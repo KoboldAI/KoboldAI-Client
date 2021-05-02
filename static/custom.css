@@ -1,0 +1,124 @@
+body {
+	background-color: #303030;
+}
+
+chunk {
+	color: #ffffff;
+}
+
+#topmenu {
+	background-color: #337ab7;
+	padding: 10px;
+}
+
+#menuitems {
+	display: grid;
+	grid-template-columns: 80% 20%;
+}
+
+#connectstatusdiv {
+	display: flex;
+}
+
+#connectstatusdiv span {
+	align-self: center;
+}
+
+#gamescreen {
+	height: 500px;
+	margin-top: 10px;
+	padding: 10px;
+	display: flex;
+	vertical-align: bottom;
+	overflow: auto;
+	background-color: #262626;
+	color: #ffffff;
+	font-size: 12pt;
+	font-family: "Helvetica";
+}
+
+#gamescreen span {
+	align-self: flex-end;
+}
+
+#actionmenu {
+	margin-top: 10px;
+}
+
+#actionmenuitems {
+	
+}
+
+#actionmenuitems button {
+	width: 80px;
+}
+
+#messagefield {
+	margin-left: 20px;
+}
+
+#inputrow {
+	margin-top: 10px;
+	padding: 0px;
+	width: 100%;
+	display: grid;
+	grid-template-columns: 90% 10%;
+}
+
+#inputrowleft {
+	padding-right: 10px;
+}
+
+#inputrowright {
+	position: relative;
+}
+
+#input_text {
+	height: 60px;
+	resize: none;
+	overflow:auto;
+	background-color: #404040;
+	color: #ffffff;
+}
+
+#btnsend {
+	width: 100%;
+	height: 100%;
+}
+
+#waitanim {
+	position:absolute;
+	top:10px;
+	left:5px;	
+}
+	
+.color_orange {
+	color: #f7a223;
+}
+
+.color_green {
+	color: #3bf723;
+}
+
+.color_cyan {
+	color: #7afaff;
+}
+
+.color_red {
+	color: #ff0000;	
+}
+
+.hidden {
+	display: none;
+}
+
+.chunkhov:hover {
+	color: #c0fc51;
+	cursor: pointer;
+}
+
+.colorfade {
+	-moz-transition:color 1s ease-in;
+    -o-transition:color 1s ease-in;
+    -webkit-transition:color 1s ease-in;
+}
