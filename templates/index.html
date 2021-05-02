@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<title>KoboldAI Client</title>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+	<script src="static/socket.io.min.js"></script>
+	<script src="static/application.js"></script>
+	<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/js/bootstrap.min.js"></script>
+	
+	<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap.min.css">
+	<link rel="stylesheet" href="static/custom.css">
+</head>
+<body>
+	<div class="container">
+		<div class="row" id="topmenu">
+			<div id="menuitems">
+				<div>
+					<button type="button" class="btn btn-primary" id="btn_newgame">New Story</button>
+					<button type="button" class="btn btn-primary" id="btn_save">Save</button>
+					<button type="button" class="btn btn-primary" id="btn_load">Load</button>
+				</div>
+				<div id="connectstatusdiv">
+					<span id="connectstatus" class="color_orange">Waiting for connection...</span>
+				</div>
+			</div>
+		</div>
+		<div class="row" id="gamescreen">
+			<span id="gametext">...</span>
+		</div>
+		<div class="row" id="actionmenu">
+			<div id="actionmenuitems">
+				<div>
+					<button type="button" class="btn btn-primary" id="btn_actedit">Edit</button>
+					<button type="button" class="btn btn-primary" id="btn_actmem">Memory</button>
+					<button type="button" class="btn btn-primary" id="btn_actundo">Back</button>
+					<button type="button" class="btn btn-primary" id="btn_actretry">Retry</button>
+					<button type="button" class="btn btn-primary hidden" id="btn_delete">Delete</button>
+					<span id="messagefield"></span>
+				</div>
+			</div>
+		</div>
+		<div class="row">
+			<div id="inputrow">
+				<div id="inputrowleft">
+					<textarea class="form-control" id="input_text" placeholder="Enter text here"></textarea>
+				</div>
+				<div id="inputrowright">
+					<button type="button" class="btn btn-secondary" id="btnsend">Wait</button>
+				</div>
+			</div>
+		</div>
+	</div>
+</body>
+</html>
