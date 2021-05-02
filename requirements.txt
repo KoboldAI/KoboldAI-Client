@@ -1,0 +1,6 @@
+transformers == 4.5.1
+tensorflow-gpu == 2.4.1
+Flask == 1.1.2
+Flask-SocketIO == 5.0.1
+requests == 2.25.1
+easygui == 0.98.2
