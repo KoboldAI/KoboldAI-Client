@@ -24,7 +24,7 @@ to 40,000 characters, and the free account will work with KoboldAI.
 1. Install Python. (https://www.python.org/downloads/)
 	(Development was done on 3.7, I have not tested newer versions)
 2. When installing Python make sure "pip" is selected under Optional features.
-	(If pip isn't working, run the installer again and choose Modify to choose Optional fearures.)
+	(If pip isn't working, run the installer again and choose Modify to choose Optional features.)
 3. Run install_requirements.bat.
 	(This will install the necessary python packages via pip)
 4. Run play.bat
