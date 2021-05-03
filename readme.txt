@@ -48,3 +48,13 @@ If you see strange numeric tags in the console output, then your console of choi
 color support enabled. On Windows 10, you can enable color support by lanching the registry editor
 and adding the REG_DWORD key VirtualTerminalLevel to Computer\HKEY_CURRENT_USER\Console and setting
 its value to 1.
+
+[ENABLE GPU FOR SUPPORTED VIDEO CARDS]
+
+1. Install NVidia CUDA toolkit from https://developer.nvidia.com/cuda-10.2-download-archive
+2. Visit PyTorch's website(https://pytorch.org/get-started/locally/) and select Pip under "Package" 
+and your version of CUDA under "Compute Platform" (I linked 10.2) to get the pip3 command.
+3. Copy and paste pip3 command into command prompt to install torch with GPU support
+
+Be aware that when using GPU mode, inference will be MUCH faster but if your GPU doesn't have enough 
+VRAM to load the model it will crash the application.
