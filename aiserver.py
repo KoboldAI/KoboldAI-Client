@@ -274,6 +274,7 @@ def calcsubmit(txt):
                 else:
                     count = budget * -1
                     tokens = acttkns[count:] + tokens
+                    break
             
             # Add mmory & prompt tokens to beginning of bundle
             tokens = memtokens + prompttkns + tokens
@@ -299,6 +300,7 @@ def calcsubmit(txt):
             else:
                 count = budget * -1
                 subtxt = vars.actions[(-1-n)][count:] + subtxt
+                break
         
         # Add mmory & prompt tokens to beginning of bundle
         if(vars.memory != ""):
