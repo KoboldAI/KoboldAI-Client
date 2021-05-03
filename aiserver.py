@@ -108,7 +108,7 @@ if(vars.model != "InferKit"):
         print("{0}Initializing transformers, please wait...{1}".format(colors.HEADER, colors.ENDC))
         from transformers import pipeline, GPT2Tokenizer
 
-        generator = pipeline('text-generation', model=vars.model)
+        generator = pipeline('text-generation', model=vars.model, device=0)
         tokenizer = GPT2Tokenizer.from_pretrained(vars.model)
         print("{0}OK! {1} pipeline created!{2}".format(colors.OKGREEN, vars.model, colors.ENDC))
 else:
