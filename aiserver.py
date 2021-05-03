@@ -25,13 +25,13 @@ class colors:
 
 # Transformers models
 modellist = [
-    ["InferKit API (requires API key)", "InferKit"],
-    ["GPT Neo 1.3B", "EleutherAI/gpt-neo-1.3B"],
-    ["GPT Neo 2.7B", "EleutherAI/gpt-neo-2.7B"],
-    ["GPT-2", "gpt2"],
-    ["GPT-2 Med", "gpt2-medium"],
-    ["GPT-2 Large", "gpt2-large"],
-    ["GPT-2 XL", "gpt2-xl"]
+    ["InferKit API (requires API key)", "InferKit", ""],
+    ["GPT Neo 1.3B", "EleutherAI/gpt-neo-1.3B", "8GB"],
+    ["GPT Neo 2.7B", "EleutherAI/gpt-neo-2.7B", "16GB"],
+    ["GPT-2", "gpt2", "1.2GB"],
+    ["GPT-2 Med", "gpt2-medium", "2GB"],
+    ["GPT-2 Large", "gpt2-large", "16GB"],
+    ["GPT-2 XL", "gpt2-xl", "16GB"]
     ]
 
 # Variables
@@ -54,24 +54,60 @@ class vars:
     apikey      = ""
     savedir     = getcwd()+"\stories\\newstory.json"
     hascuda     = False
+    usegpu      = False
 
 #==================================================================#
 # Startup
 #==================================================================#
+
+# Test for GPU support
+print("{0}Looking for GPU support...{1}".format(colors.HEADER, colors.ENDC), end="")
+import torch
+vars.hascuda = torch.cuda.is_available()
+if(vars.hascuda):
+    print("{0}FOUND!{1}".format(colors.OKGREEN, colors.ENDC))
+else:
+    print("{0}NOT FOUND!{1}".format(colors.WARNING, colors.ENDC))
+
 # Select a model to run
 print("{0}Welcome to the KoboldAI Client!\nSelect an AI model to continue:{1}\n".format(colors.OKCYAN, colors.ENDC))
+print("    #   Model                   {0}\n    ==================================="
+    .format("VRAM" if vars.hascuda else "    "))
+    
 i = 1
 for m in modellist:
-    print("    {0} - {1}".format(i, m[0]))
+    if(vars.hascuda):
+        print("    {0} - {1}\t\t{2}".format(i, m[0].ljust(15), m[2]))
+    else:
+        print("    {0} - {1}".format(i, m[0]))
     i += 1
 print(" ");
 modelsel = 0
 while(vars.model == ''):
-    modelsel = int(input("Model #> "))
-    if(modelsel > 0 and modelsel <= len(modellist)):
-        vars.model = modellist[modelsel-1][1]
+    modelsel = input("Model #> ")
+    if(modelsel.isnumeric() and int(modelsel) > 0 and int(modelsel) <= len(modellist)):
+        vars.model = modellist[int(modelsel)-1][1]
     else:
         print("{0}Please enter a valid selection.{1}".format(colors.FAIL, colors.ENDC))
+
+# If transformers model was selected & GPU available, ask to use CPU or GPU
+if(vars.model != "InferKit" and vars.hascuda):
+    print("{0}Use GPU or CPU for generation?:  (Default GPU){1}\n".format(colors.OKCYAN, colors.ENDC))
+    print("    1 - GPU\n    2 - CPU\n")
+    genselected = False
+    while(genselected == False):
+        genselect = input("Mode> ")
+        if(genselect == ""):
+            vars.usegpu = True
+            genselected = True
+        elif(genselect.isnumeric() and int(genselect) == 1):
+            vars.usegpu = True
+            genselected = True
+        elif(genselect.isnumeric() and int(genselect) == 2):
+            vars.usegpu = False
+            genselected = True
+        else:
+            print("{0}Please enter a valid selection.{1}".format(colors.FAIL, colors.ENDC))
 
 # Ask for API key if InferKit was selected
 if(vars.model == "InferKit"):
@@ -108,12 +144,9 @@ if(vars.model != "InferKit"):
     if(not vars.noai):
         print("{0}Initializing transformers, please wait...{1}".format(colors.HEADER, colors.ENDC))
         from transformers import pipeline, GPT2Tokenizer
-        import torch
         
         # Is CUDA available? If so, use GPU, otherwise fall back to CPU
-        vars.hascuda = torch.cuda.is_available()
-
-        if(vars.hascuda):
+        if(vars.hascuda and vars.usegpu):
             generator = pipeline('text-generation', model=vars.model, device=0)
         else:
             generator = pipeline('text-generation', model=vars.model)
