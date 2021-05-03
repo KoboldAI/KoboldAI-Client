@@ -41,3 +41,10 @@ On the API Key page, click "Reveal API Key" and copy it. When starting KoboldAI 
 InferKit API model, you will be asked to paste your API key into the terminal. After entering,
 the API key will be stored in the client.settings file for future use.
 You can see your remaining budget for generated characters on their website under "Billing & Usage".
+
+[ENABLE COLORS IN WINDOWS 10 COMMAND LINE]
+
+If you see strange numeric tags in the console output, then your console of choice does not have
+color support enabled. On Windows 10, you can enable color support by lanching the registry editor
+and adding the REG_DWORD key VirtualTerminalLevel to Computer\HKEY_CURRENT_USER\Console and setting
+its value to 1.
