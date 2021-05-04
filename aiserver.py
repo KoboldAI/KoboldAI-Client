@@ -7,6 +7,7 @@
 from os import path, getcwd
 import json
 import easygui
+import torch
 
 #==================================================================#
 # Variables & Storage
@@ -31,7 +32,9 @@ modellist = [
     ["GPT-2", "gpt2", "1.2GB"],
     ["GPT-2 Med", "gpt2-medium", "2GB"],
     ["GPT-2 Large", "gpt2-large", "16GB"],
-    ["GPT-2 XL", "gpt2-xl", "16GB"]
+    ["GPT-2 XL", "gpt2-xl", "16GB"],
+    ["Custom Neo   (eg Neo-horni)", "NeoCustom", ""],
+    ["Custom GPT-2 (eg CloverEdition)", "GPT2Custom", ""]
     ]
 
 # Variables
@@ -51,10 +54,48 @@ class vars:
     mode        = "play" # Whether the interface is in play, memory, or edit mode
     editln      = 0 # Which line was last selected in Edit Mode
     url         = "https://api.inferkit.com/v1/models/standard/generate" # InferKit API URL
-    apikey      = ""
+    apikey      = ""     # API key to use for InferKit API calls
     savedir     = getcwd()+"\stories\\newstory.json"
-    hascuda     = False
-    usegpu      = False
+    hascuda     = False  # Whether torch has detected CUDA on the system
+    usegpu      = False  # Whether to launch pipeline with GPU support
+    custmodpth  = ""     # Filesystem location of custom model to run
+
+#==================================================================#
+# Function to get model selection at startup
+#==================================================================#
+def getModelSelection():
+    print("    #   Model                   {0}\n    ==================================="
+        .format("VRAM" if vars.hascuda else "    "))
+    
+    i = 1
+    for m in modellist:
+        if(vars.hascuda):
+            print("    {0} - {1}\t\t{2}".format(i, m[0].ljust(15), m[2]))
+        else:
+            print("    {0} - {1}".format(i, m[0]))
+        i += 1
+    print(" ");
+    modelsel = 0
+    vars.model = ''
+    while(vars.model == ''):
+        modelsel = input("Model #> ")
+        if(modelsel.isnumeric() and int(modelsel) > 0 and int(modelsel) <= len(modellist)):
+            vars.model = modellist[int(modelsel)-1][1]
+        else:
+            print("{0}Please enter a valid selection.{1}".format(colors.FAIL, colors.ENDC))
+    
+    # If custom model was selected, get the filesystem location and store it
+    if(vars.model == "NeoCustom" or vars.model == "GPT2Custom"):
+        print("{0}Please choose the folder where pytorch_model.bin is located:{1}\n".format(colors.OKCYAN, colors.ENDC))
+        path = easygui.diropenbox (default=getcwd())
+        if(path != None):
+            # Save directory to vars
+            vars.custmodpth = path
+        else:
+            # Print error and retry model selection
+            print("{0}Model select cancelled!{1}".format(colors.FAIL, colors.ENDC))
+            print("{0}Select an AI model to continue:{1}\n".format(colors.OKCYAN, colors.ENDC))
+            getModelSelection()
 
 #==================================================================#
 # Startup
@@ -62,7 +103,6 @@ class vars:
 
 # Test for GPU support
 print("{0}Looking for GPU support...{1}".format(colors.HEADER, colors.ENDC), end="")
-import torch
 vars.hascuda = torch.cuda.is_available()
 if(vars.hascuda):
     print("{0}FOUND!{1}".format(colors.OKGREEN, colors.ENDC))
@@ -71,24 +111,7 @@ else:
 
 # Select a model to run
 print("{0}Welcome to the KoboldAI Client!\nSelect an AI model to continue:{1}\n".format(colors.OKCYAN, colors.ENDC))
-print("    #   Model                   {0}\n    ==================================="
-    .format("VRAM" if vars.hascuda else "    "))
-    
-i = 1
-for m in modellist:
-    if(vars.hascuda):
-        print("    {0} - {1}\t\t{2}".format(i, m[0].ljust(15), m[2]))
-    else:
-        print("    {0} - {1}".format(i, m[0]))
-    i += 1
-print(" ");
-modelsel = 0
-while(vars.model == ''):
-    modelsel = input("Model #> ")
-    if(modelsel.isnumeric() and int(modelsel) > 0 and int(modelsel) <= len(modellist)):
-        vars.model = modellist[int(modelsel)-1][1]
-    else:
-        print("{0}Please enter a valid selection.{1}".format(colors.FAIL, colors.ENDC))
+getModelSelection()
 
 # If transformers model was selected & GPU available, ask to use CPU or GPU
 if(vars.model != "InferKit" and vars.hascuda):
@@ -143,15 +166,35 @@ print("{0}OK!{1}".format(colors.OKGREEN, colors.ENDC))
 if(vars.model != "InferKit"):
     if(not vars.noai):
         print("{0}Initializing transformers, please wait...{1}".format(colors.HEADER, colors.ENDC))
-        from transformers import pipeline, GPT2Tokenizer
+        from transformers import pipeline, GPT2Tokenizer, GPT2LMHeadModel, GPTNeoForCausalLM
         
-        # Is CUDA available? If so, use GPU, otherwise fall back to CPU
-        if(vars.hascuda and vars.usegpu):
-            generator = pipeline('text-generation', model=vars.model, device=0)
+        # If custom GPT Neo model was chosen
+        if(vars.model == "NeoCustom"):
+            model     = GPTNeoForCausalLM.from_pretrained(vars.custmodpth)
+            tokenizer = GPT2Tokenizer.from_pretrained(vars.custmodpth)
+            # Is CUDA available? If so, use GPU, otherwise fall back to CPU
+            if(vars.hascuda and vars.usegpu):
+                generator = pipeline('text-generation', model=model, tokenizer=tokenizer, device=0)
+            else:
+                generator = pipeline('text-generation', model=model, tokenizer=tokenizer)
+        # If custom GPT2 model was chosen
+        elif(vars.model == "GPT2Custom"):
+            model     = GPT2LMHeadModel.from_pretrained(vars.custmodpth)
+            tokenizer = GPT2Tokenizer.from_pretrained(vars.custmodpth)
+            # Is CUDA available? If so, use GPU, otherwise fall back to CPU
+            if(vars.hascuda and vars.usegpu):
+                generator = pipeline('text-generation', model=model, tokenizer=tokenizer, device=0)
+            else:
+                generator = pipeline('text-generation', model=model, tokenizer=tokenizer)
+        # If base HuggingFace model was chosen
         else:
-            generator = pipeline('text-generation', model=vars.model)
-            
-        tokenizer = GPT2Tokenizer.from_pretrained(vars.model)
+            # Is CUDA available? If so, use GPU, otherwise fall back to CPU
+            tokenizer = GPT2Tokenizer.from_pretrained(vars.model)
+            if(vars.hascuda and vars.usegpu):
+                generator = pipeline('text-generation', model=vars.model, device=0)
+            else:
+                generator = pipeline('text-generation', model=vars.model)
+        
         print("{0}OK! {1} pipeline created!{2}".format(colors.OKGREEN, vars.model, colors.ENDC))
 else:
     # Import requests library for HTTPS calls
@@ -349,6 +392,7 @@ def calcsubmit(txt):
 #==================================================================#
 def generate(txt, min, max):    
     print("{0}Min:{1}, Max:{2}, Txt:{3}{4}".format(colors.WARNING, min, max, txt, colors.ENDC))
+
     genout = generator(
         txt, 
         do_sample=True, 
