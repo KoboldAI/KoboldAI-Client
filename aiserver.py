@@ -45,8 +45,9 @@ class vars:
     aibusy      = False # Stops submissions while the AI is working
     max_length  = 500 # Maximum number of tokens to submit per action
     genamt      = 60  # Amount of text for each action to generate
-    rep_pen     = 1.2 # Generator repetition_penalty
-    temp        = 1.1 # Generator temperature
+    rep_pen     = 1.0 # Generator repetition_penalty
+    temp        = 0.9 # Generator temperature
+    top_p       = 1.0 # Generator top_p
     gamestarted = False
     prompt      = ""
     memory      = ""
@@ -221,9 +222,11 @@ def do_connect():
     emit('from_server', {'cmd': 'connected'})
     if(not vars.gamestarted):
         setStartState()
+        refresh_settings()
     else:
         # Game in session, send current game data and ready state to browser
         refresh_story()
+        refresh_settings()
         if(vars.mode == "play"):
             if(not vars.aibusy):
                 emit('from_server', {'cmd': 'setgamestate', 'data': 'ready'})
@@ -288,6 +291,18 @@ def get_message(msg):
         loadRequest()
     elif(msg['cmd'] == 'newgame'):
         newGameRequest()
+    elif(msg['cmd'] == 'settemp'):
+        vars.temperature = float(msg['data'])
+        emit('from_server', {'cmd': 'setlabeltemp', 'data': msg['data']})
+    elif(msg['cmd'] == 'settopp'):
+        vars.top_p = float(msg['data'])
+        emit('from_server', {'cmd': 'setlabeltopp', 'data': msg['data']})
+    elif(msg['cmd'] == 'setreppen'):
+        vars.rep_pen = float(msg['data'])
+        emit('from_server', {'cmd': 'setlabelreppen', 'data': msg['data']})
+    elif(msg['cmd'] == 'setoutput'):
+        vars.genamt = int(msg['data'])
+        emit('from_server', {'cmd': 'setlabeloutput', 'data': msg['data']})
 
 #==================================================================#
 #   
@@ -436,6 +451,15 @@ def refresh_story():
         txt = txt + '<chunk n="'+str(i)+'" id="n'+str(i)+'">'+item+'</chunk>'
         i += 1
     emit('from_server', {'cmd': 'updatescreen', 'data': formatforhtml(txt)})
+
+#==================================================================#
+# Sends the current generator settings to the Game Menu
+#==================================================================#
+def refresh_settings():
+    emit('from_server', {'cmd': 'updatetemp', 'data': vars.temp})
+    emit('from_server', {'cmd': 'updatetopp', 'data': vars.top_p})
+    emit('from_server', {'cmd': 'updatereppen', 'data': vars.rep_pen})
+    emit('from_server', {'cmd': 'updateoutlen', 'data': vars.genamt})
 
 #==================================================================#
 #  Sets the logical and display states for the AI Busy condition

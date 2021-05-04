@@ -3,6 +3,10 @@
 //=================================================================//
 var socket;
 
+var button_newgame;
+var button_save;
+var button_load;
+var button_settings;
 var button_send;
 var button_actedit;
 var button_actmem;
@@ -12,6 +16,10 @@ var button_delete;
 var game_text;
 var input_text;
 var message_text;
+var setting_temp;
+var setting_topp;
+var setting_reppen;
+var setting_outlen;
 
 var shift_down = false;
 var do_clear_ent = false;
@@ -156,6 +164,7 @@ $(document).ready(function(){
 	button_newgame  = $('#btn_newgame');
 	button_save     = $('#btn_save');
 	button_load     = $('#btn_load');
+	button_settings = $('#btn_settings');
 	button_send     = $('#btnsend');
 	button_actedit  = $('#btn_actedit');
 	button_actmem   = $('#btn_actmem');
@@ -165,6 +174,14 @@ $(document).ready(function(){
 	game_text       = $('#gametext');
 	input_text      = $('#input_text');
 	message_text    = $('#messagefield');
+	setting_temp    = $('#settemp');
+	setting_topp    = $('#settopp');
+	setting_reppen  = $('#setreppen');
+	setting_outlen  = $('#setoutput');
+	label_temp      = $('#settempcur');
+	label_topp      = $('#settoppcur');
+	label_reppen    = $('#setreppencur');
+	label_outlen    = $('#setoutputcur');
 	
     // Connect to SocketIO server
     socket = io.connect('http://127.0.0.1:5000');
@@ -178,6 +195,10 @@ $(document).ready(function(){
 		} else if(msg.cmd == "updatescreen") {
 			// Send game content to Game Screen
 			game_text.html(msg.data);
+			// Scroll to bottom of text
+			setTimeout(function () {
+				$('#gamescreen').animate({scrollTop: $('#gamescreen').prop('scrollHeight')}, 1000);
+			}, 5);
 		} else if(msg.cmd == "setgamestate") {
 			// Enable or Disable buttons
 			if(msg.data == "ready") {
@@ -227,6 +248,34 @@ $(document).ready(function(){
 		} else if(msg.cmd == "texteffect") {
 			// Apply color highlight to line of text
 			newTextHighlight($("#n"+msg.data))
+		} else if(msg.cmd == "updatetemp") {
+			// Send current temp value to input
+			setting_temp.val(parseFloat(msg.data));
+			label_temp.html(msg.data);
+		} else if(msg.cmd == "updatetopp") {
+			// Send current temp value to input
+			setting_topp.val(parseFloat(msg.data));
+			label_topp.html(msg.data);
+		} else if(msg.cmd == "updatereppen") {
+			// Send current temp value to input
+			setting_reppen.val(parseFloat(msg.data));
+			label_reppen.html(msg.data);
+		} else if(msg.cmd == "updateoutlen") {
+			// Send current temp value to input
+			setting_outlen.val(parseInt(msg.data));
+			label_outlen.html(msg.data);
+		} else if(msg.cmd == "setlabeltemp") {
+			// Update setting label with value from server
+			label_temp.html(msg.data);
+		} else if(msg.cmd == "setlabeltopp") {
+			// Update setting label with value from server
+			label_topp.html(msg.data);
+		} else if(msg.cmd == "setlabelreppen") {
+			// Update setting label with value from server
+			label_reppen.html(msg.data);
+		} else if(msg.cmd == "setlabeloutput") {
+			// Update setting label with value from server
+			label_outlen.html(msg.data);
 		}
     });	
 	
@@ -271,6 +320,15 @@ $(document).ready(function(){
 	
 	button_newgame.on("click", function(ev) {
 		socket.send({'cmd': 'newgame', 'data': ''});
+	});
+	
+	button_settings.on("click", function(ev) {
+		$('#settingsmenu').slideToggle("slow");
+	});
+	
+	// Bind settings to server calls
+	$('input[type=range]').on('input', function () {
+		socket.send({'cmd': $(this).attr('id'), 'data': $(this).val()});
 	});
 	
 	// Bind Enter button to submit

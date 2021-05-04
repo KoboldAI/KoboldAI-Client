@@ -16,6 +16,12 @@ chunk {
 	grid-template-columns: 80% 20%;
 }
 
+#settingsmenu {
+	display:none;
+	background-color: #295071;
+	padding: 10px;
+}
+
 #connectstatusdiv {
 	display: flex;
 }
@@ -30,7 +36,7 @@ chunk {
 	padding: 10px;
 	display: flex;
 	vertical-align: bottom;
-	overflow: auto;
+	overflow-y: scroll;
 	background-color: #262626;
 	color: #ffffff;
 	font-size: 12pt;
@@ -39,6 +45,11 @@ chunk {
 
 #gamescreen span {
 	align-self: flex-end;
+}
+
+#gametext {
+	max-height: 100%;
+	width: 100%;
 }
 
 #actionmenu {
@@ -91,6 +102,21 @@ chunk {
 	top:10px;
 	left:5px;	
 }
+
+.airange {
+	width: 100px;
+}
+
+.chunkhov:hover {
+	color: #c0fc51;
+	cursor: pointer;
+}
+
+.colorfade {
+	-moz-transition:color 1s ease-in;
+    -o-transition:color 1s ease-in;
+    -webkit-transition:color 1s ease-in;
+}
 	
 .color_orange {
 	color: #f7a223;
@@ -112,13 +138,38 @@ chunk {
 	display: none;
 }
 
-.chunkhov:hover {
-	color: #c0fc51;
-	cursor: pointer;
+.justifyleft {
+	text-align: left;
 }
 
-.colorfade {
-	-moz-transition:color 1s ease-in;
-    -o-transition:color 1s ease-in;
-    -webkit-transition:color 1s ease-in;
+.justifyright {
+	text-align: right;
+}
+
+.settingitem {
+	width: 20%;
+	padding-left: 10px;
+	padding-right: 10px;
+	display: inline-block;
+}
+
+.settinglabel {
+	color: #ffffff;
+	display: grid;
+	grid-template-columns: 80% 20%;
+}
+
+.settingminmax {
+	display: grid;
+	grid-template-columns: 50% 50%;
+}
+
+.settingminmax div {
+	font-size: 8pt;
+	color: #ffffff;
+}
+
+.spacer {
+	display: inline-block;
+	width: 50px;
 }
