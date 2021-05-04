@@ -553,7 +553,7 @@ def ikrequest(txt):
         'startFromBeginning': False,
         'streamResponse': False,
         'temperature': vars.temp,
-        'topP': 0.9
+        'topP': vars.top_p
     }
     
     # Create request
