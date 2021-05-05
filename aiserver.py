@@ -5,8 +5,9 @@
 #==================================================================#
 
 from os import path, getcwd
+from tkinter import filedialog, messagebox
+import tkinter as tk
 import json
-import easygui
 import torch
 
 #==================================================================#
@@ -58,7 +59,7 @@ class vars:
     editln      = 0      # Which line was last selected in Edit Mode
     url         = "https://api.inferkit.com/v1/models/standard/generate" # InferKit API URL
     apikey      = ""     # API key to use for InferKit API calls
-    savedir     = getcwd()+"\stories\\newstory.json"
+    savedir     = getcwd()+"\stories"
     hascuda     = False  # Whether torch has detected CUDA on the system
     usegpu      = False  # Whether to launch pipeline with GPU support
     custmodpth  = ""     # Filesystem location of custom model to run
@@ -90,8 +91,16 @@ def getModelSelection():
     # If custom model was selected, get the filesystem location and store it
     if(vars.model == "NeoCustom" or vars.model == "GPT2Custom"):
         print("{0}Please choose the folder where pytorch_model.bin is located:{1}\n".format(colors.OKCYAN, colors.ENDC))
-        path = easygui.diropenbox (default=getcwd())
-        if(path != None):
+        
+        root = tk.Tk()
+        root.attributes("-topmost", True)
+        path = filedialog.askdirectory(
+            initialdir=getcwd(), 
+            title="Select Model Folder", 
+            )
+        root.destroy()
+        
+        if(path != None and path != ""):
             # Save directory to vars
             vars.custmodpth = path
         else:
@@ -143,8 +152,10 @@ if(vars.model == "InferKit"):
         vars.apikey = input("Key> ")
         # Write API key to file
         file = open("client.settings", "w")
-        file.write("{\"apikey\": \""+vars.apikey+"\"}")
-        file.close()
+        try:
+            file.write("{\"apikey\": \""+vars.apikey+"\"}")
+        finally:
+            file.close()
     else:
         # Otherwise open it up and get the key
         file = open("client.settings", "r")
@@ -686,9 +697,16 @@ def exitModes():
 #  Save the story to a file
 #==================================================================#
 def saveRequest():    
-    path = easygui.filesavebox(default=vars.savedir)
+    root = tk.Tk()
+    root.attributes("-topmost", True)
+    path = filedialog.asksaveasfile(
+        initialdir=vars.savedir, 
+        title="Save Story As", 
+        filetypes = [("Json", "*.json")]
+        )
+    root.destroy()
     
-    if(path != None):
+    if(path != None and path != ''):
         # Leave Edit/Memory mode before continuing
         exitModes()
         # Save path for future saves
@@ -704,19 +722,28 @@ def saveRequest():
         js["memory"]      = vars.memory
         js["authorsnote"] = vars.authornote
         js["actions"]     = vars.actions
-        js["savedir"]     = path        
+        #js["savedir"]     = path.name  # For privacy, don't include savedir in save file      
         # Write it
-        file = open(path, "w")
-        file.write(json.dumps(js))
-        file.close()
+        file = open(path.name, "w")
+        try:
+            file.write(json.dumps(js))
+        finally:
+            file.close()
 
 #==================================================================#
 #  Load a stored story from a file
 #==================================================================#
 def loadRequest():    
-    path = easygui.fileopenbox(default=vars.savedir) # Returns None on cancel
+    root = tk.Tk()
+    root.attributes("-topmost", True)
+    path = filedialog.askopenfilename(
+        initialdir=vars.savedir, 
+        title="Select Story File", 
+        filetypes = [("Json", "*.json")]
+        )
+    root.destroy()
     
-    if(path != None):
+    if(path != None and path != ''):
         # Leave Edit/Memory mode before continuing
         exitModes()
         # Read file contents into JSON object
@@ -731,7 +758,7 @@ def loadRequest():
         vars.prompt      = js["prompt"]
         vars.memory      = js["memory"]
         vars.actions     = js["actions"]
-        vars.savedir     = js["savedir"]
+        #vars.savedir     = js["savedir"] # For privacy, don't include savedir in save file
         
         # Try not to break older save files
         if("authorsnote" in js):
@@ -747,7 +774,12 @@ def loadRequest():
 #==================================================================#
 def newGameRequest(): 
     # Ask for confirmation
-    if(easygui.ccbox("Really start new Story?","Please Confirm")):
+    root = tk.Tk()
+    root.attributes("-topmost", True)
+    confirm = messagebox.askquestion("Confirm New Game", "Really start new Story?")
+    root.destroy()
+    
+    if(confirm == "yes"):
         # Leave Edit/Memory mode before continuing
         exitModes()
         # Clear vars values
