@@ -85,7 +85,7 @@ chunk {
 }
 
 #input_text {
-	height: 60px;
+	height: 80px;
 	resize: none;
 	overflow:auto;
 	background-color: #404040;
@@ -101,6 +101,38 @@ chunk {
 	position:absolute;
 	top:10px;
 	left:5px;	
+}
+
+#anoterowcontainer {
+	display: none;
+}
+
+#anoterow {
+	margin-top: 10px;
+	padding: 0px;
+	width: 100%;
+	display: grid;
+	grid-template-columns: 90% 10%;
+}
+
+#anoterowleft {
+	padding-right: 10px;
+}
+
+#anoteinput {
+	background-color: #404040;
+	color: #ffffff;
+}
+
+#anoteslidelabel {
+	color: #ffffff;
+	display: grid;
+	grid-template-columns: 80% 20%;
+}
+
+.anotelabel {
+	font-size: 10pt;
+	color: #ffffff;
 }
 
 .airange {

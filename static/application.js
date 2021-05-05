@@ -1,8 +1,11 @@
 //=================================================================//
 //  VARIABLES
 //=================================================================//
+
+// Socket IO Object
 var socket;
 
+// UI references for jQuery
 var button_newgame;
 var button_save;
 var button_load;
@@ -20,33 +23,46 @@ var setting_temp;
 var setting_topp;
 var setting_reppen;
 var setting_outlen;
+var label_temp;
+var label_topp;
+var label_reppen;
+var label_outlen;
+var anote_menu;
+var anote_input;
+var anote_labelcur;
+var anote_slider;
 
-var shift_down = false;
+// Key states
+var shift_down   = false;
 var do_clear_ent = false;
 
 //=================================================================//
 //  METHODS
 //=================================================================//
 
-function enableButton(ref) {
-	ref.prop("disabled",false);
-	ref.removeClass("btn-secondary");
-	ref.addClass("btn-primary");
+function enableButtons(refs) {
+	for(i=0; i<refs.length; i++) {
+		refs[i].prop("disabled",false);
+		refs[i].removeClass("btn-secondary");
+		refs[i].addClass("btn-primary");
+	}
 }
 
-function disableButton(ref) {
-	ref.prop("disabled",true);
-	ref.removeClass("btn-primary");
-	ref.addClass("btn-secondary");
+function disableButtons(refs) {
+	for(i=0; i<refs.length; i++) {
+		refs[i].prop("disabled",true);
+		refs[i].removeClass("btn-primary");
+		refs[i].addClass("btn-secondary");
+	}
 }
 
 function enableSendBtn() {
-	enableButton(button_send)
+	enableButtons([button_send])
 	button_send.html("Submit");
 }
 
 function disableSendBtn() {
-	disableButton(button_send)
+	disableButtons([button_send])
 	button_send.html("");
 }
 
@@ -75,12 +91,16 @@ function hideWaitAnimation() {
 	$('#waitanim').remove();
 }
 
-function hide(ref) {
-	ref.addClass("hidden");
+function hide(refs) {
+	for(i=0; i<refs.length; i++) {
+		refs[i].addClass("hidden");
+	}
 }
 
-function show(ref) {
-	ref.removeClass("hidden");
+function show(refs) {
+	for(i=0; i<refs.length; i++) {
+		refs[i].removeClass("hidden");
+	}
 }
 
 function enterEditMode() {
@@ -92,10 +112,8 @@ function enterEditMode() {
 		editModeSelect($(this).attr("n"));
 	});
 	disableSendBtn();
-	hide(button_actback);
-	hide(button_actmem);
-	hide(button_actretry);
-	show(button_delete);
+	hide([button_actback, button_actmem, button_actretry]);
+	show([button_delete]);
 }
 
 function exitEditMode() {
@@ -105,10 +123,8 @@ function exitEditMode() {
 	game_text.children('chunk').removeClass("chunkhov");
 	game_text.off('click', '> *');
 	enableSendBtn();
-	show(button_actback);
-	show(button_actmem);
-	show(button_actretry);
-	hide(button_delete);
+	show([button_actback, button_actmem, button_actretry]);
+	hide([button_delete]);
 	input_text.val("");
 }
 
@@ -117,23 +133,20 @@ function editModeSelect(n) {
 }
 
 function enterMemoryMode() {
-	// Add class to each story chunk
 	showMessage("Edit the memory to be sent with each request to the AI.");
 	button_actmem.html("Cancel");
-	hide(button_actback);
-	hide(button_actretry);
-	hide(button_actedit);
-	hide(button_delete);
+	hide([button_actback, button_actretry, button_actedit, button_delete]);
+	// Display Author's Note field
+	anote_menu.slideDown("fast");
 }
 
 function exitMemoryMode() {
-	// Remove class to each story chunk
 	hideMessage();
 	button_actmem.html("Memory");
-	show(button_actback);
-	show(button_actretry);
-	show(button_actedit);
+	show([button_actback, button_actretry, button_actedit]);
 	input_text.val("");
+	// Hide Author's Note field
+	anote_menu.slideUp("fast");
 }
 
 function dosubmit() {
@@ -160,7 +173,7 @@ function newTextHighlight(ref) {
 
 $(document).ready(function(){
 	
-	// Bind references
+	// Bind UI references
 	button_newgame  = $('#btn_newgame');
 	button_save     = $('#btn_save');
 	button_load     = $('#btn_load');
@@ -182,6 +195,10 @@ $(document).ready(function(){
 	label_topp      = $('#settoppcur');
 	label_reppen    = $('#setreppencur');
 	label_outlen    = $('#setoutputcur');
+	anote_menu      = $('#anoterowcontainer');
+	anote_input     = $('#anoteinput');
+	anote_labelcur  = $('#anotecur');
+	anote_slider    = $('#anotedepth');
 	
     // Connect to SocketIO server
     socket = io.connect('http://127.0.0.1:5000');
@@ -203,24 +220,16 @@ $(document).ready(function(){
 			// Enable or Disable buttons
 			if(msg.data == "ready") {
 				enableSendBtn();
-				enableButton(button_actedit);
-				enableButton(button_actmem);
-				enableButton(button_actback);
-				enableButton(button_actretry);
+				enableButtons([button_actedit, button_actmem, button_actback, button_actretry]);
 				hideWaitAnimation();
 			} else if(msg.data == "wait") {
 				disableSendBtn();
-				disableButton(button_actedit);
-				disableButton(button_actmem);
-				disableButton(button_actback);
-				disableButton(button_actretry);
+				disableButtons([button_actedit, button_actmem, button_actback, button_actretry]);
 				showWaitAnimation();
 			} else if(msg.data == "start") {
 				enableSendBtn();
-				enableButton(button_actmem);
-				disableButton(button_actedit);
-				disableButton(button_actback);
-				disableButton(button_actretry);
+				enableButtons([button_actmem]);
+				disableButtons([button_actedit, button_actback, button_actretry]);
 			}
 		} else if(msg.cmd == "editmode") {
 			// Enable or Disable edit mode
@@ -276,6 +285,20 @@ $(document).ready(function(){
 		} else if(msg.cmd == "setlabeloutput") {
 			// Update setting label with value from server
 			label_outlen.html(msg.data);
+		} else if(msg.cmd == "updatanotedepth") {
+			// Send current Author's Note depth value to input
+			anote_slider.val(parseInt(msg.data));
+			anote_labelcur.html(msg.data);
+		} else if(msg.cmd == "setlabelanotedepth") {
+			// Update setting label with value from server
+			anote_labelcur.html(msg.data);
+		} else if(msg.cmd == "getanote") {
+			// Request contents of Author's Note field
+			var txt = anote_input.val();
+			socket.send({'cmd': 'anote', 'data': txt});
+		} else if(msg.cmd == "setanote") {
+			// Set contents of Author's Note field
+			anote_input.val(msg.data);
 		}
     });	
 	
@@ -341,6 +364,7 @@ $(document).ready(function(){
 		}
 	});
 	
+	// Enter to submit, but not if holding shift
 	input_text.keyup(function (ev) {
 		if (ev.which == 13 && do_clear_ent) {
 			input_text.val("");

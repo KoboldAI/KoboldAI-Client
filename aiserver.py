@@ -40,20 +40,22 @@ modellist = [
 # Variables
 class vars:
     lastact     = "" # The last action submitted to the generator
-    model       = ''
+    model       = ""
     noai        = False # Runs the script without starting up the transformers pipeline
     aibusy      = False # Stops submissions while the AI is working
     max_length  = 500 # Maximum number of tokens to submit per action
     genamt      = 60  # Amount of text for each action to generate
-    rep_pen     = 1.0 # Generator repetition_penalty
-    temp        = 0.9 # Generator temperature
-    top_p       = 1.0 # Generator top_p
+    rep_pen     = 1.0 # Default generator repetition_penalty
+    temp        = 0.9 # Default generator temperature
+    top_p       = 1.0 # Default generator top_p
     gamestarted = False
     prompt      = ""
     memory      = ""
+    authornote  = ""
+    andepth     = 3     # How far back in history to append author's note
     actions     = []
     mode        = "play" # Whether the interface is in play, memory, or edit mode
-    editln      = 0 # Which line was last selected in Edit Mode
+    editln      = 0      # Which line was last selected in Edit Mode
     url         = "https://api.inferkit.com/v1/models/standard/generate" # InferKit API URL
     apikey      = ""     # API key to use for InferKit API calls
     savedir     = getcwd()+"\stories\\newstory.json"
@@ -303,6 +305,13 @@ def get_message(msg):
     elif(msg['cmd'] == 'setoutput'):
         vars.genamt = int(msg['data'])
         emit('from_server', {'cmd': 'setlabeloutput', 'data': msg['data']})
+    # Author's Note field update
+    elif(msg['cmd'] == 'anote'):
+        anotesubmit(msg['data'])
+    # Author's Note depth update
+    elif(msg['cmd'] == 'anotedepth'):
+        vars.andepth = int(msg['data'])
+        emit('from_server', {'cmd': 'setlabelanotedepth', 'data': msg['data']})
 
 #==================================================================#
 #   
@@ -333,9 +342,20 @@ def actionsubmit(data):
 # Take submitted text and build the text to be given to generator
 #==================================================================#
 def calcsubmit(txt):
+    vars.lastact = txt   # Store most recent action in memory (is this still needed?)
+    anotetxt     = ""    # Placeholder for Author's Note text
+    lnanote      = 0     # Placeholder for Author's Note length
+    forceanote   = False # In case we don't have enough actions to hit A.N. depth
+    anoteadded   = False # In case our budget runs out before we hit A.N. depth
+    actionlen    = len(vars.actions)
+    
+    # Build Author's Note if set
+    if(vars.authornote != ""):
+        anotetxt  = "\n[Author's note: "+vars.authornote+"]\n"
+    
     # For all transformers models
     if(vars.model != "InferKit"):
-        vars.lastact = txt # Store most recent action in memory (is this still needed?)
+        anotetkns    = []  # Placeholder for Author's Note tokens
         
         # Calculate token budget
         prompttkns = tokenizer.encode(vars.prompt)
@@ -344,17 +364,28 @@ def calcsubmit(txt):
         memtokens = tokenizer.encode(vars.memory)
         lnmem     = len(memtokens)
         
-        budget = vars.max_length - lnprompt - lnmem - vars.genamt
+        if(anotetxt != ""):
+            anotetkns = tokenizer.encode(anotetxt)
+            lnanote   = len(anotetkns)
         
-        if(len(vars.actions) == 0):
+        budget = vars.max_length - lnprompt - lnmem - lnanote - vars.genamt
+        
+        if(actionlen == 0):
             # First/Prompt action
-            subtxt = vars.memory + vars.prompt
-            lnsub  = len(memtokens+prompttkns)
+            subtxt = vars.memory + anotetxt + vars.prompt
+            lnsub  = lnmem + lnprompt + lnanote
+            
             generate(subtxt, lnsub+1, lnsub+vars.genamt)
         else:
+            tokens     = []
+            
+            # Check if we have the action depth to hit our A.N. depth
+            if(anotetxt != "" and actionlen < vars.andepth):
+                forceanote = True
+            
             # Get most recent action tokens up to our budget
-            tokens = []
-            for n in range(len(vars.actions)):
+            for n in range(actionlen):
+                
                 if(budget <= 0):
                     break
                 acttkns = tokenizer.encode(vars.actions[(-1-n)])
@@ -366,9 +397,22 @@ def calcsubmit(txt):
                     count = budget * -1
                     tokens = acttkns[count:] + tokens
                     break
-            
-            # Add mmory & prompt tokens to beginning of bundle
-            tokens = memtokens + prompttkns + tokens
+                
+                # Inject Author's Note if we've reached the desired depth
+                if(n == vars.andepth-1):
+                    if(anotetxt != ""):
+                        tokens = anotetkns + tokens # A.N. len already taken from bdgt
+                        anoteadded = True
+                    
+            # Did we get to add the A.N.? If not, do it here
+            if(anotetxt != ""):
+                if((not anoteadded) or forceanote):
+                    tokens = memtokens + anotetkns + prompttkns + tokens
+                else:
+                    tokens = memtokens + prompttkns + tokens
+            else:
+                # Prepend Memory and Prompt before action tokens
+                tokens = memtokens + prompttkns + tokens
             
             # Send completed bundle to generator
             ln = len(tokens)
@@ -379,9 +423,15 @@ def calcsubmit(txt):
                 )
     # For InferKit web API
     else:
-        budget = vars.max_length - len(vars.prompt) - len(vars.memory) - 1
+        
+        # Check if we have the action depth to hit our A.N. depth
+        if(anotetxt != "" and actionlen < vars.andepth):
+            forceanote = True
+        
+        budget = vars.max_length - len(vars.prompt) - len(anotetxt) - len(vars.memory) - 1
         subtxt = ""
-        for n in range(len(vars.actions)):
+        for n in range(actionlen):
+            
             if(budget <= 0):
                     break
             actlen = len(vars.actions[(-1-n)])
@@ -392,12 +442,26 @@ def calcsubmit(txt):
                 count = budget * -1
                 subtxt = vars.actions[(-1-n)][count:] + subtxt
                 break
+            
+            # Inject Author's Note if we've reached the desired depth
+            if(n == vars.andepth-1):
+                if(anotetxt != ""):
+                    subtxt = anotetxt + subtxt # A.N. len already taken from bdgt
+                    anoteadded = True
         
-        # Add mmory & prompt tokens to beginning of bundle
+        # Format memory for inclusion (adding newline separator)
+        memsub = ""
         if(vars.memory != ""):
-            subtxt = vars.memory + "\n" + vars.prompt + subtxt
+            memsub = vars.memory + "\n"
+        
+        # Did we get to add the A.N.? If not, do it here
+        if(anotetxt != ""):
+            if((not anoteadded) or forceanote):
+                subtxt = memsub + anotetxt + vars.prompt + subtxt
+            else:
+                subtxt = memsub + vars.prompt + subtxt
         else:
-            subtxt = vars.prompt + subtxt
+            subtxt = memsub + vars.prompt + subtxt
         
         # Send it!
         ikrequest(subtxt)
@@ -407,7 +471,12 @@ def calcsubmit(txt):
 #==================================================================#
 def generate(txt, min, max):    
     print("{0}Min:{1}, Max:{2}, Txt:{3}{4}".format(colors.WARNING, min, max, txt, colors.ENDC))
-
+    
+    # Clear CUDA cache if using GPU
+    if(vars.hascuda and vars.usegpu):
+        torch.cuda.empty_cache()
+    
+    # Submit input text to generator
     genout = generator(
         txt, 
         do_sample=True, 
@@ -420,6 +489,10 @@ def generate(txt, min, max):
     vars.actions.append(getnewcontent(genout))
     refresh_story()
     emit('from_server', {'cmd': 'texteffect', 'data': len(vars.actions)})
+    
+    # Clear CUDA cache again if using GPU
+    if(vars.hascuda and vars.usegpu):
+        torch.cuda.empty_cache()
     
     set_aibusy(0)
 
@@ -460,6 +533,7 @@ def refresh_settings():
     emit('from_server', {'cmd': 'updatetopp', 'data': vars.top_p})
     emit('from_server', {'cmd': 'updatereppen', 'data': vars.rep_pen})
     emit('from_server', {'cmd': 'updateoutlen', 'data': vars.genamt})
+    emit('from_server', {'cmd': 'updatanotedepth', 'data': vars.andepth})
 
 #==================================================================#
 #  Sets the logical and display states for the AI Busy condition
@@ -521,6 +595,7 @@ def togglememorymode():
         vars.mode = "memory"
         emit('from_server', {'cmd': 'memmode', 'data': 'true'})
         emit('from_server', {'cmd': 'setinputtext', 'data': vars.memory})
+        emit('from_server', {'cmd': 'setanote', 'data': vars.authornote})
     elif(vars.mode == "memory"):
         vars.mode = "play"
         emit('from_server', {'cmd': 'memmode', 'data': 'false'})
@@ -534,6 +609,17 @@ def memsubmit(data):
     vars.memory = data
     vars.mode = "play"
     emit('from_server', {'cmd': 'memmode', 'data': 'false'})
+    
+    # Ask for contents of Author's Note field
+    emit('from_server', {'cmd': 'getanote', 'data': ''})
+
+#==================================================================#
+#  Commit changes to Author's Note
+#==================================================================#
+def anotesubmit(data):
+    # Maybe check for length at some point
+    # For now just send it to storage
+    vars.authornote = data
 
 #==================================================================#
 #  Assembles game data into a request to InferKit API
@@ -611,11 +697,12 @@ def saveRequest():
         js = {}
         #js["maxlegth"]    = vars.max_length # This causes problems when switching to/from InfraKit
         #js["genamt"]      = vars.genamt
-        js["rep_pen"]     = vars.rep_pen
-        js["temp"]        = vars.temp
+        #js["rep_pen"]     = vars.rep_pen
+        #js["temp"]        = vars.temp
         js["gamestarted"] = vars.gamestarted
         js["prompt"]      = vars.prompt
         js["memory"]      = vars.memory
+        js["authorsnote"] = vars.authornote
         js["actions"]     = vars.actions
         js["savedir"]     = path        
         # Write it
@@ -638,13 +725,18 @@ def loadRequest():
         # Copy file contents to vars
         #vars.max_length  = js["maxlegth"] # This causes problems when switching to/from InfraKit
         #vars.genamt      = js["genamt"]
-        vars.rep_pen     = js["rep_pen"]
-        vars.temp        = js["temp"]
+        #vars.rep_pen     = js["rep_pen"]
+        #vars.temp        = js["temp"]
         vars.gamestarted = js["gamestarted"]
         vars.prompt      = js["prompt"]
         vars.memory      = js["memory"]
         vars.actions     = js["actions"]
         vars.savedir     = js["savedir"]
+        
+        # Try not to break older save files
+        if("authorsnote" in js):
+            vars.authornote = js["authorsnote"]
+        
         file.close()
         # Refresh game screen
         refresh_story()
