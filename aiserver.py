@@ -48,7 +48,7 @@ class vars:
     model       = ""
     noai        = False # Runs the script without starting up the transformers pipeline
     aibusy      = False # Stops submissions while the AI is working
-    max_length  = 1024   # Maximum number of tokens to submit per action
+    max_length  = 512   # Maximum number of tokens to submit per action
     ikmax       = 3000  # Maximum number of characters to submit to InferKit
     genamt      = 60    # Amount of text for each action to generate
     ikgen       = 200   # Number of characters for InferKit to generate

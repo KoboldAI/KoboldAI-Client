@@ -29,15 +29,15 @@ gensettingstf = [{
 	"max": 2.0,
 	"step": 0.05,
 	"default": 1.0,
-    "tooltip": "Used to penalize words that were already generated or belong to the context"
+    "tooltip": "Used to penalize words that were already generated or belong to the context."
 	},
 	{
 	"uitype": "slider",
 	"unit": "int",
 	"label": "Amount to Generate",
 	"id": "setoutput", 
-	"min": 10,
-	"max": 500,
+	"min": 16,
+	"max": 512,
 	"step": 2,
 	"default": 60,
     "tooltip": "Number of tokens the AI should generate. Higher numbers will take longer to generate."
@@ -50,8 +50,8 @@ gensettingstf = [{
 	"min": 512,
 	"max": 2048,
 	"step": 8,
-	"default": 1024,
-    "tooltip": "Number of tokens of context to submit to the AI for sampling."
+	"default": 512,
+    "tooltip": "Max number of tokens of context to submit to the AI for sampling. Make sure this is higher than Amount to Generate. Higher values increase VRAM/RAM usage."
 	}]
 
 gensettingsik =[{
