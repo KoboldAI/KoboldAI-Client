@@ -170,6 +170,49 @@ chunk {
 	display: none;
 }
 
+.helpicon {
+    display: inline-block;
+    font-family: sans-serif;
+    font-weight: bold;
+    text-align: center;
+    width: 2.2ex;
+    height: 2.4ex;
+    font-size: 1.4ex;
+    line-height: 1.8ex;
+    border-radius: 1.2ex;
+    margin-right: 4px;
+    padding: 1px;
+    color: #295071;
+    background: #ffffff;
+    border: 1px solid white;
+    text-decoration: none;
+}
+
+.helpicon:hover {
+  cursor: pointer;
+}
+
+.helpicon:hover .helptext {
+	display: inline-block;
+	width: 250px;
+	background-color: #1f2931;
+	color: #ffffff;
+	font-size: 11pt;
+	font-weight: normal;
+	line-height: normal;
+	border-radius: 6px;
+	padding: 15px;
+	margin-left:10px;
+	border: 1px solid #337ab7;
+
+	position: absolute;
+	z-index: 1;
+}
+
+.helptext {
+	display: none;
+}
+
 .justifyleft {
 	text-align: left;
 }
@@ -179,9 +222,14 @@ chunk {
 }
 
 .settingitem {
-	width: 20%;
+	width: 18%;
 	padding-left: 10px;
 	padding-right: 10px;
+	display: inline-block;
+}
+
+.settingsave {
+	width: 10%;
 	display: inline-block;
 }
 

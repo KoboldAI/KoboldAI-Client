@@ -6,6 +6,7 @@
 var socket;
 
 // UI references for jQuery
+var connect_status;
 var button_newgame;
 var button_save;
 var button_load;
@@ -19,14 +20,7 @@ var button_delete;
 var game_text;
 var input_text;
 var message_text;
-var setting_temp;
-var setting_topp;
-var setting_reppen;
-var setting_outlen;
-var label_temp;
-var label_topp;
-var label_reppen;
-var label_outlen;
+var settings_menu;
 var anote_menu;
 var anote_input;
 var anote_labelcur;
@@ -39,6 +33,40 @@ var do_clear_ent = false;
 //=================================================================//
 //  METHODS
 //=================================================================//
+
+function addSetting(ob) {	
+	// Add setting block to Settings Menu
+	settings_menu.append("<div class=\"settingitem\">\
+	<div class=\"settinglabel\">\
+		<div class=\"justifyleft\">\
+			"+ob.label+" <span class=\"helpicon\">?<span class=\"helptext\">"+ob.tooltip+"</span></span>\
+		</div>\
+		<div class=\"justifyright\" id=\""+ob.id+"cur\">\
+			"+ob.default+"\
+		</div>\
+	</div>\
+	<div>\
+		<input type=\"range\" class=\"form-range airange\" min=\""+ob.min+"\" max=\""+ob.max+"\" step=\""+ob.step+"\" id=\""+ob.id+"\">\
+	</div>\
+	<div class=\"settingminmax\">\
+		<div class=\"justifyleft\">\
+			"+ob.min+"\
+		</div>\
+		<div class=\"justifyright\">\
+			"+ob.max+"\
+		</div>\
+	</div>\
+	</div>");
+	// Set references to HTML objects
+	refin = $("#"+ob.id);
+	reflb = $("#"+ob.id+"cur");
+	window["setting_"+ob.id] = refin;
+	window["label_"+ob.id]   = reflb;
+	// Add event function to input
+	refin.on("input", function () {
+		socket.send({'cmd': $(this).attr('id'), 'data': $(this).val()});
+	});
+}
 
 function enableButtons(refs) {
 	for(i=0; i<refs.length; i++) {
@@ -174,6 +202,7 @@ function newTextHighlight(ref) {
 $(document).ready(function(){
 	
 	// Bind UI references
+	connect_status  = $('#connectstatus');
 	button_newgame  = $('#btn_newgame');
 	button_save     = $('#btn_save');
 	button_load     = $('#btn_load');
@@ -187,14 +216,7 @@ $(document).ready(function(){
 	game_text       = $('#gametext');
 	input_text      = $('#input_text');
 	message_text    = $('#messagefield');
-	setting_temp    = $('#settemp');
-	setting_topp    = $('#settopp');
-	setting_reppen  = $('#setreppen');
-	setting_outlen  = $('#setoutput');
-	label_temp      = $('#settempcur');
-	label_topp      = $('#settoppcur');
-	label_reppen    = $('#setreppencur');
-	label_outlen    = $('#setoutputcur');
+	settings_menu   = $("#settingsmenu");
 	anote_menu      = $('#anoterowcontainer');
 	anote_input     = $('#anoteinput');
 	anote_labelcur  = $('#anotecur');
@@ -206,9 +228,11 @@ $(document).ready(function(){
 	socket.on('from_server', function(msg) {
         if(msg.cmd == "connected") {
 			// Connected to Server Actions
-			$('#connectstatus').html("<b>Connected to KoboldAI Process!</b>");
-			$('#connectstatus').removeClass("color_orange");
-			$('#connectstatus').addClass("color_green");
+			connect_status.html("<b>Connected to KoboldAI Process!</b>");
+			connect_status.removeClass("color_orange");
+			connect_status.addClass("color_green");
+			// Reset Settings Menu
+			settings_menu.html("");
 		} else if(msg.cmd == "updatescreen") {
 			// Send game content to Game Screen
 			game_text.html(msg.data);
@@ -259,33 +283,47 @@ $(document).ready(function(){
 			newTextHighlight($("#n"+msg.data))
 		} else if(msg.cmd == "updatetemp") {
 			// Send current temp value to input
-			setting_temp.val(parseFloat(msg.data));
-			label_temp.html(msg.data);
+			$("#settemp").val(parseFloat(msg.data));
+			$("#settempcur").html(msg.data);
 		} else if(msg.cmd == "updatetopp") {
-			// Send current temp value to input
-			setting_topp.val(parseFloat(msg.data));
-			label_topp.html(msg.data);
+			// Send current top p value to input
+			$("#settopp").val(parseFloat(msg.data));
+			$("#settoppcur").html(msg.data);
 		} else if(msg.cmd == "updatereppen") {
-			// Send current temp value to input
-			setting_reppen.val(parseFloat(msg.data));
-			label_reppen.html(msg.data);
+			// Send current rep pen value to input
+			$("#setreppen").val(parseFloat(msg.data));
+			$("#setreppencur").html(msg.data);
 		} else if(msg.cmd == "updateoutlen") {
-			// Send current temp value to input
-			setting_outlen.val(parseInt(msg.data));
-			label_outlen.html(msg.data);
+			// Send current output amt value to input
+			$("#setoutput").val(parseInt(msg.data));
+			$("#setoutputcur").html(msg.data);
+		} else if(msg.cmd == "updatetknmax") {
+			// Send current max tokens value to input
+			$("#settknmax").val(parseInt(msg.data));
+			$("#settknmaxcur").html(msg.data);
+		} else if(msg.cmd == "updateikgen") {
+			// Send current max tokens value to input
+			$("#setikgen").val(parseInt(msg.data));
+			$("#setikgencur").html(msg.data);
 		} else if(msg.cmd == "setlabeltemp") {
 			// Update setting label with value from server
-			label_temp.html(msg.data);
+			$("#settempcur").html(msg.data);
 		} else if(msg.cmd == "setlabeltopp") {
 			// Update setting label with value from server
-			label_topp.html(msg.data);
+			$("#settoppcur").html(msg.data);
 		} else if(msg.cmd == "setlabelreppen") {
 			// Update setting label with value from server
-			label_reppen.html(msg.data);
+			$("#setreppencur").html(msg.data);
 		} else if(msg.cmd == "setlabeloutput") {
 			// Update setting label with value from server
-			label_outlen.html(msg.data);
-		} else if(msg.cmd == "updatanotedepth") {
+			$("#setoutputcur").html(msg.data);
+		} else if(msg.cmd == "setlabeltknmax") {
+			// Update setting label with value from server
+			$("#settknmaxcur").html(msg.data);
+		} else if(msg.cmd == "setlabelikgen") {
+			// Update setting label with value from server
+			$("#setikgencur").html(msg.data);
+		} else if(msg.cmd == "updateanotedepth") {
 			// Send current Author's Note depth value to input
 			anote_slider.val(parseInt(msg.data));
 			anote_labelcur.html(msg.data);
@@ -299,13 +337,16 @@ $(document).ready(function(){
 		} else if(msg.cmd == "setanote") {
 			// Set contents of Author's Note field
 			anote_input.val(msg.data);
+		} else if(msg.cmd == "addsetting") {
+			// Add setting controls
+			addSetting(msg.data);
 		}
     });	
 	
 	socket.on('disconnect', function() {
-		$('#connectstatus').html("<b>Lost connection...</b>");
-		$('#connectstatus').removeClass("color_green");
-		$('#connectstatus').addClass("color_orange");
+		connect_status.html("<b>Lost connection...</b>");
+		connect_status.removeClass("color_green");
+		connect_status.addClass("color_orange");
 	});
 	
 	// Bind actions to UI buttons
@@ -349,9 +390,8 @@ $(document).ready(function(){
 		$('#settingsmenu').slideToggle("slow");
 	});
 	
-	// Bind settings to server calls
-	$('input[type=range]').on('input', function () {
-		socket.send({'cmd': $(this).attr('id'), 'data': $(this).val()});
+	$("#btn_savesettings").on("click", function(ev) {
+		socket.send({'cmd': 'savesettings', 'data': ''});
 	});
 	
 	// Bind Enter button to submit
