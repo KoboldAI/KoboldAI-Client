@@ -1,1 +1,1 @@
-aiserver.py
+py -3 aiserver.py
