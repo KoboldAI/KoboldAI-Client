@@ -36,6 +36,21 @@ var anote_slider;
 var shift_down   = false;
 var do_clear_ent = false;
 
+// Data records
+var actions = [];
+var memory = "";
+var prompt = "";
+var authors_note = "";
+var scripts = {
+	"shared": "",
+	"inputModifier": "",
+	"contextModifier": "",
+	"outputModifier": "",
+};
+var script_state;
+
+var current_mode = "play"; // Tracks current input mode based off of what's been enabled / disabled. (Set based on which modes have entered/exited here, though really should probably be a variable received from the server as it changes serverside)
+
 //=================================================================//
 //  METHODS
 //=================================================================//
@@ -114,6 +129,8 @@ function enterEditMode() {
 	disableSendBtn();
 	hide([button_actback, button_actmem, button_actretry]);
 	show([button_delete]);
+	
+	current_mode = "edit";
 }
 
 function exitEditMode() {
@@ -126,6 +143,8 @@ function exitEditMode() {
 	show([button_actback, button_actmem, button_actretry]);
 	hide([button_delete]);
 	input_text.val("");
+	
+	current_mode = "play";
 }
 
 function editModeSelect(n) {
@@ -138,6 +157,8 @@ function enterMemoryMode() {
 	hide([button_actback, button_actretry, button_actedit, button_delete]);
 	// Display Author's Note field
 	anote_menu.slideDown("fast");
+	
+	current_mode = "memory";
 }
 
 function exitMemoryMode() {
@@ -147,11 +168,21 @@ function exitMemoryMode() {
 	input_text.val("");
 	// Hide Author's Note field
 	anote_menu.slideUp("fast");
+	
+	current_mode = "play";
 }
 
 function dosubmit() {
 	var txt = input_text.val();
-	socket.send({'cmd': 'submit', 'data': txt});
+	
+	if(current_mode == "play"){
+		// Run the input through the input modifier script
+		let [new_input, should_stop] = applyScriptModifier(scripts.inputModifier, txt);
+		socket.send({'cmd': 'submit', 'data': new_input, 'stop': should_stop});	
+	} else {
+		socket.send({'cmd': 'submit', 'data': txt});
+	}
+
 	input_text.val("");
 	hideMessage();
 }
@@ -168,8 +199,76 @@ function newTextHighlight(ref) {
 }
 
 //=================================================================//
+//  STORY SCRIPTS
+//=================================================================//
+
+function applyScriptModifier(modifier_script, text="") {
+	let modified_actions = actions.slice().splice(0, 0, prompt); // Just to be lazy, add the prompt onto the start of the actions instead of feeding it in as a separate thing
+	
+	// TODO: Sandbox this elsewhere so scripts can't mess with the client
+	let script = new Function("text", "actions", "memory", "state", "authorsNote", `"use strict";\n${scripts.shared}\n${modifier_script}\nreturn modifier(text)`);
+	
+	let script_return = script(text, modified_actions, memory, script_state, authors_note);
+	
+	if (!script_return || (!script_return.text && !script_return.text === "")) {
+		// TODO: ERRORING
+	}
+	
+	// Should we progress to generating an AI output?
+	let should_stop = false;
+	if (script_return.stop) {
+		should_stop = true;
+	}
+	
+	// Update the server's record of the script state
+	// (otherwise changes made to it by this script modifier won't be saved with the story!)
+	socket.send({'cmd': 'recordscriptstate', 'data': script_state});
+	
+	return [script_return.text, should_stop];
+}
+
+// Responds to server's request for a context to be sent, kicking off the generation of an AI output (provided the contextModifer script doesn't say to abort)
+function answerContextRequest(base_context) {
+	// Run a base context through the contextModifer script
+	let [context, should_stop]  = applyScriptModifier(scripts.contextModifier, base_context);
+	
+	// Provide the server with a context and trigger it to generate an output, but only if the context modifier allows it
+	if (!should_stop) {
+		// (Strict enforcement of tokenization / context length is performed later by the server, so no need to worry about it here)
+		socket.send({'cmd': 'generate', 'data': context});
+	}
+}
+
+// Receives the AI output from the server, runs it through the output modifier script, then sends it off to the server to record as the AI's output
+function modifyOutput(output_text) {
+	// Run through output modifier
+	let [new_output] = applyScriptModifier(scripts.outputModifier, output_text);
+	
+	// Send the new output to the server to use as a new output
+	socket.send({'cmd': 'newoutput', 'data': new_output});
+}
+
+//=================================================================//
 //  READY/RUNTIME
 //=================================================================//
+
+// Replaces returns and newlines with HTML breaks
+function formatForHtml(txt) {
+	return txt.replace("\\r", "<br/>").replace("\\n", "<br/>").replace('\n', '<br/>').replace('\r', '<br/>');
+}
+
+// Takes actions and turns into html code for displaying
+function buildGameScreen(action_list) {
+	let text = '<chunk n="0" id="n0">'+prompt+'</chunk>';
+	
+	let position = 1;
+	for (let item of actions) {
+		text += '<chunk n="'+position+'" id="n'+position+'">'+item+'</chunk>';
+		position += 1;
+	}
+	
+	return formatForHtml(text);
+}
 
 $(document).ready(function(){
 	
@@ -204,14 +303,23 @@ $(document).ready(function(){
     socket = io.connect('http://127.0.0.1:5000');
 	
 	socket.on('from_server', function(msg) {
-        if(msg.cmd == "connected") {
+		console.log(`Data recieved: ${JSON.stringify(msg)}`)
+		
+		if(msg.cmd == "connected") {
 			// Connected to Server Actions
 			$('#connectstatus').html("<b>Connected to KoboldAI Process!</b>");
 			$('#connectstatus').removeClass("color_orange");
 			$('#connectstatus').addClass("color_green");
 		} else if(msg.cmd == "updatescreen") {
 			// Send game content to Game Screen
-			game_text.html(msg.data);
+			if (msg.data) {
+				// Server provided its own html
+				game_text.html(msg.data);
+			} else {
+				// Build game screen html based on what we've got
+				game_text.html(buildGameScreen(actions))
+			}
+
 			// Scroll to bottom of text
 			setTimeout(function () {
 				$('#gamescreen').animate({scrollTop: $('#gamescreen').prop('scrollHeight')}, 1000);
@@ -230,6 +338,8 @@ $(document).ready(function(){
 				enableSendBtn();
 				enableButtons([button_actmem]);
 				disableButtons([button_actedit, button_actback, button_actretry]);
+				
+				current_mode = "play";
 			}
 		} else if(msg.cmd == "editmode") {
 			// Enable or Disable edit mode
@@ -299,8 +409,23 @@ $(document).ready(function(){
 		} else if(msg.cmd == "setanote") {
 			// Set contents of Author's Note field
 			anote_input.val(msg.data);
+		} else if(msg.cmd == "updatedata") {
+			// Update local records based on what the server holds
+			// (Ideally we'd sync each individual change so this is only necessary on initial loads)
+			if('actions' in msg) actions = msg.actions;
+			if('memory' in msg) memory = msg.memory;
+			if('prompt' in msg) prompt = msg.prompt;
+			if('scripts' in msg) scripts = msg.scripts;
+			if('authornote' in msg) authors_note = msg.authornote;
+    } else if(msg.cmd == "modcontext") {
+			answerContextRequest(msg.data)
+		} else if(msg.cmd == "modoutput") {
+			modifyOutput(msg.data)
+		} else if(msg.cmd == "setscriptstate") {
+			// New / loaded script state received from the server
+			script_state = msg.data
 		}
-    });	
+		});	
 	
 	socket.on('disconnect', function() {
 		$('#connectstatus').html("<b>Lost connection...</b>");
