@@ -546,6 +546,7 @@ def build_base_context_transformers():
 
   # Memory
   memory_tokens = tokenizer.encode(vars.memory)[-int(vars.max_length / 2):] # Turn memory into tokens and cut any excess off the start
+  remaining_tokens -= len(memory_tokens)
 
   # History
   history = vars.actions[:] # Copy actions list
