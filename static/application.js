@@ -11,6 +11,7 @@ var button_newgame;
 var button_save;
 var button_load;
 var button_settings;
+var button_format;
 var button_send;
 var button_actedit;
 var button_actmem;
@@ -21,6 +22,7 @@ var game_text;
 var input_text;
 var message_text;
 var settings_menu;
+var format_menu;
 var anote_menu;
 var anote_input;
 var anote_labelcur;
@@ -29,6 +31,10 @@ var anote_slider;
 // Key states
 var shift_down   = false;
 var do_clear_ent = false;
+
+// Display vars
+var allowtoggle = false;
+var formatcount = 0;
 
 //=================================================================//
 //  METHODS
@@ -58,14 +64,42 @@ function addSetting(ob) {
 	</div>\
 	</div>");
 	// Set references to HTML objects
-	refin = $("#"+ob.id);
-	reflb = $("#"+ob.id+"cur");
-	window["setting_"+ob.id] = refin;
-	window["label_"+ob.id]   = reflb;
+	var refin = $("#"+ob.id);
+	var reflb = $("#"+ob.id+"cur");
+	window["setting_"+ob.id] = refin;  // Is this still needed?
+	window["label_"+ob.id]   = reflb;  // Is this still needed?
 	// Add event function to input
 	refin.on("input", function () {
 		socket.send({'cmd': $(this).attr('id'), 'data': $(this).val()});
 	});
+}
+
+function addFormat(ob) {
+	// Check if we need to make a new column for this button
+	if(formatcount == 0) {
+		format_menu.append("<div class=\"formatcolumn\"></div>");
+	}
+	// Get reference to the last child column
+	var ref = $("#formatmenu > div").last();
+	// Add format block to Format Menu
+	ref.append("<div class=\"formatrow\">\
+		<input type=\"checkbox\" data-toggle=\"toggle\" data-onstyle=\"success\" id=\""+ob.id+"\">\
+		<span class=\"formatlabel\">"+ob.label+" </span>\
+		<span class=\"helpicon\">?<span class=\"helptext\">"+ob.tooltip+"</span></span>\
+	</div>");
+	// Tell Bootstrap-Toggle to render the new checkbox
+	$("input[type=checkbox]").bootstrapToggle();
+	// Add event to input
+	$("#"+ob.id).on("change", function () {
+		if(allowtoggle) {
+			socket.send({'cmd': $(this).attr('id'), 'data': $(this).prop('checked')});
+		}
+	});
+	// Increment display variable
+	formatcount++;
+	if(formatcount == 2) {
+		formatcount = 0;
+	}
 }
 
 function enableButtons(refs) {
@@ -207,6 +241,7 @@ $(document).ready(function(){
 	button_save     = $('#btn_save');
 	button_load     = $('#btn_load');
 	button_settings = $('#btn_settings');
+	button_format   = $('#btn_format');
 	button_send     = $('#btnsend');
 	button_actedit  = $('#btn_actedit');
 	button_actmem   = $('#btn_actmem');
@@ -217,6 +252,7 @@ $(document).ready(function(){
 	input_text      = $('#input_text');
 	message_text    = $('#messagefield');
 	settings_menu   = $("#settingsmenu");
+	format_menu     = $('#formatmenu');
 	anote_menu      = $('#anoterowcontainer');
 	anote_input     = $('#anoteinput');
 	anote_labelcur  = $('#anotecur');
@@ -233,6 +269,7 @@ $(document).ready(function(){
 			connect_status.addClass("color_green");
 			// Reset Settings Menu
 			settings_menu.html("");
+			format_menu.html("");
 		} else if(msg.cmd == "updatescreen") {
 			// Send game content to Game Screen
 			game_text.html(msg.data);
@@ -340,6 +377,24 @@ $(document).ready(function(){
 		} else if(msg.cmd == "addsetting") {
 			// Add setting controls
 			addSetting(msg.data);
+		} else if(msg.cmd == "addformat") {
+			// Add setting controls
+			addFormat(msg.data);
+		} else if(msg.cmd == "updatefrmttriminc") {
+			// Update toggle state
+			$("#frmttriminc").prop('checked', msg.data).change()
+		} else if(msg.cmd == "updatefrmtrmblln") {
+			// Update toggle state
+			$("#frmtrmblln").prop('checked', msg.data).change()
+		} else if(msg.cmd == "updatefrmtrmspch") {
+			// Update toggle state
+			$("#frmtrmspch").prop('checked', msg.data).change()
+		} else if(msg.cmd == "updatefrmtadsnsp") {
+			// Update toggle state
+			$("#frmtadsnsp").prop('checked', msg.data).change()
+		} else if(msg.cmd == "allowtoggle") {
+			// Allow toggle change states to propagate
+			allowtoggle = msg.data;
 		}
     });	
 	
@@ -388,6 +443,10 @@ $(document).ready(function(){
 	
 	button_settings.on("click", function(ev) {
 		$('#settingsmenu').slideToggle("slow");
+	});
+	
+	button_format.on("click", function(ev) {
+		$('#formatmenu').slideToggle("slow");
 	});
 	
 	$("#btn_savesettings").on("click", function(ev) {

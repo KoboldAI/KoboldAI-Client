@@ -4,15 +4,18 @@
 # By: KoboldAIDev
 #==================================================================#
 
+# External packages
 from os import path, getcwd
 import tkinter as tk
 from tkinter import messagebox
 import json
 import torch
 
+# KoboldAI
 import fileops
 import gensettings
 from utils import debounce
+import utils
 
 #==================================================================#
 # Variables & Storage
@@ -69,6 +72,7 @@ class vars:
     hascuda     = False  # Whether torch has detected CUDA on the system
     usegpu      = False  # Whether to launch pipeline with GPU support
     custmodpth  = ""     # Filesystem location of custom model to run
+    formatoptns = {}     # Container for state of formatting options
 
 #==================================================================#
 # Function to get model selection at startup
@@ -349,6 +353,23 @@ def get_message(msg):
         vars.andepth = int(msg['data'])
         emit('from_server', {'cmd': 'setlabelanotedepth', 'data': msg['data']})
         settingschanged()
+    # Format - Trim incomplete sentences
+    elif(msg['cmd'] == 'frmttriminc'):
+        if('frmttriminc' in vars.formatoptns):
+            vars.formatoptns["frmttriminc"] = msg['data']
+        settingschanged()
+    elif(msg['cmd'] == 'frmtrmblln'):
+        if('frmtrmblln' in vars.formatoptns):
+            vars.formatoptns["frmtrmblln"] = msg['data']
+        settingschanged()
+    elif(msg['cmd'] == 'frmtrmspch'):
+        if('frmtrmspch' in vars.formatoptns):
+            vars.formatoptns["frmtrmspch"] = msg['data']
+        settingschanged()
+    elif(msg['cmd'] == 'frmtadsnsp'):
+        if('frmtadsnsp' in vars.formatoptns):
+            vars.formatoptns["frmtadsnsp"] = msg['data']
+        settingschanged()
 
 #==================================================================#
 #   
@@ -368,6 +389,13 @@ def sendsettings():
     else:
         for set in gensettings.gensettingsik:
             emit('from_server', {'cmd': 'addsetting', 'data': set})
+    
+    # Send formatting options
+    for frm in gensettings.formatcontrols:
+        emit('from_server', {'cmd': 'addformat', 'data': frm})
+        # Add format key to vars if it wasn't loaded with client.settings
+        if(not frm["id"] in vars.formatoptns):
+            vars.formatoptns[frm["id"]] = False;
 
 #==================================================================#
 #   
@@ -375,14 +403,15 @@ def sendsettings():
 def savesettings():
      # Build json to write
     js = {}
-    js["apikey"]     = vars.apikey
-    js["andepth"]    = vars.andepth
-    js["temp"]       = vars.temp
-    js["top_p"]      = vars.top_p
-    js["rep_pen"]    = vars.rep_pen
-    js["genamt"]     = vars.genamt
-    js["max_length"] = vars.max_length
-    js["ikgen"]      = vars.ikgen
+    js["apikey"]      = vars.apikey
+    js["andepth"]     = vars.andepth
+    js["temp"]        = vars.temp
+    js["top_p"]       = vars.top_p
+    js["rep_pen"]     = vars.rep_pen
+    js["genamt"]      = vars.genamt
+    js["max_length"]  = vars.max_length
+    js["ikgen"]       = vars.ikgen
+    js["formatoptns"] = vars.formatoptns
     
     # Write it
     file = open("client.settings", "w")
@@ -417,6 +446,8 @@ def loadsettings():
             vars.max_length = js["max_length"]
         if("ikgen" in js):
             vars.ikgen      = js["ikgen"]
+        if("formatoptns" in js):
+            vars.formatoptns = js["formatoptns"]
         
         file.close()
 
@@ -436,14 +467,22 @@ def actionsubmit(data):
         return
     set_aibusy(1)
     if(not vars.gamestarted):
-        vars.gamestarted = True # Start the game
-        vars.prompt = data # Save this first action as the prompt
-        emit('from_server', {'cmd': 'updatescreen', 'data': 'Please wait, generating story...'}) # Clear the startup text from game screen
+        # Start the game
+        vars.gamestarted = True
+        # Save this first action as the prompt
+        vars.prompt = data
+        # Clear the startup text from game screen
+        emit('from_server', {'cmd': 'updatescreen', 'data': 'Please wait, generating story...'})
         calcsubmit(data) # Run the first action through the generator
     else:
         # Dont append submission if it's a blank/continue action
         if(data != ""):
+            # Apply input formatting & scripts before sending to tokenizer
+            data = applyinputformatting(data)
+            # Store the result in the Action log
             vars.actions.append(data)
+        
+        # Off to the tokenizer!
         calcsubmit(data)
 
 #==================================================================#
@@ -594,7 +633,12 @@ def generate(txt, min, max):
         temperature=vars.temp
         )[0]["generated_text"]
     print("{0}{1}{2}".format(colors.CYAN, genout, colors.END))
-    vars.actions.append(getnewcontent(genout))
+    
+    # Format output before continuing
+    genout = applyoutputformatting(getnewcontent(genout))
+    
+    # Add formatted text to Actions array and refresh the game screen
+    vars.actions.append(genout)
     refresh_story()
     emit('from_server', {'cmd': 'texteffect', 'data': len(vars.actions)})
     
@@ -611,7 +655,7 @@ def formatforhtml(txt):
     return txt.replace("\\r", "<br/>").replace("\\n", "<br/>").replace('\n', '<br/>').replace('\r', '<br/>')
 
 #==================================================================#
-#  Strips submitted text from the text returned by the AI
+# Strips submitted text from the text returned by the AI
 #==================================================================#
 def getnewcontent(txt):
     ln = len(vars.actions)
@@ -621,6 +665,35 @@ def getnewcontent(txt):
         delim = vars.actions[-1]
     
     return (txt.split(delim)[-1])
+
+#==================================================================#
+# Applies chosen formatting options to text submitted to AI
+#==================================================================#
+def applyinputformatting(txt):
+    # Add sentence spacing
+    if(vars.formatoptns["frmtadsnsp"]):
+        txt = utils.addsentencespacing(txt, vars.actions)
+    
+    return txt
+
+#==================================================================#
+# Applies chosen formatting options to text returned from AI
+#==================================================================#
+def applyoutputformatting(txt):
+    # Use standard quotes and apostrophes
+    txt = utils.fixquotes(txt)
+    
+    # Trim incomplete sentences
+    if(vars.formatoptns["frmttriminc"]):
+        txt = utils.trimincompletesentence(txt)
+    # Replace blank lines
+    if(vars.formatoptns["frmtrmblln"]):
+        txt = utils.replaceblanklines(txt)
+    # Remove special characters
+    if(vars.formatoptns["frmtrmspch"]):
+        txt = utils.removespecialchars(txt)
+    
+    return txt
 
 #==================================================================#
 # Sends the current story content to the Game Screen
@@ -637,6 +710,9 @@ def refresh_story():
 # Sends the current generator settings to the Game Menu
 #==================================================================#
 def refresh_settings():
+    # Suppress toggle change events while loading state
+    emit('from_server', {'cmd': 'allowtoggle', 'data': False})
+    
     if(vars.model != "InferKit"):
         emit('from_server', {'cmd': 'updatetemp', 'data': vars.temp})
         emit('from_server', {'cmd': 'updatetopp', 'data': vars.top_p})
@@ -649,6 +725,14 @@ def refresh_settings():
         emit('from_server', {'cmd': 'updateikgen', 'data': vars.ikgen})
     
     emit('from_server', {'cmd': 'updateanotedepth', 'data': vars.andepth})
+    
+    emit('from_server', {'cmd': 'updatefrmttriminc', 'data': vars.formatoptns["frmttriminc"]})
+    emit('from_server', {'cmd': 'updatefrmtrmblln', 'data': vars.formatoptns["frmtrmblln"]})
+    emit('from_server', {'cmd': 'updatefrmtrmspch', 'data': vars.formatoptns["frmtrmspch"]})
+    emit('from_server', {'cmd': 'updatefrmtadsnsp', 'data': vars.formatoptns["frmtadsnsp"]})
+    
+    # Allow toggle events again
+    emit('from_server', {'cmd': 'allowtoggle', 'data': True})
 
 #==================================================================#
 #  Sets the logical and display states for the AI Busy condition

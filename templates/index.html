@@ -8,8 +8,10 @@
 	<script src="static/socket.io.min.js"></script>
 	<script src="static/application.js"></script>
 	<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/js/bootstrap.min.js"></script>
+	<script src="static/bootstrap-toggle.min.js"></script>
 	
 	<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap.min.css">
+	<link rel="stylesheet" href="static/bootstrap-toggle.min.css">
 	<link rel="stylesheet" href="static/custom.css">
 </head>
 <body>
@@ -22,6 +24,7 @@
 					<button type="button" class="btn btn-primary" id="btn_load">Load</button>
 					<div class="spacer"></div>
 					<button type="button" class="btn btn-primary" id="btn_settings">Settings</button>
+					<button type="button" class="btn btn-primary" id="btn_format">Formatting</button>
 				</div>
 				<div id="connectstatusdiv">
 					<span id="connectstatus" class="color_orange">Waiting for connection...</span>
@@ -29,6 +32,8 @@
 			</div>
 		</div>
 		<div class="row" id="settingsmenu">
+		</div>
+		<div class="row" id="formatmenu">
 		</div>
 		<div class="row" id="gamescreen">
 			<span id="gametext">...</span>

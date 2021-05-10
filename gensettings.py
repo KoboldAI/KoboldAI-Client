@@ -87,3 +87,24 @@ gensettingsik =[{
 	"default": 200,
     "tooltip": "Number of characters the AI should generate."
 	}]
+
+formatcontrols = [{
+    "label": "Trim incomplete sentences",
+    "id": "frmttriminc",
+    "tooltip": "Remove text after last sentence closure.  If no closure is found, all tokens will be returned."
+    },
+    {
+    "label": "Remove blank lines",
+    "id": "frmtrmblln",
+    "tooltip": "Replace double newlines (\\n\\n) with single newlines to avoid blank lines."
+    },
+    {
+    "label": "Remove special characters",
+    "id": "frmtrmspch",
+    "tooltip": "Remove special characters (@,#,%,^, etc)"
+    },
+    {
+    "label": "Add sentence spacing",
+    "id": "frmtadsnsp",
+    "tooltip": "If the last action ended with punctuation, add a space to the beginning of the next action."
+    }]

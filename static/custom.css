@@ -22,6 +22,12 @@ chunk {
 	padding: 10px;
 }
 
+#formatmenu {
+	display:none;
+	background-color: #295071;
+	padding: 10px;
+}
+
 #connectstatusdiv {
 	display: flex;
 }
@@ -99,7 +105,7 @@ chunk {
 
 #waitanim {
 	position:absolute;
-	top:10px;
+	top:18px;
 	left:5px;	
 }
 
@@ -164,6 +170,26 @@ chunk {
 
 .color_red {
 	color: #ff0000;	
+}
+
+.formatcolumn {
+	width: 25%;
+	padding-left: 10px;
+	padding-right: 10px;
+	display: inline-block;
+}
+
+.formatcolumn > div:first-child {
+	margin-bottom: 5px;
+}
+
+.formatrow {
+	
+}
+
+.formatlabel {
+	color: #ffffff;
+	padding-left: 5px;
 }
 
 .hidden {
