@@ -401,6 +401,8 @@ def loadsettings():
         js   = json.load(file)
         
         # Copy file contents to vars
+        if("apikey" in js):
+            vars.apikey     = js["apikey"]
         if("andepth" in js):
             vars.andepth    = js["andepth"]
         if("temp" in js):
