@@ -401,16 +401,20 @@ def loadsettings():
         js   = json.load(file)
         
         # Copy file contents to vars
-        #for set in js:
-        #   vars[set] = js[set]
-        vars.apikey     = js["apikey"]
-        vars.andepth    = js["andepth"]
-        vars.temp       = js["temp"]
-        vars.top_p      = js["top_p"]
-        vars.rep_pen    = js["rep_pen"]
-        vars.genamt     = js["genamt"]
-        vars.max_length = js["max_length"]
-        vars.ikgen      = js["ikgen"]
+        if("andepth" in js):
+            vars.andepth    = js["andepth"]
+        if("temp" in js):
+            vars.temp       = js["temp"]
+        if("top_p" in js):
+            vars.top_p      = js["top_p"]
+        if("rep_pen" in js):
+            vars.rep_pen    = js["rep_pen"]
+        if("genamt" in js):
+            vars.genamt     = js["genamt"]
+        if("max_length" in js):
+            vars.max_length = js["max_length"]
+        if("ikgen" in js):
+            vars.ikgen      = js["ikgen"]
         
         file.close()
 
