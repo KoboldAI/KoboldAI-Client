@@ -1,8 +1,9 @@
-Thanks for checking out the KoboldAI Client!
+Thanks for checking out the KoboldAI Client! Keep up with news and updates on the subreddit:
+https://www.reddit.com/r/KoboldAI/
 
 [ABOUT]
 
-This is a test release of a quickly-assembled front-end for multiple local & remote AI models.
+This is a browser front-end for playing with multiple local & remote AI models.
 The purpose is to provide a smoother, web-based UI experience than the various command-line AI apps.
 I'm pushing this out now that the major quality-of-life fearures have been roughed in (generate,
 undo, edit-by-line, memory, save/load, etc), which means there will probably be bugs.
