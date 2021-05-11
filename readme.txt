@@ -58,3 +58,16 @@ and your version of CUDA under "Compute Platform" (I linked 10.2) to get the pip
 
 Be aware that when using GPU mode, inference will be MUCH faster but if your GPU doesn't have enough 
 VRAM to load the model it will crash the application.
+
+[IMPORT AI DUNGEON GAMES]
+
+To import your games from AI Dungeon, first grab CuriousNekomimi's AI Dungeon Content Archive Toolkit:
+https://github.com/CuriousNekomimi/AIDCAT
+Follow the video instructions for getting your access_token, and run aidcat.py in command prompt.
+Choose option [1] Download your saved content.
+Choose option [2] Download your adventures.
+Save the JSON file to your computer using the prompt.
+Run KoboldAI, and after connecting to the web GUI, press the Import button at the top.
+Navigate to the JSON file exported from AIDCAT and select it. A prompt will appear in the GUI 
+presenting you with all Adventures scraped from your AI Dungeon account.
+Select an Adventure and click the Accept button.
