@@ -642,6 +642,7 @@ def generate(txt, min, max):
         min_length=min, 
         max_length=max,
         repetition_penalty=vars.rep_pen,
+        top_p=vars.top_p,
         temperature=vars.temp
         )[0]["generated_text"]
     print("{0}{1}{2}".format(colors.CYAN, genout, colors.END))
