@@ -10,6 +10,7 @@ var connect_status;
 var button_newgame;
 var button_save;
 var button_load;
+var button_import;
 var button_settings;
 var button_format;
 var button_send;
@@ -27,6 +28,11 @@ var anote_menu;
 var anote_input;
 var anote_labelcur;
 var anote_slider;
+var popup;
+var popup_title;
+var popup_content;
+var popup_accept;
+var popup_close;
 
 // Key states
 var shift_down   = false;
@@ -102,6 +108,23 @@ function addFormat(ob) {
 	}
 }
 
+function addImportLine(ob) {
+	popup_content.append("<div class=\"popuplistitem\" id=\"import"+ob.num+"\">\
+		<div>"+ob.title+"</div>\
+		<div>"+ob.acts+"</div>\
+		<div>"+ob.descr+"</div>\
+	</div>");
+	$("#import"+ob.num).on("click", function () {
+		socket.send({'cmd': 'importselect', 'data': $(this).attr('id')});
+		highlightImportLine($(this));
+	});
+}
+
+function highlightImportLine(ref) {
+	$("#popupcontent > div").removeClass("popuplistselected");
+	ref.addClass("popuplistselected");
+}
+
 function enableButtons(refs) {
 	for(i=0; i<refs.length; i++) {
 		refs[i].prop("disabled",false);
@@ -162,6 +185,16 @@ function hide(refs) {
 function show(refs) {
 	for(i=0; i<refs.length; i++) {
 		refs[i].removeClass("hidden");
+	}
+}
+
+function popupShow(state) {
+	if(state) {
+		popup.removeClass("hidden");
+		popup.addClass("flex");
+	} else {
+		popup.removeClass("flex");
+		popup.addClass("hidden");
 	}
 }
 
@@ -240,6 +273,7 @@ $(document).ready(function(){
 	button_newgame  = $('#btn_newgame');
 	button_save     = $('#btn_save');
 	button_load     = $('#btn_load');
+	button_import   = $("#btn_import");
 	button_settings = $('#btn_settings');
 	button_format   = $('#btn_format');
 	button_send     = $('#btnsend');
@@ -257,6 +291,11 @@ $(document).ready(function(){
 	anote_input     = $('#anoteinput');
 	anote_labelcur  = $('#anotecur');
 	anote_slider    = $('#anotedepth');
+	popup           = $("#popupcontainer");
+	popup_title     = $("#popuptitletext");
+	popup_content   = $("#popupcontent");
+	popup_accept    = $("#btn_popupaccept");
+	popup_close     = $("#btn_popupclose");
 	
     // Connect to SocketIO server
     socket = io.connect('http://127.0.0.1:5000');
@@ -395,6 +434,15 @@ $(document).ready(function(){
 		} else if(msg.cmd == "allowtoggle") {
 			// Allow toggle change states to propagate
 			allowtoggle = msg.data;
+		} else if(msg.cmd == "popupshow") {
+			// Show/Hide Popup
+			popupShow(msg.data);
+		} else if(msg.cmd == "addimportline") {
+			// Add import popup entry
+			addImportLine(msg.data);
+		} else if(msg.cmd == "clearpopup") {
+			// Clear previous contents of popup
+			popup_content.html("");
 		}
     });	
 	
@@ -437,6 +485,10 @@ $(document).ready(function(){
 		socket.send({'cmd': 'load', 'data': ''});
 	});
 	
+	button_import.on("click", function(ev) {
+		socket.send({'cmd': 'import', 'data': ''});
+	});
+	
 	button_newgame.on("click", function(ev) {
 		socket.send({'cmd': 'newgame', 'data': ''});
 	});
@@ -449,9 +501,18 @@ $(document).ready(function(){
 		$('#formatmenu').slideToggle("slow");
 	});
 	
-	$("#btn_savesettings").on("click", function(ev) {
-		socket.send({'cmd': 'savesettings', 'data': ''});
+	popup_close.on("click", function(ev) {
+		socket.send({'cmd': 'importcancel', 'data': ''});
 	});
+	
+	popup_accept.on("click", function(ev) {
+		socket.send({'cmd': 'importaccept', 'data': ''});
+	});
+	
+	// I think this was removed?
+	//$("#btn_savesettings").on("click", function(ev) {
+	//	socket.send({'cmd': 'savesettings', 'data': ''});
+	//});
 	
 	// Bind Enter button to submit
 	input_text.keydown(function (ev) {

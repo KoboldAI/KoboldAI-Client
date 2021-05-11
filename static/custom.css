@@ -136,6 +136,69 @@ chunk {
 	grid-template-columns: 80% 20%;
 }
 
+#popupcontainer {
+	position: absolute;
+	top: 0px;
+	left: 0px;
+	z-index: 1;
+	width: 100%;
+	height: 100%;
+	background-color: rgba(0,0,0,0.5);
+	flex-direction: column;
+	align-items: center;
+}
+
+#popup {
+	width: 75%;
+	min-width: 500px;
+	max-width: 1000px;
+	background-color: #262626;
+	margin-top: 100px;
+}
+
+#popuptitlebar {
+	padding: 10px;
+	background-color: #337ab7;
+}
+
+#popuptitletext {
+	height: 100%;
+	display: flex;
+	align-items:center;
+	color: #ffffff;
+	font-size: 12pt;
+}
+
+#popuplistheader {
+	padding-left: 10px;
+	display: grid;
+	grid-template-columns: 28% 10% 60%;
+	color: #737373;
+}
+
+#popupcontent {
+	min-height: 300px;
+	overflow-y: scroll;
+}
+
+#popupfooter {
+	width: 100%;
+	padding: 10px;
+	display: flex;
+	justify-content: center;
+	background-color: #295071;
+}
+
+#popupfooter button {
+	width: 100px;
+	margin-left: 10px;
+	margin-right: 10px;
+}
+
+#popuptitleclose {
+	
+}
+
 .anotelabel {
 	font-size: 10pt;
 	color: #ffffff;
@@ -170,6 +233,10 @@ chunk {
 
 .color_red {
 	color: #ff0000;	
+}
+
+.flex {
+	display: flex;
 }
 
 .formatcolumn {
@@ -245,6 +312,26 @@ chunk {
 
 .justifyright {
 	text-align: right;
+}
+
+.popuplistitem {
+	padding: 5px 10px 5px 10px;
+	display: grid;
+	grid-template-columns: 30% 10% 60%;
+	color: #ffffff;
+	
+	-moz-transition: background-color 0.25s ease-in;
+    -o-transition: background-color 0.25s ease-in;
+    -webkit-transition: background-color 0.25s ease-in;
+}
+
+.popuplistitem:hover {
+	cursor: pointer;
+	background-color: #688f1f;
+}
+
+.popuplistselected {
+	background-color: #688f1f;
 }
 
 .settingitem {

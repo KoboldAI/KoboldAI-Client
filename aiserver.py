@@ -73,6 +73,8 @@ class vars:
     usegpu      = False  # Whether to launch pipeline with GPU support
     custmodpth  = ""     # Filesystem location of custom model to run
     formatoptns = {}     # Container for state of formatting options
+    importnum   = -1     # Selection on import popup list
+    importjs    = {}     # Temporary storage for import data
 
 #==================================================================#
 # Function to get model selection at startup
@@ -319,6 +321,8 @@ def get_message(msg):
         saveRequest()
     elif(msg['cmd'] == 'load'):
         loadRequest()
+    elif(msg['cmd'] == 'import'):
+        importRequest()
     elif(msg['cmd'] == 'newgame'):
         newGameRequest()
     elif(msg['cmd'] == 'settemp'):
@@ -370,6 +374,14 @@ def get_message(msg):
         if('frmtadsnsp' in vars.formatoptns):
             vars.formatoptns["frmtadsnsp"] = msg['data']
         settingschanged()
+    elif(msg['cmd'] == 'importselect'):
+        vars.importnum = int(msg["data"][-1])
+    elif(msg['cmd'] == 'importcancel'):
+        emit('from_server', {'cmd': 'popupshow', 'data': False})
+        vars.importjs  = {}
+    elif(msg['cmd'] == 'importaccept'):
+        emit('from_server', {'cmd': 'popupshow', 'data': False})
+        importgame()
 
 #==================================================================#
 #   
@@ -936,6 +948,73 @@ def loadRequest():
             vars.authornote = ""
         
         file.close()
+        
+        # Refresh game screen
+        refresh_story()
+        emit('from_server', {'cmd': 'setgamestate', 'data': 'ready'})
+
+#==================================================================#
+# Import an AIDungon game exported with Mimi's tool
+#==================================================================#
+def importRequest():
+    importpath = fileops.getloadpath(vars.savedir, "Select AID CAT File", [("Json", "*.json")])
+    
+    if(importpath):
+        # Leave Edit/Memory mode before continuing
+        exitModes()
+        
+        # Read file contents into JSON object
+        file = open(importpath, "r")
+        vars.importjs = json.load(file)
+        
+        # Clear Popup Contents
+        emit('from_server', {'cmd': 'clearpopup', 'data': ''})
+        
+        # Initialize vars
+        num = 0
+        vars.importnum = -1
+        
+        # Get list of stories
+        for story in vars.importjs:
+            ob = {}
+            ob["num"]   = num
+            ob["title"] = story["title"]
+            if(story["description"] != ""):
+                ob["descr"] = story["description"]
+            else:
+                ob["descr"] = "(No Description)"
+            ob["acts"]  = len(story["actions"])
+            emit('from_server', {'cmd': 'addimportline', 'data': ob})
+            num += 1
+        
+        # Show Popup
+        emit('from_server', {'cmd': 'popupshow', 'data': True})
+
+#==================================================================#
+# Import an AIDungon game selected in popup
+#==================================================================#
+def importgame():
+    if(vars.importnum >= 0):
+        # Cache reference to selected game
+        ref = vars.importjs[vars.importnum]
+        
+        # Copy game contents to vars
+        vars.gamestarted = True
+        if(len(ref["actions"]) > 0):
+            vars.prompt = ref["actions"][0]["text"]
+        else:
+            vars.prompt = ""
+        vars.memory      = ref["memory"]
+        vars.authornote  = ref["authorsNote"]
+        vars.actions     = []
+        
+        # Get all actions except for prompt
+        if(len(ref["actions"]) > 1):
+            for act in ref["actions"][1:]:
+                vars.actions.append(act["text"])
+        
+        # Clear import data
+        vars.importjs = {}
         
         # Refresh game screen
         refresh_story()
