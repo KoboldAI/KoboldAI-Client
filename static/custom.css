@@ -199,6 +199,13 @@ chunk {
 	
 }
 
+#wimenu {
+	max-height: 100%;
+	width: 100%;
+}
+
+/*================= Classes =================*/
+
 .anotelabel {
 	font-size: 10pt;
 	color: #ffffff;
@@ -261,6 +268,14 @@ chunk {
 
 .hidden {
 	display: none;
+}
+
+.heightfull {
+	height: 100%;
+}
+
+.heighthalf {
+	height: 50%;
 }
 
 .helpicon {
@@ -365,4 +380,40 @@ chunk {
 .spacer {
 	display: inline-block;
 	width: 50px;
+}
+
+.wilistitem {
+	height: 80px;
+	display: grid;
+	grid-template-columns: 4% 30% 66%;
+	margin-bottom: 10px;
+}
+
+.wientry {
+	padding-left: 10px;
+	background-color: #212122;
+}
+
+.wientry > textarea {
+	height: 100%;
+	resize: none;
+	overflow:auto;
+	background-color: #404040;
+	color: #ffffff;
+}
+
+.wikey {
+	background-color: #212122;
+}
+
+.wikey > input {
+	height: 100%;
+	background-color: #404040;
+	color: #ffffff;
+}
+
+.wiremove > button {
+	width: 80%;
+	overflow: hidden;
+	font-size: 12pt;
 }

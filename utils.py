@@ -69,7 +69,7 @@ def removespecialchars(txt):
 def addsentencespacing(txt, acts):
     # Get last character of last action
     lastchar = acts[-1][-1]
-    if(lastchar == "." or lastchar == "!" or lastchar == "?"):
+    if(lastchar == "." or lastchar == "!" or lastchar == "?" or lastchar == "," or lastchar == ";" or lastchar == ":"):
         txt = " " + txt
     return txt
     

@@ -19,11 +19,13 @@ var button_actmem;
 var button_actback;
 var button_actretry;
 var button_delete;
+var button_actwi;
 var game_text;
 var input_text;
 var message_text;
 var settings_menu;
 var format_menu;
+var wi_menu;
 var anote_menu;
 var anote_input;
 var anote_labelcur;
@@ -120,6 +122,77 @@ function addImportLine(ob) {
 	});
 }
 
+function addWiLine(ob) {
+	if(ob.init) {
+		wi_menu.append("<div class=\"wilistitem\">\
+			<div class=\"wiremove\">\
+				<button type=\"button\" class=\"btn btn-primary heightfull\" id=\"btn_wi"+ob.num+"\">X</button>\
+				<button type=\"button\" class=\"btn btn-success heighthalf hidden\" id=\"btn_widel"+ob.num+"\">✓</button>\
+				<button type=\"button\" class=\"btn btn-danger heighthalf hidden\" id=\"btn_wican"+ob.num+"\">⮌</button>\
+			</div>\
+			<div class=\"wikey\">\
+				<input class=\"form-control\" type=\"text\" placeholder=\"Key(s)\" id=\"wikey"+ob.num+"\">\
+			</div>\
+			<div class=\"wientry\">\
+				<textarea class=\"form-control\" id=\"wientry"+ob.num+"\" placeholder=\"What To Remember\">"+ob.content+"</textarea>\
+			</div>\
+		</div>");
+		// Send key value to text input
+		$("#wikey"+ob.num).val(ob.key);
+		// Assign delete event to button
+		$("#btn_wi"+ob.num).on("click", function () {
+			showWiDeleteConfirm(ob.num);
+		});
+	} else {
+		// Show WI line item with form fields hidden (uninitialized)
+		wi_menu.append("<div class=\"wilistitem\">\
+			<div class=\"wiremove\">\
+				<button type=\"button\" class=\"btn btn-primary heightfull\" id=\"btn_wi"+ob.num+"\">+</button>\
+				<button type=\"button\" class=\"btn btn-success heighthalf hidden\" id=\"btn_widel"+ob.num+"\">✓</button>\
+				<button type=\"button\" class=\"btn btn-danger heighthalf hidden\" id=\"btn_wican"+ob.num+"\">X</button>\
+			</div>\
+			<div class=\"wikey\">\
+				<input class=\"form-control hidden\" type=\"text\" placeholder=\"Key(s)\" id=\"wikey"+ob.num+"\">\
+			</div>\
+			<div class=\"wientry\">\
+				<textarea class=\"form-control hidden\" id=\"wientry"+ob.num+"\" placeholder=\"What To Remember\"></textarea>\
+			</div>\
+		</div>");
+		// Assign function to expand WI item to button
+		$("#btn_wi"+ob.num).on("click", function () {
+			expandWiLine(ob.num);
+		});
+	}
+	// Assign actions to other elements
+	$("#btn_wican"+ob.num).on("click", function () {
+		hideWiDeleteConfirm(ob.num);
+	});
+	$("#btn_widel"+ob.num).on("click", function () {
+		socket.send({'cmd': 'widelete', 'data': ob.num});
+	});
+}
+
+function expandWiLine(num) {
+	show([$("#wikey"+num), $("#wientry"+num)]);
+	$("#btn_wi"+num).html("X");
+	$("#btn_wi"+num).off();
+	// Tell server the WI entry was initialized
+	socket.send({'cmd': 'wiinit', 'data': num});
+	$("#btn_wi"+num).on("click", function () {
+		showWiDeleteConfirm(num);
+	});
+}
+
+function showWiDeleteConfirm(num) {
+	hide([$("#btn_wi"+num)]);
+	show([$("#btn_widel"+num), $("#btn_wican"+num)]);
+}
+
+function hideWiDeleteConfirm(num) {
+	show([$("#btn_wi"+num)]);
+	hide([$("#btn_widel"+num), $("#btn_wican"+num)]);
+}
+
 function highlightImportLine(ref) {
 	$("#popupcontent > div").removeClass("popuplistselected");
 	ref.addClass("popuplistselected");
@@ -207,7 +280,7 @@ function enterEditMode() {
 		editModeSelect($(this).attr("n"));
 	});
 	disableSendBtn();
-	hide([button_actback, button_actmem, button_actretry]);
+	hide([button_actback, button_actmem, button_actretry, button_actwi]);
 	show([button_delete]);
 }
 
@@ -218,7 +291,7 @@ function exitEditMode() {
 	game_text.children('chunk').removeClass("chunkhov");
 	game_text.off('click', '> *');
 	enableSendBtn();
-	show([button_actback, button_actmem, button_actretry]);
+	show([button_actback, button_actmem, button_actretry, button_actwi]);
 	hide([button_delete]);
 	input_text.val("");
 }
@@ -230,7 +303,7 @@ function editModeSelect(n) {
 function enterMemoryMode() {
 	showMessage("Edit the memory to be sent with each request to the AI.");
 	button_actmem.html("Cancel");
-	hide([button_actback, button_actretry, button_actedit, button_delete]);
+	hide([button_actback, button_actretry, button_actedit, button_delete, button_actwi]);
 	// Display Author's Note field
 	anote_menu.slideDown("fast");
 }
@@ -238,10 +311,38 @@ function enterMemoryMode() {
 function exitMemoryMode() {
 	hideMessage();
 	button_actmem.html("Memory");
-	show([button_actback, button_actretry, button_actedit]);
+	show([button_actback, button_actretry, button_actedit, button_actwi]);
 	input_text.val("");
 	// Hide Author's Note field
 	anote_menu.slideUp("fast");
+}
+
+function enterWiMode() {
+	showMessage("World Info will be added to memory only when the key appears in submitted text or the last action.");
+	button_actwi.html("Accept");
+	hide([button_actedit, button_actback, button_actmem, button_actretry, game_text]);
+	show([wi_menu]);
+	disableSendBtn();
+}
+
+function exitWiMode() {
+	hideMessage();
+	button_actwi.html("W Info");
+	hide([wi_menu]);
+	show([button_actedit, button_actback, button_actmem, button_actretry, game_text]);
+	enableSendBtn();
+}
+
+function returnWiList(ar) {
+	var list = [];
+	var i;
+	for(i=0; i<ar.length; i++) {
+		var ob     = {"key": "", "content": "", "num": ar[i]};
+		ob.key     = $("#wikey"+ar[i]).val();
+		ob.content = $("#wientry"+ar[i]).val();
+		list.push(ob);
+	}
+	socket.send({'cmd': 'sendwilist', 'data': list});
 }
 
 function dosubmit() {
@@ -282,12 +383,14 @@ $(document).ready(function(){
 	button_actback  = $('#btn_actundo');
 	button_actretry = $('#btn_actretry');
 	button_delete   = $('#btn_delete');
+	button_actwi    = $('#btn_actwi');
 	game_text       = $('#gametext');
 	input_text      = $('#input_text');
 	message_text    = $('#messagefield');
 	settings_menu   = $("#settingsmenu");
 	format_menu     = $('#formatmenu');
 	anote_menu      = $('#anoterowcontainer');
+	wi_menu         = $('#wimenu');
 	anote_input     = $('#anoteinput');
 	anote_labelcur  = $('#anotecur');
 	anote_slider    = $('#anotedepth');
@@ -298,7 +401,8 @@ $(document).ready(function(){
 	popup_close     = $("#btn_popupclose");
 	
     // Connect to SocketIO server
-    socket = io.connect('http://127.0.0.1:5000');
+	loc    = window.document.location;
+    socket = io.connect(loc.href);
 	
 	socket.on('from_server', function(msg) {
         if(msg.cmd == "connected") {
@@ -306,9 +410,10 @@ $(document).ready(function(){
 			connect_status.html("<b>Connected to KoboldAI Process!</b>");
 			connect_status.removeClass("color_orange");
 			connect_status.addClass("color_green");
-			// Reset Settings Menu
+			// Reset Menus
 			settings_menu.html("");
 			format_menu.html("");
+			wi_menu.html("");
 		} else if(msg.cmd == "updatescreen") {
 			// Send game content to Game Screen
 			game_text.html(msg.data);
@@ -320,16 +425,22 @@ $(document).ready(function(){
 			// Enable or Disable buttons
 			if(msg.data == "ready") {
 				enableSendBtn();
-				enableButtons([button_actedit, button_actmem, button_actback, button_actretry]);
+				enableButtons([button_actedit, button_actmem, button_actwi, button_actback, button_actretry]);
 				hideWaitAnimation();
 			} else if(msg.data == "wait") {
 				disableSendBtn();
-				disableButtons([button_actedit, button_actmem, button_actback, button_actretry]);
+				disableButtons([button_actedit, button_actmem, button_actwi, button_actback, button_actretry]);
 				showWaitAnimation();
 			} else if(msg.data == "start") {
 				enableSendBtn();
-				enableButtons([button_actmem]);
+				enableButtons([button_actmem, button_actwi]);
 				disableButtons([button_actedit, button_actback, button_actretry]);
+				hide([wi_menu, button_delete]);
+				show([game_text, button_actedit, button_actmem, button_actwi, button_actback, button_actretry]);
+				hideMessage();
+				button_actedit.html("Edit");
+				button_actmem.html("Memory");
+				button_actwi.html("W Info");
 			}
 		} else if(msg.cmd == "editmode") {
 			// Enable or Disable edit mode
@@ -443,6 +554,22 @@ $(document).ready(function(){
 		} else if(msg.cmd == "clearpopup") {
 			// Clear previous contents of popup
 			popup_content.html("");
+		} else if(msg.cmd == "wimode") {
+			// Enable or Disable WI edit mode
+			if(msg.data == "true") {
+				enterWiMode();
+			} else {
+				exitWiMode();
+			}
+		} else if(msg.cmd == "addwiitem") {
+			// Add WI entry to WI Menu
+			addWiLine(msg.data);
+		} else if(msg.cmd == "clearwi") {
+			// Clear previous contents of WI list
+			wi_menu.html("");
+		} else if(msg.cmd == "requestwiitem") {
+			// Package WI contents and send back to server
+			returnWiList(msg.data);
 		}
     });	
 	
@@ -507,6 +634,10 @@ $(document).ready(function(){
 	
 	popup_accept.on("click", function(ev) {
 		socket.send({'cmd': 'importaccept', 'data': ''});
+	});
+	
+	button_actwi.on("click", function(ev) {
+		socket.send({'cmd': 'wi', 'data': ''});
 	});
 	
 	// I think this was removed?

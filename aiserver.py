@@ -64,6 +64,8 @@ class vars:
     authornote  = ""
     andepth     = 3      # How far back in history to append author's note
     actions     = []
+    worldinfo   = []
+    deletewi    = -1     # Temporary storage for index to delete
     mode        = "play" # Whether the interface is in play, memory, or edit mode
     editln      = 0      # Which line was last selected in Edit Mode
     url         = "https://api.inferkit.com/v1/models/standard/generate" # InferKit API URL
@@ -254,11 +256,14 @@ def do_connect():
         setStartState()
         sendsettings()
         refresh_settings()
+        sendwi()
+        vars.mode = "play"
     else:
         # Game in session, send current game data and ready state to browser
         refresh_story()
         sendsettings()
         refresh_settings()
+        sendwi()
         if(vars.mode == "play"):
             if(not vars.aibusy):
                 emit('from_server', {'cmd': 'setgamestate', 'data': 'ready'})
@@ -268,6 +273,8 @@ def do_connect():
             emit('from_server', {'cmd': 'editmode', 'data': 'true'})
         elif(vars.mode == "memory"):
             emit('from_server', {'cmd': 'memmode', 'data': 'true'})
+        elif(vars.mode == "wi"):
+            emit('from_server', {'cmd': 'wimode', 'data': 'true'})
 
 #==================================================================#
 # Event triggered when browser SocketIO sends data to the server
@@ -382,7 +389,17 @@ def get_message(msg):
     elif(msg['cmd'] == 'importaccept'):
         emit('from_server', {'cmd': 'popupshow', 'data': False})
         importgame()
-
+    elif(msg['cmd'] == 'wi'):
+        togglewimode()
+    elif(msg['cmd'] == 'wiinit'):
+        if(int(msg['data']) < len(vars.worldinfo)):
+            vars.worldinfo[msg['data']]["init"] = True
+            addwiitem()
+    elif(msg['cmd'] == 'widelete'):
+        deletewi(msg['data'])
+    elif(msg['cmd'] == 'sendwilist'):
+        commitwi(msg['data'])
+    
 #==================================================================#
 #   
 #==================================================================#
@@ -508,6 +525,15 @@ def calcsubmit(txt):
     anoteadded   = False # In case our budget runs out before we hit A.N. depth
     actionlen    = len(vars.actions)
     
+    # Scan for WorldInfo matches
+    winfo = checkworldinfo(txt)
+    
+    # Add a newline to the end of memory
+    if(vars.memory != "" and vars.memory[-1] != "\n"):
+        mem = vars.memory + "\n"
+    else:
+        mem = vars.memory
+    
     # Build Author's Note if set
     if(vars.authornote != ""):
         anotetxt  = "\n[Author's note: "+vars.authornote+"]\n"
@@ -520,19 +546,22 @@ def calcsubmit(txt):
         prompttkns = tokenizer.encode(vars.prompt)
         lnprompt   = len(prompttkns)
         
-        memtokens = tokenizer.encode(vars.memory)
+        memtokens = tokenizer.encode(mem)
         lnmem     = len(memtokens)
+        
+        witokens  = tokenizer.encode(winfo)
+        lnwi      = len(witokens)
         
         if(anotetxt != ""):
             anotetkns = tokenizer.encode(anotetxt)
             lnanote   = len(anotetkns)
         
-        budget = vars.max_length - lnprompt - lnmem - lnanote - vars.genamt
+        budget = vars.max_length - lnprompt - lnmem - lnanote - lnwi - vars.genamt
         
         if(actionlen == 0):
             # First/Prompt action
-            subtxt = vars.memory + anotetxt + vars.prompt
-            lnsub  = lnmem + lnprompt + lnanote
+            subtxt = vars.memory + winfo + anotetxt + vars.prompt
+            lnsub  = lnmem + lnwi + lnprompt + lnanote
             
             generate(subtxt, lnsub+1, lnsub+vars.genamt)
         else:
@@ -570,8 +599,8 @@ def calcsubmit(txt):
                 else:
                     tokens = memtokens + prompttkns + tokens
             else:
-                # Prepend Memory and Prompt before action tokens
-                tokens = memtokens + prompttkns + tokens
+                # Prepend Memory, WI, and Prompt before action tokens
+                tokens = memtokens + witokens + prompttkns + tokens
             
             # Send completed bundle to generator
             ln = len(tokens)
@@ -587,7 +616,7 @@ def calcsubmit(txt):
         if(anotetxt != "" and actionlen < vars.andepth):
             forceanote = True
         
-        budget = vars.ikmax - len(vars.prompt) - len(anotetxt) - len(vars.memory) - 1
+        budget = vars.ikmax - len(vars.prompt) - len(anotetxt) - len(mem) - len(winfo) - 1
         subtxt = ""
         for n in range(actionlen):
             
@@ -608,19 +637,14 @@ def calcsubmit(txt):
                     subtxt = anotetxt + subtxt # A.N. len already taken from bdgt
                     anoteadded = True
         
-        # Format memory for inclusion (adding newline separator)
-        memsub = ""
-        if(vars.memory != ""):
-            memsub = vars.memory + "\n"
-        
         # Did we get to add the A.N.? If not, do it here
         if(anotetxt != ""):
             if((not anoteadded) or forceanote):
-                subtxt = memsub + anotetxt + vars.prompt + subtxt
+                subtxt = mem + winfo + anotetxt + vars.prompt + subtxt
             else:
-                subtxt = memsub + vars.prompt + subtxt
+                subtxt = mem + winfo + vars.prompt + subtxt
         else:
-            subtxt = memsub + vars.prompt + subtxt
+            subtxt = mem + winfo + vars.prompt + subtxt
         
         # Send it!
         ikrequest(subtxt)
@@ -813,6 +837,124 @@ def togglememorymode():
         emit('from_server', {'cmd': 'memmode', 'data': 'false'})
 
 #==================================================================#
+#   Toggles the game mode for WI editing and sends UI commands
+#==================================================================#
+def togglewimode():
+    if(vars.mode == "play"):
+        vars.mode = "wi"
+        emit('from_server', {'cmd': 'wimode', 'data': 'true'})
+    elif(vars.mode == "wi"):
+        # Commit WI fields first
+        requestwi()
+        # Then set UI state back to Play
+        vars.mode = "play"
+        emit('from_server', {'cmd': 'wimode', 'data': 'false'})
+
+#==================================================================#
+#   
+#==================================================================#
+def addwiitem():
+    ob = {"key": "", "content": "", "num": len(vars.worldinfo), "init": False}
+    vars.worldinfo.append(ob);
+    emit('from_server', {'cmd': 'addwiitem', 'data': ob})
+
+#==================================================================#
+#   
+#==================================================================#
+def sendwi():
+    # Cache len of WI
+    ln = len(vars.worldinfo)
+    
+    # Clear contents of WI container
+    emit('from_server', {'cmd': 'clearwi', 'data': ''})
+    
+    # If there are no WI entries, send an empty WI object
+    if(ln == 0):
+        addwiitem()
+    else:
+        # Send contents of WI array
+        for wi in vars.worldinfo:
+            ob = wi
+            emit('from_server', {'cmd': 'addwiitem', 'data': ob})
+        # Make sure last WI item is uninitialized
+        if(vars.worldinfo[-1]["init"]):
+            addwiitem()
+
+#==================================================================#
+#  Request current contents of all WI HTML elements
+#==================================================================#
+def requestwi():
+    list = []
+    for wi in vars.worldinfo:
+        list.append(wi["num"])
+    emit('from_server', {'cmd': 'requestwiitem', 'data': list})
+
+#==================================================================#
+#  Renumber WI items consecutively
+#==================================================================#
+def organizewi():
+    if(len(vars.worldinfo) > 0):
+        count = 0
+        for wi in vars.worldinfo:
+            wi["num"] = count
+            count += 1
+        
+
+#==================================================================#
+#  Extract object from server and send it to WI objects
+#==================================================================#
+def commitwi(ar):
+    for ob in ar:
+        vars.worldinfo[ob["num"]]["key"]     = ob["key"]
+        vars.worldinfo[ob["num"]]["content"] = ob["content"]
+    # Was this a deletion request? If so, remove the requested index
+    if(vars.deletewi >= 0):
+        del vars.worldinfo[vars.deletewi]
+        organizewi()
+        # Send the new WI array structure
+        sendwi()
+        # And reset deletewi index
+        vars.deletewi = -1
+
+#==================================================================#
+#  
+#==================================================================#
+def deletewi(num):
+    if(num < len(vars.worldinfo)):
+        # Store index of deletion request
+        vars.deletewi = num
+        # Get contents of WI HTML inputs
+        requestwi()
+
+#==================================================================#
+#  Look for WI keys in text to generator
+#==================================================================#
+def checkworldinfo(txt):
+    # Dont go any further if WI is empty
+    if(len(vars.worldinfo) == 0):
+        return
+
+    # Join submitted text to last action
+    if(len(vars.actions) > 0):
+        txt = vars.actions[-1] + txt
+    
+    # Scan text for matches on WI keys
+    wimem = ""
+    for wi in vars.worldinfo:
+        if(wi["key"] != ""):
+            # Split comma-separated keys
+            keys = wi["key"].split(",")
+            for k in keys:
+                # Remove leading/trailing spaces
+                ky = k.strip()
+                if ky in txt:
+                    wimem = wimem + wi["content"] + "\n"
+                    break
+    
+    return wimem
+    
+
+#==================================================================#
 #  Commit changes to Memory storage
 #==================================================================#
 def memsubmit(data):
@@ -892,6 +1034,8 @@ def exitModes():
         emit('from_server', {'cmd': 'editmode', 'data': 'false'})
     elif(vars.mode == "memory"):
         emit('from_server', {'cmd': 'memmode', 'data': 'false'})
+    elif(vars.mode == "wi"):
+        emit('from_server', {'cmd': 'wimode', 'data': 'false'})
     vars.mode = "play"
 
 #==================================================================#
@@ -914,6 +1058,15 @@ def saveRequest():
         js["memory"]      = vars.memory
         js["authorsnote"] = vars.authornote
         js["actions"]     = vars.actions
+        js["worldinfo"]   = []
+        
+        # Extract only the important bits of WI
+        for wi in vars.worldinfo:
+            if(wi["key"] != ""):
+                js["worldinfo"].append({
+                    "key": wi["key"],
+                    "content": wi["content"]
+                })
         
         # Write it
         file = open(savpath, "w")
@@ -941,6 +1094,7 @@ def loadRequest():
         vars.prompt      = js["prompt"]
         vars.memory      = js["memory"]
         vars.actions     = js["actions"]
+        vars.worldinfo   = []
         
         # Try not to break older save files
         if("authorsnote" in js):
@@ -948,9 +1102,21 @@ def loadRequest():
         else:
             vars.authornote = ""
         
+        if("worldinfo" in js):
+            num = 0
+            for wi in js["worldinfo"]:
+                vars.worldinfo.append({
+                    "key": wi["key"],
+                    "content": wi["content"],
+                    "num": num,
+                    "init": True
+                })
+                num += 1
+        
         file.close()
         
         # Refresh game screen
+        sendwi()
         refresh_story()
         emit('from_server', {'cmd': 'setgamestate', 'data': 'ready'})
 
@@ -1008,16 +1174,30 @@ def importgame():
         vars.memory      = ref["memory"]
         vars.authornote  = ref["authorsNote"]
         vars.actions     = []
+        vars.worldinfo   = []
         
         # Get all actions except for prompt
         if(len(ref["actions"]) > 1):
             for act in ref["actions"][1:]:
                 vars.actions.append(act["text"])
         
+        # Get just the important parts of world info
+        if(len(ref["worldInfo"]) > 1):
+            num = 0
+            for wi in ref["worldInfo"]:
+                vars.worldinfo.append({
+                    "key": wi["keys"],
+                    "content": wi["entry"],
+                    "num": num,
+                    "init": True
+                })
+                num += 1
+        
         # Clear import data
         vars.importjs = {}
         
         # Refresh game screen
+        sendwi()
         refresh_story()
         emit('from_server', {'cmd': 'setgamestate', 'data': 'ready'})
 
@@ -1056,4 +1236,5 @@ if __name__ == "__main__":
     
     # Start Flask/SocketIO (Blocking, so this must be last method!)
     print("{0}Server started!\rYou may now connect with a browser at http://127.0.0.1:5000/{1}".format(colors.GREEN, colors.END))
+    #socketio.run(app, host='0.0.0.0', port=5000)
     socketio.run(app)
