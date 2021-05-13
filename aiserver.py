@@ -701,7 +701,12 @@ def getnewcontent(txt):
     else:
         delim = vars.actions[-1]
     
-    return (txt.split(delim)[-1])
+    # Fix issue with tokenizer replacing space+period with period
+    delim = delim.replace(" .", ".")
+    
+    split = txt.split(delim)
+    
+    return (split[-1])
 
 #==================================================================#
 # Applies chosen formatting options to text submitted to AI
