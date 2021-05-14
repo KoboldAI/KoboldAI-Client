@@ -574,7 +574,10 @@ def calcsubmit(txt):
             subtxt = vars.memory + winfo + anotetxt + vars.prompt
             lnsub  = lnmem + lnwi + lnprompt + lnanote
             
-            generate(subtxt, lnsub+1, lnsub+vars.genamt)
+            if(vars.model != "Colab"):
+                generate(subtxt, lnsub+1, lnsub+vars.genamt)
+            else:
+                sendtocolab(subtxt, lnsub+1, lnsub+vars.genamt)
         else:
             tokens     = []
             
