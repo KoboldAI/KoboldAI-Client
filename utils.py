@@ -66,9 +66,12 @@ def removespecialchars(txt):
 #==================================================================#
 # If the next action follows a sentence closure, add a space
 #==================================================================#
-def addsentencespacing(txt, acts):
+def addsentencespacing(txt, vars):
     # Get last character of last action
-    lastchar = acts[-1][-1]
+    if(len(vars.actions) > 0):
+        lastchar = vars.actions[-1][-1]
+    else:
+        lastchar = vars.prompt[-1]
     if(lastchar == "." or lastchar == "!" or lastchar == "?" or lastchar == "," or lastchar == ";" or lastchar == ":"):
         txt = " " + txt
     return txt
