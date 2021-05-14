@@ -786,7 +786,7 @@ def getnewcontent(txt):
 def applyinputformatting(txt):
     # Add sentence spacing
     if(vars.formatoptns["frmtadsnsp"]):
-        txt = utils.addsentencespacing(txt, vars.actions)
+        txt = utils.addsentencespacing(txt, vars)
     
     return txt
 
