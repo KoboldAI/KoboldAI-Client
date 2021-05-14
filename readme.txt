@@ -22,9 +22,10 @@ to 40,000 characters, and the free account will work with KoboldAI.
 
 [SETUP]
 
-1. Install Python. (https://www.python.org/downloads/)
+1. Install a 64-bit version of Python.
 	(Development was done on 3.7, I have not tested newer versions)
-2. When installing Python make sure "pip" is selected under Optional features.
+	Windows download link: https://www.python.org/ftp/python/3.7.9/python-3.7.9-amd64.exe
+2. When installing Python make sure "Add Python to PATH" is selected.
 	(If pip isn't working, run the installer again and choose Modify to choose Optional features.)
 3. Run install_requirements.bat.
 	(This will install the necessary python packages via pip)
@@ -72,3 +73,10 @@ Run KoboldAI, and after connecting to the web GUI, press the Import button at th
 Navigate to the JSON file exported from AIDCAT and select it. A prompt will appear in the GUI 
 presenting you with all Adventures scraped from your AI Dungeon account.
 Select an Adventure and click the Accept button.
+
+[HOST GPT-NEO ON GOOGLE COLAB]
+
+If your computer does not have an 8GB GPU to run GPT-Neo locally, you can now run a Google Colab
+notebook hosting a GPT-Neo-2.7B model remotely and connect to it using the KoboldAI client.
+See the instructions on the Colab at the link below:
+https://colab.research.google.com/drive/1uGe9f4ruIQog3RLxfUsoThakvLpHjIkX?usp=sharing

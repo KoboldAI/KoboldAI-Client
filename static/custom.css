@@ -177,7 +177,7 @@ chunk {
 }
 
 #popupcontent {
-	min-height: 300px;
+	height: 325px;
 	overflow-y: scroll;
 }
 

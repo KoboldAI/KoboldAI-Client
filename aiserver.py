@@ -393,7 +393,7 @@ def get_message(msg):
             vars.formatoptns["frmtadsnsp"] = msg['data']
         settingschanged()
     elif(msg['cmd'] == 'importselect'):
-        vars.importnum = int(msg["data"][-1])
+        vars.importnum = int(msg["data"].replace("import", ""))
     elif(msg['cmd'] == 'importcancel'):
         emit('from_server', {'cmd': 'popupshow', 'data': False})
         vars.importjs  = {}
@@ -1208,7 +1208,7 @@ def importRequest():
         exitModes()
         
         # Read file contents into JSON object
-        file = open(importpath, "r")
+        file = open(importpath, "rb")
         vars.importjs = json.load(file)
         
         # Clear Popup Contents
@@ -1222,8 +1222,11 @@ def importRequest():
         for story in vars.importjs:
             ob = {}
             ob["num"]   = num
-            ob["title"] = story["title"]
-            if(story["description"] != ""):
+            if(story["title"] != "" and story["title"] != None):
+                ob["title"] = story["title"]
+            else:
+                ob["title"] = "(No Title)"
+            if(story["description"] != "" and story["description"] != None):
                 ob["descr"] = story["description"]
             else:
                 ob["descr"] = "(No Description)"
@@ -1259,16 +1262,17 @@ def importgame():
                 vars.actions.append(act["text"])
         
         # Get just the important parts of world info
-        if(len(ref["worldInfo"]) > 1):
-            num = 0
-            for wi in ref["worldInfo"]:
-                vars.worldinfo.append({
-                    "key": wi["keys"],
-                    "content": wi["entry"],
-                    "num": num,
-                    "init": True
-                })
-                num += 1
+        if(ref["worldInfo"] != None):
+            if(len(ref["worldInfo"]) > 1):
+                num = 0
+                for wi in ref["worldInfo"]:
+                    vars.worldinfo.append({
+                        "key": wi["keys"],
+                        "content": wi["entry"],
+                        "num": num,
+                        "init": True
+                    })
+                    num += 1
         
         # Clear import data
         vars.importjs = {}
