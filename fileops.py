@@ -10,7 +10,8 @@ def getsavepath(dir, title, types):
     path = tk.filedialog.asksaveasfile(
         initialdir=dir, 
         title=title, 
-        filetypes = types
+        filetypes = types,
+        defaultextension="*.*"
         )
     root.destroy()
     if(path != "" and path != None):
