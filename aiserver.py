@@ -1235,7 +1235,10 @@ def importRequest():
                 ob["descr"] = story["description"]
             else:
                 ob["descr"] = "(No Description)"
-            ob["acts"]  = len(story["actions"])
+            if("actions" in story):
+                ob["acts"]  = len(story["actions"])
+            elif("actionWindow" in story):
+                ob["acts"]  = len(story["actionWindow"])
             emit('from_server', {'cmd': 'addimportline', 'data': ob})
             num += 1
         
@@ -1252,8 +1255,17 @@ def importgame():
         
         # Copy game contents to vars
         vars.gamestarted = True
-        if(len(ref["actions"]) > 0):
-            vars.prompt = ref["actions"][0]["text"]
+        
+        if("actions" in ref):
+            if(len(ref["actions"]) > 0):
+                vars.prompt = ref["actions"][0]["text"]
+            else:
+                vars.prompt = ""
+        elif("actionWindow" in ref):
+            if(len(ref["actionWindow"]) > 0):
+                vars.prompt = ref["actionWindow"][0]["text"]
+            else:
+                vars.prompt = ""
         else:
             vars.prompt = ""
         vars.memory      = ref["memory"]
@@ -1262,9 +1274,14 @@ def importgame():
         vars.worldinfo   = []
         
         # Get all actions except for prompt
-        if(len(ref["actions"]) > 1):
-            for act in ref["actions"][1:]:
-                vars.actions.append(act["text"])
+        if("actions" in ref):
+            if(len(ref["actions"]) > 1):
+                for act in ref["actions"][1:]:
+                    vars.actions.append(act["text"])
+        elif("actionWindow" in ref):
+            if(len(ref["actionWindow"]) > 1):
+                for act in ref["actionWindow"][1:]:
+                    vars.actions.append(act["text"])
         
         # Get just the important parts of world info
         if(ref["worldInfo"] != None):
