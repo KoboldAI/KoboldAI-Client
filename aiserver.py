@@ -9,6 +9,7 @@ from os import path, getcwd
 import tkinter as tk
 from tkinter import messagebox
 import json
+import requests
 
 # KoboldAI
 import fileops
@@ -239,8 +240,6 @@ if(not vars.model in ["InferKit", "Colab"]):
         
         print("{0}OK! {1} pipeline created!{2}".format(colors.GREEN, vars.model, colors.END))
 else:
-    # Import requests library for HTTPS calls
-    import requests
     # If we're running Colab, we still need a tokenizer.
     if(vars.model == "Colab"):
         from transformers import GPT2Tokenizer
