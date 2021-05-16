@@ -11,6 +11,7 @@ var button_newgame;
 var button_save;
 var button_load;
 var button_import;
+var button_impaidg;
 var button_settings;
 var button_format;
 var button_send;
@@ -35,6 +36,10 @@ var popup_title;
 var popup_content;
 var popup_accept;
 var popup_close;
+var aidgpopup;
+var aidgpromptnum;
+var aidg_accept;
+var aidg_close;
 
 // Key states
 var shift_down   = false;
@@ -356,11 +361,28 @@ function newTextHighlight(ref) {
 	ref.addClass("color_green");
 	ref.addClass("colorfade");
 	setTimeout(function () {
-		ref.removeClass("color_green")
+		ref.removeClass("color_green");
 		setTimeout(function () {
-			ref.removeClass("colorfade")
+			ref.removeClass("colorfade");
 		}, 1000);
 	}, 10);
+}
+
+function showAidgPopup() {
+	aidgpopup.removeClass("hidden");
+	aidgpopup.addClass("flex");
+	aidgpromptnum.focus();
+}
+
+function hideAidgPopup() {
+	aidgpopup.removeClass("flex");
+	aidgpopup.addClass("hidden");
+}
+
+function sendAidgImportRequest() {
+	socket.send({'cmd': 'aidgimport', 'data': aidgpromptnum.val()});
+	hideAidgPopup();
+	aidgpromptnum.val("");
 }
 
 //=================================================================//
@@ -375,6 +397,7 @@ $(document).ready(function(){
 	button_save     = $('#btn_save');
 	button_load     = $('#btn_load');
 	button_import   = $("#btn_import");
+	button_impaidg  = $("#btn_impaidg");
 	button_settings = $('#btn_settings');
 	button_format   = $('#btn_format');
 	button_send     = $('#btnsend');
@@ -399,6 +422,10 @@ $(document).ready(function(){
 	popup_content   = $("#popupcontent");
 	popup_accept    = $("#btn_popupaccept");
 	popup_close     = $("#btn_popupclose");
+	aidgpopup       = $("#aidgpopupcontainer");
+	aidgpromptnum   = $("#aidgpromptnum");
+	aidg_accept     = $("#btn_aidgpopupaccept");
+	aidg_close      = $("#btn_aidgpopupclose");
 	
     // Connect to SocketIO server
 	loc    = window.document.location;
@@ -441,6 +468,7 @@ $(document).ready(function(){
 				button_actedit.html("Edit");
 				button_actmem.html("Memory");
 				button_actwi.html("W Info");
+				hideAidgPopup();
 			}
 		} else if(msg.cmd == "editmode") {
 			// Enable or Disable edit mode
@@ -640,10 +668,17 @@ $(document).ready(function(){
 		socket.send({'cmd': 'wi', 'data': ''});
 	});
 	
-	// I think this was removed?
-	//$("#btn_savesettings").on("click", function(ev) {
-	//	socket.send({'cmd': 'savesettings', 'data': ''});
-	//});
+	button_impaidg.on("click", function(ev) {
+		showAidgPopup();
+	});
+	
+	aidg_close.on("click", function(ev) {
+		hideAidgPopup();
+	});
+	
+	aidg_accept.on("click", function(ev) {
+		sendAidgImportRequest();
+	});
 	
 	// Bind Enter button to submit
 	input_text.keydown(function (ev) {
@@ -665,5 +700,10 @@ $(document).ready(function(){
 		}
 	});
 	
+	aidgpromptnum.keydown(function (ev) {
+		if (ev.which == 13) {
+			sendAidgImportRequest();
+		}
+	});
 });
 

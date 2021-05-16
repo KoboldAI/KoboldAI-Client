@@ -408,6 +408,8 @@ def get_message(msg):
         deletewi(msg['data'])
     elif(msg['cmd'] == 'sendwilist'):
         commitwi(msg['data'])
+    elif(msg['cmd'] == 'aidgimport'):
+        importAidgRequest(msg['data'])
     
 #==================================================================#
 #   
@@ -1274,6 +1276,48 @@ def importgame():
         
         # Clear import data
         vars.importjs = {}
+        
+        # Refresh game screen
+        sendwi()
+        refresh_story()
+        emit('from_server', {'cmd': 'setgamestate', 'data': 'ready'})
+
+#==================================================================#
+# Import an aidg.club prompt and start a new game with it.
+#==================================================================#
+def importAidgRequest(id):
+    import html
+    import re
+    
+    exitModes()
+    
+    urlformat = "https://prompts.aidg.club/"
+    req = requests.get(urlformat+id)
+
+    if(req.status_code == 200):
+        contents = html.unescape(req.text)
+        title    = re.search("<h3>(.*?)</h3>", contents, re.IGNORECASE | re.MULTILINE | re.DOTALL).group(1).strip()
+        
+        keys     = re.findall("<h5>(.*?)</h5>", contents, re.IGNORECASE | re.MULTILINE | re.DOTALL)
+        contents = re.findall("<code class=\"card-text pre-line\">(.*?)</code>", contents, re.IGNORECASE | re.MULTILINE | re.DOTALL)
+        
+        # Initialize game state
+        vars.gamestarted = True
+        vars.prompt      = ""
+        vars.memory      = ""
+        vars.authornote  = ""
+        vars.actions     = []
+        vars.worldinfo   = []
+        
+        for i in range(len(keys)):
+            if(keys[i] == "Description"):
+                pass
+            elif(keys[i] == "Prompt"):
+                vars.prompt = contents[i]
+            elif(keys[i] == "Memory"):
+                vars.memory = contents[i]
+            elif(keys[i] == "Author's Note"):
+                vars.authornote = contents[i]
         
         # Refresh game screen
         sendwi()

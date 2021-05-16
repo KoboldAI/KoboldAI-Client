@@ -19,13 +19,34 @@
 		<div class="row" id="topmenu">
 			<div id="menuitems">
 				<div>
-					<button type="button" class="btn btn-primary" id="btn_newgame">New Story</button>
-					<button type="button" class="btn btn-primary" id="btn_save">Save</button>
-					<button type="button" class="btn btn-primary" id="btn_load">Load</button>
-					<button type="button" class="btn btn-primary" id="btn_import">Import</button>
-					<div class="spacer"></div>
-					<button type="button" class="btn btn-primary" id="btn_settings">Settings</button>
-					<button type="button" class="btn btn-primary" id="btn_format">Formatting</button>
+					<nav class="navbar default" id="navbar">
+						<div class="collapse navbar-collapse" id="navbarNavDropdown">
+							<ul class="nav navbar-nav">
+								<li class="nav-item">
+									<a class="nav-link" href="#" id="btn_newgame">New Story</a>
+								</li>
+								<li class="nav-item">
+									<a class="nav-link" href="#" id="btn_save">Save</a>
+								</li>
+								<li class="nav-item">
+									<a class="nav-link" href="#" id="btn_load">Load</a>
+								</li>
+								<li class="nav-item dropdown">
+									<a class="nav-link dropdown-toggle" href="#" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Import...</a>
+									<div class="dropdown-menu">
+										<a class="dropdown-item" href="#" id="btn_import">AI Dungeon Adventure</a>
+										<a class="dropdown-item" href="#" id="btn_impaidg">aidg.club Prompt</a>
+									</div>
+								</li>
+								<li class="nav-item">
+									<a class="nav-link" href="#" id="btn_settings">Settings</a>
+								</li>
+								<li class="nav-item">
+									<a class="nav-link" href="#" id="btn_format">Formatting</a>
+								</li>
+							</ul>
+						</div>
+					</nav>
 				</div>
 				<div id="connectstatusdiv">
 					<span id="connectstatus" class="color_orange">Waiting for connection...</span>
@@ -113,6 +134,23 @@
 			<div id="popupfooter">
 				<button type="button" class="btn btn-primary" id="btn_popupaccept">Accept</button>
 				<button type="button" class="btn btn-primary" id="btn_popupclose">Cancel</button>
+			</div>
+		</div>
+	</div>
+	<div class="popupcontainer hidden" id="aidgpopupcontainer">
+		<div id="aidgpopup">
+			<div class="popuptitlebar">
+				<div class="popuptitletext">Enter the Prompt Number</div>
+			</div>
+			<div class="aidgpopuplistheader">
+				(4-digit number at the end of aidg.club URL)
+			</div>
+			<div class="aidgpopupcontent">
+				<input class="form-control" type="text" placeholder="Prompt Number" id="aidgpromptnum">
+			</div>
+			<div class="popupfooter">
+				<button type="button" class="btn btn-primary" id="btn_aidgpopupaccept">Accept</button>
+				<button type="button" class="btn btn-primary" id="btn_aidgpopupclose">Cancel</button>
 			</div>
 		</div>
 	</div>

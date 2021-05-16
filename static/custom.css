@@ -16,6 +16,21 @@ chunk {
 	grid-template-columns: 80% 20%;
 }
 
+#navbar {
+	margin: 0px;
+}
+
+#navbar li {
+	margin-right: 5px;
+	background-color: #4787be;
+	border-radius: 5px;
+}
+
+#navbar li > a {
+	color: #ffffff;
+	font-weight: bold;
+}
+
 #settingsmenu {
 	display:none;
 	background-color: #295071;
@@ -195,16 +210,32 @@ chunk {
 	margin-right: 10px;
 }
 
-#popuptitleclose {
-	
-}
-
 #wimenu {
 	max-height: 100%;
 	width: 100%;
 }
 
+#aidgpopup {
+	width: 350px;
+	background-color: #262626;
+	margin-top: 100px;
+}
+
+#aidgpromptnum {
+	background-color: #404040;
+	color: #ffffff;
+}
+
 /*================= Classes =================*/
+
+.aidgpopupcontent {
+	padding: 10px 40px 10px 40px;
+}
+
+.aidgpopuplistheader {
+	color: #737373;
+	text-align: center;
+}
 
 .anotelabel {
 	font-size: 10pt;
@@ -240,6 +271,27 @@ chunk {
 
 .color_red {
 	color: #ff0000;	
+}
+
+.dropdown-menu {
+	background-color: #337ab7;
+	width: 200px;
+}
+
+.dropdown-item {
+	display: block;
+	padding: 10px;
+	color: #ffffff;
+	border-bottom: 1px solid #295071;
+}
+
+.dropdown-item:first-child {
+	border-top: 1px solid #295071;
+}
+
+.dropdown-item:hover {
+	background-color: #98bcdb;
+	text-decoration: none;
 }
 
 .flex {
@@ -329,6 +381,28 @@ chunk {
 	text-align: right;
 }
 
+.navbar .navbar-nav .nav-link:hover {
+    border-radius: 5px;
+	background-color: #98bcdb;
+}
+
+.navbar .navbar-nav .nav-link:focus {
+    border-radius: 5px;
+	background-color: #98bcdb;
+}
+
+.popupcontainer {
+	position: absolute;
+	top: 0px;
+	left: 0px;
+	z-index: 1;
+	width: 100%;
+	height: 100%;
+	background-color: rgba(0,0,0,0.5);
+	flex-direction: column;
+	align-items: center;
+}
+
 .popuplistitem {
 	padding: 5px 10px 5px 10px;
 	display: grid;
@@ -347,6 +421,33 @@ chunk {
 
 .popuplistselected {
 	background-color: #688f1f;
+}
+
+.popuptitlebar {
+	padding: 10px;
+	background-color: #337ab7;
+}
+
+.popuptitletext {
+	height: 100%;
+	display: flex;
+	align-items:center;
+	color: #ffffff;
+	font-size: 12pt;
+}
+
+.popupfooter {
+	width: 100%;
+	padding: 10px;
+	display: flex;
+	justify-content: center;
+	background-color: #295071;
+}
+
+.popupfooter button {
+	width: 100px;
+	margin-left: 10px;
+	margin-right: 10px;
 }
 
 .settingitem {
