@@ -1216,6 +1216,9 @@ def importRequest():
         file = open(importpath, "rb")
         vars.importjs = json.load(file)
         
+        if type(vars.importjs) is dict and "stories" in vars.importjs:
+            vars.importjs = vars.importjs["stories"]
+        
         # Clear Popup Contents
         emit('from_server', {'cmd': 'clearpopup', 'data': ''})
         
@@ -1269,7 +1272,7 @@ def importgame():
         else:
             vars.prompt = ""
         vars.memory      = ref["memory"]
-        vars.authornote  = ref["authorsNote"]
+        vars.authornote  = ref["authorsNote"] if type(ref["authorsNote"]) is str else ""
         vars.actions     = []
         vars.worldinfo   = []
         
