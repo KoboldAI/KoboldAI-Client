@@ -391,6 +391,45 @@ chunk {
 	background-color: #98bcdb;
 }
 
+.navbar-toggler {
+	background-color: #337ab7;
+	border: 1px solid #98bcdb;
+	height: 45px;
+	width: 60px;
+	border-radius: 6px;
+}
+
+.navbar-toggler:hover {
+	background-color: #98bcdb;
+}
+
+@media (min-width: 768px) {
+	.navbar-toggler {
+		display: none;
+	}
+}
+
+@media (max-width: 768px) {
+	.nav-item {
+		margin-bottom: 3px;
+	}
+}
+
+.navbar-button-bar {
+	display: block;
+	height: 2px;
+	width: 42px;
+	border: 1px solid #fff;
+}
+
+.navbar-button-bar + .navbar-button-bar {
+	margin-top: 4px;
+}
+
+.navcontainer {
+	
+}
+
 .popupcontainer {
 	position: absolute;
 	top: 0px;

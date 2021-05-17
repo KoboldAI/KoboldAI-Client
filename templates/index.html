@@ -6,20 +6,25 @@
 	<meta name="viewport" content="width=device-width, initial-scale=1">
 	<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 	<script src="static/socket.io.min.js"></script>
-	<script src="static/application.js?ver=0.14.1"></script>
+	<script src="static/application.js?ver=0.14.2"></script>
 	<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/js/bootstrap.min.js"></script>
 	<script src="static/bootstrap-toggle.min.js"></script>
 	
 	<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap.min.css">
 	<link rel="stylesheet" href="static/bootstrap-toggle.min.css">
-	<link rel="stylesheet" href="static/custom.css?ver=0.14.1">
+	<link rel="stylesheet" href="static/custom.css?ver=0.14.2">
 </head>
 <body>
 	<div class="container">
 		<div class="row" id="topmenu">
 			<div id="menuitems">
-				<div>
-					<nav class="navbar default" id="navbar">
+				<div class="navcontainer">
+					<nav class="navbar" id="navbar">
+						<button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNavDropdown">
+							<span class="navbar-button-bar"></span>
+							<span class="navbar-button-bar"></span>
+							<span class="navbar-button-bar"></span>
+						</button>
 						<div class="collapse navbar-collapse" id="navbarNavDropdown">
 							<ul class="nav navbar-nav">
 								<li class="nav-item">
