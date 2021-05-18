@@ -69,7 +69,12 @@ def removespecialchars(txt):
 def addsentencespacing(txt, vars):
     # Get last character of last action
     if(len(vars.actions) > 0):
-        lastchar = vars.actions[-1][-1]
+        if(len(vars.actions[-1]) > 0):
+            lastchar = vars.actions[-1][-1]
+        else:
+            # Last action is blank, this should never happen, but
+            # since it did let's bail out.
+            return txt
     else:
         lastchar = vars.prompt[-1]
     if(lastchar == "." or lastchar == "!" or lastchar == "?" or lastchar == "," or lastchar == ";" or lastchar == ":"):
