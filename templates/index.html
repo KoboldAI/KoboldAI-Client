@@ -6,13 +6,13 @@
 	<meta name="viewport" content="width=device-width, initial-scale=1">
 	<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 	<script src="static/socket.io.min.js"></script>
-	<script src="static/application.js?ver=0.14.2"></script>
+	<script src="static/application.js?ver=0.15.0g"></script>
 	<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/js/bootstrap.min.js"></script>
 	<script src="static/bootstrap-toggle.min.js"></script>
 	
 	<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap.min.css">
 	<link rel="stylesheet" href="static/bootstrap-toggle.min.css">
-	<link rel="stylesheet" href="static/custom.css?ver=0.14.2">
+	<link rel="stylesheet" href="static/custom.css?ver=0.15.0g">
 </head>
 <body>
 	<div class="container">
@@ -30,14 +30,23 @@
 								<li class="nav-item">
 									<a class="nav-link" href="#" id="btn_newgame">New Story</a>
 								</li>
-								<li class="nav-item">
-									<a class="nav-link" href="#" id="btn_save">Save</a>
-								</li>
-								<li class="nav-item">
-									<a class="nav-link" href="#" id="btn_load">Load</a>
+								<li class="nav-item dropdown">
+									<a class="nav-link dropdown-toggle" href="#" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Save</a>
+									<div class="dropdown-menu">
+										<a class="dropdown-item" href="#" id="btn_save">Save</a>
+										<a class="dropdown-item" href="#" id="btn_saveas">Save As</a>
+										<a class="dropdown-item" href="#" id="btn_savetofile">Save To File...</a>
+									</div>
 								</li>
 								<li class="nav-item dropdown">
-									<a class="nav-link dropdown-toggle" href="#" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Import...</a>
+									<a class="nav-link dropdown-toggle" href="#" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Load</a>
+									<div class="dropdown-menu">
+										<a class="dropdown-item" href="#" id="btn_load">Load</a>
+										<a class="dropdown-item" href="#" id="btn_loadfromfile">Load From File...</a>
+									</div>
+								</li>
+								<li class="nav-item dropdown">
+									<a class="nav-link dropdown-toggle" href="#" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Import</a>
 									<div class="dropdown-menu">
 										<a class="dropdown-item" href="#" id="btn_import">AI Dungeon Adventure</a>
 										<a class="dropdown-item" href="#" id="btn_impaidg">aidg.club Prompt</a>
@@ -156,6 +165,54 @@
 			<div class="popupfooter">
 				<button type="button" class="btn btn-primary" id="btn_aidgpopupaccept">Accept</button>
 				<button type="button" class="btn btn-primary" id="btn_aidgpopupclose">Cancel</button>
+			</div>
+		</div>
+	</div>
+	<div class="popupcontainer hidden" id="saveascontainer">
+		<div id="saveaspopup">
+			<div class="popuptitlebar">
+				<div class="popuptitletext">Enter Name For Save</div>
+			</div>
+			<div class="aidgpopupcontent">
+				<input class="form-control" type="text" placeholder="Save Name" id="savename">
+			</div>
+			<div class="hidden" id="saveasoverwrite">
+				<span>File already exists. Really overwrite?</span>
+			</div>
+			<div class="popupfooter">
+				<button type="button" class="btn btn-primary" id="btn_saveasaccept">Accept</button>
+				<button type="button" class="btn btn-primary" id="btn_saveasclose">Cancel</button>
+			</div>
+		</div>
+	</div>
+	<div class="popupcontainer hidden" id="loadcontainer">
+		<div id="loadpopup">
+			<div class="popuptitlebar">
+				<div class="popuptitletext">Select A Story To Load</div>
+			</div>
+			<div class="loadlistheader">
+				<div>Save Name</div>
+				<div># Actions</div>
+			</div>
+			<div id="loadlistcontent">
+			</div>
+			<div class="popupfooter">
+				<button type="button" class="btn btn-primary" id="btn_loadaccept">Load</button>
+				<button type="button" class="btn btn-primary" id="btn_loadclose">Cancel</button>
+			</div>
+		</div>
+	</div>
+	<div class="popupcontainer hidden" id="newgamecontainer">
+		<div id="nspopup">
+			<div class="popuptitlebar">
+				<div class="popuptitletext">Really Start A New Story?</div>
+			</div>
+			<div class="aidgpopuplistheader">
+				Unsaved data will be lost.
+			</div>
+			<div class="popupfooter">
+				<button type="button" class="btn btn-primary" id="btn_nsaccept">Accept</button>
+				<button type="button" class="btn btn-primary" id="btn_nsclose">Cancel</button>
 			</div>
 		</div>
 	</div>

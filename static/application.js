@@ -9,6 +9,8 @@ var socket;
 var connect_status;
 var button_newgame;
 var button_save;
+var button_saveas;
+var button_savetofile;
 var button_load;
 var button_import;
 var button_impaidg;
@@ -40,6 +42,18 @@ var aidgpopup;
 var aidgpromptnum;
 var aidg_accept;
 var aidg_close;
+var saveaspopup;
+var saveasinput;
+var saveas_accept;
+var saveas_close;
+var saveasoverwrite;
+var loadpopup;
+var	loadcontent;
+var	load_accept;
+var	load_close;
+var nspopup;
+var ns_accept;
+var ns_close;
 
 // Key states
 var shift_down   = false;
@@ -201,6 +215,7 @@ function hideWiDeleteConfirm(num) {
 function highlightImportLine(ref) {
 	$("#popupcontent > div").removeClass("popuplistselected");
 	ref.addClass("popuplistselected");
+	enableButtons([popup_accept]);
 }
 
 function enableButtons(refs) {
@@ -270,6 +285,7 @@ function popupShow(state) {
 	if(state) {
 		popup.removeClass("hidden");
 		popup.addClass("flex");
+		disableButtons([popup_accept]);
 	} else {
 		popup.removeClass("flex");
 		popup.addClass("hidden");
@@ -385,6 +401,68 @@ function sendAidgImportRequest() {
 	aidgpromptnum.val("");
 }
 
+function showSaveAsPopup() {
+	disableButtons([saveas_accept]);
+	saveaspopup.removeClass("hidden");
+	saveaspopup.addClass("flex");
+	saveasinput.focus();
+}
+
+function hideSaveAsPopup() {
+	saveaspopup.removeClass("flex");
+	saveaspopup.addClass("hidden");
+	saveasinput.val("");
+	hide([saveasoverwrite]);
+}
+
+function sendSaveAsRequest() {
+	socket.send({'cmd': 'saveasrequest', 'data': saveasinput.val()});
+}
+
+function showLoadPopup() {
+	loadpopup.removeClass("hidden");
+	loadpopup.addClass("flex");
+}
+
+function hideLoadPopup() {
+	loadpopup.removeClass("flex");
+	loadpopup.addClass("hidden");
+	loadcontent.html("");
+}
+
+function buildLoadList(ar) {
+	disableButtons([load_accept]);
+	loadcontent.html("");
+	showLoadPopup();
+	var i;
+	for(i=0; i<ar.length; i++) {
+		loadcontent.append("<div class=\"loadlistitem\" id=\"load"+i+"\" name=\""+ar[i].name+"\">\
+			<div>"+ar[i].name+"</div>\
+			<div>"+ar[i].actions+"</div>\
+		</div>");
+		$("#load"+i).on("click", function () {
+			enableButtons([load_accept]);
+			socket.send({'cmd': 'loadselect', 'data': $(this).attr("name")});
+			highlightLoadLine($(this));
+		});
+	}
+}
+
+function highlightLoadLine(ref) {
+	$("#loadlistcontent > div").removeClass("popuplistselected");
+	ref.addClass("popuplistselected");
+}
+
+function showNewStoryPopup() {
+	nspopup.removeClass("hidden");
+	nspopup.addClass("flex");
+}
+
+function hideNewStoryPopup() {
+	nspopup.removeClass("flex");
+	nspopup.addClass("hidden");
+}
+
 //=================================================================//
 //  READY/RUNTIME
 //=================================================================//
@@ -392,40 +470,55 @@ function sendAidgImportRequest() {
 $(document).ready(function(){
 	
 	// Bind UI references
-	connect_status  = $('#connectstatus');
-	button_newgame  = $('#btn_newgame');
-	button_save     = $('#btn_save');
-	button_load     = $('#btn_load');
-	button_import   = $("#btn_import");
-	button_impaidg  = $("#btn_impaidg");
-	button_settings = $('#btn_settings');
-	button_format   = $('#btn_format');
-	button_send     = $('#btnsend');
-	button_actedit  = $('#btn_actedit');
-	button_actmem   = $('#btn_actmem');
-	button_actback  = $('#btn_actundo');
-	button_actretry = $('#btn_actretry');
-	button_delete   = $('#btn_delete');
-	button_actwi    = $('#btn_actwi');
-	game_text       = $('#gametext');
-	input_text      = $('#input_text');
-	message_text    = $('#messagefield');
-	settings_menu   = $("#settingsmenu");
-	format_menu     = $('#formatmenu');
-	anote_menu      = $('#anoterowcontainer');
-	wi_menu         = $('#wimenu');
-	anote_input     = $('#anoteinput');
-	anote_labelcur  = $('#anotecur');
-	anote_slider    = $('#anotedepth');
-	popup           = $("#popupcontainer");
-	popup_title     = $("#popuptitletext");
-	popup_content   = $("#popupcontent");
-	popup_accept    = $("#btn_popupaccept");
-	popup_close     = $("#btn_popupclose");
-	aidgpopup       = $("#aidgpopupcontainer");
-	aidgpromptnum   = $("#aidgpromptnum");
-	aidg_accept     = $("#btn_aidgpopupaccept");
-	aidg_close      = $("#btn_aidgpopupclose");
+	connect_status    = $('#connectstatus');
+	button_newgame    = $('#btn_newgame');
+	button_save       = $('#btn_save');
+	button_saveas     = $('#btn_saveas');
+	button_savetofile = $('#btn_savetofile');
+	button_load       = $('#btn_load');
+	button_loadfrfile = $('#btn_loadfromfile');
+	button_import     = $("#btn_import");
+	button_impaidg    = $("#btn_impaidg");
+	button_settings   = $('#btn_settings');
+	button_format     = $('#btn_format');
+	button_send       = $('#btnsend');
+	button_actedit    = $('#btn_actedit');
+	button_actmem     = $('#btn_actmem');
+	button_actback    = $('#btn_actundo');
+	button_actretry   = $('#btn_actretry');
+	button_delete     = $('#btn_delete');
+	button_actwi      = $('#btn_actwi');
+	game_text         = $('#gametext');
+	input_text        = $('#input_text');
+	message_text      = $('#messagefield');
+	settings_menu     = $("#settingsmenu");
+	format_menu       = $('#formatmenu');
+	anote_menu        = $('#anoterowcontainer');
+	wi_menu           = $('#wimenu');
+	anote_input       = $('#anoteinput');
+	anote_labelcur    = $('#anotecur');
+	anote_slider      = $('#anotedepth');
+	popup             = $("#popupcontainer");
+	popup_title       = $("#popuptitletext");
+	popup_content     = $("#popupcontent");
+	popup_accept      = $("#btn_popupaccept");
+	popup_close       = $("#btn_popupclose");
+	aidgpopup         = $("#aidgpopupcontainer");
+	aidgpromptnum     = $("#aidgpromptnum");
+	aidg_accept       = $("#btn_aidgpopupaccept");
+	aidg_close        = $("#btn_aidgpopupclose");
+	saveaspopup       = $("#saveascontainer");
+	saveasinput       = $("#savename");
+	saveas_accept     = $("#btn_saveasaccept");
+	saveas_close      = $("#btn_saveasclose");
+	saveasoverwrite   = $("#saveasoverwrite");
+	loadpopup         = $("#loadcontainer");
+	loadcontent       = $("#loadlistcontent");
+	load_accept       = $("#btn_loadaccept");
+	load_close        = $("#btn_loadclose");
+	nspopup           = $("#newgamecontainer");
+	ns_accept         = $("#btn_nsaccept");
+	ns_close          = $("#btn_nsclose");
 	
     // Connect to SocketIO server
 	loc    = window.document.location;
@@ -465,10 +558,14 @@ $(document).ready(function(){
 				hide([wi_menu, button_delete]);
 				show([game_text, button_actedit, button_actmem, button_actwi, button_actback, button_actretry]);
 				hideMessage();
+				hideWaitAnimation();
 				button_actedit.html("Edit");
 				button_actmem.html("Memory");
 				button_actwi.html("W Info");
 				hideAidgPopup();
+				hideSaveAsPopup();
+				hideLoadPopup();
+				hideNewStoryPopup();
 			}
 		} else if(msg.cmd == "editmode") {
 			// Enable or Disable edit mode
@@ -598,8 +695,20 @@ $(document).ready(function(){
 		} else if(msg.cmd == "requestwiitem") {
 			// Package WI contents and send back to server
 			returnWiList(msg.data);
+		} else if(msg.cmd == "saveas") {
+			// Show Save As prompt
+			showSaveAsPopup();
+		} else if(msg.cmd == "hidesaveas") {
+			// Hide Save As prompt
+			hideSaveAsPopup();
+		} else if(msg.cmd == "buildload") {
+			// Send array of save files to load UI
+			buildLoadList(msg.data);
+		} else if(msg.cmd == "askforoverwrite") {
+			// Show overwrite warning
+			show([saveasoverwrite]);
 		}
-    });	
+    });
 	
 	socket.on('disconnect', function() {
 		connect_status.html("<b>Lost connection...</b>");
@@ -632,20 +741,16 @@ $(document).ready(function(){
 		socket.send({'cmd': 'memory', 'data': ''});
 	});
 	
-	button_save.on("click", function(ev) {
-		socket.send({'cmd': 'save', 'data': ''});
+	button_savetofile.on("click", function(ev) {
+		socket.send({'cmd': 'savetofile', 'data': ''});
 	});
 	
-	button_load.on("click", function(ev) {
-		socket.send({'cmd': 'load', 'data': ''});
+	button_loadfrfile.on("click", function(ev) {
+		socket.send({'cmd': 'loadfromfile', 'data': ''});
 	});
 	
 	button_import.on("click", function(ev) {
 		socket.send({'cmd': 'import', 'data': ''});
-	});
-	
-	button_newgame.on("click", function(ev) {
-		socket.send({'cmd': 'newgame', 'data': ''});
 	});
 	
 	button_settings.on("click", function(ev) {
@@ -680,6 +785,58 @@ $(document).ready(function(){
 		sendAidgImportRequest();
 	});
 	
+	button_save.on("click", function(ev) {
+		socket.send({'cmd': 'saverequest', 'data': ''});
+	});
+	
+	button_saveas.on("click", function(ev) {
+		showSaveAsPopup();
+	});
+	
+	saveas_close.on("click", function(ev) {
+		hideSaveAsPopup();
+		socket.send({'cmd': 'clearoverwrite', 'data': ''});
+	});
+	
+	saveas_accept.on("click", function(ev) {
+		sendSaveAsRequest();
+	});
+	
+	button_load.on("click", function(ev) {
+		socket.send({'cmd': 'loadlistrequest', 'data': ''});
+	});
+	
+	load_close.on("click", function(ev) {
+		hideLoadPopup();
+	});
+	
+	load_accept.on("click", function(ev) {
+		socket.send({'cmd': 'loadrequest', 'data': ''});
+		hideLoadPopup();
+	});
+	
+	button_newgame.on("click", function(ev) {
+		showNewStoryPopup();
+	});
+	
+	ns_accept.on("click", function(ev) {
+		socket.send({'cmd': 'newgame', 'data': ''});
+		hideNewStoryPopup();
+	});
+	
+	ns_close.on("click", function(ev) {
+		hideNewStoryPopup();
+	});
+	
+	saveasinput.on("input", function () {
+		if(saveasinput.val() == "") {
+			disableButtons([saveas_accept]);
+		} else {
+			enableButtons([saveas_accept]);
+		}
+		hide([saveasoverwrite]);
+	});
+	
 	// Bind Enter button to submit
 	input_text.keydown(function (ev) {
 		if (ev.which == 13 && !shift_down) {
@@ -703,6 +860,12 @@ $(document).ready(function(){
 	aidgpromptnum.keydown(function (ev) {
 		if (ev.which == 13) {
 			sendAidgImportRequest();
+		}
+	});
+	
+	saveasinput.keydown(function (ev) {
+		if (ev.which == 13 && saveasinput.val() != "") {
+			sendSaveAsRequest();
 		}
 	});
 });

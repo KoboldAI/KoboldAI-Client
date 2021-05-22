@@ -80,9 +80,14 @@ def addsentencespacing(txt, vars):
     if(lastchar == "." or lastchar == "!" or lastchar == "?" or lastchar == "," or lastchar == ";" or lastchar == ":"):
         txt = " " + txt
     return txt
-    
-    
-    
+
+#==================================================================#
+#  Cleans string for use in file name
+#==================================================================#
+def cleanfilename(filename):
+    keepcharacters = (' ','.','_')
+    filename = "".join(c for c in filename if c.isalnum() or c in keepcharacters).rstrip()
+    return filename
     
     
     

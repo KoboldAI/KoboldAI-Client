@@ -226,6 +226,43 @@ chunk {
 	color: #ffffff;
 }
 
+#saveaspopup {
+	width: 350px;
+	background-color: #262626;
+	margin-top: 200px;
+}
+
+#saveasoverwrite {
+	color: #ff9900;
+	font-weight: bold;
+	text-align: center;
+}
+
+#loadpopup {
+	width: 500px;
+	background-color: #262626;
+	margin-top: 100px;
+}
+
+@media (max-width: 768px) {
+	#loadpopup {
+		width: 100%;
+		background-color: #262626;
+		margin-top: 100px;
+	}
+}
+
+#loadlistcontent {
+	height: 325px;
+	overflow-y: scroll;
+}
+
+#nspopup {
+	width: 350px;
+	background-color: #262626;
+	margin-top: 200px;
+}
+
 /*================= Classes =================*/
 
 .aidgpopupcontent {
@@ -379,6 +416,29 @@ chunk {
 
 .justifyright {
 	text-align: right;
+}
+
+.loadlistheader {
+	padding-left: 10px;
+	display: grid;
+	grid-template-columns: 80% 20%;
+	color: #737373;
+}
+
+.loadlistitem {
+	padding: 5px 10px 5px 10px;
+	display: grid;
+	grid-template-columns: 80% 20%;
+	color: #ffffff;
+	
+	-moz-transition: background-color 0.25s ease-in;
+    -o-transition: background-color 0.25s ease-in;
+    -webkit-transition: background-color 0.25s ease-in;
+}
+
+.loadlistitem:hover {
+	cursor: pointer;
+	background-color: #688f1f;
 }
 
 .navbar .navbar-nav .nav-link:hover {

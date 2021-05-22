@@ -1,5 +1,7 @@
 import tkinter as tk
 from tkinter import filedialog
+from os import getcwd, listdir, path
+import json
 
 #==================================================================#
 #  Generic Method for prompting for file path
@@ -51,3 +53,25 @@ def getdirpath(dir, title):
         return path
     else:
         return None
+
+#==================================================================#
+#  Returns an array of dicts containing story files in /stories
+#==================================================================#
+def getstoryfiles():
+    list = []
+    for file in listdir(getcwd()+"/stories"):
+        if file.endswith(".json"):
+            ob = {}
+            ob["name"] = file.replace(".json", "")
+            f = open(getcwd()+"/stories/"+file, "r")
+            js = json.load(f)
+            f.close()
+            ob["actions"] = len(js["actions"])
+            list.append(ob)
+    return list
+
+#==================================================================#
+#  Returns True if json file exists with requested save name
+#==================================================================#
+def saveexists(name):
+    return path.exists(getcwd()+"/stories/"+name+".json")

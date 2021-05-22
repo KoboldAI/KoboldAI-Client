@@ -1,1 +1,1 @@
-py -3 aiserver.py
+start cmd /k py -3 aiserver.py

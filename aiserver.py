@@ -1,6 +1,6 @@
 #==================================================================#
 # KoboldAI Client
-# Version: 1.14.0
+# Version: 1.15.0
 # By: KoboldAIDev
 #==================================================================#
 
@@ -43,40 +43,44 @@ modellist = [
     ["InferKit API (requires API key)", "InferKit", ""],
     ["Custom Neo   (eg Neo-horni)", "NeoCustom", ""],
     ["Custom GPT-2 (eg CloverEdition)", "GPT2Custom", ""],
-    ["Google Colab", "Colab", ""]
+    ["Google Colab", "Colab", ""],
+    ["OpenAI API (requires API key)", "OAI", ""]
     ]
 
 # Variables
 class vars:
-    lastact     = ""    # The last action received from the user
-    lastctx     = ""    # The last context submitted to the generator
-    model       = ""
-    noai        = False # Runs the script without starting up the transformers pipeline
-    aibusy      = False # Stops submissions while the AI is working
-    max_length  = 512   # Maximum number of tokens to submit per action
-    ikmax       = 3000  # Maximum number of characters to submit to InferKit
-    genamt      = 60    # Amount of text for each action to generate
-    ikgen       = 200   # Number of characters for InferKit to generate
-    rep_pen     = 1.0   # Default generator repetition_penalty
-    temp        = 1.0   # Default generator temperature
-    top_p       = 1.0   # Default generator top_p
-    gamestarted = False
-    prompt      = ""
-    memory      = ""
-    authornote  = ""
+    lastact     = ""     # The last action received from the user
+    lastctx     = ""     # The last context submitted to the generator
+    model       = ""     # Model ID string chosen at startup
+    noai        = False  # Runs the script without starting up the transformers pipeline
+    aibusy      = False  # Stops submissions while the AI is working
+    max_length  = 512    # Maximum number of tokens to submit per action
+    ikmax       = 3000   # Maximum number of characters to submit to InferKit
+    genamt      = 60     # Amount of text for each action to generate
+    ikgen       = 200    # Number of characters for InferKit to generate
+    rep_pen     = 1.0    # Default generator repetition_penalty
+    temp        = 1.0    # Default generator temperature
+    top_p       = 1.0    # Default generator top_p
+    gamestarted = False  # Whether the game has started (disables UI elements)
+    prompt      = ""     # Prompt
+    memory      = ""     # Text submitted to memory field
+    authornote  = ""     # Text submitted to Author's Note field
     andepth     = 3      # How far back in history to append author's note
-    actions     = []
-    worldinfo   = []
-    badwords    = []
-    badwordsids = []
+    actions     = []     # Array of actions submitted by user and AI
+    worldinfo   = []     # Array of World Info key/value objects
+    badwords    = []     # Array of str/chr values that should be removed from output
+    badwordsids = []     # Tokenized array of badwords
     deletewi    = -1     # Temporary storage for index to delete
     wirmvwhtsp  = False  # Whether to remove leading whitespace from WI entries
     widepth     = 1      # How many historical actions to scan for WI hits
     mode        = "play" # Whether the interface is in play, memory, or edit mode
     editln      = 0      # Which line was last selected in Edit Mode
     url         = "https://api.inferkit.com/v1/models/standard/generate" # InferKit API URL
+    oaiurl      = "" # OpenAI API URL
+    oaiengines  = "https://api.openai.com/v1/engines"
     colaburl    = ""     # Ngrok url for Google Colab mode
     apikey      = ""     # API key to use for InferKit API calls
+    oaiapikey   = ""     # API key to use for OpenAI API calls
     savedir     = getcwd()+"\stories"
     hascuda     = False  # Whether torch has detected CUDA on the system
     usegpu      = False  # Whether to launch pipeline with GPU support
@@ -84,6 +88,9 @@ class vars:
     formatoptns = {}     # Container for state of formatting options
     importnum   = -1     # Selection on import popup list
     importjs    = {}     # Temporary storage for import data
+    loadselect  = ""     # Temporary storage for filename to load
+    svowname    = ""
+    saveow      = False
 
 #==================================================================#
 # Function to get model selection at startup
@@ -138,7 +145,7 @@ print("{0}Welcome to the KoboldAI Client!\nSelect an AI model to continue:{1}\n"
 getModelSelection()
 
 # If transformers model was selected & GPU available, ask to use CPU or GPU
-if(not vars.model in ["InferKit", "Colab"]):
+if(not vars.model in ["InferKit", "Colab", "OAI"]):
     # Test for GPU support
     import torch
     print("{0}Looking for GPU support...{1}".format(colors.PURPLE, colors.END), end="")
@@ -185,7 +192,7 @@ if(vars.model == "InferKit"):
         file = open("client.settings", "r")
         # Check if API key exists
         js = json.load(file)
-        if(js["apikey"] != ""):
+        if("apikey" in js and js["apikey"] != ""):
             # API key exists, grab it and close the file
             vars.apikey = js["apikey"]
             file.close()
@@ -200,6 +207,73 @@ if(vars.model == "InferKit"):
                 file.write(json.dumps(js, indent=3))
             finally:
                 file.close()
+
+# Ask for API key if OpenAI was selected
+if(vars.model == "OAI"):
+    if(not path.exists("client.settings")):
+        # If the client settings file doesn't exist, create it
+        print("{0}Please enter your OpenAI API key:{1}\n".format(colors.CYAN, colors.END))
+        vars.oaiapikey = input("Key> ")
+        # Write API key to file
+        file = open("client.settings", "w")
+        try:
+            js = {"oaiapikey": vars.oaiapikey}
+            file.write(json.dumps(js, indent=3))
+        finally:
+            file.close()
+    else:
+        # Otherwise open it up
+        file = open("client.settings", "r")
+        # Check if API key exists
+        js = json.load(file)
+        if("oaiapikey" in js and js["oaiapikey"] != ""):
+            # API key exists, grab it and close the file
+            vars.oaiapikey = js["oaiapikey"]
+            file.close()
+        else:
+            # Get API key, add it to settings object, and write it to disk
+            print("{0}Please enter your OpenAI API key:{1}\n".format(colors.CYAN, colors.END))
+            vars.oaiapikey = input("Key> ")
+            js["oaiapikey"] = vars.oaiapikey
+            # Write API key to file
+            file = open("client.settings", "w")
+            try:
+                file.write(json.dumps(js, indent=3))
+            finally:
+                file.close()
+    
+    # Get list of models from OAI
+    print("{0}Retrieving engine list...{1}".format(colors.PURPLE, colors.END), end="")
+    req = requests.get(
+        vars.oaiengines, 
+        headers = {
+            'Authorization': 'Bearer '+vars.oaiapikey
+            }
+        )
+    if(req.status_code == 200):
+        print("{0}OK!{1}".format(colors.GREEN, colors.END))
+        print("{0}Please select an engine to use:{1}\n".format(colors.CYAN, colors.END))
+        engines = req.json()["data"]
+        # Print list of engines
+        i = 0
+        for en in engines:
+            print("    {0} - {1} ({2})".format(i, en["id"], "\033[92mready\033[0m" if en["ready"] == True else "\033[91mnot ready\033[0m"))
+            i += 1
+        # Get engine to use
+        print("")
+        engselected = False
+        while(engselected == False):
+            engine = input("Engine #> ")
+            if(engine.isnumeric() and int(engine) < len(engines)):
+                vars.oaiurl = "https://api.openai.com/v1/engines/{0}/completions".format(engines[int(engine)]["id"])
+                engselected = True
+            else:
+                print("{0}Please enter a valid selection.{1}".format(colors.RED, colors.END))
+    else:
+        # Something went wrong, print the message and quit since we can't initialize an engine
+        print("{0}ERROR!{1}".format(colors.RED, colors.END))
+        print(req.json())
+        quit()
 
 # Ask for ngrok url if Google Colab was selected
 if(vars.model == "Colab"):
@@ -221,7 +295,7 @@ socketio = SocketIO(app)
 print("{0}OK!{1}".format(colors.GREEN, colors.END))
 
 # Start transformers and create pipeline
-if(not vars.model in ["InferKit", "Colab"]):
+if(not vars.model in ["InferKit", "Colab", "OAI"]):
     if(not vars.noai):
         print("{0}Initializing transformers, please wait...{1}".format(colors.PURPLE, colors.END))
         from transformers import pipeline, GPT2Tokenizer, GPT2LMHeadModel, GPTNeoForCausalLM
@@ -262,10 +336,13 @@ if(not vars.model in ["InferKit", "Colab"]):
         
         print("{0}OK! {1} pipeline created!{2}".format(colors.GREEN, vars.model, colors.END))
 else:
-    # If we're running Colab, we still need a tokenizer.
+    # If we're running Colab or OAI, we still need a tokenizer.
     if(vars.model == "Colab"):
         from transformers import GPT2Tokenizer
         tokenizer = GPT2Tokenizer.from_pretrained("EleutherAI/gpt-neo-2.7B")
+    elif(vars.model == "OAI"):
+        from transformers import GPT2Tokenizer
+        tokenizer = GPT2Tokenizer.from_pretrained("gpt2")
 
 # Set up Flask routes
 @app.route('/')
@@ -354,10 +431,10 @@ def get_message(msg):
         deleterequest()
     elif(msg['cmd'] == 'memory'):
         togglememorymode()
-    elif(msg['cmd'] == 'save'):
-        saveRequest()
-    elif(msg['cmd'] == 'load'):
-        loadRequest()
+    elif(msg['cmd'] == 'savetofile'):
+        savetofile()
+    elif(msg['cmd'] == 'loadfromfile'):
+        loadfromfile()
     elif(msg['cmd'] == 'import'):
         importRequest()
     elif(msg['cmd'] == 'newgame'):
@@ -431,16 +508,29 @@ def get_message(msg):
         commitwi(msg['data'])
     elif(msg['cmd'] == 'aidgimport'):
         importAidgRequest(msg['data'])
+    elif(msg['cmd'] == 'saveasrequest'):
+        saveas(msg['data'])
+    elif(msg['cmd'] == 'saverequest'):
+        save()
+    elif(msg['cmd'] == 'loadlistrequest'):
+        getloadlist()
+    elif(msg['cmd'] == 'loadselect'):
+        vars.loadselect = msg["data"]
+    elif(msg['cmd'] == 'loadrequest'):
+        loadRequest(getcwd()+"/stories/"+vars.loadselect+".json")
+    elif(msg['cmd'] == 'clearoverwrite'):    
+        vars.svowname = ""
+        vars.saveow   = False
     
 #==================================================================#
-#   
+#  Send start message and tell Javascript to set UI state
 #==================================================================#
 def setStartState():
     emit('from_server', {'cmd': 'updatescreen', 'data': '<span>Welcome to <span class="color_cyan">KoboldAI Client</span>! You are running <span class="color_green">'+vars.model+'</span>.<br/>Please load a game or enter a prompt below to begin!</span>'})
     emit('from_server', {'cmd': 'setgamestate', 'data': 'start'})
 
 #==================================================================#
-#   
+#  Transmit applicable settings to SocketIO to build UI sliders/toggles
 #==================================================================#
 def sendsettings():
     # Send settings for selected AI type
@@ -459,7 +549,7 @@ def sendsettings():
             vars.formatoptns[frm["id"]] = False;
 
 #==================================================================#
-#   
+#  Take settings from vars and write them to client settings file
 #==================================================================#
 def savesettings():
      # Build json to write
@@ -482,7 +572,7 @@ def savesettings():
         file.close()
 
 #==================================================================#
-# 
+#  Read settings from client file JSON and send to vars
 #==================================================================#
 def loadsettings():
     if(path.exists("client.settings")):
@@ -513,7 +603,7 @@ def loadsettings():
         file.close()
 
 #==================================================================#
-# 
+#  Don't save settings unless 2 seconds have passed without modification
 #==================================================================#
 @debounce(2)
 def settingschanged():
@@ -521,7 +611,7 @@ def settingschanged():
     savesettings()
 
 #==================================================================#
-# 
+#  Take input text from SocketIO and decide what to do with it
 #==================================================================#
 def actionsubmit(data):
     # Ignore new submissions if the AI is currently busy
@@ -601,10 +691,12 @@ def calcsubmit(txt):
             subtxt = vars.memory + winfo + anotetxt + vars.prompt
             lnsub  = lnmem + lnwi + lnprompt + lnanote
             
-            if(vars.model != "Colab"):
+            if(not vars.model in ["Colab", "OAI"]):
                 generate(subtxt, lnsub+1, lnsub+vars.genamt)
-            else:
+            elif(vars.model == "Colab"):
                 sendtocolab(subtxt, lnsub+1, lnsub+vars.genamt)
+            elif(vars.model == "OAI"):
+                oairequest(subtxt, lnsub+1, lnsub+vars.genamt)
         else:
             tokens     = []
             
@@ -643,23 +735,28 @@ def calcsubmit(txt):
                 # Prepend Memory, WI, and Prompt before action tokens
                 tokens = memtokens + witokens + prompttkns + tokens
             
-            
-            
             # Send completed bundle to generator
             ln = len(tokens)
             
-            if(vars.model != "Colab"):
+            if(not vars.model in ["Colab", "OAI"]):
                 generate (
                     tokenizer.decode(tokens),
                     ln+1,
                     ln+vars.genamt
                     )
-            else:
+            elif(vars.model == "Colab"):
                 sendtocolab(
                     tokenizer.decode(tokens),
                     ln+1,
                     ln+vars.genamt
                     )
+            elif(vars.model == "OAI"):
+                oairequest(
+                    tokenizer.decode(tokens),
+                    ln+1,
+                    ln+vars.genamt
+                    )
+                    
     # For InferKit web API
     else:
         
@@ -1152,6 +1249,55 @@ def ikrequest(txt):
         set_aibusy(0)
 
 #==================================================================#
+#  Assembles game data into a request to OpenAI API
+#==================================================================#
+def oairequest(txt, min, max):
+    # Log request to console
+    print("{0}Len:{1}, Txt:{2}{3}".format(colors.YELLOW, len(txt), txt, colors.END))
+    
+    # Store context in memory to use it for comparison with generated content
+    vars.lastctx = txt
+    
+    # Build request JSON data
+    reqdata = {
+        'prompt': txt,
+        'max_tokens': max,
+        'temperature': vars.temp,
+        'top_p': vars.top_p,
+        'n': 1,
+        'stream': False
+    }
+    
+    req = requests.post(
+        vars.oaiurl, 
+        json    = reqdata,
+        headers = {
+            'Authorization': 'Bearer '+vars.oaiapikey,
+            'Content-Type': 'application/json'
+            }
+        )
+    
+    # Deal with the response
+    if(req.status_code == 200):
+        genout = req.json()["choices"][0]["text"]
+        print("{0}{1}{2}".format(colors.CYAN, genout, colors.END))
+        vars.actions.append(genout)
+        refresh_story()
+        emit('from_server', {'cmd': 'texteffect', 'data': len(vars.actions)})
+        
+        set_aibusy(0)
+    else:
+        # Send error message to web client            
+        er = req.json()
+        if("error" in er):
+            type    = er["error"]["type"]
+            message = er["error"]["message"]
+            
+        errmsg = "OpenAI API Error: {0} - {1}".format(type, message)
+        emit('from_server', {'cmd': 'errmsg', 'data': errmsg})
+        set_aibusy(0)
+
+#==================================================================#
 #  Forces UI to Play mode
 #==================================================================#
 def exitModes():
@@ -1164,11 +1310,44 @@ def exitModes():
     vars.mode = "play"
 
 #==================================================================#
-#  Save the story to a file
+#  Launch in-browser save prompt
 #==================================================================#
-def saveRequest():    
+def saveas(name):
+    # Check if filename exists already
+    name = utils.cleanfilename(name)
+    if(not fileops.saveexists(name) or (vars.saveow and vars.svowname == name)):
+        # All clear to save
+        saveRequest(getcwd()+"/stories/"+name+".json")
+        emit('from_server', {'cmd': 'hidesaveas', 'data': ''})
+        vars.saveow = False
+        vars.svowname = ""
+    else:
+        # File exists, prompt for overwrite
+        vars.saveow   = True
+        vars.svowname = name
+        emit('from_server', {'cmd': 'askforoverwrite', 'data': ''})
+
+#==================================================================#
+#  Save the currently running story
+#==================================================================#
+def save():
+    # Check if a file is currently open
+    if(".json" in vars.savedir):
+        saveRequest(vars.savedir)
+    else:
+        emit('from_server', {'cmd': 'saveas', 'data': ''})
+
+#==================================================================#
+#  Save the story via file browser
+#==================================================================#
+def savetofile():
     savpath = fileops.getsavepath(vars.savedir, "Save Story As", [("Json", "*.json")])
-    
+    saveRequest(savpath)
+
+#==================================================================#
+#  Save the story to specified path
+#==================================================================#
+def saveRequest(savpath):    
     if(savpath):
         # Leave Edit/Memory mode before continuing
         exitModes()
@@ -1201,11 +1380,22 @@ def saveRequest():
             file.close()
 
 #==================================================================#
+#  Load a saved story via file browser
+#==================================================================#
+def getloadlist():
+    emit('from_server', {'cmd': 'buildload', 'data': fileops.getstoryfiles()})
+
+#==================================================================#
+#  Load a saved story via file browser
+#==================================================================#
+def loadfromfile():
+    loadpath = fileops.getloadpath(vars.savedir, "Select Story File", [("Json", "*.json")])
+    loadRequest(loadpath)
+
+#==================================================================#
 #  Load a stored story from a file
 #==================================================================#
-def loadRequest():
-    loadpath = fileops.getloadpath(vars.savedir, "Select Story File", [("Json", "*.json")])
-    
+def loadRequest(loadpath):
     if(loadpath):
         # Leave Edit/Memory mode before continuing
         exitModes()
@@ -1241,6 +1431,12 @@ def loadRequest():
                 num += 1
         
         file.close()
+        
+        # Save path for save button
+        vars.savedir = loadpath
+        
+        # Clear loadselect var
+        vars.loadselect = ""
         
         # Refresh game screen
         sendwi()
@@ -1351,6 +1547,9 @@ def importgame():
         # Clear import data
         vars.importjs = {}
         
+        # Reset current save
+        vars.savedir = getcwd()+"\stories"
+        
         # Refresh game screen
         sendwi()
         refresh_story()
@@ -1388,6 +1587,9 @@ def importAidgRequest(id):
             })
             num += 1
         
+        # Reset current save
+        vars.savedir = getcwd()+"\stories"
+        
         # Refresh game screen
         sendwi()
         refresh_story()
@@ -1397,30 +1599,26 @@ def importAidgRequest(id):
 #  Starts a new story
 #==================================================================#
 def newGameRequest(): 
-    # Ask for confirmation
-    root = tk.Tk()
-    root.attributes("-topmost", True)
-    confirm = tk.messagebox.askquestion("Confirm New Game", "Really start new Story?")
-    root.destroy()
+    # Leave Edit/Memory mode before continuing
+    exitModes()
     
-    if(confirm == "yes"):
-        # Leave Edit/Memory mode before continuing
-        exitModes()
-        
-        # Clear vars values
-        vars.gamestarted = False
-        vars.prompt      = ""
-        vars.memory      = ""
-        vars.actions     = []
-        vars.savedir     = getcwd()+"\stories"
-        vars.authornote  = ""
-        vars.worldinfo   = []
-        vars.lastact     = ""
-        vars.lastctx     = ""
-        
-        # Refresh game screen
-        sendwi()
-        setStartState()
+    # Clear vars values
+    vars.gamestarted = False
+    vars.prompt      = ""
+    vars.memory      = ""
+    vars.actions     = []
+    
+    vars.authornote  = ""
+    vars.worldinfo   = []
+    vars.lastact     = ""
+    vars.lastctx     = ""
+    
+    # Reset current save
+    vars.savedir = getcwd()+"\stories"
+    
+    # Refresh game screen
+    sendwi()
+    setStartState()
 
 
 #==================================================================#
