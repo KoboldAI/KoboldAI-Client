@@ -828,6 +828,10 @@ $(document).ready(function(){
 		hideNewStoryPopup();
 	});
 	
+	anote_slider.on("input", function () {
+		socket.send({'cmd': 'anotedepth', 'data': $(this).val()});
+	});
+	
 	saveasinput.on("input", function () {
 		if(saveasinput.val() == "") {
 			disableButtons([saveas_accept]);
