@@ -75,6 +75,6 @@ You can see your remaining budget for generated characters on their website unde
 
 ### OpenAI Support
 
-KoboldAI now supports OpenAI's API. Their models are incredibly strong, but there is a little bit of a complication here, that being fairly moderated API usage. **If you're going to use the API in a way that keeps God in heaven, it's most likely not worth going through the trouble of getting an API key.**
+KoboldAI now supports OpenAI's API. Their models are incredibly strong, but there is a little bit of a complication here, that being moderated API usage. **If you're going to use the API in a way that keeps God in heaven, it's most likely not worth going through the trouble of getting an API key.**
 
-If that doesn't dissuade you [You'll need to get an API key from them.](https://beta.openai.com/?app=creative-gen)
+If that doesn't dissuade you, [you'll need to get an API key from them.](https://beta.openai.com/?app=creative-gen)
