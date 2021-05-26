@@ -1,5 +1,7 @@
 # Ignore client settings file
 client.settings
+# And the server settings
+server.settings
 
 # Ignore stories file except for test_story
 stories/*

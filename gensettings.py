@@ -108,3 +108,10 @@ formatcontrols = [{
     "id": "frmtadsnsp",
     "tooltip": "If the last action ended with punctuation, add a space to the beginning of the next action."
     }]
+server = [
+    {
+	"open": False,
+	"port": 5000,
+    "host": '0.0.0.0'
+	}
+]

@@ -91,9 +91,171 @@ class vars:
     loadselect  = ""     # Temporary storage for filename to load
     svowname    = ""
     saveow      = False
+    openserver  = False  # Setting toggled when starting up Kobold, to let the flask be connected to from other devices on the network.
+    serverport  = 5000   # Port of aforementioned server
+    serverhost  = '0.0.0.0' # Host of aforementioned server
 
 #==================================================================#
-# Function to get model selection at startup
+# Function to get opening screen options
+#==================================================================#
+def loadServerSettings():
+
+    if(path.exists("server.settings")):
+        # Read file contents into JSON object
+        file = open("server.settings", "r")
+        js = json.load(file)
+        
+        # Copy file contents to vars
+        if("open" in js):
+            vars.openserver = js["open"]
+        if("port" in js):
+            vars.serverport = js["port"]
+        if("host" in js):
+            vars.serverhost = js["host"]
+        
+        file.close()
+
+#==================================================================#
+# Function called when settings are modified to write it to a file
+#==================================================================#
+def saveServerSettings():
+
+    # Build json to write
+    js = {}
+    js["open"] = vars.openserver
+    js["port"] = "port": vars.serverport
+    js["host"] = "host": vars.serverhost
+
+    # Write it
+    file = open("server.settings",'w')
+    try:
+        file.write(json.dumps(js, indent=3))
+    finally:
+        file.close()
+
+#==================================================================#
+# Function to get the Settings menu, used in the main menu
+#==================================================================#
+def getSettingsMenu():
+
+    #defines for readability
+    OPTION_SERVER_OPEN = 0
+    OPTION_SERVER_PORT = 1
+    OPTION_SERVER_HOST = 2
+    OPTION_EXIT_SETTINGS = 3
+
+    OPTION_NAME_INDEX = 0
+
+    options = [
+        ["Allow Connecting from Other Devices", vars.openserver], 
+        ["Set Server Port", vars.serverport],
+        ["Set Server Host", vars.serverhost],
+        ["Exit Server Settings"]
+    ]
+
+    connection_string = not vars.openserver and "Enable" or "Disable"
+    #sets the menu options to show what they are set to
+    options[OPTION_SERVER_OPEN][OPTION_NAME_INDEX] = connection_string + " Connecting from Other Devices"
+    options[OPTION_SERVER_PORT][OPTION_NAME_INDEX] = "Set Server Port (" + str(vars.serverport) + ")"
+    options[OPTION_SERVER_HOST][OPTION_NAME_INDEX] = "Set Server Host (" + str(vars.serverhost) + ")"
+
+    index = 1
+    for optionlist in options:
+        print("#{0}: {1}".format(index, optionlist[OPTION_NAME_INDEX]));
+        index += 1
+    print(" ");
+    optionsel = 0
+    while(True):
+        optionsel = input("Edit Setting #> ")
+        if(not optionsel.isnumeric()):
+            print("{0}Please enter the number of the option.{1}".format(colors.RED, colors.END))
+            continue
+        optionint = int(optionsel) - 1
+        if(optionint < 0 or optionint > len(options)):
+            print("{0}Please enter a valid selection.{1}".format(colors.RED, colors.END))
+            continue
+        if(optionint == OPTION_SERVER_OPEN):
+            vars.openserver = not vars.openserver
+            toggle_string = vars.openserver and "Enabled! Please note that your traffic is unencrypted, so please only use this for devices on your local network." or "Disabled."
+            print_color = not vars.openserver and colors.GREEN or colors.RED
+            print("{0}Server {1}{2}".format(print_color, toggle_string, colors.END))
+            saveServerSettings(OPTION_SERVER_OPEN, vars.openserver)
+        if(optionint == OPTION_SERVER_PORT):
+            newportvalue = "error" #we want this to fail checks, just in case
+            validport = False
+            while(not validport):
+                newportvalue = input("New Port #> ")
+                print_color = not vars.openserver and colors.GREEN or colors.RED
+                if(not newportvalue.isnumeric()):
+                    print("{0}Please enter a valid port. Ports need to be numbers. If you're not sure what you're doing, you should leave this setting at its default of 5000.{1}".format(colors.RED, colors.END))
+                    continue
+                newportvalue = int(newportvalue)
+                if(newportvalue < 0):
+                    print("{0}Valid ports need to be positive numbers.{1}".format(colors.RED, colors.END))
+                    continue
+                validport = True
+                vars.serverport = newportvalue
+                print("{0}Server port set to {1}{2}".format(print_color, newportvalue, colors.END))
+                saveServerSettings(OPTION_SERVER_PORT, vars.serverport)
+        if(optionint == OPTION_SERVER_HOST):
+            newhostvalue = -1 #we want this to fail checks, just in case
+            validhost = False
+            while(not validhost):
+                newhostvalue = input("New Host (Format is 'x.x.x.x' with x = numbers) #> ")
+                print_color = not vars.openserver and colors.GREEN or colors.RED
+                if(newhostvalue.isnumeric()):
+                    print("{0}Please enter a valid host. An example of a valid host is \"0.0.0.0\".{1}".format(colors.RED, colors.END))
+                    continue
+                #In the future, it may be worth putting in a function to check if the input is actually a valid host.
+                #Right now, you can enter "blah blah blah" and it will be accepted, though this will certainly break
+                #When you try to start a server.
+                validhost = True
+                vars.serverhost = newhostvalue
+                print("{0}Server host set to {1}{2}".format(print_color, newhostvalue, colors.END))
+                saveServerSettings(OPTION_SERVER_HOST, vars.serverhost)
+        elif(optionint == OPTION_EXIT_SETTINGS):
+            return
+
+#==================================================================#
+# Function to get opening screen options
+#==================================================================#
+def getStartMenuOptions():
+
+    #defines for readability
+    OPTION_PLAY = 0
+    OPTION_SETTINGS = 1
+    options = [
+        "Play",
+        "Server Options"
+    ]
+
+    index = 1
+    for option in options:
+        print("#{0}: {1}".format(index, option));
+        index += 1
+    print(" ");
+    acceptableanswer = False
+    optionsel = 0
+
+    while(not acceptableanswer):
+        optionsel = input("Menu Option #> ")
+        if(not optionsel.isnumeric()):
+            print("{0}Please enter the number of the option.{1}".format(colors.RED, colors.END))
+            continue
+        optionint = int(optionsel) - 1
+        if(optionint < 0 or optionint > len(options)):
+            print("{0}Please enter a valid selection.{1}".format(colors.RED, colors.END))
+            continue
+        print("{0}, {1}".format(optionsel, str(OPTION_PLAY)))
+        acceptableanswer = True
+        if(optionint == OPTION_PLAY):
+            return
+        elif(optionint == OPTION_SETTINGS):
+            print("{0}---Server Settings---{1}".format(colors.YELLOW, colors.END))
+            getSettingsMenu()    
+
+#==================================================================#
+# Function to get model selection at the start of play
 #==================================================================#
 def getModelSelection():
     print("    #   Model                           V/RAM\n    =========================================")
@@ -139,9 +301,10 @@ def gettokenids(char):
 #==================================================================#
 # Startup
 #==================================================================#
-
+loadServerSettings()
+print("{0}Welcome to the KoboldAI Client!\nSelect an option to continue:{1}\n".format(colors.CYAN, colors.END))
+getStartMenuOptions()
 # Select a model to run
-print("{0}Welcome to the KoboldAI Client!\nSelect an AI model to continue:{1}\n".format(colors.CYAN, colors.END))
 getModelSelection()
 
 # If transformers model was selected & GPU available, ask to use CPU or GPU
@@ -1629,6 +1792,9 @@ if __name__ == "__main__":
     loadsettings()
     
     # Start Flask/SocketIO (Blocking, so this must be last method!)
-    print("{0}Server started!\rYou may now connect with a browser at http://127.0.0.1:5000/{1}".format(colors.GREEN, colors.END))
-    #socketio.run(app, host='0.0.0.0', port=5000)
-    socketio.run(app)
+    if(vars.openserver):
+        print("{0}Server started!\rYou may now connect with any device at http://{1}:{2}/{3}".format(colors.GREEN, vars.serverhost, vars.serverport, colors.END))
+        socketio.run(app, host=vars.serverhost, port=vars.serverport)
+    else:
+        print("{0}Server started!\rYou may now connect with a browser at http://127.0.0.1:5000/{1}".format(colors.GREEN, colors.END))
+        socketio.run(app)
