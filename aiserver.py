@@ -123,8 +123,8 @@ def saveServerSettings():
     # Build json to write
     js = {}
     js["open"] = vars.openserver
-    js["port"] = "port": vars.serverport
-    js["host"] = "host": vars.serverhost
+    js["port"] = vars.serverport
+    js["host"] = vars.serverhost
 
     # Write it
     file = open("server.settings",'w')
@@ -179,7 +179,7 @@ def getSettingsMenu():
             toggle_string = vars.openserver and "Enabled! Please note that your traffic is unencrypted, so please only use this for devices on your local network." or "Disabled."
             print_color = not vars.openserver and colors.GREEN or colors.RED
             print("{0}Server {1}{2}".format(print_color, toggle_string, colors.END))
-            saveServerSettings(OPTION_SERVER_OPEN, vars.openserver)
+            saveServerSettings()
         if(optionint == OPTION_SERVER_PORT):
             newportvalue = "error" #we want this to fail checks, just in case
             validport = False
@@ -196,7 +196,7 @@ def getSettingsMenu():
                 validport = True
                 vars.serverport = newportvalue
                 print("{0}Server port set to {1}{2}".format(print_color, newportvalue, colors.END))
-                saveServerSettings(OPTION_SERVER_PORT, vars.serverport)
+                saveServerSettings()
         if(optionint == OPTION_SERVER_HOST):
             newhostvalue = -1 #we want this to fail checks, just in case
             validhost = False
@@ -212,7 +212,7 @@ def getSettingsMenu():
                 validhost = True
                 vars.serverhost = newhostvalue
                 print("{0}Server host set to {1}{2}".format(print_color, newhostvalue, colors.END))
-                saveServerSettings(OPTION_SERVER_HOST, vars.serverhost)
+                saveServerSettings()
         elif(optionint == OPTION_EXIT_SETTINGS):
             return
 
