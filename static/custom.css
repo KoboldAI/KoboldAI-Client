@@ -32,7 +32,8 @@ chunk {
 }
 
 #settingsmenu {
-	display:none;
+	display: flex;
+	flex-wrap: wrap;
 	background-color: #295071;
 	padding: 10px;
 }
@@ -71,6 +72,13 @@ chunk {
 #gametext {
 	max-height: 100%;
 	width: 100%;
+}
+
+#seqselmenu {
+	display:none;
+	padding: 10px;
+	border-top: 2px solid #303030;
+	background-color: #262626;
 }
 
 #actionmenu {
@@ -346,7 +354,7 @@ chunk {
 	margin-bottom: 5px;
 }
 
-.formatrow {
+.formatrow:only-child {
 	
 }
 
@@ -549,11 +557,38 @@ chunk {
 	margin-right: 10px;
 }
 
+.seqselheader {
+	color: #737373;
+}
+
+.seqselitem {
+	border: 1px solid #959595;
+	border-radius: 5px;
+	padding: 5px;
+	color: #ffffff;
+	-moz-transition: all 0.15s ease-in;
+    -o-transition: all 0.15s ease-in;
+    -webkit-transition: all 0.15s ease-in;
+}
+
+.seqselitem:hover {
+	cursor: pointer;
+	border: 1px solid #ffffff;
+	background-color: #3a3a3a;
+}
+
+.seqselitem + .seqselitem {
+	margin-top: 5px;
+}
+
 .settingitem {
-	width: 18%;
+	width: 20%;
 	padding-left: 10px;
 	padding-right: 10px;
+	padding-bottom: 5px;
+	padding-top: 5px;
 	display: inline-block;
+	border-bottom: 1px solid #12324f;
 }
 
 .settingsave {

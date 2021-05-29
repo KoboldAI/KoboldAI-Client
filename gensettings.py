@@ -52,6 +52,39 @@ gensettingstf = [{
 	"step": 8,
 	"default": 512,
     "tooltip": "Max number of tokens of context to submit to the AI for sampling. Make sure this is higher than Amount to Generate. Higher values increase VRAM/RAM usage."
+	},
+    {
+	"uitype": "slider",
+	"unit": "int",
+	"label": "Gens Per Action",
+	"id": "setnumseq", 
+	"min": 1,
+	"max": 5,
+	"step": 1,
+	"default": 1,
+    "tooltip": "Number of results to generate per submission. Increases VRAM/RAM usage."
+	},
+    {
+	"uitype": "slider",
+	"unit": "int",
+	"label": "W Info Depth",
+	"id": "setwidepth", 
+	"min": 1,
+	"max": 5,
+	"step": 1,
+	"default": 1,
+    "tooltip": "Number of historic actions to scan for W Info keys."
+	},
+    {
+	"uitype": "toggle",
+	"unit": "bool",
+	"label": "Always Add Prompt",
+	"id": "setuseprompt", 
+	"min": 0,
+	"max": 1,
+	"step": 1,
+	"default": 1,
+    "tooltip": "Whether the prompt should be sent in the context of every action."
 	}]
 
 gensettingsik =[{
@@ -86,6 +119,28 @@ gensettingsik =[{
 	"step": 2,
 	"default": 200,
     "tooltip": "Number of characters the AI should generate."
+	},
+    {
+	"uitype": "slider",
+	"unit": "int",
+	"label": "W Info Depth",
+	"id": "setwidepth", 
+	"min": 1,
+	"max": 5,
+	"step": 1,
+	"default": 1,
+    "tooltip": "Number of historic actions to scan for W Info keys."
+	},
+    {
+	"uitype": "toggle",
+	"unit": "bool",
+	"label": "Always Add Prompt",
+	"id": "setuseprompt", 
+	"min": 0,
+	"max": 1,
+	"step": 1,
+	"default": 1,
+    "tooltip": "Whether the prompt should be sent in the context of every action."
 	}]
 
 formatcontrols = [{

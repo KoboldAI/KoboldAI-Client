@@ -13,6 +13,7 @@ var button_saveas;
 var button_savetofile;
 var button_load;
 var button_import;
+var button_importwi;
 var button_impaidg;
 var button_settings;
 var button_format;
@@ -54,6 +55,8 @@ var	load_close;
 var nspopup;
 var ns_accept;
 var ns_close;
+var seqselmenu;
+var seqselcontents;
 
 // Key states
 var shift_down   = false;
@@ -69,36 +72,51 @@ var formatcount = 0;
 
 function addSetting(ob) {	
 	// Add setting block to Settings Menu
-	settings_menu.append("<div class=\"settingitem\">\
-	<div class=\"settinglabel\">\
-		<div class=\"justifyleft\">\
-			"+ob.label+" <span class=\"helpicon\">?<span class=\"helptext\">"+ob.tooltip+"</span></span>\
+	if(ob.uitype == "slider"){
+		settings_menu.append("<div class=\"settingitem\">\
+		<div class=\"settinglabel\">\
+			<div class=\"justifyleft\">\
+				"+ob.label+" <span class=\"helpicon\">?<span class=\"helptext\">"+ob.tooltip+"</span></span>\
+			</div>\
+			<div class=\"justifyright\" id=\""+ob.id+"cur\">\
+				"+ob.default+"\
+			</div>\
 		</div>\
-		<div class=\"justifyright\" id=\""+ob.id+"cur\">\
-			"+ob.default+"\
+		<div>\
+			<input type=\"range\" class=\"form-range airange\" min=\""+ob.min+"\" max=\""+ob.max+"\" step=\""+ob.step+"\" id=\""+ob.id+"\">\
 		</div>\
-	</div>\
-	<div>\
-		<input type=\"range\" class=\"form-range airange\" min=\""+ob.min+"\" max=\""+ob.max+"\" step=\""+ob.step+"\" id=\""+ob.id+"\">\
-	</div>\
-	<div class=\"settingminmax\">\
-		<div class=\"justifyleft\">\
-			"+ob.min+"\
+		<div class=\"settingminmax\">\
+			<div class=\"justifyleft\">\
+				"+ob.min+"\
+			</div>\
+			<div class=\"justifyright\">\
+				"+ob.max+"\
+			</div>\
 		</div>\
-		<div class=\"justifyright\">\
-			"+ob.max+"\
-		</div>\
-	</div>\
-	</div>");
-	// Set references to HTML objects
-	var refin = $("#"+ob.id);
-	var reflb = $("#"+ob.id+"cur");
-	window["setting_"+ob.id] = refin;  // Is this still needed?
-	window["label_"+ob.id]   = reflb;  // Is this still needed?
-	// Add event function to input
-	refin.on("input", function () {
-		socket.send({'cmd': $(this).attr('id'), 'data': $(this).val()});
-	});
+		</div>");
+		// Set references to HTML objects
+		var refin = $("#"+ob.id);
+		var reflb = $("#"+ob.id+"cur");
+		window["setting_"+ob.id] = refin;  // Is this still needed?
+		window["label_"+ob.id]   = reflb;  // Is this still needed?
+		// Add event function to input
+		refin.on("input", function () {
+			socket.send({'cmd': $(this).attr('id'), 'data': $(this).val()});
+		});
+	} else if(ob.uitype == "toggle"){
+		settings_menu.append("<div class=\"settingitem\">\
+			<input type=\"checkbox\" data-toggle=\"toggle\" data-onstyle=\"success\" id=\""+ob.id+"\">\
+			<span class=\"formatlabel\">"+ob.label+" </span>\
+			<span class=\"helpicon\">?<span class=\"helptext\">"+ob.tooltip+"</span></span>\
+		</div>");
+		// Tell Bootstrap-Toggle to render the new checkbox
+		$("input[type=checkbox]").bootstrapToggle();
+		$("#"+ob.id).on("change", function () {
+			if(allowtoggle) {
+				socket.send({'cmd': $(this).attr('id'), 'data': $(this).prop('checked')});
+			}
+		});
+	}
 }
 
 function addFormat(ob) {
@@ -371,6 +389,7 @@ function dosubmit() {
 	socket.send({'cmd': 'submit', 'data': txt});
 	input_text.val("");
 	hideMessage();
+	hidegenseqs();
 }
 
 function newTextHighlight(ref) {
@@ -463,6 +482,42 @@ function hideNewStoryPopup() {
 	nspopup.addClass("hidden");
 }
 
+function setStartState() {
+	enableSendBtn();
+	enableButtons([button_actmem, button_actwi]);
+	disableButtons([button_actedit, button_actback, button_actretry]);
+	hide([wi_menu, button_delete]);
+	show([game_text, button_actedit, button_actmem, button_actwi, button_actback, button_actretry]);
+	hideMessage();
+	hideWaitAnimation();
+	button_actedit.html("Edit");
+	button_actmem.html("Memory");
+	button_actwi.html("W Info");
+	hideAidgPopup();
+	hideSaveAsPopup();
+	hideLoadPopup();
+	hideNewStoryPopup();
+	hidegenseqs();
+}
+
+function parsegenseqs(seqs) {
+	seqselcontents.html("");
+	var i;
+	for(i=0; i<seqs.length; i++) {
+		seqselcontents.append("<div class=\"seqselitem\" id=\"seqsel"+i+"\" n=\""+i+"\">"+seqs[i].generated_text+"</div>");
+		$("#seqsel"+i).on("click", function () {
+			socket.send({'cmd': 'seqsel', 'data': $(this).attr("n")});
+		});
+	}
+	$('#seqselmenu').slideDown("slow");
+}
+
+function hidegenseqs() {
+	$('#seqselmenu').slideUp("slow", function() {
+		seqselcontents.html("");
+	});
+}
+
 //=================================================================//
 //  READY/RUNTIME
 //=================================================================//
@@ -478,6 +533,7 @@ $(document).ready(function(){
 	button_load       = $('#btn_load');
 	button_loadfrfile = $('#btn_loadfromfile');
 	button_import     = $("#btn_import");
+	button_importwi   = $("#btn_importwi");
 	button_impaidg    = $("#btn_impaidg");
 	button_settings   = $('#btn_settings');
 	button_format     = $('#btn_format');
@@ -519,6 +575,8 @@ $(document).ready(function(){
 	nspopup           = $("#newgamecontainer");
 	ns_accept         = $("#btn_nsaccept");
 	ns_close          = $("#btn_nsclose");
+	seqselmenu        = $("#seqselmenu");
+	seqselcontents    = $("#seqselcontents");
 	
     // Connect to SocketIO server
 	loc    = window.document.location;
@@ -552,20 +610,7 @@ $(document).ready(function(){
 				disableButtons([button_actedit, button_actmem, button_actwi, button_actback, button_actretry]);
 				showWaitAnimation();
 			} else if(msg.data == "start") {
-				enableSendBtn();
-				enableButtons([button_actmem, button_actwi]);
-				disableButtons([button_actedit, button_actback, button_actretry]);
-				hide([wi_menu, button_delete]);
-				show([game_text, button_actedit, button_actmem, button_actwi, button_actback, button_actretry]);
-				hideMessage();
-				hideWaitAnimation();
-				button_actedit.html("Edit");
-				button_actmem.html("Memory");
-				button_actwi.html("W Info");
-				hideAidgPopup();
-				hideSaveAsPopup();
-				hideLoadPopup();
-				hideNewStoryPopup();
+				setStartState();
 			}
 		} else if(msg.cmd == "editmode") {
 			// Enable or Disable edit mode
@@ -657,16 +702,16 @@ $(document).ready(function(){
 			addFormat(msg.data);
 		} else if(msg.cmd == "updatefrmttriminc") {
 			// Update toggle state
-			$("#frmttriminc").prop('checked', msg.data).change()
+			$("#frmttriminc").prop('checked', msg.data).change();
 		} else if(msg.cmd == "updatefrmtrmblln") {
 			// Update toggle state
-			$("#frmtrmblln").prop('checked', msg.data).change()
+			$("#frmtrmblln").prop('checked', msg.data).change();
 		} else if(msg.cmd == "updatefrmtrmspch") {
 			// Update toggle state
-			$("#frmtrmspch").prop('checked', msg.data).change()
+			$("#frmtrmspch").prop('checked', msg.data).change();
 		} else if(msg.cmd == "updatefrmtadsnsp") {
 			// Update toggle state
-			$("#frmtadsnsp").prop('checked', msg.data).change()
+			$("#frmtadsnsp").prop('checked', msg.data).change();
 		} else if(msg.cmd == "allowtoggle") {
 			// Allow toggle change states to propagate
 			allowtoggle = msg.data;
@@ -707,6 +752,29 @@ $(document).ready(function(){
 		} else if(msg.cmd == "askforoverwrite") {
 			// Show overwrite warning
 			show([saveasoverwrite]);
+		} else if(msg.cmd == "genseqs") {
+			// Parse generator sequences to UI
+			parsegenseqs(msg.data);
+		} else if(msg.cmd == "hidegenseqs") {
+			// Collapse genseqs menu
+			hidegenseqs();
+		} else if(msg.cmd == "setlabelnumseq") {
+			// Update setting label with value from server
+			$("#setnumseqcur").html(msg.data);
+		} else if(msg.cmd == "updatenumseq") {
+			// Send current max tokens value to input
+			$("#setnumseq").val(parseInt(msg.data));
+			$("#setnumseqcur").html(msg.data);
+		} else if(msg.cmd == "setlabelwidepth") {
+			// Update setting label with value from server
+			$("#setwidepthcur").html(msg.data);
+		} else if(msg.cmd == "updatewidepth") {
+			// Send current max tokens value to input
+			$("#setwidepth").val(parseInt(msg.data));
+			$("#setwidepthcur").html(msg.data);
+		} else if(msg.cmd == "updateuseprompt") {
+			// Update toggle state
+			$("#setuseprompt").prop('checked', msg.data).change();
 		}
     });
 	
@@ -723,10 +791,12 @@ $(document).ready(function(){
 	
 	button_actretry.on("click", function(ev) {
 		socket.send({'cmd': 'retry', 'data': ''});
+		hidegenseqs();
 	});
 	
 	button_actback.on("click", function(ev) {
 		socket.send({'cmd': 'back', 'data': ''});
+		hidegenseqs();
 	});
 	
 	button_actedit.on("click", function(ev) {
@@ -751,6 +821,10 @@ $(document).ready(function(){
 	
 	button_import.on("click", function(ev) {
 		socket.send({'cmd': 'import', 'data': ''});
+	});
+	
+	button_importwi.on("click", function(ev) {
+		socket.send({'cmd': 'importwi', 'data': ''});
 	});
 	
 	button_settings.on("click", function(ev) {
