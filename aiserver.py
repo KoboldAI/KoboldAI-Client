@@ -838,6 +838,7 @@ def calcsubmit(txt):
             budget = vars.ikmax - len(anotetxt) - len(mem) - len(winfo) - 1
             
         subtxt = ""
+        prompt = vars.prompt
         for n in range(actionlen):
             
             if(budget <= 0):
@@ -854,7 +855,6 @@ def calcsubmit(txt):
             
             # If we're not using the prompt every time and there's still budget left,
             # add some prompt.
-            prompt = vars.prompt
             if(not vars.useprompt):
                 if(budget > 0):
                     prompt = vars.prompt[-budget:]
