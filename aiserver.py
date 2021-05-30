@@ -1090,12 +1090,10 @@ def applyoutputformatting(txt):
 # Sends the current story content to the Game Screen
 #==================================================================#
 def refresh_story():
-    txt = '<chunk n="0" id="n0">'+vars.prompt+'</chunk>'
-    i = 1
-    for item in vars.actions:
-        txt = txt + '<chunk n="'+str(i)+'" id="n'+str(i)+'">'+item+'</chunk>'
-        i += 1
-    emit('from_server', {'cmd': 'updatescreen', 'data': formatforhtml(txt)})
+    text_parts = ['<chunk n="0" id="n0">', vars.prompt, '</chunk>']
+    for idx, item in enumerate(vars.actions, start=1):
+        text_parts.extend(('<chunk n="', str(idx), '" id="n', str(idx), '">', item, '</chunk>'))
+    emit('from_server', {'cmd': 'updatescreen', 'data': formatforhtml(''.join(text_parts))})
 
 #==================================================================#
 # Sends the current generator settings to the Game Menu
