@@ -1090,9 +1090,10 @@ def applyoutputformatting(txt):
 # Sends the current story content to the Game Screen
 #==================================================================#
 def refresh_story():
-    text_parts = ['<chunk n="0" id="n0">', vars.prompt, '</chunk>']
+    import markupsafe
+    text_parts = ['<chunk n="0" id="n0">', markupsafe.escape(vars.prompt), '</chunk>']
     for idx, item in enumerate(vars.actions, start=1):
-        text_parts.extend(('<chunk n="', str(idx), '" id="n', str(idx), '">', item, '</chunk>'))
+        text_parts.extend(('<chunk n="', str(idx), '" id="n', str(idx), '">', markupsafe.escape(item), '</chunk>'))
     emit('from_server', {'cmd': 'updatescreen', 'data': formatforhtml(''.join(text_parts))})
 
 #==================================================================#
