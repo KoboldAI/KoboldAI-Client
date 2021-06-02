@@ -162,20 +162,8 @@ if(not vars.model in ["InferKit", "Colab", "OAI", "ReadOnly"]):
     if(vars.hascuda):    
         print("{0}Use GPU or CPU for generation?:  (Default GPU){1}\n".format(colors.CYAN, colors.END))
         print("    1 - GPU\n    2 - CPU\n")
-        genselected = False
-        while(genselected == False):
-            genselect = input("Mode> ")
-            if(genselect == ""):
-                vars.usegpu = True
-                genselected = True
-            elif(genselect.isnumeric() and int(genselect) == 1):
-                vars.usegpu = True
-                genselected = True
-            elif(genselect.isnumeric() and int(genselect) == 2):
-                vars.usegpu = False
-                genselected = True
-            else:
-                print("{0}Please enter a valid selection.{1}".format(colors.RED, colors.END))
+        vars.usegpu = True
+        genselected = True
 
 # Ask for API key if InferKit was selected
 if(vars.model == "InferKit"):
