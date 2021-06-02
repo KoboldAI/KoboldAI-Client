@@ -10,6 +10,7 @@ import tkinter as tk
 from tkinter import messagebox
 import json
 import requests
+import html
 
 # KoboldAI
 import fileops
@@ -1092,7 +1093,7 @@ def applyoutputformatting(txt):
 def refresh_story():
     text_parts = ['<chunk n="0" id="n0">', vars.prompt, '</chunk>']
     for idx, item in enumerate(vars.actions, start=1):
-        text_parts.extend(('<chunk n="', str(idx), '" id="n', str(idx), '">', item, '</chunk>'))
+        text_parts.extend(('<chunk n="', str(idx), '" id="n', str(idx), '">', html.escape(item), '</chunk>'))
     emit('from_server', {'cmd': 'updatescreen', 'data': formatforhtml(''.join(text_parts))})
 
 #==================================================================#
