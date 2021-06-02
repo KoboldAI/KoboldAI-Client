@@ -295,8 +295,11 @@ if(not vars.model in ["InferKit", "Colab", "OAI", "ReadOnly"]):
         from transformers import pipeline, GPT2Tokenizer, GPT2LMHeadModel, GPTNeoForCausalLM
         
         # If custom GPT Neo model was chosen
-        if(vars.model == "NeoCustom"):
-            model     = GPTNeoForCausalLM.from_pretrained(vars.custmodpth).half
+        if(vars.model == "NeoCustom"):            
+            if(vars.hascuda and vars.usegpu):
+                model     = GPTNeoForCausalLM.from_pretrained(vars.custmodpth).half().to("cuda").eval()
+            else:
+                model     = GPTNeoForCausalLM.from_pretrained(vars.custmodpth).half()
             tokenizer = GPT2Tokenizer.from_pretrained(vars.custmodpth)
             # Is CUDA available? If so, use GPU, otherwise fall back to CPU
             if(vars.hascuda and vars.usegpu):
