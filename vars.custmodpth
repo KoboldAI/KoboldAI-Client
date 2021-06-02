@@ -52,7 +52,7 @@ modellist = [
 class vars:
     lastact     = ""     # The last action received from the user
     lastctx     = ""     # The last context submitted to the generator
-    model       = ""     # Model ID string chosen at startup
+    model       = "8"     # Model ID string chosen at startup
     noai        = False  # Runs the script without starting up the transformers pipeline
     aibusy      = False  # Stops submissions while the AI is working
     max_length  = 512    # Maximum number of tokens to submit per action
@@ -117,18 +117,18 @@ def getModelSelection():
     
     # If custom model was selected, get the filesystem location and store it
     if(vars.model == "NeoCustom" or vars.model == "GPT2Custom"):
-        print("{0}Please choose the folder where pytorch_model.bin is located:{1}\n".format(colors.CYAN, colors.END))
+        #print("{0}Please choose the folder where pytorch_model.bin is located:{1}\n".format(colors.CYAN, colors.END))
+        vars.custmodpth = /content/model/
+        #modpath = fileops.getdirpath(getcwd(), "Select Model Folder")
         
-        modpath = fileops.getdirpath(getcwd(), "Select Model Folder")
-        
-        if(modpath):
-            # Save directory to vars
-            vars.custmodpth = modpath
-        else:
-            # Print error and retry model selection
-            print("{0}Model select cancelled!{1}".format(colors.RED, colors.END))
-            print("{0}Select an AI model to continue:{1}\n".format(colors.CYAN, colors.END))
-            getModelSelection()
+        #if(modpath):
+        #    # Save directory to vars
+        #    vars.custmodpth = modpath
+        #else:
+        #    # Print error and retry model selection
+        #    print("{0}Model select cancelled!{1}".format(colors.RED, colors.END))
+        #    print("{0}Select an AI model to continue:{1}\n".format(colors.CYAN, colors.END))
+        #    getModelSelection()
 
 #==================================================================#
 # Return all keys in tokenizer dictionary containing char
