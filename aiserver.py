@@ -52,7 +52,7 @@ modellist = [
 class vars:
     lastact     = ""     # The last action received from the user
     lastctx     = ""     # The last context submitted to the generator
-    model       = "8"     # Model ID string chosen at startup
+    model       = ""     # Model ID string chosen at startup
     noai        = False  # Runs the script without starting up the transformers pipeline
     aibusy      = False  # Stops submissions while the AI is working
     max_length  = 512    # Maximum number of tokens to submit per action
@@ -107,7 +107,7 @@ def getModelSelection():
         i += 1
     print(" ");
     modelsel = 0
-    vars.model = ''
+    vars.model = '8'
     while(vars.model == ''):
         modelsel = input("Model #> ")
         if(modelsel.isnumeric() and int(modelsel) > 0 and int(modelsel) <= len(modellist)):
