@@ -107,7 +107,7 @@ def getModelSelection():
         i += 1
     print(" ");
     modelsel = 0
-    vars.model = '8'
+    vars.model = 'NeoCustom'
     while(vars.model == ''):
         modelsel = input("Model #> ")
         if(modelsel.isnumeric() and int(modelsel) > 0 and int(modelsel) <= len(modellist)):
