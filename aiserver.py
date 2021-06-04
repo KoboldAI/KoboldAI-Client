@@ -103,7 +103,7 @@ def getModelSelection():
     i = 1
     print("Welcome to ColabKobold! The easiest way to run KoboldAI! We will now load the AI, once its done you will see a message to refresh the cloudflare page.");
     modelsel = 0
-    vars.model = 'NeoCustom'
+    vars.model = 'EleutherAI/gpt-neo-2.7B'
     while(vars.model == ''):
         modelsel = input("Model #> ")
         if(modelsel.isnumeric() and int(modelsel) > 0 and int(modelsel) <= len(modellist)):
@@ -290,31 +290,31 @@ if(not vars.model in ["InferKit", "Colab", "OAI", "ReadOnly"]):
         
         # If custom GPT Neo model was chosen
         if(vars.model == "NeoCustom"):            
-            if(vars.hascuda and vars.usegpu):
-                model     = GPTNeoForCausalLM.from_pretrained(vars.custmodpth).half().to("cuda").eval()
-            else:
-                model     = GPTNeoForCausalLM.from_pretrained(vars.custmodpth).half()
             tokenizer = GPT2Tokenizer.from_pretrained(vars.custmodpth)
             # Is CUDA available? If so, use GPU, otherwise fall back to CPU
             if(vars.hascuda and vars.usegpu):
+                model     = GPTNeoForCausalLM.from_pretrained(vars.custmodpth).half().to("cuda").eval()
                 generator = pipeline('text-generation', model=model, tokenizer=tokenizer, device=0)
             else:
+                model     = GPTNeoForCausalLM.from_pretrained(vars.custmodpth)
                 generator = pipeline('text-generation', model=model, tokenizer=tokenizer)
         # If custom GPT2 model was chosen
         elif(vars.model == "GPT2Custom"):
-            model     = GPT2LMHeadModel.from_pretrained(vars.custmodpth)
             tokenizer = GPT2Tokenizer.from_pretrained(vars.custmodpth)
             # Is CUDA available? If so, use GPU, otherwise fall back to CPU
             if(vars.hascuda and vars.usegpu):
+                model     = GPT2LMHeadModel.from_pretrained(vars.custmodpth).half().to("cuda").eval()
                 generator = pipeline('text-generation', model=model, tokenizer=tokenizer, device=0)
             else:
+                model     = GPT2LMHeadModel.from_pretrained(vars.custmodpth)
                 generator = pipeline('text-generation', model=model, tokenizer=tokenizer)
         # If base HuggingFace model was chosen
         else:
             # Is CUDA available? If so, use GPU, otherwise fall back to CPU
             tokenizer = GPT2Tokenizer.from_pretrained(vars.model)
             if(vars.hascuda and vars.usegpu):
-                generator = pipeline('text-generation', model=vars.model, device=0)
+                model     = GPTNeoForCausalLM.from_pretrained(vars.model).half().to("cuda").eval()
+                generator = pipeline('text-generation', model=model, device=0)
             else:
                 generator = pipeline('text-generation', model=vars.model)
         
