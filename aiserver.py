@@ -103,7 +103,7 @@ def getModelSelection():
     i = 1
     print("Welcome to ColabKobold! The easiest way to run KoboldAI! We will now load the AI, once its done you will see a message to refresh the cloudflare page.");
     modelsel = 0
-    vars.model = 'EleutherAI/gpt-neo-2.7B'
+    vars.model = 'NeoCustom'
     while(vars.model == ''):
         modelsel = input("Model #> ")
         if(modelsel.isnumeric() and int(modelsel) > 0 and int(modelsel) <= len(modellist)):
