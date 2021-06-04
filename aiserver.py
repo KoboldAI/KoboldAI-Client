@@ -303,7 +303,7 @@ if(not vars.model in ["InferKit", "Colab", "OAI", "ReadOnly"]):
             tokenizer = GPT2Tokenizer.from_pretrained(vars.custmodpth)
             # Is CUDA available? If so, use GPU, otherwise fall back to CPU
             if(vars.hascuda and vars.usegpu):
-                model     = GPT2LMHeadModel.from_pretrained(vars.custmodpth).half().to("cuda").eval()
+                model     = GPT2LMHeadModel.from_pretrained(vars.custmodpth).half().to(torch.float16)
                 generator = pipeline('text-generation', model=model, tokenizer=tokenizer, device=0)
             else:
                 model     = GPT2LMHeadModel.from_pretrained(vars.custmodpth)
