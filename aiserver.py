@@ -100,14 +100,10 @@ class vars:
 # Function to get model selection at startup
 #==================================================================#
 def getModelSelection():
-    print("    #   Model                           V/RAM\n    =========================================")
     i = 1
-    for m in modellist:
-        print("    {0} - {1}\t\t{2}".format("{:<2}".format(i), m[0].ljust(15), m[2]))
-        i += 1
-    print(" ");
+    print("Welcome to ColabKobold! The easiest way to run KoboldAI! We will now load the AI, once its done you will see a message to refresh the cloudflare page.");
     modelsel = 0
-    vars.model = 'NeoCustom'
+    vars.model = 'EleutherAI/gpt-neo-2.7B'
     while(vars.model == ''):
         modelsel = input("Model #> ")
         if(modelsel.isnumeric() and int(modelsel) > 0 and int(modelsel) <= len(modellist)):
@@ -160,8 +156,6 @@ if(not vars.model in ["InferKit", "Colab", "OAI", "ReadOnly"]):
         print("{0}NOT FOUND!{1}".format(colors.YELLOW, colors.END))
     
     if(vars.hascuda):    
-        print("{0}Use GPU or CPU for generation?:  (Default GPU){1}\n".format(colors.CYAN, colors.END))
-        print("    1 - GPU\n    2 - CPU\n")
         vars.usegpu = True
         genselected = True
 
