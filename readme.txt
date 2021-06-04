@@ -1,1 +1,4 @@
-You should probably not use this fork, i use it to test one specific use case by breaking menu's and predefining settings.
+This is an unofficial (crippled but also optimized) fork that powers ColabKobald.
+You can play it on henk.tech/colabkobald , once Colab support becomes official this fork will eventually be archived.
+
+If you want to play it offline you are much better off with the official version.
