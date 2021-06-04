@@ -251,7 +251,7 @@ if(vars.model == "OAI"):
             print("    {0} - {1} ({2})".format(i, en["id"], "\033[92mready\033[0m" if en["ready"] == True else "\033[91mnot ready\033[0m"))
             i += 1
         # Get engine to use
-        print("")
+        print("This is powered by ColabKobold, automatically selecting GPT-Neo (For other models use the official version)")
         engselected = False
         while(engselected == False):
             engine = input("Engine #> ")
@@ -1802,6 +1802,6 @@ if __name__ == "__main__":
     loadsettings()
     
     # Start Flask/SocketIO (Blocking, so this must be last method!)
-    print("{0}Server started!\rYou may now connect with a browser at http://127.0.0.1:5000/{1}".format(colors.GREEN, colors.END))
+    print("{0}Server started!\rYou may now refresh your 502 cloudflare page, or scroll up and click the trycloudflare link".format(colors.GREEN, colors.END))
     #socketio.run(app, host='0.0.0.0', port=5000)
     socketio.run(app)
