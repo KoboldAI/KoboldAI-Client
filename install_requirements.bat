@@ -2,8 +2,8 @@
 title Installing Portable Python (Miniconda3)
 echo Miniconda3's installer will overwrite existing Miniconda3 shortcuts in the startmenu (We currently can not prevent this)
 echo Please choose one of the following transformers options
-echo 1. Official Transformers (Maximum Compatibility)
-echo 2. Finetuneanon Transformers (Less ram usage, Less compatibility)
+echo 1. Official Transformers
+echo 2. Finetuneanon Transformers (Half-Precision for 8GB or smaller GPUs) 
 SET /P M=Type the number of the desired option and then press ENTER: 
 
 cd %~dp0
