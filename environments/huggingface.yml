@@ -1,0 +1,4 @@
+channels:
+  - huggingface
+dependencies:
+  - transformers
