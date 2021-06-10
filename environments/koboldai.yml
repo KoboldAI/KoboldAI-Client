@@ -1,0 +1,11 @@
+name: koboldai
+channels:
+  - pytorch
+  - conda-forge
+  - defaults
+dependencies:
+  - colorama
+  - flask-socketio
+  - git
+  - pytorch
+  - tensorflow-gpu

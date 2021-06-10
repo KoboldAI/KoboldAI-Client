@@ -23,9 +23,9 @@ IF ERRORLEVEL 1 (
 miniconda3.exe /S /InstallationType=JustMe /RegisterPython=0 /AddTopath=0 /NoScripts=1 /NoRegistry=1 /D=%~dp0\miniconda3
 del miniconda3.exe
 call miniconda3\condabin\activate
-call conda install --all --no-shortcuts -y git pytorch tensorflow-gpu colorama Flask-SocketIO -c pytorch -c conda-forge
-IF %M%==1 pip install git+https://github.com/finetuneanon/transformers@gpt-neo-localattention3
-IF %M%==2 call conda install --no-shortcuts -y transformers -c huggingface
+call conda env create -n koboldai -f environments\koboldai.yml
+IF %M%==1 call conda env update -n koboldai -f environments\finetuneanon.yml
+IF %M%==2 call conda env update -n koboldai -f environments\huggingface.yml
 call conda clean -a -y
 echo All done!
 pause
