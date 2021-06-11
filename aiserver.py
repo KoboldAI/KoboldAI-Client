@@ -330,7 +330,13 @@ if(not vars.model in ["InferKit", "Colab", "OAI", "ReadOnly"]):
             # Is CUDA available? If so, use GPU, otherwise fall back to CPU
             tokenizer = GPT2Tokenizer.from_pretrained(vars.model)
             if(vars.hascuda and vars.usegpu):
-                generator = pipeline('text-generation', model=vars.model, device=0)
+                # Consider using half-size model:
+                if(vars.model.startswith('gpt2')):
+                    print("{0}Using half-precision GPT2 model!{1}".format(colors.GREEN, colors.END))
+                    model = GPT2LMHeadModel.from_pretrained(vars.model).half()
+                    generator = pipeline('text-generation', model=model, tokenizer=tokenizer, device=0)
+                else:
+                    generator = pipeline('text-generation', model=vars.model, device=0)
             else:
                 generator = pipeline('text-generation', model=vars.model)
         
