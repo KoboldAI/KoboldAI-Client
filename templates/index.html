@@ -85,12 +85,12 @@
 		<div class="row" id="actionmenu">
 			<div id="actionmenuitems">
 				<div>
-					<button type="button" class="btn btn-primary" id="btn_actedit">Edit</button>
-					<button type="button" class="btn btn-primary" id="btn_actmem">Memory</button>
-					<button type="button" class="btn btn-primary" id="btn_actwi">W Info</button>
-					<button type="button" class="btn btn-primary" id="btn_actundo">Back</button>
-					<button type="button" class="btn btn-primary" id="btn_actretry">Retry</button>
-					<button type="button" class="btn btn-primary hidden" id="btn_delete">Delete</button>
+					<button type="button" accesskey="e" class="btn btn-primary" id="btn_actedit">(E)dit</button>
+					<button type="button" accesskey="m" class="btn btn-primary" id="btn_actmem">(M)emory</button>
+					<button type="button" accesskey="i" class="btn btn-primary" id="btn_actwi">W (I)nfo</button>
+					<button type="button" accesskey="b" class="btn btn-primary" id="btn_actundo">(B)ack</button>
+					<button type="button" accesskey="r" class="btn btn-primary" id="btn_actretry">(R)etry</button>
+					<button type="button" accesskey="d" class="btn btn-primary hidden" id="btn_delete">(D)elete</button>
 					<span id="messagefield"></span>
 				</div>
 			</div>
@@ -98,7 +98,7 @@
 		<div class="row">
 			<div id="inputrow">
 				<div id="inputrowleft">
-					<textarea class="form-control" id="input_text" placeholder="Enter text here"></textarea>
+					<textarea class="form-control" accesskey="w" id="input_text" placeholder="(W)rite text here"></textarea>
 				</div>
 				<div id="inputrowright">
 					<button type="button" class="btn btn-secondary" id="btnsend">Wait</button>

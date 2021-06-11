@@ -313,7 +313,7 @@ function popupShow(state) {
 function enterEditMode() {
 	// Add class to each story chunk
 	showMessage("Please select a story chunk to edit above.");
-	button_actedit.html("Cancel");
+	button_actedit.html("Canc(e)l");
 	game_text.children('chunk').addClass("chunkhov");
 	game_text.on('click', '> *', function() {
 		editModeSelect($(this).attr("n"));
@@ -326,7 +326,7 @@ function enterEditMode() {
 function exitEditMode() {
 	// Remove class to each story chunk
 	hideMessage();
-	button_actedit.html("Edit");
+	button_actedit.html("(E)dit");
 	game_text.children('chunk').removeClass("chunkhov");
 	game_text.off('click', '> *');
 	enableSendBtn();
@@ -341,7 +341,7 @@ function editModeSelect(n) {
 
 function enterMemoryMode() {
 	showMessage("Edit the memory to be sent with each request to the AI.");
-	button_actmem.html("Cancel");
+	button_actmem.html("Cancel (m)");
 	hide([button_actback, button_actretry, button_actedit, button_delete, button_actwi]);
 	// Display Author's Note field
 	anote_menu.slideDown("fast");
@@ -349,7 +349,7 @@ function enterMemoryMode() {
 
 function exitMemoryMode() {
 	hideMessage();
-	button_actmem.html("Memory");
+	button_actmem.html("(M)emory");
 	show([button_actback, button_actretry, button_actedit, button_actwi]);
 	input_text.val("");
 	// Hide Author's Note field
@@ -358,7 +358,7 @@ function exitMemoryMode() {
 
 function enterWiMode() {
 	showMessage("World Info will be added to memory only when the key appears in submitted text or the last action.");
-	button_actwi.html("Accept");
+	button_actwi.html("Accept (i)");
 	hide([button_actedit, button_actback, button_actmem, button_actretry, game_text]);
 	show([wi_menu]);
 	disableSendBtn();
@@ -366,7 +366,7 @@ function enterWiMode() {
 
 function exitWiMode() {
 	hideMessage();
-	button_actwi.html("W Info");
+	button_actwi.html("W (I)nfo");
 	hide([wi_menu]);
 	show([button_actedit, button_actback, button_actmem, button_actretry, game_text]);
 	enableSendBtn();
@@ -490,9 +490,9 @@ function setStartState() {
 	show([game_text, button_actedit, button_actmem, button_actwi, button_actback, button_actretry]);
 	hideMessage();
 	hideWaitAnimation();
-	button_actedit.html("Edit");
-	button_actmem.html("Memory");
-	button_actwi.html("W Info");
+	button_actedit.html("(E)dit");
+	button_actmem.html("(M)emory");
+	button_actwi.html("W (I)nfo");
 	hideAidgPopup();
 	hideSaveAsPopup();
 	hideLoadPopup();
