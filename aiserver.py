@@ -692,7 +692,8 @@ def actionretry(data):
     set_aibusy(1)
     # Remove last action if possible and resubmit
     if(len(vars.actions) > 0):
-        vars.actions.pop()
+        if(vars.numseqs == 1):
+            vars.actions.pop()
         refresh_story()
         calcsubmit('')
 
