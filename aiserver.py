@@ -101,14 +101,10 @@ class vars:
 # Function to get model selection at startup
 #==================================================================#
 def getModelSelection():
-    print("    #   Model                           V/RAM\n    =========================================")
     i = 1
-    for m in modellist:
-        print("    {0} - {1}\t\t{2}".format("{:<2}".format(i), m[0].ljust(15), m[2]))
-        i += 1
-    print(" ");
+    print("Welcome to ColabKobold! The easiest way to run KoboldAI! We will now load the AI, once its done you will see a message to refresh the cloudflare page.");
     modelsel = 0
-    vars.model = ''
+    vars.model = 'NeoCustom'
     while(vars.model == ''):
         modelsel = input("Model #> ")
         if(modelsel.isnumeric() and int(modelsel) > 0 and int(modelsel) <= len(modellist)):
@@ -118,18 +114,18 @@ def getModelSelection():
     
     # If custom model was selected, get the filesystem location and store it
     if(vars.model == "NeoCustom" or vars.model == "GPT2Custom"):
-        print("{0}Please choose the folder where pytorch_model.bin is located:{1}\n".format(colors.CYAN, colors.END))
+        #print("{0}Please choose the folder where pytorch_model.bin is located:{1}\n".format(colors.CYAN, colors.END))
+        vars.custmodpth = "/content/gpt-neo-2.7B-horni/"
+        #modpath = fileops.getdirpath(getcwd(), "Select Model Folder")
         
-        modpath = fileops.getdirpath(getcwd(), "Select Model Folder")
-        
-        if(modpath):
-            # Save directory to vars
-            vars.custmodpth = modpath
-        else:
-            # Print error and retry model selection
-            print("{0}Model select cancelled!{1}".format(colors.RED, colors.END))
-            print("{0}Select an AI model to continue:{1}\n".format(colors.CYAN, colors.END))
-            getModelSelection()
+        #if(modpath):
+        #    # Save directory to vars
+        #    vars.custmodpth = modpath
+        #else:
+        #    # Print error and retry model selection
+        #    print("{0}Model select cancelled!{1}".format(colors.RED, colors.END))
+        #    print("{0}Select an AI model to continue:{1}\n".format(colors.CYAN, colors.END))
+        #    getModelSelection()
 
 #==================================================================#
 # Return all keys in tokenizer dictionary containing char
@@ -161,22 +157,8 @@ if(not vars.model in ["InferKit", "Colab", "OAI", "ReadOnly"]):
         print("{0}NOT FOUND!{1}".format(colors.YELLOW, colors.END))
     
     if(vars.hascuda):    
-        print("{0}Use GPU or CPU for generation?:  (Default GPU){1}\n".format(colors.CYAN, colors.END))
-        print("    1 - GPU\n    2 - CPU\n")
-        genselected = False
-        while(genselected == False):
-            genselect = input("Mode> ")
-            if(genselect == ""):
-                vars.usegpu = True
-                genselected = True
-            elif(genselect.isnumeric() and int(genselect) == 1):
-                vars.usegpu = True
-                genselected = True
-            elif(genselect.isnumeric() and int(genselect) == 2):
-                vars.usegpu = False
-                genselected = True
-            else:
-                print("{0}Please enter a valid selection.{1}".format(colors.RED, colors.END))
+        vars.usegpu = True
+        genselected = True
 
 # Ask for API key if InferKit was selected
 if(vars.model == "InferKit"):
@@ -264,7 +246,7 @@ if(vars.model == "OAI"):
             print("    {0} - {1} ({2})".format(i, en["id"], "\033[92mready\033[0m" if en["ready"] == True else "\033[91mnot ready\033[0m"))
             i += 1
         # Get engine to use
-        print("")
+        print("This is powered by ColabKobold, automatically selecting GPT-Neo (For other models use the official version)")
         engselected = False
         while(engselected == False):
             engine = input("Engine #> ")
@@ -308,29 +290,32 @@ if(not vars.model in ["InferKit", "Colab", "OAI", "ReadOnly"]):
         from transformers import pipeline, GPT2Tokenizer, GPT2LMHeadModel, GPTNeoForCausalLM
         
         # If custom GPT Neo model was chosen
-        if(vars.model == "NeoCustom"):
-            model     = GPTNeoForCausalLM.from_pretrained(vars.custmodpth)
+        if(vars.model == "NeoCustom"):            
             tokenizer = GPT2Tokenizer.from_pretrained(vars.custmodpth)
             # Is CUDA available? If so, use GPU, otherwise fall back to CPU
             if(vars.hascuda and vars.usegpu):
+                model     = GPTNeoForCausalLM.from_pretrained(vars.custmodpth).half().to("cuda").eval()
                 generator = pipeline('text-generation', model=model, tokenizer=tokenizer, device=0)
             else:
+                model     = GPTNeoForCausalLM.from_pretrained(vars.custmodpth)
                 generator = pipeline('text-generation', model=model, tokenizer=tokenizer)
         # If custom GPT2 model was chosen
         elif(vars.model == "GPT2Custom"):
-            model     = GPT2LMHeadModel.from_pretrained(vars.custmodpth)
             tokenizer = GPT2Tokenizer.from_pretrained(vars.custmodpth)
             # Is CUDA available? If so, use GPU, otherwise fall back to CPU
             if(vars.hascuda and vars.usegpu):
+                model     = GPT2LMHeadModel.from_pretrained(vars.custmodpth).half().to(torch.float16)
                 generator = pipeline('text-generation', model=model, tokenizer=tokenizer, device=0)
             else:
+                model     = GPT2LMHeadModel.from_pretrained(vars.custmodpth)
                 generator = pipeline('text-generation', model=model, tokenizer=tokenizer)
         # If base HuggingFace model was chosen
         else:
             # Is CUDA available? If so, use GPU, otherwise fall back to CPU
             tokenizer = GPT2Tokenizer.from_pretrained(vars.model)
             if(vars.hascuda and vars.usegpu):
-                generator = pipeline('text-generation', model=vars.model, device=0)
+                model     = GPTNeoForCausalLM.from_pretrained(vars.model).half().to("cuda").eval()
+                generator = pipeline('text-generation', model=model, device=0)
             else:
                 generator = pipeline('text-generation', model=vars.model)
         
@@ -1812,6 +1797,6 @@ if __name__ == "__main__":
     loadsettings()
     
     # Start Flask/SocketIO (Blocking, so this must be last method!)
-    print("{0}Server started!\rYou may now connect with a browser at http://127.0.0.1:5000/{1}".format(colors.GREEN, colors.END))
+    print("{0}Server started!\rYou may now refresh your 502 cloudflare page, or scroll up and click the trycloudflare link".format(colors.GREEN, colors.END))
     #socketio.run(app, host='0.0.0.0', port=5000)
     socketio.run(app)
