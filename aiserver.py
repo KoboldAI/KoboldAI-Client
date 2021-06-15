@@ -1105,7 +1105,7 @@ def update_story_chunk(idx: Union[int, Literal['last']]):
         if len(vars.actions) <= 1:
             # In this case, we are better off just refreshing the whole thing as the
             # prompt might not have been shown yet (with a "Generating story..."
-            # messsage instead).
+            # message instead).
             refresh_story()
             return
 
