@@ -599,6 +599,39 @@ $(document).ready(function(){
 			setTimeout(function () {
 				$('#gamescreen').animate({scrollTop: $('#gamescreen').prop('scrollHeight')}, 1000);
 			}, 5);
+		} else if(msg.cmd == "updatechunk") {
+			const {index, html, last} = msg.data;
+			const existingChunk = game_text.children(`#n${index}`)
+			const newChunk = $(html);
+			if (existingChunk.length > 0) {
+				// Update existing chunk
+				existingChunk.before(newChunk);
+				existingChunk.remove();
+			} else {
+				// Append at the end
+				game_text.append(newChunk);
+			}
+			if(last) {
+				// Scroll to bottom of text if it's the last element
+				setTimeout(function () {
+					$('#gamescreen').animate({scrollTop: $('#gamescreen').prop('scrollHeight')}, 1000);
+				}, 5);
+			}
+		} else if(msg.cmd == "removechunk") {
+        	let index = msg.data;
+        	// Remove the chunk
+        	game_text.children(`#n${index}`).remove()
+			// Shift all existing chunks by 1
+			index++;
+        	while (true) {
+        		const chunk = game_text.children(`#n${index}`)
+				if(chunk.length === 0) {
+					break;
+				}
+        		const newIndex = index - 1;
+        		chunk.attr('n', newIndex.toString()).attr('id', `n${newIndex}`);
+        		index++;
+			}
 		} else if(msg.cmd == "setgamestate") {
 			// Enable or Disable buttons
 			if(msg.data == "ready") {

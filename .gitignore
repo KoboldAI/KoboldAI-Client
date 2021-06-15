@@ -4,3 +4,9 @@ client.settings
 # Ignore stories file except for test_story
 stories/*
 !stories/sample_story.json
+
+# Ignore PyCharm project files.
+.idea
+
+# Ignore compiled Python files.
+*.pyc

@@ -9,6 +9,8 @@ from os import path, getcwd
 import tkinter as tk
 from tkinter import messagebox
 import json
+from typing import Literal, Union
+
 import requests
 import html
 
@@ -666,12 +668,12 @@ def actionsubmit(data):
             data = applyinputformatting(data)
             # Store the result in the Action log
             vars.actions.append(data)
-        
+            update_story_chunk('last')
+
         if(not vars.noai):
             # Off to the tokenizer!
             calcsubmit(data)
         else:
-            refresh_story()
             set_aibusy(0)
 
 #==================================================================#
@@ -687,7 +689,7 @@ def actionretry(data):
     # Remove last action if possible and resubmit
     if(len(vars.actions) > 0):
         vars.actions.pop()
-        refresh_story()
+        remove_story_chunk(len(vars.actions) + 1)
         calcsubmit('')
 
 #==================================================================#
@@ -698,8 +700,9 @@ def actionback():
         return
     # Remove last index of actions and refresh game screen
     if(len(vars.actions) > 0):
+        action_index = len(vars.actions)
         vars.actions.pop()
-        refresh_story()
+        remove_story_chunk(len(vars.actions) + 1)
 
 #==================================================================#
 # Take submitted text and build the text to be given to generator
@@ -936,7 +939,7 @@ def genresult(genout):
     
     # Add formatted text to Actions array and refresh the game screen
     vars.actions.append(genout)
-    refresh_story()
+    update_story_chunk('last')
     emit('from_server', {'cmd': 'texteffect', 'data': len(vars.actions)})
 
 #==================================================================#
@@ -955,9 +958,6 @@ def genselect(genout):
     
     # Send sequences to UI for selection
     emit('from_server', {'cmd': 'genseqs', 'data': genout})
-    
-    # Refresh story for any input text
-    refresh_story()
 
 #==================================================================#
 #  Send selected sequence to action log and refresh UI
@@ -966,7 +966,7 @@ def selectsequence(n):
     if(len(vars.genseqs) == 0):
         return
     vars.actions.append(vars.genseqs[int(n)]["generated_text"])
-    refresh_story()
+    update_story_chunk('last')
     emit('from_server', {'cmd': 'texteffect', 'data': len(vars.actions)})
     emit('from_server', {'cmd': 'hidegenseqs', 'data': ''})
     vars.genseqs = []
@@ -1096,6 +1096,39 @@ def refresh_story():
         text_parts.extend(('<chunk n="', str(idx), '" id="n', str(idx), '">', html.escape(item), '</chunk>'))
     emit('from_server', {'cmd': 'updatescreen', 'data': formatforhtml(''.join(text_parts))})
 
+
+#==================================================================#
+# Signals the Game Screen to update one of the chunks
+#==================================================================#
+def update_story_chunk(idx: Union[int, Literal['last']]):
+    if idx == 'last':
+        if len(vars.actions) <= 1:
+            # In this case, we are better off just refreshing the whole thing as the
+            # prompt might not have been shown yet (with a "Generating story..."
+            # messsage instead).
+            refresh_story()
+            return
+
+        idx = len(vars.actions)
+
+    if idx == 0:
+        text = vars.prompt
+    else:
+        # Actions are 0 based, but in chunks 0 is the prompt.
+        # So the chunk index is one more than the corresponding action index.
+        text = vars.actions[idx - 1]
+
+    chunk_text = f'<chunk n="{idx}" id="n{idx}">{formatforhtml(html.escape(text))}</chunk>'
+    emit('from_server', {'cmd': 'updatechunk', 'data': {'index': idx, 'html': chunk_text, 'last': (idx == len(vars.actions))}})
+
+
+#==================================================================#
+# Signals the Game Screen to remove one of the chunks
+#==================================================================#
+def remove_story_chunk(idx: int):
+    emit('from_server', {'cmd': 'removechunk', 'data': idx})
+
+
 #==================================================================#
 # Sends the current generator settings to the Game Menu
 #==================================================================#
@@ -1161,7 +1194,7 @@ def editsubmit(data):
         vars.actions[vars.editln-1] = data
     
     vars.mode = "play"
-    refresh_story()
+    update_story_chunk(vars.editln)
     emit('from_server', {'cmd': 'texteffect', 'data': vars.editln})
     emit('from_server', {'cmd': 'editmode', 'data': 'false'})
 
@@ -1176,7 +1209,7 @@ def deleterequest():
     else:
         del vars.actions[vars.editln-1]
         vars.mode = "play"
-        refresh_story()
+        remove_story_chunk(vars.editln)
         emit('from_server', {'cmd': 'editmode', 'data': 'false'})
 
 #==================================================================#
@@ -1382,7 +1415,7 @@ def ikrequest(txt):
         genout = req.json()["data"]["text"]
         print("{0}{1}{2}".format(colors.CYAN, genout, colors.END))
         vars.actions.append(genout)
-        refresh_story()
+        update_story_chunk('last')
         emit('from_server', {'cmd': 'texteffect', 'data': len(vars.actions)})
         
         set_aibusy(0)
@@ -1432,7 +1465,7 @@ def oairequest(txt, min, max):
         genout = req.json()["choices"][0]["text"]
         print("{0}{1}{2}".format(colors.CYAN, genout, colors.END))
         vars.actions.append(genout)
-        refresh_story()
+        update_story_chunk('last')
         emit('from_server', {'cmd': 'texteffect', 'data': len(vars.actions)})
         
         set_aibusy(0)
