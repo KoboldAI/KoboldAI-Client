@@ -280,7 +280,7 @@ from flask import Flask, render_template
 from flask_socketio import SocketIO, emit
 app = Flask(__name__)
 app.config['SECRET KEY'] = 'secret!'
-socketio = SocketIO(app)
+socketio = SocketIO(app, cors_allowed_origins="*")
 print("{0}OK!{1}".format(colors.GREEN, colors.END))
 
 # Start transformers and create pipeline
