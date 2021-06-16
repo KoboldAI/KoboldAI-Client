@@ -1,3 +1,5 @@
 If you use Google Colab to run your models, and you made a local copy of the Colab notebook in Google Drive instead of using the community notebook, you MUST make a new copy of the community notebook to use the new multiple-sequence generation feature. The link is below:
 
-https://colab.research.google.com/drive/1uGe9f4ruIQog3RLxfUsoThakvLpHjIkX?usp=sharing
+https://colab.research.google.com/github/KoboldAI/KoboldAI-Client/blob/main/colab/KoboldAI_Server_GPTNeo_2_7B_Horni.ipynb
+https://colab.research.google.com/github/KoboldAI/KoboldAI-Client/blob/main/colab/KoboldAI_Server_GPT_J_6B.ipynb
+https://colab.research.google.com/github/KoboldAI/KoboldAI-Client/blob/main/colab/KoboldAI_Server_GPT_J_6B_Rev_2.ipynb
