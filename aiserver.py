@@ -103,7 +103,7 @@ def getModelSelection():
     i = 1
     print("Welcome to ColabKobold! The easiest way to run KoboldAI! We will now load the AI, once its done you will see a message to refresh the cloudflare page.");
     modelsel = 0
-    vars.model = 'NeoCustom'
+    vars.model = 'Colab'
     while(vars.model == ''):
         modelsel = input("Model #> ")
         if(modelsel.isnumeric() and int(modelsel) > 0 and int(modelsel) <= len(modellist)):
@@ -263,7 +263,7 @@ if(vars.model == "OAI"):
 # Ask for ngrok url if Google Colab was selected
 if(vars.model == "Colab"):
     print("{0}Please enter the ngrok.io or trycloudflare.com URL displayed in Google Colab:{1}\n".format(colors.CYAN, colors.END))
-    vars.colaburl = input("URL> ") + "/request"
+    vars.colaburl = "http://localhost:7777/request"
 
 if(vars.model == "ReadOnly"):
     vars.noai = True
