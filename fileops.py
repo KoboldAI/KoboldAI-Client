@@ -83,4 +83,4 @@ def getstoryfiles():
 #  Returns True if json file exists with requested save name
 #==================================================================#
 def saveexists(name):
-    return path.exists(path.dirname(os.path.realpath(__file__))+"/stories/"+name+".json")
+    return path.exists(path.dirname(path.realpath(__file__))+"/stories/"+name+".json")
