@@ -2,9 +2,15 @@
 title Installing Portable Python (Miniconda3)
 echo Miniconda3's installer will overwrite existing Miniconda3 shortcuts in the startmenu (We currently can not prevent this)
 echo Please choose one of the following transformers options
-echo 1. Official Transformers
-echo 2. Finetuneanon Transformers (Half-Precision for 8GB or smaller GPUs) 
+echo 1. Finetuneanon Transformers
+echo 2. Official Transformers (Only use this if your model does not support half)
+echo.
+echo Errors? Rerun this as admin so it can add the needed registery tweak.
+echo.
+
 SET /P M=Type the number of the desired option and then press ENTER: 
+
+Reg add "HKLM\SYSTEM\CurrentControlSet\Control\FileSystem" /v "LongPathsEnabled" /t REG_DWORD /d "1" /f 2>nul
 
 cd %~dp0
 rmdir /s /q miniconda3
@@ -17,9 +23,9 @@ IF ERRORLEVEL 1 (
 miniconda3.exe /S /InstallationType=JustMe /RegisterPython=0 /AddTopath=0 /NoScripts=1 /NoRegistry=1 /D=%~dp0\miniconda3
 del miniconda3.exe
 call miniconda3\condabin\activate
-call conda install --all --no-shortcuts -y git pytorch tensorflow-gpu colorama Flask-SocketIO cudatoolkit=11 -c pytorch
-IF %M%==1 call conda install --no-shortcuts -y transformers -c huggingface
-IF %M%==2 pip install git+https://github.com/finetuneanon/transformers@gpt-neo-dungeon-localattention2
+call conda install --all --no-shortcuts -y git pytorch tensorflow-gpu colorama Flask-SocketIO -c pytorch -c conda-forge
+IF %M%==1 pip install git+https://github.com/finetuneanon/transformers@gpt-neo-localattention3
+IF %M%==2 call conda install --no-shortcuts -y transformers -c huggingface
 call conda clean -a -y
 echo All done!
 pause
