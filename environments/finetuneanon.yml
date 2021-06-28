@@ -1,0 +1,15 @@
+name: koboldai
+channels:
+  - pytorch
+  - conda-forge
+  - defaults
+dependencies:
+  - colorama
+  - flask-socketio
+  - pytorch
+  - tensorflow-gpu
+  - python=3.8.*
+  - pip
+  - git
+  - pip:
+    - git+https://github.com/finetuneanon/transformers@gpt-neo-localattention3-rp-b

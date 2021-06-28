@@ -1,0 +1,16 @@
+version: "2"
+services:
+  koboldai:
+    build: .
+    environment:
+      - DISPLAY=${DISPLAY} 
+    network_mode: "host"
+    volumes:
+      - /tmp/.X11-unix:/tmp/.X11-unix
+      - ../:/content/
+      - $HOME/.Xauthority:/root/.Xauthority:rw
+    devices:
+      - /dev/kfd
+      - /dev/dri
+    group_add:
+      - video

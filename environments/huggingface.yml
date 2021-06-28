@@ -1,0 +1,12 @@
+name: koboldai
+channels:
+  - huggingface
+  - pytorch
+  - conda-forge
+  - defaults
+dependencies:
+  - colorama
+  - flask-socketio
+  - pytorch
+  - tensorflow-gpu
+  - transformers
