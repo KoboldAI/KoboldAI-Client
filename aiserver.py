@@ -17,6 +17,7 @@ import fileops
 import gensettings
 from utils import debounce
 import utils
+import socket
 
 #==================================================================#
 # Variables & Storage
@@ -96,6 +97,7 @@ class vars:
     saveow      = False  # Whether or not overwrite confirm has been displayed
     genseqs     = []     # Temporary storage for generated sequences
     useprompt   = True   # Whether to send the full prompt with every submit action
+    localbind   = True   # Whether to bind IP address to localhost (127.0.0.1)
 
 #==================================================================#
 # Function to get model selection at startup
@@ -140,6 +142,21 @@ def gettokenids(char):
         if(key.find(char) != -1):
             keys.append(key)
     return keys
+
+#==================================================================#
+# Return "Primary" IP address of machine
+#==================================================================#
+def get_ip():
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    try:
+        # doesn't even have to be reachable
+        s.connect(('10.255.255.255', 1))
+        IP = s.getsockname()[0]
+    except Exception:
+        IP = '127.0.0.1'
+    finally:
+        s.close()
+    return IP
 
 #==================================================================#
 # Startup
@@ -581,6 +598,7 @@ def savesettings():
     js["numseqs"]     = vars.numseqs
     js["widepth"]     = vars.widepth
     js["useprompt"]   = vars.useprompt
+    js["localbind"]   = vars.localbind
     
     # Write it
     file = open("client.settings", "w")
@@ -623,6 +641,8 @@ def loadsettings():
             vars.widepth = js["widepth"]
         if("useprompt" in js):
             vars.useprompt = js["useprompt"]
+        if("localbind" in js):
+            vars.localbind = js["localbind"]
         
         file.close()
 
@@ -1810,8 +1830,13 @@ def newGameRequest():
 if __name__ == "__main__":
     # Load settings from client.settings
     loadsettings()
-    
+    print(str(vars.localbind))
     # Start Flask/SocketIO (Blocking, so this must be last method!)
-    print("{0}Server started!\rYou may now connect with a browser at http://127.0.0.1:5000/{1}".format(colors.GREEN, colors.END))
-    #socketio.run(app, host='0.0.0.0', port=5000)
-    socketio.run(app)
+    if (vars.localbind):
+        print("{0}Private Server started!\nYou may now connect with a browser at http://127.0.0.1:5000/{1}".format(colors.GREEN, colors.END))
+        socketio.run(app)
+    else:
+        IP = get_ip()
+        print("{0}Public Server started!\nYou may now connect with a browser at http://{1}:5000/{2}".format(colors.GREEN, IP, colors.END))
+        socketio.run(app, host=IP, port=5000)
+    
