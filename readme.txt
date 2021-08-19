@@ -11,3 +11,4 @@ Contains work from :
 - All the original KoboldAI creators
 - Henky!! (Random Story Generator / Setting Optimizations)
 - VE_FORBRYDERNE (Adventure Mode, Selective World Info)
+- Frogging101 (top_k / tfs support)
