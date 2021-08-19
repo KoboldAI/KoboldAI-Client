@@ -10,4 +10,4 @@ Looking for ColabKobold? Check the different branches on my account.
 Contains work from :
 - All the original KoboldAI creators
 - Henky!! (Random Story Generator / Setting Optimizations)
-- VE_FORBRYDERNE (Adventure Mode)
+- VE_FORBRYDERNE (Adventure Mode, Selective World Info)
