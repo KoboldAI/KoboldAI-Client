@@ -1316,8 +1316,9 @@ def applyoutputformatting(txt):
 def refresh_story():
     text_parts = ['<chunk n="0" id="n0">', html.escape(vars.prompt), '</chunk>']
     for idx, item in enumerate(vars.actions, start=1):
+        item = html.escape(item)
         if vars.adventure:  # Add special formatting to adventure actions
-            item = vars.acregex_ui.sub('<action>\\1</action>', html.escape(item))
+            item = vars.acregex_ui.sub('<action>\\1</action>', item)
         text_parts.extend(('<chunk n="', str(idx), '" id="n', str(idx), '">', item, '</chunk>'))
     emit('from_server', {'cmd': 'updatescreen', 'gamestarted': vars.gamestarted, 'data': formatforhtml(''.join(text_parts))}, broadcast=True)
 
