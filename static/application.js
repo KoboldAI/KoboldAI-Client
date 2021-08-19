@@ -178,21 +178,51 @@ function addImportLine(ob) {
 
 function addWiLine(ob) {
 	if(ob.init) {
-		wi_menu.append("<div class=\"wilistitem\">\
-			<div class=\"wiremove\">\
-				<button type=\"button\" class=\"btn btn-primary heightfull\" id=\"btn_wi"+ob.num+"\">X</button>\
-				<button type=\"button\" class=\"btn btn-success heighthalf hidden\" id=\"btn_widel"+ob.num+"\">✓</button>\
-				<button type=\"button\" class=\"btn btn-danger heighthalf hidden\" id=\"btn_wican"+ob.num+"\">⮌</button>\
-			</div>\
-			<div class=\"wikey\">\
-				<input class=\"form-control\" type=\"text\" placeholder=\"Key(s)\" id=\"wikey"+ob.num+"\">\
-			</div>\
-			<div class=\"wientry\">\
-				<textarea class=\"form-control\" id=\"wientry"+ob.num+"\" placeholder=\"What To Remember\">"+ob.content+"</textarea>\
-			</div>\
-		</div>");
+		if(ob.selective){
+			wi_menu.append("<div class=\"wilistitem\">\
+				<div class=\"wiremove\">\
+					<button type=\"button\" class=\"btn btn-primary heightfull\" id=\"btn_wi"+ob.num+"\">X</button>\
+					<button type=\"button\" class=\"btn btn-success heighthalf hidden\" id=\"btn_widel"+ob.num+"\">✓</button>\
+					<button type=\"button\" class=\"btn btn-danger heighthalf hidden\" id=\"btn_wican"+ob.num+"\">⮌</button>\
+				</div>\
+				<div class=\"wikey\">\
+					<input class=\"form-control heightfull hidden\" type=\"text\" placeholder=\"Key(s)\" id=\"wikey"+ob.num+"\">\
+					<input class=\"form-control heighthalf\" type=\"text\" placeholder=\"Primary Key(s)\" id=\"wikeyprimary"+ob.num+"\">\
+					<input class=\"form-control heighthalf\" type=\"text\" placeholder=\"Secondary Key(s)\" id=\"wikeysecondary"+ob.num+"\">\
+				</div>\
+				<div class=\"wientry\">\
+					<textarea class=\"form-control\" id=\"wientry"+ob.num+"\" placeholder=\"What To Remember\">"+ob.content+"</textarea>\
+				</div>\
+				<div class=\"wiselective\">\
+					<button type=\"button\" class=\"btn btn-success heightfull hidden\" id=\"btn_wiselon"+ob.num+"\">Enable Selective Mode</button>\
+					<button type=\"button\" class=\"btn btn-danger heightfull\" id=\"btn_wiseloff"+ob.num+"\">Disable Selective Mode</button>\
+				</div>\
+			</div>");
+		} else {
+			wi_menu.append("<div class=\"wilistitem\">\
+				<div class=\"wiremove\">\
+					<button type=\"button\" class=\"btn btn-primary heightfull\" id=\"btn_wi"+ob.num+"\">X</button>\
+					<button type=\"button\" class=\"btn btn-success heighthalf hidden\" id=\"btn_widel"+ob.num+"\">✓</button>\
+					<button type=\"button\" class=\"btn btn-danger heighthalf hidden\" id=\"btn_wican"+ob.num+"\">⮌</button>\
+				</div>\
+				<div class=\"wikey\">\
+					<input class=\"form-control heightfull\" type=\"text\" placeholder=\"Key(s)\" id=\"wikey"+ob.num+"\">\
+					<input class=\"form-control heighthalf hidden\" type=\"text\" placeholder=\"Primary Key(s)\" id=\"wikeyprimary"+ob.num+"\">\
+					<input class=\"form-control heighthalf hidden\" type=\"text\" placeholder=\"Secondary Key(s)\" id=\"wikeysecondary"+ob.num+"\">\
+				</div>\
+				<div class=\"wientry\">\
+					<textarea class=\"form-control\" id=\"wientry"+ob.num+"\" placeholder=\"What To Remember\">"+ob.content+"</textarea>\
+				</div>\
+				<div class=\"wiselective\">\
+					<button type=\"button\" class=\"btn btn-success heightfull\" id=\"btn_wiselon"+ob.num+"\">Enable Selective Mode</button>\
+					<button type=\"button\" class=\"btn btn-danger heightfull hidden\" id=\"btn_wiseloff"+ob.num+"\">Disable Selective Mode</button>\
+				</div>\
+			</div>");
+		}
 		// Send key value to text input
 		$("#wikey"+ob.num).val(ob.key);
+		$("#wikeyprimary"+ob.num).val(ob.key);
+		$("#wikeysecondary"+ob.num).val(ob.keysecondary);
 		// Assign delete event to button
 		$("#btn_wi"+ob.num).on("click", function () {
 			showWiDeleteConfirm(ob.num);
@@ -206,10 +236,16 @@ function addWiLine(ob) {
 				<button type=\"button\" class=\"btn btn-danger heighthalf hidden\" id=\"btn_wican"+ob.num+"\">X</button>\
 			</div>\
 			<div class=\"wikey\">\
-				<input class=\"form-control hidden\" type=\"text\" placeholder=\"Key(s)\" id=\"wikey"+ob.num+"\">\
+				<input class=\"form-control heightfull hidden\" type=\"text\" placeholder=\"Key(s)\" id=\"wikey"+ob.num+"\">\
+				<input class=\"form-control heighthalf hidden\" type=\"text\" placeholder=\"Primary Key(s)\" id=\"wikeyprimary"+ob.num+"\">\
+				<input class=\"form-control heighthalf hidden\" type=\"text\" placeholder=\"Secondary Key(s)\" id=\"wikeysecondary"+ob.num+"\">\
 			</div>\
 			<div class=\"wientry\">\
 				<textarea class=\"form-control hidden\" id=\"wientry"+ob.num+"\" placeholder=\"What To Remember\"></textarea>\
+			</div>\
+			<div class=\"wiselective\">\
+				<button type=\"button\" class=\"btn btn-success heightfull hidden\" id=\"btn_wiselon"+ob.num+"\">Enable Selective Mode</button>\
+				<button type=\"button\" class=\"btn btn-danger heightfull hidden\" id=\"btn_wiseloff"+ob.num+"\">Disable Selective Mode</button>\
 			</div>\
 		</div>");
 		// Assign function to expand WI item to button
@@ -224,10 +260,16 @@ function addWiLine(ob) {
 	$("#btn_widel"+ob.num).on("click", function () {
 		socket.send({'cmd': 'widelete', 'data': ob.num});
 	});
+	$("#btn_wiselon"+ob.num).on("click", function () {
+		enableWiSelective(ob.num);
+	});
+	$("#btn_wiseloff"+ob.num).on("click", function () {
+		disableWiSelective(ob.num);
+	});
 }
 
 function expandWiLine(num) {
-	show([$("#wikey"+num), $("#wientry"+num)]);
+	show([$("#wikey"+num), $("#wientry"+num), $("#btn_wiselon"+num)]);
 	$("#btn_wi"+num).html("X");
 	$("#btn_wi"+num).off();
 	// Tell server the WI entry was initialized
@@ -245,6 +287,20 @@ function showWiDeleteConfirm(num) {
 function hideWiDeleteConfirm(num) {
 	show([$("#btn_wi"+num)]);
 	hide([$("#btn_widel"+num), $("#btn_wican"+num)]);
+}
+
+function enableWiSelective(num) {
+	hide([$("#btn_wiselon"+num), $("#wikey"+num)]);
+	// Tell server the WI entry is now selective
+	socket.send({'cmd': 'wiselon', 'data': num});
+	show([$("#wikeyprimary"+num), $("#wikeysecondary"+num), $("#btn_wiseloff"+num)]);
+}
+
+function disableWiSelective(num) {
+	hide([$("#btn_wiseloff"+num), $("#wikeyprimary"+num), $("#wikeysecondary"+num)]);
+	// Tell server the WI entry is now non-selective
+	socket.send({'cmd': 'wiseloff', 'data': num});
+	show([$("#btn_wiselon"+num), $("#wikey"+num)]);
 }
 
 function highlightImportLine(ref) {
@@ -397,9 +453,11 @@ function returnWiList(ar) {
 	var list = [];
 	var i;
 	for(i=0; i<ar.length; i++) {
-		var ob     = {"key": "", "content": "", "num": ar[i]};
-		ob.key     = $("#wikey"+ar[i]).val();
-		ob.content = $("#wientry"+ar[i]).val();
+		var ob          = {"key": "", "keysecondary": "", "content": "", "num": ar[i], "selective": false};
+		ob.selective    = $("#wikeyprimary"+ar[i]).css("display") != "none"
+		ob.key          = ob.selective ? $("#wikeyprimary"+ar[i]).val() : $("#wikey"+ar[i]).val();
+		ob.keysecondary = $("#wikeysecondary"+ar[i]).val()
+		ob.content      = $("#wientry"+ar[i]).val();
 		list.push(ob);
 	}
 	socket.send({'cmd': 'sendwilist', 'data': list});

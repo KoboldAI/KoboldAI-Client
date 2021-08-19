@@ -506,6 +506,10 @@ def get_message(msg):
             addwiitem()
     elif(msg['cmd'] == 'widelete'):
         deletewi(msg['data'])
+    elif(msg['cmd'] == 'wiselon'):
+        vars.worldinfo[msg['data']]["selective"] = True
+    elif(msg['cmd'] == 'wiseloff'):
+        vars.worldinfo[msg['data']]["selective"] = False
     elif(msg['cmd'] == 'sendwilist'):
         commitwi(msg['data'])
     elif(msg['cmd'] == 'aidgimport'):
@@ -1240,7 +1244,7 @@ def togglewimode():
 #   
 #==================================================================#
 def addwiitem():
-    ob = {"key": "", "content": "", "num": len(vars.worldinfo), "init": False}
+    ob = {"key": "", "keysecondary": "", "content": "", "num": len(vars.worldinfo), "init": False, "selective": False}
     vars.worldinfo.append(ob);
     emit('from_server', {'cmd': 'addwiitem', 'data': ob})
 
@@ -1291,8 +1295,10 @@ def organizewi():
 #==================================================================#
 def commitwi(ar):
     for ob in ar:
-        vars.worldinfo[ob["num"]]["key"]     = ob["key"]
-        vars.worldinfo[ob["num"]]["content"] = ob["content"]
+        vars.worldinfo[ob["num"]]["key"]          = ob["key"]
+        vars.worldinfo[ob["num"]]["keysecondary"] = ob["keysecondary"]
+        vars.worldinfo[ob["num"]]["content"]      = ob["content"]
+        vars.worldinfo[ob["num"]]["selective"]    = ob["selective"]
     # Was this a deletion request? If so, remove the requested index
     if(vars.deletewi >= 0):
         del vars.worldinfo[vars.deletewi]
@@ -1345,14 +1351,29 @@ def checkworldinfo(txt):
         if(wi["key"] != ""):
             # Split comma-separated keys
             keys = wi["key"].split(",")
+            keys_secondary = wi.get("keysecondary", "").split(",")
+
             for k in keys:
                 ky = k
                 # Remove leading/trailing spaces if the option is enabled
                 if(vars.wirmvwhtsp):
                     ky = k.strip()
                 if ky in txt:
-                    wimem = wimem + wi["content"] + "\n"
-                    break
+                    if wi.get("selective", False) and len(keys_secondary):
+                        found = False
+                        for ks in keys_secondary:
+                            ksy = ks
+                            if(vars.wirmvwhtsp):
+                                ksy = ks.strip()
+                            if ksy in txt:
+                                wimem = wimem + wi["content"] + "\n"
+                                found = True
+                                break
+                        if found:
+                            break
+                    else:
+                        wimem = wimem + wi["content"] + "\n"
+                        break
     
     return wimem
     
@@ -1549,7 +1570,9 @@ def saveRequest(savpath):
             if(wi["key"] != ""):
                 js["worldinfo"].append({
                     "key": wi["key"],
-                    "content": wi["content"]
+                    "keysecondary": wi["keysecondary"],
+                    "content": wi["content"],
+                    "selective": wi["selective"]
                 })
         
         # Write it
@@ -1606,9 +1629,11 @@ def loadRequest(loadpath):
             for wi in js["worldinfo"]:
                 vars.worldinfo.append({
                     "key": wi["key"],
+                    "keysecondary": wi.get("keysecondary", ""),
                     "content": wi["content"],
                     "num": num,
-                    "init": True
+                    "init": True,
+                    "selective": wi.get("selective", False)
                 })
                 num += 1
         
@@ -1722,9 +1747,11 @@ def importgame():
                 for wi in ref["worldInfo"]:
                     vars.worldinfo.append({
                         "key": wi["keys"],
+                        "keysecondary": wi.get("keysecondary", ""),
                         "content": wi["entry"],
                         "num": num,
-                        "init": True
+                        "init": True,
+                        "selective": wi.get("selective", False)
                     })
                     num += 1
         
@@ -1766,9 +1793,11 @@ def importAidgRequest(id):
         for wi in js["worldInfos"]:
             vars.worldinfo.append({
                 "key": wi["keys"],
+                "keysecondary": wi.get("keysecondary", ""),
                 "content": wi["entry"],
                 "num": num,
-                "init": True
+                "init": True,
+                "selective": wi.get("selective", False)
             })
             num += 1
         
@@ -1797,9 +1826,11 @@ def wiimportrequest():
             for wi in js:
                 vars.worldinfo.append({
                     "key": wi["keys"],
+                    "keysecondary": wi.get("keysecondary", ""),
                     "content": wi["entry"],
                     "num": num,
-                    "init": True
+                    "init": True,
+                    "selective": wi.get("selective", False)
                 })
                 num += 1
         
