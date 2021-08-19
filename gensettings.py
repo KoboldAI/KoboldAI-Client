@@ -85,6 +85,17 @@ gensettingstf = [{
 	"step": 1,
 	"default": 1,
     "tooltip": "Whether the prompt should be sent in the context of every action."
+	},
+	{
+	"uitype": "toggle",
+	"unit": "bool",
+	"label": "Adventure Mode",
+	"id": "setadventure", 
+	"min": 0,
+	"max": 1,
+	"step": 1,
+	"default": 0,
+    "tooltip": "Turn this on if you are playing a Choose your Adventure model."
 	}]
 
 gensettingsik =[{
@@ -141,6 +152,17 @@ gensettingsik =[{
 	"step": 1,
 	"default": 1,
     "tooltip": "Whether the prompt should be sent in the context of every action."
+	},
+	{
+	"uitype": "toggle",
+	"unit": "bool",
+	"label": "Adventure Mode",
+	"id": "setadventure", 
+	"min": 0,
+	"max": 1,
+	"step": 1,
+	"default": 0,
+    "tooltip": "Turn this on if you are playing a Choose your Adventure model."
 	}]
 
 formatcontrols = [{

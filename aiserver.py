@@ -6,6 +6,7 @@
 
 # External packages
 from os import path, getcwd
+import re
 import tkinter as tk
 from tkinter import messagebox
 import json
@@ -96,6 +97,10 @@ class vars:
     saveow      = False  # Whether or not overwrite confirm has been displayed
     genseqs     = []     # Temporary storage for generated sequences
     useprompt   = True   # Whether to send the full prompt with every submit action
+    acregex_ai  = re.compile(r'\n* *>(.|\n)*')  # Pattern for matching adventure actions from the AI so we can remove them
+    acregex_ui  = re.compile(r'^ *(&gt;.*)$', re.MULTILINE)    # Pattern for matching actions in the HTML-escaped story so we can apply colouring, etc (make sure to encase part to format in parentheses)
+    actionmode  = 1
+    adventure   = False
 
 #==================================================================#
 # Function to get model selection at startup
@@ -399,7 +404,7 @@ def get_message(msg):
     # Submit action
     if(msg['cmd'] == 'submit'):
         if(vars.mode == "play"):
-            actionsubmit(msg['data'])
+            actionsubmit(msg['data'], actionmode=msg['actionmode'])
         elif(vars.mode == "edit"):
             editsubmit(msg['data'])
         elif(vars.mode == "memory"):
@@ -531,6 +536,10 @@ def get_message(msg):
     elif(msg['cmd'] == 'setuseprompt'):
         vars.useprompt = msg['data']
         settingschanged()
+    elif(msg['cmd'] == 'setadventure'):
+        vars.adventure = msg['data']
+        settingschanged()
+        refresh_story()
     elif(msg['cmd'] == 'importwi'):
         wiimportrequest()
     
@@ -543,7 +552,7 @@ def setStartState():
         txt = txt + "Please load a game or enter a prompt below to begin!</span>"
     else:
         txt = txt + "Please load or import a story to read. There is no AI in this mode."
-    emit('from_server', {'cmd': 'updatescreen', 'data': txt})
+    emit('from_server', {'cmd': 'updatescreen', 'gamestarted': vars.gamestarted, 'data': txt})
     emit('from_server', {'cmd': 'setgamestate', 'data': 'start'})
 
 #==================================================================#
@@ -583,6 +592,7 @@ def savesettings():
     js["numseqs"]     = vars.numseqs
     js["widepth"]     = vars.widepth
     js["useprompt"]   = vars.useprompt
+    js["adventure"]   = vars.adventure
     
     # Write it
     file = open("client.settings", "w")
@@ -625,6 +635,8 @@ def loadsettings():
             vars.widepth = js["widepth"]
         if("useprompt" in js):
             vars.useprompt = js["useprompt"]
+        if("adventure" in js):
+            vars.adventure = js["adventure"]
         
         file.close()
 
@@ -639,11 +651,19 @@ def settingschanged():
 #==================================================================#
 #  Take input text from SocketIO and decide what to do with it
 #==================================================================#
-def actionsubmit(data):
+def actionsubmit(data, actionmode=0):
     # Ignore new submissions if the AI is currently busy
     if(vars.aibusy):
         return
     set_aibusy(1)
+
+    vars.actionmode = actionmode
+
+    # "Action" mode
+    if(actionmode == 1):
+        data = data.strip().lstrip('>')
+        data = re.sub(r'\n+', ' ', data)
+        data = f"\n\n> {data}\n"
     
     # If we're not continuing, store a copy of the raw input
     if(data != ""):
@@ -656,7 +676,7 @@ def actionsubmit(data):
         vars.prompt = data
         if(not vars.noai):
             # Clear the startup text from game screen
-            emit('from_server', {'cmd': 'updatescreen', 'data': 'Please wait, generating story...'})
+            emit('from_server', {'cmd': 'updatescreen', 'gamestarted': vars.gamestarted, 'data': 'Please wait, generating story...'})
             calcsubmit(data) # Run the first action through the generator
         else:
             refresh_story()
@@ -665,7 +685,8 @@ def actionsubmit(data):
         # Dont append submission if it's a blank/continue action
         if(data != ""):
             # Apply input formatting & scripts before sending to tokenizer
-            data = applyinputformatting(data)
+            if(vars.actionmode == 0):
+                data = applyinputformatting(data)
             # Store the result in the Action log
             vars.actions.append(data)
         
@@ -1076,6 +1097,10 @@ def applyinputformatting(txt):
 def applyoutputformatting(txt):
     # Use standard quotes and apostrophes
     txt = utils.fixquotes(txt)
+
+    # Adventure mode clipping of all characters after '>'
+    if(vars.adventure):
+        txt = vars.acregex_ai.sub('', txt)
     
     # Trim incomplete sentences
     if(vars.formatoptns["frmttriminc"]):
@@ -1085,7 +1110,7 @@ def applyoutputformatting(txt):
         txt = utils.replaceblanklines(txt)
     # Remove special characters
     if(vars.formatoptns["frmtrmspch"]):
-        txt = utils.removespecialchars(txt)
+        txt = utils.removespecialchars(txt, vars)
     
     return txt
 
@@ -1095,8 +1120,10 @@ def applyoutputformatting(txt):
 def refresh_story():
     text_parts = ['<chunk n="0" id="n0">', html.escape(vars.prompt), '</chunk>']
     for idx, item in enumerate(vars.actions, start=1):
-        text_parts.extend(('<chunk n="', str(idx), '" id="n', str(idx), '">', html.escape(item), '</chunk>'))
-    emit('from_server', {'cmd': 'updatescreen', 'data': formatforhtml(''.join(text_parts))})
+        if vars.adventure:  # Add special formatting to adventure actions
+            item = vars.acregex_ui.sub('<action>\\1</action>', html.escape(item))
+        text_parts.extend(('<chunk n="', str(idx), '" id="n', str(idx), '">', item, '</chunk>'))
+    emit('from_server', {'cmd': 'updatescreen', 'gamestarted': vars.gamestarted, 'data': formatforhtml(''.join(text_parts))})
 
 #==================================================================#
 # Sends the current generator settings to the Game Menu
@@ -1120,6 +1147,7 @@ def refresh_settings():
     emit('from_server', {'cmd': 'updateanotedepth', 'data': vars.andepth})
     emit('from_server', {'cmd': 'updatewidepth', 'data': vars.widepth})
     emit('from_server', {'cmd': 'updateuseprompt', 'data': vars.useprompt})
+    emit('from_server', {'cmd': 'updateadventure', 'data': vars.adventure})
     
     emit('from_server', {'cmd': 'updatefrmttriminc', 'data': vars.formatoptns["frmttriminc"]})
     emit('from_server', {'cmd': 'updatefrmtrmblln', 'data': vars.formatoptns["frmtrmblln"]})
@@ -1820,5 +1848,5 @@ if __name__ == "__main__":
     
     # Start Flask/SocketIO (Blocking, so this must be last method!)
     print("{0}Server started!\rYou may now connect with a browser at http://127.0.0.1:5000/{1}".format(colors.GREEN, colors.END))
-    socketio.run(app, host='0.0.0.0', port=5000)
-    #socketio.run(app)
+    #socketio.run(app, host='0.0.0.0', port=5000)
+    socketio.run(app)

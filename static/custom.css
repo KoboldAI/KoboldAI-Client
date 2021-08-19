@@ -6,6 +6,11 @@ chunk {
 	color: #ffffff;
 }
 
+action {
+	color: #9ff7fa;
+	font-weight: bold;
+}
+
 #topmenu {
 	background-color: #337ab7;
 	padding: 10px;
@@ -97,12 +102,21 @@ chunk {
 	margin-left: 20px;
 }
 
+#inputrow.show_mode {
+	grid-template-columns: 7% 83% 10%;
+}
+
 #inputrow {
 	margin-top: 10px;
 	padding: 0px;
 	width: 100%;
 	display: grid;
-	grid-template-columns: 90% 10%;
+	grid-template-columns: 0% 90% 10%;
+}
+
+#inputrowmode {
+	position: relative;
+	padding-right: 0px;
 }
 
 #inputrowleft {
@@ -119,6 +133,13 @@ chunk {
 	overflow:auto;
 	background-color: #404040;
 	color: #ffffff;
+}
+
+#btnmode {
+	width: 100%;
+	height: 100%;
+	overflow: auto;
+	overflow-x: hidden;
 }
 
 #btnsend {
@@ -302,10 +323,15 @@ chunk {
 	cursor: pointer;
 }
 
+.chunkhov:hover > action {
+	color: #00fa00;
+}
+
 .colorfade {
 	-moz-transition:color 1s ease-in;
     -o-transition:color 1s ease-in;
     -webkit-transition:color 1s ease-in;
+	transition:color 1s ease-in;
 }
 	
 .color_orange {
@@ -448,6 +474,7 @@ chunk {
 	-moz-transition: background-color 0.25s ease-in;
     -o-transition: background-color 0.25s ease-in;
     -webkit-transition: background-color 0.25s ease-in;
+	transition: background-color 0.25s ease-in;
 }
 
 .loadlistitem:hover {
@@ -525,6 +552,7 @@ chunk {
 	-moz-transition: background-color 0.25s ease-in;
     -o-transition: background-color 0.25s ease-in;
     -webkit-transition: background-color 0.25s ease-in;
+	transition: background-color 0.25s ease-in;
 }
 
 .popuplistitem:hover {
@@ -575,6 +603,7 @@ chunk {
 	-moz-transition: all 0.15s ease-in;
     -o-transition: all 0.15s ease-in;
     -webkit-transition: all 0.15s ease-in;
+	transition: all 0.15s ease-in;
 }
 
 .seqselitem:hover {

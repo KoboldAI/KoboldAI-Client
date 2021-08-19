@@ -59,8 +59,11 @@ def replaceblanklines(txt):
 #==================================================================#
 # 
 #==================================================================#
-def removespecialchars(txt):
-    txt = re.sub(r"[#/@%<>{}+=~|\^]", "", txt)
+def removespecialchars(txt, vars=None):
+    if vars is None or vars.actionmode == 0:
+        txt = re.sub(r"[#/@%<>{}+=~|\^]", "", txt)
+    else:
+        txt = re.sub(r"[#/@%{}+=~|\^]", "", txt)
     return txt
 
 #==================================================================#
