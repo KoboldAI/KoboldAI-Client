@@ -7,12 +7,12 @@ IF %M%==2 GOTO subfolder
 
 :subfolder
 call miniconda3\condabin\activate
-python aiserver.py
+python aiserver.py %*
 cmd /k
 
 :drivemap
 subst K: miniconda3 >nul
 call K:\python\condabin\activate
-python aiserver.py
+python aiserver.py %*
 subst K: /D
 cmd /k

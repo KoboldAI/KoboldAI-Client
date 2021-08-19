@@ -4,3 +4,4 @@ Flask == 1.1.2
 Flask-SocketIO == 5.0.1
 requests == 2.25.1
 torch == 1.8.1
+flask-cloudflared

@@ -10,3 +10,6 @@ dependencies:
   - pytorch
   - tensorflow-gpu
   - transformers
+  - pip
+  - pip:
+    - flask-cloudflared

@@ -12,6 +12,7 @@ from tkinter import messagebox
 import json
 import requests
 import html
+import argparse
 
 # KoboldAI
 import fileops
@@ -103,6 +104,7 @@ class vars:
     acregex_ui  = re.compile(r'^ *(&gt;.*)$', re.MULTILINE)    # Pattern for matching actions in the HTML-escaped story so we can apply colouring, etc (make sure to encase part to format in parentheses)
     actionmode  = 1
     adventure   = False
+    remote      = False
 
 #==================================================================#
 # Function to get model selection at startup
@@ -151,6 +153,14 @@ def gettokenids(char):
 #==================================================================#
 # Startup
 #==================================================================#
+
+# Parsing Parameters
+parser = argparse.ArgumentParser(description="My Script")
+parser.add_argument("--remote", action='store_true')
+args = parser.parse_args()
+
+if args.remote:
+    vars.remote = True;
 
 # Select a model to run
 print("{0}Welcome to the KoboldAI Client!\nSelect an AI model to continue:{1}\n".format(colors.CYAN, colors.END))
@@ -373,6 +383,9 @@ def index():
 def do_connect():
     print("{0}Client connected!{1}".format(colors.GREEN, colors.END))
     emit('from_server', {'cmd': 'connected'})
+    if(vars.remote):
+        emit('from_server', {'cmd': 'runs_remotely'})
+    
     if(not vars.gamestarted):
         setStartState()
         sendsettings()
@@ -1900,10 +1913,18 @@ def randomGameRequest(topic):
 #  Final startup commands to launch Flask app
 #==================================================================#
 if __name__ == "__main__":
+	
     # Load settings from client.settings
     loadsettings()
     
     # Start Flask/SocketIO (Blocking, so this must be last method!)
     print("{0}Server started!\rYou may now connect with a browser at http://127.0.0.1:5000/{1}".format(colors.GREEN, colors.END))
     #socketio.run(app, host='0.0.0.0', port=5000)
-    socketio.run(app)
+    if(vars.remote):
+        from flask_cloudflared import start_cloudflared
+        start_cloudflared(5000)
+        socketio.run(app, host='0.0.0.0', port=5000)
+    else:
+        import webbrowser
+        webbrowser.open_new('http://localhost:5000')
+        socketio.run(app)
