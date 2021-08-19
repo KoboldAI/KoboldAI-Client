@@ -56,13 +56,13 @@ class vars:
     model       = ""     # Model ID string chosen at startup
     noai        = False  # Runs the script without starting up the transformers pipeline
     aibusy      = False  # Stops submissions while the AI is working
-    max_length  = 512    # Maximum number of tokens to submit per action
+    max_length  = 1024    # Maximum number of tokens to submit per action
     ikmax       = 3000   # Maximum number of characters to submit to InferKit
-    genamt      = 60     # Amount of text for each action to generate
+    genamt      = 80     # Amount of text for each action to generate
     ikgen       = 200    # Number of characters for InferKit to generate
-    rep_pen     = 1.0    # Default generator repetition_penalty
-    temp        = 1.0    # Default generator temperature
-    top_p       = 1.0    # Default generator top_p
+    rep_pen     = 1.1    # Default generator repetition_penalty
+    temp        = 0.5    # Default generator temperature
+    top_p       = 0.9    # Default generator top_p
     numseqs     = 1     # Number of sequences to ask the generator to create
     gamestarted = False  # Whether the game has started (disables UI elements)
     prompt      = ""     # Prompt
@@ -75,7 +75,7 @@ class vars:
     badwordsids = []     # Tokenized array of badwords
     deletewi    = -1     # Temporary storage for index to delete
     wirmvwhtsp  = False  # Whether to remove leading whitespace from WI entries
-    widepth     = 1      # How many historical actions to scan for WI hits
+    widepth     = 3      # How many historical actions to scan for WI hits
     mode        = "play" # Whether the interface is in play, memory, or edit mode
     editln      = 0      # Which line was last selected in Edit Mode
     url         = "https://api.inferkit.com/v1/models/standard/generate" # InferKit API URL
@@ -434,6 +434,8 @@ def get_message(msg):
         importRequest()
     elif(msg['cmd'] == 'newgame'):
         newGameRequest()
+    elif(msg['cmd'] == 'rndgame'):
+        randomGameRequest(msg['data'])
     elif(msg['cmd'] == 'settemp'):
         vars.temp = float(msg['data'])
         emit('from_server', {'cmd': 'setlabeltemp', 'data': msg['data']})
@@ -1803,6 +1805,11 @@ def newGameRequest():
     sendwi()
     setStartState()
 
+def randomGameRequest(topic): 
+    newGameRequest()
+    vars.memory      = "You generate the following " + topic + " story concept :"
+    actionsubmit("")
+    vars.memory      = ""
 
 #==================================================================#
 #  Final startup commands to launch Flask app
@@ -1813,5 +1820,5 @@ if __name__ == "__main__":
     
     # Start Flask/SocketIO (Blocking, so this must be last method!)
     print("{0}Server started!\rYou may now connect with a browser at http://127.0.0.1:5000/{1}".format(colors.GREEN, colors.END))
-    #socketio.run(app, host='0.0.0.0', port=5000)
-    socketio.run(app)
+    socketio.run(app, host='0.0.0.0', port=5000)
+    #socketio.run(app)

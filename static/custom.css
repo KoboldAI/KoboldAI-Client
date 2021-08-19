@@ -271,6 +271,12 @@ chunk {
 	margin-top: 200px;
 }
 
+#rspopup {
+	width: 800px;
+	background-color: #262626;
+	margin-top: 200px;
+}
+
 /*================= Classes =================*/
 
 .aidgpopupcontent {

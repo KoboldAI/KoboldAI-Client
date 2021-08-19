@@ -4,3 +4,4 @@ client.settings
 # Ignore stories file except for test_story
 stories/*
 !stories/sample_story.json
+/.project

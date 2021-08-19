@@ -8,6 +8,7 @@ var socket;
 // UI references for jQuery
 var connect_status;
 var button_newgame;
+var button_rndgame;
 var button_save;
 var button_saveas;
 var button_savetofile;
@@ -45,6 +46,7 @@ var aidg_accept;
 var aidg_close;
 var saveaspopup;
 var saveasinput;
+var topic;
 var saveas_accept;
 var saveas_close;
 var saveasoverwrite;
@@ -55,6 +57,9 @@ var	load_close;
 var nspopup;
 var ns_accept;
 var ns_close;
+var rspopup;
+var rs_accept;
+var rs_close;
 var seqselmenu;
 var seqselcontents;
 
@@ -482,6 +487,16 @@ function hideNewStoryPopup() {
 	nspopup.addClass("hidden");
 }
 
+function showRandomStoryPopup() {
+	rspopup.removeClass("hidden");
+	rspopup.addClass("flex");
+}
+
+function hideRandomStoryPopup() {
+	rspopup.removeClass("flex");
+	rspopup.addClass("hidden");
+}
+
 function setStartState() {
 	enableSendBtn();
 	enableButtons([button_actmem, button_actwi]);
@@ -527,6 +542,7 @@ $(document).ready(function(){
 	// Bind UI references
 	connect_status    = $('#connectstatus');
 	button_newgame    = $('#btn_newgame');
+	button_rndgame    = $('#btn_rndgame');
 	button_save       = $('#btn_save');
 	button_saveas     = $('#btn_saveas');
 	button_savetofile = $('#btn_savetofile');
@@ -565,6 +581,7 @@ $(document).ready(function(){
 	aidg_close        = $("#btn_aidgpopupclose");
 	saveaspopup       = $("#saveascontainer");
 	saveasinput       = $("#savename");
+	topic             = $("#topic");
 	saveas_accept     = $("#btn_saveasaccept");
 	saveas_close      = $("#btn_saveasclose");
 	saveasoverwrite   = $("#saveasoverwrite");
@@ -575,6 +592,9 @@ $(document).ready(function(){
 	nspopup           = $("#newgamecontainer");
 	ns_accept         = $("#btn_nsaccept");
 	ns_close          = $("#btn_nsclose");
+	rspopup           = $("#rndgamecontainer");
+	rs_accept         = $("#btn_rsaccept");
+	rs_close          = $("#btn_rsclose");
 	seqselmenu        = $("#seqselmenu");
 	seqselcontents    = $("#seqselcontents");
 	
@@ -900,6 +920,19 @@ $(document).ready(function(){
 	
 	ns_close.on("click", function(ev) {
 		hideNewStoryPopup();
+	});
+	
+	button_rndgame.on("click", function(ev) {
+		showRandomStoryPopup();
+	});
+	
+	rs_accept.on("click", function(ev) {
+		socket.send({'cmd': 'rndgame', 'data': topic.val()});
+		hideRandomStoryPopup();
+	});
+	
+	rs_close.on("click", function(ev) {
+		hideRandomStoryPopup();
 	});
 	
 	anote_slider.on("input", function () {

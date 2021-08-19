@@ -27,8 +27,12 @@
 						</button>
 						<div class="collapse navbar-collapse" id="navbarNavDropdown">
 							<ul class="nav navbar-nav">
-								<li class="nav-item">
-									<a class="nav-link" href="#" id="btn_newgame">New Story</a>
+								<li class="nav-item dropdown">
+									<a class="nav-link dropdown-toggle" href="#" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">New Game</a>
+									<div class="dropdown-menu">
+										<a class="dropdown-item" href="#" id="btn_newgame">Blank Story</a>
+										<a class="dropdown-item" href="#" id="btn_rndgame">Random Story</a>
+									</div>
 								</li>
 								<li class="nav-item dropdown">
 									<a class="nav-link dropdown-toggle" href="#" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Save</a>
@@ -219,6 +223,29 @@
 			<div class="popupfooter">
 				<button type="button" class="btn btn-primary" id="btn_nsaccept">Accept</button>
 				<button type="button" class="btn btn-primary" id="btn_nsclose">Cancel</button>
+			</div>
+		</div>
+	</div>
+	<div class="popupcontainer hidden" id="rndgamecontainer">
+		<div id="rspopup">
+			<div class="popuptitlebar">
+				<div class="popuptitletext">Really Start A Random Story?</div>
+			</div>
+			<div class="aidgpopuplistheader">
+				<br>
+				Story quality and topic depends on the model and your settings/suggestion (Around 0.5 temp is recommended).<br>
+				This feature works best with finetuned models like GPT-Neo-AID or GPT-Neo-Horni but is limited to what the AI knows.<br>
+				If you get random spam then your model is not capable of using this feature and if you get unrelated stories it does not understand the topic.<br>
+				Generated results are unfiltered and can be offensive or unsuitable for children.<br><br>
+				Unsaved data will be lost.<br><br>
+				Below you can input a genre suggestion for the AI to loosely base the story on (For example Horror or Cowboy).<br>
+			</div>
+            <div class="aidgpopupcontent">
+				<input class="form-control" type="text" placeholder="Story Genre Suggestion (Leave blank for fully random)" id="topic">
+			</div>
+			<div class="popupfooter">
+				<button type="button" class="btn btn-primary" id="btn_rsaccept">Accept</button>
+				<button type="button" class="btn btn-primary" id="btn_rsclose">Cancel</button>
 			</div>
 		</div>
 	</div>
