@@ -14,11 +14,33 @@ gensettingstf = [{
 	"unit": "float",
 	"label": "Top p Sampling",
 	"id": "settopp", 
-	"min": 0.1,
+	"min": 0.0,
 	"max": 1.0,
 	"step": 0.05,
 	"default": 0.9,
     "tooltip": "Used to discard unlikely text in the sampling process. Lower values will make text more predictable but can become repetitious."
+	},
+	{
+	"uitype": "slider",
+	"unit": "int",
+	"label": "Top k Sampling",
+	"id": "settopk",
+	"min": 0,
+	"max": 100,
+	"step": 1,
+	"default": 0,
+    "tooltip": "Alternative sampling method, can be combined with top_p."
+	},
+	{
+	"uitype": "slider",
+	"unit": "float",
+	"label": "Tail-free Sampling",
+	"id": "settfs", 
+	"min": 0.0,
+	"max": 1.0,
+	"step": 0.05,
+	"default": 0.0,
+    "tooltip": "Alternative sampling method; it is recommended to disable (set to 0) top_p and top_k if using this. 0.95 is thought to be a good value."
 	},
 	{
 	"uitype": "slider",
@@ -114,11 +136,33 @@ gensettingsik =[{
 	"unit": "float",
 	"label": "Top p Sampling",
 	"id": "settopp", 
-	"min": 0.1,
+	"min": 0.0,
 	"max": 1.0,
 	"step": 0.05,
 	"default": 1.1,
     "tooltip": "Used to discard unlikely text in the sampling process. Lower values will make text more predictable but can become repetitious."
+	},
+	{
+	"uitype": "slider",
+	"unit": "int",
+	"label": "Top k Sampling",
+	"id": "settopk",
+	"min": 0,
+	"max": 100,
+	"step": 1,
+	"default": 0,
+    "tooltip": "Alternative sampling method, can be combined with top_p."
+	},
+	{
+	"uitype": "slider",
+	"unit": "float",
+	"label": "Tail-free Sampling",
+	"id": "settfs", 
+	"min": 0.0,
+	"max": 1.0,
+	"step": 0.05,
+	"default": 0.0,
+    "tooltip": "Alternative sampling method; it is recommended to disable (set to 0) top_p and top_k if using this. 0.95 is thought to be a good value."
 	},
     {
 	"uitype": "slider",
