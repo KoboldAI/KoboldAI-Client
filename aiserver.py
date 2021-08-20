@@ -159,6 +159,7 @@ parser = argparse.ArgumentParser(description="KoboldAI Server")
 parser.add_argument("--remote", action='store_true', help="Optimizes KoboldAI for Remote Play")
 parser.add_argument("--model", help="Specify the Model Type to skip the Menu")
 parser.add_argument("--path", help="Specify the Path for local models (For model NeoCustom or GPT2Custom)")
+parser.add_argument("--cpu", action='store_true', help="By default unattended launches are on the GPU use this option to force CPU usage.")
 args = parser.parse_args()
 vars.model = args.model;
 
@@ -171,6 +172,8 @@ if args.model:
     if args.path:
         print("You have selected the following path for your Model :", args.path)
         vars.custmodpth = args.path;
+        vars.colaburl = args.path + "/request"; # Lets just use the same parameter to keep it simple
+
 else:
     print("{0}Welcome to the KoboldAI Client!\nSelect an AI model to continue:{1}\n".format(colors.CYAN, colors.END))
     getModelSelection()
@@ -186,9 +189,17 @@ if(not vars.model in ["InferKit", "Colab", "OAI", "ReadOnly"]):
     else:
         print("{0}NOT FOUND!{1}".format(colors.YELLOW, colors.END))
     
-    if(vars.hascuda):    
+    if args.model:
+        if(vars.hascuda):
+            genselected = True
+            vars.usegpu = True
+        if(args.cpu):
+            vars.usegpu = False
+    elif(vars.hascuda):
         print("{0}Use GPU or CPU for generation?:  (Default GPU){1}\n".format(colors.CYAN, colors.END))
         print("    1 - GPU\n    2 - CPU\n")
+
+    if(vars.hascuda):
         genselected = False
         while(genselected == False):
             genselect = input("Mode> ")
@@ -307,8 +318,9 @@ if(vars.model == "OAI"):
 
 # Ask for ngrok url if Google Colab was selected
 if(vars.model == "Colab"):
-    print("{0}Please enter the ngrok.io or trycloudflare.com URL displayed in Google Colab:{1}\n".format(colors.CYAN, colors.END))
-    vars.colaburl = input("URL> ") + "/request"
+    if(vars.colaburl == ""):
+        print("{0}Please enter the ngrok.io or trycloudflare.com URL displayed in Google Colab:{1}\n".format(colors.CYAN, colors.END))
+        vars.colaburl = input("URL> ") + "/request"
 
 if(vars.model == "ReadOnly"):
     vars.noai = True
