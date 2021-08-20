@@ -198,9 +198,9 @@ if(not vars.model in ["InferKit", "Colab", "OAI", "ReadOnly"]):
     elif(vars.hascuda):
         print("{0}Use GPU or CPU for generation?:  (Default GPU){1}\n".format(colors.CYAN, colors.END))
         print("    1 - GPU\n    2 - CPU\n")
+        genselected = False
 
     if(vars.hascuda):
-        genselected = False
         while(genselected == False):
             genselect = input("Mode> ")
             if(genselect == ""):
