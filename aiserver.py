@@ -421,15 +421,15 @@ def do_connect():
         sendwi()
         if(vars.mode == "play"):
             if(not vars.aibusy):
-                emit('from_server', {'cmd': 'setgamestate', 'data': 'ready'})
+                emit('from_server', {'cmd': 'setgamestate', 'data': 'ready'}, broadcast=True)
             else:
-                emit('from_server', {'cmd': 'setgamestate', 'data': 'wait'})
+                emit('from_server', {'cmd': 'setgamestate', 'data': 'wait'}, broadcast=True)
         elif(vars.mode == "edit"):
-            emit('from_server', {'cmd': 'editmode', 'data': 'true'})
+            emit('from_server', {'cmd': 'editmode', 'data': 'true'}, broadcast=True)
         elif(vars.mode == "memory"):
-            emit('from_server', {'cmd': 'memmode', 'data': 'true'})
+            emit('from_server', {'cmd': 'memmode', 'data': 'true'}, broadcast=True)
         elif(vars.mode == "wi"):
-            emit('from_server', {'cmd': 'wimode', 'data': 'true'})
+            emit('from_server', {'cmd': 'wimode', 'data': 'true'}, broadcast=True)
 
 #==================================================================#
 # Event triggered when browser SocketIO sends data to the server
@@ -455,10 +455,10 @@ def get_message(msg):
     elif(msg['cmd'] == 'edit'):
         if(vars.mode == "play"):
             vars.mode = "edit"
-            emit('from_server', {'cmd': 'editmode', 'data': 'true'})
+            emit('from_server', {'cmd': 'editmode', 'data': 'true'}, broadcast=True)
         elif(vars.mode == "edit"):
             vars.mode = "play"
-            emit('from_server', {'cmd': 'editmode', 'data': 'false'})
+            emit('from_server', {'cmd': 'editmode', 'data': 'false'}, broadcast=True)
     # EditLine Action
     elif(msg['cmd'] == 'editline'):
         editrequest(int(msg['data']))
@@ -479,61 +479,74 @@ def get_message(msg):
         randomGameRequest(msg['data'])
     elif(msg['cmd'] == 'settemp'):
         vars.temp = float(msg['data'])
-        emit('from_server', {'cmd': 'setlabeltemp', 'data': msg['data']})
+        emit('from_server', {'cmd': 'setlabeltemp', 'data': msg['data']}, broadcast=True)
         settingschanged()
+        refresh_settings()
     elif(msg['cmd'] == 'settopp'):
         vars.top_p = float(msg['data'])
-        emit('from_server', {'cmd': 'setlabeltopp', 'data': msg['data']})
+        emit('from_server', {'cmd': 'setlabeltopp', 'data': msg['data']}, broadcast=True)
         settingschanged()
+        refresh_settings()
     elif(msg['cmd'] == 'settopk'):
         vars.top_k = int(msg['data'])
-        emit('from_server', {'cmd': 'setlabeltopk', 'data': msg['data']})
+        emit('from_server', {'cmd': 'setlabeltopk', 'data': msg['data']}, broadcast=True)
         settingschanged()
+        refresh_settings()
     elif(msg['cmd'] == 'settfs'):
         vars.tfs = float(msg['data'])
-        emit('from_server', {'cmd': 'setlabeltfs', 'data': msg['data']})
+        emit('from_server', {'cmd': 'setlabeltfs', 'data': msg['data']}, broadcast=True)
         settingschanged()
+        refresh_settings()
     elif(msg['cmd'] == 'setreppen'):
         vars.rep_pen = float(msg['data'])
-        emit('from_server', {'cmd': 'setlabelreppen', 'data': msg['data']})
+        emit('from_server', {'cmd': 'setlabelreppen', 'data': msg['data']}, broadcast=True)
         settingschanged()
+        refresh_settings()
     elif(msg['cmd'] == 'setoutput'):
         vars.genamt = int(msg['data'])
-        emit('from_server', {'cmd': 'setlabeloutput', 'data': msg['data']})
+        emit('from_server', {'cmd': 'setlabeloutput', 'data': msg['data']}, broadcast=True)
         settingschanged()
+        refresh_settings()
     elif(msg['cmd'] == 'settknmax'):
         vars.max_length = int(msg['data'])
-        emit('from_server', {'cmd': 'setlabeltknmax', 'data': msg['data']})
+        emit('from_server', {'cmd': 'setlabeltknmax', 'data': msg['data']}, broadcast=True)
         settingschanged()
+        refresh_settings()
     elif(msg['cmd'] == 'setikgen'):
         vars.ikgen = int(msg['data'])
-        emit('from_server', {'cmd': 'setlabelikgen', 'data': msg['data']})
+        emit('from_server', {'cmd': 'setlabelikgen', 'data': msg['data']}, broadcast=True)
         settingschanged()
+        refresh_settings()
     # Author's Note field update
     elif(msg['cmd'] == 'anote'):
         anotesubmit(msg['data'])
     # Author's Note depth update
     elif(msg['cmd'] == 'anotedepth'):
         vars.andepth = int(msg['data'])
-        emit('from_server', {'cmd': 'setlabelanotedepth', 'data': msg['data']})
+        emit('from_server', {'cmd': 'setlabelanotedepth', 'data': msg['data']}, broadcast=True)
         settingschanged()
+        refresh_settings()
     # Format - Trim incomplete sentences
     elif(msg['cmd'] == 'frmttriminc'):
         if('frmttriminc' in vars.formatoptns):
             vars.formatoptns["frmttriminc"] = msg['data']
         settingschanged()
+        refresh_settings()
     elif(msg['cmd'] == 'frmtrmblln'):
         if('frmtrmblln' in vars.formatoptns):
             vars.formatoptns["frmtrmblln"] = msg['data']
         settingschanged()
+        refresh_settings()
     elif(msg['cmd'] == 'frmtrmspch'):
         if('frmtrmspch' in vars.formatoptns):
             vars.formatoptns["frmtrmspch"] = msg['data']
         settingschanged()
+        refresh_settings()
     elif(msg['cmd'] == 'frmtadsnsp'):
         if('frmtadsnsp' in vars.formatoptns):
             vars.formatoptns["frmtadsnsp"] = msg['data']
         settingschanged()
+        refresh_settings()
     elif(msg['cmd'] == 'importselect'):
         vars.importnum = int(msg["data"].replace("import", ""))
     elif(msg['cmd'] == 'importcancel'):
@@ -577,16 +590,20 @@ def get_message(msg):
         vars.numseqs = int(msg['data'])
         emit('from_server', {'cmd': 'setlabelnumseq', 'data': msg['data']})
         settingschanged()
+        refresh_settings()
     elif(msg['cmd'] == 'setwidepth'):
         vars.widepth = int(msg['data'])
         emit('from_server', {'cmd': 'setlabelwidepth', 'data': msg['data']})
         settingschanged()
+        refresh_settings()
     elif(msg['cmd'] == 'setuseprompt'):
         vars.useprompt = msg['data']
         settingschanged()
+        refresh_settings()
     elif(msg['cmd'] == 'setadventure'):
         vars.adventure = msg['data']
         settingschanged()
+        refresh_settings()
         refresh_story()
     elif(msg['cmd'] == 'importwi'):
         wiimportrequest()
@@ -600,8 +617,8 @@ def setStartState():
         txt = txt + "Please load a game or enter a prompt below to begin!</span>"
     else:
         txt = txt + "Please load or import a story to read. There is no AI in this mode."
-    emit('from_server', {'cmd': 'updatescreen', 'gamestarted': vars.gamestarted, 'data': txt})
-    emit('from_server', {'cmd': 'setgamestate', 'data': 'start'})
+    emit('from_server', {'cmd': 'updatescreen', 'gamestarted': vars.gamestarted, 'data': txt}, broadcast=True)
+    emit('from_server', {'cmd': 'setgamestate', 'data': 'start'}, broadcast=True)
 
 #==================================================================#
 #  Transmit applicable settings to SocketIO to build UI sliders/toggles
@@ -730,7 +747,7 @@ def actionsubmit(data, actionmode=0):
         vars.prompt = data
         if(not vars.noai):
             # Clear the startup text from game screen
-            emit('from_server', {'cmd': 'updatescreen', 'gamestarted': vars.gamestarted, 'data': 'Please wait, generating story...'})
+            emit('from_server', {'cmd': 'updatescreen', 'gamestarted': vars.gamestarted, 'data': 'Please wait, generating story...'}, broadcast=True)
             calcsubmit(data) # Run the first action through the generator
         else:
             refresh_story()
@@ -992,7 +1009,7 @@ def generate(txt, min, max):
             num_return_sequences=vars.numseqs
             )
     except Exception as e:
-        emit('from_server', {'cmd': 'errmsg', 'data': 'Error occured during generator call, please check console.'})
+        emit('from_server', {'cmd': 'errmsg', 'data': 'Error occured during generator call, please check console.'}, broadcast=True)
         print("{0}{1}{2}".format(colors.RED, e, colors.END))
         set_aibusy(0)
         return
@@ -1020,7 +1037,7 @@ def genresult(genout):
     # Add formatted text to Actions array and refresh the game screen
     vars.actions.append(genout)
     refresh_story()
-    emit('from_server', {'cmd': 'texteffect', 'data': len(vars.actions)})
+    emit('from_server', {'cmd': 'texteffect', 'data': len(vars.actions)}, broadcast=True)
 
 #==================================================================#
 #  Send generator sequences to the UI for selection
@@ -1037,7 +1054,7 @@ def genselect(genout):
     vars.genseqs = genout
     
     # Send sequences to UI for selection
-    emit('from_server', {'cmd': 'genseqs', 'data': genout})
+    emit('from_server', {'cmd': 'genseqs', 'data': genout}, broadcast=True)
     
     # Refresh story for any input text
     refresh_story()
@@ -1050,8 +1067,8 @@ def selectsequence(n):
         return
     vars.actions.append(vars.genseqs[int(n)]["generated_text"])
     refresh_story()
-    emit('from_server', {'cmd': 'texteffect', 'data': len(vars.actions)})
-    emit('from_server', {'cmd': 'hidegenseqs', 'data': ''})
+    emit('from_server', {'cmd': 'texteffect', 'data': len(vars.actions)}, broadcast=True)
+    emit('from_server', {'cmd': 'hidegenseqs', 'data': ''}, broadcast=True)
     vars.genseqs = []
 
 #==================================================================#
@@ -1115,7 +1132,7 @@ def sendtocolab(txt, min, max):
     else:
         errmsg = "Colab API Error: Failed to get a reply from the server. Please check the colab console."
         print("{0}{1}{2}".format(colors.RED, errmsg, colors.END))
-        emit('from_server', {'cmd': 'errmsg', 'data': errmsg})
+        emit('from_server', {'cmd': 'errmsg', 'data': errmsg}, broadcast=True)
         set_aibusy(0)
     
 
@@ -1185,41 +1202,41 @@ def refresh_story():
         if vars.adventure:  # Add special formatting to adventure actions
             item = vars.acregex_ui.sub('<action>\\1</action>', html.escape(item))
         text_parts.extend(('<chunk n="', str(idx), '" id="n', str(idx), '">', item, '</chunk>'))
-    emit('from_server', {'cmd': 'updatescreen', 'gamestarted': vars.gamestarted, 'data': formatforhtml(''.join(text_parts))})
+    emit('from_server', {'cmd': 'updatescreen', 'gamestarted': vars.gamestarted, 'data': formatforhtml(''.join(text_parts))}, broadcast=True)
 
 #==================================================================#
 # Sends the current generator settings to the Game Menu
 #==================================================================#
 def refresh_settings():
     # Suppress toggle change events while loading state
-    emit('from_server', {'cmd': 'allowtoggle', 'data': False})
+    emit('from_server', {'cmd': 'allowtoggle', 'data': False}, broadcast=True)
     
     if(vars.model != "InferKit"):
-        emit('from_server', {'cmd': 'updatetemp', 'data': vars.temp})
-        emit('from_server', {'cmd': 'updatetopp', 'data': vars.top_p})
-        emit('from_server', {'cmd': 'updatetopk', 'data': vars.top_k})
-        emit('from_server', {'cmd': 'updatetfs', 'data': vars.tfs})
-        emit('from_server', {'cmd': 'updatereppen', 'data': vars.rep_pen})
-        emit('from_server', {'cmd': 'updateoutlen', 'data': vars.genamt})
-        emit('from_server', {'cmd': 'updatetknmax', 'data': vars.max_length})
-        emit('from_server', {'cmd': 'updatenumseq', 'data': vars.numseqs})
+        emit('from_server', {'cmd': 'updatetemp', 'data': vars.temp}, broadcast=True)
+        emit('from_server', {'cmd': 'updatetopp', 'data': vars.top_p}, broadcast=True)
+        emit('from_server', {'cmd': 'updatetopk', 'data': vars.top_k}, broadcast=True)
+        emit('from_server', {'cmd': 'updatetfs', 'data': vars.tfs}, broadcast=True)
+        emit('from_server', {'cmd': 'updatereppen', 'data': vars.rep_pen}, broadcast=True)
+        emit('from_server', {'cmd': 'updateoutlen', 'data': vars.genamt}, broadcast=True)
+        emit('from_server', {'cmd': 'updatetknmax', 'data': vars.max_length}, broadcast=True)
+        emit('from_server', {'cmd': 'updatenumseq', 'data': vars.numseqs}, broadcast=True)
     else:
-        emit('from_server', {'cmd': 'updatetemp', 'data': vars.temp})
-        emit('from_server', {'cmd': 'updatetopp', 'data': vars.top_p})
-        emit('from_server', {'cmd': 'updateikgen', 'data': vars.ikgen})
+        emit('from_server', {'cmd': 'updatetemp', 'data': vars.temp}, broadcast=True)
+        emit('from_server', {'cmd': 'updatetopp', 'data': vars.top_p}, broadcast=True)
+        emit('from_server', {'cmd': 'updateikgen', 'data': vars.ikgen}, broadcast=True)
     
-    emit('from_server', {'cmd': 'updateanotedepth', 'data': vars.andepth})
-    emit('from_server', {'cmd': 'updatewidepth', 'data': vars.widepth})
-    emit('from_server', {'cmd': 'updateuseprompt', 'data': vars.useprompt})
-    emit('from_server', {'cmd': 'updateadventure', 'data': vars.adventure})
+    emit('from_server', {'cmd': 'updateanotedepth', 'data': vars.andepth}, broadcast=True)
+    emit('from_server', {'cmd': 'updatewidepth', 'data': vars.widepth}, broadcast=True)
+    emit('from_server', {'cmd': 'updateuseprompt', 'data': vars.useprompt}, broadcast=True)
+    emit('from_server', {'cmd': 'updateadventure', 'data': vars.adventure}, broadcast=True)
     
-    emit('from_server', {'cmd': 'updatefrmttriminc', 'data': vars.formatoptns["frmttriminc"]})
-    emit('from_server', {'cmd': 'updatefrmtrmblln', 'data': vars.formatoptns["frmtrmblln"]})
-    emit('from_server', {'cmd': 'updatefrmtrmspch', 'data': vars.formatoptns["frmtrmspch"]})
-    emit('from_server', {'cmd': 'updatefrmtadsnsp', 'data': vars.formatoptns["frmtadsnsp"]})
+    emit('from_server', {'cmd': 'updatefrmttriminc', 'data': vars.formatoptns["frmttriminc"]}, broadcast=True)
+    emit('from_server', {'cmd': 'updatefrmtrmblln', 'data': vars.formatoptns["frmtrmblln"]}, broadcast=True)
+    emit('from_server', {'cmd': 'updatefrmtrmspch', 'data': vars.formatoptns["frmtrmspch"]}, broadcast=True)
+    emit('from_server', {'cmd': 'updatefrmtadsnsp', 'data': vars.formatoptns["frmtadsnsp"]}, broadcast=True)
     
     # Allow toggle events again
-    emit('from_server', {'cmd': 'allowtoggle', 'data': True})
+    emit('from_server', {'cmd': 'allowtoggle', 'data': True}, broadcast=True)
 
 #==================================================================#
 #  Sets the logical and display states for the AI Busy condition
@@ -1227,10 +1244,10 @@ def refresh_settings():
 def set_aibusy(state):
     if(state):
         vars.aibusy = True
-        emit('from_server', {'cmd': 'setgamestate', 'data': 'wait'})
+        emit('from_server', {'cmd': 'setgamestate', 'data': 'wait'}, broadcast=True)
     else:
         vars.aibusy = False
-        emit('from_server', {'cmd': 'setgamestate', 'data': 'ready'})
+        emit('from_server', {'cmd': 'setgamestate', 'data': 'ready'}, broadcast=True)
 
 #==================================================================#
 # 
@@ -1242,8 +1259,8 @@ def editrequest(n):
         txt = vars.actions[n-1]
     
     vars.editln = n
-    emit('from_server', {'cmd': 'setinputtext', 'data': txt})
-    emit('from_server', {'cmd': 'enablesubmit', 'data': ''})
+    emit('from_server', {'cmd': 'setinputtext', 'data': txt}, broadcast=True)
+    emit('from_server', {'cmd': 'enablesubmit', 'data': ''}, broadcast=True)
 
 #==================================================================#
 # 
@@ -1256,8 +1273,8 @@ def editsubmit(data):
     
     vars.mode = "play"
     refresh_story()
-    emit('from_server', {'cmd': 'texteffect', 'data': vars.editln})
-    emit('from_server', {'cmd': 'editmode', 'data': 'false'})
+    emit('from_server', {'cmd': 'texteffect', 'data': vars.editln}, broadcast=True)
+    emit('from_server', {'cmd': 'editmode', 'data': 'false'}, broadcast=True)
 
 #==================================================================#
 #  
@@ -1271,7 +1288,7 @@ def deleterequest():
         del vars.actions[vars.editln-1]
         vars.mode = "play"
         refresh_story()
-        emit('from_server', {'cmd': 'editmode', 'data': 'false'})
+        emit('from_server', {'cmd': 'editmode', 'data': 'false'}, broadcast=True)
 
 #==================================================================#
 #   Toggles the game mode for memory editing and sends UI commands
@@ -1279,12 +1296,12 @@ def deleterequest():
 def togglememorymode():
     if(vars.mode == "play"):
         vars.mode = "memory"
-        emit('from_server', {'cmd': 'memmode', 'data': 'true'})
-        emit('from_server', {'cmd': 'setinputtext', 'data': vars.memory})
-        emit('from_server', {'cmd': 'setanote', 'data': vars.authornote})
+        emit('from_server', {'cmd': 'memmode', 'data': 'true'}, broadcast=True)
+        emit('from_server', {'cmd': 'setinputtext', 'data': vars.memory}, broadcast=True)
+        emit('from_server', {'cmd': 'setanote', 'data': vars.authornote}, broadcast=True)
     elif(vars.mode == "memory"):
         vars.mode = "play"
-        emit('from_server', {'cmd': 'memmode', 'data': 'false'})
+        emit('from_server', {'cmd': 'memmode', 'data': 'false'}, broadcast=True)
 
 #==================================================================#
 #   Toggles the game mode for WI editing and sends UI commands
@@ -1292,13 +1309,13 @@ def togglememorymode():
 def togglewimode():
     if(vars.mode == "play"):
         vars.mode = "wi"
-        emit('from_server', {'cmd': 'wimode', 'data': 'true'})
+        emit('from_server', {'cmd': 'wimode', 'data': 'true'}, broadcast=True)
     elif(vars.mode == "wi"):
         # Commit WI fields first
         requestwi()
         # Then set UI state back to Play
         vars.mode = "play"
-        emit('from_server', {'cmd': 'wimode', 'data': 'false'})
+        emit('from_server', {'cmd': 'wimode', 'data': 'false'}, broadcast=True)
 
 #==================================================================#
 #   
@@ -1306,7 +1323,7 @@ def togglewimode():
 def addwiitem():
     ob = {"key": "", "keysecondary": "", "content": "", "num": len(vars.worldinfo), "init": False, "selective": False}
     vars.worldinfo.append(ob);
-    emit('from_server', {'cmd': 'addwiitem', 'data': ob})
+    emit('from_server', {'cmd': 'addwiitem', 'data': ob}, broadcast=True)
 
 #==================================================================#
 #   
@@ -1316,7 +1333,7 @@ def sendwi():
     ln = len(vars.worldinfo)
     
     # Clear contents of WI container
-    emit('from_server', {'cmd': 'clearwi', 'data': ''})
+    emit('from_server', {'cmd': 'clearwi', 'data': ''}, broadcast=True)
     
     # If there are no WI entries, send an empty WI object
     if(ln == 0):
@@ -1325,7 +1342,7 @@ def sendwi():
         # Send contents of WI array
         for wi in vars.worldinfo:
             ob = wi
-            emit('from_server', {'cmd': 'addwiitem', 'data': ob})
+            emit('from_server', {'cmd': 'addwiitem', 'data': ob}, broadcast=True)
         # Make sure last WI item is uninitialized
         if(vars.worldinfo[-1]["init"]):
             addwiitem()
@@ -1337,7 +1354,7 @@ def requestwi():
     list = []
     for wi in vars.worldinfo:
         list.append(wi["num"])
-    emit('from_server', {'cmd': 'requestwiitem', 'data': list})
+    emit('from_server', {'cmd': 'requestwiitem', 'data': list}, broadcast=True)
 
 #==================================================================#
 #  Renumber WI items consecutively
@@ -1445,10 +1462,10 @@ def memsubmit(data):
     # For now just send it to storage
     vars.memory = data
     vars.mode = "play"
-    emit('from_server', {'cmd': 'memmode', 'data': 'false'})
+    emit('from_server', {'cmd': 'memmode', 'data': 'false'}, broadcast=True)
     
     # Ask for contents of Author's Note field
-    emit('from_server', {'cmd': 'getanote', 'data': ''})
+    emit('from_server', {'cmd': 'getanote', 'data': ''}, broadcast=True)
 
 #==================================================================#
 #  Commit changes to Author's Note
@@ -1494,7 +1511,7 @@ def ikrequest(txt):
         print("{0}{1}{2}".format(colors.CYAN, genout, colors.END))
         vars.actions.append(genout)
         refresh_story()
-        emit('from_server', {'cmd': 'texteffect', 'data': len(vars.actions)})
+        emit('from_server', {'cmd': 'texteffect', 'data': len(vars.actions)}, broadcast=True)
         
         set_aibusy(0)
     else:
@@ -1506,7 +1523,7 @@ def ikrequest(txt):
             code = er["errors"][0]["extensions"]["code"]
             
         errmsg = "InferKit API Error: {0} - {1}".format(req.status_code, code)
-        emit('from_server', {'cmd': 'errmsg', 'data': errmsg})
+        emit('from_server', {'cmd': 'errmsg', 'data': errmsg}, broadcast=True)
         set_aibusy(0)
 
 #==================================================================#
@@ -1544,7 +1561,7 @@ def oairequest(txt, min, max):
         print("{0}{1}{2}".format(colors.CYAN, genout, colors.END))
         vars.actions.append(genout)
         refresh_story()
-        emit('from_server', {'cmd': 'texteffect', 'data': len(vars.actions)})
+        emit('from_server', {'cmd': 'texteffect', 'data': len(vars.actions)}, broadcast=True)
         
         set_aibusy(0)
     else:
@@ -1555,7 +1572,7 @@ def oairequest(txt, min, max):
             message = er["error"]["message"]
             
         errmsg = "OpenAI API Error: {0} - {1}".format(type, message)
-        emit('from_server', {'cmd': 'errmsg', 'data': errmsg})
+        emit('from_server', {'cmd': 'errmsg', 'data': errmsg}, broadcast=True)
         set_aibusy(0)
 
 #==================================================================#
@@ -1563,11 +1580,11 @@ def oairequest(txt, min, max):
 #==================================================================#
 def exitModes():
     if(vars.mode == "edit"):
-        emit('from_server', {'cmd': 'editmode', 'data': 'false'})
+        emit('from_server', {'cmd': 'editmode', 'data': 'false'}, broadcast=True)
     elif(vars.mode == "memory"):
-        emit('from_server', {'cmd': 'memmode', 'data': 'false'})
+        emit('from_server', {'cmd': 'memmode', 'data': 'false'}, broadcast=True)
     elif(vars.mode == "wi"):
-        emit('from_server', {'cmd': 'wimode', 'data': 'false'})
+        emit('from_server', {'cmd': 'wimode', 'data': 'false'}, broadcast=True)
     vars.mode = "play"
 
 #==================================================================#
@@ -1708,8 +1725,8 @@ def loadRequest(loadpath):
         # Refresh game screen
         sendwi()
         refresh_story()
-        emit('from_server', {'cmd': 'setgamestate', 'data': 'ready'})
-        emit('from_server', {'cmd': 'hidegenseqs', 'data': ''})
+        emit('from_server', {'cmd': 'setgamestate', 'data': 'ready'}, broadcast=True)
+        emit('from_server', {'cmd': 'hidegenseqs', 'data': ''}, broadcast=True)
         print("{0}Story loaded from {1}!{2}".format(colors.GREEN, path.basename(loadpath), colors.END))
 
 #==================================================================#
@@ -1731,7 +1748,7 @@ def importRequest():
             vars.importjs = vars.importjs["stories"]
         
         # Clear Popup Contents
-        emit('from_server', {'cmd': 'clearpopup', 'data': ''})
+        emit('from_server', {'cmd': 'clearpopup', 'data': ''}, broadcast=True)
         
         # Initialize vars
         num = 0
@@ -1824,8 +1841,8 @@ def importgame():
         # Refresh game screen
         sendwi()
         refresh_story()
-        emit('from_server', {'cmd': 'setgamestate', 'data': 'ready'})
-        emit('from_server', {'cmd': 'hidegenseqs', 'data': ''})
+        emit('from_server', {'cmd': 'setgamestate', 'data': 'ready'}, broadcast=True)
+        emit('from_server', {'cmd': 'hidegenseqs', 'data': ''}, broadcast=True)
 
 #==================================================================#
 # Import an aidg.club prompt and start a new game with it.
@@ -1867,7 +1884,7 @@ def importAidgRequest(id):
         # Refresh game screen
         sendwi()
         refresh_story()
-        emit('from_server', {'cmd': 'setgamestate', 'data': 'ready'})
+        emit('from_server', {'cmd': 'setgamestate', 'data': 'ready'}, broadcast=True)
 
 #==================================================================#
 #  Import World Info JSON file
