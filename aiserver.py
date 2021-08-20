@@ -1109,6 +1109,10 @@ def generate(txt, min, max):
         set_aibusy(0)
         return
     
+    # Need to manually strip and decode tokens if we're not using a pipeline
+    if(vars.hascuda and vars.breakmodel):
+        genout = [{"generated_text": tokenizer.decode(tokens[len(gen_in[0])-len(tokens):])} for tokens in genout]
+    
     if(len(genout) == 1):
         genresult(genout[0]["generated_text"])
     else:
