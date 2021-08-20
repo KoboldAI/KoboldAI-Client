@@ -205,7 +205,7 @@ if(not vars.model in ["InferKit", "Colab", "OAI", "ReadOnly"]):
         if(args.cpu):
             vars.usegpu = False
             vars.breakmodel = False
-        if(args.breakmodel):
+        if(vars.bmsupported and args.breakmodel):
             vars.usegpu = False
             vars.breakmodel = True
     elif(vars.hascuda):    
@@ -387,7 +387,7 @@ if(not vars.model in ["InferKit", "Colab", "OAI", "ReadOnly"]):
                     model.transformer.wte.to(breakmodel.gpu_device)
                     model.transformer.ln_f.to(breakmodel.gpu_device)
                     gc.collect()
-                    if(args.breakmodel):
+                    if(vars.bmsupported and args.breakmodel):
                         breakmodel.ram_blocks = max(0, min(n_layers, args.breakmodel))
                     else:
                         print(colors.CYAN + "\nHow many layers would you like to put into system RAM?")
@@ -435,7 +435,7 @@ if(not vars.model in ["InferKit", "Colab", "OAI", "ReadOnly"]):
                     model.transformer.wte.to(breakmodel.gpu_device)
                     model.transformer.ln_f.to(breakmodel.gpu_device)
                     gc.collect()
-                    if(args.breakmodel):
+                    if(vars.bmsupported and args.breakmodel):
                         breakmodel.ram_blocks = max(0, min(n_layers, args.breakmodel))
                     else:
                         print(colors.CYAN + "\nHow many layers would you like to put into system RAM?")
