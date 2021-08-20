@@ -1119,7 +1119,7 @@ def generate(txt, min, max):
         genselect(genout)
     
     # Clear CUDA cache again if using GPU
-    if(vars.hascuda and vars.usegpu):
+    if(vars.hascuda and (vars.usegpu or vars.breakmodel)):
         torch.cuda.empty_cache()
     
     set_aibusy(0)
