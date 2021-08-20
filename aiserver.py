@@ -386,6 +386,8 @@ if(not vars.model in ["InferKit", "Colab", "OAI", "ReadOnly"]):
                     model.lm_head.to(breakmodel.gpu_device)
                     model.transformer.wte.to(breakmodel.gpu_device)
                     model.transformer.ln_f.to(breakmodel.gpu_device)
+                    if(not model.config.rotary):
+                        model.transformer.wpe.to(breakmodel.gpu_device)
                     gc.collect()
                     if(vars.bmsupported and args.breakmodel):
                         breakmodel.ram_blocks = max(0, min(n_layers, args.breakmodel))
@@ -434,6 +436,8 @@ if(not vars.model in ["InferKit", "Colab", "OAI", "ReadOnly"]):
                     model.lm_head.to(breakmodel.gpu_device)
                     model.transformer.wte.to(breakmodel.gpu_device)
                     model.transformer.ln_f.to(breakmodel.gpu_device)
+                    if(not model.config.rotary):
+                        model.transformer.wpe.to(breakmodel.gpu_device)
                     gc.collect()
                     if(vars.bmsupported and args.breakmodel):
                         breakmodel.ram_blocks = max(0, min(n_layers, args.breakmodel))
