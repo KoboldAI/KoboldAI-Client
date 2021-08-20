@@ -378,7 +378,7 @@ def new_forward(
             inputs_embeds[:, pos:pos+emb.shape[1]] = emb
             offset += emb.shape[1]
 
-    if self.rotary:
+    if hasattr(self, 'rotary') and self.rotary:
         hidden_states = inputs_embeds
     else:
         position_embeds = self.wpe(position_ids)
