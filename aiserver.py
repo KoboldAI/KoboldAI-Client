@@ -1316,6 +1316,7 @@ def togglewimode():
         # Then set UI state back to Play
         vars.mode = "play"
         emit('from_server', {'cmd': 'wimode', 'data': 'false'}, broadcast=True)
+    sendwi()
 
 #==================================================================#
 #   
