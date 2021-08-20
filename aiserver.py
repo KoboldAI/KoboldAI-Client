@@ -155,16 +155,25 @@ def gettokenids(char):
 #==================================================================#
 
 # Parsing Parameters
-parser = argparse.ArgumentParser(description="My Script")
-parser.add_argument("--remote", action='store_true')
+parser = argparse.ArgumentParser(description="KoboldAI Server")
+parser.add_argument("--remote", action='store_true', help="Optimizes KoboldAI for Remote Play")
+parser.add_argument("--model", help="Specify the Model Type to skip the Menu")
+parser.add_argument("--path", help="Specify the Path for local models (For model NeoCustom or GPT2Custom)")
 args = parser.parse_args()
+vars.model = args.model;
 
 if args.remote:
     vars.remote = True;
 
 # Select a model to run
-print("{0}Welcome to the KoboldAI Client!\nSelect an AI model to continue:{1}\n".format(colors.CYAN, colors.END))
-getModelSelection()
+if args.model:
+    print("Welcome to KoboldAI!\nYou have selected the following Model:", vars.model)
+    if args.path:
+        print("You have selected the following path for your Model :", args.path)
+        vars.custmodpth = args.path;
+else:
+    print("{0}Welcome to the KoboldAI Client!\nSelect an AI model to continue:{1}\n".format(colors.CYAN, colors.END))
+    getModelSelection()
 
 # If transformers model was selected & GPU available, ask to use CPU or GPU
 if(not vars.model in ["InferKit", "Colab", "OAI", "ReadOnly"]):

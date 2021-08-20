@@ -6,3 +6,6 @@ stories/*
 !stories/sample_story.json
 /.project
 *.bak
+miniconda3/*
+*.settings
+__pycache__
