@@ -385,7 +385,7 @@ if(not vars.model in ["InferKit", "Colab", "OAI", "ReadOnly"]):
                     gc.collect()
                     model.transformer.wte.to(breakmodel.gpu_device)
                     model.transformer.ln_f.to(breakmodel.gpu_device)
-                    if(hasattr(model), 'lm_head'):
+                    if(hasattr(model, 'lm_head')):
                         model.lm_head.to(breakmodel.gpu_device)
                     if(not hasattr(model.config, 'rotary') or not model.config.rotary):
                         model.transformer.wpe.to(breakmodel.gpu_device)
@@ -436,7 +436,7 @@ if(not vars.model in ["InferKit", "Colab", "OAI", "ReadOnly"]):
                     gc.collect()
                     model.transformer.wte.to(breakmodel.gpu_device)
                     model.transformer.ln_f.to(breakmodel.gpu_device)
-                    if(hasattr(model), 'lm_head'):
+                    if(hasattr(model, 'lm_head')):
                         model.lm_head.to(breakmodel.gpu_device)
                     if(not hasattr(model.config, 'rotary') or not model.config.rotary):
                         model.transformer.wpe.to(breakmodel.gpu_device)
