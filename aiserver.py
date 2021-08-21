@@ -390,8 +390,8 @@ if(not vars.model in ["InferKit", "Colab", "OAI", "ReadOnly"]):
                     if(not hasattr(model.config, 'rotary') or not model.config.rotary):
                         model.transformer.wpe.to(breakmodel.gpu_device)
                     gc.collect()
-                    if(vars.bmsupported and args.breakmodel):
-                        breakmodel.ram_blocks = max(0, min(n_layers, args.breakmodel))
+                    if(args.breakmodel_layers is not None):
+                        breakmodel.ram_blocks = max(0, min(n_layers, args.breakmodel_layers))
                     else:
                         print(colors.CYAN + "\nHow many layers would you like to put into system RAM?")
                         print("The more of them you put into system RAM, the slower it will run,")
@@ -441,8 +441,8 @@ if(not vars.model in ["InferKit", "Colab", "OAI", "ReadOnly"]):
                     if(not hasattr(model.config, 'rotary') or not model.config.rotary):
                         model.transformer.wpe.to(breakmodel.gpu_device)
                     gc.collect()
-                    if(vars.bmsupported and args.breakmodel):
-                        breakmodel.ram_blocks = max(0, min(n_layers, args.breakmodel))
+                    if(args.breakmodel_layers is not None):
+                        breakmodel.ram_blocks = max(0, min(n_layers, args.breakmodel_layers))
                     else:
                         print(colors.CYAN + "\nHow many layers would you like to put into system RAM?")
                         print("The more of them you put into system RAM, the slower it will run,")
