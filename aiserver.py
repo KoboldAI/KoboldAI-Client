@@ -13,12 +13,15 @@ import json
 import requests
 import html
 import argparse
+import sys
+import gc
 
 # KoboldAI
 import fileops
 import gensettings
 from utils import debounce
 import utils
+import breakmodel
 
 #==================================================================#
 # Variables & Storage
@@ -100,6 +103,8 @@ class vars:
     saveow      = False  # Whether or not overwrite confirm has been displayed
     genseqs     = []     # Temporary storage for generated sequences
     useprompt   = True   # Whether to send the full prompt with every submit action
+    breakmodel  = False  # For GPU users, whether to use both system RAM and VRAM to conserve VRAM while offering speedup compared to CPU-only
+    bmsupported = False  # Whether the breakmodel option is supported (GPT-Neo/GPT-J only, currently)
     acregex_ai  = re.compile(r'\n* *>(.|\n)*')  # Pattern for matching adventure actions from the AI so we can remove them
     acregex_ui  = re.compile(r'^ *(&gt;.*)$', re.MULTILINE)    # Pattern for matching actions in the HTML-escaped story so we can apply colouring, etc (make sure to encase part to format in parentheses)
     actionmode  = 1
@@ -160,6 +165,8 @@ parser.add_argument("--remote", action='store_true', help="Optimizes KoboldAI fo
 parser.add_argument("--model", help="Specify the Model Type to skip the Menu")
 parser.add_argument("--path", help="Specify the Path for local models (For model NeoCustom or GPT2Custom)")
 parser.add_argument("--cpu", action='store_true', help="By default unattended launches are on the GPU use this option to force CPU usage.")
+parser.add_argument("--breakmodel", action='store_true', help="For models that support GPU-CPU hybrid generation, use this feature instead of GPU or CPU generation")
+parser.add_argument("--breakmodel_layers", type=int, help="Specify the number of layers to commit to system RAM if --breakmodel is used")
 args = parser.parse_args()
 vars.model = args.model;
 
@@ -184,6 +191,7 @@ if(not vars.model in ["InferKit", "Colab", "OAI", "ReadOnly"]):
     import torch
     print("{0}Looking for GPU support...{1}".format(colors.PURPLE, colors.END), end="")
     vars.hascuda = torch.cuda.is_available()
+    vars.bmsupported = vars.model in ("EleutherAI/gpt-neo-1.3B", "EleutherAI/gpt-neo-2.7B", "NeoCustom")
     if(vars.hascuda):
         print("{0}FOUND!{1}".format(colors.GREEN, colors.END))
     else:
@@ -193,23 +201,40 @@ if(not vars.model in ["InferKit", "Colab", "OAI", "ReadOnly"]):
         if(vars.hascuda):
             genselected = True
             vars.usegpu = True
+            vars.breakmodel = False
         if(args.cpu):
             vars.usegpu = False
-    elif(vars.hascuda):
-        print("{0}Use GPU or CPU for generation?:  (Default GPU){1}\n".format(colors.CYAN, colors.END))
-        print("    1 - GPU\n    2 - CPU\n")
+            vars.breakmodel = False
+        if(vars.bmsupported and args.breakmodel):
+            vars.usegpu = False
+            vars.breakmodel = True
+    elif(vars.hascuda):    
+        if(vars.bmsupported):
+            print(colors.YELLOW + "You're using a model that supports GPU-CPU hybrid generation!\nCurrently only GPT-Neo models and GPT-J-6B support this feature.")
+        print("{0}Use GPU or CPU for generation?:  (Default GPU){1}".format(colors.CYAN, colors.END))
+        if(vars.bmsupported):
+            print(f"    1 - GPU\n    2 - CPU\n    3 - Both (slower than GPU-only but uses less VRAM)\n")
+        else:
+            print("    1 - GPU\n    2 - CPU\n")
         genselected = False
 
     if(vars.hascuda):
         while(genselected == False):
             genselect = input("Mode> ")
             if(genselect == ""):
+                vars.breakmodel = False
                 vars.usegpu = True
                 genselected = True
             elif(genselect.isnumeric() and int(genselect) == 1):
+                vars.breakmodel = False
                 vars.usegpu = True
                 genselected = True
             elif(genselect.isnumeric() and int(genselect) == 2):
+                vars.breakmodel = False
+                vars.usegpu = False
+                genselected = True
+            elif(vars.bmsupported and genselect.isnumeric() and int(genselect) == 3):
+                vars.breakmodel = True
                 vars.usegpu = False
                 genselected = True
             else:
@@ -343,15 +368,48 @@ print("{0}OK!{1}".format(colors.GREEN, colors.END))
 if(not vars.model in ["InferKit", "Colab", "OAI", "ReadOnly"]):
     if(not vars.noai):
         print("{0}Initializing transformers, please wait...{1}".format(colors.PURPLE, colors.END))
-        from transformers import pipeline, GPT2Tokenizer, GPT2LMHeadModel, GPTNeoForCausalLM
+        from transformers import pipeline, GPT2Tokenizer, GPT2LMHeadModel, GPTNeoForCausalLM, GPTNeoModel, AutoModel
         
         # If custom GPT Neo model was chosen
         if(vars.model == "NeoCustom"):
             model     = GPTNeoForCausalLM.from_pretrained(vars.custmodpth)
             tokenizer = GPT2Tokenizer.from_pretrained(vars.custmodpth)
             # Is CUDA available? If so, use GPU, otherwise fall back to CPU
-            if(vars.hascuda and vars.usegpu):
-                generator = pipeline('text-generation', model=model, tokenizer=tokenizer, device=0)
+            if(vars.hascuda):
+                if(vars.usegpu):
+                    generator = pipeline('text-generation', model=model, tokenizer=tokenizer, device=0)
+                elif(vars.breakmodel):  # Use both RAM and VRAM (breakmodel)
+                    n_layers = model.config.num_layers
+                    breakmodel.total_blocks = n_layers
+                    model.half().to('cpu')
+                    gc.collect()
+                    model.transformer.wte.to(breakmodel.gpu_device)
+                    model.transformer.ln_f.to(breakmodel.gpu_device)
+                    if(hasattr(model, 'lm_head')):
+                        model.lm_head.to(breakmodel.gpu_device)
+                    if(not hasattr(model.config, 'rotary') or not model.config.rotary):
+                        model.transformer.wpe.to(breakmodel.gpu_device)
+                    gc.collect()
+                    if(args.breakmodel_layers is not None):
+                        breakmodel.ram_blocks = max(0, min(n_layers, args.breakmodel_layers))
+                    else:
+                        print(colors.CYAN + "\nHow many layers would you like to put into system RAM?")
+                        print("The more of them you put into system RAM, the slower it will run,")
+                        print("but it will require less VRAM")
+                        print("(roughly proportional to number of layers).")
+                        print(f"This model has{colors.YELLOW} {n_layers} {colors.CYAN}layers.{colors.END}\n")
+                        while(True):
+                            layerselect = input("# of layers> ")
+                            if(layerselect.isnumeric() and 0 <= int(layerselect) <= n_layers):
+                                breakmodel.ram_blocks = int(layerselect)
+                                break
+                            else:
+                                print(f"{colors.RED}Please enter an integer between 0 and {n_layers}.{colors.END}")
+                    print(f"{colors.PURPLE}Will commit{colors.YELLOW} {breakmodel.ram_blocks} {colors.PURPLE}of{colors.YELLOW} {n_layers} {colors.PURPLE}layers to system RAM.{colors.END}")
+                    GPTNeoModel.forward = breakmodel.new_forward
+                    generator = model.generate
+                else:
+                    generator = pipeline('text-generation', model=model, tokenizer=tokenizer)
             else:
                 generator = pipeline('text-generation', model=model, tokenizer=tokenizer)
         # If custom GPT2 model was chosen
@@ -367,8 +425,42 @@ if(not vars.model in ["InferKit", "Colab", "OAI", "ReadOnly"]):
         else:
             # Is CUDA available? If so, use GPU, otherwise fall back to CPU
             tokenizer = GPT2Tokenizer.from_pretrained(vars.model)
-            if(vars.hascuda and vars.usegpu):
-                generator = pipeline('text-generation', model=vars.model, device=0)
+            if(vars.hascuda):
+                if(vars.usegpu):
+                    generator = pipeline('text-generation', model=vars.model, device=0)
+                elif(vars.breakmodel):  # Use both RAM and VRAM (breakmodel)
+                    model = AutoModel.from_pretrained(vars.model)
+                    n_layers = model.config.num_layers
+                    breakmodel.total_blocks = n_layers
+                    model.half().to('cpu')
+                    gc.collect()
+                    model.transformer.wte.to(breakmodel.gpu_device)
+                    model.transformer.ln_f.to(breakmodel.gpu_device)
+                    if(hasattr(model, 'lm_head')):
+                        model.lm_head.to(breakmodel.gpu_device)
+                    if(not hasattr(model.config, 'rotary') or not model.config.rotary):
+                        model.transformer.wpe.to(breakmodel.gpu_device)
+                    gc.collect()
+                    if(args.breakmodel_layers is not None):
+                        breakmodel.ram_blocks = max(0, min(n_layers, args.breakmodel_layers))
+                    else:
+                        print(colors.CYAN + "\nHow many layers would you like to put into system RAM?")
+                        print("The more of them you put into system RAM, the slower it will run,")
+                        print("but it will require less VRAM")
+                        print("(roughly proportional to number of layers).")
+                        print(f"This model has{colors.YELLOW} {n_layers} {colors.CYAN}layers.{colors.END}\n")
+                        while(True):
+                            layerselect = input("# of layers> ")
+                            if(layerselect.isnumeric() and 0 <= int(layerselect) <= n_layers):
+                                breakmodel.ram_blocks = int(layerselect)
+                                break
+                            else:
+                                print(f"{colors.RED}Please enter an integer between 0 and {n_layers}.{colors.END}")
+                    print(f"{colors.PURPLE}Will commit{colors.YELLOW} {breakmodel.ram_blocks} {colors.PURPLE}of{colors.YELLOW} {n_layers} {colors.PURPLE}layers to system RAM.{colors.END}")
+                    GPTNeoModel.forward = breakmodel.new_forward
+                    generator = model.generate
+                else:
+                    generator = pipeline('text-generation', model=vars.model)
             else:
                 generator = pipeline('text-generation', model=vars.model)
         
@@ -984,7 +1076,8 @@ def generate(txt, min, max):
     vars.lastctx = txt
     
     # Clear CUDA cache if using GPU
-    if(vars.hascuda and vars.usegpu):
+    if(vars.hascuda and (vars.usegpu or vars.breakmodel)):
+        gc.collect()
         torch.cuda.empty_cache()
     
     # Submit input text to generator
@@ -992,27 +1085,40 @@ def generate(txt, min, max):
         top_p = vars.top_p if vars.top_p > 0.0 else None
         top_k = vars.top_k if vars.top_k > 0 else None
         tfs = vars.tfs if vars.tfs > 0.0 else None
+
+        # generator() only accepts a torch tensor of tokens (long datatype) as
+        # its first argument if we're using breakmodel, otherwise a string
+        # is fine
+        if(vars.hascuda and vars.breakmodel):
+            gen_in = tokenizer.encode(txt, return_tensors="pt", truncation=True).long().to(breakmodel.gpu_device)
+        else:
+            gen_in = txt
 		
-        genout = generator(
-            txt, 
-            do_sample=True, 
-            min_length=min, 
-            max_length=max,
-            repetition_penalty=vars.rep_pen,
-            top_p=top_p,
-            top_k=top_k,
-            tfs=tfs,
-            temperature=vars.temp,
-            bad_words_ids=vars.badwordsids,
-            use_cache=True,
-            return_full_text=False,
-            num_return_sequences=vars.numseqs
-            )
+        with torch.no_grad():
+            genout = generator(
+                gen_in, 
+                do_sample=True, 
+                min_length=min, 
+                max_length=max,
+                repetition_penalty=vars.rep_pen,
+                top_p=top_p,
+                top_k=top_k,
+                tfs=tfs,
+                temperature=vars.temp,
+                bad_words_ids=vars.badwordsids,
+                use_cache=True,
+                return_full_text=False,
+                num_return_sequences=vars.numseqs
+                )
     except Exception as e:
         emit('from_server', {'cmd': 'errmsg', 'data': 'Error occured during generator call, please check console.'}, broadcast=True)
         print("{0}{1}{2}".format(colors.RED, e, colors.END))
         set_aibusy(0)
         return
+    
+    # Need to manually strip and decode tokens if we're not using a pipeline
+    if(vars.hascuda and vars.breakmodel):
+        genout = [{"generated_text": tokenizer.decode(tokens[len(gen_in[0])-len(tokens):])} for tokens in genout]
     
     if(len(genout) == 1):
         genresult(genout[0]["generated_text"])
@@ -1020,7 +1126,9 @@ def generate(txt, min, max):
         genselect(genout)
     
     # Clear CUDA cache again if using GPU
-    if(vars.hascuda and vars.usegpu):
+    if(vars.hascuda and (vars.usegpu or vars.breakmodel)):
+        del genout
+        gc.collect()
         torch.cuda.empty_cache()
     
     set_aibusy(0)
