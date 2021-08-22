@@ -1406,7 +1406,7 @@ def togglememorymode():
         vars.mode = "memory"
         emit('from_server', {'cmd': 'memmode', 'data': 'true'}, broadcast=True)
         emit('from_server', {'cmd': 'setinputtext', 'data': vars.memory}, broadcast=True)
-        emit('from_server', {'cmd': 'setanote', 'data': vars.authornote}, broadcast=True)
+        emit('from_server', {'cmd': 'setanote', 'data': vars.authornote})
     elif(vars.mode == "memory"):
         vars.mode = "play"
         emit('from_server', {'cmd': 'memmode', 'data': 'false'}, broadcast=True)
