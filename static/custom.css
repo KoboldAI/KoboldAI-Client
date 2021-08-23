@@ -67,7 +67,6 @@ chunk[contenteditable="true"]:focus, chunk[contenteditable="true"]:focus > actio
 	height: 490px;
 	margin-top: 10px;
 	padding: 10px;
-	display: flex;
 	vertical-align: bottom;
 	overflow-y: scroll;
 	background-color: #262626;
