@@ -774,8 +774,8 @@ $(document).ready(function(){
 			$('body').on('input', autofocus).on('keydown', 'chunk', chunkOnKeyDown).on('focusout', 'chunk', submitEditedChunk);
 			$('#allowediting').prop('checked', allowedit).prop('disabled', false).change().on('change', function () {
 				if(allowtoggle) {
-					checked = $(this).prop('checked')
-					$("chunk").attr('contenteditable', checked)
+					allowedit = $(this).prop('checked')
+					$("chunk").attr('contenteditable', allowedit)
 				}
 			});
 		} else if(msg.cmd == "updatescreen") {
