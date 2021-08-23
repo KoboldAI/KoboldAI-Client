@@ -640,7 +640,7 @@ function chunkOnKeyDown(event) {
 		return;
 	}
 
-	// Allow left and right arrow keys to move between chunks
+	// Allow left and right arrow keys (and backspace) to move between chunks
 	switch(event.keyCode) {
 		case 37:  // left
 		case 39:  // right
@@ -672,6 +672,25 @@ function chunkOnKeyDown(event) {
 				}
 			}, 2);
 			return;
+		
+		case 8:  // backspace
+			old_length = document.activeElement.innerText.length;
+			setTimeout(function () {
+				// Wait a few milliseconds and compare the chunk's length
+				if(old_length != document.activeElement.innerText.length) {
+					return;
+				}
+				// If it's the same, we're at the beginning of a chunk
+				if((chunk = document.activeElement.previousSibling) && chunk.tagName == "CHUNK") {
+					range = document.createRange();
+					selection = getSelection();
+					range.selectNodeContents(chunk);
+					range.collapse(false);
+					selection.removeAllRanges();
+					selection.addRange(range);
+				}
+			}, 2);
+			return
 	}
 
 	// Don't allow any edits if not connected to server
