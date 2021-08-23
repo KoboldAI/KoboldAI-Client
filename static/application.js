@@ -68,7 +68,7 @@ var gamestarted = false;
 var editmode = false;
 var connected = false;
 var newly_loaded = true;
-var current_chunk_changed = false;
+var current_editing_chunk = null;
 var chunk_conflict = false;
 
 // Key states
@@ -622,7 +622,7 @@ function setadventure(state) {
 
 function autofocus(event) {
 	if(connected) {
-		current_chunk_changed = true;
+		current_editing_chunk = event.target;
 		event.target.focus();
 	} else {
 		event.preventDefault();
@@ -635,7 +635,7 @@ function chunkOnKeyDown(event) {
 	if(event.keyCode == 27 || (!event.shiftKey && event.keyCode == 13)) {
 		setTimeout(function () {
 			event.target.blur();
-		}, 25);
+		}, 5);
 		event.preventDefault();
 		return;
 	}
@@ -717,7 +717,7 @@ function chunkOnKeyDown(event) {
 function submitEditedChunk(event) {
 	// Don't do anything if the current chunk hasn't been edited or if someone
 	// else overwrote it while you were busy lollygagging
-	if(!current_chunk_changed || chunk_conflict) {
+	if(current_editing_chunk === null || chunk_conflict) {
 		chunk_conflict = false;
 		return;
 	}
@@ -727,8 +727,10 @@ function submitEditedChunk(event) {
 		if(document.activeElement.tagName == "CHUNK") {
 			document.activeElement.blur();
 		}
-	}, 25);
-	current_chunk_changed = false;
+	}, 5);
+
+	chunk = current_editing_chunk;
+	current_editing_chunk = null;
 
 	// Enter edit mode if we aren't already in edit mode
 	if(!editmode) {
@@ -736,9 +738,9 @@ function submitEditedChunk(event) {
 	}
 
 	// Submit the edited chunk if it's not empty, otherwise delete it
-	socket.send({'cmd': 'editline', 'data': event.target.getAttribute("n")});
-	if(event.target.innerText.length) {
-		socket.send({'cmd': 'submit', 'data': event.target.innerText});
+	socket.send({'cmd': 'editline', 'data': chunk.getAttribute("n")});
+	if(chunk.innerText.length) {
+		socket.send({'cmd': 'submit', 'data': chunk.innerText});
 	} else {
 		socket.send({'cmd': 'delete', 'data': ''});
 	}
