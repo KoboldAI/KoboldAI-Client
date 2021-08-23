@@ -21,7 +21,6 @@ var button_format;
 var button_mode;
 var button_mode_label;
 var button_send;
-var button_actedit;
 var button_actmem;
 var button_actback;
 var button_actretry;
@@ -67,6 +66,11 @@ var seqselcontents;
 
 var memorymode = false;
 var gamestarted = false;
+var editmode = false;
+var connected = false;
+var newly_loaded = true;
+var current_chunk_changed = false;
+var chunk_conflict = false;
 
 // Key states
 var shift_down   = false;
@@ -75,6 +79,7 @@ var do_clear_ent = false;
 // Display vars
 var allowtoggle = false;
 var formatcount = 0;
+var allowedit   = true;  // Whether clicking on chunks will edit them
 
 // Adventure
 var action_mode = 0;  // 0: story, 1: action
@@ -384,32 +389,11 @@ function popupShow(state) {
 }
 
 function enterEditMode() {
-	// Add class to each story chunk
-	showMessage("Please select a story chunk to edit above.");
-	button_actedit.html("Cancel");
-	game_text.children('chunk').addClass("chunkhov");
-	game_text.on('click', '> *', function() {
-		editModeSelect($(this).attr("n"));
-	});
-	disableSendBtn();
-	hide([button_actback, button_actmem, button_actretry, button_actwi]);
-	show([button_delete]);
+	editmode = true;
 }
 
 function exitEditMode() {
-	// Remove class to each story chunk
-	hideMessage();
-	button_actedit.html("Edit");
-	game_text.children('chunk').removeClass("chunkhov");
-	game_text.off('click', '> *');
-	enableSendBtn();
-	show([button_actback, button_actmem, button_actretry, button_actwi]);
-	hide([button_delete]);
-	input_text.val("");
-}
-
-function editModeSelect(n) {
-	socket.send({'cmd': 'editline', 'data': n});
+	editmode = false;
 }
 
 function enterMemoryMode() {
@@ -417,7 +401,7 @@ function enterMemoryMode() {
 	setmodevisibility(false);
 	showMessage("Edit the memory to be sent with each request to the AI.");
 	button_actmem.html("Cancel");
-	hide([button_actback, button_actretry, button_actedit, button_delete, button_actwi]);
+	hide([button_actback, button_actretry, button_delete, button_actwi]);
 	// Display Author's Note field
 	anote_menu.slideDown("fast");
 }
@@ -427,7 +411,7 @@ function exitMemoryMode() {
 	setmodevisibility(adventure);
 	hideMessage();
 	button_actmem.html("Memory");
-	show([button_actback, button_actretry, button_actedit, button_actwi]);
+	show([button_actback, button_actretry, button_actwi]);
 	input_text.val("");
 	// Hide Author's Note field
 	anote_menu.slideUp("fast");
@@ -436,7 +420,7 @@ function exitMemoryMode() {
 function enterWiMode() {
 	showMessage("World Info will be added to memory only when the key appears in submitted text or the last action.");
 	button_actwi.html("Accept");
-	hide([button_actedit, button_actback, button_actmem, button_actretry, game_text]);
+	hide([button_actback, button_actmem, button_actretry, game_text]);
 	show([wi_menu]);
 	disableSendBtn();
 }
@@ -445,7 +429,7 @@ function exitWiMode() {
 	hideMessage();
 	button_actwi.html("W Info");
 	hide([wi_menu]);
-	show([button_actedit, button_actback, button_actmem, button_actretry, game_text]);
+	show([button_actback, button_actmem, button_actretry, game_text]);
 	enableSendBtn();
 }
 
@@ -486,10 +470,10 @@ function changemode() {
 }
 
 function newTextHighlight(ref) {
-	ref.addClass("color_green");
-	ref.addClass("colorfade");
+	ref.addClass("edit-flash");
 	setTimeout(function () {
-		ref.removeClass("color_green");
+		ref.addClass("colorfade");
+		ref.removeClass("edit-flash");
 		setTimeout(function () {
 			ref.removeClass("colorfade");
 		}, 1000);
@@ -588,12 +572,11 @@ function hideRandomStoryPopup() {
 function setStartState() {
 	enableSendBtn();
 	enableButtons([button_actmem, button_actwi]);
-	disableButtons([button_actedit, button_actback, button_actretry]);
+	disableButtons([button_actback, button_actretry]);
 	hide([wi_menu, button_delete]);
-	show([game_text, button_actedit, button_actmem, button_actwi, button_actback, button_actretry]);
+	show([game_text, button_actmem, button_actwi, button_actback, button_actretry]);
 	hideMessage();
 	hideWaitAnimation();
-	button_actedit.html("Edit");
 	button_actmem.html("Memory");
 	button_actwi.html("W Info");
 	hideAidgPopup();
@@ -638,6 +621,74 @@ function setadventure(state) {
 	}
 }
 
+function autofocus(event) {
+	if(connected) {
+		current_chunk_changed = true;
+		event.target.focus();
+	} else {
+		event.preventDefault();
+	}
+}
+
+function chunkOnKeyDown(event) {
+	// Enter should submit the chunk changes, except when holding shift
+	// Escape should also do it regardless of whether shift is held
+	if(event.keyCode == 27 || (!event.shiftKey && event.keyCode == 13)) {
+		event.target.blur();
+		event.preventDefault();
+		return;
+	}
+
+	// Don't allow any edits if not connected to server
+	if(!connected) {
+		event.preventDefault();
+		return;
+	}
+
+	// Prevent CTRL+B, CTRL+I and CTRL+U when editing chunks
+	if(event.ctrlKey || event.metaKey) {  // metaKey is macOS's command key
+		switch(event.keyCode) {
+			case 66:
+			case 98:
+			case 73:
+			case 105:
+			case 85:
+			case 117:
+				event.preventDefault();
+				return;
+		}
+	}
+}
+
+function submitEditedChunk(event) {
+	// Don't do anything if the current chunk hasn't been edited or if someone
+	// else overwrote it while you were busy lollygagging
+	if(!current_chunk_changed || chunk_conflict) {
+		chunk_conflict = false;
+		return;
+	}
+
+	show([$('#curtain')]);
+	setTimeout(function () {
+		document.activeElement.blur();
+	}, 5);
+	document.activeElement.blur();
+	current_chunk_changed = false;
+
+	// Enter edit mode if we aren't already in edit mode
+	if(!editmode) {
+		socket.send({'cmd': 'edit', 'data': ''});
+	}
+
+	// Submit the edited chunk if it's not empty, otherwise delete it
+	socket.send({'cmd': 'editline', 'data': event.target.getAttribute("n")});
+	if(event.target.innerText.length) {
+		socket.send({'cmd': 'submit', 'data': event.target.innerText});
+	} else {
+		socket.send({'cmd': 'delete', 'data': ''});
+	}
+}
+
 //=================================================================//
 //  READY/RUNTIME
 //=================================================================//
@@ -661,7 +712,6 @@ $(document).ready(function(){
 	button_mode       = $('#btnmode')
 	button_mode_label = $('#btnmode_label')
 	button_send       = $('#btnsend');
-	button_actedit    = $('#btn_actedit');
 	button_actmem     = $('#btn_actmem');
 	button_actback    = $('#btn_actundo');
 	button_actretry   = $('#btn_actretry');
@@ -711,6 +761,7 @@ $(document).ready(function(){
 	socket.on('from_server', function(msg) {
         if(msg.cmd == "connected") {
 			// Connected to Server Actions
+			connected = true;
 			connect_status.html("<b>Connected to KoboldAI Process!</b>");
 			connect_status.removeClass("color_orange");
 			connect_status.addClass("color_green");
@@ -718,6 +769,14 @@ $(document).ready(function(){
 			settings_menu.html("");
 			format_menu.html("");
 			wi_menu.html("");
+			// Set up "Allow Editing"
+			$('body').on('input', autofocus).on('keydown', 'chunk', chunkOnKeyDown).on('focusout', 'chunk', submitEditedChunk);
+			$('#allowediting').prop('checked', allowedit).prop('disabled', false).change().on('change', function () {
+				if(allowtoggle) {
+					checked = $(this).prop('checked')
+					$("chunk").attr('contenteditable', checked)
+				}
+			});
 		} else if(msg.cmd == "updatescreen") {
 			_gamestarted = gamestarted
 			gamestarted = msg.gamestarted;
@@ -726,20 +785,30 @@ $(document).ready(function(){
 				changemode();
 			}
 			// Send game content to Game Screen
+			if(allowedit && document.activeElement.tagName == "CHUNK") {
+				chunk_conflict = true;
+			}
 			game_text.html(msg.data);
+			// Make content editable if need be
+			$("chunk").attr('tabindex', -1)
+			$('chunk').attr('contenteditable', allowedit);
+			hide([$('#curtain')]);
 			// Scroll to bottom of text
-			setTimeout(function () {
-				$('#gamescreen').animate({scrollTop: $('#gamescreen').prop('scrollHeight')}, 1000);
-			}, 5);
+			if(newly_loaded) {
+				setTimeout(function () {
+					$('#gamescreen').animate({scrollTop: $('#gamescreen').prop('scrollHeight')}, 1000);
+				}, 5);
+			}
+			newly_loaded = false;
 		} else if(msg.cmd == "setgamestate") {
 			// Enable or Disable buttons
 			if(msg.data == "ready") {
 				enableSendBtn();
-				enableButtons([button_actedit, button_actmem, button_actwi, button_actback, button_actretry]);
+				enableButtons([button_actmem, button_actwi, button_actback, button_actretry]);
 				hideWaitAnimation();
 			} else if(msg.data == "wait") {
 				disableSendBtn();
-				disableButtons([button_actedit, button_actmem, button_actwi, button_actback, button_actretry]);
+				disableButtons([button_actmem, button_actwi, button_actback, button_actretry]);
 				showWaitAnimation();
 			} else if(msg.data == "start") {
 				setStartState();
@@ -752,11 +821,10 @@ $(document).ready(function(){
 				exitEditMode();
 			}
 		} else if(msg.cmd == "setinputtext") {
-			// Set input box text for edit mode
-			input_text.val(msg.data);
-		} else if(msg.cmd == "enablesubmit") {
-			// Enables the submit button
-			enableSendBtn();
+			// Set input box text for memory mode
+			if(memorymode) {
+				input_text.val(msg.data);
+			}
 		} else if(msg.cmd == "memmode") {
 			// Enable or Disable memory edit mode
 			if(msg.data == "true") {
@@ -932,6 +1000,7 @@ $(document).ready(function(){
     });
 	
 	socket.on('disconnect', function() {
+		connected = false;
 		connect_status.html("<b>Lost connection...</b>");
 		connect_status.removeClass("color_green");
 		connect_status.addClass("color_orange");
@@ -954,10 +1023,6 @@ $(document).ready(function(){
 	button_actback.on("click", function(ev) {
 		socket.send({'cmd': 'back', 'data': ''});
 		hidegenseqs();
-	});
-	
-	button_actedit.on("click", function(ev) {
-		socket.send({'cmd': 'edit', 'data': ''});
 	});
 	
 	button_delete.on("click", function(ev) {
@@ -1042,6 +1107,7 @@ $(document).ready(function(){
 	});
 	
 	load_accept.on("click", function(ev) {
+		newly_loaded = true;
 		socket.send({'cmd': 'loadrequest', 'data': ''});
 		hideLoadPopup();
 	});
