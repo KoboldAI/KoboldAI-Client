@@ -76,27 +76,30 @@
 		</div>
 		<div class="row" id="formatmenu">
 		</div>
-		<div class="row" id="gamescreen">
-			<span id="gametext">...</span>
-			<div class="hidden" id="wimenu">
+		<div class="layer-container">
+			<div class="layer-bottom row" id="gamescreen">
+				<span id="gametext">...</span>
+				<div class="hidden" id="wimenu">
+				</div>
 			</div>
+			<div id="curtain" class="layer-top row hidden"></div>
 		</div>
 		<div class="row" id="seqselmenu">
 			<div class="seqselheader">Select sequence to keep:</div>
 			<div id="seqselcontents">
 			</div>
 		</div>
-		<div class="row" id="actionmenu">
+		<div class="row flex" id="actionmenu">
 			<div id="actionmenuitems">
-				<div>
-					<button type="button" class="btn btn-primary" id="btn_actedit">Edit</button>
-					<button type="button" class="btn btn-primary" id="btn_actmem">Memory</button>
-					<button type="button" class="btn btn-primary" id="btn_actwi">W Info</button>
-					<button type="button" class="btn btn-primary" id="btn_actundo">Back</button>
-					<button type="button" class="btn btn-primary" id="btn_actretry">Retry</button>
-					<button type="button" class="btn btn-primary hidden" id="btn_delete">Delete</button>
-					<span id="messagefield"></span>
-				</div>
+				<button type="button" class="btn btn-primary" id="btn_actmem">Memory</button>
+				<button type="button" class="btn btn-primary" id="btn_actwi">W Info</button>
+				<button type="button" class="btn btn-primary" id="btn_actundo">Back</button>
+				<button type="button" class="btn btn-primary" id="btn_actretry">Retry</button>
+			</div>
+			<div id="messagefield"></div>
+			<div class="box flex-push-right">
+				<input type="checkbox" data-toggle="toggle" data-onstyle="success" id="allowediting" disabled>
+				<div class="box-label">Allow Editing</div>
 			</div>
 		</div>
 		<div class="row">
