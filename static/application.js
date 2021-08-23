@@ -850,6 +850,10 @@ $(document).ready(function(){
 				}, 5);
 			}
 			newly_loaded = false;
+		} else if(msg.cmd == "scrolldown") {
+			setTimeout(function () {
+				$('#gamescreen').animate({scrollTop: $('#gamescreen').prop('scrollHeight')}, 1000);
+			}, 5);
 		} else if(msg.cmd == "setgamestate") {
 			// Enable or Disable buttons
 			if(msg.data == "ready") {

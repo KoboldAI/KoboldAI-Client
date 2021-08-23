@@ -846,9 +846,11 @@ def actionsubmit(data, actionmode=0):
             # Clear the startup text from game screen
             emit('from_server', {'cmd': 'updatescreen', 'gamestarted': vars.gamestarted, 'data': 'Please wait, generating story...'}, broadcast=True)
             calcsubmit(data) # Run the first action through the generator
+            emit('from_server', {'cmd': 'scrolldown', 'data': ''}, broadcast=True)
         else:
             refresh_story()
             set_aibusy(0)
+            emit('from_server', {'cmd': 'scrolldown', 'data': ''}, broadcast=True)
     else:
         # Dont append submission if it's a blank/continue action
         if(data != ""):
@@ -861,9 +863,11 @@ def actionsubmit(data, actionmode=0):
         if(not vars.noai):
             # Off to the tokenizer!
             calcsubmit(data)
+            emit('from_server', {'cmd': 'scrolldown', 'data': ''}, broadcast=True)
         else:
             refresh_story()
             set_aibusy(0)
+            emit('from_server', {'cmd': 'scrolldown', 'data': ''}, broadcast=True)
 
 #==================================================================#
 #  
