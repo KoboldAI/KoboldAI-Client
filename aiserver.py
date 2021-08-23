@@ -69,7 +69,7 @@ class vars:
     temp        = 0.5    # Default generator temperature
     top_p       = 0.9    # Default generator top_p
     top_k       = 0      # Default generator top_k
-    tfs         = 0.0    # Default generator tfs (tail-free sampling)
+    tfs         = 1.0    # Default generator tfs (tail-free sampling)
     numseqs     = 1     # Number of sequences to ask the generator to create
     gamestarted = False  # Whether the game has started (disables UI elements)
     prompt      = ""     # Prompt

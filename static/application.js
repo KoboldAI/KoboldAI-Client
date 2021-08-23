@@ -630,9 +630,9 @@ function autofocus(event) {
 }
 
 function chunkOnKeyDown(event) {
-	// Enter should submit the chunk changes, except when holding shift
-	// Escape should also do it regardless of whether shift is held
-	if(event.keyCode == 27 || (!event.shiftKey && event.keyCode == 13)) {
+	// Make escape commit the changes (Originally we had Enter here to but its not required and nicer for users if we let them type freely
+	// You can add the following after 27 if you want it back to committing on enter : || (!event.shiftKey && event.keyCode == 13)
+	if(event.keyCode == 27) {
 		setTimeout(function () {
 			event.target.blur();
 		}, 5);

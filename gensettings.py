@@ -18,7 +18,7 @@ gensettingstf = [{
 	"max": 1.0,
 	"step": 0.05,
 	"default": 0.9,
-    "tooltip": "Used to discard unlikely text in the sampling process. Lower values will make text more predictable but can become repetitious."
+    "tooltip": "Used to discard unlikely text in the sampling process. Lower values will make text more predictable but can become repetitious. (Put this value on 1 to disable its effect)"
 	},
 	{
 	"uitype": "slider",
@@ -29,7 +29,7 @@ gensettingstf = [{
 	"max": 100,
 	"step": 1,
 	"default": 0,
-    "tooltip": "Alternative sampling method, can be combined with top_p."
+    "tooltip": "Alternative sampling method, can be combined with top_p. (Put this value on 0 to disable its effect)"
 	},
 	{
 	"uitype": "slider",
@@ -40,7 +40,7 @@ gensettingstf = [{
 	"max": 1.0,
 	"step": 0.05,
 	"default": 0.0,
-    "tooltip": "Alternative sampling method; it is recommended to disable (set to 0) top_p and top_k if using this. 0.95 is thought to be a good value."
+    "tooltip": "Alternative sampling method; it is recommended to disable top_p and top_k (set top_p to 1 and top_k to 0) if using this. 0.95 is thought to be a good value. (Put this value on 1 to disable its effect)"
 	},
 	{
 	"uitype": "slider",
@@ -70,7 +70,7 @@ gensettingstf = [{
 	"label": "Max Tokens",
 	"id": "settknmax", 
 	"min": 512,
-	"max": 4096,
+	"max": 2048,
 	"step": 8,
 	"default": 1024,
     "tooltip": "Max number of tokens of context to submit to the AI for sampling. Make sure this is higher than Amount to Generate. Higher values increase VRAM/RAM usage."
