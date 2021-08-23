@@ -633,7 +633,9 @@ function chunkOnKeyDown(event) {
 	// Enter should submit the chunk changes, except when holding shift
 	// Escape should also do it regardless of whether shift is held
 	if(event.keyCode == 27 || (!event.shiftKey && event.keyCode == 13)) {
-		event.target.blur();
+		setTimeout(function () {
+			event.target.blur();
+		}, 5);
 		event.preventDefault();
 		return;
 	}
@@ -669,9 +671,10 @@ function submitEditedChunk(event) {
 
 	show([$('#curtain')]);
 	setTimeout(function () {
-		document.activeElement.blur();
+		if(document.activeElement.tagName == "CHUNK") {
+			document.activeElement.blur();
+		}
 	}, 5);
-	document.activeElement.blur();
 	current_chunk_changed = false;
 
 	// Enter edit mode if we aren't already in edit mode
