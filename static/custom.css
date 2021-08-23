@@ -11,9 +11,12 @@ action {
 	font-weight: bold;
 }
 
-chunk[contenteditable="true"]:focus, chunk[contenteditable="true"]:focus > action {
+chunk[contenteditable="true"]:focus, chunk[contenteditable="true"]:focus * {
 	color: #cdf;
 	font-weight: normal;
+}
+
+chunk, chunk * {
 	outline: 0px solid transparent;
 }
 
@@ -349,7 +352,7 @@ chunk[contenteditable="true"]:focus, chunk[contenteditable="true"]:focus > actio
 	color: #00fa00;
 }
 
-.colorfade, .colorfade > action {
+.colorfade, .colorfade * {
 	-moz-transition:color 1s ease-in;
     -o-transition:color 1s ease-in;
     -webkit-transition:color 1s ease-in;
@@ -393,7 +396,7 @@ chunk[contenteditable="true"]:focus, chunk[contenteditable="true"]:focus > actio
 	text-decoration: none;
 }
 
-.edit-flash, .edit-flash > action {
+.edit-flash, .edit-flash * {
 	color: #3bf723;
 }
 
