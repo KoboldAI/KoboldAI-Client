@@ -24,7 +24,6 @@ var button_send;
 var button_actmem;
 var button_actback;
 var button_actretry;
-var button_delete;
 var button_actwi;
 var game_text;
 var input_text;
@@ -401,7 +400,7 @@ function enterMemoryMode() {
 	setmodevisibility(false);
 	showMessage("Edit the memory to be sent with each request to the AI.");
 	button_actmem.html("Cancel");
-	hide([button_actback, button_actretry, button_delete, button_actwi]);
+	hide([button_actback, button_actretry, button_actwi]);
 	// Display Author's Note field
 	anote_menu.slideDown("fast");
 }
@@ -573,7 +572,7 @@ function setStartState() {
 	enableSendBtn();
 	enableButtons([button_actmem, button_actwi]);
 	disableButtons([button_actback, button_actretry]);
-	hide([wi_menu, button_delete]);
+	hide([wi_menu]);
 	show([game_text, button_actmem, button_actwi, button_actback, button_actretry]);
 	hideMessage();
 	hideWaitAnimation();
@@ -715,7 +714,6 @@ $(document).ready(function(){
 	button_actmem     = $('#btn_actmem');
 	button_actback    = $('#btn_actundo');
 	button_actretry   = $('#btn_actretry');
-	button_delete     = $('#btn_delete');
 	button_actwi      = $('#btn_actwi');
 	game_text         = $('#gametext');
 	input_text        = $('#input_text');
@@ -1023,10 +1021,6 @@ $(document).ready(function(){
 	button_actback.on("click", function(ev) {
 		socket.send({'cmd': 'back', 'data': ''});
 		hidegenseqs();
-	});
-	
-	button_delete.on("click", function(ev) {
-		socket.send({'cmd': 'delete', 'data': ''});
 	});
 	
 	button_actmem.on("click", function(ev) {
