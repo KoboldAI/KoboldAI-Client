@@ -12,8 +12,9 @@ action {
 }
 
 chunk[contenteditable="true"]:focus, chunk[contenteditable="true"]:focus > action {
-	color: #ddffdd;
+	color: #cdf;
 	font-weight: normal;
+	outline: 0px solid transparent;
 }
 
 #topmenu {
