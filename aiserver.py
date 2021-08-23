@@ -543,7 +543,7 @@ def get_message(msg):
     # Back/Undo Action
     elif(msg['cmd'] == 'back'):
         actionback()
-    # EditMode Action
+    # EditMode Action (old)
     elif(msg['cmd'] == 'edit'):
         if(vars.mode == "play"):
             vars.mode = "edit"
@@ -551,10 +551,15 @@ def get_message(msg):
         elif(vars.mode == "edit"):
             vars.mode = "play"
             emit('from_server', {'cmd': 'editmode', 'data': 'false'}, broadcast=True)
-    # EditLine Action
+    # EditLine Action (old)
     elif(msg['cmd'] == 'editline'):
         editrequest(int(msg['data']))
-    # DeleteLine Action
+    # Inline edit
+    elif(msg['cmd'] == 'inlineedit'):
+        inlineedit(msg['chunk'], msg['data'])
+    elif(msg['cmd'] == 'inlinedelete'):
+        inlinedelete(msg['data'])
+    # DeleteLine Action (old)
     elif(msg['cmd'] == 'delete'):
         deleterequest()
     elif(msg['cmd'] == 'memory'):
@@ -1382,7 +1387,7 @@ def editsubmit(data):
     vars.mode = "play"
     refresh_story()
     emit('from_server', {'cmd': 'texteffect', 'data': vars.editln}, broadcast=True)
-    emit('from_server', {'cmd': 'editmode', 'data': 'false'}, broadcast=True)
+    emit('from_server', {'cmd': 'editmode', 'data': 'false'})
 
 #==================================================================#
 #  
@@ -1395,6 +1400,34 @@ def deleterequest():
     else:
         del vars.actions[vars.editln-1]
         vars.mode = "play"
+        refresh_story()
+        emit('from_server', {'cmd': 'editmode', 'data': 'false'})
+
+#==================================================================#
+# 
+#==================================================================#
+def inlineedit(chunk, data):
+    chunk = int(chunk)
+    if(chunk == 0):
+        vars.prompt = data
+    else:
+        vars.actions[chunk-1] = data
+    
+    refresh_story()
+    emit('from_server', {'cmd': 'texteffect', 'data': chunk}, broadcast=True)
+    emit('from_server', {'cmd': 'editmode', 'data': 'false'}, broadcast=True)
+
+#==================================================================#
+#  
+#==================================================================#
+def inlinedelete(chunk):
+    chunk = int(chunk)
+    # Don't delete prompt
+    if(chunk == 0):
+        # Send error message
+        emit('from_server', {'cmd': 'editmode', 'data': 'false'}, broadcast=True)
+    else:
+        del vars.actions[chunk-1]
         refresh_story()
         emit('from_server', {'cmd': 'editmode', 'data': 'false'}, broadcast=True)
 

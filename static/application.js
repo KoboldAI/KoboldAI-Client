@@ -476,7 +476,7 @@ function newTextHighlight(ref) {
 		setTimeout(function () {
 			ref.removeClass("colorfade");
 		}, 1000);
-	}, 10);
+	}, 50);
 }
 
 function showAidgPopup() {
@@ -732,17 +732,11 @@ function submitEditedChunk(event) {
 	chunk = current_editing_chunk;
 	current_editing_chunk = null;
 
-	// Enter edit mode if we aren't already in edit mode
-	if(!editmode) {
-		socket.send({'cmd': 'edit', 'data': ''});
-	}
-
 	// Submit the edited chunk if it's not empty, otherwise delete it
-	socket.send({'cmd': 'editline', 'data': chunk.getAttribute("n")});
 	if(chunk.innerText.length) {
-		socket.send({'cmd': 'submit', 'data': chunk.innerText});
+		socket.send({'cmd': 'inlineedit', 'chunk': chunk.getAttribute("n"), 'data': chunk.innerText});
 	} else {
-		socket.send({'cmd': 'delete', 'data': ''});
+		socket.send({'cmd': 'inlinedelete', 'data': chunk.getAttribute("n")});
 	}
 }
 
@@ -834,7 +828,7 @@ $(document).ready(function(){
 				}
 			});
 		} else if(msg.cmd == "updatescreen") {
-			_gamestarted = gamestarted
+			_gamestarted = gamestarted;
 			gamestarted = msg.gamestarted;
 			if(_gamestarted != gamestarted) {
 				action_mode = 0;
