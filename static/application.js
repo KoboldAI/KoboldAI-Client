@@ -635,9 +635,43 @@ function chunkOnKeyDown(event) {
 	if(event.keyCode == 27 || (!event.shiftKey && event.keyCode == 13)) {
 		setTimeout(function () {
 			event.target.blur();
-		}, 5);
+		}, 25);
 		event.preventDefault();
 		return;
+	}
+
+	// Allow left and right arrow keys to move between chunks
+	switch(event.keyCode) {
+		case 37:  // left
+		case 39:  // right
+			old_selection_offset = getSelection().focusOffset;
+			setTimeout(function () {
+				// Wait a few milliseconds and check if the caret has moved
+				new_selection = getSelection();
+				if(old_selection_offset != new_selection.focusOffset) {
+					return;
+				}
+				// If it hasn't moved, we're at the beginning or end of a chunk
+				// and the caret must be moved to a different chunk
+				chunk = document.activeElement;
+				switch(event.keyCode) {
+					case 37:  // left
+						if((chunk = chunk.previousSibling) && chunk.tagName == "CHUNK") {
+							range = document.createRange();
+							range.selectNodeContents(chunk);
+							range.collapse(false);
+							new_selection.removeAllRanges();
+							new_selection.addRange(range);
+						}
+						break;
+
+					case 39:  // right
+						if((chunk = chunk.nextSibling) && chunk.tagName == "CHUNK") {
+							chunk.focus();
+						}
+				}
+			}, 2);
+			return;
 	}
 
 	// Don't allow any edits if not connected to server
@@ -674,7 +708,7 @@ function submitEditedChunk(event) {
 		if(document.activeElement.tagName == "CHUNK") {
 			document.activeElement.blur();
 		}
-	}, 5);
+	}, 25);
 	current_chunk_changed = false;
 
 	// Enter edit mode if we aren't already in edit mode
