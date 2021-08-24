@@ -507,6 +507,54 @@ chunk, chunk * {
 	z-index: 2;
 }
 
+.icon-container {
+	position: relative;
+}
+
+.constant-key-icon {
+	position: absolute !important;
+	top: 5px !important;
+	right: 5px !important;
+	z-index: 1;
+	transform: rotate(20deg);
+	-moz-transform: rotate(20deg);
+	-webkit-transform: rotate(20deg);
+	-ms-transform: rotate(20deg);
+	-o-transform: rotate(20deg);
+	opacity: 0%;
+}
+
+*:hover > .constant-key-icon {
+	opacity: 40%;
+}
+
+.constant-key-icon:hover {
+	opacity: 65%;
+	cursor: pointer;
+}
+
+.constant-key-icon-enabled {
+	color: #3bf723;
+	opacity: 65%
+}
+
+*:hover > .constant-key-icon-enabled {
+	opacity: 65%;
+}
+
+.constant-key-icon-enabled:hover {
+	opacity: 100%
+}
+
+.constant-key-icon-clickthrough {
+	opacity: 0% !important;
+	pointer-events: none;
+}
+
+.constant-key-icon-clickthrough.constant-key-icon-enabled {
+	opacity: 35% !important;
+}
+
 .loadlistheader {
 	padding-left: 10px;
 	display: grid;

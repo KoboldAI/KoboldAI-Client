@@ -664,6 +664,10 @@ def get_message(msg):
         vars.worldinfo[msg['data']]["selective"] = True
     elif(msg['cmd'] == 'wiseloff'):
         vars.worldinfo[msg['data']]["selective"] = False
+    elif(msg['cmd'] == 'wiconstanton'):
+        vars.worldinfo[msg['data']]["constant"] = True
+    elif(msg['cmd'] == 'wiconstantoff'):
+        vars.worldinfo[msg['data']]["constant"] = False
     elif(msg['cmd'] == 'sendwilist'):
         commitwi(msg['data'])
     elif(msg['cmd'] == 'aidgimport'):
@@ -1469,7 +1473,7 @@ def togglewimode():
 #   
 #==================================================================#
 def addwiitem():
-    ob = {"key": "", "keysecondary": "", "content": "", "num": len(vars.worldinfo), "init": False, "selective": False}
+    ob = {"key": "", "keysecondary": "", "content": "", "num": len(vars.worldinfo), "init": False, "selective": False, "constant": False}
     vars.worldinfo.append(ob);
     emit('from_server', {'cmd': 'addwiitem', 'data': ob}, broadcast=True)
 
@@ -1524,6 +1528,7 @@ def commitwi(ar):
         vars.worldinfo[ob["num"]]["keysecondary"] = ob["keysecondary"]
         vars.worldinfo[ob["num"]]["content"]      = ob["content"]
         vars.worldinfo[ob["num"]]["selective"]    = ob["selective"]
+        vars.worldinfo[ob["num"]]["constant"]     = ob.get("constant", False)
     # Was this a deletion request? If so, remove the requested index
     if(vars.deletewi >= 0):
         del vars.worldinfo[vars.deletewi]
@@ -1573,6 +1578,10 @@ def checkworldinfo(txt):
     # Scan text for matches on WI keys
     wimem = ""
     for wi in vars.worldinfo:
+        if(wi.get("constant", False)):
+            wimem = wimem + wi["content"] + "\n"
+            continue
+
         if(wi["key"] != ""):
             # Split comma-separated keys
             keys = wi["key"].split(",")
@@ -1792,12 +1801,13 @@ def saveRequest(savpath):
         
         # Extract only the important bits of WI
         for wi in vars.worldinfo:
-            if(wi["key"] != ""):
+            if(wi["constant"] or wi["key"] != ""):
                 js["worldinfo"].append({
                     "key": wi["key"],
                     "keysecondary": wi["keysecondary"],
                     "content": wi["content"],
-                    "selective": wi["selective"]
+                    "selective": wi["selective"],
+                    "constant": wi["constant"]
                 })
         
         # Write it
@@ -1858,7 +1868,8 @@ def loadRequest(loadpath):
                     "content": wi["content"],
                     "num": num,
                     "init": True,
-                    "selective": wi.get("selective", False)
+                    "selective": wi.get("selective", False),
+                    "constant": wi.get("constant", False)
                 })
                 num += 1
         
@@ -1976,7 +1987,8 @@ def importgame():
                         "content": wi["entry"],
                         "num": num,
                         "init": True,
-                        "selective": wi.get("selective", False)
+                        "selective": wi.get("selective", False),
+                        "constant": wi.get("constant", False)
                     })
                     num += 1
         
@@ -2022,7 +2034,8 @@ def importAidgRequest(id):
                 "content": wi["entry"],
                 "num": num,
                 "init": True,
-                "selective": wi.get("selective", False)
+                "selective": wi.get("selective", False),
+                "constant": wi.get("constant", False)
             })
             num += 1
         
@@ -2055,7 +2068,8 @@ def wiimportrequest():
                     "content": wi["entry"],
                     "num": num,
                     "init": True,
-                    "selective": wi.get("selective", False)
+                    "selective": wi.get("selective", False),
+                    "constant": wi.get("constant", False)
                 })
                 num += 1
         

@@ -189,13 +189,14 @@ function addWiLine(ob) {
 					<button type=\"button\" class=\"btn btn-success heighthalf hidden\" id=\"btn_widel"+ob.num+"\">✓</button>\
 					<button type=\"button\" class=\"btn btn-danger heighthalf hidden\" id=\"btn_wican"+ob.num+"\">⮌</button>\
 				</div>\
-				<div class=\"wikey\">\
+				<div class=\"icon-container wikey\">\
 					<input class=\"form-control heightfull hidden\" type=\"text\" placeholder=\"Key(s)\" id=\"wikey"+ob.num+"\">\
 					<input class=\"form-control heighthalf\" type=\"text\" placeholder=\"Primary Key(s)\" id=\"wikeyprimary"+ob.num+"\">\
 					<input class=\"form-control heighthalf\" type=\"text\" placeholder=\"Secondary Key(s)\" id=\"wikeysecondary"+ob.num+"\">\
+					<span class=\"constant-key-icon "+(ob.constant ? "constant-key-icon-enabled" : "")+" oi oi-pin\" id=\"constant-key-"+ob.num+"\" title=\"Toggle Constant Key mode (if enabled, this world info entry will always be included in memory)\" aria-hidden=\"true\"></span>\
 				</div>\
 				<div class=\"wientry\">\
-					<textarea class=\"form-control\" id=\"wientry"+ob.num+"\" placeholder=\"What To Remember\">"+ob.content+"</textarea>\
+					<textarea class=\"layer-bottom form-control\" id=\"wientry"+ob.num+"\" placeholder=\"What To Remember\">"+ob.content+"</textarea>\
 				</div>\
 				<div class=\"wiselective\">\
 					<button type=\"button\" class=\"btn btn-success heightfull hidden\" id=\"btn_wiselon"+ob.num+"\">Enable Selective Mode</button>\
@@ -209,10 +210,11 @@ function addWiLine(ob) {
 					<button type=\"button\" class=\"btn btn-success heighthalf hidden\" id=\"btn_widel"+ob.num+"\">✓</button>\
 					<button type=\"button\" class=\"btn btn-danger heighthalf hidden\" id=\"btn_wican"+ob.num+"\">⮌</button>\
 				</div>\
-				<div class=\"wikey\">\
+				<div class=\"icon-container wikey\">\
 					<input class=\"form-control heightfull\" type=\"text\" placeholder=\"Key(s)\" id=\"wikey"+ob.num+"\">\
 					<input class=\"form-control heighthalf hidden\" type=\"text\" placeholder=\"Primary Key(s)\" id=\"wikeyprimary"+ob.num+"\">\
 					<input class=\"form-control heighthalf hidden\" type=\"text\" placeholder=\"Secondary Key(s)\" id=\"wikeysecondary"+ob.num+"\">\
+					<span class=\"constant-key-icon "+(ob.constant ? "constant-key-icon-enabled" : "")+" oi oi-pin\" id=\"constant-key-"+ob.num+"\" title=\"Toggle Constant Key mode (if enabled, this world info entry will always be included in memory)\" aria-hidden=\"true\"></span>\
 				</div>\
 				<div class=\"wientry\">\
 					<textarea class=\"form-control\" id=\"wientry"+ob.num+"\" placeholder=\"What To Remember\">"+ob.content+"</textarea>\
@@ -239,13 +241,14 @@ function addWiLine(ob) {
 				<button type=\"button\" class=\"btn btn-success heighthalf hidden\" id=\"btn_widel"+ob.num+"\">✓</button>\
 				<button type=\"button\" class=\"btn btn-danger heighthalf hidden\" id=\"btn_wican"+ob.num+"\">X</button>\
 			</div>\
-			<div class=\"wikey\">\
+			<div class=\"icon-container wikey\">\
 				<input class=\"form-control heightfull hidden\" type=\"text\" placeholder=\"Key(s)\" id=\"wikey"+ob.num+"\">\
 				<input class=\"form-control heighthalf hidden\" type=\"text\" placeholder=\"Primary Key(s)\" id=\"wikeyprimary"+ob.num+"\">\
 				<input class=\"form-control heighthalf hidden\" type=\"text\" placeholder=\"Secondary Key(s)\" id=\"wikeysecondary"+ob.num+"\">\
+				<span class=\"constant-key-icon oi oi-pin hidden\" id=\"constant-key-"+ob.num+"\" title=\"Toggle Constant Key mode (if enabled, this world info entry will always be included in memory)\" aria-hidden=\"true\"></span>\
 			</div>\
 			<div class=\"wientry\">\
-				<textarea class=\"form-control hidden\" id=\"wientry"+ob.num+"\" placeholder=\"What To Remember\"></textarea>\
+				<textarea class=\"layer-bottom form-control hidden\" id=\"wientry"+ob.num+"\" placeholder=\"What To Remember\">"+ob.content+"</textarea>\
 			</div>\
 			<div class=\"wiselective\">\
 				<button type=\"button\" class=\"btn btn-success heightfull hidden\" id=\"btn_wiselon"+ob.num+"\">Enable Selective Mode</button>\
@@ -258,6 +261,18 @@ function addWiLine(ob) {
 		});
 	}
 	// Assign actions to other elements
+	wientry_onfocus = function () {
+		$("#constant-key-"+ob.num).addClass("constant-key-icon-clickthrough");
+	}
+	wientry_onfocusout = function () {
+		$("#constant-key-"+ob.num).removeClass("constant-key-icon-clickthrough");
+	}
+	$("#wikey"+ob.num).on("focus", wientry_onfocus);
+	$("#wikeyprimary"+ob.num).on("focus", wientry_onfocus);
+	$("#wikeysecondary"+ob.num).on("focus", wientry_onfocus);
+	$("#wikey"+ob.num).on("focusout", wientry_onfocusout);
+	$("#wikeyprimary"+ob.num).on("focusout", wientry_onfocusout);
+	$("#wikeysecondary"+ob.num).on("focusout", wientry_onfocusout);
 	$("#btn_wican"+ob.num).on("click", function () {
 		hideWiDeleteConfirm(ob.num);
 	});
@@ -270,10 +285,20 @@ function addWiLine(ob) {
 	$("#btn_wiseloff"+ob.num).on("click", function () {
 		disableWiSelective(ob.num);
 	});
+	$("#constant-key-"+ob.num).on("click", function () {
+		element = $("#constant-key-"+ob.num);
+		if(element.hasClass("constant-key-icon-enabled")) {
+			socket.send({'cmd': 'wiconstantoff', 'data': ob.num});
+			element.removeClass("constant-key-icon-enabled")
+		} else {
+			socket.send({'cmd': 'wiconstanton', 'data': ob.num});
+			element.addClass("constant-key-icon-enabled");
+		}
+	});
 }
 
 function expandWiLine(num) {
-	show([$("#wikey"+num), $("#wientry"+num), $("#btn_wiselon"+num)]);
+	show([$("#wikey"+num), $("#wientry"+num), $("#constant-key-"+num), $("#btn_wiselon"+num)]);
 	$("#btn_wi"+num).html("X");
 	$("#btn_wi"+num).off();
 	// Tell server the WI entry was initialized
@@ -297,6 +322,7 @@ function enableWiSelective(num) {
 	hide([$("#btn_wiselon"+num), $("#wikey"+num)]);
 	// Tell server the WI entry is now selective
 	socket.send({'cmd': 'wiselon', 'data': num});
+	$("#wikeyprimary"+num).val($("#wikey"+num).val());
 	show([$("#wikeyprimary"+num), $("#wikeysecondary"+num), $("#btn_wiseloff"+num)]);
 }
 
@@ -304,6 +330,7 @@ function disableWiSelective(num) {
 	hide([$("#btn_wiseloff"+num), $("#wikeyprimary"+num), $("#wikeysecondary"+num)]);
 	// Tell server the WI entry is now non-selective
 	socket.send({'cmd': 'wiseloff', 'data': num});
+	$("#wikey"+num).val($("#wikeyprimary"+num).val());
 	show([$("#btn_wiselon"+num), $("#wikey"+num)]);
 }
 
@@ -436,11 +463,12 @@ function returnWiList(ar) {
 	var list = [];
 	var i;
 	for(i=0; i<ar.length; i++) {
-		var ob          = {"key": "", "keysecondary": "", "content": "", "num": ar[i], "selective": false};
+		var ob          = {"key": "", "keysecondary": "", "content": "", "num": ar[i], "selective": false, "constant": false};
 		ob.selective    = $("#wikeyprimary"+ar[i]).css("display") != "none"
 		ob.key          = ob.selective ? $("#wikeyprimary"+ar[i]).val() : $("#wikey"+ar[i]).val();
 		ob.keysecondary = $("#wikeysecondary"+ar[i]).val()
 		ob.content      = $("#wientry"+ar[i]).val();
+		ob.constant     = $("#constant-key-"+ar[i]).hasClass("constant-key-icon-enabled");
 		list.push(ob);
 	}
 	socket.send({'cmd': 'sendwilist', 'data': list});
