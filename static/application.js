@@ -852,6 +852,7 @@ $(document).ready(function(){
 				}, 5);
 			}
 			newly_loaded = false;
+			hideMessage();
 		} else if(msg.cmd == "scrolldown") {
 			setTimeout(function () {
 				$('#gamescreen').animate({scrollTop: $('#gamescreen').prop('scrollHeight')}, 1000);
