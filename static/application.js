@@ -622,7 +622,9 @@ function setadventure(state) {
 
 function autofocus(event) {
 	if(connected) {
-		current_editing_chunk = event.target;
+		if(event.target.tagName == "CHUNK") {
+			current_editing_chunk = event.target;
+		}
 		event.target.focus();
 	} else {
 		event.preventDefault();
