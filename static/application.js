@@ -848,7 +848,6 @@ $(document).ready(function(){
 			}
 			game_text.html(msg.data);
 			// Make content editable if need be
-			$("chunk").attr('tabindex', -1)
 			$('chunk').attr('contenteditable', allowedit);
 			hide([$('#curtain')]);
 			// Scroll to bottom of text
@@ -875,6 +874,8 @@ $(document).ready(function(){
 				// Append at the end
 				game_text.append(newChunk);
 			}
+			newChunk.attr('contenteditable', allowedit);
+			hide([$('#curtain')]);
 			if(last) {
 				// Scroll to bottom of text if it's the last element
 				setTimeout(function () {
@@ -896,6 +897,7 @@ $(document).ready(function(){
 				chunk.attr('n', newIndex.toString()).attr('id', `n${newIndex}`);
 				index++;
 			}
+			hide([$('#curtain')]);
 		} else if(msg.cmd == "setgamestate") {
 			// Enable or Disable buttons
 			if(msg.data == "ready") {

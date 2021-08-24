@@ -1314,12 +1314,12 @@ def applyoutputformatting(txt):
 # Sends the current story content to the Game Screen
 #==================================================================#
 def refresh_story():
-    text_parts = ['<chunk n="0" id="n0">', html.escape(vars.prompt), '</chunk>']
+    text_parts = ['<chunk n="0" id="n0" tabindex="-1">', html.escape(vars.prompt), '</chunk>']
     for idx, item in enumerate(vars.actions, start=1):
         item = html.escape(item)
         if vars.adventure:  # Add special formatting to adventure actions
             item = vars.acregex_ui.sub('<action>\\1</action>', item)
-        text_parts.extend(('<chunk n="', str(idx), '" id="n', str(idx), '">', item, '</chunk>'))
+        text_parts.extend(('<chunk n="', str(idx), '" id="n', str(idx), '" tabindex="-1">', item, '</chunk>'))
     emit('from_server', {'cmd': 'updatescreen', 'gamestarted': vars.gamestarted, 'data': formatforhtml(''.join(text_parts))}, broadcast=True)
 
 
@@ -1344,7 +1344,11 @@ def update_story_chunk(idx: Union[int, Literal['last']]):
         # So the chunk index is one more than the corresponding action index.
         text = vars.actions[idx - 1]
 
-    chunk_text = f'<chunk n="{idx}" id="n{idx}">{formatforhtml(html.escape(text))}</chunk>'
+    item = html.escape(text)
+    if vars.adventure:  # Add special formatting to adventure actions
+        item = vars.acregex_ui.sub('<action>\\1</action>', item)
+
+    chunk_text = f'<chunk n="{idx}" id="n{idx}" tabindex="-1">{formatforhtml(item)}</chunk>'
     emit('from_server', {'cmd': 'updatechunk', 'data': {'index': idx, 'html': chunk_text, 'last': (idx == len(vars.actions))}}, broadcast=True)
 
 
@@ -1451,7 +1455,7 @@ def inlineedit(chunk, data):
     else:
         vars.actions[chunk-1] = data
     
-    refresh_story()
+    update_story_chunk(chunk)
     emit('from_server', {'cmd': 'texteffect', 'data': chunk}, broadcast=True)
     emit('from_server', {'cmd': 'editmode', 'data': 'false'}, broadcast=True)
 
@@ -1463,12 +1467,12 @@ def inlinedelete(chunk):
     # Don't delete prompt
     if(chunk == 0):
         # Send error message
-        refresh_story()
+        update_story_chunk(chunk)
         emit('from_server', {'cmd': 'errmsg', 'data': "Cannot delete the prompt."})
         emit('from_server', {'cmd': 'editmode', 'data': 'false'}, broadcast=True)
     else:
         del vars.actions[chunk-1]
-        refresh_story()
+        remove_story_chunk(chunk)
         emit('from_server', {'cmd': 'editmode', 'data': 'false'}, broadcast=True)
 
 #==================================================================#
