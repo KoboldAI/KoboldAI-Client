@@ -67,14 +67,14 @@ def getstoryfiles():
             try:
                 js = json.load(f)
             except:
-                print("Browser loading error: Story file is malformed or not a JSON file.")
+                print(f"Browser loading error: {file} is malformed or not a JSON file.")
                 f.close()
                 continue
             f.close()
             try:
                 ob["actions"] = len(js["actions"])
             except TypeError:
-                print("Browser loading error: Story file has incorrect format.")
+                print(f"Browser loading error: {file} has incorrect format.")
                 continue
             list.append(ob)
     return list
