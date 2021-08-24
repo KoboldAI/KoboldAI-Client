@@ -1429,6 +1429,8 @@ def inlinedelete(chunk):
     # Don't delete prompt
     if(chunk == 0):
         # Send error message
+        refresh_story()
+        emit('from_server', {'cmd': 'errmsg', 'data': "Cannot delete the prompt."})
         emit('from_server', {'cmd': 'editmode', 'data': 'false'}, broadcast=True)
     else:
         del vars.actions[chunk-1]
