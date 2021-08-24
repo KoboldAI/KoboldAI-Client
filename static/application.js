@@ -813,11 +813,11 @@ $(document).ready(function(){
 	seqselmenu        = $("#seqselmenu");
 	seqselcontents    = $("#seqselcontents");
 	
-    // Connect to SocketIO server
-    socket = io.connect(window.document.origin);
+	// Connect to SocketIO server
+	socket = io.connect(window.document.origin);
 	
 	socket.on('from_server', function(msg) {
-        if(msg.cmd == "connected") {
+		if(msg.cmd == "connected") {
 			// Connected to Server Actions
 			connected = true;
 			connect_status.html("<b>Connected to KoboldAI Process!</b>");
@@ -882,19 +882,19 @@ $(document).ready(function(){
 				}, 5);
 			}
 		} else if(msg.cmd == "removechunk") {
-        	let index = msg.data;
-        	// Remove the chunk
-        	game_text.children(`#n${index}`).remove()
+			let index = msg.data;
+			// Remove the chunk
+			game_text.children(`#n${index}`).remove()
 			// Shift all existing chunks by 1
 			index++;
-        	while (true) {
-        		const chunk = game_text.children(`#n${index}`)
+			while(true) {
+				const chunk = game_text.children(`#n${index}`)
 				if(chunk.length === 0) {
 					break;
 				}
-        		const newIndex = index - 1;
-        		chunk.attr('n', newIndex.toString()).attr('id', `n${newIndex}`);
-        		index++;
+				const newIndex = index - 1;
+				chunk.attr('n', newIndex.toString()).attr('id', `n${newIndex}`);
+				index++;
 			}
 		} else if(msg.cmd == "setgamestate") {
 			// Enable or Disable buttons
@@ -1093,7 +1093,7 @@ $(document).ready(function(){
 		} else if(msg.cmd == "runs_remotely") {
 			hide([button_loadfrfile, button_savetofile, button_import, button_importwi]);
 		}
-    });
+	});
 	
 	socket.on('disconnect', function() {
 		connected = false;
