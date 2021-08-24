@@ -1344,14 +1344,14 @@ def update_story_chunk(idx: Union[int, Literal['last']]):
         text = vars.actions[idx - 1]
 
     chunk_text = f'<chunk n="{idx}" id="n{idx}">{formatforhtml(html.escape(text))}</chunk>'
-    emit('from_server', {'cmd': 'updatechunk', 'data': {'index': idx, 'html': chunk_text, 'last': (idx == len(vars.actions))}})
+    emit('from_server', {'cmd': 'updatechunk', 'data': {'index': idx, 'html': chunk_text, 'last': (idx == len(vars.actions))}}, broadcast=True)
 
 
 #==================================================================#
 # Signals the Game Screen to remove one of the chunks
 #==================================================================#
 def remove_story_chunk(idx: int):
-    emit('from_server', {'cmd': 'removechunk', 'data': idx})
+    emit('from_server', {'cmd': 'removechunk', 'data': idx}, broadcast=True)
 
 
 #==================================================================#
