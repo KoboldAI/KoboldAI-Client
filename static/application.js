@@ -646,11 +646,17 @@ function chunkOnKeyDown(event) {
 	switch(event.keyCode) {
 		case 37:  // left
 		case 39:  // right
-			old_selection_offset = getSelection().focusOffset;
+			old_range = getSelection().getRangeAt(0);
+			old_range_start = old_range.startOffset;
+			old_range_end = old_range.endOffset;
+			old_range_ancestor = old_range.commonAncestorContainer;
+			old_range_start_container = old_range.startContainer;
+			old_range_end_container = old_range.endContainer;
 			setTimeout(function () {
 				// Wait a few milliseconds and check if the caret has moved
 				new_selection = getSelection();
-				if(old_selection_offset != new_selection.focusOffset) {
+				new_range = new_selection.getRangeAt(0);
+				if(old_range_start != new_range.startOffset || old_range_end != new_range.endOffset || old_range_ancestor != new_range.commonAncestorContainer || old_range_start_container != new_range.startContainer || old_range_end_container != new_range.endContainer) {
 					return;
 				}
 				// If it hasn't moved, we're at the beginning or end of a chunk
