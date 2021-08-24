@@ -9,3 +9,9 @@ stories/*
 miniconda3/*
 *.settings
 __pycache__
+
+# Ignore PyCharm project files.
+.idea
+
+# Ignore compiled Python files.
+*.pyc
