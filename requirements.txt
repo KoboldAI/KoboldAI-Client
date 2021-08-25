@@ -1,4 +1,4 @@
-transformers == 4.5.1
+git+https://github.com/finetuneanon/transformers@gpt-neo-localattention3-rp-b
 tensorflow-gpu
 Flask == 1.1.2
 Flask-SocketIO == 5.0.1
