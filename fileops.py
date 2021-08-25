@@ -59,14 +59,23 @@ def getdirpath(dir, title):
 #==================================================================#
 def getstoryfiles():
     list = []
-    for file in listdir(getcwd()+"/stories"):
+    for file in listdir(path.dirname(path.realpath(__file__))+"/stories"):
         if file.endswith(".json"):
             ob = {}
             ob["name"] = file.replace(".json", "")
-            f = open(getcwd()+"/stories/"+file, "r")
-            js = json.load(f)
+            f = open(path.dirname(path.realpath(__file__))+"/stories/"+file, "r")
+            try:
+                js = json.load(f)
+            except:
+                print(f"Browser loading error: {file} is malformed or not a JSON file.")
+                f.close()
+                continue
             f.close()
-            ob["actions"] = len(js["actions"])
+            try:
+                ob["actions"] = len(js["actions"])
+            except TypeError:
+                print(f"Browser loading error: {file} has incorrect format.")
+                continue
             list.append(ob)
     return list
 
@@ -74,4 +83,4 @@ def getstoryfiles():
 #  Returns True if json file exists with requested save name
 #==================================================================#
 def saveexists(name):
-    return path.exists(getcwd()+"/stories/"+name+".json")
+    return path.exists(path.dirname(path.realpath(__file__))+"/stories/"+name+".json")

@@ -102,6 +102,7 @@ class vars:
     svowname    = ""     # Filename that was flagged for overwrite confirm
     saveow      = False  # Whether or not overwrite confirm has been displayed
     genseqs     = []     # Temporary storage for generated sequences
+    recentback  = False  # Whether Back button was recently used without Submitting or Retrying after
     useprompt   = True   # Whether to send the full prompt with every submit action
     breakmodel  = False  # For GPU users, whether to use both system RAM and VRAM to conserve VRAM while offering speedup compared to CPU-only
     bmsupported = False  # Whether the breakmodel option is supported (GPT-Neo/GPT-J only, currently)
@@ -528,7 +529,7 @@ def do_connect():
 #==================================================================#
 @socketio.on('message')
 def get_message(msg):
-    print("{0}Data recieved:{1}{2}".format(colors.GREEN, msg, colors.END))
+    print("{0}Data received:{1}{2}".format(colors.GREEN, msg, colors.END))
     # Submit action
     if(msg['cmd'] == 'submit'):
         if(vars.mode == "play"):
@@ -829,6 +830,7 @@ def actionsubmit(data, actionmode=0):
         return
     set_aibusy(1)
 
+    vars.recentback = False
     vars.actionmode = actionmode
 
     # "Action" mode
@@ -882,12 +884,17 @@ def actionretry(data):
         return
     if(vars.aibusy):
         return
-    set_aibusy(1)
     # Remove last action if possible and resubmit
-    if(len(vars.actions) > 0):
-        vars.actions.pop()
+    if(vars.gamestarted if vars.useprompt else len(vars.actions) > 0):
+        set_aibusy(1)
+        if(not vars.recentback and len(vars.actions) != 0 and len(vars.genseqs) == 0):  # Don't pop if we're in the "Select sequence to keep" menu or if there are no non-prompt actions
+            vars.actions.pop()
+        vars.genseqs = []
         refresh_story()
         calcsubmit('')
+        vars.recentback = False
+    elif(not vars.useprompt):
+        emit('from_server', {'cmd': 'errmsg', 'data': "Please enable \"Always Add Prompt\" to retry with your prompt."})
 
 #==================================================================#
 #  
@@ -896,9 +903,14 @@ def actionback():
     if(vars.aibusy):
         return
     # Remove last index of actions and refresh game screen
-    if(len(vars.actions) > 0):
+    if(len(vars.genseqs) == 0 and len(vars.actions) > 0):
         vars.actions.pop()
+        vars.recentback = True
         refresh_story()
+    elif(len(vars.genseqs) == 0):
+        emit('from_server', {'cmd': 'errmsg', 'data': "Cannot delete the prompt."})
+    else:
+        vars.genseqs = []
 
 #==================================================================#
 # Take submitted text and build the text to be given to generator

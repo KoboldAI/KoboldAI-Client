@@ -1107,11 +1107,13 @@ $(document).ready(function(){
 	});
 	
 	button_actretry.on("click", function(ev) {
+		hideMessage();
 		socket.send({'cmd': 'retry', 'data': ''});
 		hidegenseqs();
 	});
 	
 	button_actback.on("click", function(ev) {
+		hideMessage();
 		socket.send({'cmd': 'back', 'data': ''});
 		hidegenseqs();
 	});
