@@ -730,13 +730,6 @@ function submitEditedChunk(event) {
 		return;
 	}
 
-	show([$('#curtain')]);
-	setTimeout(function () {
-		if(document.activeElement.tagName == "CHUNK") {
-			document.activeElement.blur();
-		}
-	}, 5);
-
 	chunk = current_editing_chunk;
 	current_editing_chunk = null;
 
@@ -849,7 +842,6 @@ $(document).ready(function(){
 			game_text.html(msg.data);
 			// Make content editable if need be
 			$('chunk').attr('contenteditable', allowedit);
-			hide([$('#curtain')]);
 			// Scroll to bottom of text
 			if(newly_loaded) {
 				setTimeout(function () {
