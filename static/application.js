@@ -855,6 +855,7 @@ $(document).ready(function(){
 				$('#gamescreen').animate({scrollTop: $('#gamescreen').prop('scrollHeight')}, 1000);
 			}, 5);
 		} else if(msg.cmd == "updatechunk") {
+			hideMessage();
 			const {index, html, last} = msg.data;
 			const existingChunk = game_text.children(`#n${index}`)
 			const newChunk = $(html);
@@ -875,6 +876,7 @@ $(document).ready(function(){
 				}, 5);
 			}
 		} else if(msg.cmd == "removechunk") {
+			hideMessage();
 			let index = msg.data;
 			// Remove the chunk
 			game_text.children(`#n${index}`).remove()
