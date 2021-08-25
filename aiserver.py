@@ -10,6 +10,7 @@ import re
 import tkinter as tk
 from tkinter import messagebox
 import json
+import collections
 from typing import Literal, Union
 
 import requests
@@ -23,6 +24,7 @@ import fileops
 import gensettings
 from utils import debounce
 import utils
+import structures
 import breakmodel
 
 #==================================================================#
@@ -78,7 +80,7 @@ class vars:
     memory      = ""     # Text submitted to memory field
     authornote  = ""     # Text submitted to Author's Note field
     andepth     = 3      # How far back in history to append author's note
-    actions     = []     # Array of actions submitted by user and AI
+    actions     = structures.KoboldStoryRegister()  # Actions submitted by user and AI
     worldinfo   = []     # Array of World Info key/value objects
     badwords    = []     # Array of str/chr values that should be removed from output
     badwordsids = []     # Tokenized array of badwords
@@ -883,8 +885,9 @@ def actionretry(data):
     set_aibusy(1)
     # Remove last action if possible and resubmit
     if(len(vars.actions) > 0):
+        last_key = vars.actions.get_last_key()
         vars.actions.pop()
-        remove_story_chunk(len(vars.actions) + 1)
+        remove_story_chunk(last_key)
         calcsubmit('')
 
 #==================================================================#
@@ -895,9 +898,9 @@ def actionback():
         return
     # Remove last index of actions and refresh game screen
     if(len(vars.actions) > 0):
-        action_index = len(vars.actions)
+        last_key = vars.actions.get_last_key()
         vars.actions.pop()
-        remove_story_chunk(len(vars.actions) + 1)
+        remove_story_chunk(last_key)
 
 #==================================================================#
 # Take submitted text and build the text to be given to generator
@@ -964,11 +967,13 @@ def calcsubmit(txt):
                 forceanote = True
             
             # Get most recent action tokens up to our budget
-            for n in range(actionlen):
+            n = 0
+            for key in reversed(vars.actions):
+                chunk = vars.actions[key]
                 
                 if(budget <= 0):
                     break
-                acttkns = tokenizer.encode(vars.actions[(-1-n)])
+                acttkns = tokenizer.encode(chunk)
                 tknlen = len(acttkns)
                 if(tknlen < budget):
                     tokens = acttkns + tokens
@@ -984,6 +989,7 @@ def calcsubmit(txt):
                     if(anotetxt != ""):
                         tokens = anotetkns + tokens # A.N. len already taken from bdgt
                         anoteadded = True
+                n += 1
             
             # If we're not using the prompt every time and there's still budget left,
             # add some prompt.
@@ -1038,17 +1044,19 @@ def calcsubmit(txt):
             
         subtxt = ""
         prompt = vars.prompt
-        for n in range(actionlen):
+        n = 0
+        for key in reversed(vars.actions):
+            chunk = vars.actions[key]
             
             if(budget <= 0):
                     break
-            actlen = len(vars.actions[(-1-n)])
+            actlen = len(chunk)
             if(actlen < budget):
-                subtxt = vars.actions[(-1-n)] + subtxt
+                subtxt = chunk + subtxt
                 budget -= actlen
             else:
                 count = budget * -1
-                subtxt = vars.actions[(-1-n)][count:] + subtxt
+                subtxt = chunk[count:] + subtxt
                 budget = 0
                 break
             
@@ -1065,6 +1073,7 @@ def calcsubmit(txt):
                 if(anotetxt != ""):
                     subtxt = anotetxt + subtxt # A.N. len already taken from bdgt
                     anoteadded = True
+            n += 1
         
         # Did we get to add the A.N.? If not, do it here
         if(anotetxt != ""):
@@ -1157,7 +1166,7 @@ def genresult(genout):
     # Add formatted text to Actions array and refresh the game screen
     vars.actions.append(genout)
     update_story_chunk('last')
-    emit('from_server', {'cmd': 'texteffect', 'data': len(vars.actions)}, broadcast=True)
+    emit('from_server', {'cmd': 'texteffect', 'data': vars.actions.get_last_key()}, broadcast=True)
 
 #==================================================================#
 #  Send generator sequences to the UI for selection
@@ -1184,7 +1193,7 @@ def selectsequence(n):
         return
     vars.actions.append(vars.genseqs[int(n)]["generated_text"])
     update_story_chunk('last')
-    emit('from_server', {'cmd': 'texteffect', 'data': len(vars.actions)}, broadcast=True)
+    emit('from_server', {'cmd': 'texteffect', 'data': vars.actions.get_last_key()}, broadcast=True)
     emit('from_server', {'cmd': 'hidegenseqs', 'data': ''}, broadcast=True)
     vars.genseqs = []
 
@@ -1243,7 +1252,7 @@ def sendtocolab(txt, min, max):
         # Add formatted text to Actions array and refresh the game screen
         #vars.actions.append(genout)
         #refresh_story()
-        #emit('from_server', {'cmd': 'texteffect', 'data': len(vars.actions)})
+        #emit('from_server', {'cmd': 'texteffect', 'data': vars.actions.get_last_key()})
         
         set_aibusy(0)
     else:
@@ -1315,7 +1324,9 @@ def applyoutputformatting(txt):
 #==================================================================#
 def refresh_story():
     text_parts = ['<chunk n="0" id="n0" tabindex="-1">', html.escape(vars.prompt), '</chunk>']
-    for idx, item in enumerate(vars.actions, start=1):
+    for idx in vars.actions:
+        item = vars.actions[idx]
+        idx += 1
         item = html.escape(item)
         if vars.adventure:  # Add special formatting to adventure actions
             item = vars.acregex_ui.sub('<action>\\1</action>', item)
@@ -1335,7 +1346,7 @@ def update_story_chunk(idx: Union[int, Literal['last']]):
             refresh_story()
             return
 
-        idx = len(vars.actions)
+        idx = vars.actions.get_last_key() + 1
 
     if idx == 0:
         text = vars.prompt
@@ -1349,7 +1360,7 @@ def update_story_chunk(idx: Union[int, Literal['last']]):
         item = vars.acregex_ui.sub('<action>\\1</action>', item)
 
     chunk_text = f'<chunk n="{idx}" id="n{idx}" tabindex="-1">{formatforhtml(item)}</chunk>'
-    emit('from_server', {'cmd': 'updatechunk', 'data': {'index': idx, 'html': chunk_text, 'last': (idx == len(vars.actions))}}, broadcast=True)
+    emit('from_server', {'cmd': 'updatechunk', 'data': {'index': idx, 'html': chunk_text, 'last': (idx == vars.actions.get_last_key())}}, broadcast=True)
 
 
 #==================================================================#
@@ -1601,10 +1612,19 @@ def checkworldinfo(txt):
             txt    = ""
             depth += 1
         
+        if(ln > 0):
+            chunks = collections.deque()
+            i = 0
+            for key in reversed(vars.actions):
+                chunk = vars.actions[key]
+                chunks.appendleft(chunk)
+                if(i == depth):
+                    break
+        
         if(ln >= depth):
-            txt = "".join(vars.actions[(depth*-1):])
+            txt = "".join(chunks)
         elif(ln > 0):
-            txt = vars.prompt + "".join(vars.actions[(depth*-1):])
+            txt = vars.prompt + "".join(chunks)
         elif(ln == 0):
             txt = vars.prompt
     
@@ -1697,7 +1717,7 @@ def ikrequest(txt):
         print("{0}{1}{2}".format(colors.CYAN, genout, colors.END))
         vars.actions.append(genout)
         update_story_chunk('last')
-        emit('from_server', {'cmd': 'texteffect', 'data': len(vars.actions)}, broadcast=True)
+        emit('from_server', {'cmd': 'texteffect', 'data': vars.actions.get_last_key()}, broadcast=True)
         
         set_aibusy(0)
     else:
@@ -1747,7 +1767,7 @@ def oairequest(txt, min, max):
         print("{0}{1}{2}".format(colors.CYAN, genout, colors.END))
         vars.actions.append(genout)
         update_story_chunk('last')
-        emit('from_server', {'cmd': 'texteffect', 'data': len(vars.actions)}, broadcast=True)
+        emit('from_server', {'cmd': 'texteffect', 'data': vars.actions.get_last_key()}, broadcast=True)
         
         set_aibusy(0)
     else:
@@ -1825,7 +1845,7 @@ def saveRequest(savpath):
         js["prompt"]      = vars.prompt
         js["memory"]      = vars.memory
         js["authorsnote"] = vars.authornote
-        js["actions"]     = vars.actions
+        js["actions"]     = tuple(vars.actions.values())
         js["worldinfo"]   = []
         
         # Extract only the important bits of WI
@@ -1876,10 +1896,14 @@ def loadRequest(loadpath):
         vars.gamestarted = js["gamestarted"]
         vars.prompt      = js["prompt"]
         vars.memory      = js["memory"]
-        vars.actions     = js["actions"]
         vars.worldinfo   = []
         vars.lastact     = ""
         vars.lastctx     = ""
+
+        del vars.actions
+        vars.actions = structures.KoboldStoryRegister()
+        for s in js["actions"]:
+            vars.actions.append(s)
         
         # Try not to break older save files
         if("authorsnote" in js):
@@ -1988,7 +2012,7 @@ def importgame():
             vars.prompt = ""
         vars.memory      = ref["memory"]
         vars.authornote  = ref["authorsNote"] if type(ref["authorsNote"]) is str else ""
-        vars.actions     = []
+        vars.actions     = structures.KoboldStoryRegister()
         vars.worldinfo   = []
         vars.lastact     = ""
         vars.lastctx     = ""
@@ -2047,7 +2071,7 @@ def importAidgRequest(id):
         vars.prompt      = js["promptContent"]
         vars.memory      = js["memory"]
         vars.authornote  = js["authorsNote"]
-        vars.actions     = []
+        vars.actions     = structures.KoboldStoryRegister()
         vars.worldinfo   = []
         vars.lastact     = ""
         vars.lastctx     = ""
@@ -2113,7 +2137,7 @@ def newGameRequest():
     vars.gamestarted = False
     vars.prompt      = ""
     vars.memory      = ""
-    vars.actions     = []
+    vars.actions     = structures.KoboldStoryRegister()
     
     vars.authornote  = ""
     vars.worldinfo   = []

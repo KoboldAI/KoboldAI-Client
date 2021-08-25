@@ -880,17 +880,6 @@ $(document).ready(function(){
 			let index = msg.data;
 			// Remove the chunk
 			game_text.children(`#n${index}`).remove()
-			// Shift all existing chunks by 1
-			index++;
-			while(true) {
-				const chunk = game_text.children(`#n${index}`)
-				if(chunk.length === 0) {
-					break;
-				}
-				const newIndex = index - 1;
-				chunk.attr('n', newIndex.toString()).attr('id', `n${newIndex}`);
-				index++;
-			}
 			hide([$('#curtain')]);
 		} else if(msg.cmd == "setgamestate") {
 			// Enable or Disable buttons
