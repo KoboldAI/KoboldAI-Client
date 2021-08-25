@@ -102,6 +102,7 @@ class vars:
     svowname    = ""     # Filename that was flagged for overwrite confirm
     saveow      = False  # Whether or not overwrite confirm has been displayed
     genseqs     = []     # Temporary storage for generated sequences
+    recentback  = False  # Whether Back button was recently used without Submitting or Retrying after
     useprompt   = True   # Whether to send the full prompt with every submit action
     breakmodel  = False  # For GPU users, whether to use both system RAM and VRAM to conserve VRAM while offering speedup compared to CPU-only
     bmsupported = False  # Whether the breakmodel option is supported (GPT-Neo/GPT-J only, currently)
@@ -825,6 +826,7 @@ def actionsubmit(data, actionmode=0):
         return
     set_aibusy(1)
 
+    vars.recentback = False
     vars.actionmode = actionmode
 
     # "Action" mode
@@ -881,11 +883,12 @@ def actionretry(data):
     # Remove last action if possible and resubmit
     if(vars.gamestarted if vars.useprompt else len(vars.actions) > 0):
         set_aibusy(1)
-        if(len(vars.actions) != 0 and len(vars.genseqs) == 0):  # Don't pop if we're in the "Select sequence to keep" menu or if there are no non-prompt actions
+        if(not vars.recentback and len(vars.actions) != 0 and len(vars.genseqs) == 0):  # Don't pop if we're in the "Select sequence to keep" menu or if there are no non-prompt actions
             vars.actions.pop()
         vars.genseqs = []
         refresh_story()
         calcsubmit('')
+        vars.recentback = False
     elif(not vars.useprompt):
         emit('from_server', {'cmd': 'errmsg', 'data': "Please enable \"Always Add Prompt\" to retry with your prompt."})
 
@@ -898,6 +901,7 @@ def actionback():
     # Remove last index of actions and refresh game screen
     if(len(vars.genseqs) == 0 and len(vars.actions) > 0):
         vars.actions.pop()
+        vars.recentback = True
         refresh_story()
     elif(len(vars.genseqs) == 0):
         emit('from_server', {'cmd': 'errmsg', 'data': "Cannot delete the prompt."})
