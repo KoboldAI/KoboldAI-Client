@@ -735,7 +735,7 @@ function submitEditedChunk(event) {
 
 	// Submit the edited chunk if it's not empty, otherwise delete it
 	if(chunk.innerText.length) {
-		socket.send({'cmd': 'inlineedit', 'chunk': chunk.getAttribute("n"), 'data': chunk.innerText});
+		socket.send({'cmd': 'inlineedit', 'chunk': chunk.getAttribute("n"), 'data': chunk.innerText.replace(/\u00a0/g, " ")});
 	} else {
 		socket.send({'cmd': 'inlinedelete', 'data': chunk.getAttribute("n")});
 	}
