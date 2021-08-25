@@ -887,7 +887,7 @@ def actionretry(data):
     if(len(vars.actions) > 0):
         last_key = vars.actions.get_last_key()
         vars.actions.pop()
-        remove_story_chunk(last_key)
+        remove_story_chunk(last_key + 1)
         calcsubmit('')
 
 #==================================================================#
@@ -900,7 +900,7 @@ def actionback():
     if(len(vars.actions) > 0):
         last_key = vars.actions.get_last_key()
         vars.actions.pop()
-        remove_story_chunk(last_key)
+        remove_story_chunk(last_key + 1)
 
 #==================================================================#
 # Take submitted text and build the text to be given to generator
