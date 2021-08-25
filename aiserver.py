@@ -878,12 +878,16 @@ def actionretry(data):
         return
     if(vars.aibusy):
         return
-    set_aibusy(1)
     # Remove last action if possible and resubmit
-    if(len(vars.actions) > 0):
-        vars.actions.pop()
+    if(vars.gamestarted if vars.useprompt else len(vars.actions) > 0):
+        set_aibusy(1)
+        if(len(vars.actions) != 0 and len(vars.genseqs) == 0):  # Don't pop if we're in the "Select sequence to keep" menu or if there are no non-prompt actions
+            vars.actions.pop()
+        vars.genseqs = []
         refresh_story()
         calcsubmit('')
+    elif(not vars.useprompt):
+        emit('from_server', {'cmd': 'errmsg', 'data': "Please enable \"Always Add Prompt\" to retry with your prompt."})
 
 #==================================================================#
 #  
@@ -892,9 +896,13 @@ def actionback():
     if(vars.aibusy):
         return
     # Remove last index of actions and refresh game screen
-    if(len(vars.actions) > 0):
+    if(len(vars.genseqs) == 0 and len(vars.actions) > 0):
         vars.actions.pop()
         refresh_story()
+    elif(len(vars.genseqs) == 0):
+        emit('from_server', {'cmd': 'errmsg', 'data': "Cannot delete the prompt."})
+    else:
+        vars.genseqs = []
 
 #==================================================================#
 # Take submitted text and build the text to be given to generator
