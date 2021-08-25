@@ -2104,13 +2104,17 @@ if __name__ == "__main__":
     loadsettings()
     
     # Start Flask/SocketIO (Blocking, so this must be last method!)
-    print("{0}Server started!\rYou may now connect with a browser at http://127.0.0.1:5000/{1}".format(colors.GREEN, colors.END))
+    
     #socketio.run(app, host='0.0.0.0', port=5000)
     if(vars.remote):
-        from flask_cloudflared import start_cloudflared
-        start_cloudflared(5000)
+        from flask_cloudflared import _run_cloudflared
+        cloudflare = _run_cloudflared(5000)
+        with open('cloudflare.log', 'w') as cloudflarelog:
+            cloudflarelog.write("KoboldAI has finished loading and is available in the following link : " + cloudflare)
+            print(format(colors.GREEN) + "KoboldAI has finished loading and is available in the following link : " + cloudflare + format(colors.END))
         socketio.run(app, host='0.0.0.0', port=5000)
     else:
         import webbrowser
         webbrowser.open_new('http://localhost:5000')
+        print("{0}Server started!\rYou may now connect with a browser at http://127.0.0.1:5000/{1}".format(colors.GREEN, colors.END))
         socketio.run(app)
