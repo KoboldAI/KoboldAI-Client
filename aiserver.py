@@ -106,6 +106,7 @@ class vars:
     svowname    = ""     # Filename that was flagged for overwrite confirm
     saveow      = False  # Whether or not overwrite confirm has been displayed
     genseqs     = []     # Temporary storage for generated sequences
+    recentback  = False  # Whether Back button was recently used without Submitting or Retrying after
     useprompt   = True   # Whether to send the full prompt with every submit action
     breakmodel  = False  # For GPU users, whether to use both system RAM and VRAM to conserve VRAM while offering speedup compared to CPU-only
     bmsupported = False  # Whether the breakmodel option is supported (GPT-Neo/GPT-J only, currently)
@@ -532,7 +533,7 @@ def do_connect():
 #==================================================================#
 @socketio.on('message')
 def get_message(msg):
-    print("{0}Data recieved:{1}{2}".format(colors.GREEN, msg, colors.END))
+    print("{0}Data received:{1}{2}".format(colors.GREEN, msg, colors.END))
     # Submit action
     if(msg['cmd'] == 'submit'):
         if(vars.mode == "play"):
@@ -668,6 +669,10 @@ def get_message(msg):
         vars.worldinfo[msg['data']]["selective"] = True
     elif(msg['cmd'] == 'wiseloff'):
         vars.worldinfo[msg['data']]["selective"] = False
+    elif(msg['cmd'] == 'wiconstanton'):
+        vars.worldinfo[msg['data']]["constant"] = True
+    elif(msg['cmd'] == 'wiconstantoff'):
+        vars.worldinfo[msg['data']]["constant"] = False
     elif(msg['cmd'] == 'sendwilist'):
         commitwi(msg['data'])
     elif(msg['cmd'] == 'aidgimport'):
@@ -828,6 +833,7 @@ def actionsubmit(data, actionmode=0):
         return
     set_aibusy(1)
 
+    vars.recentback = False
     vars.actionmode = actionmode
 
     # "Action" mode
@@ -881,13 +887,18 @@ def actionretry(data):
         return
     if(vars.aibusy):
         return
-    set_aibusy(1)
     # Remove last action if possible and resubmit
-    if(len(vars.actions) > 0):
-        last_key = vars.actions.get_last_key()
-        vars.actions.pop()
-        remove_story_chunk(last_key + 1)
+    if(vars.gamestarted if vars.useprompt else len(vars.actions) > 0):
+        set_aibusy(1)
+        if(not vars.recentback and len(vars.actions) != 0 and len(vars.genseqs) == 0):  # Don't pop if we're in the "Select sequence to keep" menu or if there are no non-prompt actions
+            last_key = vars.actions.get_last_key()
+            vars.actions.pop()
+            remove_story_chunk(last_key + 1)
+        vars.genseqs = []
         calcsubmit('')
+        vars.recentback = False
+    elif(not vars.useprompt):
+        emit('from_server', {'cmd': 'errmsg', 'data': "Please enable \"Always Add Prompt\" to retry with your prompt."})
 
 #==================================================================#
 #  
@@ -896,10 +907,15 @@ def actionback():
     if(vars.aibusy):
         return
     # Remove last index of actions and refresh game screen
-    if(len(vars.actions) > 0):
+    if(len(vars.genseqs) == 0 and len(vars.actions) > 0):
         last_key = vars.actions.get_last_key()
         vars.actions.pop()
+        vars.recentback = True
         remove_story_chunk(last_key + 1)
+    elif(len(vars.genseqs) == 0):
+        emit('from_server', {'cmd': 'errmsg', 'data': "Cannot delete the prompt."})
+    else:
+        vars.genseqs = []
 
 #==================================================================#
 # Take submitted text and build the text to be given to generator
@@ -1515,7 +1531,7 @@ def togglewimode():
 #   
 #==================================================================#
 def addwiitem():
-    ob = {"key": "", "keysecondary": "", "content": "", "num": len(vars.worldinfo), "init": False, "selective": False}
+    ob = {"key": "", "keysecondary": "", "content": "", "num": len(vars.worldinfo), "init": False, "selective": False, "constant": False}
     vars.worldinfo.append(ob);
     emit('from_server', {'cmd': 'addwiitem', 'data': ob}, broadcast=True)
 
@@ -1570,6 +1586,7 @@ def commitwi(ar):
         vars.worldinfo[ob["num"]]["keysecondary"] = ob["keysecondary"]
         vars.worldinfo[ob["num"]]["content"]      = ob["content"]
         vars.worldinfo[ob["num"]]["selective"]    = ob["selective"]
+        vars.worldinfo[ob["num"]]["constant"]     = ob.get("constant", False)
     # Was this a deletion request? If so, remove the requested index
     if(vars.deletewi >= 0):
         del vars.worldinfo[vars.deletewi]
@@ -1628,6 +1645,10 @@ def checkworldinfo(txt):
     # Scan text for matches on WI keys
     wimem = ""
     for wi in vars.worldinfo:
+        if(wi.get("constant", False)):
+            wimem = wimem + wi["content"] + "\n"
+            continue
+
         if(wi["key"] != ""):
             # Split comma-separated keys
             keys = wi["key"].split(",")
@@ -1847,12 +1868,13 @@ def saveRequest(savpath):
         
         # Extract only the important bits of WI
         for wi in vars.worldinfo:
-            if(wi["key"] != ""):
+            if(wi["constant"] or wi["key"] != ""):
                 js["worldinfo"].append({
                     "key": wi["key"],
                     "keysecondary": wi["keysecondary"],
                     "content": wi["content"],
-                    "selective": wi["selective"]
+                    "selective": wi["selective"],
+                    "constant": wi["constant"]
                 })
         
         # Write it
@@ -1917,7 +1939,8 @@ def loadRequest(loadpath):
                     "content": wi["content"],
                     "num": num,
                     "init": True,
-                    "selective": wi.get("selective", False)
+                    "selective": wi.get("selective", False),
+                    "constant": wi.get("constant", False)
                 })
                 num += 1
         
@@ -2035,7 +2058,8 @@ def importgame():
                         "content": wi["entry"],
                         "num": num,
                         "init": True,
-                        "selective": wi.get("selective", False)
+                        "selective": wi.get("selective", False),
+                        "constant": wi.get("constant", False)
                     })
                     num += 1
         
@@ -2081,7 +2105,8 @@ def importAidgRequest(id):
                 "content": wi["entry"],
                 "num": num,
                 "init": True,
-                "selective": wi.get("selective", False)
+                "selective": wi.get("selective", False),
+                "constant": wi.get("constant", False)
             })
             num += 1
         
@@ -2114,7 +2139,8 @@ def wiimportrequest():
                     "content": wi["entry"],
                     "num": num,
                     "init": True,
-                    "selective": wi.get("selective", False)
+                    "selective": wi.get("selective", False),
+                    "constant": wi.get("constant", False)
                 })
                 num += 1
         
@@ -2163,13 +2189,17 @@ if __name__ == "__main__":
     loadsettings()
     
     # Start Flask/SocketIO (Blocking, so this must be last method!)
-    print("{0}Server started!\rYou may now connect with a browser at http://127.0.0.1:5000/{1}".format(colors.GREEN, colors.END))
+    
     #socketio.run(app, host='0.0.0.0', port=5000)
     if(vars.remote):
-        from flask_cloudflared import start_cloudflared
-        start_cloudflared(5000)
+        from flask_cloudflared import _run_cloudflared
+        cloudflare = _run_cloudflared(5000)
+        with open('cloudflare.log', 'w') as cloudflarelog:
+            cloudflarelog.write("KoboldAI has finished loading and is available in the following link : " + cloudflare)
+            print(format(colors.GREEN) + "KoboldAI has finished loading and is available in the following link : " + cloudflare + format(colors.END))
         socketio.run(app, host='0.0.0.0', port=5000)
     else:
         import webbrowser
         webbrowser.open_new('http://localhost:5000')
+        print("{0}Server started!\rYou may now connect with a browser at http://127.0.0.1:5000/{1}".format(colors.GREEN, colors.END))
         socketio.run(app)
