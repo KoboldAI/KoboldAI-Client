@@ -1166,7 +1166,7 @@ def genresult(genout):
     # Add formatted text to Actions array and refresh the game screen
     vars.actions.append(genout)
     update_story_chunk('last')
-    emit('from_server', {'cmd': 'texteffect', 'data': vars.actions.get_last_key()}, broadcast=True)
+    emit('from_server', {'cmd': 'texteffect', 'data': vars.actions.get_last_key() if len(vars.actions) else 0}, broadcast=True)
 
 #==================================================================#
 #  Send generator sequences to the UI for selection
@@ -1193,7 +1193,7 @@ def selectsequence(n):
         return
     vars.actions.append(vars.genseqs[int(n)]["generated_text"])
     update_story_chunk('last')
-    emit('from_server', {'cmd': 'texteffect', 'data': vars.actions.get_last_key()}, broadcast=True)
+    emit('from_server', {'cmd': 'texteffect', 'data': vars.actions.get_last_key() if len(vars.actions) else 0}, broadcast=True)
     emit('from_server', {'cmd': 'hidegenseqs', 'data': ''}, broadcast=True)
     vars.genseqs = []
 
@@ -1252,7 +1252,7 @@ def sendtocolab(txt, min, max):
         # Add formatted text to Actions array and refresh the game screen
         #vars.actions.append(genout)
         #refresh_story()
-        #emit('from_server', {'cmd': 'texteffect', 'data': vars.actions.get_last_key()})
+        #emit('from_server', {'cmd': 'texteffect', 'data': vars.actions.get_last_key() if len(vars.actions) else 0})
         
         set_aibusy(0)
     else:
@@ -1346,7 +1346,7 @@ def update_story_chunk(idx: Union[int, Literal['last']]):
             refresh_story()
             return
 
-        idx = vars.actions.get_last_key() + 1
+        idx = (vars.actions.get_last_key() if len(vars.actions) else 0) + 1
 
     if idx == 0:
         text = vars.prompt
@@ -1360,7 +1360,7 @@ def update_story_chunk(idx: Union[int, Literal['last']]):
         item = vars.acregex_ui.sub('<action>\\1</action>', item)
 
     chunk_text = f'<chunk n="{idx}" id="n{idx}" tabindex="-1">{formatforhtml(item)}</chunk>'
-    emit('from_server', {'cmd': 'updatechunk', 'data': {'index': idx, 'html': chunk_text, 'last': (idx == vars.actions.get_last_key())}}, broadcast=True)
+    emit('from_server', {'cmd': 'updatechunk', 'data': {'index': idx, 'html': chunk_text, 'last': (idx == (vars.actions.get_last_key() if len(vars.actions) else 0))}}, broadcast=True)
 
 
 #==================================================================#
@@ -1717,7 +1717,7 @@ def ikrequest(txt):
         print("{0}{1}{2}".format(colors.CYAN, genout, colors.END))
         vars.actions.append(genout)
         update_story_chunk('last')
-        emit('from_server', {'cmd': 'texteffect', 'data': vars.actions.get_last_key()}, broadcast=True)
+        emit('from_server', {'cmd': 'texteffect', 'data': vars.actions.get_last_key() if len(vars.actions) else 0}, broadcast=True)
         
         set_aibusy(0)
     else:
@@ -1767,7 +1767,7 @@ def oairequest(txt, min, max):
         print("{0}{1}{2}".format(colors.CYAN, genout, colors.END))
         vars.actions.append(genout)
         update_story_chunk('last')
-        emit('from_server', {'cmd': 'texteffect', 'data': vars.actions.get_last_key()}, broadcast=True)
+        emit('from_server', {'cmd': 'texteffect', 'data': vars.actions.get_last_key() if len(vars.actions) else 0}, broadcast=True)
         
         set_aibusy(0)
     else:
