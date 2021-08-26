@@ -11,7 +11,7 @@ import tkinter as tk
 from tkinter import messagebox
 import json
 import collections
-from typing import Literal, Union
+from typing import Union
 
 import requests
 import html
@@ -1351,7 +1351,7 @@ def refresh_story():
 #==================================================================#
 # Signals the Game Screen to update one of the chunks
 #==================================================================#
-def update_story_chunk(idx: Union[int, Literal['last']]):
+def update_story_chunk(idx: Union[int, str]):
     if idx == 'last':
         if len(vars.actions) <= 1:
             # In this case, we are better off just refreshing the whole thing as the
