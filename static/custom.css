@@ -6,14 +6,14 @@ chunk {
 	color: #ffffff;
 }
 
-action {
+#gametext.adventure action {
 	color: #9ff7fa;
 	font-weight: bold;
 }
 
 chunk[contenteditable="true"]:focus, chunk[contenteditable="true"]:focus * {
-	color: #cdf;
-	font-weight: normal;
+	color: #cdf !important;
+	font-weight: normal !important;
 }
 
 chunk, chunk * {

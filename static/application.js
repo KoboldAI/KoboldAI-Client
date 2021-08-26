@@ -615,6 +615,11 @@ function setmodevisibility(state) {
 
 function setadventure(state) {
 	adventure = state;
+	if(state) {
+		game_text.addClass("adventure");
+	} else {
+		game_text.removeClass("adventure");
+	}
 	if(!memorymode){
 		setmodevisibility(state);
 	}

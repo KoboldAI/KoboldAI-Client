@@ -705,7 +705,6 @@ def get_message(msg):
         vars.adventure = msg['data']
         settingschanged()
         refresh_settings()
-        refresh_story()
     elif(msg['cmd'] == 'importwi'):
         wiimportrequest()
     
@@ -1328,8 +1327,7 @@ def refresh_story():
         item = vars.actions[idx]
         idx += 1
         item = html.escape(item)
-        if vars.adventure:  # Add special formatting to adventure actions
-            item = vars.acregex_ui.sub('<action>\\1</action>', item)
+        item = vars.acregex_ui.sub('<action>\\1</action>', item)  # Add special formatting to adventure actions
         text_parts.extend(('<chunk n="', str(idx), '" id="n', str(idx), '" tabindex="-1">', item, '</chunk>'))
     emit('from_server', {'cmd': 'updatescreen', 'gamestarted': vars.gamestarted, 'data': formatforhtml(''.join(text_parts))}, broadcast=True)
 
@@ -1356,8 +1354,7 @@ def update_story_chunk(idx: Union[int, Literal['last']]):
         text = vars.actions[idx - 1]
 
     item = html.escape(text)
-    if vars.adventure:  # Add special formatting to adventure actions
-        item = vars.acregex_ui.sub('<action>\\1</action>', item)
+    item = vars.acregex_ui.sub('<action>\\1</action>', item)  # Add special formatting to adventure actions
 
     chunk_text = f'<chunk n="{idx}" id="n{idx}" tabindex="-1">{formatforhtml(item)}</chunk>'
     emit('from_server', {'cmd': 'updatechunk', 'data': {'index': idx, 'html': chunk_text, 'last': (idx == (vars.actions.get_last_key() if len(vars.actions) else 0))}}, broadcast=True)
