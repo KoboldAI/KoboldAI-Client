@@ -1632,6 +1632,7 @@ def checkworldinfo(txt):
             for key in reversed(vars.actions):
                 chunk = vars.actions[key]
                 chunks.appendleft(chunk)
+                i += 1
                 if(i == depth):
                     break
         

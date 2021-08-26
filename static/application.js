@@ -391,6 +391,12 @@ function hideWaitAnimation() {
 	$('#waitanim').remove();
 }
 
+function scrollToBottom() {
+	setTimeout(function () {
+		$('#gamescreen').animate({scrollTop: $('#gamescreen').prop('scrollHeight')}, 500);
+	}, 5);
+}
+
 function hide(refs) {
 	for(i=0; i<refs.length; i++) {
 		refs[i].addClass("hidden");
@@ -457,6 +463,7 @@ function exitWiMode() {
 	hide([wi_menu]);
 	show([button_actback, button_actmem, button_actretry, game_text]);
 	enableSendBtn();
+	scrollToBottom();
 }
 
 function returnWiList(ar) {
@@ -629,6 +636,7 @@ function hidegenseqs() {
 	$('#seqselmenu').slideUp("slow", function() {
 		seqselcontents.html("");
 	});
+	scrollToBottom();
 }
 
 function setmodevisibility(state) {
@@ -877,16 +885,12 @@ $(document).ready(function(){
 			$('chunk').attr('contenteditable', allowedit);
 			// Scroll to bottom of text
 			if(newly_loaded) {
-				setTimeout(function () {
-					$('#gamescreen').animate({scrollTop: $('#gamescreen').prop('scrollHeight')}, 1000);
-				}, 5);
+				scrollToBottom();
 			}
 			newly_loaded = false;
 			hideMessage();
 		} else if(msg.cmd == "scrolldown") {
-			setTimeout(function () {
-				$('#gamescreen').animate({scrollTop: $('#gamescreen').prop('scrollHeight')}, 1000);
-			}, 5);
+			scrollToBottom();
 		} else if(msg.cmd == "updatechunk") {
 			hideMessage();
 			const {index, html, last} = msg.data;
@@ -904,9 +908,7 @@ $(document).ready(function(){
 			hide([$('#curtain')]);
 			if(last) {
 				// Scroll to bottom of text if it's the last element
-				setTimeout(function () {
-					$('#gamescreen').animate({scrollTop: $('#gamescreen').prop('scrollHeight')}, 1000);
-				}, 5);
+				scrollToBottom();
 			}
 		} else if(msg.cmd == "removechunk") {
 			hideMessage();
