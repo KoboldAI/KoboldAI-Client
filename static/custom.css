@@ -6,14 +6,14 @@ chunk {
 	color: #ffffff;
 }
 
-action {
+#gametext.adventure action {
 	color: #9ff7fa;
 	font-weight: bold;
 }
 
 chunk[contenteditable="true"]:focus, chunk[contenteditable="true"]:focus * {
-	color: #cdf;
-	font-weight: normal;
+	color: #cdf !important;
+	font-weight: normal !important;
 }
 
 chunk, chunk * {
@@ -355,8 +355,8 @@ chunk, chunk * {
 
 .colorfade, .colorfade * {
 	-moz-transition:color 1s ease-in;
-    -o-transition:color 1s ease-in;
-    -webkit-transition:color 1s ease-in;
+	-o-transition:color 1s ease-in;
+	-webkit-transition:color 1s ease-in;
 	transition:color 1s ease-in;
 }
 	
@@ -398,7 +398,7 @@ chunk, chunk * {
 }
 
 .edit-flash, .edit-flash * {
-	color: #3bf723;
+	color: #3bf723 !important;
 }
 
 .flex {
@@ -443,21 +443,21 @@ chunk, chunk * {
 }
 
 .helpicon {
-    display: inline-block;
-    font-family: sans-serif;
-    font-weight: bold;
-    text-align: center;
-    width: 2.2ex;
-    height: 2.4ex;
-    font-size: 1.4ex;
-    line-height: 1.8ex;
-    border-radius: 1.2ex;
-    margin-right: 4px;
-    padding: 1px;
-    color: #295071;
-    background: #ffffff;
-    border: 1px solid white;
-    text-decoration: none;
+	display: inline-block;
+	font-family: sans-serif;
+	font-weight: bold;
+	text-align: center;
+	width: 2.2ex;
+	height: 2.4ex;
+	font-size: 1.4ex;
+	line-height: 1.8ex;
+	border-radius: 1.2ex;
+	margin-right: 4px;
+	padding: 1px;
+	color: #295071;
+	background: #ffffff;
+	border: 1px solid white;
+	text-decoration: none;
 }
 
 .helpicon:hover {
@@ -569,8 +569,8 @@ chunk, chunk * {
 	color: #ffffff;
 	
 	-moz-transition: background-color 0.25s ease-in;
-    -o-transition: background-color 0.25s ease-in;
-    -webkit-transition: background-color 0.25s ease-in;
+	-o-transition: background-color 0.25s ease-in;
+	-webkit-transition: background-color 0.25s ease-in;
 	transition: background-color 0.25s ease-in;
 }
 
@@ -580,12 +580,12 @@ chunk, chunk * {
 }
 
 .navbar .navbar-nav .nav-link:hover {
-    border-radius: 5px;
+	border-radius: 5px;
 	background-color: #98bcdb;
 }
 
 .navbar .navbar-nav .nav-link:focus {
-    border-radius: 5px;
+	border-radius: 5px;
 	background-color: #98bcdb;
 }
 
@@ -651,8 +651,8 @@ chunk, chunk * {
 	color: #ffffff;
 	
 	-moz-transition: background-color 0.25s ease-in;
-    -o-transition: background-color 0.25s ease-in;
-    -webkit-transition: background-color 0.25s ease-in;
+	-o-transition: background-color 0.25s ease-in;
+	-webkit-transition: background-color 0.25s ease-in;
 	transition: background-color 0.25s ease-in;
 }
 
@@ -702,8 +702,8 @@ chunk, chunk * {
 	padding: 5px;
 	color: #ffffff;
 	-moz-transition: all 0.15s ease-in;
-    -o-transition: all 0.15s ease-in;
-    -webkit-transition: all 0.15s ease-in;
+	-o-transition: all 0.15s ease-in;
+	-webkit-transition: all 0.15s ease-in;
 	transition: all 0.15s ease-in;
 }
 

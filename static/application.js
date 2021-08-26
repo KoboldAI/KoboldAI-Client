@@ -643,6 +643,11 @@ function setmodevisibility(state) {
 
 function setadventure(state) {
 	adventure = state;
+	if(state) {
+		game_text.addClass("adventure");
+	} else {
+		game_text.removeClass("adventure");
+	}
 	if(!memorymode){
 		setmodevisibility(state);
 	}
@@ -758,19 +763,12 @@ function submitEditedChunk(event) {
 		return;
 	}
 
-	show([$('#curtain')]);
-	setTimeout(function () {
-		if(document.activeElement.tagName == "CHUNK") {
-			document.activeElement.blur();
-		}
-	}, 5);
-
 	chunk = current_editing_chunk;
 	current_editing_chunk = null;
 
 	// Submit the edited chunk if it's not empty, otherwise delete it
 	if(chunk.innerText.length) {
-		socket.send({'cmd': 'inlineedit', 'chunk': chunk.getAttribute("n"), 'data': chunk.innerText});
+		socket.send({'cmd': 'inlineedit', 'chunk': chunk.getAttribute("n"), 'data': chunk.innerText.replace(/\u00a0/g, " ")});
 	} else {
 		socket.send({'cmd': 'inlinedelete', 'data': chunk.getAttribute("n")});
 	}
@@ -841,11 +839,11 @@ $(document).ready(function(){
 	seqselmenu        = $("#seqselmenu");
 	seqselcontents    = $("#seqselcontents");
 	
-    // Connect to SocketIO server
-    socket = io.connect(window.document.origin);
+	// Connect to SocketIO server
+	socket = io.connect(window.document.origin);
 	
 	socket.on('from_server', function(msg) {
-        if(msg.cmd == "connected") {
+		if(msg.cmd == "connected") {
 			// Connected to Server Actions
 			connected = true;
 			connect_status.html("<b>Connected to KoboldAI Process!</b>");
@@ -876,9 +874,7 @@ $(document).ready(function(){
 			}
 			game_text.html(msg.data);
 			// Make content editable if need be
-			$("chunk").attr('tabindex', -1)
 			$('chunk').attr('contenteditable', allowedit);
-			hide([$('#curtain')]);
 			// Scroll to bottom of text
 			if(newly_loaded) {
 				setTimeout(function () {
@@ -891,6 +887,33 @@ $(document).ready(function(){
 			setTimeout(function () {
 				$('#gamescreen').animate({scrollTop: $('#gamescreen').prop('scrollHeight')}, 1000);
 			}, 5);
+		} else if(msg.cmd == "updatechunk") {
+			hideMessage();
+			const {index, html, last} = msg.data;
+			const existingChunk = game_text.children(`#n${index}`)
+			const newChunk = $(html);
+			if (existingChunk.length > 0) {
+				// Update existing chunk
+				existingChunk.before(newChunk);
+				existingChunk.remove();
+			} else {
+				// Append at the end
+				game_text.append(newChunk);
+			}
+			newChunk.attr('contenteditable', allowedit);
+			hide([$('#curtain')]);
+			if(last) {
+				// Scroll to bottom of text if it's the last element
+				setTimeout(function () {
+					$('#gamescreen').animate({scrollTop: $('#gamescreen').prop('scrollHeight')}, 1000);
+				}, 5);
+			}
+		} else if(msg.cmd == "removechunk") {
+			hideMessage();
+			let index = msg.data;
+			// Remove the chunk
+			game_text.children(`#n${index}`).remove()
+			hide([$('#curtain')]);
 		} else if(msg.cmd == "setgamestate") {
 			// Enable or Disable buttons
 			if(msg.data == "ready") {
@@ -1088,7 +1111,7 @@ $(document).ready(function(){
 		} else if(msg.cmd == "runs_remotely") {
 			hide([button_loadfrfile, button_savetofile, button_import, button_importwi]);
 		}
-    });
+	});
 	
 	socket.on('disconnect', function() {
 		connected = false;
