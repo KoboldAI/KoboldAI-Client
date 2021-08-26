@@ -398,7 +398,7 @@ chunk, chunk * {
 }
 
 .edit-flash, .edit-flash * {
-	color: #3bf723;
+	color: #3bf723 !important;
 }
 
 .flex {
