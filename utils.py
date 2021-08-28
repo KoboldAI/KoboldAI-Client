@@ -72,8 +72,8 @@ def removespecialchars(txt, vars=None):
 def addsentencespacing(txt, vars):
     # Get last character of last action
     if(len(vars.actions) > 0):
-        if(len(vars.actions[-1]) > 0):
-            lastchar = vars.actions[-1][-1]
+        if(len(vars.actions[vars.actions.get_last_key()]) > 0):
+            lastchar = vars.actions[vars.actions.get_last_key()][-1]
         else:
             # Last action is blank, this should never happen, but
             # since it did let's bail out.
