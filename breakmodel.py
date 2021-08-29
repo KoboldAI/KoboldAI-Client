@@ -291,11 +291,12 @@ def new_forward(
                     gc.collect()
                     torch.cuda.empty_cache()
 
-            for param1,param2 in zip(self.h[0].parameters(),self.extrastorage[0].parameters()):
-                param1.data = param2.data.to(gpu_device, non_blocking=False).detach()
+            if ram_blocks:
+                for param1,param2 in zip(self.h[0].parameters(),self.extrastorage[0].parameters()):
+                    param1.data = param2.data.to(gpu_device, non_blocking=False).detach()
 
-            for param1,param2 in zip(self.h[ram_blocks-1].parameters(),self.extrastorage[ram_blocks-1].parameters()):
-                param1.data = param2.data.to(gpu_device, non_blocking=False).detach()
+                for param1,param2 in zip(self.h[ram_blocks-1].parameters(),self.extrastorage[ram_blocks-1].parameters()):
+                    param1.data = param2.data.to(gpu_device, non_blocking=False).detach()
     #END MODEL BREAK EDITS
 
     output_attentions = output_attentions if output_attentions is not None else self.config.output_attentions
