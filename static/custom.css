@@ -271,12 +271,6 @@ chunk, chunk * {
 	margin-top: 200px;
 }
 
-#saveasoverwrite {
-	color: #ff9900;
-	font-weight: bold;
-	text-align: center;
-}
-
 #loadpopup {
 	width: 500px;
 	background-color: #262626;
@@ -289,6 +283,18 @@ chunk, chunk * {
 		background-color: #262626;
 		margin-top: 100px;
 	}
+}
+
+#loadpopupdelete {
+	width: 350px;
+	background-color: #262626;
+	margin-top: 200px;
+}
+
+#loadpopuprename {
+	width: 350px;
+	background-color: #262626;
+	margin-top: 200px;
 }
 
 #loadlistcontent {
@@ -315,6 +321,12 @@ chunk, chunk * {
 }
 
 .aidgpopuplistheader {
+	color: #737373;
+	text-align: center;
+}
+
+.dialogheader {
+	padding: 10px 40px 10px 40px;
 	color: #737373;
 	text-align: center;
 }
@@ -556,16 +568,16 @@ chunk, chunk * {
 }
 
 .loadlistheader {
-	padding-left: 10px;
-	display: grid;
-	grid-template-columns: 80% 20%;
+	padding-left: 68px;
+	padding-right: 20px;
+	display: flex;
 	color: #737373;
 }
 
 .loadlistitem {
 	padding: 5px 10px 5px 10px;
-	display: grid;
-	grid-template-columns: 80% 20%;
+	display: flex;
+	flex-grow: 1;
 	color: #ffffff;
 	
 	-moz-transition: background-color 0.25s ease-in;
@@ -577,6 +589,30 @@ chunk, chunk * {
 .loadlistitem:hover {
 	cursor: pointer;
 	background-color: #688f1f;
+}
+
+.loadlistpadding {
+	padding-right: 10px;
+}
+
+.loadlisticon {
+	color: #333
+}
+
+.loadlisticon.allowed {
+	color: #ddd
+}
+
+.loadlisticon.allowed:hover {
+	cursor: pointer;
+}
+
+.loadlisticon-delete.allowed:hover {
+	color: #ef2929
+}
+
+.loadlisticon-rename.allowed:hover {
+	color: #fce94f
 }
 
 .navbar .navbar-nav .nav-link:hover {
@@ -678,6 +714,11 @@ chunk, chunk * {
 	font-size: 12pt;
 }
 
+.popuperror {
+	color: #ef2929;
+	text-align: center;
+}
+
 .popupfooter {
 	width: 100%;
 	padding: 10px;
@@ -690,6 +731,12 @@ chunk, chunk * {
 	width: 100px;
 	margin-left: 10px;
 	margin-right: 10px;
+}
+
+.saveasoverwrite {
+	color: #ff9900;
+	font-weight: bold;
+	text-align: center;
 }
 
 .seqselheader {

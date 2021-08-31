@@ -110,6 +110,8 @@ class vars:
     useprompt   = True   # Whether to send the full prompt with every submit action
     breakmodel  = False  # For GPU users, whether to use both system RAM and VRAM to conserve VRAM while offering speedup compared to CPU-only
     bmsupported = False  # Whether the breakmodel option is supported (GPT-Neo/GPT-J only, currently)
+    smandelete  = False  # Whether stories can be deleted from inside the browser
+    smanrename  = False  # Whether stories can be renamed from inside the browser
     acregex_ai  = re.compile(r'\n* *>(.|\n)*')  # Pattern for matching adventure actions from the AI so we can remove them
     acregex_ui  = re.compile(r'^ *(&gt;.*)$', re.MULTILINE)    # Pattern for matching actions in the HTML-escaped story so we can apply colouring, etc (make sure to encase part to format in parentheses)
     actionmode  = 1
@@ -172,11 +174,16 @@ parser.add_argument("--path", help="Specify the Path for local models (For model
 parser.add_argument("--cpu", action='store_true', help="By default unattended launches are on the GPU use this option to force CPU usage.")
 parser.add_argument("--breakmodel", action='store_true', help="For models that support GPU-CPU hybrid generation, use this feature instead of GPU or CPU generation")
 parser.add_argument("--breakmodel_layers", type=int, help="Specify the number of layers to commit to system RAM if --breakmodel is used")
+parser.add_argument("--override_delete", action='store_true', help="Deleting stories from inside the browser is disabled if you are using --remote and enabled otherwise. Using this option will instead allow deleting stories if using --remote and prevent deleting stories otherwise.")
+parser.add_argument("--override_rename", action='store_true', help="Renaming stories from inside the browser is disabled if you are using --remote and enabled otherwise. Using this option will instead allow renaming stories if using --remote and prevent renaming stories otherwise.")
 args = parser.parse_args()
 vars.model = args.model;
 
 if args.remote:
     vars.remote = True;
+
+vars.smandelete = vars.remote == args.override_delete
+vars.smanrename = vars.remote == args.override_rename
 
 # Select a model to run
 if args.model:
@@ -500,7 +507,7 @@ def index():
 @socketio.on('connect')
 def do_connect():
     print("{0}Client connected!{1}".format(colors.GREEN, colors.END))
-    emit('from_server', {'cmd': 'connected'})
+    emit('from_server', {'cmd': 'connected', 'smandelete': vars.smandelete, 'smanrename': vars.smanrename})
     if(vars.remote):
         emit('from_server', {'cmd': 'runs_remotely'})
     
@@ -686,7 +693,11 @@ def get_message(msg):
     elif(msg['cmd'] == 'loadselect'):
         vars.loadselect = msg["data"]
     elif(msg['cmd'] == 'loadrequest'):
-        loadRequest(getcwd()+"/stories/"+vars.loadselect+".json")
+        loadRequest(fileops.storypath(vars.loadselect))
+    elif(msg['cmd'] == 'deletestory'):
+        deletesave(msg['data'])
+    elif(msg['cmd'] == 'renamestory'):
+        renamesave(msg['data'], msg['newname'])
     elif(msg['cmd'] == 'clearoverwrite'):    
         vars.svowname = ""
         vars.saveow   = False
@@ -1820,7 +1831,7 @@ def saveas(name):
     name = utils.cleanfilename(name)
     if(not fileops.saveexists(name) or (vars.saveow and vars.svowname == name)):
         # All clear to save
-        saveRequest(getcwd()+"/stories/"+name+".json")
+        saveRequest(fileops.storypath(name))
         emit('from_server', {'cmd': 'hidesaveas', 'data': ''})
         vars.saveow = False
         vars.svowname = ""
@@ -1828,6 +1839,48 @@ def saveas(name):
         # File exists, prompt for overwrite
         vars.saveow   = True
         vars.svowname = name
+        emit('from_server', {'cmd': 'askforoverwrite', 'data': ''})
+
+#==================================================================#
+#  Launch in-browser story-delete prompt
+#==================================================================#
+def deletesave(name):
+    name = utils.cleanfilename(name)
+    e = fileops.deletesave(name)
+    if(e is None):
+        if(vars.smandelete):
+            emit('from_server', {'cmd': 'hidepopupdelete', 'data': ''})
+            getloadlist()
+        else:
+            emit('from_server', {'cmd': 'popuperror', 'data': "The server denied your request to delete this story"})
+    else:
+        print("{0}{1}{2}".format(colors.RED, str(e), colors.END))
+        emit('from_server', {'cmd': 'popuperror', 'data': str(e)})
+
+#==================================================================#
+#  Launch in-browser story-rename prompt
+#==================================================================#
+def renamesave(name, newname):
+    # Check if filename exists already
+    name = utils.cleanfilename(name)
+    newname = utils.cleanfilename(newname)
+    if(not fileops.saveexists(newname) or name == newname or (vars.saveow and vars.svowname == newname)):
+        e = fileops.renamesave(name, newname)
+        vars.saveow = False
+        vars.svowname = ""
+        if(e is None):
+            if(vars.smanrename):
+                emit('from_server', {'cmd': 'hidepopuprename', 'data': ''})
+                getloadlist()
+            else:
+                emit('from_server', {'cmd': 'popuperror', 'data': "The server denied your request to rename this story"})
+        else:
+            print("{0}{1}{2}".format(colors.RED, str(e), colors.END))
+            emit('from_server', {'cmd': 'popuperror', 'data': str(e)})
+    else:
+        # File exists, prompt for overwrite
+        vars.saveow   = True
+        vars.svowname = newname
         emit('from_server', {'cmd': 'askforoverwrite', 'data': ''})
 
 #==================================================================#

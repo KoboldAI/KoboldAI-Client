@@ -49,7 +49,6 @@ var saveasinput;
 var topic;
 var saveas_accept;
 var saveas_close;
-var saveasoverwrite;
 var loadpopup;
 var	loadcontent;
 var	load_accept;
@@ -70,6 +69,8 @@ var connected = false;
 var newly_loaded = true;
 var current_editing_chunk = null;
 var chunk_conflict = false;
+var sman_allow_delete = false;
+var sman_allow_rename = false;
 
 // Key states
 var shift_down   = false;
@@ -542,7 +543,7 @@ function hideSaveAsPopup() {
 	saveaspopup.removeClass("flex");
 	saveaspopup.addClass("hidden");
 	saveasinput.val("");
-	hide([saveasoverwrite]);
+	hide([$(".saveasoverwrite"), $(".popuperror")]);
 }
 
 function sendSaveAsRequest() {
@@ -566,15 +567,70 @@ function buildLoadList(ar) {
 	showLoadPopup();
 	var i;
 	for(i=0; i<ar.length; i++) {
-		loadcontent.append("<div class=\"loadlistitem\" id=\"load"+i+"\" name=\""+ar[i].name+"\">\
-			<div>"+ar[i].name+"</div>\
-			<div>"+ar[i].actions+"</div>\
+		loadcontent.append("<div class=\"flex\">\
+			<div class=\"loadlistpadding\"></div>\
+			<span class=\"loadlisticon loadlisticon-delete oi oi-x "+(sman_allow_delete ? "allowed" : "")+"\" id=\"loaddelete"+i+"\" "+(sman_allow_delete ? "title=\"Delete story\"" : "")+" aria-hidden=\"true\"></span>\
+			<div class=\"loadlistpadding\"></div>\
+			<span class=\"loadlisticon loadlisticon-rename oi oi-pencil "+(sman_allow_rename ? "allowed" : "")+"\" id=\"loadrename"+i+"\" "+(sman_allow_rename ? "title=\"Rename story\"" : "")+" aria-hidden=\"true\"></span>\
+			<div class=\"loadlistpadding\"></div>\
+			<div class=\"loadlistitem\" id=\"load"+i+"\" name=\""+ar[i].name+"\">\
+				<div>"+ar[i].name+"</div>\
+				<div class=\"flex-push-right\">"+ar[i].actions+"</div>\
+			</div>\
 		</div>");
 		$("#load"+i).on("click", function () {
 			enableButtons([load_accept]);
 			socket.send({'cmd': 'loadselect', 'data': $(this).attr("name")});
 			highlightLoadLine($(this));
 		});
+
+		$("#loaddelete"+i).off("click").on("click", (function (name) {
+			return function () {
+				if(!sman_allow_delete) {
+					return;
+				}
+				$("#loadcontainerdelete-storyname").text(name);
+				$("#btn_dsaccept").off("click").on("click", (function (name) {
+					return function () {
+						hide([$(".saveasoverwrite"), $(".popuperror")]);
+						socket.send({'cmd': 'deletestory', 'data': name});
+					}
+				})(name));
+				$("#btn_dsclose").off("click").on("click", function () {
+					$("#loadcontainerdelete").removeClass("flex").addClass("hidden");
+					hide([$(".saveasoverwrite"), $(".popuperror")]);
+				});
+				$("#loadcontainerdelete").removeClass("hidden").addClass("flex");
+			}
+		})(ar[i].name));
+
+		$("#loadrename"+i).off("click").on("click", (function (name) {
+			return function () {
+				if(!sman_allow_rename) {
+					return;
+				}
+				$("#newsavename").val("")
+				$("#loadcontainerrename-storyname").text(name);
+				submit = (function (name) {
+					return function () {
+						hide([$(".saveasoverwrite"), $(".popuperror")]);
+						socket.send({'cmd': 'renamestory', 'data': name, 'newname': $("#newsavename").val()});
+					}
+				})(name);
+				$("#btn_rensaccept").off("click").on("click", submit);
+				$("#newsavename").off("keydown").on("keydown", function (ev) {
+					if (ev.which == 13 && $(this).val() != "") {
+						submit();
+					}
+				});
+				$("#btn_rensclose").off("click").on("click", function () {
+					$("#loadcontainerrename").removeClass("flex").addClass("hidden");
+					hide([$(".saveasoverwrite"), $(".popuperror")]);
+				});
+				$("#loadcontainerrename").removeClass("hidden").addClass("flex");
+				$("#newsavename").val(name).select();
+			}
+		})(ar[i].name));
 	}
 }
 
@@ -833,7 +889,6 @@ $(document).ready(function(){
 	topic             = $("#topic");
 	saveas_accept     = $("#btn_saveasaccept");
 	saveas_close      = $("#btn_saveasclose");
-	saveasoverwrite   = $("#saveasoverwrite");
 	loadpopup         = $("#loadcontainer");
 	loadcontent       = $("#loadlistcontent");
 	load_accept       = $("#btn_loadaccept");
@@ -853,6 +908,8 @@ $(document).ready(function(){
 	socket.on('from_server', function(msg) {
 		if(msg.cmd == "connected") {
 			// Connected to Server Actions
+			sman_allow_delete = msg.hasOwnProperty("smandelete") && msg.smandelete;
+			sman_allow_rename = msg.hasOwnProperty("smanrename") && msg.smanrename;
 			connected = true;
 			connect_status.html("<b>Connected to KoboldAI Process!</b>");
 			connect_status.removeClass("color_orange");
@@ -1048,6 +1105,14 @@ $(document).ready(function(){
 		} else if(msg.cmd == "popupshow") {
 			// Show/Hide Popup
 			popupShow(msg.data);
+		} else if(msg.cmd == "hidepopupdelete") {
+			// Hide the dialog box that asks you to confirm deletion of a story
+			$("#loadcontainerdelete").removeClass("flex").addClass("hidden");
+			hide([$(".saveasoverwrite"), $(".popuperror")]);
+		} else if(msg.cmd == "hidepopuprename") {
+			// Hide the story renaming dialog box
+			$("#loadcontainerrename").removeClass("flex").addClass("hidden");
+			hide([$(".saveasoverwrite"), $(".popuperror")]);
 		} else if(msg.cmd == "addimportline") {
 			// Add import popup entry
 			addImportLine(msg.data);
@@ -1081,7 +1146,11 @@ $(document).ready(function(){
 			buildLoadList(msg.data);
 		} else if(msg.cmd == "askforoverwrite") {
 			// Show overwrite warning
-			show([saveasoverwrite]);
+			show([$(".saveasoverwrite")]);
+		} else if(msg.cmd == "popuperror") {
+			// Show error in the current dialog box
+			$(".popuperror").text(msg.data);
+			show([$(".popuperror")]);
 		} else if(msg.cmd == "genseqs") {
 			// Parse generator sequences to UI
 			parsegenseqs(msg.data);
@@ -1262,7 +1331,7 @@ $(document).ready(function(){
 		} else {
 			enableButtons([saveas_accept]);
 		}
-		hide([saveasoverwrite]);
+		hide([$(".saveasoverwrite"), $(".popuperror")]);
 	});
 	
 	// Bind Enter button to submit
