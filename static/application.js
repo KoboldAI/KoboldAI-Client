@@ -627,7 +627,7 @@ function buildLoadList(ar) {
 }
 
 function highlightLoadLine(ref) {
-	$("#loadlistcontent > div").removeClass("popuplistselected");
+	$("#loadlistcontent > div > div.popuplistselected").removeClass("popuplistselected");
 	ref.addClass("popuplistselected");
 }
 
