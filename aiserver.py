@@ -501,9 +501,6 @@ def index():
     return render_template('index.html')
 @app.route('/download')
 def download():
-    # Leave Edit/Memory mode before continuing
-    exitModes()
-    
     # Build json to write
     js = {}
     js["gamestarted"] = vars.gamestarted
