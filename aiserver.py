@@ -370,7 +370,7 @@ log.setLevel(logging.ERROR)
 
 # Start flask & SocketIO
 print("{0}Initializing Flask... {1}".format(colors.PURPLE, colors.END), end="")
-from flask import Flask, render_template
+from flask import Flask, render_template, Response
 from flask_socketio import SocketIO, emit
 app = Flask(__name__)
 app.config['SECRET KEY'] = 'secret!'
@@ -523,7 +523,7 @@ def download():
                 "selective": wi["selective"],
                 "constant": wi["constant"]
             })
-    save = flask.Response(json.dumps(js, indent=3))
+    save = Response(json.dumps(js, indent=3))
     save.headers.set('Content-Disposition', 'attachment', filename='%s.json' % path.basename(vars.savedir))
     return(save)
 
