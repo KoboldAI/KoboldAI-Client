@@ -3,7 +3,6 @@ from tkinter import filedialog
 from os import getcwd, listdir, path
 import os
 import json
-import string
 
 #==================================================================#
 #  Generic Method for prompting for file path
