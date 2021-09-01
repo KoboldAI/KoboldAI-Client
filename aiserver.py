@@ -1831,10 +1831,14 @@ def saveas(name):
     name = utils.cleanfilename(name)
     if(not fileops.saveexists(name) or (vars.saveow and vars.svowname == name)):
         # All clear to save
-        saveRequest(fileops.storypath(name))
-        emit('from_server', {'cmd': 'hidesaveas', 'data': ''})
+        e = saveRequest(fileops.storypath(name))
         vars.saveow = False
         vars.svowname = ""
+        if(e is None):
+            emit('from_server', {'cmd': 'hidesaveas', 'data': ''})
+        else:
+            print("{0}{1}{2}".format(colors.RED, str(e), colors.END))
+            emit('from_server', {'cmd': 'popuperror', 'data': str(e)})
     else:
         # File exists, prompt for overwrite
         vars.saveow   = True
@@ -1932,11 +1936,16 @@ def saveRequest(savpath):
                 })
         
         # Write it
-        file = open(savpath, "w")
+        try:
+            file = open(savpath, "w")
+        except Exception as e:
+            return e
         try:
             file.write(json.dumps(js, indent=3))
-        finally:
+        except Exception as e:
             file.close()
+            return e
+        file.close()
         
         print("{0}Story saved to {1}!{2}".format(colors.GREEN, path.basename(savpath), colors.END))
 
