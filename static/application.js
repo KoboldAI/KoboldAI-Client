@@ -287,7 +287,7 @@ function addWiLine(ob) {
 		disableWiSelective(ob.num);
 	});
 	$("#constant-key-"+ob.num).on("click", function () {
-		element = $("#constant-key-"+ob.num);
+		var element = $("#constant-key-"+ob.num);
 		if(element.hasClass("constant-key-icon-enabled")) {
 			socket.send({'cmd': 'wiconstantoff', 'data': ob.num});
 			element.removeClass("constant-key-icon-enabled")
@@ -607,7 +607,7 @@ function buildLoadList(ar) {
 				}
 				$("#newsavename").val("")
 				$("#loadcontainerrename-storyname").text(name);
-				submit = (function (name) {
+				var submit = (function (name) {
 					return function () {
 						hide([$(".saveasoverwrite"), $(".popuperror")]);
 						socket.send({'cmd': 'renamestory', 'data': name, 'newname': $("#newsavename").val()});
@@ -730,26 +730,26 @@ function chunkOnKeyDown(event) {
 	switch(event.keyCode) {
 		case 37:  // left
 		case 39:  // right
-			old_range = getSelection().getRangeAt(0);
-			old_range_start = old_range.startOffset;
-			old_range_end = old_range.endOffset;
-			old_range_ancestor = old_range.commonAncestorContainer;
-			old_range_start_container = old_range.startContainer;
-			old_range_end_container = old_range.endContainer;
+			var old_range = getSelection().getRangeAt(0);
+			var old_range_start = old_range.startOffset;
+			var old_range_end = old_range.endOffset;
+			var old_range_ancestor = old_range.commonAncestorContainer;
+			var old_range_start_container = old_range.startContainer;
+			var old_range_end_container = old_range.endContainer;
 			setTimeout(function () {
 				// Wait a few milliseconds and check if the caret has moved
-				new_selection = getSelection();
-				new_range = new_selection.getRangeAt(0);
+				var new_selection = getSelection();
+				var new_range = new_selection.getRangeAt(0);
 				if(old_range_start != new_range.startOffset || old_range_end != new_range.endOffset || old_range_ancestor != new_range.commonAncestorContainer || old_range_start_container != new_range.startContainer || old_range_end_container != new_range.endContainer) {
 					return;
 				}
 				// If it hasn't moved, we're at the beginning or end of a chunk
 				// and the caret must be moved to a different chunk
-				chunk = document.activeElement;
+				var chunk = document.activeElement;
 				switch(event.keyCode) {
 					case 37:  // left
 						if((chunk = chunk.previousSibling) && chunk.tagName == "CHUNK") {
-							range = document.createRange();
+							var range = document.createRange();
 							range.selectNodeContents(chunk);
 							range.collapse(false);
 							new_selection.removeAllRanges();
@@ -766,7 +766,7 @@ function chunkOnKeyDown(event) {
 			return;
 		
 		case 8:  // backspace
-			old_length = document.activeElement.innerText.length;
+			var old_length = document.activeElement.innerText.length;
 			setTimeout(function () {
 				// Wait a few milliseconds and compare the chunk's length
 				if(old_length != document.activeElement.innerText.length) {
@@ -774,8 +774,8 @@ function chunkOnKeyDown(event) {
 				}
 				// If it's the same, we're at the beginning of a chunk
 				if((chunk = document.activeElement.previousSibling) && chunk.tagName == "CHUNK") {
-					range = document.createRange();
-					selection = getSelection();
+					var range = document.createRange();
+					var selection = getSelection();
 					range.selectNodeContents(chunk);
 					range.collapse(false);
 					selection.removeAllRanges();
@@ -814,7 +814,7 @@ function submitEditedChunk(event) {
 		return;
 	}
 
-	chunk = current_editing_chunk;
+	var chunk = current_editing_chunk;
 	current_editing_chunk = null;
 
 	// Submit the edited chunk if it's not empty, otherwise delete it
@@ -916,7 +916,7 @@ $(document).ready(function(){
 				}
 			});
 		} else if(msg.cmd == "updatescreen") {
-			_gamestarted = gamestarted;
+			var _gamestarted = gamestarted;
 			gamestarted = msg.gamestarted;
 			if(_gamestarted != gamestarted) {
 				action_mode = 0;
