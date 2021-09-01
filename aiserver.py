@@ -370,7 +370,7 @@ log.setLevel(logging.ERROR)
 
 # Start flask & SocketIO
 print("{0}Initializing Flask... {1}".format(colors.PURPLE, colors.END), end="")
-from flask import Flask, render_template, Response
+from flask import Flask, render_template, Response, request
 from flask_socketio import SocketIO, emit
 app = Flask(__name__)
 app.config['SECRET KEY'] = 'secret!'
@@ -501,6 +501,26 @@ def index():
     return render_template('index.html')
 @app.route('/download')
 def download():
+    save_format = request.args.get("format", "json").strip().lower()
+
+    if(save_format == "plaintext"):
+        ln = len(vars.actions)
+
+        if(ln > 0):
+            chunks = collections.deque()
+            for key in reversed(vars.actions):
+                chunk = vars.actions[key]
+                chunks.appendleft(chunk)
+
+        if(ln > 0):
+            txt = vars.prompt + "".join(chunks)
+        elif(ln == 0):
+            txt = vars.prompt
+        
+        save = Response(txt)
+        save.headers.set('Content-Disposition', 'attachment', filename='%s.txt' % path.basename(vars.savedir))
+        return(save)
+
     # Build json to write
     js = {}
     js["gamestarted"] = vars.gamestarted
@@ -520,6 +540,7 @@ def download():
                 "selective": wi["selective"],
                 "constant": wi["constant"]
             })
+    
     save = Response(json.dumps(js, indent=3))
     save.headers.set('Content-Disposition', 'attachment', filename='%s.json' % path.basename(vars.savedir))
     return(save)
@@ -1964,11 +1985,9 @@ def saveRequest(savpath):
 
         if(ln > 0):
             chunks = collections.deque()
-            i = 0
             for key in reversed(vars.actions):
                 chunk = vars.actions[key]
                 chunks.appendleft(chunk)
-                i += 1
 
         if(ln > 0):
             txt = vars.prompt + "".join(chunks)
