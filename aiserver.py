@@ -5,6 +5,7 @@
 #==================================================================#
 
 # External packages
+import os
 from os import path, getcwd
 import re
 import tkinter as tk
@@ -498,6 +499,33 @@ else:
 @app.route('/index')
 def index():
     return render_template('index.html')
+@app.route('/download')
+def download():
+    # Leave Edit/Memory mode before continuing
+    exitModes()
+    
+    # Build json to write
+    js = {}
+    js["gamestarted"] = vars.gamestarted
+    js["prompt"]      = vars.prompt
+    js["memory"]      = vars.memory
+    js["authorsnote"] = vars.authornote
+    js["actions"]     = tuple(vars.actions.values())
+    js["worldinfo"]   = []
+        
+    # Extract only the important bits of WI
+    for wi in vars.worldinfo:
+        if(wi["constant"] or wi["key"] != ""):
+            js["worldinfo"].append({
+                "key": wi["key"],
+                "keysecondary": wi["keysecondary"],
+                "content": wi["content"],
+                "selective": wi["selective"],
+                "constant": wi["constant"]
+            })
+    save = flask.Response(json.dumps(js, indent=3))
+    save.headers.set('Content-Disposition', 'attachment', filename='%s.json' % path.basename(vars.savedir))
+    return(save)
 
 #============================ METHODS =============================#    
 
@@ -1914,7 +1942,7 @@ def saveRequest(savpath):
         
         # Save path for future saves
         vars.savedir = savpath
-        
+        txtpath = os.path.splitext(savpath)[0] + ".txt"
         # Build json to write
         js = {}
         js["gamestarted"] = vars.gamestarted
@@ -1923,7 +1951,7 @@ def saveRequest(savpath):
         js["authorsnote"] = vars.authornote
         js["actions"]     = tuple(vars.actions.values())
         js["worldinfo"]   = []
-        
+		
         # Extract only the important bits of WI
         for wi in vars.worldinfo:
             if(wi["constant"] or wi["key"] != ""):
@@ -1934,7 +1962,22 @@ def saveRequest(savpath):
                     "selective": wi["selective"],
                     "constant": wi["constant"]
                 })
-        
+                
+        ln = len(vars.actions)
+
+        if(ln > 0):
+            chunks = collections.deque()
+            i = 0
+            for key in reversed(vars.actions):
+                chunk = vars.actions[key]
+                chunks.appendleft(chunk)
+                i += 1
+
+        if(ln > 0):
+            txt = vars.prompt + "".join(chunks)
+        elif(ln == 0):
+            txt = vars.prompt
+
         # Write it
         try:
             file = open(savpath, "w")
@@ -1947,6 +1990,17 @@ def saveRequest(savpath):
             return e
         file.close()
         
+        try:
+            file = open(txtpath, "w")
+        except Exception as e:
+            return e
+        try:
+            file.write(txt)
+        except Exception as e:
+            file.close()
+            return e
+        file.close()
+
         print("{0}Story saved to {1}!{2}".format(colors.GREEN, path.basename(savpath), colors.END))
 
 #==================================================================#
