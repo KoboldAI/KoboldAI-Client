@@ -507,7 +507,10 @@ def download():
     if(save_format == "plaintext"):
         txt = vars.prompt + "".join(vars.actions.values())
         save = Response(txt)
-        save.headers.set('Content-Disposition', 'attachment', filename='%s.txt' % path.basename(vars.savedir))
+        filename = path.basename(vars.savedir)
+        if filename[-5:] == ".json":
+            filename = filename[:-5]
+        save.headers.set('Content-Disposition', 'attachment', filename='%s.txt' % filename)
         return(save)
 
     # Build json to write
@@ -531,7 +534,10 @@ def download():
             })
     
     save = Response(json.dumps(js, indent=3))
-    save.headers.set('Content-Disposition', 'attachment', filename='%s.json' % path.basename(vars.savedir))
+    filename = path.basename(vars.savedir)
+    if filename[-5:] == ".json":
+        filename = filename[:-5]
+    save.headers.set('Content-Disposition', 'attachment', filename='%s.json' % filename)
     return(save)
 
 #============================ METHODS =============================#    
