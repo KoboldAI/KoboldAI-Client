@@ -614,6 +614,11 @@ function buildLoadList(ar) {
 					}
 				})(name);
 				$("#btn_rensaccept").off("click").on("click", submit);
+				$("#newsavename").off("keydown").on("keydown", function (ev) {
+					if (ev.which == 13 && $(this).val() != "") {
+						submit();
+					}
+				});
 				$("#loadcontainerrename").removeClass("hidden").addClass("flex");
 				$("#newsavename").val(name).select();
 			}
@@ -1317,10 +1322,6 @@ $(document).ready(function(){
 			enableButtons([$("#btn_rensaccept")]);
 		}
 		hide([$(".saveasoverwrite"), $(".popuperror")]);
-	}).on("keydown", function (ev) {
-		if (ev.which == 13 && $(this).val() != "") {
-			submit();
-		}
 	});
 	
 	$("#btn_rensclose").on("click", function () {
