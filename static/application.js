@@ -838,6 +838,7 @@ $(document).ready(function(){
 	button_save       = $('#btn_save');
 	button_saveas     = $('#btn_saveas');
 	button_savetofile = $('#btn_savetofile');
+	button_download   = $('#btn_download');
 	button_load       = $('#btn_load');
 	button_loadfrfile = $('#btn_loadfromfile');
 	button_import     = $("#btn_import");
@@ -1266,6 +1267,10 @@ $(document).ready(function(){
 	
 	saveas_accept.on("click", function(ev) {
 		sendSaveAsRequest();
+	});
+
+	button_download.on("click", function(ev) {
+		window.open("/download", "_blank");
 	});
 	
 	button_load.on("click", function(ev) {
