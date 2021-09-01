@@ -1300,7 +1300,14 @@ $(document).ready(function(){
 		hide([$(".saveasoverwrite"), $(".popuperror")]);
 	});
 	
-	$("#newsavename").on("keydown", function (ev) {
+	$("#newsavename").on("input", function (ev) {
+		if($(this).val() == "") {
+			disableButtons([$("#btn_rensaccept")]);
+		} else {
+			enableButtons([$("#btn_rensaccept")]);
+		}
+		hide([$(".saveasoverwrite"), $(".popuperror")]);
+	}).on("keydown", function (ev) {
 		if (ev.which == 13 && $(this).val() != "") {
 			submit();
 		}
