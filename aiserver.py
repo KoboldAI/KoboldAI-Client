@@ -5,6 +5,7 @@
 #==================================================================#
 
 # External packages
+import os
 from os import path, getcwd
 import re
 import tkinter as tk
@@ -1884,7 +1885,7 @@ def saveRequest(savpath):
         
         # Save path for future saves
         vars.savedir = savpath
-        
+        txtpath = os.path.splitext(savpath)[0] + ".txt"
         # Build json to write
         js = {}
         js["gamestarted"] = vars.gamestarted
@@ -1893,7 +1894,7 @@ def saveRequest(savpath):
         js["authorsnote"] = vars.authornote
         js["actions"]     = tuple(vars.actions.values())
         js["worldinfo"]   = []
-        
+		
         # Extract only the important bits of WI
         for wi in vars.worldinfo:
             if(wi["constant"] or wi["key"] != ""):
@@ -1904,14 +1905,35 @@ def saveRequest(savpath):
                     "selective": wi["selective"],
                     "constant": wi["constant"]
                 })
-        
+                
+        ln = len(vars.actions)
+
+        if(ln > 0):
+            chunks = collections.deque()
+            i = 0
+            for key in reversed(vars.actions):
+                chunk = vars.actions[key]
+                chunks.appendleft(chunk)
+                i += 1
+
+        if(ln > 0):
+            txt = vars.prompt + "".join(chunks)
+        elif(ln == 0):
+            txt = vars.prompt
+
         # Write it
         file = open(savpath, "w")
         try:
             file.write(json.dumps(js, indent=3))
         finally:
             file.close()
-        
+
+        file = open(txtpath, "w")
+        try:
+            file.write(txt)
+        finally:
+            file.close()
+
         print("{0}Story saved to {1}!{2}".format(colors.GREEN, path.basename(savpath), colors.END))
 
 #==================================================================#
