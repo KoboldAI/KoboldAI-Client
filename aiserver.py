@@ -26,7 +26,6 @@ import gensettings
 from utils import debounce
 import utils
 import structures
-import breakmodel
 
 #==================================================================#
 # Variables & Storage
@@ -392,6 +391,7 @@ if(not vars.model in ["InferKit", "Colab", "OAI", "ReadOnly"]):
                 if(vars.usegpu):
                     generator = pipeline('text-generation', model=model, tokenizer=tokenizer, device=0)
                 elif(vars.breakmodel):  # Use both RAM and VRAM (breakmodel)
+                    import breakmodel
                     n_layers = model.config.num_layers
                     breakmodel.total_blocks = n_layers
                     model.half().to('cpu')
@@ -442,6 +442,7 @@ if(not vars.model in ["InferKit", "Colab", "OAI", "ReadOnly"]):
                 if(vars.usegpu):
                     generator = pipeline('text-generation', model=vars.model, device=0)
                 elif(vars.breakmodel):  # Use both RAM and VRAM (breakmodel)
+                    import breakmodel
                     model = AutoModel.from_pretrained(vars.model)
                     n_layers = model.config.num_layers
                     breakmodel.total_blocks = n_layers
