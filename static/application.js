@@ -596,10 +596,6 @@ function buildLoadList(ar) {
 						socket.send({'cmd': 'deletestory', 'data': name});
 					}
 				})(name));
-				$("#btn_dsclose").off("click").on("click", function () {
-					$("#loadcontainerdelete").removeClass("flex").addClass("hidden");
-					hide([$(".saveasoverwrite"), $(".popuperror")]);
-				});
 				$("#loadcontainerdelete").removeClass("hidden").addClass("flex");
 			}
 		})(ar[i].name));
@@ -618,15 +614,6 @@ function buildLoadList(ar) {
 					}
 				})(name);
 				$("#btn_rensaccept").off("click").on("click", submit);
-				$("#newsavename").off("keydown").on("keydown", function (ev) {
-					if (ev.which == 13 && $(this).val() != "") {
-						submit();
-					}
-				});
-				$("#btn_rensclose").off("click").on("click", function () {
-					$("#loadcontainerrename").removeClass("flex").addClass("hidden");
-					hide([$(".saveasoverwrite"), $(".popuperror")]);
-				});
 				$("#loadcontainerrename").removeClass("hidden").addClass("flex");
 				$("#newsavename").val(name).select();
 			}
@@ -1306,6 +1293,22 @@ $(document).ready(function(){
 	
 	ns_close.on("click", function(ev) {
 		hideNewStoryPopup();
+	});
+
+	$("#btn_dsclose").on("click", function () {
+		$("#loadcontainerdelete").removeClass("flex").addClass("hidden");
+		hide([$(".saveasoverwrite"), $(".popuperror")]);
+	});
+	
+	$("#newsavename").on("keydown", function (ev) {
+		if (ev.which == 13 && $(this).val() != "") {
+			submit();
+		}
+	});
+	
+	$("#btn_rensclose").on("click", function () {
+		$("#loadcontainerrename").removeClass("flex").addClass("hidden");
+		hide([$(".saveasoverwrite"), $(".popuperror")]);
 	});
 	
 	button_rndgame.on("click", function(ev) {
