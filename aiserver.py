@@ -504,19 +504,7 @@ def download():
     save_format = request.args.get("format", "json").strip().lower()
 
     if(save_format == "plaintext"):
-        ln = len(vars.actions)
-
-        if(ln > 0):
-            chunks = collections.deque()
-            for key in reversed(vars.actions):
-                chunk = vars.actions[key]
-                chunks.appendleft(chunk)
-
-        if(ln > 0):
-            txt = vars.prompt + "".join(chunks)
-        elif(ln == 0):
-            txt = vars.prompt
-        
+        txt = vars.prompt + "".join(vars.actions.values())
         save = Response(txt)
         save.headers.set('Content-Disposition', 'attachment', filename='%s.txt' % path.basename(vars.savedir))
         return(save)
@@ -1981,18 +1969,7 @@ def saveRequest(savpath):
                     "constant": wi["constant"]
                 })
                 
-        ln = len(vars.actions)
-
-        if(ln > 0):
-            chunks = collections.deque()
-            for key in reversed(vars.actions):
-                chunk = vars.actions[key]
-                chunks.appendleft(chunk)
-
-        if(ln > 0):
-            txt = vars.prompt + "".join(chunks)
-        elif(ln == 0):
-            txt = vars.prompt
+        txt = vars.prompt + "".join(vars.actions.values())
 
         # Write it
         try:
