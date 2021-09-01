@@ -610,11 +610,11 @@ def get_message(msg):
         deleterequest()
     elif(msg['cmd'] == 'memory'):
         togglememorymode()
-    elif(msg['cmd'] == 'savetofile'):
+    elif(not vars.remote and msg['cmd'] == 'savetofile'):
         savetofile()
-    elif(msg['cmd'] == 'loadfromfile'):
+    elif(not vars.remote and msg['cmd'] == 'loadfromfile'):
         loadfromfile()
-    elif(msg['cmd'] == 'import'):
+    elif(not vars.remote and msg['cmd'] == 'import'):
         importRequest()
     elif(msg['cmd'] == 'newgame'):
         newGameRequest()
@@ -755,7 +755,7 @@ def get_message(msg):
         vars.adventure = msg['data']
         settingschanged()
         refresh_settings()
-    elif(msg['cmd'] == 'importwi'):
+    elif(not vars.remote and msg['cmd'] == 'importwi'):
         wiimportrequest()
     
 #==================================================================#
