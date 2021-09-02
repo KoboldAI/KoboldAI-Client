@@ -111,7 +111,7 @@ If you get these errors you either did not select the correct folder for your cu
 
 This project contains work from the following contributors :
 
-- The Gantian - Original Developer of KoboldAI
+- The Gantian - Creator of KoboldAI, has created most features such as the interface, the different AI model / API integrations and in general the largest part of the project.
 - VE FORBRYDERNE - Contributed many features such as the Editing overhaul, Adventure Mode, expansions to the world info section, breakmodel integration and much more.
 - Henk717 - Contributed the installation scripts, this readme, random story generator, the docker scripts, the foundation for the commandline interface and other smaller changes as well as integrating multiple parts of the code of different forks to unite it all. Not all code Github attributes to Henk717 is by Henk717 as some of it has been integrations of other people's work. We try to clarify this in the contributors list as much as we can.
 - Frogging101 - top_k / tfs support
