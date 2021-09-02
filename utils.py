@@ -88,8 +88,8 @@ def addsentencespacing(txt, vars):
 #  Cleans string for use in file name
 #==================================================================#
 def cleanfilename(filename):
-    keepcharacters = (' ','.','_')
-    filename = "".join(c for c in filename if c.isalnum() or c in keepcharacters).rstrip()
+    filteredcharacters = ('/','\\')
+    filename = "".join(c for c in filename if c not in filteredcharacters).rstrip()
     return filename
     
     

@@ -26,7 +26,6 @@ import gensettings
 from utils import debounce
 import utils
 import structures
-import breakmodel
 
 #==================================================================#
 # Variables & Storage
@@ -111,6 +110,8 @@ class vars:
     useprompt   = True   # Whether to send the full prompt with every submit action
     breakmodel  = False  # For GPU users, whether to use both system RAM and VRAM to conserve VRAM while offering speedup compared to CPU-only
     bmsupported = False  # Whether the breakmodel option is supported (GPT-Neo/GPT-J only, currently)
+    smandelete  = False  # Whether stories can be deleted from inside the browser
+    smanrename  = False  # Whether stories can be renamed from inside the browser
     acregex_ai  = re.compile(r'\n* *>(.|\n)*')  # Pattern for matching adventure actions from the AI so we can remove them
     acregex_ui  = re.compile(r'^ *(&gt;.*)$', re.MULTILINE)    # Pattern for matching actions in the HTML-escaped story so we can apply colouring, etc (make sure to encase part to format in parentheses)
     actionmode  = 1
@@ -173,11 +174,16 @@ parser.add_argument("--path", help="Specify the Path for local models (For model
 parser.add_argument("--cpu", action='store_true', help="By default unattended launches are on the GPU use this option to force CPU usage.")
 parser.add_argument("--breakmodel", action='store_true', help="For models that support GPU-CPU hybrid generation, use this feature instead of GPU or CPU generation")
 parser.add_argument("--breakmodel_layers", type=int, help="Specify the number of layers to commit to system RAM if --breakmodel is used")
+parser.add_argument("--override_delete", action='store_true', help="Deleting stories from inside the browser is disabled if you are using --remote and enabled otherwise. Using this option will instead allow deleting stories if using --remote and prevent deleting stories otherwise.")
+parser.add_argument("--override_rename", action='store_true', help="Renaming stories from inside the browser is disabled if you are using --remote and enabled otherwise. Using this option will instead allow renaming stories if using --remote and prevent renaming stories otherwise.")
 args = parser.parse_args()
 vars.model = args.model;
 
 if args.remote:
     vars.remote = True;
+
+vars.smandelete = vars.remote == args.override_delete
+vars.smanrename = vars.remote == args.override_rename
 
 # Select a model to run
 if args.model:
@@ -363,7 +369,7 @@ log.setLevel(logging.ERROR)
 
 # Start flask & SocketIO
 print("{0}Initializing Flask... {1}".format(colors.PURPLE, colors.END), end="")
-from flask import Flask, render_template
+from flask import Flask, render_template, Response, request
 from flask_socketio import SocketIO, emit
 app = Flask(__name__)
 app.config['SECRET KEY'] = 'secret!'
@@ -385,6 +391,7 @@ if(not vars.model in ["InferKit", "Colab", "OAI", "ReadOnly"]):
                 if(vars.usegpu):
                     generator = pipeline('text-generation', model=model, tokenizer=tokenizer, device=0)
                 elif(vars.breakmodel):  # Use both RAM and VRAM (breakmodel)
+                    import breakmodel
                     n_layers = model.config.num_layers
                     breakmodel.total_blocks = n_layers
                     model.half().to('cpu')
@@ -435,6 +442,7 @@ if(not vars.model in ["InferKit", "Colab", "OAI", "ReadOnly"]):
                 if(vars.usegpu):
                     generator = pipeline('text-generation', model=vars.model, device=0)
                 elif(vars.breakmodel):  # Use both RAM and VRAM (breakmodel)
+                    import breakmodel
                     model = AutoModel.from_pretrained(vars.model)
                     n_layers = model.config.num_layers
                     breakmodel.total_blocks = n_layers
@@ -494,9 +502,17 @@ def index():
     return render_template('index.html')
 @app.route('/download')
 def download():
-    # Leave Edit/Memory mode before continuing
-    exitModes()
-    
+    save_format = request.args.get("format", "json").strip().lower()
+
+    if(save_format == "plaintext"):
+        txt = vars.prompt + "".join(vars.actions.values())
+        save = Response(txt)
+        filename = path.basename(vars.savedir)
+        if filename[-5:] == ".json":
+            filename = filename[:-5]
+        save.headers.set('Content-Disposition', 'attachment', filename='%s.txt' % filename)
+        return(save)
+
     # Build json to write
     js = {}
     js["gamestarted"] = vars.gamestarted
@@ -516,8 +532,12 @@ def download():
                 "selective": wi["selective"],
                 "constant": wi["constant"]
             })
-    save = flask.Response(json.dumps(js, indent=3))
-    save.headers.set('Content-Disposition', 'attachment', filename='%s.json' % path.basename(vars.savedir))
+    
+    save = Response(json.dumps(js, indent=3))
+    filename = path.basename(vars.savedir)
+    if filename[-5:] == ".json":
+        filename = filename[:-5]
+    save.headers.set('Content-Disposition', 'attachment', filename='%s.json' % filename)
     return(save)
 
 #============================ METHODS =============================#    
@@ -528,7 +548,7 @@ def download():
 @socketio.on('connect')
 def do_connect():
     print("{0}Client connected!{1}".format(colors.GREEN, colors.END))
-    emit('from_server', {'cmd': 'connected'})
+    emit('from_server', {'cmd': 'connected', 'smandelete': vars.smandelete, 'smanrename': vars.smanrename})
     if(vars.remote):
         emit('from_server', {'cmd': 'runs_remotely'})
     
@@ -597,11 +617,11 @@ def get_message(msg):
         deleterequest()
     elif(msg['cmd'] == 'memory'):
         togglememorymode()
-    elif(msg['cmd'] == 'savetofile'):
+    elif(not vars.remote and msg['cmd'] == 'savetofile'):
         savetofile()
-    elif(msg['cmd'] == 'loadfromfile'):
+    elif(not vars.remote and msg['cmd'] == 'loadfromfile'):
         loadfromfile()
-    elif(msg['cmd'] == 'import'):
+    elif(not vars.remote and msg['cmd'] == 'import'):
         importRequest()
     elif(msg['cmd'] == 'newgame'):
         newGameRequest()
@@ -714,7 +734,11 @@ def get_message(msg):
     elif(msg['cmd'] == 'loadselect'):
         vars.loadselect = msg["data"]
     elif(msg['cmd'] == 'loadrequest'):
-        loadRequest(getcwd()+"/stories/"+vars.loadselect+".json")
+        loadRequest(fileops.storypath(vars.loadselect))
+    elif(msg['cmd'] == 'deletestory'):
+        deletesave(msg['data'])
+    elif(msg['cmd'] == 'renamestory'):
+        renamesave(msg['data'], msg['newname'])
     elif(msg['cmd'] == 'clearoverwrite'):    
         vars.svowname = ""
         vars.saveow   = False
@@ -738,7 +762,7 @@ def get_message(msg):
         vars.adventure = msg['data']
         settingschanged()
         refresh_settings()
-    elif(msg['cmd'] == 'importwi'):
+    elif(not vars.remote and msg['cmd'] == 'importwi'):
         wiimportrequest()
     
 #==================================================================#
@@ -1848,14 +1872,60 @@ def saveas(name):
     name = utils.cleanfilename(name)
     if(not fileops.saveexists(name) or (vars.saveow and vars.svowname == name)):
         # All clear to save
-        saveRequest(getcwd()+"/stories/"+name+".json")
-        emit('from_server', {'cmd': 'hidesaveas', 'data': ''})
+        e = saveRequest(fileops.storypath(name))
         vars.saveow = False
         vars.svowname = ""
+        if(e is None):
+            emit('from_server', {'cmd': 'hidesaveas', 'data': ''})
+        else:
+            print("{0}{1}{2}".format(colors.RED, str(e), colors.END))
+            emit('from_server', {'cmd': 'popuperror', 'data': str(e)})
     else:
         # File exists, prompt for overwrite
         vars.saveow   = True
         vars.svowname = name
+        emit('from_server', {'cmd': 'askforoverwrite', 'data': ''})
+
+#==================================================================#
+#  Launch in-browser story-delete prompt
+#==================================================================#
+def deletesave(name):
+    name = utils.cleanfilename(name)
+    e = fileops.deletesave(name)
+    if(e is None):
+        if(vars.smandelete):
+            emit('from_server', {'cmd': 'hidepopupdelete', 'data': ''})
+            getloadlist()
+        else:
+            emit('from_server', {'cmd': 'popuperror', 'data': "The server denied your request to delete this story"})
+    else:
+        print("{0}{1}{2}".format(colors.RED, str(e), colors.END))
+        emit('from_server', {'cmd': 'popuperror', 'data': str(e)})
+
+#==================================================================#
+#  Launch in-browser story-rename prompt
+#==================================================================#
+def renamesave(name, newname):
+    # Check if filename exists already
+    name = utils.cleanfilename(name)
+    newname = utils.cleanfilename(newname)
+    if(not fileops.saveexists(newname) or name == newname or (vars.saveow and vars.svowname == newname)):
+        e = fileops.renamesave(name, newname)
+        vars.saveow = False
+        vars.svowname = ""
+        if(e is None):
+            if(vars.smanrename):
+                emit('from_server', {'cmd': 'hidepopuprename', 'data': ''})
+                getloadlist()
+            else:
+                emit('from_server', {'cmd': 'popuperror', 'data': "The server denied your request to rename this story"})
+        else:
+            print("{0}{1}{2}".format(colors.RED, str(e), colors.END))
+            emit('from_server', {'cmd': 'popuperror', 'data': str(e)})
+    else:
+        # File exists, prompt for overwrite
+        vars.saveow   = True
+        vars.svowname = newname
         emit('from_server', {'cmd': 'askforoverwrite', 'data': ''})
 
 #==================================================================#
@@ -1906,33 +1976,30 @@ def saveRequest(savpath):
                     "constant": wi["constant"]
                 })
                 
-        ln = len(vars.actions)
-
-        if(ln > 0):
-            chunks = collections.deque()
-            i = 0
-            for key in reversed(vars.actions):
-                chunk = vars.actions[key]
-                chunks.appendleft(chunk)
-                i += 1
-
-        if(ln > 0):
-            txt = vars.prompt + "".join(chunks)
-        elif(ln == 0):
-            txt = vars.prompt
+        txt = vars.prompt + "".join(vars.actions.values())
 
         # Write it
-        file = open(savpath, "w")
+        try:
+            file = open(savpath, "w")
+        except Exception as e:
+            return e
         try:
             file.write(json.dumps(js, indent=3))
-        finally:
+        except Exception as e:
             file.close()
-
-        file = open(txtpath, "w")
+            return e
+        file.close()
+        
+        try:
+            file = open(txtpath, "w")
+        except Exception as e:
+            return e
         try:
             file.write(txt)
-        finally:
+        except Exception as e:
             file.close()
+            return e
+        file.close()
 
         print("{0}Story saved to {1}!{2}".format(colors.GREEN, path.basename(savpath), colors.END))
 

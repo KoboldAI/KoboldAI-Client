@@ -49,7 +49,6 @@ var saveasinput;
 var topic;
 var saveas_accept;
 var saveas_close;
-var saveasoverwrite;
 var loadpopup;
 var	loadcontent;
 var	load_accept;
@@ -70,6 +69,8 @@ var connected = false;
 var newly_loaded = true;
 var current_editing_chunk = null;
 var chunk_conflict = false;
+var sman_allow_delete = false;
+var sman_allow_rename = false;
 
 // Key states
 var shift_down   = false;
@@ -286,7 +287,7 @@ function addWiLine(ob) {
 		disableWiSelective(ob.num);
 	});
 	$("#constant-key-"+ob.num).on("click", function () {
-		element = $("#constant-key-"+ob.num);
+		var element = $("#constant-key-"+ob.num);
 		if(element.hasClass("constant-key-icon-enabled")) {
 			socket.send({'cmd': 'wiconstantoff', 'data': ob.num});
 			element.removeClass("constant-key-icon-enabled")
@@ -542,7 +543,7 @@ function hideSaveAsPopup() {
 	saveaspopup.removeClass("flex");
 	saveaspopup.addClass("hidden");
 	saveasinput.val("");
-	hide([saveasoverwrite]);
+	hide([$(".saveasoverwrite"), $(".popuperror")]);
 }
 
 function sendSaveAsRequest() {
@@ -566,20 +567,67 @@ function buildLoadList(ar) {
 	showLoadPopup();
 	var i;
 	for(i=0; i<ar.length; i++) {
-		loadcontent.append("<div class=\"loadlistitem\" id=\"load"+i+"\" name=\""+ar[i].name+"\">\
-			<div>"+ar[i].name+"</div>\
-			<div>"+ar[i].actions+"</div>\
+		loadcontent.append("<div class=\"flex\">\
+			<div class=\"loadlistpadding\"></div>\
+			<span class=\"loadlisticon loadlisticon-delete oi oi-x "+(sman_allow_delete ? "allowed" : "")+"\" id=\"loaddelete"+i+"\" "+(sman_allow_delete ? "title=\"Delete story\"" : "")+" aria-hidden=\"true\"></span>\
+			<div class=\"loadlistpadding\"></div>\
+			<span class=\"loadlisticon loadlisticon-rename oi oi-pencil "+(sman_allow_rename ? "allowed" : "")+"\" id=\"loadrename"+i+"\" "+(sman_allow_rename ? "title=\"Rename story\"" : "")+" aria-hidden=\"true\"></span>\
+			<div class=\"loadlistpadding\"></div>\
+			<div class=\"loadlistitem\" id=\"load"+i+"\" name=\""+ar[i].name+"\">\
+				<div>"+ar[i].name+"</div>\
+				<div class=\"flex-push-right\">"+ar[i].actions+"</div>\
+			</div>\
 		</div>");
 		$("#load"+i).on("click", function () {
 			enableButtons([load_accept]);
 			socket.send({'cmd': 'loadselect', 'data': $(this).attr("name")});
 			highlightLoadLine($(this));
 		});
+
+		$("#loaddelete"+i).off("click").on("click", (function (name) {
+			return function () {
+				if(!sman_allow_delete) {
+					return;
+				}
+				$("#loadcontainerdelete-storyname").text(name);
+				$("#btn_dsaccept").off("click").on("click", (function (name) {
+					return function () {
+						hide([$(".saveasoverwrite"), $(".popuperror")]);
+						socket.send({'cmd': 'deletestory', 'data': name});
+					}
+				})(name));
+				$("#loadcontainerdelete").removeClass("hidden").addClass("flex");
+			}
+		})(ar[i].name));
+
+		$("#loadrename"+i).off("click").on("click", (function (name) {
+			return function () {
+				if(!sman_allow_rename) {
+					return;
+				}
+				$("#newsavename").val("")
+				$("#loadcontainerrename-storyname").text(name);
+				var submit = (function (name) {
+					return function () {
+						hide([$(".saveasoverwrite"), $(".popuperror")]);
+						socket.send({'cmd': 'renamestory', 'data': name, 'newname': $("#newsavename").val()});
+					}
+				})(name);
+				$("#btn_rensaccept").off("click").on("click", submit);
+				$("#newsavename").off("keydown").on("keydown", function (ev) {
+					if (ev.which == 13 && $(this).val() != "") {
+						submit();
+					}
+				});
+				$("#loadcontainerrename").removeClass("hidden").addClass("flex");
+				$("#newsavename").val(name).select();
+			}
+		})(ar[i].name));
 	}
 }
 
 function highlightLoadLine(ref) {
-	$("#loadlistcontent > div").removeClass("popuplistselected");
+	$("#loadlistcontent > div > div.popuplistselected").removeClass("popuplistselected");
 	ref.addClass("popuplistselected");
 }
 
@@ -687,26 +735,26 @@ function chunkOnKeyDown(event) {
 	switch(event.keyCode) {
 		case 37:  // left
 		case 39:  // right
-			old_range = getSelection().getRangeAt(0);
-			old_range_start = old_range.startOffset;
-			old_range_end = old_range.endOffset;
-			old_range_ancestor = old_range.commonAncestorContainer;
-			old_range_start_container = old_range.startContainer;
-			old_range_end_container = old_range.endContainer;
+			var old_range = getSelection().getRangeAt(0);
+			var old_range_start = old_range.startOffset;
+			var old_range_end = old_range.endOffset;
+			var old_range_ancestor = old_range.commonAncestorContainer;
+			var old_range_start_container = old_range.startContainer;
+			var old_range_end_container = old_range.endContainer;
 			setTimeout(function () {
 				// Wait a few milliseconds and check if the caret has moved
-				new_selection = getSelection();
-				new_range = new_selection.getRangeAt(0);
+				var new_selection = getSelection();
+				var new_range = new_selection.getRangeAt(0);
 				if(old_range_start != new_range.startOffset || old_range_end != new_range.endOffset || old_range_ancestor != new_range.commonAncestorContainer || old_range_start_container != new_range.startContainer || old_range_end_container != new_range.endContainer) {
 					return;
 				}
 				// If it hasn't moved, we're at the beginning or end of a chunk
 				// and the caret must be moved to a different chunk
-				chunk = document.activeElement;
+				var chunk = document.activeElement;
 				switch(event.keyCode) {
 					case 37:  // left
 						if((chunk = chunk.previousSibling) && chunk.tagName == "CHUNK") {
-							range = document.createRange();
+							var range = document.createRange();
 							range.selectNodeContents(chunk);
 							range.collapse(false);
 							new_selection.removeAllRanges();
@@ -723,7 +771,7 @@ function chunkOnKeyDown(event) {
 			return;
 		
 		case 8:  // backspace
-			old_length = document.activeElement.innerText.length;
+			var old_length = document.activeElement.innerText.length;
 			setTimeout(function () {
 				// Wait a few milliseconds and compare the chunk's length
 				if(old_length != document.activeElement.innerText.length) {
@@ -731,8 +779,8 @@ function chunkOnKeyDown(event) {
 				}
 				// If it's the same, we're at the beginning of a chunk
 				if((chunk = document.activeElement.previousSibling) && chunk.tagName == "CHUNK") {
-					range = document.createRange();
-					selection = getSelection();
+					var range = document.createRange();
+					var selection = getSelection();
 					range.selectNodeContents(chunk);
 					range.collapse(false);
 					selection.removeAllRanges();
@@ -771,7 +819,7 @@ function submitEditedChunk(event) {
 		return;
 	}
 
-	chunk = current_editing_chunk;
+	var chunk = current_editing_chunk;
 	current_editing_chunk = null;
 
 	// Submit the edited chunk if it's not empty, otherwise delete it
@@ -795,6 +843,8 @@ $(document).ready(function(){
 	button_save       = $('#btn_save');
 	button_saveas     = $('#btn_saveas');
 	button_savetofile = $('#btn_savetofile');
+	button_download   = $('#btn_download');
+	button_downloadtxt= $('#btn_downloadtxt');
 	button_load       = $('#btn_load');
 	button_loadfrfile = $('#btn_loadfromfile');
 	button_import     = $("#btn_import");
@@ -833,7 +883,6 @@ $(document).ready(function(){
 	topic             = $("#topic");
 	saveas_accept     = $("#btn_saveasaccept");
 	saveas_close      = $("#btn_saveasclose");
-	saveasoverwrite   = $("#saveasoverwrite");
 	loadpopup         = $("#loadcontainer");
 	loadcontent       = $("#loadlistcontent");
 	load_accept       = $("#btn_loadaccept");
@@ -853,6 +902,8 @@ $(document).ready(function(){
 	socket.on('from_server', function(msg) {
 		if(msg.cmd == "connected") {
 			// Connected to Server Actions
+			sman_allow_delete = msg.hasOwnProperty("smandelete") && msg.smandelete;
+			sman_allow_rename = msg.hasOwnProperty("smanrename") && msg.smanrename;
 			connected = true;
 			connect_status.html("<b>Connected to KoboldAI Process!</b>");
 			connect_status.removeClass("color_orange");
@@ -870,7 +921,7 @@ $(document).ready(function(){
 				}
 			});
 		} else if(msg.cmd == "updatescreen") {
-			_gamestarted = gamestarted;
+			var _gamestarted = gamestarted;
 			gamestarted = msg.gamestarted;
 			if(_gamestarted != gamestarted) {
 				action_mode = 0;
@@ -1048,6 +1099,14 @@ $(document).ready(function(){
 		} else if(msg.cmd == "popupshow") {
 			// Show/Hide Popup
 			popupShow(msg.data);
+		} else if(msg.cmd == "hidepopupdelete") {
+			// Hide the dialog box that asks you to confirm deletion of a story
+			$("#loadcontainerdelete").removeClass("flex").addClass("hidden");
+			hide([$(".saveasoverwrite"), $(".popuperror")]);
+		} else if(msg.cmd == "hidepopuprename") {
+			// Hide the story renaming dialog box
+			$("#loadcontainerrename").removeClass("flex").addClass("hidden");
+			hide([$(".saveasoverwrite"), $(".popuperror")]);
 		} else if(msg.cmd == "addimportline") {
 			// Add import popup entry
 			addImportLine(msg.data);
@@ -1081,7 +1140,11 @@ $(document).ready(function(){
 			buildLoadList(msg.data);
 		} else if(msg.cmd == "askforoverwrite") {
 			// Show overwrite warning
-			show([saveasoverwrite]);
+			show([$(".saveasoverwrite")]);
+		} else if(msg.cmd == "popuperror") {
+			// Show error in the current dialog box
+			$(".popuperror").text(msg.data);
+			show([$(".popuperror")]);
 		} else if(msg.cmd == "genseqs") {
 			// Parse generator sequences to UI
 			parsegenseqs(msg.data);
@@ -1211,6 +1274,14 @@ $(document).ready(function(){
 	saveas_accept.on("click", function(ev) {
 		sendSaveAsRequest();
 	});
+
+	button_download.on("click", function(ev) {
+		window.open("/download", "_blank");
+	});
+
+	button_downloadtxt.on("click", function(ev) {
+		window.open("/download?format=plaintext", "_blank");
+	});
 	
 	button_load.on("click", function(ev) {
 		socket.send({'cmd': 'loadlistrequest', 'data': ''});
@@ -1238,6 +1309,25 @@ $(document).ready(function(){
 	ns_close.on("click", function(ev) {
 		hideNewStoryPopup();
 	});
+
+	$("#btn_dsclose").on("click", function () {
+		$("#loadcontainerdelete").removeClass("flex").addClass("hidden");
+		hide([$(".saveasoverwrite"), $(".popuperror")]);
+	});
+	
+	$("#newsavename").on("input", function (ev) {
+		if($(this).val() == "") {
+			disableButtons([$("#btn_rensaccept")]);
+		} else {
+			enableButtons([$("#btn_rensaccept")]);
+		}
+		hide([$(".saveasoverwrite"), $(".popuperror")]);
+	});
+	
+	$("#btn_rensclose").on("click", function () {
+		$("#loadcontainerrename").removeClass("flex").addClass("hidden");
+		hide([$(".saveasoverwrite"), $(".popuperror")]);
+	});
 	
 	button_rndgame.on("click", function(ev) {
 		showRandomStoryPopup();
@@ -1262,7 +1352,7 @@ $(document).ready(function(){
 		} else {
 			enableButtons([saveas_accept]);
 		}
-		hide([saveasoverwrite]);
+		hide([$(".saveasoverwrite"), $(".popuperror")]);
 	});
 	
 	// Bind Enter button to submit

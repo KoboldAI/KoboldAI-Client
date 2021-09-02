@@ -1,6 +1,7 @@
 import tkinter as tk
 from tkinter import filedialog
 from os import getcwd, listdir, path
+import os
 import json
 
 #==================================================================#
@@ -55,6 +56,12 @@ def getdirpath(dir, title):
         return None
 
 #==================================================================#
+#  Returns the path (as a string) to the given story by its name
+#==================================================================#
+def storypath(name):
+    return path.join(path.dirname(path.realpath(__file__)), "stories", name + ".json")
+
+#==================================================================#
 #  Returns an array of dicts containing story files in /stories
 #==================================================================#
 def getstoryfiles():
@@ -83,4 +90,22 @@ def getstoryfiles():
 #  Returns True if json file exists with requested save name
 #==================================================================#
 def saveexists(name):
-    return path.exists(path.dirname(path.realpath(__file__))+"/stories/"+name+".json")
+    return path.exists(storypath(name))
+
+#==================================================================#
+#  Delete save file by name; returns None if successful, or the exception if not
+#==================================================================#
+def deletesave(name):
+    try:
+        os.remove(storypath(name))
+    except Exception as e:
+        return e
+
+#==================================================================#
+#  Rename save file; returns None if successful, or the exception if not
+#==================================================================#
+def renamesave(name, new_name):
+    try:
+        os.replace(storypath(name), storypath(new_name))
+    except Exception as e:
+        return e

@@ -41,6 +41,8 @@
 										<a class="dropdown-item" href="#" id="btn_save">Save</a>
 										<a class="dropdown-item" href="#" id="btn_saveas">Save As</a>
 										<a class="dropdown-item" href="#" id="btn_savetofile">Save To File...</a>
+										<a class="dropdown-item" href="#" id="btn_download">Download Story as JSON</a>
+										<a class="dropdown-item" href="#" id="btn_downloadtxt">Download Story as Plaintext</a>
 									</div>
 								</li>
 								<li class="nav-item dropdown">
@@ -193,7 +195,10 @@
 			<div class="aidgpopupcontent">
 				<input class="form-control" type="text" placeholder="Save Name" id="savename">
 			</div>
-			<div class="hidden" id="saveasoverwrite">
+			<div class="popuperror hidden">
+				<span></span>
+			</div>
+			<div class="saveasoverwrite hidden">
 				<span>File already exists. Really overwrite?</span>
 			</div>
 			<div class="popupfooter">
@@ -209,13 +214,51 @@
 			</div>
 			<div class="loadlistheader">
 				<div>Save Name</div>
-				<div># Actions</div>
+				<div class="flex-push-right"># Actions</div>
 			</div>
 			<div id="loadlistcontent">
 			</div>
 			<div class="popupfooter">
 				<button type="button" class="btn btn-primary" id="btn_loadaccept">Load</button>
 				<button type="button" class="btn btn-primary" id="btn_loadclose">Cancel</button>
+			</div>
+		</div>
+	</div>
+	<div class="popupcontainer hidden" id="loadcontainerdelete">
+		<div id="loadpopupdelete">
+			<div class="popuptitlebar">
+				<div class="popuptitletext">Really Delete Story?</div>
+			</div>
+			<div class="dialogheader">
+				"<span id="loadcontainerdelete-storyname"></span>" will be PERMANENTLY deleted! You will not be able to recover this story later.
+			</div>
+			<div class="popuperror hidden">
+				<span></span>
+			</div>
+			<div class="popupfooter">
+				<button type="button" class="btn btn-danger" id="btn_dsaccept">Delete</button>
+				<button type="button" class="btn btn-primary" id="btn_dsclose">Cancel</button>
+			</div>
+		</div>
+	</div>
+	<div class="popupcontainer hidden" id="loadcontainerrename">
+		<div id="loadpopuprename">
+			<div class="popuptitlebar">
+				<div class="popuptitletext">Enter New Name For Story</div>
+			</div>
+			<div class="dialogheader">
+				What should the story "<span id="loadcontainerrename-storyname"></span>" be renamed to?
+				<input class="form-control" type="text" placeholder="New Save Name" id="newsavename">
+			</div>
+			<div class="popuperror hidden">
+				<span></span>
+			</div>
+			<div class="saveasoverwrite hidden">
+				<span>File already exists. Really overwrite?</span>
+			</div>
+			<div class="popupfooter">
+				<button type="button" class="btn btn-primary" id="btn_rensaccept">Accept</button>
+				<button type="button" class="btn btn-primary" id="btn_rensclose">Cancel</button>
 			</div>
 		</div>
 	</div>
