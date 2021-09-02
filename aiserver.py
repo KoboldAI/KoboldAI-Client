@@ -44,15 +44,15 @@ class colors:
 
 # AI models
 modellist = [
-    ["GPT Neo 1.3B", "EleutherAI/gpt-neo-1.3B", "8GB"],
-    ["GPT Neo 2.7B", "EleutherAI/gpt-neo-2.7B", "16GB"],
-    ["GPT-2", "gpt2", "1.2GB"],
-    ["GPT-2 Med", "gpt2-medium", "2GB"],
-    ["GPT-2 Large", "gpt2-large", "16GB"],
-    ["GPT-2 XL", "gpt2-xl", "16GB"],
-    ["InferKit API (requires API key)", "InferKit", ""],
     ["Custom Neo   (eg Neo-horni)", "NeoCustom", ""],
     ["Custom GPT-2 (eg CloverEdition)", "GPT2Custom", ""],
+    ["GPT Neo 1.3B", "EleutherAI/gpt-neo-1.3B", "4GB"],
+    ["GPT Neo 2.7B", "EleutherAI/gpt-neo-2.7B", "8GB"],
+    ["GPT-2", "gpt2", "600MB"],
+    ["GPT-2 Med", "gpt2-medium", "1GB"],
+    ["GPT-2 Large", "gpt2-large", "8GB"],
+    ["GPT-2 XL", "gpt2-xl", "8GB"],
+    ["InferKit API (requires API key)", "InferKit", ""],
     ["Google Colab", "Colab", ""],
     ["OpenAI API (requires API key)", "OAI", ""],
     ["Read Only (No AI)", "ReadOnly", ""]
