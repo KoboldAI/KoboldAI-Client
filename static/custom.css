@@ -533,7 +533,7 @@ chunk, chunk * {
 	-webkit-transform: rotate(20deg);
 	-ms-transform: rotate(20deg);
 	-o-transform: rotate(20deg);
-	opacity: 0%;
+	opacity: 20%;
 }
 
 *:hover > .constant-key-icon {
