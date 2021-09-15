@@ -9,7 +9,7 @@ dependencies:
   - pytorch
   - cudatoolkit=11.1
   - tensorflow-gpu
-  - python=3.9.*
+  - python=3.8.*
   - pip
   - git
   - pip:
