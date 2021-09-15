@@ -8,6 +8,8 @@ dependencies:
   - colorama
   - flask-socketio
   - pytorch
+  - python=3.9.*
+  - cudatoolkit=11.1
   - tensorflow-gpu
   - transformers
   - pip
