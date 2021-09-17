@@ -1,7 +1,7 @@
 #==================================================================#
 # KoboldAI Client
-# Version: 1.15.0
-# By: KoboldAIDev
+# Version: 1.16.0
+# By: KoboldAIDev and the KoboldAI Community
 #==================================================================#
 
 # External packages
