@@ -44,7 +44,7 @@ class colors:
 
 # AI models
 modellist = [
-    ["Custom Neo   (eg Neo-horni)", "NeoCustom", ""],
+    ["Custom Neo (GPT-Neo / Converted GPT-J)", "NeoCustom", ""],
     ["Custom GPT-2 (eg CloverEdition)", "GPT2Custom", ""],
     ["GPT Neo 1.3B", "EleutherAI/gpt-neo-1.3B", "4GB"],
     ["GPT Neo 2.7B", "EleutherAI/gpt-neo-2.7B", "8GB"],
@@ -82,8 +82,8 @@ class vars:
     andepth     = 3      # How far back in history to append author's note
     actions     = structures.KoboldStoryRegister()  # Actions submitted by user and AI
     worldinfo   = []     # Array of World Info key/value objects
-    badwords    = []     # Array of str/chr values that should be removed from output
-    badwordsids = []     # Tokenized array of badwords
+    # badwords    = []     # Array of str/chr values that should be removed from output
+    badwordsids = [[13460], [6880], [50256], [42496], [4613], [17414], [22039], [16410], [27], [29], [38430], [37922], [15913], [24618], [28725], [58], [47175], [36937], [26700], [12878], [16471], [37981], [5218], [29795], [13412], [45160], [3693], [49778], [4211], [20598], [36475], [33409], [44167], [32406], [29847], [29342], [42669], [685], [25787], [7359], [3784], [5320], [33994], [33490], [34516], [43734], [17635], [24293], [9959], [23785], [21737], [28401], [18161], [26358], [32509], [1279], [38155], [18189], [26894], [6927], [14610], [23834], [11037], [14631], [26933], [46904], [22330], [25915], [47934], [38214], [1875], [14692], [41832], [13163], [25970], [29565], [44926], [19841], [37250], [49029], [9609], [44438], [16791], [17816], [30109], [41888], [47527], [42924], [23984], [49074], [33717], [31161], [49082], [30138], [31175], [12240], [14804], [7131], [26076], [33250], [3556], [38381], [36338], [32756], [46581], [17912], [49146]] # Tokenized array of badwords used to prevent AI artifacting
     deletewi    = -1     # Temporary storage for index to delete
     wirmvwhtsp  = False  # Whether to remove leading whitespace from WI entries
     widepth     = 3      # How many historical actions to scan for WI hits
@@ -479,11 +479,11 @@ if(not vars.model in ["InferKit", "Colab", "OAI", "ReadOnly"]):
                 generator = pipeline('text-generation', model=vars.model)
         
         # Suppress Author's Note by flagging square brackets
-        vocab         = tokenizer.get_vocab()
-        vocab_keys    = vocab.keys()
-        vars.badwords = gettokenids("[")
-        for key in vars.badwords:
-            vars.badwordsids.append([vocab[key]])
+        #vocab         = tokenizer.get_vocab()
+        #vocab_keys    = vocab.keys()
+        #vars.badwords = gettokenids("[")
+        #for key in vars.badwords:
+        #    vars.badwordsids.append([vocab[key]])
         
         print("{0}OK! {1} pipeline created!{2}".format(colors.GREEN, vars.model, colors.END))
 else:
