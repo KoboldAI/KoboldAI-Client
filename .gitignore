@@ -3,6 +3,7 @@ client.settings
 
 # Ignore stories file except for test_story
 stories/*
+settings/*
 !stories/sample_story.json
 /.project
 *.bak
