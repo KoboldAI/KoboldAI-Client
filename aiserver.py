@@ -1,5 +1,5 @@
 #==================================================================#
-# KoboldAI Client
+# KoboldAI
 # Version: 1.16.0
 # By: KoboldAIDev and the KoboldAI Community
 #==================================================================#
@@ -99,7 +99,7 @@ class vars:
     hascuda     = False  # Whether torch has detected CUDA on the system
     usegpu      = False  # Whether to launch pipeline with GPU support
     custmodpth  = ""     # Filesystem location of custom model to run
-    formatoptns = {}     # Container for state of formatting options
+    formatoptns = {'frmttriminc': True, 'frmtrmblln': False, 'frmtrmspch': False, 'frmtadsnsp': False}     # Container for state of formatting options
     importnum   = -1     # Selection on import popup list
     importjs    = {}     # Temporary storage for import data
     loadselect  = ""     # Temporary storage for filename to load
@@ -210,7 +210,7 @@ if args.model:
         vars.colaburl = args.path + "/request"; # Lets just use the same parameter to keep it simple
 
 else:
-    print("{0}Welcome to the KoboldAI Client!\nSelect an AI model to continue:{1}\n".format(colors.CYAN, colors.END))
+    print("{0}Welcome to the KoboldAI Server!\nSelect an AI model to continue:{1}\n".format(colors.CYAN, colors.END))
     getModelSelection()
 
 # If transformers model was selected & GPU available, ask to use CPU or GPU
@@ -785,7 +785,7 @@ def get_message(msg):
 #  Send start message and tell Javascript to set UI state
 #==================================================================#
 def setStartState():
-    txt = "<span>Welcome to <span class=\"color_cyan\">KoboldAI Client</span>! You are running <span class=\"color_green\">"+vars.model+"</span>.<br/>"
+    txt = "<span>Welcome to <span class=\"color_cyan\">KoboldAI</span>! You are running <span class=\"color_green\">"+getmodelname()+"</span>.<br/>"
     if(not vars.noai):
         txt = txt + "Please load a game or enter a prompt below to begin!</span>"
     else:
@@ -833,7 +833,7 @@ def savesettings():
     js["widepth"]     = vars.widepth
     js["useprompt"]   = vars.useprompt
     js["adventure"]   = vars.adventure
-    
+
     # Write it
     if not os.path.exists('settings'):
         os.mkdir('settings')

@@ -1,6 +1,6 @@
 @echo off
 cd %~dp0
-TITLE KoboldAI - Client
+TITLE KoboldAI - Server
 SET /P M=<loader.settings
 IF %M%==1 GOTO drivemap
 IF %M%==2 GOTO subfolder
