@@ -1344,11 +1344,11 @@ $(document).ready(function(){
 	});
 
 	button_download.on("click", function(ev) {
-		downloadStory('json')
+		downloadStory('json');
 	});
 
 	button_downloadtxt.on("click", function(ev) {
-		downloadStory('plaintext')
+		downloadStory('plaintext');
 	});
 	
 	button_load.on("click", function(ev) {
