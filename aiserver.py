@@ -1600,7 +1600,7 @@ def togglememorymode():
         vars.mode = "memory"
         emit('from_server', {'cmd': 'memmode', 'data': 'true'}, broadcast=True)
         emit('from_server', {'cmd': 'setinputtext', 'data': vars.memory}, broadcast=True)
-        emit('from_server', {'cmd': 'setanote', 'data': vars.authornote})
+        emit('from_server', {'cmd': 'setanote', 'data': vars.authornote}, broadcast=True)
     elif(vars.mode == "memory"):
         vars.mode = "play"
         emit('from_server', {'cmd': 'memmode', 'data': 'false'}, broadcast=True)
@@ -2111,7 +2111,13 @@ def loadRequest(loadpath):
         vars.loadselect = ""
         
         # Refresh game screen
+        filename = path.basename(loadpath)
+        if(filename.endswith('.json')):
+            filename = filename[:-5]
+        emit('from_server', {'cmd': 'setstoryname', 'data': filename}, broadcast=True)
         sendwi()
+        emit('from_server', {'cmd': 'setmemory', 'data': vars.memory}, broadcast=True)
+        emit('from_server', {'cmd': 'setanote', 'data': vars.authornote}, broadcast=True)
         refresh_story()
         emit('from_server', {'cmd': 'setgamestate', 'data': 'ready'}, broadcast=True)
         emit('from_server', {'cmd': 'hidegenseqs', 'data': ''}, broadcast=True)
@@ -2329,7 +2335,10 @@ def newGameRequest():
     vars.savedir = getcwd()+"\stories"
     
     # Refresh game screen
+    emit('from_server', {'cmd': 'setstoryname', 'data': None}, broadcast=True)
     sendwi()
+    emit('from_server', {'cmd': 'setmemory', 'data': vars.memory}, broadcast=True)
+    emit('from_server', {'cmd': 'setanote', 'data': vars.authornote}, broadcast=True)
     setStartState()
 
 def randomGameRequest(topic): 
