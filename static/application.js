@@ -840,7 +840,7 @@ function submitEditedChunk(event) {
 }
 
 function downloadStory(format) {
-	var filename_without_extension = storyname !== null ? storyname : "untitled"
+	var filename_without_extension = storyname !== null ? storyname : "untitled";
 
 	var anchor = document.createElement('a');
 
