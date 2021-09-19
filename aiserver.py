@@ -1665,7 +1665,7 @@ def requestwi():
     list = []
     for wi in vars.worldinfo:
         list.append(wi["num"])
-    emit('from_server', {'cmd': 'requestwiitem', 'data': list}, broadcast=True)
+    emit('from_server', {'cmd': 'requestwiitem', 'data': list})
 
 #==================================================================#
 #  Renumber WI items consecutively
@@ -1791,7 +1791,7 @@ def memsubmit(data):
     emit('from_server', {'cmd': 'memmode', 'data': 'false'}, broadcast=True)
     
     # Ask for contents of Author's Note field
-    emit('from_server', {'cmd': 'getanote', 'data': ''}, broadcast=True)
+    emit('from_server', {'cmd': 'getanote', 'data': ''})
 
 #==================================================================#
 #  Commit changes to Author's Note
