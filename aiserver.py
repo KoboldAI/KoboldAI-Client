@@ -112,6 +112,7 @@ class vars:
     bmsupported = False  # Whether the breakmodel option is supported (GPT-Neo/GPT-J only, currently)
     smandelete  = False  # Whether stories can be deleted from inside the browser
     smanrename  = False  # Whether stories can be renamed from inside the browser
+    laststory   = None   # Filename (without extension) of most recent story JSON file we loaded
     acregex_ai  = re.compile(r'\n* *>(.|\n)*')  # Pattern for matching adventure actions from the AI so we can remove them
     acregex_ui  = re.compile(r'^ *(&gt;.*)$', re.MULTILINE)    # Pattern for matching actions in the HTML-escaped story so we can apply colouring, etc (make sure to encase part to format in parentheses)
     actionmode  = 1
@@ -572,14 +573,21 @@ def do_connect():
         setStartState()
         sendsettings()
         refresh_settings()
+        vars.laststory = None
+        emit('from_server', {'cmd': 'setstoryname', 'data': vars.laststory}, broadcast=True)
         sendwi()
+        emit('from_server', {'cmd': 'setmemory', 'data': vars.memory}, broadcast=True)
+        emit('from_server', {'cmd': 'setanote', 'data': vars.authornote}, broadcast=True)
         vars.mode = "play"
     else:
         # Game in session, send current game data and ready state to browser
         refresh_story()
         sendsettings()
         refresh_settings()
+        emit('from_server', {'cmd': 'setstoryname', 'data': vars.laststory}, broadcast=True)
         sendwi()
+        emit('from_server', {'cmd': 'setmemory', 'data': vars.memory}, broadcast=True)
+        emit('from_server', {'cmd': 'setanote', 'data': vars.authornote}, broadcast=True)
         if(vars.mode == "play"):
             if(not vars.aibusy):
                 emit('from_server', {'cmd': 'setgamestate', 'data': 'ready'}, broadcast=True)
@@ -1600,7 +1608,7 @@ def togglememorymode():
         vars.mode = "memory"
         emit('from_server', {'cmd': 'memmode', 'data': 'true'}, broadcast=True)
         emit('from_server', {'cmd': 'setinputtext', 'data': vars.memory}, broadcast=True)
-        emit('from_server', {'cmd': 'setanote', 'data': vars.authornote})
+        emit('from_server', {'cmd': 'setanote', 'data': vars.authornote}, broadcast=True)
     elif(vars.mode == "memory"):
         vars.mode = "play"
         emit('from_server', {'cmd': 'memmode', 'data': 'false'}, broadcast=True)
@@ -1657,7 +1665,7 @@ def requestwi():
     list = []
     for wi in vars.worldinfo:
         list.append(wi["num"])
-    emit('from_server', {'cmd': 'requestwiitem', 'data': list}, broadcast=True)
+    emit('from_server', {'cmd': 'requestwiitem', 'data': list})
 
 #==================================================================#
 #  Renumber WI items consecutively
@@ -1783,7 +1791,7 @@ def memsubmit(data):
     emit('from_server', {'cmd': 'memmode', 'data': 'false'}, broadcast=True)
     
     # Ask for contents of Author's Note field
-    emit('from_server', {'cmd': 'getanote', 'data': ''}, broadcast=True)
+    emit('from_server', {'cmd': 'getanote', 'data': ''})
 
 #==================================================================#
 #  Commit changes to Author's Note
@@ -2111,7 +2119,14 @@ def loadRequest(loadpath):
         vars.loadselect = ""
         
         # Refresh game screen
+        filename = path.basename(loadpath)
+        if(filename.endswith('.json')):
+            filename = filename[:-5]
+        vars.laststory = filename
+        emit('from_server', {'cmd': 'setstoryname', 'data': vars.laststory}, broadcast=True)
         sendwi()
+        emit('from_server', {'cmd': 'setmemory', 'data': vars.memory}, broadcast=True)
+        emit('from_server', {'cmd': 'setanote', 'data': vars.authornote}, broadcast=True)
         refresh_story()
         emit('from_server', {'cmd': 'setgamestate', 'data': 'ready'}, broadcast=True)
         emit('from_server', {'cmd': 'hidegenseqs', 'data': ''}, broadcast=True)
@@ -2228,7 +2243,11 @@ def importgame():
         vars.savedir = getcwd()+"\stories"
         
         # Refresh game screen
+        vars.laststory = None
+        emit('from_server', {'cmd': 'setstoryname', 'data': vars.laststory}, broadcast=True)
         sendwi()
+        emit('from_server', {'cmd': 'setmemory', 'data': vars.memory}, broadcast=True)
+        emit('from_server', {'cmd': 'setanote', 'data': vars.authornote}, broadcast=True)
         refresh_story()
         emit('from_server', {'cmd': 'setgamestate', 'data': 'ready'}, broadcast=True)
         emit('from_server', {'cmd': 'hidegenseqs', 'data': ''}, broadcast=True)
@@ -2272,7 +2291,11 @@ def importAidgRequest(id):
         vars.savedir = getcwd()+"\stories"
         
         # Refresh game screen
+        vars.laststory = None
+        emit('from_server', {'cmd': 'setstoryname', 'data': vars.laststory}, broadcast=True)
         sendwi()
+        emit('from_server', {'cmd': 'setmemory', 'data': vars.memory}, broadcast=True)
+        emit('from_server', {'cmd': 'setanote', 'data': vars.authornote}, broadcast=True)
         refresh_story()
         emit('from_server', {'cmd': 'setgamestate', 'data': 'ready'}, broadcast=True)
 
@@ -2329,7 +2352,11 @@ def newGameRequest():
     vars.savedir = getcwd()+"\stories"
     
     # Refresh game screen
+    vars.laststory = None
+    emit('from_server', {'cmd': 'setstoryname', 'data': vars.laststory}, broadcast=True)
     sendwi()
+    emit('from_server', {'cmd': 'setmemory', 'data': vars.memory}, broadcast=True)
+    emit('from_server', {'cmd': 'setanote', 'data': vars.authornote}, broadcast=True)
     setStartState()
 
 def randomGameRequest(topic): 

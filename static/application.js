@@ -62,7 +62,9 @@ var rs_close;
 var seqselmenu;
 var seqselcontents;
 
+var storyname = null;
 var memorymode = false;
+var memorytext = "";
 var gamestarted = false;
 var editmode = false;
 var connected = false;
@@ -184,7 +186,7 @@ function addImportLine(ob) {
 function addWiLine(ob) {
 	if(ob.init) {
 		if(ob.selective){
-			wi_menu.append("<div class=\"wilistitem\">\
+			wi_menu.append("<div class=\"wilistitem wilistitem-selective "+(ob.constant ? "wilistitem-constant" : "")+"\">\
 				<div class=\"wiremove\">\
 					<button type=\"button\" class=\"btn btn-primary heightfull\" id=\"btn_wi"+ob.num+"\">X</button>\
 					<button type=\"button\" class=\"btn btn-success heighthalf hidden\" id=\"btn_widel"+ob.num+"\">✓</button>\
@@ -205,7 +207,7 @@ function addWiLine(ob) {
 				</div>\
 			</div>");
 		} else {
-			wi_menu.append("<div class=\"wilistitem\">\
+			wi_menu.append("<div class=\"wilistitem "+(ob.constant ? "wilistitem-constant" : "")+"\">\
 				<div class=\"wiremove\">\
 					<button type=\"button\" class=\"btn btn-primary heightfull\" id=\"btn_wi"+ob.num+"\">X</button>\
 					<button type=\"button\" class=\"btn btn-success heighthalf hidden\" id=\"btn_widel"+ob.num+"\">✓</button>\
@@ -282,18 +284,22 @@ function addWiLine(ob) {
 	});
 	$("#btn_wiselon"+ob.num).on("click", function () {
 		enableWiSelective(ob.num);
+		$("#wikey"+ob.num).addClass("wilistitem-selective");
 	});
 	$("#btn_wiseloff"+ob.num).on("click", function () {
 		disableWiSelective(ob.num);
+		$("#wikey"+ob.num).removeClass("wilistitem-selective");
 	});
 	$("#constant-key-"+ob.num).on("click", function () {
 		var element = $("#constant-key-"+ob.num);
 		if(element.hasClass("constant-key-icon-enabled")) {
 			socket.send({'cmd': 'wiconstantoff', 'data': ob.num});
-			element.removeClass("constant-key-icon-enabled")
+			element.removeClass("constant-key-icon-enabled");
+			$("#wikey"+ob.num).removeClass("wilistitem-constant");
 		} else {
 			socket.send({'cmd': 'wiconstanton', 'data': ob.num});
 			element.addClass("constant-key-icon-enabled");
+			$("#wikey"+ob.num).addClass("wilistitem-constant");
 		}
 	});
 }
@@ -485,6 +491,9 @@ function returnWiList(ar) {
 function dosubmit() {
 	var txt = input_text.val();
 	socket.send({'cmd': 'submit', 'actionmode': adventure ? action_mode : 0, 'data': txt});
+	if(memorymode) {
+		memorytext = input_text.val();
+	}
 	input_text.val("");
 	hideMessage();
 	hidegenseqs();
@@ -830,6 +839,57 @@ function submitEditedChunk(event) {
 	}
 }
 
+function downloadStory(format) {
+	var filename_without_extension = storyname !== null ? storyname : "untitled";
+
+	var anchor = document.createElement('a');
+
+	var actionlist = $("chunk");
+	var actionlist_compiled = [];
+	for(var i = 0; i < actionlist.length; i++) {
+		actionlist_compiled.push(actionlist[i].innerText.replace(/\u00a0/g, " "));
+	}
+
+	if(format == "plaintext") {
+		var objectURL = URL.createObjectURL(new Blob(actionlist_compiled));
+		anchor.setAttribute('href', objectURL);
+		anchor.setAttribute('download', filename_without_extension + ".txt");
+		anchor.click();
+		URL.revokeObjectURL(objectURL);
+		return;
+	}
+
+	var wilist = $(".wilistitem");
+	var wilist_compiled = [];
+	for(var i = 0; i < wilist.length-1; i++) {
+		var selective = wilist[i].classList.contains("wilistitem-selective");
+		wilist_compiled.push({
+			key: selective ? $("#wikeyprimary"+i).val() : $("#wikey"+i).val(),
+			keysecondary: $("#wikeysecondary"+i).val(),
+			content: $("#wientry"+i).val(),
+			selective: selective,
+			constant: wilist[i].classList.contains("wilistitem-constant"),
+		});
+	}
+
+	var prompt = actionlist_compiled.shift();
+	if(prompt === undefined) {
+		prompt = "";
+	}
+	var objectURL = URL.createObjectURL(new Blob([JSON.stringify({
+		gamestarted: gamestarted,
+		prompt: prompt,
+		memory: memorytext,
+		authorsnote: $("#anoteinput").val(),
+		actions: actionlist_compiled,
+		worldinfo: wilist_compiled,
+	}, null, 4)]));
+	anchor.setAttribute('href', objectURL);
+	anchor.setAttribute('download', filename_without_extension + ".json");
+	anchor.click();
+	URL.revokeObjectURL(objectURL);
+}
+
 //=================================================================//
 //  READY/RUNTIME
 //=================================================================//
@@ -980,6 +1040,8 @@ $(document).ready(function(){
 			} else if(msg.data == "start") {
 				setStartState();
 			}
+		} else if(msg.cmd == "setstoryname") {
+			storyname = msg.data;
 		} else if(msg.cmd == "editmode") {
 			// Enable or Disable edit mode
 			if(msg.data == "true") {
@@ -989,6 +1051,12 @@ $(document).ready(function(){
 			}
 		} else if(msg.cmd == "setinputtext") {
 			// Set input box text for memory mode
+			if(memorymode) {
+				memorytext = msg.data;
+				input_text.val(msg.data);
+			}
+		} else if(msg.cmd == "setmemory") {
+			memorytext = msg.data;
 			if(memorymode) {
 				input_text.val(msg.data);
 			}
@@ -1276,11 +1344,11 @@ $(document).ready(function(){
 	});
 
 	button_download.on("click", function(ev) {
-		window.open("/download", "_blank");
+		downloadStory('json');
 	});
 
 	button_downloadtxt.on("click", function(ev) {
-		window.open("/download?format=plaintext", "_blank");
+		downloadStory('plaintext');
 	});
 	
 	button_load.on("click", function(ev) {
