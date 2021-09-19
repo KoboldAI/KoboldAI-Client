@@ -112,6 +112,7 @@ class vars:
     bmsupported = False  # Whether the breakmodel option is supported (GPT-Neo/GPT-J only, currently)
     smandelete  = False  # Whether stories can be deleted from inside the browser
     smanrename  = False  # Whether stories can be renamed from inside the browser
+    laststory   = None   # Filename (without extension) of most recent story JSON file we loaded
     acregex_ai  = re.compile(r'\n* *>(.|\n)*')  # Pattern for matching adventure actions from the AI so we can remove them
     acregex_ui  = re.compile(r'^ *(&gt;.*)$', re.MULTILINE)    # Pattern for matching actions in the HTML-escaped story so we can apply colouring, etc (make sure to encase part to format in parentheses)
     actionmode  = 1
@@ -572,14 +573,21 @@ def do_connect():
         setStartState()
         sendsettings()
         refresh_settings()
+        vars.laststory = None
+        emit('from_server', {'cmd': 'setstoryname', 'data': vars.laststory}, broadcast=True)
         sendwi()
+        emit('from_server', {'cmd': 'setmemory', 'data': vars.memory}, broadcast=True)
+        emit('from_server', {'cmd': 'setanote', 'data': vars.authornote}, broadcast=True)
         vars.mode = "play"
     else:
         # Game in session, send current game data and ready state to browser
         refresh_story()
         sendsettings()
         refresh_settings()
+        emit('from_server', {'cmd': 'setstoryname', 'data': vars.laststory}, broadcast=True)
         sendwi()
+        emit('from_server', {'cmd': 'setmemory', 'data': vars.memory}, broadcast=True)
+        emit('from_server', {'cmd': 'setanote', 'data': vars.authornote}, broadcast=True)
         if(vars.mode == "play"):
             if(not vars.aibusy):
                 emit('from_server', {'cmd': 'setgamestate', 'data': 'ready'}, broadcast=True)
@@ -2114,7 +2122,8 @@ def loadRequest(loadpath):
         filename = path.basename(loadpath)
         if(filename.endswith('.json')):
             filename = filename[:-5]
-        emit('from_server', {'cmd': 'setstoryname', 'data': filename}, broadcast=True)
+        vars.laststory = filename
+        emit('from_server', {'cmd': 'setstoryname', 'data': vars.laststory}, broadcast=True)
         sendwi()
         emit('from_server', {'cmd': 'setmemory', 'data': vars.memory}, broadcast=True)
         emit('from_server', {'cmd': 'setanote', 'data': vars.authornote}, broadcast=True)
@@ -2234,7 +2243,11 @@ def importgame():
         vars.savedir = getcwd()+"\stories"
         
         # Refresh game screen
+        vars.laststory = None
+        emit('from_server', {'cmd': 'setstoryname', 'data': vars.laststory}, broadcast=True)
         sendwi()
+        emit('from_server', {'cmd': 'setmemory', 'data': vars.memory}, broadcast=True)
+        emit('from_server', {'cmd': 'setanote', 'data': vars.authornote}, broadcast=True)
         refresh_story()
         emit('from_server', {'cmd': 'setgamestate', 'data': 'ready'}, broadcast=True)
         emit('from_server', {'cmd': 'hidegenseqs', 'data': ''}, broadcast=True)
@@ -2278,7 +2291,11 @@ def importAidgRequest(id):
         vars.savedir = getcwd()+"\stories"
         
         # Refresh game screen
+        vars.laststory = None
+        emit('from_server', {'cmd': 'setstoryname', 'data': vars.laststory}, broadcast=True)
         sendwi()
+        emit('from_server', {'cmd': 'setmemory', 'data': vars.memory}, broadcast=True)
+        emit('from_server', {'cmd': 'setanote', 'data': vars.authornote}, broadcast=True)
         refresh_story()
         emit('from_server', {'cmd': 'setgamestate', 'data': 'ready'}, broadcast=True)
 
@@ -2335,7 +2352,8 @@ def newGameRequest():
     vars.savedir = getcwd()+"\stories"
     
     # Refresh game screen
-    emit('from_server', {'cmd': 'setstoryname', 'data': None}, broadcast=True)
+    vars.laststory = None
+    emit('from_server', {'cmd': 'setstoryname', 'data': vars.laststory}, broadcast=True)
     sendwi()
     emit('from_server', {'cmd': 'setmemory', 'data': vars.memory}, broadcast=True)
     emit('from_server', {'cmd': 'setanote', 'data': vars.authornote}, broadcast=True)
