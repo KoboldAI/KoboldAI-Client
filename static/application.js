@@ -883,7 +883,7 @@ function downloadStory(format) {
 		authorsnote: $("#anoteinput").val(),
 		actions: actionlist_compiled,
 		worldinfo: wilist_compiled,
-	}, null, 4)]));
+	}, null, 3)]));
 	anchor.setAttribute('href', objectURL);
 	anchor.setAttribute('download', filename_without_extension + ".json");
 	anchor.click();
