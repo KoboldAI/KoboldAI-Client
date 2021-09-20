@@ -2050,6 +2050,11 @@ def saveRequest(savpath):
             return e
         file.close()
 
+        filename = path.basename(savpath)
+        if(filename.endswith('.json')):
+            filename = filename[:-5]
+        vars.laststory = filename
+        emit('from_server', {'cmd': 'setstoryname', 'data': vars.laststory}, broadcast=True)
         print("{0}Story saved to {1}!{2}".format(colors.GREEN, path.basename(savpath), colors.END))
 
 #==================================================================#
