@@ -44,7 +44,7 @@ subst K: /D >nul
 mkdir miniconda3 
 subst K: miniconda3
 copy umamba.exe K:\umamba.exe
-cd K:
+K:
 umamba.exe create -r K:\python\ -n base
 IF %B%==1 umamba.exe install --no-shortcuts -r K:\python\ -n base -f "%~dp0\environments\finetuneanon.yml" -y
 IF %B%==2 umamba.exe install --no-shortcuts -r K:\python\ -n base -f "%~dp0\environments\huggingface.yml" -y
