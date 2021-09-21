@@ -1384,7 +1384,7 @@ def sendtocolab(txt, min, max):
 # Replaces returns and newlines with HTML breaks
 #==================================================================#
 def formatforhtml(txt):
-    return txt.replace("\\r", "<br/>").replace("\\n", "<br/>").replace('\n', '<br/>').replace('\r', '<br/>')
+    return txt.replace("\\r\\n", "<br/>").replace("\\r", "<br/>").replace("\\n", "<br/>").replace("\r\n", "<br/>").replace('\n', '<br/>').replace('\r', '<br/>')
 
 #==================================================================#
 # Strips submitted text from the text returned by the AI
