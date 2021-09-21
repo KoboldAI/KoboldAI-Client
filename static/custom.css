@@ -6,6 +6,20 @@ chunk {
 	color: #ffffff;
 }
 
+#gametext.adventure action {
+	color: #9ff7fa;
+	font-weight: bold;
+}
+
+chunk[contenteditable="true"]:focus, chunk[contenteditable="true"]:focus * {
+	color: #cdf !important;
+	font-weight: normal !important;
+}
+
+chunk, chunk * {
+	outline: 0px solid transparent;
+}
+
 #topmenu {
 	background-color: #337ab7;
 	padding: 10px;
@@ -53,7 +67,7 @@ chunk {
 }
 
 #gamescreen {
-	height: 500px;
+	height: 490px;
 	margin-top: 10px;
 	padding: 10px;
 	display: flex;
@@ -72,6 +86,7 @@ chunk {
 #gametext {
 	max-height: 100%;
 	width: 100%;
+	word-wrap: break-word;
 }
 
 #seqselmenu {
@@ -97,12 +112,21 @@ chunk {
 	margin-left: 20px;
 }
 
+#inputrow.show_mode {
+	grid-template-columns: 7% 83% 10%;
+}
+
 #inputrow {
 	margin-top: 10px;
 	padding: 0px;
 	width: 100%;
 	display: grid;
-	grid-template-columns: 90% 10%;
+	grid-template-columns: 0% 90% 10%;
+}
+
+#inputrowmode {
+	position: relative;
+	padding-right: 0px;
 }
 
 #inputrowleft {
@@ -119,6 +143,13 @@ chunk {
 	overflow:auto;
 	background-color: #404040;
 	color: #ffffff;
+}
+
+#btnmode {
+	width: 100%;
+	height: 100%;
+	overflow: auto;
+	overflow-x: hidden;
 }
 
 #btnsend {
@@ -163,7 +194,7 @@ chunk {
 	position: absolute;
 	top: 0px;
 	left: 0px;
-	z-index: 1;
+	z-index: 3;
 	width: 100%;
 	height: 100%;
 	background-color: rgba(0,0,0,0.5);
@@ -240,12 +271,6 @@ chunk {
 	margin-top: 200px;
 }
 
-#saveasoverwrite {
-	color: #ff9900;
-	font-weight: bold;
-	text-align: center;
-}
-
 #loadpopup {
 	width: 500px;
 	background-color: #262626;
@@ -260,6 +285,18 @@ chunk {
 	}
 }
 
+#loadpopupdelete {
+	width: 350px;
+	background-color: #262626;
+	margin-top: 200px;
+}
+
+#loadpopuprename {
+	width: 350px;
+	background-color: #262626;
+	margin-top: 200px;
+}
+
 #loadlistcontent {
 	height: 325px;
 	overflow-y: scroll;
@@ -267,6 +304,12 @@ chunk {
 
 #nspopup {
 	width: 350px;
+	background-color: #262626;
+	margin-top: 200px;
+}
+
+#rspopup {
+	width: 800px;
 	background-color: #262626;
 	margin-top: 200px;
 }
@@ -282,6 +325,12 @@ chunk {
 	text-align: center;
 }
 
+.dialogheader {
+	padding: 10px 40px 10px 40px;
+	color: #737373;
+	text-align: center;
+}
+
 .anotelabel {
 	font-size: 10pt;
 	color: #ffffff;
@@ -291,15 +340,36 @@ chunk {
 	width: 100px;
 }
 
+.box {
+	border-radius: 5px;
+	border: 1px solid #646464;
+	padding: 4px;
+	background: #373737;
+}
+
+.box-label {
+	color: #ffffff;
+	padding-left: 10px;
+	padding-right: 10px;
+	padding-bottom: 5px;
+	padding-top: 5px;
+	display: inline-block;
+}
+
 .chunkhov:hover {
 	color: #c0fc51;
 	cursor: pointer;
 }
 
-.colorfade {
+.chunkhov:hover > action {
+	color: #00fa00;
+}
+
+.colorfade, .colorfade * {
 	-moz-transition:color 1s ease-in;
-    -o-transition:color 1s ease-in;
-    -webkit-transition:color 1s ease-in;
+	-o-transition:color 1s ease-in;
+	-webkit-transition:color 1s ease-in;
+	transition:color 1s ease-in;
 }
 	
 .color_orange {
@@ -339,8 +409,17 @@ chunk {
 	text-decoration: none;
 }
 
+.edit-flash, .edit-flash * {
+	color: #3bf723 !important;
+}
+
 .flex {
 	display: flex;
+	align-items: center;
+}
+
+.flex-push-right {
+	margin-left: auto;
 }
 
 .formatcolumn {
@@ -376,21 +455,21 @@ chunk {
 }
 
 .helpicon {
-    display: inline-block;
-    font-family: sans-serif;
-    font-weight: bold;
-    text-align: center;
-    width: 2.2ex;
-    height: 2.4ex;
-    font-size: 1.4ex;
-    line-height: 1.8ex;
-    border-radius: 1.2ex;
-    margin-right: 4px;
-    padding: 1px;
-    color: #295071;
-    background: #ffffff;
-    border: 1px solid white;
-    text-decoration: none;
+	display: inline-block;
+	font-family: sans-serif;
+	font-weight: bold;
+	text-align: center;
+	width: 2.2ex;
+	height: 2.4ex;
+	font-size: 1.4ex;
+	line-height: 1.8ex;
+	border-radius: 1.2ex;
+	margin-right: 4px;
+	padding: 1px;
+	color: #295071;
+	background: #ffffff;
+	border: 1px solid white;
+	text-decoration: none;
 }
 
 .helpicon:hover {
@@ -426,22 +505,85 @@ chunk {
 	text-align: right;
 }
 
-.loadlistheader {
-	padding-left: 10px;
+.layer-container {
 	display: grid;
-	grid-template-columns: 80% 20%;
+}
+
+.layer-bottom {
+	grid-area: 1/1;
+	z-index: 0;
+}
+
+.layer-top {
+	grid-area: 1/1;
+	z-index: 2;
+}
+
+.icon-container {
+	position: relative;
+}
+
+.constant-key-icon {
+	position: absolute !important;
+	top: 5px !important;
+	right: 5px !important;
+	z-index: 1;
+	transform: rotate(20deg);
+	-moz-transform: rotate(20deg);
+	-webkit-transform: rotate(20deg);
+	-ms-transform: rotate(20deg);
+	-o-transform: rotate(20deg);
+	opacity: 20%;
+}
+
+*:hover > .constant-key-icon {
+	opacity: 40%;
+}
+
+.constant-key-icon:hover {
+	opacity: 65%;
+	cursor: pointer;
+}
+
+.constant-key-icon-enabled {
+	color: #3bf723;
+	opacity: 65%
+}
+
+*:hover > .constant-key-icon-enabled {
+	opacity: 65%;
+}
+
+.constant-key-icon-enabled:hover {
+	opacity: 100%
+}
+
+.constant-key-icon-clickthrough {
+	opacity: 0% !important;
+	pointer-events: none;
+}
+
+.constant-key-icon-clickthrough.constant-key-icon-enabled {
+	opacity: 35% !important;
+}
+
+.loadlistheader {
+	padding-left: 68px;
+	padding-right: 20px;
+	display: flex;
 	color: #737373;
 }
 
 .loadlistitem {
 	padding: 5px 10px 5px 10px;
-	display: grid;
-	grid-template-columns: 80% 20%;
+	display: flex;
+	flex-grow: 1;
 	color: #ffffff;
 	
 	-moz-transition: background-color 0.25s ease-in;
-    -o-transition: background-color 0.25s ease-in;
-    -webkit-transition: background-color 0.25s ease-in;
+	-o-transition: background-color 0.25s ease-in;
+	-webkit-transition: background-color 0.25s ease-in;
+	transition: background-color 0.25s ease-in;
 }
 
 .loadlistitem:hover {
@@ -449,13 +591,37 @@ chunk {
 	background-color: #688f1f;
 }
 
+.loadlistpadding {
+	padding-right: 10px;
+}
+
+.loadlisticon {
+	color: #333
+}
+
+.loadlisticon.allowed {
+	color: #ddd
+}
+
+.loadlisticon.allowed:hover {
+	cursor: pointer;
+}
+
+.loadlisticon-delete.allowed:hover {
+	color: #ef2929
+}
+
+.loadlisticon-rename.allowed:hover {
+	color: #fce94f
+}
+
 .navbar .navbar-nav .nav-link:hover {
-    border-radius: 5px;
+	border-radius: 5px;
 	background-color: #98bcdb;
 }
 
 .navbar .navbar-nav .nav-link:focus {
-    border-radius: 5px;
+	border-radius: 5px;
 	background-color: #98bcdb;
 }
 
@@ -498,11 +664,15 @@ chunk {
 	
 }
 
+.nowrap {
+	white-space: nowrap;
+}
+
 .popupcontainer {
 	position: absolute;
 	top: 0px;
 	left: 0px;
-	z-index: 1;
+	z-index: 3;
 	width: 100%;
 	height: 100%;
 	background-color: rgba(0,0,0,0.5);
@@ -517,8 +687,9 @@ chunk {
 	color: #ffffff;
 	
 	-moz-transition: background-color 0.25s ease-in;
-    -o-transition: background-color 0.25s ease-in;
-    -webkit-transition: background-color 0.25s ease-in;
+	-o-transition: background-color 0.25s ease-in;
+	-webkit-transition: background-color 0.25s ease-in;
+	transition: background-color 0.25s ease-in;
 }
 
 .popuplistitem:hover {
@@ -543,6 +714,11 @@ chunk {
 	font-size: 12pt;
 }
 
+.popuperror {
+	color: #ef2929;
+	text-align: center;
+}
+
 .popupfooter {
 	width: 100%;
 	padding: 10px;
@@ -557,6 +733,12 @@ chunk {
 	margin-right: 10px;
 }
 
+.saveasoverwrite {
+	color: #ff9900;
+	font-weight: bold;
+	text-align: center;
+}
+
 .seqselheader {
 	color: #737373;
 }
@@ -567,8 +749,9 @@ chunk {
 	padding: 5px;
 	color: #ffffff;
 	-moz-transition: all 0.15s ease-in;
-    -o-transition: all 0.15s ease-in;
-    -webkit-transition: all 0.15s ease-in;
+	-o-transition: all 0.15s ease-in;
+	-webkit-transition: all 0.15s ease-in;
+	transition: all 0.15s ease-in;
 }
 
 .seqselitem:hover {
@@ -617,15 +800,20 @@ chunk {
 	width: 50px;
 }
 
+.width-auto {
+	width: auto;
+}
+
 .wilistitem {
 	height: 80px;
 	display: grid;
-	grid-template-columns: 4% 30% 66%;
+	grid-template-columns: 4% 30% 58% 8%;
 	margin-bottom: 10px;
 }
 
 .wientry {
 	padding-left: 10px;
+	padding-right: 10px;
 	background-color: #212122;
 }
 
@@ -642,7 +830,6 @@ chunk {
 }
 
 .wikey > input {
-	height: 100%;
 	background-color: #404040;
 	color: #ffffff;
 }
@@ -651,4 +838,8 @@ chunk {
 	width: 80%;
 	overflow: hidden;
 	font-size: 12pt;
+}
+
+.wiselective > button {
+	white-space: normal;
 }

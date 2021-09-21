@@ -8,6 +8,7 @@ var socket;
 // UI references for jQuery
 var connect_status;
 var button_newgame;
+var button_rndgame;
 var button_save;
 var button_saveas;
 var button_savetofile;
@@ -17,12 +18,12 @@ var button_importwi;
 var button_impaidg;
 var button_settings;
 var button_format;
+var button_mode;
+var button_mode_label;
 var button_send;
-var button_actedit;
 var button_actmem;
 var button_actback;
 var button_actretry;
-var button_delete;
 var button_actwi;
 var game_text;
 var input_text;
@@ -45,9 +46,9 @@ var aidg_accept;
 var aidg_close;
 var saveaspopup;
 var saveasinput;
+var topic;
 var saveas_accept;
 var saveas_close;
-var saveasoverwrite;
 var loadpopup;
 var	loadcontent;
 var	load_accept;
@@ -55,8 +56,23 @@ var	load_close;
 var nspopup;
 var ns_accept;
 var ns_close;
+var rspopup;
+var rs_accept;
+var rs_close;
 var seqselmenu;
 var seqselcontents;
+
+var storyname = null;
+var memorymode = false;
+var memorytext = "";
+var gamestarted = false;
+var editmode = false;
+var connected = false;
+var newly_loaded = true;
+var current_editing_chunk = null;
+var chunk_conflict = false;
+var sman_allow_delete = false;
+var sman_allow_rename = false;
 
 // Key states
 var shift_down   = false;
@@ -65,6 +81,11 @@ var do_clear_ent = false;
 // Display vars
 var allowtoggle = false;
 var formatcount = 0;
+var allowedit   = true;  // Whether clicking on chunks will edit them
+
+// Adventure
+var action_mode = 0;  // 0: story, 1: action
+var adventure = false;
 
 //=================================================================//
 //  METHODS
@@ -115,6 +136,9 @@ function addSetting(ob) {
 			if(allowtoggle) {
 				socket.send({'cmd': $(this).attr('id'), 'data': $(this).prop('checked')});
 			}
+			if(ob.id == "setadventure"){
+				setadventure($(this).prop('checked'));
+			}
 		});
 	}
 }
@@ -161,21 +185,53 @@ function addImportLine(ob) {
 
 function addWiLine(ob) {
 	if(ob.init) {
-		wi_menu.append("<div class=\"wilistitem\">\
-			<div class=\"wiremove\">\
-				<button type=\"button\" class=\"btn btn-primary heightfull\" id=\"btn_wi"+ob.num+"\">X</button>\
-				<button type=\"button\" class=\"btn btn-success heighthalf hidden\" id=\"btn_widel"+ob.num+"\">✓</button>\
-				<button type=\"button\" class=\"btn btn-danger heighthalf hidden\" id=\"btn_wican"+ob.num+"\">⮌</button>\
-			</div>\
-			<div class=\"wikey\">\
-				<input class=\"form-control\" type=\"text\" placeholder=\"Key(s)\" id=\"wikey"+ob.num+"\">\
-			</div>\
-			<div class=\"wientry\">\
-				<textarea class=\"form-control\" id=\"wientry"+ob.num+"\" placeholder=\"What To Remember\">"+ob.content+"</textarea>\
-			</div>\
-		</div>");
+		if(ob.selective){
+			wi_menu.append("<div class=\"wilistitem wilistitem-selective "+(ob.constant ? "wilistitem-constant" : "")+"\">\
+				<div class=\"wiremove\">\
+					<button type=\"button\" class=\"btn btn-primary heightfull\" id=\"btn_wi"+ob.num+"\">X</button>\
+					<button type=\"button\" class=\"btn btn-success heighthalf hidden\" id=\"btn_widel"+ob.num+"\">✓</button>\
+					<button type=\"button\" class=\"btn btn-danger heighthalf hidden\" id=\"btn_wican"+ob.num+"\">⮌</button>\
+				</div>\
+				<div class=\"icon-container wikey\">\
+					<input class=\"form-control heightfull hidden\" type=\"text\" placeholder=\"Key(s)\" id=\"wikey"+ob.num+"\">\
+					<input class=\"form-control heighthalf\" type=\"text\" placeholder=\"Primary Key(s)\" id=\"wikeyprimary"+ob.num+"\">\
+					<input class=\"form-control heighthalf\" type=\"text\" placeholder=\"Secondary Key(s)\" id=\"wikeysecondary"+ob.num+"\">\
+					<span class=\"constant-key-icon "+(ob.constant ? "constant-key-icon-enabled" : "")+" oi oi-pin\" id=\"constant-key-"+ob.num+"\" title=\"Toggle Constant Key mode (if enabled, this world info entry will always be included in memory)\" aria-hidden=\"true\"></span>\
+				</div>\
+				<div class=\"wientry\">\
+					<textarea class=\"layer-bottom form-control\" id=\"wientry"+ob.num+"\" placeholder=\"What To Remember\">"+ob.content+"</textarea>\
+				</div>\
+				<div class=\"wiselective\">\
+					<button type=\"button\" class=\"btn btn-success heightfull hidden\" id=\"btn_wiselon"+ob.num+"\">Enable Selective Mode</button>\
+					<button type=\"button\" class=\"btn btn-danger heightfull\" id=\"btn_wiseloff"+ob.num+"\">Disable Selective Mode</button>\
+				</div>\
+			</div>");
+		} else {
+			wi_menu.append("<div class=\"wilistitem "+(ob.constant ? "wilistitem-constant" : "")+"\">\
+				<div class=\"wiremove\">\
+					<button type=\"button\" class=\"btn btn-primary heightfull\" id=\"btn_wi"+ob.num+"\">X</button>\
+					<button type=\"button\" class=\"btn btn-success heighthalf hidden\" id=\"btn_widel"+ob.num+"\">✓</button>\
+					<button type=\"button\" class=\"btn btn-danger heighthalf hidden\" id=\"btn_wican"+ob.num+"\">⮌</button>\
+				</div>\
+				<div class=\"icon-container wikey\">\
+					<input class=\"form-control heightfull\" type=\"text\" placeholder=\"Key(s)\" id=\"wikey"+ob.num+"\">\
+					<input class=\"form-control heighthalf hidden\" type=\"text\" placeholder=\"Primary Key(s)\" id=\"wikeyprimary"+ob.num+"\">\
+					<input class=\"form-control heighthalf hidden\" type=\"text\" placeholder=\"Secondary Key(s)\" id=\"wikeysecondary"+ob.num+"\">\
+					<span class=\"constant-key-icon "+(ob.constant ? "constant-key-icon-enabled" : "")+" oi oi-pin\" id=\"constant-key-"+ob.num+"\" title=\"Toggle Constant Key mode (if enabled, this world info entry will always be included in memory)\" aria-hidden=\"true\"></span>\
+				</div>\
+				<div class=\"wientry\">\
+					<textarea class=\"form-control\" id=\"wientry"+ob.num+"\" placeholder=\"What To Remember\">"+ob.content+"</textarea>\
+				</div>\
+				<div class=\"wiselective\">\
+					<button type=\"button\" class=\"btn btn-success heightfull\" id=\"btn_wiselon"+ob.num+"\">Enable Selective Mode</button>\
+					<button type=\"button\" class=\"btn btn-danger heightfull hidden\" id=\"btn_wiseloff"+ob.num+"\">Disable Selective Mode</button>\
+				</div>\
+			</div>");
+		}
 		// Send key value to text input
 		$("#wikey"+ob.num).val(ob.key);
+		$("#wikeyprimary"+ob.num).val(ob.key);
+		$("#wikeysecondary"+ob.num).val(ob.keysecondary);
 		// Assign delete event to button
 		$("#btn_wi"+ob.num).on("click", function () {
 			showWiDeleteConfirm(ob.num);
@@ -188,11 +244,18 @@ function addWiLine(ob) {
 				<button type=\"button\" class=\"btn btn-success heighthalf hidden\" id=\"btn_widel"+ob.num+"\">✓</button>\
 				<button type=\"button\" class=\"btn btn-danger heighthalf hidden\" id=\"btn_wican"+ob.num+"\">X</button>\
 			</div>\
-			<div class=\"wikey\">\
-				<input class=\"form-control hidden\" type=\"text\" placeholder=\"Key(s)\" id=\"wikey"+ob.num+"\">\
+			<div class=\"icon-container wikey\">\
+				<input class=\"form-control heightfull hidden\" type=\"text\" placeholder=\"Key(s)\" id=\"wikey"+ob.num+"\">\
+				<input class=\"form-control heighthalf hidden\" type=\"text\" placeholder=\"Primary Key(s)\" id=\"wikeyprimary"+ob.num+"\">\
+				<input class=\"form-control heighthalf hidden\" type=\"text\" placeholder=\"Secondary Key(s)\" id=\"wikeysecondary"+ob.num+"\">\
+				<span class=\"constant-key-icon oi oi-pin hidden\" id=\"constant-key-"+ob.num+"\" title=\"Toggle Constant Key mode (if enabled, this world info entry will always be included in memory)\" aria-hidden=\"true\"></span>\
 			</div>\
 			<div class=\"wientry\">\
-				<textarea class=\"form-control hidden\" id=\"wientry"+ob.num+"\" placeholder=\"What To Remember\"></textarea>\
+				<textarea class=\"layer-bottom form-control hidden\" id=\"wientry"+ob.num+"\" placeholder=\"What To Remember\">"+ob.content+"</textarea>\
+			</div>\
+			<div class=\"wiselective\">\
+				<button type=\"button\" class=\"btn btn-success heightfull hidden\" id=\"btn_wiselon"+ob.num+"\">Enable Selective Mode</button>\
+				<button type=\"button\" class=\"btn btn-danger heightfull hidden\" id=\"btn_wiseloff"+ob.num+"\">Disable Selective Mode</button>\
 			</div>\
 		</div>");
 		// Assign function to expand WI item to button
@@ -201,16 +264,48 @@ function addWiLine(ob) {
 		});
 	}
 	// Assign actions to other elements
+	wientry_onfocus = function () {
+		$("#constant-key-"+ob.num).addClass("constant-key-icon-clickthrough");
+	}
+	wientry_onfocusout = function () {
+		$("#constant-key-"+ob.num).removeClass("constant-key-icon-clickthrough");
+	}
+	$("#wikey"+ob.num).on("focus", wientry_onfocus);
+	$("#wikeyprimary"+ob.num).on("focus", wientry_onfocus);
+	$("#wikeysecondary"+ob.num).on("focus", wientry_onfocus);
+	$("#wikey"+ob.num).on("focusout", wientry_onfocusout);
+	$("#wikeyprimary"+ob.num).on("focusout", wientry_onfocusout);
+	$("#wikeysecondary"+ob.num).on("focusout", wientry_onfocusout);
 	$("#btn_wican"+ob.num).on("click", function () {
 		hideWiDeleteConfirm(ob.num);
 	});
 	$("#btn_widel"+ob.num).on("click", function () {
 		socket.send({'cmd': 'widelete', 'data': ob.num});
 	});
+	$("#btn_wiselon"+ob.num).on("click", function () {
+		enableWiSelective(ob.num);
+		$("#wikey"+ob.num).addClass("wilistitem-selective");
+	});
+	$("#btn_wiseloff"+ob.num).on("click", function () {
+		disableWiSelective(ob.num);
+		$("#wikey"+ob.num).removeClass("wilistitem-selective");
+	});
+	$("#constant-key-"+ob.num).on("click", function () {
+		var element = $("#constant-key-"+ob.num);
+		if(element.hasClass("constant-key-icon-enabled")) {
+			socket.send({'cmd': 'wiconstantoff', 'data': ob.num});
+			element.removeClass("constant-key-icon-enabled");
+			$("#wikey"+ob.num).removeClass("wilistitem-constant");
+		} else {
+			socket.send({'cmd': 'wiconstanton', 'data': ob.num});
+			element.addClass("constant-key-icon-enabled");
+			$("#wikey"+ob.num).addClass("wilistitem-constant");
+		}
+	});
 }
 
 function expandWiLine(num) {
-	show([$("#wikey"+num), $("#wientry"+num)]);
+	show([$("#wikey"+num), $("#wientry"+num), $("#constant-key-"+num), $("#btn_wiselon"+num)]);
 	$("#btn_wi"+num).html("X");
 	$("#btn_wi"+num).off();
 	// Tell server the WI entry was initialized
@@ -228,6 +323,22 @@ function showWiDeleteConfirm(num) {
 function hideWiDeleteConfirm(num) {
 	show([$("#btn_wi"+num)]);
 	hide([$("#btn_widel"+num), $("#btn_wican"+num)]);
+}
+
+function enableWiSelective(num) {
+	hide([$("#btn_wiselon"+num), $("#wikey"+num)]);
+	// Tell server the WI entry is now selective
+	socket.send({'cmd': 'wiselon', 'data': num});
+	$("#wikeyprimary"+num).val($("#wikey"+num).val());
+	show([$("#wikeyprimary"+num), $("#wikeysecondary"+num), $("#btn_wiseloff"+num)]);
+}
+
+function disableWiSelective(num) {
+	hide([$("#btn_wiseloff"+num), $("#wikeyprimary"+num), $("#wikeysecondary"+num)]);
+	// Tell server the WI entry is now non-selective
+	socket.send({'cmd': 'wiseloff', 'data': num});
+	$("#wikey"+num).val($("#wikeyprimary"+num).val());
+	show([$("#btn_wiselon"+num), $("#wikey"+num)]);
 }
 
 function highlightImportLine(ref) {
@@ -287,6 +398,12 @@ function hideWaitAnimation() {
 	$('#waitanim').remove();
 }
 
+function scrollToBottom() {
+	setTimeout(function () {
+		$('#gamescreen').animate({scrollTop: $('#gamescreen').prop('scrollHeight')}, 500);
+	}, 5);
+}
+
 function hide(refs) {
 	for(i=0; i<refs.length; i++) {
 		refs[i].addClass("hidden");
@@ -311,46 +428,29 @@ function popupShow(state) {
 }
 
 function enterEditMode() {
-	// Add class to each story chunk
-	showMessage("Please select a story chunk to edit above.");
-	button_actedit.html("Cancel");
-	game_text.children('chunk').addClass("chunkhov");
-	game_text.on('click', '> *', function() {
-		editModeSelect($(this).attr("n"));
-	});
-	disableSendBtn();
-	hide([button_actback, button_actmem, button_actretry, button_actwi]);
-	show([button_delete]);
+	editmode = true;
 }
 
 function exitEditMode() {
-	// Remove class to each story chunk
-	hideMessage();
-	button_actedit.html("Edit");
-	game_text.children('chunk').removeClass("chunkhov");
-	game_text.off('click', '> *');
-	enableSendBtn();
-	show([button_actback, button_actmem, button_actretry, button_actwi]);
-	hide([button_delete]);
-	input_text.val("");
-}
-
-function editModeSelect(n) {
-	socket.send({'cmd': 'editline', 'data': n});
+	editmode = false;
 }
 
 function enterMemoryMode() {
+	memorymode = true;
+	setmodevisibility(false);
 	showMessage("Edit the memory to be sent with each request to the AI.");
 	button_actmem.html("Cancel");
-	hide([button_actback, button_actretry, button_actedit, button_delete, button_actwi]);
+	hide([button_actback, button_actretry, button_actwi]);
 	// Display Author's Note field
 	anote_menu.slideDown("fast");
 }
 
 function exitMemoryMode() {
+	memorymode = false;
+	setmodevisibility(adventure);
 	hideMessage();
 	button_actmem.html("Memory");
-	show([button_actback, button_actretry, button_actedit, button_actwi]);
+	show([button_actback, button_actretry, button_actwi]);
 	input_text.val("");
 	// Hide Author's Note field
 	anote_menu.slideUp("fast");
@@ -359,7 +459,7 @@ function exitMemoryMode() {
 function enterWiMode() {
 	showMessage("World Info will be added to memory only when the key appears in submitted text or the last action.");
 	button_actwi.html("Accept");
-	hide([button_actedit, button_actback, button_actmem, button_actretry, game_text]);
+	hide([button_actback, button_actmem, button_actretry, game_text]);
 	show([wi_menu]);
 	disableSendBtn();
 }
@@ -368,17 +468,21 @@ function exitWiMode() {
 	hideMessage();
 	button_actwi.html("W Info");
 	hide([wi_menu]);
-	show([button_actedit, button_actback, button_actmem, button_actretry, game_text]);
+	show([button_actback, button_actmem, button_actretry, game_text]);
 	enableSendBtn();
+	scrollToBottom();
 }
 
 function returnWiList(ar) {
 	var list = [];
 	var i;
 	for(i=0; i<ar.length; i++) {
-		var ob     = {"key": "", "content": "", "num": ar[i]};
-		ob.key     = $("#wikey"+ar[i]).val();
-		ob.content = $("#wientry"+ar[i]).val();
+		var ob          = {"key": "", "keysecondary": "", "content": "", "num": ar[i], "selective": false, "constant": false};
+		ob.selective    = $("#wikeyprimary"+ar[i]).css("display") != "none"
+		ob.key          = ob.selective ? $("#wikeyprimary"+ar[i]).val() : $("#wikey"+ar[i]).val();
+		ob.keysecondary = $("#wikeysecondary"+ar[i]).val()
+		ob.content      = $("#wientry"+ar[i]).val();
+		ob.constant     = $("#constant-key-"+ar[i]).hasClass("constant-key-icon-enabled");
 		list.push(ob);
 	}
 	socket.send({'cmd': 'sendwilist', 'data': list});
@@ -386,21 +490,38 @@ function returnWiList(ar) {
 
 function dosubmit() {
 	var txt = input_text.val();
-	socket.send({'cmd': 'submit', 'data': txt});
+	socket.send({'cmd': 'submit', 'actionmode': adventure ? action_mode : 0, 'data': txt});
+	if(memorymode) {
+		memorytext = input_text.val();
+	}
 	input_text.val("");
 	hideMessage();
 	hidegenseqs();
 }
 
+function changemode() {
+	if(gamestarted) {
+		action_mode += 1;
+		action_mode %= 2;  // Total number of action modes (Story and Action)
+	} else {
+		action_mode = 0;  // Force "Story" mode if game is not started
+	}
+
+	switch (action_mode) {
+		case 0: button_mode_label.html("Story"); break;
+		case 1: button_mode_label.html("Action"); break;
+	}
+}
+
 function newTextHighlight(ref) {
-	ref.addClass("color_green");
-	ref.addClass("colorfade");
+	ref.addClass("edit-flash");
 	setTimeout(function () {
-		ref.removeClass("color_green");
+		ref.addClass("colorfade");
+		ref.removeClass("edit-flash");
 		setTimeout(function () {
 			ref.removeClass("colorfade");
 		}, 1000);
-	}, 10);
+	}, 50);
 }
 
 function showAidgPopup() {
@@ -431,7 +552,7 @@ function hideSaveAsPopup() {
 	saveaspopup.removeClass("flex");
 	saveaspopup.addClass("hidden");
 	saveasinput.val("");
-	hide([saveasoverwrite]);
+	hide([$(".saveasoverwrite"), $(".popuperror")]);
 }
 
 function sendSaveAsRequest() {
@@ -455,20 +576,67 @@ function buildLoadList(ar) {
 	showLoadPopup();
 	var i;
 	for(i=0; i<ar.length; i++) {
-		loadcontent.append("<div class=\"loadlistitem\" id=\"load"+i+"\" name=\""+ar[i].name+"\">\
-			<div>"+ar[i].name+"</div>\
-			<div>"+ar[i].actions+"</div>\
+		loadcontent.append("<div class=\"flex\">\
+			<div class=\"loadlistpadding\"></div>\
+			<span class=\"loadlisticon loadlisticon-delete oi oi-x "+(sman_allow_delete ? "allowed" : "")+"\" id=\"loaddelete"+i+"\" "+(sman_allow_delete ? "title=\"Delete story\"" : "")+" aria-hidden=\"true\"></span>\
+			<div class=\"loadlistpadding\"></div>\
+			<span class=\"loadlisticon loadlisticon-rename oi oi-pencil "+(sman_allow_rename ? "allowed" : "")+"\" id=\"loadrename"+i+"\" "+(sman_allow_rename ? "title=\"Rename story\"" : "")+" aria-hidden=\"true\"></span>\
+			<div class=\"loadlistpadding\"></div>\
+			<div class=\"loadlistitem\" id=\"load"+i+"\" name=\""+ar[i].name+"\">\
+				<div>"+ar[i].name+"</div>\
+				<div class=\"flex-push-right\">"+ar[i].actions+"</div>\
+			</div>\
 		</div>");
 		$("#load"+i).on("click", function () {
 			enableButtons([load_accept]);
 			socket.send({'cmd': 'loadselect', 'data': $(this).attr("name")});
 			highlightLoadLine($(this));
 		});
+
+		$("#loaddelete"+i).off("click").on("click", (function (name) {
+			return function () {
+				if(!sman_allow_delete) {
+					return;
+				}
+				$("#loadcontainerdelete-storyname").text(name);
+				$("#btn_dsaccept").off("click").on("click", (function (name) {
+					return function () {
+						hide([$(".saveasoverwrite"), $(".popuperror")]);
+						socket.send({'cmd': 'deletestory', 'data': name});
+					}
+				})(name));
+				$("#loadcontainerdelete").removeClass("hidden").addClass("flex");
+			}
+		})(ar[i].name));
+
+		$("#loadrename"+i).off("click").on("click", (function (name) {
+			return function () {
+				if(!sman_allow_rename) {
+					return;
+				}
+				$("#newsavename").val("")
+				$("#loadcontainerrename-storyname").text(name);
+				var submit = (function (name) {
+					return function () {
+						hide([$(".saveasoverwrite"), $(".popuperror")]);
+						socket.send({'cmd': 'renamestory', 'data': name, 'newname': $("#newsavename").val()});
+					}
+				})(name);
+				$("#btn_rensaccept").off("click").on("click", submit);
+				$("#newsavename").off("keydown").on("keydown", function (ev) {
+					if (ev.which == 13 && $(this).val() != "") {
+						submit();
+					}
+				});
+				$("#loadcontainerrename").removeClass("hidden").addClass("flex");
+				$("#newsavename").val(name).select();
+			}
+		})(ar[i].name));
 	}
 }
 
 function highlightLoadLine(ref) {
-	$("#loadlistcontent > div").removeClass("popuplistselected");
+	$("#loadlistcontent > div > div.popuplistselected").removeClass("popuplistselected");
 	ref.addClass("popuplistselected");
 }
 
@@ -482,15 +650,24 @@ function hideNewStoryPopup() {
 	nspopup.addClass("hidden");
 }
 
+function showRandomStoryPopup() {
+	rspopup.removeClass("hidden");
+	rspopup.addClass("flex");
+}
+
+function hideRandomStoryPopup() {
+	rspopup.removeClass("flex");
+	rspopup.addClass("hidden");
+}
+
 function setStartState() {
 	enableSendBtn();
 	enableButtons([button_actmem, button_actwi]);
-	disableButtons([button_actedit, button_actback, button_actretry]);
-	hide([wi_menu, button_delete]);
-	show([game_text, button_actedit, button_actmem, button_actwi, button_actback, button_actretry]);
+	disableButtons([button_actback, button_actretry]);
+	hide([wi_menu]);
+	show([game_text, button_actmem, button_actwi, button_actback, button_actretry]);
 	hideMessage();
 	hideWaitAnimation();
-	button_actedit.html("Edit");
 	button_actmem.html("Memory");
 	button_actwi.html("W Info");
 	hideAidgPopup();
@@ -516,6 +693,201 @@ function hidegenseqs() {
 	$('#seqselmenu').slideUp("slow", function() {
 		seqselcontents.html("");
 	});
+	scrollToBottom();
+}
+
+function setmodevisibility(state) {
+	if(state){  // Enabling
+		show([button_mode]);
+		$("#inputrow").addClass("show_mode");
+	} else{  // Disabling
+		hide([button_mode]);
+		$("#inputrow").removeClass("show_mode");
+	}
+}
+
+function setadventure(state) {
+	adventure = state;
+	if(state) {
+		game_text.addClass("adventure");
+	} else {
+		game_text.removeClass("adventure");
+	}
+	if(!memorymode){
+		setmodevisibility(state);
+	}
+}
+
+function autofocus(event) {
+	if(connected) {
+		if(event.target.tagName == "CHUNK") {
+			current_editing_chunk = event.target;
+		}
+		event.target.focus();
+	} else {
+		event.preventDefault();
+	}
+}
+
+function chunkOnKeyDown(event) {
+	// Make escape commit the changes (Originally we had Enter here to but its not required and nicer for users if we let them type freely
+	// You can add the following after 27 if you want it back to committing on enter : || (!event.shiftKey && event.keyCode == 13)
+	if(event.keyCode == 27) {
+		setTimeout(function () {
+			event.target.blur();
+		}, 5);
+		event.preventDefault();
+		return;
+	}
+
+	// Allow left and right arrow keys (and backspace) to move between chunks
+	switch(event.keyCode) {
+		case 37:  // left
+		case 39:  // right
+			var old_range = getSelection().getRangeAt(0);
+			var old_range_start = old_range.startOffset;
+			var old_range_end = old_range.endOffset;
+			var old_range_ancestor = old_range.commonAncestorContainer;
+			var old_range_start_container = old_range.startContainer;
+			var old_range_end_container = old_range.endContainer;
+			setTimeout(function () {
+				// Wait a few milliseconds and check if the caret has moved
+				var new_selection = getSelection();
+				var new_range = new_selection.getRangeAt(0);
+				if(old_range_start != new_range.startOffset || old_range_end != new_range.endOffset || old_range_ancestor != new_range.commonAncestorContainer || old_range_start_container != new_range.startContainer || old_range_end_container != new_range.endContainer) {
+					return;
+				}
+				// If it hasn't moved, we're at the beginning or end of a chunk
+				// and the caret must be moved to a different chunk
+				var chunk = document.activeElement;
+				switch(event.keyCode) {
+					case 37:  // left
+						if((chunk = chunk.previousSibling) && chunk.tagName == "CHUNK") {
+							var range = document.createRange();
+							range.selectNodeContents(chunk);
+							range.collapse(false);
+							new_selection.removeAllRanges();
+							new_selection.addRange(range);
+						}
+						break;
+
+					case 39:  // right
+						if((chunk = chunk.nextSibling) && chunk.tagName == "CHUNK") {
+							chunk.focus();
+						}
+				}
+			}, 2);
+			return;
+		
+		case 8:  // backspace
+			var old_length = document.activeElement.innerText.length;
+			setTimeout(function () {
+				// Wait a few milliseconds and compare the chunk's length
+				if(old_length != document.activeElement.innerText.length) {
+					return;
+				}
+				// If it's the same, we're at the beginning of a chunk
+				if((chunk = document.activeElement.previousSibling) && chunk.tagName == "CHUNK") {
+					var range = document.createRange();
+					var selection = getSelection();
+					range.selectNodeContents(chunk);
+					range.collapse(false);
+					selection.removeAllRanges();
+					selection.addRange(range);
+				}
+			}, 2);
+			return
+	}
+
+	// Don't allow any edits if not connected to server
+	if(!connected) {
+		event.preventDefault();
+		return;
+	}
+
+	// Prevent CTRL+B, CTRL+I and CTRL+U when editing chunks
+	if(event.ctrlKey || event.metaKey) {  // metaKey is macOS's command key
+		switch(event.keyCode) {
+			case 66:
+			case 98:
+			case 73:
+			case 105:
+			case 85:
+			case 117:
+				event.preventDefault();
+				return;
+		}
+	}
+}
+
+function submitEditedChunk(event) {
+	// Don't do anything if the current chunk hasn't been edited or if someone
+	// else overwrote it while you were busy lollygagging
+	if(current_editing_chunk === null || chunk_conflict) {
+		chunk_conflict = false;
+		return;
+	}
+
+	var chunk = current_editing_chunk;
+	current_editing_chunk = null;
+
+	// Submit the edited chunk if it's not empty, otherwise delete it
+	if(chunk.innerText.length) {
+		socket.send({'cmd': 'inlineedit', 'chunk': chunk.getAttribute("n"), 'data': chunk.innerText.replace(/\u00a0/g, " ")});
+	} else {
+		socket.send({'cmd': 'inlinedelete', 'data': chunk.getAttribute("n")});
+	}
+}
+
+function downloadStory(format) {
+	var filename_without_extension = storyname !== null ? storyname : "untitled";
+
+	var anchor = document.createElement('a');
+
+	var actionlist = $("chunk");
+	var actionlist_compiled = [];
+	for(var i = 0; i < actionlist.length; i++) {
+		actionlist_compiled.push(actionlist[i].innerText.replace(/\u00a0/g, " "));
+	}
+
+	if(format == "plaintext") {
+		var objectURL = URL.createObjectURL(new Blob(actionlist_compiled));
+		anchor.setAttribute('href', objectURL);
+		anchor.setAttribute('download', filename_without_extension + ".txt");
+		anchor.click();
+		URL.revokeObjectURL(objectURL);
+		return;
+	}
+
+	var wilist = $(".wilistitem");
+	var wilist_compiled = [];
+	for(var i = 0; i < wilist.length-1; i++) {
+		var selective = wilist[i].classList.contains("wilistitem-selective");
+		wilist_compiled.push({
+			key: selective ? $("#wikeyprimary"+i).val() : $("#wikey"+i).val(),
+			keysecondary: $("#wikeysecondary"+i).val(),
+			content: $("#wientry"+i).val(),
+			selective: selective,
+			constant: wilist[i].classList.contains("wilistitem-constant"),
+		});
+	}
+
+	var prompt = actionlist_compiled.shift();
+	if(prompt === undefined) {
+		prompt = "";
+	}
+	var objectURL = URL.createObjectURL(new Blob([JSON.stringify({
+		gamestarted: gamestarted,
+		prompt: prompt,
+		memory: memorytext,
+		authorsnote: $("#anoteinput").val(),
+		actions: actionlist_compiled,
+		worldinfo: wilist_compiled,
+	}, null, 3)]));
+	anchor.setAttribute('href', objectURL);
+	anchor.setAttribute('download', filename_without_extension + ".json");
+	anchor.click();
+	URL.revokeObjectURL(objectURL);
 }
 
 //=================================================================//
@@ -527,9 +899,12 @@ $(document).ready(function(){
 	// Bind UI references
 	connect_status    = $('#connectstatus');
 	button_newgame    = $('#btn_newgame');
+	button_rndgame    = $('#btn_rndgame');
 	button_save       = $('#btn_save');
 	button_saveas     = $('#btn_saveas');
 	button_savetofile = $('#btn_savetofile');
+	button_download   = $('#btn_download');
+	button_downloadtxt= $('#btn_downloadtxt');
 	button_load       = $('#btn_load');
 	button_loadfrfile = $('#btn_loadfromfile');
 	button_import     = $("#btn_import");
@@ -537,12 +912,12 @@ $(document).ready(function(){
 	button_impaidg    = $("#btn_impaidg");
 	button_settings   = $('#btn_settings');
 	button_format     = $('#btn_format');
+	button_mode       = $('#btnmode')
+	button_mode_label = $('#btnmode_label')
 	button_send       = $('#btnsend');
-	button_actedit    = $('#btn_actedit');
 	button_actmem     = $('#btn_actmem');
 	button_actback    = $('#btn_actundo');
 	button_actretry   = $('#btn_actretry');
-	button_delete     = $('#btn_delete');
 	button_actwi      = $('#btn_actwi');
 	game_text         = $('#gametext');
 	input_text        = $('#input_text');
@@ -565,9 +940,9 @@ $(document).ready(function(){
 	aidg_close        = $("#btn_aidgpopupclose");
 	saveaspopup       = $("#saveascontainer");
 	saveasinput       = $("#savename");
+	topic             = $("#topic");
 	saveas_accept     = $("#btn_saveasaccept");
 	saveas_close      = $("#btn_saveasclose");
-	saveasoverwrite   = $("#saveasoverwrite");
 	loadpopup         = $("#loadcontainer");
 	loadcontent       = $("#loadlistcontent");
 	load_accept       = $("#btn_loadaccept");
@@ -575,16 +950,21 @@ $(document).ready(function(){
 	nspopup           = $("#newgamecontainer");
 	ns_accept         = $("#btn_nsaccept");
 	ns_close          = $("#btn_nsclose");
+	rspopup           = $("#rndgamecontainer");
+	rs_accept         = $("#btn_rsaccept");
+	rs_close          = $("#btn_rsclose");
 	seqselmenu        = $("#seqselmenu");
 	seqselcontents    = $("#seqselcontents");
 	
-    // Connect to SocketIO server
-	loc    = window.document.location;
-    socket = io.connect(loc.href);
+	// Connect to SocketIO server
+	socket = io.connect(window.document.origin);
 	
 	socket.on('from_server', function(msg) {
-        if(msg.cmd == "connected") {
+		if(msg.cmd == "connected") {
 			// Connected to Server Actions
+			sman_allow_delete = msg.hasOwnProperty("smandelete") && msg.smandelete;
+			sman_allow_rename = msg.hasOwnProperty("smanrename") && msg.smanrename;
+			connected = true;
 			connect_status.html("<b>Connected to KoboldAI Process!</b>");
 			connect_status.removeClass("color_orange");
 			connect_status.addClass("color_green");
@@ -592,26 +972,76 @@ $(document).ready(function(){
 			settings_menu.html("");
 			format_menu.html("");
 			wi_menu.html("");
+			// Set up "Allow Editing"
+			$('body').on('input', autofocus).on('keydown', 'chunk', chunkOnKeyDown).on('focusout', 'chunk', submitEditedChunk);
+			$('#allowediting').prop('checked', allowedit).prop('disabled', false).change().on('change', function () {
+				if(allowtoggle) {
+					allowedit = $(this).prop('checked')
+					$("chunk").attr('contenteditable', allowedit)
+				}
+			});
 		} else if(msg.cmd == "updatescreen") {
+			var _gamestarted = gamestarted;
+			gamestarted = msg.gamestarted;
+			if(_gamestarted != gamestarted) {
+				action_mode = 0;
+				changemode();
+			}
 			// Send game content to Game Screen
+			if(allowedit && document.activeElement.tagName == "CHUNK") {
+				chunk_conflict = true;
+			}
 			game_text.html(msg.data);
+			// Make content editable if need be
+			$('chunk').attr('contenteditable', allowedit);
 			// Scroll to bottom of text
-			setTimeout(function () {
-				$('#gamescreen').animate({scrollTop: $('#gamescreen').prop('scrollHeight')}, 1000);
-			}, 5);
+			if(newly_loaded) {
+				scrollToBottom();
+			}
+			newly_loaded = false;
+			hideMessage();
+		} else if(msg.cmd == "scrolldown") {
+			scrollToBottom();
+		} else if(msg.cmd == "updatechunk") {
+			hideMessage();
+			const {index, html, last} = msg.data;
+			const existingChunk = game_text.children(`#n${index}`)
+			const newChunk = $(html);
+			if (existingChunk.length > 0) {
+				// Update existing chunk
+				existingChunk.before(newChunk);
+				existingChunk.remove();
+			} else {
+				// Append at the end
+				game_text.append(newChunk);
+			}
+			newChunk.attr('contenteditable', allowedit);
+			hide([$('#curtain')]);
+			if(last) {
+				// Scroll to bottom of text if it's the last element
+				scrollToBottom();
+			}
+		} else if(msg.cmd == "removechunk") {
+			hideMessage();
+			let index = msg.data;
+			// Remove the chunk
+			game_text.children(`#n${index}`).remove()
+			hide([$('#curtain')]);
 		} else if(msg.cmd == "setgamestate") {
 			// Enable or Disable buttons
 			if(msg.data == "ready") {
 				enableSendBtn();
-				enableButtons([button_actedit, button_actmem, button_actwi, button_actback, button_actretry]);
+				enableButtons([button_actmem, button_actwi, button_actback, button_actretry]);
 				hideWaitAnimation();
 			} else if(msg.data == "wait") {
 				disableSendBtn();
-				disableButtons([button_actedit, button_actmem, button_actwi, button_actback, button_actretry]);
+				disableButtons([button_actmem, button_actwi, button_actback, button_actretry]);
 				showWaitAnimation();
 			} else if(msg.data == "start") {
 				setStartState();
 			}
+		} else if(msg.cmd == "setstoryname") {
+			storyname = msg.data;
 		} else if(msg.cmd == "editmode") {
 			// Enable or Disable edit mode
 			if(msg.data == "true") {
@@ -620,11 +1050,16 @@ $(document).ready(function(){
 				exitEditMode();
 			}
 		} else if(msg.cmd == "setinputtext") {
-			// Set input box text for edit mode
-			input_text.val(msg.data);
-		} else if(msg.cmd == "enablesubmit") {
-			// Enables the submit button
-			enableSendBtn();
+			// Set input box text for memory mode
+			if(memorymode) {
+				memorytext = msg.data;
+				input_text.val(msg.data);
+			}
+		} else if(msg.cmd == "setmemory") {
+			memorytext = msg.data;
+			if(memorymode) {
+				input_text.val(msg.data);
+			}
 		} else if(msg.cmd == "memmode") {
 			// Enable or Disable memory edit mode
 			if(msg.data == "true") {
@@ -646,6 +1081,14 @@ $(document).ready(function(){
 			// Send current top p value to input
 			$("#settopp").val(parseFloat(msg.data));
 			$("#settoppcur").html(msg.data);
+		} else if(msg.cmd == "updatetopk") {
+			// Send current top k value to input
+			$("#settopk").val(parseFloat(msg.data));
+			$("#settopkcur").html(msg.data);
+		} else if(msg.cmd == "updatetfs") {
+			// Send current tfs value to input
+			$("#settfs").val(parseFloat(msg.data));
+			$("#settfscur").html(msg.data);
 		} else if(msg.cmd == "updatereppen") {
 			// Send current rep pen value to input
 			$("#setreppen").val(parseFloat(msg.data));
@@ -668,6 +1111,12 @@ $(document).ready(function(){
 		} else if(msg.cmd == "setlabeltopp") {
 			// Update setting label with value from server
 			$("#settoppcur").html(msg.data);
+		} else if(msg.cmd == "setlabeltopk") {
+			// Update setting label with value from server
+			$("#settopkcur").html(msg.data);
+		} else if(msg.cmd == "setlabeltfs") {
+			// Update setting label with value from server
+			$("#settfscur").html(msg.data);
 		} else if(msg.cmd == "setlabelreppen") {
 			// Update setting label with value from server
 			$("#setreppencur").html(msg.data);
@@ -718,6 +1167,14 @@ $(document).ready(function(){
 		} else if(msg.cmd == "popupshow") {
 			// Show/Hide Popup
 			popupShow(msg.data);
+		} else if(msg.cmd == "hidepopupdelete") {
+			// Hide the dialog box that asks you to confirm deletion of a story
+			$("#loadcontainerdelete").removeClass("flex").addClass("hidden");
+			hide([$(".saveasoverwrite"), $(".popuperror")]);
+		} else if(msg.cmd == "hidepopuprename") {
+			// Hide the story renaming dialog box
+			$("#loadcontainerrename").removeClass("flex").addClass("hidden");
+			hide([$(".saveasoverwrite"), $(".popuperror")]);
 		} else if(msg.cmd == "addimportline") {
 			// Add import popup entry
 			addImportLine(msg.data);
@@ -751,7 +1208,11 @@ $(document).ready(function(){
 			buildLoadList(msg.data);
 		} else if(msg.cmd == "askforoverwrite") {
 			// Show overwrite warning
-			show([saveasoverwrite]);
+			show([$(".saveasoverwrite")]);
+		} else if(msg.cmd == "popuperror") {
+			// Show error in the current dialog box
+			$(".popuperror").text(msg.data);
+			show([$(".popuperror")]);
 		} else if(msg.cmd == "genseqs") {
 			// Parse generator sequences to UI
 			parsegenseqs(msg.data);
@@ -775,10 +1236,18 @@ $(document).ready(function(){
 		} else if(msg.cmd == "updateuseprompt") {
 			// Update toggle state
 			$("#setuseprompt").prop('checked', msg.data).change();
+		} else if(msg.cmd == "updateadventure") {
+			// Update toggle state
+			$("#setadventure").prop('checked', msg.data).change();
+			// Update adventure state
+			setadventure(msg.data);
+		} else if(msg.cmd == "runs_remotely") {
+			hide([button_loadfrfile, button_savetofile, button_import, button_importwi]);
 		}
-    });
+	});
 	
 	socket.on('disconnect', function() {
+		connected = false;
 		connect_status.html("<b>Lost connection...</b>");
 		connect_status.removeClass("color_green");
 		connect_status.addClass("color_orange");
@@ -788,23 +1257,21 @@ $(document).ready(function(){
 	button_send.on("click", function(ev) {
 		dosubmit();
 	});
+
+	button_mode.on("click", function(ev) {
+		changemode();
+	});
 	
 	button_actretry.on("click", function(ev) {
+		hideMessage();
 		socket.send({'cmd': 'retry', 'data': ''});
 		hidegenseqs();
 	});
 	
 	button_actback.on("click", function(ev) {
+		hideMessage();
 		socket.send({'cmd': 'back', 'data': ''});
 		hidegenseqs();
-	});
-	
-	button_actedit.on("click", function(ev) {
-		socket.send({'cmd': 'edit', 'data': ''});
-	});
-	
-	button_delete.on("click", function(ev) {
-		socket.send({'cmd': 'delete', 'data': ''});
 	});
 	
 	button_actmem.on("click", function(ev) {
@@ -875,6 +1342,14 @@ $(document).ready(function(){
 	saveas_accept.on("click", function(ev) {
 		sendSaveAsRequest();
 	});
+
+	button_download.on("click", function(ev) {
+		downloadStory('json');
+	});
+
+	button_downloadtxt.on("click", function(ev) {
+		downloadStory('plaintext');
+	});
 	
 	button_load.on("click", function(ev) {
 		socket.send({'cmd': 'loadlistrequest', 'data': ''});
@@ -885,6 +1360,7 @@ $(document).ready(function(){
 	});
 	
 	load_accept.on("click", function(ev) {
+		newly_loaded = true;
 		socket.send({'cmd': 'loadrequest', 'data': ''});
 		hideLoadPopup();
 	});
@@ -901,6 +1377,38 @@ $(document).ready(function(){
 	ns_close.on("click", function(ev) {
 		hideNewStoryPopup();
 	});
+
+	$("#btn_dsclose").on("click", function () {
+		$("#loadcontainerdelete").removeClass("flex").addClass("hidden");
+		hide([$(".saveasoverwrite"), $(".popuperror")]);
+	});
+	
+	$("#newsavename").on("input", function (ev) {
+		if($(this).val() == "") {
+			disableButtons([$("#btn_rensaccept")]);
+		} else {
+			enableButtons([$("#btn_rensaccept")]);
+		}
+		hide([$(".saveasoverwrite"), $(".popuperror")]);
+	});
+	
+	$("#btn_rensclose").on("click", function () {
+		$("#loadcontainerrename").removeClass("flex").addClass("hidden");
+		hide([$(".saveasoverwrite"), $(".popuperror")]);
+	});
+	
+	button_rndgame.on("click", function(ev) {
+		showRandomStoryPopup();
+	});
+	
+	rs_accept.on("click", function(ev) {
+		socket.send({'cmd': 'rndgame', 'data': topic.val()});
+		hideRandomStoryPopup();
+	});
+	
+	rs_close.on("click", function(ev) {
+		hideRandomStoryPopup();
+	});
 	
 	anote_slider.on("input", function () {
 		socket.send({'cmd': 'anotedepth', 'data': $(this).val()});
@@ -912,7 +1420,7 @@ $(document).ready(function(){
 		} else {
 			enableButtons([saveas_accept]);
 		}
-		hide([saveasoverwrite]);
+		hide([$(".saveasoverwrite"), $(".popuperror")]);
 	});
 	
 	// Bind Enter button to submit

@@ -8,5 +8,10 @@ dependencies:
   - colorama
   - flask-socketio
   - pytorch
+  - python=3.8.*
+  - cudatoolkit=11.1
   - tensorflow-gpu
   - transformers
+  - pip
+  - pip:
+    - flask-cloudflared

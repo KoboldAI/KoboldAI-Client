@@ -13,6 +13,7 @@
 	<link rel="stylesheet" href="static/bootstrap.min.css">
 	<link rel="stylesheet" href="static/bootstrap-toggle.min.css">
 	<link rel="stylesheet" href="static/custom.css?ver=0.15.0g">
+	<link rel="stylesheet" href="static/open-iconic-bootstrap.min.css">
 </head>
 <body>
 	<div class="container">
@@ -27,8 +28,12 @@
 						</button>
 						<div class="collapse navbar-collapse" id="navbarNavDropdown">
 							<ul class="nav navbar-nav">
-								<li class="nav-item">
-									<a class="nav-link" href="#" id="btn_newgame">New Story</a>
+								<li class="nav-item dropdown">
+									<a class="nav-link dropdown-toggle" href="#" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">New Game</a>
+									<div class="dropdown-menu">
+										<a class="dropdown-item" href="#" id="btn_newgame">Blank Story</a>
+										<a class="dropdown-item" href="#" id="btn_rndgame">Random Story</a>
+									</div>
 								</li>
 								<li class="nav-item dropdown">
 									<a class="nav-link dropdown-toggle" href="#" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Save</a>
@@ -36,6 +41,8 @@
 										<a class="dropdown-item" href="#" id="btn_save">Save</a>
 										<a class="dropdown-item" href="#" id="btn_saveas">Save As</a>
 										<a class="dropdown-item" href="#" id="btn_savetofile">Save To File...</a>
+										<a class="dropdown-item" href="#" id="btn_download">Download Story as JSON</a>
+										<a class="dropdown-item" href="#" id="btn_downloadtxt">Download Story as Plaintext</a>
 									</div>
 								</li>
 								<li class="nav-item dropdown">
@@ -72,31 +79,37 @@
 		</div>
 		<div class="row" id="formatmenu">
 		</div>
-		<div class="row" id="gamescreen">
-			<span id="gametext">...</span>
-			<div class="hidden" id="wimenu">
+		<div class="layer-container">
+			<div class="layer-bottom row" id="gamescreen">
+				<span id="gametext"><p>...</p></span>
+				<div class="hidden" id="wimenu">
+				</div>
 			</div>
+			<div id="curtain" class="layer-top row hidden"></div>
 		</div>
 		<div class="row" id="seqselmenu">
 			<div class="seqselheader">Select sequence to keep:</div>
 			<div id="seqselcontents">
 			</div>
 		</div>
-		<div class="row" id="actionmenu">
+		<div class="row flex" id="actionmenu">
 			<div id="actionmenuitems">
-				<div>
-					<button type="button" class="btn btn-primary" id="btn_actedit">Edit</button>
-					<button type="button" class="btn btn-primary" id="btn_actmem">Memory</button>
-					<button type="button" class="btn btn-primary" id="btn_actwi">W Info</button>
-					<button type="button" class="btn btn-primary" id="btn_actundo">Back</button>
-					<button type="button" class="btn btn-primary" id="btn_actretry">Retry</button>
-					<button type="button" class="btn btn-primary hidden" id="btn_delete">Delete</button>
-					<span id="messagefield"></span>
-				</div>
+				<button type="button" class="btn btn-primary" id="btn_actmem">Memory</button>
+				<button type="button" class="btn btn-primary" id="btn_actwi">W Info</button>
+				<button type="button" class="btn btn-primary" id="btn_actundo">Back</button>
+				<button type="button" class="btn btn-primary" id="btn_actretry">Retry</button>
+			</div>
+			<div id="messagefield"></div>
+			<div class="box flex-push-right">
+				<input type="checkbox" data-toggle="toggle" data-onstyle="success" id="allowediting" disabled>
+				<div class="box-label">Allow Editing</div>
 			</div>
 		</div>
 		<div class="row">
 			<div id="inputrow">
+				<div id="inputrowmode">
+					<button type="button" class="btn btn-secondary hidden" id="btnmode">Mode:<br/><b id="btnmode_label">Story</b></button>
+				</div>
 				<div id="inputrowleft">
 					<textarea class="form-control" id="input_text" placeholder="Enter text here"></textarea>
 				</div>
@@ -182,7 +195,10 @@
 			<div class="aidgpopupcontent">
 				<input class="form-control" type="text" placeholder="Save Name" id="savename">
 			</div>
-			<div class="hidden" id="saveasoverwrite">
+			<div class="popuperror hidden">
+				<span></span>
+			</div>
+			<div class="saveasoverwrite hidden">
 				<span>File already exists. Really overwrite?</span>
 			</div>
 			<div class="popupfooter">
@@ -198,13 +214,51 @@
 			</div>
 			<div class="loadlistheader">
 				<div>Save Name</div>
-				<div># Actions</div>
+				<div class="flex-push-right"># Actions</div>
 			</div>
 			<div id="loadlistcontent">
 			</div>
 			<div class="popupfooter">
 				<button type="button" class="btn btn-primary" id="btn_loadaccept">Load</button>
 				<button type="button" class="btn btn-primary" id="btn_loadclose">Cancel</button>
+			</div>
+		</div>
+	</div>
+	<div class="popupcontainer hidden" id="loadcontainerdelete">
+		<div id="loadpopupdelete">
+			<div class="popuptitlebar">
+				<div class="popuptitletext">Really Delete Story?</div>
+			</div>
+			<div class="dialogheader">
+				"<span id="loadcontainerdelete-storyname"></span>" will be PERMANENTLY deleted! You will not be able to recover this story later.
+			</div>
+			<div class="popuperror hidden">
+				<span></span>
+			</div>
+			<div class="popupfooter">
+				<button type="button" class="btn btn-danger" id="btn_dsaccept">Delete</button>
+				<button type="button" class="btn btn-primary" id="btn_dsclose">Cancel</button>
+			</div>
+		</div>
+	</div>
+	<div class="popupcontainer hidden" id="loadcontainerrename">
+		<div id="loadpopuprename">
+			<div class="popuptitlebar">
+				<div class="popuptitletext">Enter New Name For Story</div>
+			</div>
+			<div class="dialogheader">
+				What should the story "<span id="loadcontainerrename-storyname"></span>" be renamed to?
+				<input class="form-control" type="text" placeholder="New Save Name" id="newsavename">
+			</div>
+			<div class="popuperror hidden">
+				<span></span>
+			</div>
+			<div class="saveasoverwrite hidden">
+				<span>File already exists. Really overwrite?</span>
+			</div>
+			<div class="popupfooter">
+				<button type="button" class="btn btn-primary" id="btn_rensaccept">Accept</button>
+				<button type="button" class="btn btn-primary" id="btn_rensclose">Cancel</button>
 			</div>
 		</div>
 	</div>
@@ -219,6 +273,29 @@
 			<div class="popupfooter">
 				<button type="button" class="btn btn-primary" id="btn_nsaccept">Accept</button>
 				<button type="button" class="btn btn-primary" id="btn_nsclose">Cancel</button>
+			</div>
+		</div>
+	</div>
+	<div class="popupcontainer hidden" id="rndgamecontainer">
+		<div id="rspopup">
+			<div class="popuptitlebar">
+				<div class="popuptitletext">Really Start A Random Story?</div>
+			</div>
+			<div class="aidgpopuplistheader">
+				<br>
+				Story quality and topic depends on the model and your settings/suggestion (Around 0.5 temp is recommended).<br>
+				This feature works best with finetuned models like GPT-Neo-AID or GPT-Neo-Horni but is limited to what the AI knows.<br>
+				If you get random spam then your model is not capable of using this feature and if you get unrelated stories it does not understand the topic.<br>
+				Generated results are unfiltered and can be offensive or unsuitable for children.<br><br>
+				Unsaved data will be lost.<br><br>
+				Below you can input a genre suggestion for the AI to loosely base the story on (For example Horror or Cowboy).<br>
+			</div>
+			<div class="aidgpopupcontent">
+				<input class="form-control" type="text" placeholder="Story Genre Suggestion (Leave blank for fully random)" id="topic">
+			</div>
+			<div class="popupfooter">
+				<button type="button" class="btn btn-primary" id="btn_rsaccept">Accept</button>
+				<button type="button" class="btn btn-primary" id="btn_rsclose">Cancel</button>
 			</div>
 		</div>
 	</div>

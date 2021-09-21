@@ -12,6 +12,7 @@ echo.
 SET /P B=Type the number of the desired option and then press ENTER: 
 
 Reg add "HKLM\SYSTEM\CurrentControlSet\Control\FileSystem" /v "LongPathsEnabled" /t REG_DWORD /d "1" /f 2>nul
+%~d0
 cd %~dp0
 
 if exist miniconda3\ (
