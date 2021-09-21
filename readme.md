@@ -140,7 +140,7 @@ This project contains work from the following contributors :
 - VE FORBRYDERNE - Contributed many features such as the Editing overhaul, Adventure Mode, expansions to the world info section, breakmodel integration and much more.
 - Henk717 - Contributed the installation scripts, this readme, random story generator, the docker scripts, the foundation for the commandline interface and other smaller changes as well as integrating multiple parts of the code of different forks to unite it all. Not all code Github attributes to Henk717 is by Henk717 as some of it has been integrations of other people's work. We try to clarify this in the contributors list as much as we can.
 - Frogging101 - top_k / tfs support
-- UWUplus (Ralf) - Contributed storage systems for community colabs, as well as cleaning up and integrating the website dependencies/code better.
+- UWUplus (Ralf) - Contributed storage systems for community colabs, as well as cleaning up and integrating the website dependencies/code better. He is also the maintainer of flask-cloudflared which we use to generate the cloudflare links.
 - Javalar - Initial Performance increases on the story_refresh
 - LexSong - Initial environment file adaptation for conda that served as a basis for the install_requirements.bat overhaul.
 - Arrmansa - Breakmodel support for other projects that served as a basis for VE FORBRYDERNE's integration.
