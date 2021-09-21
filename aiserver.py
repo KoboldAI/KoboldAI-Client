@@ -915,6 +915,8 @@ def loadmodelsettings():
             vars.rep_pen    = js["rep_pen"]
         if("adventure" in js):
             vars.adventure = js["adventure"]
+        if("formatoptns" in js):
+            vars.formatoptns = js["formatoptns"]
         model_config.close()
 
 #==================================================================#
