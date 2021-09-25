@@ -397,7 +397,7 @@ print("{0}OK!{1}".format(colors.GREEN, colors.END))
 if(not vars.model in ["InferKit", "Colab", "OAI", "ReadOnly"]):
     if(not vars.noai):
         print("{0}Initializing transformers, please wait...{1}".format(colors.PURPLE, colors.END))
-        from transformers import pipeline, GPT2Tokenizer, GPT2LMHeadModel, GPTNeoForCausalLM, GPTNeoModel, AutoModel
+        from transformers import pipeline, GPT2Tokenizer, GPT2LMHeadModel, GPTNeoForCausalLM, GPTNeoModel, AutoModelForCausalLM
         
         # If custom GPT Neo model was chosen
         if(vars.model == "NeoCustom"):
@@ -460,7 +460,7 @@ if(not vars.model in ["InferKit", "Colab", "OAI", "ReadOnly"]):
                     generator = pipeline('text-generation', model=vars.model, device=0)
                 elif(vars.breakmodel):  # Use both RAM and VRAM (breakmodel)
                     import breakmodel
-                    model = AutoModel.from_pretrained(vars.model)
+                    model = AutoModelForCausalLM.from_pretrained(vars.model)
                     n_layers = model.config.num_layers
                     breakmodel.total_blocks = n_layers
                     model.half().to('cpu')
