@@ -404,7 +404,7 @@ if(not vars.model in ["InferKit", "Colab", "OAI", "ReadOnly"]):
         if(vars.model == "NeoCustom"):
             model_config = open(vars.custmodpth + "/config.json", "r")
             js   = json.load(model_config)
-            if("architectures" in js):
+            if("model_type" in js):
                 model     = vars.custmodpth
             else:
                 model     = GPTNeoForCausalLM.from_pretrained(vars.custmodpth)
