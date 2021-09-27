@@ -1088,6 +1088,8 @@ $(document).ready(function(){
 				changemode();
 			}
 			unbindGametext();
+			allowedit = gamestarted && $("#allowediting").prop('checked');
+			game_text.attr('contenteditable', allowedit);
 			modified_chunks = new Set();
 			empty_chunks = new Set();
 			game_text.html(msg.data);
