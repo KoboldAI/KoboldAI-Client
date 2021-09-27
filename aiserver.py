@@ -1476,7 +1476,7 @@ def update_story_chunk(idx: Union[int, str]):
     item = vars.acregex_ui.sub('<action>\\1</action>', item)  # Add special formatting to adventure actions
 
     chunk_text = f'<chunk n="{idx}" id="n{idx}" tabindex="-1">{formatforhtml(item)}</chunk>'
-    emit('from_server', {'cmd': 'updatechunk', 'data': {'index': idx, 'html': chunk_text, 'last': (idx == (vars.actions.get_last_key() if len(vars.actions) else 0))}}, broadcast=True)
+    emit('from_server', {'cmd': 'updatechunk', 'data': {'index': idx, 'html': chunk_text}}, broadcast=True)
 
 
 #==================================================================#

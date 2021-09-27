@@ -947,6 +947,12 @@ function chunkOnSelectionChange(event) {
 		syncAllModifiedChunks();
 		setTimeout(function() {
 			highlightEditingChunks();
+			// Attempt to prevent Chromium-based browsers on Android from
+			// scrolling away from the current selection
+			setTimeout(function() {
+				game_text.blur();
+				game_text.focus();
+			}, 144);
 		}, 2);
 	}, 2);
 }
@@ -1096,7 +1102,7 @@ $(document).ready(function(){
 			scrollToBottom();
 		} else if(msg.cmd == "updatechunk") {
 			hideMessage();
-			const {index, html, last} = msg.data;
+			const {index, html} = msg.data;
 			const existingChunk = game_text.children(`#n${index}`)
 			const newChunk = $(html);
 			unbindGametext();
@@ -1110,10 +1116,6 @@ $(document).ready(function(){
 			}
 			bindGametext();
 			hide([$('#curtain')]);
-			if(last) {
-				// Scroll to bottom of text if it's the last element
-				scrollToBottom();
-			}
 		} else if(msg.cmd == "removechunk") {
 			hideMessage();
 			let index = msg.data;
