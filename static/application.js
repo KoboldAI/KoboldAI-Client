@@ -402,7 +402,7 @@ function hideWaitAnimation() {
 
 function scrollToBottom() {
 	setTimeout(function () {
-		$('#gamescreen').animate({scrollTop: $('#gamescreen').prop('scrollHeight')}, 500);
+		game_text.animate({scrollTop: game_text.prop('scrollHeight')}, 500);
 	}, 5);
 }
 
