@@ -907,7 +907,7 @@ function highlightEditingChunks() {
 	}
 }
 
-// (Desktop client only) This gets run every time the text in a chunk is edited
+// This gets run every time the text in a chunk is edited
 // or a chunk is deleted
 function chunkOnDOMMutate(mutations, observer) {
 	if(!gametext_bound) {
@@ -938,7 +938,7 @@ function chunkOnPaste(event) {
     }
 }
 
-// (Desktop client only) This gets run every time the caret moves in the editor
+// This gets run every time the caret moves in the editor
 function chunkOnSelectionChange(event) {
 	if(!gametext_bound) {
 		return;
@@ -951,7 +951,7 @@ function chunkOnSelectionChange(event) {
 	}, 2);
 }
 
-// (Desktop client only) This gets run when you defocus the editor by clicking
+// This gets run when you defocus the editor by clicking
 // outside of the editor or by pressing escape or tab
 function chunkOnFocusOut(event) {
 	if(!gametext_bound || event.target !== gametext) {
@@ -1347,7 +1347,7 @@ $(document).ready(function(){
 		connect_status.addClass("color_orange");
 	});
 
-	// Register editing events (desktop)
+	// Register editing events
 	$(gametext).on('keydown',
 		chunkOnKeyDown
 	).on('paste', 
