@@ -1352,7 +1352,7 @@ $(document).ready(function(){
 		chunkOnKeyDown
 	).on('paste', 
 		chunkOnPaste
-	).on('focus',
+	).on('click',
 		chunkOnSelectionChange
 	).on('keydown',
 		chunkOnSelectionChange
