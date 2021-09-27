@@ -954,16 +954,16 @@ function chunkOnSelectionChange(event) {
 // This gets run when you defocus the editor by clicking
 // outside of the editor or by pressing escape or tab
 function chunkOnFocusOut(event) {
-	if(!gametext_bound || event.target !== gametext) {
+	if(!gametext_bound || event.target !== game_text[0]) {
 		return;
 	}
 	setTimeout(function() {
-		if(document.activeElement === gametext || gametext.contains(document.activeElement)) {
+		if(document.activeElement === game_text[0] || game_text[0].contains(document.activeElement)) {
 			return;
 		}
 		syncAllModifiedChunks(true);
 		setTimeout(function() {
-			var blurred = $("#gametext")[0] !== document.activeElement;
+			var blurred = game_text[0] !== document.activeElement;
 			if(blurred) {
 				deleteEmptyChunks();
 			}
@@ -975,7 +975,7 @@ function chunkOnFocusOut(event) {
 }
 
 function bindGametext() {
-	mutation_observer.observe($("#gametext")[0], {characterData: true, childList: true, subtree: true});
+	mutation_observer.observe(game_text[0], {characterData: true, childList: true, subtree: true});
 	gametext_bound = true;
 }
 
@@ -1071,7 +1071,7 @@ $(document).ready(function(){
 			$('#allowediting').prop('checked', allowedit).prop('disabled', false).change().off('change').on('change', function () {
 				if(allowtoggle) {
 					allowedit = $(this).prop('checked');
-					$(gametext).attr('contenteditable', allowedit);
+					game_text.attr('contenteditable', allowedit);
 				}
 			});
 		} else if(msg.cmd == "updatescreen") {
@@ -1348,7 +1348,7 @@ $(document).ready(function(){
 	});
 
 	// Register editing events
-	$(gametext).on('keydown',
+	game_text.on('keydown',
 		chunkOnKeyDown
 	).on('paste', 
 		chunkOnPaste
@@ -1365,8 +1365,8 @@ $(document).ready(function(){
 	// because the gods of HTML and JavaScript say so
 	$(document.body).on('focusin', function(event) {
 		setTimeout(function() {
-			if(document.activeElement !== gametext && gametext.contains(document.activeElement)) {
-				gametext.focus();
+			if(document.activeElement !== game_text[0] && game_text[0].contains(document.activeElement)) {
+				game_text[0].focus();
 			}
 		}, 2);
 	});
