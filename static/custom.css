@@ -11,12 +11,12 @@ chunk {
 	font-weight: bold;
 }
 
-chunk[contenteditable="true"]:focus, chunk[contenteditable="true"]:focus * {
+chunk.editing, chunk.editing * {
 	color: #cdf !important;
 	font-weight: normal !important;
 }
 
-chunk, chunk * {
+#gametext, chunk, chunk * {
 	outline: 0px solid transparent;
 }
 
