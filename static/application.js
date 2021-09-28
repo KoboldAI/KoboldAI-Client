@@ -73,6 +73,8 @@ var modified_chunks = new Set();
 var empty_chunks = new Set();
 var mutation_observer = null;
 var gametext_bound = false;
+var saved_prompt = "...";
+var override_focusout = false;
 var sman_allow_delete = false;
 var sman_allow_rename = false;
 
@@ -732,9 +734,8 @@ function chunkOnKeyDown(event) {
 	// Make escape commit the changes (Originally we had Enter here to but its not required and nicer for users if we let them type freely
 	// You can add the following after 27 if you want it back to committing on enter : || (!event.shiftKey && event.keyCode == 13)
 	if(event.keyCode == 27) {
-		setTimeout(function () {
-			event.target.blur();
-		}, 5);
+		override_focusout = true;
+		game_text.blur();
 		event.preventDefault();
 		return;
 	}
@@ -844,7 +845,7 @@ function applyChunkDeltas(nodes) {
 		var selected_chunks = buildChunkSetFromNodeArray(getSelectedNodes());
 		for(var i = 0; i < chunks.length; i++) {
 			var chunk = document.getElementById("n" + chunks[i]);
-			if(chunk && chunk.innerText.length != 0) {
+			if(chunk && chunk.innerText.length != 0 && chunks[i] != '0') {
 				if(!selected_chunks.has(chunks[i])) {
 					modified_chunks.delete(chunks[i]);
 					socket.send({'cmd': 'inlineedit', 'chunk': chunks[i], 'data': chunk.innerText.replace(/\u00a0/g, " ")});
@@ -879,12 +880,45 @@ function syncAllModifiedChunks(including_selected_chunks=false) {
 	}
 }
 
+function restorePrompt() {
+	if(game_text[0].firstChild.nodeType === 3) {
+		saved_prompt = game_text[0].firstChild.textContent.replace(/\u00a0/g, " ");
+		unbindGametext();
+		game_text[0].innerText = "";
+		bindGametext();
+	}
+	if($("#n0").length) {
+		$("#n0").remove();
+	}
+	var prompt_chunk = document.createElement("chunk");
+	prompt_chunk.setAttribute("n", "0");
+	prompt_chunk.setAttribute("id", "n0");
+	prompt_chunk.setAttribute("tabindex", "-1");
+	prompt_chunk.innerText = saved_prompt;
+	unbindGametext();
+	game_text[0].prepend(prompt_chunk);
+	bindGametext();
+	modified_chunks.delete('0');
+	empty_chunks.delete('0');
+	socket.send({'cmd': 'inlineedit', 'chunk': '0', 'data': saved_prompt});
+}
+
 function deleteEmptyChunks() {
 	var chunks = Array.from(empty_chunks);
 	for(var i = 0; i < chunks.length; i++) {
 		empty_chunks.delete(chunks[i]);
-		socket.send({'cmd': 'inlinedelete', 'data': chunks[i]});
+		if(chunks[i] === "0") {
+			// Don't delete the prompt
+			restorePrompt();
+		} else {
+			socket.send({'cmd': 'inlinedelete', 'data': chunks[i]});
+		}
 	}
+	if(modified_chunks.has('0')) {
+		modified_chunks.delete(chunks[i]);
+		socket.send({'cmd': 'inlineedit', 'chunk': chunks[i], 'data':  document.getElementById("n0").innerText.replace(/\u00a0/g, " ")});
+	}
+	saved_prompt = $("#n0")[0].innerText.replace(/\u00a0/g, " ");
 }
 
 function highlightEditingChunks() {
@@ -910,17 +944,14 @@ function highlightEditingChunks() {
 // This gets run every time the text in a chunk is edited
 // or a chunk is deleted
 function chunkOnDOMMutate(mutations, observer) {
-	if(!gametext_bound) {
+	if(!gametext_bound || !allowedit) {
 		return;
 	}
 	var nodes = [];
 	for(var i = 0; i < mutations.length; i++) {
 		var mutation = mutations[i];
-		if(mutation.type === "childList") {
-			nodes = nodes.concat(Array.from(mutation.addedNodes), Array.from(mutation.removedNodes));
-		} else {
-			nodes.push(mutation.target);
-		}
+		nodes = nodes.concat(Array.from(mutation.addedNodes), Array.from(mutation.removedNodes));
+		nodes.push(mutation.target);
 	}
 	applyChunkDeltas(nodes);
 }
@@ -940,7 +971,8 @@ function chunkOnPaste(event) {
 
 // This gets run every time the caret moves in the editor
 function chunkOnSelectionChange(event) {
-	if(!gametext_bound) {
+	if(!gametext_bound || !allowedit || override_focusout) {
+		override_focusout = false;
 		return;
 	}
 	setTimeout(function() {
@@ -960,7 +992,7 @@ function chunkOnSelectionChange(event) {
 // This gets run when you defocus the editor by clicking
 // outside of the editor or by pressing escape or tab
 function chunkOnFocusOut(event) {
-	if(!gametext_bound || event.target !== game_text[0]) {
+	if(!gametext_bound || !allowedit || event.target !== game_text[0]) {
 		return;
 	}
 	setTimeout(function() {
@@ -1076,7 +1108,7 @@ $(document).ready(function(){
 			$('body').on('input', autofocus);
 			$('#allowediting').prop('checked', allowedit).prop('disabled', false).change().off('change').on('change', function () {
 				if(allowtoggle) {
-					allowedit = $(this).prop('checked');
+					allowedit = gamestarted && $(this).prop('checked');
 					game_text.attr('contenteditable', allowedit);
 				}
 			});
@@ -1094,6 +1126,9 @@ $(document).ready(function(){
 			empty_chunks = new Set();
 			game_text.html(msg.data);
 			bindGametext();
+			if(gamestarted) {
+				saved_prompt = $("#n0")[0].innerText.replace(/\u00a0/g, " ");
+			}
 			// Scroll to bottom of text
 			if(newly_loaded) {
 				scrollToBottom();
