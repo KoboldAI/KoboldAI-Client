@@ -944,7 +944,8 @@ def actionsubmit(data, actionmode=0):
     if(actionmode == 1):
         data = data.strip().lstrip('>')
         data = re.sub(r'\n+', ' ', data)
-        data = f"\n\n> {data}\n"
+        if(len(data)):
+            data = f"\n\n> {data}\n"
     
     # If we're not continuing, store a copy of the raw input
     if(data != ""):
