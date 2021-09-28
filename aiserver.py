@@ -937,6 +937,7 @@ def actionsubmit(data, actionmode=0):
     set_aibusy(1)
 
     vars.recentback = False
+    vars.recentedit = False
     vars.actionmode = actionmode
 
     # "Action" mode
@@ -956,7 +957,7 @@ def actionsubmit(data, actionmode=0):
         vars.prompt = data
         if(not vars.noai):
             # Clear the startup text from game screen
-            emit('from_server', {'cmd': 'updatescreen', 'gamestarted': vars.gamestarted, 'data': 'Please wait, generating story...'}, broadcast=True)
+            emit('from_server', {'cmd': 'updatescreen', 'gamestarted': False, 'data': 'Please wait, generating story...'}, broadcast=True)
             calcsubmit(data) # Run the first action through the generator
             emit('from_server', {'cmd': 'scrolldown', 'data': ''}, broadcast=True)
         else:
@@ -993,13 +994,14 @@ def actionretry(data):
     # Remove last action if possible and resubmit
     if(vars.gamestarted if vars.useprompt else len(vars.actions) > 0):
         set_aibusy(1)
-        if(not vars.recentback and len(vars.actions) != 0 and len(vars.genseqs) == 0):  # Don't pop if we're in the "Select sequence to keep" menu or if there are no non-prompt actions
+        if(not vars.recentback and not vars.recentedit and len(vars.actions) != 0 and len(vars.genseqs) == 0):  # Don't pop if we're in the "Select sequence to keep" menu or if there are no non-prompt actions
             last_key = vars.actions.get_last_key()
             vars.actions.pop()
             remove_story_chunk(last_key + 1)
         vars.genseqs = []
         calcsubmit('')
         vars.recentback = False
+        vars.recentedit = False
     elif(not vars.useprompt):
         emit('from_server', {'cmd': 'errmsg', 'data': "Please enable \"Always Add Prompt\" to retry with your prompt."})
 
@@ -1548,6 +1550,7 @@ def editrequest(n):
 # 
 #==================================================================#
 def editsubmit(data):
+    vars.recentedit = True
     if(vars.editln == 0):
         vars.prompt = data
     else:
@@ -1562,6 +1565,7 @@ def editsubmit(data):
 #  
 #==================================================================#
 def deleterequest():
+    vars.recentedit = True
     # Don't delete prompt
     if(vars.editln == 0):
         # Send error message
@@ -1576,8 +1580,11 @@ def deleterequest():
 # 
 #==================================================================#
 def inlineedit(chunk, data):
+    vars.recentedit = True
     chunk = int(chunk)
     if(chunk == 0):
+        if(len(data.strip()) == 0):
+            return
         vars.prompt = data
     else:
         vars.actions[chunk-1] = data
@@ -1590,6 +1597,7 @@ def inlineedit(chunk, data):
 #  
 #==================================================================#
 def inlinedelete(chunk):
+    vars.recentedit = True
     chunk = int(chunk)
     # Don't delete prompt
     if(chunk == 0):
