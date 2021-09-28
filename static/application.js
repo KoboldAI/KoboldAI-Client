@@ -846,7 +846,6 @@ function applyChunkDeltas(nodes) {
 		for(var i = 0; i < chunks.length; i++) {
 			var chunk = document.getElementById("n" + chunks[i]);
 			if(chunk && chunk.innerText.length != 0 && chunks[i] != '0') {
-				console.log(chunks[i])
 				if(!selected_chunks.has(chunks[i])) {
 					modified_chunks.delete(chunks[i]);
 					socket.send({'cmd': 'inlineedit', 'chunk': chunks[i], 'data': chunk.innerText.replace(/\u00a0/g, " ")});
@@ -919,7 +918,6 @@ function deleteEmptyChunks() {
 		modified_chunks.delete(chunks[i]);
 		socket.send({'cmd': 'inlineedit', 'chunk': chunks[i], 'data':  document.getElementById("n0").innerText.replace(/\u00a0/g, " ")});
 	}
-	console.log(empty_chunks)
 	saved_prompt = $("#n0")[0].innerText.replace(/\u00a0/g, " ");
 }
 
