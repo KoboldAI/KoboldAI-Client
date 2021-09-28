@@ -466,6 +466,7 @@ function enterWiMode() {
 	hide([button_actback, button_actmem, button_actretry, game_text]);
 	show([wi_menu]);
 	disableSendBtn();
+	$("#gamescreen").addClass("wigamescreen");
 }
 
 function exitWiMode() {
@@ -474,6 +475,7 @@ function exitWiMode() {
 	hide([wi_menu]);
 	show([button_actback, button_actmem, button_actretry, game_text]);
 	enableSendBtn();
+	$("#gamescreen").removeClass("wigamescreen");
 	scrollToBottom();
 }
 
