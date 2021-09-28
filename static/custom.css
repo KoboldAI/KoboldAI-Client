@@ -86,7 +86,7 @@ chunk.editing, chunk.editing * {
 	width: 100%;
 	word-wrap: break-word;
 	padding: 10px;
-	overflow-y: scroll;
+	overflow-y: auto;
 }
 
 #seqselmenu {
