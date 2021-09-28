@@ -73,6 +73,7 @@ var modified_chunks = new Set();
 var empty_chunks = new Set();
 var mutation_observer = null;
 var gametext_bound = false;
+var saved_prompt = "...";
 var sman_allow_delete = false;
 var sman_allow_rename = false;
 
@@ -844,7 +845,8 @@ function applyChunkDeltas(nodes) {
 		var selected_chunks = buildChunkSetFromNodeArray(getSelectedNodes());
 		for(var i = 0; i < chunks.length; i++) {
 			var chunk = document.getElementById("n" + chunks[i]);
-			if(chunk && chunk.innerText.length != 0) {
+			if(chunk && chunk.innerText.length != 0 && chunks[i] != '0') {
+				console.log(chunks[i])
 				if(!selected_chunks.has(chunks[i])) {
 					modified_chunks.delete(chunks[i]);
 					socket.send({'cmd': 'inlineedit', 'chunk': chunks[i], 'data': chunk.innerText.replace(/\u00a0/g, " ")});
@@ -879,12 +881,46 @@ function syncAllModifiedChunks(including_selected_chunks=false) {
 	}
 }
 
+function restorePrompt() {
+	if($("#gametext > chunk").length == 0 && game_text[0].innerText.trim().length) {
+		saved_prompt = game_text[0].innerText.replace(/\u00a0/g, " ");
+		unbindGametext();
+		game_text[0].innerText = "";
+		bindGametext();
+	}
+	if($("#n0").length) {
+		$("#n0").remove();
+	}
+	var prompt_chunk = document.createElement("chunk");
+	prompt_chunk.setAttribute("n", "0");
+	prompt_chunk.setAttribute("id", "n0");
+	prompt_chunk.setAttribute("tabindex", "-1");
+	prompt_chunk.innerText = saved_prompt;
+	unbindGametext();
+	game_text[0].prepend(prompt_chunk);
+	bindGametext();
+	modified_chunks.delete('0');
+	empty_chunks.delete('0');
+	socket.send({'cmd': 'inlineedit', 'chunk': '0', 'data': saved_prompt});
+}
+
 function deleteEmptyChunks() {
 	var chunks = Array.from(empty_chunks);
 	for(var i = 0; i < chunks.length; i++) {
 		empty_chunks.delete(chunks[i]);
-		socket.send({'cmd': 'inlinedelete', 'data': chunks[i]});
+		if(chunks[i] === "0") {
+			// Don't delete the prompt
+			restorePrompt();
+		} else {
+			socket.send({'cmd': 'inlinedelete', 'data': chunks[i]});
+		}
 	}
+	if(modified_chunks.has('0')) {
+		modified_chunks.delete(chunks[i]);
+		socket.send({'cmd': 'inlineedit', 'chunk': chunks[i], 'data':  document.getElementById("n0").innerText.replace(/\u00a0/g, " ")});
+	}
+	console.log(empty_chunks)
+	saved_prompt = $("#n0")[0].innerText.replace(/\u00a0/g, " ");
 }
 
 function highlightEditingChunks() {
@@ -1094,6 +1130,9 @@ $(document).ready(function(){
 			empty_chunks = new Set();
 			game_text.html(msg.data);
 			bindGametext();
+			if(gamestarted) {
+				saved_prompt = $("#n0")[0].innerText.replace(/\u00a0/g, " ");
+			}
 			// Scroll to bottom of text
 			if(newly_loaded) {
 				scrollToBottom();

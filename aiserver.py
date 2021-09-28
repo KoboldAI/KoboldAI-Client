@@ -1578,6 +1578,8 @@ def deleterequest():
 def inlineedit(chunk, data):
     chunk = int(chunk)
     if(chunk == 0):
+        if(len(data.strip()) == 0):
+            return
         vars.prompt = data
     else:
         vars.actions[chunk-1] = data
