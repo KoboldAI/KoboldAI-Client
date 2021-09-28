@@ -956,7 +956,7 @@ def actionsubmit(data, actionmode=0):
         vars.prompt = data
         if(not vars.noai):
             # Clear the startup text from game screen
-            emit('from_server', {'cmd': 'updatescreen', 'gamestarted': vars.gamestarted, 'data': 'Please wait, generating story...'}, broadcast=True)
+            emit('from_server', {'cmd': 'updatescreen', 'gamestarted': False, 'data': 'Please wait, generating story...'}, broadcast=True)
             calcsubmit(data) # Run the first action through the generator
             emit('from_server', {'cmd': 'scrolldown', 'data': ''}, broadcast=True)
         else:

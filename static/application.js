@@ -944,7 +944,7 @@ function highlightEditingChunks() {
 // This gets run every time the text in a chunk is edited
 // or a chunk is deleted
 function chunkOnDOMMutate(mutations, observer) {
-	if(!gametext_bound) {
+	if(!gametext_bound || !allowedit) {
 		return;
 	}
 	var nodes = [];
@@ -971,7 +971,7 @@ function chunkOnPaste(event) {
 
 // This gets run every time the caret moves in the editor
 function chunkOnSelectionChange(event) {
-	if(!gametext_bound || override_focusout) {
+	if(!gametext_bound || !allowedit || override_focusout) {
 		override_focusout = false;
 		return;
 	}
@@ -992,7 +992,7 @@ function chunkOnSelectionChange(event) {
 // This gets run when you defocus the editor by clicking
 // outside of the editor or by pressing escape or tab
 function chunkOnFocusOut(event) {
-	if(!gametext_bound || event.target !== game_text[0]) {
+	if(!gametext_bound || !allowedit || event.target !== game_text[0]) {
 		return;
 	}
 	setTimeout(function() {
@@ -1108,7 +1108,7 @@ $(document).ready(function(){
 			$('body').on('input', autofocus);
 			$('#allowediting').prop('checked', allowedit).prop('disabled', false).change().off('change').on('change', function () {
 				if(allowtoggle) {
-					allowedit = $(this).prop('checked');
+					allowedit = gamestarted && $(this).prop('checked');
 					game_text.attr('contenteditable', allowedit);
 				}
 			});
