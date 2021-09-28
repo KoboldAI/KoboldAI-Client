@@ -881,8 +881,8 @@ function syncAllModifiedChunks(including_selected_chunks=false) {
 }
 
 function restorePrompt() {
-	if($("#gametext > chunk").length == 0 && game_text[0].innerText.trim().length) {
-		saved_prompt = game_text[0].innerText.replace(/\u00a0/g, " ");
+	if(game_text[0].firstChild.nodeType === 3) {
+		saved_prompt = game_text[0].firstChild.textContent.replace(/\u00a0/g, " ");
 		unbindGametext();
 		game_text[0].innerText = "";
 		bindGametext();
