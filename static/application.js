@@ -476,7 +476,6 @@ function exitWiMode() {
 	show([button_actback, button_actmem, button_actretry, game_text]);
 	enableSendBtn();
 	$("#gamescreen").removeClass("wigamescreen");
-	scrollToBottom();
 }
 
 function returnWiList(ar) {
