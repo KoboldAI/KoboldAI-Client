@@ -1565,6 +1565,7 @@ def editsubmit(data):
 #  
 #==================================================================#
 def deleterequest():
+    vars.recentedit = True
     # Don't delete prompt
     if(vars.editln == 0):
         # Send error message
