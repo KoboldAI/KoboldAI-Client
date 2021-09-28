@@ -74,6 +74,7 @@ var empty_chunks = new Set();
 var mutation_observer = null;
 var gametext_bound = false;
 var saved_prompt = "...";
+var override_focusout = false;
 var sman_allow_delete = false;
 var sman_allow_rename = false;
 
@@ -733,9 +734,8 @@ function chunkOnKeyDown(event) {
 	// Make escape commit the changes (Originally we had Enter here to but its not required and nicer for users if we let them type freely
 	// You can add the following after 27 if you want it back to committing on enter : || (!event.shiftKey && event.keyCode == 13)
 	if(event.keyCode == 27) {
-		setTimeout(function () {
-			event.target.blur();
-		}, 5);
+		override_focusout = true;
+		game_text.blur();
 		event.preventDefault();
 		return;
 	}
@@ -974,7 +974,8 @@ function chunkOnPaste(event) {
 
 // This gets run every time the caret moves in the editor
 function chunkOnSelectionChange(event) {
-	if(!gametext_bound) {
+	if(!gametext_bound || override_focusout) {
+		override_focusout = false;
 		return;
 	}
 	setTimeout(function() {
