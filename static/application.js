@@ -950,11 +950,8 @@ function chunkOnDOMMutate(mutations, observer) {
 	var nodes = [];
 	for(var i = 0; i < mutations.length; i++) {
 		var mutation = mutations[i];
-		if(mutation.type === "childList") {
-			nodes = nodes.concat(Array.from(mutation.addedNodes), Array.from(mutation.removedNodes));
-		} else {
-			nodes.push(mutation.target);
-		}
+		nodes = nodes.concat(Array.from(mutation.addedNodes), Array.from(mutation.removedNodes));
+		nodes.push(mutation.target);
 	}
 	applyChunkDeltas(nodes);
 }
