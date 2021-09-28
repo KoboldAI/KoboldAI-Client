@@ -951,6 +951,9 @@ def actionsubmit(data, actionmode=0):
         vars.lastact = data
     
     if(not vars.gamestarted):
+        if(len(data.strip()) == 0):
+            set_aibusy(0)
+            return
         # Start the game
         vars.gamestarted = True
         # Save this first action as the prompt
@@ -971,7 +974,10 @@ def actionsubmit(data, actionmode=0):
             if(vars.actionmode == 0):
                 data = applyinputformatting(data)
             # Store the result in the Action log
-            vars.actions.append(data)
+            if(len(vars.prompt.strip()) == 0):
+                vars.prompt = data
+            else:
+                vars.actions.append(data)
             update_story_chunk('last')
 
         if(not vars.noai):
@@ -1284,7 +1290,10 @@ def genresult(genout):
     genout = applyoutputformatting(genout)
     
     # Add formatted text to Actions array and refresh the game screen
-    vars.actions.append(genout)
+    if(len(vars.prompt.strip()) == 0):
+        vars.prompt = genout
+    else:
+        vars.actions.append(genout)
     update_story_chunk('last')
     emit('from_server', {'cmd': 'texteffect', 'data': vars.actions.get_last_key() if len(vars.actions) else 0}, broadcast=True)
 
@@ -2102,8 +2111,19 @@ def loadRequest(loadpath):
 
         del vars.actions
         vars.actions = structures.KoboldStoryRegister()
-        for s in js["actions"]:
-            vars.actions.append(s)
+        actions = collections.deque(js["actions"])
+
+        if(len(vars.prompt.strip()) == 0):
+            while(len(actions)):
+                action = actions.popleft()
+                if(len(action.strip()) != 0):
+                    vars.prompt = action
+                    break
+            else:
+                vars.gamestarted = False
+        if(vars.gamestarted):
+            for s in actions:
+                vars.actions.append(s)
         
         # Try not to break older save files
         if("authorsnote" in js):
