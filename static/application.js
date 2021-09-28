@@ -69,8 +69,10 @@ var gamestarted = false;
 var editmode = false;
 var connected = false;
 var newly_loaded = true;
-var current_editing_chunk = null;
-var chunk_conflict = false;
+var modified_chunks = new Set();
+var empty_chunks = new Set();
+var mutation_observer = null;
+var gametext_bound = false;
 var sman_allow_delete = false;
 var sman_allow_rename = false;
 
@@ -400,7 +402,7 @@ function hideWaitAnimation() {
 
 function scrollToBottom() {
 	setTimeout(function () {
-		$('#gamescreen').animate({scrollTop: $('#gamescreen').prop('scrollHeight')}, 500);
+		game_text.stop(true).animate({scrollTop: game_text.prop('scrollHeight')}, 500);
 	}, 5);
 }
 
@@ -720,9 +722,6 @@ function setadventure(state) {
 
 function autofocus(event) {
 	if(connected) {
-		if(event.target.tagName == "CHUNK") {
-			current_editing_chunk = event.target;
-		}
 		event.target.focus();
 	} else {
 		event.preventDefault();
@@ -738,65 +737,6 @@ function chunkOnKeyDown(event) {
 		}, 5);
 		event.preventDefault();
 		return;
-	}
-
-	// Allow left and right arrow keys (and backspace) to move between chunks
-	switch(event.keyCode) {
-		case 37:  // left
-		case 39:  // right
-			var old_range = getSelection().getRangeAt(0);
-			var old_range_start = old_range.startOffset;
-			var old_range_end = old_range.endOffset;
-			var old_range_ancestor = old_range.commonAncestorContainer;
-			var old_range_start_container = old_range.startContainer;
-			var old_range_end_container = old_range.endContainer;
-			setTimeout(function () {
-				// Wait a few milliseconds and check if the caret has moved
-				var new_selection = getSelection();
-				var new_range = new_selection.getRangeAt(0);
-				if(old_range_start != new_range.startOffset || old_range_end != new_range.endOffset || old_range_ancestor != new_range.commonAncestorContainer || old_range_start_container != new_range.startContainer || old_range_end_container != new_range.endContainer) {
-					return;
-				}
-				// If it hasn't moved, we're at the beginning or end of a chunk
-				// and the caret must be moved to a different chunk
-				var chunk = document.activeElement;
-				switch(event.keyCode) {
-					case 37:  // left
-						if((chunk = chunk.previousSibling) && chunk.tagName == "CHUNK") {
-							var range = document.createRange();
-							range.selectNodeContents(chunk);
-							range.collapse(false);
-							new_selection.removeAllRanges();
-							new_selection.addRange(range);
-						}
-						break;
-
-					case 39:  // right
-						if((chunk = chunk.nextSibling) && chunk.tagName == "CHUNK") {
-							chunk.focus();
-						}
-				}
-			}, 2);
-			return;
-		
-		case 8:  // backspace
-			var old_length = document.activeElement.innerText.length;
-			setTimeout(function () {
-				// Wait a few milliseconds and compare the chunk's length
-				if(old_length != document.activeElement.innerText.length) {
-					return;
-				}
-				// If it's the same, we're at the beginning of a chunk
-				if((chunk = document.activeElement.previousSibling) && chunk.tagName == "CHUNK") {
-					var range = document.createRange();
-					var selection = getSelection();
-					range.selectNodeContents(chunk);
-					range.collapse(false);
-					selection.removeAllRanges();
-					selection.addRange(range);
-				}
-			}, 2);
-			return
 	}
 
 	// Don't allow any edits if not connected to server
@@ -817,25 +757,6 @@ function chunkOnKeyDown(event) {
 				event.preventDefault();
 				return;
 		}
-	}
-}
-
-function submitEditedChunk(event) {
-	// Don't do anything if the current chunk hasn't been edited or if someone
-	// else overwrote it while you were busy lollygagging
-	if(current_editing_chunk === null || chunk_conflict) {
-		chunk_conflict = false;
-		return;
-	}
-
-	var chunk = current_editing_chunk;
-	current_editing_chunk = null;
-
-	// Submit the edited chunk if it's not empty, otherwise delete it
-	if(chunk.innerText.length) {
-		socket.send({'cmd': 'inlineedit', 'chunk': chunk.getAttribute("n"), 'data': chunk.innerText.replace(/\u00a0/g, " ")});
-	} else {
-		socket.send({'cmd': 'inlinedelete', 'data': chunk.getAttribute("n")});
 	}
 }
 
@@ -888,6 +809,185 @@ function downloadStory(format) {
 	anchor.setAttribute('download', filename_without_extension + ".json");
 	anchor.click();
 	URL.revokeObjectURL(objectURL);
+}
+
+function buildChunkSetFromNodeArray(nodes) {
+	var set = new Set();
+	for(var i = 0; i < nodes.length; i++) {
+		node = nodes[i];
+		while(node !== null && node.tagName !== "CHUNK") {
+			node = node.parentNode;
+		}
+		if(node === null) {
+			continue;
+		}
+		set.add(node.getAttribute("n"));
+	}
+	return set;
+}
+
+function getSelectedNodes() {
+	var range = rangy.getSelection().getRangeAt(0);  // rangy is not a typo
+	var nodes = range.getNodes([1,3]);
+	nodes.push(range.startContainer);
+	nodes.push(range.endContainer);
+	return nodes
+}
+
+function applyChunkDeltas(nodes) {
+	var chunks = Array.from(buildChunkSetFromNodeArray(nodes));
+	for(var i = 0; i < chunks.length; i++) {
+		modified_chunks.add(chunks[i]);
+	}
+	setTimeout(function() {
+		var chunks = Array.from(modified_chunks);
+		var selected_chunks = buildChunkSetFromNodeArray(getSelectedNodes());
+		for(var i = 0; i < chunks.length; i++) {
+			var chunk = document.getElementById("n" + chunks[i]);
+			if(chunk && chunk.innerText.length != 0) {
+				if(!selected_chunks.has(chunks[i])) {
+					modified_chunks.delete(chunks[i]);
+					socket.send({'cmd': 'inlineedit', 'chunk': chunks[i], 'data': chunk.innerText.replace(/\u00a0/g, " ")});
+				}
+				empty_chunks.delete(chunks[i]);
+			} else {
+				if(!selected_chunks.has(chunks[i])) {
+					modified_chunks.delete(chunks[i]);
+					socket.send({'cmd': 'inlineedit', 'chunk': chunks[i], 'data': ''});
+				}
+				empty_chunks.add(chunks[i]);
+			}
+		}
+	}, 2);
+}
+
+function syncAllModifiedChunks(including_selected_chunks=false) {
+	var chunks = Array.from(modified_chunks);
+	var selected_chunks = buildChunkSetFromNodeArray(getSelectedNodes());
+	for(var i = 0; i < chunks.length; i++) {
+		if(including_selected_chunks || !selected_chunks.has(chunks[i])) {
+			modified_chunks.delete(chunks[i]);
+			var chunk = document.getElementById("n" + chunks[i]);
+			var data = chunk ? document.getElementById("n" + chunks[i]).innerText.replace(/\u00a0/g, " ") : "";
+			if(data.length == 0) {
+				empty_chunks.add(chunks[i]);
+			} else {
+				empty_chunks.delete(chunks[i]);
+			}
+			socket.send({'cmd': 'inlineedit', 'chunk': chunks[i], 'data': data});
+		}
+	}
+}
+
+function deleteEmptyChunks() {
+	var chunks = Array.from(empty_chunks);
+	for(var i = 0; i < chunks.length; i++) {
+		empty_chunks.delete(chunks[i]);
+		socket.send({'cmd': 'inlinedelete', 'data': chunks[i]});
+	}
+}
+
+function highlightEditingChunks() {
+	var chunks = $('chunk.editing').toArray();
+	var selected_chunks = buildChunkSetFromNodeArray(getSelectedNodes());
+	for(var i = 0; i < chunks.length; i++) {
+		var chunk = chunks[i];
+		if(!selected_chunks.has(chunks[i].getAttribute("n"))) {
+			unbindGametext();
+			$(chunk).removeClass('editing');
+			bindGametext();
+		}
+	}
+	chunks = Array.from(selected_chunks);
+	for(var i = 0; i < chunks.length; i++) {
+		var chunk = $("#n"+chunks[i]);
+		unbindGametext();
+		chunk.addClass('editing');
+		bindGametext();
+	}
+}
+
+// This gets run every time the text in a chunk is edited
+// or a chunk is deleted
+function chunkOnDOMMutate(mutations, observer) {
+	if(!gametext_bound) {
+		return;
+	}
+	var nodes = [];
+	for(var i = 0; i < mutations.length; i++) {
+		var mutation = mutations[i];
+		if(mutation.type === "childList") {
+			nodes = nodes.concat(Array.from(mutation.addedNodes), Array.from(mutation.removedNodes));
+		} else {
+			nodes.push(mutation.target);
+		}
+	}
+	applyChunkDeltas(nodes);
+}
+
+// This gets run every time you try to paste text into the editor
+function chunkOnPaste(event) {
+	if(!gametext_bound) {
+		return;
+	}
+	// If possible, intercept paste events into the editor in order to always
+	// paste as plaintext
+	if(event.originalEvent.clipboardData && document.queryCommandSupported && document.execCommand && document.queryCommandSupported('insertText')) {
+		event.preventDefault();
+        document.execCommand('insertText', false, event.originalEvent.clipboardData.getData('text/plain'));
+    }
+}
+
+// This gets run every time the caret moves in the editor
+function chunkOnSelectionChange(event) {
+	if(!gametext_bound) {
+		return;
+	}
+	setTimeout(function() {
+		syncAllModifiedChunks();
+		setTimeout(function() {
+			highlightEditingChunks();
+			// Attempt to prevent Chromium-based browsers on Android from
+			// scrolling away from the current selection
+			setTimeout(function() {
+				game_text.blur();
+				game_text.focus();
+			}, 144);
+		}, 2);
+	}, 2);
+}
+
+// This gets run when you defocus the editor by clicking
+// outside of the editor or by pressing escape or tab
+function chunkOnFocusOut(event) {
+	if(!gametext_bound || event.target !== game_text[0]) {
+		return;
+	}
+	setTimeout(function() {
+		if(document.activeElement === game_text[0] || game_text[0].contains(document.activeElement)) {
+			return;
+		}
+		syncAllModifiedChunks(true);
+		setTimeout(function() {
+			var blurred = game_text[0] !== document.activeElement;
+			if(blurred) {
+				deleteEmptyChunks();
+			}
+			setTimeout(function() {
+				$("chunk").removeClass('editing');
+			}, 2);
+		}, 2);
+	}, 2);
+}
+
+function bindGametext() {
+	mutation_observer.observe(game_text[0], {characterData: true, childList: true, subtree: true});
+	gametext_bound = true;
+}
+
+function unbindGametext() {
+	mutation_observer.disconnect();
+	gametext_bound = false;
 }
 
 //=================================================================//
@@ -973,11 +1073,11 @@ $(document).ready(function(){
 			format_menu.html("");
 			wi_menu.html("");
 			// Set up "Allow Editing"
-			$('body').on('input', autofocus).on('keydown', 'chunk', chunkOnKeyDown).on('focusout', 'chunk', submitEditedChunk);
-			$('#allowediting').prop('checked', allowedit).prop('disabled', false).change().on('change', function () {
+			$('body').on('input', autofocus);
+			$('#allowediting').prop('checked', allowedit).prop('disabled', false).change().off('change').on('change', function () {
 				if(allowtoggle) {
-					allowedit = $(this).prop('checked')
-					$("chunk").attr('contenteditable', allowedit)
+					allowedit = $(this).prop('checked');
+					game_text.attr('contenteditable', allowedit);
 				}
 			});
 		} else if(msg.cmd == "updatescreen") {
@@ -987,13 +1087,13 @@ $(document).ready(function(){
 				action_mode = 0;
 				changemode();
 			}
-			// Send game content to Game Screen
-			if(allowedit && document.activeElement.tagName == "CHUNK") {
-				chunk_conflict = true;
-			}
+			unbindGametext();
+			allowedit = gamestarted && $("#allowediting").prop('checked');
+			game_text.attr('contenteditable', allowedit);
+			modified_chunks = new Set();
+			empty_chunks = new Set();
 			game_text.html(msg.data);
-			// Make content editable if need be
-			$('chunk').attr('contenteditable', allowedit);
+			bindGametext();
 			// Scroll to bottom of text
 			if(newly_loaded) {
 				scrollToBottom();
@@ -1004,28 +1104,26 @@ $(document).ready(function(){
 			scrollToBottom();
 		} else if(msg.cmd == "updatechunk") {
 			hideMessage();
-			const {index, html, last} = msg.data;
+			const {index, html} = msg.data;
 			const existingChunk = game_text.children(`#n${index}`)
 			const newChunk = $(html);
+			unbindGametext();
 			if (existingChunk.length > 0) {
 				// Update existing chunk
 				existingChunk.before(newChunk);
 				existingChunk.remove();
-			} else {
+			} else if (!empty_chunks.has(index.toString())) {
 				// Append at the end
 				game_text.append(newChunk);
 			}
-			newChunk.attr('contenteditable', allowedit);
+			bindGametext();
 			hide([$('#curtain')]);
-			if(last) {
-				// Scroll to bottom of text if it's the last element
-				scrollToBottom();
-			}
 		} else if(msg.cmd == "removechunk") {
 			hideMessage();
 			let index = msg.data;
-			// Remove the chunk
-			game_text.children(`#n${index}`).remove()
+			unbindGametext();
+			game_text.children(`#n${index}`).remove()  // Remove the chunk
+			bindGametext();
 			hide([$('#curtain')]);
 		} else if(msg.cmd == "setgamestate") {
 			// Enable or Disable buttons
@@ -1252,7 +1350,31 @@ $(document).ready(function(){
 		connect_status.removeClass("color_green");
 		connect_status.addClass("color_orange");
 	});
-	
+
+	// Register editing events
+	game_text.on('keydown',
+		chunkOnKeyDown
+	).on('paste', 
+		chunkOnPaste
+	).on('click',
+		chunkOnSelectionChange
+	).on('keydown',
+		chunkOnSelectionChange
+	).on('focusout',
+		chunkOnFocusOut
+	);
+	mutation_observer = new MutationObserver(chunkOnDOMMutate);
+
+	// This is required for the editor to work correctly in Firefox on desktop
+	// because the gods of HTML and JavaScript say so
+	$(document.body).on('focusin', function(event) {
+		setTimeout(function() {
+			if(document.activeElement !== game_text[0] && game_text[0].contains(document.activeElement)) {
+				game_text[0].focus();
+			}
+		}, 2);
+	});
+
 	// Bind actions to UI buttons
 	button_send.on("click", function(ev) {
 		dosubmit();
