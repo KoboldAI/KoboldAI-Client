@@ -1007,6 +1007,7 @@ def actionretry(data):
             remove_story_chunk(last_key + 1)
         vars.genseqs = []
         calcsubmit('')
+        emit('from_server', {'cmd': 'scrolldown', 'data': ''}, broadcast=True)
         vars.recentback = False
         vars.recentedit = False
     elif(not vars.useprompt):
