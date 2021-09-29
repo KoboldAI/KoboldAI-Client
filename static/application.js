@@ -466,6 +466,7 @@ function enterWiMode() {
 	hide([button_actback, button_actmem, button_actretry, game_text]);
 	show([wi_menu]);
 	disableSendBtn();
+	$("#gamescreen").addClass("wigamescreen");
 }
 
 function exitWiMode() {
@@ -474,7 +475,7 @@ function exitWiMode() {
 	hide([wi_menu]);
 	show([button_actback, button_actmem, button_actretry, game_text]);
 	enableSendBtn();
-	scrollToBottom();
+	$("#gamescreen").removeClass("wigamescreen");
 }
 
 function returnWiList(ar) {
@@ -493,7 +494,11 @@ function returnWiList(ar) {
 }
 
 function dosubmit() {
-	var txt = input_text.val();
+	var txt = input_text.val().replace(/\u00a0/g, " ");
+	console.log(gamestarted)
+	if(!gamestarted && ((!adventure || !action_mode) && txt.trim().length == 0)) {
+		return;
+	}
 	socket.send({'cmd': 'submit', 'actionmode': adventure ? action_mode : 0, 'data': txt});
 	if(memorymode) {
 		memorytext = input_text.val();
@@ -881,7 +886,7 @@ function syncAllModifiedChunks(including_selected_chunks=false) {
 }
 
 function restorePrompt() {
-	if(game_text[0].firstChild.nodeType === 3) {
+	if(game_text[0].firstChild && game_text[0].firstChild.nodeType === 3) {
 		saved_prompt = game_text[0].firstChild.textContent.replace(/\u00a0/g, " ");
 		unbindGametext();
 		game_text[0].innerText = "";

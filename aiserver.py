@@ -1,6 +1,6 @@
 #==================================================================#
 # KoboldAI
-# Version: 1.16.1
+# Version: 1.16.2
 # By: KoboldAIDev and the KoboldAI Community
 #==================================================================#
 
@@ -930,7 +930,7 @@ def settingschanged():
 #==================================================================#
 #  Take input text from SocketIO and decide what to do with it
 #==================================================================#
-def actionsubmit(data, actionmode=0):
+def actionsubmit(data, actionmode=0, force_submit=False):
     # Ignore new submissions if the AI is currently busy
     if(vars.aibusy):
         return
@@ -944,13 +944,17 @@ def actionsubmit(data, actionmode=0):
     if(actionmode == 1):
         data = data.strip().lstrip('>')
         data = re.sub(r'\n+', ' ', data)
-        data = f"\n\n> {data}\n"
+        if(len(data)):
+            data = f"\n\n> {data}\n"
     
     # If we're not continuing, store a copy of the raw input
     if(data != ""):
         vars.lastact = data
     
     if(not vars.gamestarted):
+        if(not force_submit and len(data.strip()) == 0):
+            set_aibusy(0)
+            return
         # Start the game
         vars.gamestarted = True
         # Save this first action as the prompt
@@ -971,7 +975,10 @@ def actionsubmit(data, actionmode=0):
             if(vars.actionmode == 0):
                 data = applyinputformatting(data)
             # Store the result in the Action log
-            vars.actions.append(data)
+            if(len(vars.prompt.strip()) == 0):
+                vars.prompt = data
+            else:
+                vars.actions.append(data)
             update_story_chunk('last')
 
         if(not vars.noai):
@@ -994,12 +1001,13 @@ def actionretry(data):
     # Remove last action if possible and resubmit
     if(vars.gamestarted if vars.useprompt else len(vars.actions) > 0):
         set_aibusy(1)
-        if(not vars.recentback and not vars.recentedit and len(vars.actions) != 0 and len(vars.genseqs) == 0):  # Don't pop if we're in the "Select sequence to keep" menu or if there are no non-prompt actions
+        if(not vars.recentback and len(vars.actions) != 0 and len(vars.genseqs) == 0):  # Don't pop if we're in the "Select sequence to keep" menu or if there are no non-prompt actions
             last_key = vars.actions.get_last_key()
             vars.actions.pop()
             remove_story_chunk(last_key + 1)
         vars.genseqs = []
         calcsubmit('')
+        emit('from_server', {'cmd': 'scrolldown', 'data': ''}, broadcast=True)
         vars.recentback = False
         vars.recentedit = False
     elif(not vars.useprompt):
@@ -1284,7 +1292,10 @@ def genresult(genout):
     genout = applyoutputformatting(genout)
     
     # Add formatted text to Actions array and refresh the game screen
-    vars.actions.append(genout)
+    if(len(vars.prompt.strip()) == 0):
+        vars.prompt = genout
+    else:
+        vars.actions.append(genout)
     update_story_chunk('last')
     emit('from_server', {'cmd': 'texteffect', 'data': vars.actions.get_last_key() if len(vars.actions) else 0}, broadcast=True)
 
@@ -2102,8 +2113,19 @@ def loadRequest(loadpath):
 
         del vars.actions
         vars.actions = structures.KoboldStoryRegister()
-        for s in js["actions"]:
-            vars.actions.append(s)
+        actions = collections.deque(js["actions"])
+
+        if(len(vars.prompt.strip()) == 0):
+            while(len(actions)):
+                action = actions.popleft()
+                if(len(action.strip()) != 0):
+                    vars.prompt = action
+                    break
+            else:
+                vars.gamestarted = False
+        if(vars.gamestarted):
+            for s in actions:
+                vars.actions.append(s)
         
         # Try not to break older save files
         if("authorsnote" in js):
@@ -2377,7 +2399,7 @@ def newGameRequest():
 def randomGameRequest(topic): 
     newGameRequest()
     vars.memory      = "You generate the following " + topic + " story concept :"
-    actionsubmit("")
+    actionsubmit("", force_submit=True)
     vars.memory      = ""
 
 #==================================================================#

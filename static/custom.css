@@ -77,6 +77,11 @@ chunk.editing, chunk.editing * {
 	font-family: "Helvetica";
 }
 
+#gamescreen.wigamescreen {
+	padding: 10px;
+	overflow-y: scroll;
+}
+
 #gamescreen span {
 	align-self: flex-end;
 }
