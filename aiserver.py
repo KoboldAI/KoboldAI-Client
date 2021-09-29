@@ -930,7 +930,7 @@ def settingschanged():
 #==================================================================#
 #  Take input text from SocketIO and decide what to do with it
 #==================================================================#
-def actionsubmit(data, actionmode=0):
+def actionsubmit(data, actionmode=0, force_submit=False):
     # Ignore new submissions if the AI is currently busy
     if(vars.aibusy):
         return
@@ -952,7 +952,7 @@ def actionsubmit(data, actionmode=0):
         vars.lastact = data
     
     if(not vars.gamestarted):
-        if(len(data.strip()) == 0):
+        if(not force_submit and len(data.strip()) == 0):
             set_aibusy(0)
             return
         # Start the game
@@ -2398,7 +2398,7 @@ def newGameRequest():
 def randomGameRequest(topic): 
     newGameRequest()
     vars.memory      = "You generate the following " + topic + " story concept :"
-    actionsubmit("")
+    actionsubmit("", force_submit=True)
     vars.memory      = ""
 
 #==================================================================#
