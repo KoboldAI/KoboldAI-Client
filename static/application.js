@@ -495,8 +495,7 @@ function returnWiList(ar) {
 
 function dosubmit() {
 	var txt = input_text.val().replace(/\u00a0/g, " ");
-	console.log(gamestarted)
-	if(!gamestarted && ((!adventure || !action_mode) && txt.trim().length == 0)) {
+	if(!memorymode && !gamestarted && ((!adventure || !action_mode) && txt.trim().length == 0)) {
 		return;
 	}
 	socket.send({'cmd': 'submit', 'actionmode': adventure ? action_mode : 0, 'data': txt});
