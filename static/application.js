@@ -78,6 +78,9 @@ var override_focusout = false;
 var sman_allow_delete = false;
 var sman_allow_rename = false;
 
+// This is true iff [we're in macOS and the browser is Safari] or [we're in iOS]
+var using_webkit_patch = false;
+
 // Key states
 var shift_down   = false;
 var do_clear_ent = false;
@@ -985,10 +988,12 @@ function chunkOnSelectionChange(event) {
 			highlightEditingChunks();
 			// Attempt to prevent Chromium-based browsers on Android from
 			// scrolling away from the current selection
-			setTimeout(function() {
-				game_text.blur();
-				game_text.focus();
-			}, 144);
+			if(!using_webkit_patch) {
+				setTimeout(function() {
+					game_text.blur();
+					game_text.focus();
+				}, 144);
+			}
 		}, 2);
 	}, 2);
 }
@@ -1091,6 +1096,35 @@ $(document).ready(function(){
 	rs_close          = $("#btn_rsclose");
 	seqselmenu        = $("#seqselmenu");
 	seqselcontents    = $("#seqselcontents");
+
+	// A simple feature detection test to determine whether the user interface
+	// is using WebKit (Safari browser's rendering engine) because WebKit
+	// requires special treatment to work correctly with the KoboldAI editor
+	using_webkit_patch = (function() {
+		try {
+			var active_element = document.activeElement;
+			var c = document.createElement("chunk");
+			var t = document.createTextNode("KoboldAI");
+			c.appendChild(t);
+			game_text[0].appendChild(c);
+			var r = rangy.createRange();
+			r.setStart(t, 6);
+			r.collapse(true);
+			var s = rangy.getSelection();
+			s.removeAllRanges();
+			s.addRange(r);
+			game_text.blur();
+			game_text.focus();
+			var offset = rangy.getSelection().focusOffset;
+			c.removeChild(t);
+			game_text[0].removeChild(c);
+			document.activeElement.blur();
+			active_element.focus();
+			return offset !== 6;
+		} catch (e) {
+			return false;
+		}
+	})();
 	
 	// Connect to SocketIO server
 	socket = io.connect(window.document.origin);
