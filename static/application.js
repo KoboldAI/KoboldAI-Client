@@ -977,7 +977,7 @@ function chunkOnPaste(event) {
 }
 
 // This gets run every time the caret moves in the editor
-function chunkOnSelectionChange(event) {
+function _chunkOnSelectionChange(event, do_blur_focus) {
 	if(!gametext_bound || !allowedit || override_focusout) {
 		override_focusout = false;
 		return;
@@ -988,7 +988,7 @@ function chunkOnSelectionChange(event) {
 			highlightEditingChunks();
 			// Attempt to prevent Chromium-based browsers on Android from
 			// scrolling away from the current selection
-			if(!using_webkit_patch) {
+			if(do_blur_focus && !using_webkit_patch) {
 				setTimeout(function() {
 					game_text.blur();
 					game_text.focus();
@@ -996,6 +996,14 @@ function chunkOnSelectionChange(event) {
 			}
 		}, 2);
 	}, 2);
+}
+
+function chunkOnSelectionChange(event) {
+	return _chunkOnSelectionChange(event, true);
+}
+
+function chunkOnKeyDownSelectionChange(event) {
+	return _chunkOnSelectionChange(event, false);
 }
 
 // This gets run when you defocus the editor by clicking
@@ -1432,7 +1440,7 @@ $(document).ready(function(){
 	).on('click',
 		chunkOnSelectionChange
 	).on('keydown',
-		chunkOnSelectionChange
+		chunkOnKeyDownSelectionChange
 	).on('focusout',
 		chunkOnFocusOut
 	);
