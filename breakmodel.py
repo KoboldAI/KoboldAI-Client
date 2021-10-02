@@ -1,10 +1,10 @@
 '''
 This is a MODIFIED version of arrmansa's low VRAM patch.
 https://github.com/arrmansa/Basic-UI-for-GPT-J-6B-with-low-vram/blob/main/GPT-J-6B-Low-Vram-UI.ipynb
+The ORIGINAL version of the patch is released under the Apache License 2.0
 Copyright 2021 arrmansa
 Copyright 2021 finetuneanon
 Copyright 2018 The Hugging Face team
-Released under the Apache License 2.0
 
 
                                  Apache License
