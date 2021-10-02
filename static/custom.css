@@ -11,12 +11,12 @@ chunk {
 	font-weight: bold;
 }
 
-chunk[contenteditable="true"]:focus, chunk[contenteditable="true"]:focus * {
+chunk.editing, chunk.editing * {
 	color: #cdf !important;
 	font-weight: normal !important;
 }
 
-chunk, chunk * {
+#gametext, chunk, chunk * {
 	outline: 0px solid transparent;
 }
 
@@ -69,14 +69,17 @@ chunk, chunk * {
 #gamescreen {
 	height: 490px;
 	margin-top: 10px;
-	padding: 10px;
 	display: flex;
 	vertical-align: bottom;
-	overflow-y: scroll;
 	background-color: #262626;
 	color: #ffffff;
 	font-size: 12pt;
 	font-family: "Helvetica";
+}
+
+#gamescreen.wigamescreen {
+	padding: 10px;
+	overflow-y: scroll;
 }
 
 #gamescreen span {
@@ -87,6 +90,8 @@ chunk, chunk * {
 	max-height: 100%;
 	width: 100%;
 	word-wrap: break-word;
+	padding: 10px;
+	overflow-y: auto;
 }
 
 #seqselmenu {

@@ -11,7 +11,8 @@ dependencies:
   - python=3.8.*
   - cudatoolkit=11.1
   - tensorflow-gpu
-  - transformers
   - pip
+  - git
   - pip:
     - flask-cloudflared
+    - git+https://github.com/huggingface/transformers#transformer

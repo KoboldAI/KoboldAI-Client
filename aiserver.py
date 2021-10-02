@@ -1,6 +1,6 @@
 #==================================================================#
 # KoboldAI
-# Version: 1.16.0
+# Version: 1.16.2
 # By: KoboldAIDev and the KoboldAI Community
 #==================================================================#
 
@@ -44,10 +44,11 @@ class colors:
 
 # AI models
 modellist = [
-    ["Custom Neo (GPT-Neo / Converted GPT-J)", "NeoCustom", ""],
-    ["Custom GPT-2 (eg CloverEdition)", "GPT2Custom", ""],
-    ["GPT Neo 1.3B", "EleutherAI/gpt-neo-1.3B", "8GB"],
-    ["GPT Neo 2.7B", "EleutherAI/gpt-neo-2.7B", "16GB"],
+    ["Load a model from its directory", "NeoCustom", ""],
+    ["Load an old GPT-2 model (eg CloverEdition)", "GPT2Custom", ""],
+    ["GPT-Neo 1.3B", "EleutherAI/gpt-neo-1.3B", "8GB"],
+    ["GPT-Neo 2.7B", "EleutherAI/gpt-neo-2.7B", "16GB"],
+    ["GPT-J 6B (HF GIT Required)", "EleutherAI/gpt-j-6B", "24GB"],
     ["GPT-2", "gpt2", "1GB"],
     ["GPT-2 Med", "gpt2-medium", "2GB"],
     ["GPT-2 Large", "gpt2-large", "4GB"],
@@ -397,11 +398,16 @@ print("{0}OK!{1}".format(colors.GREEN, colors.END))
 if(not vars.model in ["InferKit", "Colab", "OAI", "ReadOnly"]):
     if(not vars.noai):
         print("{0}Initializing transformers, please wait...{1}".format(colors.PURPLE, colors.END))
-        from transformers import pipeline, GPT2Tokenizer, GPT2LMHeadModel, GPTNeoForCausalLM, GPTNeoModel, AutoModel
+        from transformers import pipeline, GPT2Tokenizer, GPT2LMHeadModel, GPTNeoForCausalLM, GPTNeoModel, AutoModelForCausalLM
         
         # If custom GPT Neo model was chosen
         if(vars.model == "NeoCustom"):
-            model     = GPTNeoForCausalLM.from_pretrained(vars.custmodpth)
+            model_config = open(vars.custmodpth + "/config.json", "r")
+            js   = json.load(model_config)
+            if("model_type" in js):
+                model     = vars.custmodpth
+            else:
+                model     = GPTNeoForCausalLM.from_pretrained(vars.custmodpth)
             tokenizer = GPT2Tokenizer.from_pretrained(vars.custmodpth)
             # Is CUDA available? If so, use GPU, otherwise fall back to CPU
             if(vars.hascuda):
@@ -460,7 +466,7 @@ if(not vars.model in ["InferKit", "Colab", "OAI", "ReadOnly"]):
                     generator = pipeline('text-generation', model=vars.model, device=0)
                 elif(vars.breakmodel):  # Use both RAM and VRAM (breakmodel)
                     import breakmodel
-                    model = AutoModel.from_pretrained(vars.model)
+                    model = AutoModelForCausalLM.from_pretrained(vars.model)
                     n_layers = model.config.num_layers
                     breakmodel.total_blocks = n_layers
                     model.half().to('cpu')
@@ -930,33 +936,38 @@ def settingschanged():
 #==================================================================#
 #  Take input text from SocketIO and decide what to do with it
 #==================================================================#
-def actionsubmit(data, actionmode=0):
+def actionsubmit(data, actionmode=0, force_submit=False):
     # Ignore new submissions if the AI is currently busy
     if(vars.aibusy):
         return
     set_aibusy(1)
 
     vars.recentback = False
+    vars.recentedit = False
     vars.actionmode = actionmode
 
     # "Action" mode
     if(actionmode == 1):
         data = data.strip().lstrip('>')
         data = re.sub(r'\n+', ' ', data)
-        data = f"\n\n> {data}\n"
+        if(len(data)):
+            data = f"\n\n> {data}\n"
     
     # If we're not continuing, store a copy of the raw input
     if(data != ""):
         vars.lastact = data
     
     if(not vars.gamestarted):
+        if(not force_submit and len(data.strip()) == 0):
+            set_aibusy(0)
+            return
         # Start the game
         vars.gamestarted = True
         # Save this first action as the prompt
         vars.prompt = data
         if(not vars.noai):
             # Clear the startup text from game screen
-            emit('from_server', {'cmd': 'updatescreen', 'gamestarted': vars.gamestarted, 'data': 'Please wait, generating story...'}, broadcast=True)
+            emit('from_server', {'cmd': 'updatescreen', 'gamestarted': False, 'data': 'Please wait, generating story...'}, broadcast=True)
             calcsubmit(data) # Run the first action through the generator
             emit('from_server', {'cmd': 'scrolldown', 'data': ''}, broadcast=True)
         else:
@@ -970,7 +981,10 @@ def actionsubmit(data, actionmode=0):
             if(vars.actionmode == 0):
                 data = applyinputformatting(data)
             # Store the result in the Action log
-            vars.actions.append(data)
+            if(len(vars.prompt.strip()) == 0):
+                vars.prompt = data
+            else:
+                vars.actions.append(data)
             update_story_chunk('last')
 
         if(not vars.noai):
@@ -999,7 +1013,9 @@ def actionretry(data):
             remove_story_chunk(last_key + 1)
         vars.genseqs = []
         calcsubmit('')
+        emit('from_server', {'cmd': 'scrolldown', 'data': ''}, broadcast=True)
         vars.recentback = False
+        vars.recentedit = False
     elif(not vars.useprompt):
         emit('from_server', {'cmd': 'errmsg', 'data': "Please enable \"Always Add Prompt\" to retry with your prompt."})
 
@@ -1282,7 +1298,10 @@ def genresult(genout):
     genout = applyoutputformatting(genout)
     
     # Add formatted text to Actions array and refresh the game screen
-    vars.actions.append(genout)
+    if(len(vars.prompt.strip()) == 0):
+        vars.prompt = genout
+    else:
+        vars.actions.append(genout)
     update_story_chunk('last')
     emit('from_server', {'cmd': 'texteffect', 'data': vars.actions.get_last_key() if len(vars.actions) else 0}, broadcast=True)
 
@@ -1476,7 +1495,7 @@ def update_story_chunk(idx: Union[int, str]):
     item = vars.acregex_ui.sub('<action>\\1</action>', item)  # Add special formatting to adventure actions
 
     chunk_text = f'<chunk n="{idx}" id="n{idx}" tabindex="-1">{formatforhtml(item)}</chunk>'
-    emit('from_server', {'cmd': 'updatechunk', 'data': {'index': idx, 'html': chunk_text, 'last': (idx == (vars.actions.get_last_key() if len(vars.actions) else 0))}}, broadcast=True)
+    emit('from_server', {'cmd': 'updatechunk', 'data': {'index': idx, 'html': chunk_text}}, broadcast=True)
 
 
 #==================================================================#
@@ -1548,6 +1567,7 @@ def editrequest(n):
 # 
 #==================================================================#
 def editsubmit(data):
+    vars.recentedit = True
     if(vars.editln == 0):
         vars.prompt = data
     else:
@@ -1562,6 +1582,7 @@ def editsubmit(data):
 #  
 #==================================================================#
 def deleterequest():
+    vars.recentedit = True
     # Don't delete prompt
     if(vars.editln == 0):
         # Send error message
@@ -1576,8 +1597,11 @@ def deleterequest():
 # 
 #==================================================================#
 def inlineedit(chunk, data):
+    vars.recentedit = True
     chunk = int(chunk)
     if(chunk == 0):
+        if(len(data.strip()) == 0):
+            return
         vars.prompt = data
     else:
         vars.actions[chunk-1] = data
@@ -1590,6 +1614,7 @@ def inlineedit(chunk, data):
 #  
 #==================================================================#
 def inlinedelete(chunk):
+    vars.recentedit = True
     chunk = int(chunk)
     # Don't delete prompt
     if(chunk == 0):
@@ -2094,8 +2119,19 @@ def loadRequest(loadpath):
 
         del vars.actions
         vars.actions = structures.KoboldStoryRegister()
-        for s in js["actions"]:
-            vars.actions.append(s)
+        actions = collections.deque(js["actions"])
+
+        if(len(vars.prompt.strip()) == 0):
+            while(len(actions)):
+                action = actions.popleft()
+                if(len(action.strip()) != 0):
+                    vars.prompt = action
+                    break
+            else:
+                vars.gamestarted = False
+        if(vars.gamestarted):
+            for s in actions:
+                vars.actions.append(s)
         
         # Try not to break older save files
         if("authorsnote" in js):
@@ -2369,7 +2405,7 @@ def newGameRequest():
 def randomGameRequest(topic): 
     newGameRequest()
     vars.memory      = "You generate the following " + topic + " story concept :"
-    actionsubmit("")
+    actionsubmit("", force_submit=True)
     vars.memory      = ""
 
 #==================================================================#
