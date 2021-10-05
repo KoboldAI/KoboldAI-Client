@@ -108,7 +108,7 @@ class vars:
     saveow      = False  # Whether or not overwrite confirm has been displayed
     genseqs     = []     # Temporary storage for generated sequences
     recentback  = False  # Whether Back button was recently used without Submitting or Retrying after
-    useprompt   = True   # Whether to send the full prompt with every submit action
+    useprompt   = False   # Whether to send the full prompt with every submit action
     breakmodel  = False  # For GPU users, whether to use both system RAM and VRAM to conserve VRAM while offering speedup compared to CPU-only
     bmsupported = False  # Whether the breakmodel option is supported (GPT-Neo/GPT-J only, currently)
     smandelete  = False  # Whether stories can be deleted from inside the browser
