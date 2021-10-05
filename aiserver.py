@@ -322,10 +322,14 @@ if(not vars.model in ["InferKit", "Colab", "OAI", "ReadOnly"]):
             vars.breakmodel = True
     elif(vars.hascuda):    
         if(vars.bmsupported):
-            print(colors.YELLOW + "You're using a model that supports GPU-CPU hybrid generation!\nCurrently only GPT-Neo models and GPT-J-6B support this feature.")
+            print(colors.YELLOW + "You're using a model that supports hybrid generation!")
+            print("This feature allows you to split the model between the CPU and GPU(s)")
+            print("(slower than GPU-only but uses less VRAM) or between multiple GPUs")
+            print("(allowing you to use the combined VRAM of all your GPUs).")
+            print("Currently only GPT-Neo and GPT-J models support this feature.")
         print("{0}Use GPU or CPU for generation?:  (Default GPU){1}".format(colors.CYAN, colors.END))
         if(vars.bmsupported):
-            print(f"    1 - GPU\n    2 - CPU\n    3 - Both (slower than GPU-only but uses less VRAM)\n")
+            print(f"    1 - GPU\n    2 - CPU\n    3 - Hybrid generation\n")
         else:
             print("    1 - GPU\n    2 - CPU\n")
         genselected = False
