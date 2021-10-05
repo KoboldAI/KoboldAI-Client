@@ -179,6 +179,88 @@ def getmodelname():
         return modelname
 
 #==================================================================#
+# Breakmodel configuration functions
+#==================================================================#
+def device_list(n_layers, primary=None, selected=None):
+    device_count = torch.cuda.device_count()
+    if(device_count < 2):
+        primary = None
+    gpu_blocks = breakmodel.gpu_blocks + (device_count - len(breakmodel.gpu_blocks))*[0]
+    print(f"{colors.YELLOW}       DEVICE ID  |  LAYERS  |  DEVICE NAME{colors.END}")
+    for i in range(device_count):
+        name = torch.cuda.get_device_name(i)
+        if(len(name) > 47):
+            name = "..." + name[-44:]
+        row_color = colors.END
+        sep_color = colors.YELLOW
+        print(f"{row_color}{colors.YELLOW + '->' + row_color if i == selected else '  '} {'(primary)' if i == primary else ' '*9} {i:3}  {sep_color}|{row_color}     {gpu_blocks[i]:3}  {sep_color}|{row_color}  {name}{colors.END}")
+    row_color = colors.END
+    sep_color = colors.YELLOW
+    print(f"{row_color}   {' '*9} N/A  {sep_color}|{row_color}     {n_layers:3}  {sep_color}|{row_color}  (CPU){colors.END}")
+
+def device_config(model):
+    global breakmodel, generator
+    import breakmodel
+    n_layers = model.config.num_layers
+    model.half().to('cpu')
+    gc.collect()
+    if(args.breakmodel_layers is not None):
+        breakmodel.gpu_blocks = [n_layers - max(0, min(n_layers, args.breakmodel_layers))]
+    else:
+        device_count = torch.cuda.device_count()
+        if(device_count > 1):
+            print(colors.CYAN + "\nPlease select one of your GPUs to be your primary GPU.")
+            print("VRAM usage in your primary GPU will be higher than for your other ones.")
+            print("It is recommended you make your fastest GPU your primary GPU.")
+            device_list(n_layers)
+            while(True):
+                primaryselect = input("device ID> ")
+                if(primaryselect.isnumeric() and 0 <= int(primaryselect) < device_count):
+                    breakmodel.primary_device = int(primaryselect)
+                else:
+                    print(f"{colors.RED}Please enter an integer between 0 and {device_count-1}.{colors.END}")
+        else:
+            breakmodel.primary_device = 0
+
+        print(colors.PURPLE + "\nIf you don't have enough VRAM to run the model on a single GPU")
+        print("you can split the model between your CPU and your GPU(s), or between")
+        print("multiple GPUs if you have more than one.")
+        print("By putting more 'layers' on a GPU or CPU, more computations will be")
+        print("done on that device and more VRAM or RAM will be required on that device")
+        print("(roughly proportional to number of layers).")
+        print("It should be noted that GPUs are orders of magnitude faster than the CPU.")
+        print(f"This model has{colors.YELLOW} {n_layers} {colors.PURPLE}layers.{colors.END}\n")
+
+        for i in range(device_count):
+            device_list(n_layers, primary=breakmodel.primary_device, selected=i)
+            print(f"{colors.CYAN}\nHow many of the remaining{colors.YELLOW} {n_layers} {colors.CYAN}layers would you like to put into device {i}?\nYou can also enter -1 to allocate all remaining layers to this device.{colors.END}\n")
+            while(True):
+                layerselect = input("# of layers> ")
+                if((layerselect.isnumeric() or layerselect.strip() == '-1') and -1 <= int(layerselect) <= n_layers):
+                    layerselect = int(layerselect)
+                    layerselect = n_layers if layerselect == -1 else layerselect
+                    breakmodel.gpu_blocks.append(layerselect)
+                    n_layers -= layerselect
+                    break
+                else:
+                    print(f"{colors.RED}Please enter an integer between -1 and {n_layers}.{colors.END}")
+            if(n_layers == 0):
+                break
+    
+    print(colors.PURPLE + "\nFinal device configuration:")
+    device_list(n_layers)
+
+    model.transformer.wte.to(breakmodel.primary_device)
+    model.transformer.ln_f.to(breakmodel.primary_device)
+    if(hasattr(model, 'lm_head')):
+        model.lm_head.to(breakmodel.primary_device)
+    if(not hasattr(model.config, 'rotary') or not model.config.rotary):
+        model.transformer.wpe.to(breakmodel.primary_device)
+    gc.collect()
+    GPTNeoModel.forward = breakmodel.new_forward
+    generator = model.generate
+
+#==================================================================#
 # Startup
 #==================================================================#
 
@@ -414,36 +496,7 @@ if(not vars.model in ["InferKit", "Colab", "OAI", "ReadOnly"]):
                 if(vars.usegpu):
                     generator = pipeline('text-generation', model=model, tokenizer=tokenizer, device=0)
                 elif(vars.breakmodel):  # Use both RAM and VRAM (breakmodel)
-                    import breakmodel
-                    n_layers = model.config.num_layers
-                    breakmodel.total_blocks = n_layers
-                    model.half().to('cpu')
-                    gc.collect()
-                    model.transformer.wte.to(breakmodel.embedding_device)
-                    model.transformer.ln_f.to(breakmodel.layernormfinal_device)
-                    if(hasattr(model, 'lm_head')):
-                        model.lm_head.to(breakmodel.embedding_device)
-                    if(not hasattr(model.config, 'rotary') or not model.config.rotary):
-                        model.transformer.wpe.to(breakmodel.positional_device)
-                    gc.collect()
-                    if(args.breakmodel_layers is not None):
-                        breakmodel.ram_blocks = max(0, min(n_layers, args.breakmodel_layers))
-                    else:
-                        print(colors.CYAN + "\nHow many layers would you like to put into system RAM?")
-                        print("The more of them you put into system RAM, the slower it will run,")
-                        print("but it will require less VRAM")
-                        print("(roughly proportional to number of layers).")
-                        print(f"This model has{colors.YELLOW} {n_layers} {colors.CYAN}layers.{colors.END}\n")
-                        while(True):
-                            layerselect = input("# of layers> ")
-                            if(layerselect.isnumeric() and 0 <= int(layerselect) <= n_layers):
-                                breakmodel.ram_blocks = int(layerselect)
-                                break
-                            else:
-                                print(f"{colors.RED}Please enter an integer between 0 and {n_layers}.{colors.END}")
-                    print(f"{colors.PURPLE}Will commit{colors.YELLOW} {breakmodel.ram_blocks} {colors.PURPLE}of{colors.YELLOW} {n_layers} {colors.PURPLE}layers to system RAM.{colors.END}")
-                    GPTNeoModel.forward = breakmodel.new_forward
-                    generator = model.generate
+                    device_config(model)
                 else:
                     generator = pipeline('text-generation', model=model, tokenizer=tokenizer)
             else:
@@ -465,37 +518,8 @@ if(not vars.model in ["InferKit", "Colab", "OAI", "ReadOnly"]):
                 if(vars.usegpu):
                     generator = pipeline('text-generation', model=vars.model, device=0)
                 elif(vars.breakmodel):  # Use both RAM and VRAM (breakmodel)
-                    import breakmodel
                     model = AutoModelForCausalLM.from_pretrained(vars.model)
-                    n_layers = model.config.num_layers
-                    breakmodel.total_blocks = n_layers
-                    model.half().to('cpu')
-                    gc.collect()
-                    model.transformer.wte.to(breakmodel.embedding_device)
-                    model.transformer.ln_f.to(breakmodel.layernormfinal_device)
-                    if(hasattr(model, 'lm_head')):
-                        model.lm_head.to(breakmodel.embedding_device)
-                    if(not hasattr(model.config, 'rotary') or not model.config.rotary):
-                        model.transformer.wpe.to(breakmodel.positional_device)
-                    gc.collect()
-                    if(args.breakmodel_layers is not None):
-                        breakmodel.ram_blocks = max(0, min(n_layers, args.breakmodel_layers))
-                    else:
-                        print(colors.CYAN + "\nHow many layers would you like to put into system RAM?")
-                        print("The more of them you put into system RAM, the slower it will run,")
-                        print("but it will require less VRAM")
-                        print("(roughly proportional to number of layers).")
-                        print(f"This model has{colors.YELLOW} {n_layers} {colors.CYAN}layers.{colors.END}\n")
-                        while(True):
-                            layerselect = input("# of layers> ")
-                            if(layerselect.isnumeric() and 0 <= int(layerselect) <= n_layers):
-                                breakmodel.ram_blocks = int(layerselect)
-                                break
-                            else:
-                                print(f"{colors.RED}Please enter an integer between 0 and {n_layers}.{colors.END}")
-                    print(f"{colors.PURPLE}Will commit{colors.YELLOW} {breakmodel.ram_blocks} {colors.PURPLE}of{colors.YELLOW} {n_layers} {colors.PURPLE}layers to system RAM.{colors.END}")
-                    GPTNeoModel.forward = breakmodel.new_forward
-                    generator = model.generate
+                    device_config(model)
                 else:
                     generator = pipeline('text-generation', model=vars.model)
             else:
@@ -1245,7 +1269,7 @@ def generate(txt, min, max):
         # its first argument if we're using breakmodel, otherwise a string
         # is fine
         if(vars.hascuda and vars.breakmodel):
-            gen_in = tokenizer.encode(txt, return_tensors="pt", truncation=True).long().to(breakmodel.embedding_device)
+            gen_in = tokenizer.encode(txt, return_tensors="pt", truncation=True).long().to(breakmodel.primary_device)
         else:
             gen_in = txt
 		
