@@ -434,7 +434,7 @@ def new_forward(
                 device = primary_device if i < ram_blocks else bisect.bisect_right(cumulative_gpu_blocks, i - ram_blocks)
             outputs = block(
                 hidden_states.to(device) if breakmodel and hidden_states is not None else hidden_states,
-                layer_past=tuple(v.to(device) for v in layer_past if v is not None) if breakmodel and layer_past is not None else layer_past,
+                layer_past=tuple(v.to(device) for v in layer_past if v is not None) if breakmodel and layer_past is not None and i >= ram_blocks and len(layer_past) and layer_past[0].device.index != device else layer_past,
                 attention_mask=attn_mask.to(device) if breakmodel and attn_mask is not None else attn_mask,
                 head_mask=head_mask[i].to(device) if breakmodel and head_mask[i] is not None else head_mask[i],
                 use_cache=use_cache,
