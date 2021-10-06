@@ -204,9 +204,9 @@ def device_config(model):
     n_layers = model.config.num_layers
     model.half().to('cpu')
     gc.collect()
-    if(args.layers is not None):
+    if(args.breakmodel_gpulayers is not None):
         try:
-            breakmodel.gpu_blocks = list(map(int, args.layers.split(',')))
+            breakmodel.gpu_blocks = list(map(int, args.breakmodel_gpulayers.split(',')))
             assert len(breakmodel.gpu_blocks) <= torch.cuda.device_count()
             assert sum(breakmodel.gpu_blocks) <= n_layers
             n_layers -= sum(breakmodel.gpu_blocks)
@@ -283,7 +283,7 @@ parser.add_argument("--path", help="Specify the Path for local models (For model
 parser.add_argument("--cpu", action='store_true', help="By default unattended launches are on the GPU use this option to force CPU usage.")
 parser.add_argument("--breakmodel", action='store_true', help=argparse.SUPPRESS)
 parser.add_argument("--breakmodel_layers", type=int, help=argparse.SUPPRESS)
-parser.add_argument("--layers", type=str, help="If using a model that supports hybrid generation, this is a comma-separated list that specifies how many layers to put on each GPU device. For example to put 8 layers on device 0, 9 layers on device 1 and 11 layers on device 2, use --layers 8,9,11")
+parser.add_argument("--breakmodel_gpulayers", type=str, help="If using a model that supports hybrid generation, this is a comma-separated list that specifies how many layers to put on each GPU device. For example to put 8 layers on device 0, 9 layers on device 1 and 11 layers on device 2, use --layers 8,9,11")
 parser.add_argument("--override_delete", action='store_true', help="Deleting stories from inside the browser is disabled if you are using --remote and enabled otherwise. Using this option will instead allow deleting stories if using --remote and prevent deleting stories otherwise.")
 parser.add_argument("--override_rename", action='store_true', help="Renaming stories from inside the browser is disabled if you are using --remote and enabled otherwise. Using this option will instead allow renaming stories if using --remote and prevent renaming stories otherwise.")
 parser.add_argument("--configname", help="Force a fixed configuration name to aid with config management.")
@@ -320,7 +320,7 @@ if(not vars.model in ["InferKit", "Colab", "OAI", "ReadOnly"]):
         print("WARNING: --breakmodel is no longer supported. Breakmodel mode is now automatically enabled when --layers is used (see --help for details).", file=sys.stderr)
     if(args.breakmodel_layers is not None):
         print("WARNING: --breakmodel_layers is deprecated. Use --layers instead (see --help for details).", file=sys.stderr)
-    if(not vars.bmsupported and (args.layers is not None or args.breakmodel_layers is not None)):
+    if(not vars.bmsupported and (args.breakmodel_gpulayers is not None or args.breakmodel_layers is not None)):
         print("WARNING: This model does not support hybrid generation. --layers will be ignored.", file=sys.stderr)
     if(vars.hascuda):
         print("{0}FOUND!{1}".format(colors.GREEN, colors.END))
