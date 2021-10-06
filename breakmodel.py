@@ -1,10 +1,10 @@
 '''
 This is a MODIFIED version of arrmansa's low VRAM patch.
 https://github.com/arrmansa/Basic-UI-for-GPT-J-6B-with-low-vram/blob/main/GPT-J-6B-Low-Vram-UI.ipynb
+The ORIGINAL version of the patch is released under the Apache License 2.0
 Copyright 2021 arrmansa
 Copyright 2021 finetuneanon
 Copyright 2018 The Hugging Face team
-Released under the Apache License 2.0
 
 
                                  Apache License
@@ -215,6 +215,8 @@ import torch
 import torch.cuda.comm
 import copy
 import gc
+import itertools
+import bisect
 
 from transformers.modeling_outputs import BaseModelOutputWithPast
 
@@ -222,17 +224,9 @@ from transformers.utils import logging
 logger = logging.get_logger(__name__)
 
 
-class MaxSharedRamBlocksException(Exception):
-    def __init__(self, i: int):
-        self.corrected_max_shared_ram_blocks = i
-        super().__init__('max_shared_ram_blocks is set too high, please set it to '+str(i))
-
-
 breakmodel = True
-gpu_device = 'cuda'
-total_blocks = 24
-ram_blocks = 7
-max_shared_ram_blocks = None
+gpu_blocks = []
+primary_device = 0
 
 
 def new_forward(
@@ -250,54 +244,43 @@ def new_forward(
         return_dict=None,
         embs=None,
     ):
-    global max_shared_ram_blocks
+    assert len(gpu_blocks) <= torch.cuda.device_count()
+    assert sum(gpu_blocks) <= len(self.h)
+    ram_blocks = len(self.h) - sum(gpu_blocks)
+    cumulative_gpu_blocks = tuple(itertools.accumulate(gpu_blocks))
 
     if breakmodel:
-        if max_shared_ram_blocks is None:
-            max_shared_ram_blocks = total_blocks
-
         if not hasattr(self, 'extrastorage'):
             setattr(self,"extrastorage",{})
             torch.cuda.empty_cache()
 
-            for i in range(ram_blocks,len(self.h)):
-                self.h[i].to(gpu_device)
-
             for i in range(ram_blocks):
                 self.h[i].to("cpu")
                 self.extrastorage[i] = copy.deepcopy(self.h[i])
-                smalltensor = torch.tensor(0).to(gpu_device)
+                smalltensor = torch.tensor(0).to(primary_device)
                 for param1 in self.h[i].parameters():
                     param1.data = smalltensor
-                self.h[i].to(gpu_device)
-
-            for i in range(len(self.h)):
-                for param in self.h[i].parameters():
-                    param.requires_grad = False
-                    param.data = param.data.detach()
-                    gc.collect()
-                    torch.cuda.empty_cache()
-
-            for i in range(ram_blocks):
+                self.h[i].to(primary_device)
                 for param in self.extrastorage[i].parameters():
                     param.requires_grad = False
-                    if i < max_shared_ram_blocks:
-                        try:
-                            param.data = param.data.detach().pin_memory()
-                        except:
-                            raise MaxSharedRamBlocksException(i)
-                    else:
-                        param.data = param.data.detach()
+                    param.data = param.data.detach().pin_memory()
                     gc.collect()
                     torch.cuda.empty_cache()
 
             if ram_blocks:
                 for param1,param2 in zip(self.h[0].parameters(),self.extrastorage[0].parameters()):
-                    param1.data = param2.data.to(gpu_device, non_blocking=False).detach()
+                    param1.data = param2.data.to(primary_device, non_blocking=False).detach()
 
                 for param1,param2 in zip(self.h[ram_blocks-1].parameters(),self.extrastorage[ram_blocks-1].parameters()):
-                    param1.data = param2.data.to(gpu_device, non_blocking=False).detach()
-    #END MODEL BREAK EDITS
+                    param1.data = param2.data.to(primary_device, non_blocking=False).detach()
+
+            i = ram_blocks
+            for j in range(len(gpu_blocks)):
+                for _ in range(gpu_blocks[j]):
+                    self.h[i].to(j)
+                    i += 1
+
+
 
     output_attentions = output_attentions if output_attentions is not None else self.config.output_attentions
     output_hidden_states = (
@@ -331,7 +314,7 @@ def new_forward(
     else:
         past_length = past_key_values[0][0].size(-2)
 
-    device = input_ids.device if input_ids is not None else inputs_embeds.device
+    device = primary_device if breakmodel else input_ids.device if input_ids is not None else inputs_embeds.device
     if position_ids is None:
         position_ids = torch.arange(past_length, input_shape[-1] + past_length, dtype=torch.long, device=device)
         position_ids = position_ids.unsqueeze(0).view(-1, input_shape[-1])
@@ -368,6 +351,8 @@ def new_forward(
     head_mask = self.get_head_mask(head_mask, self.config.num_layers)
 
     if inputs_embeds is None:
+        if breakmodel:
+            input_ids = input_ids.to(primary_device)
         inputs_embeds = self.wte(input_ids)
 
     if embs is not None and not (use_cache is not None and use_cache and past_key_values is not None and len(past_key_values) > 0 and past_key_values[0] is not None):
@@ -382,7 +367,11 @@ def new_forward(
     if hasattr(self, 'rotary') and self.rotary:
         hidden_states = inputs_embeds
     else:
+        if breakmodel:
+            position_ids = position_ids.to(primary_device)
         position_embeds = self.wpe(position_ids)
+        if breakmodel:
+            position_embeds = position_embeds.to(primary_device)
         hidden_states = inputs_embeds + position_embeds
 
     if token_type_ids is not None:
@@ -397,9 +386,8 @@ def new_forward(
     all_self_attentions = () if output_attentions else None
     all_hidden_states = () if output_hidden_states else None
 
-
-    if breakmodel:
-        copystream = torch.cuda.Stream(device=0,priority = -1)
+    if breakmodel and ram_blocks:
+        copystream = torch.cuda.Stream(device=primary_device, priority=-1)
 
     for i, (block, layer_past) in enumerate(zip(self.h, past_key_values)):
 
@@ -411,7 +399,6 @@ def new_forward(
                 for param1,param2 in zip(self.h[index1].parameters(),self.extrastorage[index1].parameters()):
                     with torch.cuda.stream(copystream):
                         torch.cuda.comm.broadcast(param2.data,out = [param1.data])
-
 
         attn_type = self.config.attention_layers[i]
         attn_mask = global_attention_mask
@@ -443,11 +430,13 @@ def new_forward(
                 head_mask[i],
             )
         else:
+            if breakmodel:
+                device = primary_device if i < ram_blocks else bisect.bisect_right(cumulative_gpu_blocks, i - ram_blocks)
             outputs = block(
-                hidden_states,
-                layer_past=layer_past,
-                attention_mask=attn_mask,
-                head_mask=head_mask[i],
+                hidden_states.to(device) if breakmodel and hidden_states is not None else hidden_states,
+                layer_past=tuple(v.to(device) for v in layer_past if v is not None) if breakmodel and layer_past is not None and i >= ram_blocks and len(layer_past) and layer_past[0].device.index != device else layer_past,
+                attention_mask=attn_mask.to(device) if breakmodel and attn_mask is not None else attn_mask,
+                head_mask=head_mask[i].to(device) if breakmodel and head_mask[i] is not None else head_mask[i],
                 use_cache=use_cache,
                 output_attentions=output_attentions,
             )
@@ -466,12 +455,13 @@ def new_forward(
                 torch.cuda.empty_cache()
 
     if breakmodel:
-        del copystream
-
-    torch.cuda.empty_cache()
-
-
+        if ram_blocks:
+            del copystream
+        torch.cuda.empty_cache()
+        hidden_states = hidden_states.to(primary_device)
     hidden_states = self.ln_f(hidden_states)
+    if breakmodel:
+        hidden_states = hidden_states.to(primary_device)
 
     hidden_states = hidden_states.view(*output_shape)
     # Add last hidden state
@@ -480,7 +470,6 @@ def new_forward(
 
     if not return_dict:
         return tuple(v for v in [hidden_states, presents, all_hidden_states, all_self_attentions] if v is not None)
-
     return BaseModelOutputWithPast(
         last_hidden_state=hidden_states,
         past_key_values=presents,
