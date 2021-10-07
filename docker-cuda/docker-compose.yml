@@ -1,4 +1,4 @@
-version: "2"
+version: "3.2"
 services:
   koboldai:
     build: .
@@ -10,7 +10,16 @@ services:
       - ../:/content/
       - $HOME/.Xauthority:/home/micromamba/.Xauthority:rw
     devices:
-      - /dev/kfd
       - /dev/dri
+      - /dev/nvidia0:/dev/nvidia0
+      - /dev/nvidiactl:/dev/nvidiactl
+      - /dev/nvidia-uvm:/dev/nvidia-uvm
+    deploy:
+      resources:
+        reservations:
+          devices:
+          - driver: nvidia
+            device_ids: ['0']
+            capabilities: [gpu]
     group_add:
       - video
