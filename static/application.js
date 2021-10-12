@@ -737,6 +737,44 @@ function autofocus(event) {
 	}
 }
 
+function chunkOnTextInput(event) {
+	// The enter key does not behave correctly in almost all non-Firefox
+	// browsers, so we (attempt to) shim all enter keystrokes here to behave the
+	// same as in Firefox
+	if(event.originalEvent.data.slice(-1) === '\n') {
+		event.preventDefault();
+		var s = getSelection();  // WARNING: Do not use rangy.getSelection() instead of getSelection()
+		var r = s.getRangeAt(0);
+
+		// We prefer using document.execCommand here because it works best on
+		// mobile devices, but the other method is also here as
+		// a fallback
+		if(document.queryCommandSupported && document.execCommand && document.queryCommandSupported('insertHTML')) {
+			document.execCommand('insertHTML', false, event.originalEvent.data.slice(0, -1) + '<br/><span id="_EDITOR_SENTINEL_">|</span>');
+			var t = $('#_EDITOR_SENTINEL_').contents().filter(function() { return this.nodeType === 3; })[0];
+		} else {
+			var t = document.createTextNode('|');
+			r.insertNode(document.createElement('br'));
+			r.collapse(false);
+			r.insertNode(t);
+		}
+
+		r.selectNodeContents(t);
+		s.removeAllRanges();
+		s.addRange(r);
+		if(document.queryCommandSupported && document.execCommand && document.queryCommandSupported('forwardDelete')) {
+			r.collapse(true);
+			document.execCommand('forwardDelete');
+		} else {
+			// deleteContents() sometimes breaks using the left
+			// arrow key in some browsers so we prefer the
+			// document.execCommand method
+			r.deleteContents();
+		}
+		return;
+	}
+}
+
 function chunkOnKeyDown(event) {
 	// Make escape commit the changes (Originally we had Enter here to but its not required and nicer for users if we let them type freely
 	// You can add the following after 27 if you want it back to committing on enter : || (!event.shiftKey && event.keyCode == 13)
@@ -1427,7 +1465,9 @@ $(document).ready(function(){
 	});
 
 	// Register editing events
-	game_text.on('keydown',
+	game_text.on('textInput',
+		chunkOnTextInput
+	).on('keydown',
 		chunkOnKeyDown
 	).on('paste', 
 		chunkOnPaste
