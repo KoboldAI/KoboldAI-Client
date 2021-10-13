@@ -758,7 +758,7 @@ function chunkOnTextInput(event) {
 		// mobile devices, but the other method is also here as
 		// a fallback
 		if(document.queryCommandSupported && document.execCommand && document.queryCommandSupported('insertHTML')) {
-			document.execCommand('insertHTML', false, event.originalEvent.data.slice(0, -1).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;').replace(/\n/g, '<br/>') + '<br id="_EDITOR_LINEBREAK_"/><span id="_EDITOR_SENTINEL_">|</span>');
+			document.execCommand('insertHTML', false, event.originalEvent.data.slice(0, -1).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;').replace(/(?=\r|\n)\r?\n?/g, '<br/>') + '<br id="_EDITOR_LINEBREAK_"/><span id="_EDITOR_SENTINEL_">|</span>');
 			var t = $('#_EDITOR_SENTINEL_').contents().filter(function() { return this.nodeType === 3; })[0];
 		} else {
 			var t = document.createTextNode('|');
@@ -1043,13 +1043,13 @@ function chunkOnPaste(event) {
 	// paste as plaintext
 	if(event.originalEvent.clipboardData && document.queryCommandSupported && document.execCommand && document.queryCommandSupported('insertText')) {
 		event.preventDefault();
-        document.execCommand('insertHTML', false, event.originalEvent.clipboardData.getData('text/plain').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;').replace(/\n/g, '<br/>'));
+        document.execCommand('insertHTML', false, event.originalEvent.clipboardData.getData('text/plain').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;').replace(/(?=\r|\n)\r?\n?/g, '<br/>'));
     } else if (event.originalEvent.clipboardData) {
 		event.preventDefault();
 		var s = getSelection();  // WARNING: Do not use rangy.getSelection() instead of getSelection()
 		var r = s.getRangeAt(0);
 		r.deleteContents();
-		var nodes = Array.from($('<span>' + event.originalEvent.clipboardData.getData('text/plain').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;').replace(/\n/g, '<br/>') + '</span>')[0].childNodes);
+		var nodes = Array.from($('<span>' + event.originalEvent.clipboardData.getData('text/plain').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;').replace(/(?=\r|\n)\r?\n?/g, '<br/>') + '</span>')[0].childNodes);
 		for(var i = 0; i < nodes.length; i++) {
 			r.insertNode(nodes[i]);
 			r.collapse(false);
