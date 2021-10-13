@@ -1041,7 +1041,7 @@ function chunkOnPaste(event) {
 	}
 	// If possible, intercept paste events into the editor in order to always
 	// paste as plaintext
-	if(event.originalEvent.clipboardData && document.queryCommandSupported && document.execCommand && document.queryCommandSupported('insertText')) {
+	if(event.originalEvent.clipboardData && document.queryCommandSupported && document.execCommand && document.queryCommandSupported('insertHTML')) {
 		event.preventDefault();
         document.execCommand('insertHTML', false, event.originalEvent.clipboardData.getData('text/plain').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;').replace(/(?=\r|\n)\r?\n?/g, '<br/>'));
     } else if (event.originalEvent.clipboardData) {
