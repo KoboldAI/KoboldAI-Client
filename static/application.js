@@ -1044,7 +1044,17 @@ function chunkOnPaste(event) {
 	if(event.originalEvent.clipboardData && document.queryCommandSupported && document.execCommand && document.queryCommandSupported('insertText')) {
 		event.preventDefault();
         document.execCommand('insertHTML', false, event.originalEvent.clipboardData.getData('text/plain').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;').replace(/\n/g, '<br/>'));
-    }
+    } else if (event.originalEvent.clipboardData) {
+		event.preventDefault();
+		var s = getSelection();  // WARNING: Do not use rangy.getSelection() instead of getSelection()
+		var r = s.getRangeAt(0);
+		r.deleteContents();
+		var nodes = Array.from($('<span>' + event.originalEvent.clipboardData.getData('text/plain').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;').replace(/\n/g, '<br/>') + '</span>')[0].childNodes);
+		for(var i = 0; i < nodes.length; i++) {
+			r.insertNode(nodes[i]);
+			r.collapse(false);
+		}
+	}
 }
 
 // This gets run every time the caret moves in the editor
