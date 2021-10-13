@@ -758,7 +758,7 @@ function chunkOnTextInput(event) {
 		// mobile devices, but the other method is also here as
 		// a fallback
 		if(document.queryCommandSupported && document.execCommand && document.queryCommandSupported('insertHTML')) {
-			document.execCommand('insertHTML', false, event.originalEvent.data.slice(0, -1) + '<br id="_EDITOR_LINEBREAK_"/><span id="_EDITOR_SENTINEL_">|</span>');
+			document.execCommand('insertHTML', false, event.originalEvent.data.slice(0, -1).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;').replace(/\n/g, '<br/>') + '<br id="_EDITOR_LINEBREAK_"/><span id="_EDITOR_SENTINEL_">|</span>');
 			var t = $('#_EDITOR_SENTINEL_').contents().filter(function() { return this.nodeType === 3; })[0];
 		} else {
 			var t = document.createTextNode('|');
@@ -1043,7 +1043,7 @@ function chunkOnPaste(event) {
 	// paste as plaintext
 	if(event.originalEvent.clipboardData && document.queryCommandSupported && document.execCommand && document.queryCommandSupported('insertText')) {
 		event.preventDefault();
-        document.execCommand('insertText', false, event.originalEvent.clipboardData.getData('text/plain'));
+        document.execCommand('insertHTML', false, event.originalEvent.clipboardData.getData('text/plain').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;').replace(/\n/g, '<br/>'));
     }
 }
 
