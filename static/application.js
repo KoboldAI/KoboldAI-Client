@@ -496,6 +496,14 @@ function returnWiList(ar) {
 	socket.send({'cmd': 'sendwilist', 'data': list});
 }
 
+function formatChunkInnerText(chunk) {
+	var text = chunk.innerText.replace(/\u00a0/g, " ");
+	if((chunk.nextSibling === null || chunk.nextSibling.nodeType !== 1 || chunk.nextSibling.tagName !== "CHUNK") && text.slice(-1) === '\n') {
+		return text.slice(0, -1);
+	}
+	return text;
+}
+
 function dosubmit() {
 	var txt = input_text.val().replace(/\u00a0/g, " ");
 	if(!memorymode && !gamestarted && ((!adventure || !action_mode) && txt.trim().length == 0)) {
@@ -737,6 +745,65 @@ function autofocus(event) {
 	}
 }
 
+function chunkOnTextInput(event) {
+	// The enter key does not behave correctly in almost all non-Firefox
+	// browsers, so we (attempt to) shim all enter keystrokes here to behave the
+	// same as in Firefox
+	if(event.originalEvent.data.slice(-1) === '\n') {
+		event.preventDefault();
+		var s = getSelection();  // WARNING: Do not use rangy.getSelection() instead of getSelection()
+		var r = s.getRangeAt(0);
+
+		// We prefer using document.execCommand here because it works best on
+		// mobile devices, but the other method is also here as
+		// a fallback
+		if(document.queryCommandSupported && document.execCommand && document.queryCommandSupported('insertHTML')) {
+			document.execCommand('insertHTML', false, event.originalEvent.data.slice(0, -1).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;').replace(/(?=\r|\n)\r?\n?/g, '<br/>') + '<br id="_EDITOR_LINEBREAK_"/><span id="_EDITOR_SENTINEL_">|</span>');
+			var t = $('#_EDITOR_SENTINEL_').contents().filter(function() { return this.nodeType === 3; })[0];
+		} else {
+			var t = document.createTextNode('|');
+			var b = document.createElement('br');
+			b.id = "_EDITOR_LINEBREAK_";
+			r.insertNode(b);
+			r.collapse(false);
+			r.insertNode(t);
+		}
+
+		r.selectNodeContents(t);
+		s.removeAllRanges();
+		s.addRange(r);
+		if(document.queryCommandSupported && document.execCommand && document.queryCommandSupported('forwardDelete')) {
+			r.collapse(true);
+			document.execCommand('forwardDelete');
+		} else {
+			// deleteContents() sometimes breaks using the left
+			// arrow key in some browsers so we prefer the
+			// document.execCommand method
+			r.deleteContents();
+		}
+
+		// In Chrome the added <br/> will go outside of the chunks if we press
+		// enter at the end of the story in the editor, so this is here
+		// to put the <br/> back in the right place
+		var br = $("#_EDITOR_LINEBREAK_")[0];
+		if(br.parentNode === game_text[0]) {
+			if(br.previousSibling.nodeType !== 1) {
+				br.previousSibling.previousSibling.appendChild(br.previousSibling);
+			}
+			br.previousSibling.appendChild(br);
+			r.selectNodeContents(br.parentNode);
+			s.removeAllRanges();
+			s.addRange(r);
+			r.collapse(false);
+		}
+		br.id = "";
+		if(game_text[0].lastChild.tagName === "BR") {
+			br.parentNode.appendChild(game_text[0].lastChild);
+		}
+		return;
+	}
+}
+
 function chunkOnKeyDown(event) {
 	// Make escape commit the changes (Originally we had Enter here to but its not required and nicer for users if we let them type freely
 	// You can add the following after 27 if you want it back to committing on enter : || (!event.shiftKey && event.keyCode == 13)
@@ -777,6 +844,10 @@ function downloadStory(format) {
 	var actionlist_compiled = [];
 	for(var i = 0; i < actionlist.length; i++) {
 		actionlist_compiled.push(actionlist[i].innerText.replace(/\u00a0/g, " "));
+	}
+	var last = actionlist_compiled[actionlist_compiled.length-1];
+	if(last.slice(-1) === '\n') {
+		actionlist_compiled[actionlist_compiled.length-1] = last.slice(0, -1);
 	}
 
 	if(format == "plaintext") {
@@ -852,10 +923,10 @@ function applyChunkDeltas(nodes) {
 		var selected_chunks = buildChunkSetFromNodeArray(getSelectedNodes());
 		for(var i = 0; i < chunks.length; i++) {
 			var chunk = document.getElementById("n" + chunks[i]);
-			if(chunk && chunk.innerText.length != 0 && chunks[i] != '0') {
+			if(chunk && formatChunkInnerText(chunk).length != 0 && chunks[i] != '0') {
 				if(!selected_chunks.has(chunks[i])) {
 					modified_chunks.delete(chunks[i]);
-					socket.send({'cmd': 'inlineedit', 'chunk': chunks[i], 'data': chunk.innerText.replace(/\u00a0/g, " ")});
+					socket.send({'cmd': 'inlineedit', 'chunk': chunks[i], 'data': formatChunkInnerText(chunk)});
 				}
 				empty_chunks.delete(chunks[i]);
 			} else {
@@ -876,7 +947,7 @@ function syncAllModifiedChunks(including_selected_chunks=false) {
 		if(including_selected_chunks || !selected_chunks.has(chunks[i])) {
 			modified_chunks.delete(chunks[i]);
 			var chunk = document.getElementById("n" + chunks[i]);
-			var data = chunk ? document.getElementById("n" + chunks[i]).innerText.replace(/\u00a0/g, " ") : "";
+			var data = chunk ? formatChunkInnerText(document.getElementById("n" + chunks[i])) : "";
 			if(data.length == 0) {
 				empty_chunks.add(chunks[i]);
 			} else {
@@ -889,7 +960,7 @@ function syncAllModifiedChunks(including_selected_chunks=false) {
 
 function restorePrompt() {
 	if(game_text[0].firstChild && game_text[0].firstChild.nodeType === 3) {
-		saved_prompt = game_text[0].firstChild.textContent.replace(/\u00a0/g, " ");
+		saved_prompt = formatChunkInnerText(game_text[0].firstChild);
 		unbindGametext();
 		game_text[0].innerText = "";
 		bindGametext();
@@ -923,9 +994,9 @@ function deleteEmptyChunks() {
 	}
 	if(modified_chunks.has('0')) {
 		modified_chunks.delete(chunks[i]);
-		socket.send({'cmd': 'inlineedit', 'chunk': chunks[i], 'data':  document.getElementById("n0").innerText.replace(/\u00a0/g, " ")});
+		socket.send({'cmd': 'inlineedit', 'chunk': chunks[i], 'data': formatChunkInnerText(document.getElementById("n0"))});
 	}
-	saved_prompt = $("#n0")[0].innerText.replace(/\u00a0/g, " ");
+	saved_prompt = formatChunkInnerText($("#n0")[0]);
 }
 
 function highlightEditingChunks() {
@@ -970,10 +1041,20 @@ function chunkOnPaste(event) {
 	}
 	// If possible, intercept paste events into the editor in order to always
 	// paste as plaintext
-	if(event.originalEvent.clipboardData && document.queryCommandSupported && document.execCommand && document.queryCommandSupported('insertText')) {
+	if(event.originalEvent.clipboardData && document.queryCommandSupported && document.execCommand && document.queryCommandSupported('insertHTML')) {
 		event.preventDefault();
-        document.execCommand('insertText', false, event.originalEvent.clipboardData.getData('text/plain'));
-    }
+        document.execCommand('insertHTML', false, event.originalEvent.clipboardData.getData('text/plain').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;').replace(/(?=\r|\n)\r?\n?/g, '<br/>'));
+    } else if (event.originalEvent.clipboardData) {
+		event.preventDefault();
+		var s = getSelection();  // WARNING: Do not use rangy.getSelection() instead of getSelection()
+		var r = s.getRangeAt(0);
+		r.deleteContents();
+		var nodes = Array.from($('<span>' + event.originalEvent.clipboardData.getData('text/plain').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;').replace(/(?=\r|\n)\r?\n?/g, '<br/>') + '</span>')[0].childNodes);
+		for(var i = 0; i < nodes.length; i++) {
+			r.insertNode(nodes[i]);
+			r.collapse(false);
+		}
+	}
 }
 
 // This gets run every time the caret moves in the editor
@@ -1165,9 +1246,12 @@ $(document).ready(function(){
 			modified_chunks = new Set();
 			empty_chunks = new Set();
 			game_text.html(msg.data);
+			if(game_text[0].lastChild !== null && game_text[0].lastChild.tagName === "CHUNK") {
+				game_text[0].lastChild.appendChild(document.createElement("br"));
+			}
 			bindGametext();
 			if(gamestarted) {
-				saved_prompt = $("#n0")[0].innerText.replace(/\u00a0/g, " ");
+				saved_prompt = formatChunkInnerText($("#n0")[0]);
 			}
 			// Scroll to bottom of text
 			if(newly_loaded) {
@@ -1179,26 +1263,43 @@ $(document).ready(function(){
 			scrollToBottom();
 		} else if(msg.cmd == "updatechunk") {
 			hideMessage();
-			const {index, html} = msg.data;
-			const existingChunk = game_text.children(`#n${index}`)
-			const newChunk = $(html);
+			var index = msg.data.index;
+			var html = msg.data.html;
+			var existingChunk = game_text.children('#n' + index);
+			var newChunk = $(html);
 			unbindGametext();
 			if (existingChunk.length > 0) {
 				// Update existing chunk
+				if(existingChunk[0].nextSibling === null || existingChunk[0].nextSibling.nodeType !== 1 || existingChunk[0].nextSibling.tagName !== "CHUNK") {
+					newChunk[0].appendChild(document.createElement("br"));
+				}
 				existingChunk.before(newChunk);
 				existingChunk.remove();
 			} else if (!empty_chunks.has(index.toString())) {
 				// Append at the end
+				unbindGametext();
+				var lc = game_text[0].lastChild;
+				if(lc.tagName === "CHUNK" && lc.lastChild !== null && lc.lastChild.tagName === "BR") {
+					lc.removeChild(lc.lastChild);
+				}
+				newChunk[0].appendChild(document.createElement("br"));
 				game_text.append(newChunk);
+				bindGametext();
 			}
 			bindGametext();
 			hide([$('#curtain')]);
 		} else if(msg.cmd == "removechunk") {
 			hideMessage();
-			let index = msg.data;
-			unbindGametext();
-			game_text.children(`#n${index}`).remove()  // Remove the chunk
-			bindGametext();
+			var index = msg.data;
+			var element = game_text.children('#n' + index);
+			if(element.length) {
+				unbindGametext();
+				if((element[0].nextSibling === null || element[0].nextSibling.nodeType !== 1 || element[0].nextSibling.tagName !== "CHUNK") && element[0].previousSibling !== null && element[0].previousSibling.tagName === "CHUNK") {
+					element[0].previousSibling.appendChild(document.createElement("br"));
+				}
+				element.remove();  // Remove the chunk
+				bindGametext();
+			}
 			hide([$('#curtain')]);
 		} else if(msg.cmd == "setgamestate") {
 			// Enable or Disable buttons
@@ -1427,7 +1528,9 @@ $(document).ready(function(){
 	});
 
 	// Register editing events
-	game_text.on('keydown',
+	game_text.on('textInput',
+		chunkOnTextInput
+	).on('keydown',
 		chunkOnKeyDown
 	).on('paste', 
 		chunkOnPaste
