@@ -682,15 +682,18 @@ function buildSPList(ar) {
 			: Object.prototype.toString.call(ar[i].supported) === "[object Array]"
 			? "[" + ar[i].supported.join(', ') + "]"
 			: "[" + ar[i].supported.toString() + "]";
+		var filename = ar[i].filename.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;').replace(/(?=\r|\n)\r?\n?/g, '<br/>');
 		var name = ar[i].name || ar[i].filename;
 		name = name.length > 120 ? name.slice(0, 117) + '...' : name;
+		name = name.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;').replace(/(?=\r|\n)\r?\n?/g, '<br/>');
 		var desc = ar[i].description || '';
 		desc = desc.length > 500 ? desc.slice(0, 497) + '...' : desc;
+		desc = desc.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;').replace(/(?=\r|\n)\r?\n?/g, '<br/>');
 		spcontent.append("<div class=\"flex\">\
 			<div class=\"splistitem flex-row-container\" id=\"sp"+i+"\" name=\""+ar[i].filename+"\">\
 				<div class=\"flex-row\">\
 					<div>"+name+"</div>\
-					<div class=\"flex-push-right splistitemsub\">"+ar[i].filename+"</div>\
+					<div class=\"flex-push-right splistitemsub\">"+filename+"</div>\
 				</div>\
 				<div class=\"flex-row\">\
 					<div>"+desc+"</div>\
