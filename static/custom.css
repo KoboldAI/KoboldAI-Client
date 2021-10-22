@@ -307,6 +307,38 @@ chunk.editing, chunk.editing * {
 	overflow-y: scroll;
 }
 
+#sppopup {
+	width: 500px;
+	background-color: #262626;
+	margin-top: 100px;
+}
+
+@media (max-width: 768px) {
+	#loadpopup {
+		width: 100%;
+		background-color: #262626;
+		margin-top: 100px;
+	}
+}
+
+#sppopupdelete {
+	width: 350px;
+	background-color: #262626;
+	margin-top: 200px;
+}
+
+#sppopuprename {
+	width: 350px;
+	background-color: #262626;
+	margin-top: 200px;
+}
+
+#splistcontent {
+	height: 325px;
+	overflow-y: scroll;
+	overflow-wrap: anywhere;
+}
+
 #nspopup {
 	width: 350px;
 	background-color: #262626;
@@ -421,6 +453,18 @@ chunk.editing, chunk.editing * {
 .flex {
 	display: flex;
 	align-items: center;
+}
+
+.flex-row-container {
+	display: flex;
+	flex-flow: wrap;
+}
+
+.flex-row {
+	display: flex;
+	flex-flow: row;
+	flex-grow: 1;
+	width: 100%;
 }
 
 .flex-push-right {
@@ -803,6 +847,34 @@ chunk.editing, chunk.editing * {
 .spacer {
 	display: inline-block;
 	width: 50px;
+}
+
+.splistheader {
+	padding-left: 68px;
+	padding-right: 20px;
+	display: flex;
+	color: #737373;
+}
+
+.splistitem {
+	padding: 12px 10px 12px 10px;
+	display: flex;
+	flex-grow: 1;
+	color: #ffffff;
+	
+	-moz-transition: background-color 0.25s ease-in;
+	-o-transition: background-color 0.25s ease-in;
+	-webkit-transition: background-color 0.25s ease-in;
+	transition: background-color 0.25s ease-in;
+}
+
+.splistitemsub {
+	color: #ba9;
+}
+
+.splistitem:hover {
+	cursor: pointer;
+	background-color: #688f1f;
 }
 
 .width-auto {

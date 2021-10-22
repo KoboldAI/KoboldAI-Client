@@ -18,6 +18,7 @@ var button_importwi;
 var button_impaidg;
 var button_settings;
 var button_format;
+var button_softprompt;
 var button_mode;
 var button_mode_label;
 var button_send;
@@ -53,6 +54,10 @@ var loadpopup;
 var	loadcontent;
 var	load_accept;
 var	load_close;
+var sppopup;
+var	spcontent;
+var	sp_accept;
+var	sp_close;
 var nspopup;
 var ns_accept;
 var ns_close;
@@ -77,6 +82,7 @@ var saved_prompt = "...";
 var override_focusout = false;
 var sman_allow_delete = false;
 var sman_allow_rename = false;
+var allowsp = false;
 
 // This is true iff [we're in macOS and the browser is Safari] or [we're in iOS]
 var using_webkit_patch = true;
@@ -589,6 +595,17 @@ function hideLoadPopup() {
 	loadcontent.html("");
 }
 
+function showSPPopup() {
+	sppopup.removeClass("hidden");
+	sppopup.addClass("flex");
+}
+
+function hideSPPopup() {
+	sppopup.removeClass("flex");
+	sppopup.addClass("hidden");
+	spcontent.html("");
+}
+
 function buildLoadList(ar) {
 	disableButtons([load_accept]);
 	loadcontent.html("");
@@ -654,8 +671,48 @@ function buildLoadList(ar) {
 	}
 }
 
+function buildSPList(ar) {
+	disableButtons([sp_accept]);
+	spcontent.html("");
+	showSPPopup();
+	ar.push({filename: '', name: "[None]"})
+	for(var i = 0; i < ar.length; i++) {
+		var supported = !ar[i].supported
+			? ''
+			: Object.prototype.toString.call(ar[i].supported) === "[object Array]"
+			? "[" + ar[i].supported.join(', ') + "]"
+			: "[" + ar[i].supported.toString() + "]";
+		var name = ar[i].name || ar[i].filename;
+		name = name.length > 120 ? name.slice(0, 117) + '...' : name;
+		var desc = ar[i].description || '';
+		desc = desc.length > 500 ? desc.slice(0, 497) + '...' : desc;
+		spcontent.append("<div class=\"flex\">\
+			<div class=\"splistitem flex-row-container\" id=\"sp"+i+"\" name=\""+ar[i].filename+"\">\
+				<div class=\"flex-row\">\
+					<div>"+name+"</div>\
+					<div class=\"flex-push-right splistitemsub\">"+ar[i].filename+"</div>\
+				</div>\
+				<div class=\"flex-row\">\
+					<div>"+desc+"</div>\
+					<div class=\"flex-push-right splistitemsub\">"+supported+"</div>\
+				</div>\
+			</div>\
+		</div>");
+		$("#sp"+i).on("click", function () {
+			enableButtons([sp_accept]);
+			socket.send({'cmd': 'spselect', 'data': $(this).attr("name")});
+			highlightSPLine($(this));
+		});
+	}
+}
+
 function highlightLoadLine(ref) {
 	$("#loadlistcontent > div > div.popuplistselected").removeClass("popuplistselected");
+	ref.addClass("popuplistselected");
+}
+
+function highlightSPLine(ref) {
+	$("#splistcontent > div > div.popuplistselected").removeClass("popuplistselected");
 	ref.addClass("popuplistselected");
 }
 
@@ -1142,6 +1199,7 @@ $(document).ready(function(){
 	button_impaidg    = $("#btn_impaidg");
 	button_settings   = $('#btn_settings');
 	button_format     = $('#btn_format');
+	button_softprompt = $("#btn_softprompt");
 	button_mode       = $('#btnmode')
 	button_mode_label = $('#btnmode_label')
 	button_send       = $('#btnsend');
@@ -1177,6 +1235,10 @@ $(document).ready(function(){
 	loadcontent       = $("#loadlistcontent");
 	load_accept       = $("#btn_loadaccept");
 	load_close        = $("#btn_loadclose");
+	sppopup           = $("#spcontainer");
+	spcontent         = $("#splistcontent");
+	sp_accept         = $("#btn_spaccept");
+	sp_close          = $("#btn_spclose");
 	nspopup           = $("#newgamecontainer");
 	ns_accept         = $("#btn_nsaccept");
 	ns_close          = $("#btn_nsclose");
@@ -1313,6 +1375,13 @@ $(document).ready(function(){
 				showWaitAnimation();
 			} else if(msg.data == "start") {
 				setStartState();
+			}
+		} else if(msg.cmd == "allowsp") {
+			allowsp = !!msg.data;
+			if(allowsp) {
+				button_softprompt.removeClass("hidden");
+			} else {
+				button_softprompt.addClass("hidden");
 			}
 		} else if(msg.cmd == "setstoryname") {
 			storyname = msg.data;
@@ -1480,6 +1549,8 @@ $(document).ready(function(){
 		} else if(msg.cmd == "buildload") {
 			// Send array of save files to load UI
 			buildLoadList(msg.data);
+		} else if(msg.cmd == "buildsp") {
+			buildSPList(msg.data);
 		} else if(msg.cmd == "askforoverwrite") {
 			// Show overwrite warning
 			show([$(".saveasoverwrite")]);
@@ -1654,6 +1725,10 @@ $(document).ready(function(){
 	button_load.on("click", function(ev) {
 		socket.send({'cmd': 'loadlistrequest', 'data': ''});
 	});
+
+	button_softprompt.on("click", function(ev) {
+		socket.send({'cmd': 'splistrequest', 'data': ''});
+	});
 	
 	load_close.on("click", function(ev) {
 		hideLoadPopup();
@@ -1663,6 +1738,15 @@ $(document).ready(function(){
 		newly_loaded = true;
 		socket.send({'cmd': 'loadrequest', 'data': ''});
 		hideLoadPopup();
+	});
+
+	sp_close.on("click", function(ev) {
+		hideSPPopup();
+	});
+	
+	sp_accept.on("click", function(ev) {
+		socket.send({'cmd': 'sprequest', 'data': ''});
+		hideSPPopup();
 	});
 	
 	button_newgame.on("click", function(ev) {
