@@ -228,4 +228,9 @@ formatcontrols = [{
     "label": "Add sentence spacing",
     "id": "frmtadsnsp",
     "tooltip": "If the last action ended with punctuation, add a space to the beginning of the next action."
+    },
+    {
+    "label": "Single Line",
+    "id": "singleline",
+    "tooltip": "Only allows the AI to output anything before the enter"
     }]

@@ -10,6 +10,7 @@ settings/*
 miniconda3/*
 *.settings
 __pycache__
+*.log
 
 # Ignore PyCharm project files.
 .idea

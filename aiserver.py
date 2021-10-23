@@ -101,7 +101,7 @@ class vars:
     hascuda     = False  # Whether torch has detected CUDA on the system
     usegpu      = False  # Whether to launch pipeline with GPU support
     custmodpth  = ""     # Filesystem location of custom model to run
-    formatoptns = {'frmttriminc': True, 'frmtrmblln': False, 'frmtrmspch': False, 'frmtadsnsp': False}     # Container for state of formatting options
+    formatoptns = {'frmttriminc': True, 'frmtrmblln': False, 'frmtrmspch': False, 'frmtadsnsp': False, 'singleline': False}     # Container for state of formatting options
     importnum   = -1     # Selection on import popup list
     importjs    = {}     # Temporary storage for import data
     loadselect  = ""     # Temporary storage for story filename to load
@@ -119,6 +119,7 @@ class vars:
     allowsp     = False  # Whether we are allowed to use soft prompts (by default enabled if we're using GPT-2, GPT-Neo or GPT-J)
     modeldim    = -1     # Embedding dimension of your model (e.g. it's 4096 for GPT-J-6B and 2560 for GPT-Neo-2.7B)
     laststory   = None   # Filename (without extension) of most recent story JSON file we loaded
+    regex_sl    = re.compile(r'\n*(?<=.) *\n(.|\n)*')  # Pattern for limiting the output to a single line
     acregex_ai  = re.compile(r'\n* *>(.|\n)*')  # Pattern for matching adventure actions from the AI so we can remove them
     acregex_ui  = re.compile(r'^ *(&gt;.*)$', re.MULTILINE)    # Pattern for matching actions in the HTML-escaped story so we can apply colouring, etc (make sure to encase part to format in parentheses)
     actionmode  = 1
@@ -804,6 +805,11 @@ def get_message(msg):
     elif(msg['cmd'] == 'frmtadsnsp'):
         if('frmtadsnsp' in vars.formatoptns):
             vars.formatoptns["frmtadsnsp"] = msg['data']
+        settingschanged()
+        refresh_settings()
+    elif(msg['cmd'] == 'singleline'):
+        if('singleline' in vars.formatoptns):
+            vars.formatoptns["singleline"] = msg['data']
         settingschanged()
         refresh_settings()
     elif(msg['cmd'] == 'importselect'):
@@ -1542,6 +1548,9 @@ def applyoutputformatting(txt):
     # Remove special characters
     if(vars.formatoptns["frmtrmspch"]):
         txt = utils.removespecialchars(txt, vars)
+	# Single Line Mode
+    if(vars.formatoptns["singleline"]):
+        txt = utils.singlelineprocessing(txt, vars)
     
     return txt
 
@@ -1624,6 +1633,7 @@ def refresh_settings():
     emit('from_server', {'cmd': 'updatefrmtrmblln', 'data': vars.formatoptns["frmtrmblln"]}, broadcast=True)
     emit('from_server', {'cmd': 'updatefrmtrmspch', 'data': vars.formatoptns["frmtrmspch"]}, broadcast=True)
     emit('from_server', {'cmd': 'updatefrmtadsnsp', 'data': vars.formatoptns["frmtadsnsp"]}, broadcast=True)
+    emit('from_server', {'cmd': 'updatesingleline', 'data': vars.formatoptns["singleline"]}, broadcast=True)
     
     # Allow toggle events again
     emit('from_server', {'cmd': 'allowtoggle', 'data': True}, broadcast=True)
