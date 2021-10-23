@@ -83,6 +83,21 @@ def addsentencespacing(txt, vars):
     if(lastchar == "." or lastchar == "!" or lastchar == "?" or lastchar == "," or lastchar == ";" or lastchar == ":"):
         txt = " " + txt
     return txt
+	
+def singlelineprocessing(txt, vars):
+    txt = vars.regex_sl.sub('', txt)
+    if(len(vars.actions) > 0):
+        if(len(vars.actions[vars.actions.get_last_key()]) > 0):
+            lastchar = vars.actions[vars.actions.get_last_key()][-1]
+        else:
+            # Last action is blank, this should never happen, but
+            # since it did let's bail out.
+            return txt
+    else:
+        lastchar = vars.prompt[-1]
+    if(lastchar != "\n"):
+        txt = txt + "\n"
+    return txt
 
 #==================================================================#
 #  Cleans string for use in file name

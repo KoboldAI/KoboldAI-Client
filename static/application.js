@@ -1435,6 +1435,9 @@ $(document).ready(function(){
 		} else if(msg.cmd == "updatefrmtadsnsp") {
 			// Update toggle state
 			$("#frmtadsnsp").prop('checked', msg.data).change();
+		} else if(msg.cmd == "updatesingleline") {
+			// Update toggle state
+			$("#singleline").prop('checked', msg.data).change();
 		} else if(msg.cmd == "allowtoggle") {
 			// Allow toggle change states to propagate
 			allowtoggle = msg.data;
