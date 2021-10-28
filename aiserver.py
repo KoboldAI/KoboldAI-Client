@@ -518,13 +518,15 @@ if(not vars.model in ["InferKit", "Colab", "OAI", "ReadOnly"]):
                 input_ids = kwargs.get('input_ids').to(self.device)
                 assert input_ids is not None
                 kwargs['input_ids'] = None
-                inputs_embeds = self.transformer.wte(input_ids.clamp(max=self.config.vocab_size-1))
-                input_ids = input_ids - self.config.vocab_size  # Don't use the -= operator here, you'll get a cryptic error message
+                if(vars.sp is not None):
+                    shifted_input_ids = input_ids - self.config.vocab_size
+                input_ids.clamp_(max=self.config.vocab_size-1)
+                inputs_embeds = self.transformer.wte(input_ids)
                 if(vars.sp is not None):
                     vars.sp = vars.sp.to(inputs_embeds.dtype).to(inputs_embeds.device)
                     inputs_embeds = torch.where(
-                        (input_ids >= 0)[:, :, None],
-                        vars.sp[input_ids.clamp(min=0)],
+                        (shifted_input_ids >= 0)[:, :, None],
+                        vars.sp[shifted_input_ids.clamp(min=0)],
                         inputs_embeds,
                     )
                 kwargs['inputs_embeds'] = inputs_embeds
