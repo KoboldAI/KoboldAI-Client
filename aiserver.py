@@ -1189,7 +1189,7 @@ def calcsubmit(txt):
         if(actionlen == 0):
             # First/Prompt action
             subtxt = vars.memory + winfo + anotetxt + vars.prompt
-            lnsub  = lnmem + lnwi + lnprompt + lnanote
+            lnsub  = lnsp + lnmem + lnwi + lnprompt + lnanote
             
             if(not vars.model in ["Colab", "OAI"]):
                 generate(subtxt, lnsub+1, lnsub+vars.genamt)
