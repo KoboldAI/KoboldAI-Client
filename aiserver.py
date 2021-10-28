@@ -382,6 +382,7 @@ if(vars.model == "InferKit"):
         print("{0}Please enter your InferKit API key:{1}\n".format(colors.CYAN, colors.END))
         vars.apikey = input("Key> ")
         # Write API key to file
+        os.makedirs('settings', exist_ok=True)
         file = open("settings/" + getmodelname() + ".settings", "w")
         try:
             js = {"apikey": vars.apikey}
@@ -416,6 +417,7 @@ if(vars.model == "OAI"):
         print("{0}Please enter your OpenAI API key:{1}\n".format(colors.CYAN, colors.END))
         vars.oaiapikey = input("Key> ")
         # Write API key to file
+        os.makedirs('settings', exist_ok=True)
         file = open("settings/" + getmodelname() + ".settings", "w")
         try:
             js = {"oaiapikey": vars.oaiapikey}
