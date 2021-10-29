@@ -6,14 +6,14 @@
 	<meta name="viewport" content="width=device-width, initial-scale=1">
 	<script src="static/jquery-3.6.0.min.js"></script>
 	<script src="static/socket.io.min.js"></script>
-	<script src="static/application.js?ver=1.16.2j"></script>
+	<script src="static/application.js?ver=1.16.3ua"></script>
 	<script src="static/bootstrap.min.js"></script>
 	<script src="static/bootstrap-toggle.min.js"></script>
 	<script src="static/rangy-core.min.js"></script>
 	
 	<link rel="stylesheet" href="static/bootstrap.min.css">
 	<link rel="stylesheet" href="static/bootstrap-toggle.min.css">
-	<link rel="stylesheet" href="static/custom.css?ver=1.16.2a">
+	<link rel="stylesheet" href="static/custom.css?ver=1.16.3ua">
 	<link rel="stylesheet" href="static/open-iconic-bootstrap.min.css">
 </head>
 <body>
@@ -66,6 +66,9 @@
 								</li>
 								<li class="nav-item">
 									<a class="nav-link" href="#" id="btn_format">Formatting</a>
+								</li>
+								<li class="nav-item">
+									<a class="nav-link hidden" href="#" id="btn_softprompt">Soft Prompt</a>
 								</li>
 							</ul>
 						</div>
@@ -222,6 +225,19 @@
 			<div class="popupfooter">
 				<button type="button" class="btn btn-primary" id="btn_loadaccept">Load</button>
 				<button type="button" class="btn btn-primary" id="btn_loadclose">Cancel</button>
+			</div>
+		</div>
+	</div>
+	<div class="popupcontainer hidden" id="spcontainer">
+		<div id="sppopup">
+			<div class="popuptitlebar">
+				<div class="popuptitletext">Select A Soft Prompt To Use</div>
+			</div>
+			<div id="splistcontent">
+			</div>
+			<div class="popupfooter">
+				<button type="button" class="btn btn-primary" id="btn_spaccept">Load</button>
+				<button type="button" class="btn btn-primary" id="btn_spclose">Cancel</button>
 			</div>
 		</div>
 	</div>
