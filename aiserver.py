@@ -1190,9 +1190,6 @@ def calcsubmit(txt):
         else:
             budget = vars.max_length - lnsp - lnmem - lnanote - lnwi - vars.genamt
 
-        if(vars.sp is not None):
-            budget -= vars.sp.shape[0]
-
         if(actionlen == 0):
             # First/Prompt action
             subtxt = vars.memory + winfo + anotetxt + vars.prompt
