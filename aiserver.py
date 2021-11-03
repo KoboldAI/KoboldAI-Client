@@ -1224,6 +1224,8 @@ def calcsubmitbudgetheader(txt, **kwargs):
     return winfo, mem, anotetxt, found_entries
 
 def calcsubmitbudget(actionlen, winfo, mem, anotetxt, actions=vars.actions):
+    forceanote   = False # In case we don't have enough actions to hit A.N. depth
+    anoteadded   = False # In case our budget runs out before we hit A.N. depth
     anotetkns    = []  # Placeholder for Author's Note tokens
     lnanote      = 0   # Placeholder for Author's Note length
 
@@ -1457,7 +1459,6 @@ def generate(txt, min, max):
                     )
                 already_generated += len(genout[0]) - len(gen_in[0])
                 if(not model.kai_scanner.any_new_entries):
-                    assert already_generated == max - min + 1
                     break
                 txt = tokenizer.decode(genout[0, -already_generated:])
                 winfo, mem, anotetxt, _found_entries = calcsubmitbudgetheader(txt, force_use_txt=True)
