@@ -1255,7 +1255,7 @@ def calcsubmit(txt):
                 tokens = memtokens + witokens + prompttkns + tokens
             
             # Send completed bundle to generator
-            ln = len(tokens)
+            ln = len(tokens) + lnsp
             
             if(not vars.model in ["Colab", "OAI"]):
                 generate (
