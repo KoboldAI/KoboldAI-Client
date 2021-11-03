@@ -1433,7 +1433,7 @@ def generate(txt, min, max):
 
         with torch.no_grad():
             already_generated = 0
-            numseqs = vars.numseqs
+            numseqs = vars.numseqs if not vars.dynamicscan else 1
             found_entries = model.kai_scanner_excluded_world_info
             while True:
                 genout = generator(
