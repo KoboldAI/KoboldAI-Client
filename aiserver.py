@@ -1471,6 +1471,7 @@ def generate(txt, min, max):
                     soft_tokens = torch.arange(
                         model.config.vocab_size,
                         model.config.vocab_size + vars.sp.shape[0],
+                        device=genout.device,
                     )
                     gen_in = torch.cat((soft_tokens[None], gen_in), dim=-1)
                 diff = gen_in.shape[-1] - genout.shape[-1]
