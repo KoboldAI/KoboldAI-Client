@@ -1592,6 +1592,9 @@ $(document).ready(function(){
 			$("#setadventure").prop('checked', msg.data).change();
 			// Update adventure state
 			setadventure(msg.data);
+		} else if(msg.cmd == "updatedynamicscan") {
+			// Update toggle state
+			$("#setdynamicscan").prop('checked', msg.data).change();
 		} else if(msg.cmd == "runs_remotely") {
 			hide([button_loadfrfile, button_savetofile, button_import, button_importwi]);
 		}

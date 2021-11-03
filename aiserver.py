@@ -124,6 +124,7 @@ class vars:
     acregex_ui  = re.compile(r'^ *(&gt;.*)$', re.MULTILINE)    # Pattern for matching actions in the HTML-escaped story so we can apply colouring, etc (make sure to encase part to format in parentheses)
     actionmode  = 1
     adventure   = False
+    dynamicscan = False
     remote      = False
 
 #==================================================================#
@@ -564,8 +565,10 @@ if(not vars.model in ["InferKit", "Colab", "OAI", "ReadOnly"]):
             ) -> bool:
                 assert input_ids.ndim == 2
                 #assert input_ids.shape[:-1] == self.head_length.shape
-                tail = input_ids[..., self.head_length:]
                 self.any_new_entries = False
+                if(not vars.dynamicscan):
+                    return False
+                tail = input_ids[..., self.head_length:]
                 for t in tail:
                     decoded = tokenizer.decode(t)
                     _, found = checkworldinfo(decoded, force_use_txt=True)
@@ -943,6 +946,10 @@ def get_message(msg):
         vars.adventure = msg['data']
         settingschanged()
         refresh_settings()
+    elif(msg['cmd'] == 'setdynamicscan'):
+        vars.dynamicscan = msg['data']
+        settingschanged()
+        refresh_settings()
     elif(not vars.remote and msg['cmd'] == 'importwi'):
         wiimportrequest()
     
@@ -1000,6 +1007,7 @@ def savesettings():
     js["widepth"]     = vars.widepth
     js["useprompt"]   = vars.useprompt
     js["adventure"]   = vars.adventure
+    js["dynamicscan"] = vars.dynamicscan
 
     # Write it
     if not os.path.exists('settings'):
@@ -1050,6 +1058,8 @@ def loadsettings():
             vars.useprompt = js["useprompt"]
         if("adventure" in js):
             vars.adventure = js["adventure"]
+        if("dynamicscan" in js):
+            vars.dynamicscan = js["dynamicscan"]
         
         file.close()
 
@@ -1074,6 +1084,8 @@ def loadmodelsettings():
             vars.rep_pen    = js["rep_pen"]
         if("adventure" in js):
             vars.adventure = js["adventure"]
+        if("dynamicscan" in js):
+            vars.dynamicscan = js["dynamicscan"]
         if("formatoptns" in js):
             vars.formatoptns = js["formatoptns"]
         model_config.close()
@@ -1735,6 +1747,7 @@ def refresh_settings():
     emit('from_server', {'cmd': 'updatewidepth', 'data': vars.widepth}, broadcast=True)
     emit('from_server', {'cmd': 'updateuseprompt', 'data': vars.useprompt}, broadcast=True)
     emit('from_server', {'cmd': 'updateadventure', 'data': vars.adventure}, broadcast=True)
+    emit('from_server', {'cmd': 'updatedynamicscan', 'data': vars.dynamicscan}, broadcast=True)
     
     emit('from_server', {'cmd': 'updatefrmttriminc', 'data': vars.formatoptns["frmttriminc"]}, broadcast=True)
     emit('from_server', {'cmd': 'updatefrmtrmblln', 'data': vars.formatoptns["frmtrmblln"]}, broadcast=True)
