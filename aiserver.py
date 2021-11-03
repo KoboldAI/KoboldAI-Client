@@ -1306,7 +1306,7 @@ def calcsubmitbudget(actionlen, winfo, mem, anotetxt, actions=vars.actions):
             tokens = memtokens + witokens + prompttkns + tokens
         
         # Send completed bundle to generator
-        ln = len(tokens)
+        ln = len(tokens) + lnsp
         return tokenizer.decode(tokens), ln+1, ln+vars.genamt
 
 #==================================================================#
