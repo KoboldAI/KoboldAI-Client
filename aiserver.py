@@ -1440,6 +1440,7 @@ def generate(txt, min, max):
                     )
                 already_generated += len(genout[0]) - len(gen_in[0])
                 if(not model.kai_scanner.any_new_entries):
+                    assert already_generated == max - min + 1
                     break
                 txt = tokenizer.decode(genout[0, -already_generated:])
                 winfo, mem, anotetxt, _found_entries = calcsubmitbudgetheader(txt, force_use_txt=True)
