@@ -1440,8 +1440,8 @@ def generate(txt, min, max):
                 genout = generator(
                     gen_in, 
                     do_sample=True, 
-                    min_length=min+already_generated, 
-                    max_length=max,
+                    min_length=min, 
+                    max_length=max-already_generated,
                     repetition_penalty=vars.rep_pen,
                     top_p=top_p,
                     top_k=top_k,
@@ -1460,7 +1460,7 @@ def generate(txt, min, max):
                 found_entries |= _found_entries
                 txt, _, _ = calcsubmitbudget(len(vars.actions), winfo, mem, anotetxt)
                 encoded = tokenizer.encode(txt, return_tensors="pt", truncation=True).long().to(genout.device)
-                gen_in = torch.cat(
+                genout = torch.cat(
                     (
                         encoded,
                         genout[..., -already_generated:],
@@ -1473,8 +1473,8 @@ def generate(txt, min, max):
                         model.config.vocab_size + vars.sp.shape[0],
                         device=genout.device,
                     )
-                    gen_in = torch.cat((soft_tokens[None], gen_in), dim=-1)
-                diff = gen_in.shape[-1] - genout.shape[-1]
+                    genout = torch.cat((soft_tokens[None], genout), dim=-1)
+                diff = genout.shape[-1] - gen_in.shape[-1]
                 min += diff
                 max += diff
                 gen_in = genout
