@@ -234,6 +234,7 @@ def device_config(model):
                 primaryselect = input("device ID> ")
                 if(primaryselect.isnumeric() and 0 <= int(primaryselect) < device_count):
                     breakmodel.primary_device = int(primaryselect)
+                    break
                 else:
                     print(f"{colors.RED}Please enter an integer between 0 and {device_count-1}.{colors.END}")
         else:
@@ -1254,7 +1255,7 @@ def calcsubmit(txt):
                 tokens = memtokens + witokens + prompttkns + tokens
             
             # Send completed bundle to generator
-            ln = len(tokens)
+            ln = len(tokens) + lnsp
             
             if(not vars.model in ["Colab", "OAI"]):
                 generate (
