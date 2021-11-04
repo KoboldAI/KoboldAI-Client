@@ -83,6 +83,7 @@ var override_focusout = false;
 var sman_allow_delete = false;
 var sman_allow_rename = false;
 var allowsp = false;
+var remote = false;
 
 // This is true iff [we're in macOS and the browser is Safari] or [we're in iOS]
 var using_webkit_patch = true;
@@ -1593,7 +1594,8 @@ $(document).ready(function(){
 			// Update adventure state
 			setadventure(msg.data);
 		} else if(msg.cmd == "runs_remotely") {
-			hide([button_loadfrfile, button_savetofile, button_import, button_importwi]);
+			remote = true;
+			hide([button_savetofile, button_import, button_importwi]);
 		}
 	});
 	
@@ -1660,7 +1662,21 @@ $(document).ready(function(){
 	});
 	
 	button_loadfrfile.on("click", function(ev) {
-		socket.send({'cmd': 'loadfromfile', 'data': ''});
+		if(remote) {
+			$("#remote-save-select").click();
+		} else {
+			socket.send({'cmd': 'loadfromfile', 'data': ''});
+		}
+	});
+
+	$("#remote-save-select").on("change", function() {
+		console.log(1)
+		var reader = new FileReader();
+		var file = $("#remote-save-select")[0].files[0];
+		reader.addEventListener("load", function(response) {
+			socket.send({'cmd': 'loadfromstring', 'filename': file.name, 'data': response.target.result});
+		}, false);
+		reader.readAsText(file);
 	});
 	
 	button_import.on("click", function(ev) {
