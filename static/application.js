@@ -1670,7 +1670,6 @@ $(document).ready(function(){
 	});
 
 	$("#remote-save-select").on("change", function() {
-		console.log(1)
 		var reader = new FileReader();
 		var file = $("#remote-save-select")[0].files[0];
 		reader.addEventListener("load", function(response) {
