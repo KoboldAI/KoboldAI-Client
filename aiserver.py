@@ -1,6 +1,6 @@
 #==================================================================#
 # KoboldAI
-# Version: 1.16.3
+# Version: 1.16.4
 # By: KoboldAIDev and the KoboldAI Community
 #==================================================================#
 
@@ -647,6 +647,8 @@ def get_message(msg):
         savetofile()
     elif(not vars.remote and msg['cmd'] == 'loadfromfile'):
         loadfromfile()
+    elif(msg['cmd'] == 'loadfromstring'):
+        loadRequest(json.loads(msg['data']), filename=msg['filename'])
     elif(not vars.remote and msg['cmd'] == 'import'):
         importRequest()
     elif(msg['cmd'] == 'newgame'):
@@ -2096,14 +2098,21 @@ def loadfromfile():
 #==================================================================#
 #  Load a stored story from a file
 #==================================================================#
-def loadRequest(loadpath):
+def loadRequest(loadpath, filename=None):
     if(loadpath):
         # Leave Edit/Memory mode before continuing
         exitModes()
         
         # Read file contents into JSON object
-        file = open(loadpath, "r")
-        js   = json.load(file)
+        if(isinstance(loadpath, str)):
+            with open(loadpath, "r") as file:
+                js = json.load(file)
+            if(filename is None):
+                filename = path.basename(loadpath)
+        else:
+            js = loadpath
+            if(filename is None):
+                filename = "untitled.json"
         
         # Copy file contents to vars
         vars.gamestarted = js["gamestarted"]
@@ -2149,8 +2158,6 @@ def loadRequest(loadpath):
                 })
                 num += 1
         
-        file.close()
-        
         # Save path for save button
         vars.savedir = loadpath
         
@@ -2158,10 +2165,10 @@ def loadRequest(loadpath):
         vars.loadselect = ""
         
         # Refresh game screen
-        filename = path.basename(loadpath)
+        _filename = filename
         if(filename.endswith('.json')):
-            filename = filename[:-5]
-        vars.laststory = filename
+            _filename = filename[:-5]
+        vars.laststory = _filename
         emit('from_server', {'cmd': 'setstoryname', 'data': vars.laststory}, broadcast=True)
         sendwi()
         emit('from_server', {'cmd': 'setmemory', 'data': vars.memory}, broadcast=True)
@@ -2169,7 +2176,7 @@ def loadRequest(loadpath):
         refresh_story()
         emit('from_server', {'cmd': 'setgamestate', 'data': 'ready'}, broadcast=True)
         emit('from_server', {'cmd': 'hidegenseqs', 'data': ''}, broadcast=True)
-        print("{0}Story loaded from {1}!{2}".format(colors.GREEN, path.basename(loadpath), colors.END))
+        print("{0}Story loaded from {1}!{2}".format(colors.GREEN, filename, colors.END))
 
 #==================================================================#
 # Import an AIDungon game exported with Mimi's tool
