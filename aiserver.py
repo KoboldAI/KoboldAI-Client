@@ -637,12 +637,15 @@ if(not vars.model in ["InferKit", "Colab", "OAI", "ReadOnly"]):
                     generator = model.generate
                 elif(vars.breakmodel):  # Use both RAM and VRAM (breakmodel)
                     model = AutoModelForCausalLM.from_pretrained(vars.model)
+                    vars.modeldim = int(model.transformer.hidden_size)
                     device_config(model)
                 else:
                     model = AutoModelForCausalLM.from_pretrained(vars.model)
+                    vars.modeldim = int(model.transformer.hidden_size)
                     generator = model.generate
             else:
                 model = AutoModelForCausalLM.from_pretrained(vars.model)
+                vars.modeldim = int(model.transformer.hidden_size)
                 generator = model.generate
         
         # Suppress Author's Note by flagging square brackets (Old implementation)
