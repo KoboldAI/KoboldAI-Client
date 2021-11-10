@@ -591,6 +591,12 @@ if(not vars.model in ["InferKit", "Colab", "OAI", "ReadOnly"]):
             return stopping_criteria
         transformers.generation_utils.GenerationMixin._get_stopping_criteria = new_get_stopping_criteria
 
+        def get_hidden_size_from_model(model):
+            try:
+                return int(model.transformer.hidden_size)
+            except:
+                return int(model.transformer.embed_dim)
+
         # If custom GPT Neo model was chosen
         if(vars.model == "NeoCustom"):
             model_config = open(vars.custmodpth + "/config.json", "r")
@@ -632,20 +638,20 @@ if(not vars.model in ["InferKit", "Colab", "OAI", "ReadOnly"]):
             if(vars.hascuda):
                 if(vars.usegpu):
                     model = AutoModelForCausalLM.from_pretrained(vars.model, device=0)
-                    vars.modeldim = int(model.transformer.hidden_size)
+                    vars.modeldim = get_hidden_size_from_model(model)
                     model = model.to(0)
                     generator = model.generate
                 elif(vars.breakmodel):  # Use both RAM and VRAM (breakmodel)
                     model = AutoModelForCausalLM.from_pretrained(vars.model)
-                    vars.modeldim = int(model.transformer.hidden_size)
+                    vars.modeldim = get_hidden_size_from_model(model)
                     device_config(model)
                 else:
                     model = AutoModelForCausalLM.from_pretrained(vars.model)
-                    vars.modeldim = int(model.transformer.hidden_size)
+                    vars.modeldim = get_hidden_size_from_model(model)
                     generator = model.generate
             else:
                 model = AutoModelForCausalLM.from_pretrained(vars.model)
-                vars.modeldim = int(model.transformer.hidden_size)
+                vars.modeldim = get_hidden_size_from_model(model)
                 generator = model.generate
         
         # Suppress Author's Note by flagging square brackets (Old implementation)
