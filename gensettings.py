@@ -118,6 +118,17 @@ gensettingstf = [{
 	"step": 1,
 	"default": 0,
     "tooltip": "Turn this on if you are playing a Choose your Adventure model."
+	},
+	{
+	"uitype": "toggle",
+	"unit": "bool",
+	"label": "Dynamic WI Scan",
+	"id": "setdynamicscan", 
+	"min": 0,
+	"max": 1,
+	"step": 1,
+	"default": 0,
+    "tooltip": "Scan the AI's output for world info keys as it's generating the output. Turning this on will set Gens Per Action to 1, as these two features are not currently compatible with each other."
 	}]
 
 gensettingsik =[{
