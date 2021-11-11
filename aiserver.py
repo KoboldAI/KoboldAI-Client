@@ -735,31 +735,31 @@ def do_connect():
         sendsettings()
         refresh_settings()
         vars.laststory = None
-        emit('from_server', {'cmd': 'setstoryname', 'data': vars.laststory}, broadcast=True)
+        emit('from_server', {'cmd': 'setstoryname', 'data': vars.laststory})
         sendwi()
-        emit('from_server', {'cmd': 'setmemory', 'data': vars.memory}, broadcast=True)
-        emit('from_server', {'cmd': 'setanote', 'data': vars.authornote}, broadcast=True)
+        emit('from_server', {'cmd': 'setmemory', 'data': vars.memory})
+        emit('from_server', {'cmd': 'setanote', 'data': vars.authornote})
         vars.mode = "play"
     else:
         # Game in session, send current game data and ready state to browser
         refresh_story()
         sendsettings()
         refresh_settings()
-        emit('from_server', {'cmd': 'setstoryname', 'data': vars.laststory}, broadcast=True)
+        emit('from_server', {'cmd': 'setstoryname', 'data': vars.laststory})
         sendwi()
-        emit('from_server', {'cmd': 'setmemory', 'data': vars.memory}, broadcast=True)
-        emit('from_server', {'cmd': 'setanote', 'data': vars.authornote}, broadcast=True)
+        emit('from_server', {'cmd': 'setmemory', 'data': vars.memory})
+        emit('from_server', {'cmd': 'setanote', 'data': vars.authornote})
         if(vars.mode == "play"):
             if(not vars.aibusy):
-                emit('from_server', {'cmd': 'setgamestate', 'data': 'ready'}, broadcast=True)
+                emit('from_server', {'cmd': 'setgamestate', 'data': 'ready'})
             else:
-                emit('from_server', {'cmd': 'setgamestate', 'data': 'wait'}, broadcast=True)
+                emit('from_server', {'cmd': 'setgamestate', 'data': 'wait'})
         elif(vars.mode == "edit"):
-            emit('from_server', {'cmd': 'editmode', 'data': 'true'}, broadcast=True)
+            emit('from_server', {'cmd': 'editmode', 'data': 'true'})
         elif(vars.mode == "memory"):
-            emit('from_server', {'cmd': 'memmode', 'data': 'true'}, broadcast=True)
+            emit('from_server', {'cmd': 'memmode', 'data': 'true'})
         elif(vars.mode == "wi"):
-            emit('from_server', {'cmd': 'wimode', 'data': 'true'}, broadcast=True)
+            emit('from_server', {'cmd': 'wimode', 'data': 'true'})
 
 #==================================================================#
 # Event triggered when browser SocketIO sends data to the server
