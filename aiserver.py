@@ -727,6 +727,8 @@ def do_connect():
     emit('from_server', {'cmd': 'connected', 'smandelete': vars.smandelete, 'smanrename': vars.smanrename})
     if(vars.remote):
         emit('from_server', {'cmd': 'runs_remotely'})
+    if(vars.allowsp):
+        emit('from_server', {'cmd': 'allowsp', 'data': vars.allowsp})
     
     if(not vars.gamestarted):
         setStartState()
@@ -970,8 +972,6 @@ def get_message(msg):
 #==================================================================#
 def setStartState():
     txt = "<span>Welcome to <span class=\"color_cyan\">KoboldAI</span>! You are running <span class=\"color_green\">"+getmodelname()+"</span>.<br/>"
-    if(vars.allowsp):
-        emit('from_server', {'cmd': 'allowsp', 'data': vars.allowsp}, broadcast=True)
     if(not vars.noai):
         txt = txt + "Please load a game or enter a prompt below to begin!</span>"
     else:
