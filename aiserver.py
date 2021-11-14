@@ -638,7 +638,7 @@ if(not vars.model in ["InferKit", "Colab", "OAI", "ReadOnly"]):
             tokenizer = GPT2Tokenizer.from_pretrained(vars.model)
             if(vars.hascuda):
                 if(vars.usegpu):
-                    model = AutoModelForCausalLM.from_pretrained(vars.model, device=0)
+                    model = AutoModelForCausalLM.from_pretrained(vars.model)
                     vars.modeldim = get_hidden_size_from_model(model)
                     model = model.to(0)
                     generator = model.generate
