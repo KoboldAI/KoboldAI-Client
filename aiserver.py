@@ -225,6 +225,10 @@ def device_config(model):
     elif(args.breakmodel_layers is not None):
         breakmodel.gpu_blocks = [n_layers - max(0, min(n_layers, args.breakmodel_layers))]
         n_layers -= sum(breakmodel.gpu_blocks)
+    elif(args.model is not None):
+        print("Breakmodel not specified, assuming GPU 0")
+        breakmodel.gpu_blocks = [n_layers]
+        n_layers = 0
     else:
         device_count = torch.cuda.device_count()
         if(device_count > 1):
