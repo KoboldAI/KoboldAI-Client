@@ -627,9 +627,9 @@ if(not vars.model in ["InferKit", "Colab", "OAI", "ReadOnly"]):
         elif(vars.model == "GPT2Custom"):
             model_config = open(vars.custmodpth + "/config.json", "r")
             js   = json.load(model_config)
-            vars.modeldim = int(js['hidden_size'])
             model     = GPT2LMHeadModel.from_pretrained(vars.custmodpth)
             tokenizer = GPT2Tokenizer.from_pretrained(vars.custmodpth)
+            vars.modeldim = get_hidden_size_from_model(model)
             # Is CUDA available? If so, use GPU, otherwise fall back to CPU
             if(vars.hascuda and vars.usegpu):
                 model = model.to(0)
