@@ -210,8 +210,6 @@ def device_config(model):
     global breakmodel, generator
     import breakmodel
     n_layers = model.config.num_layers
-    model.half().to('cpu')
-    gc.collect()
     if(args.breakmodel_gpulayers is not None):
         try:
             breakmodel.gpu_blocks = list(map(int, args.breakmodel_gpulayers.split(',')))
@@ -274,6 +272,18 @@ def device_config(model):
     print(colors.PURPLE + "\nFinal device configuration:")
     device_list(n_layers)
 
+    # If all layers are on the same device, use the old GPU generation mode
+    while(breakmodel.gpu_layers[-1] == 0):
+        breakmodel.gpu_layers.pop()
+    if(breakmodel.gpu_layers[-1] in (-1, model.config.num_layers)):
+        vars.breakmodel = False
+        vars.usegpu = True
+        model = model.to(len(breakmodel.gpu_layers)-1)
+        generator = model.generate
+        return
+
+    model.half().to('cpu')
+    gc.collect()
     model.transformer.wte.to(breakmodel.primary_device)
     model.transformer.ln_f.to(breakmodel.primary_device)
     if(hasattr(model, 'lm_head')):
@@ -359,8 +369,8 @@ if(not vars.model in ["InferKit", "Colab", "OAI", "ReadOnly"]):
             print("(slower than GPU-only but uses less VRAM) or between multiple GPUs")
             print("(allowing you to use the combined VRAM of all your GPUs).")
             print("Currently only GPT-Neo and GPT-J models support this feature.")
-            print("{0}Use hybrid generation, GPU-only generation or CPU-only generation?:  (Default hybrid){1}".format(colors.CYAN, colors.END))
-            print(f"    1 - Hybrid generation\n    2 - GPU\n    3 - CPU\n")
+            print("{0}Use hybrid generation or CPU-only generation?:  (Default hybrid){1}".format(colors.CYAN, colors.END))
+            print(f"    1 - Hybrid generation\n    2 - CPU\n")
         else:
             print("    1 - GPU\n    2 - CPU\n")
         genselected = False
@@ -382,10 +392,6 @@ if(not vars.model in ["InferKit", "Colab", "OAI", "ReadOnly"]):
                     vars.usegpu = True
                     genselected = True
             elif(genselect.isnumeric() and int(genselect) == 2):
-                vars.breakmodel = False
-                vars.usegpu = True
-                genselected = True
-            elif(genselect.isnumeric() and int(genselect) == 3):
                 vars.breakmodel = False
                 vars.usegpu = False
                 genselected = True
