@@ -210,8 +210,6 @@ def device_config(model):
     global breakmodel, generator
     import breakmodel
     n_layers = model.config.num_layers
-    model.half().to('cpu')
-    gc.collect()
     if(args.breakmodel_gpulayers is not None):
         try:
             breakmodel.gpu_blocks = list(map(int, args.breakmodel_gpulayers.split(',')))
@@ -274,6 +272,18 @@ def device_config(model):
     print(colors.PURPLE + "\nFinal device configuration:")
     device_list(n_layers)
 
+    # If all layers are on the same device, use the old GPU generation mode
+    while(len(breakmodel.gpu_blocks) and breakmodel.gpu_blocks[-1] == 0):
+        breakmodel.gpu_blocks.pop()
+    if(len(breakmodel.gpu_blocks) and breakmodel.gpu_blocks[-1] in (-1, model.config.num_layers)):
+        vars.breakmodel = False
+        vars.usegpu = True
+        model = model.to(len(breakmodel.gpu_blocks)-1)
+        generator = model.generate
+        return
+
+    model.half().to('cpu')
+    gc.collect()
     model.transformer.wte.to(breakmodel.primary_device)
     model.transformer.ln_f.to(breakmodel.primary_device)
     if(hasattr(model, 'lm_head')):
