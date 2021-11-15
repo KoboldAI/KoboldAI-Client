@@ -273,12 +273,12 @@ def device_config(model):
     device_list(n_layers)
 
     # If all layers are on the same device, use the old GPU generation mode
-    while(len(breakmodel.gpu_layers) and breakmodel.gpu_layers[-1] == 0):
-        breakmodel.gpu_layers.pop()
-    if(len(breakmodel.gpu_layers) and breakmodel.gpu_layers[-1] in (-1, model.config.num_layers)):
+    while(len(breakmodel.gpu_blocks) and breakmodel.gpu_blocks[-1] == 0):
+        breakmodel.gpu_blocks.pop()
+    if(len(breakmodel.gpu_blocks) and breakmodel.gpu_blocks[-1] in (-1, model.config.num_layers)):
         vars.breakmodel = False
         vars.usegpu = True
-        model = model.to(len(breakmodel.gpu_layers)-1)
+        model = model.to(len(breakmodel.gpu_blocks)-1)
         generator = model.generate
         return
 
