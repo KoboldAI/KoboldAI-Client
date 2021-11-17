@@ -1452,8 +1452,6 @@ def generate(txt, min, max, found_entries=set()):
             gen_in = gen_in.to(0)
         elif(vars.hascuda and vars.breakmodel):
             gen_in = gen_in.to(breakmodel.primary_device)
-        elif(vars.hascuda):
-            gen_in = gen_in.to(0)
         else:
             gen_in = gen_in.to('cpu')
 
