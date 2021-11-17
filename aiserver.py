@@ -609,17 +609,20 @@ if(not vars.model in ["InferKit", "Colab", "OAI", "ReadOnly"]):
             try:
                 return int(model.transformer.hidden_size)
             except:
-                return int(model.transformer.embed_dim)
+                try:
+                    return int(model.transformer.embed_dim)
+                except:
+                    return int(model.lm_head.in_features)
 
         # If custom GPT Neo model was chosen
         if(vars.model == "NeoCustom"):
             model_config = open(vars.custmodpth + "/config.json", "r")
             js   = json.load(model_config)
-            vars.modeldim = int(js['hidden_size'])
             if("model_type" in js):
                 model     = AutoModelForCausalLM.from_pretrained(vars.custmodpth)
             else:
                 model     = GPTNeoForCausalLM.from_pretrained(vars.custmodpth)
+            vars.modeldim = get_hidden_size_from_model(model)
             tokenizer = GPT2Tokenizer.from_pretrained(vars.custmodpth)
             # Is CUDA available? If so, use GPU, otherwise fall back to CPU
             if(vars.hascuda):
