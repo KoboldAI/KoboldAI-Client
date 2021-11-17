@@ -278,10 +278,17 @@ def device_config(model):
     if(len(breakmodel.gpu_blocks) and breakmodel.gpu_blocks[-1] in (-1, model.config.num_layers)):
         vars.breakmodel = False
         vars.usegpu = True
-        model = model.to(len(breakmodel.gpu_blocks)-1)
+        model = model.half().to(len(breakmodel.gpu_blocks)-1)
         generator = model.generate
         return
 
+    if(not breakmodel.gpu_blocks):
+        print("Nothing assigned to a GPU, reverting to CPU only mode")
+        vars.breakmodel = False
+        vars.usegpu = False
+        model = model.half().to('cpu')
+        generator = model.generate
+        return
     model.half().to('cpu')
     gc.collect()
     model.transformer.wte.to(breakmodel.primary_device)
@@ -364,15 +371,13 @@ if(not vars.model in ["InferKit", "Colab", "OAI", "ReadOnly"]):
             vars.breakmodel = False
     elif(vars.hascuda):    
         if(vars.bmsupported):
-            print(colors.YELLOW + "You're using a model that supports hybrid generation!")
-            print("This feature allows you to split the model between the CPU and GPU(s)")
-            print("(slower than GPU-only but uses less VRAM) or between multiple GPUs")
-            print("(allowing you to use the combined VRAM of all your GPUs).")
-            print("Currently only GPT-Neo and GPT-J models support this feature.")
-            print("{0}Use hybrid generation or CPU-only generation?:  (Default hybrid){1}".format(colors.CYAN, colors.END))
-            print(f"    1 - Hybrid generation\n    2 - CPU\n")
+            genselected = True
+            vars.usegpu = False
+            vars.breakmodel = True
         else:
             print("    1 - GPU\n    2 - CPU\n")
+            genselected = False
+    else:
         genselected = False
 
     if(vars.hascuda):
@@ -619,15 +624,15 @@ if(not vars.model in ["InferKit", "Colab", "OAI", "ReadOnly"]):
             model_config = open(vars.custmodpth + "/config.json", "r")
             js   = json.load(model_config)
             if("model_type" in js):
-                model     = AutoModelForCausalLM.from_pretrained(vars.custmodpth)
+                model     = AutoModelForCausalLM.from_pretrained(vars.custmodpth, cache_dir="cache/")
             else:
-                model     = GPTNeoForCausalLM.from_pretrained(vars.custmodpth)
+                model     = GPTNeoForCausalLM.from_pretrained(vars.custmodpth, cache_dir="cache/")
             vars.modeldim = get_hidden_size_from_model(model)
-            tokenizer = GPT2Tokenizer.from_pretrained(vars.custmodpth)
+            tokenizer = GPT2Tokenizer.from_pretrained(vars.custmodpth, cache_dir="cache/")
             # Is CUDA available? If so, use GPU, otherwise fall back to CPU
             if(vars.hascuda):
                 if(vars.usegpu):
-                    model = model.to(0)
+                    model = model.half().to(0)
                     generator = model.generate
                 elif(vars.breakmodel):  # Use both RAM and VRAM (breakmodel)
                     device_config(model)
@@ -639,35 +644,35 @@ if(not vars.model in ["InferKit", "Colab", "OAI", "ReadOnly"]):
         elif(vars.model == "GPT2Custom"):
             model_config = open(vars.custmodpth + "/config.json", "r")
             js   = json.load(model_config)
-            model     = GPT2LMHeadModel.from_pretrained(vars.custmodpth)
-            tokenizer = GPT2Tokenizer.from_pretrained(vars.custmodpth)
+            model     = GPT2LMHeadModel.from_pretrained(vars.custmodpth, cache_dir="cache/")
+            tokenizer = GPT2Tokenizer.from_pretrained(vars.custmodpth, cache_dir="cache/")
             vars.modeldim = get_hidden_size_from_model(model)
             # Is CUDA available? If so, use GPU, otherwise fall back to CPU
             if(vars.hascuda and vars.usegpu):
-                model = model.to(0)
+                model = model.half().to(0)
                 generator = model.generate
             else:
                 generator = model.generate
         # If base HuggingFace model was chosen
         else:
             # Is CUDA available? If so, use GPU, otherwise fall back to CPU
-            tokenizer = GPT2Tokenizer.from_pretrained(vars.model)
+            tokenizer = GPT2Tokenizer.from_pretrained(vars.model, cache_dir="cache/")
             if(vars.hascuda):
                 if(vars.usegpu):
-                    model = AutoModelForCausalLM.from_pretrained(vars.model)
+                    model = AutoModelForCausalLM.from_pretrained(vars.model, cache_dir="cache/")
                     vars.modeldim = get_hidden_size_from_model(model)
-                    model = model.to(0)
+                    model = model.half().to(0)
                     generator = model.generate
                 elif(vars.breakmodel):  # Use both RAM and VRAM (breakmodel)
-                    model = AutoModelForCausalLM.from_pretrained(vars.model)
+                    model = AutoModelForCausalLM.from_pretrained(vars.model, cache_dir="cache/")
                     vars.modeldim = get_hidden_size_from_model(model)
                     device_config(model)
                 else:
-                    model = AutoModelForCausalLM.from_pretrained(vars.model)
+                    model = AutoModelForCausalLM.from_pretrained(vars.model, cache_dir="cache/")
                     vars.modeldim = get_hidden_size_from_model(model)
                     generator = model.generate
             else:
-                model = AutoModelForCausalLM.from_pretrained(vars.model)
+                model = AutoModelForCausalLM.from_pretrained(vars.model, cache_dir="cache/")
                 vars.modeldim = get_hidden_size_from_model(model)
                 generator = model.generate
         

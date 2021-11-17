@@ -1,16 +1,18 @@
 # Ignore client settings file
-client.settings
+settings/*
 
 # Ignore stories file except for test_story
 stories/*
-settings/*
 !stories/sample_story.json
+
+# Ignore stuff that would polute our Git
 /.project
 *.bak
 miniconda3/*
 *.settings
 __pycache__
 *.log
+cache/*
 
 # Ignore PyCharm project files.
 .idea
