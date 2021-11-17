@@ -128,7 +128,7 @@ gensettingstf = [{
 	"max": 1,
 	"step": 1,
 	"default": 0,
-    "tooltip": "Scan the AI's output for world info keys as it's generating the output. Turning this on will set Gens Per Action to 1, as these two features are not currently compatible with each other."
+    "tooltip": "Scan the AI's output for world info keys as it's generating the output."
 	}]
 
 gensettingsik =[{
