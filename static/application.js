@@ -76,7 +76,6 @@ var connected = false;
 var newly_loaded = true;
 var modified_chunks = new Set();
 var empty_chunks = new Set();
-var mutation_observer = null;
 var gametext_bound = false;
 var saved_prompt = "...";
 var override_focusout = false;
@@ -865,6 +864,48 @@ function chunkOnTextInput(event) {
 	}
 }
 
+// This gets run when one or more chunks are edited.  The event occurs before
+// the actual edits are made by the browser, so we are free to check which
+// nodes are selected or stop the event from occurring.
+function chunkOnBeforeInput(event) {
+	// Register all selected chunks as having been modified
+	applyChunkDeltas(getSelectedNodes());
+
+	// Fix editing across chunks and paragraphs in Firefox 93.0 and higher
+	if(event.originalEvent.inputType === "deleteContentBackward" && document.queryCommandSupported && document.execCommand && document.queryCommandSupported('delete')) {
+		event.preventDefault();
+		document.execCommand('delete');
+	}
+	var s = rangy.getSelection();
+	if(!s.isCollapsed) {
+		s.deleteFromDocument();
+	}
+	if(buildChunkSetFromNodeArray(getSelectedNodes()).size === 0) {
+		var s = rangy.getSelection();
+		var r = s.getRangeAt(0);
+		if(document.queryCommandSupported && document.execCommand && document.queryCommandSupported('insertHTML')) {
+			document.execCommand('insertHTML', false, '<span id="_EDITOR_SENTINEL_">|</span>');
+		} else {
+			var t = document.createTextNode('|');
+			var b = document.createElement('span');
+			b.id = "_EDITOR_SENTINEL_";
+			b.insertNode(t);
+			r.insertNode(b);
+		}
+		var sentinel = document.getElementById("_EDITOR_SENTINEL_");
+		if(sentinel.nextSibling && sentinel.nextSibling.tagName === "CHUNK") {
+			r.selectNodeContents(sentinel.nextSibling);
+			r.collapse(true);
+		} else if(sentinel.previousSibling && sentinel.previousSibling.tagName === "CHUNK") {
+			r.selectNodeContents(sentinel.previousSibling);
+			r.collapse(false);
+		}
+		s.removeAllRanges();
+		s.addRange(r);
+		sentinel.parentNode.removeChild(sentinel);
+	}
+}
+
 function chunkOnKeyDown(event) {
 	// Make escape commit the changes (Originally we had Enter here to but its not required and nicer for users if we let them type freely
 	// You can add the following after 27 if you want it back to committing on enter : || (!event.shiftKey && event.keyCode == 13)
@@ -1080,26 +1121,11 @@ function highlightEditingChunks() {
 	}
 }
 
-// This gets run every time the text in a chunk is edited
-// or a chunk is deleted
-function chunkOnDOMMutate(mutations, observer) {
-	if(!gametext_bound || !allowedit) {
-		return;
-	}
-	var nodes = [];
-	for(var i = 0; i < mutations.length; i++) {
-		var mutation = mutations[i];
-		nodes = nodes.concat(Array.from(mutation.addedNodes), Array.from(mutation.removedNodes));
-		nodes.push(mutation.target);
-	}
-	applyChunkDeltas(nodes);
-}
-
 // This gets run every time you try to paste text into the editor
 function chunkOnPaste(event) {
-	if(!gametext_bound) {
-		return;
-	}
+	// Register the chunk we're pasting in as having been modified
+	applyChunkDeltas(getSelectedNodes());
+
 	// If possible, intercept paste events into the editor in order to always
 	// paste as plaintext
 	if(event.originalEvent.clipboardData && document.queryCommandSupported && document.execCommand && document.queryCommandSupported('insertHTML')) {
@@ -1172,12 +1198,10 @@ function chunkOnFocusOut(event) {
 }
 
 function bindGametext() {
-	mutation_observer.observe(game_text[0], {characterData: true, childList: true, subtree: true});
 	gametext_bound = true;
 }
 
 function unbindGametext() {
-	mutation_observer.disconnect();
 	gametext_bound = false;
 }
 
@@ -1612,6 +1636,8 @@ $(document).ready(function(){
 	// Register editing events
 	game_text.on('textInput',
 		chunkOnTextInput
+	).on('beforeinput',
+		chunkOnBeforeInput
 	).on('keydown',
 		chunkOnKeyDown
 	).on('paste', 
@@ -1623,7 +1649,6 @@ $(document).ready(function(){
 	).on('focusout',
 		chunkOnFocusOut
 	);
-	mutation_observer = new MutationObserver(chunkOnDOMMutate);
 
 	// This is required for the editor to work correctly in Firefox on desktop
 	// because the gods of HTML and JavaScript say so
