@@ -405,13 +405,13 @@ if(not vars.model in ["InferKit", "Colab", "OAI", "ReadOnly"]):
 
 # Ask for API key if InferKit was selected
 if(vars.model == "InferKit"):
-    if(not path.exists("settings/" + getmodelname() + ".settings")):
+    if(not path.exists("settings/" + getmodelname().replace('/', '_') + ".settings")):
         # If the client settings file doesn't exist, create it
         print("{0}Please enter your InferKit API key:{1}\n".format(colors.CYAN, colors.END))
         vars.apikey = input("Key> ")
         # Write API key to file
         os.makedirs('settings', exist_ok=True)
-        file = open("settings/" + getmodelname() + ".settings", "w")
+        file = open("settings/" + getmodelname().replace('/', '_') + ".settings", "w")
         try:
             js = {"apikey": vars.apikey}
             file.write(json.dumps(js, indent=3))
@@ -419,7 +419,7 @@ if(vars.model == "InferKit"):
             file.close()
     else:
         # Otherwise open it up
-        file = open("settings/" + getmodelname() + ".settings", "r")
+        file = open("settings/" + getmodelname().replace('/', '_') + ".settings", "r")
         # Check if API key exists
         js = json.load(file)
         if("apikey" in js and js["apikey"] != ""):
@@ -432,7 +432,7 @@ if(vars.model == "InferKit"):
             vars.apikey = input("Key> ")
             js["apikey"] = vars.apikey
             # Write API key to file
-            file = open("settings/" + getmodelname() + ".settings", "w")
+            file = open("settings/" + getmodelname().replace('/', '_') + ".settings", "w")
             try:
                 file.write(json.dumps(js, indent=3))
             finally:
@@ -440,13 +440,13 @@ if(vars.model == "InferKit"):
 
 # Ask for API key if OpenAI was selected
 if(vars.model == "OAI"):
-    if(not path.exists("settings/" + getmodelname() + ".settings")):
+    if(not path.exists("settings/" + getmodelname().replace('/', '_') + ".settings")):
         # If the client settings file doesn't exist, create it
         print("{0}Please enter your OpenAI API key:{1}\n".format(colors.CYAN, colors.END))
         vars.oaiapikey = input("Key> ")
         # Write API key to file
         os.makedirs('settings', exist_ok=True)
-        file = open("settings/" + getmodelname() + ".settings", "w")
+        file = open("settings/" + getmodelname().replace('/', '_') + ".settings", "w")
         try:
             js = {"oaiapikey": vars.oaiapikey}
             file.write(json.dumps(js, indent=3))
@@ -454,7 +454,7 @@ if(vars.model == "OAI"):
             file.close()
     else:
         # Otherwise open it up
-        file = open("settings/" + getmodelname() + ".settings", "r")
+        file = open("settings/" + getmodelname().replace('/', '_') + ".settings", "r")
         # Check if API key exists
         js = json.load(file)
         if("oaiapikey" in js and js["oaiapikey"] != ""):
@@ -467,7 +467,7 @@ if(vars.model == "OAI"):
             vars.oaiapikey = input("Key> ")
             js["oaiapikey"] = vars.oaiapikey
             # Write API key to file
-            file = open("settings/" + getmodelname() + ".settings", "w")
+            file = open("settings/" + getmodelname().replace('/', '_') + ".settings", "w")
             try:
                 file.write(json.dumps(js, indent=3))
             finally:
@@ -1046,7 +1046,7 @@ def savesettings():
     # Write it
     if not os.path.exists('settings'):
         os.mkdir('settings')
-    file = open("settings/" + getmodelname() + ".settings", "w")
+    file = open("settings/" + getmodelname().replace('/', '_') + ".settings", "w")
     try:
         file.write(json.dumps(js, indent=3))
     finally:
@@ -1056,9 +1056,9 @@ def savesettings():
 #  Read settings from client file JSON and send to vars
 #==================================================================#
 def loadsettings():
-    if(path.exists("settings/" + getmodelname() + ".settings")):
+    if(path.exists("settings/" + getmodelname().replace('/', '_') + ".settings")):
         # Read file contents into JSON object
-        file = open("settings/" + getmodelname() + ".settings", "r")
+        file = open("settings/" + getmodelname().replace('/', '_') + ".settings", "r")
         js   = json.load(file)
         
         # Copy file contents to vars
