@@ -11,6 +11,11 @@ chunk {
 	font-weight: bold;
 }
 
+#gametext comment {
+	color: #888;
+	font-style: italic;
+}
+
 chunk.editing, chunk.editing * {
 	color: #cdf !important;
 	font-weight: normal !important;
