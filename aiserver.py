@@ -1391,12 +1391,12 @@ def calcsubmit(txt):
             forceanote = True
         
         if(vars.useprompt):
-            budget = vars.ikmax - len(vars.prompt) - len(anotetxt) - len(mem) - len(winfo) - 1
+            budget = vars.ikmax - len(vars.comregex_ai.sub('', vars.prompt)) - len(anotetxt) - len(mem) - len(winfo) - 1
         else:
             budget = vars.ikmax - len(anotetxt) - len(mem) - len(winfo) - 1
             
         subtxt = ""
-        prompt = vars.prompt
+        prompt = vars.comregex_ai.sub('', vars.prompt)
         n = 0
         for key in reversed(vars.actions):
             chunk = vars.actions[key]
@@ -1417,7 +1417,7 @@ def calcsubmit(txt):
             # add some prompt.
             if(not vars.useprompt):
                 if(budget > 0):
-                    prompt = vars.prompt[-budget:]
+                    prompt = vars.comregex_ai.sub('', vars.prompt)[-budget:]
                 else:
                     prompt = ""
             
@@ -2092,9 +2092,9 @@ def checkworldinfo(txt, force_use_txt=False):
         if(ln >= depth):
             txt = "".join(chunks)
         elif(ln > 0):
-            txt = vars.prompt + "".join(chunks)
+            txt = vars.comregex_ai.sub('', vars.prompt) + "".join(chunks)
         elif(ln == 0):
-            txt = vars.prompt
+            txt = vars.comregex_ai.sub('', vars.prompt)
 
     if(force_use_txt):
         txt += original_txt
