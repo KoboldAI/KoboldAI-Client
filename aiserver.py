@@ -123,6 +123,8 @@ class vars:
     regex_sl    = re.compile(r'\n*(?<=.) *\n(.|\n)*')  # Pattern for limiting the output to a single line
     acregex_ai  = re.compile(r'\n* *>(.|\n)*')  # Pattern for matching adventure actions from the AI so we can remove them
     acregex_ui  = re.compile(r'^ *(&gt;.*)$', re.MULTILINE)    # Pattern for matching actions in the HTML-escaped story so we can apply colouring, etc (make sure to encase part to format in parentheses)
+    comregex_ai = re.compile(r'(?:\n<\|(?:.|\n)*?\|>(?=\n|$))|(?:<\|(?:.|\n)*?\|>\n?)')  # Pattern for matching comments to remove them before sending them to the AI
+    comregex_ui = re.compile(r'(&lt;\|(?:.|\n)*?\|&gt;)')  # Pattern for matching comments in the editor
     actionmode  = 1
     adventure   = False
     dynamicscan = False
@@ -1270,7 +1272,7 @@ def calcsubmitbudget(actionlen, winfo, mem, anotetxt, actions):
     lnanote      = 0   # Placeholder for Author's Note length
 
     # Calculate token budget
-    prompttkns = tokenizer.encode(vars.prompt)
+    prompttkns = tokenizer.encode(vars.comregex_ai.sub('', vars.prompt))
     lnprompt   = len(prompttkns)
     
     memtokens = tokenizer.encode(mem)
@@ -1292,7 +1294,7 @@ def calcsubmitbudget(actionlen, winfo, mem, anotetxt, actions):
 
     if(actionlen == 0):
         # First/Prompt action
-        subtxt = vars.memory + winfo + anotetxt + vars.prompt
+        subtxt = vars.memory + winfo + anotetxt + vars.comregex_ai.sub('', vars.prompt)
         lnsub  = lnsp + lnmem + lnwi + lnprompt + lnanote
         return subtxt, lnsub+1, lnsub+vars.genamt
     else:
@@ -1305,7 +1307,7 @@ def calcsubmitbudget(actionlen, winfo, mem, anotetxt, actions):
         # Get most recent action tokens up to our budget
         n = 0
         for key in reversed(actions):
-            chunk = actions[key]
+            chunk = vars.comregex_ai.sub('', actions[key])
             
             if(budget <= 0):
                 break
@@ -1389,12 +1391,12 @@ def calcsubmit(txt):
             forceanote = True
         
         if(vars.useprompt):
-            budget = vars.ikmax - len(vars.prompt) - len(anotetxt) - len(mem) - len(winfo) - 1
+            budget = vars.ikmax - len(vars.comregex_ai.sub('', vars.prompt)) - len(anotetxt) - len(mem) - len(winfo) - 1
         else:
             budget = vars.ikmax - len(anotetxt) - len(mem) - len(winfo) - 1
             
         subtxt = ""
-        prompt = vars.prompt
+        prompt = vars.comregex_ai.sub('', vars.prompt)
         n = 0
         for key in reversed(vars.actions):
             chunk = vars.actions[key]
@@ -1415,7 +1417,7 @@ def calcsubmit(txt):
             # add some prompt.
             if(not vars.useprompt):
                 if(budget > 0):
-                    prompt = vars.prompt[-budget:]
+                    prompt = vars.comregex_ai.sub('', vars.prompt)[-budget:]
                 else:
                     prompt = ""
             
@@ -1777,11 +1779,12 @@ def applyoutputformatting(txt):
 # Sends the current story content to the Game Screen
 #==================================================================#
 def refresh_story():
-    text_parts = ['<chunk n="0" id="n0" tabindex="-1">', html.escape(vars.prompt), '</chunk>']
+    text_parts = ['<chunk n="0" id="n0" tabindex="-1">', vars.comregex_ui.sub(lambda m: '\n'.join('<comment>' + l + '</comment>' for l in m.group().split('\n')), html.escape(vars.prompt)), '</chunk>']
     for idx in vars.actions:
         item = vars.actions[idx]
         idx += 1
         item = html.escape(item)
+        item = vars.comregex_ui.sub(lambda m: '\n'.join('<comment>' + l + '</comment>' for l in m.group().split('\n')), item)  # Add special formatting to comments
         item = vars.acregex_ui.sub('<action>\\1</action>', item)  # Add special formatting to adventure actions
         text_parts.extend(('<chunk n="', str(idx), '" id="n', str(idx), '" tabindex="-1">', item, '</chunk>'))
     emit('from_server', {'cmd': 'updatescreen', 'gamestarted': vars.gamestarted, 'data': formatforhtml(''.join(text_parts))}, broadcast=True)
@@ -1809,6 +1812,7 @@ def update_story_chunk(idx: Union[int, str]):
         text = vars.actions[idx - 1]
 
     item = html.escape(text)
+    item = vars.comregex_ui.sub(lambda m: '\n'.join('<comment>' + l + '</comment>' for l in m.group().split('\n')), item)  # Add special formatting to comments
     item = vars.acregex_ui.sub('<action>\\1</action>', item)  # Add special formatting to adventure actions
 
     chunk_text = f'<chunk n="{idx}" id="n{idx}" tabindex="-1">{formatforhtml(item)}</chunk>'
@@ -2088,9 +2092,9 @@ def checkworldinfo(txt, force_use_txt=False):
         if(ln >= depth):
             txt = "".join(chunks)
         elif(ln > 0):
-            txt = vars.prompt + "".join(chunks)
+            txt = vars.comregex_ai.sub('', vars.prompt) + "".join(chunks)
         elif(ln == 0):
-            txt = vars.prompt
+            txt = vars.comregex_ai.sub('', vars.prompt)
 
     if(force_use_txt):
         txt += original_txt
