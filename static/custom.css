@@ -19,6 +19,7 @@ chunk {
 chunk.editing, chunk.editing * {
 	color: #cdf !important;
 	font-weight: normal !important;
+	font-style: normal !important;
 }
 
 #gametext, chunk, chunk * {
