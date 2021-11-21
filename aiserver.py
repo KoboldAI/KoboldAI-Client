@@ -108,6 +108,7 @@ class vars:
     loadselect  = ""     # Temporary storage for story filename to load
     spselect    = ""     # Temporary storage for soft prompt filename to load
     sp          = None   # Current soft prompt tensor (as a NumPy array)
+    sp_length   = 0      # Length of current soft prompt in tokens, or 0 if not using a soft prompt
     svowname    = ""     # Filename that was flagged for overwrite confirm
     saveow      = False  # Whether or not overwrite confirm has been displayed
     genseqs     = []     # Temporary storage for generated sequences
@@ -700,6 +701,8 @@ else:
         assert vars.model == "TPUMeshTransformerGPTJ" and vars.custmodpth and os.path.isdir(vars.custmodpth)
         import tpu_mtj_backend
         tpu_mtj_backend.load_model(vars.custmodpth)
+        vars.allowsp = True
+        vars.modeldim = int(tpu_mtj_backend.params["d_model"])
         tokenizer = tpu_mtj_backend.tokenizer
 
 # Set up Flask routes
@@ -1684,10 +1687,17 @@ def tpumtjgenerate(txt, minimum, maximum, found_entries=None):
 
     # Submit input text to generator
     try:
-        if(vars.sp is not None):
-            raise ValueError("Softprompts are not supported by the TPU backend yet")
         if(vars.dynamicscan):
             raise ValueError("Dynamic world info scanning is not supported by the TPU backend yet")
+        
+        soft_tokens = None
+        if(vars.sp is not None):
+            soft_tokens = np.arange(
+                tpu_mtj_backend.params["n_vocab"] + tpu_mtj_backend.params["n_vocab_padding"],
+                tpu_mtj_backend.params["n_vocab"] + tpu_mtj_backend.params["n_vocab_padding"] + vars.sp_length,
+                dtype=np.uint32
+            )
+
         genout = tpu_mtj_backend.infer(
             txt,
             gen_len = maximum-minimum+1,
@@ -1697,6 +1707,8 @@ def tpumtjgenerate(txt, minimum, maximum, found_entries=None):
             tfs=vars.tfs,
             numseqs=vars.numseqs,
             repetition_penalty=vars.rep_pen,
+            soft_embeddings=vars.sp,
+            soft_tokens=soft_tokens,
         )
 
     except Exception as e:
@@ -2525,6 +2537,7 @@ def loadRequest(loadpath, filename=None):
 def spRequest(filename):
     if(len(filename) == 0):
         vars.sp = None
+        vars.sp_length = 0
         return
 
     global np
@@ -2548,7 +2561,20 @@ def spRequest(filename):
         tensor = np.float32(tensor)
     assert not np.isinf(tensor).any() and not np.isnan(tensor).any()
 
-    vars.sp = torch.from_numpy(tensor)
+    vars.sp_length = tensor.shape[0]
+
+    if(vars.model in ("TPUMeshTransformerGPTJ",)):
+        rows = tensor.shape[0]
+        padding_amount = -(rows % -tpu_mtj_backend.params["cores_per_replica"])
+        tensor = np.pad(tensor, ((0, padding_amount), (0, 0)))
+        tensor = tensor.reshape(
+            tpu_mtj_backend.params["cores_per_replica"],
+            -1,
+            tpu_mtj_backend.params["d_model"],
+        )
+        vars.sp = np.float32(tensor)
+    else:
+        vars.sp = torch.from_numpy(tensor)
 
 #==================================================================#
 # Import an AIDungon game exported with Mimi's tool
