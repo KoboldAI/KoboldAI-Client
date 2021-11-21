@@ -2572,7 +2572,7 @@ def spRequest(filename):
             -1,
             tpu_mtj_backend.params["d_model"],
         )
-        vars.sp = tensor
+        vars.sp = np.float32(tensor)
     else:
         vars.sp = torch.from_numpy(tensor)
 
