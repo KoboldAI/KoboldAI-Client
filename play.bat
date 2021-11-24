@@ -1,4 +1,5 @@
 @echo off
+%~d0
 cd %~dp0
 TITLE KoboldAI - Server
 SET /P M=<loader.settings
