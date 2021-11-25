@@ -14,7 +14,8 @@ from tkinter import messagebox
 import json
 import collections
 import zipfile
-from typing import Union, Dict, Set, List
+import packaging
+from typing import Any, Union, Dict, Set, List
 
 import requests
 import html
@@ -541,6 +542,7 @@ if(not vars.model in ["InferKit", "Colab", "OAI", "ReadOnly", "TPUMeshTransforme
         print("{0}Initializing transformers, please wait...{1}".format(colors.PURPLE, colors.END))
         from transformers import StoppingCriteria, GPT2Tokenizer, GPT2LMHeadModel, GPTNeoForCausalLM, GPTNeoModel, AutoModelForCausalLM
         import transformers.generation_utils
+        from transformers import __version__ as transformers_version
 
         # Patch transformers to use our soft prompt
         def patch_causallm(cls):
@@ -701,15 +703,21 @@ if(not vars.model in ["InferKit", "Colab", "OAI", "ReadOnly", "TPUMeshTransforme
                     return int(model.transformer.embed_dim)
                 except:
                     return int(model.lm_head.in_features)
+        
+        def maybe_low_cpu_mem_usage() -> Dict[str, Any]:
+            if(packaging.version.parse(transformers_version) < packaging.version.parse("4.11.0")):
+                print(f"\nWARNING:  Please upgrade to transformers 4.11.0 for lower RAM usage.  You have transformers {transformers_version}.", file=sys.stderr)
+                return {}
+            return {"low_cpu_mem_usage": True}
 
         # If custom GPT Neo model was chosen
         if(vars.model == "NeoCustom"):
             model_config = open(vars.custmodpth + "/config.json", "r")
             js   = json.load(model_config)
             if("model_type" in js):
-                model     = AutoModelForCausalLM.from_pretrained(vars.custmodpth, cache_dir="cache/")
+                model     = AutoModelForCausalLM.from_pretrained(vars.custmodpth, cache_dir="cache/", **maybe_low_cpu_mem_usage())
             else:
-                model     = GPTNeoForCausalLM.from_pretrained(vars.custmodpth, cache_dir="cache/")
+                model     = GPTNeoForCausalLM.from_pretrained(vars.custmodpth, cache_dir="cache/", **maybe_low_cpu_mem_usage())
             vars.modeldim = get_hidden_size_from_model(model)
             tokenizer = GPT2Tokenizer.from_pretrained(vars.custmodpth, cache_dir="cache/")
             # Is CUDA available? If so, use GPU, otherwise fall back to CPU
@@ -727,8 +735,8 @@ if(not vars.model in ["InferKit", "Colab", "OAI", "ReadOnly", "TPUMeshTransforme
         elif(vars.model == "GPT2Custom"):
             model_config = open(vars.custmodpth + "/config.json", "r")
             js   = json.load(model_config)
-            model     = GPT2LMHeadModel.from_pretrained(vars.custmodpth, cache_dir="cache/")
-            tokenizer = GPT2Tokenizer.from_pretrained(vars.custmodpth, cache_dir="cache/")
+            model     = GPT2LMHeadModel.from_pretrained(vars.custmodpth, cache_dir="cache/", **maybe_low_cpu_mem_usage())
+            tokenizer = GPT2Tokenizer.from_pretrained(vars.custmodpth, cache_dir="cache/", **maybe_low_cpu_mem_usage())
             vars.modeldim = get_hidden_size_from_model(model)
             # Is CUDA available? If so, use GPU, otherwise fall back to CPU
             if(vars.hascuda and vars.usegpu):
@@ -742,20 +750,20 @@ if(not vars.model in ["InferKit", "Colab", "OAI", "ReadOnly", "TPUMeshTransforme
             tokenizer = GPT2Tokenizer.from_pretrained(vars.model, cache_dir="cache/")
             if(vars.hascuda):
                 if(vars.usegpu):
-                    model = AutoModelForCausalLM.from_pretrained(vars.model, cache_dir="cache/")
+                    model = AutoModelForCausalLM.from_pretrained(vars.model, cache_dir="cache/", **maybe_low_cpu_mem_usage())
                     vars.modeldim = get_hidden_size_from_model(model)
                     model = model.half().to(0)
                     generator = model.generate
                 elif(vars.breakmodel):  # Use both RAM and VRAM (breakmodel)
-                    model = AutoModelForCausalLM.from_pretrained(vars.model, cache_dir="cache/")
+                    model = AutoModelForCausalLM.from_pretrained(vars.model, cache_dir="cache/", **maybe_low_cpu_mem_usage())
                     vars.modeldim = get_hidden_size_from_model(model)
                     device_config(model)
                 else:
-                    model = AutoModelForCausalLM.from_pretrained(vars.model, cache_dir="cache/")
+                    model = AutoModelForCausalLM.from_pretrained(vars.model, cache_dir="cache/", **maybe_low_cpu_mem_usage())
                     vars.modeldim = get_hidden_size_from_model(model)
                     generator = model.generate
             else:
-                model = AutoModelForCausalLM.from_pretrained(vars.model, cache_dir="cache/")
+                model = AutoModelForCausalLM.from_pretrained(vars.model, cache_dir="cache/", **maybe_low_cpu_mem_usage())
                 vars.modeldim = get_hidden_size_from_model(model)
                 generator = model.generate
         
