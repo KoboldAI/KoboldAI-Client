@@ -229,6 +229,41 @@ gpu_blocks = []
 primary_device = 0
 
 
+def move_hidden_layers(transformer):
+    assert len(gpu_blocks) <= torch.cuda.device_count()
+    assert sum(gpu_blocks) <= len(transformer.h)
+    ram_blocks = len(transformer.h) - sum(gpu_blocks)
+
+    transformer.extrastorage = {}
+    torch.cuda.empty_cache()
+    
+    for i in range(ram_blocks):
+        transformer.h[i].to("cpu")
+        transformer.extrastorage[i] = copy.deepcopy(transformer.h[i])
+        smalltensor = torch.tensor(0).to(primary_device)
+        for param1 in transformer.h[i].parameters():
+            param1.data = smalltensor
+        transformer.h[i].to(primary_device)
+        for param in transformer.extrastorage[i].parameters():
+            param.requires_grad = False
+            param.data = param.data.detach().pin_memory()
+            gc.collect()
+            torch.cuda.empty_cache()
+
+    if ram_blocks:
+        for param1,param2 in zip(transformer.h[0].parameters(),transformer.extrastorage[0].parameters()):
+            param1.data = param2.data.to(primary_device, non_blocking=False).detach()
+
+        for param1,param2 in zip(transformer.h[ram_blocks-1].parameters(),transformer.extrastorage[ram_blocks-1].parameters()):
+            param1.data = param2.data.to(primary_device, non_blocking=False).detach()
+
+    i = ram_blocks
+    for j in range(len(gpu_blocks)):
+        for _ in range(gpu_blocks[j]):
+            transformer.h[i].to(j)
+            i += 1
+
+
 def new_forward(
         self,
         input_ids=None,
@@ -248,38 +283,6 @@ def new_forward(
     assert sum(gpu_blocks) <= len(self.h)
     ram_blocks = len(self.h) - sum(gpu_blocks)
     cumulative_gpu_blocks = tuple(itertools.accumulate(gpu_blocks))
-
-    if breakmodel:
-        if not hasattr(self, 'extrastorage'):
-            setattr(self,"extrastorage",{})
-            torch.cuda.empty_cache()
-
-            for i in range(ram_blocks):
-                self.h[i].to("cpu")
-                self.extrastorage[i] = copy.deepcopy(self.h[i])
-                smalltensor = torch.tensor(0).to(primary_device)
-                for param1 in self.h[i].parameters():
-                    param1.data = smalltensor
-                self.h[i].to(primary_device)
-                for param in self.extrastorage[i].parameters():
-                    param.requires_grad = False
-                    param.data = param.data.detach().pin_memory()
-                    gc.collect()
-                    torch.cuda.empty_cache()
-
-            if ram_blocks:
-                for param1,param2 in zip(self.h[0].parameters(),self.extrastorage[0].parameters()):
-                    param1.data = param2.data.to(primary_device, non_blocking=False).detach()
-
-                for param1,param2 in zip(self.h[ram_blocks-1].parameters(),self.extrastorage[ram_blocks-1].parameters()):
-                    param1.data = param2.data.to(primary_device, non_blocking=False).detach()
-
-            i = ram_blocks
-            for j in range(len(gpu_blocks)):
-                for _ in range(gpu_blocks[j]):
-                    self.h[i].to(j)
-                    i += 1
-
 
 
     output_attentions = output_attentions if output_attentions is not None else self.config.output_attentions

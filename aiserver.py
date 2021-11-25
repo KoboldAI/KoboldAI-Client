@@ -303,6 +303,7 @@ def device_config(model):
     gc.collect()
     GPTNeoModel.forward = breakmodel.new_forward
     generator = model.generate
+    breakmodel.move_hidden_layers(model.transformer)
 
 #==================================================================#
 # Startup
