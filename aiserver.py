@@ -15,6 +15,7 @@ import json
 import collections
 import zipfile
 import packaging
+import contextlib
 from typing import Any, Union, Dict, Set, List
 
 import requests
@@ -709,15 +710,26 @@ if(not vars.model in ["InferKit", "Colab", "OAI", "ReadOnly", "TPUMeshTransforme
                 print(f"\nWARNING:  Please upgrade to transformers 4.11.0 for lower RAM usage.  You have transformers {transformers_version}.", file=sys.stderr)
                 return {}
             return {"low_cpu_mem_usage": True}
+        
+        @contextlib.contextmanager
+        def maybe_use_float16(always_use=False):
+            if(always_use or (vars.hascuda and (vars.usegpu or vars.breakmodel))):
+                original_dtype = torch.get_default_dtype()
+                torch.set_default_dtype(torch.float16)
+                yield True
+                torch.set_default_dtype(original_dtype)
+            else:
+                yield False
 
         # If custom GPT Neo model was chosen
         if(vars.model == "NeoCustom"):
             model_config = open(vars.custmodpth + "/config.json", "r")
             js   = json.load(model_config)
-            if("model_type" in js):
-                model     = AutoModelForCausalLM.from_pretrained(vars.custmodpth, cache_dir="cache/", **maybe_low_cpu_mem_usage())
-            else:
-                model     = GPTNeoForCausalLM.from_pretrained(vars.custmodpth, cache_dir="cache/", **maybe_low_cpu_mem_usage())
+            with(maybe_use_float16()):
+                if("model_type" in js):
+                    model     = AutoModelForCausalLM.from_pretrained(vars.custmodpth, cache_dir="cache/", **maybe_low_cpu_mem_usage())
+                else:
+                    model     = GPTNeoForCausalLM.from_pretrained(vars.custmodpth, cache_dir="cache/", **maybe_low_cpu_mem_usage())
             vars.modeldim = get_hidden_size_from_model(model)
             tokenizer = GPT2Tokenizer.from_pretrained(vars.custmodpth, cache_dir="cache/")
             # Is CUDA available? If so, use GPU, otherwise fall back to CPU
@@ -735,7 +747,8 @@ if(not vars.model in ["InferKit", "Colab", "OAI", "ReadOnly", "TPUMeshTransforme
         elif(vars.model == "GPT2Custom"):
             model_config = open(vars.custmodpth + "/config.json", "r")
             js   = json.load(model_config)
-            model     = GPT2LMHeadModel.from_pretrained(vars.custmodpth, cache_dir="cache/", **maybe_low_cpu_mem_usage())
+            with(maybe_use_float16()):
+                model = GPT2LMHeadModel.from_pretrained(vars.custmodpth, cache_dir="cache/", **maybe_low_cpu_mem_usage())
             tokenizer = GPT2Tokenizer.from_pretrained(vars.custmodpth, cache_dir="cache/", **maybe_low_cpu_mem_usage())
             vars.modeldim = get_hidden_size_from_model(model)
             # Is CUDA available? If so, use GPU, otherwise fall back to CPU
@@ -750,12 +763,14 @@ if(not vars.model in ["InferKit", "Colab", "OAI", "ReadOnly", "TPUMeshTransforme
             tokenizer = GPT2Tokenizer.from_pretrained(vars.model, cache_dir="cache/")
             if(vars.hascuda):
                 if(vars.usegpu):
-                    model = AutoModelForCausalLM.from_pretrained(vars.model, cache_dir="cache/", **maybe_low_cpu_mem_usage())
+                    with(maybe_use_float16()):
+                        model = AutoModelForCausalLM.from_pretrained(vars.model, cache_dir="cache/", **maybe_low_cpu_mem_usage())
                     vars.modeldim = get_hidden_size_from_model(model)
                     model = model.half().to(0)
                     generator = model.generate
                 elif(vars.breakmodel):  # Use both RAM and VRAM (breakmodel)
-                    model = AutoModelForCausalLM.from_pretrained(vars.model, cache_dir="cache/", **maybe_low_cpu_mem_usage())
+                    with(maybe_use_float16()):
+                        model = AutoModelForCausalLM.from_pretrained(vars.model, cache_dir="cache/", **maybe_low_cpu_mem_usage())
                     vars.modeldim = get_hidden_size_from_model(model)
                     device_config(model)
                 else:
