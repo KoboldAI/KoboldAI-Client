@@ -749,7 +749,7 @@ if(not vars.model in ["InferKit", "Colab", "OAI", "ReadOnly", "TPUMeshTransforme
             js   = json.load(model_config)
             with(maybe_use_float16()):
                 model = GPT2LMHeadModel.from_pretrained(vars.custmodpth, cache_dir="cache/", **maybe_low_cpu_mem_usage())
-            tokenizer = GPT2Tokenizer.from_pretrained(vars.custmodpth, cache_dir="cache/", **maybe_low_cpu_mem_usage())
+            tokenizer = GPT2Tokenizer.from_pretrained(vars.custmodpth, cache_dir="cache/")
             vars.modeldim = get_hidden_size_from_model(model)
             # Is CUDA available? If so, use GPU, otherwise fall back to CPU
             if(vars.hascuda and vars.usegpu):
