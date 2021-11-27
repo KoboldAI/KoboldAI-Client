@@ -52,7 +52,7 @@ modellist = [
     ["Load an old GPT-2 model (eg CloverEdition)", "GPT2Custom", ""],
     ["GPT-Neo 1.3B", "EleutherAI/gpt-neo-1.3B", "8GB"],
     ["GPT-Neo 2.7B", "EleutherAI/gpt-neo-2.7B", "16GB"],
-    ["GPT-J 6B (HF GIT Required)", "EleutherAI/gpt-j-6B", "24GB"],
+    ["GPT-J 6B", "EleutherAI/gpt-j-6B", "24GB"],
     ["GPT-2", "gpt2", "1GB"],
     ["GPT-2 Med", "gpt2-medium", "2GB"],
     ["GPT-2 Large", "gpt2-large", "4GB"],
@@ -354,7 +354,7 @@ if(not vars.model in ["InferKit", "Colab", "OAI", "ReadOnly", "TPUMeshTransforme
     import torch
     print("{0}Looking for GPU support...{1}".format(colors.PURPLE, colors.END), end="")
     vars.hascuda = torch.cuda.is_available()
-    vars.bmsupported = vars.model in ("EleutherAI/gpt-neo-1.3B", "EleutherAI/gpt-neo-2.7B", "NeoCustom")
+    vars.bmsupported = vars.model in ("EleutherAI/gpt-neo-1.3B", "EleutherAI/gpt-neo-2.7B", "EleutherAI/gpt-j-6B", "NeoCustom")
     if(args.breakmodel is not None and args.breakmodel):
         print("WARNING: --breakmodel is no longer supported. Breakmodel mode is now automatically enabled when --layers is used (see --help for details).", file=sys.stderr)
     if(args.breakmodel_layers is not None):
