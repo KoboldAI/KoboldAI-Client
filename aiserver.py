@@ -291,7 +291,7 @@ def device_config(model):
         print("Nothing assigned to a GPU, reverting to CPU only mode")
         vars.breakmodel = False
         vars.usegpu = False
-        model = model.to('cpu')
+        model = model.to('cpu').float()
         generator = model.generate
         return
     model.half().to('cpu')
