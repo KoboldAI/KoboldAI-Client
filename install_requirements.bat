@@ -1,8 +1,8 @@
 @echo off
 title KoboldAI Runtime Installer (MicroMamba)
 echo Please choose one of the following transformers options
-echo 1. Finetuneanon Transformers (Best for GPU users)
-echo 2. Official Transformers (Best for CPU users)
+echo 1. Official Transformers (Recommended)
+echo 2. Finetune Transformers (For old 6B models)
 echo.
 echo Errors? Rerun this as admin so it can add the needed LongPathsEnabled registery tweak.
 echo Installer failed or crashed? Run it again so it can continue.
@@ -46,8 +46,8 @@ subst K: miniconda3
 copy umamba.exe K:\umamba.exe
 K:
 umamba.exe create -r K:\python\ -n base
-IF %B%==1 umamba.exe install --no-shortcuts -r K:\python\ -n base -f "%~dp0\environments\finetuneanon.yml" -y
-IF %B%==2 umamba.exe install --no-shortcuts -r K:\python\ -n base -f "%~dp0\environments\huggingface.yml" -y
+IF %B%==1 umamba.exe install --no-shortcuts -r K:\python\ -n base -f "%~dp0\environments\huggingface.yml" -y
+IF %B%==2 umamba.exe install --no-shortcuts -r K:\python\ -n base -f "%~dp0\environments\finetuneanon.yml" -y
 umamba.exe -r K:\ clean -a -y
 subst K: /d
 pause
@@ -56,8 +56,8 @@ exit
 :subfolder
 echo 2 > loader.settings
 umamba.exe create -r miniconda3\ -n base
-IF %B%==1 umamba.exe install --no-shortcuts -r miniconda3 -n base -f environments\finetuneanon.yml -y
-IF %B%==2 umamba.exe install --no-shortcuts -r miniconda3 -n base -f environments\huggingface.yml -y
+IF %B%==1 umamba.exe install --no-shortcuts -r miniconda3 -n base -f environments\huggingface.yml -y
+IF %B%==2 umamba.exe install --no-shortcuts -r miniconda3 -n base -f environments\finetuneanon.yml -y
 umamba.exe clean -a -y
 pause
 exit
