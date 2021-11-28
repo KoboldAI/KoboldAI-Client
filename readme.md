@@ -4,7 +4,7 @@ This is a browser-based front-end for AI-assisted writing with multiple local & 
 
 ## Multiple ways to play
 
-Stories can be played like a Novel, or played like a text adventure game with an easy toggle to change between the two gameplay styles. This makes KoboldAI both a writing assistant and a game. The way you play and how good the AI will be depends on the model or service you decide to use. No matter if you want to use the free, fast power of Google Colab. Your own high end graphics card, an online service you have an API key for (Like OpenAI or Inferkit) or if you rather just run it slower on your CPU you will be able to find a way to use KoboldAI that works for you.
+Stories can be played like a Novel, or played like a text adventure game with an easy toggle to change between the two gameplay styles. This makes KoboldAI both a writing assistant and a game. The way you play and how good the AI will be depends on the model or service you decide to use. No matter if you want to use the free, fast power of Google Colab, your own high end graphics card, an online service you have an API key for (Like OpenAI or Inferkit) or if you rather just run it slower on your CPU you will be able to find a way to use KoboldAI that works for you.
 
 ### Adventure mode
 
