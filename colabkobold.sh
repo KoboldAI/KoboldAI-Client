@@ -2,7 +2,7 @@
 # KoboldAI Easy Deployment Script by Henk717
 
 # read the options
-TEMP=`getopt -o m:i:p:c:d:a:l:z:g:t: --long model:,init:,path:,configname:,download:,aria2:,dloc:7z:git:tar: -- "$@"`
+TEMP=`getopt -o m:i:p:c:d:a:l:z:g:t:n: --long model:,init:,path:,configname:,download:,aria2:,dloc:7z:git:tar:ngrok: -- "$@"`
 eval set -- "$TEMP"
 
 # extract options and their arguments into variables.
