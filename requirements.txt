@@ -4,3 +4,4 @@ Flask-SocketIO
 requests
 torch
 flask-cloudflared
+flask-ngrok

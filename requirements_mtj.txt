@@ -11,3 +11,4 @@ git+https://github.com/VE-FORBRYDERNE/mesh-transformer-jax@ck
 flask
 Flask-SocketIO
 flask-cloudflared >= 0.0.5
+flask-ngrok
