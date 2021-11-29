@@ -15,3 +15,4 @@ dependencies:
   - git
   - pip:
     - flask-cloudflared
+    - flask-ngrok

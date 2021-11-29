@@ -14,3 +14,4 @@ dependencies:
     - torchvision==0.11.1
     - flask-cloudflared
     - git+https://github.com/vfbd/transformers#tfs
+    - flask-ngrok

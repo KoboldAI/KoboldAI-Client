@@ -316,6 +316,7 @@ def device_config(model):
 # Parsing Parameters
 parser = argparse.ArgumentParser(description="KoboldAI Server")
 parser.add_argument("--remote", action='store_true', help="Optimizes KoboldAI for Remote Play")
+parser.add_argument("--ngrok", action='store_true', help="Optimizes KoboldAI for Remote Play using Ngrok")
 parser.add_argument("--model", help="Specify the Model Type to skip the Menu")
 parser.add_argument("--path", help="Specify the Path for local models (For model NeoCustom or GPT2Custom)")
 parser.add_argument("--cpu", action='store_true', help="By default unattended launches are on the GPU use this option to force CPU usage.")
@@ -330,6 +331,9 @@ args = parser.parse_args()
 vars.model = args.model;
 
 if args.remote:
+    vars.remote = True;
+
+if args.ngrok:
     vars.remote = True;
 
 vars.smandelete = vars.remote == args.override_delete
@@ -2929,8 +2933,12 @@ if __name__ == "__main__":
     
     #socketio.run(app, host='0.0.0.0', port=5000)
     if(vars.remote):
-        from flask_cloudflared import _run_cloudflared
-        cloudflare = _run_cloudflared(5000)
+        if(args.ngrok):
+            from flask_ngrok import _run_ngrok
+            cloudflare = _run_ngrok()
+        else:
+           from flask_cloudflared import _run_cloudflared
+           cloudflare = _run_cloudflared(5000)
         with open('cloudflare.log', 'w') as cloudflarelog:
             cloudflarelog.write("KoboldAI has finished loading and is available in the following link : " + cloudflare)
             print(format(colors.GREEN) + "KoboldAI has finished loading and is available in the following link : " + cloudflare + format(colors.END))
