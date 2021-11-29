@@ -16,6 +16,8 @@ while true ; do
             path=" --path /content/$2" ; shift 2 ;;
         -c|--configname)
             configname=" --configname $2" ; shift 2 ;;
+        -n|--ngrok)
+            configname=" --ngrok" ; shift 2 ;;
         -d|--download)
             download="$2" ; shift 2 ;;
         -a|--aria2)
@@ -42,7 +44,7 @@ function launch
         exit 0
     else
     cd /content/KoboldAI-Client
-    python3 aiserver.py$model$path$configname --remote --override_delete --override_rename
+    python3 aiserver.py$model$path$configname$ngrok --remote --override_delete --override_rename
     exit
     fi
 }
