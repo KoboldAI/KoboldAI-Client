@@ -1849,13 +1849,21 @@ $(document).ready(function(){
 			// Allow drag-and-drop rearranging of world info entries (via JQuery UI's "sortable widget")
 			$(".wifolderhandle").on("mousedown", function () {
 				$(".wilistitem, .wisortable-dummy").addClass("wisortable-excluded-dynamic");
+				// Prevent WI folders with extremely long names from filling the screen and preventing scrolling
+				$(this).parent().parent().find(".wisortable-body").addClass("hidden");
+				$(this).parent().css("max-height", "200px").find(".wifoldername").find(".form-control").css("max-height", "181px");
 			}).on("mouseup", function () {
 				$(".wisortable-excluded-dynamic").removeClass("wisortable-excluded-dynamic");
+				$(this).parent().parent().find(".wisortable-body").removeClass("hidden");
+				$(this).parent().css("max-height", "").find(".wifoldername").find(".form-control").css("max-height", "");
 			});
 			$(".wihandle:not(.wifolderhandle)").on("mousedown", function () {
 				$(".wisortable-container").addClass("wisortable-excluded");
+				// Prevent WI entries with extremely long comments from filling the screen and preventing scrolling
+				$(this).parent().css("max-height", "200px").find(".wicomment").find(".form-control").css("max-height", "110px");
 			}).on("mouseup", function () {
 				$(".wisortable-excluded-dynamic").removeClass("wisortable-excluded-dynamic");
+				$(this).parent().css("max-height", "").find(".wicomment").find(".form-control").css("max-height", "");
 			});
 			$("#gamescreen").sortable({
 				items: "#wimenu .wisortable-body > :not(.wisortable-excluded):not(.wisortable-excluded-dynamic), #wimenu .wisortable-container[folder-uid]:not(.wisortable-excluded):not(.wisortable-excluded-dynamic)",
