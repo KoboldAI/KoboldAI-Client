@@ -71,7 +71,7 @@ if [ "$init" != "skip" ]; then
     cd /content
     else
     cd /content
-    if [ ! -z ${git+x} ]; then
+    if [ -z ${git+x} ]; then
         if [ "$git" == "united" ]; then
             git clone https://github.com/henk717/KoboldAI-Client
         fi
