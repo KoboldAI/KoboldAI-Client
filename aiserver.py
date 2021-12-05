@@ -2236,7 +2236,7 @@ def stablesortwi():
                 last_wi["init"] = False
             last_folder = wi["folder"]
         last_wi = wi
-    if(last_wi) is not None:
+    if(last_wi is not None):
         last_wi["init"] = False
 
 #==================================================================#
@@ -2750,6 +2750,7 @@ def loadRequest(loadpath, filename=None):
         for uid in vars.wifolders_l + [None]:
             vars.worldinfo.append({"key": "", "keysecondary": "", "content": "", "comment": "", "folder": uid, "num": None, "init": False, "selective": False, "constant": False})
         stablesortwi()
+        organizewi()
 
         # Save path for save button
         vars.savedir = loadpath

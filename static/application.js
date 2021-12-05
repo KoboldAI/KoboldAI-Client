@@ -341,8 +341,14 @@ function addWiLine(ob) {
 		</div>");
 		// Assign function to expand WI item to button
 		$("#btn_wi"+ob.num).on("click", function () {
+			var folder = $("#wilistitem"+ob.num).parent().attr("folder-uid");
+			if(folder === undefined) {
+				folder = null;
+			} else {
+				folder = parseInt(folder);
+			}
 			socket.send({'cmd': 'wiexpand', 'data': ob.num});
-			socket.send({'cmd': 'wiinit', 'folder': parseInt($("#wilistitem"+ob.num).parent().attr("folder-uid")) || null, 'data': ob.num});
+			socket.send({'cmd': 'wiinit', 'folder': folder, 'data': ob.num});
 		});
 	}
 	// Assign actions to other elements
@@ -522,7 +528,6 @@ function expandWiLine(num) {
 	$("#btn_wi"+num).html("X");
 	$("#btn_wi"+num).off();
 	$("#wilistitem"+num).removeClass("wilistitem-uninitialized").removeClass("wisortable-excluded");
-	// Tell server the WI entry was initialized
 	$("#btn_wi"+num).on("click", function () {
 		showWiDeleteConfirm(num);
 	});
@@ -723,13 +728,19 @@ function returnWiList(ar) {
 	var list = [];
 	var i;
 	for(i=0; i<ar.length; i++) {
+		var folder = $("#wilistitem"+ar[i]).parent().attr("folder-uid");
+		if(folder === undefined) {
+			folder = null;
+		} else {
+			folder = parseInt(folder);
+		}
 		var ob          = {"key": "", "keysecondary": "", "content": "", "comment": "", "folder": null, "num": ar[i], "selective": false, "constant": false};
 		ob.selective    = $("#wikeyprimary"+ar[i]).css("display") != "none"
 		ob.key          = ob.selective ? $("#wikeyprimary"+ar[i]).val() : $("#wikey"+ar[i]).val();
 		ob.keysecondary = $("#wikeysecondary"+ar[i]).val();
 		ob.content      = $("#wientry"+ar[i]).val();
 		ob.comment      = $("#wicomment"+i).val();
-		ob.folder       = parseInt($("#wilistitem"+i).parent().attr("folder-uid")) || null;
+		ob.folder       = folder;
 		ob.constant     = $("#constant-key-"+ar[i]).hasClass("constant-key-icon-enabled");
 		list.push(ob);
 	}
@@ -1237,12 +1248,18 @@ function downloadStory(format) {
 			continue;
 		}
 		var selective = wilist[i].classList.contains("wilistitem-selective");
+		var folder = $("#wilistitem"+i).parent().attr("folder-uid");
+		if(folder === undefined) {
+			folder = null;
+		} else {
+			folder = parseInt(folder);
+		}
 		wilist_compiled.push({
 			key: selective ? $("#wikeyprimary"+i).val() : $("#wikey"+i).val(),
 			keysecondary: $("#wikeysecondary"+i).val(),
 			content: $("#wientry"+i).val(),
 			comment: $("#wicomment"+i).val(),
-			folder: parseInt($("#wilistitem"+i).parent().attr("folder-uid")) || null,
+			folder: folder,
 			selective: selective,
 			constant: wilist[i].classList.contains("wilistitem-constant"),
 		});
