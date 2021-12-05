@@ -394,7 +394,15 @@ function addWiLine(ob) {
 			socket.send({'cmd': 'wiconstanton', 'data': ob.num});
 		}
 	});
-	$("#wihandle"+ob.num).off().on("mousedown", wientry_onfocusout);
+	$("#wihandle"+ob.num).off().on("mousedown", function () {
+		wientry_onfocusout()
+		$(".wisortable-container").addClass("wisortable-excluded");
+		// Prevent WI entries with extremely long comments from filling the screen and preventing scrolling
+		$(this).parent().css("max-height", "200px").find(".wicomment").find(".form-control").css("max-height", "110px");
+	}).on("mouseup", function () {
+		$(".wisortable-excluded-dynamic").removeClass("wisortable-excluded-dynamic");
+		$(this).parent().css("max-height", "").find(".wicomment").find(".form-control").css("max-height", "");
+	});
 }
 
 function addWiFolder(uid, ob) {
@@ -452,7 +460,17 @@ function addWiFolder(uid, ob) {
 			hideWiFolderDeleteConfirm(uid);
 		})
 		$("#wifoldername"+uid).on("focusout", onfocusout);
-		$("#wifolderhandle"+uid).off().on("mousedown", onfocusout);
+		$("#wifolderhandle"+uid).off().on("mousedown", function () {
+			onfocusout();
+			$(".wilistitem, .wisortable-dummy").addClass("wisortable-excluded-dynamic");
+			// Prevent WI folders with extremely long names from filling the screen and preventing scrolling
+			$(this).parent().parent().find(".wisortable-body").addClass("hidden");
+			$(this).parent().css("max-height", "200px").find(".wifoldername").find(".form-control").css("max-height", "181px");
+		}).on("mouseup", function () {
+			$(".wisortable-excluded-dynamic").removeClass("wisortable-excluded-dynamic");
+			$(this).parent().parent().find(".wisortable-body").removeClass("hidden");
+			$(this).parent().css("max-height", "").find(".wifoldername").find(".form-control").css("max-height", "");
+		});
 		adjustWiFolderNameHeight($("#wifoldername"+uid)[0]);
 	} else {
 		wi_menu.append("<div class=\"wisortable-container\" id=\"wilistfoldercontainer"+uid+"\">\
@@ -1855,24 +1873,6 @@ $(document).ready(function(){
 			wifolders_l = msg.wifolders_l;
 		} else if(msg.cmd == "wifinish") {
 			// Allow drag-and-drop rearranging of world info entries (via JQuery UI's "sortable widget")
-			$(".wifolderhandle").on("mousedown", function () {
-				$(".wilistitem, .wisortable-dummy").addClass("wisortable-excluded-dynamic");
-				// Prevent WI folders with extremely long names from filling the screen and preventing scrolling
-				$(this).parent().parent().find(".wisortable-body").addClass("hidden");
-				$(this).parent().css("max-height", "200px").find(".wifoldername").find(".form-control").css("max-height", "181px");
-			}).on("mouseup", function () {
-				$(".wisortable-excluded-dynamic").removeClass("wisortable-excluded-dynamic");
-				$(this).parent().parent().find(".wisortable-body").removeClass("hidden");
-				$(this).parent().css("max-height", "").find(".wifoldername").find(".form-control").css("max-height", "");
-			});
-			$(".wihandle:not(.wifolderhandle)").on("mousedown", function () {
-				$(".wisortable-container").addClass("wisortable-excluded");
-				// Prevent WI entries with extremely long comments from filling the screen and preventing scrolling
-				$(this).parent().css("max-height", "200px").find(".wicomment").find(".form-control").css("max-height", "110px");
-			}).on("mouseup", function () {
-				$(".wisortable-excluded-dynamic").removeClass("wisortable-excluded-dynamic");
-				$(this).parent().css("max-height", "").find(".wicomment").find(".form-control").css("max-height", "");
-			});
 			$("#gamescreen").sortable({
 				items: "#wimenu .wisortable-body > :not(.wisortable-excluded):not(.wisortable-excluded-dynamic), #wimenu .wisortable-container[folder-uid]:not(.wisortable-excluded):not(.wisortable-excluded-dynamic)",
 				containment: "#wimenu",
