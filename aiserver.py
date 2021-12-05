@@ -1838,12 +1838,25 @@ def tpumtjgenerate(txt, minimum, maximum, found_entries=None):
             raise ValueError("Dynamic world info scanning is not supported by the TPU backend yet")
         
         soft_tokens = None
-        if(vars.sp is not None):
-            soft_tokens = np.arange(
-                tpu_mtj_backend.params["n_vocab"] + tpu_mtj_backend.params["n_vocab_padding"],
-                tpu_mtj_backend.params["n_vocab"] + tpu_mtj_backend.params["n_vocab_padding"] + vars.sp_length,
-                dtype=np.uint32
+        if(vars.sp is None):
+            global np
+            if 'np' not in globals():
+                import numpy as np
+            tensor = np.zeros((1, tpu_mtj_backend.params["d_model"]), dtype=np.float32)
+            rows = tensor.shape[0]
+            padding_amount = tpu_mtj_backend.params["seq"] - (tpu_mtj_backend.params["seq"] % -tpu_mtj_backend.params["cores_per_replica"]) - rows
+            tensor = np.pad(tensor, ((0, padding_amount), (0, 0)))
+            tensor = tensor.reshape(
+                tpu_mtj_backend.params["cores_per_replica"],
+                -1,
+                tpu_mtj_backend.params["d_model"],
             )
+            vars.sp = tensor
+        soft_tokens = np.arange(
+            tpu_mtj_backend.params["n_vocab"] + tpu_mtj_backend.params["n_vocab_padding"],
+            tpu_mtj_backend.params["n_vocab"] + tpu_mtj_backend.params["n_vocab_padding"] + vars.sp_length,
+            dtype=np.uint32
+        )
 
         genout = tpu_mtj_backend.infer(
             txt,
@@ -2806,7 +2819,7 @@ def spRequest(filename):
 
     if(vars.model in ("TPUMeshTransformerGPTJ",)):
         rows = tensor.shape[0]
-        padding_amount = -(rows % -tpu_mtj_backend.params["cores_per_replica"])
+        padding_amount = tpu_mtj_backend.params["seq"] - (tpu_mtj_backend.params["seq"] % -tpu_mtj_backend.params["cores_per_replica"]) - rows
         tensor = np.pad(tensor, ((0, padding_amount), (0, 0)))
         tensor = tensor.reshape(
             tpu_mtj_backend.params["cores_per_replica"],

@@ -4,7 +4,7 @@ requests
 optax >= 0.0.5, <= 0.0.9
 dm-haiku
 ray[default]
-jax == 0.2.12
+jax == 0.2.21
 transformers
 progressbar2
 git+https://github.com/VE-FORBRYDERNE/mesh-transformer-jax@ck
