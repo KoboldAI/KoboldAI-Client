@@ -1029,6 +1029,10 @@ function sortableOnStop(event, ui) {
 			next_sibling = ui.item.next().next().attr("num");
 		}
 		next_sibling = parseInt(next_sibling);
+		if(Number.isNaN(next_sibling)) {
+			$(this).sortable("cancel");
+			return;
+		}
 		socket.send({'cmd': 'wimoveitem', 'destination': next_sibling, 'data': parseInt(ui.item.attr("num"))});
 	} else {
 		// Do the same thing for WI folders
@@ -1037,6 +1041,10 @@ function sortableOnStop(event, ui) {
 			next_sibling = null;
 		} else {
 			next_sibling = parseInt(next_sibling);
+		}
+		if(Number.isNaN(next_sibling)) {
+			$(this).sortable("cancel");
+			return;
 		}
 		socket.send({'cmd': 'wimovefolder', 'destination': next_sibling, 'data': parseInt(ui.item.attr("folder-uid"))});
 	}
@@ -1873,6 +1881,7 @@ $(document).ready(function(){
 				start: sortableOnStart,
 				stop: sortableOnStop,
 				placeholder: "wisortable-placeholder",
+				delay: 2,
 				cursor: "move",
 				tolerance: "pointer",
 				opacity: 0.21,
