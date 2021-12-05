@@ -577,6 +577,28 @@ chunk.editing, chunk.editing * {
 	background-color: #3bf723;
 }
 
+.wisortable-container {
+	padding-bottom: 50px;
+}
+
+.wisortable-container[folder-uid] {
+	display: grid;
+	grid-template-columns: 5% 95%;
+}
+
+.wifoldergutter-container {
+	cursor: pointer;
+	margin-right: 14px;
+	display: grid;
+}
+
+.wifoldergutter {
+	background-color: #cdf;
+	margin-left: 48%;
+	margin-right: 48%;
+	margin-bottom: 20px;
+}
+
 .wisortable-body {
 
 }
@@ -1012,6 +1034,7 @@ chunk.editing, chunk.editing * {
 
 .wilistfolder {
 	height: 60px;
+	grid-column: span 2;
 	display: grid;
 	grid-template-columns: 4% 5% 88.5% 2.5%;
 	margin-bottom: 24px;

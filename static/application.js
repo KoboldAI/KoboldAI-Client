@@ -435,6 +435,9 @@ function addWiFolder(uid, ob) {
 					</div>\
 				</div>\
 			</div>\
+			<div class=\"wifoldergutter-container\" id=\"wifoldergutter"+uid+"\">\
+				<div class=\"wifoldergutter\"></div>\
+			</div>\
 			<div class=\"wisortable-body\" folder-uid=\""+uid+"\">\
 				<div class=\"wisortable-dummy\"></div>\
 			</div>\
@@ -450,6 +453,9 @@ function addWiFolder(uid, ob) {
 				collapsed: false,
 			}});
 		};
+		$("#wifoldergutter"+uid).on("click", function () {
+			$(this).siblings(".wilistfolder")[0].scrollIntoView();
+		});
 		$("#btn_wifolder"+uid).on("click", function () {
 			showWiFolderDeleteConfirm(uid);
 		});
