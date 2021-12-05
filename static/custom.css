@@ -73,6 +73,7 @@ chunk.editing, chunk.editing * {
 }
 
 #gamescreen {
+	overflow-x: hidden;
 	height: 490px;
 	margin-top: 10px;
 	display: flex;
@@ -509,6 +510,70 @@ chunk.editing, chunk.editing * {
 	height: 50%;
 }
 
+.wiheightfull {
+	height: 90%;
+}
+
+.wiheighthalf {
+	height: 45%;
+}
+
+.wicomment {
+	height: 10%;
+	grid-column-start: 2;
+	grid-column-end: 4;
+	padding-top: 10px;
+	padding-bottom: 6px;
+	padding-right: 0px;
+}
+
+.wihandle, .wifolderhandle {
+	grid-row: span 2;
+	line-height: 100%;
+	opacity: 30%;
+	font-size: 8px;
+	position: relative;
+}
+
+.wifoldericon {
+	font-size: 28px;
+	position: relative;
+	grid-row: span 2;
+}
+
+.wicentered {
+	position: absolute;
+	left: 50%;
+	top: 50%;
+	transform: translate(-50%, -50%);
+	-moz-transform: translate(-50%, -50%);
+	-webkit-transform: translate(-50%, -50%);
+	-ms-transform: translate(-50%, -50%);
+	-o-transform: translate(-50%, -50%);
+}
+
+.wicentered-vertical {
+	position: absolute;
+	top: 50%;
+	transform: translate(0%, -50%);
+	-moz-transform: translate(0%, -50%);
+	-webkit-transform: translate(0%, -50%);
+	-ms-transform: translate(0%, -50%);
+	-o-transform: translate(0%, -50%);
+}
+
+.wihandle:hover {
+	cursor: move;
+}
+
+.wisortable-body {
+
+}
+
+.wisortable-dummy {
+	padding: 6px;
+}
+
 .helpicon {
 	display: inline-block;
 	font-family: sans-serif;
@@ -576,6 +641,45 @@ chunk.editing, chunk.editing * {
 
 .icon-container {
 	position: relative;
+}
+
+.selective-key-icon {
+	position: absolute !important;
+	top: 5px !important;
+	right: 28px !important;
+	z-index: 1;
+	opacity: 20%;
+}
+
+*:hover > .selective-key-icon {
+	opacity: 40%;
+}
+
+.selective-key-icon:hover {
+	opacity: 65%;
+	cursor: pointer;
+}
+
+.selective-key-icon-enabled {
+	color: #3bf723;
+	opacity: 65%
+}
+
+*:hover > .selective-key-icon-enabled {
+	opacity: 65%;
+}
+
+.selective-key-icon-enabled:hover {
+	opacity: 100%
+}
+
+.selective-key-icon-clickthrough {
+	opacity: 0% !important;
+	pointer-events: none;
+}
+
+.selective-key-icon-clickthrough.selective-key-icon-enabled {
+	opacity: 35% !important;
 }
 
 .constant-key-icon {
@@ -888,22 +992,58 @@ chunk.editing, chunk.editing * {
 }
 
 .wilistitem {
-	height: 80px;
+	height: 120px;
 	display: grid;
-	grid-template-columns: 4% 30% 58% 8%;
-	margin-bottom: 10px;
+	grid-template-columns: 4% 30% 63.5% 2.5%;
+	margin-bottom: 24px;
+	background-color: #212122;
+}
+
+.wilistfolder {
+	height: 60px;
+	display: grid;
+	grid-template-columns: 4% 5% 88.5% 2.5%;
+	margin-bottom: 24px;
+	background-color: #212122;
 }
 
 .wientry {
 	padding-left: 10px;
-	padding-right: 10px;
+	padding-right: 0px;
 	background-color: #212122;
 }
 
 .wientry > textarea {
-	height: 100%;
+	height: 90%;
 	resize: none;
 	overflow:auto;
+	background-color: #404040;
+	color: #ffffff;
+}
+
+.wicomment > textarea {
+	resize: none;
+	height: 0px;
+	overflow: hidden;
+	background-color: #404040;
+	color: #ffffff;
+}
+
+.wifoldername {
+	position: relative;
+	grid-row: span 2;
+}
+
+.wifoldername > div {
+	width: 100%;
+	padding-left: 10px;
+}
+
+.wifoldername > div > textarea {
+	font-size: 20px;
+	resize: none;
+	height: 0px;
+	overflow: hidden;
 	background-color: #404040;
 	color: #ffffff;
 }
@@ -917,12 +1057,13 @@ chunk.editing, chunk.editing * {
 	color: #ffffff;
 }
 
+.wiremove {
+	grid-row-start: 1;
+	grid-row-end: 3;
+}
+
 .wiremove > button {
 	width: 80%;
 	overflow: hidden;
 	font-size: 12pt;
-}
-
-.wiselective > button {
-	white-space: normal;
 }
