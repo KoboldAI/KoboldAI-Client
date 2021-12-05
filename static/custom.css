@@ -262,6 +262,7 @@ chunk.editing, chunk.editing * {
 }
 
 #wimenu {
+	padding-top: 10px;
 	max-height: 100%;
 	width: 100%;
 }
@@ -564,6 +565,16 @@ chunk.editing, chunk.editing * {
 
 .wihandle:hover {
 	cursor: move;
+}
+
+.wisortable-placeholder {
+	height: 4px;
+	transform: translate(0%, -14px);
+	-moz-transform: translate(0%, -14px);
+	-webkit-transform: translate(0%, -14px);
+	-ms-transform: translate(0%, -14px);
+	-o-transform: translate(0%, -14px);
+	background-color: #3bf723;
 }
 
 .wisortable-body {
