@@ -1,8 +1,10 @@
 name: koboldai
 channels:
+  - huggingface
   - conda-forge
   - defaults
 dependencies:
+  - transformers
   - colorama
   - flask-socketio
   - python=3.8.*
@@ -13,5 +15,4 @@ dependencies:
     - torch
     - torchvision==0.11.1
     - flask-cloudflared
-    - git+https://github.com/vfbd/transformers#tfs
     - flask-ngrok
