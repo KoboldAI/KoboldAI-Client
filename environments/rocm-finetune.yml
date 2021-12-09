@@ -6,6 +6,7 @@ dependencies:
   - colorama
   - flask-socketio
   - python=3.8.*
+  - gevent-websocket
   - pip
   - git
   - pip:
@@ -15,3 +16,4 @@ dependencies:
     - flask-cloudflared
     - git+https://github.com/finetuneanon/transformers@gpt-neo-localattention3-rp-b
     - flask-ngrok
+    - lupa
