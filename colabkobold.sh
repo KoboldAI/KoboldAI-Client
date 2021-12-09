@@ -133,7 +133,7 @@ if [ ! -z ${tar+x} ]; then
     make install
     cd ..
     apt install zstd -y
-    pv $tar | tar -I zstd -x
+    pv $dloc/$tar | tar -I zstd -x
     touch /content/extracted
 fi
 
