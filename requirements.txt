@@ -5,3 +5,5 @@ requests
 torch
 flask-cloudflared
 flask-ngrok
+gevent-websocket
+lupa

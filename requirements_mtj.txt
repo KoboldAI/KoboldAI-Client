@@ -12,3 +12,5 @@ flask
 Flask-SocketIO
 flask-cloudflared >= 0.0.5
 flask-ngrok
+gevent-websocket
+lupa
