@@ -102,6 +102,8 @@ if [ "$init" != "skip" ]; then
     fi
 fi
 
+cd /content
+
 # Models extracted? Then we skip anything beyond this point for faster loading.
 if [ -f "/content/extracted" ]; then
     launch
