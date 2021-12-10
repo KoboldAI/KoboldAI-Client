@@ -102,6 +102,8 @@ if [ "$init" != "skip" ]; then
     fi
 fi
 
+cd /content
+
 # Models extracted? Then we skip anything beyond this point for faster loading.
 if [ -f "/content/extracted" ]; then
     launch
@@ -133,7 +135,7 @@ if [ ! -z ${tar+x} ]; then
     make install
     cd ..
     apt install zstd -y
-    pv $tar | tar -I zstd -x
+    pv $dloc/$tar | tar -I zstd -C /content/ -x
     touch /content/extracted
 fi
 
