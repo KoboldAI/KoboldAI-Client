@@ -415,7 +415,7 @@ return function(_python, _bridged)
     function KoboldWorldInfoFolder_mt.__newindex(t, k, v)
         if not check_validity(t) then
             return
-        elseif type(t) == "number" and math.tointeger(t) ~= nil then
+        elseif type(k) == "number" and math.tointeger(k) ~= nil then
             error("Cannot write to integer indices of `"..rawget(t, "_name").."`")
         elseif rawget(t, "_name") == "KoboldWorldInfoFolder" and k == "uid" then
             error("`"..rawget(t, "_name").."."..k.."` is a read-only attribute")
@@ -480,7 +480,7 @@ return function(_python, _bridged)
     ---@param t KoboldWorldInfoFolderSelector
     ---@return KoboldWorldInfoFolder|nil
     function KoboldWorldInfoFolderSelector_mt.__index(t, k)
-        if not check_validity(t) or type(t) ~= "number" or math.tointeger(t) == nil or t < 1 or t > _python.builtins.len(bridged.wifolders_l) then
+        if not check_validity(t) or type(k) ~= "number" or math.tointeger(k) == nil or k < 1 or k > _python.builtins.len(bridged.wifolders_l) then
             return
         end
         local folder = deepcopy(KoboldWorldInfoFolder)
@@ -491,7 +491,7 @@ return function(_python, _bridged)
     ---@param t KoboldWorldInfoFolderSelector
     ---@return KoboldWorldInfoFolderSelector
     function KoboldWorldInfoFolderSelector_mt.__newindex(t, k, v)
-        if check_validity(t) or (type(t) == "number" and math.tointeger(t) ~= nil) then
+        if check_validity(t) or (type(k) == "number" and math.tointeger(k) ~= nil) then
             error("Cannot write to integer indices of `"..rawget(t, "_name").."`")
         end
         return rawset(t, k, v)
@@ -611,7 +611,7 @@ return function(_python, _bridged)
     ---@param v string
     ---@return KoboldLib
     function KoboldLib_setters.memory(t, v)
-        if type(t) ~= "string" then
+        if type(v) ~= "string" then
             error("`KoboldLib.memory` must be a string; you attempted to set it to a "..type(v))
             return
         end
