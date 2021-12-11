@@ -8,9 +8,10 @@ kobold, koboldcore = require("bridge")()  -- This line is optional and is only f
 local corescript = {}
 
 
--- Run all the input modifiers from top to bottom
+-- Run all the input modifiers from bottom to top
 function corescript.inmod()
-    for i, userscript in ipairs(koboldcore.userscripts) do
+    for i = #koboldcore.userscripts, 1, -1 do
+        local userscript = koboldcore.userscripts[i]
         if userscript.inmod ~= nil then
             userscript.inmod()
         end
@@ -26,11 +27,9 @@ function corescript.genmod()
     end
 end
 
--- Run all the generation modifiers from bottom to top
+-- Run all the generation modifiers from top to bottom
 function corescript.outmod()
-    local userscript
-    for i = #koboldcore.userscripts, 1, -1 do
-        userscript = koboldcore.userscripts[i]
+    for i, userscript in ipairs(koboldcore.userscripts) do
         if userscript.outmod ~= nil then
             userscript.outmod()
         end
