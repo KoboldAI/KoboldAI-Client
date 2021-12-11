@@ -185,13 +185,9 @@ return function(_python, _bridged)
     -- Userscript API: World Info
     --==========================================================================
 
-    local inmods = setmetatable({}, metawrapper)
-    local genmods = setmetatable({}, metawrapper)
-    local outmods = setmetatable({}, metawrapper)
-
     local genmod_comparison_context = nil
-    local generating = true
-    local userstate = "inmod"
+    koboldbridge.generating = true
+    koboldbridge.userstate = "inmod"
 
     local fields = setmetatable({}, metawrapper)
 
@@ -207,7 +203,7 @@ return function(_python, _bridged)
 
     ---@return nil
     local function maybe_save_genmod_comparison_context()
-        if userstate == "genmod" and genmod_comparison_context == nil then
+        if koboldbridge.userstate == "genmod" and genmod_comparison_context == nil then
             genmod_comparison_context = kobold.worldinfo:compute_context()
         end
     end
@@ -666,7 +662,7 @@ return function(_python, _bridged)
 
     ---@return nil
     function kobold.halt_generation()
-        generating = false
+        koboldbridge.generating = false
     end
 
 
@@ -1062,6 +1058,7 @@ return function(_python, _bridged)
         koboldbridge.num_userscripts = 0
         for i, filename in _python.enumerate(filenames) do
             bridged.load_callback(filename)
+            ---@type KoboldUserScript
             local _userscript = old_loadfile(join_folder_and_filename(bridged.userscript_path, filename), "t", koboldbridge.get_universe(filename))()
             local userscript = deepcopy(KoboldUserScriptModule)
             rawset(userscript, "_inmod", _userscript.inmod)
@@ -1077,43 +1074,47 @@ return function(_python, _bridged)
 
     ---@return nil
     function koboldbridge.load_corescript(filename)
+        ---@type KoboldCoreScript
         local corescript = old_loadfile(join_folder_and_filename(bridged.corescript_path, filename), "t", koboldbridge.get_universe(0))()
         koboldbridge.inmod = corescript.inmod
         koboldbridge.genmod = corescript.genmod
         koboldbridge.outmod = corescript.outmod
     end
 
-    ---@return integer, any, any, any
-    function koboldbridge.execute()
-        local i, g, o
-        local num_generated = 0
-        g = {}
-        generating = true
-        userstate = "inmod"
+    function koboldbridge.execute_inmod()
+        local r
+        koboldbridge.generating = true
+        koboldbridge.userstate = "inmod"
         if koboldbridge.inmod ~= nil then
-            i = koboldbridge.inmod()
+            r = koboldbridge.inmod()
         end
-        userstate = "genmod"
-        bridged.start_generation()
-        while generating and num_generated < bridged.get_gen_len() do
-            bridged.generation_step()
-            if koboldbridge.genmod ~= nil then
-                g[num_generated + 1] = koboldbridge.genmod()
-                if genmod_comparison_context ~= kobold.worldinfo:compute_context() then
-                    bridged.register_context_change()
-                    genmod_comparison_context = nil
-                end
+        return r
+    end
+
+    ---@return any, boolean
+    function koboldbridge.execute_genmod()
+        local r
+        local changed = false
+        koboldbridge.userstate = "genmod"
+        if koboldbridge.genmod ~= nil then
+            r = koboldbridge.genmod()
+            if genmod_comparison_context ~= kobold.worldinfo:compute_context() then
+                changed = true
+                genmod_comparison_context = nil
             end
-            num_generated = num_generated + 1
         end
-        userstate = "outmod"
-        bridged.stop_generation()
+        return r, changed
+    end
+
+    function koboldbridge.execute_outmod()
+        local r
+        koboldbridge.userstate = "outmod"
         if koboldbridge.outmod ~= nil then
-            o = koboldbridge.outmod()
+            r = koboldbridge.outmod()
         end
-        generating = true
-        userstate = "inmod"
-        return num_generated, i, g, o
+        koboldbridge.generating = true
+        koboldbridge.userstate = "inmod"
+        return r
     end
 
 
