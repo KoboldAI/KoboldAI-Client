@@ -182,6 +182,7 @@ return function(_python, _bridged)
 
     koboldbridge.genmod_comparison_context = nil
     koboldbridge.regeneration_required = false
+    koboldbridge.resend_settings_required = false
     koboldbridge.generating = true
     koboldbridge.userstate = "inmod"
 
@@ -547,6 +548,23 @@ return function(_python, _bridged)
     local _ = {}
 
     ---@class KoboldSettings : KoboldSettings_base
+    ---@field numseqs integer
+    ---@field genamt integer
+    ---@field settemp number
+    ---@field settopp number
+    ---@field settopk integer
+    ---@field settfs number
+    ---@field setreppen number
+    ---@field settknmax integer
+    ---@field anotedepth integer
+    ---@field setwidepth integer
+    ---@field setuseprompt boolean
+    ---@field setadventure boolean
+    ---@field frmttriminc boolean
+    ---@field frmtrmblln boolean
+    ---@field frmtrmspch boolean
+    ---@field frmtadsnsp boolean
+    ---@field singleline boolean
     local KoboldSettings = setmetatable({
         _name = "KoboldSettings",
     }, metawrapper)
@@ -576,10 +594,10 @@ return function(_python, _bridged)
         if type(k) ~= "string" then
             return
         end
-        if k == "gen_len" then
-            return bridged.get_gen_len()
+        if k == "genamt" then
+            return math.tointeger(bridged.get_genamt()), true
         elseif k == "numseqs" then
-            return bridged.get_numseqs()
+            return math.tointeger(bridged.get_numseqs()), true
         elseif bridged.has_setting(k) then
             return bridged.get_setting(k), true
         else
@@ -589,20 +607,23 @@ return function(_python, _bridged)
 
     ---@param t KoboldSettings_base
     function KoboldSettings_mt.__newindex(t, k, v)
-        if k == "gen_len" and type(v) == "number" and math.tointeger(v) ~= nil and v >= 0 then
+        if k == "genamt" and type(v) == "number" and math.tointeger(v) ~= nil and v >= 0 then
+            bridged.set_genamt(v)
             maybe_require_regeneration()
-            bridged.set_gen_len(v)
+            koboldbridge.resend_settings_required = true
         elseif k == "numseqs" and type(v) == "number" and math.tointeger(v) ~= nil and v >= 1 then
             if koboldbridge.userstate == "genmod" then
                 error("Cannot set numseqs from a generation modifier")
                 return
             end
             bridged.set_numseqs(v)
+            koboldbridge.resend_settings_required = true
         elseif type(k) == "string" and bridged.has_setting(k) and type(v) == type(bridged.get_setting(k)) then
             if k == "settknmax" or k == "anotedepth" or k == "setwidepth" or k == "setuseprompt" then
                 maybe_require_regeneration()
             end
-            return bridged.set_setting(k, v)
+            bridged.set_setting(k, v)
+            koboldbridge.resend_settings_required = true
         end
         return t
     end
@@ -1125,6 +1146,9 @@ return function(_python, _bridged)
         if koboldbridge.outmod ~= nil then
             r = koboldbridge.outmod()
         end
+        if koboldbridge.resend_settings_required then
+            bridged.resend_settings()
+        end
         koboldbridge.generating = true
         koboldbridge.userstate = "inmod"
         return r
@@ -1140,6 +1164,7 @@ return function(_python, _bridged)
     setmetatable(KoboldWorldInfoFolder, KoboldWorldInfoFolder_mt)
     setmetatable(KoboldWorldInfoFolderSelector, KoboldWorldInfoFolderSelector_mt)
     setmetatable(KoboldWorldInfo, KoboldWorldInfo_mt)
+    setmetatable(KoboldSettings, KoboldSettings_mt)
     setmetatable(KoboldUserScriptModule, KoboldUserScriptModule_mt)
     setmetatable(KoboldUserScriptList, KoboldUserScriptList_mt)
     setmetatable(kobold, KoboldLib_mt)

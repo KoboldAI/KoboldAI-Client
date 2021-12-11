@@ -994,14 +994,15 @@ def lua_folder_set_attr(uid, k, v):
 #==================================================================#
 #  Get the "Amount to Generate"
 #==================================================================#
-def lua_get_gen_len():
+def lua_get_genamt():
     return vars.genamt
 
 #==================================================================#
 #  Set the "Amount to Generate"
 #==================================================================#
-def lua_set_gen_len(genamt):
+def lua_set_genamt(genamt):
     assert vars.lua_koboldbridge.userstate != "genmod" and type(genamt) in (int, float) and genamt >= 0
+    print(colors.PURPLE + f"[USERPLACEHOLDER] set genamt to {int(genamt)}" + colors.END)
     vars.genamt = int(genamt)
 
 #==================================================================#
@@ -1015,6 +1016,7 @@ def lua_get_numseqs():
 #==================================================================#
 def lua_set_numseqs(numseqs):
     assert type(numseqs) in (int, float) and numseqs >= 1
+    print(colors.PURPLE + f"[USERPLACEHOLDER] set numseqs to {int(numseqs)}" + colors.END)
     vars.genamt = int(numseqs)
 
 #==================================================================#
@@ -1027,7 +1029,6 @@ def lua_has_setting(setting):
         "settopk",
         "settfs",
         "setreppen",
-        "setoutput",
         "settknmax",
         "anotedepth",
         "setwidepth",
@@ -1070,7 +1071,21 @@ def lua_set_setting(setting, v):
     print(colors.PURPLE + f"[USERPLACEHOLDER] set {setting} to {v}" + colors.END)
     if(setting == "setadventure" and v):
         vars.actionmode = 1
-    get_message({'cmd': setting, 'data': v})
+    if(setting == "settemp"): vars.temp = v
+    if(setting == "settopp"): vars.top_p = v
+    if(setting == "settopk"): vars.top_k = v
+    if(setting == "settfs"): vars.tfs = v
+    if(setting == "setreppen"): vars.rep_pen = v
+    if(setting == "settknmax"): vars.max_length = v
+    if(setting == "anotedepth"): vars.andepth = v
+    if(setting == "setwidepth"): vars.widepth = v
+    if(setting == "setuseprompt"): vars.useprompt = v
+    if(setting == "setadventure"): vars.adventure = v
+    if(setting == "frmttriminc"): vars.formatoptns["frmttriminc"] = v
+    if(setting == "frmtrmblln"): vars.formatoptns["frmttriminc"] = v
+    if(setting == "frmtrmspch"): vars.formatoptns["frmttriminc"] = v
+    if(setting == "frmtadsnsp"): vars.formatoptns["frmttriminc"] = v
+    if(setting == "singleline"): vars.formatoptns["frmttriminc"] = v
 
 #==================================================================#
 #  Get contents of memory
@@ -1084,6 +1099,25 @@ def lua_get_memory():
 def lua_set_memory(m):
     assert type(m) is str
     vars.memory = m
+
+#==================================================================#
+#  Save settings and send them to client
+#==================================================================#
+def lua_resend_settings():
+    settingschanged()
+    refresh_settings()
+
+#==================================================================#
+#  
+#==================================================================#
+def execute_inmod():
+    vars.lua_koboldbridge.execute_inmod()
+
+def execute_genmod():
+    vars.lua_koboldbridge.execute_genmod()
+
+def execute_outmod():
+    vars.lua_koboldbridge.execute_outmod()
 
 #==================================================================#
 #  Lua runtime startup
@@ -1104,14 +1138,16 @@ bridged = {
     "encode": lua_encode,
     "get_attr": lua_get_attr,
     "set_attr": lua_set_attr,
-    "get_gen_len": lua_get_gen_len,
-    "set_gen_len": lua_set_gen_len,
+    "get_genamt": lua_get_genamt,
+    "set_genamt": lua_set_genamt,
     "get_memory": lua_get_memory,
     "set_memory": lua_set_memory,
     "get_numseqs": lua_get_numseqs,
     "set_numseqs": lua_set_numseqs,
+    "has_setting": lua_has_setting,
     "get_setting": lua_get_setting,
     "set_setting": lua_set_setting,
+    "resend_settings": lua_resend_settings,
     "vars": vars,
 }
 try:
