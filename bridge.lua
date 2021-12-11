@@ -180,14 +180,22 @@ return function(_python, _bridged)
     ---@class KoboldBridgeLib
     local koboldbridge = setmetatable({}, metawrapper)
 
+    koboldbridge.genmod_comparison_context = nil
+    koboldbridge.regeneration_required = false
+    koboldbridge.generating = true
+    koboldbridge.userstate = "inmod"
+
+    ---@return nil
+    local function maybe_require_regeneration()
+        if koboldbridge.userstate == "genmod" and koboldbridge.genmod_comparison_context == nil then
+            koboldbridge.regeneration_required = true
+        end
+    end
+
 
     --==========================================================================
     -- Userscript API: World Info
     --==========================================================================
-
-    local genmod_comparison_context = nil
-    koboldbridge.generating = true
-    koboldbridge.userstate = "inmod"
 
     local fields = setmetatable({}, metawrapper)
 
@@ -199,13 +207,6 @@ return function(_python, _bridged)
             return false
         end
         return true
-    end
-
-    ---@return nil
-    local function maybe_save_genmod_comparison_context()
-        if koboldbridge.userstate == "genmod" and genmod_comparison_context == nil then
-            genmod_comparison_context = kobold.worldinfo:compute_context()
-        end
     end
 
 
@@ -306,7 +307,7 @@ return function(_python, _bridged)
                 return
             else
                 if k ~= "comment" then
-                    maybe_save_genmod_comparison_context()
+                    maybe_require_regeneration()
                 end
                 bridged.set_attr(t.uid, k, v)
                 return t
@@ -589,6 +590,7 @@ return function(_python, _bridged)
     ---@param t KoboldSettings_base
     function KoboldSettings_mt.__newindex(t, k, v)
         if k == "gen_len" and type(v) == "number" and math.tointeger(v) ~= nil and v >= 0 then
+            maybe_require_regeneration()
             bridged.set_gen_len(v)
         elseif k == "numseqs" and type(v) == "number" and math.tointeger(v) ~= nil and v >= 1 then
             if koboldbridge.userstate == "genmod" then
@@ -598,7 +600,7 @@ return function(_python, _bridged)
             bridged.set_numseqs(v)
         elseif type(k) == "string" and bridged.has_setting(k) and type(v) == type(bridged.get_setting(k)) then
             if k == "settknmax" or k == "anotedepth" or k == "setwidepth" or k == "setuseprompt" then
-                maybe_save_genmod_comparison_context()
+                maybe_require_regeneration()
             end
             return bridged.set_setting(k, v)
         end
@@ -626,7 +628,7 @@ return function(_python, _bridged)
             error("`KoboldLib.memory` must be a string; you attempted to set it to a "..type(v))
             return
         end
-        maybe_save_genmod_comparison_context()
+        maybe_require_regeneration()
         bridged.set_memory(v)
     end
 
