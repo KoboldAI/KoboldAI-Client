@@ -87,8 +87,10 @@ class vars:
     andepth     = 3      # How far back in history to append author's note
     actions     = structures.KoboldStoryRegister()  # Actions submitted by user and AI
     worldinfo   = []     # List of World Info key/value objects
+    worldinfo_u = {}     # Dictionary of World Info UID - key/value pairs
     wifolders_d = {}     # Dictionary of World Info folder UID-info pairs
     wifolders_l = []     # List of World Info folder UIDs
+    wifolders_u = {}     # Dictionary of pairs of folder UID - list of WI UID
     # badwords    = []     # Array of str/chr values that should be removed from output
     badwordsids = [[13460], [6880], [50256], [42496], [4613], [17414], [22039], [16410], [27], [29], [38430], [37922], [15913], [24618], [28725], [58], [47175], [36937], [26700], [12878], [16471], [37981], [5218], [29795], [13412], [45160], [3693], [49778], [4211], [20598], [36475], [33409], [44167], [32406], [29847], [29342], [42669], [685], [25787], [7359], [3784], [5320], [33994], [33490], [34516], [43734], [17635], [24293], [9959], [23785], [21737], [28401], [18161], [26358], [32509], [1279], [38155], [18189], [26894], [6927], [14610], [23834], [11037], [14631], [26933], [46904], [22330], [25915], [47934], [38214], [1875], [14692], [41832], [13163], [25970], [29565], [44926], [19841], [37250], [49029], [9609], [44438], [16791], [17816], [30109], [41888], [47527], [42924], [23984], [49074], [33717], [31161], [49082], [30138], [31175], [12240], [14804], [7131], [26076], [33250], [3556], [38381], [36338], [32756], [46581], [17912], [49146]] # Tokenized array of badwords used to prevent AI artifacting
     deletewi    = -1     # Temporary storage for index to delete
@@ -2157,6 +2159,12 @@ def addwiitem(folder_uid=None):
     assert folder_uid is None or folder_uid in vars.wifolders_d
     ob = {"key": "", "keysecondary": "", "content": "", "comment": "", "folder": folder_uid, "num": len(vars.worldinfo), "init": False, "selective": False, "constant": False}
     vars.worldinfo.append(ob)
+    while(True):
+        uid = int.from_bytes(os.urandom(4), "little", signed=True)
+        if(uid not in vars.worldinfo_u):
+            break
+    vars.worldinfo_u[uid] = vars.worldinfo[-1]
+    vars.worldinfo[-1]["uid"] = uid
     emit('from_server', {'cmd': 'addwiitem', 'data': ob}, broadcast=True)
 
 #==================================================================#
@@ -2170,6 +2178,7 @@ def addwifolder():
     ob = {"name": "", "collapsed": False}
     vars.wifolders_d[uid] = ob
     vars.wifolders_l.append(uid)
+    vars.wifolders_u[uid] = []
     emit('from_server', {'cmd': 'addwifolder', 'uid': uid, 'data': ob}, broadcast=True)
     addwiitem(folder_uid=uid)
 
@@ -2178,6 +2187,13 @@ def addwifolder():
 #   the WI entry with number dst
 #==================================================================#
 def movewiitem(dst, src):
+    if(vars.worldinfo[src]["folder"] is not None):
+        for i, e in enumerate(vars.wifolders_u[vars.worldinfo[src]["folder"]]):
+            if(e is vars.worldinfo[src]):
+                vars.wifolders_u[vars.worldinfo[src]["folder"]].pop(i)
+    if(vars.worldinfo[dst]["folder"] is not None):
+        vars.wifolders_u[vars.worldinfo[dst]["folder"]].append(vars.worldinfo[src])
+    vars.wifolders_u[vars.worldinfo[src]["folder"]]
     vars.worldinfo[src]["folder"] = vars.worldinfo[dst]["folder"]
     vars.worldinfo.insert(dst - (dst >= src), vars.worldinfo.pop(src))
     sendwi()
@@ -2213,7 +2229,6 @@ def sendwi():
         addwiitem()
     else:
         # Send contents of WI array
-        organizewi()
         last_folder = ...
         for wi in vars.worldinfo:
             if(wi["folder"] != last_folder):
@@ -2242,7 +2257,8 @@ def stablesortwi():
     vars.worldinfo.sort(key=lambda x: mapping[x["folder"]] if x["folder"] is not None else float("inf"))
     last_folder = ...
     last_wi = None
-    for wi in vars.worldinfo:
+    for i, wi in enumerate(vars.worldinfo):
+        wi["num"] = i
         wi["init"] = True
         if(wi["folder"] != last_folder):
             if(last_wi is not None and last_folder is not ...):
@@ -2251,17 +2267,8 @@ def stablesortwi():
         last_wi = wi
     if(last_wi is not None):
         last_wi["init"] = False
-
-#==================================================================#
-#  Renumber WI items consecutively
-#==================================================================#
-def organizewi():
-    if(len(vars.worldinfo) > 0):
-        count = 0
-        for wi in vars.worldinfo:
-            wi["num"] = count
-            count += 1
-        
+    for folder in vars.wifolders_u:
+        folder.sort(key=lambda x: x["num"])
 
 #==================================================================#
 #  Extract object from server and send it to WI objects
@@ -2277,6 +2284,11 @@ def commitwi(ar):
         vars.worldinfo[ob["num"]]["constant"]     = ob.get("constant", False)
     # Was this a deletion request? If so, remove the requested index
     if(vars.deletewi >= 0):
+        if(vars.worldinfo[vars.deletewi]["folder"] is not None):
+            for i, e in enumerate(vars.wifolders_u[vars.worldinfo[vars.deletewi]["folder"]]):
+                if(e is vars.worldinfo[vars.deletewi]):
+                    vars.wifolders_u[vars.worldinfo[vars.deletewi]["folder"]].pop(i)
+        del vars.worldinfo_d[vars.worldinfo[vars.deletewi]]
         del vars.worldinfo[vars.deletewi]
         # Send the new WI array structure
         sendwi()
@@ -2298,6 +2310,7 @@ def deletewi(num):
 #==================================================================#
 def deletewifolder(uid):
     uid = int(uid)
+    del vars.wifolders_u[uid]
     del vars.wifolders_d[uid]
     del vars.wifolders_l[vars.wifolders_l.index(uid)]
     # Delete uninitialized entries in the folder we're going to delete
@@ -2717,8 +2730,10 @@ def loadRequest(loadpath, filename=None):
         vars.prompt      = js["prompt"]
         vars.memory      = js["memory"]
         vars.worldinfo   = []
+        vars.worldinfo_u = {}
         vars.wifolders_d = {int(k): v for k, v in js.get("wifolders_d", {}).items()}
         vars.wifolders_l = js.get("wifolders_l", [])
+        vars.wifolders_u = {uid: [] for uid in vars.wifolders_d}
         vars.lastact     = ""
         vars.lastctx     = ""
 
@@ -2756,14 +2771,20 @@ def loadRequest(loadpath, filename=None):
                     "num": num,
                     "init": True,
                     "selective": wi.get("selective", False),
-                    "constant": wi.get("constant", False)
+                    "constant": wi.get("constant", False),
+                    "uid": None,
                 })
+                while(True):
+                    uid = int.from_bytes(os.urandom(4), "little", signed=True)
+                    if(uid not in vars.worldinfo_u):
+                        break
+                vars.worldinfo_u[uid] = vars.worldinfo[-1]
+                vars.worldinfo[-1]["uid"] = uid
                 num += 1
 
         for uid in vars.wifolders_l + [None]:
-            vars.worldinfo.append({"key": "", "keysecondary": "", "content": "", "comment": "", "folder": uid, "num": None, "init": False, "selective": False, "constant": False})
+            vars.worldinfo.append({"key": "", "keysecondary": "", "content": "", "comment": "", "folder": uid, "num": None, "init": False, "selective": False, "constant": False, "uid": None})
         stablesortwi()
-        organizewi()
 
         # Save path for save button
         vars.savedir = loadpath
@@ -2905,8 +2926,10 @@ def importgame():
         vars.authornote  = ref["authorsNote"] if type(ref["authorsNote"]) is str else ""
         vars.actions     = structures.KoboldStoryRegister()
         vars.worldinfo   = []
+        vars.worldinfo_u = {}
         vars.wifolders_d = {}
         vars.wifolders_l = []
+        vars.wifolders_u = {uid: [] for uid in vars.wifolders_d}
         vars.lastact     = ""
         vars.lastctx     = ""
         
@@ -2934,8 +2957,15 @@ def importgame():
                         "num": num,
                         "init": True,
                         "selective": wi.get("selective", False),
-                        "constant": wi.get("constant", False)
+                        "constant": wi.get("constant", False),
+                        "uid": None,
                     })
+                    while(True):
+                        uid = int.from_bytes(os.urandom(4), "little", signed=True)
+                        if(uid not in vars.worldinfo_u):
+                            break
+                    vars.worldinfo_u[uid] = vars.worldinfo[-1]
+                    vars.worldinfo[-1]["uid"] = uid
                     num += 1
         
         # Clear import data
@@ -2973,8 +3003,10 @@ def importAidgRequest(id):
         vars.authornote  = js["authorsNote"]
         vars.actions     = structures.KoboldStoryRegister()
         vars.worldinfo   = []
+        vars.worldinfo_u = {}
         vars.wifolders_d = {}
         vars.wifolders_l = []
+        vars.wifolders_u = {uid: [] for uid in vars.wifolders_d}
         vars.lastact     = ""
         vars.lastctx     = ""
         
@@ -2989,8 +3021,15 @@ def importAidgRequest(id):
                 "num": num,
                 "init": True,
                 "selective": wi.get("selective", False),
-                "constant": wi.get("constant", False)
+                "constant": wi.get("constant", False),
+                "uid": None,
             })
+            while(True):
+                uid = int.from_bytes(os.urandom(4), "little", signed=True)
+                if(uid not in vars.worldinfo_u):
+                    break
+            vars.worldinfo_u[uid] = vars.worldinfo[-1]
+            vars.worldinfo[-1]["uid"] = uid
             num += 1
         
         # Reset current save
@@ -3029,8 +3068,15 @@ def wiimportrequest():
                     "num": num,
                     "init": True,
                     "selective": wi.get("selective", False),
-                    "constant": wi.get("constant", False)
+                    "constant": wi.get("constant", False),
+                    "uid": None,
                 })
+                while(True):
+                    uid = int.from_bytes(os.urandom(4), "little", signed=True)
+                    if(uid not in vars.worldinfo_u):
+                        break
+                vars.worldinfo_u[uid] = vars.worldinfo[-1]
+                vars.worldinfo[-1]["uid"] = uid
                 num += 1
         
         print("{0}".format(vars.worldinfo[0]))
@@ -3053,6 +3099,7 @@ def newGameRequest():
     
     vars.authornote  = ""
     vars.worldinfo   = []
+    vars.worldinfo_u = {}
     vars.wifolders_d = {}
     vars.wifolders_l = []
     vars.lastact     = ""
