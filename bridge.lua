@@ -17,7 +17,7 @@ return function(_python, _bridged)
     ---@return K|nil, V|nil
     function next(t, k)
         local meta = getmetatable(t)
-        return ((meta ~= nil and string.match(rawget(t, "_name"), "^Kobold") and type(meta._kobold_next) == "function") and meta._kobold_next or old_next)(t,k)
+        return ((meta ~= nil and type(rawget(t, "_name")) == "string" and string.match(rawget(t, "_name"), "^Kobold") and type(meta._kobold_next) == "function") and meta._kobold_next or old_next)(t, k)
     end
 
 
@@ -53,13 +53,21 @@ return function(_python, _bridged)
         package.cpath = ""
     end
 
+    ---@param path string
+    ---@param filename string
+    ---@return string
+    function join_folder_and_filename(path, filename)
+        return path .. string.match(package.config, "[^\n]+") .. filename
+    end
+
 
     --==========================================================================
     -- _bridged preprocessing
     --==========================================================================
 
     local bridged = {}
-    for k, v in pairs(_bridged) do
+    for k in _python.iter(_bridged) do
+        v = _bridged[k]
         bridged[k] = type(v) == "userdata" and _python.as_attrgetter(v) or v
     end
     set_require_path(bridged.lib_path)
@@ -264,7 +272,11 @@ return function(_python, _bridged)
     ---@param k K
     ---@return K, any
     function KoboldWorldInfoEntry_mt._kobold_next(t, k)
-        return next(fields[rawget(t, "_name")], k)
+        local _t = fields[rawget(t, "_name")]
+        if _t == nil then
+            return
+        end
+        return next(_t, k)
     end
 
     ---@param t KoboldWorldInfoEntry|KoboldWorldInfoFolder|KoboldWorldInfo|KoboldWorldInfoFolderSelector
@@ -811,28 +823,34 @@ return function(_python, _bridged)
     local envs = {}
 
     local old_load = load
-    local function safe_load(chunk, chunkname, mode, env)
-        if mode == nil then
-            mode = "t"
-        elseif mode ~= "t" then
-            error("Calling `load` with a `mode` other than 't' is disabled for security reasons")
-            return
+    local function _safe_load(_g)
+        return function(chunk, chunkname, mode, env)
+            if mode == nil then
+                mode = "t"
+            elseif mode ~= "t" then
+                error("Calling `load` with a `mode` other than 't' is disabled for security reasons")
+                return
+            end
+            if env == nil then
+                env = _g
+            end
+            return old_load(chunk, chunkname, mode, env)
         end
-        if env == nil then
-            env = _G
-        end
-        return old_load(chunk, chunkname, mode, env)
     end
 
     local old_loadfile = loadfile
     local old_package_loaded = package.loaded
     local old_package_searchers = package.searchers
     ---@param modname string
-    ---@param env table<string, any>
+    ---@param env? table<string, any>
+    ---@param search_path? string
     ---@return any, string|nil
-    local function safe_require_with_env(modname, env)
+    local function requirex(modname, env, search_path)
+        if search_path == nil then
+            search_path = bridged.lib_path
+        end
         if modname == "bridge" then
-            return function() return _G.kobold, _G.koboldcore end
+            return function() return env.kobold, env.koboldcore end
         end
         if type(modname) == "number" then
             modname = tostring(modname)
@@ -840,13 +858,14 @@ return function(_python, _bridged)
             error("bad argument #1 to 'require' (string expected, got "..type(modname)..")")
             return
         end
-        local allowsearch = type(modname) == "string" and string.match(modname, "[^%w._]") == nil and string.match(modname, "%.%.") == nil
+        local allowsearch = type(modname) == "string" and string.match(modname, "[^%w._-]") == nil and string.match(modname, "%.%.") == nil
         if allowsearch and old_package_loaded[modname] then
             return old_package_loaded[modname]
         end
         local loader, path
         local errors = {}
         local n_errors = 0
+        set_require_path(search_path)
         for k, v in ipairs(old_package_searchers) do
             loader, path = v(modname)
             if allowsearch and type(loader) == "function" then
@@ -856,6 +875,7 @@ return function(_python, _bridged)
                 errors[n_errors] = "\n\t" .. loader
             end
         end
+        set_require_path(bridged.lib_path)
         if not allowsearch or type(loader) ~= "function" then
             error("module '" .. modname .. "' not found:" .. table.concat(errors))
             return
@@ -864,10 +884,12 @@ return function(_python, _bridged)
         old_package_loaded[modname] = retval == nil or retval
         return old_package_loaded[modname], path
     end
-    ---@param modname string
-    ---@return any, string|nil
-    local function safe_require(modname)
-        return safe_require_with_env(modname, _G)
+    local function _safe_require(_g)
+        ---@param modname string
+        ---@return any, string|nil
+        return function(modname)
+            return requirex(modname, _g)
+        end
     end
 
     local sandbox_template_env = {
@@ -876,7 +898,7 @@ return function(_python, _bridged)
         error = error,
         getmetatable = getmetatable,
         ipairs = ipairs,
-        load = safe_load,
+        load = nil,  ---@type function
         next = next,
         pairs = pairs,
         pcall = pcall,
@@ -903,7 +925,7 @@ return function(_python, _bridged)
             wrap = coroutine.wrap,
             yield = coroutine.yield,
         },
-        require = safe_require,
+        require = nil,  ---@type function
         package = {
             config = package.config,
         },
@@ -1017,6 +1039,8 @@ return function(_python, _bridged)
             if universe == 0 then
                 envs[universe].koboldcore = deepcopy(koboldcore)
             end
+            envs[universe].load = _safe_load(env)
+            envs[universe].require = _safe_require(env)
             env._G = env
         end
         return env
@@ -1028,17 +1052,17 @@ return function(_python, _bridged)
 
 
     --==========================================================================
-    -- Connection to aiserver.py
+    -- API for aiserver.py
     --==========================================================================
 
     ---@return nil
     function koboldbridge.load_userscripts(filenames, modulenames, descriptions)
-        local old_path = set_require_path(bridged.userscript_path)
+        set_require_path(bridged.userscript_path)
         koboldbridge.userscripts = {}
         koboldbridge.num_userscripts = 0
         for i, filename in _python.enumerate(filenames) do
             bridged.load_callback(filename)
-            local _userscript = safe_require_with_env(filename, koboldbridge.get_universe(filename))
+            local _userscript = old_loadfile(join_folder_and_filename(bridged.userscript_path, filename), "t", koboldbridge.get_universe(filename))()
             local userscript = deepcopy(KoboldUserScriptModule)
             rawset(userscript, "_inmod", _userscript.inmod)
             rawset(userscript, "_genmod", _userscript.genmod)
@@ -1049,20 +1073,17 @@ return function(_python, _bridged)
             koboldbridge.userscripts[i+1] = userscript
             koboldbridge.num_userscripts = i + 1
         end
-        set_require_path(old_path)
     end
 
     ---@return nil
     function koboldbridge.load_corescript(filename)
-        set_require_path(bridged.corescript_path)
-        local corescript = safe_require_with_env(filename, koboldbridge.get_universe(0))
+        local corescript = old_loadfile(join_folder_and_filename(bridged.corescript_path, filename), "t", koboldbridge.get_universe(0))()
         koboldbridge.inmod = corescript.inmod
         koboldbridge.genmod = corescript.genmod
         koboldbridge.outmod = corescript.outmod
-        set_require_path(bridged.lib_path)
     end
 
-    ---@return any, any, any
+    ---@return integer, any, any, any
     function koboldbridge.execute()
         local i, g, o
         local num_generated = 0
@@ -1077,7 +1098,7 @@ return function(_python, _bridged)
         while generating and num_generated < bridged.get_gen_len() do
             bridged.generation_step()
             if koboldbridge.genmod ~= nil then
-                table.insert(g, koboldbridge.genmod())
+                g[num_generated + 1] = koboldbridge.genmod()
                 if genmod_comparison_context ~= kobold.worldinfo:compute_context() then
                     bridged.register_context_change()
                     genmod_comparison_context = nil
@@ -1092,11 +1113,13 @@ return function(_python, _bridged)
         end
         generating = true
         userstate = "inmod"
-        return i, g, o
+        return num_generated, i, g, o
     end
 
 
-    ----------------------------------------------------------------------------
+    --==========================================================================
+    -- Footer
+    --==========================================================================
 
     metawrapper.__newindex = nil
     setmetatable(KoboldWorldInfoEntry, KoboldWorldInfoEntry_mt)
