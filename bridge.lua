@@ -252,7 +252,7 @@ return function(_python, _bridged)
 
     ---@return boolean
     function KoboldWorldInfoEntry:is_valid()
-        return bridged.worldinfo_u.get(self.uid) ~= nil
+        return bridged.vars.worldinfo_u.get(self.uid) ~= nil
     end
 
     ---@return string
@@ -340,7 +340,7 @@ return function(_python, _bridged)
         if not check_validity(self) or type(u) ~= "number" then
             return
         end
-        local query = bridged.worldinfo_u.get(u)
+        local query = bridged.vars.worldinfo_u.get(u)
         if query == nil or (rawget(self, "_name") == "KoboldWorldInfoFolder" and self.uid ~= query.get("folder")) then
             return
         end
@@ -373,7 +373,7 @@ return function(_python, _bridged)
 
     ---@return boolean
     function KoboldWorldInfoFolder:is_valid()
-        return bridged.wifolders_d.get(self.uid) ~= nil
+        return bridged.vars.wifolders_d.get(self.uid) ~= nil
     end
 
     ---@param t KoboldWorldInfoFolder
@@ -382,7 +382,7 @@ return function(_python, _bridged)
         if not check_validity(t) then
             return 0
         end
-        return _python.builtins.len(bridged.worldinfo_u.get(t.uid))
+        return _python.builtins.len(bridged.vars.worldinfo_u.get(t.uid))
     end
 
     KoboldWorldInfoFolder_mt._kobold_next = KoboldWorldInfoEntry_mt._kobold_next
@@ -397,9 +397,9 @@ return function(_python, _bridged)
         elseif rawget(t, "_name") == "KoboldWorldInfoFolder" and k == "uid" then
             return rawget(t, "_uid")
         elseif rawget(t, "_name") == "KoboldWorldInfoFolder" and k == "comment" then
-            return bridged.wifolders_d.get(t.uid).__getitem__("comment")
+            return bridged.folder_get_attr(t.uid, k)
         elseif type(k) == "number" then
-            local query = rawget(t, "_name") == "KoboldWorldInfoFolder" and bridged.wifolders_u.get(t.uid) or bridged.worldinfo
+            local query = rawget(t, "_name") == "KoboldWorldInfoFolder" and bridged.vars.wifolders_u.get(t.uid) or bridged.vars.worldinfo
             k = math.tointeger(k)
             if k == nil or k < 1 or k > _python.builtins.len(query) then
                 return
@@ -424,7 +424,7 @@ return function(_python, _bridged)
                 error("`"..rawget(t, "_name").."."..k.."` must be a string; you attempted to set it to a "..type(v))
                 return
             end
-            bridged.safe_setitem(bridged.wifolders_d.get(t.uid), "comment", v)
+            bridged.folder_set_attr(t.uid, k, v)
             return t
         else
             return rawset(t, k, v)
@@ -450,7 +450,7 @@ return function(_python, _bridged)
         if not check_validity(self) or type(u) ~= "number" then
             return
         end
-        local query = bridged.wifolders_d.get(u)
+        local query = bridged.vars.wifolders_d.get(u)
         if query == nil then
             return
         end
@@ -480,11 +480,11 @@ return function(_python, _bridged)
     ---@param t KoboldWorldInfoFolderSelector
     ---@return KoboldWorldInfoFolder|nil
     function KoboldWorldInfoFolderSelector_mt.__index(t, k)
-        if not check_validity(t) or type(k) ~= "number" or math.tointeger(k) == nil or k < 1 or k > _python.builtins.len(bridged.wifolders_l) then
+        if not check_validity(t) or type(k) ~= "number" or math.tointeger(k) == nil or k < 1 or k > _python.builtins.len(bridged.vars.wifolders_l) then
             return
         end
         local folder = deepcopy(KoboldWorldInfoFolder)
-        rawset(folder, "_uid", bridged.wifolders_l.__getitem__(k))
+        rawset(folder, "_uid", bridged.vars.wifolders_l.__getitem__(k))
         return folder
     end
 
@@ -523,7 +523,7 @@ return function(_python, _bridged)
         if not check_validity(t) then
             return 0
         end
-        return _python.builtins.len(bridged.worldinfo)
+        return _python.builtins.len(bridged.vars.worldinfo)
     end
 
     KoboldWorldInfo_mt._kobold_next = KoboldWorldInfoEntry_mt._kobold_next
@@ -577,6 +577,8 @@ return function(_python, _bridged)
         end
         if k == "gen_len" then
             return bridged.get_gen_len()
+        elseif k == "numseqs" then
+            return bridged.get_numseqs()
         elseif bridged.has_setting(k) then
             return bridged.get_setting(k), true
         else
@@ -588,7 +590,16 @@ return function(_python, _bridged)
     function KoboldSettings_mt.__newindex(t, k, v)
         if k == "gen_len" and type(v) == "number" and math.tointeger(v) ~= nil and v >= 0 then
             bridged.set_gen_len(v)
+        elseif k == "numseqs" and type(v) == "number" and math.tointeger(v) ~= nil and v >= 1 then
+            if koboldbridge.userstate == "genmod" then
+                error("Cannot set numseqs from a generation modifier")
+                return
+            end
+            bridged.set_numseqs(v)
         elseif type(k) == "string" and bridged.has_setting(k) and type(v) == type(bridged.get_setting(k)) then
+            if k == "settknmax" or k == "anotedepth" or k == "setwidepth" or k == "setuseprompt" then
+                maybe_save_genmod_comparison_context()
+            end
             return bridged.set_setting(k, v)
         end
         return t
@@ -838,7 +849,7 @@ return function(_python, _bridged)
     local old_package_loaded = package.loaded
     local old_package_searchers = package.searchers
     ---@param modname string
-    ---@param env? table<string, any>
+    ---@param env table<string, any>
     ---@param search_path? string
     ---@return any, string|nil
     local function requirex(modname, env, search_path)
