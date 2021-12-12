@@ -73,6 +73,7 @@ modellist = [
 # Variables
 class vars:
     lastact     = ""     # The last action received from the user
+    submission  = ""     # Same as above, but after applying input formatting
     lastctx     = ""     # The last context submitted to the generator
     model       = ""     # Model ID string chosen at startup
     noai        = False  # Runs the script without starting up the transformers pipeline
@@ -1637,9 +1638,6 @@ def actionsubmit(data, actionmode=0, force_submit=False):
     vars.recentedit = False
     vars.actionmode = actionmode
 
-    # Run the core script's input modifier
-    vars.lua_koboldbridge.execute_inmod()
-
     # "Action" mode
     if(actionmode == 1):
         data = data.strip().lstrip('>')
@@ -1652,20 +1650,24 @@ def actionsubmit(data, actionmode=0, force_submit=False):
         vars.lastact = data
     
     if(not vars.gamestarted):
+        vars.submission = data
+        execute_inmod()
         if(not force_submit and len(data.strip()) == 0):
             set_aibusy(0)
             return
         # Start the game
         vars.gamestarted = True
-        # Save this first action as the prompt
-        vars.prompt = data
         if(not vars.noai):
+            # Save this first action as the prompt
+            vars.prompt = data
             # Clear the startup text from game screen
             emit('from_server', {'cmd': 'updatescreen', 'gamestarted': False, 'data': 'Please wait, generating story...'}, broadcast=True)
             calcsubmit(data) # Run the first action through the generator
             emit('from_server', {'cmd': 'scrolldown', 'data': ''}, broadcast=True)
         else:
-            vars.lua_koboldbridge.execute_outmod()
+            execute_outmod()
+            # Save this first action as the prompt
+            vars.prompt = data
             refresh_story()
             set_aibusy(0)
             emit('from_server', {'cmd': 'scrolldown', 'data': ''}, broadcast=True)
@@ -1675,6 +1677,8 @@ def actionsubmit(data, actionmode=0, force_submit=False):
             # Apply input formatting & scripts before sending to tokenizer
             if(vars.actionmode == 0):
                 data = applyinputformatting(data)
+            vars.submission = data
+            execute_inmod()
             # Store the result in the Action log
             if(len(vars.prompt.strip()) == 0):
                 vars.prompt = data
@@ -1687,7 +1691,7 @@ def actionsubmit(data, actionmode=0, force_submit=False):
             calcsubmit(data)
             emit('from_server', {'cmd': 'scrolldown', 'data': ''}, broadcast=True)
         else:
-            vars.lua_koboldbridge.execute_outmod()
+            execute_outmod()
             set_aibusy(0)
             emit('from_server', {'cmd': 'scrolldown', 'data': ''}, broadcast=True)
 
@@ -2029,7 +2033,7 @@ def generate(txt, minimum, maximum, found_entries=None):
     #already_generated = -(len(gen_in[0]) - len(tokens))
     genout = [{"generated_text": tokenizer.decode(tokens[-already_generated:])} for tokens in genout]
 
-    vars.lua_koboldbridge.execute_outmod()
+    execute_outmod()
     
     if(len(genout) == 1):
         genresult(genout[0]["generated_text"])
@@ -2130,7 +2134,7 @@ def sendtocolab(txt, min, max):
         else:
             genout = js["seqs"]
         
-        vars.lua_koboldbridge.execute_outmod()
+        execute_outmod()
         
         if(len(genout) == 1):
             genresult(genout[0])
@@ -2213,7 +2217,7 @@ def tpumtjgenerate(txt, minimum, maximum, found_entries=None):
 
     genout = [{"generated_text": txt} for txt in genout]
 
-    vars.lua_koboldbridge.execute_outmod()
+    execute_outmod()
 
     if(len(genout) == 1):
         genresult(genout[0]["generated_text"])
@@ -2801,7 +2805,7 @@ def ikrequest(txt):
     # Deal with the response
     if(req.status_code == 200):
         genout = req.json()["data"]["text"]
-        vars.lua_koboldbridge.execute_outmod()
+        execute_outmod()
         print("{0}{1}{2}".format(colors.CYAN, genout, colors.END))
         vars.actions.append(genout)
         update_story_chunk('last')
@@ -2852,7 +2856,7 @@ def oairequest(txt, min, max):
     # Deal with the response
     if(req.status_code == 200):
         genout = req.json()["choices"][0]["text"]
-        vars.lua_koboldbridge.execute_outmod()
+        execute_outmod()
         print("{0}{1}{2}".format(colors.CYAN, genout, colors.END))
         vars.actions.append(genout)
         update_story_chunk('last')
@@ -3080,6 +3084,7 @@ def loadRequest(loadpath, filename=None):
         vars.wifolders_l = js.get("wifolders_l", [])
         vars.wifolders_u = {uid: [] for uid in vars.wifolders_d}
         vars.lastact     = ""
+        vars.submission  = ""
         vars.lastctx     = ""
 
         del vars.actions
@@ -3278,6 +3283,7 @@ def importgame():
         vars.wifolders_l = []
         vars.wifolders_u = {uid: [] for uid in vars.wifolders_d}
         vars.lastact     = ""
+        vars.submission  = ""
         vars.lastctx     = ""
         
         # Get all actions except for prompt
@@ -3361,6 +3367,7 @@ def importAidgRequest(id):
         vars.wifolders_l = []
         vars.wifolders_u = {uid: [] for uid in vars.wifolders_d}
         vars.lastact     = ""
+        vars.submission  = ""
         vars.lastctx     = ""
         
         num = 0
@@ -3462,6 +3469,7 @@ def newGameRequest():
     vars.wifolders_d = {}
     vars.wifolders_l = []
     vars.lastact     = ""
+    vars.submission  = ""
     vars.lastctx     = ""
     
     # Reset current save

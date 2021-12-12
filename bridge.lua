@@ -129,6 +129,7 @@ return function(_python, _bridged)
 
     ---@class KoboldLib
     ---@field memory string
+    ---@field submission string
     local kobold = setmetatable({}, metawrapper)
     local KoboldLib_mt = setmetatable({}, metawrapper)
     local KoboldLib_getters = setmetatable({}, metawrapper)
@@ -806,6 +807,23 @@ return function(_python, _bridged)
         end
         maybe_require_regeneration()
         bridged.set_memory(v)
+    end
+
+
+    --==========================================================================
+    -- Userscript API: User-submitted text (after applying input formatting)
+    --==========================================================================
+
+    ---@param t KoboldLib
+    ---@return string
+    function KoboldLib_getters.submission(t)
+        return bridged.vars.submission
+    end
+
+    ---@param t KoboldLib
+    ---@param v string
+    function KoboldLib_setters.submission(t, v)
+        error("`KoboldLib.submission` is a read-only attribute")
     end
 
 
