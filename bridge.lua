@@ -196,7 +196,6 @@ return function(_python, _bridged)
     ---@class KoboldBridgeLib
     local koboldbridge = setmetatable({}, metawrapper)
 
-    koboldbridge.genmod_comparison_context = nil
     koboldbridge.regeneration_required = false
     koboldbridge.resend_settings_required = false
     koboldbridge.generating = true
@@ -204,7 +203,7 @@ return function(_python, _bridged)
 
     ---@return nil
     local function maybe_require_regeneration()
-        if koboldbridge.userstate == "genmod" and koboldbridge.genmod_comparison_context == nil then
+        if koboldbridge.userstate == "genmod" then
             koboldbridge.regeneration_required = true
         end
     end
@@ -1372,7 +1371,7 @@ return function(_python, _bridged)
 
     function koboldbridge.execute_inmod()
         local r
-        koboldbridge.generating = true
+        koboldbridge.generating = false
         koboldbridge.userstate = "inmod"
         if koboldbridge.inmod ~= nil then
             r = koboldbridge.inmod()
@@ -1383,20 +1382,17 @@ return function(_python, _bridged)
     ---@return any, boolean
     function koboldbridge.execute_genmod()
         local r
-        local changed = false
+        koboldbridge.generating = true
         koboldbridge.userstate = "genmod"
         if koboldbridge.genmod ~= nil then
             r = koboldbridge.genmod()
-            if genmod_comparison_context ~= kobold.worldinfo:compute_context() then
-                changed = true
-                genmod_comparison_context = nil
-            end
         end
-        return r, changed
+        return r
     end
 
     function koboldbridge.execute_outmod()
         local r
+        koboldbridge.generating = false
         koboldbridge.userstate = "outmod"
         if koboldbridge.outmod ~= nil then
             r = koboldbridge.outmod()
@@ -1404,7 +1400,6 @@ return function(_python, _bridged)
         if koboldbridge.resend_settings_required then
             bridged.resend_settings()
         end
-        koboldbridge.generating = true
         koboldbridge.userstate = "inmod"
         return r
     end
