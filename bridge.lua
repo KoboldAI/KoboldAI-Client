@@ -78,6 +78,8 @@ return function(_python, _bridged)
     -- metatables prior to executing the function body
     --==========================================================================
 
+    local wrapped = false
+
     ---@class Metatables
     local metatables = {}
     local type_map = {
@@ -111,10 +113,18 @@ return function(_python, _bridged)
     function metawrapper.__newindex(t, k, v)
         if type(v) == "function" then
             return rawset(t, k, function(...)
-                metatables:overwrite()
-                metatables_original:restore()
+                local _needs_unwrap = false
+                if not wrapped then
+                    metatables:overwrite()
+                    metatables_original:restore()
+                    _needs_unwrap = true
+                    wrapped = true
+                end
                 local r = {v(...)}
-                metatables:restore()
+                if _needs_unwrap then
+                    metatables:restore()
+                    wrapped = false
+                end
                 return table.unpack(r)
             end)
         else
