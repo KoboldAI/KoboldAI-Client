@@ -110,8 +110,8 @@ return function(_python, _bridged)
     ---@generic T : table
     ---@param t T
     ---@return T
-    function metawrapper.__newindex(t, k, v)
-        if type(v) == "function" then
+    function metawrapper.__newindex(t, k, wrapped_func)
+        if type(wrapped_func) == "function" then
             return rawset(t, k, function(...)
                 local _needs_unwrap = false
                 if not wrapped then
@@ -120,7 +120,7 @@ return function(_python, _bridged)
                     _needs_unwrap = true
                     wrapped = true
                 end
-                local r = {v(...)}
+                local r = {wrapped_func(...)}
                 if _needs_unwrap then
                     metatables:restore()
                     wrapped = false
@@ -128,7 +128,7 @@ return function(_python, _bridged)
                 return table.unpack(r)
             end)
         else
-            return rawset(t, k, v)
+            return rawset(t, k, wrapped_func)
         end
     end
 
