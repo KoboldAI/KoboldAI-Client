@@ -923,7 +923,12 @@ def load_lua_scripts():
 #  Decode tokens into a string using current tokenizer
 #==================================================================#
 def lua_decode(tokens):
+    tokens = list(tokens.values())
     assert type(tokens) is list
+    if("tokenizer" not in globals()):
+        from transformers import GPT2TokenizerFast
+        global tokenizer
+        tokenizer = GPT2TokenizerFast.from_pretrained("gpt2")
     return tokenizer.decode(tokens)
 
 #==================================================================#
@@ -931,6 +936,11 @@ def lua_decode(tokens):
 #==================================================================#
 def lua_encode(string):
     assert type(string) is str
+    if("tokenizer" not in globals()):
+        thinking = False
+        from transformers import GPT2TokenizerFast
+        global tokenizer
+        tokenizer = GPT2TokenizerFast.from_pretrained("gpt2")
     return tokenizer.encode(string, max_length=int(4e9), truncation=True)
 
 #==================================================================#
