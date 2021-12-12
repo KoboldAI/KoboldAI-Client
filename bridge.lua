@@ -540,6 +540,160 @@ return function(_python, _bridged)
 
 
     --==========================================================================
+    -- Userscript API: Story chunks
+    --==========================================================================
+
+    ---@class KoboldStoryChunk
+    ---@field num integer
+    ---@field content string
+    local KoboldStoryChunk = setmetatable({
+        _name = "KoboldStoryChunk",
+    }, metawrapper)
+    local KoboldStoryChunk_mt = setmetatable({}, metawrapper)
+
+    local KoboldStoryChunk_fields = {
+        num = false,
+        content = false,
+    }
+
+    ---@generic K
+    ---@param t KoboldStoryChunk
+    ---@param k K
+    ---@return K, any
+    function KoboldStoryChunk_mt._kobold_next(t, k)
+        k = (next(KoboldStoryChunk_fields, k))
+        return k, t[k]
+    end
+
+    ---@param t KoboldStoryChunk
+    ---@return function, KoboldStoryChunk, nil
+    function KoboldStoryChunk_mt.__pairs(t)
+        return next, t, nil
+    end
+
+    ---@param t KoboldStoryChunk
+    function KoboldStoryChunk_mt.__index(t, k)
+        if k == "num" then
+            return rawget(t, "_num")
+        end
+        if k == "content" then
+            if rawget(t, "_num") == 0 then
+                return bridged.vars.prompt
+            end
+            return _python.as_attrgetter(bridged.vars.actions).get(math.tointeger(rawget(t, "_num")) - 1)
+        end
+    end
+
+    ---@param t KoboldStoryChunk
+    function KoboldStoryChunk_mt.__newindex(t, k, v)
+        if k == "num" then
+            error("`"..rawget(t, "_name").."."..k.."` is a read-only attribute")
+            return
+        elseif k == "content" then
+            if type(v) ~= "string" then
+                error("`"..rawget(t, "_name").."."..k.."` must be a string; you attempted to set it to a "..type(v))
+                return
+            end
+            local _k = math.tointeger(rawget(t, "_num"))
+            if _k == nil or _k < 0 then
+                return
+            elseif _k == 0 and v == "" then
+                error("Attempted to set the prompt chunk's content to the empty string; this is not allowed")
+                return
+            end
+            if _k ~= 0 and _python.as_attrgetter(bridged.vars.actions).get(_k-1) == nil then
+                return
+            end
+            bridged.set_chunk(_k, v)
+            return t
+        end
+    end
+
+
+    ----------------------------------------------------------------------------
+
+    ---@class KoboldStory_base
+    ---@type table<integer, KoboldStoryChunk>
+    local _ = {}
+
+    ---@class KoboldStory : KoboldStory_base
+    local KoboldStory = setmetatable({
+        _name = "KoboldStory",
+    }, metawrapper)
+    local KoboldStory_mt = setmetatable({}, metawrapper)
+
+    ---@return fun(): KoboldStoryChunk, table, nil
+    function KoboldStory.forward_iter()
+        local nxt, iterator = _python.iter(bridged.vars.actions)
+        local run_once = false
+        local f = function()
+            local chunk = deepcopy(KoboldStoryChunk)
+            local _k
+            if not run_once then
+                _k = -1
+                run_once = true
+            else
+                _k = nxt(iterator)
+            end
+            if _k == nil then
+                return nil
+            else
+                _k = math.tointeger(_k) + 1
+            end
+            rawset(chunk, "_num", _k)
+            return chunk
+        end
+        return f, {}, nil
+    end
+
+    ---@return fun(): KoboldStoryChunk, table, nil
+    function KoboldStory.reverse_iter()
+        local nxt, iterator = _python.iter(_python.builtins.reversed(bridged.vars.actions))
+        local last_run = false
+        local f = function()
+            if last_run then
+                return nil
+            end
+            local chunk = deepcopy(KoboldStoryChunk)
+            local _k = nxt(iterator)
+            if _k == nil then
+                _k = 0
+                last_run = true
+            else
+                _k = math.tointeger(_k) + 1
+            end
+            rawset(chunk, "_num", _k)
+            return chunk
+        end
+        return f, {}, nil
+    end
+
+    ---@param t KoboldStory
+    function KoboldStory_mt.__pairs(t)
+        return function() return nil end, t, nil
+    end
+
+    ---@param t KoboldStory
+    function KoboldStory_mt.__index(t, k)
+        if k == nil or (type(k) == "number" and math.tointeger(k) ~= nil) then
+            local chunk = deepcopy(KoboldStoryChunk)
+            rawset(chunk, "_num", math.tointeger(k))
+            if chunk.content == nil then
+                return nil
+            end
+            return chunk
+        end
+    end
+
+    ---@param t KoboldStory
+    function KoboldStory_mt.__newindex(t, k, v)
+        error("`"..rawget(t, "_name").."` is a read-only class")
+    end
+
+    kobold.story = KoboldStory
+
+
+    --==========================================================================
     -- Userscript API: Settings
     --==========================================================================
 
@@ -1165,6 +1319,8 @@ return function(_python, _bridged)
     setmetatable(KoboldWorldInfoFolder, KoboldWorldInfoFolder_mt)
     setmetatable(KoboldWorldInfoFolderSelector, KoboldWorldInfoFolderSelector_mt)
     setmetatable(KoboldWorldInfo, KoboldWorldInfo_mt)
+    setmetatable(KoboldStoryChunk, KoboldStoryChunk_mt)
+    setmetatable(KoboldStory, KoboldStory_mt)
     setmetatable(KoboldSettings, KoboldSettings_mt)
     setmetatable(KoboldUserScriptModule, KoboldUserScriptModule_mt)
     setmetatable(KoboldUserScriptList, KoboldUserScriptList_mt)

@@ -1121,6 +1121,23 @@ def lua_resend_settings():
     refresh_settings()
 
 #==================================================================#
+#  Set story chunk text and delete the chunk if the new chunk is empty
+#==================================================================#
+def lua_set_chunk(k, v):
+    assert type(k) in (int, None) and type(v) is str
+    assert k >= 0
+    assert k != 0 or len(v) != 0
+    if(len(v) == 0):
+        print(colors.PURPLE + f"[USERPLACEHOLDER] deleted story chunk {k}" + colors.END)
+        inlinedelete(k)
+    else:
+        if(k == 0):
+            print(colors.PURPLE + f"[USERPLACEHOLDER] edited prompt chunk" + colors.END)
+        else:
+            print(colors.PURPLE + f"[USERPLACEHOLDER] edited story chunk {k}" + colors.END)
+        inlineedit(k, v)
+
+#==================================================================#
 #  
 #==================================================================#
 def execute_inmod():
@@ -1163,6 +1180,7 @@ bridged = {
     "get_setting": lua_get_setting,
     "set_setting": lua_set_setting,
     "resend_settings": lua_resend_settings,
+    "set_chunk": lua_set_chunk,
     "vars": vars,
 }
 try:
