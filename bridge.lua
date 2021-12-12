@@ -140,6 +140,11 @@ return function(_python, _bridged)
     ---@class KoboldLib
     ---@field memory string
     ---@field submission string
+    ---@field model string
+    ---@field modeltype "'readonly'"|"'api'"|"'unknown'"|"'gpt2'"|"'gpt2-medium'"|"'gpt2-large'"|"'gpt2-xl'"|"'gpt-neo-125M'"|"'gpt-neo-1.3B'"|"'gpt-neo-2.7B'"|"'gpt-j-6B'"
+    ---@field modelbackend "'readonly'"|"'api'"|"'transformers'"|"'mtj'"
+    ---@field is_custommodel boolean
+    ---@field custmodpth string
     local kobold = setmetatable({}, metawrapper)
     local KoboldLib_mt = setmetatable({}, metawrapper)
     local KoboldLib_getters = setmetatable({}, metawrapper)
@@ -835,6 +840,71 @@ return function(_python, _bridged)
     ---@param v string
     function KoboldLib_setters.submission(t, v)
         error("`KoboldLib.submission` is a read-only attribute")
+    end
+
+
+    --==========================================================================
+    -- Userscript API: Model information
+    --==========================================================================
+
+    ---@param t KoboldLib
+    ---@return string
+    function KoboldLib_getters.modeltype(t)
+        return bridged.get_modeltype()
+    end
+
+    ---@param t KoboldLib
+    ---@param v string
+    function KoboldLib_setters.modeltype(t, v)
+        error("`KoboldLib.modeltype` is a read-only attribute")
+    end
+
+    ---@param t KoboldLib
+    ---@return string
+    function KoboldLib_getters.model(t)
+        return bridged.vars.model
+    end
+
+    ---@param t KoboldLib
+    ---@param v string
+    function KoboldLib_setters.model(t, v)
+        error("`KoboldLib.model` is a read-only attribute")
+    end
+
+    ---@param t KoboldLib
+    ---@return string
+    function KoboldLib_getters.modelbackend(t)
+        return bridged.get_modelbackend()
+    end
+
+    ---@param t KoboldLib
+    ---@param v string
+    function KoboldLib_setters.modelbackend(t, v)
+        error("`KoboldLib.modelbackend` is a read-only attribute")
+    end
+
+    ---@param t KoboldLib
+    ---@return string
+    function KoboldLib_getters.is_custommodel(t)
+        return bridged.is_custommodel()
+    end
+
+    ---@param t KoboldLib
+    ---@param v string
+    function KoboldLib_setters.is_custommodel(t, v)
+        error("`KoboldLib.is_custommodel` is a read-only attribute")
+    end
+
+    ---@param t KoboldLib
+    ---@return string
+    function KoboldLib_getters.custmodpth(t)
+        return bridged.vars.custmodpth
+    end
+
+    ---@param t KoboldLib
+    ---@param v string
+    function KoboldLib_setters.custmodpth(t, v)
+        error("`KoboldLib.custmodpth` is a read-only attribute")
     end
 
 
