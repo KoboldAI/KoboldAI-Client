@@ -605,6 +605,7 @@ return function(_python, _bridged)
                 return
             end
             bridged.set_chunk(_k, v)
+            maybe_require_regeneration()
             return t
         end
     end
