@@ -1160,8 +1160,8 @@ vars.lua_state = lupa.LuaRuntime(unpack_returned_tuples=True)
 
 # Load bridge.lua
 bridged = {
-    "corescript_path": os.path.join(os.path.dirname(os.path.realpath(__file__)), "scripts", "corescripts"),
-    "userscript_path": os.path.join(os.path.dirname(os.path.realpath(__file__)), "scripts", "userscripts"),
+    "corescript_path": os.path.join(os.path.dirname(os.path.realpath(__file__)), "cores"),
+    "userscript_path": os.path.join(os.path.dirname(os.path.realpath(__file__)), "userscripts"),
     "lib_path": os.path.join(os.path.dirname(os.path.realpath(__file__)), "extern", "lualibs"),
     "load_callback": load_callback,
     "decode": lua_decode,
