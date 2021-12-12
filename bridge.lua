@@ -623,7 +623,7 @@ return function(_python, _bridged)
     local KoboldStory_mt = setmetatable({}, metawrapper)
 
     ---@return fun(): KoboldStoryChunk, table, nil
-    function KoboldStory.forward_iter()
+    function KoboldStory:forward_iter()
         local nxt, iterator = _python.iter(bridged.vars.actions)
         local run_once = false
         local f = function()
@@ -647,7 +647,7 @@ return function(_python, _bridged)
     end
 
     ---@return fun(): KoboldStoryChunk, table, nil
-    function KoboldStory.reverse_iter()
+    function KoboldStory:reverse_iter()
         local nxt, iterator = _python.iter(_python.builtins.reversed(bridged.vars.actions))
         local last_run = false
         local f = function()
