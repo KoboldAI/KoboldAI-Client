@@ -1048,6 +1048,7 @@ def lua_has_setting(setting):
         "setwidepth",
         "setuseprompt",
         "setadventure",
+        "setdynamicscan",
         "frmttriminc",
         "frmtrmblln",
         "frmtrmspch",
@@ -1069,6 +1070,7 @@ def lua_get_setting(setting):
     if(setting == "setwidepth"): return vars.widepth
     if(setting == "setuseprompt"): return vars.useprompt
     if(setting == "setadventure"): return vars.adventure
+    if(setting == "setdynamicscan"): return vars.dynamicscan
     if(setting == "frmttriminc"): return vars.formatoptns["frmttriminc"]
     if(setting == "frmtrmblln"): return vars.formatoptns["frmttriminc"]
     if(setting == "frmtrmspch"): return vars.formatoptns["frmttriminc"]
@@ -1095,6 +1097,7 @@ def lua_set_setting(setting, v):
     if(setting == "setwidepth"): vars.widepth = v
     if(setting == "setuseprompt"): vars.useprompt = v
     if(setting == "setadventure"): vars.adventure = v
+    if(setting == "setdynamicscan"): vars.dynamicscan = v
     if(setting == "frmttriminc"): vars.formatoptns["frmttriminc"] = v
     if(setting == "frmtrmblln"): vars.formatoptns["frmttriminc"] = v
     if(setting == "frmtrmspch"): vars.formatoptns["frmttriminc"] = v

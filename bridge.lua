@@ -716,6 +716,7 @@ return function(_python, _bridged)
     ---@field setwidepth integer
     ---@field setuseprompt boolean
     ---@field setadventure boolean
+    ---@field setdynamicscan boolean
     ---@field frmttriminc boolean
     ---@field frmtrmblln boolean
     ---@field frmtrmspch boolean
