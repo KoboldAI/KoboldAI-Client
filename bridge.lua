@@ -254,7 +254,7 @@ return function(_python, _bridged)
 
     ---@return boolean
     function KoboldWorldInfoEntry:is_valid()
-        return bridged.vars.worldinfo_u.get(self.uid) ~= nil
+        return _python.as_attrgetter(bridged.vars.worldinfo_u).get(rawget(self, "_uid")) ~= nil
     end
 
     ---@return string
@@ -326,7 +326,7 @@ return function(_python, _bridged)
 
     ---@class KoboldWorldInfoFolder : KoboldWorldInfoFolder_base
     ---@field uid integer
-    ---@field comment string
+    ---@field name string
     local KoboldWorldInfoFolder = setmetatable({
         _name = "KoboldWorldInfoFolder",
     }, metawrapper)
@@ -342,8 +342,8 @@ return function(_python, _bridged)
         if not check_validity(self) or type(u) ~= "number" then
             return
         end
-        local query = bridged.vars.worldinfo_u.get(u)
-        if query == nil or (rawget(self, "_name") == "KoboldWorldInfoFolder" and self.uid ~= query.get("folder")) then
+        local query = _python.as_attrgetter(bridged.vars.worldinfo_u).get(u)
+        if query == nil or (rawget(self, "_name") == "KoboldWorldInfoFolder" and self.uid ~= _python.as_attrgetter(query).get("folder")) then
             return
         end
         local entry = deepcopy(KoboldWorldInfoEntry)
@@ -375,7 +375,7 @@ return function(_python, _bridged)
 
     ---@return boolean
     function KoboldWorldInfoFolder:is_valid()
-        return bridged.vars.wifolders_d.get(self.uid) ~= nil
+        return _python.as_attrgetter(bridged.vars.wifolders_d).get(rawget(self, "_uid")) ~= nil
     end
 
     ---@param t KoboldWorldInfoFolder
@@ -384,7 +384,7 @@ return function(_python, _bridged)
         if not check_validity(t) then
             return 0
         end
-        return _python.builtins.len(bridged.vars.worldinfo_u.get(t.uid))
+        return math.tointeger(_python.builtins.len(_python.as_attrgetter(bridged.vars.wifolders_u).get(t.uid))) - 1
     end
 
     KoboldWorldInfoFolder_mt._kobold_next = KoboldWorldInfoEntry_mt._kobold_next
@@ -398,16 +398,16 @@ return function(_python, _bridged)
             return
         elseif rawget(t, "_name") == "KoboldWorldInfoFolder" and k == "uid" then
             return rawget(t, "_uid")
-        elseif rawget(t, "_name") == "KoboldWorldInfoFolder" and k == "comment" then
+        elseif rawget(t, "_name") == "KoboldWorldInfoFolder" and k == "name" then
             return bridged.folder_get_attr(t.uid, k)
         elseif type(k) == "number" then
-            local query = rawget(t, "_name") == "KoboldWorldInfoFolder" and bridged.vars.wifolders_u.get(t.uid) or bridged.vars.worldinfo
+            local query = rawget(t, "_name") == "KoboldWorldInfoFolder" and _python.as_attrgetter(bridged.vars.wifolders_u).get(t.uid) or bridged.vars.worldinfo_i
             k = math.tointeger(k)
-            if k == nil or k < 1 or k > _python.builtins.len(query) then
+            if k == nil or k < 1 or k > #t then
                 return
             end
             local entry = deepcopy(KoboldWorldInfoEntry)
-            rawset(entry, "_uid", query.__getitem__(k))
+            rawset(entry, "_uid", math.tointeger(query[k-1].uid))
             return entry
         end
     end
@@ -421,7 +421,7 @@ return function(_python, _bridged)
             error("Cannot write to integer indices of `"..rawget(t, "_name").."`")
         elseif rawget(t, "_name") == "KoboldWorldInfoFolder" and k == "uid" then
             error("`"..rawget(t, "_name").."."..k.."` is a read-only attribute")
-        elseif t == "comment" then
+        elseif t == "name" then
             if type(v) ~= "string" then
                 error("`"..rawget(t, "_name").."."..k.."` must be a string; you attempted to set it to a "..type(v))
                 return
@@ -452,7 +452,7 @@ return function(_python, _bridged)
         if not check_validity(self) or type(u) ~= "number" then
             return
         end
-        local query = bridged.vars.wifolders_d.get(u)
+        local query = _python.as_attrgetter(bridged.vars.wifolders_d).get(u)
         if query == nil then
             return
         end
@@ -482,11 +482,11 @@ return function(_python, _bridged)
     ---@param t KoboldWorldInfoFolderSelector
     ---@return KoboldWorldInfoFolder|nil
     function KoboldWorldInfoFolderSelector_mt.__index(t, k)
-        if not check_validity(t) or type(k) ~= "number" or math.tointeger(k) == nil or k < 1 or k > _python.builtins.len(bridged.vars.wifolders_l) then
+        if not check_validity(t) or type(k) ~= "number" or math.tointeger(k) == nil or k < 1 or k > #t then
             return
         end
         local folder = deepcopy(KoboldWorldInfoFolder)
-        rawset(folder, "_uid", bridged.vars.wifolders_l.__getitem__(k))
+        rawset(folder, "_uid", math.tointeger(bridged.vars.wifolders_l[k-1]))
         return folder
     end
 
@@ -525,7 +525,7 @@ return function(_python, _bridged)
         if not check_validity(t) then
             return 0
         end
-        return _python.builtins.len(bridged.vars.worldinfo)
+        return math.tointeger(_python.builtins.len(bridged.vars.worldinfo)) - math.tointeger(_python.builtins.len(bridged.vars.wifolders_l)) - 1
     end
 
     KoboldWorldInfo_mt._kobold_next = KoboldWorldInfoEntry_mt._kobold_next
