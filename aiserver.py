@@ -3807,6 +3807,11 @@ def randomGameRequest(topic):
 #  Final startup commands to launch Flask app
 #==================================================================#
 if __name__ == "__main__":
+
+    # Load settings from client.settings
+    loadmodelsettings()
+    loadsettings()
+
     # Start Flask/SocketIO (Blocking, so this must be last method!)
     
     #socketio.run(app, host='0.0.0.0', port=5000)
