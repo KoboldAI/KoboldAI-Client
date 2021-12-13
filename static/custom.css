@@ -833,6 +833,15 @@ chunk.editing, chunk.editing * {
 	color: #fce94f
 }
 
+.usheadergrid {
+	display: grid;
+	grid-template-columns: 50% 50%;
+	color: #ffffff;
+	text-align: center;
+	padding-top: 5px;
+	padding-bottom: 5px;
+}
+
 .uslistgrid {
 	display: grid;
 	grid-template-columns: 50% 50%;
