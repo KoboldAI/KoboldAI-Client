@@ -202,7 +202,7 @@ return function(_python, _bridged)
     end
 
     ---@class KoboldBridgeLib
-    local koboldbridge = setmetatable({}, metawrapper)
+    local koboldbridge = {}
 
     koboldbridge.regeneration_required = false
     koboldbridge.resend_settings_required = false
