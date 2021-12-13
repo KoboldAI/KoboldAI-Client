@@ -765,13 +765,13 @@ function dosubmit() {
 	if(!memorymode && !gamestarted && ((!adventure || !action_mode) && txt.trim().length == 0)) {
 		return;
 	}
+	input_text.val("");
+	hideMessage();
+	hidegenseqs();
 	socket.send({'cmd': 'submit', 'actionmode': adventure ? action_mode : 0, 'data': txt});
 	if(memorymode) {
 		memorytext = input_text.val();
 	}
-	input_text.val("");
-	hideMessage();
-	hidegenseqs();
 }
 
 function changemode() {
@@ -1690,7 +1690,6 @@ $(document).ready(function(){
 				scrollToBottom();
 			}
 			newly_loaded = false;
-			hideMessage();
 		} else if(msg.cmd == "scrolldown") {
 			scrollToBottom();
 		} else if(msg.cmd == "updatechunk") {
