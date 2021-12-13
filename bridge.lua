@@ -146,6 +146,13 @@ return function(_python, _bridged)
     ---@field is_custommodel boolean
     ---@field custmodpth string
     ---@field logits table<integer, table<integer, number>>
+    ---@field logits_rows integer
+    ---@field logits_cols integer
+    ---@field generated table<integer, table<integer, integer>>
+    ---@field generated_rows integer
+    ---@field generated_cols integer
+    ---@field outputs table<integer, string>
+    ---@field num_outputs integer
     local kobold = setmetatable({}, metawrapper)
     local KoboldLib_mt = setmetatable({}, metawrapper)
     local KoboldLib_getters = setmetatable({}, metawrapper)
@@ -203,10 +210,13 @@ return function(_python, _bridged)
     koboldbridge.userstate = "inmod"
     koboldbridge.logits = {}
     koboldbridge.vocab_size = 0
+    koboldbridge.generated = {}
+    koboldbridge.generated_cols = 0
+    koboldbridge.outputs = {}
 
     ---@return nil
     local function maybe_require_regeneration()
-        if koboldbridge.userstate == "genmod" then
+        if koboldbridge.userstate == "genmod" or koboldbridge.userstate == "outmod" then
             koboldbridge.regeneration_required = true
         end
     end
@@ -917,6 +927,9 @@ return function(_python, _bridged)
     ---@param t KoboldLib
     ---@return integer
     function KoboldLib_getters.logits_rows(t)
+        if koboldbridge.userstate ~= "genmod" then
+            return 0
+        end
         local backend = kobold.modelbackend
         if backend == "readonly" or backend == "api" then
             return 0
@@ -933,6 +946,9 @@ return function(_python, _bridged)
     ---@param t KoboldLib
     ---@return integer
     function KoboldLib_getters.logits_cols(t)
+        if koboldbridge.userstate ~= "genmod" then
+            return 0
+        end
         local backend = kobold.modelbackend
         if backend == "readonly" or backend == "api" then
             return 0
@@ -966,6 +982,119 @@ return function(_python, _bridged)
             return
         end
         koboldbridge.logits = v
+    end
+
+
+    --==========================================================================
+    -- Userscript API: Generated Tokens
+    --==========================================================================
+
+    ---@param t KoboldLib
+    ---@return integer
+    function KoboldLib_getters.generated_rows(t)
+        local backend = kobold.modelbackend
+        if backend == "readonly" or backend == "api" then
+            return 0
+        end
+        return kobold.settings.numseqs
+    end
+
+    ---@param t KoboldLib
+    ---@return integer
+    function KoboldLib_setters.generated_rows(t)
+        error("`KoboldLib.generated_rows` is a read-only attribute")
+    end
+
+    ---@param t KoboldLib
+    ---@return integer
+    function KoboldLib_getters.generated_cols(t)
+        if koboldbridge.userstate ~= "genmod" then
+            return 0
+        end
+        local backend = kobold.modelbackend
+        if backend == "readonly" or backend == "api" then
+            return 0
+        end
+        return math.tointeger(koboldbridge.generated_cols)
+    end
+
+    ---@param t KoboldLib
+    ---@return integer
+    function KoboldLib_setters.generated_cols(t)
+        error("`KoboldLib.generated_cols` is a read-only attribute")
+    end
+
+    ---@param t KoboldLib
+    ---@return table<integer, table<integer, integer>>
+    function KoboldLib_getters.generated(t)
+        if koboldbridge.userstate ~= "genmod" and koboldbridge.userstate ~= "outmod" then
+            return
+        end
+        local backend = kobold.modelbackend
+        if backend == "readonly" or backend == "api" then
+            return
+        end
+        return koboldbridge.generated
+    end
+
+    ---@param t KoboldLib
+    ---@param v table<integer, table<integer, integer>>
+    function KoboldLib_setters.generated(t, v)
+        if koboldbridge.userstate ~= "genmod" then
+            error("Cannot write to `KoboldLib.generated` from outside of a generation modifier")
+            return
+        elseif type(v) ~= "table" then
+            error("`KoboldLib.generated` must be a 2D list (table) of integers; you attempted to set it to a " .. type(v))
+            return
+        end
+        koboldbridge.generated = v
+    end
+
+
+    --==========================================================================
+    -- Userscript API: Output
+    --==========================================================================
+
+    ---@param t KoboldLib
+    ---@return integer
+    function KoboldLib_getters.num_outputs(t)
+        local backend = kobold.modelbackend
+        if backend == "readonly" then
+            return 0
+        end
+        local model = kobold.model
+        if model == "OAI" or model == "InferKit" then
+            return 1
+        end
+        return kobold.settings.numseqs
+    end
+
+    ---@param t KoboldLib
+    ---@return integer
+    function KoboldLib_setters.num_outputs(t)
+        error("`KoboldLib.num_outputs` is a read-only attribute")
+    end
+
+    ---@param t KoboldLib
+    ---@return table<integer, string>
+    function KoboldLib_getters.outputs(t)
+        if koboldbridge.userstate ~= "outmod" then
+            return
+        end
+        return koboldbridge.outputs
+    end
+
+    ---@param t KoboldLib
+    ---@param v table<integer, string>
+    function KoboldLib_setters.outputs(t, v)
+        if koboldbridge.userstate ~= "outmod" then
+            error("Cannot write to `KoboldLib.generated` from outside of an output modifier")
+            return
+        elseif type(v) ~= "table" then
+            error("`KoboldLib.generated` must be a list (table) of strings; you attempted to set it to a " .. type(v))
+            return
+        end
+        koboldbridge.outputs = v
     end
 
 
@@ -1433,8 +1562,18 @@ return function(_python, _bridged)
 
     function koboldbridge.execute_inmod()
         local r
+        koboldbridge.regeneration_required = false
         koboldbridge.generating = false
         koboldbridge.userstate = "inmod"
+        koboldbridge.generated_cols = 0
+        koboldbridge.generated = {}
+        for i = 1, kobold.settings.numseqs do
+            koboldbridge.generated[i] = {}
+        end
+        koboldbridge.outputs = {}
+        for i = 1, kobold.num_outputs do
+            koboldbridge.outputs[i] = {}
+        end
         if koboldbridge.inmod ~= nil then
             r = koboldbridge.inmod()
         end
@@ -1447,6 +1586,7 @@ return function(_python, _bridged)
         koboldbridge.generating = true
         koboldbridge.userstate = "genmod"
         if koboldbridge.genmod ~= nil then
+            local _generated = deepcopy(koboldbridge.generated)
             r = koboldbridge.genmod()
             setmetatable(koboldbridge.logits, nil)
             for kr, vr in old_next, koboldbridge.logits, nil do
@@ -1458,7 +1598,22 @@ return function(_python, _bridged)
                     end
                 end
             end
+            setmetatable(koboldbridge.generated, nil)
+            for kr, vr in old_next, koboldbridge.generated, nil do
+                setmetatable(vr, nil)
+                for kc, vc in old_next, vr, nil do
+                    if math.tointeger(vc) == nil then
+                        error("`kobold.generated` must be a 2D table of integers, but found a non-integer element at row " .. kr .. ", column " .. kc)
+                        return r
+                    end
+                    vr[kc] = math.tointeger(vc)
+                    if vr[kc] ~= _generated[kr][kc] then
+                        maybe_require_regeneration()
+                    end
+                end
+            end
         end
+        koboldbridge.generated_cols = koboldbridge.generated_cols + 1
         return r
     end
 
@@ -1467,12 +1622,22 @@ return function(_python, _bridged)
         koboldbridge.generating = false
         koboldbridge.userstate = "outmod"
         if koboldbridge.outmod ~= nil then
+            local _outputs = deepcopy(koboldbridge.outputs)
             r = koboldbridge.outmod()
+            setmetatable(koboldbridge.outputs, nil)
+            for k, v in old_next, koboldbridge.outputs, nil do
+                if type(v) ~= "string" then
+                    error("`kobold.outputs` must be a 1D list of strings, but found a non-string element at index " .. k)
+                    return r
+                end
+                if v ~= _outputs[k] then
+                    maybe_require_regeneration()
+                end
+            end
         end
         if koboldbridge.resend_settings_required then
             bridged.resend_settings()
         end
-        koboldbridge.userstate = "inmod"
         return r
     end
 
