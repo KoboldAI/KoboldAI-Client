@@ -1746,9 +1746,9 @@ def actionsubmit(data, actionmode=0, force_submit=False):
     if(not vars.gamestarted):
         vars.submission = data
         execute_inmod()
+        data = vars.submission
         if(not force_submit and len(data.strip()) == 0):
-            set_aibusy(0)
-            return
+            assert False
         # Start the game
         vars.gamestarted = True
         if(not vars.noai):
@@ -1776,13 +1776,14 @@ def actionsubmit(data, actionmode=0, force_submit=False):
             set_aibusy(0)
             emit('from_server', {'cmd': 'scrolldown', 'data': ''}, broadcast=True)
     else:
+        # Apply input formatting & scripts before sending to tokenizer
+        if(vars.actionmode == 0):
+            data = applyinputformatting(data)
+        vars.submission = data
+        execute_inmod()
+        data = vars.submission
         # Dont append submission if it's a blank/continue action
         if(data != ""):
-            # Apply input formatting & scripts before sending to tokenizer
-            if(vars.actionmode == 0):
-                data = applyinputformatting(data)
-            vars.submission = data
-            execute_inmod()
             # Store the result in the Action log
             if(len(vars.prompt.strip()) == 0):
                 vars.prompt = data

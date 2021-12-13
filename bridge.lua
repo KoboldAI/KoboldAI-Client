@@ -606,7 +606,9 @@ return function(_python, _bridged)
         end
         if k == "content" then
             if rawget(t, "_num") == 0 then
-                return bridged.vars.prompt
+                if bridged.vars.gamestarted then
+                    return bridged.vars.prompt
+                end
             end
             return _python.as_attrgetter(bridged.vars.actions).get(math.tointeger(rawget(t, "_num")) - 1)
         end
@@ -656,6 +658,9 @@ return function(_python, _bridged)
         local nxt, iterator = _python.iter(bridged.vars.actions)
         local run_once = false
         local f = function()
+            if not bridged.vars.gamestarted then
+                return
+            end
             local chunk = deepcopy(KoboldStoryChunk)
             local _k
             if not run_once then
@@ -665,7 +670,7 @@ return function(_python, _bridged)
                 _k = nxt(iterator)
             end
             if _k == nil then
-                return nil
+                return
             else
                 _k = math.tointeger(_k) + 1
             end
@@ -680,8 +685,8 @@ return function(_python, _bridged)
         local nxt, iterator = _python.iter(_python.builtins.reversed(bridged.vars.actions))
         local last_run = false
         local f = function()
-            if last_run then
-                return nil
+            if not bridged.vars.gamestarted or last_run then
+                return
             end
             local chunk = deepcopy(KoboldStoryChunk)
             local _k = nxt(iterator)
@@ -704,7 +709,7 @@ return function(_python, _bridged)
 
     ---@param t KoboldStory
     function KoboldStory_mt.__index(t, k)
-        if k == nil or (type(k) == "number" and math.tointeger(k) ~= nil) then
+        if type(k) == "number" and math.tointeger(k) ~= nil then
             local chunk = deepcopy(KoboldStoryChunk)
             rawset(chunk, "_num", math.tointeger(k))
             if chunk.content == nil then
@@ -851,7 +856,16 @@ return function(_python, _bridged)
     ---@param t KoboldLib
     ---@param v string
     function KoboldLib_setters.submission(t, v)
-        error("`KoboldLib.submission` is a read-only attribute")
+        if koboldbridge.userstate ~= "inmod" then
+            error("Cannot write to `KoboldLib.submission` from outside of an input modifier")
+            return
+        elseif type(v) ~= "string" then
+            error("`KoboldLib.submission` must be a string; you attempted to set it to a " .. type(v))
+            return
+        elseif not bridged.vars.gamestarted and v == "" then
+            error("`KoboldLib.submission` must not be set to the empty string when the story is empty")
+        end
+        bridged.vars.submission = v
     end
 
 
