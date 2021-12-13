@@ -1018,7 +1018,7 @@ def lua_warn(msg):
     if(vars.lua_logname != vars.lua_koboldbridge.logging_name):
         vars.lua_logname = vars.lua_koboldbridge.logging_name
         print(colors.BLUE + lua_log_format_name(vars.lua_logname) + ":" + colors.END, file=sys.stderr)
-    print(colors.YELLOW + msg.replace("\033", "") + colors.END)
+    print(colors.RED + msg.replace("\033", "") + colors.END)
 
 #==================================================================#
 #  Decode tokens into a string using current tokenizer

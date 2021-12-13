@@ -1509,6 +1509,11 @@ return function(_python, _bridged)
             ult = math.ult,
         },
         io = {
+            stdin = io.stdin,
+            stdout = io.stdout,
+            stderr = io.stderr,
+            input = io.input,
+            output = io.output,
             read = io.read,
             write = io.write,
             flush = io.flush,
