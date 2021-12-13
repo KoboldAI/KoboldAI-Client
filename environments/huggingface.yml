@@ -11,10 +11,10 @@ dependencies:
   - python=3.8.*
   - cudatoolkit=11.1
   - transformers
-  - gevent-websocket
+  - eventlet
   - pip
   - git
   - pip:
     - flask-cloudflared
     - flask-ngrok
-    - lupa
+    - lupa==1.10

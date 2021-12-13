@@ -1679,9 +1679,6 @@ return function(_python, _bridged)
                 end
             end
         end
-        if koboldbridge.resend_settings_required then
-            bridged.resend_settings()
-        end
         koboldbridge.userstate = nil
         return r
     end

@@ -6,7 +6,12 @@
 #==================================================================#
 
 # External packages
+import eventlet
+eventlet.monkey_patch()
 import os
+os.environ['EVENTLET_THREADPOOL_SIZE'] = '1'
+from eventlet import tpool
+
 from os import path, getcwd
 import re
 import tkinter as tk
@@ -559,7 +564,7 @@ from flask import Flask, render_template, Response, request
 from flask_socketio import SocketIO, emit
 app = Flask(__name__)
 app.config['SECRET KEY'] = 'secret!'
-socketio = SocketIO(app)
+socketio = SocketIO(app, async_method="eventlet")
 print("{0}OK!{1}".format(colors.GREEN, colors.END))
 
 # Start transformers and create pipeline
@@ -990,8 +995,8 @@ def load_lua_scripts():
 
     try:
         vars.lua_koboldbridge.obliterate_multiverse()
-        vars.lua_koboldbridge.load_corescript("default.lua")
-        vars.lua_koboldbridge.load_userscripts(filenames, modulenames, descriptions)
+        tpool.execute(vars.lua_koboldbridge.load_corescript, "default.lua")
+        tpool.execute(vars.lua_koboldbridge.load_userscripts, filenames, modulenames, descriptions)
     except lupa.LuaError as e:
         vars.lua_koboldbridge.obliterate_multiverse()
         if(vars.serverstarted):
@@ -1293,7 +1298,7 @@ def lua_is_custommodel():
 def execute_inmod():
     vars.lua_logname = ...
     try:
-        vars.lua_koboldbridge.execute_inmod()
+        tpool.execute(vars.lua_koboldbridge.execute_inmod)
     except lupa.LuaError as e:
         vars.lua_koboldbridge.obliterate_multiverse()
         emit('from_server', {'cmd': 'errmsg', 'data': 'Lua script error, please check console.'}, broadcast=True)
@@ -1307,7 +1312,7 @@ def execute_genmod():
 
 def execute_outmod():
     try:
-        vars.lua_koboldbridge.execute_outmod()
+        tpool.execute(vars.lua_koboldbridge.execute_outmod)
     except lupa.LuaError as e:
         vars.lua_koboldbridge.obliterate_multiverse()
         emit('from_server', {'cmd': 'errmsg', 'data': 'Lua script error, please check console.'}, broadcast=True)
@@ -1315,6 +1320,9 @@ def execute_outmod():
         print("{0}{1}{2}".format(colors.RED, str(e).replace("\033", ""), colors.END), file=sys.stderr)
         print("{0}{1}{2}".format(colors.YELLOW, "Lua engine stopped; please open 'Userscripts' and press Load to reinitialize scripts.", colors.END), file=sys.stderr)
         set_aibusy(0)
+    if(vars.lua_koboldbridge.resend_settings_required):
+        vars.lua_koboldbridge.resend_settings_required = False
+        lua_resend_settings()
 
 #==================================================================#
 #  Lua runtime startup
@@ -1348,7 +1356,6 @@ bridged = {
     "has_setting": lua_has_setting,
     "get_setting": lua_get_setting,
     "set_setting": lua_set_setting,
-    "resend_settings": lua_resend_settings,
     "set_chunk": lua_set_chunk,
     "get_modeltype": lua_get_modeltype,
     "get_modelbackend": lua_get_modelbackend,
@@ -2157,100 +2164,106 @@ def calcsubmit(txt):
 #==================================================================#
 # Send text to generator and deal with output
 #==================================================================#
+
+def _generate(txt, minimum, maximum, found_entries):
+    gen_in = tokenizer.encode(txt, return_tensors="pt", truncation=True).long()
+    if(vars.sp is not None):
+        soft_tokens = torch.arange(
+            model.config.vocab_size,
+            model.config.vocab_size + vars.sp.shape[0],
+        )
+        gen_in = torch.cat((soft_tokens[None], gen_in), dim=-1)
+
+    if(vars.hascuda and vars.usegpu):
+        gen_in = gen_in.to(0)
+    elif(vars.hascuda and vars.breakmodel):
+        gen_in = gen_in.to(breakmodel.primary_device)
+    else:
+        gen_in = gen_in.to('cpu')
+
+    model.kai_scanner_head_length = gen_in.shape[-1]
+    model.kai_scanner_excluded_world_info = found_entries
+
+    actions = vars.actions
+    if(vars.dynamicscan):
+        actions = actions.copy()
+
+    with torch.no_grad():
+        already_generated = 0
+        numseqs = vars.numseqs
+        while True:
+            genout = generator(
+                gen_in, 
+                do_sample=True, 
+                min_length=minimum, 
+                max_length=maximum-already_generated,
+                repetition_penalty=vars.rep_pen,
+                bad_words_ids=vars.badwordsids,
+                use_cache=True,
+                num_return_sequences=numseqs
+                )
+            already_generated += len(genout[0]) - len(gen_in[0])
+            if(model.kai_scanner.halt or not model.kai_scanner.regeneration_required):
+                break
+            assert genout.ndim >= 2
+            assert genout.shape[0] == vars.numseqs
+            if(already_generated != vars.lua_koboldbridge.generated_cols):
+                raise RuntimeError("WI scanning error")
+            for r in range(vars.numseqs):
+                for c in range(already_generated):
+                    assert vars.lua_koboldbridge.generated[r+1][c+1] is not None
+                    genout[r][genout.shape[-1] - already_generated - c] = vars.lua_koboldbridge.generated[r+1][c+1]
+            encoded = []
+            for i in range(vars.numseqs):
+                txt = tokenizer.decode(genout[i, -already_generated:])
+                winfo, mem, anotetxt, _found_entries = calcsubmitbudgetheader(txt, force_use_txt=True)
+                found_entries[i].update(_found_entries)
+                txt, _, _ = calcsubmitbudget(len(actions), winfo, mem, anotetxt, actions)
+                encoded.append(tokenizer.encode(txt, return_tensors="pt", truncation=True)[0].long().to(genout.device))
+            max_length = len(max(encoded, key=len))
+            encoded = torch.stack(tuple(torch.nn.functional.pad(e, (max_length - len(e), 0), value=model.config.pad_token_id or model.config.eos_token_id) for e in encoded))
+            genout = torch.cat(
+                (
+                    encoded,
+                    genout[..., -already_generated:],
+                ),
+                dim=-1
+            )
+            if(vars.sp is not None):
+                soft_tokens = torch.arange(
+                    model.config.vocab_size,
+                    model.config.vocab_size + vars.sp.shape[0],
+                    device=genout.device,
+                )
+                genout = torch.cat((soft_tokens.tile(vars.numseqs, 1), genout), dim=-1)
+            diff = genout.shape[-1] - gen_in.shape[-1]
+            minimum += diff
+            maximum += diff
+            gen_in = genout
+            model.kai_scanner_head_length = encoded.shape[-1]
+            numseqs = 1
+    
+    return genout, already_generated
+    
+
 def generate(txt, minimum, maximum, found_entries=None):    
     if(found_entries is None):
         found_entries = set()
     found_entries = tuple(found_entries.copy() for _ in range(vars.numseqs))
 
     print("{0}Min:{1}, Max:{2}, Txt:{3}{4}".format(colors.YELLOW, minimum, maximum, txt, colors.END))
-    
+
     # Store context in memory to use it for comparison with generated content
     vars.lastctx = txt
-    
+
     # Clear CUDA cache if using GPU
     if(vars.hascuda and (vars.usegpu or vars.breakmodel)):
         gc.collect()
         torch.cuda.empty_cache()
-    
+
     # Submit input text to generator
     try:
-        gen_in = tokenizer.encode(txt, return_tensors="pt", truncation=True).long()
-        if(vars.sp is not None):
-            soft_tokens = torch.arange(
-                model.config.vocab_size,
-                model.config.vocab_size + vars.sp.shape[0],
-            )
-            gen_in = torch.cat((soft_tokens[None], gen_in), dim=-1)
-
-        if(vars.hascuda and vars.usegpu):
-            gen_in = gen_in.to(0)
-        elif(vars.hascuda and vars.breakmodel):
-            gen_in = gen_in.to(breakmodel.primary_device)
-        else:
-            gen_in = gen_in.to('cpu')
-
-        model.kai_scanner_head_length = gen_in.shape[-1]
-        model.kai_scanner_excluded_world_info = found_entries
-
-        actions = vars.actions
-        if(vars.dynamicscan):
-            actions = actions.copy()
-
-        with torch.no_grad():
-            already_generated = 0
-            numseqs = vars.numseqs
-            while True:
-                genout = generator(
-                    gen_in, 
-                    do_sample=True, 
-                    min_length=minimum, 
-                    max_length=maximum-already_generated,
-                    repetition_penalty=vars.rep_pen,
-                    bad_words_ids=vars.badwordsids,
-                    use_cache=True,
-                    num_return_sequences=numseqs
-                    )
-                already_generated += len(genout[0]) - len(gen_in[0])
-                if(model.kai_scanner.halt or not model.kai_scanner.regeneration_required):
-                    break
-                assert genout.ndim >= 2
-                assert genout.shape[0] == vars.numseqs
-                if(already_generated != vars.lua_koboldbridge.generated_cols):
-                    raise RuntimeError("WI scanning error")
-                for r in range(vars.numseqs):
-                    for c in range(already_generated):
-                        assert vars.lua_koboldbridge.generated[r+1][c+1] is not None
-                        genout[r][genout.shape[-1] - already_generated - c] = vars.lua_koboldbridge.generated[r+1][c+1]
-                encoded = []
-                for i in range(vars.numseqs):
-                    txt = tokenizer.decode(genout[i, -already_generated:])
-                    winfo, mem, anotetxt, _found_entries = calcsubmitbudgetheader(txt, force_use_txt=True)
-                    found_entries[i].update(_found_entries)
-                    txt, _, _ = calcsubmitbudget(len(actions), winfo, mem, anotetxt, actions)
-                    encoded.append(tokenizer.encode(txt, return_tensors="pt", truncation=True)[0].long().to(genout.device))
-                max_length = len(max(encoded, key=len))
-                encoded = torch.stack(tuple(torch.nn.functional.pad(e, (max_length - len(e), 0), value=model.config.pad_token_id or model.config.eos_token_id) for e in encoded))
-                genout = torch.cat(
-                    (
-                        encoded,
-                        genout[..., -already_generated:],
-                    ),
-                    dim=-1
-                )
-                if(vars.sp is not None):
-                    soft_tokens = torch.arange(
-                        model.config.vocab_size,
-                        model.config.vocab_size + vars.sp.shape[0],
-                        device=genout.device,
-                    )
-                    genout = torch.cat((soft_tokens.tile(vars.numseqs, 1), genout), dim=-1)
-                diff = genout.shape[-1] - gen_in.shape[-1]
-                minimum += diff
-                maximum += diff
-                gen_in = genout
-                model.kai_scanner_head_length = encoded.shape[-1]
-                numseqs = 1
-
+        genout, already_generated = tpool.execute(_generate, txt, minimum, maximum, found_entries)
     except Exception as e:
         if(issubclass(type(e), lupa.LuaError)):
             vars.lua_koboldbridge.obliterate_multiverse()
@@ -2448,7 +2461,8 @@ def tpumtjgenerate(txt, minimum, maximum, found_entries=None):
             dtype=np.uint32
         )
 
-        genout = tpu_mtj_backend.infer(
+        genout = tpool.execute(
+            tpu_mtj_backend.infer,
             txt,
             gen_len = maximum-minimum+1,
             temp=vars.temp,
@@ -3813,4 +3827,4 @@ if __name__ == "__main__":
         webbrowser.open_new('http://localhost:5000')
         print("{0}\nServer started!\nYou may now connect with a browser at http://127.0.0.1:5000/{1}".format(colors.GREEN, colors.END))
         vars.serverstarted = True
-        socketio.run(app)
+        socketio.run(app, port=5000)

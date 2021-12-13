@@ -8,7 +8,7 @@ dependencies:
   - colorama
   - flask-socketio
   - python=3.8.*
-  - gevent-websocket
+  - eventlet
   - pip
   - git
   - pip:
@@ -17,4 +17,4 @@ dependencies:
     - torchvision==0.11.1
     - flask-cloudflared
     - flask-ngrok
-    - lupa
+    - lupa==1.10
