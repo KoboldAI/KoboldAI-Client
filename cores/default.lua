@@ -12,27 +12,21 @@ local corescript = {}
 function corescript.inmod()
     for i = #koboldcore.userscripts, 1, -1 do
         local userscript = koboldcore.userscripts[i]
-        if userscript.inmod ~= nil then
-            userscript.inmod()
-        end
+        userscript.inmod()
     end
 end
 
 -- Run all the generation modifiers from top to bottom
 function corescript.genmod()
     for i, userscript in ipairs(koboldcore.userscripts) do
-        if userscript.genmod ~= nil then
-            userscript.genmod()
-        end
+        userscript.genmod()
     end
 end
 
 -- Run all the generation modifiers from top to bottom
 function corescript.outmod()
     for i, userscript in ipairs(koboldcore.userscripts) do
-        if userscript.outmod ~= nil then
-            userscript.outmod()
-        end
+        userscript.outmod()
     end
 end
 
