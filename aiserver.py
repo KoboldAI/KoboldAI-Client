@@ -1827,7 +1827,9 @@ def actionretry(data):
             vars.actions.pop()
             remove_story_chunk(last_key + 1)
         vars.genseqs = []
-        calcsubmit('')
+        vars.submission = ""
+        execute_inmod()
+        calcsubmit(vars.submission)
         emit('from_server', {'cmd': 'scrolldown', 'data': ''}, broadcast=True)
         vars.recentback = False
         vars.recentedit = False
