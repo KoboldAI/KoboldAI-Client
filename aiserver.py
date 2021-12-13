@@ -105,6 +105,7 @@ class vars:
     lua_kobold  = None   # `kobold` from` bridge.lua
     lua_koboldcore = None  # `koboldcore` from bridge.lua
     lua_warper  = None   # Transformers logits warper controllable from Lua
+    lua_logname = ...    # Name of previous userscript that logged to terminal
     userscripts = []     # List of userscripts to load
     # badwords    = []     # Array of str/chr values that should be removed from output
     badwordsids = [[13460], [6880], [50256], [42496], [4613], [17414], [22039], [16410], [27], [29], [38430], [37922], [15913], [24618], [28725], [58], [47175], [36937], [26700], [12878], [16471], [37981], [5218], [29795], [13412], [45160], [3693], [49778], [4211], [20598], [36475], [33409], [44167], [32406], [29847], [29342], [42669], [685], [25787], [7359], [3784], [5320], [33994], [33490], [34516], [43734], [17635], [24293], [9959], [23785], [21737], [28401], [18161], [26358], [32509], [1279], [38155], [18189], [26894], [6927], [14610], [23834], [11037], [14631], [26933], [46904], [22330], [25915], [47934], [38214], [1875], [14692], [41832], [13163], [25970], [29565], [44926], [19841], [37250], [49029], [9609], [44438], [16791], [17816], [30109], [41888], [47527], [42924], [23984], [49074], [33717], [31161], [49082], [30138], [31175], [12240], [14804], [7131], [26076], [33250], [3556], [38381], [36338], [32756], [46581], [17912], [49146]] # Tokenized array of badwords used to prevent AI artifacting
@@ -957,17 +958,20 @@ if(path.exists("settings/" + getmodelname().replace('/', '_') + ".settings")):
                 vars.userscripts.append(userscript)
     file.close()
 
+def lua_log_format_name(name):
+    return f"[{name}]" if type(name) is str else "CORE"
+
 #==================================================================#
 #  Event triggered when a userscript is loaded
 #==================================================================#
 def load_callback(filename, modulename):
-    print(colors.PURPLE + f"Loading Userscript [{modulename}] <{filename}>" + colors.END)
+    print(colors.GREEN + f"Loading Userscript [{modulename}] <{filename}>" + colors.END)
 
 #==================================================================#
 #  Load all Lua scripts
 #==================================================================#
 def load_lua_scripts():
-    print(colors.PURPLE + "Loading Core Script [COREPLACEHOLDER] <default.lua>" + colors.END)
+    print(colors.GREEN + "Loading Core Script" + colors.END)
 
     filenames = []
     modulenames = []
@@ -990,6 +994,24 @@ def load_lua_scripts():
     except lupa.LuaError as e:
         print(e, file=sys.stderr)
         exit(1)
+
+#==================================================================#
+#  Print message that originates from the userscript with the given name
+#==================================================================#
+def lua_print(msg):
+    if(vars.lua_logname != vars.lua_koboldbridge.logging_name):
+        vars.lua_logname = vars.lua_koboldbridge.logging_name
+        print(colors.BLUE + lua_log_format_name(vars.lua_logname) + ":" + colors.END, file=sys.stderr)
+    print(colors.PURPLE + msg.replace("\033", "") + colors.END)
+
+#==================================================================#
+#  Print warning that originates from the userscript with the given name
+#==================================================================#
+def lua_warn(msg):
+    if(vars.lua_logname != vars.lua_koboldbridge.logging_name):
+        vars.lua_logname = vars.lua_koboldbridge.logging_name
+        print(colors.BLUE + lua_log_format_name(vars.lua_logname) + ":" + colors.END, file=sys.stderr)
+    print(colors.YELLOW + msg.replace("\033", "") + colors.END)
 
 #==================================================================#
 #  Decode tokens into a string using current tokenizer
@@ -1050,7 +1072,7 @@ def lua_set_attr(uid, k, v):
         v = int(v)
     assert type(vars.worldinfo_u[uid][k]) is type(v)
     vars.worldinfo_u[uid][k] = v
-    print(colors.PURPLE + f"[USERPLACEHOLDER] set {k} of world info entry {uid} to {v}" + colors.END)
+    print(colors.GREEN + f"{lua_log_format_name(vars.lua_koboldbridge.logging_name)} set {k} of world info entry {uid} to {v}" + colors.END)
 
 #==================================================================#
 #  Get property of a world info folder given its UID and property name
@@ -1074,7 +1096,7 @@ def lua_folder_set_attr(uid, k, v):
         v = int(v)
     assert type(vars.wifolders_d[uid][k]) is type(v)
     vars.wifolders_d[uid][k] = v
-    print(colors.PURPLE + f"[USERPLACEHOLDER] set {k} of world info folder {uid} to {v}" + colors.END)
+    print(colors.GREEN + f"{lua_log_format_name(vars.lua_koboldbridge.logging_name)} set {k} of world info folder {uid} to {v}" + colors.END)
 
 #==================================================================#
 #  Get the "Amount to Generate"
@@ -1087,7 +1109,7 @@ def lua_get_genamt():
 #==================================================================#
 def lua_set_genamt(genamt):
     assert vars.lua_koboldbridge.userstate != "genmod" and type(genamt) in (int, float) and genamt >= 0
-    print(colors.PURPLE + f"[USERPLACEHOLDER] set genamt to {int(genamt)}" + colors.END)
+    print(colors.GREEN + f"{lua_log_format_name(vars.lua_koboldbridge.logging_name)} set genamt to {int(genamt)}" + colors.END)
     vars.genamt = int(genamt)
 
 #==================================================================#
@@ -1101,7 +1123,7 @@ def lua_get_numseqs():
 #==================================================================#
 def lua_set_numseqs(numseqs):
     assert type(numseqs) in (int, float) and numseqs >= 1
-    print(colors.PURPLE + f"[USERPLACEHOLDER] set numseqs to {int(numseqs)}" + colors.END)
+    print(colors.GREEN + f"{lua_log_format_name(vars.lua_koboldbridge.logging_name)} set numseqs to {int(numseqs)}" + colors.END)
     vars.genamt = int(numseqs)
 
 #==================================================================#
@@ -1155,7 +1177,7 @@ def lua_set_setting(setting, v):
     actual_type = type(lua_get_setting(setting))
     assert v is not None and (actual_type is type(v) or (actual_type is int and type(v) is float))
     v = actual_type(v)
-    print(colors.PURPLE + f"[USERPLACEHOLDER] set {setting} to {v}" + colors.END)
+    print(colors.GREEN + f"{lua_log_format_name(vars.lua_koboldbridge.logging_name)} set {setting} to {v}" + colors.END)
     if(setting == "setadventure" and v):
         vars.actionmode = 1
     if(setting == "settemp"): vars.temp = v
@@ -1203,13 +1225,13 @@ def lua_set_chunk(k, v):
     assert k >= 0
     assert k != 0 or len(v) != 0
     if(len(v) == 0):
-        print(colors.PURPLE + f"[USERPLACEHOLDER] deleted story chunk {k}" + colors.END)
+        print(colors.GREEN + f"{lua_log_format_name(vars.lua_koboldbridge.logging_name)} deleted story chunk {k}" + colors.END)
         inlinedelete(k)
     else:
         if(k == 0):
-            print(colors.PURPLE + f"[USERPLACEHOLDER] edited prompt chunk" + colors.END)
+            print(colors.GREEN + f"{lua_log_format_name(vars.lua_koboldbridge.logging_name)} edited prompt chunk" + colors.END)
         else:
-            print(colors.PURPLE + f"[USERPLACEHOLDER] edited story chunk {k}" + colors.END)
+            print(colors.GREEN + f"{lua_log_format_name(vars.lua_koboldbridge.logging_name)} edited story chunk {k}" + colors.END)
         inlineedit(k, v)
 
 #==================================================================#
@@ -1262,6 +1284,7 @@ def lua_is_custommodel():
 #  
 #==================================================================#
 def execute_inmod():
+    vars.lua_logname = ...
     vars.lua_koboldbridge.execute_inmod()
 
 def execute_genmod():
@@ -1285,6 +1308,8 @@ bridged = {
     "userscript_path": os.path.join(os.path.dirname(os.path.realpath(__file__)), "userscripts"),
     "lib_path": os.path.join(os.path.dirname(os.path.realpath(__file__)), "extern", "lualibs"),
     "load_callback": load_callback,
+    "print": lua_print,
+    "warn": lua_warn,
     "decode": lua_decode,
     "encode": lua_encode,
     "get_attr": lua_get_attr,
@@ -3741,10 +3766,10 @@ if __name__ == "__main__":
            cloudflare = _run_cloudflared(5000)
         with open('cloudflare.log', 'w') as cloudflarelog:
             cloudflarelog.write("KoboldAI has finished loading and is available in the following link : " + cloudflare)
-            print(format(colors.GREEN) + "KoboldAI has finished loading and is available in the following link : " + cloudflare + format(colors.END))
+            print("\n" + format(colors.GREEN) + "KoboldAI has finished loading and is available in the following link : " + cloudflare + format(colors.END))
         socketio.run(app, host='0.0.0.0', port=5000)
     else:
         import webbrowser
         webbrowser.open_new('http://localhost:5000')
-        print("{0}Server started!\rYou may now connect with a browser at http://127.0.0.1:5000/{1}".format(colors.GREEN, colors.END))
+        print("{0}\nServer started!\nYou may now connect with a browser at http://127.0.0.1:5000/{1}".format(colors.GREEN, colors.END))
         socketio.run(app)

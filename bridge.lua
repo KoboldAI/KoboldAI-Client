@@ -207,7 +207,7 @@ return function(_python, _bridged)
     koboldbridge.regeneration_required = false
     koboldbridge.resend_settings_required = false
     koboldbridge.generating = true
-    koboldbridge.userstate = "inmod"
+    koboldbridge.userstate = nil
     koboldbridge.logits = {}
     koboldbridge.vocab_size = 0
     koboldbridge.generated = {}
@@ -1310,6 +1310,7 @@ return function(_python, _bridged)
     --==========================================================================
 
     local envs = {}
+    koboldbridge.logging_name = nil
 
     local old_load = load
     local function _safe_load(_g)
@@ -1381,6 +1382,22 @@ return function(_python, _bridged)
         end
     end
 
+    local function redirected_print(...)
+        local args = {...}
+        for k, v in ipairs(args) do
+            args[k] = tostring(v)
+        end
+        bridged.print(table.concat(args, "\t"))
+    end
+
+    local function redirected_warn(...)
+        local args = {...}
+        for k, v in ipairs(args) do
+            args[k] = tostring(v)
+        end
+        bridged.warn(table.concat(args, "\t"))
+    end
+
     local sandbox_template_env = {
         assert = assert,
         connectgarbage = collectgarbage,
@@ -1391,7 +1408,7 @@ return function(_python, _bridged)
         next = next,
         pairs = pairs,
         pcall = pcall,
-        print = print,
+        print = nil,   ---@type function
         rawequal = rawequal,
         rawget = rawget,
         rawlen = rawlen,
@@ -1402,7 +1419,7 @@ return function(_python, _bridged)
         tostring = tostring,
         type = type,
         _VERSION = _VERSION,
-        warn = warn,
+        warn = nil,   ---@type function
         xpcall = xpcall,
         coroutine = {
             close = coroutine.close,
@@ -1530,6 +1547,8 @@ return function(_python, _bridged)
             end
             envs[universe].load = _safe_load(env)
             envs[universe].require = _safe_require(env)
+            envs[universe].print = redirected_print
+            envs[universe].warn = redirected_warn
             env._G = env
         end
         return env
@@ -1552,11 +1571,13 @@ return function(_python, _bridged)
         for i, filename in _python.enumerate(filenames) do
             bridged.load_callback(filename, modulenames[i])
             ---@type KoboldUserScript
+            koboldbridge.logging_name = modulenames[i]
             local _userscript = old_loadfile(join_folder_and_filename(bridged.userscript_path, filename), "t", koboldbridge.get_universe(filename))()
+            koboldbridge.logging_name = nil
             local userscript = deepcopy(KoboldUserScriptModule)
-            rawset(userscript, "_inmod", _userscript.inmod)
-            rawset(userscript, "_genmod", _userscript.genmod)
-            rawset(userscript, "_outmod", _userscript.outmod)
+            rawset(userscript, "_inmod", function() koboldbridge.logging_name = modulenames[i]; _userscript.inmod() end)
+            rawset(userscript, "_genmod", function() koboldbridge.logging_name = modulenames[i]; _userscript.genmod() end)
+            rawset(userscript, "_outmod", function() koboldbridge.logging_name = modulenames[i]; _userscript.outmod() end)
             rawset(userscript, "_filename", filename)
             rawset(userscript, "_modulename", modulenames[i])
             rawset(userscript, "_description", descriptions[i])
@@ -1652,6 +1673,7 @@ return function(_python, _bridged)
         if koboldbridge.resend_settings_required then
             bridged.resend_settings()
         end
+        koboldbridge.userstate = nil
         return r
     end
 
