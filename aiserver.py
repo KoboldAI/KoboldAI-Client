@@ -762,7 +762,7 @@ if(not vars.model in ["InferKit", "Colab", "OAI", "ReadOnly", "TPUMeshTransforme
                 self.halt = vars.lua_warper.halt
 
                 if(not vars.dynamicscan):
-                    return False
+                    return self.regeneration_required or self.halt
                 tail = input_ids[..., self.head_length:]
                 for i, t in enumerate(tail):
                     decoded = tokenizer.decode(t)
