@@ -1550,7 +1550,7 @@ return function(_python, _bridged)
         koboldbridge.userscripts = {}
         koboldbridge.num_userscripts = 0
         for i, filename in _python.enumerate(filenames) do
-            bridged.load_callback(filename)
+            bridged.load_callback(filename, modulenames[i])
             ---@type KoboldUserScript
             local _userscript = old_loadfile(join_folder_and_filename(bridged.userscript_path, filename), "t", koboldbridge.get_universe(filename))()
             local userscript = deepcopy(KoboldUserScriptModule)

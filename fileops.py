@@ -70,6 +70,12 @@ def sppath(filename):
     return path.join(path.dirname(path.realpath(__file__)), "softprompts", filename)
 
 #==================================================================#
+#  Returns the path (as a string) to the given username by its filename
+#==================================================================#
+def uspath(filename):
+    return path.join(path.dirname(path.realpath(__file__)), "userscripts", filename)
+
+#==================================================================#
 #  Returns an array of dicts containing story files in /stories
 #==================================================================#
 def getstoryfiles():
@@ -156,6 +162,53 @@ def getspfiles(model_dimension: int):
         z.close()
         ob["filename"] = file
         lst.append(ob)
+    return lst
+
+#==================================================================#
+#  Returns an array of dicts containing userscript files in /userscripts
+#==================================================================#
+def getusfiles(long_desc=False):
+    lst = []
+    for file in listdir(path.dirname(path.realpath(__file__))+"/userscripts"):
+        if file.endswith(".lua"):
+            ob = {}
+            ob["filename"] = file
+            description = []
+            multiline = False
+            with open(uspath(file)) as f:
+                ob["modulename"] = f.readline().strip().replace("\033", "")
+                if ob["modulename"][:2] != "--":
+                    ob["modulename"] = file
+                else:
+                    ob["modulename"] = ob["modulename"][2:]
+                    if ob["modulename"][:2] == "[[":
+                        ob["modulename"] = ob["modulename"][2:]
+                        multiline = True
+                    ob["modulename"] = ob["modulename"].lstrip("-").strip()
+                    for line in f:
+                        line = line.strip().replace("\033", "")
+                        if multiline:
+                            index = line.find("]]")
+                            if index > -1:
+                                description.append(line[:index])
+                                if index != len(line) - 2:
+                                    break
+                                multiline = False
+                            else:
+                                description.append(line)
+                        else:
+                            if line[:2] != "--":
+                                break
+                            line = line[2:]
+                            if line[:2] == "[[":
+                                multiline = True
+                                line = line[2:]
+                            description.append(line.strip())
+            ob["description"] = "\n".join(description)
+            if not long_desc:
+                if len(ob["description"]) > 250:
+                    ob["description"] = ob["description"][:247] + "..."
+            lst.append(ob)
     return lst
 
 #==================================================================#

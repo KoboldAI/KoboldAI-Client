@@ -19,6 +19,7 @@ var button_impaidg;
 var button_settings;
 var button_format;
 var button_softprompt;
+var button_userscripts;
 var button_mode;
 var button_mode_label;
 var button_send;
@@ -58,6 +59,10 @@ var sppopup;
 var	spcontent;
 var	sp_accept;
 var	sp_close;
+var uspopup;
+var	uscontent;
+var	us_accept;
+var	us_close;
 var nspopup;
 var ns_accept;
 var ns_close;
@@ -851,6 +856,17 @@ function hideSPPopup() {
 	spcontent.html("");
 }
 
+function showUSPopup() {
+	uspopup.removeClass("hidden");
+	uspopup.addClass("flex");
+}
+
+function hideUSPopup() {
+	uspopup.removeClass("flex");
+	uspopup.addClass("hidden");
+	spcontent.html("");
+}
+
 function buildLoadList(ar) {
 	disableButtons([load_accept]);
 	loadcontent.html("");
@@ -951,6 +967,33 @@ function buildSPList(ar) {
 			socket.send({'cmd': 'spselect', 'data': $(this).attr("name")});
 			highlightSPLine($(this));
 		});
+	}
+}
+
+function buildUSList(unloaded, loaded) {
+	usunloaded.html("");
+	usloaded.html("");
+	showUSPopup();
+	var i;
+	var j;
+	var el = usunloaded;
+	var ar = unloaded;
+	for(j=0; j<2; j++) {
+		for(i=0; i<ar.length; i++) {
+			el.append("<div class=\"flex\">\
+				<div class=\"uslistitem flex-row-container\" name=\""+ar[i].filename+"\">\
+					<div class=\"flex-row\">\
+						<div>"+ar[i].modulename+"</div>\
+						<div class=\"flex-push-right uslistitemsub\">&lt;"+ar[i].filename+"&gt;</div>\
+					</div>\
+					<div class=\"flex-row\">\
+						<div>"+ar[i].description+"</div>\
+					</div>\
+				</div>\
+			</div>");
+		}
+		el = usloaded;
+		ar = loaded;
 	}
 }
 
@@ -1521,6 +1564,7 @@ $(document).ready(function(){
 	button_settings   = $('#btn_settings');
 	button_format     = $('#btn_format');
 	button_softprompt = $("#btn_softprompt");
+	button_userscripts= $("#btn_userscripts");
 	button_mode       = $('#btnmode')
 	button_mode_label = $('#btnmode_label')
 	button_send       = $('#btnsend');
@@ -1560,6 +1604,11 @@ $(document).ready(function(){
 	spcontent         = $("#splistcontent");
 	sp_accept         = $("#btn_spaccept");
 	sp_close          = $("#btn_spclose");
+	uspopup           = $("#uscontainer");
+	usunloaded        = $("#uslistunloaded");
+	usloaded          = $("#uslistloaded");
+	us_accept         = $("#btn_usaccept");
+	us_close          = $("#btn_usclose");
 	nspopup           = $("#newgamecontainer");
 	ns_accept         = $("#btn_nsaccept");
 	ns_close          = $("#btn_nsclose");
@@ -1928,6 +1977,8 @@ $(document).ready(function(){
 			buildLoadList(msg.data);
 		} else if(msg.cmd == "buildsp") {
 			buildSPList(msg.data);
+		} else if(msg.cmd == "buildus") {
+			buildUSList(msg.data.unloaded, msg.data.loaded);
 		} else if(msg.cmd == "askforoverwrite") {
 			// Show overwrite warning
 			show([$(".saveasoverwrite")]);
@@ -2005,6 +2056,23 @@ $(document).ready(function(){
 			}
 		}, 2);
 	});
+
+	// Make the userscripts menu sortable
+	var us_sortable_settings = {
+		delay: 2,
+		cursor: "move",
+		tolerance: "pointer",
+		opacity: 0.21,
+		revert: 173,
+		scrollSensitivity: 64,
+		scrollSpeed: 10,
+	}
+	$(usunloaded).sortable($.extend({
+		connectWith: "#uslistloaded",
+	}, us_sortable_settings));
+	$(usloaded).sortable($.extend({
+		connectWith: "#uslistunloaded",
+	}, us_sortable_settings));
 
 	// Bind actions to UI buttons
 	button_send.on("click", function(ev) {
@@ -2124,6 +2192,10 @@ $(document).ready(function(){
 	button_softprompt.on("click", function(ev) {
 		socket.send({'cmd': 'splistrequest', 'data': ''});
 	});
+
+	button_userscripts.on("click", function(ev) {
+		socket.send({'cmd': 'uslistrequest', 'data': ''});
+	});
 	
 	load_close.on("click", function(ev) {
 		hideLoadPopup();
@@ -2142,6 +2214,17 @@ $(document).ready(function(){
 	sp_accept.on("click", function(ev) {
 		socket.send({'cmd': 'sprequest', 'data': ''});
 		hideSPPopup();
+	});
+
+	us_close.on("click", function(ev) {
+		socket.send({'cmd': 'usloaded', 'data': usloaded.find(".uslistitem").map(function() { return $(this).attr("name"); }).toArray()});
+		hideUSPopup();
+	});
+	
+	us_accept.on("click", function(ev) {
+		socket.send({'cmd': 'usloaded', 'data': usloaded.find(".uslistitem").map(function() { return $(this).attr("name"); }).toArray()});
+		socket.send({'cmd': 'usload', 'data': ''});
+		hideUSPopup();
 	});
 	
 	button_newgame.on("click", function(ev) {

@@ -7,7 +7,7 @@
 	<script src="static/jquery-3.6.0.min.js"></script>
 	<script src="static/jquery-ui.sortable.min.js"></script>
 	<script src="static/socket.io.min.js"></script>
-	<script src="static/application.js?ver=1.16.4c"></script>
+	<script src="static/application.js?ver=1.16.4d"></script>
 	<script src="static/bootstrap.min.js"></script>
 	<script src="static/bootstrap-toggle.min.js"></script>
 	<script src="static/rangy-core.min.js"></script>
@@ -15,7 +15,7 @@
 	<link rel="stylesheet" href="static/jquery-ui.sortable.min.css">
 	<link rel="stylesheet" href="static/bootstrap.min.css">
 	<link rel="stylesheet" href="static/bootstrap-toggle.min.css">
-	<link rel="stylesheet" href="static/custom.css?ver=1.16.4c">
+	<link rel="stylesheet" href="static/custom.css?ver=1.16.4d">
 	<link rel="stylesheet" href="static/open-iconic-bootstrap.min.css">
 </head>
 <body>
@@ -69,6 +69,9 @@
 								</li>
 								<li class="nav-item">
 									<a class="nav-link" href="#" id="btn_format">Formatting</a>
+								</li>
+								<li class="nav-item">
+									<a class="nav-link" href="#" id="btn_userscripts">Userscripts</a>
 								</li>
 								<li class="nav-item">
 									<a class="nav-link hidden" href="#" id="btn_softprompt">Soft Prompt</a>
@@ -241,6 +244,23 @@
 			<div class="popupfooter">
 				<button type="button" class="btn btn-primary" id="btn_spaccept">Load</button>
 				<button type="button" class="btn btn-primary" id="btn_spclose">Cancel</button>
+			</div>
+		</div>
+	</div>
+	<div class="popupcontainer hidden" id="uscontainer">
+		<div id="uspopup">
+			<div class="popuptitlebar">
+				<div class="popuptitletext">Select userscripts to load; drag-and-drop to reorder</div>
+			</div>
+			<div class="uslistgrid">
+				<div id="uslistunloaded">
+				</div>
+				<div id="uslistloaded">
+				</div>
+			</div>
+			<div class="popupfooter">
+				<button type="button" class="btn btn-primary" id="btn_usaccept">Load</button>
+				<button type="button" class="btn btn-primary" id="btn_usclose">Cancel</button>
 			</div>
 		</div>
 	</div>

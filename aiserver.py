@@ -105,6 +105,7 @@ class vars:
     lua_kobold  = None   # `kobold` from` bridge.lua
     lua_koboldcore = None  # `koboldcore` from bridge.lua
     lua_warper  = None   # Transformers logits warper controllable from Lua
+    userscripts = []     # List of userscripts to load
     # badwords    = []     # Array of str/chr values that should be removed from output
     badwordsids = [[13460], [6880], [50256], [42496], [4613], [17414], [22039], [16410], [27], [29], [38430], [37922], [15913], [24618], [28725], [58], [47175], [36937], [26700], [12878], [16471], [37981], [5218], [29795], [13412], [45160], [3693], [49778], [4211], [20598], [36475], [33409], [44167], [32406], [29847], [29342], [42669], [685], [25787], [7359], [3784], [5320], [33994], [33490], [34516], [43734], [17635], [24293], [9959], [23785], [21737], [28401], [18161], [26358], [32509], [1279], [38155], [18189], [26894], [6927], [14610], [23834], [11037], [14631], [26933], [46904], [22330], [25915], [47934], [38214], [1875], [14692], [41832], [13163], [25970], [29565], [44926], [19841], [37250], [49029], [9609], [44438], [16791], [17816], [30109], [41888], [47527], [42924], [23984], [49074], [33717], [31161], [49082], [30138], [31175], [12240], [14804], [7131], [26076], [33250], [3556], [38381], [36338], [32756], [46581], [17912], [49146]] # Tokenized array of badwords used to prevent AI artifacting
     deletewi    = -1     # Temporary storage for index to delete
@@ -941,23 +942,51 @@ def download():
     return(save)
 
 
-#============================ LUA API =============================# 
+#============================ LUA API =============================#
+
+if(path.exists("settings/" + getmodelname().replace('/', '_') + ".settings")):
+    file = open("settings/" + getmodelname().replace('/', '_') + ".settings", "r")
+    js   = json.load(file)
+    if("userscripts" in js):
+        vars.userscripts = []
+        for userscript in js["userscripts"]:
+            if type(userscript) is not str:
+                continue
+            userscript = userscript.strip()
+            if len(userscript) != 0 and all(q not in userscript for q in ("..", ":")) and all(userscript[0] not in q for q in ("/", "\\")) and os.path.exists(fileops.uspath(userscript)):
+                vars.userscripts.append(userscript)
+    file.close()
 
 #==================================================================#
 #  Event triggered when a userscript is loaded
 #==================================================================#
-def load_callback(filename):
-    print(colors.PURPLE + f"Loading Userscript [USERPLACEHOLDER] <{filename}>" + colors.END)
+def load_callback(filename, modulename):
+    print(colors.PURPLE + f"Loading Userscript [{modulename}] <{filename}>" + colors.END)
 
 #==================================================================#
 #  Load all Lua scripts
 #==================================================================#
 def load_lua_scripts():
     print(colors.PURPLE + "Loading Core Script [COREPLACEHOLDER] <default.lua>" + colors.END)
+
+    filenames = []
+    modulenames = []
+    descriptions = []
+
+    lst = fileops.getusfiles(long_desc=True)
+    filenames_dict = {ob["filename"]: i for i, ob in enumerate(lst)}
+
+    for filename in vars.userscripts:
+        if filename in filenames_dict:
+            i = filenames_dict[filename]
+            filenames.append(filename)
+            modulenames.append(lst[i]["modulename"])
+            descriptions.append(lst[i]["description"])
+
     try:
         vars.lua_koboldbridge.obliterate_multiverse()
         vars.lua_koboldbridge.load_corescript("default.lua")
-        vars.lua_koboldbridge.load_userscripts([], [], [])
+        vars.lua_koboldbridge.load_userscripts(filenames, modulenames, descriptions)
     except lupa.LuaError as e:
         print(e, file=sys.stderr)
         exit(1)
@@ -1534,6 +1563,21 @@ def get_message(msg):
         getloadlist()
     elif(msg['cmd'] == 'splistrequest'):
         getsplist()
+    elif(msg['cmd'] == 'uslistrequest'):
+        getuslist()
+    elif(msg['cmd'] == 'usloaded'):
+        vars.userscripts = []
+        for userscript in msg['data']:
+            if type(userscript) is not str:
+                continue
+            userscript = userscript.strip()
+            if len(userscript) != 0 and all(q not in userscript for q in ("..", ":")) and all(userscript[0] not in q for q in ("/", "\\")) and os.path.exists(fileops.uspath(userscript)):
+                vars.userscripts.append(userscript)
+        settingschanged()
+    elif(msg['cmd'] == 'usload'):
+        load_lua_scripts()
+    elif(msg['cmd'] == 'usload'):
+        getuslist()
     elif(msg['cmd'] == 'loadselect'):
         vars.loadselect = msg["data"]
     elif(msg['cmd'] == 'spselect'):
@@ -1630,6 +1674,8 @@ def savesettings():
     js["adventure"]   = vars.adventure
     js["dynamicscan"] = vars.dynamicscan
 
+    js["userscripts"] = vars.userscripts
+
     # Write it
     if not os.path.exists('settings'):
         os.mkdir('settings')
@@ -1681,6 +1727,15 @@ def loadsettings():
             vars.adventure = js["adventure"]
         if("dynamicscan" in js):
             vars.dynamicscan = js["dynamicscan"]
+        
+        if("userscripts" in js):
+            vars.userscripts = []
+            for userscript in js["userscripts"]:
+                if type(userscript) is not str:
+                    continue
+                userscript = userscript.strip()
+                if len(userscript) != 0 and all(q not in userscript for q in ("..", ":")) and all(userscript[0] not in q for q in ("/", "\\")) and os.path.exists(fileops.uspath(userscript)):
+                    vars.userscripts.append(userscript)
         
         file.close()
 
@@ -3214,6 +3269,21 @@ def getsplist():
         emit('from_server', {'cmd': 'buildsp', 'data': fileops.getspfiles(vars.modeldim)})
 
 #==================================================================#
+#  Show list of userscripts
+#==================================================================#
+def getuslist():
+    files = {i: v for i, v in enumerate(fileops.getusfiles())}
+    loaded = []
+    unloaded = []
+    userscripts = set(vars.userscripts)
+    for i in range(len(files)):
+        if files[i]["filename"] in userscripts:
+            loaded.append(files[i])
+        else:
+            unloaded.append(files[i])
+    emit('from_server', {'cmd': 'buildus', 'data': {"unloaded": unloaded, "loaded": loaded}})
+
+#==================================================================#
 #  Load a saved story via file browser
 #==================================================================#
 def loadfromfile():
@@ -3659,11 +3729,6 @@ def randomGameRequest(topic):
 #  Final startup commands to launch Flask app
 #==================================================================#
 if __name__ == "__main__":
-	
-    # Load settings from client.settings
-    loadmodelsettings()
-    loadsettings()
-
     # Start Flask/SocketIO (Blocking, so this must be last method!)
     
     #socketio.run(app, host='0.0.0.0', port=5000)
