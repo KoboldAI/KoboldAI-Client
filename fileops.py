@@ -169,6 +169,7 @@ def getspfiles(model_dimension: int):
 #==================================================================#
 def getusfiles(long_desc=False):
     lst = []
+    os.makedirs(path.dirname(path.realpath(__file__))+"/userscripts", exist_ok=True)
     for file in listdir(path.dirname(path.realpath(__file__))+"/userscripts"):
         if file.endswith(".lua"):
             ob = {}
