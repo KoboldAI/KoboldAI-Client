@@ -662,7 +662,7 @@ if(not vars.model in ["InferKit", "Colab", "OAI", "ReadOnly", "TPUMeshTransforme
                 self.halt = False
 
                 scores_shape = scores.shape
-                scores_list = self.scores.tolist()
+                scores_list = scores.tolist()
                 vars.lua_koboldbridge.logits = vars.lua_state.table()
                 for r, row in enumerate(scores_list):
                     vars.lua_koboldbridge.logits[r+1] = vars.lua_state.table(*row)
