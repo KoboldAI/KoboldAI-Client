@@ -1556,6 +1556,10 @@ return function(_python, _bridged)
 
     function koboldbridge.obliterate_multiverse()
         envs = {}
+        koboldbridge.num_userscripts = 0
+        koboldbridge.inmod = nil
+        koboldbridge.genmod = nil
+        koboldbridge.outmod = nil
     end
 
 

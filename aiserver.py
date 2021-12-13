@@ -89,6 +89,7 @@ class vars:
     tfs         = 1.0    # Default generator tfs (tail-free sampling)
     numseqs     = 1     # Number of sequences to ask the generator to create
     gamestarted = False  # Whether the game has started (disables UI elements)
+    serverstarted = False  # Whether or not the Flask server has started
     prompt      = ""     # Prompt
     memory      = ""     # Text submitted to memory field
     authornote  = ""     # Text submitted to Author's Note field
@@ -992,8 +993,14 @@ def load_lua_scripts():
         vars.lua_koboldbridge.load_corescript("default.lua")
         vars.lua_koboldbridge.load_userscripts(filenames, modulenames, descriptions)
     except lupa.LuaError as e:
-        print(e, file=sys.stderr)
-        exit(1)
+        vars.lua_koboldbridge.obliterate_multiverse()
+        if(vars.serverstarted):
+            emit('from_server', {'cmd': 'errmsg', 'data': 'Lua script error, please check console.'}, broadcast=True)
+        print("{0}{1}{2}".format(colors.RED, "***LUA ERROR***: ", colors.END), end="", file=sys.stderr)
+        print("{0}{1}{2}".format(colors.RED, e, colors.END), file=sys.stderr)
+        print("{0}{1}{2}".format(colors.YELLOW, "Lua engine stopped; please open 'Userscripts' and press Load to reinitialize scripts.", colors.END), file=sys.stderr)
+        if(vars.serverstarted):
+            set_aibusy(0)
 
 #==================================================================#
 #  Print message that originates from the userscript with the given name
@@ -1285,13 +1292,29 @@ def lua_is_custommodel():
 #==================================================================#
 def execute_inmod():
     vars.lua_logname = ...
-    vars.lua_koboldbridge.execute_inmod()
+    try:
+        vars.lua_koboldbridge.execute_inmod()
+    except lupa.LuaError as e:
+        vars.lua_koboldbridge.obliterate_multiverse()
+        emit('from_server', {'cmd': 'errmsg', 'data': 'Lua script error, please check console.'}, broadcast=True)
+        print("{0}{1}{2}".format(colors.RED, "***LUA ERROR***: ", colors.END), end="", file=sys.stderr)
+        print("{0}{1}{2}".format(colors.RED, e, colors.END), file=sys.stderr)
+        print("{0}{1}{2}".format(colors.YELLOW, "Lua engine stopped; please open 'Userscripts' and press Load to reinitialize scripts.", colors.END), file=sys.stderr)
+        set_aibusy(0)
 
 def execute_genmod():
     vars.lua_koboldbridge.execute_genmod()
 
 def execute_outmod():
-    vars.lua_koboldbridge.execute_outmod()
+    try:
+        vars.lua_koboldbridge.execute_outmod()
+    except lupa.LuaError as e:
+        vars.lua_koboldbridge.obliterate_multiverse()
+        emit('from_server', {'cmd': 'errmsg', 'data': 'Lua script error, please check console.'}, broadcast=True)
+        print("{0}{1}{2}".format(colors.RED, "***LUA ERROR***: ", colors.END), end="", file=sys.stderr)
+        print("{0}{1}{2}".format(colors.RED, e, colors.END), file=sys.stderr)
+        print("{0}{1}{2}".format(colors.YELLOW, "Lua engine stopped; please open 'Userscripts' and press Load to reinitialize scripts.", colors.END), file=sys.stderr)
+        set_aibusy(0)
 
 #==================================================================#
 #  Lua runtime startup
@@ -1339,7 +1362,9 @@ try:
     )
 except lupa.LuaError as e:
     print(colors.RED + "ERROR!" + colors.END)
-    print(e, file=sys.stderr)
+    vars.lua_koboldbridge.obliterate_multiverse()
+    print("{0}{1}{2}".format(colors.RED, "***LUA ERROR***: ", colors.END), end="", file=sys.stderr)
+    print("{0}{1}{2}".format(colors.RED, e, colors.END), file=sys.stderr)
     exit(1)
 print(colors.GREEN + "OK!" + colors.END)
 
@@ -2227,8 +2252,15 @@ def generate(txt, minimum, maximum, found_entries=None):
                 numseqs = 1
 
     except Exception as e:
-        emit('from_server', {'cmd': 'errmsg', 'data': 'Error occured during generator call, please check console.'}, broadcast=True)
-        print("{0}{1}{2}".format(colors.RED, e, colors.END))
+        if(issubclass(type(e), lupa.LuaError)):
+            vars.lua_koboldbridge.obliterate_multiverse()
+            emit('from_server', {'cmd': 'errmsg', 'data': 'Lua script error, please check console.'}, broadcast=True)
+            print("{0}{1}{2}".format(colors.RED, "***LUA ERROR***: ", colors.END), end="", file=sys.stderr)
+            print("{0}{1}{2}".format(colors.RED, e, colors.END), file=sys.stderr)
+            print("{0}{1}{2}".format(colors.YELLOW, "Lua engine stopped; please open 'Userscripts' and press Load to reinitialize scripts.", colors.END), file=sys.stderr)
+        else:
+            emit('from_server', {'cmd': 'errmsg', 'data': 'Error occured during generator call, please check console.'}, broadcast=True)
+        print("{0}{1}{2}".format(colors.RED, e, colors.END), file=sys.stderr)
         set_aibusy(0)
         return
 
@@ -2430,8 +2462,15 @@ def tpumtjgenerate(txt, minimum, maximum, found_entries=None):
         )
 
     except Exception as e:
-        emit('from_server', {'cmd': 'errmsg', 'data': 'Error occured during generator call, please check console.'}, broadcast=True)
-        print("{0}{1}{2}".format(colors.RED, e, colors.END))
+        if(issubclass(type(e), lupa.LuaError)):
+            vars.lua_koboldbridge.obliterate_multiverse()
+            emit('from_server', {'cmd': 'errmsg', 'data': 'Lua script error, please check console.'}, broadcast=True)
+            print("{0}{1}{2}".format(colors.RED, "***LUA ERROR***: ", colors.END), end="", file=sys.stderr)
+            print("{0}{1}{2}".format(colors.RED, e, colors.END), file=sys.stderr)
+            print("{0}{1}{2}".format(colors.YELLOW, "Lua engine stopped; please open 'Userscripts' and press Load to reinitialize scripts.", colors.END), file=sys.stderr)
+        else:
+            emit('from_server', {'cmd': 'errmsg', 'data': 'Error occured during generator call, please check console.'}, broadcast=True)
+        print("{0}{1}{2}".format(colors.RED, e, colors.END), file=sys.stderr)
         set_aibusy(0)
         return
     
@@ -3767,9 +3806,11 @@ if __name__ == "__main__":
         with open('cloudflare.log', 'w') as cloudflarelog:
             cloudflarelog.write("KoboldAI has finished loading and is available in the following link : " + cloudflare)
             print("\n" + format(colors.GREEN) + "KoboldAI has finished loading and is available in the following link : " + cloudflare + format(colors.END))
+        vars.serverstarted = True
         socketio.run(app, host='0.0.0.0', port=5000)
     else:
         import webbrowser
         webbrowser.open_new('http://localhost:5000')
         print("{0}\nServer started!\nYou may now connect with a browser at http://127.0.0.1:5000/{1}".format(colors.GREEN, colors.END))
+        vars.serverstarted = True
         socketio.run(app)
