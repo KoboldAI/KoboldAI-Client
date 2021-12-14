@@ -1607,7 +1607,7 @@ return function(_python, _bridged)
     function koboldbridge.execute_inmod()
         local r
         koboldbridge.regeneration_required = false
-        koboldbridge.generating = false
+        koboldbridge.generating = true
         koboldbridge.userstate = "inmod"
         koboldbridge.generated_cols = 0
         koboldbridge.generated = {}

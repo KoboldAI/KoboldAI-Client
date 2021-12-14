@@ -1865,7 +1865,7 @@ def actionsubmit(data, actionmode=0, force_submit=False):
             assert False
         # Start the game
         vars.gamestarted = True
-        if(not vars.noai):
+        if(not vars.noai and vars.lua_koboldbridge.generating):
             # Save this first action as the prompt
             vars.prompt = data
             # Clear the startup text from game screen
@@ -1905,7 +1905,7 @@ def actionsubmit(data, actionmode=0, force_submit=False):
                 vars.actions.append(data)
             update_story_chunk('last')
 
-        if(not vars.noai):
+        if(not vars.noai and vars.lua_koboldbridge.generating):
             # Off to the tokenizer!
             calcsubmit(data)
             emit('from_server', {'cmd': 'scrolldown', 'data': ''}, broadcast=True)
