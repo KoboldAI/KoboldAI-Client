@@ -85,6 +85,7 @@ if [ "$init" != "skip" ]; then
     mkdir /content/drive/MyDrive/KoboldAI/models/
     mkdir /content/drive/MyDrive/KoboldAI/settings/
     mkdir /content/drive/MyDrive/KoboldAI/softprompts/
+    mkdir /content/drive/MyDrive/KoboldAI/userscripts/
 
     cd /content/KoboldAI-Client
     rm stories
@@ -92,6 +93,7 @@ if [ "$init" != "skip" ]; then
     ln -s /content/drive/MyDrive/KoboldAI/stories/ stories
     ln -s /content/drive/MyDrive/KoboldAI/settings/ settings
     ln -s /content/drive/MyDrive/KoboldAI/softprompts/ softprompts
+    ln -s /content/drive/MyDrive/KoboldAI/userscripts/ userscripts
 
     if [ "$model" == " --model TPUMeshTransformerGPTJ" ]; then
         pip install -r requirements_mtj.txt
