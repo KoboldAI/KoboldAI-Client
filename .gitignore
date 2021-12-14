@@ -13,6 +13,8 @@ miniconda3/*
 __pycache__
 *.log
 cache/*
+userscripts/*
+softprompts/*
 
 # Ignore PyCharm project files.
 .idea
