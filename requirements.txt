@@ -5,5 +5,5 @@ requests
 torch
 flask-cloudflared
 flask-ngrok
-gevent-websocket
-lupa
+eventlet
+lupa==1.10
