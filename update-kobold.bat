@@ -35,6 +35,7 @@ SET branch=main
 git init     
 git remote remove origin
 git remote add origin %origin%    
-git fetch
+git fetch --all
 git checkout %branch% -f
+git reset --hard origin/%branch%
 cmd /k
