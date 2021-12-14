@@ -3825,8 +3825,8 @@ if __name__ == "__main__":
            from flask_cloudflared import _run_cloudflared
            cloudflare = _run_cloudflared(5000)
         with open('cloudflare.log', 'w') as cloudflarelog:
-            cloudflarelog.write("KoboldAI has finished loading and is available in the following link : " + cloudflare)
-            print("\n" + format(colors.GREEN) + "KoboldAI has finished loading and is available in the following link : " + cloudflare + format(colors.END))
+            cloudflarelog.write("KoboldAI has finished loading and is available at the following link : " + cloudflare)
+            print("\n" + format(colors.GREEN) + "KoboldAI has finished loading and is available at the following link : " + cloudflare + format(colors.END))
         vars.serverstarted = True
         socketio.run(app, host='0.0.0.0', port=5000)
     else:
