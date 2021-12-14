@@ -17,6 +17,7 @@ GOTO GIT
 
 :GIT
 if exist .git\ (
+	git fetch
 	git checkout -f
 ) else (
 	git init     
