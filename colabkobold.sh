@@ -100,6 +100,9 @@ if [ "$init" != "skip" ]; then
     else
         pip install -r requirements.txt
     fi
+    
+    # Make sure Colab has netbase, somehow it doesn't properly have that...
+    sudo apt-get -o Dpkg::Options::="--force-confmiss" install --reinstall netbase
     touch /content/installed
     fi
 fi
