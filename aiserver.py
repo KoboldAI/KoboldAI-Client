@@ -113,6 +113,7 @@ class vars:
     lua_warper  = None   # Transformers logits warper controllable from Lua
     lua_logname = ...    # Name of previous userscript that logged to terminal
     userscripts = []     # List of userscripts to load
+    corescript  = "default.lua"  # Filename of corescript to load
     # badwords    = []     # Array of str/chr values that should be removed from output
     badwordsids = [[13460], [6880], [50256], [42496], [4613], [17414], [22039], [16410], [27], [29], [38430], [37922], [15913], [24618], [28725], [58], [47175], [36937], [26700], [12878], [16471], [37981], [5218], [29795], [13412], [45160], [3693], [49778], [4211], [20598], [36475], [33409], [44167], [32406], [29847], [29342], [42669], [685], [25787], [7359], [3784], [5320], [33994], [33490], [34516], [43734], [17635], [24293], [9959], [23785], [21737], [28401], [18161], [26358], [32509], [1279], [38155], [18189], [26894], [6927], [14610], [23834], [11037], [14631], [26933], [46904], [22330], [25915], [47934], [38214], [1875], [14692], [41832], [13163], [25970], [29565], [44926], [19841], [37250], [49029], [9609], [44438], [16791], [17816], [30109], [41888], [47527], [42924], [23984], [49074], [33717], [31161], [49082], [30138], [31175], [12240], [14804], [7131], [26076], [33250], [3556], [38381], [36338], [32756], [46581], [17912], [49146]] # Tokenized array of badwords used to prevent AI artifacting
     deletewi    = -1     # Temporary storage for index to delete
@@ -953,6 +954,10 @@ if(path.exists("settings/" + getmodelname().replace('/', '_') + ".settings")):
             userscript = userscript.strip()
             if len(userscript) != 0 and all(q not in userscript for q in ("..", ":")) and all(userscript[0] not in q for q in ("/", "\\")) and os.path.exists(fileops.uspath(userscript)):
                 vars.userscripts.append(userscript)
+    if("corescript" in js and type(js["corescript"]) is str and all(q not in js["corescript"] for q in ("..", ":")) and all(js["corescript"][0] not in q for q in ("/", "\\"))):
+        vars.corescript = js["corescript"]
+    else:
+        vars.corescript = "default.lua"
     file.close()
 
 def lua_log_format_name(name):
@@ -986,7 +991,7 @@ def load_lua_scripts():
 
     try:
         vars.lua_koboldbridge.obliterate_multiverse()
-        tpool.execute(vars.lua_koboldbridge.load_corescript, "default.lua")
+        tpool.execute(vars.lua_koboldbridge.load_corescript, vars.corescript)
         tpool.execute(vars.lua_koboldbridge.load_userscripts, filenames, modulenames, descriptions)
     except lupa.LuaError as e:
         vars.lua_koboldbridge.obliterate_multiverse()
@@ -1723,6 +1728,7 @@ def savesettings():
     js["dynamicscan"] = vars.dynamicscan
 
     js["userscripts"] = vars.userscripts
+    js["corescript"]  = vars.corescript
 
     # Write it
     if not os.path.exists('settings'):
@@ -1784,6 +1790,11 @@ def loadsettings():
                 userscript = userscript.strip()
                 if len(userscript) != 0 and all(q not in userscript for q in ("..", ":")) and all(userscript[0] not in q for q in ("/", "\\")) and os.path.exists(fileops.uspath(userscript)):
                     vars.userscripts.append(userscript)
+
+        if("corescript" in js and type(js["corescript"]) is str and all(q not in js["corescript"] for q in ("..", ":")) and all(js["corescript"][0] not in q for q in ("/", "\\"))):
+            vars.corescript = js["corescript"]
+        else:
+            vars.corescript = "default.lua"
         
         file.close()
 
