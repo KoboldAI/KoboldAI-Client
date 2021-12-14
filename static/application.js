@@ -19,6 +19,7 @@ var button_impaidg;
 var button_settings;
 var button_format;
 var button_softprompt;
+var button_userscripts;
 var button_mode;
 var button_mode_label;
 var button_send;
@@ -58,6 +59,10 @@ var sppopup;
 var	spcontent;
 var	sp_accept;
 var	sp_close;
+var uspopup;
+var	uscontent;
+var	us_accept;
+var	us_close;
 var nspopup;
 var ns_accept;
 var ns_close;
@@ -71,6 +76,7 @@ var storyname = null;
 var memorymode = false;
 var memorytext = "";
 var gamestarted = false;
+var wiscroll = 0;
 var editmode = false;
 var connected = false;
 var newly_loaded = true;
@@ -78,6 +84,8 @@ var modified_chunks = new Set();
 var empty_chunks = new Set();
 var gametext_bound = false;
 var saved_prompt = "...";
+var wifolders_d = {};
+var wifolders_l = [];
 var override_focusout = false;
 var sman_allow_delete = false;
 var sman_allow_rename = false;
@@ -196,51 +204,99 @@ function addImportLine(ob) {
 	});
 }
 
+function adjustWiCommentHeight(element) {
+	element.style.height = "0px";
+	element.style.height = element.scrollHeight + "px";
+	element.parentNode.parentNode.style.height = element.scrollHeight + 90 + "px";
+}
+
+function adjustWiFolderNameHeight(element) {
+	element.style.height = "0px";
+	element.style.height = element.scrollHeight + "px";
+	element.parentNode.parentNode.parentNode.style.height = element.scrollHeight + 19 + "px";
+}
+
 function addWiLine(ob) {
+	var current_wifolder_element = ob.folder === null ? $(".wisortable-body:not([folder-uid])").last() : $(".wisortable-body[folder-uid="+ob.folder+"]");
 	if(ob.init) {
 		if(ob.selective){
-			wi_menu.append("<div class=\"wilistitem wilistitem-selective "+(ob.constant ? "wilistitem-constant" : "")+"\">\
+			current_wifolder_element.append("<div class=\"wilistitem wilistitem-selective "+(ob.constant ? "wilistitem-constant" : "")+"\" num=\""+ob.num+"\" id=\"wilistitem"+ob.num+"\">\
+				<div class=\"wicomment\">\
+					<textarea class=\"form-control\" placeholder=\"Comment\" id=\"wicomment"+ob.num+"\">"+ob.comment+"</textarea>\
+				</div>\
+				<div class=\"wihandle\" id=\"wihandle"+ob.num+"\">\
+					<div class=\"wicentered\">\
+						<span class=\"oi oi-grid-two-up\" aria-hidden=\"true\"></span>\
+						<br/>\
+						<span class=\"oi oi-grid-two-up\" aria-hidden=\"true\"></span>\
+						<br/>\
+						<span class=\"oi oi-grid-two-up\" aria-hidden=\"true\"></span>\
+						<br/>\
+						<span class=\"oi oi-grid-two-up\" aria-hidden=\"true\"></span>\
+						<br/>\
+						<span class=\"oi oi-grid-two-up\" aria-hidden=\"true\"></span>\
+						<br/>\
+						<span class=\"oi oi-grid-two-up\" aria-hidden=\"true\"></span>\
+						<br/>\
+						<span class=\"oi oi-grid-two-up\" aria-hidden=\"true\"></span>\
+					</div>\
+				</div>\
 				<div class=\"wiremove\">\
 					<button type=\"button\" class=\"btn btn-primary heightfull\" id=\"btn_wi"+ob.num+"\">X</button>\
 					<button type=\"button\" class=\"btn btn-success heighthalf hidden\" id=\"btn_widel"+ob.num+"\">✓</button>\
 					<button type=\"button\" class=\"btn btn-danger heighthalf hidden\" id=\"btn_wican"+ob.num+"\">⮌</button>\
 				</div>\
 				<div class=\"icon-container wikey\">\
-					<input class=\"form-control heightfull hidden\" type=\"text\" placeholder=\"Key(s)\" id=\"wikey"+ob.num+"\">\
-					<input class=\"form-control heighthalf\" type=\"text\" placeholder=\"Primary Key(s)\" id=\"wikeyprimary"+ob.num+"\">\
-					<input class=\"form-control heighthalf\" type=\"text\" placeholder=\"Secondary Key(s)\" id=\"wikeysecondary"+ob.num+"\">\
+					<input class=\"form-control wiheightfull hidden\" type=\"text\" placeholder=\"Key(s)\" id=\"wikey"+ob.num+"\">\
+					<input class=\"form-control wiheighthalf\" type=\"text\" placeholder=\"Primary Key(s)\" id=\"wikeyprimary"+ob.num+"\">\
+					<input class=\"form-control wiheighthalf\" type=\"text\" placeholder=\"Secondary Key(s)\" id=\"wikeysecondary"+ob.num+"\">\
+					<span class=\"selective-key-icon "+(ob.selective ? "selective-key-icon-enabled" : "")+" oi oi-layers\" id=\"selective-key-"+ob.num+"\" title=\"Toggle Selective Key mode (if enabled, this world info entry will be included in memory only if at least one PRIMARY KEY and at least one SECONDARY KEY are both present in the story)\" aria-hidden=\"true\"></span>\
 					<span class=\"constant-key-icon "+(ob.constant ? "constant-key-icon-enabled" : "")+" oi oi-pin\" id=\"constant-key-"+ob.num+"\" title=\"Toggle Constant Key mode (if enabled, this world info entry will always be included in memory)\" aria-hidden=\"true\"></span>\
 				</div>\
 				<div class=\"wientry\">\
 					<textarea class=\"layer-bottom form-control\" id=\"wientry"+ob.num+"\" placeholder=\"What To Remember\">"+ob.content+"</textarea>\
 				</div>\
-				<div class=\"wiselective\">\
-					<button type=\"button\" class=\"btn btn-success heightfull hidden\" id=\"btn_wiselon"+ob.num+"\">Enable Selective Mode</button>\
-					<button type=\"button\" class=\"btn btn-danger heightfull\" id=\"btn_wiseloff"+ob.num+"\">Disable Selective Mode</button>\
-				</div>\
 			</div>");
 		} else {
-			wi_menu.append("<div class=\"wilistitem "+(ob.constant ? "wilistitem-constant" : "")+"\">\
+			current_wifolder_element.append("<div class=\"wilistitem "+(ob.constant ? "wilistitem-constant" : "")+"\" num=\""+ob.num+"\" id=\"wilistitem"+ob.num+"\">\
+				<div class=\"wicomment\">\
+					<textarea class=\"form-control\" placeholder=\"Comment\" id=\"wicomment"+ob.num+"\">"+ob.comment+"</textarea>\
+				</div>\
+				<div class=\"wihandle\" id=\"wihandle"+ob.num+"\">\
+					<div class=\"wicentered\">\
+						<span class=\"oi oi-grid-two-up\" aria-hidden=\"true\"></span>\
+						<br/>\
+						<span class=\"oi oi-grid-two-up\" aria-hidden=\"true\"></span>\
+						<br/>\
+						<span class=\"oi oi-grid-two-up\" aria-hidden=\"true\"></span>\
+						<br/>\
+						<span class=\"oi oi-grid-two-up\" aria-hidden=\"true\"></span>\
+						<br/>\
+						<span class=\"oi oi-grid-two-up\" aria-hidden=\"true\"></span>\
+						<br/>\
+						<span class=\"oi oi-grid-two-up\" aria-hidden=\"true\"></span>\
+						<br/>\
+						<span class=\"oi oi-grid-two-up\" aria-hidden=\"true\"></span>\
+					</div>\
+				</div>\
 				<div class=\"wiremove\">\
 					<button type=\"button\" class=\"btn btn-primary heightfull\" id=\"btn_wi"+ob.num+"\">X</button>\
 					<button type=\"button\" class=\"btn btn-success heighthalf hidden\" id=\"btn_widel"+ob.num+"\">✓</button>\
 					<button type=\"button\" class=\"btn btn-danger heighthalf hidden\" id=\"btn_wican"+ob.num+"\">⮌</button>\
 				</div>\
 				<div class=\"icon-container wikey\">\
-					<input class=\"form-control heightfull\" type=\"text\" placeholder=\"Key(s)\" id=\"wikey"+ob.num+"\">\
-					<input class=\"form-control heighthalf hidden\" type=\"text\" placeholder=\"Primary Key(s)\" id=\"wikeyprimary"+ob.num+"\">\
-					<input class=\"form-control heighthalf hidden\" type=\"text\" placeholder=\"Secondary Key(s)\" id=\"wikeysecondary"+ob.num+"\">\
+					<input class=\"form-control wiheightfull\" type=\"text\" placeholder=\"Key(s)\" id=\"wikey"+ob.num+"\">\
+					<input class=\"form-control wiheighthalf hidden\" type=\"text\" placeholder=\"Primary Key(s)\" id=\"wikeyprimary"+ob.num+"\">\
+					<input class=\"form-control wiheighthalf hidden\" type=\"text\" placeholder=\"Secondary Key(s)\" id=\"wikeysecondary"+ob.num+"\">\
+					<span class=\"selective-key-icon "+(ob.selective ? "selective-key-icon-enabled" : "")+" oi oi-layers\" id=\"selective-key-"+ob.num+"\" title=\"Toggle Selective Key mode (if enabled, this world info entry will be included in memory only if at least one PRIMARY KEY and at least one SECONDARY KEY are both present in the story)\" aria-hidden=\"true\"></span>\
 					<span class=\"constant-key-icon "+(ob.constant ? "constant-key-icon-enabled" : "")+" oi oi-pin\" id=\"constant-key-"+ob.num+"\" title=\"Toggle Constant Key mode (if enabled, this world info entry will always be included in memory)\" aria-hidden=\"true\"></span>\
 				</div>\
 				<div class=\"wientry\">\
 					<textarea class=\"form-control\" id=\"wientry"+ob.num+"\" placeholder=\"What To Remember\">"+ob.content+"</textarea>\
 				</div>\
-				<div class=\"wiselective\">\
-					<button type=\"button\" class=\"btn btn-success heightfull\" id=\"btn_wiselon"+ob.num+"\">Enable Selective Mode</button>\
-					<button type=\"button\" class=\"btn btn-danger heightfull hidden\" id=\"btn_wiseloff"+ob.num+"\">Disable Selective Mode</button>\
-				</div>\
 			</div>");
 		}
+		adjustWiCommentHeight($("#wicomment"+ob.num)[0]);
 		// Send key value to text input
 		$("#wikey"+ob.num).val(ob.key);
 		$("#wikeyprimary"+ob.num).val(ob.key);
@@ -251,81 +307,241 @@ function addWiLine(ob) {
 		});
 	} else {
 		// Show WI line item with form fields hidden (uninitialized)
-		wi_menu.append("<div class=\"wilistitem\">\
+		current_wifolder_element.append("<div class=\"wilistitem wilistitem-uninitialized wisortable-excluded\" num=\""+ob.num+"\" id=\"wilistitem"+ob.num+"\">\
+			<div class=\"wicomment\">\
+				<textarea class=\"form-control hidden\" placeholder=\"Comment\" id=\"wicomment"+ob.num+"\">"+ob.comment+"</textarea>\
+			</div>\
+			<div class=\"wihandle-inactive hidden\" id=\"wihandle"+ob.num+"\">\
+				<div class=\"wicentered\">\
+					<span class=\"oi oi-grid-two-up\" aria-hidden=\"true\"></span>\
+					<br/>\
+					<span class=\"oi oi-grid-two-up\" aria-hidden=\"true\"></span>\
+					<br/>\
+					<span class=\"oi oi-grid-two-up\" aria-hidden=\"true\"></span>\
+					<br/>\
+					<span class=\"oi oi-grid-two-up\" aria-hidden=\"true\"></span>\
+					<br/>\
+					<span class=\"oi oi-grid-two-up\" aria-hidden=\"true\"></span>\
+					<br/>\
+					<span class=\"oi oi-grid-two-up\" aria-hidden=\"true\"></span>\
+					<br/>\
+					<span class=\"oi oi-grid-two-up\" aria-hidden=\"true\"></span>\
+				</div>\
+			</div>\
 			<div class=\"wiremove\">\
 				<button type=\"button\" class=\"btn btn-primary heightfull\" id=\"btn_wi"+ob.num+"\">+</button>\
 				<button type=\"button\" class=\"btn btn-success heighthalf hidden\" id=\"btn_widel"+ob.num+"\">✓</button>\
 				<button type=\"button\" class=\"btn btn-danger heighthalf hidden\" id=\"btn_wican"+ob.num+"\">X</button>\
 			</div>\
 			<div class=\"icon-container wikey\">\
-				<input class=\"form-control heightfull hidden\" type=\"text\" placeholder=\"Key(s)\" id=\"wikey"+ob.num+"\">\
-				<input class=\"form-control heighthalf hidden\" type=\"text\" placeholder=\"Primary Key(s)\" id=\"wikeyprimary"+ob.num+"\">\
-				<input class=\"form-control heighthalf hidden\" type=\"text\" placeholder=\"Secondary Key(s)\" id=\"wikeysecondary"+ob.num+"\">\
+				<input class=\"form-control wiheightfull hidden\" type=\"text\" placeholder=\"Key(s)\" id=\"wikey"+ob.num+"\">\
+				<input class=\"form-control wiheighthalf hidden\" type=\"text\" placeholder=\"Primary Key(s)\" id=\"wikeyprimary"+ob.num+"\">\
+				<input class=\"form-control wiheighthalf hidden\" type=\"text\" placeholder=\"Secondary Key(s)\" id=\"wikeysecondary"+ob.num+"\">\
+				<span class=\"selective-key-icon oi oi-layers hidden\" id=\"selective-key-"+ob.num+"\" title=\"Toggle Selective Key mode (if enabled, this world info entry will be included in memory only if at least one PRIMARY KEY and at least one SECONDARY KEY are both present in the story)\" aria-hidden=\"true\"></span>\
 				<span class=\"constant-key-icon oi oi-pin hidden\" id=\"constant-key-"+ob.num+"\" title=\"Toggle Constant Key mode (if enabled, this world info entry will always be included in memory)\" aria-hidden=\"true\"></span>\
 			</div>\
 			<div class=\"wientry\">\
 				<textarea class=\"layer-bottom form-control hidden\" id=\"wientry"+ob.num+"\" placeholder=\"What To Remember\">"+ob.content+"</textarea>\
 			</div>\
-			<div class=\"wiselective\">\
-				<button type=\"button\" class=\"btn btn-success heightfull hidden\" id=\"btn_wiselon"+ob.num+"\">Enable Selective Mode</button>\
-				<button type=\"button\" class=\"btn btn-danger heightfull hidden\" id=\"btn_wiseloff"+ob.num+"\">Disable Selective Mode</button>\
-			</div>\
 		</div>");
 		// Assign function to expand WI item to button
 		$("#btn_wi"+ob.num).on("click", function () {
-			expandWiLine(ob.num);
+			var folder = $("#wilistitem"+ob.num).parent().attr("folder-uid");
+			if(folder === undefined) {
+				folder = null;
+			} else {
+				folder = parseInt(folder);
+			}
+			socket.send({'cmd': 'wiexpand', 'data': ob.num});
+			socket.send({'cmd': 'wiinit', 'folder': folder, 'data': ob.num});
 		});
 	}
 	// Assign actions to other elements
 	wientry_onfocus = function () {
+		$("#selective-key-"+ob.num).addClass("selective-key-icon-clickthrough");
 		$("#constant-key-"+ob.num).addClass("constant-key-icon-clickthrough");
 	}
 	wientry_onfocusout = function () {
+		$("#selective-key-"+ob.num).removeClass("selective-key-icon-clickthrough");
 		$("#constant-key-"+ob.num).removeClass("constant-key-icon-clickthrough");
+		// Tell server about updated WI fields
+		var selective = $("#wilistitem"+ob.num)[0].classList.contains("wilistitem-selective");
+		socket.send({'cmd': 'wiupdate', 'num': ob.num, 'data': {
+			key: selective ? $("#wikeyprimary"+ob.num).val() : $("#wikey"+ob.num).val(),
+			keysecondary: $("#wikeysecondary"+ob.num).val(),
+			content: $("#wientry"+ob.num).val(),
+			comment: $("#wicomment"+ob.num).val(),
+		}});
 	}
 	$("#wikey"+ob.num).on("focus", wientry_onfocus);
 	$("#wikeyprimary"+ob.num).on("focus", wientry_onfocus);
 	$("#wikeysecondary"+ob.num).on("focus", wientry_onfocus);
+	$("#wientry"+ob.num).on("focus", wientry_onfocus);
+	$("#wicomment"+ob.num).on("focus", wientry_onfocus);
 	$("#wikey"+ob.num).on("focusout", wientry_onfocusout);
 	$("#wikeyprimary"+ob.num).on("focusout", wientry_onfocusout);
 	$("#wikeysecondary"+ob.num).on("focusout", wientry_onfocusout);
+	$("#wientry"+ob.num).on("focusout", wientry_onfocusout);
+	$("#wicomment"+ob.num).on("focusout", wientry_onfocusout);
 	$("#btn_wican"+ob.num).on("click", function () {
 		hideWiDeleteConfirm(ob.num);
 	});
 	$("#btn_widel"+ob.num).on("click", function () {
 		socket.send({'cmd': 'widelete', 'data': ob.num});
 	});
-	$("#btn_wiselon"+ob.num).on("click", function () {
-		enableWiSelective(ob.num);
-		$("#wikey"+ob.num).addClass("wilistitem-selective");
-	});
-	$("#btn_wiseloff"+ob.num).on("click", function () {
-		disableWiSelective(ob.num);
-		$("#wikey"+ob.num).removeClass("wilistitem-selective");
+	$("#selective-key-"+ob.num).on("click", function () {
+		var element = $("#selective-key-"+ob.num);
+		if(element.hasClass("selective-key-icon-enabled")) {
+			socket.send({'cmd': 'wiseloff', 'data': ob.num});
+		} else {
+			socket.send({'cmd': 'wiselon', 'data': ob.num});
+		}
 	});
 	$("#constant-key-"+ob.num).on("click", function () {
 		var element = $("#constant-key-"+ob.num);
 		if(element.hasClass("constant-key-icon-enabled")) {
 			socket.send({'cmd': 'wiconstantoff', 'data': ob.num});
-			element.removeClass("constant-key-icon-enabled");
-			$("#wikey"+ob.num).removeClass("wilistitem-constant");
 		} else {
 			socket.send({'cmd': 'wiconstanton', 'data': ob.num});
-			element.addClass("constant-key-icon-enabled");
-			$("#wikey"+ob.num).addClass("wilistitem-constant");
 		}
+	});
+	$("#wihandle"+ob.num).off().on("mousedown", function () {
+		wientry_onfocusout()
+		$(".wisortable-container").addClass("wisortable-excluded");
+		// Prevent WI entries with extremely long comments from filling the screen and preventing scrolling
+		$(this).parent().css("max-height", "200px").find(".wicomment").find(".form-control").css("max-height", "110px");
+	}).on("mouseup", function () {
+		$(".wisortable-excluded-dynamic").removeClass("wisortable-excluded-dynamic");
+		$(this).parent().css("max-height", "").find(".wicomment").find(".form-control").css("max-height", "");
 	});
 }
 
+function addWiFolder(uid, ob) {
+	if(uid !== null) {
+		var uninitialized = $("#wilistfoldercontainer"+null);
+		var html = "<div class=\"wisortable-container\" id=\"wilistfoldercontainer"+uid+"\" folder-uid=\""+uid+"\">\
+			<div class=\"wilistfolder\" id=\"wilistfolder"+uid+"\">\
+				<div class=\"wiremove\">\
+					<button type=\"button\" class=\"btn btn-primary heightfull\" id=\"btn_wifolder"+uid+"\">X</button>\
+					<button type=\"button\" class=\"btn btn-success heighthalf hidden\" id=\"btn_wifolderdel"+uid+"\">✓</button>\
+					<button type=\"button\" class=\"btn btn-danger heighthalf hidden\" id=\"btn_wifoldercan"+uid+"\">⮌</button>\
+				</div>\
+				<div class=\"wifoldericon\">\
+					<div class=\"wicentered\">\
+						<span class=\"oi oi-folder\" aria-hidden=\"true\"></span>\
+					</div>\
+				</div>\
+				<div class=\"wifoldername\">\
+					<div class=\"wicentered-vertical\">\
+						<textarea class=\"form-control\" placeholder=\"Untitled Folder\" id=\"wifoldername"+uid+"\">"+ob.name+"</textarea>\
+					</div>\
+				</div>\
+				<div class=\"wihandle wifolderhandle\" id=\"wifolderhandle"+uid+"\">\
+					<div class=\"wicentered\">\
+						<span class=\"oi oi-grid-two-up\" aria-hidden=\"true\"></span>\
+						<br/>\
+						<span class=\"oi oi-grid-two-up\" aria-hidden=\"true\"></span>\
+						<br/>\
+						<span class=\"oi oi-grid-two-up\" aria-hidden=\"true\"></span>\
+					</div>\
+				</div>\
+			</div>\
+			<div class=\"wifoldergutter-container\" id=\"wifoldergutter"+uid+"\">\
+				<div class=\"wifoldergutter\"></div>\
+			</div>\
+			<div class=\"wisortable-body\" folder-uid=\""+uid+"\">\
+				<div class=\"wisortable-dummy\"></div>\
+			</div>\
+		</div>";
+		if(uninitialized.length) {
+			$(html).insertBefore(uninitialized);
+		} else {
+			wi_menu.append(html);
+		}
+		var onfocusout = function () {
+			socket.send({'cmd': 'wifolderupdate', 'uid': uid, 'data': {
+				name: $("#wifoldername"+uid).val(),
+				collapsed: false,
+			}});
+		};
+		$("#wifoldergutter"+uid).on("click", function () {
+			$(this).siblings(".wilistfolder")[0].scrollIntoView();
+		});
+		$("#btn_wifolder"+uid).on("click", function () {
+			showWiFolderDeleteConfirm(uid);
+		});
+		$("#btn_wifolderdel"+uid).on("click", function () {
+			socket.send({'cmd': 'wifolderdelete', 'data': uid});
+		});
+		$("#btn_wifoldercan"+uid).on("click", function () {
+			hideWiFolderDeleteConfirm(uid);
+		})
+		$("#wifoldername"+uid).on("focusout", onfocusout);
+		$("#wifolderhandle"+uid).off().on("mousedown", function () {
+			onfocusout();
+			$(".wilistitem, .wisortable-dummy").addClass("wisortable-excluded-dynamic");
+			// Prevent WI folders with extremely long names from filling the screen and preventing scrolling
+			$(this).parent().parent().find(".wisortable-body").addClass("hidden");
+			$(this).parent().css("max-height", "200px").find(".wifoldername").find(".form-control").css("max-height", "181px");
+		}).on("mouseup", function () {
+			$(".wisortable-excluded-dynamic").removeClass("wisortable-excluded-dynamic");
+			$(this).parent().parent().find(".wisortable-body").removeClass("hidden");
+			$(this).parent().css("max-height", "").find(".wifoldername").find(".form-control").css("max-height", "");
+		});
+		adjustWiFolderNameHeight($("#wifoldername"+uid)[0]);
+	} else {
+		wi_menu.append("<div class=\"wisortable-container\" id=\"wilistfoldercontainer"+uid+"\">\
+			<div class=\"wilistfolder\" id=\"wilistfolder"+uid+"\">\
+				<div class=\"wiremove\">\
+					<button type=\"button\" class=\"btn btn-primary heightfull\" id=\"btn_wifolder"+uid+"\">+</button>\
+					<button type=\"button\" class=\"btn btn-success heighthalf hidden\" id=\"btn_wifolderdel"+uid+"\">✓</button>\
+					<button type=\"button\" class=\"btn btn-danger heighthalf hidden\" id=\"btn_wifoldercan"+uid+"\">⮌</button>\
+				</div>\
+				<div class=\"wifoldericon\">\
+					<div class=\"wicentered\">\
+						<span class=\"oi oi-folder\" aria-hidden=\"true\"></span>\
+					</div>\
+				</div>\
+				<div class=\"wifoldername\">\
+					<div class=\"wicentered-vertical\">\
+						<textarea class=\"form-control hidden\" placeholder=\"Untitled Folder\" id=\"wifoldername"+uid+"\"></textarea>\
+					</div>\
+				</div>\
+				<div class=\"wihandle-inactive wifolderhandle hidden\" id=\"wifolderhandle"+uid+"\">\
+					<div class=\"wicentered\">\
+						<span class=\"oi oi-grid-two-up\" aria-hidden=\"true\"></span>\
+						<br/>\
+						<span class=\"oi oi-grid-two-up\" aria-hidden=\"true\"></span>\
+						<br/>\
+						<span class=\"oi oi-grid-two-up\" aria-hidden=\"true\"></span>\
+					</div>\
+				</div>\
+			</div>\
+			<div class=\"wisortable-body\">\
+				<div class=\"wisortable-dummy\"></div>\
+			</div>\
+		</div>");
+		$("#btn_wifolder"+uid).on("click", function () {
+			expandWiFolderLine(uid);
+		});
+	}
+}
+
 function expandWiLine(num) {
-	show([$("#wikey"+num), $("#wientry"+num), $("#constant-key-"+num), $("#btn_wiselon"+num)]);
+	show([$("#wikey"+num), $("#wientry"+num), $("#wihandle"+num), $("#selective-key-"+num), $("#constant-key-"+num), $("#btn_wiselon"+num), $("#wicomment"+num)]);
+	$("#wihandle"+num).removeClass("wihandle-inactive").addClass("wihandle");
 	$("#btn_wi"+num).html("X");
 	$("#btn_wi"+num).off();
-	// Tell server the WI entry was initialized
-	socket.send({'cmd': 'wiinit', 'data': num});
+	$("#wilistitem"+num).removeClass("wilistitem-uninitialized").removeClass("wisortable-excluded");
 	$("#btn_wi"+num).on("click", function () {
 		showWiDeleteConfirm(num);
 	});
+
+	adjustWiCommentHeight($("#wicomment"+num)[0]);
+}
+
+function expandWiFolderLine(num) {
+	socket.send({'cmd': 'wifolderinit', 'data': ''});
 }
 
 function showWiDeleteConfirm(num) {
@@ -333,25 +549,51 @@ function showWiDeleteConfirm(num) {
 	show([$("#btn_widel"+num), $("#btn_wican"+num)]);
 }
 
+function showWiFolderDeleteConfirm(num) {
+	hide([$("#btn_wifolder"+num)]);
+	show([$("#btn_wifolderdel"+num), $("#btn_wifoldercan"+num)]);
+}
+
 function hideWiDeleteConfirm(num) {
 	show([$("#btn_wi"+num)]);
 	hide([$("#btn_widel"+num), $("#btn_wican"+num)]);
 }
 
+function hideWiFolderDeleteConfirm(num) {
+	show([$("#btn_wifolder"+num)]);
+	hide([$("#btn_wifolderdel"+num), $("#btn_wifoldercan"+num)]);
+}
+
 function enableWiSelective(num) {
-	hide([$("#btn_wiselon"+num), $("#wikey"+num)]);
-	// Tell server the WI entry is now selective
-	socket.send({'cmd': 'wiselon', 'data': num});
+	hide([$("#wikey"+num)]);
 	$("#wikeyprimary"+num).val($("#wikey"+num).val());
-	show([$("#wikeyprimary"+num), $("#wikeysecondary"+num), $("#btn_wiseloff"+num)]);
+	show([$("#wikeyprimary"+num), $("#wikeysecondary"+num)]);
+
+	var element = $("#selective-key-"+num);
+	element.addClass("selective-key-icon-enabled");
+	$("#wikey"+num).addClass("wilistitem-selective");
 }
 
 function disableWiSelective(num) {
-	hide([$("#btn_wiseloff"+num), $("#wikeyprimary"+num), $("#wikeysecondary"+num)]);
-	// Tell server the WI entry is now non-selective
-	socket.send({'cmd': 'wiseloff', 'data': num});
+	hide([$("#wikeyprimary"+num), $("#wikeysecondary"+num)]);
 	$("#wikey"+num).val($("#wikeyprimary"+num).val());
-	show([$("#btn_wiselon"+num), $("#wikey"+num)]);
+	show([$("#wikey"+num)]);
+
+	var element = $("#selective-key-"+num);
+	element.removeClass("selective-key-icon-enabled");
+	$("#wikey"+num).removeClass("wilistitem-selective");
+}
+
+function enableWiConstant(num) {
+	var element = $("#constant-key-"+num);
+	element.addClass("constant-key-icon-enabled");
+	$("#wikey"+num).addClass("wilistitem-constant");
+}
+
+function disableWiConstant(num) {
+	var element = $("#constant-key-"+num);
+	element.removeClass("constant-key-icon-enabled");
+	$("#wikey"+num).removeClass("wilistitem-constant");
 }
 
 function highlightImportLine(ref) {
@@ -491,11 +733,19 @@ function returnWiList(ar) {
 	var list = [];
 	var i;
 	for(i=0; i<ar.length; i++) {
-		var ob          = {"key": "", "keysecondary": "", "content": "", "num": ar[i], "selective": false, "constant": false};
+		var folder = $("#wilistitem"+ar[i]).parent().attr("folder-uid");
+		if(folder === undefined) {
+			folder = null;
+		} else {
+			folder = parseInt(folder);
+		}
+		var ob          = {"key": "", "keysecondary": "", "content": "", "comment": "", "folder": null, "num": ar[i], "selective": false, "constant": false};
 		ob.selective    = $("#wikeyprimary"+ar[i]).css("display") != "none"
 		ob.key          = ob.selective ? $("#wikeyprimary"+ar[i]).val() : $("#wikey"+ar[i]).val();
-		ob.keysecondary = $("#wikeysecondary"+ar[i]).val()
+		ob.keysecondary = $("#wikeysecondary"+ar[i]).val();
 		ob.content      = $("#wientry"+ar[i]).val();
+		ob.comment      = $("#wicomment"+i).val();
+		ob.folder       = folder;
 		ob.constant     = $("#constant-key-"+ar[i]).hasClass("constant-key-icon-enabled");
 		list.push(ob);
 	}
@@ -515,13 +765,13 @@ function dosubmit() {
 	if(!memorymode && !gamestarted && ((!adventure || !action_mode) && txt.trim().length == 0)) {
 		return;
 	}
+	input_text.val("");
+	hideMessage();
+	hidegenseqs();
 	socket.send({'cmd': 'submit', 'actionmode': adventure ? action_mode : 0, 'data': txt});
 	if(memorymode) {
 		memorytext = input_text.val();
 	}
-	input_text.val("");
-	hideMessage();
-	hidegenseqs();
 }
 
 function changemode() {
@@ -603,6 +853,17 @@ function showSPPopup() {
 function hideSPPopup() {
 	sppopup.removeClass("flex");
 	sppopup.addClass("hidden");
+	spcontent.html("");
+}
+
+function showUSPopup() {
+	uspopup.removeClass("hidden");
+	uspopup.addClass("flex");
+}
+
+function hideUSPopup() {
+	uspopup.removeClass("flex");
+	uspopup.addClass("hidden");
 	spcontent.html("");
 }
 
@@ -709,6 +970,33 @@ function buildSPList(ar) {
 	}
 }
 
+function buildUSList(unloaded, loaded) {
+	usunloaded.html("");
+	usloaded.html("");
+	showUSPopup();
+	var i;
+	var j;
+	var el = usunloaded;
+	var ar = unloaded;
+	for(j=0; j<2; j++) {
+		for(i=0; i<ar.length; i++) {
+			el.append("<div class=\"flex\">\
+				<div class=\"uslistitem flex-row-container\" name=\""+ar[i].filename+"\">\
+					<div class=\"flex-row\">\
+						<div>"+ar[i].modulename+"</div>\
+						<div class=\"flex-push-right uslistitemsub\">&lt;"+ar[i].filename+"&gt;</div>\
+					</div>\
+					<div class=\"flex-row\">\
+						<div>"+ar[i].description+"</div>\
+					</div>\
+				</div>\
+			</div>");
+		}
+		el = usloaded;
+		ar = loaded;
+	}
+}
+
 function highlightLoadLine(ref) {
 	$("#loadlistcontent > div > div.popuplistselected").removeClass("popuplistselected");
 	ref.addClass("popuplistselected");
@@ -802,6 +1090,41 @@ function autofocus(event) {
 		event.target.focus();
 	} else {
 		event.preventDefault();
+	}
+}
+
+function sortableOnStart(event, ui) {
+}
+
+function sortableOnStop(event, ui) {
+	if(ui.item.hasClass("wilistitem")) {
+		// When a WI entry is dragged and dropped, tell the server which WI
+		// entry was dropped and which WI entry comes immediately after the
+		// dropped position so that the server can internally move around
+		// the WI entries
+		var next_sibling = ui.item.next(".wilistitem").attr("num");
+		if(next_sibling === undefined) {
+			next_sibling = ui.item.next().next().attr("num");
+		}
+		next_sibling = parseInt(next_sibling);
+		if(Number.isNaN(next_sibling)) {
+			$(this).sortable("cancel");
+			return;
+		}
+		socket.send({'cmd': 'wimoveitem', 'destination': next_sibling, 'data': parseInt(ui.item.attr("num"))});
+	} else {
+		// Do the same thing for WI folders
+		var next_sibling = ui.item.next(".wisortable-container").attr("folder-uid");
+		if(next_sibling === undefined) {
+			next_sibling = null;
+		} else {
+			next_sibling = parseInt(next_sibling);
+		}
+		if(Number.isNaN(next_sibling)) {
+			$(this).sortable("cancel");
+			return;
+		}
+		socket.send({'cmd': 'wimovefolder', 'destination': next_sibling, 'data': parseInt(ui.item.attr("folder-uid"))});
 	}
 }
 
@@ -948,7 +1271,7 @@ function downloadStory(format) {
 		actionlist_compiled.push(actionlist[i].innerText.replace(/\u00a0/g, " "));
 	}
 	var last = actionlist_compiled[actionlist_compiled.length-1];
-	if(last.slice(-1) === '\n') {
+	if(last && last.slice(-1) === '\n') {
 		actionlist_compiled[actionlist_compiled.length-1] = last.slice(0, -1);
 	}
 
@@ -963,12 +1286,23 @@ function downloadStory(format) {
 
 	var wilist = $(".wilistitem");
 	var wilist_compiled = [];
-	for(var i = 0; i < wilist.length-1; i++) {
+	for(var i = 0; i < wilist.length; i++) {
+		if(wilist[i].classList.contains("wilistitem-uninitialized")) {
+			continue;
+		}
 		var selective = wilist[i].classList.contains("wilistitem-selective");
+		var folder = $("#wilistitem"+i).parent().attr("folder-uid");
+		if(folder === undefined) {
+			folder = null;
+		} else {
+			folder = parseInt(folder);
+		}
 		wilist_compiled.push({
 			key: selective ? $("#wikeyprimary"+i).val() : $("#wikey"+i).val(),
 			keysecondary: $("#wikeysecondary"+i).val(),
 			content: $("#wientry"+i).val(),
+			comment: $("#wicomment"+i).val(),
+			folder: folder,
 			selective: selective,
 			constant: wilist[i].classList.contains("wilistitem-constant"),
 		});
@@ -985,6 +1319,8 @@ function downloadStory(format) {
 		authorsnote: $("#anoteinput").val(),
 		actions: actionlist_compiled,
 		worldinfo: wilist_compiled,
+		wifolders_d: wifolders_d,
+		wifolders_l: wifolders_l,
 	}, null, 3)]));
 	anchor.setAttribute('href', objectURL);
 	anchor.setAttribute('download', filename_without_extension + ".json");
@@ -1228,6 +1564,7 @@ $(document).ready(function(){
 	button_settings   = $('#btn_settings');
 	button_format     = $('#btn_format');
 	button_softprompt = $("#btn_softprompt");
+	button_userscripts= $("#btn_userscripts");
 	button_mode       = $('#btnmode')
 	button_mode_label = $('#btnmode_label')
 	button_send       = $('#btnsend');
@@ -1267,6 +1604,11 @@ $(document).ready(function(){
 	spcontent         = $("#splistcontent");
 	sp_accept         = $("#btn_spaccept");
 	sp_close          = $("#btn_spclose");
+	uspopup           = $("#uscontainer");
+	usunloaded        = $("#uslistunloaded");
+	usloaded          = $("#uslistloaded");
+	us_accept         = $("#btn_usaccept");
+	us_close          = $("#btn_usclose");
 	nspopup           = $("#newgamecontainer");
 	ns_accept         = $("#btn_nsaccept");
 	ns_close          = $("#btn_nsclose");
@@ -1277,7 +1619,7 @@ $(document).ready(function(){
 	seqselcontents    = $("#seqselcontents");
 
 	// Connect to SocketIO server
-	socket = io.connect(window.document.origin);
+	socket = io.connect(window.document.origin, {transports: ['websocket', 'polling']});
 	
 	socket.on('from_server', function(msg) {
 		if(msg.cmd == "connected") {
@@ -1348,7 +1690,6 @@ $(document).ready(function(){
 				scrollToBottom();
 			}
 			newly_loaded = false;
-			hideMessage();
 		} else if(msg.cmd == "scrolldown") {
 			scrollToBottom();
 		} else if(msg.cmd == "updatechunk") {
@@ -1562,13 +1903,66 @@ $(document).ready(function(){
 			} else {
 				exitWiMode();
 			}
+		} else if(msg.cmd == "wiupdate") {
+			var selective = $("#wilistitem"+msg.num)[0].classList.contains("wilistitem-selective");
+			if(selective) {
+				$("#wikeyprimary"+msg.num).val(msg.data.key);
+			} else {
+				$("#wikey"+msg.num).val(msg.data.key);
+			}
+			$("#wikeysecondary"+msg.num).val(msg.data.keysecondary);
+			$("#wientry"+msg.num).val(msg.data.content);
+			$("#wicomment"+msg.num).val(msg.data.comment);
+			adjustWiCommentHeight($("#wicomment"+msg.num)[0]);
+		} else if(msg.cmd == "wifolderupdate") {
+			$("#wifoldername"+msg.uid).val(msg.data.name);
+			adjustWiFolderNameHeight($("#wifoldername"+msg.uid)[0]);
+		} else if(msg.cmd == "wiexpand") {
+			expandWiLine(msg.data);
+		} else if(msg.cmd == "wiexpandfolder") {
+			expandWiFolderLine(msg.data);
+		} else if(msg.cmd == "wiselon") {
+			enableWiSelective(msg.data);
+		} else if(msg.cmd == "wiseloff") {
+			disableWiSelective(msg.data);
+		} else if(msg.cmd == "wiconstanton") {
+			enableWiConstant(msg.data);
+		} else if(msg.cmd == "wiconstantoff") {
+			disableWiConstant(msg.data);
 		} else if(msg.cmd == "addwiitem") {
 			// Add WI entry to WI Menu
 			addWiLine(msg.data);
-		} else if(msg.cmd == "clearwi") {
+		} else if(msg.cmd == "addwifolder") {
+			addWiFolder(msg.uid, msg.data);
+		} else if(msg.cmd == "wistart") {
+			// Save scroll position for later so we can restore it later
+			wiscroll = $("#gamescreen").scrollTop();
 			// Clear previous contents of WI list
 			wi_menu.html("");
-		} else if(msg.cmd == "requestwiitem") {
+			// Save wifolders_d and wifolders_l
+			wifolders_d = msg.wifolders_d;
+			wifolders_l = msg.wifolders_l;
+		} else if(msg.cmd == "wifinish") {
+			// Allow drag-and-drop rearranging of world info entries (via JQuery UI's "sortable widget")
+			$("#gamescreen").sortable({
+				items: "#wimenu .wisortable-body > :not(.wisortable-excluded):not(.wisortable-excluded-dynamic), #wimenu .wisortable-container[folder-uid]:not(.wisortable-excluded):not(.wisortable-excluded-dynamic)",
+				containment: "#wimenu",
+				connectWith: "#wimenu .wisortable-body",
+				handle: ".wihandle",
+				start: sortableOnStart,
+				stop: sortableOnStop,
+				placeholder: "wisortable-placeholder",
+				delay: 2,
+				cursor: "move",
+				tolerance: "pointer",
+				opacity: 0.21,
+				revert: 173,
+				scrollSensitivity: 64,
+				scrollSpeed: 10,
+			});
+			// Restore previously-saved scroll position
+			$("#gamescreen").scrollTop(wiscroll);
+	 	} else if(msg.cmd == "requestwiitem") {
 			// Package WI contents and send back to server
 			returnWiList(msg.data);
 		} else if(msg.cmd == "saveas") {
@@ -1582,6 +1976,8 @@ $(document).ready(function(){
 			buildLoadList(msg.data);
 		} else if(msg.cmd == "buildsp") {
 			buildSPList(msg.data);
+		} else if(msg.cmd == "buildus") {
+			buildUSList(msg.data.unloaded, msg.data.loaded);
 		} else if(msg.cmd == "askforoverwrite") {
 			// Show overwrite warning
 			show([$(".saveasoverwrite")]);
@@ -1659,6 +2055,23 @@ $(document).ready(function(){
 			}
 		}, 2);
 	});
+
+	// Make the userscripts menu sortable
+	var us_sortable_settings = {
+		delay: 2,
+		cursor: "move",
+		tolerance: "pointer",
+		opacity: 0.21,
+		revert: 173,
+		scrollSensitivity: 64,
+		scrollSpeed: 10,
+	}
+	$(usunloaded).sortable($.extend({
+		connectWith: "#uslistloaded",
+	}, us_sortable_settings));
+	$(usloaded).sortable($.extend({
+		connectWith: "#uslistunloaded",
+	}, us_sortable_settings));
 
 	// Bind actions to UI buttons
 	button_send.on("click", function(ev) {
@@ -1778,6 +2191,10 @@ $(document).ready(function(){
 	button_softprompt.on("click", function(ev) {
 		socket.send({'cmd': 'splistrequest', 'data': ''});
 	});
+
+	button_userscripts.on("click", function(ev) {
+		socket.send({'cmd': 'uslistrequest', 'data': ''});
+	});
 	
 	load_close.on("click", function(ev) {
 		hideLoadPopup();
@@ -1796,6 +2213,17 @@ $(document).ready(function(){
 	sp_accept.on("click", function(ev) {
 		socket.send({'cmd': 'sprequest', 'data': ''});
 		hideSPPopup();
+	});
+
+	us_close.on("click", function(ev) {
+		socket.send({'cmd': 'usloaded', 'data': usloaded.find(".uslistitem").map(function() { return $(this).attr("name"); }).toArray()});
+		hideUSPopup();
+	});
+	
+	us_accept.on("click", function(ev) {
+		socket.send({'cmd': 'usloaded', 'data': usloaded.find(".uslistitem").map(function() { return $(this).attr("name"); }).toArray()});
+		socket.send({'cmd': 'usload', 'data': ''});
+		hideUSPopup();
 	});
 	
 	button_newgame.on("click", function(ev) {
@@ -1846,7 +2274,17 @@ $(document).ready(function(){
 	anote_slider.on("input", function () {
 		socket.send({'cmd': 'anotedepth', 'data': $(this).val()});
 	});
-	
+
+	// Dynamically change vertical size of world info "Comment" text box
+	wi_menu.on("input", ".wicomment > textarea", function () {
+		adjustWiCommentHeight(this);
+	});
+
+	// Dynamically change vertical size of world info folder name text box
+	wi_menu.on("input", ".wifoldername > div > textarea", function () {
+		adjustWiFolderNameHeight(this);
+	});
+
 	saveasinput.on("input", function () {
 		if(saveasinput.val() == "") {
 			disableButtons([saveas_accept]);

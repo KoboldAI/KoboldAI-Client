@@ -305,7 +305,7 @@ def infer(
         soft_embeddings=soft_embeddings,
     )[0]
     for o in output:
-        samples.append(tokenizer.decode(o[0][0, 0, params["seq"] : params["seq"] + gen_len]))
+        samples.append(o[0][0, 0, params["seq"] : params["seq"] + gen_len])
     return samples
 
 

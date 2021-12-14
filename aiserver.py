@@ -6,7 +6,12 @@
 #==================================================================#
 
 # External packages
+import eventlet
+eventlet.monkey_patch()
 import os
+os.environ['EVENTLET_THREADPOOL_SIZE'] = '1'
+from eventlet import tpool
+
 from os import path, getcwd
 import re
 import tkinter as tk
@@ -24,12 +29,19 @@ import argparse
 import sys
 import gc
 
+import lupa
+
 # KoboldAI
 import fileops
 import gensettings
 from utils import debounce
 import utils
 import structures
+
+
+if lupa.LUA_VERSION[:2] != (5, 4):
+    print(f"Please install lupa==1.10. You have lupa {lupa.__version__}.", file=sys.stderr)
+
 
 #==================================================================#
 # Variables & Storage
@@ -66,6 +78,7 @@ modellist = [
 # Variables
 class vars:
     lastact     = ""     # The last action received from the user
+    submission  = ""     # Same as above, but after applying input formatting
     lastctx     = ""     # The last context submitted to the generator
     model       = ""     # Model ID string chosen at startup
     noai        = False  # Runs the script without starting up the transformers pipeline
@@ -81,12 +94,26 @@ class vars:
     tfs         = 1.0    # Default generator tfs (tail-free sampling)
     numseqs     = 1     # Number of sequences to ask the generator to create
     gamestarted = False  # Whether the game has started (disables UI elements)
+    serverstarted = False  # Whether or not the Flask server has started
     prompt      = ""     # Prompt
     memory      = ""     # Text submitted to memory field
     authornote  = ""     # Text submitted to Author's Note field
     andepth     = 3      # How far back in history to append author's note
     actions     = structures.KoboldStoryRegister()  # Actions submitted by user and AI
-    worldinfo   = []     # Array of World Info key/value objects
+    worldinfo   = []     # List of World Info key/value objects
+    worldinfo_i = []     # List of World Info key/value objects sans uninitialized entries
+    worldinfo_u = {}     # Dictionary of World Info UID - key/value pairs
+    wifolders_d = {}     # Dictionary of World Info folder UID-info pairs
+    wifolders_l = []     # List of World Info folder UIDs
+    wifolders_u = {}     # Dictionary of pairs of folder UID - list of WI UID
+    lua_state   = None   # Lua state of the Lua scripting system
+    lua_koboldbridge = None  # `koboldbridge` from bridge.lua
+    lua_kobold  = None   # `kobold` from` bridge.lua
+    lua_koboldcore = None  # `koboldcore` from bridge.lua
+    lua_warper  = None   # Transformers logits warper controllable from Lua
+    lua_logname = ...    # Name of previous userscript that logged to terminal
+    userscripts = []     # List of userscripts to load
+    corescript  = "default.lua"  # Filename of corescript to load
     # badwords    = []     # Array of str/chr values that should be removed from output
     badwordsids = [[13460], [6880], [50256], [42496], [4613], [17414], [22039], [16410], [27], [29], [38430], [37922], [15913], [24618], [28725], [58], [47175], [36937], [26700], [12878], [16471], [37981], [5218], [29795], [13412], [45160], [3693], [49778], [4211], [20598], [36475], [33409], [44167], [32406], [29847], [29342], [42669], [685], [25787], [7359], [3784], [5320], [33994], [33490], [34516], [43734], [17635], [24293], [9959], [23785], [21737], [28401], [18161], [26358], [32509], [1279], [38155], [18189], [26894], [6927], [14610], [23834], [11037], [14631], [26933], [46904], [22330], [25915], [47934], [38214], [1875], [14692], [41832], [13163], [25970], [29565], [44926], [19841], [37250], [49029], [9609], [44438], [16791], [17816], [30109], [41888], [47527], [42924], [23984], [49074], [33717], [31161], [49082], [30138], [31175], [12240], [14804], [7131], [26076], [33250], [3556], [38381], [36338], [32756], [46581], [17912], [49146]] # Tokenized array of badwords used to prevent AI artifacting
     deletewi    = -1     # Temporary storage for index to delete
@@ -538,14 +565,14 @@ from flask import Flask, render_template, Response, request
 from flask_socketio import SocketIO, emit
 app = Flask(__name__)
 app.config['SECRET KEY'] = 'secret!'
-socketio = SocketIO(app)
+socketio = SocketIO(app, async_method="eventlet")
 print("{0}OK!{1}".format(colors.GREEN, colors.END))
 
 # Start transformers and create pipeline
 if(not vars.model in ["InferKit", "Colab", "OAI", "ReadOnly", "TPUMeshTransformerGPTJ"]):
     if(not vars.noai):
         print("{0}Initializing transformers, please wait...{1}".format(colors.PURPLE, colors.END))
-        from transformers import StoppingCriteria, GPT2Tokenizer, GPT2LMHeadModel, GPTNeoForCausalLM, GPTNeoModel, AutoModelForCausalLM
+        from transformers import StoppingCriteria, GPT2TokenizerFast, GPT2LMHeadModel, GPTNeoForCausalLM, GPTNeoModel, AutoModelForCausalLM
         try:
             from transformers import GPTJModel
         except:
@@ -626,6 +653,35 @@ if(not vars.model in ["InferKit", "Colab", "OAI", "ReadOnly", "TPUMeshTransforme
                 indices_to_remove = sorted_indices_to_remove.scatter(1, sorted_indices, sorted_indices_to_remove)
                 scores = scores.masked_fill(indices_to_remove, self.filter_value)
                 return scores
+        
+        class LuaLogitsWarper(LogitsWarper):
+
+            def __init__(self):
+                pass
+
+            def __call__(self, input_ids: torch.LongTensor, scores: torch.FloatTensor) -> torch.FloatTensor:
+                assert scores.ndim == 2
+                assert input_ids.ndim == 2
+                self.regeneration_required = False
+                self.halt = False
+
+                scores_shape = scores.shape
+                scores_list = scores.tolist()
+                vars.lua_koboldbridge.logits = vars.lua_state.table()
+                for r, row in enumerate(scores_list):
+                    vars.lua_koboldbridge.logits[r+1] = vars.lua_state.table(*row)
+                vars.lua_koboldbridge.vocab_size = scores_shape[-1]
+
+                execute_genmod()
+
+                scores = torch.tensor(
+                    tuple(tuple(row.values()) for row in vars.lua_koboldbridge.logits.values()),
+                    device=scores.device,
+                    dtype=scores.dtype,
+                )
+                assert scores.shape == scores_shape
+
+                return scores
 
         def new_get_logits_warper(
             top_k: int = None,
@@ -643,6 +699,8 @@ if(not vars.model in ["InferKit", "Colab", "OAI", "ReadOnly", "TPUMeshTransforme
                 warper_list.append(TailFreeLogitsWarper(tfs=tfs, min_tokens_to_keep=1 + (beams > 1)))
             if(temp is not None and temp != 1.0):
                 warper_list.append(TemperatureLogitsWarper(temperature=temp))
+            vars.lua_warper = LuaLogitsWarper()
+            warper_list.append(vars.lua_warper)
             return warper_list
         
         def new_sample(self, *args, **kwargs):
@@ -675,7 +733,8 @@ if(not vars.model in ["InferKit", "Colab", "OAI", "ReadOnly", "TPUMeshTransforme
                 excluded_world_info: List[Set],
                 head_length: int,
             ):
-                self.any_new_entries = False
+                self.regeneration_required = False
+                self.halt = False
                 self.tokenizer = tokenizer
                 self.excluded_world_info = excluded_world_info
                 self.head_length = head_length
@@ -687,18 +746,24 @@ if(not vars.model in ["InferKit", "Colab", "OAI", "ReadOnly", "TPUMeshTransforme
             ) -> bool:
                 assert input_ids.ndim == 2
                 assert len(self.excluded_world_info) == input_ids.shape[0]
-                self.any_new_entries = False
+                self.regeneration_required = vars.lua_koboldbridge.regeneration_required
+                self.halt = not vars.lua_koboldbridge.generating
+                vars.lua_koboldbridge.regeneration_required = False
+
+                for i in range(vars.numseqs):
+                    vars.lua_koboldbridge.generated[i+1][vars.lua_koboldbridge.generated_cols] = input_ids[i, -1].item()
+
                 if(not vars.dynamicscan):
-                    return False
+                    return self.regeneration_required or self.halt
                 tail = input_ids[..., self.head_length:]
                 for i, t in enumerate(tail):
                     decoded = tokenizer.decode(t)
                     _, found = checkworldinfo(decoded, force_use_txt=True)
                     found -= self.excluded_world_info[i]
                     if(len(found) != 0):
-                        self.any_new_entries = True
+                        self.regeneration_required = True
                         break
-                return self.any_new_entries
+                return self.regeneration_required or self.halt
         old_get_stopping_criteria = transformers.generation_utils.GenerationMixin._get_stopping_criteria
         def new_get_stopping_criteria(self, *args, **kwargs):
             stopping_criteria = old_get_stopping_criteria(self, *args, **kwargs)
@@ -747,7 +812,7 @@ if(not vars.model in ["InferKit", "Colab", "OAI", "ReadOnly", "TPUMeshTransforme
                 else:
                     model     = GPTNeoForCausalLM.from_pretrained(vars.custmodpth, cache_dir="cache/", **maybe_low_cpu_mem_usage())
             vars.modeldim = get_hidden_size_from_model(model)
-            tokenizer = GPT2Tokenizer.from_pretrained(vars.custmodpth, cache_dir="cache/")
+            tokenizer = GPT2TokenizerFast.from_pretrained(vars.custmodpth, cache_dir="cache/")
             # Is CUDA available? If so, use GPU, otherwise fall back to CPU
             if(vars.hascuda):
                 if(vars.usegpu):
@@ -765,7 +830,7 @@ if(not vars.model in ["InferKit", "Colab", "OAI", "ReadOnly", "TPUMeshTransforme
             js   = json.load(model_config)
             with(maybe_use_float16()):
                 model = GPT2LMHeadModel.from_pretrained(vars.custmodpth, cache_dir="cache/", **maybe_low_cpu_mem_usage())
-            tokenizer = GPT2Tokenizer.from_pretrained(vars.custmodpth, cache_dir="cache/")
+            tokenizer = GPT2TokenizerFast.from_pretrained(vars.custmodpth, cache_dir="cache/")
             vars.modeldim = get_hidden_size_from_model(model)
             # Is CUDA available? If so, use GPU, otherwise fall back to CPU
             if(vars.hascuda and vars.usegpu):
@@ -776,7 +841,7 @@ if(not vars.model in ["InferKit", "Colab", "OAI", "ReadOnly", "TPUMeshTransforme
         # If base HuggingFace model was chosen
         else:
             # Is CUDA available? If so, use GPU, otherwise fall back to CPU
-            tokenizer = GPT2Tokenizer.from_pretrained(vars.model, cache_dir="cache/")
+            tokenizer = GPT2TokenizerFast.from_pretrained(vars.model, cache_dir="cache/")
             if(vars.hascuda):
                 if(vars.usegpu):
                     with(maybe_use_float16()):
@@ -806,14 +871,18 @@ if(not vars.model in ["InferKit", "Colab", "OAI", "ReadOnly", "TPUMeshTransforme
         #    vars.badwordsids.append([vocab[key]])
 		
         print("{0}OK! {1} pipeline created!{2}".format(colors.GREEN, vars.model, colors.END))
+    
+    else:
+        from transformers import GPT2TokenizerFast
+        tokenizer = GPT2TokenizerFast.from_pretrained("gpt2")
 else:
     # If we're running Colab or OAI, we still need a tokenizer.
     if(vars.model == "Colab"):
-        from transformers import GPT2Tokenizer
-        tokenizer = GPT2Tokenizer.from_pretrained("EleutherAI/gpt-neo-2.7B")
+        from transformers import GPT2TokenizerFast
+        tokenizer = GPT2TokenizerFast.from_pretrained("EleutherAI/gpt-neo-2.7B")
     elif(vars.model == "OAI"):
-        from transformers import GPT2Tokenizer
-        tokenizer = GPT2Tokenizer.from_pretrained("gpt2")
+        from transformers import GPT2TokenizerFast
+        tokenizer = GPT2TokenizerFast.from_pretrained("gpt2")
     # Load the TPU backend if requested
     elif(vars.model == "TPUMeshTransformerGPTJ"):
         print("{0}Initializing Mesh Transformer JAX, please wait...{1}".format(colors.PURPLE, colors.END))
@@ -858,6 +927,8 @@ def download():
                 "key": wi["key"],
                 "keysecondary": wi["keysecondary"],
                 "content": wi["content"],
+                "comment": wi["comment"],
+                "folder": wi["folder"],
                 "selective": wi["selective"],
                 "constant": wi["constant"]
             })
@@ -868,6 +939,441 @@ def download():
         filename = filename[:-5]
     save.headers.set('Content-Disposition', 'attachment', filename='%s.json' % filename)
     return(save)
+
+
+#============================ LUA API =============================#
+
+if(path.exists("settings/" + getmodelname().replace('/', '_') + ".settings")):
+    file = open("settings/" + getmodelname().replace('/', '_') + ".settings", "r")
+    js   = json.load(file)
+    if("userscripts" in js):
+        vars.userscripts = []
+        for userscript in js["userscripts"]:
+            if type(userscript) is not str:
+                continue
+            userscript = userscript.strip()
+            if len(userscript) != 0 and all(q not in userscript for q in ("..", ":")) and all(userscript[0] not in q for q in ("/", "\\")) and os.path.exists(fileops.uspath(userscript)):
+                vars.userscripts.append(userscript)
+    if("corescript" in js and type(js["corescript"]) is str and all(q not in js["corescript"] for q in ("..", ":")) and all(js["corescript"][0] not in q for q in ("/", "\\"))):
+        vars.corescript = js["corescript"]
+    else:
+        vars.corescript = "default.lua"
+    file.close()
+
+def lua_log_format_name(name):
+    return f"[{name}]" if type(name) is str else "CORE"
+
+#==================================================================#
+#  Event triggered when a userscript is loaded
+#==================================================================#
+def load_callback(filename, modulename):
+    print(colors.GREEN + f"Loading Userscript [{modulename}] <{filename}>" + colors.END)
+
+#==================================================================#
+#  Load all Lua scripts
+#==================================================================#
+def load_lua_scripts():
+    print(colors.GREEN + "Loading Core Script" + colors.END)
+
+    filenames = []
+    modulenames = []
+    descriptions = []
+
+    lst = fileops.getusfiles(long_desc=True)
+    filenames_dict = {ob["filename"]: i for i, ob in enumerate(lst)}
+
+    for filename in vars.userscripts:
+        if filename in filenames_dict:
+            i = filenames_dict[filename]
+            filenames.append(filename)
+            modulenames.append(lst[i]["modulename"])
+            descriptions.append(lst[i]["description"])
+
+    try:
+        vars.lua_koboldbridge.obliterate_multiverse()
+        tpool.execute(vars.lua_koboldbridge.load_corescript, vars.corescript)
+        tpool.execute(vars.lua_koboldbridge.load_userscripts, filenames, modulenames, descriptions)
+    except lupa.LuaError as e:
+        vars.lua_koboldbridge.obliterate_multiverse()
+        if(vars.serverstarted):
+            emit('from_server', {'cmd': 'errmsg', 'data': 'Lua script error, please check console.'}, broadcast=True)
+        print("{0}{1}{2}".format(colors.RED, "***LUA ERROR***: ", colors.END), end="", file=sys.stderr)
+        print("{0}{1}{2}".format(colors.RED, str(e).replace("\033", ""), colors.END), file=sys.stderr)
+        print("{0}{1}{2}".format(colors.YELLOW, "Lua engine stopped; please open 'Userscripts' and press Load to reinitialize scripts.", colors.END), file=sys.stderr)
+        if(vars.serverstarted):
+            set_aibusy(0)
+
+#==================================================================#
+#  Print message that originates from the userscript with the given name
+#==================================================================#
+def lua_print(msg):
+    if(vars.lua_logname != vars.lua_koboldbridge.logging_name):
+        vars.lua_logname = vars.lua_koboldbridge.logging_name
+        print(colors.BLUE + lua_log_format_name(vars.lua_logname) + ":" + colors.END, file=sys.stderr)
+    print(colors.PURPLE + msg.replace("\033", "") + colors.END)
+
+#==================================================================#
+#  Print warning that originates from the userscript with the given name
+#==================================================================#
+def lua_warn(msg):
+    if(vars.lua_logname != vars.lua_koboldbridge.logging_name):
+        vars.lua_logname = vars.lua_koboldbridge.logging_name
+        print(colors.BLUE + lua_log_format_name(vars.lua_logname) + ":" + colors.END, file=sys.stderr)
+    print(colors.RED + msg.replace("\033", "") + colors.END)
+
+#==================================================================#
+#  Decode tokens into a string using current tokenizer
+#==================================================================#
+def lua_decode(tokens):
+    tokens = list(tokens.values())
+    assert type(tokens) is list
+    if("tokenizer" not in globals()):
+        from transformers import GPT2TokenizerFast
+        global tokenizer
+        tokenizer = GPT2TokenizerFast.from_pretrained("gpt2")
+    return tokenizer.decode(tokens)
+
+#==================================================================#
+#  Encode string into list of token IDs using current tokenizer
+#==================================================================#
+def lua_encode(string):
+    assert type(string) is str
+    if("tokenizer" not in globals()):
+        thinking = False
+        from transformers import GPT2TokenizerFast
+        global tokenizer
+        tokenizer = GPT2TokenizerFast.from_pretrained("gpt2")
+    return tokenizer.encode(string, max_length=int(4e9), truncation=True)
+
+#==================================================================#
+#  Get property of a world info entry given its UID and property name
+#==================================================================#
+def lua_get_attr(uid, k):
+    assert type(uid) is int and type(k) is str
+    if(uid in vars.worldinfo_u and k in (
+        "key",
+        "keysecondary",
+        "content",
+        "comment",
+        "folder",
+        "num",
+        "selective",
+        "constant",
+        "uid",
+    )):
+        return vars.worldinfo_u[uid][k]
+
+#==================================================================#
+#  Set property of a world info entry given its UID, property name and new value
+#==================================================================#
+def lua_set_attr(uid, k, v):
+    assert type(uid) is int and type(k) is str
+    assert uid in vars.worldinfo_u and k in (
+        "key",
+        "keysecondary",
+        "content",
+        "comment",
+        "selective",
+        "constant",
+    )
+    if(type(vars.worldinfo_u[uid][k]) is int and type(v) is float):
+        v = int(v)
+    assert type(vars.worldinfo_u[uid][k]) is type(v)
+    vars.worldinfo_u[uid][k] = v
+    print(colors.GREEN + f"{lua_log_format_name(vars.lua_koboldbridge.logging_name)} set {k} of world info entry {uid} to {v}" + colors.END)
+
+#==================================================================#
+#  Get property of a world info folder given its UID and property name
+#==================================================================#
+def lua_folder_get_attr(uid, k):
+    assert type(uid) is int and type(k) is str
+    if(uid in vars.wifolders_d and k in (
+        "name",
+    )):
+        return vars.wifolders_d[uid][k]
+
+#==================================================================#
+#  Set property of a world info folder given its UID, property name and new value
+#==================================================================#
+def lua_folder_set_attr(uid, k, v):
+    assert type(uid) is int and type(k) is str
+    assert uid in vars.wifolders_d and k in (
+        "name",
+    )
+    if(type(vars.wifolders_d[uid][k]) is int and type(v) is float):
+        v = int(v)
+    assert type(vars.wifolders_d[uid][k]) is type(v)
+    vars.wifolders_d[uid][k] = v
+    print(colors.GREEN + f"{lua_log_format_name(vars.lua_koboldbridge.logging_name)} set {k} of world info folder {uid} to {v}" + colors.END)
+
+#==================================================================#
+#  Get the "Amount to Generate"
+#==================================================================#
+def lua_get_genamt():
+    return vars.genamt
+
+#==================================================================#
+#  Set the "Amount to Generate"
+#==================================================================#
+def lua_set_genamt(genamt):
+    assert vars.lua_koboldbridge.userstate != "genmod" and type(genamt) in (int, float) and genamt >= 0
+    print(colors.GREEN + f"{lua_log_format_name(vars.lua_koboldbridge.logging_name)} set genamt to {int(genamt)}" + colors.END)
+    vars.genamt = int(genamt)
+
+#==================================================================#
+#  Get the "Gens Per Action"
+#==================================================================#
+def lua_get_numseqs():
+    return vars.numseqs
+
+#==================================================================#
+#  Set the "Gens Per Action"
+#==================================================================#
+def lua_set_numseqs(numseqs):
+    assert type(numseqs) in (int, float) and numseqs >= 1
+    print(colors.GREEN + f"{lua_log_format_name(vars.lua_koboldbridge.logging_name)} set numseqs to {int(numseqs)}" + colors.END)
+    vars.genamt = int(numseqs)
+
+#==================================================================#
+#  Check if a setting exists with the given name
+#==================================================================#
+def lua_has_setting(setting):
+    return setting in (
+        "settemp",
+        "settopp",
+        "settopk",
+        "settfs",
+        "setreppen",
+        "settknmax",
+        "anotedepth",
+        "setwidepth",
+        "setuseprompt",
+        "setadventure",
+        "setdynamicscan",
+        "frmttriminc",
+        "frmtrmblln",
+        "frmtrmspch",
+        "frmtadsnsp",
+        "singleline",
+    )
+
+#==================================================================#
+#  Return the setting with the given name if it exists
+#==================================================================#
+def lua_get_setting(setting):
+    if(setting == "settemp"): return vars.temp
+    if(setting == "settopp"): return vars.top_p
+    if(setting == "settopk"): return vars.top_k
+    if(setting == "settfs"): return vars.tfs
+    if(setting == "setreppen"): return vars.rep_pen
+    if(setting == "settknmax"): return vars.max_length
+    if(setting == "anotedepth"): return vars.andepth
+    if(setting == "setwidepth"): return vars.widepth
+    if(setting == "setuseprompt"): return vars.useprompt
+    if(setting == "setadventure"): return vars.adventure
+    if(setting == "setdynamicscan"): return vars.dynamicscan
+    if(setting == "frmttriminc"): return vars.formatoptns["frmttriminc"]
+    if(setting == "frmtrmblln"): return vars.formatoptns["frmttriminc"]
+    if(setting == "frmtrmspch"): return vars.formatoptns["frmttriminc"]
+    if(setting == "frmtadsnsp"): return vars.formatoptns["frmttriminc"]
+    if(setting == "singleline"): return vars.formatoptns["frmttriminc"]
+
+#==================================================================#
+#  Set the setting with the given name if it exists
+#==================================================================#
+def lua_set_setting(setting, v):
+    actual_type = type(lua_get_setting(setting))
+    assert v is not None and (actual_type is type(v) or (actual_type is int and type(v) is float))
+    v = actual_type(v)
+    print(colors.GREEN + f"{lua_log_format_name(vars.lua_koboldbridge.logging_name)} set {setting} to {v}" + colors.END)
+    if(setting == "setadventure" and v):
+        vars.actionmode = 1
+    if(setting == "settemp"): vars.temp = v
+    if(setting == "settopp"): vars.top_p = v
+    if(setting == "settopk"): vars.top_k = v
+    if(setting == "settfs"): vars.tfs = v
+    if(setting == "setreppen"): vars.rep_pen = v
+    if(setting == "settknmax"): vars.max_length = v
+    if(setting == "anotedepth"): vars.andepth = v
+    if(setting == "setwidepth"): vars.widepth = v
+    if(setting == "setuseprompt"): vars.useprompt = v
+    if(setting == "setadventure"): vars.adventure = v
+    if(setting == "setdynamicscan"): vars.dynamicscan = v
+    if(setting == "frmttriminc"): vars.formatoptns["frmttriminc"] = v
+    if(setting == "frmtrmblln"): vars.formatoptns["frmttriminc"] = v
+    if(setting == "frmtrmspch"): vars.formatoptns["frmttriminc"] = v
+    if(setting == "frmtadsnsp"): vars.formatoptns["frmttriminc"] = v
+    if(setting == "singleline"): vars.formatoptns["frmttriminc"] = v
+
+#==================================================================#
+#  Get contents of memory
+#==================================================================#
+def lua_get_memory():
+    return vars.memory
+
+#==================================================================#
+#  Set contents of memory
+#==================================================================#
+def lua_set_memory(m):
+    assert type(m) is str
+    vars.memory = m
+
+#==================================================================#
+#  Save settings and send them to client
+#==================================================================#
+def lua_resend_settings():
+    settingschanged()
+    refresh_settings()
+
+#==================================================================#
+#  Set story chunk text and delete the chunk if the new chunk is empty
+#==================================================================#
+def lua_set_chunk(k, v):
+    assert type(k) in (int, None) and type(v) is str
+    assert k >= 0
+    assert k != 0 or len(v) != 0
+    if(len(v) == 0):
+        print(colors.GREEN + f"{lua_log_format_name(vars.lua_koboldbridge.logging_name)} deleted story chunk {k}" + colors.END)
+        inlinedelete(k)
+    else:
+        if(k == 0):
+            print(colors.GREEN + f"{lua_log_format_name(vars.lua_koboldbridge.logging_name)} edited prompt chunk" + colors.END)
+        else:
+            print(colors.GREEN + f"{lua_log_format_name(vars.lua_koboldbridge.logging_name)} edited story chunk {k}" + colors.END)
+        inlineedit(k, v)
+
+#==================================================================#
+#  Get model type as "gpt-2-xl", "gpt-neo-2.7B", etc.
+#==================================================================#
+def lua_get_modeltype():
+    if(vars.noai):
+        return "readonly"
+    if(vars.model in ("Colab", "OAI", "InferKit")):
+        return "api"
+    if(vars.model in ("GPT2Custom", "NeoCustom")):
+        hidden_size = get_hidden_size_from_model(model)
+    if(vars.model in ("gpt2",) or (vars.model == "GPT2Custom" and hidden_size == 768)):
+        return "gpt2"
+    if(vars.model in ("gpt2-medium",) or (vars.model == "GPT2Custom" and hidden_size == 1024)):
+        return "gpt2-medium"
+    if(vars.model in ("gpt2-large",) or (vars.model == "GPT2Custom" and hidden_size == 1280)):
+        return "gpt2-large"
+    if(vars.model in ("gpt2-xl",) or (vars.model == "GPT2Custom" and hidden_size == 1600)):
+        return "gpt2-xl"
+    if(vars.model == "NeoCustom" and hidden_size == 768):
+        return "gpt-neo-125M"
+    if(vars.model in ("EleutherAI/gpt-neo-1.3M",) or (vars.model == "NeoCustom" and hidden_size == 2048)):
+        return "gpt-neo-1.3M"
+    if(vars.model in ("EleutherAI/gpt-neo-2.7B",) or (vars.model == "NeoCustom" and hidden_size == 2560)):
+        return "gpt-neo-2.7B"
+    if(vars.model in ("EleutherAI/gpt-j-6B",) or (vars.model == "NeoCustom" and hidden_size == 4096) or (vars.model == "TPUMeshTransformerGPTJ" and tpu_mtj_backend.params["d_model"] == 4096)):
+        return "gpt-j-6B"
+    return "unknown"
+
+#==================================================================#
+#  Get model backend as "transformers" or "mtj"
+#==================================================================#
+def lua_get_modelbackend():
+    if(vars.noai):
+        return "readonly"
+    if(vars.model in ("Colab", "OAI", "InferKit")):
+        return "api"
+    if(vars.model in ("TPUMeshTransformerGPTJ",)):
+        return "mtj"
+    return "transformers"
+
+#==================================================================#
+#  Check whether model is loaded from a custom path
+#==================================================================#
+def lua_is_custommodel():
+    return vars.model in ("GPT2Custom", "NeoCustom", "TPUMeshTransformerGPTJ")
+
+#==================================================================#
+#  
+#==================================================================#
+def execute_inmod():
+    vars.lua_logname = ...
+    try:
+        tpool.execute(vars.lua_koboldbridge.execute_inmod)
+    except lupa.LuaError as e:
+        vars.lua_koboldbridge.obliterate_multiverse()
+        emit('from_server', {'cmd': 'errmsg', 'data': 'Lua script error, please check console.'}, broadcast=True)
+        print("{0}{1}{2}".format(colors.RED, "***LUA ERROR***: ", colors.END), end="", file=sys.stderr)
+        print("{0}{1}{2}".format(colors.RED, str(e).replace("\033", ""), colors.END), file=sys.stderr)
+        print("{0}{1}{2}".format(colors.YELLOW, "Lua engine stopped; please open 'Userscripts' and press Load to reinitialize scripts.", colors.END), file=sys.stderr)
+        set_aibusy(0)
+
+def execute_genmod():
+    vars.lua_koboldbridge.execute_genmod()
+
+def execute_outmod():
+    try:
+        tpool.execute(vars.lua_koboldbridge.execute_outmod)
+    except lupa.LuaError as e:
+        vars.lua_koboldbridge.obliterate_multiverse()
+        emit('from_server', {'cmd': 'errmsg', 'data': 'Lua script error, please check console.'}, broadcast=True)
+        print("{0}{1}{2}".format(colors.RED, "***LUA ERROR***: ", colors.END), end="", file=sys.stderr)
+        print("{0}{1}{2}".format(colors.RED, str(e).replace("\033", ""), colors.END), file=sys.stderr)
+        print("{0}{1}{2}".format(colors.YELLOW, "Lua engine stopped; please open 'Userscripts' and press Load to reinitialize scripts.", colors.END), file=sys.stderr)
+        set_aibusy(0)
+    if(vars.lua_koboldbridge.resend_settings_required):
+        vars.lua_koboldbridge.resend_settings_required = False
+        lua_resend_settings()
+
+#==================================================================#
+#  Lua runtime startup
+#==================================================================#
+
+print(colors.PURPLE + "Initializing Lua Bridge... " + colors.END, end="")
+
+# Set up Lua state
+vars.lua_state = lupa.LuaRuntime(unpack_returned_tuples=True)
+
+# Load bridge.lua
+bridged = {
+    "corescript_path": os.path.join(os.path.dirname(os.path.realpath(__file__)), "cores"),
+    "userscript_path": os.path.join(os.path.dirname(os.path.realpath(__file__)), "userscripts"),
+    "lib_path": os.path.join(os.path.dirname(os.path.realpath(__file__)), "extern", "lualibs"),
+    "load_callback": load_callback,
+    "print": lua_print,
+    "warn": lua_warn,
+    "decode": lua_decode,
+    "encode": lua_encode,
+    "get_attr": lua_get_attr,
+    "set_attr": lua_set_attr,
+    "folder_get_attr": lua_folder_get_attr,
+    "folder_set_attr": lua_folder_set_attr,
+    "get_genamt": lua_get_genamt,
+    "set_genamt": lua_set_genamt,
+    "get_memory": lua_get_memory,
+    "set_memory": lua_set_memory,
+    "get_numseqs": lua_get_numseqs,
+    "set_numseqs": lua_set_numseqs,
+    "has_setting": lua_has_setting,
+    "get_setting": lua_get_setting,
+    "set_setting": lua_set_setting,
+    "set_chunk": lua_set_chunk,
+    "get_modeltype": lua_get_modeltype,
+    "get_modelbackend": lua_get_modelbackend,
+    "is_custommodel": lua_is_custommodel,
+    "vars": vars,
+}
+try:
+    vars.lua_kobold, vars.lua_koboldcore, vars.lua_koboldbridge = vars.lua_state.globals().dofile(os.path.join(os.path.dirname(os.path.realpath(__file__)), "bridge.lua"))(
+        vars.lua_state.globals().python,
+        bridged,
+    )
+except lupa.LuaError as e:
+    print(colors.RED + "ERROR!" + colors.END)
+    vars.lua_koboldbridge.obliterate_multiverse()
+    print("{0}{1}{2}".format(colors.RED, "***LUA ERROR***: ", colors.END), end="", file=sys.stderr)
+    print("{0}{1}{2}".format(colors.RED, str(e).replace("\033", ""), colors.END), file=sys.stderr)
+    exit(1)
+print(colors.GREEN + "OK!" + colors.END)
+
+# Load scripts
+load_lua_scripts()
+
 
 #============================ METHODS =============================#    
 
@@ -1055,17 +1561,49 @@ def get_message(msg):
     elif(msg['cmd'] == 'wiinit'):
         if(int(msg['data']) < len(vars.worldinfo)):
             vars.worldinfo[msg['data']]["init"] = True
-            addwiitem()
+            addwiitem(folder_uid=msg['folder'])
+    elif(msg['cmd'] == 'wifolderinit'):
+        addwifolder()
+    elif(msg['cmd'] == 'wimoveitem'):
+        movewiitem(msg['destination'], msg['data'])
+    elif(msg['cmd'] == 'wimovefolder'):
+        movewifolder(msg['destination'], msg['data'])
     elif(msg['cmd'] == 'widelete'):
         deletewi(msg['data'])
+    elif(msg['cmd'] == 'wifolderdelete'):
+        deletewifolder(msg['data'])
+    elif(msg['cmd'] == 'wiexpand'):
+        assert 0 <= int(msg['data']) < len(vars.worldinfo)
+        emit('from_server', {'cmd': 'wiexpand', 'data': msg['data']}, broadcast=True)
+    elif(msg['cmd'] == 'wiexpandfolder'):
+        assert 0 <= int(msg['data']) < len(vars.worldinfo)
+        emit('from_server', {'cmd': 'wiexpandfolder', 'data': msg['data']}, broadcast=True)
+    elif(msg['cmd'] == 'wiupdate'):
+        num = int(msg['num'])
+        fields = ("key", "keysecondary", "content", "comment")
+        for field in fields:
+            if(field in msg['data'] and type(msg['data'][field]) is str):
+                vars.worldinfo[num][field] = msg['data'][field]
+        emit('from_server', {'cmd': 'wiupdate', 'num': msg['num'], 'data': {field: vars.worldinfo[num][field] for field in fields}}, broadcast=True)
+    elif(msg['cmd'] == 'wifolderupdate'):
+        uid = int(msg['uid'])
+        fields = ("name", "collapsed")
+        for field in fields:
+            if(field in msg['data'] and type(msg['data'][field]) is (str if field != "collapsed" else bool)):
+                vars.wifolders_d[uid][field] = msg['data'][field]
+        emit('from_server', {'cmd': 'wifolderupdate', 'uid': msg['uid'], 'data': {field: vars.wifolders_d[uid][field] for field in fields}}, broadcast=True)
     elif(msg['cmd'] == 'wiselon'):
         vars.worldinfo[msg['data']]["selective"] = True
+        emit('from_server', {'cmd': 'wiselon', 'data': msg['data']}, broadcast=True)
     elif(msg['cmd'] == 'wiseloff'):
         vars.worldinfo[msg['data']]["selective"] = False
+        emit('from_server', {'cmd': 'wiseloff', 'data': msg['data']}, broadcast=True)
     elif(msg['cmd'] == 'wiconstanton'):
         vars.worldinfo[msg['data']]["constant"] = True
+        emit('from_server', {'cmd': 'wiconstanton', 'data': msg['data']}, broadcast=True)
     elif(msg['cmd'] == 'wiconstantoff'):
         vars.worldinfo[msg['data']]["constant"] = False
+        emit('from_server', {'cmd': 'wiconstantoff', 'data': msg['data']}, broadcast=True)
     elif(msg['cmd'] == 'sendwilist'):
         commitwi(msg['data'])
     elif(msg['cmd'] == 'aidgimport'):
@@ -1078,6 +1616,21 @@ def get_message(msg):
         getloadlist()
     elif(msg['cmd'] == 'splistrequest'):
         getsplist()
+    elif(msg['cmd'] == 'uslistrequest'):
+        getuslist()
+    elif(msg['cmd'] == 'usloaded'):
+        vars.userscripts = []
+        for userscript in msg['data']:
+            if type(userscript) is not str:
+                continue
+            userscript = userscript.strip()
+            if len(userscript) != 0 and all(q not in userscript for q in ("..", ":")) and all(userscript[0] not in q for q in ("/", "\\")) and os.path.exists(fileops.uspath(userscript)):
+                vars.userscripts.append(userscript)
+        settingschanged()
+    elif(msg['cmd'] == 'usload'):
+        load_lua_scripts()
+    elif(msg['cmd'] == 'usload'):
+        getuslist()
     elif(msg['cmd'] == 'loadselect'):
         vars.loadselect = msg["data"]
     elif(msg['cmd'] == 'spselect'):
@@ -1174,6 +1727,9 @@ def savesettings():
     js["adventure"]   = vars.adventure
     js["dynamicscan"] = vars.dynamicscan
 
+    js["userscripts"] = vars.userscripts
+    js["corescript"]  = vars.corescript
+
     # Write it
     if not os.path.exists('settings'):
         os.mkdir('settings')
@@ -1225,6 +1781,20 @@ def loadsettings():
             vars.adventure = js["adventure"]
         if("dynamicscan" in js):
             vars.dynamicscan = js["dynamicscan"]
+        
+        if("userscripts" in js):
+            vars.userscripts = []
+            for userscript in js["userscripts"]:
+                if type(userscript) is not str:
+                    continue
+                userscript = userscript.strip()
+                if len(userscript) != 0 and all(q not in userscript for q in ("..", ":")) and all(userscript[0] not in q for q in ("/", "\\")) and os.path.exists(fileops.uspath(userscript)):
+                    vars.userscripts.append(userscript)
+
+        if("corescript" in js and type(js["corescript"]) is str and all(q not in js["corescript"] for q in ("..", ":")) and all(js["corescript"][0] not in q for q in ("/", "\\"))):
+            vars.corescript = js["corescript"]
+        else:
+            vars.corescript = "default.lua"
         
         file.close()
 
@@ -1288,28 +1858,46 @@ def actionsubmit(data, actionmode=0, force_submit=False):
         vars.lastact = data
     
     if(not vars.gamestarted):
+        vars.submission = data
+        execute_inmod()
+        data = vars.submission
         if(not force_submit and len(data.strip()) == 0):
-            set_aibusy(0)
-            return
+            assert False
         # Start the game
         vars.gamestarted = True
-        # Save this first action as the prompt
-        vars.prompt = data
-        if(not vars.noai):
+        if(not vars.noai and vars.lua_koboldbridge.generating):
+            # Save this first action as the prompt
+            vars.prompt = data
             # Clear the startup text from game screen
             emit('from_server', {'cmd': 'updatescreen', 'gamestarted': False, 'data': 'Please wait, generating story...'}, broadcast=True)
             calcsubmit(data) # Run the first action through the generator
             emit('from_server', {'cmd': 'scrolldown', 'data': ''}, broadcast=True)
         else:
+            # Save this first action as the prompt
+            vars.prompt = data
+            execute_outmod()
+            if(vars.lua_koboldbridge.regeneration_required):
+                vars.lua_koboldbridge.regeneration_required = False
+                genout = []
+                for i in range(vars.numseqs):
+                    genout.append({"generated_text": vars.lua_koboldbridge.outputs[i+1]})
+                    assert type(genout[-1]["generated_text"]) is str
+                if(len(genout) == 1):
+                    genresult(genout[0]["generated_text"])
+                else:
+                    genselect(genout)
             refresh_story()
             set_aibusy(0)
             emit('from_server', {'cmd': 'scrolldown', 'data': ''}, broadcast=True)
     else:
+        # Apply input formatting & scripts before sending to tokenizer
+        if(vars.actionmode == 0):
+            data = applyinputformatting(data)
+        vars.submission = data
+        execute_inmod()
+        data = vars.submission
         # Dont append submission if it's a blank/continue action
         if(data != ""):
-            # Apply input formatting & scripts before sending to tokenizer
-            if(vars.actionmode == 0):
-                data = applyinputformatting(data)
             # Store the result in the Action log
             if(len(vars.prompt.strip()) == 0):
                 vars.prompt = data
@@ -1317,12 +1905,23 @@ def actionsubmit(data, actionmode=0, force_submit=False):
                 vars.actions.append(data)
             update_story_chunk('last')
 
-        if(not vars.noai):
+        if(not vars.noai and vars.lua_koboldbridge.generating):
             # Off to the tokenizer!
             calcsubmit(data)
             emit('from_server', {'cmd': 'scrolldown', 'data': ''}, broadcast=True)
         else:
+            execute_outmod()
             set_aibusy(0)
+            if(vars.lua_koboldbridge.regeneration_required):
+                vars.lua_koboldbridge.regeneration_required = False
+                genout = []
+                for i in range(vars.numseqs):
+                    genout.append({"generated_text": vars.lua_koboldbridge.outputs[i+1]})
+                    assert type(genout[-1]["generated_text"]) is str
+                if(len(genout) == 1):
+                    genresult(genout[0]["generated_text"])
+                else:
+                    genselect(genout)
             emit('from_server', {'cmd': 'scrolldown', 'data': ''}, broadcast=True)
 
 #==================================================================#
@@ -1342,7 +1941,9 @@ def actionretry(data):
             vars.actions.pop()
             remove_story_chunk(last_key + 1)
         vars.genseqs = []
-        calcsubmit('')
+        vars.submission = ""
+        execute_inmod()
+        calcsubmit(vars.submission)
         emit('from_server', {'cmd': 'scrolldown', 'data': ''}, broadcast=True)
         vars.recentback = False
         vars.recentedit = False
@@ -1565,103 +2166,132 @@ def calcsubmit(txt):
 #==================================================================#
 # Send text to generator and deal with output
 #==================================================================#
+
+def _generate(txt, minimum, maximum, found_entries):
+    gen_in = tokenizer.encode(txt, return_tensors="pt", truncation=True).long()
+    if(vars.sp is not None):
+        soft_tokens = torch.arange(
+            model.config.vocab_size,
+            model.config.vocab_size + vars.sp.shape[0],
+        )
+        gen_in = torch.cat((soft_tokens[None], gen_in), dim=-1)
+
+    if(vars.hascuda and vars.usegpu):
+        gen_in = gen_in.to(0)
+    elif(vars.hascuda and vars.breakmodel):
+        gen_in = gen_in.to(breakmodel.primary_device)
+    else:
+        gen_in = gen_in.to('cpu')
+
+    model.kai_scanner_head_length = gen_in.shape[-1]
+    model.kai_scanner_excluded_world_info = found_entries
+
+    actions = vars.actions
+    if(vars.dynamicscan):
+        actions = actions.copy()
+
+    with torch.no_grad():
+        already_generated = 0
+        numseqs = vars.numseqs
+        while True:
+            genout = generator(
+                gen_in, 
+                do_sample=True, 
+                min_length=minimum, 
+                max_length=maximum-already_generated,
+                repetition_penalty=vars.rep_pen,
+                bad_words_ids=vars.badwordsids,
+                use_cache=True,
+                num_return_sequences=numseqs
+                )
+            already_generated += len(genout[0]) - len(gen_in[0])
+            if(model.kai_scanner.halt or not model.kai_scanner.regeneration_required):
+                break
+            assert genout.ndim >= 2
+            assert genout.shape[0] == vars.numseqs
+            if(already_generated != vars.lua_koboldbridge.generated_cols):
+                raise RuntimeError("WI scanning error")
+            for r in range(vars.numseqs):
+                for c in range(already_generated):
+                    assert vars.lua_koboldbridge.generated[r+1][c+1] is not None
+                    genout[r][genout.shape[-1] - already_generated - c] = vars.lua_koboldbridge.generated[r+1][c+1]
+            encoded = []
+            for i in range(vars.numseqs):
+                txt = tokenizer.decode(genout[i, -already_generated:])
+                winfo, mem, anotetxt, _found_entries = calcsubmitbudgetheader(txt, force_use_txt=True)
+                found_entries[i].update(_found_entries)
+                txt, _, _ = calcsubmitbudget(len(actions), winfo, mem, anotetxt, actions)
+                encoded.append(tokenizer.encode(txt, return_tensors="pt", truncation=True)[0].long().to(genout.device))
+            max_length = len(max(encoded, key=len))
+            encoded = torch.stack(tuple(torch.nn.functional.pad(e, (max_length - len(e), 0), value=model.config.pad_token_id or model.config.eos_token_id) for e in encoded))
+            genout = torch.cat(
+                (
+                    encoded,
+                    genout[..., -already_generated:],
+                ),
+                dim=-1
+            )
+            if(vars.sp is not None):
+                soft_tokens = torch.arange(
+                    model.config.vocab_size,
+                    model.config.vocab_size + vars.sp.shape[0],
+                    device=genout.device,
+                )
+                genout = torch.cat((soft_tokens.tile(vars.numseqs, 1), genout), dim=-1)
+            diff = genout.shape[-1] - gen_in.shape[-1]
+            minimum += diff
+            maximum += diff
+            gen_in = genout
+            model.kai_scanner_head_length = encoded.shape[-1]
+            numseqs = 1
+    
+    return genout, already_generated
+    
+
 def generate(txt, minimum, maximum, found_entries=None):    
     if(found_entries is None):
         found_entries = set()
     found_entries = tuple(found_entries.copy() for _ in range(vars.numseqs))
 
     print("{0}Min:{1}, Max:{2}, Txt:{3}{4}".format(colors.YELLOW, minimum, maximum, txt, colors.END))
-    
+
     # Store context in memory to use it for comparison with generated content
     vars.lastctx = txt
-    
+
     # Clear CUDA cache if using GPU
     if(vars.hascuda and (vars.usegpu or vars.breakmodel)):
         gc.collect()
         torch.cuda.empty_cache()
-    
+
     # Submit input text to generator
     try:
-        gen_in = tokenizer.encode(txt, return_tensors="pt", truncation=True).long()
-        if(vars.sp is not None):
-            soft_tokens = torch.arange(
-                model.config.vocab_size,
-                model.config.vocab_size + vars.sp.shape[0],
-            )
-            gen_in = torch.cat((soft_tokens[None], gen_in), dim=-1)
-
-        if(vars.hascuda and vars.usegpu):
-            gen_in = gen_in.to(0)
-        elif(vars.hascuda and vars.breakmodel):
-            gen_in = gen_in.to(breakmodel.primary_device)
-        else:
-            gen_in = gen_in.to('cpu')
-
-        model.kai_scanner_head_length = gen_in.shape[-1]
-        model.kai_scanner_excluded_world_info = found_entries
-
-        actions = vars.actions
-        if(vars.dynamicscan):
-            actions = actions.copy()
-
-        with torch.no_grad():
-            already_generated = 0
-            numseqs = vars.numseqs
-            while True:
-                genout = generator(
-                    gen_in, 
-                    do_sample=True, 
-                    min_length=minimum, 
-                    max_length=maximum-already_generated,
-                    repetition_penalty=vars.rep_pen,
-                    bad_words_ids=vars.badwordsids,
-                    use_cache=True,
-                    num_return_sequences=numseqs
-                    )
-                already_generated += len(genout[0]) - len(gen_in[0])
-                if(not model.kai_scanner.any_new_entries):
-                    break
-                assert genout.ndim >= 2
-                assert genout.shape[0] == vars.numseqs
-                encoded = []
-                for i in range(vars.numseqs):
-                    txt = tokenizer.decode(genout[i, -already_generated:])
-                    winfo, mem, anotetxt, _found_entries = calcsubmitbudgetheader(txt, force_use_txt=True)
-                    found_entries[i].update(_found_entries)
-                    txt, _, _ = calcsubmitbudget(len(actions), winfo, mem, anotetxt, actions)
-                    encoded.append(tokenizer.encode(txt, return_tensors="pt", truncation=True)[0].long().to(genout.device))
-                max_length = len(max(encoded, key=len))
-                encoded = torch.stack(tuple(torch.nn.functional.pad(e, (max_length - len(e), 0), value=model.config.pad_token_id or model.config.eos_token_id) for e in encoded))
-                genout = torch.cat(
-                    (
-                        encoded,
-                        genout[..., -already_generated:],
-                    ),
-                    dim=-1
-                )
-                if(vars.sp is not None):
-                    soft_tokens = torch.arange(
-                        model.config.vocab_size,
-                        model.config.vocab_size + vars.sp.shape[0],
-                        device=genout.device,
-                    )
-                    genout = torch.cat((soft_tokens.tile(vars.numseqs, 1), genout), dim=-1)
-                diff = genout.shape[-1] - gen_in.shape[-1]
-                minimum += diff
-                maximum += diff
-                gen_in = genout
-                model.kai_scanner_head_length = encoded.shape[-1]
-                numseqs = 1
-
+        genout, already_generated = tpool.execute(_generate, txt, minimum, maximum, found_entries)
     except Exception as e:
-        emit('from_server', {'cmd': 'errmsg', 'data': 'Error occured during generator call, please check console.'}, broadcast=True)
-        print("{0}{1}{2}".format(colors.RED, e, colors.END))
+        if(issubclass(type(e), lupa.LuaError)):
+            vars.lua_koboldbridge.obliterate_multiverse()
+            emit('from_server', {'cmd': 'errmsg', 'data': 'Lua script error, please check console.'}, broadcast=True)
+            print("{0}{1}{2}".format(colors.RED, "***LUA ERROR***: ", colors.END), end="", file=sys.stderr)
+            print("{0}{1}{2}".format(colors.RED, str(e).replace("\033", ""), colors.END), file=sys.stderr)
+            print("{0}{1}{2}".format(colors.YELLOW, "Lua engine stopped; please open 'Userscripts' and press Load to reinitialize scripts.", colors.END), file=sys.stderr)
+        else:
+            emit('from_server', {'cmd': 'errmsg', 'data': 'Error occured during generator call, please check console.'}, broadcast=True)
+        print("{0}{1}{2}".format(colors.RED, str(e).replace("\033", ""), colors.END), file=sys.stderr)
         set_aibusy(0)
         return
-    
-    # Need to manually strip and decode tokens if we're not using a pipeline
-    #already_generated = -(len(gen_in[0]) - len(tokens))
-    genout = [{"generated_text": tokenizer.decode(tokens[-already_generated:])} for tokens in genout]
+
+    for i in range(vars.numseqs):
+        vars.lua_koboldbridge.generated[i+1][vars.lua_koboldbridge.generated_cols] = genout[i, -1].item()
+        vars.lua_koboldbridge.outputs[i+1] = tokenizer.decode(genout[i, -already_generated:])
+
+    execute_outmod()
+    if(vars.lua_koboldbridge.regeneration_required):
+        vars.lua_koboldbridge.regeneration_required = False
+        genout = []
+        for i in range(vars.numseqs):
+            genout.append({"generated_text": vars.lua_koboldbridge.outputs[i+1]})
+            assert type(genout[-1]["generated_text"]) is str
+    else:
+        genout = [{"generated_text": tokenizer.decode(tokens[-already_generated:])} for tokens in genout]
     
     if(len(genout) == 1):
         genresult(genout[0]["generated_text"])
@@ -1762,6 +2392,17 @@ def sendtocolab(txt, min, max):
         else:
             genout = js["seqs"]
         
+        for i in range(vars.numseqs):
+            vars.lua_koboldbridge.outputs[i+1] = genout[i]
+
+        execute_outmod()
+        if(vars.lua_koboldbridge.regeneration_required):
+            vars.lua_koboldbridge.regeneration_required = False
+            genout = []
+            for i in range(vars.numseqs):
+                genout.append(vars.lua_koboldbridge.outputs[i+1])
+                assert type(genout[-1]) is str
+
         if(len(genout) == 1):
             genresult(genout[0])
         else:
@@ -1822,7 +2463,8 @@ def tpumtjgenerate(txt, minimum, maximum, found_entries=None):
             dtype=np.uint32
         )
 
-        genout = tpu_mtj_backend.infer(
+        genout = tpool.execute(
+            tpu_mtj_backend.infer,
             txt,
             gen_len = maximum-minimum+1,
             temp=vars.temp,
@@ -1836,12 +2478,31 @@ def tpumtjgenerate(txt, minimum, maximum, found_entries=None):
         )
 
     except Exception as e:
-        emit('from_server', {'cmd': 'errmsg', 'data': 'Error occured during generator call, please check console.'}, broadcast=True)
-        print("{0}{1}{2}".format(colors.RED, e, colors.END))
+        if(issubclass(type(e), lupa.LuaError)):
+            vars.lua_koboldbridge.obliterate_multiverse()
+            emit('from_server', {'cmd': 'errmsg', 'data': 'Lua script error, please check console.'}, broadcast=True)
+            print("{0}{1}{2}".format(colors.RED, "***LUA ERROR***: ", colors.END), end="", file=sys.stderr)
+            print("{0}{1}{2}".format(colors.RED, str(e).replace("\033", ""), colors.END), file=sys.stderr)
+            print("{0}{1}{2}".format(colors.YELLOW, "Lua engine stopped; please open 'Userscripts' and press Load to reinitialize scripts.", colors.END), file=sys.stderr)
+        else:
+            emit('from_server', {'cmd': 'errmsg', 'data': 'Error occured during generator call, please check console.'}, broadcast=True)
+        print("{0}{1}{2}".format(colors.RED, str(e).replace("\033", ""), colors.END), file=sys.stderr)
         set_aibusy(0)
         return
+    
+    for i in range(vars.numseqs):
+        vars.lua_koboldbridge.generated[i+1] = vars.lua_state.table(*genout[i].tolist())
+        vars.lua_koboldbridge.outputs[i+1] = tokenizer.decode(genout[i])
 
-    genout = [{"generated_text": txt} for txt in genout]
+    execute_outmod()
+    if(vars.lua_koboldbridge.regeneration_required):
+        vars.lua_koboldbridge.regeneration_required = False
+        genout = []
+        for i in range(vars.numseqs):
+            genout.append({"generated_text": vars.lua_koboldbridge.outputs[i+1]})
+            assert type(genout[-1]["generated_text"]) is str
+    else:
+        genout = [{"generated_text": tokenizer.decode(txt)} for txt in genout]
 
     if(len(genout) == 1):
         genresult(genout[0]["generated_text"])
@@ -2117,10 +2778,63 @@ def togglewimode():
 #==================================================================#
 #   
 #==================================================================#
-def addwiitem():
-    ob = {"key": "", "keysecondary": "", "content": "", "num": len(vars.worldinfo), "init": False, "selective": False, "constant": False}
-    vars.worldinfo.append(ob);
+def addwiitem(folder_uid=None):
+    assert folder_uid is None or folder_uid in vars.wifolders_d
+    ob = {"key": "", "keysecondary": "", "content": "", "comment": "", "folder": folder_uid, "num": len(vars.worldinfo), "init": False, "selective": False, "constant": False}
+    vars.worldinfo.append(ob)
+    while(True):
+        uid = int.from_bytes(os.urandom(4), "little", signed=True)
+        if(uid not in vars.worldinfo_u):
+            break
+    vars.worldinfo_u[uid] = vars.worldinfo[-1]
+    vars.worldinfo[-1]["uid"] = uid
+    if(folder_uid is not None):
+        vars.wifolders_u[folder_uid].append(vars.worldinfo[-1])
     emit('from_server', {'cmd': 'addwiitem', 'data': ob}, broadcast=True)
+
+#==================================================================#
+#   Creates a new WI folder with an unused cryptographically secure random UID
+#==================================================================#
+def addwifolder():
+    while(True):
+        uid = int.from_bytes(os.urandom(4), "little", signed=True)
+        if(uid not in vars.wifolders_d):
+            break
+    ob = {"name": "", "collapsed": False}
+    vars.wifolders_d[uid] = ob
+    vars.wifolders_l.append(uid)
+    vars.wifolders_u[uid] = []
+    emit('from_server', {'cmd': 'addwifolder', 'uid': uid, 'data': ob}, broadcast=True)
+    addwiitem(folder_uid=uid)
+
+#==================================================================#
+#   Move the WI entry with number src so that it immediately precedes
+#   the WI entry with number dst
+#==================================================================#
+def movewiitem(dst, src):
+    if(vars.worldinfo[src]["folder"] is not None):
+        for i, e in enumerate(vars.wifolders_u[vars.worldinfo[src]["folder"]]):
+            if(e is vars.worldinfo[src]):
+                vars.wifolders_u[vars.worldinfo[src]["folder"]].pop(i)
+                break
+    if(vars.worldinfo[dst]["folder"] is not None):
+        vars.wifolders_u[vars.worldinfo[dst]["folder"]].append(vars.worldinfo[src])
+    vars.worldinfo[src]["folder"] = vars.worldinfo[dst]["folder"]
+    vars.worldinfo.insert(dst - (dst >= src), vars.worldinfo.pop(src))
+    sendwi()
+
+#==================================================================#
+#   Move the WI folder with UID src so that it immediately precedes
+#   the WI folder with UID dst
+#==================================================================#
+def movewifolder(dst, src):
+    vars.wifolders_l.remove(src)
+    if(dst is None):
+        # If dst is None, that means we should move src to be the last folder
+        vars.wifolders_l.append(src)
+    else:
+        vars.wifolders_l.insert(vars.wifolders_l.index(dst), src)
+    sendwi()
 
 #==================================================================#
 #   
@@ -2128,21 +2842,29 @@ def addwiitem():
 def sendwi():
     # Cache len of WI
     ln = len(vars.worldinfo)
-    
+
     # Clear contents of WI container
-    emit('from_server', {'cmd': 'clearwi', 'data': ''}, broadcast=True)
-    
+    emit('from_server', {'cmd': 'wistart', 'wifolders_d': vars.wifolders_d, 'wifolders_l': vars.wifolders_l, 'data': ''}, broadcast=True)
+
+    # Stable-sort WI entries in order of folder
+    stablesortwi()
+
+    vars.worldinfo_i = [wi for wi in vars.worldinfo if wi["init"]]
+
     # If there are no WI entries, send an empty WI object
     if(ln == 0):
         addwiitem()
     else:
         # Send contents of WI array
+        last_folder = ...
         for wi in vars.worldinfo:
+            if(wi["folder"] != last_folder):
+                emit('from_server', {'cmd': 'addwifolder', 'uid': wi["folder"], 'data': vars.wifolders_d[wi["folder"]] if wi["folder"] is not None else None}, broadcast=True)
+                last_folder = wi["folder"]
             ob = wi
             emit('from_server', {'cmd': 'addwiitem', 'data': ob}, broadcast=True)
-        # Make sure last WI item is uninitialized
-        if(vars.worldinfo[-1]["init"]):
-            addwiitem()
+    
+    emit('from_server', {'cmd': 'wifinish', 'data': ''}, broadcast=True)
 
 #==================================================================#
 #  Request current contents of all WI HTML elements
@@ -2154,15 +2876,26 @@ def requestwi():
     emit('from_server', {'cmd': 'requestwiitem', 'data': list})
 
 #==================================================================#
-#  Renumber WI items consecutively
+#  Stable-sort WI items so that items in the same folder are adjacent,
+#  and items in different folders are sorted based on the order of the folders
 #==================================================================#
-def organizewi():
-    if(len(vars.worldinfo) > 0):
-        count = 0
-        for wi in vars.worldinfo:
-            wi["num"] = count
-            count += 1
-        
+def stablesortwi():
+    mapping = {uid: index for index, uid in enumerate(vars.wifolders_l)}
+    vars.worldinfo.sort(key=lambda x: mapping[x["folder"]] if x["folder"] is not None else float("inf"))
+    last_folder = ...
+    last_wi = None
+    for i, wi in enumerate(vars.worldinfo):
+        wi["num"] = i
+        wi["init"] = True
+        if(wi["folder"] != last_folder):
+            if(last_wi is not None and last_folder is not ...):
+                last_wi["init"] = False
+            last_folder = wi["folder"]
+        last_wi = wi
+    if(last_wi is not None):
+        last_wi["init"] = False
+    for folder in vars.wifolders_u:
+        vars.wifolders_u[folder].sort(key=lambda x: x["num"])
 
 #==================================================================#
 #  Extract object from server and send it to WI objects
@@ -2172,16 +2905,25 @@ def commitwi(ar):
         vars.worldinfo[ob["num"]]["key"]          = ob["key"]
         vars.worldinfo[ob["num"]]["keysecondary"] = ob["keysecondary"]
         vars.worldinfo[ob["num"]]["content"]      = ob["content"]
+        vars.worldinfo[ob["num"]]["comment"]      = ob.get("comment", "")
+        vars.worldinfo[ob["num"]]["folder"]       = ob.get("folder", None)
         vars.worldinfo[ob["num"]]["selective"]    = ob["selective"]
         vars.worldinfo[ob["num"]]["constant"]     = ob.get("constant", False)
     # Was this a deletion request? If so, remove the requested index
     if(vars.deletewi >= 0):
+        if(vars.worldinfo[vars.deletewi]["folder"] is not None):
+            for i, e in enumerate(vars.wifolders_u[vars.worldinfo[vars.deletewi]["folder"]]):
+                if(e is vars.worldinfo[vars.deletewi]):
+                    vars.wifolders_u[vars.worldinfo[vars.deletewi]["folder"]].pop(i)
+        del vars.worldinfo_u[vars.worldinfo[vars.deletewi]["uid"]]
         del vars.worldinfo[vars.deletewi]
-        organizewi()
         # Send the new WI array structure
         sendwi()
         # And reset deletewi index
         vars.deletewi = -1
+    else:
+        stablesortwi()
+        vars.worldinfo_i = [wi for wi in vars.worldinfo if wi["init"]]
 
 #==================================================================#
 #  
@@ -2192,6 +2934,25 @@ def deletewi(num):
         vars.deletewi = num
         # Get contents of WI HTML inputs
         requestwi()
+
+#==================================================================#
+#  
+#==================================================================#
+def deletewifolder(uid):
+    uid = int(uid)
+    del vars.wifolders_u[uid]
+    del vars.wifolders_d[uid]
+    del vars.wifolders_l[vars.wifolders_l.index(uid)]
+    # Delete uninitialized entries in the folder we're going to delete
+    vars.worldinfo = [wi for wi in vars.worldinfo if wi["folder"] != uid or wi["init"]]
+    vars.worldinfo_i = [wi for wi in vars.worldinfo if wi["init"]]
+    # Move WI entries that are inside of the folder we're going to delete
+    # so that they're outside of all folders
+    for wi in vars.worldinfo:
+        if(wi["folder"] == uid):
+            wi["folder"] = None
+
+    sendwi()
 
 #==================================================================#
 #  Look for WI keys in text to generator 
@@ -2329,6 +3090,15 @@ def ikrequest(txt):
     # Deal with the response
     if(req.status_code == 200):
         genout = req.json()["data"]["text"]
+
+        vars.lua_koboldbridge.outputs[1] = genout
+
+        execute_outmod()
+        if(vars.lua_koboldbridge.regeneration_required):
+            vars.lua_koboldbridge.regeneration_required = False
+            genout = vars.lua_koboldbridge.outputs[1]
+            assert genout is str
+
         print("{0}{1}{2}".format(colors.CYAN, genout, colors.END))
         vars.actions.append(genout)
         update_story_chunk('last')
@@ -2379,6 +3149,15 @@ def oairequest(txt, min, max):
     # Deal with the response
     if(req.status_code == 200):
         genout = req.json()["choices"][0]["text"]
+
+        vars.lua_koboldbridge.outputs[1] = genout
+
+        execute_outmod()
+        if(vars.lua_koboldbridge.regeneration_required):
+            vars.lua_koboldbridge.regeneration_required = False
+            genout = vars.lua_koboldbridge.outputs[1]
+            assert genout is str
+
         print("{0}{1}{2}".format(colors.CYAN, genout, colors.END))
         vars.actions.append(genout)
         update_story_chunk('last')
@@ -2508,6 +3287,8 @@ def saveRequest(savpath):
         js["authorsnote"] = vars.authornote
         js["actions"]     = tuple(vars.actions.values())
         js["worldinfo"]   = []
+        js["wifolders_d"] = vars.wifolders_d
+        js["wifolders_l"] = vars.wifolders_l
 		
         # Extract only the important bits of WI
         for wi in vars.worldinfo:
@@ -2516,6 +3297,8 @@ def saveRequest(savpath):
                     "key": wi["key"],
                     "keysecondary": wi["keysecondary"],
                     "content": wi["content"],
+                    "comment": wi["comment"],
+                    "folder": wi["folder"],
                     "selective": wi["selective"],
                     "constant": wi["constant"]
                 })
@@ -2566,6 +3349,21 @@ def getsplist():
         emit('from_server', {'cmd': 'buildsp', 'data': fileops.getspfiles(vars.modeldim)})
 
 #==================================================================#
+#  Show list of userscripts
+#==================================================================#
+def getuslist():
+    files = {i: v for i, v in enumerate(fileops.getusfiles())}
+    loaded = []
+    unloaded = []
+    userscripts = set(vars.userscripts)
+    for i in range(len(files)):
+        if files[i]["filename"] in userscripts:
+            loaded.append(files[i])
+        else:
+            unloaded.append(files[i])
+    emit('from_server', {'cmd': 'buildus', 'data': {"unloaded": unloaded, "loaded": loaded}})
+
+#==================================================================#
 #  Load a saved story via file browser
 #==================================================================#
 def loadfromfile():
@@ -2596,7 +3394,13 @@ def loadRequest(loadpath, filename=None):
         vars.prompt      = js["prompt"]
         vars.memory      = js["memory"]
         vars.worldinfo   = []
+        vars.worldinfo   = []
+        vars.worldinfo_u = {}
+        vars.wifolders_d = {int(k): v for k, v in js.get("wifolders_d", {}).items()}
+        vars.wifolders_l = js.get("wifolders_l", [])
+        vars.wifolders_u = {uid: [] for uid in vars.wifolders_d}
         vars.lastact     = ""
+        vars.submission  = ""
         vars.lastctx     = ""
 
         del vars.actions
@@ -2628,13 +3432,27 @@ def loadRequest(loadpath, filename=None):
                     "key": wi["key"],
                     "keysecondary": wi.get("keysecondary", ""),
                     "content": wi["content"],
+                    "comment": wi.get("comment", ""),
+                    "folder": wi.get("folder", None),
                     "num": num,
                     "init": True,
                     "selective": wi.get("selective", False),
-                    "constant": wi.get("constant", False)
+                    "constant": wi.get("constant", False),
+                    "uid": None,
                 })
+                while(True):
+                    uid = int.from_bytes(os.urandom(4), "little", signed=True)
+                    if(uid not in vars.worldinfo_u):
+                        break
+                vars.worldinfo_u[uid] = vars.worldinfo[-1]
+                vars.worldinfo[-1]["uid"] = uid
                 num += 1
-        
+
+        for uid in vars.wifolders_l + [None]:
+            vars.worldinfo.append({"key": "", "keysecondary": "", "content": "", "comment": "", "folder": uid, "num": None, "init": False, "selective": False, "constant": False, "uid": None})
+        stablesortwi()
+        vars.worldinfo_i = [wi for wi in vars.worldinfo if wi["init"]]
+
         # Save path for save button
         vars.savedir = loadpath
         
@@ -2775,7 +3593,13 @@ def importgame():
         vars.authornote  = ref["authorsNote"] if type(ref["authorsNote"]) is str else ""
         vars.actions     = structures.KoboldStoryRegister()
         vars.worldinfo   = []
+        vars.worldinfo_i = []
+        vars.worldinfo_u = {}
+        vars.wifolders_d = {}
+        vars.wifolders_l = []
+        vars.wifolders_u = {uid: [] for uid in vars.wifolders_d}
         vars.lastact     = ""
+        vars.submission  = ""
         vars.lastctx     = ""
         
         # Get all actions except for prompt
@@ -2797,12 +3621,26 @@ def importgame():
                         "key": wi["keys"],
                         "keysecondary": wi.get("keysecondary", ""),
                         "content": wi["entry"],
+                        "comment": wi.get("comment", ""),
+                        "folder": wi.get("folder", None),
                         "num": num,
                         "init": True,
                         "selective": wi.get("selective", False),
-                        "constant": wi.get("constant", False)
+                        "constant": wi.get("constant", False),
+                        "uid": None,
                     })
+                    while(True):
+                        uid = int.from_bytes(os.urandom(4), "little", signed=True)
+                        if(uid not in vars.worldinfo_u):
+                            break
+                    vars.worldinfo_u[uid] = vars.worldinfo[-1]
+                    vars.worldinfo[-1]["uid"] = uid
                     num += 1
+
+        for uid in vars.wifolders_l + [None]:
+            vars.worldinfo.append({"key": "", "keysecondary": "", "content": "", "comment": "", "folder": uid, "num": None, "init": False, "selective": False, "constant": False, "uid": None})
+        stablesortwi()
+        vars.worldinfo_i = [wi for wi in vars.worldinfo if wi["init"]]
         
         # Clear import data
         vars.importjs = {}
@@ -2839,7 +3677,13 @@ def importAidgRequest(id):
         vars.authornote  = js["authorsNote"]
         vars.actions     = structures.KoboldStoryRegister()
         vars.worldinfo   = []
+        vars.worldinfo_i = []
+        vars.worldinfo_u = {}
+        vars.wifolders_d = {}
+        vars.wifolders_l = []
+        vars.wifolders_u = {uid: [] for uid in vars.wifolders_d}
         vars.lastact     = ""
+        vars.submission  = ""
         vars.lastctx     = ""
         
         num = 0
@@ -2848,13 +3692,27 @@ def importAidgRequest(id):
                 "key": wi["keys"],
                 "keysecondary": wi.get("keysecondary", ""),
                 "content": wi["entry"],
+                "comment": wi.get("comment", ""),
+                "folder": wi.get("folder", None),
                 "num": num,
                 "init": True,
                 "selective": wi.get("selective", False),
-                "constant": wi.get("constant", False)
+                "constant": wi.get("constant", False),
+                "uid": None,
             })
+            while(True):
+                uid = int.from_bytes(os.urandom(4), "little", signed=True)
+                if(uid not in vars.worldinfo_u):
+                    break
+            vars.worldinfo_u[uid] = vars.worldinfo[-1]
+            vars.worldinfo[-1]["uid"] = uid
             num += 1
-        
+
+        for uid in vars.wifolders_l + [None]:
+            vars.worldinfo.append({"key": "", "keysecondary": "", "content": "", "comment": "", "folder": uid, "num": None, "init": False, "selective": False, "constant": False, "uid": None})
+        stablesortwi()
+        vars.worldinfo_i = [wi for wi in vars.worldinfo if wi["init"]]
+
         # Reset current save
         vars.savedir = getcwd()+"\stories"
         
@@ -2886,11 +3744,20 @@ def wiimportrequest():
                     "key": wi["keys"],
                     "keysecondary": wi.get("keysecondary", ""),
                     "content": wi["entry"],
+                    "comment": wi.get("comment", ""),
+                    "folder": wi.get("folder", None),
                     "num": num,
                     "init": True,
                     "selective": wi.get("selective", False),
-                    "constant": wi.get("constant", False)
+                    "constant": wi.get("constant", False),
+                    "uid": None,
                 })
+                while(True):
+                    uid = int.from_bytes(os.urandom(4), "little", signed=True)
+                    if(uid not in vars.worldinfo_u):
+                        break
+                vars.worldinfo_u[uid] = vars.worldinfo[-1]
+                vars.worldinfo[-1]["uid"] = uid
                 num += 1
         
         print("{0}".format(vars.worldinfo[0]))
@@ -2913,7 +3780,12 @@ def newGameRequest():
     
     vars.authornote  = ""
     vars.worldinfo   = []
+    vars.worldinfo_i = []
+    vars.worldinfo_u = {}
+    vars.wifolders_d = {}
+    vars.wifolders_l = []
     vars.lastact     = ""
+    vars.submission  = ""
     vars.lastctx     = ""
     
     # Reset current save
@@ -2937,7 +3809,7 @@ def randomGameRequest(topic):
 #  Final startup commands to launch Flask app
 #==================================================================#
 if __name__ == "__main__":
-	
+
     # Load settings from client.settings
     loadmodelsettings()
     loadsettings()
@@ -2954,10 +3826,12 @@ if __name__ == "__main__":
            cloudflare = _run_cloudflared(5000)
         with open('cloudflare.log', 'w') as cloudflarelog:
             cloudflarelog.write("KoboldAI has finished loading and is available in the following link : " + cloudflare)
-            print(format(colors.GREEN) + "KoboldAI has finished loading and is available in the following link : " + cloudflare + format(colors.END))
+            print("\n" + format(colors.GREEN) + "KoboldAI has finished loading and is available in the following link : " + cloudflare + format(colors.END))
+        vars.serverstarted = True
         socketio.run(app, host='0.0.0.0', port=5000)
     else:
         import webbrowser
         webbrowser.open_new('http://localhost:5000')
-        print("{0}Server started!\rYou may now connect with a browser at http://127.0.0.1:5000/{1}".format(colors.GREEN, colors.END))
-        socketio.run(app)
+        print("{0}\nServer started!\nYou may now connect with a browser at http://127.0.0.1:5000/{1}".format(colors.GREEN, colors.END))
+        vars.serverstarted = True
+        socketio.run(app, port=5000)
