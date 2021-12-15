@@ -21,6 +21,7 @@ import collections
 import zipfile
 import packaging
 import contextlib
+import traceback
 from typing import Any, Union, Dict, Set, List
 
 import requests
@@ -2280,7 +2281,7 @@ def generate(txt, minimum, maximum, found_entries=None):
             print("{0}{1}{2}".format(colors.YELLOW, "Lua engine stopped; please open 'Userscripts' and press Load to reinitialize scripts.", colors.END), file=sys.stderr)
         else:
             emit('from_server', {'cmd': 'errmsg', 'data': 'Error occured during generator call, please check console.'}, broadcast=True)
-        print("{0}{1}{2}".format(colors.RED, str(e).replace("\033", ""), colors.END), file=sys.stderr)
+            print("{0}{1}{2}".format(colors.RED, traceback.format_exc().replace("\033", ""), colors.END), file=sys.stderr)
         set_aibusy(0)
         return
 
@@ -2491,7 +2492,7 @@ def tpumtjgenerate(txt, minimum, maximum, found_entries=None):
             print("{0}{1}{2}".format(colors.YELLOW, "Lua engine stopped; please open 'Userscripts' and press Load to reinitialize scripts.", colors.END), file=sys.stderr)
         else:
             emit('from_server', {'cmd': 'errmsg', 'data': 'Error occured during generator call, please check console.'}, broadcast=True)
-        print("{0}{1}{2}".format(colors.RED, str(e).replace("\033", ""), colors.END), file=sys.stderr)
+            print("{0}{1}{2}".format(colors.RED, traceback.format_exc().replace("\033", ""), colors.END), file=sys.stderr)
         set_aibusy(0)
         return
     
