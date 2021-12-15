@@ -827,8 +827,10 @@ if(not vars.model in ["InferKit", "Colab", "OAI", "ReadOnly", "TPUMeshTransforme
                 elif(vars.breakmodel):  # Use both RAM and VRAM (breakmodel)
                     device_config(model)
                 else:
+                    model = model.to('cpu').float()
                     generator = model.generate
             else:
+                model = model.to('cpu').float()
                 generator = model.generate
         # If custom GPT2 model was chosen
         elif(vars.model == "GPT2Custom"):
@@ -843,6 +845,7 @@ if(not vars.model in ["InferKit", "Colab", "OAI", "ReadOnly", "TPUMeshTransforme
                 model = model.half().to(0)
                 generator = model.generate
             else:
+                model = model.to('cpu').float()
                 generator = model.generate
         # If base HuggingFace model was chosen
         else:
