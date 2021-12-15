@@ -2000,17 +2000,17 @@ def calcsubmitbudget(actionlen, winfo, mem, anotetxt, actions):
     lnanote      = 0   # Placeholder for Author's Note length
 
     # Calculate token budget
-    prompttkns = tokenizer.encode(vars.comregex_ai.sub('', vars.prompt))
+    prompttkns = tokenizer.encode(vars.comregex_ai.sub('', vars.prompt), max_length=1+int(vars.max_length), truncation=True)
     lnprompt   = len(prompttkns)
     
-    memtokens = tokenizer.encode(mem)
+    memtokens = tokenizer.encode(mem, max_length=1+int(vars.max_length), truncation=True)
     lnmem     = len(memtokens)
     
-    witokens  = tokenizer.encode(winfo)
+    witokens  = tokenizer.encode(winfo, max_length=1+int(vars.max_length), truncation=True)
     lnwi      = len(witokens)
     
     if(anotetxt != ""):
-        anotetkns = tokenizer.encode(anotetxt)
+        anotetkns = tokenizer.encode(anotetxt, max_length=1+int(vars.max_length), truncation=True)
         lnanote   = len(anotetkns)
     
     lnsp = vars.sp.shape[0] if vars.sp is not None else 0
@@ -2039,7 +2039,7 @@ def calcsubmitbudget(actionlen, winfo, mem, anotetxt, actions):
             
             if(budget <= 0):
                 break
-            acttkns = tokenizer.encode(chunk)
+            acttkns = tokenizer.encode(chunk, max_length=int(vars.max_length), truncation=True)
             tknlen = len(acttkns)
             if(tknlen < budget):
                 tokens = acttkns + tokens
@@ -2173,7 +2173,7 @@ def calcsubmit(txt):
 #==================================================================#
 
 def _generate(txt, minimum, maximum, found_entries):
-    gen_in = tokenizer.encode(txt, return_tensors="pt", truncation=True).long()
+    gen_in = tokenizer.encode(txt, return_tensors="pt", max_length=int(vars.max_length), truncation=True).long()
     if(vars.sp is not None):
         soft_tokens = torch.arange(
             model.config.vocab_size,
@@ -2226,7 +2226,7 @@ def _generate(txt, minimum, maximum, found_entries):
                 winfo, mem, anotetxt, _found_entries = calcsubmitbudgetheader(txt, force_use_txt=True)
                 found_entries[i].update(_found_entries)
                 txt, _, _ = calcsubmitbudget(len(actions), winfo, mem, anotetxt, actions)
-                encoded.append(tokenizer.encode(txt, return_tensors="pt", truncation=True)[0].long().to(genout.device))
+                encoded.append(tokenizer.encode(txt, return_tensors="pt", max_length=int(vars.max_length), truncation=True)[0].long().to(genout.device))
             max_length = len(max(encoded, key=len))
             encoded = torch.stack(tuple(torch.nn.functional.pad(e, (max_length - len(e), 0), value=model.config.pad_token_id or model.config.eos_token_id) for e in encoded))
             genout = torch.cat(
@@ -2532,8 +2532,8 @@ def getnewcontent(txt):
         return txt
     
     # Tokenize the last context and the generated content
-    ctxtokens = tokenizer.encode(vars.lastctx)
-    txttokens = tokenizer.encode(txt)
+    ctxtokens = tokenizer.encode(vars.lastctx, max_length=1+int(vars.max_length), truncation=True)
+    txttokens = tokenizer.encode(txt, max_length=1+int(vars.max_length), truncation=True)
     dif       = (len(txttokens) - len(ctxtokens)) * -1
     
     # Remove the context from the returned text
