@@ -2214,7 +2214,7 @@ def _generate(txt, minimum, maximum, found_entries):
             for r in range(vars.numseqs):
                 for c in range(already_generated):
                     assert vars.lua_koboldbridge.generated[r+1][c+1] is not None
-                    genout[r][genout.shape[-1] - already_generated - c] = vars.lua_koboldbridge.generated[r+1][c+1]
+                    genout[r][genout.shape[-1] - already_generated + c] = vars.lua_koboldbridge.generated[r+1][c+1]
             encoded = []
             for i in range(vars.numseqs):
                 txt = tokenizer.decode(genout[i, -already_generated:])
