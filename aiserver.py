@@ -744,6 +744,11 @@ if(not vars.model in ["InferKit", "Colab", "OAI", "ReadOnly", "TPUMeshTransforme
                 scores: torch.FloatTensor,
                 **kwargs,
             ) -> bool:
+                if(vars.lua_koboldbridge.generated_cols >= vars.genamt):
+                    self.regeneration_required = False
+                    self.halt = False
+                    return True
+
                 assert input_ids.ndim == 2
                 assert len(self.excluded_world_info) == input_ids.shape[0]
                 self.regeneration_required = vars.lua_koboldbridge.regeneration_required
@@ -773,7 +778,7 @@ if(not vars.model in ["InferKit", "Colab", "OAI", "ReadOnly", "TPUMeshTransforme
                 excluded_world_info=self.kai_scanner_excluded_world_info,
                 head_length=self.kai_scanner_head_length,
             )
-            stopping_criteria.append(self.kai_scanner)
+            stopping_criteria.insert(0, self.kai_scanner)
             return stopping_criteria
         transformers.generation_utils.GenerationMixin._get_stopping_criteria = new_get_stopping_criteria
 
