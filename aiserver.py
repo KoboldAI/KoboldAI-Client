@@ -850,25 +850,36 @@ if(not vars.model in ["InferKit", "Colab", "OAI", "ReadOnly", "TPUMeshTransforme
         # If base HuggingFace model was chosen
         else:
             # Is CUDA available? If so, use GPU, otherwise fall back to CPU
-            tokenizer = GPT2TokenizerFast.from_pretrained(vars.model, cache_dir="cache/")
+            
+            if(os.path.isdir(vars.model.replace('/', '_'))):
+               with(maybe_use_float16()):
+                   tokenizer = GPT2TokenizerFast.from_pretrained(vars.model.replace('/', '_'), cache_dir="cache/")
+                   model = AutoModelForCausalLM.from_pretrained(vars.model.replace('/', '_'), cache_dir="cache/", **maybe_low_cpu_mem_usage())
+            else:
+                print("Model does not exist locally, attempting to download from Huggingface...")
+                tokenizer = GPT2TokenizerFast.from_pretrained(vars.model, cache_dir="cache/")
+                with(maybe_use_float16()):
+                    model = AutoModelForCausalLM.from_pretrained(vars.model, cache_dir="cache/", **maybe_low_cpu_mem_usage())
+                model = model.half()
+                import shutil
+                shutil.rmtree("cache/")
+                model.save_pretrained(vars.model.replace('/', '_'))
+                tokenizer.save_pretrained(vars.model.replace('/', '_'))
+
             if(vars.hascuda):
                 if(vars.usegpu):
-                    with(maybe_use_float16()):
-                        model = AutoModelForCausalLM.from_pretrained(vars.model, cache_dir="cache/", **maybe_low_cpu_mem_usage())
                     vars.modeldim = get_hidden_size_from_model(model)
                     model = model.half().to(0)
                     generator = model.generate
                 elif(vars.breakmodel):  # Use both RAM and VRAM (breakmodel)
-                    with(maybe_use_float16()):
-                        model = AutoModelForCausalLM.from_pretrained(vars.model, cache_dir="cache/", **maybe_low_cpu_mem_usage())
                     vars.modeldim = get_hidden_size_from_model(model)
                     device_config(model)
                 else:
-                    model = AutoModelForCausalLM.from_pretrained(vars.model, cache_dir="cache/", **maybe_low_cpu_mem_usage())
+                    model = model.to('cpu').float()
                     vars.modeldim = get_hidden_size_from_model(model)
                     generator = model.generate
             else:
-                model = AutoModelForCausalLM.from_pretrained(vars.model, cache_dir="cache/", **maybe_low_cpu_mem_usage())
+                model.to('cpu').float()
                 vars.modeldim = get_hidden_size_from_model(model)
                 generator = model.generate
         
