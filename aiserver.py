@@ -122,6 +122,7 @@ class vars:
     widepth     = 3      # How many historical actions to scan for WI hits
     mode        = "play" # Whether the interface is in play, memory, or edit mode
     editln      = 0      # Which line was last selected in Edit Mode
+    gpu_device  = 0      # Which PyTorch device to use when using pure GPU generation
     url         = "https://api.inferkit.com/v1/models/standard/generate" # InferKit API URL
     oaiurl      = "" # OpenAI API URL
     oaiengines  = "https://api.openai.com/v1/engines"
@@ -311,7 +312,8 @@ def device_config(model):
     if(len(breakmodel.gpu_blocks) and breakmodel.gpu_blocks[-1] in (-1, model.config.num_layers if hasattr(model.config, "num_layers") else model.config.n_layer)):
         vars.breakmodel = False
         vars.usegpu = True
-        model = model.half().to(len(breakmodel.gpu_blocks)-1)
+        vars.gpu_device = len(breakmodel.gpu_blocks)-1
+        model = model.half().to(vars.gpu_device)
         generator = model.generate
         return
 
@@ -822,7 +824,7 @@ if(not vars.model in ["InferKit", "Colab", "OAI", "ReadOnly", "TPUMeshTransforme
             # Is CUDA available? If so, use GPU, otherwise fall back to CPU
             if(vars.hascuda):
                 if(vars.usegpu):
-                    model = model.half().to(0)
+                    model = model.half().to(vars.gpu_device)
                     generator = model.generate
                 elif(vars.breakmodel):  # Use both RAM and VRAM (breakmodel)
                     device_config(model)
@@ -842,7 +844,7 @@ if(not vars.model in ["InferKit", "Colab", "OAI", "ReadOnly", "TPUMeshTransforme
             vars.modeldim = get_hidden_size_from_model(model)
             # Is CUDA available? If so, use GPU, otherwise fall back to CPU
             if(vars.hascuda and vars.usegpu):
-                model = model.half().to(0)
+                model = model.half().to(vars.gpu_device)
                 generator = model.generate
             else:
                 model = model.to('cpu').float()
@@ -869,7 +871,7 @@ if(not vars.model in ["InferKit", "Colab", "OAI", "ReadOnly", "TPUMeshTransforme
             if(vars.hascuda):
                 if(vars.usegpu):
                     vars.modeldim = get_hidden_size_from_model(model)
-                    model = model.half().to(0)
+                    model = model.half().to(vars.gpu_device)
                     generator = model.generate
                 elif(vars.breakmodel):  # Use both RAM and VRAM (breakmodel)
                     vars.modeldim = get_hidden_size_from_model(model)
@@ -2197,7 +2199,7 @@ def _generate(txt, minimum, maximum, found_entries):
         gen_in = torch.cat((soft_tokens[None], gen_in), dim=-1)
 
     if(vars.hascuda and vars.usegpu):
-        gen_in = gen_in.to(0)
+        gen_in = gen_in.to(vars.gpu_device)
     elif(vars.hascuda and vars.breakmodel):
         gen_in = gen_in.to(breakmodel.primary_device)
     else:
