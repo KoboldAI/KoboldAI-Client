@@ -1671,7 +1671,6 @@ return function(_python, _bridged)
             setmetatable(koboldbridge.outputs, nil)
             for k, v in old_next, koboldbridge.outputs, nil do
                 if type(v) ~= "string" then
-                    error("`kobold.outputs` must be a 1D list of strings, but found a non-string element at index " .. k)
                     return r
                 end
                 if v ~= _outputs[k] then
