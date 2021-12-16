@@ -2016,6 +2016,9 @@ $(document).ready(function(){
 		} else if(msg.cmd == "updatedynamicscan") {
 			// Update toggle state
 			$("#setdynamicscan").prop('checked', msg.data).change();
+		} else if(msg.cmd == "updatenopromptgen") {
+			// Update toggle state
+			$("#setnopromptgen").prop('checked', msg.data).change();
 		} else if(msg.cmd == "runs_remotely") {
 			remote = true;
 			hide([button_savetofile, button_import, button_importwi]);

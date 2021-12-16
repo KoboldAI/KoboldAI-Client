@@ -161,6 +161,7 @@ class vars:
     adventure   = False
     dynamicscan = False
     remote      = False
+    nopromptgen = False
 
 #==================================================================#
 # Function to get model selection at startup
@@ -1172,6 +1173,7 @@ def lua_has_setting(setting):
         "setuseprompt",
         "setadventure",
         "setdynamicscan",
+        "nopromptgen",
         "frmttriminc",
         "frmtrmblln",
         "frmtrmspch",
@@ -1194,6 +1196,7 @@ def lua_get_setting(setting):
     if(setting == "setuseprompt"): return vars.useprompt
     if(setting == "setadventure"): return vars.adventure
     if(setting == "setdynamicscan"): return vars.dynamicscan
+    if(setting == "nopromptgen"): return vars.nopromptgen    
     if(setting == "frmttriminc"): return vars.formatoptns["frmttriminc"]
     if(setting == "frmtrmblln"): return vars.formatoptns["frmttriminc"]
     if(setting == "frmtrmspch"): return vars.formatoptns["frmttriminc"]
@@ -1221,6 +1224,7 @@ def lua_set_setting(setting, v):
     if(setting == "setuseprompt"): vars.useprompt = v
     if(setting == "setadventure"): vars.adventure = v
     if(setting == "setdynamicscan"): vars.dynamicscan = v
+    if(setting == "setnopromptgen"): vars.nopromptgen = v
     if(setting == "frmttriminc"): vars.formatoptns["frmttriminc"] = v
     if(setting == "frmtrmblln"): vars.formatoptns["frmttriminc"] = v
     if(setting == "frmtrmspch"): vars.formatoptns["frmttriminc"] = v
@@ -1692,6 +1696,10 @@ def get_message(msg):
         vars.dynamicscan = msg['data']
         settingschanged()
         refresh_settings()
+    elif(msg['cmd'] == 'setnopromptgen'):
+        vars.nopromptgen = msg['data']
+        settingschanged()
+        refresh_settings()
     elif(not vars.remote and msg['cmd'] == 'importwi'):
         wiimportrequest()
     
@@ -1748,6 +1756,7 @@ def savesettings():
     js["useprompt"]   = vars.useprompt
     js["adventure"]   = vars.adventure
     js["dynamicscan"] = vars.dynamicscan
+    js["nopromptgen"] = vars.nopromptgen
 
     js["userscripts"] = vars.userscripts
     js["corescript"]  = vars.corescript
@@ -1803,6 +1812,8 @@ def loadsettings():
             vars.adventure = js["adventure"]
         if("dynamicscan" in js):
             vars.dynamicscan = js["dynamicscan"]
+        if("nopromptgen" in js):
+            vars.nopromptgen = js["nopromptgen"]
         
         if("userscripts" in js):
             vars.userscripts = []
@@ -1887,7 +1898,7 @@ def actionsubmit(data, actionmode=0, force_submit=False):
             assert False
         # Start the game
         vars.gamestarted = True
-        if(not vars.noai and vars.lua_koboldbridge.generating):
+        if(not vars.noai and vars.lua_koboldbridge.generating and not vars.nopromptgen):
             # Save this first action as the prompt
             vars.prompt = data
             # Clear the startup text from game screen
@@ -2671,6 +2682,7 @@ def refresh_settings():
     emit('from_server', {'cmd': 'updateuseprompt', 'data': vars.useprompt}, broadcast=True)
     emit('from_server', {'cmd': 'updateadventure', 'data': vars.adventure}, broadcast=True)
     emit('from_server', {'cmd': 'updatedynamicscan', 'data': vars.dynamicscan}, broadcast=True)
+    emit('from_server', {'cmd': 'updatenopromptgen', 'data': vars.nopromptgen}, broadcast=True)
     
     emit('from_server', {'cmd': 'updatefrmttriminc', 'data': vars.formatoptns["frmttriminc"]}, broadcast=True)
     emit('from_server', {'cmd': 'updatefrmtrmblln', 'data': vars.formatoptns["frmtrmblln"]}, broadcast=True)

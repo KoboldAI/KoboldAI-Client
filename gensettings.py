@@ -129,6 +129,17 @@ gensettingstf = [{
 	"step": 1,
 	"default": 0,
     "tooltip": "Scan the AI's output for world info keys as it's generating the output."
+	},
+	{
+	"uitype": "toggle",
+	"unit": "bool",
+	"label": "No Prompt Generation",
+	"id": "setnopromptgen", 
+	"min": 0,
+	"max": 1,
+	"step": 1,
+	"default": 0,
+    "tooltip": "When enabled the AI does not generate when you enter the prompt, instead you need to do an action first."
 	}]
 
 gensettingsik =[{
