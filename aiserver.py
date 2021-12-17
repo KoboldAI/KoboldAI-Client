@@ -1908,6 +1908,8 @@ def actionsubmit(data, actionmode=0, force_submit=False):
         else:
             # Save this first action as the prompt
             vars.prompt = data
+            for i in range(vars.numseqs):
+                vars.lua_koboldbridge.outputs[i+1] = ""
             execute_outmod()
             if(vars.lua_koboldbridge.regeneration_required):
                 vars.lua_koboldbridge.regeneration_required = False
@@ -1943,6 +1945,8 @@ def actionsubmit(data, actionmode=0, force_submit=False):
             calcsubmit(data)
             emit('from_server', {'cmd': 'scrolldown', 'data': ''}, broadcast=True)
         else:
+            for i in range(vars.numseqs):
+                vars.lua_koboldbridge.outputs[i+1] = ""
             execute_outmod()
             set_aibusy(0)
             if(vars.lua_koboldbridge.regeneration_required):

@@ -1619,7 +1619,7 @@ $(document).ready(function(){
 	seqselcontents    = $("#seqselcontents");
 
 	// Connect to SocketIO server
-	socket = io.connect(window.document.origin, {transports: ['websocket', 'polling']});
+	socket = io.connect(window.document.origin, {transports: ['polling', 'websocket']});
 	
 	socket.on('from_server', function(msg) {
 		if(msg.cmd == "connected") {
