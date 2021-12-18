@@ -3488,6 +3488,12 @@ def loadRequest(loadpath, filename=None):
 
         for uid in vars.wifolders_l + [None]:
             vars.worldinfo.append({"key": "", "keysecondary": "", "content": "", "comment": "", "folder": uid, "num": None, "init": False, "selective": False, "constant": False, "uid": None})
+            while(True):
+                uid = int.from_bytes(os.urandom(4), "little", signed=True)
+                if(uid not in vars.worldinfo_u):
+                    break
+            vars.worldinfo_u[uid] = vars.worldinfo[-1]
+            vars.worldinfo[-1]["uid"] = uid
         stablesortwi()
         vars.worldinfo_i = [wi for wi in vars.worldinfo if wi["init"]]
 
@@ -3677,6 +3683,12 @@ def importgame():
 
         for uid in vars.wifolders_l + [None]:
             vars.worldinfo.append({"key": "", "keysecondary": "", "content": "", "comment": "", "folder": uid, "num": None, "init": False, "selective": False, "constant": False, "uid": None})
+            while(True):
+                uid = int.from_bytes(os.urandom(4), "little", signed=True)
+                if(uid not in vars.worldinfo_u):
+                    break
+            vars.worldinfo_u[uid] = vars.worldinfo[-1]
+            vars.worldinfo[-1]["uid"] = uid
         stablesortwi()
         vars.worldinfo_i = [wi for wi in vars.worldinfo if wi["init"]]
         
@@ -3748,6 +3760,12 @@ def importAidgRequest(id):
 
         for uid in vars.wifolders_l + [None]:
             vars.worldinfo.append({"key": "", "keysecondary": "", "content": "", "comment": "", "folder": uid, "num": None, "init": False, "selective": False, "constant": False, "uid": None})
+            while(True):
+                uid = int.from_bytes(os.urandom(4), "little", signed=True)
+                if(uid not in vars.worldinfo_u):
+                    break
+            vars.worldinfo_u[uid] = vars.worldinfo[-1]
+            vars.worldinfo[-1]["uid"] = uid
         stablesortwi()
         vars.worldinfo_i = [wi for wi in vars.worldinfo if wi["init"]]
 
@@ -3797,6 +3815,14 @@ def wiimportrequest():
                 vars.worldinfo_u[uid] = vars.worldinfo[-1]
                 vars.worldinfo[-1]["uid"] = uid
                 num += 1
+            for uid in [None]:
+                vars.worldinfo.append({"key": "", "keysecondary": "", "content": "", "comment": "", "folder": uid, "num": None, "init": False, "selective": False, "constant": False, "uid": None})
+                while(True):
+                    uid = int.from_bytes(os.urandom(4), "little", signed=True)
+                    if(uid not in vars.worldinfo_u):
+                        break
+                vars.worldinfo_u[uid] = vars.worldinfo[-1]
+                vars.worldinfo[-1]["uid"] = uid
         
         print("{0}".format(vars.worldinfo[0]))
                 
