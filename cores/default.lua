@@ -1,6 +1,6 @@
 -- Default core script
--- Runs all input modifiers and generation modifiers in forward order, and
--- runs all output modifiers in reverse order
+-- Runs all generation modifiers and output modifiers in forward order, and
+-- runs all input modifiers in reverse order
 
 kobold, koboldcore = require("bridge")()  -- This line is optional and is only for EmmyLua type annotations
 
