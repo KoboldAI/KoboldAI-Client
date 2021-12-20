@@ -646,6 +646,7 @@ function hideMessage() {
 }
 
 function showWaitAnimation() {
+	hideWaitAnimation();
 	$("#inputrowright").append("<img id=\"waitanim\" src=\"static/thinking.gif\"/>");
 }
 

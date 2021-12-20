@@ -207,12 +207,14 @@ return function(_python, _bridged)
     koboldbridge.regeneration_required = false
     koboldbridge.resend_settings_required = false
     koboldbridge.generating = true
+    koboldbridge.restart_sequence = nil
     koboldbridge.userstate = nil
     koboldbridge.logits = {}
     koboldbridge.vocab_size = 0
     koboldbridge.generated = {}
     koboldbridge.generated_cols = 0
     koboldbridge.outputs = {}
+    koboldbridge.feedback = nil  ---@type string|nil
 
     ---@return nil
     local function maybe_require_regeneration()
@@ -285,12 +287,18 @@ return function(_python, _bridged)
         return _python.as_attrgetter(bridged.vars.worldinfo_u).get(rawget(self, "_uid")) ~= nil
     end
 
+    ---@param submission? string
     ---@return string
-    function KoboldWorldInfoEntry:compute_context()
+    function KoboldWorldInfoEntry:compute_context(submission)
         if not check_validity(self) then
             return ""
+        elseif submission == nil then
+            submission = kobold.submission
+        elseif type(submission) ~= "string" then
+            error("`compute_context` takes a string or nil as argument #1, but got a " .. type(submission))
+            return ""
         end
-        return bridged.compute_context({self.uid})
+        return bridged.compute_context(submission, {self.uid}, nil)
     end
 
     ---@generic K
@@ -335,7 +343,7 @@ return function(_python, _bridged)
                 error("`"..rawget(t, "_name").."."..k.."` must be a "..KoboldWorldInfoEntry_fieldtypes[k].."; you attempted to set it to a "..type(v))
                 return
             else
-                if k ~= "comment" then
+                if k ~= "comment" and not (t.selective and k == "keysecondary") then
                     maybe_require_regeneration()
                 end
                 bridged.set_attr(t.uid, k, v)
@@ -379,26 +387,38 @@ return function(_python, _bridged)
         return entry
     end
 
+    ---@param submission? string
     ---@param entries? KoboldWorldInfoEntry|table<any, KoboldWorldInfoEntry>
     ---@return string
-    function KoboldWorldInfoFolder:compute_context(entries)
+    function KoboldWorldInfoFolder:compute_context(submission, entries)
         if not check_validity(self) then
-            return
-        end
-        if entries ~= nil and type(entries) ~= "table" or (entries.name ~= nil and entries.name ~= "KoboldWorldInfoEntry") then
-            error("`compute_context` takes a KoboldWorldInfoEntry, table of KoboldWorldInfoEntries or nil as argument, but got a " .. type(entries))
+            return ""
+        elseif submission == nil then
+            submission = kobold.submission
+        elseif type(submission) ~= "string" then
+            error("`compute_context` takes a string or nil as argument #1, but got a " .. type(submission))
             return ""
         end
-        if entries.name == "KoboldWorldInfoEntry" then
-            entries = {entries}
-        end
         local _entries
-        for k, v in pairs(entries) do
-            if type(v) == "table" and v.name == "KoboldWorldInfoEntry" and (rawget(self, "_name") ~= "KoboldWorldInfoFolder" or self.uid == v.uid) and v:is_valid() then
-                _entries[k] = v.uid
+        if entries ~= nil then
+            if type(entries) ~= "table" or (entries.name ~= nil and entries.name ~= "KoboldWorldInfoEntry") then
+                error("`compute_context` takes a KoboldWorldInfoEntry, table of KoboldWorldInfoEntries or nil as argument #2, but got a " .. type(entries))
+                return ""
+            elseif entries.name == "KoboldWorldInfoEntry" then
+                _entries = {entries}
+            else
+                for k, v in pairs(entries) do
+                    if type(v) == "table" and v.name == "KoboldWorldInfoEntry" and v:is_valid() then
+                        _entries[k] = v.uid
+                    end
+                end
             end
         end
-        return bridged.compute_context(_entries)
+        local folders
+        if self.name == "KoboldWorldInfoFolder" then
+            folders = {rawget(self, "_uid")}
+        end
+        return bridged.compute_context(submission, _entries, folders)
     end
 
     ---@return boolean
@@ -607,10 +627,12 @@ return function(_python, _bridged)
         if k == "content" then
             if rawget(t, "_num") == 0 then
                 if bridged.vars.gamestarted then
-                    return bridged.vars.prompt
+                    local prompt = koboldbridge.userstate == "genmod" and bridged.vars._prompt or bridged.vars.prompt
+                    return prompt
                 end
             end
-            return _python.as_attrgetter(bridged.vars.actions).get(math.tointeger(rawget(t, "_num")) - 1)
+            local actions = koboldbridge.userstate == "genmod" and bridged.vars._actions or bridged.vars.actions
+            return _python.as_attrgetter(actions).get(math.tointeger(rawget(t, "_num")) - 1)
         end
     end
 
@@ -631,7 +653,8 @@ return function(_python, _bridged)
                 error("Attempted to set the prompt chunk's content to the empty string; this is not allowed")
                 return
             end
-            if _k ~= 0 and _python.as_attrgetter(bridged.vars.actions).get(_k-1) == nil then
+            local actions = koboldbridge.userstate == "genmod" and bridged.vars._actions or bridged.vars.actions
+            if _k ~= 0 and _python.as_attrgetter(actions).get(_k-1) == nil then
                 return
             end
             bridged.set_chunk(_k, v)
@@ -655,7 +678,8 @@ return function(_python, _bridged)
 
     ---@return fun(): KoboldStoryChunk, table, nil
     function KoboldStory:forward_iter()
-        local nxt, iterator = _python.iter(bridged.vars.actions)
+        local actions = koboldbridge.userstate == "genmod" and bridged.vars._actions or bridged.vars.actions
+        local nxt, iterator = _python.iter(actions)
         local run_once = false
         local f = function()
             if not bridged.vars.gamestarted then
@@ -682,7 +706,8 @@ return function(_python, _bridged)
 
     ---@return fun(): KoboldStoryChunk, table, nil
     function KoboldStory:reverse_iter()
-        local nxt, iterator = _python.iter(_python.builtins.reversed(bridged.vars.actions))
+        local actions = koboldbridge.userstate == "genmod" and bridged.vars._actions or bridged.vars.actions
+        local nxt, iterator = _python.iter(_python.builtins.reversed(actions))
         local last_run = false
         local f = function()
             if not bridged.vars.gamestarted or last_run then
@@ -738,21 +763,38 @@ return function(_python, _bridged)
     ---@class KoboldSettings : KoboldSettings_base
     ---@field numseqs integer
     ---@field genamt integer
+    ---@field anotedepth integer
     ---@field settemp number
     ---@field settopp number
     ---@field settopk integer
     ---@field settfs number
     ---@field setreppen number
     ---@field settknmax integer
-    ---@field anotedepth integer
     ---@field setwidepth integer
     ---@field setuseprompt boolean
     ---@field setadventure boolean
     ---@field setdynamicscan boolean
+    ---@field setnopromptgen boolean
+    ---@field temp number
+    ---@field topp number
+    ---@field topk integer
+    ---@field tfs number
+    ---@field reppen number
+    ---@field tknmax integer
+    ---@field widepth integer
+    ---@field useprompt boolean
+    ---@field adventure boolean
+    ---@field dynamicscan boolean
+    ---@field nopromptgen boolean
     ---@field frmttriminc boolean
     ---@field frmtrmblln boolean
     ---@field frmtrmspch boolean
     ---@field frmtadsnsp boolean
+    ---@field frmtsingleline boolean
+    ---@field triminc boolean
+    ---@field rmblln boolean
+    ---@field rmspch boolean
+    ---@field adsnsp boolean
     ---@field singleline boolean
     local KoboldSettings = setmetatable({
         _name = "KoboldSettings",
@@ -783,9 +825,9 @@ return function(_python, _bridged)
         if type(k) ~= "string" then
             return
         end
-        if k == "genamt" then
+        if k == "genamt" or k == "output" or k == "setoutput" then
             return math.tointeger(bridged.get_genamt()), true
-        elseif k == "numseqs" then
+        elseif k == "numseqs" or k == "numseq" or k == "setnumseq" then
             return math.tointeger(bridged.get_numseqs()), true
         elseif bridged.has_setting(k) then
             return bridged.get_setting(k), true
@@ -796,11 +838,10 @@ return function(_python, _bridged)
 
     ---@param t KoboldSettings_base
     function KoboldSettings_mt.__newindex(t, k, v)
-        if k == "genamt" and type(v) == "number" and math.tointeger(v) ~= nil and v >= 0 then
+        if (k == "genamt" or k == "output" or k == "setoutput") and type(v) == "number" and math.tointeger(v) ~= nil and v >= 0 then
             bridged.set_genamt(v)
-            maybe_require_regeneration()
             koboldbridge.resend_settings_required = true
-        elseif k == "numseqs" and type(v) == "number" and math.tointeger(v) ~= nil and v >= 1 then
+        elseif (k == "numseqs" or k == "numseq" or k == "setnumseq") and type(v) == "number" and math.tointeger(v) ~= nil and v >= 1 then
             if koboldbridge.userstate == "genmod" then
                 error("Cannot set numseqs from a generation modifier")
                 return
@@ -808,10 +849,9 @@ return function(_python, _bridged)
             bridged.set_numseqs(v)
             koboldbridge.resend_settings_required = true
         elseif type(k) == "string" and bridged.has_setting(k) and type(v) == type(bridged.get_setting(k)) then
-            if k == "settknmax" or k == "anotedepth" or k == "setwidepth" or k == "setuseprompt" then
+            if bridged.set_setting(k, v) == true then
                 maybe_require_regeneration()
             end
-            bridged.set_setting(k, v)
             koboldbridge.resend_settings_required = true
         end
         return t
@@ -821,7 +861,7 @@ return function(_python, _bridged)
 
 
     --==========================================================================
-    -- Userscript API: Memory
+    -- Userscript API: Memory / Author's Note
     --==========================================================================
 
     ---@param t KoboldLib
@@ -840,6 +880,24 @@ return function(_python, _bridged)
         end
         maybe_require_regeneration()
         bridged.set_memory(v)
+    end
+
+    ---@param t KoboldLib
+    ---@return string
+    function KoboldLib_getters.authorsnote(t)
+        return bridged.get_authorsnote()
+    end
+
+    ---@param t KoboldLib
+    ---@param v string
+    ---@return KoboldLib
+    function KoboldLib_setters.authorsnote(t, v)
+        if type(v) ~= "string" then
+            error("`KoboldLib.authorsnote` must be a string; you attempted to set it to a "..type(v))
+            return
+        end
+        maybe_require_regeneration()
+        bridged.set_authorsnote(v)
     end
 
 
@@ -992,7 +1050,7 @@ return function(_python, _bridged)
             error("Cannot write to `KoboldLib.logits` from outside of a generation modifer")
             return
         elseif type(v) ~= "table" then
-            error("`KoboldLib.logits` must be a 2D list (table) of numbers; you attempted to set it to a " .. type(v))
+            error("`KoboldLib.logits` must be a 2D array of numbers; you attempted to set it to a " .. type(v))
             return
         end
         koboldbridge.logits = v
@@ -1009,6 +1067,8 @@ return function(_python, _bridged)
         local backend = kobold.modelbackend
         if backend == "readonly" or backend == "api" then
             return 0
+        elseif koboldbridge.userstate == "outmod" then
+            return koboldbridge.num_outputs
         end
         return kobold.settings.numseqs
     end
@@ -1058,7 +1118,7 @@ return function(_python, _bridged)
             error("Cannot write to `KoboldLib.generated` from outside of a generation modifier")
             return
         elseif type(v) ~= "table" then
-            error("`KoboldLib.generated` must be a 2D list (table) of integers; you attempted to set it to a " .. type(v))
+            error("`KoboldLib.generated` must be a 2D array of integers; you attempted to set it to a " .. type(v))
             return
         end
         koboldbridge.generated = v
@@ -1072,13 +1132,12 @@ return function(_python, _bridged)
     ---@param t KoboldLib
     ---@return integer
     function KoboldLib_getters.num_outputs(t)
-        local backend = kobold.modelbackend
-        if backend == "readonly" then
-            return 0
-        end
         local model = kobold.model
         if model == "OAI" or model == "InferKit" then
             return 1
+        end
+        if koboldbridge.userstate == "outmod" then
+            return koboldbridge.num_outputs
         end
         return kobold.settings.numseqs
     end
@@ -1105,7 +1164,7 @@ return function(_python, _bridged)
             error("Cannot write to `KoboldLib.generated` from outside of an output modifier")
             return
         elseif type(v) ~= "table" then
-            error("`KoboldLib.generated` must be a list (table) of strings; you attempted to set it to a " .. type(v))
+            error("`KoboldLib.generated` must be a 1D array of strings; you attempted to set it to a " .. type(v))
             return
         end
         koboldbridge.outputs = v
@@ -1156,6 +1215,41 @@ return function(_python, _bridged)
     ---@return nil
     function kobold.halt_generation()
         koboldbridge.generating = false
+    end
+
+    ---@param sequence? integer
+    ---@return nil
+    function kobold.restart_generation(sequence)
+        if sequence == nil then
+            sequence = 0
+        end
+        sequence_type = type(sequence)
+        sequence = math.tointeger(sequence)
+        if sequence_type ~= "number" then
+            error("`kobold.restart_generation` takes an integer greater than or equal to 0 or nil as argument, but got a " .. sequence_type)
+            return
+        elseif sequence < 0 then
+            error("`kobold.restart_generation` takes an integer greater than or equal to 0 or nil as argument, but got `" .. sequence .. "`")
+            return
+        end
+        if koboldbridge.userstate ~= "outmod" then
+            error("Can only call `kobold.restart_generation()` from an output modifier")
+            return
+        end
+        koboldbridge.restart_sequence = sequence
+    end
+
+    ---@param t KoboldCoreLib
+    ---@return string
+    function KoboldLib_getters.feedback(t)
+        return koboldbridge.feedback
+    end
+
+    ---@param t KoboldCoreLib
+    ---@param v string
+    ---@return KoboldCoreLib
+    function KoboldLib_setters.feedback(t, v)
+        error("`KoboldLib.feedback` is a read-only attribute")
     end
 
 
@@ -1383,17 +1477,17 @@ return function(_python, _bridged)
     end
 
     local function redirected_print(...)
-        local args = {...}
-        for k, v in ipairs(args) do
-            args[k] = tostring(v)
+        local args = table.pack(...)
+        for i = 1, args.n do
+            args[i] = tostring(args[i])
         end
         bridged.print(table.concat(args, "\t"))
     end
 
     local function redirected_warn(...)
-        local args = {...}
-        for k, v in ipairs(args) do
-            args[k] = tostring(v)
+        local args = table.pack(...)
+        for i = 1, args.n do
+            args[i] = tostring(args[i])
         end
         bridged.warn(table.concat(args, "\t"))
     end
@@ -1579,8 +1673,8 @@ return function(_python, _bridged)
         koboldbridge.num_userscripts = 0
         for i, filename in _python.enumerate(filenames) do
             bridged.load_callback(filename, modulenames[i])
-            ---@type KoboldUserScript
             koboldbridge.logging_name = modulenames[i]
+            ---@type KoboldUserScript
             local _userscript = old_loadfile(join_folder_and_filename(bridged.userscript_path, filename), "t", koboldbridge.get_universe(filename))()
             koboldbridge.logging_name = nil
             local userscript = deepcopy(KoboldUserScriptModule)
@@ -1606,9 +1700,10 @@ return function(_python, _bridged)
 
     function koboldbridge.execute_inmod()
         local r
+        koboldbridge.restart_sequence = nil
+        koboldbridge.userstate = "inmod"
         koboldbridge.regeneration_required = false
         koboldbridge.generating = true
-        koboldbridge.userstate = "inmod"
         koboldbridge.generated_cols = 0
         koboldbridge.generated = {}
         for i = 1, kobold.settings.numseqs do
@@ -1665,13 +1760,14 @@ return function(_python, _bridged)
         local r
         koboldbridge.generating = false
         koboldbridge.userstate = "outmod"
+        koboldbridge.num_outputs = kobold.settings.numseqs
         if koboldbridge.outmod ~= nil then
             local _outputs = deepcopy(koboldbridge.outputs)
             r = koboldbridge.outmod()
             setmetatable(koboldbridge.outputs, nil)
             for k, v in old_next, koboldbridge.outputs, nil do
                 if type(v) ~= "string" then
-                    error("`kobold.outputs` must be a 1D list of strings, but found a non-string element at index " .. k)
+                    error("`kobold.outputs` must be a 1D array of strings, but found a non-string element at index " .. k)
                     return r
                 end
                 if v ~= _outputs[k] then
