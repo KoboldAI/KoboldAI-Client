@@ -414,7 +414,11 @@ return function(_python, _bridged)
                 end
             end
         end
-        return bridged.compute_context(submission, _entries, rawget(self, "_uid"))
+        local folders
+        if self.name == "KoboldWorldInfoFolder" then
+            folders = {rawget(self, "_uid")}
+        end
+        return bridged.compute_context(submission, _entries, folders)
     end
 
     ---@return boolean
