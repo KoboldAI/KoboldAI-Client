@@ -846,7 +846,7 @@ if(not vars.model in ["InferKit", "Colab", "OAI", "ReadOnly", "TPUMeshTransforme
             model_config = open(vars.custmodpth + "/config.json", "r")
             js   = json.load(model_config)
             with(maybe_use_float16()):
-                model = GPT2LMHeadModel.from_pretrained(vars.custmodpth, cache_dir="cache/", **maybe_low_cpu_mem_usage())
+                model = GPT2LMHeadModel.from_pretrained(vars.custmodpth, cache_dir="cache/")
             tokenizer = GPT2TokenizerFast.from_pretrained(vars.custmodpth, cache_dir="cache/")
             vars.modeldim = get_hidden_size_from_model(model)
             # Is CUDA available? If so, use GPU, otherwise fall back to CPU
@@ -858,17 +858,24 @@ if(not vars.model in ["InferKit", "Colab", "OAI", "ReadOnly", "TPUMeshTransforme
                 generator = model.generate
         # If base HuggingFace model was chosen
         else:
+            lowmem = maybe_low_cpu_mem_usage()
+            # We must disable low_cpu_mem_usage (by setting lowmem to {}) if
+            # using a GPT-2 model because GPT-2 is not compatible with this
+            # feature yet
+            if("/" not in vars.model and vars.model.lower().startswith("gpt2")):
+                lowmem = {}
+
             # Is CUDA available? If so, use GPU, otherwise fall back to CPU
             
             if(os.path.isdir(vars.model.replace('/', '_'))):
                with(maybe_use_float16()):
                    tokenizer = GPT2TokenizerFast.from_pretrained(vars.model.replace('/', '_'), cache_dir="cache/")
-                   model = AutoModelForCausalLM.from_pretrained(vars.model.replace('/', '_'), cache_dir="cache/", **maybe_low_cpu_mem_usage())
+                   model = AutoModelForCausalLM.from_pretrained(vars.model.replace('/', '_'), cache_dir="cache/", **lowmem)
             else:
                 print("Model does not exist locally, attempting to download from Huggingface...")
                 tokenizer = GPT2TokenizerFast.from_pretrained(vars.model, cache_dir="cache/")
                 with(maybe_use_float16()):
-                    model = AutoModelForCausalLM.from_pretrained(vars.model, cache_dir="cache/", **maybe_low_cpu_mem_usage())
+                    model = AutoModelForCausalLM.from_pretrained(vars.model, cache_dir="cache/", **lowmem)
                 model = model.half()
                 import shutil
                 shutil.rmtree("cache/")
