@@ -3,7 +3,7 @@
 
 ---@param _python? table<string, any>
 ---@param _bridged? table<string, any>
----@return KoboldLib, KoboldCoreLib|nil
+---@return KoboldLib, KoboldCoreLib?
 return function(_python, _bridged)
 
     --==========================================================================
@@ -14,7 +14,7 @@ return function(_python, _bridged)
     ---@generic K, V
     ---@param t table<K, V>
     ---@param k? K
-    ---@return K|nil, V|nil
+    ---@return K?, V?
     function next(t, k)
         local meta = getmetatable(t)
         return ((meta ~= nil and type(rawget(t, "_name")) == "string" and string.match(rawget(t, "_name"), "^Kobold") and type(meta._kobold_next) == "function") and meta._kobold_next or old_next)(t, k)
@@ -214,7 +214,7 @@ return function(_python, _bridged)
     koboldbridge.generated = {}
     koboldbridge.generated_cols = 0
     koboldbridge.outputs = {}
-    koboldbridge.feedback = nil  ---@type string|nil
+    koboldbridge.feedback = nil  ---@type string?
 
     ---@return nil
     local function maybe_require_regeneration()
@@ -373,7 +373,7 @@ return function(_python, _bridged)
     local KoboldWorldInfoFolder_mt = setmetatable({}, metawrapper)
 
     ---@param u integer
-    ---@return KoboldWorldInfoEntry|nil
+    ---@return KoboldWorldInfoEntry?
     function KoboldWorldInfoFolder:finduid(u)
         if not check_validity(self) or type(u) ~= "number" then
             return
@@ -440,7 +440,7 @@ return function(_python, _bridged)
     KoboldWorldInfoFolder_mt.__pairs = KoboldWorldInfoEntry_mt.__pairs
 
     ---@param t KoboldWorldInfoFolder|KoboldWorldInfo
-    ---@return KoboldWorldInfoEntry|nil
+    ---@return KoboldWorldInfoEntry?
     function KoboldWorldInfoFolder_mt.__index(t, k)
         if not check_validity(t) then
             return
@@ -495,7 +495,7 @@ return function(_python, _bridged)
     local KoboldWorldInfoFolderSelector_mt = setmetatable({}, metawrapper)
 
     ---@param u integer
-    ---@return KoboldWorldInfoFolder|nil
+    ---@return KoboldWorldInfoFolder?
     function KoboldWorldInfoFolderSelector:finduid(u)
         if not check_validity(self) or type(u) ~= "number" then
             return
@@ -528,7 +528,7 @@ return function(_python, _bridged)
     KoboldWorldInfoFolderSelector_mt.__pairs = KoboldWorldInfoEntry_mt.__pairs
 
     ---@param t KoboldWorldInfoFolderSelector
-    ---@return KoboldWorldInfoFolder|nil
+    ---@return KoboldWorldInfoFolder?
     function KoboldWorldInfoFolderSelector_mt.__index(t, k)
         if not check_validity(t) or type(k) ~= "number" or math.tointeger(k) == nil or k < 1 or k > #t then
             return
@@ -1259,19 +1259,19 @@ return function(_python, _bridged)
 
     koboldbridge.userscripts = {}  ---@type table<integer, string>
     koboldbridge.num_userscripts = 0
-    koboldbridge.inmod = nil  ---@type function|nil
-    koboldbridge.genmod = nil  ---@type function|nil
-    koboldbridge.outmod = nil  ---@type function|nil
+    koboldbridge.inmod = nil  ---@type function?
+    koboldbridge.genmod = nil  ---@type function?
+    koboldbridge.outmod = nil  ---@type function?
 
     ---@class KoboldUserScript
-    ---@field inmod function|nil
-    ---@field genmod function|nil
-    ---@field outmod function|nil
+    ---@field inmod function?
+    ---@field genmod function?
+    ---@field outmod function?
 
     ---@class KoboldCoreScript
-    ---@field inmod function|nil
-    ---@field genmod function|nil
-    ---@field outmod function|nil
+    ---@field inmod function?
+    ---@field genmod function?
+    ---@field outmod function?
 
 
     ----------------------------------------------------------------------------
@@ -1280,9 +1280,9 @@ return function(_python, _bridged)
     ---@field filename string
     ---@field modulename string
     ---@field description string
-    ---@field inmod function|nil
-    ---@field genmod function|nil
-    ---@field outmod function|nil
+    ---@field inmod function?
+    ---@field genmod function?
+    ---@field outmod function?
     local KoboldUserScriptModule = setmetatable({
         _name = "KoboldUserScriptModule",
     }, metawrapper)
@@ -1346,7 +1346,7 @@ return function(_python, _bridged)
 
     ---@param t KoboldUserScriptList
     ---@param k integer
-    ---@return KoboldUserScriptModule|nil
+    ---@return KoboldUserScriptModule?
     function KoboldUserScriptList_mt.__index(t, k)
         if type(k) == "number" and math.tointeger(k) ~= nil then
             return koboldbridge.userscripts[k]
@@ -1428,7 +1428,7 @@ return function(_python, _bridged)
     ---@param modname string
     ---@param env table<string, any>
     ---@param search_path? string
-    ---@return any, string|nil
+    ---@return any, string?
     local function requirex(modname, env, search_path)
         if search_path == nil then
             search_path = bridged.lib_path
@@ -1470,7 +1470,7 @@ return function(_python, _bridged)
     end
     local function _safe_require(_g)
         ---@param modname string
-        ---@return any, string|nil
+        ---@return any, string?
         return function(modname)
             return requirex(modname, _g)
         end
