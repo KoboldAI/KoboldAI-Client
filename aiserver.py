@@ -865,7 +865,10 @@ if(not vars.model in ["InferKit", "Colab", "OAI", "ReadOnly", "TPUMeshTransforme
             if("/" not in vars.model and vars.model.lower().startswith("gpt2")):
                 lowmem = {}
 
-            # Is CUDA available? If so, use GPU, otherwise fall back to CPU
+            # Make model path the same as the model name to make this consistent with the other loading method
+            vars.custmodpth = vars.model
+            
+            # Download model from Huggingface if it does not exist, otherwise load locally
             
             if(os.path.isdir(vars.model.replace('/', '_'))):
                with(maybe_use_float16()):
