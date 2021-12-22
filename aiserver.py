@@ -717,14 +717,10 @@ if(not vars.model in ["InferKit", "Colab", "OAI", "ReadOnly", "TPUMeshTransforme
             beams: int = 1,
         ) -> LogitsProcessorList:
             warper_list = LogitsProcessorList()
-            if(top_k is not None and top_k > 0):
-                warper_list.append(TopKLogitsWarper(top_k=top_k, min_tokens_to_keep=1 + (beams > 1)))
-            if(top_p is not None and top_p < 1.0):
-                warper_list.append(TopPLogitsWarper(top_p=top_p, min_tokens_to_keep=1 + (beams > 1)))
-            if(tfs is not None and tfs < 1.0):
-                warper_list.append(TailFreeLogitsWarper(tfs=tfs, min_tokens_to_keep=1 + (beams > 1)))
-            if(temp is not None and temp != 1.0):
-                warper_list.append(TemperatureLogitsWarper(temperature=temp))
+            warper_list.append(TopKLogitsWarper(top_k=top_k, min_tokens_to_keep=1 + (beams > 1)))
+            warper_list.append(TopPLogitsWarper(top_p=top_p, min_tokens_to_keep=1 + (beams > 1)))
+            warper_list.append(TailFreeLogitsWarper(tfs=tfs, min_tokens_to_keep=1 + (beams > 1)))
+            warper_list.append(TemperatureLogitsWarper(temperature=temp))
             return warper_list
         
         def new_sample(self, *args, **kwargs):
