@@ -120,12 +120,12 @@ return function(_python, _bridged)
                     _needs_unwrap = true
                     wrapped = true
                 end
-                local r = {wrapped_func(...)}
+                local r = table.pack(wrapped_func(...))
                 if _needs_unwrap then
                     metatables:restore()
                     wrapped = false
                 end
-                return table.unpack(r)
+                return table.unpack(r, 1, r.n)
             end)
         else
             return rawset(t, k, wrapped_func)
