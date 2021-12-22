@@ -603,7 +603,12 @@ chunk.editing, chunk.editing * {
 	background-color: #3bf723;
 }
 
-.wisortable-container {
+.ussortable-placeholder {
+	height: 4px;
+	background-color: #3bf723;
+}
+
+.wisortable-container.folder-expanded {
 	padding-bottom: 50px;
 }
 
@@ -700,6 +705,23 @@ chunk.editing, chunk.editing * {
 
 .icon-container {
 	position: relative;
+}
+
+.folder-expand {
+	opacity: 20%;
+}
+
+.folder-expand:hover {
+	opacity: 44%;
+	cursor: pointer;
+}
+
+.folder-expand.folder-expanded {
+	opacity: 80% !important;
+}
+
+.folder-expand.folder-expanded:hover {
+	opacity: 100% !important;
 }
 
 .selective-key-icon {

@@ -1710,6 +1710,12 @@ def get_message(msg):
     elif(msg['cmd'] == 'wiexpandfolder'):
         assert 0 <= int(msg['data']) < len(vars.worldinfo)
         emit('from_server', {'cmd': 'wiexpandfolder', 'data': msg['data']}, broadcast=True)
+    elif(msg['cmd'] == 'wifoldercollapsecontent'):
+        vars.wifolders_d[msg['data']]['collapsed'] = True
+        emit('from_server', {'cmd': 'wifoldercollapsecontent', 'data': msg['data']}, broadcast=True)
+    elif(msg['cmd'] == 'wifolderexpandcontent'):
+        vars.wifolders_d[msg['data']]['collapsed'] = False
+        emit('from_server', {'cmd': 'wifolderexpandcontent', 'data': msg['data']}, broadcast=True)
     elif(msg['cmd'] == 'wiupdate'):
         num = int(msg['num'])
         fields = ("key", "keysecondary", "content", "comment")

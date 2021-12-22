@@ -419,7 +419,7 @@ function addWiLine(ob) {
 function addWiFolder(uid, ob) {
 	if(uid !== null) {
 		var uninitialized = $("#wilistfoldercontainer"+null);
-		var html = "<div class=\"wisortable-container\" id=\"wilistfoldercontainer"+uid+"\" folder-uid=\""+uid+"\">\
+		var html = "<div class=\"wisortable-container "+(ob.collapsed ? "" : "folder-expanded")+"\" id=\"wilistfoldercontainer"+uid+"\" folder-uid=\""+uid+"\">\
 			<div class=\"wilistfolder\" id=\"wilistfolder"+uid+"\">\
 				<div class=\"wiremove\">\
 					<button type=\"button\" class=\"btn btn-primary heightfull\" id=\"btn_wifolder"+uid+"\">X</button>\
@@ -428,7 +428,7 @@ function addWiFolder(uid, ob) {
 				</div>\
 				<div class=\"wifoldericon\">\
 					<div class=\"wicentered\">\
-						<span class=\"oi oi-folder\" aria-hidden=\"true\"></span>\
+						<span class=\"oi oi-folder folder-expand "+(ob.collapsed ? "" : "folder-expanded")+"\" id=\"btn_wifolderexpand"+uid+"\" aria-hidden=\"true\"></span>\
 					</div>\
 				</div>\
 				<div class=\"wifoldername\">\
@@ -461,7 +461,7 @@ function addWiFolder(uid, ob) {
 		var onfocusout = function () {
 			socket.send({'cmd': 'wifolderupdate', 'uid': uid, 'data': {
 				name: $("#wifoldername"+uid).val(),
-				collapsed: false,
+				collapsed: !$("#btn_wifolderexpand"+uid).hasClass("folder-expanded"),
 			}});
 		};
 		$("#wifoldergutter"+uid).on("click", function () {
@@ -488,9 +488,22 @@ function addWiFolder(uid, ob) {
 			$(this).parent().parent().find(".wisortable-body").removeClass("hidden");
 			$(this).parent().css("max-height", "").find(".wifoldername").find(".form-control").css("max-height", "");
 		});
+		$("#btn_wifolderexpand"+uid).on("click", function () {
+			if($(this).hasClass("folder-expanded")) {
+				socket.send({'cmd': 'wifoldercollapsecontent', 'data': uid});
+			} else {
+				socket.send({'cmd': 'wifolderexpandcontent', 'data': uid});
+			}
+		})
 		adjustWiFolderNameHeight($("#wifoldername"+uid)[0]);
+		if(ob.collapsed) {
+			setTimeout(function() {
+				var container = $("#wilistfoldercontainer"+uid);
+				hide([container.find(".wifoldergutter-container"), container.find(".wisortable-body")]);
+			}, 2);
+		}
 	} else {
-		wi_menu.append("<div class=\"wisortable-container\" id=\"wilistfoldercontainer"+uid+"\">\
+		wi_menu.append("<div class=\"wisortable-container folder-expanded\" id=\"wilistfoldercontainer"+uid+"\">\
 			<div class=\"wilistfolder\" id=\"wilistfolder"+uid+"\">\
 				<div class=\"wiremove\">\
 					<button type=\"button\" class=\"btn btn-primary heightfull\" id=\"btn_wifolder"+uid+"\">+</button>\
@@ -499,7 +512,7 @@ function addWiFolder(uid, ob) {
 				</div>\
 				<div class=\"wifoldericon\">\
 					<div class=\"wicentered\">\
-						<span class=\"oi oi-folder\" aria-hidden=\"true\"></span>\
+						<span class=\"oi oi-folder folder-expand folder-expanded\" id=\"btn_wifolderexpand"+uid+"\" aria-hidden=\"true\"></span>\
 					</div>\
 				</div>\
 				<div class=\"wifoldername\">\
@@ -562,6 +575,18 @@ function hideWiDeleteConfirm(num) {
 function hideWiFolderDeleteConfirm(num) {
 	show([$("#btn_wifolder"+num)]);
 	hide([$("#btn_wifolderdel"+num), $("#btn_wifoldercan"+num)]);
+}
+
+function collapseWiFolderContent(uid) {
+	hide([$("#wifoldergutter"+uid), $(".wisortable-body[folder-uid="+uid+"]")]);
+	$("#btn_wifolderexpand"+uid).removeClass("folder-expanded");
+	$("#wilistfoldercontainer"+uid).removeClass("folder-expanded");
+}
+
+function expandWiFolderContent(uid) {
+	show([$("#wifoldergutter"+uid), $(".wisortable-body[folder-uid="+uid+"]")]);
+	$("#btn_wifolderexpand"+uid).addClass("folder-expanded");
+	$("#wilistfoldercontainer"+uid).addClass("folder-expanded");
 }
 
 function enableWiSelective(num) {
@@ -1922,6 +1947,10 @@ $(document).ready(function(){
 			expandWiLine(msg.data);
 		} else if(msg.cmd == "wiexpandfolder") {
 			expandWiFolderLine(msg.data);
+		} else if(msg.cmd == "wifoldercollapsecontent") {
+			collapseWiFolderContent(msg.data);
+		} else if(msg.cmd == "wifolderexpandcontent") {
+			expandWiFolderContent(msg.data);
 		} else if(msg.cmd == "wiselon") {
 			enableWiSelective(msg.data);
 		} else if(msg.cmd == "wiseloff") {
@@ -2062,6 +2091,7 @@ $(document).ready(function(){
 
 	// Make the userscripts menu sortable
 	var us_sortable_settings = {
+		placeholder: "ussortable-placeholder",
 		delay: 2,
 		cursor: "move",
 		tolerance: "pointer",
