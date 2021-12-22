@@ -249,7 +249,7 @@ return function(_python, _bridged)
         return file
     end
 
-    ---@param file file*
+    ---@param file? file*
     local function new_close_pre(file)
         if file == nil then
             file = io.output()
@@ -263,7 +263,7 @@ return function(_python, _bridged)
 
     ---@param f fun(file?: file*)
     local function _new_close(f)
-        ---@param file file*?
+        ---@param file? file*
         return function(file)
             new_close_pre(file)
             return f(file)
@@ -1350,15 +1350,14 @@ return function(_python, _bridged)
     koboldbridge.outmod = nil  ---@type function?
 
     ---@class KoboldUserScript
-    ---@field inmod function?
-    ---@field genmod function?
-    ---@field outmod function?
-    ---@field config file*
+    ---@field inmod? function
+    ---@field genmod? function
+    ---@field outmod? function
 
     ---@class KoboldCoreScript
-    ---@field inmod function?
-    ---@field genmod function?
-    ---@field outmod function?
+    ---@field inmod? function
+    ---@field genmod? function
+    ---@field outmod? function
 
 
     ----------------------------------------------------------------------------
@@ -1368,9 +1367,9 @@ return function(_python, _bridged)
     ---@field modulename string
     ---@field description string
     ---@field is_config_file_open boolean
-    ---@field inmod function?
-    ---@field genmod function?
-    ---@field outmod function?
+    ---@field inmod? function
+    ---@field genmod? function
+    ---@field outmod? function
     local KoboldUserScriptModule = setmetatable({
         _name = "KoboldUserScriptModule",
     }, metawrapper)
