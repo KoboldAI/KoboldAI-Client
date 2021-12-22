@@ -1461,7 +1461,7 @@ bridged = {
     "corescript_path": os.path.join(os.path.dirname(os.path.realpath(__file__)), "cores"),
     "userscript_path": os.path.join(os.path.dirname(os.path.realpath(__file__)), "userscripts"),
     "config_path": os.path.join(os.path.dirname(os.path.realpath(__file__)), "userscripts"),
-    "lib_path": os.path.join(os.path.dirname(os.path.realpath(__file__)), "extern", "lualibs"),
+    "lib_paths": vars.lua_state.table(os.path.join(os.path.dirname(os.path.realpath(__file__)), "lualibs"), os.path.join(os.path.dirname(os.path.realpath(__file__)), "extern", "lualibs")),
     "load_callback": load_callback,
     "print": lua_print,
     "warn": lua_warn,

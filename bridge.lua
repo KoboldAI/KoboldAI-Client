@@ -40,16 +40,23 @@ return function(_python, _bridged)
         return original
     end
 
-    ---@param path string
+    ---@param paths string|table<integer, string>
     ---@return nil
-    local function set_require_path(path)
+    local function set_require_path(paths)
+        if type(paths) == "string" then
+            paths = {paths}
+        end
         local config = {}
         local i = 1
         for substring in string.gmatch(package.config, "[^\n]+") do
             config[i] = substring
             i = i + 1
         end
-        package.path = path .. config[1] .. config[3] .. ".lua" .. config[2] .. path .. config[1] .. config[3] .. config[1] .. "init.lua"
+        local _paths = {}
+        for i, path in ipairs(paths) do
+            _paths[i] = path .. config[1] .. config[3] .. ".lua" .. config[2] .. path .. config[1] .. config[3] .. config[1] .. "init.lua"
+        end
+        package.path = table.concat(_paths, config[2])
         package.cpath = ""
     end
 
@@ -70,7 +77,7 @@ return function(_python, _bridged)
         local v = _bridged[k]
         bridged[k] = type(v) == "userdata" and _python.as_attrgetter(v) or v
     end
-    set_require_path(bridged.lib_path)
+    set_require_path(bridged.lib_paths)
 
 
     --==========================================================================
@@ -1523,11 +1530,11 @@ return function(_python, _bridged)
     local old_package_searchers = package.searchers
     ---@param modname string
     ---@param env table<string, any>
-    ---@param search_path? string
+    ---@param search_paths? string|table<integer, string>
     ---@return any, string?
-    local function requirex(modname, env, search_path)
-        if search_path == nil then
-            search_path = bridged.lib_path
+    local function requirex(modname, env, search_paths)
+        if search_paths == nil then
+            search_paths = bridged.lib_paths
         end
         if modname == "bridge" then
             return function() return env.kobold, env.koboldcore end
@@ -1545,7 +1552,7 @@ return function(_python, _bridged)
         local loader, path
         local errors = {}
         local n_errors = 0
-        set_require_path(search_path)
+        set_require_path(search_paths)
         for k, v in ipairs(old_package_searchers) do
             loader, path = v(modname)
             if allowsearch and type(loader) == "function" then
@@ -1555,7 +1562,7 @@ return function(_python, _bridged)
                 errors[n_errors] = "\n\t" .. loader
             end
         end
-        set_require_path(bridged.lib_path)
+        set_require_path(bridged.lib_paths)
         if not allowsearch or type(loader) ~= "function" then
             error("module '" .. modname .. "' not found:" .. table.concat(errors))
             return
@@ -1770,7 +1777,6 @@ return function(_python, _bridged)
 
     ---@return nil
     function koboldbridge.load_userscripts(filenames, modulenames, descriptions)
-        set_require_path(bridged.userscript_path)
         config_files = {}
         config_file_filename_map = {}
         koboldbridge.userscripts = {}
