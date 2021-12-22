@@ -7,7 +7,6 @@
 
 # External packages
 import eventlet
-from transformers.generation_logits_process import RepetitionPenaltyLogitsProcessor
 eventlet.monkey_patch()
 import os
 os.environ['EVENTLET_THREADPOOL_SIZE'] = '1'
@@ -617,7 +616,7 @@ if(not vars.model in ["InferKit", "Colab", "OAI", "ReadOnly", "TPUMeshTransforme
 
 
         # Patch transformers to use our custom logit warpers
-        from transformers import LogitsProcessorList, LogitsWarper, LogitsProcessor, TopKLogitsWarper, TopPLogitsWarper, TemperatureLogitsWarper
+        from transformers import LogitsProcessorList, LogitsWarper, LogitsProcessor, TopKLogitsWarper, TopPLogitsWarper, TemperatureLogitsWarper, RepetitionPenaltyLogitsProcessor
 
         def dynamic_processor_wrap(cls, field_name, var_name):
             old_call = cls.__call__
@@ -1461,6 +1460,7 @@ vars.lua_state = lupa.LuaRuntime(unpack_returned_tuples=True)
 bridged = {
     "corescript_path": os.path.join(os.path.dirname(os.path.realpath(__file__)), "cores"),
     "userscript_path": os.path.join(os.path.dirname(os.path.realpath(__file__)), "userscripts"),
+    "config_path": os.path.join(os.path.dirname(os.path.realpath(__file__)), "userscripts"),
     "lib_path": os.path.join(os.path.dirname(os.path.realpath(__file__)), "extern", "lualibs"),
     "load_callback": load_callback,
     "print": lua_print,
