@@ -42,7 +42,7 @@ return function(_python, _bridged)
 
     ---@param path string
     ---@return nil
-    function set_require_path(path)
+    local function set_require_path(path)
         local config = {}
         local i = 1
         for substring in string.gmatch(package.config, "[^\n]+") do
@@ -56,7 +56,7 @@ return function(_python, _bridged)
     ---@param path string
     ---@param filename string
     ---@return string
-    function join_folder_and_filename(path, filename)
+    local function join_folder_and_filename(path, filename)
         return path .. string.match(package.config, "[^\n]+") .. filename
     end
 
@@ -67,7 +67,7 @@ return function(_python, _bridged)
 
     local bridged = {}
     for k in _python.iter(_bridged) do
-        v = _bridged[k]
+        local v = _bridged[k]
         bridged[k] = type(v) == "userdata" and _python.as_attrgetter(v) or v
     end
     set_require_path(bridged.lib_path)
@@ -766,7 +766,7 @@ return function(_python, _bridged)
         local actions = koboldbridge.userstate == "genmod" and bridged.vars._actions or bridged.vars.actions
         local nxt, iterator = _python.iter(actions)
         local run_once = false
-        local f = function()
+        local function f()
             if not bridged.vars.gamestarted then
                 return
             end
@@ -794,7 +794,7 @@ return function(_python, _bridged)
         local actions = koboldbridge.userstate == "genmod" and bridged.vars._actions or bridged.vars.actions
         local nxt, iterator = _python.iter(_python.builtins.reversed(actions))
         local last_run = false
-        local f = function()
+        local function f()
             if not bridged.vars.gamestarted or last_run then
                 return
             end
