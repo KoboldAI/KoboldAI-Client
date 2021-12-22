@@ -2205,6 +2205,7 @@ $(document).ready(function(){
 	});
 	
 	load_accept.on("click", function(ev) {
+		hideMessage();
 		newly_loaded = true;
 		socket.send({'cmd': 'loadrequest', 'data': ''});
 		hideLoadPopup();
@@ -2215,6 +2216,7 @@ $(document).ready(function(){
 	});
 	
 	sp_accept.on("click", function(ev) {
+		hideMessage();
 		socket.send({'cmd': 'sprequest', 'data': ''});
 		hideSPPopup();
 	});
@@ -2225,6 +2227,7 @@ $(document).ready(function(){
 	});
 	
 	us_accept.on("click", function(ev) {
+		hideMessage();
 		socket.send({'cmd': 'usloaded', 'data': usloaded.find(".uslistitem").map(function() { return $(this).attr("name"); }).toArray()});
 		socket.send({'cmd': 'usload', 'data': ''});
 		hideUSPopup();
@@ -2235,6 +2238,7 @@ $(document).ready(function(){
 	});
 	
 	ns_accept.on("click", function(ev) {
+		hideMessage();
 		socket.send({'cmd': 'newgame', 'data': ''});
 		hideNewStoryPopup();
 	});
@@ -2267,6 +2271,7 @@ $(document).ready(function(){
 	});
 	
 	rs_accept.on("click", function(ev) {
+		hideMessage();
 		socket.send({'cmd': 'rndgame', 'data': topic.val()});
 		hideRandomStoryPopup();
 	});
