@@ -393,7 +393,7 @@ if(not vars.model in ["InferKit", "Colab", "OAI", "ReadOnly", "TPUMeshTransforme
     # Make model path the same as the model name to make this consistent with the other loading method if it isn't a known model type
     # This code is not just a workaround for below, it is also used to make the behavior consistent with other loading methods - Henk717
     if(not vars.model in ["NeoCustom", "GPT2Custom"]):
-        vars.custmodpth = vars.model.replace('/', '_')
+        vars.custmodpth = vars.model
     # Get the model_type from the config or assume a model type if it isn't present
     from transformers import AutoConfig
     try:
@@ -1948,8 +1948,8 @@ def loadsettings():
 #  Allow the models to override some settings
 #==================================================================#
 def loadmodelsettings():
-    if(path.exists(vars.custmodpth + "/config.json")):
-        model_config = open(vars.custmodpth + "/config.json", "r")
+    if(path.exists(vars.custmodpth.replace('/', '_') + "/config.json")):
+        model_config = open(vars.custmodpth.replace('/', '_') + "/config.json", "r")
         js   = json.load(model_config)
         if("badwordsids" in js):
             vars.badwordsids = js["badwordsids"]
