@@ -116,6 +116,7 @@ class vars:
     lua_running = False  # Whether or not Lua is running (i.e. wasn't stopped due to an error)
     lua_edited  = set()  # Set of chunk numbers that were edited from a Lua generation modifier
     lua_deleted = set()  # Set of chunk numbers that were deleted from a Lua generation modifier
+    spfilename  = ""     # Filename of soft prompt to load, or an empty string if not using a soft prompt
     userscripts = []     # List of userscripts to load
     last_userscripts = []  # List of previous userscript filenames from the previous time userscripts were send via usstatitems
     corescript  = "default.lua"  # Filename of corescript to load
@@ -1539,7 +1540,7 @@ def do_connect():
         emit('from_server', {'cmd': 'allowsp', 'data': vars.allowsp})
 
     sendUSStatItems()
-    emit('from_server', {'cmd': 'spstatitems', 'data': {vars.spselect: vars.spmeta} if len(vars.spselect) else {}}, broadcast=True)
+    emit('from_server', {'cmd': 'spstatitems', 'data': {vars.spfilename: vars.spmeta} if vars.allowsp and len(vars.spfilename) else {}}, broadcast=True)
 
     if(not vars.gamestarted):
         setStartState()
@@ -1799,7 +1800,7 @@ def get_message(msg):
         loadRequest(fileops.storypath(vars.loadselect))
     elif(msg['cmd'] == 'sprequest'):
         spRequest(vars.spselect)
-        emit('from_server', {'cmd': 'spstatitems', 'data': {vars.spselect: vars.spmeta} if len(vars.spselect) else {}}, broadcast=True)
+        emit('from_server', {'cmd': 'spstatitems', 'data': {vars.spfilename: vars.spmeta} if vars.allowsp and len(vars.spfilename) else {}}, broadcast=True)
     elif(msg['cmd'] == 'deletestory'):
         deletesave(msg['data'])
     elif(msg['cmd'] == 'renamestory'):
@@ -1905,6 +1906,7 @@ def savesettings():
 
     js["userscripts"] = vars.userscripts
     js["corescript"]  = vars.corescript
+    js["softprompt"]  = vars.spfilename
 
     # Write it
     if not os.path.exists('settings'):
@@ -1974,6 +1976,11 @@ def loadsettings():
         else:
             vars.corescript = "default.lua"
         
+        if(vars.allowsp and "softprompt" in js and type(js["softprompt"]) is str and all(q not in js["softprompt"] for q in ("..", ":")) and all(js["softprompt"][0] not in q for q in ("/", "\\"))):
+            spRequest(vars.spfilename)
+        else:
+            vars.spfilename = ""
+
         file.close()
 
 #==================================================================#
@@ -3726,6 +3733,9 @@ def loadRequest(loadpath, filename=None):
 #  Load a soft prompt from a file
 #==================================================================#
 def spRequest(filename):
+    vars.spfilename = ""
+    savesettings()
+
     if(len(filename) == 0):
         vars.sp = None
         vars.sp_length = 0
@@ -3768,6 +3778,9 @@ def spRequest(filename):
         vars.sp = np.float32(tensor)
     else:
         vars.sp = torch.from_numpy(tensor)
+
+    vars.spfilename = filename
+    savesettings()
 
 #==================================================================#
 # Import an AIDungon game exported with Mimi's tool
