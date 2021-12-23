@@ -12,8 +12,7 @@ echo.
 SET /P B=Type the number of the desired option and then press ENTER: 
 
 Reg add "HKLM\SYSTEM\CurrentControlSet\Control\FileSystem" /v "LongPathsEnabled" /t REG_DWORD /d "1" /f 2>nul
-%~d0
-cd %~dp0
+cd /D %~dp0
 
 if exist miniconda3\ (
   echo Delete existing installation?
@@ -43,21 +42,27 @@ echo 1 > loader.settings
 subst K: /D >nul
 mkdir miniconda3 
 subst K: miniconda3
+SET TEMP=K:\
+SET TMP=K:\
 copy umamba.exe K:\umamba.exe
 K:
 umamba.exe create -r K:\python\ -n base
-IF %B%==1 umamba.exe install --no-shortcuts -r K:\python\ -n base -f "%~dp0\environments\huggingface.yml" -y
-IF %B%==2 umamba.exe install --no-shortcuts -r K:\python\ -n base -f "%~dp0\environments\finetuneanon.yml" -y
+IF %B%==1 umamba.exe install --no-shortcuts -r K:\python\ -n base -f "%~dp0\environments\huggingface.yml" -y --always-copy
+IF %B%==2 umamba.exe install --no-shortcuts -r K:\python\ -n base -f "%~dp0\environments\finetuneanon.yml" -y --always-copy
 umamba.exe -r K:\ clean -a -y
+rd K:\Python\pkgs /S /Q
 subst K: /d
 pause
 exit
 
 :subfolder
 echo 2 > loader.settings
+SET TEMP=%~DP0MINICONDA3
+SET TMP=%~DP0MINICONDA3
 umamba.exe create -r miniconda3\ -n base
-IF %B%==1 umamba.exe install --no-shortcuts -r miniconda3 -n base -f environments\huggingface.yml -y
-IF %B%==2 umamba.exe install --no-shortcuts -r miniconda3 -n base -f environments\finetuneanon.yml -y
+IF %B%==1 umamba.exe install --no-shortcuts -r miniconda3 -n base -f environments\huggingface.yml -y --always-copy
+IF %B%==2 umamba.exe install --no-shortcuts -r miniconda3 -n base -f environments\finetuneanon.yml -y --always-copy
 umamba.exe clean -a -y
+rd miniconda3\Python\pkgs /S /Q
 pause
 exit
