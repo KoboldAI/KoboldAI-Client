@@ -1476,14 +1476,59 @@ function syncAllModifiedChunks(including_selected_chunks=false) {
 }
 
 function restorePrompt() {
-	if(game_text[0].firstChild && game_text[0].firstChild.nodeType === 3) {
-		saved_prompt = formatChunkInnerText(game_text[0].firstChild);
+	if($("#n0").length && formatChunkInnerText($("#n0")[0]).length === 0) {
+		$("#n0").remove();
+	}
+	var shadow_text = $("<b>" + game_text.html() + "</b>");
+	var detected = false;
+	var ref = null;
+	try {
+		if(shadow_text.length && shadow_text[0].firstChild && (shadow_text[0].firstChild.nodeType === 3 || shadow_text[0].firstChild.tagName === "BR")) {
+			detected = true;
+			ref = shadow_text;
+		} else if(game_text.length && game_text[0].firstChild && game_text[0].firstChild.nodeType === 3 || game_text[0].firstChild.tagName === "BR") {
+			detected = true;
+			ref = game_text;
+		}
+	} catch (e) {
+		detected = false;
+	}
+	if(detected) {
 		unbindGametext();
-		game_text[0].innerText = "";
+		var text = [];
+		while(true) {
+			if(ref.length && ref[0].firstChild && ref[0].firstChild.nodeType === 3) {
+				text.push(ref[0].firstChild.textContent.replace(/\u00a0/g, " "));
+			} else if(ref.length && ref[0].firstChild && ref[0].firstChild.tagName === "BR") {
+				text.push("\n");
+			} else {
+				break;
+			}
+			ref[0].removeChild(ref[0].firstChild);
+		}
+		text = text.join("").trim();
+		if(text.length) {
+			saved_prompt = text;
+		}
+		game_text[0].innerHTML = "";
 		bindGametext();
 	}
-	if($("#n0").length) {
-		$("#n0").remove();
+	game_text.children().each(function() {
+		if(this.tagName !== "CHUNK") {
+			this.parentNode.removeChild(this);
+		}
+	});
+	if(!detected) {
+		game_text.children().each(function() {
+			if(this.innerText.trim().length) {
+				saved_prompt = this.innerText.trim();
+				socket.send({'cmd': 'inlinedelete', 'data': this.getAttribute("n")});
+				this.parentNode.removeChild(this);
+				return false;
+			}
+			socket.send({'cmd': 'inlinedelete', 'data': this.getAttribute("n")});
+			this.parentNode.removeChild(this);
+		});
 	}
 	var prompt_chunk = document.createElement("chunk");
 	prompt_chunk.setAttribute("n", "0");
