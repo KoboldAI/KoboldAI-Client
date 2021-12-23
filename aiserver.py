@@ -394,6 +394,9 @@ if(not vars.model in ["InferKit", "Colab", "OAI", "ReadOnly", "TPUMeshTransforme
     # This code is not just a workaround for below, it is also used to make the behavior consistent with other loading methods - Henk717
     if(not vars.model in ["NeoCustom", "GPT2Custom"]):
         vars.custmodpth = vars.model
+    elif(vars.model == "NeoCustom"):
+        vars.model = os.path.basename(os.path.normpath(vars.custmodpth))
+
     # Get the model_type from the config or assume a model type if it isn't present
     from transformers import AutoConfig
     if(os.path.isdir(vars.custmodpth.replace('/', '_'))):
@@ -844,32 +847,8 @@ if(not vars.model in ["InferKit", "Colab", "OAI", "ReadOnly", "TPUMeshTransforme
             else:
                 yield False
 
-        # If custom GPT Neo model was chosen
-        if(vars.model == "NeoCustom"):
-            model_config = open(vars.custmodpth + "/config.json", "r")
-            js   = json.load(model_config)
-            with(maybe_use_float16()):
-                if("model_type" in js):
-                    model     = AutoModelForCausalLM.from_pretrained(vars.custmodpth, cache_dir="cache/", **maybe_low_cpu_mem_usage())
-                else:
-                    model     = GPTNeoForCausalLM.from_pretrained(vars.custmodpth, cache_dir="cache/", **maybe_low_cpu_mem_usage())
-            vars.modeldim = get_hidden_size_from_model(model)
-            tokenizer = GPT2TokenizerFast.from_pretrained(vars.custmodpth, cache_dir="cache/")
-            # Is CUDA available? If so, use GPU, otherwise fall back to CPU
-            if(vars.hascuda):
-                if(vars.usegpu):
-                    model = model.half().to(vars.gpu_device)
-                    generator = model.generate
-                elif(vars.breakmodel):  # Use both RAM and VRAM (breakmodel)
-                    device_config(model)
-                else:
-                    model = model.to('cpu').float()
-                    generator = model.generate
-            else:
-                model = model.to('cpu').float()
-                generator = model.generate
         # If custom GPT2 model was chosen
-        elif(vars.model == "GPT2Custom"):
+        if(vars.model == "GPT2Custom"):
             model_config = open(vars.custmodpth + "/config.json", "r")
             js   = json.load(model_config)
             with(maybe_use_float16()):
@@ -883,7 +862,7 @@ if(not vars.model in ["InferKit", "Colab", "OAI", "ReadOnly", "TPUMeshTransforme
             else:
                 model = model.to('cpu').float()
                 generator = model.generate
-        # If base HuggingFace model was chosen
+        # Use the Generic implementation
         else:
             lowmem = maybe_low_cpu_mem_usage()
             # We must disable low_cpu_mem_usage (by setting lowmem to {}) if
@@ -893,19 +872,29 @@ if(not vars.model in ["InferKit", "Colab", "OAI", "ReadOnly", "TPUMeshTransforme
                 lowmem = {}
             
             # Download model from Huggingface if it does not exist, otherwise load locally
-            
-            if(os.path.isdir(vars.model.replace('/', '_'))):
+            if(os.path.isdir(vars.custmodpth)):
+               with(maybe_use_float16()):
+                   tokenizer = GPT2TokenizerFast.from_pretrained(vars.custmodpth, cache_dir="cache/")
+                   try:
+                       model     = AutoModelForCausalLM.from_pretrained(vars.custmodpth, cache_dir="cache/", **maybe_low_cpu_mem_usage())
+                   except ValueError as e:
+                       model     = GPTNeoForCausalLM.from_pretrained(vars.custmodpth, cache_dir="cache/", **maybe_low_cpu_mem_usage())
+            elif(os.path.isdir(vars.model.replace('/', '_'))):
                with(maybe_use_float16()):
                    tokenizer = GPT2TokenizerFast.from_pretrained(vars.model.replace('/', '_'), cache_dir="cache/")
                    try:
-                       model     = AutoModelForCausalLM.from_pretrained(vars.custmodpth.replace('/', '_'), cache_dir="cache/", **maybe_low_cpu_mem_usage())
+                       model     = AutoModelForCausalLM.from_pretrained(vars.model.replace('/', '_'), cache_dir="cache/", **maybe_low_cpu_mem_usage())
                    except ValueError as e:
-                       model     = GPTNeoForCausalLM.from_pretrained(vars.custmodpth.replace('/', '_'), cache_dir="cache/", **maybe_low_cpu_mem_usage())
+                       model     = GPTNeoForCausalLM.from_pretrained(vars.model.replace('/', '_'), cache_dir="cache/", **maybe_low_cpu_mem_usage())
             else:
                 print("Model does not exist locally, attempting to download from Huggingface...")
-                tokenizer = GPT2TokenizerFast.from_pretrained(vars.model, cache_dir="cache/")
+                tokenizer = GPT2TokenizerFast.from_pretrained(vars.custmodpth, cache_dir="cache/")
                 with(maybe_use_float16()):
-                    model = AutoModelForCausalLM.from_pretrained(vars.model, cache_dir="cache/", **lowmem)
+                    tokenizer = GPT2TokenizerFast.from_pretrained(vars.model.replace('/', '_'), cache_dir="cache/")
+                    try:
+                        model     = AutoModelForCausalLM.from_pretrained(vars.model.replace('/', '_'), cache_dir="cache/", **maybe_low_cpu_mem_usage())
+                    except ValueError as e:
+                        model     = GPTNeoForCausalLM.from_pretrained(vars.model.replace('/', '_'), cache_dir="cache/", **maybe_low_cpu_mem_usage())
                 model = model.half()
                 import shutil
                 shutil.rmtree("cache/")
