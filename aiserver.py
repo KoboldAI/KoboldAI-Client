@@ -876,25 +876,25 @@ if(not vars.model in ["InferKit", "Colab", "OAI", "ReadOnly", "TPUMeshTransforme
                with(maybe_use_float16()):
                    tokenizer = GPT2TokenizerFast.from_pretrained(vars.custmodpth, cache_dir="cache/")
                    try:
-                       model     = AutoModelForCausalLM.from_pretrained(vars.custmodpth, cache_dir="cache/", **maybe_low_cpu_mem_usage())
+                       model     = AutoModelForCausalLM.from_pretrained(vars.custmodpth, cache_dir="cache/", **lowmem)
                    except ValueError as e:
-                       model     = GPTNeoForCausalLM.from_pretrained(vars.custmodpth, cache_dir="cache/", **maybe_low_cpu_mem_usage())
+                       model     = GPTNeoForCausalLM.from_pretrained(vars.custmodpth, cache_dir="cache/", **lowmem)
             elif(os.path.isdir(vars.model.replace('/', '_'))):
                with(maybe_use_float16()):
                    tokenizer = GPT2TokenizerFast.from_pretrained(vars.model.replace('/', '_'), cache_dir="cache/")
                    try:
-                       model     = AutoModelForCausalLM.from_pretrained(vars.model.replace('/', '_'), cache_dir="cache/", **maybe_low_cpu_mem_usage())
+                       model     = AutoModelForCausalLM.from_pretrained(vars.model.replace('/', '_'), cache_dir="cache/", **lowmem)
                    except ValueError as e:
-                       model     = GPTNeoForCausalLM.from_pretrained(vars.model.replace('/', '_'), cache_dir="cache/", **maybe_low_cpu_mem_usage())
+                       model     = GPTNeoForCausalLM.from_pretrained(vars.model.replace('/', '_'), cache_dir="cache/", **lowmem)
             else:
                 print("Model does not exist locally, attempting to download from Huggingface...")
                 tokenizer = GPT2TokenizerFast.from_pretrained(vars.model, cache_dir="cache/")
                 with(maybe_use_float16()):
                     tokenizer = GPT2TokenizerFast.from_pretrained(vars.model, cache_dir="cache/")
                     try:
-                        model     = AutoModelForCausalLM.from_pretrained(vars.model, cache_dir="cache/", **maybe_low_cpu_mem_usage())
+                        model     = AutoModelForCausalLM.from_pretrained(vars.model, cache_dir="cache/", **lowmem)
                     except ValueError as e:
-                        model     = GPTNeoForCausalLM.from_pretrained(vars.model, cache_dir="cache/", **maybe_low_cpu_mem_usage())
+                        model     = GPTNeoForCausalLM.from_pretrained(vars.model, cache_dir="cache/", **lowmem)
                 model = model.half()
                 import shutil
                 shutil.rmtree("cache/")
