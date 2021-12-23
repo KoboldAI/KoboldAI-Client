@@ -866,7 +866,7 @@ if(not vars.model in ["InferKit", "Colab", "OAI", "ReadOnly", "TPUMeshTransforme
                 lowmem = {}
 
             # Make model path the same as the model name to make this consistent with the other loading method
-            vars.custmodpth = vars.model
+            vars.custmodpth = vars.model.replace('/', '_')
             
             # Download model from Huggingface if it does not exist, otherwise load locally
             
