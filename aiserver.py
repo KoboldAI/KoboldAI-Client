@@ -1977,7 +1977,7 @@ def loadsettings():
             vars.corescript = "default.lua"
         
         if(vars.allowsp and "softprompt" in js and type(js["softprompt"]) is str and all(q not in js["softprompt"] for q in ("..", ":")) and all(js["softprompt"][0] not in q for q in ("/", "\\"))):
-            spRequest(vars.spfilename)
+            spRequest(js["softprompt"])
         else:
             vars.spfilename = ""
 
@@ -3734,7 +3734,7 @@ def loadRequest(loadpath, filename=None):
 #==================================================================#
 def spRequest(filename):
     vars.spfilename = ""
-    savesettings()
+    settingschanged()
 
     if(len(filename) == 0):
         vars.sp = None
@@ -3780,7 +3780,7 @@ def spRequest(filename):
         vars.sp = torch.from_numpy(tensor)
 
     vars.spfilename = filename
-    savesettings()
+    settingschanged()
 
 #==================================================================#
 # Import an AIDungon game exported with Mimi's tool
