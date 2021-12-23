@@ -29,11 +29,12 @@ chunk.editing, chunk.editing * {
 #topmenu {
 	background-color: #337ab7;
 	padding: 10px;
+	display: flex;
 }
 
 #menuitems {
-	display: grid;
-	grid-template-columns: 80% 20%;
+	display: flex;
+	width: 100%;
 }
 
 #navbar {
@@ -66,10 +67,7 @@ chunk.editing, chunk.editing * {
 
 #connectstatusdiv {
 	display: flex;
-}
-
-#connectstatusdiv span {
-	align-self: center;
+	text-align: right;
 }
 
 #gamescreen {
@@ -437,10 +435,10 @@ chunk.editing, chunk.editing * {
 }
 
 .colorfade, .colorfade * {
-	-moz-transition:color 1s ease-in;
-	-o-transition:color 1s ease-in;
-	-webkit-transition:color 1s ease-in;
-	transition:color 1s ease-in;
+	-moz-transition: color 1s ease-in, text-shadow 1s ease-in;
+	-o-transition: color 1s ease-in, text-shadow 1s ease-in;
+	-webkit-transition: color 1s ease-in, text-shadow 1s ease-in;
+	transition: color 1s ease-in, text-shadow 1s ease-in;
 }
 	
 .color_orange {
@@ -482,6 +480,11 @@ chunk.editing, chunk.editing * {
 
 .edit-flash, .edit-flash * {
 	color: #3bf723 !important;
+}
+
+.status-flash, .status-flash {
+	color: #fce94f !important;
+	text-shadow: 0 0 50px #fce94f, 0 0 50px #fce94f, 0 0 10px #fce94f, 0 0 10px #fce94f, 0 0 10px #fce94f, 0 0 10px #fce94f, 0 0 10px #fce94f;
 }
 
 .flex {
@@ -656,11 +659,30 @@ chunk.editing, chunk.editing * {
 	text-decoration: none;
 }
 
-.helpicon:hover {
-  cursor: pointer;
+.statusicon {
+	display: inline-block;
+	font-weight: bold;
+	text-align: center;
+	padding-left: 8px;
+	padding-right: 8px;
+	font-size: 30px !important;
+	font-weight: bold;
+	text-align: center;
+	font-size: 1.4ex;
+	line-height: 1.8ex;
+	text-decoration: none;
+	color: #68a2d4;
 }
 
-.helpicon:hover .helptext {
+.statusicon.active {
+	color: #3bf723;
+}
+
+.helpicon:hover, .statusicon:hover {
+	cursor: pointer;
+}
+
+.helpicon:hover .helptext, .statusicon:hover .statustext, .statusicon.statustoggled .statustext {
 	display: inline-block;
 	width: 250px;
 	background-color: #1f2931;
@@ -672,13 +694,59 @@ chunk.editing, chunk.editing * {
 	padding: 15px;
 	margin-left:10px;
 	border: 1px solid #337ab7;
-
-	position: absolute;
-	z-index: 1;
 }
 
-.helptext {
+.statusicon:hover .statustext.statustext-wide, .statusicon.statustoggled .statustext.statustext-wide {
+	width: 350px;
+}
+
+.statusiconlabel {
+	pointer-events: none;
+	color: #337ab7;
+	text-align: center;
+	font-weight: bold;
+	font-size: 13px;
+}
+
+#usiconlabel {
+	transform: translate(-3px, 10px);
+	-moz-transform: translate(-3px, 10px);
+	-webkit-transform: translate(-3px, 10px);
+	-ms-transform: translate(-3px, 10px);
+	-o-transform: translate(-3px, 10px);
+}
+
+.status-container {
+	z-index: 1;
+	text-shadow: none !important;
+}
+
+.helptext, .statustext {
 	display: none;
+	font-family: sans-serif;
+	position: absolute;
+	z-index: 1;
+	text-shadow: none !important;
+}
+
+.statustext {
+	transform: translate(-105%, 30px);
+	-moz-transform: translate(-105%, 30px);
+	-webkit-transform: translate(-105%, 30px);
+	-ms-transform: translate(-105%, 30px);
+	-o-transform: translate(-105%, 30px);
+}
+
+.statusheader {
+	padding-bottom: 10px;
+}
+
+#stat-usactive {
+	text-align: left;
+	height: 270px;
+	overflow-y: scroll;
+	position: relative;
+	padding-left: 20px;
 }
 
 .justifyleft {
@@ -915,7 +983,7 @@ chunk.editing, chunk.editing * {
 }
 
 .navcontainer {
-	
+	width: 100%;
 }
 
 .nowrap {

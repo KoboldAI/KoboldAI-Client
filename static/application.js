@@ -1053,6 +1053,59 @@ function hideRandomStoryPopup() {
 	rspopup.addClass("hidden");
 }
 
+function statFlash(ref) {
+	ref.addClass("status-flash");
+	setTimeout(function () {
+		ref.addClass("colorfade");
+		ref.removeClass("status-flash");
+		setTimeout(function () {
+			ref.removeClass("colorfade");
+		}, 1000);
+	}, 50);
+}
+
+function updateUSStatItems(items, flash) {
+	var stat_us = $("#stat-us");
+	var stat_usactive = $("#stat-usactive");
+	if(flash || stat_usactive.find("li").length != items.length) {
+		statFlash(stat_us.closest(".statusicon").add("#usiconlabel"));
+	}
+	stat_usactive.html("");
+	if(items.length == 0) {
+		stat_us.html("No userscripts active");
+		$("#usiconlabel").html("");
+		stat_us.closest(".statusicon").removeClass("active");
+		return;
+	}
+	stat_us.html("Active userscripts:");
+	stat_us.closest(".statusicon").addClass("active");
+	var i;
+	for(i = 0; i < items.length; i++) {
+		stat_usactive.append($("<li filename=\""+items[i].filename+"\">"+items[i].modulename+" &lt;"+items[i].filename+"&gt;</li>"));
+	}
+	$("#usiconlabel").html(items.length);
+}
+
+function updateSPStatItems(items) {
+	var stat_sp = $("#stat-sp");
+	var stat_spactive = $("#stat-spactive");
+	var key = null;
+	var old_val = stat_spactive.html();
+	Object.keys(items).forEach(function(k) {key = k;});
+	if(key === null) {
+		stat_sp.html("No soft prompt active");
+		stat_sp.closest(".statusicon").removeClass("active");
+		stat_spactive.html("");
+	} else {
+		stat_sp.html("Active soft prompt:");
+		stat_sp.closest(".statusicon").addClass("active");
+		stat_spactive.html((items[key].name || key)+" &lt;"+key+"&gt;");
+	}
+	if(stat_spactive.html() !== old_val) {
+		statFlash(stat_sp.closest(".statusicon"));
+	}
+}
+
 function setStartState() {
 	enableSendBtn();
 	enableButtons([button_actmem, button_actwi]);
@@ -1905,6 +1958,10 @@ $(document).ready(function(){
 		} else if(msg.cmd == "allowtoggle") {
 			// Allow toggle change states to propagate
 			allowtoggle = msg.data;
+		} else if(msg.cmd == "usstatitems") {
+			updateUSStatItems(msg.data, msg.flash);
+		} else if(msg.cmd == "spstatitems") {
+			updateSPStatItems(msg.data);
 		} else if(msg.cmd == "popupshow") {
 			// Show/Hide Popup
 			popupShow(msg.data);
@@ -2060,6 +2117,8 @@ $(document).ready(function(){
 		connect_status.html("<b>Lost connection...</b>");
 		connect_status.removeClass("color_green");
 		connect_status.addClass("color_orange");
+		updateUSStatItems([], false);
+		updateSPStatItems({});
 	});
 
 	// Register editing events

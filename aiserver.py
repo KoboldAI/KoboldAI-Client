@@ -112,9 +112,11 @@ class vars:
     lua_kobold  = None   # `kobold` from` bridge.lua
     lua_koboldcore = None  # `koboldcore` from bridge.lua
     lua_logname = ...    # Name of previous userscript that logged to terminal
+    lua_running = False  # Whether or not Lua is running (i.e. wasn't stopped due to an error)
     lua_edited  = set()  # Set of chunk numbers that were edited from a Lua generation modifier
     lua_deleted = set()  # Set of chunk numbers that were deleted from a Lua generation modifier
     userscripts = []     # List of userscripts to load
+    last_userscripts = []  # List of previous userscript filenames from the previous time userscripts were send via usstatitems
     corescript  = "default.lua"  # Filename of corescript to load
     # badwords    = []     # Array of str/chr values that should be removed from output
     badwordsids = [[13460], [6880], [50256], [42496], [4613], [17414], [22039], [16410], [27], [29], [38430], [37922], [15913], [24618], [28725], [58], [47175], [36937], [26700], [12878], [16471], [37981], [5218], [29795], [13412], [45160], [3693], [49778], [4211], [20598], [36475], [33409], [44167], [32406], [29847], [29342], [42669], [685], [25787], [7359], [3784], [5320], [33994], [33490], [34516], [43734], [17635], [24293], [9959], [23785], [21737], [28401], [18161], [26358], [32509], [1279], [38155], [18189], [26894], [6927], [14610], [23834], [11037], [14631], [26933], [46904], [22330], [25915], [47934], [38214], [1875], [14692], [41832], [13163], [25970], [29565], [44926], [19841], [37250], [49029], [9609], [44438], [16791], [17816], [30109], [41888], [47527], [42924], [23984], [49074], [33717], [31161], [49082], [30138], [31175], [12240], [14804], [7131], [26076], [33250], [3556], [38381], [36338], [32756], [46581], [17912], [49146]] # Tokenized array of badwords used to prevent AI artifacting
@@ -139,6 +141,7 @@ class vars:
     importjs    = {}     # Temporary storage for import data
     loadselect  = ""     # Temporary storage for story filename to load
     spselect    = ""     # Temporary storage for soft prompt filename to load
+    spmeta      = None   # Metadata of current soft prompt, or None if not using a soft prompt
     sp          = None   # Current soft prompt tensor (as a NumPy array)
     sp_length   = 0      # Length of current soft prompt in tokens, or 0 if not using a soft prompt
     svowname    = ""     # Filename that was flagged for overwrite confirm
@@ -1039,10 +1042,13 @@ def load_lua_scripts():
         vars.lua_koboldbridge.obliterate_multiverse()
         tpool.execute(vars.lua_koboldbridge.load_corescript, vars.corescript)
         tpool.execute(vars.lua_koboldbridge.load_userscripts, filenames, modulenames, descriptions)
+        vars.lua_running = True
     except lupa.LuaError as e:
         vars.lua_koboldbridge.obliterate_multiverse()
+        vars.lua_running = False
         if(vars.serverstarted):
             emit('from_server', {'cmd': 'errmsg', 'data': 'Lua script error, please check console.'}, broadcast=True)
+            sendUSStatItems()
         print("{0}{1}{2}".format(colors.RED, "***LUA ERROR***: ", colors.END), end="", file=sys.stderr)
         print("{0}{1}{2}".format(colors.RED, str(e).replace("\033", ""), colors.END), file=sys.stderr)
         print("{0}{1}{2}".format(colors.YELLOW, "Lua engine stopped; please open 'Userscripts' and press Load to reinitialize scripts.", colors.END), file=sys.stderr)
@@ -1414,7 +1420,9 @@ def execute_inmod():
         tpool.execute(vars.lua_koboldbridge.execute_inmod)
     except lupa.LuaError as e:
         vars.lua_koboldbridge.obliterate_multiverse()
+        vars.lua_running = False
         emit('from_server', {'cmd': 'errmsg', 'data': 'Lua script error, please check console.'}, broadcast=True)
+        sendUSStatItems()
         print("{0}{1}{2}".format(colors.RED, "***LUA ERROR***: ", colors.END), end="", file=sys.stderr)
         print("{0}{1}{2}".format(colors.RED, str(e).replace("\033", ""), colors.END), file=sys.stderr)
         print("{0}{1}{2}".format(colors.YELLOW, "Lua engine stopped; please open 'Userscripts' and press Load to reinitialize scripts.", colors.END), file=sys.stderr)
@@ -1430,7 +1438,9 @@ def execute_outmod():
         tpool.execute(vars.lua_koboldbridge.execute_outmod)
     except lupa.LuaError as e:
         vars.lua_koboldbridge.obliterate_multiverse()
+        vars.lua_running = False
         emit('from_server', {'cmd': 'errmsg', 'data': 'Lua script error, please check console.'}, broadcast=True)
+        sendUSStatItems()
         print("{0}{1}{2}".format(colors.RED, "***LUA ERROR***: ", colors.END), end="", file=sys.stderr)
         print("{0}{1}{2}".format(colors.RED, str(e).replace("\033", ""), colors.END), file=sys.stderr)
         print("{0}{1}{2}".format(colors.YELLOW, "Lua engine stopped; please open 'Userscripts' and press Load to reinitialize scripts.", colors.END), file=sys.stderr)
@@ -1515,7 +1525,10 @@ def do_connect():
         emit('from_server', {'cmd': 'runs_remotely'})
     if(vars.allowsp):
         emit('from_server', {'cmd': 'allowsp', 'data': vars.allowsp})
-    
+
+    sendUSStatItems()
+    emit('from_server', {'cmd': 'spstatitems', 'data': {vars.spselect: vars.spmeta} if len(vars.spselect) else {}}, broadcast=True)
+
     if(not vars.gamestarted):
         setStartState()
         sendsettings()
@@ -1751,7 +1764,8 @@ def get_message(msg):
     elif(msg['cmd'] == 'splistrequest'):
         getsplist()
     elif(msg['cmd'] == 'uslistrequest'):
-        getuslist()
+        unloaded, loaded = getuslist()
+        emit('from_server', {'cmd': 'buildus', 'data': {"unloaded": unloaded, "loaded": loaded}})
     elif(msg['cmd'] == 'usloaded'):
         vars.userscripts = []
         for userscript in msg['data']:
@@ -1763,8 +1777,8 @@ def get_message(msg):
         settingschanged()
     elif(msg['cmd'] == 'usload'):
         load_lua_scripts()
-    elif(msg['cmd'] == 'usload'):
-        getuslist()
+        unloaded, loaded = getuslist()
+        sendUSStatItems()
     elif(msg['cmd'] == 'loadselect'):
         vars.loadselect = msg["data"]
     elif(msg['cmd'] == 'spselect'):
@@ -1773,6 +1787,7 @@ def get_message(msg):
         loadRequest(fileops.storypath(vars.loadselect))
     elif(msg['cmd'] == 'sprequest'):
         spRequest(vars.spselect)
+        emit('from_server', {'cmd': 'spstatitems', 'data': {vars.spselect: vars.spmeta} if len(vars.spselect) else {}}, broadcast=True)
     elif(msg['cmd'] == 'deletestory'):
         deletesave(msg['data'])
     elif(msg['cmd'] == 'renamestory'):
@@ -1810,7 +1825,17 @@ def get_message(msg):
         refresh_settings()
     elif(not vars.remote and msg['cmd'] == 'importwi'):
         wiimportrequest()
-    
+
+#==================================================================#
+#  Send userscripts list to client
+#==================================================================#
+def sendUSStatItems():
+    _, loaded = getuslist()
+    loaded = loaded if vars.lua_running else []
+    last_userscripts = [e["filename"] for e in loaded]
+    emit('from_server', {'cmd': 'usstatitems', 'data': loaded, 'flash': last_userscripts != vars.last_userscripts}, broadcast=True)
+    vars.last_userscripts = last_userscripts
+
 #==================================================================#
 #  Send start message and tell Javascript to set UI state
 #==================================================================#
@@ -2443,7 +2468,9 @@ def generate(txt, minimum, maximum, found_entries=None):
     except Exception as e:
         if(issubclass(type(e), lupa.LuaError)):
             vars.lua_koboldbridge.obliterate_multiverse()
+            vars.lua_running = False
             emit('from_server', {'cmd': 'errmsg', 'data': 'Lua script error, please check console.'}, broadcast=True)
+            sendUSStatItems()
             print("{0}{1}{2}".format(colors.RED, "***LUA ERROR***: ", colors.END), end="", file=sys.stderr)
             print("{0}{1}{2}".format(colors.RED, str(e).replace("\033", ""), colors.END), file=sys.stderr)
             print("{0}{1}{2}".format(colors.YELLOW, "Lua engine stopped; please open 'Userscripts' and press Load to reinitialize scripts.", colors.END), file=sys.stderr)
@@ -2670,7 +2697,9 @@ def tpumtjgenerate(txt, minimum, maximum, found_entries=None):
     except Exception as e:
         if(issubclass(type(e), lupa.LuaError)):
             vars.lua_koboldbridge.obliterate_multiverse()
+            vars.lua_running = False
             emit('from_server', {'cmd': 'errmsg', 'data': 'Lua script error, please check console.'}, broadcast=True)
+            sendUSStatItems()
             print("{0}{1}{2}".format(colors.RED, "***LUA ERROR***: ", colors.END), end="", file=sys.stderr)
             print("{0}{1}{2}".format(colors.RED, str(e).replace("\033", ""), colors.END), file=sys.stderr)
             print("{0}{1}{2}".format(colors.YELLOW, "Lua engine stopped; please open 'Userscripts' and press Load to reinitialize scripts.", colors.END), file=sys.stderr)
@@ -3548,7 +3577,7 @@ def getsplist():
         emit('from_server', {'cmd': 'buildsp', 'data': fileops.getspfiles(vars.modeldim)})
 
 #==================================================================#
-#  Show list of userscripts
+#  Get list of userscripts
 #==================================================================#
 def getuslist():
     files = {i: v for i, v in enumerate(fileops.getusfiles())}
@@ -3556,11 +3585,14 @@ def getuslist():
     unloaded = []
     userscripts = set(vars.userscripts)
     for i in range(len(files)):
-        if files[i]["filename"] in userscripts:
-            loaded.append(files[i])
-        else:
+        if files[i]["filename"] not in userscripts:
             unloaded.append(files[i])
-    emit('from_server', {'cmd': 'buildus', 'data': {"unloaded": unloaded, "loaded": loaded}})
+    files = {files[k]["filename"]: files[k] for k in files}
+    userscripts = set(files.keys())
+    for filename in vars.userscripts:
+        if filename in userscripts:
+            loaded.append(files[filename])
+    return unloaded, loaded
 
 #==================================================================#
 #  Load a saved story via file browser
@@ -3693,6 +3725,8 @@ def spRequest(filename):
 
     z, version, shape, fortran_order, dtype = fileops.checksp(filename, vars.modeldim)
     assert isinstance(z, zipfile.ZipFile)
+    with z.open('meta.json') as f:
+        vars.spmeta = json.load(f)
     z.close()
 
     with np.load(fileops.sppath(filename), allow_pickle=False) as f:
