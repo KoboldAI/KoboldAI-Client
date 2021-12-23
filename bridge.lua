@@ -1038,7 +1038,7 @@ return function(_python, _bridged)
     ---@param t KoboldLib
     ---@return string
     function KoboldLib_getters.model(t)
-        return bridged.vars.model
+        return bridged.vars.model_orig
     end
 
     ---@param t KoboldLib
