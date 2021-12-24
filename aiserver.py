@@ -1977,7 +1977,7 @@ def loadsettings():
         else:
             vars.corescript = "default.lua"
         
-        if(vars.allowsp and "softprompt" in js and type(js["softprompt"]) is str and all(q not in js["softprompt"] for q in ("..", ":")) and all(js["softprompt"][0] not in q for q in ("/", "\\"))):
+        if(vars.allowsp and "softprompt" in js and type(js["softprompt"]) is str and all(q not in js["softprompt"] for q in ("..", ":")) and (len(js["softprompt"]) == 0 or all(js["softprompt"][0] not in q for q in ("/", "\\")))):
             spRequest(js["softprompt"])
         else:
             vars.spfilename = ""
