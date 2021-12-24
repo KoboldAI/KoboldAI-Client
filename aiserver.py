@@ -65,7 +65,7 @@ modellist = [
     ["Load an old GPT-2 model (eg CloverEdition)", "GPT2Custom", ""],
     ["Skein 6B", "KoboldAI/GPT-J-6B-Skein", "12GB"],
     ["Adventure 6B", "KoboldAI/GPT-J-6B-Adventure", "12GB"],
-    ["Picard 6B", "KoboldAI/GPT-Neo-2.7B-Picard", "12GB"],
+    ["Picard 2.7B", "KoboldAI/GPT-Neo-2.7B-Picard", "6GB"],
     ["GPT-Neo 1.3B", "EleutherAI/gpt-neo-1.3B", "3GB"],
     ["GPT-Neo 2.7B", "EleutherAI/gpt-neo-2.7B", "6GB"],
     ["GPT-J 6B", "EleutherAI/gpt-j-6B", "12GB"],
