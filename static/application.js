@@ -419,7 +419,7 @@ function addWiLine(ob) {
 function addWiFolder(uid, ob) {
 	if(uid !== null) {
 		var uninitialized = $("#wilistfoldercontainer"+null);
-		var html = "<div class=\"wisortable-container\" id=\"wilistfoldercontainer"+uid+"\" folder-uid=\""+uid+"\">\
+		var html = "<div class=\"wisortable-container "+(ob.collapsed ? "" : "folder-expanded")+"\" id=\"wilistfoldercontainer"+uid+"\" folder-uid=\""+uid+"\">\
 			<div class=\"wilistfolder\" id=\"wilistfolder"+uid+"\">\
 				<div class=\"wiremove\">\
 					<button type=\"button\" class=\"btn btn-primary heightfull\" id=\"btn_wifolder"+uid+"\">X</button>\
@@ -428,7 +428,7 @@ function addWiFolder(uid, ob) {
 				</div>\
 				<div class=\"wifoldericon\">\
 					<div class=\"wicentered\">\
-						<span class=\"oi oi-folder\" aria-hidden=\"true\"></span>\
+						<span class=\"oi oi-folder folder-expand "+(ob.collapsed ? "" : "folder-expanded")+"\" id=\"btn_wifolderexpand"+uid+"\" aria-hidden=\"true\"></span>\
 					</div>\
 				</div>\
 				<div class=\"wifoldername\">\
@@ -461,7 +461,7 @@ function addWiFolder(uid, ob) {
 		var onfocusout = function () {
 			socket.send({'cmd': 'wifolderupdate', 'uid': uid, 'data': {
 				name: $("#wifoldername"+uid).val(),
-				collapsed: false,
+				collapsed: !$("#btn_wifolderexpand"+uid).hasClass("folder-expanded"),
 			}});
 		};
 		$("#wifoldergutter"+uid).on("click", function () {
@@ -488,9 +488,22 @@ function addWiFolder(uid, ob) {
 			$(this).parent().parent().find(".wisortable-body").removeClass("hidden");
 			$(this).parent().css("max-height", "").find(".wifoldername").find(".form-control").css("max-height", "");
 		});
+		$("#btn_wifolderexpand"+uid).on("click", function () {
+			if($(this).hasClass("folder-expanded")) {
+				socket.send({'cmd': 'wifoldercollapsecontent', 'data': uid});
+			} else {
+				socket.send({'cmd': 'wifolderexpandcontent', 'data': uid});
+			}
+		})
 		adjustWiFolderNameHeight($("#wifoldername"+uid)[0]);
+		if(ob.collapsed) {
+			setTimeout(function() {
+				var container = $("#wilistfoldercontainer"+uid);
+				hide([container.find(".wifoldergutter-container"), container.find(".wisortable-body")]);
+			}, 2);
+		}
 	} else {
-		wi_menu.append("<div class=\"wisortable-container\" id=\"wilistfoldercontainer"+uid+"\">\
+		wi_menu.append("<div class=\"wisortable-container folder-expanded\" id=\"wilistfoldercontainer"+uid+"\">\
 			<div class=\"wilistfolder\" id=\"wilistfolder"+uid+"\">\
 				<div class=\"wiremove\">\
 					<button type=\"button\" class=\"btn btn-primary heightfull\" id=\"btn_wifolder"+uid+"\">+</button>\
@@ -499,7 +512,7 @@ function addWiFolder(uid, ob) {
 				</div>\
 				<div class=\"wifoldericon\">\
 					<div class=\"wicentered\">\
-						<span class=\"oi oi-folder\" aria-hidden=\"true\"></span>\
+						<span class=\"oi oi-folder folder-expand folder-expanded\" id=\"btn_wifolderexpand"+uid+"\" aria-hidden=\"true\"></span>\
 					</div>\
 				</div>\
 				<div class=\"wifoldername\">\
@@ -562,6 +575,18 @@ function hideWiDeleteConfirm(num) {
 function hideWiFolderDeleteConfirm(num) {
 	show([$("#btn_wifolder"+num)]);
 	hide([$("#btn_wifolderdel"+num), $("#btn_wifoldercan"+num)]);
+}
+
+function collapseWiFolderContent(uid) {
+	hide([$("#wifoldergutter"+uid), $(".wisortable-body[folder-uid="+uid+"]")]);
+	$("#btn_wifolderexpand"+uid).removeClass("folder-expanded");
+	$("#wilistfoldercontainer"+uid).removeClass("folder-expanded");
+}
+
+function expandWiFolderContent(uid) {
+	show([$("#wifoldergutter"+uid), $(".wisortable-body[folder-uid="+uid+"]")]);
+	$("#btn_wifolderexpand"+uid).addClass("folder-expanded");
+	$("#wilistfoldercontainer"+uid).addClass("folder-expanded");
 }
 
 function enableWiSelective(num) {
@@ -1028,6 +1053,59 @@ function hideRandomStoryPopup() {
 	rspopup.addClass("hidden");
 }
 
+function statFlash(ref) {
+	ref.addClass("status-flash");
+	setTimeout(function () {
+		ref.addClass("colorfade");
+		ref.removeClass("status-flash");
+		setTimeout(function () {
+			ref.removeClass("colorfade");
+		}, 1000);
+	}, 50);
+}
+
+function updateUSStatItems(items, flash) {
+	var stat_us = $("#stat-us");
+	var stat_usactive = $("#stat-usactive");
+	if(flash || stat_usactive.find("li").length != items.length) {
+		statFlash(stat_us.closest(".statusicon").add("#usiconlabel"));
+	}
+	stat_usactive.html("");
+	if(items.length == 0) {
+		stat_us.html("No userscripts active");
+		$("#usiconlabel").html("");
+		stat_us.closest(".statusicon").removeClass("active");
+		return;
+	}
+	stat_us.html("Active userscripts:");
+	stat_us.closest(".statusicon").addClass("active");
+	var i;
+	for(i = 0; i < items.length; i++) {
+		stat_usactive.append($("<li filename=\""+items[i].filename+"\">"+items[i].modulename+" &lt;"+items[i].filename+"&gt;</li>"));
+	}
+	$("#usiconlabel").html(items.length);
+}
+
+function updateSPStatItems(items) {
+	var stat_sp = $("#stat-sp");
+	var stat_spactive = $("#stat-spactive");
+	var key = null;
+	var old_val = stat_spactive.html();
+	Object.keys(items).forEach(function(k) {key = k;});
+	if(key === null) {
+		stat_sp.html("No soft prompt active");
+		stat_sp.closest(".statusicon").removeClass("active");
+		stat_spactive.html("");
+	} else {
+		stat_sp.html("Active soft prompt:");
+		stat_sp.closest(".statusicon").addClass("active");
+		stat_spactive.html((items[key].name || key)+" &lt;"+key+"&gt;");
+	}
+	if(stat_spactive.html() !== old_val) {
+		statFlash(stat_sp.closest(".statusicon"));
+	}
+}
+
 function setStartState() {
 	enableSendBtn();
 	enableButtons([button_actmem, button_actwi]);
@@ -1398,14 +1476,59 @@ function syncAllModifiedChunks(including_selected_chunks=false) {
 }
 
 function restorePrompt() {
-	if(game_text[0].firstChild && game_text[0].firstChild.nodeType === 3) {
-		saved_prompt = formatChunkInnerText(game_text[0].firstChild);
+	if($("#n0").length && formatChunkInnerText($("#n0")[0]).length === 0) {
+		$("#n0").remove();
+	}
+	var shadow_text = $("<b>" + game_text.html() + "</b>");
+	var detected = false;
+	var ref = null;
+	try {
+		if(shadow_text.length && shadow_text[0].firstChild && (shadow_text[0].firstChild.nodeType === 3 || shadow_text[0].firstChild.tagName === "BR")) {
+			detected = true;
+			ref = shadow_text;
+		} else if(game_text.length && game_text[0].firstChild && game_text[0].firstChild.nodeType === 3 || game_text[0].firstChild.tagName === "BR") {
+			detected = true;
+			ref = game_text;
+		}
+	} catch (e) {
+		detected = false;
+	}
+	if(detected) {
 		unbindGametext();
-		game_text[0].innerText = "";
+		var text = [];
+		while(true) {
+			if(ref.length && ref[0].firstChild && ref[0].firstChild.nodeType === 3) {
+				text.push(ref[0].firstChild.textContent.replace(/\u00a0/g, " "));
+			} else if(ref.length && ref[0].firstChild && ref[0].firstChild.tagName === "BR") {
+				text.push("\n");
+			} else {
+				break;
+			}
+			ref[0].removeChild(ref[0].firstChild);
+		}
+		text = text.join("").trim();
+		if(text.length) {
+			saved_prompt = text;
+		}
+		game_text[0].innerHTML = "";
 		bindGametext();
 	}
-	if($("#n0").length) {
-		$("#n0").remove();
+	game_text.children().each(function() {
+		if(this.tagName !== "CHUNK") {
+			this.parentNode.removeChild(this);
+		}
+	});
+	if(!detected) {
+		game_text.children().each(function() {
+			if(this.innerText.trim().length) {
+				saved_prompt = this.innerText.trim();
+				socket.send({'cmd': 'inlinedelete', 'data': this.getAttribute("n")});
+				this.parentNode.removeChild(this);
+				return false;
+			}
+			socket.send({'cmd': 'inlinedelete', 'data': this.getAttribute("n")});
+			this.parentNode.removeChild(this);
+		});
 	}
 	var prompt_chunk = document.createElement("chunk");
 	prompt_chunk.setAttribute("n", "0");
@@ -1880,6 +2003,10 @@ $(document).ready(function(){
 		} else if(msg.cmd == "allowtoggle") {
 			// Allow toggle change states to propagate
 			allowtoggle = msg.data;
+		} else if(msg.cmd == "usstatitems") {
+			updateUSStatItems(msg.data, msg.flash);
+		} else if(msg.cmd == "spstatitems") {
+			updateSPStatItems(msg.data);
 		} else if(msg.cmd == "popupshow") {
 			// Show/Hide Popup
 			popupShow(msg.data);
@@ -1922,6 +2049,10 @@ $(document).ready(function(){
 			expandWiLine(msg.data);
 		} else if(msg.cmd == "wiexpandfolder") {
 			expandWiFolderLine(msg.data);
+		} else if(msg.cmd == "wifoldercollapsecontent") {
+			collapseWiFolderContent(msg.data);
+		} else if(msg.cmd == "wifolderexpandcontent") {
+			expandWiFolderContent(msg.data);
 		} else if(msg.cmd == "wiselon") {
 			enableWiSelective(msg.data);
 		} else if(msg.cmd == "wiseloff") {
@@ -2031,6 +2162,8 @@ $(document).ready(function(){
 		connect_status.html("<b>Lost connection...</b>");
 		connect_status.removeClass("color_green");
 		connect_status.addClass("color_orange");
+		updateUSStatItems([], false);
+		updateSPStatItems({});
 	});
 
 	// Register editing events
@@ -2062,6 +2195,7 @@ $(document).ready(function(){
 
 	// Make the userscripts menu sortable
 	var us_sortable_settings = {
+		placeholder: "ussortable-placeholder",
 		delay: 2,
 		cursor: "move",
 		tolerance: "pointer",
@@ -2205,6 +2339,7 @@ $(document).ready(function(){
 	});
 	
 	load_accept.on("click", function(ev) {
+		hideMessage();
 		newly_loaded = true;
 		socket.send({'cmd': 'loadrequest', 'data': ''});
 		hideLoadPopup();
@@ -2215,6 +2350,7 @@ $(document).ready(function(){
 	});
 	
 	sp_accept.on("click", function(ev) {
+		hideMessage();
 		socket.send({'cmd': 'sprequest', 'data': ''});
 		hideSPPopup();
 	});
@@ -2225,6 +2361,7 @@ $(document).ready(function(){
 	});
 	
 	us_accept.on("click", function(ev) {
+		hideMessage();
 		socket.send({'cmd': 'usloaded', 'data': usloaded.find(".uslistitem").map(function() { return $(this).attr("name"); }).toArray()});
 		socket.send({'cmd': 'usload', 'data': ''});
 		hideUSPopup();
@@ -2235,6 +2372,7 @@ $(document).ready(function(){
 	});
 	
 	ns_accept.on("click", function(ev) {
+		hideMessage();
 		socket.send({'cmd': 'newgame', 'data': ''});
 		hideNewStoryPopup();
 	});
@@ -2267,6 +2405,7 @@ $(document).ready(function(){
 	});
 	
 	rs_accept.on("click", function(ev) {
+		hideMessage();
 		socket.send({'cmd': 'rndgame', 'data': topic.val()});
 		hideRandomStoryPopup();
 	});

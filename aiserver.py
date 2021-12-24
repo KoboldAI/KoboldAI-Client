@@ -82,6 +82,7 @@ class vars:
     submission  = ""     # Same as above, but after applying input formatting
     lastctx     = ""     # The last context submitted to the generator
     model       = ""     # Model ID string chosen at startup
+    model_orig  = ""     # Original model string before being changed by auto model type detection
     model_type  = ""     # Model Type (Automatically taken from the model config)
     noai        = False  # Runs the script without starting up the transformers pipeline
     aibusy      = False  # Stops submissions while the AI is working
@@ -113,9 +114,12 @@ class vars:
     lua_kobold  = None   # `kobold` from` bridge.lua
     lua_koboldcore = None  # `koboldcore` from bridge.lua
     lua_logname = ...    # Name of previous userscript that logged to terminal
+    lua_running = False  # Whether or not Lua is running (i.e. wasn't stopped due to an error)
     lua_edited  = set()  # Set of chunk numbers that were edited from a Lua generation modifier
     lua_deleted = set()  # Set of chunk numbers that were deleted from a Lua generation modifier
+    spfilename  = ""     # Filename of soft prompt to load, or an empty string if not using a soft prompt
     userscripts = []     # List of userscripts to load
+    last_userscripts = []  # List of previous userscript filenames from the previous time userscripts were send via usstatitems
     corescript  = "default.lua"  # Filename of corescript to load
     # badwords    = []     # Array of str/chr values that should be removed from output
     badwordsids = [[13460], [6880], [50256], [42496], [4613], [17414], [22039], [16410], [27], [29], [38430], [37922], [15913], [24618], [28725], [58], [47175], [36937], [26700], [12878], [16471], [37981], [5218], [29795], [13412], [45160], [3693], [49778], [4211], [20598], [36475], [33409], [44167], [32406], [29847], [29342], [42669], [685], [25787], [7359], [3784], [5320], [33994], [33490], [34516], [43734], [17635], [24293], [9959], [23785], [21737], [28401], [18161], [26358], [32509], [1279], [38155], [18189], [26894], [6927], [14610], [23834], [11037], [14631], [26933], [46904], [22330], [25915], [47934], [38214], [1875], [14692], [41832], [13163], [25970], [29565], [44926], [19841], [37250], [49029], [9609], [44438], [16791], [17816], [30109], [41888], [47527], [42924], [23984], [49074], [33717], [31161], [49082], [30138], [31175], [12240], [14804], [7131], [26076], [33250], [3556], [38381], [36338], [32756], [46581], [17912], [49146]] # Tokenized array of badwords used to prevent AI artifacting
@@ -140,6 +144,7 @@ class vars:
     importjs    = {}     # Temporary storage for import data
     loadselect  = ""     # Temporary storage for story filename to load
     spselect    = ""     # Temporary storage for soft prompt filename to load
+    spmeta      = None   # Metadata of current soft prompt, or None if not using a soft prompt
     sp          = None   # Current soft prompt tensor (as a NumPy array)
     sp_length   = 0      # Length of current soft prompt in tokens, or 0 if not using a soft prompt
     svowname    = ""     # Filename that was flagged for overwrite confirm
@@ -180,7 +185,7 @@ def getModelSelection():
     while(vars.model == ''):
         modelsel = input("Model #> ")
         if(modelsel.isnumeric() and int(modelsel) > 0 and int(modelsel) <= len(modellist)):
-            vars.model = modellist[int(modelsel)-1][1]
+            vars.model = vars.model_orig = modellist[int(modelsel)-1][1]
         else:
             print("{0}Please enter a valid selection.{1}".format(colors.RED, colors.END))
     
@@ -361,7 +366,7 @@ parser.add_argument("--override_rename", action='store_true', help="Renaming sto
 parser.add_argument("--configname", help="Force a fixed configuration name to aid with config management.")
 
 args = parser.parse_args()
-vars.model = args.model;
+vars.model = vars.model_orig = args.model;
 
 if args.remote:
     vars.remote = True;
@@ -646,7 +651,22 @@ if(not vars.model in ["InferKit", "Colab", "OAI", "ReadOnly", "TPUMeshTransforme
 
 
         # Patch transformers to use our custom logit warpers
-        from transformers import LogitsProcessorList, LogitsWarper, LogitsProcessor, TopKLogitsWarper, TopPLogitsWarper, TemperatureLogitsWarper
+        from transformers import LogitsProcessorList, LogitsWarper, LogitsProcessor, TopKLogitsWarper, TopPLogitsWarper, TemperatureLogitsWarper, RepetitionPenaltyLogitsProcessor
+
+        def dynamic_processor_wrap(cls, field_name, var_name, cond=None):
+            old_call = cls.__call__
+            def new_call(self, *args, **kwargs):
+                setattr(self, field_name, getattr(vars, var_name))
+                assert len(args) == 2
+                if(cond is None or cond(getattr(vars, var_name))):
+                    return old_call(self, *args, **kwargs)
+                return args[1]
+            cls.__call__ = new_call
+        dynamic_processor_wrap(RepetitionPenaltyLogitsProcessor, "penalty", "rep_pen", cond=lambda x: x != 1.0)
+        dynamic_processor_wrap(TopKLogitsWarper, "top_k", "top_k", cond=lambda x: x > 0)
+        dynamic_processor_wrap(TopPLogitsWarper, "top_p", "top_p", cond=lambda x: x < 1.0)
+        dynamic_processor_wrap(TemperatureLogitsWarper, "temperature", "temp", cond=lambda x: x != 1.0)
+
         class TailFreeLogitsWarper(LogitsWarper):
 
             def __init__(self, tfs: float, filter_value: float = -float("Inf"), min_tokens_to_keep: int = 1):
@@ -658,6 +678,8 @@ if(not vars.model in ["InferKit", "Colab", "OAI", "ReadOnly", "TPUMeshTransforme
                 self.min_tokens_to_keep = min_tokens_to_keep
 
             def __call__(self, input_ids: torch.LongTensor, scores: torch.FloatTensor) -> torch.FloatTensor:
+                self.tfs = vars.tfs
+
                 if self.filter_value >= 1.0:
                     return scores
                 sorted_logits, sorted_indices = torch.sort(scores, descending=True)
@@ -725,31 +747,17 @@ if(not vars.model in ["InferKit", "Colab", "OAI", "ReadOnly", "TPUMeshTransforme
         new_get_logits_processor.old_get_logits_processor = transformers.generation_utils.GenerationMixin._get_logits_processor
         transformers.generation_utils.GenerationMixin._get_logits_processor = new_get_logits_processor
 
-        def new_get_logits_warper(
-            top_k: int = None,
-            top_p: float = None,
-            tfs: float = None,
-            temp: float = None,
-            beams: int = 1,
-        ) -> LogitsProcessorList:
+        def new_get_logits_warper(beams: int = 1,) -> LogitsProcessorList:
             warper_list = LogitsProcessorList()
-            if(top_k is not None and top_k > 0):
-                warper_list.append(TopKLogitsWarper(top_k=top_k, min_tokens_to_keep=1 + (beams > 1)))
-            if(top_p is not None and top_p < 1.0):
-                warper_list.append(TopPLogitsWarper(top_p=top_p, min_tokens_to_keep=1 + (beams > 1)))
-            if(tfs is not None and tfs < 1.0):
-                warper_list.append(TailFreeLogitsWarper(tfs=tfs, min_tokens_to_keep=1 + (beams > 1)))
-            if(temp is not None and temp != 1.0):
-                warper_list.append(TemperatureLogitsWarper(temperature=temp))
+            warper_list.append(TopKLogitsWarper(top_k=1, min_tokens_to_keep=1 + (beams > 1)))
+            warper_list.append(TopPLogitsWarper(top_p=0.5, min_tokens_to_keep=1 + (beams > 1)))
+            warper_list.append(TailFreeLogitsWarper(tfs=0.5, min_tokens_to_keep=1 + (beams > 1)))
+            warper_list.append(TemperatureLogitsWarper(temperature=0.5))
             return warper_list
         
         def new_sample(self, *args, **kwargs):
             assert kwargs.pop("logits_warper", None) is not None
             kwargs["logits_warper"] = new_get_logits_warper(
-                top_k=vars.top_k,
-                top_p=vars.top_p,
-                tfs=vars.tfs,
-                temp=vars.temp,
                 beams=1,
             )
             return new_sample.old_sample(self, *args, **kwargs)
@@ -1048,10 +1056,13 @@ def load_lua_scripts():
         vars.lua_koboldbridge.obliterate_multiverse()
         tpool.execute(vars.lua_koboldbridge.load_corescript, vars.corescript)
         tpool.execute(vars.lua_koboldbridge.load_userscripts, filenames, modulenames, descriptions)
+        vars.lua_running = True
     except lupa.LuaError as e:
         vars.lua_koboldbridge.obliterate_multiverse()
+        vars.lua_running = False
         if(vars.serverstarted):
             emit('from_server', {'cmd': 'errmsg', 'data': 'Lua script error, please check console.'}, broadcast=True)
+            sendUSStatItems()
         print("{0}{1}{2}".format(colors.RED, "***LUA ERROR***: ", colors.END), end="", file=sys.stderr)
         print("{0}{1}{2}".format(colors.RED, str(e).replace("\033", ""), colors.END), file=sys.stderr)
         print("{0}{1}{2}".format(colors.YELLOW, "Lua engine stopped; please open 'Userscripts' and press Load to reinitialize scripts.", colors.END), file=sys.stderr)
@@ -1376,23 +1387,23 @@ def lua_get_modeltype():
         return "readonly"
     if(vars.model in ("Colab", "OAI", "InferKit")):
         return "api"
-    if(vars.model in ("GPT2Custom", "NeoCustom")):
+    if(vars.model not in ("TPUMeshTransformerGPTJ",) and (vars.model in ("GPT2Custom", "NeoCustom") or vars.model_type in ("gpt2", "gpt_neo", "gptj"))):
         hidden_size = get_hidden_size_from_model(model)
-    if(vars.model in ("gpt2",) or (vars.model == "GPT2Custom" and hidden_size == 768)):
+    if(vars.model in ("gpt2",) or (vars.model_type == "gpt2" and hidden_size == 768)):
         return "gpt2"
-    if(vars.model in ("gpt2-medium",) or (vars.model == "GPT2Custom" and hidden_size == 1024)):
+    if(vars.model in ("gpt2-medium",) or (vars.model_type == "gpt2" and hidden_size == 1024)):
         return "gpt2-medium"
-    if(vars.model in ("gpt2-large",) or (vars.model == "GPT2Custom" and hidden_size == 1280)):
+    if(vars.model in ("gpt2-large",) or (vars.model_type == "gpt2" and hidden_size == 1280)):
         return "gpt2-large"
-    if(vars.model in ("gpt2-xl",) or (vars.model == "GPT2Custom" and hidden_size == 1600)):
+    if(vars.model in ("gpt2-xl",) or (vars.model_type == "gpt2" and hidden_size == 1600)):
         return "gpt2-xl"
-    if(vars.model == "NeoCustom" and hidden_size == 768):
+    if(vars.model_type == "gpt_neo" and hidden_size == 768):
         return "gpt-neo-125M"
-    if(vars.model in ("EleutherAI/gpt-neo-1.3B",) or (vars.model == "NeoCustom" and hidden_size == 2048)):
+    if(vars.model in ("EleutherAI/gpt-neo-1.3B",) or (vars.model_type == "gpt_neo" and hidden_size == 2048)):
         return "gpt-neo-1.3B"
-    if(vars.model in ("EleutherAI/gpt-neo-2.7B",) or (vars.model == "NeoCustom" and hidden_size == 2560)):
+    if(vars.model in ("EleutherAI/gpt-neo-2.7B",) or (vars.model_type == "gpt_neo" and hidden_size == 2560)):
         return "gpt-neo-2.7B"
-    if(vars.model in ("EleutherAI/gpt-j-6B",) or (vars.model == "NeoCustom" and hidden_size == 4096) or (vars.model == "TPUMeshTransformerGPTJ" and tpu_mtj_backend.params["d_model"] == 4096)):
+    if(vars.model in ("EleutherAI/gpt-j-6B",) or (vars.model == "TPUMeshTransformerGPTJ" and tpu_mtj_backend.params["d_model"] == 4096) or (vars.model_type in ("gpt_neo", "gptj") and hidden_size == 4096)):
         return "gpt-j-6B"
     return "unknown"
 
@@ -1423,7 +1434,9 @@ def execute_inmod():
         tpool.execute(vars.lua_koboldbridge.execute_inmod)
     except lupa.LuaError as e:
         vars.lua_koboldbridge.obliterate_multiverse()
+        vars.lua_running = False
         emit('from_server', {'cmd': 'errmsg', 'data': 'Lua script error, please check console.'}, broadcast=True)
+        sendUSStatItems()
         print("{0}{1}{2}".format(colors.RED, "***LUA ERROR***: ", colors.END), end="", file=sys.stderr)
         print("{0}{1}{2}".format(colors.RED, str(e).replace("\033", ""), colors.END), file=sys.stderr)
         print("{0}{1}{2}".format(colors.YELLOW, "Lua engine stopped; please open 'Userscripts' and press Load to reinitialize scripts.", colors.END), file=sys.stderr)
@@ -1439,7 +1452,9 @@ def execute_outmod():
         tpool.execute(vars.lua_koboldbridge.execute_outmod)
     except lupa.LuaError as e:
         vars.lua_koboldbridge.obliterate_multiverse()
+        vars.lua_running = False
         emit('from_server', {'cmd': 'errmsg', 'data': 'Lua script error, please check console.'}, broadcast=True)
+        sendUSStatItems()
         print("{0}{1}{2}".format(colors.RED, "***LUA ERROR***: ", colors.END), end="", file=sys.stderr)
         print("{0}{1}{2}".format(colors.RED, str(e).replace("\033", ""), colors.END), file=sys.stderr)
         print("{0}{1}{2}".format(colors.YELLOW, "Lua engine stopped; please open 'Userscripts' and press Load to reinitialize scripts.", colors.END), file=sys.stderr)
@@ -1465,7 +1480,8 @@ vars.lua_state = lupa.LuaRuntime(unpack_returned_tuples=True)
 bridged = {
     "corescript_path": os.path.join(os.path.dirname(os.path.realpath(__file__)), "cores"),
     "userscript_path": os.path.join(os.path.dirname(os.path.realpath(__file__)), "userscripts"),
-    "lib_path": os.path.join(os.path.dirname(os.path.realpath(__file__)), "extern", "lualibs"),
+    "config_path": os.path.join(os.path.dirname(os.path.realpath(__file__)), "userscripts"),
+    "lib_paths": vars.lua_state.table(os.path.join(os.path.dirname(os.path.realpath(__file__)), "lualibs"), os.path.join(os.path.dirname(os.path.realpath(__file__)), "extern", "lualibs")),
     "load_callback": load_callback,
     "print": lua_print,
     "warn": lua_warn,
@@ -1523,7 +1539,10 @@ def do_connect():
         emit('from_server', {'cmd': 'runs_remotely'})
     if(vars.allowsp):
         emit('from_server', {'cmd': 'allowsp', 'data': vars.allowsp})
-    
+
+    sendUSStatItems()
+    emit('from_server', {'cmd': 'spstatitems', 'data': {vars.spfilename: vars.spmeta} if vars.allowsp and len(vars.spfilename) else {}}, broadcast=True)
+
     if(not vars.gamestarted):
         setStartState()
         sendsettings()
@@ -1714,6 +1733,12 @@ def get_message(msg):
     elif(msg['cmd'] == 'wiexpandfolder'):
         assert 0 <= int(msg['data']) < len(vars.worldinfo)
         emit('from_server', {'cmd': 'wiexpandfolder', 'data': msg['data']}, broadcast=True)
+    elif(msg['cmd'] == 'wifoldercollapsecontent'):
+        vars.wifolders_d[msg['data']]['collapsed'] = True
+        emit('from_server', {'cmd': 'wifoldercollapsecontent', 'data': msg['data']}, broadcast=True)
+    elif(msg['cmd'] == 'wifolderexpandcontent'):
+        vars.wifolders_d[msg['data']]['collapsed'] = False
+        emit('from_server', {'cmd': 'wifolderexpandcontent', 'data': msg['data']}, broadcast=True)
     elif(msg['cmd'] == 'wiupdate'):
         num = int(msg['num'])
         fields = ("key", "keysecondary", "content", "comment")
@@ -1753,7 +1778,8 @@ def get_message(msg):
     elif(msg['cmd'] == 'splistrequest'):
         getsplist()
     elif(msg['cmd'] == 'uslistrequest'):
-        getuslist()
+        unloaded, loaded = getuslist()
+        emit('from_server', {'cmd': 'buildus', 'data': {"unloaded": unloaded, "loaded": loaded}})
     elif(msg['cmd'] == 'usloaded'):
         vars.userscripts = []
         for userscript in msg['data']:
@@ -1765,8 +1791,8 @@ def get_message(msg):
         settingschanged()
     elif(msg['cmd'] == 'usload'):
         load_lua_scripts()
-    elif(msg['cmd'] == 'usload'):
-        getuslist()
+        unloaded, loaded = getuslist()
+        sendUSStatItems()
     elif(msg['cmd'] == 'loadselect'):
         vars.loadselect = msg["data"]
     elif(msg['cmd'] == 'spselect'):
@@ -1775,6 +1801,7 @@ def get_message(msg):
         loadRequest(fileops.storypath(vars.loadselect))
     elif(msg['cmd'] == 'sprequest'):
         spRequest(vars.spselect)
+        emit('from_server', {'cmd': 'spstatitems', 'data': {vars.spfilename: vars.spmeta} if vars.allowsp and len(vars.spfilename) else {}}, broadcast=True)
     elif(msg['cmd'] == 'deletestory'):
         deletesave(msg['data'])
     elif(msg['cmd'] == 'renamestory'):
@@ -1812,7 +1839,17 @@ def get_message(msg):
         refresh_settings()
     elif(not vars.remote and msg['cmd'] == 'importwi'):
         wiimportrequest()
-    
+
+#==================================================================#
+#  Send userscripts list to client
+#==================================================================#
+def sendUSStatItems():
+    _, loaded = getuslist()
+    loaded = loaded if vars.lua_running else []
+    last_userscripts = [e["filename"] for e in loaded]
+    emit('from_server', {'cmd': 'usstatitems', 'data': loaded, 'flash': last_userscripts != vars.last_userscripts}, broadcast=True)
+    vars.last_userscripts = last_userscripts
+
 #==================================================================#
 #  Send start message and tell Javascript to set UI state
 #==================================================================#
@@ -1870,6 +1907,7 @@ def savesettings():
 
     js["userscripts"] = vars.userscripts
     js["corescript"]  = vars.corescript
+    js["softprompt"]  = vars.spfilename
 
     # Write it
     if not os.path.exists('settings'):
@@ -1939,6 +1977,11 @@ def loadsettings():
         else:
             vars.corescript = "default.lua"
         
+        if(vars.allowsp and "softprompt" in js and type(js["softprompt"]) is str and all(q not in js["softprompt"] for q in ("..", ":")) and all(js["softprompt"][0] not in q for q in ("/", "\\"))):
+            spRequest(js["softprompt"])
+        else:
+            vars.spfilename = ""
+
         file.close()
 
 #==================================================================#
@@ -2445,7 +2488,9 @@ def generate(txt, minimum, maximum, found_entries=None):
     except Exception as e:
         if(issubclass(type(e), lupa.LuaError)):
             vars.lua_koboldbridge.obliterate_multiverse()
+            vars.lua_running = False
             emit('from_server', {'cmd': 'errmsg', 'data': 'Lua script error, please check console.'}, broadcast=True)
+            sendUSStatItems()
             print("{0}{1}{2}".format(colors.RED, "***LUA ERROR***: ", colors.END), end="", file=sys.stderr)
             print("{0}{1}{2}".format(colors.RED, str(e).replace("\033", ""), colors.END), file=sys.stderr)
             print("{0}{1}{2}".format(colors.YELLOW, "Lua engine stopped; please open 'Userscripts' and press Load to reinitialize scripts.", colors.END), file=sys.stderr)
@@ -2672,7 +2717,9 @@ def tpumtjgenerate(txt, minimum, maximum, found_entries=None):
     except Exception as e:
         if(issubclass(type(e), lupa.LuaError)):
             vars.lua_koboldbridge.obliterate_multiverse()
+            vars.lua_running = False
             emit('from_server', {'cmd': 'errmsg', 'data': 'Lua script error, please check console.'}, broadcast=True)
+            sendUSStatItems()
             print("{0}{1}{2}".format(colors.RED, "***LUA ERROR***: ", colors.END), end="", file=sys.stderr)
             print("{0}{1}{2}".format(colors.RED, str(e).replace("\033", ""), colors.END), file=sys.stderr)
             print("{0}{1}{2}".format(colors.YELLOW, "Lua engine stopped; please open 'Userscripts' and press Load to reinitialize scripts.", colors.END), file=sys.stderr)
@@ -3550,7 +3597,7 @@ def getsplist():
         emit('from_server', {'cmd': 'buildsp', 'data': fileops.getspfiles(vars.modeldim)})
 
 #==================================================================#
-#  Show list of userscripts
+#  Get list of userscripts
 #==================================================================#
 def getuslist():
     files = {i: v for i, v in enumerate(fileops.getusfiles())}
@@ -3558,11 +3605,14 @@ def getuslist():
     unloaded = []
     userscripts = set(vars.userscripts)
     for i in range(len(files)):
-        if files[i]["filename"] in userscripts:
-            loaded.append(files[i])
-        else:
+        if files[i]["filename"] not in userscripts:
             unloaded.append(files[i])
-    emit('from_server', {'cmd': 'buildus', 'data': {"unloaded": unloaded, "loaded": loaded}})
+    files = {files[k]["filename"]: files[k] for k in files}
+    userscripts = set(files.keys())
+    for filename in vars.userscripts:
+        if filename in userscripts:
+            loaded.append(files[filename])
+    return unloaded, loaded
 
 #==================================================================#
 #  Load a saved story via file browser
@@ -3684,6 +3734,9 @@ def loadRequest(loadpath, filename=None):
 #  Load a soft prompt from a file
 #==================================================================#
 def spRequest(filename):
+    vars.spfilename = ""
+    settingschanged()
+
     if(len(filename) == 0):
         vars.sp = None
         vars.sp_length = 0
@@ -3695,6 +3748,8 @@ def spRequest(filename):
 
     z, version, shape, fortran_order, dtype = fileops.checksp(filename, vars.modeldim)
     assert isinstance(z, zipfile.ZipFile)
+    with z.open('meta.json') as f:
+        vars.spmeta = json.load(f)
     z.close()
 
     with np.load(fileops.sppath(filename), allow_pickle=False) as f:
@@ -3724,6 +3779,9 @@ def spRequest(filename):
         vars.sp = np.float32(tensor)
     else:
         vars.sp = torch.from_numpy(tensor)
+
+    vars.spfilename = filename
+    settingschanged()
 
 #==================================================================#
 # Import an AIDungon game exported with Mimi's tool

@@ -3,7 +3,7 @@
 
 ---@param _python? table<string, any>
 ---@param _bridged? table<string, any>
----@return KoboldLib, KoboldCoreLib|nil
+---@return KoboldLib, KoboldCoreLib?
 return function(_python, _bridged)
 
     --==========================================================================
@@ -14,7 +14,7 @@ return function(_python, _bridged)
     ---@generic K, V
     ---@param t table<K, V>
     ---@param k? K
-    ---@return K|nil, V|nil
+    ---@return K?, V?
     function next(t, k)
         local meta = getmetatable(t)
         return ((meta ~= nil and type(rawget(t, "_name")) == "string" and string.match(rawget(t, "_name"), "^Kobold") and type(meta._kobold_next) == "function") and meta._kobold_next or old_next)(t, k)
@@ -40,23 +40,30 @@ return function(_python, _bridged)
         return original
     end
 
-    ---@param path string
+    ---@param paths string|table<integer, string>
     ---@return nil
-    function set_require_path(path)
+    local function set_require_path(paths)
+        if type(paths) == "string" then
+            paths = {paths}
+        end
         local config = {}
         local i = 1
         for substring in string.gmatch(package.config, "[^\n]+") do
             config[i] = substring
             i = i + 1
         end
-        package.path = path .. config[1] .. config[3] .. ".lua" .. config[2] .. path .. config[1] .. config[3] .. config[1] .. "init.lua"
+        local _paths = {}
+        for i, path in ipairs(paths) do
+            _paths[i] = path .. config[1] .. config[3] .. ".lua" .. config[2] .. path .. config[1] .. config[3] .. config[1] .. "init.lua"
+        end
+        package.path = table.concat(_paths, config[2])
         package.cpath = ""
     end
 
     ---@param path string
     ---@param filename string
     ---@return string
-    function join_folder_and_filename(path, filename)
+    local function join_folder_and_filename(path, filename)
         return path .. string.match(package.config, "[^\n]+") .. filename
     end
 
@@ -67,10 +74,10 @@ return function(_python, _bridged)
 
     local bridged = {}
     for k in _python.iter(_bridged) do
-        v = _bridged[k]
+        local v = _bridged[k]
         bridged[k] = type(v) == "userdata" and _python.as_attrgetter(v) or v
     end
-    set_require_path(bridged.lib_path)
+    set_require_path(bridged.lib_paths)
 
 
     --==========================================================================
@@ -120,12 +127,12 @@ return function(_python, _bridged)
                     _needs_unwrap = true
                     wrapped = true
                 end
-                local r = {wrapped_func(...)}
+                local r = table.pack(wrapped_func(...))
                 if _needs_unwrap then
                     metatables:restore()
                     wrapped = false
                 end
-                return table.unpack(r)
+                return table.unpack(r, 1, r.n)
             end)
         else
             return rawset(t, k, wrapped_func)
@@ -153,6 +160,8 @@ return function(_python, _bridged)
     ---@field generated_cols integer
     ---@field outputs table<integer, string>
     ---@field num_outputs integer
+    ---@field feedback string
+    ---@field is_config_file_open boolean
     local kobold = setmetatable({}, metawrapper)
     local KoboldLib_mt = setmetatable({}, metawrapper)
     local KoboldLib_getters = setmetatable({}, metawrapper)
@@ -214,13 +223,96 @@ return function(_python, _bridged)
     koboldbridge.generated = {}
     koboldbridge.generated_cols = 0
     koboldbridge.outputs = {}
-    koboldbridge.feedback = nil  ---@type string|nil
+    koboldbridge.feedback = nil  ---@type string?
+
+    function koboldbridge:clear_userscript_metadata()
+        self.logging_name = nil
+        self.filename = nil
+    end
 
     ---@return nil
     local function maybe_require_regeneration()
         if koboldbridge.userstate == "genmod" or koboldbridge.userstate == "outmod" then
             koboldbridge.regeneration_required = true
         end
+    end
+
+
+    --==========================================================================
+    -- Userscript API: Configuration
+    --==========================================================================
+
+    local config_files = {}  ---@type table<string, file*>
+    local config_file_filename_map = {}  ---@type table<file*, string>
+
+    ---@return file*?
+    local function open_and_handle_errors(...)
+        local file, err_msg = io.open(...)
+        if err_msg ~= nil then
+            koboldbridge.obliterate_multiverse()
+            error(err_msg)
+            return
+        end
+        return file
+    end
+
+    ---@param file? file*
+    local function new_close_pre(file)
+        if file == nil then
+            file = io.output()
+        end
+        local filename = config_file_filename_map[file]
+        if filename ~= nil then
+            config_file_filename_map[file] = nil
+            config_files[filename] = nil
+        end
+    end
+
+    ---@param f fun(file?: file*)
+    local function _new_close(f)
+        ---@param file? file*
+        return function(file)
+            new_close_pre(file)
+            return f(file)
+        end
+    end
+    debug.getmetatable(io.stdout).__index.close = _new_close(io.stdout.close)
+
+    ---@param filename string
+    ---@return boolean
+    local function is_config_file_open(filename)
+        return config_files[filename] ~= nil
+    end
+
+    ---@param filename string
+    ---@param clear? boolean
+    ---@return file*
+    local function get_config_file(filename, clear)
+        if not is_config_file_open(filename) then
+            local config_filepath = join_folder_and_filename(bridged.config_path, filename .. ".conf")
+            open_and_handle_errors(config_filepath, "a"):close()
+            config_files[filename] = open_and_handle_errors(config_filepath, clear and "w+b" or "r+b")
+            config_file_filename_map[config_files[filename]] = filename
+        end
+        return config_files[filename]
+    end
+
+    ---@param clear? boolean
+    ---@return file*
+    function kobold.get_config_file(clear)
+        return get_config_file(koboldbridge.filename, clear)
+    end
+
+    ---@param t KoboldLib
+    ---@return boolean
+    function KoboldLib_getters.is_config_file_open(t)
+        return is_config_file_open(koboldbridge.filename)
+    end
+
+    ---@param t KoboldLib
+    ---@param v boolean
+    function KoboldLib_setters.is_config_file_open(t, v)
+        error("`KoboldLib.is_config_file_open` is a read-only attribute")
     end
 
 
@@ -373,7 +465,7 @@ return function(_python, _bridged)
     local KoboldWorldInfoFolder_mt = setmetatable({}, metawrapper)
 
     ---@param u integer
-    ---@return KoboldWorldInfoEntry|nil
+    ---@return KoboldWorldInfoEntry?
     function KoboldWorldInfoFolder:finduid(u)
         if not check_validity(self) or type(u) ~= "number" then
             return
@@ -440,7 +532,7 @@ return function(_python, _bridged)
     KoboldWorldInfoFolder_mt.__pairs = KoboldWorldInfoEntry_mt.__pairs
 
     ---@param t KoboldWorldInfoFolder|KoboldWorldInfo
-    ---@return KoboldWorldInfoEntry|nil
+    ---@return KoboldWorldInfoEntry?
     function KoboldWorldInfoFolder_mt.__index(t, k)
         if not check_validity(t) then
             return
@@ -495,7 +587,7 @@ return function(_python, _bridged)
     local KoboldWorldInfoFolderSelector_mt = setmetatable({}, metawrapper)
 
     ---@param u integer
-    ---@return KoboldWorldInfoFolder|nil
+    ---@return KoboldWorldInfoFolder?
     function KoboldWorldInfoFolderSelector:finduid(u)
         if not check_validity(self) or type(u) ~= "number" then
             return
@@ -528,7 +620,7 @@ return function(_python, _bridged)
     KoboldWorldInfoFolderSelector_mt.__pairs = KoboldWorldInfoEntry_mt.__pairs
 
     ---@param t KoboldWorldInfoFolderSelector
-    ---@return KoboldWorldInfoFolder|nil
+    ---@return KoboldWorldInfoFolder?
     function KoboldWorldInfoFolderSelector_mt.__index(t, k)
         if not check_validity(t) or type(k) ~= "number" or math.tointeger(k) == nil or k < 1 or k > #t then
             return
@@ -681,7 +773,7 @@ return function(_python, _bridged)
         local actions = koboldbridge.userstate == "genmod" and bridged.vars._actions or bridged.vars.actions
         local nxt, iterator = _python.iter(actions)
         local run_once = false
-        local f = function()
+        local function f()
             if not bridged.vars.gamestarted then
                 return
             end
@@ -709,7 +801,7 @@ return function(_python, _bridged)
         local actions = koboldbridge.userstate == "genmod" and bridged.vars._actions or bridged.vars.actions
         local nxt, iterator = _python.iter(_python.builtins.reversed(actions))
         local last_run = false
-        local f = function()
+        local function f()
             if not bridged.vars.gamestarted or last_run then
                 return
             end
@@ -946,7 +1038,7 @@ return function(_python, _bridged)
     ---@param t KoboldLib
     ---@return string
     function KoboldLib_getters.model(t)
-        return bridged.vars.model
+        return bridged.vars.model_orig
     end
 
     ---@param t KoboldLib
@@ -1257,21 +1349,22 @@ return function(_python, _bridged)
     -- Core script API
     --==========================================================================
 
-    koboldbridge.userscripts = {}  ---@type table<integer, string>
+    koboldbridge.userscripts = {}  ---@type table<integer, KoboldUserScriptModule>
+    koboldbridge.userscriptmodule_filename_map = {}  ---@type table<KoboldUserScriptModule, string>
     koboldbridge.num_userscripts = 0
-    koboldbridge.inmod = nil  ---@type function|nil
-    koboldbridge.genmod = nil  ---@type function|nil
-    koboldbridge.outmod = nil  ---@type function|nil
+    koboldbridge.inmod = nil  ---@type function?
+    koboldbridge.genmod = nil  ---@type function?
+    koboldbridge.outmod = nil  ---@type function?
 
     ---@class KoboldUserScript
-    ---@field inmod function|nil
-    ---@field genmod function|nil
-    ---@field outmod function|nil
+    ---@field inmod? function
+    ---@field genmod? function
+    ---@field outmod? function
 
     ---@class KoboldCoreScript
-    ---@field inmod function|nil
-    ---@field genmod function|nil
-    ---@field outmod function|nil
+    ---@field inmod? function
+    ---@field genmod? function
+    ---@field outmod? function
 
 
     ----------------------------------------------------------------------------
@@ -1280,9 +1373,10 @@ return function(_python, _bridged)
     ---@field filename string
     ---@field modulename string
     ---@field description string
-    ---@field inmod function|nil
-    ---@field genmod function|nil
-    ---@field outmod function|nil
+    ---@field is_config_file_open boolean
+    ---@field inmod? function
+    ---@field genmod? function
+    ---@field outmod? function
     local KoboldUserScriptModule = setmetatable({
         _name = "KoboldUserScriptModule",
     }, metawrapper)
@@ -1296,6 +1390,12 @@ return function(_python, _bridged)
         genmod = false,
         outmod = false,
     }
+
+    ---@param clear? boolean
+    ---@return file*
+    function KoboldUserScriptModule:get_config_file(clear)
+        return get_config_file(koboldbridge.userscriptmodule_filename_map[self], clear)
+    end
 
     ---@generic K
     ---@param t KoboldUserScriptModule
@@ -1316,6 +1416,8 @@ return function(_python, _bridged)
     function KoboldUserScriptModule_mt.__index(t, k)
         if type(k) == "string" and KoboldUserScriptModule_fields[k] ~= nil then
             return rawget(t, "_" .. k)
+        elseif k == "is_config_file_open" then
+            return is_config_file_open(koboldbridge.userscriptmodule_filename_map[t])
         end
         return rawget(t, k)
     end
@@ -1346,7 +1448,7 @@ return function(_python, _bridged)
 
     ---@param t KoboldUserScriptList
     ---@param k integer
-    ---@return KoboldUserScriptModule|nil
+    ---@return KoboldUserScriptModule?
     function KoboldUserScriptList_mt.__index(t, k)
         if type(k) == "number" and math.tointeger(k) ~= nil then
             return koboldbridge.userscripts[k]
@@ -1405,6 +1507,7 @@ return function(_python, _bridged)
 
     local envs = {}
     koboldbridge.logging_name = nil
+    koboldbridge.filename = nil
 
     local old_load = load
     local function _safe_load(_g)
@@ -1427,11 +1530,11 @@ return function(_python, _bridged)
     local old_package_searchers = package.searchers
     ---@param modname string
     ---@param env table<string, any>
-    ---@param search_path? string
-    ---@return any, string|nil
-    local function requirex(modname, env, search_path)
-        if search_path == nil then
-            search_path = bridged.lib_path
+    ---@param search_paths? string|table<integer, string>
+    ---@return any, string?
+    local function requirex(modname, env, search_paths)
+        if search_paths == nil then
+            search_paths = bridged.lib_paths
         end
         if modname == "bridge" then
             return function() return env.kobold, env.koboldcore end
@@ -1449,7 +1552,7 @@ return function(_python, _bridged)
         local loader, path
         local errors = {}
         local n_errors = 0
-        set_require_path(search_path)
+        set_require_path(search_paths)
         for k, v in ipairs(old_package_searchers) do
             loader, path = v(modname)
             if allowsearch and type(loader) == "function" then
@@ -1459,7 +1562,7 @@ return function(_python, _bridged)
                 errors[n_errors] = "\n\t" .. loader
             end
         end
-        set_require_path(bridged.lib_path)
+        set_require_path(bridged.lib_paths)
         if not allowsearch or type(loader) ~= "function" then
             error("module '" .. modname .. "' not found:" .. table.concat(errors))
             return
@@ -1470,7 +1573,7 @@ return function(_python, _bridged)
     end
     local function _safe_require(_g)
         ---@param modname string
-        ---@return any, string|nil
+        ---@return any, string?
         return function(modname)
             return requirex(modname, _g)
         end
@@ -1610,6 +1713,8 @@ return function(_python, _bridged)
             output = io.output,
             read = io.read,
             write = io.write,
+            close = _new_close(io.close),
+            lines = io.lines,
             flush = io.flush,
             type = io.type,
         },
@@ -1654,7 +1759,11 @@ return function(_python, _bridged)
     end
 
     function koboldbridge.obliterate_multiverse()
+        for k, v in pairs(config_files) do
+            pcall(v.close, v)
+        end
         envs = {}
+        koboldbridge.userscripts = {}
         koboldbridge.num_userscripts = 0
         koboldbridge.inmod = nil
         koboldbridge.genmod = nil
@@ -1668,23 +1777,49 @@ return function(_python, _bridged)
 
     ---@return nil
     function koboldbridge.load_userscripts(filenames, modulenames, descriptions)
-        set_require_path(bridged.userscript_path)
+        config_files = {}
+        config_file_filename_map = {}
         koboldbridge.userscripts = {}
+        koboldbridge.userscriptmodule_filename_map = {}
         koboldbridge.num_userscripts = 0
         for i, filename in _python.enumerate(filenames) do
             bridged.load_callback(filename, modulenames[i])
             koboldbridge.logging_name = modulenames[i]
+            koboldbridge.filename = filename
             ---@type KoboldUserScript
             local _userscript = old_loadfile(join_folder_and_filename(bridged.userscript_path, filename), "t", koboldbridge.get_universe(filename))()
             koboldbridge.logging_name = nil
+            koboldbridge.filename = nil
             local userscript = deepcopy(KoboldUserScriptModule)
-            rawset(userscript, "_inmod", function() koboldbridge.logging_name = modulenames[i]; if _userscript.inmod ~= nil then _userscript.inmod() end end)
-            rawset(userscript, "_genmod", function() koboldbridge.logging_name = modulenames[i]; if _userscript.genmod ~= nil then _userscript.genmod() end end)
-            rawset(userscript, "_outmod", function() koboldbridge.logging_name = modulenames[i]; if _userscript.outmod ~= nil then _userscript.outmod() end end)
+            rawset(userscript, "_inmod", function()
+                koboldbridge.logging_name = modulenames[i]
+                koboldbridge.filename = filename
+                if _userscript.inmod ~= nil then
+                    _userscript.inmod()
+                end
+                koboldbridge:clear_userscript_metadata()
+            end)
+            rawset(userscript, "_genmod", function()
+                koboldbridge.logging_name = modulenames[i]
+                koboldbridge.filename = filename
+                if _userscript.genmod ~= nil then
+                    _userscript.genmod()
+                end
+                koboldbridge:clear_userscript_metadata()
+            end)
+            rawset(userscript, "_outmod", function()
+                koboldbridge.logging_name = modulenames[i]
+                koboldbridge.filename = filename
+                if _userscript.outmod ~= nil then
+                    _userscript.outmod()
+                end
+                koboldbridge:clear_userscript_metadata()
+            end)
             rawset(userscript, "_filename", filename)
             rawset(userscript, "_modulename", modulenames[i])
             rawset(userscript, "_description", descriptions[i])
             koboldbridge.userscripts[i+1] = userscript
+            koboldbridge.userscriptmodule_filename_map[userscript] = filename
             koboldbridge.num_userscripts = i + 1
         end
     end
@@ -1700,6 +1835,7 @@ return function(_python, _bridged)
 
     function koboldbridge.execute_inmod()
         local r
+        koboldbridge:clear_userscript_metadata()
         koboldbridge.restart_sequence = nil
         koboldbridge.userstate = "inmod"
         koboldbridge.regeneration_required = false
@@ -1722,6 +1858,7 @@ return function(_python, _bridged)
     ---@return any, boolean
     function koboldbridge.execute_genmod()
         local r
+        koboldbridge:clear_userscript_metadata()
         koboldbridge.generating = true
         koboldbridge.userstate = "genmod"
         if koboldbridge.genmod ~= nil then
@@ -1758,6 +1895,7 @@ return function(_python, _bridged)
 
     function koboldbridge.execute_outmod()
         local r
+        koboldbridge:clear_userscript_metadata()
         koboldbridge.generating = false
         koboldbridge.userstate = "outmod"
         koboldbridge.num_outputs = kobold.settings.numseqs
