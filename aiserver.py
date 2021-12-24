@@ -910,7 +910,6 @@ if(not vars.model in ["InferKit", "Colab", "OAI", "ReadOnly", "TPUMeshTransforme
                 except ValueError as e:
                     tokenizer = GPT2TokenizerFast.from_pretrained(vars.custmodpth, cache_dir="cache/")
                 with(maybe_use_float16()):
-                    tokenizer = GPT2TokenizerFast.from_pretrained(vars.model, cache_dir="cache/")
                     try:
                         model     = AutoModelForCausalLM.from_pretrained(vars.model, cache_dir="cache/", **lowmem)
                     except ValueError as e:
