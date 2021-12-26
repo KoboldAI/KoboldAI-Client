@@ -9,6 +9,7 @@
 import eventlet
 eventlet.monkey_patch()
 import os
+os.system('color')
 os.environ['EVENTLET_THREADPOOL_SIZE'] = '1'
 from eventlet import tpool
 
