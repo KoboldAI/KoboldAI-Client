@@ -1264,6 +1264,7 @@ def lua_has_setting(setting):
         "widepth",
         "useprompt",
         "chatmode",
+        "chatname",
         "adventure",
         "dynamicscan",
         "nopromptgen",
@@ -1924,6 +1925,7 @@ def savesettings():
     js["useprompt"]   = vars.useprompt
     js["adventure"]   = vars.adventure
     js["chatmode"]    = vars.chatmode
+    js["chatname"]    = vars.chatname
     js["dynamicscan"] = vars.dynamicscan
     js["nopromptgen"] = vars.nopromptgen
 
@@ -1982,6 +1984,8 @@ def loadsettings():
             vars.adventure = js["adventure"]
         if("chatmode" in js):
             vars.chatmode = js["chatmode"]
+        if("chatname" in js):
+            vars.chatmode = js["chatname"]
         if("dynamicscan" in js):
             vars.dynamicscan = js["dynamicscan"]
         if("nopromptgen" in js):
