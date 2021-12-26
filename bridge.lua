@@ -1038,7 +1038,7 @@ return function(_python, _bridged)
     ---@param t KoboldLib
     ---@return string
     function KoboldLib_getters.model(t)
-        return bridged.vars.model_orig
+        return bridged.vars.model
     end
 
     ---@param t KoboldLib
@@ -1526,7 +1526,7 @@ return function(_python, _bridged)
     end
 
     local old_loadfile = loadfile
-    local old_package_loaded = package.loaded
+    local package_loaded = {}  ---@type table<table, table>
     local old_package_searchers = package.searchers
     ---@param modname string
     ---@param env table<string, any>
@@ -1546,8 +1546,10 @@ return function(_python, _bridged)
             return
         end
         local allowsearch = type(modname) == "string" and string.match(modname, "[^%w._-]") == nil and string.match(modname, "%.%.") == nil
-        if allowsearch and old_package_loaded[modname] then
-            return old_package_loaded[modname]
+        if allowsearch and package_loaded[env] == nil then
+            package_loaded[env] = {}
+        elseif allowsearch and package_loaded[env][modname] then
+            return package_loaded[env][modname]
         end
         local loader, path
         local errors = {}
@@ -1568,8 +1570,8 @@ return function(_python, _bridged)
             return
         end
         local retval = old_loadfile(path, "t", env)()
-        old_package_loaded[modname] = retval == nil or retval
-        return old_package_loaded[modname], path
+        package_loaded[env][modname] = retval == nil or retval
+        return package_loaded[env][modname], path
     end
     local function _safe_require(_g)
         ---@param modname string

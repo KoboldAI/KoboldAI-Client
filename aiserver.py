@@ -85,7 +85,6 @@ class vars:
     submission  = ""     # Same as above, but after applying input formatting
     lastctx     = ""     # The last context submitted to the generator
     model       = ""     # Model ID string chosen at startup
-    model_orig  = ""     # Original model string before being changed by auto model type detection
     model_type  = ""     # Model Type (Automatically taken from the model config)
     noai        = False  # Runs the script without starting up the transformers pipeline
     aibusy      = False  # Stops submissions while the AI is working
@@ -190,7 +189,7 @@ def getModelSelection():
     while(vars.model == ''):
         modelsel = input("Model #> ")
         if(modelsel.isnumeric() and int(modelsel) > 0 and int(modelsel) <= len(modellist)):
-            vars.model = vars.model_orig = modellist[int(modelsel)-1][1]
+            vars.model = modellist[int(modelsel)-1][1]
         else:
             print("{0}Please enter a valid selection.{1}".format(colors.RED, colors.END))
     
@@ -371,7 +370,7 @@ parser.add_argument("--override_rename", action='store_true', help="Renaming sto
 parser.add_argument("--configname", help="Force a fixed configuration name to aid with config management.")
 
 args = parser.parse_args()
-vars.model = vars.model_orig = args.model;
+vars.model = args.model;
 
 if args.remote:
     vars.remote = True;
@@ -1448,6 +1447,8 @@ def lua_is_custommodel():
 #==================================================================#
 def execute_inmod():
     vars.lua_logname = ...
+    vars.lua_edited = set()
+    vars.lua_deleted = set()
     try:
         tpool.execute(vars.lua_koboldbridge.execute_inmod)
     except lupa.LuaError as e:
@@ -1461,8 +1462,6 @@ def execute_inmod():
         set_aibusy(0)
 
 def execute_genmod():
-    vars.lua_edited = set()
-    vars.lua_deleted = set()
     vars.lua_koboldbridge.execute_genmod()
 
 def execute_outmod():
