@@ -111,6 +111,17 @@ gensettingstf = [{
 	{
 	"uitype": "toggle",
 	"unit": "bool",
+	"label": "Chat Mode",
+	"id": "setchatmode", 
+	"min": 0,
+	"max": 1,
+	"step": 1,
+	"default": 0,
+    "tooltip": "This mode optimizes KoboldAI for chatting."
+	},
+	{
+	"uitype": "toggle",
+	"unit": "bool",
 	"label": "Adventure Mode",
 	"id": "setadventure", 
 	"min": 0,
@@ -218,6 +229,17 @@ gensettingsik =[{
 	"step": 1,
 	"default": 1,
     "tooltip": "Whether the prompt should be sent in the context of every action."
+	},
+	{
+	"uitype": "toggle",
+	"unit": "bool",
+	"label": "Chat Mode",
+	"id": "setchatmode", 
+	"min": 0,
+	"max": 1,
+	"step": 1,
+	"default": 0,
+    "tooltip": "This mode optimizes KoboldAI for chatting."
 	},
 	{
 	"uitype": "toggle",

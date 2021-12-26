@@ -167,8 +167,10 @@ class vars:
     acregex_ui  = re.compile(r'^ *(&gt;.*)$', re.MULTILINE)    # Pattern for matching actions in the HTML-escaped story so we can apply colouring, etc (make sure to encase part to format in parentheses)
     comregex_ai = re.compile(r'(?:\n<\|(?:.|\n)*?\|>(?=\n|$))|(?:<\|(?:.|\n)*?\|>\n?)')  # Pattern for matching comments to remove them before sending them to the AI
     comregex_ui = re.compile(r'(&lt;\|(?:.|\n)*?\|&gt;)')  # Pattern for matching comments in the editor
-    actionmode  = 1
+    chatmode    = False
+    chatname    = "You"
     adventure   = False
+    actionmode  = 1
     dynamicscan = False
     remote      = False
     nopromptgen = False
@@ -1250,6 +1252,7 @@ def lua_has_setting(setting):
         "setwidepth",
         "setuseprompt",
         "setadventure",
+        "setchatmode",
         "setdynamicscan",
         "setnopromptgen",
         "temp",
@@ -1260,6 +1263,7 @@ def lua_has_setting(setting):
         "tknmax",
         "widepth",
         "useprompt",
+        "chatmode",
         "adventure",
         "dynamicscan",
         "nopromptgen",
@@ -1289,6 +1293,7 @@ def lua_get_setting(setting):
     if(setting in ("setwidepth", "widepth")): return vars.widepth
     if(setting in ("setuseprompt", "useprompt")): return vars.useprompt
     if(setting in ("setadventure", "adventure")): return vars.adventure
+    if(setting in ("setchatmode", "chatmode")): return vars.chatmode
     if(setting in ("setdynamicscan", "dynamicscan")): return vars.dynamicscan
     if(setting in ("setnopromptgen", "nopromptgen")): return vars.nopromptgen
     if(setting in ("frmttriminc", "triminc")): return vars.formatoptns["frmttriminc"]
@@ -1319,6 +1324,7 @@ def lua_set_setting(setting, v):
     if(setting in ("setadventure", "adventure")): vars.adventure = v
     if(setting in ("setdynamicscan", "dynamicscan")): vars.dynamicscan = v
     if(setting in ("setnopromptgen", "nopromptgen")): vars.nopromptgen = v
+    if(setting in ("setchatmode", "chatmode")): vars.chatmode = v
     if(setting in ("frmttriminc", "triminc")): vars.formatoptns["frmttriminc"] = v
     if(setting in ("frmtrmblln", "rmblln")): vars.formatoptns["frmttrmblln"] = v
     if(setting in ("frmtrmspch", "rmspch")): vars.formatoptns["frmttrmspch"] = v
@@ -1840,6 +1846,10 @@ def get_message(msg):
         vars.adventure = msg['data']
         settingschanged()
         refresh_settings()
+    elif(msg['cmd'] == 'setchatmode'):
+        vars.chatmode = msg['data']
+        settingschanged()
+        refresh_settings()
     elif(msg['cmd'] == 'setdynamicscan'):
         vars.dynamicscan = msg['data']
         settingschanged()
@@ -1913,6 +1923,7 @@ def savesettings():
     js["widepth"]     = vars.widepth
     js["useprompt"]   = vars.useprompt
     js["adventure"]   = vars.adventure
+    js["chatmode"]    = vars.chatmode
     js["dynamicscan"] = vars.dynamicscan
     js["nopromptgen"] = vars.nopromptgen
 
@@ -1969,6 +1980,8 @@ def loadsettings():
             vars.useprompt = js["useprompt"]
         if("adventure" in js):
             vars.adventure = js["adventure"]
+        if("chatmode" in js):
+            vars.chatmode = js["chatmode"]
         if("dynamicscan" in js):
             vars.dynamicscan = js["dynamicscan"]
         if("nopromptgen" in js):
@@ -2016,6 +2029,8 @@ def loadmodelsettings():
             vars.rep_pen    = js["rep_pen"]
         if("adventure" in js):
             vars.adventure = js["adventure"]
+        if("chatmode" in js):
+            vars.adventure = js["chatmode"]
         if("dynamicscan" in js):
             vars.dynamicscan = js["dynamicscan"]
         if("formatoptns" in js):
@@ -2052,6 +2067,14 @@ def actionsubmit(data, actionmode=0, force_submit=False):
             if(len(data)):
                 data = f"\n\n> {data}\n"
         
+        # "Chat" mode
+        if(vars.chatmode and vars.gamestarted):
+            print("Chatmode is active")
+            data = data.strip().lstrip('>')
+            data = re.sub(r'\n+', ' ', data)
+            if(len(data)):
+                data = f"\n{vars.chatname} : {data}\n"
+                
         # If we're not continuing, store a copy of the raw input
         if(data != ""):
             vars.lastact = data
@@ -2811,7 +2834,7 @@ def applyoutputformatting(txt):
         txt = vars.acregex_ai.sub('', txt)
     
     # Trim incomplete sentences
-    if(vars.formatoptns["frmttriminc"]):
+    if(vars.formatoptns["frmttriminc"] and not vars.chatmode):
         txt = utils.trimincompletesentence(txt)
     # Replace blank lines
     if(vars.formatoptns["frmtrmblln"]):
@@ -2820,7 +2843,7 @@ def applyoutputformatting(txt):
     if(vars.formatoptns["frmtrmspch"]):
         txt = utils.removespecialchars(txt, vars)
 	# Single Line Mode
-    if(vars.formatoptns["singleline"]):
+    if(vars.formatoptns["singleline"] or vars.chatmode):
         txt = utils.singlelineprocessing(txt, vars)
     
     return txt
@@ -2901,6 +2924,7 @@ def refresh_settings():
     emit('from_server', {'cmd': 'updatewidepth', 'data': vars.widepth}, broadcast=True)
     emit('from_server', {'cmd': 'updateuseprompt', 'data': vars.useprompt}, broadcast=True)
     emit('from_server', {'cmd': 'updateadventure', 'data': vars.adventure}, broadcast=True)
+    emit('from_server', {'cmd': 'updatechatmode', 'data': vars.chatmode}, broadcast=True)
     emit('from_server', {'cmd': 'updatedynamicscan', 'data': vars.dynamicscan}, broadcast=True)
     emit('from_server', {'cmd': 'updatenopromptgen', 'data': vars.nopromptgen}, broadcast=True)
     

@@ -108,6 +108,9 @@ var allowedit   = true;  // Whether clicking on chunks will edit them
 var action_mode = 0;  // 0: story, 1: action
 var adventure = false;
 
+// Chatmode
+var chatmode = false;
+
 //=================================================================//
 //  METHODS
 //=================================================================//
@@ -1164,6 +1167,10 @@ function setadventure(state) {
 	}
 }
 
+function setchatmode(state) {
+	chatmode = state;
+}
+
 function autofocus(event) {
 	if(connected) {
 		event.target.focus();
@@ -2145,6 +2152,11 @@ $(document).ready(function(){
 			$("#setadventure").prop('checked', msg.data).change();
 			// Update adventure state
 			setadventure(msg.data);
+		} else if(msg.cmd == "updatechatmode") {
+			// Update toggle state
+			$("#setchatmode").prop('checked', msg.data).change();
+			// Update chatmode state
+			setchatmode(msg.data);
 		} else if(msg.cmd == "updatedynamicscan") {
 			// Update toggle state
 			$("#setdynamicscan").prop('checked', msg.data).change();
