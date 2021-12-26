@@ -1985,7 +1985,7 @@ def loadsettings():
         if("chatmode" in js):
             vars.chatmode = js["chatmode"]
         if("chatname" in js):
-            vars.chatmode = js["chatname"]
+            vars.chatname = js["chatname"]
         if("dynamicscan" in js):
             vars.dynamicscan = js["dynamicscan"]
         if("nopromptgen" in js):
@@ -2073,8 +2073,6 @@ def actionsubmit(data, actionmode=0, force_submit=False):
         
         # "Chat" mode
         if(vars.chatmode and vars.gamestarted):
-            print("Chatmode is active")
-            data = data.strip().lstrip('>')
             data = re.sub(r'\n+', ' ', data)
             if(len(data)):
                 data = f"\n{vars.chatname} : {data}\n"
