@@ -1581,6 +1581,36 @@ return function(_python, _bridged)
         end
     end
 
+    local old_input = io.input
+    ---@param file? string|file*
+    local function safe_input(file)
+        if type(file) == "string" then
+            error("Calling `io.input` with a string as argument is disabled for security reasons")
+            return
+        end
+        return old_input(file)
+    end
+
+    local old_output = io.output
+    ---@param file? string|file*
+    local function safe_output(file)
+        if type(file) == "string" then
+            error("Calling `io.output` with a string as argument is disabled for security reasons")
+            return
+        end
+        return old_output(file)
+    end
+
+    local old_lines = io.lines
+    ---@param filename? string
+    local function safe_lines(filename, ...)
+        if type(filename) == "string" then
+            error("Calling `io.lines` with a string as first argument is disabled for security reasons")
+            return
+        end
+        return old_lines(filename, ...)
+    end
+
     local function redirected_print(...)
         local args = table.pack(...)
         for i = 1, args.n do
@@ -1711,12 +1741,12 @@ return function(_python, _bridged)
             stdin = io.stdin,
             stdout = io.stdout,
             stderr = io.stderr,
-            input = io.input,
-            output = io.output,
+            input = safe_input,
+            output = safe_output,
             read = io.read,
             write = io.write,
             close = _new_close(io.close),
-            lines = io.lines,
+            lines = safe_lines,
             flush = io.flush,
             type = io.type,
         },
