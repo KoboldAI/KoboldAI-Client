@@ -268,7 +268,7 @@ class PenalizingCausalTransformer(CausalTransformer):
 
 
 def infer(
-    context: str,
+    context: np.array,
     top_p=0.9,
     temp=0.5,
     top_k=0,
@@ -281,7 +281,7 @@ def infer(
 ) -> List[str]:
     maps.thread_resources.env = thread_resources_env
     total_batch = 1
-    tokens = np.uint32(tokenizer.encode(context, max_length=params["seq"] - (soft_tokens.shape[0] if soft_tokens is not None else 0), truncation=True))
+    tokens = context
     if(soft_tokens is not None):
         tokens = np.uint32(np.concatenate((soft_tokens, tokens)))
     provided_ctx = tokens.shape[0]

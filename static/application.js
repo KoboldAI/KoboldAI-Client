@@ -30,6 +30,7 @@ var button_actwi;
 var game_text;
 var input_text;
 var message_text;
+var chat_name;
 var settings_menu;
 var format_menu;
 var wi_menu;
@@ -722,6 +723,7 @@ function exitEditMode() {
 function enterMemoryMode() {
 	memorymode = true;
 	setmodevisibility(false);
+	setchatnamevisibility(false);
 	showMessage("Edit the memory to be sent with each request to the AI.");
 	button_actmem.html("Cancel");
 	hide([button_actback, button_actretry, button_actwi]);
@@ -732,6 +734,7 @@ function enterMemoryMode() {
 function exitMemoryMode() {
 	memorymode = false;
 	setmodevisibility(adventure);
+	setchatnamevisibility(chatmode);
 	hideMessage();
 	button_actmem.html("Memory");
 	show([button_actback, button_actretry, button_actwi]);
@@ -744,6 +747,7 @@ function enterWiMode() {
 	showMessage("World Info will be added to memory only when the key appears in submitted text or the last action.");
 	button_actwi.html("Accept");
 	hide([button_actback, button_actmem, button_actretry, game_text]);
+	setchatnamevisibility(false);
 	show([wi_menu]);
 	disableSendBtn();
 	$("#gamescreen").addClass("wigamescreen");
@@ -753,6 +757,7 @@ function exitWiMode() {
 	hideMessage();
 	button_actwi.html("W Info");
 	hide([wi_menu]);
+	setchatnamevisibility(chatmode);
 	show([button_actback, button_actmem, button_actretry, game_text]);
 	enableSendBtn();
 	$("#gamescreen").removeClass("wigamescreen");
@@ -797,7 +802,7 @@ function dosubmit() {
 	input_text.val("");
 	hideMessage();
 	hidegenseqs();
-	socket.send({'cmd': 'submit', 'actionmode': adventure ? action_mode : 0, 'data': txt});
+	socket.send({'cmd': 'submit', 'actionmode': adventure ? action_mode : 0, 'chatname': chatmode ? chat_name.val() : undefined, 'data': txt});
 	if(memorymode) {
 		memorytext = input_text.val();
 	}
@@ -1155,6 +1160,14 @@ function setmodevisibility(state) {
 	}
 }
 
+function setchatnamevisibility(state) {
+	if(state){  // Enabling
+		show([chat_name]);
+	} else{  // Disabling
+		hide([chat_name]);
+	}
+}
+
 function setadventure(state) {
 	adventure = state;
 	if(state) {
@@ -1169,6 +1182,7 @@ function setadventure(state) {
 
 function setchatmode(state) {
 	chatmode = state;
+	setchatnamevisibility(state);
 }
 
 function autofocus(event) {
@@ -1706,6 +1720,7 @@ $(document).ready(function(){
 	game_text         = $('#gametext');
 	input_text        = $('#input_text');
 	message_text      = $('#messagefield');
+	chat_name         = $('#chatname');
 	settings_menu     = $("#settingsmenu");
 	format_menu       = $('#formatmenu');
 	anote_menu        = $('#anoterowcontainer');
@@ -2130,6 +2145,8 @@ $(document).ready(function(){
 		} else if(msg.cmd == "hidegenseqs") {
 			// Collapse genseqs menu
 			hidegenseqs();
+		} else if(msg.cmd == "setchatname") {
+			chat_name.val(msg.data);
 		} else if(msg.cmd == "setlabelnumseq") {
 			// Update setting label with value from server
 			$("#setnumseqcur").html(msg.data);
@@ -2234,7 +2251,7 @@ $(document).ready(function(){
 	
 	button_actretry.on("click", function(ev) {
 		hideMessage();
-		socket.send({'cmd': 'retry', 'data': ''});
+		socket.send({'cmd': 'retry', 'chatname': chatmode ? chat_name.val() : undefined, 'data': ''});
 		hidegenseqs();
 	});
 	

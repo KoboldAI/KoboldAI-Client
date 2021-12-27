@@ -888,6 +888,8 @@ return function(_python, _bridged)
     ---@field rmspch boolean
     ---@field adsnsp boolean
     ---@field singleline boolean
+    ---@field chatmode boolean
+    ---@field chatname string
     local KoboldSettings = setmetatable({
         _name = "KoboldSettings",
     }, metawrapper)
@@ -1038,7 +1040,7 @@ return function(_python, _bridged)
     ---@param t KoboldLib
     ---@return string
     function KoboldLib_getters.model(t)
-        return bridged.vars.model_orig
+        return bridged.vars.model
     end
 
     ---@param t KoboldLib
@@ -1526,7 +1528,7 @@ return function(_python, _bridged)
     end
 
     local old_loadfile = loadfile
-    local old_package_loaded = package.loaded
+    local package_loaded = {}  ---@type table<table, table>
     local old_package_searchers = package.searchers
     ---@param modname string
     ---@param env table<string, any>
@@ -1546,8 +1548,10 @@ return function(_python, _bridged)
             return
         end
         local allowsearch = type(modname) == "string" and string.match(modname, "[^%w._-]") == nil and string.match(modname, "%.%.") == nil
-        if allowsearch and old_package_loaded[modname] then
-            return old_package_loaded[modname]
+        if allowsearch and package_loaded[env] == nil then
+            package_loaded[env] = {}
+        elseif allowsearch and package_loaded[env][modname] then
+            return package_loaded[env][modname]
         end
         local loader, path
         local errors = {}
@@ -1568,8 +1572,8 @@ return function(_python, _bridged)
             return
         end
         local retval = old_loadfile(path, "t", env)()
-        old_package_loaded[modname] = retval == nil or retval
-        return old_package_loaded[modname], path
+        package_loaded[env][modname] = retval == nil or retval
+        return package_loaded[env][modname], path
     end
     local function _safe_require(_g)
         ---@param modname string
@@ -1577,6 +1581,36 @@ return function(_python, _bridged)
         return function(modname)
             return requirex(modname, _g)
         end
+    end
+
+    local old_input = io.input
+    ---@param file? string|file*
+    local function safe_input(file)
+        if type(file) == "string" then
+            error("Calling `io.input` with a string as argument is disabled for security reasons")
+            return
+        end
+        return old_input(file)
+    end
+
+    local old_output = io.output
+    ---@param file? string|file*
+    local function safe_output(file)
+        if type(file) == "string" then
+            error("Calling `io.output` with a string as argument is disabled for security reasons")
+            return
+        end
+        return old_output(file)
+    end
+
+    local old_lines = io.lines
+    ---@param filename? string
+    local function safe_lines(filename, ...)
+        if type(filename) == "string" then
+            error("Calling `io.lines` with a string as first argument is disabled for security reasons")
+            return
+        end
+        return old_lines(filename, ...)
     end
 
     local function redirected_print(...)
@@ -1709,12 +1743,12 @@ return function(_python, _bridged)
             stdin = io.stdin,
             stdout = io.stdout,
             stderr = io.stderr,
-            input = io.input,
-            output = io.output,
+            input = safe_input,
+            output = safe_output,
             read = io.read,
             write = io.write,
             close = _new_close(io.close),
-            lines = io.lines,
+            lines = safe_lines,
             flush = io.flush,
             type = io.type,
         },
