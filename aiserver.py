@@ -154,6 +154,7 @@ class vars:
     saveow      = False  # Whether or not overwrite confirm has been displayed
     genseqs     = []     # Temporary storage for generated sequences
     recentback  = False  # Whether Back button was recently used without Submitting or Retrying after
+    recentrng   = None   # If a new random game was recently generated without Submitting after, this is the topic used (as a string), otherwise this is None
     useprompt   = False   # Whether to send the full prompt with every submit action
     breakmodel  = False  # For GPU users, whether to use both system RAM and VRAM to conserve VRAM while offering speedup compared to CPU-only
     bmsupported = False  # Whether the breakmodel option is supported (GPT-Neo/GPT-J only, currently)
@@ -2055,13 +2056,16 @@ def settingschanged():
 #==================================================================#
 #  Take input text from SocketIO and decide what to do with it
 #==================================================================#
-def actionsubmit(data, actionmode=0, force_submit=False, force_prompt_gen=False):
+def actionsubmit(data, actionmode=0, force_submit=False, force_prompt_gen=False, disable_recentrng=False):
     # Ignore new submissions if the AI is currently busy
     if(vars.aibusy):
         return
 
     while(True):
         set_aibusy(1)
+
+        if(disable_recentrng):
+            vars.recentrng = None
 
         vars.recentback = False
         vars.recentedit = False
@@ -2101,6 +2105,7 @@ def actionsubmit(data, actionmode=0, force_submit=False, force_prompt_gen=False)
                 if(vars.lua_koboldbridge.restart_sequence is not None and len(vars.genseqs) == 0):
                     data = ""
                     force_submit = True
+                    disable_recentrng = True
                     continue
                 emit('from_server', {'cmd': 'scrolldown', 'data': ''}, broadcast=True)
                 break
@@ -2121,6 +2126,7 @@ def actionsubmit(data, actionmode=0, force_submit=False, force_prompt_gen=False)
                         refresh_story()
                         data = ""
                         force_submit = True
+                        disable_recentrng = True
                         continue
                 else:
                     if(vars.lua_koboldbridge.restart_sequence is not None and vars.lua_koboldbridge.restart_sequence > 0):
@@ -2128,6 +2134,7 @@ def actionsubmit(data, actionmode=0, force_submit=False, force_prompt_gen=False)
                         refresh_story()
                         data = ""
                         force_submit = True
+                        disable_recentrng = True
                         continue
                     genselect(genout)
                 refresh_story()
@@ -2156,6 +2163,7 @@ def actionsubmit(data, actionmode=0, force_submit=False, force_prompt_gen=False)
                 if(vars.lua_koboldbridge.restart_sequence is not None and len(vars.genseqs) == 0):
                     data = ""
                     force_submit = True
+                    disable_recentrng = True
                     continue
                 emit('from_server', {'cmd': 'scrolldown', 'data': ''}, broadcast=True)
                 break
@@ -2173,12 +2181,14 @@ def actionsubmit(data, actionmode=0, force_submit=False, force_prompt_gen=False)
                     if(vars.lua_koboldbridge.restart_sequence is not None):
                         data = ""
                         force_submit = True
+                        disable_recentrng = True
                         continue
                 else:
                     if(vars.lua_koboldbridge.restart_sequence is not None and vars.lua_koboldbridge.restart_sequence > 0):
                         genresult(genout[vars.lua_koboldbridge.restart_sequence-1]["generated_text"])
                         data = ""
                         force_submit = True
+                        disable_recentrng = True
                         continue
                     genselect(genout)
                 set_aibusy(0)
@@ -2193,6 +2203,9 @@ def actionretry(data):
         emit('from_server', {'cmd': 'errmsg', 'data': "Retry function unavailable in Read Only mode."})
         return
     if(vars.aibusy):
+        return
+    if(vars.recentrng is not None):
+        randomGameRequest(vars.recentrng)
         return
     # Remove last action if possible and resubmit
     if(vars.gamestarted if vars.useprompt else len(vars.actions) > 0):
@@ -2647,7 +2660,7 @@ def selectsequence(n):
     vars.genseqs = []
 
     if(vars.lua_koboldbridge.restart_sequence is not None):
-        actionsubmit("", actionmode=vars.actionmode, force_submit=True)
+        actionsubmit("", actionmode=vars.actionmode, force_submit=True, disable_recentrng=True)
 
 #==================================================================#
 #  Send transformers-style request to ngrok/colab host
@@ -4149,9 +4162,11 @@ def newGameRequest():
     setStartState()
 
 def randomGameRequest(topic): 
+    vars.recentrng = topic
     newGameRequest()
     vars.memory      = "You generate the following " + topic + " story concept :"
     vars.lua_koboldbridge.feedback = None
+    vars.recentrng = None
     actionsubmit("", force_submit=True, force_prompt_gen=True)
     vars.memory      = ""
 
