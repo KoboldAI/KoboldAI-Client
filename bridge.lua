@@ -888,6 +888,8 @@ return function(_python, _bridged)
     ---@field rmspch boolean
     ---@field adsnsp boolean
     ---@field singleline boolean
+    ---@field chatmode boolean
+    ---@field chatname string
     local KoboldSettings = setmetatable({
         _name = "KoboldSettings",
     }, metawrapper)
