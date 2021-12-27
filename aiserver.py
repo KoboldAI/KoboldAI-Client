@@ -1612,6 +1612,7 @@ def get_message(msg):
                 vars.chatname = msg['chatname']
                 settingschanged()
                 emit('from_server', {'cmd': 'setchatname', 'data': vars.chatname}, broadcast=True)
+            vars.recentrng = None
             actionsubmit(msg['data'], actionmode=msg['actionmode'])
         elif(vars.mode == "edit"):
             editsubmit(msg['data'])
@@ -4178,7 +4179,6 @@ def randomGameRequest(topic):
     newGameRequest()
     vars.memory      = "You generate the following " + topic + " story concept :"
     vars.lua_koboldbridge.feedback = None
-    vars.recentrng = None
     actionsubmit("", force_submit=True, force_prompt_gen=True)
     vars.memory      = ""
 
