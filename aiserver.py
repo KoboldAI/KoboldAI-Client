@@ -1560,6 +1560,7 @@ load_lua_scripts()
 @socketio.on('connect')
 def do_connect():
     print("{0}Client connected!{1}".format(colors.GREEN, colors.END))
+    emit('from_server', {'cmd': 'setchatname', 'data': vars.chatname})
     emit('from_server', {'cmd': 'connected', 'smandelete': vars.smandelete, 'smanrename': vars.smanrename})
     if(vars.remote):
         emit('from_server', {'cmd': 'runs_remotely'})
