@@ -1866,10 +1866,12 @@ def get_message(msg):
         refresh_settings()
     elif(msg['cmd'] == 'setadventure'):
         vars.adventure = msg['data']
+        vars.chatmode = False
         settingschanged()
         refresh_settings()
     elif(msg['cmd'] == 'setchatmode'):
         vars.chatmode = msg['data']
+        vars.adventure = False
         settingschanged()
         refresh_settings()
     elif(msg['cmd'] == 'setdynamicscan'):
@@ -2896,7 +2898,7 @@ def applyoutputformatting(txt):
     if(vars.formatoptns["frmttriminc"] and not vars.chatmode):
         txt = utils.trimincompletesentence(txt)
     # Replace blank lines
-    if(vars.formatoptns["frmtrmblln"]):
+    if(vars.formatoptns["frmtrmblln"] or vars.chatmode):
         txt = utils.replaceblanklines(txt)
     # Remove special characters
     if(vars.formatoptns["frmtrmspch"]):
