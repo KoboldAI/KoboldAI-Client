@@ -2038,7 +2038,7 @@ def loadmodelsettings():
         if("adventure" in js):
             vars.adventure = js["adventure"]
         if("chatmode" in js):
-            vars.adventure = js["chatmode"]
+            vars.chatmode = js["chatmode"]
         if("dynamicscan" in js):
             vars.dynamicscan = js["dynamicscan"]
         if("formatoptns" in js):
