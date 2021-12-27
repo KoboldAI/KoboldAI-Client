@@ -2055,7 +2055,7 @@ def settingschanged():
 #==================================================================#
 #  Take input text from SocketIO and decide what to do with it
 #==================================================================#
-def actionsubmit(data, actionmode=0, force_submit=False):
+def actionsubmit(data, actionmode=0, force_submit=False, force_prompt_gen=False):
     # Ignore new submissions if the AI is currently busy
     if(vars.aibusy):
         return
@@ -2092,7 +2092,7 @@ def actionsubmit(data, actionmode=0, force_submit=False):
                 assert False
             # Start the game
             vars.gamestarted = True
-            if(not vars.noai and vars.lua_koboldbridge.generating and not vars.nopromptgen):
+            if(not vars.noai and vars.lua_koboldbridge.generating and (not vars.nopromptgen or force_prompt_gen)):
                 # Save this first action as the prompt
                 vars.prompt = data
                 # Clear the startup text from game screen
@@ -4152,7 +4152,7 @@ def randomGameRequest(topic):
     newGameRequest()
     vars.memory      = "You generate the following " + topic + " story concept :"
     vars.lua_koboldbridge.feedback = None
-    actionsubmit("", force_submit=True)
+    actionsubmit("", force_submit=True, force_prompt_gen=True)
     vars.memory      = ""
 
 #==================================================================#
