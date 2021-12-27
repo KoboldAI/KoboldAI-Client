@@ -1606,6 +1606,12 @@ def get_message(msg):
     if(msg['cmd'] == 'submit'):
         if(vars.mode == "play"):
             vars.lua_koboldbridge.feedback = None
+            if(vars.chatmode):
+                if(type(msg['chatname']) is not str):
+                    raise ValueError("Chatname must be a string")
+                vars.chatname = msg['chatname']
+                settingschanged()
+                emit('from_server', {'cmd': 'setchatname', 'data': vars.chatname}, broadcast=True)
             actionsubmit(msg['data'], actionmode=msg['actionmode'])
         elif(vars.mode == "edit"):
             editsubmit(msg['data'])
@@ -1613,6 +1619,12 @@ def get_message(msg):
             memsubmit(msg['data'])
     # Retry Action
     elif(msg['cmd'] == 'retry'):
+        if(vars.chatmode):
+            if(type(msg['chatname']) is not str):
+                raise ValueError("Chatname must be a string")
+            vars.chatname = msg['chatname']
+            settingschanged()
+            emit('from_server', {'cmd': 'setchatname', 'data': vars.chatname}, broadcast=True)
         actionretry(msg['data'])
     # Back/Undo Action
     elif(msg['cmd'] == 'back'):
