@@ -48,10 +48,10 @@ gensettingstf = [{
 	"label": "Repetition Penalty",
 	"id": "setreppen", 
 	"min": 1.0,
-	"max": 2.0,
+	"max": 3.0,
 	"step": 0.01,
 	"default": 1.1,
-    "tooltip": "Used to penalize words that were already generated or belong to the context."
+    "tooltip": "Used to penalize words that were already generated or belong to the context (Going over 1.2 breaks 6B models)."
 	},
 	{
 	"uitype": "slider",
