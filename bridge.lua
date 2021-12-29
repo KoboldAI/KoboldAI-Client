@@ -1511,6 +1511,18 @@ return function(_python, _bridged)
     koboldbridge.logging_name = nil
     koboldbridge.filename = nil
 
+    local sandbox_require_builtins = {
+        coroutine = true,
+        package = true,
+        string = true,
+        utf8 = true,
+        table = true,
+        math = true,
+        io = true,
+        os = true,
+        debug = true,
+    }
+
     local old_load = load
     local function _safe_load(_g)
         return function(chunk, chunkname, mode, env)
@@ -1540,6 +1552,11 @@ return function(_python, _bridged)
         end
         if modname == "bridge" then
             return function() return env.kobold, env.koboldcore end
+        end
+        for k, v in pairs(sandbox_require_builtins) do
+            if modname == k then
+                return env[k]
+            end
         end
         if type(modname) == "number" then
             modname = tostring(modname)
