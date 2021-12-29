@@ -2141,23 +2141,25 @@ def actionsubmit(data, actionmode=0, force_submit=False, force_prompt_gen=False,
                     genout.append({"generated_text": vars.lua_koboldbridge.outputs[i+1]})
                     assert type(genout[-1]["generated_text"]) is str
                 if(len(genout) == 1):
-                    genresult(genout[0]["generated_text"])
+                    genresult(genout[0]["generated_text"], flash=False)
+                    refresh_story()
+                    if(len(vars.actions) > 0):
+                        emit('from_server', {'cmd': 'texteffect', 'data': vars.actions.get_last_key() + 1}, broadcast=True)
                     if(vars.lua_koboldbridge.restart_sequence is not None):
-                        refresh_story()
                         data = ""
                         force_submit = True
                         disable_recentrng = True
                         continue
                 else:
                     if(vars.lua_koboldbridge.restart_sequence is not None and vars.lua_koboldbridge.restart_sequence > 0):
-                        genresult(genout[vars.lua_koboldbridge.restart_sequence-1]["generated_text"])
+                        genresult(genout[vars.lua_koboldbridge.restart_sequence-1]["generated_text"], flash=False)
                         refresh_story()
                         data = ""
                         force_submit = True
                         disable_recentrng = True
                         continue
                     genselect(genout)
-                refresh_story()
+                    refresh_story()
                 set_aibusy(0)
                 emit('from_server', {'cmd': 'scrolldown', 'data': ''}, broadcast=True)
                 break
@@ -2629,7 +2631,7 @@ def generate(txt, minimum, maximum, found_entries=None):
 #==================================================================#
 #  Deal with a single return sequence from generate()
 #==================================================================#
-def genresult(genout):
+def genresult(genout, flash=True):
     print("{0}{1}{2}".format(colors.CYAN, genout, colors.END))
     
     # Format output before continuing
@@ -2646,7 +2648,8 @@ def genresult(genout):
     else:
         vars.actions.append(genout)
     update_story_chunk('last')
-    emit('from_server', {'cmd': 'texteffect', 'data': vars.actions.get_last_key() if len(vars.actions) else 0}, broadcast=True)
+    if(flash):
+        emit('from_server', {'cmd': 'texteffect', 'data': vars.actions.get_last_key() + 1 if len(vars.actions) else 0}, broadcast=True)
 
 #==================================================================#
 #  Send generator sequences to the UI for selection
@@ -2675,7 +2678,7 @@ def selectsequence(n):
     if(len(vars.lua_koboldbridge.feedback) != 0):
         vars.actions.append(vars.lua_koboldbridge.feedback)
         update_story_chunk('last')
-        emit('from_server', {'cmd': 'texteffect', 'data': vars.actions.get_last_key() if len(vars.actions) else 0}, broadcast=True)
+        emit('from_server', {'cmd': 'texteffect', 'data': vars.actions.get_last_key() + 1 if len(vars.actions) else 0}, broadcast=True)
     emit('from_server', {'cmd': 'hidegenseqs', 'data': ''}, broadcast=True)
     vars.genseqs = []
 
@@ -2751,7 +2754,7 @@ def sendtocolab(txt, min, max):
         # Add formatted text to Actions array and refresh the game screen
         #vars.actions.append(genout)
         #refresh_story()
-        #emit('from_server', {'cmd': 'texteffect', 'data': vars.actions.get_last_key() if len(vars.actions) else 0})
+        #emit('from_server', {'cmd': 'texteffect', 'data': vars.actions.get_last_key() + 1 if len(vars.actions) else 0})
         
         set_aibusy(0)
     else:
@@ -3447,7 +3450,7 @@ def ikrequest(txt):
         print("{0}{1}{2}".format(colors.CYAN, genout, colors.END))
         vars.actions.append(genout)
         update_story_chunk('last')
-        emit('from_server', {'cmd': 'texteffect', 'data': vars.actions.get_last_key() if len(vars.actions) else 0}, broadcast=True)
+        emit('from_server', {'cmd': 'texteffect', 'data': vars.actions.get_last_key() + 1 if len(vars.actions) else 0}, broadcast=True)
         
         set_aibusy(0)
     else:
@@ -3506,7 +3509,7 @@ def oairequest(txt, min, max):
         print("{0}{1}{2}".format(colors.CYAN, genout, colors.END))
         vars.actions.append(genout)
         update_story_chunk('last')
-        emit('from_server', {'cmd': 'texteffect', 'data': vars.actions.get_last_key() if len(vars.actions) else 0}, broadcast=True)
+        emit('from_server', {'cmd': 'texteffect', 'data': vars.actions.get_last_key() + 1 if len(vars.actions) else 0}, broadcast=True)
         
         set_aibusy(0)
     else:
