@@ -1179,7 +1179,7 @@ body.connected .navbar-togger:hover, .navbar-togger.always-available:hover {
 	background-color: #757575;
 }
 
-body .popuptitlebar {
+body.connected .popuptitlebar {
 	background-color: #337ab7;
 }
 

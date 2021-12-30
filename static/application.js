@@ -2330,7 +2330,9 @@ $(document).ready(function(){
 	});
 	
 	button_impaidg.on("click", function(ev) {
-		showAidgPopup();
+		if(connected) {
+			showAidgPopup();
+		}
 	});
 	
 	aidg_close.on("click", function(ev) {
@@ -2346,7 +2348,9 @@ $(document).ready(function(){
 	});
 	
 	button_saveas.on("click", function(ev) {
-		showSaveAsPopup();
+		if(connected) {
+			showSaveAsPopup();
+		}
 	});
 	
 	saveas_close.on("click", function(ev) {
@@ -2412,7 +2416,9 @@ $(document).ready(function(){
 	});
 	
 	button_newgame.on("click", function(ev) {
-		showNewStoryPopup();
+		if(connected) {
+			showNewStoryPopup();
+		}
 	});
 	
 	ns_accept.on("click", function(ev) {
@@ -2445,7 +2451,9 @@ $(document).ready(function(){
 	});
 	
 	button_rndgame.on("click", function(ev) {
-		showRandomStoryPopup();
+		if(connected) {
+			showRandomStoryPopup();
+		}
 	});
 	
 	rs_accept.on("click", function(ev) {
