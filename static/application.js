@@ -1815,6 +1815,7 @@ $(document).ready(function(){
 				document.activeElement.blur();
 				active_element.focus();
 			})();
+			$("body").addClass("connected");
 		} else if(msg.cmd == "updatescreen") {
 			var _gamestarted = gamestarted;
 			gamestarted = msg.gamestarted;
@@ -2201,6 +2202,7 @@ $(document).ready(function(){
 	
 	socket.on('disconnect', function() {
 		connected = false;
+		$("body").removeClass("connected");
 		connect_status.html("<b>Lost connection...</b>");
 		connect_status.removeClass("color_green");
 		connect_status.addClass("color_orange");
