@@ -2104,6 +2104,10 @@ def loadmodelsettings():
             vars.dynamicscan = js["dynamicscan"]
         if("formatoptns" in js):
             vars.formatoptns = js["formatoptns"]
+        if("antemplate" in js):
+            vars.setauthornotetemplate = js["antemplate"]
+            if(not vars.gamestarted):
+                vars.authornotetemplate = vars.setauthornotetemplate
         model_config.close()
 
 #==================================================================#
