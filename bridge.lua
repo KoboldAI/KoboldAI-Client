@@ -1577,16 +1577,14 @@ return function(_python, _bridged)
         if modname == "bridge" then
             return function() return env.kobold, env.koboldcore end
         end
-        for k, v in pairs(sandbox_require_builtins) do
-            if modname == k then
-                return env[k]
-            end
-        end
         if type(modname) == "number" then
             modname = tostring(modname)
         elseif type(modname) ~= "string" then
             error("bad argument #1 to 'require' (string expected, got "..type(modname)..")")
             return
+        end
+        if sandbox_require_builtins[modname] then
+            return env[modname]
         end
         local allowsearch = type(modname) == "string" and string.match(modname, "[^%w._-]") == nil and string.match(modname, "%.%.") == nil
         if allowsearch and package_loaded[env] == nil then
