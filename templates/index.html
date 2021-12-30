@@ -10,12 +10,12 @@
 	<script src="static/bootstrap.min.js"></script>
 	<script src="static/bootstrap-toggle.min.js"></script>
 	<script src="static/rangy-core.min.js"></script>
-	<script src="static/application.js?ver=1.16.4o"></script>
+	<script src="static/application.js?ver=1.16.4p"></script>
 
 	<link rel="stylesheet" href="static/jquery-ui.sortable.min.css">
 	<link rel="stylesheet" href="static/bootstrap.min.css">
 	<link rel="stylesheet" href="static/bootstrap-toggle.min.css">
-	<link rel="stylesheet" href="static/custom.css?ver=1.16.4i">
+	<link rel="stylesheet" href="static/custom.css?ver=1.16.4j">
 	<link rel="stylesheet" href="static/open-iconic-bootstrap.min.css">
 </head>
 <body>
@@ -146,11 +146,11 @@
 			<div id="anoterowcontainer">
 				<div id="anoterow">
 					<div id="anoterowleft">
-						<div class="anotelabel">
+						<div class="anotelabel no-padding">
 							Author's Note
 						</div>
 						<div class="anotefield">
-							<input class="form-control" type="text" placeholder="Author's Note" id="anoteinput">
+							<textarea class="form-control" placeholder="Author's Note" id="anoteinput"></textarea>
 						</div>
 					</div>
 					<div id="anoterowright">
@@ -173,6 +173,14 @@
 								5
 							</div>
 						</div>
+					</div>
+				</div>
+				<div>
+					<div class="anotelabel">
+						Author's Note Template (the "&lt;|&gt;" will be replaced with the Author's Note text)
+					</div>
+					<div class="anotefield">
+						<textarea class="form-control" placeholder="Author's Note Template" id="anotetemplate"></textarea>
 					</div>
 				</div>
 			</div>

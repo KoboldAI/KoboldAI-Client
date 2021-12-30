@@ -107,6 +107,8 @@ class vars:
     prompt      = ""     # Prompt
     memory      = ""     # Text submitted to memory field
     authornote  = ""     # Text submitted to Author's Note field
+    authornotetemplate = "[Author's note: <|>]"  # Author's note template
+    setauthornotetemplate = authornotetemplate  # Saved author's note template in settings
     andepth     = 3      # How far back in history to append author's note
     actions     = structures.KoboldStoryRegister()  # Actions submitted by user and AI
     worldinfo   = []     # List of World Info key/value objects
@@ -1002,6 +1004,7 @@ def download():
     js["prompt"]      = vars.prompt
     js["memory"]      = vars.memory
     js["authorsnote"] = vars.authornote
+    js["anotetemplate"] = vars.authornotetemplate
     js["actions"]     = tuple(vars.actions.values())
     js["worldinfo"]   = []
         
@@ -1374,6 +1377,19 @@ def lua_set_authorsnote(m):
     vars.authornote = m
 
 #==================================================================#
+#  Get contents of author's note template
+#==================================================================#
+def lua_get_authorsnotetemplate():
+    return vars.authornotetemplate
+
+#==================================================================#
+#  Set contents of author's note template
+#==================================================================#
+def lua_set_authorsnotetemplate(m):
+    assert type(m) is str
+    vars.authornotetemplate = m
+
+#==================================================================#
 #  Save settings and send them to client
 #==================================================================#
 def lua_resend_settings():
@@ -1530,6 +1546,8 @@ bridged = {
     "set_memory": lua_set_memory,
     "get_authorsnote": lua_get_authorsnote,
     "set_authorsnote": lua_set_authorsnote,
+    "get_authorsnote": lua_get_authorsnotetemplate,
+    "set_authorsnote": lua_set_authorsnotetemplate,
     "compute_context": lua_compute_context,
     "get_numseqs": lua_get_numseqs,
     "set_numseqs": lua_set_numseqs,
@@ -1568,6 +1586,7 @@ load_lua_scripts()
 def do_connect():
     print("{0}Client connected!{1}".format(colors.GREEN, colors.END))
     emit('from_server', {'cmd': 'setchatname', 'data': vars.chatname})
+    emit('from_server', {'cmd': 'setanotetemplate', 'data': vars.authornotetemplate})
     emit('from_server', {'cmd': 'connected', 'smandelete': vars.smandelete, 'smanrename': vars.smanrename})
     if(vars.remote):
         emit('from_server', {'cmd': 'runs_remotely'})
@@ -1717,7 +1736,7 @@ def get_message(msg):
         refresh_settings()
     # Author's Note field update
     elif(msg['cmd'] == 'anote'):
-        anotesubmit(msg['data'])
+        anotesubmit(msg['data'], template=msg['template'])
     # Author's Note depth update
     elif(msg['cmd'] == 'anotedepth'):
         vars.andepth = int(msg['data'])
@@ -1964,6 +1983,7 @@ def savesettings():
     js["dynamicscan"] = vars.dynamicscan
     js["nopromptgen"] = vars.nopromptgen
     js["rngpersist"]  = vars.rngpersist
+    js["antemplate"]  = vars.setauthornotetemplate
 
     js["userscripts"] = vars.userscripts
     js["corescript"]  = vars.corescript
@@ -2028,6 +2048,11 @@ def loadsettings():
             vars.nopromptgen = js["nopromptgen"]
         if("rngpersist" in js):
             vars.rngpersist = js["rngpersist"]
+
+        if("antemplate" in js):
+            vars.setauthornotetemplate = js["antemplate"]
+            if(not vars.gamestarted):
+                vars.authornotetemplate = vars.setauthornotetemplate
         
         if("userscripts" in js):
             vars.userscripts = []
@@ -2288,7 +2313,7 @@ def calcsubmitbudgetheader(txt, **kwargs):
 
     # Build Author's Note if set
     if(vars.authornote != ""):
-        anotetxt  = "\n[Author's note: "+vars.authornote+"]\n"
+        anotetxt  = ("\n" + vars.authornotetemplate + "\n").replace("<|>", vars.authornote)
     else:
         anotetxt = ""
 
@@ -3114,6 +3139,7 @@ def togglememorymode():
         emit('from_server', {'cmd': 'memmode', 'data': 'true'}, broadcast=True)
         emit('from_server', {'cmd': 'setinputtext', 'data': vars.memory}, broadcast=True)
         emit('from_server', {'cmd': 'setanote', 'data': vars.authornote}, broadcast=True)
+        emit('from_server', {'cmd': 'setanotetemplate', 'data': vars.authornotetemplate}, broadcast=True)
     elif(vars.mode == "memory"):
         vars.mode = "play"
         emit('from_server', {'cmd': 'memmode', 'data': 'false'}, broadcast=True)
@@ -3415,10 +3441,16 @@ def memsubmit(data):
 #==================================================================#
 #  Commit changes to Author's Note
 #==================================================================#
-def anotesubmit(data):
+def anotesubmit(data, template=""):
+    assert type(data) is str and type(template) is str
     # Maybe check for length at some point
     # For now just send it to storage
     vars.authornote = data
+
+    if(vars.authornotetemplate != template):
+        vars.setauthornotetemplate = template
+        settingschanged()
+    vars.authornotetemplate = template
 
 #==================================================================#
 #  Assembles game data into a request to InferKit API
@@ -3648,6 +3680,7 @@ def saveRequest(savpath):
         js["prompt"]      = vars.prompt
         js["memory"]      = vars.memory
         js["authorsnote"] = vars.authornote
+        js["anotetemplate"] = vars.authornotetemplate
         js["actions"]     = tuple(vars.actions.values())
         js["worldinfo"]   = []
         js["wifolders_d"] = vars.wifolders_d
@@ -3790,6 +3823,10 @@ def loadRequest(loadpath, filename=None):
             vars.authornote = js["authorsnote"]
         else:
             vars.authornote = ""
+        if("anotetemplate" in js):
+            vars.authornotetemplate = js["anotetemplate"]
+        else:
+            vars.authornotetemplate = "[Author's Note: <|>]"
         
         if("worldinfo" in js):
             num = 0
@@ -3840,6 +3877,7 @@ def loadRequest(loadpath, filename=None):
         sendwi()
         emit('from_server', {'cmd': 'setmemory', 'data': vars.memory}, broadcast=True)
         emit('from_server', {'cmd': 'setanote', 'data': vars.authornote}, broadcast=True)
+        emit('from_server', {'cmd': 'setanotetemplate', 'data': vars.authornotetemplate}, broadcast=True)
         refresh_story()
         emit('from_server', {'cmd': 'setgamestate', 'data': 'ready'}, broadcast=True)
         emit('from_server', {'cmd': 'hidegenseqs', 'data': ''}, broadcast=True)
@@ -3971,6 +4009,7 @@ def importgame():
             vars.prompt = ""
         vars.memory      = ref["memory"]
         vars.authornote  = ref["authorsNote"] if type(ref["authorsNote"]) is str else ""
+        vars.authornotetemplate = "[Author's Note: <|>]"
         vars.actions     = structures.KoboldStoryRegister()
         vars.worldinfo   = []
         vars.worldinfo_i = []
@@ -4040,6 +4079,7 @@ def importgame():
         sendwi()
         emit('from_server', {'cmd': 'setmemory', 'data': vars.memory}, broadcast=True)
         emit('from_server', {'cmd': 'setanote', 'data': vars.authornote}, broadcast=True)
+        emit('from_server', {'cmd': 'setanotetemplate', 'data': vars.authornotetemplate}, broadcast=True)
         refresh_story()
         emit('from_server', {'cmd': 'setgamestate', 'data': 'ready'}, broadcast=True)
         emit('from_server', {'cmd': 'hidegenseqs', 'data': ''}, broadcast=True)
@@ -4061,6 +4101,7 @@ def importAidgRequest(id):
         vars.prompt      = js["promptContent"]
         vars.memory      = js["memory"]
         vars.authornote  = js["authorsNote"]
+        vars.authornotetemplate = "[Author's Note: <|>]"
         vars.actions     = structures.KoboldStoryRegister()
         vars.worldinfo   = []
         vars.worldinfo_i = []
@@ -4114,6 +4155,7 @@ def importAidgRequest(id):
         sendwi()
         emit('from_server', {'cmd': 'setmemory', 'data': vars.memory}, broadcast=True)
         emit('from_server', {'cmd': 'setanote', 'data': vars.authornote}, broadcast=True)
+        emit('from_server', {'cmd': 'setanotetemplate', 'data': vars.authornotetemplate}, broadcast=True)
         refresh_story()
         emit('from_server', {'cmd': 'setgamestate', 'data': 'ready'}, broadcast=True)
 
@@ -4179,6 +4221,7 @@ def newGameRequest():
     vars.actions     = structures.KoboldStoryRegister()
     
     vars.authornote  = ""
+    vars.authornotetemplate = vars.setauthornotetemplate
     vars.worldinfo   = []
     vars.worldinfo_i = []
     vars.worldinfo_u = {}
@@ -4197,6 +4240,7 @@ def newGameRequest():
     sendwi()
     emit('from_server', {'cmd': 'setmemory', 'data': vars.memory}, broadcast=True)
     emit('from_server', {'cmd': 'setanote', 'data': vars.authornote}, broadcast=True)
+    emit('from_server', {'cmd': 'setanotetemplate', 'data': vars.authornotetemplate}, broadcast=True)
     setStartState()
 
 def randomGameRequest(topic, memory=""): 

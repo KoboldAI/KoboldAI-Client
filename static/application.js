@@ -1420,6 +1420,7 @@ function downloadStory(format) {
 		prompt: prompt,
 		memory: memorytext,
 		authorsnote: $("#anoteinput").val(),
+		anotetemplate: $("#anotetemplate").val(),
 		actions: actionlist_compiled,
 		worldinfo: wilist_compiled,
 		wifolders_d: wifolders_d,
@@ -2000,10 +2001,13 @@ $(document).ready(function(){
 		} else if(msg.cmd == "getanote") {
 			// Request contents of Author's Note field
 			var txt = anote_input.val();
-			socket.send({'cmd': 'anote', 'data': txt});
+			socket.send({'cmd': 'anote', 'template': $("#anotetemplate").val(), 'data': txt});
 		} else if(msg.cmd == "setanote") {
 			// Set contents of Author's Note field
 			anote_input.val(msg.data);
+		} else if(msg.cmd == "setanotetemplate") {
+			// Set contents of Author's Note Template field
+			$("#anotetemplate").val(msg.data);
 		} else if(msg.cmd == "addsetting") {
 			// Add setting controls
 			addSetting(msg.data);

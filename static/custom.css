@@ -212,9 +212,19 @@ chunk.editing, chunk.editing * {
 	padding-right: 10px;
 }
 
-#anoteinput {
+#anoteinput, #anotetemplate {
 	background-color: #404040;
 	color: #ffffff;
+	resize: none;
+	overflow: auto;
+}
+
+#anoteinput {
+	height: 60px;
+}
+
+#anotetemplate {
+	height: 60px;
 }
 
 #anoteslidelabel {
@@ -426,6 +436,10 @@ chunk.editing, chunk.editing * {
 .anotelabel {
 	font-size: 10pt;
 	color: #ffffff;
+}
+
+.anotelabel:not(.no-padding) {
+	padding-top: 10px;
 }
 
 .airange {

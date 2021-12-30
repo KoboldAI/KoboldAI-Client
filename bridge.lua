@@ -145,6 +145,8 @@ return function(_python, _bridged)
     --==========================================================================
 
     ---@class KoboldLib
+    ---@field authorsnote string
+    ---@field authorsnotetemplate string
     ---@field memory string
     ---@field submission string
     ---@field model string
@@ -996,6 +998,24 @@ return function(_python, _bridged)
         end
         maybe_require_regeneration()
         bridged.set_authorsnote(v)
+    end
+
+    ---@param t KoboldLib
+    ---@return string
+    function KoboldLib_getters.authorsnotetemplate(t)
+        return bridged.get_authorsnotetemplate()
+    end
+
+    ---@param t KoboldLib
+    ---@param v string
+    ---@return KoboldLib
+    function KoboldLib_setters.authorsnotetemplate(t, v)
+        if type(v) ~= "string" then
+            error("`KoboldLib.authorsnotetemplate` must be a string; you attempted to set it to a "..type(v))
+            return
+        end
+        maybe_require_regeneration()
+        bridged.set_authorsnotetemplate(v)
     end
 
 
