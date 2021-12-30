@@ -4249,9 +4249,10 @@ def randomGameRequest(topic, memory=""):
         return
     vars.recentrng = topic
     newGameRequest()
+    _memory = memory
     if(len(memory) > 0):
-        memory = memory.rstrip() + "\n\n"
-    vars.memory      = memory + "You generate the following " + topic + " story concept :"
+        _memory = memory.rstrip() + "\n\n"
+    vars.memory      = _memory + "You generate the following " + topic + " story concept :"
     vars.lua_koboldbridge.feedback = None
     actionsubmit("", force_submit=True, force_prompt_gen=True)
     vars.memory      = memory
