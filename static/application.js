@@ -2367,7 +2367,9 @@ $(document).ready(function(){
 	});
 
 	button_downloadtxt.on("click", function(ev) {
-		downloadStory('plaintext');
+		if(connected) {
+			downloadStory('plaintext');
+		}
 	});
 	
 	button_load.on("click", function(ev) {
