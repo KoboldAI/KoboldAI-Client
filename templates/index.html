@@ -4,19 +4,20 @@
 	<title>KoboldAI Client</title>
 	<meta charset="utf-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1">
+
+	<link rel="stylesheet" href="static/jquery-ui.sortable.min.css">
+	<link rel="stylesheet" href="static/bootstrap.min.css">
+	<link rel="stylesheet" href="static/bootstrap-toggle.min.css">
+	<link rel="stylesheet" href="static/open-iconic-bootstrap.min.css">
+	<link rel="stylesheet" href="static/custom.css?ver=1.16.4m">
+
 	<script src="static/jquery-3.6.0.min.js"></script>
 	<script src="static/jquery-ui.sortable.min.js"></script>
 	<script src="static/socket.io.min.js"></script>
 	<script src="static/bootstrap.min.js"></script>
 	<script src="static/bootstrap-toggle.min.js"></script>
 	<script src="static/rangy-core.min.js"></script>
-	<script src="static/application.js?ver=1.16.4n"></script>
-
-	<link rel="stylesheet" href="static/jquery-ui.sortable.min.css">
-	<link rel="stylesheet" href="static/bootstrap.min.css">
-	<link rel="stylesheet" href="static/bootstrap-toggle.min.css">
-	<link rel="stylesheet" href="static/custom.css?ver=1.16.4h">
-	<link rel="stylesheet" href="static/open-iconic-bootstrap.min.css">
+	<script src="static/application.js?ver=1.16.4t"></script>
 </head>
 <body>
 	<input type="file" id="remote-save-select" accept="application/json" style="display:none">
@@ -39,13 +40,13 @@
 										<a class="dropdown-item" href="#" id="btn_rndgame">Random Story</a>
 									</div>
 								</li>
-								<li class="nav-item dropdown">
-									<a class="nav-link dropdown-toggle" href="#" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Save</a>
+								<li class="nav-item dropdown always-available">
+									<a class="nav-link dropdown-toggle always-available" href="#" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Save</a>
 									<div class="dropdown-menu">
 										<a class="dropdown-item" href="#" id="btn_save">Save</a>
 										<a class="dropdown-item" href="#" id="btn_saveas">Save As</a>
 										<a class="dropdown-item" href="#" id="btn_savetofile">Save To File...</a>
-										<a class="dropdown-item" href="#" id="btn_download">Download Story as JSON</a>
+										<a class="dropdown-item always-available" href="#" id="btn_download">Download Story as JSON</a>
 										<a class="dropdown-item" href="#" id="btn_downloadtxt">Download Story as Plaintext</a>
 									</div>
 								</li>
@@ -146,11 +147,11 @@
 			<div id="anoterowcontainer">
 				<div id="anoterow">
 					<div id="anoterowleft">
-						<div class="anotelabel">
+						<div class="anotelabel no-padding">
 							Author's Note
 						</div>
 						<div class="anotefield">
-							<input class="form-control" type="text" placeholder="Author's Note" id="anoteinput">
+							<textarea class="form-control" placeholder="Author's Note" id="anoteinput"></textarea>
 						</div>
 					</div>
 					<div id="anoterowright">
@@ -173,6 +174,14 @@
 								5
 							</div>
 						</div>
+					</div>
+				</div>
+				<div>
+					<div class="anotelabel">
+						Author's Note Template (the "&lt;|&gt;" will be replaced with the Author's Note text)
+					</div>
+					<div class="anotefield">
+						<textarea class="form-control" placeholder="Author's Note Template" id="anotetemplate"></textarea>
 					</div>
 				</div>
 			</div>
@@ -352,6 +361,9 @@
 			</div>
 			<div class="aidgpopupcontent">
 				<input class="form-control" type="text" placeholder="Story Genre Suggestion (Leave blank for fully random)" id="topic">
+			</div>
+			<div class="aidgpopupcontent">
+				<textarea class="form-control" placeholder="Memory" id="rngmemory"></textarea>
 			</div>
 			<div class="popupfooter">
 				<button type="button" class="btn btn-primary" id="btn_rsaccept">Accept</button>

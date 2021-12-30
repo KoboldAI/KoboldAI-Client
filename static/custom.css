@@ -27,9 +27,29 @@ chunk.editing, chunk.editing * {
 }
 
 #topmenu {
-	background-color: #337ab7;
+	background-color: #757575;
 	padding: 10px;
 	display: flex;
+}
+
+body.connected #topmenu, #topmenu.always-available {
+	background-color: #337ab7;
+}
+
+#topic {
+	margin-top: 20px;
+	resize: none;
+	overflow: auto;
+	background-color: #404040;
+	color: #ffffff;
+}
+
+#rngmemory {
+	height: 80px;
+	resize: none;
+	overflow:auto;
+	background-color: #404040;
+	color: #ffffff;
 }
 
 #chatname {
@@ -50,8 +70,12 @@ chunk.editing, chunk.editing * {
 
 #navbar li {
 	margin-right: 5px;
-	background-color: #4787be;
+	background-color: #828282;
 	border-radius: 5px;
+}
+
+body.connected #navbar li, #navbar li.always-available {
+	background-color: #4787be;
 }
 
 #navbar li > a {
@@ -62,14 +86,22 @@ chunk.editing, chunk.editing * {
 #settingsmenu {
 	display: flex;
 	flex-wrap: wrap;
-	background-color: #295071;
+	background-color: #4d4d4d;
 	padding: 10px;
+}
+
+body.connected #settingsmenu, #settingsmenu.always-available {
+	background-color: #295071;
 }
 
 #formatmenu {
 	display:none;
-	background-color: #295071;
+	background-color: #4d4d4d;
 	padding: 10px;
+}
+
+body.connected #formatmenu, #formatmenu.always-available {
+	background-color: #295071;
 }
 
 #connectstatusdiv {
@@ -196,9 +228,19 @@ chunk.editing, chunk.editing * {
 	padding-right: 10px;
 }
 
-#anoteinput {
+#anoteinput, #anotetemplate {
 	background-color: #404040;
 	color: #ffffff;
+	resize: none;
+	overflow: auto;
+}
+
+#anoteinput {
+	height: 60px;
+}
+
+#anotetemplate {
+	height: 60px;
 }
 
 #anoteslidelabel {
@@ -229,6 +271,10 @@ chunk.editing, chunk.editing * {
 
 #popuptitlebar {
 	padding: 10px;
+	background-color: #757575;
+}
+
+body.connected #popuptitlebar, #popuptitlebar.always-available {
 	background-color: #337ab7;
 }
 
@@ -257,6 +303,10 @@ chunk.editing, chunk.editing * {
 	padding: 10px;
 	display: flex;
 	justify-content: center;
+	background-color: #4d4d4d;
+}
+
+body.connected #popupfooter, #popupfooter.always-available {
 	background-color: #295071;
 }
 
@@ -387,10 +437,48 @@ chunk.editing, chunk.editing * {
 #rspopup {
 	width: 800px;
 	background-color: #262626;
-	margin-top: 200px;
+	margin-top: 150px;
 }
 
 /*================= Classes =================*/
+
+body:not(.connected) .btn-primary {
+	background-color: #757575;
+	border-color: #4a4a4a;
+}
+
+.btn-primary.always-available {
+	background-color: #337ab7;
+	border-color: #2e6da4;
+}
+
+body:not(.connected) .btn-primary.focus, body:not(.connected) .btn-primary:focus {
+	background-color: #5c5c5c;
+	border-color: #292929;
+}
+
+.btn-primary.focus.always-available, .btn-primary.always-available:focus {
+	background-color: #286090;
+	border-color: #122b40;
+}
+
+body:not(.connected) .btn-primary:hover {
+	background-color: #5c5c5c;
+	border-color: #4a4a4a;
+}
+
+.btn-primary.always-available:hover {
+	background-color: #286090;
+	border-color: #204d74;
+}
+
+body:not(.connected) a.dropdown-item:focus, body:not(.connected) a.dropdown-item:hover {
+	color: #4f4f4f;
+}
+
+a.dropdown-item.always-available:focus, a.dropdown-item.always-available:hover {
+	color: #23527c !important;
+}
 
 .aidgpopupcontent {
 	padding: 10px 40px 10px 40px;
@@ -410,6 +498,10 @@ chunk.editing, chunk.editing * {
 .anotelabel {
 	font-size: 10pt;
 	color: #ffffff;
+}
+
+.anotelabel:not(.no-padding) {
+	padding-top: 10px;
 }
 
 .airange {
@@ -465,24 +557,40 @@ chunk.editing, chunk.editing * {
 }
 
 .dropdown-menu {
-	background-color: #337ab7;
+	background-color: #757575;
 	width: 200px;
+}
+
+body.connected .dropdown-menu, .dropdown-menu.always-available {
+	background-color: #337ab7;
 }
 
 .dropdown-item {
 	display: block;
 	padding: 10px;
 	color: #ffffff;
+	border-bottom: 1px solid #4d4d4d;
+}
+
+body.connected .dropdown-item, .dropdown-item.always-available {
 	border-bottom: 1px solid #295071;
 }
 
 .dropdown-item:first-child {
+	border-top: 1px solid #4d4d4d;
+}
+
+body.connected .dropdown-item:first-child, .dropdown-item:first-child.always-available {
 	border-top: 1px solid #295071;
 }
 
 .dropdown-item:hover {
-	background-color: #98bcdb;
+	background-color: #bababa;
 	text-decoration: none;
+}
+
+body.connected .dropdown-item:hover, .dropdown-item.always-available:hover {
+	background-color: #98bcdb;
 }
 
 .edit-flash, .edit-flash * {
@@ -678,11 +786,15 @@ chunk.editing, chunk.editing * {
 	font-size: 1.4ex;
 	line-height: 1.8ex;
 	text-decoration: none;
+	color: #9e9e9e;
+}
+
+body.connected .statusicon, .statusicon.always-available {
 	color: #68a2d4;
 }
 
 .statusicon.active {
-	color: #3bf723;
+	color: #3bf723 !important;
 }
 
 .helpicon:hover, .statusicon:hover {
@@ -709,10 +821,14 @@ chunk.editing, chunk.editing * {
 
 .statusiconlabel {
 	pointer-events: none;
-	color: #337ab7;
+	color: #757575;
 	text-align: center;
 	font-weight: bold;
 	font-size: 13px;
+}
+
+body.connected .statusiconlabel, .statusiconlabel.always-available {
+	color: #337ab7;
 }
 
 #usiconlabel {
@@ -946,23 +1062,51 @@ chunk.editing, chunk.editing * {
 
 .navbar .navbar-nav .nav-link:hover {
 	border-radius: 5px;
+	background-color: #bababa;
+}
+
+body.connected .navbar .navbar-nav .nav-link:hover, .navbar .navbar-nav .nav-link.always-available:hover {
+	background-color: #98bcdb;
+}
+
+body .navbar .navbar-nav .dropdown-item.always-available {
+	background-color: #337ab7;
+}
+
+body .navbar .navbar-nav .dropdown-item.always-available:hover {
 	background-color: #98bcdb;
 }
 
 .navbar .navbar-nav .nav-link:focus {
 	border-radius: 5px;
+	background-color: #bababa;
+}
+
+body.connected .navbar .navbar-nav .nav-link:focus, .navbar .navbar-nav .nav-link.always-available:focus {
 	background-color: #98bcdb;
 }
 
 .navbar-toggler {
-	background-color: #337ab7;
-	border: 1px solid #98bcdb;
+	background-color: #757575;
+	border: 1px solid #bababa;
 	height: 45px;
 	width: 60px;
 	border-radius: 6px;
 }
 
+body.connected .navbar-toggler, .navbar-toggler.always-available {
+	border: 1px solid #98bcdb;
+}
+
+body .navbar-toggler {
+	background-color: #337ab7;
+}
+
 .navbar-toggler:hover {
+	background-color: #bababa;
+}
+
+body.connected .navbar-togger:hover, .navbar-togger.always-available:hover {
 	background-color: #98bcdb;
 }
 
@@ -1032,6 +1176,10 @@ chunk.editing, chunk.editing * {
 
 .popuptitlebar {
 	padding: 10px;
+	background-color: #757575;
+}
+
+body.connected .popuptitlebar {
 	background-color: #337ab7;
 }
 
@@ -1053,6 +1201,10 @@ chunk.editing, chunk.editing * {
 	padding: 10px;
 	display: flex;
 	justify-content: center;
+	background-color: #4d4d4d;
+}
+
+body.connected .popupfooter, .popupfooter.always-available {
 	background-color: #295071;
 }
 

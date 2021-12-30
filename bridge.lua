@@ -145,6 +145,8 @@ return function(_python, _bridged)
     --==========================================================================
 
     ---@class KoboldLib
+    ---@field authorsnote string
+    ---@field authorsnotetemplate string
     ---@field memory string
     ---@field submission string
     ---@field model string
@@ -867,9 +869,12 @@ return function(_python, _bridged)
     ---@field setadventure boolean
     ---@field setdynamicscan boolean
     ---@field setnopromptgen boolean
+    ---@field setrngpersist boolean
     ---@field temp number
     ---@field topp number
     ---@field topk integer
+    ---@field top_p number
+    ---@field top_k integer
     ---@field tfs number
     ---@field reppen number
     ---@field tknmax integer
@@ -878,6 +883,7 @@ return function(_python, _bridged)
     ---@field adventure boolean
     ---@field dynamicscan boolean
     ---@field nopromptgen boolean
+    ---@field rngpersist boolean
     ---@field frmttriminc boolean
     ---@field frmtrmblln boolean
     ---@field frmtrmspch boolean
@@ -992,6 +998,24 @@ return function(_python, _bridged)
         end
         maybe_require_regeneration()
         bridged.set_authorsnote(v)
+    end
+
+    ---@param t KoboldLib
+    ---@return string
+    function KoboldLib_getters.authorsnotetemplate(t)
+        return bridged.get_authorsnotetemplate()
+    end
+
+    ---@param t KoboldLib
+    ---@param v string
+    ---@return KoboldLib
+    function KoboldLib_setters.authorsnotetemplate(t, v)
+        if type(v) ~= "string" then
+            error("`KoboldLib.authorsnotetemplate` must be a string; you attempted to set it to a "..type(v))
+            return
+        end
+        maybe_require_regeneration()
+        bridged.set_authorsnotetemplate(v)
     end
 
 
@@ -1553,16 +1577,14 @@ return function(_python, _bridged)
         if modname == "bridge" then
             return function() return env.kobold, env.koboldcore end
         end
-        for k, v in pairs(sandbox_require_builtins) do
-            if modname == k then
-                return env[k]
-            end
-        end
         if type(modname) == "number" then
             modname = tostring(modname)
         elseif type(modname) ~= "string" then
             error("bad argument #1 to 'require' (string expected, got "..type(modname)..")")
             return
+        end
+        if sandbox_require_builtins[modname] then
+            return env[modname]
         end
         local allowsearch = type(modname) == "string" and string.match(modname, "[^%w._-]") == nil and string.match(modname, "%.%.") == nil
         if allowsearch and package_loaded[env] == nil then

@@ -109,6 +109,8 @@ class vars:
     prompt      = ""     # Prompt
     memory      = ""     # Text submitted to memory field
     authornote  = ""     # Text submitted to Author's Note field
+    authornotetemplate = "[Author's note: <|>]"  # Author's note template
+    setauthornotetemplate = authornotetemplate  # Saved author's note template in settings
     andepth     = 3      # How far back in history to append author's note
     actions     = structures.KoboldStoryRegister()  # Actions submitted by user and AI
     worldinfo   = []     # List of World Info key/value objects
@@ -181,6 +183,7 @@ class vars:
     dynamicscan = False
     remote      = False
     nopromptgen = False
+    rngpersist  = False
 
 #==================================================================#
 # Function to get model selection at startup
@@ -1003,6 +1006,7 @@ def download():
     js["prompt"]      = vars.prompt
     js["memory"]      = vars.memory
     js["authorsnote"] = vars.authornote
+    js["anotetemplate"] = vars.authornotetemplate
     js["actions"]     = tuple(vars.actions.values())
     js["worldinfo"]   = []
         
@@ -1265,9 +1269,12 @@ def lua_has_setting(setting):
         "setchatmode",
         "setdynamicscan",
         "setnopromptgen",
+        "setrngpersist",
         "temp",
         "topp",
+        "top_p",
         "topk",
+        "top_k",
         "tfs",
         "reppen",
         "tknmax",
@@ -1278,6 +1285,7 @@ def lua_has_setting(setting):
         "adventure",
         "dynamicscan",
         "nopromptgen",
+        "rngpersist",
         "frmttriminc",
         "frmtrmblln",
         "frmtrmspch",
@@ -1295,8 +1303,8 @@ def lua_has_setting(setting):
 #==================================================================#
 def lua_get_setting(setting):
     if(setting in ("settemp", "temp")): return vars.temp
-    if(setting in ("settopp", "topp")): return vars.top_p
-    if(setting in ("settopk", "topk")): return vars.top_k
+    if(setting in ("settopp", "topp", "top_p")): return vars.top_p
+    if(setting in ("settopk", "topk", "top_k")): return vars.top_k
     if(setting in ("settfs", "tfs")): return vars.tfs
     if(setting in ("setreppen", "reppen")): return vars.rep_pen
     if(setting in ("settknmax", "tknmax")): return vars.max_length
@@ -1307,6 +1315,7 @@ def lua_get_setting(setting):
     if(setting in ("setchatmode", "chatmode")): return vars.chatmode
     if(setting in ("setdynamicscan", "dynamicscan")): return vars.dynamicscan
     if(setting in ("setnopromptgen", "nopromptgen")): return vars.nopromptgen
+    if(setting in ("setrngpersist", "rngpersist")): return vars.rngpersist
     if(setting in ("frmttriminc", "triminc")): return vars.formatoptns["frmttriminc"]
     if(setting in ("frmtrmblln", "rmblln")): return vars.formatoptns["frmttrmblln"]
     if(setting in ("frmtrmspch", "rmspch")): return vars.formatoptns["frmttrmspch"]
@@ -1335,6 +1344,7 @@ def lua_set_setting(setting, v):
     if(setting in ("setadventure", "adventure")): vars.adventure = v
     if(setting in ("setdynamicscan", "dynamicscan")): vars.dynamicscan = v
     if(setting in ("setnopromptgen", "nopromptgen")): vars.nopromptgen = v
+    if(setting in ("setrngpersist", "rngpersist")): vars.rngpersist = v
     if(setting in ("setchatmode", "chatmode")): vars.chatmode = v
     if(setting in ("frmttriminc", "triminc")): vars.formatoptns["frmttriminc"] = v
     if(setting in ("frmtrmblln", "rmblln")): vars.formatoptns["frmttrmblln"] = v
@@ -1367,6 +1377,19 @@ def lua_get_authorsnote():
 def lua_set_authorsnote(m):
     assert type(m) is str
     vars.authornote = m
+
+#==================================================================#
+#  Get contents of author's note template
+#==================================================================#
+def lua_get_authorsnotetemplate():
+    return vars.authornotetemplate
+
+#==================================================================#
+#  Set contents of author's note template
+#==================================================================#
+def lua_set_authorsnotetemplate(m):
+    assert type(m) is str
+    vars.authornotetemplate = m
 
 #==================================================================#
 #  Save settings and send them to client
@@ -1525,6 +1548,8 @@ bridged = {
     "set_memory": lua_set_memory,
     "get_authorsnote": lua_get_authorsnote,
     "set_authorsnote": lua_set_authorsnote,
+    "get_authorsnote": lua_get_authorsnotetemplate,
+    "set_authorsnote": lua_set_authorsnotetemplate,
     "compute_context": lua_compute_context,
     "get_numseqs": lua_get_numseqs,
     "set_numseqs": lua_set_numseqs,
@@ -1563,6 +1588,7 @@ load_lua_scripts()
 def do_connect():
     print("{0}Client connected!{1}".format(colors.GREEN, colors.END))
     emit('from_server', {'cmd': 'setchatname', 'data': vars.chatname})
+    emit('from_server', {'cmd': 'setanotetemplate', 'data': vars.authornotetemplate})
     emit('from_server', {'cmd': 'connected', 'smandelete': vars.smandelete, 'smanrename': vars.smanrename})
     if(vars.remote):
         emit('from_server', {'cmd': 'runs_remotely'})
@@ -1669,7 +1695,7 @@ def get_message(msg):
     elif(msg['cmd'] == 'newgame'):
         newGameRequest()
     elif(msg['cmd'] == 'rndgame'):
-        randomGameRequest(msg['data'])
+        randomGameRequest(msg['data'], memory=msg['memory'])
     elif(msg['cmd'] == 'settemp'):
         vars.temp = float(msg['data'])
         emit('from_server', {'cmd': 'setlabeltemp', 'data': msg['data']}, broadcast=True)
@@ -1712,7 +1738,7 @@ def get_message(msg):
         refresh_settings()
     # Author's Note field update
     elif(msg['cmd'] == 'anote'):
-        anotesubmit(msg['data'])
+        anotesubmit(msg['data'], template=msg['template'])
     # Author's Note depth update
     elif(msg['cmd'] == 'anotedepth'):
         vars.andepth = int(msg['data'])
@@ -1885,6 +1911,10 @@ def get_message(msg):
         vars.nopromptgen = msg['data']
         settingschanged()
         refresh_settings()
+    elif(msg['cmd'] == 'setrngpersist'):
+        vars.rngpersist = msg['data']
+        settingschanged()
+        refresh_settings()
     elif(not vars.remote and msg['cmd'] == 'importwi'):
         wiimportrequest()
 
@@ -1954,6 +1984,8 @@ def savesettings():
     js["chatname"]    = vars.chatname
     js["dynamicscan"] = vars.dynamicscan
     js["nopromptgen"] = vars.nopromptgen
+    js["rngpersist"]  = vars.rngpersist
+    js["antemplate"]  = vars.setauthornotetemplate
 
     js["userscripts"] = vars.userscripts
     js["corescript"]  = vars.corescript
@@ -2016,6 +2048,13 @@ def loadsettings():
             vars.dynamicscan = js["dynamicscan"]
         if("nopromptgen" in js):
             vars.nopromptgen = js["nopromptgen"]
+        if("rngpersist" in js):
+            vars.rngpersist = js["rngpersist"]
+
+        if("antemplate" in js):
+            vars.setauthornotetemplate = js["antemplate"]
+            if(not vars.gamestarted):
+                vars.authornotetemplate = vars.setauthornotetemplate
         
         if("userscripts" in js):
             vars.userscripts = []
@@ -2276,7 +2315,7 @@ def calcsubmitbudgetheader(txt, **kwargs):
 
     # Build Author's Note if set
     if(vars.authornote != ""):
-        anotetxt  = "\n[Author's note: "+vars.authornote+"]\n"
+        anotetxt  = ("\n" + vars.authornotetemplate + "\n").replace("<|>", vars.authornote)
     else:
         anotetxt = ""
 
@@ -2994,6 +3033,7 @@ def refresh_settings():
     emit('from_server', {'cmd': 'updatechatmode', 'data': vars.chatmode}, broadcast=True)
     emit('from_server', {'cmd': 'updatedynamicscan', 'data': vars.dynamicscan}, broadcast=True)
     emit('from_server', {'cmd': 'updatenopromptgen', 'data': vars.nopromptgen}, broadcast=True)
+    emit('from_server', {'cmd': 'updaterngpersist', 'data': vars.rngpersist}, broadcast=True)
     
     emit('from_server', {'cmd': 'updatefrmttriminc', 'data': vars.formatoptns["frmttriminc"]}, broadcast=True)
     emit('from_server', {'cmd': 'updatefrmtrmblln', 'data': vars.formatoptns["frmtrmblln"]}, broadcast=True)
@@ -3101,6 +3141,7 @@ def togglememorymode():
         emit('from_server', {'cmd': 'memmode', 'data': 'true'}, broadcast=True)
         emit('from_server', {'cmd': 'setinputtext', 'data': vars.memory}, broadcast=True)
         emit('from_server', {'cmd': 'setanote', 'data': vars.authornote}, broadcast=True)
+        emit('from_server', {'cmd': 'setanotetemplate', 'data': vars.authornotetemplate}, broadcast=True)
     elif(vars.mode == "memory"):
         vars.mode = "play"
         emit('from_server', {'cmd': 'memmode', 'data': 'false'}, broadcast=True)
@@ -3402,10 +3443,16 @@ def memsubmit(data):
 #==================================================================#
 #  Commit changes to Author's Note
 #==================================================================#
-def anotesubmit(data):
+def anotesubmit(data, template=""):
+    assert type(data) is str and type(template) is str
     # Maybe check for length at some point
     # For now just send it to storage
     vars.authornote = data
+
+    if(vars.authornotetemplate != template):
+        vars.setauthornotetemplate = template
+        settingschanged()
+    vars.authornotetemplate = template
 
 #==================================================================#
 #  Assembles game data into a request to InferKit API
@@ -3635,6 +3682,7 @@ def saveRequest(savpath):
         js["prompt"]      = vars.prompt
         js["memory"]      = vars.memory
         js["authorsnote"] = vars.authornote
+        js["anotetemplate"] = vars.authornotetemplate
         js["actions"]     = tuple(vars.actions.values())
         js["worldinfo"]   = []
         js["wifolders_d"] = vars.wifolders_d
@@ -3777,6 +3825,10 @@ def loadRequest(loadpath, filename=None):
             vars.authornote = js["authorsnote"]
         else:
             vars.authornote = ""
+        if("anotetemplate" in js):
+            vars.authornotetemplate = js["anotetemplate"]
+        else:
+            vars.authornotetemplate = "[Author's note: <|>]"
         
         if("worldinfo" in js):
             num = 0
@@ -3827,6 +3879,7 @@ def loadRequest(loadpath, filename=None):
         sendwi()
         emit('from_server', {'cmd': 'setmemory', 'data': vars.memory}, broadcast=True)
         emit('from_server', {'cmd': 'setanote', 'data': vars.authornote}, broadcast=True)
+        emit('from_server', {'cmd': 'setanotetemplate', 'data': vars.authornotetemplate}, broadcast=True)
         refresh_story()
         emit('from_server', {'cmd': 'setgamestate', 'data': 'ready'}, broadcast=True)
         emit('from_server', {'cmd': 'hidegenseqs', 'data': ''}, broadcast=True)
@@ -3958,6 +4011,7 @@ def importgame():
             vars.prompt = ""
         vars.memory      = ref["memory"]
         vars.authornote  = ref["authorsNote"] if type(ref["authorsNote"]) is str else ""
+        vars.authornotetemplate = "[Author's note: <|>]"
         vars.actions     = structures.KoboldStoryRegister()
         vars.worldinfo   = []
         vars.worldinfo_i = []
@@ -4027,6 +4081,7 @@ def importgame():
         sendwi()
         emit('from_server', {'cmd': 'setmemory', 'data': vars.memory}, broadcast=True)
         emit('from_server', {'cmd': 'setanote', 'data': vars.authornote}, broadcast=True)
+        emit('from_server', {'cmd': 'setanotetemplate', 'data': vars.authornotetemplate}, broadcast=True)
         refresh_story()
         emit('from_server', {'cmd': 'setgamestate', 'data': 'ready'}, broadcast=True)
         emit('from_server', {'cmd': 'hidegenseqs', 'data': ''}, broadcast=True)
@@ -4048,6 +4103,7 @@ def importAidgRequest(id):
         vars.prompt      = js["promptContent"]
         vars.memory      = js["memory"]
         vars.authornote  = js["authorsNote"]
+        vars.authornotetemplate = "[Author's note: <|>]"
         vars.actions     = structures.KoboldStoryRegister()
         vars.worldinfo   = []
         vars.worldinfo_i = []
@@ -4101,6 +4157,7 @@ def importAidgRequest(id):
         sendwi()
         emit('from_server', {'cmd': 'setmemory', 'data': vars.memory}, broadcast=True)
         emit('from_server', {'cmd': 'setanote', 'data': vars.authornote}, broadcast=True)
+        emit('from_server', {'cmd': 'setanotetemplate', 'data': vars.authornotetemplate}, broadcast=True)
         refresh_story()
         emit('from_server', {'cmd': 'setgamestate', 'data': 'ready'}, broadcast=True)
 
@@ -4166,6 +4223,7 @@ def newGameRequest():
     vars.actions     = structures.KoboldStoryRegister()
     
     vars.authornote  = ""
+    vars.authornotetemplate = vars.setauthornotetemplate
     vars.worldinfo   = []
     vars.worldinfo_i = []
     vars.worldinfo_u = {}
@@ -4184,24 +4242,31 @@ def newGameRequest():
     sendwi()
     emit('from_server', {'cmd': 'setmemory', 'data': vars.memory}, broadcast=True)
     emit('from_server', {'cmd': 'setanote', 'data': vars.authornote}, broadcast=True)
+    emit('from_server', {'cmd': 'setanotetemplate', 'data': vars.authornotetemplate}, broadcast=True)
     setStartState()
 
-def randomGameRequest(topic): 
+def randomGameRequest(topic, memory=""): 
+    if(vars.noai):
+        newGameRequest()
+        return
     vars.recentrng = topic
     newGameRequest()
-    vars.memory      = "You generate the following " + topic + " story concept :"
+    _memory = memory
+    if(len(memory) > 0):
+        _memory = memory.rstrip() + "\n\n"
+    vars.memory      = _memory + "You generate the following " + topic + " story concept :"
     vars.lua_koboldbridge.feedback = None
     actionsubmit("", force_submit=True, force_prompt_gen=True)
-    vars.memory      = ""
+    vars.memory      = memory
+
+# Load settings from client.settings
+loadmodelsettings()
+loadsettings()
 
 #==================================================================#
 #  Final startup commands to launch Flask app
 #==================================================================#
 if __name__ == "__main__":
-
-    # Load settings from client.settings
-    loadmodelsettings()
-    loadsettings()
 
     # Start Flask/SocketIO (Blocking, so this must be last method!)
     

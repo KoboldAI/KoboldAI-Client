@@ -1054,6 +1054,9 @@ function hideNewStoryPopup() {
 function showRandomStoryPopup() {
 	rspopup.removeClass("hidden");
 	rspopup.addClass("flex");
+	if($("#setrngpersist").prop("checked")) {
+		$("#rngmemory").val(memorytext);
+	}
 }
 
 function hideRandomStoryPopup() {
@@ -1376,7 +1379,7 @@ function downloadStory(format) {
 	}
 
 	if(format == "plaintext") {
-		var objectURL = URL.createObjectURL(new Blob(actionlist_compiled));
+		var objectURL = URL.createObjectURL(new Blob(actionlist_compiled, {type: "text/plain; charset=UTF-8"}));
 		anchor.setAttribute('href', objectURL);
 		anchor.setAttribute('download', filename_without_extension + ".txt");
 		anchor.click();
@@ -1417,11 +1420,12 @@ function downloadStory(format) {
 		prompt: prompt,
 		memory: memorytext,
 		authorsnote: $("#anoteinput").val(),
+		anotetemplate: $("#anotetemplate").val(),
 		actions: actionlist_compiled,
 		worldinfo: wilist_compiled,
 		wifolders_d: wifolders_d,
 		wifolders_l: wifolders_l,
-	}, null, 3)]));
+	}, null, 3)], {type: "application/json; charset=UTF-8"}));
 	anchor.setAttribute('href', objectURL);
 	anchor.setAttribute('download', filename_without_extension + ".json");
 	anchor.click();
@@ -1811,6 +1815,7 @@ $(document).ready(function(){
 				document.activeElement.blur();
 				active_element.focus();
 			})();
+			$("body").addClass("connected");
 		} else if(msg.cmd == "updatescreen") {
 			var _gamestarted = gamestarted;
 			gamestarted = msg.gamestarted;
@@ -1997,10 +2002,13 @@ $(document).ready(function(){
 		} else if(msg.cmd == "getanote") {
 			// Request contents of Author's Note field
 			var txt = anote_input.val();
-			socket.send({'cmd': 'anote', 'data': txt});
+			socket.send({'cmd': 'anote', 'template': $("#anotetemplate").val(), 'data': txt});
 		} else if(msg.cmd == "setanote") {
 			// Set contents of Author's Note field
 			anote_input.val(msg.data);
+		} else if(msg.cmd == "setanotetemplate") {
+			// Set contents of Author's Note Template field
+			$("#anotetemplate").val(msg.data);
 		} else if(msg.cmd == "addsetting") {
 			// Add setting controls
 			addSetting(msg.data);
@@ -2180,6 +2188,12 @@ $(document).ready(function(){
 		} else if(msg.cmd == "updatenopromptgen") {
 			// Update toggle state
 			$("#setnopromptgen").prop('checked', msg.data).change();
+		} else if(msg.cmd == "updaterngpersist") {
+			// Update toggle state
+			$("#setrngpersist").prop('checked', msg.data).change();
+			if(!$("#setrngpersist").prop("checked")) {
+				$("#rngmemory").val("");
+			}
 		} else if(msg.cmd == "runs_remotely") {
 			remote = true;
 			hide([button_savetofile, button_import, button_importwi]);
@@ -2188,6 +2202,7 @@ $(document).ready(function(){
 	
 	socket.on('disconnect', function() {
 		connected = false;
+		$("body").removeClass("connected");
 		connect_status.html("<b>Lost connection...</b>");
 		connect_status.removeClass("color_green");
 		connect_status.addClass("color_orange");
@@ -2315,7 +2330,9 @@ $(document).ready(function(){
 	});
 	
 	button_impaidg.on("click", function(ev) {
-		showAidgPopup();
+		if(connected) {
+			showAidgPopup();
+		}
 	});
 	
 	aidg_close.on("click", function(ev) {
@@ -2331,7 +2348,9 @@ $(document).ready(function(){
 	});
 	
 	button_saveas.on("click", function(ev) {
-		showSaveAsPopup();
+		if(connected) {
+			showSaveAsPopup();
+		}
 	});
 	
 	saveas_close.on("click", function(ev) {
@@ -2348,7 +2367,9 @@ $(document).ready(function(){
 	});
 
 	button_downloadtxt.on("click", function(ev) {
-		downloadStory('plaintext');
+		if(connected) {
+			downloadStory('plaintext');
+		}
 	});
 	
 	button_load.on("click", function(ev) {
@@ -2397,7 +2418,9 @@ $(document).ready(function(){
 	});
 	
 	button_newgame.on("click", function(ev) {
-		showNewStoryPopup();
+		if(connected) {
+			showNewStoryPopup();
+		}
 	});
 	
 	ns_accept.on("click", function(ev) {
@@ -2430,12 +2453,14 @@ $(document).ready(function(){
 	});
 	
 	button_rndgame.on("click", function(ev) {
-		showRandomStoryPopup();
+		if(connected) {
+			showRandomStoryPopup();
+		}
 	});
 	
 	rs_accept.on("click", function(ev) {
 		hideMessage();
-		socket.send({'cmd': 'rndgame', 'data': topic.val()});
+		socket.send({'cmd': 'rndgame', 'memory': $("#rngmemory").val(), 'data': topic.val()});
 		hideRandomStoryPopup();
 	});
 	
