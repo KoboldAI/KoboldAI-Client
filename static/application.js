@@ -1379,7 +1379,7 @@ function downloadStory(format) {
 	}
 
 	if(format == "plaintext") {
-		var objectURL = URL.createObjectURL(new Blob(actionlist_compiled));
+		var objectURL = URL.createObjectURL(new Blob(actionlist_compiled, {type: "text/plain; charset=UTF-8"}));
 		anchor.setAttribute('href', objectURL);
 		anchor.setAttribute('download', filename_without_extension + ".txt");
 		anchor.click();
@@ -1425,7 +1425,7 @@ function downloadStory(format) {
 		worldinfo: wilist_compiled,
 		wifolders_d: wifolders_d,
 		wifolders_l: wifolders_l,
-	}, null, 3)]));
+	}, null, 3)], {type: "application/json; charset=UTF-8"}));
 	anchor.setAttribute('href', objectURL);
 	anchor.setAttribute('download', filename_without_extension + ".json");
 	anchor.click();
