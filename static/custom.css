@@ -794,7 +794,7 @@ body.connected .statusicon, .statusicon.always-available {
 }
 
 .statusicon.active {
-	color: #3bf723;
+	color: #3bf723 !important;
 }
 
 .helpicon:hover, .statusicon:hover {
