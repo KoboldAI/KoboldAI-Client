@@ -867,9 +867,12 @@ return function(_python, _bridged)
     ---@field setadventure boolean
     ---@field setdynamicscan boolean
     ---@field setnopromptgen boolean
+    ---@field setrngpersist boolean
     ---@field temp number
     ---@field topp number
     ---@field topk integer
+    ---@field top_p number
+    ---@field top_k integer
     ---@field tfs number
     ---@field reppen number
     ---@field tknmax integer
@@ -878,6 +881,7 @@ return function(_python, _bridged)
     ---@field adventure boolean
     ---@field dynamicscan boolean
     ---@field nopromptgen boolean
+    ---@field rngpersist boolean
     ---@field frmttriminc boolean
     ---@field frmtrmblln boolean
     ---@field frmtrmspch boolean

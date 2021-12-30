@@ -1054,6 +1054,9 @@ function hideNewStoryPopup() {
 function showRandomStoryPopup() {
 	rspopup.removeClass("hidden");
 	rspopup.addClass("flex");
+	if($("#setrngpersist").prop("checked")) {
+		$("#rngmemory").val(memorytext);
+	}
 }
 
 function hideRandomStoryPopup() {
@@ -2180,6 +2183,12 @@ $(document).ready(function(){
 		} else if(msg.cmd == "updatenopromptgen") {
 			// Update toggle state
 			$("#setnopromptgen").prop('checked', msg.data).change();
+		} else if(msg.cmd == "updaterngpersist") {
+			// Update toggle state
+			$("#setrngpersist").prop('checked', msg.data).change();
+			if(!$("#setrngpersist").prop("checked")) {
+				$("#rngmemory").val("");
+			}
 		} else if(msg.cmd == "runs_remotely") {
 			remote = true;
 			hide([button_savetofile, button_import, button_importwi]);
@@ -2435,7 +2444,7 @@ $(document).ready(function(){
 	
 	rs_accept.on("click", function(ev) {
 		hideMessage();
-		socket.send({'cmd': 'rndgame', 'data': topic.val()});
+		socket.send({'cmd': 'rndgame', 'memory': $("#rngmemory").val(), 'data': topic.val()});
 		hideRandomStoryPopup();
 	});
 	

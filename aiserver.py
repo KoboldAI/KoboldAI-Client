@@ -179,6 +179,7 @@ class vars:
     dynamicscan = False
     remote      = False
     nopromptgen = False
+    rngpersist  = False
 
 #==================================================================#
 # Function to get model selection at startup
@@ -1263,9 +1264,12 @@ def lua_has_setting(setting):
         "setchatmode",
         "setdynamicscan",
         "setnopromptgen",
+        "setrngpersist",
         "temp",
         "topp",
+        "top_p",
         "topk",
+        "top_k",
         "tfs",
         "reppen",
         "tknmax",
@@ -1276,6 +1280,7 @@ def lua_has_setting(setting):
         "adventure",
         "dynamicscan",
         "nopromptgen",
+        "rngpersist",
         "frmttriminc",
         "frmtrmblln",
         "frmtrmspch",
@@ -1293,8 +1298,8 @@ def lua_has_setting(setting):
 #==================================================================#
 def lua_get_setting(setting):
     if(setting in ("settemp", "temp")): return vars.temp
-    if(setting in ("settopp", "topp")): return vars.top_p
-    if(setting in ("settopk", "topk")): return vars.top_k
+    if(setting in ("settopp", "topp", "top_p")): return vars.top_p
+    if(setting in ("settopk", "topk", "top_k")): return vars.top_k
     if(setting in ("settfs", "tfs")): return vars.tfs
     if(setting in ("setreppen", "reppen")): return vars.rep_pen
     if(setting in ("settknmax", "tknmax")): return vars.max_length
@@ -1305,6 +1310,7 @@ def lua_get_setting(setting):
     if(setting in ("setchatmode", "chatmode")): return vars.chatmode
     if(setting in ("setdynamicscan", "dynamicscan")): return vars.dynamicscan
     if(setting in ("setnopromptgen", "nopromptgen")): return vars.nopromptgen
+    if(setting in ("setrngpersist", "rngpersist")): return vars.rngpersist
     if(setting in ("frmttriminc", "triminc")): return vars.formatoptns["frmttriminc"]
     if(setting in ("frmtrmblln", "rmblln")): return vars.formatoptns["frmttrmblln"]
     if(setting in ("frmtrmspch", "rmspch")): return vars.formatoptns["frmttrmspch"]
@@ -1333,6 +1339,7 @@ def lua_set_setting(setting, v):
     if(setting in ("setadventure", "adventure")): vars.adventure = v
     if(setting in ("setdynamicscan", "dynamicscan")): vars.dynamicscan = v
     if(setting in ("setnopromptgen", "nopromptgen")): vars.nopromptgen = v
+    if(setting in ("setrngpersist", "rngpersist")): vars.rngpersist = v
     if(setting in ("setchatmode", "chatmode")): vars.chatmode = v
     if(setting in ("frmttriminc", "triminc")): vars.formatoptns["frmttriminc"] = v
     if(setting in ("frmtrmblln", "rmblln")): vars.formatoptns["frmttrmblln"] = v
@@ -1667,7 +1674,7 @@ def get_message(msg):
     elif(msg['cmd'] == 'newgame'):
         newGameRequest()
     elif(msg['cmd'] == 'rndgame'):
-        randomGameRequest(msg['data'])
+        randomGameRequest(msg['data'], memory=msg['memory'])
     elif(msg['cmd'] == 'settemp'):
         vars.temp = float(msg['data'])
         emit('from_server', {'cmd': 'setlabeltemp', 'data': msg['data']}, broadcast=True)
@@ -1883,6 +1890,10 @@ def get_message(msg):
         vars.nopromptgen = msg['data']
         settingschanged()
         refresh_settings()
+    elif(msg['cmd'] == 'setrngpersist'):
+        vars.rngpersist = msg['data']
+        settingschanged()
+        refresh_settings()
     elif(not vars.remote and msg['cmd'] == 'importwi'):
         wiimportrequest()
 
@@ -1952,6 +1963,7 @@ def savesettings():
     js["chatname"]    = vars.chatname
     js["dynamicscan"] = vars.dynamicscan
     js["nopromptgen"] = vars.nopromptgen
+    js["rngpersist"]  = vars.rngpersist
 
     js["userscripts"] = vars.userscripts
     js["corescript"]  = vars.corescript
@@ -2014,6 +2026,8 @@ def loadsettings():
             vars.dynamicscan = js["dynamicscan"]
         if("nopromptgen" in js):
             vars.nopromptgen = js["nopromptgen"]
+        if("rngpersist" in js):
+            vars.rngpersist = js["rngpersist"]
         
         if("userscripts" in js):
             vars.userscripts = []
@@ -2992,6 +3006,7 @@ def refresh_settings():
     emit('from_server', {'cmd': 'updatechatmode', 'data': vars.chatmode}, broadcast=True)
     emit('from_server', {'cmd': 'updatedynamicscan', 'data': vars.dynamicscan}, broadcast=True)
     emit('from_server', {'cmd': 'updatenopromptgen', 'data': vars.nopromptgen}, broadcast=True)
+    emit('from_server', {'cmd': 'updaterngpersist', 'data': vars.rngpersist}, broadcast=True)
     
     emit('from_server', {'cmd': 'updatefrmttriminc', 'data': vars.formatoptns["frmttriminc"]}, broadcast=True)
     emit('from_server', {'cmd': 'updatefrmtrmblln', 'data': vars.formatoptns["frmtrmblln"]}, broadcast=True)
@@ -4184,22 +4199,27 @@ def newGameRequest():
     emit('from_server', {'cmd': 'setanote', 'data': vars.authornote}, broadcast=True)
     setStartState()
 
-def randomGameRequest(topic): 
+def randomGameRequest(topic, memory=""): 
+    if(vars.noai):
+        newGameRequest()
+        return
     vars.recentrng = topic
     newGameRequest()
-    vars.memory      = "You generate the following " + topic + " story concept :"
+    if(len(memory) > 0):
+        memory = memory.rstrip() + "\n\n"
+    vars.memory      = memory + "You generate the following " + topic + " story concept :"
     vars.lua_koboldbridge.feedback = None
     actionsubmit("", force_submit=True, force_prompt_gen=True)
-    vars.memory      = ""
+    vars.memory      = memory
+
+# Load settings from client.settings
+loadmodelsettings()
+loadsettings()
 
 #==================================================================#
 #  Final startup commands to launch Flask app
 #==================================================================#
 if __name__ == "__main__":
-
-    # Load settings from client.settings
-    loadmodelsettings()
-    loadsettings()
 
     # Start Flask/SocketIO (Blocking, so this must be last method!)
     

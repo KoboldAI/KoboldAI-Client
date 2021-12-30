@@ -151,6 +151,17 @@ gensettingstf = [{
 	"step": 1,
 	"default": 0,
     "tooltip": "When enabled the AI does not generate when you enter the prompt, instead you need to do an action first."
+	},
+	{
+	"uitype": "toggle",
+	"unit": "bool",
+	"label": "Random Story Persist",
+	"id": "setrngpersist",
+	"min": 0,
+	"max": 1,
+	"step": 1,
+	"default": 0,
+    "tooltip": "When enabled, the Memory text box in the Random Story dialog will be prefilled by default with your current story's memory instead of being empty."
 	}]
 
 gensettingsik =[{
@@ -251,6 +262,28 @@ gensettingsik =[{
 	"step": 1,
 	"default": 0,
     "tooltip": "Turn this on if you are playing a Choose your Adventure model."
+	},
+	{
+	"uitype": "toggle",
+	"unit": "bool",
+	"label": "No Prompt Generation",
+	"id": "setnopromptgen", 
+	"min": 0,
+	"max": 1,
+	"step": 1,
+	"default": 0,
+    "tooltip": "When enabled the AI does not generate when you enter the prompt, instead you need to do an action first."
+	},
+	{
+	"uitype": "toggle",
+	"unit": "bool",
+	"label": "Random Story Persist",
+	"id": "setrngpersist",
+	"min": 0,
+	"max": 1,
+	"step": 1,
+	"default": 0,
+    "tooltip": "When enabled, the Memory text box in the Random Story dialog will be prefilled by default with your current story's memory instead of being empty."
 	}]
 
 formatcontrols = [{

@@ -32,6 +32,22 @@ chunk.editing, chunk.editing * {
 	display: flex;
 }
 
+#topic {
+	margin-top: 20px;
+	resize: none;
+	overflow: auto;
+	background-color: #404040;
+	color: #ffffff;
+}
+
+#rngmemory {
+	height: 80px;
+	resize: none;
+	overflow:auto;
+	background-color: #404040;
+	color: #ffffff;
+}
+
 #chatname {
 	background-color: #404040;
 	color: #ffffff;
@@ -387,7 +403,7 @@ chunk.editing, chunk.editing * {
 #rspopup {
 	width: 800px;
 	background-color: #262626;
-	margin-top: 200px;
+	margin-top: 150px;
 }
 
 /*================= Classes =================*/
