@@ -3826,7 +3826,7 @@ def loadRequest(loadpath, filename=None):
         if("anotetemplate" in js):
             vars.authornotetemplate = js["anotetemplate"]
         else:
-            vars.authornotetemplate = "[Author's Note: <|>]"
+            vars.authornotetemplate = "[Author's note: <|>]"
         
         if("worldinfo" in js):
             num = 0
@@ -4009,7 +4009,7 @@ def importgame():
             vars.prompt = ""
         vars.memory      = ref["memory"]
         vars.authornote  = ref["authorsNote"] if type(ref["authorsNote"]) is str else ""
-        vars.authornotetemplate = "[Author's Note: <|>]"
+        vars.authornotetemplate = "[Author's note: <|>]"
         vars.actions     = structures.KoboldStoryRegister()
         vars.worldinfo   = []
         vars.worldinfo_i = []
@@ -4101,7 +4101,7 @@ def importAidgRequest(id):
         vars.prompt      = js["promptContent"]
         vars.memory      = js["memory"]
         vars.authornote  = js["authorsNote"]
-        vars.authornotetemplate = "[Author's Note: <|>]"
+        vars.authornotetemplate = "[Author's note: <|>]"
         vars.actions     = structures.KoboldStoryRegister()
         vars.worldinfo   = []
         vars.worldinfo_i = []
