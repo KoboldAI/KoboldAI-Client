@@ -2333,6 +2333,11 @@ def calcsubmitbudget(actionlen, winfo, mem, anotetxt, actions, submission=None, 
 
     lnsp = vars.sp.shape[0] if vars.sp is not None else 0
 
+    if("tokenizer" not in globals()):
+        from transformers import GPT2TokenizerFast
+        global tokenizer
+        tokenizer = GPT2TokenizerFast.from_pretrained("gpt2", cache_dir="cache/")
+
     # Calculate token budget
     prompttkns = tokenizer.encode(vars.comregex_ai.sub('', vars.prompt), max_length=int(2e9), truncation=True)
     lnprompt   = len(prompttkns)
