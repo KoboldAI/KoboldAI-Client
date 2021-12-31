@@ -279,6 +279,7 @@ return function(_python, _bridged)
         end
     end
     debug.getmetatable(io.stdout).__index.close = _new_close(io.stdout.close)
+    debug.getmetatable(io.stdout).__close = _new_close(io.stdout.close)
 
     ---@param filename string
     ---@return boolean
