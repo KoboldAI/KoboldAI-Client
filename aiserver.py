@@ -1249,7 +1249,7 @@ def lua_get_numseqs():
 def lua_set_numseqs(numseqs):
     assert type(numseqs) in (int, float) and numseqs >= 1
     print(colors.GREEN + f"{lua_log_format_name(vars.lua_koboldbridge.logging_name)} set numseqs to {int(numseqs)}" + colors.END)
-    vars.genamt = int(numseqs)
+    vars.numseqs = int(numseqs)
 
 #==================================================================#
 #  Check if a setting exists with the given name
@@ -1410,8 +1410,8 @@ def lua_set_chunk(k, v):
         chunk = int(k)
         if(vars.lua_koboldbridge.userstate == "genmod"):
             del vars._actions[chunk-1]
-            vars.lua_deleted.add(chunk)
-        if(vars._actions is not vars.actions):
+        vars.lua_deleted.add(chunk)
+        if(not hasattr(vars, "_actions") or vars._actions is not vars.actions):
             del vars.actions[chunk-1]
     else:
         if(k == 0):
@@ -1422,12 +1422,12 @@ def lua_set_chunk(k, v):
         if(chunk == 0):
             if(vars.lua_koboldbridge.userstate == "genmod"):
                 vars._prompt = v
-                vars.lua_edited.add(chunk)
+            vars.lua_edited.add(chunk)
             vars.prompt = v
         else:
             if(vars.lua_koboldbridge.userstate == "genmod"):
                 vars._actions[chunk-1] = v
-                vars.lua_edited.add(chunk)
+            vars.lua_edited.add(chunk)
             vars.actions[chunk-1] = v
 
 #==================================================================#
@@ -3118,7 +3118,8 @@ def inlineedit(chunk, data):
             return
         vars.prompt = data
     else:
-        vars.actions[chunk-1] = data
+        if(chunk-1 in vars.actions):
+            vars.actions[chunk-1] = data
     
     update_story_chunk(chunk)
     emit('from_server', {'cmd': 'texteffect', 'data': chunk}, broadcast=True)
@@ -3137,7 +3138,8 @@ def inlinedelete(chunk):
         emit('from_server', {'cmd': 'errmsg', 'data': "Cannot delete the prompt."})
         emit('from_server', {'cmd': 'editmode', 'data': 'false'}, broadcast=True)
     else:
-        del vars.actions[chunk-1]
+        if(chunk-1 in vars.actions):
+            del vars.actions[chunk-1]
         remove_story_chunk(chunk)
         emit('from_server', {'cmd': 'editmode', 'data': 'false'}, broadcast=True)
 

@@ -1916,15 +1916,15 @@ return function(_python, _bridged)
         koboldbridge.generating = true
         koboldbridge.generated_cols = 0
         koboldbridge.generated = {}
+        if koboldbridge.inmod ~= nil then
+            r = koboldbridge.inmod()
+        end
         for i = 1, kobold.settings.numseqs do
             koboldbridge.generated[i] = {}
         end
         koboldbridge.outputs = {}
         for i = 1, kobold.num_outputs do
             koboldbridge.outputs[i] = {}
-        end
-        if koboldbridge.inmod ~= nil then
-            r = koboldbridge.inmod()
         end
         return r
     end
