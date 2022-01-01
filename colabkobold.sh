@@ -88,8 +88,16 @@ if [ "$init" != "skip" ]; then
     mkdir /content/drive/MyDrive/KoboldAI/userscripts/
 
     cd /content/KoboldAI-Client
+
+    cp -rn stories/* /content/drive/MyDrive/KoboldAI/stories/
+    cp -rn userscripts/* /content/drive/MyDrive/KoboldAI/userscripts/
+    cp -rn softprompts/* /content/drive/MyDrive/KoboldAI/softprompts/
     rm stories
     rm -rf stories/
+    rm userscripts
+    rm -rf userscripts/
+    rm softprompts
+    rm -rf softprompts/
     ln -s /content/drive/MyDrive/KoboldAI/stories/ stories
     ln -s /content/drive/MyDrive/KoboldAI/settings/ settings
     ln -s /content/drive/MyDrive/KoboldAI/softprompts/ softprompts
