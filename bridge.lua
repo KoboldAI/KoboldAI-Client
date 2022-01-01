@@ -1860,8 +1860,13 @@ return function(_python, _bridged)
             bridged.load_callback(filename, modulenames[i])
             koboldbridge.logging_name = modulenames[i]
             koboldbridge.filename = filename
+            local f, err = old_loadfile(join_folder_and_filename(bridged.userscript_path, filename), "t", koboldbridge.get_universe(filename))
+            if err ~= nil then
+                error(err)
+                return
+            end
             ---@type KoboldUserScript
-            local _userscript = old_loadfile(join_folder_and_filename(bridged.userscript_path, filename), "t", koboldbridge.get_universe(filename))()
+            local _userscript = f()
             koboldbridge.logging_name = nil
             koboldbridge.filename = nil
             local userscript = deepcopy(KoboldUserScriptModule)
@@ -1900,8 +1905,13 @@ return function(_python, _bridged)
 
     ---@return nil
     function koboldbridge.load_corescript(filename)
+        local f, err = old_loadfile(join_folder_and_filename(bridged.corescript_path, filename), "t", koboldbridge.get_universe(0))
+        if err ~= nil then
+            error(err)
+            return
+        end
         ---@type KoboldCoreScript
-        local corescript = old_loadfile(join_folder_and_filename(bridged.corescript_path, filename), "t", koboldbridge.get_universe(0))()
+        local corescript = f()
         koboldbridge.inmod = corescript.inmod
         koboldbridge.genmod = corescript.genmod
         koboldbridge.outmod = corescript.outmod
