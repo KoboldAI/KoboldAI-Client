@@ -134,7 +134,7 @@ class vars:
     corescript  = "default.lua"  # Filename of corescript to load
     # badwords    = []     # Array of str/chr values that should be removed from output
     badwordsids = [[13460], [6880], [50256], [42496], [4613], [17414], [22039], [16410], [27], [29], [38430], [37922], [15913], [24618], [28725], [58], [47175], [36937], [26700], [12878], [16471], [37981], [5218], [29795], [13412], [45160], [3693], [49778], [4211], [20598], [36475], [33409], [44167], [32406], [29847], [29342], [42669], [685], [25787], [7359], [3784], [5320], [33994], [33490], [34516], [43734], [17635], [24293], [9959], [23785], [21737], [28401], [18161], [26358], [32509], [1279], [38155], [18189], [26894], [6927], [14610], [23834], [11037], [14631], [26933], [46904], [22330], [25915], [47934], [38214], [1875], [14692], [41832], [13163], [25970], [29565], [44926], [19841], [37250], [49029], [9609], [44438], [16791], [17816], [30109], [41888], [47527], [42924], [23984], [49074], [33717], [31161], [49082], [30138], [31175], [12240], [14804], [7131], [26076], [33250], [3556], [38381], [36338], [32756], [46581], [17912], [49146]] # Tokenized array of badwords used to prevent AI artifacting
-    deletewi    = -1     # Temporary storage for index to delete
+    deletewi    = None   # Temporary storage for UID to delete
     wirmvwhtsp  = False  # Whether to remove leading whitespace from WI entries
     widepth     = 3      # How many historical actions to scan for WI hits
     mode        = "play" # Whether the interface is in play, memory, or edit mode
@@ -1249,7 +1249,7 @@ def lua_get_numseqs():
 def lua_set_numseqs(numseqs):
     assert type(numseqs) in (int, float) and numseqs >= 1
     print(colors.GREEN + f"{lua_log_format_name(vars.lua_koboldbridge.logging_name)} set numseqs to {int(numseqs)}" + colors.END)
-    vars.genamt = int(numseqs)
+    vars.numseqs = int(numseqs)
 
 #==================================================================#
 #  Check if a setting exists with the given name
@@ -1410,8 +1410,8 @@ def lua_set_chunk(k, v):
         chunk = int(k)
         if(vars.lua_koboldbridge.userstate == "genmod"):
             del vars._actions[chunk-1]
-            vars.lua_deleted.add(chunk)
-        if(vars._actions is not vars.actions):
+        vars.lua_deleted.add(chunk)
+        if(not hasattr(vars, "_actions") or vars._actions is not vars.actions):
             del vars.actions[chunk-1]
     else:
         if(k == 0):
@@ -1422,12 +1422,12 @@ def lua_set_chunk(k, v):
         if(chunk == 0):
             if(vars.lua_koboldbridge.userstate == "genmod"):
                 vars._prompt = v
-                vars.lua_edited.add(chunk)
+            vars.lua_edited.add(chunk)
             vars.prompt = v
         else:
             if(vars.lua_koboldbridge.userstate == "genmod"):
                 vars._actions[chunk-1] = v
-                vars.lua_edited.add(chunk)
+            vars.lua_edited.add(chunk)
             vars.actions[chunk-1] = v
 
 #==================================================================#
@@ -2333,6 +2333,11 @@ def calcsubmitbudget(actionlen, winfo, mem, anotetxt, actions, submission=None, 
 
     lnsp = vars.sp.shape[0] if vars.sp is not None else 0
 
+    if("tokenizer" not in globals()):
+        from transformers import GPT2TokenizerFast
+        global tokenizer
+        tokenizer = GPT2TokenizerFast.from_pretrained("gpt2", cache_dir="cache/")
+
     # Calculate token budget
     prompttkns = tokenizer.encode(vars.comregex_ai.sub('', vars.prompt), max_length=int(2e9), truncation=True)
     lnprompt   = len(prompttkns)
@@ -3113,7 +3118,8 @@ def inlineedit(chunk, data):
             return
         vars.prompt = data
     else:
-        vars.actions[chunk-1] = data
+        if(chunk-1 in vars.actions):
+            vars.actions[chunk-1] = data
     
     update_story_chunk(chunk)
     emit('from_server', {'cmd': 'texteffect', 'data': chunk}, broadcast=True)
@@ -3132,7 +3138,8 @@ def inlinedelete(chunk):
         emit('from_server', {'cmd': 'errmsg', 'data': "Cannot delete the prompt."})
         emit('from_server', {'cmd': 'editmode', 'data': 'false'}, broadcast=True)
     else:
-        del vars.actions[chunk-1]
+        if(chunk-1 in vars.actions):
+            del vars.actions[chunk-1]
         remove_story_chunk(chunk)
         emit('from_server', {'cmd': 'editmode', 'data': 'false'}, broadcast=True)
 
@@ -3198,19 +3205,24 @@ def addwifolder():
     addwiitem(folder_uid=uid)
 
 #==================================================================#
-#   Move the WI entry with number src so that it immediately precedes
-#   the WI entry with number dst
+#   Move the WI entry with UID src so that it immediately precedes
+#   the WI entry with UID dst
 #==================================================================#
 def movewiitem(dst, src):
-    if(vars.worldinfo[src]["folder"] is not None):
-        for i, e in enumerate(vars.wifolders_u[vars.worldinfo[src]["folder"]]):
-            if(e is vars.worldinfo[src]):
-                vars.wifolders_u[vars.worldinfo[src]["folder"]].pop(i)
+    if(vars.worldinfo_u[src]["folder"] is not None):
+        for i, e in enumerate(vars.wifolders_u[vars.worldinfo_u[src]["folder"]]):
+            if(e is vars.worldinfo_u[src]):
+                vars.wifolders_u[vars.worldinfo_u[src]["folder"]].pop(i)
                 break
-    if(vars.worldinfo[dst]["folder"] is not None):
-        vars.wifolders_u[vars.worldinfo[dst]["folder"]].append(vars.worldinfo[src])
-    vars.worldinfo[src]["folder"] = vars.worldinfo[dst]["folder"]
-    vars.worldinfo.insert(dst - (dst >= src), vars.worldinfo.pop(src))
+    if(vars.worldinfo_u[dst]["folder"] is not None):
+        vars.wifolders_u[vars.worldinfo_u[dst]["folder"]].append(vars.worldinfo_u[src])
+    vars.worldinfo_u[src]["folder"] = vars.worldinfo_u[dst]["folder"]
+    for i, e in enumerate(vars.worldinfo):
+        if(e is vars.worldinfo_u[src]):
+            _src = i
+        elif(e is vars.worldinfo_u[dst]):
+            _dst = i
+    vars.worldinfo.insert(_dst - (_dst >= _src), vars.worldinfo.pop(_src))
     sendwi()
 
 #==================================================================#
@@ -3292,38 +3304,38 @@ def stablesortwi():
 #==================================================================#
 def commitwi(ar):
     for ob in ar:
-        vars.worldinfo[ob["num"]]["key"]          = ob["key"]
-        vars.worldinfo[ob["num"]]["keysecondary"] = ob["keysecondary"]
-        vars.worldinfo[ob["num"]]["content"]      = ob["content"]
-        vars.worldinfo[ob["num"]]["comment"]      = ob.get("comment", "")
-        vars.worldinfo[ob["num"]]["folder"]       = ob.get("folder", None)
-        vars.worldinfo[ob["num"]]["selective"]    = ob["selective"]
-        vars.worldinfo[ob["num"]]["constant"]     = ob.get("constant", False)
-    # Was this a deletion request? If so, remove the requested index
-    if(vars.deletewi >= 0):
-        if(vars.worldinfo[vars.deletewi]["folder"] is not None):
-            for i, e in enumerate(vars.wifolders_u[vars.worldinfo[vars.deletewi]["folder"]]):
-                if(e is vars.worldinfo[vars.deletewi]):
-                    vars.wifolders_u[vars.worldinfo[vars.deletewi]["folder"]].pop(i)
-        del vars.worldinfo_u[vars.worldinfo[vars.deletewi]["uid"]]
-        del vars.worldinfo[vars.deletewi]
-        # Send the new WI array structure
-        sendwi()
-        # And reset deletewi index
-        vars.deletewi = -1
-    else:
-        stablesortwi()
-        vars.worldinfo_i = [wi for wi in vars.worldinfo if wi["init"]]
+        ob["uid"] = int(ob["uid"])
+        vars.worldinfo_u[ob["uid"]]["key"]          = ob["key"]
+        vars.worldinfo_u[ob["uid"]]["keysecondary"] = ob["keysecondary"]
+        vars.worldinfo_u[ob["uid"]]["content"]      = ob["content"]
+        vars.worldinfo_u[ob["uid"]]["comment"]      = ob.get("comment", "")
+        vars.worldinfo_u[ob["uid"]]["folder"]       = ob.get("folder", None)
+        vars.worldinfo_u[ob["uid"]]["selective"]    = ob["selective"]
+        vars.worldinfo_u[ob["uid"]]["constant"]     = ob.get("constant", False)
+    stablesortwi()
+    vars.worldinfo_i = [wi for wi in vars.worldinfo if wi["init"]]
 
 #==================================================================#
 #  
 #==================================================================#
-def deletewi(num):
-    if(num < len(vars.worldinfo)):
-        # Store index of deletion request
-        vars.deletewi = num
-        # Get contents of WI HTML inputs
-        requestwi()
+def deletewi(uid):
+    if(uid in vars.worldinfo_u):
+        # Store UID of deletion request
+        vars.deletewi = uid
+        if(vars.deletewi is not None):
+            if(vars.worldinfo_u[vars.deletewi]["folder"] is not None):
+                for i, e in enumerate(vars.wifolders_u[vars.worldinfo_u[vars.deletewi]["folder"]]):
+                    if(e is vars.worldinfo_u[vars.deletewi]):
+                        vars.wifolders_u[vars.worldinfo_u[vars.deletewi]["folder"]].pop(i)
+            for i, e in enumerate(vars.worldinfo):
+                if(e is vars.worldinfo_u[vars.deletewi]):
+                    del vars.worldinfo[i]
+                    break
+            del vars.worldinfo_u[vars.deletewi]
+            # Send the new WI array structure
+            sendwi()
+            # And reset deletewi
+            vars.deletewi = None
 
 #==================================================================#
 #  

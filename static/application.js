@@ -224,7 +224,7 @@ function addWiLine(ob) {
 	var current_wifolder_element = ob.folder === null ? $(".wisortable-body:not([folder-uid])").last() : $(".wisortable-body[folder-uid="+ob.folder+"]");
 	if(ob.init) {
 		if(ob.selective){
-			current_wifolder_element.append("<div class=\"wilistitem wilistitem-selective "+(ob.constant ? "wilistitem-constant" : "")+"\" num=\""+ob.num+"\" id=\"wilistitem"+ob.num+"\">\
+			current_wifolder_element.append("<div class=\"wilistitem wilistitem-selective "+(ob.constant ? "wilistitem-constant" : "")+"\" num=\""+ob.num+"\" uid=\""+ob.uid+"\" id=\"wilistitem"+ob.num+"\">\
 				<div class=\"wicomment\">\
 					<textarea class=\"form-control\" placeholder=\"Comment\" id=\"wicomment"+ob.num+"\">"+ob.comment+"</textarea>\
 				</div>\
@@ -262,7 +262,7 @@ function addWiLine(ob) {
 				</div>\
 			</div>");
 		} else {
-			current_wifolder_element.append("<div class=\"wilistitem "+(ob.constant ? "wilistitem-constant" : "")+"\" num=\""+ob.num+"\" id=\"wilistitem"+ob.num+"\">\
+			current_wifolder_element.append("<div class=\"wilistitem "+(ob.constant ? "wilistitem-constant" : "")+"\" num=\""+ob.num+"\" uid=\""+ob.uid+"\" id=\"wilistitem"+ob.num+"\">\
 				<div class=\"wicomment\">\
 					<textarea class=\"form-control\" placeholder=\"Comment\" id=\"wicomment"+ob.num+"\">"+ob.comment+"</textarea>\
 				</div>\
@@ -311,7 +311,7 @@ function addWiLine(ob) {
 		});
 	} else {
 		// Show WI line item with form fields hidden (uninitialized)
-		current_wifolder_element.append("<div class=\"wilistitem wilistitem-uninitialized wisortable-excluded\" num=\""+ob.num+"\" id=\"wilistitem"+ob.num+"\">\
+		current_wifolder_element.append("<div class=\"wilistitem wilistitem-uninitialized wisortable-excluded\" num=\""+ob.num+"\" uid=\""+ob.uid+"\" id=\"wilistitem"+ob.num+"\">\
 			<div class=\"wicomment\">\
 				<textarea class=\"form-control hidden\" placeholder=\"Comment\" id=\"wicomment"+ob.num+"\">"+ob.comment+"</textarea>\
 			</div>\
@@ -391,7 +391,7 @@ function addWiLine(ob) {
 		hideWiDeleteConfirm(ob.num);
 	});
 	$("#btn_widel"+ob.num).on("click", function () {
-		socket.send({'cmd': 'widelete', 'data': ob.num});
+		socket.send({'cmd': 'widelete', 'data': ob.uid});
 	});
 	$("#selective-key-"+ob.num).on("click", function () {
 		var element = $("#selective-key-"+ob.num);
@@ -773,7 +773,7 @@ function returnWiList(ar) {
 		} else {
 			folder = parseInt(folder);
 		}
-		var ob          = {"key": "", "keysecondary": "", "content": "", "comment": "", "folder": null, "num": ar[i], "selective": false, "constant": false};
+		var ob          = {"key": "", "keysecondary": "", "content": "", "comment": "", "folder": null, "uid": parseInt($("#wilistitem"+ar[i]).attr("uid")), "selective": false, "constant": false};
 		ob.selective    = $("#wikeyprimary"+ar[i]).css("display") != "none"
 		ob.key          = ob.selective ? $("#wikeyprimary"+ar[i]).val() : $("#wikey"+ar[i]).val();
 		ob.keysecondary = $("#wikeysecondary"+ar[i]).val();
@@ -1205,16 +1205,16 @@ function sortableOnStop(event, ui) {
 		// entry was dropped and which WI entry comes immediately after the
 		// dropped position so that the server can internally move around
 		// the WI entries
-		var next_sibling = ui.item.next(".wilistitem").attr("num");
+		var next_sibling = ui.item.next(".wilistitem").attr("uid");
 		if(next_sibling === undefined) {
-			next_sibling = ui.item.next().next().attr("num");
+			next_sibling = ui.item.next().next().attr("uid");
 		}
 		next_sibling = parseInt(next_sibling);
 		if(Number.isNaN(next_sibling)) {
 			$(this).sortable("cancel");
 			return;
 		}
-		socket.send({'cmd': 'wimoveitem', 'destination': next_sibling, 'data': parseInt(ui.item.attr("num"))});
+		socket.send({'cmd': 'wimoveitem', 'destination': next_sibling, 'data': parseInt(ui.item.attr("uid"))});
 	} else {
 		// Do the same thing for WI folders
 		var next_sibling = ui.item.next(".wisortable-container").attr("folder-uid");
