@@ -124,7 +124,7 @@ function userscript.inmod()
                     key = e.key,
                     keysecondary = e.keysecondary,
                 }
-                e.constant = not repeated and e:compute_context("") ~= e:compute_context(location)
+                e.constant = e.constant or (not repeated and e:compute_context("") ~= e:compute_context(location))
                 e.key = ""
                 e.keysecondary = ""
             end
