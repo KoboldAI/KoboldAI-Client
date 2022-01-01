@@ -286,7 +286,7 @@ function userscript.genmod()
 
         -- For each partially-generated sequence...
         for i, generated_row in ipairs(kobold.generated) do
-        
+
             if max_overlap[i][bias_entry] == nil then
                 max_overlap[i][bias_entry] = 0
             end
