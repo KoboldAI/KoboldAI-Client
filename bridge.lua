@@ -615,7 +615,7 @@ return function(_python, _bridged)
         if not check_validity(t) then
             return 0
         end
-        return #kobold.worldinfo
+        return _python.builtins.len(bridged.vars.wifolders_l)
     end
 
     KoboldWorldInfoFolderSelector_mt._kobold_next = KoboldWorldInfoEntry_mt._kobold_next
