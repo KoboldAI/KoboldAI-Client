@@ -279,6 +279,7 @@ return function(_python, _bridged)
         end
     end
     debug.getmetatable(io.stdout).__index.close = _new_close(io.stdout.close)
+    debug.getmetatable(io.stdout).__close = _new_close(io.stdout.close)
 
     ---@param filename string
     ---@return boolean
@@ -1859,8 +1860,13 @@ return function(_python, _bridged)
             bridged.load_callback(filename, modulenames[i])
             koboldbridge.logging_name = modulenames[i]
             koboldbridge.filename = filename
+            local f, err = old_loadfile(join_folder_and_filename(bridged.userscript_path, filename), "t", koboldbridge.get_universe(filename))
+            if err ~= nil then
+                error(err)
+                return
+            end
             ---@type KoboldUserScript
-            local _userscript = old_loadfile(join_folder_and_filename(bridged.userscript_path, filename), "t", koboldbridge.get_universe(filename))()
+            local _userscript = f()
             koboldbridge.logging_name = nil
             koboldbridge.filename = nil
             local userscript = deepcopy(KoboldUserScriptModule)
@@ -1899,8 +1905,13 @@ return function(_python, _bridged)
 
     ---@return nil
     function koboldbridge.load_corescript(filename)
+        local f, err = old_loadfile(join_folder_and_filename(bridged.corescript_path, filename), "t", koboldbridge.get_universe(0))
+        if err ~= nil then
+            error(err)
+            return
+        end
         ---@type KoboldCoreScript
-        local corescript = old_loadfile(join_folder_and_filename(bridged.corescript_path, filename), "t", koboldbridge.get_universe(0))()
+        local corescript = f()
         koboldbridge.inmod = corescript.inmod
         koboldbridge.genmod = corescript.genmod
         koboldbridge.outmod = corescript.outmod
@@ -1915,15 +1926,15 @@ return function(_python, _bridged)
         koboldbridge.generating = true
         koboldbridge.generated_cols = 0
         koboldbridge.generated = {}
+        if koboldbridge.inmod ~= nil then
+            r = koboldbridge.inmod()
+        end
         for i = 1, kobold.settings.numseqs do
             koboldbridge.generated[i] = {}
         end
         koboldbridge.outputs = {}
         for i = 1, kobold.num_outputs do
             koboldbridge.outputs[i] = {}
-        end
-        if koboldbridge.inmod ~= nil then
-            r = koboldbridge.inmod()
         end
         return r
     end
