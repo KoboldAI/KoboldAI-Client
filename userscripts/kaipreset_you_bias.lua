@@ -1,6 +1,6 @@
 -- You bias
--- Makes the word "You" more or less common, optionally only if not between
--- double quotes.
+-- Makes the word "You" less (or more) common in character references
+-- , optionally also between double quotes.
 -- Only works with models with a tokenizer based on GPT-2, such as GPT-2,
 -- GPT-Neo and GPT-J.
 
