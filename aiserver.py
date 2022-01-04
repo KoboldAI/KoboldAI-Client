@@ -163,6 +163,7 @@ class vars:
     genseqs     = []     # Temporary storage for generated sequences
     recentback  = False  # Whether Back button was recently used without Submitting or Retrying after
     recentrng   = None   # If a new random game was recently generated without Submitting after, this is the topic used (as a string), otherwise this is None
+    recentrngm  = None   # If a new random game was recently generated without Submitting after, this is the memory used (as a string), otherwise this is None
     useprompt   = False   # Whether to send the full prompt with every submit action
     breakmodel  = False  # For GPU users, whether to use both system RAM and VRAM to conserve VRAM while offering speedup compared to CPU-only
     bmsupported = False  # Whether the breakmodel option is supported (GPT-Neo/GPT-J only, currently)
@@ -1645,7 +1646,7 @@ def get_message(msg):
                 vars.chatname = msg['chatname']
                 settingschanged()
                 emit('from_server', {'cmd': 'setchatname', 'data': vars.chatname}, broadcast=True)
-            vars.recentrng = None
+            vars.recentrng = vars.recentrngm = None
             actionsubmit(msg['data'], actionmode=msg['actionmode'])
         elif(vars.mode == "edit"):
             editsubmit(msg['data'])
@@ -2130,7 +2131,7 @@ def actionsubmit(data, actionmode=0, force_submit=False, force_prompt_gen=False,
         set_aibusy(1)
 
         if(disable_recentrng):
-            vars.recentrng = None
+            vars.recentrng = vars.recentrngm = None
 
         vars.recentback = False
         vars.recentedit = False
@@ -2272,7 +2273,7 @@ def actionretry(data):
     if(vars.aibusy):
         return
     if(vars.recentrng is not None):
-        randomGameRequest(vars.recentrng)
+        randomGameRequest(vars.recentrng, memory=vars.recentrngm)
         return
     # Remove last action if possible and resubmit
     if(vars.gamestarted if vars.useprompt else len(vars.actions) > 0):
@@ -4282,6 +4283,7 @@ def randomGameRequest(topic, memory=""):
         newGameRequest()
         return
     vars.recentrng = topic
+    vars.recentrngm = memory
     newGameRequest()
     _memory = memory
     if(len(memory) > 0):
