@@ -272,6 +272,13 @@ def device_config(model):
         try:
             breakmodel.gpu_blocks = list(map(int, args.breakmodel_gpulayers.split(',')))
             assert len(breakmodel.gpu_blocks) <= torch.cuda.device_count()
+            s = n_layers
+            for i in range(len(breakmodel.gpu_blocks)):
+                if(breakmodel.gpu_blocks[i] <= -1):
+                    breakmodel.gpu_blocks[i] = s
+                    break
+                else:
+                    s -= breakmodel.gpu_blocks[i]
             assert sum(breakmodel.gpu_blocks) <= n_layers
             n_layers -= sum(breakmodel.gpu_blocks)
         except:
