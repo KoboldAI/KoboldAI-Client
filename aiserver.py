@@ -2560,7 +2560,7 @@ def _generate(txt, minimum, maximum, found_entries):
                 do_sample=True, 
                 min_length=minimum, 
                 max_length=int(2e9),
-                repetition_penalty=vars.rep_pen,
+                repetition_penalty=1.1,
                 bad_words_ids=vars.badwordsids,
                 use_cache=True,
                 num_return_sequences=numseqs
