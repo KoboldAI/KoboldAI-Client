@@ -15,8 +15,6 @@ from eventlet import tpool
 
 from os import path, getcwd
 import re
-import tkinter as tk
-from tkinter import messagebox
 import json
 import collections
 import zipfile
@@ -388,7 +386,12 @@ parser.add_argument("--override_delete", action='store_true', help="Deleting sto
 parser.add_argument("--override_rename", action='store_true', help="Renaming stories from inside the browser is disabled if you are using --remote and enabled otherwise. Using this option will instead allow renaming stories if using --remote and prevent renaming stories otherwise.")
 parser.add_argument("--configname", help="Force a fixed configuration name to aid with config management.")
 
-args = parser.parse_args()
+args: argparse.Namespace = None
+if(os.environ.get("KOBOLDAI_ARGS") is not None):
+    import shlex
+    args = parser.parse_args(shlex.split(os.environ["KOBOLDAI_ARGS"]))
+else:
+    args = parser.parse_args()
 vars.model = args.model;
 
 if args.remote:
@@ -4308,6 +4311,7 @@ loadsettings()
 #  Final startup commands to launch Flask app
 #==================================================================#
 if __name__ == "__main__":
+    print("{0}\nStarting webserver...{1}".format(colors.GREEN, colors.END))
 
     # Start Flask/SocketIO (Blocking, so this must be last method!)
     
@@ -4321,12 +4325,15 @@ if __name__ == "__main__":
            cloudflare = _run_cloudflared(5000)
         with open('cloudflare.log', 'w') as cloudflarelog:
             cloudflarelog.write("KoboldAI has finished loading and is available at the following link : " + cloudflare)
-            print("\n" + format(colors.GREEN) + "KoboldAI has finished loading and is available at the following link : " + cloudflare + format(colors.END))
+            print(format(colors.GREEN) + "KoboldAI has finished loading and is available at the following link : " + cloudflare + format(colors.END))
         vars.serverstarted = True
         socketio.run(app, host='0.0.0.0', port=5000)
     else:
         import webbrowser
         webbrowser.open_new('http://localhost:5000')
-        print("{0}\nServer started!\nYou may now connect with a browser at http://127.0.0.1:5000/{1}".format(colors.GREEN, colors.END))
+        print("{0}Server started!\nYou may now connect with a browser at http://127.0.0.1:5000/{1}".format(colors.GREEN, colors.END))
         vars.serverstarted = True
         socketio.run(app, port=5000)
+
+else:
+    print("{0}\nServer started in WSGI mode!{1}".format(colors.GREEN, colors.END))
