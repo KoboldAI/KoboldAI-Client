@@ -3867,6 +3867,8 @@ def loadRequest(loadpath, filename=None):
                         break
                 vars.worldinfo_u[uid] = vars.worldinfo[-1]
                 vars.worldinfo[-1]["uid"] = uid
+                if(vars.worldinfo[-1]["folder"] is not None):
+                    vars.wifolders_u[vars.worldinfo[-1]["folder"]].append(vars.worldinfo[-1])
                 num += 1
 
         for uid in vars.wifolders_l + [None]:
@@ -3877,6 +3879,8 @@ def loadRequest(loadpath, filename=None):
                     break
             vars.worldinfo_u[uid] = vars.worldinfo[-1]
             vars.worldinfo[-1]["uid"] = uid
+            if(vars.worldinfo[-1]["folder"] is not None):
+                vars.wifolders_u[vars.worldinfo[-1]["folder"]].append(vars.worldinfo[-1])
         stablesortwi()
         vars.worldinfo_i = [wi for wi in vars.worldinfo if wi["init"]]
 
@@ -4072,6 +4076,8 @@ def importgame():
                             break
                     vars.worldinfo_u[uid] = vars.worldinfo[-1]
                     vars.worldinfo[-1]["uid"] = uid
+                    if(vars.worldinfo[-1]["folder"]) is not None:
+                        vars.wifolders_u[vars.worldinfo[-1]["folder"]].append(vars.worldinfo[-1])
                     num += 1
 
         for uid in vars.wifolders_l + [None]:
@@ -4082,6 +4088,8 @@ def importgame():
                     break
             vars.worldinfo_u[uid] = vars.worldinfo[-1]
             vars.worldinfo[-1]["uid"] = uid
+            if(vars.worldinfo[-1]["folder"] is not None):
+                vars.wifolders_u[vars.worldinfo[-1]["folder"]].append(vars.worldinfo[-1])
         stablesortwi()
         vars.worldinfo_i = [wi for wi in vars.worldinfo if wi["init"]]
         
@@ -4151,6 +4159,8 @@ def importAidgRequest(id):
                     break
             vars.worldinfo_u[uid] = vars.worldinfo[-1]
             vars.worldinfo[-1]["uid"] = uid
+            if(vars.worldinfo[-1]["folder"]) is not None:
+                vars.wifolders_u[vars.worldinfo[-1]["folder"]].append(vars.worldinfo[-1])
             num += 1
 
         for uid in vars.wifolders_l + [None]:
@@ -4161,6 +4171,8 @@ def importAidgRequest(id):
                     break
             vars.worldinfo_u[uid] = vars.worldinfo[-1]
             vars.worldinfo[-1]["uid"] = uid
+            if(vars.worldinfo[-1]["folder"] is not None):
+                vars.wifolders_u[vars.worldinfo[-1]["folder"]].append(vars.worldinfo[-1])
         stablesortwi()
         vars.worldinfo_i = [wi for wi in vars.worldinfo if wi["init"]]
 
@@ -4210,6 +4222,8 @@ def wiimportrequest():
                         break
                 vars.worldinfo_u[uid] = vars.worldinfo[-1]
                 vars.worldinfo[-1]["uid"] = uid
+                if(vars.worldinfo[-1]["folder"]) is not None:
+                    vars.wifolders_u[vars.worldinfo[-1]["folder"]].append(vars.worldinfo[-1])
                 num += 1
             for uid in [None]:
                 vars.worldinfo.append({"key": "", "keysecondary": "", "content": "", "comment": "", "folder": uid, "num": None, "init": False, "selective": False, "constant": False, "uid": None})
@@ -4219,6 +4233,8 @@ def wiimportrequest():
                         break
                 vars.worldinfo_u[uid] = vars.worldinfo[-1]
                 vars.worldinfo[-1]["uid"] = uid
+                if(vars.worldinfo[-1]["folder"] is not None):
+                    vars.wifolders_u[vars.worldinfo[-1]["folder"]].append(vars.worldinfo[-1])
         
         print("{0}".format(vars.worldinfo[0]))
                 
