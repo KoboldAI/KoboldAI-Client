@@ -383,8 +383,9 @@ return function(_python, _bridged)
     end
 
     ---@param submission? string
+    ---@param kwargs? table<string, any>
     ---@return string
-    function KoboldWorldInfoEntry:compute_context(submission)
+    function KoboldWorldInfoEntry:compute_context(submission, kwargs)
         if not check_validity(self) then
             return ""
         elseif submission == nil then
@@ -393,7 +394,7 @@ return function(_python, _bridged)
             error("`compute_context` takes a string or nil as argument #1, but got a " .. type(submission))
             return ""
         end
-        return bridged.compute_context(submission, {self.uid}, nil)
+        return bridged.compute_context(submission, {self.uid}, nil, kwargs)
     end
 
     ---@generic K
@@ -484,8 +485,9 @@ return function(_python, _bridged)
 
     ---@param submission? string
     ---@param entries? KoboldWorldInfoEntry|table<any, KoboldWorldInfoEntry>
+    ---@param kwargs? table<string, any>
     ---@return string
-    function KoboldWorldInfoFolder:compute_context(submission, entries)
+    function KoboldWorldInfoFolder:compute_context(submission, entries, kwargs)
         if not check_validity(self) then
             return ""
         elseif submission == nil then
@@ -513,7 +515,7 @@ return function(_python, _bridged)
         if self.name == "KoboldWorldInfoFolder" then
             folders = {rawget(self, "_uid")}
         end
-        return bridged.compute_context(submission, _entries, folders)
+        return bridged.compute_context(submission, _entries, folders, kwargs)
     end
 
     ---@return boolean

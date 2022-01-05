@@ -1152,8 +1152,10 @@ def lua_encode(string):
 #  Computes context given a submission, Lua array of entry UIDs and a Lua array
 #  of folder UIDs
 #==================================================================#
-def lua_compute_context(submission, entries, folders):
+def lua_compute_context(submission, entries, folders, kwargs):
     assert type(submission) is str
+    if(kwargs is None):
+        kwargs = vars.lua_state.table()
     actions = vars._actions if vars.lua_koboldbridge.userstate == "genmod" else vars.actions
     allowed_entries = None
     allowed_folders = None
@@ -1169,8 +1171,20 @@ def lua_compute_context(submission, entries, folders):
         while(folders[i] is not None):
             allowed_folders.add(int(folders[i]))
             i += 1
-    winfo, mem, anotetxt, _ = calcsubmitbudgetheader(submission, allowed_entries=allowed_entries, allowed_folders=allowed_folders, force_use_txt=True)
-    txt, _, _ = calcsubmitbudget(len(actions), winfo, mem, anotetxt, actions)
+    winfo, mem, anotetxt, _ = calcsubmitbudgetheader(
+        submission,
+        allowed_entries=allowed_entries,
+        allowed_folders=allowed_folders,
+        force_use_txt=True,
+        scan_story=kwargs["scan_story"] if kwargs["scan_story"] != None else True,
+    )
+    txt, _, _ = calcsubmitbudget(
+        len(actions),
+        winfo,
+        mem,
+        anotetxt,
+        actions,
+    )
     return tokenizer.decode(txt)
 
 #==================================================================#
@@ -3370,7 +3384,7 @@ def deletewifolder(uid):
 #==================================================================#
 #  Look for WI keys in text to generator 
 #==================================================================#
-def checkworldinfo(txt, allowed_entries=None, allowed_folders=None, force_use_txt=False):
+def checkworldinfo(txt, allowed_entries=None, allowed_folders=None, force_use_txt=False, scan_story=True):
     original_txt = txt
 
     # Dont go any further if WI is empty
@@ -3381,7 +3395,7 @@ def checkworldinfo(txt, allowed_entries=None, allowed_folders=None, force_use_tx
     ln = len(vars.actions)
     
     # Don't bother calculating action history if widepth is 0
-    if(vars.widepth > 0):
+    if(vars.widepth > 0 and scan_story):
         depth = vars.widepth
         # If this is not a continue, add 1 to widepth since submitted
         # text is already in action history @ -1
@@ -3423,7 +3437,7 @@ def checkworldinfo(txt, allowed_entries=None, allowed_folders=None, force_use_tx
             found_entries.add(id(wi))
             continue
 
-        if(wi["key"] != ""):
+        if(len(wi["key"].strip()) > 0 and (not wi.get("selective", False) or len(wi.get("keysecondary", "").strip()) > 0)):
             # Split comma-separated keys
             keys = wi["key"].split(",")
             keys_secondary = wi.get("keysecondary", "").split(",")

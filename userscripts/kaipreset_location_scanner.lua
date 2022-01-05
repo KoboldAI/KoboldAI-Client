@@ -26,7 +26,7 @@ local example_config = [[;-- Location scanner
 ;-- Usage instructions:
 ;--
 ;-- 1. Create a world info folder with name containing the string
-;--    "<||ls||>" (without the double quotes).  The comment can be anything as
+;--    "<||ls||>" (without the double quotes).  The name can be anything as
 ;--    long as it contains that inside it somewhere -- for example, you could
 ;--    set the name to "Locations <||ls||>".
 ;--
@@ -124,7 +124,7 @@ function userscript.inmod()
                     key = e.key,
                     keysecondary = e.keysecondary,
                 }
-                e.constant = e.constant or (not repeated and e:compute_context("") ~= e:compute_context(location))
+                e.constant = e.constant or (not repeated and e:compute_context("", {scan_story=false}) ~= e:compute_context(location, {scan_story=false}))
                 e.key = ""
                 e.keysecondary = ""
             end
