@@ -21,7 +21,7 @@ import zipfile
 import packaging
 import contextlib
 import traceback
-from typing import Any, Callable, Union, Dict, Set, List
+from typing import Any, Callable, TypeVar, Union, Dict, Set, List
 
 import requests
 import html
@@ -1065,8 +1065,9 @@ def lua_log_format_name(name):
     return f"[{name}]" if type(name) is str else "CORE"
 
 _bridged = {}
+F = TypeVar("F", bound=Callable)
 def bridged_kwarg(name=None):
-    def _bridged_kwarg(f: Callable):
+    def _bridged_kwarg(f: F):
         _bridged[name if name is not None else f.__name__[4:] if f.__name__[:4] == "lua_" else f.__name__] = f
         return f
     return _bridged_kwarg
