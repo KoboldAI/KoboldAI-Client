@@ -15,15 +15,13 @@ from eventlet import tpool
 
 from os import path, getcwd
 import re
-import tkinter as tk
-from tkinter import messagebox
 import json
 import collections
 import zipfile
 import packaging
 import contextlib
 import traceback
-from typing import Any, Union, Dict, Set, List
+from typing import Any, Callable, TypeVar, Union, Dict, Set, List
 
 import requests
 import html
@@ -163,6 +161,7 @@ class vars:
     genseqs     = []     # Temporary storage for generated sequences
     recentback  = False  # Whether Back button was recently used without Submitting or Retrying after
     recentrng   = None   # If a new random game was recently generated without Submitting after, this is the topic used (as a string), otherwise this is None
+    recentrngm  = None   # If a new random game was recently generated without Submitting after, this is the memory used (as a string), otherwise this is None
     useprompt   = False   # Whether to send the full prompt with every submit action
     breakmodel  = False  # For GPU users, whether to use both system RAM and VRAM to conserve VRAM while offering speedup compared to CPU-only
     bmsupported = False  # Whether the breakmodel option is supported (GPT-Neo/GPT-J only, currently)
@@ -271,6 +270,13 @@ def device_config(model):
         try:
             breakmodel.gpu_blocks = list(map(int, args.breakmodel_gpulayers.split(',')))
             assert len(breakmodel.gpu_blocks) <= torch.cuda.device_count()
+            s = n_layers
+            for i in range(len(breakmodel.gpu_blocks)):
+                if(breakmodel.gpu_blocks[i] <= -1):
+                    breakmodel.gpu_blocks[i] = s
+                    break
+                else:
+                    s -= breakmodel.gpu_blocks[i]
             assert sum(breakmodel.gpu_blocks) <= n_layers
             n_layers -= sum(breakmodel.gpu_blocks)
         except:
@@ -380,7 +386,12 @@ parser.add_argument("--override_delete", action='store_true', help="Deleting sto
 parser.add_argument("--override_rename", action='store_true', help="Renaming stories from inside the browser is disabled if you are using --remote and enabled otherwise. Using this option will instead allow renaming stories if using --remote and prevent renaming stories otherwise.")
 parser.add_argument("--configname", help="Force a fixed configuration name to aid with config management.")
 
-args = parser.parse_args()
+args: argparse.Namespace = None
+if(os.environ.get("KOBOLDAI_ARGS") is not None):
+    import shlex
+    args = parser.parse_args(shlex.split(os.environ["KOBOLDAI_ARGS"]))
+else:
+    args = parser.parse_args()
 vars.model = args.model;
 
 if args.remote:
@@ -1053,9 +1064,18 @@ if(path.exists("settings/" + getmodelname().replace('/', '_') + ".settings")):
 def lua_log_format_name(name):
     return f"[{name}]" if type(name) is str else "CORE"
 
+_bridged = {}
+F = TypeVar("F", bound=Callable)
+def bridged_kwarg(name=None):
+    def _bridged_kwarg(f: F):
+        _bridged[name if name is not None else f.__name__[4:] if f.__name__[:4] == "lua_" else f.__name__] = f
+        return f
+    return _bridged_kwarg
+
 #==================================================================#
 #  Event triggered when a userscript is loaded
 #==================================================================#
+@bridged_kwarg()
 def load_callback(filename, modulename):
     print(colors.GREEN + f"Loading Userscript [{modulename}] <{filename}>" + colors.END)
 
@@ -1099,6 +1119,7 @@ def load_lua_scripts():
 #==================================================================#
 #  Print message that originates from the userscript with the given name
 #==================================================================#
+@bridged_kwarg()
 def lua_print(msg):
     if(vars.lua_logname != vars.lua_koboldbridge.logging_name):
         vars.lua_logname = vars.lua_koboldbridge.logging_name
@@ -1108,6 +1129,7 @@ def lua_print(msg):
 #==================================================================#
 #  Print warning that originates from the userscript with the given name
 #==================================================================#
+@bridged_kwarg()
 def lua_warn(msg):
     if(vars.lua_logname != vars.lua_koboldbridge.logging_name):
         vars.lua_logname = vars.lua_koboldbridge.logging_name
@@ -1117,6 +1139,7 @@ def lua_warn(msg):
 #==================================================================#
 #  Decode tokens into a string using current tokenizer
 #==================================================================#
+@bridged_kwarg()
 def lua_decode(tokens):
     tokens = list(tokens.values())
     assert type(tokens) is list
@@ -1129,6 +1152,7 @@ def lua_decode(tokens):
 #==================================================================#
 #  Encode string into list of token IDs using current tokenizer
 #==================================================================#
+@bridged_kwarg()
 def lua_encode(string):
     assert type(string) is str
     if("tokenizer" not in globals()):
@@ -1141,8 +1165,11 @@ def lua_encode(string):
 #  Computes context given a submission, Lua array of entry UIDs and a Lua array
 #  of folder UIDs
 #==================================================================#
-def lua_compute_context(submission, entries, folders):
+@bridged_kwarg()
+def lua_compute_context(submission, entries, folders, kwargs):
     assert type(submission) is str
+    if(kwargs is None):
+        kwargs = vars.lua_state.table()
     actions = vars._actions if vars.lua_koboldbridge.userstate == "genmod" else vars.actions
     allowed_entries = None
     allowed_folders = None
@@ -1158,13 +1185,26 @@ def lua_compute_context(submission, entries, folders):
         while(folders[i] is not None):
             allowed_folders.add(int(folders[i]))
             i += 1
-    winfo, mem, anotetxt, _ = calcsubmitbudgetheader(submission, allowed_entries=allowed_entries, allowed_folders=allowed_folders, force_use_txt=True)
-    txt, _, _ = calcsubmitbudget(len(actions), winfo, mem, anotetxt, actions)
+    winfo, mem, anotetxt, _ = calcsubmitbudgetheader(
+        submission,
+        allowed_entries=allowed_entries,
+        allowed_folders=allowed_folders,
+        force_use_txt=True,
+        scan_story=kwargs["scan_story"] if kwargs["scan_story"] != None else True,
+    )
+    txt, _, _ = calcsubmitbudget(
+        len(actions),
+        winfo,
+        mem,
+        anotetxt,
+        actions,
+    )
     return tokenizer.decode(txt)
 
 #==================================================================#
 #  Get property of a world info entry given its UID and property name
 #==================================================================#
+@bridged_kwarg()
 def lua_get_attr(uid, k):
     assert type(uid) is int and type(k) is str
     if(uid in vars.worldinfo_u and k in (
@@ -1183,6 +1223,7 @@ def lua_get_attr(uid, k):
 #==================================================================#
 #  Set property of a world info entry given its UID, property name and new value
 #==================================================================#
+@bridged_kwarg()
 def lua_set_attr(uid, k, v):
     assert type(uid) is int and type(k) is str
     assert uid in vars.worldinfo_u and k in (
@@ -1202,6 +1243,7 @@ def lua_set_attr(uid, k, v):
 #==================================================================#
 #  Get property of a world info folder given its UID and property name
 #==================================================================#
+@bridged_kwarg()
 def lua_folder_get_attr(uid, k):
     assert type(uid) is int and type(k) is str
     if(uid in vars.wifolders_d and k in (
@@ -1212,6 +1254,7 @@ def lua_folder_get_attr(uid, k):
 #==================================================================#
 #  Set property of a world info folder given its UID, property name and new value
 #==================================================================#
+@bridged_kwarg()
 def lua_folder_set_attr(uid, k, v):
     assert type(uid) is int and type(k) is str
     assert uid in vars.wifolders_d and k in (
@@ -1226,12 +1269,14 @@ def lua_folder_set_attr(uid, k, v):
 #==================================================================#
 #  Get the "Amount to Generate"
 #==================================================================#
+@bridged_kwarg()
 def lua_get_genamt():
     return vars.genamt
 
 #==================================================================#
 #  Set the "Amount to Generate"
 #==================================================================#
+@bridged_kwarg()
 def lua_set_genamt(genamt):
     assert vars.lua_koboldbridge.userstate != "genmod" and type(genamt) in (int, float) and genamt >= 0
     print(colors.GREEN + f"{lua_log_format_name(vars.lua_koboldbridge.logging_name)} set genamt to {int(genamt)}" + colors.END)
@@ -1240,12 +1285,14 @@ def lua_set_genamt(genamt):
 #==================================================================#
 #  Get the "Gens Per Action"
 #==================================================================#
+@bridged_kwarg()
 def lua_get_numseqs():
     return vars.numseqs
 
 #==================================================================#
 #  Set the "Gens Per Action"
 #==================================================================#
+@bridged_kwarg()
 def lua_set_numseqs(numseqs):
     assert type(numseqs) in (int, float) and numseqs >= 1
     print(colors.GREEN + f"{lua_log_format_name(vars.lua_koboldbridge.logging_name)} set numseqs to {int(numseqs)}" + colors.END)
@@ -1254,6 +1301,7 @@ def lua_set_numseqs(numseqs):
 #==================================================================#
 #  Check if a setting exists with the given name
 #==================================================================#
+@bridged_kwarg()
 def lua_has_setting(setting):
     return setting in (
         "anotedepth",
@@ -1301,6 +1349,7 @@ def lua_has_setting(setting):
 #==================================================================#
 #  Return the setting with the given name if it exists
 #==================================================================#
+@bridged_kwarg()
 def lua_get_setting(setting):
     if(setting in ("settemp", "temp")): return vars.temp
     if(setting in ("settopp", "topp", "top_p")): return vars.top_p
@@ -1325,6 +1374,7 @@ def lua_get_setting(setting):
 #==================================================================#
 #  Set the setting with the given name if it exists
 #==================================================================#
+@bridged_kwarg()
 def lua_set_setting(setting, v):
     actual_type = type(lua_get_setting(setting))
     assert v is not None and (actual_type is type(v) or (actual_type is int and type(v) is float))
@@ -1355,12 +1405,14 @@ def lua_set_setting(setting, v):
 #==================================================================#
 #  Get contents of memory
 #==================================================================#
+@bridged_kwarg()
 def lua_get_memory():
     return vars.memory
 
 #==================================================================#
 #  Set contents of memory
 #==================================================================#
+@bridged_kwarg()
 def lua_set_memory(m):
     assert type(m) is str
     vars.memory = m
@@ -1368,12 +1420,14 @@ def lua_set_memory(m):
 #==================================================================#
 #  Get contents of author's note
 #==================================================================#
+@bridged_kwarg()
 def lua_get_authorsnote():
     return vars.authornote
 
 #==================================================================#
 #  Set contents of author's note
 #==================================================================#
+@bridged_kwarg()
 def lua_set_authorsnote(m):
     assert type(m) is str
     vars.authornote = m
@@ -1381,12 +1435,14 @@ def lua_set_authorsnote(m):
 #==================================================================#
 #  Get contents of author's note template
 #==================================================================#
+@bridged_kwarg()
 def lua_get_authorsnotetemplate():
     return vars.authornotetemplate
 
 #==================================================================#
 #  Set contents of author's note template
 #==================================================================#
+@bridged_kwarg()
 def lua_set_authorsnotetemplate(m):
     assert type(m) is str
     vars.authornotetemplate = m
@@ -1394,6 +1450,7 @@ def lua_set_authorsnotetemplate(m):
 #==================================================================#
 #  Save settings and send them to client
 #==================================================================#
+@bridged_kwarg()
 def lua_resend_settings():
     settingschanged()
     refresh_settings()
@@ -1401,6 +1458,7 @@ def lua_resend_settings():
 #==================================================================#
 #  Set story chunk text and delete the chunk if the new chunk is empty
 #==================================================================#
+@bridged_kwarg()
 def lua_set_chunk(k, v):
     assert type(k) in (int, None) and type(v) is str
     assert k >= 0
@@ -1433,6 +1491,7 @@ def lua_set_chunk(k, v):
 #==================================================================#
 #  Get model type as "gpt-2-xl", "gpt-neo-2.7B", etc.
 #==================================================================#
+@bridged_kwarg()
 def lua_get_modeltype():
     if(vars.noai):
         return "readonly"
@@ -1461,6 +1520,7 @@ def lua_get_modeltype():
 #==================================================================#
 #  Get model backend as "transformers" or "mtj"
 #==================================================================#
+@bridged_kwarg()
 def lua_get_modelbackend():
     if(vars.noai):
         return "readonly"
@@ -1473,6 +1533,7 @@ def lua_get_modelbackend():
 #==================================================================#
 #  Check whether model is loaded from a custom path
 #==================================================================#
+@bridged_kwarg()
 def lua_is_custommodel():
     return vars.model in ("GPT2Custom", "NeoCustom", "TPUMeshTransformerGPTJ")
 
@@ -1533,35 +1594,10 @@ bridged = {
     "userscript_path": os.path.join(os.path.dirname(os.path.realpath(__file__)), "userscripts"),
     "config_path": os.path.join(os.path.dirname(os.path.realpath(__file__)), "userscripts"),
     "lib_paths": vars.lua_state.table(os.path.join(os.path.dirname(os.path.realpath(__file__)), "lualibs"), os.path.join(os.path.dirname(os.path.realpath(__file__)), "extern", "lualibs")),
-    "load_callback": load_callback,
-    "print": lua_print,
-    "warn": lua_warn,
-    "decode": lua_decode,
-    "encode": lua_encode,
-    "get_attr": lua_get_attr,
-    "set_attr": lua_set_attr,
-    "folder_get_attr": lua_folder_get_attr,
-    "folder_set_attr": lua_folder_set_attr,
-    "get_genamt": lua_get_genamt,
-    "set_genamt": lua_set_genamt,
-    "get_memory": lua_get_memory,
-    "set_memory": lua_set_memory,
-    "get_authorsnote": lua_get_authorsnote,
-    "set_authorsnote": lua_set_authorsnote,
-    "get_authorsnote": lua_get_authorsnotetemplate,
-    "set_authorsnote": lua_set_authorsnotetemplate,
-    "compute_context": lua_compute_context,
-    "get_numseqs": lua_get_numseqs,
-    "set_numseqs": lua_set_numseqs,
-    "has_setting": lua_has_setting,
-    "get_setting": lua_get_setting,
-    "set_setting": lua_set_setting,
-    "set_chunk": lua_set_chunk,
-    "get_modeltype": lua_get_modeltype,
-    "get_modelbackend": lua_get_modelbackend,
-    "is_custommodel": lua_is_custommodel,
     "vars": vars,
 }
+for kwarg in _bridged:
+    bridged[kwarg] = _bridged[kwarg]
 try:
     vars.lua_kobold, vars.lua_koboldcore, vars.lua_koboldbridge = vars.lua_state.globals().dofile(os.path.join(os.path.dirname(os.path.realpath(__file__)), "bridge.lua"))(
         vars.lua_state.globals().python,
@@ -1645,7 +1681,7 @@ def get_message(msg):
                 vars.chatname = msg['chatname']
                 settingschanged()
                 emit('from_server', {'cmd': 'setchatname', 'data': vars.chatname}, broadcast=True)
-            vars.recentrng = None
+            vars.recentrng = vars.recentrngm = None
             actionsubmit(msg['data'], actionmode=msg['actionmode'])
         elif(vars.mode == "edit"):
             editsubmit(msg['data'])
@@ -2130,7 +2166,7 @@ def actionsubmit(data, actionmode=0, force_submit=False, force_prompt_gen=False,
         set_aibusy(1)
 
         if(disable_recentrng):
-            vars.recentrng = None
+            vars.recentrng = vars.recentrngm = None
 
         vars.recentback = False
         vars.recentedit = False
@@ -2272,7 +2308,7 @@ def actionretry(data):
     if(vars.aibusy):
         return
     if(vars.recentrng is not None):
-        randomGameRequest(vars.recentrng)
+        randomGameRequest(vars.recentrng, memory=vars.recentrngm)
         return
     # Remove last action if possible and resubmit
     if(vars.gamestarted if vars.useprompt else len(vars.actions) > 0):
@@ -2560,7 +2596,7 @@ def _generate(txt, minimum, maximum, found_entries):
                 do_sample=True, 
                 min_length=minimum, 
                 max_length=int(2e9),
-                repetition_penalty=vars.rep_pen,
+                repetition_penalty=1.1,
                 bad_words_ids=vars.badwordsids,
                 use_cache=True,
                 num_return_sequences=numseqs
@@ -3359,7 +3395,7 @@ def deletewifolder(uid):
 #==================================================================#
 #  Look for WI keys in text to generator 
 #==================================================================#
-def checkworldinfo(txt, allowed_entries=None, allowed_folders=None, force_use_txt=False):
+def checkworldinfo(txt, allowed_entries=None, allowed_folders=None, force_use_txt=False, scan_story=True):
     original_txt = txt
 
     # Dont go any further if WI is empty
@@ -3370,7 +3406,7 @@ def checkworldinfo(txt, allowed_entries=None, allowed_folders=None, force_use_tx
     ln = len(vars.actions)
     
     # Don't bother calculating action history if widepth is 0
-    if(vars.widepth > 0):
+    if(vars.widepth > 0 and scan_story):
         depth = vars.widepth
         # If this is not a continue, add 1 to widepth since submitted
         # text is already in action history @ -1
@@ -3412,7 +3448,7 @@ def checkworldinfo(txt, allowed_entries=None, allowed_folders=None, force_use_tx
             found_entries.add(id(wi))
             continue
 
-        if(wi["key"] != ""):
+        if(len(wi["key"].strip()) > 0 and (not wi.get("selective", False) or len(wi.get("keysecondary", "").strip()) > 0)):
             # Split comma-separated keys
             keys = wi["key"].split(",")
             keys_secondary = wi.get("keysecondary", "").split(",")
@@ -3867,6 +3903,8 @@ def loadRequest(loadpath, filename=None):
                         break
                 vars.worldinfo_u[uid] = vars.worldinfo[-1]
                 vars.worldinfo[-1]["uid"] = uid
+                if(vars.worldinfo[-1]["folder"] is not None):
+                    vars.wifolders_u[vars.worldinfo[-1]["folder"]].append(vars.worldinfo[-1])
                 num += 1
 
         for uid in vars.wifolders_l + [None]:
@@ -3877,6 +3915,8 @@ def loadRequest(loadpath, filename=None):
                     break
             vars.worldinfo_u[uid] = vars.worldinfo[-1]
             vars.worldinfo[-1]["uid"] = uid
+            if(vars.worldinfo[-1]["folder"] is not None):
+                vars.wifolders_u[vars.worldinfo[-1]["folder"]].append(vars.worldinfo[-1])
         stablesortwi()
         vars.worldinfo_i = [wi for wi in vars.worldinfo if wi["init"]]
 
@@ -4072,6 +4112,8 @@ def importgame():
                             break
                     vars.worldinfo_u[uid] = vars.worldinfo[-1]
                     vars.worldinfo[-1]["uid"] = uid
+                    if(vars.worldinfo[-1]["folder"]) is not None:
+                        vars.wifolders_u[vars.worldinfo[-1]["folder"]].append(vars.worldinfo[-1])
                     num += 1
 
         for uid in vars.wifolders_l + [None]:
@@ -4082,6 +4124,8 @@ def importgame():
                     break
             vars.worldinfo_u[uid] = vars.worldinfo[-1]
             vars.worldinfo[-1]["uid"] = uid
+            if(vars.worldinfo[-1]["folder"] is not None):
+                vars.wifolders_u[vars.worldinfo[-1]["folder"]].append(vars.worldinfo[-1])
         stablesortwi()
         vars.worldinfo_i = [wi for wi in vars.worldinfo if wi["init"]]
         
@@ -4151,6 +4195,8 @@ def importAidgRequest(id):
                     break
             vars.worldinfo_u[uid] = vars.worldinfo[-1]
             vars.worldinfo[-1]["uid"] = uid
+            if(vars.worldinfo[-1]["folder"]) is not None:
+                vars.wifolders_u[vars.worldinfo[-1]["folder"]].append(vars.worldinfo[-1])
             num += 1
 
         for uid in vars.wifolders_l + [None]:
@@ -4161,6 +4207,8 @@ def importAidgRequest(id):
                     break
             vars.worldinfo_u[uid] = vars.worldinfo[-1]
             vars.worldinfo[-1]["uid"] = uid
+            if(vars.worldinfo[-1]["folder"] is not None):
+                vars.wifolders_u[vars.worldinfo[-1]["folder"]].append(vars.worldinfo[-1])
         stablesortwi()
         vars.worldinfo_i = [wi for wi in vars.worldinfo if wi["init"]]
 
@@ -4210,6 +4258,8 @@ def wiimportrequest():
                         break
                 vars.worldinfo_u[uid] = vars.worldinfo[-1]
                 vars.worldinfo[-1]["uid"] = uid
+                if(vars.worldinfo[-1]["folder"]) is not None:
+                    vars.wifolders_u[vars.worldinfo[-1]["folder"]].append(vars.worldinfo[-1])
                 num += 1
             for uid in [None]:
                 vars.worldinfo.append({"key": "", "keysecondary": "", "content": "", "comment": "", "folder": uid, "num": None, "init": False, "selective": False, "constant": False, "uid": None})
@@ -4219,6 +4269,8 @@ def wiimportrequest():
                         break
                 vars.worldinfo_u[uid] = vars.worldinfo[-1]
                 vars.worldinfo[-1]["uid"] = uid
+                if(vars.worldinfo[-1]["folder"] is not None):
+                    vars.wifolders_u[vars.worldinfo[-1]["folder"]].append(vars.worldinfo[-1])
         
         print("{0}".format(vars.worldinfo[0]))
                 
@@ -4266,6 +4318,7 @@ def randomGameRequest(topic, memory=""):
         newGameRequest()
         return
     vars.recentrng = topic
+    vars.recentrngm = memory
     newGameRequest()
     _memory = memory
     if(len(memory) > 0):
@@ -4283,6 +4336,7 @@ loadsettings()
 #  Final startup commands to launch Flask app
 #==================================================================#
 if __name__ == "__main__":
+    print("{0}\nStarting webserver...{1}".format(colors.GREEN, colors.END))
 
     # Start Flask/SocketIO (Blocking, so this must be last method!)
     
@@ -4296,12 +4350,15 @@ if __name__ == "__main__":
            cloudflare = _run_cloudflared(5000)
         with open('cloudflare.log', 'w') as cloudflarelog:
             cloudflarelog.write("KoboldAI has finished loading and is available at the following link : " + cloudflare)
-            print("\n" + format(colors.GREEN) + "KoboldAI has finished loading and is available at the following link : " + cloudflare + format(colors.END))
+            print(format(colors.GREEN) + "KoboldAI has finished loading and is available at the following link : " + cloudflare + format(colors.END))
         vars.serverstarted = True
         socketio.run(app, host='0.0.0.0', port=5000)
     else:
         import webbrowser
         webbrowser.open_new('http://localhost:5000')
-        print("{0}\nServer started!\nYou may now connect with a browser at http://127.0.0.1:5000/{1}".format(colors.GREEN, colors.END))
+        print("{0}Server started!\nYou may now connect with a browser at http://127.0.0.1:5000/{1}".format(colors.GREEN, colors.END))
         vars.serverstarted = True
         socketio.run(app, port=5000)
+
+else:
+    print("{0}\nServer started in WSGI mode!{1}".format(colors.GREEN, colors.END))

@@ -1511,7 +1511,7 @@ function restorePrompt() {
 		if(shadow_text.length && shadow_text[0].firstChild && (shadow_text[0].firstChild.nodeType === 3 || shadow_text[0].firstChild.tagName === "BR")) {
 			detected = true;
 			ref = shadow_text;
-		} else if(game_text.length && game_text[0].firstChild && game_text[0].firstChild.nodeType === 3 || game_text[0].firstChild.tagName === "BR") {
+		} else if(game_text.length && game_text[0].firstChild && (game_text[0].firstChild.nodeType === 3 || game_text[0].firstChild.tagName === "BR")) {
 			detected = true;
 			ref = game_text;
 		}
