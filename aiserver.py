@@ -615,7 +615,8 @@ if(vars.model == "OAI"):
 # Ask for ngrok url if Google Colab was selected
 if(vars.model == "Colab"):
     if(vars.colaburl == ""):
-        print("{0}Please enter the ngrok.io or trycloudflare.com URL displayed in Google Colab:{1}\n".format(colors.CYAN, colors.END))
+        print("{0}NOTE: For the modern KoboldAI Colab's you open the links directly in your browser.\nThis option is only for the KoboldAI Server API, not all features are supported in this mode.\n".format(colors.YELLOW, colors.END))
+        print("{0}Enter the URL of the server (For example a trycloudflare link):{1}\n".format(colors.CYAN, colors.END))
         vars.colaburl = input("URL> ") + "/request"
 
 if(vars.model == "ReadOnly"):
