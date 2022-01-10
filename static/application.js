@@ -799,7 +799,7 @@ function formatChunkInnerText(chunk) {
 
 function dosubmit(disallow_abort) {
 	var txt = input_text.val().replace(/\u00a0/g, " ");
-	if(gamestate !== "wait" && !memorymode && !gamestarted && ((!adventure || !action_mode) && txt.trim().length == 0)) {
+	if((disallow_abort || gamestate !== "wait") && !memorymode && !gamestarted && ((!adventure || !action_mode) && txt.trim().length == 0)) {
 		return;
 	}
 	input_text.val("");

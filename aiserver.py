@@ -1708,8 +1708,9 @@ def get_message(msg):
     # Submit action
     if(msg['cmd'] == 'submit'):
         if(vars.mode == "play"):
-            if(vars.aibusy and msg.get('allowabort', False)):
-                vars.abort = True
+            if(vars.aibusy):
+                if(msg.get('allowabort', False)):
+                    vars.abort = True
                 return
             vars.abort = False
             vars.lua_koboldbridge.feedback = None
@@ -1727,8 +1728,9 @@ def get_message(msg):
             memsubmit(msg['data'])
     # Retry Action
     elif(msg['cmd'] == 'retry'):
-        if(vars.aibusy and msg.get('allowabort', False)):
-            vars.abort = True
+        if(vars.aibusy):
+            if(msg.get('allowabort', False)):
+                vars.abort = True
             return
         vars.abort = False
         if(vars.chatmode):
