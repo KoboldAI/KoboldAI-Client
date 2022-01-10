@@ -127,6 +127,7 @@ class vars:
     lua_edited  = set()  # Set of chunk numbers that were edited from a Lua generation modifier
     lua_deleted = set()  # Set of chunk numbers that were deleted from a Lua generation modifier
     generated_tkns = 0   # If using a backend that supports Lua generation modifiers, how many tokens have already been generated, otherwise 0
+    abort       = False  # Whether or not generation was aborted by clicking on the submit button during generation
     spfilename  = ""     # Filename of soft prompt to load, or an empty string if not using a soft prompt
     userscripts = []     # List of userscripts to load
     last_userscripts = []  # List of previous userscript filenames from the previous time userscripts were send via usstatitems
@@ -820,7 +821,7 @@ if(not vars.model in ["InferKit", "Colab", "OAI", "ReadOnly", "TPUMeshTransforme
                 vars.generated_tkns += 1
                 if(vars.lua_koboldbridge.generated_cols and vars.generated_tkns != vars.lua_koboldbridge.generated_cols):
                     raise RuntimeError(f"Inconsistency detected between KoboldAI Python and Lua backends ({vars.generated_tkns} != {vars.lua_koboldbridge.generated_cols})")
-                if(vars.generated_tkns >= vars.genamt):
+                if(vars.abort or vars.generated_tkns >= vars.genamt):
                     self.regeneration_required = False
                     self.halt = False
                     return True
@@ -1707,6 +1708,10 @@ def get_message(msg):
     # Submit action
     if(msg['cmd'] == 'submit'):
         if(vars.mode == "play"):
+            if(vars.aibusy and msg.get('allowabort', False)):
+                vars.abort = True
+                return
+            vars.abort = False
             vars.lua_koboldbridge.feedback = None
             if(vars.chatmode):
                 if(type(msg['chatname']) is not str):
@@ -1722,6 +1727,10 @@ def get_message(msg):
             memsubmit(msg['data'])
     # Retry Action
     elif(msg['cmd'] == 'retry'):
+        if(vars.aibusy and msg.get('allowabort', False)):
+            vars.abort = True
+            return
+        vars.abort = False
         if(vars.chatmode):
             if(type(msg['chatname']) is not str):
                 raise ValueError("Chatname must be a string")
@@ -2236,7 +2245,7 @@ def actionsubmit(data, actionmode=0, force_submit=False, force_prompt_gen=False,
                 # Clear the startup text from game screen
                 emit('from_server', {'cmd': 'updatescreen', 'gamestarted': False, 'data': 'Please wait, generating story...'}, broadcast=True)
                 calcsubmit(data) # Run the first action through the generator
-                if(vars.lua_koboldbridge.restart_sequence is not None and len(vars.genseqs) == 0):
+                if(not vars.abort and vars.lua_koboldbridge.restart_sequence is not None and len(vars.genseqs) == 0):
                     data = ""
                     force_submit = True
                     disable_recentrng = True
@@ -2245,7 +2254,7 @@ def actionsubmit(data, actionmode=0, force_submit=False, force_prompt_gen=False,
                 break
             else:
                 # Save this first action as the prompt
-                vars.prompt = data
+                vars.prompt = data if len(data) > 0 else '"'
                 for i in range(vars.numseqs):
                     vars.lua_koboldbridge.outputs[i+1] = ""
                 execute_outmod()
@@ -2259,13 +2268,13 @@ def actionsubmit(data, actionmode=0, force_submit=False, force_prompt_gen=False,
                     refresh_story()
                     if(len(vars.actions) > 0):
                         emit('from_server', {'cmd': 'texteffect', 'data': vars.actions.get_last_key() + 1}, broadcast=True)
-                    if(vars.lua_koboldbridge.restart_sequence is not None):
+                    if(not vars.abort and vars.lua_koboldbridge.restart_sequence is not None):
                         data = ""
                         force_submit = True
                         disable_recentrng = True
                         continue
                 else:
-                    if(vars.lua_koboldbridge.restart_sequence is not None and vars.lua_koboldbridge.restart_sequence > 0):
+                    if(not vars.abort and vars.lua_koboldbridge.restart_sequence is not None and vars.lua_koboldbridge.restart_sequence > 0):
                         genresult(genout[vars.lua_koboldbridge.restart_sequence-1]["generated_text"], flash=False)
                         refresh_story()
                         data = ""
@@ -2296,7 +2305,7 @@ def actionsubmit(data, actionmode=0, force_submit=False, force_prompt_gen=False,
             if(not vars.noai and vars.lua_koboldbridge.generating):
                 # Off to the tokenizer!
                 calcsubmit(data)
-                if(vars.lua_koboldbridge.restart_sequence is not None and len(vars.genseqs) == 0):
+                if(not vars.abort and vars.lua_koboldbridge.restart_sequence is not None and len(vars.genseqs) == 0):
                     data = ""
                     force_submit = True
                     disable_recentrng = True
@@ -2314,13 +2323,13 @@ def actionsubmit(data, actionmode=0, force_submit=False, force_prompt_gen=False,
                     assert type(genout[-1]["generated_text"]) is str
                 if(len(genout) == 1):
                     genresult(genout[0]["generated_text"])
-                    if(vars.lua_koboldbridge.restart_sequence is not None):
+                    if(not vars.abort and vars.lua_koboldbridge.restart_sequence is not None):
                         data = ""
                         force_submit = True
                         disable_recentrng = True
                         continue
                 else:
-                    if(vars.lua_koboldbridge.restart_sequence is not None and vars.lua_koboldbridge.restart_sequence > 0):
+                    if(not vars.abort and vars.lua_koboldbridge.restart_sequence is not None and vars.lua_koboldbridge.restart_sequence > 0):
                         genresult(genout[vars.lua_koboldbridge.restart_sequence-1]["generated_text"])
                         data = ""
                         force_submit = True

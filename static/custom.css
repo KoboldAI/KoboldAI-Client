@@ -206,7 +206,16 @@ body.connected #formatmenu, #formatmenu.always-available {
 	height: 100%;
 }
 
+#btnsend.wait {
+	background-color: #6c6c6e;
+}
+
+#btnsend.wait:hover {
+	background-color: #98989a;
+}
+
 #waitanim {
+	pointer-events: none;
 	position:absolute;
 	top:18px;
 	left:5px;	
