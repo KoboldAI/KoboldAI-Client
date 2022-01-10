@@ -3765,8 +3765,8 @@ def saveRequest(savpath):
         js["wifolders_l"] = vars.wifolders_l
 		
         # Extract only the important bits of WI
-        for wi in vars.worldinfo:
-            if(wi["constant"] or wi["key"] != ""):
+        for wi in vars.worldinfo_i:
+            if(True):
                 js["worldinfo"].append({
                     "key": wi["key"],
                     "keysecondary": wi["keysecondary"],
