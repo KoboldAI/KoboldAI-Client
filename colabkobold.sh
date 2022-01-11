@@ -25,7 +25,7 @@ while true ; do
         -l|--dloc)
             dloc="$2" ; shift 2 ;;
         -x|--xloc)
-            dloc="$2" ; shift 2 ;;
+            xloc="$2" ; shift 2 ;;
         -z|--7z)
             z7="$2" ; shift 2 ;;
         -t|--tar)
