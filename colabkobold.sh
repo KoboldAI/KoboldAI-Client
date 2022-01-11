@@ -46,7 +46,7 @@ function launch
         exit 0
     else
     cd /content/KoboldAI-Client
-    python3 aiserver.py$model$path$configname$ngrok --remote --override_delete --override_rename
+    python3 aiserver.py$model$mpath$configname$ngrok --remote --override_delete --override_rename
     exit
     fi
 }
