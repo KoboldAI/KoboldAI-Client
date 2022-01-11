@@ -1717,7 +1717,7 @@ def get_message(msg):
                     raise ValueError("Chatname must be a string")
                 vars.chatname = msg['chatname']
                 settingschanged()
-                emit('from_server', {'cmd': 'setchatname', 'data': vars.chatname}, broadcast=True)
+                emit('from_server', {'cmd': 'setchatname', 'data': vars.chatname})
             vars.recentrng = vars.recentrngm = None
             actionsubmit(msg['data'], actionmode=msg['actionmode'])
         elif(vars.mode == "edit"):
@@ -1731,7 +1731,7 @@ def get_message(msg):
                 raise ValueError("Chatname must be a string")
             vars.chatname = msg['chatname']
             settingschanged()
-            emit('from_server', {'cmd': 'setchatname', 'data': vars.chatname}, broadcast=True)
+            emit('from_server', {'cmd': 'setchatname', 'data': vars.chatname})
         actionretry(msg['data'])
     # Back/Undo Action
     elif(msg['cmd'] == 'back'):
