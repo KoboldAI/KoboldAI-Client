@@ -78,7 +78,6 @@ fi
 if [[ -v mpath ]];then
 mpath="$xloc$mpath"
 kmpath=" --path $mpath"
-echo $mpath
 fi
 
 # Create Folder Structure and Install KoboldAI
