@@ -151,7 +151,7 @@ fi
 
 #Extract the model with 7z
 if [ ! -z ${z7+x} ]; then
-    7z x -o$xloc -aos $dloc/$z7
+    7z x -o$xloc $dloc/$z7 -aos
     touch /content/extracted
 fi
 
