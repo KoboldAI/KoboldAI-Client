@@ -2,7 +2,7 @@
 # KoboldAI Easy Deployment Script by Henk717
 
 # read the options
-TEMP=`getopt -o m:i:p:c:d:a:l:z:g:t:n: --long model:,init:,path:,configname:,download:,aria2:,dloc:7z:git:tar:ngrok: -- "$@"`
+TEMP=`getopt -o m:i:p:c:d:x:a:l:z:g:t:n: --long model:,init:,path:,configname:,download:,aria2:,dloc:xloc:7z:git:tar:ngrok: -- "$@"`
 eval set -- "$TEMP"
 
 # extract options and their arguments into variables.
@@ -13,7 +13,7 @@ while true ; do
         -i|--init)
             init=$2 ; shift 2 ;;
         -p|--path)
-            path=" --path /content/$2" ; shift 2 ;;
+            path=" --path $2" ; shift 2 ;;
         -c|--configname)
             configname=" --configname $2" ; shift 2 ;;
         -n|--ngrok)
@@ -23,6 +23,8 @@ while true ; do
         -a|--aria2)
             aria2="$2" ; shift 2 ;;
         -l|--dloc)
+            dloc="$2" ; shift 2 ;;
+        -x|--xloc)
             dloc="$2" ; shift 2 ;;
         -z|--7z)
             z7="$2" ; shift 2 ;;
@@ -63,6 +65,16 @@ if [ "$dloc" == "colab" ]; then
 else
     dloc="/content/drive/MyDrive/KoboldAI/models"
 fi
+
+# Redefine the extraction location
+if [ "$xloc" == "drive" ]; then
+    xloc="/content/drive/MyDrive/KoboldAI/models/"
+else
+    xloc="/content/"
+fi
+
+# Redefine the Path to be in the relevant location
+path = $xloc$path
 
 # Create Folder Structure and Install KoboldAI
 if [ "$init" != "skip" ]; then
@@ -135,7 +147,7 @@ fi
 
 #Extract the model with 7z
 if [ ! -z ${z7+x} ]; then
-    7z x -o/content/ -aos $dloc/$z7
+    7z x -o$xloc -aos $dloc/$z7
     touch /content/extracted
 fi
 
@@ -148,7 +160,7 @@ if [ ! -z ${tar+x} ]; then
     make install
     cd ..
     apt install zstd -y
-    pv $dloc/$tar | tar -I zstd -C /content/ -x
+    pv $dloc/$tar | tar -I zstd -C $xloc -x
     touch /content/extracted
 fi
 
