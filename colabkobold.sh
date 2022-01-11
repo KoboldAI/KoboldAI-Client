@@ -46,6 +46,7 @@ function launch
         exit 0
     else
     cd /content/KoboldAI-Client
+    echo "Launching KoboldAI with the following options : python3 aiserver.py$model$kmpath$configname$ngrok --remote --override_delete --override_rename"
     python3 aiserver.py$model$kmpath$configname$ngrok --remote --override_delete --override_rename
     exit
     fi
@@ -77,6 +78,7 @@ fi
 if [[ -v mpath ]];then
 mpath="$xloc$mpath"
 kmpath=" --path $mpath"
+echo $mpath
 fi
 
 # Create Folder Structure and Install KoboldAI
