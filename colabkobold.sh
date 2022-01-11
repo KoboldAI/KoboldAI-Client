@@ -13,7 +13,7 @@ while true ; do
         -i|--init)
             init=$2 ; shift 2 ;;
         -p|--path)
-            path=" --path $2" ; shift 2 ;;
+            mpath=" --path $2" ; shift 2 ;;
         -c|--configname)
             configname=" --configname $2" ; shift 2 ;;
         -n|--ngrok)
@@ -74,7 +74,7 @@ else
 fi
 
 # Redefine the Path to be in the relevant location
-path = $xloc$path
+mpath="$xloc$mpath"
 
 # Create Folder Structure and Install KoboldAI
 if [ "$init" != "skip" ]; then
