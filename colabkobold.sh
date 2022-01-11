@@ -141,7 +141,7 @@ fi
 
 # Is the model extracted on Google Drive? Skip the download and extraction
 # Only on Google Drive since it has a big impact there if we don't, and locally we have better checks in place
-if [ "$xloc" == "drive"  ] && [[ -d $mpath ]];then
+if [ "$xloc" == "/content/drive/MyDrive/KoboldAI/models/"  ] && [[ -d $mpath ]];then
     launch
 fi
 
