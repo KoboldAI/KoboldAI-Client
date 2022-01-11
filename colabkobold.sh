@@ -74,10 +74,9 @@ else
 fi
 
 # Redefine the Path to be in the relevant location
-if [ -v $mpath ];then
+if [[ -v mpath ]];then
 mpath="$xloc$mpath"
-kmpath="--path $mpath"
-echo $kmpath
+kmpath=" --path $mpath"
 fi
 
 # Create Folder Structure and Install KoboldAI
