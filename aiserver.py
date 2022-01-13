@@ -993,7 +993,7 @@ else:
                 -1,
                 tpu_mtj_backend.params["d_model"],
             )
-            vars.sp = tensor
+            vars.sp = tpu_mtj_backend.shard_xmap(tensor)
         soft_tokens = np.arange(
             tpu_mtj_backend.params["n_vocab"] + tpu_mtj_backend.params["n_vocab_padding"],
             tpu_mtj_backend.params["n_vocab"] + tpu_mtj_backend.params["n_vocab_padding"] + vars.sp_length,
@@ -4005,7 +4005,7 @@ def spRequest(filename):
             -1,
             tpu_mtj_backend.params["d_model"],
         )
-        vars.sp = np.float32(tensor)
+        vars.sp = tpu_mtj_backend.shard_xmap(np.float32(tensor))
     else:
         vars.sp = torch.from_numpy(tensor)
 
