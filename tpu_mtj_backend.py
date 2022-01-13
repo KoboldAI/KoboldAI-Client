@@ -180,11 +180,9 @@ class PenalizingCausalTransformer(CausalTransformer):
     def __init__(self, config):
         # Initialize
         super().__init__(config)
-        def generate(state, key, ctx, ctx_length, gen_length, numseqs_aux, sampler_options, soft_embeddings=None):
+        def generate_initial(state, key, ctx, ctx_length, gen_length, numseqs_aux, sampler_options, soft_embeddings=None):
             numseqs = numseqs_aux.shape[0]
-            # These are the tokens that we don't want the AI to ever write
-            self.badwords = jnp.array([6880, 50256, 42496, 4613, 17414, 22039, 16410, 27, 29, 38430, 37922, 15913, 24618, 28725, 58, 47175, 36937, 26700, 12878, 16471, 37981, 5218, 29795, 13412, 45160, 3693, 49778, 4211, 20598, 36475, 33409, 44167, 32406, 29847, 29342, 42669, 685, 25787, 7359, 3784, 5320, 33994, 33490, 34516, 43734, 17635, 24293, 9959, 23785, 21737, 28401, 18161, 26358, 32509, 1279, 38155, 18189, 26894, 6927, 14610, 23834, 11037, 14631, 26933, 46904, 22330, 25915, 47934, 38214, 1875, 14692, 41832, 13163, 25970, 29565, 44926, 19841, 37250, 49029, 9609, 44438, 16791, 17816, 30109, 41888, 47527, 42924, 23984, 49074, 33717, 31161, 49082, 30138, 31175, 12240, 14804, 7131, 26076, 33250, 3556, 38381, 36338, 32756, 46581, 17912, 49146])
-            def generate_sample(context, ctx_length):
+            def generate_initial_inner(context, ctx_length):
                 # Give the initial context to the transformer
                 transformer = CausalTransformerShard(config)
                 def generate_initial_scan_fn(sequence_index, _):
@@ -201,6 +199,32 @@ class PenalizingCausalTransformer(CausalTransformer):
                 _, initial_states = jax.lax.scan(generate_initial_scan_fn, 0, None, numseqs)
                 sample_key = initial_states[-1][0]
                 initial_states = list(jax.tree_map(lambda x: x[i], initial_states[:-1]) for i in range(numseqs))
+                return initial_states, sample_key
+            generate_initial_fn = hk.transform(generate_initial_inner).apply
+            return generate_initial_fn(state["params"], key, ctx, ctx_length)
+        self.generate_initial_xmap = jax.experimental.maps.xmap(
+            fun=generate_initial,
+            in_axes=(
+                ["shard", ...],
+                ["batch", ...],
+                ["batch", ...],
+                ["batch", ...],
+                ["batch", ...],
+                ["batch", ...],
+                ["batch", ...],
+                ["shard", ...],
+            ),
+            out_axes=["shard", "batch", ...],
+            axis_resources={'shard': 'mp', 'batch': 'dp'},
+        )
+        def generate_once(initial_states, sample_key, state, key, ctx, ctx_length, gen_length, numseqs_aux, sampler_options, soft_embeddings=None):
+            numseqs = numseqs_aux.shape[0]
+            # These are the tokens that we don't want the AI to ever write
+            self.badwords = jnp.array([6880, 50256, 42496, 4613, 17414, 22039, 16410, 27, 29, 38430, 37922, 15913, 24618, 28725, 58, 47175, 36937, 26700, 12878, 16471, 37981, 5218, 29795, 13412, 45160, 3693, 49778, 4211, 20598, 36475, 33409, 44167, 32406, 29847, 29342, 42669, 685, 25787, 7359, 3784, 5320, 33994, 33490, 34516, 43734, 17635, 24293, 9959, 23785, 21737, 28401, 18161, 26358, 32509, 1279, 38155, 18189, 26894, 6927, 14610, 23834, 11037, 14631, 26933, 46904, 22330, 25915, 47934, 38214, 1875, 14692, 41832, 13163, 25970, 29565, 44926, 19841, 37250, 49029, 9609, 44438, 16791, 17816, 30109, 41888, 47527, 42924, 23984, 49074, 33717, 31161, 49082, 30138, 31175, 12240, 14804, 7131, 26076, 33250, 3556, 38381, 36338, 32756, 46581, 17912, 49146])
+            def generate_once_inner(context, ctx_length):
+                gi = initial_states[0][1]
+                # Give the initial context to the transformer
+                transformer = CausalTransformerShard(config)
                 # Get repetition penalty from the arguments
                 repetition_penalty = sampler_options.pop('repetition_penalty', None)
                 # This is the main generation loop
@@ -253,16 +277,18 @@ class PenalizingCausalTransformer(CausalTransformer):
                     carry[0].append(carry[0].pop(0))
                     return carry[0], new_key
                 final_state = jax.lax.while_loop(
-                    lambda carry: carry[0][0][1] - config["seq"] < gen_length,
+                    lambda carry: carry[0][0][1] == gi,
                     generate_loop_fn,
                     (initial_states, sample_key),
                 )
                 return final_state
-            generate_fn = hk.transform(generate_sample).apply
-            return generate_fn(state["params"], key, ctx, ctx_length)
-        self.generate_xmap = jax.experimental.maps.xmap(
-            fun=generate,
+            generate_once_fn = hk.transform(generate_once_inner).apply
+            return generate_once_fn(state["params"], key, ctx, ctx_length)
+        self.generate_once_xmap = jax.experimental.maps.xmap(
+            fun=generate_once,
             in_axes=(
+                ["shard", "batch", ...],
+                ["shard", "batch", ...],
                 ["shard", ...],
                 ["batch", ...],
                 ["batch", ...],
@@ -277,11 +303,12 @@ class PenalizingCausalTransformer(CausalTransformer):
         )
     def generate(self, ctx, ctx_length, gen_length, numseqs, sampler_options, return_logits=False, soft_embeddings=None):
         assert not return_logits
+        assert gen_length.ndim == 1
         key = hk.PRNGSequence(random.randint(0, 2 ** 60))
         batch_size = ctx.shape[0]
         self.batch_size = batch_size
-        xargs = (
-            shard_xmap(self.state),
+        xargs = [
+            self.state,
             batch_xmap(jnp.array(key.take(batch_size))),
             batch_xmap(ctx),
             batch_xmap(np.array(ctx_length, dtype=np.uint32)),
@@ -289,8 +316,11 @@ class PenalizingCausalTransformer(CausalTransformer):
             np.empty((batch_size, numseqs), dtype=np.uint8),
             batch_xmap(sampler_options),
             shard_xmap(soft_embeddings),
-        )
-        return self.generate_xmap(*xargs)
+        ]
+        initial_state, sample_key = self.generate_initial_xmap(*xargs)
+        for i in range(gen_length[0]):
+            initial_state, sample_key = self.generate_once_xmap(initial_state, sample_key, *xargs)
+        return initial_state, sample_key
 
 
 def infer(
