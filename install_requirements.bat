@@ -27,7 +27,7 @@ IF %D%==1 rmdir /s /q miniconda3
 
 :Mode
 echo Which installation mode would you like?
-echo 1. Temporary Drive Letter (Mounts the folder as drive K:, more stable and portable)
+echo 1. Temporary Drive Letter (Mounts the folder as drive B:, more stable and portable)
 echo 2. Subfolder (Traditional method, can't run in folder paths that contain spaces)
 echo.
 SET /P M=Type the number of the desired option and then press ENTER: 
@@ -38,20 +38,20 @@ GOTO MODE
 
 
 :drivemap
-echo 1 > loader.settings
-subst K: /D >nul
+echo 3 > loader.settings
+subst B: /D >nul
 mkdir miniconda3 
-subst K: miniconda3
-SET TEMP=K:\
-SET TMP=K:\
-copy umamba.exe K:\umamba.exe
-K:
-umamba.exe create -r K:\python\ -n base
-IF %B%==1 umamba.exe install --no-shortcuts -r K:\python\ -n base -f "%~dp0\environments\huggingface.yml" -y --always-copy
-IF %B%==2 umamba.exe install --no-shortcuts -r K:\python\ -n base -f "%~dp0\environments\finetuneanon.yml" -y --always-copy
-umamba.exe -r K:\ clean -a -y
-rd K:\Python\pkgs /S /Q
-subst K: /d
+subst B: miniconda3
+SET TEMP=B:\
+SET TMP=B:\
+copy umamba.exe B:\umamba.exe
+B:
+umamba.exe create -r B:\python\ -n base
+IF %B%==1 umamba.exe install --no-shortcuts -r B:\python\ -n base -f "%~dp0\environments\huggingface.yml" -y --always-copy
+IF %B%==2 umamba.exe install --no-shortcuts -r B:\python\ -n base -f "%~dp0\environments\finetuneanon.yml" -y --always-copy
+umamba.exe -r B:\ clean -a -y
+rd B:\Python\pkgs /S /Q
+subst B: /d
 pause
 exit
 
