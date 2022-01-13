@@ -68,8 +68,8 @@ modellist = [
     ["Lit 6B (NSFW)", "hakurei/lit-6B", "12GB"],
     ["C1 6B (Chatbot)", "hakurei/c1-6B", "12GB"],
     ["Picard 2.7B (Novel)", "KoboldAI/GPT-Neo-2.7B-Picard", "6GB"],
-    ["Horni (NSFW)", "KoboldAI/GPT-Neo-2.7B-Horni", "6GB"],
-    ["Horni-LN (Novel/NSFW)", "KoboldAI/GPT-Neo-2.7B-Horni-LN", "6GB"],
+    ["Horni 2.7B (NSFW)", "KoboldAI/GPT-Neo-2.7B-Horni", "6GB"],
+    ["Horni-LN 2.7B (Novel/NSFW)", "KoboldAI/GPT-Neo-2.7B-Horni-LN", "6GB"],
     ["Shinen 2.7B (NSFW)", "KoboldAI/GPT-Neo-2.7B-Shinen", "6GB"],
     ["GPT-J 6B", "EleutherAI/gpt-j-6B", "12GB"],
     ["GPT-Neo 2.7B", "EleutherAI/gpt-neo-2.7B", "6GB"],
@@ -80,7 +80,7 @@ modellist = [
     ["GPT-2", "gpt2", "1GB"],
     ["OpenAI API (requires API key)", "OAI", ""],
     ["InferKit API (requires API key)", "InferKit", ""],
-    ["Google Colab", "Colab", ""],
+    ["KoboldAI Server API (Old Google Colab)", "Colab", ""],
     ["Read Only (No AI)", "ReadOnly", ""]
     ]
 
@@ -616,7 +616,8 @@ if(vars.model == "OAI"):
 # Ask for ngrok url if Google Colab was selected
 if(vars.model == "Colab"):
     if(vars.colaburl == ""):
-        print("{0}Please enter the ngrok.io or trycloudflare.com URL displayed in Google Colab:{1}\n".format(colors.CYAN, colors.END))
+        print("{0}NOTE: For the modern KoboldAI Colab's you open the links directly in your browser.\nThis option is only for the KoboldAI Server API, not all features are supported in this mode.\n".format(colors.YELLOW, colors.END))
+        print("{0}Enter the URL of the server (For example a trycloudflare link):{1}\n".format(colors.CYAN, colors.END))
         vars.colaburl = input("URL> ") + "/request"
 
 if(vars.model == "ReadOnly"):
@@ -1719,7 +1720,7 @@ def get_message(msg):
                     raise ValueError("Chatname must be a string")
                 vars.chatname = msg['chatname']
                 settingschanged()
-                emit('from_server', {'cmd': 'setchatname', 'data': vars.chatname}, broadcast=True)
+                emit('from_server', {'cmd': 'setchatname', 'data': vars.chatname})
             vars.recentrng = vars.recentrngm = None
             actionsubmit(msg['data'], actionmode=msg['actionmode'])
         elif(vars.mode == "edit"):
@@ -1738,7 +1739,7 @@ def get_message(msg):
                 raise ValueError("Chatname must be a string")
             vars.chatname = msg['chatname']
             settingschanged()
-            emit('from_server', {'cmd': 'setchatname', 'data': vars.chatname}, broadcast=True)
+            emit('from_server', {'cmd': 'setchatname', 'data': vars.chatname})
         actionretry(msg['data'])
     # Back/Undo Action
     elif(msg['cmd'] == 'back'):
