@@ -63,19 +63,20 @@ def apply_repetition_penalty(logits, tokens, repetition_penalty):
     # logits array; e.g.
     # if logits is [77, 5, 3, 98] and tokens is [0, 1, 2, 3, 2, 3, 1],
     # then penalty_logits will be [77, 5, 3, 98, 3, 98, 5]
-    penalty_logits = jnp.take(logits, tokens)
+    penalty_logits = np.take(logits, tokens)
     # Divide positive values by repetition_penalty and multiply negative
     # values by repetition_penalty (the academic publication that described
     # this technique actually just only divided, but that would cause tokens
     # with negative logits to become more likely, which is obviously wrong)
-    penalty_logits = jnp.where(
+    penalty_logits = np.where(
         penalty_logits > 0,
         penalty_logits/repetition_penalty,
         penalty_logits*repetition_penalty,
     )
     # Finally, put those penalized logit values back into their original
     # positions in the logits array
-    return logits.at[tokens].set(penalty_logits)
+    logits[tokens] = penalty_logits
+    return logits
 
 def kobold_sample(key, logits, top_p=0.9, temp=0.5, top_k=0, tfs=1.0):
     '''
@@ -91,15 +92,16 @@ def kobold_sample(key, logits, top_p=0.9, temp=0.5, top_k=0, tfs=1.0):
         # in the sorted logits array we want to remove and False for ones
         # we want to keep, in this case the first top_k elements will be
         # False and the rest will be True
-        sorted_indices_to_remove = jnp.arange(len(logits)) >= top_k
+        sorted_indices_to_remove = np.arange(len(logits)) >= top_k
         # Unsort the logits array back to its original configuration and
         # remove tokens we need to remove
         _, indices_to_remove = jax.lax.sort_key_val(
-            jnp.argsort(-logits),
+            np.argsort(-logits),
             sorted_indices_to_remove,
         )
-        return jnp.where(indices_to_remove, -jnp.inf, logits)
-    logits = jax.lax.cond(top_k > 0, top_k_filter, lambda x: x, logits)
+        return np.where(indices_to_remove, -np.inf, logits)
+    if top_k > 0:
+        logits = top_k_filter(logits)
     # Top-p (after sorting the remaining tokens again in descending order of
     # logit, remove the ones that have cumulative softmax probability
     # greater than p)
@@ -108,75 +110,75 @@ def kobold_sample(key, logits, top_p=0.9, temp=0.5, top_k=0, tfs=1.0):
         # with e (Euler's number) to the power of that element, and divide
         # each element of the new array by the sum of the elements in the
         # new array
-        sorted_logits = -jnp.sort(-logits)
-        probabilities = jax.nn.softmax(sorted_logits)
+        sorted_logits = -np.sort(-logits)
+        probabilities = np.array(jax.nn.softmax(sorted_logits), copy=True)
         # Calculate cumulative_probabilities as the prefix-sum array of
         # probabilities
-        cumulative_probabilities = jnp.cumsum(probabilities, axis=-1)
+        cumulative_probabilities = np.cumsum(probabilities, axis=-1)
         # We want to remove tokens with cumulative probability higher
         # than top_p
         sorted_indices_to_remove = cumulative_probabilities > top_p
         # Don't ever remove the token with the highest logit, even if
         # the probability is higher than top_p
-        sorted_indices_to_remove = sorted_indices_to_remove.at[0].set(False)
+        sorted_indices_to_remove[0] = False
         # Unsort and remove
         _, indices_to_remove = jax.lax.sort_key_val(
-            jnp.argsort(-logits),
+            np.argsort(-logits),
             sorted_indices_to_remove,
         )
-        return jnp.where(indices_to_remove, -jnp.inf, logits)
-    logits = jax.lax.cond(top_p < 1.0, top_p_filter, lambda x: x, logits)
+        return np.where(indices_to_remove, -np.inf, logits)
+    if top_p < 1.0:
+        logits = top_p_filter(logits)
     # Tail free sampling (basically top-p a second time on remaining tokens
     # except it's the "cumulative normalized absolute second finite
     # differences of the softmax probabilities" instead of just the
     # cumulative softmax probabilities)
     def tail_free_filter(logits):
         # Sort in descending order
-        sorted_logits = -jnp.sort(-logits)
+        sorted_logits = -np.sort(-logits)
         # Softmax again
-        probabilities = jax.nn.softmax(sorted_logits)
+        probabilities = np.array(jax.nn.softmax(sorted_logits), copy=True)
         # Calculate the second finite differences of that array (i.e.
         # calculate the difference array and then calculate the difference
         # array of the difference array)
-        d2 = jnp.diff(jnp.diff(probabilities))
+        d2 = np.diff(np.diff(probabilities))
         # Get the absolute values of all those second finite differences
-        d2 = jnp.abs(d2)
+        d2 = np.abs(d2)
         # Normalize (all elements in the array are divided by the sum of the
         # array's elements)
         d2 = d2 / d2.sum(axis=-1, keepdims=True)
         # Get the prefix-sum array
-        cumulative_d2 = jnp.cumsum(d2, axis=-1)
+        cumulative_d2 = np.cumsum(d2, axis=-1)
         # We will remove the tokens with a cumulative normalized absolute
         # second finite difference larger than the TFS value
         sorted_indices_to_remove = cumulative_d2 > tfs
         # Don't remove the token with the highest logit
-        sorted_indices_to_remove = sorted_indices_to_remove.at[0].set(False)
+        sorted_indices_to_remove[0] = False
         # Since the d2 array has two fewer elements than the logits array,
         # we'll add two extra Trues to the end
-        sorted_indices_to_remove = jnp.pad(
+        sorted_indices_to_remove = np.pad(
             sorted_indices_to_remove,
             (0, 2),
             constant_values=True,
         )
         # Unsort and remove
         _, indices_to_remove = jax.lax.sort_key_val(
-            jnp.argsort(-logits),
+            np.argsort(-logits),
             sorted_indices_to_remove,
         )
-        return jnp.where(indices_to_remove, -jnp.inf, logits)
-    logits = jax.lax.cond(tfs < 1.0, tail_free_filter, lambda x: x, logits)
+        return np.where(indices_to_remove, -np.inf, logits)
+    if tfs < 1.0:
+        logits = tail_free_filter(logits)
     # Temperature (just divide the logits by the temperature)
-    def temp_filter(logits):
-        return logits / temp
-    logits = jax.lax.cond(True, temp_filter, lambda x: x, logits)
+    logits /= temp
     # Finally, pick one token using the softmax thingy again (it gives
     # an array whose elements sum to 1 so it can be used nicely as a
     # probability distribution)
-    return jax.random.categorical(key, logits, -1).astype(jnp.uint32)
+    return jax.random.categorical(key, logits, -1).astype(np.uint32)
 
 pad_token_id = 50256
 
-def sample_jit(data, key, numseqs_aux, badwords, repetition_penalty, sampler_options):
+def sample_func(data, key, numseqs_aux, badwords, repetition_penalty, sampler_options):
     numseqs = numseqs_aux.shape[0]
     gi = data[0][1]
     def sample_loop_fn(carry):
@@ -195,7 +197,7 @@ def sample_jit(data, key, numseqs_aux, badwords, repetition_penalty, sampler_opt
         # Remove any tokens in the badwords list by setting
         # their logits to negative infinity which effectively
         # makes their probabilities of being chosen zero
-        logits = logits.at[badwords].set(-jnp.inf)
+        logits[badwords] = -np.inf
         # Use the sampler (kobold_sample) to pick one token
         # based on the logits array as a 0D uint32 array
         # (higher logit means higher probability of being
@@ -206,18 +208,22 @@ def sample_jit(data, key, numseqs_aux, badwords, repetition_penalty, sampler_opt
             **sampler_options,
         )
         # Remember what token was picked
-        generated = generated.at[generated_index].set(next_token)
+        generated[generated_index] = next_token
         generated_index += 1
         # Re-pack the current sample_loop_fn's state so we can
         # get back the same variables the next time
         carry[0][0] = [generated, generated_index, logits, next_token]
         carry[0].append(carry[0].pop(0))
         return carry[0], new_key
-    return jax.lax.while_loop(
-        lambda carry: carry[0][0][1] < gi,
-        sample_loop_fn,
-        (data, key),
-    )
+    # return jax.lax.while_loop(
+    #     lambda carry: carry[0][0][1] == gi,
+    #     sample_loop_fn,
+    #     (data, key),
+    # )
+    carry = (data, key)
+    while carry[0][0][1] == gi:
+        carry = sample_loop_fn(carry)
+    return carry
 
 class PenalizingCausalTransformer(CausalTransformer):
     def __init__(self, config):
@@ -237,7 +243,7 @@ class PenalizingCausalTransformer(CausalTransformer):
                     return sequence_index+1, initial_state
                 _, initial_states = jax.lax.scan(generate_initial_scan_fn, 0, None, numseqs)
                 sample_key = initial_states[-1][0]
-                initial_states = list(jax.tree_map(lambda x: x[i], initial_states[:-1]) for i in range(numseqs))
+                initial_states = list(list(jax.tree_map(lambda x: x[i], initial_states[:-1])) for i in range(numseqs))
                 return initial_states, sample_key
             return generate_initial_inner.apply(state["params"], key, ctx, ctx_length)
         self.generate_initial_xmap = jax.experimental.maps.xmap(
@@ -281,7 +287,7 @@ class PenalizingCausalTransformer(CausalTransformer):
                     # Re-pack the current generate_loop_fn's state so we can
                     # get back the same variables the next time
                     generated_index += 1
-                    carry[0][0] = (logits, generated_index, sequence_index, next_token, new_state)
+                    carry[0][0] = [logits, generated_index, sequence_index, next_token, new_state]
                     carry[0].append(carry[0].pop(0))
                     return carry[0],
                 return jax.lax.while_loop(
@@ -312,21 +318,23 @@ class PenalizingCausalTransformer(CausalTransformer):
         numseqs_aux = batch_xmap(_numseqs_aux)
         sample_data = [
             [
-                jnp.pad(ctx, (0, params["seq"]), constant_values=pad_token_id),
+                np.pad(ctx[0], (0, params["seq"]), constant_values=pad_token_id),
                 params["seq"],
                 None,
-                jnp.empty((), dtype=jnp.uint32),
+                np.empty((), dtype=np.uint32),
             ]
             for _ in range(numseqs)
         ]
         repetition_penalty = sampler_options.pop("repetition_penalty", 1.0)
         generate_data, sample_key = self.generate_initial_xmap(self.state, jnp.array(key.take(batch_size)), ctx, ctx_length, numseqs_aux, soft_embeddings)
-        sample_key = jax.device_put(sample_key[0, 0], cpu)
+        sample_key = np.asarray(sample_key[0, 0])
         for _ in range(gen_length[0].item()):
             generate_data, = self.generate_once_xmap(generate_data, self.state, numseqs_aux, soft_embeddings)
             for i in range(numseqs):
-                sample_data[i][2] = jax.device_put(generate_data[0][i][0, 0], cpu)
-            sample_data, sample_key = sample_jit(sample_data, sample_key, _numseqs_aux, badwords, repetition_penalty, sampler_options)
+                sample_data[i][2] = np.array(generate_data[0][i][0, 0], copy=True)
+            sample_data, sample_key = sample_func(sample_data, sample_key, _numseqs_aux, badwords, repetition_penalty, sampler_options)
+            for i in range(numseqs):
+                generate_data[i][3] = np.tile(sample_data[i][0][sample_data[i][1]-1][np.newaxis, np.newaxis], (params["cores_per_replica"], 1, 1))
         return sample_data, sample_key
 
 
@@ -368,7 +376,7 @@ def infer(
         soft_embeddings=soft_embeddings,
     )[0]
     for out in output:
-        samples.append(out[0][0, 0, params["seq"] : params["seq"] + gen_len])
+        samples.append(out[0][params["seq"] : params["seq"] + gen_len])
     return samples
 
 
@@ -397,36 +405,36 @@ def load_model(path: str, driver_version="tpu_driver0.1_dev20210607", **kwargs) 
     jax.host_count = jax.process_count
     jax.host_id = jax.process_index
 
-    print("Connecting to your Colab instance's TPU", flush=True)
-    spinner = multiprocessing.Process(target=show_spinner, args=())
-    spinner.start()
-    colab_tpu_addr = os.environ['COLAB_TPU_ADDR'].split(':')[0]
-    url = f'http://{colab_tpu_addr}:8475/requestversion/{driver_version}'
-    requests.post(url)
-    spinner.terminate()
-    print()
-    config.FLAGS.jax_xla_backend = "tpu_driver"
-    config.FLAGS.jax_backend_target = "grpc://" + os.environ['COLAB_TPU_ADDR']
+    while True:
+        print("Connecting to your Colab instance's TPU", flush=True)
+        spinner = multiprocessing.Process(target=show_spinner, args=())
+        spinner.start()
+        colab_tpu_addr = os.environ['COLAB_TPU_ADDR'].split(':')[0]
+        url = f'http://{colab_tpu_addr}:8475/requestversion/{driver_version}'
+        requests.post(url)
+        spinner.terminate()
+        print()
+        config.FLAGS.jax_xla_backend = "tpu_driver"
+        config.FLAGS.jax_backend_target = "grpc://" + os.environ['COLAB_TPU_ADDR']
 
-    cores_per_replica = params["cores_per_replica"]
-    seq = params["seq"]
-    params["optimizer"] = optax.scale(0)
-    mesh_shape = (1, cores_per_replica)
-    devices = np.array(jax.devices()[:cores_per_replica]).reshape(mesh_shape)
-    thread_resources_env = maps.ResourceEnv(maps.Mesh(devices, ('dp', 'mp')), ())
-    maps.thread_resources.env = thread_resources_env
-    tokenizer = transformers.GPT2TokenizerFast.from_pretrained('gpt2')
+        cores_per_replica = params["cores_per_replica"]
+        seq = params["seq"]
+        params["optimizer"] = optax.scale(0)
+        mesh_shape = (1, cores_per_replica)
+        try:
+            devices = np.array(jax.devices()[:cores_per_replica]).reshape(mesh_shape)
+        except RuntimeError as e:
+            if "DEADLINE_EXCEEDED" not in str(e):
+                raise e
+            continue
+        thread_resources_env = maps.ResourceEnv(maps.Mesh(devices, ('dp', 'mp')), ())
+        maps.thread_resources.env = thread_resources_env
+        tokenizer = transformers.GPT2TokenizerFast.from_pretrained('gpt2')
+        break
 
     global shard_xmap, batch_xmap
     shard_xmap = __shard_xmap()
     batch_xmap = __batch_xmap(shard_dim=cores_per_replica)
-
-    global cpu, sample_jit
-    cpu = jax.devices("cpu")[0]
-    sample_jit = jax.jit(
-        sample_jit,
-        device=cpu,
-    )
 
     global badwords
     # These are the tokens that we don't want the AI to ever write
