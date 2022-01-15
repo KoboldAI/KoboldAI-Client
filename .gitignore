@@ -17,7 +17,7 @@ userscripts/*
 !userscripts/examples
 !userscripts/kaipreset_*.lua
 !userscripts/Readme.*
-!userscripts/api_documentation.md
+!userscripts/api_documentation.*
 softprompts/*
 
 # Ignore PyCharm project files.
