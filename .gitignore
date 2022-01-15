@@ -13,8 +13,10 @@ miniconda3/*
 __pycache__
 *.log
 cache/*
-userscripts/*.*
+userscripts/*
+!userscripts/examples
 !userscripts/kaipreset_*.lua
+!userscripts/Readme.*
 softprompts/*
 
 # Ignore PyCharm project files.
