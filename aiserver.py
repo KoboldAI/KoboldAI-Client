@@ -2982,7 +2982,7 @@ def tpumtjgenerate(txt, minimum, maximum, found_entries=None):
 
             if(halt or not regeneration_required):
                 break
-            print("(dynamic world info scanner triggered)")
+            print("(regeneration triggered)")
 
             encoded = []
             for i in range(vars.numseqs):
