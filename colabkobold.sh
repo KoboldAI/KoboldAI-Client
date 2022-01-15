@@ -47,7 +47,7 @@ function launch
     else
     cd /content/KoboldAI-Client
     echo "Launching KoboldAI with the following options : python3 aiserver.py$model$kmpath$configname$ngrok --remote --override_delete --override_rename"
-    python3 aiserver.py$model$kmpath$configname$ngrok --remote --override_delete --override_rename
+    python3 aiserver.py$model$kmpath$configname$ngrok --remote --override_delete --override_rename --colab
     exit
     fi
 }
@@ -106,9 +106,9 @@ if [ "$init" != "skip" ]; then
 
     cd /content/KoboldAI-Client
 
-    cp -rn stories/* /content/drive/MyDrive/KoboldAI/stories/
-    cp -rn userscripts/* /content/drive/MyDrive/KoboldAI/userscripts/
-    cp -rn softprompts/* /content/drive/MyDrive/KoboldAI/softprompts/
+    cp -n stories/* /content/drive/MyDrive/KoboldAI/stories/
+    cp -n userscripts/* /content/drive/MyDrive/KoboldAI/userscripts/
+    cp -n softprompts/* /content/drive/MyDrive/KoboldAI/softprompts/
     rm stories
     rm -rf stories/
     rm userscripts
