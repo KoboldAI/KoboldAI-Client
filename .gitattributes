@@ -1,2 +1,2 @@
 *.min.lua linguist-vendored
-*documentation.html
+*documentation.html linguist-vendored
