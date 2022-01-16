@@ -47,7 +47,7 @@ function launch
     else
     cd /content/KoboldAI-Client
     echo "Launching KoboldAI with the following options : python3 aiserver.py$model$kmpath$configname$ngrok --remote --override_delete --override_rename"
-    python3 aiserver.py$model$kmpath$configname$ngrok --remote --override_delete --override_rename --colab
+    python3 aiserver.py$model$kmpath$configname$ngrok --remote --override_delete --override_rename
     exit
     fi
 }
