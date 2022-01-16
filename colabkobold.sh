@@ -106,9 +106,9 @@ if [ "$init" != "skip" ]; then
 
     cd /content/KoboldAI-Client
 
-    cp -n stories/* /content/drive/MyDrive/KoboldAI/stories/
-    cp -n userscripts/* /content/drive/MyDrive/KoboldAI/userscripts/
-    cp -n softprompts/* /content/drive/MyDrive/KoboldAI/softprompts/
+    cp -rn stories/*.* /content/drive/MyDrive/KoboldAI/stories/
+    cp -rn userscripts/*.* /content/drive/MyDrive/KoboldAI/userscripts/
+    cp -rn softprompts/*.* /content/drive/MyDrive/KoboldAI/softprompts/
     rm stories
     rm -rf stories/
     rm userscripts
