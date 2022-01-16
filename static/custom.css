@@ -192,6 +192,7 @@ body.connected #formatmenu, #formatmenu.always-available {
 	overflow:auto;
 	background-color: #404040;
 	color: #ffffff;
+	resize: vertical;
 }
 
 #btnmode {

@@ -1,0 +1,720 @@
+﻿<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>API</title>
+  <link rel="stylesheet" href="https://stackedit.io/style.css" />
+</head>
+
+<body class="stackedit">
+  <div class="stackedit__left">
+    <div class="stackedit__toc">
+      
+<ul>
+<li><a href="#kobold">kobold</a>
+<ul>
+<li></li>
+</ul>
+</li>
+<li><a href="#kobold.decode">kobold.decode()</a>
+<ul>
+<li></li>
+</ul>
+</li>
+<li><a href="#kobold.encode">kobold.encode()</a>
+<ul>
+<li></li>
+</ul>
+</li>
+<li><a href="#kobold.get_config_file">kobold.get_config_file()</a>
+<ul>
+<li></li>
+</ul>
+</li>
+<li><a href="#kobold.halt_generation">kobold.halt_generation()</a></li>
+<li><a href="#kobold.restart_generation">kobold.restart_generation()</a>
+<ul>
+<li></li>
+</ul>
+</li>
+<li><a href="#kobold.authorsnote">kobold.authorsnote</a></li>
+<li><a href="#kobold.authorsnotetemplate">kobold.authorsnotetemplate</a></li>
+<li><a href="#kobold.custmodpth">kobold.custmodpth</a></li>
+<li><a href="#kobold.feedback">kobold.feedback</a></li>
+<li><a href="#kobold.generated">kobold.generated</a></li>
+<li><a href="#kobold.generated_cols">kobold.generated_cols</a></li>
+<li><a href="#kobold.generated_rows">kobold.generated_rows</a></li>
+<li><a href="#kobold.is_config_file_open">kobold.is_config_file_open</a></li>
+<li><a href="#kobold.logits">kobold.logits</a></li>
+<li><a href="#kobold.logits_cols">kobold.logits_cols</a></li>
+<li><a href="#kobold.logits_rows">kobold.logits_rows</a></li>
+<li><a href="#kobold.memory">kobold.memory</a></li>
+<li><a href="#kobold.modelbackend">kobold.modelbackend</a></li>
+<li><a href="#kobold.modeltype">kobold.modeltype</a></li>
+<li><a href="#kobold.num_outputs">kobold.num_outputs</a></li>
+<li><a href="#kobold.outputs">kobold.outputs</a></li>
+<li><a href="#kobold.settings">kobold.settings</a></li>
+<li><a href="#kobold.story">kobold.story</a>
+<ul>
+<li></li>
+</ul>
+</li>
+<li><a href="#kobold.storyforward_iter">kobold.story:forward_iter()</a></li>
+<li><a href="#kobold.storyreverse_iter">kobold.story:reverse_iter()</a></li>
+<li><a href="#koboldstorychunk">KoboldStoryChunk</a>
+<ul>
+<li></li>
+</ul>
+</li>
+<li><a href="#koboldstorychunk.content">KoboldStoryChunk.content</a></li>
+<li><a href="#koboldstorychunk.num">KoboldStoryChunk.num</a></li>
+<li><a href="#kobold.submission">kobold.submission</a></li>
+<li><a href="#kobold.worldinfo">kobold.worldinfo</a>
+<ul>
+<li></li>
+</ul>
+</li>
+<li><a href="#kobold.worldinfocompute_context">kobold.worldinfo:compute_context()</a>
+<ul>
+<li></li>
+</ul>
+</li>
+<li><a href="#kobold.worldinfofinduid">kobold.worldinfo:finduid()</a>
+<ul>
+<li></li>
+</ul>
+</li>
+<li><a href="#kobold.worldinfois_valid">kobold.worldinfo:is_valid()</a></li>
+<li><a href="#kobold.worldinfo.folders">kobold.worldinfo.folders</a>
+<ul>
+<li></li>
+</ul>
+</li>
+<li><a href="#koboldworldinfoentry">KoboldWorldInfoEntry</a>
+<ul>
+<li></li>
+</ul>
+</li>
+<li><a href="#koboldworldinfoentrycompute_context">KoboldWorldInfoEntry:compute_context()</a>
+<ul>
+<li></li>
+</ul>
+</li>
+<li><a href="#koboldworldinfoentryis_valid">KoboldWorldInfoEntry:is_valid()</a></li>
+<li><a href="#koboldworldinfoentry.comment">KoboldWorldInfoEntry.comment</a></li>
+<li><a href="#koboldworldinfoentry.constant">KoboldWorldInfoEntry.constant</a></li>
+<li><a href="#koboldworldinfoentry.content">KoboldWorldInfoEntry.content</a></li>
+<li><a href="#koboldworldinfoentry.folder">KoboldWorldInfoEntry.folder</a></li>
+<li><a href="#koboldworldinfoentry.key">KoboldWorldInfoEntry.key</a></li>
+<li><a href="#koboldworldinfoentry.keysecondary">KoboldWorldInfoEntry.keysecondary</a></li>
+<li><a href="#koboldworldinfoentry.num">KoboldWorldInfoEntry.num</a></li>
+<li><a href="#koboldworldinfoentry.selective">KoboldWorldInfoEntry.selective</a></li>
+<li><a href="#koboldworldinfoentry.uid">KoboldWorldInfoEntry.uid</a></li>
+<li><a href="#koboldworldinfofolderselectorfinduid">KoboldWorldInfoFolderSelector:finduid()</a>
+<ul>
+<li></li>
+</ul>
+</li>
+<li><a href="#koboldworldinfofolderselectoris_valid">KoboldWorldInfoFolderSelector:is_valid()</a></li>
+<li><a href="#koboldworldinfofolder">KoboldWorldInfoFolder</a>
+<ul>
+<li></li>
+</ul>
+</li>
+<li><a href="#koboldworldinfofoldercompute_context">KoboldWorldInfoFolder:compute_context()</a>
+<ul>
+<li></li>
+</ul>
+</li>
+<li><a href="#koboldworldinfofolderfinduid">KoboldWorldInfoFolder:finduid()</a>
+<ul>
+<li></li>
+</ul>
+</li>
+<li><a href="#koboldworldinfofolderis_valid">KoboldWorldInfoFolder:is_valid()</a></li>
+<li><a href="#koboldworldinfofolder.name">KoboldWorldInfoFolder.name</a></li>
+<li><a href="#koboldworldinfofolder.uid">KoboldWorldInfoFolder.uid</a></li>
+</ul>
+
+    </div>
+  </div>
+  <div class="stackedit__right">
+    <div class="stackedit__html">
+      <h1 id="kobold">kobold</h1>
+<pre class=" language-lua"><code class="prism  language-lua">global kobold<span class="token punctuation">:</span> KoboldLib
+</code></pre>
+<h3 id="methods">Methods:</h3>
+<ul>
+<li><code>kobold.decode()</code></li>
+<li><code>kobold.encode()</code></li>
+<li><code>kobold.get_config_file()</code></li>
+<li><code>kobold.halt_generation()</code></li>
+<li><code>kobold.restart_generation()</code></li>
+</ul>
+<h3 id="fields">Fields:</h3>
+<ul>
+<li><code>kobold.authorsnote</code></li>
+<li><code>kobold.authorsnotetemplate</code></li>
+<li><code>kobold.custmodpth</code></li>
+<li><code>kobold.feedback</code></li>
+<li><code>kobold.generated</code></li>
+<li><code>kobold.generated_cols</code></li>
+<li><code>kobold.generated_rows</code></li>
+<li><code>kobold.is_config_file_open</code></li>
+<li><code>kobold.logits</code></li>
+<li><code>kobold.logits_cols</code></li>
+<li><code>kobold.logits_rows</code></li>
+<li><code>kobold.memory</code></li>
+<li><code>kobold.modelbackend</code></li>
+<li><code>kobold.modeltype</code></li>
+<li><code>kobold.num_outputs</code></li>
+<li><code>kobold.outputs</code></li>
+<li><code>kobold.settings</code></li>
+<li><code>kobold.story</code></li>
+<li><code>kobold.submission</code></li>
+<li><code>kobold.worldinfo</code></li>
+</ul>
+<h1 id="kobold.decode">kobold.decode()</h1>
+<pre class=" language-lua"><code class="prism  language-lua"><span class="token keyword">function</span> KoboldLib<span class="token punctuation">.</span><span class="token function">decode</span><span class="token punctuation">(</span>tok<span class="token punctuation">:</span> integer<span class="token operator">|</span>table<span class="token operator">&lt;</span>integer<span class="token punctuation">,</span> integer<span class="token operator">&gt;</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">&gt;</span> string
+</code></pre>
+<p><em><strong>Callable from:</strong></em> anywhere</p>
+<p>Decodes the given token or list of tokens using the current tokenizer. If <code>kobold.backend</code> is <code>'readonly'</code> or <code>'api'</code>, the tokenizer used is the GPT-2 tokenizer, otherwise the model’s tokenizer is used. This function is the inverse of <code>kobold.encode()</code>.</p>
+<pre class=" language-lua"><code class="prism  language-lua"><span class="token function">print</span><span class="token punctuation">(</span>kobold<span class="token punctuation">.</span><span class="token function">decode</span><span class="token punctuation">(</span><span class="token punctuation">{</span><span class="token number">15496</span><span class="token punctuation">,</span> <span class="token number">2159</span><span class="token punctuation">}</span><span class="token punctuation">)</span><span class="token punctuation">)</span>  <span class="token comment">-- 'Hello World'</span>
+</code></pre>
+<h3 id="parameters">Parameters:</h3>
+<ul>
+<li>tok (<code>integer|table&lt;integer, integer&gt;</code>): Array of token IDs to decode, or the token ID of a single token.</li>
+</ul>
+<h3 id="returns">Returns:</h3>
+<ul>
+<li><code>string</code>: Decoded tokens.</li>
+</ul>
+<h1 id="kobold.encode">kobold.encode()</h1>
+<pre class=" language-lua"><code class="prism  language-lua"><span class="token keyword">function</span> KoboldLib<span class="token punctuation">.</span><span class="token function">encode</span><span class="token punctuation">(</span>str<span class="token punctuation">:</span> string<span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">&gt;</span> table<span class="token operator">&lt;</span>integer<span class="token punctuation">,</span> integer<span class="token operator">&gt;</span>
+</code></pre>
+<p><em><strong>Callable from:</strong></em> anywhere</p>
+<p>Encodes the given string using the current tokenizer into an array of tokens. If <code>kobold.backend</code> is <code>'readonly'</code> or <code>'api'</code>, the tokenizer used is the GPT-2 tokenizer, otherwise the model’s tokenizer is used. This function is the inverse of <code>kobold.decode()</code>.</p>
+<pre class=" language-lua"><code class="prism  language-lua"><span class="token keyword">local</span> tokens <span class="token operator">=</span> kobold<span class="token punctuation">.</span><span class="token function">encode</span><span class="token punctuation">(</span><span class="token string">"Hello World"</span><span class="token punctuation">)</span>
+<span class="token function">print</span><span class="token punctuation">(</span><span class="token operator">#</span>tokens<span class="token punctuation">)</span>  <span class="token comment">-- 2</span>
+<span class="token function">print</span><span class="token punctuation">(</span>tokens<span class="token punctuation">[</span><span class="token number">1</span><span class="token punctuation">]</span><span class="token punctuation">)</span>  <span class="token comment">-- 15496</span>
+<span class="token function">print</span><span class="token punctuation">(</span>tokens<span class="token punctuation">[</span><span class="token number">2</span><span class="token punctuation">]</span><span class="token punctuation">)</span>  <span class="token comment">-- 2159</span>
+</code></pre>
+<h3 id="parameters-1">Parameters:</h3>
+<ul>
+<li>tok (<code>integer|table&lt;integer, integer&gt;</code>): Array of token IDs to decode, or the token ID of a single token.</li>
+</ul>
+<h3 id="returns-1">Returns:</h3>
+<ul>
+<li><code>string</code>: Decoded tokens.</li>
+</ul>
+<h1 id="kobold.get_config_file">kobold.get_config_file()</h1>
+<pre class=" language-lua"><code class="prism  language-lua"><span class="token keyword">function</span> KoboldLib<span class="token punctuation">.</span><span class="token function">get_config_file</span><span class="token punctuation">(</span>clear?<span class="token punctuation">:</span> boolean<span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">&gt;</span> file<span class="token operator">*</span>
+</code></pre>
+<p><em><strong>Callable from:</strong></em> anywhere</p>
+<p>Returns a file handle representing your script’s configuration file, which is usually the file in the userscripts folder with the same filename as your script but with “.conf” appended at the end. This function throws an error on failure.</p>
+<p>If the configuration file does not exist when this function is called, the configuration file will first be created as a new empty file.</p>
+<p>If KoboldAI does not possess an open file handle to the configuration file, this function opens the file in <code>w+b</code> mode if the <code>clear</code> parameter is a truthy value, otherwise the file is opened in <code>r+b</code> mode. These are mostly the same – the file is opened in binary read-write mode and then seeked to the start of the file – except the former mode deletes the contents of the file prior to opening it and the latter mode does not.</p>
+<p>If KoboldAI does possess an open file handle to the configuration file, that open file handle is returned without seeking or deleting the contents of the file. You can check if KoboldAI possesses an open file handle to the configuration file by using <code>kobold.is_config_file_open</code>.</p>
+<pre class=" language-lua"><code class="prism  language-lua"><span class="token keyword">local</span> example_config <span class="token operator">=</span> <span class="token string">"return 'Hello World'"</span>
+<span class="token keyword">local</span> cfg
+<span class="token keyword">do</span>
+    <span class="token comment">-- If config file is empty, write example config</span>
+    <span class="token keyword">local</span> f <span class="token operator">&lt;</span>close<span class="token operator">&gt;</span> <span class="token operator">=</span> kobold<span class="token punctuation">.</span><span class="token function">get_config_file</span><span class="token punctuation">(</span><span class="token punctuation">)</span>
+    f<span class="token punctuation">:</span><span class="token function">seek</span><span class="token punctuation">(</span><span class="token string">"set"</span><span class="token punctuation">)</span>
+    <span class="token keyword">if</span> f<span class="token punctuation">:</span><span class="token function">read</span><span class="token punctuation">(</span><span class="token number">1</span><span class="token punctuation">)</span> <span class="token operator">==</span> <span class="token keyword">nil</span> <span class="token keyword">then</span> f<span class="token punctuation">:</span><span class="token function">write</span><span class="token punctuation">(</span>example_config<span class="token punctuation">)</span> <span class="token keyword">end</span>
+    f<span class="token punctuation">:</span><span class="token function">seek</span><span class="token punctuation">(</span><span class="token string">"set"</span><span class="token punctuation">)</span>
+
+    <span class="token comment">-- Read config</span>
+    <span class="token keyword">local</span> err
+    cfg<span class="token punctuation">,</span> err <span class="token operator">=</span> <span class="token function">load</span><span class="token punctuation">(</span>f<span class="token punctuation">:</span><span class="token function">read</span><span class="token punctuation">(</span><span class="token string">"a"</span><span class="token punctuation">)</span><span class="token punctuation">)</span>
+    <span class="token keyword">if</span> err <span class="token operator">~=</span> <span class="token keyword">nil</span> <span class="token keyword">then</span> <span class="token function">error</span><span class="token punctuation">(</span>err<span class="token punctuation">)</span> <span class="token keyword">end</span>
+    cfg <span class="token operator">=</span> <span class="token function">cfg</span><span class="token punctuation">(</span><span class="token punctuation">)</span>
+<span class="token keyword">end</span>
+</code></pre>
+<h3 id="parameters-2">Parameters:</h3>
+<ul>
+<li>clear? (<code>bool</code>): If KoboldAI does not possess an open file handle to the configuration object, this determines whether the file will be opened in <code>w+b</code> or <code>r+b</code> mode. This parameter defaults to <code>false</code>.</li>
+</ul>
+<h3 id="returns-2">Returns:</h3>
+<ul>
+<li><code>file*</code>: File handle for the configuration file.</li>
+</ul>
+<h1 id="kobold.halt_generation">kobold.halt_generation()</h1>
+<pre class=" language-lua"><code class="prism  language-lua"><span class="token keyword">function</span> KoboldLib<span class="token punctuation">.</span><span class="token function">halt_generation</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">&gt;</span> <span class="token keyword">nil</span>
+</code></pre>
+<p><em><strong>Callable from:</strong></em> anywhere</p>
+<p>If called from an input modifier, prevents the user’s input from being sent to the model and skips directly to the output modifier.</p>
+<p>If called from a generation modifier, stops generation after the current token is generated and then skips to the output modifier. In other words, if, when you call this function, <code>kobold.generated</code> has n columns, it will have exactly n+1 columns when the output modifier is called.</p>
+<p>If called from an output modifier, has no effect.</p>
+<h1 id="kobold.restart_generation">kobold.restart_generation()</h1>
+<pre class=" language-lua"><code class="prism  language-lua"><span class="token keyword">function</span> KoboldLib<span class="token punctuation">.</span><span class="token function">restart_generation</span><span class="token punctuation">(</span>sequence?<span class="token punctuation">:</span> integer<span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">&gt;</span> <span class="token keyword">nil</span>
+</code></pre>
+<p><em><strong>Callable from:</strong></em> output modifier</p>
+<p>After the current output is sent to the GUI, starts another generation using the empty string as the submission.</p>
+<p>Whatever ends up being the output selected by the user or by the <code>sequence</code> parameter will be saved in <code>kobold.feedback</code> when the new generation begins.</p>
+<h3 id="parameters-3">Parameters:</h3>
+<ul>
+<li>sequence? (<code>integer</code>): If you have multiple Gens Per Action, this can be used to choose which sequence to use as the output, where 1 is the first, 2 is the second and so on. If you set this to 0, the user will be prompted to choose the sequence instead. Defaults to 0.</li>
+</ul>
+<h1 id="kobold.authorsnote">kobold.authorsnote</h1>
+<pre class=" language-lua"><code class="prism  language-lua">field KoboldLib<span class="token punctuation">.</span>authorsnote<span class="token punctuation">:</span> string
+</code></pre>
+<p><em><strong>Readable from:</strong></em> anywhere<br>
+<em><strong>Writable from:</strong></em> anywhere (triggers regeneration when written to from generation modifier)</p>
+<p>The author’s note as set from the “Memory” button in the GUI.</p>
+<p>Modifying this field from inside of a generation modifier triggers a regeneration, which means that the context is recomputed after modification and generation begins again with the new context and previously generated tokens. This incurs a small performance penalty and should not be performed in excess.</p>
+<h1 id="kobold.authorsnotetemplate">kobold.authorsnotetemplate</h1>
+<pre class=" language-lua"><code class="prism  language-lua">field KoboldLib<span class="token punctuation">.</span>authorsnotetemplate<span class="token punctuation">:</span> string
+</code></pre>
+<p><em><strong>Readable from:</strong></em> anywhere<br>
+<em><strong>Writable from:</strong></em> anywhere (triggers regeneration when written to from generation modifier)</p>
+<p>The author’s note template as set from the “Memory” button in the GUI.</p>
+<p>Modifying this field from inside of a generation modifier triggers a regeneration, which means that the context is recomputed after modification and generation begins again with the new context and previously generated tokens. This incurs a small performance penalty and should not be performed in excess.</p>
+<h1 id="kobold.custmodpth">kobold.custmodpth</h1>
+<pre class=" language-lua"><code class="prism  language-lua">field KoboldLib<span class="token punctuation">.</span>custmodpth<span class="token punctuation">:</span> string
+</code></pre>
+<p><em><strong>Readable from:</strong></em> anywhere<br>
+<em><strong>Writable from:</strong></em> nowhere</p>
+<p>Path to a directory that the user chose either via the file dialog that appears when KoboldAI asks you to choose the path to your custom model or via the <code>--path</code> command-line flag.</p>
+<p>If the user loaded a built-in model from the menu, this is instead the model ID of the model on Hugging Face’s model hub, such as “KoboldAI/GPT-Neo-2.7B-Picard” or “hakurei/lit-6B”.</p>
+<h1 id="kobold.feedback">kobold.feedback</h1>
+<pre class=" language-lua"><code class="prism  language-lua">field KoboldLib<span class="token punctuation">.</span>feedback<span class="token punctuation">:</span> string?
+</code></pre>
+<p><em><strong>Readable from:</strong></em> anywhere<br>
+<em><strong>Writable from:</strong></em> nowhere</p>
+<p>If this is a repeat generation caused by <code>kobold.restart_generation()</code>, this will be a string containing the previous output. If not, this will be <code>nil</code>.</p>
+<h1 id="kobold.generated">kobold.generated</h1>
+<pre class=" language-lua"><code class="prism  language-lua">field KoboldLib<span class="token punctuation">.</span>generated<span class="token punctuation">:</span> table<span class="token operator">&lt;</span>integer<span class="token punctuation">,</span> table<span class="token operator">&lt;</span>integer<span class="token punctuation">,</span> integer<span class="token operator">&gt;&gt;</span>?
+</code></pre>
+<p><em><strong>Readable from:</strong></em> generation modifier and output modifier, but only if <code>kobold.modelbackend</code> is not <code>'api'</code> or <code>'readonly'</code><br>
+<em><strong>Writable from:</strong></em> generation modifier</p>
+<p>Two-dimensional array of tokens generated thus far. Each row represents one sequence, each column one token.</p>
+<h1 id="kobold.generated_cols">kobold.generated_cols</h1>
+<pre class=" language-lua"><code class="prism  language-lua">field KoboldLib<span class="token punctuation">.</span>generated_cols<span class="token punctuation">:</span> integer
+</code></pre>
+<p><em><strong>Readable from:</strong></em> anywhere<br>
+<em><strong>Writable from:</strong></em> nowhere</p>
+<p>Number of columns in <code>kobold.generated</code>. In other words, the number of tokens generated thus far, which is equal to the number of times that the generation modifier has been called, not including the current time if this is being read from a generation modifier.</p>
+<p>If <code>kobold.modelbackend</code> is <code>'api'</code> or <code>'readonly'</code>, this returns 0 instead.</p>
+<h1 id="kobold.generated_rows">kobold.generated_rows</h1>
+<pre class=" language-lua"><code class="prism  language-lua">field KoboldLib<span class="token punctuation">.</span>generated_rows<span class="token punctuation">:</span> integer
+</code></pre>
+<p><em><strong>Readable from:</strong></em> anywhere<br>
+<em><strong>Writable from:</strong></em> nowhere</p>
+<p>Number of rows in <code>kobold.generated</code>, equal to <code>kobold.settings.numseqs</code>.</p>
+<h1 id="kobold.is_config_file_open">kobold.is_config_file_open</h1>
+<pre class=" language-lua"><code class="prism  language-lua">field KoboldLib<span class="token punctuation">.</span>is_config_file_open<span class="token punctuation">:</span> boolean
+</code></pre>
+<p><em><strong>Readable from:</strong></em> anywhere<br>
+<em><strong>Writable from:</strong></em> nowhere</p>
+<p>Whether or not KoboldAI possesses an open file handle to your script’s configuration file. See <code>kobold.get_config_file()</code> for more details.</p>
+<h1 id="kobold.logits">kobold.logits</h1>
+<pre class=" language-lua"><code class="prism  language-lua">field KoboldLib<span class="token punctuation">.</span>logits<span class="token punctuation">:</span> table<span class="token operator">&lt;</span>integer<span class="token punctuation">,</span> table<span class="token operator">&lt;</span>integer<span class="token punctuation">,</span> number<span class="token operator">&gt;&gt;</span>?
+</code></pre>
+<p><em><strong>Readable from:</strong></em> generation modifier, but only if <code>kobold.modelbackend</code> is not <code>'api'</code> or <code>'readonly'</code><br>
+<em><strong>Writable from:</strong></em> generation modifier</p>
+<p>Two-dimensional array of <a href="https://datascience.stackexchange.com/questions/31041/what-does-logits-in-machine-learning-mean">logits</a> prior to being filtered by top-p sampling, etc. Each row represents one sequence, each column one of the tokens in the model’s vocabulary. The ith column represents the logit score of token i-1, so if you want to access the logit score of token 18435 (" Hello" with a leading space), you need to access column 18436. You may alter this two-dimensional array to encourage or deter certain tokens from appearing in the output in a stochastic manner.</p>
+<p>Don’t modify this table unnecessarily unless you know what you are doing! The bias example scripts show how to use this feature properly.</p>
+<h1 id="kobold.logits_cols">kobold.logits_cols</h1>
+<pre class=" language-lua"><code class="prism  language-lua">field KoboldLib<span class="token punctuation">.</span>logits_cols<span class="token punctuation">:</span> integer
+</code></pre>
+<p><em><strong>Readable from:</strong></em> anywhere<br>
+<em><strong>Writable from:</strong></em> nowhere</p>
+<p>Number of columns in <code>kobold.logits</code>, equal to the vocabulary size of the current model. Most models based on GPT-2 (e.g. GPT-Neo and GPT-J) have a vocabulary size of 50257. GPT-J models in particular have a vocabulary size of 50400 instead, although GPT-J models aren’t trained to use the rightmost 143 tokens of the logits array.</p>
+<p>If <code>kobold.modelbackend</code> is <code>'api'</code> or <code>'readonly'</code>, this returns 0 instead.</p>
+<h1 id="kobold.logits_rows">kobold.logits_rows</h1>
+<pre class=" language-lua"><code class="prism  language-lua">field KoboldLib<span class="token punctuation">.</span>logits_rows<span class="token punctuation">:</span> integer
+</code></pre>
+<p><em><strong>Readable from:</strong></em> anywhere<br>
+<em><strong>Writable from:</strong></em> nowhere</p>
+<p>Number of rows in <code>kobold.generated</code>, equal to <code>kobold.settings.numseqs</code>. a local KoboldAI install.</p>
+<h1 id="kobold.memory">kobold.memory</h1>
+<pre class=" language-lua"><code class="prism  language-lua">field KoboldLib<span class="token punctuation">.</span>memory<span class="token punctuation">:</span> string
+</code></pre>
+<p><em><strong>Readable from:</strong></em> anywhere<br>
+<em><strong>Writable from:</strong></em> anywhere (triggers regeneration when written to from generation modifier)</p>
+<p>The memory as set from the “Memory” button in the GUI.</p>
+<p>Modifying this field from inside of a generation modifier triggers a regeneration, which means that the context is recomputed after modification and generation begins again with the new context and previously generated tokens. This incurs a small performance penalty and should not be performed in excess.</p>
+<h1 id="kobold.modelbackend">kobold.modelbackend</h1>
+<pre class=" language-lua"><code class="prism  language-lua">field KoboldLib<span class="token punctuation">.</span>modelbackend<span class="token punctuation">:</span> string
+</code></pre>
+<p><em><strong>Readable from:</strong></em> anywhere<br>
+<em><strong>Writable from:</strong></em> nowhere</p>
+<p>One of the following values:</p>
+<ul>
+<li><code>'api'</code>: InferKit, OpenAI or legacy Colab mode</li>
+<li><code>'readonly'</code>: Read-only no AI mode</li>
+<li><code>'transformers'</code>: Models running on your own computer, and Colab GPU backend (currently used for 2.7B models on Colab)</li>
+<li><code>'mtj'</code>: Colab TPU backend (currently used for 6B models on Colab)</li>
+</ul>
+<h1 id="kobold.modeltype">kobold.modeltype</h1>
+<pre class=" language-lua"><code class="prism  language-lua">field KoboldLib<span class="token punctuation">.</span>modeltype<span class="token punctuation">:</span> string
+</code></pre>
+<p><em><strong>Readable from:</strong></em> anywhere<br>
+<em><strong>Writable from:</strong></em> nowhere</p>
+<p>One of the following values:</p>
+<ul>
+<li><code>'api'</code>: InferKit, OpenAI or legacy Colab mode</li>
+<li><code>'readonly'</code>: Read-only no AI mode</li>
+<li><code>'unknown'</code></li>
+<li><code>'gpt2'</code>: GPT-2-Small</li>
+<li><code>'gpt2-medium'</code></li>
+<li><code>'gpt2-large'</code></li>
+<li><code>'gpt2-xl'</code></li>
+<li><code>'gpt-neo-125M'</code></li>
+<li><code>'gpt-neo-1.3B'</code></li>
+<li><code>'gpt-neo-2.7B'</code></li>
+<li><code>'gpt-j-6B'</code></li>
+</ul>
+<h1 id="kobold.num_outputs">kobold.num_outputs</h1>
+<pre class=" language-lua"><code class="prism  language-lua">field KoboldLib<span class="token punctuation">.</span>num_outputs<span class="token punctuation">:</span> integer
+</code></pre>
+<p><em><strong>Readable from:</strong></em> anywhere<br>
+<em><strong>Writable from:</strong></em> nowhere</p>
+<p>Number of rows in <code>kobold.outputs</code>. This is equal to <code>kobold.settings.numseqs</code> unless you’re using a non-Colab third-party API such as OpenAI or InferKit, in which case this is 1. If you decide to write to <code>kobold.settings.numseqs</code> from an output modifier, this value remains unchanged.</p>
+<h1 id="kobold.outputs">kobold.outputs</h1>
+<pre class=" language-lua"><code class="prism  language-lua">field KoboldLib<span class="token punctuation">.</span>outputs<span class="token punctuation">:</span> table<span class="token operator">&lt;</span>integer<span class="token punctuation">,</span> string<span class="token operator">&gt;</span>
+</code></pre>
+<p><em><strong>Readable from:</strong></em> output modifier<br>
+<em><strong>Writable from:</strong></em> output modifier</p>
+<p>Model output before applying output formatting. One row per “Gens Per Action”, unless you’re using OpenAI or InferKit, in which case this always has exactly one row.</p>
+<h1 id="kobold.settings">kobold.settings</h1>
+<pre class=" language-lua"><code class="prism  language-lua">field KoboldLib<span class="token punctuation">.</span>settings<span class="token punctuation">:</span> KoboldSettings
+</code></pre>
+<p><em><strong>Readable from:</strong></em> anywhere<br>
+<em><strong>Writable from:</strong></em> anywhere (does not affect other scripts when written to since each script has its own copy of this object)</p>
+<p>Contains most of the settings. They have the same names as in gensettings.py, so the top-p value is <code>kobold.settings.settopp</code>.</p>
+<p>All the settings can be read from anywhere and written from anywhere, except <code>kobold.settings.numseqs</code> which can only be written to from an input modifier or output modifier.</p>
+<p>Modifying certain fields from inside of a generation modifier triggers a regeneration, which means that the context is recomputed after modification and generation begins again with the new context and previously generated tokens. This incurs a small performance penalty and should not be performed in excess. Currently, only the following fields and their aliases cause this to occur:</p>
+<ul>
+<li><code>kobold.settings.settknmax</code> (Max Tokens)</li>
+<li><code>kobold.settings.anotedepth</code> (Author’s Note Depth)</li>
+<li><code>kobold.settings.setwidepth</code> (World Info Depth)</li>
+<li><code>kobold.settings.setuseprompt</code> (Always Use Prompt)</li>
+</ul>
+<h1 id="kobold.story">kobold.story</h1>
+<p><em><strong>Readable from:</strong></em> anywhere<br>
+<em><strong>Writable from:</strong></em> nowhere</p>
+<pre class=" language-lua"><code class="prism  language-lua">field KoboldLib<span class="token punctuation">.</span>story<span class="token punctuation">:</span> KoboldStory
+</code></pre>
+<p>Contains the chunks of the current story. Don’t use <code>pairs</code> or <code>ipairs</code> to iterate over the story chunks, use <code>kobold.story:forward_iter()</code> or <code>kobold.story:reverse_iter()</code>, which guarantee amortized worst-case iteration time complexity linear to the number of chunks in the story regardless of what the highest chunk number is.</p>
+<p>You can index this object to get a story chunk (as a <code>KoboldStoryChunk</code> object) by its number, which is an integer. The prompt chunk, if it exists, is guaranteed to be chunk 0. Aside from that, the chunk numbers are not guaranteed to be contiguous or ordered in any way.</p>
+<pre class=" language-lua"><code class="prism  language-lua"><span class="token keyword">local</span> prompt_chunk <span class="token operator">=</span> kobold<span class="token punctuation">.</span>story<span class="token punctuation">[</span><span class="token number">0</span><span class="token punctuation">]</span>  <span class="token comment">-- KoboldStoryChunk object referring to the prompt chunk</span>
+</code></pre>
+<h3 id="methods-1">Methods:</h3>
+<ul>
+<li><code>kobold.story:forward_iter()</code></li>
+<li><code>kobold.story:reverse_iter()</code></li>
+</ul>
+<h1 id="kobold.storyforward_iter">kobold.story:forward_iter()</h1>
+<p><em><strong>Callable from</strong></em>: anywhere</p>
+<pre class=" language-lua"><code class="prism  language-lua"><span class="token keyword">function</span> KoboldStory<span class="token punctuation">:</span><span class="token function">forward_iter</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">&gt;</span> <span class="token function">fun</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">:</span> KoboldStoryChunk<span class="token punctuation">,</span> table<span class="token punctuation">,</span> <span class="token keyword">nil</span>
+</code></pre>
+<p>Returns a stateful iterator that efficiently iterates through story chunks from top to bottom.</p>
+<pre class=" language-lua"><code class="prism  language-lua"><span class="token keyword">for</span> chunk <span class="token keyword">in</span> kobold<span class="token punctuation">.</span>story<span class="token punctuation">:</span><span class="token function">forward_iter</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token keyword">do</span>
+    <span class="token function">print</span><span class="token punctuation">(</span>chunk<span class="token punctuation">.</span>num<span class="token punctuation">,</span> chunk<span class="token punctuation">.</span>content<span class="token punctuation">)</span>
+<span class="token keyword">end</span>
+</code></pre>
+<h1 id="kobold.storyreverse_iter">kobold.story:reverse_iter()</h1>
+<p><em><strong>Callable from</strong></em>: anywhere</p>
+<pre class=" language-lua"><code class="prism  language-lua"><span class="token keyword">function</span> KoboldStory<span class="token punctuation">:</span><span class="token function">reverse_iter</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">&gt;</span> <span class="token function">fun</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">:</span> KoboldStoryChunk<span class="token punctuation">,</span> table<span class="token punctuation">,</span> <span class="token keyword">nil</span>
+</code></pre>
+<p>Returns a stateful iterator that efficiently iterates through story chunks from bottom to top.</p>
+<pre class=" language-lua"><code class="prism  language-lua"><span class="token keyword">for</span> chunk <span class="token keyword">in</span> kobold<span class="token punctuation">.</span>story<span class="token punctuation">:</span><span class="token function">reverse_iter</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token keyword">do</span>
+    <span class="token function">print</span><span class="token punctuation">(</span>chunk<span class="token punctuation">.</span>num<span class="token punctuation">,</span> chunk<span class="token punctuation">.</span>content<span class="token punctuation">)</span>
+<span class="token keyword">end</span>
+</code></pre>
+<h1 id="koboldstorychunk">KoboldStoryChunk</h1>
+<p>Represents a story chunk.</p>
+<h3 id="fields-1">Fields:</h3>
+<ul>
+<li><code>KoboldStoryChunk.content</code></li>
+<li><code>KoboldStoryChunk.num</code></li>
+</ul>
+<h1 id="koboldstorychunk.content">KoboldStoryChunk.content</h1>
+<p><em><strong>Readable from:</strong></em> anywhere<br>
+<em><strong>Writable from:</strong></em> anywhere (triggers regeneration when written to from generation modifier)</p>
+<pre class=" language-lua"><code class="prism  language-lua">field KoboldStoryChunk<span class="token punctuation">.</span>content<span class="token punctuation">:</span> string
+</code></pre>
+<p>The text inside of the story chunk.</p>
+<p>Modifying this field from inside of a generation modifier triggers a regeneration, which means that the context is recomputed after modification and generation begins again with the new context and previously generated tokens. This incurs a small performance penalty and should not be performed in excess.</p>
+<h1 id="koboldstorychunk.num">KoboldStoryChunk.num</h1>
+<p><em><strong>Readable from:</strong></em> anywhere<br>
+<em><strong>Writable from:</strong></em> nowhere</p>
+<pre class=" language-lua"><code class="prism  language-lua">field KoboldStoryChunk<span class="token punctuation">.</span>num<span class="token punctuation">:</span> integer
+</code></pre>
+<p>The number of the story chunk. Chunk 0 is guaranteed to be the prompt chunk if it exists; no guarantees can be made about the numbers of other chunks.</p>
+<h1 id="kobold.submission">kobold.submission</h1>
+<p><em><strong>Readable from:</strong></em> anywhere<br>
+<em><strong>Writable from:</strong></em> input modifier</p>
+<pre class=" language-lua"><code class="prism  language-lua">field kobold<span class="token punctuation">.</span>submission<span class="token punctuation">:</span> string
+</code></pre>
+<p>The user-submitted text after being formatted by input formatting. If this is a repeated generation incurred by <code>kobold.restart_generation()</code>, then this is the empty string.</p>
+<h1 id="kobold.worldinfo">kobold.worldinfo</h1>
+<pre class=" language-lua"><code class="prism  language-lua">field KoboldLib<span class="token punctuation">.</span>worldinfo<span class="token punctuation">:</span> KoboldWorldInfo
+</code></pre>
+<p>Represents the world info entries.</p>
+<p>Indexing this object at index i returns the ith world info entry from the top in amortized constant worst-case time as a <code>KoboldWorldInfoEntry</code>. This includes world info entries that are inside folders.</p>
+<pre class=" language-lua"><code class="prism  language-lua"><span class="token keyword">local</span> entry <span class="token operator">=</span> kobold<span class="token punctuation">.</span>worldinfo<span class="token punctuation">[</span><span class="token number">5</span><span class="token punctuation">]</span>  <span class="token comment">-- Retrieves fifth entry from top as a KoboldWorldInfoEntry</span>
+</code></pre>
+<p>You can use <code>ipairs</code> or a numeric loop to iterate from top to bottom:</p>
+<pre class=" language-lua"><code class="prism  language-lua"><span class="token keyword">for</span> index<span class="token punctuation">,</span> entry <span class="token keyword">in</span> <span class="token function">ipairs</span><span class="token punctuation">(</span>kobold<span class="token punctuation">.</span>worldinfo<span class="token punctuation">)</span><span class="token punctuation">:</span>
+    <span class="token function">print</span><span class="token punctuation">(</span>index<span class="token punctuation">,</span> entry<span class="token punctuation">.</span>content<span class="token punctuation">)</span>
+<span class="token keyword">end</span>
+</code></pre>
+<pre class=" language-lua"><code class="prism  language-lua"><span class="token keyword">for</span> index <span class="token operator">=</span> <span class="token number">1</span><span class="token punctuation">,</span> <span class="token operator">#</span>kobold<span class="token punctuation">.</span>worldinfo <span class="token keyword">do</span><span class="token punctuation">:</span>
+    <span class="token function">print</span><span class="token punctuation">(</span>index<span class="token punctuation">,</span> kobold<span class="token punctuation">.</span>worldinfo<span class="token punctuation">[</span>index<span class="token punctuation">]</span><span class="token punctuation">.</span>content<span class="token punctuation">)</span>
+<span class="token keyword">end</span>
+</code></pre>
+<h3 id="methods-2">Methods:</h3>
+<ul>
+<li><code>kobold.story:compute_context()</code></li>
+<li><code>kobold.story:finduid()</code></li>
+<li><code>kobold.story:is_valid()</code></li>
+</ul>
+<h3 id="fields-2">Fields:</h3>
+<ul>
+<li><code>kobold.story.folders</code></li>
+</ul>
+<h1 id="kobold.worldinfocompute_context">kobold.worldinfo:compute_context()</h1>
+<p><em><strong>Callable from:</strong></em> anywhere</p>
+<pre class=" language-lua"><code class="prism  language-lua"><span class="token keyword">function</span> KoboldWorldInfo<span class="token punctuation">:</span><span class="token function">compute_context</span><span class="token punctuation">(</span>submission<span class="token punctuation">:</span> string<span class="token punctuation">,</span> entries?<span class="token punctuation">:</span> KoboldWorldInfoEntry<span class="token operator">|</span>table<span class="token operator">&lt;</span>any<span class="token punctuation">,</span> KoboldWorldInfoEntry<span class="token operator">&gt;</span><span class="token punctuation">,</span> kwargs?<span class="token punctuation">:</span> table<span class="token operator">&lt;</span>string<span class="token punctuation">,</span> any<span class="token operator">&gt;</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">&gt;</span> string
+</code></pre>
+<p>Computes the context that would be sent to the generator with the user’s current settings if <code>submission</code> were the user’s input after being formatted by input formatting. The context would include memory at the top, followed by active world info entries, followed by some story chunks with the author’s note somewhere, followed by <code>submission</code>.</p>
+<h3 id="parameters-4">Parameters</h3>
+<ul>
+<li>submission (<code>string</code>): String to use as simulated user’s input after being formatted by input formatting.</li>
+<li>entries? (<code>KoboldWorldInfoEntry|table&lt;any, KoboldWorldInfoEntry&gt;</code>): A <code>KoboldWorldInfoEntry</code> or table thereof that indicates an allowed subset of world info entries to include in the context. Defaults to all world info entries.</li>
+<li>kwargs? (<code>table&lt;string, any&gt;</code>): Table of optional keyword arguments from the following list. Defaults to <code>{}</code>.
+<ul>
+<li>scan_story? (<code>boolean</code>): Whether or not to scan the past few actions of the story for world info keys in addition to the submission like how world info normally behaves. If this is set to <code>false</code>, only the <code>submission</code> is scanned for world info keys. Defaults to <code>true</code>.</li>
+</ul>
+</li>
+</ul>
+<h3 id="returns-3">Returns</h3>
+<p><code>string</code>: Computed context.</p>
+<h1 id="kobold.worldinfofinduid">kobold.worldinfo:finduid()</h1>
+<p><em><strong>Callable from:</strong></em> anywhere</p>
+<pre class=" language-lua"><code class="prism  language-lua"><span class="token keyword">function</span> KoboldWorldInfo<span class="token punctuation">:</span><span class="token function">finduid</span><span class="token punctuation">(</span>u<span class="token punctuation">:</span> integer<span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">&gt;</span> KoboldWorldInfoEntry?
+</code></pre>
+<p>Returns the world info entry with the given UID in amortized constant worst-case time, or <code>nil</code> if not found.</p>
+<h3 id="parameters-5">Parameters</h3>
+<ul>
+<li>u (<code>integer</code>): UID.</li>
+</ul>
+<h3 id="returns-4">Returns</h3>
+<ul>
+<li><code>KoboldWorldInfoEntry?</code>: The world info entry with requested UID, or <code>nil</code> if no such entry exists.</li>
+</ul>
+<h1 id="kobold.worldinfois_valid">kobold.worldinfo:is_valid()</h1>
+<p><em><strong>Callable from:</strong></em> anywhere</p>
+<pre class=" language-lua"><code class="prism  language-lua"><span class="token keyword">function</span> KoboldWorldInfo<span class="token punctuation">:</span><span class="token function">is_valid</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">&gt;</span> boolean
+</code></pre>
+<p>This always returns true.</p>
+<h1 id="kobold.worldinfo.folders">kobold.worldinfo.folders</h1>
+<p><em><strong>Readable from:</strong></em> anywhere<br>
+<em><strong>Writable from:</strong></em> nowhere</p>
+<pre class=" language-lua"><code class="prism  language-lua">field KoboldWorldInfo<span class="token punctuation">.</span>folders<span class="token punctuation">:</span> KoboldWorldInfoFolderSelector
+</code></pre>
+<p>Can be indexed in amortized constant worst-case time and iterated over and has a <code>finduid</code> method just like <code>kobold.worldinfo</code>, but gets folders (as <code>KoboldWorldInfoFolder</code> objects) instead.</p>
+<pre class=" language-lua"><code class="prism  language-lua"><span class="token keyword">local</span> folder <span class="token operator">=</span> kobold<span class="token punctuation">.</span>worldinfo<span class="token punctuation">.</span>folders<span class="token punctuation">[</span><span class="token number">5</span><span class="token punctuation">]</span>  <span class="token comment">-- Retrieves fifth folder from top as a KoboldWorldInfoFolder</span>
+</code></pre>
+<pre class=" language-lua"><code class="prism  language-lua"><span class="token keyword">for</span> index<span class="token punctuation">,</span> folder <span class="token keyword">in</span> <span class="token function">ipairs</span><span class="token punctuation">(</span>kobold<span class="token punctuation">.</span>worldinfo<span class="token punctuation">.</span>folders<span class="token punctuation">)</span><span class="token punctuation">:</span>
+    <span class="token function">print</span><span class="token punctuation">(</span>index<span class="token punctuation">,</span> folder<span class="token punctuation">.</span>name<span class="token punctuation">)</span>
+<span class="token keyword">end</span>
+</code></pre>
+<pre class=" language-lua"><code class="prism  language-lua"><span class="token keyword">for</span> index <span class="token operator">=</span> <span class="token number">1</span><span class="token punctuation">,</span> <span class="token operator">#</span>kobold<span class="token punctuation">.</span>worldinfo<span class="token punctuation">.</span>folders <span class="token keyword">do</span><span class="token punctuation">:</span>
+    <span class="token function">print</span><span class="token punctuation">(</span>index<span class="token punctuation">,</span> kobold<span class="token punctuation">.</span>worldinfo<span class="token punctuation">.</span>folders<span class="token punctuation">[</span>index<span class="token punctuation">]</span><span class="token punctuation">.</span>name<span class="token punctuation">)</span>
+<span class="token keyword">end</span>
+</code></pre>
+<h3 id="methods-3">Methods</h3>
+<ul>
+<li><code>kobold.story.folders:finduid()</code></li>
+<li><code>kobold.story.folders:is_valid()</code></li>
+</ul>
+<h1 id="koboldworldinfoentry">KoboldWorldInfoEntry</h1>
+<p>Represents a world info entry.</p>
+<h3 id="methods-4">Methods:</h3>
+<ul>
+<li><code>KoboldWorldInfoEntry:compute_context()</code></li>
+<li><code>KoboldWorldInfoEntry:is_valid()</code></li>
+</ul>
+<h3 id="fields-3">Fields:</h3>
+<ul>
+<li><code>KoboldWorldInfoEntry.comment</code></li>
+<li><code>KoboldWorldInfoEntry.constant</code></li>
+<li><code>KoboldWorldInfoEntry.content</code></li>
+<li><code>KoboldWorldInfoEntry.folder</code></li>
+<li><code>KoboldWorldInfoEntry.key</code></li>
+<li><code>KoboldWorldInfoEntry.keysecondary</code></li>
+<li><code>KoboldWorldInfoEntry.num</code></li>
+<li><code>KoboldWorldInfoEntry.selective</code></li>
+<li><code>KoboldWorldInfoEntry.uid</code></li>
+</ul>
+<h1 id="koboldworldinfoentrycompute_context">KoboldWorldInfoEntry:compute_context()</h1>
+<p><em><strong>Callable from:</strong></em> anywhere</p>
+<pre class=" language-lua"><code class="prism  language-lua"><span class="token keyword">function</span> KoboldWorldInfoEntry<span class="token punctuation">:</span><span class="token function">compute_context</span><span class="token punctuation">(</span>submission<span class="token punctuation">:</span> string<span class="token punctuation">,</span> kwargs?<span class="token punctuation">:</span> table<span class="token operator">&lt;</span>string<span class="token punctuation">,</span> any<span class="token operator">&gt;</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">&gt;</span> string
+</code></pre>
+<p>The same as calling <code>kobold.worldinfo:compute_context()</code> with this world info entry as the argument.</p>
+<h3 id="parameters-6">Parameters</h3>
+<ul>
+<li>submission (<code>string</code>): String to use as simulated user’s input after being formatted by input formatting.</li>
+<li>kwargs? (<code>table&lt;string, any&gt;</code>): Table of optional keyword arguments from the following list. Defaults to <code>{}</code>.
+<ul>
+<li>scan_story? (<code>boolean</code>): Whether or not to scan the past few actions of the story for world info keys in addition to the submission like how world info normally behaves. If this is set to <code>false</code>, only the <code>submission</code> is scanned for world info keys. Defaults to <code>true</code>.</li>
+</ul>
+</li>
+</ul>
+<h3 id="returns-5">Returns</h3>
+<p><code>string</code>: Computed context.</p>
+<h1 id="koboldworldinfoentryis_valid">KoboldWorldInfoEntry:is_valid()</h1>
+<p><em><strong>Callable from:</strong></em> anywhere</p>
+<pre class=" language-lua"><code class="prism  language-lua"><span class="token keyword">function</span> KoboldWorldInfoEntry<span class="token punctuation">:</span><span class="token function">is_valid</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">&gt;</span> boolean
+</code></pre>
+<p>Returns true if this world info entry still exists (i.e. wasn’t deleted), otherwise returns false.</p>
+<h1 id="koboldworldinfoentry.comment">KoboldWorldInfoEntry.comment</h1>
+<p><em><strong>Readable from:</strong></em> anywhere<br>
+<em><strong>Writable from:</strong></em> anywhere</p>
+<pre class=" language-lua"><code class="prism  language-lua">field KoboldWorldInfoEntry<span class="token punctuation">.</span>comment<span class="token punctuation">:</span> string
+</code></pre>
+<p>The world info entry’s comment that appears in its topmost text box.</p>
+<h1 id="koboldworldinfoentry.constant">KoboldWorldInfoEntry.constant</h1>
+<p><em><strong>Readable from:</strong></em> anywhere<br>
+<em><strong>Writable from:</strong></em> anywhere (triggers regeneration when written to from generation modifier)</p>
+<pre class=" language-lua"><code class="prism  language-lua">field KoboldWorldInfoEntry<span class="token punctuation">.</span>constant<span class="token punctuation">:</span> boolean
+</code></pre>
+<p>Whether or not this world info entry is constant. Constant world info entries are always included in the context regardless of whether or not its keys match the story chunks in the context.</p>
+<p>Modifying this field from inside of a generation modifier triggers a regeneration, which means that the context is recomputed after modification and generation begins again with the new context and previously generated tokens. This incurs a small performance penalty and should not be performed in excess.</p>
+<h1 id="koboldworldinfoentry.content">KoboldWorldInfoEntry.content</h1>
+<p><em><strong>Readable from:</strong></em> anywhere<br>
+<em><strong>Writable from:</strong></em> anywhere (triggers regeneration when written to from generation modifier)</p>
+<pre class=" language-lua"><code class="prism  language-lua">field KoboldWorldInfoEntry<span class="token punctuation">.</span>content<span class="token punctuation">:</span> string
+</code></pre>
+<p>The text in the “What To Remember” text box that gets included in the context when the world info entry is active.</p>
+<p>Modifying this field from inside of a generation modifier triggers a regeneration, which means that the context is recomputed after modification and generation begins again with the new context and previously generated tokens. This incurs a small performance penalty and should not be performed in excess.</p>
+<h1 id="koboldworldinfoentry.folder">KoboldWorldInfoEntry.folder</h1>
+<p><em><strong>Readable from:</strong></em> anywhere<br>
+<em><strong>Writable from:</strong></em> nowhere</p>
+<pre class=" language-lua"><code class="prism  language-lua">field KoboldWorldInfoEntryfolder<span class="token punctuation">:</span> integer?
+</code></pre>
+<p>UID of the folder the world info entry is in, or <code>nil</code> if it’s outside of a folder.</p>
+<h1 id="koboldworldinfoentry.key">KoboldWorldInfoEntry.key</h1>
+<p><em><strong>Readable from:</strong></em> anywhere<br>
+<em><strong>Writable from:</strong></em> anywhere (triggers regeneration when written to from generation modifier)</p>
+<pre class=" language-lua"><code class="prism  language-lua">field KoboldWorldInfoEntry<span class="token punctuation">.</span>key<span class="token punctuation">:</span> string
+</code></pre>
+<p>For non-selective world info entries, this is the world info entry’s comma-separated list of keys. For selective world info entries, this is the comma-separated list of primary keys.</p>
+<p>Modifying this field from inside of a generation modifier triggers a regeneration, which means that the context is recomputed after modification and generation begins again with the new context and previously generated tokens. This incurs a small performance penalty and should not be performed in excess.</p>
+<h1 id="koboldworldinfoentry.keysecondary">KoboldWorldInfoEntry.keysecondary</h1>
+<p><em><strong>Readable from:</strong></em> anywhere<br>
+<em><strong>Writable from:</strong></em> anywhere (triggers regeneration when written to from generation modifier)</p>
+<pre class=" language-lua"><code class="prism  language-lua">field KoboldWorldInfoEntry<span class="token punctuation">.</span>keysecondary<span class="token punctuation">:</span> string
+</code></pre>
+<p>For non-selective world info entries, the value of this field is undefined and writing to it has no effect. For selective world info entries, this is the comma-separated list of secondary keys.</p>
+<p>Modifying this field from inside of a generation modifier triggers a regeneration, which means that the context is recomputed after modification and generation begins again with the new context and previously generated tokens. This incurs a small performance penalty and should not be performed in excess.</p>
+<h1 id="koboldworldinfoentry.num">KoboldWorldInfoEntry.num</h1>
+<p><em><strong>Readable from:</strong></em> anywhere<br>
+<em><strong>Writable from:</strong></em> nowhere</p>
+<pre class=" language-lua"><code class="prism  language-lua">field KoboldWorldInfoEntry<span class="token punctuation">.</span>num<span class="token punctuation">:</span> integer
+</code></pre>
+<p>This is 0 if the entry is the first one from the top, 1 if second from the top, and so on.</p>
+<h1 id="koboldworldinfoentry.selective">KoboldWorldInfoEntry.selective</h1>
+<p><em><strong>Readable from:</strong></em> anywhere<br>
+<em><strong>Writable from:</strong></em> anywhere (triggers regeneration when written to from generation modifier)</p>
+<pre class=" language-lua"><code class="prism  language-lua">field KoboldWorldInfoEntry<span class="token punctuation">.</span>selective<span class="token punctuation">:</span> boolean
+</code></pre>
+<p>Whether or not the world info entry is selective. Selective entries have both primary and secondary keys.</p>
+<p>Modifying this field from inside of a generation modifier triggers a regeneration, which means that the context is recomputed after modification and generation begins again with the new context and previously generated tokens. This incurs a small performance penalty and should not be performed in excess.</p>
+<h1 id="koboldworldinfoentry.uid">KoboldWorldInfoEntry.uid</h1>
+<p><em><strong>Readable from:</strong></em> anywhere<br>
+<em><strong>Writable from:</strong></em> nowhere</p>
+<pre class=" language-lua"><code class="prism  language-lua">field KoboldWorldInfoEntry<span class="token punctuation">.</span>uid<span class="token punctuation">:</span> integer
+</code></pre>
+<p>UID of the world info entry.</p>
+<h1 id="koboldworldinfofolderselectorfinduid">KoboldWorldInfoFolderSelector:finduid()</h1>
+<p><em><strong>Callable from:</strong></em> anywhere</p>
+<pre class=" language-lua"><code class="prism  language-lua"><span class="token keyword">function</span> KoboldWorldInfoFolderSelector<span class="token punctuation">:</span><span class="token function">finduid</span><span class="token punctuation">(</span>u<span class="token punctuation">:</span> integer<span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">&gt;</span> KoboldWorldInfoFolder?
+</code></pre>
+<p>Returns the world info folder with the given UID in amortized constant worst-case time, or <code>nil</code> if not found.</p>
+<h3 id="parameters-7">Parameters</h3>
+<ul>
+<li>u (<code>integer</code>): UID.</li>
+</ul>
+<h3 id="returns-6">Returns</h3>
+<ul>
+<li><code>KoboldWorldInfoFolder?</code>: The world info folder with requested UID, or <code>nil</code> if no such folder exists.</li>
+</ul>
+<h1 id="koboldworldinfofolderselectoris_valid">KoboldWorldInfoFolderSelector:is_valid()</h1>
+<p><em><strong>Callable from:</strong></em> anywhere</p>
+<pre class=" language-lua"><code class="prism  language-lua"><span class="token keyword">function</span> KoboldWorldInfoFolderSelector<span class="token punctuation">:</span><span class="token function">is_valid</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">&gt;</span> boolean
+</code></pre>
+<p>This always returns true.</p>
+<h1 id="koboldworldinfofolder">KoboldWorldInfoFolder</h1>
+<p>Represents a world info folder.</p>
+<h3 id="methods-5">Methods:</h3>
+<ul>
+<li><code>KoboldWorldInfoFolder:compute_context()</code></li>
+<li><code>KoboldWorldInfoFolder:finduid()</code></li>
+<li><code>KoboldWorldInfoFolder:is_valid()</code></li>
+</ul>
+<h3 id="fields-4">Fields:</h3>
+<ul>
+<li><code>KoboldWorldInfoFolder.name</code></li>
+<li><code>KoboldWorldInfoFolder.uid</code></li>
+</ul>
+<h1 id="koboldworldinfofoldercompute_context">KoboldWorldInfoFolder:compute_context()</h1>
+<p><em><strong>Callable from:</strong></em> anywhere</p>
+<pre class=" language-lua"><code class="prism  language-lua"><span class="token keyword">function</span> KoboldWorldInfoFolder<span class="token punctuation">:</span><span class="token function">compute_context</span><span class="token punctuation">(</span>submission<span class="token punctuation">:</span> string<span class="token punctuation">,</span> entries?<span class="token punctuation">:</span> KoboldWorldInfoEntry<span class="token operator">|</span>table<span class="token operator">&lt;</span>any<span class="token punctuation">,</span> KoboldWorldInfoEntry<span class="token operator">&gt;</span><span class="token punctuation">,</span> kwargs?<span class="token punctuation">:</span> table<span class="token operator">&lt;</span>string<span class="token punctuation">,</span> any<span class="token operator">&gt;</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">&gt;</span> string
+</code></pre>
+<p>Computes the context that would be sent to the generator with the user’s current settings if <code>submission</code> were the user’s input after being formatted by input formatting. The context would include memory at the top, followed by active world info entries, followed by some story chunks with the author’s note somewhere, followed by <code>submission</code>.</p>
+<p>Unlike <code>kobold.worldinfo:compute_context()</code>, this function doesn’t include world info keys outside of the folder.</p>
+<h3 id="parameters-8">Parameters</h3>
+<ul>
+<li>submission (<code>string</code>): String to use as simulated user’s input after being formatted by input formatting.</li>
+<li>entries? (<code>KoboldWorldInfoEntry|table&lt;any, KoboldWorldInfoEntry&gt;</code>): A <code>KoboldWorldInfoEntry</code> or table thereof that indicates an allowed subset of world info entries to include in the context. Entries that are not inside of the folder are still not included. Defaults to all world info entries in the folder.</li>
+<li>kwargs? (<code>table&lt;string, any&gt;</code>): Table of optional keyword arguments from the following list. Defaults to <code>{}</code>.
+<ul>
+<li>scan_story? (<code>boolean</code>): Whether or not to scan the past few actions of the story for world info keys in addition to the submission like how world info normally behaves. If this is set to <code>false</code>, only the <code>submission</code> is scanned for world info keys. Defaults to <code>true</code>.</li>
+</ul>
+</li>
+</ul>
+<h3 id="returns-7">Returns</h3>
+<p><code>string</code>: Computed context.</p>
+<h1 id="koboldworldinfofolderfinduid">KoboldWorldInfoFolder:finduid()</h1>
+<p><em><strong>Callable from:</strong></em> anywhere</p>
+<pre class=" language-lua"><code class="prism  language-lua"><span class="token keyword">function</span> KoboldWorldInfoFolder<span class="token punctuation">:</span><span class="token function">finduid</span><span class="token punctuation">(</span>u<span class="token punctuation">:</span> integer<span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">&gt;</span> KoboldWorldInfoEntry?
+</code></pre>
+<p>Returns the world info entry inside of the folder with the given UID in amortized constant worst-case time, or <code>nil</code> if not found.</p>
+<h3 id="parameters-9">Parameters</h3>
+<ul>
+<li>u (<code>integer</code>): UID.</li>
+</ul>
+<h3 id="returns-8">Returns</h3>
+<ul>
+<li><code>KoboldWorldInfoEntry?</code>: The world info entry with requested UID, or <code>nil</code> if no such entry exists or if it’s outside of the folder.</li>
+</ul>
+<h1 id="koboldworldinfofolderis_valid">KoboldWorldInfoFolder:is_valid()</h1>
+<p><em><strong>Callable from:</strong></em> anywhere</p>
+<pre class=" language-lua"><code class="prism  language-lua"><span class="token keyword">function</span> KoboldWorldInfoFolder<span class="token punctuation">:</span><span class="token function">is_valid</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">&gt;</span> boolean
+</code></pre>
+<p>Returns whether or not the folder still exists (i.e. wasn’t deleted).</p>
+<h1 id="koboldworldinfofolder.name">KoboldWorldInfoFolder.name</h1>
+<p><em><strong>Readable from:</strong></em> anywhere<br>
+<em><strong>Writable from:</strong></em> anywhere</p>
+<pre class=" language-lua"><code class="prism  language-lua">field KoboldWorldInfoFolder<span class="token punctuation">.</span>name<span class="token punctuation">:</span> string
+</code></pre>
+<p>Name of the world info folder as defined in its one text box.</p>
+<h1 id="koboldworldinfofolder.uid">KoboldWorldInfoFolder.uid</h1>
+<p><em><strong>Readable from:</strong></em> anywhere<br>
+<em><strong>Writable from:</strong></em> nowhere</p>
+<pre class=" language-lua"><code class="prism  language-lua">field KoboldWorldInfoFolder<span class="token punctuation">.</span>uid<span class="token punctuation">:</span> integer
+</code></pre>
+<p>UID of the world info folder.</p>
+
+    </div>
+  </div>
+</body>
+
+</html>

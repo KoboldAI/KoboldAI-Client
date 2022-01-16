@@ -1,0 +1,2 @@
+This folder contains example code for KoboldAI, to use these scripts move them to the userscripts folder.
+Anything in this folder is considered official, make sure to copy it to the userscripts folder first if you do not want changes overwritten or commited as examples.
