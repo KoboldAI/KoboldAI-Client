@@ -1851,13 +1851,14 @@ return function(_python, _bridged)
     -- API for aiserver.py
     --==========================================================================
 
-    ---@return nil
+    ---@return boolean
     function koboldbridge.load_userscripts(filenames, modulenames, descriptions)
         config_files = {}
         config_file_filename_map = {}
         koboldbridge.userscripts = {}
         koboldbridge.userscriptmodule_filename_map = {}
         koboldbridge.num_userscripts = 0
+        local has_genmod = false
         for i, filename in _python.enumerate(filenames) do
             bridged.load_callback(filename, modulenames[i])
             koboldbridge.logging_name = modulenames[i]
@@ -1865,12 +1866,15 @@ return function(_python, _bridged)
             local f, err = old_loadfile(join_folder_and_filename(bridged.userscript_path, filename), "t", koboldbridge.get_universe(filename))
             if err ~= nil then
                 error(err)
-                return
+                return false
             end
             ---@type KoboldUserScript
             local _userscript = f()
             koboldbridge.logging_name = nil
             koboldbridge.filename = nil
+            if _userscript.genmod ~= nil then
+                has_genmod = true
+            end
             local userscript = deepcopy(KoboldUserScriptModule)
             rawset(userscript, "_inmod", function()
                 koboldbridge.logging_name = modulenames[i]
@@ -1903,6 +1907,7 @@ return function(_python, _bridged)
             koboldbridge.userscriptmodule_filename_map[userscript] = filename
             koboldbridge.num_userscripts = i + 1
         end
+        return has_genmod
     end
 
     ---@return nil
@@ -1949,7 +1954,9 @@ return function(_python, _bridged)
         koboldbridge.userstate = "genmod"
         if koboldbridge.genmod ~= nil then
             local _generated = deepcopy(koboldbridge.generated)
-            r = koboldbridge.genmod()
+            if not bridged.vars.nogenmod then
+                r = koboldbridge.genmod()
+            end
             setmetatable(koboldbridge.logits, nil)
             for kr, vr in old_next, koboldbridge.logits, nil do
                 setmetatable(vr, nil)

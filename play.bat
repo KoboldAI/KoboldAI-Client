@@ -4,6 +4,7 @@ TITLE KoboldAI - Server
 SET /P M=<loader.settings
 IF %M%==1 GOTO drivemap
 IF %M%==2 GOTO subfolder
+IF %M%==3 GOTO drivemap_B
 
 :subfolder
 ECHO Runtime launching in subfolder mode
@@ -21,4 +22,14 @@ SET TMP=K:\
 call K:\python\condabin\activate
 python aiserver.py %*
 subst K: /D
+cmd /k
+
+:drivemap_B
+ECHO Runtime launching in B: drive mode
+subst B: miniconda3 >nul
+SET TEMP=B:\
+SET TMP=B:\
+call B:\python\condabin\activate
+python aiserver.py %*
+subst B: /D
 cmd /k
