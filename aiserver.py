@@ -157,6 +157,7 @@ class vars:
     spmeta      = None   # Metadata of current soft prompt, or None if not using a soft prompt
     sp          = None   # Current soft prompt tensor (as a NumPy array)
     sp_length   = 0      # Length of current soft prompt in tokens, or 0 if not using a soft prompt
+    has_genmod  = False  # Whether or not at least one loaded Lua userscript has a generation modifier
     svowname    = ""     # Filename that was flagged for overwrite confirm
     saveow      = False  # Whether or not overwrite confirm has been displayed
     genseqs     = []     # Temporary storage for generated sequences
@@ -184,6 +185,7 @@ class vars:
     remote      = False
     nopromptgen = False
     rngpersist  = False
+    nogenmod    = False
 
 #==================================================================#
 # Function to get model selection at startup
@@ -1070,19 +1072,6 @@ else:
         vars.allowsp = True
         vars.modeldim = int(tpu_mtj_backend.params["d_model"])
         tokenizer = tpu_mtj_backend.tokenizer
-        soft_tokens = tpumtjgetsofttokens()
-        threading.Thread(  # Compile backend code in background
-            target=tpu_mtj_backend.infer,
-            args=(np.tile(np.uint32((23403, 727, 20185)), (vars.numseqs, 1)),),
-            kwargs={
-                "soft_embeddings": vars.sp,
-                "soft_tokens": soft_tokens,
-                "use_callback": False,
-                "gen_len": 1,
-                "numseqs": vars.numseqs,
-                "excluded_world_info": list(set() for _ in range(vars.numseqs)),
-            },
-        ).start()
 
 # Set up Flask routes
 @app.route('/')
@@ -1190,13 +1179,18 @@ def load_lua_scripts():
             modulenames.append(lst[i]["modulename"])
             descriptions.append(lst[i]["description"])
 
+    vars.has_genmod = False
+
     try:
         vars.lua_koboldbridge.obliterate_multiverse()
         tpool.execute(vars.lua_koboldbridge.load_corescript, vars.corescript)
-        tpool.execute(vars.lua_koboldbridge.load_userscripts, filenames, modulenames, descriptions)
+        vars.has_genmod = tpool.execute(vars.lua_koboldbridge.load_userscripts, filenames, modulenames, descriptions)
         vars.lua_running = True
     except lupa.LuaError as e:
-        vars.lua_koboldbridge.obliterate_multiverse()
+        try:
+            vars.lua_koboldbridge.obliterate_multiverse()
+        except:
+            pass
         vars.lua_running = False
         if(vars.serverstarted):
             emit('from_server', {'cmd': 'errmsg', 'data': 'Lua script error, please check console.'}, broadcast=True)
@@ -2043,6 +2037,10 @@ def get_message(msg):
         vars.rngpersist = msg['data']
         settingschanged()
         refresh_settings()
+    elif(msg['cmd'] == 'setnogenmod'):
+        vars.nogenmod = msg['data']
+        settingschanged()
+        refresh_settings()
     elif(not vars.remote and msg['cmd'] == 'importwi'):
         wiimportrequest()
 
@@ -2113,6 +2111,8 @@ def savesettings():
     js["dynamicscan"] = vars.dynamicscan
     js["nopromptgen"] = vars.nopromptgen
     js["rngpersist"]  = vars.rngpersist
+    js["nogenmod"]    = vars.nogenmod
+
     js["antemplate"]  = vars.setauthornotetemplate
 
     js["userscripts"] = vars.userscripts
@@ -2178,6 +2178,8 @@ def loadsettings():
             vars.nopromptgen = js["nopromptgen"]
         if("rngpersist" in js):
             vars.rngpersist = js["rngpersist"]
+        if("nogenmod" in js):
+            vars.nogenmod = js["nogenmod"]
 
         if("antemplate" in js):
             vars.setauthornotetemplate = js["antemplate"]
@@ -2960,16 +2962,62 @@ def tpumtjgenerate(txt, minimum, maximum, found_entries=None):
 
     # Submit input text to generator
     try:
-        context = np.tile(np.uint32(txt), (vars.numseqs, 1))
         soft_tokens = tpumtjgetsofttokens()
 
         global past
-        past = np.empty((vars.numseqs, 0), dtype=np.uint32)
 
-        while(True):
-            genout, n_generated, regeneration_required, halt = tpool.execute(
-                tpu_mtj_backend.infer,
-                context,
+        if(vars.dynamicscan or (not vars.nogenmod and vars.has_genmod)):
+
+            context = np.tile(np.uint32(txt), (vars.numseqs, 1))
+            past = np.empty((vars.numseqs, 0), dtype=np.uint32)
+
+            while(True):
+                genout, n_generated, regeneration_required, halt = tpool.execute(
+                    tpu_mtj_backend.infer_dynamic,
+                    context,
+                    gen_len = maximum-minimum+1,
+                    temp=vars.temp,
+                    top_p=vars.top_p,
+                    top_k=vars.top_k,
+                    tfs=vars.tfs,
+                    numseqs=vars.numseqs,
+                    repetition_penalty=vars.rep_pen,
+                    soft_embeddings=vars.sp,
+                    soft_tokens=soft_tokens,
+                    excluded_world_info=found_entries,
+                )
+
+                past = np.pad(past, ((0, 0), (0, n_generated)))
+                for r in range(vars.numseqs):
+                    for c in range(vars.lua_koboldbridge.generated_cols):
+                        assert vars.lua_koboldbridge.generated[r+1][c+1] is not None
+                        past[r, c] = vars.lua_koboldbridge.generated[r+1][c+1]
+
+                if(halt or not regeneration_required):
+                    break
+                print("(regeneration triggered)")
+
+                encoded = []
+                for i in range(vars.numseqs):
+                    txt = tokenizer.decode(past[i])
+                    winfo, mem, anotetxt, _found_entries = calcsubmitbudgetheader(txt, force_use_txt=True)
+                    found_entries[i].update(_found_entries)
+                    txt, _, _ = calcsubmitbudget(len(vars._actions), winfo, mem, anotetxt, vars._actions, submission=txt)
+                    encoded.append(np.array(txt, dtype=np.uint32))
+                max_length = len(max(encoded, key=len))
+                encoded = np.stack(tuple(np.pad(e, (max_length - len(e), 0), constant_values=tpu_mtj_backend.pad_token_id) for e in encoded))
+                context = np.concatenate(
+                    (
+                        encoded,
+                        past,
+                    ),
+                    axis=-1,
+                )
+
+        else:
+            genout = tpool.execute(
+                tpu_mtj_backend.infer_static,
+                np.uint32(txt),
                 gen_len = maximum-minimum+1,
                 temp=vars.temp,
                 top_p=vars.top_p,
@@ -2979,35 +3027,10 @@ def tpumtjgenerate(txt, minimum, maximum, found_entries=None):
                 repetition_penalty=vars.rep_pen,
                 soft_embeddings=vars.sp,
                 soft_tokens=soft_tokens,
-                excluded_world_info=found_entries,
             )
-
-            past = np.pad(past, ((0, 0), (0, n_generated)))
-            for r in range(vars.numseqs):
-                for c in range(vars.lua_koboldbridge.generated_cols):
-                    assert vars.lua_koboldbridge.generated[r+1][c+1] is not None
-                    past[r, c] = vars.lua_koboldbridge.generated[r+1][c+1]
-
-            if(halt or not regeneration_required):
-                break
-            print("(regeneration triggered)")
-
-            encoded = []
+            past = genout
             for i in range(vars.numseqs):
-                txt = tokenizer.decode(past[i])
-                winfo, mem, anotetxt, _found_entries = calcsubmitbudgetheader(txt, force_use_txt=True)
-                found_entries[i].update(_found_entries)
-                txt, _, _ = calcsubmitbudget(len(vars._actions), winfo, mem, anotetxt, vars._actions, submission=txt)
-                encoded.append(np.array(txt, dtype=np.uint32))
-            max_length = len(max(encoded, key=len))
-            encoded = np.stack(tuple(np.pad(e, (max_length - len(e), 0), constant_values=tpu_mtj_backend.pad_token_id) for e in encoded))
-            context = np.concatenate(
-                (
-                    encoded,
-                    past,
-                ),
-                axis=-1,
-            )
+                vars.lua_koboldbridge.generated[i+1] = vars.lua_state.table(*genout[i].tolist())
 
     except Exception as e:
         if(issubclass(type(e), lupa.LuaError)):
@@ -3189,6 +3212,7 @@ def refresh_settings():
     emit('from_server', {'cmd': 'updatedynamicscan', 'data': vars.dynamicscan}, broadcast=True)
     emit('from_server', {'cmd': 'updatenopromptgen', 'data': vars.nopromptgen}, broadcast=True)
     emit('from_server', {'cmd': 'updaterngpersist', 'data': vars.rngpersist}, broadcast=True)
+    emit('from_server', {'cmd': 'updatenogenmod', 'data': vars.nogenmod}, broadcast=True)
     
     emit('from_server', {'cmd': 'updatefrmttriminc', 'data': vars.formatoptns["frmttriminc"]}, broadcast=True)
     emit('from_server', {'cmd': 'updatefrmtrmblln', 'data': vars.formatoptns["frmtrmblln"]}, broadcast=True)
@@ -4441,6 +4465,34 @@ def randomGameRequest(topic, memory=""):
 # Load settings from client.settings
 loadmodelsettings()
 loadsettings()
+
+# Precompile TPU backend if required
+if(vars.model in ("TPUMeshTransformerGPTJ",)):
+    soft_tokens = tpumtjgetsofttokens()
+    if(vars.dynamicscan or (not vars.nogenmod and vars.has_genmod)):
+        threading.Thread(
+            target=tpu_mtj_backend.infer_dynamic,
+            args=(np.tile(np.uint32((23403, 727, 20185)), (vars.numseqs, 1)),),
+            kwargs={
+                "soft_embeddings": vars.sp,
+                "soft_tokens": soft_tokens,
+                "gen_len": 1,
+                "use_callback": False,
+                "numseqs": vars.numseqs,
+                "excluded_world_info": list(set() for _ in range(vars.numseqs)),
+            },
+        ).start()
+    else:
+        threading.Thread(
+            target=tpu_mtj_backend.infer_static,
+            args=(np.uint32((23403, 727, 20185)),),
+            kwargs={
+                "soft_embeddings": vars.sp,
+                "soft_tokens": soft_tokens,
+                "gen_len": 1,
+                "numseqs": vars.numseqs,
+            },
+        ).start()
 
 #==================================================================#
 #  Final startup commands to launch Flask app
