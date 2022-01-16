@@ -2194,6 +2194,9 @@ $(document).ready(function(){
 			if(!$("#setrngpersist").prop("checked")) {
 				$("#rngmemory").val("");
 			}
+		} else if(msg.cmd == "updatenogenmod") {
+			// Update toggle state
+			$("#setnogenmod").prop('checked', msg.data).change();
 		} else if(msg.cmd == "runs_remotely") {
 			remote = true;
 			hide([button_savetofile, button_import, button_importwi]);
