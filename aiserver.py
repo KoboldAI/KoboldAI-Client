@@ -128,6 +128,7 @@ class vars:
     lua_edited  = set()  # Set of chunk numbers that were edited from a Lua generation modifier
     lua_deleted = set()  # Set of chunk numbers that were deleted from a Lua generation modifier
     generated_tkns = 0   # If using a backend that supports Lua generation modifiers, how many tokens have already been generated, otherwise 0
+    abort       = False  # Whether or not generation was aborted by clicking on the submit button during generation
     compiling   = False  # If using a TPU Colab, this will be set to True when the TPU backend starts compiling and then set to False again
     checking    = False  # Whether or not we are actively checking to see if TPU backend is compiling or not
     spfilename  = ""     # Filename of soft prompt to load, or an empty string if not using a soft prompt
@@ -819,13 +820,11 @@ if(not vars.model in ["InferKit", "Colab", "OAI", "ReadOnly", "TPUMeshTransforme
                 self,
                 tokenizer,
                 excluded_world_info: List[Set],
-                head_length: int,
             ):
                 self.regeneration_required = False
                 self.halt = False
                 self.tokenizer = tokenizer
                 self.excluded_world_info = excluded_world_info
-                self.head_length = head_length
             def __call__(
                 self,
                 input_ids: torch.LongTensor,
@@ -835,7 +834,7 @@ if(not vars.model in ["InferKit", "Colab", "OAI", "ReadOnly", "TPUMeshTransforme
                 vars.generated_tkns += 1
                 if(vars.lua_koboldbridge.generated_cols and vars.generated_tkns != vars.lua_koboldbridge.generated_cols):
                     raise RuntimeError(f"Inconsistency detected between KoboldAI Python and Lua backends ({vars.generated_tkns} != {vars.lua_koboldbridge.generated_cols})")
-                if(vars.generated_tkns >= vars.genamt):
+                if(vars.abort or vars.generated_tkns >= vars.genamt):
                     self.regeneration_required = False
                     self.halt = False
                     return True
@@ -851,10 +850,10 @@ if(not vars.model in ["InferKit", "Colab", "OAI", "ReadOnly", "TPUMeshTransforme
 
                 if(not vars.dynamicscan):
                     return self.regeneration_required or self.halt
-                tail = input_ids[..., self.head_length:]
+                tail = input_ids[..., -vars.generated_tkns:]
                 for i, t in enumerate(tail):
                     decoded = tokenizer.decode(t)
-                    _, found = checkworldinfo(decoded, force_use_txt=True)
+                    _, found = checkworldinfo(decoded, force_use_txt=True, actions=vars._actions)
                     found -= self.excluded_world_info[i]
                     if(len(found) != 0):
                         self.regeneration_required = True
@@ -867,7 +866,6 @@ if(not vars.model in ["InferKit", "Colab", "OAI", "ReadOnly", "TPUMeshTransforme
             self.kai_scanner = DynamicWorldInfoScanCriteria(
                 tokenizer=tokenizer,
                 excluded_world_info=self.kai_scanner_excluded_world_info,
-                head_length=self.kai_scanner_head_length,
             )
             stopping_criteria.insert(0, self.kai_scanner)
             return stopping_criteria
@@ -919,9 +917,9 @@ if(not vars.model in ["InferKit", "Colab", "OAI", "ReadOnly", "TPUMeshTransforme
             # We must disable low_cpu_mem_usage (by setting lowmem to {}) if
             # using a GPT-2 model because GPT-2 is not compatible with this
             # feature yet
-            if("/" not in vars.model and vars.model.lower().startswith("gpt2")):
+            if(vars.model_type == "gpt2"):
                 lowmem = {}
-            
+
             # Download model from Huggingface if it does not exist, otherwise load locally
             if(os.path.isdir(vars.custmodpth)):
                with(maybe_use_float16()):
@@ -1037,7 +1035,7 @@ else:
 
         assert len(excluded_world_info) == len(generated)
         regeneration_required = vars.lua_koboldbridge.regeneration_required
-        halt = not vars.lua_koboldbridge.generating or vars.generated_tkns >= vars.genamt
+        halt = vars.abort or not vars.lua_koboldbridge.generating or vars.generated_tkns >= vars.genamt
         vars.lua_koboldbridge.regeneration_required = False
 
         global past
@@ -1050,7 +1048,7 @@ else:
 
         for i, t in enumerate(generated):
             decoded = tokenizer.decode(past[i]) + tokenizer.decode(t[tpu_mtj_backend.params["seq"] : tpu_mtj_backend.params["seq"] + n_generated])
-            _, found = checkworldinfo(decoded, force_use_txt=True)
+            _, found = checkworldinfo(decoded, force_use_txt=True, actions=vars._actions)
             found -= excluded_world_info[i]
             if(len(found) != 0):
                 regeneration_required = True
@@ -1063,6 +1061,15 @@ else:
 
     def tpumtjgenerate_stopped_compiling_callback() -> None:
         vars.compiling = False
+    
+    def tpumtjgenerate_settings_callback() -> dict:
+        return {
+            "top_p": float(vars.top_p),
+            "temp": float(vars.temp),
+            "top_k": int(vars.top_k),
+            "tfs": float(vars.tfs),
+            "repetition_penalty": float(vars.rep_pen),
+        }
 
     # If we're running Colab or OAI, we still need a tokenizer.
     if(vars.model == "Colab"):
@@ -1080,6 +1087,7 @@ else:
         tpu_mtj_backend.stopping_callback = tpumtjgenerate_stopping_callback
         tpu_mtj_backend.compiling_callback = tpumtjgenerate_compiling_callback
         tpu_mtj_backend.stopped_compiling_callback = tpumtjgenerate_stopped_compiling_callback
+        tpu_mtj_backend.settings_callback = tpumtjgenerate_settings_callback
         tpu_mtj_backend.load_model(vars.custmodpth)
         vars.allowsp = True
         vars.modeldim = int(tpu_mtj_backend.params["d_model"])
@@ -1205,7 +1213,7 @@ def load_lua_scripts():
             pass
         vars.lua_running = False
         if(vars.serverstarted):
-            emit('from_server', {'cmd': 'errmsg', 'data': 'Lua script error, please check console.'}, broadcast=True)
+            emit('from_server', {'cmd': 'errmsg', 'data': 'Lua script error; please check console.'}, broadcast=True)
             sendUSStatItems()
         print("{0}{1}{2}".format(colors.RED, "***LUA ERROR***: ", colors.END), end="", file=sys.stderr)
         print("{0}{1}{2}".format(colors.RED, str(e).replace("\033", ""), colors.END), file=sys.stderr)
@@ -1646,7 +1654,7 @@ def execute_inmod():
     except lupa.LuaError as e:
         vars.lua_koboldbridge.obliterate_multiverse()
         vars.lua_running = False
-        emit('from_server', {'cmd': 'errmsg', 'data': 'Lua script error, please check console.'}, broadcast=True)
+        emit('from_server', {'cmd': 'errmsg', 'data': 'Lua script error; please check console.'}, broadcast=True)
         sendUSStatItems()
         print("{0}{1}{2}".format(colors.RED, "***LUA ERROR***: ", colors.END), end="", file=sys.stderr)
         print("{0}{1}{2}".format(colors.RED, str(e).replace("\033", ""), colors.END), file=sys.stderr)
@@ -1663,7 +1671,7 @@ def execute_outmod():
     except lupa.LuaError as e:
         vars.lua_koboldbridge.obliterate_multiverse()
         vars.lua_running = False
-        emit('from_server', {'cmd': 'errmsg', 'data': 'Lua script error, please check console.'}, broadcast=True)
+        emit('from_server', {'cmd': 'errmsg', 'data': 'Lua script error; please check console.'}, broadcast=True)
         sendUSStatItems()
         print("{0}{1}{2}".format(colors.RED, "***LUA ERROR***: ", colors.END), end="", file=sys.stderr)
         print("{0}{1}{2}".format(colors.RED, str(e).replace("\033", ""), colors.END), file=sys.stderr)
@@ -1773,6 +1781,11 @@ def get_message(msg):
     # Submit action
     if(msg['cmd'] == 'submit'):
         if(vars.mode == "play"):
+            if(vars.aibusy):
+                if(msg.get('allowabort', False)):
+                    vars.abort = True
+                return
+            vars.abort = False
             vars.lua_koboldbridge.feedback = None
             if(vars.chatmode):
                 if(type(msg['chatname']) is not str):
@@ -1788,6 +1801,11 @@ def get_message(msg):
             memsubmit(msg['data'])
     # Retry Action
     elif(msg['cmd'] == 'retry'):
+        if(vars.aibusy):
+            if(msg.get('allowabort', False)):
+                vars.abort = True
+            return
+        vars.abort = False
         if(vars.chatmode):
             if(type(msg['chatname']) is not str):
                 raise ValueError("Chatname must be a string")
@@ -2322,7 +2340,7 @@ def actionsubmit(data, actionmode=0, force_submit=False, force_prompt_gen=False,
                 # Clear the startup text from game screen
                 emit('from_server', {'cmd': 'updatescreen', 'gamestarted': False, 'data': 'Please wait, generating story...'}, broadcast=True)
                 calcsubmit(data) # Run the first action through the generator
-                if(vars.lua_koboldbridge.restart_sequence is not None and len(vars.genseqs) == 0):
+                if(not vars.abort and vars.lua_koboldbridge.restart_sequence is not None and len(vars.genseqs) == 0):
                     data = ""
                     force_submit = True
                     disable_recentrng = True
@@ -2331,7 +2349,7 @@ def actionsubmit(data, actionmode=0, force_submit=False, force_prompt_gen=False,
                 break
             else:
                 # Save this first action as the prompt
-                vars.prompt = data
+                vars.prompt = data if len(data) > 0 else '"'
                 for i in range(vars.numseqs):
                     vars.lua_koboldbridge.outputs[i+1] = ""
                 execute_outmod()
@@ -2345,13 +2363,13 @@ def actionsubmit(data, actionmode=0, force_submit=False, force_prompt_gen=False,
                     refresh_story()
                     if(len(vars.actions) > 0):
                         emit('from_server', {'cmd': 'texteffect', 'data': vars.actions.get_last_key() + 1}, broadcast=True)
-                    if(vars.lua_koboldbridge.restart_sequence is not None):
+                    if(not vars.abort and vars.lua_koboldbridge.restart_sequence is not None):
                         data = ""
                         force_submit = True
                         disable_recentrng = True
                         continue
                 else:
-                    if(vars.lua_koboldbridge.restart_sequence is not None and vars.lua_koboldbridge.restart_sequence > 0):
+                    if(not vars.abort and vars.lua_koboldbridge.restart_sequence is not None and vars.lua_koboldbridge.restart_sequence > 0):
                         genresult(genout[vars.lua_koboldbridge.restart_sequence-1]["generated_text"], flash=False)
                         refresh_story()
                         data = ""
@@ -2382,7 +2400,7 @@ def actionsubmit(data, actionmode=0, force_submit=False, force_prompt_gen=False,
             if(not vars.noai and vars.lua_koboldbridge.generating):
                 # Off to the tokenizer!
                 calcsubmit(data)
-                if(vars.lua_koboldbridge.restart_sequence is not None and len(vars.genseqs) == 0):
+                if(not vars.abort and vars.lua_koboldbridge.restart_sequence is not None and len(vars.genseqs) == 0):
                     data = ""
                     force_submit = True
                     disable_recentrng = True
@@ -2400,13 +2418,13 @@ def actionsubmit(data, actionmode=0, force_submit=False, force_prompt_gen=False,
                     assert type(genout[-1]["generated_text"]) is str
                 if(len(genout) == 1):
                     genresult(genout[0]["generated_text"])
-                    if(vars.lua_koboldbridge.restart_sequence is not None):
+                    if(not vars.abort and vars.lua_koboldbridge.restart_sequence is not None):
                         data = ""
                         force_submit = True
                         disable_recentrng = True
                         continue
                 else:
-                    if(vars.lua_koboldbridge.restart_sequence is not None and vars.lua_koboldbridge.restart_sequence > 0):
+                    if(not vars.abort and vars.lua_koboldbridge.restart_sequence is not None and vars.lua_koboldbridge.restart_sequence > 0):
                         genresult(genout[vars.lua_koboldbridge.restart_sequence-1]["generated_text"])
                         data = ""
                         force_submit = True
@@ -2486,7 +2504,7 @@ def calcsubmitbudget(actionlen, winfo, mem, anotetxt, actions, submission=None, 
     anotetkns    = []  # Placeholder for Author's Note tokens
     lnanote      = 0   # Placeholder for Author's Note length
 
-    lnsp = vars.sp.shape[0] if vars.sp is not None else 0
+    lnsp = vars.sp_length
 
     if("tokenizer" not in globals()):
         from transformers import GPT2TokenizerFast
@@ -2698,7 +2716,6 @@ def _generate(txt, minimum, maximum, found_entries):
     else:
         gen_in = gen_in.to('cpu')
 
-    model.kai_scanner_head_length = gen_in.shape[-1]
     model.kai_scanner_excluded_world_info = found_entries
 
     vars._actions = vars.actions
@@ -2737,7 +2754,7 @@ def _generate(txt, minimum, maximum, found_entries):
             encoded = []
             for i in range(vars.numseqs):
                 txt = tokenizer.decode(genout[i, -already_generated:])
-                winfo, mem, anotetxt, _found_entries = calcsubmitbudgetheader(txt, force_use_txt=True)
+                winfo, mem, anotetxt, _found_entries = calcsubmitbudgetheader(txt, force_use_txt=True, actions=vars._actions)
                 found_entries[i].update(_found_entries)
                 txt, _, _ = calcsubmitbudget(len(vars._actions), winfo, mem, anotetxt, vars._actions, submission=txt)
                 encoded.append(torch.tensor(txt, dtype=torch.long, device=genout.device))
@@ -2762,7 +2779,6 @@ def _generate(txt, minimum, maximum, found_entries):
             minimum += diff
             maximum += diff
             gen_in = genout
-            model.kai_scanner_head_length = encoded.shape[-1]
             numseqs = 1
     
     return genout, already_generated
@@ -2792,13 +2808,13 @@ def generate(txt, minimum, maximum, found_entries=None):
         if(issubclass(type(e), lupa.LuaError)):
             vars.lua_koboldbridge.obliterate_multiverse()
             vars.lua_running = False
-            emit('from_server', {'cmd': 'errmsg', 'data': 'Lua script error, please check console.'}, broadcast=True)
+            emit('from_server', {'cmd': 'errmsg', 'data': 'Lua script error; please check console.'}, broadcast=True)
             sendUSStatItems()
             print("{0}{1}{2}".format(colors.RED, "***LUA ERROR***: ", colors.END), end="", file=sys.stderr)
             print("{0}{1}{2}".format(colors.RED, str(e).replace("\033", ""), colors.END), file=sys.stderr)
             print("{0}{1}{2}".format(colors.YELLOW, "Lua engine stopped; please open 'Userscripts' and press Load to reinitialize scripts.", colors.END), file=sys.stderr)
         else:
-            emit('from_server', {'cmd': 'errmsg', 'data': 'Error occured during generator call, please check console.'}, broadcast=True)
+            emit('from_server', {'cmd': 'errmsg', 'data': 'Error occurred during generator call; please check console.'}, broadcast=True)
             print("{0}{1}{2}".format(colors.RED, traceback.format_exc().replace("\033", ""), colors.END), file=sys.stderr)
         set_aibusy(0)
         return
@@ -3003,12 +3019,7 @@ def tpumtjgenerate(txt, minimum, maximum, found_entries=None):
                     tpu_mtj_backend.infer_dynamic,
                     context,
                     gen_len = maximum-minimum+1,
-                    temp=vars.temp,
-                    top_p=vars.top_p,
-                    top_k=vars.top_k,
-                    tfs=vars.tfs,
                     numseqs=vars.numseqs,
-                    repetition_penalty=vars.rep_pen,
                     soft_embeddings=vars.sp,
                     soft_tokens=soft_tokens,
                     excluded_world_info=found_entries,
@@ -3020,14 +3031,14 @@ def tpumtjgenerate(txt, minimum, maximum, found_entries=None):
                         assert vars.lua_koboldbridge.generated[r+1][c+1] is not None
                         past[r, c] = vars.lua_koboldbridge.generated[r+1][c+1]
 
-                if(halt or not regeneration_required):
+                if(vars.abort or halt or not regeneration_required):
                     break
                 print("(regeneration triggered)")
 
                 encoded = []
                 for i in range(vars.numseqs):
                     txt = tokenizer.decode(past[i])
-                    winfo, mem, anotetxt, _found_entries = calcsubmitbudgetheader(txt, force_use_txt=True)
+                    winfo, mem, anotetxt, _found_entries = calcsubmitbudgetheader(txt, force_use_txt=True, actions=vars._actions)
                     found_entries[i].update(_found_entries)
                     txt, _, _ = calcsubmitbudget(len(vars._actions), winfo, mem, anotetxt, vars._actions, submission=txt)
                     encoded.append(np.array(txt, dtype=np.uint32))
@@ -3058,18 +3069,19 @@ def tpumtjgenerate(txt, minimum, maximum, found_entries=None):
             past = genout
             for i in range(vars.numseqs):
                 vars.lua_koboldbridge.generated[i+1] = vars.lua_state.table(*genout[i].tolist())
+            vars.lua_koboldbridge.generated_cols = vars.generated_tkns = genout[0].shape[-1]
 
     except Exception as e:
         if(issubclass(type(e), lupa.LuaError)):
             vars.lua_koboldbridge.obliterate_multiverse()
             vars.lua_running = False
-            emit('from_server', {'cmd': 'errmsg', 'data': 'Lua script error, please check console.'}, broadcast=True)
+            emit('from_server', {'cmd': 'errmsg', 'data': 'Lua script error; please check console.'}, broadcast=True)
             sendUSStatItems()
             print("{0}{1}{2}".format(colors.RED, "***LUA ERROR***: ", colors.END), end="", file=sys.stderr)
             print("{0}{1}{2}".format(colors.RED, str(e).replace("\033", ""), colors.END), file=sys.stderr)
             print("{0}{1}{2}".format(colors.YELLOW, "Lua engine stopped; please open 'Userscripts' and press Load to reinitialize scripts.", colors.END), file=sys.stderr)
         else:
-            emit('from_server', {'cmd': 'errmsg', 'data': 'Error occured during generator call, please check console.'}, broadcast=True)
+            emit('from_server', {'cmd': 'errmsg', 'data': 'Error occurred during generator call; please check console.'}, broadcast=True)
             print("{0}{1}{2}".format(colors.RED, traceback.format_exc().replace("\033", ""), colors.END), file=sys.stderr)
         set_aibusy(0)
         return
@@ -3556,15 +3568,18 @@ def deletewifolder(uid):
 #==================================================================#
 #  Look for WI keys in text to generator 
 #==================================================================#
-def checkworldinfo(txt, allowed_entries=None, allowed_folders=None, force_use_txt=False, scan_story=True):
+def checkworldinfo(txt, allowed_entries=None, allowed_folders=None, force_use_txt=False, scan_story=True, actions=None):
     original_txt = txt
+
+    if(actions is None):
+        actions = vars.actions
 
     # Dont go any further if WI is empty
     if(len(vars.worldinfo) == 0):
         return "", set()
     
     # Cache actions length
-    ln = len(vars.actions)
+    ln = len(actions)
     
     # Don't bother calculating action history if widepth is 0
     if(vars.widepth > 0 and scan_story):
@@ -3578,8 +3593,8 @@ def checkworldinfo(txt, allowed_entries=None, allowed_folders=None, force_use_tx
         if(ln > 0):
             chunks = collections.deque()
             i = 0
-            for key in reversed(vars.actions):
-                chunk = vars.actions[key]
+            for key in reversed(actions):
+                chunk = actions[key]
                 chunks.appendleft(chunk)
                 i += 1
                 if(i == depth):
@@ -3644,6 +3659,7 @@ def checkworldinfo(txt, allowed_entries=None, allowed_folders=None, force_use_tx
 #  Commit changes to Memory storage
 #==================================================================#
 def memsubmit(data):
+    emit('from_server', {'cmd': 'setinputtext', 'data': data}, broadcast=True)
     # Maybe check for length at some point
     # For now just send it to storage
     vars.memory = data
@@ -3666,6 +3682,9 @@ def anotesubmit(data, template=""):
         vars.setauthornotetemplate = template
         settingschanged()
     vars.authornotetemplate = template
+
+    emit('from_server', {'cmd': 'setanote', 'data': vars.authornote}, broadcast=True)
+    emit('from_server', {'cmd': 'setanotetemplate', 'data': vars.authornotetemplate}, broadcast=True)
 
 #==================================================================#
 #  Assembles game data into a request to InferKit API
@@ -3902,8 +3921,8 @@ def saveRequest(savpath):
         js["wifolders_l"] = vars.wifolders_l
 		
         # Extract only the important bits of WI
-        for wi in vars.worldinfo:
-            if(wi["constant"] or wi["key"] != ""):
+        for wi in vars.worldinfo_i:
+            if(True):
                 js["worldinfo"].append({
                     "key": wi["key"],
                     "keysecondary": wi["keysecondary"],

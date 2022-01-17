@@ -26,6 +26,15 @@ def warper_callback(logits) -> np.array:
 def stopping_callback(generated, n_generated, excluded_world_info) -> Tuple[List[set], bool, bool]:
     raise NotImplementedError("`tpu_mtj_backend.stopping_callback()` needs to be defined")
 
+def settings_callback() -> dict:
+    return {
+        "top_p": 0.9,
+        "temp": 0.5,
+        "top_k": 0,
+        "tfs": 1.0,
+        "repetition_penalty": 1.0,
+    }
+
 def started_compiling_callback() -> None:
     pass
 
@@ -74,6 +83,7 @@ def apply_repetition_penalty_dynamic(logits, tokens, repetition_penalty):
     This gets called by generate_loop_fn to apply repetition penalty
     to the 1D array logits using the provided 1D array of tokens to penalize
     '''
+    tokens = np.minimum(tokens, params["n_vocab"]-1)  # https://github.com/google/jax/issues/3774
     # Make a new array with the same length as the tokens array but with
     # each element replaced by the value at the corresponding index in the
     # logits array; e.g.
@@ -540,7 +550,7 @@ class PenalizingCausalTransformer(CausalTransformer):
             out_axes=["shard", "batch", ...],
             axis_resources={'shard': 'mp', 'batch': 'dp'},
         )
-    def generate_dynamic(self, ctx, ctx_length, gen_length, numseqs, sampler_options, return_logits=False, soft_embeddings=None, excluded_world_info=None, use_callback=True):
+    def generate_dynamic(self, ctx, ctx_length, gen_length, numseqs, return_logits=False, soft_embeddings=None, excluded_world_info=None, use_callback=True):
         assert excluded_world_info is not None
         assert not return_logits
         assert gen_length.ndim == 1
@@ -559,7 +569,6 @@ class PenalizingCausalTransformer(CausalTransformer):
             ]
             for i in range(numseqs)
         ]
-        repetition_penalty = sampler_options.pop("repetition_penalty", 1.0)
         n_generated = 0
         regeneration_required = False
         halt = False
@@ -575,6 +584,8 @@ class PenalizingCausalTransformer(CausalTransformer):
                 logits = warper_callback(logits)
                 for i in range(numseqs):
                     sample_data[i][2] = logits[i]
+            sampler_options = settings_callback()
+            repetition_penalty = sampler_options.pop("repetition_penalty", 1.0)
             sample_data, sample_key = sample_func(sample_data, sample_key, _numseqs_aux, badwords, repetition_penalty, sampler_options)
             n_generated += 1
             for i in range(numseqs):
@@ -610,11 +621,6 @@ class PenalizingCausalTransformer(CausalTransformer):
 
 def infer_dynamic(
     context: np.array,
-    top_p=0.9,
-    temp=0.5,
-    top_k=0,
-    tfs=1.0,
-    repetition_penalty=1.0,
     numseqs=1,
     gen_len=80,
     soft_embeddings: Optional[np.array] = None,
@@ -633,19 +639,11 @@ def infer_dynamic(
     padded_tokens = np.pad(tokens, ((0, 0), (pad_amount, 0)), constant_values=pad_token_id)
     batched_tokens = np.array([padded_tokens] * total_batch)
     samples = []
-    generator_params = {
-        "temp": float(temp),
-        "top_p": float(top_p),
-        "tfs": float(tfs),
-        "repetition_penalty": float(repetition_penalty),
-        "top_k": int(top_k),
-    }
     output = network.generate_dynamic(
         batched_tokens,
         np.ones(total_batch, dtype=np.uint32) * provided_ctx,
         np.ones(total_batch, dtype=np.uint32) * gen_len,
         numseqs,
-        generator_params,
         soft_embeddings=soft_embeddings,
         excluded_world_info=excluded_world_info,
         use_callback=use_callback,

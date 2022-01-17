@@ -92,6 +92,7 @@ var sman_allow_delete = false;
 var sman_allow_rename = false;
 var allowsp = false;
 var remote = false;
+var gamestate = "";
 
 // This is true iff [we're in macOS and the browser is Safari] or [we're in iOS]
 var using_webkit_patch = true;
@@ -648,12 +649,14 @@ function disableButtons(refs) {
 }
 
 function enableSendBtn() {
-	enableButtons([button_send])
+	button_send.removeClass("wait");
+	button_send.addClass("btn-primary");
 	button_send.html("Submit");
 }
 
 function disableSendBtn() {
-	disableButtons([button_send])
+	button_send.removeClass("btn-primary");
+	button_send.addClass("wait");
 	button_send.html("");
 }
 
@@ -794,18 +797,15 @@ function formatChunkInnerText(chunk) {
 	return text;
 }
 
-function dosubmit() {
+function dosubmit(disallow_abort) {
 	var txt = input_text.val().replace(/\u00a0/g, " ");
-	if(!memorymode && !gamestarted && ((!adventure || !action_mode) && txt.trim().length == 0)) {
+	if((disallow_abort || gamestate !== "wait") && !memorymode && !gamestarted && ((!adventure || !action_mode) && txt.trim().length == 0)) {
 		return;
 	}
 	input_text.val("");
 	hideMessage();
 	hidegenseqs();
-	socket.send({'cmd': 'submit', 'actionmode': adventure ? action_mode : 0, 'chatname': chatmode ? chat_name.val() : undefined, 'data': txt});
-	if(memorymode) {
-		memorytext = input_text.val();
-	}
+	socket.send({'cmd': 'submit', 'allowabort': !disallow_abort, 'actionmode': adventure ? action_mode : 0, 'chatname': chatmode ? chat_name.val() : undefined, 'data': txt});
 }
 
 function changemode() {
@@ -1769,8 +1769,8 @@ $(document).ready(function(){
 	seqselcontents    = $("#seqselcontents");
 
 	// Connect to SocketIO server
-	socket = io.connect(window.document.origin, {transports: ['polling', 'websocket']});
-	
+	socket = io.connect(window.document.origin, {transports: ['polling', 'websocket'], closeOnBeforeunload: false});
+
 	socket.on('from_server', function(msg) {
 		if(msg.cmd == "connected") {
 			// Connected to Server Actions
@@ -1889,12 +1889,15 @@ $(document).ready(function(){
 				enableSendBtn();
 				enableButtons([button_actmem, button_actwi, button_actback, button_actretry]);
 				hideWaitAnimation();
+				gamestate = "ready";
 			} else if(msg.data == "wait") {
+				gamestate = "wait";
 				disableSendBtn();
 				disableButtons([button_actmem, button_actwi, button_actback, button_actretry]);
 				showWaitAnimation();
 			} else if(msg.data == "start") {
 				setStartState();
+				gamestate = "ready";
 			}
 		} else if(msg.cmd == "allowsp") {
 			allowsp = !!msg.data;
@@ -2503,7 +2506,7 @@ $(document).ready(function(){
 	input_text.keydown(function (ev) {
 		if (ev.which == 13 && !shift_down) {
 			do_clear_ent = true;
-			dosubmit();
+			dosubmit(true);
 		} else if(ev.which == 16) {
 			shift_down = true;
 		}
@@ -2530,5 +2533,10 @@ $(document).ready(function(){
 			sendSaveAsRequest();
 		}
 	});
-});
 
+	$(window).on("beforeunload", function() {
+		if(gamestarted || memorytext.length > 0 || $("#anoteinput").val().length > 0 || $(".wilistitem").length > 1) {
+			return true;
+		}
+	});
+});

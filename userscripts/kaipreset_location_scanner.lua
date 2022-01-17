@@ -50,6 +50,8 @@ return {
     n_tokens = 20,  -- Number of tokens to generate in extra generation
     singleline = true,  -- true or false; true will result in the extra generation's output being cut off after the first line.
     trim = true,  -- true or false; true will result in the extra generation's output being cut off after the end of its last sentence.
+    include = false,  -- true or false; true will result in the <||lslocation||> entry's content being included in the story.
+    template = "<|>",  -- Allows you to format the extra generation's output; for example, to surround the output in square brackets, set this to "[<|>]"
 }
 ]]
 
@@ -71,6 +73,12 @@ do
         error(err)
     end
     cfg = cfg()
+end
+
+if cfg.include == nil then
+    cfg.include = false
+elseif cfg.template == nil then
+    cfg.template = "<|>"
 end
 
 
@@ -113,7 +121,7 @@ function userscript.inmod()
 
     if entry ~= nil then
         location = entry.content
-        entry.constant = false
+        entry.constant = not not cfg.include
     end
 
     if folder ~= nil then
@@ -141,6 +149,15 @@ function userscript.outmod()
         local output = kobold.outputs[1]
         kobold.outputs[1] = ""
 
+        for chunk in kobold.story:reverse_iter() do
+            if chunk.content ~= "" then
+                chunk.content = ""
+                break
+            end
+        end
+
+        kobold.settings.genamt = genamt
+
         output = output:match("^%s*(.*)%s*$")
 
         print("Extra generation result (prior to formatting): " .. output)
@@ -166,21 +183,13 @@ function userscript.outmod()
             end
         end
 
-        location = output
+        location = cfg.template:gsub("<|>", output)
+
+        print("Extra generation result (after formatting): " .. location)
+
         if entry ~= nil and entry:is_valid() then
-            entry.content = output
+            entry.content = location
         end
-
-        kobold.settings.genamt = genamt
-
-        for chunk in kobold.story:reverse_iter() do
-            if chunk.content ~= "" then
-                chunk.content = ""
-                break
-            end
-        end
-
-        print("Extra generation result (after formatting): " .. output)
     end
 
     local size = 0

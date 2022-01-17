@@ -145,6 +145,7 @@ return function(_python, _bridged)
     --==========================================================================
 
     ---@class KoboldLib
+    ---@field API_VERSION number
     ---@field authorsnote string
     ---@field authorsnotetemplate string
     ---@field memory string
@@ -164,7 +165,7 @@ return function(_python, _bridged)
     ---@field num_outputs integer
     ---@field feedback string
     ---@field is_config_file_open boolean
-    local kobold = setmetatable({}, metawrapper)
+    local kobold = setmetatable({API_VERSION = 1.0}, metawrapper)
     local KoboldLib_mt = setmetatable({}, metawrapper)
     local KoboldLib_getters = setmetatable({}, metawrapper)
     local KoboldLib_setters = setmetatable({}, metawrapper)
@@ -1282,10 +1283,10 @@ return function(_python, _bridged)
     ---@param v table<integer, string>
     function KoboldLib_setters.outputs(t, v)
         if koboldbridge.userstate ~= "outmod" then
-            error("Cannot write to `KoboldLib.generated` from outside of an output modifier")
+            error("Cannot write to `KoboldLib.outputs` from outside of an output modifier")
             return
         elseif type(v) ~= "table" then
-            error("`KoboldLib.generated` must be a 1D array of strings; you attempted to set it to a " .. type(v))
+            error("`KoboldLib.outputs` must be a 1D array of strings; you attempted to set it to a " .. type(v))
             return
         end
         koboldbridge.outputs = v
