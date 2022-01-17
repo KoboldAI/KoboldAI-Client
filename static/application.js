@@ -806,9 +806,6 @@ function dosubmit(disallow_abort) {
 	hideMessage();
 	hidegenseqs();
 	socket.send({'cmd': 'submit', 'allowabort': !disallow_abort, 'actionmode': adventure ? action_mode : 0, 'chatname': chatmode ? chat_name.val() : undefined, 'data': txt});
-	if(memorymode) {
-		memorytext = input_text.val();
-	}
 }
 
 function changemode() {
@@ -1772,8 +1769,8 @@ $(document).ready(function(){
 	seqselcontents    = $("#seqselcontents");
 
 	// Connect to SocketIO server
-	socket = io.connect(window.document.origin, {transports: ['polling', 'websocket']});
-	
+	socket = io.connect(window.document.origin, {transports: ['polling', 'websocket'], closeOnBeforeunload: false});
+
 	socket.on('from_server', function(msg) {
 		if(msg.cmd == "connected") {
 			// Connected to Server Actions
@@ -2536,5 +2533,10 @@ $(document).ready(function(){
 			sendSaveAsRequest();
 		}
 	});
-});
 
+	$(window).on("beforeunload", function() {
+		if(gamestarted || memorytext.length > 0 || $("#anoteinput").val().length > 0 || $(".wilistitem").length > 1) {
+			return true;
+		}
+	});
+});

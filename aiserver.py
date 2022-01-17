@@ -3653,6 +3653,7 @@ def checkworldinfo(txt, allowed_entries=None, allowed_folders=None, force_use_tx
 #  Commit changes to Memory storage
 #==================================================================#
 def memsubmit(data):
+    emit('from_server', {'cmd': 'setinputtext', 'data': data}, broadcast=True)
     # Maybe check for length at some point
     # For now just send it to storage
     vars.memory = data
@@ -3675,6 +3676,9 @@ def anotesubmit(data, template=""):
         vars.setauthornotetemplate = template
         settingschanged()
     vars.authornotetemplate = template
+
+    emit('from_server', {'cmd': 'setanote', 'data': vars.authornote}, broadcast=True)
+    emit('from_server', {'cmd': 'setanotetemplate', 'data': vars.authornotetemplate}, broadcast=True)
 
 #==================================================================#
 #  Assembles game data into a request to InferKit API
