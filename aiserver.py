@@ -3064,6 +3064,7 @@ def tpumtjgenerate(txt, minimum, maximum, found_entries=None):
             past = genout
             for i in range(vars.numseqs):
                 vars.lua_koboldbridge.generated[i+1] = vars.lua_state.table(*genout[i].tolist())
+            vars.lua_koboldbridge.generated_cols = vars.generated_tkns = genout.shape[-1]
 
     except Exception as e:
         if(issubclass(type(e), lupa.LuaError)):
