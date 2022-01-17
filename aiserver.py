@@ -917,9 +917,9 @@ if(not vars.model in ["InferKit", "Colab", "OAI", "ReadOnly", "TPUMeshTransforme
             # We must disable low_cpu_mem_usage (by setting lowmem to {}) if
             # using a GPT-2 model because GPT-2 is not compatible with this
             # feature yet
-            if("/" not in vars.model and vars.model.lower().startswith("gpt2")):
+            if(vars.model_type == "gpt2"):
                 lowmem = {}
-            
+
             # Download model from Huggingface if it does not exist, otherwise load locally
             if(os.path.isdir(vars.custmodpth)):
                with(maybe_use_float16()):
