@@ -89,7 +89,10 @@ if [ "$init" != "skip" ]; then
     else
     cd /content
     if [ ! -z ${git+x} ]; then
-        if [ "$git" == "united" ]; then
+        if [ "$git" == "Stable" ]; then
+            git clone https://github.com/koboldai/KoboldAI-Client
+        fi
+        if [ "$git" == "United" ]; then
             git clone https://github.com/henk717/KoboldAI-Client
         fi
         git clone $git
