@@ -2494,7 +2494,7 @@ def calcsubmitbudget(actionlen, winfo, mem, anotetxt, actions, submission=None, 
     anotetkns    = []  # Placeholder for Author's Note tokens
     lnanote      = 0   # Placeholder for Author's Note length
 
-    lnsp = vars.sp.shape[0] if vars.sp is not None else 0
+    lnsp = vars.sp_length
 
     if("tokenizer" not in globals()):
         from transformers import GPT2TokenizerFast
