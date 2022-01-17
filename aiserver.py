@@ -1035,7 +1035,7 @@ else:
 
         assert len(excluded_world_info) == len(generated)
         regeneration_required = vars.lua_koboldbridge.regeneration_required
-        halt = not vars.lua_koboldbridge.generating or vars.generated_tkns >= vars.genamt
+        halt = vars.abort or not vars.lua_koboldbridge.generating or vars.generated_tkns >= vars.genamt
         vars.lua_koboldbridge.regeneration_required = False
 
         global past
@@ -1061,6 +1061,15 @@ else:
 
     def tpumtjgenerate_stopped_compiling_callback() -> None:
         vars.compiling = False
+    
+    def tpumtjgenerate_settings_callback() -> dict:
+        return {
+            "top_p": float(vars.top_p),
+            "temp": float(vars.temp),
+            "top_k": int(vars.top_k),
+            "tfs": float(vars.tfs),
+            "repetition_penalty": float(vars.rep_pen),
+        }
 
     # If we're running Colab or OAI, we still need a tokenizer.
     if(vars.model == "Colab"):
@@ -3009,12 +3018,7 @@ def tpumtjgenerate(txt, minimum, maximum, found_entries=None):
                     tpu_mtj_backend.infer_dynamic,
                     context,
                     gen_len = maximum-minimum+1,
-                    temp=vars.temp,
-                    top_p=vars.top_p,
-                    top_k=vars.top_k,
-                    tfs=vars.tfs,
                     numseqs=vars.numseqs,
-                    repetition_penalty=vars.rep_pen,
                     soft_embeddings=vars.sp,
                     soft_tokens=soft_tokens,
                     excluded_world_info=found_entries,
@@ -3026,7 +3030,7 @@ def tpumtjgenerate(txt, minimum, maximum, found_entries=None):
                         assert vars.lua_koboldbridge.generated[r+1][c+1] is not None
                         past[r, c] = vars.lua_koboldbridge.generated[r+1][c+1]
 
-                if(halt or not regeneration_required):
+                if(vars.abort or halt or not regeneration_required):
                     break
                 print("(regeneration triggered)")
 
