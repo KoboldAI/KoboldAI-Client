@@ -159,7 +159,7 @@ fi
 #Download routine for Aria2c scripts
 if [ ! -z ${aria2+x} ]; then
     apt install aria2 -y
-    curl -L $aria2 | aria2c -c -i- -d$dloc --user-agent=KoboldAI
+    curl -L $aria2 | aria2c -c -i- -d$dloc --user-agent=KoboldAI --file-allocation=none
 fi
 
 #Extract the model with 7z
