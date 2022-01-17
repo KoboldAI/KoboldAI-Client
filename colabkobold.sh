@@ -1,8 +1,8 @@
 #!/bin/bash
-# KoboldAI Easy Deployment Script by Henk717
+# KoboldAI Easy Colab Deployment Script by Henk717
 
 # read the options
-TEMP=`getopt -o m:i:p:c:d:x:a:l:z:g:t:n: --long model:,init:,path:,configname:,download:,aria2:,dloc:xloc:7z:git:tar:ngrok: -- "$@"`
+TEMP=`getopt -o m:i:p:c:d:x:a:l:z:g:t:n:b: --long model:,init:,path:,configname:,download:,aria2:,dloc:xloc:7z:git:tar:ngrok:branch: -- "$@"`
 eval set -- "$TEMP"
 
 # extract options and their arguments into variables.
@@ -32,6 +32,8 @@ while true ; do
             tar="$2" ; shift 2 ;;
         -g|--git)
             git="$2" ; shift 2 ;;
+        -b|--branch)
+            branch="$2" ; shift 2 ;;
         --) shift ; break ;;
         *) echo "Internal error!" ; exit 1 ;;
     esac
@@ -50,6 +52,10 @@ function launch
     python3 aiserver.py$model$kmpath$configname$ngrok --remote --override_delete --override_rename
     exit
     fi
+}
+
+git_default_branch() {
+  (git remote show $git | grep 'HEAD branch' | cut -d' ' -f5) 2>/dev/null
 }
 
 # Don't allow people to mess up their system
@@ -83,24 +89,35 @@ fi
 
 # Create Folder Structure and Install KoboldAI
 if [ "$init" != "skip" ]; then
-    if [ -f "/content/installed" ]; then
-    echo KoboldAI already installed... Skipping installation....
-    cd /content
-    else
     cd /content
     if [ ! -z ${git+x} ]; then
         if [ "$git" == "Official" ]; then
-            git clone https://github.com/koboldai/KoboldAI-Client
+            git=https://github.com/koboldai/KoboldAI-Client
         fi
         if [ "$git" == "United" ]; then
-            git clone https://github.com/henk717/KoboldAI-Client
+            git=https://github.com/henk717/KoboldAI-Client
         fi
         if [ "$git" == "united" ]; then
-            git clone https://github.com/henk717/KoboldAI-Client
+            git=https://github.com/henk717/KoboldAI-Client
         fi
-        git clone $git
     else
-        git clone https://github.com/koboldai/KoboldAI-Client
+        git=https://github.com/koboldai/KoboldAI-Client
+    fi
+
+    mkdir /content/KoboldAI-Client
+    cd /content/KoboldAI-Client
+
+    git init
+    git remote remove origin
+    git remote add origin $git
+    git fetch --all
+
+    if [ ! -z ${branch+x} ]; then
+        git checkout $branch -f
+        git reset --hard origin/$branch
+    else
+        git checkout $(git_default_branch) -f
+        git reset --hard origin/$(git_default_branch)
     fi
 
     mkdir /content/drive/MyDrive/KoboldAI/
@@ -132,10 +149,8 @@ if [ "$init" != "skip" ]; then
         pip install -r requirements.txt
     fi
     
-    # Make sure Colab has netbase, somehow it doesn't properly have that...
-    sudo apt-get -o Dpkg::Options::="--force-confmiss" install --reinstall netbase
-    touch /content/installed
-    fi
+    # Make sure Colab has netbase
+    sudo apt install netbase -y
 fi
 
 cd /content
@@ -182,4 +197,3 @@ if [ ! -z ${tar+x} ]; then
 fi
 
 launch
-
