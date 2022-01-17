@@ -666,9 +666,9 @@ function showMessage(msg) {
 	message_text.html(msg);
 }
 
-function errMessage(msg) {
+function errMessage(msg, type="error") {
 	message_text.removeClass();
-	message_text.addClass("color_red");
+	message_text.addClass(type == "warn" ? "color_orange" : "color_red");
 	message_text.html(msg);
 }
 
@@ -1938,7 +1938,12 @@ $(document).ready(function(){
 			}
 		} else if(msg.cmd == "errmsg") {
 			// Send error message
-			errMessage(msg.data);
+			errMessage(msg.data, "error");
+		} else if(msg.cmd == "warnmsg") {
+			// Send warning message
+			errMessage(msg.data, "warn");
+		} else if(msg.cmd == "hidemsg") {
+			hideMessage();
 		} else if(msg.cmd == "texteffect") {
 			// Apply color highlight to line of text
 			newTextHighlight($("#n"+msg.data))

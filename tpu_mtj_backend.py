@@ -26,6 +26,15 @@ def warper_callback(logits) -> np.array:
 def stopping_callback(generated, n_generated, excluded_world_info) -> Tuple[List[set], bool, bool]:
     raise NotImplementedError("`tpu_mtj_backend.stopping_callback()` needs to be defined")
 
+def started_compiling_callback() -> None:
+    pass
+
+def stopped_compiling_callback() -> None:
+    pass
+
+def compiling_callback() -> None:
+    pass
+
 
 def show_spinner():
     bar = progressbar.ProgressBar(max_value=progressbar.UnknownLength, widgets=[progressbar.Timer(), '  ', progressbar.BouncingBar(left='[', right=']', marker='█')])
@@ -358,6 +367,7 @@ class PenalizingCausalTransformer(CausalTransformer):
         # Initialize
         super().__init__(config)
         def generate_static(state, key, ctx, ctx_length, gen_length, numseqs_aux, sampler_options, soft_embeddings=None):
+            compiling_callback()
             numseqs = numseqs_aux.shape[0]
             # These are the tokens that we don't want the AI to ever write
             self.badwords = jnp.array([6880, 50256, 42496, 4613, 17414, 22039, 16410, 27, 29, 38430, 37922, 15913, 24618, 28725, 58, 47175, 36937, 26700, 12878, 16471, 37981, 5218, 29795, 13412, 45160, 3693, 49778, 4211, 20598, 36475, 33409, 44167, 32406, 29847, 29342, 42669, 685, 25787, 7359, 3784, 5320, 33994, 33490, 34516, 43734, 17635, 24293, 9959, 23785, 21737, 28401, 18161, 26358, 32509, 1279, 38155, 18189, 26894, 6927, 14610, 23834, 11037, 14631, 26933, 46904, 22330, 25915, 47934, 38214, 1875, 14692, 41832, 13163, 25970, 29565, 44926, 19841, 37250, 49029, 9609, 44438, 16791, 17816, 30109, 41888, 47527, 42924, 23984, 49074, 33717, 31161, 49082, 30138, 31175, 12240, 14804, 7131, 26076, 33250, 3556, 38381, 36338, 32756, 46581, 17912, 49146])
@@ -452,6 +462,7 @@ class PenalizingCausalTransformer(CausalTransformer):
             axis_resources={'shard': 'mp', 'batch': 'dp'},
         )
         def generate_initial(state, key, ctx, ctx_length, numseqs_aux, soft_embeddings=None):
+            compiling_callback()
             numseqs = numseqs_aux.shape[0]
             @hk.transform
             def generate_initial_inner(context, ctx_length):
@@ -552,6 +563,7 @@ class PenalizingCausalTransformer(CausalTransformer):
         n_generated = 0
         regeneration_required = False
         halt = False
+        started_compiling_callback()
         generate_data, sample_key = self.generate_initial_xmap(self.state, jnp.array(key.take(batch_size)), ctx, ctx_length, numseqs_aux, soft_embeddings)
         sample_key = np.asarray(sample_key[0, 0])
         while True:
@@ -574,13 +586,15 @@ class PenalizingCausalTransformer(CausalTransformer):
                     break
             else:
                 break
+        stopped_compiling_callback()
         return sample_data, n_generated, regeneration_required, halt
     def generate_static(self, ctx, ctx_length, gen_length, numseqs, sampler_options, return_logits=False, soft_embeddings=None):
         assert not return_logits
         key = hk.PRNGSequence(random.randint(0, 2 ** 60))
         batch_size = ctx.shape[0]
         self.batch_size = batch_size
-        return self.generate_static_xmap(
+        started_compiling_callback()
+        result = self.generate_static_xmap(
             self.state,
             jnp.array(key.take(batch_size)),
             ctx,
@@ -590,6 +604,8 @@ class PenalizingCausalTransformer(CausalTransformer):
             sampler_options,
             soft_embeddings,
         )
+        stopped_compiling_callback()
+        return result
 
 
 def infer_dynamic(
