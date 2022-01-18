@@ -972,11 +972,14 @@ function buildSPList(ar) {
 	showSPPopup();
 	ar.push({filename: '', name: "[None]"})
 	for(var i = 0; i < ar.length; i++) {
-		var supported = !ar[i].supported
+		var author = !ar[i].author
 			? ''
-			: Object.prototype.toString.call(ar[i].supported) === "[object Array]"
-			? "[" + ar[i].supported.join(', ') + "]"
-			: "[" + ar[i].supported.toString() + "]";
+			: ar[i].author.constructor === Array
+			? ar[i].author.join(', ')
+			: ar[i].author;
+		var n_tokens = !ar[i].n_tokens || !Number.isSafeInteger(ar[i].n_tokens) || ar[i].n_tokens < 1
+			? ''
+			: "(" + ar[i].n_tokens + " tokens)";
 		var filename = ar[i].filename.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;').replace(/(?=\r|\n)\r?\n?/g, '<br/>');
 		var name = ar[i].name || ar[i].filename;
 		name = name.length > 120 ? name.slice(0, 117) + '...' : name;
@@ -992,7 +995,7 @@ function buildSPList(ar) {
 				</div>\
 				<div class=\"flex-row\">\
 					<div>"+desc+"</div>\
-					<div class=\"flex-push-right splistitemsub\">"+supported+"</div>\
+					<div class=\"flex-push-right splistitemsub\">" + author + "<br/>" + n_tokens + "</div>\
 				</div>\
 			</div>\
 		</div>");
@@ -1108,7 +1111,7 @@ function updateSPStatItems(items) {
 		stat_sp.closest(".statusicon").removeClass("active");
 		stat_spactive.html("");
 	} else {
-		stat_sp.html("Active soft prompt:");
+		stat_sp.html("Active soft prompt (" + items[key].n_tokens + " tokens):");
 		stat_sp.closest(".statusicon").addClass("active");
 		stat_spactive.html((items[key].name || key)+" &lt;"+key+"&gt;");
 	}

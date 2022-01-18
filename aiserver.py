@@ -4156,7 +4156,8 @@ def spRequest(filename):
         tensor = np.float32(tensor)
     assert not np.isinf(tensor).any() and not np.isnan(tensor).any()
 
-    vars.sp_length = tensor.shape[0]
+    vars.sp_length = tensor.shape[-2]
+    vars.spmeta["n_tokens"] = vars.sp_length
 
     if(vars.model in ("TPUMeshTransformerGPTJ",)):
         rows = tensor.shape[0]
