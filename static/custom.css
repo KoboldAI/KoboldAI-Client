@@ -1312,6 +1312,7 @@ body.connected .popupfooter, .popupfooter.always-available {
 
 .splistitemsub {
 	color: #ba9;
+	text-align: right;
 }
 
 .splistitem:hover {

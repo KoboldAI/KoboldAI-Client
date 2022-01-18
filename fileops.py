@@ -161,6 +161,7 @@ def getspfiles(model_dimension: int):
             ob = {}
         z.close()
         ob["filename"] = file
+        ob["n_tokens"] = shape[-2]
         lst.append(ob)
     return lst
 

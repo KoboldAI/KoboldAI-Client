@@ -93,6 +93,8 @@ var sman_allow_rename = false;
 var allowsp = false;
 var remote = false;
 var gamestate = "";
+var gamesaved = true;
+var modelname = null;
 
 // This is true iff [we're in macOS and the browser is Safari] or [we're in iOS]
 var using_webkit_patch = true;
@@ -167,6 +169,23 @@ function addSetting(ob) {
 			}
 		});
 	}
+}
+
+function refreshTitle() {
+	var title = gamesaved ? "" : "\u2731 ";
+	if(storyname !== null) {
+		title += storyname + " \u2014 ";
+	}
+	title += "KoboldAI Client";
+	if(modelname !== null) {
+		title += " (" + modelname + ")";
+	}
+	document.title = title;
+}
+
+function setGameSaved(state) {
+	gamesaved = !!state;
+	refreshTitle();
 }
 
 function addFormat(ob) {
@@ -972,11 +991,14 @@ function buildSPList(ar) {
 	showSPPopup();
 	ar.push({filename: '', name: "[None]"})
 	for(var i = 0; i < ar.length; i++) {
-		var supported = !ar[i].supported
+		var author = !ar[i].author
 			? ''
-			: Object.prototype.toString.call(ar[i].supported) === "[object Array]"
-			? "[" + ar[i].supported.join(', ') + "]"
-			: "[" + ar[i].supported.toString() + "]";
+			: ar[i].author.constructor === Array
+			? ar[i].author.join(', ')
+			: ar[i].author;
+		var n_tokens = !ar[i].n_tokens || !Number.isSafeInteger(ar[i].n_tokens) || ar[i].n_tokens < 1
+			? ''
+			: "(" + ar[i].n_tokens + " tokens)";
 		var filename = ar[i].filename.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;').replace(/(?=\r|\n)\r?\n?/g, '<br/>');
 		var name = ar[i].name || ar[i].filename;
 		name = name.length > 120 ? name.slice(0, 117) + '...' : name;
@@ -992,7 +1014,7 @@ function buildSPList(ar) {
 				</div>\
 				<div class=\"flex-row\">\
 					<div>"+desc+"</div>\
-					<div class=\"flex-push-right splistitemsub\">"+supported+"</div>\
+					<div class=\"flex-push-right splistitemsub\">" + author + "<br/>" + n_tokens + "</div>\
 				</div>\
 			</div>\
 		</div>");
@@ -1108,7 +1130,7 @@ function updateSPStatItems(items) {
 		stat_sp.closest(".statusicon").removeClass("active");
 		stat_spactive.html("");
 	} else {
-		stat_sp.html("Active soft prompt:");
+		stat_sp.html("Active soft prompt (" + items[key].n_tokens + " tokens):");
 		stat_sp.closest(".statusicon").addClass("active");
 		stat_spactive.html((items[key].name || key)+" &lt;"+key+"&gt;");
 	}
@@ -1777,6 +1799,10 @@ $(document).ready(function(){
 			sman_allow_delete = msg.hasOwnProperty("smandelete") && msg.smandelete;
 			sman_allow_rename = msg.hasOwnProperty("smanrename") && msg.smanrename;
 			connected = true;
+			if(msg.hasOwnProperty("modelname")) {
+				modelname = msg.modelname;
+			}
+			refreshTitle();
 			connect_status.html("<b>Connected to KoboldAI Process!</b>");
 			connect_status.removeClass("color_orange");
 			connect_status.addClass("color_green");
@@ -1908,6 +1934,7 @@ $(document).ready(function(){
 			}
 		} else if(msg.cmd == "setstoryname") {
 			storyname = msg.data;
+			refreshTitle();
 		} else if(msg.cmd == "editmode") {
 			// Enable or Disable edit mode
 			if(msg.data == "true") {
@@ -2138,6 +2165,8 @@ $(document).ready(function(){
 		} else if(msg.cmd == "saveas") {
 			// Show Save As prompt
 			showSaveAsPopup();
+		} else if(msg.cmd == "gamesaved") {
+			setGameSaved(msg.data);
 		} else if(msg.cmd == "hidesaveas") {
 			// Hide Save As prompt
 			hideSaveAsPopup();
@@ -2534,8 +2563,12 @@ $(document).ready(function(){
 		}
 	});
 
+	$([input_text, anote_input, $("#gamescreen")]).map($.fn.toArray).on("input", function() {
+		setGameSaved(false);
+	});
+
 	$(window).on("beforeunload", function() {
-		if(gamestarted || memorytext.length > 0 || $("#anoteinput").val().length > 0 || $(".wilistitem").length > 1) {
+		if(!gamesaved) {
 			return true;
 		}
 	});
