@@ -105,6 +105,7 @@ class vars:
     tfs         = 1.0    # Default generator tfs (tail-free sampling)
     numseqs     = 1     # Number of sequences to ask the generator to create
     gamestarted = False  # Whether the game has started (disables UI elements)
+    gamesaved   = True   # Whether or not current game is saved
     serverstarted = False  # Whether or not the Flask server has started
     prompt      = ""     # Prompt
     memory      = ""     # Text submitted to memory field
@@ -1646,6 +1647,7 @@ def lua_is_custommodel():
 #  
 #==================================================================#
 def execute_inmod():
+    setgamesaved(False)
     vars.lua_logname = ...
     vars.lua_edited = set()
     vars.lua_deleted = set()
@@ -1665,6 +1667,7 @@ def execute_genmod():
     vars.lua_koboldbridge.execute_genmod()
 
 def execute_outmod():
+    setgamesaved(False)
     emit('from_server', {'cmd': 'hidemsg', 'data': ''}, broadcast=True)
     try:
         tpool.execute(vars.lua_koboldbridge.execute_outmod)
@@ -1732,7 +1735,7 @@ def do_connect():
     print("{0}Client connected!{1}".format(colors.GREEN, colors.END))
     emit('from_server', {'cmd': 'setchatname', 'data': vars.chatname})
     emit('from_server', {'cmd': 'setanotetemplate', 'data': vars.authornotetemplate})
-    emit('from_server', {'cmd': 'connected', 'smandelete': vars.smandelete, 'smanrename': vars.smanrename})
+    emit('from_server', {'cmd': 'connected', 'smandelete': vars.smandelete, 'smanrename': vars.smanrename, 'modelname': getmodelname()})
     if(vars.remote):
         emit('from_server', {'cmd': 'runs_remotely'})
     if(vars.allowsp):
@@ -1771,6 +1774,8 @@ def do_connect():
             emit('from_server', {'cmd': 'memmode', 'data': 'true'})
         elif(vars.mode == "wi"):
             emit('from_server', {'cmd': 'wimode', 'data': 'true'})
+
+    emit('from_server', {'cmd': 'gamesaved', 'data': vars.gamesaved}, broadcast=True)
 
 #==================================================================#
 # Event triggered when browser SocketIO sends data to the server
@@ -1936,6 +1941,7 @@ def get_message(msg):
         togglewimode()
     elif(msg['cmd'] == 'wiinit'):
         if(int(msg['data']) < len(vars.worldinfo)):
+            setgamesaved(False)
             vars.worldinfo[msg['data']]["init"] = True
             addwiitem(folder_uid=msg['folder'])
     elif(msg['cmd'] == 'wifolderinit'):
@@ -1950,17 +1956,22 @@ def get_message(msg):
         deletewifolder(msg['data'])
     elif(msg['cmd'] == 'wiexpand'):
         assert 0 <= int(msg['data']) < len(vars.worldinfo)
+        setgamesaved(False)
         emit('from_server', {'cmd': 'wiexpand', 'data': msg['data']}, broadcast=True)
     elif(msg['cmd'] == 'wiexpandfolder'):
         assert 0 <= int(msg['data']) < len(vars.worldinfo)
+        setgamesaved(False)
         emit('from_server', {'cmd': 'wiexpandfolder', 'data': msg['data']}, broadcast=True)
     elif(msg['cmd'] == 'wifoldercollapsecontent'):
+        setgamesaved(False)
         vars.wifolders_d[msg['data']]['collapsed'] = True
         emit('from_server', {'cmd': 'wifoldercollapsecontent', 'data': msg['data']}, broadcast=True)
     elif(msg['cmd'] == 'wifolderexpandcontent'):
+        setgamesaved(False)
         vars.wifolders_d[msg['data']]['collapsed'] = False
         emit('from_server', {'cmd': 'wifolderexpandcontent', 'data': msg['data']}, broadcast=True)
     elif(msg['cmd'] == 'wiupdate'):
+        setgamesaved(False)
         num = int(msg['num'])
         fields = ("key", "keysecondary", "content", "comment")
         for field in fields:
@@ -1968,6 +1979,7 @@ def get_message(msg):
                 vars.worldinfo[num][field] = msg['data'][field]
         emit('from_server', {'cmd': 'wiupdate', 'num': msg['num'], 'data': {field: vars.worldinfo[num][field] for field in fields}}, broadcast=True)
     elif(msg['cmd'] == 'wifolderupdate'):
+        setgamesaved(False)
         uid = int(msg['uid'])
         fields = ("name", "collapsed")
         for field in fields:
@@ -1975,15 +1987,19 @@ def get_message(msg):
                 vars.wifolders_d[uid][field] = msg['data'][field]
         emit('from_server', {'cmd': 'wifolderupdate', 'uid': msg['uid'], 'data': {field: vars.wifolders_d[uid][field] for field in fields}}, broadcast=True)
     elif(msg['cmd'] == 'wiselon'):
+        setgamesaved(False)
         vars.worldinfo[msg['data']]["selective"] = True
         emit('from_server', {'cmd': 'wiselon', 'data': msg['data']}, broadcast=True)
     elif(msg['cmd'] == 'wiseloff'):
+        setgamesaved(False)
         vars.worldinfo[msg['data']]["selective"] = False
         emit('from_server', {'cmd': 'wiseloff', 'data': msg['data']}, broadcast=True)
     elif(msg['cmd'] == 'wiconstanton'):
+        setgamesaved(False)
         vars.worldinfo[msg['data']]["constant"] = True
         emit('from_server', {'cmd': 'wiconstanton', 'data': msg['data']}, broadcast=True)
     elif(msg['cmd'] == 'wiconstantoff'):
+        setgamesaved(False)
         vars.worldinfo[msg['data']]["constant"] = False
         emit('from_server', {'cmd': 'wiconstantoff', 'data': msg['data']}, broadcast=True)
     elif(msg['cmd'] == 'sendwilist'):
@@ -2278,6 +2294,15 @@ def loadmodelsettings():
 def settingschanged():
     print("{0}Saving settings!{1}".format(colors.GREEN, colors.END))
     savesettings()
+
+#==================================================================#
+#  Set value of gamesaved
+#==================================================================#
+def setgamesaved(gamesaved):
+    assert type(gamesaved) is bool
+    if(gamesaved != vars.gamesaved):
+        emit('from_server', {'cmd': 'gamesaved', 'data': gamesaved}, broadcast=True)
+    vars.gamesaved = gamesaved
 
 #==================================================================#
 #  Take input text from SocketIO and decide what to do with it
@@ -3330,6 +3355,7 @@ def inlineedit(chunk, data):
         if(chunk-1 in vars.actions):
             vars.actions[chunk-1] = data
     
+    setgamesaved(False)
     update_story_chunk(chunk)
     emit('from_server', {'cmd': 'texteffect', 'data': chunk}, broadcast=True)
     emit('from_server', {'cmd': 'editmode', 'data': 'false'}, broadcast=True)
@@ -3349,6 +3375,7 @@ def inlinedelete(chunk):
     else:
         if(chunk-1 in vars.actions):
             del vars.actions[chunk-1]
+        setgamesaved(False)
         remove_story_chunk(chunk)
         emit('from_server', {'cmd': 'editmode', 'data': 'false'}, broadcast=True)
 
@@ -3418,6 +3445,7 @@ def addwifolder():
 #   the WI entry with UID dst
 #==================================================================#
 def movewiitem(dst, src):
+    setgamesaved(False)
     if(vars.worldinfo_u[src]["folder"] is not None):
         for i, e in enumerate(vars.wifolders_u[vars.worldinfo_u[src]["folder"]]):
             if(e is vars.worldinfo_u[src]):
@@ -3439,6 +3467,7 @@ def movewiitem(dst, src):
 #   the WI folder with UID dst
 #==================================================================#
 def movewifolder(dst, src):
+    setgamesaved(False)
     vars.wifolders_l.remove(src)
     if(dst is None):
         # If dst is None, that means we should move src to be the last folder
@@ -3662,6 +3691,8 @@ def memsubmit(data):
     emit('from_server', {'cmd': 'setinputtext', 'data': data}, broadcast=True)
     # Maybe check for length at some point
     # For now just send it to storage
+    if(data != vars.memory):
+        setgamesaved(False)
     vars.memory = data
     vars.mode = "play"
     emit('from_server', {'cmd': 'memmode', 'data': 'false'}, broadcast=True)
@@ -3676,6 +3707,8 @@ def anotesubmit(data, template=""):
     assert type(data) is str and type(template) is str
     # Maybe check for length at some point
     # For now just send it to storage
+    if(data != vars.authornote):
+        setgamesaved(False)
     vars.authornote = data
 
     if(vars.authornotetemplate != template):
@@ -3963,6 +3996,7 @@ def saveRequest(savpath):
             filename = filename[:-5]
         vars.laststory = filename
         emit('from_server', {'cmd': 'setstoryname', 'data': vars.laststory}, broadcast=True)
+        setgamesaved(True)
         print("{0}Story saved to {1}!{2}".format(colors.GREEN, path.basename(savpath), colors.END))
 
 #==================================================================#
@@ -4112,6 +4146,7 @@ def loadRequest(loadpath, filename=None):
             _filename = filename[:-5]
         vars.laststory = _filename
         emit('from_server', {'cmd': 'setstoryname', 'data': vars.laststory}, broadcast=True)
+        setgamesaved(True)
         sendwi()
         emit('from_server', {'cmd': 'setmemory', 'data': vars.memory}, broadcast=True)
         emit('from_server', {'cmd': 'setanote', 'data': vars.authornote}, broadcast=True)
@@ -4319,6 +4354,7 @@ def importgame():
         # Refresh game screen
         vars.laststory = None
         emit('from_server', {'cmd': 'setstoryname', 'data': vars.laststory}, broadcast=True)
+        setgamesaved(False)
         sendwi()
         emit('from_server', {'cmd': 'setmemory', 'data': vars.memory}, broadcast=True)
         emit('from_server', {'cmd': 'setanote', 'data': vars.authornote}, broadcast=True)
@@ -4399,6 +4435,7 @@ def importAidgRequest(id):
         # Refresh game screen
         vars.laststory = None
         emit('from_server', {'cmd': 'setstoryname', 'data': vars.laststory}, broadcast=True)
+        setgamesaved(False)
         sendwi()
         emit('from_server', {'cmd': 'setmemory', 'data': vars.memory}, broadcast=True)
         emit('from_server', {'cmd': 'setanote', 'data': vars.authornote}, broadcast=True)
@@ -4456,6 +4493,7 @@ def wiimportrequest():
         print("{0}".format(vars.worldinfo[0]))
                 
         # Refresh game screen
+        setgamesaved(False)
         sendwi()
 
 #==================================================================#
@@ -4488,6 +4526,7 @@ def newGameRequest():
     # Refresh game screen
     vars.laststory = None
     emit('from_server', {'cmd': 'setstoryname', 'data': vars.laststory}, broadcast=True)
+    setgamesaved(True)
     sendwi()
     emit('from_server', {'cmd': 'setmemory', 'data': vars.memory}, broadcast=True)
     emit('from_server', {'cmd': 'setanote', 'data': vars.authornote}, broadcast=True)
@@ -4501,6 +4540,7 @@ def randomGameRequest(topic, memory=""):
     vars.recentrng = topic
     vars.recentrngm = memory
     newGameRequest()
+    setgamesaved(False)
     _memory = memory
     if(len(memory) > 0):
         _memory = memory.rstrip() + "\n\n"

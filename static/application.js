@@ -93,6 +93,8 @@ var sman_allow_rename = false;
 var allowsp = false;
 var remote = false;
 var gamestate = "";
+var gamesaved = true;
+var modelname = null;
 
 // This is true iff [we're in macOS and the browser is Safari] or [we're in iOS]
 var using_webkit_patch = true;
@@ -167,6 +169,23 @@ function addSetting(ob) {
 			}
 		});
 	}
+}
+
+function refreshTitle() {
+	var title = gamesaved ? "" : "\u2731 ";
+	if(storyname !== null) {
+		title += storyname + " \u2014 ";
+	}
+	title += "KoboldAI Client";
+	if(modelname !== null) {
+		title += " (" + modelname + ")";
+	}
+	document.title = title;
+}
+
+function setGameSaved(state) {
+	gamesaved = !!state;
+	refreshTitle();
 }
 
 function addFormat(ob) {
@@ -1780,6 +1799,10 @@ $(document).ready(function(){
 			sman_allow_delete = msg.hasOwnProperty("smandelete") && msg.smandelete;
 			sman_allow_rename = msg.hasOwnProperty("smanrename") && msg.smanrename;
 			connected = true;
+			if(msg.hasOwnProperty("modelname")) {
+				modelname = msg.modelname;
+			}
+			refreshTitle();
 			connect_status.html("<b>Connected to KoboldAI Process!</b>");
 			connect_status.removeClass("color_orange");
 			connect_status.addClass("color_green");
@@ -1911,6 +1934,7 @@ $(document).ready(function(){
 			}
 		} else if(msg.cmd == "setstoryname") {
 			storyname = msg.data;
+			refreshTitle();
 		} else if(msg.cmd == "editmode") {
 			// Enable or Disable edit mode
 			if(msg.data == "true") {
@@ -2141,6 +2165,8 @@ $(document).ready(function(){
 		} else if(msg.cmd == "saveas") {
 			// Show Save As prompt
 			showSaveAsPopup();
+		} else if(msg.cmd == "gamesaved") {
+			setGameSaved(msg.data);
 		} else if(msg.cmd == "hidesaveas") {
 			// Hide Save As prompt
 			hideSaveAsPopup();
@@ -2537,8 +2563,12 @@ $(document).ready(function(){
 		}
 	});
 
+	$([input_text, anote_input, $("#gamescreen")]).map($.fn.toArray).on("input", function() {
+		setGameSaved(false);
+	});
+
 	$(window).on("beforeunload", function() {
-		if(gamestarted || memorytext.length > 0 || $("#anoteinput").val().length > 0 || $(".wilistitem").length > 1) {
+		if(!gamesaved) {
 			return true;
 		}
 	});
