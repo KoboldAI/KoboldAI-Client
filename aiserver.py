@@ -4512,6 +4512,14 @@ def randomGameRequest(topic, memory=""):
 loadmodelsettings()
 loadsettings()
 
+# Prevent tokenizer from taking extra time the first time it's used
+def __preempt_tokenizer():
+    if("tokenizer" not in globals()):
+        return
+    tokenizer.decode([25678, 559])
+    tokenizer.encode("eunoia")
+threading.Thread(target=__preempt_tokenizer).start()
+
 # Precompile TPU backend if required
 if(vars.model in ("TPUMeshTransformerGPTJ",)):
     soft_tokens = tpumtjgetsofttokens()
