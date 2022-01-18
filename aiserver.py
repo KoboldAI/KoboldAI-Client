@@ -69,6 +69,7 @@ modellist = [
     ["Lit 6B (NSFW)", "hakurei/lit-6B", "12GB"],
     ["C1 6B (Chatbot)", "hakurei/c1-6B", "12GB"],
     ["Picard 2.7B (Novel)", "KoboldAI/GPT-Neo-2.7B-Picard", "6GB"],
+    ["Adventure 2.7B", "KoboldAI/GPT-Neo-2.7B-AID", "6GB"],
     ["Horni 2.7B (NSFW)", "KoboldAI/GPT-Neo-2.7B-Horni", "6GB"],
     ["Horni-LN 2.7B (Novel)", "KoboldAI/GPT-Neo-2.7B-Horni-LN", "6GB"],
     ["Shinen 2.7B (NSFW)", "KoboldAI/GPT-Neo-2.7B-Shinen", "6GB"],
