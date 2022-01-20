@@ -10,7 +10,7 @@ import eventlet
 eventlet.monkey_patch(all=True, thread=False)
 import os
 os.system("")
-os.environ['EVENTLET_THREADPOOL_SIZE'] = '50'
+os.environ['EVENTLET_THREADPOOL_SIZE'] = '1'
 from eventlet import tpool
 
 from os import path, getcwd
