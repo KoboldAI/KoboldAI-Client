@@ -166,6 +166,7 @@ class vars:
     has_genmod  = False  # Whether or not at least one loaded Lua userscript has a generation modifier
     svowname    = ""     # Filename that was flagged for overwrite confirm
     saveow      = False  # Whether or not overwrite confirm has been displayed
+    autosave    = False  # Whether or not to automatically save after each action
     genseqs     = []     # Temporary storage for generated sequences
     recentback  = False  # Whether Back button was recently used without Submitting or Retrying after
     recentrng   = None   # If a new random game was recently generated without Submitting after, this is the topic used (as a string), otherwise this is None
@@ -2068,6 +2069,10 @@ def get_message(msg):
         vars.chatmode = False
         settingschanged()
         refresh_settings()
+    elif(msg['cmd'] == 'autosave'):
+        vars.autosave = msg['data']
+        settingschanged()
+        refresh_settings()
     elif(msg['cmd'] == 'setchatmode'):
         vars.chatmode = msg['data']
         vars.adventure = False
@@ -2160,6 +2165,7 @@ def savesettings():
     js["nopromptgen"] = vars.nopromptgen
     js["rngpersist"]  = vars.rngpersist
     js["nogenmod"]    = vars.nogenmod
+    js["autosave"]    = vars.autosave
 
     js["antemplate"]  = vars.setauthornotetemplate
 
@@ -2228,6 +2234,8 @@ def loadsettings():
             vars.rngpersist = js["rngpersist"]
         if("nogenmod" in js):
             vars.nogenmod = js["nogenmod"]
+        if("autosave" in js):
+            vars.autosave = js["autosave"]
 
         if("antemplate" in js):
             vars.setauthornotetemplate = js["antemplate"]
@@ -3237,6 +3245,10 @@ def update_story_chunk(idx: Union[int, str]):
 
     chunk_text = f'<chunk n="{idx}" id="n{idx}" tabindex="-1">{formatforhtml(item)}</chunk>'
     emit('from_server', {'cmd': 'updatechunk', 'data': {'index': idx, 'html': chunk_text}}, broadcast=True)
+    
+    #If we've set the auto save flag, we'll now save the file
+    if vars.autosave and (".json" in vars.savedir):
+        save()
 
 
 #==================================================================#

@@ -173,6 +173,17 @@ gensettingstf = [{
 	"step": 1,
 	"default": 0,
     "tooltip": "Disables userscript generation modifiers."
+	},
+    {
+	"uitype": "toggle",
+	"unit": "bool",
+	"label": "Auto Save",
+	"id": "autosave", 
+	"min": 0,
+	"max": 1,
+	"step": 1,
+	"default": 0,
+    "tooltip": "Whether the game is saved after each action."
 	}]
 
 gensettingsik =[{
@@ -295,6 +306,17 @@ gensettingsik =[{
 	"step": 1,
 	"default": 0,
     "tooltip": "When enabled, the Memory text box in the Random Story dialog will be prefilled by default with your current story's memory instead of being empty."
+	},
+    {
+	"uitype": "toggle",
+	"unit": "bool",
+	"label": "Auto Save",
+	"id": "autosave", 
+	"min": 0,
+	"max": 1,
+	"step": 1,
+	"default": 0,
+    "tooltip": "Whether the game is saved after each action."
 	}]
 
 formatcontrols = [{
