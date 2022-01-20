@@ -100,6 +100,17 @@ gensettingstf = [{
     {
 	"uitype": "toggle",
 	"unit": "bool",
+	"label": "Auto Save",
+	"id": "autosave", 
+	"min": 0,
+	"max": 1,
+	"step": 1,
+	"default": 0,
+    "tooltip": "Whether the game is saved after each action."
+	},
+    {
+	"uitype": "toggle",
+	"unit": "bool",
 	"label": "Always Add Prompt",
 	"id": "setuseprompt", 
 	"min": 0,
@@ -111,17 +122,6 @@ gensettingstf = [{
 	{
 	"uitype": "toggle",
 	"unit": "bool",
-	"label": "Chat Mode",
-	"id": "setchatmode", 
-	"min": 0,
-	"max": 1,
-	"step": 1,
-	"default": 0,
-    "tooltip": "This mode optimizes KoboldAI for chatting."
-	},
-	{
-	"uitype": "toggle",
-	"unit": "bool",
 	"label": "Adventure Mode",
 	"id": "setadventure", 
 	"min": 0,
@@ -129,6 +129,17 @@ gensettingstf = [{
 	"step": 1,
 	"default": 0,
     "tooltip": "Turn this on if you are playing a Choose your Adventure model."
+	},
+	{
+	"uitype": "toggle",
+	"unit": "bool",
+	"label": "Chat Mode",
+	"id": "setchatmode", 
+	"min": 0,
+	"max": 1,
+	"step": 1,
+	"default": 0,
+    "tooltip": "This mode optimizes KoboldAI for chatting."
 	},
 	{
 	"uitype": "toggle",
@@ -172,19 +183,9 @@ gensettingstf = [{
 	"max": 1,
 	"step": 1,
 	"default": 0,
-    "tooltip": "Disables userscript generation modifiers."
-	},
-    {
-	"uitype": "toggle",
-	"unit": "bool",
-	"label": "Auto Save",
-	"id": "autosave", 
-	"min": 0,
-	"max": 1,
-	"step": 1,
-	"default": 0,
-    "tooltip": "Whether the game is saved after each action."
-	}]
+  "tooltip": "Disables userscript generation modifiers."
+	}
+]
 
 gensettingsik =[{
 	"uitype": "slider",
@@ -255,6 +256,17 @@ gensettingsik =[{
     {
 	"uitype": "toggle",
 	"unit": "bool",
+	"label": "Auto Save",
+	"id": "autosave", 
+	"min": 0,
+	"max": 1,
+	"step": 1,
+	"default": 0,
+    "tooltip": "Whether the game is saved after each action."
+	},
+    {
+	"uitype": "toggle",
+	"unit": "bool",
 	"label": "Always Add Prompt",
 	"id": "setuseprompt", 
 	"min": 0,
@@ -266,17 +278,6 @@ gensettingsik =[{
 	{
 	"uitype": "toggle",
 	"unit": "bool",
-	"label": "Chat Mode",
-	"id": "setchatmode", 
-	"min": 0,
-	"max": 1,
-	"step": 1,
-	"default": 0,
-    "tooltip": "This mode optimizes KoboldAI for chatting."
-	},
-	{
-	"uitype": "toggle",
-	"unit": "bool",
 	"label": "Adventure Mode",
 	"id": "setadventure", 
 	"min": 0,
@@ -284,6 +285,17 @@ gensettingsik =[{
 	"step": 1,
 	"default": 0,
     "tooltip": "Turn this on if you are playing a Choose your Adventure model."
+	},
+	{
+	"uitype": "toggle",
+	"unit": "bool",
+	"label": "Chat Mode",
+	"id": "setchatmode", 
+	"min": 0,
+	"max": 1,
+	"step": 1,
+	"default": 0,
+    "tooltip": "This mode optimizes KoboldAI for chatting."
 	},
 	{
 	"uitype": "toggle",
@@ -306,18 +318,8 @@ gensettingsik =[{
 	"step": 1,
 	"default": 0,
     "tooltip": "When enabled, the Memory text box in the Random Story dialog will be prefilled by default with your current story's memory instead of being empty."
-	},
-    {
-	"uitype": "toggle",
-	"unit": "bool",
-	"label": "Auto Save",
-	"id": "autosave", 
-	"min": 0,
-	"max": 1,
-	"step": 1,
-	"default": 0,
-    "tooltip": "Whether the game is saved after each action."
-	}]
+	}
+]
 
 formatcontrols = [{
     "label": "Trim incomplete sentences",
