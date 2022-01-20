@@ -106,6 +106,7 @@ class vars:
     loadselect  = ""     # Temporary storage for filename to load
     svowname    = ""     # Filename that was flagged for overwrite confirm
     saveow      = False  # Whether or not overwrite confirm has been displayed
+    autosave    = False  # Whether or not to automatically save after each action
     genseqs     = []     # Temporary storage for generated sequences
     recentback  = False  # Whether Back button was recently used without Submitting or Retrying after
     useprompt   = False   # Whether to send the full prompt with every submit action
@@ -789,6 +790,10 @@ def get_message(msg):
         refresh_settings()
     elif(msg['cmd'] == 'setadventure'):
         vars.adventure = msg['data']
+        settingschanged()
+        refresh_settings()
+    elif(msg['cmd'] == 'autosave'):
+        vars.autosave = msg['data']
         settingschanged()
         refresh_settings()
     elif(not vars.remote and msg['cmd'] == 'importwi'):
@@ -1495,6 +1500,10 @@ def update_story_chunk(idx: Union[int, str]):
 
     chunk_text = f'<chunk n="{idx}" id="n{idx}" tabindex="-1">{formatforhtml(item)}</chunk>'
     emit('from_server', {'cmd': 'updatechunk', 'data': {'index': idx, 'html': chunk_text}}, broadcast=True)
+    
+    #If we've set the auto save flag, we'll now save the file
+    if vars.autosave:
+        save()
 
 
 #==================================================================#

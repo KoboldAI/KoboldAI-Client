@@ -118,6 +118,17 @@ gensettingstf = [{
 	"step": 1,
 	"default": 0,
     "tooltip": "Turn this on if you are playing a Choose your Adventure model."
+	},
+    {
+	"uitype": "toggle",
+	"unit": "bool",
+	"label": "Auto Save",
+	"id": "autosave", 
+	"min": 0,
+	"max": 1,
+	"step": 1,
+	"default": 0,
+    "tooltip": "Whether the game is saved after each action."
 	}]
 
 gensettingsik =[{
@@ -207,6 +218,17 @@ gensettingsik =[{
 	"step": 1,
 	"default": 0,
     "tooltip": "Turn this on if you are playing a Choose your Adventure model."
+	},
+    {
+	"uitype": "toggle",
+	"unit": "bool",
+	"label": "Auto Save",
+	"id": "autosave", 
+	"min": 0,
+	"max": 1,
+	"step": 1,
+	"default": 0,
+    "tooltip": "Whether the game is saved after each action."
 	}]
 
 formatcontrols = [{
