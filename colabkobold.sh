@@ -87,7 +87,19 @@ mpath="$xloc$mpath"
 kmpath=" --path $mpath"
 fi
 
-# Create Folder Structure and Install KoboldAI
+# Create folders on Google Drive
+mkdir /content/drive/MyDrive/KoboldAI/
+mkdir /content/drive/MyDrive/KoboldAI/stories/
+mkdir /content/drive/MyDrive/KoboldAI/models/
+mkdir /content/drive/MyDrive/KoboldAI/settings/
+mkdir /content/drive/MyDrive/KoboldAI/softprompts/
+mkdir /content/drive/MyDrive/KoboldAI/userscripts/
+if [ "$init" == "drive" ]; then
+	echo Google Drive folders created.
+	exit 0
+fi
+    
+# Install and/or Update KoboldAI
 if [ "$init" != "skip" ]; then
     cd /content
     if [ ! -z ${git+x} ]; then
@@ -119,13 +131,6 @@ if [ "$init" != "skip" ]; then
         git checkout $(git_default_branch) -f
         git reset --hard origin/$(git_default_branch)
     fi
-
-    mkdir /content/drive/MyDrive/KoboldAI/
-    mkdir /content/drive/MyDrive/KoboldAI/stories/
-    mkdir /content/drive/MyDrive/KoboldAI/models/
-    mkdir /content/drive/MyDrive/KoboldAI/settings/
-    mkdir /content/drive/MyDrive/KoboldAI/softprompts/
-    mkdir /content/drive/MyDrive/KoboldAI/userscripts/
 
     cd /content/KoboldAI-Client
 
