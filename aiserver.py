@@ -10,7 +10,7 @@ import eventlet
 eventlet.monkey_patch(all=True, thread=False)
 import os
 os.system("")
-os.environ['EVENTLET_THREADPOOL_SIZE'] = '50'
+os.environ['EVENTLET_THREADPOOL_SIZE'] = '1'
 from eventlet import tpool
 
 from os import path, getcwd
@@ -3559,6 +3559,7 @@ def commitwi(ar):
 #==================================================================#
 def deletewi(uid):
     if(uid in vars.worldinfo_u):
+        setgamesaved(False)
         # Store UID of deletion request
         vars.deletewi = uid
         if(vars.deletewi is not None):
@@ -3584,6 +3585,7 @@ def deletewifolder(uid):
     del vars.wifolders_u[uid]
     del vars.wifolders_d[uid]
     del vars.wifolders_l[vars.wifolders_l.index(uid)]
+    setgamesaved(False)
     # Delete uninitialized entries in the folder we're going to delete
     vars.worldinfo = [wi for wi in vars.worldinfo if wi["folder"] != uid or wi["init"]]
     vars.worldinfo_i = [wi for wi in vars.worldinfo if wi["init"]]
