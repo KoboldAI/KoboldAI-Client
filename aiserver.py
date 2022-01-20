@@ -2259,34 +2259,32 @@ def loadsettings():
 #  Allow the models to override some settings
 #==================================================================#
 def loadmodelsettings():
-    if(path.exists(vars.custmodpth.replace('/', '_') + "/config.json")):
-        model_config = open(vars.custmodpth.replace('/', '_') + "/config.json", "r")
-        js   = json.load(model_config)
-        if("badwordsids" in js):
-            vars.badwordsids = js["badwordsids"]
-        if("temp" in js):
-            vars.temp       = js["temp"]
-        if("top_p" in js):
-            vars.top_p      = js["top_p"]
-        if("top_k" in js):
-            vars.top_k      = js["top_k"]
-        if("tfs" in js):
-            vars.tfs        = js["tfs"]
-        if("rep_pen" in js):
-            vars.rep_pen    = js["rep_pen"]
-        if("adventure" in js):
-            vars.adventure = js["adventure"]
-        if("chatmode" in js):
-            vars.chatmode = js["chatmode"]
-        if("dynamicscan" in js):
-            vars.dynamicscan = js["dynamicscan"]
-        if("formatoptns" in js):
-            vars.formatoptns = js["formatoptns"]
-        if("antemplate" in js):
-            vars.setauthornotetemplate = js["antemplate"]
-            if(not vars.gamestarted):
-                vars.authornotetemplate = vars.setauthornotetemplate
-        model_config.close()
+    model_js_config = str(model_config).partition(' ')[2]
+    js   = json.loads(model_js_config)
+    if("badwordsids" in js):
+        vars.badwordsids = js["badwordsids"]
+    if("temp" in js):
+        vars.temp       = js["temp"]
+    if("top_p" in js):
+        vars.top_p      = js["top_p"]
+    if("top_k" in js):
+        vars.top_k      = js["top_k"]
+    if("tfs" in js):
+        vars.tfs        = js["tfs"]
+    if("rep_pen" in js):
+        vars.rep_pen    = js["rep_pen"]
+    if("adventure" in js):
+        vars.adventure = js["adventure"]
+    if("chatmode" in js):
+        vars.chatmode = js["chatmode"]
+    if("dynamicscan" in js):
+        vars.dynamicscan = js["dynamicscan"]
+    if("formatoptns" in js):
+        vars.formatoptns = js["formatoptns"]
+    if("antemplate" in js):
+        vars.setauthornotetemplate = js["antemplate"]
+        if(not vars.gamestarted):
+            vars.authornotetemplate = vars.setauthornotetemplate
 
 #==================================================================#
 #  Don't save settings unless 2 seconds have passed without modification
@@ -4552,8 +4550,9 @@ def randomGameRequest(topic, memory=""):
     actionsubmit("", force_submit=True, force_prompt_gen=True)
     vars.memory      = memory
 
-# Load settings from client.settings
-loadmodelsettings()
+# Load desired settings from both the model and the users config file
+if(not vars.model in ["InferKit", "Colab", "OAI", "ReadOnly", "TPUMeshTransformerGPTJ"]):
+    loadmodelsettings()
 loadsettings()
 
 # Prevent tokenizer from taking extra time the first time it's used
