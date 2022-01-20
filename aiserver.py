@@ -1505,7 +1505,7 @@ def update_story_chunk(idx: Union[int, str]):
     emit('from_server', {'cmd': 'updatechunk', 'data': {'index': idx, 'html': chunk_text}}, broadcast=True)
     
     #If we've set the auto save flag, we'll now save the file
-    if vars.autosave:
+    if vars.autosave and (".json" in vars.savedir):
         save()
 
 
