@@ -851,6 +851,7 @@ def savesettings():
     js["widepth"]     = vars.widepth
     js["useprompt"]   = vars.useprompt
     js["adventure"]   = vars.adventure
+    js["autosave"]    = vars.autosave
 
     # Write it
     if not os.path.exists('settings'):
@@ -901,6 +902,8 @@ def loadsettings():
             vars.useprompt = js["useprompt"]
         if("adventure" in js):
             vars.adventure = js["adventure"]
+        if("autosave" in js):
+            vars.autosave = js["autosave"]
         
         file.close()
 
