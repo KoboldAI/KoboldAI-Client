@@ -4640,6 +4640,8 @@ def newGameRequest():
 def randomGameRequest(topic, memory=""): 
     if(vars.noai):
         newGameRequest()
+        vars.memory = memory
+        emit('from_server', {'cmd': 'setmemory', 'data': vars.memory}, broadcast=True)
         return
     vars.recentrng = topic
     vars.recentrngm = memory
@@ -4652,6 +4654,7 @@ def randomGameRequest(topic, memory=""):
     vars.lua_koboldbridge.feedback = None
     actionsubmit("", force_submit=True, force_prompt_gen=True)
     vars.memory      = memory
+    emit('from_server', {'cmd': 'setmemory', 'data': vars.memory}, broadcast=True)
 
 # Load desired settings from both the model and the users config file
 if(not vars.model in ["InferKit", "Colab", "OAI", "ReadOnly", "TPUMeshTransformerGPTJ"]):
