@@ -25,6 +25,7 @@ var button_mode_label;
 var button_send;
 var button_actmem;
 var button_actback;
+var button_actfwd;
 var button_actretry;
 var button_actwi;
 var game_text;
@@ -1160,9 +1161,26 @@ function parsegenseqs(seqs) {
 	seqselcontents.html("");
 	var i;
 	for(i=0; i<seqs.length; i++) {
-		seqselcontents.append("<div class=\"seqselitem\" id=\"seqsel"+i+"\" n=\""+i+"\">"+seqs[i].generated_text+"</div>");
+		if (seqs[i][1]) {
+			color = "white"
+		} else {
+			color = "grey"
+		}
+		seqselcontents.append("<table><tr><td width=100%><div class=\"seqselitem\" id=\"seqsel"+i+"\" n=\""+i+"\">"+seqs[i][0]+"</div></td><td width=10><span style=\"color: "+color+"\" class=\"oi oi-pin\" title=\"Pin\" aria-hidden=\"true\" id=\"seqselpin"+i+"\" n=\""+i+"\"></span></td></tr></table>");
 		$("#seqsel"+i).on("click", function () {
 			socket.send({'cmd': 'seqsel', 'data': $(this).attr("n")});
+		});
+		$("#seqselpin"+i).on("click", function () {
+			socket.send({'cmd': 'seqpin', 'data': $(this).attr("n")});
+			if ($(this).attr("style") == "color: grey") {
+				console.log($(this).attr("style"));
+				$(this).css({"color": "white"});
+				console.log($(this).attr("style"));
+			} else {
+				console.log($(this).attr("style"));
+				$(this).css({"color": "grey"});
+				console.log($(this).attr("style"));
+			}
 		});
 	}
 	$('#seqselmenu').slideDown("slow");
@@ -1741,6 +1759,7 @@ $(document).ready(function(){
 	button_send       = $('#btnsend');
 	button_actmem     = $('#btn_actmem');
 	button_actback    = $('#btn_actundo');
+	button_actfwd     = $('#btn_actredo');
 	button_actretry   = $('#btn_actretry');
 	button_actwi      = $('#btn_actwi');
 	game_text         = $('#gametext');
@@ -2313,6 +2332,12 @@ $(document).ready(function(){
 	button_actback.on("click", function(ev) {
 		hideMessage();
 		socket.send({'cmd': 'back', 'data': ''});
+		hidegenseqs();
+	});
+	
+	button_actfwd.on("click", function(ev) {
+		hideMessage();
+		socket.send({'cmd': 'redo', 'data': ''});
 		hidegenseqs();
 	});
 	
