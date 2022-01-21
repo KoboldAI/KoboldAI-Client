@@ -1669,12 +1669,33 @@ return function(_python, _bridged)
         bridged.print(table.concat(args, "\t"))
     end
 
-    local function redirected_warn(...)
-        local args = table.pack(...)
-        for i = 1, args.n do
-            args[i] = tostring(args[i])
+    local function _redirected_warn()
+        local do_warning = true
+        local control_table = {
+            ["@on"] = function()
+                do_warning = true
+            end,
+            ["@off"] = function()
+                do_warning = false
+            end,
+        }
+        return function(...)
+            local args = table.pack(...)
+            if args.n == 1 and type(args[1]) == "string" and args[1]:sub(1, 1) == "@" then
+                local f = control_table[args[1]]
+                if f ~= nil then
+                    f()
+                end
+                return
+            end
+            if not do_warning then
+                return
+            end
+            for i = 1, args.n do
+                args[i] = tostring(args[i])
+            end
+            bridged.warn(table.concat(args, "\t"))
         end
-        bridged.warn(table.concat(args, "\t"))
     end
 
     local sandbox_template_env = {
@@ -1834,7 +1855,7 @@ return function(_python, _bridged)
             envs[universe].load = _safe_load(env)
             envs[universe].require = _safe_require(env)
             envs[universe].print = redirected_print
-            envs[universe].warn = redirected_warn
+            envs[universe].warn = _redirected_warn()
             env._G = env
         end
         return env
