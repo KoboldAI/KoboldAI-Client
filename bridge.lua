@@ -1614,7 +1614,12 @@ return function(_python, _bridged)
             error("module '" .. modname .. "' not found:" .. table.concat(errors))
             return
         end
-        local retval = old_loadfile(path, "t", env)()
+        local f, err = old_loadfile(path, "t", env)
+        if err ~= nil then
+            error(err)
+            return
+        end
+        local retval = (f())
         package_loaded[env][modname] = retval == nil or retval
         return package_loaded[env][modname], path
     end
