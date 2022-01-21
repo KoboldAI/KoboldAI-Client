@@ -3228,6 +3228,7 @@ def update_story_chunk(idx: Union[int, str]):
             # prompt might not have been shown yet (with a "Generating story..."
             # message instead).
             refresh_story()
+            setgamesaved(False)
             return
 
         idx = (vars.actions.get_last_key() if len(vars.actions) else 0) + 1
@@ -3245,7 +3246,9 @@ def update_story_chunk(idx: Union[int, str]):
 
     chunk_text = f'<chunk n="{idx}" id="n{idx}" tabindex="-1">{formatforhtml(item)}</chunk>'
     emit('from_server', {'cmd': 'updatechunk', 'data': {'index': idx, 'html': chunk_text}}, broadcast=True)
-    
+
+    setgamesaved(False)
+
     #If we've set the auto save flag, we'll now save the file
     if vars.autosave and (".json" in vars.savedir):
         save()
@@ -3256,6 +3259,7 @@ def update_story_chunk(idx: Union[int, str]):
 #==================================================================#
 def remove_story_chunk(idx: int):
     emit('from_server', {'cmd': 'removechunk', 'data': idx}, broadcast=True)
+    setgamesaved(False)
 
 
 #==================================================================#
