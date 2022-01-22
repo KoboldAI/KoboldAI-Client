@@ -3,7 +3,9 @@
 
 FROM mambaorg/micromamba
 WORKDIR /content/
-COPY env.yml /home/micromamba/env.yml
-RUN micromamba install -y -n base -f /home/micromamba/env.yml
+COPY . /content/
+RUN ls
+RUN micromamba install -y -n base -f /content/environments/huggingface.yml
 USER root
 RUN apt update && apt install xorg -y
+CMD python aiserver.py
