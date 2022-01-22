@@ -402,6 +402,7 @@ parser.add_argument("--override_delete", action='store_true', help="Deleting sto
 parser.add_argument("--override_rename", action='store_true', help="Renaming stories from inside the browser is disabled if you are using --remote and enabled otherwise. Using this option will instead allow renaming stories if using --remote and prevent renaming stories otherwise.")
 parser.add_argument("--configname", help="Force a fixed configuration name to aid with config management.")
 parser.add_argument("--colab", action='store_true', help="Optimize for Google Colab.")
+parser.add_argument("--share", action='store_true', default=False, help="If present will launch KoboldAI available to all computers rather than local only")
 
 args: argparse.Namespace = None
 if(os.environ.get("KOBOLDAI_ARGS") is not None):
@@ -940,7 +941,7 @@ if(not vars.model in ["InferKit", "Colab", "OAI", "ReadOnly", "TPUMeshTransforme
                        model     = AutoModelForCausalLM.from_pretrained(vars.custmodpth, cache_dir="cache/", **lowmem)
                    except ValueError as e:
                        model     = GPTNeoForCausalLM.from_pretrained(vars.custmodpth, cache_dir="cache/", **lowmem)
-            elif(os.path.isdir(vars.model.replace('/', '_'))):
+            elif(os.path.isdir(format(vars.model.replace('/', '_')))):
                with(maybe_use_float16()):
                    try:
                        tokenizer = AutoTokenizer.from_pretrained(vars.model.replace('/', '_'), cache_dir="cache/")
@@ -965,8 +966,8 @@ if(not vars.model in ["InferKit", "Colab", "OAI", "ReadOnly", "TPUMeshTransforme
                     model = model.half()
                     import shutil
                     shutil.rmtree("cache/")
-                    model.save_pretrained(vars.model.replace('/', '_'))
-                    tokenizer.save_pretrained(vars.model.replace('/', '_'))
+                    model.save_pretrained("/models/{}".format(vars.model.replace('/', '_')))
+                    tokenizer.save_pretrained("/models/{}".format(vars.model.replace('/', '_')))
             
             if(vars.hascuda):
                 if(vars.usegpu):
@@ -4783,7 +4784,10 @@ if __name__ == "__main__":
         webbrowser.open_new('http://localhost:5000')
         print("{0}Server started!\nYou may now connect with a browser at http://127.0.0.1:5000/{1}".format(colors.GREEN, colors.END))
         vars.serverstarted = True
-        socketio.run(app, port=5000)
+        if args.share:
+            socketio.run(app, port=5000, host='0.0.0.0')
+        else:
+            socketio.run(app, port=5000)
 
 else:
     print("{0}\nServer started in WSGI mode!{1}".format(colors.GREEN, colors.END), flush=True)
