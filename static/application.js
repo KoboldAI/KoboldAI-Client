@@ -50,6 +50,7 @@ var aidg_accept;
 var aidg_close;
 var saveaspopup;
 var saveasinput;
+var savepins;
 var topic;
 var saveas_accept;
 var saveas_close;
@@ -749,7 +750,7 @@ function enterMemoryMode() {
 	setchatnamevisibility(false);
 	showMessage("Edit the memory to be sent with each request to the AI.");
 	button_actmem.html("Cancel");
-	hide([button_actback, button_actretry, button_actwi]);
+	hide([button_actback, button_actfwd, button_actretry, button_actwi]);
 	// Display Author's Note field
 	anote_menu.slideDown("fast");
 }
@@ -760,7 +761,7 @@ function exitMemoryMode() {
 	setchatnamevisibility(chatmode);
 	hideMessage();
 	button_actmem.html("Memory");
-	show([button_actback, button_actretry, button_actwi]);
+	show([button_actback, button_actfwd, button_actretry, button_actwi]);
 	input_text.val("");
 	// Hide Author's Note field
 	anote_menu.slideUp("fast");
@@ -769,7 +770,7 @@ function exitMemoryMode() {
 function enterWiMode() {
 	showMessage("World Info will be added to memory only when the key appears in submitted text or the last action.");
 	button_actwi.html("Accept");
-	hide([button_actback, button_actmem, button_actretry, game_text]);
+	hide([button_actback, button_actfwd, button_actmem, button_actretry, game_text]);
 	setchatnamevisibility(false);
 	show([wi_menu]);
 	disableSendBtn();
@@ -781,7 +782,7 @@ function exitWiMode() {
 	button_actwi.html("W Info");
 	hide([wi_menu]);
 	setchatnamevisibility(chatmode);
-	show([button_actback, button_actmem, button_actretry, game_text]);
+	show([button_actback, button_actfwd, button_actmem, button_actretry, game_text]);
 	enableSendBtn();
 	$("#gamescreen").removeClass("wigamescreen");
 }
@@ -885,7 +886,7 @@ function hideSaveAsPopup() {
 }
 
 function sendSaveAsRequest() {
-	socket.send({'cmd': 'saveasrequest', 'data': saveasinput.val()});
+	socket.send({'cmd': 'saveasrequest', 'data': {"name": saveasinput.val(), "pins": savepins.val()});
 }
 
 function showLoadPopup() {
@@ -1143,9 +1144,9 @@ function updateSPStatItems(items) {
 function setStartState() {
 	enableSendBtn();
 	enableButtons([button_actmem, button_actwi]);
-	disableButtons([button_actback, button_actretry]);
+	disableButtons([button_actback, button_actfwd, button_actretry]);
 	hide([wi_menu]);
-	show([game_text, button_actmem, button_actwi, button_actback, button_actretry]);
+	show([game_text, button_actmem, button_actwi, button_actback, button_actfwd, button_actretry]);
 	hideMessage();
 	hideWaitAnimation();
 	button_actmem.html("Memory");
@@ -1784,6 +1785,7 @@ $(document).ready(function(){
 	aidg_close        = $("#btn_aidgpopupclose");
 	saveaspopup       = $("#saveascontainer");
 	saveasinput       = $("#savename");
+	savepins          = $("#savepins");
 	topic             = $("#topic");
 	saveas_accept     = $("#btn_saveasaccept");
 	saveas_close      = $("#btn_saveasclose");
@@ -1932,13 +1934,13 @@ $(document).ready(function(){
 			// Enable or Disable buttons
 			if(msg.data == "ready") {
 				enableSendBtn();
-				enableButtons([button_actmem, button_actwi, button_actback, button_actretry]);
+				enableButtons([button_actmem, button_actwi, button_actback, button_actfwd, button_actretry]);
 				hideWaitAnimation();
 				gamestate = "ready";
 			} else if(msg.data == "wait") {
 				gamestate = "wait";
 				disableSendBtn();
-				disableButtons([button_actmem, button_actwi, button_actback, button_actretry]);
+				disableButtons([button_actmem, button_actwi, button_actback, button_actfwd, button_actretry]);
 				showWaitAnimation();
 			} else if(msg.data == "start") {
 				setStartState();

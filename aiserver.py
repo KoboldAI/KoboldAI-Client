@@ -2555,16 +2555,19 @@ def actionback():
         
 def actionredo():
     i = 0
-    
-    genout = [{"generated_text": item['Text']} for item in vars.actions_metadata[len(vars.actions)]['Alternative Text'] if (item["Previous Selection"]==True)]
-    
-    # Store sequences in memory until selection is made
-    vars.genseqs = genout
-    
-    
-    # Send sequences to UI for selection
-    genout = [[item['Text'], True] for item in vars.actions_metadata[len(vars.actions)]['Alternative Text'] if (item["Previous Selection"]==True)]
-    emit('from_server', {'cmd': 'genseqs', 'data': genout}, broadcast=True)
+    if len(vars.actions) < len(vars.actions_metadata):
+        genout = [{"generated_text": item['Text']} for item in vars.actions_metadata[len(vars.actions)]['Alternative Text'] if (item["Previous Selection"]==True)]
+        genout = genout + [{"generated_text": item['Text']} for item in vars.actions_metadata[len(vars.actions)]['Alternative Text'] if (item["Pinned"]==True) and (item["Previous Selection"]==False)]
+        
+        # Store sequences in memory until selection is made
+        vars.genseqs = genout
+        
+        
+        # Send sequences to UI for selection
+        genout = [[item['Text'], True] for item in vars.actions_metadata[len(vars.actions)]['Alternative Text'] if (item["Previous Selection"]==True)]
+        emit('from_server', {'cmd': 'genseqs', 'data': genout}, broadcast=True)
+    else:
+        emit('from_server', {'cmd': 'popuperror', 'data': "There's nothing to undo"}, broadcast=True)
 
 #==================================================================#
 #  
@@ -2996,7 +2999,7 @@ def genselect(genout):
     vars.genseqs = genout
     
     genout = [[item['Text'], item['Pinned']] for item in vars.actions_metadata[len(vars.actions)]['Alternative Text']  if (item["Previous Selection"]==False) and (item["Edited"]==False)]
-    print(genout)
+
     # Send sequences to UI for selection
     emit('from_server', {'cmd': 'genseqs', 'data': genout}, broadcast=True)
 
@@ -3995,12 +3998,15 @@ def exitModes():
 #==================================================================#
 #  Launch in-browser save prompt
 #==================================================================#
-def saveas(name):
+def saveas(data):
+    
+    name = data['name']
+    savepins = data['pins']
     # Check if filename exists already
     name = utils.cleanfilename(name)
     if(not fileops.saveexists(name) or (vars.saveow and vars.svowname == name)):
         # All clear to save
-        e = saveRequest(fileops.storypath(name))
+        e = saveRequest(fileops.storypath(name), savepins=savepins)
         vars.saveow = False
         vars.svowname = ""
         if(e is None):
@@ -4076,7 +4082,7 @@ def savetofile():
 #==================================================================#
 #  Save the story to specified path
 #==================================================================#
-def saveRequest(savpath):    
+def saveRequest(savpath, savepins=True):    
     if(savpath):
         # Leave Edit/Memory mode before continuing
         exitModes()
@@ -4092,7 +4098,8 @@ def saveRequest(savpath):
         js["authorsnote"] = vars.authornote
         js["anotetemplate"] = vars.authornotetemplate
         js["actions"]     = tuple(vars.actions.values())
-        js["actions_metadata"]     = vars.actions_metadata
+        if savepins:
+            js["actions_metadata"]     = vars.actions_metadata
         js["worldinfo"]   = []
         js["wifolders_d"] = vars.wifolders_d
         js["wifolders_l"] = vars.wifolders_l
