@@ -1243,6 +1243,7 @@ body.connected .popupfooter, .popupfooter.always-available {
 	-o-transition: all 0.15s ease-in;
 	-webkit-transition: all 0.15s ease-in;
 	transition: all 0.15s ease-in;
+	white-space: pre-wrap;
 }
 
 .seqselitem:hover {

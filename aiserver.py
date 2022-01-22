@@ -2291,8 +2291,12 @@ def loadsettings():
 #  Allow the models to override some settings
 #==================================================================#
 def loadmodelsettings():
-    model_js_config = str(model_config).partition(' ')[2]
-    js   = json.loads(model_js_config)
+    try:
+        model_js_config = str(model_config).partition(' ')[2]
+        js   = json.loads(model_js_config)
+    except Exception as e:
+        model_js_config = open(vars.custmodpth.replace('/', '_') + "/config.json", "r")
+        js   = json.load(model_js_config)
     if("badwordsids" in js):
         vars.badwordsids = js["badwordsids"]
     if("temp" in js):
@@ -3340,6 +3344,7 @@ def update_story_chunk(idx: Union[int, str]):
             # prompt might not have been shown yet (with a "Generating story..."
             # message instead).
             refresh_story()
+            setgamesaved(False)
             return
 
         idx = (vars.actions.get_last_key() if len(vars.actions) else 0) + 1
@@ -3349,6 +3354,8 @@ def update_story_chunk(idx: Union[int, str]):
     else:
         # Actions are 0 based, but in chunks 0 is the prompt.
         # So the chunk index is one more than the corresponding action index.
+        if(idx - 1 not in vars.actions):
+            return
         text = vars.actions[idx - 1]
 
     item = html.escape(text)
@@ -3357,7 +3364,9 @@ def update_story_chunk(idx: Union[int, str]):
 
     chunk_text = f'<chunk n="{idx}" id="n{idx}" tabindex="-1">{formatforhtml(item)}</chunk>'
     emit('from_server', {'cmd': 'updatechunk', 'data': {'index': idx, 'html': chunk_text}}, broadcast=True)
-    
+
+    setgamesaved(False)
+
     #If we've set the auto save flag, we'll now save the file
     if vars.autosave and (".json" in vars.savedir):
         save()
@@ -3368,6 +3377,7 @@ def update_story_chunk(idx: Union[int, str]):
 #==================================================================#
 def remove_story_chunk(idx: int):
     emit('from_server', {'cmd': 'removechunk', 'data': idx}, broadcast=True)
+    setgamesaved(False)
 
 
 #==================================================================#
@@ -3488,7 +3498,9 @@ def inlineedit(chunk, data):
                                                                              "Edited": True}]
             vars.actions_metadata[chunk-1]['Selected Text'] = data
             vars.actions[chunk-1] = data
-    
+        else:
+            print(f"WARNING: Attempted to edit non-existent chunk {chunk}")
+
     setgamesaved(False)
     update_story_chunk(chunk)
     emit('from_server', {'cmd': 'texteffect', 'data': chunk}, broadcast=True)
@@ -3513,6 +3525,8 @@ def inlinedelete(chunk):
                                                                              "Edited": False}] + vars.actions_metadata[chunk-1]['Alternative Text']
             vars.actions_metadata[chunk-1]['Selected Text'] = ''
             vars.actions[chunk-1] = ''
+        else:
+            print(f"WARNING: Attempted to delete non-existent chunk {chunk}")
         setgamesaved(False)
         remove_story_chunk(chunk)
         emit('from_server', {'cmd': 'editmode', 'data': 'false'}, broadcast=True)
