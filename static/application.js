@@ -886,7 +886,7 @@ function hideSaveAsPopup() {
 }
 
 function sendSaveAsRequest() {
-	socket.send({'cmd': 'saveasrequest', 'data': {"name": saveasinput.val(), "pins": savepins.val()});
+	socket.send({'cmd': 'saveasrequest', 'data': {"name": saveasinput.val(), "pins": savepins.val()}});
 }
 
 function showLoadPopup() {
