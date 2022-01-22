@@ -199,6 +199,7 @@ class vars:
     nopromptgen = False
     rngpersist  = False
     nogenmod    = False
+    quiet       = False # If set will suppress any story text from being printed to the console (will only be seen on the client web page)
 
 #==================================================================#
 # Function to get model selection at startup
@@ -403,6 +404,7 @@ parser.add_argument("--override_rename", action='store_true', help="Renaming sto
 parser.add_argument("--configname", help="Force a fixed configuration name to aid with config management.")
 parser.add_argument("--colab", action='store_true', help="Optimize for Google Colab.")
 parser.add_argument("--share", action='store_true', default=False, help="If present will launch KoboldAI available to all computers rather than local only")
+parser.add_argument("--quiet", action='store_true', default=False, help="If present will suppress any story related text from showing on the console")
 
 args: argparse.Namespace = None
 if(os.environ.get("KOBOLDAI_ARGS") is not None):
@@ -412,6 +414,9 @@ else:
     args = parser.parse_args()
 
 vars.model = args.model;
+
+if args.quiet:
+    vars.quiet = True
 
 if args.colab:
     args.remote = True;
@@ -1797,7 +1802,8 @@ def do_connect():
 #==================================================================#
 @socketio.on('message')
 def get_message(msg):
-    print("{0}Data received:{1}{2}".format(colors.GREEN, msg, colors.END))
+    if not vars.quiet:
+        print("{0}Data received:{1}{2}".format(colors.GREEN, msg, colors.END))
     # Submit action
     if(msg['cmd'] == 'submit'):
         if(vars.mode == "play"):
@@ -2884,7 +2890,8 @@ def generate(txt, minimum, maximum, found_entries=None):
         found_entries = set()
     found_entries = tuple(found_entries.copy() for _ in range(vars.numseqs))
 
-    print("{0}Min:{1}, Max:{2}, Txt:{3}{4}".format(colors.YELLOW, minimum, maximum, tokenizer.decode(txt), colors.END))
+    if not vars.quiet:
+        print("{0}Min:{1}, Max:{2}, Txt:{3}{4}".format(colors.YELLOW, minimum, maximum, tokenizer.decode(txt), colors.END))
 
     # Store context in memory to use it for comparison with generated content
     vars.lastctx = tokenizer.decode(txt)
@@ -2946,7 +2953,8 @@ def generate(txt, minimum, maximum, found_entries=None):
 #  Deal with a single return sequence from generate()
 #==================================================================#
 def genresult(genout, flash=True):
-    print("{0}{1}{2}".format(colors.CYAN, genout, colors.END))
+    if not vars.quiet:
+        print("{0}{1}{2}".format(colors.CYAN, genout, colors.END))
     
     # Format output before continuing
     genout = applyoutputformatting(genout)
@@ -2977,7 +2985,8 @@ def genselect(genout):
     for result in genout:
         # Apply output formatting rules to sequences
         result["generated_text"] = applyoutputformatting(result["generated_text"])
-        print("{0}[Result {1}]\n{2}{3}".format(colors.CYAN, i, result["generated_text"], colors.END))
+        if not vars.quiet:
+            print("{0}[Result {1}]\n{2}{3}".format(colors.CYAN, i, result["generated_text"], colors.END))
         i += 1
     
     # Add the options to the actions metadata
@@ -3044,7 +3053,8 @@ def pinsequence(n):
 #==================================================================#
 def sendtocolab(txt, min, max):
     # Log request to console
-    print("{0}Tokens:{1}, Txt:{2}{3}".format(colors.YELLOW, min-1, txt, colors.END))
+    if not vars.quiet:
+        print("{0}Tokens:{1}, Txt:{2}{3}".format(colors.YELLOW, min-1, txt, colors.END))
     
     # Store context in memory to use it for comparison with generated content
     vars.lastctx = txt
@@ -3127,7 +3137,8 @@ def tpumtjgenerate(txt, minimum, maximum, found_entries=None):
         found_entries = set()
     found_entries = tuple(found_entries.copy() for _ in range(vars.numseqs))
 
-    print("{0}Min:{1}, Max:{2}, Txt:{3}{4}".format(colors.YELLOW, minimum, maximum, tokenizer.decode(txt), colors.END))
+    if not vars.quiet:
+        print("{0}Min:{1}, Max:{2}, Txt:{3}{4}".format(colors.YELLOW, minimum, maximum, tokenizer.decode(txt), colors.END))
 
     vars._actions = vars.actions
     vars._prompt = vars.prompt
@@ -3853,7 +3864,8 @@ def anotesubmit(data, template=""):
 #==================================================================#
 def ikrequest(txt):
     # Log request to console
-    print("{0}Len:{1}, Txt:{2}{3}".format(colors.YELLOW, len(txt), txt, colors.END))
+    if not vars.quiet:
+        print("{0}Len:{1}, Txt:{2}{3}".format(colors.YELLOW, len(txt), txt, colors.END))
     
     # Build request JSON data
     reqdata = {
@@ -3890,7 +3902,8 @@ def ikrequest(txt):
             genout = vars.lua_koboldbridge.outputs[1]
             assert genout is str
 
-        print("{0}{1}{2}".format(colors.CYAN, genout, colors.END))
+        if not vars.quiet:
+            print("{0}{1}{2}".format(colors.CYAN, genout, colors.END))
         vars.actions.append(genout)
         if len(vars.actions_metadata) < len(vars.actions):
             vars.actions_metadata.append({"Selected Text": genout, "Alternative Text": []})
@@ -3922,7 +3935,8 @@ def ikrequest(txt):
 #==================================================================#
 def oairequest(txt, min, max):
     # Log request to console
-    print("{0}Len:{1}, Txt:{2}{3}".format(colors.YELLOW, len(txt), txt, colors.END))
+    if not vars.quiet:
+        print("{0}Len:{1}, Txt:{2}{3}".format(colors.YELLOW, len(txt), txt, colors.END))
     
     # Store context in memory to use it for comparison with generated content
     vars.lastctx = txt
@@ -3958,7 +3972,8 @@ def oairequest(txt, min, max):
             genout = vars.lua_koboldbridge.outputs[1]
             assert genout is str
 
-        print("{0}{1}{2}".format(colors.CYAN, genout, colors.END))
+        if not vars.quiet:
+            print("{0}{1}{2}".format(colors.CYAN, genout, colors.END))
         vars.actions.append(genout)
         if len(vars.actions_metadata) < len(vars.actions):
             vars.actions_metadata.append({"Selected Text": genout, "Alternative Text": []})
@@ -4229,8 +4244,6 @@ def loadRequest(loadpath, filename=None):
         if "actions_metadata" in js:
             vars.actions_metadata = js["actions_metadata"]
         else:
-            print(js["actions"])
-            print([{'Selected Text': text, 'Alternative Text': []} for text in js["actions"]])
             vars.actions_metadata = [{'Selected Text': text, 'Alternative Text': []} for text in js["actions"]]
                 
 
@@ -4650,7 +4663,8 @@ def wiimportrequest():
                 if(vars.worldinfo[-1]["folder"] is not None):
                     vars.wifolders_u[vars.worldinfo[-1]["folder"]].append(vars.worldinfo[-1])
         
-        print("{0}".format(vars.worldinfo[0]))
+        if not vars.quiet:
+            print("{0}".format(vars.worldinfo[0]))
                 
         # Refresh game screen
         setgamesaved(False)
