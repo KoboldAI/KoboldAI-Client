@@ -3242,6 +3242,8 @@ def update_story_chunk(idx: Union[int, str]):
     else:
         # Actions are 0 based, but in chunks 0 is the prompt.
         # So the chunk index is one more than the corresponding action index.
+        if(idx - 1 not in vars.actions):
+            return
         text = vars.actions[idx - 1]
 
     item = html.escape(text)
@@ -3373,7 +3375,9 @@ def inlineedit(chunk, data):
     else:
         if(chunk-1 in vars.actions):
             vars.actions[chunk-1] = data
-    
+        else:
+            print(f"WARNING: Attempted to edit non-existent chunk {chunk}")
+
     setgamesaved(False)
     update_story_chunk(chunk)
     emit('from_server', {'cmd': 'texteffect', 'data': chunk}, broadcast=True)
@@ -3394,6 +3398,8 @@ def inlinedelete(chunk):
     else:
         if(chunk-1 in vars.actions):
             del vars.actions[chunk-1]
+        else:
+            print(f"WARNING: Attempted to delete non-existent chunk {chunk}")
         setgamesaved(False)
         remove_story_chunk(chunk)
         emit('from_server', {'cmd': 'editmode', 'data': 'false'}, broadcast=True)
