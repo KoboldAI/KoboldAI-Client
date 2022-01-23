@@ -2458,7 +2458,7 @@ def actionsubmit(data, actionmode=0, force_submit=False, force_prompt_gen=False,
                     # we now need to update the actions_metadata
                     # we'll have two conditions. 
                     # 1. This is totally new (user entered) 
-                    if len(vars.actions_metadata) < len(vars.actions):
+                    if len(vars.actions_metadata) <= len(vars.actions):
                         vars.actions_metadata.append({"Selected Text": data, "Alternative Text": []})
                     else:
                     # 2. We've selected a chunk of text that is was presented previously
