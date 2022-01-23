@@ -2199,7 +2199,8 @@ def savesettings():
 
     # Write it
     if not os.path.exists('settings'):
-        os.mkdir('settings')
+        if not os.path.islink('settings'):
+            os.mkdir('settings')
     file = open("settings/" + getmodelname().replace('/', '_') + ".settings", "w")
     try:
         file.write(json.dumps(js, indent=3))
