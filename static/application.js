@@ -1991,6 +1991,14 @@ $(document).ready(function(){
 			// Send current rep pen value to input
 			$("#setreppen").val(parseFloat(msg.data));
 			$("#setreppencur").html(msg.data);
+		} else if(msg.cmd == "updatereppenslope") {
+			// Send current rep pen value to input
+			$("#setreppenslope").val(parseFloat(msg.data));
+			$("#setreppenslopecur").html(msg.data);
+		} else if(msg.cmd == "updatereppenrange") {
+			// Send current rep pen value to input
+			$("#setreppenrange").val(parseFloat(msg.data));
+			$("#setreppenrangecur").html(msg.data);
 		} else if(msg.cmd == "updateoutlen") {
 			// Send current output amt value to input
 			$("#setoutput").val(parseInt(msg.data));
@@ -2018,6 +2026,12 @@ $(document).ready(function(){
 		} else if(msg.cmd == "setlabelreppen") {
 			// Update setting label with value from server
 			$("#setreppencur").html(msg.data);
+		} else if(msg.cmd == "setlabelreppenslope") {
+			// Update setting label with value from server
+			$("#setreppenslopecur").html(msg.data);
+		} else if(msg.cmd == "setlabelreppenrange") {
+			// Update setting label with value from server
+			$("#setreppenrangecur").html(msg.data);
 		} else if(msg.cmd == "setlabeloutput") {
 			// Update setting label with value from server
 			$("#setoutputcur").html(msg.data);
