@@ -39,6 +39,7 @@ var anote_menu;
 var anote_input;
 var anote_labelcur;
 var anote_slider;
+var debug_area;
 var popup;
 var popup_title;
 var popup_content;
@@ -1770,6 +1771,7 @@ $(document).ready(function(){
 	settings_menu     = $("#settingsmenu");
 	format_menu       = $('#formatmenu');
 	anote_menu        = $('#anoterowcontainer');
+	debug_area        = $('#debugcontainer');
 	wi_menu           = $('#wimenu');
 	anote_input       = $('#anoteinput');
 	anote_labelcur    = $('#anotecur');
@@ -2258,6 +2260,14 @@ $(document).ready(function(){
 		} else if(msg.cmd == "runs_remotely") {
 			remote = true;
 			hide([button_savetofile, button_import, button_importwi]);
+		} else if(msg.cmd == "debug_info") {
+			$("#debuginfo").val(msg.data);
+		} else if(msg.cmd == "set_debug") {
+			if(msg.data) {
+				debug_area.removeClass("hidden");
+			} else {
+				debug_area.addClass("hidden");
+			}
 		}
 	});
 	
