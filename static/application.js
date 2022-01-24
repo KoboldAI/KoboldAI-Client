@@ -2349,8 +2349,8 @@ $(document).ready(function(){
 	
 	button_actfwd.on("click", function(ev) {
 		hideMessage();
+		//hidegenseqs();
 		socket.send({'cmd': 'redo', 'data': ''});
-		hidegenseqs();
 	});
 	
 	button_actmem.on("click", function(ev) {
