@@ -2267,7 +2267,10 @@ def loadmodelsettings():
         model_js_config = str(model_config).partition(' ')[2]
         js   = json.loads(model_js_config)
     except Exception as e:
-        model_js_config = open(vars.custmodpth.replace('/', '_') + "/config.json", "r")
+        try:
+            model_js_config = open(vars.custmodpth + "/config.json", "r")
+        except Exception as e:
+            model_js_config = open(vars.custmodpth.replace('/', '_') + "/config.json", "r")
         js   = json.load(model_js_config)
     if("badwordsids" in js):
         vars.badwordsids = js["badwordsids"]
