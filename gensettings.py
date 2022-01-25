@@ -56,6 +56,28 @@ gensettingstf = [{
 	{
 	"uitype": "slider",
 	"unit": "int",
+	"label": "Rep Penalty Range",
+	"id": "setreppenrange", 
+	"min": 0,
+	"max": 4096,
+	"step": 4,
+	"default": 0,
+    "tooltip": "Repetition penalty range. If set higher than 0, only applies repetition penalty to the last few tokens of your story rather than applying it to the entire story. This slider controls the amount of tokens at the end of your story to apply it to."
+	},
+	{
+	"uitype": "slider",
+	"unit": "float",
+	"label": "Rep Penalty Slope",
+	"id": "setreppenslope", 
+	"min": 0.0,
+	"max": 10.0,
+	"step": 0.1,
+	"default": 0.0,
+    "tooltip": "Repetition penalty slope. If BOTH this setting and Rep Penalty Range are set higher than 0, will use sigmoid interpolation to apply repetition penalty more strongly on tokens that are closer to the end of your story. This setting controls the tension of the sigmoid curve; higher settings will result in the repetition penalty difference between the start and end of your story being more apparent. Setting this to 1 uses linear interpolation; setting this to 0 disables interpolation."
+	},
+	{
+	"uitype": "slider",
+	"unit": "int",
 	"label": "Amount to Generate",
 	"id": "setoutput", 
 	"min": 16,

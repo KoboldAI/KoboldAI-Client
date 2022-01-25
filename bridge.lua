@@ -867,6 +867,8 @@ return function(_python, _bridged)
     ---@field settopk integer
     ---@field settfs number
     ---@field setreppen number
+    ---@field setreppenslope number
+    ---@field setreppenrange number
     ---@field settknmax integer
     ---@field setwidepth integer
     ---@field setuseprompt boolean
@@ -881,6 +883,8 @@ return function(_python, _bridged)
     ---@field top_k integer
     ---@field tfs number
     ---@field reppen number
+    ---@field reppenslope number
+    ---@field reppenrange number
     ---@field tknmax integer
     ---@field widepth integer
     ---@field useprompt boolean
