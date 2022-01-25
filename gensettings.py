@@ -1,4 +1,16 @@
-gensettingstf = [{
+gensettingstf = [
+	{
+	"uitype": "slider",
+	"unit": "int",
+	"label": "Amount to Generate",
+	"id": "setoutput", 
+	"min": 16,
+	"max": 512,
+	"step": 2,
+	"default": 80,
+    "tooltip": "Number of tokens the AI should generate. Higher numbers will take longer to generate."
+	},
+   {
 	"uitype": "slider",
 	"unit": "float",
 	"label": "Temperature",
@@ -74,17 +86,6 @@ gensettingstf = [{
 	"step": 0.1,
 	"default": 0.0,
     "tooltip": "Repetition penalty slope. If BOTH this setting and Rep Penalty Range are set higher than 0, will use sigmoid interpolation to apply repetition penalty more strongly on tokens that are closer to the end of your story. This setting controls the tension of the sigmoid curve; higher settings will result in the repetition penalty difference between the start and end of your story being more apparent. Setting this to 1 uses linear interpolation; setting this to 0 disables interpolation."
-	},
-	{
-	"uitype": "slider",
-	"unit": "int",
-	"label": "Amount to Generate",
-	"id": "setoutput", 
-	"min": 16,
-	"max": 512,
-	"step": 2,
-	"default": 80,
-    "tooltip": "Number of tokens the AI should generate. Higher numbers will take longer to generate."
 	},
     {
 	"uitype": "slider",
