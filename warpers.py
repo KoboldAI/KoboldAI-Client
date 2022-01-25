@@ -31,7 +31,7 @@ import torch
 from transformers import LogitsWarper, LogitsProcessor
 
 
-class AdvancedRepetitionPenaltyLogitsProcessor(LogitsProcessor):
+class AdvancedRepetitionPenaltyLogitsProcessor(LogitsWarper):
     def __init__(self, *args, **kwargs):
         pass
 
