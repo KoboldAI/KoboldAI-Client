@@ -1,8 +1,7 @@
 # This dockerfile is meant to serve as a rocm base image.  It registers the debian rocm package repository, and
 # installs the rocm-dev package.
 
+
 FROM ebolam/koboldai_base
 WORKDIR /content/
-RUN apt-get update
-RUN apt-get install git -y
-RUN /opt/conda/bin/pip install tensorflow-gpu git+https://github.com/finetuneanon/transformers.git
+RUN /opt/conda/bin/pip install transformers
