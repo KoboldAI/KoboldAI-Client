@@ -1,11 +1,7 @@
 # This dockerfile is meant to serve as a rocm base image.  It registers the debian rocm package repository, and
 # installs the rocm-dev package.
 
-FROM mambaorg/micromamba
+FROM ebolam/koboldai_base
 WORKDIR /content/
 COPY . /content/
-RUN ls
-RUN micromamba install -y -n base -f /content/environments/huggingface.yml
-USER root
-RUN apt update && apt install xorg -y
 CMD python aiserver.py
