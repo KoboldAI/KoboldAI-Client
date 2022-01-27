@@ -4,4 +4,4 @@
 
 FROM ebolam/koboldai_base
 WORKDIR /content/
-RUN /opt/conda/bin/pip install transformers
+RUN micromamba update -y -n base -f /content/environments/huggingface.yml

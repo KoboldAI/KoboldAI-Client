@@ -3,6 +3,4 @@
 
 FROM ebolam/koboldai_base
 WORKDIR /content/
-RUN apt-get update
-RUN apt-get install git -y
-RUN /opt/conda/bin/pip install tensorflow-gpu git+https://github.com/finetuneanon/transformers.git
+RUN micromamba update -y -n base -f /content/environments/finetuneanon.yml
