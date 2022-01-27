@@ -2590,13 +2590,23 @@ def actionredo():
         genout = [{"generated_text": item['Text']} for item in vars.actions_metadata[len(vars.actions)]['Alternative Text'] if (item["Previous Selection"]==True)]
         genout = genout + [{"generated_text": item['Text']} for item in vars.actions_metadata[len(vars.actions)]['Alternative Text'] if (item["Pinned"]==True) and (item["Previous Selection"]==False)]
         
-        # Store sequences in memory until selection is made
-        vars.genseqs = genout
-        
-        
-        # Send sequences to UI for selection
-        genout = [[item['Text'], True] for item in vars.actions_metadata[len(vars.actions)]['Alternative Text'] if (item["Previous Selection"]==True)]
-        emit('from_server', {'cmd': 'genseqs', 'data': genout}, broadcast=True)
+        if len(genout) == 1:
+            vars.actions.append(genout[0])
+            if len(vars.actions) > len(vars.actions_metadata):
+                vars.actions_metadata.append({'Selected Text': genout[0], 'Alternative Text': []})
+            else:
+                vars.actions_metadata[len(vars.actions)-1]['Selected Text'] = genout[0]
+            update_story_chunk('last')
+            if(flash):
+                emit('from_server', {'cmd': 'texteffect', 'data': vars.actions.get_last_key() + 1 if len(vars.actions) else 0}, broadcast=True)
+        else:
+            # Store sequences in memory until selection is made
+            vars.genseqs = genout
+            
+            
+            # Send sequences to UI for selection
+            genout = [[item['Text'], True] for item in vars.actions_metadata[len(vars.actions)]['Alternative Text'] if (item["Previous Selection"]==True)]
+            emit('from_server', {'cmd': 'genseqs', 'data': genout}, broadcast=True)
     else:
         emit('from_server', {'cmd': 'popuperror', 'data': "There's nothing to undo"}, broadcast=True)
     send_debug()
