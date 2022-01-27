@@ -4731,6 +4731,7 @@ def newGameRequest():
     vars.prompt      = ""
     vars.memory      = ""
     vars.actions     = structures.KoboldStoryRegister()
+    vars.actions_metadata = []
     
     vars.authornote  = ""
     vars.authornotetemplate = vars.setauthornotetemplate
