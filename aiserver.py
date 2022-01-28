@@ -3158,7 +3158,7 @@ def tpumtjgenerate(txt, minimum, maximum, found_entries=None):
 # Replaces returns and newlines with HTML breaks
 #==================================================================#
 def formatforhtml(txt):
-    return txt.replace("\\r\\n", "<br/>").replace("\\r", "<br/>").replace("\\n", "<br/>").replace("\r\n", "<br/>").replace('\n', '<br/>').replace('\r', '<br/>').replace('</s>', '<br/>')
+    return txt.replace("\\r\\n", "<br/>").replace("\\r", "<br/>").replace("\\n", "<br/>").replace("\r\n", "<br/>").replace('\n', '<br/>').replace('\r', '<br/>').replace('&lt;/s&gt;', '<br/>')
 
 #==================================================================#
 # Strips submitted text from the text returned by the AI
