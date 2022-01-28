@@ -65,22 +65,22 @@ class colors:
 modellist = [
     ["Load a model from its directory", "NeoCustom", ""],
     ["Load an old GPT-2 model (eg CloverEdition)", "GPT2Custom", ""],
-    ["Skein 6B (Hybrid)", "KoboldAI/GPT-J-6B-Skein", "12GB"],
-    ["Adventure 6B", "KoboldAI/GPT-J-6B-Adventure", "12GB"],
-    ["Lit 6B (NSFW)", "hakurei/lit-6B", "12GB"],
-    ["C1 6B (Chatbot)", "hakurei/c1-6B", "12GB"],
-    ["Picard 2.7B (Novel)", "KoboldAI/GPT-Neo-2.7B-Picard", "6GB"],
-    ["Adventure 2.7B", "KoboldAI/GPT-Neo-2.7B-AID", "6GB"],
-    ["Horni 2.7B (NSFW)", "KoboldAI/GPT-Neo-2.7B-Horni", "6GB"],
-    ["Horni-LN 2.7B (Novel)", "KoboldAI/GPT-Neo-2.7B-Horni-LN", "6GB"],
-    ["Shinen 2.7B (NSFW)", "KoboldAI/GPT-Neo-2.7B-Shinen", "6GB"],
+    ["Skein 6B (Hybrid)", "KoboldAI/GPT-J-6B-Skein", "16GB"],
+    ["Adventure 6B", "KoboldAI/GPT-J-6B-Adventure", "16GB"],
+    ["Lit 6B (NSFW)", "hakurei/lit-6B", "16GB"],
+    ["C1 6B (Chatbot)", "hakurei/c1-6B", "16GB"],
+    ["Picard 2.7B (Novel)", "KoboldAI/GPT-Neo-2.7B-Picard", "8GB"],
+    ["Adventure 2.7B", "KoboldAI/GPT-Neo-2.7B-AID", "8GB"],
+    ["Horni 2.7B (NSFW)", "KoboldAI/GPT-Neo-2.7B-Horni", "8GB"],
+    ["Horni-LN 2.7B (Novel)", "KoboldAI/GPT-Neo-2.7B-Horni-LN", "8GB"],
+    ["Shinen 2.7B (NSFW)", "KoboldAI/GPT-Neo-2.7B-Shinen", "8GB"],
     ["GPT-J 6B", "EleutherAI/gpt-j-6B", "12GB"],
-    ["GPT-Neo 2.7B", "EleutherAI/gpt-neo-2.7B", "6GB"],
-    ["GPT-Neo 1.3B", "EleutherAI/gpt-neo-1.3B", "3GB"],
+    ["GPT-Neo 2.7B", "EleutherAI/gpt-neo-2.7B", "8GB"],
+    ["GPT-Neo 1.3B", "EleutherAI/gpt-neo-1.3B", "6GB"],
     ["GPT-2 XL", "gpt2-xl", "8GB"],
-    ["GPT-2 Large", "gpt2-large", "4GB"],
-    ["GPT-2 Med", "gpt2-medium", "2GB"],
-    ["GPT-2", "gpt2", "1GB"],
+    ["GPT-2 Large", "gpt2-large", "6GB"],
+    ["GPT-2 Med", "gpt2-medium", "4GB"],
+    ["GPT-2", "gpt2", "2GB"],
     ["OpenAI API (requires API key)", "OAI", ""],
     ["InferKit API (requires API key)", "InferKit", ""],
     ["KoboldAI Server API (Old Google Colab)", "Colab", ""],
@@ -3158,7 +3158,7 @@ def tpumtjgenerate(txt, minimum, maximum, found_entries=None):
 # Replaces returns and newlines with HTML breaks
 #==================================================================#
 def formatforhtml(txt):
-    return txt.replace("\\r\\n", "<br/>").replace("\\r", "<br/>").replace("\\n", "<br/>").replace("\r\n", "<br/>").replace('\n', '<br/>').replace('\r', '<br/>')
+    return txt.replace("\\r\\n", "<br/>").replace("\\r", "<br/>").replace("\\n", "<br/>").replace("\r\n", "<br/>").replace('\n', '<br/>').replace('\r', '<br/>').replace('</s>', '<br/>')
 
 #==================================================================#
 # Strips submitted text from the text returned by the AI
