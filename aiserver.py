@@ -2591,14 +2591,8 @@ def actionredo():
         genout = genout + [{"generated_text": item['Text']} for item in vars.actions_metadata[len(vars.actions)]['Alternative Text'] if (item["Pinned"]==True) and (item["Previous Selection"]==False)]
         
         if len(genout) == 1:
-            vars.actions.append(genout[0])
-            if len(vars.actions) > len(vars.actions_metadata):
-                vars.actions_metadata.append({'Selected Text': genout[0], 'Alternative Text': []})
-            else:
-                vars.actions_metadata[len(vars.actions)-1]['Selected Text'] = genout[0]
-            update_story_chunk('last')
-            if(flash):
-                emit('from_server', {'cmd': 'texteffect', 'data': vars.actions.get_last_key() + 1 if len(vars.actions) else 0}, broadcast=True)
+            vars.actions_metadata[len(vars.actions)]['Alternative Text'] = [item for item in vars.actions_metadata[len(vars.actions)]['Alternative Text'] if (item["Previous Selection"]!=True)]
+            genresult(genout[0]['generated_text'], flash=True)
         else:
             # Store sequences in memory until selection is made
             vars.genseqs = genout
@@ -4830,7 +4824,7 @@ if(vars.model in ("TPUMeshTransformerGPTJ",)):
 def send_debug():
     if vars.debug:
         debug_info = ""
-        for variable in [["Action Length", len(vars.actions)], ["Actions Metadata Length", len(vars.actions_metadata)]]:
+        for variable in [["Action Length", len(vars.actions)], ["Actions Metadata Length", len(vars.actions_metadata)], ["Actions Metadata", vars.actions_metadata]]:
             debug_info = "{}{}: {}\n".format(debug_info, variable[0], variable[1])
         emit('from_server', {'cmd': 'debug_info', 'data': debug_info}, broadcast=True)
     
