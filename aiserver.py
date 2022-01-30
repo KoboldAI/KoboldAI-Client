@@ -530,6 +530,7 @@ if(not vars.model in ["InferKit", "Colab", "OAI", "ReadOnly", "TPUMeshTransforme
         print("WARNING: --breakmodel_layers is deprecated. Use --layers instead (see --help for details).", file=sys.stderr)
     if(args.model and vars.bmsupported and (args.breakmodel_gpulayers is None or args.breakmodel_layers is None)):
         print("WARNING: Model launched without the --breakmodel_gpulayers argument, defaulting to GPU only mode.", file=sys.stderr)
+        vars.bmsupported = False
     if(not vars.bmsupported and (args.breakmodel_gpulayers is not None or args.breakmodel_layers is not None)):
         print("WARNING: This model does not support hybrid generation. --layers will be ignored.", file=sys.stderr)
     if(vars.hascuda):
