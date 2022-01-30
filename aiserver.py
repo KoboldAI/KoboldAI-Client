@@ -11,6 +11,7 @@ eventlet.monkey_patch(all=True, thread=False)
 import os
 os.system("")
 os.environ['EVENTLET_THREADPOOL_SIZE'] = '1'
+os.environ['TOKENIZERS_PARALLELISM'] = 'false'
 from eventlet import tpool
 
 from os import path, getcwd
@@ -74,12 +75,12 @@ modellist = [
     ["Horni 2.7B (NSFW)", "KoboldAI/GPT-Neo-2.7B-Horni", "8GB"],
     ["Horni-LN 2.7B (Novel)", "KoboldAI/GPT-Neo-2.7B-Horni-LN", "8GB"],
     ["Shinen 2.7B (NSFW)", "KoboldAI/GPT-Neo-2.7B-Shinen", "8GB"],
-    ["GPT-J 6B", "EleutherAI/gpt-j-6B", "12GB"],
+    ["GPT-J 6B", "EleutherAI/gpt-j-6B", "16GB"],
     ["GPT-Neo 2.7B", "EleutherAI/gpt-neo-2.7B", "8GB"],
     ["GPT-Neo 1.3B", "EleutherAI/gpt-neo-1.3B", "6GB"],
-    ["GPT-2 XL", "gpt2-xl", "8GB"],
-    ["GPT-2 Large", "gpt2-large", "6GB"],
-    ["GPT-2 Med", "gpt2-medium", "4GB"],
+    ["GPT-2 XL", "gpt2-xl", "6GB"],
+    ["GPT-2 Large", "gpt2-large", "4GB"],
+    ["GPT-2 Med", "gpt2-medium", "2GB"],
     ["GPT-2", "gpt2", "2GB"],
     ["OpenAI API (requires API key)", "OAI", ""],
     ["InferKit API (requires API key)", "InferKit", ""],
@@ -201,7 +202,7 @@ class vars:
 # Function to get model selection at startup
 #==================================================================#
 def getModelSelection():
-    print("    #   Model                           V/RAM\n    =========================================")
+    print("    #   Model                           VRAM\n    =========================================")
     i = 1
     for m in modellist:
         print("    {0} - {1}\t\t{2}".format("{:<2}".format(i), m[0].ljust(15), m[2]))
@@ -432,7 +433,7 @@ if args.model:
         vars.colaburl = args.path + "/request"; # Lets just use the same parameter to keep it simple
 
 else:
-    print("{0}Welcome to the KoboldAI Server!\nSelect an AI model to continue:{1}\n".format(colors.CYAN, colors.END))
+    print("{0}Welcome to the KoboldAI Server!\nListed RAM is the optimal VRAM and CPU ram can be up to twice the amount.\nMost models can run at less VRAM with reduced max tokens or less layers on the GPU.\nSelect an AI model to continue:{1}\n".format(colors.CYAN, colors.END))
     getModelSelection()
 
 # If transformers model was selected & GPU available, ask to use CPU or GPU
