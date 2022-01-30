@@ -9,6 +9,8 @@ dependencies:
   - flask-socketio
   - python=3.8.*
   - eventlet
+  - markdown
+  - bleach
   - pip
   - git
   - pip:

@@ -12,6 +12,8 @@ dependencies:
   - cudatoolkit=11.1
   - transformers
   - eventlet
+  - markdown
+  - bleach
   - pip
   - git
   - pip:

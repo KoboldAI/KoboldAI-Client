@@ -14,3 +14,5 @@ flask-cloudflared >= 0.0.5
 flask-ngrok
 eventlet
 lupa==1.10
+markdown
+bleach

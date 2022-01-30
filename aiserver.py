@@ -24,6 +24,8 @@ import packaging
 import contextlib
 import traceback
 import threading
+import markdown
+import bleach
 from collections.abc import Iterable
 from typing import Any, Callable, TypeVar, Tuple, Union, Dict, Set, List
 
@@ -198,6 +200,7 @@ class vars:
     nopromptgen = False
     rngpersist  = False
     nogenmod    = False
+    welcome     = False  # Custom Welcome Text (False is default)
 
 #==================================================================#
 # Function to get model selection at startup
@@ -422,6 +425,8 @@ def loadmodelsettings():
         vars.dynamicscan = js["dynamicscan"]
     if("formatoptns" in js):
         vars.formatoptns = js["formatoptns"]
+    if("welcome" in js):
+        vars.welcome = js["welcome"]
     if("antemplate" in js):
         vars.setauthornotetemplate = js["antemplate"]
         if(not vars.gamestarted):
@@ -2154,13 +2159,23 @@ def sendUSStatItems():
     vars.last_userscripts = last_userscripts
 
 #==================================================================#
+#  KoboldAI Markup Formatting (Mixture of Markdown and sanitized html)
+#==================================================================#
+def kml(txt):
+   txt = bleach.clean(markdown.markdown(txt), tags = ['p', 'em', 'strong', 'code', 'h1', 'h2', 'h3', 'h4', 'h5', 'b', 'i', 'a', 'span', 'button'], styles = ['color', 'font-weight'], attributes=['id', 'class', 'style', 'href'])
+   return txt
+
+#==================================================================#
 #  Send start message and tell Javascript to set UI state
 #==================================================================#
 def setStartState():
-    txt = "<span>Welcome to <span class=\"color_cyan\">KoboldAI</span>! You are running <span class=\"color_green\">"+getmodelname()+"</span>.<br/>"
-    if(not vars.noai):
-        txt = txt + "Please load a game or enter a prompt below to begin!</span>"
+    if(vars.welcome):
+        txt = kml(vars.welcome) + "<br/>"
     else:
+        txt = "<span>Welcome to <span class=\"color_cyan\">KoboldAI</span>! You are running <span class=\"color_green\">"+getmodelname()+"</span>.<br/>"
+    if(not vars.noai and not vars.welcome):
+        txt = txt + "Please load a game or enter a prompt below to begin!</span>"
+    if(vars.noai):
         txt = txt + "Please load or import a story to read. There is no AI in this mode."
     emit('from_server', {'cmd': 'updatescreen', 'gamestarted': vars.gamestarted, 'data': txt}, broadcast=True)
     emit('from_server', {'cmd': 'setgamestate', 'data': 'start'}, broadcast=True)

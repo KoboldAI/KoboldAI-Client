@@ -11,6 +11,8 @@ dependencies:
   - tensorflow-gpu
   - python=3.8.*
   - eventlet
+  - markdown
+  - bleach
   - pip
   - git
   - pip:
