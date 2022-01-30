@@ -295,7 +295,7 @@ def device_config(model):
             assert sum(breakmodel.gpu_blocks) <= n_layers
             n_layers -= sum(breakmodel.gpu_blocks)
         except:
-            print("WARNING: --layers is malformatted. Please use the --help option to see correct usage of --layers. Defaulting to all layers on device 0.", file=sys.stderr)
+            print("WARNING: --breakmodel_gpulayers is malformatted. Please use the --help option to see correct usage of --breakmodel_gpulayers. Defaulting to all layers on device 0.", file=sys.stderr)
             breakmodel.gpu_blocks = [n_layers]
             n_layers = 0
     elif(args.breakmodel_layers is not None):
@@ -440,7 +440,7 @@ parser.add_argument("--path", help="Specify the Path for local models (For model
 parser.add_argument("--cpu", action='store_true', help="By default unattended launches are on the GPU use this option to force CPU usage.")
 parser.add_argument("--breakmodel", action='store_true', help=argparse.SUPPRESS)
 parser.add_argument("--breakmodel_layers", type=int, help=argparse.SUPPRESS)
-parser.add_argument("--breakmodel_gpulayers", type=str, help="If using a model that supports hybrid generation, this is a comma-separated list that specifies how many layers to put on each GPU device. For example to put 8 layers on device 0, 9 layers on device 1 and 11 layers on device 2, use --layers 8,9,11")
+parser.add_argument("--breakmodel_gpulayers", type=str, help="If using a model that supports hybrid generation, this is a comma-separated list that specifies how many layers to put on each GPU device. For example to put 8 layers on device 0, 9 layers on device 1 and 11 layers on device 2, use --beakmodel_gpulayers 8,9,11")
 parser.add_argument("--override_delete", action='store_true', help="Deleting stories from inside the browser is disabled if you are using --remote and enabled otherwise. Using this option will instead allow deleting stories if using --remote and prevent deleting stories otherwise.")
 parser.add_argument("--override_rename", action='store_true', help="Renaming stories from inside the browser is disabled if you are using --remote and enabled otherwise. Using this option will instead allow renaming stories if using --remote and prevent renaming stories otherwise.")
 parser.add_argument("--configname", help="Force a fixed configuration name to aid with config management.")
@@ -525,14 +525,14 @@ if(not vars.model in ["InferKit", "Colab", "OAI", "ReadOnly", "TPUMeshTransforme
     vars.hascuda = torch.cuda.is_available()
     vars.bmsupported = vars.model_type in ("gpt_neo", "gptj") and not vars.nobreakmodel
     if(args.breakmodel is not None and args.breakmodel):
-        print("WARNING: --breakmodel is no longer supported. Breakmodel mode is now automatically enabled when --layers is used (see --help for details).", file=sys.stderr)
+        print("WARNING: --breakmodel is no longer supported. Breakmodel mode is now automatically enabled when --breakmodel_gpulayers is used (see --help for details).", file=sys.stderr)
     if(args.breakmodel_layers is not None):
-        print("WARNING: --breakmodel_layers is deprecated. Use --layers instead (see --help for details).", file=sys.stderr)
-    if(args.model and vars.bmsupported and (args.breakmodel_gpulayers is None or args.breakmodel_layers is None)):
+        print("WARNING: --breakmodel_layers is deprecated. Use --breakmodel_gpulayers instead (see --help for details).", file=sys.stderr)
+    if(args.model and vars.bmsupported and not args.breakmodel_gpulayers and not args.breakmodel_layers):
         print("WARNING: Model launched without the --breakmodel_gpulayers argument, defaulting to GPU only mode.", file=sys.stderr)
         vars.bmsupported = False
     if(not vars.bmsupported and (args.breakmodel_gpulayers is not None or args.breakmodel_layers is not None)):
-        print("WARNING: This model does not support hybrid generation. --layers will be ignored.", file=sys.stderr)
+        print("WARNING: This model does not support hybrid generation. --breakmodel_gpulayers will be ignored.", file=sys.stderr)
     if(vars.hascuda):
         print("{0}FOUND!{1}".format(colors.GREEN, colors.END))
     else:
