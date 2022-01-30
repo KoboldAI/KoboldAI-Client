@@ -2162,7 +2162,8 @@ def sendUSStatItems():
 #  KoboldAI Markup Formatting (Mixture of Markdown and sanitized html)
 #==================================================================#
 def kml(txt):
-   txt = bleach.clean(markdown.markdown(txt), tags = ['p', 'em', 'strong', 'code', 'h1', 'h2', 'h3', 'h4', 'h5', 'b', 'i', 'a', 'span', 'button'], styles = ['color', 'font-weight'], attributes=['id', 'class', 'style', 'href'])
+   txt = txt.replace('>', '&gt;')
+   txt = bleach.clean(markdown.markdown(txt), tags = ['p', 'em', 'strong', 'code', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'li', 'ul', 'b', 'i', 'a', 'span', 'button'], styles = ['color', 'font-weight'], attributes=['id', 'class', 'style', 'href'])
    return txt
 
 #==================================================================#
