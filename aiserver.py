@@ -2376,7 +2376,6 @@ def actionsubmit(data, actionmode=0, force_submit=False, force_prompt_gen=False,
 
     # </s> mode
     if(vars.newlinemode == "s"):
-        print("S mode activated")
         data = data.replace('\n', "</s>")
         print(data)
     
