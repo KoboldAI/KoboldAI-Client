@@ -1,6 +1,5 @@
 name: koboldai
 channels:
-  - huggingface
   - conda-forge
   - defaults
 dependencies:
