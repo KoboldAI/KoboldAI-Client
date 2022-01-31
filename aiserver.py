@@ -2239,7 +2239,6 @@ def savesettings():
     js["userscripts"] = vars.userscripts
     js["corescript"]  = vars.corescript
     js["softprompt"]  = vars.spfilename
-    js["newlinemode"]  = vars.newlinemode
 
     # Write it
     if not os.path.exists('settings'):
