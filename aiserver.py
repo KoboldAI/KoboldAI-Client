@@ -2373,10 +2373,6 @@ def actionsubmit(data, actionmode=0, force_submit=False, force_prompt_gen=False,
     # Ignore new submissions if the AI is currently busy
     if(vars.aibusy):
         return
-
-    # </s> mode
-    if(vars.newlinemode == "s"):
-        data = data.replace('\n', "</s>")
     
     while(True):
         set_aibusy(1)
@@ -2400,7 +2396,11 @@ def actionsubmit(data, actionmode=0, force_submit=False, force_prompt_gen=False,
             data = re.sub(r'\n+', ' ', data)
             if(len(data)):
                 data = f"\n{vars.chatname} : {data}\n"
-                
+        
+        # </s> mode
+        if(vars.newlinemode == "s"):
+            data = data.replace('\n', "</s>")
+        
         # If we're not continuing, store a copy of the raw input
         if(data != ""):
             vars.lastact = data
@@ -3232,6 +3232,9 @@ def applyinputformatting(txt):
 # Applies chosen formatting options to text returned from AI
 #==================================================================#
 def applyoutputformatting(txt):
+    # Revert S mode on output to maintain compatibility
+    txt = txt.replace('</s>', "\n")
+
     # Use standard quotes and apostrophes
     txt = utils.fixquotes(txt)
 
