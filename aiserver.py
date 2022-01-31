@@ -2377,7 +2377,6 @@ def actionsubmit(data, actionmode=0, force_submit=False, force_prompt_gen=False,
     # </s> mode
     if(vars.newlinemode == "s"):
         data = data.replace('\n', "</s>")
-        print(data)
     
     while(True):
         set_aibusy(1)
