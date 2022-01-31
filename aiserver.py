@@ -201,6 +201,7 @@ class vars:
     rngpersist  = False
     nogenmod    = False
     welcome     = False  # Custom Welcome Text (False is default)
+    newlinemode = "n"
 
 #==================================================================#
 # Function to get model selection at startup
@@ -427,6 +428,8 @@ def loadmodelsettings():
         vars.formatoptns = js["formatoptns"]
     if("welcome" in js):
         vars.welcome = js["welcome"]
+    if("newlinemode" in js):
+        vars.newlinemode = js["newlinemode"]
     if("antemplate" in js):
         vars.setauthornotetemplate = js["antemplate"]
         if(not vars.gamestarted):
@@ -2236,6 +2239,7 @@ def savesettings():
     js["userscripts"] = vars.userscripts
     js["corescript"]  = vars.corescript
     js["softprompt"]  = vars.spfilename
+    js["newlinemode"]  = vars.newlinemode
 
     # Write it
     if not os.path.exists('settings'):
@@ -2304,6 +2308,8 @@ def loadsettings():
             vars.nogenmod = js["nogenmod"]
         if("autosave" in js):
             vars.autosave = js["autosave"]
+        if("newlinemode" in js):
+            vars.newlinemode = js["newlinemode"]
 
         if("antemplate" in js):
             vars.setauthornotetemplate = js["antemplate"]
@@ -2369,6 +2375,12 @@ def actionsubmit(data, actionmode=0, force_submit=False, force_prompt_gen=False,
     if(vars.aibusy):
         return
 
+    # </s> mode
+    if(vars.newlinemode == "s"):
+        print("S mode activated")
+        data = data.replace('\n', "</s>")
+        print(data)
+    
     while(True):
         set_aibusy(1)
 
@@ -2686,7 +2698,7 @@ def calcsubmit(txt):
     actionlen    = len(vars.actions)
 
     winfo, mem, anotetxt, found_entries = calcsubmitbudgetheader(txt)
-
+ 
     # For all transformers models
     if(vars.model != "InferKit"):
         subtxt, min, max = calcsubmitbudget(actionlen, winfo, mem, anotetxt, vars.actions, submission=txt)
@@ -3216,7 +3228,7 @@ def applyinputformatting(txt):
     # Add sentence spacing
     if(vars.formatoptns["frmtadsnsp"]):
         txt = utils.addsentencespacing(txt, vars)
-    
+ 
     return txt
 
 #==================================================================#
