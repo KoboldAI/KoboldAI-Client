@@ -11,7 +11,7 @@ eventlet.monkey_patch(all=True, thread=False)
 import os
 os.system("")
 os.environ['EVENTLET_THREADPOOL_SIZE'] = '1'
-os.environ['TOKENIZERS_PARALLELISM'] = 'true'
+os.environ['TOKENIZERS_PARALLELISM'] = 'false'
 from eventlet import tpool
 
 from os import path, getcwd
