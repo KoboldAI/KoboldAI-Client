@@ -2309,6 +2309,8 @@ def loadsettings():
             vars.autosave = js["autosave"]
         if("newlinemode" in js):
             vars.newlinemode = js["newlinemode"]
+        if("welcome" in js):
+            vars.welcome = js["welcome"]
 
         if("antemplate" in js):
             vars.setauthornotetemplate = js["antemplate"]
@@ -4632,8 +4634,6 @@ def randomGameRequest(topic, memory=""):
     emit('from_server', {'cmd': 'setmemory', 'data': vars.memory}, broadcast=True)
 
 # Load desired settings from both the model and the users config file
-if(not vars.model in ["InferKit", "Colab", "OAI", "ReadOnly", "TPUMeshTransformerGPTJ"]):
-    loadmodelsettings()
 loadsettings()
 
 # Prevent tokenizer from taking extra time the first time it's used
