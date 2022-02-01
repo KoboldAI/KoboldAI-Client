@@ -2233,6 +2233,8 @@ def savesettings():
     js["rngpersist"]  = vars.rngpersist
     js["nogenmod"]    = vars.nogenmod
     js["autosave"]    = vars.autosave
+    js["welcome"]     = vars.welcome
+    js["newlinemode"] = vars.newlinemode
 
     js["antemplate"]  = vars.setauthornotetemplate
 
