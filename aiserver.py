@@ -384,7 +384,7 @@ def device_config(model):
     else:
         model.model.embed_tokens.to(breakmodel.primary_device)
         model.model.layer_norm.to(breakmodel.primary_device)
-        model.model.lm_head.to(breakmodel.primary_device)
+        model.lm_head.to(breakmodel.primary_device)
         model.model.embed_positions.to(breakmodel.primary_device)
     gc.collect()
     GPTNeoModel.forward = breakmodel.new_forward_neo
@@ -736,7 +736,7 @@ if(not vars.model in ["InferKit", "Colab", "OAI", "ReadOnly", "TPUMeshTransforme
         from transformers import StoppingCriteria, GPT2TokenizerFast, GPT2LMHeadModel, GPTNeoForCausalLM, GPTNeoModel, AutoModelForCausalLM, AutoTokenizer
         for m in ("GPTJModel", "XGLMModel"):
             try:
-                globals()[m] = __import__("transformers." + m, fromlist=[...])
+                globals()[m] = getattr(__import__("transformers"), m)
             except:
                 pass
         import transformers.generation_utils
