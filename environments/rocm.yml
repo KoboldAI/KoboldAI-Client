@@ -1,6 +1,5 @@
 name: koboldai
 channels:
-  - huggingface
   - conda-forge
   - defaults
 dependencies:
@@ -9,6 +8,8 @@ dependencies:
   - flask-socketio
   - python=3.8.*
   - eventlet
+  - markdown
+  - bleach
   - pip
   - git
   - pip:
