@@ -11,6 +11,7 @@ eventlet.monkey_patch(all=True, thread=False)
 import os
 os.system("")
 os.environ['EVENTLET_THREADPOOL_SIZE'] = '1'
+os.environ['TOKENIZERS_PARALLELISM'] = 'false'
 from eventlet import tpool
 
 from os import path, getcwd
@@ -23,6 +24,8 @@ import packaging
 import contextlib
 import traceback
 import threading
+import markdown
+import bleach
 from collections.abc import Iterable
 from typing import Any, Callable, TypeVar, Tuple, Union, Dict, Set, List
 
@@ -65,22 +68,22 @@ class colors:
 modellist = [
     ["Load a model from its directory", "NeoCustom", ""],
     ["Load an old GPT-2 model (eg CloverEdition)", "GPT2Custom", ""],
-    ["Skein 6B (Hybrid)", "KoboldAI/GPT-J-6B-Skein", "12GB"],
-    ["Adventure 6B", "KoboldAI/GPT-J-6B-Adventure", "12GB"],
-    ["Lit 6B (NSFW)", "hakurei/lit-6B", "12GB"],
-    ["C1 6B (Chatbot)", "hakurei/c1-6B", "12GB"],
-    ["Picard 2.7B (Novel)", "KoboldAI/GPT-Neo-2.7B-Picard", "6GB"],
-    ["Adventure 2.7B", "KoboldAI/GPT-Neo-2.7B-AID", "6GB"],
-    ["Horni 2.7B (NSFW)", "KoboldAI/GPT-Neo-2.7B-Horni", "6GB"],
-    ["Horni-LN 2.7B (Novel)", "KoboldAI/GPT-Neo-2.7B-Horni-LN", "6GB"],
-    ["Shinen 2.7B (NSFW)", "KoboldAI/GPT-Neo-2.7B-Shinen", "6GB"],
-    ["GPT-J 6B", "EleutherAI/gpt-j-6B", "12GB"],
-    ["GPT-Neo 2.7B", "EleutherAI/gpt-neo-2.7B", "6GB"],
-    ["GPT-Neo 1.3B", "EleutherAI/gpt-neo-1.3B", "3GB"],
-    ["GPT-2 XL", "gpt2-xl", "8GB"],
+    ["Skein 6B (Hybrid)", "KoboldAI/GPT-J-6B-Skein", "16GB"],
+    ["Adventure 6B", "KoboldAI/GPT-J-6B-Adventure", "16GB"],
+    ["Lit 6B (NSFW)", "hakurei/lit-6B", "16GB"],
+    ["C1 6B (Chatbot)", "hakurei/c1-6B", "16GB"],
+    ["Picard 2.7B (Novel)", "KoboldAI/GPT-Neo-2.7B-Picard", "8GB"],
+    ["Adventure 2.7B", "KoboldAI/GPT-Neo-2.7B-AID", "8GB"],
+    ["Horni 2.7B (NSFW)", "KoboldAI/GPT-Neo-2.7B-Horni", "8GB"],
+    ["Horni-LN 2.7B (Novel)", "KoboldAI/GPT-Neo-2.7B-Horni-LN", "8GB"],
+    ["Shinen 2.7B (NSFW)", "KoboldAI/GPT-Neo-2.7B-Shinen", "8GB"],
+    ["GPT-J 6B", "EleutherAI/gpt-j-6B", "16GB"],
+    ["GPT-Neo 2.7B", "EleutherAI/gpt-neo-2.7B", "8GB"],
+    ["GPT-Neo 1.3B", "EleutherAI/gpt-neo-1.3B", "6GB"],
+    ["GPT-2 XL", "gpt2-xl", "6GB"],
     ["GPT-2 Large", "gpt2-large", "4GB"],
     ["GPT-2 Med", "gpt2-medium", "2GB"],
-    ["GPT-2", "gpt2", "1GB"],
+    ["GPT-2", "gpt2", "2GB"],
     ["OpenAI API (requires API key)", "OAI", ""],
     ["InferKit API (requires API key)", "InferKit", ""],
     ["KoboldAI Server API (Old Google Colab)", "Colab", ""],
@@ -183,6 +186,7 @@ class vars:
     useprompt   = False   # Whether to send the full prompt with every submit action
     breakmodel  = False  # For GPU users, whether to use both system RAM and VRAM to conserve VRAM while offering speedup compared to CPU-only
     bmsupported = False  # Whether the breakmodel option is supported (GPT-Neo/GPT-J only, currently)
+    nobreakmodel = False  # Something specifically requested Breakmodel to be disabled (For example a models config)
     smandelete  = False  # Whether stories can be deleted from inside the browser
     smanrename  = False  # Whether stories can be renamed from inside the browser
     allowsp     = False  # Whether we are allowed to use soft prompts (by default enabled if we're using GPT-2, GPT-Neo or GPT-J)
@@ -202,6 +206,8 @@ class vars:
     nopromptgen = False
     rngpersist  = False
     nogenmod    = False
+    welcome     = False  # Custom Welcome Text (False is default)
+    newlinemode = "n"
     quiet       = False # If set will suppress any story text from being printed to the console (will only be seen on the client web page)
     debug       = False # If set to true, will send debug information to the client for display
 
@@ -209,7 +215,7 @@ class vars:
 # Function to get model selection at startup
 #==================================================================#
 def getModelSelection():
-    print("    #   Model                           V/RAM\n    =========================================")
+    print("    #   Model                           VRAM\n    =========================================")
     i = 1
     for m in modellist:
         print("    {0} - {1}\t\t{2}".format("{:<2}".format(i), m[0].ljust(15), m[2]))
@@ -301,7 +307,7 @@ def device_config(model):
             assert sum(breakmodel.gpu_blocks) <= n_layers
             n_layers -= sum(breakmodel.gpu_blocks)
         except:
-            print("WARNING: --layers is malformatted. Please use the --help option to see correct usage of --layers. Defaulting to all layers on device 0.", file=sys.stderr)
+            print("WARNING: --breakmodel_gpulayers is malformatted. Please use the --help option to see correct usage of --breakmodel_gpulayers. Defaulting to all layers on device 0.", file=sys.stderr)
             breakmodel.gpu_blocks = [n_layers]
             n_layers = 0
     elif(args.breakmodel_layers is not None):
@@ -390,6 +396,54 @@ def device_config(model):
     breakmodel.move_hidden_layers(model.transformer)
 
 #==================================================================#
+#  Allow the models to override some settings
+#==================================================================#
+def loadmodelsettings():
+    try:
+        model_js_config = str(model_config).partition(' ')[2]
+        js   = json.loads(model_js_config)
+    except Exception as e:
+        try:
+            model_js_config = open(vars.custmodpth + "/config.json", "r")
+        except Exception as e:
+            model_js_config = open(vars.custmodpth.replace('/', '_') + "/config.json", "r")
+        js   = json.load(model_js_config)
+    if("badwordsids" in js):
+        vars.badwordsids = js["badwordsids"]
+    if("nobreakmodel" in js):
+        vars.nobreakmodel = js["nobreakmodel"]
+    if("temp" in js):
+        vars.temp       = js["temp"]
+    if("top_p" in js):
+        vars.top_p      = js["top_p"]
+    if("top_k" in js):
+        vars.top_k      = js["top_k"]
+    if("tfs" in js):
+        vars.tfs        = js["tfs"]
+    if("rep_pen" in js):
+        vars.rep_pen    = js["rep_pen"]
+    if("rep_pen_slope" in js):
+        vars.rep_pen_slope = js["rep_pen_slope"]
+    if("rep_pen_range" in js):
+        vars.rep_pen_range = js["rep_pen_range"]
+    if("adventure" in js):
+        vars.adventure = js["adventure"]
+    if("chatmode" in js):
+        vars.chatmode = js["chatmode"]
+    if("dynamicscan" in js):
+        vars.dynamicscan = js["dynamicscan"]
+    if("formatoptns" in js):
+        vars.formatoptns = js["formatoptns"]
+    if("welcome" in js):
+        vars.welcome = js["welcome"]
+    if("newlinemode" in js):
+        vars.newlinemode = js["newlinemode"]
+    if("antemplate" in js):
+        vars.setauthornotetemplate = js["antemplate"]
+        if(not vars.gamestarted):
+            vars.authornotetemplate = vars.setauthornotetemplate
+
+#==================================================================#
 # Startup
 #==================================================================#
 
@@ -402,11 +456,12 @@ parser.add_argument("--path", help="Specify the Path for local models (For model
 parser.add_argument("--cpu", action='store_true', help="By default unattended launches are on the GPU use this option to force CPU usage.")
 parser.add_argument("--breakmodel", action='store_true', help=argparse.SUPPRESS)
 parser.add_argument("--breakmodel_layers", type=int, help=argparse.SUPPRESS)
-parser.add_argument("--breakmodel_gpulayers", type=str, help="If using a model that supports hybrid generation, this is a comma-separated list that specifies how many layers to put on each GPU device. For example to put 8 layers on device 0, 9 layers on device 1 and 11 layers on device 2, use --layers 8,9,11")
+parser.add_argument("--breakmodel_gpulayers", type=str, help="If using a model that supports hybrid generation, this is a comma-separated list that specifies how many layers to put on each GPU device. For example to put 8 layers on device 0, 9 layers on device 1 and 11 layers on device 2, use --beakmodel_gpulayers 8,9,11")
 parser.add_argument("--override_delete", action='store_true', help="Deleting stories from inside the browser is disabled if you are using --remote and enabled otherwise. Using this option will instead allow deleting stories if using --remote and prevent deleting stories otherwise.")
 parser.add_argument("--override_rename", action='store_true', help="Renaming stories from inside the browser is disabled if you are using --remote and enabled otherwise. Using this option will instead allow renaming stories if using --remote and prevent renaming stories otherwise.")
 parser.add_argument("--configname", help="Force a fixed configuration name to aid with config management.")
 parser.add_argument("--colab", action='store_true', help="Optimize for Google Colab.")
+parser.add_argument("--nobreakmodel", action='store_true', help="Disables Breakmodel support completely.")
 parser.add_argument("--share", action='store_true', default=False, help="If present will launch KoboldAI available to all computers rather than local only")
 parser.add_argument("--quiet", action='store_true', default=False, help="If present will suppress any story related text from showing on the console")
 
@@ -426,7 +481,11 @@ if args.colab:
     args.remote = True;
     args.override_rename = True;
     args.override_delete = True;
-    
+    args.nobreakmodel = True;
+
+if args.nobreakmodel:
+    vars.nobreakmodel = True;
+
 if args.remote:
     vars.remote = True;
 
@@ -445,7 +504,7 @@ if args.model:
         vars.colaburl = args.path + "/request"; # Lets just use the same parameter to keep it simple
 
 else:
-    print("{0}Welcome to the KoboldAI Server!\nSelect an AI model to continue:{1}\n".format(colors.CYAN, colors.END))
+    print("{0}Welcome to the KoboldAI Server!\nListed RAM is the optimal VRAM and CPU ram can be up to twice the amount.\nMost models can run at less VRAM with reduced max tokens or less layers on the GPU.\nSelect an AI model to continue:{1}\n".format(colors.CYAN, colors.END))
     getModelSelection()
 
 # If transformers model was selected & GPU available, ask to use CPU or GPU
@@ -482,15 +541,19 @@ if(not vars.model in ["InferKit", "Colab", "OAI", "ReadOnly", "TPUMeshTransforme
     elif(vars.model_type == "not_found"):
         print("WARNING: No model type detected, assuming Neo (If this is a GPT2 model use the other menu option or --model GPT2Custom)")
         vars.model_type = "gpt_neo"
+    loadmodelsettings()
     print("{0}Looking for GPU support...{1}".format(colors.PURPLE, colors.END), end="")
     vars.hascuda = torch.cuda.is_available()
-    vars.bmsupported = vars.model_type in ("gpt_neo", "gptj") and not args.colab
+    vars.bmsupported = vars.model_type in ("gpt_neo", "gptj") and not vars.nobreakmodel
     if(args.breakmodel is not None and args.breakmodel):
-        print("WARNING: --breakmodel is no longer supported. Breakmodel mode is now automatically enabled when --layers is used (see --help for details).", file=sys.stderr)
+        print("WARNING: --breakmodel is no longer supported. Breakmodel mode is now automatically enabled when --breakmodel_gpulayers is used (see --help for details).", file=sys.stderr)
     if(args.breakmodel_layers is not None):
-        print("WARNING: --breakmodel_layers is deprecated. Use --layers instead (see --help for details).", file=sys.stderr)
+        print("WARNING: --breakmodel_layers is deprecated. Use --breakmodel_gpulayers instead (see --help for details).", file=sys.stderr)
+    if(args.model and vars.bmsupported and not args.breakmodel_gpulayers and not args.breakmodel_layers):
+        print("WARNING: Model launched without the --breakmodel_gpulayers argument, defaulting to GPU only mode.", file=sys.stderr)
+        vars.bmsupported = False
     if(not vars.bmsupported and (args.breakmodel_gpulayers is not None or args.breakmodel_layers is not None)):
-        print("WARNING: This model does not support hybrid generation. --layers will be ignored.", file=sys.stderr)
+        print("WARNING: This model does not support hybrid generation. --breakmodel_gpulayers will be ignored.", file=sys.stderr)
     if(vars.hascuda):
         print("{0}FOUND!{1}".format(colors.GREEN, colors.END))
     else:
@@ -917,7 +980,7 @@ if(not vars.model in ["InferKit", "Colab", "OAI", "ReadOnly", "TPUMeshTransforme
                        model     = AutoModelForCausalLM.from_pretrained(vars.custmodpth, cache_dir="cache/", **lowmem)
                    except ValueError as e:
                        model     = GPTNeoForCausalLM.from_pretrained(vars.custmodpth, cache_dir="cache/", **lowmem)
-            elif(os.path.isdir(format(vars.model.replace('/', '_')))):
+            elif(os.path.isdir(vars.model.replace('/', '_'))):
                with(maybe_use_float16()):
                    try:
                        tokenizer = AutoTokenizer.from_pretrained(vars.model.replace('/', '_'), cache_dir="cache/")
@@ -1071,6 +1134,7 @@ else:
         print("{0}Initializing Mesh Transformer JAX, please wait...{1}".format(colors.PURPLE, colors.END))
         assert vars.model == "TPUMeshTransformerGPTJ" and vars.custmodpth and os.path.isdir(vars.custmodpth)
         import tpu_mtj_backend
+        tpu_mtj_backend.vars = vars
         tpu_mtj_backend.warper_callback = tpumtjgenerate_warper_callback
         tpu_mtj_backend.stopping_callback = tpumtjgenerate_stopping_callback
         tpu_mtj_backend.compiling_callback = tpumtjgenerate_compiling_callback
@@ -2130,13 +2194,24 @@ def sendUSStatItems():
     vars.last_userscripts = last_userscripts
 
 #==================================================================#
+#  KoboldAI Markup Formatting (Mixture of Markdown and sanitized html)
+#==================================================================#
+def kml(txt):
+   txt = txt.replace('>', '&gt;')
+   txt = bleach.clean(markdown.markdown(txt), tags = ['p', 'em', 'strong', 'code', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'li', 'ul', 'b', 'i', 'a', 'span', 'button'], styles = ['color', 'font-weight'], attributes=['id', 'class', 'style', 'href'])
+   return txt
+
+#==================================================================#
 #  Send start message and tell Javascript to set UI state
 #==================================================================#
 def setStartState():
-    txt = "<span>Welcome to <span class=\"color_cyan\">KoboldAI</span>! You are running <span class=\"color_green\">"+getmodelname()+"</span>.<br/>"
-    if(not vars.noai):
-        txt = txt + "Please load a game or enter a prompt below to begin!</span>"
+    if(vars.welcome):
+        txt = kml(vars.welcome) + "<br/>"
     else:
+        txt = "<span>Welcome to <span class=\"color_cyan\">KoboldAI</span>! You are running <span class=\"color_green\">"+getmodelname()+"</span>.<br/>"
+    if(not vars.noai and not vars.welcome):
+        txt = txt + "Please load a game or enter a prompt below to begin!</span>"
+    if(vars.noai):
         txt = txt + "Please load or import a story to read. There is no AI in this mode."
     emit('from_server', {'cmd': 'updatescreen', 'gamestarted': vars.gamestarted, 'data': txt}, broadcast=True)
     emit('from_server', {'cmd': 'setgamestate', 'data': 'start'}, broadcast=True)
@@ -2190,6 +2265,8 @@ def savesettings():
     js["rngpersist"]  = vars.rngpersist
     js["nogenmod"]    = vars.nogenmod
     js["autosave"]    = vars.autosave
+    js["welcome"]     = vars.welcome
+    js["newlinemode"] = vars.newlinemode
 
     js["antemplate"]  = vars.setauthornotetemplate
 
@@ -2264,6 +2341,10 @@ def loadsettings():
             vars.nogenmod = js["nogenmod"]
         if("autosave" in js):
             vars.autosave = js["autosave"]
+        if("newlinemode" in js):
+            vars.newlinemode = js["newlinemode"]
+        if("welcome" in js):
+            vars.welcome = js["welcome"]
 
         if("antemplate" in js):
             vars.setauthornotetemplate = js["antemplate"]
@@ -2291,47 +2372,6 @@ def loadsettings():
 
         file.close()
 
-#==================================================================#
-#  Allow the models to override some settings
-#==================================================================#
-def loadmodelsettings():
-    try:
-        model_js_config = str(model_config).partition(' ')[2]
-        js   = json.loads(model_js_config)
-    except Exception as e:
-        try:
-            model_js_config = open(vars.custmodpth + "/config.json", "r")
-        except Exception as e:
-            model_js_config = open(vars.custmodpth.replace('/', '_') + "/config.json", "r")
-        js   = json.load(model_js_config)
-    if("badwordsids" in js):
-        vars.badwordsids = js["badwordsids"]
-    if("temp" in js):
-        vars.temp       = js["temp"]
-    if("top_p" in js):
-        vars.top_p      = js["top_p"]
-    if("top_k" in js):
-        vars.top_k      = js["top_k"]
-    if("tfs" in js):
-        vars.tfs        = js["tfs"]
-    if("rep_pen" in js):
-        vars.rep_pen    = js["rep_pen"]
-    if("rep_pen_slope" in js):
-        vars.rep_pen_slope = js["rep_pen_slope"]
-    if("rep_pen_range" in js):
-        vars.rep_pen_range = js["rep_pen_range"]
-    if("adventure" in js):
-        vars.adventure = js["adventure"]
-    if("chatmode" in js):
-        vars.chatmode = js["chatmode"]
-    if("dynamicscan" in js):
-        vars.dynamicscan = js["dynamicscan"]
-    if("formatoptns" in js):
-        vars.formatoptns = js["formatoptns"]
-    if("antemplate" in js):
-        vars.setauthornotetemplate = js["antemplate"]
-        if(not vars.gamestarted):
-            vars.authornotetemplate = vars.setauthornotetemplate
 
 #==================================================================#
 #  Don't save settings unless 2 seconds have passed without modification
@@ -2369,7 +2409,7 @@ def actionsubmit(data, actionmode=0, force_submit=False, force_prompt_gen=False,
     # Ignore new submissions if the AI is currently busy
     if(vars.aibusy):
         return
-
+    
     while(True):
         set_aibusy(1)
 
@@ -2392,7 +2432,11 @@ def actionsubmit(data, actionmode=0, force_submit=False, force_prompt_gen=False,
             data = re.sub(r'\n+', ' ', data)
             if(len(data)):
                 data = f"\n{vars.chatname} : {data}\n"
-                
+        
+        # </s> mode
+        if(vars.newlinemode == "s"):
+            data = data.replace('\n', "</s>")
+        
         # If we're not continuing, store a copy of the raw input
         if(data != ""):
             vars.lastact = data
@@ -2744,7 +2788,7 @@ def calcsubmit(txt):
     actionlen    = len(vars.actions)
 
     winfo, mem, anotetxt, found_entries = calcsubmitbudgetheader(txt)
-
+ 
     # For all transformers models
     if(vars.model != "InferKit"):
         subtxt, min, max = calcsubmitbudget(actionlen, winfo, mem, anotetxt, vars.actions, submission=txt)
@@ -3296,7 +3340,7 @@ def tpumtjgenerate(txt, minimum, maximum, found_entries=None):
 # Replaces returns and newlines with HTML breaks
 #==================================================================#
 def formatforhtml(txt):
-    return txt.replace("\\r\\n", "<br/>").replace("\\r", "<br/>").replace("\\n", "<br/>").replace("\r\n", "<br/>").replace('\n', '<br/>').replace('\r', '<br/>')
+    return txt.replace("\\r\\n", "<br/>").replace("\\r", "<br/>").replace("\\n", "<br/>").replace("\r\n", "<br/>").replace('\n', '<br/>').replace('\r', '<br/>').replace('&lt;/s&gt;', '<br/>')
 
 #==================================================================#
 # Strips submitted text from the text returned by the AI
@@ -3323,13 +3367,16 @@ def applyinputformatting(txt):
     # Add sentence spacing
     if(vars.formatoptns["frmtadsnsp"]):
         txt = utils.addsentencespacing(txt, vars)
-    
+ 
     return txt
 
 #==================================================================#
 # Applies chosen formatting options to text returned from AI
 #==================================================================#
 def applyoutputformatting(txt):
+    # Revert S mode on output to maintain compatibility
+    txt = txt.replace('</s>', "\n")
+
     # Use standard quotes and apostrophes
     txt = utils.fixquotes(txt)
 
@@ -4781,8 +4828,6 @@ def randomGameRequest(topic, memory=""):
     emit('from_server', {'cmd': 'setmemory', 'data': vars.memory}, broadcast=True)
 
 # Load desired settings from both the model and the users config file
-if(not vars.model in ["InferKit", "Colab", "OAI", "ReadOnly", "TPUMeshTransformerGPTJ"]):
-    loadmodelsettings()
 loadsettings()
 
 # Prevent tokenizer from taking extra time the first time it's used
