@@ -2,6 +2,6 @@
 # installs the rocm-dev package.
 
 
-FROM ebolam/koboldai_base
+FROM ebolam/koboldai_base:bare
 WORKDIR /content/
 RUN micromamba update -y -n base -f /content/environments/huggingface.yml
