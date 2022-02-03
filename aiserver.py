@@ -104,8 +104,8 @@ class vars:
     genamt      = 80     # Amount of text for each action to generate
     ikgen       = 200    # Number of characters for InferKit to generate
     rep_pen     = 1.1    # Default generator repetition_penalty
-    rep_pen_slope = 0.0  # Default generator repetition penalty slope
-    rep_pen_range = 0    # Default generator repetition penalty range
+    rep_pen_slope = 1.0  # Default generator repetition penalty slope
+    rep_pen_range = 512    # Default generator repetition penalty range
     temp        = 0.5    # Default generator temperature
     top_p       = 0.9    # Default generator top_p
     top_k       = 0      # Default generator top_k
