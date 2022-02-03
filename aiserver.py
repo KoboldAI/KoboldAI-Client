@@ -755,7 +755,7 @@ if(not vars.model in ["InferKit", "Colab", "OAI", "ReadOnly", "TPUMeshTransforme
                 if(hasattr(self, "transformer")):
                     inputs_embeds = self.transformer.wte(input_ids)
                 else:
-                    inputs_embeds = self.model.embed_tokens(input_ids) * self.embed_scale
+                    inputs_embeds = self.model.embed_tokens(input_ids) * self.model.embed_scale
                 if(vars.sp is not None):
                     vars.sp = vars.sp.to(inputs_embeds.dtype).to(inputs_embeds.device)
                     inputs_embeds = torch.where(
