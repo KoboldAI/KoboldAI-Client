@@ -1163,27 +1163,41 @@ function parsegenseqs(seqs) {
 	seqselcontents.html("");
 	var i;
 	for(i=0; i<seqs.length; i++) {
-		if (seqs[i][1]) {
-			color = "white"
+		//setup selection data
+		text_data = "<table><tr><td width=100%><div class=\"seqselitem\" id=\"seqsel"+i+"\" n=\""+i+"\">"+seqs[i][0]+"</div></td><td width=10>"
+		
+		//Now do the icon (pin/redo)
+		
+		if (seqs[i][1] == "redo") {
+			text_data = text_data + "<span style=\"color: white\" class=\"oi oi-loop-circular\" title=\"Redo\" aria-hidden=\"true\" id=\"seqselpin"+i+"\" n=\""+i+"\"></span>"
+		} else if (seqs[i][1] == "pinned") {
+			text_data = text_data + "<span style=\"color: white\" class=\"oi oi-pin\" title=\"Pin\" aria-hidden=\"true\" id=\"seqselpin"+i+"\" n=\""+i+"\"></span>"
 		} else {
-			color = "grey"
+			text_data = text_data + "<span style=\"color: grey\" class=\"oi oi-pin\" title=\"Pin\" aria-hidden=\"true\" id=\"seqselpin"+i+"\" n=\""+i+"\"></span>"
 		}
-		seqselcontents.append("<table><tr><td width=100%><div class=\"seqselitem\" id=\"seqsel"+i+"\" n=\""+i+"\">"+seqs[i][0]+"</div></td><td width=10><span style=\"color: "+color+"\" class=\"oi oi-pin\" title=\"Pin\" aria-hidden=\"true\" id=\"seqselpin"+i+"\" n=\""+i+"\"></span></td></tr></table>");
+		text_data = text_data + "</td></tr></table>"
+		seqselcontents.append(text_data);
+		
+		//setup on-click actions
 		$("#seqsel"+i).on("click", function () {
 			socket.send({'cmd': 'seqsel', 'data': $(this).attr("n")});
 		});
-		$("#seqselpin"+i).on("click", function () {
-			socket.send({'cmd': 'seqpin', 'data': $(this).attr("n")});
-			if ($(this).attr("style") == "color: grey") {
-				console.log($(this).attr("style"));
-				$(this).css({"color": "white"});
-				console.log($(this).attr("style"));
-			} else {
-				console.log($(this).attr("style"));
-				$(this).css({"color": "grey"});
-				console.log($(this).attr("style"));
-			}
-		});
+		
+		//onclick for pin only
+		if (seqs[i][1] != "redo") {
+			$("#seqselpin"+i).on("click", function () {
+				socket.send({'cmd': 'seqpin', 'data': $(this).attr("n")});
+				if ($(this).attr("style") == "color: grey") {
+					console.log($(this).attr("style"));
+					$(this).css({"color": "white"});
+					console.log($(this).attr("style"));
+				} else {
+					console.log($(this).attr("style"));
+					$(this).css({"color": "grey"});
+					console.log($(this).attr("style"));
+				}
+			});
+		}
 	}
 	$('#seqselmenu').slideDown("slow");
 }

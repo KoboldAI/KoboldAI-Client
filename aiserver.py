@@ -2643,7 +2643,7 @@ def actionredo():
             
             
             # Send sequences to UI for selection
-            genout = [[item['Text'], True] for item in vars.actions_metadata[len(vars.actions)]['Alternative Text'] if (item["Previous Selection"]==True)]
+            genout = [[item['Text'], "redo"] for item in vars.actions_metadata[len(vars.actions)]['Alternative Text'] if (item["Previous Selection"]==True)]
             emit('from_server', {'cmd': 'genseqs', 'data': genout}, broadcast=True)
     else:
         emit('from_server', {'cmd': 'popuperror', 'data': "There's nothing to undo"}, broadcast=True)
@@ -3082,7 +3082,7 @@ def genselect(genout):
     # Store sequences in memory until selection is made
     vars.genseqs = genout
     
-    genout = [[item['Text'], item['Pinned']] for item in vars.actions_metadata[len(vars.actions)]['Alternative Text']  if (item["Previous Selection"]==False) and (item["Edited"]==False)]
+    genout = [[item['Text'], "pinned" if item['Pinned'] else "normal"] for item in vars.actions_metadata[len(vars.actions)]['Alternative Text']  if (item["Previous Selection"]==False) and (item["Edited"]==False)]
 
     # Send sequences to UI for selection
     emit('from_server', {'cmd': 'genseqs', 'data': genout}, broadcast=True)
