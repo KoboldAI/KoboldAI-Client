@@ -90,11 +90,11 @@ KoboldAI has a large number of dependencies you will need to install on your com
 
 KoboldAI is a rolling release on our github, the code you see is also the game. You can the software by clicking on the green Code button at the top of the page and clicking Download ZIP.
 
-The easiest way for Windows users is to use the [offline installer](https://sourceforge.net/projects/henkjaro/files/latest/download) below.
+The easiest way for Windows users is to use the [offline installer](https://sourceforge.net/projects/koboldai/files/latest/download) below.
 
 ### Installing KoboldAI offline bundle on Windows 7 or higher using the KoboldAI Offline Installer (Easiest)
 
-1. [Download the latest offline installer from here](https://sourceforge.net/projects/henkjaro/files/latest/download)
+1. [Download the latest offline installer from here](https://sourceforge.net/projects/koboldai/files/latest/download)
 2. Run the installer to place KoboldAI on a location of choice, KoboldAI is portable software and is not bound to a specific harddrive. (Because of long paths inside our dependencies you may not be able to extract it many folders deep).
 3. Update KoboldAI to the latest version with update-koboldai.bat if desired.
 4. Use KoboldAI offline using play.bat or remotely with remote-play.bat
