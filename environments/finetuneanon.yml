@@ -10,8 +10,13 @@ dependencies:
   - cudatoolkit=11.1
   - tensorflow-gpu
   - python=3.8.*
+  - eventlet
+  - markdown
+  - bleach
   - pip
   - git
   - pip:
     - git+https://github.com/finetuneanon/transformers@gpt-neo-localattention3-rp-b
     - flask-cloudflared
+    - flask-ngrok
+    - lupa==1.10

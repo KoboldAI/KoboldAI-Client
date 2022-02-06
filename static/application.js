@@ -18,6 +18,8 @@ var button_importwi;
 var button_impaidg;
 var button_settings;
 var button_format;
+var button_softprompt;
+var button_userscripts;
 var button_mode;
 var button_mode_label;
 var button_send;
@@ -28,6 +30,7 @@ var button_actwi;
 var game_text;
 var input_text;
 var message_text;
+var chat_name;
 var settings_menu;
 var format_menu;
 var wi_menu;
@@ -53,6 +56,14 @@ var loadpopup;
 var	loadcontent;
 var	load_accept;
 var	load_close;
+var sppopup;
+var	spcontent;
+var	sp_accept;
+var	sp_close;
+var uspopup;
+var	uscontent;
+var	us_accept;
+var	us_close;
 var nspopup;
 var ns_accept;
 var ns_close;
@@ -66,6 +77,7 @@ var storyname = null;
 var memorymode = false;
 var memorytext = "";
 var gamestarted = false;
+var wiscroll = 0;
 var editmode = false;
 var connected = false;
 var newly_loaded = true;
@@ -73,10 +85,16 @@ var modified_chunks = new Set();
 var empty_chunks = new Set();
 var gametext_bound = false;
 var saved_prompt = "...";
+var wifolders_d = {};
+var wifolders_l = [];
 var override_focusout = false;
 var sman_allow_delete = false;
 var sman_allow_rename = false;
+var allowsp = false;
 var remote = false;
+var gamestate = "";
+var gamesaved = true;
+var modelname = null;
 
 // This is true iff [we're in macOS and the browser is Safari] or [we're in iOS]
 var using_webkit_patch = true;
@@ -93,6 +111,9 @@ var allowedit   = true;  // Whether clicking on chunks will edit them
 // Adventure
 var action_mode = 0;  // 0: story, 1: action
 var adventure = false;
+
+// Chatmode
+var chatmode = false;
 
 //=================================================================//
 //  METHODS
@@ -150,6 +171,23 @@ function addSetting(ob) {
 	}
 }
 
+function refreshTitle() {
+	var title = gamesaved ? "" : "\u2731 ";
+	if(storyname !== null) {
+		title += storyname + " \u2014 ";
+	}
+	title += "KoboldAI Client";
+	if(modelname !== null) {
+		title += " (" + modelname + ")";
+	}
+	document.title = title;
+}
+
+function setGameSaved(state) {
+	gamesaved = !!state;
+	refreshTitle();
+}
+
 function addFormat(ob) {
 	// Check if we need to make a new column for this button
 	if(formatcount == 0) {
@@ -190,51 +228,99 @@ function addImportLine(ob) {
 	});
 }
 
+function adjustWiCommentHeight(element) {
+	element.style.height = "0px";
+	element.style.height = element.scrollHeight + "px";
+	element.parentNode.parentNode.style.height = element.scrollHeight + 90 + "px";
+}
+
+function adjustWiFolderNameHeight(element) {
+	element.style.height = "0px";
+	element.style.height = element.scrollHeight + "px";
+	element.parentNode.parentNode.parentNode.style.height = element.scrollHeight + 19 + "px";
+}
+
 function addWiLine(ob) {
+	var current_wifolder_element = ob.folder === null ? $(".wisortable-body:not([folder-uid])").last() : $(".wisortable-body[folder-uid="+ob.folder+"]");
 	if(ob.init) {
 		if(ob.selective){
-			wi_menu.append("<div class=\"wilistitem wilistitem-selective "+(ob.constant ? "wilistitem-constant" : "")+"\">\
+			current_wifolder_element.append("<div class=\"wilistitem wilistitem-selective "+(ob.constant ? "wilistitem-constant" : "")+"\" num=\""+ob.num+"\" uid=\""+ob.uid+"\" id=\"wilistitem"+ob.num+"\">\
+				<div class=\"wicomment\">\
+					<textarea class=\"form-control\" placeholder=\"Comment\" id=\"wicomment"+ob.num+"\">"+ob.comment+"</textarea>\
+				</div>\
+				<div class=\"wihandle\" id=\"wihandle"+ob.num+"\">\
+					<div class=\"wicentered\">\
+						<span class=\"oi oi-grid-two-up\" aria-hidden=\"true\"></span>\
+						<br/>\
+						<span class=\"oi oi-grid-two-up\" aria-hidden=\"true\"></span>\
+						<br/>\
+						<span class=\"oi oi-grid-two-up\" aria-hidden=\"true\"></span>\
+						<br/>\
+						<span class=\"oi oi-grid-two-up\" aria-hidden=\"true\"></span>\
+						<br/>\
+						<span class=\"oi oi-grid-two-up\" aria-hidden=\"true\"></span>\
+						<br/>\
+						<span class=\"oi oi-grid-two-up\" aria-hidden=\"true\"></span>\
+						<br/>\
+						<span class=\"oi oi-grid-two-up\" aria-hidden=\"true\"></span>\
+					</div>\
+				</div>\
 				<div class=\"wiremove\">\
 					<button type=\"button\" class=\"btn btn-primary heightfull\" id=\"btn_wi"+ob.num+"\">X</button>\
 					<button type=\"button\" class=\"btn btn-success heighthalf hidden\" id=\"btn_widel"+ob.num+"\">✓</button>\
 					<button type=\"button\" class=\"btn btn-danger heighthalf hidden\" id=\"btn_wican"+ob.num+"\">⮌</button>\
 				</div>\
 				<div class=\"icon-container wikey\">\
-					<input class=\"form-control heightfull hidden\" type=\"text\" placeholder=\"Key(s)\" id=\"wikey"+ob.num+"\">\
-					<input class=\"form-control heighthalf\" type=\"text\" placeholder=\"Primary Key(s)\" id=\"wikeyprimary"+ob.num+"\">\
-					<input class=\"form-control heighthalf\" type=\"text\" placeholder=\"Secondary Key(s)\" id=\"wikeysecondary"+ob.num+"\">\
+					<input class=\"form-control wiheightfull hidden\" type=\"text\" placeholder=\"Key(s)\" id=\"wikey"+ob.num+"\">\
+					<input class=\"form-control wiheighthalf\" type=\"text\" placeholder=\"Primary Key(s)\" id=\"wikeyprimary"+ob.num+"\">\
+					<input class=\"form-control wiheighthalf\" type=\"text\" placeholder=\"Secondary Key(s)\" id=\"wikeysecondary"+ob.num+"\">\
+					<span class=\"selective-key-icon "+(ob.selective ? "selective-key-icon-enabled" : "")+" oi oi-layers\" id=\"selective-key-"+ob.num+"\" title=\"Toggle Selective Key mode (if enabled, this world info entry will be included in memory only if at least one PRIMARY KEY and at least one SECONDARY KEY are both present in the story)\" aria-hidden=\"true\"></span>\
 					<span class=\"constant-key-icon "+(ob.constant ? "constant-key-icon-enabled" : "")+" oi oi-pin\" id=\"constant-key-"+ob.num+"\" title=\"Toggle Constant Key mode (if enabled, this world info entry will always be included in memory)\" aria-hidden=\"true\"></span>\
 				</div>\
 				<div class=\"wientry\">\
 					<textarea class=\"layer-bottom form-control\" id=\"wientry"+ob.num+"\" placeholder=\"What To Remember\">"+ob.content+"</textarea>\
 				</div>\
-				<div class=\"wiselective\">\
-					<button type=\"button\" class=\"btn btn-success heightfull hidden\" id=\"btn_wiselon"+ob.num+"\">Enable Selective Mode</button>\
-					<button type=\"button\" class=\"btn btn-danger heightfull\" id=\"btn_wiseloff"+ob.num+"\">Disable Selective Mode</button>\
-				</div>\
 			</div>");
 		} else {
-			wi_menu.append("<div class=\"wilistitem "+(ob.constant ? "wilistitem-constant" : "")+"\">\
+			current_wifolder_element.append("<div class=\"wilistitem "+(ob.constant ? "wilistitem-constant" : "")+"\" num=\""+ob.num+"\" uid=\""+ob.uid+"\" id=\"wilistitem"+ob.num+"\">\
+				<div class=\"wicomment\">\
+					<textarea class=\"form-control\" placeholder=\"Comment\" id=\"wicomment"+ob.num+"\">"+ob.comment+"</textarea>\
+				</div>\
+				<div class=\"wihandle\" id=\"wihandle"+ob.num+"\">\
+					<div class=\"wicentered\">\
+						<span class=\"oi oi-grid-two-up\" aria-hidden=\"true\"></span>\
+						<br/>\
+						<span class=\"oi oi-grid-two-up\" aria-hidden=\"true\"></span>\
+						<br/>\
+						<span class=\"oi oi-grid-two-up\" aria-hidden=\"true\"></span>\
+						<br/>\
+						<span class=\"oi oi-grid-two-up\" aria-hidden=\"true\"></span>\
+						<br/>\
+						<span class=\"oi oi-grid-two-up\" aria-hidden=\"true\"></span>\
+						<br/>\
+						<span class=\"oi oi-grid-two-up\" aria-hidden=\"true\"></span>\
+						<br/>\
+						<span class=\"oi oi-grid-two-up\" aria-hidden=\"true\"></span>\
+					</div>\
+				</div>\
 				<div class=\"wiremove\">\
 					<button type=\"button\" class=\"btn btn-primary heightfull\" id=\"btn_wi"+ob.num+"\">X</button>\
 					<button type=\"button\" class=\"btn btn-success heighthalf hidden\" id=\"btn_widel"+ob.num+"\">✓</button>\
 					<button type=\"button\" class=\"btn btn-danger heighthalf hidden\" id=\"btn_wican"+ob.num+"\">⮌</button>\
 				</div>\
 				<div class=\"icon-container wikey\">\
-					<input class=\"form-control heightfull\" type=\"text\" placeholder=\"Key(s)\" id=\"wikey"+ob.num+"\">\
-					<input class=\"form-control heighthalf hidden\" type=\"text\" placeholder=\"Primary Key(s)\" id=\"wikeyprimary"+ob.num+"\">\
-					<input class=\"form-control heighthalf hidden\" type=\"text\" placeholder=\"Secondary Key(s)\" id=\"wikeysecondary"+ob.num+"\">\
+					<input class=\"form-control wiheightfull\" type=\"text\" placeholder=\"Key(s)\" id=\"wikey"+ob.num+"\">\
+					<input class=\"form-control wiheighthalf hidden\" type=\"text\" placeholder=\"Primary Key(s)\" id=\"wikeyprimary"+ob.num+"\">\
+					<input class=\"form-control wiheighthalf hidden\" type=\"text\" placeholder=\"Secondary Key(s)\" id=\"wikeysecondary"+ob.num+"\">\
+					<span class=\"selective-key-icon "+(ob.selective ? "selective-key-icon-enabled" : "")+" oi oi-layers\" id=\"selective-key-"+ob.num+"\" title=\"Toggle Selective Key mode (if enabled, this world info entry will be included in memory only if at least one PRIMARY KEY and at least one SECONDARY KEY are both present in the story)\" aria-hidden=\"true\"></span>\
 					<span class=\"constant-key-icon "+(ob.constant ? "constant-key-icon-enabled" : "")+" oi oi-pin\" id=\"constant-key-"+ob.num+"\" title=\"Toggle Constant Key mode (if enabled, this world info entry will always be included in memory)\" aria-hidden=\"true\"></span>\
 				</div>\
 				<div class=\"wientry\">\
 					<textarea class=\"form-control\" id=\"wientry"+ob.num+"\" placeholder=\"What To Remember\">"+ob.content+"</textarea>\
 				</div>\
-				<div class=\"wiselective\">\
-					<button type=\"button\" class=\"btn btn-success heightfull\" id=\"btn_wiselon"+ob.num+"\">Enable Selective Mode</button>\
-					<button type=\"button\" class=\"btn btn-danger heightfull hidden\" id=\"btn_wiseloff"+ob.num+"\">Disable Selective Mode</button>\
-				</div>\
 			</div>");
 		}
+		adjustWiCommentHeight($("#wicomment"+ob.num)[0]);
 		// Send key value to text input
 		$("#wikey"+ob.num).val(ob.key);
 		$("#wikeyprimary"+ob.num).val(ob.key);
@@ -245,81 +331,254 @@ function addWiLine(ob) {
 		});
 	} else {
 		// Show WI line item with form fields hidden (uninitialized)
-		wi_menu.append("<div class=\"wilistitem\">\
+		current_wifolder_element.append("<div class=\"wilistitem wilistitem-uninitialized wisortable-excluded\" num=\""+ob.num+"\" uid=\""+ob.uid+"\" id=\"wilistitem"+ob.num+"\">\
+			<div class=\"wicomment\">\
+				<textarea class=\"form-control hidden\" placeholder=\"Comment\" id=\"wicomment"+ob.num+"\">"+ob.comment+"</textarea>\
+			</div>\
+			<div class=\"wihandle-inactive hidden\" id=\"wihandle"+ob.num+"\">\
+				<div class=\"wicentered\">\
+					<span class=\"oi oi-grid-two-up\" aria-hidden=\"true\"></span>\
+					<br/>\
+					<span class=\"oi oi-grid-two-up\" aria-hidden=\"true\"></span>\
+					<br/>\
+					<span class=\"oi oi-grid-two-up\" aria-hidden=\"true\"></span>\
+					<br/>\
+					<span class=\"oi oi-grid-two-up\" aria-hidden=\"true\"></span>\
+					<br/>\
+					<span class=\"oi oi-grid-two-up\" aria-hidden=\"true\"></span>\
+					<br/>\
+					<span class=\"oi oi-grid-two-up\" aria-hidden=\"true\"></span>\
+					<br/>\
+					<span class=\"oi oi-grid-two-up\" aria-hidden=\"true\"></span>\
+				</div>\
+			</div>\
 			<div class=\"wiremove\">\
 				<button type=\"button\" class=\"btn btn-primary heightfull\" id=\"btn_wi"+ob.num+"\">+</button>\
 				<button type=\"button\" class=\"btn btn-success heighthalf hidden\" id=\"btn_widel"+ob.num+"\">✓</button>\
 				<button type=\"button\" class=\"btn btn-danger heighthalf hidden\" id=\"btn_wican"+ob.num+"\">X</button>\
 			</div>\
 			<div class=\"icon-container wikey\">\
-				<input class=\"form-control heightfull hidden\" type=\"text\" placeholder=\"Key(s)\" id=\"wikey"+ob.num+"\">\
-				<input class=\"form-control heighthalf hidden\" type=\"text\" placeholder=\"Primary Key(s)\" id=\"wikeyprimary"+ob.num+"\">\
-				<input class=\"form-control heighthalf hidden\" type=\"text\" placeholder=\"Secondary Key(s)\" id=\"wikeysecondary"+ob.num+"\">\
+				<input class=\"form-control wiheightfull hidden\" type=\"text\" placeholder=\"Key(s)\" id=\"wikey"+ob.num+"\">\
+				<input class=\"form-control wiheighthalf hidden\" type=\"text\" placeholder=\"Primary Key(s)\" id=\"wikeyprimary"+ob.num+"\">\
+				<input class=\"form-control wiheighthalf hidden\" type=\"text\" placeholder=\"Secondary Key(s)\" id=\"wikeysecondary"+ob.num+"\">\
+				<span class=\"selective-key-icon oi oi-layers hidden\" id=\"selective-key-"+ob.num+"\" title=\"Toggle Selective Key mode (if enabled, this world info entry will be included in memory only if at least one PRIMARY KEY and at least one SECONDARY KEY are both present in the story)\" aria-hidden=\"true\"></span>\
 				<span class=\"constant-key-icon oi oi-pin hidden\" id=\"constant-key-"+ob.num+"\" title=\"Toggle Constant Key mode (if enabled, this world info entry will always be included in memory)\" aria-hidden=\"true\"></span>\
 			</div>\
 			<div class=\"wientry\">\
 				<textarea class=\"layer-bottom form-control hidden\" id=\"wientry"+ob.num+"\" placeholder=\"What To Remember\">"+ob.content+"</textarea>\
 			</div>\
-			<div class=\"wiselective\">\
-				<button type=\"button\" class=\"btn btn-success heightfull hidden\" id=\"btn_wiselon"+ob.num+"\">Enable Selective Mode</button>\
-				<button type=\"button\" class=\"btn btn-danger heightfull hidden\" id=\"btn_wiseloff"+ob.num+"\">Disable Selective Mode</button>\
-			</div>\
 		</div>");
 		// Assign function to expand WI item to button
 		$("#btn_wi"+ob.num).on("click", function () {
-			expandWiLine(ob.num);
+			var folder = $("#wilistitem"+ob.num).parent().attr("folder-uid");
+			if(folder === undefined) {
+				folder = null;
+			} else {
+				folder = parseInt(folder);
+			}
+			socket.send({'cmd': 'wiexpand', 'data': ob.num});
+			socket.send({'cmd': 'wiinit', 'folder': folder, 'data': ob.num});
 		});
 	}
 	// Assign actions to other elements
 	wientry_onfocus = function () {
+		$("#selective-key-"+ob.num).addClass("selective-key-icon-clickthrough");
 		$("#constant-key-"+ob.num).addClass("constant-key-icon-clickthrough");
 	}
 	wientry_onfocusout = function () {
+		$("#selective-key-"+ob.num).removeClass("selective-key-icon-clickthrough");
 		$("#constant-key-"+ob.num).removeClass("constant-key-icon-clickthrough");
+		// Tell server about updated WI fields
+		var selective = $("#wilistitem"+ob.num)[0].classList.contains("wilistitem-selective");
+		socket.send({'cmd': 'wiupdate', 'num': ob.num, 'data': {
+			key: selective ? $("#wikeyprimary"+ob.num).val() : $("#wikey"+ob.num).val(),
+			keysecondary: $("#wikeysecondary"+ob.num).val(),
+			content: $("#wientry"+ob.num).val(),
+			comment: $("#wicomment"+ob.num).val(),
+		}});
 	}
 	$("#wikey"+ob.num).on("focus", wientry_onfocus);
 	$("#wikeyprimary"+ob.num).on("focus", wientry_onfocus);
 	$("#wikeysecondary"+ob.num).on("focus", wientry_onfocus);
+	$("#wientry"+ob.num).on("focus", wientry_onfocus);
+	$("#wicomment"+ob.num).on("focus", wientry_onfocus);
 	$("#wikey"+ob.num).on("focusout", wientry_onfocusout);
 	$("#wikeyprimary"+ob.num).on("focusout", wientry_onfocusout);
 	$("#wikeysecondary"+ob.num).on("focusout", wientry_onfocusout);
+	$("#wientry"+ob.num).on("focusout", wientry_onfocusout);
+	$("#wicomment"+ob.num).on("focusout", wientry_onfocusout);
 	$("#btn_wican"+ob.num).on("click", function () {
 		hideWiDeleteConfirm(ob.num);
 	});
 	$("#btn_widel"+ob.num).on("click", function () {
-		socket.send({'cmd': 'widelete', 'data': ob.num});
+		socket.send({'cmd': 'widelete', 'data': ob.uid});
 	});
-	$("#btn_wiselon"+ob.num).on("click", function () {
-		enableWiSelective(ob.num);
-		$("#wikey"+ob.num).addClass("wilistitem-selective");
-	});
-	$("#btn_wiseloff"+ob.num).on("click", function () {
-		disableWiSelective(ob.num);
-		$("#wikey"+ob.num).removeClass("wilistitem-selective");
+	$("#selective-key-"+ob.num).on("click", function () {
+		var element = $("#selective-key-"+ob.num);
+		if(element.hasClass("selective-key-icon-enabled")) {
+			socket.send({'cmd': 'wiseloff', 'data': ob.num});
+		} else {
+			socket.send({'cmd': 'wiselon', 'data': ob.num});
+		}
 	});
 	$("#constant-key-"+ob.num).on("click", function () {
 		var element = $("#constant-key-"+ob.num);
 		if(element.hasClass("constant-key-icon-enabled")) {
 			socket.send({'cmd': 'wiconstantoff', 'data': ob.num});
-			element.removeClass("constant-key-icon-enabled");
-			$("#wikey"+ob.num).removeClass("wilistitem-constant");
 		} else {
 			socket.send({'cmd': 'wiconstanton', 'data': ob.num});
-			element.addClass("constant-key-icon-enabled");
-			$("#wikey"+ob.num).addClass("wilistitem-constant");
 		}
+	});
+	$("#wihandle"+ob.num).off().on("mousedown", function () {
+		wientry_onfocusout()
+		$(".wisortable-container").addClass("wisortable-excluded");
+		// Prevent WI entries with extremely long comments from filling the screen and preventing scrolling
+		$(this).parent().css("max-height", "200px").find(".wicomment").find(".form-control").css("max-height", "110px");
+	}).on("mouseup", function () {
+		$(".wisortable-excluded-dynamic").removeClass("wisortable-excluded-dynamic");
+		$(this).parent().css("max-height", "").find(".wicomment").find(".form-control").css("max-height", "");
 	});
 }
 
+function addWiFolder(uid, ob) {
+	if(uid !== null) {
+		var uninitialized = $("#wilistfoldercontainer"+null);
+		var html = "<div class=\"wisortable-container "+(ob.collapsed ? "" : "folder-expanded")+"\" id=\"wilistfoldercontainer"+uid+"\" folder-uid=\""+uid+"\">\
+			<div class=\"wilistfolder\" id=\"wilistfolder"+uid+"\">\
+				<div class=\"wiremove\">\
+					<button type=\"button\" class=\"btn btn-primary heightfull\" id=\"btn_wifolder"+uid+"\">X</button>\
+					<button type=\"button\" class=\"btn btn-success heighthalf hidden\" id=\"btn_wifolderdel"+uid+"\">✓</button>\
+					<button type=\"button\" class=\"btn btn-danger heighthalf hidden\" id=\"btn_wifoldercan"+uid+"\">⮌</button>\
+				</div>\
+				<div class=\"wifoldericon\">\
+					<div class=\"wicentered\">\
+						<span class=\"oi oi-folder folder-expand "+(ob.collapsed ? "" : "folder-expanded")+"\" id=\"btn_wifolderexpand"+uid+"\" aria-hidden=\"true\"></span>\
+					</div>\
+				</div>\
+				<div class=\"wifoldername\">\
+					<div class=\"wicentered-vertical\">\
+						<textarea class=\"form-control\" placeholder=\"Untitled Folder\" id=\"wifoldername"+uid+"\">"+ob.name+"</textarea>\
+					</div>\
+				</div>\
+				<div class=\"wihandle wifolderhandle\" id=\"wifolderhandle"+uid+"\">\
+					<div class=\"wicentered\">\
+						<span class=\"oi oi-grid-two-up\" aria-hidden=\"true\"></span>\
+						<br/>\
+						<span class=\"oi oi-grid-two-up\" aria-hidden=\"true\"></span>\
+						<br/>\
+						<span class=\"oi oi-grid-two-up\" aria-hidden=\"true\"></span>\
+					</div>\
+				</div>\
+			</div>\
+			<div class=\"wifoldergutter-container\" id=\"wifoldergutter"+uid+"\">\
+				<div class=\"wifoldergutter\"></div>\
+			</div>\
+			<div class=\"wisortable-body\" folder-uid=\""+uid+"\">\
+				<div class=\"wisortable-dummy\"></div>\
+			</div>\
+		</div>";
+		if(uninitialized.length) {
+			$(html).insertBefore(uninitialized);
+		} else {
+			wi_menu.append(html);
+		}
+		var onfocusout = function () {
+			socket.send({'cmd': 'wifolderupdate', 'uid': uid, 'data': {
+				name: $("#wifoldername"+uid).val(),
+				collapsed: !$("#btn_wifolderexpand"+uid).hasClass("folder-expanded"),
+			}});
+		};
+		$("#wifoldergutter"+uid).on("click", function () {
+			$(this).siblings(".wilistfolder")[0].scrollIntoView();
+		});
+		$("#btn_wifolder"+uid).on("click", function () {
+			showWiFolderDeleteConfirm(uid);
+		});
+		$("#btn_wifolderdel"+uid).on("click", function () {
+			socket.send({'cmd': 'wifolderdelete', 'data': uid});
+		});
+		$("#btn_wifoldercan"+uid).on("click", function () {
+			hideWiFolderDeleteConfirm(uid);
+		})
+		$("#wifoldername"+uid).on("focusout", onfocusout);
+		$("#wifolderhandle"+uid).off().on("mousedown", function () {
+			onfocusout();
+			$(".wilistitem, .wisortable-dummy").addClass("wisortable-excluded-dynamic");
+			// Prevent WI folders with extremely long names from filling the screen and preventing scrolling
+			$(this).parent().parent().find(".wisortable-body").addClass("hidden");
+			$(this).parent().css("max-height", "200px").find(".wifoldername").find(".form-control").css("max-height", "181px");
+		}).on("mouseup", function () {
+			$(".wisortable-excluded-dynamic").removeClass("wisortable-excluded-dynamic");
+			$(this).parent().parent().find(".wisortable-body").removeClass("hidden");
+			$(this).parent().css("max-height", "").find(".wifoldername").find(".form-control").css("max-height", "");
+		});
+		$("#btn_wifolderexpand"+uid).on("click", function () {
+			if($(this).hasClass("folder-expanded")) {
+				socket.send({'cmd': 'wifoldercollapsecontent', 'data': uid});
+			} else {
+				socket.send({'cmd': 'wifolderexpandcontent', 'data': uid});
+			}
+		})
+		adjustWiFolderNameHeight($("#wifoldername"+uid)[0]);
+		if(ob.collapsed) {
+			setTimeout(function() {
+				var container = $("#wilistfoldercontainer"+uid);
+				hide([container.find(".wifoldergutter-container"), container.find(".wisortable-body")]);
+			}, 2);
+		}
+	} else {
+		wi_menu.append("<div class=\"wisortable-container folder-expanded\" id=\"wilistfoldercontainer"+uid+"\">\
+			<div class=\"wilistfolder\" id=\"wilistfolder"+uid+"\">\
+				<div class=\"wiremove\">\
+					<button type=\"button\" class=\"btn btn-primary heightfull\" id=\"btn_wifolder"+uid+"\">+</button>\
+					<button type=\"button\" class=\"btn btn-success heighthalf hidden\" id=\"btn_wifolderdel"+uid+"\">✓</button>\
+					<button type=\"button\" class=\"btn btn-danger heighthalf hidden\" id=\"btn_wifoldercan"+uid+"\">⮌</button>\
+				</div>\
+				<div class=\"wifoldericon\">\
+					<div class=\"wicentered\">\
+						<span class=\"oi oi-folder folder-expand folder-expanded\" id=\"btn_wifolderexpand"+uid+"\" aria-hidden=\"true\"></span>\
+					</div>\
+				</div>\
+				<div class=\"wifoldername\">\
+					<div class=\"wicentered-vertical\">\
+						<textarea class=\"form-control hidden\" placeholder=\"Untitled Folder\" id=\"wifoldername"+uid+"\"></textarea>\
+					</div>\
+				</div>\
+				<div class=\"wihandle-inactive wifolderhandle hidden\" id=\"wifolderhandle"+uid+"\">\
+					<div class=\"wicentered\">\
+						<span class=\"oi oi-grid-two-up\" aria-hidden=\"true\"></span>\
+						<br/>\
+						<span class=\"oi oi-grid-two-up\" aria-hidden=\"true\"></span>\
+						<br/>\
+						<span class=\"oi oi-grid-two-up\" aria-hidden=\"true\"></span>\
+					</div>\
+				</div>\
+			</div>\
+			<div class=\"wisortable-body\">\
+				<div class=\"wisortable-dummy\"></div>\
+			</div>\
+		</div>");
+		$("#btn_wifolder"+uid).on("click", function () {
+			expandWiFolderLine(uid);
+		});
+	}
+}
+
 function expandWiLine(num) {
-	show([$("#wikey"+num), $("#wientry"+num), $("#constant-key-"+num), $("#btn_wiselon"+num)]);
+	show([$("#wikey"+num), $("#wientry"+num), $("#wihandle"+num), $("#selective-key-"+num), $("#constant-key-"+num), $("#btn_wiselon"+num), $("#wicomment"+num)]);
+	$("#wihandle"+num).removeClass("wihandle-inactive").addClass("wihandle");
 	$("#btn_wi"+num).html("X");
 	$("#btn_wi"+num).off();
-	// Tell server the WI entry was initialized
-	socket.send({'cmd': 'wiinit', 'data': num});
+	$("#wilistitem"+num).removeClass("wilistitem-uninitialized").removeClass("wisortable-excluded");
 	$("#btn_wi"+num).on("click", function () {
 		showWiDeleteConfirm(num);
 	});
+
+	adjustWiCommentHeight($("#wicomment"+num)[0]);
+}
+
+function expandWiFolderLine(num) {
+	socket.send({'cmd': 'wifolderinit', 'data': ''});
 }
 
 function showWiDeleteConfirm(num) {
@@ -327,25 +586,63 @@ function showWiDeleteConfirm(num) {
 	show([$("#btn_widel"+num), $("#btn_wican"+num)]);
 }
 
+function showWiFolderDeleteConfirm(num) {
+	hide([$("#btn_wifolder"+num)]);
+	show([$("#btn_wifolderdel"+num), $("#btn_wifoldercan"+num)]);
+}
+
 function hideWiDeleteConfirm(num) {
 	show([$("#btn_wi"+num)]);
 	hide([$("#btn_widel"+num), $("#btn_wican"+num)]);
 }
 
+function hideWiFolderDeleteConfirm(num) {
+	show([$("#btn_wifolder"+num)]);
+	hide([$("#btn_wifolderdel"+num), $("#btn_wifoldercan"+num)]);
+}
+
+function collapseWiFolderContent(uid) {
+	hide([$("#wifoldergutter"+uid), $(".wisortable-body[folder-uid="+uid+"]")]);
+	$("#btn_wifolderexpand"+uid).removeClass("folder-expanded");
+	$("#wilistfoldercontainer"+uid).removeClass("folder-expanded");
+}
+
+function expandWiFolderContent(uid) {
+	show([$("#wifoldergutter"+uid), $(".wisortable-body[folder-uid="+uid+"]")]);
+	$("#btn_wifolderexpand"+uid).addClass("folder-expanded");
+	$("#wilistfoldercontainer"+uid).addClass("folder-expanded");
+}
+
 function enableWiSelective(num) {
-	hide([$("#btn_wiselon"+num), $("#wikey"+num)]);
-	// Tell server the WI entry is now selective
-	socket.send({'cmd': 'wiselon', 'data': num});
+	hide([$("#wikey"+num)]);
 	$("#wikeyprimary"+num).val($("#wikey"+num).val());
-	show([$("#wikeyprimary"+num), $("#wikeysecondary"+num), $("#btn_wiseloff"+num)]);
+	show([$("#wikeyprimary"+num), $("#wikeysecondary"+num)]);
+
+	var element = $("#selective-key-"+num);
+	element.addClass("selective-key-icon-enabled");
+	$("#wikey"+num).addClass("wilistitem-selective");
 }
 
 function disableWiSelective(num) {
-	hide([$("#btn_wiseloff"+num), $("#wikeyprimary"+num), $("#wikeysecondary"+num)]);
-	// Tell server the WI entry is now non-selective
-	socket.send({'cmd': 'wiseloff', 'data': num});
+	hide([$("#wikeyprimary"+num), $("#wikeysecondary"+num)]);
 	$("#wikey"+num).val($("#wikeyprimary"+num).val());
-	show([$("#btn_wiselon"+num), $("#wikey"+num)]);
+	show([$("#wikey"+num)]);
+
+	var element = $("#selective-key-"+num);
+	element.removeClass("selective-key-icon-enabled");
+	$("#wikey"+num).removeClass("wilistitem-selective");
+}
+
+function enableWiConstant(num) {
+	var element = $("#constant-key-"+num);
+	element.addClass("constant-key-icon-enabled");
+	$("#wikey"+num).addClass("wilistitem-constant");
+}
+
+function disableWiConstant(num) {
+	var element = $("#constant-key-"+num);
+	element.removeClass("constant-key-icon-enabled");
+	$("#wikey"+num).removeClass("wilistitem-constant");
 }
 
 function highlightImportLine(ref) {
@@ -371,12 +668,14 @@ function disableButtons(refs) {
 }
 
 function enableSendBtn() {
-	enableButtons([button_send])
+	button_send.removeClass("wait");
+	button_send.addClass("btn-primary");
 	button_send.html("Submit");
 }
 
 function disableSendBtn() {
-	disableButtons([button_send])
+	button_send.removeClass("btn-primary");
+	button_send.addClass("wait");
 	button_send.html("");
 }
 
@@ -386,9 +685,9 @@ function showMessage(msg) {
 	message_text.html(msg);
 }
 
-function errMessage(msg) {
+function errMessage(msg, type="error") {
 	message_text.removeClass();
-	message_text.addClass("color_red");
+	message_text.addClass(type == "warn" ? "color_orange" : "color_red");
 	message_text.html(msg);
 }
 
@@ -398,6 +697,7 @@ function hideMessage() {
 }
 
 function showWaitAnimation() {
+	hideWaitAnimation();
 	$("#inputrowright").append("<img id=\"waitanim\" src=\"static/thinking.gif\"/>");
 }
 
@@ -445,6 +745,7 @@ function exitEditMode() {
 function enterMemoryMode() {
 	memorymode = true;
 	setmodevisibility(false);
+	setchatnamevisibility(false);
 	showMessage("Edit the memory to be sent with each request to the AI.");
 	button_actmem.html("Cancel");
 	hide([button_actback, button_actretry, button_actwi]);
@@ -455,6 +756,7 @@ function enterMemoryMode() {
 function exitMemoryMode() {
 	memorymode = false;
 	setmodevisibility(adventure);
+	setchatnamevisibility(chatmode);
 	hideMessage();
 	button_actmem.html("Memory");
 	show([button_actback, button_actretry, button_actwi]);
@@ -467,6 +769,7 @@ function enterWiMode() {
 	showMessage("World Info will be added to memory only when the key appears in submitted text or the last action.");
 	button_actwi.html("Accept");
 	hide([button_actback, button_actmem, button_actretry, game_text]);
+	setchatnamevisibility(false);
 	show([wi_menu]);
 	disableSendBtn();
 	$("#gamescreen").addClass("wigamescreen");
@@ -476,6 +779,7 @@ function exitWiMode() {
 	hideMessage();
 	button_actwi.html("W Info");
 	hide([wi_menu]);
+	setchatnamevisibility(chatmode);
 	show([button_actback, button_actmem, button_actretry, game_text]);
 	enableSendBtn();
 	$("#gamescreen").removeClass("wigamescreen");
@@ -485,11 +789,19 @@ function returnWiList(ar) {
 	var list = [];
 	var i;
 	for(i=0; i<ar.length; i++) {
-		var ob          = {"key": "", "keysecondary": "", "content": "", "num": ar[i], "selective": false, "constant": false};
+		var folder = $("#wilistitem"+ar[i]).parent().attr("folder-uid");
+		if(folder === undefined) {
+			folder = null;
+		} else {
+			folder = parseInt(folder);
+		}
+		var ob          = {"key": "", "keysecondary": "", "content": "", "comment": "", "folder": null, "uid": parseInt($("#wilistitem"+ar[i]).attr("uid")), "selective": false, "constant": false};
 		ob.selective    = $("#wikeyprimary"+ar[i]).css("display") != "none"
 		ob.key          = ob.selective ? $("#wikeyprimary"+ar[i]).val() : $("#wikey"+ar[i]).val();
-		ob.keysecondary = $("#wikeysecondary"+ar[i]).val()
+		ob.keysecondary = $("#wikeysecondary"+ar[i]).val();
 		ob.content      = $("#wientry"+ar[i]).val();
+		ob.comment      = $("#wicomment"+i).val();
+		ob.folder       = folder;
 		ob.constant     = $("#constant-key-"+ar[i]).hasClass("constant-key-icon-enabled");
 		list.push(ob);
 	}
@@ -504,18 +816,15 @@ function formatChunkInnerText(chunk) {
 	return text;
 }
 
-function dosubmit() {
+function dosubmit(disallow_abort) {
 	var txt = input_text.val().replace(/\u00a0/g, " ");
-	if(!memorymode && !gamestarted && ((!adventure || !action_mode) && txt.trim().length == 0)) {
+	if((disallow_abort || gamestate !== "wait") && !memorymode && !gamestarted && ((!adventure || !action_mode) && txt.trim().length == 0)) {
 		return;
-	}
-	socket.send({'cmd': 'submit', 'actionmode': adventure ? action_mode : 0, 'data': txt});
-	if(memorymode) {
-		memorytext = input_text.val();
 	}
 	input_text.val("");
 	hideMessage();
 	hidegenseqs();
+	socket.send({'cmd': 'submit', 'allowabort': !disallow_abort, 'actionmode': adventure ? action_mode : 0, 'chatname': chatmode ? chat_name.val() : undefined, 'data': txt});
 }
 
 function changemode() {
@@ -589,6 +898,28 @@ function hideLoadPopup() {
 	loadcontent.html("");
 }
 
+function showSPPopup() {
+	sppopup.removeClass("hidden");
+	sppopup.addClass("flex");
+}
+
+function hideSPPopup() {
+	sppopup.removeClass("flex");
+	sppopup.addClass("hidden");
+	spcontent.html("");
+}
+
+function showUSPopup() {
+	uspopup.removeClass("hidden");
+	uspopup.addClass("flex");
+}
+
+function hideUSPopup() {
+	uspopup.removeClass("flex");
+	uspopup.addClass("hidden");
+	spcontent.html("");
+}
+
 function buildLoadList(ar) {
 	disableButtons([load_accept]);
 	loadcontent.html("");
@@ -654,8 +985,81 @@ function buildLoadList(ar) {
 	}
 }
 
+function buildSPList(ar) {
+	disableButtons([sp_accept]);
+	spcontent.html("");
+	showSPPopup();
+	ar.push({filename: '', name: "[None]"})
+	for(var i = 0; i < ar.length; i++) {
+		var author = !ar[i].author
+			? ''
+			: ar[i].author.constructor === Array
+			? ar[i].author.join(', ')
+			: ar[i].author;
+		var n_tokens = !ar[i].n_tokens || !Number.isSafeInteger(ar[i].n_tokens) || ar[i].n_tokens < 1
+			? ''
+			: "(" + ar[i].n_tokens + " tokens)";
+		var filename = ar[i].filename.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;').replace(/(?=\r|\n)\r?\n?/g, '<br/>');
+		var name = ar[i].name || ar[i].filename;
+		name = name.length > 120 ? name.slice(0, 117) + '...' : name;
+		name = name.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;').replace(/(?=\r|\n)\r?\n?/g, '<br/>');
+		var desc = ar[i].description || '';
+		desc = desc.length > 500 ? desc.slice(0, 497) + '...' : desc;
+		desc = desc.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;').replace(/(?=\r|\n)\r?\n?/g, '<br/>');
+		spcontent.append("<div class=\"flex\">\
+			<div class=\"splistitem flex-row-container\" id=\"sp"+i+"\" name=\""+ar[i].filename+"\">\
+				<div class=\"flex-row\">\
+					<div>"+name+"</div>\
+					<div class=\"flex-push-right splistitemsub\">"+filename+"</div>\
+				</div>\
+				<div class=\"flex-row\">\
+					<div>"+desc+"</div>\
+					<div class=\"flex-push-right splistitemsub\">" + author + "<br/>" + n_tokens + "</div>\
+				</div>\
+			</div>\
+		</div>");
+		$("#sp"+i).on("click", function () {
+			enableButtons([sp_accept]);
+			socket.send({'cmd': 'spselect', 'data': $(this).attr("name")});
+			highlightSPLine($(this));
+		});
+	}
+}
+
+function buildUSList(unloaded, loaded) {
+	usunloaded.html("");
+	usloaded.html("");
+	showUSPopup();
+	var i;
+	var j;
+	var el = usunloaded;
+	var ar = unloaded;
+	for(j=0; j<2; j++) {
+		for(i=0; i<ar.length; i++) {
+			el.append("<div class=\"flex\">\
+				<div class=\"uslistitem flex-row-container\" name=\""+ar[i].filename+"\">\
+					<div class=\"flex-row\">\
+						<div>"+ar[i].modulename+"</div>\
+						<div class=\"flex-push-right uslistitemsub\">&lt;"+ar[i].filename+"&gt;</div>\
+					</div>\
+					<div class=\"flex-row\">\
+						<div>"+ar[i].description+"</div>\
+					</div>\
+				</div>\
+			</div>");
+		}
+		el = usloaded;
+		ar = loaded;
+	}
+}
+
 function highlightLoadLine(ref) {
 	$("#loadlistcontent > div > div.popuplistselected").removeClass("popuplistselected");
+	ref.addClass("popuplistselected");
+}
+
+function highlightSPLine(ref) {
+	$("#splistcontent > div > div.popuplistselected").removeClass("popuplistselected");
 	ref.addClass("popuplistselected");
 }
 
@@ -672,11 +1076,67 @@ function hideNewStoryPopup() {
 function showRandomStoryPopup() {
 	rspopup.removeClass("hidden");
 	rspopup.addClass("flex");
+	if($("#setrngpersist").prop("checked")) {
+		$("#rngmemory").val(memorytext);
+	}
 }
 
 function hideRandomStoryPopup() {
 	rspopup.removeClass("flex");
 	rspopup.addClass("hidden");
+}
+
+function statFlash(ref) {
+	ref.addClass("status-flash");
+	setTimeout(function () {
+		ref.addClass("colorfade");
+		ref.removeClass("status-flash");
+		setTimeout(function () {
+			ref.removeClass("colorfade");
+		}, 1000);
+	}, 50);
+}
+
+function updateUSStatItems(items, flash) {
+	var stat_us = $("#stat-us");
+	var stat_usactive = $("#stat-usactive");
+	if(flash || stat_usactive.find("li").length != items.length) {
+		statFlash(stat_us.closest(".statusicon").add("#usiconlabel"));
+	}
+	stat_usactive.html("");
+	if(items.length == 0) {
+		stat_us.html("No userscripts active");
+		$("#usiconlabel").html("");
+		stat_us.closest(".statusicon").removeClass("active");
+		return;
+	}
+	stat_us.html("Active userscripts:");
+	stat_us.closest(".statusicon").addClass("active");
+	var i;
+	for(i = 0; i < items.length; i++) {
+		stat_usactive.append($("<li filename=\""+items[i].filename+"\">"+items[i].modulename+" &lt;"+items[i].filename+"&gt;</li>"));
+	}
+	$("#usiconlabel").html(items.length);
+}
+
+function updateSPStatItems(items) {
+	var stat_sp = $("#stat-sp");
+	var stat_spactive = $("#stat-spactive");
+	var key = null;
+	var old_val = stat_spactive.html();
+	Object.keys(items).forEach(function(k) {key = k;});
+	if(key === null) {
+		stat_sp.html("No soft prompt active");
+		stat_sp.closest(".statusicon").removeClass("active");
+		stat_spactive.html("");
+	} else {
+		stat_sp.html("Active soft prompt (" + items[key].n_tokens + " tokens):");
+		stat_sp.closest(".statusicon").addClass("active");
+		stat_spactive.html((items[key].name || key)+" &lt;"+key+"&gt;");
+	}
+	if(stat_spactive.html() !== old_val) {
+		statFlash(stat_sp.closest(".statusicon"));
+	}
 }
 
 function setStartState() {
@@ -725,6 +1185,14 @@ function setmodevisibility(state) {
 	}
 }
 
+function setchatnamevisibility(state) {
+	if(state){  // Enabling
+		show([chat_name]);
+	} else{  // Disabling
+		hide([chat_name]);
+	}
+}
+
 function setadventure(state) {
 	adventure = state;
 	if(state) {
@@ -737,11 +1205,51 @@ function setadventure(state) {
 	}
 }
 
+function setchatmode(state) {
+	chatmode = state;
+	setchatnamevisibility(state);
+}
+
 function autofocus(event) {
 	if(connected) {
 		event.target.focus();
 	} else {
 		event.preventDefault();
+	}
+}
+
+function sortableOnStart(event, ui) {
+}
+
+function sortableOnStop(event, ui) {
+	if(ui.item.hasClass("wilistitem")) {
+		// When a WI entry is dragged and dropped, tell the server which WI
+		// entry was dropped and which WI entry comes immediately after the
+		// dropped position so that the server can internally move around
+		// the WI entries
+		var next_sibling = ui.item.next(".wilistitem").attr("uid");
+		if(next_sibling === undefined) {
+			next_sibling = ui.item.next().next().attr("uid");
+		}
+		next_sibling = parseInt(next_sibling);
+		if(Number.isNaN(next_sibling)) {
+			$(this).sortable("cancel");
+			return;
+		}
+		socket.send({'cmd': 'wimoveitem', 'destination': next_sibling, 'data': parseInt(ui.item.attr("uid"))});
+	} else {
+		// Do the same thing for WI folders
+		var next_sibling = ui.item.next(".wisortable-container").attr("folder-uid");
+		if(next_sibling === undefined) {
+			next_sibling = null;
+		} else {
+			next_sibling = parseInt(next_sibling);
+		}
+		if(Number.isNaN(next_sibling)) {
+			$(this).sortable("cancel");
+			return;
+		}
+		socket.send({'cmd': 'wimovefolder', 'destination': next_sibling, 'data': parseInt(ui.item.attr("folder-uid"))});
 	}
 }
 
@@ -888,12 +1396,12 @@ function downloadStory(format) {
 		actionlist_compiled.push(actionlist[i].innerText.replace(/\u00a0/g, " "));
 	}
 	var last = actionlist_compiled[actionlist_compiled.length-1];
-	if(last.slice(-1) === '\n') {
+	if(last && last.slice(-1) === '\n') {
 		actionlist_compiled[actionlist_compiled.length-1] = last.slice(0, -1);
 	}
 
 	if(format == "plaintext") {
-		var objectURL = URL.createObjectURL(new Blob(actionlist_compiled));
+		var objectURL = URL.createObjectURL(new Blob(actionlist_compiled, {type: "text/plain; charset=UTF-8"}));
 		anchor.setAttribute('href', objectURL);
 		anchor.setAttribute('download', filename_without_extension + ".txt");
 		anchor.click();
@@ -903,12 +1411,23 @@ function downloadStory(format) {
 
 	var wilist = $(".wilistitem");
 	var wilist_compiled = [];
-	for(var i = 0; i < wilist.length-1; i++) {
+	for(var i = 0; i < wilist.length; i++) {
+		if(wilist[i].classList.contains("wilistitem-uninitialized")) {
+			continue;
+		}
 		var selective = wilist[i].classList.contains("wilistitem-selective");
+		var folder = $("#wilistitem"+i).parent().attr("folder-uid");
+		if(folder === undefined) {
+			folder = null;
+		} else {
+			folder = parseInt(folder);
+		}
 		wilist_compiled.push({
 			key: selective ? $("#wikeyprimary"+i).val() : $("#wikey"+i).val(),
 			keysecondary: $("#wikeysecondary"+i).val(),
 			content: $("#wientry"+i).val(),
+			comment: $("#wicomment"+i).val(),
+			folder: folder,
 			selective: selective,
 			constant: wilist[i].classList.contains("wilistitem-constant"),
 		});
@@ -923,9 +1442,12 @@ function downloadStory(format) {
 		prompt: prompt,
 		memory: memorytext,
 		authorsnote: $("#anoteinput").val(),
+		anotetemplate: $("#anotetemplate").val(),
 		actions: actionlist_compiled,
 		worldinfo: wilist_compiled,
-	}, null, 3)]));
+		wifolders_d: wifolders_d,
+		wifolders_l: wifolders_l,
+	}, null, 3)], {type: "application/json; charset=UTF-8"}));
 	anchor.setAttribute('href', objectURL);
 	anchor.setAttribute('download', filename_without_extension + ".json");
 	anchor.click();
@@ -1001,14 +1523,59 @@ function syncAllModifiedChunks(including_selected_chunks=false) {
 }
 
 function restorePrompt() {
-	if(game_text[0].firstChild && game_text[0].firstChild.nodeType === 3) {
-		saved_prompt = formatChunkInnerText(game_text[0].firstChild);
+	if($("#n0").length && formatChunkInnerText($("#n0")[0]).length === 0) {
+		$("#n0").remove();
+	}
+	var shadow_text = $("<b>" + game_text.html() + "</b>");
+	var detected = false;
+	var ref = null;
+	try {
+		if(shadow_text.length && shadow_text[0].firstChild && (shadow_text[0].firstChild.nodeType === 3 || shadow_text[0].firstChild.tagName === "BR")) {
+			detected = true;
+			ref = shadow_text;
+		} else if(game_text.length && game_text[0].firstChild && (game_text[0].firstChild.nodeType === 3 || game_text[0].firstChild.tagName === "BR")) {
+			detected = true;
+			ref = game_text;
+		}
+	} catch (e) {
+		detected = false;
+	}
+	if(detected) {
 		unbindGametext();
-		game_text[0].innerText = "";
+		var text = [];
+		while(true) {
+			if(ref.length && ref[0].firstChild && ref[0].firstChild.nodeType === 3) {
+				text.push(ref[0].firstChild.textContent.replace(/\u00a0/g, " "));
+			} else if(ref.length && ref[0].firstChild && ref[0].firstChild.tagName === "BR") {
+				text.push("\n");
+			} else {
+				break;
+			}
+			ref[0].removeChild(ref[0].firstChild);
+		}
+		text = text.join("").trim();
+		if(text.length) {
+			saved_prompt = text;
+		}
+		game_text[0].innerHTML = "";
 		bindGametext();
 	}
-	if($("#n0").length) {
-		$("#n0").remove();
+	game_text.children().each(function() {
+		if(this.tagName !== "CHUNK") {
+			this.parentNode.removeChild(this);
+		}
+	});
+	if(!detected) {
+		game_text.children().each(function() {
+			if(this.innerText.trim().length) {
+				saved_prompt = this.innerText.trim();
+				socket.send({'cmd': 'inlinedelete', 'data': this.getAttribute("n")});
+				this.parentNode.removeChild(this);
+				return false;
+			}
+			socket.send({'cmd': 'inlinedelete', 'data': this.getAttribute("n")});
+			this.parentNode.removeChild(this);
+		});
 	}
 	var prompt_chunk = document.createElement("chunk");
 	prompt_chunk.setAttribute("n", "0");
@@ -1167,6 +1734,8 @@ $(document).ready(function(){
 	button_impaidg    = $("#btn_impaidg");
 	button_settings   = $('#btn_settings');
 	button_format     = $('#btn_format');
+	button_softprompt = $("#btn_softprompt");
+	button_userscripts= $("#btn_userscripts");
 	button_mode       = $('#btnmode')
 	button_mode_label = $('#btnmode_label')
 	button_send       = $('#btnsend');
@@ -1177,6 +1746,7 @@ $(document).ready(function(){
 	game_text         = $('#gametext');
 	input_text        = $('#input_text');
 	message_text      = $('#messagefield');
+	chat_name         = $('#chatname');
 	settings_menu     = $("#settingsmenu");
 	format_menu       = $('#formatmenu');
 	anote_menu        = $('#anoterowcontainer');
@@ -1202,6 +1772,15 @@ $(document).ready(function(){
 	loadcontent       = $("#loadlistcontent");
 	load_accept       = $("#btn_loadaccept");
 	load_close        = $("#btn_loadclose");
+	sppopup           = $("#spcontainer");
+	spcontent         = $("#splistcontent");
+	sp_accept         = $("#btn_spaccept");
+	sp_close          = $("#btn_spclose");
+	uspopup           = $("#uscontainer");
+	usunloaded        = $("#uslistunloaded");
+	usloaded          = $("#uslistloaded");
+	us_accept         = $("#btn_usaccept");
+	us_close          = $("#btn_usclose");
 	nspopup           = $("#newgamecontainer");
 	ns_accept         = $("#btn_nsaccept");
 	ns_close          = $("#btn_nsclose");
@@ -1212,14 +1791,18 @@ $(document).ready(function(){
 	seqselcontents    = $("#seqselcontents");
 
 	// Connect to SocketIO server
-	socket = io.connect(window.document.origin);
-	
+	socket = io.connect(window.document.origin, {transports: ['polling', 'websocket'], closeOnBeforeunload: false});
+
 	socket.on('from_server', function(msg) {
 		if(msg.cmd == "connected") {
 			// Connected to Server Actions
 			sman_allow_delete = msg.hasOwnProperty("smandelete") && msg.smandelete;
 			sman_allow_rename = msg.hasOwnProperty("smanrename") && msg.smanrename;
 			connected = true;
+			if(msg.hasOwnProperty("modelname")) {
+				modelname = msg.modelname;
+			}
+			refreshTitle();
 			connect_status.html("<b>Connected to KoboldAI Process!</b>");
 			connect_status.removeClass("color_orange");
 			connect_status.addClass("color_green");
@@ -1258,6 +1841,7 @@ $(document).ready(function(){
 				document.activeElement.blur();
 				active_element.focus();
 			})();
+			$("body").addClass("connected");
 		} else if(msg.cmd == "updatescreen") {
 			var _gamestarted = gamestarted;
 			gamestarted = msg.gamestarted;
@@ -1283,7 +1867,6 @@ $(document).ready(function(){
 				scrollToBottom();
 			}
 			newly_loaded = false;
-			hideMessage();
 		} else if(msg.cmd == "scrolldown") {
 			scrollToBottom();
 		} else if(msg.cmd == "updatechunk") {
@@ -1332,15 +1915,26 @@ $(document).ready(function(){
 				enableSendBtn();
 				enableButtons([button_actmem, button_actwi, button_actback, button_actretry]);
 				hideWaitAnimation();
+				gamestate = "ready";
 			} else if(msg.data == "wait") {
+				gamestate = "wait";
 				disableSendBtn();
 				disableButtons([button_actmem, button_actwi, button_actback, button_actretry]);
 				showWaitAnimation();
 			} else if(msg.data == "start") {
 				setStartState();
+				gamestate = "ready";
+			}
+		} else if(msg.cmd == "allowsp") {
+			allowsp = !!msg.data;
+			if(allowsp) {
+				button_softprompt.removeClass("hidden");
+			} else {
+				button_softprompt.addClass("hidden");
 			}
 		} else if(msg.cmd == "setstoryname") {
 			storyname = msg.data;
+			refreshTitle();
 		} else if(msg.cmd == "editmode") {
 			// Enable or Disable edit mode
 			if(msg.data == "true") {
@@ -1368,7 +1962,12 @@ $(document).ready(function(){
 			}
 		} else if(msg.cmd == "errmsg") {
 			// Send error message
-			errMessage(msg.data);
+			errMessage(msg.data, "error");
+		} else if(msg.cmd == "warnmsg") {
+			// Send warning message
+			errMessage(msg.data, "warn");
+		} else if(msg.cmd == "hidemsg") {
+			hideMessage();
 		} else if(msg.cmd == "texteffect") {
 			// Apply color highlight to line of text
 			newTextHighlight($("#n"+msg.data))
@@ -1392,6 +1991,14 @@ $(document).ready(function(){
 			// Send current rep pen value to input
 			$("#setreppen").val(parseFloat(msg.data));
 			$("#setreppencur").html(msg.data);
+		} else if(msg.cmd == "updatereppenslope") {
+			// Send current rep pen value to input
+			$("#setreppenslope").val(parseFloat(msg.data));
+			$("#setreppenslopecur").html(msg.data);
+		} else if(msg.cmd == "updatereppenrange") {
+			// Send current rep pen value to input
+			$("#setreppenrange").val(parseFloat(msg.data));
+			$("#setreppenrangecur").html(msg.data);
 		} else if(msg.cmd == "updateoutlen") {
 			// Send current output amt value to input
 			$("#setoutput").val(parseInt(msg.data));
@@ -1419,6 +2026,12 @@ $(document).ready(function(){
 		} else if(msg.cmd == "setlabelreppen") {
 			// Update setting label with value from server
 			$("#setreppencur").html(msg.data);
+		} else if(msg.cmd == "setlabelreppenslope") {
+			// Update setting label with value from server
+			$("#setreppenslopecur").html(msg.data);
+		} else if(msg.cmd == "setlabelreppenrange") {
+			// Update setting label with value from server
+			$("#setreppenrangecur").html(msg.data);
 		} else if(msg.cmd == "setlabeloutput") {
 			// Update setting label with value from server
 			$("#setoutputcur").html(msg.data);
@@ -1438,10 +2051,13 @@ $(document).ready(function(){
 		} else if(msg.cmd == "getanote") {
 			// Request contents of Author's Note field
 			var txt = anote_input.val();
-			socket.send({'cmd': 'anote', 'data': txt});
+			socket.send({'cmd': 'anote', 'template': $("#anotetemplate").val(), 'data': txt});
 		} else if(msg.cmd == "setanote") {
 			// Set contents of Author's Note field
 			anote_input.val(msg.data);
+		} else if(msg.cmd == "setanotetemplate") {
+			// Set contents of Author's Note Template field
+			$("#anotetemplate").val(msg.data);
 		} else if(msg.cmd == "addsetting") {
 			// Add setting controls
 			addSetting(msg.data);
@@ -1460,9 +2076,16 @@ $(document).ready(function(){
 		} else if(msg.cmd == "updatefrmtadsnsp") {
 			// Update toggle state
 			$("#frmtadsnsp").prop('checked', msg.data).change();
+		} else if(msg.cmd == "updatesingleline") {
+			// Update toggle state
+			$("#singleline").prop('checked', msg.data).change();
 		} else if(msg.cmd == "allowtoggle") {
 			// Allow toggle change states to propagate
 			allowtoggle = msg.data;
+		} else if(msg.cmd == "usstatitems") {
+			updateUSStatItems(msg.data, msg.flash);
+		} else if(msg.cmd == "spstatitems") {
+			updateSPStatItems(msg.data);
 		} else if(msg.cmd == "popupshow") {
 			// Show/Hide Popup
 			popupShow(msg.data);
@@ -1487,24 +2110,87 @@ $(document).ready(function(){
 			} else {
 				exitWiMode();
 			}
+		} else if(msg.cmd == "wiupdate") {
+			var selective = $("#wilistitem"+msg.num)[0].classList.contains("wilistitem-selective");
+			if(selective) {
+				$("#wikeyprimary"+msg.num).val(msg.data.key);
+			} else {
+				$("#wikey"+msg.num).val(msg.data.key);
+			}
+			$("#wikeysecondary"+msg.num).val(msg.data.keysecondary);
+			$("#wientry"+msg.num).val(msg.data.content);
+			$("#wicomment"+msg.num).val(msg.data.comment);
+			adjustWiCommentHeight($("#wicomment"+msg.num)[0]);
+		} else if(msg.cmd == "wifolderupdate") {
+			$("#wifoldername"+msg.uid).val(msg.data.name);
+			adjustWiFolderNameHeight($("#wifoldername"+msg.uid)[0]);
+		} else if(msg.cmd == "wiexpand") {
+			expandWiLine(msg.data);
+		} else if(msg.cmd == "wiexpandfolder") {
+			expandWiFolderLine(msg.data);
+		} else if(msg.cmd == "wifoldercollapsecontent") {
+			collapseWiFolderContent(msg.data);
+		} else if(msg.cmd == "wifolderexpandcontent") {
+			expandWiFolderContent(msg.data);
+		} else if(msg.cmd == "wiselon") {
+			enableWiSelective(msg.data);
+		} else if(msg.cmd == "wiseloff") {
+			disableWiSelective(msg.data);
+		} else if(msg.cmd == "wiconstanton") {
+			enableWiConstant(msg.data);
+		} else if(msg.cmd == "wiconstantoff") {
+			disableWiConstant(msg.data);
 		} else if(msg.cmd == "addwiitem") {
 			// Add WI entry to WI Menu
 			addWiLine(msg.data);
-		} else if(msg.cmd == "clearwi") {
+		} else if(msg.cmd == "addwifolder") {
+			addWiFolder(msg.uid, msg.data);
+		} else if(msg.cmd == "wistart") {
+			// Save scroll position for later so we can restore it later
+			wiscroll = $("#gamescreen").scrollTop();
 			// Clear previous contents of WI list
 			wi_menu.html("");
-		} else if(msg.cmd == "requestwiitem") {
+			// Save wifolders_d and wifolders_l
+			wifolders_d = msg.wifolders_d;
+			wifolders_l = msg.wifolders_l;
+		} else if(msg.cmd == "wifinish") {
+			// Allow drag-and-drop rearranging of world info entries (via JQuery UI's "sortable widget")
+			$("#gamescreen").sortable({
+				items: "#wimenu .wisortable-body > :not(.wisortable-excluded):not(.wisortable-excluded-dynamic), #wimenu .wisortable-container[folder-uid]:not(.wisortable-excluded):not(.wisortable-excluded-dynamic)",
+				containment: "#wimenu",
+				connectWith: "#wimenu .wisortable-body",
+				handle: ".wihandle",
+				start: sortableOnStart,
+				stop: sortableOnStop,
+				placeholder: "wisortable-placeholder",
+				delay: 2,
+				cursor: "move",
+				tolerance: "pointer",
+				opacity: 0.21,
+				revert: 173,
+				scrollSensitivity: 64,
+				scrollSpeed: 10,
+			});
+			// Restore previously-saved scroll position
+			$("#gamescreen").scrollTop(wiscroll);
+	 	} else if(msg.cmd == "requestwiitem") {
 			// Package WI contents and send back to server
 			returnWiList(msg.data);
 		} else if(msg.cmd == "saveas") {
 			// Show Save As prompt
 			showSaveAsPopup();
+		} else if(msg.cmd == "gamesaved") {
+			setGameSaved(msg.data);
 		} else if(msg.cmd == "hidesaveas") {
 			// Hide Save As prompt
 			hideSaveAsPopup();
 		} else if(msg.cmd == "buildload") {
 			// Send array of save files to load UI
 			buildLoadList(msg.data);
+		} else if(msg.cmd == "buildsp") {
+			buildSPList(msg.data);
+		} else if(msg.cmd == "buildus") {
+			buildUSList(msg.data.unloaded, msg.data.loaded);
 		} else if(msg.cmd == "askforoverwrite") {
 			// Show overwrite warning
 			show([$(".saveasoverwrite")]);
@@ -1518,6 +2204,8 @@ $(document).ready(function(){
 		} else if(msg.cmd == "hidegenseqs") {
 			// Collapse genseqs menu
 			hidegenseqs();
+		} else if(msg.cmd == "setchatname") {
+			chat_name.val(msg.data);
 		} else if(msg.cmd == "setlabelnumseq") {
 			// Update setting label with value from server
 			$("#setnumseqcur").html(msg.data);
@@ -1540,6 +2228,26 @@ $(document).ready(function(){
 			$("#setadventure").prop('checked', msg.data).change();
 			// Update adventure state
 			setadventure(msg.data);
+		} else if(msg.cmd == "updatechatmode") {
+			// Update toggle state
+			$("#setchatmode").prop('checked', msg.data).change();
+			// Update chatmode state
+			setchatmode(msg.data);
+		} else if(msg.cmd == "updatedynamicscan") {
+			// Update toggle state
+			$("#setdynamicscan").prop('checked', msg.data).change();
+		} else if(msg.cmd == "updatenopromptgen") {
+			// Update toggle state
+			$("#setnopromptgen").prop('checked', msg.data).change();
+		} else if(msg.cmd == "updaterngpersist") {
+			// Update toggle state
+			$("#setrngpersist").prop('checked', msg.data).change();
+			if(!$("#setrngpersist").prop("checked")) {
+				$("#rngmemory").val("");
+			}
+		} else if(msg.cmd == "updatenogenmod") {
+			// Update toggle state
+			$("#setnogenmod").prop('checked', msg.data).change();
 		} else if(msg.cmd == "runs_remotely") {
 			remote = true;
 			hide([button_savetofile, button_import, button_importwi]);
@@ -1548,9 +2256,12 @@ $(document).ready(function(){
 	
 	socket.on('disconnect', function() {
 		connected = false;
+		$("body").removeClass("connected");
 		connect_status.html("<b>Lost connection...</b>");
 		connect_status.removeClass("color_green");
 		connect_status.addClass("color_orange");
+		updateUSStatItems([], false);
+		updateSPStatItems({});
 	});
 
 	// Register editing events
@@ -1580,6 +2291,24 @@ $(document).ready(function(){
 		}, 2);
 	});
 
+	// Make the userscripts menu sortable
+	var us_sortable_settings = {
+		placeholder: "ussortable-placeholder",
+		delay: 2,
+		cursor: "move",
+		tolerance: "pointer",
+		opacity: 0.21,
+		revert: 173,
+		scrollSensitivity: 64,
+		scrollSpeed: 10,
+	}
+	$(usunloaded).sortable($.extend({
+		connectWith: "#uslistloaded",
+	}, us_sortable_settings));
+	$(usloaded).sortable($.extend({
+		connectWith: "#uslistunloaded",
+	}, us_sortable_settings));
+
 	// Bind actions to UI buttons
 	button_send.on("click", function(ev) {
 		dosubmit();
@@ -1591,7 +2320,7 @@ $(document).ready(function(){
 	
 	button_actretry.on("click", function(ev) {
 		hideMessage();
-		socket.send({'cmd': 'retry', 'data': ''});
+		socket.send({'cmd': 'retry', 'chatname': chatmode ? chat_name.val() : undefined, 'data': ''});
 		hidegenseqs();
 	});
 	
@@ -1655,7 +2384,9 @@ $(document).ready(function(){
 	});
 	
 	button_impaidg.on("click", function(ev) {
-		showAidgPopup();
+		if(connected) {
+			showAidgPopup();
+		}
 	});
 	
 	aidg_close.on("click", function(ev) {
@@ -1671,7 +2402,9 @@ $(document).ready(function(){
 	});
 	
 	button_saveas.on("click", function(ev) {
-		showSaveAsPopup();
+		if(connected) {
+			showSaveAsPopup();
+		}
 	});
 	
 	saveas_close.on("click", function(ev) {
@@ -1688,11 +2421,21 @@ $(document).ready(function(){
 	});
 
 	button_downloadtxt.on("click", function(ev) {
-		downloadStory('plaintext');
+		if(connected) {
+			downloadStory('plaintext');
+		}
 	});
 	
 	button_load.on("click", function(ev) {
 		socket.send({'cmd': 'loadlistrequest', 'data': ''});
+	});
+
+	button_softprompt.on("click", function(ev) {
+		socket.send({'cmd': 'splistrequest', 'data': ''});
+	});
+
+	button_userscripts.on("click", function(ev) {
+		socket.send({'cmd': 'uslistrequest', 'data': ''});
 	});
 	
 	load_close.on("click", function(ev) {
@@ -1700,16 +2443,42 @@ $(document).ready(function(){
 	});
 	
 	load_accept.on("click", function(ev) {
+		hideMessage();
 		newly_loaded = true;
 		socket.send({'cmd': 'loadrequest', 'data': ''});
 		hideLoadPopup();
 	});
+
+	sp_close.on("click", function(ev) {
+		hideSPPopup();
+	});
+	
+	sp_accept.on("click", function(ev) {
+		hideMessage();
+		socket.send({'cmd': 'sprequest', 'data': ''});
+		hideSPPopup();
+	});
+
+	us_close.on("click", function(ev) {
+		socket.send({'cmd': 'usloaded', 'data': usloaded.find(".uslistitem").map(function() { return $(this).attr("name"); }).toArray()});
+		hideUSPopup();
+	});
+	
+	us_accept.on("click", function(ev) {
+		hideMessage();
+		socket.send({'cmd': 'usloaded', 'data': usloaded.find(".uslistitem").map(function() { return $(this).attr("name"); }).toArray()});
+		socket.send({'cmd': 'usload', 'data': ''});
+		hideUSPopup();
+	});
 	
 	button_newgame.on("click", function(ev) {
-		showNewStoryPopup();
+		if(connected) {
+			showNewStoryPopup();
+		}
 	});
 	
 	ns_accept.on("click", function(ev) {
+		hideMessage();
 		socket.send({'cmd': 'newgame', 'data': ''});
 		hideNewStoryPopup();
 	});
@@ -1738,11 +2507,14 @@ $(document).ready(function(){
 	});
 	
 	button_rndgame.on("click", function(ev) {
-		showRandomStoryPopup();
+		if(connected) {
+			showRandomStoryPopup();
+		}
 	});
 	
 	rs_accept.on("click", function(ev) {
-		socket.send({'cmd': 'rndgame', 'data': topic.val()});
+		hideMessage();
+		socket.send({'cmd': 'rndgame', 'memory': $("#rngmemory").val(), 'data': topic.val()});
 		hideRandomStoryPopup();
 	});
 	
@@ -1753,7 +2525,17 @@ $(document).ready(function(){
 	anote_slider.on("input", function () {
 		socket.send({'cmd': 'anotedepth', 'data': $(this).val()});
 	});
-	
+
+	// Dynamically change vertical size of world info "Comment" text box
+	wi_menu.on("input", ".wicomment > textarea", function () {
+		adjustWiCommentHeight(this);
+	});
+
+	// Dynamically change vertical size of world info folder name text box
+	wi_menu.on("input", ".wifoldername > div > textarea", function () {
+		adjustWiFolderNameHeight(this);
+	});
+
 	saveasinput.on("input", function () {
 		if(saveasinput.val() == "") {
 			disableButtons([saveas_accept]);
@@ -1767,7 +2549,7 @@ $(document).ready(function(){
 	input_text.keydown(function (ev) {
 		if (ev.which == 13 && !shift_down) {
 			do_clear_ent = true;
-			dosubmit();
+			dosubmit(true);
 		} else if(ev.which == 16) {
 			shift_down = true;
 		}
@@ -1794,5 +2576,14 @@ $(document).ready(function(){
 			sendSaveAsRequest();
 		}
 	});
-});
 
+	$([input_text, anote_input, $("#gamescreen")]).map($.fn.toArray).on("input", function() {
+		setGameSaved(false);
+	});
+
+	$(window).on("beforeunload", function() {
+		if(!gamesaved) {
+			return true;
+		}
+	});
+});

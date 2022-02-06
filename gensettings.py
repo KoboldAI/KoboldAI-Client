@@ -1,4 +1,16 @@
-gensettingstf = [{
+gensettingstf = [
+	{
+	"uitype": "slider",
+	"unit": "int",
+	"label": "Amount to Generate",
+	"id": "setoutput", 
+	"min": 16,
+	"max": 512,
+	"step": 2,
+	"default": 80,
+    "tooltip": "Number of tokens the AI should generate. Higher numbers will take longer to generate."
+	},
+   {
 	"uitype": "slider",
 	"unit": "float",
 	"label": "Temperature",
@@ -48,21 +60,32 @@ gensettingstf = [{
 	"label": "Repetition Penalty",
 	"id": "setreppen", 
 	"min": 1.0,
-	"max": 2.0,
-	"step": 0.05,
+	"max": 3.0,
+	"step": 0.01,
 	"default": 1.1,
-    "tooltip": "Used to penalize words that were already generated or belong to the context."
+    "tooltip": "Used to penalize words that were already generated or belong to the context (Going over 1.2 breaks 6B models)."
 	},
 	{
 	"uitype": "slider",
 	"unit": "int",
-	"label": "Amount to Generate",
-	"id": "setoutput", 
-	"min": 16,
-	"max": 512,
-	"step": 2,
-	"default": 80,
-    "tooltip": "Number of tokens the AI should generate. Higher numbers will take longer to generate."
+	"label": "Rep Penalty Range",
+	"id": "setreppenrange", 
+	"min": 0,
+	"max": 4096,
+	"step": 4,
+	"default": 0,
+    "tooltip": "Repetition penalty range. If set higher than 0, only applies repetition penalty to the last few tokens of your story rather than applying it to the entire story. This slider controls the amount of tokens at the end of your story to apply it to."
+	},
+	{
+	"uitype": "slider",
+	"unit": "float",
+	"label": "Rep Penalty Slope",
+	"id": "setreppenslope", 
+	"min": 0.0,
+	"max": 10.0,
+	"step": 0.1,
+	"default": 0.0,
+    "tooltip": "Repetition penalty slope. If BOTH this setting and Rep Penalty Range are set higher than 0, will use sigmoid interpolation to apply repetition penalty more strongly on tokens that are closer to the end of your story. This setting controls the tension of the sigmoid curve; higher settings will result in the repetition penalty difference between the start and end of your story being more apparent. Setting this to 1 uses linear interpolation; setting this to 0 disables interpolation."
 	},
     {
 	"uitype": "slider",
@@ -100,6 +123,17 @@ gensettingstf = [{
     {
 	"uitype": "toggle",
 	"unit": "bool",
+	"label": "Auto Save",
+	"id": "autosave", 
+	"min": 0,
+	"max": 1,
+	"step": 1,
+	"default": 0,
+    "tooltip": "Whether the game is saved after each action."
+	},
+    {
+	"uitype": "toggle",
+	"unit": "bool",
 	"label": "Always Add Prompt",
 	"id": "setuseprompt", 
 	"min": 0,
@@ -118,7 +152,63 @@ gensettingstf = [{
 	"step": 1,
 	"default": 0,
     "tooltip": "Turn this on if you are playing a Choose your Adventure model."
-	}]
+	},
+	{
+	"uitype": "toggle",
+	"unit": "bool",
+	"label": "Chat Mode",
+	"id": "setchatmode", 
+	"min": 0,
+	"max": 1,
+	"step": 1,
+	"default": 0,
+    "tooltip": "This mode optimizes KoboldAI for chatting."
+	},
+	{
+	"uitype": "toggle",
+	"unit": "bool",
+	"label": "Dynamic WI Scan",
+	"id": "setdynamicscan", 
+	"min": 0,
+	"max": 1,
+	"step": 1,
+	"default": 0,
+    "tooltip": "Scan the AI's output for world info keys as it's generating the output."
+	},
+	{
+	"uitype": "toggle",
+	"unit": "bool",
+	"label": "No Prompt Generation",
+	"id": "setnopromptgen", 
+	"min": 0,
+	"max": 1,
+	"step": 1,
+	"default": 0,
+    "tooltip": "When enabled the AI does not generate when you enter the prompt, instead you need to do an action first."
+	},
+	{
+	"uitype": "toggle",
+	"unit": "bool",
+	"label": "Random Story Persist",
+	"id": "setrngpersist",
+	"min": 0,
+	"max": 1,
+	"step": 1,
+	"default": 0,
+    "tooltip": "When enabled, the Memory text box in the Random Story dialog will be prefilled by default with your current story's memory instead of being empty."
+	},
+	{
+	"uitype": "toggle",
+	"unit": "bool",
+	"label": "No Genmod",
+	"id": "setnogenmod",
+	"min": 0,
+	"max": 1,
+	"step": 1,
+	"default": 0,
+  "tooltip": "Disables userscript generation modifiers."
+	}
+]
 
 gensettingsik =[{
 	"uitype": "slider",
@@ -189,6 +279,17 @@ gensettingsik =[{
     {
 	"uitype": "toggle",
 	"unit": "bool",
+	"label": "Auto Save",
+	"id": "autosave", 
+	"min": 0,
+	"max": 1,
+	"step": 1,
+	"default": 0,
+    "tooltip": "Whether the game is saved after each action."
+	},
+    {
+	"uitype": "toggle",
+	"unit": "bool",
 	"label": "Always Add Prompt",
 	"id": "setuseprompt", 
 	"min": 0,
@@ -207,7 +308,41 @@ gensettingsik =[{
 	"step": 1,
 	"default": 0,
     "tooltip": "Turn this on if you are playing a Choose your Adventure model."
-	}]
+	},
+	{
+	"uitype": "toggle",
+	"unit": "bool",
+	"label": "Chat Mode",
+	"id": "setchatmode", 
+	"min": 0,
+	"max": 1,
+	"step": 1,
+	"default": 0,
+    "tooltip": "This mode optimizes KoboldAI for chatting."
+	},
+	{
+	"uitype": "toggle",
+	"unit": "bool",
+	"label": "No Prompt Generation",
+	"id": "setnopromptgen", 
+	"min": 0,
+	"max": 1,
+	"step": 1,
+	"default": 0,
+    "tooltip": "When enabled the AI does not generate when you enter the prompt, instead you need to do an action first."
+	},
+	{
+	"uitype": "toggle",
+	"unit": "bool",
+	"label": "Random Story Persist",
+	"id": "setrngpersist",
+	"min": 0,
+	"max": 1,
+	"step": 1,
+	"default": 0,
+    "tooltip": "When enabled, the Memory text box in the Random Story dialog will be prefilled by default with your current story's memory instead of being empty."
+	}
+]
 
 formatcontrols = [{
     "label": "Trim incomplete sentences",
@@ -228,4 +363,9 @@ formatcontrols = [{
     "label": "Add sentence spacing",
     "id": "frmtadsnsp",
     "tooltip": "If the last action ended with punctuation, add a space to the beginning of the next action."
+    },
+    {
+    "label": "Single Line",
+    "id": "singleline",
+    "tooltip": "Only allows the AI to output anything before the enter"
     }]

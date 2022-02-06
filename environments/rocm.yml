@@ -1,0 +1,21 @@
+name: koboldai
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - transformers
+  - colorama
+  - flask-socketio
+  - python=3.8.*
+  - eventlet
+  - markdown
+  - bleach
+  - pip
+  - git
+  - pip:
+    - --find-links https://download.pytorch.org/whl/rocm4.2/torch_stable.html
+    - torch
+    - torchvision==0.11.1
+    - flask-cloudflared
+    - flask-ngrok
+    - lupa==1.10

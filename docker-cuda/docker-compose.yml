@@ -7,6 +7,7 @@ services:
     network_mode: "host"
     volumes:
       - /tmp/.X11-unix:/tmp/.X11-unix
+      - /etc/protocols:/etc/protocols:ro
       - ../:/content/
       - $HOME/.Xauthority:/home/micromamba/.Xauthority:rw
     devices:

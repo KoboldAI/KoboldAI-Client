@@ -1,6 +1,5 @@
 name: koboldai
 channels:
-  - huggingface
   - pytorch
   - conda-forge
   - defaults
@@ -10,8 +9,13 @@ dependencies:
   - pytorch
   - python=3.8.*
   - cudatoolkit=11.1
-  - tensorflow-gpu
   - transformers
+  - eventlet
+  - markdown
+  - bleach
   - pip
+  - git
   - pip:
     - flask-cloudflared
+    - flask-ngrok
+    - lupa==1.10

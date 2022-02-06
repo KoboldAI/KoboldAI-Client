@@ -73,15 +73,34 @@ def addsentencespacing(txt, vars):
     # Get last character of last action
     if(len(vars.actions) > 0):
         if(len(vars.actions[vars.actions.get_last_key()]) > 0):
-            lastchar = vars.actions[vars.actions.get_last_key()][-1]
+            action = vars.actions[vars.actions.get_last_key()]
+            lastchar = action[-1] if len(action) else ""
         else:
             # Last action is blank, this should never happen, but
             # since it did let's bail out.
             return txt
     else:
-        lastchar = vars.prompt[-1]
+        action = vars.prompt
+        lastchar = action[-1] if len(action) else ""
     if(lastchar == "." or lastchar == "!" or lastchar == "?" or lastchar == "," or lastchar == ";" or lastchar == ":"):
         txt = " " + txt
+    return txt
+	
+def singlelineprocessing(txt, vars):
+    txt = vars.regex_sl.sub('', txt)
+    if(len(vars.actions) > 0):
+        if(len(vars.actions[vars.actions.get_last_key()]) > 0):
+            action = vars.actions[vars.actions.get_last_key()]
+            lastchar = action[-1] if len(action) else ""
+        else:
+            # Last action is blank, this should never happen, but
+            # since it did let's bail out.
+            return txt
+    else:
+        action = vars.prompt
+        lastchar = action[-1] if len(action) else ""
+    if(lastchar != "\n"):
+        txt = txt + "\n"
     return txt
 
 #==================================================================#
