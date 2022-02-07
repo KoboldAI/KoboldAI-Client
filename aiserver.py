@@ -121,6 +121,12 @@ class vars:
     setauthornotetemplate = authornotetemplate  # Saved author's note template in settings
     andepth     = 3      # How far back in history to append author's note
     actions     = structures.KoboldStoryRegister()  # Actions submitted by user and AI
+    actions_metadata = [] # List of dictonaries, one dictonary for every action that contains information about the action like alternative options.
+                          # Contains at least the same number of items as actions. Back action will remove an item from actions, but not actions_metadata
+                          # Dictonary keys are:
+                          # Selected Text: (text the user had selected. None when this is a newly generated action)
+                          # Alternative Generated Text: {Text, Pinned, Previous Selection, Edited}
+                          # 
     worldinfo   = []     # List of World Info key/value objects
     worldinfo_i = []     # List of World Info key/value objects sans uninitialized entries
     worldinfo_u = {}     # Dictionary of World Info UID - key/value pairs
@@ -202,6 +208,8 @@ class vars:
     nogenmod    = False
     welcome     = False  # Custom Welcome Text (False is default)
     newlinemode = "n"
+    quiet       = False # If set will suppress any story text from being printed to the console (will only be seen on the client web page)
+    debug       = False # If set to true, will send debug information to the client for display
 
 #==================================================================#
 # Function to get model selection at startup
@@ -465,6 +473,8 @@ parser.add_argument("--override_rename", action='store_true', help="Renaming sto
 parser.add_argument("--configname", help="Force a fixed configuration name to aid with config management.")
 parser.add_argument("--colab", action='store_true', help="Optimize for Google Colab.")
 parser.add_argument("--nobreakmodel", action='store_true', help="Disables Breakmodel support completely.")
+parser.add_argument("--share", action='store_true', default=False, help="If present will launch KoboldAI available to all computers rather than local only")
+parser.add_argument("--quiet", action='store_true', default=False, help="If present will suppress any story related text from showing on the console")
 
 args: argparse.Namespace = None
 if(os.environ.get("KOBOLDAI_ARGS") is not None):
@@ -474,6 +484,9 @@ else:
     args = parser.parse_args()
 
 vars.model = args.model;
+
+if args.quiet:
+    vars.quiet = True
 
 if args.colab:
     args.remote = True;
@@ -972,43 +985,50 @@ if(not vars.model in ["InferKit", "Colab", "OAI", "ReadOnly", "TPUMeshTransforme
                 lowmem = {}
 
             # Download model from Huggingface if it does not exist, otherwise load locally
+            
+            #If we specify a model and it's in the root directory, we need to move it to the models directory (legacy folder structure to new)
+            if os.path.isdir(vars.model.replace('/', '_')):
+                import shutil
+                shutil.move(vars.model.replace('/', '_'), "models/{}".format(vars.model.replace('/', '_')))
             if(os.path.isdir(vars.custmodpth)):
                with(maybe_use_float16()):
                    try:
-                       tokenizer = AutoTokenizer.from_pretrained(vars.custmodpth, cache_dir="cache/")
+                       tokenizer = AutoTokenizer.from_pretrained(vars.custmodpth, cache_dir="cache")
                    except ValueError as e:
-                       tokenizer = GPT2TokenizerFast.from_pretrained(vars.custmodpth, cache_dir="cache/")
+                       tokenizer = GPT2TokenizerFast.from_pretrained(vars.custmodpth, cache_dir="cache")
                    try:
-                       model     = AutoModelForCausalLM.from_pretrained(vars.custmodpth, cache_dir="cache/", **lowmem)
+                       model     = AutoModelForCausalLM.from_pretrained(vars.custmodpth, cache_dir="cache", **lowmem)
                    except ValueError as e:
-                       model     = GPTNeoForCausalLM.from_pretrained(vars.custmodpth, cache_dir="cache/", **lowmem)
-            elif(os.path.isdir(vars.model.replace('/', '_'))):
-               with(maybe_use_float16()):
+                       model     = GPTNeoForCausalLM.from_pretrained(vars.custmodpth, cache_dir="cache", **lowmem)
+            elif(os.path.isdir("models/{}".format(vars.model.replace('/', '_')))):
+                with(maybe_use_float16()):
                    try:
-                       tokenizer = AutoTokenizer.from_pretrained(vars.model.replace('/', '_'), cache_dir="cache/")
+                       tokenizer = AutoTokenizer.from_pretrained("models/{}".format(vars.model.replace('/', '_')), cache_dir="cache")
                    except ValueError as e:
-                       tokenizer = GPT2TokenizerFast.from_pretrained(vars.model.replace('/', '_'), cache_dir="cache/")
+                       tokenizer = GPT2TokenizerFast.from_pretrained("models/{}".format(vars.model.replace('/', '_')), cache_dir="cache")
                    try:
-                       model     = AutoModelForCausalLM.from_pretrained(vars.model.replace('/', '_'), cache_dir="cache/", **lowmem)
+                       model     = AutoModelForCausalLM.from_pretrained("models/{}".format(vars.model.replace('/', '_')), cache_dir="cache", **lowmem)
                    except ValueError as e:
-                       model     = GPTNeoForCausalLM.from_pretrained(vars.model.replace('/', '_'), cache_dir="cache/", **lowmem)
+                       model     = GPTNeoForCausalLM.from_pretrained("models/{}".format(vars.model.replace('/', '_')), cache_dir="cache", **lowmem)
             else:
                 try:
-                    tokenizer = AutoTokenizer.from_pretrained(vars.model, cache_dir="cache/")
+                    tokenizer = AutoTokenizer.from_pretrained(vars.model, cache_dir="cache")
                 except ValueError as e:
-                    tokenizer = GPT2TokenizerFast.from_pretrained(vars.model, cache_dir="cache/")
+                    tokenizer = GPT2TokenizerFast.from_pretrained(vars.model, cache_dir="cache")
                 with(maybe_use_float16()):
                     try:
-                        model     = AutoModelForCausalLM.from_pretrained(vars.model, cache_dir="cache/", **lowmem)
+                        model     = AutoModelForCausalLM.from_pretrained(vars.model, cache_dir="cache", **lowmem)
                     except ValueError as e:
-                        model     = GPTNeoForCausalLM.from_pretrained(vars.model, cache_dir="cache/", **lowmem)
+                        model     = GPTNeoForCausalLM.from_pretrained(vars.model, cache_dir="cache", **lowmem)
                 
                 if not args.colab:
-                    model = model.half()
+                    print("Trying to save model")
                     import shutil
                     shutil.rmtree("cache/")
-                    model.save_pretrained(vars.model.replace('/', '_'))
-                    tokenizer.save_pretrained(vars.model.replace('/', '_'))
+                    model = model.half()
+                    model.save_pretrained("models/{}".format(vars.model.replace('/', '_')))
+                    tokenizer.save_pretrained("models/{}".format(vars.model.replace('/', '_')))
+                    print("Saved")
             
             if(vars.hascuda):
                 if(vars.usegpu):
@@ -1173,6 +1193,7 @@ def download():
     js["authorsnote"] = vars.authornote
     js["anotetemplate"] = vars.authornotetemplate
     js["actions"]     = tuple(vars.actions.values())
+    js["actions_metadata"] = vars.actions_metadata
     js["worldinfo"]   = []
         
     # Extract only the important bits of WI
@@ -1637,7 +1658,11 @@ def lua_set_chunk(k, v):
             del vars._actions[chunk-1]
         vars.lua_deleted.add(chunk)
         if(not hasattr(vars, "_actions") or vars._actions is not vars.actions):
-            del vars.actions[chunk-1]
+            #Instead of deleting we'll blank out the text. This way our actions and actions_metadata stay in sync and we can restore the chunk on an undo
+            vars.actions[chunk-1] = ""
+            vars.actions_metadata[chunk-1]['Alternative Text'] = [{"Text": vars.actions_metadata[chunk-1]['Selected Text'], "Pinned": False, "Editted": True}] + vars.actions_metadata[chunk-1]['Alternative Text']
+            vars.actions_metadata[chunk-1]['Selected Text'] = ''
+            send_debug()
     else:
         if(k == 0):
             print(colors.GREEN + f"{lua_log_format_name(vars.lua_koboldbridge.logging_name)} edited prompt chunk" + colors.END)
@@ -1654,6 +1679,9 @@ def lua_set_chunk(k, v):
                 vars._actions[chunk-1] = v
             vars.lua_edited.add(chunk)
             vars.actions[chunk-1] = v
+            vars.actions_metadata[chunk-1]['Alternative Text'] = [{"Text": vars.actions_metadata[chunk-1]['Selected Text'], "Pinned": False, "Editted": True}] + vars.actions_metadata[chunk-1]['Alternative Text']
+            vars.actions_metadata[chunk-1]['Selected Text'] = v
+            send_debug()
 
 #==================================================================#
 #  Get model type as "gpt-2-xl", "gpt-neo-2.7B", etc.
@@ -1843,7 +1871,8 @@ def do_connect():
 #==================================================================#
 @socketio.on('message')
 def get_message(msg):
-    print("{0}Data received:{1}{2}".format(colors.GREEN, msg, colors.END))
+    if not vars.quiet:
+        print("{0}Data received:{1}{2}".format(colors.GREEN, msg, colors.END))
     # Submit action
     if(msg['cmd'] == 'submit'):
         if(vars.mode == "play"):
@@ -1882,6 +1911,9 @@ def get_message(msg):
     # Back/Undo Action
     elif(msg['cmd'] == 'back'):
         actionback()
+    # Forward/Redo Action
+    elif(msg['cmd'] == 'redo'):
+        actionredo()
     # EditMode Action (old)
     elif(msg['cmd'] == 'edit'):
         if(vars.mode == "play"):
@@ -2119,6 +2151,8 @@ def get_message(msg):
         vars.saveow   = False
     elif(msg['cmd'] == 'seqsel'):
         selectsequence(msg['data'])
+    elif(msg['cmd'] == 'seqpin'):
+        pinsequence(msg['data'])
     elif(msg['cmd'] == 'setnumseq'):
         vars.numseqs = int(msg['data'])
         emit('from_server', {'cmd': 'setlabelnumseq', 'data': msg['data']})
@@ -2165,6 +2199,11 @@ def get_message(msg):
         refresh_settings()
     elif(not vars.remote and msg['cmd'] == 'importwi'):
         wiimportrequest()
+    elif(msg['cmd'] == 'debug'):
+        vars.debug = msg['data']
+        emit('from_server', {'cmd': 'set_debug', 'data': msg['data']}, broadcast=True)
+        if vars.debug:
+            send_debug()
 
 #==================================================================#
 #  Send userscripts list to client
@@ -2493,7 +2532,25 @@ def actionsubmit(data, actionmode=0, force_submit=False, force_prompt_gen=False,
                     vars.prompt = data
                 else:
                     vars.actions.append(data)
+                    # we now need to update the actions_metadata
+                    # we'll have two conditions. 
+                    # 1. This is totally new (user entered) 
+                    if len(vars.actions_metadata) < len(vars.actions):
+                        vars.actions_metadata.append({"Selected Text": data, "Alternative Text": []})
+                    else:
+                    # 2. We've selected a chunk of text that is was presented previously
+                        try:
+                            alternatives = [item['Text'] for item in vars.actions_metadata[len(vars.actions)-1]["Alternative Text"]]
+                        except:
+                            print(len(vars.actions))
+                            print(vars.actions_metadata)
+                            raise
+                        if data in alternatives:
+                            alternatives = [item for item in vars.actions_metadata[len(vars.actions)-1]["Alternative Text"] if item['Text'] != data]
+                            vars.actions_metadata[len(vars.actions)-1]["Alternative Text"] = alternatives
+                        vars.actions_metadata[len(vars.actions)-1]["Selected Text"] = data
                 update_story_chunk('last')
+                send_debug()
 
             if(not vars.noai and vars.lua_koboldbridge.generating):
                 # Off to the tokenizer!
@@ -2548,6 +2605,15 @@ def actionretry(data):
     # Remove last action if possible and resubmit
     if(vars.gamestarted if vars.useprompt else len(vars.actions) > 0):
         if(not vars.recentback and len(vars.actions) != 0 and len(vars.genseqs) == 0):  # Don't pop if we're in the "Select sequence to keep" menu or if there are no non-prompt actions
+            # We are going to move the selected text to alternative text in the actions_metadata variable so we can redo this action
+            vars.actions_metadata[vars.actions]['Alternative Text'] = [{'Text': vars.actions_metadata[len(vars.actions)]['Selected Text'],
+                                                                        'Pinned': False,
+                                                                        "Previous Selection": True,
+                                                                        "Edited": False}] + vars.actions_metadata[vars.actions]['Alternative Text']
+            vars.actions_metadata[vars.actions]['Selected Text'] = ""
+            
+            
+            
             last_key = vars.actions.get_last_key()
             vars.actions.pop()
             remove_story_chunk(last_key + 1)
@@ -2555,6 +2621,7 @@ def actionretry(data):
         vars.recentedit = False
         vars.lua_koboldbridge.feedback = None
         actionsubmit("", actionmode=vars.actionmode, force_submit=True)
+        send_debug()
     elif(not vars.useprompt):
         emit('from_server', {'cmd': 'errmsg', 'data': "Please enable \"Always Add Prompt\" to retry with your prompt."})
 
@@ -2566,6 +2633,13 @@ def actionback():
         return
     # Remove last index of actions and refresh game screen
     if(len(vars.genseqs) == 0 and len(vars.actions) > 0):
+        # We are going to move the selected text to alternative text in the actions_metadata variable so we can redo this action
+        vars.actions_metadata[len(vars.actions)-1]['Alternative Text'] = [{'Text': vars.actions_metadata[len(vars.actions)-1]['Selected Text'],
+                                                                    'Pinned': False,
+                                                                    "Previous Selection": True,
+                                                                    "Edited": False}] + vars.actions_metadata[len(vars.actions)-1]['Alternative Text']
+        vars.actions_metadata[len(vars.actions)-1]['Selected Text'] = ""
+    
         last_key = vars.actions.get_last_key()
         vars.actions.pop()
         vars.recentback = True
@@ -2574,6 +2648,28 @@ def actionback():
         emit('from_server', {'cmd': 'errmsg', 'data': "Cannot delete the prompt."})
     else:
         vars.genseqs = []
+    send_debug()
+        
+def actionredo():
+    i = 0
+    if len(vars.actions) < len(vars.actions_metadata):
+        genout = [{"generated_text": item['Text']} for item in vars.actions_metadata[len(vars.actions)]['Alternative Text'] if (item["Previous Selection"]==True)]
+        genout = genout + [{"generated_text": item['Text']} for item in vars.actions_metadata[len(vars.actions)]['Alternative Text'] if (item["Pinned"]==True) and (item["Previous Selection"]==False)]
+        
+        if len(genout) == 1:
+            vars.actions_metadata[len(vars.actions)]['Alternative Text'] = [item for item in vars.actions_metadata[len(vars.actions)]['Alternative Text'] if (item["Previous Selection"]!=True)]
+            genresult(genout[0]['generated_text'], flash=True)
+        else:
+            # Store sequences in memory until selection is made
+            vars.genseqs = genout
+            
+            
+            # Send sequences to UI for selection
+            genout = [[item['Text'], "redo"] for item in vars.actions_metadata[len(vars.actions)]['Alternative Text'] if (item["Previous Selection"]==True)]
+            emit('from_server', {'cmd': 'genseqs', 'data': genout}, broadcast=True)
+    else:
+        emit('from_server', {'cmd': 'popuperror', 'data': "There's nothing to undo"}, broadcast=True)
+    send_debug()
 
 #==================================================================#
 #  
@@ -2889,7 +2985,8 @@ def generate(txt, minimum, maximum, found_entries=None):
         found_entries = set()
     found_entries = tuple(found_entries.copy() for _ in range(vars.numseqs))
 
-    print("{0}Min:{1}, Max:{2}, Txt:{3}{4}".format(colors.YELLOW, minimum, maximum, tokenizer.decode(txt), colors.END))
+    if not vars.quiet:
+        print("{0}Min:{1}, Max:{2}, Txt:{3}{4}".format(colors.YELLOW, minimum, maximum, tokenizer.decode(txt), colors.END))
 
     # Store context in memory to use it for comparison with generated content
     vars.lastctx = tokenizer.decode(txt)
@@ -2951,7 +3048,8 @@ def generate(txt, minimum, maximum, found_entries=None):
 #  Deal with a single return sequence from generate()
 #==================================================================#
 def genresult(genout, flash=True):
-    print("{0}{1}{2}".format(colors.CYAN, genout, colors.END))
+    if not vars.quiet:
+        print("{0}{1}{2}".format(colors.CYAN, genout, colors.END))
     
     # Format output before continuing
     genout = applyoutputformatting(genout)
@@ -2966,9 +3064,14 @@ def genresult(genout, flash=True):
         vars.prompt = genout
     else:
         vars.actions.append(genout)
+        if len(vars.actions) > len(vars.actions_metadata):
+            vars.actions_metadata.append({'Selected Text': genout, 'Alternative Text': []})
+        else:
+            vars.actions_metadata[len(vars.actions)-1]['Selected Text'] = genout
     update_story_chunk('last')
     if(flash):
         emit('from_server', {'cmd': 'texteffect', 'data': vars.actions.get_last_key() + 1 if len(vars.actions) else 0}, broadcast=True)
+    send_debug()
 
 #==================================================================#
 #  Send generator sequences to the UI for selection
@@ -2978,14 +3081,34 @@ def genselect(genout):
     for result in genout:
         # Apply output formatting rules to sequences
         result["generated_text"] = applyoutputformatting(result["generated_text"])
-        print("{0}[Result {1}]\n{2}{3}".format(colors.CYAN, i, result["generated_text"], colors.END))
+        if not vars.quiet:
+            print("{0}[Result {1}]\n{2}{3}".format(colors.CYAN, i, result["generated_text"], colors.END))
         i += 1
     
+    # Add the options to the actions metadata
+    # If we've already generated text for this action but haven't selected one we'll want to kill all non-pinned, non-previous selection, and non-edited options then add the new ones
+    if (len(vars.actions_metadata) > len(vars.actions)):
+        if (vars.actions_metadata[len(vars.actions)]['Selected Text'] == ""):
+            vars.actions_metadata[len(vars.actions)]['Alternative Text'] = [{"Text": item['Text'], "Pinned": item['Pinned'], 
+                                                                             "Previous Selection": item["Previous Selection"], 
+                                                                             "Edited": item["Edited"]} for item in vars.actions_metadata[len(vars.actions)]['Alternative Text'] 
+                                                                             if item['Pinned'] or item["Previous Selection"] or item["Edited"]] + [{"Text": text["generated_text"], 
+                                                                                    "Pinned": False, "Previous Selection": False, "Edited": False} for text in genout]
+        else:
+            vars.actions_metadata.append({'Selected Text': '', 'Alternative Text': [{"Text": text["generated_text"], "Pinned": False, "Previous Selection": False, "Edited": False} for text in genout]})
+    else:
+        vars.actions_metadata.append({'Selected Text': '', 'Alternative Text': [{"Text": text["generated_text"], "Pinned": False, "Previous Selection": False, "Edited": False} for text in genout]})
+    
+    genout = [{"generated_text": item['Text']} for item in vars.actions_metadata[len(vars.actions)]['Alternative Text'] if (item["Previous Selection"]==False) and (item["Edited"]==False)]
+
     # Store sequences in memory until selection is made
     vars.genseqs = genout
     
+    genout = [[item['Text'], "pinned" if item['Pinned'] else "normal"] for item in vars.actions_metadata[len(vars.actions)]['Alternative Text']  if (item["Previous Selection"]==False) and (item["Edited"]==False)]
+
     # Send sequences to UI for selection
     emit('from_server', {'cmd': 'genseqs', 'data': genout}, broadcast=True)
+    send_debug()
 
 #==================================================================#
 #  Send selected sequence to action log and refresh UI
@@ -2996,6 +3119,9 @@ def selectsequence(n):
     vars.lua_koboldbridge.feedback = vars.genseqs[int(n)]["generated_text"]
     if(len(vars.lua_koboldbridge.feedback) != 0):
         vars.actions.append(vars.lua_koboldbridge.feedback)
+        #We'll want to remove the option from the alternative text and put it in selected text
+        vars.actions_metadata[len(vars.actions)-1]['Alternative Text'] = [item for item in vars.actions_metadata[len(vars.actions)-1]['Alternative Text'] if item['Text'] != vars.lua_koboldbridge.feedback]
+        vars.actions_metadata[len(vars.actions)-1]['Selected Text'] = vars.lua_koboldbridge.feedback
         update_story_chunk('last')
         emit('from_server', {'cmd': 'texteffect', 'data': vars.actions.get_last_key() + 1 if len(vars.actions) else 0}, broadcast=True)
     emit('from_server', {'cmd': 'hidegenseqs', 'data': ''}, broadcast=True)
@@ -3003,13 +3129,31 @@ def selectsequence(n):
 
     if(vars.lua_koboldbridge.restart_sequence is not None):
         actionsubmit("", actionmode=vars.actionmode, force_submit=True, disable_recentrng=True)
+    send_debug()
+
+#==================================================================#
+#  Pin/Unpin the selected sequence
+#==================================================================#
+def pinsequence(n):
+    if n.isnumeric():
+        text = vars.genseqs[int(n)]['generated_text']
+        if text in [item['Text'] for item in vars.actions_metadata[len(vars.actions)]['Alternative Text']]:
+            alternatives = vars.actions_metadata[len(vars.actions)]['Alternative Text']
+            for i in range(len(alternatives)):
+                if alternatives[i]['Text'] == text:
+                    alternatives[i]['Pinned'] = not alternatives[i]['Pinned']
+                    break
+            vars.actions_metadata[len(vars.actions)]['Alternative Text'] = alternatives
+    send_debug()
+
 
 #==================================================================#
 #  Send transformers-style request to ngrok/colab host
 #==================================================================#
 def sendtocolab(txt, min, max):
     # Log request to console
-    print("{0}Tokens:{1}, Txt:{2}{3}".format(colors.YELLOW, min-1, txt, colors.END))
+    if not vars.quiet:
+        print("{0}Tokens:{1}, Txt:{2}{3}".format(colors.YELLOW, min-1, txt, colors.END))
     
     # Store context in memory to use it for comparison with generated content
     vars.lastctx = txt
@@ -3094,7 +3238,8 @@ def tpumtjgenerate(txt, minimum, maximum, found_entries=None):
         found_entries = set()
     found_entries = tuple(found_entries.copy() for _ in range(vars.numseqs))
 
-    print("{0}Min:{1}, Max:{2}, Txt:{3}{4}".format(colors.YELLOW, minimum, maximum, tokenizer.decode(txt), colors.END))
+    if not vars.quiet:
+        print("{0}Min:{1}, Max:{2}, Txt:{3}{4}".format(colors.YELLOW, minimum, maximum, tokenizer.decode(txt), colors.END))
 
     vars._actions = vars.actions
     vars._prompt = vars.prompt
@@ -3411,12 +3556,17 @@ def editsubmit(data):
     if(vars.editln == 0):
         vars.prompt = data
     else:
+        vars.actions_metadata[vars.editln-1]['Alternative Text'] = vars.actions_metadata[vars.editln-1]['Alternative Text'] + [{"Text": vars.actions[vars.editln-1], "Pinned": False, 
+                                                                         "Previous Selection": False, 
+                                                                         "Edited": True}]
+        vars.actions_metadata[vars.editln-1]['Selected Text'] = data
         vars.actions[vars.editln-1] = data
     
     vars.mode = "play"
     update_story_chunk(vars.editln)
     emit('from_server', {'cmd': 'texteffect', 'data': vars.editln}, broadcast=True)
     emit('from_server', {'cmd': 'editmode', 'data': 'false'})
+    send_debug()
 
 #==================================================================#
 #  
@@ -3428,10 +3578,14 @@ def deleterequest():
         # Send error message
         pass
     else:
-        del vars.actions[vars.editln-1]
+        vars.actions_metadata[vars.editln-1]['Alternative Text'] = [{"Text": vars.actions[vars.editln-1], "Pinned": False, 
+                                                      "Previous Selection": True, "Edited": False}] + vars.actions_metadata[vars.editln-1]['Alternative Text']
+        vars.actions_metadata[vars.editln-1]['Selected Text'] = ''
+        vars.actions[vars.editln-1] = ''
         vars.mode = "play"
         remove_story_chunk(vars.editln)
         emit('from_server', {'cmd': 'editmode', 'data': 'false'})
+    send_debug()
 
 #==================================================================#
 # 
@@ -3445,6 +3599,10 @@ def inlineedit(chunk, data):
         vars.prompt = data
     else:
         if(chunk-1 in vars.actions):
+            vars.actions_metadata[chunk-1]['Alternative Text'] = vars.actions_metadata[chunk-1]['Alternative Text'] + [{"Text": vars.actions[chunk-1], "Pinned": False, 
+                                                                             "Previous Selection": False, 
+                                                                             "Edited": True}]
+            vars.actions_metadata[chunk-1]['Selected Text'] = data
             vars.actions[chunk-1] = data
         else:
             print(f"WARNING: Attempted to edit non-existent chunk {chunk}")
@@ -3453,6 +3611,7 @@ def inlineedit(chunk, data):
     update_story_chunk(chunk)
     emit('from_server', {'cmd': 'texteffect', 'data': chunk}, broadcast=True)
     emit('from_server', {'cmd': 'editmode', 'data': 'false'}, broadcast=True)
+    send_debug()
 
 #==================================================================#
 #  
@@ -3468,12 +3627,17 @@ def inlinedelete(chunk):
         emit('from_server', {'cmd': 'editmode', 'data': 'false'}, broadcast=True)
     else:
         if(chunk-1 in vars.actions):
-            del vars.actions[chunk-1]
+            vars.actions_metadata[chunk-1]['Alternative Text'] = [{"Text": vars.actions[chunk-1], "Pinned": False, 
+                                                                             "Previous Selection": True, 
+                                                                             "Edited": False}] + vars.actions_metadata[chunk-1]['Alternative Text']
+            vars.actions_metadata[chunk-1]['Selected Text'] = ''
+            vars.actions[chunk-1] = ''
         else:
             print(f"WARNING: Attempted to delete non-existent chunk {chunk}")
         setgamesaved(False)
         remove_story_chunk(chunk)
         emit('from_server', {'cmd': 'editmode', 'data': 'false'}, broadcast=True)
+    send_debug()
 
 #==================================================================#
 #   Toggles the game mode for memory editing and sends UI commands
@@ -3822,7 +3986,8 @@ def anotesubmit(data, template=""):
 #==================================================================#
 def ikrequest(txt):
     # Log request to console
-    print("{0}Len:{1}, Txt:{2}{3}".format(colors.YELLOW, len(txt), txt, colors.END))
+    if not vars.quiet:
+        print("{0}Len:{1}, Txt:{2}{3}".format(colors.YELLOW, len(txt), txt, colors.END))
     
     # Build request JSON data
     reqdata = {
@@ -3859,11 +4024,21 @@ def ikrequest(txt):
             genout = vars.lua_koboldbridge.outputs[1]
             assert genout is str
 
-        print("{0}{1}{2}".format(colors.CYAN, genout, colors.END))
+        if not vars.quiet:
+            print("{0}{1}{2}".format(colors.CYAN, genout, colors.END))
         vars.actions.append(genout)
+        if len(vars.actions_metadata) < len(vars.actions):
+            vars.actions_metadata.append({"Selected Text": genout, "Alternative Text": []})
+        else:
+        # 2. We've selected a chunk of text that is was presented previously
+            alternatives = [item['Text'] for item in vars.actions_metadata[len(vars.actions)]["Alternative Text"]]
+            if genout in alternatives:
+                alternatives = [item for item in vars.actions_metadata[len(vars.actions)]["Alternative Text"] if item['Text'] != genout]
+                vars.actions_metadata[len(vars.actions)]["Alternative Text"] = alternatives
+            vars.actions_metadata[len(vars.actions)]["Selected Text"] = genout
         update_story_chunk('last')
         emit('from_server', {'cmd': 'texteffect', 'data': vars.actions.get_last_key() + 1 if len(vars.actions) else 0}, broadcast=True)
-        
+        send_debug()
         set_aibusy(0)
     else:
         # Send error message to web client
@@ -3882,7 +4057,8 @@ def ikrequest(txt):
 #==================================================================#
 def oairequest(txt, min, max):
     # Log request to console
-    print("{0}Len:{1}, Txt:{2}{3}".format(colors.YELLOW, len(txt), txt, colors.END))
+    if not vars.quiet:
+        print("{0}Len:{1}, Txt:{2}{3}".format(colors.YELLOW, len(txt), txt, colors.END))
     
     # Store context in memory to use it for comparison with generated content
     vars.lastctx = txt
@@ -3918,11 +4094,21 @@ def oairequest(txt, min, max):
             genout = vars.lua_koboldbridge.outputs[1]
             assert genout is str
 
-        print("{0}{1}{2}".format(colors.CYAN, genout, colors.END))
+        if not vars.quiet:
+            print("{0}{1}{2}".format(colors.CYAN, genout, colors.END))
         vars.actions.append(genout)
+        if len(vars.actions_metadata) < len(vars.actions):
+            vars.actions_metadata.append({"Selected Text": genout, "Alternative Text": []})
+        else:
+        # 2. We've selected a chunk of text that is was presented previously
+            alternatives = [item['Text'] for item in vars.actions_metadata[len(vars.actions)]["Alternative Text"]]
+            if genout in alternatives:
+                alternatives = [item for item in vars.actions_metadata[len(vars.actions)]["Alternative Text"] if item['Text'] != genout]
+                vars.actions_metadata[len(vars.actions)]["Alternative Text"] = alternatives
+            vars.actions_metadata[len(vars.actions)]["Selected Text"] = genout
         update_story_chunk('last')
         emit('from_server', {'cmd': 'texteffect', 'data': vars.actions.get_last_key() + 1 if len(vars.actions) else 0}, broadcast=True)
-        
+        send_debug()
         set_aibusy(0)
     else:
         # Send error message to web client            
@@ -3950,12 +4136,15 @@ def exitModes():
 #==================================================================#
 #  Launch in-browser save prompt
 #==================================================================#
-def saveas(name):
+def saveas(data):
+    
+    name = data['name']
+    savepins = data['pins']
     # Check if filename exists already
     name = utils.cleanfilename(name)
     if(not fileops.saveexists(name) or (vars.saveow and vars.svowname == name)):
         # All clear to save
-        e = saveRequest(fileops.storypath(name))
+        e = saveRequest(fileops.storypath(name), savepins=savepins)
         vars.saveow = False
         vars.svowname = ""
         if(e is None):
@@ -4031,7 +4220,7 @@ def savetofile():
 #==================================================================#
 #  Save the story to specified path
 #==================================================================#
-def saveRequest(savpath):    
+def saveRequest(savpath, savepins=True):    
     if(savpath):
         # Leave Edit/Memory mode before continuing
         exitModes()
@@ -4047,6 +4236,8 @@ def saveRequest(savpath):
         js["authorsnote"] = vars.authornote
         js["anotetemplate"] = vars.authornotetemplate
         js["actions"]     = tuple(vars.actions.values())
+        if savepins:
+            js["actions_metadata"]     = vars.actions_metadata
         js["worldinfo"]   = []
         js["wifolders_d"] = vars.wifolders_d
         js["wifolders_l"] = vars.wifolders_l
@@ -4171,6 +4362,12 @@ def loadRequest(loadpath, filename=None):
         del vars.actions
         vars.actions = structures.KoboldStoryRegister()
         actions = collections.deque(js["actions"])
+
+        if "actions_metadata" in js:
+            vars.actions_metadata = js["actions_metadata"]
+        else:
+            vars.actions_metadata = [{'Selected Text': text, 'Alternative Text': []} for text in js["actions"]]
+                
 
         if(len(vars.prompt.strip()) == 0):
             while(len(actions)):
@@ -4588,7 +4785,8 @@ def wiimportrequest():
                 if(vars.worldinfo[-1]["folder"] is not None):
                     vars.wifolders_u[vars.worldinfo[-1]["folder"]].append(vars.worldinfo[-1])
         
-        print("{0}".format(vars.worldinfo[0]))
+        if not vars.quiet:
+            print("{0}".format(vars.worldinfo[0]))
                 
         # Refresh game screen
         setgamesaved(False)
@@ -4606,6 +4804,7 @@ def newGameRequest():
     vars.prompt      = ""
     vars.memory      = ""
     vars.actions     = structures.KoboldStoryRegister()
+    vars.actions_metadata = []
     
     vars.authornote  = ""
     vars.authornotetemplate = vars.setauthornotetemplate
@@ -4689,6 +4888,13 @@ if(vars.model in ("TPUMeshTransformerGPTJ",)):
             },
         ).start()
 
+def send_debug():
+    if vars.debug:
+        debug_info = ""
+        for variable in [["Action Length", len(vars.actions)], ["Actions Metadata Length", len(vars.actions_metadata)], ["Actions Metadata", vars.actions_metadata]]:
+            debug_info = "{}{}: {}\n".format(debug_info, variable[0], variable[1])
+        emit('from_server', {'cmd': 'debug_info', 'data': debug_info}, broadcast=True)
+    
 #==================================================================#
 #  Final startup commands to launch Flask app
 #==================================================================#
@@ -4716,7 +4922,10 @@ if __name__ == "__main__":
         webbrowser.open_new('http://localhost:5000')
         print("{0}Server started!\nYou may now connect with a browser at http://127.0.0.1:5000/{1}".format(colors.GREEN, colors.END))
         vars.serverstarted = True
-        socketio.run(app, port=5000)
+        if args.share:
+            socketio.run(app, port=5000, host='0.0.0.0')
+        else:
+            socketio.run(app, port=5000)
 
 else:
     print("{0}\nServer started in WSGI mode!{1}".format(colors.GREEN, colors.END), flush=True)

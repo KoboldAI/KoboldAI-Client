@@ -207,6 +207,17 @@ gensettingstf = [
 	"step": 1,
 	"default": 0,
   "tooltip": "Disables userscript generation modifiers."
+	},
+    {
+	"uitype": "toggle",
+	"unit": "bool",
+	"label": "Debug",
+	"id": "debug",
+	"min": 0,
+	"max": 1,
+	"step": 1,
+	"default": 0,
+  "tooltip": "Show debug info"
 	}
 ]
 
@@ -341,6 +352,17 @@ gensettingsik =[{
 	"step": 1,
 	"default": 0,
     "tooltip": "When enabled, the Memory text box in the Random Story dialog will be prefilled by default with your current story's memory instead of being empty."
+	},
+    {
+	"uitype": "toggle",
+	"unit": "bool",
+	"label": "Debug",
+	"id": "debug",
+	"min": 0,
+	"max": 1,
+	"step": 1,
+	"default": 0,
+  "tooltip": "Show debug info"
 	}
 ]
 

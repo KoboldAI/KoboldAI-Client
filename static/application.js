@@ -25,6 +25,7 @@ var button_mode_label;
 var button_send;
 var button_actmem;
 var button_actback;
+var button_actfwd;
 var button_actretry;
 var button_actwi;
 var game_text;
@@ -38,6 +39,7 @@ var anote_menu;
 var anote_input;
 var anote_labelcur;
 var anote_slider;
+var debug_area;
 var popup;
 var popup_title;
 var popup_content;
@@ -49,6 +51,7 @@ var aidg_accept;
 var aidg_close;
 var saveaspopup;
 var saveasinput;
+var savepins;
 var topic;
 var saveas_accept;
 var saveas_close;
@@ -748,7 +751,7 @@ function enterMemoryMode() {
 	setchatnamevisibility(false);
 	showMessage("Edit the memory to be sent with each request to the AI.");
 	button_actmem.html("Cancel");
-	hide([button_actback, button_actretry, button_actwi]);
+	hide([button_actback, button_actfwd, button_actretry, button_actwi]);
 	// Display Author's Note field
 	anote_menu.slideDown("fast");
 }
@@ -759,7 +762,7 @@ function exitMemoryMode() {
 	setchatnamevisibility(chatmode);
 	hideMessage();
 	button_actmem.html("Memory");
-	show([button_actback, button_actretry, button_actwi]);
+	show([button_actback, button_actfwd, button_actretry, button_actwi]);
 	input_text.val("");
 	// Hide Author's Note field
 	anote_menu.slideUp("fast");
@@ -768,7 +771,7 @@ function exitMemoryMode() {
 function enterWiMode() {
 	showMessage("World Info will be added to memory only when the key appears in submitted text or the last action.");
 	button_actwi.html("Accept");
-	hide([button_actback, button_actmem, button_actretry, game_text]);
+	hide([button_actback, button_actfwd, button_actmem, button_actretry, game_text]);
 	setchatnamevisibility(false);
 	show([wi_menu]);
 	disableSendBtn();
@@ -780,7 +783,7 @@ function exitWiMode() {
 	button_actwi.html("W Info");
 	hide([wi_menu]);
 	setchatnamevisibility(chatmode);
-	show([button_actback, button_actmem, button_actretry, game_text]);
+	show([button_actback, button_actfwd, button_actmem, button_actretry, game_text]);
 	enableSendBtn();
 	$("#gamescreen").removeClass("wigamescreen");
 }
@@ -884,7 +887,7 @@ function hideSaveAsPopup() {
 }
 
 function sendSaveAsRequest() {
-	socket.send({'cmd': 'saveasrequest', 'data': saveasinput.val()});
+	socket.send({'cmd': 'saveasrequest', 'data': {"name": saveasinput.val(), "pins": savepins.val()}});
 }
 
 function showLoadPopup() {
@@ -1142,9 +1145,9 @@ function updateSPStatItems(items) {
 function setStartState() {
 	enableSendBtn();
 	enableButtons([button_actmem, button_actwi]);
-	disableButtons([button_actback, button_actretry]);
+	disableButtons([button_actback, button_actfwd, button_actretry]);
 	hide([wi_menu]);
-	show([game_text, button_actmem, button_actwi, button_actback, button_actretry]);
+	show([game_text, button_actmem, button_actwi, button_actback, button_actfwd, button_actretry]);
 	hideMessage();
 	hideWaitAnimation();
 	button_actmem.html("Memory");
@@ -1160,10 +1163,41 @@ function parsegenseqs(seqs) {
 	seqselcontents.html("");
 	var i;
 	for(i=0; i<seqs.length; i++) {
-		seqselcontents.append("<div class=\"seqselitem\" id=\"seqsel"+i+"\" n=\""+i+"\">"+seqs[i].generated_text+"</div>");
+		//setup selection data
+		text_data = "<table><tr><td width=100%><div class=\"seqselitem\" id=\"seqsel"+i+"\" n=\""+i+"\">"+seqs[i][0]+"</div></td><td width=10>"
+		
+		//Now do the icon (pin/redo)
+		
+		if (seqs[i][1] == "redo") {
+			text_data = text_data + "<span style=\"color: white\" class=\"oi oi-loop-circular\" title=\"Redo\" aria-hidden=\"true\" id=\"seqselpin"+i+"\" n=\""+i+"\"></span>"
+		} else if (seqs[i][1] == "pinned") {
+			text_data = text_data + "<span style=\"color: white\" class=\"oi oi-pin\" title=\"Pin\" aria-hidden=\"true\" id=\"seqselpin"+i+"\" n=\""+i+"\"></span>"
+		} else {
+			text_data = text_data + "<span style=\"color: grey\" class=\"oi oi-pin\" title=\"Pin\" aria-hidden=\"true\" id=\"seqselpin"+i+"\" n=\""+i+"\"></span>"
+		}
+		text_data = text_data + "</td></tr></table>"
+		seqselcontents.append(text_data);
+		
+		//setup on-click actions
 		$("#seqsel"+i).on("click", function () {
 			socket.send({'cmd': 'seqsel', 'data': $(this).attr("n")});
 		});
+		
+		//onclick for pin only
+		if (seqs[i][1] != "redo") {
+			$("#seqselpin"+i).on("click", function () {
+				socket.send({'cmd': 'seqpin', 'data': $(this).attr("n")});
+				if ($(this).attr("style") == "color: grey") {
+					console.log($(this).attr("style"));
+					$(this).css({"color": "white"});
+					console.log($(this).attr("style"));
+				} else {
+					console.log($(this).attr("style"));
+					$(this).css({"color": "grey"});
+					console.log($(this).attr("style"));
+				}
+			});
+		}
 	}
 	$('#seqselmenu').slideDown("slow");
 }
@@ -1741,6 +1775,7 @@ $(document).ready(function(){
 	button_send       = $('#btnsend');
 	button_actmem     = $('#btn_actmem');
 	button_actback    = $('#btn_actundo');
+	button_actfwd     = $('#btn_actredo');
 	button_actretry   = $('#btn_actretry');
 	button_actwi      = $('#btn_actwi');
 	game_text         = $('#gametext');
@@ -1750,6 +1785,7 @@ $(document).ready(function(){
 	settings_menu     = $("#settingsmenu");
 	format_menu       = $('#formatmenu');
 	anote_menu        = $('#anoterowcontainer');
+	debug_area        = $('#debugcontainer');
 	wi_menu           = $('#wimenu');
 	anote_input       = $('#anoteinput');
 	anote_labelcur    = $('#anotecur');
@@ -1765,6 +1801,7 @@ $(document).ready(function(){
 	aidg_close        = $("#btn_aidgpopupclose");
 	saveaspopup       = $("#saveascontainer");
 	saveasinput       = $("#savename");
+	savepins          = $("#savepins");
 	topic             = $("#topic");
 	saveas_accept     = $("#btn_saveasaccept");
 	saveas_close      = $("#btn_saveasclose");
@@ -1913,13 +1950,13 @@ $(document).ready(function(){
 			// Enable or Disable buttons
 			if(msg.data == "ready") {
 				enableSendBtn();
-				enableButtons([button_actmem, button_actwi, button_actback, button_actretry]);
+				enableButtons([button_actmem, button_actwi, button_actback, button_actfwd, button_actretry]);
 				hideWaitAnimation();
 				gamestate = "ready";
 			} else if(msg.data == "wait") {
 				gamestate = "wait";
 				disableSendBtn();
-				disableButtons([button_actmem, button_actwi, button_actback, button_actretry]);
+				disableButtons([button_actmem, button_actwi, button_actback, button_actfwd, button_actretry]);
 				showWaitAnimation();
 			} else if(msg.data == "start") {
 				setStartState();
@@ -2251,6 +2288,14 @@ $(document).ready(function(){
 		} else if(msg.cmd == "runs_remotely") {
 			remote = true;
 			hide([button_savetofile, button_import, button_importwi]);
+		} else if(msg.cmd == "debug_info") {
+			$("#debuginfo").val(msg.data);
+		} else if(msg.cmd == "set_debug") {
+			if(msg.data) {
+				debug_area.removeClass("hidden");
+			} else {
+				debug_area.addClass("hidden");
+			}
 		}
 	});
 	
@@ -2328,6 +2373,12 @@ $(document).ready(function(){
 		hideMessage();
 		socket.send({'cmd': 'back', 'data': ''});
 		hidegenseqs();
+	});
+	
+	button_actfwd.on("click", function(ev) {
+		hideMessage();
+		//hidegenseqs();
+		socket.send({'cmd': 'redo', 'data': ''});
 	});
 	
 	button_actmem.on("click", function(ev) {
