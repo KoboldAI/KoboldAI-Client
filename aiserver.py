@@ -2606,11 +2606,11 @@ def actionretry(data):
     if(vars.gamestarted if vars.useprompt else len(vars.actions) > 0):
         if(not vars.recentback and len(vars.actions) != 0 and len(vars.genseqs) == 0):  # Don't pop if we're in the "Select sequence to keep" menu or if there are no non-prompt actions
             # We are going to move the selected text to alternative text in the actions_metadata variable so we can redo this action
-            vars.actions_metadata[vars.actions]['Alternative Text'] = [{'Text': vars.actions_metadata[len(vars.actions)]['Selected Text'],
+            vars.actions_metadata[len(vars.actions)-1]['Alternative Text'] = [{'Text': vars.actions_metadata[len(vars.actions)-1]['Selected Text'],
                                                                         'Pinned': False,
                                                                         "Previous Selection": True,
-                                                                        "Edited": False}] + vars.actions_metadata[vars.actions]['Alternative Text']
-            vars.actions_metadata[vars.actions]['Selected Text'] = ""
+                                                                        "Edited": False}] + vars.actions_metadata[len(vars.actions)-1]['Alternative Text']
+            vars.actions_metadata[len(vars.actions)-1]['Selected Text'] = ""
             
             
             
