@@ -4886,7 +4886,7 @@ if(vars.model in ("TPUMeshTransformerGPTJ",)):
 def send_debug():
     if vars.debug:
         debug_info = ""
-        for variable in [["Action Length", len(vars.actions)], ["Actions Metadata Length", len(vars.actions_metadata)], ["Actions Metadata", vars.actions_metadata]], ["Newline Mode", vars.newlinemode]:
+        for variable in [["Action Length", len(vars.actions)], ["Actions Metadata Length", len(vars.actions_metadata)], ["Actions Metadata", vars.actions_metadata], ["Newline Mode", vars.newlinemode]]:
             debug_info = "{}{}: {}\n".format(debug_info, variable[0], variable[1])
         emit('from_server', {'cmd': 'debug_info', 'data': debug_info}, broadcast=True)
     
