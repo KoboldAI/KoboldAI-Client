@@ -1,6 +1,8 @@
 from threading import Timer
 import re
 
+vars = None
+
 #==================================================================#
 # Decorator to prevent a function's actions from being run until
 # at least x seconds have passed without the function being called
@@ -111,8 +113,15 @@ def cleanfilename(filename):
     filename = "".join(c for c in filename if c not in filteredcharacters).rstrip()
     return filename
     
-    
-    
-    
-    
-    
+#==================================================================#
+#  Newline substitution for fairseq models
+#==================================================================#
+def encodenewlines(txt):
+    if(vars.newlinemode == "s"):
+        return txt.replace('\n', "</s>")
+    return txt
+
+def decodenewlines(txt):
+    if(vars.newlinemode == "s"):
+        return txt.replace("</s>", '\n')
+    return txt
