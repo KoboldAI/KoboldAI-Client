@@ -17,7 +17,7 @@ As a result of this what you need to type is slightly different, in AI Dungeon y
 To speak simply type : *You say "We should probably gather some supplies first"*
 Just typing the quote might work, but the AI is at its best when you specify who does what in your commands.
 
-If you want to do this with your friends we advice using the main character as You and using the other characters by their name if you are playing on a model trained for Adventures. These models assume there is a You in the story. This mode does usually not perform well on Novel models because they do not know how to handle the input those are best used with regular story writing where you take turns with the AI.
+If you want to do this with your friends we advise using the main character as You and using the other characters by their name if you are playing on a model trained for Adventures. These models assume there is a You in the story. This mode does usually not perform well on Novel models because they do not know how to handle the input those are best used with regular story writing where you take turns with the AI.
 
 ### Writing assistant
 
@@ -50,7 +50,7 @@ If you would like to play KoboldAI online for free on a powerful computer you ca
 
 Each edition features different models and requires different hardware to run, this means that if you are unable to obtain a TPU or a GPU you might still be able to use the other version. The models you can use are listed underneath the edition. To open a Colab click the big link featuring the editions name.
 
-### [TPU Edition Model Descriptions](https://colab.research.google.com/github/KoboldAI/KoboldAI-Client/blob/main/colab/TPU.ipynb)
+### [Click here for the TPU Edition Colab](https://colab.research.google.com/github/KoboldAI/KoboldAI-Client/blob/main/colab/TPU.ipynb)
 
 | Model                          | Size   | Type     | Drive Space | Description                                                  |
 | ------------------------------ | ------ | --------- | ----------- | ------------------------------------------------------------ |
@@ -60,7 +60,7 @@ Each edition features different models and requires different hardware to run, t
 | Generic 6B by EleutherAI       | 6B TPU | Generic   | 10 GB / 12 GB | GPT-J-6B is what all other models are based on, if you need something that has no specific bias towards any particular subject this is the model for you. Best used when the other models are not suitable for what you wish to do. Such as homework assistance, blog writing, coding and more. It needs more hand holding than other models and is more prone to undesirable formatting changes. |
 | C1 6B by Haru                  | 6B TPU | Chatbot   | 8 GB /  12 GB | C1 has been trained on various internet chatrooms, it makes the basis for an interesting chatbot model and has been optimized to be used in the Chatmode. |
 
-### [GPU Edition Colab](https://colab.research.google.com/github/KoboldAI/KoboldAI-Client/blob/main/colab/GPU.ipynb)
+### [Click here for the GPU Edition Colab](https://colab.research.google.com/github/KoboldAI/KoboldAI-Client/blob/main/colab/GPU.ipynb)
 
 | Model                                                        | Size     | Type      | Description                                                  |
 | ------------------------------------------------------------ | -------- | ---------- | ------------------------------------------------------------ |
@@ -188,7 +188,7 @@ Training softprompts can be done for free with the [mtj-softtuner colab](https:/
 ## Userscripts
 
 Userscripts are scripts that can automate tasks in KoboldAI, or modify the AI behavior / input / output.
-Scripting is done in LUA5.4 (Lua does not need to be separately installed as long as you got all the python requirements) and has sandboxing to help protect you from malicious behavior. Even with these measures in place we strongly advice you only run userscripts from places you trust and/or understand, otherwise consult the community for advice on how safe the script might be.
+Scripting is done in LUA5.4 (Lua does not need to be separately installed as long as you got all the python requirements) and has sandboxing to help protect you from malicious behavior. Even with these measures in place we strongly advise you only run userscripts from places you trust and/or understand, otherwise consult the community for advice on how safe the script might be.
 
 Inside the userscripts folder you will find our kaipreset scripts, these are default scripts that we think will be useful for our users. These scripts are automatically overwritten when you update KoboldAI, if you wish to modify these scripts make sure to first rename them to something else that does not contain kaipreset so your changes are not lost. These scripts range from a You Bias filter that prevents the AI from addressing characters as you. Ways to be able to prevent the AI from using words, word replacements and more. 
 
