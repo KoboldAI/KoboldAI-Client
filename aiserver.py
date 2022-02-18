@@ -479,6 +479,7 @@ parser.add_argument("--colab", action='store_true', help="Optimize for Google Co
 parser.add_argument("--nobreakmodel", action='store_true', help="Disables Breakmodel support completely.")
 parser.add_argument("--unblock", action='store_true', default=False, help="Unblocks the KoboldAI port to be accessible from other machines without optimizing for remote play (It is recommended to use --host instead)")
 parser.add_argument("--quiet", action='store_true', default=False, help="If present will suppress any story related text from showing on the console")
+parser.add_argument("--lowmem", action='store_true', help="Extra Low Memory loading for the GPU, slower but memory does not peak to twice the usage")
 
 args: argparse.Namespace = None
 if(os.environ.get("KOBOLDAI_ARGS") is not None):
@@ -495,6 +496,7 @@ if args.colab:
     args.override_delete = True;
     args.nobreakmodel = True;
     args.quiet = True;
+    args.lowmem = True;
 
 if args.quiet:
     vars.quiet = True
@@ -960,7 +962,7 @@ if(not vars.model in ["InferKit", "Colab", "OAI", "ReadOnly", "TPUMeshTransforme
         
         @contextlib.contextmanager
         def maybe_use_float16(always_use=False):
-            if(always_use or (vars.hascuda and (vars.usegpu or vars.breakmodel))):
+            if(always_use or (vars.hascuda and args.lowmem and (vars.usegpu or vars.breakmodel))):
                 original_dtype = torch.get_default_dtype()
                 torch.set_default_dtype(torch.float16)
                 yield True
