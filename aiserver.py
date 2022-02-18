@@ -202,7 +202,7 @@ class vars:
     adventure   = False
     actionmode  = 1
     dynamicscan = False
-    remote      = False
+    host        = False
     nopromptgen = False
     rngpersist  = False
     nogenmod    = False
@@ -464,6 +464,7 @@ def loadmodelsettings():
 parser = argparse.ArgumentParser(description="KoboldAI Server")
 parser.add_argument("--remote", action='store_true', help="Optimizes KoboldAI for Remote Play")
 parser.add_argument("--ngrok", action='store_true', help="Optimizes KoboldAI for Remote Play using Ngrok")
+parser.add_argument("--host", action='store_true', help="Optimizes KoboldAI for Remote Play without using a proxy service")
 parser.add_argument("--model", help="Specify the Model Type to skip the Menu")
 parser.add_argument("--path", help="Specify the Path for local models (For model NeoCustom or GPT2Custom)")
 parser.add_argument("--cpu", action='store_true', help="By default unattended launches are on the GPU use this option to force CPU usage.")
@@ -475,7 +476,7 @@ parser.add_argument("--override_rename", action='store_true', help="Renaming sto
 parser.add_argument("--configname", help="Force a fixed configuration name to aid with config management.")
 parser.add_argument("--colab", action='store_true', help="Optimize for Google Colab.")
 parser.add_argument("--nobreakmodel", action='store_true', help="Disables Breakmodel support completely.")
-parser.add_argument("--share", action='store_true', default=False, help="If present will launch KoboldAI available to all computers rather than local only")
+parser.add_argument("--unblock", action='store_true', default=False, help="Unblocks the KoboldAI port to be accessible from other machines without optimizing for remote play (It is recommended to use --host instead)")
 parser.add_argument("--quiet", action='store_true', default=False, help="If present will suppress any story related text from showing on the console")
 
 args: argparse.Namespace = None
@@ -500,13 +501,16 @@ if args.nobreakmodel:
     vars.nobreakmodel = True;
 
 if args.remote:
-    vars.remote = True;
+    vars.host = True;
 
 if args.ngrok:
-    vars.remote = True;
+    vars.host = True;
 
-vars.smandelete = vars.remote == args.override_delete
-vars.smanrename = vars.remote == args.override_rename
+if args.host:
+    vars.host = True;
+
+vars.smandelete = vars.host == args.override_delete
+vars.smanrename = vars.host == args.override_rename
 
 # Select a model to run
 if args.model:
@@ -1024,13 +1028,11 @@ if(not vars.model in ["InferKit", "Colab", "OAI", "ReadOnly", "TPUMeshTransforme
                         model     = GPTNeoForCausalLM.from_pretrained(vars.model, cache_dir="cache", **lowmem)
                 
                 if not args.colab:
-                    print("Trying to save model")
                     import shutil
                     shutil.rmtree("cache/")
                     model = model.half()
                     model.save_pretrained("models/{}".format(vars.model.replace('/', '_')))
                     tokenizer.save_pretrained("models/{}".format(vars.model.replace('/', '_')))
-                    print("Saved")
             
             if(vars.hascuda):
                 if(vars.usegpu):
@@ -1827,7 +1829,7 @@ def do_connect():
     emit('from_server', {'cmd': 'setchatname', 'data': vars.chatname})
     emit('from_server', {'cmd': 'setanotetemplate', 'data': vars.authornotetemplate})
     emit('from_server', {'cmd': 'connected', 'smandelete': vars.smandelete, 'smanrename': vars.smanrename, 'modelname': getmodelname()})
-    if(vars.remote):
+    if(vars.host):
         emit('from_server', {'cmd': 'runs_remotely'})
     if(vars.allowsp):
         emit('from_server', {'cmd': 'allowsp', 'data': vars.allowsp})
@@ -1937,13 +1939,13 @@ def get_message(msg):
         deleterequest()
     elif(msg['cmd'] == 'memory'):
         togglememorymode()
-    elif(not vars.remote and msg['cmd'] == 'savetofile'):
+    elif(not vars.host and msg['cmd'] == 'savetofile'):
         savetofile()
-    elif(not vars.remote and msg['cmd'] == 'loadfromfile'):
+    elif(not vars.host and msg['cmd'] == 'loadfromfile'):
         loadfromfile()
     elif(msg['cmd'] == 'loadfromstring'):
         loadRequest(json.loads(msg['data']), filename=msg['filename'])
-    elif(not vars.remote and msg['cmd'] == 'import'):
+    elif(not vars.host and msg['cmd'] == 'import'):
         importRequest()
     elif(msg['cmd'] == 'newgame'):
         newGameRequest()
@@ -2199,7 +2201,7 @@ def get_message(msg):
         vars.nogenmod = msg['data']
         settingschanged()
         refresh_settings()
-    elif(not vars.remote and msg['cmd'] == 'importwi'):
+    elif(not vars.host and msg['cmd'] == 'importwi'):
         wiimportrequest()
     elif(msg['cmd'] == 'debug'):
         vars.debug = msg['data']
@@ -4900,16 +4902,19 @@ if __name__ == "__main__":
     # Start Flask/SocketIO (Blocking, so this must be last method!)
     
     #socketio.run(app, host='0.0.0.0', port=5000)
-    if(vars.remote):
+    if(vars.host):
         if(args.ngrok):
             from flask_ngrok import _run_ngrok
             cloudflare = _run_ngrok()
-        else:
+        elif(args.remote):
            from flask_cloudflared import _run_cloudflared
            cloudflare = _run_cloudflared(5000)
-        with open('cloudflare.log', 'w') as cloudflarelog:
-            cloudflarelog.write("KoboldAI has finished loading and is available at the following link : " + cloudflare)
-            print(format(colors.GREEN) + "KoboldAI has finished loading and is available at the following link : " + cloudflare + format(colors.END))
+        if(args.ngrok or args.remote):
+            with open('cloudflare.log', 'w') as cloudflarelog:
+                cloudflarelog.write("KoboldAI has finished loading and is available at the following link : " + cloudflare)
+                print(format(colors.GREEN) + "KoboldAI has finished loading and is available at the following link : " + cloudflare + format(colors.END))
+        else:
+            print("{0}Webserver has started, you can now connect to this machine at port 5000{1}".format(colors.GREEN, colors.END))
         vars.serverstarted = True
         socketio.run(app, host='0.0.0.0', port=5000)
     else:
@@ -4917,7 +4922,7 @@ if __name__ == "__main__":
         webbrowser.open_new('http://localhost:5000')
         print("{0}Server started!\nYou may now connect with a browser at http://127.0.0.1:5000/{1}".format(colors.GREEN, colors.END))
         vars.serverstarted = True
-        if args.share:
+        if args.unblock:
             socketio.run(app, port=5000, host='0.0.0.0')
         else:
             socketio.run(app, port=5000)
