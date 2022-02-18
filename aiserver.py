@@ -496,6 +496,7 @@ if args.colab:
     args.override_rename = True;
     args.override_delete = True;
     args.nobreakmodel = True;
+    args.quiet = True;
 
 if args.nobreakmodel:
     vars.nobreakmodel = True;
