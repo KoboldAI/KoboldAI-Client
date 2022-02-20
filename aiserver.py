@@ -236,8 +236,7 @@ def getModelSelection():
     # If custom model was selected, get the filesystem location and store it
     if(vars.model == "NeoCustom" or vars.model == "GPT2Custom"):
         print("{0}Please choose the folder where pytorch_model.bin is located:{1}\n".format(colors.CYAN, colors.END))
-        
-        modpath = fileops.getdirpath(getcwd(), "Select Model Folder")
+        modpath = fileops.getdirpath(getcwd() + "/models", "Select Model Folder")
         
         if(modpath):
             # Save directory to vars
