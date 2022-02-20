@@ -19,6 +19,8 @@ userscripts/*
 !userscripts/Readme.*
 !userscripts/api_documentation.*
 softprompts/*
+models/*
+!models/models go here.txt
 
 # Ignore PyCharm project files.
 .idea

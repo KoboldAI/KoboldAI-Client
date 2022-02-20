@@ -1,0 +1,2 @@
+Place the models extracted in their own subfolder.
+Downloaded models from the menu will automatically appear here.
