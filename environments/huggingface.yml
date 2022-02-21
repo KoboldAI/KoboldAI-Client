@@ -9,13 +9,15 @@ dependencies:
   - pytorch
   - python=3.8.*
   - cudatoolkit=11.1
-  - transformers
   - eventlet
   - markdown
   - bleach
   - pip
   - git
+  - sentencepiece
+  - protobuf
   - pip:
     - flask-cloudflared
     - flask-ngrok
     - lupa==1.10
+    - git+https://github.com/huggingface/transformers

@@ -9,3 +9,5 @@ eventlet
 lupa==1.10
 markdown
 bleach
+sentencepiece
+protobuf

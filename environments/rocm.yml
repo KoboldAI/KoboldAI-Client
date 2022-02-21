@@ -3,7 +3,6 @@ channels:
   - conda-forge
   - defaults
 dependencies:
-  - transformers
   - colorama
   - flask-socketio
   - python=3.8.*
@@ -12,6 +11,8 @@ dependencies:
   - bleach
   - pip
   - git
+  - sentencepiece
+  - protobuf
   - pip:
     - --find-links https://download.pytorch.org/whl/rocm4.2/torch_stable.html
     - torch
@@ -19,3 +20,4 @@ dependencies:
     - flask-cloudflared
     - flask-ngrok
     - lupa==1.10
+    - git+https://github.com/huggingface/transformers
