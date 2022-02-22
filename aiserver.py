@@ -548,6 +548,12 @@ if(not vars.model in ["InferKit", "Colab", "OAI", "ReadOnly", "TPUMeshTransforme
             vars.model_type = model_config.model_type
         except ValueError as e:
             vars.model_type = "not_found"
+    elif(os.path.isdir("models/{}".format(vars.custmodpth.replace('/', '_')))):
+        try:
+            model_config = AutoConfig.from_pretrained("models/{}".format(vars.custmodpth.replace('/', '_')), cache_dir="cache/")
+            vars.model_type = model_config.model_type
+        except ValueError as e:
+            vars.model_type = "not_found"
     else:
         try:
             model_config = AutoConfig.from_pretrained(vars.custmodpth, cache_dir="cache/")
