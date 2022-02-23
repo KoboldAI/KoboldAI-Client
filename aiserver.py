@@ -1063,10 +1063,10 @@ if(not vars.model in ["InferKit", "Colab", "OAI", "ReadOnly", "TPUMeshTransforme
                 
                 if not args.colab:
                     import shutil
-                    shutil.rmtree("cache/")
                     model = model.half()
                     model.save_pretrained("models/{}".format(vars.model.replace('/', '_')))
                     tokenizer.save_pretrained("models/{}".format(vars.model.replace('/', '_')))
+                    shutil.rmtree("cache/")
             
             if(vars.hascuda):
                 if(vars.usegpu):
