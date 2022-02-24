@@ -106,7 +106,7 @@ class vars:
     ikgen       = 200    # Number of characters for InferKit to generate
     rep_pen     = 1.1    # Default generator repetition_penalty
     rep_pen_slope = 1.0  # Default generator repetition penalty slope
-    rep_pen_range = 512    # Default generator repetition penalty range
+    rep_pen_range = 1024 # Default generator repetition penalty range
     temp        = 0.5    # Default generator temperature
     top_p       = 0.9    # Default generator top_p
     top_k       = 0      # Default generator top_k
@@ -414,18 +414,16 @@ def device_config(model):
 #==================================================================#
 def loadmodelsettings():
     try:
-        model_js_config = str(model_config).partition(' ')[2]
-        js   = json.loads(model_js_config)
+        js   = json.loads(str(model_config).partition(' ')[2])
     except Exception as e:
         try:
             try:
-                model_js_config = open(vars.custmodpth + "/config.json", "r")
+                js   = json.load(open(vars.custmodpth + "/config.json", "r"))
             except Exception as e:
-                model_js_config = open(vars.custmodpth.replace('/', '_') + "/config.json", "r")
-            js   = json.load(model_js_config)
+                js   = json.load(open(vars.custmodpth.replace('/', '_') + "/config.json", "r"))            
         except Exception as e:
             js   = {}
-    if vars.model_type == "xglm" or js.get("modelcompat", "j") == "fairseq_lm":
+    if vars.model_type == "xglm" or js.get("compat", "j") == "fairseq_lm":
         vars.newlinemode = "s"  # Default to </s> newline mode if using XGLM
     vars.modelconfig = js
     if("badwordsids" in js):
