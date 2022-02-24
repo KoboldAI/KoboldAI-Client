@@ -598,11 +598,6 @@ def loadsettings():
             vars.corescript = js["corescript"]
         else:
             vars.corescript = "default.lua"
-        
-        if(vars.allowsp and "softprompt" in js and type(js["softprompt"]) is str and all(q not in js["softprompt"] for q in ("..", ":")) and (len(js["softprompt"]) == 0 or all(js["softprompt"][0] not in q for q in ("/", "\\")))):
-            spRequest(js["softprompt"])
-        else:
-            vars.spfilename = ""
 
         file.close()
 
@@ -4898,6 +4893,16 @@ def __preempt_tokenizer():
     utils.decodenewlines(tokenizer.decode([25678, 559]))
     tokenizer.encode(utils.encodenewlines("eunoia"))
 threading.Thread(target=__preempt_tokenizer).start()
+
+# Load soft prompt specified by the settings file, if applicable
+if(path.exists("settings/" + getmodelname().replace('/', '_') + ".settings")):
+    file = open("settings/" + getmodelname().replace('/', '_') + ".settings", "r")
+    js   = json.load(file)
+    if(vars.allowsp and "softprompt" in js and type(js["softprompt"]) is str and all(q not in js["softprompt"] for q in ("..", ":")) and (len(js["softprompt"]) == 0 or all(js["softprompt"][0] not in q for q in ("/", "\\")))):
+        spRequest(js["softprompt"])
+    else:
+        vars.spfilename = ""
+    file.close()
 
 # Precompile TPU backend if required
 if(vars.model in ("TPUMeshTransformerGPTJ",)):
