@@ -65,7 +65,7 @@ class colors:
     UNDERLINE = '\033[4m'
 
 # AI models
-modellist = [
+mainmenu = [
     ["Load a model from its directory", "NeoCustom", ""],
     ["Load an old GPT-2 model (eg CloverEdition)", "GPT2Custom", ""],
     ["Skein 6B (Hybrid)", "KoboldAI/GPT-J-6B-Skein", "16GB"],
@@ -78,19 +78,54 @@ modellist = [
     ["Horni 2.7B (NSFW)", "KoboldAI/GPT-Neo-2.7B-Horni", "8GB"],
     ["Horni-LN 2.7B (Novel)", "KoboldAI/GPT-Neo-2.7B-Horni-LN", "8GB"],
     ["Shinen 2.7B (NSFW)", "KoboldAI/GPT-Neo-2.7B-Shinen", "8GB"],
+    ["Untuned GPT-Neo/J", "gptneolist", ""],
+    ["Untuned Fairseq Dense", "fsdlist", ""],
+    ["Untuned XGLM", "xglmlist", ""],
+    ["Untuned GPT2", "gpt2list", ""],
+    ["Online Services", "apilist", ""],
+    ["Read Only (No AI)", "ReadOnly", ""]
+    ]
+
+gptneolist = [
     ["GPT-J 6B", "EleutherAI/gpt-j-6B", "16GB"],
     ["GPT-Neo 2.7B", "EleutherAI/gpt-neo-2.7B", "8GB"],
     ["GPT-Neo 1.3B", "EleutherAI/gpt-neo-1.3B", "6GB"],
+    ["Return to Main Menu", "Return", ""],
+]
+
+gpt2list = [
     ["GPT-2 XL", "gpt2-xl", "6GB"],
     ["GPT-2 Large", "gpt2-large", "4GB"],
     ["GPT-2 Med", "gpt2-medium", "2GB"],
     ["GPT-2", "gpt2", "2GB"],
+    ["Return to Main Menu", "Return", ""],
+    ]
+
+fsdlist = [
+    ["Fairseq Dense 13B", "KoboldAI/fairseq-dense-13B", "32GB"],
+    ["Fairseq Dense 6.7B", "KoboldAI/fairseq-dense-6.7B", "16GB"],
+    ["Fairseq Dense 2.7B", "KoboldAI/fairseq-dense-2.7B", "8GB"],
+    ["Fairseq Dense 1.3B", "KoboldAI/fairseq-dense-1.3B", "6GB"],
+    ["Fairseq Dense 355M", "KoboldAI/fairseq-dense-355M", ""],
+    ["Fairseq Dense 125M", "KoboldAI/fairseq-dense-125M", ""],
+    ["Return to Main Menu", "Return", ""],
+    ]
+
+xglmlist = [
+    ["XGLM 4.5B (Larger Dataset)", "facebook/xglm-4.5B", ""],
+    ["XGLM 7.5B", "facebook/xglm-7.5B", ""],
+    ["XGLM 2.9B", "facebook/xglm-2.9B", ""],
+    ["XGLM 1.7B", "facebook/xglm-1.7B", ""],
+    ["XGLM 564M", "facebook/xglm-564M", ""],
+    ["Return to Main Menu", "Return", ""],
+    ]
+
+apilist = [
     ["OpenAI API (requires API key)", "OAI", ""],
     ["InferKit API (requires API key)", "InferKit", ""],
     ["KoboldAI Server API (Old Google Colab)", "Colab", ""],
-    ["Read Only (No AI)", "ReadOnly", ""]
-    ]
-
+    ["Return to Main Menu", "Return", ""],
+]
 # Variables
 class vars:
     lastact     = ""     # The last action received from the user
@@ -218,7 +253,7 @@ utils.vars = vars
 #==================================================================#
 # Function to get model selection at startup
 #==================================================================#
-def getModelSelection():
+def getModelSelection(modellist):
     print("    #   Model                           VRAM\n    =========================================")
     i = 1
     for m in modellist:
@@ -234,19 +269,26 @@ def getModelSelection():
         else:
             print("{0}Please enter a valid selection.{1}".format(colors.RED, colors.END))
     
-    # If custom model was selected, get the filesystem location and store it
-    if(vars.model == "NeoCustom" or vars.model == "GPT2Custom"):
-        print("{0}Please choose the folder where pytorch_model.bin is located:{1}\n".format(colors.CYAN, colors.END))
-        modpath = fileops.getdirpath(getcwd() + "/models", "Select Model Folder")
+    # Model Lists
+    try:
+        getModelSelection(eval(vars.model))
+    except Exception as e:
+        if(vars.model == "Return"):
+            getModelSelection(mainmenu)
+
+        # If custom model was selected, get the filesystem location and store it
+        if(vars.model == "NeoCustom" or vars.model == "GPT2Custom"):
+            print("{0}Please choose the folder where pytorch_model.bin is located:{1}\n".format(colors.CYAN, colors.END))
+            modpath = fileops.getdirpath(getcwd() + "/models", "Select Model Folder")
         
-        if(modpath):
-            # Save directory to vars
-            vars.custmodpth = modpath
-        else:
-            # Print error and retry model selection
-            print("{0}Model select cancelled!{1}".format(colors.RED, colors.END))
-            print("{0}Select an AI model to continue:{1}\n".format(colors.CYAN, colors.END))
-            getModelSelection()
+            if(modpath):
+                # Save directory to vars
+                vars.custmodpth = modpath
+            else:
+                # Print error and retry model selection
+                print("{0}Model select cancelled!{1}".format(colors.RED, colors.END))
+                print("{0}Select an AI model to continue:{1}\n".format(colors.CYAN, colors.END))
+                getModelSelection(mainmenu)
 
 #==================================================================#
 # Return all keys in tokenizer dictionary containing char
@@ -724,7 +766,7 @@ if args.model:
 
 else:
     print("{0}Welcome to the KoboldAI Server!\nListed RAM is the optimal VRAM and CPU ram can be up to twice the amount.\nMost models can run at less VRAM with reduced max tokens or less layers on the GPU.\nSelect an AI model to continue:{1}\n".format(colors.CYAN, colors.END))
-    getModelSelection()
+    getModelSelection(mainmenu)
 
 # If transformers model was selected & GPU available, ask to use CPU or GPU
 if(not vars.model in ["InferKit", "Colab", "OAI", "ReadOnly", "TPUMeshTransformerGPTJ"]):
