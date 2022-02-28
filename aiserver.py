@@ -72,8 +72,8 @@ mainmenu = [
     ["Adventure 6B", "KoboldAI/GPT-J-6B-Adventure", "16GB"],
     ["Lit 6B (NSFW)", "hakurei/lit-6B", "16GB"],
     ["C1 6B (Chatbot)", "hakurei/c1-6B", "16GB"],
-    ["Janeway 2.7B (Novel)", "KoboldAI/GPT-Neo-2.7B-Janeway", "8GB"],
-    ["Janeway fairseq-2.7B (Novel)", "KoboldAI/fairseq-dense-2.7B-Janeway", "16GB"],
+    ["Janeway Neo 2.7B (Novel)", "KoboldAI/GPT-Neo-2.7B-Janeway", "8GB"],
+    ["Janeway FSD 2.7B (Novel)", "KoboldAI/fairseq-dense-2.7B-Janeway", "8GB"],
     ["Adventure 2.7B", "KoboldAI/GPT-Neo-2.7B-AID", "8GB"],
     ["Picard 2.7B (Novel)", "KoboldAI/GPT-Neo-2.7B-Picard", "8GB"],
     ["Horni 2.7B (NSFW)", "KoboldAI/GPT-Neo-2.7B-Horni", "8GB"],
@@ -255,10 +255,10 @@ utils.vars = vars
 # Function to get model selection at startup
 #==================================================================#
 def getModelSelection(modellist):
-    print("    #   Model                           VRAM\n    =========================================")
+    print("    #    Model\t\t\t\t\t\tVRAM\n    ========================================================")
     i = 1
     for m in modellist:
-        print("    {0} - {1}\t\t{2}".format("{:<2}".format(i), m[0].ljust(15), m[2]))
+        print("    {0} - {1}\t\t\t{2}".format("{:<2}".format(i), m[0].ljust(25), m[2]))
         i += 1
     print(" ");
     modelsel = 0
