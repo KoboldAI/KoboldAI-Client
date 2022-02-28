@@ -4503,8 +4503,26 @@ def loadRequest(loadpath, filename=None):
         actions = collections.deque(js["actions"])
 
         if "actions_metadata" in js:
+            
             if type(js["actions_metadata"]) == dict:
-                vars.actions_metadata = js["actions_metadata"]
+                temp = js["actions_metadata"]
+                vars.actions_metadata = {}
+                #we need to redo the numbering of the actions_metadata since the actions list doesn't preserve it's number on saving
+                if len(temp) > 0:
+                    counter = 0
+                    for i in range(max(temp)):
+                        if i in temp:
+                            vars.actions_metadata[counter] = temp[i]
+                            counter += 1
+                del temp
+            else:
+                #fix if we're using the old metadata format
+                vars.actions_metadata = {}
+                i = 0
+                
+                for text in js['actions']:
+                    vars.actions_metadata[i] = {'Selected Text': text, 'Alternative Text': []}
+                    i+=1
         else:
             vars.actions_metadata = {}
             i = 0
@@ -4671,6 +4689,7 @@ def importgame():
         vars.authornote  = ref["authorsNote"] if type(ref["authorsNote"]) is str else ""
         vars.authornotetemplate = "[Author's note: <|>]"
         vars.actions     = structures.KoboldStoryRegister()
+        vars.actions_metadata = {}
         vars.worldinfo   = []
         vars.worldinfo_i = []
         vars.worldinfo_u = {}
@@ -4768,6 +4787,7 @@ def importAidgRequest(id):
         vars.authornote  = js["authorsNote"]
         vars.authornotetemplate = "[Author's note: <|>]"
         vars.actions     = structures.KoboldStoryRegister()
+        vars.actions_metadata = {}
         vars.worldinfo   = []
         vars.worldinfo_i = []
         vars.worldinfo_u = {}
@@ -4989,7 +5009,7 @@ if(vars.model in ("TPUMeshTransformerGPTJ",)):
 def send_debug():
     if vars.debug:
         debug_info = ""
-        for variable in [["Newline Mode", vars.newlinemode], ["Action Length", vars.actions.get_last_key()], ["Actions Metadata Length", max(vars.actions_metadata)], ["Actions Metadata", vars.actions_metadata]]:
+        for variable in [["Newline Mode", vars.newlinemode], ["Action Length", vars.actions.get_last_key()], ["Actions Metadata Length", max(vars.actions_metadata) if len(vars.actions_metadata) > 0 else 0], ["Actions Metadata", vars.actions_metadata]]:
             debug_info = "{}{}: {}\n".format(debug_info, variable[0], variable[1])
         emit('from_server', {'cmd': 'debug_info', 'data': debug_info}, broadcast=True)
     
