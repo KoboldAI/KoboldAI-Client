@@ -2676,7 +2676,7 @@ def actionsubmit(data, actionmode=0, force_submit=False, force_prompt_gen=False,
                     # we'll have two conditions. 
                     # 1. This is totally new (user entered) 
                     if vars.actions.get_next_id()-1 not in vars.actions_metadata:
-                        vars.actions_metadata.append({"Selected Text": data, "Alternative Text": []})
+                        vars.actions_metadata[vars.actions.get_next_id()-1] = {"Selected Text": data, "Alternative Text": []}
                     else:
                     # 2. We've selected a chunk of text that is was presented previously
                         try:
