@@ -2402,7 +2402,7 @@ def actionsubmit(data, actionmode=0, force_submit=False, force_prompt_gen=False,
         if(vars.chatmode and vars.gamestarted):
             data = re.sub(r'\n+', ' ', data)
             if(len(data)):
-                data = f"\n{vars.chatname} : {data}\n"
+                data = f"\n{vars.chatname}: {data}\n"
         
         # </s> mode
         if(vars.newlinemode == "s"):
