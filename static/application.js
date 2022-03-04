@@ -1662,6 +1662,21 @@ function highlightEditingChunks() {
 	}
 }
 
+// This gets run every time the text in a chunk is edited
+// or a chunk is deleted
+function chunkOnDOMMutate(mutations, observer) {
+	if(!gametext_bound || !allowedit) {
+		return;
+	}
+	var nodes = [];
+	for(var i = 0; i < mutations.length; i++) {
+		var mutation = mutations[i];
+		nodes = nodes.concat(Array.from(mutation.addedNodes), Array.from(mutation.removedNodes));
+		nodes.push(mutation.target);
+	}
+	applyChunkDeltas(nodes);
+}
+
 // This gets run every time you try to paste text into the editor
 function chunkOnPaste(event) {
 	// Register the chunk we're pasting in as having been modified
@@ -1739,10 +1754,12 @@ function chunkOnFocusOut(event) {
 }
 
 function bindGametext() {
+	mutation_observer.observe(game_text[0], {characterData: true, childList: true, subtree: true});
 	gametext_bound = true;
 }
 
 function unbindGametext() {
+	mutation_observer.disconnect();
 	gametext_bound = false;
 }
 
@@ -2325,6 +2342,7 @@ $(document).ready(function(){
 	).on('focusout',
 		chunkOnFocusOut
 	);
+	mutation_observer = new MutationObserver(chunkOnDOMMutate);
 
 	// This is required for the editor to work correctly in Firefox on desktop
 	// because the gods of HTML and JavaScript say so

@@ -1,25 +1,25 @@
 # Ignore client settings file
-settings/*
+settings
 
 # Ignore stories file except for test_story
-stories/*
+stories
 !stories/sample_story.json
 
 # Ignore stuff that would polute our Git
 /.project
 *.bak
-miniconda3/*
+miniconda3
 *.settings
 __pycache__
 *.log
-cache/*
-userscripts/*
+cache
+userscripts
 !userscripts/examples
 !userscripts/kaipreset_*.lua
 !userscripts/Readme.*
 !userscripts/api_documentation.*
-softprompts/*
-models/*
+softprompts
+models
 !models/models go here.txt
 
 # Ignore PyCharm project files.
