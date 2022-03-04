@@ -2675,8 +2675,8 @@ def actionsubmit(data, actionmode=0, force_submit=False, force_prompt_gen=False,
                     # we now need to update the actions_metadata
                     # we'll have two conditions. 
                     # 1. This is totally new (user entered) 
-                    if vars.actions.get_next_id()-1 not in vars.actions_metadata:
-                        vars.actions_metadata[vars.actions.get_next_id()-1] = {"Selected Text": data, "Alternative Text": []}
+                    if vars.actions.get_last_key() not in vars.actions_metadata:
+                        vars.actions_metadata[vars.actions.get_last_key()] = {"Selected Text": data, "Alternative Text": []}
                     else:
                     # 2. We've selected a chunk of text that is was presented previously
                         try:
@@ -2686,9 +2686,9 @@ def actionsubmit(data, actionmode=0, force_submit=False, force_prompt_gen=False,
                             print(vars.actions_metadata)
                             raise
                         if data in alternatives:
-                            alternatives = [item for item in vars.actions_metadata[vars.actions.get_next_id()-1 ]["Alternative Text"] if item['Text'] != data]
-                            vars.actions_metadata[vars.actions.get_next_id()-1]["Alternative Text"] = alternatives
-                        vars.actions_metadata[vars.actions.get_next_id()-1]["Selected Text"] = data
+                            alternatives = [item for item in vars.actions_metadata[vars.actions.get_last_key() ]["Alternative Text"] if item['Text'] != data]
+                            vars.actions_metadata[vars.actions.get_last_key()]["Alternative Text"] = alternatives
+                        vars.actions_metadata[vars.actions.get_last_key()]["Selected Text"] = data
                 update_story_chunk('last')
                 send_debug()
 
@@ -2746,11 +2746,11 @@ def actionretry(data):
     if(vars.gamestarted if vars.useprompt else len(vars.actions) > 0):
         if(not vars.recentback and len(vars.actions) != 0 and len(vars.genseqs) == 0):  # Don't pop if we're in the "Select sequence to keep" menu or if there are no non-prompt actions
             # We are going to move the selected text to alternative text in the actions_metadata variable so we can redo this action
-            vars.actions_metadata[vars.actions.get_next_id()-1 ]['Alternative Text'] = [{'Text': vars.actions_metadata[vars.actions.get_next_id()-1 ]['Selected Text'],
+            vars.actions_metadata[vars.actions.get_last_key() ]['Alternative Text'] = [{'Text': vars.actions_metadata[vars.actions.get_last_key() ]['Selected Text'],
                                                                         'Pinned': False,
                                                                         "Previous Selection": True,
-                                                                        "Edited": False}] + vars.actions_metadata[vars.actions.get_next_id()-1 ]['Alternative Text']
-            vars.actions_metadata[vars.actions.get_next_id()-1]['Selected Text'] = ""
+                                                                        "Edited": False}] + vars.actions_metadata[vars.actions.get_last_key() ]['Alternative Text']
+            vars.actions_metadata[vars.actions.get_last_key()]['Selected Text'] = ""
             
             
             
@@ -2774,18 +2774,18 @@ def actionback():
     # Remove last index of actions and refresh game screen
     if(len(vars.genseqs) == 0 and len(vars.actions) > 0):
         # We are going to move the selected text to alternative text in the actions_metadata variable so we can redo this action
-        vars.actions_metadata[vars.actions.get_next_id()-1 ]['Alternative Text'] = [{'Text': vars.actions_metadata[vars.actions.get_next_id()-1 ]['Selected Text'],
+        vars.actions_metadata[vars.actions.get_last_key() ]['Alternative Text'] = [{'Text': vars.actions_metadata[vars.actions.get_last_key() ]['Selected Text'],
                                                                     'Pinned': False,
                                                                     "Previous Selection": True,
-                                                                    "Edited": False}] + vars.actions_metadata[vars.actions.get_next_id()-1 ]['Alternative Text']
-        vars.actions_metadata[vars.actions.get_next_id()-1 ]['Selected Text'] = ""
+                                                                    "Edited": False}] + vars.actions_metadata[vars.actions.get_last_key() ]['Alternative Text']
+        vars.actions_metadata[vars.actions.get_last_key() ]['Selected Text'] = ""
     
         last_key = vars.actions.get_last_key()
         vars.actions.pop()
         vars.recentback = True
         remove_story_chunk(last_key + 1)
         #for the redo to not get out of whack, need to reset the max # in the actions sequence
-        vars.actions.set_next_id(vars.actions.get_next_id()-1)
+        vars.actions.set_next_id(vars.actions.get_last_key())
     elif(len(vars.genseqs) == 0):
         emit('from_server', {'cmd': 'errmsg', 'data': "Cannot delete the prompt."})
     else:
@@ -3206,10 +3206,10 @@ def genresult(genout, flash=True):
         vars.prompt = genout
     else:
         vars.actions.append(genout)
-        if vars.actions.get_next_id()-1 not in vars.actions_metadata:
-            vars.actions_metadata[vars.actions.get_next_id()-1] = {'Selected Text': genout, 'Alternative Text': []}
+        if vars.actions.get_last_key() not in vars.actions_metadata:
+            vars.actions_metadata[vars.actions.get_last_key()] = {'Selected Text': genout, 'Alternative Text': []}
         else:
-            vars.actions_metadata[vars.actions.get_next_id()-1]['Selected Text'] = genout
+            vars.actions_metadata[vars.actions.get_last_key()]['Selected Text'] = genout
     update_story_chunk('last')
     if(flash):
         emit('from_server', {'cmd': 'texteffect', 'data': vars.actions.get_last_key() + 1 if len(vars.actions) else 0}, broadcast=True)
@@ -3262,8 +3262,8 @@ def selectsequence(n):
     if(len(vars.lua_koboldbridge.feedback) != 0):
         vars.actions.append(vars.lua_koboldbridge.feedback)
         #We'll want to remove the option from the alternative text and put it in selected text
-        vars.actions_metadata[vars.actions.get_next_id()-1 ]['Alternative Text'] = [item for item in vars.actions_metadata[vars.actions.get_next_id()-1]['Alternative Text'] if item['Text'] != vars.lua_koboldbridge.feedback]
-        vars.actions_metadata[vars.actions.get_next_id()-1 ]['Selected Text'] = vars.lua_koboldbridge.feedback
+        vars.actions_metadata[vars.actions.get_last_key() ]['Alternative Text'] = [item for item in vars.actions_metadata[vars.actions.get_last_key()]['Alternative Text'] if item['Text'] != vars.lua_koboldbridge.feedback]
+        vars.actions_metadata[vars.actions.get_last_key() ]['Selected Text'] = vars.lua_koboldbridge.feedback
         update_story_chunk('last')
         emit('from_server', {'cmd': 'texteffect', 'data': vars.actions.get_last_key() + 1 if len(vars.actions) else 0}, broadcast=True)
     emit('from_server', {'cmd': 'hidegenseqs', 'data': ''}, broadcast=True)
@@ -4166,15 +4166,15 @@ def ikrequest(txt):
         if not vars.quiet:
             print("{0}{1}{2}".format(colors.CYAN, genout, colors.END))
         vars.actions.append(genout)
-        if vars.actions.get_next_id()-1 in vars.actions_metadata:
-            vars.actions_metadata[vars.actions.get_next_id()-1] = {"Selected Text": genout, "Alternative Text": []}
+        if vars.actions.get_last_key() in vars.actions_metadata:
+            vars.actions_metadata[vars.actions.get_last_key()] = {"Selected Text": genout, "Alternative Text": []}
         else:
         # 2. We've selected a chunk of text that is was presented previously
-            alternatives = [item['Text'] for item in vars.actions_metadata[vars.actions.get_next_id()-1]["Alternative Text"]]
+            alternatives = [item['Text'] for item in vars.actions_metadata[vars.actions.get_last_key()]["Alternative Text"]]
             if genout in alternatives:
-                alternatives = [item for item in vars.actions_metadata[vars.actions.get_next_id()-1]["Alternative Text"] if item['Text'] != genout]
-                vars.actions_metadata[vars.actions.get_next_id()-1]["Alternative Text"] = alternatives
-            vars.actions_metadata[vars.actions.get_next_id()-1]["Selected Text"] = genout
+                alternatives = [item for item in vars.actions_metadata[vars.actions.get_last_key()]["Alternative Text"] if item['Text'] != genout]
+                vars.actions_metadata[vars.actions.get_last_key()]["Alternative Text"] = alternatives
+            vars.actions_metadata[vars.actions.get_last_key()]["Selected Text"] = genout
         update_story_chunk('last')
         emit('from_server', {'cmd': 'texteffect', 'data': vars.actions.get_last_key() + 1 if len(vars.actions) else 0}, broadcast=True)
         send_debug()
@@ -4236,15 +4236,15 @@ def oairequest(txt, min, max):
         if not vars.quiet:
             print("{0}{1}{2}".format(colors.CYAN, genout, colors.END))
         vars.actions.append(genout)
-        if vars.actions.get_next_id()-1 in vars.actions_metadata:
-            vars.actions_metadata[vars.actions.get_next_id()-1] = {"Selected Text": genout, "Alternative Text": []}
+        if vars.actions.get_last_key() in vars.actions_metadata:
+            vars.actions_metadata[vars.actions.get_last_key()] = {"Selected Text": genout, "Alternative Text": []}
         else:
         # 2. We've selected a chunk of text that is was presented previously
-            alternatives = [item['Text'] for item in vars.actions_metadata[vars.actions.get_next_id()-1]["Alternative Text"]]
+            alternatives = [item['Text'] for item in vars.actions_metadata[vars.actions.get_last_key()]["Alternative Text"]]
             if genout in alternatives:
-                alternatives = [item for item in vars.actions_metadata[vars.actions.get_next_id()-1 ]["Alternative Text"] if item['Text'] != genout]
-                vars.actions_metadata[vars.actions.get_next_id()-1 ]["Alternative Text"] = alternatives
-            vars.actions_metadata[vars.actions.get_next_id()-1 ]["Selected Text"] = genout
+                alternatives = [item for item in vars.actions_metadata[vars.actions.get_last_key() ]["Alternative Text"] if item['Text'] != genout]
+                vars.actions_metadata[vars.actions.get_last_key() ]["Alternative Text"] = alternatives
+            vars.actions_metadata[vars.actions.get_last_key() ]["Selected Text"] = genout
         update_story_chunk('last')
         emit('from_server', {'cmd': 'texteffect', 'data': vars.actions.get_last_key() + 1 if len(vars.actions) else 0}, broadcast=True)
         send_debug()
@@ -4501,6 +4501,7 @@ def loadRequest(loadpath, filename=None):
         del vars.actions
         vars.actions = structures.KoboldStoryRegister()
         actions = collections.deque(js["actions"])
+        
 
         if "actions_metadata" in js:
             
@@ -4510,7 +4511,8 @@ def loadRequest(loadpath, filename=None):
                 #we need to redo the numbering of the actions_metadata since the actions list doesn't preserve it's number on saving
                 if len(temp) > 0:
                     counter = 0
-                    for i in range(max(temp)):
+                    temp = {int(k):v for k,v in temp.items()}
+                    for i in range(max(temp)+1):
                         if i in temp:
                             vars.actions_metadata[counter] = temp[i]
                             counter += 1
@@ -4613,6 +4615,10 @@ def loadRequest(loadpath, filename=None):
         emit('from_server', {'cmd': 'setgamestate', 'data': 'ready'}, broadcast=True)
         emit('from_server', {'cmd': 'hidegenseqs', 'data': ''}, broadcast=True)
         print("{0}Story loaded from {1}!{2}".format(colors.GREEN, filename, colors.END))
+        
+        print([k for k in vars.actions])
+        print([k for k in vars.actions_metadata])
+        send_debug()
 
 #==================================================================#
 # Import an AIDungon game exported with Mimi's tool
@@ -5009,7 +5015,10 @@ if(vars.model in ("TPUMeshTransformerGPTJ",)):
 def send_debug():
     if vars.debug:
         debug_info = ""
-        for variable in [["Newline Mode", vars.newlinemode], ["Action Length", vars.actions.get_last_key()], ["Actions Metadata Length", max(vars.actions_metadata) if len(vars.actions_metadata) > 0 else 0], ["Actions Metadata", vars.actions_metadata]]:
+        for variable in [["Newline Mode", vars.newlinemode], 
+                         ["Action Length", vars.actions.get_last_key()], ["Actions Metadata Length", max(vars.actions_metadata) if len(vars.actions_metadata) > 0 else 0], 
+                         ["Actions", [k for k in vars.actions]], ["Actions Metadata", [k for k in vars.actions_metadata]],
+                         ["Last Action", vars.actions[vars.actions.get_last_key()]], ["Last Metadata", vars.actions_metadata[max(vars.actions_metadata)]]]:
             debug_info = "{}{}: {}\n".format(debug_info, variable[0], variable[1])
         emit('from_server', {'cmd': 'debug_info', 'data': debug_info}, broadcast=True)
     
