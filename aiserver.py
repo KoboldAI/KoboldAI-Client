@@ -69,8 +69,10 @@ mainmenu = [
     ["Load a model from its directory", "NeoCustom", ""],
     ["Load an old GPT-2 model (eg CloverEdition)", "GPT2Custom", ""],
     ["Skein 6B (Hybrid)", "KoboldAI/GPT-J-6B-Skein", "16GB"],
+    ["Janeway 6B (Novel)", "KoboldAI/GPT-J-6B-Janeway", "16GB"],
     ["Adventure 6B", "KoboldAI/GPT-J-6B-Adventure", "16GB"],
     ["Lit 6B (NSFW)", "hakurei/lit-6B", "16GB"],
+    ["Shinen 6B (NSFW)", "KoboldAI/GPT-J-6B-Shinen", "16GB"],
     ["C1 6B (Chatbot)", "hakurei/c1-6B", "16GB"],
     ["Janeway Neo 2.7B (Novel)", "KoboldAI/GPT-Neo-2.7B-Janeway", "8GB"],
     ["Janeway FSD 2.7B (Novel)", "KoboldAI/fairseq-dense-2.7B-Janeway", "8GB"],
@@ -2597,7 +2599,7 @@ def actionsubmit(data, actionmode=0, force_submit=False, force_prompt_gen=False,
         if(vars.chatmode and vars.gamestarted):
             data = re.sub(r'\n+', ' ', data)
             if(len(data)):
-                data = f"\n{vars.chatname} : {data}\n"
+                data = f"\n{vars.chatname}: {data}\n"
         
         # If we're not continuing, store a copy of the raw input
         if(data != ""):
