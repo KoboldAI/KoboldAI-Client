@@ -5015,11 +5015,35 @@ if(vars.model in ("TPUMeshTransformerGPTJ",)):
 def send_debug():
     if vars.debug:
         debug_info = ""
-        for variable in [["Newline Mode", vars.newlinemode], 
-                         ["Action Length", vars.actions.get_last_key()], ["Actions Metadata Length", max(vars.actions_metadata) if len(vars.actions_metadata) > 0 else 0], 
-                         ["Actions", [k for k in vars.actions]], ["Actions Metadata", [k for k in vars.actions_metadata]],
-                         ["Last Action", vars.actions[vars.actions.get_last_key()]], ["Last Metadata", vars.actions_metadata[max(vars.actions_metadata)]]]:
-            debug_info = "{}{}: {}\n".format(debug_info, variable[0], variable[1])
+        try:
+            debug_info = "{}Newline Mode: {}\n".format(debug_info, vars.newlinemode)
+        except:
+            pass
+        try:
+            debug_info = "{}Action Length: {}\n".format(debug_info, vars.actions.get_last_key())
+        except:
+            pass
+        try:
+            debug_info = "{}Actions Metadata Length: {}\n".format(debug_info, max(vars.actions_metadata) if len(vars.actions_metadata) > 0 else 0)
+        except:
+            pass
+        try:
+            debug_info = "{}Actions: {}\n".format(debug_info, vars.actions.get_last_key())
+        except:
+            pass
+        try:
+            debug_info = "{}Actions Metadata: {}\n".format(debug_info, [k for k in vars.actions_metadata])
+        except:
+            pass
+        try:
+            debug_info = "{}Last Action: {}\n".format(debug_info, vars.actions[vars.actions.get_last_key()])
+        except:
+            pass
+        try:
+            debug_info = "{}Last Metadata: {}\n".format(debug_info, vars.actions_metadata[max(vars.actions_metadata)])
+        except:
+            pass
+
         emit('from_server', {'cmd': 'debug_info', 'data': debug_info}, broadcast=True)
     
 #==================================================================#
