@@ -1080,8 +1080,9 @@ if(not vars.model in ["InferKit", "Colab", "OAI", "ReadOnly", "TPUMeshTransforme
 
             return lazy_load_callback
 
-        if(vars.lazy_load and "model_config" in globals() and vars.model_type in ("gpt_neo", "gptj", "xglm")):
-            with open(os.path.join(path.dirname(path.realpath(__file__)), "maps", vars.model_type + ".json")) as f:
+        lazy_load_config_path = os.path.join(path.dirname(path.realpath(__file__)), "maps", vars.model_type + ".json")
+        if(vars.lazy_load and "model_config" in globals() and os.path.isfile(lazy_load_config_path)):
+            with open(lazy_load_config_path) as f:
                 lazy_load_spec = json.load(f)
 
         else:
