@@ -48,8 +48,8 @@ function launch
         exit 0
     else
     cd /content/KoboldAI-Client
-    echo "Launching KoboldAI with the following options : python3 aiserver.py$model$kmpath$configname$ngrok --remote --override_delete --override_rename"
-    python3 aiserver.py$model$kmpath$configname$ngrok --colab
+    echo "Launching KoboldAI with the following options : python3 aiserver.py$model$kmpath$configname$ngrok$colab"
+    python3 aiserver.py$model$kmpath$configname$ngrok$colab
     exit
     fi
 }
@@ -151,10 +151,12 @@ if [ "$init" != "skip" ]; then
     ln -s /content/drive/MyDrive/KoboldAI/userscripts/ userscripts
     ln -s /content/drive/MyDrive/KoboldAI/models/ models
 
-    if [ "$model" == " --model TPUMeshTransformerGPTJ" ]; then
+    if [ -n "${COLAB_TPU_ADDR+set}" ]; then
         pip install -r requirements_mtj.txt
+        colab=" --colab --colab_tpu"
     else
         pip install -r requirements.txt
+        colab=" --colab"
     fi
     
     # Make sure Colab has netbase
