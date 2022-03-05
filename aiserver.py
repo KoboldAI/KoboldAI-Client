@@ -2802,7 +2802,7 @@ def actionredo():
             genout = genout + [{"generated_text": item['Text']} for item in vars.actions_metadata[vars.actions.get_last_key()+1]['Alternative Text'] if (item["Pinned"]==True) and (item["Previous Selection"]==False)]
             if len(genout) == 1:
                 vars.actions_metadata[vars.actions.get_last_key()+1]['Alternative Text'] = [item for item in vars.actions_metadata[vars.actions.get_last_key()+1]['Alternative Text'] if (item["Previous Selection"]!=True)]
-                genresult(genout[0]['generated_text'], flash=True)
+                genresult(genout[0]['generated_text'], flash=True, ignore_formatting=True)
             else:
                 # Store sequences in memory until selection is made
                 vars.genseqs = genout
@@ -3191,12 +3191,13 @@ def generate(txt, minimum, maximum, found_entries=None):
 #==================================================================#
 #  Deal with a single return sequence from generate()
 #==================================================================#
-def genresult(genout, flash=True):
+def genresult(genout, flash=True, ignore_formatting=False):
     if not vars.quiet:
         print("{0}{1}{2}".format(colors.CYAN, genout, colors.END))
     
     # Format output before continuing
-    genout = applyoutputformatting(genout)
+    if not ignore_formatting:
+        genout = applyoutputformatting(genout)
 
     vars.lua_koboldbridge.feedback = genout
 
