@@ -1097,27 +1097,28 @@ if(not vars.use_colab_tpu and vars.model not in ["InferKit", "Colab", "OAI", "Re
         else:
             vars.lazy_load = False
 
-        # Temporary fix for XGLM positional embedding issues until
+        # Some versions of transformers 4.17.0.dev0 are affected by
         # https://github.com/huggingface/transformers/issues/15736
-        # is resolved
-        try:
-            from transformers.models.xglm.modeling_xglm import XGLMSinusoidalPositionalEmbedding
-        except ImportError:
-            pass
-        else:
-            @torch.no_grad()
-            def new_forward(self, input_ids: torch.Tensor = None, inputs_embeds: torch.Tensor = None, past_key_values_length: int = 0):
-                bsz, seq_len = inputs_embeds.size()[:-1]
-                input_shape = inputs_embeds.size()[:-1]
-                sequence_length = input_shape[1]
-                position_ids = torch.arange(
-                    past_key_values_length + self.padding_idx + 1, past_key_values_length + sequence_length + self.padding_idx + 1, dtype=torch.long, device=inputs_embeds.device
-                ).unsqueeze(0).expand(input_shape).contiguous()
-                max_pos = self.padding_idx + 1 + seq_len + past_key_values_length
-                if max_pos > self.weights.size(0):
-                    self.make_weights(max_pos + self.offset, self.embedding_dim, self.padding_idx)
-                return self.weights.index_select(0, position_ids.view(-1)).view(bsz, seq_len, -1).detach()
-            XGLMSinusoidalPositionalEmbedding.forward = new_forward
+        # This is a workaround for those versions of transformers.
+        if(transformers_version == "4.17.0.dev0"):
+            try:
+                from transformers.models.xglm.modeling_xglm import XGLMSinusoidalPositionalEmbedding
+            except ImportError:
+                pass
+            else:
+                @torch.no_grad()
+                def new_forward(self, input_ids: torch.Tensor = None, inputs_embeds: torch.Tensor = None, past_key_values_length: int = 0):
+                    bsz, seq_len = inputs_embeds.size()[:-1]
+                    input_shape = inputs_embeds.size()[:-1]
+                    sequence_length = input_shape[1]
+                    position_ids = torch.arange(
+                        past_key_values_length + self.padding_idx + 1, past_key_values_length + sequence_length + self.padding_idx + 1, dtype=torch.long, device=inputs_embeds.device
+                    ).unsqueeze(0).expand(input_shape).contiguous()
+                    max_pos = self.padding_idx + 1 + seq_len + past_key_values_length
+                    if max_pos > self.weights.size(0):
+                        self.make_weights(max_pos + self.offset, self.embedding_dim, self.padding_idx)
+                    return self.weights.index_select(0, position_ids.view(-1)).view(bsz, seq_len, -1).detach()
+                XGLMSinusoidalPositionalEmbedding.forward = new_forward
 
         # Patch transformers to use our soft prompt
         def patch_causallm(cls):
@@ -2877,7 +2878,7 @@ def actionback():
         vars.recentback = True
         remove_story_chunk(last_key + 1)
         #for the redo to not get out of whack, need to reset the max # in the actions sequence
-        vars.actions.set_next_id(vars.actions.get_last_key())
+        vars.actions.set_next_id(last_key)
     elif(len(vars.genseqs) == 0):
         emit('from_server', {'cmd': 'errmsg', 'data': "Cannot delete the prompt."})
     else:
@@ -2890,10 +2891,9 @@ def actionredo():
         genout = [{"generated_text": item['Text']} for item in vars.actions_metadata[vars.actions.get_last_key()+1]['Alternative Text'] if (item["Previous Selection"]==True)]
         if len(genout) > 0:
             genout = genout + [{"generated_text": item['Text']} for item in vars.actions_metadata[vars.actions.get_last_key()+1]['Alternative Text'] if (item["Pinned"]==True) and (item["Previous Selection"]==False)]
-            
             if len(genout) == 1:
                 vars.actions_metadata[vars.actions.get_last_key()+1]['Alternative Text'] = [item for item in vars.actions_metadata[vars.actions.get_last_key()+1]['Alternative Text'] if (item["Previous Selection"]!=True)]
-                genresult(genout[0]['generated_text'], flash=True)
+                genresult(genout[0]['generated_text'], flash=True, ignore_formatting=True)
             else:
                 # Store sequences in memory until selection is made
                 vars.genseqs = genout
@@ -2901,6 +2901,7 @@ def actionredo():
                 
                 # Send sequences to UI for selection
                 genout = [[item['Text'], "redo"] for item in vars.actions_metadata[vars.actions.get_last_key()+1]['Alternative Text'] if (item["Previous Selection"]==True)]
+                
                 emit('from_server', {'cmd': 'genseqs', 'data': genout}, broadcast=True)
     else:
         emit('from_server', {'cmd': 'popuperror', 'data': "There's nothing to undo"}, broadcast=True)
@@ -3281,12 +3282,13 @@ def generate(txt, minimum, maximum, found_entries=None):
 #==================================================================#
 #  Deal with a single return sequence from generate()
 #==================================================================#
-def genresult(genout, flash=True):
+def genresult(genout, flash=True, ignore_formatting=False):
     if not vars.quiet:
         print("{0}{1}{2}".format(colors.CYAN, genout, colors.END))
     
     # Format output before continuing
-    genout = applyoutputformatting(genout)
+    if not ignore_formatting:
+        genout = applyoutputformatting(genout)
 
     vars.lua_koboldbridge.feedback = genout
 
@@ -4708,8 +4710,6 @@ def loadRequest(loadpath, filename=None):
         emit('from_server', {'cmd': 'hidegenseqs', 'data': ''}, broadcast=True)
         print("{0}Story loaded from {1}!{2}".format(colors.GREEN, filename, colors.END))
         
-        print([k for k in vars.actions])
-        print([k for k in vars.actions_metadata])
         send_debug()
 
 #==================================================================#
@@ -5120,7 +5120,7 @@ def send_debug():
         except:
             pass
         try:
-            debug_info = "{}Actions: {}\n".format(debug_info, vars.actions.get_last_key())
+            debug_info = "{}Actions: {}\n".format(debug_info, [k for k in vars.actions])
         except:
             pass
         try:
