@@ -253,6 +253,7 @@ class vars:
     quiet       = False # If set will suppress any story text from being printed to the console (will only be seen on the client web page)
     debug       = False # If set to true, will send debug information to the client for display
     lazy_load   = True  # Whether or not to use torch_lazy_loader.py for transformers models in order to reduce CPU memory usage
+    use_colab_tpu = os.environ.get("COLAB_TPU_ADDR", "") != ""  # Whether or not we're in a Colab TPU instance and are going to use the TPU rather than the CPU
 
 utils.vars = vars
 
@@ -695,7 +696,7 @@ def spRequest(filename):
     vars.sp_length = tensor.shape[-2]
     vars.spmeta["n_tokens"] = vars.sp_length
 
-    if(args.colab_tpu or vars.model in ("TPUMeshTransformerGPTJ",)):
+    if(vars.use_colab_tpu or vars.model in ("TPUMeshTransformerGPTJ",)):
         rows = tensor.shape[0]
         padding_amount = tpu_mtj_backend.params["seq"] - (tpu_mtj_backend.params["seq"] % -tpu_mtj_backend.params["cores_per_replica"]) - rows
         tensor = np.pad(tensor, ((0, padding_amount), (0, 0)))
@@ -730,7 +731,6 @@ parser.add_argument("--override_delete", action='store_true', help="Deleting sto
 parser.add_argument("--override_rename", action='store_true', help="Renaming stories from inside the browser is disabled if you are using --remote and enabled otherwise. Using this option will instead allow renaming stories if using --remote and prevent renaming stories otherwise.")
 parser.add_argument("--configname", help="Force a fixed configuration name to aid with config management.")
 parser.add_argument("--colab", action='store_true', help="Optimize for Google Colab.")
-parser.add_argument("--colab_tpu", action='store_true', help="If you're running KoboldAI in a Google Colab TPU instance, enable this to load Hugging Face models onto the TPU.")
 parser.add_argument("--nobreakmodel", action='store_true', help="Disables Breakmodel support completely.")
 parser.add_argument("--unblock", action='store_true', default=False, help="Unblocks the KoboldAI port to be accessible from other machines without optimizing for remote play (It is recommended to use --host instead)")
 parser.add_argument("--quiet", action='store_true', default=False, help="If present will suppress any story related text from showing on the console")
@@ -767,6 +767,9 @@ if args.ngrok:
 
 if args.host:
     vars.host = True;
+
+if args.cpu:
+    vars.use_colab_tpu = False
 
 vars.smandelete = vars.host == args.override_delete
 vars.smanrename = vars.host == args.override_rename
@@ -824,7 +827,7 @@ if(vars.model not in ["InferKit", "Colab", "OAI", "ReadOnly", "TPUMeshTransforme
         print("WARNING: No model type detected, assuming Neo (If this is a GPT2 model use the other menu option or --model GPT2Custom)")
         vars.model_type = "gpt_neo"
 
-if(not args.colab_tpu and vars.model not in ["InferKit", "Colab", "OAI", "ReadOnly", "TPUMeshTransformerGPTJ"]):
+if(not vars.use_colab_tpu and vars.model not in ["InferKit", "Colab", "OAI", "ReadOnly", "TPUMeshTransformerGPTJ"]):
     loadmodelsettings()
     loadsettings()
     print("{0}Looking for GPU support...{1}".format(colors.PURPLE, colors.END), end="")
@@ -1017,7 +1020,7 @@ socketio = SocketIO(app, async_method="eventlet")
 print("{0}OK!{1}".format(colors.GREEN, colors.END))
 
 # Start transformers and create pipeline
-if(not args.colab_tpu and vars.model not in ["InferKit", "Colab", "OAI", "ReadOnly", "TPUMeshTransformerGPTJ"]):
+if(not vars.use_colab_tpu and vars.model not in ["InferKit", "Colab", "OAI", "ReadOnly", "TPUMeshTransformerGPTJ"]):
     if(not vars.noai):
         print("{0}Initializing transformers, please wait...{1}".format(colors.PURPLE, colors.END))
         from transformers import StoppingCriteria, GPT2TokenizerFast, GPT2LMHeadModel, GPTNeoForCausalLM, GPTNeoModel, AutoModelForCausalLM, AutoTokenizer
@@ -1526,7 +1529,7 @@ else:
         tokenizer = GPT2TokenizerFast.from_pretrained("gpt2", cache_dir="cache/")
         loadsettings()
     # Load the TPU backend if requested
-    elif(args.colab_tpu or vars.model == "TPUMeshTransformerGPTJ"):
+    elif(vars.use_colab_tpu or vars.model == "TPUMeshTransformerGPTJ"):
         print("{0}Initializing Mesh Transformer JAX, please wait...{1}".format(colors.PURPLE, colors.END))
         if vars.model == "TPUMeshTransformerGPTJ" and (not vars.custmodpth or not os.path.isdir(vars.custmodpth)):
             raise FileNotFoundError(f"The specified model path {repr(vars.custmodpth)} is not the path to a valid folder")
@@ -1540,7 +1543,7 @@ else:
         vars.allowsp = True
         loadmodelsettings()
         loadsettings()
-        tpu_mtj_backend.load_model(vars.custmodpth, hf_checkpoint=args.colab_tpu, **vars.modelconfig)
+        tpu_mtj_backend.load_model(vars.custmodpth, hf_checkpoint=vars.model != "TPUMeshTransformerGPTJ" and vars.use_colab_tpu, **vars.modelconfig)
         vars.modeldim = int(tpu_mtj_backend.params["d_model"])
         tokenizer = tpu_mtj_backend.tokenizer
     else:
@@ -2071,7 +2074,7 @@ def lua_get_modeltype():
         return "readonly"
     if(vars.model in ("Colab", "OAI", "InferKit")):
         return "api"
-    if(not args.colab_tpu and vars.model not in ("TPUMeshTransformerGPTJ",) and (vars.model in ("GPT2Custom", "NeoCustom") or vars.model_type in ("gpt2", "gpt_neo", "gptj"))):
+    if(not vars.use_colab_tpu and vars.model not in ("TPUMeshTransformerGPTJ",) and (vars.model in ("GPT2Custom", "NeoCustom") or vars.model_type in ("gpt2", "gpt_neo", "gptj"))):
         hidden_size = get_hidden_size_from_model(model)
     if(vars.model in ("gpt2",) or (vars.model_type == "gpt2" and hidden_size == 768)):
         return "gpt2"
@@ -2087,7 +2090,7 @@ def lua_get_modeltype():
         return "gpt-neo-1.3B"
     if(vars.model in ("EleutherAI/gpt-neo-2.7B",) or (vars.model_type == "gpt_neo" and hidden_size == 2560)):
         return "gpt-neo-2.7B"
-    if(vars.model in ("EleutherAI/gpt-j-6B",) or ((args.colab_tpu or vars.model == "TPUMeshTransformerGPTJ") and tpu_mtj_backend.params["d_model"] == 4096) or (vars.model_type in ("gpt_neo", "gptj") and hidden_size == 4096)):
+    if(vars.model in ("EleutherAI/gpt-j-6B",) or ((vars.use_colab_tpu or vars.model == "TPUMeshTransformerGPTJ") and tpu_mtj_backend.params["d_model"] == 4096) or (vars.model_type in ("gpt_neo", "gptj") and hidden_size == 4096)):
         return "gpt-j-6B"
     return "unknown"
 
@@ -2100,7 +2103,7 @@ def lua_get_modelbackend():
         return "readonly"
     if(vars.model in ("Colab", "OAI", "InferKit")):
         return "api"
-    if(args.colab_tpu or vars.model in ("TPUMeshTransformerGPTJ",)):
+    if(vars.use_colab_tpu or vars.model in ("TPUMeshTransformerGPTJ",)):
         return "mtj"
     return "transformers"
 
@@ -3047,22 +3050,22 @@ def calcsubmit(txt):
     if(vars.model != "InferKit"):
         subtxt, min, max = calcsubmitbudget(actionlen, winfo, mem, anotetxt, vars.actions, submission=txt)
         if(actionlen == 0):
-            if(not args.colab_tpu and vars.model not in ["Colab", "OAI", "TPUMeshTransformerGPTJ"]):
+            if(not vars.use_colab_tpu and vars.model not in ["Colab", "OAI", "TPUMeshTransformerGPTJ"]):
                 generate(subtxt, min, max, found_entries=found_entries)
             elif(vars.model == "Colab"):
                 sendtocolab(utils.decodenewlines(tokenizer.decode(subtxt)), min, max)
             elif(vars.model == "OAI"):
                 oairequest(utils.decodenewlines(tokenizer.decode(subtxt)), min, max)
-            elif(args.colab_tpu or vars.model == "TPUMeshTransformerGPTJ"):
+            elif(vars.use_colab_tpu or vars.model == "TPUMeshTransformerGPTJ"):
                 tpumtjgenerate(subtxt, min, max, found_entries=found_entries)
         else:
-            if(not args.colab_tpu and vars.model not in ["Colab", "OAI", "TPUMeshTransformerGPTJ"]):
+            if(not vars.use_colab_tpu and vars.model not in ["Colab", "OAI", "TPUMeshTransformerGPTJ"]):
                 generate(subtxt, min, max, found_entries=found_entries)
             elif(vars.model == "Colab"):
                 sendtocolab(utils.decodenewlines(tokenizer.decode(subtxt)), min, max)
             elif(vars.model == "OAI"):
                 oairequest(utils.decodenewlines(tokenizer.decode(subtxt)), min, max)
-            elif(args.colab_tpu or vars.model == "TPUMeshTransformerGPTJ"):
+            elif(vars.use_colab_tpu or vars.model == "TPUMeshTransformerGPTJ"):
                 tpumtjgenerate(subtxt, min, max, found_entries=found_entries)
                     
     # For InferKit web API
@@ -5074,7 +5077,7 @@ if(path.exists("settings/" + getmodelname().replace('/', '_') + ".settings")):
     file.close()
 
 # Precompile TPU backend if required
-if(args.colab_tpu or vars.model in ("TPUMeshTransformerGPTJ",)):
+if(vars.use_colab_tpu or vars.model in ("TPUMeshTransformerGPTJ",)):
     soft_tokens = tpumtjgetsofttokens()
     if(vars.dynamicscan or (not vars.nogenmod and vars.has_genmod)):
         threading.Thread(
