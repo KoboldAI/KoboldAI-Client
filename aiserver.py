@@ -3195,10 +3195,8 @@ def genresult(genout, flash=True):
     if not vars.quiet:
         print("{0}{1}{2}".format(colors.CYAN, genout, colors.END))
     
-    print("1: {}\n\n".format(genout))
     # Format output before continuing
     genout = applyoutputformatting(genout)
-    print("2: {}\n\n".format(genout))
 
     vars.lua_koboldbridge.feedback = genout
 
