@@ -1,1 +1,0 @@
-play --remote --lowmem %*
