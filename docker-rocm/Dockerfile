@@ -1,6 +1,6 @@
-# This dockerfile is meant to serve as a rocm base image.  It registers the debian rocm package repository, and
-# installs the rocm-dev package.
-
-FROM rocm/pytorch
-RUN conda install --all -y Flask-SocketIO
-RUN pip3 install git+https://github.com/finetuneanon/transformers@gpt-neo-localattention3
+FROM mambaorg/micromamba
+WORKDIR /content/
+COPY env.yml /home/micromamba/env.yml
+RUN micromamba install -y -n base -f /home/micromamba/env.yml
+USER root
+RUN apt update && apt install xorg libsqlite3-0 -y
