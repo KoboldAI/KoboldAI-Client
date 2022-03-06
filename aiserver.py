@@ -995,7 +995,7 @@ if(vars.model == "OAI"):
             engine = input("Engine #> ")
             if(engine.isnumeric() and int(engine) < len(engines)):
                 vars.oaiurl = vars.oaiengines + "/{0}/completions".format(engines[int(engine)]["id"])
-                args.configname = args.configname + "/" + en["id"]
+                args.configname = args.configname + "/" + engines[int(engine)]["id"]
                 engselected = True
             else:
                 print("{0}Please enter a valid selection.{1}".format(colors.RED, colors.END))
