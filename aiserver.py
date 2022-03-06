@@ -2899,12 +2899,30 @@ def actionback():
         
 def actionredo():
     i = 0
-    if vars.actions.get_last_key()+1 in vars.actions_metadata:
-        genout = [{"generated_text": item['Text']} for item in vars.actions_metadata[vars.actions.get_last_key()+1]['Alternative Text'] if (item["Previous Selection"]==True)]
+    #First we need to find the next valid key
+    #We might have deleted text so we don't want to show a redo for that blank chunk
+    
+    restore_id = vars.actions.get_last_key()+1
+    if restore_id in vars.actions_metadata:
+        ok_to_use = False
+        while not ok_to_use:
+            for item in vars.actions_metadata[restore_id]['Alternative Text']:
+                if item['Previous Selection'] and item['Text'] != "":
+                    ok_to_use = True
+            if not ok_to_use:
+                restore_id+=1
+                if restore_id not in vars.actions_metadata:
+                    return
+            else:
+                vars.actions.set_next_id(restore_id)
+                
+    
+    if restore_id in vars.actions_metadata:
+        genout = [{"generated_text": item['Text']} for item in vars.actions_metadata[restore_id]['Alternative Text'] if (item["Previous Selection"]==True)]
         if len(genout) > 0:
-            genout = genout + [{"generated_text": item['Text']} for item in vars.actions_metadata[vars.actions.get_last_key()+1]['Alternative Text'] if (item["Pinned"]==True) and (item["Previous Selection"]==False)]
+            genout = genout + [{"generated_text": item['Text']} for item in vars.actions_metadata[restore_id]['Alternative Text'] if (item["Pinned"]==True) and (item["Previous Selection"]==False)]
             if len(genout) == 1:
-                vars.actions_metadata[vars.actions.get_last_key()+1]['Alternative Text'] = [item for item in vars.actions_metadata[vars.actions.get_last_key()+1]['Alternative Text'] if (item["Previous Selection"]!=True)]
+                vars.actions_metadata[restore_id]['Alternative Text'] = [item for item in vars.actions_metadata[restore_id]['Alternative Text'] if (item["Previous Selection"]!=True)]
                 genresult(genout[0]['generated_text'], flash=True, ignore_formatting=True)
             else:
                 # Store sequences in memory until selection is made
@@ -2912,7 +2930,7 @@ def actionredo():
                 
                 
                 # Send sequences to UI for selection
-                genout = [[item['Text'], "redo"] for item in vars.actions_metadata[vars.actions.get_last_key()+1]['Alternative Text'] if (item["Previous Selection"]==True)]
+                genout = [[item['Text'], "redo"] for item in vars.actions_metadata[restore_id]['Alternative Text'] if (item["Previous Selection"]==True)]
                 
                 emit('from_server', {'cmd': 'genseqs', 'data': genout}, broadcast=True)
     else:
