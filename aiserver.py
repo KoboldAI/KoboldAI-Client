@@ -1081,6 +1081,8 @@ if(not vars.use_colab_tpu and vars.model not in ["InferKit", "Colab", "OAI", "Re
                             model_dict[key] = model_dict[key].materialize(f, map_location="cpu")
                             if convert_to_float16 and vars.hascuda and (vars.breakmodel or vars.usegpu) and model_dict[key].dtype is torch.float32:
                                 model_dict[key] = model_dict[key].to(torch.float16)
+                            if not vars.usegpu and model_dict[key].dtype is torch.float16:
+                                model_dict[key] = model_dict[key].to(torch.float32)
                             model_dict[key] = model_dict[key].to(device)
                             #print("OK", flush=True)
                     finally:
