@@ -1,5 +1,3 @@
-import tkinter as tk
-from tkinter import filedialog
 from os import getcwd, listdir, path
 from typing import Tuple, Union, Optional
 import os
@@ -10,6 +8,8 @@ import zipfile
 #  Generic Method for prompting for file path
 #==================================================================#
 def getsavepath(dir, title, types):
+    import tkinter as tk
+    from tkinter import filedialog
     root = tk.Tk()
     root.attributes("-topmost", True)
     path = tk.filedialog.asksaveasfile(
@@ -28,6 +28,8 @@ def getsavepath(dir, title, types):
 #  Generic Method for prompting for file path
 #==================================================================#
 def getloadpath(dir, title, types):
+    import tkinter as tk
+    from tkinter import filedialog
     root = tk.Tk()
     root.attributes("-topmost", True)
     path = tk.filedialog.askopenfilename(
@@ -45,6 +47,8 @@ def getloadpath(dir, title, types):
 #  Generic Method for prompting for directory path
 #==================================================================#
 def getdirpath(dir, title):
+    import tkinter as tk
+    from tkinter import filedialog
     root = tk.Tk()
     root.attributes("-topmost", True)
     path = filedialog.askdirectory(
