@@ -4387,6 +4387,11 @@ def oairequest(txt, min, max):
         'max_tokens': max,
         'temperature': vars.temp,
         'top_p': vars.top_p,
+        'top_k': vars.top_k,
+        'tfs': vars.tfs,
+        'repetition_penalty': vars.rep_pen,
+        'repetition_penalty_slope': vars.rep_pen_slope,
+        'repetition_penalty_range': vars.rep_pen_range,
         'n': 1,
         'stream': False
     }
