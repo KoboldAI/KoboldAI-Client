@@ -937,9 +937,10 @@ function hideUSPopup() {
 }
 
 
-function buildLoadModelList(ar) {
+function buildLoadModelList(ar, menu) {
 	disableButtons([load_model_accept]);
 	loadmodelcontent.html("");
+	console.log(menu);	
 	var i;
 	for(i=0; i<ar.length; i++) {
 		var html
@@ -951,7 +952,7 @@ function buildLoadModelList(ar) {
 			html = html + "<div class=\"loadlistpadding\"></div>"
 		}
 		html = html + "<div class=\"loadlistpadding\"></div>\
-						<div class=\"loadlistitem\" id=\"loadmodel"+i+"\" name=\""+ar[i][1]+"\">\
+						<div class=\"loadlistitem\" id=\"loadmodel"+i+"\" name=\""+ar[i][1]+"\" pretty_name=\""+ar[i][0]+"\">\
 							<div>"+ar[i][0]+"</div>\
 							<div class=\"flex-push-right\">"+ar[i][2]+"</div>\
 						</div>\
@@ -960,8 +961,16 @@ function buildLoadModelList(ar) {
 		if(ar[i][3]) {
 			$("#loadmodel"+i).off("click").on("click", (function () {
 				return function () {
-					socket.send({'cmd': 'list_model', 'data': $(this).attr("name")});
+					socket.send({'cmd': 'list_model', 'data': $(this).attr("name"), 'pretty_name': $(this).attr("pretty_name")});
 					disableButtons([load_model_accept]);
+				}
+			})(i));
+		} else if(menu == 'custom') {
+			$("#loadmodel"+i).off("click").on("click", (function () {
+				return function () {
+					socket.send({'cmd': 'selectmodel', 'data': $(this).attr("name"), 'path': $(this).attr("pretty_name")});
+					highlightLoadLine($(this));
+					enableButtons([load_model_accept]);
 				}
 			})(i));
 		} else {
@@ -2382,7 +2391,7 @@ $(document).ready(function(){
 			} else {
 				$("#modelkey").addClass("hidden")
 			}
-			buildLoadModelList(msg.data);
+			buildLoadModelList(msg.data, msg.menu);
 		}
 	});
 	

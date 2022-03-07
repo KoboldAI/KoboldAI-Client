@@ -260,7 +260,11 @@ utils.vars = vars
 # Function to get model selection at startup
 #==================================================================#
 def sendModelSelection(menu="mainmenu"):
-    emit('from_server', {'cmd': 'show_model_menu', 'data': model_menu[menu], 'menu': menu}, broadcast=True)
+    #If we send one of the manual load options, send back the list of model directories, otherwise send the menu
+    if menu in ('NeoCustom', 'GPT2Custom'):
+        emit('from_server', {'cmd': 'show_model_menu', 'data': [[folder, menu, "", False] for folder in next(os.walk('./models'))[1]], 'menu': 'custom'}, broadcast=True)
+    else:
+        emit('from_server', {'cmd': 'show_model_menu', 'data': model_menu[menu], 'menu': menu}, broadcast=True)
 
 def getModelSelection(modellist):
     print("    #    Model\t\t\t\t\t\tVRAM\n    ========================================================")
@@ -801,6 +805,8 @@ def load_model(use_gpu=True, key=''):
     global generator
     vars.noai = False
     set_aibusy(True)
+    print("Model: ".format(vars.model))
+    print("args.path: ".format(args.path))
     # If transformers model was selected & GPU available, ask to use CPU or GPU
     if(vars.model not in ["InferKit", "Colab", "OAI", "GooseAI" , "ReadOnly", "TPUMeshTransformerGPTJ"]):
         vars.allowsp = True
@@ -2532,7 +2538,13 @@ def get_message(msg):
     elif(msg['cmd'] == 'load_model'):
         load_model(use_gpu=msg['use_gpu'], key=msg['key'])
     elif(msg['cmd'] == 'selectmodel'):
+        if msg['data'] in ('NeoCustom', 'GPT2Custom') and 'path' not in msg:
+            sendModelSelection(menu=msg['data'])
         vars.model = msg['data']
+        if 'path' in msg:
+            args.path = msg['path']
+            print(vars.model)
+            print(args.path)
     elif(msg['cmd'] == 'loadselect'):
         vars.loadselect = msg["data"]
     elif(msg['cmd'] == 'spselect'):
@@ -5189,7 +5201,8 @@ if __name__ == "__main__":
 
     general_startup()
     #show_select_model_list()
-    vars.model = "ReadOnly"
+    if vars.model == "" or vars.model is None:
+        vars.model = "ReadOnly"
     load_model()
 
     # Start Flask/SocketIO (Blocking, so this must be last method!)
