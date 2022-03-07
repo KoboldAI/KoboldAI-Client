@@ -940,7 +940,6 @@ function hideUSPopup() {
 function buildLoadModelList(ar, menu) {
 	disableButtons([load_model_accept]);
 	loadmodelcontent.html("");
-	console.log(menu);	
 	var i;
 	for(i=0; i<ar.length; i++) {
 		var html
@@ -970,7 +969,6 @@ function buildLoadModelList(ar, menu) {
 				return function () {
 					socket.send({'cmd': 'selectmodel', 'data': $(this).attr("name"), 'path': $(this).attr("pretty_name")});
 					highlightLoadLine($(this));
-					enableButtons([load_model_accept]);
 				}
 			})(i));
 		} else {
@@ -978,7 +976,6 @@ function buildLoadModelList(ar, menu) {
 				return function () {
 					socket.send({'cmd': 'selectmodel', 'data': $(this).attr("name")});
 					highlightLoadLine($(this));
-					enableButtons([load_model_accept]);
 				}
 			})(i));
 		}
@@ -1120,6 +1117,7 @@ function buildUSList(unloaded, loaded) {
 
 function highlightLoadLine(ref) {
 	$("#loadlistcontent > div > div.popuplistselected").removeClass("popuplistselected");
+	$("#loadmodellistcontent > div > div.popuplistselected").removeClass("popuplistselected");
 	ref.addClass("popuplistselected");
 }
 
@@ -1825,6 +1823,21 @@ function unbindGametext() {
 	gametext_bound = false;
 }
 
+function update_gpu_layers() {
+	var gpu_layers
+	gpu_layers = 0;
+	for (let i=0; i < $("#gpu_count")[0].value; i++) {
+		gpu_layers += parseInt($("#gpu_layers"+i)[0].value);
+	}
+	if (gpu_layers > parseInt(document.getElementById("gpu_layers_max").innerHTML)) {
+		disableButtons([load_model_accept]);
+		$("#gpu_layers_current").html("<span style='color: red'>"+gpu_layers+"</span>");
+	} else {
+		enableButtons([load_model_accept]);
+		$("#gpu_layers_current").html(gpu_layers);
+	}
+}
+
 //=================================================================//
 //  READY/RUNTIME
 //=================================================================//
@@ -2382,16 +2395,30 @@ $(document).ready(function(){
 			}
 		} else if(msg.cmd == 'show_model_menu') {
 			if(msg.menu == 'gpt2list') {
-				$("#use_gpu_div").removeClass("hidden")
+				$("#use_gpu_div").removeClass("hidden");
 			} else {
-				$("#use_gpu_div").addClass("hidden")
+				$("#use_gpu_div").addClass("hidden");
 			}
 			if(msg.menu == 'apilist') {
-				$("#modelkey").removeClass("hidden")
+				$("#modelkey").removeClass("hidden");
 			} else {
-				$("#modelkey").addClass("hidden")
+				$("#modelkey").addClass("hidden");
 			}
 			buildLoadModelList(msg.data, msg.menu);
+		} else if(msg.cmd == 'show_layer_bar') {
+			var html;
+			$("#modellayers").removeClass("hidden");
+			html = "";
+			for (let i=0; i < msg.gpu_count; i++) {
+				html += "GPU " + i + ": <input type='range' class='form-range airange' min='0' max='"+msg.data+"' step='1' value='"+msg.data+"' id='gpu_layers"+i+"' onchange='update_gpu_layers();'>";
+			}
+			$("#model_layer_bars").html(html);
+			$("#gpu_layers_max").html(msg.data);
+			$("#gpu_count")[0].value = msg.gpu_count;
+			update_gpu_layers();
+		} else if(msg.cmd == 'hide_layer_bar') {
+			$("#modellayers").addClass("hidden");
+			enableButtons([load_model_accept]);
 		}
 	});
 	
@@ -2603,7 +2630,19 @@ $(document).ready(function(){
 	
 	load_model_accept.on("click", function(ev) {
 		hideMessage();
-		socket.send({'cmd': 'load_model', 'use_gpu': $('#use_gpu')[0].checked, 'key': $('#modelkey')[0].value});
+		var gpu_layers;
+		var message;
+		if($("#modellayers")[0].hidden) {
+			gpu_layers = ","
+		} else {
+			gpu_layers = ""
+			for (let i=0; i < $("#gpu_count")[0].value; i++) {
+				gpu_layers += $("#gpu_layers"+i)[0].value + ",";
+			}
+		}
+		message = {'cmd': 'load_model', 'use_gpu': $('#use_gpu')[0].checked, 'key': $('#modelkey')[0].value, 'gpu_layers': gpu_layers.slice(0, -1)};
+		console.log(message);
+		socket.send(message);
 		loadmodelcontent.html("");
 		hideLoadModelPopup();
 	});

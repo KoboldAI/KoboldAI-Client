@@ -800,13 +800,40 @@ def general_startup():
 #==================================================================#
 # Load Model
 #==================================================================#
-def load_model(use_gpu=True, key=''):
+def get_layer_count(model, directory=""):
+    if(model not in ["InferKit", "Colab", "OAI", "GooseAI" , "ReadOnly", "TPUMeshTransformerGPTJ"]):
+        from transformers import AutoConfig
+        if(os.path.isdir(directory)):
+            try:
+                model_config = AutoConfig.from_pretrained(directory, cache_dir="cache/")
+            except ValueError as e:
+                model_config = None
+        elif(os.path.isdir("models/{}".format(model.replace('/', '_')))):
+            try:
+                model_config = AutoConfig.from_pretrained("models/{}".format(model.replace("/", "_")), cache_dir="cache/")
+            except ValueError as e:
+                model_config = None
+        else:
+            try:
+                model_config = AutoConfig.from_pretrained(model, cache_dir="cache/")
+            except ValueError as e:
+                model_config = None
+        if model_config is None:
+            return None
+        try:
+            layers = model_config.num_layers
+        except:
+            layers = None
+            pass
+        return layers
+
+def load_model(use_gpu=True, key='', gpu_layers=None):
     global model
     global generator
     vars.noai = False
     set_aibusy(True)
-    print("Model: ".format(vars.model))
-    print("args.path: ".format(args.path))
+    if gpu_layers is not None:
+        args.breakmodel_gpulayers = gpu_layers
     # If transformers model was selected & GPU available, ask to use CPU or GPU
     if(vars.model not in ["InferKit", "Colab", "OAI", "GooseAI" , "ReadOnly", "TPUMeshTransformerGPTJ"]):
         vars.allowsp = True
@@ -2536,15 +2563,20 @@ def get_message(msg):
     elif(msg['cmd'] == 'list_model'):
         sendModelSelection(menu=msg['data'])
     elif(msg['cmd'] == 'load_model'):
-        load_model(use_gpu=msg['use_gpu'], key=msg['key'])
+        load_model(use_gpu=msg['use_gpu'], key=msg['key'], gpu_layers=msg['gpu_layers'])
     elif(msg['cmd'] == 'selectmodel'):
         if msg['data'] in ('NeoCustom', 'GPT2Custom') and 'path' not in msg:
             sendModelSelection(menu=msg['data'])
         vars.model = msg['data']
         if 'path' in msg:
             args.path = msg['path']
-            print(vars.model)
-            print(args.path)
+            layers = get_layer_count(vars.model, directory=msg['path'])
+        else:
+            layers = get_layer_count(vars.model)
+        if layers is not None:
+            emit('from_server', {'cmd': 'show_layer_bar', 'data': layers, 'gpu_count': torch.cuda.device_count()}, broadcast=True)
+        else:
+            emit('from_server', {'cmd': 'hide_layer_bar'}, broadcast=True)
     elif(msg['cmd'] == 'loadselect'):
         vars.loadselect = msg["data"]
     elif(msg['cmd'] == 'spselect'):

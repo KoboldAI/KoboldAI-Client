@@ -284,6 +284,31 @@
 			<div class="popupfooter">
 				<input class="form-control hidden" type="text" placeholder="key" id="modelkey"><br>
 			</div>
+			<div class="popupfooter hidden" id=modellayers>
+				<div class='settingitem' style="width:100%">
+					<div class='settinglabel'>
+						<div class="justifyleft">
+							GPU Layers
+							<span class="helpicon">?
+								<span class="helptext">Number of layers to assign to the GPU</span>
+							</span>
+						</div>
+						<div class="justifyright" id="gpu_layers_current">0</div>
+					</div>
+					<div id=model_layer_bars style="color: white">
+						
+					</div>
+					<input type=hidden id='gpu_count' value=0/>
+					<div class="settingminmax">
+						<div class="justifyleft">
+							0
+						</div>
+						<div class="justifyright" id="gpu_layers_max">
+							24
+						</div>
+					</div>
+				</div>
+			</div>
 			<div class="popupfooter">
 				<button type="button" class="btn btn-primary" id="btn_loadmodelaccept">Load</button>
 				<button type="button" class="btn btn-primary" id="btn_loadmodelclose">Cancel</button>
