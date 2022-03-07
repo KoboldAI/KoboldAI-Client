@@ -40,7 +40,7 @@ import gc
 import lupa
 
 import torch
-from transformers import StoppingCriteria, GPT2TokenizerFast, GPT2LMHeadModel, GPTNeoForCausalLM, GPTNeoModel, AutoModelForCausalLM, AutoTokenizer
+from transformers import StoppingCriteria, GPT2TokenizerFast, GPT2LMHeadModel, GPTNeoForCausalLM, GPTNeoModel, AutoModelForCausalLM, AutoTokenizer, GPT2TokenizerFast
 
 # KoboldAI
 import fileops
@@ -830,11 +830,21 @@ def get_layer_count(model, directory=""):
 def load_model(use_gpu=True, key='', gpu_layers=None, initial_load=False):
     global model
     global generator
+    global torch
     vars.noai = False
     if not initial_load:
         set_aibusy(True)
     if gpu_layers is not None:
         args.breakmodel_gpulayers = gpu_layers
+    #We need to wipe out the existing model and refresh the cuda cache
+    model = None
+    generator = None
+    
+    torch.cuda.empty_cache()
+    print("Cache cleared")
+    print(vars.model)
+    print(args.path)
+    print(vars.custmodpth)
     # If transformers model was selected & GPU available, ask to use CPU or GPU
     if(vars.model not in ["InferKit", "Colab", "OAI", "GooseAI" , "ReadOnly", "TPUMeshTransformerGPTJ"]):
         vars.allowsp = True
@@ -843,10 +853,10 @@ def load_model(use_gpu=True, key='', gpu_layers=None, initial_load=False):
         
         # Make model path the same as the model name to make this consistent with the other loading method if it isn't a known model type
         # This code is not just a workaround for below, it is also used to make the behavior consistent with other loading methods - Henk717
-        if(not vars.model in ["NeoCustom", "GPT2Custom"]):
-            vars.custmodpth = vars.model
-        elif(vars.model == "NeoCustom"):
-            vars.model = os.path.basename(os.path.normpath(vars.custmodpth))
+        #if(not vars.model in ["NeoCustom", "GPT2Custom"]):
+        #    vars.custmodpth = vars.model
+        #elif(vars.model == "NeoCustom"):
+        #    vars.model = os.path.basename(os.path.normpath(vars.custmodpth))
 
         # Get the model_type from the config or assume a model type if it isn't present
         from transformers import AutoConfig
@@ -856,15 +866,21 @@ def load_model(use_gpu=True, key='', gpu_layers=None, initial_load=False):
                 vars.model_type = model_config.model_type
             except ValueError as e:
                 vars.model_type = "not_found"
-        elif(os.path.isdir("models/{}".format(vars.custmodpth.replace('/', '_')))):
+        elif(os.path.isdir("models/{}".format(vars.custmodpth.replace('/', '_'))) and vars.custmodpth != ""):
             try:
                 model_config = AutoConfig.from_pretrained("models/{}".format(vars.custmodpth.replace('/', '_')), cache_dir="cache/")
                 vars.model_type = model_config.model_type
             except ValueError as e:
                 vars.model_type = "not_found"
+        elif(os.path.isdir("models/{}".format(vars.model.replace('/', '_')))):
+            try:
+                model_config = AutoConfig.from_pretrained("models/{}".format(vars.model.replace('/', '_')), cache_dir="cache/")
+                vars.model_type = model_config.model_type
+            except ValueError as e:
+                vars.model_type = "not_found"
         else:
             try:
-                model_config = AutoConfig.from_pretrained(vars.custmodpth, cache_dir="cache/")
+                model_config = AutoConfig.from_pretrained(vars.model, cache_dir="cache/")
                 vars.model_type = model_config.model_type
             except ValueError as e:
                 vars.model_type = "not_found"
@@ -1366,7 +1382,7 @@ def load_model(use_gpu=True, key='', gpu_layers=None, initial_load=False):
             # If custom GPT2 model was chosen
             if(vars.model == "GPT2Custom"):
                 vars.lazy_load = False
-                model_config = open(vars.custmodpth + "/config.json", "r")
+                model_config = open("{}/config.json".format(vars.custmodpth), "r")
                 js   = json.load(model_config)
                 with(maybe_use_float16()):
                     model = GPT2LMHeadModel.from_pretrained(vars.custmodpth, cache_dir="cache/")
@@ -1466,7 +1482,6 @@ def load_model(use_gpu=True, key='', gpu_layers=None, initial_load=False):
             print("{0}OK! {1} pipeline created!{2}".format(colors.GREEN, vars.model, colors.END))
         
         else:
-            from transformers import GPT2TokenizerFast
             tokenizer = GPT2TokenizerFast.from_pretrained("gpt2", cache_dir="cache/")
     else:
         def tpumtjgetsofttokens():
@@ -1555,11 +1570,9 @@ def load_model(use_gpu=True, key='', gpu_layers=None, initial_load=False):
 
         # If we're running Colab or OAI, we still need a tokenizer.
         if(vars.model == "Colab"):
-            from transformers import GPT2TokenizerFast
             tokenizer = GPT2TokenizerFast.from_pretrained("EleutherAI/gpt-neo-2.7B", cache_dir="cache/")
             loadsettings()
         elif(vars.model == "OAI"):
-            from transformers import GPT2TokenizerFast
             tokenizer = GPT2TokenizerFast.from_pretrained("gpt2", cache_dir="cache/")
             loadsettings()
         # Load the TPU backend if requested
@@ -1789,7 +1802,6 @@ def lua_decode(tokens):
     tokens = list(tokens.values())
     assert type(tokens) is list
     if("tokenizer" not in globals()):
-        from transformers import GPT2TokenizerFast
         global tokenizer
         tokenizer = GPT2TokenizerFast.from_pretrained("gpt2", cache_dir="cache/")
     return utils.decodenewlines(tokenizer.decode(tokens))
@@ -1801,7 +1813,6 @@ def lua_decode(tokens):
 def lua_encode(string):
     assert type(string) is str
     if("tokenizer" not in globals()):
-        from transformers import GPT2TokenizerFast
         global tokenizer
         tokenizer = GPT2TokenizerFast.from_pretrained("gpt2", cache_dir="cache/")
     return tokenizer.encode(utils.encodenewlines(string), max_length=int(4e9), truncation=True)
@@ -2575,22 +2586,28 @@ def get_message(msg):
     elif(msg['cmd'] == 'selectmodel'):
         if msg['data'] in ('NeoCustom', 'GPT2Custom') and 'path' not in msg:
             sendModelSelection(menu=msg['data'])
-        vars.model = msg['data']
-        if 'path' in msg:
-            args.path = msg['path']
-            layers = get_layer_count(vars.model, directory=msg['path'])
         else:
-            layers = get_layer_count(vars.model)
-        if layers is not None:
-            if path.exists("settings/" + vars.model.replace('/', '_') + ".breakmodel"):
-                f = open("settings/" + vars.model.replace('/', '_') + ".breakmodel", "r")
-                breakmodel = f.read().split(",")
-                f.close()
+            vars.model = msg['data']
+            if 'path' in msg:
+                vars.custmodpth = "models/{}".format(msg['path'])
+                if msg['data'] == 'GPT2Custom':
+                    layers = None
+                elif msg['data'] == 'NeoCustom':
+                    layers = get_layer_count(vars.custmodpth, directory=msg['path'])
+                else:
+                    layers = get_layer_count(vars.model, directory=msg['path'])
             else:
-                breakmodel = [layers for i in range(torch.cuda.device_count())]
-            emit('from_server', {'cmd': 'show_layer_bar', 'data': layers, 'gpu_count': torch.cuda.device_count(), 'breakmodel': breakmodel}, broadcast=True)
-        else:
-            emit('from_server', {'cmd': 'hide_layer_bar'}, broadcast=True)
+                layers = get_layer_count(vars.model)
+            if layers is not None:
+                if path.exists("settings/" + vars.model.replace('/', '_') + ".breakmodel"):
+                    f = open("settings/" + vars.model.replace('/', '_') + ".breakmodel", "r")
+                    breakmodel = f.read().split(",")
+                    f.close()
+                else:
+                    breakmodel = [layers for i in range(torch.cuda.device_count())]
+                emit('from_server', {'cmd': 'show_layer_bar', 'data': layers, 'gpu_count': torch.cuda.device_count(), 'breakmodel': breakmodel}, broadcast=True)
+            else:
+                emit('from_server', {'cmd': 'hide_layer_bar'}, broadcast=True)
     elif(msg['cmd'] == 'loadselect'):
         vars.loadselect = msg["data"]
     elif(msg['cmd'] == 'spselect'):
@@ -3030,7 +3047,6 @@ def calcsubmitbudget(actionlen, winfo, mem, anotetxt, actions, submission=None, 
     lnsp = vars.sp_length
 
     if("tokenizer" not in globals()):
-        from transformers import GPT2TokenizerFast
         global tokenizer
         tokenizer = GPT2TokenizerFast.from_pretrained("gpt2", cache_dir="cache/")
 

@@ -1847,6 +1847,7 @@ $(document).ready(function(){
 	// Bind UI references
 	connect_status    = $('#connectstatus');
 	button_loadmodel  = $('#btn_loadmodel');
+	button_showmodel  = $('#btn_showmodel');
 	button_newgame    = $('#btn_newgame');
 	button_rndgame    = $('#btn_rndgame');
 	button_save       = $('#btn_save');
@@ -2677,6 +2678,9 @@ $(document).ready(function(){
 	button_loadmodel.on("click", function(ev) {
 		showLoadModelPopup();
 		socket.send({'cmd': 'list_model', 'data': 'mainmenu'});
+	});
+	button_showmodel.on("click", function(ev) {
+		socket.send({'cmd': 'show_model', 'data': ''});
 	});
 	
 	button_newgame.on("click", function(ev) {

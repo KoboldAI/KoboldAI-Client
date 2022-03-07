@@ -37,6 +37,7 @@
 									<a class="nav-link dropdown-toggle" href="#" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">AI</a>
 									<div class="dropdown-menu">
 										<a class="dropdown-item" href="#" id="btn_loadmodel">Load Model</a>
+										<a class="dropdown-item" href="#" id="btn_showmodel">Model Info</a>
 									</div>
 								</li>
 								<li class="nav-item dropdown">
@@ -319,19 +320,6 @@
 			</div>
 		</div>
 	</div>
-	<div class="popupcontainer hidden" id="showmodelnamecontainer">
-		<div id="nspopup">
-			<div class="popuptitlebar">
-				<div class="popuptitletext">Model Name</div>
-			</div>
-			<div class="aidgpopuplistheader" id=showmodelnamecontent>
-				Read Only
-			</div>
-			<div class="popupfooter">
-				<button type="button" class="btn btn-primary" onclick='$("#showmodelnamecontainer").addClass("hidden");'>OK</button>
-			</div>
-		</div>
-	</div>
 	<div class="popupcontainer hidden" id="spcontainer">
 		<div id="sppopup">
 			<div class="popuptitlebar">
@@ -415,6 +403,19 @@
 			<div class="popupfooter">
 				<button type="button" class="btn btn-primary" id="btn_nsaccept">Accept</button>
 				<button type="button" class="btn btn-primary" id="btn_nsclose">Cancel</button>
+			</div>
+		</div>
+	</div>
+	<div class="popupcontainer hidden" id="showmodelnamecontainer" style="center;">
+		<div>
+			<div class="popuptitlebar">
+				<div class="popuptitletext">Model Name</div>
+			</div>
+			<div class="aidgpopuplistheader" id=showmodelnamecontent>
+				Read Only
+			</div>
+			<div class="popupfooter">
+				<button type="button" class="btn btn-primary" onclick='$("#showmodelnamecontainer").addClass("hidden");'>OK</button>
 			</div>
 		</div>
 	</div>
