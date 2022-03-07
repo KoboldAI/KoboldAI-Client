@@ -827,11 +827,12 @@ def get_layer_count(model, directory=""):
             pass
         return layers
 
-def load_model(use_gpu=True, key='', gpu_layers=None):
+def load_model(use_gpu=True, key='', gpu_layers=None, initial_load=False):
     global model
     global generator
     vars.noai = False
-    set_aibusy(True)
+    if not initial_load:
+        set_aibusy(True)
     if gpu_layers is not None:
         args.breakmodel_gpulayers = gpu_layers
     # If transformers model was selected & GPU available, ask to use CPU or GPU
@@ -1587,7 +1588,9 @@ def load_model(use_gpu=True, key='', gpu_layers=None):
     load_lua_scripts()
     
     final_startup()
-    set_aibusy(False)
+    if not initial_load:
+        set_aibusy(False)
+
 
 # Set up Flask routes
 @app.route('/')
@@ -3850,16 +3853,10 @@ def refresh_settings():
 def set_aibusy(state):
     if(state):
         vars.aibusy = True
-        try:
-            emit('from_server', {'cmd': 'setgamestate', 'data': 'wait'}, broadcast=True)
-        except:
-            pass
+        emit('from_server', {'cmd': 'setgamestate', 'data': 'wait'}, broadcast=True)
     else:
         vars.aibusy = False
-        try:
-            emit('from_server', {'cmd': 'setgamestate', 'data': 'ready'}, broadcast=True)
-        except:
-            pass
+        emit('from_server', {'cmd': 'setgamestate', 'data': 'ready'}, broadcast=True)
 
 #==================================================================#
 # 
@@ -5248,7 +5245,7 @@ if __name__ == "__main__":
     #show_select_model_list()
     if vars.model == "" or vars.model is None:
         vars.model = "ReadOnly"
-    load_model()
+    load_model(initial_load=True)
 
     # Start Flask/SocketIO (Blocking, so this must be last method!)
     

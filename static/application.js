@@ -1928,6 +1928,7 @@ $(document).ready(function(){
 	socket = io.connect(window.document.origin, {transports: ['polling', 'websocket'], closeOnBeforeunload: false});
 
 	socket.on('from_server', function(msg) {
+		//console.log(msg);
 		if(msg.cmd == "connected") {
 			// Connected to Server Actions
 			sman_allow_delete = msg.hasOwnProperty("smandelete") && msg.smandelete;
@@ -2642,7 +2643,6 @@ $(document).ready(function(){
 			}
 		}
 		message = {'cmd': 'load_model', 'use_gpu': $('#use_gpu')[0].checked, 'key': $('#modelkey')[0].value, 'gpu_layers': gpu_layers.slice(0, -1)};
-		console.log(message);
 		socket.send(message);
 		loadmodelcontent.html("");
 		hideLoadModelPopup();
