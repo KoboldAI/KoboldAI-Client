@@ -2618,6 +2618,7 @@ $(document).ready(function(){
 	});
 	
 	load_model_close.on("click", function(ev) {
+		$("#modellayers").addClass("hidden");
 		hideLoadModelPopup();
 	});
 	

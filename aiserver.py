@@ -40,6 +40,7 @@ import gc
 import lupa
 
 import torch
+from transformers import StoppingCriteria, GPT2TokenizerFast, GPT2LMHeadModel, GPTNeoForCausalLM, GPTNeoModel, AutoModelForCausalLM, AutoTokenizer
 
 # KoboldAI
 import fileops
@@ -437,7 +438,6 @@ def device_config(config):
 
 def move_model_to_devices(model):
     global generator
-
     if(not vars.breakmodel):
         if(vars.usegpu):
             model = model.half().to(vars.gpu_device)
@@ -1054,7 +1054,6 @@ def load_model(use_gpu=True, key='', gpu_layers=None):
     if(not vars.use_colab_tpu and vars.model not in ["InferKit", "Colab", "OAI", "GooseAI" , "ReadOnly", "TPUMeshTransformerGPTJ"]):
         if(not vars.noai):
             print("{0}Initializing transformers, please wait...{1}".format(colors.PURPLE, colors.END))
-            from transformers import StoppingCriteria, GPT2TokenizerFast, GPT2LMHeadModel, GPTNeoForCausalLM, GPTNeoModel, AutoModelForCausalLM, AutoTokenizer
             for m in ("GPTJModel", "XGLMModel"):
                 try:
                     globals()[m] = getattr(__import__("transformers"), m)
