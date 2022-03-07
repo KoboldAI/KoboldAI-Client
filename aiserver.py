@@ -2563,6 +2563,9 @@ def get_message(msg):
     elif(msg['cmd'] == 'list_model'):
         sendModelSelection(menu=msg['data'])
     elif(msg['cmd'] == 'load_model'):
+        f = open("settings/" + vars.model.replace('/', '_') + ".breakmodel", "w")
+        f.write(msg['gpu_layers'])
+        f.close()
         load_model(use_gpu=msg['use_gpu'], key=msg['key'], gpu_layers=msg['gpu_layers'])
     elif(msg['cmd'] == 'selectmodel'):
         if msg['data'] in ('NeoCustom', 'GPT2Custom') and 'path' not in msg:
@@ -2574,7 +2577,13 @@ def get_message(msg):
         else:
             layers = get_layer_count(vars.model)
         if layers is not None:
-            emit('from_server', {'cmd': 'show_layer_bar', 'data': layers, 'gpu_count': torch.cuda.device_count()}, broadcast=True)
+            if path.exists("settings/" + vars.model.replace('/', '_') + ".breakmodel"):
+                f = open("settings/" + vars.model.replace('/', '_') + ".breakmodel", "r")
+                breakmodel = f.read().split(",")
+                f.close()
+            else:
+                breakmodel = [layers for i in range(torch.cuda.device_count())]
+            emit('from_server', {'cmd': 'show_layer_bar', 'data': layers, 'gpu_count': torch.cuda.device_count(), 'breakmodel': breakmodel}, broadcast=True)
         else:
             emit('from_server', {'cmd': 'hide_layer_bar'}, broadcast=True)
     elif(msg['cmd'] == 'loadselect'):

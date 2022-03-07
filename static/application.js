@@ -2410,7 +2410,7 @@ $(document).ready(function(){
 			$("#modellayers").removeClass("hidden");
 			html = "";
 			for (let i=0; i < msg.gpu_count; i++) {
-				html += "GPU " + i + ": <input type='range' class='form-range airange' min='0' max='"+msg.data+"' step='1' value='"+msg.data+"' id='gpu_layers"+i+"' onchange='update_gpu_layers();'>";
+				html += "GPU " + i + ": <input type='range' class='form-range airange' min='0' max='"+msg.data+"' step='1' value='"+msg.breakmodel[i]+"' id='gpu_layers"+i+"' onchange='update_gpu_layers();'>";
 			}
 			$("#model_layer_bars").html(html);
 			$("#gpu_layers_max").html(msg.data);
