@@ -34,6 +34,12 @@
 						<div class="collapse navbar-collapse" id="navbarNavDropdown">
 							<ul class="nav navbar-nav">
 								<li class="nav-item dropdown">
+									<a class="nav-link dropdown-toggle" href="#" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">AI</a>
+									<div class="dropdown-menu">
+										<a class="dropdown-item" href="#" id="btn_loadmodel">Load Model</a>
+									</div>
+								</li>
+								<li class="nav-item dropdown">
 									<a class="nav-link dropdown-toggle" href="#" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">New Game</a>
 									<div class="dropdown-menu">
 										<a class="dropdown-item" href="#" id="btn_newgame">Blank Story</a>
@@ -262,6 +268,29 @@
 			<div class="popupfooter">
 				<button type="button" class="btn btn-primary" id="btn_loadaccept">Load</button>
 				<button type="button" class="btn btn-primary" id="btn_loadclose">Cancel</button>
+			</div>
+		</div>
+	</div>
+	<div class="popupcontainer hidden" id="loadmodelcontainer">
+		<div id="loadpopup">
+			<div class="popuptitlebar">
+				<div class="popuptitletext">Select A Model To Load</div>
+			</div>
+			<div class="loadmodellistheader">
+				<div>Model</div>
+			</div>
+			<div id="loadmodellistcontent">
+			</div>
+			<div class="popupfooter">
+				<input class="form-control hidden" type="text" placeholder="key" id="modelkey"><br>
+			</div>
+			<div class="popupfooter">
+				<button type="button" class="btn btn-primary" id="btn_loadmodelaccept">Load</button>
+				<button type="button" class="btn btn-primary" id="btn_loadmodelclose">Cancel</button>
+				<div class="box flex-push-right hidden" id=use_gpu_div>
+					<input type="checkbox" data-toggle="toggle" data-onstyle="success" id="use_gpu" checked>
+					<div class="box-label">Use GPU</div>
+				</div>
 			</div>
 		</div>
 	</div>
