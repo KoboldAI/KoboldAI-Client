@@ -2420,6 +2420,10 @@ $(document).ready(function(){
 		} else if(msg.cmd == 'hide_layer_bar') {
 			$("#modellayers").addClass("hidden");
 			enableButtons([load_model_accept]);
+		} else if(msg.cmd == 'show_model_name') {
+			$("#showmodelnamecontent").html("<div class=\"flex\"><div class=\"loadlistpadding\"></div><div class=\"loadlistitem\">" + msg.data + "</div></div>");
+			$("#showmodelnamecontainer").removeClass("hidden");
+			console.log(msg.data);
 		}
 	});
 	

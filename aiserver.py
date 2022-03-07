@@ -2569,6 +2569,9 @@ def get_message(msg):
         f.write(msg['gpu_layers'])
         f.close()
         load_model(use_gpu=msg['use_gpu'], key=msg['key'], gpu_layers=msg['gpu_layers'])
+    elif(msg['cmd'] == 'show_model'):
+        print("Model Name: {}".format(getmodelname()))
+        emit('from_server', {'cmd': 'show_model_name', 'data': getmodelname()}, broadcast=True)
     elif(msg['cmd'] == 'selectmodel'):
         if msg['data'] in ('NeoCustom', 'GPT2Custom') and 'path' not in msg:
             sendModelSelection(menu=msg['data'])
