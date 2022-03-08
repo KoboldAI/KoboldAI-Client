@@ -792,6 +792,9 @@ def general_startup():
 
     if args.cpu:
         vars.use_colab_tpu = False
+    
+    if args.path is not None:
+        vars.custmodpth = args.path
 
     vars.smandelete = vars.host == args.override_delete
     vars.smanrename = vars.host == args.override_rename
@@ -1133,7 +1136,7 @@ def load_model(use_gpu=True, key='', gpu_layers=None, initial_load=False):
                 return lazy_load_callback
 
             lazy_load_config_path = os.path.join(path.dirname(path.realpath(__file__)), "maps", vars.model_type + ".json")
-            if(vars.lazy_load and "model_config" in globals() and os.path.isfile(lazy_load_config_path)):
+            if(vars.lazy_load and ("model_config" in globals() or "model_config" in locals()) and os.path.isfile(lazy_load_config_path)):
                 with open(lazy_load_config_path) as f:
                     lazy_load_spec = json.load(f)
 
