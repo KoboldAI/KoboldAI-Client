@@ -2570,6 +2570,8 @@ def get_message(msg):
     elif(msg['cmd'] == 'list_model'):
         sendModelSelection(menu=msg['data'])
     elif(msg['cmd'] == 'load_model'):
+        if not os.path.exists("settings/" + vars.model.replace('/', '_') + ".breakmodel"):
+            os.mkdir("settings")
         f = open("settings/" + vars.model.replace('/', '_') + ".breakmodel", "w")
         f.write(msg['gpu_layers'])
         f.close()
