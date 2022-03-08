@@ -821,7 +821,7 @@ def get_layer_count(model, directory=""):
         if model_config is None:
             return None
         try:
-            layers = model_config.num_layers
+            layers = model_config.num_layers if hasattr(model_config, "num_layers") else model_config.n_layer
         except:
             layers = None
             pass
