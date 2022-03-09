@@ -301,12 +301,12 @@ def getModelSelection(modellist):
 #==================================================================#
 # Return all keys in tokenizer dictionary containing char
 #==================================================================#
-def gettokenids(char):
-    keys = []
-    for key in vocab_keys:
-        if(key.find(char) != -1):
-            keys.append(key)
-    return keys
+#def gettokenids(char):
+#    keys = []
+#    for key in vocab_keys:
+#        if(key.find(char) != -1):
+#            keys.append(key)
+#    return keys
 
 #==================================================================#
 # Return Model Name
