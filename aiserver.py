@@ -2871,6 +2871,8 @@ def actionretry(data):
             last_key = vars.actions.get_last_key()
             vars.actions.pop()
             remove_story_chunk(last_key + 1)
+            #for the redo to not get out of whack, need to reset the max # in the actions sequence
+            vars.actions.set_next_id(last_key)
         vars.recentback = False
         vars.recentedit = False
         vars.lua_koboldbridge.feedback = None
