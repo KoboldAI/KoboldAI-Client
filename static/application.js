@@ -2424,6 +2424,11 @@ $(document).ready(function(){
 		} else if(msg.cmd == 'show_model_name') {
 			$("#showmodelnamecontent").html("<div class=\"flex\"><div class=\"loadlistpadding\"></div><div class=\"loadlistitem\">" + msg.data + "</div></div>");
 			$("#showmodelnamecontainer").removeClass("hidden");
+		} else if(msg.cmd == 'hide_model_name') {
+			$("#showmodelnamecontainer").addClass("hidden");
+		} else if(msg.cmd == 'model_load_status') {
+			$("#showmodelnamecontent").html("<div class=\"flex\"><div class=\"loadlistpadding\"></div><div class=\"loadlistitem\" style='align: left'>" + msg.data + "</div></div>");
+			$("#showmodelnamecontainer").removeClass("hidden");
 			console.log(msg.data);
 		}
 	});

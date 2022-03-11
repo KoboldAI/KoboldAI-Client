@@ -1110,7 +1110,13 @@ def load_model(use_gpu=True, key='', gpu_layers=None, initial_load=False):
                         try:
                             last_storage_key = None
                             f = None
-                            for key in tqdm(sorted(device_map.keys(), key=lambda k: (model_dict[k].key, model_dict[k].seek_offset)), desc="Loading model tensors"):
+                            import time
+                            class Send_to_socketio(object):
+                              def write(self, bar):
+                                print(bar, end="")
+                                time.sleep(0.01)
+                                emit('from_server', {'cmd': 'model_load_status', 'data': bar}, broadcast=True)
+                            for key in tqdm(sorted(device_map.keys(), key=lambda k: (model_dict[k].key, model_dict[k].seek_offset)), desc="Loading model tensors", file=Send_to_socketio()):
                                 storage_key = model_dict[key].key
                                 if storage_key != last_storage_key:
                                     last_storage_key = storage_key
@@ -1132,7 +1138,7 @@ def load_model(use_gpu=True, key='', gpu_layers=None, initial_load=False):
                         finally:
                             if isinstance(f, zipfile.ZipExtFile):
                                 f.close()
-
+                        emit('from_server', {'cmd': 'hide_model_name'}, broadcast=True)
                 return lazy_load_callback
 
             lazy_load_config_path = os.path.join(path.dirname(path.realpath(__file__)), "maps", vars.model_type + ".json")
@@ -2573,7 +2579,7 @@ def get_message(msg):
     elif(msg['cmd'] == 'list_model'):
         sendModelSelection(menu=msg['data'])
     elif(msg['cmd'] == 'load_model'):
-        if not os.path.exists("settings/" + vars.model.replace('/', '_') + ".breakmodel"):
+        if not os.path.exists("settings/"):
             os.mkdir("settings")
         f = open("settings/" + vars.model.replace('/', '_') + ".breakmodel", "w")
         f.write(msg['gpu_layers'])
@@ -2941,6 +2947,8 @@ def actionretry(data):
             last_key = vars.actions.get_last_key()
             vars.actions.pop()
             remove_story_chunk(last_key + 1)
+            #for the redo to not get out of whack, need to reset the max # in the actions sequence
+            vars.actions.set_next_id(last_key)
         vars.recentback = False
         vars.recentedit = False
         vars.lua_koboldbridge.feedback = None
