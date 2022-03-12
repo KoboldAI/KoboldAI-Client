@@ -2314,7 +2314,7 @@ def get_message(msg):
         actionretry(msg['data'])
     # Back/Undo Action
     elif(msg['cmd'] == 'back'):
-        actionback()
+        ignore = actionback()
     # Forward/Redo Action
     elif(msg['cmd'] == 'redo'):
         actionredo()
@@ -2851,31 +2851,7 @@ def actionretry(data):
     if(vars.noai):
         emit('from_server', {'cmd': 'errmsg', 'data': "Retry function unavailable in Read Only mode."})
         return
-    if(vars.aibusy):
-        return
-    if(vars.recentrng is not None):
-        randomGameRequest(vars.recentrng, memory=vars.recentrngm)
-        return
-    # Remove last action if possible and resubmit
-    if(vars.gamestarted if vars.useprompt else len(vars.actions) > 0):
-        if(not vars.recentback and len(vars.actions) != 0 and len(vars.genseqs) == 0):  # Don't pop if we're in the "Select sequence to keep" menu or if there are no non-prompt actions
-            # We are going to move the selected text to alternative text in the actions_metadata variable so we can redo this action
-            vars.actions_metadata[vars.actions.get_last_key() ]['Alternative Text'] = [{'Text': vars.actions_metadata[vars.actions.get_last_key() ]['Selected Text'],
-                                                                        'Pinned': False,
-                                                                        "Previous Selection": True,
-                                                                        "Edited": False}] + vars.actions_metadata[vars.actions.get_last_key() ]['Alternative Text']
-            vars.actions_metadata[vars.actions.get_last_key()]['Selected Text'] = ""
-            
-            
-            
-            last_key = vars.actions.get_last_key()
-            vars.actions.pop()
-            remove_story_chunk(last_key + 1)
-            #for the redo to not get out of whack, need to reset the max # in the actions sequence
-            vars.actions.set_next_id(last_key)
-        vars.recentback = False
-        vars.recentedit = False
-        vars.lua_koboldbridge.feedback = None
+    if actionback():
         actionsubmit("", actionmode=vars.actionmode, force_submit=True)
         send_debug()
     elif(not vars.useprompt):
@@ -2902,11 +2878,15 @@ def actionback():
         remove_story_chunk(last_key + 1)
         #for the redo to not get out of whack, need to reset the max # in the actions sequence
         vars.actions.set_next_id(last_key)
+        success = True
     elif(len(vars.genseqs) == 0):
         emit('from_server', {'cmd': 'errmsg', 'data': "Cannot delete the prompt."})
+        success =  False
     else:
         vars.genseqs = []
+        success = True
     send_debug()
+    return success
         
 def actionredo():
     i = 0
