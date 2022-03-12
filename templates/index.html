@@ -280,10 +280,14 @@
 			<div class="loadmodellistheader">
 				<div>Model</div>
 			</div>
-			<div id="loadmodellistcontent" style="overflow: scroll; height: 400px;">
+			<div id="loadmodellistcontent" style="overflow: scroll; height: 300px;">
 			</div>
 			<div class="popupfooter">
-				<input class="form-control hidden" type="text" placeholder="key" id="modelkey"><br>
+				<input class="form-control hidden" type="text" placeholder="key" id="modelkey" onchange="check_enable_model_load()">
+				<input class="form-control hidden" type="text" placeholder="Enter the URL of the server (For example a trycloudflare link)" id="modelurl" onchange="check_enable_model_load()">
+			</div>
+			<div class="popupfooter">
+				<select class="form-control hidden" id="oaimodel" onchange="check_enable_model_load()"><option value="Select OAI Model">Select OAI Model</option></select>
 			</div>
 			<div class="popupfooter hidden" id=modellayers>
 				<div class='settingitem' style="width:100%">

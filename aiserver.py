@@ -124,6 +124,7 @@ model_menu = {'mainmenu': [
         ["Return to Main Menu", "mainmenu", "", True],
     ],
     'apilist': [
+        ["GooseAI API (requires API key)", "GooseAI", ""],
         ["OpenAI API (requires API key)", "OAI", "", False],
         ["InferKit API (requires API key)", "InferKit", "", False],
         ["KoboldAI Server API (Old Google Colab)", "Colab", "", False],
@@ -830,6 +831,35 @@ def get_layer_count(model, directory=""):
             pass
         return layers
 
+def get_oai_models(dummy=True):
+    if vars.oaiapikey != "":
+        # Get list of models from OAI
+        if dummy:
+            print("{0}Retrieving engine list...{1}".format(colors.PURPLE, colors.END), end="")
+            emit('from_server', {'cmd': 'oai_engines', 'data': [["num1", "Engine 1"], ["num2", "Engine2"]]}, broadcast=True)
+        else:
+            print("{0}Retrieving engine list...{1}".format(colors.PURPLE, colors.END), end="")
+            req = requests.get(
+                vars.oaiengines, 
+                headers = {
+                    'Authorization': 'Bearer '+vars.oaiapikey
+                    }
+                )
+            if(req.status_code == 200):
+                print("{0}OK!{1}".format(colors.GREEN, colors.END))
+                print("{0}Please select an engine to use:{1}\n".format(colors.CYAN, colors.END))
+                engines = req.json()["data"]
+                engines = [[en["id"], "{1} ({2})".format(en['id'], "Ready" if en["Ready"] == True else "Not Ready")] for en in engines]
+                emit('from_server', {'cmd': 'oai_engines', 'data': engines}, broadcast=True)
+            else:
+                # Something went wrong, print the message and quit since we can't initialize an engine
+                print("{0}ERROR!{1}".format(colors.RED, colors.END))
+                print(req.json())
+                emit('from_server', {'cmd': 'errmsg', 'data': req.json()})
+    else:
+        print("{0}OAI API Key not set yet, doing nothing...{1}".format(colors.PURPLE, colors.END), end="")
+            
+
 def load_model(use_gpu=True, key='', gpu_layers=None, initial_load=False):
     global model
     global generator
@@ -1020,46 +1050,7 @@ def load_model(use_gpu=True, key='', gpu_layers=None, initial_load=False):
                 finally:
                     file.close()
         
-        # Get list of models from OAI
-        print("{0}Retrieving engine list...{1}".format(colors.PURPLE, colors.END), end="")
-        req = requests.get(
-            vars.oaiengines, 
-            headers = {
-                'Authorization': 'Bearer '+vars.oaiapikey
-                }
-            )
-        if(req.status_code == 200):
-            print("{0}OK!{1}".format(colors.GREEN, colors.END))
-            print("{0}Please select an engine to use:{1}\n".format(colors.CYAN, colors.END))
-            engines = req.json()["data"]
-            # Print list of engines
-            i = 0
-            for en in engines:
-                print("    {0} - {1} ({2})".format(i, en["id"], "\033[92mready\033[0m" if en["ready"] == True else "\033[91mnot ready\033[0m"))
-                i += 1
-            # Get engine to use
-            print("")
-            engselected = False
-            while(engselected == False):
-                engine = input("Engine #> ")
-                if(engine.isnumeric() and int(engine) < len(engines)):
-                    vars.oaiurl = vars.oaiengines + "/{0}/completions".format(engines[int(engine)]["id"])
-                    args.configname = args.configname + "/" + engines[int(engine)]["id"]
-                    engselected = True
-                else:
-                    print("{0}Please enter a valid selection.{1}".format(colors.RED, colors.END))
-        else:
-            # Something went wrong, print the message and quit since we can't initialize an engine
-            print("{0}ERROR!{1}".format(colors.RED, colors.END))
-            print(req.json())
-            quit()
 
-    # Ask for ngrok url if Google Colab was selected
-    if(vars.model == "Colab"):
-        if(vars.colaburl == ""):
-            print("{0}NOTE: For the modern KoboldAI Colab's you open the links directly in your browser.\nThis option is only for the KoboldAI Server API, not all features are supported in this mode.\n".format(colors.YELLOW, colors.END))
-            print("{0}Enter the URL of the server (For example a trycloudflare link):{1}\n".format(colors.CYAN, colors.END))
-            vars.colaburl = input("URL> ") + "/request"
 
     if(vars.model == "ReadOnly"):
         vars.noai = True
@@ -2353,7 +2344,7 @@ def get_message(msg):
         actionretry(msg['data'])
     # Back/Undo Action
     elif(msg['cmd'] == 'back'):
-        actionback()
+        ignore = actionback()
     # Forward/Redo Action
     elif(msg['cmd'] == 'redo'):
         actionredo()
@@ -2584,14 +2575,28 @@ def get_message(msg):
         f = open("settings/" + vars.model.replace('/', '_') + ".breakmodel", "w")
         f.write(msg['gpu_layers'])
         f.close()
+        vars.colaburl = msg['url'] + "/request"
         load_model(use_gpu=msg['use_gpu'], key=msg['key'], gpu_layers=msg['gpu_layers'])
     elif(msg['cmd'] == 'show_model'):
         print("Model Name: {}".format(getmodelname()))
         emit('from_server', {'cmd': 'show_model_name', 'data': getmodelname()}, broadcast=True)
     elif(msg['cmd'] == 'selectmodel'):
+        # This is run when a model line is selected from the UI (line from the model_menu variable) that is tagged as not a menu
+        # otherwise we should be running the msg['cmd'] == 'list_model'
+        
+        # The data variable will contain the model name. But our Custom lines need a bit more processing
+        # If we're on a custom line that we have selected a model for, the path variable will be in msg
+        # so if that's missing we need to run the menu to show the model folders in the models folder
         if msg['data'] in ('NeoCustom', 'GPT2Custom') and 'path' not in msg:
             sendModelSelection(menu=msg['data'])
+        elif msg['data'] in ('OAI', 'GooseAI'):
+            vars.model = msg['data']
+            get_oai_models()
+            emit('from_server', {'cmd': 'hide_layer_bar'}, broadcast=True)
+            emit('from_server', {'cmd': 'check_enable_model_load', 'model': vars.model}, broadcast=True)
         else:
+            #we have a real model to load now, so let's save the data. We won't load it until the user
+            #selects the accept button (runs msg['cmd'] == 'load_mode')
             vars.model = msg['data']
             if 'path' in msg:
                 vars.custmodpth = "models/{}".format(msg['path'])
@@ -2604,15 +2609,24 @@ def get_message(msg):
             else:
                 layers = get_layer_count(vars.model)
             if layers is not None:
+                #If we can use layers on the mode, we will check to see if there is a "breakmodel" file in the settings
+                #this file contains the number of layers on each gpu the last time we loaded the model
+                #and becomes our default
                 if path.exists("settings/" + vars.model.replace('/', '_') + ".breakmodel"):
                     f = open("settings/" + vars.model.replace('/', '_') + ".breakmodel", "r")
                     breakmodel = f.read().split(",")
                     f.close()
                 else:
+                    #If we don't have a default, just set it to 100% GPU
                     breakmodel = [layers for i in range(torch.cuda.device_count())]
                 emit('from_server', {'cmd': 'show_layer_bar', 'data': layers, 'gpu_count': torch.cuda.device_count(), 'breakmodel': breakmodel}, broadcast=True)
             else:
                 emit('from_server', {'cmd': 'hide_layer_bar'}, broadcast=True)
+                emit('from_server', {'cmd': 'check_enable_model_load', 'model': vars.model}, broadcast=True)
+    elif(msg['cmd'] == 'OAI_Key_Update'):
+        if vars.oaiapikey != msg['data']:
+            vars.oaiapikey = msg['data']
+            get_oai_models()
     elif(msg['cmd'] == 'loadselect'):
         vars.loadselect = msg["data"]
     elif(msg['cmd'] == 'spselect'):
@@ -2927,31 +2941,7 @@ def actionretry(data):
     if(vars.noai):
         emit('from_server', {'cmd': 'errmsg', 'data': "Retry function unavailable in Read Only mode."})
         return
-    if(vars.aibusy):
-        return
-    if(vars.recentrng is not None):
-        randomGameRequest(vars.recentrng, memory=vars.recentrngm)
-        return
-    # Remove last action if possible and resubmit
-    if(vars.gamestarted if vars.useprompt else len(vars.actions) > 0):
-        if(not vars.recentback and len(vars.actions) != 0 and len(vars.genseqs) == 0):  # Don't pop if we're in the "Select sequence to keep" menu or if there are no non-prompt actions
-            # We are going to move the selected text to alternative text in the actions_metadata variable so we can redo this action
-            vars.actions_metadata[vars.actions.get_last_key() ]['Alternative Text'] = [{'Text': vars.actions_metadata[vars.actions.get_last_key() ]['Selected Text'],
-                                                                        'Pinned': False,
-                                                                        "Previous Selection": True,
-                                                                        "Edited": False}] + vars.actions_metadata[vars.actions.get_last_key() ]['Alternative Text']
-            vars.actions_metadata[vars.actions.get_last_key()]['Selected Text'] = ""
-            
-            
-            
-            last_key = vars.actions.get_last_key()
-            vars.actions.pop()
-            remove_story_chunk(last_key + 1)
-            #for the redo to not get out of whack, need to reset the max # in the actions sequence
-            vars.actions.set_next_id(last_key)
-        vars.recentback = False
-        vars.recentedit = False
-        vars.lua_koboldbridge.feedback = None
+    if actionback():
         actionsubmit("", actionmode=vars.actionmode, force_submit=True)
         send_debug()
     elif(not vars.useprompt):
@@ -2978,11 +2968,15 @@ def actionback():
         remove_story_chunk(last_key + 1)
         #for the redo to not get out of whack, need to reset the max # in the actions sequence
         vars.actions.set_next_id(last_key)
+        success = True
     elif(len(vars.genseqs) == 0):
         emit('from_server', {'cmd': 'errmsg', 'data': "Cannot delete the prompt."})
+        success =  False
     else:
         vars.genseqs = []
+        success = True
     send_debug()
+    return success
         
 def actionredo():
     i = 0

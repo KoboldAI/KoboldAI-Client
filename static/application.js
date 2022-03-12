@@ -100,6 +100,7 @@ var remote = false;
 var gamestate = "";
 var gamesaved = true;
 var modelname = null;
+var model = "";
 
 // This is true iff [we're in macOS and the browser is Safari] or [we're in iOS]
 var using_webkit_patch = true;
@@ -957,6 +958,7 @@ function buildLoadModelList(ar, menu) {
 						</div>\
 					</div>"
 		loadmodelcontent.append(html);
+		//If this is a menu
 		if(ar[i][3]) {
 			$("#loadmodel"+i).off("click").on("click", (function () {
 				return function () {
@@ -964,6 +966,7 @@ function buildLoadModelList(ar, menu) {
 					disableButtons([load_model_accept]);
 				}
 			})(i));
+		//If we're in the custom load menu (we need to send the path data back in that case)
 		} else if(menu == 'custom') {
 			$("#loadmodel"+i).off("click").on("click", (function () {
 				return function () {
@@ -971,11 +974,25 @@ function buildLoadModelList(ar, menu) {
 					highlightLoadLine($(this));
 				}
 			})(i));
+		//Normal load
 		} else {
 			$("#loadmodel"+i).off("click").on("click", (function () {
 				return function () {
 					socket.send({'cmd': 'selectmodel', 'data': $(this).attr("name")});
 					highlightLoadLine($(this));
+					if($(this).attr("name") == 'Colab') {
+						$("#modelurl").removeClass('hidden');
+						$("#modelkey").addClass('hidden');
+						$("#oaimodel").addClass('hidden');
+					} else if($(this).attr("name") == 'OAI' || $(this).attr("name") == 'GooseAI') {
+						$("#modelurl").addClass('hidden');
+						$("#modelkey").removeClass('hidden');
+						$("#oaimodel").removeClass('hidden');
+					} else {
+						$("#modelurl").addClass('hidden');
+						$("#modelkey").removeClass('hidden');
+						$("#oaimodel").addClass('hidden');
+					}
 				}
 			})(i));
 		}
@@ -1838,6 +1855,38 @@ function update_gpu_layers() {
 	}
 }
 
+function check_enable_model_load() {
+	if(model == 'Colab') {
+		if($('#modelurl')[0].value != "") {
+			enableButtons([load_model_accept]);
+		} else {
+			disableButtons([load_model_accept]);
+		}
+	} else if(model == 'OAI' || model == 'GooseAI') {
+		socket.send({'cmd': 'OAI_Key_Update', 'data': $('#modelkey')[0].value});
+		if($('#modelkey')[0].value != "" && $('#oaimodel')[0].value != 'Select OAI Model') {
+			enableButtons([load_model_accept]);
+		} else {
+			disableButtons([load_model_accept]);
+		}
+	} else if(model == 'InferKit') {
+		if($('#modelkey')[0].value != "") {
+			enableButtons([load_model_accept]);
+		} else {
+			disableButtons([load_model_accept]);
+		}
+	} else {
+		enableButtons([load_model_accept]);
+	}
+}
+
+function RemoveAllButFirstOption(selectElement) {
+   var i, L = selectElement.options.length - 1;
+   for(i = L; i >= 1; i--) {
+      selectElement.remove(i);
+   }
+}
+
 //=================================================================//
 //  READY/RUNTIME
 //=================================================================//
@@ -2420,7 +2469,12 @@ $(document).ready(function(){
 			update_gpu_layers();
 		} else if(msg.cmd == 'hide_layer_bar') {
 			$("#modellayers").addClass("hidden");
-			enableButtons([load_model_accept]);
+		} else if(msg.cmd == 'check_enable_model_load') {
+			//Check if it's safe to enable the load model button
+			//The backend checks for the layers, so if it requires layers then another function enables the button
+			//This is only for the online services or models that don't use layers
+			model = msg.model;
+			check_enable_model_load();
 		} else if(msg.cmd == 'show_model_name') {
 			$("#showmodelnamecontent").html("<div class=\"flex\"><div class=\"loadlistpadding\"></div><div class=\"loadlistitem\">" + msg.data + "</div></div>");
 			$("#showmodelnamecontainer").removeClass("hidden");
@@ -2430,6 +2484,14 @@ $(document).ready(function(){
 			$("#showmodelnamecontent").html("<div class=\"flex\"><div class=\"loadlistpadding\"></div><div class=\"loadlistitem\" style='align: left'>" + msg.data + "</div></div>");
 			$("#showmodelnamecontainer").removeClass("hidden");
 			console.log(msg.data);
+		} else if(msg.cmd == 'oai_engines') {
+			RemoveAllButFirstOption($("#oaimodel")[0]);
+			for (const engine of msg.data) {
+				var opt = document.createElement('option');
+				opt.value = engine[0];
+				opt.innerHTML = engine[1];
+				$("#oaimodel")[0].appendChild(opt);
+			}
 		}
 	});
 	
@@ -2652,7 +2714,7 @@ $(document).ready(function(){
 				gpu_layers += $("#gpu_layers"+i)[0].value + ",";
 			}
 		}
-		message = {'cmd': 'load_model', 'use_gpu': $('#use_gpu')[0].checked, 'key': $('#modelkey')[0].value, 'gpu_layers': gpu_layers.slice(0, -1)};
+		message = {'cmd': 'load_model', 'use_gpu': $('#use_gpu')[0].checked, 'key': $('#modelkey')[0].value, 'gpu_layers': gpu_layers.slice(0, -1), 'url': $('#modelurl')[0].value};
 		socket.send(message);
 		loadmodelcontent.html("");
 		hideLoadModelPopup();
