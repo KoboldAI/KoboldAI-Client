@@ -2,7 +2,7 @@
 # KoboldAI Easy Colab Deployment Script by Henk717
 
 # read the options
-TEMP=`getopt -o m:i:p:c:d:x:a:l:z:g:t:n:b: --long model:,init:,path:,configname:,download:,aria2:,dloc:xloc:7z:git:tar:ngrok:branch: -- "$@"`
+TEMP=`getopt -o m:i:p:c:d:x:a:l:z:g:t:n:b:s: --long model:,init:,path:,configname:,download:,aria2:,dloc:xloc:7z:git:tar:ngrok:branch:savemodel: -- "$@"`
 eval set -- "$TEMP"
 
 # extract options and their arguments into variables.
@@ -34,6 +34,8 @@ while true ; do
             git="$2" ; shift 2 ;;
         -b|--branch)
             branch="$2" ; shift 2 ;;
+        -s|--savemodel)
+            savemodel=" --savemodel" ; shift 2 ;;
         --) shift ; break ;;
         *) echo "Internal error!" ; exit 1 ;;
     esac
@@ -48,8 +50,8 @@ function launch
         exit 0
     else
     cd /content/KoboldAI-Client
-    echo "Launching KoboldAI with the following options : python3 aiserver.py$model$kmpath$configname$ngrok --colab"
-    python3 aiserver.py$model$kmpath$configname$ngrok --colab
+    echo "Launching KoboldAI with the following options : python3 aiserver.py$model$kmpath$configname$ngrok$savemodel --colab"
+    python3 aiserver.py$model$kmpath$configname$ngrok$savemodel --colab
     exit
     fi
 }
