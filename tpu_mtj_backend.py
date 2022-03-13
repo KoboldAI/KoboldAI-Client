@@ -822,7 +822,7 @@ def load_model(path: str, driver_version="tpu_driver0.1_dev20210607", hf_checkpo
 
     # Try to convert HF config.json to MTJ config
     if hf_checkpoint:
-        spec_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "maps", vars.model_type + ".json")
+        spec_path = os.path.join("maps", vars.model_type + ".json")
         if not os.path.isfile(spec_path):
             raise NotImplementedError(f"Unsupported model type {repr(vars.model_type)}")
         with open(spec_path) as f:

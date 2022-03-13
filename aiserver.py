@@ -10,6 +10,8 @@ import eventlet
 eventlet.monkey_patch(all=True, thread=False)
 import os
 os.system("")
+__file__ = os.path.dirname(os.path.realpath(__file__))
+os.chdir(__file__)
 os.environ['EVENTLET_THREADPOOL_SIZE'] = '1'
 os.environ['TOKENIZERS_PARALLELISM'] = 'false'
 from eventlet import tpool
@@ -1024,7 +1026,7 @@ log.setLevel(logging.ERROR)
 print("{0}Initializing Flask... {1}".format(colors.PURPLE, colors.END), end="")
 from flask import Flask, render_template, Response, request, copy_current_request_context
 from flask_socketio import SocketIO, emit
-app = Flask(__name__)
+app = Flask(__name__, root_path=os.getcwd())
 app.config['SECRET KEY'] = 'secret!'
 socketio = SocketIO(app, async_method="eventlet")
 print("{0}OK!{1}".format(colors.GREEN, colors.END))
@@ -1101,7 +1103,7 @@ if(not vars.use_colab_tpu and vars.model not in ["InferKit", "Colab", "OAI", "Go
 
             return lazy_load_callback
 
-        lazy_load_config_path = os.path.join(path.dirname(path.realpath(__file__)), "maps", vars.model_type + ".json")
+        lazy_load_config_path = os.path.join("maps", vars.model_type + ".json")
         if(vars.lazy_load and "model_config" in globals() and os.path.isfile(lazy_load_config_path)):
             with open(lazy_load_config_path) as f:
                 lazy_load_spec = json.load(f)
@@ -2193,16 +2195,16 @@ vars.lua_state = lupa.LuaRuntime(unpack_returned_tuples=True)
 
 # Load bridge.lua
 bridged = {
-    "corescript_path": os.path.join(os.path.dirname(os.path.realpath(__file__)), "cores"),
-    "userscript_path": os.path.join(os.path.dirname(os.path.realpath(__file__)), "userscripts"),
-    "config_path": os.path.join(os.path.dirname(os.path.realpath(__file__)), "userscripts"),
-    "lib_paths": vars.lua_state.table(os.path.join(os.path.dirname(os.path.realpath(__file__)), "lualibs"), os.path.join(os.path.dirname(os.path.realpath(__file__)), "extern", "lualibs")),
+    "corescript_path": "cores",
+    "userscript_path": "userscripts",
+    "config_path": "userscripts",
+    "lib_paths": vars.lua_state.table("lualibs", os.path.join("extern", "lualibs")),
     "vars": vars,
 }
 for kwarg in _bridged:
     bridged[kwarg] = _bridged[kwarg]
 try:
-    vars.lua_kobold, vars.lua_koboldcore, vars.lua_koboldbridge = vars.lua_state.globals().dofile(os.path.join(os.path.dirname(os.path.realpath(__file__)), "bridge.lua"))(
+    vars.lua_kobold, vars.lua_koboldcore, vars.lua_koboldbridge = vars.lua_state.globals().dofile("bridge.lua")(
         vars.lua_state.globals().python,
         bridged,
     )
