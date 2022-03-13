@@ -822,7 +822,7 @@ def load_model(path: str, driver_version="tpu_driver0.1_dev20210607", hf_checkpo
 
     # Try to convert HF config.json to MTJ config
     if hf_checkpoint:
-        spec_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "maps", vars.model_type + ".json")
+        spec_path = os.path.join("maps", vars.model_type + ".json")
         if not os.path.isfile(spec_path):
             raise NotImplementedError(f"Unsupported model type {repr(vars.model_type)}")
         with open(spec_path) as f:
@@ -1035,29 +1035,38 @@ def load_model(path: str, driver_version="tpu_driver0.1_dev20210607", hf_checkpo
         if(os.path.isdir(vars.custmodpth)):
             try:
                 tokenizer = AutoTokenizer.from_pretrained(vars.custmodpth, cache_dir="cache")
-            except ValueError as e:
-                tokenizer = GPT2TokenizerFast.from_pretrained(vars.custmodpth, cache_dir="cache")
+            except Exception as e:
+                try:
+                    tokenizer = GPT2TokenizerFast.from_pretrained(vars.custmodpth, cache_dir="cache")
+                except Exception as e:
+                    tokenizer = GPT2TokenizerFast.from_pretrained("gpt2", cache_dir="cache")
             try:
                 model     = AutoModelForCausalLM.from_pretrained(vars.custmodpth, cache_dir="cache")
-            except ValueError as e:
+            except Exception as e:
                 model     = GPTNeoForCausalLM.from_pretrained(vars.custmodpth, cache_dir="cache")
         elif(os.path.isdir("models/{}".format(vars.model.replace('/', '_')))):
             try:
                 tokenizer = AutoTokenizer.from_pretrained("models/{}".format(vars.model.replace('/', '_')), cache_dir="cache")
-            except ValueError as e:
-                tokenizer = GPT2TokenizerFast.from_pretrained("models/{}".format(vars.model.replace('/', '_')), cache_dir="cache")
+            except Exception as e:
+                try:
+                    tokenizer = GPT2TokenizerFast.from_pretrained("models/{}".format(vars.model.replace('/', '_')), cache_dir="cache")
+                except Exception as e:
+                    tokenizer = GPT2TokenizerFast.from_pretrained("gpt2", cache_dir="cache")
             try:
                 model     = AutoModelForCausalLM.from_pretrained("models/{}".format(vars.model.replace('/', '_')), cache_dir="cache")
-            except ValueError as e:
+            except Exception as e:
                 model     = GPTNeoForCausalLM.from_pretrained("models/{}".format(vars.model.replace('/', '_')), cache_dir="cache")
         else:
             try:
                 tokenizer = AutoTokenizer.from_pretrained(vars.model, cache_dir="cache")
-            except ValueError as e:
-                tokenizer = GPT2TokenizerFast.from_pretrained(vars.model, cache_dir="cache")
+            except Exception as e:
+                try:
+                    tokenizer = GPT2TokenizerFast.from_pretrained(vars.model, cache_dir="cache")
+                except Exception as e:
+                    tokenizer = GPT2TokenizerFast.from_pretrained("gpt2", cache_dir="cache")
             try:
                 model     = AutoModelForCausalLM.from_pretrained(vars.model, cache_dir="cache")
-            except ValueError as e:
+            except Exception as e:
                 model     = GPTNeoForCausalLM.from_pretrained(vars.model, cache_dir="cache")
 
     network.state = network.move_xmap(network.state, np.zeros(cores_per_replica))
