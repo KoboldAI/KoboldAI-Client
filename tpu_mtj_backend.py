@@ -1176,6 +1176,7 @@ def load_model(path: str, driver_version="tpu_driver0.1_dev20210607", hf_checkpo
     if os.path.isdir(vars.model.replace('/', '_')):
         import shutil
         shutil.move(vars.model.replace('/', '_'), "models/{}".format(vars.model.replace('/', '_')))
+    print("\n", flush=True)
     with torch_lazy_loader.use_lazy_torch_load(callback=callback, dematerialized_modules=True):
         if(os.path.isdir(vars.custmodpth)):
             try:
