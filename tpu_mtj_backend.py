@@ -988,7 +988,7 @@ def load_model(path: str, driver_version="tpu_driver0.1_dev20210607", hf_checkpo
                         tensor /= params["cores_per_replica"]
                     if "vocab_pad" in transforms:
                         tensor = torch.nn.functional.pad(tensor, (0, 0, 0, params["n_vocab_padding"]))
-                    if "no_transpose" not in transforms:
+                    if "no_transpose" not in transforms and tensor.ndim == 2:
                         tensor = tensor.T
                     tensor.unsqueeze_(0)
                     if tensor.dtype is torch.float16 or tensor.dtype is torch.float32:
