@@ -57,11 +57,26 @@ from typing import Any, Callable, Dict, Optional, Tuple, Type, Union
 _EXTRA_STATE_KEY_SUFFIX = '_extra_state'
 
 
+STORAGE_TYPE_MAP = {
+    torch.float64: torch.DoubleStorage,
+    torch.float32: torch.FloatStorage,
+    torch.float16: torch.HalfStorage,
+    torch.int64: torch.LongStorage,
+    torch.int32: torch.IntStorage,
+    torch.int16: torch.ShortStorage,
+    torch.int8: torch.CharStorage,
+    torch.uint8: torch.ByteStorage,
+    torch.bool: torch.BoolStorage,
+    torch.bfloat16: torch.BFloat16Storage,
+}
+
+
 class LazyTensor:
-    def __init__(self, storage_type: Type[torch._StorageBase], key: str, location: str, seek_offset: Optional[int] = None, shape: Optional[Tuple[int, ...]] = None, stride: Optional[Tuple[int, ...]] = None, requires_grad=False, backward_hooks: Any = None):
+    def __init__(self, storage_type: Type[torch._StorageBase], key: str, location: str, dtype: Optional[torch.dtype] = None, seek_offset: Optional[int] = None, shape: Optional[Tuple[int, ...]] = None, stride: Optional[Tuple[int, ...]] = None, requires_grad=False, backward_hooks: Any = None):
         self.storage_type = storage_type
         self.key = key
         self.location = location
+        self.dtype = dtype
         self.seek_offset = seek_offset
         self.shape = shape
         self.stride = stride
@@ -69,14 +84,14 @@ class LazyTensor:
         self.backward_hooks = backward_hooks
 
     def __view(self, f: Callable):
-        return f"{type(self).__name__}(storage_type={f(self.storage_type)}, key={f(self.key)}, location={f(self.location)}, seek_offset={f(self.seek_offset)}, shape={f(self.shape)}, stride={f(self.stride)}, requires_grad={f(self.requires_grad)}, backward_hooks={f(self.backward_hooks)})"
+        return f"{type(self).__name__}(storage_type={f(self.storage_type)}, key={f(self.key)}, location={f(self.location)}, dtype={f(self.dtype)}, seek_offset={f(self.seek_offset)}, shape={f(self.shape)}, stride={f(self.stride)}, requires_grad={f(self.requires_grad)}, backward_hooks={f(self.backward_hooks)})"
 
     def __repr__(self):
         return self.__view(repr)
 
     def materialize(self, checkpoint: Union[zipfile.ZipFile, zipfile.ZipExtFile], map_location=None) -> torch.Tensor:
         size = reduce(lambda x, y: x * y, self.shape, 1)
-        dtype = self.storage_type(0).dtype
+        dtype = self.dtype
         nbytes = size if dtype is torch.bool else size * ((torch.finfo if dtype.is_floating_point else torch.iinfo)(dtype).bits >> 3)
         if isinstance(checkpoint, zipfile.ZipFile):
             f = checkpoint.open(f"archive/data/{self.key}", "r")
@@ -84,7 +99,7 @@ class LazyTensor:
         else:
             f = checkpoint
         try:
-            storage = self.storage_type.from_buffer(f.read(nbytes), "little")
+            storage = STORAGE_TYPE_MAP[dtype].from_buffer(f.read(nbytes), "little")
         finally:
             if isinstance(checkpoint, zipfile.ZipFile):
                 f.close()
@@ -120,7 +135,10 @@ class _LazyUnpickler(pickle.Unpickler):
 def _rebuild_tensor(lazy_storage: LazyTensor, storage_offset, shape, stride):
     lazy_storage.shape = shape
     lazy_storage.stride = stride
-    dtype = lazy_storage.storage_type(0).dtype
+    dtype = lazy_storage.storage_type.dtype
+    if not isinstance(dtype, torch.dtype):
+        dtype = lazy_storage.storage_type(0).dtype
+    lazy_storage.dtype = dtype
     lazy_storage.seek_offset = storage_offset if dtype is torch.bool else storage_offset * ((torch.finfo if dtype.is_floating_point else torch.iinfo)(dtype).bits >> 3)
     return lazy_storage
 
@@ -177,7 +195,7 @@ def _load_from_state_dict(self, state_dict, prefix, local_metadata, strict, miss
             missing_keys.append(key)
 
     extra_state_key = prefix + _EXTRA_STATE_KEY_SUFFIX
-    if getattr(self.__class__, "set_extra_state", Module.set_extra_state) is not Module.set_extra_state:
+    if hasattr(Module, "set_extra_state") and getattr(self.__class__, "set_extra_state", Module.set_extra_state) is not Module.set_extra_state:  # if getattr(self.__class__, "set_extra_state", Module.set_extra_state) is not Module.set_extra_state:
         if extra_state_key in state_dict:
             self.set_extra_state(state_dict[extra_state_key])
         elif strict:
