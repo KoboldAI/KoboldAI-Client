@@ -195,7 +195,7 @@ def _load_from_state_dict(self, state_dict, prefix, local_metadata, strict, miss
             missing_keys.append(key)
 
     extra_state_key = prefix + _EXTRA_STATE_KEY_SUFFIX
-    if getattr(self.__class__, "set_extra_state", Module.set_extra_state) is not Module.set_extra_state:
+    if hasattr(Module, "set_extra_state") and getattr(self.__class__, "set_extra_state", Module.set_extra_state) is not Module.set_extra_state:  # if getattr(self.__class__, "set_extra_state", Module.set_extra_state) is not Module.set_extra_state:
         if extra_state_key in state_dict:
             self.set_extra_state(state_dict[extra_state_key])
         elif strict:
