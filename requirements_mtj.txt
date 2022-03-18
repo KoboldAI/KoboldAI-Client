@@ -1,3 +1,4 @@
+torch >= 1.9, <= 1.11
 numpy
 tqdm
 requests
@@ -5,7 +6,7 @@ optax >= 0.0.5, <= 0.0.9
 dm-haiku == 0.0.5
 ray[default]
 jax == 0.2.21
-transformers
+transformers >= 4.17
 progressbar2
 git+https://github.com/VE-FORBRYDERNE/mesh-transformer-jax@ck
 flask

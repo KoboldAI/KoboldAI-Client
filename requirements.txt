@@ -1,8 +1,8 @@
-git+https://github.com/huggingface/transformers
+transformers>=4.17
 Flask
 Flask-SocketIO
 requests
-torch
+torch==1.11
 flask-cloudflared
 flask-ngrok
 eventlet
