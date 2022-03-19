@@ -9,6 +9,8 @@ stories
 /.project
 *.bak
 miniconda3
+runtime
+bin
 *.settings
 __pycache__
 *.log
