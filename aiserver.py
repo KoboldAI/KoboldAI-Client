@@ -1466,6 +1466,7 @@ def lua_has_setting(setting):
         "setchatmode",
         "setdynamicscan",
         "setnopromptgen",
+        "autosave",
         "setrngpersist",
         "temp",
         "topp",
@@ -1517,6 +1518,7 @@ def lua_get_setting(setting):
     if(setting in ("setchatmode", "chatmode")): return vars.chatmode
     if(setting in ("setdynamicscan", "dynamicscan")): return vars.dynamicscan
     if(setting in ("setnopromptgen", "nopromptgen")): return vars.nopromptgen
+    if(setting in ("autosave", "autosave")): return vars.autosave
     if(setting in ("setrngpersist", "rngpersist")): return vars.rngpersist
     if(setting in ("frmttriminc", "triminc")): return vars.formatoptns["frmttriminc"]
     if(setting in ("frmtrmblln", "rmblln")): return vars.formatoptns["frmttrmblln"]
@@ -1549,6 +1551,7 @@ def lua_set_setting(setting, v):
     if(setting in ("setadventure", "adventure")): vars.adventure = v
     if(setting in ("setdynamicscan", "dynamicscan")): vars.dynamicscan = v
     if(setting in ("setnopromptgen", "nopromptgen")): vars.nopromptgen = v
+    if(setting in ("autosave", "noautosave")): vars.autosave = v
     if(setting in ("setrngpersist", "rngpersist")): vars.rngpersist = v
     if(setting in ("setchatmode", "chatmode")): vars.chatmode = v
     if(setting in ("frmttriminc", "triminc")): vars.formatoptns["frmttriminc"] = v
@@ -3354,6 +3357,7 @@ def refresh_settings():
     emit('from_server', {'cmd': 'updateadventure', 'data': vars.adventure}, broadcast=True)
     emit('from_server', {'cmd': 'updatechatmode', 'data': vars.chatmode}, broadcast=True)
     emit('from_server', {'cmd': 'updatedynamicscan', 'data': vars.dynamicscan}, broadcast=True)
+    emit('from_server', {'cmd': 'updateautosave', 'data': vars.autosave}, broadcast=True)
     emit('from_server', {'cmd': 'updatenopromptgen', 'data': vars.nopromptgen}, broadcast=True)
     emit('from_server', {'cmd': 'updaterngpersist', 'data': vars.rngpersist}, broadcast=True)
     emit('from_server', {'cmd': 'updatenogenmod', 'data': vars.nogenmod}, broadcast=True)

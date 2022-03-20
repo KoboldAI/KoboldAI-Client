@@ -2256,6 +2256,9 @@ $(document).ready(function(){
 		} else if(msg.cmd == "updatenopromptgen") {
 			// Update toggle state
 			$("#setnopromptgen").prop('checked', msg.data).change();
+		} else if(msg.cmd == "updateautosave") {
+			// Update toggle state
+			$("#autosave").prop('checked', msg.data).change();
 		} else if(msg.cmd == "updaterngpersist") {
 			// Update toggle state
 			$("#setrngpersist").prop('checked', msg.data).change();
