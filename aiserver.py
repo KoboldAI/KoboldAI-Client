@@ -2863,7 +2863,8 @@ def actionretry(data):
         emit('from_server', {'cmd': 'errmsg', 'data': "Retry function unavailable in Read Only mode."})
         return
     if(vars.recentrng is not None):
-        randomGameRequest(vars.recentrng, memory=vars.recentrngm)
+        if(not vars.aibusy):
+            randomGameRequest(vars.recentrng, memory=vars.recentrngm)
         return
     if actionback():
         actionsubmit("", actionmode=vars.actionmode, force_submit=True)
