@@ -140,7 +140,7 @@ function getThrottle(ms) {
         }
         timer[id] = setTimeout(function () {
             callback();
-			delete timer[id];
+            delete timer[id];
         }, ms);
     }
 }
