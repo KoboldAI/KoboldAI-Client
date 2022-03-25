@@ -176,7 +176,7 @@ function addSetting(ob) {
 		window["label_"+ob.id]   = reflb;  // Is this still needed?
 		// Add event function to input
 		refin.on("input", function () {
-			var that = this
+			var that = this;
 			sliders_throttle(ob.id, function () {
 			    socket.send({'cmd': $(that).attr('id'), 'data': $(that).val()});
 			});
