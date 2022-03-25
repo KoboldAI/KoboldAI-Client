@@ -5186,7 +5186,7 @@ def send_debug():
 #==================================================================#
 print("", end="", flush=True)
 if __name__ == "__main__":
-    port = args.port if "port" in args else 5000
+    port = args.port if "port" in args and args.port is not None else 5000
     print("{0}\nStarting webserver...{1}".format(colors.GREEN, colors.END), flush=True)
 
     # Start Flask/SocketIO (Blocking, so this must be last method!)
