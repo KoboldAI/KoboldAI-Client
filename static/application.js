@@ -132,14 +132,15 @@ var sliders_throttle = getThrottle(250);
  * @return {(function(*): void)|*} function that takes the ms to wait and a callback to execute after the timer
  */
 function getThrottle(ms) {
-    var timer;
+    var timer = {};
 
-    return function (callback) {
-        if (timer) {
-            clearTimeout(timer);
+    return function (id, callback) {
+        if (timer[id]) {
+            clearTimeout(timer[id]);
         }
-        timer = setTimeout(function () {
+        timer[id] = setTimeout(function () {
             callback();
+			delete timer[id];
         }, ms);
     }
 }
@@ -175,7 +176,7 @@ function addSetting(ob) {
 		window["label_"+ob.id]   = reflb;  // Is this still needed?
 		// Add event function to input
 		refin.on("input", function () {
-			sliders_throttle(function () {
+			sliders_throttle(ob.id, function () {
 			    socket.send({'cmd': $(this).attr('id'), 'data': $(this).val()});
 			});
 		    }
