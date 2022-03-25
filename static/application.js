@@ -118,9 +118,31 @@ var adventure = false;
 // Chatmode
 var chatmode = false;
 
+var sliders_throttle = getThrottle(250);
+
 //=================================================================//
 //  METHODS
 //=================================================================//
+
+/**
+ * Returns a function that will automatically wait for X ms before executing the callback
+ * The timer is reset each time the returned function is called
+ * Useful for methods where something is overridden too fast
+ * @param ms milliseconds to wait before executing the callback
+ * @return {(function(*): void)|*} function that takes the ms to wait and a callback to execute after the timer
+ */
+function getThrottle(ms) {
+    var timer;
+
+    return function (callback) {
+        if (timer) {
+            clearTimeout(timer);
+        }
+        timer = setTimeout(function () {
+            callback();
+        }, ms);
+    }
+}
 
 function addSetting(ob) {	
 	// Add setting block to Settings Menu
@@ -153,8 +175,11 @@ function addSetting(ob) {
 		window["label_"+ob.id]   = reflb;  // Is this still needed?
 		// Add event function to input
 		refin.on("input", function () {
-			socket.send({'cmd': $(this).attr('id'), 'data': $(this).val()});
-		});
+			sliders_throttle(function () {
+			    socket.send({'cmd': $(this).attr('id'), 'data': $(this).val()});
+			});
+		    }
+		);
 	} else if(ob.uitype == "toggle"){
 		settings_menu.append("<div class=\"settingitem\">\
 			<input type=\"checkbox\" data-toggle=\"toggle\" data-onstyle=\"success\" id=\""+ob.id+"\">\
