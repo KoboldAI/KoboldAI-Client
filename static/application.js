@@ -118,7 +118,7 @@ var adventure = false;
 // Chatmode
 var chatmode = false;
 
-var sliders_throttle = getThrottle(250);
+var sliders_throttle = getThrottle(200);
 
 //=================================================================//
 //  METHODS
@@ -179,6 +179,8 @@ function addSetting(ob) {
 			var that = this;
 			sliders_throttle(ob.id, function () {
 			    socket.send({'cmd': $(that).attr('id'), 'data': $(that).val()});
+				refin.val(parseFloat($(that).val()));
+				reflb.html($(that).val());
 			});
 		    }
 		);
