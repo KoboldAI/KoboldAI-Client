@@ -51,8 +51,19 @@ gensettingstf = [
 	"min": 0.0,
 	"max": 1.0,
 	"step": 0.05,
-	"default": 0.0,
+	"default": 1.0,
     "tooltip": "Alternative sampling method; it is recommended to disable top_p and top_k (set top_p to 1 and top_k to 0) if using this. 0.95 is thought to be a good value. (Put this value on 1 to disable its effect)"
+	},
+	{
+	"uitype": "slider",
+	"unit": "float",
+	"label": "Typical Sampling",
+	"id": "settypical", 
+	"min": 0.0,
+	"max": 1.0,
+	"step": 0.05,
+	"default": 1.0,
+    "tooltip": "Alternative sampling method described in the paper \"Typical Decoding for Natural Language Generation\" (10.48550/ARXIV.2202.00666). The paper suggests 0.2 as a good value for this setting. Set this setting to 1 to disable its effect."
 	},
 	{
 	"uitype": "slider",
