@@ -2041,6 +2041,10 @@ $(document).ready(function(){
 			// Send current tfs value to input
 			$("#settfs").val(parseFloat(msg.data));
 			$("#settfscur").html(msg.data);
+		} else if(msg.cmd == "updatetypical") {
+			// Send current typical value to input
+			$("#settypical").val(parseFloat(msg.data));
+			$("#settypicalcur").html(msg.data);
 		} else if(msg.cmd == "updatereppen") {
 			// Send current rep pen value to input
 			$("#setreppen").val(parseFloat(msg.data));
@@ -2077,6 +2081,9 @@ $(document).ready(function(){
 		} else if(msg.cmd == "setlabeltfs") {
 			// Update setting label with value from server
 			$("#settfscur").html(msg.data);
+		} else if(msg.cmd == "setlabeltypical") {
+			// Update setting label with value from server
+			$("#settypicalcur").html(msg.data);
 		} else if(msg.cmd == "setlabelreppen") {
 			// Update setting label with value from server
 			$("#setreppencur").html(msg.data);
