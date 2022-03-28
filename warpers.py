@@ -123,7 +123,7 @@ class TypicalLogitsWarper(LogitsWarper):
 
         # Compute the negative of entropy, which is the sum of p*ln(p) for all p
         # in the set of softmax probabilities of the logits
-        neg_entropy = (probs * log_probs).sum(dim=-1, keepdim=True)
+        neg_entropy = (probs * log_probs).nansum(dim=-1, keepdim=True)
 
         # Determine absolute difference between the negative entropy and the
         # log probabilities
