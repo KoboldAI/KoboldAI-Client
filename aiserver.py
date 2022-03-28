@@ -4355,20 +4355,30 @@ def oairequest(txt, min, max):
     vars.lastctx = txt
     
     # Build request JSON data
-    reqdata = {
-        'prompt': txt,
-        'max_tokens': max,
-        'temperature': vars.temp,
-        'top_p': vars.top_p,
-        'top_k': vars.top_k,
-        'tfs': vars.tfs,
-        'typical': vars.typical,
-        'repetition_penalty': vars.rep_pen,
-        'repetition_penalty_slope': vars.rep_pen_slope,
-        'repetition_penalty_range': vars.rep_pen_range,
-        'n': 1,
-        'stream': False
-    }
+    if 'GooseAI' in args.configname:
+        reqdata = {
+            'prompt': txt,
+            'max_tokens': max,
+            'temperature': vars.temp,
+            'top_p': vars.top_p,
+            'top_k': vars.top_k,
+            'tfs': vars.tfs,
+            'typical_p': vars.typical,
+            'repetition_penalty': vars.rep_pen,
+            'repetition_penalty_slope': vars.rep_pen_slope,
+            'repetition_penalty_range': vars.rep_pen_range,
+            'n': 1,
+            'stream': False
+        }
+    else:
+        reqdata = {
+            'prompt': txt,
+            'max_tokens': max,
+            'temperature': vars.temp,
+            'top_p': vars.top_p,
+            'n': 1,
+            'stream': False
+        }
     
     req = requests.post(
         vars.oaiurl, 
