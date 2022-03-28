@@ -255,7 +255,7 @@ def kobold_sample_dynamic(key, logits, top_p=0.9, temp=0.5, top_k=0, tfs=1.0, ty
             log_probs = np.log(probs)
         # Compute the negative of entropy, which is the sum of p*ln(p) for all p
         # in the set of softmax probabilities of the logits
-        neg_entropy = (probs * log_probs).sum(axis=-1, keepdims=True)
+        neg_entropy = np.nansum(probs * log_probs, axis=-1, keepdims=True)
         # Determine absolute difference between the negative entropy and the
         # log probabilities
         entropy_deviation = np.abs(neg_entropy - log_probs)
@@ -425,7 +425,7 @@ def kobold_sample_static(key, logits, top_p=0.9, temp=0.5, top_k=0, tfs=1.0, typ
         log_probs = jnp.log(probs)
         # Compute the negative of entropy, which is the sum of p*ln(p) for all p
         # in the set of softmax probabilities of the logits
-        neg_entropy = (probs * log_probs).sum(axis=-1, keepdims=True)
+        neg_entropy = jnp.nansum(probs * log_probs, axis=-1, keepdims=True)
         # Determine absolute difference between the negative entropy and the
         # log probabilities
         entropy_deviation = jnp.abs(neg_entropy - log_probs)
