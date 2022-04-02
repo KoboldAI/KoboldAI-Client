@@ -95,7 +95,7 @@ class LazyTensor:
         nbytes = size if dtype is torch.bool else size * ((torch.finfo if dtype.is_floating_point else torch.iinfo)(dtype).bits >> 3)
         if isinstance(checkpoint, zipfile.ZipFile):
             f = checkpoint.open(f"archive/data/{self.key}", "r")
-            f.seek(self.seek_offset)
+            f.read(self.seek_offset)
         else:
             f = checkpoint
         try:
