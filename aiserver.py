@@ -73,6 +73,7 @@ modellist = [
     ["Adventure 6B", "KoboldAI/GPT-J-6B-Adventure", "16GB"],
     ["Lit 6B (NSFW)", "hakurei/lit-6B", "16GB"],
     ["Shinen 6B (NSFW)", "KoboldAI/GPT-J-6B-Shinen", "16GB"],
+    ["Convo 6B (Chatbot)", "hitomi-team/convo-6B", "16GB"],
     ["C1 6B (Chatbot)", "hakurei/c1-6B", "16GB"],
     ["Janeway 2.7B (Novel)", "KoboldAI/GPT-Neo-2.7B-Janeway", "8GB"],
     ["Adventure 2.7B", "KoboldAI/GPT-Neo-2.7B-AID", "8GB"],
