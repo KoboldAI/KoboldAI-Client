@@ -4,7 +4,6 @@ tqdm
 requests
 optax >= 0.0.5, <= 0.0.9
 dm-haiku == 0.0.5
-ray[default]
 jax == 0.2.21
 transformers >= 4.17
 progressbar2
