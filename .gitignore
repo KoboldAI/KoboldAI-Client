@@ -23,6 +23,7 @@ userscripts
 softprompts
 models
 !models/models go here.txt
+Uninstall
 
 # Ignore PyCharm project files.
 .idea
