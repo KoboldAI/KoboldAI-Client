@@ -4418,8 +4418,8 @@ def oairequest(txt, min, max):
                 print(len(vars.actions))
                 print(vars.actions_metadata)
                 raise
-            if data in alternatives:
-                alternatives = [item for item in vars.actions_metadata[vars.actions.get_last_key() ]["Alternative Text"] if item['Text'] != data]
+            if genout in alternatives:
+                alternatives = [item for item in vars.actions_metadata[vars.actions.get_last_key() ]["Alternative Text"] if item['Text'] != genout]
                 vars.actions_metadata[vars.actions.get_last_key()]["Alternative Text"] = alternatives
             vars.actions_metadata[vars.actions.get_last_key()]["Selected Text"] = genout
         update_story_chunk('last')
