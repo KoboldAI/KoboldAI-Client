@@ -981,39 +981,44 @@ if(vars.model == "OAI"):
             finally:
                 file.close()
     
-    # Get list of models from OAI
-    print("{0}Retrieving engine list...{1}".format(colors.PURPLE, colors.END), end="")
-    req = requests.get(
-        vars.oaiengines, 
-        headers = {
-            'Authorization': 'Bearer '+vars.oaiapikey
-            }
-        )
-    if(req.status_code == 200):
-        print("{0}OK!{1}".format(colors.GREEN, colors.END))
-        print("{0}Please select an engine to use:{1}\n".format(colors.CYAN, colors.END))
-        engines = req.json()["data"]
-        # Print list of engines
-        i = 0
-        for en in engines:
-            print("    {0} - {1} ({2})".format(i, en["id"], "\033[92mready\033[0m" if en["ready"] == True else "\033[91mnot ready\033[0m"))
-            i += 1
-        # Get engine to use
-        print("")
-        engselected = False
-        while(engselected == False):
-            engine = input("Engine #> ")
-            if(engine.isnumeric() and int(engine) < len(engines)):
-                vars.oaiurl = vars.oaiengines + "/{0}/completions".format(engines[int(engine)]["id"])
-                args.configname = args.configname + "/" + engines[int(engine)]["id"]
-                engselected = True
-            else:
-                print("{0}Please enter a valid selection.{1}".format(colors.RED, colors.END))
+    if vars.custmodpth:
+        vars.oaiurl = vars.oaiengines + "/" + vars.custmodpth + "/completions"
+        args.configname = args.configname + "/" + vars.custmodpth
+        engselected = True
     else:
-        # Something went wrong, print the message and quit since we can't initialize an engine
-        print("{0}ERROR!{1}".format(colors.RED, colors.END))
-        print(req.json())
-        quit()
+        # Get list of models from OAI
+        print("{0}Retrieving engine list...{1}".format(colors.PURPLE, colors.END), end="")
+        req = requests.get(
+            vars.oaiengines, 
+            headers = {
+                'Authorization': 'Bearer '+vars.oaiapikey
+                }
+            )
+        if(req.status_code == 200):
+            print("{0}OK!{1}".format(colors.GREEN, colors.END))
+            print("{0}Please select an engine to use:{1}\n".format(colors.CYAN, colors.END))
+            engines = req.json()["data"]
+            # Print list of engines
+            i = 0
+            for en in engines:
+                print("    {0} - {1} ({2})".format(i, en["id"], "\033[92mready\033[0m" if en["ready"] == True else "\033[91mnot ready\033[0m"))
+                i += 1
+            # Get engine to use
+            print("")
+            engselected = False
+            while(engselected == False):
+                engine = input("Engine #> ")
+                if(engine.isnumeric() and int(engine) < len(engines)):
+                    vars.oaiurl = vars.oaiengines + "/{0}/completions".format(engines[int(engine)]["id"])
+                    args.configname = args.configname + "/" + engines[int(engine)]["id"]
+                    engselected = True
+                else:
+                    print("{0}Please enter a valid selection.{1}".format(colors.RED, colors.END))
+        else:
+            # Something went wrong, print the message and quit since we can't initialize an engine
+            print("{0}ERROR!{1}".format(colors.RED, colors.END))
+            print(req.json())
+            quit()
 
 # Ask for ngrok url if Google Colab was selected
 if(vars.model == "Colab"):
