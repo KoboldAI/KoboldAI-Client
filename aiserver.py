@@ -4405,15 +4405,23 @@ def oairequest(txt, min, max):
         if not vars.quiet:
             print("{0}{1}{2}".format(colors.CYAN, genout, colors.END))
         vars.actions.append(genout)
-        if vars.actions.get_last_key() in vars.actions_metadata:
+        # we now need to update the actions_metadata
+        # we'll have two conditions. 
+        # 1. This is totally new (user entered) 
+        if vars.actions.get_last_key() not in vars.actions_metadata:
             vars.actions_metadata[vars.actions.get_last_key()] = {"Selected Text": genout, "Alternative Text": []}
         else:
         # 2. We've selected a chunk of text that is was presented previously
-            alternatives = [item['Text'] for item in vars.actions_metadata[vars.actions.get_last_key()]["Alternative Text"]]
-            if genout in alternatives:
-                alternatives = [item for item in vars.actions_metadata[vars.actions.get_last_key() ]["Alternative Text"] if item['Text'] != genout]
-                vars.actions_metadata[vars.actions.get_last_key() ]["Alternative Text"] = alternatives
-            vars.actions_metadata[vars.actions.get_last_key() ]["Selected Text"] = genout
+            try:
+                alternatives = [item['Text'] for item in vars.actions_metadata[len(vars.actions)-1]["Alternative Text"]]
+            except:
+                print(len(vars.actions))
+                print(vars.actions_metadata)
+                raise
+            if data in alternatives:
+                alternatives = [item for item in vars.actions_metadata[vars.actions.get_last_key() ]["Alternative Text"] if item['Text'] != data]
+                vars.actions_metadata[vars.actions.get_last_key()]["Alternative Text"] = alternatives
+            vars.actions_metadata[vars.actions.get_last_key()]["Selected Text"] = genout
         update_story_chunk('last')
         emit('from_server', {'cmd': 'texteffect', 'data': vars.actions.get_last_key() + 1 if len(vars.actions) else 0}, broadcast=True)
         send_debug()
