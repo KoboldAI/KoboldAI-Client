@@ -4364,7 +4364,7 @@ def oairequest(txt, min, max):
     if 'GooseAI' in args.configname:
         reqdata = {
             'prompt': txt,
-            'max_tokens': vars.max_length,
+            'max_tokens': vars.genamt,
             'temperature': vars.temp,
             'top_p': vars.top_p,
             'top_k': vars.top_k,
@@ -4379,7 +4379,7 @@ def oairequest(txt, min, max):
     else:
         reqdata = {
             'prompt': txt,
-            'max_tokens': vars.max_length,
+            'max_tokens': vars.genamt,
             'temperature': vars.temp,
             'top_p': vars.top_p,
             'n': 1,
