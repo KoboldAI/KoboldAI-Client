@@ -74,6 +74,7 @@ mainmenu = [
     ["Load an old GPT-2 model (eg CloverEdition)", "GPT2Custom", ""],
     ["Skein 6B (Hybrid)", "KoboldAI/GPT-J-6B-Skein", "16GB"],
     ["Janeway 6B (Novel)", "KoboldAI/GPT-J-6B-Janeway", "16GB"],
+    ["Janeway FSD 6.7B (Novel)", "KoboldAI/fairseq-dense-6.7B-Janeway", "16GB"],
     ["Adventure 6B", "KoboldAI/GPT-J-6B-Adventure", "16GB"],
     ["Lit 6B (NSFW)", "hakurei/lit-6B", "16GB"],
     ["Shinen 6B (NSFW)", "KoboldAI/GPT-J-6B-Shinen", "16GB"],
