@@ -1176,7 +1176,7 @@ def load_model(path: str, driver_version="tpu_driver0.1_dev20210607", hf_checkpo
                         continue
 
                     storage_key = model_dict[key].key
-                    if storage_key != last_storage_key:
+                    if storage_key != last_storage_key or model_dict[key].seek_offset < current_offset:
                         last_storage_key = storage_key
                         if isinstance(f, zipfile.ZipExtFile):
                             f.close()
