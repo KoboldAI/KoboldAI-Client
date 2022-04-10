@@ -1325,9 +1325,7 @@ function chunkOnBeforeInput(event) {
 		document.execCommand('delete');
 	}
 	var s = rangy.getSelection();
-	if(!s.isCollapsed) {
-		s.deleteFromDocument();
-	}
+
 	if(buildChunkSetFromNodeArray(getSelectedNodes()).size === 0) {
 		var s = rangy.getSelection();
 		var r = s.getRangeAt(0);
