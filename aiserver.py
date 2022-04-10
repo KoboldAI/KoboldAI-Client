@@ -73,6 +73,7 @@ class colors:
 mainmenu = [
     ["Load a model from its directory", "NeoCustom", ""],
     ["Load an old GPT-2 model (eg CloverEdition)", "GPT2Custom", ""],
+    ["Janeway FSD 13B (Novel)", "KoboldAI/fairseq-dense-13B-Janeway", "32GB"],
     ["Skein 6B (Hybrid)", "KoboldAI/GPT-J-6B-Skein", "16GB"],
     ["Janeway 6B (Novel)", "KoboldAI/GPT-J-6B-Janeway", "16GB"],
     ["Janeway FSD 6.7B (Novel)", "KoboldAI/fairseq-dense-6.7B-Janeway", "16GB"],
