@@ -73,22 +73,10 @@ class colors:
 mainmenu = [
     ["Load a model from its directory", "NeoCustom", ""],
     ["Load an old GPT-2 model (eg CloverEdition)", "GPT2Custom", ""],
-    ["Janeway FSD 13B (Novel)", "KoboldAI/fairseq-dense-13B-Janeway", "32GB"],
-    ["Skein 6B (Hybrid)", "KoboldAI/GPT-J-6B-Skein", "16GB"],
-    ["Janeway 6B (Novel)", "KoboldAI/GPT-J-6B-Janeway", "16GB"],
-    ["Janeway FSD 6.7B (Novel)", "KoboldAI/fairseq-dense-6.7B-Janeway", "16GB"],
-    ["Adventure 6B", "KoboldAI/GPT-J-6B-Adventure", "16GB"],
-    ["Lit 6B (NSFW)", "hakurei/lit-6B", "16GB"],
-    ["Shinen 6B (NSFW)", "KoboldAI/GPT-J-6B-Shinen", "16GB"],
-    ["Convo 6B (Chatbot)", "hitomi-team/convo-6B", "16GB"],
-    ["C1 6B (Chatbot)", "hakurei/c1-6B", "16GB"],
-    ["Janeway Neo 2.7B (Novel)", "KoboldAI/GPT-Neo-2.7B-Janeway", "8GB"],
-    ["Janeway FSD 2.7B (Novel)", "KoboldAI/fairseq-dense-2.7B-Janeway", "8GB"],
-    ["Adventure 2.7B", "KoboldAI/GPT-Neo-2.7B-AID", "8GB"],
-    ["Picard 2.7B (Novel)", "KoboldAI/GPT-Neo-2.7B-Picard", "8GB"],
-    ["Horni 2.7B (NSFW)", "KoboldAI/GPT-Neo-2.7B-Horni", "8GB"],
-    ["Horni-LN 2.7B (Novel)", "KoboldAI/GPT-Neo-2.7B-Horni-LN", "8GB"],
-    ["Shinen 2.7B (NSFW)", "KoboldAI/GPT-Neo-2.7B-Shinen", "8GB"],
+    ["Adventure Models", "adventurelist", ""],
+    ["Novel Models", "novellist", ""],
+    ["NSFW Models", "nsfwlist", ""],
+    ["Chatbot Models", "chatlist", ""],
     ["Untuned GPT-Neo/J", "gptneolist", ""],
     ["Untuned Fairseq Dense", "fsdlist", ""],
     ["Untuned XGLM", "xglmlist", ""],
@@ -97,10 +85,44 @@ mainmenu = [
     ["Read Only (No AI)", "ReadOnly", ""]
     ]
 
+adventurelist= [
+    ["Skein 6B", "KoboldAI/GPT-J-6B-Skein", "16GB"],
+    ["Adventure 6B", "KoboldAI/GPT-J-6B-Adventure", "16GB"],
+    ["Adventure 2.7B", "KoboldAI/GPT-Neo-2.7B-AID", "8GB"],
+    ["Adventure 1.3B", "KoboldAI/GPT-Neo-1.3B-Adventure", "6GB"],
+    ["Adventure 125M (Mia)", "KoboldAI/GPT-Neo-125M-AID", ""],
+    ["Return to Main Menu", "Return", ""],
+]
+
+novellist= [
+    ["Janeway FSD 13B", "KoboldAI/fairseq-dense-13B-Janeway", "32GB"],
+    ["Janeway FSD 6.7B", "KoboldAI/fairseq-dense-6.7B-Janeway", "16GB"],
+    ["Janeway Neo 6B", "KoboldAI/GPT-J-6B-Janeway", "16GB"],
+    ["Janeway Neo 2.7B", "KoboldAI/GPT-Neo-2.7B-Janeway", "8GB"],
+    ["Janeway FSD 2.7B", "KoboldAI/fairseq-dense-2.7B-Janeway", "8GB"],
+    ["Horni-LN 2.7B", "KoboldAI/GPT-Neo-2.7B-Horni-LN", "8GB"],
+    ["Picard 2.7B (Older Janeway)", "KoboldAI/GPT-Neo-2.7B-Picard", "8GB"],
+    ["Return to Main Menu", "Return", ""],
+]
+
+nsfwlist= [
+    ["Lit 6B (NSFW)", "hakurei/lit-6B", "16GB"],
+    ["Shinen 6B (NSFW)", "KoboldAI/GPT-J-6B-Shinen", "16GB"],
+    ["Horni 2.7B (NSFW)", "KoboldAI/GPT-Neo-2.7B-Horni", "8GB"],
+    ["Shinen 2.7B (NSFW)", "KoboldAI/GPT-Neo-2.7B-Shinen", "8GB"],
+    ["Return to Main Menu", "Return", ""],
+]
+
+chatlist= [
+    ["Convo 6B (Chatbot)", "hitomi-team/convo-6B", "16GB"],
+    ["C1 6B (Chatbot)", "hakurei/c1-6B", "16GB"],
+    ["Return to Main Menu", "Return", ""],
+]
 gptneolist = [
     ["GPT-J 6B", "EleutherAI/gpt-j-6B", "16GB"],
     ["GPT-Neo 2.7B", "EleutherAI/gpt-neo-2.7B", "8GB"],
     ["GPT-Neo 1.3B", "EleutherAI/gpt-neo-1.3B", "6GB"],
+    ["GPT-Neo 125M", "EleutherAI/gpt-neo-125M", ""],
     ["Return to Main Menu", "Return", ""],
 ]
 
