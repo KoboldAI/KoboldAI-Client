@@ -8,7 +8,7 @@ dependencies:
   - python=3.8.*
   - eventlet
   - markdown
-  - bleach
+  - bleach=4.1.0
   - pip
   - git
   - pip:
