@@ -11,7 +11,7 @@ dependencies:
   - cudatoolkit=11.1
   - eventlet
   - markdown
-  - bleach
+  - bleach=4.1.0
   - pip
   - git
   - sentencepiece

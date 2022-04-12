@@ -8,6 +8,6 @@ flask-ngrok
 eventlet
 lupa==1.10
 markdown
-bleach
+bleach==4.1.0
 sentencepiece
 protobuf
