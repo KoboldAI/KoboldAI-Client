@@ -1050,8 +1050,31 @@ return function(_python, _bridged)
             return
         elseif not bridged.vars.gamestarted and v == "" then
             error("`KoboldLib.submission` must not be set to the empty string when the story is empty")
+            return
         end
         bridged.vars.submission = v
+    end
+
+
+    --==========================================================================
+    -- Userscript API: Soft prompt
+    --==========================================================================
+
+    ---@param t KoboldLib
+    ---@return string?
+    function KoboldLib_getters.spfilename(t)
+        return bridged.get_spfilename()
+    end
+
+    ---@param t KoboldLib
+    ---@param v string?
+    function KoboldLib_setters.spfilename(t, v)
+        if v:find("/") or v:find("\\") then
+            error("Cannot set `KoboldLib.spfilename` to a string that contains slashes")
+        end
+        if bridged.set_spfilename(v) then
+            maybe_require_regeneration()
+        end
     end
 
 
