@@ -90,7 +90,7 @@ adventurelist= [
     ["Adventure 6B", "KoboldAI/GPT-J-6B-Adventure", "16GB"],
     ["Adventure 2.7B", "KoboldAI/GPT-Neo-2.7B-AID", "8GB"],
     ["Adventure 1.3B", "KoboldAI/GPT-Neo-1.3B-Adventure", "6GB"],
-    ["Adventure 125M (Mia)", "KoboldAI/GPT-Neo-125M-AID", ""],
+    ["Adventure 125M (Mia)", "KoboldAI/GPT-Neo-125M-AID", "2GB"],
     ["Return to Main Menu", "Return", ""],
 ]
 
@@ -122,7 +122,7 @@ gptneolist = [
     ["GPT-J 6B", "EleutherAI/gpt-j-6B", "16GB"],
     ["GPT-Neo 2.7B", "EleutherAI/gpt-neo-2.7B", "8GB"],
     ["GPT-Neo 1.3B", "EleutherAI/gpt-neo-1.3B", "6GB"],
-    ["GPT-Neo 125M", "EleutherAI/gpt-neo-125M", ""],
+    ["GPT-Neo 125M", "EleutherAI/gpt-neo-125M", "2GB"],
     ["Return to Main Menu", "Return", ""],
 ]
 
@@ -138,18 +138,18 @@ fsdlist = [
     ["Fairseq Dense 13B", "KoboldAI/fairseq-dense-13B", "32GB"],
     ["Fairseq Dense 6.7B", "KoboldAI/fairseq-dense-6.7B", "16GB"],
     ["Fairseq Dense 2.7B", "KoboldAI/fairseq-dense-2.7B", "8GB"],
-    ["Fairseq Dense 1.3B", "KoboldAI/fairseq-dense-1.3B", "6GB"],
-    ["Fairseq Dense 355M", "KoboldAI/fairseq-dense-355M", ""],
-    ["Fairseq Dense 125M", "KoboldAI/fairseq-dense-125M", ""],
+    ["Fairseq Dense 1.3B", "KoboldAI/fairseq-dense-1.3B", "4GB"],
+    ["Fairseq Dense 355M", "KoboldAI/fairseq-dense-355M", "2GB"],
+    ["Fairseq Dense 125M", "KoboldAI/fairseq-dense-125M", "1GB"],
     ["Return to Main Menu", "Return", ""],
     ]
 
 xglmlist = [
-    ["XGLM 4.5B (Larger Dataset)", "facebook/xglm-4.5B", ""],
-    ["XGLM 7.5B", "facebook/xglm-7.5B", ""],
-    ["XGLM 2.9B", "facebook/xglm-2.9B", ""],
-    ["XGLM 1.7B", "facebook/xglm-1.7B", ""],
-    ["XGLM 564M", "facebook/xglm-564M", ""],
+    ["XGLM 4.5B (Larger Dataset)", "facebook/xglm-4.5B", "12GB"],
+    ["XGLM 7.5B", "facebook/xglm-7.5B", "18GB"],
+    ["XGLM 2.9B", "facebook/xglm-2.9B", "10GB"],
+    ["XGLM 1.7B", "facebook/xglm-1.7B", "6GB"],
+    ["XGLM 564M", "facebook/xglm-564M", "4GB"],
     ["Return to Main Menu", "Return", ""],
     ]
 
