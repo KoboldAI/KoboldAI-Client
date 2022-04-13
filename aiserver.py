@@ -106,6 +106,7 @@ novellist= [
 ]
 
 nsfwlist= [
+    ["Shinen FSD 6.7B (NSFW)", "KoboldAI/fairseq-dense-6.7B-Shinen", "16GB"],
     ["Lit 6B (NSFW)", "hakurei/lit-6B", "16GB"],
     ["Shinen 6B (NSFW)", "KoboldAI/GPT-J-6B-Shinen", "16GB"],
     ["Horni 2.7B (NSFW)", "KoboldAI/GPT-Neo-2.7B-Horni", "8GB"],
