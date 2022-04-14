@@ -122,7 +122,10 @@ def checksp(filename: str, model_dimension: int) -> Tuple[Union[zipfile.ZipFile,
             shape, fortran_order, dtype = np.lib.format._read_array_header(f, version)
             assert len(shape) == 2
     except:
-        z.close()
+        try:
+            z.close()
+        except UnboundLocalError:
+            pass
         return 1, None, None, None, None
     if dtype not in ('V2', np.float16, np.float32):
         z.close()

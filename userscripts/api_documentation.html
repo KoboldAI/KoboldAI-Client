@@ -56,6 +56,7 @@
 <li><a href="#kobold.num_outputs">kobold.num_outputs</a></li>
 <li><a href="#kobold.outputs">kobold.outputs</a></li>
 <li><a href="#kobold.settings">kobold.settings</a></li>
+<li><a href="#kobold.spfilename">kobold.spfilename</a></li>
 <li><a href="#kobold.story">kobold.story</a>
 <ul>
 <li></li>
@@ -172,6 +173,7 @@
 <li><code>kobold.num_outputs</code></li>
 <li><code>kobold.outputs</code></li>
 <li><code>kobold.settings</code></li>
+<li><code>kobold.spfilename</code></li>
 <li><code>kobold.story</code></li>
 <li><code>kobold.submission</code></li>
 <li><code>kobold.worldinfo</code></li>
@@ -394,6 +396,14 @@
 <li><code>kobold.settings.setwidepth</code> (World Info Depth)</li>
 <li><code>kobold.settings.setuseprompt</code> (Always Use Prompt)</li>
 </ul>
+<h1 id="kobold.spfilename">kobold.spfilename</h1>
+<p><em><strong>Readable from:</strong></em> anywhere<br>
+<em><strong>Writable from:</strong></em> anywhere</p>
+<pre class=" language-lua"><code class="prism  language-lua">field kobold<span class="token punctuation">.</span>spfilename<span class="token punctuation">:</span> string?
+</code></pre>
+<p>The name of the soft prompt file to use (as a string), including the file extension. If not using a soft prompt, this is <code>nil</code> instead.</p>
+<p>You can also set the soft prompt to use by setting this to a string or <code>nil</code>.</p>
+<p>Modifying this field from inside of a generation modifier triggers a regeneration, which means that the context is recomputed after modification and generation begins again with the new context and previously generated tokens. This incurs a small performance penalty and should not be performed in excess.</p>
 <h1 id="kobold.story">kobold.story</h1>
 <p><em><strong>Readable from:</strong></em> anywhere<br>
 <em><strong>Writable from:</strong></em> nowhere</p>
