@@ -165,7 +165,7 @@ return function(_python, _bridged)
     ---@field num_outputs integer
     ---@field feedback string
     ---@field is_config_file_open boolean
-    local kobold = setmetatable({API_VERSION = 1.0}, metawrapper)
+    local kobold = setmetatable({API_VERSION = 1.1}, metawrapper)
     local KoboldLib_mt = setmetatable({}, metawrapper)
     local KoboldLib_getters = setmetatable({}, metawrapper)
     local KoboldLib_setters = setmetatable({}, metawrapper)
