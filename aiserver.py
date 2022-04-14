@@ -1119,7 +1119,7 @@ if(not vars.use_colab_tpu and vars.model not in ["InferKit", "Colab", "OAI", "Go
                         current_offset = 0
                         for key in tqdm(sorted(device_map.keys(), key=lambda k: (model_dict[k].key, model_dict[k].seek_offset)), desc="Loading model tensors"):
                             storage_key = model_dict[key].key
-                            if storage_key != last_storage_key:
+                            if storage_key != last_storage_key or model_dict[key].seek_offset < current_offset:
                                 last_storage_key = storage_key
                                 if isinstance(f, zipfile.ZipExtFile):
                                     f.close()
