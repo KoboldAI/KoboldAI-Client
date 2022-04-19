@@ -5332,8 +5332,8 @@ if __name__ == "__main__":
     #socketio.run(app, host='0.0.0.0', port=5000)
     if(vars.host):
         if(args.localtunnel):
-            import subprocess
-            localtunnel = subprocess.Popen(['lt', '-p', '5000', 'http'], shell=True, stdout=subprocess.PIPE)
+            import subprocess, shutil
+            localtunnel = subprocess.Popen([shutil.which('lt'), '-p', '5000', 'http'], stdout=subprocess.PIPE)
             attempts = 0
             while attempts < 10:
                 try:
