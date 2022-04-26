@@ -778,6 +778,7 @@ def spRequest(filename):
 parser = argparse.ArgumentParser(description="KoboldAI Server")
 parser.add_argument("--remote", action='store_true', help="Optimizes KoboldAI for Remote Play")
 parser.add_argument("--ngrok", action='store_true', help="Optimizes KoboldAI for Remote Play using Ngrok")
+parser.add_argument("--localtunnel", action='store_true', help="Optimizes KoboldAI for Remote Play using Localtunnel")
 parser.add_argument("--host", action='store_true', help="Optimizes KoboldAI for Remote Play without using a proxy service")
 parser.add_argument("--port", type=int, help="Specify the port on which the application will be joinable")
 parser.add_argument("--model", help="Specify the Model Type to skip the Menu")
@@ -822,6 +823,9 @@ if args.remote:
     vars.host = True;
 
 if args.ngrok:
+    vars.host = True;
+
+if args.localtunnel:
     vars.host = True;
 
 if args.host:
@@ -5327,21 +5331,38 @@ if __name__ == "__main__":
 
     # Start Flask/SocketIO (Blocking, so this must be last method!)
 
-    #socketio.run(app, host='0.0.0.0', port=5000)
+    #socketio.run(app, host='0.0.0.0', port=port)
     if(vars.host):
-        if(args.ngrok):
+        if(args.localtunnel):
+            import subprocess, shutil
+            localtunnel = subprocess.Popen([shutil.which('lt'), '-p', str(port), 'http'], stdout=subprocess.PIPE)
+            attempts = 0
+            while attempts < 10:
+                try:
+                    cloudflare = str(localtunnel.stdout.readline())
+                    cloudflare = (re.search("(?P<url>https?:\/\/[^\s]+loca.lt)", cloudflare).group("url"))
+                    break
+                except:
+                    attempts += 1
+                    time.sleep(3)
+                    continue
+            if attempts == 10:
+                print("LocalTunnel could not be created, falling back to cloudflare...")
+                from flask_cloudflared import _run_cloudflared
+                cloudflare = _run_cloudflared(port)
+        elif(args.ngrok):
             from flask_ngrok import _run_ngrok
             cloudflare = _run_ngrok()
         elif(args.remote):
            from flask_cloudflared import _run_cloudflared
            cloudflare = _run_cloudflared(port)
-        if(args.ngrok or args.remote):
+        if(args.localtunnel or args.ngrok or args.remote):
             with open('cloudflare.log', 'w') as cloudflarelog:
                 cloudflarelog.write("KoboldAI has finished loading and is available at the following link : " + cloudflare)
                 print(format(colors.GREEN) + "KoboldAI has finished loading and is available at the following link : " + cloudflare + format(colors.END))
         else:
-            print("{0}Webserver has started, you can now connect to this machine at port 5000{1}"
-                  .format(colors.GREEN, colors.END))
+            print("{0}Webserver has started, you can now connect to this machine at port {1}{2}"
+                  .format(colors.GREEN, port, colors.END))
         vars.serverstarted = True
         socketio.run(app, host='0.0.0.0', port=port)
     else:

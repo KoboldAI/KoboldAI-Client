@@ -2,7 +2,7 @@
 # KoboldAI Easy Colab Deployment Script by Henk717
 
 # read the options
-TEMP=`getopt -o m:i:p:c:d:x:a:l:z:g:t:n:b:s: --long model:,init:,path:,configname:,download:,aria2:,dloc:xloc:7z:git:tar:ngrok:branch:savemodel: -- "$@"`
+TEMP=`getopt -o m:i:p:c:d:x:a:l:z:g:t:n:b:s: --long model:,init:,path:,configname:,download:,aria2:,dloc:,xloc:,7z:,git:,tar:,ngrok:,branch:,savemodel:,localtunnel:,lt: -- "$@"`
 eval set -- "$TEMP"
 
 # extract options and their arguments into variables.
@@ -17,7 +17,9 @@ while true ; do
         -c|--configname)
             configname=" --configname $2" ; shift 2 ;;
         -n|--ngrok)
-            configname=" --ngrok" ; shift 2 ;;
+            ngrok=" --ngrok" ; shift 2 ;;
+        --lt|--localtunnel)
+            localtunnel=" --localtunnel" ; shift 2 ;;
         -d|--download)
             download="$2" ; shift 2 ;;
         -a|--aria2)
@@ -50,8 +52,8 @@ function launch
         exit 0
     else
     cd /content/KoboldAI-Client
-    echo "Launching KoboldAI with the following options : python3 aiserver.py$model$kmpath$configname$ngrok$savemodel --colab"
-    python3 aiserver.py$model$kmpath$configname$ngrok$savemodel --colab
+    echo "Launching KoboldAI with the following options : python3 aiserver.py$model$kmpath$configname$ngrok$localtunnel$savemodel --colab"
+    python3 aiserver.py$model$kmpath$configname$ngrok$localtunnel$savemodel --colab
     exit
     fi
 }
@@ -159,8 +161,9 @@ if [ "$init" != "skip" ]; then
         pip install -r requirements.txt
     fi
     
-    # Make sure Colab has netbase
+    # Make sure Colab has the system dependencies
     sudo apt install netbase -y
+    npm install -g localtunnel
 fi
 
 cd /content
