@@ -780,6 +780,7 @@ parser.add_argument("--remote", action='store_true', help="Optimizes KoboldAI fo
 parser.add_argument("--ngrok", action='store_true', help="Optimizes KoboldAI for Remote Play using Ngrok")
 parser.add_argument("--localtunnel", action='store_true', help="Optimizes KoboldAI for Remote Play using Localtunnel")
 parser.add_argument("--host", action='store_true', help="Optimizes KoboldAI for Remote Play without using a proxy service")
+parser.add_argument("--port", type=int, help="Specify the port on which the application will be joinable")
 parser.add_argument("--model", help="Specify the Model Type to skip the Menu")
 parser.add_argument("--path", help="Specify the Path for local models (For model NeoCustom or GPT2Custom)")
 parser.add_argument("--cpu", action='store_true', help="By default unattended launches are on the GPU use this option to force CPU usage.")
@@ -5319,21 +5320,22 @@ def send_debug():
             pass
 
         emit('from_server', {'cmd': 'debug_info', 'data': debug_info}, broadcast=True)
-    
+
 #==================================================================#
 #  Final startup commands to launch Flask app
 #==================================================================#
 print("", end="", flush=True)
 if __name__ == "__main__":
+    port = args.port if "port" in args and args.port is not None else 5000
     print("{0}\nStarting webserver...{1}".format(colors.GREEN, colors.END), flush=True)
 
     # Start Flask/SocketIO (Blocking, so this must be last method!)
-    
-    #socketio.run(app, host='0.0.0.0', port=5000)
+
+    #socketio.run(app, host='0.0.0.0', port=port)
     if(vars.host):
         if(args.localtunnel):
             import subprocess, shutil
-            localtunnel = subprocess.Popen([shutil.which('lt'), '-p', '5000', 'http'], stdout=subprocess.PIPE)
+            localtunnel = subprocess.Popen([shutil.which('lt'), '-p', str(port), 'http'], stdout=subprocess.PIPE)
             attempts = 0
             while attempts < 10:
                 try:
@@ -5347,30 +5349,32 @@ if __name__ == "__main__":
             if attempts == 10:
                 print("LocalTunnel could not be created, falling back to cloudflare...")
                 from flask_cloudflared import _run_cloudflared
-                cloudflare = _run_cloudflared(5000)
+                cloudflare = _run_cloudflared(port)
         elif(args.ngrok):
             from flask_ngrok import _run_ngrok
             cloudflare = _run_ngrok()
         elif(args.remote):
            from flask_cloudflared import _run_cloudflared
-           cloudflare = _run_cloudflared(5000)
+           cloudflare = _run_cloudflared(port)
         if(args.localtunnel or args.ngrok or args.remote):
             with open('cloudflare.log', 'w') as cloudflarelog:
                 cloudflarelog.write("KoboldAI has finished loading and is available at the following link : " + cloudflare)
                 print(format(colors.GREEN) + "KoboldAI has finished loading and is available at the following link : " + cloudflare + format(colors.END))
         else:
-            print("{0}Webserver has started, you can now connect to this machine at port 5000{1}".format(colors.GREEN, colors.END))
+            print("{0}Webserver has started, you can now connect to this machine at port {1}{2}"
+                  .format(colors.GREEN, port, colors.END))
         vars.serverstarted = True
-        socketio.run(app, host='0.0.0.0', port=5000)
+        socketio.run(app, host='0.0.0.0', port=port)
     else:
         import webbrowser
-        webbrowser.open_new('http://localhost:5000')
-        print("{0}Server started!\nYou may now connect with a browser at http://127.0.0.1:5000/{1}".format(colors.GREEN, colors.END))
+        webbrowser.open_new('http://localhost:{0}'.format(port))
+        print("{0}Server started!\nYou may now connect with a browser at http://127.0.0.1:{1}/{2}"
+              .format(colors.GREEN, port, colors.END))
         vars.serverstarted = True
         if args.unblock:
-            socketio.run(app, port=5000, host='0.0.0.0')
+            socketio.run(app, port=port, host='0.0.0.0')
         else:
-            socketio.run(app, port=5000)
+            socketio.run(app, port=port)
 
 else:
     print("{0}\nServer started in WSGI mode!{1}".format(colors.GREEN, colors.END), flush=True)

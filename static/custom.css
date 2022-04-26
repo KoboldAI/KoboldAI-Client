@@ -22,6 +22,17 @@ chunk.editing, chunk.editing * {
 	font-style: normal !important;
 }
 
+.settinglabel input {
+	width: 5ch;
+	background-color: inherit;
+	border: none;
+	outline: none;
+}
+
+.settinglabel input:focus {
+	color: #cdf;
+}
+
 #gametext, chunk, chunk * {
 	outline: 0px solid transparent;
 }
@@ -1273,8 +1284,8 @@ body.connected .popupfooter, .popupfooter.always-available {
 
 .settinglabel {
 	color: #ffffff;
-	display: grid;
-	grid-template-columns: 80% 20%;
+	display: flex;
+	flex-flow: wrap;
 }
 
 .settingminmax {
