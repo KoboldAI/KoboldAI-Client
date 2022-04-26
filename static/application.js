@@ -118,7 +118,7 @@ var adventure = false;
 // Chatmode
 var chatmode = false;
 
-var sliders_throttle = getThrottle(200);
+var sliders_throttle = getThrottle(40);
 
 //=================================================================//
 //  METHODS
