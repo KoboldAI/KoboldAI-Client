@@ -153,9 +153,7 @@ function addSetting(ob) {
 			<div class=\"justifyleft\">\
 				"+ob.label+" <span class=\"helpicon\">?<span class=\"helptext\">"+ob.tooltip+"</span></span>\
 			</div>\
-			<div class=\"justifyright\" id=\""+ob.id+"cur\">\
-				"+ob.default+"\
-			</div>\
+			<input inputmode=\""+(ob.unit === "float" ? "decimal" : "numeric")+"\" class=\"justifyright flex-push-right\" id=\""+ob.id+"cur\" value=\""+ob.default+"\">\
 		</div>\
 		<div>\
 			<input type=\"range\" class=\"form-range airange\" min=\""+ob.min+"\" max=\""+ob.max+"\" step=\""+ob.step+"\" id=\""+ob.id+"\">\
@@ -175,15 +173,24 @@ function addSetting(ob) {
 		window["setting_"+ob.id] = refin;  // Is this still needed?
 		window["label_"+ob.id]   = reflb;  // Is this still needed?
 		// Add event function to input
-		refin.on("input", function () {
-			var that = this;
+		var send = function () {
+			var that = refin;
 			sliders_throttle(ob.id, function () {
 			    socket.send({'cmd': $(that).attr('id'), 'data': $(that).val()});
 				refin.val(parseFloat($(that).val()));
 				reflb.html($(that).val());
 			});
-		    }
-		);
+		}
+		refin.on("input", send);
+		reflb.on("change", function (event) {
+			var value = (ob.unit === "float" ? parseFloat : parseInt)(event.target.value);
+			if(Number.isNaN(value) || value > ob.max || value < ob.min) {
+				event.target.value = refin.val();
+				return;
+			}
+			refin.val(value);
+			send();
+		});
 	} else if(ob.uitype == "toggle"){
 		settings_menu.append("<div class=\"settingitem\">\
 			<input type=\"checkbox\" data-toggle=\"toggle\" data-onstyle=\"success\" id=\""+ob.id+"\">\
@@ -2055,87 +2062,87 @@ $(document).ready(function(){
 		} else if(msg.cmd == "updatetemp") {
 			// Send current temp value to input
 			$("#settemp").val(parseFloat(msg.data));
-			$("#settempcur").html(msg.data);
+			$("#settempcur").val(msg.data);
 		} else if(msg.cmd == "updatetopp") {
 			// Send current top p value to input
 			$("#settopp").val(parseFloat(msg.data));
-			$("#settoppcur").html(msg.data);
+			$("#settoppcur").val(msg.data);
 		} else if(msg.cmd == "updatetopk") {
 			// Send current top k value to input
 			$("#settopk").val(parseFloat(msg.data));
-			$("#settopkcur").html(msg.data);
+			$("#settopkcur").val(msg.data);
 		} else if(msg.cmd == "updatetfs") {
 			// Send current tfs value to input
 			$("#settfs").val(parseFloat(msg.data));
-			$("#settfscur").html(msg.data);
+			$("#settfscur").val(msg.data);
 		} else if(msg.cmd == "updatetypical") {
 			// Send current typical value to input
 			$("#settypical").val(parseFloat(msg.data));
-			$("#settypicalcur").html(msg.data);
+			$("#settypicalcur").val(msg.data);
 		} else if(msg.cmd == "updatereppen") {
 			// Send current rep pen value to input
 			$("#setreppen").val(parseFloat(msg.data));
-			$("#setreppencur").html(msg.data);
+			$("#setreppencur").val(msg.data);
 		} else if(msg.cmd == "updatereppenslope") {
 			// Send current rep pen value to input
 			$("#setreppenslope").val(parseFloat(msg.data));
-			$("#setreppenslopecur").html(msg.data);
+			$("#setreppenslopecur").val(msg.data);
 		} else if(msg.cmd == "updatereppenrange") {
 			// Send current rep pen value to input
 			$("#setreppenrange").val(parseFloat(msg.data));
-			$("#setreppenrangecur").html(msg.data);
+			$("#setreppenrangecur").val(msg.data);
 		} else if(msg.cmd == "updateoutlen") {
 			// Send current output amt value to input
 			$("#setoutput").val(parseInt(msg.data));
-			$("#setoutputcur").html(msg.data);
+			$("#setoutputcur").val(msg.data);
 		} else if(msg.cmd == "updatetknmax") {
 			// Send current max tokens value to input
 			$("#settknmax").val(parseInt(msg.data));
-			$("#settknmaxcur").html(msg.data);
+			$("#settknmaxcur").val(msg.data);
 		} else if(msg.cmd == "updateikgen") {
 			// Send current max tokens value to input
 			$("#setikgen").val(parseInt(msg.data));
-			$("#setikgencur").html(msg.data);
+			$("#setikgencur").val(msg.data);
 		} else if(msg.cmd == "setlabeltemp") {
 			// Update setting label with value from server
-			$("#settempcur").html(msg.data);
+			$("#settempcur").val(msg.data);
 		} else if(msg.cmd == "setlabeltopp") {
 			// Update setting label with value from server
-			$("#settoppcur").html(msg.data);
+			$("#settoppcur").val(msg.data);
 		} else if(msg.cmd == "setlabeltopk") {
 			// Update setting label with value from server
-			$("#settopkcur").html(msg.data);
+			$("#settopkcur").val(msg.data);
 		} else if(msg.cmd == "setlabeltfs") {
 			// Update setting label with value from server
-			$("#settfscur").html(msg.data);
+			$("#settfscur").val(msg.data);
 		} else if(msg.cmd == "setlabeltypical") {
 			// Update setting label with value from server
-			$("#settypicalcur").html(msg.data);
+			$("#settypicalcur").val(msg.data);
 		} else if(msg.cmd == "setlabelreppen") {
 			// Update setting label with value from server
-			$("#setreppencur").html(msg.data);
+			$("#setreppencur").val(msg.data);
 		} else if(msg.cmd == "setlabelreppenslope") {
 			// Update setting label with value from server
-			$("#setreppenslopecur").html(msg.data);
+			$("#setreppenslopecur").val(msg.data);
 		} else if(msg.cmd == "setlabelreppenrange") {
 			// Update setting label with value from server
-			$("#setreppenrangecur").html(msg.data);
+			$("#setreppenrangecur").val(msg.data);
 		} else if(msg.cmd == "setlabeloutput") {
 			// Update setting label with value from server
-			$("#setoutputcur").html(msg.data);
+			$("#setoutputcur").val(msg.data);
 		} else if(msg.cmd == "setlabeltknmax") {
 			// Update setting label with value from server
-			$("#settknmaxcur").html(msg.data);
+			$("#settknmaxcur").val(msg.data);
 		} else if(msg.cmd == "setlabelikgen") {
 			// Update setting label with value from server
-			$("#setikgencur").html(msg.data);
+			$("#setikgencur").val(msg.data);
 		} else if(msg.cmd == "updateanotedepth") {
 			// Send current Author's Note depth value to input
 			anote_slider.val(parseInt(msg.data));
-			anote_labelcur.html(msg.data);
+			anote_labelcur.val(msg.data);
 		} else if(msg.cmd == "setlabelanotedepth") {
 			// Update setting label with value from server
-			anote_labelcur.html(msg.data);
+			anote_labelcur.val(msg.data);
 		} else if(msg.cmd == "getanote") {
 			// Request contents of Author's Note field
 			var txt = anote_input.val();
