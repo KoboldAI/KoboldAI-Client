@@ -2139,10 +2139,10 @@ $(document).ready(function(){
 		} else if(msg.cmd == "updateanotedepth") {
 			// Send current Author's Note depth value to input
 			anote_slider.val(parseInt(msg.data));
-			anote_labelcur.val(msg.data);
+			anote_labelcur.html(msg.data);
 		} else if(msg.cmd == "setlabelanotedepth") {
 			// Update setting label with value from server
-			anote_labelcur.val(msg.data);
+			anote_labelcur.html(msg.data);
 		} else if(msg.cmd == "getanote") {
 			// Request contents of Author's Note field
 			var txt = anote_input.val();
