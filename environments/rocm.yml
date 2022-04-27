@@ -10,7 +10,7 @@ dependencies:
   - markdown
   - bleach=4.1.0
   - pip
-  - git
+  - git=2.35.1
   - sentencepiece
   - protobuf
   - pip:
