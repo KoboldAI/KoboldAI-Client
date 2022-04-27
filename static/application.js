@@ -118,7 +118,7 @@ var adventure = false;
 // Chatmode
 var chatmode = false;
 
-var sliders_throttle = getThrottle(40);
+var sliders_throttle = getThrottle(200);
 
 //=================================================================//
 //  METHODS
@@ -174,12 +174,10 @@ function addSetting(ob) {
 		window["label_"+ob.id]   = reflb;  // Is this still needed?
 		// Add event function to input
 		var send = function () {
-			var that = refin;
 			sliders_throttle(ob.id, function () {
-			    socket.send({'cmd': $(that).attr('id'), 'data': $(that).val()});
-				refin.val(parseFloat($(that).val()));
-				reflb.html($(that).val());
+			    socket.send({'cmd': $(refin).attr('id'), 'data': $(refin).val()});
 			});
+			reflb.val($(refin).val());
 		}
 		refin.on("input", send);
 		reflb.on("change", function (event) {
