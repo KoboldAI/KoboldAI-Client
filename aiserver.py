@@ -90,7 +90,7 @@ adventurelist= [
     ["Adventure 6B", "KoboldAI/GPT-J-6B-Adventure", "16GB"],
     ["Adventure 2.7B", "KoboldAI/GPT-Neo-2.7B-AID", "8GB"],
     ["Adventure 1.3B", "KoboldAI/GPT-Neo-1.3B-Adventure", "6GB"],
-    ["Adventure 125M (Mia)", "KoboldAI/GPT-Neo-125M-AID", "2GB"],
+    ["Adventure 125M (Mia)", "Merry/AID-Neo-125M", "2GB"],
     ["Return to Main Menu", "Return", ""],
 ]
 
@@ -118,6 +118,7 @@ nsfwlist= [
 chatlist= [
     ["Convo 6B (Chatbot)", "hitomi-team/convo-6B", "16GB"],
     ["C1 6B (Chatbot)", "hakurei/c1-6B", "16GB"],
+    ["C1 1.3B (Chatbot)", "iokru/c1-1.3B", "6GB"],
     ["Return to Main Menu", "Return", ""],
 ]
 gptneolist = [
