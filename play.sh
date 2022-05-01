@@ -1,3 +1,4 @@
-wget -qO- https://micromamba.snakepit.net/api/micromamba/linux-64/latest | tar -xvj bin/micromamba
-bin/micromamba create -f environments/huggingface.yml -r runtime -n koboldai -y
+if [ ! -f "runtime/envs/koboldai/bin/python" ]; then
+source ./install_requirements.sh cuda
+fi
 bin/micromamba run -r runtime -n koboldai python aiserver.py $*
