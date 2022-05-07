@@ -1,4 +1,4 @@
 if [ ! -f "runtime/envs/koboldai/bin/python" ]; then
-source ./install_requirements.sh cuda
+./install_requirements.sh cuda
 fi
 bin/micromamba run -r runtime -n koboldai python aiserver.py $*
