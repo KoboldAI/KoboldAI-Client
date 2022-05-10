@@ -24,6 +24,7 @@ softprompts
 models
 !models/models go here.txt
 Uninstall
+.ipynb_checkpoints
 
 # Ignore PyCharm project files.
 .idea
