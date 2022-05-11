@@ -1251,39 +1251,39 @@ def load_model(path: str, driver_version="tpu_driver0.1_dev20210607", hf_checkpo
     with torch_lazy_loader.use_lazy_torch_load(callback=callback, dematerialized_modules=True):
         if(os.path.isdir(vars.custmodpth)):
             try:
-                tokenizer = AutoTokenizer.from_pretrained(vars.custmodpth, cache_dir="cache")
+                tokenizer = AutoTokenizer.from_pretrained(vars.custmodpth, revision=vars.revision, cache_dir="cache")
             except Exception as e:
                 try:
-                    tokenizer = GPT2TokenizerFast.from_pretrained(vars.custmodpth, cache_dir="cache")
+                    tokenizer = GPT2TokenizerFast.from_pretrained(vars.custmodpth, revision=vars.revision, cache_dir="cache")
                 except Exception as e:
-                    tokenizer = GPT2TokenizerFast.from_pretrained("gpt2", cache_dir="cache")
+                    tokenizer = GPT2TokenizerFast.from_pretrained("gpt2", revision=vars.revision, cache_dir="cache")
             try:
-                model     = AutoModelForCausalLM.from_pretrained(vars.custmodpth, cache_dir="cache")
+                model     = AutoModelForCausalLM.from_pretrained(vars.custmodpth, revision=vars.revision, cache_dir="cache")
             except Exception as e:
-                model     = GPTNeoForCausalLM.from_pretrained(vars.custmodpth, cache_dir="cache")
+                model     = GPTNeoForCausalLM.from_pretrained(vars.custmodpth, revision=vars.revision, cache_dir="cache")
         elif(os.path.isdir("models/{}".format(vars.model.replace('/', '_')))):
             try:
-                tokenizer = AutoTokenizer.from_pretrained("models/{}".format(vars.model.replace('/', '_')), cache_dir="cache")
+                tokenizer = AutoTokenizer.from_pretrained("models/{}".format(vars.model.replace('/', '_')), revision=vars.revision, cache_dir="cache")
             except Exception as e:
                 try:
-                    tokenizer = GPT2TokenizerFast.from_pretrained("models/{}".format(vars.model.replace('/', '_')), cache_dir="cache")
+                    tokenizer = GPT2TokenizerFast.from_pretrained("models/{}".format(vars.model.replace('/', '_')), revision=vars.revision, cache_dir="cache")
                 except Exception as e:
-                    tokenizer = GPT2TokenizerFast.from_pretrained("gpt2", cache_dir="cache")
+                    tokenizer = GPT2TokenizerFast.from_pretrained("gpt2", revision=vars.revision, cache_dir="cache")
             try:
-                model     = AutoModelForCausalLM.from_pretrained("models/{}".format(vars.model.replace('/', '_')), cache_dir="cache")
+                model     = AutoModelForCausalLM.from_pretrained("models/{}".format(vars.model.replace('/', '_')), revision=vars.revision, cache_dir="cache")
             except Exception as e:
-                model     = GPTNeoForCausalLM.from_pretrained("models/{}".format(vars.model.replace('/', '_')), cache_dir="cache")
+                model     = GPTNeoForCausalLM.from_pretrained("models/{}".format(vars.model.replace('/', '_')), revision=vars.revision, cache_dir="cache")
         else:
             try:
-                tokenizer = AutoTokenizer.from_pretrained(vars.model, cache_dir="cache")
+                tokenizer = AutoTokenizer.from_pretrained(vars.model, revision=vars.revision, cache_dir="cache")
             except Exception as e:
                 try:
-                    tokenizer = GPT2TokenizerFast.from_pretrained(vars.model, cache_dir="cache")
+                    tokenizer = GPT2TokenizerFast.from_pretrained(vars.model, revision=vars.revision, cache_dir="cache")
                 except Exception as e:
-                    tokenizer = GPT2TokenizerFast.from_pretrained("gpt2", cache_dir="cache")
+                    tokenizer = GPT2TokenizerFast.from_pretrained("gpt2", revision=vars.revision, cache_dir="cache")
             try:
-                model     = AutoModelForCausalLM.from_pretrained(vars.model, cache_dir="cache")
+                model     = AutoModelForCausalLM.from_pretrained(vars.model, revision=vars.revision, cache_dir="cache")
             except Exception as e:
-                model     = GPTNeoForCausalLM.from_pretrained(vars.model, cache_dir="cache")
+                model     = GPTNeoForCausalLM.from_pretrained(vars.model, revision=vars.revision, cache_dir="cache")
 
     #network.state = network.move_xmap(network.state, np.zeros(cores_per_replica))

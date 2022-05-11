@@ -784,6 +784,7 @@ parser.add_argument("--host", action='store_true', help="Optimizes KoboldAI for 
 parser.add_argument("--port", type=int, help="Specify the port on which the application will be joinable")
 parser.add_argument("--model", help="Specify the Model Type to skip the Menu")
 parser.add_argument("--path", help="Specify the Path for local models (For model NeoCustom or GPT2Custom)")
+parser.add_argument("--revision", help="Specify the model revision for huggingface models (can be a git branch/tag name or a git commit hash)")
 parser.add_argument("--cpu", action='store_true', help="By default unattended launches are on the GPU use this option to force CPU usage.")
 parser.add_argument("--breakmodel", action='store_true', help=argparse.SUPPRESS)
 parser.add_argument("--breakmodel_layers", type=int, help=argparse.SUPPRESS)
@@ -867,19 +868,19 @@ if(vars.model not in ["InferKit", "Colab", "OAI", "GooseAI" , "ReadOnly", "TPUMe
     from transformers import AutoConfig
     if(os.path.isdir(vars.custmodpth.replace('/', '_'))):
         try:
-            model_config = AutoConfig.from_pretrained(vars.custmodpth.replace('/', '_'), cache_dir="cache/")
+            model_config = AutoConfig.from_pretrained(vars.custmodpth.replace('/', '_'), revision=vars.revision, cache_dir="cache")
             vars.model_type = model_config.model_type
         except ValueError as e:
             vars.model_type = "not_found"
     elif(os.path.isdir("models/{}".format(vars.custmodpth.replace('/', '_')))):
         try:
-            model_config = AutoConfig.from_pretrained("models/{}".format(vars.custmodpth.replace('/', '_')), cache_dir="cache/")
+            model_config = AutoConfig.from_pretrained("models/{}".format(vars.custmodpth.replace('/', '_')), revision=vars.revision, cache_dir="cache")
             vars.model_type = model_config.model_type
         except ValueError as e:
             vars.model_type = "not_found"
     else:
         try:
-            model_config = AutoConfig.from_pretrained(vars.custmodpth, cache_dir="cache/")
+            model_config = AutoConfig.from_pretrained(vars.custmodpth, revision=vars.revision, cache_dir="cache")
             vars.model_type = model_config.model_type
         except ValueError as e:
             vars.model_type = "not_found"
@@ -1432,8 +1433,8 @@ if(not vars.use_colab_tpu and vars.model not in ["InferKit", "Colab", "OAI", "Go
             model_config = open(vars.custmodpth + "/config.json", "r")
             js   = json.load(model_config)
             with(maybe_use_float16()):
-                model = GPT2LMHeadModel.from_pretrained(vars.custmodpth, cache_dir="cache/")
-            tokenizer = GPT2TokenizerFast.from_pretrained(vars.custmodpth, cache_dir="cache/")
+                model = GPT2LMHeadModel.from_pretrained(vars.custmodpth, revision=vars.revision, cache_dir="cache")
+            tokenizer = GPT2TokenizerFast.from_pretrained(vars.custmodpth, revision=vars.revision, cache_dir="cache")
             vars.modeldim = get_hidden_size_from_model(model)
             # Is CUDA available? If so, use GPU, otherwise fall back to CPU
             if(vars.hascuda and vars.usegpu):
@@ -1468,40 +1469,40 @@ if(not vars.use_colab_tpu and vars.model not in ["InferKit", "Colab", "OAI", "Go
                     lowmem = {}
                 if(os.path.isdir(vars.custmodpth)):
                     try:
-                        tokenizer = AutoTokenizer.from_pretrained(vars.custmodpth, cache_dir="cache")
+                        tokenizer = AutoTokenizer.from_pretrained(vars.custmodpth, revision=vars.revision, cache_dir="cache")
                     except Exception as e:
                         try:
-                            tokenizer = GPT2TokenizerFast.from_pretrained(vars.custmodpth, cache_dir="cache")
+                            tokenizer = GPT2TokenizerFast.from_pretrained(vars.custmodpth, revision=vars.revision, cache_dir="cache")
                         except Exception as e:
-                            tokenizer = GPT2TokenizerFast.from_pretrained("gpt2", cache_dir="cache")
+                            tokenizer = GPT2TokenizerFast.from_pretrained("gpt2", revision=vars.revision, cache_dir="cache")
                     try:
-                        model     = AutoModelForCausalLM.from_pretrained(vars.custmodpth, cache_dir="cache", **lowmem)
+                        model     = AutoModelForCausalLM.from_pretrained(vars.custmodpth, revision=vars.revision, cache_dir="cache", **lowmem)
                     except Exception as e:
-                        model     = GPTNeoForCausalLM.from_pretrained(vars.custmodpth, cache_dir="cache", **lowmem)
+                        model     = GPTNeoForCausalLM.from_pretrained(vars.custmodpth, revision=vars.revision, cache_dir="cache", **lowmem)
                 elif(os.path.isdir("models/{}".format(vars.model.replace('/', '_')))):
                     try:
-                        tokenizer = AutoTokenizer.from_pretrained("models/{}".format(vars.model.replace('/', '_')), cache_dir="cache")
+                        tokenizer = AutoTokenizer.from_pretrained("models/{}".format(vars.model.replace('/', '_')), revision=vars.revision, cache_dir="cache")
                     except Exception as e:
                         try:
-                            tokenizer = GPT2TokenizerFast.from_pretrained("models/{}".format(vars.model.replace('/', '_')), cache_dir="cache")
+                            tokenizer = GPT2TokenizerFast.from_pretrained("models/{}".format(vars.model.replace('/', '_')), revision=vars.revision, cache_dir="cache")
                         except Exception as e:
-                            tokenizer = GPT2TokenizerFast.from_pretrained("gpt2", cache_dir="cache")
+                            tokenizer = GPT2TokenizerFast.from_pretrained("gpt2", revision=vars.revision, cache_dir="cache")
                     try:
-                        model     = AutoModelForCausalLM.from_pretrained("models/{}".format(vars.model.replace('/', '_')), cache_dir="cache", **lowmem)
+                        model     = AutoModelForCausalLM.from_pretrained("models/{}".format(vars.model.replace('/', '_')), revision=vars.revision, cache_dir="cache", **lowmem)
                     except Exception as e:
-                        model     = GPTNeoForCausalLM.from_pretrained("models/{}".format(vars.model.replace('/', '_')), cache_dir="cache", **lowmem)
+                        model     = GPTNeoForCausalLM.from_pretrained("models/{}".format(vars.model.replace('/', '_')), revision=vars.revision, cache_dir="cache", **lowmem)
                 else:
                     try:
-                        tokenizer = AutoTokenizer.from_pretrained(vars.model, cache_dir="cache")
+                        tokenizer = AutoTokenizer.from_pretrained(vars.model, revision=vars.revision, cache_dir="cache")
                     except Exception as e:
                         try:
-                            tokenizer = GPT2TokenizerFast.from_pretrained(vars.model, cache_dir="cache")
+                            tokenizer = GPT2TokenizerFast.from_pretrained(vars.model, revision=vars.revision, cache_dir="cache")
                         except Exception as e:
-                            tokenizer = GPT2TokenizerFast.from_pretrained("gpt2", cache_dir="cache")
+                            tokenizer = GPT2TokenizerFast.from_pretrained("gpt2", revision=vars.revision, cache_dir="cache")
                     try:
-                        model     = AutoModelForCausalLM.from_pretrained(vars.model, cache_dir="cache", **lowmem)
+                        model     = AutoModelForCausalLM.from_pretrained(vars.model, revision=vars.revision, cache_dir="cache", **lowmem)
                     except Exception as e:
-                        model     = GPTNeoForCausalLM.from_pretrained(vars.model, cache_dir="cache", **lowmem)
+                        model     = GPTNeoForCausalLM.from_pretrained(vars.model, revision=vars.revision, cache_dir="cache", **lowmem)
 
                     if not args.colab or args.savemodel:
                         import shutil
@@ -1540,7 +1541,7 @@ if(not vars.use_colab_tpu and vars.model not in ["InferKit", "Colab", "OAI", "Go
     
     else:
         from transformers import GPT2TokenizerFast
-        tokenizer = GPT2TokenizerFast.from_pretrained("gpt2", cache_dir="cache/")
+        tokenizer = GPT2TokenizerFast.from_pretrained("gpt2", revision=vars.revision, cache_dir="cache")
 else:
     from transformers import PreTrainedModel
     old_from_pretrained = PreTrainedModel.from_pretrained
@@ -1637,11 +1638,11 @@ else:
     # If we're running Colab or OAI, we still need a tokenizer.
     if(vars.model == "Colab"):
         from transformers import GPT2TokenizerFast
-        tokenizer = GPT2TokenizerFast.from_pretrained("EleutherAI/gpt-neo-2.7B", cache_dir="cache/")
+        tokenizer = GPT2TokenizerFast.from_pretrained("EleutherAI/gpt-neo-2.7B", revision=vars.revision, cache_dir="cache")
         loadsettings()
     elif(vars.model == "OAI"):
         from transformers import GPT2TokenizerFast
-        tokenizer = GPT2TokenizerFast.from_pretrained("gpt2", cache_dir="cache/")
+        tokenizer = GPT2TokenizerFast.from_pretrained("gpt2", revision=vars.revision, cache_dir="cache")
         loadsettings()
     # Load the TPU backend if requested
     elif(vars.use_colab_tpu or vars.model in ("TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX")):
@@ -1827,7 +1828,7 @@ def lua_decode(tokens):
     if("tokenizer" not in globals()):
         from transformers import GPT2TokenizerFast
         global tokenizer
-        tokenizer = GPT2TokenizerFast.from_pretrained("gpt2", cache_dir="cache/")
+        tokenizer = GPT2TokenizerFast.from_pretrained("gpt2", revision=vars.revision, cache_dir="cache")
     return utils.decodenewlines(tokenizer.decode(tokens))
 
 #==================================================================#
@@ -1839,7 +1840,7 @@ def lua_encode(string):
     if("tokenizer" not in globals()):
         from transformers import GPT2TokenizerFast
         global tokenizer
-        tokenizer = GPT2TokenizerFast.from_pretrained("gpt2", cache_dir="cache/")
+        tokenizer = GPT2TokenizerFast.from_pretrained("gpt2", revision=vars.revision, cache_dir="cache")
     return tokenizer.encode(utils.encodenewlines(string), max_length=int(4e9), truncation=True)
 
 #==================================================================#
@@ -3095,7 +3096,7 @@ def calcsubmitbudget(actionlen, winfo, mem, anotetxt, actions, submission=None, 
     if("tokenizer" not in globals()):
         from transformers import GPT2TokenizerFast
         global tokenizer
-        tokenizer = GPT2TokenizerFast.from_pretrained("gpt2", cache_dir="cache/")
+        tokenizer = GPT2TokenizerFast.from_pretrained("gpt2", revision=vars.revision, cache_dir="cache")
 
     # Calculate token budget
     prompttkns = tokenizer.encode(utils.encodenewlines(vars.comregex_ai.sub('', vars.prompt)), max_length=int(2e9), truncation=True)
