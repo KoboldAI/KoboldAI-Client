@@ -135,7 +135,7 @@ def decodenewlines(txt):
 #==================================================================#
 #  Downloads sharded huggingface checkpoints using aria2c if possible
 #==================================================================#
-def aria2_hook(pretrained_model_name_or_path: str, force_download=True, cache_dir=None, proxies=None, resume_download=False, local_files_only=False, use_auth_token=None, user_agent=None, revision=None, mirror=None, **kwargs):
+def aria2_hook(pretrained_model_name_or_path: str, force_download=False, cache_dir=None, proxies=None, resume_download=False, local_files_only=False, use_auth_token=None, user_agent=None, revision=None, mirror=None, **kwargs):
     import transformers
     import transformers.modeling_utils
     from huggingface_hub import HfFolder
