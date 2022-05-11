@@ -218,6 +218,9 @@ def aria2_hook(pretrained_model_name_or_path: str, force_download=False, cache_d
         os.remove(path)
     except OSError:
         pass
+    code = p.wait()
+    if code:
+        raise OSError(f"aria2 exited with exit code {code}")
     for u, t, n in zip(urls, etags, filenames):
         os.rename(os.path.join(_cache_dir, "kai-tempfile." + n), os.path.join(_cache_dir, n))
         with open(os.path.join(_cache_dir, n + ".json"), "w") as f:
