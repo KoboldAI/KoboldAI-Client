@@ -198,6 +198,9 @@ def aria2_hook(pretrained_model_name_or_path: str, force_download=False, cache_d
             path = os.path.join(_cache_dir, n + ".json")
             if os.path.exists(path):
                 os.remove(path)
+            path = os.path.join(_cache_dir, n)
+            if os.path.exists(path):
+                os.remove(path)
     aria2_config = "\n".join(f"{u}\n  out={n}" for u, n in zip(urls, filenames)).encode()
     with tempfile.NamedTemporaryFile("w+b", delete=False) as f:
         f.write(aria2_config)
