@@ -162,7 +162,7 @@ if [ "$init" != "skip" ]; then
     fi
     
     # Make sure Colab has the system dependencies
-    sudo apt install netbase -y
+    sudo apt install netbase aria2 -y
     npm install -g localtunnel
 fi
 
@@ -186,8 +186,7 @@ fi
 
 #Download routine for Aria2c scripts
 if [ ! -z ${aria2+x} ]; then
-    apt install aria2 -y
-    curl -L $aria2 | aria2c -c -i- -d$dloc --user-agent=KoboldAI --file-allocation=none
+    curl -L $aria2 | aria2c -x 10 -s 10 -j 10 -c -i- -d$dloc --user-agent=KoboldAI --file-allocation=none
 fi
 
 #Extract the model with 7z
