@@ -806,6 +806,7 @@ else:
     args = parser.parse_args()
 
 vars.model = args.model;
+vars.revision = args.revision
 
 if args.colab:
     args.remote = True;
