@@ -1506,7 +1506,7 @@ if(not vars.use_colab_tpu and vars.model not in ["InferKit", "Colab", "OAI", "Go
                     if not args.colab or args.savemodel:
                         import shutil
                         model = model.half()
-                        model.save_pretrained("models/{}".format(vars.model.replace('/', '_')))
+                        model.save_pretrained("models/{}".format(vars.model.replace('/', '_')), max_shard_size="500MiB")
                         tokenizer.save_pretrained("models/{}".format(vars.model.replace('/', '_')))
                         shutil.rmtree("cache/")
             
