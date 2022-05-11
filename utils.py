@@ -210,7 +210,7 @@ def aria2_hook(pretrained_model_name_or_path: str, force_download=False, cache_d
     aria2_config = "\n".join(f"{u}\n  out={n}" for u, n in zip(urls, filenames)).encode()
     with tempfile.NamedTemporaryFile("w+b", delete=True) as f:
         f.write(aria2_config)
-        p = subprocess.Popen(["aria2c", "-d", _cache_dir, "-i", f.name] + (["-c"] if not force_download else []) + (["-U", str(user_agent)] if user_agent is not None else []) + ([f"--header='Authorization: Bearer {token}'"] if use_auth_token else []), stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        p = subprocess.Popen(["aria2c", "-d", _cache_dir, "-i", f.name, "-U", transformers.file_utils.http_user_agent(user_agent)] + (["-c"] if not force_download else []) + ([f"--header='Authorization: Bearer {token}'"] if use_auth_token else []), stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
         for line in p.stdout:
             print(line.decode(), end="", flush=True)
     for u, t, n in zip(urls, etags, filenames):
