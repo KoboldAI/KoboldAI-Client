@@ -186,7 +186,7 @@ fi
 
 #Download routine for Aria2c scripts
 if [ ! -z ${aria2+x} ]; then
-    curl -L $aria2 | aria2c -c -i- -d$dloc --user-agent=KoboldAI --file-allocation=none
+    curl -L $aria2 | aria2c -x 10 -s 10 -j 10 -c -i- -d$dloc --user-agent=KoboldAI --file-allocation=none
 fi
 
 #Extract the model with 7z
