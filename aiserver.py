@@ -796,6 +796,7 @@ parser.add_argument("--colab", action='store_true', help="Optimize for Google Co
 parser.add_argument("--nobreakmodel", action='store_true', help="Disables Breakmodel support completely.")
 parser.add_argument("--unblock", action='store_true', default=False, help="Unblocks the KoboldAI port to be accessible from other machines without optimizing for remote play (It is recommended to use --host instead)")
 parser.add_argument("--quiet", action='store_true', default=False, help="If present will suppress any story related text from showing on the console")
+parser.add_argument("--no_aria2", action='store_true', default=False, help="Prevents KoboldAI from using aria2 to download huggingface models more efficiently, in case aria2 is causing you issues")
 parser.add_argument("--lowmem", action='store_true', help="Extra Low Memory loading for the GPU, slower but memory does not peak to twice the usage")
 parser.add_argument("--savemodel", action='store_true', help="Saves the model to the models folder even if --colab is used (Allows you to save models to Google Drive)")
 args: argparse.Namespace = None
@@ -1117,7 +1118,8 @@ if(not vars.use_colab_tpu and vars.model not in ["InferKit", "Colab", "OAI", "Go
         old_from_pretrained = PreTrainedModel.from_pretrained.__func__
         @classmethod
         def new_from_pretrained(cls, pretrained_model_name_or_path, *model_args, **kwargs):
-            utils.aria2_hook(pretrained_model_name_or_path, **kwargs)
+            if not args.no_aria2:
+                utils.aria2_hook(pretrained_model_name_or_path, **kwargs)
             return old_from_pretrained(cls, pretrained_model_name_or_path, *model_args, **kwargs)
         PreTrainedModel.from_pretrained = new_from_pretrained
 
@@ -1549,7 +1551,8 @@ else:
     old_from_pretrained = PreTrainedModel.from_pretrained.__func__
     @classmethod
     def new_from_pretrained(cls, pretrained_model_name_or_path, *model_args, **kwargs):
-        utils.aria2_hook(pretrained_model_name_or_path, **kwargs)
+        if not args.no_aria2:
+            utils.aria2_hook(pretrained_model_name_or_path, **kwargs)
         return old_from_pretrained(cls, pretrained_model_name_or_path, *model_args, **kwargs)
     PreTrainedModel.from_pretrained = new_from_pretrained
 
