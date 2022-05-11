@@ -186,11 +186,6 @@ def aria2_hook(pretrained_model_name_or_path: str, force_download=False, cache_d
             map_data = json.load(f)
         filenames = set(map_data["weight_map"].values())
     urls = [transformers.file_utils.hf_bucket_url(pretrained_model_name_or_path, n, revision=revision, mirror=mirror) for n in filenames]
-    if not force_download:
-        if all(is_cached(u) for u in urls):
-            return
-        elif local_files_only:
-            raise FileNotFoundError("Cannot find the requested files in the cached path and outgoing traffic has been disabled. To enable model look-ups and downloads online, set 'local_files_only' to False.")
     etags = [h.get("X-Linked-Etag") or h.get("ETag") for u in urls for h in [requests.head(u, headers=headers, allow_redirects=False, proxies=proxies, timeout=10).headers]]
     filenames = [transformers.file_utils.url_to_filename(u, t) for u, t in zip(urls, etags)]
     if force_download:
