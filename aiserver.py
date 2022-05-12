@@ -79,6 +79,7 @@ mainmenu = [
     ["Chatbot Models", "chatlist", ""],
     ["Untuned GPT-Neo/J", "gptneolist", ""],
     ["Untuned Fairseq Dense", "fsdlist", ""],
+    ["Untuned OPT", "optlist", ""],
     ["Untuned XGLM", "xglmlist", ""],
     ["Untuned GPT2", "gpt2list", ""],
     ["Online Services", "apilist", ""],
@@ -134,6 +135,17 @@ gpt2list = [
     ["GPT-2 Large", "gpt2-large", "4GB"],
     ["GPT-2 Med", "gpt2-medium", "2GB"],
     ["GPT-2", "gpt2", "2GB"],
+    ["Return to Main Menu", "Return", ""],
+    ]
+
+optlist = [
+    ["OPT 30B", "facebook/opt-30b", ""],
+    ["OPT 13B", "facebook/opt-13b", "32GB"],
+    ["OPT 6.7B", "facebook/opt-6.7b", "16GB"],
+    ["OPT 2.7B", "facebook/opt-2.7b", "8GB"],
+    ["OPT 1.3B", "facebook/opt-1.3b", "4GB"],
+    ["OPT 355M", "facebook/opt-350m", "2GB"],
+    ["OPT 125M", "facebook/opt-125m", "1GB"],
     ["Return to Main Menu", "Return", ""],
     ]
 
