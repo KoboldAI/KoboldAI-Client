@@ -1,4 +1,4 @@
-transformers>=4.17
+transformers>=4.19
 Flask
 Flask-SocketIO
 requests

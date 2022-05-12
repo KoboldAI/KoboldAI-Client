@@ -1200,6 +1200,8 @@ def load_model(path: str, driver_version="tpu_driver0.1_dev20210607", hf_checkpo
 
                     # MTJ requires certain mathematical operations to be performed
                     # on tensors in order for them to be in the correct format
+                    if "remove_first_two_rows" in transforms:
+                        tensor = tensor[2:]
                     if "divide_by_shards" in transforms:
                         tensor /= params["cores_per_replica"]
                     if "vocab_pad" in transforms:
