@@ -527,7 +527,7 @@ def loadmodelsettings():
                 js   = json.load(open(vars.custmodpth.replace('/', '_') + "/config.json", "r"))            
         except Exception as e:
             js   = {}
-    if vars.model_type == "xglm" or vars.model_type == "opt" or js.get("compat", "j") == "fairseq_lm":
+    if vars.model_type == "xglm" or js.get("compat", "j") == "fairseq_lm":
         vars.newlinemode = "s"  # Default to </s> newline mode if using XGLM
     vars.modelconfig = js
     if("badwordsids" in js):
