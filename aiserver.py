@@ -1268,7 +1268,7 @@ if(not vars.use_colab_tpu and vars.model not in ["InferKit", "Colab", "OAI", "Go
                 input_ids.clamp_(max=self.config.vocab_size-1)
                 if(hasattr(self, "transformer")):
                     inputs_embeds = self.transformer.wte(input_ids)
-                elif(not hasattr(model.model, "decoder")):
+                elif(not hasattr(self.model, "decoder")):
                     inputs_embeds = self.model.embed_tokens(input_ids)
                 else:
                     inputs_embeds = self.model.decoder.embed_tokens(input_ids)
@@ -1279,7 +1279,7 @@ if(not vars.use_colab_tpu and vars.model not in ["InferKit", "Colab", "OAI", "Go
                         vars.sp[shifted_input_ids.clamp(min=0)],
                         inputs_embeds,
                     )
-                if(hasattr(self.model, "embed_scale")):
+                if(hasattr(self, "model") and hasattr(self.model, "embed_scale")):
                     inputs_embeds *= self.model.embed_scale
                 kwargs['inputs_embeds'] = inputs_embeds
                 return old_forward(self, *args, **kwargs)
