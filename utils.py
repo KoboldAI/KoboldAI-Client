@@ -136,6 +136,12 @@ def decodenewlines(txt):
     return txt
 
 #==================================================================#
+#  Returns number of layers given an HF model config
+#==================================================================#
+def num_layers(config):
+    return config.num_layers if hasattr(config, "num_layers") else config.n_layer if hasattr(config, "n_layer") else config.num_hidden_layers
+
+#==================================================================#
 #  Downloads huggingface checkpoints using aria2c if possible
 #==================================================================#
 def aria2_hook(pretrained_model_name_or_path: str, force_download=False, cache_dir=None, proxies=None, resume_download=False, local_files_only=False, use_auth_token=None, user_agent=None, revision=None, mirror=None, **kwargs):

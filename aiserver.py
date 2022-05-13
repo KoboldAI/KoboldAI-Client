@@ -274,7 +274,7 @@ class vars:
     recentrngm  = None   # If a new random game was recently generated without Submitting after, this is the memory used (as a string), otherwise this is None
     useprompt   = False   # Whether to send the full prompt with every submit action
     breakmodel  = False  # For GPU users, whether to use both system RAM and VRAM to conserve VRAM while offering speedup compared to CPU-only
-    bmsupported = False  # Whether the breakmodel option is supported (GPT-Neo/GPT-J/XGLM only, currently)
+    bmsupported = False  # Whether the breakmodel option is supported (GPT-Neo/GPT-J/XGLM/OPT only, currently)
     nobreakmodel = False  # Something specifically requested Breakmodel to be disabled (For example a models config)
     smandelete  = False  # Whether stories can be deleted from inside the browser
     smanrename  = False  # Whether stories can be renamed from inside the browser
@@ -391,7 +391,7 @@ def device_list(n_layers, primary=None, selected=None):
 def device_config(config):
     global breakmodel, generator
     import breakmodel
-    n_layers = config.num_layers if hasattr(config, "num_layers") else config.n_layer
+    n_layers = utils.num_layers(config)
     if(args.breakmodel_gpulayers is not None):
         try:
             breakmodel.gpu_blocks = list(map(int, args.breakmodel_gpulayers.split(',')))
@@ -464,7 +464,7 @@ def device_config(config):
     # If all layers are on the same device, use the old GPU generation mode
     while(len(breakmodel.gpu_blocks) and breakmodel.gpu_blocks[-1] == 0):
         breakmodel.gpu_blocks.pop()
-    if(len(breakmodel.gpu_blocks) and breakmodel.gpu_blocks[-1] in (-1, config.num_layers if hasattr(config, "num_layers") else config.n_layer)):
+    if(len(breakmodel.gpu_blocks) and breakmodel.gpu_blocks[-1] in (-1, utils.num_layers(config))):
         vars.breakmodel = False
         vars.usegpu = True
         vars.gpu_device = len(breakmodel.gpu_blocks)-1
@@ -496,22 +496,33 @@ def move_model_to_devices(model):
             model.lm_head.to(breakmodel.primary_device)
         if(hasattr(model.transformer, 'wpe')):
             model.transformer.wpe.to(breakmodel.primary_device)
-    else:
+    elif(not hasattr(model.model, "decoder")):
         model.model.embed_tokens.to(breakmodel.primary_device)
         model.model.layer_norm.to(breakmodel.primary_device)
         model.lm_head.to(breakmodel.primary_device)
         model.model.embed_positions.to(breakmodel.primary_device)
+    else:
+        model.model.decoder.embed_tokens.to(breakmodel.primary_device)
+        if(model.model.decoder.project_in is not None):
+            model.model.decoder.project_in.to(breakmodel.primary_device)
+        if(model.model.decoder.project_out is not None):
+            model.model.decoder.project_out.to(breakmodel.primary_device)
+        model.model.decoder.embed_positions.to(breakmodel.primary_device)
     gc.collect()
     GPTNeoModel.forward = breakmodel.new_forward_neo
     if("GPTJModel" in globals()):
         GPTJModel.forward = breakmodel.new_forward_neo # type: ignore
     if("XGLMModel" in globals()):
         XGLMModel.forward = breakmodel.new_forward_xglm # type: ignore
+    if("OPTDecoder" in globals()):
+        OPTDecoder.forward = breakmodel.new_forward_opt # type: ignore
     generator = model.generate
     if(hasattr(model, "transformer")):
         breakmodel.move_hidden_layers(model.transformer)
-    else:
+    elif(not hasattr(model.model, "decoder")):
         breakmodel.move_hidden_layers(model.model, model.model.layers)
+    else:
+        breakmodel.move_hidden_layers(model.model.decoder, model.model.decoder.layers)
 
 #==================================================================#
 #  Allow the models to override some settings
@@ -911,7 +922,7 @@ if(not vars.use_colab_tpu and vars.model not in ["InferKit", "Colab", "OAI", "Go
     loadsettings()
     print("{0}Looking for GPU support...{1}".format(colors.PURPLE, colors.END), end="")
     vars.hascuda = torch.cuda.is_available()
-    vars.bmsupported = vars.model_type in ("gpt_neo", "gptj", "xglm") and not vars.nobreakmodel
+    vars.bmsupported = vars.model_type in ("gpt_neo", "gptj", "xglm", "opt") and not vars.nobreakmodel
     if(args.breakmodel is not None and args.breakmodel):
         print("WARNING: --breakmodel is no longer supported. Breakmodel mode is now automatically enabled when --breakmodel_gpulayers is used (see --help for details).", file=sys.stderr)
     if(args.breakmodel_layers is not None):
@@ -1123,6 +1134,10 @@ if(not vars.use_colab_tpu and vars.model not in ["InferKit", "Colab", "OAI", "Go
                 globals()[m] = getattr(__import__("transformers"), m)
             except:
                 pass
+        try:
+            from transformers.models.opt.modeling_opt import OPTDecoder
+        except:
+            pass
         import transformers.generation_utils
         from transformers import __version__ as transformers_version
 
@@ -1253,8 +1268,10 @@ if(not vars.use_colab_tpu and vars.model not in ["InferKit", "Colab", "OAI", "Go
                 input_ids.clamp_(max=self.config.vocab_size-1)
                 if(hasattr(self, "transformer")):
                     inputs_embeds = self.transformer.wte(input_ids)
-                else:
+                elif(not hasattr(model.model, "decoder")):
                     inputs_embeds = self.model.embed_tokens(input_ids)
+                else:
+                    inputs_embeds = self.model.decoder.embed_tokens(input_ids)
                 if(vars.sp is not None):
                     vars.sp = vars.sp.to(inputs_embeds.dtype).to(inputs_embeds.device)
                     inputs_embeds = torch.where(
@@ -1262,14 +1279,14 @@ if(not vars.use_colab_tpu and vars.model not in ["InferKit", "Colab", "OAI", "Go
                         vars.sp[shifted_input_ids.clamp(min=0)],
                         inputs_embeds,
                     )
-                if(not hasattr(self, "transformer")):
+                if(hasattr(self.model, "embed_scale")):
                     inputs_embeds *= self.model.embed_scale
                 kwargs['inputs_embeds'] = inputs_embeds
                 return old_forward(self, *args, **kwargs)
             cls.forward = new_causallm_forward
         for cls in (GPT2LMHeadModel, GPTNeoForCausalLM):
             patch_causallm(cls)
-        for c in ("GPTJForCausalLM", "XGLMForCausalLM"):
+        for c in ("GPTJForCausalLM", "XGLMForCausalLM", "OPTForCausalLM"):
             try:
                 patch_causallm(getattr(__import__("transformers"), c))
             except:
@@ -1430,12 +1447,18 @@ if(not vars.use_colab_tpu and vars.model not in ["InferKit", "Colab", "OAI", "Go
 
         def get_hidden_size_from_model(model):
             try:
-                return int(model.transformer.hidden_size)
+                return int(model.model.decoder.project_in.in_features)
             except:
                 try:
-                    return int(model.transformer.embed_dim)
+                    return int(model.model.decoder.embed_tokens.out_features)
                 except:
-                    return int(model.lm_head.in_features)
+                    try:
+                        return int(model.transformer.hidden_size)
+                    except:
+                        try:
+                            return int(model.transformer.embed_dim)
+                        except:
+                            return int(model.lm_head.in_features)
         
         def maybe_low_cpu_mem_usage() -> Dict[str, Any]:
             if(packaging.version.parse(transformers_version) < packaging.version.parse("4.11.0")):
@@ -1490,7 +1513,7 @@ if(not vars.use_colab_tpu and vars.model not in ["InferKit", "Colab", "OAI", "Go
                 import shutil
                 shutil.move(vars.model.replace('/', '_'), "models/{}".format(vars.model.replace('/', '_')))
             print("\n", flush=True)
-            with maybe_use_float16(), torch_lazy_loader.use_lazy_torch_load(enable=vars.lazy_load, callback=get_lazy_load_callback(model_config.num_layers if hasattr(model_config, "num_layers") else model_config.n_layer) if vars.lazy_load else None, dematerialized_modules=True):
+            with maybe_use_float16(), torch_lazy_loader.use_lazy_torch_load(enable=vars.lazy_load, callback=get_lazy_load_callback(utils.num_layers(model_config)) if vars.lazy_load else None, dematerialized_modules=True):
                 if(vars.lazy_load):  # torch_lazy_loader.py and low_cpu_mem_usage can't be used at the same time
                     lowmem = {}
                 if(os.path.isdir(vars.custmodpth)):
