@@ -7,7 +7,7 @@ dm-haiku == 0.0.5
 jax == 0.2.21
 transformers >= 4.19
 progressbar2
-git+https://github.com/VE-FORBRYDERNE/mesh-transformer-jax@ck-staging
+git+https://github.com/VE-FORBRYDERNE/mesh-transformer-jax@ck
 flask
 Flask-SocketIO
 flask-cloudflared >= 0.0.5
