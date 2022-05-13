@@ -530,7 +530,7 @@ def loadmodelsettings():
     if vars.model_type == "xglm" or js.get("compat", "j") == "fairseq_lm":
         vars.newlinemode = "s"  # Default to </s> newline mode if using XGLM
     if vars.model_type == "opt":
-        vars.newlinemode = "ns"  # Default to </s> newline mode if using XGLM
+        vars.newlinemode = "ns"  # Handle </s> but don't convert newlines if using Fairseq models that have newlines trained in them
     vars.modelconfig = js
     if("badwordsids" in js):
         vars.badwordsids = js["badwordsids"]
