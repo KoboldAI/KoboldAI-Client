@@ -27,6 +27,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 '''
 
+import utils
+
 import multiprocessing
 from typing import Any, Callable, Dict, List, Optional, Tuple, TypeVar
 import progressbar
@@ -1054,7 +1056,7 @@ def load_model(path: str, driver_version="tpu_driver0.1_dev20210607", hf_checkpo
         # by the number of TPU cores, and fall back to one core if an even
         # number of TPU cores is not possible.
         for c in (8, 6, 4, 2, 1):
-            if 0 == params["n_heads"] % c == params["d_model"] % c:
+            if 0 == params["n_heads"] % c == params.get("d_embed", params["d_model"]) % c:
                 params["cores_per_replica"] = c
                 break
 
@@ -1163,8 +1165,11 @@ def load_model(path: str, driver_version="tpu_driver0.1_dev20210607", hf_checkpo
                 last_storage_key = None
                 f = None
                 current_offset = 0
-                print("\n\n\nThis model has  ", f"{hk.data_structures.tree_size(network.state['params']):,d}".replace(",", " "), "  parameters.\n")
-                for key in tqdm(sorted(model_dict.keys(), key=lambda k: (model_dict[k].key, model_dict[k].seek_offset)), desc="Loading model tensors"):
+                if utils.current_shard == 0:
+                    print("\n\n\nThis model has  ", f"{hk.data_structures.tree_size(network.state['params']):,d}".replace(",", " "), "  parameters.\n")
+                if utils.num_shards is not None:
+                    utils.current_shard += 1
+                for key in tqdm(sorted(model_dict.keys(), key=lambda k: (model_dict[k].key, model_dict[k].seek_offset)), desc="Loading model tensors" + (f" (shard {utils.current_shard}/{utils.num_shards})" if utils.num_shards is not None else "")):
 
                     # Some model weights are used by transformers but not by MTJ.
                     # We have to materialize these weights anyways because
@@ -1200,6 +1205,8 @@ def load_model(path: str, driver_version="tpu_driver0.1_dev20210607", hf_checkpo
 
                     # MTJ requires certain mathematical operations to be performed
                     # on tensors in order for them to be in the correct format
+                    if "remove_first_two_rows" in transforms:
+                        tensor = tensor[2:]
                     if "divide_by_shards" in transforms:
                         tensor /= params["cores_per_replica"]
                     if "vocab_pad" in transforms:
@@ -1222,6 +1229,9 @@ def load_model(path: str, driver_version="tpu_driver0.1_dev20210607", hf_checkpo
                         )).copy(),
                         np.empty(params["cores_per_replica"]),
                     )
+
+                if utils.num_shards is not None and utils.current_shard < utils.num_shards:
+                    return
 
                 # Check for tensors that MTJ needs that were not provided in the
                 # HF model
