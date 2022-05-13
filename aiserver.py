@@ -57,6 +57,16 @@ if lupa.LUA_VERSION[:2] != (5, 4):
     print(f"Please install lupa==1.10. You have lupa {lupa.__version__}.", file=sys.stderr)
 
 
+# Make sure tqdm progress bars display properly in Colab
+from tqdm.auto import tqdm
+old_init = tqdm.__init__
+def new_init(self, *args, **kwargs):
+    old_init(self, *args, **kwargs)
+    if(self.ncols == 0 and kwargs.get("ncols") != 0):
+        self.ncols = 99
+tqdm.__init__ = new_init
+
+
 #==================================================================#
 # Variables & Storage
 #==================================================================#
