@@ -772,7 +772,7 @@ def spRequest(filename):
         tensor = tensor.reshape(
             tpu_mtj_backend.params["cores_per_replica"],
             -1,
-            tpu_mtj_backend.params["d_model"],
+            tpu_mtj_backend.params.get("d_embed", tpu_mtj_backend.params["d_model"]),
         )
         vars.sp = tpu_mtj_backend.shard_xmap(np.float32(tensor))
     else:
@@ -1574,14 +1574,14 @@ else:
             global np
             if 'np' not in globals():
                 import numpy as np
-            tensor = np.zeros((1, tpu_mtj_backend.params["d_model"]), dtype=np.float32)
+            tensor = np.zeros((1, tpu_mtj_backend.params.get("d_embed", tpu_mtj_backend.params["d_model"])), dtype=np.float32)
             rows = tensor.shape[0]
             padding_amount = tpu_mtj_backend.params["seq"] - (tpu_mtj_backend.params["seq"] % -tpu_mtj_backend.params["cores_per_replica"]) - rows
             tensor = np.pad(tensor, ((0, padding_amount), (0, 0)))
             tensor = tensor.reshape(
                 tpu_mtj_backend.params["cores_per_replica"],
                 -1,
-                tpu_mtj_backend.params["d_model"],
+                tpu_mtj_backend.params.get("d_embed", tpu_mtj_backend.params["d_model"]),
             )
             vars.sp = tpu_mtj_backend.shard_xmap(tensor)
         soft_tokens = np.arange(
@@ -1682,7 +1682,7 @@ else:
         loadmodelsettings()
         loadsettings()
         tpu_mtj_backend.load_model(vars.custmodpth, hf_checkpoint=vars.model not in ("TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX") and vars.use_colab_tpu, **vars.modelconfig)
-        vars.modeldim = int(tpu_mtj_backend.params["d_model"])
+        vars.modeldim = int(tpu_mtj_backend.params.get("d_embed", tpu_mtj_backend.params["d_model"]))
         tokenizer = tpu_mtj_backend.tokenizer
     else:
         loadsettings()

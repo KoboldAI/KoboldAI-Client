@@ -1054,7 +1054,7 @@ def load_model(path: str, driver_version="tpu_driver0.1_dev20210607", hf_checkpo
         # by the number of TPU cores, and fall back to one core if an even
         # number of TPU cores is not possible.
         for c in (8, 6, 4, 2, 1):
-            if 0 == params["n_heads"] % c == params["d_model"] % c:
+            if 0 == params["n_heads"] % c == params.get("d_embed", params["d_model"]) % c:
                 params["cores_per_replica"] = c
                 break
 
