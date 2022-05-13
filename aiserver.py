@@ -144,7 +144,7 @@ optlist = [
     ["OPT 6.7B", "facebook/opt-6.7b", "16GB"],
     ["OPT 2.7B", "facebook/opt-2.7b", "8GB"],
     ["OPT 1.3B", "facebook/opt-1.3b", "4GB"],
-    ["OPT 355M", "facebook/opt-350m", "2GB"],
+    ["OPT 350M", "facebook/opt-350m", "2GB"],
     ["OPT 125M", "facebook/opt-125m", "1GB"],
     ["Return to Main Menu", "Return", ""],
     ]
@@ -529,6 +529,8 @@ def loadmodelsettings():
             js   = {}
     if vars.model_type == "xglm" or js.get("compat", "j") == "fairseq_lm":
         vars.newlinemode = "s"  # Default to </s> newline mode if using XGLM
+    if vars.model_type == "opt":
+        vars.newlinemode = "ns"  # Default to </s> newline mode if using XGLM
     vars.modelconfig = js
     if("badwordsids" in js):
         vars.badwordsids = js["badwordsids"]
@@ -1345,7 +1347,7 @@ if(not vars.use_colab_tpu and vars.model not in ["InferKit", "Colab", "OAI", "Go
             kwargs["logits_warper"] = new_get_logits_warper(
                 beams=1,
             )
-            if(vars.newlinemode == "s"):
+            if(vars.newlinemode == "s") or (vars.newlinemode == "ns"):
                 kwargs["eos_token_id"] = -1
                 kwargs.setdefault("pad_token_id", 2)
             return new_sample.old_sample(self, *args, **kwargs)

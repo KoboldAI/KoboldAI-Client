@@ -130,6 +130,8 @@ def encodenewlines(txt):
 def decodenewlines(txt):
     if(vars.newlinemode == "s"):
         return txt.replace("</s>", '\n')
+    if(vars.newlinemode == "ns"):
+        return txt.replace("</s>", '')
     return txt
 
 #==================================================================#
