@@ -16,6 +16,9 @@ os.environ['EVENTLET_THREADPOOL_SIZE'] = '1'
 os.environ['TOKENIZERS_PARALLELISM'] = 'false'
 from eventlet import tpool
 
+import logging
+logging.getLogger("urllib3").setLevel(logging.ERROR)
+
 from os import path, getcwd
 import time
 import re
@@ -808,6 +811,7 @@ parser.add_argument("--ngrok", action='store_true', help="Optimizes KoboldAI for
 parser.add_argument("--localtunnel", action='store_true', help="Optimizes KoboldAI for Remote Play using Localtunnel")
 parser.add_argument("--host", action='store_true', help="Optimizes KoboldAI for Remote Play without using a proxy service")
 parser.add_argument("--port", type=int, help="Specify the port on which the application will be joinable")
+parser.add_argument("--aria2_port", type=int, help="Specify the port on which aria2's RPC interface will be open if aria2 is installed (defaults to 6799)")
 parser.add_argument("--model", help="Specify the Model Type to skip the Menu")
 parser.add_argument("--path", help="Specify the Path for local models (For model NeoCustom or GPT2Custom)")
 parser.add_argument("--revision", help="Specify the model revision for huggingface models (can be a git branch/tag name or a git commit hash)")
@@ -866,6 +870,8 @@ if args.cpu:
 
 vars.smandelete = vars.host == args.override_delete
 vars.smanrename = vars.host == args.override_rename
+
+vars.aria2_port = args.aria2_port or 6799
 
 # Select a model to run
 if args.model:
