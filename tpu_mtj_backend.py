@@ -1264,9 +1264,6 @@ def load_model(path: str, driver_version="tpu_driver0.1_dev20210607", hf_checkpo
                                 error = f"{mk} {pk} could not be found in the model checkpoint"
                                 print("\n\nERROR:  " + error, file=sys.stderr)
                                 raise RuntimeError(error)
-            except:
-                import traceback
-                traceback.print_exc()
             finally:
                 if utils.num_shards is None or utils.current_shard >= utils.num_shards:
                     utils.bar.close()
