@@ -1180,12 +1180,13 @@ if(not vars.use_colab_tpu and vars.model not in ["InferKit", "Colab", "OAI", "Go
                 utils.aria2_hook(pretrained_model_name_or_path, **kwargs)
             return old_from_pretrained(cls, pretrained_model_name_or_path, *model_args, **kwargs)
         PreTrainedModel.from_pretrained = new_from_pretrained
-        old_get_checkpoint_shard_files = modeling_utils.get_checkpoint_shard_files
-        def new_get_checkpoint_shard_files(pretrained_model_name_or_path, index_filename, *args, **kwargs):
-            utils.num_shards = utils.get_num_shards(index_filename)
-            utils.from_pretrained_index_filename = index_filename
-            return old_get_checkpoint_shard_files(pretrained_model_name_or_path, index_filename, *args, **kwargs)
-        modeling_utils.get_checkpoint_shard_files = new_get_checkpoint_shard_files
+        if(hasattr(modeling_utils, "get_checkpoint_shard_files")):
+            old_get_checkpoint_shard_files = modeling_utils.get_checkpoint_shard_files
+            def new_get_checkpoint_shard_files(pretrained_model_name_or_path, index_filename, *args, **kwargs):
+                utils.num_shards = utils.get_num_shards(index_filename)
+                utils.from_pretrained_index_filename = index_filename
+                return old_get_checkpoint_shard_files(pretrained_model_name_or_path, index_filename, *args, **kwargs)
+            modeling_utils.get_checkpoint_shard_files = new_get_checkpoint_shard_files
 
         # Lazy loader
         import torch_lazy_loader
@@ -1707,12 +1708,13 @@ else:
             utils.aria2_hook(pretrained_model_name_or_path, **kwargs)
         return old_from_pretrained(cls, pretrained_model_name_or_path, *model_args, **kwargs)
     PreTrainedModel.from_pretrained = new_from_pretrained
-    old_get_checkpoint_shard_files = modeling_utils.get_checkpoint_shard_files
-    def new_get_checkpoint_shard_files(pretrained_model_name_or_path, index_filename, *args, **kwargs):
-        utils.num_shards = utils.get_num_shards(index_filename)
-        utils.from_pretrained_index_filename = index_filename
-        return old_get_checkpoint_shard_files(pretrained_model_name_or_path, index_filename, *args, **kwargs)
-    modeling_utils.get_checkpoint_shard_files = new_get_checkpoint_shard_files
+    if(hasattr(modeling_utils, "get_checkpoint_shard_files")):
+        old_get_checkpoint_shard_files = modeling_utils.get_checkpoint_shard_files
+        def new_get_checkpoint_shard_files(pretrained_model_name_or_path, index_filename, *args, **kwargs):
+            utils.num_shards = utils.get_num_shards(index_filename)
+            utils.from_pretrained_index_filename = index_filename
+            return old_get_checkpoint_shard_files(pretrained_model_name_or_path, index_filename, *args, **kwargs)
+        modeling_utils.get_checkpoint_shard_files = new_get_checkpoint_shard_files
 
     def tpumtjgetsofttokens():
         soft_tokens = None
