@@ -114,6 +114,7 @@ novellist= [
     ["Janeway Neo 6B", "KoboldAI/GPT-J-6B-Janeway", "16GB"],
     ["Janeway Neo 2.7B", "KoboldAI/GPT-Neo-2.7B-Janeway", "8GB"],
     ["Janeway FSD 2.7B", "KoboldAI/fairseq-dense-2.7B-Janeway", "8GB"],
+    ["Nerys FSD 2.7B", "KoboldAI/fairseq-dense-2.7B-Nerys", "8GB"],
     ["Horni-LN 2.7B", "KoboldAI/GPT-Neo-2.7B-Horni-LN", "8GB"],
     ["Picard 2.7B (Older Janeway)", "KoboldAI/GPT-Neo-2.7B-Picard", "8GB"],
     ["Return to Main Menu", "Return", ""],
