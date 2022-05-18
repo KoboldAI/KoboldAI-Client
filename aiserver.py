@@ -110,6 +110,7 @@ adventurelist= [
 
 novellist= [
     ["Janeway FSD 13B", "KoboldAI/fairseq-dense-13B-Janeway", "32GB"],
+    ["Nerys FSD 13B", "KoboldAI/fairseq-dense-13B-Nerys", "32GB"],
     ["Janeway FSD 6.7B", "KoboldAI/fairseq-dense-6.7B-Janeway", "16GB"],
     ["Janeway Neo 6B", "KoboldAI/GPT-J-6B-Janeway", "16GB"],
     ["Janeway Neo 2.7B", "KoboldAI/GPT-Neo-2.7B-Janeway", "8GB"],
