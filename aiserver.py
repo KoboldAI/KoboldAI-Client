@@ -1613,10 +1613,13 @@ if(not vars.use_colab_tpu and vars.model not in ["InferKit", "Colab", "OAI", "Go
                         model     = GPTNeoForCausalLM.from_pretrained("models/{}".format(vars.model.replace('/', '_')), revision=vars.revision, cache_dir="cache", **lowmem)
                 else:
                     old_rebuild_tensor = torch._utils._rebuild_tensor
-                    def new_rebuild_tensor(storage, storage_offset, shape, stride):
-                        dtype = storage.storage_type.dtype
-                        if(not isinstance(dtype, torch.dtype)):
-                            dtype = storage.storage_type(0).dtype
+                    def new_rebuild_tensor(storage: Union[torch_lazy_loader.LazyTensor, torch.Storage], storage_offset, shape, stride):
+                        if(not isinstance(storage, torch_lazy_loader.LazyTensor)):
+                            dtype = storage.dtype
+                        else:
+                            dtype = storage.storage_type.dtype
+                            if(not isinstance(dtype, torch.dtype)):
+                                dtype = storage.storage_type(0).dtype
                         if(dtype is torch.float32 and len(shape) >= 2):
                             vars.fp32_model = True
                         return old_rebuild_tensor(storage, storage_offset, shape, stride)
