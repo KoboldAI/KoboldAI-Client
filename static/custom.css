@@ -4,6 +4,7 @@ body {
 
 chunk {
 	color: #ffffff;
+	white-space: pre-wrap;
 }
 
 #gametext.adventure action {
