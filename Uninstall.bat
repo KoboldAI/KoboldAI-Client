@@ -2,8 +2,8 @@
 cd /D %~dp0
 TITLE KoboldAI Uninstall Helper
 SET /P M=<loader.settings
-IF %M%==3 subst /D B:
-IF %M%==1 subst /D K:
+IF %M%==3 subst /D B: >nul
+IF %M%==1 subst /D K: >nul
 
 IF "%1" == "FORCE" GOTO UNINSTALL
 
