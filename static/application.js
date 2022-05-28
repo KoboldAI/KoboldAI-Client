@@ -173,6 +173,14 @@ function addSetting(ob) {
 		window["setting_"+ob.id] = refin;  // Is this still needed?
 		window["label_"+ob.id]   = reflb;  // Is this still needed?
 		// Add event function to input
+		var updateLabelColor = function () {
+			var value = (ob.unit === "float" ? parseFloat : parseInt)(reflb.val());
+			if(value > ob.max || value < ob.min) {
+				reflb.addClass("setting-value-warning");
+			} else {
+				reflb.removeClass("setting-value-warning");
+			}
+		}
 		var send = function () {
 			sliders_throttle(ob.id, function () {
 			    socket.send({'cmd': $(refin).attr('id'), 'data': $(reflb).val()});
@@ -180,11 +188,12 @@ function addSetting(ob) {
 		}
 		refin.on("input", function (event) {
 			reflb.val(refin.val());
+			updateLabelColor();
 			send();
-		});
+		}).on("change", updateLabelColor);
 		reflb.on("change", function (event) {
 			var value = (ob.unit === "float" ? parseFloat : parseInt)(event.target.value);
-			if(Number.isNaN(value) || value > ob.max || value < ob.min) {
+			if(Number.isNaN(value) || (ob.min >= 0 && value < 0)) {
 				event.target.value = refin.val();
 				return;
 			}
@@ -193,6 +202,7 @@ function addSetting(ob) {
 			}
 			refin.val(value);
 			reflb.val(value);
+			updateLabelColor();
 			send();
 		});
 	} else if(ob.uitype == "toggle"){
@@ -2065,48 +2075,48 @@ $(document).ready(function(){
 			newTextHighlight($("#n"+msg.data))
 		} else if(msg.cmd == "updatetemp") {
 			// Send current temp value to input
-			$("#settemp").val(parseFloat(msg.data));
 			$("#settempcur").val(msg.data);
+			$("#settemp").val(parseFloat(msg.data)).trigger("change");
 		} else if(msg.cmd == "updatetopp") {
 			// Send current top p value to input
-			$("#settopp").val(parseFloat(msg.data));
 			$("#settoppcur").val(msg.data);
+			$("#settopp").val(parseFloat(msg.data)).trigger("change");
 		} else if(msg.cmd == "updatetopk") {
 			// Send current top k value to input
-			$("#settopk").val(parseFloat(msg.data));
 			$("#settopkcur").val(msg.data);
+			$("#settopk").val(parseFloat(msg.data)).trigger("change");
 		} else if(msg.cmd == "updatetfs") {
 			// Send current tfs value to input
-			$("#settfs").val(parseFloat(msg.data));
 			$("#settfscur").val(msg.data);
+			$("#settfs").val(parseFloat(msg.data)).trigger("change");
 		} else if(msg.cmd == "updatetypical") {
 			// Send current typical value to input
-			$("#settypical").val(parseFloat(msg.data));
 			$("#settypicalcur").val(msg.data);
+			$("#settypical").val(parseFloat(msg.data)).trigger("change");
 		} else if(msg.cmd == "updatereppen") {
 			// Send current rep pen value to input
-			$("#setreppen").val(parseFloat(msg.data));
 			$("#setreppencur").val(msg.data);
+			$("#setreppen").val(parseFloat(msg.data)).trigger("change");
 		} else if(msg.cmd == "updatereppenslope") {
 			// Send current rep pen value to input
-			$("#setreppenslope").val(parseFloat(msg.data));
 			$("#setreppenslopecur").val(msg.data);
+			$("#setreppenslope").val(parseFloat(msg.data)).trigger("change");
 		} else if(msg.cmd == "updatereppenrange") {
 			// Send current rep pen value to input
-			$("#setreppenrange").val(parseFloat(msg.data));
 			$("#setreppenrangecur").val(msg.data);
+			$("#setreppenrange").val(parseFloat(msg.data)).trigger("change");
 		} else if(msg.cmd == "updateoutlen") {
 			// Send current output amt value to input
-			$("#setoutput").val(parseInt(msg.data));
 			$("#setoutputcur").val(msg.data);
+			$("#setoutput").val(parseInt(msg.data)).trigger("change");
 		} else if(msg.cmd == "updatetknmax") {
 			// Send current max tokens value to input
-			$("#settknmax").val(parseInt(msg.data));
 			$("#settknmaxcur").val(msg.data);
+			$("#settknmax").val(parseInt(msg.data)).trigger("change");
 		} else if(msg.cmd == "updateikgen") {
 			// Send current max tokens value to input
-			$("#setikgen").val(parseInt(msg.data));
 			$("#setikgencur").val(msg.data);
+			$("#setikgen").val(parseInt(msg.data)).trigger("change");
 		} else if(msg.cmd == "setlabeltemp") {
 			// Update setting label with value from server
 			$("#settempcur").val(msg.data);
@@ -2310,15 +2320,15 @@ $(document).ready(function(){
 			$("#setnumseqcur").html(msg.data);
 		} else if(msg.cmd == "updatenumseq") {
 			// Send current max tokens value to input
-			$("#setnumseq").val(parseInt(msg.data));
 			$("#setnumseqcur").html(msg.data);
+			$("#setnumseq").val(parseInt(msg.data)).trigger("change");
 		} else if(msg.cmd == "setlabelwidepth") {
 			// Update setting label with value from server
 			$("#setwidepthcur").html(msg.data);
 		} else if(msg.cmd == "updatewidepth") {
 			// Send current max tokens value to input
-			$("#setwidepth").val(parseInt(msg.data));
 			$("#setwidepthcur").html(msg.data);
+			$("#setwidepth").val(parseInt(msg.data)).trigger("change");
 		} else if(msg.cmd == "updateuseprompt") {
 			// Update toggle state
 			$("#setuseprompt").prop('checked', msg.data).change();

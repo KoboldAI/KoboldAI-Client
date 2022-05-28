@@ -22,6 +22,14 @@ chunk.editing, chunk.editing * {
 	font-style: normal !important;
 }
 
+.setting-value-warning {
+	color: #ff7777;
+}
+
+.setting-value-warning:focus {
+	color: #ffaaaa !important;
+}
+
 .settinglabel input {
 	width: 5ch;
 	background-color: inherit;
