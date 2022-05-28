@@ -175,18 +175,24 @@ function addSetting(ob) {
 		// Add event function to input
 		var send = function () {
 			sliders_throttle(ob.id, function () {
-			    socket.send({'cmd': $(refin).attr('id'), 'data': $(refin).val()});
+			    socket.send({'cmd': $(refin).attr('id'), 'data': $(reflb).val()});
 			});
-			reflb.val($(refin).val());
 		}
-		refin.on("input", send);
+		refin.on("input", function (event) {
+			reflb.val(refin.val());
+			send();
+		});
 		reflb.on("change", function (event) {
 			var value = (ob.unit === "float" ? parseFloat : parseInt)(event.target.value);
 			if(Number.isNaN(value) || value > ob.max || value < ob.min) {
 				event.target.value = refin.val();
 				return;
 			}
+			if (ob.unit === "float") {
+				value = parseFloat(value.toFixed(3));  // Round to 3 decimal places to help avoid the number being too long to fit in the box
+			}
 			refin.val(value);
+			reflb.val(value);
 			send();
 		});
 	} else if(ob.uitype == "toggle"){
