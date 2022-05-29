@@ -26,6 +26,7 @@ import json
 import collections
 import zipfile
 import packaging
+import packaging.version
 import contextlib
 import traceback
 import threading
@@ -1348,7 +1349,7 @@ if(not vars.use_colab_tpu and vars.model not in ["InferKit", "Colab", "OAI", "Go
 
 
         # Fix a bug in OPTForCausalLM where self.lm_head is the wrong size
-        if(transformers_version == "4.19.0"):
+        if(packaging.version.parse("4.19.0.dev0") <= packaging.version.parse(transformers_version) <= packaging.version.parse("4.19.2")):
             try:
                 from transformers import OPTForCausalLM, OPTModel
             except ImportError:
