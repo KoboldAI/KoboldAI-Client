@@ -1094,13 +1094,18 @@ def load_model(path: str, driver_version="tpu_driver0.1_dev20210607", hf_checkpo
     print("Connecting to your Colab instance's TPU", flush=True)
     spinner = multiprocessing.Process(target=show_spinner, args=())
     spinner.start()
-    colab_tpu_addr = os.environ['COLAB_TPU_ADDR'].split(':')[0]
-    url = f'http://{colab_tpu_addr}:8475/requestversion/{driver_version}'
+    if os.environ.get('COLAB_TPU_ADDR', '') != '':
+        tpu_address = os.environ['COLAB_TPU_ADDR']  # Colab
+    else:
+        tpu_address = os.environ['TPU_NAME']  # Kaggle
+    tpu_address = tpu_address.replace("grpc://", "")
+    tpu_address_without_port = tpu_address.split(':', 1)[0]
+    url = f'http://{tpu_address_without_port}:8475/requestversion/{driver_version}'
+    config.FLAGS.jax_xla_backend = "tpu_driver"
+    config.FLAGS.jax_backend_target = "grpc://" + tpu_address
     requests.post(url)
     spinner.terminate()
     print()
-    config.FLAGS.jax_xla_backend = "tpu_driver"
-    config.FLAGS.jax_backend_target = "grpc://" + os.environ['COLAB_TPU_ADDR']
 
     cores_per_replica = params["cores_per_replica"]
     seq = params["seq"]
