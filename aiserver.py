@@ -157,7 +157,7 @@ gpt2list = [
     ]
 
 optlist = [
-    ["OPT 30B", "facebook/opt-30b", ""],
+    ["OPT 30B", "facebook/opt-30b", "64GB"],
     ["OPT 13B", "facebook/opt-13b", "32GB"],
     ["OPT 6.7B", "facebook/opt-6.7b", "16GB"],
     ["OPT 2.7B", "facebook/opt-2.7b", "8GB"],
