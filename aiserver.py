@@ -320,7 +320,7 @@ class vars:
     quiet       = False # If set will suppress any story text from being printed to the console (will only be seen on the client web page)
     debug       = False # If set to true, will send debug information to the client for display
     lazy_load   = True  # Whether or not to use torch_lazy_loader.py for transformers models in order to reduce CPU memory usage
-    use_colab_tpu = os.environ.get("COLAB_TPU_ADDR", "") != ""  # Whether or not we're in a Colab TPU instance and are going to use the TPU rather than the CPU
+    use_colab_tpu = os.environ.get("COLAB_TPU_ADDR", "") != "" or os.environ.get("TPU_NAME", "") != ""  # Whether or not we're in a Colab TPU instance or Kaggle TPU instance and are going to use the TPU rather than the CPU
 
 utils.vars = vars
 
