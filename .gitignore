@@ -31,3 +31,6 @@ Uninstall
 
 # Ignore compiled Python files.
 *.pyc
+
+# Don't ignore defaults
+!defaults/*
