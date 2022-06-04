@@ -25,6 +25,7 @@ var button_mode_label;
 var button_send;
 var button_actmem;
 var button_actback;
+var button_actfwd;
 var button_actretry;
 var button_actwi;
 var game_text;
@@ -38,6 +39,7 @@ var anote_menu;
 var anote_input;
 var anote_labelcur;
 var anote_slider;
+var debug_area;
 var popup;
 var popup_title;
 var popup_content;
@@ -49,6 +51,7 @@ var aidg_accept;
 var aidg_close;
 var saveaspopup;
 var saveasinput;
+var savepins;
 var topic;
 var saveas_accept;
 var saveas_close;
@@ -115,9 +118,32 @@ var adventure = false;
 // Chatmode
 var chatmode = false;
 
+var sliders_throttle = getThrottle(200);
+
 //=================================================================//
 //  METHODS
 //=================================================================//
+
+/**
+ * Returns a function that will automatically wait for X ms before executing the callback
+ * The timer is reset each time the returned function is called
+ * Useful for methods where something is overridden too fast
+ * @param ms milliseconds to wait before executing the callback
+ * @return {(function(*): void)|*} function that takes the ms to wait and a callback to execute after the timer
+ */
+function getThrottle(ms) {
+    var timer = {};
+
+    return function (id, callback) {
+        if (timer[id]) {
+            clearTimeout(timer[id]);
+        }
+        timer[id] = setTimeout(function () {
+            callback();
+            delete timer[id];
+        }, ms);
+    }
+}
 
 function addSetting(ob) {	
 	// Add setting block to Settings Menu
@@ -127,9 +153,7 @@ function addSetting(ob) {
 			<div class=\"justifyleft\">\
 				"+ob.label+" <span class=\"helpicon\">?<span class=\"helptext\">"+ob.tooltip+"</span></span>\
 			</div>\
-			<div class=\"justifyright\" id=\""+ob.id+"cur\">\
-				"+ob.default+"\
-			</div>\
+			<input inputmode=\""+(ob.unit === "float" ? "decimal" : "numeric")+"\" class=\"justifyright flex-push-right\" id=\""+ob.id+"cur\" value=\""+ob.default+"\">\
 		</div>\
 		<div>\
 			<input type=\"range\" class=\"form-range airange\" min=\""+ob.min+"\" max=\""+ob.max+"\" step=\""+ob.step+"\" id=\""+ob.id+"\">\
@@ -149,8 +173,37 @@ function addSetting(ob) {
 		window["setting_"+ob.id] = refin;  // Is this still needed?
 		window["label_"+ob.id]   = reflb;  // Is this still needed?
 		// Add event function to input
-		refin.on("input", function () {
-			socket.send({'cmd': $(this).attr('id'), 'data': $(this).val()});
+		var updateLabelColor = function () {
+			var value = (ob.unit === "float" ? parseFloat : parseInt)(reflb.val());
+			if(value > ob.max || value < ob.min) {
+				reflb.addClass("setting-value-warning");
+			} else {
+				reflb.removeClass("setting-value-warning");
+			}
+		}
+		var send = function () {
+			sliders_throttle(ob.id, function () {
+			    socket.send({'cmd': $(refin).attr('id'), 'data': $(reflb).val()});
+			});
+		}
+		refin.on("input", function (event) {
+			reflb.val(refin.val());
+			updateLabelColor();
+			send();
+		}).on("change", updateLabelColor);
+		reflb.on("change", function (event) {
+			var value = (ob.unit === "float" ? parseFloat : parseInt)(event.target.value);
+			if(Number.isNaN(value) || (ob.min >= 0 && value < 0)) {
+				event.target.value = refin.val();
+				return;
+			}
+			if (ob.unit === "float") {
+				value = parseFloat(value.toFixed(3));  // Round to 3 decimal places to help avoid the number being too long to fit in the box
+			}
+			refin.val(value);
+			reflb.val(value);
+			updateLabelColor();
+			send();
 		});
 	} else if(ob.uitype == "toggle"){
 		settings_menu.append("<div class=\"settingitem\">\
@@ -748,7 +801,7 @@ function enterMemoryMode() {
 	setchatnamevisibility(false);
 	showMessage("Edit the memory to be sent with each request to the AI.");
 	button_actmem.html("Cancel");
-	hide([button_actback, button_actretry, button_actwi]);
+	hide([button_actback, button_actfwd, button_actretry, button_actwi]);
 	// Display Author's Note field
 	anote_menu.slideDown("fast");
 }
@@ -759,7 +812,7 @@ function exitMemoryMode() {
 	setchatnamevisibility(chatmode);
 	hideMessage();
 	button_actmem.html("Memory");
-	show([button_actback, button_actretry, button_actwi]);
+	show([button_actback, button_actfwd, button_actretry, button_actwi]);
 	input_text.val("");
 	// Hide Author's Note field
 	anote_menu.slideUp("fast");
@@ -768,7 +821,7 @@ function exitMemoryMode() {
 function enterWiMode() {
 	showMessage("World Info will be added to memory only when the key appears in submitted text or the last action.");
 	button_actwi.html("Accept");
-	hide([button_actback, button_actmem, button_actretry, game_text]);
+	hide([button_actback, button_actfwd, button_actmem, button_actretry, game_text]);
 	setchatnamevisibility(false);
 	show([wi_menu]);
 	disableSendBtn();
@@ -780,7 +833,7 @@ function exitWiMode() {
 	button_actwi.html("W Info");
 	hide([wi_menu]);
 	setchatnamevisibility(chatmode);
-	show([button_actback, button_actmem, button_actretry, game_text]);
+	show([button_actback, button_actfwd, button_actmem, button_actretry, game_text]);
 	enableSendBtn();
 	$("#gamescreen").removeClass("wigamescreen");
 }
@@ -884,7 +937,7 @@ function hideSaveAsPopup() {
 }
 
 function sendSaveAsRequest() {
-	socket.send({'cmd': 'saveasrequest', 'data': saveasinput.val()});
+	socket.send({'cmd': 'saveasrequest', 'data': {"name": saveasinput.val(), "pins": savepins.val()}});
 }
 
 function showLoadPopup() {
@@ -1142,9 +1195,9 @@ function updateSPStatItems(items) {
 function setStartState() {
 	enableSendBtn();
 	enableButtons([button_actmem, button_actwi]);
-	disableButtons([button_actback, button_actretry]);
+	disableButtons([button_actback, button_actfwd, button_actretry]);
 	hide([wi_menu]);
-	show([game_text, button_actmem, button_actwi, button_actback, button_actretry]);
+	show([game_text, button_actmem, button_actwi, button_actback, button_actfwd, button_actretry]);
 	hideMessage();
 	hideWaitAnimation();
 	button_actmem.html("Memory");
@@ -1160,10 +1213,41 @@ function parsegenseqs(seqs) {
 	seqselcontents.html("");
 	var i;
 	for(i=0; i<seqs.length; i++) {
-		seqselcontents.append("<div class=\"seqselitem\" id=\"seqsel"+i+"\" n=\""+i+"\">"+seqs[i].generated_text+"</div>");
+		//setup selection data
+		text_data = "<table><tr><td width=100%><div class=\"seqselitem\" id=\"seqsel"+i+"\" n=\""+i+"\">"+seqs[i][0]+"</div></td><td width=10>"
+		
+		//Now do the icon (pin/redo)
+		
+		if (seqs[i][1] == "redo") {
+			text_data = text_data + "<span style=\"color: white\" class=\"oi oi-loop-circular\" title=\"Redo\" aria-hidden=\"true\" id=\"seqselpin"+i+"\" n=\""+i+"\"></span>"
+		} else if (seqs[i][1] == "pinned") {
+			text_data = text_data + "<span style=\"color: white\" class=\"oi oi-pin\" title=\"Pin\" aria-hidden=\"true\" id=\"seqselpin"+i+"\" n=\""+i+"\"></span>"
+		} else {
+			text_data = text_data + "<span style=\"color: grey\" class=\"oi oi-pin\" title=\"Pin\" aria-hidden=\"true\" id=\"seqselpin"+i+"\" n=\""+i+"\"></span>"
+		}
+		text_data = text_data + "</td></tr></table>"
+		seqselcontents.append(text_data);
+		
+		//setup on-click actions
 		$("#seqsel"+i).on("click", function () {
 			socket.send({'cmd': 'seqsel', 'data': $(this).attr("n")});
 		});
+		
+		//onclick for pin only
+		if (seqs[i][1] != "redo") {
+			$("#seqselpin"+i).on("click", function () {
+				socket.send({'cmd': 'seqpin', 'data': $(this).attr("n")});
+				if ($(this).attr("style") == "color: grey") {
+					console.log($(this).attr("style"));
+					$(this).css({"color": "white"});
+					console.log($(this).attr("style"));
+				} else {
+					console.log($(this).attr("style"));
+					$(this).css({"color": "grey"});
+					console.log($(this).attr("style"));
+				}
+			});
+		}
 	}
 	$('#seqselmenu').slideDown("slow");
 }
@@ -1756,6 +1840,7 @@ $(document).ready(function(){
 	button_send       = $('#btnsend');
 	button_actmem     = $('#btn_actmem');
 	button_actback    = $('#btn_actundo');
+	button_actfwd     = $('#btn_actredo');
 	button_actretry   = $('#btn_actretry');
 	button_actwi      = $('#btn_actwi');
 	game_text         = $('#gametext');
@@ -1765,6 +1850,7 @@ $(document).ready(function(){
 	settings_menu     = $("#settingsmenu");
 	format_menu       = $('#formatmenu');
 	anote_menu        = $('#anoterowcontainer');
+	debug_area        = $('#debugcontainer');
 	wi_menu           = $('#wimenu');
 	anote_input       = $('#anoteinput');
 	anote_labelcur    = $('#anotecur');
@@ -1780,6 +1866,7 @@ $(document).ready(function(){
 	aidg_close        = $("#btn_aidgpopupclose");
 	saveaspopup       = $("#saveascontainer");
 	saveasinput       = $("#savename");
+	savepins          = $("#savepins");
 	topic             = $("#topic");
 	saveas_accept     = $("#btn_saveasaccept");
 	saveas_close      = $("#btn_saveasclose");
@@ -1928,13 +2015,13 @@ $(document).ready(function(){
 			// Enable or Disable buttons
 			if(msg.data == "ready") {
 				enableSendBtn();
-				enableButtons([button_actmem, button_actwi, button_actback, button_actretry]);
+				enableButtons([button_actmem, button_actwi, button_actback, button_actfwd, button_actretry]);
 				hideWaitAnimation();
 				gamestate = "ready";
 			} else if(msg.data == "wait") {
 				gamestate = "wait";
 				disableSendBtn();
-				disableButtons([button_actmem, button_actwi, button_actback, button_actretry]);
+				disableButtons([button_actmem, button_actwi, button_actback, button_actfwd, button_actretry]);
 				showWaitAnimation();
 			} else if(msg.data == "start") {
 				setStartState();
@@ -1988,74 +2075,81 @@ $(document).ready(function(){
 			newTextHighlight($("#n"+msg.data))
 		} else if(msg.cmd == "updatetemp") {
 			// Send current temp value to input
-			$("#settemp").val(parseFloat(msg.data));
-			$("#settempcur").html(msg.data);
+			$("#settempcur").val(msg.data);
+			$("#settemp").val(parseFloat(msg.data)).trigger("change");
 		} else if(msg.cmd == "updatetopp") {
 			// Send current top p value to input
-			$("#settopp").val(parseFloat(msg.data));
-			$("#settoppcur").html(msg.data);
+			$("#settoppcur").val(msg.data);
+			$("#settopp").val(parseFloat(msg.data)).trigger("change");
 		} else if(msg.cmd == "updatetopk") {
 			// Send current top k value to input
-			$("#settopk").val(parseFloat(msg.data));
-			$("#settopkcur").html(msg.data);
+			$("#settopkcur").val(msg.data);
+			$("#settopk").val(parseFloat(msg.data)).trigger("change");
 		} else if(msg.cmd == "updatetfs") {
 			// Send current tfs value to input
-			$("#settfs").val(parseFloat(msg.data));
-			$("#settfscur").html(msg.data);
+			$("#settfscur").val(msg.data);
+			$("#settfs").val(parseFloat(msg.data)).trigger("change");
+		} else if(msg.cmd == "updatetypical") {
+			// Send current typical value to input
+			$("#settypicalcur").val(msg.data);
+			$("#settypical").val(parseFloat(msg.data)).trigger("change");
 		} else if(msg.cmd == "updatereppen") {
 			// Send current rep pen value to input
-			$("#setreppen").val(parseFloat(msg.data));
-			$("#setreppencur").html(msg.data);
+			$("#setreppencur").val(msg.data);
+			$("#setreppen").val(parseFloat(msg.data)).trigger("change");
 		} else if(msg.cmd == "updatereppenslope") {
 			// Send current rep pen value to input
-			$("#setreppenslope").val(parseFloat(msg.data));
-			$("#setreppenslopecur").html(msg.data);
+			$("#setreppenslopecur").val(msg.data);
+			$("#setreppenslope").val(parseFloat(msg.data)).trigger("change");
 		} else if(msg.cmd == "updatereppenrange") {
 			// Send current rep pen value to input
-			$("#setreppenrange").val(parseFloat(msg.data));
-			$("#setreppenrangecur").html(msg.data);
+			$("#setreppenrangecur").val(msg.data);
+			$("#setreppenrange").val(parseFloat(msg.data)).trigger("change");
 		} else if(msg.cmd == "updateoutlen") {
 			// Send current output amt value to input
-			$("#setoutput").val(parseInt(msg.data));
-			$("#setoutputcur").html(msg.data);
+			$("#setoutputcur").val(msg.data);
+			$("#setoutput").val(parseInt(msg.data)).trigger("change");
 		} else if(msg.cmd == "updatetknmax") {
 			// Send current max tokens value to input
-			$("#settknmax").val(parseInt(msg.data));
-			$("#settknmaxcur").html(msg.data);
+			$("#settknmaxcur").val(msg.data);
+			$("#settknmax").val(parseInt(msg.data)).trigger("change");
 		} else if(msg.cmd == "updateikgen") {
 			// Send current max tokens value to input
-			$("#setikgen").val(parseInt(msg.data));
-			$("#setikgencur").html(msg.data);
+			$("#setikgencur").val(msg.data);
+			$("#setikgen").val(parseInt(msg.data)).trigger("change");
 		} else if(msg.cmd == "setlabeltemp") {
 			// Update setting label with value from server
-			$("#settempcur").html(msg.data);
+			$("#settempcur").val(msg.data);
 		} else if(msg.cmd == "setlabeltopp") {
 			// Update setting label with value from server
-			$("#settoppcur").html(msg.data);
+			$("#settoppcur").val(msg.data);
 		} else if(msg.cmd == "setlabeltopk") {
 			// Update setting label with value from server
-			$("#settopkcur").html(msg.data);
+			$("#settopkcur").val(msg.data);
 		} else if(msg.cmd == "setlabeltfs") {
 			// Update setting label with value from server
-			$("#settfscur").html(msg.data);
+			$("#settfscur").val(msg.data);
+		} else if(msg.cmd == "setlabeltypical") {
+			// Update setting label with value from server
+			$("#settypicalcur").val(msg.data);
 		} else if(msg.cmd == "setlabelreppen") {
 			// Update setting label with value from server
-			$("#setreppencur").html(msg.data);
+			$("#setreppencur").val(msg.data);
 		} else if(msg.cmd == "setlabelreppenslope") {
 			// Update setting label with value from server
-			$("#setreppenslopecur").html(msg.data);
+			$("#setreppenslopecur").val(msg.data);
 		} else if(msg.cmd == "setlabelreppenrange") {
 			// Update setting label with value from server
-			$("#setreppenrangecur").html(msg.data);
+			$("#setreppenrangecur").val(msg.data);
 		} else if(msg.cmd == "setlabeloutput") {
 			// Update setting label with value from server
-			$("#setoutputcur").html(msg.data);
+			$("#setoutputcur").val(msg.data);
 		} else if(msg.cmd == "setlabeltknmax") {
 			// Update setting label with value from server
-			$("#settknmaxcur").html(msg.data);
+			$("#settknmaxcur").val(msg.data);
 		} else if(msg.cmd == "setlabelikgen") {
 			// Update setting label with value from server
-			$("#setikgencur").html(msg.data);
+			$("#setikgencur").val(msg.data);
 		} else if(msg.cmd == "updateanotedepth") {
 			// Send current Author's Note depth value to input
 			anote_slider.val(parseInt(msg.data));
@@ -2226,15 +2320,15 @@ $(document).ready(function(){
 			$("#setnumseqcur").html(msg.data);
 		} else if(msg.cmd == "updatenumseq") {
 			// Send current max tokens value to input
-			$("#setnumseq").val(parseInt(msg.data));
 			$("#setnumseqcur").html(msg.data);
+			$("#setnumseq").val(parseInt(msg.data)).trigger("change");
 		} else if(msg.cmd == "setlabelwidepth") {
 			// Update setting label with value from server
 			$("#setwidepthcur").html(msg.data);
 		} else if(msg.cmd == "updatewidepth") {
 			// Send current max tokens value to input
-			$("#setwidepth").val(parseInt(msg.data));
 			$("#setwidepthcur").html(msg.data);
+			$("#setwidepth").val(parseInt(msg.data)).trigger("change");
 		} else if(msg.cmd == "updateuseprompt") {
 			// Update toggle state
 			$("#setuseprompt").prop('checked', msg.data).change();
@@ -2269,6 +2363,14 @@ $(document).ready(function(){
 		} else if(msg.cmd == "runs_remotely") {
 			remote = true;
 			hide([button_savetofile, button_import, button_importwi]);
+		} else if(msg.cmd == "debug_info") {
+			$("#debuginfo").val(msg.data);
+		} else if(msg.cmd == "set_debug") {
+			if(msg.data) {
+				debug_area.removeClass("hidden");
+			} else {
+				debug_area.addClass("hidden");
+			}
 		}
 	});
 	
@@ -2347,6 +2449,12 @@ $(document).ready(function(){
 		hideMessage();
 		socket.send({'cmd': 'back', 'data': ''});
 		hidegenseqs();
+	});
+	
+	button_actfwd.on("click", function(ev) {
+		hideMessage();
+		//hidegenseqs();
+		socket.send({'cmd': 'redo', 'data': ''});
 	});
 	
 	button_actmem.on("click", function(ev) {

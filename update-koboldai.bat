@@ -50,4 +50,4 @@ git remote add origin %origin%
 git fetch --all
 git checkout %branch% -f
 git reset --hard origin/%branch%
-cmd /k
+%windir%\system32\timeout -t 10

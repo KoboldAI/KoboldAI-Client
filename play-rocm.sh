@@ -1,4 +1,5 @@
-cd docker-rocm
-xhost +local:docker
-cp ../environments/rocm.yml env.yml
-docker-compose run --service-ports koboldai bash -c "cd /content && python3 aiserver.py $*"
+#!/bin/bash
+if [ ! -f "runtime/envs/koboldai-rocm/bin/python" ]; then
+./install_requirements.sh rocm
+fi
+bin/micromamba run -r runtime -n koboldai-rocm python aiserver.py $*

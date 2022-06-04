@@ -9,7 +9,7 @@
 	<link rel="stylesheet" href="static/bootstrap.min.css">
 	<link rel="stylesheet" href="static/bootstrap-toggle.min.css">
 	<link rel="stylesheet" href="static/open-iconic-bootstrap.min.css">
-	<link rel="stylesheet" href="static/custom.css?ver=1.17">
+	<link rel="stylesheet" href="static/custom.css?ver=1.18b">
 
 	<script src="static/jquery-3.6.0.min.js"></script>
 	<script src="static/jquery-ui.sortable.min.js"></script>
@@ -17,7 +17,7 @@
 	<script src="static/bootstrap.min.js"></script>
 	<script src="static/bootstrap-toggle.min.js"></script>
 	<script src="static/rangy-core.min.js"></script>
-	<script src="static/application.js?ver=1.17a"></script>
+	<script src="static/application.js?ver=1.18b"></script>
 </head>
 <body>
 	<input type="file" id="remote-save-select" accept="application/json" style="display:none">
@@ -123,6 +123,7 @@
 				<button type="button" class="btn btn-primary" id="btn_actmem">Memory</button>
 				<button type="button" class="btn btn-primary" id="btn_actwi">W Info</button>
 				<button type="button" class="btn btn-primary" id="btn_actundo">Back</button>
+				<button type="button" class="btn btn-primary" id="btn_actredo">Redo</button>
 				<button type="button" class="btn btn-primary" id="btn_actretry">Retry</button>
 			</div>
 			<input type="text" id="chatname" class="form-control hidden" placeholder="Chat name">
@@ -185,6 +186,9 @@
 					</div>
 				</div>
 			</div>
+			<div  class="hidden" id="debugcontainer">
+				<textarea class="form-control" placeholder="Debug Info" id="debuginfo"></textarea>
+			</div>
 		</div>
 	</div>
 	<div class="hidden" id="popupcontainer">
@@ -228,7 +232,9 @@
 				<div class="popuptitletext">Enter Name For Save</div>
 			</div>
 			<div class="aidgpopupcontent">
-				<input class="form-control" type="text" placeholder="Save Name" id="savename">
+				<input class="form-control" type="text" placeholder="Save Name" id="savename"><br>
+				<input type="checkbox" data-toggle="toggle" data-onstyle="success" id="savepins" checked>
+				<div class="box-label">Save Pin Information</div>
 			</div>
 			<div class="popuperror hidden">
 				<span></span>

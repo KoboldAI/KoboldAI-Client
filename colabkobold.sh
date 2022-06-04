@@ -2,7 +2,7 @@
 # KoboldAI Easy Colab Deployment Script by Henk717
 
 # read the options
-TEMP=`getopt -o m:i:p:c:d:x:a:l:z:g:t:n:b: --long model:,init:,path:,configname:,download:,aria2:,dloc:xloc:7z:git:tar:ngrok:branch: -- "$@"`
+TEMP=`getopt -o m:i:p:c:d:x:a:l:z:g:t:n:b:s: --long model:,init:,path:,configname:,download:,aria2:,dloc:,xloc:,7z:,git:,tar:,ngrok:,branch:,savemodel:,localtunnel:,lt: -- "$@"`
 eval set -- "$TEMP"
 
 # extract options and their arguments into variables.
@@ -17,7 +17,9 @@ while true ; do
         -c|--configname)
             configname=" --configname $2" ; shift 2 ;;
         -n|--ngrok)
-            configname=" --ngrok" ; shift 2 ;;
+            ngrok=" --ngrok" ; shift 2 ;;
+        --lt|--localtunnel)
+            localtunnel=" --localtunnel" ; shift 2 ;;
         -d|--download)
             download="$2" ; shift 2 ;;
         -a|--aria2)
@@ -34,6 +36,8 @@ while true ; do
             git="$2" ; shift 2 ;;
         -b|--branch)
             branch="$2" ; shift 2 ;;
+        -s|--savemodel)
+            savemodel=" --savemodel" ; shift 2 ;;
         --) shift ; break ;;
         *) echo "Internal error!" ; exit 1 ;;
     esac
@@ -48,8 +52,8 @@ function launch
         exit 0
     else
     cd /content/KoboldAI-Client
-    echo "Launching KoboldAI with the following options : python3 aiserver.py$model$kmpath$configname$ngrok --remote --override_delete --override_rename"
-    python3 aiserver.py$model$kmpath$configname$ngrok --colab
+    echo "Launching KoboldAI with the following options : python3 aiserver.py$model$kmpath$configname$ngrok$localtunnel$savemodel --colab"
+    python3 aiserver.py$model$kmpath$configname$ngrok$localtunnel$savemodel --colab
     exit
     fi
 }
@@ -134,28 +138,32 @@ if [ "$init" != "skip" ]; then
 
     cd /content/KoboldAI-Client
 
-    cp -rn stories/*.* /content/drive/MyDrive/KoboldAI/stories/
-    cp -rn userscripts/*.* /content/drive/MyDrive/KoboldAI/userscripts/
-    cp -rn softprompts/*.* /content/drive/MyDrive/KoboldAI/softprompts/
+    cp -rn stories/* /content/drive/MyDrive/KoboldAI/stories/
+    cp -rn userscripts/* /content/drive/MyDrive/KoboldAI/userscripts/
+    cp -rn softprompts/* /content/drive/MyDrive/KoboldAI/softprompts/
     rm stories
     rm -rf stories/
     rm userscripts
     rm -rf userscripts/
     rm softprompts
     rm -rf softprompts/
+    rm models
+    rm -rf models/
     ln -s /content/drive/MyDrive/KoboldAI/stories/ stories
     ln -s /content/drive/MyDrive/KoboldAI/settings/ settings
     ln -s /content/drive/MyDrive/KoboldAI/softprompts/ softprompts
     ln -s /content/drive/MyDrive/KoboldAI/userscripts/ userscripts
+    ln -s /content/drive/MyDrive/KoboldAI/models/ models
 
-    if [ "$model" == " --model TPUMeshTransformerGPTJ" ]; then
+    if [ -n "${COLAB_TPU_ADDR+set}" ]; then
         pip install -r requirements_mtj.txt
     else
         pip install -r requirements.txt
     fi
     
-    # Make sure Colab has netbase
-    sudo apt install netbase -y
+    # Make sure Colab has the system dependencies
+    sudo apt install netbase aria2 -y
+    npm install -g localtunnel
 fi
 
 cd /content
@@ -178,8 +186,7 @@ fi
 
 #Download routine for Aria2c scripts
 if [ ! -z ${aria2+x} ]; then
-    apt install aria2 -y
-    curl -L $aria2 | aria2c -c -i- -d$dloc --user-agent=KoboldAI --file-allocation=none
+    curl -L $aria2 | aria2c -x 10 -s 10 -j 10 -c -i- -d$dloc --user-agent=KoboldAI --file-allocation=none
 fi
 
 #Extract the model with 7z
