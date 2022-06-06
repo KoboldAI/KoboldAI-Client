@@ -2541,10 +2541,11 @@ $(document).ready(function(){
 			$("#showmodelnamecontainer").removeClass("hidden");
 		} else if(msg.cmd == 'hide_model_name') {
 			$("#showmodelnamecontainer").addClass("hidden");
+			//console.log("Closing window");
 		} else if(msg.cmd == 'model_load_status') {
 			$("#showmodelnamecontent").html("<div class=\"flex\"><div class=\"loadlistpadding\"></div><div class=\"loadlistitem\" style='align: left'>" + msg.data + "</div></div>");
 			$("#showmodelnamecontainer").removeClass("hidden");
-			console.log(msg.data);
+			//console.log(msg.data);
 		} else if(msg.cmd == 'oai_engines') {
 			RemoveAllButFirstOption($("#oaimodel")[0]);
 			for (const engine of msg.data) {
