@@ -29,6 +29,7 @@ global kobold: KoboldLib
 * `kobold.num_outputs`
 * `kobold.outputs`
 * `kobold.settings`
+* `kobold.spfilename`
 * `kobold.story`
 * `kobold.submission`
 * `kobold.worldinfo`
@@ -371,6 +372,21 @@ Modifying certain fields from inside of a generation modifier triggers a regener
 * `kobold.settings.anotedepth` (Author's Note Depth)
 * `kobold.settings.setwidepth` (World Info Depth)
 * `kobold.settings.setuseprompt` (Always Use Prompt)
+
+# kobold.spfilename
+
+***Readable from:*** anywhere
+***Writable from:*** anywhere
+
+```lua
+field kobold.spfilename: string?
+```
+
+The name of the soft prompt file to use (as a string), including the file extension. If not using a soft prompt, this is `nil` instead.
+
+You can also set the soft prompt to use by setting this to a string or `nil`.
+
+Modifying this field from inside of a generation modifier triggers a regeneration, which means that the context is recomputed after modification and generation begins again with the new context and previously generated tokens. This incurs a small performance penalty and should not be performed in excess.
 
 # kobold.story
 

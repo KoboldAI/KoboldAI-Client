@@ -9,6 +9,8 @@ stories
 /.project
 *.bak
 miniconda3
+runtime
+bin
 *.settings
 __pycache__
 *.log
@@ -21,9 +23,14 @@ userscripts
 softprompts
 models
 !models/models go here.txt
+Uninstall
+.ipynb_checkpoints
 
 # Ignore PyCharm project files.
 .idea
 
 # Ignore compiled Python files.
 *.pyc
+
+# Don't ignore defaults
+!defaults/*

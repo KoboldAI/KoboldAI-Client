@@ -27,6 +27,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 '''
 
+import utils
+
 import multiprocessing
 from typing import Any, Callable, Dict, List, Optional, Tuple, TypeVar
 import progressbar
@@ -38,6 +40,7 @@ import zipfile
 import requests
 import random
 import jax
+import jax.dlpack
 from jax.config import config
 from jax.experimental import maps
 import jax.numpy as jnp
@@ -45,6 +48,7 @@ import numpy as np
 import optax
 import haiku as hk
 from transformers import AutoTokenizer, GPT2TokenizerFast, AutoModelForCausalLM, GPTNeoForCausalLM
+from tokenizers import Tokenizer
 from mesh_transformer.checkpoint import read_ckpt_lowmem
 from mesh_transformer.transformer_shard import CausalTransformer, CausalTransformerShard, PlaceholderTensor
 from mesh_transformer.util import to_bf16
@@ -65,6 +69,7 @@ def settings_callback() -> dict:
         "temp": 0.5,
         "top_k": 0,
         "tfs": 1.0,
+        "typical": 1.0,
         "repetition_penalty": 1.0,
         "rpslope": 0.0,
         "rprange": 0,
@@ -153,11 +158,11 @@ def apply_repetition_penalty_dynamic(logits, tokens, repetition_penalty, generat
     logits[tokens] = penalty_logits
     return logits
 
-def kobold_sample_dynamic(key, logits, top_p=0.9, temp=0.5, top_k=0, tfs=1.0):
+def kobold_sample_dynamic(key, logits, top_p=0.9, temp=0.5, top_k=0, tfs=1.0, typical=1.0):
     '''
-    This gets called by generate_loop_fn to apply a series of 4 filters
-    to the logits (top-k, then top-p, then TFS, then temperature) before
-    picking one token using the modified logits
+    This gets called by generate_loop_fn to apply a series of 5 filters
+    to the logits (top-k, then top-p, then TFS, then typical, then temperature)
+    before picking one token using the modified logits
     '''
     # Top-k (keep only the k tokens with the highest logits and remove
     # the rest, by setting their logits to negative infinity)
@@ -244,6 +249,37 @@ def kobold_sample_dynamic(key, logits, top_p=0.9, temp=0.5, top_k=0, tfs=1.0):
         return np.where(indices_to_remove, -np.inf, logits)
     if tfs < 1.0:
         logits = tail_free_filter(logits)
+    # Typical sampling (https://arxiv.org/pdf/2202.00666.pdf)
+    def typical_filter(logits):
+        # Compute softmax probabilities and the natural logarithms of them
+        probs = jax.nn.softmax(logits)
+        with np.errstate(divide="ignore"):
+            log_probs = np.log(probs)
+        # Compute the negative of entropy, which is the sum of p*ln(p) for all p
+        # in the set of softmax probabilities of the logits
+        neg_entropy = np.nansum(probs * log_probs, axis=-1, keepdims=True)
+        # Determine absolute difference between the negative entropy and the
+        # log probabilities
+        entropy_deviation = np.abs(neg_entropy - log_probs)
+        # Keep certain tokens such that the sum of the entropy_deviation of the
+        # kept tokens is the smallest possible value such that the sum of the
+        # softmax probabilities of the kept tokens is at least the threshold
+        # value (by sorting the tokens in ascending order of entropy_deviation
+        # and then keeping the smallest possible number of tokens from the
+        # beginning such that sum of softmax probabilities is at or above the
+        # threshold)
+        _, sorted_logits = jax.lax.sort_key_val(entropy_deviation, probs)
+        sorted_indices_to_remove = np.cumsum(sorted_logits, axis=-1) >= typical
+        sorted_indices_to_remove = np.roll(sorted_indices_to_remove, 1, axis=-1)
+        sorted_indices_to_remove[0] = False
+        # Unsort and remove
+        _, indices_to_remove = jax.lax.sort_key_val(
+            jnp.argsort(entropy_deviation),
+            sorted_indices_to_remove,
+        )
+        return np.where(indices_to_remove, -jnp.inf, logits)
+    if typical < 1.0:
+        logits = typical_filter(logits)
     # Temperature (just divide the logits by the temperature)
     logits /= temp
     # Finally, pick one token using the softmax thingy again (it gives
@@ -296,11 +332,11 @@ def apply_repetition_penalty_static(logits, tokens, repetition_penalty, generate
     # positions in the logits array
     return logits.at[tokens].set(penalty_logits)
 
-def kobold_sample_static(key, logits, top_p=0.9, temp=0.5, top_k=0, tfs=1.0):
+def kobold_sample_static(key, logits, top_p=0.9, temp=0.5, top_k=0, tfs=1.0, typical=1.0):
     '''
-    This gets called by generate_loop_fn to apply a series of 4 filters
-    to the logits (top-k, then top-p, then TFS, then temperature) before
-    picking one token using the modified logits
+    This gets called by generate_loop_fn to apply a series of 5 filters
+    to the logits (top-k, then top-p, then TFS, then typical, then temperature)
+    before picking one token using the modified logits
     '''
     # Top-k (keep only the k tokens with the highest logits and remove
     # the rest, by setting their logits to negative infinity)
@@ -384,6 +420,35 @@ def kobold_sample_static(key, logits, top_p=0.9, temp=0.5, top_k=0, tfs=1.0):
         )
         return jnp.where(indices_to_remove, -jnp.inf, logits)
     logits = jax.lax.cond(tfs < 1.0, tail_free_filter, lambda x: x, logits)
+    # Typical sampling (https://arxiv.org/pdf/2202.00666.pdf)
+    def typical_filter(logits):
+        # Compute softmax probabilities and the natural logarithms of them
+        probs = jax.nn.softmax(logits)
+        log_probs = jnp.log(probs)
+        # Compute the negative of entropy, which is the sum of p*ln(p) for all p
+        # in the set of softmax probabilities of the logits
+        neg_entropy = jnp.nansum(probs * log_probs, axis=-1, keepdims=True)
+        # Determine absolute difference between the negative entropy and the
+        # log probabilities
+        entropy_deviation = jnp.abs(neg_entropy - log_probs)
+        # Keep certain tokens such that the sum of the entropy_deviation of the
+        # kept tokens is the smallest possible value such that the sum of the
+        # softmax probabilities of the kept tokens is at least the threshold
+        # value (by sorting the tokens in ascending order of entropy_deviation
+        # and then keeping the smallest possible number of tokens from the
+        # beginning such that sum of softmax probabilities is at or above the
+        # threshold)
+        _, sorted_logits = jax.lax.sort_key_val(entropy_deviation, probs)
+        sorted_indices_to_remove = jnp.cumsum(sorted_logits, axis=-1) >= typical
+        sorted_indices_to_remove = jnp.roll(sorted_indices_to_remove, 1, axis=-1)
+        sorted_indices_to_remove = sorted_indices_to_remove.at[0].set(False)
+        # Unsort and remove
+        _, indices_to_remove = jax.lax.sort_key_val(
+            jnp.argsort(entropy_deviation),
+            sorted_indices_to_remove,
+        )
+        return jnp.where(indices_to_remove, -jnp.inf, logits)
+    logits = jax.lax.cond(typical < 1.0, typical_filter, lambda x: x, logits)
     # Temperature (just divide the logits by the temperature)
     def temp_filter(logits):
         return logits / temp
@@ -740,6 +805,7 @@ def infer_static(
     temp=0.5,
     top_k=0,
     tfs=1.0,
+    typical=1.0,
     repetition_penalty=1.0,
     rpslope=0.0,
     rprange=0,
@@ -762,6 +828,7 @@ def infer_static(
         "temp": temp * np.ones(total_batch),
         "top_p": top_p * np.ones(total_batch),
         "tfs": tfs * np.ones(total_batch),
+        "typical": typical * np.ones(total_batch),
         "repetition_penalty": repetition_penalty * np.ones(total_batch),
         "rpslope": rpslope * np.ones(total_batch),
         "rprange": np.full(total_batch, rprange, dtype=np.uint32),
@@ -799,6 +866,122 @@ def reshard_reverse(x, total_shards, old_shape):
     return out
 
 
+def get_old_shape(t, total_shards, dim=2):
+    if len(t.shape) == 2:
+        shard_shape = t.shape
+        if dim == 1:
+            assert shard_shape[0] % total_shards == 0
+            return (shard_shape[0] // total_shards, shard_shape[1])
+        elif dim == 2:
+            assert shard_shape[1] % total_shards == 0
+            return (shard_shape[0], shard_shape[1] // total_shards)
+        else:
+            raise ValueError(f"Unsupported dim {dim}")
+    if len(t.shape) == 1:
+        assert t.shape[0] % total_shards == 0
+        return (t.shape[0] // total_shards,)
+    else:
+        raise ValueError(f"Unsupported shape {t.shape}")
+
+
+def read_neox_checkpoint(state, path, config, checkpoint_shards=2):
+    assert config["cores_per_replica"] % checkpoint_shards == 0
+    output_shards = config["cores_per_replica"] // checkpoint_shards
+
+    import torch
+    import torch.utils.dlpack
+    from tqdm.auto import tqdm
+
+    move_xmap = jax.experimental.maps.xmap(
+        fun=lambda x, _: to_bf16(x),
+        in_axes=(["shard", ...], ["batch", ...]),
+        out_axes=["shard", ...],
+        axis_resources={'shard': 'mp', 'batch': 'dp'}
+    )
+
+    path_template = os.path.join(path, "layer_{layer:02d}-model_{shard:02d}-model_states.pt")
+
+    static_mapping = {
+        "word_embeddings.weight": {"module": "embedding_shard/~/linear", "param": "w", "axis": 1},
+        "final_linear.weight": {"module": "projection_shard/~/linear", "param": "w", "axis": 2},
+        "norm.weight": {"module": "projection_shard/~/replicated_layer_norm", "param": "scale", "axis": None},
+        "norm.bias": {"module": "projection_shard/~/replicated_layer_norm", "param": "offset", "axis": None},
+    }
+
+    layer_mapping = {
+        "attention.query_key_value.weight": {"module": "combined_qkv", "param": "w", "axis": 2},
+        "attention.query_key_value.bias": {"module": "combined_qkv", "param": "b", "axis": 1},
+        "attention.dense.weight": {"module": "linear_3", "param": "w", "axis": 1},
+        "attention.dense.bias": {"module": "linear_3", "param": "b", "axis": None},
+        "mlp.dense_h_to_4h.weight": {"module": "linear_4", "param": "w", "axis": 2},
+        "mlp.dense_h_to_4h.bias": {"module": "linear_4", "param": "b", "axis": 1},
+        "mlp.dense_4h_to_h.weight": {"module": "linear_5", "param": "w", "axis": 1},
+        "mlp.dense_4h_to_h.bias": {"module": "linear_5", "param": "b", "axis": None},
+        "input_layernorm.weight": {"module": "replicated_layer_norm", "param": "scale", "axis": None},
+        "input_layernorm.bias": {"module": "replicated_layer_norm", "param": "offset", "axis": None},
+        "post_attention_layernorm.weight": {"module": "replicated_layer_norm_1", "param": "scale", "axis": None},
+        "post_attention_layernorm.bias": {"module": "replicated_layer_norm_1", "param": "offset", "axis": None},
+    }
+
+    tqdm_length = len(static_mapping) + config["layers"]*len(layer_mapping)
+    bar = tqdm(total=tqdm_length, desc="Loading from NeoX checkpoint")
+
+    for checkpoint_layer in range(config["layers"] + 5):
+        if checkpoint_layer in (1, config["layers"] + 2):
+            continue
+        layer = checkpoint_layer - 2
+        shards = []
+        for checkpoint_shard in range(checkpoint_shards):
+            shards.append(torch.load(path_template.format(layer=checkpoint_layer, shard=checkpoint_shard), map_location="cpu"))
+        for key in shards[0]:
+            if key == "attention.rotary_emb.inv_freq":
+                continue
+            elif key in static_mapping:
+                target_module = "causal_transformer_shard/~/" + static_mapping[key]["module"]
+                target_param = static_mapping[key]["param"]
+                target_axis = static_mapping[key]["axis"]
+            elif key in layer_mapping:
+                target_module = f"causal_transformer_shard/~/layer_{layer}/~/" + layer_mapping[key]["module"]
+                target_param = layer_mapping[key]["param"]
+                target_axis = layer_mapping[key]["axis"]
+            else:
+                error = f"{repr(key)} not found in mapping"
+                print("\n\nERROR: ", error, file=sys.stderr)
+                raise RuntimeError(error)
+            original_shape = shards[0][key].shape
+            for checkpoint_shard in range(checkpoint_shards):
+                if key in ("attention.dense.bias", "mlp.dense_4h_to_h.bias"):
+                    shards[checkpoint_shard][key] /= output_shards
+                if key != "word_embeddings.weight" and shards[checkpoint_shard][key].ndim == 2:
+                    shards[checkpoint_shard][key] = shards[checkpoint_shard][key].T
+                tensor = shards[checkpoint_shard][key]
+                if target_axis is not None:
+                    target_shape = (output_shards,) + get_old_shape(tensor, total_shards=output_shards, dim=target_axis)
+                else:
+                    target_shape = (output_shards, tensor.shape[0])
+                shards[checkpoint_shard][key] = reshard_reverse(tensor.unsqueeze_(0), output_shards, target_shape)
+            #print(key, ":", original_shape, "->", shards[0][key].shape)
+            tensor = torch.cat([shards[s][key] for s in range(checkpoint_shards)], dim=0)
+            target_shape = state["params"][target_module][target_param].shape
+            if tensor.shape != target_shape:
+                error = f"Weight {repr(key)} has shape {tensor.shape} in checkpoint but shape {target_shape} was requested by MTJ for {target_module} {target_param}"
+                print("\n\nERROR: ", error, file=sys.stderr)
+                raise RuntimeError(error)
+            if tensor.dtype is torch.float16 or tensor.dtype is torch.float32:
+                tensor = tensor.bfloat16()
+            state["params"][target_module][target_param] = move_xmap(
+                jax.dlpack.from_dlpack(torch.utils.dlpack.to_dlpack(tensor)).copy(),
+                np.zeros(config["cores_per_replica"]),
+            )
+            bar.update(1)
+    for mk, mv in state["params"].items():
+        for pk, pv in mv.items():
+            if isinstance(pv, PlaceholderTensor):
+                error = f"{mk} {pk} could not be found in the model checkpoint"
+                print("\n\nERROR:  " + error, file=sys.stderr)
+                raise RuntimeError(error)
+
+
 def load_model(path: str, driver_version="tpu_driver0.1_dev20210607", hf_checkpoint=False, **kwargs) -> None:
     global thread_resources_env, seq, tokenizer, network, params
 
@@ -819,9 +1002,26 @@ def load_model(path: str, driver_version="tpu_driver0.1_dev20210607", hf_checkpo
     }
     params = kwargs
 
+    if vars.model == "TPUMeshTransformerGPTNeoX":
+        default_params = {
+            "compat": "neox",
+            "layers": 44,
+            "d_model": 6144,
+            "n_heads": 64,
+            "n_vocab": 50432,
+            "n_vocab_padding": 0,
+            "norm": "doublelayernorm",
+            "pe": "neox_rotary",
+            "pe_rotary_dims": 24,
+            "seq": 2048,
+            "cores_per_replica": 8,
+            "tokenizer_class": "GPT2TokenizerFast",
+            "tokenizer": "gpt2",
+        }
+
     # Try to convert HF config.json to MTJ config
     if hf_checkpoint:
-        spec_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "maps", vars.model_type + ".json")
+        spec_path = os.path.join("maps", vars.model_type + ".json")
         if not os.path.isfile(spec_path):
             raise NotImplementedError(f"Unsupported model type {repr(vars.model_type)}")
         with open(spec_path) as f:
@@ -856,7 +1056,7 @@ def load_model(path: str, driver_version="tpu_driver0.1_dev20210607", hf_checkpo
         # by the number of TPU cores, and fall back to one core if an even
         # number of TPU cores is not possible.
         for c in (8, 6, 4, 2, 1):
-            if 0 == params["n_heads"] % c == params["d_model"] % c:
+            if 0 == params["n_heads"] % c == params.get("d_embed", params["d_model"]) % c:
                 params["cores_per_replica"] = c
                 break
 
@@ -874,7 +1074,14 @@ def load_model(path: str, driver_version="tpu_driver0.1_dev20210607", hf_checkpo
             params[param] = default_params[param]
 
     # Load tokenizer
-    if not hf_checkpoint:
+    if vars.model == "TPUMeshTransformerGPTNeoX":
+        tokenizer = Tokenizer.from_file(os.path.join(path, "20B_tokenizer.json"))
+        def new_encode(old_encode):
+            def encode(s, *args, **kwargs):
+                return old_encode(s).ids
+            return encode
+        tokenizer.encode = new_encode(tokenizer.encode)
+    elif not hf_checkpoint:
         if not isinstance(params["tokenizer_class"], str) or not any(params["tokenizer_class"].endswith(s) for s in ("Tokenizer", "TokenizerFast")):
             raise ValueError("`tokenizer_class` must be a string ending in 'Tokenizer' or 'TokenizerFast'")
         tokenizer_class = getattr(__import__("transformers"), params["tokenizer_class"])
@@ -887,13 +1094,18 @@ def load_model(path: str, driver_version="tpu_driver0.1_dev20210607", hf_checkpo
     print("Connecting to your Colab instance's TPU", flush=True)
     spinner = multiprocessing.Process(target=show_spinner, args=())
     spinner.start()
-    colab_tpu_addr = os.environ['COLAB_TPU_ADDR'].split(':')[0]
-    url = f'http://{colab_tpu_addr}:8475/requestversion/{driver_version}'
+    if os.environ.get('COLAB_TPU_ADDR', '') != '':
+        tpu_address = os.environ['COLAB_TPU_ADDR']  # Colab
+    else:
+        tpu_address = os.environ['TPU_NAME']  # Kaggle
+    tpu_address = tpu_address.replace("grpc://", "")
+    tpu_address_without_port = tpu_address.split(':', 1)[0]
+    url = f'http://{tpu_address_without_port}:8475/requestversion/{driver_version}'
+    config.FLAGS.jax_xla_backend = "tpu_driver"
+    config.FLAGS.jax_backend_target = "grpc://" + tpu_address
     requests.post(url)
     spinner.terminate()
     print()
-    config.FLAGS.jax_xla_backend = "tpu_driver"
-    config.FLAGS.jax_backend_target = "grpc://" + os.environ['COLAB_TPU_ADDR']
 
     cores_per_replica = params["cores_per_replica"]
     seq = params["seq"]
@@ -916,9 +1128,14 @@ def load_model(path: str, driver_version="tpu_driver0.1_dev20210607", hf_checkpo
 
     network = PenalizingCausalTransformer(params, dematerialized=True)
 
-    if not hf_checkpoint:
+    if not hf_checkpoint and vars.model != "TPUMeshTransformerGPTNeoX":
         network.state = read_ckpt_lowmem(network.state, path, devices.shape[1])
-        network.state = network.move_xmap(network.state, np.zeros(cores_per_replica))
+        #network.state = network.move_xmap(network.state, np.zeros(cores_per_replica))
+        return
+
+    if vars.model == "TPUMeshTransformerGPTNeoX":
+        print("\n\n\nThis model has  ", f"{hk.data_structures.tree_size(network.state['params']):,d}".replace(",", " "), "  parameters.\n")
+        read_neox_checkpoint(network.state, path, params)
         return
 
     # Convert from HF checkpoint
@@ -944,15 +1161,31 @@ def load_model(path: str, driver_version="tpu_driver0.1_dev20210607", hf_checkpo
 
     import torch_lazy_loader
     import torch
-    from tqdm import tqdm
+    from tqdm.auto import tqdm
+    import functools
 
     def callback(model_dict, f, **_):
+        if callback.nested:
+            return
+        callback.nested = True
         with zipfile.ZipFile(f, "r") as z:
             try:
                 last_storage_key = None
                 f = None
-                print("\n\n\nThis model has  ", f"{hk.data_structures.tree_size(network.state['params']):,d}".replace(",", " "), "  parameters.\n")
-                for key in tqdm(sorted(model_dict.keys(), key=lambda k: (model_dict[k].key, model_dict[k].seek_offset)), desc="Loading model tensors"):
+                current_offset = 0
+                if utils.current_shard == 0:
+                    print("\n\n\nThis model has  ", f"{hk.data_structures.tree_size(network.state['params']):,d}".replace(",", " "), "  parameters.\n")
+
+                if utils.num_shards is None or utils.current_shard == 0:
+                    if utils.num_shards is not None:
+                        num_tensors = len(utils.get_sharded_checkpoint_num_tensors(utils.from_pretrained_model_name, utils.from_pretrained_index_filename, **utils.from_pretrained_kwargs))
+                    else:
+                        num_tensors = len(model_dict)
+                    utils.bar = tqdm(total=num_tensors, desc="Loading model tensors")
+
+                if utils.num_shards is not None:
+                    utils.current_shard += 1
+                for key in sorted(model_dict.keys(), key=lambda k: (model_dict[k].key, model_dict[k].seek_offset)):
 
                     # Some model weights are used by transformers but not by MTJ.
                     # We have to materialize these weights anyways because
@@ -960,50 +1193,64 @@ def load_model(path: str, driver_version="tpu_driver0.1_dev20210607", hf_checkpo
                     # the least possible memory usage, we create them as meta
                     # tensors, which don't take up any actual CPU or TPU memory.
                     if key not in model_spec:
-                        model_dict[key] = torch.empty(model_dict[key].shape, dtype=model_dict[key].storage_type(0).dtype, device="meta")
+                        model_dict[key] = torch.empty(model_dict[key].shape, dtype=model_dict[key].dtype, device="meta")
+                        utils.bar.update(1)
                         continue
 
                     storage_key = model_dict[key].key
-                    if storage_key != last_storage_key:
+                    if storage_key != last_storage_key or model_dict[key].seek_offset < current_offset:
                         last_storage_key = storage_key
                         if isinstance(f, zipfile.ZipExtFile):
                             f.close()
                         f = z.open(f"archive/data/{storage_key}")
-                    current_offset = f.tell()
+                        current_offset = 0
                     if current_offset != model_dict[key].seek_offset:
-                        f.seek(model_dict[key].seek_offset - current_offset, 1)
+                        f.read(model_dict[key].seek_offset - current_offset)
+                        current_offset = model_dict[key].seek_offset
                     spec = model_spec[key]
                     transforms = set(spec.get("transforms", ()))
                     if not isinstance(model_dict[key], torch_lazy_loader.LazyTensor):
                         error = f"Duplicate key {repr(key)}"
                         print("\n\nERROR:  " + error, file=sys.stderr)
                         raise RuntimeError(error)
+                    size = functools.reduce(lambda x, y: x * y, model_dict[key].shape, 1)
+                    dtype = model_dict[key].dtype
+                    nbytes = size if dtype is torch.bool else size * ((torch.finfo if dtype.is_floating_point else torch.iinfo)(dtype).bits >> 3)
                     tensor = model_dict[key].materialize(f, map_location="cpu")
                     model_dict[key] = tensor.to("meta")
+                    current_offset += nbytes
 
                     # MTJ requires certain mathematical operations to be performed
                     # on tensors in order for them to be in the correct format
+                    if "remove_first_two_rows" in transforms:
+                        tensor = tensor[2:]
                     if "divide_by_shards" in transforms:
                         tensor /= params["cores_per_replica"]
                     if "vocab_pad" in transforms:
                         tensor = torch.nn.functional.pad(tensor, (0, 0, 0, params["n_vocab_padding"]))
-                    if "no_transpose" not in transforms:
+                    if "no_transpose" not in transforms and tensor.ndim == 2:
                         tensor = tensor.T
                     tensor.unsqueeze_(0)
+                    if tensor.dtype is torch.float16 or tensor.dtype is torch.float32:
+                        tensor = tensor.bfloat16()
 
                     # Shard the tensor so that parts of the tensor can be used
                     # on different TPU cores
                     network.state["params"][spec["module"]][spec["param"]] = move_xmap(
-                        jnp.array(
+                        jax.dlpack.from_dlpack(torch.utils.dlpack.to_dlpack(
                             reshard_reverse(
                                 tensor,
                                 params["cores_per_replica"],
                                 network.state["params"][spec["module"]][spec["param"]].shape,
-                            ),
-                            dtype=jnp.bfloat16,
-                        ),
+                            )
+                        )).copy(),
                         np.empty(params["cores_per_replica"]),
                     )
+
+                    utils.bar.update(1)
+
+                if utils.num_shards is not None and utils.current_shard < utils.num_shards:
+                    return
 
                 # Check for tensors that MTJ needs that were not provided in the
                 # HF model
@@ -1023,39 +1270,54 @@ def load_model(path: str, driver_version="tpu_driver0.1_dev20210607", hf_checkpo
                                 print("\n\nERROR:  " + error, file=sys.stderr)
                                 raise RuntimeError(error)
             finally:
+                if utils.num_shards is None or utils.current_shard >= utils.num_shards:
+                    utils.bar.close()
+                    utils.bar = None
+                callback.nested = False
                 if isinstance(f, zipfile.ZipExtFile):
                     f.close()
+    callback.nested = False
 
     if os.path.isdir(vars.model.replace('/', '_')):
         import shutil
         shutil.move(vars.model.replace('/', '_'), "models/{}".format(vars.model.replace('/', '_')))
+    print("\n", flush=True)
     with torch_lazy_loader.use_lazy_torch_load(callback=callback, dematerialized_modules=True):
         if(os.path.isdir(vars.custmodpth)):
             try:
-                tokenizer = AutoTokenizer.from_pretrained(vars.custmodpth, cache_dir="cache")
-            except ValueError as e:
-                tokenizer = GPT2TokenizerFast.from_pretrained(vars.custmodpth, cache_dir="cache")
+                tokenizer = AutoTokenizer.from_pretrained(vars.custmodpth, revision=vars.revision, cache_dir="cache")
+            except Exception as e:
+                try:
+                    tokenizer = GPT2TokenizerFast.from_pretrained(vars.custmodpth, revision=vars.revision, cache_dir="cache")
+                except Exception as e:
+                    tokenizer = GPT2TokenizerFast.from_pretrained("gpt2", revision=vars.revision, cache_dir="cache")
             try:
-                model     = AutoModelForCausalLM.from_pretrained(vars.custmodpth, cache_dir="cache")
-            except ValueError as e:
-                model     = GPTNeoForCausalLM.from_pretrained(vars.custmodpth, cache_dir="cache")
+                model     = AutoModelForCausalLM.from_pretrained(vars.custmodpth, revision=vars.revision, cache_dir="cache")
+            except Exception as e:
+                model     = GPTNeoForCausalLM.from_pretrained(vars.custmodpth, revision=vars.revision, cache_dir="cache")
         elif(os.path.isdir("models/{}".format(vars.model.replace('/', '_')))):
             try:
-                tokenizer = AutoTokenizer.from_pretrained("models/{}".format(vars.model.replace('/', '_')), cache_dir="cache")
-            except ValueError as e:
-                tokenizer = GPT2TokenizerFast.from_pretrained("models/{}".format(vars.model.replace('/', '_')), cache_dir="cache")
+                tokenizer = AutoTokenizer.from_pretrained("models/{}".format(vars.model.replace('/', '_')), revision=vars.revision, cache_dir="cache")
+            except Exception as e:
+                try:
+                    tokenizer = GPT2TokenizerFast.from_pretrained("models/{}".format(vars.model.replace('/', '_')), revision=vars.revision, cache_dir="cache")
+                except Exception as e:
+                    tokenizer = GPT2TokenizerFast.from_pretrained("gpt2", revision=vars.revision, cache_dir="cache")
             try:
-                model     = AutoModelForCausalLM.from_pretrained("models/{}".format(vars.model.replace('/', '_')), cache_dir="cache", **lowmem)
-            except ValueError as e:
-                model     = GPTNeoForCausalLM.from_pretrained("models/{}".format(vars.model.replace('/', '_')), cache_dir="cache", **lowmem)
+                model     = AutoModelForCausalLM.from_pretrained("models/{}".format(vars.model.replace('/', '_')), revision=vars.revision, cache_dir="cache")
+            except Exception as e:
+                model     = GPTNeoForCausalLM.from_pretrained("models/{}".format(vars.model.replace('/', '_')), revision=vars.revision, cache_dir="cache")
         else:
             try:
-                tokenizer = AutoTokenizer.from_pretrained(vars.model, cache_dir="cache")
-            except ValueError as e:
-                tokenizer = GPT2TokenizerFast.from_pretrained(vars.model, cache_dir="cache")
+                tokenizer = AutoTokenizer.from_pretrained(vars.model, revision=vars.revision, cache_dir="cache")
+            except Exception as e:
+                try:
+                    tokenizer = GPT2TokenizerFast.from_pretrained(vars.model, revision=vars.revision, cache_dir="cache")
+                except Exception as e:
+                    tokenizer = GPT2TokenizerFast.from_pretrained("gpt2", revision=vars.revision, cache_dir="cache")
             try:
-                model     = AutoModelForCausalLM.from_pretrained(vars.model, cache_dir="cache")
-            except ValueError as e:
-                model     = GPTNeoForCausalLM.from_pretrained(vars.model, cache_dir="cache")
+                model     = AutoModelForCausalLM.from_pretrained(vars.model, revision=vars.revision, cache_dir="cache")
+            except Exception as e:
+                model     = GPTNeoForCausalLM.from_pretrained(vars.model, revision=vars.revision, cache_dir="cache")
 
-    network.state = network.move_xmap(network.state, np.zeros(cores_per_replica))
+    #network.state = network.move_xmap(network.state, np.zeros(cores_per_replica))

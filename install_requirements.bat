@@ -45,6 +45,8 @@ subst B: miniconda3
 SET TEMP=B:\
 SET TMP=B:\
 copy umamba.exe B:\umamba.exe
+copy loader.settings B:\loader.settings
+copy disconnect-kobold-drive.bat B:\disconnect-kobold-drive.bat
 B:
 umamba.exe create -r B:\python\ -n base
 IF %B%==1 umamba.exe install --no-shortcuts -r B:\python\ -n base -f "%~dp0\environments\huggingface.yml" -y --always-copy

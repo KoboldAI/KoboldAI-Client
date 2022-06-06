@@ -8,9 +8,9 @@ dependencies:
   - python=3.8.*
   - eventlet
   - markdown
-  - bleach
+  - bleach=4.1.0
   - pip
-  - git
+  - git=2.35.1
   - pip:
     - --find-links https://download.pytorch.org/whl/rocm4.2/torch_stable.html
     - torch

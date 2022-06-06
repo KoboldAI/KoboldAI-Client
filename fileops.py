@@ -65,30 +65,30 @@ def getdirpath(dir, title):
 #  Returns the path (as a string) to the given story by its name
 #==================================================================#
 def storypath(name):
-    return path.join(path.dirname(path.realpath(__file__)), "stories", name + ".json")
+    return path.join("stories", name + ".json")
 
 #==================================================================#
 #  Returns the path (as a string) to the given soft prompt by its filename
 #==================================================================#
 def sppath(filename):
-    return path.join(path.dirname(path.realpath(__file__)), "softprompts", filename)
+    return path.join("softprompts", filename)
 
 #==================================================================#
 #  Returns the path (as a string) to the given username by its filename
 #==================================================================#
 def uspath(filename):
-    return path.join(path.dirname(path.realpath(__file__)), "userscripts", filename)
+    return path.join("userscripts", filename)
 
 #==================================================================#
 #  Returns an array of dicts containing story files in /stories
 #==================================================================#
 def getstoryfiles():
     list = []
-    for file in listdir(path.dirname(path.realpath(__file__))+"/stories"):
+    for file in listdir("stories"):
         if file.endswith(".json"):
             ob = {}
             ob["name"] = file.replace(".json", "")
-            f = open(path.dirname(path.realpath(__file__))+"/stories/"+file, "r")
+            f = open("stories/"+file, "r")
             try:
                 js = json.load(f)
             except:
@@ -112,7 +112,7 @@ def checksp(filename: str, model_dimension: int) -> Tuple[Union[zipfile.ZipFile,
     if 'np' not in globals():
         import numpy as np
     try:
-        z = zipfile.ZipFile(path.dirname(path.realpath(__file__))+"/softprompts/"+filename)
+        z = zipfile.ZipFile("softprompts/"+filename)
         with z.open('tensor.npy') as f:
             # Read only the header of the npy file, for efficiency reasons
             version: Tuple[int, int] = np.lib.format.read_magic(f)
@@ -122,7 +122,10 @@ def checksp(filename: str, model_dimension: int) -> Tuple[Union[zipfile.ZipFile,
             shape, fortran_order, dtype = np.lib.format._read_array_header(f, version)
             assert len(shape) == 2
     except:
-        z.close()
+        try:
+            z.close()
+        except UnboundLocalError:
+            pass
         return 1, None, None, None, None
     if dtype not in ('V2', np.float16, np.float32):
         z.close()
@@ -140,8 +143,8 @@ def checksp(filename: str, model_dimension: int) -> Tuple[Union[zipfile.ZipFile,
 #==================================================================#
 def getspfiles(model_dimension: int):
     lst = []
-    os.makedirs(path.dirname(path.realpath(__file__))+"/softprompts", exist_ok=True)
-    for file in listdir(path.dirname(path.realpath(__file__))+"/softprompts"):
+    os.makedirs("softprompts", exist_ok=True)
+    for file in listdir("softprompts"):
         if not file.endswith(".zip"):
             continue
         z, version, shape, fortran_order, dtype = checksp(file, model_dimension)
@@ -174,8 +177,8 @@ def getspfiles(model_dimension: int):
 #==================================================================#
 def getusfiles(long_desc=False):
     lst = []
-    os.makedirs(path.dirname(path.realpath(__file__))+"/userscripts", exist_ok=True)
-    for file in listdir(path.dirname(path.realpath(__file__))+"/userscripts"):
+    os.makedirs("userscripts", exist_ok=True)
+    for file in listdir("userscripts"):
         if file.endswith(".lua"):
             ob = {}
             ob["filename"] = file

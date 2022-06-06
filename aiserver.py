@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 #==================================================================#
 # KoboldAI
-# Version: 1.17.0
+# Version: 1.18.0
 # By: KoboldAIDev and the KoboldAI Community
 #==================================================================#
 
@@ -10,9 +10,14 @@ import eventlet
 eventlet.monkey_patch(all=True, thread=False)
 import os
 os.system("")
+__file__ = os.path.dirname(os.path.realpath(__file__))
+os.chdir(__file__)
 os.environ['EVENTLET_THREADPOOL_SIZE'] = '1'
 os.environ['TOKENIZERS_PARALLELISM'] = 'false'
 from eventlet import tpool
+
+import logging
+logging.getLogger("urllib3").setLevel(logging.ERROR)
 
 from os import path, getcwd
 import time
@@ -21,6 +26,7 @@ import json
 import collections
 import zipfile
 import packaging
+import packaging.version
 import contextlib
 import traceback
 import threading
@@ -28,6 +34,7 @@ import markdown
 import bleach
 import itertools
 import bisect
+import functools
 from collections.abc import Iterable
 from typing import Any, Callable, TypeVar, Tuple, Union, Dict, Set, List
 
@@ -39,19 +46,27 @@ import gc
 
 import lupa
 
-import torch
-from transformers import StoppingCriteria, GPT2TokenizerFast, GPT2LMHeadModel, GPTNeoForCausalLM, GPTNeoModel, AutoModelForCausalLM, AutoTokenizer, GPT2TokenizerFast
-
 # KoboldAI
 import fileops
 import gensettings
 from utils import debounce
 import utils
 import structures
+import torch
 
 
 if lupa.LUA_VERSION[:2] != (5, 4):
     print(f"Please install lupa==1.10. You have lupa {lupa.__version__}.", file=sys.stderr)
+
+
+# Make sure tqdm progress bars display properly in Colab
+from tqdm.auto import tqdm
+old_init = tqdm.__init__
+def new_init(self, *args, **kwargs):
+    old_init(self, *args, **kwargs)
+    if(self.ncols == 0 and kwargs.get("ncols") != 0):
+        self.ncols = 99
+tqdm.__init__ = new_init
 
 
 #==================================================================#
@@ -69,69 +84,112 @@ class colors:
     END       = '\033[0m'
     UNDERLINE = '\033[4m'
 
-# AI models
-model_menu = {'mainmenu': [
+# AI models Menu
+# This is a dict of lists where they key is the menu name, and the list is the menu items.
+# Each item takes the 4 elements, 1: Text to display, 2: Model Name (var.model) or menu name (Key name for another menu),
+# 3: the memory requirement for the model, 4: if the item is a menu or not (True/False)
+model_menu = {
+    'mainmenu': [
         ["Load a model from its directory", "NeoCustom", "", False],
         ["Load an old GPT-2 model (eg CloverEdition)", "GPT2Custom", "", False],
-        ["Skein 6B (Hybrid)", "KoboldAI/GPT-J-6B-Skein", "16GB", False],
-        ["Janeway 6B (Novel)", "KoboldAI/GPT-J-6B-Janeway", "16GB", False],
-        ["Adventure 6B", "KoboldAI/GPT-J-6B-Adventure", "16GB", False],
-        ["Lit 6B (NSFW)", "hakurei/lit-6B", "16GB", False],
-        ["Shinen 6B (NSFW)", "KoboldAI/GPT-J-6B-Shinen", "16GB", False],
-        ["C1 6B (Chatbot)", "hakurei/c1-6B", "16GB", False],
-        ["Janeway Neo 2.7B (Novel)", "KoboldAI/GPT-Neo-2.7B-Janeway", "8GB", False],
-        ["Janeway FSD 2.7B (Novel)", "KoboldAI/fairseq-dense-2.7B-Janeway", "8GB", False],
-        ["Adventure 2.7B", "KoboldAI/GPT-Neo-2.7B-AID", "8GB", False],
-        ["Picard 2.7B (Novel)", "KoboldAI/GPT-Neo-2.7B-Picard", "8GB", False],
-        ["Horni 2.7B (NSFW)", "KoboldAI/GPT-Neo-2.7B-Horni", "8GB", False],
-        ["Horni-LN 2.7B (Novel)", "KoboldAI/GPT-Neo-2.7B-Horni-LN", "8GB", False],
-        ["Shinen 2.7B (NSFW)", "KoboldAI/GPT-Neo-2.7B-Shinen", "8GB", False],
+        ["Adventure Models", "adventurelist", "", True],
+        ["Novel Models", "novellist", "", True],
+        ["NSFW Models", "nsfwlist", "", True],
+        ["Chatbot Models", "chatlist", "", True],
         ["Untuned GPT-Neo/J", "gptneolist", "", True],
         ["Untuned Fairseq Dense", "fsdlist", "", True],
+        ["Untuned OPT", "optlist", "", True],
         ["Untuned XGLM", "xglmlist", "", True],
         ["Untuned GPT2", "gpt2list", "", True],
         ["Online Services", "apilist", "", True],
-        ["Read Only (No AI)", "ReadOnly", "", False]
-    ],
+        ["Read Only (No AI)", "ReadOnly", "", True]
+        ],
+    'adventurelist': [
+        ["Nerys FSD 13B (Hybrid)", "KoboldAI/fairseq-dense-13B-Nerys", "32GB", False],
+        ["Skein 6B", "KoboldAI/GPT-J-6B-Skein", "16GB", False],
+        ["Adventure 6B", "KoboldAI/GPT-J-6B-Adventure", "16GB", False],
+        ["Nerys FSD 2.7B (Hybrid)", "KoboldAI/fairseq-dense-2.7B-Nerys", "8GB", False],
+        ["Adventure 2.7B", "KoboldAI/GPT-Neo-2.7B-AID", "8GB", False],
+        ["Adventure 1.3B", "KoboldAI/GPT-Neo-1.3B-Adventure", "6GB", False],
+        ["Adventure 125M (Mia)", "Merry/AID-Neo-125M", "2GB", False],
+        ["Return to Main Menu", "mainmenu", "", True],
+        ],
+    'novellist': [
+        ["Nerys FSD 13B (Hybrid)", "KoboldAI/fairseq-dense-13B-Nerys", "32GB", False],
+        ["Janeway FSD 13B", "KoboldAI/fairseq-dense-13B-Janeway", "32GB", False],
+        ["Janeway FSD 6.7B", "KoboldAI/fairseq-dense-6.7B-Janeway", "16GB", False],
+        ["Janeway Neo 6B", "KoboldAI/GPT-J-6B-Janeway", "16GB", False],
+        ["Janeway Neo 2.7B", "KoboldAI/GPT-Neo-2.7B-Janeway", "8GB", False],
+        ["Janeway FSD 2.7B", "KoboldAI/fairseq-dense-2.7B-Janeway", "8GB", False],
+        ["Nerys FSD 2.7B (Hybrid)", "KoboldAI/fairseq-dense-2.7B-Nerys", "8GB", False],
+        ["Horni-LN 2.7B", "KoboldAI/GPT-Neo-2.7B-Horni-LN", "8GB", False],
+        ["Picard 2.7B (Older Janeway)", "KoboldAI/GPT-Neo-2.7B-Picard", "8GB", False],
+        ["Return to Main Menu", "mainmenu", "", True],
+        ],
+    'nsfwlist': [
+        ["Shinen FSD 13B (NSFW)", "KoboldAI/fairseq-dense-13B-Shinen", "32GB", False],
+        ["Shinen FSD 6.7B (NSFW)", "KoboldAI/fairseq-dense-6.7B-Shinen", "16GB", False],
+        ["Lit 6B (NSFW)", "hakurei/lit-6B", "16GB", False],
+        ["Shinen 6B (NSFW)", "KoboldAI/GPT-J-6B-Shinen", "16GB", False],
+        ["Horni 2.7B (NSFW)", "KoboldAI/GPT-Neo-2.7B-Horni", "8GB", False],
+        ["Shinen 2.7B (NSFW)", "KoboldAI/GPT-Neo-2.7B-Shinen", "8GB", False],
+        ["Return to Main Menu", "mainmenu", "", True],
+        ],
+    'chatlist': [
+        ["Convo 6B (Chatbot)", "hitomi-team/convo-6B", "16GB", False],
+        ["C1 6B (Chatbot)", "hakurei/c1-6B", "16GB", False],
+        ["C1 1.3B (Chatbot)", "iokru/c1-1.3B", "6GB", False],
+        ["Return to Main Menu", "mainmenu", "", True],
+        ],
     'gptneolist': [
         ["GPT-J 6B", "EleutherAI/gpt-j-6B", "16GB", False],
         ["GPT-Neo 2.7B", "EleutherAI/gpt-neo-2.7B", "8GB", False],
         ["GPT-Neo 1.3B", "EleutherAI/gpt-neo-1.3B", "6GB", False],
+        ["GPT-Neo 125M", "EleutherAI/gpt-neo-125M", "2GB", False],
         ["Return to Main Menu", "mainmenu", "", True],
-    ],
+        ],
     'gpt2list': [
         ["GPT-2 XL", "gpt2-xl", "6GB", False],
         ["GPT-2 Large", "gpt2-large", "4GB", False],
         ["GPT-2 Med", "gpt2-medium", "2GB", False],
         ["GPT-2", "gpt2", "2GB", False],
         ["Return to Main Menu", "mainmenu", "", True],
-    ],
+        ],
+    'optlist': [
+        ["OPT 30B", "facebook/opt-30b", "64GB", False],
+        ["OPT 13B", "facebook/opt-13b", "32GB", False],
+        ["OPT 6.7B", "facebook/opt-6.7b", "16GB", False],
+        ["OPT 2.7B", "facebook/opt-2.7b", "8GB", False],
+        ["OPT 1.3B", "facebook/opt-1.3b", "4GB", False],
+        ["OPT 350M", "facebook/opt-350m", "2GB", False],
+        ["OPT 125M", "facebook/opt-125m", "1GB", False],
+        ["Return to Main Menu", "mainmenu", "", True],
+        ],
     'fsdlist': [
         ["Fairseq Dense 13B", "KoboldAI/fairseq-dense-13B", "32GB", False],
         ["Fairseq Dense 6.7B", "KoboldAI/fairseq-dense-6.7B", "16GB", False],
         ["Fairseq Dense 2.7B", "KoboldAI/fairseq-dense-2.7B", "8GB", False],
-        ["Fairseq Dense 1.3B", "KoboldAI/fairseq-dense-1.3B", "6GB", False],
-        ["Fairseq Dense 355M", "KoboldAI/fairseq-dense-355M", "", False],
-        ["Fairseq Dense 125M", "KoboldAI/fairseq-dense-125M", "", False],
-        ["Return to Main Menu", "Return", "", True],
-    ],
-    'xglmlist': [
-        ["XGLM 4.5B (Larger Dataset)", "facebook/xglm-4.5B", "", False],
-        ["XGLM 7.5B", "facebook/xglm-7.5B", "", False],
-        ["XGLM 2.9B", "facebook/xglm-2.9B", "", False],
-        ["XGLM 1.7B", "facebook/xglm-1.7B", "", False],
-        ["XGLM 564M", "facebook/xglm-564M", "", False],
+        ["Fairseq Dense 1.3B", "KoboldAI/fairseq-dense-1.3B", "4GB", False],
+        ["Fairseq Dense 355M", "KoboldAI/fairseq-dense-355M", "2GB", False],
+        ["Fairseq Dense 125M", "KoboldAI/fairseq-dense-125M", "1GB", False],
         ["Return to Main Menu", "mainmenu", "", True],
-    ],
+        ],
+    'xglmlist': [
+        ["XGLM 4.5B (Larger Dataset)", "facebook/xglm-4.5B", "12GB", False],
+        ["XGLM 7.5B", "facebook/xglm-7.5B", "18GB", False],
+        ["XGLM 2.9B", "facebook/xglm-2.9B", "10GB", False],
+        ["XGLM 1.7B", "facebook/xglm-1.7B", "6GB", False],
+        ["XGLM 564M", "facebook/xglm-564M", "4GB", False],
+        ["Return to Main Menu", "mainmenu", "", True],
+        ],
     'apilist': [
-        ["GooseAI API (requires API key)", "GooseAI", ""],
+        ["GooseAI API (requires API key)", "GooseAI", "", False],
         ["OpenAI API (requires API key)", "OAI", "", False],
         ["InferKit API (requires API key)", "InferKit", "", False],
         ["KoboldAI Server API (Old Google Colab)", "Colab", "", False],
         ["Return to Main Menu", "mainmenu", "", True],
     ]
     }
-
 # Variables
 class vars:
     lastact     = ""     # The last action received from the user
@@ -141,17 +199,18 @@ class vars:
     model_type  = ""     # Model Type (Automatically taken from the model config)
     noai        = False  # Runs the script without starting up the transformers pipeline
     aibusy      = False  # Stops submissions while the AI is working
-    max_length  = 1024    # Maximum number of tokens to submit per action
+    max_length  = 2048    # Maximum number of tokens to submit per action
     ikmax       = 3000   # Maximum number of characters to submit to InferKit
     genamt      = 80     # Amount of text for each action to generate
     ikgen       = 200    # Number of characters for InferKit to generate
     rep_pen     = 1.1    # Default generator repetition_penalty
-    rep_pen_slope = 1.0  # Default generator repetition penalty slope
+    rep_pen_slope = 0.7  # Default generator repetition penalty slope
     rep_pen_range = 1024 # Default generator repetition penalty range
     temp        = 0.5    # Default generator temperature
     top_p       = 0.9    # Default generator top_p
     top_k       = 0      # Default generator top_k
     tfs         = 1.0    # Default generator tfs (tail-free sampling)
+    typical     = 1.0    # Default generator typical sampling threshold
     numseqs     = 1     # Number of sequences to ask the generator to create
     gamestarted = False  # Whether the game has started (disables UI elements)
     gamesaved   = True   # Whether or not current game is saved
@@ -188,12 +247,16 @@ class vars:
     abort       = False  # Whether or not generation was aborted by clicking on the submit button during generation
     compiling   = False  # If using a TPU Colab, this will be set to True when the TPU backend starts compiling and then set to False again
     checking    = False  # Whether or not we are actively checking to see if TPU backend is compiling or not
+    sp_changed  = False  # This gets set to True whenever a userscript changes the soft prompt so that check_for_sp_change() can alert the browser that the soft prompt has changed
     spfilename  = ""     # Filename of soft prompt to load, or an empty string if not using a soft prompt
     userscripts = []     # List of userscripts to load
     last_userscripts = []  # List of previous userscript filenames from the previous time userscripts were send via usstatitems
     corescript  = "default.lua"  # Filename of corescript to load
     # badwords    = []     # Array of str/chr values that should be removed from output
     badwordsids = [[13460], [6880], [50256], [42496], [4613], [17414], [22039], [16410], [27], [29], [38430], [37922], [15913], [24618], [28725], [58], [47175], [36937], [26700], [12878], [16471], [37981], [5218], [29795], [13412], [45160], [3693], [49778], [4211], [20598], [36475], [33409], [44167], [32406], [29847], [29342], [42669], [685], [25787], [7359], [3784], [5320], [33994], [33490], [34516], [43734], [17635], [24293], [9959], [23785], [21737], [28401], [18161], [26358], [32509], [1279], [38155], [18189], [26894], [6927], [14610], [23834], [11037], [14631], [26933], [46904], [22330], [25915], [47934], [38214], [1875], [14692], [41832], [13163], [25970], [29565], [44926], [19841], [37250], [49029], [9609], [44438], [16791], [17816], [30109], [41888], [47527], [42924], [23984], [49074], [33717], [31161], [49082], [30138], [31175], [12240], [14804], [7131], [26076], [33250], [3556], [38381], [36338], [32756], [46581], [17912], [49146]] # Tokenized array of badwords used to prevent AI artifacting
+    badwordsids_neox = [[0], [1], [44162], [9502], [12520], [31841], [36320], [49824], [34417], [6038], [34494], [24815], [26635], [24345], [3455], [28905], [44270], [17278], [32666], [46880], [7086], [43189], [37322], [17778], [20879], [49821], [3138], [14490], [4681], [21391], [26786], [43134], [9336], [683], [48074], [41256], [19181], [29650], [28532], [36487], [45114], [46275], [16445], [15104], [11337], [1168], [5647], [29], [27482], [44965], [43782], [31011], [42944], [47389], [6334], [17548], [38329], [32044], [35487], [2239], [34761], [7444], [1084], [12399], [18990], [17636], [39083], [1184], [35830], [28365], [16731], [43467], [47744], [1138], [16079], [40116], [45564], [18297], [42368], [5456], [18022], [42696], [34476], [23505], [23741], [39334], [37944], [45382], [38709], [33440], [26077], [43600], [34418], [36033], [6660], [48167], [48471], [15775], [19884], [41533], [1008], [31053], [36692], [46576], [20095], [20629], [31759], [46410], [41000], [13488], [30952], [39258], [16160], [27655], [22367], [42767], [43736], [49694], [13811], [12004], [46768], [6257], [37471], [5264], [44153], [33805], [20977], [21083], [25416], [14277], [31096], [42041], [18331], [33376], [22372], [46294], [28379], [38475], [1656], [5204], [27075], [50001], [16616], [11396], [7748], [48744], [35402], [28120], [41512], [4207], [43144], [14767], [15640], [16595], [41305], [44479], [38958], [18474], [22734], [30522], [46267], [60], [13976], [31830], [48701], [39822], [9014], [21966], [31422], [28052], [34607], [2479], [3851], [32214], [44082], [45507], [3001], [34368], [34758], [13380], [38363], [4299], [46802], [30996], [12630], [49236], [7082], [8795], [5218], [44740], [9686], [9983], [45301], [27114], [40125], [1570], [26997], [544], [5290], [49193], [23781], [14193], [40000], [2947], [43781], [9102], [48064], [42274], [18772], [49384], [9884], [45635], [43521], [31258], [32056], [47686], [21760], [13143], [10148], [26119], [44308], [31379], [36399], [23983], [46694], [36134], [8562], [12977], [35117], [28591], [49021], [47093], [28653], [29013], [46468], [8605], [7254], [25896], [5032], [8168], [36893], [38270], [20499], [27501], [34419], [29547], [28571], [36586], [20871], [30537], [26842], [21375], [31148], [27618], [33094], [3291], [31789], [28391], [870], [9793], [41361], [47916], [27468], [43856], [8850], [35237], [15707], [47552], [2730], [41449], [45488], [3073], [49806], [21938], [24430], [22747], [20924], [46145], [20481], [20197], [8239], [28231], [17987], [42804], [47269], [29972], [49884], [21382], [46295], [36676], [34616], [3921], [26991], [27720], [46265], [654], [9855], [40354], [5291], [34904], [44342], [2470], [14598], [880], [19282], [2498], [24237], [21431], [16369], [8994], [44524], [45662], [13663], [37077], [1447], [37786], [30863], [42854], [1019], [20322], [4398], [12159], [44072], [48664], [31547], [18736], [9259], [31], [16354], [21810], [4357], [37982], [5064], [2033], [32871], [47446], [62], [22158], [37387], [8743], [47007], [17981], [11049], [4622], [37916], [36786], [35138], [29925], [14157], [18095], [27829], [1181], [22226], [5709], [4725], [30189], [37014], [1254], [11380], [42989], [696], [24576], [39487], [30119], [1092], [8088], [2194], [9899], [14412], [21828], [3725], [13544], [5180], [44679], [34398], [3891], [28739], [14219], [37594], [49550], [11326], [6904], [17266], [5749], [10174], [23405], [9955], [38271], [41018], [13011], [48392], [36784], [24254], [21687], [23734], [5413], [41447], [45472], [10122], [17555], [15830], [47384], [12084], [31350], [47940], [11661], [27988], [45443], [905], [49651], [16614], [34993], [6781], [30803], [35869], [8001], [41604], [28118], [46462], [46762], [16262], [17281], [5774], [10943], [5013], [18257], [6750], [4713], [3951], [11899], [38791], [16943], [37596], [9318], [18413], [40473], [13208], [16375]]
+    badwordsids_opt = [[44717], [46613], [48513], [49923], [50185], [48755], [8488], [43303], [49659], [48601], [49817], [45405], [48742], [49925], [47720], [11227], [48937], [48784], [50017], [42248], [49310], [48082], [49895], [50025], [49092], [49007], [8061], [44226], [0], [742], [28578], [15698], [49784], [46679], [39365], [49281], [49609], [48081], [48906], [46161], [48554], [49670], [48677], [49721], [49632], [48610], [48462], [47457], [10975], [46077], [28696], [48709], [43839], [49798], [49154], [48203], [49625], [48395], [50155], [47161], [49095], [48833], [49420], [49666], [48443], [22176], [49242], [48651], [49138], [49750], [40389], [48021], [21838], [49070], [45333], [40862], [1], [49915], [33525], [49858], [50254], [44403], [48992], [48872], [46117], [49853], [47567], [50206], [41552], [50068], [48999], [49703], [49940], [49329], [47620], [49868], [49962], [2], [44082], [50236], [31274], [50260], [47052], [42645], [49177], [17523], [48691], [49900], [49069], [49358], [48794], [47529], [46479], [48457], [646], [49910], [48077], [48935], [46386], [48902], [49151], [48759], [49803], [45587], [48392], [47789], [48654], [49836], [49230], [48188], [50264], [46844], [44690], [48505], [50161], [27779], [49995], [41833], [50154], [49097], [48520], [50018], [8174], [50084], [49366], [49526], [50193], [7479], [49982], [3]]
+    fp32_model  = False  # Whether or not the most recently loaded HF model was in fp32 format
     deletewi    = None   # Temporary storage for UID to delete
     wirmvwhtsp  = False  # Whether to remove leading whitespace from WI entries
     widepth     = 3      # How many historical actions to scan for WI hits
@@ -228,7 +291,7 @@ class vars:
     recentrngm  = None   # If a new random game was recently generated without Submitting after, this is the memory used (as a string), otherwise this is None
     useprompt   = False   # Whether to send the full prompt with every submit action
     breakmodel  = False  # For GPU users, whether to use both system RAM and VRAM to conserve VRAM while offering speedup compared to CPU-only
-    bmsupported = False  # Whether the breakmodel option is supported (GPT-Neo/GPT-J/XGLM only, currently)
+    bmsupported = False  # Whether the breakmodel option is supported (GPT-Neo/GPT-J/XGLM/OPT only, currently)
     nobreakmodel = False  # Something specifically requested Breakmodel to be disabled (For example a models config)
     smandelete  = False  # Whether stories can be deleted from inside the browser
     smanrename  = False  # Whether stories can be renamed from inside the browser
@@ -254,9 +317,23 @@ class vars:
     quiet       = False # If set will suppress any story text from being printed to the console (will only be seen on the client web page)
     debug       = False # If set to true, will send debug information to the client for display
     lazy_load   = True  # Whether or not to use torch_lazy_loader.py for transformers models in order to reduce CPU memory usage
-    use_colab_tpu = os.environ.get("COLAB_TPU_ADDR", "") != ""  # Whether or not we're in a Colab TPU instance and are going to use the TPU rather than the CPU
+    use_colab_tpu = os.environ.get("COLAB_TPU_ADDR", "") != "" or os.environ.get("TPU_NAME", "") != ""  # Whether or not we're in a Colab TPU instance or Kaggle TPU instance and are going to use the TPU rather than the CPU
 
 utils.vars = vars
+
+# Set logging level to reduce chatter from Flask
+import logging
+log = logging.getLogger('werkzeug')
+log.setLevel(logging.ERROR)
+
+# Start flask & SocketIO
+print("{0}Initializing Flask... {1}".format(colors.PURPLE, colors.END), end="")
+from flask import Flask, render_template, Response, request, copy_current_request_context
+from flask_socketio import SocketIO, emit
+app = Flask(__name__, root_path=os.getcwd())
+app.config['SECRET KEY'] = 'secret!'
+socketio = SocketIO(app, async_method="eventlet")
+print("{0}OK!{1}".format(colors.GREEN, colors.END))
 
 #==================================================================#
 # Function to get model selection at startup
@@ -308,12 +385,12 @@ def getModelSelection(modellist):
 #==================================================================#
 # Return all keys in tokenizer dictionary containing char
 #==================================================================#
-def gettokenids(char):
-    keys = []
-    for key in vocab_keys:
-        if(key.find(char) != -1):
-            keys.append(key)
-    return keys
+#def gettokenids(char):
+#    keys = []
+#    for key in vocab_keys:
+#        if(key.find(char) != -1):
+#            keys.append(key)
+#    return keys
 
 #==================================================================#
 # Return Model Name
@@ -322,7 +399,7 @@ def getmodelname():
     if(args.configname):
        modelname = args.configname
        return modelname
-    if(vars.model in ("NeoCustom", "GPT2Custom", "TPUMeshTransformerGPTJ")):
+    if(vars.model in ("NeoCustom", "GPT2Custom", "TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX")):
         modelname = os.path.basename(os.path.normpath(vars.custmodpth))
         return modelname
     else:
@@ -352,7 +429,7 @@ def device_list(n_layers, primary=None, selected=None):
 def device_config(config):
     global breakmodel, generator
     import breakmodel
-    n_layers = config.num_layers if hasattr(config, "num_layers") else config.n_layer
+    n_layers = utils.num_layers(config)
     if(args.breakmodel_gpulayers is not None):
         try:
             breakmodel.gpu_blocks = list(map(int, args.breakmodel_gpulayers.split(',')))
@@ -425,7 +502,7 @@ def device_config(config):
     # If all layers are on the same device, use the old GPU generation mode
     while(len(breakmodel.gpu_blocks) and breakmodel.gpu_blocks[-1] == 0):
         breakmodel.gpu_blocks.pop()
-    if(len(breakmodel.gpu_blocks) and breakmodel.gpu_blocks[-1] in (-1, config.num_layers if hasattr(config, "num_layers") else config.n_layer)):
+    if(len(breakmodel.gpu_blocks) and breakmodel.gpu_blocks[-1] in (-1, utils.num_layers(config))):
         vars.breakmodel = False
         vars.usegpu = True
         vars.gpu_device = len(breakmodel.gpu_blocks)-1
@@ -439,6 +516,7 @@ def device_config(config):
 
 def move_model_to_devices(model):
     global generator
+
     if(not vars.breakmodel):
         if(vars.usegpu):
             model = model.half().to(vars.gpu_device)
@@ -456,22 +534,33 @@ def move_model_to_devices(model):
             model.lm_head.to(breakmodel.primary_device)
         if(hasattr(model.transformer, 'wpe')):
             model.transformer.wpe.to(breakmodel.primary_device)
-    else:
+    elif(not hasattr(model.model, "decoder")):
         model.model.embed_tokens.to(breakmodel.primary_device)
         model.model.layer_norm.to(breakmodel.primary_device)
         model.lm_head.to(breakmodel.primary_device)
         model.model.embed_positions.to(breakmodel.primary_device)
+    else:
+        model.model.decoder.embed_tokens.to(breakmodel.primary_device)
+        if(model.model.decoder.project_in is not None):
+            model.model.decoder.project_in.to(breakmodel.primary_device)
+        if(model.model.decoder.project_out is not None):
+            model.model.decoder.project_out.to(breakmodel.primary_device)
+        model.model.decoder.embed_positions.to(breakmodel.primary_device)
     gc.collect()
     GPTNeoModel.forward = breakmodel.new_forward_neo
     if("GPTJModel" in globals()):
-        GPTJModel.forward = breakmodel.new_forward_neo
+        GPTJModel.forward = breakmodel.new_forward_neo # type: ignore
     if("XGLMModel" in globals()):
-        XGLMModel.forward = breakmodel.new_forward_xglm
+        XGLMModel.forward = breakmodel.new_forward_xglm # type: ignore
+    if("OPTDecoder" in globals()):
+        OPTDecoder.forward = breakmodel.new_forward_opt # type: ignore
     generator = model.generate
     if(hasattr(model, "transformer")):
         breakmodel.move_hidden_layers(model.transformer)
-    else:
+    elif(not hasattr(model.model, "decoder")):
         breakmodel.move_hidden_layers(model.model, model.model.layers)
+    else:
+        breakmodel.move_hidden_layers(model.model.decoder, model.model.decoder.layers)
 
 #==================================================================#
 #  Allow the models to override some settings
@@ -489,6 +578,8 @@ def loadmodelsettings():
             js   = {}
     if vars.model_type == "xglm" or js.get("compat", "j") == "fairseq_lm":
         vars.newlinemode = "s"  # Default to </s> newline mode if using XGLM
+    if vars.model_type == "opt":
+        vars.newlinemode = "ns"  # Handle </s> but don't convert newlines if using Fairseq models that have newlines trained in them
     vars.modelconfig = js
     if("badwordsids" in js):
         vars.badwordsids = js["badwordsids"]
@@ -502,6 +593,8 @@ def loadmodelsettings():
         vars.top_k      = js["top_k"]
     if("tfs" in js):
         vars.tfs        = js["tfs"]
+    if("typical" in js):
+        vars.typical    = js["typical"]
     if("rep_pen" in js):
         vars.rep_pen    = js["rep_pen"]
     if("rep_pen_slope" in js):
@@ -537,6 +630,7 @@ def savesettings():
     js["top_p"]       = vars.top_p
     js["top_k"]       = vars.top_k
     js["tfs"]         = vars.tfs
+    js["typical"]     = vars.typical
     js["rep_pen"]     = vars.rep_pen
     js["rep_pen_slope"] = vars.rep_pen_slope
     js["rep_pen_range"] = vars.rep_pen_range
@@ -584,97 +678,127 @@ def settingschanged():
 #==================================================================#
 #  Read settings from client file JSON and send to vars
 #==================================================================#
+
 def loadsettings():
+    if(path.exists("defaults/" + getmodelname().replace('/', '_') + ".settings")):
+        # Read file contents into JSON object
+        file = open("defaults/" + getmodelname().replace('/', '_') + ".settings", "r")
+        js   = json.load(file)
+        
+        processsettings(js)
+        file.close()
     if(path.exists("settings/" + getmodelname().replace('/', '_') + ".settings")):
         # Read file contents into JSON object
         file = open("settings/" + getmodelname().replace('/', '_') + ".settings", "r")
         js   = json.load(file)
         
-        # Copy file contents to vars
-        if("apikey" in js):
-            vars.apikey     = js["apikey"]
-        if("andepth" in js):
-            vars.andepth    = js["andepth"]
-        if("temp" in js):
-            vars.temp       = js["temp"]
-        if("top_p" in js):
-            vars.top_p      = js["top_p"]
-        if("top_k" in js):
-            vars.top_k      = js["top_k"]
-        if("tfs" in js):
-            vars.tfs        = js["tfs"]
-        if("rep_pen" in js):
-            vars.rep_pen    = js["rep_pen"]
-        if("rep_pen_slope" in js):
-            vars.rep_pen_slope = js["rep_pen_slope"]
-        if("rep_pen_range" in js):
-            vars.rep_pen_range = js["rep_pen_range"]
-        if("genamt" in js):
-            vars.genamt     = js["genamt"]
-        if("max_length" in js):
-            vars.max_length = js["max_length"]
-        if("ikgen" in js):
-            vars.ikgen      = js["ikgen"]
-        if("formatoptns" in js):
-            vars.formatoptns = js["formatoptns"]
-        if("numseqs" in js):
-            vars.numseqs = js["numseqs"]
-        if("widepth" in js):
-            vars.widepth = js["widepth"]
-        if("useprompt" in js):
-            vars.useprompt = js["useprompt"]
-        if("adventure" in js):
-            vars.adventure = js["adventure"]
-        if("chatmode" in js):
-            vars.chatmode = js["chatmode"]
-        if("chatname" in js):
-            vars.chatname = js["chatname"]
-        if("dynamicscan" in js):
-            vars.dynamicscan = js["dynamicscan"]
-        if("nopromptgen" in js):
-            vars.nopromptgen = js["nopromptgen"]
-        if("rngpersist" in js):
-            vars.rngpersist = js["rngpersist"]
-        if("nogenmod" in js):
-            vars.nogenmod = js["nogenmod"]
-        if("autosave" in js):
-            vars.autosave = js["autosave"]
-        if("newlinemode" in js):
-            vars.newlinemode = js["newlinemode"]
-        if("welcome" in js):
-            vars.welcome = js["welcome"]
-
-        if("antemplate" in js):
-            vars.setauthornotetemplate = js["antemplate"]
-            if(not vars.gamestarted):
-                vars.authornotetemplate = vars.setauthornotetemplate
-        
-        if("userscripts" in js):
-            vars.userscripts = []
-            for userscript in js["userscripts"]:
-                if type(userscript) is not str:
-                    continue
-                userscript = userscript.strip()
-                if len(userscript) != 0 and all(q not in userscript for q in ("..", ":")) and all(userscript[0] not in q for q in ("/", "\\")) and os.path.exists(fileops.uspath(userscript)):
-                    vars.userscripts.append(userscript)
-
-        if("corescript" in js and type(js["corescript"]) is str and all(q not in js["corescript"] for q in ("..", ":")) and all(js["corescript"][0] not in q for q in ("/", "\\"))):
-            vars.corescript = js["corescript"]
-        else:
-            vars.corescript = "default.lua"
-
+        processsettings(js)
         file.close()
+        
+def processsettings(js):
+# Copy file contents to vars
+    if("apikey" in js):
+        vars.apikey     = js["apikey"]
+    if("andepth" in js):
+        vars.andepth    = js["andepth"]
+    if("temp" in js):
+        vars.temp       = js["temp"]
+    if("top_p" in js):
+        vars.top_p      = js["top_p"]
+    if("top_k" in js):
+        vars.top_k      = js["top_k"]
+    if("tfs" in js):
+        vars.tfs        = js["tfs"]
+    if("typical" in js):
+        vars.typical    = js["typical"]
+    if("rep_pen" in js):
+        vars.rep_pen    = js["rep_pen"]
+    if("rep_pen_slope" in js):
+        vars.rep_pen_slope = js["rep_pen_slope"]
+    if("rep_pen_range" in js):
+        vars.rep_pen_range = js["rep_pen_range"]
+    if("genamt" in js):
+        vars.genamt     = js["genamt"]
+    if("max_length" in js):
+        vars.max_length = js["max_length"]
+    if("ikgen" in js):
+        vars.ikgen      = js["ikgen"]
+    if("formatoptns" in js):
+        vars.formatoptns = js["formatoptns"]
+    if("numseqs" in js):
+        vars.numseqs = js["numseqs"]
+    if("widepth" in js):
+        vars.widepth = js["widepth"]
+    if("useprompt" in js):
+        vars.useprompt = js["useprompt"]
+    if("adventure" in js):
+        vars.adventure = js["adventure"]
+    if("chatmode" in js):
+        vars.chatmode = js["chatmode"]
+    if("chatname" in js):
+        vars.chatname = js["chatname"]
+    if("dynamicscan" in js):
+        vars.dynamicscan = js["dynamicscan"]
+    if("nopromptgen" in js):
+        vars.nopromptgen = js["nopromptgen"]
+    if("rngpersist" in js):
+        vars.rngpersist = js["rngpersist"]
+    if("nogenmod" in js):
+        vars.nogenmod = js["nogenmod"]
+    if("autosave" in js):
+        vars.autosave = js["autosave"]
+    if("newlinemode" in js):
+        vars.newlinemode = js["newlinemode"]
+    if("welcome" in js):
+        vars.welcome = js["welcome"]
+
+    if("antemplate" in js):
+        vars.setauthornotetemplate = js["antemplate"]
+        if(not vars.gamestarted):
+            vars.authornotetemplate = vars.setauthornotetemplate
+    
+    if("userscripts" in js):
+        vars.userscripts = []
+        for userscript in js["userscripts"]:
+            if type(userscript) is not str:
+                continue
+            userscript = userscript.strip()
+            if len(userscript) != 0 and all(q not in userscript for q in ("..", ":")) and all(userscript[0] not in q for q in ("/", "\\")) and os.path.exists(fileops.uspath(userscript)):
+                vars.userscripts.append(userscript)
+
+    if("corescript" in js and type(js["corescript"]) is str and all(q not in js["corescript"] for q in ("..", ":")) and all(js["corescript"][0] not in q for q in ("/", "\\"))):
+        vars.corescript = js["corescript"]
+    else:
+        vars.corescript = "default.lua"
 
 #==================================================================#
 #  Load a soft prompt from a file
 #==================================================================#
+
+def check_for_sp_change():
+    while(True):
+        time.sleep(0.1)
+        if(vars.sp_changed):
+            with app.app_context():
+                emit('from_server', {'cmd': 'spstatitems', 'data': {vars.spfilename: vars.spmeta} if vars.allowsp and len(vars.spfilename) else {}}, namespace=None, broadcast=True)
+            vars.sp_changed = False
+
+socketio.start_background_task(check_for_sp_change)
+
 def spRequest(filename):
+    if(not vars.allowsp):
+        raise RuntimeError("Soft prompts are not supported by your current model/backend")
+    
+    old_filename = vars.spfilename
+
     vars.spfilename = ""
     settingschanged()
 
     if(len(filename) == 0):
         vars.sp = None
         vars.sp_length = 0
+        if(old_filename != filename):
+            vars.sp_changed = True
         return
 
     global np
@@ -682,7 +806,8 @@ def spRequest(filename):
         import numpy as np
 
     z, version, shape, fortran_order, dtype = fileops.checksp(filename, vars.modeldim)
-    assert isinstance(z, zipfile.ZipFile)
+    if not isinstance(z, zipfile.ZipFile):
+        raise RuntimeError(f"{repr(filename)} is not a valid soft prompt file")
     with z.open('meta.json') as f:
         vars.spmeta = json.load(f)
     z.close()
@@ -703,14 +828,14 @@ def spRequest(filename):
     vars.sp_length = tensor.shape[-2]
     vars.spmeta["n_tokens"] = vars.sp_length
 
-    if(vars.use_colab_tpu or vars.model in ("TPUMeshTransformerGPTJ",)):
+    if(vars.use_colab_tpu or vars.model in ("TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX")):
         rows = tensor.shape[0]
         padding_amount = tpu_mtj_backend.params["seq"] - (tpu_mtj_backend.params["seq"] % -tpu_mtj_backend.params["cores_per_replica"]) - rows
         tensor = np.pad(tensor, ((0, padding_amount), (0, 0)))
         tensor = tensor.reshape(
             tpu_mtj_backend.params["cores_per_replica"],
             -1,
-            tpu_mtj_backend.params["d_model"],
+            tpu_mtj_backend.params.get("d_embed", tpu_mtj_backend.params["d_model"]),
         )
         vars.sp = tpu_mtj_backend.shard_xmap(np.float32(tensor))
     else:
@@ -718,34 +843,25 @@ def spRequest(filename):
 
     vars.spfilename = filename
     settingschanged()
+    if(old_filename != filename):
+            vars.sp_changed = True
 
 #==================================================================#
 # Startup
 #==================================================================#
-
-# Set logging level to reduce chatter from Flask
-import logging
-log = logging.getLogger('werkzeug')
-log.setLevel(logging.ERROR)
-
-# Start flask & SocketIO
-print("{0}Initializing Flask... {1}".format(colors.PURPLE, colors.END), end="")
-from flask import Flask, render_template, Response, request, copy_current_request_context
-from flask_socketio import SocketIO, emit
-app = Flask(__name__)
-app.config['SECRET KEY'] = 'secret!'
-socketio = SocketIO(app, async_method="eventlet")
-print("{0}OK!{1}".format(colors.GREEN, colors.END))
-
 def general_startup():
     global args
     # Parsing Parameters
     parser = argparse.ArgumentParser(description="KoboldAI Server")
     parser.add_argument("--remote", action='store_true', help="Optimizes KoboldAI for Remote Play")
     parser.add_argument("--ngrok", action='store_true', help="Optimizes KoboldAI for Remote Play using Ngrok")
+    parser.add_argument("--localtunnel", action='store_true', help="Optimizes KoboldAI for Remote Play using Localtunnel")
     parser.add_argument("--host", action='store_true', help="Optimizes KoboldAI for Remote Play without using a proxy service")
+    parser.add_argument("--port", type=int, help="Specify the port on which the application will be joinable")
+    parser.add_argument("--aria2_port", type=int, help="Specify the port on which aria2's RPC interface will be open if aria2 is installed (defaults to 6799)")
     parser.add_argument("--model", help="Specify the Model Type to skip the Menu")
     parser.add_argument("--path", help="Specify the Path for local models (For model NeoCustom or GPT2Custom)")
+    parser.add_argument("--revision", help="Specify the model revision for huggingface models (can be a git branch/tag name or a git commit hash)")
     parser.add_argument("--cpu", action='store_true', help="By default unattended launches are on the GPU use this option to force CPU usage.")
     parser.add_argument("--breakmodel", action='store_true', help=argparse.SUPPRESS)
     parser.add_argument("--breakmodel_layers", type=int, help=argparse.SUPPRESS)
@@ -757,9 +873,10 @@ def general_startup():
     parser.add_argument("--nobreakmodel", action='store_true', help="Disables Breakmodel support completely.")
     parser.add_argument("--unblock", action='store_true', default=False, help="Unblocks the KoboldAI port to be accessible from other machines without optimizing for remote play (It is recommended to use --host instead)")
     parser.add_argument("--quiet", action='store_true', default=False, help="If present will suppress any story related text from showing on the console")
+    parser.add_argument("--no_aria2", action='store_true', default=False, help="Prevents KoboldAI from using aria2 to download huggingface models more efficiently, in case aria2 is causing you issues")
     parser.add_argument("--lowmem", action='store_true', help="Extra Low Memory loading for the GPU, slower but memory does not peak to twice the usage")
-
-    
+    parser.add_argument("--savemodel", action='store_true', help="Saves the model to the models folder even if --colab is used (Allows you to save models to Google Drive)")
+    #args: argparse.Namespace = None
     if(os.environ.get("KOBOLDAI_ARGS") is not None):
         import shlex
         args = parser.parse_args(shlex.split(os.environ["KOBOLDAI_ARGS"]))
@@ -767,6 +884,7 @@ def general_startup():
         args = parser.parse_args()
 
     vars.model = args.model;
+    vars.revision = args.revision
 
     if args.colab:
         args.remote = True;
@@ -788,22 +906,23 @@ def general_startup():
     if args.ngrok:
         vars.host = True;
 
+    if args.localtunnel:
+        vars.host = True;
+
     if args.host:
         vars.host = True;
 
     if args.cpu:
         vars.use_colab_tpu = False
-    
-    if args.path is not None:
-        vars.custmodpth = args.path
 
     vars.smandelete = vars.host == args.override_delete
     vars.smanrename = vars.host == args.override_rename
 
+    vars.aria2_port = args.aria2_port or 6799
 
 #==================================================================#
 # Load Model
-#==================================================================#
+#==================================================================#  
 def get_layer_count(model, directory=""):
     if(model not in ["InferKit", "Colab", "OAI", "GooseAI" , "ReadOnly", "TPUMeshTransformerGPTJ"]):
         from transformers import AutoConfig
@@ -869,45 +988,44 @@ def load_model(use_gpu=True, key='', gpu_layers=None, initial_load=False):
         set_aibusy(True)
     if gpu_layers is not None:
         args.breakmodel_gpulayers = gpu_layers
+    
     #We need to wipe out the existing model and refresh the cuda cache
     model = None
     generator = None
+    try:
+        torch.cuda.empty_cache()
+    except:
+        pass
     
-    torch.cuda.empty_cache()
-    print("Cache cleared")
-    print(vars.model)
-    print(args.path)
-    print(vars.custmodpth)
     # If transformers model was selected & GPU available, ask to use CPU or GPU
-    if(vars.model not in ["InferKit", "Colab", "OAI", "GooseAI" , "ReadOnly", "TPUMeshTransformerGPTJ"]):
+    if(vars.model not in ["InferKit", "Colab", "OAI", "GooseAI" , "ReadOnly", "TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX"]):
         vars.allowsp = True
         # Test for GPU support
-        import torch
         
         # Make model path the same as the model name to make this consistent with the other loading method if it isn't a known model type
         # This code is not just a workaround for below, it is also used to make the behavior consistent with other loading methods - Henk717
-        #if(not vars.model in ["NeoCustom", "GPT2Custom"]):
-        #    vars.custmodpth = vars.model
-        #elif(vars.model == "NeoCustom"):
-        #    vars.model = os.path.basename(os.path.normpath(vars.custmodpth))
+        if(not vars.model in ["NeoCustom", "GPT2Custom"]):
+            vars.custmodpth = vars.model
+        elif(vars.model == "NeoCustom"):
+            vars.model = os.path.basename(os.path.normpath(vars.custmodpth))
 
         # Get the model_type from the config or assume a model type if it isn't present
         from transformers import AutoConfig
-        if(os.path.isdir(vars.custmodpth) and vars.custmodpth != ""):
+        if(os.path.isdir(vars.custmodpth.replace('/', '_'))):
             try:
-                model_config = AutoConfig.from_pretrained(vars.custmodpth, cache_dir="cache/")
+                model_config = AutoConfig.from_pretrained(vars.custmodpth.replace('/', '_'), revision=vars.revision, cache_dir="cache")
                 vars.model_type = model_config.model_type
             except ValueError as e:
                 vars.model_type = "not_found"
-        elif(os.path.isdir("models/{}".format(vars.model.replace('/', '_')))):
+        elif(os.path.isdir("models/{}".format(vars.custmodpth.replace('/', '_')))):
             try:
-                model_config = AutoConfig.from_pretrained("models/{}".format(vars.model.replace('/', '_')), cache_dir="cache/")
+                model_config = AutoConfig.from_pretrained("models/{}".format(vars.custmodpth.replace('/', '_')), revision=vars.revision, cache_dir="cache")
                 vars.model_type = model_config.model_type
             except ValueError as e:
                 vars.model_type = "not_found"
         else:
             try:
-                model_config = AutoConfig.from_pretrained(vars.model, cache_dir="cache/")
+                model_config = AutoConfig.from_pretrained(vars.custmodpth, revision=vars.revision, cache_dir="cache")
                 vars.model_type = model_config.model_type
             except ValueError as e:
                 vars.model_type = "not_found"
@@ -919,12 +1037,15 @@ def load_model(use_gpu=True, key='', gpu_layers=None, initial_load=False):
             print("WARNING: No model type detected, assuming Neo (If this is a GPT2 model use the other menu option or --model GPT2Custom)")
             vars.model_type = "gpt_neo"
 
-    if(not vars.use_colab_tpu and vars.model not in ["InferKit", "Colab", "OAI", "GooseAI" , "ReadOnly", "TPUMeshTransformerGPTJ"]):
+        if(vars.model_type == "opt"):
+            vars.badwordsids = vars.badwordsids_opt
+
+    if(not vars.use_colab_tpu and vars.model not in ["InferKit", "Colab", "OAI", "GooseAI" , "ReadOnly", "TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX"]):
         loadmodelsettings()
         loadsettings()
         print("{0}Looking for GPU support...{1}".format(colors.PURPLE, colors.END), end="")
         vars.hascuda = torch.cuda.is_available()
-        vars.bmsupported = vars.model_type in ("gpt_neo", "gptj", "xglm") and not vars.nobreakmodel
+        vars.bmsupported = vars.model_type in ("gpt_neo", "gptj", "xglm", "opt") and not vars.nobreakmodel
         if(args.breakmodel is not None and args.breakmodel):
             print("WARNING: --breakmodel is no longer supported. Breakmodel mode is now automatically enabled when --breakmodel_gpulayers is used (see --help for details).", file=sys.stderr)
         if(args.breakmodel_layers is not None):
@@ -961,20 +1082,19 @@ def load_model(use_gpu=True, key='', gpu_layers=None, initial_load=False):
             genselected = False
 
         if(vars.hascuda):
-            while(genselected == False):
-                if(use_gpu):
-                    if(vars.bmsupported):
-                        vars.breakmodel = True
-                        vars.usegpu = False
-                        genselected = True
-                    else:
-                        vars.breakmodel = False
-                        vars.usegpu = True
-                        genselected = True
-                else:
-                    vars.breakmodel = False
+            if(use_gpu):
+                if(vars.bmsupported):
+                    vars.breakmodel = True
                     vars.usegpu = False
                     genselected = True
+                else:
+                    vars.breakmodel = False
+                    vars.usegpu = True
+                    genselected = True
+            else:
+                vars.breakmodel = False
+                vars.usegpu = False
+                genselected = True
 
     # Ask for API key if InferKit was selected
     if(vars.model == "InferKit"):
@@ -1050,22 +1170,49 @@ def load_model(use_gpu=True, key='', gpu_layers=None, initial_load=False):
                 finally:
                     file.close()
         
-
-
     if(vars.model == "ReadOnly"):
         vars.noai = True
 
     # Start transformers and create pipeline
-    if(not vars.use_colab_tpu and vars.model not in ["InferKit", "Colab", "OAI", "GooseAI" , "ReadOnly", "TPUMeshTransformerGPTJ"]):
+    if(not vars.use_colab_tpu and vars.model not in ["InferKit", "Colab", "OAI", "GooseAI" , "ReadOnly", "TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX"]):
         if(not vars.noai):
             print("{0}Initializing transformers, please wait...{1}".format(colors.PURPLE, colors.END))
+            from transformers import StoppingCriteria, GPT2TokenizerFast, GPT2LMHeadModel, GPTNeoForCausalLM, GPTNeoModel, AutoModelForCausalLM, AutoTokenizer
             for m in ("GPTJModel", "XGLMModel"):
                 try:
                     globals()[m] = getattr(__import__("transformers"), m)
                 except:
                     pass
+            try:
+                from transformers.models.opt.modeling_opt import OPTDecoder
+            except:
+                pass
             import transformers.generation_utils
             from transformers import __version__ as transformers_version
+
+            from transformers import PreTrainedModel
+            from transformers import modeling_utils
+            old_from_pretrained = PreTrainedModel.from_pretrained.__func__
+            @classmethod
+            def new_from_pretrained(cls, pretrained_model_name_or_path, *model_args, **kwargs):
+                vars.fp32_model = False
+                utils.num_shards = None
+                utils.current_shard = 0
+                utils.from_pretrained_model_name = pretrained_model_name_or_path
+                utils.from_pretrained_index_filename = None
+                utils.from_pretrained_kwargs = kwargs
+                utils.bar = None
+                if not args.no_aria2:
+                    utils.aria2_hook(pretrained_model_name_or_path, **kwargs)
+                return old_from_pretrained(cls, pretrained_model_name_or_path, *model_args, **kwargs)
+            PreTrainedModel.from_pretrained = new_from_pretrained
+            if(hasattr(modeling_utils, "get_checkpoint_shard_files")):
+                old_get_checkpoint_shard_files = modeling_utils.get_checkpoint_shard_files
+                def new_get_checkpoint_shard_files(pretrained_model_name_or_path, index_filename, *args, **kwargs):
+                    utils.num_shards = utils.get_num_shards(index_filename)
+                    utils.from_pretrained_index_filename = index_filename
+                    return old_get_checkpoint_shard_files(pretrained_model_name_or_path, index_filename, *args, **kwargs)
+                modeling_utils.get_checkpoint_shard_files = new_get_checkpoint_shard_files
 
             # Lazy loader
             import torch_lazy_loader
@@ -1073,7 +1220,7 @@ def load_model(use_gpu=True, key='', gpu_layers=None, initial_load=False):
                 if not vars.lazy_load:
                     return
 
-                from tqdm import tqdm
+                from tqdm.auto import tqdm
 
                 if "breakmodel" in globals():
                     gpu_blocks = breakmodel.gpu_blocks
@@ -1083,6 +1230,10 @@ def load_model(use_gpu=True, key='', gpu_layers=None, initial_load=False):
                     ram_blocks = gpu_blocks = cumulative_gpu_blocks = None
 
                 def lazy_load_callback(model_dict, f, **_):
+                    if lazy_load_callback.nested:
+                        return
+                    lazy_load_callback.nested = True
+
                     device_map = {}
 
                     for _key, spec in lazy_load_spec.get("layer_weights", {}).items():
@@ -1097,43 +1248,61 @@ def load_model(use_gpu=True, key='', gpu_layers=None, initial_load=False):
                         if isinstance(value, torch_lazy_loader.LazyTensor) and key not in device_map:
                             device_map[key] = vars.gpu_device if vars.hascuda and vars.usegpu else "cpu"
 
+                    if utils.num_shards is None or utils.current_shard == 0:
+                        if utils.num_shards is not None:
+                            num_tensors = len(utils.get_sharded_checkpoint_num_tensors(utils.from_pretrained_model_name, utils.from_pretrained_index_filename, **utils.from_pretrained_kwargs))
+                        else:
+                            num_tensors = len(device_map)
+                        print(flush=True)
+                        utils.bar = tqdm(total=num_tensors, desc="Loading model tensors")
+
                     with zipfile.ZipFile(f, "r") as z:
                         try:
                             last_storage_key = None
                             f = None
-                            import time
-                            class Send_to_socketio(object):
-                              def write(self, bar):
-                                print(bar, end="")
-                                time.sleep(0.01)
-                                emit('from_server', {'cmd': 'model_load_status', 'data': bar}, broadcast=True)
-                            for key in tqdm(sorted(device_map.keys(), key=lambda k: (model_dict[k].key, model_dict[k].seek_offset)), desc="Loading model tensors", file=Send_to_socketio()):
+                            current_offset = 0
+                            if utils.num_shards is not None:
+                                utils.current_shard += 1
+                            for key in sorted(device_map.keys(), key=lambda k: (model_dict[k].key, model_dict[k].seek_offset)):
                                 storage_key = model_dict[key].key
-                                if storage_key != last_storage_key:
+                                if storage_key != last_storage_key or model_dict[key].seek_offset < current_offset:
                                     last_storage_key = storage_key
                                     if isinstance(f, zipfile.ZipExtFile):
                                         f.close()
                                     f = z.open(f"archive/data/{storage_key}")
-                                current_offset = f.tell()
+                                    current_offset = 0
                                 if current_offset != model_dict[key].seek_offset:
-                                    f.seek(model_dict[key].seek_offset - current_offset, 1)
+                                    f.read(model_dict[key].seek_offset - current_offset)
+                                    current_offset = model_dict[key].seek_offset
                                 device = device_map[key]
+                                size = functools.reduce(lambda x, y: x * y, model_dict[key].shape, 1)
+                                dtype = model_dict[key].dtype
+                                nbytes = size if dtype is torch.bool else size * ((torch.finfo if dtype.is_floating_point else torch.iinfo)(dtype).bits >> 3)
                                 #print(f"Transferring <{key}>  to  {'(CPU)' if device == 'cpu' else '[device ' + str(device) + ']'} ... ", end="", flush=True)
                                 model_dict[key] = model_dict[key].materialize(f, map_location="cpu")
+                                if model_dict[key].dtype is torch.float32:
+                                    vars.fp32_model = True
                                 if convert_to_float16 and vars.hascuda and (vars.breakmodel or vars.usegpu) and model_dict[key].dtype is torch.float32:
                                     model_dict[key] = model_dict[key].to(torch.float16)
                                 if not vars.usegpu and not vars.breakmodel and model_dict[key].dtype is torch.float16:
                                     model_dict[key] = model_dict[key].to(torch.float32)
                                 model_dict[key] = model_dict[key].to(device)
                                 #print("OK", flush=True)
+                                current_offset += nbytes
+                                utils.bar.update(1)
                         finally:
+                            if utils.num_shards is None or utils.current_shard >= utils.num_shards:
+                                utils.bar.close()
+                                utils.bar = None
+                            lazy_load_callback.nested = False
                             if isinstance(f, zipfile.ZipExtFile):
                                 f.close()
-                        emit('from_server', {'cmd': 'hide_model_name'}, broadcast=True)
+
+                lazy_load_callback.nested = False
                 return lazy_load_callback
 
-            lazy_load_config_path = os.path.join(path.dirname(path.realpath(__file__)), "maps", vars.model_type + ".json")
-            if(vars.lazy_load and ("model_config" in globals() or "model_config" in locals()) and os.path.isfile(lazy_load_config_path)):
+            lazy_load_config_path = os.path.join("maps", vars.model_type + ".json")
+            if(vars.lazy_load and "model_config" in globals() and os.path.isfile(lazy_load_config_path)):
                 with open(lazy_load_config_path) as f:
                     lazy_load_spec = json.load(f)
 
@@ -1175,8 +1344,10 @@ def load_model(use_gpu=True, key='', gpu_layers=None, initial_load=False):
                     input_ids.clamp_(max=self.config.vocab_size-1)
                     if(hasattr(self, "transformer")):
                         inputs_embeds = self.transformer.wte(input_ids)
-                    else:
+                    elif(not hasattr(self.model, "decoder")):
                         inputs_embeds = self.model.embed_tokens(input_ids)
+                    else:
+                        inputs_embeds = self.model.decoder.embed_tokens(input_ids)
                     if(vars.sp is not None):
                         vars.sp = vars.sp.to(inputs_embeds.dtype).to(inputs_embeds.device)
                         inputs_embeds = torch.where(
@@ -1184,23 +1355,42 @@ def load_model(use_gpu=True, key='', gpu_layers=None, initial_load=False):
                             vars.sp[shifted_input_ids.clamp(min=0)],
                             inputs_embeds,
                         )
-                    if(not hasattr(self, "transformer")):
+                    if(hasattr(self, "model") and hasattr(self.model, "embed_scale")):
                         inputs_embeds *= self.model.embed_scale
                     kwargs['inputs_embeds'] = inputs_embeds
                     return old_forward(self, *args, **kwargs)
                 cls.forward = new_causallm_forward
             for cls in (GPT2LMHeadModel, GPTNeoForCausalLM):
                 patch_causallm(cls)
-            for c in ("GPTJForCausalLM", "XGLMForCausalLM"):
+            for c in ("GPTJForCausalLM", "XGLMForCausalLM", "OPTForCausalLM"):
                 try:
                     patch_causallm(getattr(__import__("transformers"), c))
                 except:
                     pass
 
 
+            # Fix a bug in OPTForCausalLM where self.lm_head is the wrong size
+            if(packaging.version.parse("4.19.0.dev0") <= packaging.version.parse(transformers_version) <= packaging.version.parse("4.19.2")):
+                try:
+                    from transformers import OPTForCausalLM, OPTModel
+                except ImportError:
+                    pass
+                else:
+                    # This is the same as the original __init__ but with
+                    # config.hidden_size
+                    # replaced with
+                    # config.word_embed_proj_dim
+                    def new_init(self, config):
+                        super(OPTForCausalLM, self).__init__(config)
+                        self.model = OPTModel(config)
+                        self.lm_head = torch.nn.Linear(config.word_embed_proj_dim, config.vocab_size, bias=False)
+                        self.post_init()
+                    OPTForCausalLM.__init__ = new_init
+
+
             # Patch transformers to use our custom logit warpers
             from transformers import LogitsProcessorList, LogitsWarper, LogitsProcessor, TopKLogitsWarper, TopPLogitsWarper, TemperatureLogitsWarper, RepetitionPenaltyLogitsProcessor
-            from warpers import AdvancedRepetitionPenaltyLogitsProcessor, TailFreeLogitsWarper
+            from warpers import AdvancedRepetitionPenaltyLogitsProcessor, TailFreeLogitsWarper, TypicalLogitsWarper
 
             def dynamic_processor_wrap(cls, field_name, var_name, cond=None):
                 old_call = cls.__call__
@@ -1222,6 +1412,7 @@ def load_model(use_gpu=True, key='', gpu_layers=None, initial_load=False):
             dynamic_processor_wrap(TopKLogitsWarper, "top_k", "top_k", cond=lambda x: x > 0)
             dynamic_processor_wrap(TopPLogitsWarper, "top_p", "top_p", cond=lambda x: x < 1.0)
             dynamic_processor_wrap(TailFreeLogitsWarper, "tfs", "tfs", cond=lambda x: x < 1.0)
+            dynamic_processor_wrap(TypicalLogitsWarper, "typical", "typical", cond=lambda x: x < 1.0)
             dynamic_processor_wrap(TemperatureLogitsWarper, "temperature", "temp", cond=lambda x: x != 1.0)
             RepetitionPenaltyLogitsProcessor.__init__ = AdvancedRepetitionPenaltyLogitsProcessor.__init__
             RepetitionPenaltyLogitsProcessor.__call__ = AdvancedRepetitionPenaltyLogitsProcessor.__call__
@@ -1267,6 +1458,7 @@ def load_model(use_gpu=True, key='', gpu_layers=None, initial_load=False):
                 warper_list.append(TopKLogitsWarper(top_k=1, min_tokens_to_keep=1 + (beams > 1)))
                 warper_list.append(TopPLogitsWarper(top_p=0.5, min_tokens_to_keep=1 + (beams > 1)))
                 warper_list.append(TailFreeLogitsWarper(tfs=0.5, min_tokens_to_keep=1 + (beams > 1)))
+                warper_list.append(TypicalLogitsWarper(typical=0.5, min_tokens_to_keep=1 + (beams > 1)))
                 warper_list.append(TemperatureLogitsWarper(temperature=0.5))
                 return warper_list
             
@@ -1275,7 +1467,7 @@ def load_model(use_gpu=True, key='', gpu_layers=None, initial_load=False):
                 kwargs["logits_warper"] = new_get_logits_warper(
                     beams=1,
                 )
-                if(vars.newlinemode == "s"):
+                if(vars.newlinemode == "s") or (vars.newlinemode == "ns"):
                     kwargs["eos_token_id"] = -1
                     kwargs.setdefault("pad_token_id", 2)
                 return new_sample.old_sample(self, *args, **kwargs)
@@ -1350,12 +1542,18 @@ def load_model(use_gpu=True, key='', gpu_layers=None, initial_load=False):
 
             def get_hidden_size_from_model(model):
                 try:
-                    return int(model.transformer.hidden_size)
+                    return int(model.model.decoder.project_in.in_features)
                 except:
                     try:
-                        return int(model.transformer.embed_dim)
+                        return int(model.model.decoder.embed_tokens.out_features)
                     except:
-                        return int(model.lm_head.in_features)
+                        try:
+                            return int(model.transformer.hidden_size)
+                        except:
+                            try:
+                                return int(model.transformer.embed_dim)
+                            except:
+                                return int(model.lm_head.in_features)
             
             def maybe_low_cpu_mem_usage() -> Dict[str, Any]:
                 if(packaging.version.parse(transformers_version) < packaging.version.parse("4.11.0")):
@@ -1376,11 +1574,11 @@ def load_model(use_gpu=True, key='', gpu_layers=None, initial_load=False):
             # If custom GPT2 model was chosen
             if(vars.model == "GPT2Custom"):
                 vars.lazy_load = False
-                model_config = open("{}/config.json".format(vars.custmodpth), "r")
+                model_config = open(vars.custmodpth + "/config.json", "r")
                 js   = json.load(model_config)
                 with(maybe_use_float16()):
-                    model = GPT2LMHeadModel.from_pretrained(vars.custmodpth, cache_dir="cache/")
-                tokenizer = GPT2TokenizerFast.from_pretrained(vars.custmodpth, cache_dir="cache/")
+                    model = GPT2LMHeadModel.from_pretrained(vars.custmodpth, revision=vars.revision, cache_dir="cache")
+                tokenizer = GPT2TokenizerFast.from_pretrained(vars.custmodpth, revision=vars.revision, cache_dir="cache")
                 vars.modeldim = get_hidden_size_from_model(model)
                 # Is CUDA available? If so, use GPU, otherwise fall back to CPU
                 if(vars.hascuda and vars.usegpu):
@@ -1409,42 +1607,86 @@ def load_model(use_gpu=True, key='', gpu_layers=None, initial_load=False):
                 if os.path.isdir(vars.model.replace('/', '_')):
                     import shutil
                     shutil.move(vars.model.replace('/', '_'), "models/{}".format(vars.model.replace('/', '_')))
-                with maybe_use_float16(), torch_lazy_loader.use_lazy_torch_load(enable=vars.lazy_load, callback=get_lazy_load_callback(model_config.num_layers if hasattr(model_config, "num_layers") else model_config.n_layer), dematerialized_modules=True):
+                print("\n", flush=True)
+                with maybe_use_float16(), torch_lazy_loader.use_lazy_torch_load(enable=vars.lazy_load, callback=get_lazy_load_callback(utils.num_layers(model_config)) if vars.lazy_load else None, dematerialized_modules=True):
                     if(vars.lazy_load):  # torch_lazy_loader.py and low_cpu_mem_usage can't be used at the same time
                         lowmem = {}
                     if(os.path.isdir(vars.custmodpth)):
                         try:
-                            tokenizer = AutoTokenizer.from_pretrained(vars.custmodpth, cache_dir="cache")
-                        except ValueError as e:
-                            tokenizer = GPT2TokenizerFast.from_pretrained(vars.custmodpth, cache_dir="cache")
+                            tokenizer = AutoTokenizer.from_pretrained(vars.custmodpth, revision=vars.revision, cache_dir="cache")
+                        except Exception as e:
+                            try:
+                                tokenizer = GPT2TokenizerFast.from_pretrained(vars.custmodpth, revision=vars.revision, cache_dir="cache")
+                            except Exception as e:
+                                tokenizer = GPT2TokenizerFast.from_pretrained("gpt2", revision=vars.revision, cache_dir="cache")
                         try:
-                            model     = AutoModelForCausalLM.from_pretrained(vars.custmodpth, cache_dir="cache", **lowmem)
-                        except ValueError as e:
-                            model     = GPTNeoForCausalLM.from_pretrained(vars.custmodpth, cache_dir="cache", **lowmem)
+                            model     = AutoModelForCausalLM.from_pretrained(vars.custmodpth, revision=vars.revision, cache_dir="cache", **lowmem)
+                        except Exception as e:
+                            model     = GPTNeoForCausalLM.from_pretrained(vars.custmodpth, revision=vars.revision, cache_dir="cache", **lowmem)
                     elif(os.path.isdir("models/{}".format(vars.model.replace('/', '_')))):
                         try:
-                            tokenizer = AutoTokenizer.from_pretrained("models/{}".format(vars.model.replace('/', '_')), cache_dir="cache")
-                        except ValueError as e:
-                            tokenizer = GPT2TokenizerFast.from_pretrained("models/{}".format(vars.model.replace('/', '_')), cache_dir="cache")
+                            tokenizer = AutoTokenizer.from_pretrained("models/{}".format(vars.model.replace('/', '_')), revision=vars.revision, cache_dir="cache")
+                        except Exception as e:
+                            try:
+                                tokenizer = GPT2TokenizerFast.from_pretrained("models/{}".format(vars.model.replace('/', '_')), revision=vars.revision, cache_dir="cache")
+                            except Exception as e:
+                                tokenizer = GPT2TokenizerFast.from_pretrained("gpt2", revision=vars.revision, cache_dir="cache")
                         try:
-                            model     = AutoModelForCausalLM.from_pretrained("models/{}".format(vars.model.replace('/', '_')), cache_dir="cache", **lowmem)
-                        except ValueError as e:
-                            model     = GPTNeoForCausalLM.from_pretrained("models/{}".format(vars.model.replace('/', '_')), cache_dir="cache", **lowmem)
+                            model     = AutoModelForCausalLM.from_pretrained("models/{}".format(vars.model.replace('/', '_')), revision=vars.revision, cache_dir="cache", **lowmem)
+                        except Exception as e:
+                            model     = GPTNeoForCausalLM.from_pretrained("models/{}".format(vars.model.replace('/', '_')), revision=vars.revision, cache_dir="cache", **lowmem)
                     else:
-                        try:
-                            tokenizer = AutoTokenizer.from_pretrained(vars.model, cache_dir="cache")
-                        except ValueError as e:
-                            tokenizer = GPT2TokenizerFast.from_pretrained(vars.model, cache_dir="cache")
-                        try:
-                            model     = AutoModelForCausalLM.from_pretrained(vars.model, cache_dir="cache", **lowmem)
-                        except ValueError as e:
-                            model     = GPTNeoForCausalLM.from_pretrained(vars.model, cache_dir="cache", **lowmem)
+                        old_rebuild_tensor = torch._utils._rebuild_tensor
+                        def new_rebuild_tensor(storage: Union[torch_lazy_loader.LazyTensor, torch.Storage], storage_offset, shape, stride):
+                            if(not isinstance(storage, torch_lazy_loader.LazyTensor)):
+                                dtype = storage.dtype
+                            else:
+                                dtype = storage.storage_type.dtype
+                                if(not isinstance(dtype, torch.dtype)):
+                                    dtype = storage.storage_type(0).dtype
+                            if(dtype is torch.float32 and len(shape) >= 2):
+                                vars.fp32_model = True
+                            return old_rebuild_tensor(storage, storage_offset, shape, stride)
+                        torch._utils._rebuild_tensor = new_rebuild_tensor
 
-                        if not args.colab:
+                        try:
+                            tokenizer = AutoTokenizer.from_pretrained(vars.model, revision=vars.revision, cache_dir="cache")
+                        except Exception as e:
+                            try:
+                                tokenizer = GPT2TokenizerFast.from_pretrained(vars.model, revision=vars.revision, cache_dir="cache")
+                            except Exception as e:
+                                tokenizer = GPT2TokenizerFast.from_pretrained("gpt2", revision=vars.revision, cache_dir="cache")
+                        try:
+                            model     = AutoModelForCausalLM.from_pretrained(vars.model, revision=vars.revision, cache_dir="cache", **lowmem)
+                        except Exception as e:
+                            model     = GPTNeoForCausalLM.from_pretrained(vars.model, revision=vars.revision, cache_dir="cache", **lowmem)
+
+                        torch._utils._rebuild_tensor = old_rebuild_tensor
+
+                        if not args.colab or args.savemodel:
                             import shutil
-                            model = model.half()
-                            model.save_pretrained("models/{}".format(vars.model.replace('/', '_')))
                             tokenizer.save_pretrained("models/{}".format(vars.model.replace('/', '_')))
+                            if(vars.fp32_model):  # Use save_pretrained to convert fp32 models to fp16
+                                model = model.half()
+                                model.save_pretrained("models/{}".format(vars.model.replace('/', '_')), max_shard_size="500MiB")
+                            else:  # For fp16 models, we can just copy the model files directly
+                                import transformers.configuration_utils
+                                import transformers.modeling_utils
+                                import transformers.file_utils
+                                # Save the config.json
+                                shutil.move(transformers.file_utils.get_from_cache(transformers.file_utils.hf_bucket_url(vars.model, transformers.configuration_utils.CONFIG_NAME, revision=vars.revision), cache_dir="cache", local_files_only=True), os.path.join("models/{}".format(vars.model.replace('/', '_')), transformers.configuration_utils.CONFIG_NAME))
+                                if(utils.num_shards is None):
+                                    # Save the pytorch_model.bin of an unsharded model
+                                    shutil.move(transformers.file_utils.get_from_cache(transformers.file_utils.hf_bucket_url(vars.model, transformers.modeling_utils.WEIGHTS_NAME, revision=vars.revision), cache_dir="cache", local_files_only=True), os.path.join("models/{}".format(vars.model.replace('/', '_')), transformers.modeling_utils.WEIGHTS_NAME))
+                                else:
+                                    with open(utils.from_pretrained_index_filename) as f:
+                                        map_data = json.load(f)
+                                    filenames = set(map_data["weight_map"].values())
+                                    # Save the pytorch_model.bin.index.json of a sharded model
+                                    shutil.move(utils.from_pretrained_index_filename, os.path.join("models/{}".format(vars.model.replace('/', '_')), transformers.modeling_utils.WEIGHTS_INDEX_NAME))
+                                    # Then save the pytorch_model-#####-of-#####.bin files
+                                    for filename in filenames:
+                                        shutil.move(transformers.file_utils.get_from_cache(transformers.file_utils.hf_bucket_url(vars.model, filename, revision=vars.revision), cache_dir="cache", local_files_only=True), os.path.join("models/{}".format(vars.model.replace('/', '_')), filename))
                             shutil.rmtree("cache/")
                 
                 if(vars.hascuda):
@@ -1476,22 +1718,47 @@ def load_model(use_gpu=True, key='', gpu_layers=None, initial_load=False):
             print("{0}OK! {1} pipeline created!{2}".format(colors.GREEN, vars.model, colors.END))
         
         else:
-            tokenizer = GPT2TokenizerFast.from_pretrained("gpt2", cache_dir="cache/")
+            from transformers import GPT2TokenizerFast
+            tokenizer = GPT2TokenizerFast.from_pretrained("gpt2", revision=vars.revision, cache_dir="cache")
     else:
+        from transformers import PreTrainedModel
+        from transformers import modeling_utils
+        old_from_pretrained = PreTrainedModel.from_pretrained.__func__
+        @classmethod
+        def new_from_pretrained(cls, pretrained_model_name_or_path, *model_args, **kwargs):
+            vars.fp32_model = False
+            utils.num_shards = None
+            utils.current_shard = 0
+            utils.from_pretrained_model_name = pretrained_model_name_or_path
+            utils.from_pretrained_index_filename = None
+            utils.from_pretrained_kwargs = kwargs
+            utils.bar = None
+            if not args.no_aria2:
+                utils.aria2_hook(pretrained_model_name_or_path, **kwargs)
+            return old_from_pretrained(cls, pretrained_model_name_or_path, *model_args, **kwargs)
+        PreTrainedModel.from_pretrained = new_from_pretrained
+        if(hasattr(modeling_utils, "get_checkpoint_shard_files")):
+            old_get_checkpoint_shard_files = modeling_utils.get_checkpoint_shard_files
+            def new_get_checkpoint_shard_files(pretrained_model_name_or_path, index_filename, *args, **kwargs):
+                utils.num_shards = utils.get_num_shards(index_filename)
+                utils.from_pretrained_index_filename = index_filename
+                return old_get_checkpoint_shard_files(pretrained_model_name_or_path, index_filename, *args, **kwargs)
+            modeling_utils.get_checkpoint_shard_files = new_get_checkpoint_shard_files
+
         def tpumtjgetsofttokens():
             soft_tokens = None
             if(vars.sp is None):
                 global np
                 if 'np' not in globals():
                     import numpy as np
-                tensor = np.zeros((1, tpu_mtj_backend.params["d_model"]), dtype=np.float32)
+                tensor = np.zeros((1, tpu_mtj_backend.params.get("d_embed", tpu_mtj_backend.params["d_model"])), dtype=np.float32)
                 rows = tensor.shape[0]
                 padding_amount = tpu_mtj_backend.params["seq"] - (tpu_mtj_backend.params["seq"] % -tpu_mtj_backend.params["cores_per_replica"]) - rows
                 tensor = np.pad(tensor, ((0, padding_amount), (0, 0)))
                 tensor = tensor.reshape(
                     tpu_mtj_backend.params["cores_per_replica"],
                     -1,
-                    tpu_mtj_backend.params["d_model"],
+                    tpu_mtj_backend.params.get("d_embed", tpu_mtj_backend.params["d_model"]),
                 )
                 vars.sp = tpu_mtj_backend.shard_xmap(tensor)
             soft_tokens = np.arange(
@@ -1557,6 +1824,7 @@ def load_model(use_gpu=True, key='', gpu_layers=None, initial_load=False):
                 "temp": float(vars.temp),
                 "top_k": int(vars.top_k),
                 "tfs": float(vars.tfs),
+                "typical": float(vars.typical),
                 "repetition_penalty": float(vars.rep_pen),
                 "rpslope": float(vars.rep_pen_slope),
                 "rprange": int(vars.rep_pen_range),
@@ -1564,17 +1832,23 @@ def load_model(use_gpu=True, key='', gpu_layers=None, initial_load=False):
 
         # If we're running Colab or OAI, we still need a tokenizer.
         if(vars.model == "Colab"):
-            tokenizer = GPT2TokenizerFast.from_pretrained("EleutherAI/gpt-neo-2.7B", cache_dir="cache/")
+            from transformers import GPT2TokenizerFast
+            tokenizer = GPT2TokenizerFast.from_pretrained("EleutherAI/gpt-neo-2.7B", revision=vars.revision, cache_dir="cache")
             loadsettings()
         elif(vars.model == "OAI"):
-            tokenizer = GPT2TokenizerFast.from_pretrained("gpt2", cache_dir="cache/")
+            from transformers import GPT2TokenizerFast
+            tokenizer = GPT2TokenizerFast.from_pretrained("gpt2", revision=vars.revision, cache_dir="cache")
             loadsettings()
         # Load the TPU backend if requested
-        elif(vars.use_colab_tpu or vars.model == "TPUMeshTransformerGPTJ"):
+        elif(vars.use_colab_tpu or vars.model in ("TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX")):
+            if(vars.model == "TPUMeshTransformerGPTNeoX"):
+                vars.badwordsids = vars.badwordsids_neox
             print("{0}Initializing Mesh Transformer JAX, please wait...{1}".format(colors.PURPLE, colors.END))
-            if vars.model == "TPUMeshTransformerGPTJ" and (not vars.custmodpth or not os.path.isdir(vars.custmodpth)):
+            if vars.model in ("TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX") and (not vars.custmodpth or not os.path.isdir(vars.custmodpth)):
                 raise FileNotFoundError(f"The specified model path {repr(vars.custmodpth)} is not the path to a valid folder")
             import tpu_mtj_backend
+            if(vars.model == "TPUMeshTransformerGPTNeoX" or vars.model_type == "opt"):
+                tpu_mtj_backend.pad_token_id = 1
             tpu_mtj_backend.vars = vars
             tpu_mtj_backend.warper_callback = tpumtjgenerate_warper_callback
             tpu_mtj_backend.stopping_callback = tpumtjgenerate_stopping_callback
@@ -1584,12 +1858,12 @@ def load_model(use_gpu=True, key='', gpu_layers=None, initial_load=False):
             vars.allowsp = True
             loadmodelsettings()
             loadsettings()
-            tpu_mtj_backend.load_model(vars.custmodpth, hf_checkpoint=vars.model != "TPUMeshTransformerGPTJ" and vars.use_colab_tpu, **vars.modelconfig)
-            vars.modeldim = int(tpu_mtj_backend.params["d_model"])
+            tpu_mtj_backend.load_model(vars.custmodpth, hf_checkpoint=vars.model not in ("TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX") and vars.use_colab_tpu, **vars.modelconfig)
+            vars.modeldim = int(tpu_mtj_backend.params.get("d_embed", tpu_mtj_backend.params["d_model"]))
             tokenizer = tpu_mtj_backend.tokenizer
         else:
             loadsettings()
-            
+    
     lua_startup()
     # Load scripts
     load_lua_scripts()
@@ -1650,7 +1924,6 @@ def download():
 
 
 #============================ LUA API =============================#
-
 _bridged = {}
 F = TypeVar("F", bound=Callable)
 def lua_startup():
@@ -1673,7 +1946,7 @@ def lua_startup():
         else:
             vars.corescript = "default.lua"
         file.close()
-
+        
     #==================================================================#
     #  Lua runtime startup
     #==================================================================#
@@ -1686,16 +1959,16 @@ def lua_startup():
 
     # Load bridge.lua
     bridged = {
-        "corescript_path": os.path.join(os.path.dirname(os.path.realpath(__file__)), "cores"),
-        "userscript_path": os.path.join(os.path.dirname(os.path.realpath(__file__)), "userscripts"),
-        "config_path": os.path.join(os.path.dirname(os.path.realpath(__file__)), "userscripts"),
-        "lib_paths": vars.lua_state.table(os.path.join(os.path.dirname(os.path.realpath(__file__)), "lualibs"), os.path.join(os.path.dirname(os.path.realpath(__file__)), "extern", "lualibs")),
+        "corescript_path": "cores",
+        "userscript_path": "userscripts",
+        "config_path": "userscripts",
+        "lib_paths": vars.lua_state.table("lualibs", os.path.join("extern", "lualibs")),
         "vars": vars,
     }
     for kwarg in _bridged:
         bridged[kwarg] = _bridged[kwarg]
     try:
-        vars.lua_kobold, vars.lua_koboldcore, vars.lua_koboldbridge = vars.lua_state.globals().dofile(os.path.join(os.path.dirname(os.path.realpath(__file__)), "bridge.lua"))(
+        vars.lua_kobold, vars.lua_koboldcore, vars.lua_koboldbridge = vars.lua_state.globals().dofile("bridge.lua")(
             vars.lua_state.globals().python,
             bridged,
         )
@@ -1708,12 +1981,11 @@ def lua_startup():
     print(colors.GREEN + "OK!" + colors.END)
 
 
-
 def lua_log_format_name(name):
     return f"[{name}]" if type(name) is str else "CORE"
 
+
 def bridged_kwarg(name=None):
-    global F
     def _bridged_kwarg(f: F):
         _bridged[name if name is not None else f.__name__[4:] if f.__name__[:4] == "lua_" else f.__name__] = f
         return f
@@ -1796,8 +2068,9 @@ def lua_decode(tokens):
     tokens = list(tokens.values())
     assert type(tokens) is list
     if("tokenizer" not in globals()):
+        from transformers import GPT2TokenizerFast
         global tokenizer
-        tokenizer = GPT2TokenizerFast.from_pretrained("gpt2", cache_dir="cache/")
+        tokenizer = GPT2TokenizerFast.from_pretrained("gpt2", revision=vars.revision, cache_dir="cache")
     return utils.decodenewlines(tokenizer.decode(tokens))
 
 #==================================================================#
@@ -1807,8 +2080,9 @@ def lua_decode(tokens):
 def lua_encode(string):
     assert type(string) is str
     if("tokenizer" not in globals()):
+        from transformers import GPT2TokenizerFast
         global tokenizer
-        tokenizer = GPT2TokenizerFast.from_pretrained("gpt2", cache_dir="cache/")
+        tokenizer = GPT2TokenizerFast.from_pretrained("gpt2", revision=vars.revision, cache_dir="cache")
     return tokenizer.encode(utils.encodenewlines(string), max_length=int(4e9), truncation=True)
 
 #==================================================================#
@@ -1959,6 +2233,7 @@ def lua_has_setting(setting):
         "settopp",
         "settopk",
         "settfs",
+        "settypical",
         "setreppen",
         "setreppenslope",
         "setreppenrange",
@@ -1969,6 +2244,7 @@ def lua_has_setting(setting):
         "setchatmode",
         "setdynamicscan",
         "setnopromptgen",
+        "autosave",
         "setrngpersist",
         "temp",
         "topp",
@@ -1976,6 +2252,7 @@ def lua_has_setting(setting):
         "topk",
         "top_k",
         "tfs",
+        "typical",
         "reppen",
         "reppenslope",
         "reppenrange",
@@ -2009,6 +2286,7 @@ def lua_get_setting(setting):
     if(setting in ("settopp", "topp", "top_p")): return vars.top_p
     if(setting in ("settopk", "topk", "top_k")): return vars.top_k
     if(setting in ("settfs", "tfs")): return vars.tfs
+    if(setting in ("settypical", "typical")): return vars.typical
     if(setting in ("setreppen", "reppen")): return vars.rep_pen
     if(setting in ("setreppenslope", "reppenslope")): return vars.rep_pen_slope
     if(setting in ("setreppenrange", "reppenrange")): return vars.rep_pen_range
@@ -2020,6 +2298,7 @@ def lua_get_setting(setting):
     if(setting in ("setchatmode", "chatmode")): return vars.chatmode
     if(setting in ("setdynamicscan", "dynamicscan")): return vars.dynamicscan
     if(setting in ("setnopromptgen", "nopromptgen")): return vars.nopromptgen
+    if(setting in ("autosave", "autosave")): return vars.autosave
     if(setting in ("setrngpersist", "rngpersist")): return vars.rngpersist
     if(setting in ("frmttriminc", "triminc")): return vars.formatoptns["frmttriminc"]
     if(setting in ("frmtrmblln", "rmblln")): return vars.formatoptns["frmttrmblln"]
@@ -2042,6 +2321,7 @@ def lua_set_setting(setting, v):
     if(setting in ("settopp", "topp")): vars.top_p = v
     if(setting in ("settopk", "topk")): vars.top_k = v
     if(setting in ("settfs", "tfs")): vars.tfs = v
+    if(setting in ("settypical", "typical")): vars.typical = v
     if(setting in ("setreppen", "reppen")): vars.rep_pen = v
     if(setting in ("setreppenslope", "reppenslope")): vars.rep_pen_slope = v
     if(setting in ("setreppenrange", "reppenrange")): vars.rep_pen_range = v
@@ -2052,6 +2332,7 @@ def lua_set_setting(setting, v):
     if(setting in ("setadventure", "adventure")): vars.adventure = v
     if(setting in ("setdynamicscan", "dynamicscan")): vars.dynamicscan = v
     if(setting in ("setnopromptgen", "nopromptgen")): vars.nopromptgen = v
+    if(setting in ("autosave", "noautosave")): vars.autosave = v
     if(setting in ("setrngpersist", "rngpersist")): vars.rngpersist = v
     if(setting in ("setchatmode", "chatmode")): vars.chatmode = v
     if(setting in ("frmttriminc", "triminc")): vars.formatoptns["frmttriminc"] = v
@@ -2162,7 +2443,7 @@ def lua_get_modeltype():
         return "readonly"
     if(vars.model in ("Colab", "OAI", "InferKit")):
         return "api"
-    if(not vars.use_colab_tpu and vars.model not in ("TPUMeshTransformerGPTJ",) and (vars.model in ("GPT2Custom", "NeoCustom") or vars.model_type in ("gpt2", "gpt_neo", "gptj"))):
+    if(not vars.use_colab_tpu and vars.model not in ("TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX") and (vars.model in ("GPT2Custom", "NeoCustom") or vars.model_type in ("gpt2", "gpt_neo", "gptj"))):
         hidden_size = get_hidden_size_from_model(model)
     if(vars.model in ("gpt2",) or (vars.model_type == "gpt2" and hidden_size == 768)):
         return "gpt2"
@@ -2191,7 +2472,7 @@ def lua_get_modelbackend():
         return "readonly"
     if(vars.model in ("Colab", "OAI", "InferKit")):
         return "api"
-    if(vars.use_colab_tpu or vars.model in ("TPUMeshTransformerGPTJ",)):
+    if(vars.use_colab_tpu or vars.model in ("TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX")):
         return "mtj"
     return "transformers"
 
@@ -2200,7 +2481,30 @@ def lua_get_modelbackend():
 #==================================================================#
 @bridged_kwarg()
 def lua_is_custommodel():
-    return vars.model in ("GPT2Custom", "NeoCustom", "TPUMeshTransformerGPTJ")
+    return vars.model in ("GPT2Custom", "NeoCustom", "TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX")
+
+#==================================================================#
+#  Return the filename (as a string) of the current soft prompt, or
+#  None if no soft prompt is loaded
+#==================================================================#
+@bridged_kwarg()
+def lua_get_spfilename():
+    return vars.spfilename.strip() or None
+
+#==================================================================#
+#  When called with a string as argument, sets the current soft prompt;
+#  when called with None as argument, uses no soft prompt.
+#  Returns True if soft prompt changed, False otherwise.
+#==================================================================#
+@bridged_kwarg()
+def lua_set_spfilename(filename: Union[str, None]):
+    if(filename is None):
+        filename = ""
+    filename = str(filename).strip()
+    changed = lua_get_spfilename() != filename
+    assert all(q not in filename for q in ("/", "\\"))
+    spRequest(filename)
+    return changed
 
 #==================================================================#
 #  
@@ -2246,6 +2550,8 @@ def execute_outmod():
         inlineedit(k, vars.actions[k])
     for k in vars.lua_deleted:
         inlinedelete(k)
+
+
 
 
 #============================ METHODS =============================#    
@@ -2399,6 +2705,11 @@ def get_message(msg):
     elif(msg['cmd'] == 'settfs'):
         vars.tfs = float(msg['data'])
         emit('from_server', {'cmd': 'setlabeltfs', 'data': msg['data']}, broadcast=True)
+        settingschanged()
+        refresh_settings()
+    elif(msg['cmd'] == 'settypical'):
+        vars.typical = float(msg['data'])
+        emit('from_server', {'cmd': 'setlabeltypical', 'data': msg['data']}, broadcast=True)
         settingschanged()
         refresh_settings()
     elif(msg['cmd'] == 'setreppen'):
@@ -2635,7 +2946,6 @@ def get_message(msg):
         loadRequest(fileops.storypath(vars.loadselect))
     elif(msg['cmd'] == 'sprequest'):
         spRequest(vars.spselect)
-        emit('from_server', {'cmd': 'spstatitems', 'data': {vars.spfilename: vars.spmeta} if vars.allowsp and len(vars.spfilename) else {}}, broadcast=True)
     elif(msg['cmd'] == 'deletestory'):
         deletesave(msg['data'])
     elif(msg['cmd'] == 'renamestory'):
@@ -2713,7 +3023,7 @@ def sendUSStatItems():
 #  KoboldAI Markup Formatting (Mixture of Markdown and sanitized html)
 #==================================================================#
 def kml(txt):
-   txt = txt.replace('>', '&gt;')
+   txt = txt.replace('\>', '&gt;')
    txt = bleach.clean(markdown.markdown(txt), tags = ['p', 'em', 'strong', 'code', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'li', 'ul', 'b', 'i', 'a', 'span', 'button'], styles = ['color', 'font-weight'], attributes=['id', 'class', 'style', 'href'])
    return txt
 
@@ -2941,6 +3251,10 @@ def actionretry(data):
     if(vars.noai):
         emit('from_server', {'cmd': 'errmsg', 'data': "Retry function unavailable in Read Only mode."})
         return
+    if(vars.recentrng is not None):
+        if(not vars.aibusy):
+            randomGameRequest(vars.recentrng, memory=vars.recentrngm)
+        return
     if actionback():
         actionsubmit("", actionmode=vars.actionmode, force_submit=True)
         send_debug()
@@ -3048,8 +3362,9 @@ def calcsubmitbudget(actionlen, winfo, mem, anotetxt, actions, submission=None, 
     lnsp = vars.sp_length
 
     if("tokenizer" not in globals()):
+        from transformers import GPT2TokenizerFast
         global tokenizer
-        tokenizer = GPT2TokenizerFast.from_pretrained("gpt2", cache_dir="cache/")
+        tokenizer = GPT2TokenizerFast.from_pretrained("gpt2", revision=vars.revision, cache_dir="cache")
 
     # Calculate token budget
     prompttkns = tokenizer.encode(utils.encodenewlines(vars.comregex_ai.sub('', vars.prompt)), max_length=int(2e9), truncation=True)
@@ -3161,22 +3476,22 @@ def calcsubmit(txt):
     if(vars.model != "InferKit"):
         subtxt, min, max = calcsubmitbudget(actionlen, winfo, mem, anotetxt, vars.actions, submission=txt)
         if(actionlen == 0):
-            if(not vars.use_colab_tpu and vars.model not in ["Colab", "OAI", "TPUMeshTransformerGPTJ"]):
+            if(not vars.use_colab_tpu and vars.model not in ["Colab", "OAI", "TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX"]):
                 generate(subtxt, min, max, found_entries=found_entries)
             elif(vars.model == "Colab"):
                 sendtocolab(utils.decodenewlines(tokenizer.decode(subtxt)), min, max)
             elif(vars.model == "OAI"):
                 oairequest(utils.decodenewlines(tokenizer.decode(subtxt)), min, max)
-            elif(vars.use_colab_tpu or vars.model == "TPUMeshTransformerGPTJ"):
+            elif(vars.use_colab_tpu or vars.model in ("TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX")):
                 tpumtjgenerate(subtxt, min, max, found_entries=found_entries)
         else:
-            if(not vars.use_colab_tpu and vars.model not in ["Colab", "OAI", "TPUMeshTransformerGPTJ"]):
+            if(not vars.use_colab_tpu and vars.model not in ["Colab", "OAI", "TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX"]):
                 generate(subtxt, min, max, found_entries=found_entries)
             elif(vars.model == "Colab"):
                 sendtocolab(utils.decodenewlines(tokenizer.decode(subtxt)), min, max)
             elif(vars.model == "OAI"):
                 oairequest(utils.decodenewlines(tokenizer.decode(subtxt)), min, max)
-            elif(vars.use_colab_tpu or vars.model == "TPUMeshTransformerGPTJ"):
+            elif(vars.use_colab_tpu or vars.model in ("TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX")):
                 tpumtjgenerate(subtxt, min, max, found_entries=found_entries)
                     
     # For InferKit web API
@@ -3516,6 +3831,7 @@ def sendtocolab(txt, min, max):
         'top_p': vars.top_p,
         'top_k': vars.top_k,
         'tfs': vars.tfs,
+        'typical': vars.typical,
         'numseqs': vars.numseqs,
         'retfultxt': False
     }
@@ -3652,6 +3968,7 @@ def tpumtjgenerate(txt, minimum, maximum, found_entries=None):
                 top_p=vars.top_p,
                 top_k=vars.top_k,
                 tfs=vars.tfs,
+                typical=vars.typical,
                 numseqs=vars.numseqs,
                 repetition_penalty=vars.rep_pen,
                 rpslope=vars.rep_pen_slope,
@@ -3837,6 +4154,7 @@ def refresh_settings():
         emit('from_server', {'cmd': 'updatetopp', 'data': vars.top_p}, broadcast=True)
         emit('from_server', {'cmd': 'updatetopk', 'data': vars.top_k}, broadcast=True)
         emit('from_server', {'cmd': 'updatetfs', 'data': vars.tfs}, broadcast=True)
+        emit('from_server', {'cmd': 'updatetypical', 'data': vars.typical}, broadcast=True)
         emit('from_server', {'cmd': 'updatereppen', 'data': vars.rep_pen}, broadcast=True)
         emit('from_server', {'cmd': 'updatereppenslope', 'data': vars.rep_pen_slope}, broadcast=True)
         emit('from_server', {'cmd': 'updatereppenrange', 'data': vars.rep_pen_range}, broadcast=True)
@@ -3854,6 +4172,7 @@ def refresh_settings():
     emit('from_server', {'cmd': 'updateadventure', 'data': vars.adventure}, broadcast=True)
     emit('from_server', {'cmd': 'updatechatmode', 'data': vars.chatmode}, broadcast=True)
     emit('from_server', {'cmd': 'updatedynamicscan', 'data': vars.dynamicscan}, broadcast=True)
+    emit('from_server', {'cmd': 'updateautosave', 'data': vars.autosave}, broadcast=True)
     emit('from_server', {'cmd': 'updatenopromptgen', 'data': vars.nopromptgen}, broadcast=True)
     emit('from_server', {'cmd': 'updaterngpersist', 'data': vars.rngpersist}, broadcast=True)
     emit('from_server', {'cmd': 'updatenogenmod', 'data': vars.nogenmod}, broadcast=True)
@@ -4407,19 +4726,30 @@ def oairequest(txt, min, max):
     vars.lastctx = txt
     
     # Build request JSON data
-    reqdata = {
-        'prompt': txt,
-        'max_tokens': max,
-        'temperature': vars.temp,
-        'top_p': vars.top_p,
-        'top_k': vars.top_k,
-        'tfs': vars.tfs,
-        'repetition_penalty': vars.rep_pen,
-        'repetition_penalty_slope': vars.rep_pen_slope,
-        'repetition_penalty_range': vars.rep_pen_range,
-        'n': 1,
-        'stream': False
-    }
+    if 'GooseAI' in args.configname:
+        reqdata = {
+            'prompt': txt,
+            'max_tokens': vars.genamt,
+            'temperature': vars.temp,
+            'top_p': vars.top_p,
+            'top_k': vars.top_k,
+            'tfs': vars.tfs,
+            'typical_p': vars.typical,
+            'repetition_penalty': vars.rep_pen,
+            'repetition_penalty_slope': vars.rep_pen_slope,
+            'repetition_penalty_range': vars.rep_pen_range,
+            'n': vars.numseqs,
+            'stream': False
+        }
+    else:
+        reqdata = {
+            'prompt': txt,
+            'max_tokens': vars.genamt,
+            'temperature': vars.temp,
+            'top_p': vars.top_p,
+            'n': vars.numseqs,
+            'stream': False
+        }
     
     req = requests.post(
         vars.oaiurl, 
@@ -4432,31 +4762,53 @@ def oairequest(txt, min, max):
     
     # Deal with the response
     if(req.status_code == 200):
-        genout = req.json()["choices"][0]["text"]
+        outputs = [out["text"] for out in req.json()["choices"]]
 
-        vars.lua_koboldbridge.outputs[1] = genout
+        for idx in range(len(outputs)):
+            vars.lua_koboldbridge.outputs[idx+1] = outputs[idx]
 
         execute_outmod()
-        if(vars.lua_koboldbridge.regeneration_required):
+        if (vars.lua_koboldbridge.regeneration_required):
             vars.lua_koboldbridge.regeneration_required = False
-            genout = vars.lua_koboldbridge.outputs[1]
-            assert genout is str
+            genout = []
+            for i in range(len(outputs)):
+                genout.append(
+                    {"generated_text": vars.lua_koboldbridge.outputs[i + 1]})
+                assert type(genout[-1]["generated_text"]) is str
+        else:
+            genout = [
+                {"generated_text": utils.decodenewlines(txt)}
+                for txt in outputs]
+
+        if vars.actions.get_last_key() not in vars.actions_metadata:
+            vars.actions_metadata[vars.actions.get_last_key()] = {
+                "Selected Text": genout[0], "Alternative Text": []}
+        else:
+        # 2. We've selected a chunk of text that is was presented previously
+            try:
+                alternatives = [item['Text'] for item in vars.actions_metadata[len(vars.actions)-1]["Alternative Text"]]
+            except:
+                print(len(vars.actions))
+                print(vars.actions_metadata)
+                raise
+            if genout in alternatives:
+                alternatives = [item for item in vars.actions_metadata[vars.actions.get_last_key() ]["Alternative Text"] if item['Text'] != genout]
+                vars.actions_metadata[vars.actions.get_last_key()]["Alternative Text"] = alternatives
+            vars.actions_metadata[vars.actions.get_last_key()]["Selected Text"] = genout
+
+        if (len(genout) == 1):
+            genresult(genout[0]["generated_text"])
+        else:
+            if (vars.lua_koboldbridge.restart_sequence is not None and
+                    vars.lua_koboldbridge.restart_sequence > 0):
+                genresult(genout[vars.lua_koboldbridge.restart_sequence - 1][
+                              "generated_text"])
+            else:
+                genselect(genout)
 
         if not vars.quiet:
             print("{0}{1}{2}".format(colors.CYAN, genout, colors.END))
-        vars.actions.append(genout)
-        if vars.actions.get_last_key() in vars.actions_metadata:
-            vars.actions_metadata[vars.actions.get_last_key()] = {"Selected Text": genout, "Alternative Text": []}
-        else:
-        # 2. We've selected a chunk of text that is was presented previously
-            alternatives = [item['Text'] for item in vars.actions_metadata[vars.actions.get_last_key()]["Alternative Text"]]
-            if genout in alternatives:
-                alternatives = [item for item in vars.actions_metadata[vars.actions.get_last_key() ]["Alternative Text"] if item['Text'] != genout]
-                vars.actions_metadata[vars.actions.get_last_key() ]["Alternative Text"] = alternatives
-            vars.actions_metadata[vars.actions.get_last_key() ]["Selected Text"] = genout
-        update_story_chunk('last')
-        emit('from_server', {'cmd': 'texteffect', 'data': vars.actions.get_last_key() + 1 if len(vars.actions) else 0}, broadcast=True)
-        send_debug()
+
         set_aibusy(0)
     else:
         # Send error message to web client            
@@ -5193,7 +5545,7 @@ def final_startup():
         file.close()
 
     # Precompile TPU backend if required
-    if(vars.use_colab_tpu or vars.model in ("TPUMeshTransformerGPTJ",)):
+    if(vars.use_colab_tpu or vars.model in ("TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX")):
         soft_tokens = tpumtjgetsofttokens()
         if(vars.dynamicscan or (not vars.nogenmod and vars.has_genmod)):
             threading.Thread(
@@ -5253,7 +5605,7 @@ def send_debug():
             pass
 
         emit('from_server', {'cmd': 'debug_info', 'data': debug_info}, broadcast=True)
-    
+
 #==================================================================#
 #  Final startup commands to launch Flask app
 #==================================================================#
@@ -5268,32 +5620,57 @@ if __name__ == "__main__":
     load_model(initial_load=True)
 
     # Start Flask/SocketIO (Blocking, so this must be last method!)
+    port = args.port if "port" in args and args.port is not None else 5000
     
-    #socketio.run(app, host='0.0.0.0', port=5000)
+    #socketio.run(app, host='0.0.0.0', port=port)
     if(vars.host):
-        if(args.ngrok):
+        if(args.localtunnel):
+            import subprocess, shutil
+            localtunnel = subprocess.Popen([shutil.which('lt'), '-p', str(port), 'http'], stdout=subprocess.PIPE)
+            attempts = 0
+            while attempts < 10:
+                try:
+                    cloudflare = str(localtunnel.stdout.readline())
+                    cloudflare = (re.search("(?P<url>https?:\/\/[^\s]+loca.lt)", cloudflare).group("url"))
+                    break
+                except:
+                    attempts += 1
+                    time.sleep(3)
+                    continue
+            if attempts == 10:
+                print("LocalTunnel could not be created, falling back to cloudflare...")
+                from flask_cloudflared import _run_cloudflared
+                cloudflare = _run_cloudflared(port)
+        elif(args.ngrok):
             from flask_ngrok import _run_ngrok
             cloudflare = _run_ngrok()
         elif(args.remote):
            from flask_cloudflared import _run_cloudflared
-           cloudflare = _run_cloudflared(5000)
-        if(args.ngrok or args.remote):
+           cloudflare = _run_cloudflared(port)
+        if(args.localtunnel or args.ngrok or args.remote):
             with open('cloudflare.log', 'w') as cloudflarelog:
                 cloudflarelog.write("KoboldAI has finished loading and is available at the following link : " + cloudflare)
                 print(format(colors.GREEN) + "KoboldAI has finished loading and is available at the following link : " + cloudflare + format(colors.END))
         else:
-            print("{0}Webserver has started, you can now connect to this machine at port 5000{1}".format(colors.GREEN, colors.END))
+            print("{0}Webserver has started, you can now connect to this machine at port {1}{2}"
+                  .format(colors.GREEN, port, colors.END))
         vars.serverstarted = True
-        socketio.run(app, host='0.0.0.0', port=5000)
+        socketio.run(app, host='0.0.0.0', port=port)
     else:
         import webbrowser
-        webbrowser.open_new('http://localhost:5000')
-        print("{0}Server started!\nYou may now connect with a browser at http://127.0.0.1:5000/{1}".format(colors.GREEN, colors.END))
+        webbrowser.open_new('http://localhost:{0}'.format(port))
+        print("{0}Server started!\nYou may now connect with a browser at http://127.0.0.1:{1}/{2}"
+              .format(colors.GREEN, port, colors.END))
         vars.serverstarted = True
         if args.unblock:
-            socketio.run(app, port=5000, host='0.0.0.0')
+            socketio.run(app, port=port, host='0.0.0.0')
         else:
-            socketio.run(app, port=5000)
+            socketio.run(app, port=port)
 
 else:
+    general_startup()
+    #show_select_model_list()
+    if vars.model == "" or vars.model is None:
+        vars.model = "ReadOnly"
+    load_model(initial_load=True)
     print("{0}\nServer started in WSGI mode!{1}".format(colors.GREEN, colors.END), flush=True)

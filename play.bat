@@ -16,6 +16,7 @@ cmd /k
 
 :drivemap
 ECHO Runtime launching in K: drive mode
+subst /D K: >nul
 subst K: miniconda3 >nul
 SET TEMP=K:\
 SET TMP=K:\
@@ -25,6 +26,7 @@ cmd /k
 
 :drivemap_B
 ECHO Runtime launching in B: drive mode
+subst /D B: >nul
 subst B: miniconda3 >nul
 SET TEMP=B:\
 SET TMP=B:\

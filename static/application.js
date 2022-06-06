@@ -109,6 +109,9 @@ var using_webkit_patch = true;
 var shift_down   = false;
 var do_clear_ent = false;
 
+// Whether or not an entry in the Userscripts menu is being dragged
+var us_dragging = false;
+
 // Display vars
 var allowtoggle = false;
 var formatcount = 0;
@@ -121,9 +124,32 @@ var adventure = false;
 // Chatmode
 var chatmode = false;
 
+var sliders_throttle = getThrottle(200);
+
 //=================================================================//
 //  METHODS
 //=================================================================//
+
+/**
+ * Returns a function that will automatically wait for X ms before executing the callback
+ * The timer is reset each time the returned function is called
+ * Useful for methods where something is overridden too fast
+ * @param ms milliseconds to wait before executing the callback
+ * @return {(function(*): void)|*} function that takes the ms to wait and a callback to execute after the timer
+ */
+function getThrottle(ms) {
+    var timer = {};
+
+    return function (id, callback) {
+        if (timer[id]) {
+            clearTimeout(timer[id]);
+        }
+        timer[id] = setTimeout(function () {
+            callback();
+            delete timer[id];
+        }, ms);
+    }
+}
 
 function addSetting(ob) {	
 	// Add setting block to Settings Menu
@@ -133,9 +159,7 @@ function addSetting(ob) {
 			<div class=\"justifyleft\">\
 				"+ob.label+" <span class=\"helpicon\">?<span class=\"helptext\">"+ob.tooltip+"</span></span>\
 			</div>\
-			<div class=\"justifyright\" id=\""+ob.id+"cur\">\
-				"+ob.default+"\
-			</div>\
+			<input inputmode=\""+(ob.unit === "float" ? "decimal" : "numeric")+"\" class=\"justifyright flex-push-right\" id=\""+ob.id+"cur\" value=\""+ob.default+"\">\
 		</div>\
 		<div>\
 			<input type=\"range\" class=\"form-range airange\" min=\""+ob.min+"\" max=\""+ob.max+"\" step=\""+ob.step+"\" id=\""+ob.id+"\">\
@@ -155,8 +179,37 @@ function addSetting(ob) {
 		window["setting_"+ob.id] = refin;  // Is this still needed?
 		window["label_"+ob.id]   = reflb;  // Is this still needed?
 		// Add event function to input
-		refin.on("input", function () {
-			socket.send({'cmd': $(this).attr('id'), 'data': $(this).val()});
+		var updateLabelColor = function () {
+			var value = (ob.unit === "float" ? parseFloat : parseInt)(reflb.val());
+			if(value > ob.max || value < ob.min) {
+				reflb.addClass("setting-value-warning");
+			} else {
+				reflb.removeClass("setting-value-warning");
+			}
+		}
+		var send = function () {
+			sliders_throttle(ob.id, function () {
+			    socket.send({'cmd': $(refin).attr('id'), 'data': $(reflb).val()});
+			});
+		}
+		refin.on("input", function (event) {
+			reflb.val(refin.val());
+			updateLabelColor();
+			send();
+		}).on("change", updateLabelColor);
+		reflb.on("change", function (event) {
+			var value = (ob.unit === "float" ? parseFloat : parseInt)(event.target.value);
+			if(Number.isNaN(value) || (ob.min >= 0 && value < 0)) {
+				event.target.value = refin.val();
+				return;
+			}
+			if (ob.unit === "float") {
+				value = parseFloat(value.toFixed(3));  // Round to 3 decimal places to help avoid the number being too long to fit in the box
+			}
+			refin.val(value);
+			reflb.val(value);
+			updateLabelColor();
+			send();
 		});
 	} else if(ob.uitype == "toggle"){
 		settings_menu.append("<div class=\"settingitem\">\
@@ -1436,9 +1489,7 @@ function chunkOnBeforeInput(event) {
 		document.execCommand('delete');
 	}
 	var s = rangy.getSelection();
-	if(!s.isCollapsed) {
-		s.deleteFromDocument();
-	}
+
 	if(buildChunkSetFromNodeArray(getSelectedNodes()).size === 0) {
 		var s = rangy.getSelection();
 		var r = s.getRangeAt(0);
@@ -2158,74 +2209,81 @@ $(document).ready(function(){
 			newTextHighlight($("#n"+msg.data))
 		} else if(msg.cmd == "updatetemp") {
 			// Send current temp value to input
-			$("#settemp").val(parseFloat(msg.data));
-			$("#settempcur").html(msg.data);
+			$("#settempcur").val(msg.data);
+			$("#settemp").val(parseFloat(msg.data)).trigger("change");
 		} else if(msg.cmd == "updatetopp") {
 			// Send current top p value to input
-			$("#settopp").val(parseFloat(msg.data));
-			$("#settoppcur").html(msg.data);
+			$("#settoppcur").val(msg.data);
+			$("#settopp").val(parseFloat(msg.data)).trigger("change");
 		} else if(msg.cmd == "updatetopk") {
 			// Send current top k value to input
-			$("#settopk").val(parseFloat(msg.data));
-			$("#settopkcur").html(msg.data);
+			$("#settopkcur").val(msg.data);
+			$("#settopk").val(parseFloat(msg.data)).trigger("change");
 		} else if(msg.cmd == "updatetfs") {
 			// Send current tfs value to input
-			$("#settfs").val(parseFloat(msg.data));
-			$("#settfscur").html(msg.data);
+			$("#settfscur").val(msg.data);
+			$("#settfs").val(parseFloat(msg.data)).trigger("change");
+		} else if(msg.cmd == "updatetypical") {
+			// Send current typical value to input
+			$("#settypicalcur").val(msg.data);
+			$("#settypical").val(parseFloat(msg.data)).trigger("change");
 		} else if(msg.cmd == "updatereppen") {
 			// Send current rep pen value to input
-			$("#setreppen").val(parseFloat(msg.data));
-			$("#setreppencur").html(msg.data);
+			$("#setreppencur").val(msg.data);
+			$("#setreppen").val(parseFloat(msg.data)).trigger("change");
 		} else if(msg.cmd == "updatereppenslope") {
 			// Send current rep pen value to input
-			$("#setreppenslope").val(parseFloat(msg.data));
-			$("#setreppenslopecur").html(msg.data);
+			$("#setreppenslopecur").val(msg.data);
+			$("#setreppenslope").val(parseFloat(msg.data)).trigger("change");
 		} else if(msg.cmd == "updatereppenrange") {
 			// Send current rep pen value to input
-			$("#setreppenrange").val(parseFloat(msg.data));
-			$("#setreppenrangecur").html(msg.data);
+			$("#setreppenrangecur").val(msg.data);
+			$("#setreppenrange").val(parseFloat(msg.data)).trigger("change");
 		} else if(msg.cmd == "updateoutlen") {
 			// Send current output amt value to input
-			$("#setoutput").val(parseInt(msg.data));
-			$("#setoutputcur").html(msg.data);
+			$("#setoutputcur").val(msg.data);
+			$("#setoutput").val(parseInt(msg.data)).trigger("change");
 		} else if(msg.cmd == "updatetknmax") {
 			// Send current max tokens value to input
-			$("#settknmax").val(parseInt(msg.data));
-			$("#settknmaxcur").html(msg.data);
+			$("#settknmaxcur").val(msg.data);
+			$("#settknmax").val(parseInt(msg.data)).trigger("change");
 		} else if(msg.cmd == "updateikgen") {
 			// Send current max tokens value to input
-			$("#setikgen").val(parseInt(msg.data));
-			$("#setikgencur").html(msg.data);
+			$("#setikgencur").val(msg.data);
+			$("#setikgen").val(parseInt(msg.data)).trigger("change");
 		} else if(msg.cmd == "setlabeltemp") {
 			// Update setting label with value from server
-			$("#settempcur").html(msg.data);
+			$("#settempcur").val(msg.data);
 		} else if(msg.cmd == "setlabeltopp") {
 			// Update setting label with value from server
-			$("#settoppcur").html(msg.data);
+			$("#settoppcur").val(msg.data);
 		} else if(msg.cmd == "setlabeltopk") {
 			// Update setting label with value from server
-			$("#settopkcur").html(msg.data);
+			$("#settopkcur").val(msg.data);
 		} else if(msg.cmd == "setlabeltfs") {
 			// Update setting label with value from server
-			$("#settfscur").html(msg.data);
+			$("#settfscur").val(msg.data);
+		} else if(msg.cmd == "setlabeltypical") {
+			// Update setting label with value from server
+			$("#settypicalcur").val(msg.data);
 		} else if(msg.cmd == "setlabelreppen") {
 			// Update setting label with value from server
-			$("#setreppencur").html(msg.data);
+			$("#setreppencur").val(msg.data);
 		} else if(msg.cmd == "setlabelreppenslope") {
 			// Update setting label with value from server
-			$("#setreppenslopecur").html(msg.data);
+			$("#setreppenslopecur").val(msg.data);
 		} else if(msg.cmd == "setlabelreppenrange") {
 			// Update setting label with value from server
-			$("#setreppenrangecur").html(msg.data);
+			$("#setreppenrangecur").val(msg.data);
 		} else if(msg.cmd == "setlabeloutput") {
 			// Update setting label with value from server
-			$("#setoutputcur").html(msg.data);
+			$("#setoutputcur").val(msg.data);
 		} else if(msg.cmd == "setlabeltknmax") {
 			// Update setting label with value from server
-			$("#settknmaxcur").html(msg.data);
+			$("#settknmaxcur").val(msg.data);
 		} else if(msg.cmd == "setlabelikgen") {
 			// Update setting label with value from server
-			$("#setikgencur").html(msg.data);
+			$("#setikgencur").val(msg.data);
 		} else if(msg.cmd == "updateanotedepth") {
 			// Send current Author's Note depth value to input
 			anote_slider.val(parseInt(msg.data));
@@ -2396,15 +2454,15 @@ $(document).ready(function(){
 			$("#setnumseqcur").html(msg.data);
 		} else if(msg.cmd == "updatenumseq") {
 			// Send current max tokens value to input
-			$("#setnumseq").val(parseInt(msg.data));
 			$("#setnumseqcur").html(msg.data);
+			$("#setnumseq").val(parseInt(msg.data)).trigger("change");
 		} else if(msg.cmd == "setlabelwidepth") {
 			// Update setting label with value from server
 			$("#setwidepthcur").html(msg.data);
 		} else if(msg.cmd == "updatewidepth") {
 			// Send current max tokens value to input
-			$("#setwidepth").val(parseInt(msg.data));
 			$("#setwidepthcur").html(msg.data);
+			$("#setwidepth").val(parseInt(msg.data)).trigger("change");
 		} else if(msg.cmd == "updateuseprompt") {
 			// Update toggle state
 			$("#setuseprompt").prop('checked', msg.data).change();
@@ -2424,6 +2482,9 @@ $(document).ready(function(){
 		} else if(msg.cmd == "updatenopromptgen") {
 			// Update toggle state
 			$("#setnopromptgen").prop('checked', msg.data).change();
+		} else if(msg.cmd == "updateautosave") {
+			// Update toggle state
+			$("#autosave").prop('checked', msg.data).change();
 		} else if(msg.cmd == "updaterngpersist") {
 			// Update toggle state
 			$("#setrngpersist").prop('checked', msg.data).change();
@@ -2533,9 +2594,25 @@ $(document).ready(function(){
 		}, 2);
 	});
 
+	var us_click_handler = function(ev) {
+		setTimeout(function() {
+			if (us_dragging) {
+				return;
+			}
+			var target = $(ev.target).closest(".uslistitem")[0];
+			if ($.contains(document.getElementById("uslistunloaded"), target)) {
+				document.getElementById("uslistloaded").appendChild(target);
+			} else {
+				document.getElementById("uslistunloaded").appendChild(target);
+			}
+		}, 10);
+	}
+
 	// Make the userscripts menu sortable
 	var us_sortable_settings = {
 		placeholder: "ussortable-placeholder",
+		start: function() { us_dragging = true; },
+		stop: function() { us_dragging = false; },
 		delay: 2,
 		cursor: "move",
 		tolerance: "pointer",
@@ -2544,12 +2621,12 @@ $(document).ready(function(){
 		scrollSensitivity: 64,
 		scrollSpeed: 10,
 	}
-	$(usunloaded).sortable($.extend({
+	usunloaded.sortable($.extend({
 		connectWith: "#uslistloaded",
-	}, us_sortable_settings));
-	$(usloaded).sortable($.extend({
+	}, us_sortable_settings)).on("click", ".uslistitem", us_click_handler);
+	usloaded.sortable($.extend({
 		connectWith: "#uslistunloaded",
-	}, us_sortable_settings));
+	}, us_sortable_settings)).on("click", ".uslistitem", us_click_handler);
 
 	// Bind actions to UI buttons
 	button_send.on("click", function(ev) {
