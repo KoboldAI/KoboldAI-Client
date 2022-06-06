@@ -349,7 +349,8 @@ def sendModelSelection(menu="mainmenu"):
     #If we send one of the manual load options, send back the list of model directories, otherwise send the menu
     if menu in ('NeoCustom', 'GPT2Custom'):
         menu_list = [[folder, menu, "", False] for folder in next(os.walk('./models'))[1]]
-        menu_list.append(["Read Only (No AI)", "ReadOnly", "", True])
+        menu_list.append(["Return to Main Menu", "mainmenu", "", True])
+        emit('from_server', {'cmd': 'hide_layer_bar'}, broadcast=True)
         emit('from_server', {'cmd': 'show_model_menu', 'data': menu_list, 'menu': 'custom'}, broadcast=True)
     else:
         emit('from_server', {'cmd': 'show_model_menu', 'data': model_menu[menu], 'menu': menu}, broadcast=True)
