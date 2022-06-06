@@ -348,7 +348,9 @@ print("{0}OK!{1}".format(colors.GREEN, colors.END))
 def sendModelSelection(menu="mainmenu"):
     #If we send one of the manual load options, send back the list of model directories, otherwise send the menu
     if menu in ('NeoCustom', 'GPT2Custom'):
-        emit('from_server', {'cmd': 'show_model_menu', 'data': [[folder, menu, "", False] for folder in next(os.walk('./models'))[1]], 'menu': 'custom'}, broadcast=True)
+        menu_list = [[folder, menu, "", False] for folder in next(os.walk('./models'))[1]]
+        menu_list.append(["Read Only (No AI)", "ReadOnly", "", True])
+        emit('from_server', {'cmd': 'show_model_menu', 'data': menu_list, 'menu': 'custom'}, broadcast=True)
     else:
         emit('from_server', {'cmd': 'show_model_menu', 'data': model_menu[menu], 'menu': menu}, broadcast=True)
 
@@ -932,30 +934,26 @@ def general_startup():
 #==================================================================#  
 def get_layer_count(model, directory=""):
     if(model not in ["InferKit", "Colab", "OAI", "GooseAI" , "ReadOnly", "TPUMeshTransformerGPTJ"]):
-        from transformers import AutoConfig
-        if(os.path.isdir(directory)):
-            try:
-                model_config = AutoConfig.from_pretrained(directory, cache_dir="cache/")
-            except ValueError as e:
-                model_config = None
-        elif(os.path.isdir("models/{}".format(model.replace('/', '_')))):
-            try:
-                model_config = AutoConfig.from_pretrained("models/{}".format(model.replace("/", "_")), cache_dir="cache/")
-            except ValueError as e:
-                model_config = None
+        if(vars.model == "GPT2Custom"):
+            model_config = open(vars.custmodpth + "/config.json", "r")
+        # Get the model_type from the config or assume a model type if it isn't present
         else:
-            try:
-                model_config = AutoConfig.from_pretrained(model, cache_dir="cache/")
-            except ValueError as e:
-                model_config = None
-        if model_config is None:
-            return None
-        try:
-            layers = model_config.num_layers if hasattr(model_config, "num_layers") else model_config.n_layer
-        except:
-            layers = None
-            pass
-        return layers
+            from transformers import AutoConfig
+            if vars.custmodpth == "":
+                model_config = AutoConfig.from_pretrained(vars.model, revision=vars.revision, cache_dir="cache")
+            elif(os.path.isdir(vars.custmodpth.replace('/', '_'))):
+                model_config = AutoConfig.from_pretrained(vars.custmodpth.replace('/', '_'), revision=vars.revision, cache_dir="cache")
+            elif(os.path.isdir("models/{}".format(vars.custmodpth.replace('/', '_')))):
+                model_config = AutoConfig.from_pretrained("models/{}".format(vars.custmodpth.replace('/', '_')), revision=vars.revision, cache_dir="cache")
+            else:
+                model_config = AutoConfig.from_pretrained(vars.custmodpth, revision=vars.revision, cache_dir="cache")
+        
+        
+        
+        return utils.num_layers(model_config)
+    else:
+        return None
+
 
 def get_oai_models(dummy=True):
     if vars.oaiapikey != "":
@@ -1891,7 +1889,7 @@ def load_model(use_gpu=True, key='', gpu_layers=None, initial_load=False):
 @app.route('/')
 @app.route('/index')
 def index():
-    return render_template('index.html')
+    return render_template('index.html', hide_ai_menu=args.remote)
 @app.route('/download')
 def download():
     save_format = request.args.get("format", "json").strip().lower()

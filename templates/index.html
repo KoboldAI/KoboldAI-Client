@@ -33,6 +33,7 @@
 						</button>
 						<div class="collapse navbar-collapse" id="navbarNavDropdown">
 							<ul class="nav navbar-nav">
+								{% if not hide_ai_menu %}
 								<li class="nav-item dropdown">
 									<a class="nav-link dropdown-toggle" href="#" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">AI</a>
 									<div class="dropdown-menu">
@@ -40,6 +41,7 @@
 										<a class="dropdown-item" href="#" id="btn_showmodel">Model Info</a>
 									</div>
 								</li>
+								{% endif %}
 								<li class="nav-item dropdown">
 									<a class="nav-link dropdown-toggle" href="#" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">New Game</a>
 									<div class="dropdown-menu">
