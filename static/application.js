@@ -106,6 +106,9 @@ var using_webkit_patch = true;
 var shift_down   = false;
 var do_clear_ent = false;
 
+// Whether or not an entry in the Userscripts menu is being dragged
+var us_dragging = false;
+
 // Display vars
 var allowtoggle = false;
 var formatcount = 0;
@@ -2412,9 +2415,25 @@ $(document).ready(function(){
 		}, 2);
 	});
 
+	var us_click_handler = function(ev) {
+		setTimeout(function() {
+			if (us_dragging) {
+				return;
+			}
+			var target = $(ev.target).closest(".uslistitem")[0];
+			if ($.contains(document.getElementById("uslistunloaded"), target)) {
+				document.getElementById("uslistloaded").appendChild(target);
+			} else {
+				document.getElementById("uslistunloaded").appendChild(target);
+			}
+		}, 10);
+	}
+
 	// Make the userscripts menu sortable
 	var us_sortable_settings = {
 		placeholder: "ussortable-placeholder",
+		start: function() { us_dragging = true; },
+		stop: function() { us_dragging = false; },
 		delay: 2,
 		cursor: "move",
 		tolerance: "pointer",
@@ -2423,12 +2442,12 @@ $(document).ready(function(){
 		scrollSensitivity: 64,
 		scrollSpeed: 10,
 	}
-	$(usunloaded).sortable($.extend({
+	usunloaded.sortable($.extend({
 		connectWith: "#uslistloaded",
-	}, us_sortable_settings));
-	$(usloaded).sortable($.extend({
+	}, us_sortable_settings)).on("click", ".uslistitem", us_click_handler);
+	usloaded.sortable($.extend({
 		connectWith: "#uslistunloaded",
-	}, us_sortable_settings));
+	}, us_sortable_settings)).on("click", ".uslistitem", us_click_handler);
 
 	// Bind actions to UI buttons
 	button_send.on("click", function(ev) {
