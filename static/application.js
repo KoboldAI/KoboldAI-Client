@@ -2513,8 +2513,10 @@ $(document).ready(function(){
 			}
 			if(msg.menu == 'apilist') {
 				$("#modelkey").removeClass("hidden");
+				console.log("Should be showing key");
 			} else {
 				$("#modelkey").addClass("hidden");
+				console.log("Should be hiding key");
 			}
 			buildLoadModelList(msg.data, msg.menu);
 		} else if(msg.cmd == 'show_layer_bar') {
@@ -2529,6 +2531,7 @@ $(document).ready(function(){
 			$("#gpu_count")[0].value = msg.gpu_count;
 			update_gpu_layers();
 		} else if(msg.cmd == 'hide_layer_bar') {
+			console.log("Should be removing layer bar");
 			$("#modellayers").addClass("hidden");
 		} else if(msg.cmd == 'check_enable_model_load') {
 			//Check if it's safe to enable the load model button

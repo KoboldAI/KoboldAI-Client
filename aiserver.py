@@ -350,8 +350,10 @@ def sendModelSelection(menu="mainmenu"):
     if menu in ('NeoCustom', 'GPT2Custom'):
         menu_list = [[folder, menu, "", False] for folder in next(os.walk('./models'))[1]]
         menu_list.append(["Return to Main Menu", "mainmenu", "", True])
-        emit('from_server', {'cmd': 'hide_layer_bar'}, broadcast=True)
         emit('from_server', {'cmd': 'show_model_menu', 'data': menu_list, 'menu': 'custom'}, broadcast=True)
+        time.sleep(0.2)
+        emit('from_server', {'cmd': 'hide_layer_bar'}, broadcast=True)
+        time.sleep(0.2)
     else:
         emit('from_server', {'cmd': 'show_model_menu', 'data': model_menu[menu], 'menu': menu}, broadcast=True)
 
@@ -989,6 +991,7 @@ def load_model(use_gpu=True, key='', gpu_layers=None, initial_load=False):
     global model
     global generator
     global torch
+    global model_config
     vars.noai = False
     if not initial_load:
         set_aibusy(True)
@@ -1618,6 +1621,8 @@ def load_model(use_gpu=True, key='', gpu_layers=None, initial_load=False):
                     import shutil
                     shutil.move(vars.model.replace('/', '_'), "models/{}".format(vars.model.replace('/', '_')))
                 print("\n", flush=True)
+                print("At lazy load section")
+                print(vars.lazy_load)
                 with maybe_use_float16(), torch_lazy_loader.use_lazy_torch_load(enable=vars.lazy_load, callback=get_lazy_load_callback(utils.num_layers(model_config)) if vars.lazy_load else None, dematerialized_modules=True):
                     if(vars.lazy_load):  # torch_lazy_loader.py and low_cpu_mem_usage can't be used at the same time
                         lowmem = {}
