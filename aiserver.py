@@ -103,7 +103,7 @@ model_menu = {
         ["Untuned XGLM", "xglmlist", "", True],
         ["Untuned GPT2", "gpt2list", "", True],
         ["Online Services", "apilist", "", True],
-        ["Read Only (No AI)", "ReadOnly", "", True]
+        ["Read Only (No AI)", "ReadOnly", "", False]
         ],
     'adventurelist': [
         ["Nerys FSD 13B (Hybrid)", "KoboldAI/fairseq-dense-13B-Nerys", "32GB", False],
@@ -326,7 +326,7 @@ class Send_to_socketio(object):
     def write(self, bar):
         print(bar, end="")
         time.sleep(0.01)
-        emit('from_server', {'cmd': 'model_load_status', 'data': bar}, broadcast=True)
+        emit('from_server', {'cmd': 'model_load_status', 'data': bar.replace(" ", "&nbsp;")}, broadcast=True)
                                 
 # Set logging level to reduce chatter from Flask
 import logging
@@ -351,9 +351,6 @@ def sendModelSelection(menu="mainmenu"):
         menu_list = [[folder, menu, "", False] for folder in next(os.walk('./models'))[1]]
         menu_list.append(["Return to Main Menu", "mainmenu", "", True])
         emit('from_server', {'cmd': 'show_model_menu', 'data': menu_list, 'menu': 'custom'}, broadcast=True)
-        time.sleep(0.2)
-        emit('from_server', {'cmd': 'hide_layer_bar'}, broadcast=True)
-        time.sleep(0.2)
     else:
         emit('from_server', {'cmd': 'show_model_menu', 'data': model_menu[menu], 'menu': menu}, broadcast=True)
 
@@ -935,6 +932,46 @@ def general_startup():
 #==================================================================#
 # Load Model
 #==================================================================#  
+def get_model_info(model, directory=""):
+    # if the model is in the api list
+    key = False
+    breakmodel = False
+    gpu = False
+    layer_count = None
+    key_value = ""
+    break_values = []
+    if model in [x[1] for x in model_menu['apilist']]:
+        if path.exists("settings/{}.settings".format(model)):
+            with open("settings/{}.settings".format(model), "r") as file:
+                # Check if API key exists
+                js = json.load(file)
+                if("apikey" in js and js["apikey"] != ""):
+                    # API key exists, grab it and close the file
+                    key_value = js["apikey"]
+                elif 'oaiapikey' in js and js['oaiapikey'] != "":
+                    key_value = js["oaiapikey"]
+        key = True
+    elif model == 'ReadOnly':
+        pass
+    elif not torch.cuda.is_available():
+        pass
+    else:
+        layer_count = get_layer_count(model, directory=directory)
+        if layer_count is None:
+            breakmodel = False
+        else:
+            breakmodel = True
+            if path.exists("settings/{}.breakmodel".format(model.replace("/", "_"))):
+                with open("settings/{}.breakmodel".format(model.replace("/", "_")), "r") as file:
+                    break_values = file.read().split(",")
+            else:
+                break_values = [layer_count]
+                break_values += [0] * (gpu+1 - len(break_values))
+    emit('from_server', {'cmd': 'selected_model_info', 'key_value': key_value, 'key':key, 'gpu':gpu, 'layer_count':layer_count, 'breakmodel':breakmodel, 'break_values': break_values, 'gpu_count': torch.cuda.device_count()}, broadcast=True)
+    if key_value != "":
+        get_oai_models(key_value)
+    
+
 def get_layer_count(model, directory=""):
     if(model not in ["InferKit", "Colab", "OAI", "GooseAI" , "ReadOnly", "TPUMeshTransformerGPTJ"]):
         if(vars.model == "GPT2Custom"):
@@ -958,36 +995,62 @@ def get_layer_count(model, directory=""):
         return None
 
 
-def get_oai_models(dummy=True):
-    if vars.oaiapikey != "":
-        # Get list of models from OAI
-        if dummy:
-            print("{0}Retrieving engine list...{1}".format(colors.PURPLE, colors.END), end="")
-            emit('from_server', {'cmd': 'oai_engines', 'data': [["num1", "Engine 1"], ["num2", "Engine2"]]}, broadcast=True)
-        else:
-            print("{0}Retrieving engine list...{1}".format(colors.PURPLE, colors.END), end="")
-            req = requests.get(
-                vars.oaiengines, 
-                headers = {
-                    'Authorization': 'Bearer '+vars.oaiapikey
-                    }
-                )
-            if(req.status_code == 200):
-                print("{0}OK!{1}".format(colors.GREEN, colors.END))
-                print("{0}Please select an engine to use:{1}\n".format(colors.CYAN, colors.END))
-                engines = req.json()["data"]
-                engines = [[en["id"], "{1} ({2})".format(en['id'], "Ready" if en["Ready"] == True else "Not Ready")] for en in engines]
-                emit('from_server', {'cmd': 'oai_engines', 'data': engines}, broadcast=True)
-            else:
-                # Something went wrong, print the message and quit since we can't initialize an engine
-                print("{0}ERROR!{1}".format(colors.RED, colors.END))
-                print(req.json())
-                emit('from_server', {'cmd': 'errmsg', 'data': req.json()})
+def get_oai_models(key):
+    vars.oaiapikey = key
+    if vars.model == 'OAI':
+        url = "https://api.openai.com/v1/engines"
+    elif vars.model == 'GooseAI':
+        url = "https://api.goose.ai/v1/engines"
     else:
-        print("{0}OAI API Key not set yet, doing nothing...{1}".format(colors.PURPLE, colors.END), end="")
+        return
+        
+    # Get list of models from OAI
+    print("{0}Retrieving engine list...{1}".format(colors.PURPLE, colors.END), end="")
+    req = requests.get(
+        url, 
+        headers = {
+            'Authorization': 'Bearer '+key
+            }
+        )
+    if(req.status_code == 200):
+        engines = req.json()["data"]
+        try:
+            engines = [[en["id"], "{} ({})".format(en['id'], "Ready" if en["ready"] == True else "Not Ready")] for en in engines]
+        except:
+            print(engines)
+            raise
+        
+        online_model = ""
+        changed=False
+        
+        #Save the key
+        if not path.exists("settings"):
+            # If the client settings file doesn't exist, create it
+            # Write API key to file
+            os.makedirs('settings', exist_ok=True)
+        if path.exists("settings/{}.settings".format(vars.model)):
+            with open("settings/{}.settings".format(vars.model), "r") as file:
+                js = json.load(file)
+                if 'online_model' in js:
+                    online_model = js['online_model']
+                if "apikey" in js:
+                    if js['apikey'] != key:
+                        changed=True
+        if changed:
+            with open("settings/{}.settings".format(vars.model), "w") as file:
+                js["apikey"] = key
+                file.write(json.dumps(js, indent=3))
+            
+        emit('from_server', {'cmd': 'oai_engines', 'data': engines, 'online_model': online_model}, broadcast=True)
+    else:
+        # Something went wrong, print the message and quit since we can't initialize an engine
+        print("{0}ERROR!{1}".format(colors.RED, colors.END))
+        print(req.json())
+        emit('from_server', {'cmd': 'errmsg', 'data': req.json()})
+        
             
 
-def load_model(use_gpu=True, key='', gpu_layers=None, initial_load=False):
+def load_model(use_gpu=True, gpu_layers=None, initial_load=False, online_model=""):
     global model
     global generator
     global torch
@@ -1009,6 +1072,31 @@ def load_model(use_gpu=True, key='', gpu_layers=None, initial_load=False):
         torch.cuda.empty_cache()
     except:
         pass
+    
+    #Let's set the GooseAI or OpenAI server URLs if that's applicable
+    if online_model != "":
+        if path.exists("settings/{}.settings".format(vars.model)):
+            changed=False
+            with open("settings/{}.settings".format(vars.model), "r") as file:
+                # Check if API key exists
+                js = json.load(file)
+                if 'online_model' in js:
+                    if js['online_model'] != online_model:
+                        changed=True
+                        js['online_model'] = online_model
+                else:
+                    changed=True
+                    js['online_model'] = online_model
+            if changed:
+                with open("settings/{}.settings".format(vars.model), "w") as file:
+                    file.write(json.dumps(js, indent=3))
+        # Swap OAI Server if GooseAI was selected
+        if(vars.model == "GooseAI"):
+            vars.oaiengines = "https://api.goose.ai/v1/engines"
+            vars.model = "OAI"
+            args.configname = "GooseAI"
+        vars.oaiurl = vars.oaiengines + "/{0}/completions".format(online_model)
+        args.configname = vars.model + "/" + online_model
     
     # If transformers model was selected & GPU available, ask to use CPU or GPU
     if(vars.model not in ["InferKit", "Colab", "OAI", "GooseAI" , "ReadOnly", "TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX"]):
@@ -1152,36 +1240,6 @@ def load_model(use_gpu=True, key='', gpu_layers=None, initial_load=False):
     if(vars.model == "OAI"):
         if not args.configname:
             args.configname = "OAI"
-        if(not path.exists("settings/" + getmodelname().replace('/', '_') + ".settings")):
-            # If the client settings file doesn't exist, create it
-            vars.oaiapikey = key
-            # Write API key to file
-            os.makedirs('settings', exist_ok=True)
-            file = open("settings/" + getmodelname().replace('/', '_') + ".settings", "w")
-            try:
-                js = {"oaiapikey": vars.oaiapikey}
-                file.write(json.dumps(js, indent=3))
-            finally:
-                file.close()
-        else:
-            # Otherwise open it up
-            file = open("settings/" + getmodelname().replace('/', '_') + ".settings", "r")
-            # Check if API key exists
-            js = json.load(file)
-            if("oaiapikey" in js and js["oaiapikey"] != ""):
-                # API key exists, grab it and close the file
-                vars.oaiapikey = js["oaiapikey"]
-                file.close()
-            else:
-                # Get API key, add it to settings object, and write it to disk
-                vars.oaiapikey = key
-                js["oaiapikey"] = vars.oaiapikey
-                # Write API key to file
-                file = open("settings/" + getmodelname().replace('/', '_') + ".settings", "w")
-                try:
-                    file.write(json.dumps(js, indent=3))
-                finally:
-                    file.close()
         
     if(vars.model == "ReadOnly"):
         vars.noai = True
@@ -1621,8 +1679,6 @@ def load_model(use_gpu=True, key='', gpu_layers=None, initial_load=False):
                     import shutil
                     shutil.move(vars.model.replace('/', '_'), "models/{}".format(vars.model.replace('/', '_')))
                 print("\n", flush=True)
-                print("At lazy load section")
-                print(vars.lazy_load)
                 with maybe_use_float16(), torch_lazy_loader.use_lazy_torch_load(enable=vars.lazy_load, callback=get_lazy_load_callback(utils.num_layers(model_config)) if vars.lazy_load else None, dematerialized_modules=True):
                     if(vars.lazy_load):  # torch_lazy_loader.py and low_cpu_mem_usage can't be used at the same time
                         lowmem = {}
@@ -1886,7 +1942,6 @@ def load_model(use_gpu=True, key='', gpu_layers=None, initial_load=False):
     final_startup()
     if not initial_load:
         set_aibusy(False)
-        print("Sending model window close")
         emit('from_server', {'cmd': 'hide_model_name'}, broadcast=True)
         time.sleep(0.1)
 
@@ -2901,11 +2956,17 @@ def get_message(msg):
     elif(msg['cmd'] == 'load_model'):
         if not os.path.exists("settings/"):
             os.mkdir("settings")
-        f = open("settings/" + vars.model.replace('/', '_') + ".breakmodel", "w")
-        f.write(msg['gpu_layers'])
-        f.close()
+        changed = True
+        if os.path.exists("settings/" + vars.model.replace('/', '_') + ".breakmodel"):
+            with open("settings/" + vars.model.replace('/', '_') + ".breakmodel", "r") as file:
+                if file.read() == msg['gpu_layers']:
+                    changed = False
+        if changed:
+            f = open("settings/" + vars.model.replace('/', '_') + ".breakmodel", "w")
+            f.write(msg['gpu_layers'])
+            f.close()
         vars.colaburl = msg['url'] + "/request"
-        load_model(use_gpu=msg['use_gpu'], key=msg['key'], gpu_layers=msg['gpu_layers'])
+        load_model(use_gpu=msg['use_gpu'], gpu_layers=msg['gpu_layers'], online_model=msg['online_model'])
     elif(msg['cmd'] == 'show_model'):
         print("Model Name: {}".format(getmodelname()))
         emit('from_server', {'cmd': 'show_model_name', 'data': getmodelname()}, broadcast=True)
@@ -2913,49 +2974,32 @@ def get_message(msg):
         # This is run when a model line is selected from the UI (line from the model_menu variable) that is tagged as not a menu
         # otherwise we should be running the msg['cmd'] == 'list_model'
         
+        # We have to do a bit of processing though, if we select a custom path, we need to list out the contents of folders
+        # But if we select something else, we need to potentially show model layers for each GPU
+        # We might also need to show key input. All of that happens here
+        
         # The data variable will contain the model name. But our Custom lines need a bit more processing
         # If we're on a custom line that we have selected a model for, the path variable will be in msg
         # so if that's missing we need to run the menu to show the model folders in the models folder
         if msg['data'] in ('NeoCustom', 'GPT2Custom') and 'path' not in msg:
             sendModelSelection(menu=msg['data'])
-        elif msg['data'] in ('OAI', 'GooseAI'):
-            vars.model = msg['data']
-            get_oai_models()
-            emit('from_server', {'cmd': 'hide_layer_bar'}, broadcast=True)
-            emit('from_server', {'cmd': 'check_enable_model_load', 'model': vars.model}, broadcast=True)
+        #elif msg['data'] in ('OAI', 'GooseAI'):
+        #    vars.model = msg['data']
+        #    get_oai_models()
+        #    emit('from_server', {'cmd': 'hide_layer_bar'}, broadcast=True)
+        #    emit('from_server', {'cmd': 'check_enable_model_load', 'model': vars.model}, broadcast=True)
         else:
-            #we have a real model to load now, so let's save the data. We won't load it until the user
-            #selects the accept button (runs msg['cmd'] == 'load_mode')
             vars.model = msg['data']
             if 'path' in msg:
-                vars.custmodpth = "models/{}".format(msg['path'])
-                if msg['data'] == 'GPT2Custom':
-                    layers = None
-                elif msg['data'] == 'NeoCustom':
-                    layers = get_layer_count(vars.custmodpth, directory=msg['path'])
+                if msg['data'] == 'NeoCustom':
+                    get_model_info(vars.custmodpth, directory=msg['path'])
                 else:
-                    layers = get_layer_count(vars.model, directory=msg['path'])
+                    get_model_info(vars.model, directory=msg['path'])
             else:
-                layers = get_layer_count(vars.model)
-            if layers is not None:
-                #If we can use layers on the mode, we will check to see if there is a "breakmodel" file in the settings
-                #this file contains the number of layers on each gpu the last time we loaded the model
-                #and becomes our default
-                if path.exists("settings/" + vars.model.replace('/', '_') + ".breakmodel"):
-                    f = open("settings/" + vars.model.replace('/', '_') + ".breakmodel", "r")
-                    breakmodel = f.read().split(",")
-                    f.close()
-                else:
-                    #If we don't have a default, just set it to 100% GPU
-                    breakmodel = [layers for i in range(torch.cuda.device_count())]
-                emit('from_server', {'cmd': 'show_layer_bar', 'data': layers, 'gpu_count': torch.cuda.device_count(), 'breakmodel': breakmodel}, broadcast=True)
-            else:
-                emit('from_server', {'cmd': 'hide_layer_bar'}, broadcast=True)
-                emit('from_server', {'cmd': 'check_enable_model_load', 'model': vars.model}, broadcast=True)
+                get_model_info(vars.model)
+            
     elif(msg['cmd'] == 'OAI_Key_Update'):
-        if vars.oaiapikey != msg['data']:
-            vars.oaiapikey = msg['data']
-            get_oai_models()
+        get_oai_models(msg['key'])
     elif(msg['cmd'] == 'loadselect'):
         vars.loadselect = msg["data"]
     elif(msg['cmd'] == 'spselect'):

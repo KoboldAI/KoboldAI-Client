@@ -1031,21 +1031,11 @@ function buildLoadModelList(ar, menu) {
 		} else {
 			$("#loadmodel"+i).off("click").on("click", (function () {
 				return function () {
+					$("#use_gpu_div").addClass("hidden");
+					$("#modelkey").addClass("hidden");
+					$("#modellayers").addClass("hidden");
 					socket.send({'cmd': 'selectmodel', 'data': $(this).attr("name")});
 					highlightLoadLine($(this));
-					if($(this).attr("name") == 'Colab') {
-						$("#modelurl").removeClass('hidden');
-						$("#modelkey").addClass('hidden');
-						$("#oaimodel").addClass('hidden');
-					} else if($(this).attr("name") == 'OAI' || $(this).attr("name") == 'GooseAI') {
-						$("#modelurl").addClass('hidden');
-						$("#modelkey").removeClass('hidden');
-						$("#oaimodel").removeClass('hidden');
-					} else {
-						$("#modelurl").addClass('hidden');
-						$("#modelkey").removeClass('hidden');
-						$("#oaimodel").addClass('hidden');
-					}
 				}
 			})(i));
 		}
@@ -1906,30 +1896,6 @@ function update_gpu_layers() {
 	}
 }
 
-function check_enable_model_load() {
-	if(model == 'Colab') {
-		if($('#modelurl')[0].value != "") {
-			enableButtons([load_model_accept]);
-		} else {
-			disableButtons([load_model_accept]);
-		}
-	} else if(model == 'OAI' || model == 'GooseAI') {
-		socket.send({'cmd': 'OAI_Key_Update', 'data': $('#modelkey')[0].value});
-		if($('#modelkey')[0].value != "" && $('#oaimodel')[0].value != 'Select OAI Model') {
-			enableButtons([load_model_accept]);
-		} else {
-			disableButtons([load_model_accept]);
-		}
-	} else if(model == 'InferKit') {
-		if($('#modelkey')[0].value != "") {
-			enableButtons([load_model_accept]);
-		} else {
-			disableButtons([load_model_accept]);
-		}
-	} else {
-		enableButtons([load_model_accept]);
-	}
-}
 
 function RemoveAllButFirstOption(selectElement) {
    var i, L = selectElement.options.length - 1;
@@ -2506,39 +2472,54 @@ $(document).ready(function(){
 				debug_area.addClass("hidden");
 			}
 		} else if(msg.cmd == 'show_model_menu') {
-			if(msg.menu == 'gpt2list') {
+			$("#use_gpu_div").addClass("hidden");
+			$("#modelkey").addClass("hidden");
+			$("#modellayers").addClass("hidden");
+			$("#oaimodel").addClass("hidden")
+			buildLoadModelList(msg.data, msg.menu);
+		} else if(msg.cmd == 'selected_model_info') {
+			enableButtons([load_model_accept]);
+			$("#oaimodel").addClass("hidden")
+			if (msg.key) {
+				$("#modelkey").removeClass("hidden");
+				$("#modelkey")[0].value = msg.key_value;
+			} else {
+				$("#modelkey").addClass("hidden");
+			}
+			if (msg.gpu) {
 				$("#use_gpu_div").removeClass("hidden");
 			} else {
 				$("#use_gpu_div").addClass("hidden");
 			}
-			if(msg.menu == 'apilist') {
-				$("#modelkey").removeClass("hidden");
-				console.log("Should be showing key");
+			if (msg.breakmodel) {
+				var html;
+				$("#modellayers").removeClass("hidden");
+				html = "";
+				msg.break_values.forEach(function (item, index) {
+					html += "GPU " + index + ": <input type='range' class='form-range airange' min='0' max='"+msg.layer_count+"' step='1' value='"+item+"' id='gpu_layers"+index+"' onchange='update_gpu_layers();'>";
+				})
+				$("#model_layer_bars").html(html);
+				$("#gpu_layers_max").html(msg.layer_count);
+				$("#gpu_count")[0].value = msg.gpu_count;
+				update_gpu_layers();
 			} else {
-				$("#modelkey").addClass("hidden");
-				console.log("Should be hiding key");
+				$("#modellayers").addClass("hidden");
 			}
-			buildLoadModelList(msg.data, msg.menu);
-		} else if(msg.cmd == 'show_layer_bar') {
-			var html;
-			$("#modellayers").removeClass("hidden");
-			html = "";
-			for (let i=0; i < msg.gpu_count; i++) {
-				html += "GPU " + i + ": <input type='range' class='form-range airange' min='0' max='"+msg.data+"' step='1' value='"+msg.breakmodel[i]+"' id='gpu_layers"+i+"' onchange='update_gpu_layers();'>";
-			}
-			$("#model_layer_bars").html(html);
-			$("#gpu_layers_max").html(msg.data);
-			$("#gpu_count")[0].value = msg.gpu_count;
-			update_gpu_layers();
-		} else if(msg.cmd == 'hide_layer_bar') {
-			console.log("Should be removing layer bar");
-			$("#modellayers").addClass("hidden");
-		} else if(msg.cmd == 'check_enable_model_load') {
-			//Check if it's safe to enable the load model button
-			//The backend checks for the layers, so if it requires layers then another function enables the button
-			//This is only for the online services or models that don't use layers
-			model = msg.model;
-			check_enable_model_load();
+		} else if(msg.cmd == 'oai_engines') {
+			$("#oaimodel").removeClass("hidden")
+			selected_item = 0;
+			msg.data.forEach(function (item, index) {
+				var option = document.createElement("option");
+				option.value = item[0];
+				option.text = item[1];
+				if(msg.online_model == item[0]) {
+					selected_item = index+1;
+				}
+				$("#oaimodel")[0].appendChild(option);
+				if(selected_item != "") {
+					$("#oaimodel")[0].options[selected_item].selected = true;
+				}
+			})
 		} else if(msg.cmd == 'show_model_name') {
 			$("#showmodelnamecontent").html("<div class=\"flex\"><div class=\"loadlistpadding\"></div><div class=\"loadlistitem\">" + msg.data + "</div></div>");
 			$("#showmodelnamecontainer").removeClass("hidden");
@@ -2787,7 +2768,7 @@ $(document).ready(function(){
 		hideMessage();
 		var gpu_layers;
 		var message;
-		if($("#modellayers")[0].hidden) {
+		if($("#modellayers")[0].classList.contains('hidden')) {
 			gpu_layers = ","
 		} else {
 			gpu_layers = ""
@@ -2795,7 +2776,7 @@ $(document).ready(function(){
 				gpu_layers += $("#gpu_layers"+i)[0].value + ",";
 			}
 		}
-		message = {'cmd': 'load_model', 'use_gpu': $('#use_gpu')[0].checked, 'key': $('#modelkey')[0].value, 'gpu_layers': gpu_layers.slice(0, -1), 'url': $('#modelurl')[0].value};
+		message = {'cmd': 'load_model', 'use_gpu': $('#use_gpu')[0].checked, 'key': $('#modelkey')[0].value, 'gpu_layers': gpu_layers.slice(0, -1), 'url': $('#modelurl')[0].value, 'online_model': $('#oaimodel')[0].value};
 		socket.send(message);
 		loadmodelcontent.html("");
 		hideLoadModelPopup();
