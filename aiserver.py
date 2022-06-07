@@ -934,27 +934,28 @@ def general_startup():
 #==================================================================# 
 
 def tpumtjgetsofttokens():
-            soft_tokens = None
-            if(vars.sp is None):
-                global np
-                if 'np' not in globals():
-                    import numpy as np
-                tensor = np.zeros((1, tpu_mtj_backend.params.get("d_embed", tpu_mtj_backend.params["d_model"])), dtype=np.float32)
-                rows = tensor.shape[0]
-                padding_amount = tpu_mtj_backend.params["seq"] - (tpu_mtj_backend.params["seq"] % -tpu_mtj_backend.params["cores_per_replica"]) - rows
-                tensor = np.pad(tensor, ((0, padding_amount), (0, 0)))
-                tensor = tensor.reshape(
-                    tpu_mtj_backend.params["cores_per_replica"],
-                    -1,
-                    tpu_mtj_backend.params.get("d_embed", tpu_mtj_backend.params["d_model"]),
-                )
-                vars.sp = tpu_mtj_backend.shard_xmap(tensor)
-            soft_tokens = np.arange(
-                tpu_mtj_backend.params["n_vocab"] + tpu_mtj_backend.params["n_vocab_padding"],
-                tpu_mtj_backend.params["n_vocab"] + tpu_mtj_backend.params["n_vocab_padding"] + vars.sp_length,
-                dtype=np.uint32
-            )
-            return soft_tokens
+    import tpu_mtj_backend
+    soft_tokens = None
+    if(vars.sp is None):
+        global np
+        if 'np' not in globals():
+            import numpy as np
+        tensor = np.zeros((1, tpu_mtj_backend.params.get("d_embed", tpu_mtj_backend.params["d_model"])), dtype=np.float32)
+        rows = tensor.shape[0]
+        padding_amount = tpu_mtj_backend.params["seq"] - (tpu_mtj_backend.params["seq"] % -tpu_mtj_backend.params["cores_per_replica"]) - rows
+        tensor = np.pad(tensor, ((0, padding_amount), (0, 0)))
+        tensor = tensor.reshape(
+            tpu_mtj_backend.params["cores_per_replica"],
+            -1,
+            tpu_mtj_backend.params.get("d_embed", tpu_mtj_backend.params["d_model"]),
+        )
+        vars.sp = tpu_mtj_backend.shard_xmap(tensor)
+    soft_tokens = np.arange(
+        tpu_mtj_backend.params["n_vocab"] + tpu_mtj_backend.params["n_vocab_padding"],
+        tpu_mtj_backend.params["n_vocab"] + tpu_mtj_backend.params["n_vocab_padding"] + vars.sp_length,
+        dtype=np.uint32
+    )
+    return soft_tokens
  
 def get_model_info(model, directory=""):
     # if the model is in the api list
