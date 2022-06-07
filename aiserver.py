@@ -5611,6 +5611,7 @@ def final_startup():
 
     # Precompile TPU backend if required
     if(vars.use_colab_tpu or vars.model in ("TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX")):
+        import tpu_mtj_backend
         soft_tokens = tpumtjgetsofttokens()
         if(vars.dynamicscan or (not vars.nogenmod and vars.has_genmod)):
             threading.Thread(
