@@ -2486,6 +2486,11 @@ $(document).ready(function(){
 			} else {
 				$("#modelkey").addClass("hidden");
 			}
+			if (msg.url) {
+				$("#modelurl").removeClass("hidden");
+			} else {
+				$("#modelurl").addClass("hidden");
+			}
 			if (msg.gpu) {
 				$("#use_gpu_div").removeClass("hidden");
 			} else {

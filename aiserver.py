@@ -965,6 +965,7 @@ def get_model_info(model, directory=""):
     layer_count = None
     key_value = ""
     break_values = []
+    url = False
     if model in [x[1] for x in model_menu['apilist']]:
         if path.exists("settings/{}.settings".format(model)):
             with open("settings/{}.settings".format(model), "r") as file:
@@ -978,6 +979,8 @@ def get_model_info(model, directory=""):
         key = True
     elif model == 'ReadOnly':
         pass
+    elif model == 'Colab':
+        url = True
     elif not torch.cuda.is_available():
         pass
     else:
@@ -992,7 +995,10 @@ def get_model_info(model, directory=""):
             else:
                 break_values = [layer_count]
                 break_values += [0] * (gpu+1 - len(break_values))
-    emit('from_server', {'cmd': 'selected_model_info', 'key_value': key_value, 'key':key, 'gpu':gpu, 'layer_count':layer_count, 'breakmodel':breakmodel, 'break_values': break_values, 'gpu_count': torch.cuda.device_count()}, broadcast=True)
+    emit('from_server', {'cmd': 'selected_model_info', 'key_value': key_value, 'key':key, 
+                         'gpu':gpu, 'layer_count':layer_count, 'breakmodel':breakmodel, 
+                         'break_values': break_values, 'gpu_count': torch.cuda.device_count(),
+                         'url': url}, broadcast=True)
     if key_value != "":
         get_oai_models(key_value)
     
@@ -1224,36 +1230,7 @@ def load_model(use_gpu=True, gpu_layers=None, initial_load=False, online_model="
 
     # Ask for API key if InferKit was selected
     if(vars.model == "InferKit"):
-        if(not path.exists("settings/" + getmodelname().replace('/', '_') + ".settings")):
-            # If the client settings file doesn't exist, create it
-            vars.apikey = key
-            # Write API key to file
-            os.makedirs('settings', exist_ok=True)
-            file = open("settings/" + getmodelname().replace('/', '_') + ".settings", "w")
-            try:
-                js = {"apikey": vars.apikey}
-                file.write(json.dumps(js, indent=3))
-            finally:
-                file.close()
-        else:
-            # Otherwise open it up
-            file = open("settings/" + getmodelname().replace('/', '_') + ".settings", "r")
-            # Check if API key exists
-            js = json.load(file)
-            if("apikey" in js and js["apikey"] != ""):
-                # API key exists, grab it and close the file
-                vars.apikey = js["apikey"]
-                file.close()
-            else:
-                # Get API key, add it to settings object, and write it to disk
-                vars.apikey = key
-                js["apikey"] = vars.apikey
-                # Write API key to file
-                file = open("settings/" + getmodelname().replace('/', '_') + ".settings", "w")
-                try:
-                    file.write(json.dumps(js, indent=3))
-                finally:
-                    file.close()
+        vars.apikey = vars.oaiapikey
                     
     # Swap OAI Server if GooseAI was selected
     if(vars.model == "GooseAI"):
@@ -2969,7 +2946,7 @@ def get_message(msg):
             f.write(msg['gpu_layers'])
             f.close()
         vars.colaburl = msg['url'] + "/request"
-        load_model(use_gpu=msg['use_gpu'], gpu_layers=msg['gpu_layers'], online_model=msg['online_model'])
+        load_model(use_gpu=msg['use_gpu'], gpu_layers=msg['gpu_layers'], online_model=msg['online_model'], url=msg['url'])
     elif(msg['cmd'] == 'show_model'):
         print("Model Name: {}".format(getmodelname()))
         emit('from_server', {'cmd': 'show_model_name', 'data': getmodelname()}, broadcast=True)
