@@ -7,6 +7,7 @@ var socket;
 
 // UI references for jQuery
 var connect_status;
+var button_loadmodel;
 var button_newgame;
 var button_rndgame;
 var button_save;
@@ -55,6 +56,7 @@ var savepins;
 var topic;
 var saveas_accept;
 var saveas_close;
+var loadmodelpopup;
 var loadpopup;
 var	loadcontent;
 var	load_accept;
@@ -98,6 +100,7 @@ var remote = false;
 var gamestate = "";
 var gamesaved = true;
 var modelname = null;
+var model = "";
 
 // This is true iff [we're in macOS and the browser is Safari] or [we're in iOS]
 var using_webkit_patch = true;
@@ -943,6 +946,17 @@ function sendSaveAsRequest() {
 	socket.send({'cmd': 'saveasrequest', 'data': {"name": saveasinput.val(), "pins": savepins.val()}});
 }
 
+function showLoadModelPopup() {
+	loadmodelpopup.removeClass("hidden");
+	loadmodelpopup.addClass("flex");
+}
+
+function hideLoadModelPopup() {
+	loadmodelpopup.removeClass("flex");
+	loadmodelpopup.addClass("hidden");
+	loadmodelcontent.html("");
+}
+
 function showLoadPopup() {
 	loadpopup.removeClass("hidden");
 	loadpopup.addClass("flex");
@@ -974,6 +988,58 @@ function hideUSPopup() {
 	uspopup.removeClass("flex");
 	uspopup.addClass("hidden");
 	spcontent.html("");
+}
+
+
+function buildLoadModelList(ar, menu) {
+	disableButtons([load_model_accept]);
+	loadmodelcontent.html("");
+	var i;
+	for(i=0; i<ar.length; i++) {
+		var html
+		html = "<div class=\"flex\">\
+			<div class=\"loadlistpadding\"></div>"
+		if(ar[i][3]) {
+			html = html + "<span class=\"loadlisticon loadmodellisticon-folder oi oi-folder allowed\"  aria-hidden=\"true\"></span>"
+		} else {
+			html = html + "<div class=\"loadlistpadding\"></div>"
+		}
+		html = html + "<div class=\"loadlistpadding\"></div>\
+						<div class=\"loadlistitem\" id=\"loadmodel"+i+"\" name=\""+ar[i][1]+"\" pretty_name=\""+ar[i][0]+"\">\
+							<div>"+ar[i][0]+"</div>\
+							<div class=\"flex-push-right\">"+ar[i][2]+"</div>\
+						</div>\
+					</div>"
+		loadmodelcontent.append(html);
+		//If this is a menu
+		if(ar[i][3]) {
+			$("#loadmodel"+i).off("click").on("click", (function () {
+				return function () {
+					socket.send({'cmd': 'list_model', 'data': $(this).attr("name"), 'pretty_name': $(this).attr("pretty_name")});
+					disableButtons([load_model_accept]);
+				}
+			})(i));
+		//If we're in the custom load menu (we need to send the path data back in that case)
+		} else if(menu == 'custom') {
+			$("#loadmodel"+i).off("click").on("click", (function () {
+				return function () {
+					socket.send({'cmd': 'selectmodel', 'data': $(this).attr("name"), 'path': $(this).attr("pretty_name")});
+					highlightLoadLine($(this));
+				}
+			})(i));
+		//Normal load
+		} else {
+			$("#loadmodel"+i).off("click").on("click", (function () {
+				return function () {
+					$("#use_gpu_div").addClass("hidden");
+					$("#modelkey").addClass("hidden");
+					$("#modellayers").addClass("hidden");
+					socket.send({'cmd': 'selectmodel', 'data': $(this).attr("name")});
+					highlightLoadLine($(this));
+				}
+			})(i));
+		}
+	}
 }
 
 function buildLoadList(ar) {
@@ -1111,6 +1177,7 @@ function buildUSList(unloaded, loaded) {
 
 function highlightLoadLine(ref) {
 	$("#loadlistcontent > div > div.popuplistselected").removeClass("popuplistselected");
+	$("#loadmodellistcontent > div > div.popuplistselected").removeClass("popuplistselected");
 	ref.addClass("popuplistselected");
 }
 
@@ -1814,6 +1881,29 @@ function unbindGametext() {
 	gametext_bound = false;
 }
 
+function update_gpu_layers() {
+	var gpu_layers
+	gpu_layers = 0;
+	for (let i=0; i < $("#gpu_count")[0].value; i++) {
+		gpu_layers += parseInt($("#gpu_layers"+i)[0].value);
+	}
+	if (gpu_layers > parseInt(document.getElementById("gpu_layers_max").innerHTML)) {
+		disableButtons([load_model_accept]);
+		$("#gpu_layers_current").html("<span style='color: red'>"+gpu_layers+"</span>");
+	} else {
+		enableButtons([load_model_accept]);
+		$("#gpu_layers_current").html(gpu_layers);
+	}
+}
+
+
+function RemoveAllButFirstOption(selectElement) {
+   var i, L = selectElement.options.length - 1;
+   for(i = L; i >= 1; i--) {
+      selectElement.remove(i);
+   }
+}
+
 //=================================================================//
 //  READY/RUNTIME
 //=================================================================//
@@ -1822,6 +1912,8 @@ $(document).ready(function(){
 	
 	// Bind UI references
 	connect_status    = $('#connectstatus');
+	button_loadmodel  = $('#btn_loadmodel');
+	button_showmodel  = $('#btn_showmodel');
 	button_newgame    = $('#btn_newgame');
 	button_rndgame    = $('#btn_rndgame');
 	button_save       = $('#btn_save');
@@ -1874,9 +1966,13 @@ $(document).ready(function(){
 	saveas_accept     = $("#btn_saveasaccept");
 	saveas_close      = $("#btn_saveasclose");
 	loadpopup         = $("#loadcontainer");
+	loadmodelpopup    = $("#loadmodelcontainer");
 	loadcontent       = $("#loadlistcontent");
+	loadmodelcontent  = $("#loadmodellistcontent");
 	load_accept       = $("#btn_loadaccept");
 	load_close        = $("#btn_loadclose");
+	load_model_accept = $("#btn_loadmodelaccept");
+	load_model_close  = $("#btn_loadmodelclose");
 	sppopup           = $("#spcontainer");
 	spcontent         = $("#splistcontent");
 	sp_accept         = $("#btn_spaccept");
@@ -1899,6 +1995,7 @@ $(document).ready(function(){
 	socket = io.connect(window.document.origin, {transports: ['polling', 'websocket'], closeOnBeforeunload: false});
 
 	socket.on('from_server', function(msg) {
+		//console.log(msg);
 		if(msg.cmd == "connected") {
 			// Connected to Server Actions
 			sman_allow_delete = msg.hasOwnProperty("smandelete") && msg.smandelete;
@@ -2374,6 +2471,84 @@ $(document).ready(function(){
 			} else {
 				debug_area.addClass("hidden");
 			}
+		} else if(msg.cmd == 'show_model_menu') {
+			$("#use_gpu_div").addClass("hidden");
+			$("#modelkey").addClass("hidden");
+			$("#modellayers").addClass("hidden");
+			$("#oaimodel").addClass("hidden")
+			buildLoadModelList(msg.data, msg.menu);
+		} else if(msg.cmd == 'selected_model_info') {
+			enableButtons([load_model_accept]);
+			$("#oaimodel").addClass("hidden")
+			$("#oaimodel")[0].options[0].selected = true;
+			if (msg.key) {
+				$("#modelkey").removeClass("hidden");
+				$("#modelkey")[0].value = msg.key_value;
+			} else {
+				$("#modelkey").addClass("hidden");
+				
+			}
+			if (msg.url) {
+				$("#modelurl").removeClass("hidden");
+			} else {
+				$("#modelurl").addClass("hidden");
+			}
+			if (msg.gpu) {
+				$("#use_gpu_div").removeClass("hidden");
+			} else {
+				$("#use_gpu_div").addClass("hidden");
+			}
+			if (msg.breakmodel) {
+				var html;
+				$("#modellayers").removeClass("hidden");
+				html = "";
+				msg.break_values.forEach(function (item, index) {
+					html += "GPU " + index + ": <input type='range' class='form-range airange' min='0' max='"+msg.layer_count+"' step='1' value='"+item+"' id='gpu_layers"+index+"' onchange='update_gpu_layers();'>";
+				})
+				$("#model_layer_bars").html(html);
+				$("#gpu_layers_max").html(msg.layer_count);
+				$("#gpu_count")[0].value = msg.gpu_count;
+				update_gpu_layers();
+			} else {
+				$("#modellayers").addClass("hidden");
+			}
+		} else if(msg.cmd == 'oai_engines') {
+			$("#oaimodel").removeClass("hidden")
+			selected_item = 0;
+			length = $("#oaimodel")[0].options.length;
+			for (let i = 0; i < length; i++) {
+				$("#oaimodel")[0].options.remove(1);
+			}
+			msg.data.forEach(function (item, index) {
+				var option = document.createElement("option");
+				option.value = item[0];
+				option.text = item[1];
+				if(msg.online_model == item[0]) {
+					selected_item = index+1;
+				}
+				$("#oaimodel")[0].appendChild(option);
+				if(selected_item != "") {
+					$("#oaimodel")[0].options[selected_item].selected = true;
+				}
+			})
+		} else if(msg.cmd == 'show_model_name') {
+			$("#showmodelnamecontent").html("<div class=\"flex\"><div class=\"loadlistpadding\"></div><div class=\"loadlistitem\">" + msg.data + "</div></div>");
+			$("#showmodelnamecontainer").removeClass("hidden");
+		} else if(msg.cmd == 'hide_model_name') {
+			$("#showmodelnamecontainer").addClass("hidden");
+			//console.log("Closing window");
+		} else if(msg.cmd == 'model_load_status') {
+			$("#showmodelnamecontent").html("<div class=\"flex\"><div class=\"loadlistpadding\"></div><div class=\"loadlistitem\" style='align: left'>" + msg.data + "</div></div>");
+			$("#showmodelnamecontainer").removeClass("hidden");
+			//console.log(msg.data);
+		} else if(msg.cmd == 'oai_engines') {
+			RemoveAllButFirstOption($("#oaimodel")[0]);
+			for (const engine of msg.data) {
+				var opt = document.createElement('option');
+				opt.value = engine[0];
+				opt.innerHTML = engine[1];
+				$("#oaimodel")[0].appendChild(opt);
+			}
 		}
 	});
 	
@@ -2588,11 +2763,34 @@ $(document).ready(function(){
 		hideLoadPopup();
 	});
 	
+	load_model_close.on("click", function(ev) {
+		$("#modellayers").addClass("hidden");
+		hideLoadModelPopup();
+	});
+	
 	load_accept.on("click", function(ev) {
 		hideMessage();
 		newly_loaded = true;
 		socket.send({'cmd': 'loadrequest', 'data': ''});
 		hideLoadPopup();
+	});
+	
+	load_model_accept.on("click", function(ev) {
+		hideMessage();
+		var gpu_layers;
+		var message;
+		if($("#modellayers")[0].classList.contains('hidden')) {
+			gpu_layers = ","
+		} else {
+			gpu_layers = ""
+			for (let i=0; i < $("#gpu_count")[0].value; i++) {
+				gpu_layers += $("#gpu_layers"+i)[0].value + ",";
+			}
+		}
+		message = {'cmd': 'load_model', 'use_gpu': $('#use_gpu')[0].checked, 'key': $('#modelkey')[0].value, 'gpu_layers': gpu_layers.slice(0, -1), 'url': $('#modelurl')[0].value, 'online_model': $('#oaimodel')[0].value};
+		socket.send(message);
+		loadmodelcontent.html("");
+		hideLoadModelPopup();
 	});
 
 	sp_close.on("click", function(ev) {
@@ -2615,6 +2813,14 @@ $(document).ready(function(){
 		socket.send({'cmd': 'usloaded', 'data': usloaded.find(".uslistitem").map(function() { return $(this).attr("name"); }).toArray()});
 		socket.send({'cmd': 'usload', 'data': ''});
 		hideUSPopup();
+	});
+	
+	button_loadmodel.on("click", function(ev) {
+		showLoadModelPopup();
+		socket.send({'cmd': 'list_model', 'data': 'mainmenu'});
+	});
+	button_showmodel.on("click", function(ev) {
+		socket.send({'cmd': 'show_model', 'data': ''});
 	});
 	
 	button_newgame.on("click", function(ev) {
