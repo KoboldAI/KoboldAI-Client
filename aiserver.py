@@ -1125,9 +1125,10 @@ def load_model(use_gpu=True, gpu_layers=None, initial_load=False, online_model="
         if(vars.model == "GooseAI"):
             vars.oaiengines = "https://api.goose.ai/v1/engines"
             vars.model = "OAI"
-            args.configname = "GooseAI"
+            args.configname = "GooseAI" + "/" + online_model
+        else:
+            args.configname = vars.model + "/" + online_model
         vars.oaiurl = vars.oaiengines + "/{0}/completions".format(online_model)
-        args.configname = vars.model + "/" + online_model
     
     # If transformers model was selected & GPU available, ask to use CPU or GPU
     if(vars.model not in ["InferKit", "Colab", "OAI", "GooseAI" , "ReadOnly", "TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX"]):
@@ -1926,6 +1927,9 @@ def load_model(use_gpu=True, gpu_layers=None, initial_load=False, online_model="
         set_aibusy(False)
         emit('from_server', {'cmd': 'hide_model_name'}, broadcast=True)
         time.sleep(0.1)
+        
+        if not vars.gamestarted:
+            setStartState()
 
 
 # Set up Flask routes

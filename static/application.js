@@ -2480,11 +2480,13 @@ $(document).ready(function(){
 		} else if(msg.cmd == 'selected_model_info') {
 			enableButtons([load_model_accept]);
 			$("#oaimodel").addClass("hidden")
+			$("#oaimodel")[0].options[0].selected = true;
 			if (msg.key) {
 				$("#modelkey").removeClass("hidden");
 				$("#modelkey")[0].value = msg.key_value;
 			} else {
 				$("#modelkey").addClass("hidden");
+				
 			}
 			if (msg.url) {
 				$("#modelurl").removeClass("hidden");
@@ -2513,6 +2515,10 @@ $(document).ready(function(){
 		} else if(msg.cmd == 'oai_engines') {
 			$("#oaimodel").removeClass("hidden")
 			selected_item = 0;
+			length = $("#oaimodel")[0].options.length;
+			for (let i = 0; i < length; i++) {
+				$("#oaimodel")[0].options.remove(1);
+			}
 			msg.data.forEach(function (item, index) {
 				var option = document.createElement("option");
 				option.value = item[0];
