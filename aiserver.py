@@ -377,7 +377,7 @@ def getModelSelection(modellist):
     except Exception as e:
         if(vars.model == "Return"):
             getModelSelection(mainmenu)
-
+                
         # If custom model was selected, get the filesystem location and store it
         if(vars.model == "NeoCustom" or vars.model == "GPT2Custom"):
             print("{0}Please choose the folder where pytorch_model.bin is located:{1}\n".format(colors.CYAN, colors.END))
@@ -1131,6 +1131,14 @@ def load_model(use_gpu=True, gpu_layers=None, initial_load=False, online_model="
         else:
             args.configname = vars.model + "/" + online_model
         vars.oaiurl = vars.oaiengines + "/{0}/completions".format(online_model)
+    
+    if(vars.model == "selectfolder"):
+        print("{0}Please choose the folder where pytorch_model.bin is located:{1}\n".format(colors.CYAN, colors.END))
+        modpath = fileops.getdirpath(getcwd() + "/models", "Select Model Folder")
+    
+        if(modpath):
+            # Save directory to vars
+            vars.model = modpath
     
     # If transformers model was selected & GPU available, ask to use CPU or GPU
     if(vars.model not in ["InferKit", "Colab", "OAI", "GooseAI" , "ReadOnly", "TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX"]):
