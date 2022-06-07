@@ -54,6 +54,7 @@ import utils
 import structures
 import torch
 from transformers import StoppingCriteria, GPT2TokenizerFast, GPT2LMHeadModel, GPTNeoForCausalLM, GPTNeoModel, AutoModelForCausalLM, AutoTokenizer
+import tpu_mtj_backend
 
 
 if lupa.LUA_VERSION[:2] != (5, 4):
@@ -934,7 +935,6 @@ def general_startup():
 #==================================================================# 
 
 def tpumtjgetsofttokens():
-    import tpu_mtj_backend
     soft_tokens = None
     if(vars.sp is None):
         global np
@@ -5611,7 +5611,6 @@ def final_startup():
 
     # Precompile TPU backend if required
     if(vars.use_colab_tpu or vars.model in ("TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX")):
-        import tpu_mtj_backend
         soft_tokens = tpumtjgetsofttokens()
         if(vars.dynamicscan or (not vars.nogenmod and vars.has_genmod)):
             threading.Thread(
