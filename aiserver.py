@@ -987,8 +987,14 @@ def general_startup():
     
         if(modpath):
             # Save directory to vars
-            vars.model = modpath
-
+            vars.model = "NeoCustom"
+            vars.custmodpth = modpath
+    elif args.model:
+        print("Welcome to KoboldAI!\nYou have selected the following Model:", vars.model)
+        if args.path:
+            print("You have selected the following path for your Model :", args.path)
+            vars.custmodpth = args.path;
+            vars.colaburl = args.path + "/request"; # Lets just use the same parameter to keep it simple
 #==================================================================#
 # Load Model
 #==================================================================# 
@@ -1989,6 +1995,8 @@ def load_model(use_gpu=True, gpu_layers=None, initial_load=False, online_model="
         
         if not vars.gamestarted:
             setStartState()
+            sendsettings()
+            refresh_settings()
 
 
 # Set up Flask routes
