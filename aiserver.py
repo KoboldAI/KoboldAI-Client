@@ -377,7 +377,7 @@ def getModelSelection(modellist):
     except Exception as e:
         if(vars.model == "Return"):
             getModelSelection(mainmenu)
-
+                
         # If custom model was selected, get the filesystem location and store it
         if(vars.model == "NeoCustom" or vars.model == "GPT2Custom"):
             print("{0}Please choose the folder where pytorch_model.bin is located:{1}\n".format(colors.CYAN, colors.END))
@@ -864,6 +864,7 @@ def general_startup():
     # Parsing Parameters
     parser = argparse.ArgumentParser(description="KoboldAI Server")
     parser.add_argument("--remote", action='store_true', help="Optimizes KoboldAI for Remote Play")
+    parser.add_argument("--noaimenu", action='store_true', help="Disables the ability to select the AI")
     parser.add_argument("--ngrok", action='store_true', help="Optimizes KoboldAI for Remote Play using Ngrok")
     parser.add_argument("--localtunnel", action='store_true', help="Optimizes KoboldAI for Remote Play using Localtunnel")
     parser.add_argument("--host", action='store_true', help="Optimizes KoboldAI for Remote Play without using a proxy service")
@@ -903,6 +904,7 @@ def general_startup():
         args.nobreakmodel = True;
         args.quiet = True;
         args.lowmem = True;
+        args.noaimenu = True;
 
     if args.quiet:
         vars.quiet = True
@@ -1129,6 +1131,14 @@ def load_model(use_gpu=True, gpu_layers=None, initial_load=False, online_model="
         else:
             args.configname = vars.model + "/" + online_model
         vars.oaiurl = vars.oaiengines + "/{0}/completions".format(online_model)
+    
+    if(vars.model == "selectfolder"):
+        print("{0}Please choose the folder where pytorch_model.bin is located:{1}\n".format(colors.CYAN, colors.END))
+        modpath = fileops.getdirpath(getcwd() + "/models", "Select Model Folder")
+    
+        if(modpath):
+            # Save directory to vars
+            vars.model = modpath
     
     # If transformers model was selected & GPU available, ask to use CPU or GPU
     if(vars.model not in ["InferKit", "Colab", "OAI", "GooseAI" , "ReadOnly", "TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX"]):
@@ -1936,7 +1946,7 @@ def load_model(use_gpu=True, gpu_layers=None, initial_load=False, online_model="
 @app.route('/')
 @app.route('/index')
 def index():
-    return render_template('index.html', hide_ai_menu=args.remote)
+    return render_template('index.html', hide_ai_menu=args.noaimenu)
 @app.route('/download')
 def download():
     save_format = request.args.get("format", "json").strip().lower()
