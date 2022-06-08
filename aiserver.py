@@ -1031,6 +1031,7 @@ def get_model_info(model, directory=""):
     key_value = ""
     break_values = []
     url = False
+    gpu_count = torch.cuda.device_count()
     if model in [x[1] for x in model_menu['apilist']]:
         if path.exists("settings/{}.settings".format(model)):
             with open("settings/{}.settings".format(model), "r") as file:
@@ -1059,10 +1060,10 @@ def get_model_info(model, directory=""):
                     break_values = file.read().split(",")
             else:
                 break_values = [layer_count]
-                break_values += [0] * (gpu+1 - len(break_values))
+            break_values += [0] * (gpu_count - len(break_values))
     emit('from_server', {'cmd': 'selected_model_info', 'key_value': key_value, 'key':key, 
                          'gpu':gpu, 'layer_count':layer_count, 'breakmodel':breakmodel, 
-                         'break_values': break_values, 'gpu_count': torch.cuda.device_count(),
+                         'break_values': break_values, 'gpu_count': gpu_count,
                          'url': url}, broadcast=True)
     if key_value != "":
         get_oai_models(key_value)

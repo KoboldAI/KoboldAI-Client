@@ -997,13 +997,16 @@ function buildLoadModelList(ar, menu, breadcrumbs) {
 	$("#loadmodellistbreadcrumbs").html("");
 	var i;
 	for(i=0; i<breadcrumbs.length; i++) {
-		$("#loadmodellistbreadcrumbs").append("<button id='model_breadcrumbs"+i+"' name='"+ar[0][1]+"' value='"+breadcrumbs[i][0]+"'>"+breadcrumbs[i][1]+"</button>");
+		$("#loadmodellistbreadcrumbs").append("<button class=\"breadcrumbitem\" id='model_breadcrumbs"+i+"' name='"+ar[0][1]+"' value='"+breadcrumbs[i][0]+"'>"+breadcrumbs[i][1]+"</button><font color=white>\\</font>");
 		$("#model_breadcrumbs"+i).off("click").on("click", (function () {
 				return function () {
 					socket.send({'cmd': 'selectmodel', 'data': $(this).attr("name"), 'folder': $(this).attr("value")});
 					disableButtons([load_model_accept]);
 				}
 			})(i));
+	}
+	if (breadcrumbs.length > 0) {
+		$("#loadmodellistbreadcrumbs").append("<hr size='1'>")  
 	}
 	for(i=0; i<ar.length; i++) {
 		var html
