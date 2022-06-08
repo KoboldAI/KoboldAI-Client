@@ -991,22 +991,41 @@ function hideUSPopup() {
 }
 
 
-function buildLoadModelList(ar, menu) {
+function buildLoadModelList(ar, menu, breadcrumbs) {
 	disableButtons([load_model_accept]);
 	loadmodelcontent.html("");
+	$("#loadmodellistbreadcrumbs").html("");
 	var i;
+	for(i=0; i<breadcrumbs.length; i++) {
+		$("#loadmodellistbreadcrumbs").append("<button id='model_breadcrumbs"+i+"' name='"+ar[0][1]+"' value='"+breadcrumbs[i][0]+"'>"+breadcrumbs[i][1]+"</button>");
+		$("#model_breadcrumbs"+i).off("click").on("click", (function () {
+				return function () {
+					socket.send({'cmd': 'selectmodel', 'data': $(this).attr("name"), 'folder': $(this).attr("value")});
+					disableButtons([load_model_accept]);
+				}
+			})(i));
+	}
 	for(i=0; i<ar.length; i++) {
 		var html
 		html = "<div class=\"flex\">\
 			<div class=\"loadlistpadding\"></div>"
+		//if the menu item is a link to another menu
 		if(ar[i][3]) {
 			html = html + "<span class=\"loadlisticon loadmodellisticon-folder oi oi-folder allowed\"  aria-hidden=\"true\"></span>"
 		} else {
+		//this is a model
 			html = html + "<div class=\"loadlistpadding\"></div>"
 		}
+		if (Array.isArray(ar[i][0])) {
+			full_path = ar[i][0][0];
+			folder = ar[i][0][1];
+		} else {
+			full_path = "";
+			folder = ar[i][0];
+		}
 		html = html + "<div class=\"loadlistpadding\"></div>\
-						<div class=\"loadlistitem\" id=\"loadmodel"+i+"\" name=\""+ar[i][1]+"\" pretty_name=\""+ar[i][0]+"\">\
-							<div>"+ar[i][0]+"</div>\
+						<div class=\"loadlistitem\" id=\"loadmodel"+i+"\" name=\""+ar[i][1]+"\" pretty_name=\""+full_path+"\">\
+							<div>"+folder+"</div>\
 							<div class=\"flex-push-right\">"+ar[i][2]+"</div>\
 						</div>\
 					</div>"
@@ -1020,7 +1039,7 @@ function buildLoadModelList(ar, menu) {
 				}
 			})(i));
 		//If we're in the custom load menu (we need to send the path data back in that case)
-		} else if(menu == 'custom') {
+		} else if(['NeoCustom', 'GPT2Custom'].includes(menu)) {
 			$("#loadmodel"+i).off("click").on("click", (function () {
 				return function () {
 					socket.send({'cmd': 'selectmodel', 'data': $(this).attr("name"), 'path': $(this).attr("pretty_name")});
@@ -2472,11 +2491,12 @@ $(document).ready(function(){
 				debug_area.addClass("hidden");
 			}
 		} else if(msg.cmd == 'show_model_menu') {
+			console.log(msg)
 			$("#use_gpu_div").addClass("hidden");
 			$("#modelkey").addClass("hidden");
 			$("#modellayers").addClass("hidden");
 			$("#oaimodel").addClass("hidden")
-			buildLoadModelList(msg.data, msg.menu);
+			buildLoadModelList(msg.data, msg.menu, msg.breadcrumbs);
 		} else if(msg.cmd == 'selected_model_info') {
 			enableButtons([load_model_accept]);
 			$("#oaimodel").addClass("hidden")
