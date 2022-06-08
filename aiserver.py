@@ -327,7 +327,10 @@ class Send_to_socketio(object):
     def write(self, bar):
         print(bar, end="")
         time.sleep(0.01)
-        emit('from_server', {'cmd': 'model_load_status', 'data': bar.replace(" ", "&nbsp;")}, broadcast=True)
+        try:
+            emit('from_server', {'cmd': 'model_load_status', 'data': bar.replace(" ", "&nbsp;")}, broadcast=True)
+        except:
+            pass
                                 
 # Set logging level to reduce chatter from Flask
 import logging
@@ -931,6 +934,15 @@ def general_startup():
     vars.smanrename = vars.host == args.override_rename
 
     vars.aria2_port = args.aria2_port or 6799
+    
+    #Now let's look to see if we are going to force a load of a model from a user selected folder
+    if(vars.model == "selectfolder"):
+        print("{0}Please choose the folder where pytorch_model.bin is located:{1}\n".format(colors.CYAN, colors.END))
+        modpath = fileops.getdirpath(getcwd() + "/models", "Select Model Folder")
+    
+        if(modpath):
+            # Save directory to vars
+            vars.model = modpath
 
 #==================================================================#
 # Load Model
@@ -1132,13 +1144,6 @@ def load_model(use_gpu=True, gpu_layers=None, initial_load=False, online_model="
             args.configname = vars.model + "/" + online_model
         vars.oaiurl = vars.oaiengines + "/{0}/completions".format(online_model)
     
-    if(vars.model == "selectfolder"):
-        print("{0}Please choose the folder where pytorch_model.bin is located:{1}\n".format(colors.CYAN, colors.END))
-        modpath = fileops.getdirpath(getcwd() + "/models", "Select Model Folder")
-    
-        if(modpath):
-            # Save directory to vars
-            vars.model = modpath
     
     # If transformers model was selected & GPU available, ask to use CPU or GPU
     if(vars.model not in ["InferKit", "Colab", "OAI", "GooseAI" , "ReadOnly", "TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX"]):
