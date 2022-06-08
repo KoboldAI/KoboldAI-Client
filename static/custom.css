@@ -1035,7 +1035,7 @@ body.connected .statusiconlabel, .statusiconlabel.always-available {
 }
 
 .loadlistitem {
-	padding: 5px 10px 5px 10px;
+	padding: 0px 0px 0px 0px;
 	display: flex;
 	flex-grow: 1;
 	color: #ffffff;
@@ -1049,6 +1049,28 @@ body.connected .statusiconlabel, .statusiconlabel.always-available {
 .loadlistitem:hover {
 	cursor: pointer;
 	background-color: #688f1f;
+}
+
+.breadcrumbitem {
+	padding: 5px 10px 5px 10px;
+	color: #ffffff;
+	background-color: transparent;
+	border: none;
+	
+	-moz-transition: background-color 0.25s ease-in;
+	-o-transition: background-color 0.25s ease-in;
+	-webkit-transition: background-color 0.25s ease-in;
+	transition: background-color 0.25s ease-in;
+}
+
+.breadcrumbitem:hover {
+	cursor: pointer;
+	background-color: #688f1f;
+}
+
+hr {
+    padding: 0px;
+    margin: 0px;    
 }
 
 .loadlistpadding {
