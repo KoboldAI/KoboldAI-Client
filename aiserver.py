@@ -1951,6 +1951,8 @@ def load_model(use_gpu=True, gpu_layers=None, initial_load=False, online_model="
         
         if not vars.gamestarted:
             setStartState()
+            sendsettings()
+            refresh_settings()
 
 
 # Set up Flask routes
