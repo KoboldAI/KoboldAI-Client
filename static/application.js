@@ -1911,7 +1911,7 @@ function update_gpu_layers() {
 	}
 	if (gpu_layers > parseInt(document.getElementById("gpu_layers_max").innerHTML)) {
 		disableButtons([load_model_accept]);
-		$("#gpu_layers_current").html("<span style='color: red'>"+gpu_layers+"</span>");
+		$("#gpu_layers_current").html("<span style='color: red'>"+gpu_layers+"/"+ document.getElementById("gpu_layers_max").innerHTML +"</span>");
 	} else {
 		enableButtons([load_model_accept]);
 		$("#gpu_layers_current").html(gpu_layers);
@@ -2494,7 +2494,7 @@ $(document).ready(function(){
 				debug_area.addClass("hidden");
 			}
 		} else if(msg.cmd == 'show_model_menu') {
-			console.log(msg)
+			//console.log(msg)
 			$("#use_gpu_div").addClass("hidden");
 			$("#modelkey").addClass("hidden");
 			$("#modellayers").addClass("hidden");
@@ -2525,9 +2525,9 @@ $(document).ready(function(){
 				var html;
 				$("#modellayers").removeClass("hidden");
 				html = "";
-				msg.break_values.forEach(function (item, index) {
-					html += "GPU " + index + ": <input type='range' class='form-range airange' min='0' max='"+msg.layer_count+"' step='1' value='"+item+"' id='gpu_layers"+index+"' onchange='update_gpu_layers();'>";
-				})
+				for (let i = 0; i < msg.gpu_names.length; i++) {
+					html += "GPU " + i + " " + msg.gpu_names[i] + ": <input type='range' class='form-range airange' min='0' max='"+msg.layer_count+"' step='1' value='"+msg.break_values[i]+"' id='gpu_layers"+i+"' onchange='update_gpu_layers();'>";
+				}
 				$("#model_layer_bars").html(html);
 				$("#gpu_layers_max").html(msg.layer_count);
 				$("#gpu_count")[0].value = msg.gpu_count;
