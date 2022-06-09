@@ -349,7 +349,7 @@ log.setLevel(logging.ERROR)
 
 # Start flask & SocketIO
 print("{0}Initializing Flask... {1}".format(colors.PURPLE, colors.END), end="")
-from flask import Flask, render_template, Response, request, copy_current_request_context
+from flask import Flask, render_template, Response, request, copy_current_request_context, send_from_directory
 from flask_socketio import SocketIO, emit
 app = Flask(__name__, root_path=os.getcwd())
 app.config['SECRET KEY'] = 'secret!'
@@ -1032,6 +1032,9 @@ def get_model_info(model, directory=""):
     break_values = []
     url = False
     gpu_count = torch.cuda.device_count()
+    gpu_names = []
+    for i in range(gpu_count):
+        gpu_names.append(torch.cuda.get_device_name(i))
     if model in [x[1] for x in model_menu['apilist']]:
         if path.exists("settings/{}.settings".format(model)):
             with open("settings/{}.settings".format(model), "r") as file:
@@ -1064,7 +1067,7 @@ def get_model_info(model, directory=""):
     emit('from_server', {'cmd': 'selected_model_info', 'key_value': key_value, 'key':key, 
                          'gpu':gpu, 'layer_count':layer_count, 'breakmodel':breakmodel, 
                          'break_values': break_values, 'gpu_count': gpu_count,
-                         'url': url}, broadcast=True)
+                         'url': url, 'gpu_names': gpu_names}, broadcast=True)
     if key_value != "":
         get_oai_models(key_value)
     
@@ -2006,6 +2009,10 @@ def load_model(use_gpu=True, gpu_layers=None, initial_load=False, online_model="
 @app.route('/index')
 def index():
     return render_template('index.html', hide_ai_menu=args.noaimenu)
+@app.route('/favicon.ico')
+def favicon():
+    return send_from_directory(app.root_path,
+                                   'koboldai.ico', mimetype='image/vnd.microsoft.icon')    
 @app.route('/download')
 def download():
     save_format = request.args.get("format", "json").strip().lower()
