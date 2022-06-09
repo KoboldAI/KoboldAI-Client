@@ -330,6 +330,7 @@ class vars:
     debug       = False # If set to true, will send debug information to the client for display
     lazy_load   = True  # Whether or not to use torch_lazy_loader.py for transformers models in order to reduce CPU memory usage
     use_colab_tpu = os.environ.get("COLAB_TPU_ADDR", "") != "" or os.environ.get("TPU_NAME", "") != ""  # Whether or not we're in a Colab TPU instance or Kaggle TPU instance and are going to use the TPU rather than the CPU
+    revision    = None
 
 utils.vars = vars
 
@@ -907,7 +908,7 @@ def spRequest(filename):
 #==================================================================#
 # Startup
 #==================================================================#
-def general_startup():
+def general_startup(override_args=None):
     global args
     # Parsing Parameters
     parser = argparse.ArgumentParser(description="KoboldAI Server")
@@ -936,7 +937,14 @@ def general_startup():
     parser.add_argument("--lowmem", action='store_true', help="Extra Low Memory loading for the GPU, slower but memory does not peak to twice the usage")
     parser.add_argument("--savemodel", action='store_true', help="Saves the model to the models folder even if --colab is used (Allows you to save models to Google Drive)")
     #args: argparse.Namespace = None
-    if(os.environ.get("KOBOLDAI_ARGS") is not None):
+    if len(sys.argv) > 1 and override_args is None:
+        if sys.argv[1] == 'unit_tests.py':
+            args = parser.parse_args([])
+            return
+    if override_args is not None:
+        import shlex
+        args = parser.parse_args(shlex.split(override_args))
+    elif(os.environ.get("KOBOLDAI_ARGS") is not None):
         import shlex
         args = parser.parse_args(shlex.split(os.environ["KOBOLDAI_ARGS"]))
     else:
