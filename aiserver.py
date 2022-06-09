@@ -1410,6 +1410,7 @@ def load_model(use_gpu=True, gpu_layers=None, initial_load=False, online_model="
     global torch
     global model_config
     global GPT2TokenizerFast
+    global tokenizer
     print("Loading vars.model: {} vars.custmodpth: {}".format(vars.model, vars.custmodpth))
     vars.noai = False
     if not initial_load:
