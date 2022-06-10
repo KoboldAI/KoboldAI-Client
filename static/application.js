@@ -2140,14 +2140,17 @@ $(document).ready(function(){
 				enableButtons([button_actmem, button_actwi, button_actback, button_actfwd, button_actretry]);
 				hideWaitAnimation();
 				gamestate = "ready";
+				favicon.stop_swap();
 			} else if(msg.data == "wait") {
 				gamestate = "wait";
 				disableSendBtn();
 				disableButtons([button_actmem, button_actwi, button_actback, button_actfwd, button_actretry]);
 				showWaitAnimation();
+				favicon.start_swap();
 			} else if(msg.data == "start") {
 				setStartState();
 				gamestate = "ready";
+				favicon.stop_swap();
 			}
 		} else if(msg.cmd == "allowsp") {
 			allowsp = !!msg.data;
