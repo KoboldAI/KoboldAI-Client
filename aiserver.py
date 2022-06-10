@@ -379,9 +379,9 @@ def get_folder_path_info(base):
         if path[-1] == "\\":
             path = path[:-1]
         breadcrumbs = []
-        for i in range(len(path.split("\\"))):
-            breadcrumbs.append(["\\".join(path.split("\\")[:i+1]),
-                                 path.split("\\")[i]])
+        for i in range(len(path.replace("/", "\\").split("\\"))):
+            breadcrumbs.append(["\\".join(path.replace("/", "\\").split("\\")[:i+1]),
+                                 path.replace("/", "\\").split("\\")[i]])
         if len(breadcrumbs) == 1:
             breadcrumbs = [["{}:\\".format(chr(i)), "{}:\\".format(chr(i))] for i in range(65, 91) if os.path.exists("{}:".format(chr(i)))]
         else:
@@ -394,6 +394,7 @@ def get_folder_path_info(base):
                 paths.append([os.path.join(base_path, item), item])
     # Paths/breadcrumbs is a list of lists, where the first element in the sublist is the full path and the second is the folder name
     return (paths, breadcrumbs)
+
 
 def getModelSelection(modellist):
     print("    #    Model\t\t\t\t\t\tVRAM\n    ========================================================")
