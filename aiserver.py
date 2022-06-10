@@ -937,10 +937,9 @@ def general_startup(override_args=None):
     parser.add_argument("--lowmem", action='store_true', help="Extra Low Memory loading for the GPU, slower but memory does not peak to twice the usage")
     parser.add_argument("--savemodel", action='store_true', help="Saves the model to the models folder even if --colab is used (Allows you to save models to Google Drive)")
     #args: argparse.Namespace = None
-    if len(sys.argv) > 1 and override_args is None:
-        if sys.argv[1] == 'unit_tests.py':
-            args = parser.parse_args([])
-            return
+    if "pytest" in sys.modules and override_args is None:
+        args = parser.parse_args([])
+        return
     if override_args is not None:
         import shlex
         args = parser.parse_args(shlex.split(override_args))
