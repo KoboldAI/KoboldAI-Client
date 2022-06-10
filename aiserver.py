@@ -330,6 +330,7 @@ class vars:
     debug       = False # If set to true, will send debug information to the client for display
     lazy_load   = True  # Whether or not to use torch_lazy_loader.py for transformers models in order to reduce CPU memory usage
     use_colab_tpu = os.environ.get("COLAB_TPU_ADDR", "") != "" or os.environ.get("TPU_NAME", "") != ""  # Whether or not we're in a Colab TPU instance or Kaggle TPU instance and are going to use the TPU rather than the CPU
+    revision    = None
 
 utils.vars = vars
 
@@ -378,9 +379,9 @@ def get_folder_path_info(base):
         if path[-1] == "\\":
             path = path[:-1]
         breadcrumbs = []
-        for i in range(len(path.split("\\"))):
-            breadcrumbs.append(["\\".join(path.split("\\")[:i+1]),
-                                 path.split("\\")[i]])
+        for i in range(len(path.replace("/", "\\").split("\\"))):
+            breadcrumbs.append(["\\".join(path.replace("/", "\\").split("\\")[:i+1]),
+                                 path.replace("/", "\\").split("\\")[i]])
         if len(breadcrumbs) == 1:
             breadcrumbs = [["{}:\\".format(chr(i)), "{}:\\".format(chr(i))] for i in range(65, 91) if os.path.exists("{}:".format(chr(i)))]
         else:
@@ -393,6 +394,7 @@ def get_folder_path_info(base):
                 paths.append([os.path.join(base_path, item), item])
     # Paths/breadcrumbs is a list of lists, where the first element in the sublist is the full path and the second is the folder name
     return (paths, breadcrumbs)
+
 
 def getModelSelection(modellist):
     print("    #    Model\t\t\t\t\t\tVRAM\n    ========================================================")
@@ -907,7 +909,7 @@ def spRequest(filename):
 #==================================================================#
 # Startup
 #==================================================================#
-def general_startup():
+def general_startup(override_args=None):
     global args
     # Parsing Parameters
     parser = argparse.ArgumentParser(description="KoboldAI Server")
@@ -936,7 +938,13 @@ def general_startup():
     parser.add_argument("--lowmem", action='store_true', help="Extra Low Memory loading for the GPU, slower but memory does not peak to twice the usage")
     parser.add_argument("--savemodel", action='store_true', help="Saves the model to the models folder even if --colab is used (Allows you to save models to Google Drive)")
     #args: argparse.Namespace = None
-    if(os.environ.get("KOBOLDAI_ARGS") is not None):
+    if "pytest" in sys.modules and override_args is None:
+        args = parser.parse_args([])
+        return
+    if override_args is not None:
+        import shlex
+        args = parser.parse_args(shlex.split(override_args))
+    elif(os.environ.get("KOBOLDAI_ARGS") is not None):
         import shlex
         args = parser.parse_args(shlex.split(os.environ["KOBOLDAI_ARGS"]))
     else:
