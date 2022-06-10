@@ -151,6 +151,12 @@ function getThrottle(ms) {
     }
 }
 
+function reset_menus() {
+	settings_menu.html("");
+	format_menu.html("");
+	wi_menu.html("");
+}
+
 function addSetting(ob) {	
 	// Add setting block to Settings Menu
 	if(ob.uitype == "slider"){
@@ -2031,9 +2037,7 @@ $(document).ready(function(){
 			connect_status.removeClass("color_orange");
 			connect_status.addClass("color_green");
 			// Reset Menus
-			settings_menu.html("");
-			format_menu.html("");
-			wi_menu.html("");
+			reset_menus();
 			// Set up "Allow Editing"
 			$('body').on('input', autofocus);
 			$('#allowediting').prop('checked', allowedit).prop('disabled', false).change().off('change').on('change', function () {
@@ -2292,6 +2296,8 @@ $(document).ready(function(){
 		} else if(msg.cmd == "setanotetemplate") {
 			// Set contents of Author's Note Template field
 			$("#anotetemplate").val(msg.data);
+		} else if(msg.cmd == "reset_menus") {
+			reset_menus();
 		} else if(msg.cmd == "addsetting") {
 			// Add setting controls
 			addSetting(msg.data);
