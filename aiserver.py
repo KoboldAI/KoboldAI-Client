@@ -4668,6 +4668,7 @@ def oairequest(txt, min, max):
             'prompt': txt,
             'max_tokens': vars.genamt,
             'temperature': vars.temp,
+            'top_a': vars.top_a,
             'top_p': vars.top_p,
             'top_k': vars.top_k,
             'tfs': vars.tfs,
