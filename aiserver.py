@@ -90,7 +90,6 @@ mainmenu = [
     ["Adventure Models", "adventurelist", ""],
     ["Novel Models", "novellist", ""],
     ["NSFW Models", "nsfwlist", ""],
-    ["Chatbot Models", "chatlist", ""],
     ["Untuned GPT-Neo/J", "gptneolist", ""],
     ["Untuned Fairseq Dense", "fsdlist", ""],
     ["Untuned OPT", "optlist", ""],
