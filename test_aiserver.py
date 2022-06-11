@@ -150,6 +150,10 @@ def test_load_model_from_web_ui(client_data, model, expected_load_options):
     
     generate_story_data(client_data)
   
+def test_load_GooseAI_from_web_ui(client_data):
+    
+    pytest.skip("unsupported configuration")
+
 @pytest.mark.parametrize("model, expected_load_options", test_models)
 def test_load_model_from_command_line(client_data, model, expected_load_options):
     (client, app, socketio_client) = client_data
