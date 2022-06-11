@@ -867,6 +867,7 @@ return function(_python, _bridged)
     ---@field settopk integer
     ---@field settfs number
     ---@field settypical number
+    ---@field settopa number
     ---@field setreppen number
     ---@field setreppenslope number
     ---@field setreppenrange number
@@ -884,6 +885,7 @@ return function(_python, _bridged)
     ---@field top_k integer
     ---@field tfs number
     ---@field typical number
+    ---@field topa number
     ---@field reppen number
     ---@field reppenslope number
     ---@field reppenrange number

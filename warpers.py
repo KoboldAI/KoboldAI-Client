@@ -148,3 +148,32 @@ class TypicalLogitsWarper(LogitsWarper):
         indices_to_remove = sorted_indices_to_remove.scatter(1, sorted_indices, sorted_indices_to_remove)
         scores = scores.masked_fill(indices_to_remove, self.filter_value)
         return scores
+
+
+class TopALogitsWarper(LogitsWarper):
+    def __init__(self, top_a: float, filter_value: float = -float("Inf"), min_tokens_to_keep: int = 1):
+        top_a = float(top_a)
+        if top_a < 0 or top_a > 1.0:
+            raise ValueError(f"`top_a` has to be a float >= 0 and <= 1, but is {top_a}")
+        self.top_a = top_a
+        self.filter_value = filter_value
+        self.min_tokens_to_keep = min_tokens_to_keep
+
+    def __call__(self, input_ids: torch.LongTensor, scores: torch.FloatTensor) -> torch.FloatTensor:
+        if self.filter_value >= 1.0:
+            return scores
+
+        sorted_logits, sorted_indices = torch.sort(scores, descending=True)
+        probs = sorted_logits.softmax(dim=-1)
+
+        # Remove tokens with probability less than top_a*(max(probs))^2 (token with 0 are kept)
+        probs_max = probs[..., 0, None]
+        sorted_indices_to_remove = probs < probs_max * probs_max * self.top_a
+
+        if self.min_tokens_to_keep > 1:
+            # Keep at least min_tokens_to_keep
+            sorted_indices_to_remove[..., : self.min_tokens_to_keep] = 0
+
+        indices_to_remove = sorted_indices_to_remove.scatter(1, sorted_indices, sorted_indices_to_remove)
+        scores = scores.masked_fill(indices_to_remove, self.filter_value)
+        return scores
