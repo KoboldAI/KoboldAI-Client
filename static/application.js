@@ -2096,6 +2096,10 @@ $(document).ready(function(){
 			// Send current typical value to input
 			$("#settypicalcur").val(msg.data);
 			$("#settypical").val(parseFloat(msg.data)).trigger("change");
+		} else if(msg.cmd == "updatetopa") {
+			// Send current top a value to input
+			$("#settopacur").val(msg.data);
+			$("#settopa").val(parseFloat(msg.data)).trigger("change");
 		} else if(msg.cmd == "updatereppen") {
 			// Send current rep pen value to input
 			$("#setreppencur").val(msg.data);
@@ -2135,6 +2139,9 @@ $(document).ready(function(){
 		} else if(msg.cmd == "setlabeltypical") {
 			// Update setting label with value from server
 			$("#settypicalcur").val(msg.data);
+		} else if(msg.cmd == "setlabeltypical") {
+			// Update setting label with value from server
+			$("#settopa").val(msg.data);
 		} else if(msg.cmd == "setlabelreppen") {
 			// Update setting label with value from server
 			$("#setreppencur").val(msg.data);
