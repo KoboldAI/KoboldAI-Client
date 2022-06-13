@@ -568,6 +568,8 @@ def loadmodelsettings():
         vars.badwordsids = js["badwordsids"]
     if("nobreakmodel" in js):
         vars.nobreakmodel = js["nobreakmodel"]
+    if("sampler_order" in js):
+        vars.sampler_order = js["sampler_order"]
     if("temp" in js):
         vars.temp       = js["temp"]
     if("top_p" in js):
@@ -611,6 +613,7 @@ def savesettings():
     js = {}
     js["apikey"]      = vars.apikey
     js["andepth"]     = vars.andepth
+    js["sampler_order"] = vars.sampler_order
     js["temp"]        = vars.temp
     js["top_p"]       = vars.top_p
     js["top_k"]       = vars.top_k
@@ -687,6 +690,8 @@ def processsettings(js):
         vars.apikey     = js["apikey"]
     if("andepth" in js):
         vars.andepth    = js["andepth"]
+    if("sampler_order" in js):
+        vars.sampler_order = js["sampler_order"]
     if("temp" in js):
         vars.temp       = js["temp"]
     if("top_p" in js):
