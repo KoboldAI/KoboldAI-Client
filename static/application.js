@@ -1002,6 +1002,7 @@ function buildLoadModelList(ar, menu, breadcrumbs) {
 	disableButtons([load_model_accept]);
 	loadmodelcontent.html("");
 	$("#loadmodellistbreadcrumbs").html("");
+	$("#custommodelname").addClass("hidden");
 	var i;
 	for(i=0; i<breadcrumbs.length; i++) {
 		$("#loadmodellistbreadcrumbs").append("<button class=\"breadcrumbitem\" id='model_breadcrumbs"+i+"' name='"+ar[0][1]+"' value='"+breadcrumbs[i][0]+"'>"+breadcrumbs[i][1]+"</button><font color=white>\\</font>");
@@ -1056,6 +1057,8 @@ function buildLoadModelList(ar, menu, breadcrumbs) {
 					highlightLoadLine($(this));
 				}
 			})(i));
+			$("#custommodelname").removeClass("hidden");
+			$("#custommodelname")[0].setAttribute("menu", menu);
 		//Normal load
 		} else {
 			$("#loadmodel"+i).off("click").on("click", (function () {
