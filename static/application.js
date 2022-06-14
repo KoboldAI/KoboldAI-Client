@@ -1012,7 +1012,7 @@ function hideSamplersPopup() {
 }
 
 
-function buildLoadModelList(ar, menu, breadcrumbs) {
+function buildLoadModelList(ar, menu, breadcrumbs, showdelete) {
 	disableButtons([load_model_accept]);
 	loadmodelcontent.html("");
 	$("#loadmodellistbreadcrumbs").html("");
@@ -1051,7 +1051,7 @@ function buildLoadModelList(ar, menu, breadcrumbs) {
 		}
 		
 		//now let's do the delete icon if applicable
-		if (['NeoCustom', 'GPT2Custom'].includes(menu) && !ar[i][3]) {
+		if (['NeoCustom', 'GPT2Custom'].includes(menu) && !ar[i][3] && showdelete) {
 			html = html + "<span class=\"loadlisticon loadmodellisticon-folder oi oi-x allowed\"  aria-hidden=\"true\" onclick='if(confirm(\"This will delete the selected folder with all contents. Are you sure?\")) { socket.send({\"cmd\": \"delete_model\", \"data\": \""+full_path.replaceAll("\\", "\\\\")+"\", \"menu\": \""+menu+"\"});}'></span>"
 		} else {
 			html = html + "<div class=\"loadlistpadding\"></div>"
@@ -2577,7 +2577,7 @@ $(document).ready(function(){
 			$("#modelkey").addClass("hidden");
 			$("#modellayers").addClass("hidden");
 			$("#oaimodel").addClass("hidden")
-			buildLoadModelList(msg.data, msg.menu, msg.breadcrumbs);
+			buildLoadModelList(msg.data, msg.menu, msg.breadcrumbs, msg.showdelete);
 		} else if(msg.cmd == 'selected_model_info') {
 			enableButtons([load_model_accept]);
 			$("#oaimodel").addClass("hidden")

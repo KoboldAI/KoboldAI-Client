@@ -370,9 +370,13 @@ def sendModelSelection(menu="mainmenu", folder="./models"):
             breadcrumbs = []
         menu_list = [[folder, menu, "", False] for folder in paths]
         menu_list.append(["Return to Main Menu", "mainmenu", "", True])
-        emit('from_server', {'cmd': 'show_model_menu', 'data': menu_list, 'menu': menu, 'breadcrumbs': breadcrumbs}, broadcast=True)
+        if os.path.abspath("{}/models".format(os.getcwd())) == os.path.abspath(folder):
+            showdelete=True
+        else:
+            showdelete=False
+        emit('from_server', {'cmd': 'show_model_menu', 'data': menu_list, 'menu': menu, 'breadcrumbs': breadcrumbs, "showdelete": showdelete}, broadcast=True)
     else:
-        emit('from_server', {'cmd': 'show_model_menu', 'data': model_menu[menu], 'menu': menu, 'breadcrumbs': []}, broadcast=True)
+        emit('from_server', {'cmd': 'show_model_menu', 'data': model_menu[menu], 'menu': menu, 'breadcrumbs': [], "showdelete": False}, broadcast=True)
 
 def get_folder_path_info(base):
     if base == 'This PC':
@@ -3141,7 +3145,7 @@ def get_message(msg):
             else:
                 get_model_info(vars.model)
     elif(msg['cmd'] == 'delete_model'):
-        if "{}/models".format(os.getcwd()) in msg['data'] or "{}\\models".format(os.getcwd()) in msg['data']:
+        if "{}/models".format(os.getcwd()) in os.path.abspath(msg['data']) or "{}\\models".format(os.getcwd()) in os.path.abspath(msg['data']):
             if check_if_dir_is_model(msg['data']):
                 print("It's a model, now we really will kill it")
                 import shutil

@@ -368,14 +368,14 @@ body.connected #popupfooter, #popupfooter.always-available {
 	margin-top: 200px;
 }
 
-#loadpopup {
+.loadpopup {
 	width: 500px;
 	background-color: #262626;
 	margin-top: 100px;
 }
 
 @media (max-width: 768px) {
-	#loadpopup {
+	.loadpopup {
 		width: 100%;
 		background-color: #262626;
 		margin-top: 100px;
