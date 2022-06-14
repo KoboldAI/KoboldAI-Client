@@ -68,6 +68,17 @@ gensettingstf = [
 	{
 	"uitype": "slider",
 	"unit": "float",
+	"label": "Top a Sampling",
+	"id": "settopa", 
+	"min": 0.0,
+	"max": 1.0,
+	"step": 0.01,
+	"default": 0.0,
+    "tooltip": "Alternative sampling method that reduces the randomness of the AI whenever the probability of one token is much higher than all the others. Higher values have a stronger effect. Set this setting to 0 to disable its effect."
+	},
+	{
+	"uitype": "slider",
+	"unit": "float",
 	"label": "Repetition Penalty",
 	"id": "setreppen", 
 	"min": 1.0,

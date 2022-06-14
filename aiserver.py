@@ -106,7 +106,6 @@ model_menu = {
         ["Adventure Models", "adventurelist", "", True],
         ["Novel Models", "novellist", "", True],
         ["NSFW Models", "nsfwlist", "", True],
-        ["Chatbot Models", "chatlist", "", True],
         ["Untuned GPT-Neo/J", "gptneolist", "", True],
         ["Untuned Fairseq Dense", "fsdlist", "", True],
         ["Untuned OPT", "optlist", "", True],
@@ -220,6 +219,7 @@ class vars:
     temp        = 0.5    # Default generator temperature
     top_p       = 0.9    # Default generator top_p
     top_k       = 0      # Default generator top_k
+    top_a       = 0.0    # Default generator top-a
     tfs         = 1.0    # Default generator tfs (tail-free sampling)
     typical     = 1.0    # Default generator typical sampling threshold
     numseqs     = 1     # Number of sequences to ask the generator to create
@@ -315,6 +315,7 @@ class vars:
     acregex_ui  = re.compile(r'^ *(&gt;.*)$', re.MULTILINE)    # Pattern for matching actions in the HTML-escaped story so we can apply colouring, etc (make sure to encase part to format in parentheses)
     comregex_ai = re.compile(r'(?:\n<\|(?:.|\n)*?\|>(?=\n|$))|(?:<\|(?:.|\n)*?\|>\n?)')  # Pattern for matching comments to remove them before sending them to the AI
     comregex_ui = re.compile(r'(&lt;\|(?:.|\n)*?\|&gt;)')  # Pattern for matching comments in the editor
+    sampler_order = utils.default_sampler_order.copy()
     chatmode    = False
     chatname    = "You"
     adventure   = False
@@ -647,6 +648,8 @@ def loadmodelsettings():
         vars.badwordsids = js["badwordsids"]
     if("nobreakmodel" in js):
         vars.nobreakmodel = js["nobreakmodel"]
+    if("sampler_order" in js):
+        vars.sampler_order = js["sampler_order"]
     if("temp" in js):
         vars.temp       = js["temp"]
     if("top_p" in js):
@@ -657,6 +660,8 @@ def loadmodelsettings():
         vars.tfs        = js["tfs"]
     if("typical" in js):
         vars.typical    = js["typical"]
+    if("top_a" in js):
+        vars.top_a      = js["top_a"]
     if("rep_pen" in js):
         vars.rep_pen    = js["rep_pen"]
     if("rep_pen_slope" in js):
@@ -688,11 +693,13 @@ def savesettings():
     js = {}
     js["apikey"]      = vars.apikey
     js["andepth"]     = vars.andepth
+    js["sampler_order"] = vars.sampler_order
     js["temp"]        = vars.temp
     js["top_p"]       = vars.top_p
     js["top_k"]       = vars.top_k
     js["tfs"]         = vars.tfs
     js["typical"]     = vars.typical
+    js["top_a"]       = vars.top_a
     js["rep_pen"]     = vars.rep_pen
     js["rep_pen_slope"] = vars.rep_pen_slope
     js["rep_pen_range"] = vars.rep_pen_range
@@ -763,6 +770,8 @@ def processsettings(js):
         vars.apikey     = js["apikey"]
     if("andepth" in js):
         vars.andepth    = js["andepth"]
+    if("sampler_order" in js):
+        vars.sampler_order = js["sampler_order"]
     if("temp" in js):
         vars.temp       = js["temp"]
     if("top_p" in js):
@@ -773,6 +782,8 @@ def processsettings(js):
         vars.tfs        = js["tfs"]
     if("typical" in js):
         vars.typical    = js["typical"]
+    if("top_a" in js):
+        vars.top_a      = js["top_a"]
     if("rep_pen" in js):
         vars.rep_pen    = js["rep_pen"]
     if("rep_pen_slope" in js):
@@ -1268,7 +1279,7 @@ def patch_transformers():
 
     # Patch transformers to use our custom logit warpers
     from transformers import LogitsProcessorList, LogitsWarper, LogitsProcessor, TopKLogitsWarper, TopPLogitsWarper, TemperatureLogitsWarper, RepetitionPenaltyLogitsProcessor
-    from warpers import AdvancedRepetitionPenaltyLogitsProcessor, TailFreeLogitsWarper, TypicalLogitsWarper
+    from warpers import AdvancedRepetitionPenaltyLogitsProcessor, TailFreeLogitsWarper, TypicalLogitsWarper, TopALogitsWarper
 
     def dynamic_processor_wrap(cls, field_name, var_name, cond=None):
         old_call = cls.__call__
@@ -1288,6 +1299,7 @@ def patch_transformers():
         cls.__call__ = new_call
     dynamic_processor_wrap(AdvancedRepetitionPenaltyLogitsProcessor, ("penalty", "penalty_slope", "penalty_range"), ("rep_pen", "rep_pen_slope", "rep_pen_range"), cond=lambda x: x[0] != 1.0)
     dynamic_processor_wrap(TopKLogitsWarper, "top_k", "top_k", cond=lambda x: x > 0)
+    dynamic_processor_wrap(TopALogitsWarper, "top_a", "top_a", cond=lambda x: x > 0.0)
     dynamic_processor_wrap(TopPLogitsWarper, "top_p", "top_p", cond=lambda x: x < 1.0)
     dynamic_processor_wrap(TailFreeLogitsWarper, "tfs", "tfs", cond=lambda x: x < 1.0)
     dynamic_processor_wrap(TypicalLogitsWarper, "typical", "typical", cond=lambda x: x < 1.0)
@@ -1331,14 +1343,23 @@ def patch_transformers():
     new_get_logits_processor.old_get_logits_processor = transformers.generation_utils.GenerationMixin._get_logits_processor
     transformers.generation_utils.GenerationMixin._get_logits_processor = new_get_logits_processor
 
+    class KoboldLogitsWarperList(LogitsProcessorList):
+        def __init__(self, beams: int = 1, **kwargs):
+            self.__warper_list: List[LogitsWarper] = []
+            self.__warper_list.append(TopKLogitsWarper(top_k=1, min_tokens_to_keep=1 + (beams > 1)))
+            self.__warper_list.append(TopALogitsWarper(top_a=0.5, min_tokens_to_keep=1 + (beams > 1)))
+            self.__warper_list.append(TopPLogitsWarper(top_p=0.5, min_tokens_to_keep=1 + (beams > 1)))
+            self.__warper_list.append(TailFreeLogitsWarper(tfs=0.5, min_tokens_to_keep=1 + (beams > 1)))
+            self.__warper_list.append(TypicalLogitsWarper(typical=0.5, min_tokens_to_keep=1 + (beams > 1)))
+            self.__warper_list.append(TemperatureLogitsWarper(temperature=0.5))
+
+        def __call__(self, input_ids: torch.LongTensor, scores: torch.FloatTensor, *args, **kwargs):
+            for k in vars.sampler_order:
+                scores = self.__warper_list[k](input_ids, scores, *args, **kwargs)
+            return scores
+
     def new_get_logits_warper(beams: int = 1,) -> LogitsProcessorList:
-        warper_list = LogitsProcessorList()
-        warper_list.append(TopKLogitsWarper(top_k=1, min_tokens_to_keep=1 + (beams > 1)))
-        warper_list.append(TopPLogitsWarper(top_p=0.5, min_tokens_to_keep=1 + (beams > 1)))
-        warper_list.append(TailFreeLogitsWarper(tfs=0.5, min_tokens_to_keep=1 + (beams > 1)))
-        warper_list.append(TypicalLogitsWarper(typical=0.5, min_tokens_to_keep=1 + (beams > 1)))
-        warper_list.append(TemperatureLogitsWarper(temperature=0.5))
-        return warper_list
+        return KoboldLogitsWarperList(beams=beams)
     
     def new_sample(self, *args, **kwargs):
         assert kwargs.pop("logits_warper", None) is not None
@@ -1957,11 +1978,13 @@ def load_model(use_gpu=True, gpu_layers=None, initial_load=False, online_model="
         
         def tpumtjgenerate_settings_callback() -> dict:
             return {
+                "sampler_order": vars.sampler_order,
                 "top_p": float(vars.top_p),
                 "temp": float(vars.temp),
                 "top_k": int(vars.top_k),
                 "tfs": float(vars.tfs),
                 "typical": float(vars.typical),
+                "top_a": float(vars.top_a),
                 "repetition_penalty": float(vars.rep_pen),
                 "rpslope": float(vars.rep_pen_slope),
                 "rprange": int(vars.rep_pen_range),
@@ -2384,6 +2407,7 @@ def lua_has_setting(setting):
         "settopk",
         "settfs",
         "settypical",
+        "settopa",
         "setreppen",
         "setreppenslope",
         "setreppenrange",
@@ -2403,6 +2427,7 @@ def lua_has_setting(setting):
         "top_k",
         "tfs",
         "typical",
+        "topa",
         "reppen",
         "reppenslope",
         "reppenrange",
@@ -2437,6 +2462,7 @@ def lua_get_setting(setting):
     if(setting in ("settopk", "topk", "top_k")): return vars.top_k
     if(setting in ("settfs", "tfs")): return vars.tfs
     if(setting in ("settypical", "typical")): return vars.typical
+    if(setting in ("settopa", "topa")): return vars.top_a
     if(setting in ("setreppen", "reppen")): return vars.rep_pen
     if(setting in ("setreppenslope", "reppenslope")): return vars.rep_pen_slope
     if(setting in ("setreppenrange", "reppenrange")): return vars.rep_pen_range
@@ -2472,6 +2498,7 @@ def lua_set_setting(setting, v):
     if(setting in ("settopk", "topk")): vars.top_k = v
     if(setting in ("settfs", "tfs")): vars.tfs = v
     if(setting in ("settypical", "typical")): vars.typical = v
+    if(setting in ("settopa", "topa")): vars.top_a = v
     if(setting in ("setreppen", "reppen")): vars.rep_pen = v
     if(setting in ("setreppenslope", "reppenslope")): vars.rep_pen_slope = v
     if(setting in ("setreppenrange", "reppenrange")): vars.rep_pen_range = v
@@ -2862,6 +2889,11 @@ def get_message(msg):
         emit('from_server', {'cmd': 'setlabeltypical', 'data': msg['data']}, broadcast=True)
         settingschanged()
         refresh_settings()
+    elif(msg['cmd'] == 'settopa'):
+        vars.top_a = float(msg['data'])
+        emit('from_server', {'cmd': 'setlabeltopa', 'data': msg['data']}, broadcast=True)
+        settingschanged()
+        refresh_settings()
     elif(msg['cmd'] == 'setreppen'):
         vars.rep_pen = float(msg['data'])
         emit('from_server', {'cmd': 'setlabelreppen', 'data': msg['data']}, broadcast=True)
@@ -3015,6 +3047,8 @@ def get_message(msg):
     elif(msg['cmd'] == 'uslistrequest'):
         unloaded, loaded = getuslist()
         emit('from_server', {'cmd': 'buildus', 'data': {"unloaded": unloaded, "loaded": loaded}})
+    elif(msg['cmd'] == 'samplerlistrequest'):
+        emit('from_server', {'cmd': 'buildsamplers', 'data': vars.sampler_order})
     elif(msg['cmd'] == 'usloaded'):
         vars.userscripts = []
         for userscript in msg['data']:
@@ -3028,6 +3062,16 @@ def get_message(msg):
         load_lua_scripts()
         unloaded, loaded = getuslist()
         sendUSStatItems()
+    elif(msg['cmd'] == 'samplers'):
+        sampler_order = msg["data"]
+        if(not isinstance(sampler_order, list)):
+            raise ValueError(f"Sampler order must be a list, but got a {type(sampler_order)}")
+        if(len(sampler_order) != len(vars.sampler_order)):
+            raise ValueError(f"Sampler order must be a list of length {len(vars.sampler_order)}, but got a list of length {len(sampler_order)}")
+        if(not all(isinstance(e, int) for e in sampler_order)):
+            raise ValueError(f"Sampler order must be a list of ints, but got a list with at least one non-int element")
+        vars.sampler_order = sampler_order
+        settingschanged()
     elif(msg['cmd'] == 'list_model'):
         sendModelSelection(menu=msg['data'])
     elif(msg['cmd'] == 'load_model'):
@@ -3988,6 +4032,7 @@ def sendtocolab(txt, min, max):
         'top_k': vars.top_k,
         'tfs': vars.tfs,
         'typical': vars.typical,
+        'topa': vars.top_a,
         'numseqs': vars.numseqs,
         'retfultxt': False
     }
@@ -4125,12 +4170,14 @@ def tpumtjgenerate(txt, minimum, maximum, found_entries=None):
                 top_k=vars.top_k,
                 tfs=vars.tfs,
                 typical=vars.typical,
+                top_a=vars.top_a,
                 numseqs=vars.numseqs,
                 repetition_penalty=vars.rep_pen,
                 rpslope=vars.rep_pen_slope,
                 rprange=vars.rep_pen_range,
                 soft_embeddings=vars.sp,
                 soft_tokens=soft_tokens,
+                sampler_order=vars.sampler_order,
             )
             past = genout
             for i in range(vars.numseqs):
@@ -4311,6 +4358,7 @@ def refresh_settings():
         emit('from_server', {'cmd': 'updatetopk', 'data': vars.top_k}, broadcast=True)
         emit('from_server', {'cmd': 'updatetfs', 'data': vars.tfs}, broadcast=True)
         emit('from_server', {'cmd': 'updatetypical', 'data': vars.typical}, broadcast=True)
+        emit('from_server', {'cmd': 'updatetopa', 'data': vars.top_a}, broadcast=True)
         emit('from_server', {'cmd': 'updatereppen', 'data': vars.rep_pen}, broadcast=True)
         emit('from_server', {'cmd': 'updatereppenslope', 'data': vars.rep_pen_slope}, broadcast=True)
         emit('from_server', {'cmd': 'updatereppenrange', 'data': vars.rep_pen_range}, broadcast=True)
@@ -4887,6 +4935,7 @@ def oairequest(txt, min, max):
             'prompt': txt,
             'max_tokens': vars.genamt,
             'temperature': vars.temp,
+            'top_a': vars.top_a,
             'top_p': vars.top_p,
             'top_k': vars.top_k,
             'tfs': vars.tfs,

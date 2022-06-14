@@ -21,6 +21,7 @@ var button_settings;
 var button_format;
 var button_softprompt;
 var button_userscripts;
+var button_samplers;
 var button_mode;
 var button_mode_label;
 var button_send;
@@ -111,6 +112,9 @@ var do_clear_ent = false;
 
 // Whether or not an entry in the Userscripts menu is being dragged
 var us_dragging = false;
+
+// Whether or not an entry in the Samplers menu is being dragged
+var samplers_dragging = false;
 
 // Display vars
 var allowtoggle = false;
@@ -997,6 +1001,16 @@ function hideUSPopup() {
 	spcontent.html("");
 }
 
+function showSamplersPopup() {
+	samplerspopup.removeClass("hidden");
+	samplerspopup.addClass("flex");
+}
+
+function hideSamplersPopup() {
+	samplerspopup.removeClass("flex");
+	samplerspopup.addClass("hidden");
+}
+
 
 function buildLoadModelList(ar, menu, breadcrumbs) {
 	disableButtons([load_model_accept]);
@@ -1204,6 +1218,29 @@ function buildUSList(unloaded, loaded) {
 		}
 		el = usloaded;
 		ar = loaded;
+	}
+}
+
+function buildSamplerList(samplers) {
+	samplerslist.html("");
+	showSamplersPopup();
+	var i;
+	var samplers_lookup_table = [
+		"Top-k Sampling",
+		"Top-a Sampling",
+		"Top-p Sampling",
+		"Tail-free Sampling",
+		"Typical Sampling",
+		"Temperature",
+	]
+	for(i=0; i<samplers.length; i++) {
+		samplerslist.append("<div class=\"flex\">\
+			<div class=\"samplerslistitem flex-row-container\" sid=\""+samplers[i]+"\">\
+				<div class=\"flex-row\">\
+					<div>"+samplers_lookup_table[samplers[i]]+"</div>\
+				</div>\
+			</div>\
+		</div>");
 	}
 }
 
@@ -1963,6 +2000,7 @@ $(document).ready(function(){
 	button_format     = $('#btn_format');
 	button_softprompt = $("#btn_softprompt");
 	button_userscripts= $("#btn_userscripts");
+	button_samplers   = $("#btn_samplers");
 	button_mode       = $('#btnmode')
 	button_mode_label = $('#btnmode_label')
 	button_send       = $('#btnsend');
@@ -2015,6 +2053,10 @@ $(document).ready(function(){
 	usloaded          = $("#uslistloaded");
 	us_accept         = $("#btn_usaccept");
 	us_close          = $("#btn_usclose");
+	samplerspopup     = $("#samplerscontainer");
+	samplerslist      = $("#samplerslist");
+	samplers_accept   = $("#btn_samplersaccept");
+	samplers_close    = $("#btn_samplersclose");
 	nspopup           = $("#newgamecontainer");
 	ns_accept         = $("#btn_nsaccept");
 	ns_close          = $("#btn_nsclose");
@@ -2038,7 +2080,7 @@ $(document).ready(function(){
 				modelname = msg.modelname;
 			}
 			refreshTitle();
-			connect_status.html("<b>Connected to KoboldAI Process!</b>");
+			connect_status.html("<b>Connected to KoboldAI!</b>");
 			connect_status.removeClass("color_orange");
 			connect_status.addClass("color_green");
 			// Reset Menus
@@ -2231,6 +2273,10 @@ $(document).ready(function(){
 			// Send current typical value to input
 			$("#settypicalcur").val(msg.data);
 			$("#settypical").val(parseFloat(msg.data)).trigger("change");
+		} else if(msg.cmd == "updatetopa") {
+			// Send current top a value to input
+			$("#settopacur").val(msg.data);
+			$("#settopa").val(parseFloat(msg.data)).trigger("change");
 		} else if(msg.cmd == "updatereppen") {
 			// Send current rep pen value to input
 			$("#setreppencur").val(msg.data);
@@ -2270,6 +2316,9 @@ $(document).ready(function(){
 		} else if(msg.cmd == "setlabeltypical") {
 			// Update setting label with value from server
 			$("#settypicalcur").val(msg.data);
+		} else if(msg.cmd == "setlabeltypical") {
+			// Update setting label with value from server
+			$("#settopa").val(msg.data);
 		} else if(msg.cmd == "setlabelreppen") {
 			// Update setting label with value from server
 			$("#setreppencur").val(msg.data);
@@ -2440,6 +2489,8 @@ $(document).ready(function(){
 			buildSPList(msg.data);
 		} else if(msg.cmd == "buildus") {
 			buildUSList(msg.data.unloaded, msg.data.loaded);
+		} else if(msg.cmd == "buildsamplers") {
+			buildSamplerList(msg.data);
 		} else if(msg.cmd == "askforoverwrite") {
 			// Show overwrite warning
 			show([$(".saveasoverwrite")]);
@@ -2648,6 +2699,20 @@ $(document).ready(function(){
 		}, 10);
 	}
 
+	var samplers_click_handler = function(ev) {
+		setTimeout(function() {
+			if (samplers_dragging) {
+				return;
+			}
+			var target = $(ev.target).closest(".samplerslistitem");
+			var next = target.parent().next().find(".samplerslistitem");
+			if (!next.length) {
+				return;
+			}
+			next.parent().after(target.parent());
+		}, 10);
+	}
+
 	// Make the userscripts menu sortable
 	var us_sortable_settings = {
 		placeholder: "ussortable-placeholder",
@@ -2667,6 +2732,22 @@ $(document).ready(function(){
 	usloaded.sortable($.extend({
 		connectWith: "#uslistunloaded",
 	}, us_sortable_settings)).on("click", ".uslistitem", us_click_handler);
+
+	// Make the samplers menu sortable
+	var samplers_sortable_settings = {
+		placeholder: "samplerssortable-placeholder",
+		start: function() { samplers_dragging = true; },
+		stop: function() { samplers_dragging = false; },
+		delay: 2,
+		cursor: "move",
+		tolerance: "pointer",
+		opacity: 0.21,
+		revert: 173,
+		scrollSensitivity: 64,
+		scrollSpeed: 10,
+	}
+	samplerslist.sortable($.extend({
+	}, samplers_sortable_settings)).on("click", ".samplerslistitem", samplers_click_handler);
 
 	// Bind actions to UI buttons
 	button_send.on("click", function(ev) {
@@ -2802,6 +2883,10 @@ $(document).ready(function(){
 	button_userscripts.on("click", function(ev) {
 		socket.send({'cmd': 'uslistrequest', 'data': ''});
 	});
+
+	button_samplers.on("click", function(ev) {
+		socket.send({'cmd': 'samplerlistrequest', 'data': ''});
+	});
 	
 	load_close.on("click", function(ev) {
 		hideLoadPopup();
@@ -2857,6 +2942,16 @@ $(document).ready(function(){
 		socket.send({'cmd': 'usloaded', 'data': usloaded.find(".uslistitem").map(function() { return $(this).attr("name"); }).toArray()});
 		socket.send({'cmd': 'usload', 'data': ''});
 		hideUSPopup();
+	});
+
+	samplers_close.on("click", function(ev) {
+		hideSamplersPopup();
+	});
+
+	samplers_accept.on("click", function(ev) {
+		hideMessage();
+		socket.send({'cmd': 'samplers', 'data': samplerslist.find(".samplerslistitem").map(function() { return parseInt($(this).attr("sid")); }).toArray()});
+		hideSamplersPopup();
 	});
 	
 	button_loadmodel.on("click", function(ev) {

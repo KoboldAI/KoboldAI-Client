@@ -20,6 +20,8 @@ from_pretrained_index_filename: Optional[str] = None
 from_pretrained_kwargs = {}
 bar = None
 
+default_sampler_order = [0, 1, 2, 3, 4, 5]
+
 #==================================================================#
 # Decorator to prevent a function's actions from being run until
 # at least x seconds have passed without the function being called

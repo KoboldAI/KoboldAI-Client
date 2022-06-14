@@ -457,6 +457,26 @@ body.connected #popupfooter, #popupfooter.always-available {
 	overflow-wrap: anywhere;
 }
 
+#samplerspopup {
+	width: 300px;
+	background-color: #262626;
+	margin-top: 100px;
+}
+
+@media (max-width: 768px) {
+	#samplerspopup {
+		width: 100%;
+		background-color: #262626;
+		margin-top: 100px;
+	}
+}
+
+#samplerslist {
+	height: 300px;
+	overflow-y: scroll;
+	overflow-wrap: anywhere;
+}
+
 #nspopup {
 	width: 350px;
 	background-color: #262626;
@@ -750,7 +770,7 @@ body.connected .dropdown-item:hover, .dropdown-item.always-available:hover {
 	background-color: #3bf723;
 }
 
-.ussortable-placeholder {
+.ussortable-placeholder, .samplerssortable-placeholder {
 	height: 4px;
 	background-color: #3bf723;
 }
@@ -1362,7 +1382,7 @@ body.connected .popupfooter, .popupfooter.always-available {
 	background-color: #688f1f;
 }
 
-.uslistitem {
+.uslistitem, .samplerslistitem {
 	padding: 12px 10px 12px 10px;
 	display: flex;
 	flex-grow: 1;
@@ -1374,11 +1394,11 @@ body.connected .popupfooter, .popupfooter.always-available {
 	transition: background-color 0.25s ease-in;
 }
 
-.uslistitemsub {
+.uslistitemsub, .samplerslistitemsub {
 	color: #ba9;
 }
 
-.uslistitem:hover {
+.uslistitem:hover, .samplerslistitem:hover {
 	cursor: move;
 	background-color: #688f1f;
 }
