@@ -306,6 +306,7 @@ class vars:
     acregex_ui  = re.compile(r'^ *(&gt;.*)$', re.MULTILINE)    # Pattern for matching actions in the HTML-escaped story so we can apply colouring, etc (make sure to encase part to format in parentheses)
     comregex_ai = re.compile(r'(?:\n<\|(?:.|\n)*?\|>(?=\n|$))|(?:<\|(?:.|\n)*?\|>\n?)')  # Pattern for matching comments to remove them before sending them to the AI
     comregex_ui = re.compile(r'(&lt;\|(?:.|\n)*?\|&gt;)')  # Pattern for matching comments in the editor
+    sampler_order = utils.default_sampler_order.copy()
     chatmode    = False
     chatname    = "You"
     adventure   = False
@@ -567,6 +568,8 @@ def loadmodelsettings():
         vars.badwordsids = js["badwordsids"]
     if("nobreakmodel" in js):
         vars.nobreakmodel = js["nobreakmodel"]
+    if("sampler_order" in js):
+        vars.sampler_order = js["sampler_order"]
     if("temp" in js):
         vars.temp       = js["temp"]
     if("top_p" in js):
@@ -610,6 +613,7 @@ def savesettings():
     js = {}
     js["apikey"]      = vars.apikey
     js["andepth"]     = vars.andepth
+    js["sampler_order"] = vars.sampler_order
     js["temp"]        = vars.temp
     js["top_p"]       = vars.top_p
     js["top_k"]       = vars.top_k
@@ -686,6 +690,8 @@ def processsettings(js):
         vars.apikey     = js["apikey"]
     if("andepth" in js):
         vars.andepth    = js["andepth"]
+    if("sampler_order" in js):
+        vars.sampler_order = js["sampler_order"]
     if("temp" in js):
         vars.temp       = js["temp"]
     if("top_p" in js):
@@ -1448,15 +1454,23 @@ if(not vars.use_colab_tpu and vars.model not in ["InferKit", "Colab", "OAI", "Go
         new_get_logits_processor.old_get_logits_processor = transformers.generation_utils.GenerationMixin._get_logits_processor
         transformers.generation_utils.GenerationMixin._get_logits_processor = new_get_logits_processor
 
+        class KoboldLogitsWarperList(LogitsProcessorList):
+            def __init__(self, beams: int = 1, **kwargs):
+                self.__warper_list: List[LogitsWarper] = []
+                self.__warper_list.append(TopKLogitsWarper(top_k=1, min_tokens_to_keep=1 + (beams > 1)))
+                self.__warper_list.append(TopALogitsWarper(top_a=0.5, min_tokens_to_keep=1 + (beams > 1)))
+                self.__warper_list.append(TopPLogitsWarper(top_p=0.5, min_tokens_to_keep=1 + (beams > 1)))
+                self.__warper_list.append(TailFreeLogitsWarper(tfs=0.5, min_tokens_to_keep=1 + (beams > 1)))
+                self.__warper_list.append(TypicalLogitsWarper(typical=0.5, min_tokens_to_keep=1 + (beams > 1)))
+                self.__warper_list.append(TemperatureLogitsWarper(temperature=0.5))
+
+            def __call__(self, input_ids: torch.LongTensor, scores: torch.FloatTensor, *args, **kwargs):
+                for k in vars.sampler_order:
+                    scores = self.__warper_list[k](input_ids, scores, *args, **kwargs)
+                return scores
+
         def new_get_logits_warper(beams: int = 1,) -> LogitsProcessorList:
-            warper_list = LogitsProcessorList()
-            warper_list.append(TopKLogitsWarper(top_k=1, min_tokens_to_keep=1 + (beams > 1)))
-            warper_list.append(TopALogitsWarper(top_a=0.5, min_tokens_to_keep=1 + (beams > 1)))
-            warper_list.append(TopPLogitsWarper(top_p=0.5, min_tokens_to_keep=1 + (beams > 1)))
-            warper_list.append(TailFreeLogitsWarper(tfs=0.5, min_tokens_to_keep=1 + (beams > 1)))
-            warper_list.append(TypicalLogitsWarper(typical=0.5, min_tokens_to_keep=1 + (beams > 1)))
-            warper_list.append(TemperatureLogitsWarper(temperature=0.5))
-            return warper_list
+            return KoboldLogitsWarperList(beams=beams)
         
         def new_sample(self, *args, **kwargs):
             assert kwargs.pop("logits_warper", None) is not None
@@ -1816,6 +1830,7 @@ else:
     
     def tpumtjgenerate_settings_callback() -> dict:
         return {
+            "sampler_order": vars.sampler_order,
             "top_p": float(vars.top_p),
             "temp": float(vars.temp),
             "top_k": int(vars.top_k),
@@ -2858,6 +2873,8 @@ def get_message(msg):
     elif(msg['cmd'] == 'uslistrequest'):
         unloaded, loaded = getuslist()
         emit('from_server', {'cmd': 'buildus', 'data': {"unloaded": unloaded, "loaded": loaded}})
+    elif(msg['cmd'] == 'samplerlistrequest'):
+        emit('from_server', {'cmd': 'buildsamplers', 'data': vars.sampler_order})
     elif(msg['cmd'] == 'usloaded'):
         vars.userscripts = []
         for userscript in msg['data']:
@@ -2871,6 +2888,16 @@ def get_message(msg):
         load_lua_scripts()
         unloaded, loaded = getuslist()
         sendUSStatItems()
+    elif(msg['cmd'] == 'samplers'):
+        sampler_order = msg["data"]
+        if(not isinstance(sampler_order, list)):
+            raise ValueError(f"Sampler order must be a list, but got a {type(sampler_order)}")
+        if(len(sampler_order) != len(vars.sampler_order)):
+            raise ValueError(f"Sampler order must be a list of length {len(vars.sampler_order)}, but got a list of length {len(sampler_order)}")
+        if(not all(isinstance(e, int) for e in sampler_order)):
+            raise ValueError(f"Sampler order must be a list of ints, but got a list with at least one non-int element")
+        vars.sampler_order = sampler_order
+        settingschanged()
     elif(msg['cmd'] == 'loadselect'):
         vars.loadselect = msg["data"]
     elif(msg['cmd'] == 'spselect'):
@@ -3910,6 +3937,7 @@ def tpumtjgenerate(txt, minimum, maximum, found_entries=None):
                 rprange=vars.rep_pen_range,
                 soft_embeddings=vars.sp,
                 soft_tokens=soft_tokens,
+                sampler_order=vars.sampler_order,
             )
             past = genout
             for i in range(vars.numseqs):

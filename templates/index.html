@@ -9,7 +9,7 @@
 	<link rel="stylesheet" href="static/bootstrap.min.css">
 	<link rel="stylesheet" href="static/bootstrap-toggle.min.css">
 	<link rel="stylesheet" href="static/open-iconic-bootstrap.min.css">
-	<link rel="stylesheet" href="static/custom.css?ver=1.18b">
+	<link rel="stylesheet" href="static/custom.css?ver=1.18c">
 
 	<script src="static/jquery-3.6.0.min.js"></script>
 	<script src="static/jquery-ui.sortable.min.js"></script>
@@ -17,7 +17,7 @@
 	<script src="static/bootstrap.min.js"></script>
 	<script src="static/bootstrap-toggle.min.js"></script>
 	<script src="static/rangy-core.min.js"></script>
-	<script src="static/application.js?ver=1.18d"></script>
+	<script src="static/application.js?ver=1.18e"></script>
 </head>
 <body>
 	<input type="file" id="remote-save-select" accept="application/json" style="display:none">
@@ -70,6 +70,9 @@
 								</li>
 								<li class="nav-item">
 									<a class="nav-link" href="#" id="btn_format">Formatting</a>
+								</li>
+								<li class="nav-item">
+									<a class="nav-link" href="#" id="btn_samplers">Samplers</a>
 								</li>
 								<li class="nav-item">
 									<a class="nav-link" href="#" id="btn_userscripts">Userscripts</a>
@@ -296,6 +299,19 @@
 			<div class="popupfooter">
 				<button type="button" class="btn btn-primary" id="btn_usaccept">Load</button>
 				<button type="button" class="btn btn-primary" id="btn_usclose">Cancel</button>
+			</div>
+		</div>
+	</div>
+	<div class="popupcontainer hidden" id="samplerscontainer">
+		<div id="samplerspopup">
+			<div class="popuptitlebar">
+				<div class="popuptitletext">Drag-and-drop to change the order in which the samplers are applied</div>
+			</div>
+			<div id="samplerslist">
+			</div>
+			<div class="popupfooter">
+				<button type="button" class="btn btn-primary" id="btn_samplersaccept">Save</button>
+				<button type="button" class="btn btn-primary" id="btn_samplersclose">Cancel</button>
 			</div>
 		</div>
 	</div>
