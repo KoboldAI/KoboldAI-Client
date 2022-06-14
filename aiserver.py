@@ -355,6 +355,7 @@ from flask import Flask, render_template, Response, request, copy_current_reques
 from flask_socketio import SocketIO, emit
 app = Flask(__name__, root_path=os.getcwd())
 app.config['SECRET KEY'] = 'secret!'
+app.config['TEMPLATES_AUTO_RELOAD'] = True
 socketio = SocketIO(app, async_method="eventlet")
 print("{0}OK!{1}".format(colors.GREEN, colors.END))
 
@@ -365,6 +366,8 @@ def sendModelSelection(menu="mainmenu", folder="./models"):
     #If we send one of the manual load options, send back the list of model directories, otherwise send the menu
     if menu in ('NeoCustom', 'GPT2Custom'):
         (paths, breadcrumbs) = get_folder_path_info(folder)
+        if args.remote:
+            breadcrumbs = []
         menu_list = [[folder, menu, "", False] for folder in paths]
         menu_list.append(["Return to Main Menu", "mainmenu", "", True])
         emit('from_server', {'cmd': 'show_model_menu', 'data': menu_list, 'menu': menu, 'breadcrumbs': breadcrumbs}, broadcast=True)
@@ -2046,7 +2049,10 @@ def load_model(use_gpu=True, gpu_layers=None, initial_load=False, online_model="
 @app.route('/')
 @app.route('/index')
 def index():
-    return render_template('index.html', hide_ai_menu=args.noaimenu)
+    if 'new_ui' in request.args:
+        return render_template('index_new.html', hide_ai_menu=args.noaimenu)
+    else:
+        return render_template('index.html', hide_ai_menu=args.noaimenu)
 @app.route('/favicon.ico')
 def favicon():
     return send_from_directory(app.root_path,
@@ -3134,7 +3140,17 @@ def get_message(msg):
                 get_model_info(msg['data'], directory=msg['path'])
             else:
                 get_model_info(vars.model)
-            
+    elif(msg['cmd'] == 'delete_model'):
+        if "{}/models".format(os.getcwd()) in msg['data'] or "{}\\models".format(os.getcwd()) in msg['data']:
+            if check_if_dir_is_model(msg['data']):
+                print("It's a model, now we really will kill it")
+                import shutil
+                shutil.rmtree(msg['data'])
+                sendModelSelection(menu=msg['menu'])
+            else:
+                print("Not a model, don't delete")
+        else:
+            print("Ah ah ah, you didn't say the magic word: The selected directory is not in the KoboldAI Models directory, not doing anything.")
     elif(msg['cmd'] == 'OAI_Key_Update'):
         get_oai_models(msg['key'])
     elif(msg['cmd'] == 'loadselect'):

@@ -1031,6 +1031,14 @@ function buildLoadModelList(ar, menu, breadcrumbs) {
 		$("#loadmodellistbreadcrumbs").append("<hr size='1'>")  
 	}
 	for(i=0; i<ar.length; i++) {
+		if (Array.isArray(ar[i][0])) {
+			full_path = ar[i][0][0];
+			folder = ar[i][0][1];
+		} else {
+			full_path = "";
+			folder = ar[i][0];
+		}
+		
 		var html
 		html = "<div class=\"flex\">\
 			<div class=\"loadlistpadding\"></div>"
@@ -1041,13 +1049,14 @@ function buildLoadModelList(ar, menu, breadcrumbs) {
 		//this is a model
 			html = html + "<div class=\"loadlistpadding\"></div>"
 		}
-		if (Array.isArray(ar[i][0])) {
-			full_path = ar[i][0][0];
-			folder = ar[i][0][1];
+		
+		//now let's do the delete icon if applicable
+		if (['NeoCustom', 'GPT2Custom'].includes(menu) && !ar[i][3]) {
+			html = html + "<span class=\"loadlisticon loadmodellisticon-folder oi oi-x allowed\"  aria-hidden=\"true\" onclick='if(confirm(\"This will delete the selected folder with all contents. Are you sure?\")) { socket.send({\"cmd\": \"delete_model\", \"data\": \""+full_path.replaceAll("\\", "\\\\")+"\", \"menu\": \""+menu+"\"});}'></span>"
 		} else {
-			full_path = "";
-			folder = ar[i][0];
+			html = html + "<div class=\"loadlistpadding\"></div>"
 		}
+		
 		html = html + "<div class=\"loadlistpadding\"></div>\
 						<div class=\"loadlistitem\" id=\"loadmodel"+i+"\" name=\""+ar[i][1]+"\" pretty_name=\""+full_path+"\">\
 							<div>"+folder+"</div>\
