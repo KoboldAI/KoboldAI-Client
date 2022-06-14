@@ -369,9 +369,13 @@ def sendModelSelection(menu="mainmenu", folder="./models"):
             breadcrumbs = []
         menu_list = [[folder, menu, "", False] for folder in paths]
         menu_list.append(["Return to Main Menu", "mainmenu", "", True])
-        emit('from_server', {'cmd': 'show_model_menu', 'data': menu_list, 'menu': menu, 'breadcrumbs': breadcrumbs}, broadcast=True)
+        if os.path.abspath("{}/models".format(os.getcwd())) == os.path.abspath(folder):
+            showdelete=True
+        else:
+            showdelete=False
+        emit('from_server', {'cmd': 'show_model_menu', 'data': menu_list, 'menu': menu, 'breadcrumbs': breadcrumbs, "showdelete": showdelete}, broadcast=True)
     else:
-        emit('from_server', {'cmd': 'show_model_menu', 'data': model_menu[menu], 'menu': menu, 'breadcrumbs': []}, broadcast=True)
+        emit('from_server', {'cmd': 'show_model_menu', 'data': model_menu[menu], 'menu': menu, 'breadcrumbs': [], "showdelete": False}, broadcast=True)
 
 def get_folder_path_info(base):
     if base == 'This PC':
