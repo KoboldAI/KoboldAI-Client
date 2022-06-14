@@ -1475,3 +1475,54 @@ body.connected .popupfooter, .popupfooter.always-available {
 .model_layers:focus {
 	color: #cdf;
 }
+
+.menu_icon {
+	position: fixed;
+	top:10px;
+	left: 5px;
+	z-index:100;
+	display: inline-block;
+	cursor: pointer;
+}
+
+.SideMenu {
+  height: 100%;
+  width: 0;
+  position: fixed;
+  z-index: 1;
+  top: 0;
+  left: 0;
+  background-color: #111;
+  overflow-x: hidden;
+  transition: 0.5s;
+  padding-top: 60px;
+}
+
+.SideMenu.open {
+  width: 450px;
+}
+
+@media only screen and (max-width: 768px) {
+	.SideMenu.open {
+	  width: 100%;
+	}
+}
+
+
+.menubar1, .menubar2, .menubar3 {
+  width: 21px;
+  height: 3px;
+  background-color: #999;
+  margin: 3px 0;
+  transition: 0.4s;
+}
+
+.change .menubar1 {
+  transform: translate(0px, 6px) rotate(-45deg);
+}
+
+.change .menubar2 {opacity: 0;}
+
+.change .menubar3 {
+  transform: translate(0px, -6px) rotate(45deg);
+}
