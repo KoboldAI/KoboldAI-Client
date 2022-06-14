@@ -3097,7 +3097,7 @@ def get_message(msg):
             else:
                 get_model_info(vars.model)
     elif(msg['cmd'] == 'delete_model'):
-        if "{}/models".format(os.getcwd()) in msg['data'] or "{}\\models".format(os.getcwd()) in msg['data']:
+        if "{}/models".format(os.getcwd()) in os.path.abspath(msg['data']) or "{}\\models".format(os.getcwd()) in os.path.abspath(msg['data']):
             if check_if_dir_is_model(msg['data']):
                 print("It's a model, now we really will kill it")
                 import shutil
