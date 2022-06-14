@@ -1464,3 +1464,14 @@ body.connected .popupfooter, .popupfooter.always-available {
 	overflow: hidden;
 	font-size: 12pt;
 }
+
+.model_layers {
+	width: 3ch;
+	background-color: inherit;
+	border: none; 
+	outline: none;
+}
+
+.model_layers:focus {
+	color: #cdf;
+}
