@@ -281,7 +281,7 @@ class vars:
     colaburl    = ""     # Ngrok url for Google Colab mode
     apikey      = ""     # API key to use for InferKit API calls
     oaiapikey   = ""     # API key to use for OpenAI API calls
-    savedir     = getcwd()+"\stories"
+    savedir     = getcwd()+"\\stories"
     hascuda     = False  # Whether torch has detected CUDA on the system
     usegpu      = False  # Whether to launch pipeline with GPU support
     custmodpth  = ""     # Filesystem location of custom model to run
@@ -434,13 +434,15 @@ def getModelSelection(modellist):
                 getModelSelection(mainmenu)
 
 def check_if_dir_is_model(path):
-    try:
-        from transformers import AutoConfig
-        model_config = AutoConfig.from_pretrained(path, revision=vars.revision, cache_dir="cache")
-    except:
+    if os.path.exists(path):
+        try:
+            from transformers import AutoConfig
+            model_config = AutoConfig.from_pretrained(path, revision=vars.revision, cache_dir="cache")
+        except:
+            return False
+        return True
+    else:
         return False
-    return True
-    
     
 #==================================================================#
 # Return all keys in tokenizer dictionary containing char
@@ -1072,6 +1074,10 @@ def get_model_info(model, directory=""):
             else:
                 break_values = [layer_count]
             break_values += [0] * (gpu_count - len(break_values))
+    #print("Model_info: {}".format({'cmd': 'selected_model_info', 'key_value': key_value, 'key':key, 
+    #                     'gpu':gpu, 'layer_count':layer_count, 'breakmodel':breakmodel, 
+    #                     'break_values': break_values, 'gpu_count': gpu_count,
+    #                     'url': url, 'gpu_names': gpu_names}))
     emit('from_server', {'cmd': 'selected_model_info', 'key_value': key_value, 'key':key, 
                          'gpu':gpu, 'layer_count':layer_count, 'breakmodel':breakmodel, 
                          'break_values': break_values, 'gpu_count': gpu_count,
@@ -3052,12 +3058,24 @@ def get_message(msg):
         # The data variable will contain the model name. But our Custom lines need a bit more processing
         # If we're on a custom line that we have selected a model for, the path variable will be in msg
         # so if that's missing we need to run the menu to show the model folders in the models folder
-        if msg['data'] in ('NeoCustom', 'GPT2Custom') and 'path' not in msg:
+        if msg['data'] in ('NeoCustom', 'GPT2Custom') and 'path' not in msg and 'path_modelname' not in msg:
             if 'folder' not in msg:
                 folder = "./models"
             else:
                 folder = msg['folder']
             sendModelSelection(menu=msg['data'], folder=folder)
+        elif msg['data'] in ('NeoCustom', 'GPT2Custom') and 'path_modelname' in msg:
+            #Here the user entered custom text in the text box. This could be either a model name or a path.
+            if check_if_dir_is_model(msg['path_modelname']):
+                vars.model = msg['data']
+                vars.custmodpth = msg['path_modelname']
+                get_model_info(msg['data'], directory=msg['path'])
+            else:
+                vars.model = msg['path_modelname']
+                try:
+                    get_model_info(vars.model)
+                except:
+                    emit('from_server', {'cmd': 'errmsg', 'data': "The model entered doesn't exist."})
         elif msg['data'] in ('NeoCustom', 'GPT2Custom'):
             if check_if_dir_is_model(msg['path']):
                 vars.model = msg['data']
@@ -3160,7 +3178,7 @@ def sendUSStatItems():
 #  KoboldAI Markup Formatting (Mixture of Markdown and sanitized html)
 #==================================================================#
 def kml(txt):
-   txt = txt.replace('\>', '&gt;')
+   txt = txt.replace('>', '&gt;')
    txt = bleach.clean(markdown.markdown(txt), tags = ['p', 'em', 'strong', 'code', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'li', 'ul', 'b', 'i', 'a', 'span', 'button'], styles = ['color', 'font-weight'], attributes=['id', 'class', 'style', 'href'])
    return txt
 
@@ -3184,6 +3202,7 @@ def setStartState():
 #==================================================================#
 def sendsettings():
     # Send settings for selected AI type
+    emit('from_server', {'cmd': 'reset_menus'})
     if(vars.model != "InferKit"):
         for set in gensettings.gensettingstf:
             emit('from_server', {'cmd': 'addsetting', 'data': set})
@@ -5195,6 +5214,7 @@ def loadRequest(loadpath, filename=None):
         vars.lastact     = ""
         vars.submission  = ""
         vars.lastctx     = ""
+        vars.genseqs = []
 
         del vars.actions
         vars.actions = structures.KoboldStoryRegister()
@@ -5456,7 +5476,7 @@ def importgame():
         vars.importjs = {}
         
         # Reset current save
-        vars.savedir = getcwd()+"\stories"
+        vars.savedir = getcwd()+"\\stories"
         
         # Refresh game screen
         vars.laststory = None
@@ -5538,7 +5558,7 @@ def importAidgRequest(id):
         vars.worldinfo_i = [wi for wi in vars.worldinfo if wi["init"]]
 
         # Reset current save
-        vars.savedir = getcwd()+"\stories"
+        vars.savedir = getcwd()+"\\stories"
         
         # Refresh game screen
         vars.laststory = None
@@ -5631,7 +5651,7 @@ def newGameRequest():
     vars.lastctx     = ""
     
     # Reset current save
-    vars.savedir = getcwd()+"\stories"
+    vars.savedir = getcwd()+"\\stories"
     
     # Refresh game screen
     vars.laststory = None
@@ -5769,7 +5789,7 @@ if __name__ == "__main__":
             while attempts < 10:
                 try:
                     cloudflare = str(localtunnel.stdout.readline())
-                    cloudflare = (re.search("(?P<url>https?:\/\/[^\s]+loca.lt)", cloudflare).group("url"))
+                    cloudflare = (re.search("(?P<url>https?://[^s]+loca.lt)", cloudflare).group("url"))
                     break
                 except:
                     attempts += 1

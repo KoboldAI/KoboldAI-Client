@@ -151,6 +151,12 @@ function getThrottle(ms) {
     }
 }
 
+function reset_menus() {
+	settings_menu.html("");
+	format_menu.html("");
+	wi_menu.html("");
+}
+
 function addSetting(ob) {	
 	// Add setting block to Settings Menu
 	if(ob.uitype == "slider"){
@@ -876,6 +882,7 @@ function formatChunkInnerText(chunk) {
 }
 
 function dosubmit(disallow_abort) {
+	submit_start = Date.now();
 	var txt = input_text.val().replace(/\u00a0/g, " ");
 	if((disallow_abort || gamestate !== "wait") && !memorymode && !gamestarted && ((!adventure || !action_mode) && txt.trim().length == 0)) {
 		return;
@@ -995,6 +1002,7 @@ function buildLoadModelList(ar, menu, breadcrumbs) {
 	disableButtons([load_model_accept]);
 	loadmodelcontent.html("");
 	$("#loadmodellistbreadcrumbs").html("");
+	$("#custommodelname").addClass("hidden");
 	var i;
 	for(i=0; i<breadcrumbs.length; i++) {
 		$("#loadmodellistbreadcrumbs").append("<button class=\"breadcrumbitem\" id='model_breadcrumbs"+i+"' name='"+ar[0][1]+"' value='"+breadcrumbs[i][0]+"'>"+breadcrumbs[i][1]+"</button><font color=white>\\</font>");
@@ -1049,6 +1057,8 @@ function buildLoadModelList(ar, menu, breadcrumbs) {
 					highlightLoadLine($(this));
 				}
 			})(i));
+			$("#custommodelname").removeClass("hidden");
+			$("#custommodelname")[0].setAttribute("menu", menu);
 		//Normal load
 		} else {
 			$("#loadmodel"+i).off("click").on("click", (function () {
@@ -1908,13 +1918,14 @@ function update_gpu_layers() {
 	gpu_layers = 0;
 	for (let i=0; i < $("#gpu_count")[0].value; i++) {
 		gpu_layers += parseInt($("#gpu_layers"+i)[0].value);
+		$("#gpu_layers_box_"+i)[0].value=$("#gpu_layers"+i)[0].value;
 	}
 	if (gpu_layers > parseInt(document.getElementById("gpu_layers_max").innerHTML)) {
 		disableButtons([load_model_accept]);
 		$("#gpu_layers_current").html("<span style='color: red'>"+gpu_layers+"/"+ document.getElementById("gpu_layers_max").innerHTML +"</span>");
 	} else {
 		enableButtons([load_model_accept]);
-		$("#gpu_layers_current").html(gpu_layers);
+		$("#gpu_layers_current").html(gpu_layers+"/"+document.getElementById("gpu_layers_max").innerHTML);
 	}
 }
 
@@ -2031,9 +2042,7 @@ $(document).ready(function(){
 			connect_status.removeClass("color_orange");
 			connect_status.addClass("color_green");
 			// Reset Menus
-			settings_menu.html("");
-			format_menu.html("");
-			wi_menu.html("");
+			reset_menus();
 			// Set up "Allow Editing"
 			$('body').on('input', autofocus);
 			$('#allowediting').prop('checked', allowedit).prop('disabled', false).change().off('change').on('change', function () {
@@ -2095,6 +2104,10 @@ $(document).ready(function(){
 			scrollToBottom();
 		} else if(msg.cmd == "updatechunk") {
 			hideMessage();
+			if (typeof submit_start !== 'undefined') {
+				$("#runtime")[0].innerHTML = `Generation time: ${Math.round((Date.now() - submit_start)/1000)} sec`;
+				delete submit_start;
+			}
 			var index = msg.data.index;
 			var html = msg.data.html;
 			var existingChunk = game_text.children('#n' + index);
@@ -2292,6 +2305,8 @@ $(document).ready(function(){
 		} else if(msg.cmd == "setanotetemplate") {
 			// Set contents of Author's Note Template field
 			$("#anotetemplate").val(msg.data);
+		} else if(msg.cmd == "reset_menus") {
+			reset_menus();
 		} else if(msg.cmd == "addsetting") {
 			// Add setting controls
 			addSetting(msg.data);
@@ -2529,7 +2544,10 @@ $(document).ready(function(){
 				$("#modellayers").removeClass("hidden");
 				html = "";
 				for (let i = 0; i < msg.gpu_names.length; i++) {
-					html += "GPU " + i + " " + msg.gpu_names[i] + ": <input type='range' class='form-range airange' min='0' max='"+msg.layer_count+"' step='1' value='"+msg.break_values[i]+"' id='gpu_layers"+i+"' onchange='update_gpu_layers();'>";
+					html += "GPU " + i + " " + msg.gpu_names[i] + ": ";
+					html += '<input inputmode="numeric" id="gpu_layers_box_'+i+'" class="justifyright flex-push-right model_layers" value="'+msg.break_values[i]+'" ';
+					html += 'onblur=\'$("#gpu_layers'+i+'")[0].value=$("#gpu_layers_box_'+i+'")[0].value;update_gpu_layers();\'>';
+					html += "<input type='range' class='form-range airange' min='0' max='"+msg.layer_count+"' step='1' value='"+msg.break_values[i]+"' id='gpu_layers"+i+"' onchange='update_gpu_layers();'>";
 				}
 				$("#model_layer_bars").html(html);
 				$("#gpu_layers_max").html(msg.layer_count);
