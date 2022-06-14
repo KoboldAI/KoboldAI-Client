@@ -2873,6 +2873,8 @@ def get_message(msg):
     elif(msg['cmd'] == 'uslistrequest'):
         unloaded, loaded = getuslist()
         emit('from_server', {'cmd': 'buildus', 'data': {"unloaded": unloaded, "loaded": loaded}})
+    elif(msg['cmd'] == 'samplerlistrequest'):
+        emit('from_server', {'cmd': 'buildsamplers', 'data': vars.sampler_order})
     elif(msg['cmd'] == 'usloaded'):
         vars.userscripts = []
         for userscript in msg['data']:
@@ -2886,6 +2888,16 @@ def get_message(msg):
         load_lua_scripts()
         unloaded, loaded = getuslist()
         sendUSStatItems()
+    elif(msg['cmd'] == 'samplers'):
+        sampler_order = msg["data"]
+        if(not isinstance(sampler_order, list)):
+            raise ValueError(f"Sampler order must be a list, but got a {type(sampler_order)}")
+        if(len(sampler_order) != len(vars.sampler_order)):
+            raise ValueError(f"Sampler order must be a list of length {len(vars.sampler_order)}, but got a list of length {len(sampler_order)}")
+        if(not all(isinstance(e, int) for e in sampler_order)):
+            raise ValueError(f"Sampler order must be a list of ints, but got a list with at least one non-int element")
+        vars.sampler_order = sampler_order
+        settingschanged()
     elif(msg['cmd'] == 'loadselect'):
         vars.loadselect = msg["data"]
     elif(msg['cmd'] == 'spselect'):
