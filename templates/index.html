@@ -9,7 +9,7 @@
 	<link rel="stylesheet" href="static/bootstrap.min.css">
 	<link rel="stylesheet" href="static/bootstrap-toggle.min.css">
 	<link rel="stylesheet" href="static/open-iconic-bootstrap.min.css">
-	<link rel="stylesheet" href="static/custom.css?ver=1.18.1a">
+	<link rel="stylesheet" href="static/custom.css?ver=1.18.1b">
 
 	<script src="static/jquery-3.6.0.min.js"></script>
 	<script src="static/jquery-ui.sortable.min.js"></script>
@@ -17,7 +17,8 @@
 	<script src="static/bootstrap.min.js"></script>
 	<script src="static/bootstrap-toggle.min.js"></script>
 	<script src="static/rangy-core.min.js"></script>
-	<script src="static/application.js?ver=1.18.1a"></script>
+	<script src="static/application.js?ver=1.18.1b"></script>
+	<script src="static/favicon.js"></script>
 </head>
 <body>
 	<input type="file" id="remote-save-select" accept="application/json" style="display:none">
@@ -33,6 +34,15 @@
 						</button>
 						<div class="collapse navbar-collapse" id="navbarNavDropdown">
 							<ul class="nav navbar-nav">
+								{% if not hide_ai_menu %}
+								<li class="nav-item dropdown">
+									<a class="nav-link dropdown-toggle" href="#" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">AI</a>
+									<div class="dropdown-menu">
+										<a class="dropdown-item" href="#" id="btn_loadmodel">Load Model</a>
+										<a class="dropdown-item" href="#" id="btn_showmodel">Model Info</a>
+									</div>
+								</li>
+								{% endif %}
 								<li class="nav-item dropdown">
 									<a class="nav-link dropdown-toggle" href="#" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">New Game</a>
 									<div class="dropdown-menu">
@@ -86,6 +96,7 @@
 				</div>
 				<div id="connectstatusdiv" class="flex-row-container">
 					<span id="connectstatus" class="color_orange flex-row">Waiting for connection...</span>
+					<div class="layer-container status-container flex-push-left" style="color: #FFFFFF;" id="runtime"></div>
 					<div class="layer-container status-container flex-push-right">
 						<span class="oi oi-puzzle-piece statusicon layer-bottom" aria-hidden="true">
 							<div class="statustext statustext-wide">
@@ -252,7 +263,7 @@
 		</div>
 	</div>
 	<div class="popupcontainer hidden" id="loadcontainer">
-		<div id="loadpopup">
+		<div class="loadpopup" id="loadpopup">
 			<div class="popuptitlebar">
 				<div class="popuptitletext">Select A Story To Load</div>
 			</div>
@@ -265,6 +276,59 @@
 			<div class="popupfooter">
 				<button type="button" class="btn btn-primary" id="btn_loadaccept">Load</button>
 				<button type="button" class="btn btn-primary" id="btn_loadclose">Cancel</button>
+			</div>
+		</div>
+	</div>
+	<div class="popupcontainer hidden" id="loadmodelcontainer">
+		<div class="loadpopup">
+			<div class="popuptitlebar">
+				<div class="popuptitletext">Select A Model To Load</div>
+			</div>
+			<div id="loadmodellistbreadcrumbs">
+				
+			</div>
+			<div id="loadmodellistcontent" style="overflow: scroll; height: 300px;">
+			</div>
+			<div class="popupfooter">
+				<input class="form-control hidden" type="text" placeholder="key" id="modelkey" onblur="socket.send({'cmd': 'OAI_Key_Update', 'key': $('#modelkey')[0].value});">
+				<input class="form-control hidden" type="text" placeholder="Enter the URL of the server (For example a trycloudflare link)" id="modelurl" onchange="check_enable_model_load()">
+				<input class="form-control hidden" type="text" placeholder="Model Path or Hugging Face Name" id="custommodelname" menu="" onblur="socket.send({'cmd': 'selectmodel', 'data': $(this).attr('menu'), 'path_modelname': $('#custommodelname')[0].value});">
+			</div>
+			<div class="popupfooter">
+				<select class="form-control hidden" id="oaimodel"><option value="">Select OAI Model</option></select>
+			</div>
+			<div class="popupfooter hidden" id=modellayers>
+				<div class='settingitem' style="width:100%">
+					<div class='settinglabel'>
+						<div class="justifyleft">
+							GPU Layers
+							<span class="helpicon">?
+								<span class="helptext">Number of layers to assign to the GPU</span>
+							</span>
+						</div>
+						<div class="justifyright" id="gpu_layers_current">0</div>
+					</div>
+					<div id=model_layer_bars style="color: white">
+						
+					</div>
+					<input type=hidden id='gpu_count' value=0/>
+					<div class="settingminmax">
+						<div class="justifyleft">
+							0
+						</div>
+						<div class="justifyright" id="gpu_layers_max">
+							24
+						</div>
+					</div>
+				</div>
+			</div>
+			<div class="popupfooter">
+				<button type="button" class="btn btn-primary" id="btn_loadmodelaccept">Load</button>
+				<button type="button" class="btn btn-primary" id="btn_loadmodelclose">Cancel</button>
+				<div class="box flex-push-right hidden" id=use_gpu_div>
+					<input type="checkbox" data-toggle="toggle" data-onstyle="success" id="use_gpu" checked>
+					<div class="box-label">Use GPU</div>
+				</div>
 			</div>
 		</div>
 	</div>
@@ -364,6 +428,19 @@
 			<div class="popupfooter">
 				<button type="button" class="btn btn-primary" id="btn_nsaccept">Accept</button>
 				<button type="button" class="btn btn-primary" id="btn_nsclose">Cancel</button>
+			</div>
+		</div>
+	</div>
+	<div class="popupcontainer hidden flex" id="showmodelnamecontainer" style="center;">
+		<div class="loadpopup">
+			<div class="popuptitlebar" style="width:50% center;">
+				<div class="popuptitletext">Model Info</div>
+			</div>
+			<div id=showmodelnamecontent style="width:50%;">
+				Read Only
+			</div>
+			<div class="popupfooter" style="width:50% center;">
+				<button type="button" class="btn btn-primary" onclick='$("#showmodelnamecontainer").addClass("hidden");'>OK</button>
 			</div>
 		</div>
 	</div>

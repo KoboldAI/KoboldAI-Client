@@ -7,6 +7,7 @@ var socket;
 
 // UI references for jQuery
 var connect_status;
+var button_loadmodel;
 var button_newgame;
 var button_rndgame;
 var button_save;
@@ -56,6 +57,7 @@ var savepins;
 var topic;
 var saveas_accept;
 var saveas_close;
+var loadmodelpopup;
 var loadpopup;
 var	loadcontent;
 var	load_accept;
@@ -99,6 +101,7 @@ var remote = false;
 var gamestate = "";
 var gamesaved = true;
 var modelname = null;
+var model = "";
 
 // This is true iff [we're in macOS and the browser is Safari] or [we're in iOS]
 var using_webkit_patch = true;
@@ -150,6 +153,12 @@ function getThrottle(ms) {
             delete timer[id];
         }, ms);
     }
+}
+
+function reset_menus() {
+	settings_menu.html("");
+	format_menu.html("");
+	wi_menu.html("");
 }
 
 function addSetting(ob) {	
@@ -877,6 +886,7 @@ function formatChunkInnerText(chunk) {
 }
 
 function dosubmit(disallow_abort) {
+	submit_start = Date.now();
 	var txt = input_text.val().replace(/\u00a0/g, " ");
 	if((disallow_abort || gamestate !== "wait") && !memorymode && !gamestarted && ((!adventure || !action_mode) && txt.trim().length == 0)) {
 		return;
@@ -947,6 +957,17 @@ function sendSaveAsRequest() {
 	socket.send({'cmd': 'saveasrequest', 'data': {"name": saveasinput.val(), "pins": savepins.val()}});
 }
 
+function showLoadModelPopup() {
+	loadmodelpopup.removeClass("hidden");
+	loadmodelpopup.addClass("flex");
+}
+
+function hideLoadModelPopup() {
+	loadmodelpopup.removeClass("flex");
+	loadmodelpopup.addClass("hidden");
+	loadmodelcontent.html("");
+}
+
 function showLoadPopup() {
 	loadpopup.removeClass("hidden");
 	loadpopup.addClass("flex");
@@ -988,6 +1009,92 @@ function showSamplersPopup() {
 function hideSamplersPopup() {
 	samplerspopup.removeClass("flex");
 	samplerspopup.addClass("hidden");
+}
+
+
+function buildLoadModelList(ar, menu, breadcrumbs, showdelete) {
+	disableButtons([load_model_accept]);
+	loadmodelcontent.html("");
+	$("#loadmodellistbreadcrumbs").html("");
+	$("#custommodelname").addClass("hidden");
+	var i;
+	for(i=0; i<breadcrumbs.length; i++) {
+		$("#loadmodellistbreadcrumbs").append("<button class=\"breadcrumbitem\" id='model_breadcrumbs"+i+"' name='"+ar[0][1]+"' value='"+breadcrumbs[i][0]+"'>"+breadcrumbs[i][1]+"</button><font color=white>\\</font>");
+		$("#model_breadcrumbs"+i).off("click").on("click", (function () {
+				return function () {
+					socket.send({'cmd': 'selectmodel', 'data': $(this).attr("name"), 'folder': $(this).attr("value")});
+					disableButtons([load_model_accept]);
+				}
+			})(i));
+	}
+	if (breadcrumbs.length > 0) {
+		$("#loadmodellistbreadcrumbs").append("<hr size='1'>")  
+	}
+	for(i=0; i<ar.length; i++) {
+		if (Array.isArray(ar[i][0])) {
+			full_path = ar[i][0][0];
+			folder = ar[i][0][1];
+		} else {
+			full_path = "";
+			folder = ar[i][0];
+		}
+		
+		var html
+		html = "<div class=\"flex\">\
+			<div class=\"loadlistpadding\"></div>"
+		//if the menu item is a link to another menu
+		if(ar[i][3]) {
+			html = html + "<span class=\"loadlisticon loadmodellisticon-folder oi oi-folder allowed\"  aria-hidden=\"true\"></span>"
+		} else {
+		//this is a model
+			html = html + "<div class=\"loadlistpadding\"></div>"
+		}
+		
+		//now let's do the delete icon if applicable
+		if (['NeoCustom', 'GPT2Custom'].includes(menu) && !ar[i][3] && showdelete) {
+			html = html + "<span class=\"loadlisticon loadmodellisticon-folder oi oi-x allowed\"  aria-hidden=\"true\" onclick='if(confirm(\"This will delete the selected folder with all contents. Are you sure?\")) { socket.send({\"cmd\": \"delete_model\", \"data\": \""+full_path.replaceAll("\\", "\\\\")+"\", \"menu\": \""+menu+"\"});}'></span>"
+		} else {
+			html = html + "<div class=\"loadlistpadding\"></div>"
+		}
+		
+		html = html + "<div class=\"loadlistpadding\"></div>\
+						<div class=\"loadlistitem\" id=\"loadmodel"+i+"\" name=\""+ar[i][1]+"\" pretty_name=\""+full_path+"\">\
+							<div>"+folder+"</div>\
+							<div class=\"flex-push-right\">"+ar[i][2]+"</div>\
+						</div>\
+					</div>"
+		loadmodelcontent.append(html);
+		//If this is a menu
+		if(ar[i][3]) {
+			$("#loadmodel"+i).off("click").on("click", (function () {
+				return function () {
+					socket.send({'cmd': 'list_model', 'data': $(this).attr("name"), 'pretty_name': $(this).attr("pretty_name")});
+					disableButtons([load_model_accept]);
+				}
+			})(i));
+		//If we're in the custom load menu (we need to send the path data back in that case)
+		} else if(['NeoCustom', 'GPT2Custom'].includes(menu)) {
+			$("#loadmodel"+i).off("click").on("click", (function () {
+				return function () {
+					socket.send({'cmd': 'selectmodel', 'data': $(this).attr("name"), 'path': $(this).attr("pretty_name")});
+					highlightLoadLine($(this));
+				}
+			})(i));
+			$("#custommodelname").removeClass("hidden");
+			$("#custommodelname")[0].setAttribute("menu", menu);
+		//Normal load
+		} else {
+			$("#loadmodel"+i).off("click").on("click", (function () {
+				return function () {
+					$("#use_gpu_div").addClass("hidden");
+					$("#modelkey").addClass("hidden");
+					$("#modellayers").addClass("hidden");
+					socket.send({'cmd': 'selectmodel', 'data': $(this).attr("name")});
+					highlightLoadLine($(this));
+				}
+			})(i));
+		}
+	}
 }
 
 function buildLoadList(ar) {
@@ -1148,6 +1255,7 @@ function buildSamplerList(samplers) {
 
 function highlightLoadLine(ref) {
 	$("#loadlistcontent > div > div.popuplistselected").removeClass("popuplistselected");
+	$("#loadmodellistcontent > div > div.popuplistselected").removeClass("popuplistselected");
 	ref.addClass("popuplistselected");
 }
 
@@ -1851,6 +1959,30 @@ function unbindGametext() {
 	gametext_bound = false;
 }
 
+function update_gpu_layers() {
+	var gpu_layers
+	gpu_layers = 0;
+	for (let i=0; i < $("#gpu_count")[0].value; i++) {
+		gpu_layers += parseInt($("#gpu_layers"+i)[0].value);
+		$("#gpu_layers_box_"+i)[0].value=$("#gpu_layers"+i)[0].value;
+	}
+	if (gpu_layers > parseInt(document.getElementById("gpu_layers_max").innerHTML)) {
+		disableButtons([load_model_accept]);
+		$("#gpu_layers_current").html("<span style='color: red'>"+gpu_layers+"/"+ document.getElementById("gpu_layers_max").innerHTML +"</span>");
+	} else {
+		enableButtons([load_model_accept]);
+		$("#gpu_layers_current").html(gpu_layers+"/"+document.getElementById("gpu_layers_max").innerHTML);
+	}
+}
+
+
+function RemoveAllButFirstOption(selectElement) {
+   var i, L = selectElement.options.length - 1;
+   for(i = L; i >= 1; i--) {
+      selectElement.remove(i);
+   }
+}
+
 //=================================================================//
 //  READY/RUNTIME
 //=================================================================//
@@ -1859,6 +1991,8 @@ $(document).ready(function(){
 	
 	// Bind UI references
 	connect_status    = $('#connectstatus');
+	button_loadmodel  = $('#btn_loadmodel');
+	button_showmodel  = $('#btn_showmodel');
 	button_newgame    = $('#btn_newgame');
 	button_rndgame    = $('#btn_rndgame');
 	button_save       = $('#btn_save');
@@ -1912,9 +2046,13 @@ $(document).ready(function(){
 	saveas_accept     = $("#btn_saveasaccept");
 	saveas_close      = $("#btn_saveasclose");
 	loadpopup         = $("#loadcontainer");
+	loadmodelpopup    = $("#loadmodelcontainer");
 	loadcontent       = $("#loadlistcontent");
+	loadmodelcontent  = $("#loadmodellistcontent");
 	load_accept       = $("#btn_loadaccept");
 	load_close        = $("#btn_loadclose");
+	load_model_accept = $("#btn_loadmodelaccept");
+	load_model_close  = $("#btn_loadmodelclose");
 	sppopup           = $("#spcontainer");
 	spcontent         = $("#splistcontent");
 	sp_accept         = $("#btn_spaccept");
@@ -1941,6 +2079,7 @@ $(document).ready(function(){
 	socket = io.connect(window.document.origin, {transports: ['polling', 'websocket'], closeOnBeforeunload: false});
 
 	socket.on('from_server', function(msg) {
+		//console.log(msg);
 		if(msg.cmd == "connected") {
 			// Connected to Server Actions
 			sman_allow_delete = msg.hasOwnProperty("smandelete") && msg.smandelete;
@@ -1954,9 +2093,7 @@ $(document).ready(function(){
 			connect_status.removeClass("color_orange");
 			connect_status.addClass("color_green");
 			// Reset Menus
-			settings_menu.html("");
-			format_menu.html("");
-			wi_menu.html("");
+			reset_menus();
 			// Set up "Allow Editing"
 			$('body').on('input', autofocus);
 			$('#allowediting').prop('checked', allowedit).prop('disabled', false).change().off('change').on('change', function () {
@@ -2018,6 +2155,10 @@ $(document).ready(function(){
 			scrollToBottom();
 		} else if(msg.cmd == "updatechunk") {
 			hideMessage();
+			if (typeof submit_start !== 'undefined') {
+				$("#runtime")[0].innerHTML = `Generation time: ${Math.round((Date.now() - submit_start)/1000)} sec`;
+				delete submit_start;
+			}
 			var index = msg.data.index;
 			var html = msg.data.html;
 			var existingChunk = game_text.children('#n' + index);
@@ -2063,14 +2204,17 @@ $(document).ready(function(){
 				enableButtons([button_actmem, button_actwi, button_actback, button_actfwd, button_actretry]);
 				hideWaitAnimation();
 				gamestate = "ready";
+				favicon.stop_swap();
 			} else if(msg.data == "wait") {
 				gamestate = "wait";
 				disableSendBtn();
 				disableButtons([button_actmem, button_actwi, button_actback, button_actfwd, button_actretry]);
 				showWaitAnimation();
+				favicon.start_swap();
 			} else if(msg.data == "start") {
 				setStartState();
 				gamestate = "ready";
+				favicon.stop_swap();
 			}
 		} else if(msg.cmd == "allowsp") {
 			allowsp = !!msg.data;
@@ -2219,6 +2363,8 @@ $(document).ready(function(){
 		} else if(msg.cmd == "setanotetemplate") {
 			// Set contents of Author's Note Template field
 			$("#anotetemplate").val(msg.data);
+		} else if(msg.cmd == "reset_menus") {
+			reset_menus();
 		} else if(msg.cmd == "addsetting") {
 			// Add setting controls
 			addSetting(msg.data);
@@ -2424,6 +2570,88 @@ $(document).ready(function(){
 				debug_area.removeClass("hidden");
 			} else {
 				debug_area.addClass("hidden");
+			}
+		} else if(msg.cmd == 'show_model_menu') {
+			//console.log(msg)
+			$("#use_gpu_div").addClass("hidden");
+			$("#modelkey").addClass("hidden");
+			$("#modellayers").addClass("hidden");
+			$("#oaimodel").addClass("hidden")
+			buildLoadModelList(msg.data, msg.menu, msg.breadcrumbs, msg.showdelete);
+		} else if(msg.cmd == 'selected_model_info') {
+			enableButtons([load_model_accept]);
+			$("#oaimodel").addClass("hidden")
+			$("#oaimodel")[0].options[0].selected = true;
+			if (msg.key) {
+				$("#modelkey").removeClass("hidden");
+				$("#modelkey")[0].value = msg.key_value;
+			} else {
+				$("#modelkey").addClass("hidden");
+				
+			}
+			if (msg.url) {
+				$("#modelurl").removeClass("hidden");
+			} else {
+				$("#modelurl").addClass("hidden");
+			}
+			if (msg.gpu) {
+				$("#use_gpu_div").removeClass("hidden");
+			} else {
+				$("#use_gpu_div").addClass("hidden");
+			}
+			if (msg.breakmodel) {
+				var html;
+				$("#modellayers").removeClass("hidden");
+				html = "";
+				for (let i = 0; i < msg.gpu_names.length; i++) {
+					html += "GPU " + i + " " + msg.gpu_names[i] + ": ";
+					html += '<input inputmode="numeric" id="gpu_layers_box_'+i+'" class="justifyright flex-push-right model_layers" value="'+msg.break_values[i]+'" ';
+					html += 'onblur=\'$("#gpu_layers'+i+'")[0].value=$("#gpu_layers_box_'+i+'")[0].value;update_gpu_layers();\'>';
+					html += "<input type='range' class='form-range airange' min='0' max='"+msg.layer_count+"' step='1' value='"+msg.break_values[i]+"' id='gpu_layers"+i+"' onchange='update_gpu_layers();'>";
+				}
+				$("#model_layer_bars").html(html);
+				$("#gpu_layers_max").html(msg.layer_count);
+				$("#gpu_count")[0].value = msg.gpu_count;
+				update_gpu_layers();
+			} else {
+				$("#modellayers").addClass("hidden");
+			}
+		} else if(msg.cmd == 'oai_engines') {
+			$("#oaimodel").removeClass("hidden")
+			selected_item = 0;
+			length = $("#oaimodel")[0].options.length;
+			for (let i = 0; i < length; i++) {
+				$("#oaimodel")[0].options.remove(1);
+			}
+			msg.data.forEach(function (item, index) {
+				var option = document.createElement("option");
+				option.value = item[0];
+				option.text = item[1];
+				if(msg.online_model == item[0]) {
+					selected_item = index+1;
+				}
+				$("#oaimodel")[0].appendChild(option);
+				if(selected_item != "") {
+					$("#oaimodel")[0].options[selected_item].selected = true;
+				}
+			})
+		} else if(msg.cmd == 'show_model_name') {
+			$("#showmodelnamecontent").html("<div class=\"flex\"><div class=\"loadlistpadding\"></div><div class=\"loadlistitem\">" + msg.data + "</div></div>");
+			$("#showmodelnamecontainer").removeClass("hidden");
+		} else if(msg.cmd == 'hide_model_name') {
+			$("#showmodelnamecontainer").addClass("hidden");
+			//console.log("Closing window");
+		} else if(msg.cmd == 'model_load_status') {
+			$("#showmodelnamecontent").html("<div class=\"flex\"><div class=\"loadlistpadding\"></div><div class=\"loadlistitem\" style='align: left'>" + msg.data + "</div></div>");
+			$("#showmodelnamecontainer").removeClass("hidden");
+			//console.log(msg.data);
+		} else if(msg.cmd == 'oai_engines') {
+			RemoveAllButFirstOption($("#oaimodel")[0]);
+			for (const engine of msg.data) {
+				var opt = document.createElement('option');
+				opt.value = engine[0];
+				opt.innerHTML = engine[1];
+				$("#oaimodel")[0].appendChild(opt);
 			}
 		}
 	});
@@ -2673,11 +2901,34 @@ $(document).ready(function(){
 		hideLoadPopup();
 	});
 	
+	load_model_close.on("click", function(ev) {
+		$("#modellayers").addClass("hidden");
+		hideLoadModelPopup();
+	});
+	
 	load_accept.on("click", function(ev) {
 		hideMessage();
 		newly_loaded = true;
 		socket.send({'cmd': 'loadrequest', 'data': ''});
 		hideLoadPopup();
+	});
+	
+	load_model_accept.on("click", function(ev) {
+		hideMessage();
+		var gpu_layers;
+		var message;
+		if($("#modellayers")[0].classList.contains('hidden')) {
+			gpu_layers = ","
+		} else {
+			gpu_layers = ""
+			for (let i=0; i < $("#gpu_count")[0].value; i++) {
+				gpu_layers += $("#gpu_layers"+i)[0].value + ",";
+			}
+		}
+		message = {'cmd': 'load_model', 'use_gpu': $('#use_gpu')[0].checked, 'key': $('#modelkey')[0].value, 'gpu_layers': gpu_layers.slice(0, -1), 'url': $('#modelurl')[0].value, 'online_model': $('#oaimodel')[0].value};
+		socket.send(message);
+		loadmodelcontent.html("");
+		hideLoadModelPopup();
 	});
 
 	sp_close.on("click", function(ev) {
@@ -2710,6 +2961,14 @@ $(document).ready(function(){
 		hideMessage();
 		socket.send({'cmd': 'samplers', 'data': samplerslist.find(".samplerslistitem").map(function() { return parseInt($(this).attr("sid")); }).toArray()});
 		hideSamplersPopup();
+	});
+	
+	button_loadmodel.on("click", function(ev) {
+		showLoadModelPopup();
+		socket.send({'cmd': 'list_model', 'data': 'mainmenu'});
+	});
+	button_showmodel.on("click", function(ev) {
+		socket.send({'cmd': 'show_model', 'data': ''});
 	});
 	
 	button_newgame.on("click", function(ev) {

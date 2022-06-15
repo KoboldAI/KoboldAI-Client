@@ -368,14 +368,14 @@ body.connected #popupfooter, #popupfooter.always-available {
 	margin-top: 200px;
 }
 
-#loadpopup {
+.loadpopup {
 	width: 500px;
 	background-color: #262626;
 	margin-top: 100px;
 }
 
 @media (max-width: 768px) {
-	#loadpopup {
+	.loadpopup {
 		width: 100%;
 		background-color: #262626;
 		margin-top: 100px;
@@ -1055,7 +1055,7 @@ body.connected .statusiconlabel, .statusiconlabel.always-available {
 }
 
 .loadlistitem {
-	padding: 5px 10px 5px 10px;
+	padding: 0px 0px 0px 0px;
 	display: flex;
 	flex-grow: 1;
 	color: #ffffff;
@@ -1069,6 +1069,28 @@ body.connected .statusiconlabel, .statusiconlabel.always-available {
 .loadlistitem:hover {
 	cursor: pointer;
 	background-color: #688f1f;
+}
+
+.breadcrumbitem {
+	padding: 5px 10px 5px 10px;
+	color: #ffffff;
+	background-color: transparent;
+	border: none;
+	
+	-moz-transition: background-color 0.25s ease-in;
+	-o-transition: background-color 0.25s ease-in;
+	-webkit-transition: background-color 0.25s ease-in;
+	transition: background-color 0.25s ease-in;
+}
+
+.breadcrumbitem:hover {
+	cursor: pointer;
+	background-color: #688f1f;
+}
+
+hr {
+    padding: 0px;
+    margin: 0px;    
 }
 
 .loadlistpadding {
@@ -1461,4 +1483,66 @@ body.connected .popupfooter, .popupfooter.always-available {
 	width: 80%;
 	overflow: hidden;
 	font-size: 12pt;
+}
+
+.model_layers {
+	width: 3ch;
+	background-color: inherit;
+	border: none; 
+	outline: none;
+}
+
+.model_layers:focus {
+	color: #cdf;
+}
+
+.menu_icon {
+	position: fixed;
+	top:10px;
+	left: 5px;
+	z-index:100;
+	display: inline-block;
+	cursor: pointer;
+}
+
+.SideMenu {
+  height: 100%;
+  width: 0;
+  position: fixed;
+  z-index: 1;
+  top: 0;
+  left: 0;
+  background-color: #111;
+  overflow-x: hidden;
+  transition: 0.5s;
+  padding-top: 60px;
+}
+
+.SideMenu.open {
+  width: 450px;
+}
+
+@media only screen and (max-width: 768px) {
+	.SideMenu.open {
+	  width: 100%;
+	}
+}
+
+
+.menubar1, .menubar2, .menubar3 {
+  width: 21px;
+  height: 3px;
+  background-color: #999;
+  margin: 3px 0;
+  transition: 0.4s;
+}
+
+.change .menubar1 {
+  transform: translate(0px, 6px) rotate(-45deg);
+}
+
+.change .menubar2 {opacity: 0;}
+
+.change .menubar3 {
+  transform: translate(0px, -6px) rotate(45deg);
 }
