@@ -366,7 +366,7 @@ def sendModelSelection(menu="mainmenu", folder="./models"):
     #If we send one of the manual load options, send back the list of model directories, otherwise send the menu
     if menu in ('NeoCustom', 'GPT2Custom'):
         (paths, breadcrumbs) = get_folder_path_info(folder)
-        if args.remote:
+        if vars.host:
             breadcrumbs = []
         menu_list = [[folder, menu, "", False] for folder in paths]
         menu_list.append(["Return to Main Menu", "mainmenu", "", True])
