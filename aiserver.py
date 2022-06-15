@@ -35,6 +35,7 @@ import bleach
 import itertools
 import bisect
 import functools
+import traceback
 from collections.abc import Iterable
 from typing import Any, Callable, TypeVar, Tuple, Union, Dict, Set, List
 
@@ -1763,7 +1764,12 @@ def load_model(use_gpu=True, gpu_layers=None, initial_load=False, online_model="
                 model_config = open(vars.custmodpth + "/config.json", "r")
                 js   = json.load(model_config)
                 with(maybe_use_float16()):
-                    model = GPT2LMHeadModel.from_pretrained(vars.custmodpth, revision=vars.revision, cache_dir="cache")
+                    try:
+                        model = GPT2LMHeadModel.from_pretrained(vars.custmodpth, revision=vars.revision, cache_dir="cache")
+                    except Exception as e:
+                        if("out of memory" in traceback.format_exc().lower()):
+                            raise RuntimeError("One of your GPUs ran out of memory when KoboldAI tried to load your model.")
+                        raise e
                 tokenizer = GPT2TokenizerFast.from_pretrained(vars.custmodpth, revision=vars.revision, cache_dir="cache")
                 vars.modeldim = get_hidden_size_from_model(model)
                 # Is CUDA available? If so, use GPU, otherwise fall back to CPU
@@ -1808,6 +1814,8 @@ def load_model(use_gpu=True, gpu_layers=None, initial_load=False, online_model="
                         try:
                             model     = AutoModelForCausalLM.from_pretrained(vars.custmodpth, revision=vars.revision, cache_dir="cache", **lowmem)
                         except Exception as e:
+                            if("out of memory" in traceback.format_exc().lower()):
+                                raise RuntimeError("One of your GPUs ran out of memory when KoboldAI tried to load your model.")
                             model     = GPTNeoForCausalLM.from_pretrained(vars.custmodpth, revision=vars.revision, cache_dir="cache", **lowmem)
                     elif(os.path.isdir("models/{}".format(vars.model.replace('/', '_')))):
                         try:
@@ -1820,6 +1828,8 @@ def load_model(use_gpu=True, gpu_layers=None, initial_load=False, online_model="
                         try:
                             model     = AutoModelForCausalLM.from_pretrained("models/{}".format(vars.model.replace('/', '_')), revision=vars.revision, cache_dir="cache", **lowmem)
                         except Exception as e:
+                            if("out of memory" in traceback.format_exc().lower()):
+                                raise RuntimeError("One of your GPUs ran out of memory when KoboldAI tried to load your model.")
                             model     = GPTNeoForCausalLM.from_pretrained("models/{}".format(vars.model.replace('/', '_')), revision=vars.revision, cache_dir="cache", **lowmem)
                     else:
                         old_rebuild_tensor = torch._utils._rebuild_tensor
@@ -1845,6 +1855,8 @@ def load_model(use_gpu=True, gpu_layers=None, initial_load=False, online_model="
                         try:
                             model     = AutoModelForCausalLM.from_pretrained(vars.model, revision=vars.revision, cache_dir="cache", **lowmem)
                         except Exception as e:
+                            if("out of memory" in traceback.format_exc().lower()):
+                                raise RuntimeError("One of your GPUs ran out of memory when KoboldAI tried to load your model.")
                             model     = GPTNeoForCausalLM.from_pretrained(vars.model, revision=vars.revision, cache_dir="cache", **lowmem)
 
                         torch._utils._rebuild_tensor = old_rebuild_tensor
