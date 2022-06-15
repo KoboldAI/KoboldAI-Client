@@ -3112,7 +3112,7 @@ def get_message(msg):
         # If we're on a custom line that we have selected a model for, the path variable will be in msg
         # so if that's missing we need to run the menu to show the model folders in the models folder
         if msg['data'] in ('NeoCustom', 'GPT2Custom') and 'path' not in msg and 'path_modelname' not in msg:
-            if 'folder' not in msg:
+            if 'folder' not in msg or vars.host:
                 folder = "./models"
             else:
                 folder = msg['folder']
@@ -3135,7 +3135,10 @@ def get_message(msg):
                 vars.custmodpth = msg['path']
                 get_model_info(msg['data'], directory=msg['path'])
             else:
-                sendModelSelection(menu=msg['data'], folder=msg['path'])
+                if vars.host:
+                    sendModelSelection(menu=msg['data'], folder="./models")
+                else:
+                    sendModelSelection(menu=msg['data'], folder=msg['path'])
         else:
             vars.model = msg['data']
             if 'path' in msg:
