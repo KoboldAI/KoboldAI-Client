@@ -1453,7 +1453,6 @@ def load_model(use_gpu=True, gpu_layers=None, initial_load=False, online_model="
     global model_config
     global GPT2TokenizerFast
     global tokenizer
-    print("Loading vars.model: {} vars.custmodpth: {}".format(vars.model, vars.custmodpth))
     vars.noai = False
     if not initial_load:
         set_aibusy(True)
@@ -3147,14 +3146,14 @@ def get_message(msg):
     elif(msg['cmd'] == 'delete_model'):
         if "{}/models".format(os.getcwd()) in os.path.abspath(msg['data']) or "{}\\models".format(os.getcwd()) in os.path.abspath(msg['data']):
             if check_if_dir_is_model(msg['data']):
-                print("It's a model, now we really will kill it")
+                print(colors.YELLOW + "WARNING: Someone deleted " + msg['data'])
                 import shutil
                 shutil.rmtree(msg['data'])
                 sendModelSelection(menu=msg['menu'])
             else:
-                print("Not a model, don't delete")
+                print(colors.RED + "ERROR: Someone attempted to delete " + msg['data'] + " but this is not a valid model")
         else:
-            print("Ah ah ah, you didn't say the magic word: The selected directory is not in the KoboldAI Models directory, not doing anything.")
+            print(colors.RED + "WARNING!!: Someone maliciously attempted to delete " + msg['data'] + " the attempt has been blocked.")
     elif(msg['cmd'] == 'OAI_Key_Update'):
         get_oai_models(msg['key'])
     elif(msg['cmd'] == 'loadselect'):
@@ -5858,7 +5857,7 @@ if __name__ == "__main__":
             while attempts < 10:
                 try:
                     cloudflare = str(localtunnel.stdout.readline())
-                    cloudflare = (re.search("(?P<url>https?://[^s]+loca.lt)", cloudflare).group("url"))
+                    cloudflare = (re.search("(?P<url>https?:\/\/[^\s]+loca.lt)", cloudflare).group("url"))
                     break
                 except:
                     attempts += 1
