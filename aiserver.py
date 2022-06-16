@@ -1788,7 +1788,7 @@ def load_model(use_gpu=True, gpu_layers=None, initial_load=False, online_model="
                     shutil.move(vars.model.replace('/', '_'), "models/{}".format(vars.model.replace('/', '_')))
                 print("\n", flush=True)
                 if(vars.lazy_load):  # If we're using lazy loader, we need to figure out what the model's hidden layers are called
-                    with torch_lazy_loader.use_lazy_torch_load(dematerialized_modules=True):
+                    with torch_lazy_loader.use_lazy_torch_load(dematerialized_modules=True, use_accelerate_init_empty_weights=True):
                         try:
                             metamodel = AutoModelForCausalLM.from_config(model_config)
                         except Exception as e:
