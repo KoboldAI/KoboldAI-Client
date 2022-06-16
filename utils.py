@@ -7,10 +7,18 @@ import tempfile
 import requests
 import requests.adapters
 import time
+from transformers import __version__ as transformers_version
+import packaging.version
 from tqdm.auto import tqdm
 import os
 import itertools
 from typing import Optional
+
+HAS_ACCELERATE = packaging.version.parse(transformers_version) >= packaging.version.parse("4.20.0.dev0")
+try:
+    import accelerate
+except ImportError:
+    HAS_ACCELERATE = False
 
 vars = None
 num_shards: Optional[int] = None
@@ -300,3 +308,15 @@ def get_sharded_checkpoint_num_tensors(pretrained_model_name_or_path, filename, 
     import torch
     shard_paths, _ = transformers.modeling_utils.get_checkpoint_shard_files(pretrained_model_name_or_path, filename, cache_dir=cache_dir, force_download=force_download, proxies=proxies, resume_download=resume_download, local_files_only=local_files_only, use_auth_token=use_auth_token, user_agent=user_agent, revision=revision, mirror=mirror)
     return list(itertools.chain(*(torch.load(p, map_location="cpu").keys() for p in shard_paths)))
+
+def get_layer_param_names(model):
+    names = []
+    def recurse(module, head=""):
+        for c in module.named_children():
+            name = head + c[0]
+            if c[0].isnumeric() and any(c[1].__class__.__name__.endswith(suffix) for suffix in ("Block", "Layer")):
+                names.append(name)
+            else:
+                recurse(c[1], head=name + ".")
+    recurse(model)
+    return names
