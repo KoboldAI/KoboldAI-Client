@@ -323,6 +323,7 @@ class vars:
     actionmode  = 1
     dynamicscan = False
     host        = False
+    flaskwebgui = False
     nopromptgen = False
     rngpersist  = False
     nogenmod    = False
@@ -2765,6 +2766,8 @@ def do_connect():
     emit('from_server', {'cmd': 'connected', 'smandelete': vars.smandelete, 'smanrename': vars.smanrename, 'modelname': getmodelname()})
     if(vars.host):
         emit('from_server', {'cmd': 'runs_remotely'})
+    if(vars.flaskwebgui):
+        emit('from_server', {'cmd': 'flaskwebgui'})
     if(vars.allowsp):
         emit('from_server', {'cmd': 'allowsp', 'data': vars.allowsp})
 
@@ -5898,15 +5901,26 @@ if __name__ == "__main__":
         vars.serverstarted = True
         socketio.run(app, host='0.0.0.0', port=port)
     else:
-        import webbrowser
-        webbrowser.open_new('http://localhost:{0}'.format(port))
-        print("{0}Server started!\nYou may now connect with a browser at http://127.0.0.1:{1}/{2}"
-              .format(colors.GREEN, port, colors.END))
-        vars.serverstarted = True
         if args.unblock:
+            import webbrowser
+            webbrowser.open_new('http://localhost:{0}'.format(port))
+            print("{0}Server started!\nYou may now connect with a browser at http://127.0.0.1:{1}/{2}"
+                  .format(colors.GREEN, port, colors.END))
+            vars.serverstarted = True
             socketio.run(app, port=port, host='0.0.0.0')
         else:
-            socketio.run(app, port=port)
+            try:
+                from flaskwebgui import FlaskUI
+                vars.serverstarted = True
+                vars.flaskwebgui = True
+                FlaskUI(app, socketio=socketio, start_server="flask-socketio", maximized=True, close_server_on_exit=False).run()
+            except:
+                import webbrowser
+                webbrowser.open_new('http://localhost:{0}'.format(port))
+                print("{0}Server started!\nYou may now connect with a browser at http://127.0.0.1:{1}/{2}"
+                        .format(colors.GREEN, port, colors.END))
+                vars.serverstarted = True
+                socketio.run(app, port=port)
 
 else:
     general_startup()
