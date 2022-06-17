@@ -2068,7 +2068,7 @@ def index():
     if 'new_ui' in request.args:
         return render_template('index_new.html', hide_ai_menu=args.noaimenu)
     else:
-        return render_template('index.html', hide_ai_menu=args.noaimenu)
+        return render_template('index.html', hide_ai_menu=args.noaimenu, flaskwebgui=vars.flaskwebgui)
 @app.route('/favicon.ico')
 def favicon():
     return send_from_directory(app.root_path,
@@ -5913,7 +5913,7 @@ if __name__ == "__main__":
                 from flaskwebgui import FlaskUI
                 vars.serverstarted = True
                 vars.flaskwebgui = True
-                FlaskUI(app, socketio=socketio, start_server="flask-socketio", maximized=True, close_server_on_exit=False).run()
+                FlaskUI(app, socketio=socketio, start_server="flask-socketio", maximized=True, close_server_on_exit=True).run()
             except:
                 import webbrowser
                 webbrowser.open_new('http://localhost:{0}'.format(port))
