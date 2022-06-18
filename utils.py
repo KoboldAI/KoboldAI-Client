@@ -8,11 +8,12 @@ import requests
 import requests.adapters
 import time
 from transformers import __version__ as transformers_version
+from transformers import PreTrainedModel
 import packaging.version
 from tqdm.auto import tqdm
 import os
 import itertools
-from typing import Optional
+from typing import List, Optional
 
 HAS_ACCELERATE = packaging.version.parse(transformers_version) >= packaging.version.parse("4.20.0.dev0")
 try:
@@ -309,8 +310,12 @@ def get_sharded_checkpoint_num_tensors(pretrained_model_name_or_path, filename, 
     shard_paths, _ = transformers.modeling_utils.get_checkpoint_shard_files(pretrained_model_name_or_path, filename, cache_dir=cache_dir, force_download=force_download, proxies=proxies, resume_download=resume_download, local_files_only=local_files_only, use_auth_token=use_auth_token, user_agent=user_agent, revision=revision, mirror=mirror)
     return list(itertools.chain(*(torch.load(p, map_location="cpu").keys() for p in shard_paths)))
 
-def get_layer_param_names(model):
-    names = []
+#==================================================================#
+#  Given a PreTrainedModel, returns the list of module names that correspond
+#  to the model's hidden layers.
+#==================================================================#
+def get_layers_module_names(model: PreTrainedModel) -> List[str]:
+    names: List[str] = []
     def recurse(module, head=""):
         for c in module.named_children():
             name = head + c[0]
@@ -320,3 +325,37 @@ def get_layer_param_names(model):
                 recurse(c[1], head=name + ".")
     recurse(model)
     return names
+
+#==================================================================#
+#  Given a PreTrainedModel, returns the module name that corresponds
+#  to the model's input embeddings.
+#==================================================================#
+def get_input_embeddings_module_name(model: PreTrainedModel) -> str:
+    embeddings = model.get_input_embeddings()
+    def recurse(module, head=""):
+        for c in module.named_children():
+            name = head + c[0]
+            if c[1] is embeddings:
+                return name
+            else:
+                return recurse(c[1], head=name + ".")
+    return recurse(model)
+
+#==================================================================#
+#  Given a PreTrainedModel and a list of module names, returns a list
+#  of module names such that the union of the set of modules given as input
+#  and the set of modules returned as output contains all modules in the model.
+#==================================================================#
+def get_missing_module_names(model: PreTrainedModel, names: List[str]) -> List[str]:
+    missing_names: List[str] = []
+    def recurse(module, head=""):
+        for c in module.named_children():
+            name = head + c[0]
+            if any(name.startswith(n) for n in names):
+                continue
+            if next(c[1].named_children(), None) is None:
+                missing_names.append(name)
+            else:
+                recurse(c[1], head=name + ".")
+    recurse(model)
+    return missing_names

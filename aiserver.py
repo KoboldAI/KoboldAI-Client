@@ -1805,7 +1805,7 @@ def load_model(use_gpu=True, gpu_layers=None, initial_load=False, online_model="
                             metamodel = AutoModelForCausalLM.from_config(model_config)
                         except Exception as e:
                             metamodel = GPTNeoForCausalLM.from_config(model_config)
-                        vars.layer_param_names = utils.get_layer_param_names(metamodel)
+                        vars.layer_param_names = utils.get_layers_module_names(metamodel)
                 with maybe_use_float16(), torch_lazy_loader.use_lazy_torch_load(enable=vars.lazy_load, callback=get_lazy_load_callback(utils.num_layers(model_config)) if vars.lazy_load else None, dematerialized_modules=True):
                     if(vars.lazy_load):  # torch_lazy_loader.py and low_cpu_mem_usage can't be used at the same time
                         lowmem = {}
