@@ -67,6 +67,17 @@ def new_init(self, *args, **kwargs):
         self.ncols = 99
 tqdm.__init__ = new_init
 
+# Fix some issues with the OPT tokenizer
+from transformers import PreTrainedTokenizerBase
+old_pretrainedtokenizerbase_from_pretrained = PreTrainedTokenizerBase.from_pretrained.__func__
+@classmethod
+def new_pretrainedtokenizerbase_from_pretrained(cls, *args, **kwargs):
+    tokenizer = old_pretrainedtokenizerbase_from_pretrained(cls, *args, **kwargs)
+    tokenizer._koboldai_header = tokenizer.encode("")
+    tokenizer.add_bos_token = False
+    tokenizer.add_prefix_space = False
+    return tokenizer
+PreTrainedTokenizerBase.from_pretrained = new_pretrainedtokenizerbase_from_pretrained
 
 #==================================================================#
 # Variables & Storage
@@ -1625,6 +1636,10 @@ if(not vars.use_colab_tpu and vars.model not in ["InferKit", "Colab", "OAI", "Go
                     try:
                         tokenizer = AutoTokenizer.from_pretrained(vars.custmodpth, revision=vars.revision, cache_dir="cache")
                     except Exception as e:
+                        pass
+                    try:
+                        tokenizer = AutoTokenizer.from_pretrained(vars.custmodpth, revision=vars.revision, cache_dir="cache", use_fast=False)
+                    except Exception as e:
                         try:
                             tokenizer = GPT2TokenizerFast.from_pretrained(vars.custmodpth, revision=vars.revision, cache_dir="cache")
                         except Exception as e:
@@ -1636,6 +1651,10 @@ if(not vars.use_colab_tpu and vars.model not in ["InferKit", "Colab", "OAI", "Go
                 elif(os.path.isdir("models/{}".format(vars.model.replace('/', '_')))):
                     try:
                         tokenizer = AutoTokenizer.from_pretrained("models/{}".format(vars.model.replace('/', '_')), revision=vars.revision, cache_dir="cache")
+                    except Exception as e:
+                        pass
+                    try:
+                        tokenizer = AutoTokenizer.from_pretrained("models/{}".format(vars.model.replace('/', '_')), revision=vars.revision, cache_dir="cache", use_fast=False)
                     except Exception as e:
                         try:
                             tokenizer = GPT2TokenizerFast.from_pretrained("models/{}".format(vars.model.replace('/', '_')), revision=vars.revision, cache_dir="cache")
@@ -1661,6 +1680,10 @@ if(not vars.use_colab_tpu and vars.model not in ["InferKit", "Colab", "OAI", "Go
 
                     try:
                         tokenizer = AutoTokenizer.from_pretrained(vars.model, revision=vars.revision, cache_dir="cache")
+                    except Exception as e:
+                        pass
+                    try:
+                        tokenizer = AutoTokenizer.from_pretrained(vars.model, revision=vars.revision, cache_dir="cache", use_fast=False)
                     except Exception as e:
                         try:
                             tokenizer = GPT2TokenizerFast.from_pretrained(vars.model, revision=vars.revision, cache_dir="cache")
@@ -3326,24 +3349,26 @@ def calcsubmitbudget(actionlen, winfo, mem, anotetxt, actions, submission=None, 
         global tokenizer
         tokenizer = GPT2TokenizerFast.from_pretrained("gpt2", revision=vars.revision, cache_dir="cache")
 
+    lnheader = len(tokenizer._koboldai_header)
+
     # Calculate token budget
     prompttkns = tokenizer.encode(utils.encodenewlines(vars.comregex_ai.sub('', vars.prompt)), max_length=int(2e9), truncation=True)
     lnprompt   = len(prompttkns)
 
     memtokens = tokenizer.encode(utils.encodenewlines(mem), max_length=int(2e9), truncation=True)
     lnmem     = len(memtokens)
-    if(lnmem > vars.max_length - lnsp - vars.genamt - budget_deduction):
+    if(lnmem > vars.max_length - lnheader - lnsp - vars.genamt - budget_deduction):
         raise OverflowError("The memory in your story is too long. Please either write a shorter memory text or increase the Max Tokens setting. If you are using a soft prompt, additionally consider using a smaller soft prompt.")
 
     witokens  = tokenizer.encode(utils.encodenewlines(winfo), max_length=int(2e9), truncation=True)
     lnwi      = len(witokens)
-    if(lnmem + lnwi > vars.max_length - lnsp - vars.genamt - budget_deduction):
+    if(lnmem + lnwi > vars.max_length - lnheader - lnsp - vars.genamt - budget_deduction):
         raise OverflowError("The current active world info keys take up too many tokens. Please either write shorter world info, decrease World Info Depth or increase the Max Tokens setting. If you are using a soft prompt, additionally consider using a smaller soft prompt.")
 
     if(anotetxt != ""):
         anotetkns = tokenizer.encode(utils.encodenewlines(anotetxt), max_length=int(2e9), truncation=True)
         lnanote   = len(anotetkns)
-        if(lnmem + lnwi + lnanote > vars.max_length - lnsp - vars.genamt - budget_deduction):
+        if(lnmem + lnwi + lnanote > vars.max_length - lnheader - lnsp - vars.genamt - budget_deduction):
             raise OverflowError("The author's note in your story is too long. Please either write a shorter author's note or increase the Max Tokens setting. If you are using a soft prompt, additionally consider using a smaller soft prompt.")
 
     if(vars.useprompt):
@@ -3354,14 +3379,14 @@ def calcsubmitbudget(actionlen, winfo, mem, anotetxt, actions, submission=None, 
     lnsubmission = len(tokenizer.encode(utils.encodenewlines(vars.comregex_ai.sub('', submission)), max_length=int(2e9), truncation=True)) if submission is not None else 0
     maybe_lnprompt = lnprompt if vars.useprompt and actionlen > 0 else 0
 
-    if(lnmem + lnwi + lnanote + maybe_lnprompt + lnsubmission > vars.max_length - lnsp - vars.genamt - budget_deduction):
+    if(lnmem + lnwi + lnanote + maybe_lnprompt + lnsubmission > vars.max_length - lnheader - lnsp - vars.genamt - budget_deduction):
         raise OverflowError("Your submission is too long. Please either write a shorter submission or increase the Max Tokens setting. If you are using a soft prompt, additionally consider using a smaller soft prompt. If you are using the Always Add Prompt setting, turning it off may help.")
 
     assert budget >= 0
 
     if(actionlen == 0):
         # First/Prompt action
-        tokens = memtokens + witokens + anotetkns + prompttkns
+        tokens = tokenizer._koboldai_header + memtokens + witokens + anotetkns + prompttkns
         assert len(tokens) <= vars.max_length - lnsp - vars.genamt - budget_deduction
         ln = len(tokens) + lnsp
         return tokens, ln+1, ln+vars.genamt
@@ -3409,12 +3434,12 @@ def calcsubmitbudget(actionlen, winfo, mem, anotetxt, actions, submission=None, 
         # Did we get to add the A.N.? If not, do it here
         if(anotetxt != ""):
             if((not anoteadded) or forceanote):
-                tokens = memtokens + witokens + anotetkns + prompttkns + tokens
+                tokens = tokenizer._koboldai_header + memtokens + witokens + anotetkns + prompttkns + tokens
             else:
-                tokens = memtokens + witokens + prompttkns + tokens
+                tokens = tokenizer._koboldai_header + memtokens + witokens + prompttkns + tokens
         else:
             # Prepend Memory, WI, and Prompt before action tokens
-            tokens = memtokens + witokens + prompttkns + tokens
+            tokens = tokenizer._koboldai_header + memtokens + witokens + prompttkns + tokens
 
         # Send completed bundle to generator
         assert len(tokens) <= vars.max_length - lnsp - vars.genamt - budget_deduction
