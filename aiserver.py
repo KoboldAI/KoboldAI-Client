@@ -339,7 +339,7 @@ class vars:
     rngpersist  = False
     nogenmod    = False
     welcome     = False  # Custom Welcome Text (False is default)
-    newlinemode = "n"
+    newlinemode = "ns"
     quiet       = False # If set will suppress any story text from being printed to the console (will only be seen on the client web page)
     debug       = False # If set to true, will send debug information to the client for display
     lazy_load   = True  # Whether or not to use torch_lazy_loader.py for transformers models in order to reduce CPU memory usage
@@ -661,7 +661,7 @@ def loadmodelsettings():
             js   = {}
     if vars.model_type == "xglm" or js.get("compat", "j") == "fairseq_lm":
         vars.newlinemode = "s"  # Default to </s> newline mode if using XGLM
-    if vars.model_type == "opt":
+    if vars.model_type == "opt" or vars.model_type == "bloom":
         vars.newlinemode = "ns"  # Handle </s> but don't convert newlines if using Fairseq models that have newlines trained in them
     vars.modelconfig = js
     if("badwordsids" in js):
