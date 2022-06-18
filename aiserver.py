@@ -1636,6 +1636,10 @@ if(not vars.use_colab_tpu and vars.model not in ["InferKit", "Colab", "OAI", "Go
                     try:
                         tokenizer = AutoTokenizer.from_pretrained(vars.custmodpth, revision=vars.revision, cache_dir="cache")
                     except Exception as e:
+                        pass
+                    try:
+                        tokenizer = AutoTokenizer.from_pretrained(vars.custmodpth, revision=vars.revision, cache_dir="cache", use_fast=False)
+                    except Exception as e:
                         try:
                             tokenizer = GPT2TokenizerFast.from_pretrained(vars.custmodpth, revision=vars.revision, cache_dir="cache")
                         except Exception as e:
@@ -1647,6 +1651,10 @@ if(not vars.use_colab_tpu and vars.model not in ["InferKit", "Colab", "OAI", "Go
                 elif(os.path.isdir("models/{}".format(vars.model.replace('/', '_')))):
                     try:
                         tokenizer = AutoTokenizer.from_pretrained("models/{}".format(vars.model.replace('/', '_')), revision=vars.revision, cache_dir="cache")
+                    except Exception as e:
+                        pass
+                    try:
+                        tokenizer = AutoTokenizer.from_pretrained("models/{}".format(vars.model.replace('/', '_')), revision=vars.revision, cache_dir="cache", use_fast=False)
                     except Exception as e:
                         try:
                             tokenizer = GPT2TokenizerFast.from_pretrained("models/{}".format(vars.model.replace('/', '_')), revision=vars.revision, cache_dir="cache")
@@ -1672,6 +1680,10 @@ if(not vars.use_colab_tpu and vars.model not in ["InferKit", "Colab", "OAI", "Go
 
                     try:
                         tokenizer = AutoTokenizer.from_pretrained(vars.model, revision=vars.revision, cache_dir="cache")
+                    except Exception as e:
+                        pass
+                    try:
+                        tokenizer = AutoTokenizer.from_pretrained(vars.model, revision=vars.revision, cache_dir="cache", use_fast=False)
                     except Exception as e:
                         try:
                             tokenizer = GPT2TokenizerFast.from_pretrained(vars.model, revision=vars.revision, cache_dir="cache")
@@ -1708,9 +1720,6 @@ if(not vars.use_colab_tpu and vars.model not in ["InferKit", "Colab", "OAI", "Go
                                 # Then save the pytorch_model-#####-of-#####.bin files
                                 for filename in filenames:
                                     shutil.move(transformers.file_utils.get_from_cache(transformers.file_utils.hf_bucket_url(vars.model, filename, revision=vars.revision), cache_dir="cache", local_files_only=True), os.path.join("models/{}".format(vars.model.replace('/', '_')), filename))
-                        # If the model has a tokenizer_config.json, preserve the original file instead of using the one output by tokenizer.save_pretrained (using the file output by tokenizer.save_pretrained can break OPT-350M in transformers 4.20.0)
-                        if(os.path.isfile(os.path.join("models/{}".format(vars.model.replace('/', '_')), "tokenizer_config.json"))):
-                            shutil.move(transformers.file_utils.get_from_cache(transformers.file_utils.hf_bucket_url(vars.model, "tokenizer_config.json", revision=vars.revision), cache_dir="cache", local_files_only=True), os.path.join("models/{}".format(vars.model.replace('/', '_')), "tokenizer_config.json"))
                         shutil.rmtree("cache/")
             
             if(vars.hascuda):
