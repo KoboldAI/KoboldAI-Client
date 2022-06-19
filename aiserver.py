@@ -1804,6 +1804,7 @@ def load_model(use_gpu=True, gpu_layers=None, initial_load=False, online_model="
                 # feature yet
                 if(vars.model_type == "gpt2"):
                     lowmem = {}
+                    vars.lazy_load = False  # Also, lazy loader doesn't support GPT-2 models
                 
                 # If we're using torch_lazy_loader, we need to get breakmodel config
                 # early so that it knows where to load the individual model tensors
