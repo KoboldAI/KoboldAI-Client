@@ -1668,19 +1668,19 @@ def load_model(use_gpu=True, gpu_layers=None, initial_load=False, online_model="
                 else:
                     ram_blocks = gpu_blocks = cumulative_gpu_blocks = None
 
-                def lazy_load_callback(model_dict, f, **_):
+                def lazy_load_callback(model_dict: Dict[str, torch.Tensor], f, **_):
                     if lazy_load_callback.nested:
                         return
                     lazy_load_callback.nested = True
 
-                    device_map = {}
+                    device_map: Dict[str, Union[str, int]] = {}
 
                     for key, value in model_dict.items():
                         if isinstance(value, torch_lazy_loader.LazyTensor) and not any(key.startswith(n) or key.startswith(n.split(".", 1)[1]) for n in vars.layers_module_names):
                             device_map[key] = vars.gpu_device if vars.hascuda and vars.usegpu else "cpu"
                         else:
                             layer = int(max((n for n in vars.layers_module_names if key.startswith(n) or key.startswith(n.split(".", 1)[1])), key=len).rsplit(".", 1)[1])
-                            device = vars.gpu_device if vars.hascuda and vars.usegpu else "cpu" if not vars.hascuda or not vars.breakmodel or layer < ram_blocks else bisect.bisect_right(cumulative_gpu_blocks, layer - ram_blocks)
+                            device = vars.gpu_device if vars.hascuda and vars.usegpu else "cpu" if not vars.hascuda or not vars.breakmodel else "shared" if layer < ram_blocks else bisect.bisect_right(cumulative_gpu_blocks, layer - ram_blocks)
                             device_map[key] = device
 
                     if utils.num_shards is None or utils.current_shard == 0:
@@ -1696,6 +1696,7 @@ def load_model(use_gpu=True, gpu_layers=None, initial_load=False, online_model="
                             last_storage_key = None
                             f = None
                             current_offset = 0
+                            able_to_pin_layers = True
                             if utils.num_shards is not None:
                                 utils.current_shard += 1
                             for key in sorted(device_map.keys(), key=lambda k: (model_dict[k].key, model_dict[k].seek_offset)):
@@ -1721,7 +1722,15 @@ def load_model(use_gpu=True, gpu_layers=None, initial_load=False, online_model="
                                     model_dict[key] = model_dict[key].to(torch.float16)
                                 if not vars.usegpu and not vars.breakmodel and model_dict[key].dtype is torch.float16:
                                     model_dict[key] = model_dict[key].to(torch.float32)
-                                model_dict[key] = model_dict[key].to(device)
+                                if device == "shared":
+                                    model_dict[key] = model_dict[key].to("cpu").detach_()
+                                    if able_to_pin_layers and utils.HAS_ACCELERATE:
+                                        try:
+                                            model_dict[key] = model_dict[key].pin_memory()
+                                        except:
+                                            able_to_pin_layers = False
+                                else:
+                                    model_dict[key] = model_dict[key].to(device)
                                 #print("OK", flush=True)
                                 current_offset += nbytes
                                 utils.bar.update(1)
