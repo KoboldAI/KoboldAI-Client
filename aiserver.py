@@ -1668,7 +1668,7 @@ def load_model(use_gpu=True, gpu_layers=None, initial_load=False, online_model="
                 else:
                     ram_blocks = gpu_blocks = cumulative_gpu_blocks = None
 
-                def lazy_load_callback(model_dict: Dict[str, torch.Tensor], f, **_):
+                def lazy_load_callback(model_dict: Dict[str, Union[torch_lazy_loader.LazyTensor, torch.Tensor]], f, **_):
                     if lazy_load_callback.nested:
                         return
                     lazy_load_callback.nested = True
