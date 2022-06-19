@@ -1686,7 +1686,7 @@ def load_model(use_gpu=True, gpu_layers=None, initial_load=False, online_model="
                         if isinstance(value, torch_lazy_loader.LazyTensor) and not any(key.startswith(n) or key.startswith(n.split(".", 1)[1]) for n in vars.layers_module_names):
                             device_map[key] = vars.gpu_device if vars.hascuda and vars.usegpu else "cpu"
                         else:
-                            layer = int(next(n for n in vars.layers_module_names if key.startswith(n) or key.startswith(n.split(".", 1)[1])).rsplit(".", 1)[1])
+                            layer = int(max((n for n in vars.layers_module_names if key.startswith(n) or key.startswith(n.split(".", 1)[1])), key=len).rsplit(".", 1)[1])
                             device = vars.gpu_device if vars.hascuda and vars.usegpu else "cpu" if not vars.hascuda or not vars.breakmodel or layer < ram_blocks else bisect.bisect_right(cumulative_gpu_blocks, layer - ram_blocks)
                             device_map[key] = device
 
