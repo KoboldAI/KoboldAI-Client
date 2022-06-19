@@ -610,6 +610,24 @@ def move_model_to_devices(model):
 
     model.half()
     gc.collect()
+
+    if(utils.HAS_ACCELERATE):
+        import accelerate
+        gpu_blocks = breakmodel.gpu_blocks
+        ram_blocks = len(vars.layers_module_names) - sum(gpu_blocks)
+        cumulative_gpu_blocks = tuple(itertools.accumulate(gpu_blocks))
+        device_map = {}
+        for name in vars.layers_module_names:
+            layer = int(name.rsplit(".", 1)[1])
+            device = "cpu" if layer < ram_blocks else bisect.bisect_right(cumulative_gpu_blocks, layer - ram_blocks)
+            device_map[name] = device
+        for name in utils.get_missing_module_names(model, list(device_map.keys())):
+            device_map[name] = breakmodel.primary_device
+        accelerate.dispatch_model(model, device_map, main_device=breakmodel.primary_device)
+        gc.collect()
+        generator = model.generate
+        return
+
     if(hasattr(model, "transformer")):
         model.transformer.wte.to(breakmodel.primary_device)
         model.transformer.ln_f.to(breakmodel.primary_device)
@@ -1665,10 +1683,10 @@ def load_model(use_gpu=True, gpu_layers=None, initial_load=False, online_model="
                     device_map = {}
 
                     for key, value in model_dict.items():
-                        if isinstance(value, torch_lazy_loader.LazyTensor) and not any(key.startswith(n) or key.startswith(n.split(".", 1)[1]) for n in vars.layer_param_names):
+                        if isinstance(value, torch_lazy_loader.LazyTensor) and not any(key.startswith(n) or key.startswith(n.split(".", 1)[1]) for n in vars.layers_module_names):
                             device_map[key] = vars.gpu_device if vars.hascuda and vars.usegpu else "cpu"
                         else:
-                            layer = int(next(n for n in vars.layer_param_names if key.startswith(n) or key.startswith(n.split(".", 1)[1])).rsplit(".", 1)[1])
+                            layer = int(next(n for n in vars.layers_module_names if key.startswith(n) or key.startswith(n.split(".", 1)[1])).rsplit(".", 1)[1])
                             device = vars.gpu_device if vars.hascuda and vars.usegpu else "cpu" if not vars.hascuda or not vars.breakmodel or layer < ram_blocks else bisect.bisect_right(cumulative_gpu_blocks, layer - ram_blocks)
                             device_map[key] = device
 
@@ -1805,7 +1823,7 @@ def load_model(use_gpu=True, gpu_layers=None, initial_load=False, online_model="
                             metamodel = AutoModelForCausalLM.from_config(model_config)
                         except Exception as e:
                             metamodel = GPTNeoForCausalLM.from_config(model_config)
-                        vars.layer_param_names = utils.get_layers_module_names(metamodel)
+                        vars.layers_module_names = utils.get_layers_module_names(metamodel)
                 with maybe_use_float16(), torch_lazy_loader.use_lazy_torch_load(enable=vars.lazy_load, callback=get_lazy_load_callback(utils.num_layers(model_config)) if vars.lazy_load else None, dematerialized_modules=True):
                     if(vars.lazy_load):  # torch_lazy_loader.py and low_cpu_mem_usage can't be used at the same time
                         lowmem = {}
