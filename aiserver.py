@@ -1718,7 +1718,6 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
                     lazy_load_callback.nested = True
 
                     device_map: Dict[str, Union[str, int]] = {}
-                    offload_map: Dict[str, str] = {}
 
                     @functools.lru_cache(maxsize=None)
                     def get_original_key(key):
@@ -1801,6 +1800,9 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
                         finally:
                             if utils.num_shards is None or utils.current_shard >= utils.num_shards:
                                 if utils.offload_index:
+                                    for name, tensor in vars.named_buffers:
+                                        if name not in utils.offload_index:
+                                            accelerate.utils.offload_weight(tensor, name, "accelerate-disk-cache", index=utils.offload_index)
                                     accelerate.utils.save_offload_index(utils.offload_index, "accelerate-disk-cache")
                                 utils.bar.close()
                                 utils.bar = None
@@ -1895,6 +1897,7 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
                             metamodel = GPTNeoForCausalLM.from_config(model_config)
                         vars.layers_module_names = utils.get_layers_module_names(metamodel)
                         vars.module_names = list(metamodel.state_dict().keys())
+                        vars.named_buffers = list(metamodel.named_buffers(recurse=True))
                 with maybe_use_float16(), torch_lazy_loader.use_lazy_torch_load(enable=vars.lazy_load, callback=get_lazy_load_callback(utils.num_layers(model_config)) if vars.lazy_load else None, dematerialized_modules=True):
                     if(vars.lazy_load):  # torch_lazy_loader.py and low_cpu_mem_usage can't be used at the same time
                         lowmem = {}
