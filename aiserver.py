@@ -2004,7 +2004,7 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
                         if(not vars.lazy_load):
                             device_config(model.config)
                         move_model_to_devices(model)
-                    elif(utils.HAS_ACCELERATE):
+                    elif(utils.HAS_ACCELERATE and __import__("breakmodel").disk_blocks > 0):
                         move_model_to_devices(model)
                         vars.modeldim = get_hidden_size_from_model(model)
                         generator = model.generate
@@ -2012,7 +2012,7 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
                         model = model.to('cpu').float()
                         vars.modeldim = get_hidden_size_from_model(model)
                         generator = model.generate
-                elif(utils.HAS_ACCELERATE):
+                elif(utils.HAS_ACCELERATE and __import__("breakmodel").disk_blocks > 0):
                     move_model_to_devices(model)
                     vars.modeldim = get_hidden_size_from_model(model)
                     generator = model.generate
