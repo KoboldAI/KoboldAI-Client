@@ -516,10 +516,11 @@ def device_config(config):
     import breakmodel
     n_layers = utils.num_layers(config)
     if(args.breakmodel_gpulayers is not None or (utils.HAS_ACCELERATE and args.breakmodel_disklayers is not None)):
-        if(args.breakmodel_gpulayers is None):
-            args.breakmodel_gpulayers = ",".join(["0"] * torch.cuda.device_count())
         try:
-            breakmodel.gpu_blocks = list(map(int, args.breakmodel_gpulayers.split(',')))
+            if(not args.breakmodel_gpulayers):
+                breakmodel.gpu_blocks = []
+            else:
+                breakmodel.gpu_blocks = list(map(int, args.breakmodel_gpulayers.split(',')))
             assert len(breakmodel.gpu_blocks) <= torch.cuda.device_count()
             s = n_layers
             for i in range(len(breakmodel.gpu_blocks)):
@@ -622,7 +623,7 @@ def device_config(config):
 def move_model_to_devices(model):
     global generator
 
-    if(not vars.breakmodel):
+    if(not utils.HAS_ACCELERATE and not vars.breakmodel):
         if(vars.usegpu):
             model = model.half().to(vars.gpu_device)
         else:
@@ -630,11 +631,8 @@ def move_model_to_devices(model):
         generator = model.generate
         return
 
-    model.half()
-    gc.collect()
-
     if(utils.HAS_ACCELERATE):
-        import accelerate
+        import breakmodel
         disk_blocks = breakmodel.disk_blocks
         gpu_blocks = breakmodel.gpu_blocks
         ram_blocks = len(vars.layers_module_names) - sum(gpu_blocks)
@@ -646,10 +644,13 @@ def move_model_to_devices(model):
             device_map[name] = device
         for name in utils.get_missing_module_names(model, list(device_map.keys())):
             device_map[name] = breakmodel.primary_device
-        accelerate.dispatch_model(model, device_map, main_device=breakmodel.primary_device, offload_buffers=True, offload_dir="accelerate-disk-cache")
+        breakmodel.dispatch_model_ex(model, device_map, main_device=breakmodel.primary_device, offload_buffers=True, offload_dir="accelerate-disk-cache")
         gc.collect()
         generator = model.generate
         return
+
+    model.half()
+    gc.collect()
 
     if(hasattr(model, "transformer")):
         model.transformer.wte.to(breakmodel.primary_device)
@@ -1874,7 +1875,7 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
                 
                 # If we're using torch_lazy_loader, we need to get breakmodel config
                 # early so that it knows where to load the individual model tensors
-                if(vars.lazy_load and vars.hascuda and vars.breakmodel):
+                if(utils.HAS_ACCELERATE or vars.lazy_load and vars.hascuda and vars.breakmodel):
                     device_config(model_config)
 
                 # Download model from Huggingface if it does not exist, otherwise load locally
@@ -2003,6 +2004,10 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
                         if(not vars.lazy_load):
                             device_config(model.config)
                         move_model_to_devices(model)
+                    elif(utils.HAS_ACCELERATE):
+                        move_model_to_devices(model)
+                        vars.modeldim = get_hidden_size_from_model(model)
+                        generator = model.generate
                     else:
                         model = model.to('cpu').float()
                         vars.modeldim = get_hidden_size_from_model(model)
