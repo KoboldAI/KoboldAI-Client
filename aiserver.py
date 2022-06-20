@@ -616,6 +616,8 @@ def device_config(config):
 
     if(not breakmodel.gpu_blocks):
         print("Nothing assigned to a GPU, reverting to CPU only mode")
+        import breakmodel
+        breakmodel.primary_device = "cpu"
         vars.breakmodel = False
         vars.usegpu = False
         return
