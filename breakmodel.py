@@ -230,7 +230,8 @@ logger = logging.get_logger(__name__)
 
 breakmodel = True
 gpu_blocks = []
-primary_device = 0
+disk_blocks = 0
+primary_device = 0 if torch.cuda.device_count() > 0 else "cpu"
 
 
 # Copied from transformers.models.bart.modeling_bart._expand_mask

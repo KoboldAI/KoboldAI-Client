@@ -17,7 +17,7 @@
 	<script src="static/bootstrap.min.js"></script>
 	<script src="static/bootstrap-toggle.min.js"></script>
 	<script src="static/rangy-core.min.js"></script>
-	<script src="static/application.js?ver=1.18.1b"></script>
+	<script src="static/application.js?ver=1.18.1c"></script>
 	<script src="static/favicon.js"></script>
 	{% if flaskwebgui %}
 	<script src="static/flask_web_gui.js"></script>
@@ -304,9 +304,9 @@
 				<div class='settingitem' style="width:100%">
 					<div class='settinglabel'>
 						<div class="justifyleft">
-							GPU Layers
+							GPU/Disk Layers
 							<span class="helpicon">?
-								<span class="helptext">Number of layers to assign to the GPU</span>
+								<span class="helptext">Number of layers to assign to GPUs and to disk cache. Remaining layers will be put into CPU RAM.</span>
 							</span>
 						</div>
 						<div class="justifyright" id="gpu_layers_current">0</div>

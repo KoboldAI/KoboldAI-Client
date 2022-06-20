@@ -507,13 +507,17 @@ def device_list(n_layers, primary=None, selected=None):
         print(f"{row_color}{colors.YELLOW + '->' + row_color if i == selected else '  '} {'(primary)' if i == primary else ' '*9} {i:3}  {sep_color}|{row_color}     {gpu_blocks[i]:3}  {sep_color}|{row_color}  {name}{colors.END}")
     row_color = colors.END
     sep_color = colors.YELLOW
+    if(utils.HAS_ACCELERATE):
+        print(f"{row_color}{colors.YELLOW + '->' + row_color if -1 == selected else '  '} {' '*9} N/A  {sep_color}|{row_color}     {breakmodel.disk_blocks:3}  {sep_color}|{row_color}  (Disk cache){colors.END}")
     print(f"{row_color}   {' '*9} N/A  {sep_color}|{row_color}     {n_layers:3}  {sep_color}|{row_color}  (CPU){colors.END}")
 
 def device_config(config):
     global breakmodel, generator
     import breakmodel
     n_layers = utils.num_layers(config)
-    if(args.breakmodel_gpulayers is not None):
+    if(args.breakmodel_gpulayers is not None or (utils.HAS_ACCELERATE and args.breakmodel_disklayers is not None)):
+        if(args.breakmodel_gpulayers is None):
+            args.breakmodel_gpulayers = ",".join(["0"] * torch.cuda.device_count())
         try:
             breakmodel.gpu_blocks = list(map(int, args.breakmodel_gpulayers.split(',')))
             assert len(breakmodel.gpu_blocks) <= torch.cuda.device_count()
@@ -578,7 +582,21 @@ def device_config(config):
                     print(f"{colors.RED}Please enter an integer between -1 and {n_layers}.{colors.END}")
             if(n_layers == 0):
                 break
-    
+
+        if(utils.HAS_ACCELERATE and n_layers > 0):
+            device_list(n_layers, primary=breakmodel.primary_device, selected=-1)
+            print(f"{colors.CYAN}\nHow many of the remaining{colors.YELLOW} {n_layers} {colors.CYAN}layers would you like to put into the disk cache?\nYou can also enter -1 to allocate all remaining layers to this device.{colors.END}\n")
+            while(True):
+                layerselect = input("# of layers> ")
+                if((layerselect.isnumeric() or layerselect.strip() == '-1') and -1 <= int(layerselect) <= n_layers):
+                    layerselect = int(layerselect)
+                    layerselect = n_layers if layerselect == -1 else layerselect
+                    breakmodel.disk_blocks = layerselect
+                    n_layers -= layerselect
+                    break
+                else:
+                    print(f"{colors.RED}Please enter an integer between -1 and {n_layers}.{colors.END}")
+
     print(colors.PURPLE + "\nFinal device configuration:")
     device_list(n_layers)
 
@@ -978,6 +996,7 @@ def general_startup(override_args=None):
     parser.add_argument("--breakmodel", action='store_true', help=argparse.SUPPRESS)
     parser.add_argument("--breakmodel_layers", type=int, help=argparse.SUPPRESS)
     parser.add_argument("--breakmodel_gpulayers", type=str, help="If using a model that supports hybrid generation, this is a comma-separated list that specifies how many layers to put on each GPU device. For example to put 8 layers on device 0, 9 layers on device 1 and 11 layers on device 2, use --beakmodel_gpulayers 8,9,11")
+    parser.add_argument("--breakmodel_disklayers", type=int, help="If using a model that supports hybrid generation, this is the number of layers to put in disk cache.")
     parser.add_argument("--override_delete", action='store_true', help="Deleting stories from inside the browser is disabled if you are using --remote and enabled otherwise. Using this option will instead allow deleting stories if using --remote and prevent deleting stories otherwise.")
     parser.add_argument("--override_rename", action='store_true', help="Renaming stories from inside the browser is disabled if you are using --remote and enabled otherwise. Using this option will instead allow renaming stories if using --remote and prevent renaming stories otherwise.")
     parser.add_argument("--configname", help="Force a fixed configuration name to aid with config management.")
@@ -1083,6 +1102,7 @@ def tpumtjgetsofttokens():
  
 def get_model_info(model, directory=""):
     # if the model is in the api list
+    disk_blocks = 0
     key = False
     breakmodel = False
     gpu = False
@@ -1109,7 +1129,7 @@ def get_model_info(model, directory=""):
         pass
     elif model == 'Colab':
         url = True
-    elif not torch.cuda.is_available():
+    elif not utils.HAS_ACCELERATE and not torch.cuda.is_available():
         pass
     else:
         layer_count = get_layer_count(model, directory=directory)
@@ -1119,7 +1139,11 @@ def get_model_info(model, directory=""):
             breakmodel = True
             if path.exists("settings/{}.breakmodel".format(model.replace("/", "_"))):
                 with open("settings/{}.breakmodel".format(model.replace("/", "_")), "r") as file:
-                    break_values = file.read().split(",")
+                    data = file.read().split("\n")[:2]
+                    if len(data) < 2:
+                        data.append("0")
+                    break_values, disk_blocks = data
+                    break_values = break_values.split(",")
             else:
                 break_values = [layer_count]
             break_values += [0] * (gpu_count - len(break_values))
@@ -1129,6 +1153,7 @@ def get_model_info(model, directory=""):
     #                     'url': url, 'gpu_names': gpu_names}))
     emit('from_server', {'cmd': 'selected_model_info', 'key_value': key_value, 'key':key, 
                          'gpu':gpu, 'layer_count':layer_count, 'breakmodel':breakmodel, 
+                         'disk_break_value': disk_blocks, 'accelerate': utils.HAS_ACCELERATE,
                          'break_values': break_values, 'gpu_count': gpu_count,
                          'url': url, 'gpu_names': gpu_names}, broadcast=True)
     if key_value != "":
@@ -1470,13 +1495,15 @@ def patch_transformers():
         return stopping_criteria
     transformers.generation_utils.GenerationMixin._get_stopping_criteria = new_get_stopping_criteria
 
-def load_model(use_gpu=True, gpu_layers=None, initial_load=False, online_model=""):
+def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=False, online_model=""):
     global model
     global generator
     global torch
     global model_config
     global GPT2TokenizerFast
     global tokenizer
+    if not utils.HAS_ACCELERATE:
+        disk_layers = None
     vars.noai = False
     if not initial_load:
         set_aibusy(True)
@@ -1486,6 +1513,8 @@ def load_model(use_gpu=True, gpu_layers=None, initial_load=False, online_model="
             time.sleep(0.1)
     if gpu_layers is not None:
         args.breakmodel_gpulayers = gpu_layers
+    if disk_layers is not None:
+        args.breakmodel_disklayers = int(disk_layers)
     
     #We need to wipe out the existing model and refresh the cuda cache
     model = None
@@ -1579,10 +1608,10 @@ def load_model(use_gpu=True, gpu_layers=None, initial_load=False, online_model="
             print("WARNING: --breakmodel is no longer supported. Breakmodel mode is now automatically enabled when --breakmodel_gpulayers is used (see --help for details).", file=sys.stderr)
         if(args.breakmodel_layers is not None):
             print("WARNING: --breakmodel_layers is deprecated. Use --breakmodel_gpulayers instead (see --help for details).", file=sys.stderr)
-        if(args.model and vars.bmsupported and not args.breakmodel_gpulayers and not args.breakmodel_layers):
+        if(args.model and vars.bmsupported and not args.breakmodel_gpulayers and not args.breakmodel_layers and (not utils.HAS_ACCELERATE or not args.breakmodel_disklayers)):
             print("WARNING: Model launched without the --breakmodel_gpulayers argument, defaulting to GPU only mode.", file=sys.stderr)
             vars.bmsupported = False
-        if(not vars.bmsupported and (args.breakmodel_gpulayers is not None or args.breakmodel_layers is not None)):
+        if(not vars.bmsupported and (args.breakmodel_gpulayers is not None or args.breakmodel_layers is not None or args.breakmodel_disklayers is not None)):
             print("WARNING: This model does not support hybrid generation. --breakmodel_gpulayers will be ignored.", file=sys.stderr)
         if(vars.hascuda):
             print("{0}FOUND!{1}".format(colors.GREEN, colors.END))
@@ -1593,13 +1622,13 @@ def load_model(use_gpu=True, gpu_layers=None, initial_load=False, online_model="
             if(vars.hascuda):
                 genselected = True
                 vars.usegpu = True
-                vars.breakmodel = False
+                vars.breakmodel = utils.HAS_ACCELERATE
             if(vars.bmsupported):
                 vars.usegpu = False
                 vars.breakmodel = True
             if(args.cpu):
                 vars.usegpu = False
-                vars.breakmodel = False
+                vars.breakmodel = utils.HAS_ACCELERATE
         elif(vars.hascuda):    
             if(vars.bmsupported):
                 genselected = True
@@ -1621,7 +1650,7 @@ def load_model(use_gpu=True, gpu_layers=None, initial_load=False, online_model="
                     vars.usegpu = True
                     genselected = True
             else:
-                vars.breakmodel = False
+                vars.breakmodel = utils.HAS_ACCELERATE
                 vars.usegpu = False
                 genselected = True
 
@@ -3143,16 +3172,22 @@ def get_message(msg):
         if not os.path.exists("settings/"):
             os.mkdir("settings")
         changed = True
+        if not utils.HAS_ACCELERATE:
+            msg['disk_layers'] = "0"
         if os.path.exists("settings/" + vars.model.replace('/', '_') + ".breakmodel"):
             with open("settings/" + vars.model.replace('/', '_') + ".breakmodel", "r") as file:
-                if file.read() == msg['gpu_layers']:
+                data = file.read().split('\n')[:2]
+                if len(data) < 2:
+                    data.append("0")
+                gpu_layers, disk_layers = data
+                if gpu_layers == msg['gpu_layers'] and disk_layers == msg['disk_layers']:
                     changed = False
         if changed:
             f = open("settings/" + vars.model.replace('/', '_') + ".breakmodel", "w")
-            f.write(msg['gpu_layers'])
+            f.write(msg['gpu_layers'] + '\n' + msg['disk_layers'])
             f.close()
         vars.colaburl = msg['url'] + "/request"
-        load_model(use_gpu=msg['use_gpu'], gpu_layers=msg['gpu_layers'], online_model=msg['online_model'])
+        load_model(use_gpu=msg['use_gpu'], gpu_layers=msg['gpu_layers'], disk_layers=msg['disk_layers'], online_model=msg['online_model'])
     elif(msg['cmd'] == 'show_model'):
         print("Model Name: {}".format(getmodelname()))
         emit('from_server', {'cmd': 'show_model_name', 'data': getmodelname()}, broadcast=True)

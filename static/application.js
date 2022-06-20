@@ -1966,6 +1966,10 @@ function update_gpu_layers() {
 		gpu_layers += parseInt($("#gpu_layers"+i)[0].value);
 		$("#gpu_layers_box_"+i)[0].value=$("#gpu_layers"+i)[0].value;
 	}
+	if ($("#disk_layers").length > 0) {
+		gpu_layers += parseInt($("#disk_layers")[0].value);
+		$("#disk_layers_box")[0].value=$("#disk_layers")[0].value;
+	}
 	if (gpu_layers > parseInt(document.getElementById("gpu_layers_max").innerHTML)) {
 		disableButtons([load_model_accept]);
 		$("#gpu_layers_current").html("<span style='color: red'>"+gpu_layers+"/"+ document.getElementById("gpu_layers_max").innerHTML +"</span>");
@@ -2609,6 +2613,10 @@ $(document).ready(function(){
 					html += 'onblur=\'$("#gpu_layers'+i+'")[0].value=$("#gpu_layers_box_'+i+'")[0].value;update_gpu_layers();\'>';
 					html += "<input type='range' class='form-range airange' min='0' max='"+msg.layer_count+"' step='1' value='"+msg.break_values[i]+"' id='gpu_layers"+i+"' onchange='update_gpu_layers();'>";
 				}
+				html += "Disk cache: ";
+				html += '<input inputmode="numeric" id="disk_layers_box" class="justifyright flex-push-right model_layers" value="'+msg.disk_break_value+'" ';
+				html += 'onblur=\'$("#disk_layers")[0].value=$("#disk_layers_box")[0].value;update_gpu_layers();\'>';
+				html += "<input type='range' class='form-range airange' min='0' max='"+msg.layer_count+"' step='1' value='"+msg.disk_break_value+"' id='disk_layers' onchange='update_gpu_layers();'>";
 				$("#model_layer_bars").html(html);
 				$("#gpu_layers_max").html(msg.layer_count);
 				$("#gpu_count")[0].value = msg.gpu_count;
@@ -2925,7 +2933,8 @@ $(document).ready(function(){
 				gpu_layers += $("#gpu_layers"+i)[0].value + ",";
 			}
 		}
-		message = {'cmd': 'load_model', 'use_gpu': $('#use_gpu')[0].checked, 'key': $('#modelkey')[0].value, 'gpu_layers': gpu_layers.slice(0, -1), 'url': $('#modelurl')[0].value, 'online_model': $('#oaimodel')[0].value};
+		var disk_layers = $("#disk_layers").length > 0 ? $("#disk_layers")[0].value : 0;
+		message = {'cmd': 'load_model', 'use_gpu': $('#use_gpu')[0].checked, 'key': $('#modelkey')[0].value, 'gpu_layers': gpu_layers.slice(0, -1), 'disk_layers': disk_layers, 'url': $('#modelurl')[0].value, 'online_model': $('#oaimodel')[0].value};
 		socket.send(message);
 		loadmodelcontent.html("");
 		hideLoadModelPopup();
