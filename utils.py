@@ -29,6 +29,10 @@ from_pretrained_index_filename: Optional[str] = None
 from_pretrained_kwargs = {}
 bar = None
 
+layers_module_names: Optional[List[str]] = None
+module_names: Optional[List[str]] = None
+named_buffers: Optional[List[tuple]] = None
+
 default_sampler_order = [0, 1, 2, 3, 4, 5]
 
 #==================================================================#

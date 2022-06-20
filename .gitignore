@@ -15,6 +15,7 @@ bin
 __pycache__
 *.log
 cache
+accelerate-disk-cache
 userscripts
 !userscripts/examples
 !userscripts/kaipreset_*.lua
