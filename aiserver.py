@@ -637,10 +637,10 @@ def move_model_to_devices(model):
         import breakmodel
         disk_blocks = breakmodel.disk_blocks
         gpu_blocks = breakmodel.gpu_blocks
-        ram_blocks = len(vars.layers_module_names) - sum(gpu_blocks)
+        ram_blocks = len(utils.layers_module_names) - sum(gpu_blocks)
         cumulative_gpu_blocks = tuple(itertools.accumulate(gpu_blocks))
         device_map = {}
-        for name in vars.layers_module_names:
+        for name in utils.layers_module_names:
             layer = int(name.rsplit(".", 1)[1])
             device = ("disk" if layer < disk_blocks else "cpu") if layer < ram_blocks else bisect.bisect_right(cumulative_gpu_blocks, layer - ram_blocks)
             device_map[name] = device
@@ -1721,14 +1721,14 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
 
                     @functools.lru_cache(maxsize=None)
                     def get_original_key(key):
-                        return max((original_key for original_key in vars.module_names if original_key.endswith(key)), key=len)
+                        return max((original_key for original_key in utils.module_names if original_key.endswith(key)), key=len)
 
                     for key, value in model_dict.items():
                         original_key = get_original_key(key)
-                        if isinstance(value, torch_lazy_loader.LazyTensor) and not any(original_key.startswith(n) for n in vars.layers_module_names):
+                        if isinstance(value, torch_lazy_loader.LazyTensor) and not any(original_key.startswith(n) for n in utils.layers_module_names):
                             device_map[key] = vars.gpu_device if vars.hascuda and vars.usegpu else "cpu" if not vars.hascuda or not vars.breakmodel else breakmodel.primary_device
                         else:
-                            layer = int(max((n for n in vars.layers_module_names if original_key.startswith(n)), key=len).rsplit(".", 1)[1])
+                            layer = int(max((n for n in utils.layers_module_names if original_key.startswith(n)), key=len).rsplit(".", 1)[1])
                             device = vars.gpu_device if vars.hascuda and vars.usegpu else "disk" if layer < disk_blocks and layer < ram_blocks else "cpu" if not vars.hascuda or not vars.breakmodel else "shared" if layer < ram_blocks else bisect.bisect_right(cumulative_gpu_blocks, layer - ram_blocks)
                             device_map[key] = device
 
@@ -1800,7 +1800,7 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
                         finally:
                             if utils.num_shards is None or utils.current_shard >= utils.num_shards:
                                 if utils.offload_index:
-                                    for name, tensor in vars.named_buffers:
+                                    for name, tensor in utils.named_buffers:
                                         if name not in utils.offload_index:
                                             accelerate.utils.offload_weight(tensor, name, "accelerate-disk-cache", index=utils.offload_index)
                                     accelerate.utils.save_offload_index(utils.offload_index, "accelerate-disk-cache")
@@ -1895,9 +1895,9 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
                             metamodel = AutoModelForCausalLM.from_config(model_config)
                         except Exception as e:
                             metamodel = GPTNeoForCausalLM.from_config(model_config)
-                        vars.layers_module_names = utils.get_layers_module_names(metamodel)
-                        vars.module_names = list(metamodel.state_dict().keys())
-                        vars.named_buffers = list(metamodel.named_buffers(recurse=True))
+                        utils.layers_module_names = utils.get_layers_module_names(metamodel)
+                        utils.module_names = list(metamodel.state_dict().keys())
+                        utils.named_buffers = list(metamodel.named_buffers(recurse=True))
                 with maybe_use_float16(), torch_lazy_loader.use_lazy_torch_load(enable=vars.lazy_load, callback=get_lazy_load_callback(utils.num_layers(model_config)) if vars.lazy_load else None, dematerialized_modules=True):
                     if(vars.lazy_load):  # torch_lazy_loader.py and low_cpu_mem_usage can't be used at the same time
                         lowmem = {}
