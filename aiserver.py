@@ -530,6 +530,10 @@ def device_config(config):
                     s -= breakmodel.gpu_blocks[i]
             assert sum(breakmodel.gpu_blocks) <= n_layers
             n_layers -= sum(breakmodel.gpu_blocks)
+            if(args.breakmodel_disklayers is not None):
+                assert args.breakmodel_disklayers <= n_layers
+                breakmodel.disk_blocks = args.breakmodel_disklayers
+                n_layers -= args.breakmodel_disklayers
         except:
             print("WARNING: --breakmodel_gpulayers is malformatted. Please use the --help option to see correct usage of --breakmodel_gpulayers. Defaulting to all layers on device 0.", file=sys.stderr)
             breakmodel.gpu_blocks = [n_layers]
@@ -631,17 +635,18 @@ def move_model_to_devices(model):
 
     if(utils.HAS_ACCELERATE):
         import accelerate
+        disk_blocks = breakmodel.disk_blocks
         gpu_blocks = breakmodel.gpu_blocks
         ram_blocks = len(vars.layers_module_names) - sum(gpu_blocks)
         cumulative_gpu_blocks = tuple(itertools.accumulate(gpu_blocks))
         device_map = {}
         for name in vars.layers_module_names:
             layer = int(name.rsplit(".", 1)[1])
-            device = "cpu" if layer < ram_blocks else bisect.bisect_right(cumulative_gpu_blocks, layer - ram_blocks)
+            device = ("disk" if layer < disk_blocks else "cpu") if layer < ram_blocks else bisect.bisect_right(cumulative_gpu_blocks, layer - ram_blocks)
             device_map[name] = device
         for name in utils.get_missing_module_names(model, list(device_map.keys())):
             device_map[name] = breakmodel.primary_device
-        accelerate.dispatch_model(model, device_map, main_device=breakmodel.primary_device)
+        accelerate.dispatch_model(model, device_map, main_device=breakmodel.primary_device, offload_buffers=True, offload_dir="accelerate-disk-cache")
         gc.collect()
         generator = model.generate
         return
@@ -1690,12 +1695,19 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
 
                 from tqdm.auto import tqdm
 
-                if "breakmodel" in globals():
-                    gpu_blocks = breakmodel.gpu_blocks
-                    ram_blocks = ram_blocks = n_layers - sum(gpu_blocks)
-                    cumulative_gpu_blocks = tuple(itertools.accumulate(gpu_blocks))
-                else:
-                    ram_blocks = gpu_blocks = cumulative_gpu_blocks = None
+                global breakmodel
+                import breakmodel
+
+                if utils.HAS_ACCELERATE:
+                    import accelerate.utils
+
+                if args.breakmodel_disklayers is not None:
+                    breakmodel.disk_blocks = args.breakmodel_disklayers
+
+                disk_blocks = breakmodel.disk_blocks
+                gpu_blocks = breakmodel.gpu_blocks
+                ram_blocks = ram_blocks = n_layers - sum(gpu_blocks)
+                cumulative_gpu_blocks = tuple(itertools.accumulate(gpu_blocks))
 
                 def lazy_load_callback(model_dict: Dict[str, Union[torch_lazy_loader.LazyTensor, torch.Tensor]], f, **_):
                     if lazy_load_callback.nested:
@@ -1703,16 +1715,33 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
                     lazy_load_callback.nested = True
 
                     device_map: Dict[str, Union[str, int]] = {}
+                    offload_map: Dict[str, str] = {}
+
+                    @functools.lru_cache(maxsize=None)
+                    def get_original_key(key):
+                        return max((original_key for original_key in vars.module_names if original_key.endswith(key)), key=len)
 
                     for key, value in model_dict.items():
-                        if isinstance(value, torch_lazy_loader.LazyTensor) and not any(key.startswith(n) or key.startswith(n.split(".", 1)[1]) for n in vars.layers_module_names):
+                        original_key = get_original_key(key)
+                        if isinstance(value, torch_lazy_loader.LazyTensor) and not any(original_key.startswith(n) for n in vars.layers_module_names):
                             device_map[key] = vars.gpu_device if vars.hascuda and vars.usegpu else "cpu" if not vars.hascuda or not vars.breakmodel else breakmodel.primary_device
                         else:
-                            layer = int(max((n for n in vars.layers_module_names if key.startswith(n) or key.startswith(n.split(".", 1)[1])), key=len).rsplit(".", 1)[1])
-                            device = vars.gpu_device if vars.hascuda and vars.usegpu else "cpu" if not vars.hascuda or not vars.breakmodel else "shared" if layer < ram_blocks else bisect.bisect_right(cumulative_gpu_blocks, layer - ram_blocks)
+                            layer = int(max((n for n in vars.layers_module_names if original_key.startswith(n)), key=len).rsplit(".", 1)[1])
+                            device = vars.gpu_device if vars.hascuda and vars.usegpu else "disk" if layer < disk_blocks and layer < ram_blocks else "cpu" if not vars.hascuda or not vars.breakmodel else "shared" if layer < ram_blocks else bisect.bisect_right(cumulative_gpu_blocks, layer - ram_blocks)
                             device_map[key] = device
 
                     if utils.num_shards is None or utils.current_shard == 0:
+                        utils.offload_index = {}
+                        if utils.HAS_ACCELERATE:
+                            if os.path.isdir("accelerate-disk-cache"):
+                                # Delete all of the files in the disk cache folder without deleting the folder itself to allow people to create symbolic links for this folder
+                                # (the folder doesn't contain any subfolders so os.remove will do just fine)
+                                for filename in os.listdir("accelerate-disk-cache"):
+                                    try:
+                                        os.remove(os.path.join("accelerate-disk-cache", filename))
+                                    except OSError:
+                                        pass
+                            os.makedirs("accelerate-disk-cache", exist_ok=True)
                         if utils.num_shards is not None:
                             num_tensors = len(utils.get_sharded_checkpoint_num_tensors(utils.from_pretrained_model_name, utils.from_pretrained_index_filename, **utils.from_pretrained_kwargs))
                         else:
@@ -1743,13 +1772,13 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
                                 size = functools.reduce(lambda x, y: x * y, model_dict[key].shape, 1)
                                 dtype = model_dict[key].dtype
                                 nbytes = size if dtype is torch.bool else size * ((torch.finfo if dtype.is_floating_point else torch.iinfo)(dtype).bits >> 3)
-                                #print(f"Transferring <{key}>  to  {'(CPU)' if device == 'cpu' else '[device ' + str(device) + ']'} ... ", end="", flush=True)
+                                #print(f"Transferring <{key}>  to  {f'({device.upper()})' if isinstance(device, str) else '[device ' + str(device) + ']'} ... ", end="", flush=True)
                                 model_dict[key] = model_dict[key].materialize(f, map_location="cpu")
                                 if model_dict[key].dtype is torch.float32:
                                     vars.fp32_model = True
-                                if convert_to_float16 and vars.hascuda and (vars.breakmodel or vars.usegpu) and model_dict[key].dtype is torch.float32:
+                                if convert_to_float16 and breakmodel.primary_device != "cpu" and vars.hascuda and (vars.breakmodel or vars.usegpu) and model_dict[key].dtype is torch.float32:
                                     model_dict[key] = model_dict[key].to(torch.float16)
-                                if not vars.usegpu and not vars.breakmodel and model_dict[key].dtype is torch.float16:
+                                if breakmodel.primary_device == "cpu" or (not vars.usegpu and not vars.breakmodel and model_dict[key].dtype is torch.float16):
                                     model_dict[key] = model_dict[key].to(torch.float32)
                                 if device == "shared":
                                     model_dict[key] = model_dict[key].to("cpu").detach_()
@@ -1758,6 +1787,9 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
                                             model_dict[key] = model_dict[key].pin_memory()
                                         except:
                                             able_to_pin_layers = False
+                                elif device == "disk":
+                                    accelerate.utils.offload_weight(model_dict[key], get_original_key(key), "accelerate-disk-cache", index=utils.offload_index)
+                                    model_dict[key] = model_dict[key].to("meta")
                                 else:
                                     model_dict[key] = model_dict[key].to(device)
                                 #print("OK", flush=True)
@@ -1765,6 +1797,8 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
                                 utils.bar.update(1)
                         finally:
                             if utils.num_shards is None or utils.current_shard >= utils.num_shards:
+                                if utils.offload_index:
+                                    accelerate.utils.save_offload_index(utils.offload_index, "accelerate-disk-cache")
                                 utils.bar.close()
                                 utils.bar = None
                             lazy_load_callback.nested = False
@@ -1857,6 +1891,7 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
                         except Exception as e:
                             metamodel = GPTNeoForCausalLM.from_config(model_config)
                         vars.layers_module_names = utils.get_layers_module_names(metamodel)
+                        vars.module_names = list(metamodel.state_dict().keys())
                 with maybe_use_float16(), torch_lazy_loader.use_lazy_torch_load(enable=vars.lazy_load, callback=get_lazy_load_callback(utils.num_layers(model_config)) if vars.lazy_load else None, dematerialized_modules=True):
                     if(vars.lazy_load):  # torch_lazy_loader.py and low_cpu_mem_usage can't be used at the same time
                         lowmem = {}
@@ -1972,6 +2007,10 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
                         model = model.to('cpu').float()
                         vars.modeldim = get_hidden_size_from_model(model)
                         generator = model.generate
+                elif(utils.HAS_ACCELERATE):
+                    move_model_to_devices(model)
+                    vars.modeldim = get_hidden_size_from_model(model)
+                    generator = model.generate
                 else:
                     model.to('cpu').float()
                     vars.modeldim = get_hidden_size_from_model(model)
