@@ -1995,7 +1995,7 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
                             shutil.rmtree("cache/")
 
                 if(vars.badwordsids is vars.badwordsids_default and vars.model_type not in ("gpt2", "gpt_neo", "gptj")):
-                    vars.badwordsids = [[v] for k, v in tokenizer.get_vocab().items() if any(c in k for c in "<>[]")]
+                    vars.badwordsids = [[v] for k, v in tokenizer.get_vocab().items() if any(c in str(k) for c in "<>[]")]
 
                 patch_causallm(model)
 
@@ -2162,7 +2162,7 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
             vars.modeldim = int(tpu_mtj_backend.params.get("d_embed", tpu_mtj_backend.params["d_model"]))
             tokenizer = tpu_mtj_backend.tokenizer
             if(vars.badwordsids is vars.badwordsids_default and vars.model_type not in ("gpt2", "gpt_neo", "gptj")):
-                vars.badwordsids = [[str(v)] for k, v in tokenizer.get_vocab().items() if any(c in str(k) for c in "<>[]")]
+                vars.badwordsids = [[v] for k, v in tokenizer.get_vocab().items() if any(c in str(k) for c in "<>[]")]
         else:
             loadsettings()
     
