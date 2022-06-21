@@ -12,6 +12,8 @@
     "decoder.embed_tokens.weight": {"mtj": {"module": "embedding_shard/~/linear", "param": "w", "transforms": ["no_transpose", "vocab_pad"]}},
     "decoder.project_in.weight": {"mtj": {"module": "embedding_shard", "param": "project_in"}},
     "decoder.embed_positions.weight": {"mtj": {"module": "embedding_shard", "param": "pos_embs", "transforms": ["no_transpose", "remove_first_two_rows"]}},
+    "decoder.final_layer_norm.weight": {"mtj": {"module": "projection_shard/~/replicated_layer_norm", "param": "scale"}},
+    "decoder.final_layer_norm.bias": {"mtj": {"module": "projection_shard/~/replicated_layer_norm", "param": "offset"}},
     "decoder.project_out.weight": {"mtj": {"module": "projection_shard", "param": "project_out"}}
   },
   "layer_weights": {
