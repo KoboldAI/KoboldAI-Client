@@ -633,8 +633,9 @@ def move_model_to_devices(model):
         generator = model.generate
         return
 
+    import breakmodel
+
     if(utils.HAS_ACCELERATE):
-        import breakmodel
         disk_blocks = breakmodel.disk_blocks
         gpu_blocks = breakmodel.gpu_blocks
         ram_blocks = len(utils.layers_module_names) - sum(gpu_blocks)
