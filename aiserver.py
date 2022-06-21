@@ -1604,9 +1604,6 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
             print("WARNING: No model type detected, assuming Neo (If this is a GPT2 model use the other menu option or --model GPT2Custom)")
             vars.model_type = "gpt_neo"
 
-        if(vars.model_type == "opt"):
-            vars.badwordsids = vars.badwordsids_opt
-
     if(not vars.use_colab_tpu and vars.model not in ["InferKit", "Colab", "OAI", "GooseAI" , "ReadOnly", "TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX"]):
         loadmodelsettings()
         loadsettings()
@@ -1998,6 +1995,9 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
                                         shutil.move(transformers.file_utils.get_from_cache(transformers.file_utils.hf_bucket_url(vars.model, filename, revision=vars.revision), cache_dir="cache", local_files_only=True), os.path.join("models/{}".format(vars.model.replace('/', '_')), filename))
                             shutil.rmtree("cache/")
 
+                if(vars.badwordsids is vars.badwordsids_default and vars.model_type not in ("gpt2", "gpt_neo", "gptj", "xglm")):
+                    vars.badwordsids = [[v] for k, v in tokenizer.get_vocab().items() if any(c in k for c in "<>[]")]
+
                 patch_causallm(model.__class__)
 
                 if(vars.hascuda):
@@ -2148,8 +2148,8 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
             if vars.model in ("TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX") and (not vars.custmodpth or not os.path.isdir(vars.custmodpth)):
                 raise FileNotFoundError(f"The specified model path {repr(vars.custmodpth)} is not the path to a valid folder")
             import tpu_mtj_backend
-            if(vars.model == "TPUMeshTransformerGPTNeoX" or vars.model_type == "opt"):
-                tpu_mtj_backend.pad_token_id = 1
+            if(vars.model == "TPUMeshTransformerGPTNeoX"):
+                tpu_mtj_backend.pad_token_id = 2
             tpu_mtj_backend.vars = vars
             tpu_mtj_backend.warper_callback = tpumtjgenerate_warper_callback
             tpu_mtj_backend.stopping_callback = tpumtjgenerate_stopping_callback
@@ -2162,6 +2162,8 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
             tpu_mtj_backend.load_model(vars.custmodpth, hf_checkpoint=vars.model not in ("TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX") and vars.use_colab_tpu, **vars.modelconfig)
             vars.modeldim = int(tpu_mtj_backend.params.get("d_embed", tpu_mtj_backend.params["d_model"]))
             tokenizer = tpu_mtj_backend.tokenizer
+            if(vars.badwordsids is vars.badwordsids_default and vars.model_type not in ("gpt2", "gpt_neo", "gptj", "xglm")):
+                vars.badwordsids = [[str(v)] for k, v in tokenizer.get_vocab().items() if any(c in str(k) for c in "<>[]")]
         else:
             loadsettings()
     
