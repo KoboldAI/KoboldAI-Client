@@ -1,0 +1,33 @@
+{
+  "mtj_compat": "neox",
+  "mtj_pe": "neox_rotary",
+  "mtj_config_map": {
+    "pe_rotary_pct": ["rotary_pct", 0.25],
+    "d_model": "hidden_size",
+    "n_heads": "num_attention_heads",
+    "layers": "num_hidden_layers"
+  },
+  "static_weights": {
+    "gpt_neox.embed_in.weight": {"mtj": {"module": "embedding_shard/~/linear", "param": "w", "transforms": ["no_transpose", "vocab_pad"]}},
+    "gpt_neox.final_layer_norm.weight": {"mtj": {"module": "projection_shard/~/replicated_layer_norm", "param": "scale"}},
+    "gpt_neox.final_layer_norm.bias": {"mtj": {"module": "projection_shard/~/replicated_layer_norm", "param": "offset"}},
+    "embed_out.weight": {"mtj": {"module": "projection_shard/~/linear", "param": "w", "transforms": ["vocab_pad"]}}
+  },
+  "layer_weights": {
+    "gpt_neox.layers.{layer}.attention.bias": {},
+    "gpt_neox.layers.{layer}.attention.masked_bias": {},
+    "gpt_neox.layers.{layer}.attention.rotary_emb.inv_freq": {},
+    "gpt_neox.layers.{layer}.attention.query_key_value.weight": {"mtj": {"module": "layer_{layer}/~/combined_qkv", "param": "w"}},
+    "gpt_neox.layers.{layer}.attention.query_key_value.bias": {"mtj": {"module": "layer_{layer}/~/combined_qkv", "param": "b"}},
+    "gpt_neox.layers.{layer}.attention.dense.weight": {"mtj": {"module": "layer_{layer}/~/linear_3", "param": "w"}},
+    "gpt_neox.layers.{layer}.attention.dense.bias": {"mtj": {"module": "layer_{layer}/~/linear_3", "param": "b", "transforms": ["divide_by_shards"]}},
+    "gpt_neox.layers.{layer}.mlp.dense_h_to_4h.weight": {"mtj": {"module": "layer_{layer}/~/linear_4", "param": "w"}},
+    "gpt_neox.layers.{layer}.mlp.dense_h_to_4h.bias": {"mtj": {"module": "layer_{layer}/~/linear_4", "param": "b"}},
+    "gpt_neox.layers.{layer}.mlp.dense_4h_to_h.weight": {"mtj": {"module": "layer_{layer}/~/linear_5", "param": "w"}},
+    "gpt_neox.layers.{layer}.mlp.dense_4h_to_h.bias": {"mtj": {"module": "layer_{layer}/~/linear_5", "param": "b", "transforms": ["divide_by_shards"]}},
+    "gpt_neox.layers.{layer}.input_layernorm.weight": {"mtj": {"module": "layer_{layer}/~/replicated_layer_norm", "param": "scale"}},
+    "gpt_neox.layers.{layer}.input_layernorm.bias": {"mtj": {"module": "layer_{layer}/~/replicated_layer_norm", "param": "offset"}},
+    "gpt_neox.layers.{layer}.post_attention_layernorm.weight": {"mtj": {"module": "layer_{layer}/~/replicated_layer_norm_1", "param": "scale"}},
+    "gpt_neox.layers.{layer}.post_attention_layernorm.bias": {"mtj": {"module": "layer_{layer}/~/replicated_layer_norm_1", "param": "offset"}}
+  }
+}
