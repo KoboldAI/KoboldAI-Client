@@ -976,6 +976,8 @@ if(vars.model not in ["InferKit", "Colab", "OAI", "GooseAI" , "ReadOnly", "TPUMe
 
     if(vars.model_type == "opt"):
         vars.badwordsids = vars.badwordsids_opt
+    if(vars.model_type == "neox"):
+        vars.badwordsids = vars.badwordsids_neox
 
 if(not vars.use_colab_tpu and vars.model not in ["InferKit", "Colab", "OAI", "GooseAI" , "ReadOnly", "TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX"]):
     loadmodelsettings()
