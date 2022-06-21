@@ -1018,7 +1018,12 @@ def read_neox_checkpoint(state, path, config, checkpoint_shards=2):
 
 
 def load_model(path: str, driver_version="tpu_driver0.1_dev20210607", hf_checkpoint=False, **kwargs) -> None:
-    global thread_resources_env, seq, tokenizer, network, params
+    global thread_resources_env, seq, tokenizer, network, params, pad_token_id
+
+    if "pad_token_id" in kwargs:
+        pad_token_id = kwargs["pad_token_id"]
+    elif "eos_token_id" in kwargs:
+        pad_token_id = kwargs["eos_token_id"]
 
     if not hasattr(vars, "sampler_order") or not vars.sampler_order:
         vars.sampler_order = utils.default_sampler_order.copy()
@@ -1119,6 +1124,7 @@ def load_model(path: str, driver_version="tpu_driver0.1_dev20210607", hf_checkpo
                 return old_encode(s).ids
             return encode
         tokenizer.encode = new_encode(tokenizer.encode)
+        tokenizer._koboldai_header = []
     elif not hf_checkpoint:
         if not isinstance(params["tokenizer_class"], str) or not any(params["tokenizer_class"].endswith(s) for s in ("Tokenizer", "TokenizerFast")):
             raise ValueError("`tokenizer_class` must be a string ending in 'Tokenizer' or 'TokenizerFast'")
