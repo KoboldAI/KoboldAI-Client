@@ -5,7 +5,7 @@ requests
 optax >= 0.0.5, <= 0.0.9
 dm-haiku == 0.0.5
 jax == 0.2.21
-transformers >= 4.17
+transformers >= 4.19
 progressbar2
 git+https://github.com/VE-FORBRYDERNE/mesh-transformer-jax@ck
 flask

@@ -5,9 +5,22 @@ import json
 import subprocess
 import tempfile
 import requests
+import requests.adapters
+import time
+from tqdm.auto import tqdm
 import os
+import itertools
+from typing import Optional
 
 vars = None
+num_shards: Optional[int] = None
+current_shard = 0
+from_pretrained_model_name = ""
+from_pretrained_index_filename: Optional[str] = None
+from_pretrained_kwargs = {}
+bar = None
+
+default_sampler_order = [0, 1, 2, 3, 4, 5]
 
 #==================================================================#
 # Decorator to prevent a function's actions from being run until
@@ -130,10 +143,18 @@ def encodenewlines(txt):
 def decodenewlines(txt):
     if(vars.newlinemode == "s"):
         return txt.replace("</s>", '\n')
+    if(vars.newlinemode == "ns"):
+        return txt.replace("</s>", '')
     return txt
 
 #==================================================================#
-#  Downloads sharded huggingface checkpoints using aria2c if possible
+#  Returns number of layers given an HF model config
+#==================================================================#
+def num_layers(config):
+    return config.num_layers if hasattr(config, "num_layers") else config.n_layer if hasattr(config, "n_layer") else config.num_hidden_layers
+
+#==================================================================#
+#  Downloads huggingface checkpoints using aria2c if possible
 #==================================================================#
 def aria2_hook(pretrained_model_name_or_path: str, force_download=False, cache_dir=None, proxies=None, resume_download=False, local_files_only=False, use_auth_token=None, user_agent=None, revision=None, mirror=None, **kwargs):
     import transformers
@@ -191,6 +212,7 @@ def aria2_hook(pretrained_model_name_or_path: str, force_download=False, cache_d
         if not urls:
             return
     etags = [h.get("X-Linked-Etag") or h.get("ETag") for u in urls for h in [requests.head(u, headers=headers, allow_redirects=False, proxies=proxies, timeout=10).headers]]
+    headers = [requests.head(u, headers=headers, allow_redirects=True, proxies=proxies, timeout=10).headers for u in urls]
     filenames = [transformers.file_utils.url_to_filename(u, t) for u, t in zip(urls, etags)]
     for n in filenames:
         path = os.path.join(_cache_dir, "kai-tempfile." + n + ".aria2")
@@ -206,22 +228,75 @@ def aria2_hook(pretrained_model_name_or_path: str, force_download=False, cache_d
             path = os.path.join(_cache_dir, n)
             if os.path.exists(path):
                 os.remove(path)
+    total_length = sum(int(h["Content-Length"]) for h in headers)
+    lengths = {}
     aria2_config = "\n".join(f"{u}\n  out=kai-tempfile.{n}" for u, n in zip(urls, filenames)).encode()
-    with tempfile.NamedTemporaryFile("w+b", delete=False) as f:
-        f.write(aria2_config)
-        f.flush()
-        p = subprocess.Popen(["aria2c", "-x", "10", "-s", "10", "-j", "10", "--disable-ipv6", "--file-allocation=trunc", "--allow-overwrite", "--auto-file-renaming", "false", "-d", _cache_dir, "-i", f.name, "-U", transformers.file_utils.http_user_agent(user_agent)] + (["-c"] if not force_download else []) + ([f"--header='Authorization: Bearer {token}'"] if use_auth_token else []), stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-        for line in p.stdout:
-            print(line.decode(), end="", flush=True)
-        path = f.name
+    s = requests.Session()
+    s.mount("http://", requests.adapters.HTTPAdapter(max_retries=requests.adapters.Retry(total=120, backoff_factor=1)))
+    bar = None
+    done = False
+    secret = os.urandom(17).hex()
     try:
-        os.remove(path)
-    except OSError:
-        pass
+        with tempfile.NamedTemporaryFile("w+b", delete=False) as f:
+            f.write(aria2_config)
+            f.flush()
+            p = subprocess.Popen(["aria2c", "-x", "10", "-s", "10", "-j", "10", "--enable-rpc=true", f"--rpc-secret={secret}", "--rpc-listen-port", str(vars.aria2_port), "--disable-ipv6", "--file-allocation=trunc", "--allow-overwrite", "--auto-file-renaming=false", "-d", _cache_dir, "-i", f.name, "-U", transformers.file_utils.http_user_agent(user_agent)] + (["-c"] if not force_download else []) + ([f"--header='Authorization: Bearer {token}'"] if use_auth_token else []), stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            while p.poll() is None:
+                r = s.post(f"http://localhost:{vars.aria2_port}/jsonrpc", json={"jsonrpc": "2.0", "id": "kai", "method": "aria2.tellActive", "params": [f"token:{secret}"]}).json()["result"]
+                if not r:
+                    s.close()
+                    if bar is not None:
+                        bar.n = bar.total
+                        bar.close()
+                    p.terminate()
+                    done = True
+                    break
+                if bar is None:
+                    bar = tqdm(total=total_length, desc=f"[aria2] Downloading model", unit="B", unit_scale=True, unit_divisor=1000)
+                visited = set()
+                for x in r:
+                    filename = x["files"][0]["path"]
+                    lengths[filename] = (int(x["completedLength"]), int(x["totalLength"]))
+                    visited.add(filename)
+                for k, v in lengths.items():
+                    if k not in visited:
+                        lengths[k] = (v[1], v[1])
+                bar.n = sum(v[0] for v in lengths.values())
+                bar.update()
+                time.sleep(0.1)
+            path = f.name
+    except Exception as e:
+        p.terminate()
+        raise e
+    finally:
+        try:
+            os.remove(path)
+        except OSError:
+            pass
     code = p.wait()
-    if code:
+    if not done and code:
         raise OSError(f"aria2 exited with exit code {code}")
     for u, t, n in zip(urls, etags, filenames):
         os.rename(os.path.join(_cache_dir, "kai-tempfile." + n), os.path.join(_cache_dir, n))
         with open(os.path.join(_cache_dir, n + ".json"), "w") as f:
             json.dump({"url": u, "etag": t}, f)
+
+#==================================================================#
+#  Given the path to a pytorch_model.bin.index.json, returns how many
+#  shards there are in the model
+#==================================================================#
+def get_num_shards(filename):
+    with open(filename) as f:
+        map_data = json.load(f)
+    return len(set(map_data["weight_map"].values()))
+
+#==================================================================#
+#  Given the name/path of a sharded model and the path to a
+#  pytorch_model.bin.index.json, returns a list of weight names in the
+#  sharded model.  Requires lazy loader to be enabled to work properl
+#==================================================================#
+def get_sharded_checkpoint_num_tensors(pretrained_model_name_or_path, filename, cache_dir=None, force_download=False, proxies=None, resume_download=False, local_files_only=False, use_auth_token=None, user_agent=None, revision=None, mirror=None, **kwargs):
+    import transformers.modeling_utils
+    import torch
+    shard_paths, _ = transformers.modeling_utils.get_checkpoint_shard_files(pretrained_model_name_or_path, filename, cache_dir=cache_dir, force_download=force_download, proxies=proxies, resume_download=resume_download, local_files_only=local_files_only, use_auth_token=use_auth_token, user_agent=user_agent, revision=revision, mirror=mirror)
+    return list(itertools.chain(*(torch.load(p, map_location="cpu").keys() for p in shard_paths)))

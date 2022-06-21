@@ -20,6 +20,7 @@ var button_settings;
 var button_format;
 var button_softprompt;
 var button_userscripts;
+var button_samplers;
 var button_mode;
 var button_mode_label;
 var button_send;
@@ -106,6 +107,12 @@ var using_webkit_patch = true;
 var shift_down   = false;
 var do_clear_ent = false;
 
+// Whether or not an entry in the Userscripts menu is being dragged
+var us_dragging = false;
+
+// Whether or not an entry in the Samplers menu is being dragged
+var samplers_dragging = false;
+
 // Display vars
 var allowtoggle = false;
 var formatcount = 0;
@@ -173,20 +180,36 @@ function addSetting(ob) {
 		window["setting_"+ob.id] = refin;  // Is this still needed?
 		window["label_"+ob.id]   = reflb;  // Is this still needed?
 		// Add event function to input
+		var updateLabelColor = function () {
+			var value = (ob.unit === "float" ? parseFloat : parseInt)(reflb.val());
+			if(value > ob.max || value < ob.min) {
+				reflb.addClass("setting-value-warning");
+			} else {
+				reflb.removeClass("setting-value-warning");
+			}
+		}
 		var send = function () {
 			sliders_throttle(ob.id, function () {
-			    socket.send({'cmd': $(refin).attr('id'), 'data': $(refin).val()});
+			    socket.send({'cmd': $(refin).attr('id'), 'data': $(reflb).val()});
 			});
-			reflb.val($(refin).val());
 		}
-		refin.on("input", send);
+		refin.on("input", function (event) {
+			reflb.val(refin.val());
+			updateLabelColor();
+			send();
+		}).on("change", updateLabelColor);
 		reflb.on("change", function (event) {
 			var value = (ob.unit === "float" ? parseFloat : parseInt)(event.target.value);
-			if(Number.isNaN(value) || value > ob.max || value < ob.min) {
+			if(Number.isNaN(value) || (ob.min >= 0 && value < 0)) {
 				event.target.value = refin.val();
 				return;
 			}
+			if (ob.unit === "float") {
+				value = parseFloat(value.toFixed(3));  // Round to 3 decimal places to help avoid the number being too long to fit in the box
+			}
 			refin.val(value);
+			reflb.val(value);
+			updateLabelColor();
 			send();
 		});
 	} else if(ob.uitype == "toggle"){
@@ -957,6 +980,16 @@ function hideUSPopup() {
 	spcontent.html("");
 }
 
+function showSamplersPopup() {
+	samplerspopup.removeClass("hidden");
+	samplerspopup.addClass("flex");
+}
+
+function hideSamplersPopup() {
+	samplerspopup.removeClass("flex");
+	samplerspopup.addClass("hidden");
+}
+
 function buildLoadList(ar) {
 	disableButtons([load_accept]);
 	loadcontent.html("");
@@ -1087,6 +1120,29 @@ function buildUSList(unloaded, loaded) {
 		}
 		el = usloaded;
 		ar = loaded;
+	}
+}
+
+function buildSamplerList(samplers) {
+	samplerslist.html("");
+	showSamplersPopup();
+	var i;
+	var samplers_lookup_table = [
+		"Top-k Sampling",
+		"Top-a Sampling",
+		"Top-p Sampling",
+		"Tail-free Sampling",
+		"Typical Sampling",
+		"Temperature",
+	]
+	for(i=0; i<samplers.length; i++) {
+		samplerslist.append("<div class=\"flex\">\
+			<div class=\"samplerslistitem flex-row-container\" sid=\""+samplers[i]+"\">\
+				<div class=\"flex-row\">\
+					<div>"+samplers_lookup_table[samplers[i]]+"</div>\
+				</div>\
+			</div>\
+		</div>");
 	}
 }
 
@@ -1819,6 +1875,7 @@ $(document).ready(function(){
 	button_format     = $('#btn_format');
 	button_softprompt = $("#btn_softprompt");
 	button_userscripts= $("#btn_userscripts");
+	button_samplers   = $("#btn_samplers");
 	button_mode       = $('#btnmode')
 	button_mode_label = $('#btnmode_label')
 	button_send       = $('#btnsend');
@@ -1867,6 +1924,10 @@ $(document).ready(function(){
 	usloaded          = $("#uslistloaded");
 	us_accept         = $("#btn_usaccept");
 	us_close          = $("#btn_usclose");
+	samplerspopup     = $("#samplerscontainer");
+	samplerslist      = $("#samplerslist");
+	samplers_accept   = $("#btn_samplersaccept");
+	samplers_close    = $("#btn_samplersclose");
 	nspopup           = $("#newgamecontainer");
 	ns_accept         = $("#btn_nsaccept");
 	ns_close          = $("#btn_nsclose");
@@ -1889,7 +1950,7 @@ $(document).ready(function(){
 				modelname = msg.modelname;
 			}
 			refreshTitle();
-			connect_status.html("<b>Connected to KoboldAI Process!</b>");
+			connect_status.html("<b>Connected to KoboldAI!</b>");
 			connect_status.removeClass("color_orange");
 			connect_status.addClass("color_green");
 			// Reset Menus
@@ -2059,48 +2120,52 @@ $(document).ready(function(){
 			newTextHighlight($("#n"+msg.data))
 		} else if(msg.cmd == "updatetemp") {
 			// Send current temp value to input
-			$("#settemp").val(parseFloat(msg.data));
 			$("#settempcur").val(msg.data);
+			$("#settemp").val(parseFloat(msg.data)).trigger("change");
 		} else if(msg.cmd == "updatetopp") {
 			// Send current top p value to input
-			$("#settopp").val(parseFloat(msg.data));
 			$("#settoppcur").val(msg.data);
+			$("#settopp").val(parseFloat(msg.data)).trigger("change");
 		} else if(msg.cmd == "updatetopk") {
 			// Send current top k value to input
-			$("#settopk").val(parseFloat(msg.data));
 			$("#settopkcur").val(msg.data);
+			$("#settopk").val(parseFloat(msg.data)).trigger("change");
 		} else if(msg.cmd == "updatetfs") {
 			// Send current tfs value to input
-			$("#settfs").val(parseFloat(msg.data));
 			$("#settfscur").val(msg.data);
+			$("#settfs").val(parseFloat(msg.data)).trigger("change");
 		} else if(msg.cmd == "updatetypical") {
 			// Send current typical value to input
-			$("#settypical").val(parseFloat(msg.data));
 			$("#settypicalcur").val(msg.data);
+			$("#settypical").val(parseFloat(msg.data)).trigger("change");
+		} else if(msg.cmd == "updatetopa") {
+			// Send current top a value to input
+			$("#settopacur").val(msg.data);
+			$("#settopa").val(parseFloat(msg.data)).trigger("change");
 		} else if(msg.cmd == "updatereppen") {
 			// Send current rep pen value to input
-			$("#setreppen").val(parseFloat(msg.data));
 			$("#setreppencur").val(msg.data);
+			$("#setreppen").val(parseFloat(msg.data)).trigger("change");
 		} else if(msg.cmd == "updatereppenslope") {
 			// Send current rep pen value to input
-			$("#setreppenslope").val(parseFloat(msg.data));
 			$("#setreppenslopecur").val(msg.data);
+			$("#setreppenslope").val(parseFloat(msg.data)).trigger("change");
 		} else if(msg.cmd == "updatereppenrange") {
 			// Send current rep pen value to input
-			$("#setreppenrange").val(parseFloat(msg.data));
 			$("#setreppenrangecur").val(msg.data);
+			$("#setreppenrange").val(parseFloat(msg.data)).trigger("change");
 		} else if(msg.cmd == "updateoutlen") {
 			// Send current output amt value to input
-			$("#setoutput").val(parseInt(msg.data));
 			$("#setoutputcur").val(msg.data);
+			$("#setoutput").val(parseInt(msg.data)).trigger("change");
 		} else if(msg.cmd == "updatetknmax") {
 			// Send current max tokens value to input
-			$("#settknmax").val(parseInt(msg.data));
 			$("#settknmaxcur").val(msg.data);
+			$("#settknmax").val(parseInt(msg.data)).trigger("change");
 		} else if(msg.cmd == "updateikgen") {
 			// Send current max tokens value to input
-			$("#setikgen").val(parseInt(msg.data));
 			$("#setikgencur").val(msg.data);
+			$("#setikgen").val(parseInt(msg.data)).trigger("change");
 		} else if(msg.cmd == "setlabeltemp") {
 			// Update setting label with value from server
 			$("#settempcur").val(msg.data);
@@ -2116,6 +2181,9 @@ $(document).ready(function(){
 		} else if(msg.cmd == "setlabeltypical") {
 			// Update setting label with value from server
 			$("#settypicalcur").val(msg.data);
+		} else if(msg.cmd == "setlabeltypical") {
+			// Update setting label with value from server
+			$("#settopa").val(msg.data);
 		} else if(msg.cmd == "setlabelreppen") {
 			// Update setting label with value from server
 			$("#setreppencur").val(msg.data);
@@ -2284,6 +2352,8 @@ $(document).ready(function(){
 			buildSPList(msg.data);
 		} else if(msg.cmd == "buildus") {
 			buildUSList(msg.data.unloaded, msg.data.loaded);
+		} else if(msg.cmd == "buildsamplers") {
+			buildSamplerList(msg.data);
 		} else if(msg.cmd == "askforoverwrite") {
 			// Show overwrite warning
 			show([$(".saveasoverwrite")]);
@@ -2304,15 +2374,15 @@ $(document).ready(function(){
 			$("#setnumseqcur").html(msg.data);
 		} else if(msg.cmd == "updatenumseq") {
 			// Send current max tokens value to input
-			$("#setnumseq").val(parseInt(msg.data));
 			$("#setnumseqcur").html(msg.data);
+			$("#setnumseq").val(parseInt(msg.data)).trigger("change");
 		} else if(msg.cmd == "setlabelwidepth") {
 			// Update setting label with value from server
 			$("#setwidepthcur").html(msg.data);
 		} else if(msg.cmd == "updatewidepth") {
 			// Send current max tokens value to input
-			$("#setwidepth").val(parseInt(msg.data));
 			$("#setwidepthcur").html(msg.data);
+			$("#setwidepth").val(parseInt(msg.data)).trigger("change");
 		} else if(msg.cmd == "updateuseprompt") {
 			// Update toggle state
 			$("#setuseprompt").prop('checked', msg.data).change();
@@ -2396,9 +2466,39 @@ $(document).ready(function(){
 		}, 2);
 	});
 
+	var us_click_handler = function(ev) {
+		setTimeout(function() {
+			if (us_dragging) {
+				return;
+			}
+			var target = $(ev.target).closest(".uslistitem")[0];
+			if ($.contains(document.getElementById("uslistunloaded"), target)) {
+				document.getElementById("uslistloaded").appendChild(target);
+			} else {
+				document.getElementById("uslistunloaded").appendChild(target);
+			}
+		}, 10);
+	}
+
+	var samplers_click_handler = function(ev) {
+		setTimeout(function() {
+			if (samplers_dragging) {
+				return;
+			}
+			var target = $(ev.target).closest(".samplerslistitem");
+			var next = target.parent().next().find(".samplerslistitem");
+			if (!next.length) {
+				return;
+			}
+			next.parent().after(target.parent());
+		}, 10);
+	}
+
 	// Make the userscripts menu sortable
 	var us_sortable_settings = {
 		placeholder: "ussortable-placeholder",
+		start: function() { us_dragging = true; },
+		stop: function() { us_dragging = false; },
 		delay: 2,
 		cursor: "move",
 		tolerance: "pointer",
@@ -2407,12 +2507,28 @@ $(document).ready(function(){
 		scrollSensitivity: 64,
 		scrollSpeed: 10,
 	}
-	$(usunloaded).sortable($.extend({
+	usunloaded.sortable($.extend({
 		connectWith: "#uslistloaded",
-	}, us_sortable_settings));
-	$(usloaded).sortable($.extend({
+	}, us_sortable_settings)).on("click", ".uslistitem", us_click_handler);
+	usloaded.sortable($.extend({
 		connectWith: "#uslistunloaded",
-	}, us_sortable_settings));
+	}, us_sortable_settings)).on("click", ".uslistitem", us_click_handler);
+
+	// Make the samplers menu sortable
+	var samplers_sortable_settings = {
+		placeholder: "samplerssortable-placeholder",
+		start: function() { samplers_dragging = true; },
+		stop: function() { samplers_dragging = false; },
+		delay: 2,
+		cursor: "move",
+		tolerance: "pointer",
+		opacity: 0.21,
+		revert: 173,
+		scrollSensitivity: 64,
+		scrollSpeed: 10,
+	}
+	samplerslist.sortable($.extend({
+	}, samplers_sortable_settings)).on("click", ".samplerslistitem", samplers_click_handler);
 
 	// Bind actions to UI buttons
 	button_send.on("click", function(ev) {
@@ -2548,6 +2664,10 @@ $(document).ready(function(){
 	button_userscripts.on("click", function(ev) {
 		socket.send({'cmd': 'uslistrequest', 'data': ''});
 	});
+
+	button_samplers.on("click", function(ev) {
+		socket.send({'cmd': 'samplerlistrequest', 'data': ''});
+	});
 	
 	load_close.on("click", function(ev) {
 		hideLoadPopup();
@@ -2580,6 +2700,16 @@ $(document).ready(function(){
 		socket.send({'cmd': 'usloaded', 'data': usloaded.find(".uslistitem").map(function() { return $(this).attr("name"); }).toArray()});
 		socket.send({'cmd': 'usload', 'data': ''});
 		hideUSPopup();
+	});
+
+	samplers_close.on("click", function(ev) {
+		hideSamplersPopup();
+	});
+
+	samplers_accept.on("click", function(ev) {
+		hideMessage();
+		socket.send({'cmd': 'samplers', 'data': samplerslist.find(".samplerslistitem").map(function() { return parseInt($(this).attr("sid")); }).toArray()});
+		hideSamplersPopup();
 	});
 	
 	button_newgame.on("click", function(ev) {

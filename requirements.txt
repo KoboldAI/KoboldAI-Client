@@ -1,4 +1,4 @@
-transformers>=4.17
+transformers>=4.20.1
 Flask
 Flask-SocketIO
 requests
@@ -11,3 +11,4 @@ markdown
 bleach==4.1.0
 sentencepiece
 protobuf
+accelerate

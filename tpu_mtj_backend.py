@@ -27,6 +27,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 '''
 
+import utils
+
 import multiprocessing
 from typing import Any, Callable, Dict, List, Optional, Tuple, TypeVar
 import progressbar
@@ -63,11 +65,13 @@ def stopping_callback(generated, n_generated, excluded_world_info) -> Tuple[List
 
 def settings_callback() -> dict:
     return {
+        "sampler_order": utils.default_sampler_order.copy(),
         "top_p": 0.9,
         "temp": 0.5,
         "top_k": 0,
         "tfs": 1.0,
         "typical": 1.0,
+        "top_a": 0.0,
         "repetition_penalty": 1.0,
         "rpslope": 0.0,
         "rprange": 0,
@@ -156,10 +160,10 @@ def apply_repetition_penalty_dynamic(logits, tokens, repetition_penalty, generat
     logits[tokens] = penalty_logits
     return logits
 
-def kobold_sample_dynamic(key, logits, top_p=0.9, temp=0.5, top_k=0, tfs=1.0, typical=1.0):
+def kobold_sample_dynamic(key, logits, sampler_order: Optional[np.ndarray] = None, top_p=0.9, temp=0.5, top_k=0, tfs=1.0, typical=1.0, top_a=0.0):
     '''
-    This gets called by generate_loop_fn to apply a series of 5 filters
-    to the logits (top-k, then top-p, then TFS, then typical, then temperature)
+    This gets called by generate_loop_fn to apply a series of 6 filters
+    to the logits (top-k, then top-a, then top-p, then TFS, then typical, then temperature)
     before picking one token using the modified logits
     '''
     # Top-k (keep only the k tokens with the highest logits and remove
@@ -178,8 +182,18 @@ def kobold_sample_dynamic(key, logits, top_p=0.9, temp=0.5, top_k=0, tfs=1.0, ty
             sorted_indices_to_remove,
         )
         return np.where(indices_to_remove, -np.inf, logits)
-    if top_k > 0:
-        logits = top_k_filter(logits)
+    # Top-a (remove all tokens that have softmax probability less than
+    # a*m^2 where m is the maximum softmax probability)
+    def top_a_filter(logits):
+        # Replace every element in the logits array
+        # with e (Euler's number) to the power of that element, and divide
+        # each element of the new array by the sum of the elements in the
+        # new array
+        probabilities = np.array(jax.nn.softmax(logits), copy=True)
+        # Find the largest probability
+        probs_max = probabilities.max()
+        # Remove tokens
+        return np.where(probabilities < probs_max * probs_max * top_a, -np.inf, logits)
     # Top-p (after sorting the remaining tokens again in descending order of
     # logit, remove the ones that have cumulative softmax probability
     # greater than p)
@@ -205,8 +219,6 @@ def kobold_sample_dynamic(key, logits, top_p=0.9, temp=0.5, top_k=0, tfs=1.0, ty
             sorted_indices_to_remove,
         )
         return np.where(indices_to_remove, -np.inf, logits)
-    if top_p < 1.0:
-        logits = top_p_filter(logits)
     # Tail free sampling (basically top-p a second time on remaining tokens
     # except it's the "cumulative normalized absolute second finite
     # differences of the softmax probabilities" instead of just the
@@ -245,8 +257,6 @@ def kobold_sample_dynamic(key, logits, top_p=0.9, temp=0.5, top_k=0, tfs=1.0, ty
             sorted_indices_to_remove,
         )
         return np.where(indices_to_remove, -np.inf, logits)
-    if tfs < 1.0:
-        logits = tail_free_filter(logits)
     # Typical sampling (https://arxiv.org/pdf/2202.00666.pdf)
     def typical_filter(logits):
         # Compute softmax probabilities and the natural logarithms of them
@@ -276,10 +286,16 @@ def kobold_sample_dynamic(key, logits, top_p=0.9, temp=0.5, top_k=0, tfs=1.0, ty
             sorted_indices_to_remove,
         )
         return np.where(indices_to_remove, -jnp.inf, logits)
-    if typical < 1.0:
-        logits = typical_filter(logits)
     # Temperature (just divide the logits by the temperature)
-    logits /= temp
+    def temp_filter(logits):
+        return logits / temp
+    for k in sampler_order:
+        if k == 0 and top_k > 0: logits = top_k_filter(logits)
+        if k == 1 and top_a > 0.0: logits = top_a_filter(logits)
+        if k == 2 and top_p < 1.0: logits = top_p_filter(logits)
+        if k == 3 and tfs < 1.0: logits = tail_free_filter(logits)
+        if k == 4 and typical < 1.0: logits = typical_filter(logits)
+        if k == 5 and temp != 1.0: logits = temp_filter(logits)
     # Finally, pick one token using the softmax thingy again (it gives
     # an array whose elements sum to 1 so it can be used nicely as a
     # probability distribution)
@@ -330,10 +346,10 @@ def apply_repetition_penalty_static(logits, tokens, repetition_penalty, generate
     # positions in the logits array
     return logits.at[tokens].set(penalty_logits)
 
-def kobold_sample_static(key, logits, top_p=0.9, temp=0.5, top_k=0, tfs=1.0, typical=1.0):
+def kobold_sample_static(key, logits, sampler_order: Optional[np.ndarray] = None, top_p=0.9, temp=0.5, top_k=0, tfs=1.0, typical=1.0, top_a=0.0):
     '''
-    This gets called by generate_loop_fn to apply a series of 5 filters
-    to the logits (top-k, then top-p, then TFS, then typical, then temperature)
+    This gets called by generate_loop_fn to apply a series of 6 filters
+    to the logits (top-k, then top-a, then top-p, then TFS, then typical, then temperature)
     before picking one token using the modified logits
     '''
     # Top-k (keep only the k tokens with the highest logits and remove
@@ -352,7 +368,18 @@ def kobold_sample_static(key, logits, top_p=0.9, temp=0.5, top_k=0, tfs=1.0, typ
             sorted_indices_to_remove,
         )
         return jnp.where(indices_to_remove, -jnp.inf, logits)
-    logits = jax.lax.cond(top_k > 0, top_k_filter, lambda x: x, logits)
+    # Top-a (remove all tokens that have softmax probability less than
+    # a*m^2 where m is the maximum softmax probability)
+    def top_a_filter(logits):
+        # Replace every element in the logits array
+        # with e (Euler's number) to the power of that element, and divide
+        # each element of the new array by the sum of the elements in the
+        # new array
+        probabilities = jax.nn.softmax(logits)
+        # Find the largest probability
+        probs_max = probabilities.max()
+        # Remove tokens
+        return jnp.where(probabilities < probs_max * probs_max * top_a, -jnp.inf, logits)
     # Top-p (after sorting the remaining tokens again in descending order of
     # logit, remove the ones that have cumulative softmax probability
     # greater than p)
@@ -378,7 +405,6 @@ def kobold_sample_static(key, logits, top_p=0.9, temp=0.5, top_k=0, tfs=1.0, typ
             sorted_indices_to_remove,
         )
         return jnp.where(indices_to_remove, -jnp.inf, logits)
-    logits = jax.lax.cond(top_p < 1.0, top_p_filter, lambda x: x, logits)
     # Tail free sampling (basically top-p a second time on remaining tokens
     # except it's the "cumulative normalized absolute second finite
     # differences of the softmax probabilities" instead of just the
@@ -417,7 +443,6 @@ def kobold_sample_static(key, logits, top_p=0.9, temp=0.5, top_k=0, tfs=1.0, typ
             sorted_indices_to_remove,
         )
         return jnp.where(indices_to_remove, -jnp.inf, logits)
-    logits = jax.lax.cond(tfs < 1.0, tail_free_filter, lambda x: x, logits)
     # Typical sampling (https://arxiv.org/pdf/2202.00666.pdf)
     def typical_filter(logits):
         # Compute softmax probabilities and the natural logarithms of them
@@ -446,11 +471,16 @@ def kobold_sample_static(key, logits, top_p=0.9, temp=0.5, top_k=0, tfs=1.0, typ
             sorted_indices_to_remove,
         )
         return jnp.where(indices_to_remove, -jnp.inf, logits)
-    logits = jax.lax.cond(typical < 1.0, typical_filter, lambda x: x, logits)
     # Temperature (just divide the logits by the temperature)
     def temp_filter(logits):
         return logits / temp
-    logits = jax.lax.cond(True, temp_filter, lambda x: x, logits)
+    for k in sampler_order:
+        logits = jax.lax.cond(jnp.logical_and(k == 0, top_k > 0), top_k_filter, lambda x: x, logits)
+        logits = jax.lax.cond(jnp.logical_and(k == 1, top_a > 0.0), top_a_filter, lambda x: x, logits)
+        logits = jax.lax.cond(jnp.logical_and(k == 2, top_p < 1.0), top_p_filter, lambda x: x, logits)
+        logits = jax.lax.cond(jnp.logical_and(k == 3, tfs < 1.0), tail_free_filter, lambda x: x, logits)
+        logits = jax.lax.cond(jnp.logical_and(k == 4, typical < 1.0), typical_filter, lambda x: x, logits)
+        logits = jax.lax.cond(jnp.logical_and(k == 5, temp != 1.0), temp_filter, lambda x: x, logits)
     # Finally, pick one token using the softmax thingy again (it gives
     # an array whose elements sum to 1 so it can be used nicely as a
     # probability distribution)
@@ -804,6 +834,7 @@ def infer_static(
     top_k=0,
     tfs=1.0,
     typical=1.0,
+    top_a=0.0,
     repetition_penalty=1.0,
     rpslope=0.0,
     rprange=0,
@@ -811,8 +842,12 @@ def infer_static(
     gen_len=80,
     soft_embeddings: Optional[np.array] = None,
     soft_tokens: Optional[np.array] = None,
+    sampler_order: Optional[List[int]] = None,
 ) -> List[np.array]:
     maps.thread_resources.env = thread_resources_env
+    if sampler_order is None:
+        sampler_order = utils.default_sampler_order.copy()
+    sampler_order = np.uint32(sampler_order)
     total_batch = 1
     tokens = context
     if(soft_tokens is not None):
@@ -823,10 +858,12 @@ def infer_static(
     batched_tokens = np.array([padded_tokens] * total_batch)
     samples = []
     batched_generator_params = {
+        "sampler_order": np.repeat(sampler_order[np.newaxis], total_batch, axis=0),
         "temp": temp * np.ones(total_batch),
         "top_p": top_p * np.ones(total_batch),
         "tfs": tfs * np.ones(total_batch),
         "typical": typical * np.ones(total_batch),
+        "top_a": top_a * np.ones(total_batch),
         "repetition_penalty": repetition_penalty * np.ones(total_batch),
         "rpslope": rpslope * np.ones(total_batch),
         "rprange": np.full(total_batch, rprange, dtype=np.uint32),
@@ -983,6 +1020,9 @@ def read_neox_checkpoint(state, path, config, checkpoint_shards=2):
 def load_model(path: str, driver_version="tpu_driver0.1_dev20210607", hf_checkpoint=False, **kwargs) -> None:
     global thread_resources_env, seq, tokenizer, network, params
 
+    if not hasattr(vars, "sampler_order") or not vars.sampler_order:
+        vars.sampler_order = utils.default_sampler_order.copy()
+
     default_params = {
         "compat": "j",
         "layers": 28,
@@ -1054,7 +1094,7 @@ def load_model(path: str, driver_version="tpu_driver0.1_dev20210607", hf_checkpo
         # by the number of TPU cores, and fall back to one core if an even
         # number of TPU cores is not possible.
         for c in (8, 6, 4, 2, 1):
-            if 0 == params["n_heads"] % c == params["d_model"] % c:
+            if 0 == params["n_heads"] % c == params.get("d_embed", params["d_model"]) % c:
                 params["cores_per_replica"] = c
                 break
 
@@ -1079,6 +1119,7 @@ def load_model(path: str, driver_version="tpu_driver0.1_dev20210607", hf_checkpo
                 return old_encode(s).ids
             return encode
         tokenizer.encode = new_encode(tokenizer.encode)
+        tokenizer._koboldai_header = []
     elif not hf_checkpoint:
         if not isinstance(params["tokenizer_class"], str) or not any(params["tokenizer_class"].endswith(s) for s in ("Tokenizer", "TokenizerFast")):
             raise ValueError("`tokenizer_class` must be a string ending in 'Tokenizer' or 'TokenizerFast'")
@@ -1092,13 +1133,18 @@ def load_model(path: str, driver_version="tpu_driver0.1_dev20210607", hf_checkpo
     print("Connecting to your Colab instance's TPU", flush=True)
     spinner = multiprocessing.Process(target=show_spinner, args=())
     spinner.start()
-    colab_tpu_addr = os.environ['COLAB_TPU_ADDR'].split(':')[0]
-    url = f'http://{colab_tpu_addr}:8475/requestversion/{driver_version}'
+    if os.environ.get('COLAB_TPU_ADDR', '') != '':
+        tpu_address = os.environ['COLAB_TPU_ADDR']  # Colab
+    else:
+        tpu_address = os.environ['TPU_NAME']  # Kaggle
+    tpu_address = tpu_address.replace("grpc://", "")
+    tpu_address_without_port = tpu_address.split(':', 1)[0]
+    url = f'http://{tpu_address_without_port}:8475/requestversion/{driver_version}'
+    config.FLAGS.jax_xla_backend = "tpu_driver"
+    config.FLAGS.jax_backend_target = "grpc://" + tpu_address
     requests.post(url)
     spinner.terminate()
     print()
-    config.FLAGS.jax_xla_backend = "tpu_driver"
-    config.FLAGS.jax_backend_target = "grpc://" + os.environ['COLAB_TPU_ADDR']
 
     cores_per_replica = params["cores_per_replica"]
     seq = params["seq"]
@@ -1158,13 +1204,27 @@ def load_model(path: str, driver_version="tpu_driver0.1_dev20210607", hf_checkpo
     import functools
 
     def callback(model_dict, f, **_):
+        if callback.nested:
+            return
+        callback.nested = True
         with zipfile.ZipFile(f, "r") as z:
             try:
                 last_storage_key = None
                 f = None
                 current_offset = 0
-                print("\n\n\nThis model has  ", f"{hk.data_structures.tree_size(network.state['params']):,d}".replace(",", " "), "  parameters.\n")
-                for key in tqdm(sorted(model_dict.keys(), key=lambda k: (model_dict[k].key, model_dict[k].seek_offset)), desc="Loading model tensors"):
+                if utils.current_shard == 0:
+                    print("\n\n\nThis model has  ", f"{hk.data_structures.tree_size(network.state['params']):,d}".replace(",", " "), "  parameters.\n")
+
+                if utils.num_shards is None or utils.current_shard == 0:
+                    if utils.num_shards is not None:
+                        num_tensors = len(utils.get_sharded_checkpoint_num_tensors(utils.from_pretrained_model_name, utils.from_pretrained_index_filename, **utils.from_pretrained_kwargs))
+                    else:
+                        num_tensors = len(model_dict)
+                    utils.bar = tqdm(total=num_tensors, desc="Loading model tensors")
+
+                if utils.num_shards is not None:
+                    utils.current_shard += 1
+                for key in sorted(model_dict.keys(), key=lambda k: (model_dict[k].key, model_dict[k].seek_offset)):
 
                     # Some model weights are used by transformers but not by MTJ.
                     # We have to materialize these weights anyways because
@@ -1173,6 +1233,7 @@ def load_model(path: str, driver_version="tpu_driver0.1_dev20210607", hf_checkpo
                     # tensors, which don't take up any actual CPU or TPU memory.
                     if key not in model_spec:
                         model_dict[key] = torch.empty(model_dict[key].shape, dtype=model_dict[key].dtype, device="meta")
+                        utils.bar.update(1)
                         continue
 
                     storage_key = model_dict[key].key
@@ -1200,6 +1261,8 @@ def load_model(path: str, driver_version="tpu_driver0.1_dev20210607", hf_checkpo
 
                     # MTJ requires certain mathematical operations to be performed
                     # on tensors in order for them to be in the correct format
+                    if "remove_first_two_rows" in transforms:
+                        tensor = tensor[2:]
                     if "divide_by_shards" in transforms:
                         tensor /= params["cores_per_replica"]
                     if "vocab_pad" in transforms:
@@ -1223,6 +1286,11 @@ def load_model(path: str, driver_version="tpu_driver0.1_dev20210607", hf_checkpo
                         np.empty(params["cores_per_replica"]),
                     )
 
+                    utils.bar.update(1)
+
+                if utils.num_shards is not None and utils.current_shard < utils.num_shards:
+                    return
+
                 # Check for tensors that MTJ needs that were not provided in the
                 # HF model
                 for mk, mv in network.state["params"].items():
@@ -1241,8 +1309,13 @@ def load_model(path: str, driver_version="tpu_driver0.1_dev20210607", hf_checkpo
                                 print("\n\nERROR:  " + error, file=sys.stderr)
                                 raise RuntimeError(error)
             finally:
+                if utils.num_shards is None or utils.current_shard >= utils.num_shards:
+                    utils.bar.close()
+                    utils.bar = None
+                callback.nested = False
                 if isinstance(f, zipfile.ZipExtFile):
                     f.close()
+    callback.nested = False
 
     if os.path.isdir(vars.model.replace('/', '_')):
         import shutil
@@ -1252,6 +1325,10 @@ def load_model(path: str, driver_version="tpu_driver0.1_dev20210607", hf_checkpo
         if(os.path.isdir(vars.custmodpth)):
             try:
                 tokenizer = AutoTokenizer.from_pretrained(vars.custmodpth, revision=vars.revision, cache_dir="cache")
+            except Exception as e:
+                pass
+            try:
+                tokenizer = AutoTokenizer.from_pretrained(vars.custmodpth, revision=vars.revision, cache_dir="cache", use_fast=False)
             except Exception as e:
                 try:
                     tokenizer = GPT2TokenizerFast.from_pretrained(vars.custmodpth, revision=vars.revision, cache_dir="cache")
@@ -1265,6 +1342,10 @@ def load_model(path: str, driver_version="tpu_driver0.1_dev20210607", hf_checkpo
             try:
                 tokenizer = AutoTokenizer.from_pretrained("models/{}".format(vars.model.replace('/', '_')), revision=vars.revision, cache_dir="cache")
             except Exception as e:
+                pass
+            try:
+                tokenizer = AutoTokenizer.from_pretrained("models/{}".format(vars.model.replace('/', '_')), revision=vars.revision, cache_dir="cache", use_fast=False)
+            except Exception as e:
                 try:
                     tokenizer = GPT2TokenizerFast.from_pretrained("models/{}".format(vars.model.replace('/', '_')), revision=vars.revision, cache_dir="cache")
                 except Exception as e:
@@ -1276,6 +1357,10 @@ def load_model(path: str, driver_version="tpu_driver0.1_dev20210607", hf_checkpo
         else:
             try:
                 tokenizer = AutoTokenizer.from_pretrained(vars.model, revision=vars.revision, cache_dir="cache")
+            except Exception as e:
+                pass
+            try:
+                tokenizer = AutoTokenizer.from_pretrained(vars.model, revision=vars.revision, cache_dir="cache", use_fast=False)
             except Exception as e:
                 try:
                     tokenizer = GPT2TokenizerFast.from_pretrained(vars.model, revision=vars.revision, cache_dir="cache")
