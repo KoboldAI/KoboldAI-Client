@@ -1119,6 +1119,7 @@ def load_model(path: str, driver_version="tpu_driver0.1_dev20210607", hf_checkpo
                 return old_encode(s).ids
             return encode
         tokenizer.encode = new_encode(tokenizer.encode)
+        tokenizer._koboldai_header = []
     elif not hf_checkpoint:
         if not isinstance(params["tokenizer_class"], str) or not any(params["tokenizer_class"].endswith(s) for s in ("Tokenizer", "TokenizerFast")):
             raise ValueError("`tokenizer_class` must be a string ending in 'Tokenizer' or 'TokenizerFast'")
