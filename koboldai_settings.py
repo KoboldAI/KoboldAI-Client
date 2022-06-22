@@ -261,7 +261,7 @@ class KoboldStoryRegister(object):
         
     def __next__(self):
         self.itter += 1
-        if self.itter < len(self.actions):
+        if self.itter <= self.action_count:
             return self.itter
         else:
             raise StopIteration
@@ -421,10 +421,7 @@ class KoboldStoryRegister(object):
             return text
 
     def get_last_key(self):
-        if self.action_count >= 0:
-            return self.action_count
-        else:
-            return 0
+        return self.action_count
     
     def get_last_item(self):
         if self.action_count >= 0:

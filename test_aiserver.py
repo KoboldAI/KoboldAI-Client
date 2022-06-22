@@ -208,11 +208,17 @@ def test_back_redo(client_data):
     response = socketio_client.get_received()[0]['args'][0]
     assert response == {'cmd': 'errmsg', 'data': 'Cannot delete the prompt.'}
     socketio_client.emit('message',{'cmd': 'redo', 'data': ''})
-    socketio_client.emit('message',{'cmd': 'redo', 'data': ''})
+    response = socketio_client.get_received()
+    assert response == [{'name': 'from_server', 'args': [{'cmd': 'updatescreen', 'gamestarted': True, 'data': '<chunk n="0" id="n0" tabindex="-1">Niko the kobold stalked carefully down the alley, his small scaly figure obscured by a dusky cloak that fluttered lightly in the cold winter breeze. Holding up his tail to keep it from dragging in the dirty snow that covered the cobblestone, he waited patiently for the butcher to turn his attention from his stall so that he could pilfer his next meal: a tender-looking</chunk><chunk n="1" id="n1" tabindex="-1"> chicken. He crouched just slightly as he neared the stall to ensure that no one was watching, not that anyone would be dumb enough to hassle a small kobold. What else was there for a lowly kobold to</chunk>'}], 'namespace': '/'}, 
+                        {'name': 'from_server', 'args': [{'cmd': 'texteffect', 'data': 1}], 'namespace': '/'}]
     socketio_client.emit('message',{'cmd': 'redo', 'data': ''})
     response = socketio_client.get_received()
-    assert response == [{'name': 'from_server', 'args': [{'cmd': 'updatescreen', 'gamestarted': True, 'data': '<chunk n="0" id="n0" tabindex="-1">Niko the kobold stalked carefully down the alley, his small scaly figure obscured by a dusky cloak that fluttered lightly in the cold winter breeze. Holding up his tail to keep it from dragging in the dirty snow that covered the cobblestone, he waited patiently for the butcher to turn his attention from his stall so that he could pilfer his next meal: a tender-looking</chunk><chunk n="1" id="n1" tabindex="-1"> chicken. He crouched just slightly as he neared the stall to ensure that no one was watching, not that anyone would be dumb enough to hassle a small kobold. What else was there for a lowly kobold to</chunk>'}], 'namespace': '/'}, {'name': 'from_server', 'args': [{'cmd': 'texteffect', 'data': 1}], 'namespace': '/'}, {'name': 'from_server', 'args': [{'cmd': 'updatechunk', 'data': {'index': 2, 'html': '<chunk n="2" id="n2" tabindex="-1"> do in a city? All that Niko needed to know was</chunk>'}}], 'namespace': '/'}, {'name': 'from_server', 'args': [{'cmd': 'texteffect', 'data': 2}], 'namespace': '/'}, {'name': 'from_server', 'args': [{'cmd': 'updatechunk', 'data': {'index': 3, 'html': '<chunk n="3" id="n3" tabindex="-1"> where to find the chicken and then how to make off with it.<br/><br/>A soft thud caused Niko to quickly lift his head. Standing behind the stall where the butcher had been cutting his chicken,</chunk>'}}], 'namespace': '/'}, {'name': 'from_server', 'args': [{'cmd': 'texteffect', 'data': 3}], 'namespace': '/'}]
-    
+    assert response == [{'name': 'from_server', 'args': [{'cmd': 'updatechunk', 'data': {'index': 2, 'html': '<chunk n="2" id="n2" tabindex="-1"> do in a city? All that Niko needed to know was</chunk>'}}], 'namespace': '/'}, 
+                        {'name': 'from_server', 'args': [{'cmd': 'texteffect', 'data': 2}], 'namespace': '/'}]
+    socketio_client.emit('message',{'cmd': 'redo', 'data': ''})
+    response = socketio_client.get_received()
+    assert response == [{'name': 'from_server', 'args': [{'cmd': 'updatechunk', 'data': {'index': 3, 'html': '<chunk n="3" id="n3" tabindex="-1"> where to find the chicken and then how to make off with it.<br/><br/>A soft thud caused Niko to quickly lift his head. Standing behind the stall where the butcher had been cutting his chicken,</chunk>'}}], 'namespace': '/'}, 
+                        {'name': 'from_server', 'args': [{'cmd': 'texteffect', 'data': 3}], 'namespace': '/'}]
     
     
     

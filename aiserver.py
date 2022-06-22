@@ -1401,25 +1401,22 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
         args.breakmodel_disklayers = int(disk_layers)
     
     #We need to wipe out the existing model and refresh the cuda cache
-    #Show what's in VRAM
-    import gc
     model = None
     generator = None
     model_config = None
+    for tensor in gc.get_objects():
+        try:
+            if torch.is_tensor(tensor):
+                with torch.no_grad():
+                    tensor.set_(torch.tensor((), device=tensor.device, dtype=tensor.dtype))
+        except:
+            pass
+    gc.collect()
     try:
         with torch.no_grad():
             torch.cuda.empty_cache()
     except:
         pass
-
-    for obj in gc.get_objects():
-        try:
-            if torch.is_tensor(obj) or (hasattr(obj, 'data') and torch.is_tensor(obj.data)):
-                del obj
-                gc.collect()
-                torch.cuda.empty_cache()
-        except:
-            pass
         
     #Reload our badwords
     model_settings.badwordsids = koboldai_settings.badwordsids_default
@@ -3536,7 +3533,7 @@ def actionback():
         story_settings.recentback = True
         remove_story_chunk(last_key + 1)
         #for the redo to not get out of whack, need to reset the max # in the actions sequence
-        story_settings.actions.set_next_id(last_key)
+        #story_settings.actions.set_next_id(last_key)
         success = True
     elif(len(story_settings.genseqs) == 0):
         emit('from_server', {'cmd': 'errmsg', 'data': "Cannot delete the prompt."})
@@ -3563,10 +3560,10 @@ def actionredo():
                 restore_id+=1
                 if restore_id not in story_settings.actions_metadata:
                     return
-            else:
-                story_settings.actions.set_next_id(restore_id)
+            #else:
+                #print("???")
+                #story_settings.actions.set_next_id(restore_id)
                 
-    
     if restore_id in story_settings.actions_metadata:
         genout = [{"generated_text": item['Text']} for item in story_settings.actions_metadata[restore_id]['Alternative Text'] if (item["Previous Selection"]==True)]
         if len(genout) > 0:
