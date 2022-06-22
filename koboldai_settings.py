@@ -285,7 +285,7 @@ class KoboldStoryRegister(object):
         process_variable_changes("actions", "Selected Text", {"id": i, "text": text}, {"id": i, "text": old_text})
     
     def __len__(self):
-        return self.action_count if self.action_count >=0 else 0
+        return self.action_count+1 if self.action_count >=0 else 0
     
     def __reversed__(self):
         return reversed(range(self.action_count+1))
