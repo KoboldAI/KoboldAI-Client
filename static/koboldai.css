@@ -1,0 +1,529 @@
+/*----------------Global Colors------------------*/
+:root {
+	--flyout_menu_width_base: 350px;
+	--flyout_menu_width: calc((var(--flyout_menu_width_base) * var(--screen_type_desktop)) + 
+							  (100% * var(--screen_type_mobile)) + 
+							  (var(--flyout_menu_width_base) * var(--screen_type_wide)));
+	--flyout_menu_closed_width: calc((0px * var(--screen_type_desktop)) + 
+									 (0px * var(--screen_type_mobile)) + 
+									 (var(--flyout_menu_width_base) * var(--screen_type_wide)));
+	--background: #474B4F;
+	--text: white;
+	--text_edit: #cdf;
+	--flyout_background: #6B6E70;
+	--setting_background: #285070;
+	--setting_text: white;
+	--tooltip_text: white;
+	--tooltip_background: #1f2931;
+	--gamescreen_background: #262626;
+	--textbox_background: #404040;
+	--options_background: #404040;
+	--enabled_button_text: #fff;
+	--enabled_button_background_color: #337ab7;
+	--enabled_button_border_color: #2e6da4;
+	--disabled_button_text: #303030;
+	--disabled_button_background_color: #686c68;
+	--disabled_button_border_color: #686c68;
+	--menu_button_level_1_bg_color: #4A654F;
+	--menu_button_level_1_border_color: #4A654F;
+	--menu_button_level_2_bg_color: #243127;
+	--menu_button_level_2_border_color: #243127;
+	/*--menu_button_level_2_bg_color: #6F8699;*/
+	/*--menu_button_level_2_border_color: #495965;*/
+	
+}
+@media only screen and (max-width: 768px) {
+	:root {
+		--screen_type_mobile: 1;
+		--screen_type_desktop: 0;
+		--screen_type_wide: 0;
+		--flyout_menu_width: 100%;
+	}
+}
+@media only screen and (min-width: 768px) and (max-width: 1920px) {
+	:root {
+		--screen_type_mobile: 0;
+		--screen_type_desktop: 1;
+		--screen_type_wide: 0;
+		--flyout_menu_width: 450px;
+	}
+}
+@media only screen and (min-width: 1921px) {
+	:root {
+		--screen_type_mobile: 0;
+		--screen_type_desktop: 0;
+		--screen_type_wide: 1;
+		
+	}
+}
+
+
+
+/*----------------SETTINGS AREA------------------*/
+.settings_category {
+	width: 100%;
+}
+
+.btn.menu_button_level_1 {
+	background-color: var(--menu_button_level_1_bg_color);
+	border-color: var(--menu_button_level_1_border_color);
+	text-align: left;
+}
+
+.menu_background_level_1 {
+	background-color: var(--menu_button_level_1_bg_color);
+}
+
+.btn.menu_button_level_2 {
+	background-color: var(--menu_button_level_2_bg_color);
+	border-color: var(--menu_button_level_2_border_color);
+	text-align: left;
+}
+
+.menu_background_level_2 {
+	background-color: var(--menu_button_level_2_bg_color);
+}
+
+.settings_category_area {
+	padding-left: 10px;
+	display: flex;
+	flex-direction: row;
+	flex-wrap: wrap;
+	width: 100%;
+}
+
+.setting_container {
+	display: grid;
+	grid-template-areas: "label value"
+						 "item item";
+	grid-template-rows: 20px 25px;
+	grid-template-columns: 160px 40px;
+	row-gap: 0.2em;
+	background-color: var(--setting_background);
+	color: var(--text);
+	margin: 2px;
+}
+
+.setting_label {
+	grid-area: label;
+	overflow: hidden;
+}
+
+.setting_value {
+	text-align: right;
+	grid-area: value;
+	background-color: inherit;
+	color: inherit;
+	border: none; 
+	outline: none;
+}
+
+.setting_value:focus {
+	color: var(--text_edit);
+}
+
+.setting_item {
+	grid-area: item;
+	overflow: hidden;
+}
+
+.setting_item_input {
+	width:95%;
+}
+
+.helpicon {
+	display: inline-block;
+	font-family: sans-serif;
+	font-weight: bold;
+	text-align: center;
+	width: 2ex;
+	height: 2ex;
+	font-size: 1.4ex;
+	line-height: 1.8ex;
+	border-radius: 1.2ex;
+	margin-right: 4px;
+	padding: 1px;
+	color: var(--setting_background);
+	background: var(--setting_text);
+	border: 1px solid white;
+	text-decoration: none;
+}
+
+.helpicon .helptext {
+	display: none;
+	font-family: sans-serif;
+	position: absolute;
+	z-index: 100;
+	text-shadow: none !important;
+}
+
+.helpicon:hover .helptext {
+	display: inline-block;
+	position: fixed;
+	width: 250px;
+	background-color: var(--tooltip_background);
+	color: var(--tooltip_text);
+	font-size: 11pt;
+	z-index: 100;
+	font-weight: normal;
+	line-height: normal;
+	border-radius: 6px;
+	padding: 5px;
+	margin-left:10px;
+	border: 1px solid #337ab7;
+}
+
+/*----------------LEFT FLYOUT MENU------------------*/
+.menu_icon {
+	position: fixed;
+	top:10px;
+	left: 5px;
+	z-index:50;
+	display: inline-block;
+	cursor: pointer;
+}
+
+.menu_pin {
+	position: fixed;
+	top:10px;
+	left: calc(var(--flyout_menu_width) - 20px);
+	z-index:50;
+	width: 25px;
+	height: 25px;
+	color: #999;
+	display: inline-block;
+	transition: left 0.5s;
+	cursor: pointer;
+}
+
+.menu_pin.hidden {
+	left: 0px;
+	display: inline-block;
+	width: 0px;
+	overflow: hidden;
+	transition: left 0.5s;
+}
+
+.SideMenu {
+	height: 100%;
+	width: var(--flyout_menu_closed_width);
+	position: fixed;
+	z-index: 1;
+	top: 0;
+	left: 0;
+	background-color: var(--flyout_background);
+	overflow-x: hidden;
+	transition: 0.5s;
+}
+
+.SideMenu.pinned {
+	height: 100%;
+	width: var(--flyout_menu_width);
+	position: fixed;
+	z-index: 1;
+	top: 0;
+	left: 0;
+	background-color: var(--flyout_background);
+	overflow-x: hidden;
+	transition: 0.5s;
+}
+
+.SideMenu.open {
+  width: var(--flyout_menu_width);
+}
+
+.settings_menu {
+	padding-left: 30px;
+	padding-top: 7px;
+}
+
+.settings_menu .menu_button{
+	color: var(--enabled_button_text);
+	background-color: var(--enabled_button_background_color);
+	border-color: var(--enabled_button_border_color);
+}
+
+.settings_menu .menu_button:hover {
+	filter: brightness(85%);
+}
+
+.settings_menu select {
+	color: black;
+	margin-left: auto;
+	margin-right: 25px;
+}
+
+.menubar1, .menubar2, .menubar3 {
+  width: 21px;
+  height: 3px;
+  background-color: #999;
+  margin: 3px 0;
+  transition: 0.4s;
+}
+
+.change .menubar1 {
+  transform: translate(0px, 6px) rotate(-45deg);
+}
+
+.change .menubar2 {opacity: 0;}
+
+.change .menubar3 {
+  transform: translate(0px, -6px) rotate(45deg);
+}
+
+/*----------------RIGHT FLYOUT MENU------------------*/
+.right_menu_icon {
+	position: fixed;
+	top:10px;
+	right: 5px;
+	z-index:50;
+	display: inline-block;
+	cursor: pointer;
+	grid-area: lefticon;
+}
+
+.rightSideMenu {
+	height: 100%;
+	width: 0;
+	position: fixed;
+	z-index: 1;
+	top: 0;
+	right: 0;
+	background-color: var(--flyout_background);
+	overflow-x: hidden;
+	transition: 0.5s;
+	padding-top: 20px;
+	padding-bottom: 10px;
+	
+}
+
+.rightSideMenu.open {
+  width: var(--flyout_menu_width);
+}
+
+table.server_vars {
+	border: 1px solid #959595;
+}
+
+tr.server_vars {
+	margin-top: 0px;
+	margin-bottom: 0px;
+}
+
+td.server_vars {
+	border: 1px solid #959595;
+	border-radius: 5px;
+	padding: 0px;
+	color: #ffffff;
+	-moz-transition: all 0.15s ease-in;
+	-o-transition: all 0.15s ease-in;
+	-webkit-transition: all 0.15s ease-in;
+	transition: all 0.15s ease-in;
+	white-space: pre-wrap;
+}
+
+
+/* ---------------------------- OVERALL PAGE CONFIG ------------------------------*/
+body {
+	background-color: var(--background);
+	color: var(--text);
+}
+
+.main-grid {
+	transition: margin-left .5s;
+	display: grid;
+	min-height: 98vh;
+	margin-left: var(--flyout_menu_closed_width);
+/*	grid-template-areas: "menuicon gamescreen lefticon"
+						 "menuicon actions lefticon"
+						 "menuicon inputrow lefticon";*/
+	grid-template-areas: "menuicon gamescreen lefticon"
+						 "menuicon inputrow lefticon";
+	grid-template-columns: 30px auto 20px;
+/*	grid-template-rows: auto 40px 100px;*/
+	grid-template-rows: auto 100px;
+}
+
+.main-grid.pinned {
+	margin-left: var(--flyout_menu_width);
+}
+
+/* ---------------------------------- GAME SCREEN ----------------------------------*/
+.gamescreen {
+	background-color: var(--gamescreen_background);
+	color: white;
+	grid-area: gamescreen;
+	display: flex;
+	flex-direction: column;
+	overflow-x: hidden;
+	margin-top: 10px;
+	vertical-align: bottom;
+	font-family: "Helvetica Neue",Helvetica,Arial,sans-serif;
+	font-size: 14px;
+	line-height: 1.42857143;
+}
+
+.gametext {
+	margin-top: auto;
+	padding-bottom: 1px;
+	vertical-align: bottom;
+}
+
+[contenteditable="true"]:active,
+[contenteditable="true"]:focus{
+  border:none;
+  outline:none;
+  color: var(--text_edit);
+}
+
+
+table.sequence {
+	width: 100%;
+	border: 0px;
+	border-spacing: 0;
+}
+
+tr.sequence {
+	margin-top: 0px;
+	margin-bottom: 0px;
+}
+
+td.sequence {
+	border: 1px solid #959595;
+	border-radius: 5px;
+	padding: 0px;
+	background-color: var(--options_background);
+	-moz-transition: all 0.15s ease-in;
+	-o-transition: all 0.15s ease-in;
+	-webkit-transition: all 0.15s ease-in;
+	transition: all 0.15s ease-in;
+	white-space: pre-wrap;
+}
+
+td.sequence:hover {
+	filter: brightness(70%);
+}
+
+
+.actions {
+	grid-area: actions;
+	display: flex;
+}
+
+.actions button {
+	width: 80px;
+	margin-right: 2px;
+}
+
+.inputrow {
+	grid-area: inputrow;
+	display: grid;
+	grid-template-areas: "textarea submit submit submit"
+	                     "textarea back redo retry";
+	grid-template-columns: auto 30px 30px 30px;
+	grid-template-rows: auto 40px;
+	gap: 1px;
+	
+}
+
+.inputrow textarea {
+	grid-area: textarea;
+	background-color: var(--textarea_background);
+	color: var(--text);
+}
+
+.inputrow .submit[server_value=false] {
+	grid-area: submit;
+	height: 100%;
+	width: 100%;
+	text-align: center;
+	overflow: hidden;
+}
+.inputrow .submit[server_value=true] {
+	grid-area: submit;
+	height: 100%;
+	width: 100%;
+	text-align: center;
+	overflow: hidden;
+	display: none;
+}
+
+.inputrow .submited[server_value=false] {
+	grid-area: submit;
+	height: 100%;
+	width: 100%;
+	text-align: center;
+	overflow: hidden;
+	display: none;
+}
+.inputrow .submited[server_value=true] {
+	grid-area: submit;
+	height: 100%;
+	width: 100%;
+	text-align: center;
+	overflow: hidden;
+	display: inline;
+}
+
+.inputrow .back {
+	grid-area: back;
+	padding: 0px;
+	height: 100%;
+	width: 100%;
+	text-align: center;
+	overflow: hidden;
+}
+
+.inputrow .redo {
+	grid-area: redo;
+	padding: 0px;
+	height: 100%;
+	width: 100%;
+	text-align: center;
+	overflow: hidden;
+}
+
+.inputrow .retry {
+	grid-area: retry;
+	padding: 0px;
+	height: 100%;
+	width: 100%;
+	text-align: center;
+	overflow: hidden;
+}
+
+/*---------------------------------- Global ------------------------------------------------*/
+.hidden {
+	display: none;
+}
+
+.action_button {
+	color: var(--enabled_button_text);
+	background-color: var(--enabled_button_background_color);
+	border-color: var(--enabled_button_border_color);
+}
+
+.action_button:hover {
+	filter: brightness(85%);
+}
+
+
+.action_button.disabled {
+	color: var(--disabled_button_text);
+	background-color: var(--disabled_button_background_color);
+	border-color: var(--disabled_button_border_color);
+	cursor: not-allowed;
+}
+
+.force_center {
+	margin-left: 50%;
+	transform: translateX(-50%);
+}
+
+.flex {
+	display: flex;
+}
+
+.rawtext {
+	white-space: pre-wrap;
+}

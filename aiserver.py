@@ -240,7 +240,7 @@ log.setLevel(logging.ERROR)
 # Start flask & SocketIO
 print("{0}Initializing Flask... {1}".format(colors.PURPLE, colors.END), end="")
 from flask import Flask, render_template, Response, request, copy_current_request_context, send_from_directory
-from flask_socketio import SocketIO, emit
+from flask_socketio import SocketIO, emit, join_room, leave_room
 app = Flask(__name__, root_path=os.getcwd())
 app.config['SECRET KEY'] = 'secret!'
 app.config['TEMPLATES_AUTO_RELOAD'] = True
@@ -2769,6 +2769,13 @@ def execute_outmod():
 #==================================================================#
 @socketio.on('connect')
 def do_connect():
+    join_room("UI_{}".format(request.args.get('ui')))
+    print("Joining Room UI_{}".format(request.args.get('ui')))
+    #Send all variables to client
+    model_settings.send_to_ui()
+    story_settings.send_to_ui()
+    user_settings.send_to_ui()
+    system_settings.send_to_ui()
     print("{0}Client connected!{1}".format(colors.GREEN, colors.END))
     emit('from_server', {'cmd': 'setchatname', 'data': story_settings.chatname})
     emit('from_server', {'cmd': 'setanotetemplate', 'data': story_settings.authornotetemplate})
@@ -5865,6 +5872,67 @@ def send_debug():
             pass
 
         emit('from_server', {'cmd': 'debug_info', 'data': debug_info}, broadcast=True)
+
+#==================================================================#
+# Event triggered when browser SocketIO detects a variable change
+#==================================================================#
+@socketio.on('var_change')
+def UI_2_var_change(data):
+    classname = data['ID'].split("_")[0]
+    name = data['ID'][len(classname)+1:]
+    classname += "_settings"
+    
+    #Need to fix the data type of value to match the module
+    if type(getattr(globals()[classname], name)) == int:
+        value = int(data['value'])
+    elif type(getattr(globals()[classname], name)) == float:
+        value = float(data['value'])
+    elif type(getattr(globals()[classname], name)) == bool:
+        value = bool(data['value'])
+    elif type(getattr(globals()[classname], name)) == str:
+        value = str(data['value'])
+    else:
+        print("Unknown Type {} = {}".format(name, type(getattr(globals()[classname], name))))
+    
+    print("{} {} = {}".format(classname, name, value))
+    
+    setattr(globals()[classname], name, value)
+
+
+#==================================================================#
+# UI V2 CODE
+#==================================================================#
+@app.route('/new_ui')
+def new_ui_index():
+    return render_template('index_new.html', settings=gensettings.gensettingstf if model_settings.model != "InferKit" else gensettings.gensettingsik )
+
+#==================================================================#
+# Event triggered when Selected Text is edited, Option is Selected, etc
+#==================================================================#
+@socketio.on('Set Selected Text')
+def UI_2_Set_Selected_Text(data):
+    print("Updating Selected Text: {}".format(data))
+    story_settings.actions.use_option(int(data['chunk']), int(data['option']))
+
+#==================================================================#
+# Event triggered when user clicks the submit button
+#==================================================================#
+@socketio.on('submit')
+def UI_2_submit(data):
+    system_settings.lua_koboldbridge.feedback = None
+    story_settings.recentrng = story_settings.recentrngm = None
+    actionsubmit(data['data'], actionmode=story_settings.actionmode)
+    
+#==================================================================#
+# Event triggered when user clicks the pin button
+#==================================================================#
+@socketio.on('Pinning')
+def UI_2_Pinning(data):
+    if data['set']:
+        story_settings.actions.set_pin(int(data['chunk']), int(data['option']))
+    else:
+        story_settings.actions.unset_pin(int(data['chunk']), int(data['option']))
+    
 
 #==================================================================#
 #  Final startup commands to launch Flask app

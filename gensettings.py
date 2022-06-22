@@ -8,7 +8,11 @@ gensettingstf = [
 	"max": 512,
 	"step": 2,
 	"default": 80,
-    "tooltip": "Number of tokens the AI should generate. Higher numbers will take longer to generate."
+    "tooltip": "Number of tokens the AI should generate. Higher numbers will take longer to generate.",
+    "menu_path": "Model",
+    "sub_path":  "Generation",
+    "classname": "model",
+    "name": "genamt"
 	},
    {
 	"uitype": "slider",
@@ -19,7 +23,11 @@ gensettingstf = [
 	"max": 2.0,
 	"step": 0.05,
 	"default": 0.5,
-    "tooltip": "Randomness of sampling. High values can increase creativity but may make text less sensible. Lower values will make text more predictable but can become repetitious."
+    "tooltip": "Randomness of sampling. High values can increase creativity but may make text less sensible. Lower values will make text more predictable but can become repetitious.",
+    "menu_path": "Model",
+    "sub_path":  "Generation",
+    "classname": "model",
+    "name": "temp"
 	},
 	{
 	"uitype": "slider",
@@ -30,7 +38,12 @@ gensettingstf = [
 	"max": 1.0,
 	"step": 0.05,
 	"default": 0.9,
-    "tooltip": "Used to discard unlikely text in the sampling process. Lower values will make text more predictable but can become repetitious. (Put this value on 1 to disable its effect)"
+    "tooltip": "Used to discard unlikely text in the sampling process. Lower values will make text more predictable but can become repetitious. (Put this value on 1 to disable its effect)",
+    "menu_path": "Model",
+    "sub_path":  "Sampling",
+    "classname": "model",
+    "name": "top_p"
+    
 	},
 	{
 	"uitype": "slider",
@@ -41,7 +54,11 @@ gensettingstf = [
 	"max": 100,
 	"step": 1,
 	"default": 0,
-    "tooltip": "Alternative sampling method, can be combined with top_p. (Put this value on 0 to disable its effect)"
+    "tooltip": "Alternative sampling method, can be combined with top_p. (Put this value on 0 to disable its effect)",
+    "menu_path": "Model",
+    "sub_path":  "Sampling",
+    "classname": "model",
+    "name": "top_k"
 	},
 	{
 	"uitype": "slider",
@@ -52,7 +69,11 @@ gensettingstf = [
 	"max": 1.0,
 	"step": 0.05,
 	"default": 1.0,
-    "tooltip": "Alternative sampling method; it is recommended to disable top_p and top_k (set top_p to 1 and top_k to 0) if using this. 0.95 is thought to be a good value. (Put this value on 1 to disable its effect)"
+    "tooltip": "Alternative sampling method; it is recommended to disable top_p and top_k (set top_p to 1 and top_k to 0) if using this. 0.95 is thought to be a good value. (Put this value on 1 to disable its effect)",
+    "menu_path": "Model",
+    "sub_path":  "Sampling",
+    "classname": "model",
+    "name": "tfs"
 	},
 	{
 	"uitype": "slider",
@@ -63,7 +84,11 @@ gensettingstf = [
 	"max": 1.0,
 	"step": 0.05,
 	"default": 1.0,
-    "tooltip": "Alternative sampling method described in the paper \"Typical Decoding for Natural Language Generation\" (10.48550/ARXIV.2202.00666). The paper suggests 0.2 as a good value for this setting. Set this setting to 1 to disable its effect."
+    "tooltip": "Alternative sampling method described in the paper \"Typical Decoding for Natural Language Generation\" (10.48550/ARXIV.2202.00666). The paper suggests 0.2 as a good value for this setting. Set this setting to 1 to disable its effect.",
+    "menu_path": "Model",
+    "sub_path":  "Sampling",
+    "classname": "model",
+    "name": "typical"
 	},
 	{
 	"uitype": "slider",
@@ -74,7 +99,11 @@ gensettingstf = [
 	"max": 1.0,
 	"step": 0.01,
 	"default": 0.0,
-    "tooltip": "Alternative sampling method that reduces the randomness of the AI whenever the probability of one token is much higher than all the others. Higher values have a stronger effect. Set this setting to 0 to disable its effect."
+    "tooltip": "Alternative sampling method that reduces the randomness of the AI whenever the probability of one token is much higher than all the others. Higher values have a stronger effect. Set this setting to 0 to disable its effect.",
+    "menu_path": "Model",
+    "sub_path":  "Sampling",
+    "classname": "model",
+    "name": "top_a"
 	},
 	{
 	"uitype": "slider",
@@ -85,7 +114,11 @@ gensettingstf = [
 	"max": 3.0,
 	"step": 0.01,
 	"default": 1.1,
-    "tooltip": "Used to penalize words that were already generated or belong to the context (Going over 1.2 breaks 6B models)."
+    "tooltip": "Used to penalize words that were already generated or belong to the context (Going over 1.2 breaks 6B models).",
+    "menu_path": "Model",
+    "sub_path":  "Repetition",
+    "classname": "model",
+    "name": "rep_pen"
 	},
 	{
 	"uitype": "slider",
@@ -96,7 +129,11 @@ gensettingstf = [
 	"max": 4096,
 	"step": 4,
 	"default": 0,
-    "tooltip": "Repetition penalty range. If set higher than 0, only applies repetition penalty to the last few tokens of your story rather than applying it to the entire story. This slider controls the amount of tokens at the end of your story to apply it to."
+    "tooltip": "Repetition penalty range. If set higher than 0, only applies repetition penalty to the last few tokens of your story rather than applying it to the entire story. This slider controls the amount of tokens at the end of your story to apply it to.",
+    "menu_path": "Model",
+    "sub_path":  "Repetition",
+    "classname": "model",
+    "name": "rep_pen_range"
 	},
 	{
 	"uitype": "slider",
@@ -107,7 +144,11 @@ gensettingstf = [
 	"max": 10.0,
 	"step": 0.1,
 	"default": 0.0,
-    "tooltip": "Repetition penalty slope. If BOTH this setting and Rep Penalty Range are set higher than 0, will use sigmoid interpolation to apply repetition penalty more strongly on tokens that are closer to the end of your story. This setting controls the tension of the sigmoid curve; higher settings will result in the repetition penalty difference between the start and end of your story being more apparent. Setting this to 1 uses linear interpolation; setting this to 0 disables interpolation."
+    "tooltip": "Repetition penalty slope. If BOTH this setting and Rep Penalty Range are set higher than 0, will use sigmoid interpolation to apply repetition penalty more strongly on tokens that are closer to the end of your story. This setting controls the tension of the sigmoid curve; higher settings will result in the repetition penalty difference between the start and end of your story being more apparent. Setting this to 1 uses linear interpolation; setting this to 0 disables interpolation.",
+    "menu_path": "Model",
+    "sub_path":  "Repetition",
+    "classname": "model",
+    "name": "repo_pen_slope"
 	},
     {
 	"uitype": "slider",
@@ -118,7 +159,11 @@ gensettingstf = [
 	"max": 2048,
 	"step": 8,
 	"default": 1024,
-    "tooltip": "Max number of tokens of context to submit to the AI for sampling. Make sure this is higher than Amount to Generate. Higher values increase VRAM/RAM usage."
+    "tooltip": "Max number of tokens of context to submit to the AI for sampling. Make sure this is higher than Amount to Generate. Higher values increase VRAM/RAM usage.",
+    "menu_path": "Model",
+    "sub_path":  "Generation",
+    "classname": "model",
+    "name": "max_length"
 	},
     {
 	"uitype": "slider",
@@ -129,7 +174,11 @@ gensettingstf = [
 	"max": 5,
 	"step": 1,
 	"default": 1,
-    "tooltip": "Number of results to generate per submission. Increases VRAM/RAM usage."
+    "tooltip": "Number of results to generate per submission. Increases VRAM/RAM usage.",
+    "menu_path": "Model",
+    "sub_path":  "Generation",
+    "classname": "model",
+    "name": "numseqs"
 	},
     {
 	"uitype": "slider",
@@ -140,7 +189,10 @@ gensettingstf = [
 	"max": 5,
 	"step": 1,
 	"default": 3,
-    "tooltip": "Number of historic actions to scan for W Info keys."
+    "tooltip": "Number of historic actions to scan for W Info keys.",
+    "menu_path": "User",
+    "classname": "user",
+    "name": "widepth"
 	},
     {
 	"uitype": "toggle",
@@ -151,7 +203,10 @@ gensettingstf = [
 	"max": 1,
 	"step": 1,
 	"default": 0,
-    "tooltip": "Whether the game is saved after each action."
+    "tooltip": "Whether the game is saved after each action.",
+    "menu_path": "User",
+    "classname": "user",
+    "name": "autosave"
 	},
     {
 	"uitype": "toggle",
@@ -162,7 +217,10 @@ gensettingstf = [
 	"max": 1,
 	"step": 1,
 	"default": 1,
-    "tooltip": "Whether the prompt should be sent in the context of every action."
+    "tooltip": "Whether the prompt should be sent in the context of every action.",
+    "menu_path": "Story",
+    "classname": "story",
+    "name": "useprompt"
 	},
 	{
 	"uitype": "toggle",
@@ -173,7 +231,10 @@ gensettingstf = [
 	"max": 1,
 	"step": 1,
 	"default": 0,
-    "tooltip": "Turn this on if you are playing a Choose your Adventure model."
+    "tooltip": "Turn this on if you are playing a Choose your Adventure model.",
+    "menu_path": "Story",
+    "classname": "story",
+    "name": "adventure"
 	},
 	{
 	"uitype": "toggle",
@@ -184,7 +245,10 @@ gensettingstf = [
 	"max": 1,
 	"step": 1,
 	"default": 0,
-    "tooltip": "This mode optimizes KoboldAI for chatting."
+    "tooltip": "This mode optimizes KoboldAI for chatting.",
+    "menu_path": "Story",
+    "classname": "story",
+    "name": "chatmode"
 	},
 	{
 	"uitype": "toggle",
@@ -195,7 +259,10 @@ gensettingstf = [
 	"max": 1,
 	"step": 1,
 	"default": 0,
-    "tooltip": "Scan the AI's output for world info keys as it's generating the output."
+    "tooltip": "Scan the AI's output for world info keys as it's generating the output.",
+    "menu_path": "Story",
+    "classname": "story",
+    "name": "dynamicscan"
 	},
 	{
 	"uitype": "toggle",
@@ -206,7 +273,10 @@ gensettingstf = [
 	"max": 1,
 	"step": 1,
 	"default": 0,
-    "tooltip": "When enabled the AI does not generate when you enter the prompt, instead you need to do an action first."
+    "tooltip": "When enabled the AI does not generate when you enter the prompt, instead you need to do an action first.",
+    "menu_path": "User",
+    "classname": "user",
+    "name": "nopromptgen"
 	},
 	{
 	"uitype": "toggle",
@@ -217,7 +287,10 @@ gensettingstf = [
 	"max": 1,
 	"step": 1,
 	"default": 0,
-    "tooltip": "When enabled, the Memory text box in the Random Story dialog will be prefilled by default with your current story's memory instead of being empty."
+    "tooltip": "When enabled, the Memory text box in the Random Story dialog will be prefilled by default with your current story's memory instead of being empty.",
+    "menu_path": "User",
+    "classname": "user",
+    "name": "rngpersist"
 	},
 	{
 	"uitype": "toggle",
@@ -228,7 +301,10 @@ gensettingstf = [
 	"max": 1,
 	"step": 1,
 	"default": 0,
-  "tooltip": "Disables userscript generation modifiers."
+  "tooltip": "Disables userscript generation modifiers.",
+    "menu_path": "User",
+    "classname": "user",
+    "name": "nogenmod"
 	},
     {
 	"uitype": "toggle",
@@ -239,7 +315,10 @@ gensettingstf = [
 	"max": 1,
 	"step": 1,
 	"default": 0,
-  "tooltip": "Show debug info"
+  "tooltip": "Show debug info",
+    "menu_path": "user",
+    "classname": "user",
+    "name": "debug"
 	}
 ]
 
@@ -252,7 +331,11 @@ gensettingsik =[{
 	"max": 2.0,
 	"step": 0.05,
 	"default": 0.5,
-    "tooltip": "Randomness of sampling. High values can increase creativity but may make text less sensible. Lower values will make text more predictable but can become repetitious."
+    "tooltip": "Randomness of sampling. High values can increase creativity but may make text less sensible. Lower values will make text more predictable but can become repetitious.",
+    "menu_path": "Model",
+    "sub_path":  "Generation",
+    "classname": "model",
+    "name": "temp"
 	},
 	{
 	"uitype": "slider",
@@ -263,7 +346,11 @@ gensettingsik =[{
 	"max": 1.0,
 	"step": 0.05,
 	"default": 1.1,
-    "tooltip": "Used to discard unlikely text in the sampling process. Lower values will make text more predictable but can become repetitious."
+    "tooltip": "Used to discard unlikely text in the sampling process. Lower values will make text more predictable but can become repetitious.",
+    "menu_path": "Model",
+    "sub_path":  "Sampling",
+    "classname": "model",
+    "name": "top_p"
 	},
 	{
 	"uitype": "slider",
@@ -274,7 +361,11 @@ gensettingsik =[{
 	"max": 100,
 	"step": 1,
 	"default": 0,
-    "tooltip": "Alternative sampling method, can be combined with top_p."
+    "tooltip": "Alternative sampling method, can be combined with top_p.",
+    "menu_path": "Model",
+    "sub_path":  "Sampling",
+    "classname": "model",
+    "name": "top_k"
 	},
 	{
 	"uitype": "slider",
@@ -285,7 +376,11 @@ gensettingsik =[{
 	"max": 1.0,
 	"step": 0.05,
 	"default": 0.0,
-    "tooltip": "Alternative sampling method; it is recommended to disable (set to 0) top_p and top_k if using this. 0.95 is thought to be a good value."
+    "tooltip": "Alternative sampling method; it is recommended to disable (set to 0) top_p and top_k if using this. 0.95 is thought to be a good value.",
+    "menu_path": "Model",
+    "sub_path":  "Sampling",
+    "classname": "model",
+    "name": "tfs"
 	},
     {
 	"uitype": "slider",
@@ -296,7 +391,11 @@ gensettingsik =[{
 	"max": 3000,
 	"step": 2,
 	"default": 200,
-    "tooltip": "Number of characters the AI should generate."
+    "tooltip": "Number of characters the AI should generate.",
+    "menu_path": "Model",
+    "sub_path":  "Generation",
+    "classname": "model",
+    "name": "max_length"
 	},
     {
 	"uitype": "slider",
@@ -307,7 +406,10 @@ gensettingsik =[{
 	"max": 5,
 	"step": 1,
 	"default": 3,
-    "tooltip": "Number of historic actions to scan for W Info keys."
+    "tooltip": "Number of historic actions to scan for W Info keys.",
+    "menu_path": "User",
+    "classname": "user",
+    "name": "widepth"
 	},
     {
 	"uitype": "toggle",
@@ -318,7 +420,10 @@ gensettingsik =[{
 	"max": 1,
 	"step": 1,
 	"default": 0,
-    "tooltip": "Whether the game is saved after each action."
+    "tooltip": "Whether the game is saved after each action.",
+    "menu_path": "User",
+    "classname": "user",
+    "name": "autosave"
 	},
     {
 	"uitype": "toggle",
@@ -329,7 +434,10 @@ gensettingsik =[{
 	"max": 1,
 	"step": 1,
 	"default": 1,
-    "tooltip": "Whether the prompt should be sent in the context of every action."
+    "tooltip": "Whether the prompt should be sent in the context of every action.",
+    "menu_path": "Story",
+    "classname": "story",
+    "name": "useprompt"
 	},
 	{
 	"uitype": "toggle",
@@ -340,7 +448,10 @@ gensettingsik =[{
 	"max": 1,
 	"step": 1,
 	"default": 0,
-    "tooltip": "Turn this on if you are playing a Choose your Adventure model."
+    "tooltip": "Turn this on if you are playing a Choose your Adventure model.",
+    "menu_path": "Story",
+    "classname": "story",
+    "name": "adventure"
 	},
 	{
 	"uitype": "toggle",
@@ -351,7 +462,10 @@ gensettingsik =[{
 	"max": 1,
 	"step": 1,
 	"default": 0,
-    "tooltip": "This mode optimizes KoboldAI for chatting."
+    "tooltip": "This mode optimizes KoboldAI for chatting.",
+    "menu_path": "Story",
+    "classname": "story",
+    "name": "chatmode"
 	},
 	{
 	"uitype": "toggle",
@@ -362,7 +476,10 @@ gensettingsik =[{
 	"max": 1,
 	"step": 1,
 	"default": 0,
-    "tooltip": "When enabled the AI does not generate when you enter the prompt, instead you need to do an action first."
+    "tooltip": "When enabled the AI does not generate when you enter the prompt, instead you need to do an action first.",
+    "menu_path": "User",
+    "classname": "user",
+    "name": "nopromptgen"
 	},
 	{
 	"uitype": "toggle",
@@ -373,7 +490,10 @@ gensettingsik =[{
 	"max": 1,
 	"step": 1,
 	"default": 0,
-    "tooltip": "When enabled, the Memory text box in the Random Story dialog will be prefilled by default with your current story's memory instead of being empty."
+    "tooltip": "When enabled, the Memory text box in the Random Story dialog will be prefilled by default with your current story's memory instead of being empty.",
+    "menu_path": "User",
+    "classname": "user",
+    "name": "rngpersist"
 	},
     {
 	"uitype": "toggle",
@@ -384,7 +504,10 @@ gensettingsik =[{
 	"max": 1,
 	"step": 1,
 	"default": 0,
-  "tooltip": "Show debug info"
+  "tooltip": "Show debug info",
+    "menu_path": "User",
+    "classname": "user",
+    "name": "debug"
 	}
 ]
 

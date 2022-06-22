@@ -1,0 +1,39 @@
+{% for item in settings %}
+{% if item["menu_path"] == menu %}
+<div class="setting_container">
+	<!---Top Row---->
+	<span class="setting_label">
+		{{ item['label'] }}: 
+		<span class="helpicon">
+			?
+			<span class="helptext">
+				{{ item['tooltip'] }}
+			</span>
+		</span>
+	</span>
+	{% if (item['unit'] != 'bool') and (item['unit'] != 'text') %}
+		<input class="setting_value var_sync_{{ item['classname'] }}_{{ item['name'] }}" id="{{ item['classname'] }}_{{ item['name'] }}_cur"
+			   value="{{ item['default'] }}" item_id="{{ item['classname'] }}_{{ item['name'] }}" 
+			   {% if item['unit'] == 'float' %} inputmode="decimal"{% elif item['unit'] == 'float' %} inputmode="numeric"{% endif %}
+			   onblur="document.getElementById(this.getAttribute('item_id')).value = this.value;">
+	{% endif %}
+	<!---Bottom Row---->
+	<span class="setting_item">
+		{% if item["uitype"] == "slider" %}
+			<input type="range" min="{{ item['min'] }}" max="{{ item['max'] }}" step="{{ item['step'] }}" 
+				   value="{{ item['default'] }}" id="{{ item['classname'] }}_{{ item['name'] }}" class="setting_item_input var_sync_{{ item['classname'] }}_{{ item['name'] }}"
+				   onclick="document.getElementById(this.id+'_cur').value = this.value; socket.emit('var_change', {'ID': this.id, 'value': this.value});">
+	    {% elif item["uitype"] == "toggle" %}
+			<input type=checkbox id="{{ item['classname'] }}_{{ item['name'] }}" class="setting_item_input var_sync_{{ item['classname'] }}_{{ item['name'] }}"
+			       data-size="mini" data-onstyle="success" data-toggle="toggle" onchange='socket.emit("var_change", {"ID": this.id, "value": this.checked});'>
+		{% elif item['uuitype'] == "dropdown" %}
+			<select id="{{ item['classname'] }}_{{ item['name'] }}" class="setting_item_input var_sync_{{ item['classname'] }}_{{ item['name'] }}" onclick='socket.emit("var_change", {"ID": this.id, "value": this.value});'>
+				{% for option in item['children'] %}
+					<option value="{{ option['value'] }}">{{ option["text"] }}</option>
+				{% endfor %}
+			</select>
+		{% endif %}
+	</span>
+</div>
+{% endif %}
+{% endfor %}

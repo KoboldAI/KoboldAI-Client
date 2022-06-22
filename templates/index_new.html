@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<link href="static/open-iconic/css/open-iconic.css" rel="stylesheet">
+	<link rel="stylesheet" href="static/bootstrap-toggle.min.css">
+	<link rel="stylesheet" href="static/bootstrap.min.css">
+	<script src="static/jquery-3.6.0.min.js"></script>
+	<script src="static/jquery-ui.sortable.min.js"></script>
+	<script src="static/bootstrap.min.js"></script>
+	<script src="static/bootstrap-toggle.min.js"></script>
+	<script src="static/socket.io.min.js"></script>
+	<title>KoboldAI Client</title>
+	<meta charset="utf-8">
+	<link href="static/koboldai.css" rel="stylesheet">
+	<script src="static/koboldai.js"></script>
+	<script src="static/favicon.js"></script>
+</head>
+<body>
+	<!------------ Left Flyout Menu--------------------->
+	<div id="SideMenu" class="SideMenu pinned">
+		{% include 'settings flyout.html' %}
+	</div>
+
+	<!------------ Main Screen--------------------->
+	<div id="main-grid" class="main-grid pinned">
+		<!------------ Left Menu Icon--------------------->
+		<div class="menu_icon" onclick="toggle_flyout(this)"> 
+			<div class="menubar1"></div>
+			<div class="menubar2"></div>
+			<div class="menubar3"></div>
+		</div>
+		<!------------ Menu Pin --------------------->
+		<span id="menu_pin" class="oi menu_pin" onclick="toggle_pin_flyout()" data-glyph="pin"></span>
+		<!------------ Game Text Screen--------------------->
+		<div class="gamescreen" id="gamescreen">
+			<div class="gametext">
+				<span id="prompt" class="var_sync_story_prompt rawtext"></span>
+				<span id="Selected Text" class="rawtext"></span>
+			</div>
+			<div id="selectoptions" class="sequence"></div>
+		</div>
+		<!------------ Input Area--------------------->
+		<div class="inputrow">
+			<textarea id="input_text" placeholder="Enter text here"></textarea>
+			<button type="button" class="btn action_button submit var_sync_alt_system_aibusy" id="btnsend" onclick="socket.emit('submit', {'data': document.getElementById('input_text').value});">Submit</button>
+			<button type="button" class="btn action_button submited var_sync_alt_system_aibusy" id="btnsend"><img src="static/thinking.gif" class="force_center"></button>
+			<button type="button" class="btn action_button back"><span class="oi" data-glyph="action-undo"></span></button>
+			<button type="button" class="btn action_button redo"><span class="oi" data-glyph="action-redo"></span></button>
+			<button type="button" class="btn action_button retry"><span class="oi" data-glyph="loop-circular"></span></button>
+		</div>
+		<!------------ Right Menu Icon--------------------->
+		<span class="oi right_menu_icon" data-glyph="chevron-left" onclick="toggle_flyout_right(this)"></span>
+	</div>
+	
+	<!------------ Right Flyout Menu--------------------->
+	<div id="rightSideMenu" class="rightSideMenu"> Status:<hr>
+	options:
+		<div id="Select Options"></div>
+		<br/>
+	
+	</div>
+</body>
+</html>
