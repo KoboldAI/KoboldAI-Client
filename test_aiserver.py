@@ -125,7 +125,7 @@ def test_load_model_from_web_ui(client_data, model, expected_load_options):
     assert response['url'] == expected_load_options['url']
     
     #Now send the load 
-    socketio_client.emit('message',{'cmd': 'load_model', 'use_gpu': True, 'key': '', 'gpu_layers': '', 'url': '', 'online_model': ''})
+    socketio_client.emit('message',{'cmd': 'load_model', 'use_gpu': True, 'key': '', 'gpu_layers': str(expected_load_options['layer_count']), 'disk_layers': '0', 'url': '', 'online_model': ''})
     #wait until the game state turns back to start
     state = 'wait'
     start_time = time.time()

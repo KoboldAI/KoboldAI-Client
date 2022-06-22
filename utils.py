@@ -94,7 +94,7 @@ def replaceblanklines(txt):
 # 
 #==================================================================#
 def removespecialchars(txt, vars=None):
-    if vars is None or vars.actionmode == 0:
+    if vars is None or story_settings.actionmode == 0:
         txt = re.sub(r"[#/@%<>{}+=~|\^]", "", txt)
     else:
         txt = re.sub(r"[#/@%{}+=~|\^]", "", txt)
@@ -105,33 +105,33 @@ def removespecialchars(txt, vars=None):
 #==================================================================#
 def addsentencespacing(txt, vars):
     # Get last character of last action
-    if(len(vars.actions) > 0):
-        if(len(vars.actions[vars.actions.get_last_key()]) > 0):
-            action = vars.actions[vars.actions.get_last_key()]
+    if(len(story_settings.actions) > 0):
+        if(len(story_settings.actions[story_settings.actions.get_last_key()]) > 0):
+            action = story_settings.actions[story_settings.actions.get_last_key()]
             lastchar = action[-1] if len(action) else ""
         else:
             # Last action is blank, this should never happen, but
             # since it did let's bail out.
             return txt
     else:
-        action = vars.prompt
+        action = story_settings.prompt
         lastchar = action[-1] if len(action) else ""
     if(lastchar == "." or lastchar == "!" or lastchar == "?" or lastchar == "," or lastchar == ";" or lastchar == ":"):
         txt = " " + txt
     return txt
 	
 def singlelineprocessing(txt, vars):
-    txt = vars.regex_sl.sub('', txt)
-    if(len(vars.actions) > 0):
-        if(len(vars.actions[vars.actions.get_last_key()]) > 0):
-            action = vars.actions[vars.actions.get_last_key()]
+    txt = system_settings.regex_sl.sub('', txt)
+    if(len(story_settings.actions) > 0):
+        if(len(story_settings.actions[story_settings.actions.get_last_key()]) > 0):
+            action = story_settings.actions[story_settings.actions.get_last_key()]
             lastchar = action[-1] if len(action) else ""
         else:
             # Last action is blank, this should never happen, but
             # since it did let's bail out.
             return txt
     else:
-        action = vars.prompt
+        action = story_settings.prompt
         lastchar = action[-1] if len(action) else ""
     if(lastchar != "\n"):
         txt = txt + "\n"
@@ -149,14 +149,14 @@ def cleanfilename(filename):
 #  Newline substitution for fairseq models
 #==================================================================#
 def encodenewlines(txt):
-    if(vars.newlinemode == "s"):
+    if(model_settings.newlinemode == "s"):
         return txt.replace('\n', "</s>")
     return txt
 
 def decodenewlines(txt):
-    if(vars.newlinemode == "s"):
+    if(model_settings.newlinemode == "s"):
         return txt.replace("</s>", '\n')
-    if(vars.newlinemode == "ns"):
+    if(model_settings.newlinemode == "ns"):
         return txt.replace("</s>", '')
     return txt
 
@@ -253,9 +253,9 @@ def aria2_hook(pretrained_model_name_or_path: str, force_download=False, cache_d
         with tempfile.NamedTemporaryFile("w+b", delete=False) as f:
             f.write(aria2_config)
             f.flush()
-            p = subprocess.Popen(["aria2c", "-x", "10", "-s", "10", "-j", "10", "--enable-rpc=true", f"--rpc-secret={secret}", "--rpc-listen-port", str(vars.aria2_port), "--disable-ipv6", "--file-allocation=trunc", "--allow-overwrite", "--auto-file-renaming=false", "-d", _cache_dir, "-i", f.name, "-U", transformers.file_utils.http_user_agent(user_agent)] + (["-c"] if not force_download else []) + ([f"--header='Authorization: Bearer {token}'"] if use_auth_token else []), stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            p = subprocess.Popen(["aria2c", "-x", "10", "-s", "10", "-j", "10", "--enable-rpc=true", f"--rpc-secret={secret}", "--rpc-listen-port", str(system_settings.aria2_port), "--disable-ipv6", "--file-allocation=trunc", "--allow-overwrite", "--auto-file-renaming=false", "-d", _cache_dir, "-i", f.name, "-U", transformers.file_utils.http_user_agent(user_agent)] + (["-c"] if not force_download else []) + ([f"--header='Authorization: Bearer {token}'"] if use_auth_token else []), stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             while p.poll() is None:
-                r = s.post(f"http://localhost:{vars.aria2_port}/jsonrpc", json={"jsonrpc": "2.0", "id": "kai", "method": "aria2.tellActive", "params": [f"token:{secret}"]}).json()["result"]
+                r = s.post(f"http://localhost:{system_settings.aria2_port}/jsonrpc", json={"jsonrpc": "2.0", "id": "kai", "method": "aria2.tellActive", "params": [f"token:{secret}"]}).json()["result"]
                 if not r:
                     s.close()
                     if bar is not None:

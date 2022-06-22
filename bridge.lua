@@ -380,7 +380,7 @@ return function(_python, _bridged)
 
     ---@return boolean
     function KoboldWorldInfoEntry:is_valid()
-        return _python.as_attrgetter(bridged.vars.worldinfo_u).get(rawget(self, "_uid")) ~= nil
+        return _python.as_attrgetter(bridged.story_settings.worldinfo_u).get(rawget(self, "_uid")) ~= nil
     end
 
     ---@param submission? string
@@ -475,7 +475,7 @@ return function(_python, _bridged)
         if not check_validity(self) or type(u) ~= "number" then
             return
         end
-        local query = _python.as_attrgetter(bridged.vars.worldinfo_u).get(u)
+        local query = _python.as_attrgetter(bridged.story_settings.worldinfo_u).get(u)
         if query == nil or (rawget(self, "_name") == "KoboldWorldInfoFolder" and self.uid ~= _python.as_attrgetter(query).get("folder")) then
             return
         end
@@ -521,7 +521,7 @@ return function(_python, _bridged)
 
     ---@return boolean
     function KoboldWorldInfoFolder:is_valid()
-        return _python.as_attrgetter(bridged.vars.wifolders_d).get(rawget(self, "_uid")) ~= nil
+        return _python.as_attrgetter(bridged.story_settings.wifolders_d).get(rawget(self, "_uid")) ~= nil
     end
 
     ---@param t KoboldWorldInfoFolder
@@ -530,7 +530,7 @@ return function(_python, _bridged)
         if not check_validity(t) then
             return 0
         end
-        return math.tointeger(_python.builtins.len(_python.as_attrgetter(bridged.vars.wifolders_u).get(t.uid))) - 1
+        return math.tointeger(_python.builtins.len(_python.as_attrgetter(bridged.story_settings.wifolders_u).get(t.uid))) - 1
     end
 
     KoboldWorldInfoFolder_mt._kobold_next = KoboldWorldInfoEntry_mt._kobold_next
@@ -547,7 +547,7 @@ return function(_python, _bridged)
         elseif rawget(t, "_name") == "KoboldWorldInfoFolder" and k == "name" then
             return bridged.folder_get_attr(t.uid, k)
         elseif type(k) == "number" then
-            local query = rawget(t, "_name") == "KoboldWorldInfoFolder" and _python.as_attrgetter(bridged.vars.wifolders_u).get(t.uid) or bridged.vars.worldinfo_i
+            local query = rawget(t, "_name") == "KoboldWorldInfoFolder" and _python.as_attrgetter(bridged.story_settings.wifolders_u).get(t.uid) or bridged.story_settings.worldinfo_i
             k = math.tointeger(k)
             if k == nil or k < 1 or k > #t then
                 return
@@ -598,7 +598,7 @@ return function(_python, _bridged)
         if not check_validity(self) or type(u) ~= "number" then
             return
         end
-        local query = _python.as_attrgetter(bridged.vars.wifolders_d).get(u)
+        local query = _python.as_attrgetter(bridged.story_settings.wifolders_d).get(u)
         if query == nil then
             return
         end
@@ -618,7 +618,7 @@ return function(_python, _bridged)
         if not check_validity(t) then
             return 0
         end
-        return _python.builtins.len(bridged.vars.wifolders_l)
+        return _python.builtins.len(bridged.story_settings.wifolders_l)
     end
 
     KoboldWorldInfoFolderSelector_mt._kobold_next = KoboldWorldInfoEntry_mt._kobold_next
@@ -632,7 +632,7 @@ return function(_python, _bridged)
             return
         end
         local folder = deepcopy(KoboldWorldInfoFolder)
-        rawset(folder, "_uid", math.tointeger(bridged.vars.wifolders_l[k-1]))
+        rawset(folder, "_uid", math.tointeger(bridged.story_settings.wifolders_l[k-1]))
         return folder
     end
 
@@ -671,7 +671,7 @@ return function(_python, _bridged)
         if not check_validity(t) then
             return 0
         end
-        return math.tointeger(_python.builtins.len(bridged.vars.worldinfo)) - math.tointeger(_python.builtins.len(bridged.vars.wifolders_l)) - 1
+        return math.tointeger(_python.builtins.len(bridged.story_settings.worldinfo)) - math.tointeger(_python.builtins.len(bridged.story_settings.wifolders_l)) - 1
     end
 
     KoboldWorldInfo_mt._kobold_next = KoboldWorldInfoEntry_mt._kobold_next
@@ -724,12 +724,12 @@ return function(_python, _bridged)
         end
         if k == "content" then
             if rawget(t, "_num") == 0 then
-                if bridged.vars.gamestarted then
-                    local prompt = koboldbridge.userstate == "genmod" and bridged.vars._prompt or bridged.vars.prompt
+                if bridged.story_settings.gamestarted then
+                    local prompt = koboldbridge.userstate == "genmod" and bridged.vars._prompt or bridged.story_settings.prompt
                     return prompt
                 end
             end
-            local actions = koboldbridge.userstate == "genmod" and bridged.vars._actions or bridged.vars.actions
+            local actions = koboldbridge.userstate == "genmod" and bridged.vars._actions or bridged.story_settings.actions
             return _python.as_attrgetter(actions).get(math.tointeger(rawget(t, "_num")) - 1)
         end
     end
@@ -751,7 +751,7 @@ return function(_python, _bridged)
                 error("Attempted to set the prompt chunk's content to the empty string; this is not allowed")
                 return
             end
-            local actions = koboldbridge.userstate == "genmod" and bridged.vars._actions or bridged.vars.actions
+            local actions = koboldbridge.userstate == "genmod" and bridged.vars._actions or bridged.story_settings.actions
             if _k ~= 0 and _python.as_attrgetter(actions).get(_k-1) == nil then
                 return
             end
@@ -776,11 +776,11 @@ return function(_python, _bridged)
 
     ---@return fun(): KoboldStoryChunk, table, nil
     function KoboldStory:forward_iter()
-        local actions = koboldbridge.userstate == "genmod" and bridged.vars._actions or bridged.vars.actions
+        local actions = koboldbridge.userstate == "genmod" and bridged.vars._actions or bridged.story_settings.actions
         local nxt, iterator = _python.iter(actions)
         local run_once = false
         local function f()
-            if not bridged.vars.gamestarted then
+            if not bridged.story_settings.gamestarted then
                 return
             end
             local chunk = deepcopy(KoboldStoryChunk)
@@ -804,11 +804,11 @@ return function(_python, _bridged)
 
     ---@return fun(): KoboldStoryChunk, table, nil
     function KoboldStory:reverse_iter()
-        local actions = koboldbridge.userstate == "genmod" and bridged.vars._actions or bridged.vars.actions
+        local actions = koboldbridge.userstate == "genmod" and bridged.vars._actions or bridged.story_settings.actions
         local nxt, iterator = _python.iter(_python.builtins.reversed(actions))
         local last_run = false
         local function f()
-            if not bridged.vars.gamestarted or last_run then
+            if not bridged.story_settings.gamestarted or last_run then
                 return
             end
             local chunk = deepcopy(KoboldStoryChunk)
@@ -1038,7 +1038,7 @@ return function(_python, _bridged)
     ---@param t KoboldLib
     ---@return string
     function KoboldLib_getters.submission(t)
-        return bridged.vars.submission
+        return bridged.story_settings.submission
     end
 
     ---@param t KoboldLib
@@ -1050,11 +1050,11 @@ return function(_python, _bridged)
         elseif type(v) ~= "string" then
             error("`KoboldLib.submission` must be a string; you attempted to set it to a " .. type(v))
             return
-        elseif not bridged.vars.gamestarted and v == "" then
+        elseif not bridged.story_settings.gamestarted and v == "" then
             error("`KoboldLib.submission` must not be set to the empty string when the story is empty")
             return
         end
-        bridged.vars.submission = v
+        bridged.story_settings.submission = v
     end
 
 
@@ -1099,7 +1099,7 @@ return function(_python, _bridged)
     ---@param t KoboldLib
     ---@return string
     function KoboldLib_getters.model(t)
-        return bridged.vars.model
+        return bridged.model_settings.model
     end
 
     ---@param t KoboldLib
@@ -1135,7 +1135,7 @@ return function(_python, _bridged)
     ---@param t KoboldLib
     ---@return string
     function KoboldLib_getters.custmodpth(t)
-        return bridged.vars.custmodpth
+        return bridged.model_settings.custmodpth
     end
 
     ---@param t KoboldLib
@@ -2012,7 +2012,7 @@ return function(_python, _bridged)
         koboldbridge.userstate = "genmod"
         if koboldbridge.genmod ~= nil then
             local _generated = deepcopy(koboldbridge.generated)
-            if not bridged.vars.nogenmod then
+            if not bridged.user_settings.nogenmod then
                 r = koboldbridge.genmod()
             end
             setmetatable(koboldbridge.logits, nil)

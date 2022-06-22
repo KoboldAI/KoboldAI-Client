@@ -53,7 +53,7 @@ import fileops
 import gensettings
 from utils import debounce
 import utils
-import structures
+import koboldai_settings
 import torch
 from transformers import StoppingCriteria, GPT2TokenizerFast, GPT2LMHeadModel, GPTNeoForCausalLM, GPTNeoModel, AutoModelForCausalLM, AutoTokenizer, PreTrainedModel, modeling_utils
 from transformers import __version__ as transformers_version
@@ -109,7 +109,7 @@ class colors:
 
 # AI models Menu
 # This is a dict of lists where they key is the menu name, and the list is the menu items.
-# Each item takes the 4 elements, 1: Text to display, 2: Model Name (var.model) or menu name (Key name for another menu),
+# Each item takes the 4 elements, 1: Text to display, 2: Model Name (model_settings.model) or menu name (Key name for another menu),
 # 3: the memory requirement for the model, 4: if the item is a menu or not (True/False)
 model_menu = {
     'mainmenu': [
@@ -212,141 +212,16 @@ model_menu = {
         ["Return to Main Menu", "mainmenu", "", True],
     ]
     }
-# Variables
-class vars:
-    lastact     = ""     # The last action received from the user
-    submission  = ""     # Same as above, but after applying input formatting
-    lastctx     = ""     # The last context submitted to the generator
-    model       = ""     # Model ID string chosen at startup
-    model_type  = ""     # Model Type (Automatically taken from the model config)
-    noai        = False  # Runs the script without starting up the transformers pipeline
-    aibusy      = False  # Stops submissions while the AI is working
-    max_length  = 2048    # Maximum number of tokens to submit per action
-    ikmax       = 3000   # Maximum number of characters to submit to InferKit
-    genamt      = 80     # Amount of text for each action to generate
-    ikgen       = 200    # Number of characters for InferKit to generate
-    rep_pen     = 1.1    # Default generator repetition_penalty
-    rep_pen_slope = 0.7  # Default generator repetition penalty slope
-    rep_pen_range = 1024 # Default generator repetition penalty range
-    temp        = 0.5    # Default generator temperature
-    top_p       = 0.9    # Default generator top_p
-    top_k       = 0      # Default generator top_k
-    top_a       = 0.0    # Default generator top-a
-    tfs         = 1.0    # Default generator tfs (tail-free sampling)
-    typical     = 1.0    # Default generator typical sampling threshold
-    numseqs     = 1     # Number of sequences to ask the generator to create
-    gamestarted = False  # Whether the game has started (disables UI elements)
-    gamesaved   = True   # Whether or not current game is saved
-    serverstarted = False  # Whether or not the Flask server has started
-    prompt      = ""     # Prompt
-    memory      = ""     # Text submitted to memory field
-    authornote  = ""     # Text submitted to Author's Note field
-    authornotetemplate = "[Author's note: <|>]"  # Author's note template
-    setauthornotetemplate = authornotetemplate  # Saved author's note template in settings
-    andepth     = 3      # How far back in history to append author's note
-    actions     = structures.KoboldStoryRegister()  # Actions submitted by user and AI
-    actions_metadata = {} # List of dictonaries, one dictonary for every action that contains information about the action like alternative options.
-                          # Contains at least the same number of items as actions. Back action will remove an item from actions, but not actions_metadata
-                          # Dictonary keys are:
-                          # Selected Text: (text the user had selected. None when this is a newly generated action)
-                          # Alternative Generated Text: {Text, Pinned, Previous Selection, Edited}
-                          # 
-    worldinfo   = []     # List of World Info key/value objects
-    worldinfo_i = []     # List of World Info key/value objects sans uninitialized entries
-    worldinfo_u = {}     # Dictionary of World Info UID - key/value pairs
-    wifolders_d = {}     # Dictionary of World Info folder UID-info pairs
-    wifolders_l = []     # List of World Info folder UIDs
-    wifolders_u = {}     # Dictionary of pairs of folder UID - list of WI UID
-    modelconfig = {}     # Raw contents of the model's config.json, or empty dictionary if none found
-    lua_state   = None   # Lua state of the Lua scripting system
-    lua_koboldbridge = None  # `koboldbridge` from bridge.lua
-    lua_kobold  = None   # `kobold` from` bridge.lua
-    lua_koboldcore = None  # `koboldcore` from bridge.lua
-    lua_logname = ...    # Name of previous userscript that logged to terminal
-    lua_running = False  # Whether or not Lua is running (i.e. wasn't stopped due to an error)
-    lua_edited  = set()  # Set of chunk numbers that were edited from a Lua generation modifier
-    lua_deleted = set()  # Set of chunk numbers that were deleted from a Lua generation modifier
-    generated_tkns = 0   # If using a backend that supports Lua generation modifiers, how many tokens have already been generated, otherwise 0
-    abort       = False  # Whether or not generation was aborted by clicking on the submit button during generation
-    compiling   = False  # If using a TPU Colab, this will be set to True when the TPU backend starts compiling and then set to False again
-    checking    = False  # Whether or not we are actively checking to see if TPU backend is compiling or not
-    sp_changed  = False  # This gets set to True whenever a userscript changes the soft prompt so that check_for_sp_change() can alert the browser that the soft prompt has changed
-    spfilename  = ""     # Filename of soft prompt to load, or an empty string if not using a soft prompt
-    userscripts = []     # List of userscripts to load
-    last_userscripts = []  # List of previous userscript filenames from the previous time userscripts were send via usstatitems
-    corescript  = "default.lua"  # Filename of corescript to load
-    # badwords    = []     # Array of str/chr values that should be removed from output
-    badwordsids = []
-    badwordsids_default = [[13460], [6880], [50256], [42496], [4613], [17414], [22039], [16410], [27], [29], [38430], [37922], [15913], [24618], [28725], [58], [47175], [36937], [26700], [12878], [16471], [37981], [5218], [29795], [13412], [45160], [3693], [49778], [4211], [20598], [36475], [33409], [44167], [32406], [29847], [29342], [42669], [685], [25787], [7359], [3784], [5320], [33994], [33490], [34516], [43734], [17635], [24293], [9959], [23785], [21737], [28401], [18161], [26358], [32509], [1279], [38155], [18189], [26894], [6927], [14610], [23834], [11037], [14631], [26933], [46904], [22330], [25915], [47934], [38214], [1875], [14692], [41832], [13163], [25970], [29565], [44926], [19841], [37250], [49029], [9609], [44438], [16791], [17816], [30109], [41888], [47527], [42924], [23984], [49074], [33717], [31161], [49082], [30138], [31175], [12240], [14804], [7131], [26076], [33250], [3556], [38381], [36338], [32756], [46581], [17912], [49146]] # Tokenized array of badwords used to prevent AI artifacting
-    badwordsids_neox = [[0], [1], [44162], [9502], [12520], [31841], [36320], [49824], [34417], [6038], [34494], [24815], [26635], [24345], [3455], [28905], [44270], [17278], [32666], [46880], [7086], [43189], [37322], [17778], [20879], [49821], [3138], [14490], [4681], [21391], [26786], [43134], [9336], [683], [48074], [41256], [19181], [29650], [28532], [36487], [45114], [46275], [16445], [15104], [11337], [1168], [5647], [29], [27482], [44965], [43782], [31011], [42944], [47389], [6334], [17548], [38329], [32044], [35487], [2239], [34761], [7444], [1084], [12399], [18990], [17636], [39083], [1184], [35830], [28365], [16731], [43467], [47744], [1138], [16079], [40116], [45564], [18297], [42368], [5456], [18022], [42696], [34476], [23505], [23741], [39334], [37944], [45382], [38709], [33440], [26077], [43600], [34418], [36033], [6660], [48167], [48471], [15775], [19884], [41533], [1008], [31053], [36692], [46576], [20095], [20629], [31759], [46410], [41000], [13488], [30952], [39258], [16160], [27655], [22367], [42767], [43736], [49694], [13811], [12004], [46768], [6257], [37471], [5264], [44153], [33805], [20977], [21083], [25416], [14277], [31096], [42041], [18331], [33376], [22372], [46294], [28379], [38475], [1656], [5204], [27075], [50001], [16616], [11396], [7748], [48744], [35402], [28120], [41512], [4207], [43144], [14767], [15640], [16595], [41305], [44479], [38958], [18474], [22734], [30522], [46267], [60], [13976], [31830], [48701], [39822], [9014], [21966], [31422], [28052], [34607], [2479], [3851], [32214], [44082], [45507], [3001], [34368], [34758], [13380], [38363], [4299], [46802], [30996], [12630], [49236], [7082], [8795], [5218], [44740], [9686], [9983], [45301], [27114], [40125], [1570], [26997], [544], [5290], [49193], [23781], [14193], [40000], [2947], [43781], [9102], [48064], [42274], [18772], [49384], [9884], [45635], [43521], [31258], [32056], [47686], [21760], [13143], [10148], [26119], [44308], [31379], [36399], [23983], [46694], [36134], [8562], [12977], [35117], [28591], [49021], [47093], [28653], [29013], [46468], [8605], [7254], [25896], [5032], [8168], [36893], [38270], [20499], [27501], [34419], [29547], [28571], [36586], [20871], [30537], [26842], [21375], [31148], [27618], [33094], [3291], [31789], [28391], [870], [9793], [41361], [47916], [27468], [43856], [8850], [35237], [15707], [47552], [2730], [41449], [45488], [3073], [49806], [21938], [24430], [22747], [20924], [46145], [20481], [20197], [8239], [28231], [17987], [42804], [47269], [29972], [49884], [21382], [46295], [36676], [34616], [3921], [26991], [27720], [46265], [654], [9855], [40354], [5291], [34904], [44342], [2470], [14598], [880], [19282], [2498], [24237], [21431], [16369], [8994], [44524], [45662], [13663], [37077], [1447], [37786], [30863], [42854], [1019], [20322], [4398], [12159], [44072], [48664], [31547], [18736], [9259], [31], [16354], [21810], [4357], [37982], [5064], [2033], [32871], [47446], [62], [22158], [37387], [8743], [47007], [17981], [11049], [4622], [37916], [36786], [35138], [29925], [14157], [18095], [27829], [1181], [22226], [5709], [4725], [30189], [37014], [1254], [11380], [42989], [696], [24576], [39487], [30119], [1092], [8088], [2194], [9899], [14412], [21828], [3725], [13544], [5180], [44679], [34398], [3891], [28739], [14219], [37594], [49550], [11326], [6904], [17266], [5749], [10174], [23405], [9955], [38271], [41018], [13011], [48392], [36784], [24254], [21687], [23734], [5413], [41447], [45472], [10122], [17555], [15830], [47384], [12084], [31350], [47940], [11661], [27988], [45443], [905], [49651], [16614], [34993], [6781], [30803], [35869], [8001], [41604], [28118], [46462], [46762], [16262], [17281], [5774], [10943], [5013], [18257], [6750], [4713], [3951], [11899], [38791], [16943], [37596], [9318], [18413], [40473], [13208], [16375]]
-    badwordsids_opt = [[44717], [46613], [48513], [49923], [50185], [48755], [8488], [43303], [49659], [48601], [49817], [45405], [48742], [49925], [47720], [11227], [48937], [48784], [50017], [42248], [49310], [48082], [49895], [50025], [49092], [49007], [8061], [44226], [0], [742], [28578], [15698], [49784], [46679], [39365], [49281], [49609], [48081], [48906], [46161], [48554], [49670], [48677], [49721], [49632], [48610], [48462], [47457], [10975], [46077], [28696], [48709], [43839], [49798], [49154], [48203], [49625], [48395], [50155], [47161], [49095], [48833], [49420], [49666], [48443], [22176], [49242], [48651], [49138], [49750], [40389], [48021], [21838], [49070], [45333], [40862], [1], [49915], [33525], [49858], [50254], [44403], [48992], [48872], [46117], [49853], [47567], [50206], [41552], [50068], [48999], [49703], [49940], [49329], [47620], [49868], [49962], [2], [44082], [50236], [31274], [50260], [47052], [42645], [49177], [17523], [48691], [49900], [49069], [49358], [48794], [47529], [46479], [48457], [646], [49910], [48077], [48935], [46386], [48902], [49151], [48759], [49803], [45587], [48392], [47789], [48654], [49836], [49230], [48188], [50264], [46844], [44690], [48505], [50161], [27779], [49995], [41833], [50154], [49097], [48520], [50018], [8174], [50084], [49366], [49526], [50193], [7479], [49982], [3]]
-    fp32_model  = False  # Whether or not the most recently loaded HF model was in fp32 format
-    deletewi    = None   # Temporary storage for UID to delete
-    wirmvwhtsp  = False  # Whether to remove leading whitespace from WI entries
-    widepth     = 3      # How many historical actions to scan for WI hits
-    mode        = "play" # Whether the interface is in play, memory, or edit mode
-    editln      = 0      # Which line was last selected in Edit Mode
-    gpu_device  = 0      # Which PyTorch device to use when using pure GPU generation
-    url         = "https://api.inferkit.com/v1/models/standard/generate" # InferKit API URL
-    oaiurl      = "" # OpenAI API URL
-    oaiengines  = "https://api.openai.com/v1/engines"
-    colaburl    = ""     # Ngrok url for Google Colab mode
-    apikey      = ""     # API key to use for InferKit API calls
-    oaiapikey   = ""     # API key to use for OpenAI API calls
-    savedir     = getcwd()+"\\stories"
-    hascuda     = False  # Whether torch has detected CUDA on the system
-    usegpu      = False  # Whether to launch pipeline with GPU support
-    custmodpth  = ""     # Filesystem location of custom model to run
-    formatoptns = {'frmttriminc': True, 'frmtrmblln': False, 'frmtrmspch': False, 'frmtadsnsp': False, 'singleline': False}     # Container for state of formatting options
-    importnum   = -1     # Selection on import popup list
-    importjs    = {}     # Temporary storage for import data
-    loadselect  = ""     # Temporary storage for story filename to load
-    spselect    = ""     # Temporary storage for soft prompt filename to load
-    spmeta      = None   # Metadata of current soft prompt, or None if not using a soft prompt
-    sp          = None   # Current soft prompt tensor (as a NumPy array)
-    sp_length   = 0      # Length of current soft prompt in tokens, or 0 if not using a soft prompt
-    has_genmod  = False  # Whether or not at least one loaded Lua userscript has a generation modifier
-    svowname    = ""     # Filename that was flagged for overwrite confirm
-    saveow      = False  # Whether or not overwrite confirm has been displayed
-    autosave    = False  # Whether or not to automatically save after each action
-    genseqs     = []     # Temporary storage for generated sequences
-    recentback  = False  # Whether Back button was recently used without Submitting or Retrying after
-    recentrng   = None   # If a new random game was recently generated without Submitting after, this is the topic used (as a string), otherwise this is None
-    recentrngm  = None   # If a new random game was recently generated without Submitting after, this is the memory used (as a string), otherwise this is None
-    useprompt   = False   # Whether to send the full prompt with every submit action
-    breakmodel  = False  # For GPU users, whether to use both system RAM and VRAM to conserve VRAM while offering speedup compared to CPU-only
-    bmsupported = False  # Whether the breakmodel option is supported (GPT-Neo/GPT-J/XGLM/OPT only, currently)
-    nobreakmodel = False  # Something specifically requested Breakmodel to be disabled (For example a models config)
-    smandelete  = False  # Whether stories can be deleted from inside the browser
-    smanrename  = False  # Whether stories can be renamed from inside the browser
-    allowsp     = False  # Whether we are allowed to use soft prompts (by default enabled if we're using GPT-2, GPT-Neo or GPT-J)
-    modeldim    = -1     # Embedding dimension of your model (e.g. it's 4096 for GPT-J-6B and 2560 for GPT-Neo-2.7B)
-    laststory   = None   # Filename (without extension) of most recent story JSON file we loaded
-    regex_sl    = re.compile(r'\n*(?<=.) *\n(.|\n)*')  # Pattern for limiting the output to a single line
-    acregex_ai  = re.compile(r'\n* *>(.|\n)*')  # Pattern for matching adventure actions from the AI so we can remove them
-    acregex_ui  = re.compile(r'^ *(&gt;.*)$', re.MULTILINE)    # Pattern for matching actions in the HTML-escaped story so we can apply colouring, etc (make sure to encase part to format in parentheses)
-    comregex_ai = re.compile(r'(?:\n<\|(?:.|\n)*?\|>(?=\n|$))|(?:<\|(?:.|\n)*?\|>\n?)')  # Pattern for matching comments to remove them before sending them to the AI
-    comregex_ui = re.compile(r'(&lt;\|(?:.|\n)*?\|&gt;)')  # Pattern for matching comments in the editor
-    sampler_order = utils.default_sampler_order.copy()
-    chatmode    = False
-    chatname    = "You"
-    adventure   = False
-    actionmode  = 1
-    dynamicscan = False
-    host        = False
-    flaskwebgui = False
-    nopromptgen = False
-    rngpersist  = False
-    nogenmod    = False
-    welcome     = False  # Custom Welcome Text (False is default)
-    newlinemode = "ns"
-    quiet       = False # If set will suppress any story text from being printed to the console (will only be seen on the client web page)
-    debug       = False # If set to true, will send debug information to the client for display
-    lazy_load   = True  # Whether or not to use torch_lazy_loader.py for transformers models in order to reduce CPU memory usage
-    use_colab_tpu = os.environ.get("COLAB_TPU_ADDR", "") != "" or os.environ.get("TPU_NAME", "") != ""  # Whether or not we're in a Colab TPU instance or Kaggle TPU instance and are going to use the TPU rather than the CPU
-    revision    = None
 
-utils.vars = vars
+model_settings = koboldai_settings.model_settings()
+story_settings = koboldai_settings.story_settings()
+user_settings = koboldai_settings.user_settings()
+system_settings = koboldai_settings.system_settings()
+
+utils.model_settings = model_settings
+utils.story_settings = story_settings
+utils.user_settings = user_settings
+utils.system_settings = system_settings
 
 class Send_to_socketio(object):
     def write(self, bar):
@@ -370,6 +245,7 @@ app = Flask(__name__, root_path=os.getcwd())
 app.config['SECRET KEY'] = 'secret!'
 app.config['TEMPLATES_AUTO_RELOAD'] = True
 socketio = SocketIO(app, async_method="eventlet")
+koboldai_settings.socketio = socketio
 print("{0}OK!{1}".format(colors.GREEN, colors.END))
 
 #==================================================================#
@@ -379,7 +255,7 @@ def sendModelSelection(menu="mainmenu", folder="./models"):
     #If we send one of the manual load options, send back the list of model directories, otherwise send the menu
     if menu in ('NeoCustom', 'GPT2Custom'):
         (paths, breadcrumbs) = get_folder_path_info(folder)
-        if vars.host:
+        if system_settings.host:
             breadcrumbs = []
         menu_list = [[folder, menu, "", False] for folder in paths]
         menu_list.append(["Return to Main Menu", "mainmenu", "", True])
@@ -425,29 +301,29 @@ def getModelSelection(modellist):
         i += 1
     print(" ");
     modelsel = 0
-    vars.model = ''
-    while(vars.model == ''):
+    model_settings.model = ''
+    while(model_settings.model == ''):
         modelsel = input("Model #> ")
         if(modelsel.isnumeric() and int(modelsel) > 0 and int(modelsel) <= len(modellist)):
-            vars.model = modellist[int(modelsel)-1][1]
+            model_settings.model = modellist[int(modelsel)-1][1]
         else:
             print("{0}Please enter a valid selection.{1}".format(colors.RED, colors.END))
     
     # Model Lists
     try:
-        getModelSelection(eval(vars.model))
+        getModelSelection(eval(model_settings.model))
     except Exception as e:
-        if(vars.model == "Return"):
+        if(model_settings.model == "Return"):
             getModelSelection(mainmenu)
                 
         # If custom model was selected, get the filesystem location and store it
-        if(vars.model == "NeoCustom" or vars.model == "GPT2Custom"):
+        if(model_settings.model == "NeoCustom" or model_settings.model == "GPT2Custom"):
             print("{0}Please choose the folder where pytorch_model.bin is located:{1}\n".format(colors.CYAN, colors.END))
             modpath = fileops.getdirpath(getcwd() + "/models", "Select Model Folder")
         
             if(modpath):
                 # Save directory to vars
-                vars.custmodpth = modpath
+                model_settings.custmodpth = modpath
             else:
                 # Print error and retry model selection
                 print("{0}Model select cancelled!{1}".format(colors.RED, colors.END))
@@ -458,7 +334,7 @@ def check_if_dir_is_model(path):
     if os.path.exists(path):
         try:
             from transformers import AutoConfig
-            model_config = AutoConfig.from_pretrained(path, revision=vars.revision, cache_dir="cache")
+            model_config = AutoConfig.from_pretrained(path, revision=model_settings.revision, cache_dir="cache")
         except:
             return False
         return True
@@ -482,11 +358,11 @@ def getmodelname():
     if(args.configname):
        modelname = args.configname
        return modelname
-    if(vars.model in ("NeoCustom", "GPT2Custom", "TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX")):
-        modelname = os.path.basename(os.path.normpath(vars.custmodpth))
+    if(model_settings.model in ("NeoCustom", "GPT2Custom", "TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX")):
+        modelname = os.path.basename(os.path.normpath(model_settings.custmodpth))
         return modelname
     else:
-        modelname = vars.model
+        modelname = model_settings.model
         return modelname
 
 #==================================================================#
@@ -609,25 +485,25 @@ def device_config(config):
     while(len(breakmodel.gpu_blocks) and breakmodel.gpu_blocks[-1] == 0):
         breakmodel.gpu_blocks.pop()
     if(len(breakmodel.gpu_blocks) and breakmodel.gpu_blocks[-1] in (-1, utils.num_layers(config))):
-        vars.breakmodel = False
-        vars.usegpu = True
-        vars.gpu_device = len(breakmodel.gpu_blocks)-1
+        system_settings.breakmodel = False
+        system_settings.usegpu = True
+        system_settings.gpu_device = len(breakmodel.gpu_blocks)-1
         return
 
     if(not breakmodel.gpu_blocks):
         print("Nothing assigned to a GPU, reverting to CPU only mode")
         import breakmodel
         breakmodel.primary_device = "cpu"
-        vars.breakmodel = False
-        vars.usegpu = False
+        system_settings.breakmodel = False
+        system_settings.usegpu = False
         return
 
 def move_model_to_devices(model):
     global generator
 
-    if(not utils.HAS_ACCELERATE and not vars.breakmodel):
-        if(vars.usegpu):
-            model = model.half().to(vars.gpu_device)
+    if(not utils.HAS_ACCELERATE and not system_settings.breakmodel):
+        if(system_settings.usegpu):
+            model = model.half().to(system_settings.gpu_device)
         else:
             model = model.to('cpu').float()
         generator = model.generate
@@ -699,56 +575,56 @@ def loadmodelsettings():
     except Exception as e:
         try:
             try:
-                js   = json.load(open(vars.custmodpth + "/config.json", "r"))
+                js   = json.load(open(model_settings.custmodpth + "/config.json", "r"))
             except Exception as e:
-                js   = json.load(open(vars.custmodpth.replace('/', '_') + "/config.json", "r"))            
+                js   = json.load(open(model_settings.custmodpth.replace('/', '_') + "/config.json", "r"))            
         except Exception as e:
             js   = {}
-    if vars.model_type == "xglm" or js.get("compat", "j") == "fairseq_lm":
-        vars.newlinemode = "s"  # Default to </s> newline mode if using XGLM
-    if vars.model_type == "opt" or vars.model_type == "bloom":
-        vars.newlinemode = "ns"  # Handle </s> but don't convert newlines if using Fairseq models that have newlines trained in them
-    vars.modelconfig = js
+    if model_settings.model_type == "xglm" or js.get("compat", "j") == "fairseq_lm":
+        model_settings.newlinemode = "s"  # Default to </s> newline mode if using XGLM
+    if model_settings.model_type == "opt" or model_settings.model_type == "bloom":
+        model_settings.newlinemode = "ns"  # Handle </s> but don't convert newlines if using Fairseq models that have newlines trained in them
+    model_settings.modelconfig = js
     if("badwordsids" in js):
-        vars.badwordsids = js["badwordsids"]
+        model_settings.badwordsids = js["badwordsids"]
     if("nobreakmodel" in js):
-        vars.nobreakmodel = js["nobreakmodel"]
+        system_settings.nobreakmodel = js["nobreakmodel"]
     if("sampler_order" in js):
-        vars.sampler_order = js["sampler_order"]
+        model_settings.sampler_order = js["sampler_order"]
     if("temp" in js):
-        vars.temp       = js["temp"]
+        model_settings.temp       = js["temp"]
     if("top_p" in js):
-        vars.top_p      = js["top_p"]
+        model_settings.top_p      = js["top_p"]
     if("top_k" in js):
-        vars.top_k      = js["top_k"]
+        model_settings.top_k      = js["top_k"]
     if("tfs" in js):
-        vars.tfs        = js["tfs"]
+        model_settings.tfs        = js["tfs"]
     if("typical" in js):
-        vars.typical    = js["typical"]
+        model_settings.typical    = js["typical"]
     if("top_a" in js):
-        vars.top_a      = js["top_a"]
+        model_settings.top_a      = js["top_a"]
     if("rep_pen" in js):
-        vars.rep_pen    = js["rep_pen"]
+        model_settings.rep_pen    = js["rep_pen"]
     if("rep_pen_slope" in js):
-        vars.rep_pen_slope = js["rep_pen_slope"]
+        model_settings.rep_pen_slope = js["rep_pen_slope"]
     if("rep_pen_range" in js):
-        vars.rep_pen_range = js["rep_pen_range"]
+        model_settings.rep_pen_range = js["rep_pen_range"]
     if("adventure" in js):
-        vars.adventure = js["adventure"]
+        story_settings.adventure = js["adventure"]
     if("chatmode" in js):
-        vars.chatmode = js["chatmode"]
+        story_settings.chatmode = js["chatmode"]
     if("dynamicscan" in js):
-        vars.dynamicscan = js["dynamicscan"]
+        story_settings.dynamicscan = js["dynamicscan"]
     if("formatoptns" in js):
-        vars.formatoptns = js["formatoptns"]
+        user_settings.formatoptns = js["formatoptns"]
     if("welcome" in js):
-        vars.welcome = js["welcome"]
+        system_settings.welcome = js["welcome"]
     if("newlinemode" in js):
-        vars.newlinemode = js["newlinemode"]
+        model_settings.newlinemode = js["newlinemode"]
     if("antemplate" in js):
-        vars.setauthornotetemplate = js["antemplate"]
-        if(not vars.gamestarted):
-            vars.authornotetemplate = vars.setauthornotetemplate
+        story_settings.setauthornotetemplate = js["antemplate"]
+        if(not story_settings.gamestarted):
+            story_settings.authornotetemplate = story_settings.setauthornotetemplate
 
 #==================================================================#
 #  Take settings from vars and write them to client settings file
@@ -756,41 +632,41 @@ def loadmodelsettings():
 def savesettings():
      # Build json to write
     js = {}
-    js["apikey"]      = vars.apikey
-    js["andepth"]     = vars.andepth
-    js["sampler_order"] = vars.sampler_order
-    js["temp"]        = vars.temp
-    js["top_p"]       = vars.top_p
-    js["top_k"]       = vars.top_k
-    js["tfs"]         = vars.tfs
-    js["typical"]     = vars.typical
-    js["top_a"]       = vars.top_a
-    js["rep_pen"]     = vars.rep_pen
-    js["rep_pen_slope"] = vars.rep_pen_slope
-    js["rep_pen_range"] = vars.rep_pen_range
-    js["genamt"]      = vars.genamt
-    js["max_length"]  = vars.max_length
-    js["ikgen"]       = vars.ikgen
-    js["formatoptns"] = vars.formatoptns
-    js["numseqs"]     = vars.numseqs
-    js["widepth"]     = vars.widepth
-    js["useprompt"]   = vars.useprompt
-    js["adventure"]   = vars.adventure
-    js["chatmode"]    = vars.chatmode
-    js["chatname"]    = vars.chatname
-    js["dynamicscan"] = vars.dynamicscan
-    js["nopromptgen"] = vars.nopromptgen
-    js["rngpersist"]  = vars.rngpersist
-    js["nogenmod"]    = vars.nogenmod
-    js["autosave"]    = vars.autosave
-    js["welcome"]     = vars.welcome
-    js["newlinemode"] = vars.newlinemode
+    js["apikey"]      = model_settings.apikey
+    js["andepth"]     = story_settings.andepth
+    js["sampler_order"] = model_settings.sampler_order
+    js["temp"]        = model_settings.temp
+    js["top_p"]       = model_settings.top_p
+    js["top_k"]       = model_settings.top_k
+    js["tfs"]         = model_settings.tfs
+    js["typical"]     = model_settings.typical
+    js["top_a"]       = model_settings.top_a
+    js["rep_pen"]     = model_settings.rep_pen
+    js["rep_pen_slope"] = model_settings.rep_pen_slope
+    js["rep_pen_range"] = model_settings.rep_pen_range
+    js["genamt"]      = model_settings.genamt
+    js["max_length"]  = model_settings.max_length
+    js["ikgen"]       = model_settings.ikgen
+    js["formatoptns"] = user_settings.formatoptns
+    js["numseqs"]     = model_settings.numseqs
+    js["widepth"]     = user_settings.widepth
+    js["useprompt"]   = story_settings.useprompt
+    js["adventure"]   = story_settings.adventure
+    js["chatmode"]    = story_settings.chatmode
+    js["chatname"]    = story_settings.chatname
+    js["dynamicscan"] = story_settings.dynamicscan
+    js["nopromptgen"] = user_settings.nopromptgen
+    js["rngpersist"]  = user_settings.rngpersist
+    js["nogenmod"]    = user_settings.nogenmod
+    js["autosave"]    = user_settings.autosave
+    js["welcome"]     = system_settings.welcome
+    js["newlinemode"] = model_settings.newlinemode
 
-    js["antemplate"]  = vars.setauthornotetemplate
+    js["antemplate"]  = story_settings.setauthornotetemplate
 
-    js["userscripts"] = vars.userscripts
-    js["corescript"]  = vars.corescript
-    js["softprompt"]  = vars.spfilename
+    js["userscripts"] = system_settings.userscripts
+    js["corescript"]  = system_settings.corescript
+    js["softprompt"]  = system_settings.spfilename
 
     # Write it
     if not os.path.exists('settings'):
@@ -832,82 +708,82 @@ def loadsettings():
 def processsettings(js):
 # Copy file contents to vars
     if("apikey" in js):
-        vars.apikey     = js["apikey"]
+        model_settings.apikey     = js["apikey"]
     if("andepth" in js):
-        vars.andepth    = js["andepth"]
+        story_settings.andepth    = js["andepth"]
     if("sampler_order" in js):
-        vars.sampler_order = js["sampler_order"]
+        model_settings.sampler_order = js["sampler_order"]
     if("temp" in js):
-        vars.temp       = js["temp"]
+        model_settings.temp       = js["temp"]
     if("top_p" in js):
-        vars.top_p      = js["top_p"]
+        model_settings.top_p      = js["top_p"]
     if("top_k" in js):
-        vars.top_k      = js["top_k"]
+        model_settings.top_k      = js["top_k"]
     if("tfs" in js):
-        vars.tfs        = js["tfs"]
+        model_settings.tfs        = js["tfs"]
     if("typical" in js):
-        vars.typical    = js["typical"]
+        model_settings.typical    = js["typical"]
     if("top_a" in js):
-        vars.top_a      = js["top_a"]
+        model_settings.top_a      = js["top_a"]
     if("rep_pen" in js):
-        vars.rep_pen    = js["rep_pen"]
+        model_settings.rep_pen    = js["rep_pen"]
     if("rep_pen_slope" in js):
-        vars.rep_pen_slope = js["rep_pen_slope"]
+        model_settings.rep_pen_slope = js["rep_pen_slope"]
     if("rep_pen_range" in js):
-        vars.rep_pen_range = js["rep_pen_range"]
+        model_settings.rep_pen_range = js["rep_pen_range"]
     if("genamt" in js):
-        vars.genamt     = js["genamt"]
+        model_settings.genamt     = js["genamt"]
     if("max_length" in js):
-        vars.max_length = js["max_length"]
+        model_settings.max_length = js["max_length"]
     if("ikgen" in js):
-        vars.ikgen      = js["ikgen"]
+        model_settings.ikgen      = js["ikgen"]
     if("formatoptns" in js):
-        vars.formatoptns = js["formatoptns"]
+        user_settings.formatoptns = js["formatoptns"]
     if("numseqs" in js):
-        vars.numseqs = js["numseqs"]
+        model_settings.numseqs = js["numseqs"]
     if("widepth" in js):
-        vars.widepth = js["widepth"]
+        user_settings.widepth = js["widepth"]
     if("useprompt" in js):
-        vars.useprompt = js["useprompt"]
+        story_settings.useprompt = js["useprompt"]
     if("adventure" in js):
-        vars.adventure = js["adventure"]
+        story_settings.adventure = js["adventure"]
     if("chatmode" in js):
-        vars.chatmode = js["chatmode"]
+        story_settings.chatmode = js["chatmode"]
     if("chatname" in js):
-        vars.chatname = js["chatname"]
+        story_settings.chatname = js["chatname"]
     if("dynamicscan" in js):
-        vars.dynamicscan = js["dynamicscan"]
+        story_settings.dynamicscan = js["dynamicscan"]
     if("nopromptgen" in js):
-        vars.nopromptgen = js["nopromptgen"]
+        user_settings.nopromptgen = js["nopromptgen"]
     if("rngpersist" in js):
-        vars.rngpersist = js["rngpersist"]
+        user_settings.rngpersist = js["rngpersist"]
     if("nogenmod" in js):
-        vars.nogenmod = js["nogenmod"]
+        user_settings.nogenmod = js["nogenmod"]
     if("autosave" in js):
-        vars.autosave = js["autosave"]
+        user_settings.autosave = js["autosave"]
     if("newlinemode" in js):
-        vars.newlinemode = js["newlinemode"]
+        model_settings.newlinemode = js["newlinemode"]
     if("welcome" in js):
-        vars.welcome = js["welcome"]
+        system_settings.welcome = js["welcome"]
 
     if("antemplate" in js):
-        vars.setauthornotetemplate = js["antemplate"]
-        if(not vars.gamestarted):
-            vars.authornotetemplate = vars.setauthornotetemplate
+        story_settings.setauthornotetemplate = js["antemplate"]
+        if(not story_settings.gamestarted):
+            story_settings.authornotetemplate = story_settings.setauthornotetemplate
     
     if("userscripts" in js):
-        vars.userscripts = []
+        system_settings.userscripts = []
         for userscript in js["userscripts"]:
             if type(userscript) is not str:
                 continue
             userscript = userscript.strip()
             if len(userscript) != 0 and all(q not in userscript for q in ("..", ":")) and all(userscript[0] not in q for q in ("/", "\\")) and os.path.exists(fileops.uspath(userscript)):
-                vars.userscripts.append(userscript)
+                system_settings.userscripts.append(userscript)
 
     if("corescript" in js and type(js["corescript"]) is str and all(q not in js["corescript"] for q in ("..", ":")) and all(js["corescript"][0] not in q for q in ("/", "\\"))):
-        vars.corescript = js["corescript"]
+        system_settings.corescript = js["corescript"]
     else:
-        vars.corescript = "default.lua"
+        system_settings.corescript = "default.lua"
 
 #==================================================================#
 #  Load a soft prompt from a file
@@ -916,38 +792,38 @@ def processsettings(js):
 def check_for_sp_change():
     while(True):
         time.sleep(0.1)
-        if(vars.sp_changed):
+        if(system_settings.sp_changed):
             with app.app_context():
-                emit('from_server', {'cmd': 'spstatitems', 'data': {vars.spfilename: vars.spmeta} if vars.allowsp and len(vars.spfilename) else {}}, namespace=None, broadcast=True)
-            vars.sp_changed = False
+                emit('from_server', {'cmd': 'spstatitems', 'data': {system_settings.spfilename: system_settings.spmeta} if system_settings.allowsp and len(system_settings.spfilename) else {}}, namespace=None, broadcast=True)
+            system_settings.sp_changed = False
 
 socketio.start_background_task(check_for_sp_change)
 
 def spRequest(filename):
-    if(not vars.allowsp):
+    if(not system_settings.allowsp):
         raise RuntimeError("Soft prompts are not supported by your current model/backend")
     
-    old_filename = vars.spfilename
+    old_filename = system_settings.spfilename
 
-    vars.spfilename = ""
+    system_settings.spfilename = ""
     settingschanged()
 
     if(len(filename) == 0):
-        vars.sp = None
-        vars.sp_length = 0
+        system_settings.sp = None
+        system_settings.sp_length = 0
         if(old_filename != filename):
-            vars.sp_changed = True
+            system_settings.sp_changed = True
         return
 
     global np
     if 'np' not in globals():
         import numpy as np
 
-    z, version, shape, fortran_order, dtype = fileops.checksp(filename, vars.modeldim)
+    z, version, shape, fortran_order, dtype = fileops.checksp(filename, model_settings.modeldim)
     if not isinstance(z, zipfile.ZipFile):
         raise RuntimeError(f"{repr(filename)} is not a valid soft prompt file")
     with z.open('meta.json') as f:
-        vars.spmeta = json.load(f)
+        system_settings.spmeta = json.load(f)
     z.close()
 
     with np.load(fileops.sppath(filename), allow_pickle=False) as f:
@@ -963,10 +839,10 @@ def spRequest(filename):
         tensor = np.float32(tensor)
     assert not np.isinf(tensor).any() and not np.isnan(tensor).any()
 
-    vars.sp_length = tensor.shape[-2]
-    vars.spmeta["n_tokens"] = vars.sp_length
+    system_settings.sp_length = tensor.shape[-2]
+    system_settings.spmeta["n_tokens"] = system_settings.sp_length
 
-    if(vars.use_colab_tpu or vars.model in ("TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX")):
+    if(system_settings.use_colab_tpu or model_settings.model in ("TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX")):
         rows = tensor.shape[0]
         padding_amount = tpu_mtj_backend.params["seq"] - (tpu_mtj_backend.params["seq"] % -tpu_mtj_backend.params["cores_per_replica"]) - rows
         tensor = np.pad(tensor, ((0, padding_amount), (0, 0)))
@@ -975,14 +851,14 @@ def spRequest(filename):
             -1,
             tpu_mtj_backend.params.get("d_embed", tpu_mtj_backend.params["d_model"]),
         )
-        vars.sp = tpu_mtj_backend.shard_xmap(np.float32(tensor))
+        system_settings.sp = tpu_mtj_backend.shard_xmap(np.float32(tensor))
     else:
-        vars.sp = torch.from_numpy(tensor)
+        system_settings.sp = torch.from_numpy(tensor)
 
-    vars.spfilename = filename
+    system_settings.spfilename = filename
     settingschanged()
     if(old_filename != filename):
-            vars.sp_changed = True
+            system_settings.sp_changed = True
 
 #==================================================================#
 # Startup
@@ -1029,8 +905,8 @@ def general_startup(override_args=None):
     else:
         args = parser.parse_args()
 
-    vars.model = args.model;
-    vars.revision = args.revision
+    model_settings.model = args.model;
+    model_settings.revision = args.revision
 
     if args.colab:
         args.remote = True;
@@ -1042,53 +918,53 @@ def general_startup(override_args=None):
         args.noaimenu = True;
 
     if args.quiet:
-        vars.quiet = True
+        system_settings.quiet = True
 
     if args.nobreakmodel:
-        vars.nobreakmodel = True;
+        system_settings.nobreakmodel = True;
 
     if args.remote:
-        vars.host = True;
+        system_settings.host = True;
 
     if args.ngrok:
-        vars.host = True;
+        system_settings.host = True;
 
     if args.localtunnel:
-        vars.host = True;
+        system_settings.host = True;
 
     if args.host:
-        vars.host = True;
+        system_settings.host = True;
 
     if args.cpu:
-        vars.use_colab_tpu = False
+        system_settings.use_colab_tpu = False
 
-    vars.smandelete = vars.host == args.override_delete
-    vars.smanrename = vars.host == args.override_rename
+    system_settings.smandelete = system_settings.host == args.override_delete
+    system_settings.smanrename = system_settings.host == args.override_rename
 
-    vars.aria2_port = args.aria2_port or 6799
+    system_settings.aria2_port = args.aria2_port or 6799
     
     #Now let's look to see if we are going to force a load of a model from a user selected folder
-    if(vars.model == "selectfolder"):
+    if(model_settings.model == "selectfolder"):
         print("{0}Please choose the folder where pytorch_model.bin is located:{1}\n".format(colors.CYAN, colors.END))
         modpath = fileops.getdirpath(getcwd() + "/models", "Select Model Folder")
     
         if(modpath):
             # Save directory to vars
-            vars.model = "NeoCustom"
-            vars.custmodpth = modpath
+            model_settings.model = "NeoCustom"
+            model_settings.custmodpth = modpath
     elif args.model:
-        print("Welcome to KoboldAI!\nYou have selected the following Model:", vars.model)
+        print("Welcome to KoboldAI!\nYou have selected the following Model:", model_settings.model)
         if args.path:
             print("You have selected the following path for your Model :", args.path)
-            vars.custmodpth = args.path;
-            vars.colaburl = args.path + "/request"; # Lets just use the same parameter to keep it simple
+            model_settings.custmodpth = args.path;
+            model_settings.colaburl = args.path + "/request"; # Lets just use the same parameter to keep it simple
 #==================================================================#
 # Load Model
 #==================================================================# 
 
 def tpumtjgetsofttokens():
     soft_tokens = None
-    if(vars.sp is None):
+    if(system_settings.sp is None):
         global np
         if 'np' not in globals():
             import numpy as np
@@ -1101,10 +977,10 @@ def tpumtjgetsofttokens():
             -1,
             tpu_mtj_backend.params.get("d_embed", tpu_mtj_backend.params["d_model"]),
         )
-        vars.sp = tpu_mtj_backend.shard_xmap(tensor)
+        system_settings.sp = tpu_mtj_backend.shard_xmap(tensor)
     soft_tokens = np.arange(
         tpu_mtj_backend.params["n_vocab"] + tpu_mtj_backend.params["n_vocab_padding"],
-        tpu_mtj_backend.params["n_vocab"] + tpu_mtj_backend.params["n_vocab_padding"] + vars.sp_length,
+        tpu_mtj_backend.params["n_vocab"] + tpu_mtj_backend.params["n_vocab_padding"] + system_settings.sp_length,
         dtype=np.uint32
     )
     return soft_tokens
@@ -1171,19 +1047,19 @@ def get_model_info(model, directory=""):
 
 def get_layer_count(model, directory=""):
     if(model not in ["InferKit", "Colab", "OAI", "GooseAI" , "ReadOnly", "TPUMeshTransformerGPTJ"]):
-        if(vars.model == "GPT2Custom"):
-            model_config = open(vars.custmodpth + "/config.json", "r")
+        if(model_settings.model == "GPT2Custom"):
+            model_config = open(model_settings.custmodpth + "/config.json", "r")
         # Get the model_type from the config or assume a model type if it isn't present
         else:
             from transformers import AutoConfig
             if directory == "":
-                model_config = AutoConfig.from_pretrained(vars.model, revision=vars.revision, cache_dir="cache")
-            elif(os.path.isdir(vars.custmodpth.replace('/', '_'))):
-                model_config = AutoConfig.from_pretrained(vars.custmodpth.replace('/', '_'), revision=vars.revision, cache_dir="cache")
+                model_config = AutoConfig.from_pretrained(model_settings.model, revision=model_settings.revision, cache_dir="cache")
+            elif(os.path.isdir(model_settings.custmodpth.replace('/', '_'))):
+                model_config = AutoConfig.from_pretrained(model_settings.custmodpth.replace('/', '_'), revision=model_settings.revision, cache_dir="cache")
             elif(os.path.isdir(directory)):
-                model_config = AutoConfig.from_pretrained(directory, revision=vars.revision, cache_dir="cache")
+                model_config = AutoConfig.from_pretrained(directory, revision=model_settings.revision, cache_dir="cache")
             else:
-                model_config = AutoConfig.from_pretrained(vars.custmodpth, revision=vars.revision, cache_dir="cache")
+                model_config = AutoConfig.from_pretrained(model_settings.custmodpth, revision=model_settings.revision, cache_dir="cache")
         
         
         
@@ -1193,10 +1069,10 @@ def get_layer_count(model, directory=""):
 
 
 def get_oai_models(key):
-    vars.oaiapikey = key
-    if vars.model == 'OAI':
+    model_settings.oaiapikey = key
+    if model_settings.model == 'OAI':
         url = "https://api.openai.com/v1/engines"
-    elif vars.model == 'GooseAI':
+    elif model_settings.model == 'GooseAI':
         url = "https://api.goose.ai/v1/engines"
     else:
         return
@@ -1225,8 +1101,8 @@ def get_oai_models(key):
             # If the client settings file doesn't exist, create it
             # Write API key to file
             os.makedirs('settings', exist_ok=True)
-        if path.exists("settings/{}.settings".format(vars.model)):
-            with open("settings/{}.settings".format(vars.model), "r") as file:
+        if path.exists("settings/{}.settings".format(model_settings.model)):
+            with open("settings/{}.settings".format(model_settings.model), "r") as file:
                 js = json.load(file)
                 if 'online_model' in js:
                     online_model = js['online_model']
@@ -1234,7 +1110,7 @@ def get_oai_models(key):
                     if js['apikey'] != key:
                         changed=True
         if changed:
-            with open("settings/{}.settings".format(vars.model), "w") as file:
+            with open("settings/{}.settings".format(model_settings.model), "w") as file:
                 js["apikey"] = key
                 file.write(json.dumps(js, indent=3))
             
@@ -1257,15 +1133,15 @@ def patch_causallm(model):
         if(Embedding._koboldai_patch_causallm_model.get_input_embeddings() is not self):
             return old_embedding_call(self, input_ids, *args, **kwargs)
         assert input_ids is not None
-        if(vars.sp is not None):
+        if(system_settings.sp is not None):
             shifted_input_ids = input_ids - model.config.vocab_size
         input_ids.clamp_(max=model.config.vocab_size-1)
         inputs_embeds = old_embedding_call(self, input_ids, *args, **kwargs)
-        if(vars.sp is not None):
-            vars.sp = vars.sp.to(inputs_embeds.dtype).to(inputs_embeds.device)
+        if(system_settings.sp is not None):
+            system_settings.sp = system_settings.sp.to(inputs_embeds.dtype).to(inputs_embeds.device)
             inputs_embeds = torch.where(
                 (shifted_input_ids >= 0)[..., None],
-                vars.sp[shifted_input_ids.clamp(min=0)],
+                system_settings.sp[shifted_input_ids.clamp(min=0)],
                 inputs_embeds,
             )
         return inputs_embeds
@@ -1279,7 +1155,7 @@ def patch_transformers():
     old_from_pretrained = PreTrainedModel.from_pretrained.__func__
     @classmethod
     def new_from_pretrained(cls, pretrained_model_name_or_path, *model_args, **kwargs):
-        vars.fp32_model = False
+        model_settings.fp32_model = False
         utils.num_shards = None
         utils.current_shard = 0
         utils.from_pretrained_model_name = pretrained_model_name_or_path
@@ -1351,10 +1227,10 @@ def patch_transformers():
             if(not isinstance(field_name, str) and isinstance(field_name, Iterable)):
                 conds = []
                 for f, v in zip(field_name, var_name):
-                    conds.append(getattr(vars, v))
+                    conds.append(getattr(model_settings, v))
                     setattr(self, f, conds[-1])
             else:
-                conds = getattr(vars, var_name)
+                conds = getattr(model_settings, var_name)
                 setattr(self, field_name, conds)
             assert len(args) == 2
             if(cond is None or cond(conds)):
@@ -1384,15 +1260,15 @@ def patch_transformers():
 
             scores_shape = scores.shape
             scores_list = scores.tolist()
-            vars.lua_koboldbridge.logits = vars.lua_state.table()
+            system_settings.lua_koboldbridge.logits = system_settings.lua_state.table()
             for r, row in enumerate(scores_list):
-                vars.lua_koboldbridge.logits[r+1] = vars.lua_state.table(*row)
-            vars.lua_koboldbridge.vocab_size = scores_shape[-1]
+                system_settings.lua_koboldbridge.logits[r+1] = system_settings.lua_state.table(*row)
+            system_settings.lua_koboldbridge.vocab_size = scores_shape[-1]
 
             execute_genmod()
 
             scores = torch.tensor(
-                tuple(tuple(row.values()) for row in vars.lua_koboldbridge.logits.values()),
+                tuple(tuple(row.values()) for row in system_settings.lua_koboldbridge.logits.values()),
                 device=scores.device,
                 dtype=scores.dtype,
             )
@@ -1418,7 +1294,7 @@ def patch_transformers():
             self.__warper_list.append(TemperatureLogitsWarper(temperature=0.5))
 
         def __call__(self, input_ids: torch.LongTensor, scores: torch.FloatTensor, *args, **kwargs):
-            for k in vars.sampler_order:
+            for k in model_settings.sampler_order:
                 scores = self.__warper_list[k](input_ids, scores, *args, **kwargs)
             return scores
 
@@ -1430,7 +1306,7 @@ def patch_transformers():
         kwargs["logits_warper"] = new_get_logits_warper(
             beams=1,
         )
-        if(vars.newlinemode == "s") or (vars.newlinemode == "ns"):
+        if(model_settings.newlinemode == "s") or (model_settings.newlinemode == "ns"):
             kwargs["eos_token_id"] = -1
             kwargs.setdefault("pad_token_id", 2)
         return new_sample.old_sample(self, *args, **kwargs)
@@ -1463,29 +1339,29 @@ def patch_transformers():
             scores: torch.FloatTensor,
             **kwargs,
         ) -> bool:
-            vars.generated_tkns += 1
-            if(vars.lua_koboldbridge.generated_cols and vars.generated_tkns != vars.lua_koboldbridge.generated_cols):
-                raise RuntimeError(f"Inconsistency detected between KoboldAI Python and Lua backends ({vars.generated_tkns} != {vars.lua_koboldbridge.generated_cols})")
-            if(vars.abort or vars.generated_tkns >= vars.genamt):
+            story_settings.generated_tkns += 1
+            if(system_settings.lua_koboldbridge.generated_cols and story_settings.generated_tkns != system_settings.lua_koboldbridge.generated_cols):
+                raise RuntimeError(f"Inconsistency detected between KoboldAI Python and Lua backends ({story_settings.generated_tkns} != {system_settings.lua_koboldbridge.generated_cols})")
+            if(system_settings.abort or story_settings.generated_tkns >= model_settings.genamt):
                 self.regeneration_required = False
                 self.halt = False
                 return True
 
             assert input_ids.ndim == 2
             assert len(self.excluded_world_info) == input_ids.shape[0]
-            self.regeneration_required = vars.lua_koboldbridge.regeneration_required
-            self.halt = not vars.lua_koboldbridge.generating
-            vars.lua_koboldbridge.regeneration_required = False
+            self.regeneration_required = system_settings.lua_koboldbridge.regeneration_required
+            self.halt = not system_settings.lua_koboldbridge.generating
+            system_settings.lua_koboldbridge.regeneration_required = False
 
-            for i in range(vars.numseqs):
-                vars.lua_koboldbridge.generated[i+1][vars.generated_tkns] = int(input_ids[i, -1].item())
+            for i in range(model_settings.numseqs):
+                system_settings.lua_koboldbridge.generated[i+1][story_settings.generated_tkns] = int(input_ids[i, -1].item())
 
-            if(not vars.dynamicscan):
+            if(not story_settings.dynamicscan):
                 return self.regeneration_required or self.halt
-            tail = input_ids[..., -vars.generated_tkns:]
+            tail = input_ids[..., -story_settings.generated_tkns:]
             for i, t in enumerate(tail):
                 decoded = utils.decodenewlines(tokenizer.decode(t))
-                _, found = checkworldinfo(decoded, force_use_txt=True, actions=vars._actions)
+                _, found = checkworldinfo(decoded, force_use_txt=True, actions=story_settings._actions)
                 found -= self.excluded_world_info[i]
                 if(len(found) != 0):
                     self.regeneration_required = True
@@ -1512,11 +1388,11 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
     global tokenizer
     if not utils.HAS_ACCELERATE:
         disk_layers = None
-    vars.noai = False
+    system_settings.noai = False
     if not initial_load:
         set_aibusy(True)
-        if vars.model != 'ReadOnly':
-            emit('from_server', {'cmd': 'model_load_status', 'data': "Loading {}".format(vars.model)}, broadcast=True)
+        if model_settings.model != 'ReadOnly':
+            emit('from_server', {'cmd': 'model_load_status', 'data': "Loading {}".format(model_settings.model)}, broadcast=True)
             #Have to add a sleep so the server will send the emit for some reason
             time.sleep(0.1)
     if gpu_layers is not None:
@@ -1525,22 +1401,34 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
         args.breakmodel_disklayers = int(disk_layers)
     
     #We need to wipe out the existing model and refresh the cuda cache
+    #Show what's in VRAM
+    import gc
     model = None
     generator = None
     model_config = None
     try:
-        torch.cuda.empty_cache()
+        with torch.no_grad():
+            torch.cuda.empty_cache()
     except:
         pass
+
+    for obj in gc.get_objects():
+        try:
+            if torch.is_tensor(obj) or (hasattr(obj, 'data') and torch.is_tensor(obj.data)):
+                del obj
+                gc.collect()
+                torch.cuda.empty_cache()
+        except:
+            pass
         
     #Reload our badwords
-    vars.badwordsids = vars.badwordsids_default
+    model_settings.badwordsids = koboldai_settings.badwordsids_default
     
     #Let's set the GooseAI or OpenAI server URLs if that's applicable
     if online_model != "":
-        if path.exists("settings/{}.settings".format(vars.model)):
+        if path.exists("settings/{}.settings".format(model_settings.model)):
             changed=False
-            with open("settings/{}.settings".format(vars.model), "r") as file:
+            with open("settings/{}.settings".format(model_settings.model), "r") as file:
                 # Check if API key exists
                 js = json.load(file)
                 if 'online_model' in js:
@@ -1551,135 +1439,135 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
                     changed=True
                     js['online_model'] = online_model
             if changed:
-                with open("settings/{}.settings".format(vars.model), "w") as file:
+                with open("settings/{}.settings".format(model_settings.model), "w") as file:
                     file.write(json.dumps(js, indent=3))
         # Swap OAI Server if GooseAI was selected
-        if(vars.model == "GooseAI"):
-            vars.oaiengines = "https://api.goose.ai/v1/engines"
-            vars.model = "OAI"
+        if(model_settings.model == "GooseAI"):
+            model_settings.oaiengines = "https://api.goose.ai/v1/engines"
+            model_settings.model = "OAI"
             args.configname = "GooseAI" + "/" + online_model
         else:
-            args.configname = vars.model + "/" + online_model
-        vars.oaiurl = vars.oaiengines + "/{0}/completions".format(online_model)
+            args.configname = model_settings.model + "/" + online_model
+        model_settings.oaiurl = model_settings.oaiengines + "/{0}/completions".format(online_model)
     
     
     # If transformers model was selected & GPU available, ask to use CPU or GPU
-    if(vars.model not in ["InferKit", "Colab", "OAI", "GooseAI" , "ReadOnly", "TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX"]):
-        vars.allowsp = True
+    if(model_settings.model not in ["InferKit", "Colab", "OAI", "GooseAI" , "ReadOnly", "TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX"]):
+        system_settings.allowsp = True
         # Test for GPU support
         
         # Make model path the same as the model name to make this consistent with the other loading method if it isn't a known model type
         # This code is not just a workaround for below, it is also used to make the behavior consistent with other loading methods - Henk717
-        if(not vars.model in ["NeoCustom", "GPT2Custom"]):
-            vars.custmodpth = vars.model
-        elif(vars.model == "NeoCustom"):
-            vars.model = os.path.basename(os.path.normpath(vars.custmodpth))
+        if(not model_settings.model in ["NeoCustom", "GPT2Custom"]):
+            model_settings.custmodpth = model_settings.model
+        elif(model_settings.model == "NeoCustom"):
+            model_settings.model = os.path.basename(os.path.normpath(model_settings.custmodpth))
 
         # Get the model_type from the config or assume a model type if it isn't present
         from transformers import AutoConfig
-        if(os.path.isdir(vars.custmodpth.replace('/', '_'))):
+        if(os.path.isdir(model_settings.custmodpth.replace('/', '_'))):
             try:
-                model_config = AutoConfig.from_pretrained(vars.custmodpth.replace('/', '_'), revision=vars.revision, cache_dir="cache")
-                vars.model_type = model_config.model_type
+                model_config = AutoConfig.from_pretrained(model_settings.custmodpth.replace('/', '_'), revision=model_settings.revision, cache_dir="cache")
+                model_settings.model_type = model_config.model_type
             except ValueError as e:
-                vars.model_type = "not_found"
-        elif(os.path.isdir("models/{}".format(vars.custmodpth.replace('/', '_')))):
+                model_settings.model_type = "not_found"
+        elif(os.path.isdir("models/{}".format(model_settings.custmodpth.replace('/', '_')))):
             try:
-                model_config = AutoConfig.from_pretrained("models/{}".format(vars.custmodpth.replace('/', '_')), revision=vars.revision, cache_dir="cache")
-                vars.model_type = model_config.model_type
+                model_config = AutoConfig.from_pretrained("models/{}".format(model_settings.custmodpth.replace('/', '_')), revision=model_settings.revision, cache_dir="cache")
+                model_settings.model_type = model_config.model_type
             except ValueError as e:
-                vars.model_type = "not_found"
+                model_settings.model_type = "not_found"
         else:
             try:
-                model_config = AutoConfig.from_pretrained(vars.custmodpth, revision=vars.revision, cache_dir="cache")
-                vars.model_type = model_config.model_type
+                model_config = AutoConfig.from_pretrained(model_settings.custmodpth, revision=model_settings.revision, cache_dir="cache")
+                model_settings.model_type = model_config.model_type
             except ValueError as e:
-                vars.model_type = "not_found"
-        if(vars.model_type == "not_found" and vars.model == "NeoCustom"):
-            vars.model_type = "gpt_neo"
-        elif(vars.model_type == "not_found" and vars.model == "GPT2Custom"):
-            vars.model_type = "gpt2"
-        elif(vars.model_type == "not_found"):
+                model_settings.model_type = "not_found"
+        if(model_settings.model_type == "not_found" and model_settings.model == "NeoCustom"):
+            model_settings.model_type = "gpt_neo"
+        elif(model_settings.model_type == "not_found" and model_settings.model == "GPT2Custom"):
+            model_settings.model_type = "gpt2"
+        elif(model_settings.model_type == "not_found"):
             print("WARNING: No model type detected, assuming Neo (If this is a GPT2 model use the other menu option or --model GPT2Custom)")
-            vars.model_type = "gpt_neo"
+            model_settings.model_type = "gpt_neo"
 
-    if(not vars.use_colab_tpu and vars.model not in ["InferKit", "Colab", "OAI", "GooseAI" , "ReadOnly", "TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX"]):
+    if(not system_settings.use_colab_tpu and model_settings.model not in ["InferKit", "Colab", "OAI", "GooseAI" , "ReadOnly", "TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX"]):
         loadmodelsettings()
         loadsettings()
         print("{0}Looking for GPU support...{1}".format(colors.PURPLE, colors.END), end="")
-        vars.hascuda = torch.cuda.is_available()
-        vars.bmsupported = (utils.HAS_ACCELERATE or vars.model_type in ("gpt_neo", "gptj", "xglm", "opt")) and not vars.nobreakmodel
+        system_settings.hascuda = torch.cuda.is_available()
+        system_settings.bmsupported = (utils.HAS_ACCELERATE or model_settings.model_type in ("gpt_neo", "gptj", "xglm", "opt")) and not system_settings.nobreakmodel
         if(args.breakmodel is not None and args.breakmodel):
             print("WARNING: --breakmodel is no longer supported. Breakmodel mode is now automatically enabled when --breakmodel_gpulayers is used (see --help for details).", file=sys.stderr)
         if(args.breakmodel_layers is not None):
             print("WARNING: --breakmodel_layers is deprecated. Use --breakmodel_gpulayers instead (see --help for details).", file=sys.stderr)
-        if(args.model and vars.bmsupported and not args.breakmodel_gpulayers and not args.breakmodel_layers and (not utils.HAS_ACCELERATE or not args.breakmodel_disklayers)):
+        if(args.model and system_settings.bmsupported and not args.breakmodel_gpulayers and not args.breakmodel_layers and (not utils.HAS_ACCELERATE or not args.breakmodel_disklayers)):
             print("WARNING: Model launched without the --breakmodel_gpulayers argument, defaulting to GPU only mode.", file=sys.stderr)
-            vars.bmsupported = False
-        if(not vars.bmsupported and (args.breakmodel_gpulayers is not None or args.breakmodel_layers is not None or args.breakmodel_disklayers is not None)):
+            system_settings.bmsupported = False
+        if(not system_settings.bmsupported and (args.breakmodel_gpulayers is not None or args.breakmodel_layers is not None or args.breakmodel_disklayers is not None)):
             print("WARNING: This model does not support hybrid generation. --breakmodel_gpulayers will be ignored.", file=sys.stderr)
-        if(vars.hascuda):
+        if(system_settings.hascuda):
             print("{0}FOUND!{1}".format(colors.GREEN, colors.END))
         else:
             print("{0}NOT FOUND!{1}".format(colors.YELLOW, colors.END))
         
         if args.model:
-            if(vars.hascuda):
+            if(system_settings.hascuda):
                 genselected = True
-                vars.usegpu = True
-                vars.breakmodel = utils.HAS_ACCELERATE
-            if(vars.bmsupported):
-                vars.usegpu = False
-                vars.breakmodel = True
+                system_settings.usegpu = True
+                system_settings.breakmodel = utils.HAS_ACCELERATE
+            if(system_settings.bmsupported):
+                system_settings.usegpu = False
+                system_settings.breakmodel = True
             if(args.cpu):
-                vars.usegpu = False
-                vars.breakmodel = utils.HAS_ACCELERATE
-        elif(vars.hascuda):    
-            if(vars.bmsupported):
+                system_settings.usegpu = False
+                system_settings.breakmodel = utils.HAS_ACCELERATE
+        elif(system_settings.hascuda):    
+            if(system_settings.bmsupported):
                 genselected = True
-                vars.usegpu = False
-                vars.breakmodel = True
+                system_settings.usegpu = False
+                system_settings.breakmodel = True
             else:
                 genselected = False
         else:
             genselected = False
 
-        if(vars.hascuda):
+        if(system_settings.hascuda):
             if(use_gpu):
-                if(vars.bmsupported):
-                    vars.breakmodel = True
-                    vars.usegpu = False
+                if(system_settings.bmsupported):
+                    system_settings.breakmodel = True
+                    system_settings.usegpu = False
                     genselected = True
                 else:
-                    vars.breakmodel = False
-                    vars.usegpu = True
+                    system_settings.breakmodel = False
+                    system_settings.usegpu = True
                     genselected = True
             else:
-                vars.breakmodel = utils.HAS_ACCELERATE
-                vars.usegpu = False
+                system_settings.breakmodel = utils.HAS_ACCELERATE
+                system_settings.usegpu = False
                 genselected = True
 
     # Ask for API key if InferKit was selected
-    if(vars.model == "InferKit"):
-        vars.apikey = vars.oaiapikey
+    if(model_settings.model == "InferKit"):
+        model_settings.apikey = model_settings.oaiapikey
                     
     # Swap OAI Server if GooseAI was selected
-    if(vars.model == "GooseAI"):
-        vars.oaiengines = "https://api.goose.ai/v1/engines"
-        vars.model = "OAI"
+    if(model_settings.model == "GooseAI"):
+        model_settings.oaiengines = "https://api.goose.ai/v1/engines"
+        model_settings.model = "OAI"
         args.configname = "GooseAI"
 
     # Ask for API key if OpenAI was selected
-    if(vars.model == "OAI"):
+    if(model_settings.model == "OAI"):
         if not args.configname:
             args.configname = "OAI"
         
-    if(vars.model == "ReadOnly"):
-        vars.noai = True
+    if(model_settings.model == "ReadOnly"):
+        system_settings.noai = True
 
     # Start transformers and create pipeline
-    if(not vars.use_colab_tpu and vars.model not in ["InferKit", "Colab", "OAI", "GooseAI" , "ReadOnly", "TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX"]):
-        if(not vars.noai):
+    if(not system_settings.use_colab_tpu and model_settings.model not in ["InferKit", "Colab", "OAI", "GooseAI" , "ReadOnly", "TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX"]):
+        if(not system_settings.noai):
             print("{0}Initializing transformers, please wait...{1}".format(colors.PURPLE, colors.END))
             for m in ("GPTJModel", "XGLMModel"):
                 try:
@@ -1690,7 +1578,7 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
             # Lazy loader
             import torch_lazy_loader
             def get_lazy_load_callback(n_layers, convert_to_float16=True):
-                if not vars.lazy_load:
+                if not model_settings.lazy_load:
                     return
 
                 from tqdm.auto import tqdm
@@ -1723,10 +1611,10 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
                     for key, value in model_dict.items():
                         original_key = get_original_key(key)
                         if isinstance(value, torch_lazy_loader.LazyTensor) and not any(original_key.startswith(n) for n in utils.layers_module_names):
-                            device_map[key] = vars.gpu_device if vars.hascuda and vars.usegpu else "cpu" if not vars.hascuda or not vars.breakmodel else breakmodel.primary_device
+                            device_map[key] = system_settings.gpu_device if system_settings.hascuda and system_settings.usegpu else "cpu" if not system_settings.hascuda or not system_settings.breakmodel else breakmodel.primary_device
                         else:
                             layer = int(max((n for n in utils.layers_module_names if original_key.startswith(n)), key=len).rsplit(".", 1)[1])
-                            device = vars.gpu_device if vars.hascuda and vars.usegpu else "disk" if layer < disk_blocks and layer < ram_blocks else "cpu" if not vars.hascuda or not vars.breakmodel else "shared" if layer < ram_blocks else bisect.bisect_right(cumulative_gpu_blocks, layer - ram_blocks)
+                            device = system_settings.gpu_device if system_settings.hascuda and system_settings.usegpu else "disk" if layer < disk_blocks and layer < ram_blocks else "cpu" if not system_settings.hascuda or not system_settings.breakmodel else "shared" if layer < ram_blocks else bisect.bisect_right(cumulative_gpu_blocks, layer - ram_blocks)
                             device_map[key] = device
 
                     if utils.num_shards is None or utils.current_shard == 0:
@@ -1774,10 +1662,10 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
                                 #print(f"Transferring <{key}>  to  {f'({device.upper()})' if isinstance(device, str) else '[device ' + str(device) + ']'} ... ", end="", flush=True)
                                 model_dict[key] = model_dict[key].materialize(f, map_location="cpu")
                                 if model_dict[key].dtype is torch.float32:
-                                    vars.fp32_model = True
-                                if convert_to_float16 and breakmodel.primary_device != "cpu" and vars.hascuda and (vars.breakmodel or vars.usegpu) and model_dict[key].dtype is torch.float32:
+                                    model_settings.fp32_model = True
+                                if convert_to_float16 and breakmodel.primary_device != "cpu" and system_settings.hascuda and (system_settings.breakmodel or system_settings.usegpu) and model_dict[key].dtype is torch.float32:
                                     model_dict[key] = model_dict[key].to(torch.float16)
-                                if breakmodel.primary_device == "cpu" or (not vars.usegpu and not vars.breakmodel and model_dict[key].dtype is torch.float16):
+                                if breakmodel.primary_device == "cpu" or (not system_settings.usegpu and not system_settings.breakmodel and model_dict[key].dtype is torch.float16):
                                     model_dict[key] = model_dict[key].to(torch.float32)
                                 if device == "shared":
                                     model_dict[key] = model_dict[key].to("cpu").detach_()
@@ -1834,7 +1722,7 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
             
             @contextlib.contextmanager
             def maybe_use_float16(always_use=False):
-                if(always_use or (vars.hascuda and args.lowmem and (vars.usegpu or vars.breakmodel))):
+                if(always_use or (system_settings.hascuda and args.lowmem and (system_settings.usegpu or system_settings.breakmodel))):
                     original_dtype = torch.get_default_dtype()
                     torch.set_default_dtype(torch.float16)
                     yield True
@@ -1843,22 +1731,22 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
                     yield False
 
             # If custom GPT2 model was chosen
-            if(vars.model == "GPT2Custom"):
-                vars.lazy_load = False
-                model_config = open(vars.custmodpth + "/config.json", "r")
+            if(model_settings.model == "GPT2Custom"):
+                model_settings.lazy_load = False
+                model_config = open(model_settings.custmodpth + "/config.json", "r")
                 js   = json.load(model_config)
                 with(maybe_use_float16()):
                     try:
-                        model = GPT2LMHeadModel.from_pretrained(vars.custmodpth, revision=vars.revision, cache_dir="cache")
+                        model = GPT2LMHeadModel.from_pretrained(model_settings.custmodpth, revision=model_settings.revision, cache_dir="cache")
                     except Exception as e:
                         if("out of memory" in traceback.format_exc().lower()):
                             raise RuntimeError("One of your GPUs ran out of memory when KoboldAI tried to load your model.")
                         raise e
-                tokenizer = GPT2TokenizerFast.from_pretrained(vars.custmodpth, revision=vars.revision, cache_dir="cache")
-                vars.modeldim = get_hidden_size_from_model(model)
+                tokenizer = GPT2TokenizerFast.from_pretrained(model_settings.custmodpth, revision=model_settings.revision, cache_dir="cache")
+                model_settings.modeldim = get_hidden_size_from_model(model)
                 # Is CUDA available? If so, use GPU, otherwise fall back to CPU
-                if(vars.hascuda and vars.usegpu):
-                    model = model.half().to(vars.gpu_device)
+                if(system_settings.hascuda and system_settings.usegpu):
+                    model = model.half().to(system_settings.gpu_device)
                     generator = model.generate
                 else:
                     model = model.to('cpu').float()
@@ -1870,23 +1758,23 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
                 # We must disable low_cpu_mem_usage (by setting lowmem to {}) if
                 # using a GPT-2 model because GPT-2 is not compatible with this
                 # feature yet
-                if(vars.model_type == "gpt2"):
+                if(model_settings.model_type == "gpt2"):
                     lowmem = {}
-                    vars.lazy_load = False  # Also, lazy loader doesn't support GPT-2 models
+                    model_settings.lazy_load = False  # Also, lazy loader doesn't support GPT-2 models
                 
                 # If we're using torch_lazy_loader, we need to get breakmodel config
                 # early so that it knows where to load the individual model tensors
-                if(utils.HAS_ACCELERATE or vars.lazy_load and vars.hascuda and vars.breakmodel):
+                if(utils.HAS_ACCELERATE or model_settings.lazy_load and system_settings.hascuda and system_settings.breakmodel):
                     device_config(model_config)
 
                 # Download model from Huggingface if it does not exist, otherwise load locally
                 
                 #If we specify a model and it's in the root directory, we need to move it to the models directory (legacy folder structure to new)
-                if os.path.isdir(vars.model.replace('/', '_')):
+                if os.path.isdir(model_settings.model.replace('/', '_')):
                     import shutil
-                    shutil.move(vars.model.replace('/', '_'), "models/{}".format(vars.model.replace('/', '_')))
+                    shutil.move(model_settings.model.replace('/', '_'), "models/{}".format(model_settings.model.replace('/', '_')))
                 print("\n", flush=True)
-                if(vars.lazy_load):  # If we're using lazy loader, we need to figure out what the model's hidden layers are called
+                if(model_settings.lazy_load):  # If we're using lazy loader, we need to figure out what the model's hidden layers are called
                     with torch_lazy_loader.use_lazy_torch_load(dematerialized_modules=True, use_accelerate_init_empty_weights=True):
                         try:
                             metamodel = AutoModelForCausalLM.from_config(model_config)
@@ -1895,45 +1783,45 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
                         utils.layers_module_names = utils.get_layers_module_names(metamodel)
                         utils.module_names = list(metamodel.state_dict().keys())
                         utils.named_buffers = list(metamodel.named_buffers(recurse=True))
-                with maybe_use_float16(), torch_lazy_loader.use_lazy_torch_load(enable=vars.lazy_load, callback=get_lazy_load_callback(utils.num_layers(model_config)) if vars.lazy_load else None, dematerialized_modules=True):
-                    if(vars.lazy_load):  # torch_lazy_loader.py and low_cpu_mem_usage can't be used at the same time
+                with maybe_use_float16(), torch_lazy_loader.use_lazy_torch_load(enable=model_settings.lazy_load, callback=get_lazy_load_callback(utils.num_layers(model_config)) if model_settings.lazy_load else None, dematerialized_modules=True):
+                    if(model_settings.lazy_load):  # torch_lazy_loader.py and low_cpu_mem_usage can't be used at the same time
                         lowmem = {}
-                    if(os.path.isdir(vars.custmodpth)):
+                    if(os.path.isdir(model_settings.custmodpth)):
                         try:
-                            tokenizer = AutoTokenizer.from_pretrained(vars.custmodpth, revision=vars.revision, cache_dir="cache")
+                            tokenizer = AutoTokenizer.from_pretrained(model_settings.custmodpth, revision=model_settings.revision, cache_dir="cache")
                         except Exception as e:
                             pass
                         try:
-                            tokenizer = AutoTokenizer.from_pretrained(vars.custmodpth, revision=vars.revision, cache_dir="cache", use_fast=False)
+                            tokenizer = AutoTokenizer.from_pretrained(model_settings.custmodpth, revision=model_settings.revision, cache_dir="cache", use_fast=False)
                         except Exception as e:
                             try:
-                                tokenizer = GPT2TokenizerFast.from_pretrained(vars.custmodpth, revision=vars.revision, cache_dir="cache")
+                                tokenizer = GPT2TokenizerFast.from_pretrained(model_settings.custmodpth, revision=model_settings.revision, cache_dir="cache")
                             except Exception as e:
-                                tokenizer = GPT2TokenizerFast.from_pretrained("gpt2", revision=vars.revision, cache_dir="cache")
+                                tokenizer = GPT2TokenizerFast.from_pretrained("gpt2", revision=model_settings.revision, cache_dir="cache")
                         try:
-                            model     = AutoModelForCausalLM.from_pretrained(vars.custmodpth, revision=vars.revision, cache_dir="cache", **lowmem)
+                            model     = AutoModelForCausalLM.from_pretrained(model_settings.custmodpth, revision=model_settings.revision, cache_dir="cache", **lowmem)
                         except Exception as e:
                             if("out of memory" in traceback.format_exc().lower()):
                                 raise RuntimeError("One of your GPUs ran out of memory when KoboldAI tried to load your model.")
-                            model     = GPTNeoForCausalLM.from_pretrained(vars.custmodpth, revision=vars.revision, cache_dir="cache", **lowmem)
-                    elif(os.path.isdir("models/{}".format(vars.model.replace('/', '_')))):
+                            model     = GPTNeoForCausalLM.from_pretrained(model_settings.custmodpth, revision=model_settings.revision, cache_dir="cache", **lowmem)
+                    elif(os.path.isdir("models/{}".format(model_settings.model.replace('/', '_')))):
                         try:
-                            tokenizer = AutoTokenizer.from_pretrained("models/{}".format(vars.model.replace('/', '_')), revision=vars.revision, cache_dir="cache")
+                            tokenizer = AutoTokenizer.from_pretrained("models/{}".format(model_settings.model.replace('/', '_')), revision=model_settings.revision, cache_dir="cache")
                         except Exception as e:
                             pass
                         try:
-                            tokenizer = AutoTokenizer.from_pretrained("models/{}".format(vars.model.replace('/', '_')), revision=vars.revision, cache_dir="cache", use_fast=False)
+                            tokenizer = AutoTokenizer.from_pretrained("models/{}".format(model_settings.model.replace('/', '_')), revision=model_settings.revision, cache_dir="cache", use_fast=False)
                         except Exception as e:
                             try:
-                                tokenizer = GPT2TokenizerFast.from_pretrained("models/{}".format(vars.model.replace('/', '_')), revision=vars.revision, cache_dir="cache")
+                                tokenizer = GPT2TokenizerFast.from_pretrained("models/{}".format(model_settings.model.replace('/', '_')), revision=model_settings.revision, cache_dir="cache")
                             except Exception as e:
-                                tokenizer = GPT2TokenizerFast.from_pretrained("gpt2", revision=vars.revision, cache_dir="cache")
+                                tokenizer = GPT2TokenizerFast.from_pretrained("gpt2", revision=model_settings.revision, cache_dir="cache")
                         try:
-                            model     = AutoModelForCausalLM.from_pretrained("models/{}".format(vars.model.replace('/', '_')), revision=vars.revision, cache_dir="cache", **lowmem)
+                            model     = AutoModelForCausalLM.from_pretrained("models/{}".format(model_settings.model.replace('/', '_')), revision=model_settings.revision, cache_dir="cache", **lowmem)
                         except Exception as e:
                             if("out of memory" in traceback.format_exc().lower()):
                                 raise RuntimeError("One of your GPUs ran out of memory when KoboldAI tried to load your model.")
-                            model     = GPTNeoForCausalLM.from_pretrained("models/{}".format(vars.model.replace('/', '_')), revision=vars.revision, cache_dir="cache", **lowmem)
+                            model     = GPTNeoForCausalLM.from_pretrained("models/{}".format(model_settings.model.replace('/', '_')), revision=model_settings.revision, cache_dir="cache", **lowmem)
                     else:
                         old_rebuild_tensor = torch._utils._rebuild_tensor
                         def new_rebuild_tensor(storage: Union[torch_lazy_loader.LazyTensor, torch.Storage], storage_offset, shape, stride):
@@ -1944,86 +1832,86 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
                                 if(not isinstance(dtype, torch.dtype)):
                                     dtype = storage.storage_type(0).dtype
                             if(dtype is torch.float32 and len(shape) >= 2):
-                                vars.fp32_model = True
+                                model_settings.fp32_model = True
                             return old_rebuild_tensor(storage, storage_offset, shape, stride)
                         torch._utils._rebuild_tensor = new_rebuild_tensor
 
                         try:
-                            tokenizer = AutoTokenizer.from_pretrained(vars.model, revision=vars.revision, cache_dir="cache")
+                            tokenizer = AutoTokenizer.from_pretrained(model_settings.model, revision=model_settings.revision, cache_dir="cache")
                         except Exception as e:
                             pass
                         try:
-                            tokenizer = AutoTokenizer.from_pretrained(vars.model, revision=vars.revision, cache_dir="cache", use_fast=False)
+                            tokenizer = AutoTokenizer.from_pretrained(model_settings.model, revision=model_settings.revision, cache_dir="cache", use_fast=False)
                         except Exception as e:
                             try:
-                                tokenizer = GPT2TokenizerFast.from_pretrained(vars.model, revision=vars.revision, cache_dir="cache")
+                                tokenizer = GPT2TokenizerFast.from_pretrained(model_settings.model, revision=model_settings.revision, cache_dir="cache")
                             except Exception as e:
-                                tokenizer = GPT2TokenizerFast.from_pretrained("gpt2", revision=vars.revision, cache_dir="cache")
+                                tokenizer = GPT2TokenizerFast.from_pretrained("gpt2", revision=model_settings.revision, cache_dir="cache")
                         try:
-                            model     = AutoModelForCausalLM.from_pretrained(vars.model, revision=vars.revision, cache_dir="cache", **lowmem)
+                            model     = AutoModelForCausalLM.from_pretrained(model_settings.model, revision=model_settings.revision, cache_dir="cache", **lowmem)
                         except Exception as e:
                             if("out of memory" in traceback.format_exc().lower()):
                                 raise RuntimeError("One of your GPUs ran out of memory when KoboldAI tried to load your model.")
-                            model     = GPTNeoForCausalLM.from_pretrained(vars.model, revision=vars.revision, cache_dir="cache", **lowmem)
+                            model     = GPTNeoForCausalLM.from_pretrained(model_settings.model, revision=model_settings.revision, cache_dir="cache", **lowmem)
 
                         torch._utils._rebuild_tensor = old_rebuild_tensor
 
                         if not args.colab or args.savemodel:
                             import shutil
-                            tokenizer.save_pretrained("models/{}".format(vars.model.replace('/', '_')))
-                            if(vars.fp32_model):  # Use save_pretrained to convert fp32 models to fp16
+                            tokenizer.save_pretrained("models/{}".format(model_settings.model.replace('/', '_')))
+                            if(model_settings.fp32_model):  # Use save_pretrained to convert fp32 models to fp16
                                 model = model.half()
-                                model.save_pretrained("models/{}".format(vars.model.replace('/', '_')), max_shard_size="500MiB")
+                                model.save_pretrained("models/{}".format(model_settings.model.replace('/', '_')), max_shard_size="500MiB")
                             else:  # For fp16 models, we can just copy the model files directly
                                 import transformers.configuration_utils
                                 import transformers.modeling_utils
                                 import transformers.file_utils
                                 # Save the config.json
-                                shutil.move(transformers.file_utils.get_from_cache(transformers.file_utils.hf_bucket_url(vars.model, transformers.configuration_utils.CONFIG_NAME, revision=vars.revision), cache_dir="cache", local_files_only=True), os.path.join("models/{}".format(vars.model.replace('/', '_')), transformers.configuration_utils.CONFIG_NAME))
+                                shutil.move(transformers.file_utils.get_from_cache(transformers.file_utils.hf_bucket_url(model_settings.model, transformers.configuration_utils.CONFIG_NAME, revision=model_settings.revision), cache_dir="cache", local_files_only=True), os.path.join("models/{}".format(model_settings.model.replace('/', '_')), transformers.configuration_utils.CONFIG_NAME))
                                 if(utils.num_shards is None):
                                     # Save the pytorch_model.bin of an unsharded model
-                                    shutil.move(transformers.file_utils.get_from_cache(transformers.file_utils.hf_bucket_url(vars.model, transformers.modeling_utils.WEIGHTS_NAME, revision=vars.revision), cache_dir="cache", local_files_only=True), os.path.join("models/{}".format(vars.model.replace('/', '_')), transformers.modeling_utils.WEIGHTS_NAME))
+                                    shutil.move(transformers.file_utils.get_from_cache(transformers.file_utils.hf_bucket_url(model_settings.model, transformers.modeling_utils.WEIGHTS_NAME, revision=model_settings.revision), cache_dir="cache", local_files_only=True), os.path.join("models/{}".format(model_settings.model.replace('/', '_')), transformers.modeling_utils.WEIGHTS_NAME))
                                 else:
                                     with open(utils.from_pretrained_index_filename) as f:
                                         map_data = json.load(f)
                                     filenames = set(map_data["weight_map"].values())
                                     # Save the pytorch_model.bin.index.json of a sharded model
-                                    shutil.move(utils.from_pretrained_index_filename, os.path.join("models/{}".format(vars.model.replace('/', '_')), transformers.modeling_utils.WEIGHTS_INDEX_NAME))
+                                    shutil.move(utils.from_pretrained_index_filename, os.path.join("models/{}".format(model_settings.model.replace('/', '_')), transformers.modeling_utils.WEIGHTS_INDEX_NAME))
                                     # Then save the pytorch_model-#####-of-#####.bin files
                                     for filename in filenames:
-                                        shutil.move(transformers.file_utils.get_from_cache(transformers.file_utils.hf_bucket_url(vars.model, filename, revision=vars.revision), cache_dir="cache", local_files_only=True), os.path.join("models/{}".format(vars.model.replace('/', '_')), filename))
+                                        shutil.move(transformers.file_utils.get_from_cache(transformers.file_utils.hf_bucket_url(model_settings.model, filename, revision=model_settings.revision), cache_dir="cache", local_files_only=True), os.path.join("models/{}".format(model_settings.model.replace('/', '_')), filename))
                             shutil.rmtree("cache/")
 
-                if(vars.badwordsids is vars.badwordsids_default and vars.model_type not in ("gpt2", "gpt_neo", "gptj")):
-                    vars.badwordsids = [[v] for k, v in tokenizer.get_vocab().items() if any(c in str(k) for c in "<>[]")]
+                if(model_settings.badwordsids is koboldai_settings.badwordsids_default and model_settings.model_type not in ("gpt2", "gpt_neo", "gptj")):
+                    model_settings.badwordsids = [[v] for k, v in tokenizer.get_vocab().items() if any(c in str(k) for c in "<>[]")]
 
                 patch_causallm(model)
 
-                if(vars.hascuda):
-                    if(vars.usegpu):
-                        vars.modeldim = get_hidden_size_from_model(model)
-                        model = model.half().to(vars.gpu_device)
+                if(system_settings.hascuda):
+                    if(system_settings.usegpu):
+                        model_settings.modeldim = get_hidden_size_from_model(model)
+                        model = model.half().to(system_settings.gpu_device)
                         generator = model.generate
-                    elif(vars.breakmodel):  # Use both RAM and VRAM (breakmodel)
-                        vars.modeldim = get_hidden_size_from_model(model)
-                        if(not vars.lazy_load):
+                    elif(system_settings.breakmodel):  # Use both RAM and VRAM (breakmodel)
+                        model_settings.modeldim = get_hidden_size_from_model(model)
+                        if(not model_settings.lazy_load):
                             device_config(model.config)
                         move_model_to_devices(model)
                     elif(utils.HAS_ACCELERATE and __import__("breakmodel").disk_blocks > 0):
                         move_model_to_devices(model)
-                        vars.modeldim = get_hidden_size_from_model(model)
+                        model_settings.modeldim = get_hidden_size_from_model(model)
                         generator = model.generate
                     else:
                         model = model.to('cpu').float()
-                        vars.modeldim = get_hidden_size_from_model(model)
+                        model_settings.modeldim = get_hidden_size_from_model(model)
                         generator = model.generate
                 elif(utils.HAS_ACCELERATE and __import__("breakmodel").disk_blocks > 0):
                     move_model_to_devices(model)
-                    vars.modeldim = get_hidden_size_from_model(model)
+                    model_settings.modeldim = get_hidden_size_from_model(model)
                     generator = model.generate
                 else:
                     model.to('cpu').float()
-                    vars.modeldim = get_hidden_size_from_model(model)
+                    model_settings.modeldim = get_hidden_size_from_model(model)
                     generator = model.generate
             
             # Suppress Author's Note by flagging square brackets (Old implementation)
@@ -2031,20 +1919,20 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
             #vocab_keys    = vocab.keys()
             #vars.badwords = gettokenids("[")
             #for key in vars.badwords:
-            #    vars.badwordsids.append([vocab[key]])
+            #    model_settings.badwordsids.append([vocab[key]])
             
-            print("{0}OK! {1} pipeline created!{2}".format(colors.GREEN, vars.model, colors.END))
+            print("{0}OK! {1} pipeline created!{2}".format(colors.GREEN, model_settings.model, colors.END))
         
         else:
             from transformers import GPT2TokenizerFast
-            tokenizer = GPT2TokenizerFast.from_pretrained("gpt2", revision=vars.revision, cache_dir="cache")
+            tokenizer = GPT2TokenizerFast.from_pretrained("gpt2", revision=model_settings.revision, cache_dir="cache")
     else:
         from transformers import PreTrainedModel
         from transformers import modeling_utils
         old_from_pretrained = PreTrainedModel.from_pretrained.__func__
         @classmethod
         def new_from_pretrained(cls, pretrained_model_name_or_path, *model_args, **kwargs):
-            vars.fp32_model = False
+            model_settings.fp32_model = False
             utils.num_shards = None
             utils.current_shard = 0
             utils.from_pretrained_model_name = pretrained_model_name_or_path
@@ -2067,15 +1955,15 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
         def tpumtjgenerate_warper_callback(scores) -> "np.array":
             scores_shape = scores.shape
             scores_list = scores.tolist()
-            vars.lua_koboldbridge.logits = vars.lua_state.table()
+            system_settings.lua_koboldbridge.logits = system_settings.lua_state.table()
             for r, row in enumerate(scores_list):
-                vars.lua_koboldbridge.logits[r+1] = vars.lua_state.table(*row)
-            vars.lua_koboldbridge.vocab_size = scores_shape[-1]
+                system_settings.lua_koboldbridge.logits[r+1] = system_settings.lua_state.table(*row)
+            system_settings.lua_koboldbridge.vocab_size = scores_shape[-1]
 
             execute_genmod()
 
             scores = np.array(
-                tuple(tuple(row.values()) for row in vars.lua_koboldbridge.logits.values()),
+                tuple(tuple(row.values()) for row in system_settings.lua_koboldbridge.logits.values()),
                 dtype=scores.dtype,
             )
             assert scores.shape == scores_shape
@@ -2083,24 +1971,24 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
             return scores
         
         def tpumtjgenerate_stopping_callback(generated, n_generated, excluded_world_info) -> Tuple[List[set], bool, bool]:
-            vars.generated_tkns += 1
+            story_settings.generated_tkns += 1
 
             assert len(excluded_world_info) == len(generated)
-            regeneration_required = vars.lua_koboldbridge.regeneration_required
-            halt = vars.abort or not vars.lua_koboldbridge.generating or vars.generated_tkns >= vars.genamt
-            vars.lua_koboldbridge.regeneration_required = False
+            regeneration_required = system_settings.lua_koboldbridge.regeneration_required
+            halt = system_settings.abort or not system_settings.lua_koboldbridge.generating or story_settings.generated_tkns >= model_settings.genamt
+            system_settings.lua_koboldbridge.regeneration_required = False
 
             global past
 
-            for i in range(vars.numseqs):
-                vars.lua_koboldbridge.generated[i+1][vars.generated_tkns] = int(generated[i, tpu_mtj_backend.params["seq"] + n_generated - 1].item())
+            for i in range(model_settings.numseqs):
+                system_settings.lua_koboldbridge.generated[i+1][story_settings.generated_tkns] = int(generated[i, tpu_mtj_backend.params["seq"] + n_generated - 1].item())
 
-            if(not vars.dynamicscan or halt):
+            if(not story_settings.dynamicscan or halt):
                 return excluded_world_info, regeneration_required, halt
 
             for i, t in enumerate(generated):
                 decoded = utils.decodenewlines(tokenizer.decode(past[i])) + utils.decodenewlines(tokenizer.decode(t[tpu_mtj_backend.params["seq"] : tpu_mtj_backend.params["seq"] + n_generated]))
-                _, found = checkworldinfo(decoded, force_use_txt=True, actions=vars._actions)
+                _, found = checkworldinfo(decoded, force_use_txt=True, actions=story_settings._actions)
                 found -= excluded_world_info[i]
                 if(len(found) != 0):
                     regeneration_required = True
@@ -2109,60 +1997,60 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
 
         def tpumtjgenerate_compiling_callback() -> None:
             print(colors.GREEN + "TPU backend compilation triggered" + colors.END)
-            vars.compiling = True
+            system_settings.compiling = True
 
         def tpumtjgenerate_stopped_compiling_callback() -> None:
-            vars.compiling = False
+            system_settings.compiling = False
         
         def tpumtjgenerate_settings_callback() -> dict:
             return {
-                "sampler_order": vars.sampler_order,
-                "top_p": float(vars.top_p),
-                "temp": float(vars.temp),
-                "top_k": int(vars.top_k),
-                "tfs": float(vars.tfs),
-                "typical": float(vars.typical),
-                "top_a": float(vars.top_a),
-                "repetition_penalty": float(vars.rep_pen),
-                "rpslope": float(vars.rep_pen_slope),
-                "rprange": int(vars.rep_pen_range),
+                "sampler_order": model_settings.sampler_order,
+                "top_p": float(model_settings.top_p),
+                "temp": float(model_settings.temp),
+                "top_k": int(model_settings.top_k),
+                "tfs": float(model_settings.tfs),
+                "typical": float(model_settings.typical),
+                "top_a": float(model_settings.top_a),
+                "repetition_penalty": float(model_settings.rep_pen),
+                "rpslope": float(model_settings.rep_pen_slope),
+                "rprange": int(model_settings.rep_pen_range),
             }
 
         # If we're running Colab or OAI, we still need a tokenizer.
-        if(vars.model == "Colab"):
+        if(model_settings.model == "Colab"):
             from transformers import GPT2TokenizerFast
-            tokenizer = GPT2TokenizerFast.from_pretrained("EleutherAI/gpt-neo-2.7B", revision=vars.revision, cache_dir="cache")
+            tokenizer = GPT2TokenizerFast.from_pretrained("EleutherAI/gpt-neo-2.7B", revision=model_settings.revision, cache_dir="cache")
             loadsettings()
-        elif(vars.model == "OAI"):
+        elif(model_settings.model == "OAI"):
             from transformers import GPT2TokenizerFast
-            tokenizer = GPT2TokenizerFast.from_pretrained("gpt2", revision=vars.revision, cache_dir="cache")
+            tokenizer = GPT2TokenizerFast.from_pretrained("gpt2", revision=model_settings.revision, cache_dir="cache")
             loadsettings()
         # Load the TPU backend if requested
-        elif(vars.use_colab_tpu or vars.model in ("TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX")):
+        elif(system_settings.use_colab_tpu or model_settings.model in ("TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX")):
             global tpu_mtj_backend
             import tpu_mtj_backend
-            if(vars.model == "TPUMeshTransformerGPTNeoX"):
-                vars.badwordsids = vars.badwordsids_neox
+            if(model_settings.model == "TPUMeshTransformerGPTNeoX"):
+                model_settings.badwordsids = koboldai_settings.badwordsids_neox
             print("{0}Initializing Mesh Transformer JAX, please wait...{1}".format(colors.PURPLE, colors.END))
-            if vars.model in ("TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX") and (not vars.custmodpth or not os.path.isdir(vars.custmodpth)):
-                raise FileNotFoundError(f"The specified model path {repr(vars.custmodpth)} is not the path to a valid folder")
+            if model_settings.model in ("TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX") and (not model_settings.custmodpth or not os.path.isdir(model_settings.custmodpth)):
+                raise FileNotFoundError(f"The specified model path {repr(model_settings.custmodpth)} is not the path to a valid folder")
             import tpu_mtj_backend
-            if(vars.model == "TPUMeshTransformerGPTNeoX"):
+            if(model_settings.model == "TPUMeshTransformerGPTNeoX"):
                 tpu_mtj_backend.pad_token_id = 2
-            tpu_mtj_backend.vars = vars
+            tpu_mtj_backend.model_settings = model_settings
             tpu_mtj_backend.warper_callback = tpumtjgenerate_warper_callback
             tpu_mtj_backend.stopping_callback = tpumtjgenerate_stopping_callback
             tpu_mtj_backend.compiling_callback = tpumtjgenerate_compiling_callback
             tpu_mtj_backend.stopped_compiling_callback = tpumtjgenerate_stopped_compiling_callback
             tpu_mtj_backend.settings_callback = tpumtjgenerate_settings_callback
-            vars.allowsp = True
+            system_settings.allowsp = True
             loadmodelsettings()
             loadsettings()
-            tpu_mtj_backend.load_model(vars.custmodpth, hf_checkpoint=vars.model not in ("TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX") and vars.use_colab_tpu, **vars.modelconfig)
-            vars.modeldim = int(tpu_mtj_backend.params.get("d_embed", tpu_mtj_backend.params["d_model"]))
+            tpu_mtj_backend.load_model(model_settings.custmodpth, hf_checkpoint=model_settings.model not in ("TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX") and system_settings.use_colab_tpu, **model_settings.modelconfig)
+            model_settings.modeldim = int(tpu_mtj_backend.params.get("d_embed", tpu_mtj_backend.params["d_model"]))
             tokenizer = tpu_mtj_backend.tokenizer
-            if(vars.badwordsids is vars.badwordsids_default and vars.model_type not in ("gpt2", "gpt_neo", "gptj")):
-                vars.badwordsids = [[v] for k, v in tokenizer.get_vocab().items() if any(c in str(k) for c in "<>[]")]
+            if(model_settings.badwordsids is koboldai_settings.badwordsids_default and model_settings.model_type not in ("gpt2", "gpt_neo", "gptj")):
+                model_settings.badwordsids = [[v] for k, v in tokenizer.get_vocab().items() if any(c in str(k) for c in "<>[]")]
         else:
             loadsettings()
     
@@ -2176,7 +2064,7 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
         emit('from_server', {'cmd': 'hide_model_name'}, broadcast=True)
         time.sleep(0.1)
         
-        if not vars.gamestarted:
+        if not story_settings.gamestarted:
             setStartState()
             sendsettings()
             refresh_settings()
@@ -2189,7 +2077,7 @@ def index():
     if 'new_ui' in request.args:
         return render_template('index_new.html', hide_ai_menu=args.noaimenu)
     else:
-        return render_template('index.html', hide_ai_menu=args.noaimenu, flaskwebgui=vars.flaskwebgui)
+        return render_template('index.html', hide_ai_menu=args.noaimenu, flaskwebgui=system_settings.flaskwebgui)
 @app.route('/favicon.ico')
 def favicon():
     return send_from_directory(app.root_path,
@@ -2199,9 +2087,9 @@ def download():
     save_format = request.args.get("format", "json").strip().lower()
 
     if(save_format == "plaintext"):
-        txt = vars.prompt + "".join(vars.actions.values())
+        txt = story_settings.prompt + "".join(story_settings.actions.values())
         save = Response(txt)
-        filename = path.basename(vars.savedir)
+        filename = path.basename(system_settings.savedir)
         if filename[-5:] == ".json":
             filename = filename[:-5]
         save.headers.set('Content-Disposition', 'attachment', filename='%s.txt' % filename)
@@ -2209,17 +2097,17 @@ def download():
 
     # Build json to write
     js = {}
-    js["gamestarted"] = vars.gamestarted
-    js["prompt"]      = vars.prompt
-    js["memory"]      = vars.memory
-    js["authorsnote"] = vars.authornote
-    js["anotetemplate"] = vars.authornotetemplate
-    js["actions"]     = tuple(vars.actions.values())
-    js["actions_metadata"] = vars.actions_metadata
+    js["gamestarted"] = story_settings.gamestarted
+    js["prompt"]      = story_settings.prompt
+    js["memory"]      = story_settings.memory
+    js["authorsnote"] = story_settings.authornote
+    js["anotetemplate"] = story_settings.authornotetemplate
+    js["actions"]     = tuple(story_settings.actions.values())
+    js["actions_metadata"] = story_settings.actions_metadata
     js["worldinfo"]   = []
         
     # Extract only the important bits of WI
-    for wi in vars.worldinfo:
+    for wi in story_settings.worldinfo:
         if(wi["constant"] or wi["key"] != ""):
             js["worldinfo"].append({
                 "key": wi["key"],
@@ -2232,7 +2120,7 @@ def download():
             })
     
     save = Response(json.dumps(js, indent=3))
-    filename = path.basename(vars.savedir)
+    filename = path.basename(system_settings.savedir)
     if filename[-5:] == ".json":
         filename = filename[:-5]
     save.headers.set('Content-Disposition', 'attachment', filename='%s.json' % filename)
@@ -2250,17 +2138,17 @@ def lua_startup():
         file = open("settings/" + getmodelname().replace('/', '_') + ".settings", "r")
         js   = json.load(file)
         if("userscripts" in js):
-            vars.userscripts = []
+            system_settings.userscripts = []
             for userscript in js["userscripts"]:
                 if type(userscript) is not str:
                     continue
                 userscript = userscript.strip()
                 if len(userscript) != 0 and all(q not in userscript for q in ("..", ":")) and all(userscript[0] not in q for q in ("/", "\\")) and os.path.exists(fileops.uspath(userscript)):
-                    vars.userscripts.append(userscript)
+                    system_settings.userscripts.append(userscript)
         if("corescript" in js and type(js["corescript"]) is str and all(q not in js["corescript"] for q in ("..", ":")) and all(js["corescript"][0] not in q for q in ("/", "\\"))):
-            vars.corescript = js["corescript"]
+            system_settings.corescript = js["corescript"]
         else:
-            vars.corescript = "default.lua"
+            system_settings.corescript = "default.lua"
         file.close()
         
     #==================================================================#
@@ -2271,26 +2159,29 @@ def lua_startup():
     print(colors.PURPLE + "Initializing Lua Bridge... " + colors.END, end="", flush=True)
 
     # Set up Lua state
-    vars.lua_state = lupa.LuaRuntime(unpack_returned_tuples=True)
+    system_settings.lua_state = lupa.LuaRuntime(unpack_returned_tuples=True)
 
     # Load bridge.lua
     bridged = {
         "corescript_path": "cores",
         "userscript_path": "userscripts",
         "config_path": "userscripts",
-        "lib_paths": vars.lua_state.table("lualibs", os.path.join("extern", "lualibs")),
-        "vars": vars,
+        "lib_paths": system_settings.lua_state.table("lualibs", os.path.join("extern", "lualibs")),
+        "model_settings": model_settings,
+        "story_settings": story_settings,
+        "user_settings": user_settings,
+        "system_settings": system_settings,
     }
     for kwarg in _bridged:
         bridged[kwarg] = _bridged[kwarg]
     try:
-        vars.lua_kobold, vars.lua_koboldcore, vars.lua_koboldbridge = vars.lua_state.globals().dofile("bridge.lua")(
-            vars.lua_state.globals().python,
+        system_settings.lua_kobold, system_settings.lua_koboldcore, system_settings.lua_koboldbridge = system_settings.lua_state.globals().dofile("bridge.lua")(
+            system_settings.lua_state.globals().python,
             bridged,
         )
     except lupa.LuaError as e:
         print(colors.RED + "ERROR!" + colors.END)
-        vars.lua_koboldbridge.obliterate_multiverse()
+        system_settings.lua_koboldbridge.obliterate_multiverse()
         print("{0}{1}{2}".format(colors.RED, "***LUA ERROR***: ", colors.END), end="", file=sys.stderr)
         print("{0}{1}{2}".format(colors.RED, str(e).replace("\033", ""), colors.END), file=sys.stderr)
         exit(1)
@@ -2327,33 +2218,33 @@ def load_lua_scripts():
     lst = fileops.getusfiles(long_desc=True)
     filenames_dict = {ob["filename"]: i for i, ob in enumerate(lst)}
 
-    for filename in vars.userscripts:
+    for filename in system_settings.userscripts:
         if filename in filenames_dict:
             i = filenames_dict[filename]
             filenames.append(filename)
             modulenames.append(lst[i]["modulename"])
             descriptions.append(lst[i]["description"])
 
-    vars.has_genmod = False
+    system_settings.has_genmod = False
 
     try:
-        vars.lua_koboldbridge.obliterate_multiverse()
-        tpool.execute(vars.lua_koboldbridge.load_corescript, vars.corescript)
-        vars.has_genmod = tpool.execute(vars.lua_koboldbridge.load_userscripts, filenames, modulenames, descriptions)
-        vars.lua_running = True
+        system_settings.lua_koboldbridge.obliterate_multiverse()
+        tpool.execute(system_settings.lua_koboldbridge.load_corescript, system_settings.corescript)
+        system_settings.has_genmod = tpool.execute(system_settings.lua_koboldbridge.load_userscripts, filenames, modulenames, descriptions)
+        system_settings.lua_running = True
     except lupa.LuaError as e:
         try:
-            vars.lua_koboldbridge.obliterate_multiverse()
+            system_settings.lua_koboldbridge.obliterate_multiverse()
         except:
             pass
-        vars.lua_running = False
-        if(vars.serverstarted):
+        system_settings.lua_running = False
+        if(system_settings.serverstarted):
             emit('from_server', {'cmd': 'errmsg', 'data': 'Lua script error; please check console.'}, broadcast=True)
             sendUSStatItems()
         print("{0}{1}{2}".format(colors.RED, "***LUA ERROR***: ", colors.END), end="", file=sys.stderr)
         print("{0}{1}{2}".format(colors.RED, str(e).replace("\033", ""), colors.END), file=sys.stderr)
         print("{0}{1}{2}".format(colors.YELLOW, "Lua engine stopped; please open 'Userscripts' and press Load to reinitialize scripts.", colors.END), file=sys.stderr)
-        if(vars.serverstarted):
+        if(system_settings.serverstarted):
             set_aibusy(0)
 
 #==================================================================#
@@ -2361,9 +2252,9 @@ def load_lua_scripts():
 #==================================================================#
 @bridged_kwarg()
 def lua_print(msg):
-    if(vars.lua_logname != vars.lua_koboldbridge.logging_name):
-        vars.lua_logname = vars.lua_koboldbridge.logging_name
-        print(colors.BLUE + lua_log_format_name(vars.lua_logname) + ":" + colors.END, file=sys.stderr)
+    if(system_settings.lua_logname != system_settings.lua_koboldbridge.logging_name):
+        system_settings.lua_logname = system_settings.lua_koboldbridge.logging_name
+        print(colors.BLUE + lua_log_format_name(system_settings.lua_logname) + ":" + colors.END, file=sys.stderr)
     print(colors.PURPLE + msg.replace("\033", "") + colors.END)
 
 #==================================================================#
@@ -2371,9 +2262,9 @@ def lua_print(msg):
 #==================================================================#
 @bridged_kwarg()
 def lua_warn(msg):
-    if(vars.lua_logname != vars.lua_koboldbridge.logging_name):
-        vars.lua_logname = vars.lua_koboldbridge.logging_name
-        print(colors.BLUE + lua_log_format_name(vars.lua_logname) + ":" + colors.END, file=sys.stderr)
+    if(system_settings.lua_logname != system_settings.lua_koboldbridge.logging_name):
+        system_settings.lua_logname = system_settings.lua_koboldbridge.logging_name
+        print(colors.BLUE + lua_log_format_name(system_settings.lua_logname) + ":" + colors.END, file=sys.stderr)
     print(colors.YELLOW + msg.replace("\033", "") + colors.END)
 
 #==================================================================#
@@ -2386,7 +2277,7 @@ def lua_decode(tokens):
     if("tokenizer" not in globals()):
         from transformers import GPT2TokenizerFast
         global tokenizer
-        tokenizer = GPT2TokenizerFast.from_pretrained("gpt2", revision=vars.revision, cache_dir="cache")
+        tokenizer = GPT2TokenizerFast.from_pretrained("gpt2", revision=model_settings.revision, cache_dir="cache")
     return utils.decodenewlines(tokenizer.decode(tokens))
 
 #==================================================================#
@@ -2398,7 +2289,7 @@ def lua_encode(string):
     if("tokenizer" not in globals()):
         from transformers import GPT2TokenizerFast
         global tokenizer
-        tokenizer = GPT2TokenizerFast.from_pretrained("gpt2", revision=vars.revision, cache_dir="cache")
+        tokenizer = GPT2TokenizerFast.from_pretrained("gpt2", revision=model_settings.revision, cache_dir="cache")
     return tokenizer.encode(utils.encodenewlines(string), max_length=int(4e9), truncation=True)
 
 #==================================================================#
@@ -2409,8 +2300,8 @@ def lua_encode(string):
 def lua_compute_context(submission, entries, folders, kwargs):
     assert type(submission) is str
     if(kwargs is None):
-        kwargs = vars.lua_state.table()
-    actions = vars._actions if vars.lua_koboldbridge.userstate == "genmod" else vars.actions
+        kwargs = system_settings.lua_state.table()
+    actions = story_settings._actions if system_settings.lua_koboldbridge.userstate == "genmod" else story_settings.actions
     allowed_entries = None
     allowed_folders = None
     if(entries is not None):
@@ -2447,7 +2338,7 @@ def lua_compute_context(submission, entries, folders, kwargs):
 @bridged_kwarg()
 def lua_get_attr(uid, k):
     assert type(uid) is int and type(k) is str
-    if(uid in vars.worldinfo_u and k in (
+    if(uid in story_settings.worldinfo_u and k in (
         "key",
         "keysecondary",
         "content",
@@ -2458,7 +2349,7 @@ def lua_get_attr(uid, k):
         "constant",
         "uid",
     )):
-        return vars.worldinfo_u[uid][k]
+        return story_settings.worldinfo_u[uid][k]
 
 #==================================================================#
 #  Set property of a world info entry given its UID, property name and new value
@@ -2466,7 +2357,7 @@ def lua_get_attr(uid, k):
 @bridged_kwarg()
 def lua_set_attr(uid, k, v):
     assert type(uid) is int and type(k) is str
-    assert uid in vars.worldinfo_u and k in (
+    assert uid in story_settings.worldinfo_u and k in (
         "key",
         "keysecondary",
         "content",
@@ -2474,11 +2365,11 @@ def lua_set_attr(uid, k, v):
         "selective",
         "constant",
     )
-    if(type(vars.worldinfo_u[uid][k]) is int and type(v) is float):
+    if(type(story_settings.worldinfo_u[uid][k]) is int and type(v) is float):
         v = int(v)
-    assert type(vars.worldinfo_u[uid][k]) is type(v)
-    vars.worldinfo_u[uid][k] = v
-    print(colors.GREEN + f"{lua_log_format_name(vars.lua_koboldbridge.logging_name)} set {k} of world info entry {uid} to {v}" + colors.END)
+    assert type(story_settings.worldinfo_u[uid][k]) is type(v)
+    story_settings.worldinfo_u[uid][k] = v
+    print(colors.GREEN + f"{lua_log_format_name(system_settings.lua_koboldbridge.logging_name)} set {k} of world info entry {uid} to {v}" + colors.END)
 
 #==================================================================#
 #  Get property of a world info folder given its UID and property name
@@ -2486,10 +2377,10 @@ def lua_set_attr(uid, k, v):
 @bridged_kwarg()
 def lua_folder_get_attr(uid, k):
     assert type(uid) is int and type(k) is str
-    if(uid in vars.wifolders_d and k in (
+    if(uid in story_settings.wifolders_d and k in (
         "name",
     )):
-        return vars.wifolders_d[uid][k]
+        return story_settings.wifolders_d[uid][k]
 
 #==================================================================#
 #  Set property of a world info folder given its UID, property name and new value
@@ -2497,37 +2388,37 @@ def lua_folder_get_attr(uid, k):
 @bridged_kwarg()
 def lua_folder_set_attr(uid, k, v):
     assert type(uid) is int and type(k) is str
-    assert uid in vars.wifolders_d and k in (
+    assert uid in story_settings.wifolders_d and k in (
         "name",
     )
-    if(type(vars.wifolders_d[uid][k]) is int and type(v) is float):
+    if(type(story_settings.wifolders_d[uid][k]) is int and type(v) is float):
         v = int(v)
-    assert type(vars.wifolders_d[uid][k]) is type(v)
-    vars.wifolders_d[uid][k] = v
-    print(colors.GREEN + f"{lua_log_format_name(vars.lua_koboldbridge.logging_name)} set {k} of world info folder {uid} to {v}" + colors.END)
+    assert type(story_settings.wifolders_d[uid][k]) is type(v)
+    story_settings.wifolders_d[uid][k] = v
+    print(colors.GREEN + f"{lua_log_format_name(system_settings.lua_koboldbridge.logging_name)} set {k} of world info folder {uid} to {v}" + colors.END)
 
 #==================================================================#
 #  Get the "Amount to Generate"
 #==================================================================#
 @bridged_kwarg()
 def lua_get_genamt():
-    return vars.genamt
+    return model_settings.genamt
 
 #==================================================================#
 #  Set the "Amount to Generate"
 #==================================================================#
 @bridged_kwarg()
 def lua_set_genamt(genamt):
-    assert vars.lua_koboldbridge.userstate != "genmod" and type(genamt) in (int, float) and genamt >= 0
-    print(colors.GREEN + f"{lua_log_format_name(vars.lua_koboldbridge.logging_name)} set genamt to {int(genamt)}" + colors.END)
-    vars.genamt = int(genamt)
+    assert system_settings.lua_koboldbridge.userstate != "genmod" and type(genamt) in (int, float) and genamt >= 0
+    print(colors.GREEN + f"{lua_log_format_name(system_settings.lua_koboldbridge.logging_name)} set genamt to {int(genamt)}" + colors.END)
+    model_settings.genamt = int(genamt)
 
 #==================================================================#
 #  Get the "Gens Per Action"
 #==================================================================#
 @bridged_kwarg()
 def lua_get_numseqs():
-    return vars.numseqs
+    return model_settings.numseqs
 
 #==================================================================#
 #  Set the "Gens Per Action"
@@ -2535,8 +2426,8 @@ def lua_get_numseqs():
 @bridged_kwarg()
 def lua_set_numseqs(numseqs):
     assert type(numseqs) in (int, float) and numseqs >= 1
-    print(colors.GREEN + f"{lua_log_format_name(vars.lua_koboldbridge.logging_name)} set numseqs to {int(numseqs)}" + colors.END)
-    vars.numseqs = int(numseqs)
+    print(colors.GREEN + f"{lua_log_format_name(system_settings.lua_koboldbridge.logging_name)} set numseqs to {int(numseqs)}" + colors.END)
+    model_settings.numseqs = int(numseqs)
 
 #==================================================================#
 #  Check if a setting exists with the given name
@@ -2600,30 +2491,30 @@ def lua_has_setting(setting):
 #==================================================================#
 @bridged_kwarg()
 def lua_get_setting(setting):
-    if(setting in ("settemp", "temp")): return vars.temp
-    if(setting in ("settopp", "topp", "top_p")): return vars.top_p
-    if(setting in ("settopk", "topk", "top_k")): return vars.top_k
-    if(setting in ("settfs", "tfs")): return vars.tfs
-    if(setting in ("settypical", "typical")): return vars.typical
-    if(setting in ("settopa", "topa")): return vars.top_a
-    if(setting in ("setreppen", "reppen")): return vars.rep_pen
-    if(setting in ("setreppenslope", "reppenslope")): return vars.rep_pen_slope
-    if(setting in ("setreppenrange", "reppenrange")): return vars.rep_pen_range
-    if(setting in ("settknmax", "tknmax")): return vars.max_length
-    if(setting == "anotedepth"): return vars.andepth
-    if(setting in ("setwidepth", "widepth")): return vars.widepth
-    if(setting in ("setuseprompt", "useprompt")): return vars.useprompt
-    if(setting in ("setadventure", "adventure")): return vars.adventure
-    if(setting in ("setchatmode", "chatmode")): return vars.chatmode
-    if(setting in ("setdynamicscan", "dynamicscan")): return vars.dynamicscan
-    if(setting in ("setnopromptgen", "nopromptgen")): return vars.nopromptgen
-    if(setting in ("autosave", "autosave")): return vars.autosave
-    if(setting in ("setrngpersist", "rngpersist")): return vars.rngpersist
-    if(setting in ("frmttriminc", "triminc")): return vars.formatoptns["frmttriminc"]
-    if(setting in ("frmtrmblln", "rmblln")): return vars.formatoptns["frmttrmblln"]
-    if(setting in ("frmtrmspch", "rmspch")): return vars.formatoptns["frmttrmspch"]
-    if(setting in ("frmtadsnsp", "adsnsp")): return vars.formatoptns["frmtadsnsp"]
-    if(setting in ("frmtsingleline", "singleline")): return vars.formatoptns["singleline"]
+    if(setting in ("settemp", "temp")): return model_settings.temp
+    if(setting in ("settopp", "topp", "top_p")): return model_settings.top_p
+    if(setting in ("settopk", "topk", "top_k")): return model_settings.top_k
+    if(setting in ("settfs", "tfs")): return model_settings.tfs
+    if(setting in ("settypical", "typical")): return model_settings.typical
+    if(setting in ("settopa", "topa")): return model_settings.top_a
+    if(setting in ("setreppen", "reppen")): return model_settings.rep_pen
+    if(setting in ("setreppenslope", "reppenslope")): return model_settings.rep_pen_slope
+    if(setting in ("setreppenrange", "reppenrange")): return model_settings.rep_pen_range
+    if(setting in ("settknmax", "tknmax")): return model_settings.max_length
+    if(setting == "anotedepth"): return story_settings.andepth
+    if(setting in ("setwidepth", "widepth")): return user_settings.widepth
+    if(setting in ("setuseprompt", "useprompt")): return story_settings.useprompt
+    if(setting in ("setadventure", "adventure")): return story_settings.adventure
+    if(setting in ("setchatmode", "chatmode")): return story_settings.chatmode
+    if(setting in ("setdynamicscan", "dynamicscan")): return story_settings.dynamicscan
+    if(setting in ("setnopromptgen", "nopromptgen")): return user_settings.nopromptgen
+    if(setting in ("autosave", "autosave")): return user_settings.autosave
+    if(setting in ("setrngpersist", "rngpersist")): return user_settings.rngpersist
+    if(setting in ("frmttriminc", "triminc")): return user_settings.formatoptns["frmttriminc"]
+    if(setting in ("frmtrmblln", "rmblln")): return user_settings.formatoptns["frmttrmblln"]
+    if(setting in ("frmtrmspch", "rmspch")): return user_settings.formatoptns["frmttrmspch"]
+    if(setting in ("frmtadsnsp", "adsnsp")): return user_settings.formatoptns["frmtadsnsp"]
+    if(setting in ("frmtsingleline", "singleline")): return user_settings.formatoptns["singleline"]
 
 #==================================================================#
 #  Set the setting with the given name if it exists
@@ -2633,40 +2524,40 @@ def lua_set_setting(setting, v):
     actual_type = type(lua_get_setting(setting))
     assert v is not None and (actual_type is type(v) or (actual_type is int and type(v) is float))
     v = actual_type(v)
-    print(colors.GREEN + f"{lua_log_format_name(vars.lua_koboldbridge.logging_name)} set {setting} to {v}" + colors.END)
+    print(colors.GREEN + f"{lua_log_format_name(system_settings.lua_koboldbridge.logging_name)} set {setting} to {v}" + colors.END)
     if(setting in ("setadventure", "adventure") and v):
-        vars.actionmode = 1
-    if(setting in ("settemp", "temp")): vars.temp = v
-    if(setting in ("settopp", "topp")): vars.top_p = v
-    if(setting in ("settopk", "topk")): vars.top_k = v
-    if(setting in ("settfs", "tfs")): vars.tfs = v
-    if(setting in ("settypical", "typical")): vars.typical = v
-    if(setting in ("settopa", "topa")): vars.top_a = v
-    if(setting in ("setreppen", "reppen")): vars.rep_pen = v
-    if(setting in ("setreppenslope", "reppenslope")): vars.rep_pen_slope = v
-    if(setting in ("setreppenrange", "reppenrange")): vars.rep_pen_range = v
-    if(setting in ("settknmax", "tknmax")): vars.max_length = v; return True
-    if(setting == "anotedepth"): vars.andepth = v; return True
-    if(setting in ("setwidepth", "widepth")): vars.widepth = v; return True
-    if(setting in ("setuseprompt", "useprompt")): vars.useprompt = v; return True
-    if(setting in ("setadventure", "adventure")): vars.adventure = v
-    if(setting in ("setdynamicscan", "dynamicscan")): vars.dynamicscan = v
-    if(setting in ("setnopromptgen", "nopromptgen")): vars.nopromptgen = v
-    if(setting in ("autosave", "noautosave")): vars.autosave = v
-    if(setting in ("setrngpersist", "rngpersist")): vars.rngpersist = v
-    if(setting in ("setchatmode", "chatmode")): vars.chatmode = v
-    if(setting in ("frmttriminc", "triminc")): vars.formatoptns["frmttriminc"] = v
-    if(setting in ("frmtrmblln", "rmblln")): vars.formatoptns["frmttrmblln"] = v
-    if(setting in ("frmtrmspch", "rmspch")): vars.formatoptns["frmttrmspch"] = v
-    if(setting in ("frmtadsnsp", "adsnsp")): vars.formatoptns["frmtadsnsp"] = v
-    if(setting in ("frmtsingleline", "singleline")): vars.formatoptns["singleline"] = v
+        story_settings.actionmode = 1
+    if(setting in ("settemp", "temp")): model_settings.temp = v
+    if(setting in ("settopp", "topp")): model_settings.top_p = v
+    if(setting in ("settopk", "topk")): model_settings.top_k = v
+    if(setting in ("settfs", "tfs")): model_settings.tfs = v
+    if(setting in ("settypical", "typical")): model_settings.typical = v
+    if(setting in ("settopa", "topa")): model_settings.top_a = v
+    if(setting in ("setreppen", "reppen")): model_settings.rep_pen = v
+    if(setting in ("setreppenslope", "reppenslope")): model_settings.rep_pen_slope = v
+    if(setting in ("setreppenrange", "reppenrange")): model_settings.rep_pen_range = v
+    if(setting in ("settknmax", "tknmax")): model_settings.max_length = v; return True
+    if(setting == "anotedepth"): story_settings.andepth = v; return True
+    if(setting in ("setwidepth", "widepth")): user_settings.widepth = v; return True
+    if(setting in ("setuseprompt", "useprompt")): story_settings.useprompt = v; return True
+    if(setting in ("setadventure", "adventure")): story_settings.adventure = v
+    if(setting in ("setdynamicscan", "dynamicscan")): story_settings.dynamicscan = v
+    if(setting in ("setnopromptgen", "nopromptgen")): user_settings.nopromptgen = v
+    if(setting in ("autosave", "noautosave")): user_settings.autosave = v
+    if(setting in ("setrngpersist", "rngpersist")): user_settings.rngpersist = v
+    if(setting in ("setchatmode", "chatmode")): story_settings.chatmode = v
+    if(setting in ("frmttriminc", "triminc")): user_settings.formatoptns["frmttriminc"] = v
+    if(setting in ("frmtrmblln", "rmblln")): user_settings.formatoptns["frmttrmblln"] = v
+    if(setting in ("frmtrmspch", "rmspch")): user_settings.formatoptns["frmttrmspch"] = v
+    if(setting in ("frmtadsnsp", "adsnsp")): user_settings.formatoptns["frmtadsnsp"] = v
+    if(setting in ("frmtsingleline", "singleline")): user_settings.formatoptns["singleline"] = v
 
 #==================================================================#
 #  Get contents of memory
 #==================================================================#
 @bridged_kwarg()
 def lua_get_memory():
-    return vars.memory
+    return story_settings.memory
 
 #==================================================================#
 #  Set contents of memory
@@ -2674,14 +2565,14 @@ def lua_get_memory():
 @bridged_kwarg()
 def lua_set_memory(m):
     assert type(m) is str
-    vars.memory = m
+    story_settings.memory = m
 
 #==================================================================#
 #  Get contents of author's note
 #==================================================================#
 @bridged_kwarg()
 def lua_get_authorsnote():
-    return vars.authornote
+    return story_settings.authornote
 
 #==================================================================#
 #  Set contents of author's note
@@ -2689,14 +2580,14 @@ def lua_get_authorsnote():
 @bridged_kwarg()
 def lua_set_authorsnote(m):
     assert type(m) is str
-    vars.authornote = m
+    story_settings.authornote = m
 
 #==================================================================#
 #  Get contents of author's note template
 #==================================================================#
 @bridged_kwarg()
 def lua_get_authorsnotetemplate():
-    return vars.authornotetemplate
+    return story_settings.authornotetemplate
 
 #==================================================================#
 #  Set contents of author's note template
@@ -2704,7 +2595,7 @@ def lua_get_authorsnotetemplate():
 @bridged_kwarg()
 def lua_set_authorsnotetemplate(m):
     assert type(m) is str
-    vars.authornotetemplate = m
+    story_settings.authornotetemplate = m
 
 #==================================================================#
 #  Save settings and send them to client
@@ -2723,35 +2614,35 @@ def lua_set_chunk(k, v):
     assert k >= 0
     assert k != 0 or len(v) != 0
     if(len(v) == 0):
-        print(colors.GREEN + f"{lua_log_format_name(vars.lua_koboldbridge.logging_name)} deleted story chunk {k}" + colors.END)
+        print(colors.GREEN + f"{lua_log_format_name(system_settings.lua_koboldbridge.logging_name)} deleted story chunk {k}" + colors.END)
         chunk = int(k)
-        if(vars.lua_koboldbridge.userstate == "genmod"):
-            del vars._actions[chunk-1]
-        vars.lua_deleted.add(chunk)
-        if(not hasattr(vars, "_actions") or vars._actions is not vars.actions):
+        if(system_settings.lua_koboldbridge.userstate == "genmod"):
+            del story_settings._actions[chunk-1]
+        story_settings.lua_deleted.add(chunk)
+        if(not hasattr(story_settings, "_actions") or story_settings._actions is not story_settings.actions):
             #Instead of deleting we'll blank out the text. This way our actions and actions_metadata stay in sync and we can restore the chunk on an undo
-            vars.actions[chunk-1] = ""
-            vars.actions_metadata[chunk-1]['Alternative Text'] = [{"Text": vars.actions_metadata[chunk-1]['Selected Text'], "Pinned": False, "Editted": True}] + vars.actions_metadata[chunk-1]['Alternative Text']
-            vars.actions_metadata[chunk-1]['Selected Text'] = ''
+            story_settings.actions[chunk-1] = ""
+            story_settings.actions_metadata[chunk-1]['Alternative Text'] = [{"Text": story_settings.actions_metadata[chunk-1]['Selected Text'], "Pinned": False, "Editted": True}] + story_settings.actions_metadata[chunk-1]['Alternative Text']
+            story_settings.actions_metadata[chunk-1]['Selected Text'] = ''
             send_debug()
     else:
         if(k == 0):
-            print(colors.GREEN + f"{lua_log_format_name(vars.lua_koboldbridge.logging_name)} edited prompt chunk" + colors.END)
+            print(colors.GREEN + f"{lua_log_format_name(system_settings.lua_koboldbridge.logging_name)} edited prompt chunk" + colors.END)
         else:
-            print(colors.GREEN + f"{lua_log_format_name(vars.lua_koboldbridge.logging_name)} edited story chunk {k}" + colors.END)
+            print(colors.GREEN + f"{lua_log_format_name(system_settings.lua_koboldbridge.logging_name)} edited story chunk {k}" + colors.END)
         chunk = int(k)
         if(chunk == 0):
-            if(vars.lua_koboldbridge.userstate == "genmod"):
-                vars._prompt = v
-            vars.lua_edited.add(chunk)
-            vars.prompt = v
+            if(system_settings.lua_koboldbridge.userstate == "genmod"):
+                story_settings._prompt = v
+            story_settings.lua_edited.add(chunk)
+            story_settings.prompt = v
         else:
-            if(vars.lua_koboldbridge.userstate == "genmod"):
-                vars._actions[chunk-1] = v
-            vars.lua_edited.add(chunk)
-            vars.actions[chunk-1] = v
-            vars.actions_metadata[chunk-1]['Alternative Text'] = [{"Text": vars.actions_metadata[chunk-1]['Selected Text'], "Pinned": False, "Editted": True}] + vars.actions_metadata[chunk-1]['Alternative Text']
-            vars.actions_metadata[chunk-1]['Selected Text'] = v
+            if(system_settings.lua_koboldbridge.userstate == "genmod"):
+                story_settings._actions[chunk-1] = v
+            story_settings.lua_edited.add(chunk)
+            story_settings.actions[chunk-1] = v
+            story_settings.actions_metadata[chunk-1]['Alternative Text'] = [{"Text": story_settings.actions_metadata[chunk-1]['Selected Text'], "Pinned": False, "Editted": True}] + story_settings.actions_metadata[chunk-1]['Alternative Text']
+            story_settings.actions_metadata[chunk-1]['Selected Text'] = v
             send_debug()
 
 #==================================================================#
@@ -2759,27 +2650,27 @@ def lua_set_chunk(k, v):
 #==================================================================#
 @bridged_kwarg()
 def lua_get_modeltype():
-    if(vars.noai):
+    if(system_settings.noai):
         return "readonly"
-    if(vars.model in ("Colab", "OAI", "InferKit")):
+    if(model_settings.model in ("Colab", "OAI", "InferKit")):
         return "api"
-    if(not vars.use_colab_tpu and vars.model not in ("TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX") and (vars.model in ("GPT2Custom", "NeoCustom") or vars.model_type in ("gpt2", "gpt_neo", "gptj"))):
+    if(not system_settings.use_colab_tpu and model_settings.model not in ("TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX") and (model_settings.model in ("GPT2Custom", "NeoCustom") or model_settings.model_type in ("gpt2", "gpt_neo", "gptj"))):
         hidden_size = get_hidden_size_from_model(model)
-    if(vars.model in ("gpt2",) or (vars.model_type == "gpt2" and hidden_size == 768)):
+    if(model_settings.model in ("gpt2",) or (model_settings.model_type == "gpt2" and hidden_size == 768)):
         return "gpt2"
-    if(vars.model in ("gpt2-medium",) or (vars.model_type == "gpt2" and hidden_size == 1024)):
+    if(model_settings.model in ("gpt2-medium",) or (model_settings.model_type == "gpt2" and hidden_size == 1024)):
         return "gpt2-medium"
-    if(vars.model in ("gpt2-large",) or (vars.model_type == "gpt2" and hidden_size == 1280)):
+    if(model_settings.model in ("gpt2-large",) or (model_settings.model_type == "gpt2" and hidden_size == 1280)):
         return "gpt2-large"
-    if(vars.model in ("gpt2-xl",) or (vars.model_type == "gpt2" and hidden_size == 1600)):
+    if(model_settings.model in ("gpt2-xl",) or (model_settings.model_type == "gpt2" and hidden_size == 1600)):
         return "gpt2-xl"
-    if(vars.model_type == "gpt_neo" and hidden_size == 768):
+    if(model_settings.model_type == "gpt_neo" and hidden_size == 768):
         return "gpt-neo-125M"
-    if(vars.model in ("EleutherAI/gpt-neo-1.3B",) or (vars.model_type == "gpt_neo" and hidden_size == 2048)):
+    if(model_settings.model in ("EleutherAI/gpt-neo-1.3B",) or (model_settings.model_type == "gpt_neo" and hidden_size == 2048)):
         return "gpt-neo-1.3B"
-    if(vars.model in ("EleutherAI/gpt-neo-2.7B",) or (vars.model_type == "gpt_neo" and hidden_size == 2560)):
+    if(model_settings.model in ("EleutherAI/gpt-neo-2.7B",) or (model_settings.model_type == "gpt_neo" and hidden_size == 2560)):
         return "gpt-neo-2.7B"
-    if(vars.model in ("EleutherAI/gpt-j-6B",) or ((vars.use_colab_tpu or vars.model == "TPUMeshTransformerGPTJ") and tpu_mtj_backend.params["d_model"] == 4096) or (vars.model_type in ("gpt_neo", "gptj") and hidden_size == 4096)):
+    if(model_settings.model in ("EleutherAI/gpt-j-6B",) or ((system_settings.use_colab_tpu or model_settings.model == "TPUMeshTransformerGPTJ") and tpu_mtj_backend.params["d_model"] == 4096) or (model_settings.model_type in ("gpt_neo", "gptj") and hidden_size == 4096)):
         return "gpt-j-6B"
     return "unknown"
 
@@ -2788,11 +2679,11 @@ def lua_get_modeltype():
 #==================================================================#
 @bridged_kwarg()
 def lua_get_modelbackend():
-    if(vars.noai):
+    if(system_settings.noai):
         return "readonly"
-    if(vars.model in ("Colab", "OAI", "InferKit")):
+    if(model_settings.model in ("Colab", "OAI", "InferKit")):
         return "api"
-    if(vars.use_colab_tpu or vars.model in ("TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX")):
+    if(system_settings.use_colab_tpu or model_settings.model in ("TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX")):
         return "mtj"
     return "transformers"
 
@@ -2801,7 +2692,7 @@ def lua_get_modelbackend():
 #==================================================================#
 @bridged_kwarg()
 def lua_is_custommodel():
-    return vars.model in ("GPT2Custom", "NeoCustom", "TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX")
+    return model_settings.model in ("GPT2Custom", "NeoCustom", "TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX")
 
 #==================================================================#
 #  Return the filename (as a string) of the current soft prompt, or
@@ -2809,7 +2700,7 @@ def lua_is_custommodel():
 #==================================================================#
 @bridged_kwarg()
 def lua_get_spfilename():
-    return vars.spfilename.strip() or None
+    return system_settings.spfilename.strip() or None
 
 #==================================================================#
 #  When called with a string as argument, sets the current soft prompt;
@@ -2831,14 +2722,14 @@ def lua_set_spfilename(filename: Union[str, None]):
 #==================================================================#
 def execute_inmod():
     setgamesaved(False)
-    vars.lua_logname = ...
-    vars.lua_edited = set()
-    vars.lua_deleted = set()
+    system_settings.lua_logname = ...
+    story_settings.lua_edited = set()
+    story_settings.lua_deleted = set()
     try:
-        tpool.execute(vars.lua_koboldbridge.execute_inmod)
+        tpool.execute(system_settings.lua_koboldbridge.execute_inmod)
     except lupa.LuaError as e:
-        vars.lua_koboldbridge.obliterate_multiverse()
-        vars.lua_running = False
+        system_settings.lua_koboldbridge.obliterate_multiverse()
+        system_settings.lua_running = False
         emit('from_server', {'cmd': 'errmsg', 'data': 'Lua script error; please check console.'}, broadcast=True)
         sendUSStatItems()
         print("{0}{1}{2}".format(colors.RED, "***LUA ERROR***: ", colors.END), end="", file=sys.stderr)
@@ -2847,28 +2738,28 @@ def execute_inmod():
         set_aibusy(0)
 
 def execute_genmod():
-    vars.lua_koboldbridge.execute_genmod()
+    system_settings.lua_koboldbridge.execute_genmod()
 
 def execute_outmod():
     setgamesaved(False)
     emit('from_server', {'cmd': 'hidemsg', 'data': ''}, broadcast=True)
     try:
-        tpool.execute(vars.lua_koboldbridge.execute_outmod)
+        tpool.execute(system_settings.lua_koboldbridge.execute_outmod)
     except lupa.LuaError as e:
-        vars.lua_koboldbridge.obliterate_multiverse()
-        vars.lua_running = False
+        system_settings.lua_koboldbridge.obliterate_multiverse()
+        system_settings.lua_running = False
         emit('from_server', {'cmd': 'errmsg', 'data': 'Lua script error; please check console.'}, broadcast=True)
         sendUSStatItems()
         print("{0}{1}{2}".format(colors.RED, "***LUA ERROR***: ", colors.END), end="", file=sys.stderr)
         print("{0}{1}{2}".format(colors.RED, str(e).replace("\033", ""), colors.END), file=sys.stderr)
         print("{0}{1}{2}".format(colors.YELLOW, "Lua engine stopped; please open 'Userscripts' and press Load to reinitialize scripts.", colors.END), file=sys.stderr)
         set_aibusy(0)
-    if(vars.lua_koboldbridge.resend_settings_required):
-        vars.lua_koboldbridge.resend_settings_required = False
+    if(system_settings.lua_koboldbridge.resend_settings_required):
+        system_settings.lua_koboldbridge.resend_settings_required = False
         lua_resend_settings()
-    for k in vars.lua_edited:
-        inlineedit(k, vars.actions[k])
-    for k in vars.lua_deleted:
+    for k in story_settings.lua_edited:
+        inlineedit(k, story_settings.actions[k])
+    for k in story_settings.lua_deleted:
         inlinedelete(k)
 
 
@@ -2882,93 +2773,93 @@ def execute_outmod():
 @socketio.on('connect')
 def do_connect():
     print("{0}Client connected!{1}".format(colors.GREEN, colors.END))
-    emit('from_server', {'cmd': 'setchatname', 'data': vars.chatname})
-    emit('from_server', {'cmd': 'setanotetemplate', 'data': vars.authornotetemplate})
-    emit('from_server', {'cmd': 'connected', 'smandelete': vars.smandelete, 'smanrename': vars.smanrename, 'modelname': getmodelname()})
-    if(vars.host):
+    emit('from_server', {'cmd': 'setchatname', 'data': story_settings.chatname})
+    emit('from_server', {'cmd': 'setanotetemplate', 'data': story_settings.authornotetemplate})
+    emit('from_server', {'cmd': 'connected', 'smandelete': system_settings.smandelete, 'smanrename': system_settings.smanrename, 'modelname': getmodelname()})
+    if(system_settings.host):
         emit('from_server', {'cmd': 'runs_remotely'})
-    if(vars.flaskwebgui):
+    if(system_settings.flaskwebgui):
         emit('from_server', {'cmd': 'flaskwebgui'})
-    if(vars.allowsp):
-        emit('from_server', {'cmd': 'allowsp', 'data': vars.allowsp})
+    if(system_settings.allowsp):
+        emit('from_server', {'cmd': 'allowsp', 'data': system_settings.allowsp})
 
     sendUSStatItems()
-    emit('from_server', {'cmd': 'spstatitems', 'data': {vars.spfilename: vars.spmeta} if vars.allowsp and len(vars.spfilename) else {}}, broadcast=True)
+    emit('from_server', {'cmd': 'spstatitems', 'data': {system_settings.spfilename: system_settings.spmeta} if system_settings.allowsp and len(system_settings.spfilename) else {}}, broadcast=True)
 
-    if(not vars.gamestarted):
+    if(not story_settings.gamestarted):
         setStartState()
         sendsettings()
         refresh_settings()
-        vars.laststory = None
-        emit('from_server', {'cmd': 'setstoryname', 'data': vars.laststory})
+        user_settings.laststory = None
+        emit('from_server', {'cmd': 'setstoryname', 'data': user_settings.laststory})
         sendwi()
-        emit('from_server', {'cmd': 'setmemory', 'data': vars.memory})
-        emit('from_server', {'cmd': 'setanote', 'data': vars.authornote})
-        vars.mode = "play"
+        emit('from_server', {'cmd': 'setmemory', 'data': story_settings.memory})
+        emit('from_server', {'cmd': 'setanote', 'data': story_settings.authornote})
+        story_settings.mode = "play"
     else:
         # Game in session, send current game data and ready state to browser
         refresh_story()
         sendsettings()
         refresh_settings()
-        emit('from_server', {'cmd': 'setstoryname', 'data': vars.laststory})
+        emit('from_server', {'cmd': 'setstoryname', 'data': user_settings.laststory})
         sendwi()
-        emit('from_server', {'cmd': 'setmemory', 'data': vars.memory})
-        emit('from_server', {'cmd': 'setanote', 'data': vars.authornote})
-        if(vars.mode == "play"):
-            if(not vars.aibusy):
+        emit('from_server', {'cmd': 'setmemory', 'data': story_settings.memory})
+        emit('from_server', {'cmd': 'setanote', 'data': story_settings.authornote})
+        if(story_settings.mode == "play"):
+            if(not system_settings.aibusy):
                 emit('from_server', {'cmd': 'setgamestate', 'data': 'ready'})
             else:
                 emit('from_server', {'cmd': 'setgamestate', 'data': 'wait'})
-        elif(vars.mode == "edit"):
+        elif(story_settings.mode == "edit"):
             emit('from_server', {'cmd': 'editmode', 'data': 'true'})
-        elif(vars.mode == "memory"):
+        elif(story_settings.mode == "memory"):
             emit('from_server', {'cmd': 'memmode', 'data': 'true'})
-        elif(vars.mode == "wi"):
+        elif(story_settings.mode == "wi"):
             emit('from_server', {'cmd': 'wimode', 'data': 'true'})
 
-    emit('from_server', {'cmd': 'gamesaved', 'data': vars.gamesaved}, broadcast=True)
+    emit('from_server', {'cmd': 'gamesaved', 'data': story_settings.gamesaved}, broadcast=True)
 
 #==================================================================#
 # Event triggered when browser SocketIO sends data to the server
 #==================================================================#
 @socketio.on('message')
 def get_message(msg):
-    if not vars.quiet:
+    if not system_settings.quiet:
         print("{0}Data received:{1}{2}".format(colors.GREEN, msg, colors.END))
     # Submit action
     if(msg['cmd'] == 'submit'):
-        if(vars.mode == "play"):
-            if(vars.aibusy):
+        if(story_settings.mode == "play"):
+            if(system_settings.aibusy):
                 if(msg.get('allowabort', False)):
-                    vars.abort = True
+                    system_settings.abort = True
                 return
-            vars.abort = False
-            vars.lua_koboldbridge.feedback = None
-            if(vars.chatmode):
+            system_settings.abort = False
+            system_settings.lua_koboldbridge.feedback = None
+            if(story_settings.chatmode):
                 if(type(msg['chatname']) is not str):
                     raise ValueError("Chatname must be a string")
-                vars.chatname = msg['chatname']
+                story_settings.chatname = msg['chatname']
                 settingschanged()
-                emit('from_server', {'cmd': 'setchatname', 'data': vars.chatname})
-            vars.recentrng = vars.recentrngm = None
+                emit('from_server', {'cmd': 'setchatname', 'data': story_settings.chatname})
+            story_settings.recentrng = story_settings.recentrngm = None
             actionsubmit(msg['data'], actionmode=msg['actionmode'])
-        elif(vars.mode == "edit"):
+        elif(story_settings.mode == "edit"):
             editsubmit(msg['data'])
-        elif(vars.mode == "memory"):
+        elif(story_settings.mode == "memory"):
             memsubmit(msg['data'])
     # Retry Action
     elif(msg['cmd'] == 'retry'):
-        if(vars.aibusy):
+        if(system_settings.aibusy):
             if(msg.get('allowabort', False)):
-                vars.abort = True
+                system_settings.abort = True
             return
-        vars.abort = False
-        if(vars.chatmode):
+        system_settings.abort = False
+        if(story_settings.chatmode):
             if(type(msg['chatname']) is not str):
                 raise ValueError("Chatname must be a string")
-            vars.chatname = msg['chatname']
+            story_settings.chatname = msg['chatname']
             settingschanged()
-            emit('from_server', {'cmd': 'setchatname', 'data': vars.chatname})
+            emit('from_server', {'cmd': 'setchatname', 'data': story_settings.chatname})
         actionretry(msg['data'])
     # Back/Undo Action
     elif(msg['cmd'] == 'back'):
@@ -2978,11 +2869,11 @@ def get_message(msg):
         actionredo()
     # EditMode Action (old)
     elif(msg['cmd'] == 'edit'):
-        if(vars.mode == "play"):
-            vars.mode = "edit"
+        if(story_settings.mode == "play"):
+            story_settings.mode = "edit"
             emit('from_server', {'cmd': 'editmode', 'data': 'true'}, broadcast=True)
-        elif(vars.mode == "edit"):
-            vars.mode = "play"
+        elif(story_settings.mode == "edit"):
+            story_settings.mode = "play"
             emit('from_server', {'cmd': 'editmode', 'data': 'false'}, broadcast=True)
     # EditLine Action (old)
     elif(msg['cmd'] == 'editline'):
@@ -2997,75 +2888,75 @@ def get_message(msg):
         deleterequest()
     elif(msg['cmd'] == 'memory'):
         togglememorymode()
-    elif(not vars.host and msg['cmd'] == 'savetofile'):
+    elif(not system_settings.host and msg['cmd'] == 'savetofile'):
         savetofile()
-    elif(not vars.host and msg['cmd'] == 'loadfromfile'):
+    elif(not system_settings.host and msg['cmd'] == 'loadfromfile'):
         loadfromfile()
     elif(msg['cmd'] == 'loadfromstring'):
         loadRequest(json.loads(msg['data']), filename=msg['filename'])
-    elif(not vars.host and msg['cmd'] == 'import'):
+    elif(not system_settings.host and msg['cmd'] == 'import'):
         importRequest()
     elif(msg['cmd'] == 'newgame'):
         newGameRequest()
     elif(msg['cmd'] == 'rndgame'):
         randomGameRequest(msg['data'], memory=msg['memory'])
     elif(msg['cmd'] == 'settemp'):
-        vars.temp = float(msg['data'])
+        model_settings.temp = float(msg['data'])
         emit('from_server', {'cmd': 'setlabeltemp', 'data': msg['data']}, broadcast=True)
         settingschanged()
         refresh_settings()
     elif(msg['cmd'] == 'settopp'):
-        vars.top_p = float(msg['data'])
+        model_settings.top_p = float(msg['data'])
         emit('from_server', {'cmd': 'setlabeltopp', 'data': msg['data']}, broadcast=True)
         settingschanged()
         refresh_settings()
     elif(msg['cmd'] == 'settopk'):
-        vars.top_k = int(msg['data'])
+        model_settings.top_k = int(msg['data'])
         emit('from_server', {'cmd': 'setlabeltopk', 'data': msg['data']}, broadcast=True)
         settingschanged()
         refresh_settings()
     elif(msg['cmd'] == 'settfs'):
-        vars.tfs = float(msg['data'])
+        model_settings.tfs = float(msg['data'])
         emit('from_server', {'cmd': 'setlabeltfs', 'data': msg['data']}, broadcast=True)
         settingschanged()
         refresh_settings()
     elif(msg['cmd'] == 'settypical'):
-        vars.typical = float(msg['data'])
+        model_settings.typical = float(msg['data'])
         emit('from_server', {'cmd': 'setlabeltypical', 'data': msg['data']}, broadcast=True)
         settingschanged()
         refresh_settings()
     elif(msg['cmd'] == 'settopa'):
-        vars.top_a = float(msg['data'])
+        model_settings.top_a = float(msg['data'])
         emit('from_server', {'cmd': 'setlabeltopa', 'data': msg['data']}, broadcast=True)
         settingschanged()
         refresh_settings()
     elif(msg['cmd'] == 'setreppen'):
-        vars.rep_pen = float(msg['data'])
+        model_settings.rep_pen = float(msg['data'])
         emit('from_server', {'cmd': 'setlabelreppen', 'data': msg['data']}, broadcast=True)
         settingschanged()
         refresh_settings()
     elif(msg['cmd'] == 'setreppenslope'):
-        vars.rep_pen_slope = float(msg['data'])
+        model_settings.rep_pen_slope = float(msg['data'])
         emit('from_server', {'cmd': 'setlabelreppenslope', 'data': msg['data']}, broadcast=True)
         settingschanged()
         refresh_settings()
     elif(msg['cmd'] == 'setreppenrange'):
-        vars.rep_pen_range = float(msg['data'])
+        model_settings.rep_pen_range = float(msg['data'])
         emit('from_server', {'cmd': 'setlabelreppenrange', 'data': msg['data']}, broadcast=True)
         settingschanged()
         refresh_settings()
     elif(msg['cmd'] == 'setoutput'):
-        vars.genamt = int(msg['data'])
+        model_settings.genamt = int(msg['data'])
         emit('from_server', {'cmd': 'setlabeloutput', 'data': msg['data']}, broadcast=True)
         settingschanged()
         refresh_settings()
     elif(msg['cmd'] == 'settknmax'):
-        vars.max_length = int(msg['data'])
+        model_settings.max_length = int(msg['data'])
         emit('from_server', {'cmd': 'setlabeltknmax', 'data': msg['data']}, broadcast=True)
         settingschanged()
         refresh_settings()
     elif(msg['cmd'] == 'setikgen'):
-        vars.ikgen = int(msg['data'])
+        model_settings.ikgen = int(msg['data'])
         emit('from_server', {'cmd': 'setlabelikgen', 'data': msg['data']}, broadcast=True)
         settingschanged()
         refresh_settings()
@@ -3074,50 +2965,50 @@ def get_message(msg):
         anotesubmit(msg['data'], template=msg['template'])
     # Author's Note depth update
     elif(msg['cmd'] == 'anotedepth'):
-        vars.andepth = int(msg['data'])
+        story_settings.andepth = int(msg['data'])
         emit('from_server', {'cmd': 'setlabelanotedepth', 'data': msg['data']}, broadcast=True)
         settingschanged()
         refresh_settings()
     # Format - Trim incomplete sentences
     elif(msg['cmd'] == 'frmttriminc'):
-        if('frmttriminc' in vars.formatoptns):
-            vars.formatoptns["frmttriminc"] = msg['data']
+        if('frmttriminc' in user_settings.formatoptns):
+            user_settings.formatoptns["frmttriminc"] = msg['data']
         settingschanged()
         refresh_settings()
     elif(msg['cmd'] == 'frmtrmblln'):
-        if('frmtrmblln' in vars.formatoptns):
-            vars.formatoptns["frmtrmblln"] = msg['data']
+        if('frmtrmblln' in user_settings.formatoptns):
+            user_settings.formatoptns["frmtrmblln"] = msg['data']
         settingschanged()
         refresh_settings()
     elif(msg['cmd'] == 'frmtrmspch'):
-        if('frmtrmspch' in vars.formatoptns):
-            vars.formatoptns["frmtrmspch"] = msg['data']
+        if('frmtrmspch' in user_settings.formatoptns):
+            user_settings.formatoptns["frmtrmspch"] = msg['data']
         settingschanged()
         refresh_settings()
     elif(msg['cmd'] == 'frmtadsnsp'):
-        if('frmtadsnsp' in vars.formatoptns):
-            vars.formatoptns["frmtadsnsp"] = msg['data']
+        if('frmtadsnsp' in user_settings.formatoptns):
+            user_settings.formatoptns["frmtadsnsp"] = msg['data']
         settingschanged()
         refresh_settings()
     elif(msg['cmd'] == 'singleline'):
-        if('singleline' in vars.formatoptns):
-            vars.formatoptns["singleline"] = msg['data']
+        if('singleline' in user_settings.formatoptns):
+            user_settings.formatoptns["singleline"] = msg['data']
         settingschanged()
         refresh_settings()
     elif(msg['cmd'] == 'importselect'):
-        vars.importnum = int(msg["data"].replace("import", ""))
+        user_settings.importnum = int(msg["data"].replace("import", ""))
     elif(msg['cmd'] == 'importcancel'):
         emit('from_server', {'cmd': 'popupshow', 'data': False})
-        vars.importjs  = {}
+        user_settings.importjs  = {}
     elif(msg['cmd'] == 'importaccept'):
         emit('from_server', {'cmd': 'popupshow', 'data': False})
         importgame()
     elif(msg['cmd'] == 'wi'):
         togglewimode()
     elif(msg['cmd'] == 'wiinit'):
-        if(int(msg['data']) < len(vars.worldinfo)):
+        if(int(msg['data']) < len(story_settings.worldinfo)):
             setgamesaved(False)
-            vars.worldinfo[msg['data']]["init"] = True
+            story_settings.worldinfo[msg['data']]["init"] = True
             addwiitem(folder_uid=msg['folder'])
     elif(msg['cmd'] == 'wifolderinit'):
         addwifolder()
@@ -3130,20 +3021,20 @@ def get_message(msg):
     elif(msg['cmd'] == 'wifolderdelete'):
         deletewifolder(msg['data'])
     elif(msg['cmd'] == 'wiexpand'):
-        assert 0 <= int(msg['data']) < len(vars.worldinfo)
+        assert 0 <= int(msg['data']) < len(story_settings.worldinfo)
         setgamesaved(False)
         emit('from_server', {'cmd': 'wiexpand', 'data': msg['data']}, broadcast=True)
     elif(msg['cmd'] == 'wiexpandfolder'):
-        assert 0 <= int(msg['data']) < len(vars.worldinfo)
+        assert 0 <= int(msg['data']) < len(story_settings.worldinfo)
         setgamesaved(False)
         emit('from_server', {'cmd': 'wiexpandfolder', 'data': msg['data']}, broadcast=True)
     elif(msg['cmd'] == 'wifoldercollapsecontent'):
         setgamesaved(False)
-        vars.wifolders_d[msg['data']]['collapsed'] = True
+        story_settings.wifolders_d[msg['data']]['collapsed'] = True
         emit('from_server', {'cmd': 'wifoldercollapsecontent', 'data': msg['data']}, broadcast=True)
     elif(msg['cmd'] == 'wifolderexpandcontent'):
         setgamesaved(False)
-        vars.wifolders_d[msg['data']]['collapsed'] = False
+        story_settings.wifolders_d[msg['data']]['collapsed'] = False
         emit('from_server', {'cmd': 'wifolderexpandcontent', 'data': msg['data']}, broadcast=True)
     elif(msg['cmd'] == 'wiupdate'):
         setgamesaved(False)
@@ -3151,31 +3042,31 @@ def get_message(msg):
         fields = ("key", "keysecondary", "content", "comment")
         for field in fields:
             if(field in msg['data'] and type(msg['data'][field]) is str):
-                vars.worldinfo[num][field] = msg['data'][field]
-        emit('from_server', {'cmd': 'wiupdate', 'num': msg['num'], 'data': {field: vars.worldinfo[num][field] for field in fields}}, broadcast=True)
+                story_settings.worldinfo[num][field] = msg['data'][field]
+        emit('from_server', {'cmd': 'wiupdate', 'num': msg['num'], 'data': {field: story_settings.worldinfo[num][field] for field in fields}}, broadcast=True)
     elif(msg['cmd'] == 'wifolderupdate'):
         setgamesaved(False)
         uid = int(msg['uid'])
         fields = ("name", "collapsed")
         for field in fields:
             if(field in msg['data'] and type(msg['data'][field]) is (str if field != "collapsed" else bool)):
-                vars.wifolders_d[uid][field] = msg['data'][field]
-        emit('from_server', {'cmd': 'wifolderupdate', 'uid': msg['uid'], 'data': {field: vars.wifolders_d[uid][field] for field in fields}}, broadcast=True)
+                story_settings.wifolders_d[uid][field] = msg['data'][field]
+        emit('from_server', {'cmd': 'wifolderupdate', 'uid': msg['uid'], 'data': {field: story_settings.wifolders_d[uid][field] for field in fields}}, broadcast=True)
     elif(msg['cmd'] == 'wiselon'):
         setgamesaved(False)
-        vars.worldinfo[msg['data']]["selective"] = True
+        story_settings.worldinfo[msg['data']]["selective"] = True
         emit('from_server', {'cmd': 'wiselon', 'data': msg['data']}, broadcast=True)
     elif(msg['cmd'] == 'wiseloff'):
         setgamesaved(False)
-        vars.worldinfo[msg['data']]["selective"] = False
+        story_settings.worldinfo[msg['data']]["selective"] = False
         emit('from_server', {'cmd': 'wiseloff', 'data': msg['data']}, broadcast=True)
     elif(msg['cmd'] == 'wiconstanton'):
         setgamesaved(False)
-        vars.worldinfo[msg['data']]["constant"] = True
+        story_settings.worldinfo[msg['data']]["constant"] = True
         emit('from_server', {'cmd': 'wiconstanton', 'data': msg['data']}, broadcast=True)
     elif(msg['cmd'] == 'wiconstantoff'):
         setgamesaved(False)
-        vars.worldinfo[msg['data']]["constant"] = False
+        story_settings.worldinfo[msg['data']]["constant"] = False
         emit('from_server', {'cmd': 'wiconstantoff', 'data': msg['data']}, broadcast=True)
     elif(msg['cmd'] == 'sendwilist'):
         commitwi(msg['data'])
@@ -3193,15 +3084,15 @@ def get_message(msg):
         unloaded, loaded = getuslist()
         emit('from_server', {'cmd': 'buildus', 'data': {"unloaded": unloaded, "loaded": loaded}})
     elif(msg['cmd'] == 'samplerlistrequest'):
-        emit('from_server', {'cmd': 'buildsamplers', 'data': vars.sampler_order})
+        emit('from_server', {'cmd': 'buildsamplers', 'data': model_settings.sampler_order})
     elif(msg['cmd'] == 'usloaded'):
-        vars.userscripts = []
+        system_settings.userscripts = []
         for userscript in msg['data']:
             if type(userscript) is not str:
                 continue
             userscript = userscript.strip()
             if len(userscript) != 0 and all(q not in userscript for q in ("..", ":")) and all(userscript[0] not in q for q in ("/", "\\")) and os.path.exists(fileops.uspath(userscript)):
-                vars.userscripts.append(userscript)
+                system_settings.userscripts.append(userscript)
         settingschanged()
     elif(msg['cmd'] == 'usload'):
         load_lua_scripts()
@@ -3211,11 +3102,11 @@ def get_message(msg):
         sampler_order = msg["data"]
         if(not isinstance(sampler_order, list)):
             raise ValueError(f"Sampler order must be a list, but got a {type(sampler_order)}")
-        if(len(sampler_order) != len(vars.sampler_order)):
-            raise ValueError(f"Sampler order must be a list of length {len(vars.sampler_order)}, but got a list of length {len(sampler_order)}")
+        if(len(sampler_order) != len(model_settings.sampler_order)):
+            raise ValueError(f"Sampler order must be a list of length {len(model_settings.sampler_order)}, but got a list of length {len(sampler_order)}")
         if(not all(isinstance(e, int) for e in sampler_order)):
             raise ValueError(f"Sampler order must be a list of ints, but got a list with at least one non-int element")
-        vars.sampler_order = sampler_order
+        model_settings.sampler_order = sampler_order
         settingschanged()
     elif(msg['cmd'] == 'list_model'):
         sendModelSelection(menu=msg['data'])
@@ -3225,8 +3116,8 @@ def get_message(msg):
         changed = True
         if not utils.HAS_ACCELERATE:
             msg['disk_layers'] = "0"
-        if os.path.exists("settings/" + vars.model.replace('/', '_') + ".breakmodel"):
-            with open("settings/" + vars.model.replace('/', '_') + ".breakmodel", "r") as file:
+        if os.path.exists("settings/" + model_settings.model.replace('/', '_') + ".breakmodel"):
+            with open("settings/" + model_settings.model.replace('/', '_') + ".breakmodel", "r") as file:
                 data = file.read().split('\n')[:2]
                 if len(data) < 2:
                     data.append("0")
@@ -3234,10 +3125,10 @@ def get_message(msg):
                 if gpu_layers == msg['gpu_layers'] and disk_layers == msg['disk_layers']:
                     changed = False
         if changed:
-            f = open("settings/" + vars.model.replace('/', '_') + ".breakmodel", "w")
+            f = open("settings/" + model_settings.model.replace('/', '_') + ".breakmodel", "w")
             f.write(msg['gpu_layers'] + '\n' + msg['disk_layers'])
             f.close()
-        vars.colaburl = msg['url'] + "/request"
+        model_settings.colaburl = msg['url'] + "/request"
         load_model(use_gpu=msg['use_gpu'], gpu_layers=msg['gpu_layers'], disk_layers=msg['disk_layers'], online_model=msg['online_model'])
     elif(msg['cmd'] == 'show_model'):
         print("Model Name: {}".format(getmodelname()))
@@ -3254,7 +3145,7 @@ def get_message(msg):
         # If we're on a custom line that we have selected a model for, the path variable will be in msg
         # so if that's missing we need to run the menu to show the model folders in the models folder
         if msg['data'] in ('NeoCustom', 'GPT2Custom') and 'path' not in msg and 'path_modelname' not in msg:
-            if 'folder' not in msg or vars.host:
+            if 'folder' not in msg or system_settings.host:
                 folder = "./models"
             else:
                 folder = msg['folder']
@@ -3262,32 +3153,32 @@ def get_message(msg):
         elif msg['data'] in ('NeoCustom', 'GPT2Custom') and 'path_modelname' in msg:
             #Here the user entered custom text in the text box. This could be either a model name or a path.
             if check_if_dir_is_model(msg['path_modelname']):
-                vars.model = msg['data']
-                vars.custmodpth = msg['path_modelname']
+                model_settings.model = msg['data']
+                model_settings.custmodpth = msg['path_modelname']
                 get_model_info(msg['data'], directory=msg['path'])
             else:
-                vars.model = msg['path_modelname']
+                model_settings.model = msg['path_modelname']
                 try:
-                    get_model_info(vars.model)
+                    get_model_info(model_settings.model)
                 except:
                     emit('from_server', {'cmd': 'errmsg', 'data': "The model entered doesn't exist."})
         elif msg['data'] in ('NeoCustom', 'GPT2Custom'):
             if check_if_dir_is_model(msg['path']):
-                vars.model = msg['data']
-                vars.custmodpth = msg['path']
+                model_settings.model = msg['data']
+                model_settings.custmodpth = msg['path']
                 get_model_info(msg['data'], directory=msg['path'])
             else:
-                if vars.host:
+                if system_settings.host:
                     sendModelSelection(menu=msg['data'], folder="./models")
                 else:
                     sendModelSelection(menu=msg['data'], folder=msg['path'])
         else:
-            vars.model = msg['data']
+            model_settings.model = msg['data']
             if 'path' in msg:
-                vars.custmodpth = msg['path']
+                model_settings.custmodpth = msg['path']
                 get_model_info(msg['data'], directory=msg['path'])
             else:
-                get_model_info(vars.model)
+                get_model_info(model_settings.model)
     elif(msg['cmd'] == 'delete_model'):
         if "{}/models".format(os.getcwd()) in os.path.abspath(msg['data']) or "{}\\models".format(os.getcwd()) in os.path.abspath(msg['data']):
             if check_if_dir_is_model(msg['data']):
@@ -3302,74 +3193,74 @@ def get_message(msg):
     elif(msg['cmd'] == 'OAI_Key_Update'):
         get_oai_models(msg['key'])
     elif(msg['cmd'] == 'loadselect'):
-        vars.loadselect = msg["data"]
+        user_settings.loadselect = msg["data"]
     elif(msg['cmd'] == 'spselect'):
-        vars.spselect = msg["data"]
+        user_settings.spselect = msg["data"]
     elif(msg['cmd'] == 'loadrequest'):
-        loadRequest(fileops.storypath(vars.loadselect))
+        loadRequest(fileops.storypath(user_settings.loadselect))
     elif(msg['cmd'] == 'sprequest'):
-        spRequest(vars.spselect)
+        spRequest(user_settings.spselect)
     elif(msg['cmd'] == 'deletestory'):
         deletesave(msg['data'])
     elif(msg['cmd'] == 'renamestory'):
         renamesave(msg['data'], msg['newname'])
     elif(msg['cmd'] == 'clearoverwrite'):    
-        vars.svowname = ""
-        vars.saveow   = False
+        user_settings.svowname = ""
+        user_settings.saveow   = False
     elif(msg['cmd'] == 'seqsel'):
         selectsequence(msg['data'])
     elif(msg['cmd'] == 'seqpin'):
         pinsequence(msg['data'])
     elif(msg['cmd'] == 'setnumseq'):
-        vars.numseqs = int(msg['data'])
+        model_settings.numseqs = int(msg['data'])
         emit('from_server', {'cmd': 'setlabelnumseq', 'data': msg['data']})
         settingschanged()
         refresh_settings()
     elif(msg['cmd'] == 'setwidepth'):
-        vars.widepth = int(msg['data'])
+        user_settings.widepth = int(msg['data'])
         emit('from_server', {'cmd': 'setlabelwidepth', 'data': msg['data']})
         settingschanged()
         refresh_settings()
     elif(msg['cmd'] == 'setuseprompt'):
-        vars.useprompt = msg['data']
+        story_settings.useprompt = msg['data']
         settingschanged()
         refresh_settings()
     elif(msg['cmd'] == 'setadventure'):
-        vars.adventure = msg['data']
-        vars.chatmode = False
+        story_settings.adventure = msg['data']
+        story_settings.chatmode = False
         settingschanged()
         refresh_settings()
     elif(msg['cmd'] == 'autosave'):
-        vars.autosave = msg['data']
+        user_settings.autosave = msg['data']
         settingschanged()
         refresh_settings()
     elif(msg['cmd'] == 'setchatmode'):
-        vars.chatmode = msg['data']
-        vars.adventure = False
+        story_settings.chatmode = msg['data']
+        story_settings.adventure = False
         settingschanged()
         refresh_settings()
     elif(msg['cmd'] == 'setdynamicscan'):
-        vars.dynamicscan = msg['data']
+        story_settings.dynamicscan = msg['data']
         settingschanged()
         refresh_settings()
     elif(msg['cmd'] == 'setnopromptgen'):
-        vars.nopromptgen = msg['data']
+        user_settings.nopromptgen = msg['data']
         settingschanged()
         refresh_settings()
     elif(msg['cmd'] == 'setrngpersist'):
-        vars.rngpersist = msg['data']
+        user_settings.rngpersist = msg['data']
         settingschanged()
         refresh_settings()
     elif(msg['cmd'] == 'setnogenmod'):
-        vars.nogenmod = msg['data']
+        user_settings.nogenmod = msg['data']
         settingschanged()
         refresh_settings()
-    elif(not vars.host and msg['cmd'] == 'importwi'):
+    elif(not system_settings.host and msg['cmd'] == 'importwi'):
         wiimportrequest()
     elif(msg['cmd'] == 'debug'):
-        vars.debug = msg['data']
+        user_settings.debug = msg['data']
         emit('from_server', {'cmd': 'set_debug', 'data': msg['data']}, broadcast=True)
-        if vars.debug:
+        if user_settings.debug:
             send_debug()
 
 #==================================================================#
@@ -3377,10 +3268,10 @@ def get_message(msg):
 #==================================================================#
 def sendUSStatItems():
     _, loaded = getuslist()
-    loaded = loaded if vars.lua_running else []
+    loaded = loaded if system_settings.lua_running else []
     last_userscripts = [e["filename"] for e in loaded]
-    emit('from_server', {'cmd': 'usstatitems', 'data': loaded, 'flash': last_userscripts != vars.last_userscripts}, broadcast=True)
-    vars.last_userscripts = last_userscripts
+    emit('from_server', {'cmd': 'usstatitems', 'data': loaded, 'flash': last_userscripts != system_settings.last_userscripts}, broadcast=True)
+    system_settings.last_userscripts = last_userscripts
 
 #==================================================================#
 #  KoboldAI Markup Formatting (Mixture of Markdown and sanitized html)
@@ -3394,15 +3285,15 @@ def kml(txt):
 #  Send start message and tell Javascript to set UI state
 #==================================================================#
 def setStartState():
-    if(vars.welcome):
-        txt = kml(vars.welcome) + "<br/>"
+    if(system_settings.welcome):
+        txt = kml(system_settings.welcome) + "<br/>"
     else:
         txt = "<span>Welcome to <span class=\"color_cyan\">KoboldAI</span>! You are running <span class=\"color_green\">"+getmodelname()+"</span>.<br/>"
-    if(not vars.noai and not vars.welcome):
+    if(not system_settings.noai and not system_settings.welcome):
         txt = txt + "Please load a game or enter a prompt below to begin!</span>"
-    if(vars.noai):
+    if(system_settings.noai):
         txt = txt + "Please load or import a story to read. There is no AI in this mode."
-    emit('from_server', {'cmd': 'updatescreen', 'gamestarted': vars.gamestarted, 'data': txt}, broadcast=True)
+    emit('from_server', {'cmd': 'updatescreen', 'gamestarted': story_settings.gamestarted, 'data': txt}, broadcast=True)
     emit('from_server', {'cmd': 'setgamestate', 'data': 'start'}, broadcast=True)
 
 #==================================================================#
@@ -3411,7 +3302,7 @@ def setStartState():
 def sendsettings():
     # Send settings for selected AI type
     emit('from_server', {'cmd': 'reset_menus'})
-    if(vars.model != "InferKit"):
+    if(model_settings.model != "InferKit"):
         for set in gensettings.gensettingstf:
             emit('from_server', {'cmd': 'addsetting', 'data': set})
     else:
@@ -3422,47 +3313,47 @@ def sendsettings():
     for frm in gensettings.formatcontrols:
         emit('from_server', {'cmd': 'addformat', 'data': frm})
         # Add format key to vars if it wasn't loaded with client.settings
-        if(not frm["id"] in vars.formatoptns):
-            vars.formatoptns[frm["id"]] = False;
+        if(not frm["id"] in user_settings.formatoptns):
+            user_settings.formatoptns[frm["id"]] = False;
 
 #==================================================================#
 #  Set value of gamesaved
 #==================================================================#
 def setgamesaved(gamesaved):
     assert type(gamesaved) is bool
-    if(gamesaved != vars.gamesaved):
+    if(gamesaved != story_settings.gamesaved):
         emit('from_server', {'cmd': 'gamesaved', 'data': gamesaved}, broadcast=True)
-    vars.gamesaved = gamesaved
+    story_settings.gamesaved = gamesaved
 
 #==================================================================#
 #  Take input text from SocketIO and decide what to do with it
 #==================================================================#
 
 def check_for_backend_compilation():
-    if(vars.checking):
+    if(system_settings.checking):
         return
-    vars.checking = True
+    system_settings.checking = True
     for _ in range(31):
         time.sleep(0.06276680299820175)
-        if(vars.compiling):
+        if(system_settings.compiling):
             emit('from_server', {'cmd': 'warnmsg', 'data': 'Compiling TPU backend&mdash;this usually takes 1&ndash;2 minutes...'}, broadcast=True)
             break
-    vars.checking = False
+    system_settings.checking = False
 
 def actionsubmit(data, actionmode=0, force_submit=False, force_prompt_gen=False, disable_recentrng=False):
     # Ignore new submissions if the AI is currently busy
-    if(vars.aibusy):
+    if(system_settings.aibusy):
         return
     
     while(True):
         set_aibusy(1)
 
         if(disable_recentrng):
-            vars.recentrng = vars.recentrngm = None
+            story_settings.recentrng = story_settings.recentrngm = None
 
-        vars.recentback = False
-        vars.recentedit = False
-        vars.actionmode = actionmode
+        story_settings.recentback = False
+        story_settings.recentedit = False
+        story_settings.actionmode = actionmode
 
         # "Action" mode
         if(actionmode == 1):
@@ -3472,30 +3363,30 @@ def actionsubmit(data, actionmode=0, force_submit=False, force_prompt_gen=False,
                 data = f"\n\n> {data}\n"
         
         # "Chat" mode
-        if(vars.chatmode and vars.gamestarted):
+        if(story_settings.chatmode and story_settings.gamestarted):
             data = re.sub(r'\n+', ' ', data)
             if(len(data)):
-                data = f"\n{vars.chatname}: {data}\n"
+                data = f"\n{story_settings.chatname}: {data}\n"
         
         # If we're not continuing, store a copy of the raw input
         if(data != ""):
-            vars.lastact = data
+            story_settings.lastact = data
         
-        if(not vars.gamestarted):
-            vars.submission = data
+        if(not story_settings.gamestarted):
+            story_settings.submission = data
             execute_inmod()
-            data = vars.submission
+            data = story_settings.submission
             if(not force_submit and len(data.strip()) == 0):
                 assert False
             # Start the game
-            vars.gamestarted = True
-            if(not vars.noai and vars.lua_koboldbridge.generating and (not vars.nopromptgen or force_prompt_gen)):
+            story_settings.gamestarted = True
+            if(not system_settings.noai and system_settings.lua_koboldbridge.generating and (not user_settings.nopromptgen or force_prompt_gen)):
                 # Save this first action as the prompt
-                vars.prompt = data
+                story_settings.prompt = data
                 # Clear the startup text from game screen
                 emit('from_server', {'cmd': 'updatescreen', 'gamestarted': False, 'data': 'Please wait, generating story...'}, broadcast=True)
                 calcsubmit(data) # Run the first action through the generator
-                if(not vars.abort and vars.lua_koboldbridge.restart_sequence is not None and len(vars.genseqs) == 0):
+                if(not system_settings.abort and system_settings.lua_koboldbridge.restart_sequence is not None and len(story_settings.genseqs) == 0):
                     data = ""
                     force_submit = True
                     disable_recentrng = True
@@ -3504,28 +3395,28 @@ def actionsubmit(data, actionmode=0, force_submit=False, force_prompt_gen=False,
                 break
             else:
                 # Save this first action as the prompt
-                vars.prompt = data if len(data) > 0 else '"'
-                for i in range(vars.numseqs):
-                    vars.lua_koboldbridge.outputs[i+1] = ""
+                story_settings.prompt = data if len(data) > 0 else '"'
+                for i in range(model_settings.numseqs):
+                    system_settings.lua_koboldbridge.outputs[i+1] = ""
                 execute_outmod()
-                vars.lua_koboldbridge.regeneration_required = False
+                system_settings.lua_koboldbridge.regeneration_required = False
                 genout = []
-                for i in range(vars.numseqs):
-                    genout.append({"generated_text": vars.lua_koboldbridge.outputs[i+1]})
+                for i in range(model_settings.numseqs):
+                    genout.append({"generated_text": system_settings.lua_koboldbridge.outputs[i+1]})
                     assert type(genout[-1]["generated_text"]) is str
                 if(len(genout) == 1):
                     genresult(genout[0]["generated_text"], flash=False)
                     refresh_story()
-                    if(len(vars.actions) > 0):
-                        emit('from_server', {'cmd': 'texteffect', 'data': vars.actions.get_last_key() + 1}, broadcast=True)
-                    if(not vars.abort and vars.lua_koboldbridge.restart_sequence is not None):
+                    if(len(story_settings.actions) > 0):
+                        emit('from_server', {'cmd': 'texteffect', 'data': story_settings.actions.get_last_key() + 1}, broadcast=True)
+                    if(not system_settings.abort and system_settings.lua_koboldbridge.restart_sequence is not None):
                         data = ""
                         force_submit = True
                         disable_recentrng = True
                         continue
                 else:
-                    if(not vars.abort and vars.lua_koboldbridge.restart_sequence is not None and vars.lua_koboldbridge.restart_sequence > 0):
-                        genresult(genout[vars.lua_koboldbridge.restart_sequence-1]["generated_text"], flash=False)
+                    if(not system_settings.abort and system_settings.lua_koboldbridge.restart_sequence is not None and system_settings.lua_koboldbridge.restart_sequence > 0):
+                        genresult(genout[system_settings.lua_koboldbridge.restart_sequence-1]["generated_text"], flash=False)
                         refresh_story()
                         data = ""
                         force_submit = True
@@ -3538,42 +3429,42 @@ def actionsubmit(data, actionmode=0, force_submit=False, force_prompt_gen=False,
                 break
         else:
             # Apply input formatting & scripts before sending to tokenizer
-            if(vars.actionmode == 0):
+            if(story_settings.actionmode == 0):
                 data = applyinputformatting(data)
-            vars.submission = data
+            story_settings.submission = data
             execute_inmod()
-            data = vars.submission
+            data = story_settings.submission
             # Dont append submission if it's a blank/continue action
             if(data != ""):
                 # Store the result in the Action log
-                if(len(vars.prompt.strip()) == 0):
-                    vars.prompt = data
+                if(len(story_settings.prompt.strip()) == 0):
+                    story_settings.prompt = data
                 else:
-                    vars.actions.append(data)
+                    story_settings.actions.append(data)
                     # we now need to update the actions_metadata
                     # we'll have two conditions. 
                     # 1. This is totally new (user entered) 
-                    if vars.actions.get_last_key() not in vars.actions_metadata:
-                        vars.actions_metadata[vars.actions.get_last_key()] = {"Selected Text": data, "Alternative Text": []}
+                    if story_settings.actions.get_last_key() not in story_settings.actions_metadata:
+                        story_settings.actions_metadata[story_settings.actions.get_last_key()] = {"Selected Text": data, "Alternative Text": []}
                     else:
                     # 2. We've selected a chunk of text that is was presented previously
                         try:
-                            alternatives = [item['Text'] for item in vars.actions_metadata[len(vars.actions)-1]["Alternative Text"]]
+                            alternatives = [item['Text'] for item in story_settings.actions_metadata[len(story_settings.actions)-1]["Alternative Text"]]
                         except:
-                            print(len(vars.actions))
-                            print(vars.actions_metadata)
+                            print(len(story_settings.actions))
+                            print(story_settings.actions_metadata)
                             raise
                         if data in alternatives:
-                            alternatives = [item for item in vars.actions_metadata[vars.actions.get_last_key() ]["Alternative Text"] if item['Text'] != data]
-                            vars.actions_metadata[vars.actions.get_last_key()]["Alternative Text"] = alternatives
-                        vars.actions_metadata[vars.actions.get_last_key()]["Selected Text"] = data
+                            alternatives = [item for item in story_settings.actions_metadata[story_settings.actions.get_last_key() ]["Alternative Text"] if item['Text'] != data]
+                            story_settings.actions_metadata[story_settings.actions.get_last_key()]["Alternative Text"] = alternatives
+                        story_settings.actions_metadata[story_settings.actions.get_last_key()]["Selected Text"] = data
                 update_story_chunk('last')
                 send_debug()
 
-            if(not vars.noai and vars.lua_koboldbridge.generating):
+            if(not system_settings.noai and system_settings.lua_koboldbridge.generating):
                 # Off to the tokenizer!
                 calcsubmit(data)
-                if(not vars.abort and vars.lua_koboldbridge.restart_sequence is not None and len(vars.genseqs) == 0):
+                if(not system_settings.abort and system_settings.lua_koboldbridge.restart_sequence is not None and len(story_settings.genseqs) == 0):
                     data = ""
                     force_submit = True
                     disable_recentrng = True
@@ -3581,24 +3472,24 @@ def actionsubmit(data, actionmode=0, force_submit=False, force_prompt_gen=False,
                 emit('from_server', {'cmd': 'scrolldown', 'data': ''}, broadcast=True)
                 break
             else:
-                for i in range(vars.numseqs):
-                    vars.lua_koboldbridge.outputs[i+1] = ""
+                for i in range(model_settings.numseqs):
+                    system_settings.lua_koboldbridge.outputs[i+1] = ""
                 execute_outmod()
-                vars.lua_koboldbridge.regeneration_required = False
+                system_settings.lua_koboldbridge.regeneration_required = False
                 genout = []
-                for i in range(vars.numseqs):
-                    genout.append({"generated_text": vars.lua_koboldbridge.outputs[i+1]})
+                for i in range(model_settings.numseqs):
+                    genout.append({"generated_text": system_settings.lua_koboldbridge.outputs[i+1]})
                     assert type(genout[-1]["generated_text"]) is str
                 if(len(genout) == 1):
                     genresult(genout[0]["generated_text"])
-                    if(not vars.abort and vars.lua_koboldbridge.restart_sequence is not None):
+                    if(not system_settings.abort and system_settings.lua_koboldbridge.restart_sequence is not None):
                         data = ""
                         force_submit = True
                         disable_recentrng = True
                         continue
                 else:
-                    if(not vars.abort and vars.lua_koboldbridge.restart_sequence is not None and vars.lua_koboldbridge.restart_sequence > 0):
-                        genresult(genout[vars.lua_koboldbridge.restart_sequence-1]["generated_text"])
+                    if(not system_settings.abort and system_settings.lua_koboldbridge.restart_sequence is not None and system_settings.lua_koboldbridge.restart_sequence > 0):
+                        genresult(genout[system_settings.lua_koboldbridge.restart_sequence-1]["generated_text"])
                         data = ""
                         force_submit = True
                         disable_recentrng = True
@@ -3612,46 +3503,46 @@ def actionsubmit(data, actionmode=0, force_submit=False, force_prompt_gen=False,
 #  
 #==================================================================#
 def actionretry(data):
-    if(vars.noai):
+    if(system_settings.noai):
         emit('from_server', {'cmd': 'errmsg', 'data': "Retry function unavailable in Read Only mode."})
         return
-    if(vars.recentrng is not None):
-        if(not vars.aibusy):
-            randomGameRequest(vars.recentrng, memory=vars.recentrngm)
+    if(story_settings.recentrng is not None):
+        if(not system_settings.aibusy):
+            randomGameRequest(story_settings.recentrng, memory=story_settings.recentrngm)
         return
     if actionback():
-        actionsubmit("", actionmode=vars.actionmode, force_submit=True)
+        actionsubmit("", actionmode=story_settings.actionmode, force_submit=True)
         send_debug()
-    elif(not vars.useprompt):
+    elif(not story_settings.useprompt):
         emit('from_server', {'cmd': 'errmsg', 'data': "Please enable \"Always Add Prompt\" to retry with your prompt."})
 
 #==================================================================#
 #  
 #==================================================================#
 def actionback():
-    if(vars.aibusy):
+    if(system_settings.aibusy):
         return
     # Remove last index of actions and refresh game screen
-    if(len(vars.genseqs) == 0 and len(vars.actions) > 0):
+    if(len(story_settings.genseqs) == 0 and len(story_settings.actions) > 0):
         # We are going to move the selected text to alternative text in the actions_metadata variable so we can redo this action
-        vars.actions_metadata[vars.actions.get_last_key() ]['Alternative Text'] = [{'Text': vars.actions_metadata[vars.actions.get_last_key() ]['Selected Text'],
+        story_settings.actions_metadata[story_settings.actions.get_last_key() ]['Alternative Text'] = [{'Text': story_settings.actions_metadata[story_settings.actions.get_last_key() ]['Selected Text'],
                                                                     'Pinned': False,
                                                                     "Previous Selection": True,
-                                                                    "Edited": False}] + vars.actions_metadata[vars.actions.get_last_key() ]['Alternative Text']
-        vars.actions_metadata[vars.actions.get_last_key() ]['Selected Text'] = ""
+                                                                    "Edited": False}] + story_settings.actions_metadata[story_settings.actions.get_last_key() ]['Alternative Text']
+        story_settings.actions_metadata[story_settings.actions.get_last_key() ]['Selected Text'] = ""
     
-        last_key = vars.actions.get_last_key()
-        vars.actions.pop()
-        vars.recentback = True
+        last_key = story_settings.actions.get_last_key()
+        story_settings.actions.pop()
+        story_settings.recentback = True
         remove_story_chunk(last_key + 1)
         #for the redo to not get out of whack, need to reset the max # in the actions sequence
-        vars.actions.set_next_id(last_key)
+        story_settings.actions.set_next_id(last_key)
         success = True
-    elif(len(vars.genseqs) == 0):
+    elif(len(story_settings.genseqs) == 0):
         emit('from_server', {'cmd': 'errmsg', 'data': "Cannot delete the prompt."})
         success =  False
     else:
-        vars.genseqs = []
+        story_settings.genseqs = []
         success = True
     send_debug()
     return success
@@ -3661,35 +3552,35 @@ def actionredo():
     #First we need to find the next valid key
     #We might have deleted text so we don't want to show a redo for that blank chunk
     
-    restore_id = vars.actions.get_last_key()+1
-    if restore_id in vars.actions_metadata:
+    restore_id = story_settings.actions.get_last_key()+1
+    if restore_id in story_settings.actions_metadata:
         ok_to_use = False
         while not ok_to_use:
-            for item in vars.actions_metadata[restore_id]['Alternative Text']:
+            for item in story_settings.actions_metadata[restore_id]['Alternative Text']:
                 if item['Previous Selection'] and item['Text'] != "":
                     ok_to_use = True
             if not ok_to_use:
                 restore_id+=1
-                if restore_id not in vars.actions_metadata:
+                if restore_id not in story_settings.actions_metadata:
                     return
             else:
-                vars.actions.set_next_id(restore_id)
+                story_settings.actions.set_next_id(restore_id)
                 
     
-    if restore_id in vars.actions_metadata:
-        genout = [{"generated_text": item['Text']} for item in vars.actions_metadata[restore_id]['Alternative Text'] if (item["Previous Selection"]==True)]
+    if restore_id in story_settings.actions_metadata:
+        genout = [{"generated_text": item['Text']} for item in story_settings.actions_metadata[restore_id]['Alternative Text'] if (item["Previous Selection"]==True)]
         if len(genout) > 0:
-            genout = genout + [{"generated_text": item['Text']} for item in vars.actions_metadata[restore_id]['Alternative Text'] if (item["Pinned"]==True) and (item["Previous Selection"]==False)]
+            genout = genout + [{"generated_text": item['Text']} for item in story_settings.actions_metadata[restore_id]['Alternative Text'] if (item["Pinned"]==True) and (item["Previous Selection"]==False)]
             if len(genout) == 1:
-                vars.actions_metadata[restore_id]['Alternative Text'] = [item for item in vars.actions_metadata[restore_id]['Alternative Text'] if (item["Previous Selection"]!=True)]
+                story_settings.actions_metadata[restore_id]['Alternative Text'] = [item for item in story_settings.actions_metadata[restore_id]['Alternative Text'] if (item["Previous Selection"]!=True)]
                 genresult(genout[0]['generated_text'], flash=True, ignore_formatting=True)
             else:
                 # Store sequences in memory until selection is made
-                vars.genseqs = genout
+                story_settings.genseqs = genout
                 
                 
                 # Send sequences to UI for selection
-                genout = [[item['Text'], "redo"] for item in vars.actions_metadata[restore_id]['Alternative Text'] if (item["Previous Selection"]==True)]
+                genout = [[item['Text'], "redo"] for item in story_settings.actions_metadata[restore_id]['Alternative Text'] if (item["Previous Selection"]==True)]
                 
                 emit('from_server', {'cmd': 'genseqs', 'data': genout}, broadcast=True)
     else:
@@ -3704,14 +3595,14 @@ def calcsubmitbudgetheader(txt, **kwargs):
     winfo, found_entries = checkworldinfo(txt, **kwargs)
 
     # Add a newline to the end of memory
-    if(vars.memory != "" and vars.memory[-1] != "\n"):
-        mem = vars.memory + "\n"
+    if(story_settings.memory != "" and story_settings.memory[-1] != "\n"):
+        mem = story_settings.memory + "\n"
     else:
-        mem = vars.memory
+        mem = story_settings.memory
 
     # Build Author's Note if set
-    if(vars.authornote != ""):
-        anotetxt  = ("\n" + vars.authornotetemplate + "\n").replace("<|>", vars.authornote)
+    if(story_settings.authornote != ""):
+        anotetxt  = ("\n" + story_settings.authornotetemplate + "\n").replace("<|>", story_settings.authornote)
     else:
         anotetxt = ""
 
@@ -3723,44 +3614,44 @@ def calcsubmitbudget(actionlen, winfo, mem, anotetxt, actions, submission=None, 
     anotetkns    = []  # Placeholder for Author's Note tokens
     lnanote      = 0   # Placeholder for Author's Note length
 
-    lnsp = vars.sp_length
+    lnsp = system_settings.sp_length
 
     if("tokenizer" not in globals()):
         from transformers import GPT2TokenizerFast
         global tokenizer
-        tokenizer = GPT2TokenizerFast.from_pretrained("gpt2", revision=vars.revision, cache_dir="cache")
+        tokenizer = GPT2TokenizerFast.from_pretrained("gpt2", revision=model_settings.revision, cache_dir="cache")
 
     lnheader = len(tokenizer._koboldai_header)
 
     # Calculate token budget
-    prompttkns = tokenizer.encode(utils.encodenewlines(vars.comregex_ai.sub('', vars.prompt)), max_length=int(2e9), truncation=True)
+    prompttkns = tokenizer.encode(utils.encodenewlines(system_settings.comregex_ai.sub('', story_settings.prompt)), max_length=int(2e9), truncation=True)
     lnprompt   = len(prompttkns)
 
     memtokens = tokenizer.encode(utils.encodenewlines(mem), max_length=int(2e9), truncation=True)
     lnmem     = len(memtokens)
-    if(lnmem > vars.max_length - lnheader - lnsp - vars.genamt - budget_deduction):
+    if(lnmem > model_settings.max_length - lnheader - lnsp - model_settings.genamt - budget_deduction):
         raise OverflowError("The memory in your story is too long. Please either write a shorter memory text or increase the Max Tokens setting. If you are using a soft prompt, additionally consider using a smaller soft prompt.")
 
     witokens  = tokenizer.encode(utils.encodenewlines(winfo), max_length=int(2e9), truncation=True)
     lnwi      = len(witokens)
-    if(lnmem + lnwi > vars.max_length - lnheader - lnsp - vars.genamt - budget_deduction):
+    if(lnmem + lnwi > model_settings.max_length - lnheader - lnsp - model_settings.genamt - budget_deduction):
         raise OverflowError("The current active world info keys take up too many tokens. Please either write shorter world info, decrease World Info Depth or increase the Max Tokens setting. If you are using a soft prompt, additionally consider using a smaller soft prompt.")
 
     if(anotetxt != ""):
         anotetkns = tokenizer.encode(utils.encodenewlines(anotetxt), max_length=int(2e9), truncation=True)
         lnanote   = len(anotetkns)
-        if(lnmem + lnwi + lnanote > vars.max_length - lnheader - lnsp - vars.genamt - budget_deduction):
+        if(lnmem + lnwi + lnanote > model_settings.max_length - lnheader - lnsp - model_settings.genamt - budget_deduction):
             raise OverflowError("The author's note in your story is too long. Please either write a shorter author's note or increase the Max Tokens setting. If you are using a soft prompt, additionally consider using a smaller soft prompt.")
 
-    if(vars.useprompt):
-        budget = vars.max_length - lnsp - lnprompt - lnmem - lnanote - lnwi - vars.genamt - budget_deduction
+    if(story_settings.useprompt):
+        budget = model_settings.max_length - lnsp - lnprompt - lnmem - lnanote - lnwi - model_settings.genamt - budget_deduction
     else:
-        budget = vars.max_length - lnsp - lnmem - lnanote - lnwi - vars.genamt - budget_deduction
+        budget = model_settings.max_length - lnsp - lnmem - lnanote - lnwi - model_settings.genamt - budget_deduction
 
-    lnsubmission = len(tokenizer.encode(utils.encodenewlines(vars.comregex_ai.sub('', submission)), max_length=int(2e9), truncation=True)) if submission is not None else 0
-    maybe_lnprompt = lnprompt if vars.useprompt and actionlen > 0 else 0
+    lnsubmission = len(tokenizer.encode(utils.encodenewlines(system_settings.comregex_ai.sub('', submission)), max_length=int(2e9), truncation=True)) if submission is not None else 0
+    maybe_lnprompt = lnprompt if story_settings.useprompt and actionlen > 0 else 0
 
-    if(lnmem + lnwi + lnanote + maybe_lnprompt + lnsubmission > vars.max_length - lnheader - lnsp - vars.genamt - budget_deduction):
+    if(lnmem + lnwi + lnanote + maybe_lnprompt + lnsubmission > model_settings.max_length - lnheader - lnsp - model_settings.genamt - budget_deduction):
         raise OverflowError("Your submission is too long. Please either write a shorter submission or increase the Max Tokens setting. If you are using a soft prompt, additionally consider using a smaller soft prompt. If you are using the Always Add Prompt setting, turning it off may help.")
 
     assert budget >= 0
@@ -3768,20 +3659,20 @@ def calcsubmitbudget(actionlen, winfo, mem, anotetxt, actions, submission=None, 
     if(actionlen == 0):
         # First/Prompt action
         tokens = tokenizer._koboldai_header + memtokens + witokens + anotetkns + prompttkns
-        assert len(tokens) <= vars.max_length - lnsp - vars.genamt - budget_deduction
+        assert len(tokens) <= model_settings.max_length - lnsp - model_settings.genamt - budget_deduction
         ln = len(tokens) + lnsp
-        return tokens, ln+1, ln+vars.genamt
+        return tokens, ln+1, ln+model_settings.genamt
     else:
         tokens     = []
         
         # Check if we have the action depth to hit our A.N. depth
-        if(anotetxt != "" and actionlen < vars.andepth):
+        if(anotetxt != "" and actionlen < story_settings.andepth):
             forceanote = True
         
         # Get most recent action tokens up to our budget
         n = 0
         for key in reversed(actions):
-            chunk = vars.comregex_ai.sub('', actions[key])
+            chunk = system_settings.comregex_ai.sub('', actions[key])
             
             assert budget >= 0
             if(budget <= 0):
@@ -3798,7 +3689,7 @@ def calcsubmitbudget(actionlen, winfo, mem, anotetxt, actions, submission=None, 
                 break
             
             # Inject Author's Note if we've reached the desired depth
-            if(n == vars.andepth-1):
+            if(n == story_settings.andepth-1):
                 if(anotetxt != ""):
                     tokens = anotetkns + tokens # A.N. len already taken from bdgt
                     anoteadded = True
@@ -3806,7 +3697,7 @@ def calcsubmitbudget(actionlen, winfo, mem, anotetxt, actions, submission=None, 
         
         # If we're not using the prompt every time and there's still budget left,
         # add some prompt.
-        if(not vars.useprompt):
+        if(not story_settings.useprompt):
             if(budget > 0):
                 prompttkns = prompttkns[-budget:]
             else:
@@ -3823,9 +3714,9 @@ def calcsubmitbudget(actionlen, winfo, mem, anotetxt, actions, submission=None, 
             tokens = tokenizer._koboldai_header + memtokens + witokens + prompttkns + tokens
 
         # Send completed bundle to generator
-        assert len(tokens) <= vars.max_length - lnsp - vars.genamt - budget_deduction
+        assert len(tokens) <= model_settings.max_length - lnsp - model_settings.genamt - budget_deduction
         ln = len(tokens) + lnsp
-        return tokens, ln+1, ln+vars.genamt
+        return tokens, ln+1, ln+model_settings.genamt
 
 #==================================================================#
 # Take submitted text and build the text to be given to generator
@@ -3834,48 +3725,48 @@ def calcsubmit(txt):
     anotetxt     = ""    # Placeholder for Author's Note text
     forceanote   = False # In case we don't have enough actions to hit A.N. depth
     anoteadded   = False # In case our budget runs out before we hit A.N. depth
-    actionlen    = len(vars.actions)
+    actionlen    = len(story_settings.actions)
 
     winfo, mem, anotetxt, found_entries = calcsubmitbudgetheader(txt)
  
     # For all transformers models
-    if(vars.model != "InferKit"):
-        subtxt, min, max = calcsubmitbudget(actionlen, winfo, mem, anotetxt, vars.actions, submission=txt)
+    if(model_settings.model != "InferKit"):
+        subtxt, min, max = calcsubmitbudget(actionlen, winfo, mem, anotetxt, story_settings.actions, submission=txt)
         if(actionlen == 0):
-            if(not vars.use_colab_tpu and vars.model not in ["Colab", "OAI", "TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX"]):
+            if(not system_settings.use_colab_tpu and model_settings.model not in ["Colab", "OAI", "TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX"]):
                 generate(subtxt, min, max, found_entries=found_entries)
-            elif(vars.model == "Colab"):
+            elif(model_settings.model == "Colab"):
                 sendtocolab(utils.decodenewlines(tokenizer.decode(subtxt)), min, max)
-            elif(vars.model == "OAI"):
+            elif(model_settings.model == "OAI"):
                 oairequest(utils.decodenewlines(tokenizer.decode(subtxt)), min, max)
-            elif(vars.use_colab_tpu or vars.model in ("TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX")):
+            elif(system_settings.use_colab_tpu or model_settings.model in ("TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX")):
                 tpumtjgenerate(subtxt, min, max, found_entries=found_entries)
         else:
-            if(not vars.use_colab_tpu and vars.model not in ["Colab", "OAI", "TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX"]):
+            if(not system_settings.use_colab_tpu and model_settings.model not in ["Colab", "OAI", "TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX"]):
                 generate(subtxt, min, max, found_entries=found_entries)
-            elif(vars.model == "Colab"):
+            elif(model_settings.model == "Colab"):
                 sendtocolab(utils.decodenewlines(tokenizer.decode(subtxt)), min, max)
-            elif(vars.model == "OAI"):
+            elif(model_settings.model == "OAI"):
                 oairequest(utils.decodenewlines(tokenizer.decode(subtxt)), min, max)
-            elif(vars.use_colab_tpu or vars.model in ("TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX")):
+            elif(system_settings.use_colab_tpu or model_settings.model in ("TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX")):
                 tpumtjgenerate(subtxt, min, max, found_entries=found_entries)
                     
     # For InferKit web API
     else:
         # Check if we have the action depth to hit our A.N. depth
-        if(anotetxt != "" and actionlen < vars.andepth):
+        if(anotetxt != "" and actionlen < story_settings.andepth):
             forceanote = True
         
-        if(vars.useprompt):
-            budget = vars.ikmax - len(vars.comregex_ai.sub('', vars.prompt)) - len(anotetxt) - len(mem) - len(winfo) - 1
+        if(story_settings.useprompt):
+            budget = model_settings.ikmax - len(system_settings.comregex_ai.sub('', story_settings.prompt)) - len(anotetxt) - len(mem) - len(winfo) - 1
         else:
-            budget = vars.ikmax - len(anotetxt) - len(mem) - len(winfo) - 1
+            budget = model_settings.ikmax - len(anotetxt) - len(mem) - len(winfo) - 1
             
         subtxt = ""
-        prompt = vars.comregex_ai.sub('', vars.prompt)
+        prompt = system_settings.comregex_ai.sub('', story_settings.prompt)
         n = 0
-        for key in reversed(vars.actions):
-            chunk = vars.actions[key]
+        for key in reversed(story_settings.actions):
+            chunk = story_settings.actions[key]
             
             if(budget <= 0):
                     break
@@ -3891,14 +3782,14 @@ def calcsubmit(txt):
             
             # If we're not using the prompt every time and there's still budget left,
             # add some prompt.
-            if(not vars.useprompt):
+            if(not story_settings.useprompt):
                 if(budget > 0):
-                    prompt = vars.comregex_ai.sub('', vars.prompt)[-budget:]
+                    prompt = system_settings.comregex_ai.sub('', story_settings.prompt)[-budget:]
                 else:
                     prompt = ""
             
             # Inject Author's Note if we've reached the desired depth
-            if(n == vars.andepth-1):
+            if(n == story_settings.andepth-1):
                 if(anotetxt != ""):
                     subtxt = anotetxt + subtxt # A.N. len already taken from bdgt
                     anoteadded = True
@@ -3922,61 +3813,61 @@ def calcsubmit(txt):
 
 def _generate(txt, minimum, maximum, found_entries):
     gen_in = torch.tensor(txt, dtype=torch.long)[None]
-    if(vars.sp is not None):
+    if(system_settings.sp is not None):
         soft_tokens = torch.arange(
             model.config.vocab_size,
-            model.config.vocab_size + vars.sp.shape[0],
+            model.config.vocab_size + system_settings.sp.shape[0],
         )
         gen_in = torch.cat((soft_tokens[None], gen_in), dim=-1)
-    assert gen_in.shape[-1] + vars.genamt <= vars.max_length
+    assert gen_in.shape[-1] + model_settings.genamt <= model_settings.max_length
 
-    if(vars.hascuda and vars.usegpu):
-        gen_in = gen_in.to(vars.gpu_device)
-    elif(vars.hascuda and vars.breakmodel):
+    if(system_settings.hascuda and system_settings.usegpu):
+        gen_in = gen_in.to(system_settings.gpu_device)
+    elif(system_settings.hascuda and system_settings.breakmodel):
         gen_in = gen_in.to(breakmodel.primary_device)
     else:
         gen_in = gen_in.to('cpu')
 
     model.kai_scanner_excluded_world_info = found_entries
 
-    vars._actions = vars.actions
-    vars._prompt = vars.prompt
-    if(vars.dynamicscan):
-        vars._actions = vars._actions.copy()
+    story_settings._actions = story_settings.actions
+    story_settings._prompt = story_settings.prompt
+    if(story_settings.dynamicscan):
+        story_settings._actions = story_settings._actions.copy()
 
     with torch.no_grad():
         already_generated = 0
-        numseqs = vars.numseqs
+        numseqs = model_settings.numseqs
         while True:
             genout = generator(
                 gen_in, 
                 do_sample=True, 
                 max_length=int(2e9),
                 repetition_penalty=1.1,
-                bad_words_ids=vars.badwordsids,
+                bad_words_ids=model_settings.badwordsids,
                 use_cache=True,
                 num_return_sequences=numseqs
                 )
             already_generated += len(genout[0]) - len(gen_in[0])
-            assert already_generated <= vars.genamt
+            assert already_generated <= model_settings.genamt
             if(model.kai_scanner.halt or not model.kai_scanner.regeneration_required):
                 break
             assert genout.ndim >= 2
-            assert genout.shape[0] == vars.numseqs
-            if(vars.lua_koboldbridge.generated_cols and vars.generated_tkns != vars.lua_koboldbridge.generated_cols):
+            assert genout.shape[0] == model_settings.numseqs
+            if(system_settings.lua_koboldbridge.generated_cols and story_settings.generated_tkns != system_settings.lua_koboldbridge.generated_cols):
                 raise RuntimeError("Inconsistency detected between KoboldAI Python and Lua backends")
-            if(already_generated != vars.generated_tkns):
+            if(already_generated != story_settings.generated_tkns):
                 raise RuntimeError("WI scanning error")
-            for r in range(vars.numseqs):
+            for r in range(model_settings.numseqs):
                 for c in range(already_generated):
-                    assert vars.lua_koboldbridge.generated[r+1][c+1] is not None
-                    genout[r][genout.shape[-1] - already_generated + c] = vars.lua_koboldbridge.generated[r+1][c+1]
+                    assert system_settings.lua_koboldbridge.generated[r+1][c+1] is not None
+                    genout[r][genout.shape[-1] - already_generated + c] = system_settings.lua_koboldbridge.generated[r+1][c+1]
             encoded = []
-            for i in range(vars.numseqs):
+            for i in range(model_settings.numseqs):
                 txt = utils.decodenewlines(tokenizer.decode(genout[i, -already_generated:]))
-                winfo, mem, anotetxt, _found_entries = calcsubmitbudgetheader(txt, force_use_txt=True, actions=vars._actions)
+                winfo, mem, anotetxt, _found_entries = calcsubmitbudgetheader(txt, force_use_txt=True, actions=story_settings._actions)
                 found_entries[i].update(_found_entries)
-                txt, _, _ = calcsubmitbudget(len(vars._actions), winfo, mem, anotetxt, vars._actions, submission=txt)
+                txt, _, _ = calcsubmitbudget(len(story_settings._actions), winfo, mem, anotetxt, story_settings._actions, submission=txt)
                 encoded.append(torch.tensor(txt, dtype=torch.long, device=genout.device))
             max_length = len(max(encoded, key=len))
             encoded = torch.stack(tuple(torch.nn.functional.pad(e, (max_length - len(e), 0), value=model.config.pad_token_id or model.config.eos_token_id) for e in encoded))
@@ -3987,14 +3878,14 @@ def _generate(txt, minimum, maximum, found_entries):
                 ),
                 dim=-1
             )
-            if(vars.sp is not None):
+            if(system_settings.sp is not None):
                 soft_tokens = torch.arange(
                     model.config.vocab_size,
-                    model.config.vocab_size + vars.sp.shape[0],
+                    model.config.vocab_size + system_settings.sp.shape[0],
                     device=genout.device,
                 )
-                genout = torch.cat((soft_tokens.tile(vars.numseqs, 1), genout), dim=-1)
-            assert genout.shape[-1] + vars.genamt - already_generated <= vars.max_length
+                genout = torch.cat((soft_tokens.tile(model_settings.numseqs, 1), genout), dim=-1)
+            assert genout.shape[-1] + model_settings.genamt - already_generated <= model_settings.max_length
             diff = genout.shape[-1] - gen_in.shape[-1]
             minimum += diff
             maximum += diff
@@ -4005,20 +3896,20 @@ def _generate(txt, minimum, maximum, found_entries):
     
 
 def generate(txt, minimum, maximum, found_entries=None):    
-    vars.generated_tkns = 0
+    story_settings.generated_tkns = 0
 
     if(found_entries is None):
         found_entries = set()
-    found_entries = tuple(found_entries.copy() for _ in range(vars.numseqs))
+    found_entries = tuple(found_entries.copy() for _ in range(model_settings.numseqs))
 
-    if not vars.quiet:
+    if not system_settings.quiet:
         print("{0}Min:{1}, Max:{2}, Txt:{3}{4}".format(colors.YELLOW, minimum, maximum, utils.decodenewlines(tokenizer.decode(txt)), colors.END))
 
     # Store context in memory to use it for comparison with generated content
-    vars.lastctx = utils.decodenewlines(tokenizer.decode(txt))
+    story_settings.lastctx = utils.decodenewlines(tokenizer.decode(txt))
 
     # Clear CUDA cache if using GPU
-    if(vars.hascuda and (vars.usegpu or vars.breakmodel)):
+    if(system_settings.hascuda and (system_settings.usegpu or system_settings.breakmodel)):
         gc.collect()
         torch.cuda.empty_cache()
 
@@ -4027,8 +3918,8 @@ def generate(txt, minimum, maximum, found_entries=None):
         genout, already_generated = tpool.execute(_generate, txt, minimum, maximum, found_entries)
     except Exception as e:
         if(issubclass(type(e), lupa.LuaError)):
-            vars.lua_koboldbridge.obliterate_multiverse()
-            vars.lua_running = False
+            system_settings.lua_koboldbridge.obliterate_multiverse()
+            system_settings.lua_running = False
             emit('from_server', {'cmd': 'errmsg', 'data': 'Lua script error; please check console.'}, broadcast=True)
             sendUSStatItems()
             print("{0}{1}{2}".format(colors.RED, "***LUA ERROR***: ", colors.END), end="", file=sys.stderr)
@@ -4040,16 +3931,16 @@ def generate(txt, minimum, maximum, found_entries=None):
         set_aibusy(0)
         return
 
-    for i in range(vars.numseqs):
-        vars.lua_koboldbridge.generated[i+1][vars.generated_tkns] = int(genout[i, -1].item())
-        vars.lua_koboldbridge.outputs[i+1] = utils.decodenewlines(tokenizer.decode(genout[i, -already_generated:]))
+    for i in range(model_settings.numseqs):
+        system_settings.lua_koboldbridge.generated[i+1][story_settings.generated_tkns] = int(genout[i, -1].item())
+        system_settings.lua_koboldbridge.outputs[i+1] = utils.decodenewlines(tokenizer.decode(genout[i, -already_generated:]))
 
     execute_outmod()
-    if(vars.lua_koboldbridge.regeneration_required):
-        vars.lua_koboldbridge.regeneration_required = False
+    if(system_settings.lua_koboldbridge.regeneration_required):
+        system_settings.lua_koboldbridge.regeneration_required = False
         genout = []
-        for i in range(vars.numseqs):
-            genout.append({"generated_text": vars.lua_koboldbridge.outputs[i+1]})
+        for i in range(model_settings.numseqs):
+            genout.append({"generated_text": system_settings.lua_koboldbridge.outputs[i+1]})
             assert type(genout[-1]["generated_text"]) is str
     else:
         genout = [{"generated_text": utils.decodenewlines(tokenizer.decode(tokens[-already_generated:]))} for tokens in genout]
@@ -4057,13 +3948,13 @@ def generate(txt, minimum, maximum, found_entries=None):
     if(len(genout) == 1):
         genresult(genout[0]["generated_text"])
     else:
-        if(vars.lua_koboldbridge.restart_sequence is not None and vars.lua_koboldbridge.restart_sequence > 0):
-            genresult(genout[vars.lua_koboldbridge.restart_sequence-1]["generated_text"])
+        if(system_settings.lua_koboldbridge.restart_sequence is not None and system_settings.lua_koboldbridge.restart_sequence > 0):
+            genresult(genout[system_settings.lua_koboldbridge.restart_sequence-1]["generated_text"])
         else:
             genselect(genout)
     
     # Clear CUDA cache again if using GPU
-    if(vars.hascuda and (vars.usegpu or vars.breakmodel)):
+    if(system_settings.hascuda and (system_settings.usegpu or system_settings.breakmodel)):
         del genout
         gc.collect()
         torch.cuda.empty_cache()
@@ -4074,30 +3965,30 @@ def generate(txt, minimum, maximum, found_entries=None):
 #  Deal with a single return sequence from generate()
 #==================================================================#
 def genresult(genout, flash=True, ignore_formatting=False):
-    if not vars.quiet:
+    if not system_settings.quiet:
         print("{0}{1}{2}".format(colors.CYAN, genout, colors.END))
     
     # Format output before continuing
     if not ignore_formatting:
         genout = applyoutputformatting(genout)
 
-    vars.lua_koboldbridge.feedback = genout
+    system_settings.lua_koboldbridge.feedback = genout
 
     if(len(genout) == 0):
         return
     
     # Add formatted text to Actions array and refresh the game screen
-    if(len(vars.prompt.strip()) == 0):
-        vars.prompt = genout
+    if(len(story_settings.prompt.strip()) == 0):
+        story_settings.prompt = genout
     else:
-        vars.actions.append(genout)
-        if vars.actions.get_last_key() not in vars.actions_metadata:
-            vars.actions_metadata[vars.actions.get_last_key()] = {'Selected Text': genout, 'Alternative Text': []}
+        story_settings.actions.append(genout)
+        if story_settings.actions.get_last_key() not in story_settings.actions_metadata:
+            story_settings.actions_metadata[story_settings.actions.get_last_key()] = {'Selected Text': genout, 'Alternative Text': []}
         else:
-            vars.actions_metadata[vars.actions.get_last_key()]['Selected Text'] = genout
+            story_settings.actions_metadata[story_settings.actions.get_last_key()]['Selected Text'] = genout
     update_story_chunk('last')
     if(flash):
-        emit('from_server', {'cmd': 'texteffect', 'data': vars.actions.get_last_key() + 1 if len(vars.actions) else 0}, broadcast=True)
+        emit('from_server', {'cmd': 'texteffect', 'data': story_settings.actions.get_last_key() + 1 if len(story_settings.actions) else 0}, broadcast=True)
     send_debug()
 
 #==================================================================#
@@ -4108,30 +3999,30 @@ def genselect(genout):
     for result in genout:
         # Apply output formatting rules to sequences
         result["generated_text"] = applyoutputformatting(result["generated_text"])
-        if not vars.quiet:
+        if not system_settings.quiet:
             print("{0}[Result {1}]\n{2}{3}".format(colors.CYAN, i, result["generated_text"], colors.END))
         i += 1
     
     # Add the options to the actions metadata
     # If we've already generated text for this action but haven't selected one we'll want to kill all non-pinned, non-previous selection, and non-edited options then add the new ones
-    if vars.actions.get_next_id() in vars.actions_metadata:
-        if (vars.actions_metadata[vars.actions.get_next_id()]['Selected Text'] == ""):
-            vars.actions_metadata[vars.actions.get_next_id()]['Alternative Text'] = [{"Text": item['Text'], "Pinned": item['Pinned'], 
+    if story_settings.actions.get_next_id() in story_settings.actions_metadata:
+        if (story_settings.actions_metadata[story_settings.actions.get_next_id()]['Selected Text'] == ""):
+            story_settings.actions_metadata[story_settings.actions.get_next_id()]['Alternative Text'] = [{"Text": item['Text'], "Pinned": item['Pinned'], 
                                                                              "Previous Selection": item["Previous Selection"], 
-                                                                             "Edited": item["Edited"]} for item in vars.actions_metadata[vars.actions.get_next_id()]['Alternative Text'] 
+                                                                             "Edited": item["Edited"]} for item in story_settings.actions_metadata[story_settings.actions.get_next_id()]['Alternative Text'] 
                                                                              if item['Pinned'] or item["Previous Selection"] or item["Edited"]] + [{"Text": text["generated_text"], 
                                                                                     "Pinned": False, "Previous Selection": False, "Edited": False} for text in genout]
         else:
-            vars.actions_metadata[vars.actions.get_next_id()] = {'Selected Text': '', 'Alternative Text': [{"Text": text["generated_text"], "Pinned": False, "Previous Selection": False, "Edited": False} for text in genout]}
+            story_settings.actions_metadata[story_settings.actions.get_next_id()] = {'Selected Text': '', 'Alternative Text': [{"Text": text["generated_text"], "Pinned": False, "Previous Selection": False, "Edited": False} for text in genout]}
     else:
-        vars.actions_metadata[vars.actions.get_next_id()] = {'Selected Text': '', 'Alternative Text': [{"Text": text["generated_text"], "Pinned": False, "Previous Selection": False, "Edited": False} for text in genout]}
+        story_settings.actions_metadata[story_settings.actions.get_next_id()] = {'Selected Text': '', 'Alternative Text': [{"Text": text["generated_text"], "Pinned": False, "Previous Selection": False, "Edited": False} for text in genout]}
     
-    genout = [{"generated_text": item['Text']} for item in vars.actions_metadata[vars.actions.get_next_id()]['Alternative Text'] if (item["Previous Selection"]==False) and (item["Edited"]==False)]
+    genout = [{"generated_text": item['Text']} for item in story_settings.actions_metadata[story_settings.actions.get_next_id()]['Alternative Text'] if (item["Previous Selection"]==False) and (item["Edited"]==False)]
 
     # Store sequences in memory until selection is made
-    vars.genseqs = genout
+    story_settings.genseqs = genout
     
-    genout = [[item['Text'], "pinned" if item['Pinned'] else "normal"] for item in vars.actions_metadata[vars.actions.get_next_id()]['Alternative Text']  if (item["Previous Selection"]==False) and (item["Edited"]==False)]
+    genout = [[item['Text'], "pinned" if item['Pinned'] else "normal"] for item in story_settings.actions_metadata[story_settings.actions.get_next_id()]['Alternative Text']  if (item["Previous Selection"]==False) and (item["Edited"]==False)]
 
     # Send sequences to UI for selection
     emit('from_server', {'cmd': 'genseqs', 'data': genout}, broadcast=True)
@@ -4141,21 +4032,21 @@ def genselect(genout):
 #  Send selected sequence to action log and refresh UI
 #==================================================================#
 def selectsequence(n):
-    if(len(vars.genseqs) == 0):
+    if(len(story_settings.genseqs) == 0):
         return
-    vars.lua_koboldbridge.feedback = vars.genseqs[int(n)]["generated_text"]
-    if(len(vars.lua_koboldbridge.feedback) != 0):
-        vars.actions.append(vars.lua_koboldbridge.feedback)
+    system_settings.lua_koboldbridge.feedback = story_settings.genseqs[int(n)]["generated_text"]
+    if(len(system_settings.lua_koboldbridge.feedback) != 0):
+        story_settings.actions.append(system_settings.lua_koboldbridge.feedback)
         #We'll want to remove the option from the alternative text and put it in selected text
-        vars.actions_metadata[vars.actions.get_last_key() ]['Alternative Text'] = [item for item in vars.actions_metadata[vars.actions.get_last_key()]['Alternative Text'] if item['Text'] != vars.lua_koboldbridge.feedback]
-        vars.actions_metadata[vars.actions.get_last_key() ]['Selected Text'] = vars.lua_koboldbridge.feedback
+        story_settings.actions_metadata[story_settings.actions.get_last_key() ]['Alternative Text'] = [item for item in story_settings.actions_metadata[story_settings.actions.get_last_key()]['Alternative Text'] if item['Text'] != system_settings.lua_koboldbridge.feedback]
+        story_settings.actions_metadata[story_settings.actions.get_last_key() ]['Selected Text'] = system_settings.lua_koboldbridge.feedback
         update_story_chunk('last')
-        emit('from_server', {'cmd': 'texteffect', 'data': vars.actions.get_last_key() + 1 if len(vars.actions) else 0}, broadcast=True)
+        emit('from_server', {'cmd': 'texteffect', 'data': story_settings.actions.get_last_key() + 1 if len(story_settings.actions) else 0}, broadcast=True)
     emit('from_server', {'cmd': 'hidegenseqs', 'data': ''}, broadcast=True)
-    vars.genseqs = []
+    story_settings.genseqs = []
 
-    if(vars.lua_koboldbridge.restart_sequence is not None):
-        actionsubmit("", actionmode=vars.actionmode, force_submit=True, disable_recentrng=True)
+    if(system_settings.lua_koboldbridge.restart_sequence is not None):
+        actionsubmit("", actionmode=story_settings.actionmode, force_submit=True, disable_recentrng=True)
     send_debug()
 
 #==================================================================#
@@ -4163,14 +4054,14 @@ def selectsequence(n):
 #==================================================================#
 def pinsequence(n):
     if n.isnumeric():
-        text = vars.genseqs[int(n)]['generated_text']
-        if text in [item['Text'] for item in vars.actions_metadata[vars.actions.get_next_id()]['Alternative Text']]:
-            alternatives = vars.actions_metadata[vars.actions.get_next_id()]['Alternative Text']
+        text = story_settings.genseqs[int(n)]['generated_text']
+        if text in [item['Text'] for item in story_settings.actions_metadata[story_settings.actions.get_next_id()]['Alternative Text']]:
+            alternatives = story_settings.actions_metadata[story_settings.actions.get_next_id()]['Alternative Text']
             for i in range(len(alternatives)):
                 if alternatives[i]['Text'] == text:
                     alternatives[i]['Pinned'] = not alternatives[i]['Pinned']
                     break
-            vars.actions_metadata[vars.actions.get_next_id()]['Alternative Text'] = alternatives
+            story_settings.actions_metadata[story_settings.actions.get_next_id()]['Alternative Text'] = alternatives
     send_debug()
 
 
@@ -4179,33 +4070,33 @@ def pinsequence(n):
 #==================================================================#
 def sendtocolab(txt, min, max):
     # Log request to console
-    if not vars.quiet:
+    if not system_settings.quiet:
         print("{0}Tokens:{1}, Txt:{2}{3}".format(colors.YELLOW, min-1, txt, colors.END))
     
     # Store context in memory to use it for comparison with generated content
-    vars.lastctx = txt
+    story_settings.lastctx = txt
     
     # Build request JSON data
     reqdata = {
         'text': txt,
         'min': min,
         'max': max,
-        'rep_pen': vars.rep_pen,
-        'rep_pen_slope': vars.rep_pen_slope,
-        'rep_pen_range': vars.rep_pen_range,
-        'temperature': vars.temp,
-        'top_p': vars.top_p,
-        'top_k': vars.top_k,
-        'tfs': vars.tfs,
-        'typical': vars.typical,
-        'topa': vars.top_a,
-        'numseqs': vars.numseqs,
+        'rep_pen': model_settings.rep_pen,
+        'rep_pen_slope': model_settings.rep_pen_slope,
+        'rep_pen_range': model_settings.rep_pen_range,
+        'temperature': model_settings.temp,
+        'top_p': model_settings.top_p,
+        'top_k': model_settings.top_k,
+        'tfs': model_settings.tfs,
+        'typical': model_settings.typical,
+        'topa': model_settings.top_a,
+        'numseqs': model_settings.numseqs,
         'retfultxt': False
     }
     
     # Create request
     req = requests.post(
-        vars.colaburl, 
+        model_settings.colaburl, 
         json = reqdata
         )
     
@@ -4219,15 +4110,15 @@ def sendtocolab(txt, min, max):
         else:
             genout = js["seqs"]
         
-        for i in range(vars.numseqs):
-            vars.lua_koboldbridge.outputs[i+1] = genout[i]
+        for i in range(model_settings.numseqs):
+            system_settings.lua_koboldbridge.outputs[i+1] = genout[i]
 
         execute_outmod()
-        if(vars.lua_koboldbridge.regeneration_required):
-            vars.lua_koboldbridge.regeneration_required = False
+        if(system_settings.lua_koboldbridge.regeneration_required):
+            system_settings.lua_koboldbridge.regeneration_required = False
             genout = []
-            for i in range(vars.numseqs):
-                genout.append(vars.lua_koboldbridge.outputs[i+1])
+            for i in range(model_settings.numseqs):
+                genout.append(system_settings.lua_koboldbridge.outputs[i+1])
                 assert type(genout[-1]) is str
 
         if(len(genout) == 1):
@@ -4237,8 +4128,8 @@ def sendtocolab(txt, min, max):
             seqs = []
             for seq in genout:
                 seqs.append({"generated_text": seq})
-            if(vars.lua_koboldbridge.restart_sequence is not None and vars.lua_koboldbridge.restart_sequence > 0):
-                genresult(genout[vars.lua_koboldbridge.restart_sequence-1]["generated_text"])
+            if(system_settings.lua_koboldbridge.restart_sequence is not None and system_settings.lua_koboldbridge.restart_sequence > 0):
+                genresult(genout[system_settings.lua_koboldbridge.restart_sequence-1]["generated_text"])
             else:
                 genselect(genout)
         
@@ -4246,9 +4137,9 @@ def sendtocolab(txt, min, max):
         #genout = applyoutputformatting(getnewcontent(genout))
         
         # Add formatted text to Actions array and refresh the game screen
-        #vars.actions.append(genout)
+        #story_settings.actions.append(genout)
         #refresh_story()
-        #emit('from_server', {'cmd': 'texteffect', 'data': vars.actions.get_last_key() + 1 if len(vars.actions) else 0})
+        #emit('from_server', {'cmd': 'texteffect', 'data': story_settings.actions.get_last_key() + 1 if len(story_settings.actions) else 0})
         
         set_aibusy(0)
     else:
@@ -4261,19 +4152,19 @@ def sendtocolab(txt, min, max):
 #  Send text to TPU mesh transformer backend
 #==================================================================#
 def tpumtjgenerate(txt, minimum, maximum, found_entries=None):
-    vars.generated_tkns = 0
+    story_settings.generated_tkns = 0
 
     if(found_entries is None):
         found_entries = set()
-    found_entries = tuple(found_entries.copy() for _ in range(vars.numseqs))
+    found_entries = tuple(found_entries.copy() for _ in range(model_settings.numseqs))
 
-    if not vars.quiet:
+    if not system_settings.quiet:
         print("{0}Min:{1}, Max:{2}, Txt:{3}{4}".format(colors.YELLOW, minimum, maximum, utils.decodenewlines(tokenizer.decode(txt)), colors.END))
 
-    vars._actions = vars.actions
-    vars._prompt = vars.prompt
-    if(vars.dynamicscan):
-        vars._actions = vars._actions.copy()
+    story_settings._actions = story_settings.actions
+    story_settings._prompt = story_settings.prompt
+    if(story_settings.dynamicscan):
+        story_settings._actions = story_settings._actions.copy()
 
     # Submit input text to generator
     try:
@@ -4283,38 +4174,38 @@ def tpumtjgenerate(txt, minimum, maximum, found_entries=None):
 
         socketio.start_background_task(copy_current_request_context(check_for_backend_compilation))
 
-        if(vars.dynamicscan or (not vars.nogenmod and vars.has_genmod)):
+        if(story_settings.dynamicscan or (not user_settings.nogenmod and system_settings.has_genmod)):
 
-            context = np.tile(np.uint32(txt), (vars.numseqs, 1))
-            past = np.empty((vars.numseqs, 0), dtype=np.uint32)
+            context = np.tile(np.uint32(txt), (model_settings.numseqs, 1))
+            past = np.empty((model_settings.numseqs, 0), dtype=np.uint32)
 
             while(True):
                 genout, n_generated, regeneration_required, halt = tpool.execute(
                     tpu_mtj_backend.infer_dynamic,
                     context,
                     gen_len = maximum-minimum+1,
-                    numseqs=vars.numseqs,
-                    soft_embeddings=vars.sp,
+                    numseqs=model_settings.numseqs,
+                    soft_embeddings=system_settings.sp,
                     soft_tokens=soft_tokens,
                     excluded_world_info=found_entries,
                 )
 
                 past = np.pad(past, ((0, 0), (0, n_generated)))
-                for r in range(vars.numseqs):
-                    for c in range(vars.lua_koboldbridge.generated_cols):
-                        assert vars.lua_koboldbridge.generated[r+1][c+1] is not None
-                        past[r, c] = vars.lua_koboldbridge.generated[r+1][c+1]
+                for r in range(model_settings.numseqs):
+                    for c in range(system_settings.lua_koboldbridge.generated_cols):
+                        assert system_settings.lua_koboldbridge.generated[r+1][c+1] is not None
+                        past[r, c] = system_settings.lua_koboldbridge.generated[r+1][c+1]
 
-                if(vars.abort or halt or not regeneration_required):
+                if(system_settings.abort or halt or not regeneration_required):
                     break
                 print("(regeneration triggered)")
 
                 encoded = []
-                for i in range(vars.numseqs):
+                for i in range(model_settings.numseqs):
                     txt = utils.decodenewlines(tokenizer.decode(past[i]))
-                    winfo, mem, anotetxt, _found_entries = calcsubmitbudgetheader(txt, force_use_txt=True, actions=vars._actions)
+                    winfo, mem, anotetxt, _found_entries = calcsubmitbudgetheader(txt, force_use_txt=True, actions=story_settings._actions)
                     found_entries[i].update(_found_entries)
-                    txt, _, _ = calcsubmitbudget(len(vars._actions), winfo, mem, anotetxt, vars._actions, submission=txt)
+                    txt, _, _ = calcsubmitbudget(len(story_settings._actions), winfo, mem, anotetxt, story_settings._actions, submission=txt)
                     encoded.append(np.array(txt, dtype=np.uint32))
                 max_length = len(max(encoded, key=len))
                 encoded = np.stack(tuple(np.pad(e, (max_length - len(e), 0), constant_values=tpu_mtj_backend.pad_token_id) for e in encoded))
@@ -4331,29 +4222,29 @@ def tpumtjgenerate(txt, minimum, maximum, found_entries=None):
                 tpu_mtj_backend.infer_static,
                 np.uint32(txt),
                 gen_len = maximum-minimum+1,
-                temp=vars.temp,
-                top_p=vars.top_p,
-                top_k=vars.top_k,
-                tfs=vars.tfs,
-                typical=vars.typical,
-                top_a=vars.top_a,
-                numseqs=vars.numseqs,
-                repetition_penalty=vars.rep_pen,
-                rpslope=vars.rep_pen_slope,
-                rprange=vars.rep_pen_range,
-                soft_embeddings=vars.sp,
+                temp=model_settings.temp,
+                top_p=model_settings.top_p,
+                top_k=model_settings.top_k,
+                tfs=model_settings.tfs,
+                typical=model_settings.typical,
+                top_a=model_settings.top_a,
+                numseqs=model_settings.numseqs,
+                repetition_penalty=model_settings.rep_pen,
+                rpslope=model_settings.rep_pen_slope,
+                rprange=model_settings.rep_pen_range,
+                soft_embeddings=system_settings.sp,
                 soft_tokens=soft_tokens,
-                sampler_order=vars.sampler_order,
+                sampler_order=model_settings.sampler_order,
             )
             past = genout
-            for i in range(vars.numseqs):
-                vars.lua_koboldbridge.generated[i+1] = vars.lua_state.table(*genout[i].tolist())
-            vars.lua_koboldbridge.generated_cols = vars.generated_tkns = genout[0].shape[-1]
+            for i in range(model_settings.numseqs):
+                system_settings.lua_koboldbridge.generated[i+1] = system_settings.lua_state.table(*genout[i].tolist())
+            system_settings.lua_koboldbridge.generated_cols = story_settings.generated_tkns = genout[0].shape[-1]
 
     except Exception as e:
         if(issubclass(type(e), lupa.LuaError)):
-            vars.lua_koboldbridge.obliterate_multiverse()
-            vars.lua_running = False
+            system_settings.lua_koboldbridge.obliterate_multiverse()
+            system_settings.lua_running = False
             emit('from_server', {'cmd': 'errmsg', 'data': 'Lua script error; please check console.'}, broadcast=True)
             sendUSStatItems()
             print("{0}{1}{2}".format(colors.RED, "***LUA ERROR***: ", colors.END), end="", file=sys.stderr)
@@ -4365,16 +4256,16 @@ def tpumtjgenerate(txt, minimum, maximum, found_entries=None):
         set_aibusy(0)
         return
 
-    for i in range(vars.numseqs):
-        vars.lua_koboldbridge.outputs[i+1] = utils.decodenewlines(tokenizer.decode(past[i]))
+    for i in range(model_settings.numseqs):
+        system_settings.lua_koboldbridge.outputs[i+1] = utils.decodenewlines(tokenizer.decode(past[i]))
     genout = past
 
     execute_outmod()
-    if(vars.lua_koboldbridge.regeneration_required):
-        vars.lua_koboldbridge.regeneration_required = False
+    if(system_settings.lua_koboldbridge.regeneration_required):
+        system_settings.lua_koboldbridge.regeneration_required = False
         genout = []
-        for i in range(vars.numseqs):
-            genout.append({"generated_text": vars.lua_koboldbridge.outputs[i+1]})
+        for i in range(model_settings.numseqs):
+            genout.append({"generated_text": system_settings.lua_koboldbridge.outputs[i+1]})
             assert type(genout[-1]["generated_text"]) is str
     else:
         genout = [{"generated_text": utils.decodenewlines(tokenizer.decode(txt))} for txt in genout]
@@ -4382,8 +4273,8 @@ def tpumtjgenerate(txt, minimum, maximum, found_entries=None):
     if(len(genout) == 1):
         genresult(genout[0]["generated_text"])
     else:
-        if(vars.lua_koboldbridge.restart_sequence is not None and vars.lua_koboldbridge.restart_sequence > 0):
-            genresult(genout[vars.lua_koboldbridge.restart_sequence-1]["generated_text"])
+        if(system_settings.lua_koboldbridge.restart_sequence is not None and system_settings.lua_koboldbridge.restart_sequence > 0):
+            genresult(genout[system_settings.lua_koboldbridge.restart_sequence-1]["generated_text"])
         else:
             genselect(genout)
 
@@ -4401,11 +4292,11 @@ def formatforhtml(txt):
 #==================================================================#
 def getnewcontent(txt):
     # If the submitted context was blank, then everything is new
-    if(vars.lastctx == ""):
+    if(story_settings.lastctx == ""):
         return txt
     
     # Tokenize the last context and the generated content
-    ctxtokens = tokenizer.encode(utils.encodenewlines(vars.lastctx), max_length=int(2e9), truncation=True)
+    ctxtokens = tokenizer.encode(utils.encodenewlines(story_settings.lastctx), max_length=int(2e9), truncation=True)
     txttokens = tokenizer.encode(utils.encodenewlines(txt), max_length=int(2e9), truncation=True)
     dif       = (len(txttokens) - len(ctxtokens)) * -1
     
@@ -4419,8 +4310,8 @@ def getnewcontent(txt):
 #==================================================================#
 def applyinputformatting(txt):
     # Add sentence spacing
-    if(vars.formatoptns["frmtadsnsp"]):
-        txt = utils.addsentencespacing(txt, vars)
+    if(user_settings.formatoptns["frmtadsnsp"]):
+        txt = utils.addsentencespacing(txt, story_settings)
  
     return txt
 
@@ -4432,21 +4323,21 @@ def applyoutputformatting(txt):
     txt = utils.fixquotes(txt)
 
     # Adventure mode clipping of all characters after '>'
-    if(vars.adventure):
-        txt = vars.acregex_ai.sub('', txt)
+    if(story_settings.adventure):
+        txt = system_settings.acregex_ai.sub('', txt)
     
     # Trim incomplete sentences
-    if(vars.formatoptns["frmttriminc"] and not vars.chatmode):
+    if(user_settings.formatoptns["frmttriminc"] and not story_settings.chatmode):
         txt = utils.trimincompletesentence(txt)
     # Replace blank lines
-    if(vars.formatoptns["frmtrmblln"] or vars.chatmode):
+    if(user_settings.formatoptns["frmtrmblln"] or story_settings.chatmode):
         txt = utils.replaceblanklines(txt)
     # Remove special characters
-    if(vars.formatoptns["frmtrmspch"]):
-        txt = utils.removespecialchars(txt, vars)
+    if(user_settings.formatoptns["frmtrmspch"]):
+        txt = utils.removespecialchars(txt, story_settings)
 	# Single Line Mode
-    if(vars.formatoptns["singleline"] or vars.chatmode):
-        txt = utils.singlelineprocessing(txt, vars)
+    if(user_settings.formatoptns["singleline"] or story_settings.chatmode):
+        txt = utils.singlelineprocessing(txt, story_settings)
     
     return txt
 
@@ -4454,15 +4345,15 @@ def applyoutputformatting(txt):
 # Sends the current story content to the Game Screen
 #==================================================================#
 def refresh_story():
-    text_parts = ['<chunk n="0" id="n0" tabindex="-1">', vars.comregex_ui.sub(lambda m: '\n'.join('<comment>' + l + '</comment>' for l in m.group().split('\n')), html.escape(vars.prompt)), '</chunk>']
-    for idx in vars.actions:
-        item = vars.actions[idx]
+    text_parts = ['<chunk n="0" id="n0" tabindex="-1">', system_settings.comregex_ui.sub(lambda m: '\n'.join('<comment>' + l + '</comment>' for l in m.group().split('\n')), html.escape(story_settings.prompt)), '</chunk>']
+    for idx in story_settings.actions:
+        item = story_settings.actions[idx]
         idx += 1
         item = html.escape(item)
-        item = vars.comregex_ui.sub(lambda m: '\n'.join('<comment>' + l + '</comment>' for l in m.group().split('\n')), item)  # Add special formatting to comments
-        item = vars.acregex_ui.sub('<action>\\1</action>', item)  # Add special formatting to adventure actions
+        item = system_settings.comregex_ui.sub(lambda m: '\n'.join('<comment>' + l + '</comment>' for l in m.group().split('\n')), item)  # Add special formatting to comments
+        item = system_settings.acregex_ui.sub('<action>\\1</action>', item)  # Add special formatting to adventure actions
         text_parts.extend(('<chunk n="', str(idx), '" id="n', str(idx), '" tabindex="-1">', item, '</chunk>'))
-    emit('from_server', {'cmd': 'updatescreen', 'gamestarted': vars.gamestarted, 'data': formatforhtml(''.join(text_parts))}, broadcast=True)
+    emit('from_server', {'cmd': 'updatescreen', 'gamestarted': story_settings.gamestarted, 'data': formatforhtml(''.join(text_parts))}, broadcast=True)
 
 
 #==================================================================#
@@ -4470,7 +4361,7 @@ def refresh_story():
 #==================================================================#
 def update_story_chunk(idx: Union[int, str]):
     if idx == 'last':
-        if len(vars.actions) <= 1:
+        if len(story_settings.actions) <= 1:
             # In this case, we are better off just refreshing the whole thing as the
             # prompt might not have been shown yet (with a "Generating story..."
             # message instead).
@@ -4478,20 +4369,20 @@ def update_story_chunk(idx: Union[int, str]):
             setgamesaved(False)
             return
 
-        idx = (vars.actions.get_last_key() if len(vars.actions) else 0) + 1
+        idx = (story_settings.actions.get_last_key() if len(story_settings.actions) else 0) + 1
 
     if idx == 0:
-        text = vars.prompt
+        text = story_settings.prompt
     else:
         # Actions are 0 based, but in chunks 0 is the prompt.
         # So the chunk index is one more than the corresponding action index.
-        if(idx - 1 not in vars.actions):
+        if(idx - 1 not in story_settings.actions):
             return
-        text = vars.actions[idx - 1]
+        text = story_settings.actions[idx - 1]
 
     item = html.escape(text)
-    item = vars.comregex_ui.sub(lambda m: '\n'.join('<comment>' + l + '</comment>' for l in m.group().split('\n')), item)  # Add special formatting to comments
-    item = vars.acregex_ui.sub('<action>\\1</action>', item)  # Add special formatting to adventure actions
+    item = system_settings.comregex_ui.sub(lambda m: '\n'.join('<comment>' + l + '</comment>' for l in m.group().split('\n')), item)  # Add special formatting to comments
+    item = system_settings.acregex_ui.sub('<action>\\1</action>', item)  # Add special formatting to adventure actions
 
     chunk_text = f'<chunk n="{idx}" id="n{idx}" tabindex="-1">{formatforhtml(item)}</chunk>'
     emit('from_server', {'cmd': 'updatechunk', 'data': {'index': idx, 'html': chunk_text}}, broadcast=True)
@@ -4499,7 +4390,7 @@ def update_story_chunk(idx: Union[int, str]):
     setgamesaved(False)
 
     #If we've set the auto save flag, we'll now save the file
-    if vars.autosave and (".json" in vars.savedir):
+    if user_settings.autosave and (".json" in system_settings.savedir):
         save()
 
 
@@ -4518,40 +4409,40 @@ def refresh_settings():
     # Suppress toggle change events while loading state
     emit('from_server', {'cmd': 'allowtoggle', 'data': False}, broadcast=True)
     
-    if(vars.model != "InferKit"):
-        emit('from_server', {'cmd': 'updatetemp', 'data': vars.temp}, broadcast=True)
-        emit('from_server', {'cmd': 'updatetopp', 'data': vars.top_p}, broadcast=True)
-        emit('from_server', {'cmd': 'updatetopk', 'data': vars.top_k}, broadcast=True)
-        emit('from_server', {'cmd': 'updatetfs', 'data': vars.tfs}, broadcast=True)
-        emit('from_server', {'cmd': 'updatetypical', 'data': vars.typical}, broadcast=True)
-        emit('from_server', {'cmd': 'updatetopa', 'data': vars.top_a}, broadcast=True)
-        emit('from_server', {'cmd': 'updatereppen', 'data': vars.rep_pen}, broadcast=True)
-        emit('from_server', {'cmd': 'updatereppenslope', 'data': vars.rep_pen_slope}, broadcast=True)
-        emit('from_server', {'cmd': 'updatereppenrange', 'data': vars.rep_pen_range}, broadcast=True)
-        emit('from_server', {'cmd': 'updateoutlen', 'data': vars.genamt}, broadcast=True)
-        emit('from_server', {'cmd': 'updatetknmax', 'data': vars.max_length}, broadcast=True)
-        emit('from_server', {'cmd': 'updatenumseq', 'data': vars.numseqs}, broadcast=True)
+    if(model_settings.model != "InferKit"):
+        emit('from_server', {'cmd': 'updatetemp', 'data': model_settings.temp}, broadcast=True)
+        emit('from_server', {'cmd': 'updatetopp', 'data': model_settings.top_p}, broadcast=True)
+        emit('from_server', {'cmd': 'updatetopk', 'data': model_settings.top_k}, broadcast=True)
+        emit('from_server', {'cmd': 'updatetfs', 'data': model_settings.tfs}, broadcast=True)
+        emit('from_server', {'cmd': 'updatetypical', 'data': model_settings.typical}, broadcast=True)
+        emit('from_server', {'cmd': 'updatetopa', 'data': model_settings.top_a}, broadcast=True)
+        emit('from_server', {'cmd': 'updatereppen', 'data': model_settings.rep_pen}, broadcast=True)
+        emit('from_server', {'cmd': 'updatereppenslope', 'data': model_settings.rep_pen_slope}, broadcast=True)
+        emit('from_server', {'cmd': 'updatereppenrange', 'data': model_settings.rep_pen_range}, broadcast=True)
+        emit('from_server', {'cmd': 'updateoutlen', 'data': model_settings.genamt}, broadcast=True)
+        emit('from_server', {'cmd': 'updatetknmax', 'data': model_settings.max_length}, broadcast=True)
+        emit('from_server', {'cmd': 'updatenumseq', 'data': model_settings.numseqs}, broadcast=True)
     else:
-        emit('from_server', {'cmd': 'updatetemp', 'data': vars.temp}, broadcast=True)
-        emit('from_server', {'cmd': 'updatetopp', 'data': vars.top_p}, broadcast=True)
-        emit('from_server', {'cmd': 'updateikgen', 'data': vars.ikgen}, broadcast=True)
+        emit('from_server', {'cmd': 'updatetemp', 'data': model_settings.temp}, broadcast=True)
+        emit('from_server', {'cmd': 'updatetopp', 'data': model_settings.top_p}, broadcast=True)
+        emit('from_server', {'cmd': 'updateikgen', 'data': model_settings.ikgen}, broadcast=True)
     
-    emit('from_server', {'cmd': 'updateanotedepth', 'data': vars.andepth}, broadcast=True)
-    emit('from_server', {'cmd': 'updatewidepth', 'data': vars.widepth}, broadcast=True)
-    emit('from_server', {'cmd': 'updateuseprompt', 'data': vars.useprompt}, broadcast=True)
-    emit('from_server', {'cmd': 'updateadventure', 'data': vars.adventure}, broadcast=True)
-    emit('from_server', {'cmd': 'updatechatmode', 'data': vars.chatmode}, broadcast=True)
-    emit('from_server', {'cmd': 'updatedynamicscan', 'data': vars.dynamicscan}, broadcast=True)
-    emit('from_server', {'cmd': 'updateautosave', 'data': vars.autosave}, broadcast=True)
-    emit('from_server', {'cmd': 'updatenopromptgen', 'data': vars.nopromptgen}, broadcast=True)
-    emit('from_server', {'cmd': 'updaterngpersist', 'data': vars.rngpersist}, broadcast=True)
-    emit('from_server', {'cmd': 'updatenogenmod', 'data': vars.nogenmod}, broadcast=True)
+    emit('from_server', {'cmd': 'updateanotedepth', 'data': story_settings.andepth}, broadcast=True)
+    emit('from_server', {'cmd': 'updatewidepth', 'data': user_settings.widepth}, broadcast=True)
+    emit('from_server', {'cmd': 'updateuseprompt', 'data': story_settings.useprompt}, broadcast=True)
+    emit('from_server', {'cmd': 'updateadventure', 'data': story_settings.adventure}, broadcast=True)
+    emit('from_server', {'cmd': 'updatechatmode', 'data': story_settings.chatmode}, broadcast=True)
+    emit('from_server', {'cmd': 'updatedynamicscan', 'data': story_settings.dynamicscan}, broadcast=True)
+    emit('from_server', {'cmd': 'updateautosave', 'data': user_settings.autosave}, broadcast=True)
+    emit('from_server', {'cmd': 'updatenopromptgen', 'data': user_settings.nopromptgen}, broadcast=True)
+    emit('from_server', {'cmd': 'updaterngpersist', 'data': user_settings.rngpersist}, broadcast=True)
+    emit('from_server', {'cmd': 'updatenogenmod', 'data': user_settings.nogenmod}, broadcast=True)
     
-    emit('from_server', {'cmd': 'updatefrmttriminc', 'data': vars.formatoptns["frmttriminc"]}, broadcast=True)
-    emit('from_server', {'cmd': 'updatefrmtrmblln', 'data': vars.formatoptns["frmtrmblln"]}, broadcast=True)
-    emit('from_server', {'cmd': 'updatefrmtrmspch', 'data': vars.formatoptns["frmtrmspch"]}, broadcast=True)
-    emit('from_server', {'cmd': 'updatefrmtadsnsp', 'data': vars.formatoptns["frmtadsnsp"]}, broadcast=True)
-    emit('from_server', {'cmd': 'updatesingleline', 'data': vars.formatoptns["singleline"]}, broadcast=True)
+    emit('from_server', {'cmd': 'updatefrmttriminc', 'data': user_settings.formatoptns["frmttriminc"]}, broadcast=True)
+    emit('from_server', {'cmd': 'updatefrmtrmblln', 'data': user_settings.formatoptns["frmtrmblln"]}, broadcast=True)
+    emit('from_server', {'cmd': 'updatefrmtrmspch', 'data': user_settings.formatoptns["frmtrmspch"]}, broadcast=True)
+    emit('from_server', {'cmd': 'updatefrmtadsnsp', 'data': user_settings.formatoptns["frmtadsnsp"]}, broadcast=True)
+    emit('from_server', {'cmd': 'updatesingleline', 'data': user_settings.formatoptns["singleline"]}, broadcast=True)
     
     # Allow toggle events again
     emit('from_server', {'cmd': 'allowtoggle', 'data': True}, broadcast=True)
@@ -4561,10 +4452,10 @@ def refresh_settings():
 #==================================================================#
 def set_aibusy(state):
     if(state):
-        vars.aibusy = True
+        system_settings.aibusy = True
         emit('from_server', {'cmd': 'setgamestate', 'data': 'wait'}, broadcast=True)
     else:
-        vars.aibusy = False
+        system_settings.aibusy = False
         emit('from_server', {'cmd': 'setgamestate', 'data': 'ready'}, broadcast=True)
 
 #==================================================================#
@@ -4572,11 +4463,11 @@ def set_aibusy(state):
 #==================================================================#
 def editrequest(n):
     if(n == 0):
-        txt = vars.prompt
+        txt = story_settings.prompt
     else:
-        txt = vars.actions[n-1]
+        txt = story_settings.actions[n-1]
     
-    vars.editln = n
+    story_settings.editln = n
     emit('from_server', {'cmd': 'setinputtext', 'data': txt}, broadcast=True)
     emit('from_server', {'cmd': 'enablesubmit', 'data': ''}, broadcast=True)
 
@@ -4584,19 +4475,19 @@ def editrequest(n):
 # 
 #==================================================================#
 def editsubmit(data):
-    vars.recentedit = True
-    if(vars.editln == 0):
-        vars.prompt = data
+    story_settings.recentedit = True
+    if(story_settings.editln == 0):
+        story_settings.prompt = data
     else:
-        vars.actions_metadata[vars.editln-1]['Alternative Text'] = vars.actions_metadata[vars.editln-1]['Alternative Text'] + [{"Text": vars.actions[vars.editln-1], "Pinned": False, 
+        story_settings.actions_metadata[story_settings.editln-1]['Alternative Text'] = story_settings.actions_metadata[story_settings.editln-1]['Alternative Text'] + [{"Text": story_settings.actions[story_settings.editln-1], "Pinned": False, 
                                                                          "Previous Selection": False, 
                                                                          "Edited": True}]
-        vars.actions_metadata[vars.editln-1]['Selected Text'] = data
-        vars.actions[vars.editln-1] = data
+        story_settings.actions_metadata[story_settings.editln-1]['Selected Text'] = data
+        story_settings.actions[story_settings.editln-1] = data
     
-    vars.mode = "play"
-    update_story_chunk(vars.editln)
-    emit('from_server', {'cmd': 'texteffect', 'data': vars.editln}, broadcast=True)
+    story_settings.mode = "play"
+    update_story_chunk(story_settings.editln)
+    emit('from_server', {'cmd': 'texteffect', 'data': story_settings.editln}, broadcast=True)
     emit('from_server', {'cmd': 'editmode', 'data': 'false'})
     send_debug()
 
@@ -4604,18 +4495,18 @@ def editsubmit(data):
 #  
 #==================================================================#
 def deleterequest():
-    vars.recentedit = True
+    story_settings.recentedit = True
     # Don't delete prompt
-    if(vars.editln == 0):
+    if(story_settings.editln == 0):
         # Send error message
         pass
     else:
-        vars.actions_metadata[vars.editln-1]['Alternative Text'] = [{"Text": vars.actions[vars.editln-1], "Pinned": False, 
-                                                      "Previous Selection": True, "Edited": False}] + vars.actions_metadata[vars.editln-1]['Alternative Text']
-        vars.actions_metadata[vars.editln-1]['Selected Text'] = ''
-        vars.actions[vars.editln-1] = ''
-        vars.mode = "play"
-        remove_story_chunk(vars.editln)
+        story_settings.actions_metadata[story_settings.editln-1]['Alternative Text'] = [{"Text": story_settings.actions[story_settings.editln-1], "Pinned": False, 
+                                                      "Previous Selection": True, "Edited": False}] + story_settings.actions_metadata[story_settings.editln-1]['Alternative Text']
+        story_settings.actions_metadata[story_settings.editln-1]['Selected Text'] = ''
+        story_settings.actions[story_settings.editln-1] = ''
+        story_settings.mode = "play"
+        remove_story_chunk(story_settings.editln)
         emit('from_server', {'cmd': 'editmode', 'data': 'false'})
     send_debug()
 
@@ -4623,19 +4514,19 @@ def deleterequest():
 # 
 #==================================================================#
 def inlineedit(chunk, data):
-    vars.recentedit = True
+    story_settings.recentedit = True
     chunk = int(chunk)
     if(chunk == 0):
         if(len(data.strip()) == 0):
             return
-        vars.prompt = data
+        story_settings.prompt = data
     else:
-        if(chunk-1 in vars.actions):
-            vars.actions_metadata[chunk-1]['Alternative Text'] = vars.actions_metadata[chunk-1]['Alternative Text'] + [{"Text": vars.actions[chunk-1], "Pinned": False, 
+        if(chunk-1 in story_settings.actions):
+            story_settings.actions_metadata[chunk-1]['Alternative Text'] = story_settings.actions_metadata[chunk-1]['Alternative Text'] + [{"Text": story_settings.actions[chunk-1], "Pinned": False, 
                                                                              "Previous Selection": False, 
                                                                              "Edited": True}]
-            vars.actions_metadata[chunk-1]['Selected Text'] = data
-            vars.actions[chunk-1] = data
+            story_settings.actions_metadata[chunk-1]['Selected Text'] = data
+            story_settings.actions[chunk-1] = data
         else:
             print(f"WARNING: Attempted to edit non-existent chunk {chunk}")
 
@@ -4649,7 +4540,7 @@ def inlineedit(chunk, data):
 #  
 #==================================================================#
 def inlinedelete(chunk):
-    vars.recentedit = True
+    story_settings.recentedit = True
     chunk = int(chunk)
     # Don't delete prompt
     if(chunk == 0):
@@ -4658,12 +4549,12 @@ def inlinedelete(chunk):
         emit('from_server', {'cmd': 'errmsg', 'data': "Cannot delete the prompt."})
         emit('from_server', {'cmd': 'editmode', 'data': 'false'}, broadcast=True)
     else:
-        if(chunk-1 in vars.actions):
-            vars.actions_metadata[chunk-1]['Alternative Text'] = [{"Text": vars.actions[chunk-1], "Pinned": False, 
+        if(chunk-1 in story_settings.actions):
+            story_settings.actions_metadata[chunk-1]['Alternative Text'] = [{"Text": story_settings.actions[chunk-1], "Pinned": False, 
                                                                              "Previous Selection": True, 
-                                                                             "Edited": False}] + vars.actions_metadata[chunk-1]['Alternative Text']
-            vars.actions_metadata[chunk-1]['Selected Text'] = ''
-            vars.actions[chunk-1] = ''
+                                                                             "Edited": False}] + story_settings.actions_metadata[chunk-1]['Alternative Text']
+            story_settings.actions_metadata[chunk-1]['Selected Text'] = ''
+            story_settings.actions[chunk-1] = ''
         else:
             print(f"WARNING: Attempted to delete non-existent chunk {chunk}")
         setgamesaved(False)
@@ -4675,28 +4566,28 @@ def inlinedelete(chunk):
 #   Toggles the game mode for memory editing and sends UI commands
 #==================================================================#
 def togglememorymode():
-    if(vars.mode == "play"):
-        vars.mode = "memory"
+    if(story_settings.mode == "play"):
+        story_settings.mode = "memory"
         emit('from_server', {'cmd': 'memmode', 'data': 'true'}, broadcast=True)
-        emit('from_server', {'cmd': 'setinputtext', 'data': vars.memory}, broadcast=True)
-        emit('from_server', {'cmd': 'setanote', 'data': vars.authornote}, broadcast=True)
-        emit('from_server', {'cmd': 'setanotetemplate', 'data': vars.authornotetemplate}, broadcast=True)
-    elif(vars.mode == "memory"):
-        vars.mode = "play"
+        emit('from_server', {'cmd': 'setinputtext', 'data': story_settings.memory}, broadcast=True)
+        emit('from_server', {'cmd': 'setanote', 'data': story_settings.authornote}, broadcast=True)
+        emit('from_server', {'cmd': 'setanotetemplate', 'data': story_settings.authornotetemplate}, broadcast=True)
+    elif(story_settings.mode == "memory"):
+        story_settings.mode = "play"
         emit('from_server', {'cmd': 'memmode', 'data': 'false'}, broadcast=True)
 
 #==================================================================#
 #   Toggles the game mode for WI editing and sends UI commands
 #==================================================================#
 def togglewimode():
-    if(vars.mode == "play"):
-        vars.mode = "wi"
+    if(story_settings.mode == "play"):
+        story_settings.mode = "wi"
         emit('from_server', {'cmd': 'wimode', 'data': 'true'}, broadcast=True)
-    elif(vars.mode == "wi"):
+    elif(story_settings.mode == "wi"):
         # Commit WI fields first
         requestwi()
         # Then set UI state back to Play
-        vars.mode = "play"
+        story_settings.mode = "play"
         emit('from_server', {'cmd': 'wimode', 'data': 'false'}, broadcast=True)
     sendwi()
 
@@ -4704,17 +4595,17 @@ def togglewimode():
 #   
 #==================================================================#
 def addwiitem(folder_uid=None):
-    assert folder_uid is None or folder_uid in vars.wifolders_d
-    ob = {"key": "", "keysecondary": "", "content": "", "comment": "", "folder": folder_uid, "num": len(vars.worldinfo), "init": False, "selective": False, "constant": False}
-    vars.worldinfo.append(ob)
+    assert folder_uid is None or folder_uid in story_settings.wifolders_d
+    ob = {"key": "", "keysecondary": "", "content": "", "comment": "", "folder": folder_uid, "num": len(story_settings.worldinfo), "init": False, "selective": False, "constant": False}
+    story_settings.worldinfo.append(ob)
     while(True):
         uid = int.from_bytes(os.urandom(4), "little", signed=True)
-        if(uid not in vars.worldinfo_u):
+        if(uid not in story_settings.worldinfo_u):
             break
-    vars.worldinfo_u[uid] = vars.worldinfo[-1]
-    vars.worldinfo[-1]["uid"] = uid
+    story_settings.worldinfo_u[uid] = story_settings.worldinfo[-1]
+    story_settings.worldinfo[-1]["uid"] = uid
     if(folder_uid is not None):
-        vars.wifolders_u[folder_uid].append(vars.worldinfo[-1])
+        story_settings.wifolders_u[folder_uid].append(story_settings.worldinfo[-1])
     emit('from_server', {'cmd': 'addwiitem', 'data': ob}, broadcast=True)
 
 #==================================================================#
@@ -4723,12 +4614,12 @@ def addwiitem(folder_uid=None):
 def addwifolder():
     while(True):
         uid = int.from_bytes(os.urandom(4), "little", signed=True)
-        if(uid not in vars.wifolders_d):
+        if(uid not in story_settings.wifolders_d):
             break
     ob = {"name": "", "collapsed": False}
-    vars.wifolders_d[uid] = ob
-    vars.wifolders_l.append(uid)
-    vars.wifolders_u[uid] = []
+    story_settings.wifolders_d[uid] = ob
+    story_settings.wifolders_l.append(uid)
+    story_settings.wifolders_u[uid] = []
     emit('from_server', {'cmd': 'addwifolder', 'uid': uid, 'data': ob}, broadcast=True)
     addwiitem(folder_uid=uid)
 
@@ -4738,20 +4629,20 @@ def addwifolder():
 #==================================================================#
 def movewiitem(dst, src):
     setgamesaved(False)
-    if(vars.worldinfo_u[src]["folder"] is not None):
-        for i, e in enumerate(vars.wifolders_u[vars.worldinfo_u[src]["folder"]]):
-            if(e is vars.worldinfo_u[src]):
-                vars.wifolders_u[vars.worldinfo_u[src]["folder"]].pop(i)
+    if(story_settings.worldinfo_u[src]["folder"] is not None):
+        for i, e in enumerate(story_settings.wifolders_u[story_settings.worldinfo_u[src]["folder"]]):
+            if(e is story_settings.worldinfo_u[src]):
+                story_settings.wifolders_u[story_settings.worldinfo_u[src]["folder"]].pop(i)
                 break
-    if(vars.worldinfo_u[dst]["folder"] is not None):
-        vars.wifolders_u[vars.worldinfo_u[dst]["folder"]].append(vars.worldinfo_u[src])
-    vars.worldinfo_u[src]["folder"] = vars.worldinfo_u[dst]["folder"]
-    for i, e in enumerate(vars.worldinfo):
-        if(e is vars.worldinfo_u[src]):
+    if(story_settings.worldinfo_u[dst]["folder"] is not None):
+        story_settings.wifolders_u[story_settings.worldinfo_u[dst]["folder"]].append(story_settings.worldinfo_u[src])
+    story_settings.worldinfo_u[src]["folder"] = story_settings.worldinfo_u[dst]["folder"]
+    for i, e in enumerate(story_settings.worldinfo):
+        if(e is story_settings.worldinfo_u[src]):
             _src = i
-        elif(e is vars.worldinfo_u[dst]):
+        elif(e is story_settings.worldinfo_u[dst]):
             _dst = i
-    vars.worldinfo.insert(_dst - (_dst >= _src), vars.worldinfo.pop(_src))
+    story_settings.worldinfo.insert(_dst - (_dst >= _src), story_settings.worldinfo.pop(_src))
     sendwi()
 
 #==================================================================#
@@ -4760,12 +4651,12 @@ def movewiitem(dst, src):
 #==================================================================#
 def movewifolder(dst, src):
     setgamesaved(False)
-    vars.wifolders_l.remove(src)
+    story_settings.wifolders_l.remove(src)
     if(dst is None):
         # If dst is None, that means we should move src to be the last folder
-        vars.wifolders_l.append(src)
+        story_settings.wifolders_l.append(src)
     else:
-        vars.wifolders_l.insert(vars.wifolders_l.index(dst), src)
+        story_settings.wifolders_l.insert(story_settings.wifolders_l.index(dst), src)
     sendwi()
 
 #==================================================================#
@@ -4773,15 +4664,15 @@ def movewifolder(dst, src):
 #==================================================================#
 def sendwi():
     # Cache len of WI
-    ln = len(vars.worldinfo)
+    ln = len(story_settings.worldinfo)
 
     # Clear contents of WI container
-    emit('from_server', {'cmd': 'wistart', 'wifolders_d': vars.wifolders_d, 'wifolders_l': vars.wifolders_l, 'data': ''}, broadcast=True)
+    emit('from_server', {'cmd': 'wistart', 'wifolders_d': story_settings.wifolders_d, 'wifolders_l': story_settings.wifolders_l, 'data': ''}, broadcast=True)
 
     # Stable-sort WI entries in order of folder
     stablesortwi()
 
-    vars.worldinfo_i = [wi for wi in vars.worldinfo if wi["init"]]
+    story_settings.worldinfo_i = [wi for wi in story_settings.worldinfo if wi["init"]]
 
     # If there are no WI entries, send an empty WI object
     if(ln == 0):
@@ -4789,9 +4680,9 @@ def sendwi():
     else:
         # Send contents of WI array
         last_folder = ...
-        for wi in vars.worldinfo:
+        for wi in story_settings.worldinfo:
             if(wi["folder"] != last_folder):
-                emit('from_server', {'cmd': 'addwifolder', 'uid': wi["folder"], 'data': vars.wifolders_d[wi["folder"]] if wi["folder"] is not None else None}, broadcast=True)
+                emit('from_server', {'cmd': 'addwifolder', 'uid': wi["folder"], 'data': story_settings.wifolders_d[wi["folder"]] if wi["folder"] is not None else None}, broadcast=True)
                 last_folder = wi["folder"]
             ob = wi
             emit('from_server', {'cmd': 'addwiitem', 'data': ob}, broadcast=True)
@@ -4803,7 +4694,7 @@ def sendwi():
 #==================================================================#
 def requestwi():
     list = []
-    for wi in vars.worldinfo:
+    for wi in story_settings.worldinfo:
         list.append(wi["num"])
     emit('from_server', {'cmd': 'requestwiitem', 'data': list})
 
@@ -4812,11 +4703,11 @@ def requestwi():
 #  and items in different folders are sorted based on the order of the folders
 #==================================================================#
 def stablesortwi():
-    mapping = {uid: index for index, uid in enumerate(vars.wifolders_l)}
-    vars.worldinfo.sort(key=lambda x: mapping[x["folder"]] if x["folder"] is not None else float("inf"))
+    mapping = {uid: index for index, uid in enumerate(story_settings.wifolders_l)}
+    story_settings.worldinfo.sort(key=lambda x: mapping[x["folder"]] if x["folder"] is not None else float("inf"))
     last_folder = ...
     last_wi = None
-    for i, wi in enumerate(vars.worldinfo):
+    for i, wi in enumerate(story_settings.worldinfo):
         wi["num"] = i
         wi["init"] = True
         if(wi["folder"] != last_folder):
@@ -4826,8 +4717,8 @@ def stablesortwi():
         last_wi = wi
     if(last_wi is not None):
         last_wi["init"] = False
-    for folder in vars.wifolders_u:
-        vars.wifolders_u[folder].sort(key=lambda x: x["num"])
+    for folder in story_settings.wifolders_u:
+        story_settings.wifolders_u[folder].sort(key=lambda x: x["num"])
 
 #==================================================================#
 #  Extract object from server and send it to WI objects
@@ -4835,54 +4726,54 @@ def stablesortwi():
 def commitwi(ar):
     for ob in ar:
         ob["uid"] = int(ob["uid"])
-        vars.worldinfo_u[ob["uid"]]["key"]          = ob["key"]
-        vars.worldinfo_u[ob["uid"]]["keysecondary"] = ob["keysecondary"]
-        vars.worldinfo_u[ob["uid"]]["content"]      = ob["content"]
-        vars.worldinfo_u[ob["uid"]]["comment"]      = ob.get("comment", "")
-        vars.worldinfo_u[ob["uid"]]["folder"]       = ob.get("folder", None)
-        vars.worldinfo_u[ob["uid"]]["selective"]    = ob["selective"]
-        vars.worldinfo_u[ob["uid"]]["constant"]     = ob.get("constant", False)
+        story_settings.worldinfo_u[ob["uid"]]["key"]          = ob["key"]
+        story_settings.worldinfo_u[ob["uid"]]["keysecondary"] = ob["keysecondary"]
+        story_settings.worldinfo_u[ob["uid"]]["content"]      = ob["content"]
+        story_settings.worldinfo_u[ob["uid"]]["comment"]      = ob.get("comment", "")
+        story_settings.worldinfo_u[ob["uid"]]["folder"]       = ob.get("folder", None)
+        story_settings.worldinfo_u[ob["uid"]]["selective"]    = ob["selective"]
+        story_settings.worldinfo_u[ob["uid"]]["constant"]     = ob.get("constant", False)
     stablesortwi()
-    vars.worldinfo_i = [wi for wi in vars.worldinfo if wi["init"]]
+    story_settings.worldinfo_i = [wi for wi in story_settings.worldinfo if wi["init"]]
 
 #==================================================================#
 #  
 #==================================================================#
 def deletewi(uid):
-    if(uid in vars.worldinfo_u):
+    if(uid in story_settings.worldinfo_u):
         setgamesaved(False)
         # Store UID of deletion request
-        vars.deletewi = uid
-        if(vars.deletewi is not None):
-            if(vars.worldinfo_u[vars.deletewi]["folder"] is not None):
-                for i, e in enumerate(vars.wifolders_u[vars.worldinfo_u[vars.deletewi]["folder"]]):
-                    if(e is vars.worldinfo_u[vars.deletewi]):
-                        vars.wifolders_u[vars.worldinfo_u[vars.deletewi]["folder"]].pop(i)
-            for i, e in enumerate(vars.worldinfo):
-                if(e is vars.worldinfo_u[vars.deletewi]):
-                    del vars.worldinfo[i]
+        story_settings.deletewi = uid
+        if(story_settings.deletewi is not None):
+            if(story_settings.worldinfo_u[story_settings.deletewi]["folder"] is not None):
+                for i, e in enumerate(story_settings.wifolders_u[story_settings.worldinfo_u[story_settings.deletewi]["folder"]]):
+                    if(e is story_settings.worldinfo_u[story_settings.deletewi]):
+                        story_settings.wifolders_u[story_settings.worldinfo_u[story_settings.deletewi]["folder"]].pop(i)
+            for i, e in enumerate(story_settings.worldinfo):
+                if(e is story_settings.worldinfo_u[story_settings.deletewi]):
+                    del story_settings.worldinfo[i]
                     break
-            del vars.worldinfo_u[vars.deletewi]
+            del story_settings.worldinfo_u[story_settings.deletewi]
             # Send the new WI array structure
             sendwi()
             # And reset deletewi
-            vars.deletewi = None
+            story_settings.deletewi = None
 
 #==================================================================#
 #  
 #==================================================================#
 def deletewifolder(uid):
     uid = int(uid)
-    del vars.wifolders_u[uid]
-    del vars.wifolders_d[uid]
-    del vars.wifolders_l[vars.wifolders_l.index(uid)]
+    del story_settings.wifolders_u[uid]
+    del story_settings.wifolders_d[uid]
+    del story_settings.wifolders_l[story_settings.wifolders_l.index(uid)]
     setgamesaved(False)
     # Delete uninitialized entries in the folder we're going to delete
-    vars.worldinfo = [wi for wi in vars.worldinfo if wi["folder"] != uid or wi["init"]]
-    vars.worldinfo_i = [wi for wi in vars.worldinfo if wi["init"]]
+    story_settings.worldinfo = [wi for wi in story_settings.worldinfo if wi["folder"] != uid or wi["init"]]
+    story_settings.worldinfo_i = [wi for wi in story_settings.worldinfo if wi["init"]]
     # Move WI entries that are inside of the folder we're going to delete
     # so that they're outside of all folders
-    for wi in vars.worldinfo:
+    for wi in story_settings.worldinfo:
         if(wi["folder"] == uid):
             wi["folder"] = None
 
@@ -4895,21 +4786,21 @@ def checkworldinfo(txt, allowed_entries=None, allowed_folders=None, force_use_tx
     original_txt = txt
 
     if(actions is None):
-        actions = vars.actions
+        actions = story_settings.actions
 
     # Dont go any further if WI is empty
-    if(len(vars.worldinfo) == 0):
+    if(len(story_settings.worldinfo) == 0):
         return "", set()
     
     # Cache actions length
     ln = len(actions)
     
     # Don't bother calculating action history if widepth is 0
-    if(vars.widepth > 0 and scan_story):
-        depth = vars.widepth
+    if(user_settings.widepth > 0 and scan_story):
+        depth = user_settings.widepth
         # If this is not a continue, add 1 to widepth since submitted
         # text is already in action history @ -1
-        if(not force_use_txt and (txt != "" and vars.prompt != txt)):
+        if(not force_use_txt and (txt != "" and story_settings.prompt != txt)):
             txt    = ""
             depth += 1
         
@@ -4926,9 +4817,9 @@ def checkworldinfo(txt, allowed_entries=None, allowed_folders=None, force_use_tx
         if(ln >= depth):
             txt = "".join(chunks)
         elif(ln > 0):
-            txt = vars.comregex_ai.sub('', vars.prompt) + "".join(chunks)
+            txt = system_settings.comregex_ai.sub('', story_settings.prompt) + "".join(chunks)
         elif(ln == 0):
-            txt = vars.comregex_ai.sub('', vars.prompt)
+            txt = system_settings.comregex_ai.sub('', story_settings.prompt)
 
     if(force_use_txt):
         txt += original_txt
@@ -4936,7 +4827,7 @@ def checkworldinfo(txt, allowed_entries=None, allowed_folders=None, force_use_tx
     # Scan text for matches on WI keys
     wimem = ""
     found_entries = set()
-    for wi in vars.worldinfo:
+    for wi in story_settings.worldinfo:
         if(allowed_entries is not None and wi["uid"] not in allowed_entries):
             continue
         if(allowed_folders is not None and wi["folder"] not in allowed_folders):
@@ -4955,14 +4846,14 @@ def checkworldinfo(txt, allowed_entries=None, allowed_folders=None, force_use_tx
             for k in keys:
                 ky = k
                 # Remove leading/trailing spaces if the option is enabled
-                if(vars.wirmvwhtsp):
+                if(user_settings.wirmvwhtsp):
                     ky = k.strip()
                 if ky in txt:
                     if wi.get("selective", False) and len(keys_secondary):
                         found = False
                         for ks in keys_secondary:
                             ksy = ks
-                            if(vars.wirmvwhtsp):
+                            if(user_settings.wirmvwhtsp):
                                 ksy = ks.strip()
                             if ksy in txt:
                                 wimem = wimem + wi["content"] + "\n"
@@ -4985,10 +4876,10 @@ def memsubmit(data):
     emit('from_server', {'cmd': 'setinputtext', 'data': data}, broadcast=True)
     # Maybe check for length at some point
     # For now just send it to storage
-    if(data != vars.memory):
+    if(data != story_settings.memory):
         setgamesaved(False)
-    vars.memory = data
-    vars.mode = "play"
+    story_settings.memory = data
+    story_settings.mode = "play"
     emit('from_server', {'cmd': 'memmode', 'data': 'false'}, broadcast=True)
     
     # Ask for contents of Author's Note field
@@ -5001,46 +4892,46 @@ def anotesubmit(data, template=""):
     assert type(data) is str and type(template) is str
     # Maybe check for length at some point
     # For now just send it to storage
-    if(data != vars.authornote):
+    if(data != story_settings.authornote):
         setgamesaved(False)
-    vars.authornote = data
+    story_settings.authornote = data
 
-    if(vars.authornotetemplate != template):
-        vars.setauthornotetemplate = template
+    if(story_settings.authornotetemplate != template):
+        story_settings.setauthornotetemplate = template
         settingschanged()
-    vars.authornotetemplate = template
+    story_settings.authornotetemplate = template
 
-    emit('from_server', {'cmd': 'setanote', 'data': vars.authornote}, broadcast=True)
-    emit('from_server', {'cmd': 'setanotetemplate', 'data': vars.authornotetemplate}, broadcast=True)
+    emit('from_server', {'cmd': 'setanote', 'data': story_settings.authornote}, broadcast=True)
+    emit('from_server', {'cmd': 'setanotetemplate', 'data': story_settings.authornotetemplate}, broadcast=True)
 
 #==================================================================#
 #  Assembles game data into a request to InferKit API
 #==================================================================#
 def ikrequest(txt):
     # Log request to console
-    if not vars.quiet:
+    if not system_settings.quiet:
         print("{0}Len:{1}, Txt:{2}{3}".format(colors.YELLOW, len(txt), txt, colors.END))
     
     # Build request JSON data
     reqdata = {
         'forceNoEnd': True,
-        'length': vars.ikgen,
+        'length': model_settings.ikgen,
         'prompt': {
             'isContinuation': False,
             'text': txt
         },
         'startFromBeginning': False,
         'streamResponse': False,
-        'temperature': vars.temp,
-        'topP': vars.top_p
+        'temperature': model_settings.temp,
+        'topP': model_settings.top_p
     }
     
     # Create request
     req = requests.post(
-        vars.url, 
+        model_settings.url, 
         json    = reqdata,
         headers = {
-            'Authorization': 'Bearer '+vars.apikey
+            'Authorization': 'Bearer '+model_settings.apikey
             }
         )
     
@@ -5048,28 +4939,28 @@ def ikrequest(txt):
     if(req.status_code == 200):
         genout = req.json()["data"]["text"]
 
-        vars.lua_koboldbridge.outputs[1] = genout
+        system_settings.lua_koboldbridge.outputs[1] = genout
 
         execute_outmod()
-        if(vars.lua_koboldbridge.regeneration_required):
-            vars.lua_koboldbridge.regeneration_required = False
-            genout = vars.lua_koboldbridge.outputs[1]
+        if(system_settings.lua_koboldbridge.regeneration_required):
+            system_settings.lua_koboldbridge.regeneration_required = False
+            genout = system_settings.lua_koboldbridge.outputs[1]
             assert genout is str
 
-        if not vars.quiet:
+        if not system_settings.quiet:
             print("{0}{1}{2}".format(colors.CYAN, genout, colors.END))
-        vars.actions.append(genout)
-        if vars.actions.get_last_key() in vars.actions_metadata:
-            vars.actions_metadata[vars.actions.get_last_key()] = {"Selected Text": genout, "Alternative Text": []}
+        story_settings.actions.append(genout)
+        if story_settings.actions.get_last_key() in story_settings.actions_metadata:
+            story_settings.actions_metadata[story_settings.actions.get_last_key()] = {"Selected Text": genout, "Alternative Text": []}
         else:
         # 2. We've selected a chunk of text that is was presented previously
-            alternatives = [item['Text'] for item in vars.actions_metadata[vars.actions.get_last_key()]["Alternative Text"]]
+            alternatives = [item['Text'] for item in story_settings.actions_metadata[story_settings.actions.get_last_key()]["Alternative Text"]]
             if genout in alternatives:
-                alternatives = [item for item in vars.actions_metadata[vars.actions.get_last_key()]["Alternative Text"] if item['Text'] != genout]
-                vars.actions_metadata[vars.actions.get_last_key()]["Alternative Text"] = alternatives
-            vars.actions_metadata[vars.actions.get_last_key()]["Selected Text"] = genout
+                alternatives = [item for item in story_settings.actions_metadata[story_settings.actions.get_last_key()]["Alternative Text"] if item['Text'] != genout]
+                story_settings.actions_metadata[story_settings.actions.get_last_key()]["Alternative Text"] = alternatives
+            story_settings.actions_metadata[story_settings.actions.get_last_key()]["Selected Text"] = genout
         update_story_chunk('last')
-        emit('from_server', {'cmd': 'texteffect', 'data': vars.actions.get_last_key() + 1 if len(vars.actions) else 0}, broadcast=True)
+        emit('from_server', {'cmd': 'texteffect', 'data': story_settings.actions.get_last_key() + 1 if len(story_settings.actions) else 0}, broadcast=True)
         send_debug()
         set_aibusy(0)
     else:
@@ -5089,44 +4980,44 @@ def ikrequest(txt):
 #==================================================================#
 def oairequest(txt, min, max):
     # Log request to console
-    if not vars.quiet:
+    if not system_settings.quiet:
         print("{0}Len:{1}, Txt:{2}{3}".format(colors.YELLOW, len(txt), txt, colors.END))
     
     # Store context in memory to use it for comparison with generated content
-    vars.lastctx = txt
+    story_settings.lastctx = txt
     
     # Build request JSON data
     if 'GooseAI' in args.configname:
         reqdata = {
             'prompt': txt,
-            'max_tokens': vars.genamt,
-            'temperature': vars.temp,
-            'top_a': vars.top_a,
-            'top_p': vars.top_p,
-            'top_k': vars.top_k,
-            'tfs': vars.tfs,
-            'typical_p': vars.typical,
-            'repetition_penalty': vars.rep_pen,
-            'repetition_penalty_slope': vars.rep_pen_slope,
-            'repetition_penalty_range': vars.rep_pen_range,
-            'n': vars.numseqs,
+            'max_tokens': model_settings.genamt,
+            'temperature': model_settings.temp,
+            'top_a': model_settings.top_a,
+            'top_p': model_settings.top_p,
+            'top_k': model_settings.top_k,
+            'tfs': model_settings.tfs,
+            'typical_p': model_settings.typical,
+            'repetition_penalty': model_settings.rep_pen,
+            'repetition_penalty_slope': model_settings.rep_pen_slope,
+            'repetition_penalty_range': model_settings.rep_pen_range,
+            'n': model_settings.numseqs,
             'stream': False
         }
     else:
         reqdata = {
             'prompt': txt,
-            'max_tokens': vars.genamt,
-            'temperature': vars.temp,
-            'top_p': vars.top_p,
-            'n': vars.numseqs,
+            'max_tokens': model_settings.genamt,
+            'temperature': model_settings.temp,
+            'top_p': model_settings.top_p,
+            'n': model_settings.numseqs,
             'stream': False
         }
     
     req = requests.post(
-        vars.oaiurl, 
+        model_settings.oaiurl, 
         json    = reqdata,
         headers = {
-            'Authorization': 'Bearer '+vars.oaiapikey,
+            'Authorization': 'Bearer '+model_settings.oaiapikey,
             'Content-Type': 'application/json'
             }
         )
@@ -5136,48 +5027,48 @@ def oairequest(txt, min, max):
         outputs = [out["text"] for out in req.json()["choices"]]
 
         for idx in range(len(outputs)):
-            vars.lua_koboldbridge.outputs[idx+1] = outputs[idx]
+            system_settings.lua_koboldbridge.outputs[idx+1] = outputs[idx]
 
         execute_outmod()
-        if (vars.lua_koboldbridge.regeneration_required):
-            vars.lua_koboldbridge.regeneration_required = False
+        if (system_settings.lua_koboldbridge.regeneration_required):
+            system_settings.lua_koboldbridge.regeneration_required = False
             genout = []
             for i in range(len(outputs)):
                 genout.append(
-                    {"generated_text": vars.lua_koboldbridge.outputs[i + 1]})
+                    {"generated_text": system_settings.lua_koboldbridge.outputs[i + 1]})
                 assert type(genout[-1]["generated_text"]) is str
         else:
             genout = [
                 {"generated_text": utils.decodenewlines(txt)}
                 for txt in outputs]
 
-        if vars.actions.get_last_key() not in vars.actions_metadata:
-            vars.actions_metadata[vars.actions.get_last_key()] = {
+        if story_settings.actions.get_last_key() not in story_settings.actions_metadata:
+            story_settings.actions_metadata[story_settings.actions.get_last_key()] = {
                 "Selected Text": genout[0], "Alternative Text": []}
         else:
         # 2. We've selected a chunk of text that is was presented previously
             try:
-                alternatives = [item['Text'] for item in vars.actions_metadata[len(vars.actions)-1]["Alternative Text"]]
+                alternatives = [item['Text'] for item in story_settings.actions_metadata[len(story_settings.actions)-1]["Alternative Text"]]
             except:
-                print(len(vars.actions))
-                print(vars.actions_metadata)
+                print(len(story_settings.actions))
+                print(story_settings.actions_metadata)
                 raise
             if genout in alternatives:
-                alternatives = [item for item in vars.actions_metadata[vars.actions.get_last_key() ]["Alternative Text"] if item['Text'] != genout]
-                vars.actions_metadata[vars.actions.get_last_key()]["Alternative Text"] = alternatives
-            vars.actions_metadata[vars.actions.get_last_key()]["Selected Text"] = genout
+                alternatives = [item for item in story_settings.actions_metadata[story_settings.actions.get_last_key() ]["Alternative Text"] if item['Text'] != genout]
+                story_settings.actions_metadata[story_settings.actions.get_last_key()]["Alternative Text"] = alternatives
+            story_settings.actions_metadata[story_settings.actions.get_last_key()]["Selected Text"] = genout
 
         if (len(genout) == 1):
             genresult(genout[0]["generated_text"])
         else:
-            if (vars.lua_koboldbridge.restart_sequence is not None and
-                    vars.lua_koboldbridge.restart_sequence > 0):
-                genresult(genout[vars.lua_koboldbridge.restart_sequence - 1][
+            if (system_settings.lua_koboldbridge.restart_sequence is not None and
+                    system_settings.lua_koboldbridge.restart_sequence > 0):
+                genresult(genout[system_settings.lua_koboldbridge.restart_sequence - 1][
                               "generated_text"])
             else:
                 genselect(genout)
 
-        if not vars.quiet:
+        if not system_settings.quiet:
             print("{0}{1}{2}".format(colors.CYAN, genout, colors.END))
 
         set_aibusy(0)
@@ -5196,13 +5087,13 @@ def oairequest(txt, min, max):
 #  Forces UI to Play mode
 #==================================================================#
 def exitModes():
-    if(vars.mode == "edit"):
+    if(story_settings.mode == "edit"):
         emit('from_server', {'cmd': 'editmode', 'data': 'false'}, broadcast=True)
-    elif(vars.mode == "memory"):
+    elif(story_settings.mode == "memory"):
         emit('from_server', {'cmd': 'memmode', 'data': 'false'}, broadcast=True)
-    elif(vars.mode == "wi"):
+    elif(story_settings.mode == "wi"):
         emit('from_server', {'cmd': 'wimode', 'data': 'false'}, broadcast=True)
-    vars.mode = "play"
+    story_settings.mode = "play"
 
 #==================================================================#
 #  Launch in-browser save prompt
@@ -5213,11 +5104,11 @@ def saveas(data):
     savepins = data['pins']
     # Check if filename exists already
     name = utils.cleanfilename(name)
-    if(not fileops.saveexists(name) or (vars.saveow and vars.svowname == name)):
+    if(not fileops.saveexists(name) or (user_settings.saveow and user_settings.svowname == name)):
         # All clear to save
         e = saveRequest(fileops.storypath(name), savepins=savepins)
-        vars.saveow = False
-        vars.svowname = ""
+        user_settings.saveow = False
+        user_settings.svowname = ""
         if(e is None):
             emit('from_server', {'cmd': 'hidesaveas', 'data': ''})
         else:
@@ -5225,8 +5116,8 @@ def saveas(data):
             emit('from_server', {'cmd': 'popuperror', 'data': str(e)})
     else:
         # File exists, prompt for overwrite
-        vars.saveow   = True
-        vars.svowname = name
+        user_settings.saveow   = True
+        user_settings.svowname = name
         emit('from_server', {'cmd': 'askforoverwrite', 'data': ''})
 
 #==================================================================#
@@ -5236,7 +5127,7 @@ def deletesave(name):
     name = utils.cleanfilename(name)
     e = fileops.deletesave(name)
     if(e is None):
-        if(vars.smandelete):
+        if(system_settings.smandelete):
             emit('from_server', {'cmd': 'hidepopupdelete', 'data': ''})
             getloadlist()
         else:
@@ -5252,12 +5143,12 @@ def renamesave(name, newname):
     # Check if filename exists already
     name = utils.cleanfilename(name)
     newname = utils.cleanfilename(newname)
-    if(not fileops.saveexists(newname) or name == newname or (vars.saveow and vars.svowname == newname)):
+    if(not fileops.saveexists(newname) or name == newname or (user_settings.saveow and user_settings.svowname == newname)):
         e = fileops.renamesave(name, newname)
-        vars.saveow = False
-        vars.svowname = ""
+        user_settings.saveow = False
+        user_settings.svowname = ""
         if(e is None):
-            if(vars.smanrename):
+            if(system_settings.smanrename):
                 emit('from_server', {'cmd': 'hidepopuprename', 'data': ''})
                 getloadlist()
             else:
@@ -5267,8 +5158,8 @@ def renamesave(name, newname):
             emit('from_server', {'cmd': 'popuperror', 'data': str(e)})
     else:
         # File exists, prompt for overwrite
-        vars.saveow   = True
-        vars.svowname = newname
+        user_settings.saveow   = True
+        user_settings.svowname = newname
         emit('from_server', {'cmd': 'askforoverwrite', 'data': ''})
 
 #==================================================================#
@@ -5276,8 +5167,8 @@ def renamesave(name, newname):
 #==================================================================#
 def save():
     # Check if a file is currently open
-    if(".json" in vars.savedir):
-        saveRequest(vars.savedir)
+    if(".json" in system_settings.savedir):
+        saveRequest(system_settings.savedir)
     else:
         emit('from_server', {'cmd': 'saveas', 'data': ''})
 
@@ -5285,7 +5176,7 @@ def save():
 #  Save the story via file browser
 #==================================================================#
 def savetofile():
-    savpath = fileops.getsavepath(vars.savedir, "Save Story As", [("Json", "*.json")])
+    savpath = fileops.getsavepath(system_settings.savedir, "Save Story As", [("Json", "*.json")])
     saveRequest(savpath)
 
 #==================================================================#
@@ -5297,24 +5188,24 @@ def saveRequest(savpath, savepins=True):
         exitModes()
         
         # Save path for future saves
-        vars.savedir = savpath
+        system_settings.savedir = savpath
         txtpath = os.path.splitext(savpath)[0] + ".txt"
         # Build json to write
         js = {}
-        js["gamestarted"] = vars.gamestarted
-        js["prompt"]      = vars.prompt
-        js["memory"]      = vars.memory
-        js["authorsnote"] = vars.authornote
-        js["anotetemplate"] = vars.authornotetemplate
-        js["actions"]     = tuple(vars.actions.values())
+        js["gamestarted"] = story_settings.gamestarted
+        js["prompt"]      = story_settings.prompt
+        js["memory"]      = story_settings.memory
+        js["authorsnote"] = story_settings.authornote
+        js["anotetemplate"] = story_settings.authornotetemplate
+        js["actions"]     = tuple(story_settings.actions.values())
         if savepins:
-            js["actions_metadata"]     = vars.actions_metadata
+            js["actions_metadata"]     = story_settings.actions_metadata
         js["worldinfo"]   = []
-        js["wifolders_d"] = vars.wifolders_d
-        js["wifolders_l"] = vars.wifolders_l
+        js["wifolders_d"] = story_settings.wifolders_d
+        js["wifolders_l"] = story_settings.wifolders_l
 		
         # Extract only the important bits of WI
-        for wi in vars.worldinfo_i:
+        for wi in story_settings.worldinfo_i:
             if(True):
                 js["worldinfo"].append({
                     "key": wi["key"],
@@ -5326,7 +5217,7 @@ def saveRequest(savpath, savepins=True):
                     "constant": wi["constant"]
                 })
                 
-        txt = vars.prompt + "".join(vars.actions.values())
+        txt = story_settings.prompt + "".join(story_settings.actions.values())
 
         # Write it
         try:
@@ -5354,8 +5245,8 @@ def saveRequest(savpath, savepins=True):
         filename = path.basename(savpath)
         if(filename.endswith('.json')):
             filename = filename[:-5]
-        vars.laststory = filename
-        emit('from_server', {'cmd': 'setstoryname', 'data': vars.laststory}, broadcast=True)
+        user_settings.laststory = filename
+        emit('from_server', {'cmd': 'setstoryname', 'data': user_settings.laststory}, broadcast=True)
         setgamesaved(True)
         print("{0}Story saved to {1}!{2}".format(colors.GREEN, path.basename(savpath), colors.END))
 
@@ -5369,8 +5260,8 @@ def getloadlist():
 #  Show list of soft prompts
 #==================================================================#
 def getsplist():
-    if(vars.allowsp):
-        emit('from_server', {'cmd': 'buildsp', 'data': fileops.getspfiles(vars.modeldim)})
+    if(system_settings.allowsp):
+        emit('from_server', {'cmd': 'buildsp', 'data': fileops.getspfiles(model_settings.modeldim)})
 
 #==================================================================#
 #  Get list of userscripts
@@ -5379,13 +5270,13 @@ def getuslist():
     files = {i: v for i, v in enumerate(fileops.getusfiles())}
     loaded = []
     unloaded = []
-    userscripts = set(vars.userscripts)
+    userscripts = set(system_settings.userscripts)
     for i in range(len(files)):
         if files[i]["filename"] not in userscripts:
             unloaded.append(files[i])
     files = {files[k]["filename"]: files[k] for k in files}
     userscripts = set(files.keys())
-    for filename in vars.userscripts:
+    for filename in system_settings.userscripts:
         if filename in userscripts:
             loaded.append(files[filename])
     return unloaded, loaded
@@ -5394,7 +5285,7 @@ def getuslist():
 #  Load a saved story via file browser
 #==================================================================#
 def loadfromfile():
-    loadpath = fileops.getloadpath(vars.savedir, "Select Story File", [("Json", "*.json")])
+    loadpath = fileops.getloadpath(system_settings.savedir, "Select Story File", [("Json", "*.json")])
     loadRequest(loadpath)
 
 #==================================================================#
@@ -5417,22 +5308,22 @@ def loadRequest(loadpath, filename=None):
                 filename = "untitled.json"
         
         # Copy file contents to vars
-        vars.gamestarted = js["gamestarted"]
-        vars.prompt      = js["prompt"]
-        vars.memory      = js["memory"]
-        vars.worldinfo   = []
-        vars.worldinfo   = []
-        vars.worldinfo_u = {}
-        vars.wifolders_d = {int(k): v for k, v in js.get("wifolders_d", {}).items()}
-        vars.wifolders_l = js.get("wifolders_l", [])
-        vars.wifolders_u = {uid: [] for uid in vars.wifolders_d}
-        vars.lastact     = ""
-        vars.submission  = ""
-        vars.lastctx     = ""
-        vars.genseqs = []
+        story_settings.gamestarted = js["gamestarted"]
+        story_settings.prompt      = js["prompt"]
+        story_settings.memory      = js["memory"]
+        story_settings.worldinfo   = []
+        story_settings.worldinfo   = []
+        story_settings.worldinfo_u = {}
+        story_settings.wifolders_d = {int(k): v for k, v in js.get("wifolders_d", {}).items()}
+        story_settings.wifolders_l = js.get("wifolders_l", [])
+        story_settings.wifolders_u = {uid: [] for uid in story_settings.wifolders_d}
+        story_settings.lastact     = ""
+        story_settings.submission  = ""
+        story_settings.lastctx     = ""
+        story_settings.genseqs = []
 
-        del vars.actions
-        vars.actions = structures.KoboldStoryRegister()
+        del story_settings.actions
+        story_settings.actions = koboldai_settings.KoboldStoryRegister()
         actions = collections.deque(js["actions"])
         
 
@@ -5440,59 +5331,59 @@ def loadRequest(loadpath, filename=None):
             
             if type(js["actions_metadata"]) == dict:
                 temp = js["actions_metadata"]
-                vars.actions_metadata = {}
+                story_settings.actions_metadata = {}
                 #we need to redo the numbering of the actions_metadata since the actions list doesn't preserve it's number on saving
                 if len(temp) > 0:
                     counter = 0
                     temp = {int(k):v for k,v in temp.items()}
                     for i in range(max(temp)+1):
                         if i in temp:
-                            vars.actions_metadata[counter] = temp[i]
+                            story_settings.actions_metadata[counter] = temp[i]
                             counter += 1
                 del temp
             else:
                 #fix if we're using the old metadata format
-                vars.actions_metadata = {}
+                story_settings.actions_metadata = {}
                 i = 0
                 
                 for text in js['actions']:
-                    vars.actions_metadata[i] = {'Selected Text': text, 'Alternative Text': []}
+                    story_settings.actions_metadata[i] = {'Selected Text': text, 'Alternative Text': []}
                     i+=1
         else:
-            vars.actions_metadata = {}
+            story_settings.actions_metadata = {}
             i = 0
             
             for text in js['actions']:
-                vars.actions_metadata[i] = {'Selected Text': text, 'Alternative Text': []}
+                story_settings.actions_metadata[i] = {'Selected Text': text, 'Alternative Text': []}
                 i+=1
                 
 
-        if(len(vars.prompt.strip()) == 0):
+        if(len(story_settings.prompt.strip()) == 0):
             while(len(actions)):
                 action = actions.popleft()
                 if(len(action.strip()) != 0):
-                    vars.prompt = action
+                    story_settings.prompt = action
                     break
             else:
-                vars.gamestarted = False
-        if(vars.gamestarted):
+                story_settings.gamestarted = False
+        if(story_settings.gamestarted):
             for s in actions:
-                vars.actions.append(s)
+                story_settings.actions.append(s)
         
         # Try not to break older save files
         if("authorsnote" in js):
-            vars.authornote = js["authorsnote"]
+            story_settings.authornote = js["authorsnote"]
         else:
-            vars.authornote = ""
+            story_settings.authornote = ""
         if("anotetemplate" in js):
-            vars.authornotetemplate = js["anotetemplate"]
+            story_settings.authornotetemplate = js["anotetemplate"]
         else:
-            vars.authornotetemplate = "[Author's note: <|>]"
+            story_settings.authornotetemplate = "[Author's note: <|>]"
         
         if("worldinfo" in js):
             num = 0
             for wi in js["worldinfo"]:
-                vars.worldinfo.append({
+                story_settings.worldinfo.append({
                     "key": wi["key"],
                     "keysecondary": wi.get("keysecondary", ""),
                     "content": wi["content"],
@@ -5506,44 +5397,44 @@ def loadRequest(loadpath, filename=None):
                 })
                 while(True):
                     uid = int.from_bytes(os.urandom(4), "little", signed=True)
-                    if(uid not in vars.worldinfo_u):
+                    if(uid not in story_settings.worldinfo_u):
                         break
-                vars.worldinfo_u[uid] = vars.worldinfo[-1]
-                vars.worldinfo[-1]["uid"] = uid
-                if(vars.worldinfo[-1]["folder"] is not None):
-                    vars.wifolders_u[vars.worldinfo[-1]["folder"]].append(vars.worldinfo[-1])
+                story_settings.worldinfo_u[uid] = story_settings.worldinfo[-1]
+                story_settings.worldinfo[-1]["uid"] = uid
+                if(story_settings.worldinfo[-1]["folder"] is not None):
+                    story_settings.wifolders_u[story_settings.worldinfo[-1]["folder"]].append(story_settings.worldinfo[-1])
                 num += 1
 
-        for uid in vars.wifolders_l + [None]:
-            vars.worldinfo.append({"key": "", "keysecondary": "", "content": "", "comment": "", "folder": uid, "num": None, "init": False, "selective": False, "constant": False, "uid": None})
+        for uid in story_settings.wifolders_l + [None]:
+            story_settings.worldinfo.append({"key": "", "keysecondary": "", "content": "", "comment": "", "folder": uid, "num": None, "init": False, "selective": False, "constant": False, "uid": None})
             while(True):
                 uid = int.from_bytes(os.urandom(4), "little", signed=True)
-                if(uid not in vars.worldinfo_u):
+                if(uid not in story_settings.worldinfo_u):
                     break
-            vars.worldinfo_u[uid] = vars.worldinfo[-1]
-            vars.worldinfo[-1]["uid"] = uid
-            if(vars.worldinfo[-1]["folder"] is not None):
-                vars.wifolders_u[vars.worldinfo[-1]["folder"]].append(vars.worldinfo[-1])
+            story_settings.worldinfo_u[uid] = story_settings.worldinfo[-1]
+            story_settings.worldinfo[-1]["uid"] = uid
+            if(story_settings.worldinfo[-1]["folder"] is not None):
+                story_settings.wifolders_u[story_settings.worldinfo[-1]["folder"]].append(story_settings.worldinfo[-1])
         stablesortwi()
-        vars.worldinfo_i = [wi for wi in vars.worldinfo if wi["init"]]
+        story_settings.worldinfo_i = [wi for wi in story_settings.worldinfo if wi["init"]]
 
         # Save path for save button
-        vars.savedir = loadpath
+        system_settings.savedir = loadpath
         
         # Clear loadselect var
-        vars.loadselect = ""
+        user_settings.loadselect = ""
         
         # Refresh game screen
         _filename = filename
         if(filename.endswith('.json')):
             _filename = filename[:-5]
-        vars.laststory = _filename
-        emit('from_server', {'cmd': 'setstoryname', 'data': vars.laststory}, broadcast=True)
+        user_settings.laststory = _filename
+        emit('from_server', {'cmd': 'setstoryname', 'data': user_settings.laststory}, broadcast=True)
         setgamesaved(True)
         sendwi()
-        emit('from_server', {'cmd': 'setmemory', 'data': vars.memory}, broadcast=True)
-        emit('from_server', {'cmd': 'setanote', 'data': vars.authornote}, broadcast=True)
-        emit('from_server', {'cmd': 'setanotetemplate', 'data': vars.authornotetemplate}, broadcast=True)
+        emit('from_server', {'cmd': 'setmemory', 'data': story_settings.memory}, broadcast=True)
+        emit('from_server', {'cmd': 'setanote', 'data': story_settings.authornote}, broadcast=True)
+        emit('from_server', {'cmd': 'setanotetemplate', 'data': story_settings.authornotetemplate}, broadcast=True)
         refresh_story()
         emit('from_server', {'cmd': 'setgamestate', 'data': 'ready'}, broadcast=True)
         emit('from_server', {'cmd': 'hidegenseqs', 'data': ''}, broadcast=True)
@@ -5555,7 +5446,7 @@ def loadRequest(loadpath, filename=None):
 # Import an AIDungon game exported with Mimi's tool
 #==================================================================#
 def importRequest():
-    importpath = fileops.getloadpath(vars.savedir, "Select AID CAT File", [("Json", "*.json")])
+    importpath = fileops.getloadpath(system_settings.savedir, "Select AID CAT File", [("Json", "*.json")])
     
     if(importpath):
         # Leave Edit/Memory mode before continuing
@@ -5563,21 +5454,21 @@ def importRequest():
         
         # Read file contents into JSON object
         file = open(importpath, "rb")
-        vars.importjs = json.load(file)
+        user_settings.importjs = json.load(file)
         
         # If a bundle file is being imported, select just the Adventures object
-        if type(vars.importjs) is dict and "stories" in vars.importjs:
-            vars.importjs = vars.importjs["stories"]
+        if type(user_settings.importjs) is dict and "stories" in user_settings.importjs:
+            user_settings.importjs = user_settings.importjs["stories"]
         
         # Clear Popup Contents
         emit('from_server', {'cmd': 'clearpopup', 'data': ''}, broadcast=True)
         
         # Initialize vars
         num = 0
-        vars.importnum = -1
+        user_settings.importnum = -1
         
         # Get list of stories
-        for story in vars.importjs:
+        for story in user_settings.importjs:
             ob = {}
             ob["num"]   = num
             if(story["title"] != "" and story["title"] != None):
@@ -5602,57 +5493,57 @@ def importRequest():
 # Import an AIDungon game selected in popup
 #==================================================================#
 def importgame():
-    if(vars.importnum >= 0):
+    if(user_settings.importnum >= 0):
         # Cache reference to selected game
-        ref = vars.importjs[vars.importnum]
+        ref = user_settings.importjs[user_settings.importnum]
         
         # Copy game contents to vars
-        vars.gamestarted = True
+        story_settings.gamestarted = True
         
         # Support for different versions of export script
         if("actions" in ref):
             if(len(ref["actions"]) > 0):
-                vars.prompt = ref["actions"][0]["text"]
+                story_settings.prompt = ref["actions"][0]["text"]
             else:
-                vars.prompt = ""
+                story_settings.prompt = ""
         elif("actionWindow" in ref):
             if(len(ref["actionWindow"]) > 0):
-                vars.prompt = ref["actionWindow"][0]["text"]
+                story_settings.prompt = ref["actionWindow"][0]["text"]
             else:
-                vars.prompt = ""
+                story_settings.prompt = ""
         else:
-            vars.prompt = ""
-        vars.memory      = ref["memory"]
-        vars.authornote  = ref["authorsNote"] if type(ref["authorsNote"]) is str else ""
-        vars.authornotetemplate = "[Author's note: <|>]"
-        vars.actions     = structures.KoboldStoryRegister()
-        vars.actions_metadata = {}
-        vars.worldinfo   = []
-        vars.worldinfo_i = []
-        vars.worldinfo_u = {}
-        vars.wifolders_d = {}
-        vars.wifolders_l = []
-        vars.wifolders_u = {uid: [] for uid in vars.wifolders_d}
-        vars.lastact     = ""
-        vars.submission  = ""
-        vars.lastctx     = ""
+            story_settings.prompt = ""
+        story_settings.memory      = ref["memory"]
+        story_settings.authornote  = ref["authorsNote"] if type(ref["authorsNote"]) is str else ""
+        story_settings.authornotetemplate = "[Author's note: <|>]"
+        story_settings.actions     = koboldai_settings.KoboldStoryRegister()
+        story_settings.actions_metadata = {}
+        story_settings.worldinfo   = []
+        story_settings.worldinfo_i = []
+        story_settings.worldinfo_u = {}
+        story_settings.wifolders_d = {}
+        story_settings.wifolders_l = []
+        story_settings.wifolders_u = {uid: [] for uid in story_settings.wifolders_d}
+        story_settings.lastact     = ""
+        story_settings.submission  = ""
+        story_settings.lastctx     = ""
         
         # Get all actions except for prompt
         if("actions" in ref):
             if(len(ref["actions"]) > 1):
                 for act in ref["actions"][1:]:
-                    vars.actions.append(act["text"])
+                    story_settings.actions.append(act["text"])
         elif("actionWindow" in ref):
             if(len(ref["actionWindow"]) > 1):
                 for act in ref["actionWindow"][1:]:
-                    vars.actions.append(act["text"])
+                    story_settings.actions.append(act["text"])
         
         # Get just the important parts of world info
         if(ref["worldInfo"] != None):
             if(len(ref["worldInfo"]) > 1):
                 num = 0
                 for wi in ref["worldInfo"]:
-                    vars.worldinfo.append({
+                    story_settings.worldinfo.append({
                         "key": wi["keys"],
                         "keysecondary": wi.get("keysecondary", ""),
                         "content": wi["entry"],
@@ -5666,41 +5557,41 @@ def importgame():
                     })
                     while(True):
                         uid = int.from_bytes(os.urandom(4), "little", signed=True)
-                        if(uid not in vars.worldinfo_u):
+                        if(uid not in story_settings.worldinfo_u):
                             break
-                    vars.worldinfo_u[uid] = vars.worldinfo[-1]
-                    vars.worldinfo[-1]["uid"] = uid
-                    if(vars.worldinfo[-1]["folder"]) is not None:
-                        vars.wifolders_u[vars.worldinfo[-1]["folder"]].append(vars.worldinfo[-1])
+                    story_settings.worldinfo_u[uid] = story_settings.worldinfo[-1]
+                    story_settings.worldinfo[-1]["uid"] = uid
+                    if(story_settings.worldinfo[-1]["folder"]) is not None:
+                        story_settings.wifolders_u[story_settings.worldinfo[-1]["folder"]].append(story_settings.worldinfo[-1])
                     num += 1
 
-        for uid in vars.wifolders_l + [None]:
-            vars.worldinfo.append({"key": "", "keysecondary": "", "content": "", "comment": "", "folder": uid, "num": None, "init": False, "selective": False, "constant": False, "uid": None})
+        for uid in story_settings.wifolders_l + [None]:
+            story_settings.worldinfo.append({"key": "", "keysecondary": "", "content": "", "comment": "", "folder": uid, "num": None, "init": False, "selective": False, "constant": False, "uid": None})
             while(True):
                 uid = int.from_bytes(os.urandom(4), "little", signed=True)
-                if(uid not in vars.worldinfo_u):
+                if(uid not in story_settings.worldinfo_u):
                     break
-            vars.worldinfo_u[uid] = vars.worldinfo[-1]
-            vars.worldinfo[-1]["uid"] = uid
-            if(vars.worldinfo[-1]["folder"] is not None):
-                vars.wifolders_u[vars.worldinfo[-1]["folder"]].append(vars.worldinfo[-1])
+            story_settings.worldinfo_u[uid] = story_settings.worldinfo[-1]
+            story_settings.worldinfo[-1]["uid"] = uid
+            if(story_settings.worldinfo[-1]["folder"] is not None):
+                story_settings.wifolders_u[story_settings.worldinfo[-1]["folder"]].append(story_settings.worldinfo[-1])
         stablesortwi()
-        vars.worldinfo_i = [wi for wi in vars.worldinfo if wi["init"]]
+        story_settings.worldinfo_i = [wi for wi in story_settings.worldinfo if wi["init"]]
         
         # Clear import data
-        vars.importjs = {}
+        user_settings.importjs = {}
         
         # Reset current save
-        vars.savedir = getcwd()+"\\stories"
+        system_settings.savedir = getcwd()+"\\stories"
         
         # Refresh game screen
-        vars.laststory = None
-        emit('from_server', {'cmd': 'setstoryname', 'data': vars.laststory}, broadcast=True)
+        user_settings.laststory = None
+        emit('from_server', {'cmd': 'setstoryname', 'data': user_settings.laststory}, broadcast=True)
         setgamesaved(False)
         sendwi()
-        emit('from_server', {'cmd': 'setmemory', 'data': vars.memory}, broadcast=True)
-        emit('from_server', {'cmd': 'setanote', 'data': vars.authornote}, broadcast=True)
-        emit('from_server', {'cmd': 'setanotetemplate', 'data': vars.authornotetemplate}, broadcast=True)
+        emit('from_server', {'cmd': 'setmemory', 'data': story_settings.memory}, broadcast=True)
+        emit('from_server', {'cmd': 'setanote', 'data': story_settings.authornote}, broadcast=True)
+        emit('from_server', {'cmd': 'setanotetemplate', 'data': story_settings.authornotetemplate}, broadcast=True)
         refresh_story()
         emit('from_server', {'cmd': 'setgamestate', 'data': 'ready'}, broadcast=True)
         emit('from_server', {'cmd': 'hidegenseqs', 'data': ''}, broadcast=True)
@@ -5718,26 +5609,26 @@ def importAidgRequest(id):
         js = req.json()
         
         # Import game state
-        vars.gamestarted = True
-        vars.prompt      = js["promptContent"]
-        vars.memory      = js["memory"]
-        vars.authornote  = js["authorsNote"]
-        vars.authornotetemplate = "[Author's note: <|>]"
-        vars.actions     = structures.KoboldStoryRegister()
-        vars.actions_metadata = {}
-        vars.worldinfo   = []
-        vars.worldinfo_i = []
-        vars.worldinfo_u = {}
-        vars.wifolders_d = {}
-        vars.wifolders_l = []
-        vars.wifolders_u = {uid: [] for uid in vars.wifolders_d}
-        vars.lastact     = ""
-        vars.submission  = ""
-        vars.lastctx     = ""
+        story_settings.gamestarted = True
+        story_settings.prompt      = js["promptContent"]
+        story_settings.memory      = js["memory"]
+        story_settings.authornote  = js["authorsNote"]
+        story_settings.authornotetemplate = "[Author's note: <|>]"
+        story_settings.actions     = koboldai_settings.KoboldStoryRegister()
+        story_settings.actions_metadata = {}
+        story_settings.worldinfo   = []
+        story_settings.worldinfo_i = []
+        story_settings.worldinfo_u = {}
+        story_settings.wifolders_d = {}
+        story_settings.wifolders_l = []
+        story_settings.wifolders_u = {uid: [] for uid in story_settings.wifolders_d}
+        story_settings.lastact     = ""
+        story_settings.submission  = ""
+        story_settings.lastctx     = ""
         
         num = 0
         for wi in js["worldInfos"]:
-            vars.worldinfo.append({
+            story_settings.worldinfo.append({
                 "key": wi["keys"],
                 "keysecondary": wi.get("keysecondary", ""),
                 "content": wi["entry"],
@@ -5751,38 +5642,38 @@ def importAidgRequest(id):
             })
             while(True):
                 uid = int.from_bytes(os.urandom(4), "little", signed=True)
-                if(uid not in vars.worldinfo_u):
+                if(uid not in story_settings.worldinfo_u):
                     break
-            vars.worldinfo_u[uid] = vars.worldinfo[-1]
-            vars.worldinfo[-1]["uid"] = uid
-            if(vars.worldinfo[-1]["folder"]) is not None:
-                vars.wifolders_u[vars.worldinfo[-1]["folder"]].append(vars.worldinfo[-1])
+            story_settings.worldinfo_u[uid] = story_settings.worldinfo[-1]
+            story_settings.worldinfo[-1]["uid"] = uid
+            if(story_settings.worldinfo[-1]["folder"]) is not None:
+                story_settings.wifolders_u[story_settings.worldinfo[-1]["folder"]].append(story_settings.worldinfo[-1])
             num += 1
 
-        for uid in vars.wifolders_l + [None]:
-            vars.worldinfo.append({"key": "", "keysecondary": "", "content": "", "comment": "", "folder": uid, "num": None, "init": False, "selective": False, "constant": False, "uid": None})
+        for uid in story_settings.wifolders_l + [None]:
+            story_settings.worldinfo.append({"key": "", "keysecondary": "", "content": "", "comment": "", "folder": uid, "num": None, "init": False, "selective": False, "constant": False, "uid": None})
             while(True):
                 uid = int.from_bytes(os.urandom(4), "little", signed=True)
-                if(uid not in vars.worldinfo_u):
+                if(uid not in story_settings.worldinfo_u):
                     break
-            vars.worldinfo_u[uid] = vars.worldinfo[-1]
-            vars.worldinfo[-1]["uid"] = uid
-            if(vars.worldinfo[-1]["folder"] is not None):
-                vars.wifolders_u[vars.worldinfo[-1]["folder"]].append(vars.worldinfo[-1])
+            story_settings.worldinfo_u[uid] = story_settings.worldinfo[-1]
+            story_settings.worldinfo[-1]["uid"] = uid
+            if(story_settings.worldinfo[-1]["folder"] is not None):
+                story_settings.wifolders_u[story_settings.worldinfo[-1]["folder"]].append(story_settings.worldinfo[-1])
         stablesortwi()
-        vars.worldinfo_i = [wi for wi in vars.worldinfo if wi["init"]]
+        story_settings.worldinfo_i = [wi for wi in story_settings.worldinfo if wi["init"]]
 
         # Reset current save
-        vars.savedir = getcwd()+"\\stories"
+        system_settings.savedir = getcwd()+"\\stories"
         
         # Refresh game screen
-        vars.laststory = None
-        emit('from_server', {'cmd': 'setstoryname', 'data': vars.laststory}, broadcast=True)
+        user_settings.laststory = None
+        emit('from_server', {'cmd': 'setstoryname', 'data': user_settings.laststory}, broadcast=True)
         setgamesaved(False)
         sendwi()
-        emit('from_server', {'cmd': 'setmemory', 'data': vars.memory}, broadcast=True)
-        emit('from_server', {'cmd': 'setanote', 'data': vars.authornote}, broadcast=True)
-        emit('from_server', {'cmd': 'setanotetemplate', 'data': vars.authornotetemplate}, broadcast=True)
+        emit('from_server', {'cmd': 'setmemory', 'data': story_settings.memory}, broadcast=True)
+        emit('from_server', {'cmd': 'setanote', 'data': story_settings.authornote}, broadcast=True)
+        emit('from_server', {'cmd': 'setanotetemplate', 'data': story_settings.authornotetemplate}, broadcast=True)
         refresh_story()
         emit('from_server', {'cmd': 'setgamestate', 'data': 'ready'}, broadcast=True)
 
@@ -5790,18 +5681,18 @@ def importAidgRequest(id):
 #  Import World Info JSON file
 #==================================================================#
 def wiimportrequest():
-    importpath = fileops.getloadpath(vars.savedir, "Select World Info File", [("Json", "*.json")])
+    importpath = fileops.getloadpath(system_settings.savedir, "Select World Info File", [("Json", "*.json")])
     if(importpath):
         file = open(importpath, "rb")
         js = json.load(file)
         if(len(js) > 0):
             # If the most recent WI entry is blank, remove it.
-            if(not vars.worldinfo[-1]["init"]):
-                del vars.worldinfo[-1]
+            if(not story_settings.worldinfo[-1]["init"]):
+                del story_settings.worldinfo[-1]
             # Now grab the new stuff
-            num = len(vars.worldinfo)
+            num = len(story_settings.worldinfo)
             for wi in js:
-                vars.worldinfo.append({
+                story_settings.worldinfo.append({
                     "key": wi["keys"],
                     "keysecondary": wi.get("keysecondary", ""),
                     "content": wi["entry"],
@@ -5815,26 +5706,26 @@ def wiimportrequest():
                 })
                 while(True):
                     uid = int.from_bytes(os.urandom(4), "little", signed=True)
-                    if(uid not in vars.worldinfo_u):
+                    if(uid not in story_settings.worldinfo_u):
                         break
-                vars.worldinfo_u[uid] = vars.worldinfo[-1]
-                vars.worldinfo[-1]["uid"] = uid
-                if(vars.worldinfo[-1]["folder"]) is not None:
-                    vars.wifolders_u[vars.worldinfo[-1]["folder"]].append(vars.worldinfo[-1])
+                story_settings.worldinfo_u[uid] = story_settings.worldinfo[-1]
+                story_settings.worldinfo[-1]["uid"] = uid
+                if(story_settings.worldinfo[-1]["folder"]) is not None:
+                    story_settings.wifolders_u[story_settings.worldinfo[-1]["folder"]].append(story_settings.worldinfo[-1])
                 num += 1
             for uid in [None]:
-                vars.worldinfo.append({"key": "", "keysecondary": "", "content": "", "comment": "", "folder": uid, "num": None, "init": False, "selective": False, "constant": False, "uid": None})
+                story_settings.worldinfo.append({"key": "", "keysecondary": "", "content": "", "comment": "", "folder": uid, "num": None, "init": False, "selective": False, "constant": False, "uid": None})
                 while(True):
                     uid = int.from_bytes(os.urandom(4), "little", signed=True)
-                    if(uid not in vars.worldinfo_u):
+                    if(uid not in story_settings.worldinfo_u):
                         break
-                vars.worldinfo_u[uid] = vars.worldinfo[-1]
-                vars.worldinfo[-1]["uid"] = uid
-                if(vars.worldinfo[-1]["folder"] is not None):
-                    vars.wifolders_u[vars.worldinfo[-1]["folder"]].append(vars.worldinfo[-1])
+                story_settings.worldinfo_u[uid] = story_settings.worldinfo[-1]
+                story_settings.worldinfo[-1]["uid"] = uid
+                if(story_settings.worldinfo[-1]["folder"] is not None):
+                    story_settings.wifolders_u[story_settings.worldinfo[-1]["folder"]].append(story_settings.worldinfo[-1])
         
-        if not vars.quiet:
-            print("{0}".format(vars.worldinfo[0]))
+        if not system_settings.quiet:
+            print("{0}".format(story_settings.worldinfo[0]))
                 
         # Refresh game screen
         setgamesaved(False)
@@ -5848,54 +5739,54 @@ def newGameRequest():
     exitModes()
     
     # Clear vars values
-    vars.gamestarted = False
-    vars.prompt      = ""
-    vars.memory      = ""
-    vars.actions     = structures.KoboldStoryRegister()
-    vars.actions_metadata = {}
+    story_settings.gamestarted = False
+    story_settings.prompt      = ""
+    story_settings.memory      = ""
+    story_settings.actions     = koboldai_settings.KoboldStoryRegister()
+    story_settings.actions_metadata = {}
     
-    vars.authornote  = ""
-    vars.authornotetemplate = vars.setauthornotetemplate
-    vars.worldinfo   = []
-    vars.worldinfo_i = []
-    vars.worldinfo_u = {}
-    vars.wifolders_d = {}
-    vars.wifolders_l = []
-    vars.lastact     = ""
-    vars.submission  = ""
-    vars.lastctx     = ""
+    story_settings.authornote  = ""
+    story_settings.authornotetemplate = story_settings.setauthornotetemplate
+    story_settings.worldinfo   = []
+    story_settings.worldinfo_i = []
+    story_settings.worldinfo_u = {}
+    story_settings.wifolders_d = {}
+    story_settings.wifolders_l = []
+    story_settings.lastact     = ""
+    story_settings.submission  = ""
+    story_settings.lastctx     = ""
     
     # Reset current save
-    vars.savedir = getcwd()+"\\stories"
+    system_settings.savedir = getcwd()+"\\stories"
     
     # Refresh game screen
-    vars.laststory = None
-    emit('from_server', {'cmd': 'setstoryname', 'data': vars.laststory}, broadcast=True)
+    user_settings.laststory = None
+    emit('from_server', {'cmd': 'setstoryname', 'data': user_settings.laststory}, broadcast=True)
     setgamesaved(True)
     sendwi()
-    emit('from_server', {'cmd': 'setmemory', 'data': vars.memory}, broadcast=True)
-    emit('from_server', {'cmd': 'setanote', 'data': vars.authornote}, broadcast=True)
-    emit('from_server', {'cmd': 'setanotetemplate', 'data': vars.authornotetemplate}, broadcast=True)
+    emit('from_server', {'cmd': 'setmemory', 'data': story_settings.memory}, broadcast=True)
+    emit('from_server', {'cmd': 'setanote', 'data': story_settings.authornote}, broadcast=True)
+    emit('from_server', {'cmd': 'setanotetemplate', 'data': story_settings.authornotetemplate}, broadcast=True)
     setStartState()
 
 def randomGameRequest(topic, memory=""): 
-    if(vars.noai):
+    if(system_settings.noai):
         newGameRequest()
-        vars.memory = memory
-        emit('from_server', {'cmd': 'setmemory', 'data': vars.memory}, broadcast=True)
+        story_settings.memory = memory
+        emit('from_server', {'cmd': 'setmemory', 'data': story_settings.memory}, broadcast=True)
         return
-    vars.recentrng = topic
-    vars.recentrngm = memory
+    story_settings.recentrng = topic
+    story_settings.recentrngm = memory
     newGameRequest()
     setgamesaved(False)
     _memory = memory
     if(len(memory) > 0):
         _memory = memory.rstrip() + "\n\n"
-    vars.memory      = _memory + "You generate the following " + topic + " story concept :"
-    vars.lua_koboldbridge.feedback = None
+    story_settings.memory      = _memory + "You generate the following " + topic + " story concept :"
+    system_settings.lua_koboldbridge.feedback = None
     actionsubmit("", force_submit=True, force_prompt_gen=True)
-    vars.memory      = memory
-    emit('from_server', {'cmd': 'setmemory', 'data': vars.memory}, broadcast=True)
+    story_settings.memory      = memory
+    emit('from_server', {'cmd': 'setmemory', 'data': story_settings.memory}, broadcast=True)
 
 def final_startup():
     # Prevent tokenizer from taking extra time the first time it's used
@@ -5910,26 +5801,26 @@ def final_startup():
     if(path.exists("settings/" + getmodelname().replace('/', '_') + ".settings")):
         file = open("settings/" + getmodelname().replace('/', '_') + ".settings", "r")
         js   = json.load(file)
-        if(vars.allowsp and "softprompt" in js and type(js["softprompt"]) is str and all(q not in js["softprompt"] for q in ("..", ":")) and (len(js["softprompt"]) == 0 or all(js["softprompt"][0] not in q for q in ("/", "\\")))):
+        if(system_settings.allowsp and "softprompt" in js and type(js["softprompt"]) is str and all(q not in js["softprompt"] for q in ("..", ":")) and (len(js["softprompt"]) == 0 or all(js["softprompt"][0] not in q for q in ("/", "\\")))):
             spRequest(js["softprompt"])
         else:
-            vars.spfilename = ""
+            system_settings.spfilename = ""
         file.close()
 
     # Precompile TPU backend if required
-    if(vars.use_colab_tpu or vars.model in ("TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX")):
+    if(system_settings.use_colab_tpu or model_settings.model in ("TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX")):
         soft_tokens = tpumtjgetsofttokens()
-        if(vars.dynamicscan or (not vars.nogenmod and vars.has_genmod)):
+        if(story_settings.dynamicscan or (not user_settings.nogenmod and system_settings.has_genmod)):
             threading.Thread(
                 target=tpu_mtj_backend.infer_dynamic,
-                args=(np.tile(np.uint32((23403, 727, 20185)), (vars.numseqs, 1)),),
+                args=(np.tile(np.uint32((23403, 727, 20185)), (model_settings.numseqs, 1)),),
                 kwargs={
-                    "soft_embeddings": vars.sp,
+                    "soft_embeddings": system_settings.sp,
                     "soft_tokens": soft_tokens,
                     "gen_len": 1,
                     "use_callback": False,
-                    "numseqs": vars.numseqs,
-                    "excluded_world_info": list(set() for _ in range(vars.numseqs)),
+                    "numseqs": model_settings.numseqs,
+                    "excluded_world_info": list(set() for _ in range(model_settings.numseqs)),
                 },
             ).start()
         else:
@@ -5937,42 +5828,42 @@ def final_startup():
                 target=tpu_mtj_backend.infer_static,
                 args=(np.uint32((23403, 727, 20185)),),
                 kwargs={
-                    "soft_embeddings": vars.sp,
+                    "soft_embeddings": system_settings.sp,
                     "soft_tokens": soft_tokens,
                     "gen_len": 1,
-                    "numseqs": vars.numseqs,
+                    "numseqs": model_settings.numseqs,
                 },
             ).start()
 
 def send_debug():
-    if vars.debug:
+    if user_settings.debug:
         debug_info = ""
         try:
-            debug_info = "{}Newline Mode: {}\n".format(debug_info, vars.newlinemode)
+            debug_info = "{}Newline Mode: {}\n".format(debug_info, model_settings.newlinemode)
         except:
             pass
         try:
-            debug_info = "{}Action Length: {}\n".format(debug_info, vars.actions.get_last_key())
+            debug_info = "{}Action Length: {}\n".format(debug_info, story_settings.actions.get_last_key())
         except:
             pass
         try:
-            debug_info = "{}Actions Metadata Length: {}\n".format(debug_info, max(vars.actions_metadata) if len(vars.actions_metadata) > 0 else 0)
+            debug_info = "{}Actions Metadata Length: {}\n".format(debug_info, max(story_settings.actions_metadata) if len(story_settings.actions_metadata) > 0 else 0)
         except:
             pass
         try:
-            debug_info = "{}Actions: {}\n".format(debug_info, [k for k in vars.actions])
+            debug_info = "{}Actions: {}\n".format(debug_info, [k for k in story_settings.actions])
         except:
             pass
         try:
-            debug_info = "{}Actions Metadata: {}\n".format(debug_info, [k for k in vars.actions_metadata])
+            debug_info = "{}Actions Metadata: {}\n".format(debug_info, [k for k in story_settings.actions_metadata])
         except:
             pass
         try:
-            debug_info = "{}Last Action: {}\n".format(debug_info, vars.actions[vars.actions.get_last_key()])
+            debug_info = "{}Last Action: {}\n".format(debug_info, story_settings.actions[story_settings.actions.get_last_key()])
         except:
             pass
         try:
-            debug_info = "{}Last Metadata: {}\n".format(debug_info, vars.actions_metadata[max(vars.actions_metadata)])
+            debug_info = "{}Last Metadata: {}\n".format(debug_info, story_settings.actions_metadata[max(story_settings.actions_metadata)])
         except:
             pass
 
@@ -5988,15 +5879,15 @@ if __name__ == "__main__":
     general_startup()
     patch_transformers()
     #show_select_model_list()
-    if vars.model == "" or vars.model is None:
-        vars.model = "ReadOnly"
+    if model_settings.model == "" or model_settings.model is None:
+        model_settings.model = "ReadOnly"
     load_model(initial_load=True)
 
     # Start Flask/SocketIO (Blocking, so this must be last method!)
     port = args.port if "port" in args and args.port is not None else 5000
     
     #socketio.run(app, host='0.0.0.0', port=port)
-    if(vars.host):
+    if(system_settings.host):
         if(args.localtunnel):
             import subprocess, shutil
             localtunnel = subprocess.Popen([shutil.which('lt'), '-p', str(port), 'http'], stdout=subprocess.PIPE)
@@ -6027,7 +5918,7 @@ if __name__ == "__main__":
         else:
             print("{0}Webserver has started, you can now connect to this machine at port {1}{2}"
                   .format(colors.GREEN, port, colors.END))
-        vars.serverstarted = True
+        system_settings.serverstarted = True
         socketio.run(app, host='0.0.0.0', port=port)
     else:
         if args.unblock:
@@ -6035,27 +5926,27 @@ if __name__ == "__main__":
             webbrowser.open_new('http://localhost:{0}'.format(port))
             print("{0}Server started!\nYou may now connect with a browser at http://127.0.0.1:{1}/{2}"
                   .format(colors.GREEN, port, colors.END))
-            vars.serverstarted = True
+            system_settings.serverstarted = True
             socketio.run(app, port=port, host='0.0.0.0')
         else:
             try:
                 from flaskwebgui import FlaskUI
-                vars.serverstarted = True
-                vars.flaskwebgui = True
+                system_settings.serverstarted = True
+                system_settings.flaskwebgui = True
                 FlaskUI(app, socketio=socketio, start_server="flask-socketio", maximized=True, close_server_on_exit=True).run()
             except:
                 import webbrowser
                 webbrowser.open_new('http://localhost:{0}'.format(port))
                 print("{0}Server started!\nYou may now connect with a browser at http://127.0.0.1:{1}/{2}"
                         .format(colors.GREEN, port, colors.END))
-                vars.serverstarted = True
+                system_settings.serverstarted = True
                 socketio.run(app, port=port)
 
 else:
     general_startup()
     patch_transformers()
     #show_select_model_list()
-    if vars.model == "" or vars.model is None:
-        vars.model = "ReadOnly"
+    if model_settings.model == "" or model_settings.model is None:
+        model_settings.model = "ReadOnly"
     load_model(initial_load=True)
     print("{0}\nServer started in WSGI mode!{1}".format(colors.GREEN, colors.END), flush=True)

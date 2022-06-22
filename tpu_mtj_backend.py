@@ -547,7 +547,7 @@ class PenalizingCausalTransformer(CausalTransformer):
             compiling_callback()
             numseqs = numseqs_aux.shape[0]
             # These are the tokens that we don't want the AI to ever write
-            self.badwords = jnp.array(vars.badwordsids).squeeze()
+            self.badwords = jnp.array(model_settings.badwordsids).squeeze()
             @hk.transform
             def generate_sample(context, ctx_length):
                 # Give the initial context to the transformer
@@ -1025,8 +1025,8 @@ def load_model(path: str, driver_version="tpu_driver0.1_dev20210607", hf_checkpo
     elif "eos_token_id" in kwargs:
         pad_token_id = kwargs["eos_token_id"]
 
-    if not hasattr(vars, "sampler_order") or not vars.sampler_order:
-        vars.sampler_order = utils.default_sampler_order.copy()
+    if not hasattr(vars, "sampler_order") or not model_settings.sampler_order:
+        model_settings.sampler_order = utils.default_sampler_order.copy()
 
     default_params = {
         "compat": "j",
@@ -1045,7 +1045,7 @@ def load_model(path: str, driver_version="tpu_driver0.1_dev20210607", hf_checkpo
     }
     params = kwargs
 
-    if vars.model == "TPUMeshTransformerGPTNeoX":
+    if model_settings.model == "TPUMeshTransformerGPTNeoX":
         default_params = {
             "compat": "neox",
             "layers": 44,
@@ -1064,9 +1064,9 @@ def load_model(path: str, driver_version="tpu_driver0.1_dev20210607", hf_checkpo
 
     # Try to convert HF config.json to MTJ config
     if hf_checkpoint:
-        spec_path = os.path.join("maps", vars.model_type + ".json")
+        spec_path = os.path.join("maps", model_settings.model_type + ".json")
         if not os.path.isfile(spec_path):
-            raise NotImplementedError(f"Unsupported model type {repr(vars.model_type)}")
+            raise NotImplementedError(f"Unsupported model type {repr(model_settings.model_type)}")
         with open(spec_path) as f:
             lazy_load_spec = json.load(f)
 
@@ -1117,7 +1117,7 @@ def load_model(path: str, driver_version="tpu_driver0.1_dev20210607", hf_checkpo
             params[param] = default_params[param]
 
     # Load tokenizer
-    if vars.model == "TPUMeshTransformerGPTNeoX":
+    if model_settings.model == "TPUMeshTransformerGPTNeoX":
         tokenizer = Tokenizer.from_file(os.path.join(path, "20B_tokenizer.json"))
         def new_encode(old_encode):
             def encode(s, *args, **kwargs):
@@ -1165,19 +1165,19 @@ def load_model(path: str, driver_version="tpu_driver0.1_dev20210607", hf_checkpo
 
     global badwords
     # These are the tokens that we don't want the AI to ever write
-    badwords = jnp.array(vars.badwordsids).squeeze()
+    badwords = jnp.array(model_settings.badwordsids).squeeze()
 
     if not path.endswith("/"):
         path += "/"
 
     network = PenalizingCausalTransformer(params, dematerialized=True)
 
-    if not hf_checkpoint and vars.model != "TPUMeshTransformerGPTNeoX":
+    if not hf_checkpoint and model_settings.model != "TPUMeshTransformerGPTNeoX":
         network.state = read_ckpt_lowmem(network.state, path, devices.shape[1])
         #network.state = network.move_xmap(network.state, np.zeros(cores_per_replica))
         return
 
-    if vars.model == "TPUMeshTransformerGPTNeoX":
+    if model_settings.model == "TPUMeshTransformerGPTNeoX":
         print("\n\n\nThis model has  ", f"{hk.data_structures.tree_size(network.state['params']):,d}".replace(",", " "), "  parameters.\n")
         read_neox_checkpoint(network.state, path, params)
         return
@@ -1322,58 +1322,58 @@ def load_model(path: str, driver_version="tpu_driver0.1_dev20210607", hf_checkpo
                     f.close()
     callback.nested = False
 
-    if os.path.isdir(vars.model.replace('/', '_')):
+    if os.path.isdir(model_settings.model.replace('/', '_')):
         import shutil
-        shutil.move(vars.model.replace('/', '_'), "models/{}".format(vars.model.replace('/', '_')))
+        shutil.move(model_settings.model.replace('/', '_'), "models/{}".format(model_settings.model.replace('/', '_')))
     print("\n", flush=True)
     with torch_lazy_loader.use_lazy_torch_load(callback=callback, dematerialized_modules=True):
-        if(os.path.isdir(vars.custmodpth)):
+        if(os.path.isdir(model_settings.custmodpth)):
             try:
-                tokenizer = AutoTokenizer.from_pretrained(vars.custmodpth, revision=vars.revision, cache_dir="cache")
+                tokenizer = AutoTokenizer.from_pretrained(model_settings.custmodpth, revision=model_settings.revision, cache_dir="cache")
             except Exception as e:
                 pass
             try:
-                tokenizer = AutoTokenizer.from_pretrained(vars.custmodpth, revision=vars.revision, cache_dir="cache", use_fast=False)
+                tokenizer = AutoTokenizer.from_pretrained(model_settings.custmodpth, revision=model_settings.revision, cache_dir="cache", use_fast=False)
             except Exception as e:
                 try:
-                    tokenizer = GPT2TokenizerFast.from_pretrained(vars.custmodpth, revision=vars.revision, cache_dir="cache")
+                    tokenizer = GPT2TokenizerFast.from_pretrained(model_settings.custmodpth, revision=model_settings.revision, cache_dir="cache")
                 except Exception as e:
-                    tokenizer = GPT2TokenizerFast.from_pretrained("gpt2", revision=vars.revision, cache_dir="cache")
+                    tokenizer = GPT2TokenizerFast.from_pretrained("gpt2", revision=model_settings.revision, cache_dir="cache")
             try:
-                model     = AutoModelForCausalLM.from_pretrained(vars.custmodpth, revision=vars.revision, cache_dir="cache")
+                model     = AutoModelForCausalLM.from_pretrained(model_settings.custmodpth, revision=model_settings.revision, cache_dir="cache")
             except Exception as e:
-                model     = GPTNeoForCausalLM.from_pretrained(vars.custmodpth, revision=vars.revision, cache_dir="cache")
-        elif(os.path.isdir("models/{}".format(vars.model.replace('/', '_')))):
+                model     = GPTNeoForCausalLM.from_pretrained(model_settings.custmodpth, revision=model_settings.revision, cache_dir="cache")
+        elif(os.path.isdir("models/{}".format(model_settings.model.replace('/', '_')))):
             try:
-                tokenizer = AutoTokenizer.from_pretrained("models/{}".format(vars.model.replace('/', '_')), revision=vars.revision, cache_dir="cache")
+                tokenizer = AutoTokenizer.from_pretrained("models/{}".format(model_settings.model.replace('/', '_')), revision=model_settings.revision, cache_dir="cache")
             except Exception as e:
                 pass
             try:
-                tokenizer = AutoTokenizer.from_pretrained("models/{}".format(vars.model.replace('/', '_')), revision=vars.revision, cache_dir="cache", use_fast=False)
+                tokenizer = AutoTokenizer.from_pretrained("models/{}".format(model_settings.model.replace('/', '_')), revision=model_settings.revision, cache_dir="cache", use_fast=False)
             except Exception as e:
                 try:
-                    tokenizer = GPT2TokenizerFast.from_pretrained("models/{}".format(vars.model.replace('/', '_')), revision=vars.revision, cache_dir="cache")
+                    tokenizer = GPT2TokenizerFast.from_pretrained("models/{}".format(model_settings.model.replace('/', '_')), revision=model_settings.revision, cache_dir="cache")
                 except Exception as e:
-                    tokenizer = GPT2TokenizerFast.from_pretrained("gpt2", revision=vars.revision, cache_dir="cache")
+                    tokenizer = GPT2TokenizerFast.from_pretrained("gpt2", revision=model_settings.revision, cache_dir="cache")
             try:
-                model     = AutoModelForCausalLM.from_pretrained("models/{}".format(vars.model.replace('/', '_')), revision=vars.revision, cache_dir="cache")
+                model     = AutoModelForCausalLM.from_pretrained("models/{}".format(model_settings.model.replace('/', '_')), revision=model_settings.revision, cache_dir="cache")
             except Exception as e:
-                model     = GPTNeoForCausalLM.from_pretrained("models/{}".format(vars.model.replace('/', '_')), revision=vars.revision, cache_dir="cache")
+                model     = GPTNeoForCausalLM.from_pretrained("models/{}".format(model_settings.model.replace('/', '_')), revision=model_settings.revision, cache_dir="cache")
         else:
             try:
-                tokenizer = AutoTokenizer.from_pretrained(vars.model, revision=vars.revision, cache_dir="cache")
+                tokenizer = AutoTokenizer.from_pretrained(model_settings.model, revision=model_settings.revision, cache_dir="cache")
             except Exception as e:
                 pass
             try:
-                tokenizer = AutoTokenizer.from_pretrained(vars.model, revision=vars.revision, cache_dir="cache", use_fast=False)
+                tokenizer = AutoTokenizer.from_pretrained(model_settings.model, revision=model_settings.revision, cache_dir="cache", use_fast=False)
             except Exception as e:
                 try:
-                    tokenizer = GPT2TokenizerFast.from_pretrained(vars.model, revision=vars.revision, cache_dir="cache")
+                    tokenizer = GPT2TokenizerFast.from_pretrained(model_settings.model, revision=model_settings.revision, cache_dir="cache")
                 except Exception as e:
-                    tokenizer = GPT2TokenizerFast.from_pretrained("gpt2", revision=vars.revision, cache_dir="cache")
+                    tokenizer = GPT2TokenizerFast.from_pretrained("gpt2", revision=model_settings.revision, cache_dir="cache")
             try:
-                model     = AutoModelForCausalLM.from_pretrained(vars.model, revision=vars.revision, cache_dir="cache")
+                model     = AutoModelForCausalLM.from_pretrained(model_settings.model, revision=model_settings.revision, cache_dir="cache")
             except Exception as e:
-                model     = GPTNeoForCausalLM.from_pretrained(vars.model, revision=vars.revision, cache_dir="cache")
+                model     = GPTNeoForCausalLM.from_pretrained(model_settings.model, revision=model_settings.revision, cache_dir="cache")
 
     #network.state = network.move_xmap(network.state, np.zeros(cores_per_replica))
