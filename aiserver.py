@@ -1880,7 +1880,7 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
                             shutil.rmtree("cache/")
 
                 if(model_settings.badwordsids is koboldai_settings.badwordsids_default and model_settings.model_type not in ("gpt2", "gpt_neo", "gptj")):
-                    model_settings.badwordsids = [[v] for k, v in tokenizer.get_vocab().items() if any(c in str(k) for c in "<>[]")]
+                    model_settings.badwordsids = [[v] for k, v in tokenizer.get_vocab().items() if any(c in str(k) for c in "<>[]") if model_settings.newlinemode != "s" or str(k) != "</s>"]
 
                 patch_causallm(model)
 
@@ -2047,7 +2047,7 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
             model_settings.modeldim = int(tpu_mtj_backend.params.get("d_embed", tpu_mtj_backend.params["d_model"]))
             tokenizer = tpu_mtj_backend.tokenizer
             if(model_settings.badwordsids is koboldai_settings.badwordsids_default and model_settings.model_type not in ("gpt2", "gpt_neo", "gptj")):
-                model_settings.badwordsids = [[v] for k, v in tokenizer.get_vocab().items() if any(c in str(k) for c in "<>[]")]
+                model_settings.badwordsids = [[v] for k, v in tokenizer.get_vocab().items() if any(c in str(k) for c in "<>[]") if model_settings.newlinemode != "s" or str(k) != "</s>"]
         else:
             loadsettings()
     
