@@ -101,9 +101,9 @@ mainmenu = [
     ["Adventure Models", "adventurelist", ""],
     ["Novel Models", "novellist", ""],
     ["NSFW Models", "nsfwlist", ""],
+    ["Untuned OPT", "optlist", ""],
     ["Untuned GPT-Neo/J", "gptneolist", ""],
     ["Untuned Fairseq Dense", "fsdlist", ""],
-    ["Untuned OPT", "optlist", ""],
     ["Untuned XGLM", "xglmlist", ""],
     ["Untuned GPT2", "gpt2list", ""],
     ["Online Services", "apilist", ""],
@@ -167,6 +167,7 @@ gpt2list = [
     ]
 
 optlist = [
+    ["OPT 66B", "facebook/opt-66b", "128GB"],
     ["OPT 30B", "facebook/opt-30b", "64GB"],
     ["OPT 13B", "facebook/opt-13b", "32GB"],
     ["OPT 6.7B", "facebook/opt-6.7b", "16GB"],
@@ -5356,6 +5357,11 @@ def importAidgRequest(id):
         vars.lastact     = ""
         vars.submission  = ""
         vars.lastctx     = ""
+        
+        if not vars.memory:
+            vars.memory = ""
+        if not vars.authornote:
+            vars.authornote = ""
         
         num = 0
         for wi in js["worldInfos"]:
