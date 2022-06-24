@@ -60,6 +60,10 @@
 
 
 /*----------------SETTINGS AREA------------------*/
+.load_model {
+	background-color: var(--enabled_button_background_color);
+}
+
 .settings_category {
 	width: 100%;
 }

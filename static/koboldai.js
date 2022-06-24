@@ -43,6 +43,7 @@ function fix_text(val) {
 }
 
 function create_options(data) {
+	console.log(data.value.options);
 	if (document.getElementById("Select Options Chunk "+data.value.id)) {
 			var option_chunk = document.getElementById("Select Options Chunk "+data.value.id)
 		} else {
@@ -208,6 +209,13 @@ function var_changed(data) {
 		var elements_to_change = document.getElementsByClassName("var_sync_alt_"+data.classname+"_"+data.name);
 		for (item of elements_to_change) {
 			item.setAttribute("server_value", fix_text(data.value));
+		}
+	}
+	if ((data.classname == 'system') && (data.name == 'aibusy')) {
+		if (data.value) {
+			favicon.start_swap()
+		} else {
+			favicon.stop_swap()
 		}
 	}
 }

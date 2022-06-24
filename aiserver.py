@@ -2099,8 +2099,7 @@ def download():
     js["memory"]      = story_settings.memory
     js["authorsnote"] = story_settings.authornote
     js["anotetemplate"] = story_settings.authornotetemplate
-    js["actions"]     = tuple(story_settings.actions.values())
-    js["actions_metadata"] = story_settings.actions_metadata
+    js["actions"]     = story_settings.actions.to_json()
     js["worldinfo"]   = []
         
     # Extract only the important bits of WI
@@ -2619,8 +2618,6 @@ def lua_set_chunk(k, v):
         if(not hasattr(story_settings, "_actions") or story_settings._actions is not story_settings.actions):
             #Instead of deleting we'll blank out the text. This way our actions and actions_metadata stay in sync and we can restore the chunk on an undo
             story_settings.actions[chunk-1] = ""
-            story_settings.actions_metadata[chunk-1]['Alternative Text'] = [{"Text": story_settings.actions_metadata[chunk-1]['Selected Text'], "Pinned": False, "Editted": True}] + story_settings.actions_metadata[chunk-1]['Alternative Text']
-            story_settings.actions_metadata[chunk-1]['Selected Text'] = ''
             send_debug()
     else:
         if(k == 0):
@@ -2638,8 +2635,6 @@ def lua_set_chunk(k, v):
                 story_settings._actions[chunk-1] = v
             story_settings.lua_edited.add(chunk)
             story_settings.actions[chunk-1] = v
-            story_settings.actions_metadata[chunk-1]['Alternative Text'] = [{"Text": story_settings.actions_metadata[chunk-1]['Selected Text'], "Pinned": False, "Editted": True}] + story_settings.actions_metadata[chunk-1]['Alternative Text']
-            story_settings.actions_metadata[chunk-1]['Selected Text'] = v
             send_debug()
 
 #==================================================================#
@@ -3445,23 +3440,6 @@ def actionsubmit(data, actionmode=0, force_submit=False, force_prompt_gen=False,
                     story_settings.prompt = data
                 else:
                     story_settings.actions.append(data)
-                    # we now need to update the actions_metadata
-                    # we'll have two conditions. 
-                    # 1. This is totally new (user entered) 
-                    if story_settings.actions.get_last_key() not in story_settings.actions_metadata:
-                        story_settings.actions_metadata[story_settings.actions.get_last_key()] = {"Selected Text": data, "Alternative Text": []}
-                    else:
-                    # 2. We've selected a chunk of text that is was presented previously
-                        try:
-                            alternatives = [item['Text'] for item in story_settings.actions_metadata[len(story_settings.actions)-1]["Alternative Text"]]
-                        except:
-                            print(len(story_settings.actions))
-                            print(story_settings.actions_metadata)
-                            raise
-                        if data in alternatives:
-                            alternatives = [item for item in story_settings.actions_metadata[story_settings.actions.get_last_key() ]["Alternative Text"] if item['Text'] != data]
-                            story_settings.actions_metadata[story_settings.actions.get_last_key()]["Alternative Text"] = alternatives
-                        story_settings.actions_metadata[story_settings.actions.get_last_key()]["Selected Text"] = data
                 update_story_chunk('last')
                 send_debug()
 
@@ -3528,19 +3506,10 @@ def actionback():
         return
     # Remove last index of actions and refresh game screen
     if(len(story_settings.genseqs) == 0 and len(story_settings.actions) > 0):
-        # We are going to move the selected text to alternative text in the actions_metadata variable so we can redo this action
-        story_settings.actions_metadata[story_settings.actions.get_last_key() ]['Alternative Text'] = [{'Text': story_settings.actions_metadata[story_settings.actions.get_last_key() ]['Selected Text'],
-                                                                    'Pinned': False,
-                                                                    "Previous Selection": True,
-                                                                    "Edited": False}] + story_settings.actions_metadata[story_settings.actions.get_last_key() ]['Alternative Text']
-        story_settings.actions_metadata[story_settings.actions.get_last_key() ]['Selected Text'] = ""
-    
         last_key = story_settings.actions.get_last_key()
         story_settings.actions.pop()
         story_settings.recentback = True
         remove_story_chunk(last_key + 1)
-        #for the redo to not get out of whack, need to reset the max # in the actions sequence
-        #story_settings.actions.set_next_id(last_key)
         success = True
     elif(len(story_settings.genseqs) == 0):
         emit('from_server', {'cmd': 'errmsg', 'data': "Cannot delete the prompt."})
@@ -3552,43 +3521,14 @@ def actionback():
     return success
         
 def actionredo():
-    i = 0
-    #First we need to find the next valid key
-    #We might have deleted text so we don't want to show a redo for that blank chunk
-    
-    restore_id = story_settings.actions.get_last_key()+1
-    if restore_id in story_settings.actions_metadata:
-        ok_to_use = False
-        while not ok_to_use:
-            for item in story_settings.actions_metadata[restore_id]['Alternative Text']:
-                if item['Previous Selection'] and item['Text'] != "":
-                    ok_to_use = True
-            if not ok_to_use:
-                restore_id+=1
-                if restore_id not in story_settings.actions_metadata:
-                    return
-            #else:
-                #print("???")
-                #story_settings.actions.set_next_id(restore_id)
-                
-    if restore_id in story_settings.actions_metadata:
-        genout = [{"generated_text": item['Text']} for item in story_settings.actions_metadata[restore_id]['Alternative Text'] if (item["Previous Selection"]==True)]
-        if len(genout) > 0:
-            genout = genout + [{"generated_text": item['Text']} for item in story_settings.actions_metadata[restore_id]['Alternative Text'] if (item["Pinned"]==True) and (item["Previous Selection"]==False)]
-            if len(genout) == 1:
-                story_settings.actions_metadata[restore_id]['Alternative Text'] = [item for item in story_settings.actions_metadata[restore_id]['Alternative Text'] if (item["Previous Selection"]!=True)]
-                genresult(genout[0]['generated_text'], flash=True, ignore_formatting=True)
-            else:
-                # Store sequences in memory until selection is made
-                story_settings.genseqs = genout
-                
-                
-                # Send sequences to UI for selection
-                genout = [[item['Text'], "redo"] for item in story_settings.actions_metadata[restore_id]['Alternative Text'] if (item["Previous Selection"]==True)]
-                
-                emit('from_server', {'cmd': 'genseqs', 'data': genout}, broadcast=True)
+    genout = [[x['text'], "redo" if x['Previous Selection'] else "pinned" if x['Pinned'] else "normal"] for x in story_settings.actions.get_redo_options()]
+    if len(genout) == 0:
+        emit('from_server', {'cmd': 'popuperror', 'data': "There's nothing to redo"}, broadcast=True)
+    elif len(genout) == 1:
+        genresult(genout[0][0], flash=True, ignore_formatting=True)
     else:
-        emit('from_server', {'cmd': 'popuperror', 'data': "There's nothing to undo"}, broadcast=True)
+        story_settings.genseqs = [{"generated_text": x[0]} for x in genout]
+        emit('from_server', {'cmd': 'genseqs', 'data': genout}, broadcast=True)
     send_debug()
 
 #==================================================================#
@@ -3986,10 +3926,6 @@ def genresult(genout, flash=True, ignore_formatting=False):
         story_settings.prompt = genout
     else:
         story_settings.actions.append(genout)
-        if story_settings.actions.get_last_key() not in story_settings.actions_metadata:
-            story_settings.actions_metadata[story_settings.actions.get_last_key()] = {'Selected Text': genout, 'Alternative Text': []}
-        else:
-            story_settings.actions_metadata[story_settings.actions.get_last_key()]['Selected Text'] = genout
     update_story_chunk('last')
     if(flash):
         emit('from_server', {'cmd': 'texteffect', 'data': story_settings.actions.get_last_key() + 1 if len(story_settings.actions) else 0}, broadcast=True)
@@ -4007,26 +3943,16 @@ def genselect(genout):
             print("{0}[Result {1}]\n{2}{3}".format(colors.CYAN, i, result["generated_text"], colors.END))
         i += 1
     
-    # Add the options to the actions metadata
-    # If we've already generated text for this action but haven't selected one we'll want to kill all non-pinned, non-previous selection, and non-edited options then add the new ones
-    if story_settings.actions.get_next_id() in story_settings.actions_metadata:
-        if (story_settings.actions_metadata[story_settings.actions.get_next_id()]['Selected Text'] == ""):
-            story_settings.actions_metadata[story_settings.actions.get_next_id()]['Alternative Text'] = [{"Text": item['Text'], "Pinned": item['Pinned'], 
-                                                                             "Previous Selection": item["Previous Selection"], 
-                                                                             "Edited": item["Edited"]} for item in story_settings.actions_metadata[story_settings.actions.get_next_id()]['Alternative Text'] 
-                                                                             if item['Pinned'] or item["Previous Selection"] or item["Edited"]] + [{"Text": text["generated_text"], 
-                                                                                    "Pinned": False, "Previous Selection": False, "Edited": False} for text in genout]
-        else:
-            story_settings.actions_metadata[story_settings.actions.get_next_id()] = {'Selected Text': '', 'Alternative Text': [{"Text": text["generated_text"], "Pinned": False, "Previous Selection": False, "Edited": False} for text in genout]}
-    else:
-        story_settings.actions_metadata[story_settings.actions.get_next_id()] = {'Selected Text': '', 'Alternative Text': [{"Text": text["generated_text"], "Pinned": False, "Previous Selection": False, "Edited": False} for text in genout]}
+    story_settings.actions.clear_unused_options()
+    story_settings.actions.append_options([x["generated_text"] for x in genout])
     
-    genout = [{"generated_text": item['Text']} for item in story_settings.actions_metadata[story_settings.actions.get_next_id()]['Alternative Text'] if (item["Previous Selection"]==False) and (item["Edited"]==False)]
+    genout = [{"generated_text": x['text']} for x in story_settings.actions.get_current_options_no_edits()]
 
     # Store sequences in memory until selection is made
     story_settings.genseqs = genout
     
-    genout = [[item['Text'], "pinned" if item['Pinned'] else "normal"] for item in story_settings.actions_metadata[story_settings.actions.get_next_id()]['Alternative Text']  if (item["Previous Selection"]==False) and (item["Edited"]==False)]
+    
+    genout = story_settings.actions.get_current_options_no_edits(ui=1)
 
     # Send sequences to UI for selection
     emit('from_server', {'cmd': 'genseqs', 'data': genout}, broadcast=True)
@@ -4041,9 +3967,6 @@ def selectsequence(n):
     system_settings.lua_koboldbridge.feedback = story_settings.genseqs[int(n)]["generated_text"]
     if(len(system_settings.lua_koboldbridge.feedback) != 0):
         story_settings.actions.append(system_settings.lua_koboldbridge.feedback)
-        #We'll want to remove the option from the alternative text and put it in selected text
-        story_settings.actions_metadata[story_settings.actions.get_last_key() ]['Alternative Text'] = [item for item in story_settings.actions_metadata[story_settings.actions.get_last_key()]['Alternative Text'] if item['Text'] != system_settings.lua_koboldbridge.feedback]
-        story_settings.actions_metadata[story_settings.actions.get_last_key() ]['Selected Text'] = system_settings.lua_koboldbridge.feedback
         update_story_chunk('last')
         emit('from_server', {'cmd': 'texteffect', 'data': story_settings.actions.get_last_key() + 1 if len(story_settings.actions) else 0}, broadcast=True)
     emit('from_server', {'cmd': 'hidegenseqs', 'data': ''}, broadcast=True)
@@ -4058,14 +3981,8 @@ def selectsequence(n):
 #==================================================================#
 def pinsequence(n):
     if n.isnumeric():
+        story_settings.actions.toggle_pin(story_settings.actions.get_last_key()+1, int(n))
         text = story_settings.genseqs[int(n)]['generated_text']
-        if text in [item['Text'] for item in story_settings.actions_metadata[story_settings.actions.get_next_id()]['Alternative Text']]:
-            alternatives = story_settings.actions_metadata[story_settings.actions.get_next_id()]['Alternative Text']
-            for i in range(len(alternatives)):
-                if alternatives[i]['Text'] == text:
-                    alternatives[i]['Pinned'] = not alternatives[i]['Pinned']
-                    break
-            story_settings.actions_metadata[story_settings.actions.get_next_id()]['Alternative Text'] = alternatives
     send_debug()
 
 
@@ -4483,10 +4400,6 @@ def editsubmit(data):
     if(story_settings.editln == 0):
         story_settings.prompt = data
     else:
-        story_settings.actions_metadata[story_settings.editln-1]['Alternative Text'] = story_settings.actions_metadata[story_settings.editln-1]['Alternative Text'] + [{"Text": story_settings.actions[story_settings.editln-1], "Pinned": False, 
-                                                                         "Previous Selection": False, 
-                                                                         "Edited": True}]
-        story_settings.actions_metadata[story_settings.editln-1]['Selected Text'] = data
         story_settings.actions[story_settings.editln-1] = data
     
     story_settings.mode = "play"
@@ -4505,10 +4418,7 @@ def deleterequest():
         # Send error message
         pass
     else:
-        story_settings.actions_metadata[story_settings.editln-1]['Alternative Text'] = [{"Text": story_settings.actions[story_settings.editln-1], "Pinned": False, 
-                                                      "Previous Selection": True, "Edited": False}] + story_settings.actions_metadata[story_settings.editln-1]['Alternative Text']
-        story_settings.actions_metadata[story_settings.editln-1]['Selected Text'] = ''
-        story_settings.actions[story_settings.editln-1] = ''
+        story_settings.actions.delete_action(story_settings.editln-1)
         story_settings.mode = "play"
         remove_story_chunk(story_settings.editln)
         emit('from_server', {'cmd': 'editmode', 'data': 'false'})
@@ -4526,10 +4436,6 @@ def inlineedit(chunk, data):
         story_settings.prompt = data
     else:
         if(chunk-1 in story_settings.actions):
-            story_settings.actions_metadata[chunk-1]['Alternative Text'] = story_settings.actions_metadata[chunk-1]['Alternative Text'] + [{"Text": story_settings.actions[chunk-1], "Pinned": False, 
-                                                                             "Previous Selection": False, 
-                                                                             "Edited": True}]
-            story_settings.actions_metadata[chunk-1]['Selected Text'] = data
             story_settings.actions[chunk-1] = data
         else:
             print(f"WARNING: Attempted to edit non-existent chunk {chunk}")
@@ -4554,11 +4460,7 @@ def inlinedelete(chunk):
         emit('from_server', {'cmd': 'editmode', 'data': 'false'}, broadcast=True)
     else:
         if(chunk-1 in story_settings.actions):
-            story_settings.actions_metadata[chunk-1]['Alternative Text'] = [{"Text": story_settings.actions[chunk-1], "Pinned": False, 
-                                                                             "Previous Selection": True, 
-                                                                             "Edited": False}] + story_settings.actions_metadata[chunk-1]['Alternative Text']
-            story_settings.actions_metadata[chunk-1]['Selected Text'] = ''
-            story_settings.actions[chunk-1] = ''
+            story_settings.actions.delete_action(chunk-1)
         else:
             print(f"WARNING: Attempted to delete non-existent chunk {chunk}")
         setgamesaved(False)
@@ -4954,15 +4856,6 @@ def ikrequest(txt):
         if not system_settings.quiet:
             print("{0}{1}{2}".format(colors.CYAN, genout, colors.END))
         story_settings.actions.append(genout)
-        if story_settings.actions.get_last_key() in story_settings.actions_metadata:
-            story_settings.actions_metadata[story_settings.actions.get_last_key()] = {"Selected Text": genout, "Alternative Text": []}
-        else:
-        # 2. We've selected a chunk of text that is was presented previously
-            alternatives = [item['Text'] for item in story_settings.actions_metadata[story_settings.actions.get_last_key()]["Alternative Text"]]
-            if genout in alternatives:
-                alternatives = [item for item in story_settings.actions_metadata[story_settings.actions.get_last_key()]["Alternative Text"] if item['Text'] != genout]
-                story_settings.actions_metadata[story_settings.actions.get_last_key()]["Alternative Text"] = alternatives
-            story_settings.actions_metadata[story_settings.actions.get_last_key()]["Selected Text"] = genout
         update_story_chunk('last')
         emit('from_server', {'cmd': 'texteffect', 'data': story_settings.actions.get_last_key() + 1 if len(story_settings.actions) else 0}, broadcast=True)
         send_debug()
@@ -5046,21 +4939,6 @@ def oairequest(txt, min, max):
                 {"generated_text": utils.decodenewlines(txt)}
                 for txt in outputs]
 
-        if story_settings.actions.get_last_key() not in story_settings.actions_metadata:
-            story_settings.actions_metadata[story_settings.actions.get_last_key()] = {
-                "Selected Text": genout[0], "Alternative Text": []}
-        else:
-        # 2. We've selected a chunk of text that is was presented previously
-            try:
-                alternatives = [item['Text'] for item in story_settings.actions_metadata[len(story_settings.actions)-1]["Alternative Text"]]
-            except:
-                print(len(story_settings.actions))
-                print(story_settings.actions_metadata)
-                raise
-            if genout in alternatives:
-                alternatives = [item for item in story_settings.actions_metadata[story_settings.actions.get_last_key() ]["Alternative Text"] if item['Text'] != genout]
-                story_settings.actions_metadata[story_settings.actions.get_last_key()]["Alternative Text"] = alternatives
-            story_settings.actions_metadata[story_settings.actions.get_last_key()]["Selected Text"] = genout
 
         if (len(genout) == 1):
             genresult(genout[0]["generated_text"])
@@ -5933,6 +5811,20 @@ def UI_2_Pinning(data):
     else:
         story_settings.actions.unset_pin(int(data['chunk']), int(data['option']))
     
+#==================================================================#
+# Event triggered when user clicks the back button
+#==================================================================#
+@socketio.on('back')
+def UI_2_back(data):
+    ignore = story_settings.actions.pop()
+    
+#==================================================================#
+# Event triggered when user clicks the redo button
+#==================================================================#
+@socketio.on('redo')
+def UI_2_redo(data):
+    pass
+
 
 #==================================================================#
 #  Final startup commands to launch Flask app

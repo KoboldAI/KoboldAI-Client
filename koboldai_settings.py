@@ -85,6 +85,10 @@ class model_settings(settings):
             #Put variable change actions here
             if name not in self.local_only_variables and name[0] != "_":
                 process_variable_changes(self.__class__.__name__.replace("_settings", ""), name, value, old_value)
+                
+            #Since I haven't migrated the old_ui to use the new actions class for options, let's sync the metadata and options here
+            if name == 'actions_metadata':
+                print(value)
         
                         
 class story_settings(settings):
@@ -367,6 +371,14 @@ class KoboldStoryRegister(object):
             new_options = self.actions[pointer]["Options"]
         process_variable_changes("actions", "Options", {"id": pointer, "options": new_options}, {"id": pointer, "options": old_options})
     
+    def toggle_pin(self, action_step, option_number):
+        if action_step in self.actions:
+            if option_number < len(self.actions[action_step]['Options']):
+                if self.actions[action_step]["Options"]['Pinned']:
+                    self.unset_pin(action_step, option_number)
+                else:                
+                    self.set_pin(action_step, option_number)
+    
     def set_pin(self, action_step, option_number):
         if action_step in self.actions:
             if option_number < len(self.actions[action_step]['Options']):
@@ -448,11 +460,17 @@ class KoboldStoryRegister(object):
         else:
             return []
             
-    def get_current_options_no_edits(self):
-        if self.action_count+1 in self.actions:
-            return [x for x in self.actions[self.action_count+1]["Options"] if x["Edited"] == False]
+    def get_current_options_no_edits(self, ui=2):
+        if ui==2:
+            if self.action_count+1 in self.actions:
+                return [x for x in self.actions[self.action_count+1]["Options"] if x["Edited"] == False and x['Previous Selection'] == False]
+            else:
+                return []
         else:
-            return []
+            if self.action_count+1 in self.actions:
+                return [[x, "pinned" if x['Pinned'] else 'normal'] for x in self.actions[self.action_count+1]["Options"] if x["Edited"] == False and x['Previous Selection'] == False]
+            else:
+                return []
     
     def get_pins(self, action_id):
         if action_id in self.actions:
@@ -473,14 +491,10 @@ class KoboldStoryRegister(object):
             return []
 
     def get_redo_options(self):
-        pointer = max(self.actions)
-        while pointer > self.action_count:
-            if pointer in self.actions:
-                for item in self.actions[pointer]["Options"]:
-                    if item["Previous Selection"] or item["Pinned"]:
-                        return self.actions[pointer]["Options"]
-            pointer-=1
-        return []
+        if self.action_count+1 in self.actions:
+            return [x for x in self.actions[self.action_count+1]['Options'] if x['Pinned'] or x['Previous Selection']]
+        else:
+            return []
 
 
         

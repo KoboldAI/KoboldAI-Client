@@ -1359,6 +1359,7 @@ function setStartState() {
 
 function parsegenseqs(seqs) {
 	seqselcontents.html("");
+	console.log(seqs);
 	var i;
 	for(i=0; i<seqs.length; i++) {
 		//setup selection data
