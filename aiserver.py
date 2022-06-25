@@ -111,6 +111,7 @@ mainmenu = [
     ]
 
 adventurelist= [
+    ["Nerys FSD 13B V2 (Hybrid)", "KoboldAI/fairseq-dense-13B-Nerys-v2", "32GB"],
     ["Nerys FSD 13B (Hybrid)", "KoboldAI/fairseq-dense-13B-Nerys", "32GB"],
     ["Skein 6B", "KoboldAI/GPT-J-6B-Skein", "16GB"],
     ["Adventure 6B", "KoboldAI/GPT-J-6B-Adventure", "16GB"],
@@ -122,7 +123,7 @@ adventurelist= [
 ]
 
 novellist= [
-    ["Nerys FSD 13B V2 (Hybrid)", "KoboldAI/fairseq-dense-13B-Nerys-V2", "32GB"],
+    ["Nerys FSD 13B V2 (Hybrid)", "KoboldAI/fairseq-dense-13B-Nerys-v2", "32GB"],
     ["Janeway FSD 13B", "KoboldAI/fairseq-dense-13B-Janeway", "32GB"],
     ["Nerys FSD 13B (Hybrid)", "KoboldAI/fairseq-dense-13B-Nerys", "32GB"],
     ["Janeway FSD 6.7B", "KoboldAI/fairseq-dense-6.7B-Janeway", "16GB"],
