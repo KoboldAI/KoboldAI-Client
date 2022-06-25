@@ -127,6 +127,7 @@ model_menu = {
         ["Read Only (No AI)", "ReadOnly", "", False]
         ],
     'adventurelist': [
+        ["Nerys FSD 13B V2 (Hybrid)", "KoboldAI/fairseq-dense-13B-Nerys-v2", "32GB", False],
         ["Nerys FSD 13B (Hybrid)", "KoboldAI/fairseq-dense-13B-Nerys", "32GB", False],
         ["Skein 6B", "KoboldAI/GPT-J-6B-Skein", "16GB", False],
         ["Adventure 6B", "KoboldAI/GPT-J-6B-Adventure", "16GB", False],
@@ -137,8 +138,9 @@ model_menu = {
         ["Return to Main Menu", "mainmenu", "", True],
         ],
     'novellist': [
-        ["Nerys FSD 13B (Hybrid)", "KoboldAI/fairseq-dense-13B-Nerys", "32GB", False],
+        ["Nerys FSD 13B V2 (Hybrid)", "KoboldAI/fairseq-dense-13B-Nerys-v2", "32GB", False],
         ["Janeway FSD 13B", "KoboldAI/fairseq-dense-13B-Janeway", "32GB", False],
+        ["Nerys FSD 13B (Hybrid)", "KoboldAI/fairseq-dense-13B-Nerys", "32GB", False],
         ["Janeway FSD 6.7B", "KoboldAI/fairseq-dense-6.7B-Janeway", "16GB", False],
         ["Janeway Neo 6B", "KoboldAI/GPT-J-6B-Janeway", "16GB", False],
         ["Janeway Neo 2.7B", "KoboldAI/GPT-Neo-2.7B-Janeway", "8GB", False],
