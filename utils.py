@@ -119,7 +119,7 @@ def addsentencespacing(txt, vars):
     else:
         action = vars.prompt
         lastchar = action[-1] if len(action) else ""
-    if(lastchar == "." or lastchar == "!" or lastchar == "?" or lastchar == "," or lastchar == ";" or lastchar == ":"):
+    if(lastchar != " "):
         txt = " " + txt
     return txt
 	

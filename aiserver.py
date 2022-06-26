@@ -300,7 +300,7 @@ class vars:
     hascuda     = False  # Whether torch has detected CUDA on the system
     usegpu      = False  # Whether to launch pipeline with GPU support
     custmodpth  = ""     # Filesystem location of custom model to run
-    formatoptns = {'frmttriminc': True, 'frmtrmblln': False, 'frmtrmspch': False, 'frmtadsnsp': False, 'singleline': False}     # Container for state of formatting options
+    formatoptns = {'frmttriminc': True, 'frmtrmblln': False, 'frmtrmspch': False, 'frmtadsnsp': True, 'singleline': False}     # Container for state of formatting options
     importnum   = -1     # Selection on import popup list
     importjs    = {}     # Temporary storage for import data
     loadselect  = ""     # Temporary storage for story filename to load
