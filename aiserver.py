@@ -5090,7 +5090,8 @@ def loadRequest(loadpath, filename=None):
             for text in js['actions']:
                 vars.actions_metadata[i] = {'Selected Text': text, 'Alternative Text': []}
                 i+=1
-                
+
+        footer = ""                
 
         if(len(vars.prompt.strip()) == 0):
             while(len(actions)):
@@ -5100,9 +5101,25 @@ def loadRequest(loadpath, filename=None):
                     break
             else:
                 vars.gamestarted = False
+        vars.prompt = vars.prompt.lstrip()
+        ln = len(vars.prompt.rstrip())
+        footer += vars.prompt[ln:]
+        vars.prompt = vars.prompt[:ln]
         if(vars.gamestarted):
             for s in actions:
-                vars.actions.append(s)
+                if(len(s.strip()) == 0):
+                    # If this action only contains whitespace, we merge it with the next action
+                    footer += s
+                    continue
+                vars.actions.append(footer + s)
+                footer = ""
+                # If there is trailing whitespace at the end of an action, we move that whitespace to the beginning of the next action
+                ln = len(vars.actions[vars.actions.get_last_key()].rstrip())
+                footer += vars.actions[vars.actions.get_last_key()][ln:]
+                vars.actions[vars.actions.get_last_key()] = vars.actions[vars.actions.get_last_key()][:ln]
+            if(len(vars.actions) == 0):
+                vars.gamestarted = False
+
         
         # Try not to break older save files
         if("authorsnote" in js):
