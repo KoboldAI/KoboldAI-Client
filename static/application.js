@@ -891,6 +891,7 @@ function dosubmit(disallow_abort) {
 	if((disallow_abort || gamestate !== "wait") && !memorymode && !gamestarted && ((!adventure || !action_mode) && txt.trim().length == 0)) {
 		return;
 	}
+	chunkOnFocusOut("override");
 	input_text.val("");
 	hideMessage();
 	hidegenseqs();
@@ -1969,7 +1970,7 @@ function chunkOnKeyDownSelectionChange(event) {
 // This gets run when you defocus the editor by clicking
 // outside of the editor or by pressing escape or tab
 function chunkOnFocusOut(event) {
-	if(!gametext_bound || !allowedit || event.target !== game_text[0]) {
+	if(event !== "override" && (!gametext_bound || !allowedit || event.target !== game_text[0])) {
 		return;
 	}
 	setTimeout(function() {
