@@ -91,6 +91,9 @@ def removespecialchars(txt, vars=None):
 # If the next action follows a sentence closure, add a space
 #==================================================================#
 def addsentencespacing(txt, vars):
+    # Don't add sentence spacing if submission is empty or starts with whitespace
+    if(len(txt) == 0 or len(txt) != len(txt.lstrip())):
+        return txt
     # Get last character of last action
     if(len(vars.actions) > 0):
         if(len(vars.actions[vars.actions.get_last_key()]) > 0):
