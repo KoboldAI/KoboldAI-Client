@@ -881,6 +881,7 @@ function dosubmit(disallow_abort) {
 	if((disallow_abort || gamestate !== "wait") && !memorymode && !gamestarted && ((!adventure || !action_mode) && txt.trim().length == 0)) {
 		return;
 	}
+	chunkOnFocusOut("override");
 	input_text.val("");
 	hideMessage();
 	hidegenseqs();
@@ -1609,7 +1610,7 @@ function applyChunkDeltas(nodes) {
 		var selected_chunks = buildChunkSetFromNodeArray(getSelectedNodes());
 		for(var i = 0; i < chunks.length; i++) {
 			var chunk = document.getElementById("n" + chunks[i]);
-			if(chunk && formatChunkInnerText(chunk).length != 0 && chunks[i] != '0') {
+			if(chunk && formatChunkInnerText(chunk).trim().length != 0 && chunks[i] != '0') {
 				if(!selected_chunks.has(chunks[i])) {
 					modified_chunks.delete(chunks[i]);
 					socket.send({'cmd': 'inlineedit', 'chunk': chunks[i], 'data': formatChunkInnerText(chunk)});
@@ -1618,7 +1619,7 @@ function applyChunkDeltas(nodes) {
 			} else {
 				if(!selected_chunks.has(chunks[i])) {
 					modified_chunks.delete(chunks[i]);
-					socket.send({'cmd': 'inlineedit', 'chunk': chunks[i], 'data': ''});
+					socket.send({'cmd': 'inlineedit', 'chunk': chunks[i], 'data': formatChunkInnerText(chunk)});
 				}
 				empty_chunks.add(chunks[i]);
 			}
@@ -1750,6 +1751,46 @@ function highlightEditingChunks() {
 	}
 }
 
+function cleanupChunkWhitespace() {
+	// Merge empty chunks with the next chunk
+	var chunks = Array.from(empty_chunks);
+	chunks.sort(function(e) {parseInt(e)});
+	for(var i = 0; i < chunks.length; i++) {
+		var original_chunk = document.getElementById("n" + chunks[i]);
+		original_chunk.innerText = footer + original_chunk.innerText;
+		footer = "";
+		var chunk = original_chunk.nextSibling;
+		while(chunk) {
+			if(chunk.tagName === "CHUNK") {
+				break;
+			}
+			chunk = chunk.nextSibling;
+		}
+		if(chunk) {
+			chunk.innerText = original_chunk.innerText + chunk.innerText;
+		}
+		original_chunk.innerText = "";
+	}
+	// Move whitespace at the end of non-empty chunks into the beginning of the next non-empty chunk
+	var chunks = Array.from(modified_chunks);
+	chunks.sort(function(e) {parseInt(e)});
+	for(var i = 0; i < chunks.length; i++) {
+		var original_chunk = document.getElementById("n" + chunks[i]);
+		var chunk = original_chunk.nextSibling;
+		while(chunk) {
+			if(chunk.tagName === "CHUNK" && !empty_chunks.has(chunk.getAttribute("n"))) {
+				break;
+			}
+			chunk = chunk.nextSibling;
+		}
+		var ln = original_chunk.innerText.trimEnd().length;
+		if (chunk) {
+			chunk.innerText = original_chunk.innerText.substring(ln) + chunk.innerText;
+		}
+		original_chunk.innerText = original_chunk.innerText.substring(0, ln);
+	}
+}
+
 // This gets run every time the text in a chunk is edited
 // or a chunk is deleted
 function chunkOnDOMMutate(mutations, observer) {
@@ -1821,13 +1862,14 @@ function chunkOnKeyDownSelectionChange(event) {
 // This gets run when you defocus the editor by clicking
 // outside of the editor or by pressing escape or tab
 function chunkOnFocusOut(event) {
-	if(!gametext_bound || !allowedit || event.target !== game_text[0]) {
+	if(event !== "override" && (!gametext_bound || !allowedit || event.target !== game_text[0])) {
 		return;
 	}
 	setTimeout(function() {
 		if(document.activeElement === game_text[0] || game_text[0].contains(document.activeElement)) {
 			return;
 		}
+		cleanupChunkWhitespace();
 		syncAllModifiedChunks(true);
 		setTimeout(function() {
 			var blurred = game_text[0] !== document.activeElement;
