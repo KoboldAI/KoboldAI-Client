@@ -3110,6 +3110,7 @@ def actionsubmit(data, actionmode=0, force_submit=False, force_prompt_gen=False,
         if(not vars.gamestarted):
             vars.submission = data
             execute_inmod()
+            vars.submission = re.sub(r"[^\S\r\n]*([\r\n]*)$", r"\1", vars.submission)  # Remove trailing whitespace, excluding newlines
             data = vars.submission
             if(not force_submit and len(data.strip()) == 0):
                 assert False
@@ -3168,6 +3169,7 @@ def actionsubmit(data, actionmode=0, force_submit=False, force_prompt_gen=False,
                 data = applyinputformatting(data)
             vars.submission = data
             execute_inmod()
+            vars.submission = re.sub(r"[^\S\r\n]*([\r\n]*)$", r"\1", vars.submission)  # Remove trailing whitespace, excluding newlines
             data = vars.submission
             # Dont append submission if it's a blank/continue action
             if(data != ""):
