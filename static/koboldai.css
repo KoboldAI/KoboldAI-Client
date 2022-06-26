@@ -251,7 +251,7 @@
 	filter: brightness(85%);
 }
 
-.settings_menu select {
+.settings_select {
 	color: black;
 	margin-left: auto;
 	margin-right: 25px;
@@ -341,9 +341,9 @@ body {
 /*	grid-template-areas: "menuicon gamescreen lefticon"
 						 "menuicon actions lefticon"
 						 "menuicon inputrow lefticon";*/
-	grid-template-areas: "menuicon gamescreen lefticon"
-						 "menuicon inputrow lefticon";
-	grid-template-columns: 30px auto 20px;
+	grid-template-areas: "menuicon gamescreen options lefticon"
+						 "menuicon inputrow inputrow lefticon";
+	grid-template-columns: 30px auto fit-content(30%) 20px;
 /*	grid-template-rows: auto 40px 100px;*/
 	grid-template-rows: auto 100px;
 }
@@ -380,6 +380,11 @@ body {
   color: var(--text_edit);
 }
 
+.sequence {
+	margin-top: 10px;
+	grid-area: options;
+	background-color: var(--gamescreen_background);
+}
 
 table.sequence {
 	width: 100%;

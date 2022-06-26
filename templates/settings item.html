@@ -26,8 +26,8 @@
 	    {% elif item["uitype"] == "toggle" %}
 			<input type=checkbox id="{{ item['classname'] }}_{{ item['name'] }}" class="setting_item_input var_sync_{{ item['classname'] }}_{{ item['name'] }}"
 			       data-size="mini" data-onstyle="success" data-toggle="toggle" onchange='socket.emit("var_change", {"ID": this.id, "value": this.checked});'>
-		{% elif item['uuitype'] == "dropdown" %}
-			<select id="{{ item['classname'] }}_{{ item['name'] }}" class="setting_item_input var_sync_{{ item['classname'] }}_{{ item['name'] }}" onclick='socket.emit("var_change", {"ID": this.id, "value": this.value});'>
+		{% elif item['uitype'] == "dropdown" %}
+			<select id="{{ item['classname'] }}_{{ item['name'] }}" class="settings_select var_sync_{{ item['classname'] }}_{{ item['name'] }}" onclick='socket.emit("var_change", {"ID": this.id, "value": this.value});'>
 				{% for option in item['children'] %}
 					<option value="{{ option['value'] }}">{{ option["text"] }}</option>
 				{% endfor %}

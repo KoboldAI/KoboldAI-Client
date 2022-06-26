@@ -1,8 +1,11 @@
 from flask_socketio import emit, join_room, leave_room, rooms
-import os
-import re
+import os, re, time, threading
+import socketio as socketio_client
 
 socketio = None
+main_thread_id = threading.get_ident()
+rely_clients = {}
+
 
 def clean_var_for_emit(value):
     if isinstance(value, KoboldStoryRegister):
@@ -12,19 +15,43 @@ def clean_var_for_emit(value):
     else:
         return value
 
-def process_variable_changes(classname, name, value, old_value):
-    #Special Case for KoboldStoryRegister
-    if isinstance(value, KoboldStoryRegister):
-        print("resetting")
-        socketio.emit("reset_story", {}, broadcast=True, room="UI_2")
-        for i in range(len(value.actions)):
-            socketio.emit("var_changed", {"classname": "actions", "name": "Selected Text", "old_value": None, "value": {"id": i, "text": value[i]}}, broadcast=True, room="UI_2")
-            socketio.emit("var_changed", {"classname": "actions", "name": "Options", "old_value": None, "value": {"id": i, "options": value.actions[i]['Options']}}, broadcast=True, room="UI_2")
-    else:
-        #print("{}: {} changed from {} to {}".format(classname, name, old_value, value))
-        #if name == "Selected Text":
-        #    print({"classname": classname, "name": name, "old_value": clean_var_for_emit(old_value), "value": clean_var_for_emit(value)})
-        socketio.emit("var_changed", {"classname": classname, "name": name, "old_value": clean_var_for_emit(old_value), "value": clean_var_for_emit(value)}, broadcast=True, room="UI_2")
+def process_variable_changes(classname, name, value, old_value, debug_message=None):
+    if socketio is not None:
+        if debug_message is not None:
+                print("{} {}: {} changed from {} to {}".format(debug_message, classname, name, old_value, value))
+        if value != old_value:
+            #Special Case for KoboldStoryRegister
+            if isinstance(value, KoboldStoryRegister):
+                print("We got a story register")
+                print(value)
+                socketio.emit("reset_story", {}, broadcast=True, room="UI_2")
+                for i in range(len(value.actions)):
+                    socketio.emit("var_changed", {"classname": "actions", "name": "Selected Text", "old_value": None, "value": {"id": i, "text": value[i]}}, include_self=True, broadcast=True, room="UI_2")
+                    socketio.emit("var_changed", {"classname": "actions", "name": "Options", "old_value": None, "value": {"id": i, "options": value.actions[i]['Options']}}, include_self=True, broadcast=True, room="UI_2")
+            else:
+                #If we got a variable change from a thread other than what the app is run it, eventlet seems to block and no further messages are sent. Instead, we'll rely the message to the app and have the main thread send it
+                if main_thread_id != threading.get_ident():
+                    if threading.get_ident() in rely_clients:
+                        sio = rely_clients[threading.get_ident()]
+                    else:
+                        start_time = time.time()
+                        print("getting client")
+                        sio = socketio_client.Client()
+                        @sio.event
+                        def connect():
+                            print("I'm connected!")
+                        sio.connect('http://localhost:5000/?rely=true')
+                        rely_clients[threading.get_ident()] = sio
+                        print("got client, took {}".format(time.time()-start_time))
+                    #release no longer used clients
+                    for thread in rely_clients:
+                        if thread not in [x.ident for x in threading.enumerate()]:
+                            del rely_clients[thread]
+                    sio.emit("relay", {"emit": "var_changed", "data": {"classname": classname, "name": name, "old_value": clean_var_for_emit(old_value), "value": clean_var_for_emit(value)}, "include_self":True, "broadcast":True, "room":"UI_2"})
+                else:
+                    socketio.emit("var_changed", {"classname": classname, "name": name, "old_value": clean_var_for_emit(old_value), "value": clean_var_for_emit(value)}, include_self=True, broadcast=True, room="UI_2")
+        #eventlet.sleep()
+        #socketio.sleep(0)
 
         
 class settings(object):
@@ -39,7 +66,6 @@ class settings(object):
 class model_settings(settings):
     local_only_variables = ['badwordsids', 'apikey', '_class_init']
     settings_name = "model"
-    __class_initialized = False
     def __init__(self):
         self.model       = ""     # Model ID string chosen at startup
         self.model_type  = ""     # Model Type (Automatically taken from the model config)
@@ -75,26 +101,20 @@ class model_settings(settings):
         self.presets     = []   # Holder for presets
         self.selected_preset = ""
         
-        #Must be at end of __init__
-        self.__class_initialized = True
         
     def __setattr__(self, name, value):
         old_value = getattr(self, name, None)
         super().__setattr__(name, value)
-        if self.__class_initialized and name != '__class_initialized':
-            #Put variable change actions here
-            if name not in self.local_only_variables and name[0] != "_":
-                process_variable_changes(self.__class__.__name__.replace("_settings", ""), name, value, old_value)
-                
-            #Since I haven't migrated the old_ui to use the new actions class for options, let's sync the metadata and options here
-            if name == 'actions_metadata':
-                print(value)
+        #Put variable change actions here
+        if name not in self.local_only_variables and name[0] != "_":
+            process_variable_changes(self.__class__.__name__.replace("_settings", ""), name, value, old_value)
+            
         
                         
 class story_settings(settings):
+    #local_only_variables = ['generated_tkns']
     local_only_variables = []
     settings_name = "story"
-    __class_initialized = False
     def __init__(self):
         self.lastact     = ""     # The last action received from the user
         self.submission  = ""     # Same as above, but after applying input formatting
@@ -138,21 +158,17 @@ class story_settings(settings):
         self.dynamicscan = False
         self.recentedit  = False
         
-        #Must be at end of __init__
-        self.__class_initialized = True
         
     def __setattr__(self, name, value):
         old_value = getattr(self, name, None)
         super().__setattr__(name, value)
-        if self.__class_initialized and name != '__class_initialized':
-            #Put variable change actions here
-            if name not in self.local_only_variables and name[0] != "_":
-                process_variable_changes(self.__class__.__name__.replace("_settings", ""), name, value, old_value)
+        #Put variable change actions here
+        if name not in self.local_only_variables and name[0] != "_":
+            process_variable_changes(self.__class__.__name__.replace("_settings", ""), name, value, old_value)
                     
 class user_settings(settings):
     local_only_variables = []
     settings_name = "user"
-    __class_initialized = False
     def __init__(self):
         self.wirmvwhtsp  = False             # Whether to remove leading whitespace from WI entries
         self.widepth     = 3                 # How many historical actions to scan for WI hits
@@ -172,22 +188,18 @@ class user_settings(settings):
         self.nogenmod    = False
         self.debug       = False    # If set to true, will send debug information to the client for display
         
-        #Must be at end of __init__
-        self.__class_initialized = True
         
     def __setattr__(self, name, value):
         old_value = getattr(self, name, None)
         super().__setattr__(name, value)
-        if self.__class_initialized and name != '__class_initialized':
-            #Put variable change actions here
-            if name not in self.local_only_variables and name[0] != "_":
-                process_variable_changes(self.__class__.__name__.replace("_settings", ""), name, value, old_value)
+        #Put variable change actions here
+        if name not in self.local_only_variables and name[0] != "_":
+            process_variable_changes(self.__class__.__name__.replace("_settings", ""), name, value, old_value)
         
 
 class system_settings(settings):
     local_only_variables = ['lua_state', 'lua_logname', 'lua_koboldbridge', 'lua_kobold', 'lua_koboldcore', 'regex_sl', 'acregex_ai', 'acregex_ui', 'comregex_ai', 'comregex_ui']
     settings_name = "system"
-    __class_initialized = False
     def __init__(self):
         self.noai        = False  # Runs the script without starting up the transformers pipeline
         self.aibusy      = False  # Stops submissions while the AI is working
@@ -234,16 +246,13 @@ class system_settings(settings):
         self.use_colab_tpu  = os.environ.get("COLAB_TPU_ADDR", "") != "" or os.environ.get("TPU_NAME", "") != ""  # Whether or not we're in a Colab TPU instance or Kaggle TPU instance and are going to use the TPU rather than the CPU
         self.aria2_port  = 6799 #Specify the port on which aria2's RPC interface will be open if aria2 is installed (defaults to 6799)
         
-        #Must be at end of __init__
-        self.__class_initialized = True
         
     def __setattr__(self, name, value):
         old_value = getattr(self, name, None)
         super().__setattr__(name, value)
-        if self.__class_initialized and name != '__class_initialized':
-            #Put variable change actions here
-            if name not in self.local_only_variables and name[0] != "_":
-                process_variable_changes(self.__class__.__name__.replace("_settings", ""), name, value, old_value)
+        #Put variable change actions here
+        if name not in self.local_only_variables and name[0] != "_":
+            process_variable_changes(self.__class__.__name__.replace("_settings", ""), name, value, old_value)
         
         
 class KoboldStoryRegister(object):
@@ -330,17 +339,10 @@ class KoboldStoryRegister(object):
         self.action_count+=1
         if self.action_count in self.actions:
             self.actions[self.action_count]["Selected Text"] = text
-            print("looking for old option that matches")
             for item in self.actions[self.action_count]["Options"]:
                 if item['text'] == text:
-                    print("found it")
                     old_options = self.actions[self.action_count]["Options"]
                     del item
-                    print("old: ")
-                    print(old_options)
-                    print()
-                    print("New: ")
-                    print(self.actions[self.action_count]["Options"])
                     process_variable_changes("actions", "Options", {"id": self.action_count, "options": self.actions[self.action_count]["Options"]}, {"id": self.action_count, "options": old_options})
                     
         else:
@@ -348,25 +350,23 @@ class KoboldStoryRegister(object):
         process_variable_changes("actions", "Selected Text", {"id": self.action_count, "text": text}, None)
     
     def append_options(self, option_list):
+        print("appending options for {}".format(self.action_count+1))
         if self.action_count+1 in self.actions:
-            print("1")
-            old_options = self.actions[self.action_count+1]["Options"]
+            old_options = self.actions[self.action_count+1]["Options"].copy()
             self.actions[self.action_count+1]['Options'].extend([{"text": x, "Pinned": False, "Previous Selection": False, "Edited": False} for x in option_list])
-            for item in option_list:
-                process_variable_changes("actions", "Options", {"id": self.action_count+1, "options": self.actions[self.action_count+1]["Options"]}, {"id": self.action_count+1, "options": old_options})
         else:
-            print("2")
             old_options = None
             self.actions[self.action_count+1] = {"Selected Text": "", "Options": [{"text": x, "Pinned": False, "Previous Selection": False, "Edited": False} for x in option_list]}
-        process_variable_changes("actions", "Options", {"id": self.action_count+1, "options": self.actions[self.action_count+1]["Options"]}, {"id": self.action_count+1, "options": old_options})
+        process_variable_changes("actions", "Options", {"id": self.action_count+1, "options": self.actions[self.action_count+1]["Options"]}, {"id": self.action_count+1, "options": old_options}, debug_message="wtf")
             
     def clear_unused_options(self, pointer=None):
+        print("clearing options for {}".format(self.action_count+1))
         new_options = []
         old_options = None
         if pointer is None:
             pointer = self.action_count+1
         if pointer in self.actions:
-            old_options = self.actions[pointer]["Options"]
+            old_options = self.actions[pointer]["Options"].copy()
             self.actions[pointer]["Options"] = [x for x in self.actions[pointer]["Options"] if x["Pinned"] or x["Previous Selection"] or x["Edited"]]
             new_options = self.actions[pointer]["Options"]
         process_variable_changes("actions", "Options", {"id": pointer, "options": new_options}, {"id": pointer, "options": old_options})
@@ -382,20 +382,20 @@ class KoboldStoryRegister(object):
     def set_pin(self, action_step, option_number):
         if action_step in self.actions:
             if option_number < len(self.actions[action_step]['Options']):
-                old_options = self.actions[action_step]["Options"]
+                old_options = self.actions[action_step]["Options"].copy()
                 self.actions[action_step]['Options'][option_number]['Pinned'] = True
                 process_variable_changes("actions", "Options", {"id": action_step, "options": self.actions[action_step]["Options"]}, {"id": action_step, "options": old_options})
     
     def unset_pin(self, action_step, option_number):
         if action_step in self.actions:
-            old_options = self.actions[action_step]["Options"]
+            old_options = self.actions[action_step]["Options"].copy()
             if option_number < len(self.actions[action_step]['Options']):
                 self.actions[action_step]['Options'][option_number]['Pinned'] = False
                 process_variable_changes("actions", "Options", {"id": action_step, "options": self.actions[action_step]["Options"]}, {"id": action_step, "options": old_options})
     
     def use_option(self, action_step, option_number):
         if action_step in self.actions:
-            old_options = self.actions[action_step]["Options"]
+            old_options = self.actions[action_step]["Options"].copy()
             old_text = self.actions[action_step]["Selected Text"]
             if option_number < len(self.actions[action_step]['Options']):
                 self.actions[action_step]["Selected Text"] = self.actions[action_step]['Options'][option_number]['text']
@@ -405,7 +405,7 @@ class KoboldStoryRegister(object):
     
     def delete_action(self, action_id):
         if action_id in self.actions:
-            old_options = self.actions[action_id]["Options"]
+            old_options = self.actions[action_id]["Options"].copy()
             old_text = self.actions[action_id]["Selected Text"]
             self.actions[action_id]["Options"].append({"text": self.actions[action_id]["Selected Text"], "Pinned": False, "Previous Selection": True, "Edited": False})
             self.actions[action_id]["Selected Text"] = ""
@@ -468,7 +468,7 @@ class KoboldStoryRegister(object):
                 return []
         else:
             if self.action_count+1 in self.actions:
-                return [[x, "pinned" if x['Pinned'] else 'normal'] for x in self.actions[self.action_count+1]["Options"] if x["Edited"] == False and x['Previous Selection'] == False]
+                return [[x['text'], "pinned" if x['Pinned'] else 'normal'] for x in self.actions[self.action_count+1]["Options"] if x["Edited"] == False and x['Previous Selection'] == False]
             else:
                 return []
     
@@ -495,6 +495,12 @@ class KoboldStoryRegister(object):
             return [x for x in self.actions[self.action_count+1]['Options'] if x['Pinned'] or x['Previous Selection']]
         else:
             return []
+            
+    def __setattr__(self, name, value):
+        old_value = getattr(self, name, None)
+        super().__setattr__(name, value)
+        if name == 'action_count':
+            process_variable_changes("actions", "Action Count", value, old_value)
 
 
         

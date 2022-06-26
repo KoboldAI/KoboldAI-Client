@@ -3,7 +3,9 @@ socket = io.connect(window.location.origin, {transports: ['polling', 'websocket'
 
 //Let's register our server communications
 socket.on('connect', function(){connect();});
-socket.on('disconnect', function(){disconnect();});
+socket.on("disconnect", (reason, details) => {
+  console.log("Lost connection from: "+reason); // "transport error"
+});
 socket.on('reset_story', function(){reset_story();});
 socket.on('var_changed', function(data){var_changed(data);});
 //socket.onAny(function(event_name, data) {console.log({"event": event_name, "data": data});});
@@ -20,6 +22,7 @@ function disconnect() {
 }
 
 function reset_story() {
+	console.log("Resetting story");
 	var story_area = document.getElementById('Selected Text');
 	while (story_area.firstChild) {
 		story_area.removeChild(story_area.firstChild);
@@ -43,7 +46,7 @@ function fix_text(val) {
 }
 
 function create_options(data) {
-	console.log(data.value.options);
+	console.log(data);
 	if (document.getElementById("Select Options Chunk "+data.value.id)) {
 			var option_chunk = document.getElementById("Select Options Chunk "+data.value.id)
 		} else {
@@ -200,7 +203,7 @@ function var_changed(data) {
 	} else {
 		var elements_to_change = document.getElementsByClassName("var_sync_"+data.classname+"_"+data.name);
 		for (item of elements_to_change) {
-			if (item.tagName.toLowerCase() === 'input') {
+			if ((item.tagName.toLowerCase() === 'input') || (item.tagName.toLowerCase() === 'select')) {
 				item.value = fix_text(data.value);
 			} else {
 				item.textContent = fix_text(data.value);

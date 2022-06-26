@@ -1359,7 +1359,6 @@ function setStartState() {
 
 function parsegenseqs(seqs) {
 	seqselcontents.html("");
-	console.log(seqs);
 	var i;
 	for(i=0; i<seqs.length; i++) {
 		//setup selection data
@@ -2081,7 +2080,7 @@ $(document).ready(function(){
 	seqselcontents    = $("#seqselcontents");
 
 	// Connect to SocketIO server
-	socket = io.connect(window.document.origin, {transports: ['polling', 'websocket'], closeOnBeforeunload: false});
+	socket = io.connect(window.document.origin, {transports: ['polling', 'websocket'], closeOnBeforeunload: false, query:{"ui":  "1"}});
 
 	socket.on('from_server', function(msg) {
 		//console.log(msg);

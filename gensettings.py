@@ -319,7 +319,19 @@ gensettingstf = [
     "menu_path": "user",
     "classname": "user",
     "name": "debug"
-	}
+	},
+    {
+    "uitype": "dropdown",
+	"unit": "text",
+	"label": "Story Mode",
+	"id": "actionmode",
+	"default": 0,
+    "tooltip": "Choose the mode of KoboldAI",
+    "menu_path": "Story",
+    "classname": "story",
+    "name": "actionmode",
+    'children': [{'text': 'Story', 'value': 0}, {'text':'Adventure','value':1}, {'text':'Chat', 'value':2}]
+    }
 ]
 
 gensettingsik =[{

@@ -7,14 +7,15 @@
 
 # External packages
 import eventlet
+from eventlet import tpool
 eventlet.monkey_patch(all=True, thread=False)
+#eventlet.monkey_patch(os=True, select=True, socket=True, thread=True, time=True, psycopg=True)
 import os
 os.system("")
 __file__ = os.path.dirname(os.path.realpath(__file__))
 os.chdir(__file__)
 os.environ['EVENTLET_THREADPOOL_SIZE'] = '1'
 os.environ['TOKENIZERS_PARALLELISM'] = 'false'
-from eventlet import tpool
 
 import logging
 logging.getLogger("urllib3").setLevel(logging.ERROR)
@@ -228,7 +229,7 @@ class Send_to_socketio(object):
         print(bar, end="")
         time.sleep(0.01)
         try:
-            emit('from_server', {'cmd': 'model_load_status', 'data': bar.replace(" ", "&nbsp;")}, broadcast=True)
+            emit('from_server', {'cmd': 'model_load_status', 'data': bar.replace(" ", "&nbsp;")}, broadcast=True, room="UI_1")
         except:
             pass
                                 
@@ -245,6 +246,7 @@ app = Flask(__name__, root_path=os.getcwd())
 app.config['SECRET KEY'] = 'secret!'
 app.config['TEMPLATES_AUTO_RELOAD'] = True
 socketio = SocketIO(app, async_method="eventlet")
+#socketio = SocketIO(app, async_method="eventlet", logger=True, engineio_logger=True)
 koboldai_settings.socketio = socketio
 print("{0}OK!{1}".format(colors.GREEN, colors.END))
 
@@ -263,9 +265,9 @@ def sendModelSelection(menu="mainmenu", folder="./models"):
             showdelete=True
         else:
             showdelete=False
-        emit('from_server', {'cmd': 'show_model_menu', 'data': menu_list, 'menu': menu, 'breadcrumbs': breadcrumbs, "showdelete": showdelete}, broadcast=True)
+        emit('from_server', {'cmd': 'show_model_menu', 'data': menu_list, 'menu': menu, 'breadcrumbs': breadcrumbs, "showdelete": showdelete}, broadcast=True, room="UI_1")
     else:
-        emit('from_server', {'cmd': 'show_model_menu', 'data': model_menu[menu], 'menu': menu, 'breadcrumbs': [], "showdelete": False}, broadcast=True)
+        emit('from_server', {'cmd': 'show_model_menu', 'data': model_menu[menu], 'menu': menu, 'breadcrumbs': [], "showdelete": False}, broadcast=True, room="UI_1")
 
 def get_folder_path_info(base):
     if base == 'This PC':
@@ -794,7 +796,7 @@ def check_for_sp_change():
         time.sleep(0.1)
         if(system_settings.sp_changed):
             with app.app_context():
-                emit('from_server', {'cmd': 'spstatitems', 'data': {system_settings.spfilename: system_settings.spmeta} if system_settings.allowsp and len(system_settings.spfilename) else {}}, namespace=None, broadcast=True)
+                emit('from_server', {'cmd': 'spstatitems', 'data': {system_settings.spfilename: system_settings.spmeta} if system_settings.allowsp and len(system_settings.spfilename) else {}}, namespace=None, broadcast=True, room="UI_1")
             system_settings.sp_changed = False
 
 socketio.start_background_task(check_for_sp_change)
@@ -1040,7 +1042,7 @@ def get_model_info(model, directory=""):
                          'gpu':gpu, 'layer_count':layer_count, 'breakmodel':breakmodel, 
                          'disk_break_value': disk_blocks, 'accelerate': utils.HAS_ACCELERATE,
                          'break_values': break_values, 'gpu_count': gpu_count,
-                         'url': url, 'gpu_names': gpu_names}, broadcast=True)
+                         'url': url, 'gpu_names': gpu_names}, broadcast=True, room="UI_1")
     if key_value != "":
         get_oai_models(key_value)
     
@@ -1112,12 +1114,12 @@ def get_oai_models(key):
         if changed:
             with open("settings/{}.settings".format(model_settings.model), "w") as file:
                 js["apikey"] = key
-                file.write(json.dumps(js, indent=3))
+                file.write(json.dumps(js, indent=3), room="UI_1")
             
         emit('from_server', {'cmd': 'oai_engines', 'data': engines, 'online_model': online_model}, broadcast=True)
     else:
         # Something went wrong, print the message and quit since we can't initialize an engine
-        print("{0}ERROR!{1}".format(colors.RED, colors.END))
+        print("{0}ERROR!{1}".format(colors.RED, colors.END), room="UI_1")
         print(req.json())
         emit('from_server', {'cmd': 'errmsg', 'data': req.json()})
 
@@ -1392,7 +1394,7 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
     if not initial_load:
         set_aibusy(True)
         if model_settings.model != 'ReadOnly':
-            emit('from_server', {'cmd': 'model_load_status', 'data': "Loading {}".format(model_settings.model)}, broadcast=True)
+            emit('from_server', {'cmd': 'model_load_status', 'data': "Loading {}".format(model_settings.model)}, broadcast=True, room="UI_1")
             #Have to add a sleep so the server will send the emit for some reason
             time.sleep(0.1)
     if gpu_layers is not None:
@@ -2058,7 +2060,7 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
     final_startup()
     if not initial_load:
         set_aibusy(False)
-        emit('from_server', {'cmd': 'hide_model_name'}, broadcast=True)
+        emit('from_server', {'cmd': 'hide_model_name'}, broadcast=True, room="UI_1")
         time.sleep(0.1)
         
         if not story_settings.gamestarted:
@@ -2235,7 +2237,7 @@ def load_lua_scripts():
             pass
         system_settings.lua_running = False
         if(system_settings.serverstarted):
-            emit('from_server', {'cmd': 'errmsg', 'data': 'Lua script error; please check console.'}, broadcast=True)
+            emit('from_server', {'cmd': 'errmsg', 'data': 'Lua script error; please check console.'}, broadcast=True, room="UI_1")
             sendUSStatItems()
         print("{0}{1}{2}".format(colors.RED, "***LUA ERROR***: ", colors.END), end="", file=sys.stderr)
         print("{0}{1}{2}".format(colors.RED, str(e).replace("\033", ""), colors.END), file=sys.stderr)
@@ -2722,7 +2724,7 @@ def execute_inmod():
     except lupa.LuaError as e:
         system_settings.lua_koboldbridge.obliterate_multiverse()
         system_settings.lua_running = False
-        emit('from_server', {'cmd': 'errmsg', 'data': 'Lua script error; please check console.'}, broadcast=True)
+        emit('from_server', {'cmd': 'errmsg', 'data': 'Lua script error; please check console.'}, broadcast=True, room="UI_1")
         sendUSStatItems()
         print("{0}{1}{2}".format(colors.RED, "***LUA ERROR***: ", colors.END), end="", file=sys.stderr)
         print("{0}{1}{2}".format(colors.RED, str(e).replace("\033", ""), colors.END), file=sys.stderr)
@@ -2734,13 +2736,13 @@ def execute_genmod():
 
 def execute_outmod():
     setgamesaved(False)
-    emit('from_server', {'cmd': 'hidemsg', 'data': ''}, broadcast=True)
+    emit('from_server', {'cmd': 'hidemsg', 'data': ''}, broadcast=True, room="UI_1")
     try:
         tpool.execute(system_settings.lua_koboldbridge.execute_outmod)
     except lupa.LuaError as e:
         system_settings.lua_koboldbridge.obliterate_multiverse()
         system_settings.lua_running = False
-        emit('from_server', {'cmd': 'errmsg', 'data': 'Lua script error; please check console.'}, broadcast=True)
+        emit('from_server', {'cmd': 'errmsg', 'data': 'Lua script error; please check console.'}, broadcast=True, room="UI_1")
         sendUSStatItems()
         print("{0}{1}{2}".format(colors.RED, "***LUA ERROR***: ", colors.END), end="", file=sys.stderr)
         print("{0}{1}{2}".format(colors.RED, str(e).replace("\033", ""), colors.END), file=sys.stderr)
@@ -2764,6 +2766,8 @@ def execute_outmod():
 #==================================================================#
 @socketio.on('connect')
 def do_connect():
+    if request.args.get("rely") == "true":
+        return
     join_room("UI_{}".format(request.args.get('ui')))
     print("Joining Room UI_{}".format(request.args.get('ui')))
     #Send all variables to client
@@ -2772,51 +2776,51 @@ def do_connect():
     user_settings.send_to_ui()
     system_settings.send_to_ui()
     print("{0}Client connected!{1}".format(colors.GREEN, colors.END))
-    emit('from_server', {'cmd': 'setchatname', 'data': story_settings.chatname})
-    emit('from_server', {'cmd': 'setanotetemplate', 'data': story_settings.authornotetemplate})
-    emit('from_server', {'cmd': 'connected', 'smandelete': system_settings.smandelete, 'smanrename': system_settings.smanrename, 'modelname': getmodelname()})
+    emit('from_server', {'cmd': 'setchatname', 'data': story_settings.chatname}, room="UI_1")
+    emit('from_server', {'cmd': 'setanotetemplate', 'data': story_settings.authornotetemplate}, room="UI_1")
+    emit('from_server', {'cmd': 'connected', 'smandelete': system_settings.smandelete, 'smanrename': system_settings.smanrename, 'modelname': getmodelname()}, room="UI_1")
     if(system_settings.host):
-        emit('from_server', {'cmd': 'runs_remotely'})
+        emit('from_server', {'cmd': 'runs_remotely'}, room="UI_1")
     if(system_settings.flaskwebgui):
-        emit('from_server', {'cmd': 'flaskwebgui'})
+        emit('from_server', {'cmd': 'flaskwebgui'}, room="UI_1")
     if(system_settings.allowsp):
-        emit('from_server', {'cmd': 'allowsp', 'data': system_settings.allowsp})
+        emit('from_server', {'cmd': 'allowsp', 'data': system_settings.allowsp}, room="UI_1")
 
     sendUSStatItems()
-    emit('from_server', {'cmd': 'spstatitems', 'data': {system_settings.spfilename: system_settings.spmeta} if system_settings.allowsp and len(system_settings.spfilename) else {}}, broadcast=True)
+    emit('from_server', {'cmd': 'spstatitems', 'data': {system_settings.spfilename: system_settings.spmeta} if system_settings.allowsp and len(system_settings.spfilename) else {}}, broadcast=True, room="UI_1")
 
     if(not story_settings.gamestarted):
         setStartState()
         sendsettings()
         refresh_settings()
         user_settings.laststory = None
-        emit('from_server', {'cmd': 'setstoryname', 'data': user_settings.laststory})
+        emit('from_server', {'cmd': 'setstoryname', 'data': user_settings.laststory}, room="UI_1")
         sendwi()
-        emit('from_server', {'cmd': 'setmemory', 'data': story_settings.memory})
-        emit('from_server', {'cmd': 'setanote', 'data': story_settings.authornote})
+        emit('from_server', {'cmd': 'setmemory', 'data': story_settings.memory}, room="UI_1")
+        emit('from_server', {'cmd': 'setanote', 'data': story_settings.authornote}, room="UI_1")
         story_settings.mode = "play"
     else:
         # Game in session, send current game data and ready state to browser
         refresh_story()
         sendsettings()
         refresh_settings()
-        emit('from_server', {'cmd': 'setstoryname', 'data': user_settings.laststory})
+        emit('from_server', {'cmd': 'setstoryname', 'data': user_settings.laststory}, room="UI_1")
         sendwi()
-        emit('from_server', {'cmd': 'setmemory', 'data': story_settings.memory})
-        emit('from_server', {'cmd': 'setanote', 'data': story_settings.authornote})
+        emit('from_server', {'cmd': 'setmemory', 'data': story_settings.memory}, room="UI_1")
+        emit('from_server', {'cmd': 'setanote', 'data': story_settings.authornote}, room="UI_1")
         if(story_settings.mode == "play"):
             if(not system_settings.aibusy):
-                emit('from_server', {'cmd': 'setgamestate', 'data': 'ready'})
+                emit('from_server', {'cmd': 'setgamestate', 'data': 'ready'}, room="UI_1")
             else:
-                emit('from_server', {'cmd': 'setgamestate', 'data': 'wait'})
+                emit('from_server', {'cmd': 'setgamestate', 'data': 'wait'}, room="UI_1")
         elif(story_settings.mode == "edit"):
-            emit('from_server', {'cmd': 'editmode', 'data': 'true'})
+            emit('from_server', {'cmd': 'editmode', 'data': 'true'}, room="UI_1")
         elif(story_settings.mode == "memory"):
-            emit('from_server', {'cmd': 'memmode', 'data': 'true'})
+            emit('from_server', {'cmd': 'memmode', 'data': 'true'}, room="UI_1")
         elif(story_settings.mode == "wi"):
-            emit('from_server', {'cmd': 'wimode', 'data': 'true'})
+            emit('from_server', {'cmd': 'wimode', 'data': 'true'}, room="UI_1")
 
-    emit('from_server', {'cmd': 'gamesaved', 'data': story_settings.gamesaved}, broadcast=True)
+    emit('from_server', {'cmd': 'gamesaved', 'data': story_settings.gamesaved}, broadcast=True, room="UI_1")
 
 #==================================================================#
 # Event triggered when browser SocketIO sends data to the server
@@ -2839,7 +2843,7 @@ def get_message(msg):
                     raise ValueError("Chatname must be a string")
                 story_settings.chatname = msg['chatname']
                 settingschanged()
-                emit('from_server', {'cmd': 'setchatname', 'data': story_settings.chatname})
+                emit('from_server', {'cmd': 'setchatname', 'data': story_settings.chatname}, room="UI_1")
             story_settings.recentrng = story_settings.recentrngm = None
             actionsubmit(msg['data'], actionmode=msg['actionmode'])
         elif(story_settings.mode == "edit"):
@@ -2858,7 +2862,7 @@ def get_message(msg):
                 raise ValueError("Chatname must be a string")
             story_settings.chatname = msg['chatname']
             settingschanged()
-            emit('from_server', {'cmd': 'setchatname', 'data': story_settings.chatname})
+            emit('from_server', {'cmd': 'setchatname', 'data': story_settings.chatname}, room="UI_1")
         actionretry(msg['data'])
     # Back/Undo Action
     elif(msg['cmd'] == 'back'):
@@ -2870,10 +2874,10 @@ def get_message(msg):
     elif(msg['cmd'] == 'edit'):
         if(story_settings.mode == "play"):
             story_settings.mode = "edit"
-            emit('from_server', {'cmd': 'editmode', 'data': 'true'}, broadcast=True)
+            emit('from_server', {'cmd': 'editmode', 'data': 'true'}, broadcast=True, room="UI_1")
         elif(story_settings.mode == "edit"):
             story_settings.mode = "play"
-            emit('from_server', {'cmd': 'editmode', 'data': 'false'}, broadcast=True)
+            emit('from_server', {'cmd': 'editmode', 'data': 'false'}, broadcast=True, room="UI_1")
     # EditLine Action (old)
     elif(msg['cmd'] == 'editline'):
         editrequest(int(msg['data']))
@@ -2901,62 +2905,62 @@ def get_message(msg):
         randomGameRequest(msg['data'], memory=msg['memory'])
     elif(msg['cmd'] == 'settemp'):
         model_settings.temp = float(msg['data'])
-        emit('from_server', {'cmd': 'setlabeltemp', 'data': msg['data']}, broadcast=True)
+        emit('from_server', {'cmd': 'setlabeltemp', 'data': msg['data']}, broadcast=True, room="UI_1")
         settingschanged()
         refresh_settings()
     elif(msg['cmd'] == 'settopp'):
         model_settings.top_p = float(msg['data'])
-        emit('from_server', {'cmd': 'setlabeltopp', 'data': msg['data']}, broadcast=True)
+        emit('from_server', {'cmd': 'setlabeltopp', 'data': msg['data']}, broadcast=True, room="UI_1")
         settingschanged()
         refresh_settings()
     elif(msg['cmd'] == 'settopk'):
         model_settings.top_k = int(msg['data'])
-        emit('from_server', {'cmd': 'setlabeltopk', 'data': msg['data']}, broadcast=True)
+        emit('from_server', {'cmd': 'setlabeltopk', 'data': msg['data']}, broadcast=True, room="UI_1")
         settingschanged()
         refresh_settings()
     elif(msg['cmd'] == 'settfs'):
         model_settings.tfs = float(msg['data'])
-        emit('from_server', {'cmd': 'setlabeltfs', 'data': msg['data']}, broadcast=True)
+        emit('from_server', {'cmd': 'setlabeltfs', 'data': msg['data']}, broadcast=True, room="UI_1")
         settingschanged()
         refresh_settings()
     elif(msg['cmd'] == 'settypical'):
         model_settings.typical = float(msg['data'])
-        emit('from_server', {'cmd': 'setlabeltypical', 'data': msg['data']}, broadcast=True)
+        emit('from_server', {'cmd': 'setlabeltypical', 'data': msg['data']}, broadcast=True, room="UI_1")
         settingschanged()
         refresh_settings()
     elif(msg['cmd'] == 'settopa'):
         model_settings.top_a = float(msg['data'])
-        emit('from_server', {'cmd': 'setlabeltopa', 'data': msg['data']}, broadcast=True)
+        emit('from_server', {'cmd': 'setlabeltopa', 'data': msg['data']}, broadcast=True, room="UI_1")
         settingschanged()
         refresh_settings()
     elif(msg['cmd'] == 'setreppen'):
         model_settings.rep_pen = float(msg['data'])
-        emit('from_server', {'cmd': 'setlabelreppen', 'data': msg['data']}, broadcast=True)
+        emit('from_server', {'cmd': 'setlabelreppen', 'data': msg['data']}, broadcast=True, room="UI_1")
         settingschanged()
         refresh_settings()
     elif(msg['cmd'] == 'setreppenslope'):
         model_settings.rep_pen_slope = float(msg['data'])
-        emit('from_server', {'cmd': 'setlabelreppenslope', 'data': msg['data']}, broadcast=True)
+        emit('from_server', {'cmd': 'setlabelreppenslope', 'data': msg['data']}, broadcast=True, room="UI_1")
         settingschanged()
         refresh_settings()
     elif(msg['cmd'] == 'setreppenrange'):
         model_settings.rep_pen_range = float(msg['data'])
-        emit('from_server', {'cmd': 'setlabelreppenrange', 'data': msg['data']}, broadcast=True)
+        emit('from_server', {'cmd': 'setlabelreppenrange', 'data': msg['data']}, broadcast=True, room="UI_1")
         settingschanged()
         refresh_settings()
     elif(msg['cmd'] == 'setoutput'):
         model_settings.genamt = int(msg['data'])
-        emit('from_server', {'cmd': 'setlabeloutput', 'data': msg['data']}, broadcast=True)
+        emit('from_server', {'cmd': 'setlabeloutput', 'data': msg['data']}, broadcast=True, room="UI_1")
         settingschanged()
         refresh_settings()
     elif(msg['cmd'] == 'settknmax'):
         model_settings.max_length = int(msg['data'])
-        emit('from_server', {'cmd': 'setlabeltknmax', 'data': msg['data']}, broadcast=True)
+        emit('from_server', {'cmd': 'setlabeltknmax', 'data': msg['data']}, broadcast=True, room="UI_1")
         settingschanged()
         refresh_settings()
     elif(msg['cmd'] == 'setikgen'):
         model_settings.ikgen = int(msg['data'])
-        emit('from_server', {'cmd': 'setlabelikgen', 'data': msg['data']}, broadcast=True)
+        emit('from_server', {'cmd': 'setlabelikgen', 'data': msg['data']}, broadcast=True, room="UI_1")
         settingschanged()
         refresh_settings()
     # Author's Note field update
@@ -2965,7 +2969,7 @@ def get_message(msg):
     # Author's Note depth update
     elif(msg['cmd'] == 'anotedepth'):
         story_settings.andepth = int(msg['data'])
-        emit('from_server', {'cmd': 'setlabelanotedepth', 'data': msg['data']}, broadcast=True)
+        emit('from_server', {'cmd': 'setlabelanotedepth', 'data': msg['data']}, broadcast=True, room="UI_1")
         settingschanged()
         refresh_settings()
     # Format - Trim incomplete sentences
@@ -2997,10 +3001,10 @@ def get_message(msg):
     elif(msg['cmd'] == 'importselect'):
         user_settings.importnum = int(msg["data"].replace("import", ""))
     elif(msg['cmd'] == 'importcancel'):
-        emit('from_server', {'cmd': 'popupshow', 'data': False})
+        emit('from_server', {'cmd': 'popupshow', 'data': False}, room="UI_1")
         user_settings.importjs  = {}
     elif(msg['cmd'] == 'importaccept'):
-        emit('from_server', {'cmd': 'popupshow', 'data': False})
+        emit('from_server', {'cmd': 'popupshow', 'data': False}, room="UI_1")
         importgame()
     elif(msg['cmd'] == 'wi'):
         togglewimode()
@@ -3022,19 +3026,19 @@ def get_message(msg):
     elif(msg['cmd'] == 'wiexpand'):
         assert 0 <= int(msg['data']) < len(story_settings.worldinfo)
         setgamesaved(False)
-        emit('from_server', {'cmd': 'wiexpand', 'data': msg['data']}, broadcast=True)
+        emit('from_server', {'cmd': 'wiexpand', 'data': msg['data']}, broadcast=True, room="UI_1")
     elif(msg['cmd'] == 'wiexpandfolder'):
         assert 0 <= int(msg['data']) < len(story_settings.worldinfo)
         setgamesaved(False)
-        emit('from_server', {'cmd': 'wiexpandfolder', 'data': msg['data']}, broadcast=True)
+        emit('from_server', {'cmd': 'wiexpandfolder', 'data': msg['data']}, broadcast=True, room="UI_1")
     elif(msg['cmd'] == 'wifoldercollapsecontent'):
         setgamesaved(False)
         story_settings.wifolders_d[msg['data']]['collapsed'] = True
-        emit('from_server', {'cmd': 'wifoldercollapsecontent', 'data': msg['data']}, broadcast=True)
+        emit('from_server', {'cmd': 'wifoldercollapsecontent', 'data': msg['data']}, broadcast=True, room="UI_1")
     elif(msg['cmd'] == 'wifolderexpandcontent'):
         setgamesaved(False)
         story_settings.wifolders_d[msg['data']]['collapsed'] = False
-        emit('from_server', {'cmd': 'wifolderexpandcontent', 'data': msg['data']}, broadcast=True)
+        emit('from_server', {'cmd': 'wifolderexpandcontent', 'data': msg['data']}, broadcast=True, room="UI_1")
     elif(msg['cmd'] == 'wiupdate'):
         setgamesaved(False)
         num = int(msg['num'])
@@ -3042,7 +3046,7 @@ def get_message(msg):
         for field in fields:
             if(field in msg['data'] and type(msg['data'][field]) is str):
                 story_settings.worldinfo[num][field] = msg['data'][field]
-        emit('from_server', {'cmd': 'wiupdate', 'num': msg['num'], 'data': {field: story_settings.worldinfo[num][field] for field in fields}}, broadcast=True)
+        emit('from_server', {'cmd': 'wiupdate', 'num': msg['num'], 'data': {field: story_settings.worldinfo[num][field] for field in fields}}, broadcast=True, room="UI_1")
     elif(msg['cmd'] == 'wifolderupdate'):
         setgamesaved(False)
         uid = int(msg['uid'])
@@ -3050,23 +3054,23 @@ def get_message(msg):
         for field in fields:
             if(field in msg['data'] and type(msg['data'][field]) is (str if field != "collapsed" else bool)):
                 story_settings.wifolders_d[uid][field] = msg['data'][field]
-        emit('from_server', {'cmd': 'wifolderupdate', 'uid': msg['uid'], 'data': {field: story_settings.wifolders_d[uid][field] for field in fields}}, broadcast=True)
+        emit('from_server', {'cmd': 'wifolderupdate', 'uid': msg['uid'], 'data': {field: story_settings.wifolders_d[uid][field] for field in fields}}, broadcast=True, room="UI_1")
     elif(msg['cmd'] == 'wiselon'):
         setgamesaved(False)
         story_settings.worldinfo[msg['data']]["selective"] = True
-        emit('from_server', {'cmd': 'wiselon', 'data': msg['data']}, broadcast=True)
+        emit('from_server', {'cmd': 'wiselon', 'data': msg['data']}, broadcast=True, room="UI_1")
     elif(msg['cmd'] == 'wiseloff'):
         setgamesaved(False)
         story_settings.worldinfo[msg['data']]["selective"] = False
-        emit('from_server', {'cmd': 'wiseloff', 'data': msg['data']}, broadcast=True)
+        emit('from_server', {'cmd': 'wiseloff', 'data': msg['data']}, broadcast=True, room="UI_1")
     elif(msg['cmd'] == 'wiconstanton'):
         setgamesaved(False)
         story_settings.worldinfo[msg['data']]["constant"] = True
-        emit('from_server', {'cmd': 'wiconstanton', 'data': msg['data']}, broadcast=True)
+        emit('from_server', {'cmd': 'wiconstanton', 'data': msg['data']}, broadcast=True, room="UI_1")
     elif(msg['cmd'] == 'wiconstantoff'):
         setgamesaved(False)
         story_settings.worldinfo[msg['data']]["constant"] = False
-        emit('from_server', {'cmd': 'wiconstantoff', 'data': msg['data']}, broadcast=True)
+        emit('from_server', {'cmd': 'wiconstantoff', 'data': msg['data']}, broadcast=True, room="UI_1")
     elif(msg['cmd'] == 'sendwilist'):
         commitwi(msg['data'])
     elif(msg['cmd'] == 'aidgimport'):
@@ -3081,9 +3085,9 @@ def get_message(msg):
         getsplist()
     elif(msg['cmd'] == 'uslistrequest'):
         unloaded, loaded = getuslist()
-        emit('from_server', {'cmd': 'buildus', 'data': {"unloaded": unloaded, "loaded": loaded}})
+        emit('from_server', {'cmd': 'buildus', 'data': {"unloaded": unloaded, "loaded": loaded}}, room="UI_1")
     elif(msg['cmd'] == 'samplerlistrequest'):
-        emit('from_server', {'cmd': 'buildsamplers', 'data': model_settings.sampler_order})
+        emit('from_server', {'cmd': 'buildsamplers', 'data': model_settings.sampler_order}, room="UI_1")
     elif(msg['cmd'] == 'usloaded'):
         system_settings.userscripts = []
         for userscript in msg['data']:
@@ -3131,7 +3135,7 @@ def get_message(msg):
         load_model(use_gpu=msg['use_gpu'], gpu_layers=msg['gpu_layers'], disk_layers=msg['disk_layers'], online_model=msg['online_model'])
     elif(msg['cmd'] == 'show_model'):
         print("Model Name: {}".format(getmodelname()))
-        emit('from_server', {'cmd': 'show_model_name', 'data': getmodelname()}, broadcast=True)
+        emit('from_server', {'cmd': 'show_model_name', 'data': getmodelname()}, broadcast=True, room="UI_1")
     elif(msg['cmd'] == 'selectmodel'):
         # This is run when a model line is selected from the UI (line from the model_menu variable) that is tagged as not a menu
         # otherwise we should be running the msg['cmd'] == 'list_model'
@@ -3160,7 +3164,7 @@ def get_message(msg):
                 try:
                     get_model_info(model_settings.model)
                 except:
-                    emit('from_server', {'cmd': 'errmsg', 'data': "The model entered doesn't exist."})
+                    emit('from_server', {'cmd': 'errmsg', 'data': "The model entered doesn't exist."}, room="UI_1")
         elif msg['data'] in ('NeoCustom', 'GPT2Custom'):
             if check_if_dir_is_model(msg['path']):
                 model_settings.model = msg['data']
@@ -3212,12 +3216,12 @@ def get_message(msg):
         pinsequence(msg['data'])
     elif(msg['cmd'] == 'setnumseq'):
         model_settings.numseqs = int(msg['data'])
-        emit('from_server', {'cmd': 'setlabelnumseq', 'data': msg['data']})
+        emit('from_server', {'cmd': 'setlabelnumseq', 'data': msg['data']}, room="UI_1")
         settingschanged()
         refresh_settings()
     elif(msg['cmd'] == 'setwidepth'):
         user_settings.widepth = int(msg['data'])
-        emit('from_server', {'cmd': 'setlabelwidepth', 'data': msg['data']})
+        emit('from_server', {'cmd': 'setlabelwidepth', 'data': msg['data']}, room="UI_1")
         settingschanged()
         refresh_settings()
     elif(msg['cmd'] == 'setuseprompt'):
@@ -3258,7 +3262,7 @@ def get_message(msg):
         wiimportrequest()
     elif(msg['cmd'] == 'debug'):
         user_settings.debug = msg['data']
-        emit('from_server', {'cmd': 'set_debug', 'data': msg['data']}, broadcast=True)
+        emit('from_server', {'cmd': 'set_debug', 'data': msg['data']}, broadcast=True, room="UI_1")
         if user_settings.debug:
             send_debug()
 
@@ -3269,7 +3273,7 @@ def sendUSStatItems():
     _, loaded = getuslist()
     loaded = loaded if system_settings.lua_running else []
     last_userscripts = [e["filename"] for e in loaded]
-    emit('from_server', {'cmd': 'usstatitems', 'data': loaded, 'flash': last_userscripts != system_settings.last_userscripts}, broadcast=True)
+    emit('from_server', {'cmd': 'usstatitems', 'data': loaded, 'flash': last_userscripts != system_settings.last_userscripts}, broadcast=True, room="UI_1")
     system_settings.last_userscripts = last_userscripts
 
 #==================================================================#
@@ -3292,25 +3296,25 @@ def setStartState():
         txt = txt + "Please load a game or enter a prompt below to begin!</span>"
     if(system_settings.noai):
         txt = txt + "Please load or import a story to read. There is no AI in this mode."
-    emit('from_server', {'cmd': 'updatescreen', 'gamestarted': story_settings.gamestarted, 'data': txt}, broadcast=True)
-    emit('from_server', {'cmd': 'setgamestate', 'data': 'start'}, broadcast=True)
+    emit('from_server', {'cmd': 'updatescreen', 'gamestarted': story_settings.gamestarted, 'data': txt}, broadcast=True, room="UI_1")
+    emit('from_server', {'cmd': 'setgamestate', 'data': 'start'}, broadcast=True, room="UI_1")
 
 #==================================================================#
 #  Transmit applicable settings to SocketIO to build UI sliders/toggles
 #==================================================================#
 def sendsettings():
     # Send settings for selected AI type
-    emit('from_server', {'cmd': 'reset_menus'})
+    emit('from_server', {'cmd': 'reset_menus'}, room="UI_1")
     if(model_settings.model != "InferKit"):
         for set in gensettings.gensettingstf:
-            emit('from_server', {'cmd': 'addsetting', 'data': set})
+            emit('from_server', {'cmd': 'addsetting', 'data': set}, room="UI_1")
     else:
         for set in gensettings.gensettingsik:
-            emit('from_server', {'cmd': 'addsetting', 'data': set})
+            emit('from_server', {'cmd': 'addsetting', 'data': set}, room="UI_1")
     
     # Send formatting options
     for frm in gensettings.formatcontrols:
-        emit('from_server', {'cmd': 'addformat', 'data': frm})
+        emit('from_server', {'cmd': 'addformat', 'data': frm}, room="UI_1")
         # Add format key to vars if it wasn't loaded with client.settings
         if(not frm["id"] in user_settings.formatoptns):
             user_settings.formatoptns[frm["id"]] = False;
@@ -3321,7 +3325,7 @@ def sendsettings():
 def setgamesaved(gamesaved):
     assert type(gamesaved) is bool
     if(gamesaved != story_settings.gamesaved):
-        emit('from_server', {'cmd': 'gamesaved', 'data': gamesaved}, broadcast=True)
+        emit('from_server', {'cmd': 'gamesaved', 'data': gamesaved}, broadcast=True, room="UI_1")
     story_settings.gamesaved = gamesaved
 
 #==================================================================#
@@ -3335,7 +3339,7 @@ def check_for_backend_compilation():
     for _ in range(31):
         time.sleep(0.06276680299820175)
         if(system_settings.compiling):
-            emit('from_server', {'cmd': 'warnmsg', 'data': 'Compiling TPU backend&mdash;this usually takes 1&ndash;2 minutes...'}, broadcast=True)
+            emit('from_server', {'cmd': 'warnmsg', 'data': 'Compiling TPU backend&mdash;this usually takes 1&ndash;2 minutes...'}, broadcast=True, room="UI_1")
             break
     system_settings.checking = False
 
@@ -3383,14 +3387,14 @@ def actionsubmit(data, actionmode=0, force_submit=False, force_prompt_gen=False,
                 # Save this first action as the prompt
                 story_settings.prompt = data
                 # Clear the startup text from game screen
-                emit('from_server', {'cmd': 'updatescreen', 'gamestarted': False, 'data': 'Please wait, generating story...'}, broadcast=True)
+                emit('from_server', {'cmd': 'updatescreen', 'gamestarted': False, 'data': 'Please wait, generating story...'}, broadcast=True, room="UI_1")
                 calcsubmit(data) # Run the first action through the generator
                 if(not system_settings.abort and system_settings.lua_koboldbridge.restart_sequence is not None and len(story_settings.genseqs) == 0):
                     data = ""
                     force_submit = True
                     disable_recentrng = True
                     continue
-                emit('from_server', {'cmd': 'scrolldown', 'data': ''}, broadcast=True)
+                emit('from_server', {'cmd': 'scrolldown', 'data': ''}, broadcast=True, room="UI_1")
                 break
             else:
                 # Save this first action as the prompt
@@ -3407,7 +3411,7 @@ def actionsubmit(data, actionmode=0, force_submit=False, force_prompt_gen=False,
                     genresult(genout[0]["generated_text"], flash=False)
                     refresh_story()
                     if(len(story_settings.actions) > 0):
-                        emit('from_server', {'cmd': 'texteffect', 'data': story_settings.actions.get_last_key() + 1}, broadcast=True)
+                        emit('from_server', {'cmd': 'texteffect', 'data': story_settings.actions.get_last_key() + 1}, broadcast=True, room="UI_1")
                     if(not system_settings.abort and system_settings.lua_koboldbridge.restart_sequence is not None):
                         data = ""
                         force_submit = True
@@ -3424,7 +3428,7 @@ def actionsubmit(data, actionmode=0, force_submit=False, force_prompt_gen=False,
                     genselect(genout)
                     refresh_story()
                 set_aibusy(0)
-                emit('from_server', {'cmd': 'scrolldown', 'data': ''}, broadcast=True)
+                emit('from_server', {'cmd': 'scrolldown', 'data': ''}, broadcast=True, room="UI_1")
                 break
         else:
             # Apply input formatting & scripts before sending to tokenizer
@@ -3451,7 +3455,7 @@ def actionsubmit(data, actionmode=0, force_submit=False, force_prompt_gen=False,
                     force_submit = True
                     disable_recentrng = True
                     continue
-                emit('from_server', {'cmd': 'scrolldown', 'data': ''}, broadcast=True)
+                emit('from_server', {'cmd': 'scrolldown', 'data': ''}, broadcast=True, room="UI_1")
                 break
             else:
                 for i in range(model_settings.numseqs):
@@ -3478,7 +3482,7 @@ def actionsubmit(data, actionmode=0, force_submit=False, force_prompt_gen=False,
                         continue
                     genselect(genout)
                 set_aibusy(0)
-                emit('from_server', {'cmd': 'scrolldown', 'data': ''}, broadcast=True)
+                emit('from_server', {'cmd': 'scrolldown', 'data': ''}, broadcast=True, room="UI_1")
                 break
 
 #==================================================================#
@@ -3486,7 +3490,7 @@ def actionsubmit(data, actionmode=0, force_submit=False, force_prompt_gen=False,
 #==================================================================#
 def actionretry(data):
     if(system_settings.noai):
-        emit('from_server', {'cmd': 'errmsg', 'data': "Retry function unavailable in Read Only mode."})
+        emit('from_server', {'cmd': 'errmsg', 'data': "Retry function unavailable in Read Only mode."}, room="UI_1")
         return
     if(story_settings.recentrng is not None):
         if(not system_settings.aibusy):
@@ -3496,7 +3500,7 @@ def actionretry(data):
         actionsubmit("", actionmode=story_settings.actionmode, force_submit=True)
         send_debug()
     elif(not story_settings.useprompt):
-        emit('from_server', {'cmd': 'errmsg', 'data': "Please enable \"Always Add Prompt\" to retry with your prompt."})
+        emit('from_server', {'cmd': 'errmsg', 'data': "Please enable \"Always Add Prompt\" to retry with your prompt."}, room="UI_1")
 
 #==================================================================#
 #  
@@ -3512,7 +3516,7 @@ def actionback():
         remove_story_chunk(last_key + 1)
         success = True
     elif(len(story_settings.genseqs) == 0):
-        emit('from_server', {'cmd': 'errmsg', 'data': "Cannot delete the prompt."})
+        emit('from_server', {'cmd': 'errmsg', 'data': "Cannot delete the prompt."}, room="UI_1")
         success =  False
     else:
         story_settings.genseqs = []
@@ -3523,12 +3527,12 @@ def actionback():
 def actionredo():
     genout = [[x['text'], "redo" if x['Previous Selection'] else "pinned" if x['Pinned'] else "normal"] for x in story_settings.actions.get_redo_options()]
     if len(genout) == 0:
-        emit('from_server', {'cmd': 'popuperror', 'data': "There's nothing to redo"}, broadcast=True)
+        emit('from_server', {'cmd': 'popuperror', 'data': "There's nothing to redo"}, broadcast=True, room="UI_1")
     elif len(genout) == 1:
         genresult(genout[0][0], flash=True, ignore_formatting=True)
     else:
         story_settings.genseqs = [{"generated_text": x[0]} for x in genout]
-        emit('from_server', {'cmd': 'genseqs', 'data': genout}, broadcast=True)
+        emit('from_server', {'cmd': 'genseqs', 'data': genout}, broadcast=True, room="UI_1")
     send_debug()
 
 #==================================================================#
@@ -3864,13 +3868,13 @@ def generate(txt, minimum, maximum, found_entries=None):
         if(issubclass(type(e), lupa.LuaError)):
             system_settings.lua_koboldbridge.obliterate_multiverse()
             system_settings.lua_running = False
-            emit('from_server', {'cmd': 'errmsg', 'data': 'Lua script error; please check console.'}, broadcast=True)
+            emit('from_server', {'cmd': 'errmsg', 'data': 'Lua script error; please check console.'}, broadcast=True, room="UI_1")
             sendUSStatItems()
             print("{0}{1}{2}".format(colors.RED, "***LUA ERROR***: ", colors.END), end="", file=sys.stderr)
             print("{0}{1}{2}".format(colors.RED, str(e).replace("\033", ""), colors.END), file=sys.stderr)
             print("{0}{1}{2}".format(colors.YELLOW, "Lua engine stopped; please open 'Userscripts' and press Load to reinitialize scripts.", colors.END), file=sys.stderr)
         else:
-            emit('from_server', {'cmd': 'errmsg', 'data': 'Error occurred during generator call; please check console.'}, broadcast=True)
+            emit('from_server', {'cmd': 'errmsg', 'data': 'Error occurred during generator call; please check console.'}, broadcast=True, room="UI_1")
             print("{0}{1}{2}".format(colors.RED, traceback.format_exc().replace("\033", ""), colors.END), file=sys.stderr)
         set_aibusy(0)
         return
@@ -3928,7 +3932,7 @@ def genresult(genout, flash=True, ignore_formatting=False):
         story_settings.actions.append(genout)
     update_story_chunk('last')
     if(flash):
-        emit('from_server', {'cmd': 'texteffect', 'data': story_settings.actions.get_last_key() + 1 if len(story_settings.actions) else 0}, broadcast=True)
+        emit('from_server', {'cmd': 'texteffect', 'data': story_settings.actions.get_last_key() + 1 if len(story_settings.actions) else 0}, broadcast=True, room="UI_1")
     send_debug()
 
 #==================================================================#
@@ -3955,7 +3959,7 @@ def genselect(genout):
     genout = story_settings.actions.get_current_options_no_edits(ui=1)
 
     # Send sequences to UI for selection
-    emit('from_server', {'cmd': 'genseqs', 'data': genout}, broadcast=True)
+    emit('from_server', {'cmd': 'genseqs', 'data': genout}, broadcast=True, room="UI_1")
     send_debug()
 
 #==================================================================#
@@ -3968,8 +3972,8 @@ def selectsequence(n):
     if(len(system_settings.lua_koboldbridge.feedback) != 0):
         story_settings.actions.append(system_settings.lua_koboldbridge.feedback)
         update_story_chunk('last')
-        emit('from_server', {'cmd': 'texteffect', 'data': story_settings.actions.get_last_key() + 1 if len(story_settings.actions) else 0}, broadcast=True)
-    emit('from_server', {'cmd': 'hidegenseqs', 'data': ''}, broadcast=True)
+        emit('from_server', {'cmd': 'texteffect', 'data': story_settings.actions.get_last_key() + 1 if len(story_settings.actions) else 0}, broadcast=True, room="UI_1")
+    emit('from_server', {'cmd': 'hidegenseqs', 'data': ''}, broadcast=True, room="UI_1")
     story_settings.genseqs = []
 
     if(system_settings.lua_koboldbridge.restart_sequence is not None):
@@ -4066,7 +4070,7 @@ def sendtocolab(txt, min, max):
     else:
         errmsg = "Colab API Error: Failed to get a reply from the server. Please check the colab console."
         print("{0}{1}{2}".format(colors.RED, errmsg, colors.END))
-        emit('from_server', {'cmd': 'errmsg', 'data': errmsg}, broadcast=True)
+        emit('from_server', {'cmd': 'errmsg', 'data': errmsg}, broadcast=True, room="UI_1")
         set_aibusy(0)
 
 #==================================================================#
@@ -4166,13 +4170,13 @@ def tpumtjgenerate(txt, minimum, maximum, found_entries=None):
         if(issubclass(type(e), lupa.LuaError)):
             system_settings.lua_koboldbridge.obliterate_multiverse()
             system_settings.lua_running = False
-            emit('from_server', {'cmd': 'errmsg', 'data': 'Lua script error; please check console.'}, broadcast=True)
+            emit('from_server', {'cmd': 'errmsg', 'data': 'Lua script error; please check console.'}, broadcast=True, room="UI_1")
             sendUSStatItems()
             print("{0}{1}{2}".format(colors.RED, "***LUA ERROR***: ", colors.END), end="", file=sys.stderr)
             print("{0}{1}{2}".format(colors.RED, str(e).replace("\033", ""), colors.END), file=sys.stderr)
             print("{0}{1}{2}".format(colors.YELLOW, "Lua engine stopped; please open 'Userscripts' and press Load to reinitialize scripts.", colors.END), file=sys.stderr)
         else:
-            emit('from_server', {'cmd': 'errmsg', 'data': 'Error occurred during generator call; please check console.'}, broadcast=True)
+            emit('from_server', {'cmd': 'errmsg', 'data': 'Error occurred during generator call; please check console.'}, broadcast=True, room="UI_1")
             print("{0}{1}{2}".format(colors.RED, traceback.format_exc().replace("\033", ""), colors.END), file=sys.stderr)
         set_aibusy(0)
         return
@@ -4274,7 +4278,7 @@ def refresh_story():
         item = system_settings.comregex_ui.sub(lambda m: '\n'.join('<comment>' + l + '</comment>' for l in m.group().split('\n')), item)  # Add special formatting to comments
         item = system_settings.acregex_ui.sub('<action>\\1</action>', item)  # Add special formatting to adventure actions
         text_parts.extend(('<chunk n="', str(idx), '" id="n', str(idx), '" tabindex="-1">', item, '</chunk>'))
-    emit('from_server', {'cmd': 'updatescreen', 'gamestarted': story_settings.gamestarted, 'data': formatforhtml(''.join(text_parts))}, broadcast=True)
+    emit('from_server', {'cmd': 'updatescreen', 'gamestarted': story_settings.gamestarted, 'data': formatforhtml(''.join(text_parts))}, broadcast=True, room="UI_1")
 
 
 #==================================================================#
@@ -4306,7 +4310,7 @@ def update_story_chunk(idx: Union[int, str]):
     item = system_settings.acregex_ui.sub('<action>\\1</action>', item)  # Add special formatting to adventure actions
 
     chunk_text = f'<chunk n="{idx}" id="n{idx}" tabindex="-1">{formatforhtml(item)}</chunk>'
-    emit('from_server', {'cmd': 'updatechunk', 'data': {'index': idx, 'html': chunk_text}}, broadcast=True)
+    emit('from_server', {'cmd': 'updatechunk', 'data': {'index': idx, 'html': chunk_text}}, broadcast=True, room="UI_1")
 
     setgamesaved(False)
 
@@ -4319,7 +4323,7 @@ def update_story_chunk(idx: Union[int, str]):
 # Signals the Game Screen to remove one of the chunks
 #==================================================================#
 def remove_story_chunk(idx: int):
-    emit('from_server', {'cmd': 'removechunk', 'data': idx}, broadcast=True)
+    emit('from_server', {'cmd': 'removechunk', 'data': idx}, broadcast=True, room="UI_1")
     setgamesaved(False)
 
 
@@ -4328,45 +4332,45 @@ def remove_story_chunk(idx: int):
 #==================================================================#
 def refresh_settings():
     # Suppress toggle change events while loading state
-    emit('from_server', {'cmd': 'allowtoggle', 'data': False}, broadcast=True)
+    emit('from_server', {'cmd': 'allowtoggle', 'data': False}, broadcast=True, room="UI_1")
     
     if(model_settings.model != "InferKit"):
-        emit('from_server', {'cmd': 'updatetemp', 'data': model_settings.temp}, broadcast=True)
-        emit('from_server', {'cmd': 'updatetopp', 'data': model_settings.top_p}, broadcast=True)
-        emit('from_server', {'cmd': 'updatetopk', 'data': model_settings.top_k}, broadcast=True)
-        emit('from_server', {'cmd': 'updatetfs', 'data': model_settings.tfs}, broadcast=True)
-        emit('from_server', {'cmd': 'updatetypical', 'data': model_settings.typical}, broadcast=True)
-        emit('from_server', {'cmd': 'updatetopa', 'data': model_settings.top_a}, broadcast=True)
-        emit('from_server', {'cmd': 'updatereppen', 'data': model_settings.rep_pen}, broadcast=True)
-        emit('from_server', {'cmd': 'updatereppenslope', 'data': model_settings.rep_pen_slope}, broadcast=True)
-        emit('from_server', {'cmd': 'updatereppenrange', 'data': model_settings.rep_pen_range}, broadcast=True)
-        emit('from_server', {'cmd': 'updateoutlen', 'data': model_settings.genamt}, broadcast=True)
-        emit('from_server', {'cmd': 'updatetknmax', 'data': model_settings.max_length}, broadcast=True)
-        emit('from_server', {'cmd': 'updatenumseq', 'data': model_settings.numseqs}, broadcast=True)
+        emit('from_server', {'cmd': 'updatetemp', 'data': model_settings.temp}, broadcast=True, room="UI_1")
+        emit('from_server', {'cmd': 'updatetopp', 'data': model_settings.top_p}, broadcast=True, room="UI_1")
+        emit('from_server', {'cmd': 'updatetopk', 'data': model_settings.top_k}, broadcast=True, room="UI_1")
+        emit('from_server', {'cmd': 'updatetfs', 'data': model_settings.tfs}, broadcast=True, room="UI_1")
+        emit('from_server', {'cmd': 'updatetypical', 'data': model_settings.typical}, broadcast=True, room="UI_1")
+        emit('from_server', {'cmd': 'updatetopa', 'data': model_settings.top_a}, broadcast=True, room="UI_1")
+        emit('from_server', {'cmd': 'updatereppen', 'data': model_settings.rep_pen}, broadcast=True, room="UI_1")
+        emit('from_server', {'cmd': 'updatereppenslope', 'data': model_settings.rep_pen_slope}, broadcast=True, room="UI_1")
+        emit('from_server', {'cmd': 'updatereppenrange', 'data': model_settings.rep_pen_range}, broadcast=True, room="UI_1")
+        emit('from_server', {'cmd': 'updateoutlen', 'data': model_settings.genamt}, broadcast=True, room="UI_1")
+        emit('from_server', {'cmd': 'updatetknmax', 'data': model_settings.max_length}, broadcast=True, room="UI_1")
+        emit('from_server', {'cmd': 'updatenumseq', 'data': model_settings.numseqs}, broadcast=True, room="UI_1")
     else:
-        emit('from_server', {'cmd': 'updatetemp', 'data': model_settings.temp}, broadcast=True)
-        emit('from_server', {'cmd': 'updatetopp', 'data': model_settings.top_p}, broadcast=True)
-        emit('from_server', {'cmd': 'updateikgen', 'data': model_settings.ikgen}, broadcast=True)
+        emit('from_server', {'cmd': 'updatetemp', 'data': model_settings.temp}, broadcast=True, room="UI_1")
+        emit('from_server', {'cmd': 'updatetopp', 'data': model_settings.top_p}, broadcast=True, room="UI_1")
+        emit('from_server', {'cmd': 'updateikgen', 'data': model_settings.ikgen}, broadcast=True, room="UI_1")
     
-    emit('from_server', {'cmd': 'updateanotedepth', 'data': story_settings.andepth}, broadcast=True)
-    emit('from_server', {'cmd': 'updatewidepth', 'data': user_settings.widepth}, broadcast=True)
-    emit('from_server', {'cmd': 'updateuseprompt', 'data': story_settings.useprompt}, broadcast=True)
-    emit('from_server', {'cmd': 'updateadventure', 'data': story_settings.adventure}, broadcast=True)
-    emit('from_server', {'cmd': 'updatechatmode', 'data': story_settings.chatmode}, broadcast=True)
-    emit('from_server', {'cmd': 'updatedynamicscan', 'data': story_settings.dynamicscan}, broadcast=True)
-    emit('from_server', {'cmd': 'updateautosave', 'data': user_settings.autosave}, broadcast=True)
-    emit('from_server', {'cmd': 'updatenopromptgen', 'data': user_settings.nopromptgen}, broadcast=True)
-    emit('from_server', {'cmd': 'updaterngpersist', 'data': user_settings.rngpersist}, broadcast=True)
-    emit('from_server', {'cmd': 'updatenogenmod', 'data': user_settings.nogenmod}, broadcast=True)
+    emit('from_server', {'cmd': 'updateanotedepth', 'data': story_settings.andepth}, broadcast=True, room="UI_1")
+    emit('from_server', {'cmd': 'updatewidepth', 'data': user_settings.widepth}, broadcast=True, room="UI_1")
+    emit('from_server', {'cmd': 'updateuseprompt', 'data': story_settings.useprompt}, broadcast=True, room="UI_1")
+    emit('from_server', {'cmd': 'updateadventure', 'data': story_settings.adventure}, broadcast=True, room="UI_1")
+    emit('from_server', {'cmd': 'updatechatmode', 'data': story_settings.chatmode}, broadcast=True, room="UI_1")
+    emit('from_server', {'cmd': 'updatedynamicscan', 'data': story_settings.dynamicscan}, broadcast=True, room="UI_1")
+    emit('from_server', {'cmd': 'updateautosave', 'data': user_settings.autosave}, broadcast=True, room="UI_1")
+    emit('from_server', {'cmd': 'updatenopromptgen', 'data': user_settings.nopromptgen}, broadcast=True, room="UI_1")
+    emit('from_server', {'cmd': 'updaterngpersist', 'data': user_settings.rngpersist}, broadcast=True, room="UI_1")
+    emit('from_server', {'cmd': 'updatenogenmod', 'data': user_settings.nogenmod}, broadcast=True, room="UI_1")
     
-    emit('from_server', {'cmd': 'updatefrmttriminc', 'data': user_settings.formatoptns["frmttriminc"]}, broadcast=True)
-    emit('from_server', {'cmd': 'updatefrmtrmblln', 'data': user_settings.formatoptns["frmtrmblln"]}, broadcast=True)
-    emit('from_server', {'cmd': 'updatefrmtrmspch', 'data': user_settings.formatoptns["frmtrmspch"]}, broadcast=True)
-    emit('from_server', {'cmd': 'updatefrmtadsnsp', 'data': user_settings.formatoptns["frmtadsnsp"]}, broadcast=True)
-    emit('from_server', {'cmd': 'updatesingleline', 'data': user_settings.formatoptns["singleline"]}, broadcast=True)
+    emit('from_server', {'cmd': 'updatefrmttriminc', 'data': user_settings.formatoptns["frmttriminc"]}, broadcast=True, room="UI_1")
+    emit('from_server', {'cmd': 'updatefrmtrmblln', 'data': user_settings.formatoptns["frmtrmblln"]}, broadcast=True, room="UI_1")
+    emit('from_server', {'cmd': 'updatefrmtrmspch', 'data': user_settings.formatoptns["frmtrmspch"]}, broadcast=True, room="UI_1")
+    emit('from_server', {'cmd': 'updatefrmtadsnsp', 'data': user_settings.formatoptns["frmtadsnsp"]}, broadcast=True, room="UI_1")
+    emit('from_server', {'cmd': 'updatesingleline', 'data': user_settings.formatoptns["singleline"]}, broadcast=True, room="UI_1")
     
     # Allow toggle events again
-    emit('from_server', {'cmd': 'allowtoggle', 'data': True}, broadcast=True)
+    emit('from_server', {'cmd': 'allowtoggle', 'data': True}, broadcast=True, room="UI_1")
 
 #==================================================================#
 #  Sets the logical and display states for the AI Busy condition
@@ -4374,10 +4378,10 @@ def refresh_settings():
 def set_aibusy(state):
     if(state):
         system_settings.aibusy = True
-        emit('from_server', {'cmd': 'setgamestate', 'data': 'wait'}, broadcast=True)
+        emit('from_server', {'cmd': 'setgamestate', 'data': 'wait'}, broadcast=True, room="UI_1")
     else:
         system_settings.aibusy = False
-        emit('from_server', {'cmd': 'setgamestate', 'data': 'ready'}, broadcast=True)
+        emit('from_server', {'cmd': 'setgamestate', 'data': 'ready'}, broadcast=True, room="UI_1")
 
 #==================================================================#
 # 
@@ -4389,8 +4393,8 @@ def editrequest(n):
         txt = story_settings.actions[n-1]
     
     story_settings.editln = n
-    emit('from_server', {'cmd': 'setinputtext', 'data': txt}, broadcast=True)
-    emit('from_server', {'cmd': 'enablesubmit', 'data': ''}, broadcast=True)
+    emit('from_server', {'cmd': 'setinputtext', 'data': txt}, broadcast=True, room="UI_1")
+    emit('from_server', {'cmd': 'enablesubmit', 'data': ''}, broadcast=True, room="UI_1")
 
 #==================================================================#
 # 
@@ -4404,8 +4408,8 @@ def editsubmit(data):
     
     story_settings.mode = "play"
     update_story_chunk(story_settings.editln)
-    emit('from_server', {'cmd': 'texteffect', 'data': story_settings.editln}, broadcast=True)
-    emit('from_server', {'cmd': 'editmode', 'data': 'false'})
+    emit('from_server', {'cmd': 'texteffect', 'data': story_settings.editln}, broadcast=True, room="UI_1")
+    emit('from_server', {'cmd': 'editmode', 'data': 'false'}, room="UI_1")
     send_debug()
 
 #==================================================================#
@@ -4421,7 +4425,7 @@ def deleterequest():
         story_settings.actions.delete_action(story_settings.editln-1)
         story_settings.mode = "play"
         remove_story_chunk(story_settings.editln)
-        emit('from_server', {'cmd': 'editmode', 'data': 'false'})
+        emit('from_server', {'cmd': 'editmode', 'data': 'false'}, room="UI_1")
     send_debug()
 
 #==================================================================#
@@ -4442,8 +4446,8 @@ def inlineedit(chunk, data):
 
     setgamesaved(False)
     update_story_chunk(chunk)
-    emit('from_server', {'cmd': 'texteffect', 'data': chunk}, broadcast=True)
-    emit('from_server', {'cmd': 'editmode', 'data': 'false'}, broadcast=True)
+    emit('from_server', {'cmd': 'texteffect', 'data': chunk}, broadcast=True, room="UI_1")
+    emit('from_server', {'cmd': 'editmode', 'data': 'false'}, broadcast=True, room="UI_1")
     send_debug()
 
 #==================================================================#
@@ -4456,8 +4460,8 @@ def inlinedelete(chunk):
     if(chunk == 0):
         # Send error message
         update_story_chunk(chunk)
-        emit('from_server', {'cmd': 'errmsg', 'data': "Cannot delete the prompt."})
-        emit('from_server', {'cmd': 'editmode', 'data': 'false'}, broadcast=True)
+        emit('from_server', {'cmd': 'errmsg', 'data': "Cannot delete the prompt."}, room="UI_1")
+        emit('from_server', {'cmd': 'editmode', 'data': 'false'}, broadcast=True, room="UI_1")
     else:
         if(chunk-1 in story_settings.actions):
             story_settings.actions.delete_action(chunk-1)
@@ -4465,7 +4469,7 @@ def inlinedelete(chunk):
             print(f"WARNING: Attempted to delete non-existent chunk {chunk}")
         setgamesaved(False)
         remove_story_chunk(chunk)
-        emit('from_server', {'cmd': 'editmode', 'data': 'false'}, broadcast=True)
+        emit('from_server', {'cmd': 'editmode', 'data': 'false'}, broadcast=True, room="UI_1")
     send_debug()
 
 #==================================================================#
@@ -4474,13 +4478,13 @@ def inlinedelete(chunk):
 def togglememorymode():
     if(story_settings.mode == "play"):
         story_settings.mode = "memory"
-        emit('from_server', {'cmd': 'memmode', 'data': 'true'}, broadcast=True)
-        emit('from_server', {'cmd': 'setinputtext', 'data': story_settings.memory}, broadcast=True)
-        emit('from_server', {'cmd': 'setanote', 'data': story_settings.authornote}, broadcast=True)
-        emit('from_server', {'cmd': 'setanotetemplate', 'data': story_settings.authornotetemplate}, broadcast=True)
+        emit('from_server', {'cmd': 'memmode', 'data': 'true'}, broadcast=True, room="UI_1")
+        emit('from_server', {'cmd': 'setinputtext', 'data': story_settings.memory}, broadcast=True, room="UI_1")
+        emit('from_server', {'cmd': 'setanote', 'data': story_settings.authornote}, broadcast=True, room="UI_1")
+        emit('from_server', {'cmd': 'setanotetemplate', 'data': story_settings.authornotetemplate}, broadcast=True, room="UI_1")
     elif(story_settings.mode == "memory"):
         story_settings.mode = "play"
-        emit('from_server', {'cmd': 'memmode', 'data': 'false'}, broadcast=True)
+        emit('from_server', {'cmd': 'memmode', 'data': 'false'}, broadcast=True, room="UI_1")
 
 #==================================================================#
 #   Toggles the game mode for WI editing and sends UI commands
@@ -4488,13 +4492,13 @@ def togglememorymode():
 def togglewimode():
     if(story_settings.mode == "play"):
         story_settings.mode = "wi"
-        emit('from_server', {'cmd': 'wimode', 'data': 'true'}, broadcast=True)
+        emit('from_server', {'cmd': 'wimode', 'data': 'true'}, broadcast=True, room="UI_1")
     elif(story_settings.mode == "wi"):
         # Commit WI fields first
         requestwi()
         # Then set UI state back to Play
         story_settings.mode = "play"
-        emit('from_server', {'cmd': 'wimode', 'data': 'false'}, broadcast=True)
+        emit('from_server', {'cmd': 'wimode', 'data': 'false'}, broadcast=True, room="UI_1")
     sendwi()
 
 #==================================================================#
@@ -4512,7 +4516,7 @@ def addwiitem(folder_uid=None):
     story_settings.worldinfo[-1]["uid"] = uid
     if(folder_uid is not None):
         story_settings.wifolders_u[folder_uid].append(story_settings.worldinfo[-1])
-    emit('from_server', {'cmd': 'addwiitem', 'data': ob}, broadcast=True)
+    emit('from_server', {'cmd': 'addwiitem', 'data': ob}, broadcast=True, room="UI_1")
 
 #==================================================================#
 #   Creates a new WI folder with an unused cryptographically secure random UID
@@ -4526,7 +4530,7 @@ def addwifolder():
     story_settings.wifolders_d[uid] = ob
     story_settings.wifolders_l.append(uid)
     story_settings.wifolders_u[uid] = []
-    emit('from_server', {'cmd': 'addwifolder', 'uid': uid, 'data': ob}, broadcast=True)
+    emit('from_server', {'cmd': 'addwifolder', 'uid': uid, 'data': ob}, broadcast=True, room="UI_1")
     addwiitem(folder_uid=uid)
 
 #==================================================================#
@@ -4573,7 +4577,7 @@ def sendwi():
     ln = len(story_settings.worldinfo)
 
     # Clear contents of WI container
-    emit('from_server', {'cmd': 'wistart', 'wifolders_d': story_settings.wifolders_d, 'wifolders_l': story_settings.wifolders_l, 'data': ''}, broadcast=True)
+    emit('from_server', {'cmd': 'wistart', 'wifolders_d': story_settings.wifolders_d, 'wifolders_l': story_settings.wifolders_l, 'data': ''}, broadcast=True, room="UI_1")
 
     # Stable-sort WI entries in order of folder
     stablesortwi()
@@ -4588,12 +4592,12 @@ def sendwi():
         last_folder = ...
         for wi in story_settings.worldinfo:
             if(wi["folder"] != last_folder):
-                emit('from_server', {'cmd': 'addwifolder', 'uid': wi["folder"], 'data': story_settings.wifolders_d[wi["folder"]] if wi["folder"] is not None else None}, broadcast=True)
+                emit('from_server', {'cmd': 'addwifolder', 'uid': wi["folder"], 'data': story_settings.wifolders_d[wi["folder"]] if wi["folder"] is not None else None}, broadcast=True, room="UI_1")
                 last_folder = wi["folder"]
             ob = wi
-            emit('from_server', {'cmd': 'addwiitem', 'data': ob}, broadcast=True)
+            emit('from_server', {'cmd': 'addwiitem', 'data': ob}, broadcast=True, room="UI_1")
     
-    emit('from_server', {'cmd': 'wifinish', 'data': ''}, broadcast=True)
+    emit('from_server', {'cmd': 'wifinish', 'data': ''}, broadcast=True, room="UI_1")
 
 #==================================================================#
 #  Request current contents of all WI HTML elements
@@ -4602,7 +4606,7 @@ def requestwi():
     list = []
     for wi in story_settings.worldinfo:
         list.append(wi["num"])
-    emit('from_server', {'cmd': 'requestwiitem', 'data': list})
+    emit('from_server', {'cmd': 'requestwiitem', 'data': list}, room="UI_1")
 
 #==================================================================#
 #  Stable-sort WI items so that items in the same folder are adjacent,
@@ -4779,17 +4783,17 @@ def checkworldinfo(txt, allowed_entries=None, allowed_folders=None, force_use_tx
 #  Commit changes to Memory storage
 #==================================================================#
 def memsubmit(data):
-    emit('from_server', {'cmd': 'setinputtext', 'data': data}, broadcast=True)
+    emit('from_server', {'cmd': 'setinputtext', 'data': data}, broadcast=True, room="UI_1")
     # Maybe check for length at some point
     # For now just send it to storage
     if(data != story_settings.memory):
         setgamesaved(False)
     story_settings.memory = data
     story_settings.mode = "play"
-    emit('from_server', {'cmd': 'memmode', 'data': 'false'}, broadcast=True)
+    emit('from_server', {'cmd': 'memmode', 'data': 'false'}, broadcast=True, room="UI_1")
     
     # Ask for contents of Author's Note field
-    emit('from_server', {'cmd': 'getanote', 'data': ''})
+    emit('from_server', {'cmd': 'getanote', 'data': ''}, room="UI_1")
 
 #==================================================================#
 #  Commit changes to Author's Note
@@ -4807,8 +4811,8 @@ def anotesubmit(data, template=""):
         settingschanged()
     story_settings.authornotetemplate = template
 
-    emit('from_server', {'cmd': 'setanote', 'data': story_settings.authornote}, broadcast=True)
-    emit('from_server', {'cmd': 'setanotetemplate', 'data': story_settings.authornotetemplate}, broadcast=True)
+    emit('from_server', {'cmd': 'setanote', 'data': story_settings.authornote}, broadcast=True, room="UI_1")
+    emit('from_server', {'cmd': 'setanotetemplate', 'data': story_settings.authornotetemplate}, broadcast=True, room="UI_1")
 
 #==================================================================#
 #  Assembles game data into a request to InferKit API
@@ -4857,7 +4861,7 @@ def ikrequest(txt):
             print("{0}{1}{2}".format(colors.CYAN, genout, colors.END))
         story_settings.actions.append(genout)
         update_story_chunk('last')
-        emit('from_server', {'cmd': 'texteffect', 'data': story_settings.actions.get_last_key() + 1 if len(story_settings.actions) else 0}, broadcast=True)
+        emit('from_server', {'cmd': 'texteffect', 'data': story_settings.actions.get_last_key() + 1 if len(story_settings.actions) else 0}, broadcast=True, room="UI_1")
         send_debug()
         set_aibusy(0)
     else:
@@ -4869,7 +4873,7 @@ def ikrequest(txt):
             code = er["errors"][0]["extensions"]["code"]
             
         errmsg = "InferKit API Error: {0} - {1}".format(req.status_code, code)
-        emit('from_server', {'cmd': 'errmsg', 'data': errmsg}, broadcast=True)
+        emit('from_server', {'cmd': 'errmsg', 'data': errmsg}, broadcast=True, room="UI_1")
         set_aibusy(0)
 
 #==================================================================#
@@ -4962,7 +4966,7 @@ def oairequest(txt, min, max):
             message = er["error"]["message"]
             
         errmsg = "OpenAI API Error: {0} - {1}".format(type, message)
-        emit('from_server', {'cmd': 'errmsg', 'data': errmsg}, broadcast=True)
+        emit('from_server', {'cmd': 'errmsg', 'data': errmsg}, broadcast=True, room="UI_1")
         set_aibusy(0)
 
 #==================================================================#
@@ -4970,11 +4974,11 @@ def oairequest(txt, min, max):
 #==================================================================#
 def exitModes():
     if(story_settings.mode == "edit"):
-        emit('from_server', {'cmd': 'editmode', 'data': 'false'}, broadcast=True)
+        emit('from_server', {'cmd': 'editmode', 'data': 'false'}, broadcast=True, room="UI_1")
     elif(story_settings.mode == "memory"):
-        emit('from_server', {'cmd': 'memmode', 'data': 'false'}, broadcast=True)
+        emit('from_server', {'cmd': 'memmode', 'data': 'false'}, broadcast=True, room="UI_1")
     elif(story_settings.mode == "wi"):
-        emit('from_server', {'cmd': 'wimode', 'data': 'false'}, broadcast=True)
+        emit('from_server', {'cmd': 'wimode', 'data': 'false'}, broadcast=True, room="UI_1")
     story_settings.mode = "play"
 
 #==================================================================#
@@ -4992,15 +4996,15 @@ def saveas(data):
         user_settings.saveow = False
         user_settings.svowname = ""
         if(e is None):
-            emit('from_server', {'cmd': 'hidesaveas', 'data': ''})
+            emit('from_server', {'cmd': 'hidesaveas', 'data': ''}, room="UI_1")
         else:
             print("{0}{1}{2}".format(colors.RED, str(e), colors.END))
-            emit('from_server', {'cmd': 'popuperror', 'data': str(e)})
+            emit('from_server', {'cmd': 'popuperror', 'data': str(e)}, room="UI_1")
     else:
         # File exists, prompt for overwrite
         user_settings.saveow   = True
         user_settings.svowname = name
-        emit('from_server', {'cmd': 'askforoverwrite', 'data': ''})
+        emit('from_server', {'cmd': 'askforoverwrite', 'data': ''}, room="UI_1")
 
 #==================================================================#
 #  Launch in-browser story-delete prompt
@@ -5010,13 +5014,13 @@ def deletesave(name):
     e = fileops.deletesave(name)
     if(e is None):
         if(system_settings.smandelete):
-            emit('from_server', {'cmd': 'hidepopupdelete', 'data': ''})
+            emit('from_server', {'cmd': 'hidepopupdelete', 'data': ''}, room="UI_1")
             getloadlist()
         else:
-            emit('from_server', {'cmd': 'popuperror', 'data': "The server denied your request to delete this story"})
+            emit('from_server', {'cmd': 'popuperror', 'data': "The server denied your request to delete this story"}, room="UI_1")
     else:
         print("{0}{1}{2}".format(colors.RED, str(e), colors.END))
-        emit('from_server', {'cmd': 'popuperror', 'data': str(e)})
+        emit('from_server', {'cmd': 'popuperror', 'data': str(e)}, room="UI_1")
 
 #==================================================================#
 #  Launch in-browser story-rename prompt
@@ -5031,18 +5035,18 @@ def renamesave(name, newname):
         user_settings.svowname = ""
         if(e is None):
             if(system_settings.smanrename):
-                emit('from_server', {'cmd': 'hidepopuprename', 'data': ''})
+                emit('from_server', {'cmd': 'hidepopuprename', 'data': ''}, room="UI_1")
                 getloadlist()
             else:
-                emit('from_server', {'cmd': 'popuperror', 'data': "The server denied your request to rename this story"})
+                emit('from_server', {'cmd': 'popuperror', 'data': "The server denied your request to rename this story"}, room="UI_1")
         else:
             print("{0}{1}{2}".format(colors.RED, str(e), colors.END))
-            emit('from_server', {'cmd': 'popuperror', 'data': str(e)})
+            emit('from_server', {'cmd': 'popuperror', 'data': str(e)}, room="UI_1")
     else:
         # File exists, prompt for overwrite
         user_settings.saveow   = True
         user_settings.svowname = newname
-        emit('from_server', {'cmd': 'askforoverwrite', 'data': ''})
+        emit('from_server', {'cmd': 'askforoverwrite', 'data': ''}, room="UI_1")
 
 #==================================================================#
 #  Save the currently running story
@@ -5052,7 +5056,7 @@ def save():
     if(".json" in system_settings.savedir):
         saveRequest(system_settings.savedir)
     else:
-        emit('from_server', {'cmd': 'saveas', 'data': ''})
+        emit('from_server', {'cmd': 'saveas', 'data': ''}, room="UI_1")
 
 #==================================================================#
 #  Save the story via file browser
@@ -5128,7 +5132,7 @@ def saveRequest(savpath, savepins=True):
         if(filename.endswith('.json')):
             filename = filename[:-5]
         user_settings.laststory = filename
-        emit('from_server', {'cmd': 'setstoryname', 'data': user_settings.laststory}, broadcast=True)
+        emit('from_server', {'cmd': 'setstoryname', 'data': user_settings.laststory}, broadcast=True, room="UI_1")
         setgamesaved(True)
         print("{0}Story saved to {1}!{2}".format(colors.GREEN, path.basename(savpath), colors.END))
 
@@ -5136,14 +5140,14 @@ def saveRequest(savpath, savepins=True):
 #  Show list of saved stories
 #==================================================================#
 def getloadlist():
-    emit('from_server', {'cmd': 'buildload', 'data': fileops.getstoryfiles()})
+    emit('from_server', {'cmd': 'buildload', 'data': fileops.getstoryfiles()}, room="UI_1")
 
 #==================================================================#
 #  Show list of soft prompts
 #==================================================================#
 def getsplist():
     if(system_settings.allowsp):
-        emit('from_server', {'cmd': 'buildsp', 'data': fileops.getspfiles(model_settings.modeldim)})
+        emit('from_server', {'cmd': 'buildsp', 'data': fileops.getspfiles(model_settings.modeldim)}, room="UI_1")
 
 #==================================================================#
 #  Get list of userscripts
@@ -5311,15 +5315,15 @@ def loadRequest(loadpath, filename=None):
         if(filename.endswith('.json')):
             _filename = filename[:-5]
         user_settings.laststory = _filename
-        emit('from_server', {'cmd': 'setstoryname', 'data': user_settings.laststory}, broadcast=True)
+        emit('from_server', {'cmd': 'setstoryname', 'data': user_settings.laststory}, broadcast=True, room="UI_1")
         setgamesaved(True)
         sendwi()
-        emit('from_server', {'cmd': 'setmemory', 'data': story_settings.memory}, broadcast=True)
-        emit('from_server', {'cmd': 'setanote', 'data': story_settings.authornote}, broadcast=True)
-        emit('from_server', {'cmd': 'setanotetemplate', 'data': story_settings.authornotetemplate}, broadcast=True)
+        emit('from_server', {'cmd': 'setmemory', 'data': story_settings.memory}, broadcast=True, room="UI_1")
+        emit('from_server', {'cmd': 'setanote', 'data': story_settings.authornote}, broadcast=True, room="UI_1")
+        emit('from_server', {'cmd': 'setanotetemplate', 'data': story_settings.authornotetemplate}, broadcast=True, room="UI_1")
         refresh_story()
-        emit('from_server', {'cmd': 'setgamestate', 'data': 'ready'}, broadcast=True)
-        emit('from_server', {'cmd': 'hidegenseqs', 'data': ''}, broadcast=True)
+        emit('from_server', {'cmd': 'setgamestate', 'data': 'ready'}, broadcast=True, room="UI_1")
+        emit('from_server', {'cmd': 'hidegenseqs', 'data': ''}, broadcast=True, room="UI_1")
         print("{0}Story loaded from {1}!{2}".format(colors.GREEN, filename, colors.END))
         
         send_debug()
@@ -5343,7 +5347,7 @@ def importRequest():
             user_settings.importjs = user_settings.importjs["stories"]
         
         # Clear Popup Contents
-        emit('from_server', {'cmd': 'clearpopup', 'data': ''}, broadcast=True)
+        emit('from_server', {'cmd': 'clearpopup', 'data': ''}, broadcast=True, room="UI_1")
         
         # Initialize vars
         num = 0
@@ -5365,11 +5369,11 @@ def importRequest():
                 ob["acts"]  = len(story["actions"])
             elif("actionWindow" in story):
                 ob["acts"]  = len(story["actionWindow"])
-            emit('from_server', {'cmd': 'addimportline', 'data': ob})
+            emit('from_server', {'cmd': 'addimportline', 'data': ob}, room="UI_1")
             num += 1
         
         # Show Popup
-        emit('from_server', {'cmd': 'popupshow', 'data': True})
+        emit('from_server', {'cmd': 'popupshow', 'data': True}, room="UI_1")
 
 #==================================================================#
 # Import an AIDungon game selected in popup
@@ -5468,15 +5472,15 @@ def importgame():
         
         # Refresh game screen
         user_settings.laststory = None
-        emit('from_server', {'cmd': 'setstoryname', 'data': user_settings.laststory}, broadcast=True)
+        emit('from_server', {'cmd': 'setstoryname', 'data': user_settings.laststory}, broadcast=True, room="UI_1")
         setgamesaved(False)
         sendwi()
-        emit('from_server', {'cmd': 'setmemory', 'data': story_settings.memory}, broadcast=True)
-        emit('from_server', {'cmd': 'setanote', 'data': story_settings.authornote}, broadcast=True)
-        emit('from_server', {'cmd': 'setanotetemplate', 'data': story_settings.authornotetemplate}, broadcast=True)
+        emit('from_server', {'cmd': 'setmemory', 'data': story_settings.memory}, broadcast=True, room="UI_1")
+        emit('from_server', {'cmd': 'setanote', 'data': story_settings.authornote}, broadcast=True, room="UI_1")
+        emit('from_server', {'cmd': 'setanotetemplate', 'data': story_settings.authornotetemplate}, broadcast=True, room="UI_1")
         refresh_story()
-        emit('from_server', {'cmd': 'setgamestate', 'data': 'ready'}, broadcast=True)
-        emit('from_server', {'cmd': 'hidegenseqs', 'data': ''}, broadcast=True)
+        emit('from_server', {'cmd': 'setgamestate', 'data': 'ready'}, broadcast=True, room="UI_1")
+        emit('from_server', {'cmd': 'hidegenseqs', 'data': ''}, broadcast=True, room="UI_1")
 
 #==================================================================#
 # Import an aidg.club prompt and start a new game with it.
@@ -5550,14 +5554,14 @@ def importAidgRequest(id):
         
         # Refresh game screen
         user_settings.laststory = None
-        emit('from_server', {'cmd': 'setstoryname', 'data': user_settings.laststory}, broadcast=True)
+        emit('from_server', {'cmd': 'setstoryname', 'data': user_settings.laststory}, broadcast=True, room="UI_1")
         setgamesaved(False)
         sendwi()
-        emit('from_server', {'cmd': 'setmemory', 'data': story_settings.memory}, broadcast=True)
-        emit('from_server', {'cmd': 'setanote', 'data': story_settings.authornote}, broadcast=True)
-        emit('from_server', {'cmd': 'setanotetemplate', 'data': story_settings.authornotetemplate}, broadcast=True)
+        emit('from_server', {'cmd': 'setmemory', 'data': story_settings.memory}, broadcast=True, room="UI_1")
+        emit('from_server', {'cmd': 'setanote', 'data': story_settings.authornote}, broadcast=True, room="UI_1")
+        emit('from_server', {'cmd': 'setanotetemplate', 'data': story_settings.authornotetemplate}, broadcast=True, room="UI_1")
         refresh_story()
-        emit('from_server', {'cmd': 'setgamestate', 'data': 'ready'}, broadcast=True)
+        emit('from_server', {'cmd': 'setgamestate', 'data': 'ready'}, broadcast=True, room="UI_1")
 
 #==================================================================#
 #  Import World Info JSON file
@@ -5643,19 +5647,19 @@ def newGameRequest():
     
     # Refresh game screen
     user_settings.laststory = None
-    emit('from_server', {'cmd': 'setstoryname', 'data': user_settings.laststory}, broadcast=True)
+    emit('from_server', {'cmd': 'setstoryname', 'data': user_settings.laststory}, broadcast=True, room="UI_1")
     setgamesaved(True)
     sendwi()
-    emit('from_server', {'cmd': 'setmemory', 'data': story_settings.memory}, broadcast=True)
-    emit('from_server', {'cmd': 'setanote', 'data': story_settings.authornote}, broadcast=True)
-    emit('from_server', {'cmd': 'setanotetemplate', 'data': story_settings.authornotetemplate}, broadcast=True)
+    emit('from_server', {'cmd': 'setmemory', 'data': story_settings.memory}, broadcast=True, room="UI_1")
+    emit('from_server', {'cmd': 'setanote', 'data': story_settings.authornote}, broadcast=True, room="UI_1")
+    emit('from_server', {'cmd': 'setanotetemplate', 'data': story_settings.authornotetemplate}, broadcast=True, room="UI_1")
     setStartState()
 
 def randomGameRequest(topic, memory=""): 
     if(system_settings.noai):
         newGameRequest()
         story_settings.memory = memory
-        emit('from_server', {'cmd': 'setmemory', 'data': story_settings.memory}, broadcast=True)
+        emit('from_server', {'cmd': 'setmemory', 'data': story_settings.memory}, broadcast=True, room="UI_1")
         return
     story_settings.recentrng = topic
     story_settings.recentrngm = memory
@@ -5668,7 +5672,7 @@ def randomGameRequest(topic, memory=""):
     system_settings.lua_koboldbridge.feedback = None
     actionsubmit("", force_submit=True, force_prompt_gen=True)
     story_settings.memory      = memory
-    emit('from_server', {'cmd': 'setmemory', 'data': story_settings.memory}, broadcast=True)
+    emit('from_server', {'cmd': 'setmemory', 'data': story_settings.memory}, broadcast=True, room="UI_1")
 
 def final_startup():
     # Prevent tokenizer from taking extra time the first time it's used
@@ -5749,7 +5753,7 @@ def send_debug():
         except:
             pass
 
-        emit('from_server', {'cmd': 'debug_info', 'data': debug_info}, broadcast=True)
+        emit('from_server', {'cmd': 'debug_info', 'data': debug_info}, broadcast=True, room="UI_1")
 
 #==================================================================#
 # Event triggered when browser SocketIO detects a variable change
@@ -5825,6 +5829,22 @@ def UI_2_back(data):
 def UI_2_redo(data):
     pass
 
+#==================================================================#
+# Event triggered to rely a message
+#==================================================================#
+@socketio.on('relay')
+def UI_2_relay(data):
+    socketio.emit(data[0], data[1], **data[2])
+
+
+#==================================================================#
+# Test
+#==================================================================#
+@app.route("/actions")
+def show_actions():
+    return story_settings.actions.actions
+    
+    
 
 #==================================================================#
 #  Final startup commands to launch Flask app
@@ -5843,7 +5863,6 @@ if __name__ == "__main__":
     # Start Flask/SocketIO (Blocking, so this must be last method!)
     port = args.port if "port" in args and args.port is not None else 5000
     
-    #socketio.run(app, host='0.0.0.0', port=port)
     if(system_settings.host):
         if(args.localtunnel):
             import subprocess, shutil
