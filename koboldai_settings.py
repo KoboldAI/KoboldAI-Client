@@ -1,6 +1,7 @@
 from flask_socketio import emit, join_room, leave_room, rooms
-import os, re, time, threading
+import os, re, time, threading, json, pickle, base64, copy, tqdm, datetime
 import socketio as socketio_client
+from io import BytesIO
 
 socketio = None
 main_thread_id = threading.get_ident()
@@ -47,8 +48,50 @@ def process_variable_changes(classname, name, value, old_value, debug_message=No
                 else:
                     socketio.emit("var_changed", {"classname": classname, "name": name, "old_value": clean_var_for_emit(old_value), "value": clean_var_for_emit(value)}, include_self=True, broadcast=True, room="UI_2")
 
+
+
         
 class settings(object):
+    def to_json(self):
+        json_data = {'file_version': 2}
+        for (name, value) in vars(self).items():
+            if name not in self.no_save_variables:
+                json_data[name] = value
+        def to_base64(data):
+            if isinstance(data, KoboldStoryRegister):
+                return data.to_json()
+            output = BytesIO()
+            pickle.dump(data, output)
+            output.seek(0)
+            return "base64:{}".format(base64.encodebytes(output.read()).decode())
+        return json.dumps(json_data, default=to_base64)
+    
+    def from_json(self, data):
+        if isinstance(data, str):
+            json_data = json.loads(data)
+        else:
+            json_data = data
+        for key, value in data.items():
+            if key in self.__dict__:
+                if isinstance(value, str):
+                    if value[:7] == 'base64:':
+                        value = pickle.loads(base64.b64decode(value[7:]))
+                #Need to fix the data type of value to match the module
+                if type(getattr(self, key)) == int:
+                    value = int(value)
+                elif type(getattr(self, key)) == float:
+                    value = float(value)
+                elif type(getattr(self, key)) == bool:
+                    value = bool(value)
+                elif type(getattr(self, key)) == str:
+                    value = str(value)
+                if isinstance(getattr(self, key), KoboldStoryRegister):
+                    self.actions.load_json(value)
+                else:
+                    setattr(self, key, value)
+        
+        
+
     def send_to_ui(self):
         if socketio is not None:
             for (name, value) in vars(self).items():
@@ -58,7 +101,8 @@ class settings(object):
     
 
 class model_settings(settings):
-    local_only_variables = ['badwordsids', 'apikey', '_class_init']
+    local_only_variables = ['badwordsids', 'apikey', '_class_init', 'tqdm']
+    no_save_variables = ['tqdm']
     settings_name = "model"
     def __init__(self):
         self.model       = ""     # Model ID string chosen at startup
@@ -79,6 +123,9 @@ class model_settings(settings):
         self.tfs         = 1.0     # Default generator tfs (tail-free sampling)
         self.typical     = 1.0     # Default generator typical sampling threshold
         self.numseqs     = 1       # Number of sequences to ask the generator to create
+        self.generated_tkns = 0    # If using a backend that supports Lua generation modifiers, how many tokens have already been generated, otherwise 0
+        self.tqdm        = tqdm.tqdm(total=self.genamt, file=self.ignore_tqdm())    # tqdm agent for generating tokens. This will allow us to calculate the remaining time
+        self.tqdm_rem_time = 0     # tqdm calculated reemaining time
         self.badwordsids = []
         self.fp32_model  = False  # Whether or not the most recently loaded HF model was in fp32 format
         self.url         = "https://api.inferkit.com/v1/models/standard/generate" # InferKit API URL
@@ -96,20 +143,35 @@ class model_settings(settings):
         self.selected_preset = ""
         
         
+    #dummy class to eat the tqdm output
+    class ignore_tqdm(object):
+        def write(self, bar):
+            pass
+        
     def __setattr__(self, name, value):
         old_value = getattr(self, name, None)
         super().__setattr__(name, value)
         #Put variable change actions here
+        
+        #Setup TQDP
+        if name == "generated_tkns" and 'tqdm' in self.__dict__:
+            if value == 0:
+                self.tqdm.reset(total=self.genamt)
+            else:
+                self.tqdm.update(1)
+                self.tqdm_rem_time = str(datetime.timedelta(seconds=int(float(self.genamt-self.generated_tkns)/self.tqdm.format_dict['rate'])))
+                
+        
         if name not in self.local_only_variables and name[0] != "_":
             process_variable_changes(self.__class__.__name__.replace("_settings", ""), name, value, old_value)
             
-        
-                        
 class story_settings(settings):
     #local_only_variables = ['generated_tkns']
     local_only_variables = []
+    no_save_variables = []
     settings_name = "story"
     def __init__(self):
+        self.story_name  = None   # Title of the story
         self.lastact     = ""     # The last action received from the user
         self.submission  = ""     # Same as above, but after applying input formatting
         self.lastctx     = ""     # The last context submitted to the generator
@@ -136,7 +198,6 @@ class story_settings(settings):
         self.wifolders_u = {}     # Dictionary of pairs of folder UID - list of WI UID
         self.lua_edited  = set()  # Set of chunk numbers that were edited from a Lua generation modifier
         self.lua_deleted = set()  # Set of chunk numbers that were deleted from a Lua generation modifier
-        self.generated_tkns = 0   # If using a backend that supports Lua generation modifiers, how many tokens have already been generated, otherwise 0
         self.deletewi    = None   # Temporary storage for UID to delete
         self.mode        = "play" # Whether the interface is in play, memory, or edit mode
         self.editln      = 0      # Which line was last selected in Edit Mode
@@ -159,9 +220,14 @@ class story_settings(settings):
         #Put variable change actions here
         if name not in self.local_only_variables and name[0] != "_":
             process_variable_changes(self.__class__.__name__.replace("_settings", ""), name, value, old_value)
+        #We want to automatically set gamesaved to false if something happens to the actions list (pins, redos, generations, text, etc)
+        #To do that we need to give the actions list a copy of this data so it can set the gamesaved variable as needed
+        if name == 'actions':
+            self.actions.story_settings = self
                     
 class user_settings(settings):
     local_only_variables = []
+    no_save_variables = []
     settings_name = "user"
     def __init__(self):
         self.wirmvwhtsp  = False             # Whether to remove leading whitespace from WI entries
@@ -190,9 +256,9 @@ class user_settings(settings):
         if name not in self.local_only_variables and name[0] != "_":
             process_variable_changes(self.__class__.__name__.replace("_settings", ""), name, value, old_value)
         
-
 class system_settings(settings):
     local_only_variables = ['lua_state', 'lua_logname', 'lua_koboldbridge', 'lua_kobold', 'lua_koboldcore', 'regex_sl', 'acregex_ai', 'acregex_ui', 'comregex_ai', 'comregex_ui']
+    no_save_variables = []
     settings_name = "system"
     def __init__(self):
         self.noai        = False  # Runs the script without starting up the transformers pipeline
@@ -248,7 +314,6 @@ class system_settings(settings):
         if name not in self.local_only_variables and name[0] != "_":
             process_variable_changes(self.__class__.__name__.replace("_settings", ""), name, value, old_value)
         
-        
 class KoboldStoryRegister(object):
     def __init__(self, sequence=[]):
         self.actions = {}
@@ -290,6 +355,7 @@ class KoboldStoryRegister(object):
             old_text = None
             self.actions[i] = {"Selected Text": text, "Options": []}
         process_variable_changes("actions", "Selected Text", {"id": i, "text": text}, {"id": i, "text": old_text})
+        self.set_game_saved()
     
     def __len__(self):
         return self.action_count+1 if self.action_count >=0 else 0
@@ -317,6 +383,7 @@ class KoboldStoryRegister(object):
             
         self.action_count = json_data['action_count']
         self.actions = temp
+        self.set_game_saved()
             
     def get_action(self, action_id):
         if action_id not in actions:
@@ -342,15 +409,17 @@ class KoboldStoryRegister(object):
         else:
             self.actions[self.action_count] = {"Selected Text": text, "Options": []}
         process_variable_changes("actions", "Selected Text", {"id": self.action_count, "text": text}, None)
+        self.set_game_saved()
     
     def append_options(self, option_list):
         if self.action_count+1 in self.actions:
-            old_options = self.actions[self.action_count+1]["Options"].copy()
+            old_options = copy.deepcopy(self.actions[self.action_count+1]["Options"])
             self.actions[self.action_count+1]['Options'].extend([{"text": x, "Pinned": False, "Previous Selection": False, "Edited": False} for x in option_list])
         else:
             old_options = None
             self.actions[self.action_count+1] = {"Selected Text": "", "Options": [{"text": x, "Pinned": False, "Previous Selection": False, "Edited": False} for x in option_list]}
         process_variable_changes("actions", "Options", {"id": self.action_count+1, "options": self.actions[self.action_count+1]["Options"]}, {"id": self.action_count+1, "options": old_options})
+        self.set_game_saved()
             
     def clear_unused_options(self, pointer=None):
         new_options = []
@@ -358,10 +427,11 @@ class KoboldStoryRegister(object):
         if pointer is None:
             pointer = self.action_count+1
         if pointer in self.actions:
-            old_options = self.actions[pointer]["Options"].copy()
+            old_options = copy.deepcopy(self.actions[pointer]["Options"])
             self.actions[pointer]["Options"] = [x for x in self.actions[pointer]["Options"] if x["Pinned"] or x["Previous Selection"] or x["Edited"]]
             new_options = self.actions[pointer]["Options"]
         process_variable_changes("actions", "Options", {"id": pointer, "options": new_options}, {"id": pointer, "options": old_options})
+        self.set_game_saved()
     
     def toggle_pin(self, action_step, option_number):
         if action_step in self.actions:
@@ -374,22 +444,32 @@ class KoboldStoryRegister(object):
     def set_pin(self, action_step, option_number):
         if action_step in self.actions:
             if option_number < len(self.actions[action_step]['Options']):
-                old_options = self.actions[action_step]["Options"].copy()
+                old_options = copy.deepcopy(self.actions[action_step]["Options"])
                 self.actions[action_step]['Options'][option_number]['Pinned'] = True
                 process_variable_changes("actions", "Options", {"id": action_step, "options": self.actions[action_step]["Options"]}, {"id": action_step, "options": old_options})
+                self.set_game_saved()
     
     def unset_pin(self, action_step, option_number):
         if action_step in self.actions:
-            old_options = self.actions[action_step]["Options"].copy()
+            old_options = copy.deepcopy(self.actions[action_step]["Options"])
             if option_number < len(self.actions[action_step]['Options']):
                 self.actions[action_step]['Options'][option_number]['Pinned'] = False
                 process_variable_changes("actions", "Options", {"id": action_step, "options": self.actions[action_step]["Options"]}, {"id": action_step, "options": old_options})
+                self.set_game_saved()
+    
+    def toggle_pin(self, action_step, option_number):
+        if action_step in self.actions:
+            old_options = copy.deepcopy(self.actions[action_step]["Options"])
+            if option_number < len(self.actions[action_step]['Options']):
+                self.actions[action_step]['Options'][option_number]['Pinned'] = not self.actions[action_step]['Options'][option_number]['Pinned']
+                process_variable_changes("actions", "Options", {"id": action_step, "options": self.actions[action_step]["Options"]}, {"id": action_step, "options": old_options})
+                self.set_game_saved()
     
     def use_option(self, option_number, action_step=None):
         if action_step is None:
             action_step = self.action_count+1
         if action_step in self.actions:
-            old_options = self.actions[action_step]["Options"].copy()
+            old_options = copy.deepcopy(self.actions[action_step]["Options"])
             old_text = self.actions[action_step]["Selected Text"]
             if option_number < len(self.actions[action_step]['Options']):
                 self.actions[action_step]["Selected Text"] = self.actions[action_step]['Options'][option_number]['text']
@@ -400,22 +480,25 @@ class KoboldStoryRegister(object):
                     socketio.emit("var_changed", {"classname": "actions", "name": "Action Count", "old_value": None, "value":self.action_count}, broadcast=True, room="UI_2")
                 process_variable_changes("actions", "Options", {"id": action_step, "options": self.actions[action_step]["Options"]}, {"id": action_step, "options": old_options})
                 process_variable_changes("actions", "Selected Text", {"id": action_step, "text": self.actions[action_step]["Selected Text"]}, {"id": action_step, "Selected Text": old_text})
+                self.set_game_saved()
     
     def delete_action(self, action_id):
         if action_id in self.actions:
-            old_options = self.actions[action_id]["Options"].copy()
+            old_options = copy.deepcopy(self.actions[action_id]["Options"])
             old_text = self.actions[action_id]["Selected Text"]
             self.actions[action_id]["Options"].append({"text": self.actions[action_id]["Selected Text"], "Pinned": False, "Previous Selection": True, "Edited": False})
             self.actions[action_id]["Selected Text"] = ""
             self.action_count -= 1
             process_variable_changes("actions", "Selected Text", {"id": action_id, "text": None}, {"id": action_id, "text": old_text})
             process_variable_changes("actions", "Options", {"id": action_id, "options": self.actions[action_id]["Options"]}, {"id": action_id, "options": old_options})
+            self.set_game_saved()
             
     def pop(self):
         if self.action_count >= 0:
             text = self.actions[self.action_count]
             self.delete_action(self.action_count)
             process_variable_changes("actions", "Selected Text", {"id": self.action_count, "text": None}, {"id": self.action_count, "text": text})
+            self.set_game_saved()
             return text
         else:
             return None
@@ -493,7 +576,10 @@ class KoboldStoryRegister(object):
             return [x for x in self.actions[self.action_count+1]['Options'] if x['Pinned'] or x['Previous Selection']]
         else:
             return []
-            
+        
+    def set_game_saved(self):
+        if 'story_settings' in self.__dict__:
+            self.story_settings.gamesaved = False
     def __setattr__(self, name, value):
         old_value = getattr(self, name, None)
         super().__setattr__(name, value)

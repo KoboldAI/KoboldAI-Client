@@ -12,6 +12,7 @@ socket.on('var_changed', function(data){var_changed(data);});
 
 var backend_vars = {};
 var presets = {}
+var ai_busy_start = Date.now();
 //-----------------------------------Server to UI  Functions-----------------------------------------------
 function connect() {
 	console.log("connected");
@@ -54,14 +55,11 @@ function create_options(data) {
 		var chunk = children[i];
 		if (chunk.id == "Select Options Chunk " + current_chunk) {
 			chunk.classList.remove("hidden");
-			console.log(current_chunk);
 		} else {
 			chunk.classList.add("hidden");
 		}
 	}
 	
-	console.log(current_chunk);
-	console.log(data);
 	if (document.getElementById("Select Options Chunk "+data.value.id)) {
 		var option_chunk = document.getElementById("Select Options Chunk "+data.value.id)
 	} else {
@@ -77,37 +75,6 @@ function create_options(data) {
 	var table = document.createElement("table");
 	table.classList.add("sequence");
 	table.style = "border-spacing: 0;";
-	//Add pins
-	i=0;
-	for (item of data.value.options) {
-		if (item.Pinned) {
-			var row = document.createElement("tr");
-			row.classList.add("sequence");
-			var textcell = document.createElement("td");
-			textcell.textContent = item.text;
-			textcell.classList.add("sequence");
-			textcell.setAttribute("option_id", i);
-			textcell.setAttribute("option_chunk", data.value.id);
-			var iconcell = document.createElement("td");
-			iconcell.setAttribute("option_id", i);
-			iconcell.setAttribute("option_chunk", data.value.id);
-			var icon = document.createElement("span");
-			icon.id = "Pin_"+i;
-			icon.classList.add("oi");
-			icon.setAttribute('data-glyph', "pin");
-			iconcell.append(icon);
-			textcell.onclick = function () {
-									socket.emit("Set Selected Text", {"chunk": this.getAttribute("option_chunk"), "option": this.getAttribute("option_id")});
-							  };
-			iconcell.onclick = function () {
-									socket.emit("Pinning", {"chunk": this.getAttribute("option_chunk"), "option": this.getAttribute("option_id"), "set": false});
-							   };
-			row.append(textcell);
-			row.append(iconcell);
-			table.append(row);
-		}
-		i+=1;
-	}
 	//Add Redo options
 	i=0;
 	for (item of data.value.options) {
@@ -139,7 +106,7 @@ function create_options(data) {
 	//Add general options
 	i=0;
 	for (item of data.value.options) {
-		if (!(item.Edited) && !(item.Pinned) && !(item['Previous Selection'])) {
+		if (!(item.Edited) && !(item['Previous Selection'])) {
 			var row = document.createElement("tr");
 			row.classList.add("sequence");
 			var textcell = document.createElement("td");
@@ -154,10 +121,12 @@ function create_options(data) {
 			icon.id = "Pin_"+i;
 			icon.classList.add("oi");
 			icon.setAttribute('data-glyph', "pin");
-			icon.setAttribute('style', "filter: brightness(50%);");
+			if (!(item.Pinned)) {
+				icon.setAttribute('style', "filter: brightness(50%);");
+			}
 			iconcell.append(icon);
 			iconcell.onclick = function () {
-									socket.emit("Pinning", {"chunk": this.getAttribute("option_chunk"), "option": this.getAttribute("option_id"), "set": true});
+									socket.emit("Pinning", {"chunk": this.getAttribute("option_chunk"), "option": this.getAttribute("option_id")});
 							   };
 			textcell.onclick = function () {
 									socket.emit("Set Selected Text", {"chunk": this.getAttribute("option_chunk"), "option": this.getAttribute("option_id")});
@@ -193,6 +162,7 @@ function do_story_text_updates(data) {
 }
 
 function do_presets(data) {
+	console.log(data);
 	var select = document.getElementById('presets');
 	//clear out the preset list
 	while (select.firstChild) {
@@ -203,11 +173,11 @@ function do_presets(data) {
 	option.value="";
 	option.text="presets";
 	select.append(option);
-	for (item of data.value) {
-		presets[item.preset] = item;
+	for (const [key, value] of Object.entries(data.value)) {
+		presets[key] = value;
 		var option = document.createElement("option");
-		option.value=item.preset;
-		option.text=item.preset;
+		option.value=key;
+		option.text=key;
 		select.append(option);
 	}
 }
@@ -251,6 +221,20 @@ function update_status_bar(data) {
 		document.title = "KoboldAI Client Generating (" + percent_complete + "%)";
 	}
 }
+
+function do_ai_busy(data) {
+	if (data.value) {
+		ai_busy_start = Date.now();
+		favicon.start_swap()
+	} else {
+		runtime = Date.now() - ai_busy_start;
+		if (document.getElementById("Execution Time")) {
+			document.getElementById("Execution Time").textContent = Math.round(runtime/1000).toString().toHHMMSS();
+		}
+		favicon.stop_swap()
+	}
+}
+
 function var_changed(data) {
 	//Special Case for Story Text
 	if ((data.classname == "actions") && (data.name == "Selected Text")) {
@@ -276,22 +260,18 @@ function var_changed(data) {
 		//alternative syncing method
 		var elements_to_change = document.getElementsByClassName("var_sync_alt_"+data.classname.replace(" ", "_")+"_"+data.name.replace(" ", "_"));
 		for (item of elements_to_change) {
-			item.setAttribute("server_value", fix_text(data.value));
+			item.setAttribute(data.classname.replace(" ", "_")+"_"+data.name.replace(" ", "_"), fix_text(data.value));
 		}
 	}
 	
 	//if we're updating generated tokens, let's show that in our status bar
-	if ((data.classname == 'story') && (data.name == 'generated_tkns')) {
+	if ((data.classname == 'model') && (data.name == 'generated_tkns')) {
 		update_status_bar(data);
 	}
 	
 	//If we have ai_busy, start the favicon swapping
 	if ((data.classname == 'system') && (data.name == 'aibusy')) {
-		if (data.value) {
-			favicon.start_swap()
-		} else {
-			favicon.stop_swap()
-		}
+		do_ai_busy(data);
 	}
 }
 
@@ -299,6 +279,18 @@ function var_changed(data) {
 
 
 //--------------------------------------------General UI Functions------------------------------------
+String.prototype.toHHMMSS = function () {
+    var sec_num = parseInt(this, 10); // don't forget the second param
+    var hours   = Math.floor(sec_num / 3600);
+    var minutes = Math.floor((sec_num - (hours * 3600)) / 60);
+    var seconds = sec_num - (hours * 3600) - (minutes * 60);
+
+    if (hours   < 10) {hours   = "0"+hours;}
+    if (minutes < 10) {minutes = "0"+minutes;}
+    if (seconds < 10) {seconds = "0"+seconds;}
+    return hours+':'+minutes+':'+seconds;
+}
+
 function toggle_flyout(x) {
 	if (document.getElementById("SideMenu").classList.contains("open")) {
 		x.classList.remove("change");

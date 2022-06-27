@@ -1024,8 +1024,12 @@ def get_model_info(model, directory=""):
             breakmodel = False
         else:
             breakmodel = True
-            if path.exists("settings/{}.breakmodel".format(model.replace("/", "_"))):
-                with open("settings/{}.breakmodel".format(model.replace("/", "_")), "r") as file:
+            if model in ["NeoCustom", "GPT2Custom"]:
+                filename = os.path.basename(os.path.normpath(directory))
+            else:
+                filename = "settings/{}.breakmodel".format(model.replace("/", "_"))
+            if path.exists(filename):
+                with open(filename, "r") as file:
                     data = file.read().split("\n")[:2]
                     if len(data) < 2:
                         data.append("0")
@@ -1034,10 +1038,6 @@ def get_model_info(model, directory=""):
             else:
                 break_values = [layer_count]
             break_values += [0] * (gpu_count - len(break_values))
-    #print("Model_info: {}".format({'cmd': 'selected_model_info', 'key_value': key_value, 'key':key, 
-    #                     'gpu':gpu, 'layer_count':layer_count, 'breakmodel':breakmodel, 
-    #                     'break_values': break_values, 'gpu_count': gpu_count,
-    #                     'url': url, 'gpu_names': gpu_names}))
     emit('from_server', {'cmd': 'selected_model_info', 'key_value': key_value, 'key':key, 
                          'gpu':gpu, 'layer_count':layer_count, 'breakmodel':breakmodel, 
                          'disk_break_value': disk_blocks, 'accelerate': utils.HAS_ACCELERATE,
@@ -1341,10 +1341,10 @@ def patch_transformers():
             scores: torch.FloatTensor,
             **kwargs,
         ) -> bool:
-            story_settings.generated_tkns += 1
-            if(system_settings.lua_koboldbridge.generated_cols and story_settings.generated_tkns != system_settings.lua_koboldbridge.generated_cols):
-                raise RuntimeError(f"Inconsistency detected between KoboldAI Python and Lua backends ({story_settings.generated_tkns} != {system_settings.lua_koboldbridge.generated_cols})")
-            if(system_settings.abort or story_settings.generated_tkns >= model_settings.genamt):
+            model_settings.generated_tkns += 1
+            if(system_settings.lua_koboldbridge.generated_cols and model_settings.generated_tkns != system_settings.lua_koboldbridge.generated_cols):
+                raise RuntimeError(f"Inconsistency detected between KoboldAI Python and Lua backends ({model_settings.generated_tkns} != {system_settings.lua_koboldbridge.generated_cols})")
+            if(system_settings.abort or model_settings.generated_tkns >= model_settings.genamt):
                 self.regeneration_required = False
                 self.halt = False
                 return True
@@ -1356,11 +1356,11 @@ def patch_transformers():
             system_settings.lua_koboldbridge.regeneration_required = False
 
             for i in range(model_settings.numseqs):
-                system_settings.lua_koboldbridge.generated[i+1][story_settings.generated_tkns] = int(input_ids[i, -1].item())
+                system_settings.lua_koboldbridge.generated[i+1][model_settings.generated_tkns] = int(input_ids[i, -1].item())
 
             if(not story_settings.dynamicscan):
                 return self.regeneration_required or self.halt
-            tail = input_ids[..., -story_settings.generated_tkns:]
+            tail = input_ids[..., -model_settings.generated_tkns:]
             for i, t in enumerate(tail):
                 decoded = utils.decodenewlines(tokenizer.decode(t))
                 _, found = checkworldinfo(decoded, force_use_txt=True, actions=story_settings._actions)
@@ -1970,17 +1970,17 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
             return scores
         
         def tpumtjgenerate_stopping_callback(generated, n_generated, excluded_world_info) -> Tuple[List[set], bool, bool]:
-            story_settings.generated_tkns += 1
+            model_settings.generated_tkns += 1
 
             assert len(excluded_world_info) == len(generated)
             regeneration_required = system_settings.lua_koboldbridge.regeneration_required
-            halt = system_settings.abort or not system_settings.lua_koboldbridge.generating or story_settings.generated_tkns >= model_settings.genamt
+            halt = system_settings.abort or not system_settings.lua_koboldbridge.generating or model_settings.generated_tkns >= model_settings.genamt
             system_settings.lua_koboldbridge.regeneration_required = False
 
             global past
 
             for i in range(model_settings.numseqs):
-                system_settings.lua_koboldbridge.generated[i+1][story_settings.generated_tkns] = int(generated[i, tpu_mtj_backend.params["seq"] + n_generated - 1].item())
+                system_settings.lua_koboldbridge.generated[i+1][model_settings.generated_tkns] = int(generated[i, tpu_mtj_backend.params["seq"] + n_generated - 1].item())
 
             if(not story_settings.dynamicscan or halt):
                 return excluded_world_info, regeneration_required, halt
@@ -2067,7 +2067,16 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
             setStartState()
             sendsettings()
             refresh_settings()
-
+    
+    #Let's load the presets
+    with open('settings/preset/official.presets') as f:
+        presets = json.load(f)
+        if model_settings.model in presets:
+            model_settings.presets = presets[model_settings.model]
+        elif model_settings.model.replace("/", "_") in presets:
+            model_settings.presets = presets[model_settings.model.replace("/", "_")]
+        else:
+            model_settings.presets = {}
 
 # Set up Flask routes
 @app.route('/')
@@ -2770,6 +2779,9 @@ def do_connect():
         return
     join_room("UI_{}".format(request.args.get('ui')))
     print("Joining Room UI_{}".format(request.args.get('ui')))
+    if request.args.get("ui") == 2:
+        ui2_connect()
+        return
     #Send all variables to client
     model_settings.send_to_ui()
     story_settings.send_to_ui()
@@ -3808,9 +3820,9 @@ def _generate(txt, minimum, maximum, found_entries):
                 break
             assert genout.ndim >= 2
             assert genout.shape[0] == model_settings.numseqs
-            if(system_settings.lua_koboldbridge.generated_cols and story_settings.generated_tkns != system_settings.lua_koboldbridge.generated_cols):
+            if(system_settings.lua_koboldbridge.generated_cols and model_settings.generated_tkns != system_settings.lua_koboldbridge.generated_cols):
                 raise RuntimeError("Inconsistency detected between KoboldAI Python and Lua backends")
-            if(already_generated != story_settings.generated_tkns):
+            if(already_generated != model_settings.generated_tkns):
                 raise RuntimeError("WI scanning error")
             for r in range(model_settings.numseqs):
                 for c in range(already_generated):
@@ -3850,7 +3862,7 @@ def _generate(txt, minimum, maximum, found_entries):
     
 
 def generate(txt, minimum, maximum, found_entries=None):    
-    story_settings.generated_tkns = 0
+    model_settings.generated_tkns = 0
 
     if(found_entries is None):
         found_entries = set()
@@ -3886,7 +3898,7 @@ def generate(txt, minimum, maximum, found_entries=None):
         return
 
     for i in range(model_settings.numseqs):
-        system_settings.lua_koboldbridge.generated[i+1][story_settings.generated_tkns] = int(genout[i, -1].item())
+        system_settings.lua_koboldbridge.generated[i+1][model_settings.generated_tkns] = int(genout[i, -1].item())
         system_settings.lua_koboldbridge.outputs[i+1] = utils.decodenewlines(tokenizer.decode(genout[i, -already_generated:]))
 
     execute_outmod()
@@ -4086,7 +4098,7 @@ def sendtocolab(txt, min, max):
 #  Send text to TPU mesh transformer backend
 #==================================================================#
 def tpumtjgenerate(txt, minimum, maximum, found_entries=None):
-    story_settings.generated_tkns = 0
+    model_settings.generated_tkns = 0
 
     if(found_entries is None):
         found_entries = set()
@@ -4173,7 +4185,7 @@ def tpumtjgenerate(txt, minimum, maximum, found_entries=None):
             past = genout
             for i in range(model_settings.numseqs):
                 system_settings.lua_koboldbridge.generated[i+1] = system_settings.lua_state.table(*genout[i].tolist())
-            system_settings.lua_koboldbridge.generated_cols = story_settings.generated_tkns = genout[0].shape[-1]
+            system_settings.lua_koboldbridge.generated_cols = model_settings.generated_tkns = genout[0].shape[-1]
 
     except Exception as e:
         if(issubclass(type(e), lupa.LuaError)):
@@ -5196,6 +5208,7 @@ def loadRequest(loadpath, filename=None):
         # Leave Edit/Memory mode before continuing
         exitModes()
         
+        
         # Read file contents into JSON object
         if(isinstance(loadpath, str)):
             with open(loadpath, "r") as file:
@@ -5206,107 +5219,115 @@ def loadRequest(loadpath, filename=None):
             js = loadpath
             if(filename is None):
                 filename = "untitled.json"
-        
-        # Copy file contents to vars
-        story_settings.gamestarted = js["gamestarted"]
-        story_settings.prompt      = js["prompt"]
-        story_settings.memory      = js["memory"]
-        story_settings.worldinfo   = []
-        story_settings.worldinfo   = []
-        story_settings.worldinfo_u = {}
-        story_settings.wifolders_d = {int(k): v for k, v in js.get("wifolders_d", {}).items()}
-        story_settings.wifolders_l = js.get("wifolders_l", [])
-        story_settings.wifolders_u = {uid: [] for uid in story_settings.wifolders_d}
-        story_settings.lastact     = ""
-        story_settings.submission  = ""
-        story_settings.lastctx     = ""
-        story_settings.genseqs = []
+        js['v1_loadpath'] = loadpath
+        js['v1_filename'] = filename
+        loadJSON(js)
 
-        del story_settings.actions
-        story_settings.actions = koboldai_settings.KoboldStoryRegister()
-        actions = collections.deque(js["actions"])
-        
-
-        if "actions_metadata" in js:
-            
-            if type(js["actions_metadata"]) == dict:
-                temp = js["actions_metadata"]
-                story_settings.actions_metadata = {}
-                #we need to redo the numbering of the actions_metadata since the actions list doesn't preserve it's number on saving
-                if len(temp) > 0:
-                    counter = 0
-                    temp = {int(k):v for k,v in temp.items()}
-                    for i in range(max(temp)+1):
-                        if i in temp:
-                            story_settings.actions_metadata[counter] = temp[i]
-                            counter += 1
-                del temp
-            else:
-                #fix if we're using the old metadata format
-                story_settings.actions_metadata = {}
-                i = 0
-                
-                for text in js['actions']:
-                    story_settings.actions_metadata[i] = {'Selected Text': text, 'Alternative Text': []}
-                    i+=1
+def loadJSON(json_text_or_dict):
+    if isinstance(json_text_or_dict, str):
+        json_data = json.loads(json_text_or_dict)
+    else:
+        json_data = json_text_or_dict
+    if "file_version" in json_data:
+        if json_data['file_version'] == 2:
+            load_story_v2(json_data)
         else:
+            load_story_v1(json_data)
+    else:
+        load_story_v1(json_data)
+
+def load_story_v1(js):
+    loadpath = js['v1_loadpath']
+    filename = js['v1_filename']
+
+    # Copy file contents to vars
+    story_settings.gamestarted = js["gamestarted"]
+    story_settings.prompt      = js["prompt"]
+    story_settings.memory      = js["memory"]
+    story_settings.worldinfo   = []
+    story_settings.worldinfo   = []
+    story_settings.worldinfo_u = {}
+    story_settings.wifolders_d = {int(k): v for k, v in js.get("wifolders_d", {}).items()}
+    story_settings.wifolders_l = js.get("wifolders_l", [])
+    story_settings.wifolders_u = {uid: [] for uid in story_settings.wifolders_d}
+    story_settings.lastact     = ""
+    story_settings.submission  = ""
+    story_settings.lastctx     = ""
+    story_settings.genseqs = []
+
+    del story_settings.actions
+    story_settings.actions = koboldai_settings.KoboldStoryRegister()
+    actions = collections.deque(js["actions"])
+    
+
+    if "actions_metadata" in js:
+        
+        if type(js["actions_metadata"]) == dict:
+            temp = js["actions_metadata"]
+            story_settings.actions_metadata = {}
+            #we need to redo the numbering of the actions_metadata since the actions list doesn't preserve it's number on saving
+            if len(temp) > 0:
+                counter = 0
+                temp = {int(k):v for k,v in temp.items()}
+                for i in range(max(temp)+1):
+                    if i in temp:
+                        story_settings.actions_metadata[counter] = temp[i]
+                        counter += 1
+            del temp
+        else:
+            #fix if we're using the old metadata format
             story_settings.actions_metadata = {}
             i = 0
             
             for text in js['actions']:
                 story_settings.actions_metadata[i] = {'Selected Text': text, 'Alternative Text': []}
                 i+=1
-                
-
-        if(len(story_settings.prompt.strip()) == 0):
-            while(len(actions)):
-                action = actions.popleft()
-                if(len(action.strip()) != 0):
-                    story_settings.prompt = action
-                    break
-            else:
-                story_settings.gamestarted = False
-        if(story_settings.gamestarted):
-            for s in actions:
-                story_settings.actions.append(s)
+    else:
+        story_settings.actions_metadata = {}
+        i = 0
         
-        # Try not to break older save files
-        if("authorsnote" in js):
-            story_settings.authornote = js["authorsnote"]
-        else:
-            story_settings.authornote = ""
-        if("anotetemplate" in js):
-            story_settings.authornotetemplate = js["anotetemplate"]
-        else:
-            story_settings.authornotetemplate = "[Author's note: <|>]"
-        
-        if("worldinfo" in js):
-            num = 0
-            for wi in js["worldinfo"]:
-                story_settings.worldinfo.append({
-                    "key": wi["key"],
-                    "keysecondary": wi.get("keysecondary", ""),
-                    "content": wi["content"],
-                    "comment": wi.get("comment", ""),
-                    "folder": wi.get("folder", None),
-                    "num": num,
-                    "init": True,
-                    "selective": wi.get("selective", False),
-                    "constant": wi.get("constant", False),
-                    "uid": None,
-                })
-                while(True):
-                    uid = int.from_bytes(os.urandom(4), "little", signed=True)
-                    if(uid not in story_settings.worldinfo_u):
-                        break
-                story_settings.worldinfo_u[uid] = story_settings.worldinfo[-1]
-                story_settings.worldinfo[-1]["uid"] = uid
-                if(story_settings.worldinfo[-1]["folder"] is not None):
-                    story_settings.wifolders_u[story_settings.worldinfo[-1]["folder"]].append(story_settings.worldinfo[-1])
-                num += 1
+        for text in js['actions']:
+            story_settings.actions_metadata[i] = {'Selected Text': text, 'Alternative Text': []}
+            i+=1
+            
 
-        for uid in story_settings.wifolders_l + [None]:
-            story_settings.worldinfo.append({"key": "", "keysecondary": "", "content": "", "comment": "", "folder": uid, "num": None, "init": False, "selective": False, "constant": False, "uid": None})
+    if(len(story_settings.prompt.strip()) == 0):
+        while(len(actions)):
+            action = actions.popleft()
+            if(len(action.strip()) != 0):
+                story_settings.prompt = action
+                break
+        else:
+            story_settings.gamestarted = False
+    if(story_settings.gamestarted):
+        for s in actions:
+            story_settings.actions.append(s)
+    
+    # Try not to break older save files
+    if("authorsnote" in js):
+        story_settings.authornote = js["authorsnote"]
+    else:
+        story_settings.authornote = ""
+    if("anotetemplate" in js):
+        story_settings.authornotetemplate = js["anotetemplate"]
+    else:
+        story_settings.authornotetemplate = "[Author's note: <|>]"
+    
+    if("worldinfo" in js):
+        num = 0
+        for wi in js["worldinfo"]:
+            story_settings.worldinfo.append({
+                "key": wi["key"],
+                "keysecondary": wi.get("keysecondary", ""),
+                "content": wi["content"],
+                "comment": wi.get("comment", ""),
+                "folder": wi.get("folder", None),
+                "num": num,
+                "init": True,
+                "selective": wi.get("selective", False),
+                "constant": wi.get("constant", False),
+                "uid": None,
+            })
             while(True):
                 uid = int.from_bytes(os.urandom(4), "little", signed=True)
                 if(uid not in story_settings.worldinfo_u):
@@ -5315,32 +5336,49 @@ def loadRequest(loadpath, filename=None):
             story_settings.worldinfo[-1]["uid"] = uid
             if(story_settings.worldinfo[-1]["folder"] is not None):
                 story_settings.wifolders_u[story_settings.worldinfo[-1]["folder"]].append(story_settings.worldinfo[-1])
-        stablesortwi()
-        story_settings.worldinfo_i = [wi for wi in story_settings.worldinfo if wi["init"]]
+            num += 1
 
-        # Save path for save button
-        system_settings.savedir = loadpath
-        
-        # Clear loadselect var
-        user_settings.loadselect = ""
-        
-        # Refresh game screen
-        _filename = filename
-        if(filename.endswith('.json')):
-            _filename = filename[:-5]
-        user_settings.laststory = _filename
-        emit('from_server', {'cmd': 'setstoryname', 'data': user_settings.laststory}, broadcast=True, room="UI_1")
-        setgamesaved(True)
-        sendwi()
-        emit('from_server', {'cmd': 'setmemory', 'data': story_settings.memory}, broadcast=True, room="UI_1")
-        emit('from_server', {'cmd': 'setanote', 'data': story_settings.authornote}, broadcast=True, room="UI_1")
-        emit('from_server', {'cmd': 'setanotetemplate', 'data': story_settings.authornotetemplate}, broadcast=True, room="UI_1")
-        refresh_story()
-        emit('from_server', {'cmd': 'setgamestate', 'data': 'ready'}, broadcast=True, room="UI_1")
-        emit('from_server', {'cmd': 'hidegenseqs', 'data': ''}, broadcast=True, room="UI_1")
-        print("{0}Story loaded from {1}!{2}".format(colors.GREEN, filename, colors.END))
-        
-        send_debug()
+    for uid in story_settings.wifolders_l + [None]:
+        story_settings.worldinfo.append({"key": "", "keysecondary": "", "content": "", "comment": "", "folder": uid, "num": None, "init": False, "selective": False, "constant": False, "uid": None})
+        while(True):
+            uid = int.from_bytes(os.urandom(4), "little", signed=True)
+            if(uid not in story_settings.worldinfo_u):
+                break
+        story_settings.worldinfo_u[uid] = story_settings.worldinfo[-1]
+        story_settings.worldinfo[-1]["uid"] = uid
+        if(story_settings.worldinfo[-1]["folder"] is not None):
+            story_settings.wifolders_u[story_settings.worldinfo[-1]["folder"]].append(story_settings.worldinfo[-1])
+    stablesortwi()
+    story_settings.worldinfo_i = [wi for wi in story_settings.worldinfo if wi["init"]]
+
+    # Save path for save button
+    system_settings.savedir = loadpath
+    
+    # Clear loadselect var
+    user_settings.loadselect = ""
+    
+    # Refresh game screen
+    _filename = filename
+    if(filename.endswith('.json')):
+        _filename = filename[:-5]
+    user_settings.laststory = _filename
+    #set the story_name
+    story_settings.story_name = _filename
+    emit('from_server', {'cmd': 'setstoryname', 'data': user_settings.laststory}, broadcast=True, room="UI_1")
+    setgamesaved(True)
+    sendwi()
+    emit('from_server', {'cmd': 'setmemory', 'data': story_settings.memory}, broadcast=True, room="UI_1")
+    emit('from_server', {'cmd': 'setanote', 'data': story_settings.authornote}, broadcast=True, room="UI_1")
+    emit('from_server', {'cmd': 'setanotetemplate', 'data': story_settings.authornotetemplate}, broadcast=True, room="UI_1")
+    refresh_story()
+    emit('from_server', {'cmd': 'setgamestate', 'data': 'ready'}, broadcast=True, room="UI_1")
+    emit('from_server', {'cmd': 'hidegenseqs', 'data': ''}, broadcast=True, room="UI_1")
+    print("{0}Story loaded from {1}!{2}".format(colors.GREEN, filename, colors.END))
+    
+    send_debug()
+
+def load_story_v2(js):
+    story_settings.from_json(js)
 
 #==================================================================#
 # Import an AIDungon game exported with Mimi's tool
@@ -5769,11 +5807,23 @@ def send_debug():
 
         emit('from_server', {'cmd': 'debug_info', 'data': debug_info}, broadcast=True, room="UI_1")
 
+
+#==================================================================#
+# UI V2 CODE
+#==================================================================#
+@app.route('/new_ui')
+def new_ui_index():
+    return render_template('index_new.html', settings=gensettings.gensettingstf if model_settings.model != "InferKit" else gensettings.gensettingsik )
+
+def ui2_connect():
+    pass
+
 #==================================================================#
 # Event triggered when browser SocketIO detects a variable change
 #==================================================================#
 @socketio.on('var_change')
 def UI_2_var_change(data):
+    print(data)
     classname = data['ID'].split("_")[0]
     name = data['ID'][len(classname)+1:]
     classname += "_settings"
@@ -5793,15 +5843,24 @@ def UI_2_var_change(data):
     print("{} {} = {}".format(classname, name, value))
     
     setattr(globals()[classname], name, value)
-
-
+    
+    #Now let's save except for story changes
+    if classname != "story_settings":
+        with open("settings/{}.v2_settings".format(classname), "w") as settings_file:
+            settings_file.write(globals()[classname].to_json())
+    
 #==================================================================#
-# UI V2 CODE
+# Saving Story
 #==================================================================#
-@app.route('/new_ui')
-def new_ui_index():
-    return render_template('index_new.html', settings=gensettings.gensettingstf if model_settings.model != "InferKit" else gensettings.gensettingsik )
-
+@socketio.on('save_story')
+def UI_2_save_story(data):
+    json_data = story_settings.to_json()
+    save_name = story_settings.story_name if story_settings.story_name is not None else "untitled"
+    with open("stories/{}_v2.json".format(save_name), "w") as settings_file:
+        settings_file.write(story_settings.to_json())
+    story_settings.gamesaved = True
+    
+    
 #==================================================================#
 # Event triggered when Selected Text is edited, Option is Selected, etc
 #==================================================================#
@@ -5824,10 +5883,7 @@ def UI_2_submit(data):
 #==================================================================#
 @socketio.on('Pinning')
 def UI_2_Pinning(data):
-    if data['set']:
-        story_settings.actions.set_pin(int(data['chunk']), int(data['option']))
-    else:
-        story_settings.actions.unset_pin(int(data['chunk']), int(data['option']))
+    story_settings.actions.toggle_pin(int(data['chunk']), int(data['option']))
     
 #==================================================================#
 # Event triggered when user clicks the back button
@@ -5869,6 +5925,10 @@ def UI_2_relay(data):
 @app.route("/actions")
 def show_actions():
     return story_settings.actions.actions
+    
+@app.route("/story")
+def show_story():
+    return story_settings.to_json()
     
     
 
@@ -5952,3 +6012,4 @@ else:
         model_settings.model = "ReadOnly"
     load_model(initial_load=True)
     print("{0}\nServer started in WSGI mode!{1}".format(colors.GREEN, colors.END), flush=True)
+    

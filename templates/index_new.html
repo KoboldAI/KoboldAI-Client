@@ -34,7 +34,7 @@
 		<!------------ Game Text Screen--------------------->
 		<div class="gamescreen" id="gamescreen">
 			<div class="gametext">
-				<span id="prompt" class="var_sync_story_prompt rawtext"></span>
+				<span id="story_prompt" class="var_sync_story_prompt rawtext" contenteditable=true onblur="socket.emit('var_change', {'ID': this.id, 'value': this.textContent});"></span>
 				<span id="Selected Text" class="rawtext"></span>
 			</div>
 		</div>
@@ -44,8 +44,8 @@
 		<!------------ Input Area--------------------->
 		<div class="inputrow" id="inputrow_container">
 			<textarea id="input_text" placeholder="Enter text here"></textarea>
-			<div class="statusbar_outer">
-				<div class="statusbar_inner" style="width:25%">25%</div>
+			<div class="statusbar_outer hidden">
+				<div class="statusbar_inner" style="width:0%">0%</div>
 			</div><br>
 			<button type="button" class="btn action_button submit var_sync_alt_system_aibusy" id="btnsend" onclick="socket.emit('submit', {'data': document.getElementById('input_text').value});">Submit</button>
 			<button type="button" class="btn action_button submited var_sync_alt_system_aibusy" id="btnsend"><img src="static/thinking.gif" class="force_center"></button>
@@ -58,9 +58,8 @@
 	</div>
 	
 	<!------------ Right Flyout Menu--------------------->
-	<div id="rightSideMenu" class="rightSideMenu"> Status:<hr>
-
-	
+	<div id="rightSideMenu" class="rightSideMenu">
+		{% include 'story flyout.html' %}
 	</div>
 </body>
 </html>

@@ -10,6 +10,16 @@
 	#Model_Info {
 		width: 100%;
 	}
+	#Story_Info {
+		width: 100%;
+	}
+	#save_story[story_gamesaved="true"] {
+		text: var(--disabled_button_text);
+		background-color: var(--disabled_button_background_color);
+		border-color: var(--disabled_button_border_color);
+		filter: brightness(85%);
+	}
+	
 </style>
 <!-- top menu bar-->
 <div class="flex settings_menu">
@@ -17,7 +27,7 @@
 	<button class="menu_button" onclick="show_setting_menu('story');">Story</button>
 	<button class="menu_button" onclick="show_setting_menu('user');">User</button>
 	<button class="menu_button" onclick="show_setting_menu('system');">System</button>
-	<select id=presets class="var_sync_model_selected_preset" onchange='socket.emit("var_change", {"ID": "model_selected_preset", "value": this.value});'><option>Preset</option></select>
+	<select id=presets class="var_sync_model_selected_preset settings_select" onchange='socket.emit("var_change", {"ID": "model_selected_preset", "value": this.value});'><option>Preset</option></select>
 </div>
 
 <div id="setting_menu_model" class="settings_category_area">
@@ -30,6 +40,10 @@
 {% endwith %}
 </div>
 <div id="setting_menu_story" class="hidden settings_category_area">
+	<div id="Story_Info">
+		<div>Story Name: <span class="var_sync_story_story_name"></span></div>
+		<div><button id="save_story" class="btn action_button var_sync_alt_story_gamesaved" onclick='socket.emit("save_story", "Story123");'>Save Story</button></div>
+	</div>
 {% with menu='Story' %}
 	{% include 'settings item.html' %}
 {% endwith %}

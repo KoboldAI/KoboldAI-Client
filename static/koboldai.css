@@ -327,6 +327,8 @@ td.server_vars {
 }
 
 
+
+
 /* ---------------------------- OVERALL PAGE CONFIG ------------------------------*/
 body {
 	background-color: var(--background);
@@ -336,7 +338,7 @@ body {
 .main-grid {
 	transition: margin-left .5s;
 	display: grid;
-	min-height: 98vh;
+	height: 98vh;
 	margin-left: var(--flyout_menu_closed_width);
 /*	grid-template-areas: "menuicon gamescreen lefticon"
 						 "menuicon actions lefticon"
@@ -371,6 +373,13 @@ body {
 	margin-top: auto;
 	padding-bottom: 1px;
 	vertical-align: bottom;
+	overflow-y: scroll;
+	-ms-overflow-style: none;  /* IE and Edge */
+	scrollbar-width: none;  /* Firefox */
+}
+/* Hide scrollbar for Chrome, Safari and Opera */
+.gametext::-webkit-scrollbar {
+  display: none;
 }
 
 [contenteditable="true"]:active,
@@ -384,6 +393,7 @@ body {
 	margin-top: 10px;
 	grid-area: options;
 	background-color: var(--gamescreen_background);
+	overflow-y: scroll;
 }
 
 table.sequence {
@@ -446,14 +456,14 @@ td.sequence:hover {
 	color: var(--text);
 }
 
-.inputrow .submit[server_value=false] {
+.inputrow .submit[system_aibusy=false] {
 	grid-area: submit;
 	height: 100%;
 	width: 100%;
 	text-align: center;
 	overflow: hidden;
 }
-.inputrow .submit[server_value=true] {
+.inputrow .submit[system_aibusy=true] {
 	grid-area: submit;
 	height: 100%;
 	width: 100%;
@@ -462,7 +472,7 @@ td.sequence:hover {
 	display: none;
 }
 
-.inputrow .submited[server_value=false] {
+.inputrow .submited[system_aibusy=false] {
 	grid-area: submit;
 	height: 100%;
 	width: 100%;
@@ -470,7 +480,7 @@ td.sequence:hover {
 	overflow: hidden;
 	display: none;
 }
-.inputrow .submited[server_value=true] {
+.inputrow .submited[system_aibusy=true] {
 	grid-area: submit;
 	height: 100%;
 	width: 100%;

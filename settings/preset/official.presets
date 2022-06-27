@@ -1,0 +1,95 @@
+{"EleutherAI_gpt-neo-1.3B": 
+	{
+		"Storywriter": {
+			"temp": 0.72,
+			"genamt": 40,
+			"rep_pen": 1.2,
+			"top_p": 0.725,
+			"top_k": 0,
+			"tfs": 1,
+			"rep_pen_slope": 2048,
+			"rep_pen_range": 0.18,
+			"typical": 1,
+			"top_a": 0,
+			"description": "Optimized settings for relevant output."
+		},
+		"Coherent Creativity": {
+			"temp": 0.51,
+			"genamt": 40,
+			"rep_pen": 1.2,
+			"top_p": 1,
+			"top_k": 0,
+			"tfs": 0.9,
+			"rep_pen_slope": 2048,
+			"rep_pen_range": 0,
+			"typical": 1,
+			"top_a": 0,
+			"description": "A good balance between coherence, creativity, and quality of prose."
+		},
+		"Luna Moth": {
+			"temp": 2,
+			"genamt": 40,
+			"rep_pen": 1.2,
+			"top_p": 0.235,
+			"top_k": 85,
+			"tfs": 1,
+			"rep_pen_slope": 2048,
+			"rep_pen_range": 0,
+			"typical": 1,
+			"top_a": 0,
+			"description": "A great degree of creativity without losing coherency."
+		},
+		"Sphinx Moth": {
+			"temp": 2,
+			"genamt": 40,
+			"rep_pen": 1.2,
+			"top_p": 0.175,
+			"top_k": 30,
+			"tfs": 1,
+			"rep_pen_slope": 2048,
+			"rep_pen_range": 0,
+			"typical": 1,
+			"top_a": 0,
+			"description": "Maximum randomness while still being plot relevant. Like Sphinx riddles!"
+		},
+		"Emperor Moth": {
+			"temp": 1.25,
+			"genamt": 40,
+			"rep_pen": 1.2,
+			"top_p": 0.235,
+			"top_k": 0,
+			"tfs": 1,
+			"rep_pen_slope": 2048,
+			"rep_pen_range": 0,
+			"typical": 1,
+			"top_a": 0,
+			"description": "Medium randomness with a decent bit of creative writing."
+		},
+		"Best Guess": {
+			"temp": 0.8,
+			"genamt": 40,
+			"rep_pen": 1.2,
+			"top_p": 0.9,
+			"top_k": 100,
+			"tfs": 1,
+			"rep_pen_slope": 512,
+			"rep_pen_range": 3.33,
+			"typical": 1,
+			"top_a": 0,
+			"description": "A subtle change with alternative context settings."
+		},
+		"Pleasing Results": {
+			"temp": 0.44,
+			"genamt": 40,
+			"rep_pen": 1.2,
+			"top_p": 1,
+			"top_k": 0,
+			"tfs": 0.9,
+			"rep_pen_slope": 1024,
+			"rep_pen_range": 6.75,
+			"typical": 1,
+			"top_a": 0,
+			"description": "Expectable output with alternative context settings."
+		}
+	}
+}
