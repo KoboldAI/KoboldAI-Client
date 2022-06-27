@@ -427,12 +427,17 @@ td.sequence:hover {
 .inputrow {
 	grid-area: inputrow;
 	display: grid;
-	grid-template-areas: "textarea submit submit submit"
+	grid-template-areas: "textarea statusbar statusbar statusbar"
+						 "textarea submit submit submit"
 	                     "textarea back redo retry";
 	grid-template-columns: auto 30px 30px 30px;
-	grid-template-rows: auto 40px;
+	grid-template-rows: 0px auto 40px;
 	gap: 1px;
 	
+}
+
+.inputrow.status_bar {
+	grid-template-rows: 20px auto 40px;
 }
 
 .inputrow textarea {
@@ -472,6 +477,25 @@ td.sequence:hover {
 	text-align: center;
 	overflow: hidden;
 	display: inline;
+}
+
+.statusbar_outer {
+	color: #000;
+	background-color: #f1f1f1;
+	grid-area: statusbar;
+	height: 20px;
+}
+
+.statusbar_outer.hidden {
+	height: 0px;
+}
+
+.statusbar_inner {
+	background-color: #4CAF50;
+	text-align: center;
+	font-size: 0.875em;
+	
+	
 }
 
 .inputrow .back {

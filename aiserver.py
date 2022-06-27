@@ -3407,6 +3407,9 @@ def actionsubmit(data, actionmode=0, force_submit=False, force_prompt_gen=False,
                 for i in range(model_settings.numseqs):
                     genout.append({"generated_text": system_settings.lua_koboldbridge.outputs[i+1]})
                     assert type(genout[-1]["generated_text"]) is str
+                story_settings.actions.clear_unused_options()
+                story_settings.actions.append_options([x["generated_text"] for x in genout])
+                genout = [{"generated_text": x['text']} for x in story_settings.actions.get_current_options()]
                 if(len(genout) == 1):
                     genresult(genout[0]["generated_text"], flash=False)
                     refresh_story()
@@ -3466,6 +3469,9 @@ def actionsubmit(data, actionmode=0, force_submit=False, force_prompt_gen=False,
                 for i in range(model_settings.numseqs):
                     genout.append({"generated_text": system_settings.lua_koboldbridge.outputs[i+1]})
                     assert type(genout[-1]["generated_text"]) is str
+                story_settings.actions.clear_unused_options()
+                story_settings.actions.append_options([x["generated_text"] for x in genout])
+                genout = [{"generated_text": x['text']} for x in story_settings.actions.get_current_options()]
                 if(len(genout) == 1):
                     genresult(genout[0]["generated_text"])
                     if(not system_settings.abort and system_settings.lua_koboldbridge.restart_sequence is not None):
@@ -3893,6 +3899,9 @@ def generate(txt, minimum, maximum, found_entries=None):
     else:
         genout = [{"generated_text": utils.decodenewlines(tokenizer.decode(tokens[-already_generated:]))} for tokens in genout]
     
+    story_settings.actions.clear_unused_options()
+    story_settings.actions.append_options([x["generated_text"] for x in genout])
+    genout = [{"generated_text": x['text']} for x in story_settings.actions.get_current_options()]
     if(len(genout) == 1):
         genresult(genout[0]["generated_text"])
     else:
@@ -3947,11 +3956,7 @@ def genselect(genout):
             print("{0}[Result {1}]\n{2}{3}".format(colors.CYAN, i, result["generated_text"], colors.END))
         i += 1
     
-    story_settings.actions.clear_unused_options()
-    story_settings.actions.append_options([x["generated_text"] for x in genout])
     
-    genout = [{"generated_text": x['text']} for x in story_settings.actions.get_current_options_no_edits()]
-
     # Store sequences in memory until selection is made
     story_settings.genseqs = genout
     
@@ -4046,7 +4051,11 @@ def sendtocolab(txt, min, max):
                 genout.append(system_settings.lua_koboldbridge.outputs[i+1])
                 assert type(genout[-1]) is str
 
+        story_settings.actions.clear_unused_options()
+        story_settings.actions.append_options([x["generated_text"] for x in genout])
+        genout = [{"generated_text": x['text']} for x in story_settings.actions.get_current_options()]
         if(len(genout) == 1):
+            
             genresult(genout[0])
         else:
             # Convert torch output format to transformers
@@ -4195,13 +4204,16 @@ def tpumtjgenerate(txt, minimum, maximum, found_entries=None):
     else:
         genout = [{"generated_text": utils.decodenewlines(tokenizer.decode(txt))} for txt in genout]
 
-    if(len(genout) == 1):
-        genresult(genout[0]["generated_text"])
+    story_settings.actions.clear_unused_options()
+    story_settings.actions.append_options([x["generated_text"] for x in genout])
+    genout = [{"generated_text": x['text']} for x in story_settings.actions.get_current_options()]
+    if(len(story_settings.actions.get_current_options()) == 1):
+        genresult(story_settings.actions.get_current_options()[0])
     else:
         if(system_settings.lua_koboldbridge.restart_sequence is not None and system_settings.lua_koboldbridge.restart_sequence > 0):
             genresult(genout[system_settings.lua_koboldbridge.restart_sequence-1]["generated_text"])
         else:
-            genselect(genout)
+            genselect([{"generated_text": x} for x in story_settings.actions.get_current_options()])
 
     set_aibusy(0)
 
@@ -4943,7 +4955,9 @@ def oairequest(txt, min, max):
                 {"generated_text": utils.decodenewlines(txt)}
                 for txt in outputs]
 
-
+        story_settings.actions.clear_unused_options()
+        story_settings.actions.append_options([x["generated_text"] for x in genout])
+        genout = [{"generated_text": x['text']} for x in story_settings.actions.get_current_options()]
         if (len(genout) == 1):
             genresult(genout[0]["generated_text"])
         else:
@@ -5794,7 +5808,7 @@ def new_ui_index():
 @socketio.on('Set Selected Text')
 def UI_2_Set_Selected_Text(data):
     print("Updating Selected Text: {}".format(data))
-    story_settings.actions.use_option(int(data['chunk']), int(data['option']))
+    story_settings.actions.use_option(int(data['option']), action_step=int(data['chunk']))
 
 #==================================================================#
 # Event triggered when user clicks the submit button
@@ -5820,6 +5834,7 @@ def UI_2_Pinning(data):
 #==================================================================#
 @socketio.on('back')
 def UI_2_back(data):
+    print("back")
     ignore = story_settings.actions.pop()
     
 #==================================================================#
@@ -5827,8 +5842,19 @@ def UI_2_back(data):
 #==================================================================#
 @socketio.on('redo')
 def UI_2_redo(data):
-    pass
+    if len(story_settings.actions.get_current_options()) == 1:
+        story_settings.actions.use_option(0)
 
+#==================================================================#
+# Event triggered when user clicks the redo button
+#==================================================================#
+@socketio.on('retry')
+def UI_2_retry(data):
+    story_settings.actions.clear_unused_options()
+    system_settings.lua_koboldbridge.feedback = None
+    story_settings.recentrng = story_settings.recentrngm = None
+    actionsubmit("", actionmode=story_settings.actionmode)
+    
 #==================================================================#
 # Event triggered to rely a message
 #==================================================================#

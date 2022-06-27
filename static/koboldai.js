@@ -46,86 +46,129 @@ function fix_text(val) {
 }
 
 function create_options(data) {
+	//Set all options before the next chunk to hidden
+	var option_container = document.getElementById("Select Options");
+	var current_chunk = parseInt(document.getElementById("action_count").textContent)+1;
+	var children = option_container.children;
+	for (var i = 0; i < children.length; i++) {
+		var chunk = children[i];
+		if (chunk.id == "Select Options Chunk " + current_chunk) {
+			chunk.classList.remove("hidden");
+			console.log(current_chunk);
+		} else {
+			chunk.classList.add("hidden");
+		}
+	}
+	
+	console.log(current_chunk);
 	console.log(data);
 	if (document.getElementById("Select Options Chunk "+data.value.id)) {
-			var option_chunk = document.getElementById("Select Options Chunk "+data.value.id)
-		} else {
-			var option_area = document.getElementById("Select Options");
-			var option_chunk = document.createElement("div");
-			option_chunk.id = "Select Options Chunk "+data.value.id;
-			option_area.append(option_chunk);
+		var option_chunk = document.getElementById("Select Options Chunk "+data.value.id)
+	} else {
+		var option_area = document.getElementById("Select Options");
+		var option_chunk = document.createElement("div");
+		option_chunk.id = "Select Options Chunk "+data.value.id;
+		option_area.append(option_chunk);
+	}
+	//first, let's clear out our existing data
+	while (option_chunk.firstChild) {
+		option_chunk.removeChild(option_chunk.firstChild);
+	}
+	var table = document.createElement("table");
+	table.classList.add("sequence");
+	table.style = "border-spacing: 0;";
+	//Add pins
+	i=0;
+	for (item of data.value.options) {
+		if (item.Pinned) {
+			var row = document.createElement("tr");
+			row.classList.add("sequence");
+			var textcell = document.createElement("td");
+			textcell.textContent = item.text;
+			textcell.classList.add("sequence");
+			textcell.setAttribute("option_id", i);
+			textcell.setAttribute("option_chunk", data.value.id);
+			var iconcell = document.createElement("td");
+			iconcell.setAttribute("option_id", i);
+			iconcell.setAttribute("option_chunk", data.value.id);
+			var icon = document.createElement("span");
+			icon.id = "Pin_"+i;
+			icon.classList.add("oi");
+			icon.setAttribute('data-glyph', "pin");
+			iconcell.append(icon);
+			textcell.onclick = function () {
+									socket.emit("Set Selected Text", {"chunk": this.getAttribute("option_chunk"), "option": this.getAttribute("option_id")});
+							  };
+			iconcell.onclick = function () {
+									socket.emit("Pinning", {"chunk": this.getAttribute("option_chunk"), "option": this.getAttribute("option_id"), "set": false});
+							   };
+			row.append(textcell);
+			row.append(iconcell);
+			table.append(row);
 		}
-		//first, let's clear out our existing data
-		while (option_chunk.firstChild) {
-			option_chunk.removeChild(option_chunk.firstChild);
+		i+=1;
+	}
+	//Add Redo options
+	i=0;
+	for (item of data.value.options) {
+		if ((item['Previous Selection'])) {
+			var row = document.createElement("tr");
+			row.classList.add("sequence");
+			var textcell = document.createElement("td");
+			textcell.textContent = item.text;
+			textcell.classList.add("sequence");
+			textcell.setAttribute("option_id", i);
+			textcell.setAttribute("option_chunk", data.value.id);
+			var iconcell = document.createElement("td");
+			iconcell.setAttribute("option_id", i);
+			iconcell.setAttribute("option_chunk", data.value.id);
+			var icon = document.createElement("span");
+			icon.id = "Pin_"+i;
+			icon.classList.add("oi");
+			icon.setAttribute('data-glyph', "loop-circular");
+			iconcell.append(icon);
+			textcell.onclick = function () {
+									socket.emit("Set Selected Text", {"chunk": this.getAttribute("option_chunk"), "option": this.getAttribute("option_id")});
+							  };
+			row.append(textcell);
+			row.append(iconcell);
+			table.append(row);
 		}
-		var table = document.createElement("table");
-		table.classList.add("sequence");
-		table.style = "border-spacing: 0;";
-		//Add pins
-		i=0;
-		for (item of data.value.options) {
-			if (item.Pinned) {
-				var row = document.createElement("tr");
-				row.classList.add("sequence");
-				var textcell = document.createElement("td");
-				textcell.textContent = item.text;
-				textcell.classList.add("sequence");
-				textcell.setAttribute("option_id", i);
-				textcell.setAttribute("option_chunk", data.value.id);
-				var iconcell = document.createElement("td");
-				iconcell.setAttribute("option_id", i);
-				iconcell.setAttribute("option_chunk", data.value.id);
-				var icon = document.createElement("span");
-				icon.id = "Pin_"+i;
-				icon.classList.add("oi");
-				icon.setAttribute('data-glyph', "pin");
-				iconcell.append(icon);
-				textcell.onclick = function () {
-										socket.emit("Set Selected Text", {"chunk": this.getAttribute("option_chunk"), "option": this.getAttribute("option_id")});
-								  };
-				iconcell.onclick = function () {
-										socket.emit("Pinning", {"chunk": this.getAttribute("option_chunk"), "option": this.getAttribute("option_id"), "set": false});
-								   };
-				row.append(textcell);
-				row.append(iconcell);
-				table.append(row);
-			}
-			i+=1;
+		i+=1;
+	}
+	//Add general options
+	i=0;
+	for (item of data.value.options) {
+		if (!(item.Edited) && !(item.Pinned) && !(item['Previous Selection'])) {
+			var row = document.createElement("tr");
+			row.classList.add("sequence");
+			var textcell = document.createElement("td");
+			textcell.textContent = item.text;
+			textcell.classList.add("sequence");
+			textcell.setAttribute("option_id", i);
+			textcell.setAttribute("option_chunk", data.value.id);
+			var iconcell = document.createElement("td");
+			iconcell.setAttribute("option_id", i);
+			iconcell.setAttribute("option_chunk", data.value.id);
+			var icon = document.createElement("span");
+			icon.id = "Pin_"+i;
+			icon.classList.add("oi");
+			icon.setAttribute('data-glyph', "pin");
+			icon.setAttribute('style', "filter: brightness(50%);");
+			iconcell.append(icon);
+			iconcell.onclick = function () {
+									socket.emit("Pinning", {"chunk": this.getAttribute("option_chunk"), "option": this.getAttribute("option_id"), "set": true});
+							   };
+			textcell.onclick = function () {
+									socket.emit("Set Selected Text", {"chunk": this.getAttribute("option_chunk"), "option": this.getAttribute("option_id")});
+							  };
+			row.append(textcell);
+			row.append(iconcell);
+			table.append(row);
 		}
-		//Add general options
-		i=0;
-		for (item of data.value.options) {
-			if (!(item.Edited) && !(item.Pinned) && !(item['Previous Selection'])) {
-				var row = document.createElement("tr");
-				row.classList.add("sequence");
-				var textcell = document.createElement("td");
-				textcell.textContent = item.text;
-				textcell.classList.add("sequence");
-				textcell.setAttribute("option_id", i);
-				textcell.setAttribute("option_chunk", data.value.id);
-				var iconcell = document.createElement("td");
-				iconcell.setAttribute("option_id", i);
-				iconcell.setAttribute("option_chunk", data.value.id);
-				var icon = document.createElement("span");
-				icon.id = "Pin_"+i;
-				icon.classList.add("oi");
-				icon.setAttribute('data-glyph', "pin");
-				icon.setAttribute('style', "filter: brightness(50%);");
-				iconcell.append(icon);
-				iconcell.onclick = function () {
-										socket.emit("Pinning", {"chunk": this.getAttribute("option_chunk"), "option": this.getAttribute("option_id"), "set": true});
-								   };
-				textcell.onclick = function () {
-										socket.emit("Set Selected Text", {"chunk": this.getAttribute("option_chunk"), "option": this.getAttribute("option_id")});
-								  };
-				row.append(textcell);
-				row.append(iconcell);
-				table.append(row);
-			}
-			i+=1;
-		}
-		option_chunk.append(table);
+		i+=1;
+	}
+	option_chunk.append(table);
 }
 
 function do_story_text_updates(data) {
@@ -187,6 +230,27 @@ function selected_preset(data) {
 	}
 }
 
+function update_status_bar(data) {
+	var total_tokens = document.getElementById('model_genamt').value;
+	var percent_complete = data.value/total_tokens*100;
+	var percent_bar = document.getElementsByClassName("statusbar_inner");
+	for (item of percent_bar) {
+		item.setAttribute("style", "width:"+percent_complete+"%");
+		item.textContent = Math.round(percent_complete)+"%"
+		if ((percent_complete == 0) || (percent_complete == 100)) {
+			item.parentElement.classList.add("hidden");
+			document.getElementById("inputrow_container").classList.remove("status_bar");
+		} else {
+			item.parentElement.classList.remove("hidden");
+			document.getElementById("inputrow_container").classList.add("status_bar");
+		}
+	}
+	if ((percent_complete == 0) || (percent_complete == 100)) {
+		document.title = "KoboldAI Client";
+	} else {
+		document.title = "KoboldAI Client Generating (" + percent_complete + "%)";
+	}
+}
 function var_changed(data) {
 	//Special Case for Story Text
 	if ((data.classname == "actions") && (data.name == "Selected Text")) {
@@ -201,7 +265,7 @@ function var_changed(data) {
 		selected_preset(data);
 	//Basic Data Syncing
 	} else {
-		var elements_to_change = document.getElementsByClassName("var_sync_"+data.classname+"_"+data.name);
+		var elements_to_change = document.getElementsByClassName("var_sync_"+data.classname.replace(" ", "_")+"_"+data.name.replace(" ", "_"));
 		for (item of elements_to_change) {
 			if ((item.tagName.toLowerCase() === 'input') || (item.tagName.toLowerCase() === 'select')) {
 				item.value = fix_text(data.value);
@@ -209,11 +273,19 @@ function var_changed(data) {
 				item.textContent = fix_text(data.value);
 			}
 		}
-		var elements_to_change = document.getElementsByClassName("var_sync_alt_"+data.classname+"_"+data.name);
+		//alternative syncing method
+		var elements_to_change = document.getElementsByClassName("var_sync_alt_"+data.classname.replace(" ", "_")+"_"+data.name.replace(" ", "_"));
 		for (item of elements_to_change) {
 			item.setAttribute("server_value", fix_text(data.value));
 		}
 	}
+	
+	//if we're updating generated tokens, let's show that in our status bar
+	if ((data.classname == 'story') && (data.name == 'generated_tkns')) {
+		update_status_bar(data);
+	}
+	
+	//If we have ai_busy, start the favicon swapping
 	if ((data.classname == 'system') && (data.name == 'aibusy')) {
 		if (data.value) {
 			favicon.start_swap()

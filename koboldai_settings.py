@@ -22,9 +22,8 @@ def process_variable_changes(classname, name, value, old_value, debug_message=No
         if value != old_value:
             #Special Case for KoboldStoryRegister
             if isinstance(value, KoboldStoryRegister):
-                print("We got a story register")
-                print(value)
                 socketio.emit("reset_story", {}, broadcast=True, room="UI_2")
+                socketio.emit("var_changed", {"classname": "actions", "name": "Action Count", "old_value": None, "value":value.action_count}, broadcast=True, room="UI_2")
                 for i in range(len(value.actions)):
                     socketio.emit("var_changed", {"classname": "actions", "name": "Selected Text", "old_value": None, "value": {"id": i, "text": value[i]}}, include_self=True, broadcast=True, room="UI_2")
                     socketio.emit("var_changed", {"classname": "actions", "name": "Options", "old_value": None, "value": {"id": i, "options": value.actions[i]['Options']}}, include_self=True, broadcast=True, room="UI_2")
@@ -34,24 +33,19 @@ def process_variable_changes(classname, name, value, old_value, debug_message=No
                     if threading.get_ident() in rely_clients:
                         sio = rely_clients[threading.get_ident()]
                     else:
-                        start_time = time.time()
-                        print("getting client")
                         sio = socketio_client.Client()
                         @sio.event
                         def connect():
-                            print("I'm connected!")
+                            pass
                         sio.connect('http://localhost:5000/?rely=true')
                         rely_clients[threading.get_ident()] = sio
-                        print("got client, took {}".format(time.time()-start_time))
                     #release no longer used clients
                     for thread in rely_clients:
                         if thread not in [x.ident for x in threading.enumerate()]:
                             del rely_clients[thread]
-                    sio.emit("relay", {"emit": "var_changed", "data": {"classname": classname, "name": name, "old_value": clean_var_for_emit(old_value), "value": clean_var_for_emit(value)}, "include_self":True, "broadcast":True, "room":"UI_2"})
+                    sio.emit("relay", ["var_changed", {"classname": classname, "name": name, "old_value": clean_var_for_emit(old_value), "value": clean_var_for_emit(value)}, {"include_self":True, "broadcast":True, "room":"UI_2"}])
                 else:
                     socketio.emit("var_changed", {"classname": classname, "name": name, "old_value": clean_var_for_emit(old_value), "value": clean_var_for_emit(value)}, include_self=True, broadcast=True, room="UI_2")
-        #eventlet.sleep()
-        #socketio.sleep(0)
 
         
 class settings(object):
@@ -350,17 +344,15 @@ class KoboldStoryRegister(object):
         process_variable_changes("actions", "Selected Text", {"id": self.action_count, "text": text}, None)
     
     def append_options(self, option_list):
-        print("appending options for {}".format(self.action_count+1))
         if self.action_count+1 in self.actions:
             old_options = self.actions[self.action_count+1]["Options"].copy()
             self.actions[self.action_count+1]['Options'].extend([{"text": x, "Pinned": False, "Previous Selection": False, "Edited": False} for x in option_list])
         else:
             old_options = None
             self.actions[self.action_count+1] = {"Selected Text": "", "Options": [{"text": x, "Pinned": False, "Previous Selection": False, "Edited": False} for x in option_list]}
-        process_variable_changes("actions", "Options", {"id": self.action_count+1, "options": self.actions[self.action_count+1]["Options"]}, {"id": self.action_count+1, "options": old_options}, debug_message="wtf")
+        process_variable_changes("actions", "Options", {"id": self.action_count+1, "options": self.actions[self.action_count+1]["Options"]}, {"id": self.action_count+1, "options": old_options})
             
     def clear_unused_options(self, pointer=None):
-        print("clearing options for {}".format(self.action_count+1))
         new_options = []
         old_options = None
         if pointer is None:
@@ -393,13 +385,19 @@ class KoboldStoryRegister(object):
                 self.actions[action_step]['Options'][option_number]['Pinned'] = False
                 process_variable_changes("actions", "Options", {"id": action_step, "options": self.actions[action_step]["Options"]}, {"id": action_step, "options": old_options})
     
-    def use_option(self, action_step, option_number):
+    def use_option(self, option_number, action_step=None):
+        if action_step is None:
+            action_step = self.action_count+1
         if action_step in self.actions:
             old_options = self.actions[action_step]["Options"].copy()
             old_text = self.actions[action_step]["Selected Text"]
             if option_number < len(self.actions[action_step]['Options']):
                 self.actions[action_step]["Selected Text"] = self.actions[action_step]['Options'][option_number]['text']
                 del self.actions[action_step]['Options'][option_number]
+                #If this is the current spot in the story, advance
+                if action_step-1 == self.action_count:
+                    self.action_count+=1
+                    socketio.emit("var_changed", {"classname": "actions", "name": "Action Count", "old_value": None, "value":self.action_count}, broadcast=True, room="UI_2")
                 process_variable_changes("actions", "Options", {"id": action_step, "options": self.actions[action_step]["Options"]}, {"id": action_step, "options": old_options})
                 process_variable_changes("actions", "Selected Text", {"id": action_step, "text": self.actions[action_step]["Selected Text"]}, {"id": action_step, "Selected Text": old_text})
     

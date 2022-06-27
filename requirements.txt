@@ -12,3 +12,4 @@ bleach==4.1.0
 sentencepiece
 protobuf
 accelerate
+python-socketio[client]
