@@ -1149,8 +1149,12 @@ def get_model_info(model, directory=""):
             breakmodel = False
         else:
             breakmodel = True
-            if path.exists("settings/{}.breakmodel".format(model.replace("/", "_"))):
-                with open("settings/{}.breakmodel".format(model.replace("/", "_")), "r") as file:
+            if model in ["NeoCustom", "GPT2Custom"]:
+                filename = "settings/{}.breakmodel".format(os.path.basename(os.path.normpath(directory)))
+            else:
+                filename = "settings/{}.breakmodel".format(model.replace("/", "_"))
+            if path.exists(filename):
+                with open(filename, "r") as file:
                     data = file.read().split("\n")[:2]
                     if len(data) < 2:
                         data.append("0")
@@ -3245,7 +3249,11 @@ def get_message(msg):
                 if gpu_layers == msg['gpu_layers'] and disk_layers == msg['disk_layers']:
                     changed = False
         if changed:
-            f = open("settings/" + vars.model.replace('/', '_') + ".breakmodel", "w")
+            if vars.model in ["NeoCustom", "GPT2Custom"]:
+                filename = "settings/{}.breakmodel".format(os.path.basename(os.path.normpath(vars.custmodpth)))
+            else:
+                filename = "settings/{}.breakmodel".format(vars.model.replace('/', '_'))
+            f = open(filename, "w")
             f.write(msg['gpu_layers'] + '\n' + msg['disk_layers'])
             f.close()
         vars.colaburl = msg['url'] + "/request"
