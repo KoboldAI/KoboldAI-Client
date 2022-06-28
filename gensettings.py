@@ -230,6 +230,17 @@ gensettingstf = [
 	"default": 0,
   "tooltip": "Disables userscript generation modifiers."
 	},
+	{
+	"uitype": "toggle",
+	"unit": "bool",
+	"label": "Full Determinism",
+	"id": "setfulldeterminism",
+	"min": 0,
+	"max": 1,
+	"step": 1,
+	"default": 0,
+  "tooltip": "Causes generation to be fully deterministic -- the model will always output the same thing as long as your story, settings and RNG seed are the same. If this is off, only the sequence of outputs that the model makes will be deterministic."
+	},
     {
 	"uitype": "toggle",
 	"unit": "bool",
