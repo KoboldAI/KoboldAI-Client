@@ -1865,8 +1865,6 @@ function cleanupChunkWhitespace() {
 	chunks.sort(function(e) {parseInt(e)});
 	for(var i = 0; i < chunks.length; i++) {
 		var original_chunk = document.getElementById("n" + chunks[i]);
-		original_chunk.innerText = footer + original_chunk.innerText;
-		footer = "";
 		var chunk = original_chunk.nextSibling;
 		while(chunk) {
 			if(chunk.tagName === "CHUNK") {
