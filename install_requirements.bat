@@ -1,15 +1,10 @@
 @echo off
 title KoboldAI Runtime Installer (MicroMamba)
-echo Please choose one of the following transformers options
-echo 1. Official Transformers (Recommended)
-echo 2. Finetune Transformers (For old 6B models)
-echo.
+
 echo Errors? Rerun this as admin so it can add the needed LongPathsEnabled registery tweak.
 echo Installer failed or crashed? Run it again so it can continue.
 echo Only Windows 10 and higher officially supported, older Windows installations can't handle the paths.
 echo.
-
-SET /P B=Type the number of the desired option and then press ENTER: 
 
 Reg add "HKLM\SYSTEM\CurrentControlSet\Control\FileSystem" /v "LongPathsEnabled" /t REG_DWORD /d "1" /f 2>nul
 cd /D %~dp0
