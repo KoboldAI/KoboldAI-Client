@@ -4213,7 +4213,7 @@ def tpumtjgenerate(txt, minimum, maximum, found_entries=None):
     koboldai_vars.actions.append_options([x["generated_text"] for x in genout])
     genout = [{"generated_text": x['text']} for x in koboldai_vars.actions.get_current_options()]
     if(len(koboldai_vars.actions.get_current_options()) == 1):
-        genresult(koboldai_vars.actions.get_current_options()[0])
+        genresult(koboldai_vars.actions.get_current_options()[0]['text'])
     else:
         if(koboldai_vars.lua_koboldbridge.restart_sequence is not None and koboldai_vars.lua_koboldbridge.restart_sequence > 0):
             genresult(genout[koboldai_vars.lua_koboldbridge.restart_sequence-1]["generated_text"])

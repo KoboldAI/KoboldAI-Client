@@ -88,10 +88,11 @@ class koboldai_vars(object):
         self._model_settings.send_to_ui()
         self._user_settings.send_to_ui()
         self._system_settings.send_to_ui()
-        if 'story' in self._sessions:
-            self._story_settings[self._sessions['story']].send_to_ui()
-        else:
-            self._story_settings['default'].send_to_ui()
+        #if 'story' in self._sessions:
+        #    self._story_settings[self._sessions['story']].send_to_ui()
+        #else:
+        #    self._story_settings['default'].send_to_ui()
+        self._story_settings['default'].send_to_ui()
     
     def __setattr__(self, name, value):
         if name[0] == "_":

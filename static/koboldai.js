@@ -8,7 +8,7 @@ socket.on("disconnect", (reason, details) => {
 });
 socket.on('reset_story', function(){reset_story();});
 socket.on('var_changed', function(data){var_changed(data);});
-socket.onAny(function(event_name, data) {console.log({"event": event_name, "class": data.classname, "data": data});});
+//socket.onAny(function(event_name, data) {console.log({"event": event_name, "class": data.classname, "data": data});});
 
 var backend_vars = {};
 var presets = {}
@@ -141,6 +141,7 @@ function create_options(data) {
 }
 
 function do_story_text_updates(data) {
+	console.log(data);
 	story_area = document.getElementById('Selected Text');
 	if (document.getElementById('Selected Text Chunk '+data.value.id)) {
 		document.getElementById('Selected Text Chunk '+data.value.id).textContent = data.value.text;
