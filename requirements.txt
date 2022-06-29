@@ -13,3 +13,4 @@ sentencepiece
 protobuf
 accelerate
 python-socketio[client]
+flask_session

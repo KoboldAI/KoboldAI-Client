@@ -94,7 +94,7 @@ def replaceblanklines(txt):
 # 
 #==================================================================#
 def removespecialchars(txt, vars=None):
-    if vars is None or story_settings.actionmode == 0:
+    if vars is None or koboldai_vars.actionmode == 0:
         txt = re.sub(r"[#/@%<>{}+=~|\^]", "", txt)
     else:
         txt = re.sub(r"[#/@%{}+=~|\^]", "", txt)
@@ -105,33 +105,33 @@ def removespecialchars(txt, vars=None):
 #==================================================================#
 def addsentencespacing(txt, vars):
     # Get last character of last action
-    if(len(story_settings.actions) > 0):
-        if(len(story_settings.actions[story_settings.actions.get_last_key()]) > 0):
-            action = story_settings.actions[story_settings.actions.get_last_key()]
+    if(len(koboldai_vars.actions) > 0):
+        if(len(koboldai_vars.actions[koboldai_vars.actions.get_last_key()]) > 0):
+            action = koboldai_vars.actions[koboldai_vars.actions.get_last_key()]
             lastchar = action[-1] if len(action) else ""
         else:
             # Last action is blank, this should never happen, but
             # since it did let's bail out.
             return txt
     else:
-        action = story_settings.prompt
+        action = koboldai_vars.prompt
         lastchar = action[-1] if len(action) else ""
     if(lastchar == "." or lastchar == "!" or lastchar == "?" or lastchar == "," or lastchar == ";" or lastchar == ":"):
         txt = " " + txt
     return txt
 	
 def singlelineprocessing(txt, vars):
-    txt = system_settings.regex_sl.sub('', txt)
-    if(len(story_settings.actions) > 0):
-        if(len(story_settings.actions[story_settings.actions.get_last_key()]) > 0):
-            action = story_settings.actions[story_settings.actions.get_last_key()]
+    txt = koboldai_vars.regex_sl.sub('', txt)
+    if(len(koboldai_vars.actions) > 0):
+        if(len(koboldai_vars.actions[koboldai_vars.actions.get_last_key()]) > 0):
+            action = koboldai_vars.actions[koboldai_vars.actions.get_last_key()]
             lastchar = action[-1] if len(action) else ""
         else:
             # Last action is blank, this should never happen, but
             # since it did let's bail out.
             return txt
     else:
-        action = story_settings.prompt
+        action = koboldai_vars.prompt
         lastchar = action[-1] if len(action) else ""
     if(lastchar != "\n"):
         txt = txt + "\n"
@@ -149,14 +149,14 @@ def cleanfilename(filename):
 #  Newline substitution for fairseq models
 #==================================================================#
 def encodenewlines(txt):
-    if(model_settings.newlinemode == "s"):
+    if(koboldai_vars.newlinemode == "s"):
         return txt.replace('\n', "</s>")
     return txt
 
 def decodenewlines(txt):
-    if(model_settings.newlinemode == "s"):
+    if(koboldai_vars.newlinemode == "s"):
         return txt.replace("</s>", '\n')
-    if(model_settings.newlinemode == "ns"):
+    if(koboldai_vars.newlinemode == "ns"):
         return txt.replace("</s>", '')
     return txt
 
@@ -253,9 +253,9 @@ def aria2_hook(pretrained_model_name_or_path: str, force_download=False, cache_d
         with tempfile.NamedTemporaryFile("w+b", delete=False) as f:
             f.write(aria2_config)
             f.flush()
-            p = subprocess.Popen(["aria2c", "-x", "10", "-s", "10", "-j", "10", "--enable-rpc=true", f"--rpc-secret={secret}", "--rpc-listen-port", str(system_settings.aria2_port), "--disable-ipv6", "--file-allocation=trunc", "--allow-overwrite", "--auto-file-renaming=false", "-d", _cache_dir, "-i", f.name, "-U", transformers.file_utils.http_user_agent(user_agent)] + (["-c"] if not force_download else []) + ([f"--header='Authorization: Bearer {token}'"] if use_auth_token else []), stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            p = subprocess.Popen(["aria2c", "-x", "10", "-s", "10", "-j", "10", "--enable-rpc=true", f"--rpc-secret={secret}", "--rpc-listen-port", str(koboldai_vars.aria2_port), "--disable-ipv6", "--file-allocation=trunc", "--allow-overwrite", "--auto-file-renaming=false", "-d", _cache_dir, "-i", f.name, "-U", transformers.file_utils.http_user_agent(user_agent)] + (["-c"] if not force_download else []) + ([f"--header='Authorization: Bearer {token}'"] if use_auth_token else []), stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             while p.poll() is None:
-                r = s.post(f"http://localhost:{system_settings.aria2_port}/jsonrpc", json={"jsonrpc": "2.0", "id": "kai", "method": "aria2.tellActive", "params": [f"token:{secret}"]}).json()["result"]
+                r = s.post(f"http://localhost:{koboldai_vars.aria2_port}/jsonrpc", json={"jsonrpc": "2.0", "id": "kai", "method": "aria2.tellActive", "params": [f"token:{secret}"]}).json()["result"]
                 if not r:
                     s.close()
                     if bar is not None:

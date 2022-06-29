@@ -8,7 +8,7 @@ socket.on("disconnect", (reason, details) => {
 });
 socket.on('reset_story', function(){reset_story();});
 socket.on('var_changed', function(data){var_changed(data);});
-//socket.onAny(function(event_name, data) {console.log({"event": event_name, "data": data});});
+socket.onAny(function(event_name, data) {console.log({"event": event_name, "class": data.classname, "data": data});});
 
 var backend_vars = {};
 var presets = {}
@@ -202,7 +202,7 @@ function selected_preset(data) {
 
 function update_status_bar(data) {
 	var total_tokens = document.getElementById('model_genamt').value;
-	var percent_complete = data.value/total_tokens*100;
+	var percent_complete = data.value;
 	var percent_bar = document.getElementsByClassName("statusbar_inner");
 	for (item of percent_bar) {
 		item.setAttribute("style", "width:"+percent_complete+"%");
@@ -265,7 +265,7 @@ function var_changed(data) {
 	}
 	
 	//if we're updating generated tokens, let's show that in our status bar
-	if ((data.classname == 'model') && (data.name == 'generated_tkns')) {
+	if ((data.classname == 'model') && (data.name == 'tqdm_progress')) {
 		update_status_bar(data);
 	}
 	
