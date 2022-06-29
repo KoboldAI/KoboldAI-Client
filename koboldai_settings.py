@@ -74,7 +74,8 @@ class koboldai_vars(object):
     def create_story(self, story_name, json_data=None):
         story_name = 'default'
         if story_name in self._story_settings:
-            self._story_settings[story_name].reset()
+            
+            self._story_settings[story_name]__init__()
         else:
             self._story_settings[story_name] = story_settings(self.socketio)
         if json_data is not None:
