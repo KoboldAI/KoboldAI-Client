@@ -164,7 +164,12 @@ class settings(object):
     def send_to_ui(self):
         for (name, value) in vars(self).items():
             if name not in self.local_only_variables and name[0] != "_":
-                process_variable_changes(self.socketio, self.__class__.__name__.replace("_settings", ""), name, value, None)
+                print(name)
+                try:
+                    process_variable_changes(self.socketio, self.__class__.__name__.replace("_settings", ""), name, clean_var_for_emit(value), None)
+                except:
+                    print("{} is of type {} and I can't transmit".format(name, type(value)))
+                    raise
 
 class model_settings(settings):
     local_only_variables = ['badwordsids', 'apikey', 'tqdm', 'socketio']
