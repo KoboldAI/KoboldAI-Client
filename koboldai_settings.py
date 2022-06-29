@@ -164,7 +164,6 @@ class settings(object):
     def send_to_ui(self):
         for (name, value) in vars(self).items():
             if name not in self.local_only_variables and name[0] != "_":
-                print(name)
                 try:
                     process_variable_changes(self.socketio, self.__class__.__name__.replace("_settings", ""), name, clean_var_for_emit(value), None)
                 except:
@@ -348,7 +347,7 @@ class user_settings(settings):
             process_variable_changes(self.socketio, self.__class__.__name__.replace("_settings", ""), name, value, old_value)
         
 class system_settings(settings):
-    local_only_variables = ['socketio', 'lua_state', 'lua_logname', 'lua_koboldbridge', 'lua_kobold', 'lua_koboldcore', 'regex_sl', 'acregex_ai', 'acregex_ui', 'comregex_ai', 'comregex_ui']
+    local_only_variables = ['socketio', 'lua_state', 'lua_logname', 'lua_koboldbridge', 'lua_kobold', 'lua_koboldcore', 'regex_sl', 'acregex_ai', 'acregex_ui', 'comregex_ai', 'comregex_ui', 'sp']
     no_save_variables = ['socketio']
     settings_name = "system"
     def __init__(self, socketio):
