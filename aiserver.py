@@ -4218,7 +4218,7 @@ def tpumtjgenerate(txt, minimum, maximum, found_entries=None):
         if(koboldai_vars.lua_koboldbridge.restart_sequence is not None and koboldai_vars.lua_koboldbridge.restart_sequence > 0):
             genresult(genout[koboldai_vars.lua_koboldbridge.restart_sequence-1]["generated_text"])
         else:
-            genselect([{"generated_text": x} for x in koboldai_vars.actions.get_current_options()])
+            genselect([{"generated_text": x['text']} for x in koboldai_vars.actions.get_current_options()])
 
     set_aibusy(0)
 
