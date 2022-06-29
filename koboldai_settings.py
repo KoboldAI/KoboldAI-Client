@@ -294,6 +294,7 @@ class story_settings(settings):
         self.actionmode  = 1
         self.dynamicscan = False
         self.recentedit  = False
+        self.notes       = ""    #Notes for the story. Does nothing but save
         
         
     def __setattr__(self, name, value):

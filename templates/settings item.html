@@ -34,6 +34,9 @@
 			</select>
 		{% endif %}
 	</span>
+	<!---Slider Labels--->
+	<span class="setting_minlabel"><span style="top: -4px; position: relative;">{% if item["uitype"] == "slider" %}{{ item['min'] }}{% endif %}</span></span>
+	<span class="setting_maxlabel"><span style="top: -4px; position: relative;">{% if item["uitype"] == "slider" %}{{ item['max'] }}{% endif %}</span></span>
 </div>
 {% endif %}
 {% endfor %}

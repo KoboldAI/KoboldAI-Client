@@ -99,13 +99,27 @@
 .setting_container {
 	display: grid;
 	grid-template-areas: "label value"
-						 "item item";
-	grid-template-rows: 20px 25px;
+						 "item item"
+						 "minlabel maxlabel";
+	grid-template-rows: 20px 25px 10px;
 	grid-template-columns: 160px 40px;
 	row-gap: 0.2em;
 	background-color: var(--setting_background);
 	color: var(--text);
 	margin: 2px;
+}
+
+.setting_minlabel {
+	grid-area: minlabel;
+	overflow: hidden;
+	font-size: 0.8em;
+}
+
+.setting_maxlabel {
+	grid-area: maxlabel;
+	overflow: hidden;
+	text-align: right;
+	font-size: 0.8em;
 }
 
 .setting_label {
@@ -450,12 +464,6 @@ td.sequence:hover {
 	grid-template-rows: 20px auto 40px;
 }
 
-.inputrow textarea {
-	grid-area: textarea;
-	background-color: var(--textarea_background);
-	color: var(--text);
-}
-
 .inputrow .submit[system_aibusy=false] {
 	grid-area: submit;
 	height: 100%;
@@ -540,6 +548,20 @@ td.sequence:hover {
 	display: none;
 }
 
+textarea {
+	grid-area: textarea;
+	background-color: var(--textarea_background);
+	color: var(--text);
+	resize: none;
+}
+
+input {
+	grid-area: textarea;
+	background-color: var(--textarea_background);
+	color: var(--text);
+	resize: none;
+}
+
 .action_button {
 	color: var(--enabled_button_text);
 	background-color: var(--enabled_button_background_color);
@@ -565,6 +587,10 @@ td.sequence:hover {
 
 .flex {
 	display: flex;
+}
+
+.fullwidth {
+	width: 100%;
 }
 
 .rawtext {
