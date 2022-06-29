@@ -1,0 +1,28 @@
+Status:<hr/>
+<div>Execution Time: <span id="Execution Time"></span></div>
+<div>Remaining Time: <span class="var_sync_model_tqdm_rem_time"></span></div>
+<hr/>
+<div id="Notes">
+	Notes (ignored by AI):<br/>
+	<textarea class="var_sync_story_notes fullwidth" onblur='socket.emit("var_change", {"ID": "story_notes", "value": this.value});'></textarea>
+</div>
+<hr/>
+<div id="Memory">
+	Memory:<br/>
+	<textarea rows=5 class="var_sync_story_memory fullwidth" onblur='socket.emit("var_change", {"ID": "story_memory", "value": this.value});'></textarea>
+</div>
+<hr/>
+<div id="author_notes">
+	Author's Notes:<br/>
+	<textarea rows=5 class="var_sync_story_authornote fullwidth" onblur='socket.emit("var_change", {"ID": "story_authornote", "value": this.value});'></textarea><br/>
+	Template:<br/>
+	<input type=text class="var_sync_story_authornotetemplate fullwidth" onblur='socket.emit("var_change", {"ID": "story_authornotetemplate", "value": this.value});'><br/>
+	andepth<br/>
+	<input type="range" min="0" max="5" step="1" 
+				   value="3" class="setting_item_input var_sync_story_andepth"
+				   onblur='socket.emit("var_change", {"ID": "story_andepth", "value": this.value});'>
+	<span style='display: grid; grid-template-areas: "minlabel maxlabel"'>
+		<span class=setting_minlabel>0</span>
+		<span class=setting_maxlabel>5</span>
+	</span>
+</div>
