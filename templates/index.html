@@ -9,6 +9,7 @@
 	<link rel="stylesheet" href="static/bootstrap.min.css">
 	<link rel="stylesheet" href="static/bootstrap-toggle.min.css">
 	<link rel="stylesheet" href="static/open-iconic-bootstrap.min.css">
+	<link href="static/open-iconic/css/open-iconic.css" rel="stylesheet">
 	<link rel="stylesheet" href="static/custom.css?ver=1.18.1c">
 
 	<script src="static/jquery-3.6.0.min.js"></script>
@@ -209,7 +210,7 @@
 		</div>
 	</div>
 	<div class="hidden" id="popupcontainer">
-		<div id="popup">
+		<div id="popup_old">
 			<div id="popuptitlebar">
 				<div id="popuptitletext">Select an Adventure to Import</div>
 			</div>
@@ -470,6 +471,21 @@
 			<div class="popupfooter">
 				<button type="button" class="btn btn-primary" id="btn_rsaccept">Accept</button>
 				<button type="button" class="btn btn-primary" id="btn_rsclose">Cancel</button>
+			</div>
+		</div>
+	</div>
+	
+	<!------------- Pop-Up ------------------------------->
+	<div class="new_popup hidden" id="popup">
+		<div style="height:100%;">
+			<div class="title" id="popup_title">
+				Popup Title
+			</div>
+			<div id="popup_breadcrumbs"></div>
+			<div class="popup_list_area" id="popup_list"></div>
+			<div class="popup_load_cancel">
+				<button class="btn btn-secondary popup_load_cancel_button" id="popup_accept">Load</button>
+				<button class="btn btn-primary popup_load_cancel_button" id="popup_cancel">Cancel</button>
 			</div>
 		</div>
 	</div>
