@@ -2125,6 +2125,7 @@ $(document).ready(function(){
 	socket.on('popup_items', function(data){popup_items(data);});
 	socket.on('popup_breadcrumbs', function(data){popup_breadcrumbs(data);});
 	socket.on('popup_edit_file', function(data){popup_edit_file(data);});
+	socket.on('error_popup', function(data){error_popup(data);});
 
 	socket.on('from_server', function(msg) {
 		//console.log(msg);
@@ -3148,12 +3149,15 @@ $(document).ready(function(){
 
 var popup_deleteable = false;
 var popup_editable = false;
+var popup_renameable = false;
 
 function load_popup(data) {
-	console.log(data);
 	popup_deleteable = data.deleteable;
 	popup_editable = data.editable;
+	popup_renameable = data.renameable;
 	var popup = document.getElementById("popup");
+	var popup_title = document.getElementById("popup_title");
+	popup_title.textContent = data.popup_title;
 	var popup_list = document.getElementById("popup_list");
 	//first, let's clear out our existing data
 	while (popup_list.firstChild) {
@@ -3164,24 +3168,48 @@ function load_popup(data) {
 		breadcrumbs.removeChild(breadcrumbs.firstChild);
 	}
 	
+	if (data.upload) {
+		const dropArea = document.getElementById('popup_list');
+		dropArea.addEventListener('dragover', (event) => {
+			event.stopPropagation();
+			event.preventDefault();
+			// Style the drag-and-drop as a "copy file" operation.
+			event.dataTransfer.dropEffect = 'copy';
+		});
+
+		dropArea.addEventListener('drop', (event) => {
+			event.stopPropagation();
+			event.preventDefault();
+			const fileList = event.dataTransfer.files;
+			for (file of fileList) {
+				reader = new FileReader();
+				reader.onload = function (event) {
+					socket.emit("upload_file", {'filename': file.name, "data": event.target.result});
+				};
+				reader.readAsArrayBuffer(file);
+			}
+		});
+	} else {
+		
+	}
+	
 	popup.classList.remove("hidden");
 	
 	//adjust accept button
-	var accept = document.getElementById("popup_accept");
-	accept.classList.add("btn-secondary");
-	accept.classList.remove("btn-primary");
-	accept.setAttribute("emit", data.call_back);
-	accept.setAttribute("selected_value", "");
-	accept.onclick = function () {
-							socket.emit(this.emit, this.getAttribute("selected_value"));
-							document.getElementById("popup").classList.add("hidden");
-					  };
+	if (data.call_back == "") {
+		document.getElementById("popup_load_cancel").classList.add("hidden");
+	} else {
+		document.getElementById("popup_load_cancel").classList.remove("hidden");
+		var accept = document.getElementById("popup_accept");
+		accept.classList.add("disabled");
+		accept.setAttribute("emit", data.call_back);
+		accept.setAttribute("selected_value", "");
+		accept.onclick = function () {
+								socket.emit(this.emit, this.getAttribute("selected_value"));
+								document.getElementById("popup").classList.add("hidden");
+						  };
+	}
 					  
-	//adjust cancel button
-	var cancel = document.getElementById("popup_cancel");				  
-	cancel.onclick = function () {
-							document.getElementById("popup").classList.add("hidden");
-					  };
 }
 
 function popup_items(data) {
@@ -3190,6 +3218,7 @@ function popup_items(data) {
 	while (popup_list.firstChild) {
 		popup_list.removeChild(popup_list.firstChild);
 	}
+	document.getElementById('popup_upload_input').value = "";
 	
 	for (item of data) {
 		var list_item = document.createElement("span");
@@ -3209,7 +3238,8 @@ function popup_items(data) {
 		edit_icon.classList.add("edit_icon");
 		if ((popup_editable) && !(item[0])) {
 			edit_icon.classList.add("oi");
-			edit_icon.setAttribute('data-glyph', "pencil");
+			edit_icon.setAttribute('data-glyph', "spreadsheet");
+			edit_icon.title = "Edit"
 			edit_icon.id = item[1];
 			edit_icon.onclick = function () {
 							socket.emit("popup_edit", this.id);
@@ -3217,12 +3247,31 @@ function popup_items(data) {
 		}
 		list_item.append(edit_icon);
 		
+		//create the rename icon
+		var rename_icon = document.createElement("span");
+		rename_icon.classList.add("rename_icon");
+		if ((popup_renameable) && !(item[0])) {
+			rename_icon.classList.add("oi");
+			rename_icon.setAttribute('data-glyph', "pencil");
+			rename_icon.title = "Rename"
+			rename_icon.id = item[1];
+			rename_icon.setAttribute("filename", item[2]);
+			rename_icon.onclick = function () {
+							var new_name = prompt("Please enter new filename for \n"+ this.getAttribute("filename"));
+							if (new_name != null) {
+								socket.emit("popup_rename", {"file": this.id, "new_name": new_name});
+							}
+					  };
+		}
+		list_item.append(rename_icon);
+		
 		//create the delete icon
 		var delete_icon = document.createElement("span");
 		delete_icon.classList.add("delete_icon");
 		if (popup_deleteable) {
 			delete_icon.classList.add("oi");
 			delete_icon.setAttribute('data-glyph', "x");
+			delete_icon.title = "Delete"
 			delete_icon.id = item[1];
 			delete_icon.setAttribute("folder", item[0]);
 			delete_icon.onclick = function () {
@@ -3249,14 +3298,12 @@ function popup_items(data) {
 		popup_item.onclick = function () {
 						var accept = document.getElementById("popup_accept");
 						if (this.getAttribute("valid") == "true") {
-							accept.classList.remove("btn-secondary");
-							accept.classList.add("btn-primary");
+							accept.classList.remove("disabled");
 							accept.setAttribute("selected_value", this.id);
 						} else {
 							console.log("not valid");
 							accept.setAttribute("selected_value", "");
-							accept.classList.add("btn-secondary");
-							accept.classList.remove("btn-primary");
+							accept.classList.add("disabled");
 							if (this.getAttribute("folder") == "true") {
 								console.log("folder");
 								socket.emit("popup_change_folder", this.id);
@@ -3320,3 +3367,19 @@ function popup_edit_file(data) {
 	popup_list.append(textarea);
 	
 }
+
+function error_popup(data) {
+	alert(data);
+}
+
+function upload_file(file_box) {
+	var fileList = file_box.files;
+	for (file of fileList) {
+		reader = new FileReader();
+		reader.onload = function (event) {
+			socket.emit("upload_file", {'filename': file.name, "data": event.target.result});
+		};
+		reader.readAsArrayBuffer(file);
+	}
+}
+

@@ -1580,8 +1580,8 @@ body.connected .popupfooter, .popupfooter.always-available {
 	background-color: #262626;
 	padding: 2px;
 	display: grid;
-	grid-template-areas: "folder_icon delete_icon edit_icon file";
-	grid-template-columns: 20px 20px 20px auto;
+	grid-template-areas: "folder_icon delete_icon edit_icon rename_icon file";
+	grid-template-columns: 20px 20px 20px 20px auto;
 	
 }
 
@@ -1591,6 +1591,10 @@ body.connected .popupfooter, .popupfooter.always-available {
 
 .new_popup .item .edit_icon {
 	grid-area: edit_icon;
+}
+
+.new_popup .item .rename_icon {
+	grid-area: rename_icon;
 }
 
 .new_popup .item .delete_icon {
@@ -1603,6 +1607,14 @@ body.connected .popupfooter, .popupfooter.always-available {
 
 .new_popup .item .file:hover {
 	background-color: #688f1f;
+}
+
+.new_popup textarea {
+	grid-area: textarea;
+	background-color: #404040;
+	color: white;
+	resize: none;
+	width: 100%;
 }
 
 .new_popup .popup_load_cancel {

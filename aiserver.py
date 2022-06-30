@@ -6075,8 +6075,31 @@ def send_debug():
 #==================================================================#
 @app.route("/popup_test")
 def popup_test():
-    file_popup("Test Popup", "./", "return_event_name", folder_only=False, editable=True, deleteable=True, jailed=False, item_check=check_if_dir_is_model)
+    file_popup("Test Popup", "./", "return_event_name", renameable=True, folder_only=False, editable=True, deleteable=True, jailed=False, item_check=check_if_dir_is_model)
     return "ok"
+
+@socketio.on('upload_file')
+def upload_file(data):
+    print("upload_file {}".format(data['filename']))
+    if 'current_folder' in session:
+        path = os.path.join(session['current_folder'], data['filename'])
+        print("Want to save to {}".format(path))
+        if 'popup_jailed_dir' not in session:
+            print("Someone is trying to upload a file to your server. Blocked.")
+        elif session['popup_jailed_dir'] is None:
+            if os.path.exists(path):
+                emit("error_popup", "The file already exists. Please delete it or rename the file before uploading", room="UI_2");
+            else:
+                with open(path, "wb") as f:
+                    f.write(data['data'])
+                get_files_folders(session['current_folder'])
+        elif session['popup_jailed_dir'] in session['current_folder']:
+            if os.path.exists(path):
+                emit("error_popup", "The file already exists. Please delete it or rename the file before uploading", room="UI_2");
+            else:
+                with open(path, "wb") as f:
+                    f.write(data['data'])
+                get_files_folders(session['current_folder'])
 
 @socketio.on('popup_change_folder')
 def popup_change_folder(data):
@@ -6090,6 +6113,25 @@ def popup_change_folder(data):
         get_files_folders(data)
     else:
         print("User is trying to get at files in your server outside the jail. Blocked. Jailed Dir: {}  Requested Dir: {}".format(session['popup_jailed_dir'], data))
+
+@socketio.on('popup_rename')
+def popup_rename(data):
+    if 'popup_renameable' not in session:
+        print("Someone is trying to rename a file in your server. Blocked.")
+        return
+    if not session['popup_renameable']:
+        print("Someone is trying to rename a file in your server. Blocked.")
+        return
+    
+    if session['popup_jailed_dir'] is None:
+        os.rename(data['file'], data['new_name'])
+        get_files_folders(os.path.dirname(data['file']))
+    elif session['popup_jailed_dir'] in data:
+        os.rename(data['file'], data['new_name'])
+        get_files_folders(os.path.dirname(data['file']))
+    else:
+        print("User is trying to rename files in your server outside the jail. Blocked. Jailed Dir: {}  Requested Dir: {}".format(session['popup_jailed_dir'], data['file']))
+
 
 @socketio.on('popup_delete')
 def popup_delete(data):
@@ -6159,7 +6201,7 @@ def popup_change_file(data):
     else:
         print("User is trying to delete files in your server outside the jail. Blocked. Jailed Dir: {}  Requested Dir: {}".format(session['popup_jailed_dir'], data))
 
-def file_popup(popup_title, starting_folder, return_event, jailed=True, folder_only=True, deleteable=False, editable=False, show_breadcrumbs=True, item_check=None, show_hidden=False):
+def file_popup(popup_title, starting_folder, return_event, upload=True, jailed=True, folder_only=True, renameable=False, deleteable=False, editable=False, show_breadcrumbs=True, item_check=None, show_hidden=False):
     #starting_folder = The folder we're going to get folders and/or items from
     #return_event = the socketio event that will be emitted when the load button is clicked
     #jailed = if set to true will look for the session variable jailed_folder and prevent navigation outside of that folder
@@ -6174,19 +6216,22 @@ def file_popup(popup_title, starting_folder, return_event, jailed=True, folder_o
     else:
         session['popup_jailed_dir'] = None
     session['popup_deletable'] = deleteable
+    session['popup_renameable'] = renameable
     session['popup_editable'] = editable
     session['popup_show_hidden'] = show_hidden
     session['popup_item_check'] = item_check
     session['popup_folder_only'] = folder_only
     session['popup_show_breadcrumbs'] = show_breadcrumbs
+    session['upload'] = upload
     
-    socketio.emit("load_popup", {"popup_title": popup_title, "call_back": return_event, "deleteable": deleteable, "editable": editable}, broadcast=True)
+    socketio.emit("load_popup", {"popup_title": popup_title, "call_back": return_event, "renameable": renameable, "deleteable": deleteable, "editable": editable, 'upload': upload}, broadcast=True)
     
     get_files_folders(starting_folder)
     
     
 def get_files_folders(starting_folder):
     import stat
+    session['current_folder'] = starting_folder
     item_check = session['popup_item_check']
     show_breadcrumbs = session['popup_show_breadcrumbs']
     show_hidden = session['popup_show_hidden']
