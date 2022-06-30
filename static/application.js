@@ -126,6 +126,7 @@ var adventure = false;
 var chatmode = false;
 
 var sliders_throttle = getThrottle(200);
+var submit_throttle = null;
 
 //=================================================================//
 //  METHODS
@@ -882,6 +883,17 @@ function dosubmit(disallow_abort) {
 		return;
 	}
 	chunkOnFocusOut("override");
+	// Wait for editor changes to be applied before submitting
+	submit_throttle = getThrottle(70);
+	submit_throttle.txt = txt;
+	submit_throttle.disallow_abort = disallow_abort;
+	submit_throttle(0, _dosubmit);
+}
+
+function _dosubmit() {
+	var txt = submit_throttle.txt;
+	var disallow_abort = submit_throttle.disallow_abort;
+	submit_throttle = null;
 	input_text.val("");
 	hideMessage();
 	hidegenseqs();
@@ -1619,12 +1631,18 @@ function applyChunkDeltas(nodes) {
 				if(!selected_chunks.has(chunks[i])) {
 					modified_chunks.delete(chunks[i]);
 					socket.send({'cmd': 'inlineedit', 'chunk': chunks[i], 'data': formatChunkInnerText(chunk)});
+					if(submit_throttle !== null) {
+						submit_throttle(0, _dosubmit);
+					}
 				}
 				empty_chunks.delete(chunks[i]);
 			} else {
 				if(!selected_chunks.has(chunks[i])) {
 					modified_chunks.delete(chunks[i]);
 					socket.send({'cmd': 'inlineedit', 'chunk': chunks[i], 'data': formatChunkInnerText(chunk)});
+					if(submit_throttle !== null) {
+						submit_throttle(0, _dosubmit);
+					}
 				}
 				empty_chunks.add(chunks[i]);
 			}
@@ -1646,6 +1664,9 @@ function syncAllModifiedChunks(including_selected_chunks=false) {
 				empty_chunks.delete(chunks[i]);
 			}
 			socket.send({'cmd': 'inlineedit', 'chunk': chunks[i], 'data': data});
+			if(submit_throttle !== null) {
+				submit_throttle(0, _dosubmit);
+			}
 		}
 	}
 }
@@ -1698,10 +1719,16 @@ function restorePrompt() {
 			if(this.innerText.trim().length) {
 				saved_prompt = this.innerText.trim();
 				socket.send({'cmd': 'inlinedelete', 'data': this.getAttribute("n")});
+				if(submit_throttle !== null) {
+					submit_throttle(0, _dosubmit);
+				}
 				this.parentNode.removeChild(this);
 				return false;
 			}
 			socket.send({'cmd': 'inlinedelete', 'data': this.getAttribute("n")});
+			if(submit_throttle !== null) {
+				submit_throttle(0, _dosubmit);
+			}
 			this.parentNode.removeChild(this);
 		});
 	}
@@ -1716,6 +1743,9 @@ function restorePrompt() {
 	modified_chunks.delete('0');
 	empty_chunks.delete('0');
 	socket.send({'cmd': 'inlineedit', 'chunk': '0', 'data': saved_prompt});
+	if(submit_throttle !== null) {
+		submit_throttle(0, _dosubmit);
+	}
 }
 
 function deleteEmptyChunks() {
@@ -1727,11 +1757,17 @@ function deleteEmptyChunks() {
 			restorePrompt();
 		} else {
 			socket.send({'cmd': 'inlinedelete', 'data': chunks[i]});
+			if(submit_throttle !== null) {
+				submit_throttle(0, _dosubmit);
+			}
 		}
 	}
 	if(modified_chunks.has('0')) {
 		modified_chunks.delete(chunks[i]);
 		socket.send({'cmd': 'inlineedit', 'chunk': chunks[i], 'data': formatChunkInnerText(document.getElementById("n0"))});
+		if(submit_throttle !== null) {
+			submit_throttle(0, _dosubmit);
+		}
 	}
 	if(gamestarted) {
 		saved_prompt = formatChunkInnerText($("#n0")[0]);
