@@ -2510,6 +2510,12 @@ $(document).ready(function(){
 		chunkOnFocusOut
 	);
 	mutation_observer = new MutationObserver(chunkOnDOMMutate);
+	$("#gamescreen").on('click', function(e) {
+		if(this !== e.target) {
+			return;
+		}
+		document.activeElement.blur();
+	});
 
 	// This is required for the editor to work correctly in Firefox on desktop
 	// because the gods of HTML and JavaScript say so
