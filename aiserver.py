@@ -6082,7 +6082,7 @@ def show_folder_soft_prompt(data):
 #==================================================================#
 @socketio.on('show_folder_usersripts')
 def show_folder_usersripts(data):
-    file_popup("Load Softprompt", "./userscripts", "", renameable=True, folder_only=False, editable=False, deleteable=True, jailed=True, item_check=None)
+    file_popup("Load Softprompt", "./userscripts", "", renameable=True, folder_only=False, editable=True, deleteable=True, jailed=True, item_check=None)
 
 
 
