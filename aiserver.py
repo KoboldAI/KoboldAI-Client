@@ -263,8 +263,10 @@ def sendModelSelection(menu="mainmenu", folder="./models"):
         else:
             showdelete=False
         emit('from_server', {'cmd': 'show_model_menu', 'data': menu_list, 'menu': menu, 'breadcrumbs': breadcrumbs, "showdelete": showdelete}, broadcast=True, room="UI_1")
+        emit('show_model_menu', {'data': menu_list, 'menu': menu, 'breadcrumbs': breadcrumbs, "showdelete": showdelete}, broadcast=False, room="UI_2")
     else:
         emit('from_server', {'cmd': 'show_model_menu', 'data': model_menu[menu], 'menu': menu, 'breadcrumbs': [], "showdelete": False}, broadcast=True, room="UI_1")
+        emit('show_model_menu', {'data': model_menu[menu], 'menu': menu, 'breadcrumbs': [], "showdelete": False}, broadcast=False, room="UI_2")
 
 def get_folder_path_info(base):
     if base == 'This PC':
@@ -333,7 +335,7 @@ def check_if_dir_is_model(path):
     if os.path.exists(path):
         try:
             from transformers import AutoConfig
-            model_config = AutoConfig.from_pretrained(path, revision=koboldai_vars.revision, cache_dir="cache")
+            model_config = AutoConfig.from_pretrained(path)
         except:
             return False
         return True
@@ -1034,12 +1036,18 @@ def get_model_info(model, directory=""):
                     break_values = break_values.split(",")
             else:
                 break_values = [layer_count]
+            break_values = [int(x) for x in break_values]
             break_values += [0] * (gpu_count - len(break_values))
     emit('from_server', {'cmd': 'selected_model_info', 'key_value': key_value, 'key':key, 
                          'gpu':gpu, 'layer_count':layer_count, 'breakmodel':breakmodel, 
                          'disk_break_value': disk_blocks, 'accelerate': utils.HAS_ACCELERATE,
                          'break_values': break_values, 'gpu_count': gpu_count,
                          'url': url, 'gpu_names': gpu_names}, broadcast=True, room="UI_1")
+    emit('selected_model_info', {'key_value': key_value, 'key':key, 
+                         'gpu':gpu, 'layer_count':layer_count, 'breakmodel':breakmodel, 
+                         'disk_break_value': disk_blocks, 'disk_break': not utils.HAS_ACCELERATE,
+                         'break_values': break_values, 'gpu_count': gpu_count,
+                         'url': url, 'gpu_names': gpu_names}, broadcast=False, room="UI_2")
     if key_value != "":
         get_oai_models(key_value)
     
@@ -1047,18 +1055,16 @@ def get_model_info(model, directory=""):
 def get_layer_count(model, directory=""):
     if(model not in ["InferKit", "Colab", "OAI", "GooseAI" , "ReadOnly", "TPUMeshTransformerGPTJ"]):
         if(koboldai_vars.model == "GPT2Custom"):
-            model_config = open(koboldai_vars.custmodpth + "/config.json", "r")
+            model_config = open(directory + "/config.json", "r")
         # Get the model_type from the config or assume a model type if it isn't present
         else:
             from transformers import AutoConfig
             if directory == "":
-                model_config = AutoConfig.from_pretrained(koboldai_vars.model, revision=koboldai_vars.revision, cache_dir="cache")
-            elif(os.path.isdir(koboldai_vars.custmodpth.replace('/', '_'))):
-                model_config = AutoConfig.from_pretrained(koboldai_vars.custmodpth.replace('/', '_'), revision=koboldai_vars.revision, cache_dir="cache")
-            elif(os.path.isdir(directory)):
-                model_config = AutoConfig.from_pretrained(directory, revision=koboldai_vars.revision, cache_dir="cache")
+                model_config = AutoConfig.from_pretrained(model, cache_dir="cache")
+            elif os.path.isdir(directory):
+                model_config = AutoConfig.from_pretrained(directory, cache_dir="cache")
             else:
-                model_config = AutoConfig.from_pretrained(koboldai_vars.custmodpth, revision=koboldai_vars.revision, cache_dir="cache")
+                assert "Selected Model directory doesn't exist"
         
         
         
@@ -5821,7 +5827,176 @@ def new_ui_index():
 def ui2_connect():
     #Send all variables to client
     koboldai_vars.send_to_ui()
+    
     pass
+
+#==================================================================#
+# File Popup options
+#==================================================================#
+@app.route("/popup_test")
+def popup_test():
+    file_popup("Test Popup", "./", "return_event_name", folder_only=False, editable=True, deleteable=True, jailed=False, item_check=check_if_dir_is_model)
+    return "ok"
+
+@socketio.on('popup_change_folder')
+def popup_change_folder(data):
+    print("Doing popup change folder: {}".format(data))
+    if 'popup_jailed_dir' not in session:
+        print("Someone is trying to get at files in your server. Blocked.")
+        return
+    if session['popup_jailed_dir'] is None:
+        get_files_folders(data)
+    elif session['popup_jailed_dir'] in data:
+        get_files_folders(data)
+    else:
+        print("User is trying to get at files in your server outside the jail. Blocked. Jailed Dir: {}  Requested Dir: {}".format(session['popup_jailed_dir'], data))
+
+@socketio.on('popup_delete')
+def popup_delete(data):
+    if 'popup_deletable' not in session:
+        print("Someone is trying to delete a file in your server. Blocked.")
+        return
+    if not session['popup_deletable']:
+        print("Someone is trying to delete a file in your server. Blocked.")
+        return
+    
+    if session['popup_jailed_dir'] is None:
+        import shutil
+        if os.path.isdir(data):
+            shutil.rmtree(data)
+        else:
+            os.remove(data)
+        path = os.path.abspath(data).replace("\\", "/")
+        if path[-1] == "/":
+            path = path[:-1]
+        path = "/".join(path.split("/")[:-1])
+        get_files_folders(path)
+    elif session['popup_jailed_dir'] in data:
+        import shutil
+        if os.path.isdir(data):
+            shutil.rmtree(data)
+        else:
+            os.remove(data)
+        path = os.path.abspath(data).replace("\\", "/")
+        if path[-1] == "/":
+            path = path[:-1]
+        path = "/".join(path.split("/")[:-1])
+        get_files_folders(path)
+    else:
+        print("User is trying to delete files in your server outside the jail. Blocked. Jailed Dir: {}  Requested Dir: {}".format(session['popup_jailed_dir'], data))
+
+@socketio.on('popup_edit')
+def popup_edit(data):
+    if 'popup_editable' not in session:
+        print("Someone is trying to edit a file in your server. Blocked.")
+        return
+    if not session['popup_editable']:
+        print("Someone is trying to edit a file in your server. Blocked.")
+        return
+    
+    if session['popup_jailed_dir'] is None:
+        emit("popup_edit_file", {"file": data, "text": open(data, 'r').read()});
+    elif session['popup_jailed_dir'] in data:
+        emit("popup_edit_file", {"file": data, "text": open(data, 'r').read()});
+    else:
+        print("User is trying to delete files in your server outside the jail. Blocked. Jailed Dir: {}  Requested Dir: {}".format(session['popup_jailed_dir'], data))
+
+@socketio.on('popup_change_file')
+def popup_change_file(data):
+    if 'popup_editable' not in session:
+        print("Someone is trying to edit a file in your server. Blocked.")
+        return
+    if not session['popup_editable']:
+        print("Someone is trying to edit a file in your server. Blocked.")
+        return
+    
+    if session['popup_jailed_dir'] is None:
+        with open(data['file'], 'w') as f:
+            f.write(data['data'])
+    elif session['popup_jailed_dir'] in data['file']:
+        with open(data['file'], 'w') as f:
+            f.write(data['data'])
+    else:
+        print("User is trying to delete files in your server outside the jail. Blocked. Jailed Dir: {}  Requested Dir: {}".format(session['popup_jailed_dir'], data))
+
+def file_popup(popup_title, starting_folder, return_event, jailed=True, folder_only=True, deleteable=False, editable=False, show_breadcrumbs=True, item_check=None, show_hidden=False):
+    #starting_folder = The folder we're going to get folders and/or items from
+    #return_event = the socketio event that will be emitted when the load button is clicked
+    #jailed = if set to true will look for the session variable jailed_folder and prevent navigation outside of that folder
+    #folder_only = will only show folders, no files
+    #deletable = will show the delete icons/methods.
+    #editable = will show the edit icons/methods
+    #show_breadcrumbs = will show the breadcrumbs at the top of the screen
+    #item_check will call this function to check if the item is valid as a selection if not none. Will pass absolute directory as only argument to function
+    #show_hidden = ... really, you have to ask?
+    if jailed:
+        session['popup_jailed_dir'] = os.path.abspath(starting_folder).replace("\\", "/")
+    else:
+        session['popup_jailed_dir'] = None
+    session['popup_deletable'] = deleteable
+    session['popup_editable'] = editable
+    session['popup_show_hidden'] = show_hidden
+    session['popup_item_check'] = item_check
+    session['popup_folder_only'] = folder_only
+    session['popup_show_breadcrumbs'] = show_breadcrumbs
+    
+    socketio.emit("load_popup", {"popup_title": popup_title, "call_back": return_event, "deleteable": deleteable, "editable": editable}, broadcast=True, room="UI_2")
+    socketio.emit("load_popup", {"popup_title": popup_title, "call_back": return_event, "deleteable": deleteable, "editable": editable}, broadcast=True, room="UI_1")
+    
+    get_files_folders(starting_folder)
+    
+    
+def get_files_folders(starting_folder):
+    import stat
+    item_check = session['popup_item_check']
+    show_breadcrumbs = session['popup_show_breadcrumbs']
+    show_hidden = session['popup_show_hidden']
+    folder_only = session['popup_folder_only']
+    
+    if starting_folder == 'This PC':
+        breadcrumbs = [['This PC', 'This PC']]
+        items = [["{}:/".format(chr(i)), "{}:\\".format(chr(i))] for i in range(65, 91) if os.path.exists("{}:".format(chr(i)))]
+    else:
+        path = os.path.abspath(starting_folder).replace("\\", "/")
+        if path[-1] == "/":
+            path = path[:-1]
+        breadcrumbs = []
+        for i in range(len(path.split("/"))):
+            breadcrumbs.append(["/".join(path.split("/")[:i+1]),
+                                 path.split("/")[i]])
+        if len(breadcrumbs) == 1:
+            breadcrumbs = [["{}:/".format(chr(i)), "{}:\\".format(chr(i))] for i in range(65, 91) if os.path.exists("{}:".format(chr(i)))]
+        else:
+            if len([["{}:/".format(chr(i)), "{}:\\".format(chr(i))] for i in range(65, 91) if os.path.exists("{}:".format(chr(i)))]) > 0:
+                breadcrumbs.insert(0, ['This PC', 'This PC'])
+        folders = []
+        files = []
+        base_path = os.path.abspath(starting_folder).replace("\\", "/")
+        for item in os.listdir(base_path):
+            item_full_path = os.path.join(base_path, item).replace("\\", "/")
+            if hasattr(os.stat(item_full_path), "st_file_attributes"):
+                hidden = bool(os.stat(item_full_path).st_file_attributes & stat.FILE_ATTRIBUTE_HIDDEN)
+            else:
+                hidden = item[0] == "."
+            if item_check is None:
+                valid_selection = True
+            else:
+                valid_selection = item_check(item_full_path)
+                
+            if (show_hidden and hidden) or not hidden:
+                if os.path.isdir(os.path.join(base_path, item)):
+                    folders.append([True, item_full_path, item,  valid_selection])
+                else:
+                    files.append([False, item_full_path, item,  valid_selection])
+        items = folders
+        if not folder_only:
+            items += files
+            
+    socketio.emit("popup_items", items, broadcast=True, include_self=True, room="UI_2")
+    socketio.emit("popup_items", items, broadcast=True, include_self=True, room="UI_1")
+    if show_breadcrumbs:
+        socketio.emit("popup_breadcrumbs", breadcrumbs, broadcast=True, room="UI_2")
+        socketio.emit("popup_breadcrumbs", breadcrumbs, broadcast=True, room="UI_1")
 
 #==================================================================#
 # Event triggered when browser SocketIO detects a variable change
@@ -5914,6 +6089,26 @@ def UI_2_retry(data):
     koboldai_vars.recentrng = koboldai_vars.recentrngm = None
     actionsubmit("", actionmode=koboldai_vars.actionmode)
     
+#==================================================================#
+# Event triggered when user clicks the load model button
+#==================================================================#
+@socketio.on('load_model_button')
+def UI_2_load_model_button(data):
+    sendModelSelection()
+    
+#==================================================================#
+# Event triggered when user clicks the a model
+#==================================================================#
+@socketio.on('select_model')
+def UI_2_load_model_button(data):
+    if data['model'] in model_menu:
+        sendModelSelection(menu=data['model'])
+    else:
+        #We now have some model we want to potentially load.
+        #First we need to send the client the model parameters (layers, etc)
+        print("getting model info for {}".format(data['model']))
+        get_model_info(data['model'])
+
 #==================================================================#
 # Event triggered to rely a message
 #==================================================================#

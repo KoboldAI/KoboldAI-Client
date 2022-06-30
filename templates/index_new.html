@@ -61,5 +61,53 @@
 	<div id="rightSideMenu" class="rightSideMenu">
 		{% include 'story flyout.html' %}
 	</div>
+	
+	<!------------- Pop-Up ------------------------------->
+	<div class="popup hidden" id="popup">
+		<div class="title" id="popup_title">
+			Popup Title
+		</div>
+		<div id="popup_breadcrumbs"></div>
+		<div class="popup_list_area" id="popup_list"></div>
+		<div class="popup_load_cancel">
+			<button class="btn popup_load_cancel_button" id="popup_accept">Load</button>
+			<button class="btn popup_load_cancel_button" id="popup_cancel" onclick='document.getElementById("popup").classList.add("hidden");'>Cancel</button>
+		</div>
+	</div>
+	
+	<!---------------- Model Load Screen ---------------------->
+	<div class="popup hidden" id="loadmodelcontainer">
+		<div class="title">
+			Select A Model To Load
+		</div>
+		<div id="loadmodellistbreadcrumbs">
+			
+		</div>
+		<div id="loadmodellistcontent" class="popup_list_area"></div>
+		<div class="popup_load_cancel">
+			<input class="hidden" type="text" placeholder="key" id="modelkey" onblur="socket.send({'cmd': 'OAI_Key_Update', 'key': $('#modelkey')[0].value});">
+			<input class="hidden" type="text" placeholder="Enter the URL of the server (For example a trycloudflare link)" id="modelurl" onchange="check_enable_model_load()">
+			<input class="hidden" type="text" placeholder="Model Path or Hugging Face Name" id="custommodelname" menu="" onblur="socket.send({'cmd': 'selectmodel', 'data': $(this).attr('menu'), 'path_modelname': $('#custommodelname')[0].value});">
+			<select class="hidden" id="oaimodel"><option value="">Select OAI Model</option></select>
+			<div class="hidden" id=modellayers>
+				<div class="justifyleft">
+					GPU/Disk Layers
+					<span class="helpicon">?
+						<span class="helptext">Number of layers to assign to GPUs and to disk cache. Remaining layers will be put into CPU RAM.</span>
+					</span>
+				</div>
+				<div class="justifyright"><span id="gpu_layers_current">0</span>/<span id="gpu_layers_max">0</span></div>
+				<div id=model_layer_bars style="color: white"></div>
+				<input type=hidden id='gpu_count' value=0/>
+			</div>
+			<div class="box flex-push-right hidden" id=use_gpu_div>
+				<input type="checkbox" data-toggle="toggle" data-onstyle="success" id="use_gpu" checked>
+				<div class="box-label">Use GPU</div>
+			</div>
+			<button type="button" class="btn popup_load_cancel_button disabled" onclick="load_model()" id="btn_loadmodelaccept">Load</button>
+			<button type="button" class="btn popup_load_cancel_button" onclick='document.getElementById("loadmodelcontainer").classList.add("hidden");' id="btn_loadmodelclose">Cancel</button>
+			
+		</div>
+	</div>
 </body>
 </html>

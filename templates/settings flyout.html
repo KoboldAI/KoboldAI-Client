@@ -33,7 +33,7 @@
 <div id="setting_menu_model" class="settings_category_area">
 	<div id="Model_Info">
 		<div>Running Model: <span class="var_sync_model_model">ReadOnly</span></div>
-		<div><button class="btn action_button">Load Model</button></div>
+		<div><button class="btn action_button" onclick="socket.emit('load_model_button', {});">Load Model</button></div>
 	</div>
 {% with menu='Model' %}
 	{% include 'settings item.html' %}

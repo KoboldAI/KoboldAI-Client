@@ -21,6 +21,8 @@
 	--enabled_button_text: #fff;
 	--enabled_button_background_color: #337ab7;
 	--enabled_button_border_color: #2e6da4;
+	--popup_title_bar_color: #337AB7;
+	--popup_item_color: #262626;
 	--disabled_button_text: #303030;
 	--disabled_button_background_color: #686c68;
 	--disabled_button_border_color: #686c68;
@@ -543,6 +545,161 @@ td.sequence:hover {
 	overflow: hidden;
 }
 
+
+/*---------------------------------- Popup -------------------------------------------------*/
+.popup {
+	position: absolute;
+	top: 10vh;
+	left: 10%;
+	z-index: 999;
+	width: 80%;
+	height: 80vh;
+	background-color: black;
+	display: flex;
+	flex-direction: column;
+	overflow-x: hidden;
+}
+
+.popup .title {
+	width: 100%;
+	background-color: var(--popup_title_bar_color);
+	text-align: center;
+	font-size: 1.3em;
+}
+
+.popup .popup_list_area {
+	height: 70vh;
+	overflow-x: hidden;
+}
+
+.popup .item {
+	width: 100%;
+	background-color: var(--popup_item_color);
+	padding: 2px;
+	display: grid;
+	grid-template-areas: "folder_icon delete_icon edit_icon file";
+	grid-template-columns: 20px 20px 20px auto;
+	
+}
+
+.popup .item .folder_icon {
+	grid-area: folder_icon;
+}
+
+.popup .item .edit_icon {
+	grid-area: edit_icon;
+}
+
+.popup .item .delete_icon {
+	grid-area: delete_icon;
+}
+
+.popup .item .file {
+	grid-area: file;
+	display: grid;
+}
+
+.popup .item .file:hover {
+	background-color: #688f1f;
+}
+
+.popup .popup_load_cancel {
+	text-align: center;
+	background-color: var(--popup_title_bar_color);
+}
+
+.popup_load_cancel_button {
+	vertical-align: bottom;
+	display: inline;
+}
+
+.breadcrumbitem {
+	padding: 5px 10px 5px 10px;
+	color: #ffffff;
+	background-color: transparent;
+	border: none;
+	
+	-moz-transition: background-color 0.25s ease-in;
+	-o-transition: background-color 0.25s ease-in;
+	-webkit-transition: background-color 0.25s ease-in;
+	transition: background-color 0.25s ease-in;
+}
+
+.breadcrumbitem:hover {
+	cursor: pointer;
+	background-color: #688f1f;
+}
+/*----------------------------- Model Load Popup ------------------------------------------*/
+
+.popup .item .model {
+	grid-area: file;
+	display: grid;
+	grid-template-areas: "item gpu_size";
+	grid-template-columns: auto 40px;
+}
+
+.popup .item .model:hover {
+	background-color: #688f1f;
+}
+
+.popup .item .model.selected {
+	background-color: #688f1f;
+}
+
+.model_setting_container {
+	display: grid;
+	grid-template-areas: "label label"
+						 "item item"
+						 "minlabel maxlabel";
+	grid-template-rows: 20px 25px 10px;
+	grid-template-columns: auto 40px;
+	row-gap: 0.2em;
+	border: 1px;
+	margin: 2px;
+}
+
+.model_setting_minlabel {
+	grid-area: minlabel;
+	overflow: hidden;
+	text-align: left;
+	font-size: 0.8em;
+}
+
+.model_setting_maxlabel {
+	grid-area: maxlabel;
+	overflow: hidden;
+	text-align: right;
+	font-size: 0.8em;
+}
+
+.model_setting_label {
+	grid-area: label;
+	overflow: hidden;
+	text-align: left;
+}
+
+.model_setting_value {
+	text-align: left;
+	grid-area: label;
+	background-color: inherit;
+	color: inherit;
+	border: none; 
+	outline: none;
+}
+
+.model_setting_value:focus {
+	color: var(--text_edit);
+}
+
+.model_setting_item {
+	grid-area: item;
+	overflow: hidden;
+}
+
+.model_setting_item_input {
+	width:95%;
+}
+
 /*---------------------------------- Global ------------------------------------------------*/
 .hidden {
 	display: none;
@@ -573,7 +730,7 @@ input {
 }
 
 
-.action_button.disabled {
+button.disabled {
 	color: var(--disabled_button_text);
 	background-color: var(--disabled_button_background_color);
 	border-color: var(--disabled_button_border_color);
@@ -595,4 +752,8 @@ input {
 
 .rawtext {
 	white-space: pre-wrap;
+}
+
+.text_red {
+	color: red;
 }

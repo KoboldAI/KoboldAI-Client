@@ -8,11 +8,19 @@ socket.on("disconnect", (reason, details) => {
 });
 socket.on('reset_story', function(){reset_story();});
 socket.on('var_changed', function(data){var_changed(data);});
+socket.on('load_popup', function(data){load_popup(data);});
+socket.on('popup_items', function(data){popup_items(data);});
+socket.on('popup_breadcrumbs', function(data){popup_breadcrumbs(data);});
+socket.on('popup_edit_file', function(data){popup_edit_file(data);});
+socket.on('show_model_menu', function(data){show_model_menu(data);});
+socket.on('selected_model_info', function(data){selected_model_info(data);});
 //socket.onAny(function(event_name, data) {console.log({"event": event_name, "class": data.classname, "data": data});});
 
 var backend_vars = {};
 var presets = {}
 var ai_busy_start = Date.now();
+var popup_deleteable = false;
+var popup_editable = false;
 //-----------------------------------Server to UI  Functions-----------------------------------------------
 function connect() {
 	console.log("connected");
@@ -276,9 +284,465 @@ function var_changed(data) {
 	}
 }
 
+function load_popup(data) {
+	popup_deleteable = data.deleteable;
+	popup_editable = data.editable;
+	var popup = document.getElementById("popup");
+	var popup_title = document.getElementById("popup_title");
+	popup_title.textContent = data.popup_title;
+	var popup_list = document.getElementById("popup_list");
+	//first, let's clear out our existing data
+	while (popup_list.firstChild) {
+		popup_list.removeChild(popup_list.firstChild);
+	}
+	var breadcrumbs = document.getElementById('popup_breadcrumbs');
+	while (breadcrumbs.firstChild) {
+		breadcrumbs.removeChild(breadcrumbs.firstChild);
+	}
+	
+	popup.classList.remove("hidden");
+	
+	//adjust accept button
+	var accept = document.getElementById("popup_accept");
+	accept.classList.add("disabled");
+	accept.setAttribute("emit", data.call_back);
+	accept.setAttribute("selected_value", "");
+	accept.onclick = function () {
+							socket.emit(this.emit, this.getAttribute("selected_value"));
+							document.getElementById("popup").classList.add("hidden");
+					  };
+					  
+}
+
+function popup_items(data) {
+	var popup_list = document.getElementById('popup_list');
+	//first, let's clear out our existing data
+	while (popup_list.firstChild) {
+		popup_list.removeChild(popup_list.firstChild);
+	}
+	
+	for (item of data) {
+		var list_item = document.createElement("span");
+		list_item.classList.add("item");
+		
+		//create the folder icon
+		var folder_icon = document.createElement("span");
+		folder_icon.classList.add("folder_icon");
+		if (item[0]) {
+			folder_icon.classList.add("oi");
+			folder_icon.setAttribute('data-glyph', "folder");
+		}
+		list_item.append(folder_icon);
+		
+		//create the edit icon
+		var edit_icon = document.createElement("span");
+		edit_icon.classList.add("edit_icon");
+		if ((popup_editable) && !(item[0])) {
+			edit_icon.classList.add("oi");
+			edit_icon.setAttribute('data-glyph', "pencil");
+			edit_icon.id = item[1];
+			edit_icon.onclick = function () {
+							socket.emit("popup_edit", this.id);
+					  };
+		}
+		list_item.append(edit_icon);
+		
+		//create the delete icon
+		var delete_icon = document.createElement("span");
+		delete_icon.classList.add("delete_icon");
+		if (popup_deleteable) {
+			delete_icon.classList.add("oi");
+			delete_icon.setAttribute('data-glyph', "x");
+			delete_icon.id = item[1];
+			delete_icon.setAttribute("folder", item[0]);
+			delete_icon.onclick = function () {
+							if (this.getAttribute("folder") == "true") {
+								if (window.confirm("Do you really want to delete this folder and ALL files under it?")) {
+									socket.emit("popup_delete", this.id);
+								}
+							} else {
+								if (window.confirm("Do you really want to delete this file?")) {
+									socket.emit("popup_delete", this.id);
+								}
+							}
+					  };
+		}
+		list_item.append(delete_icon);
+		
+		//create the actual item
+		var popup_item = document.createElement("span");
+		popup_item.classList.add("file");
+		popup_item.id = item[1];
+		popup_item.setAttribute("folder", item[0]);
+		popup_item.setAttribute("valid", item[3]);
+		popup_item.textContent = item[2];
+		popup_item.onclick = function () {
+						var accept = document.getElementById("popup_accept");
+						if (this.getAttribute("valid") == "true") {
+							accept.classList.remove("disabled");
+							accept.setAttribute("selected_value", this.id);
+						} else {
+							console.log("not valid");
+							accept.setAttribute("selected_value", "");
+							accept.classList.add("disabled");
+							if (this.getAttribute("folder") == "true") {
+								console.log("folder");
+								socket.emit("popup_change_folder", this.id);
+							}
+						}
+				  };
+		list_item.append(popup_item);
+		
+		
+		popup_list.append(list_item);
+		
+		
+	}
+}
+
+function popup_breadcrumbs(data) {
+	var breadcrumbs = document.getElementById('popup_breadcrumbs')
+	while (breadcrumbs.firstChild) {
+		breadcrumbs.removeChild(breadcrumbs.firstChild);
+	}
+	
+	for (item of data) {
+		var button = document.createElement("button");
+		button.id = item[0];
+		button.textContent = item[1];
+		button.classList.add("breadcrumbitem");
+		button.onclick = function () {
+							socket.emit("popup_change_folder", this.id);
+					  };
+		breadcrumbs.append(button);
+		var span = document.createElement("span");
+		span.textContent = "\\";
+		breadcrumbs.append(span);
+	}
+}
+
+function popup_edit_file(data) {
+	var popup_list = document.getElementById('popup_list');
+	//first, let's clear out our existing data
+	while (popup_list.firstChild) {
+		popup_list.removeChild(popup_list.firstChild);
+	}
+	var accept = document.getElementById("popup_accept");
+	accept.setAttribute("selected_value", "");
+	accept.onclick = function () {
+							var textarea = document.getElementById("filecontents");
+							socket.emit("popup_change_file", {"file": textarea.getAttribute("filename"), "data": textarea.value});
+							document.getElementById("popup").classList.add("hidden");
+					  };
+	
+	var textarea = document.createElement("textarea");
+	textarea.classList.add("fullwidth");
+	textarea.rows = 25;
+	textarea.id = "filecontents"
+	textarea.setAttribute("filename", data.file);
+	textarea.value = data.text;
+	textarea.onblur = function () {
+						var accept = document.getElementById("popup_accept");
+						accept.classList.remove("disabled");
+					};
+	popup_list.append(textarea);
+	
+}
 //--------------------------------------------UI to Server Functions----------------------------------
 
+function show_model_menu(data) {
+	document.getElementById("loadmodelcontainer").classList.remove("hidden");
+	
+	//clear old options
+	document.getElementById("modelkey").classList.add("hidden");
+	document.getElementById("modelkey").value = "";
+	document.getElementById("modelurl").classList.add("hidden");
+	document.getElementById("use_gpu_div").classList.add("hidden");
+	document.getElementById("modellayers").classList.add("hidden");
+	var model_layer_bars = document.getElementById('model_layer_bars');
+	while (model_layer_bars.firstChild) {
+		model_layer_bars.removeChild(model_layer_bars.firstChild);
+	}
+	
+	//clear out the breadcrumbs
+	var breadcrumbs = document.getElementById('loadmodellistbreadcrumbs')
+	while (breadcrumbs.firstChild) {
+		breadcrumbs.removeChild(breadcrumbs.firstChild);
+	}
+	//add breadcrumbs
+	for (item of data.breadcrumbs) {
+		var button = document.createElement("button");
+		button.classList.add("breadcrumbitem");
+		button.id = item[0];
+		button.value = item[1];
+		button.onclick = function () {
+					socket.emit('selectmodel', {'data': this.id, 'folder': this.value});
+				};
+		breadcrumbs.append(button);
+		var span = document.createElement("span");
+		span.textContent = "\\";
+		breadcrumbs.append(span);
+	}
+	
+	//clear out the items
+	var model_list = document.getElementById('loadmodellistcontent')
+	while (model_list.firstChild) {
+		model_list.removeChild(model_list.firstChild);
+	}
+	//add items
+	for (item of data.data) {
+		var list_item = document.createElement("span");
+		list_item.classList.add("item");
+		
+		//create the folder icon
+		var folder_icon = document.createElement("span");
+		folder_icon.classList.add("folder_icon");
+		if (item[3]) {
+			folder_icon.classList.add("oi");
+			folder_icon.setAttribute('data-glyph', "folder");
+		}
+		list_item.append(folder_icon);
+		
+		//create the delete icon
+		//var delete_icon = document.createElement("span");
+		//delete_icon.classList.add("delete_icon");
+		//if (popup_deleteable) {
+		//	delete_icon.classList.add("oi");
+		//	delete_icon.setAttribute('data-glyph', "x");
+		//	delete_icon.id = item[1];
+		//	delete_icon.setAttribute("folder", item[0]);
+		//	delete_icon.onclick = function () {
+		//					if (this.getAttribute("folder") == "true") {
+		//						if (window.confirm("Do you really want to delete this folder and ALL files under it?")) {
+		//							socket.emit("popup_delete", this.id);
+		//						}
+		//					} else {
+		//						if (window.confirm("Do you really want to delete this file?")) {
+		//							socket.emit("popup_delete", this.id);
+		//						}
+		//					}
+		//			  };
+		//}
+		//list_item.append(delete_icon);
+		
+		//create the actual item
+		var popup_item = document.createElement("span");
+		popup_item.classList.add("model");
+		popup_item.id = item[1];
+		popup_item.setAttribute("Menu", data.menu)
+		//name text
+		var text = document.createElement("span");
+		text.style="grid-area: item;";
+		text.textContent = item[0];
+		popup_item.append(text);
+		//model size text
+		var text = document.createElement("span");
+		text.textContent = item[2];
+		text.style="grid-area: gpu_size;padding: 2px;";
+		popup_item.append(text);
+		
+		popup_item.onclick = function () {
+						var accept = document.getElementById("popup_accept");
+						accept.classList.add("disabled");
+						socket.emit("select_model", {"model": this.id, "menu": this.getAttribute("Menu")});
+						var model_list = document.getElementById('loadmodellistcontent').getElementsByClassName("selected");
+						for (model of model_list) {
+							model.classList.remove("selected");
+						}
+						this.classList.add("selected");
+					};
+		list_item.append(popup_item);
+		
+		
+		model_list.append(list_item);
+	}
+	
+}
 
+function selected_model_info(data) {
+	var accept = document.getElementById("btn_loadmodelaccept");
+	//hide or unhide key
+	if (data.key) {
+		document.getElementById("modelkey").classList.remove("hidden");
+		document.getElementById("modelkey").value = data.key_value;
+	} else {
+		document.getElementById("modelkey").classList.add("hidden");
+		document.getElementById("modelkey").value = "";
+	}
+	//hide or unhide URL
+	if  (data.url) {
+		document.getElementById("modelurl").classList.remove("hidden");
+	} else {
+		document.getElementById("modelurl").classList.add("hidden");
+	}
+	//hide or unhide the use gpu checkbox
+	if  (data.gpu) {
+		document.getElementById("use_gpu_div").classList.remove("hidden");
+	} else {
+		document.getElementById("use_gpu_div").classList.add("hidden");
+	}
+	//setup breakmodel
+	if (data.breakmodel) {
+		document.getElementById("modellayers").classList.remove("hidden");
+		//setup model layer count
+		console.log(data.break_values.reduce((a, b) => a + b, 0));
+		document.getElementById("gpu_layers_current").textContent = data.break_values.reduce((a, b) => a + b, 0);
+		document.getElementById("gpu_layers_max").textContent = data.layer_count;
+		document.getElementById("gpu_count").value = data.gpu_count;
+		
+		//create the gpu load bars
+		var model_layer_bars = document.getElementById('model_layer_bars');
+		while (model_layer_bars.firstChild) {
+			model_layer_bars.removeChild(model_layer_bars.firstChild);
+		}
+		
+		//Add the bars
+		for (let i = 0; i < data.gpu_names.length; i++) {
+			var div = document.createElement("div");
+			div.classList.add("model_setting_container");
+			//build GPU text
+			var span = document.createElement("span");
+			span.classList.add("model_setting_label");
+			span.textContent = "GPU " + i + " " + data.gpu_names[i] + ": "
+			//build layer count box
+			var input = document.createElement("input");
+			input.classList.add("model_setting_value");
+			input.classList.add("setting_value");
+			input.inputmode = "numeric";
+			input.id = "gpu_layers_box_"+i;
+			input.value = data.break_values[i];
+			input.onblur = function () {
+								document.getElementById(this.id.replace("_box", "")).value = this.value;
+								update_gpu_layers();
+							}
+			span.append(input);
+			div.append(span);
+			//build layer count slider
+			var input = document.createElement("input");
+			input.classList.add("model_setting_item");
+			input.type = "range";
+			input.min = 0;
+			input.max = data.layer_count;
+			input.step = 1;
+			input.value = data.break_values[i];
+			input.id = "gpu_layers_" + i;
+			input.onchange = function () {
+								document.getElementById(this.id.replace("gpu_layers", "gpu_layers_box")).value = this.value;
+								update_gpu_layers();
+							}
+			div.append(input);
+			//build slider bar #s
+			//min
+			var span = document.createElement("span");
+			span.classList.add("model_setting_minlabel");
+			var span2 = document.createElement("span");
+			span2.style="top: -4px; position: relative;";
+			span2.textContent = 0;
+			span.append(span2);
+			div.append(span);
+			//max
+			var span = document.createElement("span");
+			span.classList.add("model_setting_maxlabel");
+			var span2 = document.createElement("span");
+			span2.style="top: -4px; position: relative;";
+			span2.textContent = data.layer_count;
+			span.append(span2);
+			div.append(span);
+			
+			model_layer_bars.append(div);
+		}
+		
+		//add the disk layers
+		var div = document.createElement("div");
+		div.classList.add("model_setting_container");
+		//build GPU text
+		var span = document.createElement("span");
+		span.classList.add("model_setting_label");
+		span.textContent = "Disk cache: "
+		//build layer count box
+		var input = document.createElement("input");
+		input.classList.add("model_setting_value");
+		input.classList.add("setting_value");
+		input.inputmode = "numeric";
+		input.id = "disk_layers_box";
+		input.value = data.disk_break_value;
+		input.onblur = function () {
+							document.getElementById(this.id.replace("_box", "")).value = this.value;
+							update_gpu_layers();
+						}
+		span.append(input);
+		div.append(span);
+		//build layer count slider
+		var input = document.createElement("input");
+		input.classList.add("model_setting_item");
+		input.type = "range";
+		input.min = 0;
+		input.max = data.layer_count;
+		input.step = 1;
+		input.value = data.disk_break_value;
+		input.id = "disk_layers";
+		input.onchange = function () {
+							document.getElementById(this.id+"_box").value = this.value;
+							update_gpu_layers();
+						}
+		div.append(input);
+		//build slider bar #s
+		//min
+		var span = document.createElement("span");
+		span.classList.add("model_setting_minlabel");
+		var span2 = document.createElement("span");
+		span2.style="top: -4px; position: relative;";
+		span2.textContent = 0;
+		span.append(span2);
+		div.append(span);
+		//max
+		var span = document.createElement("span");
+		span.classList.add("model_setting_maxlabel");
+		var span2 = document.createElement("span");
+		span2.style="top: -4px; position: relative;";
+		span2.textContent = data.layer_count;
+		span.append(span2);
+		div.append(span);
+		
+		model_layer_bars.append(div);
+		
+		update_gpu_layers();
+	} else {
+		document.getElementById("modellayers").classList.add("hidden");
+		accept.classList.remove("disabled");
+	}
+	
+	
+}
+
+function update_gpu_layers() {
+	var gpu_layers
+	gpu_layers = 0;
+	for (let i=0; i < document.getElementById("gpu_count").value; i++) {
+		gpu_layers += parseInt(document.getElementById("gpu_layers_"+i).value);
+	}
+	if (document.getElementById("disk_layers")) {
+		gpu_layers += parseInt(document.getElementById("disk_layers").value);
+	}
+	if (gpu_layers > parseInt(document.getElementById("gpu_layers_max").textContent)) {
+		document.getElementById("gpu_layers_current").textContent = gpu_layers;
+		document.getElementById("gpu_layers_current").classList.add("text_red");
+		var accept = document.getElementById("btn_loadmodelaccept");
+		accept.classList.add("disabled");
+	} else {
+		var accept = document.getElementById("btn_loadmodelaccept");
+		accept.classList.remove("disabled");
+		document.getElementById("gpu_layers_current").textContent = gpu_layers;
+		document.getElementById("gpu_layers_current").classList.remove("text_red");
+	}
+}
+
+function load_model() {
+	message = {'cmd': 'load_model', 'use_gpu': $('#use_gpu')[0].checked, 
+			   'key': $('#modelkey')[0].value, 'gpu_layers': gpu_layers.slice(0, -1), 
+			   'disk_layers': disk_layers, 'url': $('#modelurl')[0].value, 
+			   'online_model': $('#oaimodel')[0].value};
+}
 //--------------------------------------------General UI Functions------------------------------------
 String.prototype.toHHMMSS = function () {
     var sec_num = parseInt(this, 10); // don't forget the second param
