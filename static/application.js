@@ -1420,8 +1420,13 @@ function chunkOnTextInput(event) {
 		// to put the <br/> back in the right place
 		var br = $("#_EDITOR_LINEBREAK_")[0];
 		if(br.parentNode === game_text[0]) {
+			var parent = br.previousSibling;
 			if(br.previousSibling.nodeType !== 1) {
+				parent = br.previousSibling.previousSibling;
 				br.previousSibling.previousSibling.appendChild(br.previousSibling);
+			}
+			if(parent.lastChild.tagName === "BR") {
+				parent.lastChild.remove();  // Chrome also inserts an extra <br/> in this case for some reason so we need to remove it
 			}
 			br.previousSibling.appendChild(br);
 			r.selectNodeContents(br.parentNode);
