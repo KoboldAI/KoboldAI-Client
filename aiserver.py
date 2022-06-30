@@ -6071,35 +6071,56 @@ def send_debug():
         emit('from_server', {'cmd': 'debug_info', 'data': debug_info}, broadcast=True)
 
 #==================================================================#
+# Load file browser for soft prompts
+#==================================================================#
+@socketio.on('show_folder_soft_prompt')
+def show_folder_soft_prompt(data):
+    file_popup("Load Softprompt", "./softprompts", "", renameable=True, folder_only=False, editable=False, deleteable=True, jailed=True, item_check=None)
+
+#==================================================================#
+# Load file browser for user scripts
+#==================================================================#
+@socketio.on('show_folder_usersripts')
+def show_folder_usersripts(data):
+    file_popup("Load Softprompt", "./userscripts", "", renameable=True, folder_only=False, editable=False, deleteable=True, jailed=True, item_check=None)
+
+
+
+#==================================================================#
 # File Popup options
 #==================================================================#
-@app.route("/popup_test")
-def popup_test():
-    file_popup("Test Popup", "./", "return_event_name", renameable=True, folder_only=False, editable=True, deleteable=True, jailed=False, item_check=check_if_dir_is_model)
-    return "ok"
 
 @socketio.on('upload_file')
 def upload_file(data):
     print("upload_file {}".format(data['filename']))
+    print('current_folder' in session)
+    print('popup_jailed_dir' not in session)
+    print(session['popup_jailed_dir'])
+    print(session['current_folder'])    
     if 'current_folder' in session:
-        path = os.path.join(session['current_folder'], data['filename'])
-        print("Want to save to {}".format(path))
+        path = os.path.abspath(os.path.join(session['current_folder'], data['filename']).replace("\\", "/")).replace("\\", "/")
+        print(path)
+        print(os.path.exists(path))
         if 'popup_jailed_dir' not in session:
             print("Someone is trying to upload a file to your server. Blocked.")
         elif session['popup_jailed_dir'] is None:
             if os.path.exists(path):
+                print("popup error")
                 emit("error_popup", "The file already exists. Please delete it or rename the file before uploading", room="UI_2");
             else:
                 with open(path, "wb") as f:
                     f.write(data['data'])
                 get_files_folders(session['current_folder'])
+                print("saved")
         elif session['popup_jailed_dir'] in session['current_folder']:
             if os.path.exists(path):
+                print("popup error")
                 emit("error_popup", "The file already exists. Please delete it or rename the file before uploading", room="UI_2");
             else:
                 with open(path, "wb") as f:
                     f.write(data['data'])
                 get_files_folders(session['current_folder'])
+                print("saved")
 
 @socketio.on('popup_change_folder')
 def popup_change_folder(data):
@@ -6231,7 +6252,7 @@ def file_popup(popup_title, starting_folder, return_event, upload=True, jailed=T
     
 def get_files_folders(starting_folder):
     import stat
-    session['current_folder'] = starting_folder
+    session['current_folder'] = os.path.abspath(starting_folder).replace("\\", "/")
     item_check = session['popup_item_check']
     show_breadcrumbs = session['popup_show_breadcrumbs']
     show_hidden = session['popup_show_hidden']

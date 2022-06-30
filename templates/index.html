@@ -339,7 +339,7 @@
 	<div class="popupcontainer hidden" id="spcontainer">
 		<div id="sppopup">
 			<div class="popuptitlebar">
-				<div class="popuptitletext">Select A Soft Prompt To Use</div>
+				<div class="popuptitletext">Select A Soft Prompt To Use</div><span class="oi" style="color: white;" data-glyph="folder" onclick="socket.emit('show_folder_soft_prompt', {});"></span>
 			</div>
 			<div id="splistcontent">
 			</div>
@@ -352,7 +352,7 @@
 	<div class="popupcontainer hidden" id="uscontainer">
 		<div id="uspopup">
 			<div class="popuptitlebar">
-				<div class="popuptitletext">Select userscripts to load; drag-and-drop to reorder</div>
+				<div class="popuptitletext">Select userscripts to load; drag-and-drop to reorder</div><span class="oi" style="color: white;" data-glyph="folder" onclick="socket.emit('show_folder_usersripts', {});"></span>
 			</div>
 			<div class="usheadergrid">
 				<div>[AVAILABLE]</div>

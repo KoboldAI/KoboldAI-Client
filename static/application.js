@@ -3152,6 +3152,8 @@ var popup_editable = false;
 var popup_renameable = false;
 
 function load_popup(data) {
+	document.getElementById('spcontainer').classList.add('hidden');
+	document.getElementById('uscontainer').classList.add('hidden');
 	popup_deleteable = data.deleteable;
 	popup_editable = data.editable;
 	popup_renameable = data.renameable;
@@ -3197,9 +3199,9 @@ function load_popup(data) {
 	
 	//adjust accept button
 	if (data.call_back == "") {
-		document.getElementById("popup_load_cancel").classList.add("hidden");
+		document.getElementById("popup_accept").classList.add("hidden");
 	} else {
-		document.getElementById("popup_load_cancel").classList.remove("hidden");
+		document.getElementById("popup_accept").classList.remove("hidden");
 		var accept = document.getElementById("popup_accept");
 		accept.classList.add("disabled");
 		accept.setAttribute("emit", data.call_back);
