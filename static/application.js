@@ -1728,7 +1728,9 @@ function deleteEmptyChunks() {
 		modified_chunks.delete(chunks[i]);
 		socket.send({'cmd': 'inlineedit', 'chunk': chunks[i], 'data': formatChunkInnerText(document.getElementById("n0"))});
 	}
-	saved_prompt = formatChunkInnerText($("#n0")[0]);
+	if(gamestarted) {
+		saved_prompt = formatChunkInnerText($("#n0")[0]);
+	}
 }
 
 function highlightEditingChunks() {
@@ -1752,10 +1754,15 @@ function highlightEditingChunks() {
 }
 
 function cleanupChunkWhitespace() {
+	unbindGametext();
+
 	// Merge empty chunks with the next chunk
 	var chunks = Array.from(empty_chunks);
 	chunks.sort(function(e) {parseInt(e)});
 	for(var i = 0; i < chunks.length; i++) {
+		if(chunks[i] == "0") {
+			continue;
+		}
 		var original_chunk = document.getElementById("n" + chunks[i]);
 		var chunk = original_chunk.nextSibling;
 		while(chunk) {
@@ -1766,6 +1773,9 @@ function cleanupChunkWhitespace() {
 		}
 		if(chunk) {
 			chunk.innerText = original_chunk.innerText + chunk.innerText;
+			if(original_chunk.innerText.length != 0 && !modified_chunks.has(chunk.getAttribute("n"))) {
+				modified_chunks.add(chunk.getAttribute("n"));
+			}
 		}
 		original_chunk.innerText = "";
 	}
@@ -1784,9 +1794,14 @@ function cleanupChunkWhitespace() {
 		var ln = original_chunk.innerText.trimEnd().length;
 		if (chunk) {
 			chunk.innerText = original_chunk.innerText.substring(ln) + chunk.innerText;
+			if(ln != original_chunk.innerText.length && !modified_chunks.has(chunk.getAttribute("n"))) {
+				modified_chunks.add(chunk.getAttribute("n"));
+			}
 		}
 		original_chunk.innerText = original_chunk.innerText.substring(0, ln);
 	}
+
+	bindGametext();
 }
 
 // This gets run every time the text in a chunk is edited
