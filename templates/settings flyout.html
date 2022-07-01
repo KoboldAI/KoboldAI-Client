@@ -50,8 +50,12 @@
 <div id="setting_menu_story" class="hidden settings_category_area">
 	<div id="Story_Info">
 		<div>Story Name: <span class="var_sync_story_story_name"></span></div>
-		<div>Token Length: <span id="token_length">0</span></div>
-		<div><button id="save_story" class="btn action_button var_sync_alt_story_gamesaved" onclick='socket.emit("save_story", "Story123");'>Save Story</button></div>
+		<div>
+			<button id="load_story" class="btn action_button" onclick="socket.emit('load_story_list', '');">Load Story</button>
+			<button id="save_story" class="btn action_button var_sync_alt_story_gamesaved" onclick='socket.emit("save_story", "");'>Save Story</button>
+		</div>
+
+		
 	</div>
 	<div class="setting_tile_area">
 	{% with menu='Story' %}

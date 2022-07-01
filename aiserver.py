@@ -5201,7 +5201,7 @@ def saveRequest(savpath, savepins=True):
 #==================================================================#
 #  Show list of saved stories
 #==================================================================#
-def getloadlist():
+def getloadlist(data=None):
     emit('from_server', {'cmd': 'buildload', 'data': fileops.getstoryfiles()}, room="UI_1")
 
 #==================================================================#
@@ -5869,11 +5869,6 @@ def ui2_connect():
 #==================================================================#
 # File Popup options
 #==================================================================#
-@app.route("/popup_test")
-def popup_test():
-    file_popup("Test Popup", "./", "return_event_name", renameable=True, folder_only=False, editable=True, deleteable=True, jailed=False, item_check=check_if_dir_is_model)
-    return "ok"
-
 @socketio.on('upload_file')
 def upload_file(data):
     print("upload_file {}".format(data['filename']))
@@ -5996,7 +5991,9 @@ def popup_change_file(data):
     else:
         print("User is trying to delete files in your server outside the jail. Blocked. Jailed Dir: {}  Requested Dir: {}".format(session['popup_jailed_dir'], data))
 
-def file_popup(popup_title, starting_folder, return_event, upload=True, jailed=True, folder_only=True, renameable=False, deleteable=False, editable=False, show_breadcrumbs=True, item_check=None, show_hidden=False):
+def file_popup(popup_title, starting_folder, return_event, upload=True, jailed=True, folder_only=True, renameable=False, deleteable=False, 
+                                                           editable=False, show_breadcrumbs=True, item_check=None, show_hidden=False,
+                                                           valid_only=False, hide_extention=False):
     #starting_folder = The folder we're going to get folders and/or items from
     #return_event = the socketio event that will be emitted when the load button is clicked
     #jailed = if set to true will look for the session variable jailed_folder and prevent navigation outside of that folder
@@ -6006,6 +6003,8 @@ def file_popup(popup_title, starting_folder, return_event, upload=True, jailed=T
     #show_breadcrumbs = will show the breadcrumbs at the top of the screen
     #item_check will call this function to check if the item is valid as a selection if not none. Will pass absolute directory as only argument to function
     #show_hidden = ... really, you have to ask?
+    #valid_only = only show valid files
+    #hide_extention = hide extensions
     if jailed:
         session['popup_jailed_dir'] = os.path.abspath(starting_folder).replace("\\", "/")
     else:
@@ -6018,6 +6017,8 @@ def file_popup(popup_title, starting_folder, return_event, upload=True, jailed=T
     session['popup_folder_only'] = folder_only
     session['popup_show_breadcrumbs'] = show_breadcrumbs
     session['upload'] = upload
+    session['valid_only'] = valid_only
+    session['hide_extention'] = hide_extention
     
     socketio.emit("load_popup", {"popup_title": popup_title, "call_back": return_event, "renameable": renameable, "deleteable": deleteable, "editable": editable, 'upload': upload}, broadcast=True, room="UI_2")
     socketio.emit("load_popup", {"popup_title": popup_title, "call_back": return_event, "renameable": renameable, "deleteable": deleteable, "editable": editable, 'upload': upload}, broadcast=True, room="UI_1")
@@ -6032,6 +6033,8 @@ def get_files_folders(starting_folder):
     show_breadcrumbs = session['popup_show_breadcrumbs']
     show_hidden = session['popup_show_hidden']
     folder_only = session['popup_folder_only']
+    valid_only = session['valid_only']
+    hide_extention = session['hide_extention']
     
     if starting_folder == 'This PC':
         breadcrumbs = [['This PC', 'This PC']]
@@ -6049,6 +6052,12 @@ def get_files_folders(starting_folder):
         else:
             if len([["{}:/".format(chr(i)), "{}:\\".format(chr(i))] for i in range(65, 91) if os.path.exists("{}:".format(chr(i)))]) > 0:
                 breadcrumbs.insert(0, ['This PC', 'This PC'])
+        
+        #if we're jailed, remove the stuff before the jail from the breadcrumbs
+        if session['popup_jailed_dir'] is not None:
+            
+            breadcrumbs = breadcrumbs[len(session['popup_jailed_dir'].split("/")):]
+        
         folders = []
         files = []
         base_path = os.path.abspath(starting_folder).replace("\\", "/")
@@ -6067,7 +6076,14 @@ def get_files_folders(starting_folder):
                 if os.path.isdir(os.path.join(base_path, item)):
                     folders.append([True, item_full_path, item,  valid_selection])
                 else:
-                    files.append([False, item_full_path, item,  valid_selection])
+                    if hide_extention:
+                        item = ".".join(item.split(".")[:-1])
+                    if valid_only:
+                        if valid_selection:
+                            files.append([False, item_full_path, item,  valid_selection])
+                    else:
+                        files.append([False, item_full_path, item,  valid_selection])
+                        
         items = folders
         if not folder_only:
             items += files
@@ -6227,13 +6243,41 @@ def UI_2_load_model(data):
     load_model(use_gpu=data['use_gpu'], gpu_layers=data['gpu_layers'], disk_layers=data['disk_layers'], online_model=data['online_model'])
 
 #==================================================================#
+# Event triggered when load story is clicked
+#==================================================================#
+@socketio.on('load_story_list')
+def UI_2_load_story_list(data):
+    file_popup("Select Story to Load", "./stories", "load_story", upload=True, jailed=True, folder_only=False, renameable=True, 
+                                                                  deleteable=True, show_breadcrumbs=True, item_check=valid_story,
+                                                                  valid_only=True, hide_extention=True)
+
+def valid_story(file):
+        if file.endswith(".json"):
+            with open(file, "r") as f:
+                try:
+                    js = json.load(f)
+                except:
+                    pass
+                    return False
+                
+                return 'actions' in js
+
+#==================================================================#
+# Event triggered on load story
+#==================================================================#
+@socketio.on('load_story')
+def UI_2_load_story(file):
+    print("loading {}".format(file))
+    loadRequest(file)
+
+
+#==================================================================#
 # Event triggered to rely a message
 #==================================================================#
 @socketio.on('relay')
 def UI_2_relay(data):
     socketio.emit(data[0], data[1], **data[2])
 
-            
 
 #==================================================================#
 # Test

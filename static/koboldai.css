@@ -685,6 +685,10 @@ td.sequence:hover {
 	background-color: #688f1f;
 }
 
+.popup .item .file.selected {
+	background: #688f1f;
+}
+
 .popup .popup_load_cancel {
 	text-align: center;
 	background-color: var(--popup_title_bar_color);

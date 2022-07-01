@@ -15,6 +15,7 @@ socket.on('popup_edit_file', function(data){popup_edit_file(data);});
 socket.on('show_model_menu', function(data){show_model_menu(data);});
 socket.on('selected_model_info', function(data){selected_model_info(data);});
 socket.on('oai_engines', function(data){oai_engines(data);});
+socket.on('buildload', function(data){buildload(data);});
 socket.on('error_popup', function(data){error_popup(data);});
 //socket.onAny(function(event_name, data) {console.log({"event": event_name, "class": data.classname, "data": data});});
 
@@ -365,7 +366,7 @@ function load_popup(data) {
 		accept.setAttribute("emit", data.call_back);
 		accept.setAttribute("selected_value", "");
 		accept.onclick = function () {
-								socket.emit(this.emit, this.getAttribute("selected_value"));
+								socket.emit(this.getAttribute("emit"), this.getAttribute("selected_value"));
 								document.getElementById("popup").classList.add("hidden");
 						  };
 	}
@@ -469,6 +470,11 @@ function popup_items(data) {
 								socket.emit("popup_change_folder", this.id);
 							}
 						}
+						var popup_list = document.getElementById('popup_list').getElementsByClassName("selected");
+						for (item of popup_list) {
+							item.classList.remove("selected");
+						}
+						this.classList.add("selected");
 				  };
 		list_item.append(popup_item);
 		
@@ -876,6 +882,9 @@ function load_model() {
 	document.getElementById("loadmodelcontainer").classList.add("hidden");
 }
 
+function buildload(data) {
+	console.log(data);
+}
 
 //--------------------------------------------UI to Server Functions----------------------------------
 
