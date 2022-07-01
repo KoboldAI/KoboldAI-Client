@@ -908,19 +908,21 @@ def general_startup(override_args=None):
     else:
         args = parser.parse_args()
 
-    for arg in vars(args):
+    temp = [x for x in vars(args)]
+    for arg in temp:
         if arg == "path":
             if "model_path" in os.environ:
                 setattr(args, arg, os.environ["model_path"])
         else:
             if arg in os.environ:
-                if type(getattr(args, arg)) == bool:
-                    if bool(os.environ[arg]):
-                        setattr(args, arg, bool(os.environ[arg]))
+                if isinstance(getattr(args, arg), bool):
+                    if os.environ[arg].lower() == "true":
+                        setattr(args, arg, True)
                     else:
-                        delattr(args, arg)
+                        setattr(args, arg, False)
                 else:
                     setattr(args, arg, os.environ[arg])
+
    
 
     koboldai_vars.model = args.model;
