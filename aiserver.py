@@ -908,6 +908,11 @@ def general_startup(override_args=None):
     else:
         args = parser.parse_args()
 
+    for arg in vars(args):
+        if arg in os.environ:
+            setattr(args, arg, os.environ[arg])
+   
+
     koboldai_vars.model = args.model;
     koboldai_vars.revision = args.revision
 

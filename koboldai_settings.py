@@ -308,7 +308,7 @@ class story_settings(settings):
         self.notes       = ""    #Notes for the story. Does nothing but save
         
     def reset(self):
-        self.__init(self.socketio, tokenizer=self.tokenizer)
+        self.__init__(self.socketio, tokenizer=self.tokenizer)
         
     def __setattr__(self, name, value):
         new_variable = name not in self.__dict__
@@ -543,7 +543,7 @@ class KoboldStoryRegister(object):
         else:
             self.actions[self.action_count]['Selected Text Length'] = None
         process_variable_changes(self.socketio, "actions", "Selected Text", {"id": self.action_count, "text": text}, None)
-        process_variable_changes(self.socketio, "actions", 'Selected Text Length', {"id": self.action_count, 'length': self.actions[self.action_count]['Selected Text Length']}, {"id": action_step, 'length': 0})
+        process_variable_changes(self.socketio, "actions", 'Selected Text Length', {"id": self.action_count, 'length': self.actions[self.action_count]['Selected Text Length']}, {"id": self.action_count, 'length': 0})
         self.set_game_saved()
     
     def append_options(self, option_list):
