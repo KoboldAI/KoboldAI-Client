@@ -96,11 +96,18 @@ def getstoryfiles():
                 f.close()
                 continue
             f.close()
-            try:
-                ob["actions"] = len(js["actions"])
-            except TypeError:
-                print(f"Browser loading error: {file} has incorrect format.")
-                continue
+            if 'file_version' in js:
+                try:
+                    ob["actions"] = int(js["actions"]["action_count"])+1
+                except TypeError:
+                    print(f"Browser loading error: {file} has incorrect format.")
+                    continue
+            else:
+                try:
+                    ob["actions"] = len(js["actions"])
+                except TypeError:
+                    print(f"Browser loading error: {file} has incorrect format.")
+                    continue
             list.append(ob)
     return list
 
