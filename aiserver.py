@@ -257,13 +257,15 @@ def sendModelSelection(menu="mainmenu", folder="./models"):
         if koboldai_vars.host:
             breadcrumbs = []
         menu_list = [[folder, menu, "", False] for folder in paths]
+        menu_list_ui_2 = [[folder[0], folder[1], "", False] for folder in paths]
         menu_list.append(["Return to Main Menu", "mainmenu", "", True])
+        menu_list_ui_2.append(["Return to Main Menu", "mainmenu", "", True])
         if os.path.abspath("{}/models".format(os.getcwd())) == os.path.abspath(folder):
             showdelete=True
         else:
             showdelete=False
         emit('from_server', {'cmd': 'show_model_menu', 'data': menu_list, 'menu': menu, 'breadcrumbs': breadcrumbs, "showdelete": showdelete}, broadcast=True, room="UI_1")
-        emit('show_model_menu', {'data': menu_list, 'menu': menu, 'breadcrumbs': breadcrumbs, "showdelete": showdelete}, broadcast=False, room="UI_2")
+        emit('show_model_menu', {'data': menu_list_ui_2, 'menu': menu, 'breadcrumbs': breadcrumbs, "showdelete": showdelete}, broadcast=False, room="UI_2")
     else:
         emit('from_server', {'cmd': 'show_model_menu', 'data': model_menu[menu], 'menu': menu, 'breadcrumbs': [], "showdelete": False}, broadcast=True, room="UI_1")
         emit('show_model_menu', {'data': model_menu[menu], 'menu': menu, 'breadcrumbs': [], "showdelete": False}, broadcast=False, room="UI_2")
@@ -1010,6 +1012,8 @@ def get_model_info(model, directory=""):
                     key_value = js["apikey"]
                 elif 'oaiapikey' in js and js['oaiapikey'] != "":
                     key_value = js["oaiapikey"]
+                if model in ('GooseAI', 'OAI'): 
+                    get_oai_models({'model': model, 'key': key_value})
         key = True
     elif model == 'ReadOnly':
         pass
@@ -1045,11 +1049,10 @@ def get_model_info(model, directory=""):
                          'url': url, 'gpu_names': gpu_names}, broadcast=True, room="UI_1")
     emit('selected_model_info', {'key_value': key_value, 'key':key, 
                          'gpu':gpu, 'layer_count':layer_count, 'breakmodel':breakmodel, 
-                         'disk_break_value': disk_blocks, 'disk_break': not utils.HAS_ACCELERATE,
+                         'disk_break_value': disk_blocks, 'disk_break': utils.HAS_ACCELERATE,
                          'break_values': break_values, 'gpu_count': gpu_count,
                          'url': url, 'gpu_names': gpu_names}, broadcast=False, room="UI_2")
-    if key_value != "":
-        get_oai_models(key_value)
+    
     
 
 def get_layer_count(model, directory=""):
@@ -1072,12 +1075,14 @@ def get_layer_count(model, directory=""):
     else:
         return None
 
-
-def get_oai_models(key):
+@socketio.on('OAI_Key_Update')
+def get_oai_models(data):
+    key = data['key']
+    model = data['model']
     koboldai_vars.oaiapikey = key
-    if koboldai_vars.model == 'OAI':
+    if model == 'OAI':
         url = "https://api.openai.com/v1/engines"
-    elif koboldai_vars.model == 'GooseAI':
+    elif model == 'GooseAI':
         url = "https://api.goose.ai/v1/engines"
     else:
         return
@@ -1106,8 +1111,8 @@ def get_oai_models(key):
             # If the client settings file doesn't exist, create it
             # Write API key to file
             os.makedirs('settings', exist_ok=True)
-        if path.exists("settings/{}.settings".format(koboldai_vars.model)):
-            with open("settings/{}.settings".format(koboldai_vars.model), "r") as file:
+        if path.exists("settings/{}.settings".format(model)):
+            with open("settings/{}.settings".format(model), "r") as file:
                 js = json.load(file)
                 if 'online_model' in js:
                     online_model = js['online_model']
@@ -1115,11 +1120,12 @@ def get_oai_models(key):
                     if js['apikey'] != key:
                         changed=True
         if changed:
-            with open("settings/{}.settings".format(koboldai_vars.model), "w") as file:
+            with open("settings/{}.settings".format(model), "w") as file:
                 js["apikey"] = key
                 file.write(json.dumps(js, indent=3), room="UI_1")
             
-        emit('from_server', {'cmd': 'oai_engines', 'data': engines, 'online_model': online_model}, broadcast=True)
+        emit('from_server', {'cmd': 'oai_engines', 'data': engines, 'online_model': online_model}, broadcast=True, room="UI_1")
+        emit('oai_engines', {'data': engines, 'online_model': online_model}, room="UI_2")
     else:
         # Something went wrong, print the message and quit since we can't initialize an engine
         print("{0}ERROR!{1}".format(colors.RED, colors.END), room="UI_1")
@@ -3205,7 +3211,7 @@ def get_message(msg):
         else:
             print(colors.RED + "WARNING!!: Someone maliciously attempted to delete " + msg['data'] + " the attempt has been blocked.")
     elif(msg['cmd'] == 'OAI_Key_Update'):
-        get_oai_models(msg['key'])
+        get_oai_models({'model': koboldai_vars.model, 'key': msg['key']})
     elif(msg['cmd'] == 'loadselect'):
         koboldai_vars.loadselect = msg["data"]
     elif(msg['cmd'] == 'spselect'):
@@ -5835,8 +5841,31 @@ def ui2_connect():
 #==================================================================#
 @app.route("/popup_test")
 def popup_test():
-    file_popup("Test Popup", "./", "return_event_name", folder_only=False, editable=True, deleteable=True, jailed=False, item_check=check_if_dir_is_model)
+    file_popup("Test Popup", "./", "return_event_name", renameable=True, folder_only=False, editable=True, deleteable=True, jailed=False, item_check=check_if_dir_is_model)
     return "ok"
+
+@socketio.on('upload_file')
+def upload_file(data):
+    print("upload_file {}".format(data['filename']))
+    if 'current_folder' in session:
+        path = os.path.abspath(os.path.join(session['current_folder'], data['filename']).replace("\\", "/")).replace("\\", "/")
+        print("Want to save to {}".format(path))
+        if 'popup_jailed_dir' not in session:
+            print("Someone is trying to upload a file to your server. Blocked.")
+        elif session['popup_jailed_dir'] is None:
+            if os.path.exists(path):
+                emit("error_popup", "The file already exists. Please delete it or rename the file before uploading", room="UI_2");
+            else:
+                with open(path, "wb") as f:
+                    f.write(data['data'])
+                get_files_folders(session['current_folder'])
+        elif session['popup_jailed_dir'] in session['current_folder']:
+            if os.path.exists(path):
+                emit("error_popup", "The file already exists. Please delete it or rename the file before uploading", room="UI_2");
+            else:
+                with open(path, "wb") as f:
+                    f.write(data['data'])
+                get_files_folders(session['current_folder'])
 
 @socketio.on('popup_change_folder')
 def popup_change_folder(data):
@@ -5850,6 +5879,24 @@ def popup_change_folder(data):
         get_files_folders(data)
     else:
         print("User is trying to get at files in your server outside the jail. Blocked. Jailed Dir: {}  Requested Dir: {}".format(session['popup_jailed_dir'], data))
+
+@socketio.on('popup_rename')
+def popup_rename(data):
+    if 'popup_renameable' not in session:
+        print("Someone is trying to rename a file in your server. Blocked.")
+        return
+    if not session['popup_renameable']:
+        print("Someone is trying to rename a file in your server. Blocked.")
+        return
+    
+    if session['popup_jailed_dir'] is None:
+        os.rename(data['file'], data['new_name'])
+        get_files_folders(os.path.dirname(data['file']))
+    elif session['popup_jailed_dir'] in data:
+        os.rename(data['file'], data['new_name'])
+        get_files_folders(os.path.dirname(data['file']))
+    else:
+        print("User is trying to rename files in your server outside the jail. Blocked. Jailed Dir: {}  Requested Dir: {}".format(session['popup_jailed_dir'], data['file']))
 
 @socketio.on('popup_delete')
 def popup_delete(data):
@@ -5919,7 +5966,7 @@ def popup_change_file(data):
     else:
         print("User is trying to delete files in your server outside the jail. Blocked. Jailed Dir: {}  Requested Dir: {}".format(session['popup_jailed_dir'], data))
 
-def file_popup(popup_title, starting_folder, return_event, jailed=True, folder_only=True, deleteable=False, editable=False, show_breadcrumbs=True, item_check=None, show_hidden=False):
+def file_popup(popup_title, starting_folder, return_event, upload=True, jailed=True, folder_only=True, renameable=False, deleteable=False, editable=False, show_breadcrumbs=True, item_check=None, show_hidden=False):
     #starting_folder = The folder we're going to get folders and/or items from
     #return_event = the socketio event that will be emitted when the load button is clicked
     #jailed = if set to true will look for the session variable jailed_folder and prevent navigation outside of that folder
@@ -5934,20 +5981,23 @@ def file_popup(popup_title, starting_folder, return_event, jailed=True, folder_o
     else:
         session['popup_jailed_dir'] = None
     session['popup_deletable'] = deleteable
+    session['popup_renameable'] = renameable
     session['popup_editable'] = editable
     session['popup_show_hidden'] = show_hidden
     session['popup_item_check'] = item_check
     session['popup_folder_only'] = folder_only
     session['popup_show_breadcrumbs'] = show_breadcrumbs
+    session['upload'] = upload
     
-    socketio.emit("load_popup", {"popup_title": popup_title, "call_back": return_event, "deleteable": deleteable, "editable": editable}, broadcast=True, room="UI_2")
-    socketio.emit("load_popup", {"popup_title": popup_title, "call_back": return_event, "deleteable": deleteable, "editable": editable}, broadcast=True, room="UI_1")
+    socketio.emit("load_popup", {"popup_title": popup_title, "call_back": return_event, "renameable": renameable, "deleteable": deleteable, "editable": editable, 'upload': upload}, broadcast=True, room="UI_2")
+    socketio.emit("load_popup", {"popup_title": popup_title, "call_back": return_event, "renameable": renameable, "deleteable": deleteable, "editable": editable, 'upload': upload}, broadcast=True, room="UI_1")
     
     get_files_folders(starting_folder)
     
     
 def get_files_folders(starting_folder):
     import stat
+    session['current_folder'] = starting_folder
     item_check = session['popup_item_check']
     show_breadcrumbs = session['popup_show_breadcrumbs']
     show_hidden = session['popup_show_hidden']
@@ -6101,13 +6151,50 @@ def UI_2_load_model_button(data):
 #==================================================================#
 @socketio.on('select_model')
 def UI_2_load_model_button(data):
+    print(data)
+    
+    #We've selected a menu
     if data['model'] in model_menu:
         sendModelSelection(menu=data['model'])
+    #We've selected a custom line
+    elif data['menu'] in ("NeoCustom", "GPT2Custom"):
+        get_model_info(data['menu'], directory=data['display_name'])
+    #We've selected a custom menu
+    elif data['model'] in ("NeoCustom", "GPT2Custom"):
+        sendModelSelection(menu=data['model'], folder="./models")
     else:
         #We now have some model we want to potentially load.
         #First we need to send the client the model parameters (layers, etc)
-        print("getting model info for {}".format(data['model']))
         get_model_info(data['model'])
+
+#==================================================================#
+# Event triggered when user loads a model
+#==================================================================#
+@socketio.on('load_model')
+def UI_2_load_model(data):
+    print(data)
+    if not os.path.exists("settings/"):
+        os.mkdir("settings")
+    changed = True
+    if not utils.HAS_ACCELERATE:
+        data['disk_layers'] = "0"
+    if os.path.exists("settings/" + data['model'].replace('/', '_') + ".breakmodel"):
+        with open("settings/" + data['model'].replace('/', '_') + ".breakmodel", "r") as file:
+            file_data = file.read().split('\n')[:2]
+            if len(file_data) < 2:
+                file_data.append("0")
+            gpu_layers, disk_layers = file_data
+            if gpu_layers == data['gpu_layers'] and disk_layers == data['disk_layers']:
+                changed = False
+    if changed:
+        f = open("settings/" + data['model'].replace('/', '_') + ".breakmodel", "w")
+        f.write(data['gpu_layers'] + '\n' + data['disk_layers'])
+        f.close()
+    koboldai_vars.colaburl = data['url'] + "/request"
+    koboldai_vars.model = data['model']
+    koboldai_vars.custmodpth = data['path']
+    print("loading Model")
+    load_model(use_gpu=data['use_gpu'], gpu_layers=data['gpu_layers'], disk_layers=data['disk_layers'], online_model=data['online_model'])
 
 #==================================================================#
 # Event triggered to rely a message

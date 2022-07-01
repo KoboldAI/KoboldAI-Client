@@ -14,6 +14,8 @@ socket.on('popup_breadcrumbs', function(data){popup_breadcrumbs(data);});
 socket.on('popup_edit_file', function(data){popup_edit_file(data);});
 socket.on('show_model_menu', function(data){show_model_menu(data);});
 socket.on('selected_model_info', function(data){selected_model_info(data);});
+socket.on('oai_engines', function(data){oai_engines(data);});
+socket.on('error_popup', function(data){error_popup(data);});
 //socket.onAny(function(event_name, data) {console.log({"event": event_name, "class": data.classname, "data": data});});
 
 var backend_vars = {};
@@ -21,6 +23,7 @@ var presets = {}
 var ai_busy_start = Date.now();
 var popup_deleteable = false;
 var popup_editable = false;
+var popup_renameable = false;
 //-----------------------------------Server to UI  Functions-----------------------------------------------
 function connect() {
 	console.log("connected");
@@ -287,6 +290,7 @@ function var_changed(data) {
 function load_popup(data) {
 	popup_deleteable = data.deleteable;
 	popup_editable = data.editable;
+	popup_renameable = data.renameable;
 	var popup = document.getElementById("popup");
 	var popup_title = document.getElementById("popup_title");
 	popup_title.textContent = data.popup_title;
@@ -300,17 +304,47 @@ function load_popup(data) {
 		breadcrumbs.removeChild(breadcrumbs.firstChild);
 	}
 	
+	if (data.upload) {
+		const dropArea = document.getElementById('popup_list');
+		dropArea.addEventListener('dragover', (event) => {
+			event.stopPropagation();
+			event.preventDefault();
+			// Style the drag-and-drop as a "copy file" operation.
+			event.dataTransfer.dropEffect = 'copy';
+		});
+
+		dropArea.addEventListener('drop', (event) => {
+			event.stopPropagation();
+			event.preventDefault();
+			const fileList = event.dataTransfer.files;
+			for (file of fileList) {
+				reader = new FileReader();
+				reader.onload = function (event) {
+					socket.emit("upload_file", {'filename': file.name, "data": event.target.result});
+				};
+				reader.readAsArrayBuffer(file);
+			}
+		});
+	} else {
+		
+	}
+	
 	popup.classList.remove("hidden");
 	
 	//adjust accept button
-	var accept = document.getElementById("popup_accept");
-	accept.classList.add("disabled");
-	accept.setAttribute("emit", data.call_back);
-	accept.setAttribute("selected_value", "");
-	accept.onclick = function () {
-							socket.emit(this.emit, this.getAttribute("selected_value"));
-							document.getElementById("popup").classList.add("hidden");
-					  };
+	if (data.call_back == "") {
+		document.getElementById("popup_load_cancel").classList.add("hidden");
+	} else {
+		document.getElementById("popup_load_cancel").classList.remove("hidden");
+		var accept = document.getElementById("popup_accept");
+		accept.classList.add("disabled");
+		accept.setAttribute("emit", data.call_back);
+		accept.setAttribute("selected_value", "");
+		accept.onclick = function () {
+								socket.emit(this.emit, this.getAttribute("selected_value"));
+								document.getElementById("popup").classList.add("hidden");
+						  };
+	}
 					  
 }
 
@@ -320,6 +354,7 @@ function popup_items(data) {
 	while (popup_list.firstChild) {
 		popup_list.removeChild(popup_list.firstChild);
 	}
+	document.getElementById('popup_upload_input').value = "";
 	
 	for (item of data) {
 		var list_item = document.createElement("span");
@@ -339,7 +374,8 @@ function popup_items(data) {
 		edit_icon.classList.add("edit_icon");
 		if ((popup_editable) && !(item[0])) {
 			edit_icon.classList.add("oi");
-			edit_icon.setAttribute('data-glyph', "pencil");
+			edit_icon.setAttribute('data-glyph', "spreadsheet");
+			edit_icon.title = "Edit"
 			edit_icon.id = item[1];
 			edit_icon.onclick = function () {
 							socket.emit("popup_edit", this.id);
@@ -347,12 +383,31 @@ function popup_items(data) {
 		}
 		list_item.append(edit_icon);
 		
+		//create the rename icon
+		var rename_icon = document.createElement("span");
+		rename_icon.classList.add("rename_icon");
+		if ((popup_renameable) && !(item[0])) {
+			rename_icon.classList.add("oi");
+			rename_icon.setAttribute('data-glyph', "pencil");
+			rename_icon.title = "Rename"
+			rename_icon.id = item[1];
+			rename_icon.setAttribute("filename", item[2]);
+			rename_icon.onclick = function () {
+							var new_name = prompt("Please enter new filename for \n"+ this.getAttribute("filename"));
+							if (new_name != null) {
+								socket.emit("popup_rename", {"file": this.id, "new_name": new_name});
+							}
+					  };
+		}
+		list_item.append(rename_icon);
+		
 		//create the delete icon
 		var delete_icon = document.createElement("span");
 		delete_icon.classList.add("delete_icon");
 		if (popup_deleteable) {
 			delete_icon.classList.add("oi");
 			delete_icon.setAttribute('data-glyph', "x");
+			delete_icon.title = "Delete"
 			delete_icon.id = item[1];
 			delete_icon.setAttribute("folder", item[0]);
 			delete_icon.onclick = function () {
@@ -448,7 +503,30 @@ function popup_edit_file(data) {
 	popup_list.append(textarea);
 	
 }
-//--------------------------------------------UI to Server Functions----------------------------------
+
+function error_popup(data) {
+	alert(data);
+}
+
+function oai_engines(data) {
+	console.log(data);
+	var oaimodel = document.getElementById("oaimodel")
+	oaimodel.classList.remove("hidden")
+	selected_item = 0;
+	length = oaimodel.options.length;
+	for (let i = 0; i < length; i++) {
+		oaimodel.options.remove(1);
+	}
+	for (item of data.data) {
+		var option = document.createElement("option");
+		option.value = item[0];
+		option.text = item[1];
+		if(data.online_model == item[0]) {
+			option.selected = true;
+		}
+		oaimodel.appendChild(option);
+	}
+}
 
 function show_model_menu(data) {
 	document.getElementById("loadmodelcontainer").classList.remove("hidden");
@@ -528,7 +606,9 @@ function show_model_menu(data) {
 		//create the actual item
 		var popup_item = document.createElement("span");
 		popup_item.classList.add("model");
+		popup_item.setAttribute("display_name", item[0]);
 		popup_item.id = item[1];
+		
 		popup_item.setAttribute("Menu", data.menu)
 		//name text
 		var text = document.createElement("span");
@@ -542,14 +622,17 @@ function show_model_menu(data) {
 		popup_item.append(text);
 		
 		popup_item.onclick = function () {
-						var accept = document.getElementById("popup_accept");
+						var accept = document.getElementById("btn_loadmodelaccept");
 						accept.classList.add("disabled");
-						socket.emit("select_model", {"model": this.id, "menu": this.getAttribute("Menu")});
+						socket.emit("select_model", {"model": this.id, "menu": this.getAttribute("Menu"), "display_name": this.getAttribute("display_name")});
 						var model_list = document.getElementById('loadmodellistcontent').getElementsByClassName("selected");
 						for (model of model_list) {
 							model.classList.remove("selected");
 						}
 						this.classList.add("selected");
+						accept.setAttribute("selected_model", this.id);
+						accept.setAttribute("menu", this.getAttribute("Menu"));
+						accept.setAttribute("display_name", this.getAttribute("display_name"));
 					};
 		list_item.append(popup_item);
 		
@@ -560,6 +643,7 @@ function show_model_menu(data) {
 }
 
 function selected_model_info(data) {
+	console.log(data);
 	var accept = document.getElementById("btn_loadmodelaccept");
 	//hide or unhide key
 	if (data.key) {
@@ -653,56 +737,58 @@ function selected_model_info(data) {
 		}
 		
 		//add the disk layers
-		var div = document.createElement("div");
-		div.classList.add("model_setting_container");
-		//build GPU text
-		var span = document.createElement("span");
-		span.classList.add("model_setting_label");
-		span.textContent = "Disk cache: "
-		//build layer count box
-		var input = document.createElement("input");
-		input.classList.add("model_setting_value");
-		input.classList.add("setting_value");
-		input.inputmode = "numeric";
-		input.id = "disk_layers_box";
-		input.value = data.disk_break_value;
-		input.onblur = function () {
-							document.getElementById(this.id.replace("_box", "")).value = this.value;
-							update_gpu_layers();
-						}
-		span.append(input);
-		div.append(span);
-		//build layer count slider
-		var input = document.createElement("input");
-		input.classList.add("model_setting_item");
-		input.type = "range";
-		input.min = 0;
-		input.max = data.layer_count;
-		input.step = 1;
-		input.value = data.disk_break_value;
-		input.id = "disk_layers";
-		input.onchange = function () {
-							document.getElementById(this.id+"_box").value = this.value;
-							update_gpu_layers();
-						}
-		div.append(input);
-		//build slider bar #s
-		//min
-		var span = document.createElement("span");
-		span.classList.add("model_setting_minlabel");
-		var span2 = document.createElement("span");
-		span2.style="top: -4px; position: relative;";
-		span2.textContent = 0;
-		span.append(span2);
-		div.append(span);
-		//max
-		var span = document.createElement("span");
-		span.classList.add("model_setting_maxlabel");
-		var span2 = document.createElement("span");
-		span2.style="top: -4px; position: relative;";
-		span2.textContent = data.layer_count;
-		span.append(span2);
-		div.append(span);
+		if (data.disk_break) {
+			var div = document.createElement("div");
+			div.classList.add("model_setting_container");
+			//build GPU text
+			var span = document.createElement("span");
+			span.classList.add("model_setting_label");
+			span.textContent = "Disk cache: "
+			//build layer count box
+			var input = document.createElement("input");
+			input.classList.add("model_setting_value");
+			input.classList.add("setting_value");
+			input.inputmode = "numeric";
+			input.id = "disk_layers_box";
+			input.value = data.disk_break_value;
+			input.onblur = function () {
+								document.getElementById(this.id.replace("_box", "")).value = this.value;
+								update_gpu_layers();
+							}
+			span.append(input);
+			div.append(span);
+			//build layer count slider
+			var input = document.createElement("input");
+			input.classList.add("model_setting_item");
+			input.type = "range";
+			input.min = 0;
+			input.max = data.layer_count;
+			input.step = 1;
+			input.value = data.disk_break_value;
+			input.id = "disk_layers";
+			input.onchange = function () {
+								document.getElementById(this.id+"_box").value = this.value;
+								update_gpu_layers();
+							}
+			div.append(input);
+			//build slider bar #s
+			//min
+			var span = document.createElement("span");
+			span.classList.add("model_setting_minlabel");
+			var span2 = document.createElement("span");
+			span2.style="top: -4px; position: relative;";
+			span2.textContent = 0;
+			span.append(span2);
+			div.append(span);
+			//max
+			var span = document.createElement("span");
+			span.classList.add("model_setting_maxlabel");
+			var span2 = document.createElement("span");
+			span2.style="top: -4px; position: relative;";
+			span2.textContent = data.layer_count;
+			span.append(span2);
+			div.append(span);
+		}
 		
 		model_layer_bars.append(div);
 		
@@ -738,11 +824,49 @@ function update_gpu_layers() {
 }
 
 function load_model() {
-	message = {'cmd': 'load_model', 'use_gpu': $('#use_gpu')[0].checked, 
-			   'key': $('#modelkey')[0].value, 'gpu_layers': gpu_layers.slice(0, -1), 
-			   'disk_layers': disk_layers, 'url': $('#modelurl')[0].value, 
-			   'online_model': $('#oaimodel')[0].value};
+	var accept = document.getElementById('btn_loadmodelaccept');
+	gpu_layers = []
+	for (let i=0; i < document.getElementById("gpu_count").value; i++) {
+		gpu_layers.push(document.getElementById("gpu_layers_"+i).value);
+	}
+	if (document.getElementById("disk_layers")) {
+		disk_layers = document.getElementById("disk_layers").value;
+	} else {
+		disk_layers = "0";
+	}
+	//Need to do different stuff with custom models
+	if ((accept.getAttribute('menu') == 'GPT2Custom') || (accept.getAttribute('menu') == 'NeoCustom')) {
+		var model = document.getElementById("btn_loadmodelaccept").getAttribute("menu");
+		var path = document.getElementById("btn_loadmodelaccept").getAttribute("display_name");
+	} else {
+		var model = document.getElementById("btn_loadmodelaccept").getAttribute("selected_model");
+		var path = "";
+	}
+	
+	message = {'model': model, 'path': path, 'use_gpu': document.getElementById("use_gpu").checked, 
+			   'key': document.getElementById('modelkey').value, 'gpu_layers': gpu_layers.join(), 
+			   'disk_layers': disk_layers, 'url': document.getElementById("modelurl").value, 
+			   'online_model': document.getElementById("oaimodel").value};
+    console.log(message);
+	socket.emit("load_model", message);
+	document.getElementById("loadmodelcontainer").classList.add("hidden");
 }
+
+
+//--------------------------------------------UI to Server Functions----------------------------------
+
+
+function upload_file(file_box) {
+	var fileList = file_box.files;
+	for (file of fileList) {
+		reader = new FileReader();
+		reader.onload = function (event) {
+			socket.emit("upload_file", {'filename': file.name, "data": event.target.result});
+		};
+		reader.readAsArrayBuffer(file);
+	}
+}
+
 //--------------------------------------------General UI Functions------------------------------------
 String.prototype.toHHMMSS = function () {
     var sec_num = parseInt(this, 10); // don't forget the second param

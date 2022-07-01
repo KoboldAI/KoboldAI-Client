@@ -203,6 +203,12 @@
 	cursor: pointer;
 }
 
+@media only screen and (max-width: 768px) {
+.menu_pin {
+	display: hidden;
+}
+}
+@media only screen and not (max-width: 768px) {
 .menu_pin {
 	position: fixed;
 	top:10px;
@@ -214,6 +220,7 @@
 	display: inline-block;
 	transition: left 0.5s;
 	cursor: pointer;
+}
 }
 
 .menu_pin.hidden {
@@ -236,6 +243,7 @@
 	transition: 0.5s;
 }
 
+@media only screen and not (max-width: 768px) {
 .SideMenu.pinned {
 	height: 100%;
 	width: var(--flyout_menu_width);
@@ -246,6 +254,7 @@
 	background-color: var(--flyout_background);
 	overflow-x: hidden;
 	transition: 0.5s;
+}
 }
 
 .SideMenu.open {
@@ -366,8 +375,10 @@ body {
 	grid-template-rows: auto 100px;
 }
 
+@media only screen and not (max-width: 768px) {
 .main-grid.pinned {
 	margin-left: var(--flyout_menu_width);
+}
 }
 
 /* ---------------------------------- GAME SCREEN ----------------------------------*/
@@ -577,8 +588,8 @@ td.sequence:hover {
 	background-color: var(--popup_item_color);
 	padding: 2px;
 	display: grid;
-	grid-template-areas: "folder_icon delete_icon edit_icon file";
-	grid-template-columns: 20px 20px 20px auto;
+	grid-template-areas: "folder_icon delete_icon edit_icon rename_icon file";
+	grid-template-columns: 20px 20px 20px 20px auto;
 	
 }
 
@@ -588,6 +599,10 @@ td.sequence:hover {
 
 .popup .item .edit_icon {
 	grid-area: edit_icon;
+}
+
+.popup .item .rename_icon {
+	grid-area: rename_icon;
 }
 
 .popup .item .delete_icon {

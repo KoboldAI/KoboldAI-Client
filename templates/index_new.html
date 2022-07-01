@@ -69,7 +69,11 @@
 		</div>
 		<div id="popup_breadcrumbs"></div>
 		<div class="popup_list_area" id="popup_list"></div>
-		<div class="popup_load_cancel">
+		<div class="popup_load_cancel hidden" id="popup_upload">
+			<input type=file id="popup_upload_file">
+		</div>
+		<div>Drag file(s) above or click here to Upload File<input id="popup_upload_input" type=file onchange="upload_file(this)"></div>
+		<div class="popup_load_cancel" id="popup_load_cancel">
 			<button class="btn popup_load_cancel_button" id="popup_accept">Load</button>
 			<button class="btn popup_load_cancel_button" id="popup_cancel" onclick='document.getElementById("popup").classList.add("hidden");'>Cancel</button>
 		</div>
@@ -85,10 +89,12 @@
 		</div>
 		<div id="loadmodellistcontent" class="popup_list_area"></div>
 		<div class="popup_load_cancel">
-			<input class="hidden" type="text" placeholder="key" id="modelkey" onblur="socket.send({'cmd': 'OAI_Key_Update', 'key': $('#modelkey')[0].value});">
-			<input class="hidden" type="text" placeholder="Enter the URL of the server (For example a trycloudflare link)" id="modelurl" onchange="check_enable_model_load()">
-			<input class="hidden" type="text" placeholder="Model Path or Hugging Face Name" id="custommodelname" menu="" onblur="socket.send({'cmd': 'selectmodel', 'data': $(this).attr('menu'), 'path_modelname': $('#custommodelname')[0].value});">
-			<select class="hidden" id="oaimodel"><option value="">Select OAI Model</option></select>
+			<div>
+				<input class="hidden" type="text" placeholder="key" id="modelkey" onblur="socket.emit('OAI_Key_Update', {'model': document.getElementById('btn_loadmodelaccept').getAttribute('selected_model'), 'key': this.value});">
+				<input class="hidden" type="text" placeholder="Enter the URL of the server (For example a trycloudflare link)" id="modelurl" onchange="check_enable_model_load()">
+				<input class="hidden" type="text" placeholder="Model Path or Hugging Face Name" id="custommodelname" menu="" onblur="socket.send({'cmd': 'selectmodel', 'data': $(this).attr('menu'), 'path_modelname': $('#custommodelname')[0].value});">
+				<select class="hidden" id="oaimodel"><option value="">Select OAI Model</option></select>
+			</div>
 			<div class="hidden" id=modellayers>
 				<div class="justifyleft">
 					GPU/Disk Layers
