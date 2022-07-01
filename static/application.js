@@ -1427,7 +1427,7 @@ function chunkOnTextInput(event) {
 			r.deleteContents();
 		}
 
-		// In Chrome the added <br/> will go outside of the chunks if we press
+		// In Chrome and Safari the added <br/> will go outside of the chunks if we press
 		// enter at the end of the story in the editor, so this is here
 		// to put the <br/> back in the right place
 		var br = $("#_EDITOR_LINEBREAK_")[0];
@@ -1438,7 +1438,18 @@ function chunkOnTextInput(event) {
 				br.previousSibling.previousSibling.appendChild(br.previousSibling);
 			}
 			if(parent.lastChild.tagName === "BR") {
-				parent.lastChild.remove();  // Chrome also inserts an extra <br/> in this case for some reason so we need to remove it
+				parent.lastChild.remove();  // Chrome and Safari also insert an extra <br/> in this case for some reason so we need to remove it
+				if(using_webkit_patch) {
+					// Safari on iOS has a bug where it selects all text in the last chunk of the story when this happens so we collapse the selection to the end of the chunk in that case
+					setTimeout(function() {
+						var s = getSelection();
+						var r = s.getRangeAt(0);
+						r.selectNodeContents(parent);
+						r.collapse(false);
+						s.removeAllRanges();
+						s.addRange(r);
+					}, 2);
+				}
 			}
 			br.previousSibling.appendChild(br);
 			r.selectNodeContents(br.parentNode);
