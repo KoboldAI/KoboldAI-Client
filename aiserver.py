@@ -909,8 +909,15 @@ def general_startup(override_args=None):
         args = parser.parse_args()
 
     for arg in vars(args):
-        if arg in os.environ:
-            setattr(args, arg, os.environ[arg])
+        if arg == "path":
+            if "model_path" in os.environ:
+                setattr(args, arg, os.environ["model_path"])
+        else:
+            if arg in os.environ:
+                if type(getattr(args, arg)) == bool:
+                    setattr(args, arg, bool(os.environ[arg]))
+                else:
+                    setattr(args, arg, os.environ[arg])
    
 
     koboldai_vars.model = args.model;
