@@ -1,9 +1,12 @@
 <script>
-	function show_setting_menu(menu) {
-		for (item of document.getElementsByClassName("menu_button")) {
+	function show_setting_menu(span) {
+		menu = span.textContent.toLowerCase()
+		for (item of document.getElementsByClassName("setting_menu_button")) {
 			document.getElementById("setting_menu_"+item.textContent.toLowerCase()).classList.add("hidden");
+			item.classList.remove("selected");
 		}
-		document.getElementById("setting_menu_"+menu.toLowerCase()).classList.remove("hidden");
+		span.classList.add("selected");
+		document.getElementById("setting_menu_"+menu).classList.remove("hidden");
 	}
 </script>
 <style>
@@ -22,39 +25,51 @@
 	
 </style>
 <!-- top menu bar-->
-<div class="flex settings_menu">
-	<button class="menu_button" onclick="show_setting_menu('model');">Model</button>
-	<button class="menu_button" onclick="show_setting_menu('story');">Story</button>
-	<button class="menu_button" onclick="show_setting_menu('user');">User</button>
-	<button class="menu_button" onclick="show_setting_menu('system');">System</button>
-	<select id=presets class="var_sync_model_selected_preset settings_select" onchange='socket.emit("var_change", {"ID": "model_selected_preset", "value": this.value});'><option>Preset</option></select>
+<div class="menu_pin_area"></div>
+<div class="tabrow">
+	<span class="setting_menu_button selected" onclick="show_setting_menu(this);">Model</span>
+	<span class="setting_menu_button" onclick="show_setting_menu(this);">Story</span>
+	<span class="setting_menu_button" onclick="show_setting_menu(this);">User</span>
+	<span class="setting_menu_button" onclick="show_setting_menu(this);">System</span>
 </div>
 
 <div id="setting_menu_model" class="settings_category_area">
 	<div id="Model_Info">
-		<div>Running Model: <span class="var_sync_model_model">ReadOnly</span></div>
+		<div>
+			Running Model: <span class="var_sync_model_model">ReadOnly</span>
+			<select id=presets class="var_sync_model_selected_preset settings_select" onchange='socket.emit("var_change", {"ID": "model_selected_preset", "value": this.value});'><option>Preset</option></select>
+		</div>
 		<div><button class="btn action_button" onclick="socket.emit('load_model_button', {});">Load Model</button></div>
 	</div>
-{% with menu='Model' %}
-	{% include 'settings item.html' %}
-{% endwith %}
+	<div class="setting_tile_area">
+	{% with menu='Model' %}
+		{% include 'settings item.html' %}
+	{% endwith %}
+	</div>
 </div>
 <div id="setting_menu_story" class="hidden settings_category_area">
 	<div id="Story_Info">
 		<div>Story Name: <span class="var_sync_story_story_name"></span></div>
+		<div>Token Length: <span id="token_length">0</span></div>
 		<div><button id="save_story" class="btn action_button var_sync_alt_story_gamesaved" onclick='socket.emit("save_story", "Story123");'>Save Story</button></div>
 	</div>
-{% with menu='Story' %}
-	{% include 'settings item.html' %}
-{% endwith %}
+	<div class="setting_tile_area">
+	{% with menu='Story' %}
+		{% include 'settings item.html' %}
+	{% endwith %}
+	</div>
 </div>
 <div id="setting_menu_user" class="hidden settings_category_area">
-{% with menu='User' %}
-	{% include 'settings item.html' %}
-{% endwith %}
+	<div class="setting_tile_area">
+	{% with menu='User' %}
+		{% include 'settings item.html' %}
+	{% endwith %}
+	</div>
 </div>
 <div id="setting_menu_system" class="hidden settings_category_area">
-{% with menu='System' %}
-	{% include 'settings item.html' %}
-{% endwith %}
+	<div class="setting_tile_area">
+	{% with menu='System' %}
+		{% include 'settings item.html' %}
+	{% endwith %}
+	</div>
 </div>

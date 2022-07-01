@@ -9,12 +9,12 @@ Status:<hr/>
 <hr/>
 <div id="Memory">
 	Memory:<br/>
-	<textarea rows=5 class="var_sync_story_memory fullwidth" onblur='socket.emit("var_change", {"ID": "story_memory", "value": this.value});'></textarea>
+	<textarea rows=5 id="memory" class="var_sync_story_memory var_sync_alt_story_memory_length fullwidth" onblur='socket.emit("var_change", {"ID": "story_memory", "value": this.value});'></textarea>
 </div>
 <hr/>
 <div id="author_notes">
 	Author's Notes:<br/>
-	<textarea rows=5 class="var_sync_story_authornote fullwidth" onblur='socket.emit("var_change", {"ID": "story_authornote", "value": this.value});'></textarea><br/>
+	<textarea rows=5 id="authors_nodes" class="var_sync_story_authornote var_sync_alt_story_authornote_length fullwidth" onblur='socket.emit("var_change", {"ID": "story_authornote", "value": this.value});'></textarea><br/>
 	Template:<br/>
 	<input type=text class="var_sync_story_authornotetemplate fullwidth" onblur='socket.emit("var_change", {"ID": "story_authornotetemplate", "value": this.value});'><br/>
 	andepth<br/>

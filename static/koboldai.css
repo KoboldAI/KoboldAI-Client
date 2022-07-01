@@ -11,7 +11,7 @@
 	--text: white;
 	--text_edit: #cdf;
 	--flyout_background: #6B6E70;
-	--setting_background: #285070;
+	--setting_background: #474b4f;
 	--setting_text: white;
 	--tooltip_text: white;
 	--tooltip_background: #1f2931;
@@ -26,10 +26,8 @@
 	--disabled_button_text: #303030;
 	--disabled_button_background_color: #686c68;
 	--disabled_button_border_color: #686c68;
-	--menu_button_level_1_bg_color: #4A654F;
-	--menu_button_level_1_border_color: #4A654F;
-	--menu_button_level_2_bg_color: #243127;
-	--menu_button_level_2_border_color: #243127;
+	--menu_button_level_1_bg_color: #337ab7;
+	--menu_button_level_2_bg_color: #285070;
 	/*--menu_button_level_2_bg_color: #6F8699;*/
 	/*--menu_button_level_2_border_color: #495965;*/
 	
@@ -59,9 +57,95 @@
 	}
 }
 
+/*----------------Folder Tabs--------------------*/
+.tabrow {
+	text-align: left;
+	list-style: none;
+	/*margin: 200px 0 20px;*/
+	padding: 0;
+	padding-left: 40px;
+	line-height: 24px;
+	height: 26px;
+	overflow: hidden;
+	font-size: 12px;
+	font-family: verdana;
+	position: relative;
+}
+.tabrow span {
+	cursor: pointer;
+	-webkit-touch-callout: none; /* iOS Safari */
+	-webkit-user-select: none; /* Safari */
+	-khtml-user-select: none; /* Konqueror HTML */
+	-moz-user-select: none; /* Old versions of Firefox */
+	-ms-user-select: none; /* Internet Explorer/Edge */
+	user-select: none; /* Non-prefixed version, currently
+						  supported by Chrome, Edge, Opera and Firefox */
+	border: 1px solid #888;
+	background: var(--menu_button_level_1_bg_color);
+	background: -o-linear-gradient(top, #337ab70 50%, #28507 100%);
+	background: -ms-linear-gradient(top, #337ab70 50%, #28507 100%);
+	background: -moz-linear-gradient(top, #337ab70 50%, #28507 100%);
+	background: -webkit-linear-gradient(top, #337ab70 50%, #28507 100%);
+	background: linear-gradient(top, #337ab70 50%, #28507 100%);
+	display: inline-block;
+	position: relative;
+	z-index: 0;
+	border-top-left-radius: 6px;
+	border-top-right-radius: 6px;
+	box-shadow: 0 3px 3px rgba(0, 0, 0, 0.4), inset 0 1px 0 #AAA;
+	text-shadow: 0 1px #AAA;
+	margin: 0 -5px;
+	padding: 0 20px;
+}
+.tabrow span.selected {
+	background: #FFF;
+	color: #333;
+	z-index: 2;
+	border-bottom-color: #FFF;
+}
+.tabrow:before {
+	position: absolute;
+	content: " ";
+	width: 100%;
+	bottom: 0;
+	left: 0;
+	border-bottom: 1px solid #AAA;
+	z-index: 1;
+}
+.tabrow span:before,
+.tabrow span:after {
+	border: 1px solid #AAA;
+	position: absolute;
+	bottom: -1px;
+	width: 5px;
+	height: 5px;
+	content: " ";
+}
+.tabrow span:before {
+	left: -6px;
+	border-bottom-right-radius: 6px;
+	border-width: 0 1px 1px 0;
+	box-shadow: 2px 2px 0 #D1D1D1;
+}
+.tabrow span:after {
+	right: -6px;
+	border-bottom-left-radius: 6px;
+	border-width: 0 0 1px 1px;
+	box-shadow: -2px 2px 0 #D1D1D1;
+}
+.tabrow span.selected:before {
+	box-shadow: 2px 2px 0 #FFF;
+}
+.tabrow span.selected:after {
+	box-shadow: -2px 2px 0 #FFF;
+}
 
 
 /*----------------SETTINGS AREA------------------*/
+.menu_pin_area {
+	height: 10px;
+}
+
 .load_model {
 	background-color: var(--enabled_button_background_color);
 }
@@ -70,27 +154,7 @@
 	width: 100%;
 }
 
-.btn.menu_button_level_1 {
-	background-color: var(--menu_button_level_1_bg_color);
-	border-color: var(--menu_button_level_1_border_color);
-	text-align: left;
-}
-
-.menu_background_level_1 {
-	background-color: var(--menu_button_level_1_bg_color);
-}
-
-.btn.menu_button_level_2 {
-	background-color: var(--menu_button_level_2_bg_color);
-	border-color: var(--menu_button_level_2_border_color);
-	text-align: left;
-}
-
-.menu_background_level_2 {
-	background-color: var(--menu_button_level_2_bg_color);
-}
-
-.settings_category_area {
+.setting_tile_area {
 	padding-left: 10px;
 	display: flex;
 	flex-direction: row;
@@ -205,7 +269,7 @@
 
 @media only screen and (max-width: 768px) {
 .menu_pin {
-	display: hidden;
+	display: none;
 }
 }
 @media only screen and not (max-width: 768px) {
@@ -266,15 +330,18 @@
 	padding-top: 7px;
 }
 
+/*
 .settings_menu .menu_button{
 	color: var(--enabled_button_text);
 	background-color: var(--enabled_button_background_color);
 	border-color: var(--enabled_button_border_color);
 }
 
+
 .settings_menu .menu_button:hover {
 	filter: brightness(85%);
 }
+*/
 
 .settings_select {
 	color: black;
@@ -741,6 +808,7 @@ input {
 }
 
 .action_button:hover {
+	color: var(--enabled_button_text);
 	filter: brightness(85%);
 }
 
@@ -771,4 +839,9 @@ button.disabled {
 
 .text_red {
 	color: red;
+}
+
+.within_max_length {
+	color: #CCECFF;
+	font-weight: bold;
 }

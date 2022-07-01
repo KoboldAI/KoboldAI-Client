@@ -171,6 +171,12 @@ function do_story_text_updates(data) {
 		
 		story_area.append(span);
 	}
+	
+}
+
+function do_story_text_length_updates(data) {
+	document.getElementById('Selected Text Chunk '+data.value.id).setAttribute("token_length", data.value.length);
+	
 }
 
 function do_presets(data) {
@@ -254,6 +260,9 @@ function var_changed(data) {
 	//Special Case for Story Options
 	} else if ((data.classname == "actions") && (data.name == "Options")) {
 		create_options(data);
+	//Special Case for Story Text Length
+	} else if ((data.classname == "actions") && (data.name == "Selected Text Length")) {
+		do_story_text_length_updates(data);
 	//Special Case for Presets
 	} else if ((data.classname == 'model') && (data.name == 'presets')) {
 		do_presets(data);
@@ -285,6 +294,8 @@ function var_changed(data) {
 	if ((data.classname == 'system') && (data.name == 'aibusy')) {
 		do_ai_busy(data);
 	}
+	
+	update_token_lengths();
 }
 
 function load_popup(data) {
@@ -868,6 +879,45 @@ function upload_file(file_box) {
 }
 
 //--------------------------------------------General UI Functions------------------------------------
+function update_token_lengths() {
+	max_token_length = parseInt(document.getElementById("model_max_length_cur").value);
+	token_length = 0;
+	token_length += parseInt(document.getElementById("memory").getAttribute("story_memory_length"));
+	token_length += parseInt(document.getElementById("authors_nodes").getAttribute("story_authornote_length"));
+	always_prompt = document.getElementById("story_useprompt").value == "true";
+	prompt_length = parseInt(document.getElementById("story_prompt").getAttribute("story_prompt_length"));
+	if (always_prompt) {
+		token_length += prompt_length
+		document.getElementById("story_prompt").classList.add("within_max_length");
+	} else {
+		document.getElementById("story_prompt").classList.remove("within_max_length");
+	}
+	max_chunk = -1;
+	for (item of document.getElementById("Selected Text").childNodes) {
+		chunk_num = parseInt(item.id.replace("Selected Text Chunk ", ""));
+		if (chunk_num > max_chunk) {
+			max_chunk = chunk_num;
+		}
+	}
+	
+	for (var chunk=max_chunk;chunk >= 0;chunk--) {
+		current_chunk_length = parseInt(document.getElementById("Selected Text Chunk "+chunk).getAttribute("token_length"));
+		if (token_length+current_chunk_length < max_token_length) {
+			token_length += current_chunk_length;
+			document.getElementById("Selected Text Chunk "+chunk).classList.add("within_max_length");
+		} else {
+			document.getElementById("Selected Text Chunk "+chunk).classList.remove("within_max_length");
+		}
+	}
+	
+	if ((!always_prompt) && (token_length+prompt_length < max_token_length)) {
+		token_length += prompt_length
+		document.getElementById("story_prompt").classList.add("within_max_length");
+	} else if (!always_prompt) {
+		document.getElementById("story_prompt").classList.remove("within_max_length");
+	}
+}
+
 String.prototype.toHHMMSS = function () {
     var sec_num = parseInt(this, 10); // don't forget the second param
     var hours   = Math.floor(sec_num / 3600);

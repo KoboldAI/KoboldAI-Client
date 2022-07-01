@@ -2080,6 +2080,10 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
             sendsettings()
             refresh_settings()
     
+    #Saving the tokenizer to the KoboldStoryRegister class so we can do token counting on the story data
+    if 'tokenizer' in [x for x in globals()]:
+        koboldai_vars.tokenizer = tokenizer
+    
     #Let's load the presets
     with open('settings/preset/official.presets') as f:
         presets = json.load(f)
@@ -6095,7 +6099,7 @@ def UI_2_save_story(data):
 @socketio.on('Set Selected Text')
 def UI_2_Set_Selected_Text(data):
     print("Updating Selected Text: {}".format(data))
-    koboldai_vars.actions.use_option(int(data['option']), action_step=int(data['chunk']))
+    koboldai_vars.actions[int(data['id'])] = data['text']
 
 #==================================================================#
 # Event triggered when user clicks the submit button

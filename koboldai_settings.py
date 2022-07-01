@@ -22,11 +22,13 @@ def process_variable_changes(socketio, classname, name, value, old_value, debug_
         if value != old_value:
             #Special Case for KoboldStoryRegister
             if isinstance(value, KoboldStoryRegister):
+                print("sending story register")
                 socketio.emit("reset_story", {}, broadcast=True, room="UI_2")
                 socketio.emit("var_changed", {"classname": "actions", "name": "Action Count", "old_value": None, "value":value.action_count}, broadcast=True, room="UI_2")
                 for i in range(len(value.actions)):
                     socketio.emit("var_changed", {"classname": "actions", "name": "Selected Text", "old_value": None, "value": {"id": i, "text": value[i]}}, include_self=True, broadcast=True, room="UI_2")
                     socketio.emit("var_changed", {"classname": "actions", "name": "Options", "old_value": None, "value": {"id": i, "options": value.actions[i]['Options']}}, include_self=True, broadcast=True, room="UI_2")
+                    socketio.emit("var_changed", {"classname": "actions", "name": "Selected Text Length", "old_value": None, "value": {"id": i, 'length': value.actions[i]['Selected Text Length']}}, include_self=True, broadcast=True, room="UI_2")
             else:
                 #If we got a variable change from a thread other than what the app is run it, eventlet seems to block and no further messages are sent. Instead, we'll rely the message to the app and have the main thread send it
                 if not has_request_context():
@@ -75,7 +77,7 @@ class koboldai_vars(object):
         story_name = 'default'
         if story_name in self._story_settings:
             
-            self._story_settings[story_name].__init__(self._story_settings[story_name].socketio)
+            self._story_settings[story_name].reset()
         else:
             self._story_settings[story_name] = story_settings(self.socketio)
         if json_data is not None:
@@ -106,6 +108,9 @@ class koboldai_vars(object):
                 setattr(self._system_settings, name, value)
             #elif 'story' in self._sessions:
             #    setattr(self._story_settings[self._sessions['story']], name, value)
+            elif name == 'tokenizer':
+                setattr(self._story_settings['default'].actions, name, value)
+                setattr(self._story_settings['default'], name, value)
             else:
                 setattr(self._story_settings['default'], name, value)
     
@@ -167,7 +172,7 @@ class settings(object):
         for (name, value) in vars(self).items():
             if name not in self.local_only_variables and name[0] != "_":
                 try:
-                    process_variable_changes(self.socketio, self.__class__.__name__.replace("_settings", ""), name, clean_var_for_emit(value), None)
+                    process_variable_changes(self.socketio, self.__class__.__name__.replace("_settings", ""), name, value, None)
                 except:
                     print("{} is of type {} and I can't transmit".format(name, type(value)))
                     raise
@@ -253,11 +258,10 @@ class model_settings(settings):
             process_variable_changes(self.socketio, self.__class__.__name__.replace("_settings", ""), name, value, old_value)
             
 class story_settings(settings):
-    #local_only_variables = ['generated_tkns']
-    local_only_variables = ['socketio']
-    no_save_variables = ['socketio']
+    local_only_variables = ['socketio', 'tokenizer']
+    no_save_variables = ['socketio', 'tokenizer']
     settings_name = "story"
-    def __init__(self, socketio):
+    def __init__(self, socketio, tokenizer=None):
         self.socketio = socketio
         self.story_name  = None   # Title of the story
         self.lastact     = ""     # The last action received from the user
@@ -271,7 +275,7 @@ class story_settings(settings):
         self.authornotetemplate = "[Author's note: <|>]"  # Author's note template
         self.setauthornotetemplate = self.authornotetemplate  # Saved author's note template in settings
         self.andepth     = 3      # How far back in history to append author's note
-        self.actions     = KoboldStoryRegister(socketio)  # Actions submitted by user and AI
+        self.actions     = KoboldStoryRegister(socketio, tokenizer=tokenizer)  # Actions submitted by user and AI
         self.actions_metadata = {} # List of dictonaries, one dictonary for every action that contains information about the action like alternative options.
                               # Contains at least the same number of items as actions. Back action will remove an item from actions, but not actions_metadata
                               # Dictonary keys are:
@@ -300,8 +304,11 @@ class story_settings(settings):
         self.actionmode  = 1
         self.dynamicscan = False
         self.recentedit  = False
+        self.tokenizer = tokenizer
         self.notes       = ""    #Notes for the story. Does nothing but save
         
+    def reset(self):
+        self.__init(self.socketio, tokenizer=self.tokenizer)
         
     def __setattr__(self, name, value):
         new_variable = name not in self.__dict__
@@ -312,8 +319,20 @@ class story_settings(settings):
             process_variable_changes(self.socketio, self.__class__.__name__.replace("_settings", ""), name, value, old_value)
         #We want to automatically set gamesaved to false if something happens to the actions list (pins, redos, generations, text, etc)
         #To do that we need to give the actions list a copy of this data so it can set the gamesaved variable as needed
-        if name == 'actions':
-            self.actions.story_settings = self
+        if not new_variable:
+            if name == 'actions':
+                self.actions.story_settings = self
+            if self.tokenizer is not None:
+                if name == 'tokenizer' and not new_variable:
+                    self.memory_length = len(self.tokenizer.encode(self.memory))
+                    self.prompt_length = len(self.tokenizer.encode(self.prompt))
+                    self.authornote_length = len(self.tokenizer.encode(self.authornotetemplate.replace("<|>", self.authornote)))
+                elif name == 'authornote' or name == 'authornotetemplate':
+                    self.authornote_length = len(self.tokenizer.encode(self.authornotetemplate.replace("<|>", self.authornote)))
+                elif name == 'memory':
+                    self.memory_length = len(self.tokenizer.encode(self.memory))
+                elif name == 'prompt':
+                    self.prompt_length = len(self.tokenizer.encode(self.prompt))
                     
 class user_settings(settings):
     local_only_variables = ['socketio']
@@ -412,15 +431,16 @@ class system_settings(settings):
             process_variable_changes(self.socketio, self.__class__.__name__.replace("_settings", ""), name, value, old_value)
         
 class KoboldStoryRegister(object):
-    def __init__(self, socketio, sequence=[]):
+    def __init__(self, socketio, tokenizer=None, sequence=[]):
         self.socketio = socketio
-        self.actions = {}
+        self.actions = {} #keys = "Selected Text", "Options", "Selected Text Length"
         self.action_count = -1
+        self.tokenizer = tokenizer
         for item in sequence:
             self.append(item)
     
     def reset(self, sequence=[]):
-        self.__init__(self.socketio, sequence=sequence)
+        self.__init__(self.socketio, sequence=sequence, tokenizer=self.tokenizer)
         
     def __str__(self):
         return "".join([x['Selected Text'] for ignore, x in sorted(self.actions.items())])
@@ -445,6 +465,7 @@ class KoboldStoryRegister(object):
     def __setitem__(self, i, text):
         if i in self.actions:
             old_text = self.actions[i]["Selected Text"]
+            old_length = self.actions[i]["Selected Text Length"]
             self.actions[i]["Selected Text"] = text
             if "Options" in self.actions[i]:
                 for j in range(len(self.actions[i]["Options"])):
@@ -456,7 +477,12 @@ class KoboldStoryRegister(object):
             old_text = None
             self.actions[i] = {"Selected Text": text, "Options": []}
             
+        if self.tokenizer is not None:
+            self.actions[i]['Selected Text Length'] = len(self.tokenizer.encode(text))
+        else:
+            self.actions[i]['Selected Text Length'] = None
         process_variable_changes(self.socketio, "actions", "Selected Text", {"id": i, "text": text}, {"id": i, "text": old_text})
+        process_variable_changes(self.socketio, "actions", 'Selected Text Length', {"id": i, 'length':  self.actions[i]['Selected Text Length']}, {"id": i, 'length': old_length})
         self.set_game_saved()
     
     def __len__(self):
@@ -486,6 +512,7 @@ class KoboldStoryRegister(object):
         self.action_count = json_data['action_count']
         self.actions = temp
         self.set_game_saved()
+        self.recalc_token_length()
             
     def get_action(self, action_id):
         if action_id not in actions:
@@ -510,7 +537,13 @@ class KoboldStoryRegister(object):
                     
         else:
             self.actions[self.action_count] = {"Selected Text": text, "Options": []}
+            
+        if self.tokenizer is not None:
+            self.actions[self.action_count]['Selected Text Length'] = len(self.tokenizer.encode(text))
+        else:
+            self.actions[self.action_count]['Selected Text Length'] = None
         process_variable_changes(self.socketio, "actions", "Selected Text", {"id": self.action_count, "text": text}, None)
+        process_variable_changes(self.socketio, "actions", 'Selected Text Length', {"id": self.action_count, 'length': self.actions[self.action_count]['Selected Text Length']}, {"id": action_step, 'length': 0})
         self.set_game_saved()
     
     def append_options(self, option_list):
@@ -573,8 +606,13 @@ class KoboldStoryRegister(object):
         if action_step in self.actions:
             old_options = copy.deepcopy(self.actions[action_step]["Options"])
             old_text = self.actions[action_step]["Selected Text"]
+            old_length = self.actions[action_step]["Selected Text Length"]
             if option_number < len(self.actions[action_step]['Options']):
                 self.actions[action_step]["Selected Text"] = self.actions[action_step]['Options'][option_number]['text']
+                if self.tokenizer is not None:
+                    self.actions[action_step]['Selected Text Length'] = len(self.tokenizer.encode(self.actions[action_step]['Options'][option_number]['text']))
+                else:
+                    self.actions[action_step]['Selected Text Length'] = None
                 del self.actions[action_step]['Options'][option_number]
                 #If this is the current spot in the story, advance
                 if action_step-1 == self.action_count:
@@ -582,24 +620,30 @@ class KoboldStoryRegister(object):
                     socketio.emit("var_changed", {"classname": "actions", "name": "Action Count", "old_value": None, "value":self.action_count}, broadcast=True, room="UI_2")
                 process_variable_changes(self.socketio, "actions", "Options", {"id": action_step, "options": self.actions[action_step]["Options"]}, {"id": action_step, "options": old_options})
                 process_variable_changes(self.socketio, "actions", "Selected Text", {"id": action_step, "text": self.actions[action_step]["Selected Text"]}, {"id": action_step, "Selected Text": old_text})
+                process_variable_changes(self.socketio, "actions", 'Selected Text Length', {"id": action_step, 'length': self.actions[action_step]["Selected Text Length"]}, {"id": action_step, 'length': old_length})
                 self.set_game_saved()
     
     def delete_action(self, action_id):
         if action_id in self.actions:
             old_options = copy.deepcopy(self.actions[action_id]["Options"])
             old_text = self.actions[action_id]["Selected Text"]
+            old_length = self.actions[action_id]["Selected Text Length"]
             self.actions[action_id]["Options"].append({"text": self.actions[action_id]["Selected Text"], "Pinned": False, "Previous Selection": True, "Edited": False})
             self.actions[action_id]["Selected Text"] = ""
+            self.actions[action_id]['Selected Text Length'] = 0
             self.action_count -= 1
             process_variable_changes(self.socketio, "actions", "Selected Text", {"id": action_id, "text": None}, {"id": action_id, "text": old_text})
+            process_variable_changes(self.socketio, "actions", 'Selected Text Length', {"id": action_id, 'length': 0}, {"id": action_id, 'length': old_length})
             process_variable_changes(self.socketio, "actions", "Options", {"id": action_id, "options": self.actions[action_id]["Options"]}, {"id": action_id, "options": old_options})
             self.set_game_saved()
             
     def pop(self):
         if self.action_count >= 0:
-            text = self.actions[self.action_count]
+            text = self.actions[self.action_count]['Selected Text']
+            length = self.actions[self.action_count]['Selected Text Length']
             self.delete_action(self.action_count)
             process_variable_changes(self.socketio, "actions", "Selected Text", {"id": self.action_count, "text": None}, {"id": self.action_count, "text": text})
+            process_variable_changes(self.socketio, "actions", 'Selected Text Length', {"id": self.action_count, 'length': 0}, {"id": self.action_count, 'length': length})
             self.set_game_saved()
             return text
         else:
@@ -683,13 +727,24 @@ class KoboldStoryRegister(object):
         if 'story_settings' in self.__dict__:
             self.story_settings.gamesaved = False
     
+    def recalc_token_length(self):
+        if self.tokenizer is not None:
+            for key in self.actions:
+                self.actions[key]['Selected Text Length'] = len(self.tokenizer.encode(self.actions[key]['Selected Text']))
+                process_variable_changes(self.socketio, "actions", 'Selected Text Length', {"id": key, 'length': self.actions[key]['Selected Text Length']}, None)
+        else:
+            for key in self.actions:
+                self.actions[key]['Selected Text Length'] = None
+    
     def __setattr__(self, name, value):
         new_variable = name not in self.__dict__
         old_value = getattr(self, name, None)
         super().__setattr__(name, value)
         if name == 'action_count' and not new_variable:
             process_variable_changes(self.socketio, "actions", "Action Count", value, old_value)
-                    
+        elif name == 'tokenizer' and not new_variable:
+            #We set the tokenizer, recalculate all of the item lengths
+            self.recalc_token_length()
         
 badwordsids_default = [[13460], [6880], [50256], [42496], [4613], [17414], [22039], [16410], [27], [29], [38430], [37922], [15913], [24618], [28725], [58], [47175], [36937], [26700], [12878], [16471], [37981], [5218], [29795], [13412], [45160], [3693], [49778], [4211], [20598], [36475], [33409], [44167], [32406], [29847], [29342], [42669], [685], [25787], [7359], [3784], [5320], [33994], [33490], [34516], [43734], [17635], [24293], [9959], [23785], [21737], [28401], [18161], [26358], [32509], [1279], [38155], [18189], [26894], [6927], [14610], [23834], [11037], [14631], [26933], [46904], [22330], [25915], [47934], [38214], [1875], [14692], [41832], [13163], [25970], [29565], [44926], [19841], [37250], [49029], [9609], [44438], [16791], [17816], [30109], [41888], [47527], [42924], [23984], [49074], [33717], [31161], [49082], [30138], [31175], [12240], [14804], [7131], [26076], [33250], [3556], [38381], [36338], [32756], [46581], [17912], [49146]] # Tokenized array of badwords used to prevent AI artifacting
 badwordsids_neox = [[0], [1], [44162], [9502], [12520], [31841], [36320], [49824], [34417], [6038], [34494], [24815], [26635], [24345], [3455], [28905], [44270], [17278], [32666], [46880], [7086], [43189], [37322], [17778], [20879], [49821], [3138], [14490], [4681], [21391], [26786], [43134], [9336], [683], [48074], [41256], [19181], [29650], [28532], [36487], [45114], [46275], [16445], [15104], [11337], [1168], [5647], [29], [27482], [44965], [43782], [31011], [42944], [47389], [6334], [17548], [38329], [32044], [35487], [2239], [34761], [7444], [1084], [12399], [18990], [17636], [39083], [1184], [35830], [28365], [16731], [43467], [47744], [1138], [16079], [40116], [45564], [18297], [42368], [5456], [18022], [42696], [34476], [23505], [23741], [39334], [37944], [45382], [38709], [33440], [26077], [43600], [34418], [36033], [6660], [48167], [48471], [15775], [19884], [41533], [1008], [31053], [36692], [46576], [20095], [20629], [31759], [46410], [41000], [13488], [30952], [39258], [16160], [27655], [22367], [42767], [43736], [49694], [13811], [12004], [46768], [6257], [37471], [5264], [44153], [33805], [20977], [21083], [25416], [14277], [31096], [42041], [18331], [33376], [22372], [46294], [28379], [38475], [1656], [5204], [27075], [50001], [16616], [11396], [7748], [48744], [35402], [28120], [41512], [4207], [43144], [14767], [15640], [16595], [41305], [44479], [38958], [18474], [22734], [30522], [46267], [60], [13976], [31830], [48701], [39822], [9014], [21966], [31422], [28052], [34607], [2479], [3851], [32214], [44082], [45507], [3001], [34368], [34758], [13380], [38363], [4299], [46802], [30996], [12630], [49236], [7082], [8795], [5218], [44740], [9686], [9983], [45301], [27114], [40125], [1570], [26997], [544], [5290], [49193], [23781], [14193], [40000], [2947], [43781], [9102], [48064], [42274], [18772], [49384], [9884], [45635], [43521], [31258], [32056], [47686], [21760], [13143], [10148], [26119], [44308], [31379], [36399], [23983], [46694], [36134], [8562], [12977], [35117], [28591], [49021], [47093], [28653], [29013], [46468], [8605], [7254], [25896], [5032], [8168], [36893], [38270], [20499], [27501], [34419], [29547], [28571], [36586], [20871], [30537], [26842], [21375], [31148], [27618], [33094], [3291], [31789], [28391], [870], [9793], [41361], [47916], [27468], [43856], [8850], [35237], [15707], [47552], [2730], [41449], [45488], [3073], [49806], [21938], [24430], [22747], [20924], [46145], [20481], [20197], [8239], [28231], [17987], [42804], [47269], [29972], [49884], [21382], [46295], [36676], [34616], [3921], [26991], [27720], [46265], [654], [9855], [40354], [5291], [34904], [44342], [2470], [14598], [880], [19282], [2498], [24237], [21431], [16369], [8994], [44524], [45662], [13663], [37077], [1447], [37786], [30863], [42854], [1019], [20322], [4398], [12159], [44072], [48664], [31547], [18736], [9259], [31], [16354], [21810], [4357], [37982], [5064], [2033], [32871], [47446], [62], [22158], [37387], [8743], [47007], [17981], [11049], [4622], [37916], [36786], [35138], [29925], [14157], [18095], [27829], [1181], [22226], [5709], [4725], [30189], [37014], [1254], [11380], [42989], [696], [24576], [39487], [30119], [1092], [8088], [2194], [9899], [14412], [21828], [3725], [13544], [5180], [44679], [34398], [3891], [28739], [14219], [37594], [49550], [11326], [6904], [17266], [5749], [10174], [23405], [9955], [38271], [41018], [13011], [48392], [36784], [24254], [21687], [23734], [5413], [41447], [45472], [10122], [17555], [15830], [47384], [12084], [31350], [47940], [11661], [27988], [45443], [905], [49651], [16614], [34993], [6781], [30803], [35869], [8001], [41604], [28118], [46462], [46762], [16262], [17281], [5774], [10943], [5013], [18257], [6750], [4713], [3951], [11899], [38791], [16943], [37596], [9318], [18413], [40473], [13208], [16375]]
