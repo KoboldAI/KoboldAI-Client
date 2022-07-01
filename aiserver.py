@@ -6141,7 +6141,7 @@ def UI_2_save_story(data):
 @socketio.on('Set Selected Text')
 def UI_2_Set_Selected_Text(data):
     print("Updating Selected Text: {}".format(data))
-    koboldai_vars.actions[int(data['id'])] = data['text']
+    koboldai_vars.actions.use_option(int(data['id']))
 
 #==================================================================#
 # Event triggered when user clicks the submit button
