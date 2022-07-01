@@ -191,20 +191,32 @@ function do_presets(data) {
 	option.value="";
 	option.text="presets";
 	select.append(option);
+	presets = data.value;
 	for (const [key, value] of Object.entries(data.value)) {
-		presets[key] = value;
-		var option = document.createElement("option");
-		option.value=key;
-		option.text=key;
-		select.append(option);
+		var option_group = document.createElement("optgroup");
+		option_group.label = key;
+		for (const [preset, preset_value] of Object.entries(value)) {
+			var option = document.createElement("option");
+			option.value=key+"|"+preset;
+			option.text=preset;
+			option.title = preset_value.description;
+			option_group.append(option);
+		}
+		select.append(option_group);
 	}
 }
 
 function selected_preset(data) {
-	if ((data.value == undefined) || (presets[data.value] == undefined)) {
+	
+	preset_key = data.value.split("|")[0];
+	preset = data.value.split("|")[1];
+	if ((data.value == undefined) || (presets[preset_key] == undefined)) {
 		return;
 	}
-	for (const [key, value] of Object.entries(presets[data.value])) {
+	if (presets[preset_key][preset] == undefined) {
+		return;
+	}
+	for (const [key, value] of Object.entries(presets[preset_key][preset])) {
 		if (key.charAt(0) != '_') {
 			var elements_to_change = document.getElementsByClassName("var_sync_model_"+key);
 			for (item of elements_to_change) {
@@ -216,6 +228,7 @@ function selected_preset(data) {
 			}
 		}
 	}
+	socket.emit("var_change", {"ID": "model_selected_preset", "value": data.value});
 }
 
 function update_status_bar(data) {

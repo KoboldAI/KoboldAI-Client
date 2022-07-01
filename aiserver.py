@@ -2087,12 +2087,21 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
     #Let's load the presets
     with open('settings/preset/official.presets') as f:
         presets = json.load(f)
-        if koboldai_vars.model in presets:
-            koboldai_vars.presets = presets[koboldai_vars.model]
-        elif koboldai_vars.model.replace("/", "_") in presets:
-            koboldai_vars.presets = presets[koboldai_vars.model.replace("/", "_")]
+        to_use = {}
+        #Check for 6B in title
+        if '6B' in koboldai_vars.model or '6.7B' in koboldai_vars.model or '1.3B' in koboldai_vars.model:
+            to_use['Recommended'] = presets['6B']
+            for key in presets:
+                if key != '6B':
+                    to_use[key] = presets[key]
+        elif '13B' in koboldai_vars.model:
+            to_use['Recommended'] = presets['13B']
+            for key in presets:
+                if key != '13B':
+                    to_use[key] = presets[key]
         else:
-            koboldai_vars.presets = {}
+            to_use = presets
+        koboldai_vars.presets = to_use
 
 # Set up Flask routes
 @app.route('/')
