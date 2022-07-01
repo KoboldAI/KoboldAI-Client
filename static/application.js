@@ -85,6 +85,7 @@ var wiscroll = 0;
 var editmode = false;
 var connected = false;
 var newly_loaded = true;
+var all_modified_chunks = new Set();
 var modified_chunks = new Set();
 var empty_chunks = new Set();
 var gametext_bound = false;
@@ -1632,6 +1633,7 @@ function applyChunkDeltas(nodes) {
 	var chunks = Array.from(buildChunkSetFromNodeArray(nodes));
 	for(var i = 0; i < chunks.length; i++) {
 		modified_chunks.add(chunks[i]);
+		all_modified_chunks.add(chunks[i]);
 	}
 	setTimeout(function() {
 		var chunks = Array.from(modified_chunks);
@@ -1808,6 +1810,16 @@ function highlightEditingChunks() {
 function cleanupChunkWhitespace() {
 	unbindGametext();
 
+	var chunks = Array.from(all_modified_chunks);
+	for(var i = 0; i < chunks.length; i++) {
+		var original_chunk = document.getElementById("n" + chunks[i]);
+		if(original_chunk === null || original_chunk.innerText.trim().length === 0) {
+			all_modified_chunks.delete(chunks[i]);
+			modified_chunks.delete(chunks[i]);
+			empty_chunks.add(chunks[i]);
+		}
+	}
+
 	// Merge empty chunks with the next chunk
 	var chunks = Array.from(empty_chunks);
 	chunks.sort(function(e) {parseInt(e)});
@@ -1816,6 +1828,9 @@ function cleanupChunkWhitespace() {
 			continue;
 		}
 		var original_chunk = document.getElementById("n" + chunks[i]);
+		if(original_chunk === null) {
+			continue;
+		}
 		var chunk = original_chunk.nextSibling;
 		while(chunk) {
 			if(chunk.tagName === "CHUNK") {
@@ -1832,7 +1847,7 @@ function cleanupChunkWhitespace() {
 		original_chunk.innerText = "";
 	}
 	// Move whitespace at the end of non-empty chunks into the beginning of the next non-empty chunk
-	var chunks = Array.from(modified_chunks);
+	var chunks = Array.from(all_modified_chunks);
 	chunks.sort(function(e) {parseInt(e)});
 	for(var i = 0; i < chunks.length; i++) {
 		var original_chunk = document.getElementById("n" + chunks[i]);
@@ -1935,6 +1950,7 @@ function chunkOnFocusOut(event) {
 			return;
 		}
 		cleanupChunkWhitespace();
+		all_modified_chunks = new Set();
 		syncAllModifiedChunks(true);
 		setTimeout(function() {
 			var blurred = game_text[0] !== document.activeElement;
@@ -2106,6 +2122,7 @@ $(document).ready(function(){
 			unbindGametext();
 			allowedit = gamestarted && $("#allowediting").prop('checked');
 			game_text.attr('contenteditable', allowedit);
+			all_modified_chunks = new Set();
 			modified_chunks = new Set();
 			empty_chunks = new Set();
 			game_text.html(msg.data);
