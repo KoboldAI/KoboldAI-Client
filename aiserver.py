@@ -915,7 +915,10 @@ def general_startup(override_args=None):
         else:
             if arg in os.environ:
                 if type(getattr(args, arg)) == bool:
-                    setattr(args, arg, bool(os.environ[arg]))
+                    if bool(os.environ[arg]):
+                        setattr(args, arg, bool(os.environ[arg]))
+                    else:
+                        delattr(args, arg)
                 else:
                     setattr(args, arg, os.environ[arg])
    
