@@ -87,6 +87,7 @@ var wiscroll = 0;
 var editmode = false;
 var connected = false;
 var newly_loaded = true;
+var all_modified_chunks = new Set();
 var modified_chunks = new Set();
 var empty_chunks = new Set();
 var gametext_bound = false;
@@ -129,6 +130,7 @@ var adventure = false;
 var chatmode = false;
 
 var sliders_throttle = getThrottle(200);
+var submit_throttle = null;
 
 //=================================================================//
 //  METHODS
@@ -892,6 +894,17 @@ function dosubmit(disallow_abort) {
 		return;
 	}
 	chunkOnFocusOut("override");
+	// Wait for editor changes to be applied before submitting
+	submit_throttle = getThrottle(70);
+	submit_throttle.txt = txt;
+	submit_throttle.disallow_abort = disallow_abort;
+	submit_throttle(0, _dosubmit);
+}
+
+function _dosubmit() {
+	var txt = submit_throttle.txt;
+	var disallow_abort = submit_throttle.disallow_abort;
+	submit_throttle = null;
 	input_text.val("");
 	hideMessage();
 	hidegenseqs();
@@ -1523,13 +1536,29 @@ function chunkOnTextInput(event) {
 			r.deleteContents();
 		}
 
-		// In Chrome the added <br/> will go outside of the chunks if we press
+		// In Chrome and Safari the added <br/> will go outside of the chunks if we press
 		// enter at the end of the story in the editor, so this is here
 		// to put the <br/> back in the right place
 		var br = $("#_EDITOR_LINEBREAK_")[0];
 		if(br.parentNode === game_text[0]) {
+			var parent = br.previousSibling;
 			if(br.previousSibling.nodeType !== 1) {
+				parent = br.previousSibling.previousSibling;
 				br.previousSibling.previousSibling.appendChild(br.previousSibling);
+			}
+			if(parent.lastChild.tagName === "BR") {
+				parent.lastChild.remove();  // Chrome and Safari also insert an extra <br/> in this case for some reason so we need to remove it
+				if(using_webkit_patch) {
+					// Safari on iOS has a bug where it selects all text in the last chunk of the story when this happens so we collapse the selection to the end of the chunk in that case
+					setTimeout(function() {
+						var s = getSelection();
+						var r = s.getRangeAt(0);
+						r.selectNodeContents(parent);
+						r.collapse(false);
+						s.removeAllRanges();
+						s.addRange(r);
+					}, 2);
+				}
 			}
 			br.previousSibling.appendChild(br);
 			r.selectNodeContents(br.parentNode);
@@ -1712,6 +1741,7 @@ function applyChunkDeltas(nodes) {
 	var chunks = Array.from(buildChunkSetFromNodeArray(nodes));
 	for(var i = 0; i < chunks.length; i++) {
 		modified_chunks.add(chunks[i]);
+		all_modified_chunks.add(chunks[i]);
 	}
 	setTimeout(function() {
 		var chunks = Array.from(modified_chunks);
@@ -1722,12 +1752,18 @@ function applyChunkDeltas(nodes) {
 				if(!selected_chunks.has(chunks[i])) {
 					modified_chunks.delete(chunks[i]);
 					socket.send({'cmd': 'inlineedit', 'chunk': chunks[i], 'data': formatChunkInnerText(chunk)});
+					if(submit_throttle !== null) {
+						submit_throttle(0, _dosubmit);
+					}
 				}
 				empty_chunks.delete(chunks[i]);
 			} else {
 				if(!selected_chunks.has(chunks[i])) {
 					modified_chunks.delete(chunks[i]);
 					socket.send({'cmd': 'inlineedit', 'chunk': chunks[i], 'data': formatChunkInnerText(chunk)});
+					if(submit_throttle !== null) {
+						submit_throttle(0, _dosubmit);
+					}
 				}
 				empty_chunks.add(chunks[i]);
 			}
@@ -1749,6 +1785,9 @@ function syncAllModifiedChunks(including_selected_chunks=false) {
 				empty_chunks.delete(chunks[i]);
 			}
 			socket.send({'cmd': 'inlineedit', 'chunk': chunks[i], 'data': data});
+			if(submit_throttle !== null) {
+				submit_throttle(0, _dosubmit);
+			}
 		}
 	}
 }
@@ -1801,10 +1840,16 @@ function restorePrompt() {
 			if(this.innerText.trim().length) {
 				saved_prompt = this.innerText.trim();
 				socket.send({'cmd': 'inlinedelete', 'data': this.getAttribute("n")});
+				if(submit_throttle !== null) {
+					submit_throttle(0, _dosubmit);
+				}
 				this.parentNode.removeChild(this);
 				return false;
 			}
 			socket.send({'cmd': 'inlinedelete', 'data': this.getAttribute("n")});
+			if(submit_throttle !== null) {
+				submit_throttle(0, _dosubmit);
+			}
 			this.parentNode.removeChild(this);
 		});
 	}
@@ -1819,6 +1864,9 @@ function restorePrompt() {
 	modified_chunks.delete('0');
 	empty_chunks.delete('0');
 	socket.send({'cmd': 'inlineedit', 'chunk': '0', 'data': saved_prompt});
+	if(submit_throttle !== null) {
+		submit_throttle(0, _dosubmit);
+	}
 }
 
 function deleteEmptyChunks() {
@@ -1830,13 +1878,21 @@ function deleteEmptyChunks() {
 			restorePrompt();
 		} else {
 			socket.send({'cmd': 'inlinedelete', 'data': chunks[i]});
+			if(submit_throttle !== null) {
+				submit_throttle(0, _dosubmit);
+			}
 		}
 	}
 	if(modified_chunks.has('0')) {
 		modified_chunks.delete(chunks[i]);
 		socket.send({'cmd': 'inlineedit', 'chunk': chunks[i], 'data': formatChunkInnerText(document.getElementById("n0"))});
+		if(submit_throttle !== null) {
+			submit_throttle(0, _dosubmit);
+		}
 	}
-	saved_prompt = formatChunkInnerText($("#n0")[0]);
+	if(gamestarted) {
+		saved_prompt = formatChunkInnerText($("#n0")[0]);
+	}
 }
 
 function highlightEditingChunks() {
@@ -1860,11 +1916,29 @@ function highlightEditingChunks() {
 }
 
 function cleanupChunkWhitespace() {
+	unbindGametext();
+
+	var chunks = Array.from(all_modified_chunks);
+	for(var i = 0; i < chunks.length; i++) {
+		var original_chunk = document.getElementById("n" + chunks[i]);
+		if(original_chunk === null || original_chunk.innerText.trim().length === 0) {
+			all_modified_chunks.delete(chunks[i]);
+			modified_chunks.delete(chunks[i]);
+			empty_chunks.add(chunks[i]);
+		}
+	}
+
 	// Merge empty chunks with the next chunk
 	var chunks = Array.from(empty_chunks);
 	chunks.sort(function(e) {parseInt(e)});
 	for(var i = 0; i < chunks.length; i++) {
+		if(chunks[i] == "0") {
+			continue;
+		}
 		var original_chunk = document.getElementById("n" + chunks[i]);
+		if(original_chunk === null) {
+			continue;
+		}
 		var chunk = original_chunk.nextSibling;
 		while(chunk) {
 			if(chunk.tagName === "CHUNK") {
@@ -1874,11 +1948,14 @@ function cleanupChunkWhitespace() {
 		}
 		if(chunk) {
 			chunk.innerText = original_chunk.innerText + chunk.innerText;
+			if(original_chunk.innerText.length != 0 && !modified_chunks.has(chunk.getAttribute("n"))) {
+				modified_chunks.add(chunk.getAttribute("n"));
+			}
 		}
 		original_chunk.innerText = "";
 	}
 	// Move whitespace at the end of non-empty chunks into the beginning of the next non-empty chunk
-	var chunks = Array.from(modified_chunks);
+	var chunks = Array.from(all_modified_chunks);
 	chunks.sort(function(e) {parseInt(e)});
 	for(var i = 0; i < chunks.length; i++) {
 		var original_chunk = document.getElementById("n" + chunks[i]);
@@ -1892,9 +1969,14 @@ function cleanupChunkWhitespace() {
 		var ln = original_chunk.innerText.trimEnd().length;
 		if (chunk) {
 			chunk.innerText = original_chunk.innerText.substring(ln) + chunk.innerText;
+			if(ln != original_chunk.innerText.length && !modified_chunks.has(chunk.getAttribute("n"))) {
+				modified_chunks.add(chunk.getAttribute("n"));
+			}
 		}
 		original_chunk.innerText = original_chunk.innerText.substring(0, ln);
 	}
+
+	bindGametext();
 }
 
 // This gets run every time the text in a chunk is edited
@@ -1976,6 +2058,7 @@ function chunkOnFocusOut(event) {
 			return;
 		}
 		cleanupChunkWhitespace();
+		all_modified_chunks = new Set();
 		syncAllModifiedChunks(true);
 		setTimeout(function() {
 			var blurred = game_text[0] !== document.activeElement;
@@ -2180,6 +2263,7 @@ $(document).ready(function(){
 			unbindGametext();
 			allowedit = gamestarted && $("#allowediting").prop('checked');
 			game_text.attr('contenteditable', allowedit);
+			all_modified_chunks = new Set();
 			modified_chunks = new Set();
 			empty_chunks = new Set();
 			game_text.html(msg.data);
@@ -2734,6 +2818,12 @@ $(document).ready(function(){
 		chunkOnFocusOut
 	);
 	mutation_observer = new MutationObserver(chunkOnDOMMutate);
+	$("#gamescreen").on('click', function(e) {
+		if(this !== e.target) {
+			return;
+		}
+		document.activeElement.blur();
+	});
 
 	// This is required for the editor to work correctly in Firefox on desktop
 	// because the gods of HTML and JavaScript say so
