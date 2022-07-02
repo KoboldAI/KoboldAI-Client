@@ -5119,9 +5119,6 @@ def loadRequest(loadpath, filename=None):
                 ln = len(vars.actions[vars.actions.get_last_key()].rstrip())
                 footer += vars.actions[vars.actions.get_last_key()][ln:]
                 vars.actions[vars.actions.get_last_key()] = vars.actions[vars.actions.get_last_key()][:ln]
-            if(len(vars.actions) == 0):
-                vars.gamestarted = False
-
         
         # Try not to break older save files
         if("authorsnote" in js):
