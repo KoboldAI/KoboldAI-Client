@@ -253,7 +253,8 @@ class model_settings(settings):
             else:
                 self.tqdm.update(1)
                 self.tqdm_progress = int(float(self.loaded_layers)/float(self.total_layers)*100)
-                self.tqdm_rem_time = str(datetime.timedelta(seconds=int(float(self.total_layers-self.loaded_layers)/self.tqdm.format_dict['rate'])))  
+                if self.tqdm.format_dict['rate'] is not None:
+                    self.tqdm_rem_time = str(datetime.timedelta(seconds=int(float(self.total_layers-self.loaded_layers)/self.tqdm.format_dict['rate'])))  
         
         if name not in self.local_only_variables and name[0] != "_" and not new_variable:
             process_variable_changes(self.socketio, self.__class__.__name__.replace("_settings", ""), name, value, old_value)
