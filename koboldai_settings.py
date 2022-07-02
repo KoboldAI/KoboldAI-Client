@@ -243,7 +243,8 @@ class model_settings(settings):
             else:
                 self.tqdm.update(1)
                 self.tqdm_progress = int(float(self.generated_tkns)/float(self.genamt)*100)
-                self.tqdm_rem_time = str(datetime.timedelta(seconds=int(float(self.genamt-self.generated_tkns)/self.tqdm.format_dict['rate'])))
+                if self.tqdm.format_dict['rate'] is not None:
+                    self.tqdm_rem_time = str(datetime.timedelta(seconds=int(float(self.genamt-self.generated_tkns)/self.tqdm.format_dict['rate'])))
         #Setup TQDP for model loading
         if name == "loaded_layers" and 'tqdm' in self.__dict__:
             if value == 0:
