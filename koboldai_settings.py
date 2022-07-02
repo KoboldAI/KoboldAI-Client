@@ -617,7 +617,7 @@ class KoboldStoryRegister(object):
                 #If this is the current spot in the story, advance
                 if action_step-1 == self.action_count:
                     self.action_count+=1
-                    socketio.emit("var_changed", {"classname": "actions", "name": "Action Count", "old_value": None, "value":self.action_count}, broadcast=True, room="UI_2")
+                    self.socketio.emit("var_changed", {"classname": "actions", "name": "Action Count", "old_value": None, "value":self.action_count}, broadcast=True, room="UI_2")
                 process_variable_changes(self.socketio, "actions", "Options", {"id": action_step, "options": self.actions[action_step]["Options"]}, {"id": action_step, "options": old_options})
                 process_variable_changes(self.socketio, "actions", "Selected Text", {"id": action_step, "text": self.actions[action_step]["Selected Text"]}, {"id": action_step, "Selected Text": old_text})
                 process_variable_changes(self.socketio, "actions", 'Selected Text Length', {"id": action_step, 'length': self.actions[action_step]["Selected Text Length"]}, {"id": action_step, 'length': old_length})
