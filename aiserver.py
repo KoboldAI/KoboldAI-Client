@@ -6274,6 +6274,12 @@ def get_files_folders(starting_folder):
         else:
             if len([["{}:/".format(chr(i)), "{}:\\".format(chr(i))] for i in range(65, 91) if os.path.exists("{}:".format(chr(i)))]) > 0:
                 breadcrumbs.insert(0, ['This PC', 'This PC'])
+        
+        #if we're jailed, remove the stuff before the jail from the breadcrumbs
+        if session['popup_jailed_dir'] is not None:
+            
+            breadcrumbs = breadcrumbs[len(session['popup_jailed_dir'].split("/")):]
+        
         folders = []
         files = []
         base_path = os.path.abspath(starting_folder).replace("\\", "/")
