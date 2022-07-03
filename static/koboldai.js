@@ -903,11 +903,25 @@ function upload_file(file_box) {
 //--------------------------------------------General UI Functions------------------------------------
 function update_token_lengths() {
 	max_token_length = parseInt(document.getElementById("model_max_length_cur").value);
-	token_length = 0;
-	token_length += parseInt(document.getElementById("memory").getAttribute("story_memory_length"));
-	token_length += parseInt(document.getElementById("authors_nodes").getAttribute("story_authornote_length"));
+	if ((document.getElementById("memory").getAttribute("story_memory_length") == null) || (document.getElementById("memory").getAttribute("story_memory_length") == "")) {
+		memory_length = 0;
+	} else {
+		memory_length = parseInt(document.getElementById("memory").getAttribute("story_memory_length"));
+	}
+	if ((document.getElementById("authors_notes").getAttribute("story_authornote_length") == null) || (document.getElementById("authors_notes").getAttribute("story_authornote_length") == "")) {
+		authors_notes = 0;
+	} else {
+		authors_notes = parseInt(document.getElementById("authors_notes").getAttribute("story_authornote_length"));
+	}
+	if ((document.getElementById("story_prompt").getAttribute("story_prompt_length") == null) || (document.getElementById("story_prompt").getAttribute("story_prompt_length") == "")) {
+		prompt_length = 0;
+	} else {
+		prompt_length = parseInt(document.getElementById("story_prompt").getAttribute("story_prompt_length"));
+	}
+	
+	token_length = memory_length + authors_notes;
+	
 	always_prompt = document.getElementById("story_useprompt").value == "true";
-	prompt_length = parseInt(document.getElementById("story_prompt").getAttribute("story_prompt_length"));
 	if (always_prompt) {
 		token_length += prompt_length
 		document.getElementById("story_prompt").classList.add("within_max_length");
