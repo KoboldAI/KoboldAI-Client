@@ -478,20 +478,22 @@
 	</div>
 	
 	<!------------- Pop-Up ------------------------------->
-	<div class="new_popup hidden" id="popup">
-		<div style="height:100%;">
-			<div class="title" id="popup_title">
-				Popup Title
+	<div class="popupcontainer hidden" id="popup">
+		<div class="new_popup">
+			<div style="height:100%;">
+				<div class="title" id="popup_title">
+					Popup Title
+				</div>
+				<div id="popup_breadcrumbs"></div>
+				<div class="popup_list_area" id="popup_list"></div>
+				<div class="popup_load_cancel hidden" id="popup_upload">
+				<input type=file id="popup_upload_file">
 			</div>
-			<div id="popup_breadcrumbs"></div>
-			<div class="popup_list_area" id="popup_list"></div>
-			<div class="popup_load_cancel hidden" id="popup_upload">
-			<input type=file id="popup_upload_file">
-		</div>
-		<div style="background-color: black">Drag file(s) above or click here to Upload File<input id="popup_upload_input" type=file onchange="upload_file(this)"></div>
-		<div class="popup_load_cancel" id="popup_load_cancel">
-				<button class="btn btn-secondary popup_load_cancel_button" id="popup_accept">Load</button>
-				<button class="btn btn-primary popup_load_cancel_button" id="popup_cancel" onclick='document.getElementById("popup").classList.add("hidden");'>Cancel</button>
+			<div style="background-color: black">Drag file(s) above or click here to Upload File<input id="popup_upload_input" type=file onchange="upload_file(this)"></div>
+			<div class="popup_load_cancel" id="popup_load_cancel">
+					<button class="btn btn-secondary popup_load_cancel_button" id="popup_accept">Load</button>
+					<button class="btn btn-primary popup_load_cancel_button" id="popup_cancel" onclick='document.getElementById("popup").classList.add("hidden");'>Cancel</button>
+				</div>
 			</div>
 		</div>
 	</div>
