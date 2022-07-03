@@ -17,7 +17,7 @@ gensettingstf = [
 	"id": "settemp", 
 	"min": 0.1,
 	"max": 2.0,
-	"step": 0.05,
+	"step": 0.01,
 	"default": 0.5,
     "tooltip": "Randomness of sampling. High values can increase creativity but may make text less sensible. Lower values will make text more predictable but can become repetitious."
 	},
@@ -28,7 +28,7 @@ gensettingstf = [
 	"id": "settopp", 
 	"min": 0.0,
 	"max": 1.0,
-	"step": 0.05,
+	"step": 0.01,
 	"default": 0.9,
     "tooltip": "Used to discard unlikely text in the sampling process. Lower values will make text more predictable but can become repetitious. (Put this value on 1 to disable its effect)"
 	},
@@ -50,7 +50,7 @@ gensettingstf = [
 	"id": "settfs", 
 	"min": 0.0,
 	"max": 1.0,
-	"step": 0.05,
+	"step": 0.01,
 	"default": 1.0,
     "tooltip": "Alternative sampling method; it is recommended to disable top_p and top_k (set top_p to 1 and top_k to 0) if using this. 0.95 is thought to be a good value. (Put this value on 1 to disable its effect)"
 	},
@@ -61,7 +61,7 @@ gensettingstf = [
 	"id": "settypical", 
 	"min": 0.0,
 	"max": 1.0,
-	"step": 0.05,
+	"step": 0.01,
 	"default": 1.0,
     "tooltip": "Alternative sampling method described in the paper \"Typical Decoding for Natural Language Generation\" (10.48550/ARXIV.2202.00666). The paper suggests 0.2 as a good value for this setting. Set this setting to 1 to disable its effect."
 	},
