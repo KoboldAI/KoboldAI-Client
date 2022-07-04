@@ -2204,6 +2204,11 @@ $(document).ready(function(){
 
 	// Connect to SocketIO server
 	socket = io.connect(window.document.origin, {transports: ['polling', 'websocket'], closeOnBeforeunload: false});
+	socket.on('load_popup', function(data){load_popup(data);});
+	socket.on('popup_items', function(data){popup_items(data);});
+	socket.on('popup_breadcrumbs', function(data){popup_breadcrumbs(data);});
+	socket.on('popup_edit_file', function(data){popup_edit_file(data);});
+	socket.on('error_popup', function(data){error_popup(data);});
 
 	socket.on('from_server', function(msg) {
 		//console.log(msg);
@@ -3229,3 +3234,244 @@ $(document).ready(function(){
 		}
 	});
 });
+
+
+
+var popup_deleteable = false;
+var popup_editable = false;
+var popup_renameable = false;
+
+function load_popup(data) {
+	document.getElementById('spcontainer').classList.add('hidden');
+	document.getElementById('uscontainer').classList.add('hidden');
+	popup_deleteable = data.deleteable;
+	popup_editable = data.editable;
+	popup_renameable = data.renameable;
+	var popup = document.getElementById("popup");
+	var popup_title = document.getElementById("popup_title");
+	popup_title.textContent = data.popup_title;
+	var popup_list = document.getElementById("popup_list");
+	//first, let's clear out our existing data
+	while (popup_list.firstChild) {
+		popup_list.removeChild(popup_list.firstChild);
+	}
+	var breadcrumbs = document.getElementById('popup_breadcrumbs');
+	while (breadcrumbs.firstChild) {
+		breadcrumbs.removeChild(breadcrumbs.firstChild);
+	}
+	
+	if (data.upload) {
+		const dropArea = document.getElementById('popup_list');
+		dropArea.addEventListener('dragover', (event) => {
+			event.stopPropagation();
+			event.preventDefault();
+			// Style the drag-and-drop as a "copy file" operation.
+			event.dataTransfer.dropEffect = 'copy';
+		});
+
+		dropArea.addEventListener('drop', (event) => {
+			event.stopPropagation();
+			event.preventDefault();
+			const fileList = event.dataTransfer.files;
+			for (file of fileList) {
+				reader = new FileReader();
+				reader.onload = function (event) {
+					socket.emit("upload_file", {'filename': file.name, "data": event.target.result});
+				};
+				reader.readAsArrayBuffer(file);
+			}
+		});
+	} else {
+		
+	}
+	
+	popup.classList.remove("hidden");
+	
+	//adjust accept button
+	if (data.call_back == "") {
+		document.getElementById("popup_accept").classList.add("hidden");
+	} else {
+		document.getElementById("popup_accept").classList.remove("hidden");
+		var accept = document.getElementById("popup_accept");
+		accept.classList.add("disabled");
+		accept.setAttribute("emit", data.call_back);
+		accept.setAttribute("selected_value", "");
+		accept.onclick = function () {
+								socket.emit(this.emit, this.getAttribute("selected_value"));
+								document.getElementById("popup").classList.add("hidden");
+						  };
+	}
+					  
+}
+
+function popup_items(data) {
+	var popup_list = document.getElementById('popup_list');
+	//first, let's clear out our existing data
+	while (popup_list.firstChild) {
+		popup_list.removeChild(popup_list.firstChild);
+	}
+	document.getElementById('popup_upload_input').value = "";
+	
+	for (item of data) {
+		var list_item = document.createElement("span");
+		list_item.classList.add("item");
+		
+		//create the folder icon
+		var folder_icon = document.createElement("span");
+		folder_icon.classList.add("folder_icon");
+		if (item[0]) {
+			folder_icon.classList.add("oi");
+			folder_icon.setAttribute('data-glyph', "folder");
+		}
+		list_item.append(folder_icon);
+		
+		//create the edit icon
+		var edit_icon = document.createElement("span");
+		edit_icon.classList.add("edit_icon");
+		if ((popup_editable) && !(item[0])) {
+			edit_icon.classList.add("oi");
+			edit_icon.setAttribute('data-glyph', "spreadsheet");
+			edit_icon.title = "Edit"
+			edit_icon.id = item[1];
+			edit_icon.onclick = function () {
+							socket.emit("popup_edit", this.id);
+					  };
+		}
+		list_item.append(edit_icon);
+		
+		//create the rename icon
+		var rename_icon = document.createElement("span");
+		rename_icon.classList.add("rename_icon");
+		if ((popup_renameable) && !(item[0])) {
+			rename_icon.classList.add("oi");
+			rename_icon.setAttribute('data-glyph', "pencil");
+			rename_icon.title = "Rename"
+			rename_icon.id = item[1];
+			rename_icon.setAttribute("filename", item[2]);
+			rename_icon.onclick = function () {
+							var new_name = prompt("Please enter new filename for \n"+ this.getAttribute("filename"));
+							if (new_name != null) {
+								socket.emit("popup_rename", {"file": this.id, "new_name": new_name});
+							}
+					  };
+		}
+		list_item.append(rename_icon);
+		
+		//create the delete icon
+		var delete_icon = document.createElement("span");
+		delete_icon.classList.add("delete_icon");
+		if (popup_deleteable) {
+			delete_icon.classList.add("oi");
+			delete_icon.setAttribute('data-glyph', "x");
+			delete_icon.title = "Delete"
+			delete_icon.id = item[1];
+			delete_icon.setAttribute("folder", item[0]);
+			delete_icon.onclick = function () {
+							if (this.getAttribute("folder") == "true") {
+								if (window.confirm("Do you really want to delete this folder and ALL files under it?")) {
+									socket.emit("popup_delete", this.id);
+								}
+							} else {
+								if (window.confirm("Do you really want to delete this file?")) {
+									socket.emit("popup_delete", this.id);
+								}
+							}
+					  };
+		}
+		list_item.append(delete_icon);
+		
+		//create the actual item
+		var popup_item = document.createElement("span");
+		popup_item.classList.add("file");
+		popup_item.id = item[1];
+		popup_item.setAttribute("folder", item[0]);
+		popup_item.setAttribute("valid", item[3]);
+		popup_item.textContent = item[2];
+		popup_item.onclick = function () {
+						var accept = document.getElementById("popup_accept");
+						if (this.getAttribute("valid") == "true") {
+							accept.classList.remove("disabled");
+							accept.setAttribute("selected_value", this.id);
+						} else {
+							console.log("not valid");
+							accept.setAttribute("selected_value", "");
+							accept.classList.add("disabled");
+							if (this.getAttribute("folder") == "true") {
+								console.log("folder");
+								socket.emit("popup_change_folder", this.id);
+							}
+						}
+				  };
+		list_item.append(popup_item);
+		
+		
+		popup_list.append(list_item);
+		
+		
+	}
+}
+
+function popup_breadcrumbs(data) {
+	var breadcrumbs = document.getElementById('popup_breadcrumbs')
+	while (breadcrumbs.firstChild) {
+		breadcrumbs.removeChild(breadcrumbs.firstChild);
+	}
+	
+	for (item of data) {
+		var button = document.createElement("button");
+		button.id = item[0];
+		button.textContent = item[1];
+		button.classList.add("breadcrumbitem");
+		button.onclick = function () {
+							socket.emit("popup_change_folder", this.id);
+					  };
+		breadcrumbs.append(button);
+		var span = document.createElement("span");
+		span.textContent = "\\";
+		breadcrumbs.append(span);
+	}
+}
+
+function popup_edit_file(data) {
+	var popup_list = document.getElementById('popup_list');
+	//first, let's clear out our existing data
+	while (popup_list.firstChild) {
+		popup_list.removeChild(popup_list.firstChild);
+	}
+	var accept = document.getElementById("popup_accept");
+	accept.setAttribute("selected_value", "");
+	accept.onclick = function () {
+							var textarea = document.getElementById("filecontents");
+							socket.emit("popup_change_file", {"file": textarea.getAttribute("filename"), "data": textarea.value});
+							document.getElementById("popup").classList.add("hidden");
+					  };
+	
+	var textarea = document.createElement("textarea");
+	textarea.classList.add("fullwidth");
+	textarea.rows = 25;
+	textarea.id = "filecontents"
+	textarea.setAttribute("filename", data.file);
+	textarea.value = data.text;
+	textarea.onblur = function () {
+						var accept = document.getElementById("popup_accept");
+						accept.classList.remove("disabled");
+					};
+	popup_list.append(textarea);
+	
+}
+
+function error_popup(data) {
+	alert(data);
+}
+
+function upload_file(file_box) {
+	var fileList = file_box.files;
+	for (file of fileList) {
+		reader = new FileReader();
+		reader.onload = function (event) {
+			socket.emit("upload_file", {'filename': file.name, "data": event.target.result});
+		};
+		reader.readAsArrayBuffer(file);
+	}
+}
+

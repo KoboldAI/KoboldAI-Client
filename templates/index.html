@@ -9,6 +9,7 @@
 	<link rel="stylesheet" href="static/bootstrap.min.css">
 	<link rel="stylesheet" href="static/bootstrap-toggle.min.css">
 	<link rel="stylesheet" href="static/open-iconic-bootstrap.min.css">
+	<link href="static/open-iconic/css/open-iconic.css" rel="stylesheet">
 	<link rel="stylesheet" href="static/custom.css?ver=1.18.1c">
 
 	<script src="static/jquery-3.6.0.min.js"></script>
@@ -209,7 +210,7 @@
 		</div>
 	</div>
 	<div class="hidden" id="popupcontainer">
-		<div id="popup">
+		<div id="popup_old">
 			<div id="popuptitlebar">
 				<div id="popuptitletext">Select an Adventure to Import</div>
 			</div>
@@ -339,6 +340,7 @@
 		<div id="sppopup">
 			<div class="popuptitlebar">
 				<div class="popuptitletext">Select A Soft Prompt To Use</div>
+				<button class="btn btn-primary"><span class="oi" style="color: white;" data-glyph="folder" onclick="socket.emit('show_folder_soft_prompt', {});"></span></button>
 			</div>
 			<div id="splistcontent">
 			</div>
@@ -352,6 +354,7 @@
 		<div id="uspopup">
 			<div class="popuptitlebar">
 				<div class="popuptitletext">Select userscripts to load; drag-and-drop to reorder</div>
+				<button class="btn btn-primary"><span class="oi" style="color: white;" data-glyph="folder" onclick="socket.emit('show_folder_usersripts', {});"></span></button>
 			</div>
 			<div class="usheadergrid">
 				<div>[AVAILABLE]</div>
@@ -470,6 +473,27 @@
 			<div class="popupfooter">
 				<button type="button" class="btn btn-primary" id="btn_rsaccept">Accept</button>
 				<button type="button" class="btn btn-primary" id="btn_rsclose">Cancel</button>
+			</div>
+		</div>
+	</div>
+	
+	<!------------- Pop-Up ------------------------------->
+	<div class="popupcontainer hidden" id="popup">
+		<div class="new_popup">
+			<div style="height:100%;">
+				<div class="title" id="popup_title">
+					Popup Title
+				</div>
+				<div id="popup_breadcrumbs"></div>
+				<div class="popup_list_area" id="popup_list"></div>
+				<div class="popup_load_cancel hidden" id="popup_upload">
+				<input type=file id="popup_upload_file">
+			</div>
+			<div style="background-color: black">Drag file(s) above or click here to Upload File<input id="popup_upload_input" type=file onchange="upload_file(this)"></div>
+			<div class="popup_load_cancel" id="popup_load_cancel">
+					<button class="btn btn-secondary popup_load_cancel_button" id="popup_accept">Load</button>
+					<button class="btn btn-primary popup_load_cancel_button" id="popup_cancel" onclick='document.getElementById("popup").classList.add("hidden");'>Cancel</button>
+				</div>
 			</div>
 		</div>
 	</div>
