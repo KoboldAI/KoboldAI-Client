@@ -6,6 +6,7 @@ channels:
 dependencies:
   - colorama
   - flask-socketio
+  - flask-session
   - pytorch
   - cudatoolkit=11.1
   - tensorflow-gpu

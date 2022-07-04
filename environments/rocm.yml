@@ -5,6 +5,7 @@ channels:
 dependencies:
   - colorama
   - flask-socketio
+  - flask-session
   - python=3.8.*
   - eventlet
   - markdown
