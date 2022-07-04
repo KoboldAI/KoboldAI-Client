@@ -178,7 +178,7 @@ class settings(object):
                     raise
 
 class model_settings(settings):
-    local_only_variables = ['badwordsids', 'apikey', 'tqdm', 'socketio']
+    local_only_variables = ['badwordsids', 'apikey', 'tqdm', 'socketio', 'default_preset']
     no_save_variables = ['tqdm', 'socketio']
     settings_name = "model"
     def __init__(self, socketio):
@@ -222,6 +222,7 @@ class model_settings(settings):
         self.revision    = None
         self.presets     = []   # Holder for presets
         self.selected_preset = ""
+        self.default_preset = {}
         
         
     #dummy class to eat the tqdm output
@@ -531,6 +532,11 @@ class KoboldStoryRegister(object):
         self.action_count+=1
         if self.action_count in self.actions:
             self.actions[self.action_count]["Selected Text"] = text
+            if self.tokenizer is not None:
+                selected_text_length = len(self.tokenizer.encode(text))
+            else:
+                selected_text_length = 0
+            self.actions[self.action_count]["Selected Text Length"] = selected_text_length
             for item in self.actions[self.action_count]["Options"]:
                 if item['text'] == text:
                     old_options = self.actions[self.action_count]["Options"]
@@ -538,12 +544,13 @@ class KoboldStoryRegister(object):
                     process_variable_changes(self.socketio, "actions", "Options", {"id": self.action_count, "options": self.actions[self.action_count]["Options"]}, {"id": self.action_count, "options": old_options})
                     
         else:
-            self.actions[self.action_count] = {"Selected Text": text, "Options": []}
+            if self.tokenizer is not None:
+                selected_text_length = len(self.tokenizer.encode(text))
+            else:
+                selected_text_length = 0
             
-        if self.tokenizer is not None:
-            self.actions[self.action_count]['Selected Text Length'] = len(self.tokenizer.encode(text))
-        else:
-            self.actions[self.action_count]['Selected Text Length'] = None
+            self.actions[self.action_count] = {"Selected Text": text, "Selected Text Length": selected_text_length, "Options": []}
+            
         process_variable_changes(self.socketio, "actions", "Selected Text", {"id": self.action_count, "text": text}, None)
         process_variable_changes(self.socketio, "actions", 'Selected Text Length', {"id": self.action_count, 'length': self.actions[self.action_count]['Selected Text Length']}, {"id": self.action_count, 'length': 0})
         self.set_game_saved()
@@ -554,7 +561,7 @@ class KoboldStoryRegister(object):
             self.actions[self.action_count+1]['Options'].extend([{"text": x, "Pinned": False, "Previous Selection": False, "Edited": False} for x in option_list])
         else:
             old_options = None
-            self.actions[self.action_count+1] = {"Selected Text": "", "Options": [{"text": x, "Pinned": False, "Previous Selection": False, "Edited": False} for x in option_list]}
+            self.actions[self.action_count+1] = {"Selected Text": "", "Selected Text Length": 0, "Options": [{"text": x, "Pinned": False, "Previous Selection": False, "Edited": False} for x in option_list]}
         process_variable_changes(self.socketio, "actions", "Options", {"id": self.action_count+1, "options": self.actions[self.action_count+1]["Options"]}, {"id": self.action_count+1, "options": old_options})
         self.set_game_saved()
             

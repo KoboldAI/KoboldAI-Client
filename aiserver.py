@@ -594,24 +594,34 @@ def loadmodelsettings():
         koboldai_vars.nobreakmodel = js["nobreakmodel"]
     if("sampler_order" in js):
         koboldai_vars.sampler_order = js["sampler_order"]
+        koboldai_vars.default_preset['sampler_order'] = js["sampler_order"]
     if("temp" in js):
         koboldai_vars.temp       = js["temp"]
+        koboldai_vars.default_preset['temp'] = js["temp"]
     if("top_p" in js):
         koboldai_vars.top_p      = js["top_p"]
+        koboldai_vars.default_preset['top_p'] = js["top_p"]
     if("top_k" in js):
         koboldai_vars.top_k      = js["top_k"]
+        koboldai_vars.default_preset['top_k'] = js["top_k"]
     if("tfs" in js):
         koboldai_vars.tfs        = js["tfs"]
+        koboldai_vars.default_preset['tfs'] = js["tfs"]
     if("typical" in js):
         koboldai_vars.typical    = js["typical"]
+        koboldai_vars.default_preset['typical'] = js["typical"]
     if("top_a" in js):
         koboldai_vars.top_a      = js["top_a"]
+        koboldai_vars.default_preset['top_a'] = js["top_a"]
     if("rep_pen" in js):
         koboldai_vars.rep_pen    = js["rep_pen"]
+        koboldai_vars.default_preset['rep_pen'] = js["rep_pen"]
     if("rep_pen_slope" in js):
         koboldai_vars.rep_pen_slope = js["rep_pen_slope"]
+        koboldai_vars.default_preset['rep_pen_slope'] = js["rep_pen_slope"]
     if("rep_pen_range" in js):
         koboldai_vars.rep_pen_range = js["rep_pen_range"]
+        koboldai_vars.default_preset['rep_pen_range'] = js["rep_pen_range"]
     if("adventure" in js):
         koboldai_vars.adventure = js["adventure"]
     if("chatmode" in js):
@@ -2104,20 +2114,21 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
     #Let's load the presets
     with open('settings/preset/official.presets') as f:
         presets = json.load(f)
-        to_use = {}
+        to_use = {"Recommended": {"Default": koboldai_vars.default_preset}}
         #Check for 6B in title
         if '6B' in koboldai_vars.model or '6.7B' in koboldai_vars.model or '1.3B' in koboldai_vars.model:
-            to_use['Recommended'] = presets['6B']
+            to_use['Recommended'].update(presets['6B'])
             for key in presets:
                 if key != '6B':
                     to_use[key] = presets[key]
         elif '13B' in koboldai_vars.model:
-            to_use['Recommended'] = presets['13B']
+            to_use['Recommended'].update(presets['13B'])
             for key in presets:
                 if key != '13B':
                     to_use[key] = presets[key]
         else:
-            to_use = presets
+            for key in presets:
+                to_use[key] = presets[key]
         koboldai_vars.presets = to_use
 
 # Set up Flask routes
