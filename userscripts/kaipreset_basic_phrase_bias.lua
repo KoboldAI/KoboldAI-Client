@@ -183,8 +183,8 @@ function userscript.genmod()
             max_overlap[i] = 0
             local s = {}
             local z = {[0] = 0}
-            local l = 1
-            local r = 1
+            local l = 0
+            local r = 0
             local n_s = math.min(n_tokens, bias_entry.n_tokens)
             local j = 0
             for k = 1, n_s do
