@@ -5978,9 +5978,9 @@ def popup_edit(data):
         return
     
     if session['popup_jailed_dir'] is None:
-        emit("popup_edit_file", {"file": data, "text": open(data, 'r').read()});
+        emit("popup_edit_file", {"file": data, "text": open(data, 'r', encoding='utf-8').read()});
     elif session['popup_jailed_dir'] in data:
-        emit("popup_edit_file", {"file": data, "text": open(data, 'r').read()});
+        emit("popup_edit_file", {"file": data, "text": open(data, 'r', encoding='utf-8').read()});
     else:
         print("User is trying to delete files in your server outside the jail. Blocked. Jailed Dir: {}  Requested Dir: {}".format(session['popup_jailed_dir'], data))
 
@@ -6035,7 +6035,6 @@ def file_popup(popup_title, starting_folder, return_event, upload=True, jailed=T
     socketio.emit("load_popup", {"popup_title": popup_title, "call_back": return_event, "renameable": renameable, "deleteable": deleteable, "editable": editable, 'upload': upload}, broadcast=True, room="UI_1")
     
     get_files_folders(starting_folder)
-    
     
 def get_files_folders(starting_folder):
     import stat
@@ -6110,7 +6109,6 @@ def get_files_folders(starting_folder):
 #==================================================================#
 @socketio.on('var_change')
 def UI_2_var_change(data):
-    print(data)
     classname = data['ID'].split("_")[0]
     name = data['ID'][len(classname)+1:]
     classname += "_settings"
@@ -6127,6 +6125,7 @@ def UI_2_var_change(data):
     else:
         print("Unknown Type {} = {}".format(name, type(getattr(koboldai_vars, name))))
     
+    print("Setting {} to {} as type {}".format(name, value, type(value)))
     setattr(koboldai_vars, name, value)
     
     #Now let's save except for story changes
@@ -6293,30 +6292,19 @@ def UI_2_relay(data):
 #==================================================================#
 # Test
 #==================================================================#
-def setup_context_for_thread():
-    pass
-    
-@bridged_kwarg()
-def lua_print_threadid():
-    import threading
-    return threading.get_ident()
-
 @app.route("/actions")
 def show_actions():
     return koboldai_vars.actions.actions
     
-@app.route("/story")
-def show_story():
-    return koboldai_vars.actions.to_json()
-  
-@app.route("/story_list")
-def show_story_list():
-    return " ".join(koboldai_vars.story_list())
-    
-@app.route("/session")
-def show_session():
-    print(dir(session))
-    return dict(session)
+@app.route("/vars")
+def show_vars():
+    json_data = {}
+    json_data['story_settings'] = json.loads(koboldai_vars.to_json("story_settings"))
+    json_data['model_settings'] = json.loads(koboldai_vars.to_json("model_settings"))
+    json_data['user_settings'] = json.loads(koboldai_vars.to_json("user_settings"))
+    json_data['system_settings'] = json.loads(koboldai_vars.to_json("system_settings"))
+    return json_data
+
     
 
 #==================================================================#

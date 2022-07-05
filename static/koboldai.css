@@ -427,19 +427,31 @@ body {
 	color: var(--text);
 }
 
+@media only screen and not (max-width: 768px) {
 .main-grid {
 	transition: margin-left .5s;
 	display: grid;
 	height: 98vh;
 	margin-left: var(--flyout_menu_closed_width);
-/*	grid-template-areas: "menuicon gamescreen lefticon"
-						 "menuicon actions lefticon"
-						 "menuicon inputrow lefticon";*/
 	grid-template-areas: "menuicon gamescreen options lefticon"
 						 "menuicon inputrow inputrow lefticon";
 	grid-template-columns: 30px auto fit-content(30%) 20px;
-/*	grid-template-rows: auto 40px 100px;*/
 	grid-template-rows: auto 100px;
+}
+}
+
+@media only screen and (max-width: 768px) {
+.main-grid {
+	transition: margin-left .5s;
+	display: grid;
+	height: 98vh;
+	margin-left: var(--flyout_menu_closed_width);
+	grid-template-areas: "menuicon gamescreen lefticon"
+					     "menuicon mobile_options lefticon"
+						 "menuicon inputrow lefticon";
+	grid-template-columns: 30px auto 20px;
+	grid-template-rows: auto min-content 100px;
+}
 }
 
 @media only screen and not (max-width: 768px) {
@@ -452,6 +464,7 @@ body {
 .gamescreen {
 	background-color: var(--gamescreen_background);
 	color: white;
+	width: 100%;
 	grid-area: gamescreen;
 	display: flex;
 	flex-direction: column;
@@ -483,27 +496,60 @@ body {
   color: var(--text_edit);
 }
 
-.sequence {
+@media only screen and not (max-width: 768px) {
+.sequence_area {
 	margin-top: 10px;
 	grid-area: options;
 	background-color: var(--gamescreen_background);
 	overflow-y: scroll;
 }
+}
 
-table.sequence {
+@media only screen and (max-width: 768px) {
+.sequence_area {
+	margin-top: 5px;
+	grid-area: mobile_options;
+	background-color: var(--gamescreen_background);
+	overflow-y: hidden;
+}
+}
+
+@media only screen and (max-width: 768px) {
+.sequences {
 	width: 100%;
 	border: 0px;
 	border-spacing: 0;
+	display: flex;
+	flex-direction: row;
+	overflow-x: scroll;
+	scroll-snap-type: x mandatory;
+}
 }
 
-tr.sequence {
+@media only screen and not (max-width: 768px) {
+.sequences {
+	width: 100%;
+	border: 0px;
+	border-spacing: 0;
+	display: flex;
+	flex-direction: column;
+}
+}
+
+.sequence_row {
+	scroll-snap-align: start;
 	margin-top: 0px;
 	margin-bottom: 0px;
+	min-width: 100%;
+	display: grid;
+	grid-template-areas: "text icon";
+	grid-template-columns: auto 20px;
 }
 
-td.sequence {
+.sequence {
 	border: 1px solid #959595;
 	border-radius: 5px;
+	grid-area: text;
 	padding: 0px;
 	background-color: var(--options_background);
 	-moz-transition: all 0.15s ease-in;
@@ -513,7 +559,11 @@ td.sequence {
 	white-space: pre-wrap;
 }
 
-td.sequence:hover {
+.sequnce_icon {
+	grid-area: icon;
+}
+
+.sequence:hover {
 	filter: brightness(70%);
 }
 

@@ -40,14 +40,14 @@
 		</div>
 		<!------------ Sequences --------------------->
 		<div id="action_count" class="var_sync_actions_Action_Count hidden"></div>
-		<div id="Select Options" class="sequence"></div>
+		<div id="Select Options" class="sequence_area"></div>
 		<!------------ Input Area--------------------->
 		<div class="inputrow" id="inputrow_container">
 			<textarea id="input_text" placeholder="Enter text here"></textarea>
 			<div class="statusbar_outer hidden">
 				<div class="statusbar_inner" style="width:0%">0%</div>
 			</div><br>
-			<button type="button" class="btn action_button submit var_sync_alt_system_aibusy" system_aibusy=False id="btnsend" onclick="socket.emit('submit', {'data': document.getElementById('input_text').value});">Submit</button>
+			<button type="button" class="btn action_button submit var_sync_alt_system_aibusy" system_aibusy=False id="btnsend" onclick="socket.emit('submit', {'data': document.getElementById('input_text').value});this.textContent = '';">Submit</button>
 			<button type="button" class="btn action_button submited var_sync_alt_system_aibusy"  system_aibusy=False id="btnsend"><img src="static/thinking.gif" class="force_center"></button>
 			<button type="button" class="btn action_button back" onclick="socket.emit('back', {});"><span class="oi" data-glyph="action-undo"></span></button>
 			<button type="button" class="btn action_button redo" onclick="socket.emit('redo', {});"><span class="oi" data-glyph="action-redo"></span></button>

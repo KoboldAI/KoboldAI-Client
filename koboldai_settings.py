@@ -39,7 +39,7 @@ def process_variable_changes(socketio, classname, name, value, old_value, debug_
                         @sio.event
                         def connect():
                             pass
-                        sio.connect('http://localhost:5000/?rely=true')
+                        sio.connect('ws://localhost:5000/?rely=true')
                         rely_clients[threading.get_ident()] = sio
                     #release no longer used clients
                     for thread in rely_clients:
@@ -60,10 +60,10 @@ class koboldai_vars(object):
         
     def to_json(self, classname):
         if classname == 'story_settings':
-            if 'story' in self._sessions:
-                return self._story_settings[self._sessions['story']].to_json()
-            else:
-                return self._story_settings['default'].to_json()
+            #if 'story' in self._sessions:
+            #    return self._story_settings[self._sessions['story']].to_json()
+            #else:
+            return self._story_settings['default'].to_json()
         return self.__dict__["_{}".format(classname)].to_json()
         
     def load_story(self, story_name, json_data):
@@ -322,7 +322,7 @@ class story_settings(settings):
             process_variable_changes(self.socketio, self.__class__.__name__.replace("_settings", ""), name, value, old_value)
         #We want to automatically set gamesaved to false if something happens to the actions list (pins, redos, generations, text, etc)
         #To do that we need to give the actions list a copy of this data so it can set the gamesaved variable as needed
-        if not new_variable:
+        if not new_variable and old_value != value:
             if name == 'actions':
                 self.actions.story_settings = self
             if self.tokenizer is not None:
@@ -336,6 +336,29 @@ class story_settings(settings):
                     self.memory_length = len(self.tokenizer.encode(self.memory))
                 elif name == 'prompt':
                     self.prompt_length = len(self.tokenizer.encode(self.prompt))
+            
+            #Because we have seperate variables for action types, this syncs them
+            if name == 'actionmode':
+                if value == 0:
+                    self.adventure = False
+                    self.chatmode = False
+                elif value == 1:
+                    self.adventure = True
+                    self.chatmode = False
+                elif value == 2:
+                    self.adventure = False
+                    self.chatmode = True
+            elif name == 'adventure' and value == True:
+                self.chatmode = False
+                self.actionmode = 1
+            elif name == 'adventure' and value == False and self.chatmode == False:
+                self.actionmode = 0
+            elif name == 'chatmode' and value == True:
+                self.adventure = False
+                self.actionmode = 2
+            elif name == 'chatmode' and value == False and self.adventure == False:
+                self.actionmode = 0
+                
                     
 class user_settings(settings):
     local_only_variables = ['socketio']
@@ -372,7 +395,7 @@ class user_settings(settings):
         
 class system_settings(settings):
     local_only_variables = ['socketio', 'lua_state', 'lua_logname', 'lua_koboldbridge', 'lua_kobold', 'lua_koboldcore', 'regex_sl', 'acregex_ai', 'acregex_ui', 'comregex_ai', 'comregex_ui', 'sp']
-    no_save_variables = ['socketio']
+    no_save_variables = ['socketio', 'lua_state', 'lua_logname', 'lua_koboldbridge', 'lua_kobold', 'lua_koboldcore', 'sp']
     settings_name = "system"
     def __init__(self, socketio):
         self.socketio = socketio

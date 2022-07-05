@@ -84,23 +84,23 @@ function create_options(data) {
 	while (option_chunk.firstChild) {
 		option_chunk.removeChild(option_chunk.firstChild);
 	}
-	var table = document.createElement("table");
-	table.classList.add("sequence");
-	table.style = "border-spacing: 0;";
+	var table = document.createElement("div");
+	table.classList.add("sequences");
 	//Add Redo options
 	i=0;
 	for (item of data.value.options) {
 		if ((item['Previous Selection'])) {
-			var row = document.createElement("tr");
-			row.classList.add("sequence");
-			var textcell = document.createElement("td");
+			var row = document.createElement("div");
+			row.classList.add("sequence_row");
+			var textcell = document.createElement("span");
 			textcell.textContent = item.text;
 			textcell.classList.add("sequence");
 			textcell.setAttribute("option_id", i);
 			textcell.setAttribute("option_chunk", data.value.id);
-			var iconcell = document.createElement("td");
+			var iconcell = document.createElement("span");
 			iconcell.setAttribute("option_id", i);
 			iconcell.setAttribute("option_chunk", data.value.id);
+			iconcell.classList.add("sequnce_icon");
 			var icon = document.createElement("span");
 			icon.id = "Pin_"+i;
 			icon.classList.add("oi");
@@ -119,16 +119,17 @@ function create_options(data) {
 	i=0;
 	for (item of data.value.options) {
 		if (!(item.Edited) && !(item['Previous Selection'])) {
-			var row = document.createElement("tr");
-			row.classList.add("sequence");
-			var textcell = document.createElement("td");
+			var row = document.createElement("div");
+			row.classList.add("sequence_row");
+			var textcell = document.createElement("span");
 			textcell.textContent = item.text;
 			textcell.classList.add("sequence");
 			textcell.setAttribute("option_id", i);
 			textcell.setAttribute("option_chunk", data.value.id);
-			var iconcell = document.createElement("td");
+			var iconcell = document.createElement("span");
 			iconcell.setAttribute("option_id", i);
 			iconcell.setAttribute("option_chunk", data.value.id);
+			iconcell.classList.add("sequnce_icon");
 			var icon = document.createElement("span");
 			icon.id = "Pin_"+i;
 			icon.classList.add("oi");
@@ -222,7 +223,7 @@ function selected_preset(data) {
 			var elements_to_change = document.getElementsByClassName("var_sync_model_"+key);
 			for (item of elements_to_change) {
 				if (item.tagName.toLowerCase() === 'input') {
-					item.value = fix_text(value);
+					item.value = value;
 				} else {
 					item.textContent = fix_text(value);
 				}
@@ -268,6 +269,7 @@ function do_ai_busy(data) {
 }
 
 function var_changed(data) {
+	console.log(data);
 	//Special Case for Story Text
 	if ((data.classname == "actions") && (data.name == "Selected Text")) {
 		do_story_text_updates(data);
@@ -287,7 +289,14 @@ function var_changed(data) {
 		var elements_to_change = document.getElementsByClassName("var_sync_"+data.classname.replace(" ", "_")+"_"+data.name.replace(" ", "_"));
 		for (item of elements_to_change) {
 			if ((item.tagName.toLowerCase() === 'input') || (item.tagName.toLowerCase() === 'select')) {
-				item.value = fix_text(data.value);
+				if (item.getAttribute("type") == "checkbox") {
+					if (item.checked != data.value) {
+						//not sure why the bootstrap-toggle won't respect a standard item.checked = true/false, so....
+						item.parentNode.click();
+					}
+				} else {
+					item.value = fix_text(data.value);
+				}
 			} else {
 				item.textContent = fix_text(data.value);
 			}

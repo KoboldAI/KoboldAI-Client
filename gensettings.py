@@ -232,9 +232,9 @@ gensettingstf = [
 	"step": 1,
 	"default": 0,
     "tooltip": "Turn this on if you are playing a Choose your Adventure model.",
-    "menu_path": "Story",
-    "classname": "story",
-    "name": "adventure"
+    #"menu_path": "Story",
+    #"classname": "story",
+    #"name": "adventure"
 	},
 	{
 	"uitype": "toggle",
@@ -246,9 +246,9 @@ gensettingstf = [
 	"step": 1,
 	"default": 0,
     "tooltip": "This mode optimizes KoboldAI for chatting.",
-    "menu_path": "Story",
-    "classname": "story",
-    "name": "chatmode"
+    #"menu_path": "Story",
+    #"classname": "story",
+    #"name": "chatmode"
 	},
 	{
 	"uitype": "toggle",
@@ -461,9 +461,9 @@ gensettingsik =[{
 	"step": 1,
 	"default": 0,
     "tooltip": "Turn this on if you are playing a Choose your Adventure model.",
-    "menu_path": "Story",
-    "classname": "story",
-    "name": "adventure"
+    #"menu_path": "Story",
+    #"classname": "story",
+    #"name": "adventure"
 	},
 	{
 	"uitype": "toggle",
@@ -475,9 +475,9 @@ gensettingsik =[{
 	"step": 1,
 	"default": 0,
     "tooltip": "This mode optimizes KoboldAI for chatting.",
-    "menu_path": "Story",
-    "classname": "story",
-    "name": "chatmode"
+    #"menu_path": "Story",
+    #"classname": "story",
+    #"name": "chatmode"
 	},
 	{
 	"uitype": "toggle",
