@@ -1225,13 +1225,14 @@ def load_model(path: str, driver_version="tpu_driver0.1_dev20210607", hf_checkpo
                 if utils.num_shards is not None:
                     utils.current_shard += 1
                 for key in sorted(model_dict.keys(), key=lambda k: (model_dict[k].key, model_dict[k].seek_offset)):
+                    model_spec_key = max((k for k in model_spec.keys() if key.endswith(k)), key=len, default=None)
 
                     # Some model weights are used by transformers but not by MTJ.
                     # We have to materialize these weights anyways because
                     # transformers will throw a tantrum otherwise.  To attain
                     # the least possible memory usage, we create them as meta
                     # tensors, which don't take up any actual CPU or TPU memory.
-                    if key not in model_spec:
+                    if model_spec_key is None:
                         model_dict[key] = torch.empty(model_dict[key].shape, dtype=model_dict[key].dtype, device="meta")
                         utils.bar.update(1)
                         continue
@@ -1246,7 +1247,7 @@ def load_model(path: str, driver_version="tpu_driver0.1_dev20210607", hf_checkpo
                     if current_offset != model_dict[key].seek_offset:
                         f.read(model_dict[key].seek_offset - current_offset)
                         current_offset = model_dict[key].seek_offset
-                    spec = model_spec[key]
+                    spec = model_spec[model_spec_key]
                     transforms = set(spec.get("transforms", ()))
                     if not isinstance(model_dict[key], torch_lazy_loader.LazyTensor):
                         error = f"Duplicate key {repr(key)}"
