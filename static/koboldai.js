@@ -76,10 +76,12 @@ function create_options(data) {
 	if (document.getElementById("Select Options Chunk "+data.value.id)) {
 		var option_chunk = document.getElementById("Select Options Chunk "+data.value.id)
 	} else {
-		var option_area = document.getElementById("Select Options");
 		var option_chunk = document.createElement("div");
 		option_chunk.id = "Select Options Chunk "+data.value.id;
-		option_area.append(option_chunk);
+		if (current_chunk != data.value.id) {
+			option_chunk.classList.add("hidden");
+		}
+		option_container.append(option_chunk);
 	}
 	//first, let's clear out our existing data
 	while (option_chunk.firstChild) {
@@ -318,6 +320,23 @@ function var_changed(data) {
 	if ((data.classname == 'system') && (data.name == 'aibusy')) {
 		do_ai_busy(data);
 	}
+	
+	//Set all options before the next chunk to hidden
+	if ((data.classname == "actions") && (data.name == "Action Count")) {
+		var option_container = document.getElementById("Select Options");
+		var current_chunk = parseInt(document.getElementById("action_count").textContent)+1;
+		console.log("Hide except for "+current_chunk);
+		var children = option_container.children;
+		for (var i = 0; i < children.length; i++) {
+			var chunk = children[i];
+			if (chunk.id == "Select Options Chunk " + current_chunk) {
+				chunk.classList.remove("hidden");
+			} else {
+				chunk.classList.add("hidden");
+			}
+		}
+	}
+	
 	
 	update_token_lengths();
 }

@@ -68,6 +68,11 @@
 	font-family: verdana;
 	position: relative;
 }
+
+.tabrow.nomenu_icon {
+	padding-left: 10px;
+}
+
 .tabrow span {
 	cursor: pointer;
 	-webkit-touch-callout: none; /* iOS Safari */
@@ -880,6 +885,7 @@ button.disabled {
 .force_center {
 	margin-left: 50%;
 	transform: translateX(-50%);
+	padding: 0px;
 }
 
 .flex {
