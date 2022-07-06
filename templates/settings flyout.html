@@ -30,7 +30,7 @@
 	<span class="setting_menu_button selected" onclick="show_setting_menu(this);">Model</span>
 	<span class="setting_menu_button" onclick="show_setting_menu(this);">Story</span>
 	<span class="setting_menu_button" onclick="show_setting_menu(this);">User</span>
-	<span class="setting_menu_button" onclick="show_setting_menu(this);">System</span>
+	<span style="float: right;margin-right: 30px;" onclick="window.open('https://github.com/KoboldAI/KoboldAI-Client/wiki');">Help</span>
 </div>
 
 <div id="setting_menu_model" class="settings_category_area">
@@ -66,13 +66,6 @@
 <div id="setting_menu_user" class="hidden settings_category_area">
 	<div class="setting_tile_area">
 	{% with menu='User' %}
-		{% include 'settings item.html' %}
-	{% endwith %}
-	</div>
-</div>
-<div id="setting_menu_system" class="hidden settings_category_area">
-	<div class="setting_tile_area">
-	{% with menu='System' %}
 		{% include 'settings item.html' %}
 	{% endwith %}
 	</div>

@@ -1,12 +1,33 @@
 /*----------------Global Colors------------------*/
+@media only screen and (max-width: 768px) {
+	:root {
+		--screen_type_mobile: 1;
+		--screen_type_desktop: 0;
+		--screen_type_wide: 0;
+		--flyout_menu_width: 100%;
+	}
+}
+@media only screen and (min-width: 768px) and (max-width: 1920px) {
+	:root {
+		--screen_type_mobile: 0;
+		--screen_type_desktop: 1;
+		--screen_type_wide: 0;
+		--flyout_menu_width: 450px;
+	}
+}
+@media only screen and (min-width: 1921px) {
+	:root {
+		--screen_type_mobile: 0;
+		--screen_type_desktop: 0;
+		--screen_type_wide: 1;
+		--flyout_menu_width: 450px;
+		
+	}
+}
+
 :root {
 	--flyout_menu_width_base: 350px;
-	--flyout_menu_width: calc((var(--flyout_menu_width_base) * var(--screen_type_desktop)) + 
-							  (100% * var(--screen_type_mobile)) + 
-							  (var(--flyout_menu_width_base) * var(--screen_type_wide)));
-	--flyout_menu_closed_width: calc((0px * var(--screen_type_desktop)) + 
-									 (0px * var(--screen_type_mobile)) + 
-									 (var(--flyout_menu_width_base) * var(--screen_type_wide)));
+	--flyout_menu_closed_width: 0px;
 	--background: #474B4F;
 	--text: white;
 	--text_edit: #cdf;
@@ -31,30 +52,6 @@
 	/*--menu_button_level_2_bg_color: #6F8699;*/
 	/*--menu_button_level_2_border_color: #495965;*/
 	
-}
-@media only screen and (max-width: 768px) {
-	:root {
-		--screen_type_mobile: 1;
-		--screen_type_desktop: 0;
-		--screen_type_wide: 0;
-		--flyout_menu_width: 100%;
-	}
-}
-@media only screen and (min-width: 768px) and (max-width: 1920px) {
-	:root {
-		--screen_type_mobile: 0;
-		--screen_type_desktop: 1;
-		--screen_type_wide: 0;
-		--flyout_menu_width: 450px;
-	}
-}
-@media only screen and (min-width: 1921px) {
-	:root {
-		--screen_type_mobile: 0;
-		--screen_type_desktop: 0;
-		--screen_type_wide: 1;
-		
-	}
 }
 
 /*----------------Folder Tabs--------------------*/
@@ -272,9 +269,9 @@
 	display: none;
 }
 }
-@media only screen and not (max-width: 768px) {
+@media only screen and (min-width: 768px) {
 .menu_pin {
-	position: fixed;
+	position: absolute;
 	top:10px;
 	left: calc(var(--flyout_menu_width) - 20px);
 	z-index:50;
@@ -307,7 +304,7 @@
 	transition: 0.5s;
 }
 
-@media only screen and not (max-width: 768px) {
+@media only screen and (min-width: 768px) {
 .SideMenu.pinned {
 	height: 100%;
 	width: var(--flyout_menu_width);
@@ -427,7 +424,7 @@ body {
 	color: var(--text);
 }
 
-@media only screen and not (max-width: 768px) {
+@media only screen and (min-width: 768px) {
 .main-grid {
 	transition: margin-left .5s;
 	display: grid;
@@ -454,7 +451,7 @@ body {
 }
 }
 
-@media only screen and not (max-width: 768px) {
+@media only screen and (min-width: 768px) {
 .main-grid.pinned {
 	margin-left: var(--flyout_menu_width);
 }
@@ -496,7 +493,7 @@ body {
   color: var(--text_edit);
 }
 
-@media only screen and not (max-width: 768px) {
+@media only screen and (min-width: 768px) {
 .sequence_area {
 	margin-top: 10px;
 	grid-area: options;
@@ -526,7 +523,7 @@ body {
 }
 }
 
-@media only screen and not (max-width: 768px) {
+@media only screen and (min-width: 768px) {
 .sequences {
 	width: 100%;
 	border: 0px;
@@ -585,13 +582,13 @@ body {
 						 "textarea submit submit submit"
 	                     "textarea back redo retry";
 	grid-template-columns: auto 30px 30px 30px;
-	grid-template-rows: 0px auto 40px;
+	grid-template-rows: 0px 60px 40px;
 	gap: 1px;
 	
 }
 
 .inputrow.status_bar {
-	grid-template-rows: 20px auto 40px;
+	grid-template-rows: 20px 40px 40px;
 }
 
 .inputrow .submit[system_aibusy=false] {
@@ -846,6 +843,9 @@ textarea {
 	background-color: var(--textarea_background);
 	color: var(--text);
 	resize: none;
+	border-color: white;
+	border-width: 1px;
+	border-style:solid;
 }
 
 input {
@@ -853,6 +853,9 @@ input {
 	background-color: var(--textarea_background);
 	color: var(--text);
 	resize: none;
+	border-color: white;
+	border-width: 1px;
+	border-style:solid;
 }
 
 .action_button {
@@ -898,4 +901,26 @@ button.disabled {
 .within_max_length {
 	color: #CCECFF;
 	font-weight: bold;
+}
+
+.pulse {
+	box-shadow: 0 0 0 0 rgba(255, 255, 255, 1);
+	animation: pulse-white 2s infinite;
+}
+
+@keyframes pulse-white {
+  0% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.7);
+  }
+  
+  70% {
+    transform: scale(1);
+    box-shadow: 0 0 0 10px rgba(255, 255, 255, 0);
+  }
+  
+  100% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(255, 255, 255, 0);
+  }
 }

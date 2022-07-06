@@ -25,6 +25,7 @@ var ai_busy_start = Date.now();
 var popup_deleteable = false;
 var popup_editable = false;
 var popup_renameable = false;
+var shift_down = false;
 //-----------------------------------Server to UI  Functions-----------------------------------------------
 function connect() {
 	console.log("connected");
@@ -107,7 +108,7 @@ function create_options(data) {
 			icon.setAttribute('data-glyph', "loop-circular");
 			iconcell.append(icon);
 			textcell.onclick = function () {
-									socket.emit("Set Selected Text", {"chunk": this.getAttribute("option_chunk"), "option": this.getAttribute("option_id")});
+									socket.emit("Use Option Text", {"chunk": this.getAttribute("option_chunk"), "option": this.getAttribute("option_id")});
 							  };
 			row.append(textcell);
 			row.append(iconcell);
@@ -142,7 +143,7 @@ function create_options(data) {
 									socket.emit("Pinning", {"chunk": this.getAttribute("option_chunk"), "option": this.getAttribute("option_id")});
 							   };
 			textcell.onclick = function () {
-									socket.emit("Set Selected Text", {"chunk": this.getAttribute("option_chunk"), "option": this.getAttribute("option_id")});
+									socket.emit("Use Option Text", {"chunk": this.getAttribute("option_chunk"), "option": this.getAttribute("option_id")});
 							  };
 			row.append(textcell);
 			row.append(iconcell);
@@ -154,10 +155,10 @@ function create_options(data) {
 }
 
 function do_story_text_updates(data) {
-	console.log(data);
 	story_area = document.getElementById('Selected Text');
 	if (document.getElementById('Selected Text Chunk '+data.value.id)) {
 		document.getElementById('Selected Text Chunk '+data.value.id).textContent = data.value.text;
+		document.getElementById('Selected Text Chunk '+data.value.id).classList.remove("pulse")
 	} else {
 		var span = document.createElement("span");
 		span.id = 'Selected Text Chunk '+data.value.id;
@@ -167,6 +168,7 @@ function do_story_text_updates(data) {
 		span.onblur = function () {
 			if (this.textContent != this.original_text) {
 				socket.emit("Set Selected Text", {"id": this.chunk, "text": this.textContent});
+				this.classList.add("pulse");
 			}
 		}
 		span.textContent = data.value.text;
@@ -182,7 +184,6 @@ function do_story_text_length_updates(data) {
 }
 
 function do_presets(data) {
-	console.log(data);
 	var select = document.getElementById('presets');
 	//clear out the preset list
 	while (select.firstChild) {
@@ -265,11 +266,11 @@ function do_ai_busy(data) {
 			document.getElementById("Execution Time").textContent = Math.round(runtime/1000).toString().toHHMMSS();
 		}
 		favicon.stop_swap()
+		document.getElementById('btnsend').textContent = "Submit";
 	}
 }
 
 function var_changed(data) {
-	console.log(data);
 	//Special Case for Story Text
 	if ((data.classname == "actions") && (data.name == "Selected Text")) {
 		do_story_text_updates(data);
@@ -471,11 +472,9 @@ function popup_items(data) {
 							accept.classList.remove("disabled");
 							accept.setAttribute("selected_value", this.id);
 						} else {
-							console.log("not valid");
 							accept.setAttribute("selected_value", "");
 							accept.classList.add("disabled");
 							if (this.getAttribute("folder") == "true") {
-								console.log("folder");
 								socket.emit("popup_change_folder", this.id);
 							}
 						}
@@ -548,7 +547,6 @@ function error_popup(data) {
 }
 
 function oai_engines(data) {
-	console.log(data);
 	var oaimodel = document.getElementById("oaimodel")
 	oaimodel.classList.remove("hidden")
 	selected_item = 0;
@@ -682,7 +680,6 @@ function show_model_menu(data) {
 }
 
 function selected_model_info(data) {
-	console.log(data);
 	var accept = document.getElementById("btn_loadmodelaccept");
 	//hide or unhide key
 	if (data.key) {
@@ -708,7 +705,6 @@ function selected_model_info(data) {
 	if (data.breakmodel) {
 		document.getElementById("modellayers").classList.remove("hidden");
 		//setup model layer count
-		console.log(data.break_values.reduce((a, b) => a + b, 0));
 		document.getElementById("gpu_layers_current").textContent = data.break_values.reduce((a, b) => a + b, 0);
 		document.getElementById("gpu_layers_max").textContent = data.layer_count;
 		document.getElementById("gpu_count").value = data.gpu_count;
@@ -886,7 +882,6 @@ function load_model() {
 			   'key': document.getElementById('modelkey').value, 'gpu_layers': gpu_layers.join(), 
 			   'disk_layers': disk_layers, 'url': document.getElementById("modelurl").value, 
 			   'online_model': document.getElementById("oaimodel").value};
-    console.log(message);
 	socket.emit("load_model", message);
 	document.getElementById("loadmodelcontainer").classList.add("hidden");
 }
@@ -896,7 +891,41 @@ function buildload(data) {
 }
 
 //--------------------------------------------UI to Server Functions----------------------------------
-
+function sync_to_server(item) {
+	//get value
+	value = null;
+	name = null;
+	if ((item.tagName.toLowerCase() === 'input') || (item.tagName.toLowerCase() === 'select') || (item.tagName.toLowerCase() == 'textarea')) {
+		if (item.getAttribute("type") == "checkbox") {
+			value = item.checked;
+		} else {
+			value = item.value;
+		}
+	} else {
+		value = item.textContent;
+	}
+	
+	//get name
+	for (classlist_name of item.classList) {
+		if (!classlist_name.includes("var_sync_alt_") && classlist_name.includes("var_sync_")) {
+			name = classlist_name.replace("var_sync_", "");
+		}
+	}
+	
+	if (name != null) {
+		item.classList.add("pulse");
+		//send to server with ack
+		socket.emit("var_change", {"ID": name, "value": value}, (response) => {
+			if ('status' in response) {
+				if (response['status'] == 'Saved') {
+					for (item of document.getElementsByClassName("var_sync_"+response['id'])) {
+						item.classList.remove("pulse");
+					}
+				}
+			}
+		});
+	}
+}
 
 function upload_file(file_box) {
 	var fileList = file_box.files;
@@ -1013,3 +1042,34 @@ function toggle_pin_flyout() {
 		document.getElementById("main-grid").classList.add("pinned");
 	}
 }
+
+function detect_enter(e) {
+	if (((e.code == "Enter") || (e.code == "NumpadEnter")) && !(shift_down)) {
+		console.log("submitting");
+		if (typeof e.stopPropagation != "undefined") {
+			e.stopPropagation();
+		} else {
+			e.cancelBubble = true;
+		}
+		document.getElementById("btnsend").onclick();
+		document.getElementById('input_text').value = ''
+	}
+}
+
+function detect_shift_down(e) {
+	if ((e.code == "ShiftLeft") || (e.code == "ShiftRight")) {
+		shift_down = true;
+	}
+}
+
+function detect_shift_up(e) {
+	if ((e.code == "ShiftLeft") || (e.code == "ShiftRight")) {
+		shift_down = false;
+	}
+}
+
+$(document).ready(function(){
+	document.onkeydown = detect_shift_down;
+	document.onkeyup = detect_shift_up;
+	document.getElementById("input_text").onkeydown = detect_enter;
+});

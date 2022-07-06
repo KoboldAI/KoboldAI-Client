@@ -5,6 +5,7 @@ import socketio as socketio_client
 
 rely_clients = {}
 serverstarted = False
+port = 5000
 
 
 def clean_var_for_emit(value):
@@ -39,7 +40,7 @@ def process_variable_changes(socketio, classname, name, value, old_value, debug_
                         @sio.event
                         def connect():
                             pass
-                        sio.connect('ws://localhost:5000/?rely=true')
+                        sio.connect('ws://localhost:{}/?rely=true'.format(port))
                         rely_clients[threading.get_ident()] = sio
                     #release no longer used clients
                     for thread in rely_clients:

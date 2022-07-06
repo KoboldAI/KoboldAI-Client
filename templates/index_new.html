@@ -18,6 +18,8 @@
 <body>
 	<!------------ Left Flyout Menu--------------------->
 	<div id="SideMenu" class="SideMenu pinned">
+		<!------------ Menu Pin --------------------->
+		<span id="menu_pin" class="oi menu_pin" onclick="toggle_pin_flyout()" data-glyph="pin"></span>
 		{% include 'settings flyout.html' %}
 	</div>
 
@@ -29,12 +31,10 @@
 			<div class="menubar2"></div>
 			<div class="menubar3"></div>
 		</div>
-		<!------------ Menu Pin --------------------->
-		<span id="menu_pin" class="oi menu_pin" onclick="toggle_pin_flyout()" data-glyph="pin"></span>
 		<!------------ Game Text Screen--------------------->
 		<div class="gamescreen" id="gamescreen">
 			<div class="gametext">
-				<span id="story_prompt" class="var_sync_story_prompt var_sync_alt_story_prompt_length rawtext" contenteditable=true onblur="socket.emit('var_change', {'ID': this.id, 'value': this.textContent});"></span>
+				<span id="story_prompt" class="var_sync_story_prompt var_sync_alt_story_prompt_length rawtext" contenteditable=true onchange="sync_to_server(this);"></span>
 				<span id="Selected Text" class="rawtext"></span>
 			</div>
 		</div>
@@ -43,11 +43,13 @@
 		<div id="Select Options" class="sequence_area"></div>
 		<!------------ Input Area--------------------->
 		<div class="inputrow" id="inputrow_container">
-			<textarea id="input_text" placeholder="Enter text here"></textarea>
+			<textarea row=5 id="input_text" placeholder="Enter text here"></textarea>
 			<div class="statusbar_outer hidden">
 				<div class="statusbar_inner" style="width:0%">0%</div>
 			</div><br>
-			<button type="button" class="btn action_button submit var_sync_alt_system_aibusy" system_aibusy=False id="btnsend" onclick="socket.emit('submit', {'data': document.getElementById('input_text').value});this.textContent = '';">Submit</button>
+			<button type="button" class="btn action_button submit var_sync_alt_system_aibusy" system_aibusy=False id="btnsend" 
+				onclick="socket.emit('submit', {'data': document.getElementById('input_text').value});document.getElementById('input_text').value = '';"
+				>Submit</button>
 			<button type="button" class="btn action_button submited var_sync_alt_system_aibusy"  system_aibusy=False id="btnsend"><img src="static/thinking.gif" class="force_center"></button>
 			<button type="button" class="btn action_button back" onclick="socket.emit('back', {});"><span class="oi" data-glyph="action-undo"></span></button>
 			<button type="button" class="btn action_button redo" onclick="socket.emit('redo', {});"><span class="oi" data-glyph="action-redo"></span></button>

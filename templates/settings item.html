@@ -15,19 +15,19 @@
 		<input class="setting_value var_sync_{{ item['classname'] }}_{{ item['name'] }}" id="{{ item['classname'] }}_{{ item['name'] }}_cur"
 			   value="{{ item['default'] }}" item_id="{{ item['classname'] }}_{{ item['name'] }}" 
 			   {% if item['unit'] == 'float' %} inputmode="decimal"{% elif item['unit'] == 'float' %} inputmode="numeric"{% endif %}
-			   onblur="document.getElementById(this.getAttribute('item_id')).value = this.value; socket.emit('var_change', {'ID': this.id.replace('_cur', ''), 'value': this.value});">
+			   onchange="document.getElementById(this.getAttribute('item_id')).value = this.value; socket.emit('var_change', {'ID': this.id.replace('_cur', ''), 'value': this.value});">
 	{% endif %}
 	<!---Bottom Row---->
 	<span class="setting_item">
 		{% if item["uitype"] == "slider" %}
 			<input type="range" min="{{ item['min'] }}" max="{{ item['max'] }}" step="{{ item['step'] }}" 
 				   value="{{ item['default'] }}" id="{{ item['classname'] }}_{{ item['name'] }}" class="setting_item_input var_sync_{{ item['classname'] }}_{{ item['name'] }}"
-				   onclick="document.getElementById(this.id+'_cur').value = this.value; socket.emit('var_change', {'ID': this.id, 'value': this.value});">
+				   onclick="document.getElementById(this.id+'_cur').value = this.value; sync_to_server(this);">
 	    {% elif item["uitype"] == "toggle" %}
 			<input type=checkbox id="{{ item['classname'] }}_{{ item['name'] }}" class="setting_item_input var_sync_{{ item['classname'] }}_{{ item['name'] }}"
-			       data-size="mini" data-onstyle="success" data-toggle="toggle" onchange='socket.emit("var_change", {"ID": this.id, "value": this.checked});'>
+			       data-size="mini" data-onstyle="success" data-toggle="toggle" onchange='sync_to_server(this);'>
 		{% elif item['uitype'] == "dropdown" %}
-			<select id="{{ item['classname'] }}_{{ item['name'] }}" class="settings_select var_sync_{{ item['classname'] }}_{{ item['name'] }}" onchange='socket.emit("var_change", {"ID": this.id, "value": this.value});'>
+			<select id="{{ item['classname'] }}_{{ item['name'] }}" class="settings_select var_sync_{{ item['classname'] }}_{{ item['name'] }}" onchange='sync_to_server(this);'>
 				{% for option in item['children'] %}
 					<option value="{{ option['value'] }}">{{ option["text"] }}</option>
 				{% endfor %}

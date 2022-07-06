@@ -6031,7 +6031,7 @@ def file_popup(popup_title, starting_folder, return_event, upload=True, jailed=T
     session['valid_only'] = valid_only
     session['hide_extention'] = hide_extention
     
-    socketio.emit("load_popup", {"popup_title": popup_title, "call_back": return_event, "renameable": renameable, "deleteable": deleteable, "editable": editable, 'upload': upload}, broadcast=True, room="UI_2")
+    socketio.emit("load_popup", {"popup_title": popup_title, "call_back": return_event, "renameable": renameable, "deleteable": deleteable, "editable": editable, 'upload': upload}, broadcast=False, room="UI_2")
     socketio.emit("load_popup", {"popup_title": popup_title, "call_back": return_event, "renameable": renameable, "deleteable": deleteable, "editable": editable, 'upload': upload}, broadcast=True, room="UI_1")
     
     get_files_folders(starting_folder)
@@ -6098,10 +6098,10 @@ def get_files_folders(starting_folder):
         if not folder_only:
             items += files
             
-    socketio.emit("popup_items", items, broadcast=True, include_self=True, room="UI_2")
+    socketio.emit("popup_items", items, broadcast=False, include_self=True, room="UI_2")
     socketio.emit("popup_items", items, broadcast=True, include_self=True, room="UI_1")
     if show_breadcrumbs:
-        socketio.emit("popup_breadcrumbs", breadcrumbs, broadcast=True, room="UI_2")
+        socketio.emit("popup_breadcrumbs", breadcrumbs, broadcast=False, room="UI_2")
         socketio.emit("popup_breadcrumbs", breadcrumbs, broadcast=True, room="UI_1")
 
 #==================================================================#
@@ -6125,13 +6125,15 @@ def UI_2_var_change(data):
     else:
         print("Unknown Type {} = {}".format(name, type(getattr(koboldai_vars, name))))
     
-    print("Setting {} to {} as type {}".format(name, value, type(value)))
+    #print("Setting {} to {} as type {}".format(name, value, type(value)))
     setattr(koboldai_vars, name, value)
     
     #Now let's save except for story changes
     if classname != "story_settings":
         with open("settings/{}.v2_settings".format(classname), "w") as settings_file:
             settings_file.write(getattr(koboldai_vars, "_{}".format(classname)).to_json())
+    
+    return {'id': data['ID'], 'status': "Saved"}
     
 #==================================================================#
 # Saving Story
@@ -6146,12 +6148,21 @@ def UI_2_save_story(data):
     
     
 #==================================================================#
-# Event triggered when Selected Text is edited, Option is Selected, etc
+# Event triggered when Selected Text is edited
 #==================================================================#
 @socketio.on('Set Selected Text')
 def UI_2_Set_Selected_Text(data):
     print("Updating Selected Text: {}".format(data))
+    koboldai_vars.actions[int(data['id'])] = data['text']
+
+#==================================================================#
+# Event triggered when Option is Selected
+#==================================================================#
+@socketio.on('Use Option Text')
+def UI_2_Set_Selected_Text(data):
+    print("Using Option Text: {}".format(data))
     koboldai_vars.actions.use_option(int(data['option']), action_step=int(data['chunk']))
+
 
 #==================================================================#
 # Event triggered when user clicks the submit button
@@ -6323,6 +6334,7 @@ if __name__ == "__main__":
 
     # Start Flask/SocketIO (Blocking, so this must be last method!)
     port = args.port if "port" in args and args.port is not None else 5000
+    koboldai_settings.port = port
     
     if(koboldai_vars.host):
         if(args.localtunnel):
@@ -6386,5 +6398,6 @@ else:
     if koboldai_vars.model == "" or koboldai_vars.model is None:
         koboldai_vars.model = "ReadOnly"
     load_model(initial_load=True)
+    koboldai_settings.port = args.port if "port" in args and args.port is not None else 5000
     print("{0}\nServer started in WSGI mode!{1}".format(colors.GREEN, colors.END), flush=True)
     
