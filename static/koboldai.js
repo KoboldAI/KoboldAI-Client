@@ -992,9 +992,11 @@ function update_token_lengths() {
 	}
 	max_chunk = -1;
 	for (item of document.getElementById("Selected Text").childNodes) {
-		chunk_num = parseInt(item.id.replace("Selected Text Chunk ", ""));
-		if (chunk_num > max_chunk) {
-			max_chunk = chunk_num;
+		if (item.id != "story_prompt") {
+			chunk_num = parseInt(item.id.replace("Selected Text Chunk ", ""));
+			if (chunk_num > max_chunk) {
+				max_chunk = chunk_num;
+			}
 		}
 	}
 	
