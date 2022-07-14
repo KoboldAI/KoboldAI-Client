@@ -38,8 +38,8 @@ function disconnect() {
 function reset_story() {
 	console.log("Resetting story");
 	var story_area = document.getElementById('Selected Text');
-	while (story_area.firstChild) {
-		story_area.removeChild(story_area.firstChild);
+	while (story_area.lastChild.id != 'story_prompt') { 
+		story_area.removeChild(story_area.lastChild);
 	}
 	var option_area = document.getElementById("Select Options");
 	while (option_area.firstChild) {
@@ -992,10 +992,13 @@ function update_token_lengths() {
 	}
 	max_chunk = -1;
 	for (item of document.getElementById("Selected Text").childNodes) {
-		if (item.id != "story_prompt") {
-			chunk_num = parseInt(item.id.replace("Selected Text Chunk ", ""));
-			if (chunk_num > max_chunk) {
-				max_chunk = chunk_num;
+		console.log(item);
+		if (item.id != undefined) {
+			if (item.id != "story_prompt") {
+				chunk_num = parseInt(item.id.replace("Selected Text Chunk ", ""));
+				if (chunk_num > max_chunk) {
+					max_chunk = chunk_num;
+				}
 			}
 		}
 	}
