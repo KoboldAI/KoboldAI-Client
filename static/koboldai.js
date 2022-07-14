@@ -161,10 +161,11 @@ function do_story_text_updates(data) {
 	if (document.getElementById('Selected Text Chunk '+data.value.id)) {
 		document.getElementById('Selected Text Chunk '+data.value.id).textContent = data.value.text;
 		document.getElementById('Selected Text Chunk '+data.value.id).classList.remove("pulse")
-		scrollToView(document.getElementById('Selected Text Chunk '+data.value.id));
+		document.getElementById('Selected Text Chunk '+data.value.id).scrollIntoView();
 	} else {
 		var span = document.createElement("span");
 		span.id = 'Selected Text Chunk '+data.value.id;
+		span.classList.add("rawtext");
 		span.chunk = data.value.id;
 		span.original_text = data.value.text;
 		span.setAttribute("contenteditable", true);
@@ -180,7 +181,7 @@ function do_story_text_updates(data) {
 		
 		
 		story_area.append(span);
-		scrollToView(span);
+		span.scrollIntoView();
 	}
 	
 }
@@ -962,25 +963,6 @@ function upload_file(file_box) {
 }
 
 //--------------------------------------------General UI Functions------------------------------------
-function scrollToView(element){
-    var offset = element.offset().top;
-    if(!element.is(":visible")) {
-        element.css({"visibility":"hidden"}).show();
-        var offset = element.offset().top;
-        element.css({"visibility":"", "display":""});
-    }
-
-    var visible_area_start = $(window).scrollTop();
-    var visible_area_end = visible_area_start + window.innerHeight;
-
-    if(offset < visible_area_start || offset > visible_area_end){
-         // Not in view so scroll to it
-         $('html,body').animate({scrollTop: offset - window.innerHeight/3}, 1000);
-         return false;
-    }
-    return true;
-}
-
 function update_token_lengths() {
 	max_token_length = parseInt(document.getElementById("model_max_length_cur").value);
 	if ((document.getElementById("memory").getAttribute("story_memory_length") == null) || (document.getElementById("memory").getAttribute("story_memory_length") == "")) {
