@@ -161,6 +161,7 @@ function do_story_text_updates(data) {
 	if (document.getElementById('Selected Text Chunk '+data.value.id)) {
 		document.getElementById('Selected Text Chunk '+data.value.id).textContent = data.value.text;
 		document.getElementById('Selected Text Chunk '+data.value.id).classList.remove("pulse")
+		scrollToView(document.getElementById('Selected Text Chunk '+data.value.id));
 	} else {
 		var span = document.createElement("span");
 		span.id = 'Selected Text Chunk '+data.value.id;
@@ -170,12 +171,16 @@ function do_story_text_updates(data) {
 		span.onblur = function () {
 			if (this.textContent != this.original_text) {
 				socket.emit("Set Selected Text", {"id": this.chunk, "text": this.textContent});
+				this.original_text = this.textContent;
 				this.classList.add("pulse");
 			}
 		}
+		span.onkeydown = detect_enter_text;
 		span.textContent = data.value.text;
 		
+		
 		story_area.append(span);
+		scrollToView(span);
 	}
 	
 }
@@ -325,7 +330,6 @@ function var_changed(data) {
 	if ((data.classname == "actions") && (data.name == "Action Count")) {
 		var option_container = document.getElementById("Select Options");
 		var current_chunk = parseInt(document.getElementById("action_count").textContent)+1;
-		console.log("Hide except for "+current_chunk);
 		var children = option_container.children;
 		for (var i = 0; i < children.length; i++) {
 			var chunk = children[i];
@@ -958,6 +962,25 @@ function upload_file(file_box) {
 }
 
 //--------------------------------------------General UI Functions------------------------------------
+function scrollToView(element){
+    var offset = element.offset().top;
+    if(!element.is(":visible")) {
+        element.css({"visibility":"hidden"}).show();
+        var offset = element.offset().top;
+        element.css({"visibility":"", "display":""});
+    }
+
+    var visible_area_start = $(window).scrollTop();
+    var visible_area_end = visible_area_start + window.innerHeight;
+
+    if(offset < visible_area_start || offset > visible_area_end){
+         // Not in view so scroll to it
+         $('html,body').animate({scrollTop: offset - window.innerHeight/3}, 1000);
+         return false;
+    }
+    return true;
+}
+
 function update_token_lengths() {
 	max_token_length = parseInt(document.getElementById("model_max_length_cur").value);
 	if ((document.getElementById("memory").getAttribute("story_memory_length") == null) || (document.getElementById("memory").getAttribute("story_memory_length") == "")) {
@@ -1062,9 +1085,8 @@ function toggle_pin_flyout() {
 	}
 }
 
-function detect_enter(e) {
+function detect_enter_submit(e) {
 	if (((e.code == "Enter") || (e.code == "NumpadEnter")) && !(shift_down)) {
-		console.log("submitting");
 		if (typeof e.stopPropagation != "undefined") {
 			e.stopPropagation();
 		} else {
@@ -1072,6 +1094,23 @@ function detect_enter(e) {
 		}
 		document.getElementById("btnsend").onclick();
 		document.getElementById('input_text').value = ''
+	}
+}
+
+function detect_enter_text(e) {
+	if (((e.code == "Enter") || (e.code == "NumpadEnter")) && !(shift_down)) {
+		if (typeof e.stopPropagation != "undefined") {
+			e.stopPropagation();
+		} else {
+			e.cancelBubble = true;
+		}
+		//get element
+		console.log("Doing Text Enter");
+		console.log(e.currentTarget.activeElement);
+		if (e.currentTarget.activeElement != undefined) {
+			var item = $(e.currentTarget.activeElement);
+			item.onchange();
+		}
 	}
 }
 
@@ -1090,5 +1129,5 @@ function detect_shift_up(e) {
 $(document).ready(function(){
 	document.onkeydown = detect_shift_down;
 	document.onkeyup = detect_shift_up;
-	document.getElementById("input_text").onkeydown = detect_enter;
+	document.getElementById("input_text").onkeydown = detect_enter_submit;
 });
