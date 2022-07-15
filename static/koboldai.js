@@ -21,6 +21,7 @@ socket.on('error_popup', function(data){error_popup(data);});
 
 var backend_vars = {};
 var presets = {}
+var current_chunk_number = null;
 var ai_busy_start = Date.now();
 var popup_deleteable = false;
 var popup_editable = false;
@@ -37,6 +38,7 @@ function disconnect() {
 
 function reset_story() {
 	console.log("Resetting story");
+	current_chunk_number = null;
 	var story_area = document.getElementById('Selected Text');
 	while (story_area.lastChild.id != 'story_prompt') { 
 		story_area.removeChild(story_area.lastChild);
@@ -154,10 +156,15 @@ function create_options(data) {
 		i+=1;
 	}
 	option_chunk.append(table);
+	
+	
+	//make sure our last updated chunk is in view
+	document.getElementById('Selected Text Chunk '+current_chunk_number).scrollIntoView();
 }
 
 function do_story_text_updates(data) {
 	story_area = document.getElementById('Selected Text');
+	current_chunk_number = data.value.id;
 	if (document.getElementById('Selected Text Chunk '+data.value.id)) {
 		document.getElementById('Selected Text Chunk '+data.value.id).textContent = data.value.text;
 		document.getElementById('Selected Text Chunk '+data.value.id).classList.remove("pulse")
@@ -992,7 +999,6 @@ function update_token_lengths() {
 	}
 	max_chunk = -1;
 	for (item of document.getElementById("Selected Text").childNodes) {
-		console.log(item);
 		if (item.id != undefined) {
 			if (item.id != "story_prompt") {
 				chunk_num = parseInt(item.id.replace("Selected Text Chunk ", ""));

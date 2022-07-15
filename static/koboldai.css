@@ -1,32 +1,16 @@
 /*----------------Global Colors------------------*/
-@media only screen and (max-width: 768px) {
+@media only screen and (max-aspect-ratio: 7/5) {
 	:root {
-		--screen_type_mobile: 1;
-		--screen_type_desktop: 0;
-		--screen_type_wide: 0;
 		--flyout_menu_width: 100%;
 	}
 }
-@media only screen and (min-width: 768px) and (max-width: 1920px) {
+@media only screen and (min-aspect-ratio: 7/5) {
 	:root {
-		--screen_type_mobile: 0;
-		--screen_type_desktop: 1;
-		--screen_type_wide: 0;
 		--flyout_menu_width: 450px;
-	}
-}
-@media only screen and (min-width: 1921px) {
-	:root {
-		--screen_type_mobile: 0;
-		--screen_type_desktop: 0;
-		--screen_type_wide: 1;
-		--flyout_menu_width: 450px;
-		
 	}
 }
 
 :root {
-	--flyout_menu_width_base: 350px;
 	--flyout_menu_closed_width: 0px;
 	--background: #474B4F;
 	--text: white;
@@ -49,8 +33,6 @@
 	--disabled_button_border_color: #686c68;
 	--menu_button_level_1_bg_color: #337ab7;
 	--menu_button_level_2_bg_color: #285070;
-	/*--menu_button_level_2_bg_color: #6F8699;*/
-	/*--menu_button_level_2_border_color: #495965;*/
 	
 }
 
@@ -68,11 +50,9 @@
 	font-family: verdana;
 	position: relative;
 }
-
 .tabrow.nomenu_icon {
 	padding-left: 10px;
 }
-
 .tabrow span {
 	cursor: pointer;
 	-webkit-touch-callout: none; /* iOS Safari */
@@ -269,12 +249,12 @@
 	cursor: pointer;
 }
 
-@media only screen and (max-width: 768px) {
+@media only screen and (max-aspect-ratio: 7/5) {
 .menu_pin {
 	display: none;
 }
 }
-@media only screen and (min-width: 768px) {
+@media only screen and (min-aspect-ratio: 7/5) {
 .menu_pin {
 	position: absolute;
 	top:10px;
@@ -309,7 +289,7 @@
 	transition: 0.5s;
 }
 
-@media only screen and (min-width: 768px) {
+@media only screen and (min-aspect-ratio: 7/5) {
 .SideMenu.pinned {
 	height: 100%;
 	width: var(--flyout_menu_width);
@@ -331,19 +311,6 @@
 	padding-left: 30px;
 	padding-top: 7px;
 }
-
-/*
-.settings_menu .menu_button{
-	color: var(--enabled_button_text);
-	background-color: var(--enabled_button_background_color);
-	border-color: var(--enabled_button_border_color);
-}
-
-
-.settings_menu .menu_button:hover {
-	filter: brightness(85%);
-}
-*/
 
 .settings_select {
 	color: black;
@@ -429,7 +396,7 @@ body {
 	color: var(--text);
 }
 
-@media only screen and (min-width: 768px) {
+@media only screen and (min-aspect-ratio: 7/5) {
 .main-grid {
 	transition: margin-left .5s;
 	display: grid;
@@ -442,7 +409,7 @@ body {
 }
 }
 
-@media only screen and (max-width: 768px) {
+@media only screen and (max-aspect-ratio: 7/5) {
 .main-grid {
 	transition: margin-left .5s;
 	display: grid;
@@ -456,7 +423,7 @@ body {
 }
 }
 
-@media only screen and (min-width: 768px) {
+@media only screen and (min-aspect-ratio: 7/5) {
 .main-grid.pinned {
 	margin-left: var(--flyout_menu_width);
 }
@@ -498,7 +465,7 @@ body {
   color: var(--text_edit);
 }
 
-@media only screen and (min-width: 768px) {
+@media only screen and (min-aspect-ratio: 7/5) {
 .sequence_area {
 	margin-top: 10px;
 	grid-area: options;
@@ -507,7 +474,7 @@ body {
 }
 }
 
-@media only screen and (max-width: 768px) {
+@media only screen and (max-aspect-ratio: 7/5) {
 .sequence_area {
 	margin-top: 5px;
 	grid-area: mobile_options;
@@ -516,7 +483,7 @@ body {
 }
 }
 
-@media only screen and (max-width: 768px) {
+@media only screen and (max-aspect-ratio: 7/5) {
 .sequences {
 	width: 100%;
 	border: 0px;
@@ -528,7 +495,7 @@ body {
 }
 }
 
-@media only screen and (min-width: 768px) {
+@media only screen and (min-aspect-ratio: 7/5) {
 .sequences {
 	width: 100%;
 	border: 0px;
