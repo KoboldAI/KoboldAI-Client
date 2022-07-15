@@ -52,7 +52,7 @@ import pickle
 import torch
 import utils
 from torch.nn import Module
-from typing import Any, Callable, Dict, Optional, Tuple, Type, Union
+from typing import Any, Callable, Dict, Optional, Tuple, Union
 
 
 _EXTRA_STATE_KEY_SUFFIX = '_extra_state'
@@ -73,7 +73,7 @@ STORAGE_TYPE_MAP = {
 
 
 class LazyTensor:
-    def __init__(self, storage_type: Type[torch._StorageBase], key: str, location: str, dtype: Optional[torch.dtype] = None, seek_offset: Optional[int] = None, shape: Optional[Tuple[int, ...]] = None, stride: Optional[Tuple[int, ...]] = None, requires_grad=False, backward_hooks: Any = None):
+    def __init__(self, storage_type, key: str, location: str, dtype: Optional[torch.dtype] = None, seek_offset: Optional[int] = None, shape: Optional[Tuple[int, ...]] = None, stride: Optional[Tuple[int, ...]] = None, requires_grad=False, backward_hooks: Any = None):
         self.storage_type = storage_type
         self.key = key
         self.location = location

@@ -224,7 +224,7 @@ class vars:
     model_type  = ""     # Model Type (Automatically taken from the model config)
     noai        = False  # Runs the script without starting up the transformers pipeline
     aibusy      = False  # Stops submissions while the AI is working
-    max_length  = 2048    # Maximum number of tokens to submit per action
+    max_length  = 1024    # Maximum number of tokens to submit per action
     ikmax       = 3000   # Maximum number of characters to submit to InferKit
     genamt      = 80     # Amount of text for each action to generate
     ikgen       = 200    # Number of characters for InferKit to generate
@@ -646,6 +646,11 @@ def move_model_to_devices(model):
     import breakmodel
 
     if(utils.HAS_ACCELERATE):
+        import accelerate.utils
+        for key, value in model.state_dict().items():
+            target_dtype = torch.float32 if breakmodel.primary_device == "cpu" else torch.float16
+            if(value.dtype is not target_dtype):
+                accelerate.utils.set_module_tensor_to_device(model, key, target_dtype)
         disk_blocks = breakmodel.disk_blocks
         gpu_blocks = breakmodel.gpu_blocks
         ram_blocks = len(utils.layers_module_names) - sum(gpu_blocks)
@@ -5544,9 +5549,6 @@ def loadRequest(loadpath, filename=None):
                 ln = len(vars.actions[vars.actions.get_last_key()].rstrip())
                 footer += vars.actions[vars.actions.get_last_key()][ln:]
                 vars.actions[vars.actions.get_last_key()] = vars.actions[vars.actions.get_last_key()][:ln]
-            if(len(vars.actions) == 0):
-                vars.gamestarted = False
-
         
         # Try not to break older save files
         if("authorsnote" in js):

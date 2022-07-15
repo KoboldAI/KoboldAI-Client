@@ -25,6 +25,8 @@ softprompts
 models
 !models/models go here.txt
 Uninstall
+flask_session
+accelerate-disk-cache
 .ipynb_checkpoints
 
 # Ignore PyCharm project files.
