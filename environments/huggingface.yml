@@ -6,6 +6,7 @@ channels:
 dependencies:
   - colorama
   - flask-socketio
+  - flask-session
   - pytorch=1.11.*
   - python=3.8.*
   - cudatoolkit=11.1
