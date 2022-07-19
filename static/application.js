@@ -3434,10 +3434,6 @@ function popup_breadcrumbs(data) {
 
 function popup_edit_file(data) {
 	var popup_list = document.getElementById('popup_list');
-	var accept = document.getElementById("popup_accept");
-	accept.classList.add("btn-secondary");
-	accept.classList.remove("btn-primary");
-	accept.textContent = "Save";
 	//first, let's clear out our existing data
 	while (popup_list.firstChild) {
 		popup_list.removeChild(popup_list.firstChild);
@@ -3448,7 +3444,6 @@ function popup_edit_file(data) {
 							var textarea = document.getElementById("filecontents");
 							socket.emit("popup_change_file", {"file": textarea.getAttribute("filename"), "data": textarea.value});
 							document.getElementById("popup").classList.add("hidden");
-							this.classList.add("hidden");
 					  };
 	
 	var textarea = document.createElement("textarea");
@@ -3459,9 +3454,7 @@ function popup_edit_file(data) {
 	textarea.value = data.text;
 	textarea.onblur = function () {
 						var accept = document.getElementById("popup_accept");
-						accept.classList.remove("hidden");
-						accept.classList.remove("btn-secondary");
-						accept.classList.add("btn-primary");
+						accept.classList.remove("disabled");
 					};
 	popup_list.append(textarea);
 	
