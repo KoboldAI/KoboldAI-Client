@@ -6200,9 +6200,9 @@ def popup_edit(data):
         return
     
     if session['popup_jailed_dir'] is None:
-        emit("popup_edit_file", {"file": data, "text": open(data, 'r').read()});
+        emit("popup_edit_file", {"file": data, "text": open(data, 'r', encoding='utf-8').read()});
     elif session['popup_jailed_dir'] in data:
-        emit("popup_edit_file", {"file": data, "text": open(data, 'r').read()});
+        emit("popup_edit_file", {"file": data, "text": open(data, 'r', encoding='utf-8').read()});
     else:
         print("User is trying to delete files in your server outside the jail. Blocked. Jailed Dir: {}  Requested Dir: {}".format(session['popup_jailed_dir'], data))
 
