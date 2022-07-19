@@ -5782,85 +5782,101 @@ def importgame():
 def importAidgRequest(id):    
     exitModes()
     
-    urlformat = "https://prompts.aidg.club/api/"
-    req = requests.get(urlformat+id)
+    #prompts.aidg.club is dead now. They are serving up a sqllite db, so we'll download that if it's not already saved and use that instead
+    #urlformat = "https://prompts.aidg.club/api/"
+    #req = requests.get(urlformat+id)
+    
+    if not os.path.exists("aidgclub.db"):
+        import urllib.request
+        urllib.request.urlretrieve("https://prompts.aidg.club/backup.db", "aidgclub.db")
 
-    if(req.status_code == 200):
-        js = req.json()
+    import sqlite3
+    con = sqlite3.connect("aidgclub.db")
+    cur = con.cursor()
+    js = {}
+    sql = "select * from Prompts where CorrelationId = {}".format(id)
+    for row in cur.execute(sql):
+        js['promptContent'] = row[6]
+        js['memory'] = row[3]
+        js['authorsNote'] = row[1]
+        js['worldInfos'] = []
+    for row in cur.execute("select * from WorldInfos where PromptId = {}".format(id)):
+        js['worldInfos'].append({'keys': row[2], 'entry': row[1]})
+    
         
-        # Import game state
-        vars.gamestarted = True
-        vars.prompt      = js["promptContent"]
-        vars.memory      = js["memory"]
-        vars.authornote  = js["authorsNote"]
-        vars.authornotetemplate = "[Author's note: <|>]"
-        vars.actions     = structures.KoboldStoryRegister()
-        vars.actions_metadata = {}
-        vars.worldinfo   = []
-        vars.worldinfo_i = []
-        vars.worldinfo_u = {}
-        vars.wifolders_d = {}
-        vars.wifolders_l = []
-        vars.wifolders_u = {uid: [] for uid in vars.wifolders_d}
-        vars.lastact     = ""
-        vars.submission  = ""
-        vars.lastctx     = ""
-        
-        if not vars.memory:
-            vars.memory = ""
-        if not vars.authornote:
-            vars.authornote = ""
-        
-        num = 0
-        for wi in js["worldInfos"]:
-            vars.worldinfo.append({
-                "key": wi["keys"],
-                "keysecondary": wi.get("keysecondary", ""),
-                "content": wi["entry"],
-                "comment": wi.get("comment", ""),
-                "folder": wi.get("folder", None),
-                "num": num,
-                "init": True,
-                "selective": wi.get("selective", False),
-                "constant": wi.get("constant", False),
-                "uid": None,
-            })
-            while(True):
-                uid = int.from_bytes(os.urandom(4), "little", signed=True)
-                if(uid not in vars.worldinfo_u):
-                    break
-            vars.worldinfo_u[uid] = vars.worldinfo[-1]
-            vars.worldinfo[-1]["uid"] = uid
-            if(vars.worldinfo[-1]["folder"]) is not None:
-                vars.wifolders_u[vars.worldinfo[-1]["folder"]].append(vars.worldinfo[-1])
-            num += 1
+    # Import game state
+    vars.gamestarted = True
+    vars.prompt      = js["promptContent"]
+    vars.memory      = js["memory"]
+    vars.authornote  = js["authorsNote"]
+    vars.authornotetemplate = "[Author's note: <|>]"
+    vars.actions     = structures.KoboldStoryRegister()
+    vars.actions_metadata = {}
+    vars.worldinfo   = []
+    vars.worldinfo_i = []
+    vars.worldinfo_u = {}
+    vars.wifolders_d = {}
+    vars.wifolders_l = []
+    vars.wifolders_u = {uid: [] for uid in vars.wifolders_d}
+    vars.lastact     = ""
+    vars.submission  = ""
+    vars.lastctx     = ""
+    
+    if not vars.memory:
+        vars.memory = ""
+    if not vars.authornote:
+        vars.authornote = ""
+    
+    num = 0
+    for wi in js["worldInfos"]:
+        vars.worldinfo.append({
+            "key": wi["keys"],
+            "keysecondary": wi.get("keysecondary", ""),
+            "content": wi["entry"],
+            "comment": wi.get("comment", ""),
+            "folder": wi.get("folder", None),
+            "num": num,
+            "init": True,
+            "selective": wi.get("selective", False),
+            "constant": wi.get("constant", False),
+            "uid": None,
+        })
+        while(True):
+            uid = int.from_bytes(os.urandom(4), "little", signed=True)
+            if(uid not in vars.worldinfo_u):
+                break
+        vars.worldinfo_u[uid] = vars.worldinfo[-1]
+        vars.worldinfo[-1]["uid"] = uid
+        if(vars.worldinfo[-1]["folder"]) is not None:
+            vars.wifolders_u[vars.worldinfo[-1]["folder"]].append(vars.worldinfo[-1])
+        num += 1
 
-        for uid in vars.wifolders_l + [None]:
-            vars.worldinfo.append({"key": "", "keysecondary": "", "content": "", "comment": "", "folder": uid, "num": None, "init": False, "selective": False, "constant": False, "uid": None})
-            while(True):
-                uid = int.from_bytes(os.urandom(4), "little", signed=True)
-                if(uid not in vars.worldinfo_u):
-                    break
-            vars.worldinfo_u[uid] = vars.worldinfo[-1]
-            vars.worldinfo[-1]["uid"] = uid
-            if(vars.worldinfo[-1]["folder"] is not None):
-                vars.wifolders_u[vars.worldinfo[-1]["folder"]].append(vars.worldinfo[-1])
-        stablesortwi()
-        vars.worldinfo_i = [wi for wi in vars.worldinfo if wi["init"]]
+    for uid in vars.wifolders_l + [None]:
+        vars.worldinfo.append({"key": "", "keysecondary": "", "content": "", "comment": "", "folder": uid, "num": None, "init": False, "selective": False, "constant": False, "uid": None})
+        while(True):
+            uid = int.from_bytes(os.urandom(4), "little", signed=True)
+            if(uid not in vars.worldinfo_u):
+                break
+        vars.worldinfo_u[uid] = vars.worldinfo[-1]
+        vars.worldinfo[-1]["uid"] = uid
+        if(vars.worldinfo[-1]["folder"] is not None):
+            vars.wifolders_u[vars.worldinfo[-1]["folder"]].append(vars.worldinfo[-1])
+    stablesortwi()
+    vars.worldinfo_i = [wi for wi in vars.worldinfo if wi["init"]]
 
-        # Reset current save
-        vars.savedir = getcwd()+"\\stories"
-        
-        # Refresh game screen
-        vars.laststory = None
-        emit('from_server', {'cmd': 'setstoryname', 'data': vars.laststory}, broadcast=True)
-        setgamesaved(False)
-        sendwi()
-        emit('from_server', {'cmd': 'setmemory', 'data': vars.memory}, broadcast=True)
-        emit('from_server', {'cmd': 'setanote', 'data': vars.authornote}, broadcast=True)
-        emit('from_server', {'cmd': 'setanotetemplate', 'data': vars.authornotetemplate}, broadcast=True)
-        refresh_story()
-        emit('from_server', {'cmd': 'setgamestate', 'data': 'ready'}, broadcast=True)
+    # Reset current save
+    vars.savedir = getcwd()+"\\stories"
+    
+    # Refresh game screen
+    vars.laststory = None
+    emit('from_server', {'cmd': 'setstoryname', 'data': vars.laststory}, broadcast=True)
+    setgamesaved(False)
+    sendwi()
+    emit('from_server', {'cmd': 'setmemory', 'data': vars.memory}, broadcast=True)
+    emit('from_server', {'cmd': 'setanote', 'data': vars.authornote}, broadcast=True)
+    emit('from_server', {'cmd': 'setanotetemplate', 'data': vars.authornotetemplate}, broadcast=True)
+    refresh_story()
+    emit('from_server', {'cmd': 'setgamestate', 'data': 'ready'}, broadcast=True)
 
 #==================================================================#
 #  Import World Info JSON file
