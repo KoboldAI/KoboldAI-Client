@@ -165,7 +165,7 @@ return function(_python, _bridged)
     ---@field num_outputs integer
     ---@field feedback string
     ---@field is_config_file_open boolean
-    local kobold = setmetatable({API_VERSION = 1.1}, metawrapper)
+    local kobold = setmetatable({API_VERSION = 1.2}, metawrapper)
     local KoboldLib_mt = setmetatable({}, metawrapper)
     local KoboldLib_getters = setmetatable({}, metawrapper)
     local KoboldLib_setters = setmetatable({}, metawrapper)
@@ -505,6 +505,7 @@ return function(_python, _bridged)
             elseif entries.name == "KoboldWorldInfoEntry" then
                 _entries = {entries}
             else
+                _entries = {}
                 for k, v in pairs(entries) do
                     if type(v) == "table" and v.name == "KoboldWorldInfoEntry" and v:is_valid() then
                         _entries[k] = v.uid
