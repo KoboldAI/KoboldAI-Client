@@ -9,8 +9,10 @@ port = 5000
 
 
 def clean_var_for_emit(value):
-    if isinstance(value, KoboldStoryRegister):
+    if isinstance(value, KoboldStoryRegister) or isinstance(value, KoboldWorldInfo):
         return value.to_json()
+    elif isinstance(value, KoboldWorldInfoEntry):
+        return value.to_dict()
     elif isinstance(value, set):
         return list(value)
     else:
@@ -30,6 +32,10 @@ def process_variable_changes(socketio, classname, name, value, old_value, debug_
                     socketio.emit("var_changed", {"classname": "actions", "name": "Selected Text", "old_value": None, "value": {"id": i, "text": value[i]}}, include_self=True, broadcast=True, room="UI_2")
                     socketio.emit("var_changed", {"classname": "actions", "name": "Options", "old_value": None, "value": {"id": i, "options": value.actions[i]['Options']}}, include_self=True, broadcast=True, room="UI_2")
                     socketio.emit("var_changed", {"classname": "actions", "name": "Selected Text Length", "old_value": None, "value": {"id": i, 'length': value.actions[i]['Selected Text Length']}}, include_self=True, broadcast=True, room="UI_2")
+            elif isinstance(value, KoboldWorldInfo):
+                for item in value.to_json():
+                    for name in item:
+                        process_variable_changes(socketio, "world_info", "{}_{}".format(name, item['uid']), item[name], None)
             else:
                 #If we got a variable change from a thread other than what the app is run it, eventlet seems to block and no further messages are sent. Instead, we'll rely the message to the app and have the main thread send it
                 if not has_request_context():
@@ -139,6 +145,8 @@ class settings(object):
         def to_base64(data):
             if isinstance(data, KoboldStoryRegister):
                 return data.to_json()
+            elif isinstance(data, KoboldWorldInfo):
+                return data.to_json()
             output = BytesIO()
             pickle.dump(data, output)
             output.seek(0)
@@ -164,8 +172,10 @@ class settings(object):
                     value = bool(value)
                 elif type(getattr(self, key)) == str:
                     value = str(value)
-                if isinstance(getattr(self, key), KoboldStoryRegister):
+                elif isinstance(getattr(self, key), KoboldStoryRegister):
                     self.actions.load_json(value)
+                elif isinstance(getattr(self, key), KoboldWorldInfo):
+                    self.world_info.load_json(value)
                 else:
                     setattr(self, key, value)
         
@@ -286,6 +296,7 @@ class story_settings(settings):
                               # Selected Text: (text the user had selected. None when this is a newly generated action)
                               # Alternative Generated Text: {Text, Pinned, Previous Selection, Edited}
                               # 
+        self.worldinfo_v2 = KoboldWorldInfo(socketio)
         self.worldinfo   = []     # List of World Info key/value objects
         self.worldinfo_i = []     # List of World Info key/value objects sans uninitialized entries
         self.worldinfo_u = {}     # Dictionary of World Info UID - key/value pairs
@@ -316,51 +327,56 @@ class story_settings(settings):
         
     def __setattr__(self, name, value):
         new_variable = name not in self.__dict__
-        old_value = getattr(self, name, None)
-        super().__setattr__(name, value)
-        #Put variable change actions here
-        if name not in self.local_only_variables and name[0] != "_" and not new_variable:
-            process_variable_changes(self.socketio, self.__class__.__name__.replace("_settings", ""), name, value, old_value)
-        #We want to automatically set gamesaved to false if something happens to the actions list (pins, redos, generations, text, etc)
-        #To do that we need to give the actions list a copy of this data so it can set the gamesaved variable as needed
-        if not new_variable and old_value != value:
-            if name == 'actions':
-                self.actions.story_settings = self
-            if self.tokenizer is not None:
-                if name == 'tokenizer' and not new_variable:
-                    self.memory_length = len(self.tokenizer.encode(self.memory))
-                    self.prompt_length = len(self.tokenizer.encode(self.prompt))
-                    self.authornote_length = len(self.tokenizer.encode(self.authornotetemplate.replace("<|>", self.authornote)))
-                elif name == 'authornote' or name == 'authornotetemplate':
-                    self.authornote_length = len(self.tokenizer.encode(self.authornotetemplate.replace("<|>", self.authornote)))
-                elif name == 'memory':
-                    self.memory_length = len(self.tokenizer.encode(self.memory))
-                elif name == 'prompt':
-                    self.prompt_length = len(self.tokenizer.encode(self.prompt))
-            
-            #Because we have seperate variables for action types, this syncs them
-            if name == 'actionmode':
-                if value == 0:
-                    self.adventure = False
-                    self.chatmode = False
-                elif value == 1:
-                    self.adventure = True
-                    self.chatmode = False
-                elif value == 2:
-                    self.adventure = False
-                    self.chatmode = True
-            elif name == 'adventure' and value == True:
-                self.chatmode = False
-                self.actionmode = 1
-            elif name == 'adventure' and value == False and self.chatmode == False:
-                self.actionmode = 0
-            elif name == 'chatmode' and value == True:
-                self.adventure = False
-                self.actionmode = 2
-            elif name == 'chatmode' and value == False and self.adventure == False:
-                self.actionmode = 0
+        if name == 'worldinfo_v2' and not new_variable:
+            super().__setattr__('worldinfo', KoboldWorldInfo(self.socketio))
+            for i in range(len(value)):
+                self.worldinfo[i] = value[i]
+        else:
+            old_value = getattr(self, name, None)
+            super().__setattr__(name, value)
+            #Put variable change actions here
+            if name not in self.local_only_variables and name[0] != "_" and not new_variable:
+                process_variable_changes(self.socketio, self.__class__.__name__.replace("_settings", ""), name, value, old_value)
+            #We want to automatically set gamesaved to false if something happens to the actions list (pins, redos, generations, text, etc)
+            #To do that we need to give the actions list a copy of this data so it can set the gamesaved variable as needed
+            if not new_variable and old_value != value:
+                if name == 'actions':
+                    self.actions.story_settings = self
+                #Recalc token length
+                if name in ['authornote', 'memory' ,'prompt', 'tokenizer'] and self.tokenizer is not None:
+                    if name == 'tokenizer' and not new_variable:
+                        self.memory_length = len(self.tokenizer.encode(self.memory))
+                        self.prompt_length = len(self.tokenizer.encode(self.prompt))
+                        self.authornote_length = len(self.tokenizer.encode(self.authornotetemplate.replace("<|>", self.authornote)))
+                    elif name == 'authornote' or name == 'authornotetemplate':
+                        self.authornote_length = len(self.tokenizer.encode(self.authornotetemplate.replace("<|>", self.authornote)))
+                    elif name == 'memory':
+                        self.memory_length = len(self.tokenizer.encode(self.memory))
+                    elif name == 'prompt':
+                        self.prompt_length = len(self.tokenizer.encode(self.prompt))
                 
-                    
+                #Because we have seperate variables for action types, this syncs them
+                if name == 'actionmode':
+                    if value == 0:
+                        self.adventure = False
+                        self.chatmode = False
+                    elif value == 1:
+                        self.adventure = True
+                        self.chatmode = False
+                    elif value == 2:
+                        self.adventure = False
+                        self.chatmode = True
+                elif name == 'adventure' and value == True:
+                    self.chatmode = False
+                    self.actionmode = 1
+                elif name == 'adventure' and value == False and self.chatmode == False:
+                    self.actionmode = 0
+                elif name == 'chatmode' and value == True:
+                    self.adventure = False
+                    self.actionmode = 2
+                elif name == 'chatmode' and value == False and self.adventure == False:
+                    self.actionmode = 0
+                
 class user_settings(settings):
     local_only_variables = ['socketio']
     no_save_variables = ['socketio']
@@ -460,7 +476,7 @@ class system_settings(settings):
 class KoboldStoryRegister(object):
     def __init__(self, socketio, tokenizer=None, sequence=[]):
         self.socketio = socketio
-        self.actions = {} #keys = "Selected Text", "Options", "Selected Text Length"
+        self.actions = {} #keys = "Selected Text", "Options", "Selected Text Length" with options being a dict with keys of "text", "Pinned", "Previous Selection", "Edited"
         self.action_count = -1
         self.tokenizer = tokenizer
         for item in sequence:
@@ -520,6 +536,12 @@ class KoboldStoryRegister(object):
     
     def values(self):
         return [self.actions[k]["Selected Text"] for k in self.actions]
+    
+    def options(self, ui_version=2):
+        if ui_version == 1:
+            return [{"Selected Text": self.actions[k]["Selected Text"], "Alternative Text": self.actions[k]["Options"]} for k in self.actions]
+        else:
+            return [self.actions[k]["Options"] for k in self.actions]
     
     def to_json(self):
         return {"action_count": self.action_count, "actions": self.actions}
@@ -589,6 +611,12 @@ class KoboldStoryRegister(object):
         process_variable_changes(self.socketio, "actions", "Options", {"id": self.action_count+1, "options": self.actions[self.action_count+1]["Options"]}, {"id": self.action_count+1, "options": old_options})
         self.set_game_saved()
             
+    def set_options(self, option_list, action_id):
+        if action_id not in self.actions:
+            self.action_id[action_id] = {"Selected Text": "", "Options": option_list}
+        else:
+            self.action_id[action_id]['Options'] = option_list
+    
     def clear_unused_options(self, pointer=None):
         new_options = []
         old_options = None
@@ -778,7 +806,125 @@ class KoboldStoryRegister(object):
         elif name == 'tokenizer' and not new_variable:
             #We set the tokenizer, recalculate all of the item lengths
             self.recalc_token_length()
+
+class KoboldWorldInfoEntry(object):
+    #if we call info with a [x] get the world info data for x
+    def __init__(self, socketio, uid):
+        self._socketio = socketio
+        self.uid = uid
+        self.folder = "root"
+    
+    def __getitem__(self, i):
+        return getattr(self, i)
         
+    def to_dict(self):
+        return {name: value for (name, value) in vars(self).items() if name[0] != "_"}
+        
+    def __str__(self):
+        return str(self.to_dict())
+        
+    def __repr__(self):
+        return str(self.to_dict())
+        
+    #allow for setting the entire world info to a dictionary of values
+    def __setitem__(self, i, data):
+        setattr(self, i, data)
+        
+    def __setattr__(self, name, value):
+        new_variable = name not in self.__dict__
+        old_value = getattr(self, name, None)
+        super().__setattr__(name, value)
+        #Put variable change actions here
+        if name[0] != "_":
+            process_variable_changes(self._socketio, "world_info", "{}_{}".format(name, self.uid), value, old_value)
+
+class KoboldWorldInfo(object):
+    
+    def __init__(self, socketio):
+        self.world_info = {}
+        self._socketio = socketio
+        self.maxuid = 0
+    
+    def reset(self):
+        self.__init__(self._socketio)
+    
+    #if we call info with a [x] get the world info data for x as a dictionary
+    def __getitem__(self, i):
+        return self.world_info[i].to_dict()
+        
+    #allow for setting the entire world info to a dictionary of values
+    def __setitem__(self, i, data):
+        print("setting {} to {}".format(i, data))
+        if i not in self.world_info:
+            i = self.append(data)
+        for key in data:
+            self.world_info[i][key] = data[key]
+            
+    def __len__(self):
+        return len(self.world_info)
+            
+    def __iter__(self):
+        self._itter = -1
+        return self
+        
+    def __next__(self):
+        self._itter += 1
+        if self._itter < len(self.world_info):
+            return {x: self.world_info[self._itter].__dict__[x] for x in self.world_info[self._itter].__dict__ if x[0] != "_"}
+        else:
+            raise StopIteration
+        
+    def get_folders(self, ui_version=2):
+        if ui_version == 1:
+            return {i: {'collapsed': True, 'name': x} for i, x in enumerate(set([x['folder'] for x in self.world_info]))}
+        return list(set([x['folder'] for x in self.world_info]))
+        
+    def get_folder_items(self, folder):
+        items = [item.to_dict() for item in self.world_info if item['folder'] == folder]
+        return sorted(items, key=lambda d: d['sort_order'])
+    
+    def reorder(self, uid, after_uid):
+        if uid not in self.world_info or after_uid not in self.world_info:
+            return
+        folder = self.world_info[uid]['folder']
+        after_sort_number = self.world_info[after_uid]['sort']
+        for item in world_info:
+            if item['folder'] == folder and item['sort'] > after_sort_number:
+                item['sort'] = item['sort']+1
+        self.world_info[uid]['sort'] = after_sort_number+1
+        
+    def set_folder(self, uid, folder, after_uid=None):
+        max_sort = max([x['sort'] for x in self.world_info if x['folder'] == folder])
+        old_folder = self.world_info[uid]['folder']
+        self.world_info[uid]['folder'] = folder
+        self.world_info[uid]['sort'] = max_sort
+        if after_uid is not None:
+            self.reorder(folder, uid, after_uid)
+        self.resort(folder)
+        self.resort(old_folder)
+        
+    def resort(self, folder):
+        for i in range(max([x['sort'] for x in self.world_info if x['folder'] == folder])+1):
+            if i > len([x['sort'] for x in self.world_info if x['folder'] == folder]):
+                break
+            elif i not in [x['sort'] for x in self.world_info if x['folder'] == folder]:
+                for item in world_info:
+                    if item['folder'] == folder and item['sort'] > i:
+                        item['sort'] = item['sort']-1
+    
+    def append(self, data):
+        uid = self.maxuid+1
+        self.maxuid += 1
+        self.world_info[uid] = KoboldWorldInfoEntry(self._socketio, uid)
+        for key in data:
+            self.world_info[uid][key] = data[key]
+        return uid
+    
+    def to_json(self):
+        return [self.world_info[x].to_dict() for x in self.world_info]
+    
+    
+
 badwordsids_default = [[13460], [6880], [50256], [42496], [4613], [17414], [22039], [16410], [27], [29], [38430], [37922], [15913], [24618], [28725], [58], [47175], [36937], [26700], [12878], [16471], [37981], [5218], [29795], [13412], [45160], [3693], [49778], [4211], [20598], [36475], [33409], [44167], [32406], [29847], [29342], [42669], [685], [25787], [7359], [3784], [5320], [33994], [33490], [34516], [43734], [17635], [24293], [9959], [23785], [21737], [28401], [18161], [26358], [32509], [1279], [38155], [18189], [26894], [6927], [14610], [23834], [11037], [14631], [26933], [46904], [22330], [25915], [47934], [38214], [1875], [14692], [41832], [13163], [25970], [29565], [44926], [19841], [37250], [49029], [9609], [44438], [16791], [17816], [30109], [41888], [47527], [42924], [23984], [49074], [33717], [31161], [49082], [30138], [31175], [12240], [14804], [7131], [26076], [33250], [3556], [38381], [36338], [32756], [46581], [17912], [49146]] # Tokenized array of badwords used to prevent AI artifacting
 badwordsids_neox = [[0], [1], [44162], [9502], [12520], [31841], [36320], [49824], [34417], [6038], [34494], [24815], [26635], [24345], [3455], [28905], [44270], [17278], [32666], [46880], [7086], [43189], [37322], [17778], [20879], [49821], [3138], [14490], [4681], [21391], [26786], [43134], [9336], [683], [48074], [41256], [19181], [29650], [28532], [36487], [45114], [46275], [16445], [15104], [11337], [1168], [5647], [29], [27482], [44965], [43782], [31011], [42944], [47389], [6334], [17548], [38329], [32044], [35487], [2239], [34761], [7444], [1084], [12399], [18990], [17636], [39083], [1184], [35830], [28365], [16731], [43467], [47744], [1138], [16079], [40116], [45564], [18297], [42368], [5456], [18022], [42696], [34476], [23505], [23741], [39334], [37944], [45382], [38709], [33440], [26077], [43600], [34418], [36033], [6660], [48167], [48471], [15775], [19884], [41533], [1008], [31053], [36692], [46576], [20095], [20629], [31759], [46410], [41000], [13488], [30952], [39258], [16160], [27655], [22367], [42767], [43736], [49694], [13811], [12004], [46768], [6257], [37471], [5264], [44153], [33805], [20977], [21083], [25416], [14277], [31096], [42041], [18331], [33376], [22372], [46294], [28379], [38475], [1656], [5204], [27075], [50001], [16616], [11396], [7748], [48744], [35402], [28120], [41512], [4207], [43144], [14767], [15640], [16595], [41305], [44479], [38958], [18474], [22734], [30522], [46267], [60], [13976], [31830], [48701], [39822], [9014], [21966], [31422], [28052], [34607], [2479], [3851], [32214], [44082], [45507], [3001], [34368], [34758], [13380], [38363], [4299], [46802], [30996], [12630], [49236], [7082], [8795], [5218], [44740], [9686], [9983], [45301], [27114], [40125], [1570], [26997], [544], [5290], [49193], [23781], [14193], [40000], [2947], [43781], [9102], [48064], [42274], [18772], [49384], [9884], [45635], [43521], [31258], [32056], [47686], [21760], [13143], [10148], [26119], [44308], [31379], [36399], [23983], [46694], [36134], [8562], [12977], [35117], [28591], [49021], [47093], [28653], [29013], [46468], [8605], [7254], [25896], [5032], [8168], [36893], [38270], [20499], [27501], [34419], [29547], [28571], [36586], [20871], [30537], [26842], [21375], [31148], [27618], [33094], [3291], [31789], [28391], [870], [9793], [41361], [47916], [27468], [43856], [8850], [35237], [15707], [47552], [2730], [41449], [45488], [3073], [49806], [21938], [24430], [22747], [20924], [46145], [20481], [20197], [8239], [28231], [17987], [42804], [47269], [29972], [49884], [21382], [46295], [36676], [34616], [3921], [26991], [27720], [46265], [654], [9855], [40354], [5291], [34904], [44342], [2470], [14598], [880], [19282], [2498], [24237], [21431], [16369], [8994], [44524], [45662], [13663], [37077], [1447], [37786], [30863], [42854], [1019], [20322], [4398], [12159], [44072], [48664], [31547], [18736], [9259], [31], [16354], [21810], [4357], [37982], [5064], [2033], [32871], [47446], [62], [22158], [37387], [8743], [47007], [17981], [11049], [4622], [37916], [36786], [35138], [29925], [14157], [18095], [27829], [1181], [22226], [5709], [4725], [30189], [37014], [1254], [11380], [42989], [696], [24576], [39487], [30119], [1092], [8088], [2194], [9899], [14412], [21828], [3725], [13544], [5180], [44679], [34398], [3891], [28739], [14219], [37594], [49550], [11326], [6904], [17266], [5749], [10174], [23405], [9955], [38271], [41018], [13011], [48392], [36784], [24254], [21687], [23734], [5413], [41447], [45472], [10122], [17555], [15830], [47384], [12084], [31350], [47940], [11661], [27988], [45443], [905], [49651], [16614], [34993], [6781], [30803], [35869], [8001], [41604], [28118], [46462], [46762], [16262], [17281], [5774], [10943], [5013], [18257], [6750], [4713], [3951], [11899], [38791], [16943], [37596], [9318], [18413], [40473], [13208], [16375]]
 badwordsids_opt = [[44717], [46613], [48513], [49923], [50185], [48755], [8488], [43303], [49659], [48601], [49817], [45405], [48742], [49925], [47720], [11227], [48937], [48784], [50017], [42248], [49310], [48082], [49895], [50025], [49092], [49007], [8061], [44226], [0], [742], [28578], [15698], [49784], [46679], [39365], [49281], [49609], [48081], [48906], [46161], [48554], [49670], [48677], [49721], [49632], [48610], [48462], [47457], [10975], [46077], [28696], [48709], [43839], [49798], [49154], [48203], [49625], [48395], [50155], [47161], [49095], [48833], [49420], [49666], [48443], [22176], [49242], [48651], [49138], [49750], [40389], [48021], [21838], [49070], [45333], [40862], [1], [49915], [33525], [49858], [50254], [44403], [48992], [48872], [46117], [49853], [47567], [50206], [41552], [50068], [48999], [49703], [49940], [49329], [47620], [49868], [49962], [2], [44082], [50236], [31274], [50260], [47052], [42645], [49177], [17523], [48691], [49900], [49069], [49358], [48794], [47529], [46479], [48457], [646], [49910], [48077], [48935], [46386], [48902], [49151], [48759], [49803], [45587], [48392], [47789], [48654], [49836], [49230], [48188], [50264], [46844], [44690], [48505], [50161], [27779], [49995], [41833], [50154], [49097], [48520], [50018], [8174], [50084], [49366], [49526], [50193], [7479], [49982], [3]]

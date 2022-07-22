@@ -1187,9 +1187,57 @@ def patch_causallm(model):
     Embedding._koboldai_patch_causallm_model = model
     return model
 
+def patch_transformers_download():
+    global transformers
+    import copy, requests, tqdm, time
+    class Send_to_socketio(object):
+        def write(self, bar):
+            bar = bar.replace("\r", "")
+            try:
+                emit('from_server', {'cmd': 'model_load_status', 'data': bar.replace(" ", "&nbsp;")}, broadcast=True, room="UI_1")
+                eventlet.sleep(seconds=0)
+            except:
+                pass
+    def http_get(
+        url: str,
+        temp_file: transformers.utils.hub.BinaryIO,
+        proxies=None,
+        resume_size=0,
+        headers: transformers.utils.hub.Optional[transformers.utils.hub.Dict[str, str]] = None,
+        file_name: transformers.utils.hub.Optional[str] = None,
+    ):
+        """
+        Download remote file. Do not gobble up errors.
+        """
+        headers = copy.deepcopy(headers)
+        if resume_size > 0:
+            headers["Range"] = f"bytes={resume_size}-"
+        r = requests.get(url, stream=True, proxies=proxies, headers=headers)
+        transformers.utils.hub._raise_for_status(r)
+        content_length = r.headers.get("Content-Length")
+        total = resume_size + int(content_length) if content_length is not None else None
+        # `tqdm` behavior is determined by `utils.logging.is_progress_bar_enabled()`
+        # and can be set using `utils.logging.enable/disable_progress_bar()`
+        progress = tqdm.tqdm(
+            unit="B",
+            unit_scale=True,
+            unit_divisor=1024,
+            total=total,
+            initial=resume_size,
+            desc=f"Downloading {file_name}" if file_name is not None else "Downloading",
+            file=Send_to_socketio(),
+        )
+        for chunk in r.iter_content(chunk_size=1024):
+            if chunk:  # filter out keep-alive new chunks
+                progress.update(len(chunk))
+                temp_file.write(chunk)
+        progress.close()
+
+    transformers.utils.hub.http_get = http_get
 
 def patch_transformers():
     global transformers
+    patch_transformers_download()
     old_from_pretrained = PreTrainedModel.from_pretrained.__func__
     @classmethod
     def new_from_pretrained(cls, pretrained_model_name_or_path, *model_args, **kwargs):
@@ -5158,7 +5206,7 @@ def saveRequest(savpath, savepins=True):
         js["anotetemplate"] = koboldai_vars.authornotetemplate
         js["actions"]     = tuple(koboldai_vars.actions.values())
         if savepins:
-            js["actions_metadata"]     = koboldai_vars.actions_metadata
+            js["actions_metadata"]     = koboldai_vars.actions.options(ui_version=1)
         js["worldinfo"]   = []
         js["wifolders_d"] = koboldai_vars.wifolders_d
         js["wifolders_l"] = koboldai_vars.wifolders_l
@@ -5292,7 +5340,8 @@ def load_story_v1(js):
         _filename = filename[:-5]
     session['story'] = _filename
     #create the story
-    koboldai_vars.create_story(session['story'])
+    #koboldai_vars.create_story(session['story'])
+    koboldai_vars.create_story('default')
      
     koboldai_vars.laststory = _filename
     #set the story_name
@@ -5303,8 +5352,9 @@ def load_story_v1(js):
     koboldai_vars.gamestarted = js["gamestarted"]
     koboldai_vars.prompt      = js["prompt"]
     koboldai_vars.memory      = js["memory"]
+    koboldai_vars.worldinfo_v2.reset()
     koboldai_vars.worldinfo   = []
-    koboldai_vars.worldinfo   = []
+    koboldai_vars.worldinfo_i = []
     koboldai_vars.worldinfo_u = {}
     koboldai_vars.wifolders_d = {int(k): v for k, v in js.get("wifolders_d", {}).items()}
     koboldai_vars.wifolders_l = js.get("wifolders_l", [])
@@ -5317,36 +5367,6 @@ def load_story_v1(js):
     actions = collections.deque(js["actions"])
     
 
-    if "actions_metadata" in js:
-        
-        if type(js["actions_metadata"]) == dict:
-            temp = js["actions_metadata"]
-            koboldai_vars.actions_metadata = {}
-            #we need to redo the numbering of the actions_metadata since the actions list doesn't preserve it's number on saving
-            if len(temp) > 0:
-                counter = 0
-                temp = {int(k):v for k,v in temp.items()}
-                for i in range(max(temp)+1):
-                    if i in temp:
-                        koboldai_vars.actions_metadata[counter] = temp[i]
-                        counter += 1
-            del temp
-        else:
-            #fix if we're using the old metadata format
-            koboldai_vars.actions_metadata = {}
-            i = 0
-            
-            for text in js['actions']:
-                koboldai_vars.actions_metadata[i] = {'Selected Text': text, 'Alternative Text': []}
-                i+=1
-    else:
-        koboldai_vars.actions_metadata = {}
-        i = 0
-        
-        for text in js['actions']:
-            koboldai_vars.actions_metadata[i] = {'Selected Text': text, 'Alternative Text': []}
-            i+=1
-            
 
     if(len(koboldai_vars.prompt.strip()) == 0):
         while(len(actions)):
@@ -5359,6 +5379,14 @@ def load_story_v1(js):
     if(koboldai_vars.gamestarted):
         for s in actions:
             koboldai_vars.actions.append(s)
+
+    if "actions_metadata" in js:
+        if type(js["actions_metadata"]) == dict:
+            for key in js["actions_metadata"]:
+                if js["actions_metadata"][key]["Alternative Text"] != []:
+                    data = js["actions_metadata"][key]["Alternative Text"]
+                    data["text"] = data.pop("Text")
+                    koboldai_vars.actions.set_options(self, data, key)
     
     # Try not to break older save files
     if("authorsnote" in js):
@@ -5385,6 +5413,18 @@ def load_story_v1(js):
                 "constant": wi.get("constant", False),
                 "uid": None,
             })
+            koboldai_vars.worldinfo_v2.append({
+                "key": wi["key"],
+                "keysecondary": wi.get("keysecondary", ""),
+                "content": wi["content"],
+                "comment": wi.get("comment", ""),
+                "folder": wi.get("folder", None),
+                "num": num,
+                "init": True,
+                "selective": wi.get("selective", False),
+                "constant": wi.get("constant", False),
+            })
+            
             while(True):
                 uid = int.from_bytes(os.urandom(4), "little", signed=True)
                 if(uid not in koboldai_vars.worldinfo_u):
@@ -5401,7 +5441,10 @@ def load_story_v1(js):
             uid = int.from_bytes(os.urandom(4), "little", signed=True)
             if(uid not in koboldai_vars.worldinfo_u):
                 break
-        koboldai_vars.worldinfo_u[uid] = koboldai_vars.worldinfo[-1]
+        try:
+            koboldai_vars.worldinfo_u[uid] = koboldai_vars.worldinfo[-1]
+        except:
+            print(koboldai_vars.worldinfo)
         koboldai_vars.worldinfo[-1]["uid"] = uid
         if(koboldai_vars.worldinfo[-1]["folder"] is not None):
             koboldai_vars.wifolders_u[koboldai_vars.worldinfo[-1]["folder"]].append(koboldai_vars.worldinfo[-1])

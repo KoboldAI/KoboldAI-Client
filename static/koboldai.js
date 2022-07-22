@@ -300,6 +300,9 @@ function var_changed(data) {
 		do_presets(data);
 	} else if ((data.classname == "model") && (data.name == "selected_preset")) {
 		selected_preset(data);
+	//Special Case for World Info
+	} else if (data.classname == 'world_info') {
+		world_info(data);
 	//Basic Data Syncing
 	} else {
 		var elements_to_change = document.getElementsByClassName("var_sync_"+data.classname.replace(" ", "_")+"_"+data.name.replace(" ", "_"));
@@ -919,6 +922,46 @@ function load_model() {
 
 function buildload(data) {
 	console.log(data);
+}
+
+function world_info(data) {
+	var world_info_area = document.getElementById("story_menu_wi");
+	var wiid = data.name.split("_")[data.name.split("_").length-1];
+	var name = data.name.split("_").slice(0, data.name.split("_").length-1).join('_');
+	//first check to see if we have the world info id already
+	if (document.getElementById("world_info_"+wiid)) {
+		table = document.getElementById("world_info_"+wiid);
+		if (document.getElementById("world_info_"+wiid+"_"+name)) {
+			tr = document.getElementById("world_info_"+wiid+"_"+name);
+			tr.lastChild.textContent = data.value
+		} else {
+			tr = document.createElement("tr")
+			tr.id = "world_info_"+wiid+"_"+name
+			td = document.createElement("td")
+			td.textContent = name;
+			tr.append(td);
+			td = document.createElement("td")
+			td.textContent = data.value;
+			tr.append(td);
+			table.append(tr);
+		}
+	} else {
+		table = document.createElement("table");
+		table.border = 1
+		table.id = "world_info_"+wiid;
+		tr = document.createElement("tr")
+		tr.id = "world_info_"+wiid+"_"+name
+		td = document.createElement("td")
+		td.textContent = name;
+		tr.append(td);
+		td = document.createElement("td")
+		td.textContent = data.value;
+		tr.append(td);
+		table.append(tr);
+		
+		
+		world_info_area.append(table);
+	}
 }
 
 //--------------------------------------------UI to Server Functions----------------------------------
