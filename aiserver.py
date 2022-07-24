@@ -1044,6 +1044,7 @@ def general_startup(override_args=None):
     parser.add_argument("--no_aria2", action='store_true', default=False, help="Prevents KoboldAI from using aria2 to download huggingface models more efficiently, in case aria2 is causing you issues")
     parser.add_argument("--lowmem", action='store_true', help="Extra Low Memory loading for the GPU, slower but memory does not peak to twice the usage")
     parser.add_argument("--savemodel", action='store_true', help="Saves the model to the models folder even if --colab is used (Allows you to save models to Google Drive)")
+    parser.add_argument("--customsettings", help="Preloads arguements from json file. You only need to provide the location of the json file. Use customsettings.json template file. It can be renamed if you wish so that you can store multiple configurations. Leave any settings you want as default as null. Any values you wish to set need to be in double quotation marks")
     #args: argparse.Namespace = None
     if "pytest" in sys.modules and override_args is None:
         args = parser.parse_args([])
@@ -1056,6 +1057,14 @@ def general_startup(override_args=None):
         args = parser.parse_args(shlex.split(os.environ["KOBOLDAI_ARGS"]))
     else:
         args = parser.parse_args()
+
+    if args.customsettings:
+        f = open (args.customsettings)
+        importedsettings = json.load(f)
+        for items in importedsettings:
+            if importedsettings[items] is not None:
+                setattr(args, items, importedsettings[items])            
+        f.close()
 
     vars.model = args.model;
     vars.revision = args.revision
