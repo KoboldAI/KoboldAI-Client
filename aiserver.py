@@ -5352,7 +5352,7 @@ def importgame():
 def importAidgRequest(id):    
     exitModes()
     
-    urlformat = "https://prompts.aidg.club/api/"
+    urlformat = "https://aetherroom.club/api/"
     req = requests.get(urlformat+id)
 
     if(req.status_code == 200):
