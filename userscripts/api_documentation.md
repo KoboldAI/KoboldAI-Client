@@ -503,13 +503,13 @@ local entry = kobold.worldinfo[5]  -- Retrieves fifth entry from top as a Kobold
 You can use `ipairs` or a numeric loop to iterate from top to bottom:
 
 ```lua
-for index, entry in ipairs(kobold.worldinfo):
+for index, entry in ipairs(kobold.worldinfo) do
     print(index, entry.content)
 end
 ```
 
 ```lua
-for index = 1, #kobold.worldinfo do:
+for index = 1, #kobold.worldinfo do
     print(index, kobold.worldinfo[index].content)
 end
 ```
@@ -587,13 +587,13 @@ local folder = kobold.worldinfo.folders[5]  -- Retrieves fifth folder from top a
 ```
 
 ```lua
-for index, folder in ipairs(kobold.worldinfo.folders):
+for index, folder in ipairs(kobold.worldinfo.folders) do
     print(index, folder.name)
 end
 ```
 
 ```lua
-for index = 1, #kobold.worldinfo.folders do:
+for index = 1, #kobold.worldinfo.folders do
     print(index, kobold.worldinfo.folders[index].name)
 end
 ```
