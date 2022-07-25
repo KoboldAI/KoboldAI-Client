@@ -33,9 +33,10 @@ def process_variable_changes(socketio, classname, name, value, old_value, debug_
                     socketio.emit("var_changed", {"classname": "actions", "name": "Options", "old_value": None, "value": {"id": i, "options": value.actions[i]['Options']}}, include_self=True, broadcast=True, room="UI_2")
                     socketio.emit("var_changed", {"classname": "actions", "name": "Selected Text Length", "old_value": None, "value": {"id": i, 'length': value.actions[i]['Selected Text Length']}}, include_self=True, broadcast=True, room="UI_2")
             elif isinstance(value, KoboldWorldInfo):
-                for item in value.to_json():
-                    for name in item:
-                        process_variable_changes(socketio, "world_info", "{}_{}".format(name, item['uid']), item[name], None)
+                data = value.to_json()
+                for uid in data:
+                    for key in data[uid]:
+                        socketio.emit("var_changed", {"classname":"world_info", "name": "{}_{}".format(key, uid), "value": data[uid][key], "old_value": None}, broadcast=True, room="UI_2")
             else:
                 #If we got a variable change from a thread other than what the app is run it, eventlet seems to block and no further messages are sent. Instead, we'll rely the message to the app and have the main thread send it
                 if not has_request_context():
@@ -215,6 +216,8 @@ class model_settings(settings):
         self.generated_tkns = 0    # If using a backend that supports Lua generation modifiers, how many tokens have already been generated, otherwise 0
         self.loaded_layers = 0     # Used in UI 2 to show model loading progress
         self.total_layers = 0      # Same as above
+        self.total_download_chunks = 0 # tracks how much of the model has downloaded for the UI 2
+        self.downloaded_chunks = 0 #as above
         self.tqdm        = tqdm.tqdm(total=self.genamt, file=self.ignore_tqdm())    # tqdm agent for generating tokens. This will allow us to calculate the remaining time
         self.tqdm_progress = 0     # TQDP progress
         self.tqdm_rem_time = 0     # tqdm calculated reemaining time
@@ -258,7 +261,7 @@ class model_settings(settings):
                 if self.tqdm.format_dict['rate'] is not None:
                     self.tqdm_rem_time = str(datetime.timedelta(seconds=int(float(self.genamt-self.generated_tkns)/self.tqdm.format_dict['rate'])))
         #Setup TQDP for model loading
-        if name == "loaded_layers" and 'tqdm' in self.__dict__:
+        elif name == "loaded_layers" and 'tqdm' in self.__dict__:
             if value == 0:
                 self.tqdm.reset(total=self.total_layers)
                 self.tqdm_progress = 0
@@ -267,6 +270,16 @@ class model_settings(settings):
                 self.tqdm_progress = int(float(self.loaded_layers)/float(self.total_layers)*100)
                 if self.tqdm.format_dict['rate'] is not None:
                     self.tqdm_rem_time = str(datetime.timedelta(seconds=int(float(self.total_layers-self.loaded_layers)/self.tqdm.format_dict['rate'])))  
+        #Setup TQDP for model downloading
+        elif name == "downloaded_chunks" and 'tqdm' in self.__dict__:
+            if value == 0:
+                self.tqdm.reset(total=self.total_download_chunks)
+                self.tqdm_progress = 0
+            else:
+                self.tqdm.update(value-old_value)
+                self.tqdm_progress = round(float(self.downloaded_chunks)/float(self.total_download_chunks)*100, 1)
+                if self.tqdm.format_dict['rate'] is not None:
+                    self.tqdm_rem_time = str(datetime.timedelta(seconds=int(float(self.total_download_chunks-self.downloaded_chunks)/self.tqdm.format_dict['rate'])))  
         
         if name not in self.local_only_variables and name[0] != "_" and not new_variable:
             process_variable_changes(self.socketio, self.__class__.__name__.replace("_settings", ""), name, value, old_value)
@@ -296,7 +309,7 @@ class story_settings(settings):
                               # Selected Text: (text the user had selected. None when this is a newly generated action)
                               # Alternative Generated Text: {Text, Pinned, Previous Selection, Edited}
                               # 
-        self.worldinfo_v2 = KoboldWorldInfo(socketio)
+        self.worldinfo_v2 = KoboldWorldInfo(socketio, self.actions)
         self.worldinfo   = []     # List of World Info key/value objects
         self.worldinfo_i = []     # List of World Info key/value objects sans uninitialized entries
         self.worldinfo_u = {}     # Dictionary of World Info UID - key/value pairs
@@ -328,7 +341,7 @@ class story_settings(settings):
     def __setattr__(self, name, value):
         new_variable = name not in self.__dict__
         if name == 'worldinfo_v2' and not new_variable:
-            super().__setattr__('worldinfo', KoboldWorldInfo(self.socketio))
+            super().__setattr__('worldinfo', KoboldWorldInfo(self.socketio, self.actions))
             for i in range(len(value)):
                 self.worldinfo[i] = value[i]
         else:
@@ -807,12 +820,15 @@ class KoboldStoryRegister(object):
             #We set the tokenizer, recalculate all of the item lengths
             self.recalc_token_length()
 
+    
+
 class KoboldWorldInfoEntry(object):
     #if we call info with a [x] get the world info data for x
-    def __init__(self, socketio, uid):
+    def __init__(self, socketio, uid, actions):
         self._socketio = socketio
         self.uid = uid
         self.folder = "root"
+        self._actions = actions
     
     def __getitem__(self, i):
         return getattr(self, i)
@@ -831,6 +847,8 @@ class KoboldWorldInfoEntry(object):
         setattr(self, i, data)
         
     def __setattr__(self, name, value):
+        if (name == 'key' or name == 'keysecondary') and isinstance(value, str):
+            value = [x.strip() for x in value.split(",")]
         new_variable = name not in self.__dict__
         old_value = getattr(self, name, None)
         super().__setattr__(name, value)
@@ -840,13 +858,14 @@ class KoboldWorldInfoEntry(object):
 
 class KoboldWorldInfo(object):
     
-    def __init__(self, socketio):
+    def __init__(self, socketio, actions):
         self.world_info = {}
         self._socketio = socketio
         self.maxuid = 0
+        self._actions = actions
     
     def reset(self):
-        self.__init__(self._socketio)
+        self.__init__(self._socketio, self._actions)
     
     #if we call info with a [x] get the world info data for x as a dictionary
     def __getitem__(self, i):
@@ -858,7 +877,10 @@ class KoboldWorldInfo(object):
         if i not in self.world_info:
             i = self.append(data)
         for key in data:
-            self.world_info[i][key] = data[key]
+            if (key == 'key' or key == 'keysecondary') and isinstance(value, str):
+                self.world_info[i][key] = [x.strip() for x in data[key].split(",")]
+            else:
+                self.world_info[i][key] = data[key]
             
     def __len__(self):
         return len(self.world_info)
@@ -915,13 +937,19 @@ class KoboldWorldInfo(object):
     def append(self, data):
         uid = self.maxuid+1
         self.maxuid += 1
-        self.world_info[uid] = KoboldWorldInfoEntry(self._socketio, uid)
+        self.world_info[uid] = KoboldWorldInfoEntry(self._socketio, uid, self._actions)
+        if 'folder' not in data:
+            data['folder'] = "root"
+        data['sort'] = max([self.world_info[x]['sort'] for x in self.world_info if self.world_info[x]['folder'] == data['folder']]+[-1])+1
         for key in data:
-            self.world_info[uid][key] = data[key]
+            if (key == 'key' or key == 'keysecondary') and isinstance(data[key], str):
+                self.world_info[uid][key] = [x.strip() for x in data[key].split(",")]
+            else:
+                self.world_info[uid][key] = data[key]
         return uid
     
     def to_json(self):
-        return [self.world_info[x].to_dict() for x in self.world_info]
+        return {x: self.world_info[x].to_dict() for x in self.world_info}
     
     
 

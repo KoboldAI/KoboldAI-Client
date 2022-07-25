@@ -1218,6 +1218,7 @@ def patch_transformers_download():
         total = resume_size + int(content_length) if content_length is not None else None
         # `tqdm` behavior is determined by `utils.logging.is_progress_bar_enabled()`
         # and can be set using `utils.logging.enable/disable_progress_bar()`
+        koboldai_vars.total_download_chunks = total
         progress = tqdm.tqdm(
             unit="B",
             unit_scale=True,
@@ -1230,6 +1231,7 @@ def patch_transformers_download():
         for chunk in r.iter_content(chunk_size=1024):
             if chunk:  # filter out keep-alive new chunks
                 progress.update(len(chunk))
+                koboldai_vars.downloaded_chunks += len(chunk)
                 temp_file.write(chunk)
         progress.close()
 

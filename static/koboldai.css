@@ -465,6 +465,10 @@ body {
   color: var(--text_edit);
 }
 
+.gametext span span[title]:not([title=""]) {
+	font-style: italic;
+}
+
 @media only screen and (min-aspect-ratio: 7/5) {
 .sequence_area {
 	margin-top: 10px;

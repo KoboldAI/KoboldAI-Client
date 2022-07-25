@@ -34,7 +34,7 @@
 		<!------------ Game Text Screen--------------------->
 		<div class="gamescreen" id="gamescreen">
 			<div class="gametext" id="Selected Text">
-				<span id="story_prompt" class="var_sync_story_prompt var_sync_alt_story_prompt_length rawtext" contenteditable=true onchange="sync_to_server(this);" onkeydown="detect_enter_text"></span>
+				<span id="story_prompt" class="var_sync_story_prompt var_sync_alt_story_prompt_length rawtext" contenteditable=true onblur="if (getAttribute(this, 'old_text') != this.textContent) {sync_to_server(this);}" onkeydown="detect_enter_text"></span>
 			</div>
 		</div>
 		<!------------ Sequences --------------------->

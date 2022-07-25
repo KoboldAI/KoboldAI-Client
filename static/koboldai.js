@@ -27,6 +27,7 @@ var popup_deleteable = false;
 var popup_editable = false;
 var popup_renameable = false;
 var shift_down = false;
+var world_info_data = {}
 //-----------------------------------Server to UI  Functions-----------------------------------------------
 function connect() {
 	console.log("connected");
@@ -47,6 +48,11 @@ function reset_story() {
 	while (option_area.firstChild) {
 		option_area.removeChild(option_area.firstChild);
 	}
+	var world_info_area = document.getElementById("story_menu_wi");
+	while (world_info_area.firstChild) {
+		world_info_area.removeChild(world_info_area.firstChild);
+	}
+	world_info_data = {};
 }
 
 function fix_text(val) {
@@ -166,9 +172,26 @@ function do_story_text_updates(data) {
 	story_area = document.getElementById('Selected Text');
 	current_chunk_number = data.value.id;
 	if (document.getElementById('Selected Text Chunk '+data.value.id)) {
-		document.getElementById('Selected Text Chunk '+data.value.id).textContent = data.value.text;
-		document.getElementById('Selected Text Chunk '+data.value.id).classList.remove("pulse")
-		document.getElementById('Selected Text Chunk '+data.value.id).scrollIntoView();
+		var item = document.getElementById('Selected Text Chunk '+data.value.id);
+		//clear out the item first
+		while (item.firstChild) { 
+			item.removeChild(item.firstChild);
+		}
+		var text_array = data.value.text.split(" ");
+		text_array.forEach(function (text, i) {
+			var word = document.createElement("span");
+			word.classList.add("rawtext");
+			if (i == text_array.length) {
+				word.textContent = text;
+			} else {
+				word.textContent = text+" ";
+			}
+			item.append(word);
+			
+		});
+		item.original_text = data.value.text;
+		item.classList.remove("pulse")
+		item.scrollIntoView();
 	} else {
 		var span = document.createElement("span");
 		span.id = 'Selected Text Chunk '+data.value.id;
@@ -184,13 +207,50 @@ function do_story_text_updates(data) {
 			}
 		}
 		span.onkeydown = detect_enter_text;
-		span.textContent = data.value.text;
+		var text_array = data.value.text.split(" ");
+		text_array.forEach(function (text, i) {
+			var word = document.createElement("span");
+			word.classList.add("rawtext");
+			word.classList.add("world_info_tag");
+			if (i == text_array.length) {
+				word.textContent = text;
+			} else {
+				word.textContent = text+" ";
+			}
+			span.append(word);
+			
+		});
 		
 		
 		story_area.append(span);
 		span.scrollIntoView();
 	}
 	
+}
+
+function do_prompt(data) {
+	var elements_to_change = document.getElementsByClassName("var_sync_"+data.classname.replace(" ", "_")+"_"+data.name.replace(" ", "_"));
+	for (item of elements_to_change) {
+		//clear out the item first
+		while (item.firstChild) { 
+			item.removeChild(item.firstChild);
+		}
+		
+		var text_array = data.value.split(" ");
+		text_array.forEach(function (text, i) {
+			var word = document.createElement("span");
+			word.classList.add("rawtext");
+			if (i == text_array.length) {
+				word.textContent = text;
+			} else {
+				word.textContent = text+" ";
+			}
+			item.append(word);
+			
+		});
+		item.setAttribute("old_text", data.value)
+		item.classList.remove("pulse");
+	}
 }
 
 function do_story_text_length_updates(data) {
@@ -250,12 +310,11 @@ function selected_preset(data) {
 }
 
 function update_status_bar(data) {
-	var total_tokens = document.getElementById('model_genamt').value;
 	var percent_complete = data.value;
 	var percent_bar = document.getElementsByClassName("statusbar_inner");
 	for (item of percent_bar) {
 		item.setAttribute("style", "width:"+percent_complete+"%");
-		item.textContent = Math.round(percent_complete)+"%"
+		item.textContent = Math.round(percent_complete,1)+"%"
 		if ((percent_complete == 0) || (percent_complete == 100)) {
 			item.parentElement.classList.add("hidden");
 			document.getElementById("inputrow_container").classList.remove("status_bar");
@@ -303,6 +362,8 @@ function var_changed(data) {
 	//Special Case for World Info
 	} else if (data.classname == 'world_info') {
 		world_info(data);
+	} else if ((data.classname == 'story') && (data.name == 'prompt')) {
+		do_prompt(data);
 	//Basic Data Syncing
 	} else {
 		var elements_to_change = document.getElementsByClassName("var_sync_"+data.classname.replace(" ", "_")+"_"+data.name.replace(" ", "_"));
@@ -946,6 +1007,7 @@ function world_info(data) {
 			table.append(tr);
 		}
 	} else {
+		//First we need to add a folder if that doesn't exist
 		table = document.createElement("table");
 		table.border = 1
 		table.id = "world_info_"+wiid;
@@ -961,6 +1023,15 @@ function world_info(data) {
 		
 		
 		world_info_area.append(table);
+	}
+	if (wiid in world_info_data) {
+		world_info_data[wiid][name] = data.value;
+	} else {
+		world_info_data[wiid] = {name: data.value};
+	}
+	//Now let's see if we can find this key in the body of text
+	if (['key', 'selective', 'keysecondary'].includes(name)) {
+		assign_world_info_to_action(wiid=wiid);
 	}
 }
 
@@ -1013,6 +1084,67 @@ function upload_file(file_box) {
 }
 
 //--------------------------------------------General UI Functions------------------------------------
+function assign_world_info_to_action(wiid=null) {
+	//console.log(world_info_data);
+	if (wiid != null) {
+		var worldinfo_to_check = {};
+		worldinfo_to_check[wiid] = world_info_data[wiid]
+	} else {
+		var worldinfo_to_check = world_info_data;
+	}
+	for (action of document.getElementById("Selected Text").children) {
+		//First check to see if we have a key in the text
+		var found = false;
+		var words = Array.prototype.slice.call( action.children );
+		words_text = [];
+		for (word of words) {
+			words_text.push(word.textContent);
+		}
+		for (const [key, worldinfo] of  Object.entries(worldinfo_to_check)) {
+			if ('key' in worldinfo) {
+				for (keyword of worldinfo['key']) {
+//					if (keyword == 'Chernobyl Exclusion Zone') {
+//						console.log("checking " + keyword +" in " + action.textContent.replace(/[^0-9a-z \'\"]/gi, ''));
+//						console.log(action.textContent.replace(/[^0-9a-z \'\"]/gi, '').includes(keyword));
+//					}
+					if ((action.textContent.replace(/[^0-9a-z \'\"]/gi, '')).includes(keyword)) {
+						found = true;
+						//OK we have the phrase in our action. Let's see if we can identify the word(s) that are triggering
+						for (var i = 0; i < words.length; i++) {
+							key_words = keyword.split(" ").length;
+							var to_check = words_text.slice(i, i+key_words).join("").replace(/[^0-9a-z \'\"]/gi, '').trim();
+							if (keyword == to_check) {
+								console.log("found "+keyword);
+								for (var j = i; j < key_words+i; j++) {
+									words[j].title = worldinfo['content'];
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+//		//Check each word
+//		if (found) {
+//			for (word of action.children) {
+//				//we need to check each word to see if it's in the list
+//				
+//				for (const [key, worldinfo] of  Object.entries(worldinfo_to_check)) {
+//					//console.log(worldinfo);
+//					if ('key' in worldinfo) {
+//						if ((worldinfo['key'].includes(word.textContent.replace(/[^0-9a-z\'\"]/gi, '')))) {
+//							console.log(word.textContent+" is in wiid "+key);
+//							word.title = worldinfo['content'];
+//							//word.textContent = worldinfo['content'];
+//						}
+//					}
+//				}
+//			}
+//		}
+	}
+}
+
+
 function update_token_lengths() {
 	max_token_length = parseInt(document.getElementById("model_max_length_cur").value);
 	if ((document.getElementById("memory").getAttribute("story_memory_length") == null) || (document.getElementById("memory").getAttribute("story_memory_length") == "")) {
