@@ -1312,6 +1312,7 @@ def patch_transformers_download():
         def write(self, bar):
             bar = bar.replace("\r", "")
             try:
+                print(bar, end="\r")
                 emit('from_server', {'cmd': 'model_load_status', 'data': bar.replace(" ", "&nbsp;")}, broadcast=True)
                 eventlet.sleep(seconds=0)
             except:
@@ -1336,20 +1337,23 @@ def patch_transformers_download():
         total = resume_size + int(content_length) if content_length is not None else None
         # `tqdm` behavior is determined by `utils.logging.is_progress_bar_enabled()`
         # and can be set using `utils.logging.enable/disable_progress_bar()`
-        progress = tqdm.tqdm(
-            unit="B",
-            unit_scale=True,
-            unit_divisor=1024,
-            total=total,
-            initial=resume_size,
-            desc=f"Downloading {file_name}" if file_name is not None else "Downloading",
-            file=Send_to_socketio(),
-        )
+        if url[-11:] != 'config.json':
+            progress = tqdm.tqdm(
+                unit="B",
+                unit_scale=True,
+                unit_divisor=1024,
+                total=total,
+                initial=resume_size,
+                desc=f"Downloading {file_name}" if file_name is not None else "Downloading",
+                file=Send_to_socketio(),
+            )
         for chunk in r.iter_content(chunk_size=1024):
             if chunk:  # filter out keep-alive new chunks
-                progress.update(len(chunk))
+                if url[-11:] != 'config.json':
+                    progress.update(len(chunk))
                 temp_file.write(chunk)
-        progress.close()
+        if url[-11:] != 'config.json':
+            progress.close()
 
     transformers.utils.hub.http_get = http_get
     
