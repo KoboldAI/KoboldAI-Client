@@ -415,9 +415,9 @@ formatcontrols = [{
     "tooltip": "Remove special characters (@,#,%,^, etc)"
     },
     {
-    "label": "Add sentence spacing",
+    "label": "Automatic spacing",
     "id": "frmtadsnsp",
-    "tooltip": "If the last action ended with punctuation, add a space to the beginning of the next action."
+    "tooltip": "Add spaces automatically if needed"
     },
     {
     "label": "Single Line",
