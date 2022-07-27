@@ -187,7 +187,7 @@ def aria2_hook(pretrained_model_name_or_path: str, force_download=False, cache_d
     def is_cached(url):
         try:
             transformers.file_utils.get_from_cache(url, cache_dir=cache_dir, local_files_only=True)
-        except FileNotFoundError:
+        except (FileNotFoundError, transformers.file_utils.EntryNotFoundError):
             return False
         return True
     while True:  # Try to get the huggingface.co URL of the model's pytorch_model.bin or pytorch_model.bin.index.json file
