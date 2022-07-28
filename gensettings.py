@@ -251,7 +251,18 @@ gensettingstf = [
 	"step": 1,
 	"default": 0,
   "tooltip": "Show debug info"
-	}
+	},
+    {
+	"uitype": "toggle",
+	"unit": "bool",
+	"label": "Token Streaming",
+	"id": "setoutputstreaming",
+	"min": 0,
+	"max": 1,
+	"step": 1,
+	"default": 0,
+  "tooltip": "Shows outputs to you as they are made. Does not work with more than one gens per action."
+	},
 ]
 
 gensettingsik =[{
