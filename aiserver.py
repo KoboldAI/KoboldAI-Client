@@ -1310,13 +1310,14 @@ def patch_transformers_download():
     import copy, requests, tqdm, time
     class Send_to_socketio(object):
         def write(self, bar):
-            bar = bar.replace("\r", "")
-            try:
-                print(bar, end="\r")
-                emit('from_server', {'cmd': 'model_load_status', 'data': bar.replace(" ", "&nbsp;")}, broadcast=True)
-                eventlet.sleep(seconds=0)
-            except:
-                pass
+            bar = bar.replace("\r", "").replace("\n", "")
+            if bar != "":
+                try:
+                    print(bar, end="\r")
+                    emit('from_server', {'cmd': 'model_load_status', 'data': bar.replace(" ", "&nbsp;")}, broadcast=True)
+                    eventlet.sleep(seconds=0)
+                except:
+                    pass
     def http_get(
         url: str,
         temp_file: transformers.utils.hub.BinaryIO,
