@@ -192,6 +192,7 @@ function do_story_text_updates(data) {
 		item.original_text = data.value.text;
 		item.classList.remove("pulse")
 		item.scrollIntoView();
+		assign_world_info_to_action(action_item = item);
 	} else {
 		var span = document.createElement("span");
 		span.id = 'Selected Text Chunk '+data.value.id;
@@ -224,7 +225,9 @@ function do_story_text_updates(data) {
 		
 		story_area.append(span);
 		span.scrollIntoView();
+		assign_world_info_to_action(action_item = span);
 	}
+	
 	
 }
 
@@ -987,52 +990,189 @@ function buildload(data) {
 
 function world_info(data) {
 	var world_info_area = document.getElementById("story_menu_wi");
-	var wiid = data.name.split("_")[data.name.split("_").length-1];
-	var name = data.name.split("_").slice(0, data.name.split("_").length-1).join('_');
+	var wiid = data.value.uid;
+	var folder = data.value.folder;
+	
 	//first check to see if we have the world info id already
-	if (document.getElementById("world_info_"+wiid)) {
-		table = document.getElementById("world_info_"+wiid);
-		if (document.getElementById("world_info_"+wiid+"_"+name)) {
-			tr = document.getElementById("world_info_"+wiid+"_"+name);
-			tr.lastChild.textContent = data.value
-		} else {
-			tr = document.createElement("tr")
-			tr.id = "world_info_"+wiid+"_"+name
-			td = document.createElement("td")
-			td.textContent = name;
-			tr.append(td);
-			td = document.createElement("td")
-			td.textContent = data.value;
-			tr.append(td);
-			table.append(tr);
+	if (!(document.getElementById("world_info_"+wiid))) {
+		world_info_card = create_wi_card(wiid);
+	} else {
+		world_info_card = document.getElementById("world_info_"+wiid);
+	}
+	
+	//create folder if needed
+	if (folder == null) {
+		folder = 'root';
+	}
+	if (!(document.getElementById("world_info_folder_"+folder))) {
+		var folder_item = document.createElement("span");
+		folder_item.id = "world_info_folder_"+folder;
+		folder_item.classList.add("WI_Folder");
+		title = document.createElement("h2");
+		title.textContent = folder;
+		folder_item.append(title);
+		world_info_area.append(folder_item);
+	} else {
+		folder_item = document.getElementById("world_info_folder_"+folder);
+	}
+	
+	
+	
+	
+	//we'll need to move the item to the appropriate section (folder and location in folder)
+	cards = folder_item.children
+	for (var i = 0; i < cards.length; i++) {
+		if ((cards[i].tagName == 'DIV') & (cards[i].getAttribute("wi_sort") > data.value.sort)) {
+			//check to see if we've exceeded our sort #
+			folder_item.insertBefore(world_info_card, cards[i]);
+			break;
+		} else if (cards.length-1 == i) {
+			folder_item.append(world_info_card);
 		}
-	} else {
-		//First we need to add a folder if that doesn't exist
-		table = document.createElement("table");
-		table.border = 1
-		table.id = "world_info_"+wiid;
-		tr = document.createElement("tr")
-		tr.id = "world_info_"+wiid+"_"+name
-		td = document.createElement("td")
-		td.textContent = name;
-		tr.append(td);
-		td = document.createElement("td")
-		td.textContent = data.value;
-		tr.append(td);
-		table.append(tr);
-		
-		
-		world_info_area.append(table);
 	}
-	if (wiid in world_info_data) {
-		world_info_data[wiid][name] = data.value;
-	} else {
-		world_info_data[wiid] = {name: data.value};
+	
+	//set sort
+	world_info_card.setAttribute("wi_sort", data.value.sort);
+	
+	//set title
+	title = document.getElementById("world_info_title_"+wiid);
+	if ('title' in data.value) {
+		title.textContent = data.value.title;
+	} else if ((data.value.comment != "") & (data.value.comment != null)) {
+		title.textContent = data.value;
 	}
+	
+	//set content
+	entry_text = document.getElementById("world_info_entry_text_"+wiid);
+	entry_text.value = data.value.content;
+	entry_text.setAttribute("wiid", wiid);
+	entry_text.classList.remove("pulse");
+	
+	//setup keys
+	//use the first key as the title if there isn't one
+	title = document.getElementById("world_info_title_"+wiid);
+	if (title.textContent == "") {
+		title.textContent = data.value.key[0];
+	}
+	tags = document.getElementById("world_info_tags_"+wiid);
+	while (tags.firstChild) {
+		tags.removeChild(tags.firstChild);
+	} 
+	tags_title = document.createElement("div");
+	tags_title.textContent = "Primary Keys:";
+	tags.append(tags_title);
+	for (tag of data.value.key) {
+		if (!(document.getElementById("world_info_tags_"+wiid+"_"+tag))) {
+			tag_item = document.createElement("span");
+			tag_item.classList.add("tag");
+			x = document.createElement("span");
+			x.textContent = "x ";
+			x.classList.add("delete_icon");
+			x.setAttribute("wii", wiid);
+			x.setAttribute("tag", tag);
+			x.onclick = function () {
+							socket.emit('delete_wi_tag', {'wiid': this.getAttribute('wii'), 'key': this.getAttribute('tag')});
+						};
+			text = document.createElement("span");
+			text.textContent = tag;
+			text.setAttribute("contenteditable", true);
+			text.setAttribute("wii", wiid);
+			text.setAttribute("tag", tag);
+			text.onblur = function () {
+							socket.emit('change_wi_tag', {'wiid': this.getAttribute('wii'), 'key': this.getAttribute('tag'), 'new_tag': this.textContent});
+							this.classList.add("pulse");
+						};
+			tag_item.append(x);
+			tag_item.append(text);
+			tag_item.id = "world_info_tags_"+wiid+"_"+tag;
+			tags.append(tag_item);
+		}
+	}
+	//add the blank tag
+	tag_item = document.createElement("span");
+	tag_item.classList.add("tag");
+	x = document.createElement("span");
+	x.textContent = "+ ";
+	tag_item.append(x);
+	text = document.createElement("span");
+	text.classList.add("rawtext");
+	text.textContent = "    ";
+	text.setAttribute("wii", wiid);
+	text.setAttribute("contenteditable", true);
+	text.onblur = function () {
+					socket.emit('new_wi_tag', {'wiid': this.getAttribute('wii'), 'key': this.textContent});
+					this.parentElement.remove();
+				};
+	text.onclick = function () {
+					this.textContent = "";
+				};
+	tag_item.append(text);
+	tag_item.id = "world_info_secondtags_"+wiid+"_new";
+	tags.append(tag_item);
+	
+	
+	//secondary key
+	tags = document.getElementById("world_info_secondtags_"+wiid);
+	while (tags.firstChild) {
+		tags.removeChild(tags.firstChild);
+	} 
+	tags_title = document.createElement("div");
+	tags_title.textContent = "Secondary Keys:";
+	tags.append(tags_title);
+	for (tag of data.value.keysecondary) {
+		if (!(document.getElementById("world_info_secondtags_"+wiid+"_"+tag))) {
+			tag_item = document.createElement("span");
+			tag_item.classList.add("tag");
+			x = document.createElement("span");
+			x.textContent = "x ";
+			x.classList.add("delete_icon");
+			x.setAttribute("wii", wiid);
+			x.setAttribute("tag", tag);
+			x.onclick = function () {
+							socket.emit('delete_wi_secondary_tag', {'wiid': this.getAttribute('wii'), 'key': this.getAttribute('tag')});
+						};
+			text = document.createElement("span");
+			text.textContent = tag;
+			text.setAttribute("contenteditable", true);
+			text.setAttribute("wii", wiid);
+			text.setAttribute("tag", tag);
+			text.onblur = function () {
+							socket.emit('change_wi_secondary_tag', {'wiid': this.getAttribute('wii'), 'key': this.getAttribute('tag'), 'new_tag': this.textContent});
+							this.classList.add("pulse");
+						};
+			tag_item.append(x);
+			tag_item.append(text);
+			tag_item.id = "world_info_secondtags_"+wiid+"_"+tag;
+			tags.append(tag_item);
+		}
+	}
+	//add the blank tag
+	tag_item = document.createElement("span");
+	tag_item.classList.add("tag");
+	x = document.createElement("span");
+	x.textContent = "+ ";
+	tag_item.append(x);
+	text = document.createElement("span");
+	text.classList.add("rawtext");
+	text.textContent = "    ";
+	text.setAttribute("wii", wiid);
+	text.setAttribute("contenteditable", true);
+	text.onblur = function () {
+					socket.emit('new_wi_secondary_tag', {'wiid': this.getAttribute('wii'), 'key': this.textContent});
+					this.parentElement.remove();
+				};
+	text.onclick = function () {
+					this.textContent = "";
+				};
+	tag_item.append(text);
+	tag_item.id = "world_info_secondtags_"+wiid+"_new";
+	tags.append(tag_item);
+	
+	//save the world info data into an object in javascript so we can reference it later
+	world_info_data[wiid] = data.value;
+	
 	//Now let's see if we can find this key in the body of text
-	if (['key', 'selective', 'keysecondary'].includes(name)) {
-		assign_world_info_to_action(wiid=wiid);
-	}
+	assign_world_info_to_action(wiid=wiid);
 }
 
 //--------------------------------------------UI to Server Functions----------------------------------
@@ -1084,7 +1224,121 @@ function upload_file(file_box) {
 }
 
 //--------------------------------------------General UI Functions------------------------------------
-function assign_world_info_to_action(wiid=null) {
+function create_wi_card(wiid) {
+	world_info_card = document.createElement("div");
+	world_info_card.setAttribute("draggable", true);
+	world_info_card.addEventListener('dragstart', dragStart);
+	world_info_card.addEventListener('dragenter', dragEnter)
+	world_info_card.addEventListener('dragover', dragOver);
+	world_info_card.addEventListener('dragleave', dragLeave);
+	world_info_card.addEventListener('drop', drop);
+	world_info_card.addEventListener('dragend', dragend);
+	world_info_card.classList.add("world_info_card");
+	world_info_card.id = "world_info_"+wiid;
+	world_info_card.setAttribute("wi_sort", -1);
+	world_info_card.setAttribute("wi_folder", "root");
+	//create title
+	title = document.createElement("h4");
+	title.id = "world_info_title_"+wiid;
+	world_info_card.append(title)
+	//create primary tags
+	world_info_tags = document.createElement("div");
+	world_info_tags.id = "world_info_tags_"+wiid;
+	world_info_tags.classList.add("world_info_tag_area");
+	tags_title = document.createElement("div");
+	tags_title.textContent = "Primary Keys:";
+	world_info_tags.append(tags_title);
+	world_info_card.append(world_info_tags);
+	//create secondary tags
+	world_info_tags = document.createElement("div");
+	world_info_tags.id = "world_info_secondtags_"+wiid;
+	world_info_tags.classList.add("world_info_tag_area");
+	tags_title = document.createElement("div");
+	tags_title.textContent = "Secondary Keys:";
+	world_info_tags.append(tags_title);
+	world_info_card.append(world_info_tags);
+	//create entry text
+	entry_text = document.createElement("textarea");
+	entry_text.id = "world_info_entry_text_"+wiid;
+	entry_text.classList.add("world_info_text");
+	entry_text.classList.add('fullwidth');
+	entry_text.onchange = function() {
+							socket.emit("change_wi_text", {"wiid": this.getAttribute("wiid"), 'text': this.value});
+							this.classList.add("pulse");
+						}
+	world_info_card.append(entry_text);
+
+	return world_info_card;
+}
+
+function dragStart(e) {
+    e.dataTransfer.setData('text/plain', e.target.id);
+	e.dataTransfer.dropEffect = "move";
+    setTimeout(() => {
+        e.target.classList.add('hidden');
+    }, 0);
+}
+
+function find_wi_container(e) {
+	while (true) {
+		if (e.parentElement == document) {
+			return e;
+		} else if (typeof e.id == 'undefined') {
+			e = e.parentElement;
+		} else if (e.id.replace(/[^a-z_]/gi, '') == 'world_info_') {
+			return e
+		} else {
+			e = e.parentElement;
+		}
+	}
+}
+
+function dragEnter(e) {
+    e.preventDefault();
+	element = find_wi_container(e.target);
+    element.classList.add('drag-over');
+}
+
+function dragOver(e) {
+    e.preventDefault();
+	element = find_wi_container(e.target);
+    element.classList.add('drag-over');
+}
+
+function dragLeave(e) {
+	element = find_wi_container(e.target);
+    element.classList.remove('drag-over');
+}
+
+function drop(e) {
+	e.preventDefault();
+    element = find_wi_container(e.target);
+    element.classList.remove('drag-over');
+
+    // get the draggable element
+    const id = e.dataTransfer.getData('text/plain');
+    const draggable = document.getElementById(id);
+
+    // add it before the drop target
+	element = find_wi_container(e.target);
+	element.parentElement.insertBefore(draggable, element);
+
+    // display the draggable element
+    draggable.classList.remove('hidden');
+	
+	//send the new order to the backend
+	dragged_id = draggable.id.split("_").slice(-1)[0];
+	drop_id = element.id.split("_").slice(-1)[0];
+	socket.emit("move_wi", {'dragged_id': dragged_id, 'drop_id': drop_id});
+}
+
+function dragend(e) {
+	element = find_wi_container(e.target);
+	element.classList.remove('hidden');
+	e.preventDefault();
+}
+
+function assign_world_info_to_action(wiid=null, action_item=null) {
 	//console.log(world_info_data);
 	if (wiid != null) {
 		var worldinfo_to_check = {};
@@ -1092,58 +1346,67 @@ function assign_world_info_to_action(wiid=null) {
 	} else {
 		var worldinfo_to_check = world_info_data;
 	}
-	for (action of document.getElementById("Selected Text").children) {
+	if (action_item != null) {
+		var actions = [action_item]
+	} else {
+		var actions = document.getElementById("Selected Text").children;
+	}
+	for (action of actions) {
 		//First check to see if we have a key in the text
-		var found = false;
 		var words = Array.prototype.slice.call( action.children );
 		words_text = [];
 		for (word of words) {
 			words_text.push(word.textContent);
 		}
 		for (const [key, worldinfo] of  Object.entries(worldinfo_to_check)) {
-			if ('key' in worldinfo) {
+			//remove any world info tags
+			for (tag of action.getElementsByClassName("tag_wiid_"+wiid)) {
+				tag.classList.remove("tag_wiid_"+wiid);
+				tag.removeAttribute("title");
+			}
+			
+			if (('key' in worldinfo) & ('keysecondary' in worldinfo) & ('content' in worldinfo)) {
 				for (keyword of worldinfo['key']) {
-//					if (keyword == 'Chernobyl Exclusion Zone') {
-//						console.log("checking " + keyword +" in " + action.textContent.replace(/[^0-9a-z \'\"]/gi, ''));
-//						console.log(action.textContent.replace(/[^0-9a-z \'\"]/gi, '').includes(keyword));
-//					}
 					if ((action.textContent.replace(/[^0-9a-z \'\"]/gi, '')).includes(keyword)) {
-						found = true;
-						//OK we have the phrase in our action. Let's see if we can identify the word(s) that are triggering
-						for (var i = 0; i < words.length; i++) {
-							key_words = keyword.split(" ").length;
-							var to_check = words_text.slice(i, i+key_words).join("").replace(/[^0-9a-z \'\"]/gi, '').trim();
-							if (keyword == to_check) {
-								console.log("found "+keyword);
-								for (var j = i; j < key_words+i; j++) {
-									words[j].title = worldinfo['content'];
+						//Ok we have a key match, but we need to check for secondary keys if applicable
+						if (worldinfo['keysecondary'].length > 0) {
+							if ('keysecondary' in worldinfo) {
+								for (second_key of worldinfo['keysecondary']) {
+									if (action.textContent.replace(/[^0-9a-z \'\"]/gi, '').includes(second_key)) {
+										//OK we have the phrase in our action. Let's see if we can identify the word(s) that are triggering
+										for (var i = 0; i < words.length; i++) {
+											key_words = keyword.split(" ").length;
+											var to_check = words_text.slice(i, i+key_words).join("").replace(/[^0-9a-z \'\"]/gi, '').trim();
+											if (keyword == to_check) {
+												for (var j = i; j < key_words+i; j++) {
+													words[j].title = worldinfo['content'];
+													words[j].classList.add("tag_wiid_"+wiid);
+												}
+											}
+										}
+									}
+								}
+							}
+						} else {
+							//OK we have the phrase in our action. Let's see if we can identify the word(s) that are triggering
+							for (var i = 0; i < words.length; i++) {
+								key_words = keyword.split(" ").length;
+								var to_check = words_text.slice(i, i+key_words).join("").replace(/[^0-9a-z \'\"]/gi, '').trim();
+								if (keyword == to_check) {
+									for (var j = i; j < key_words+i; j++) {
+										words[j].title = worldinfo['content'];
+										words[j].classList.add("tag_wiid_"+wiid);
+									}
 								}
 							}
 						}
+						
 					}
 				}
 			}
 		}
-//		//Check each word
-//		if (found) {
-//			for (word of action.children) {
-//				//we need to check each word to see if it's in the list
-//				
-//				for (const [key, worldinfo] of  Object.entries(worldinfo_to_check)) {
-//					//console.log(worldinfo);
-//					if ('key' in worldinfo) {
-//						if ((worldinfo['key'].includes(word.textContent.replace(/[^0-9a-z\'\"]/gi, '')))) {
-//							console.log(word.textContent+" is in wiid "+key);
-//							word.title = worldinfo['content'];
-//							//word.textContent = worldinfo['content'];
-//						}
-//					}
-//				}
-//			}
-//		}
 	}
 }
-
 
 function update_token_lengths() {
 	max_token_length = parseInt(document.getElementById("model_max_length_cur").value);

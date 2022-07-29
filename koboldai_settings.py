@@ -25,7 +25,6 @@ def process_variable_changes(socketio, classname, name, value, old_value, debug_
         if value != old_value:
             #Special Case for KoboldStoryRegister
             if isinstance(value, KoboldStoryRegister):
-                print("sending story register")
                 socketio.emit("reset_story", {}, broadcast=True, room="UI_2")
                 socketio.emit("var_changed", {"classname": "actions", "name": "Action Count", "old_value": None, "value":value.action_count}, broadcast=True, room="UI_2")
                 for i in range(len(value.actions)):
@@ -35,8 +34,7 @@ def process_variable_changes(socketio, classname, name, value, old_value, debug_
             elif isinstance(value, KoboldWorldInfo):
                 data = value.to_json()
                 for uid in data:
-                    for key in data[uid]:
-                        socketio.emit("var_changed", {"classname":"world_info", "name": "{}_{}".format(key, uid), "value": data[uid][key], "old_value": None}, broadcast=True, room="UI_2")
+                    process_variable_changes(socketio, "world_info", uid, data[uid], None)
             else:
                 #If we got a variable change from a thread other than what the app is run it, eventlet seems to block and no further messages are sent. Instead, we'll rely the message to the app and have the main thread send it
                 if not has_request_context():
@@ -329,7 +327,7 @@ class story_settings(settings):
         self.chatmode    = False
         self.chatname    = "You"
         self.adventure   = False
-        self.actionmode  = 1
+        self.actionmode  = 0
         self.dynamicscan = False
         self.recentedit  = False
         self.tokenizer = tokenizer
@@ -824,11 +822,14 @@ class KoboldStoryRegister(object):
 
 class KoboldWorldInfoEntry(object):
     #if we call info with a [x] get the world info data for x
+    local_only_variables = ['selective', 'num']
+    _required_variables = ['uid', 'sort', 'key', 'keysecondary', 'folder', 'content', 'constant']
     def __init__(self, socketio, uid, actions):
         self._socketio = socketio
         self.uid = uid
         self.folder = "root"
         self._actions = actions
+        
     
     def __getitem__(self, i):
         return getattr(self, i)
@@ -847,14 +848,27 @@ class KoboldWorldInfoEntry(object):
         setattr(self, i, data)
         
     def __setattr__(self, name, value):
-        if (name == 'key' or name == 'keysecondary') and isinstance(value, str):
-            value = [x.strip() for x in value.split(",")]
         new_variable = name not in self.__dict__
-        old_value = getattr(self, name, None)
+        if isinstance(value, list):
+            old_value = None
+        else:
+            old_value = getattr(self, name, None)
+        #if we set secondary keys we set selective
+        if name == 'keysecondary':
+            if value == "" or value == [] or value == [""] or value is None:
+                self.selective = False
+            else:
+                self.selective = True
         super().__setattr__(name, value)
         #Put variable change actions here
-        if name[0] != "_":
-            process_variable_changes(self._socketio, "world_info", "{}_{}".format(name, self.uid), value, old_value)
+        if name[0] != "_" and name not in self.local_only_variables:
+            send = True
+            for var in self._required_variables:
+                if var not in self.__dict__:
+                    send = False
+                    break
+            if send:
+                process_variable_changes(self._socketio, "world_info", self.uid, self.to_dict(), None)
 
 class KoboldWorldInfo(object):
     
@@ -869,11 +883,10 @@ class KoboldWorldInfo(object):
     
     #if we call info with a [x] get the world info data for x as a dictionary
     def __getitem__(self, i):
-        return self.world_info[i].to_dict()
+        return self.world_info[i]
         
     #allow for setting the entire world info to a dictionary of values
     def __setitem__(self, i, data):
-        print("setting {} to {}".format(i, data))
         if i not in self.world_info:
             i = self.append(data)
         for key in data:
@@ -905,23 +918,23 @@ class KoboldWorldInfo(object):
         items = [item.to_dict() for item in self.world_info if item['folder'] == folder]
         return sorted(items, key=lambda d: d['sort_order'])
     
-    def reorder(self, uid, after_uid):
-        if uid not in self.world_info or after_uid not in self.world_info:
+    def reorder(self, uid, before_uid):
+        if uid not in self.world_info or before_uid not in self.world_info:
             return
         folder = self.world_info[uid]['folder']
-        after_sort_number = self.world_info[after_uid]['sort']
-        for item in world_info:
-            if item['folder'] == folder and item['sort'] > after_sort_number:
+        before_sort_number = self.world_info[before_uid]['sort']
+        for key, item in self.world_info.items():
+            if item['folder'] == folder and item['sort'] >= before_sort_number:
                 item['sort'] = item['sort']+1
-        self.world_info[uid]['sort'] = after_sort_number+1
+        self.world_info[uid]['sort'] = before_sort_number
         
-    def set_folder(self, uid, folder, after_uid=None):
+    def set_folder(self, uid, folder, before_uid=None):
         max_sort = max([x['sort'] for x in self.world_info if x['folder'] == folder])
         old_folder = self.world_info[uid]['folder']
         self.world_info[uid]['folder'] = folder
         self.world_info[uid]['sort'] = max_sort
-        if after_uid is not None:
-            self.reorder(folder, uid, after_uid)
+        if before_uid is not None:
+            self.reorder(folder, uid, before_uid)
         self.resort(folder)
         self.resort(old_folder)
         
@@ -940,6 +953,11 @@ class KoboldWorldInfo(object):
         self.world_info[uid] = KoboldWorldInfoEntry(self._socketio, uid, self._actions)
         if 'folder' not in data:
             data['folder'] = "root"
+        if data['key'] == "":
+            data['key'] = []
+        if 'keysecondary' in data:
+            if data['keysecondary'] == "":
+                data['keysecondary'] = []
         data['sort'] = max([self.world_info[x]['sort'] for x in self.world_info if self.world_info[x]['folder'] == data['folder']]+[-1])+1
         for key in data:
             if (key == 'key' or key == 'keysecondary') and isinstance(data[key], str):

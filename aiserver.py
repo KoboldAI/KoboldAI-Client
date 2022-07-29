@@ -1192,12 +1192,14 @@ def patch_transformers_download():
     import copy, requests, tqdm, time
     class Send_to_socketio(object):
         def write(self, bar):
-            bar = bar.replace("\r", "")
-            try:
-                emit('from_server', {'cmd': 'model_load_status', 'data': bar.replace(" ", "&nbsp;")}, broadcast=True, room="UI_1")
-                eventlet.sleep(seconds=0)
-            except:
-                pass
+            bar = bar.replace("\r", "").replace("\n", "")
+            if bar != "":
+                try:
+                    print(bar, end="\r")
+                    emit('from_server', {'cmd': 'model_load_status', 'data': bar.replace(" ", "&nbsp;")}, broadcast=True, room="UI_1")
+                    eventlet.sleep(seconds=0)
+                except:
+                    pass
     def http_get(
         url: str,
         temp_file: transformers.utils.hub.BinaryIO,
@@ -6336,6 +6338,77 @@ def UI_2_load_story(file):
     print("loading {}".format(file))
     loadRequest(file)
 
+#==================================================================#
+# Event triggered when user deletes world info tag
+#==================================================================#
+@socketio.on('delete_wi_tag')
+def UI_2_delete_wi_tag(data):
+    keys = koboldai_vars.worldinfo_v2[int(data['wiid'])]['key']
+    keys = [x for x in keys if x != data['key']]
+    koboldai_vars.worldinfo_v2[int(data['wiid'])]['key'] = keys
+
+#==================================================================#
+# Event triggered when user updates world info tag
+#==================================================================#
+@socketio.on('change_wi_tag')
+def UI_2_change_wi_tag(data):
+    print("update: {}".format(data))
+    keys = koboldai_vars.worldinfo_v2[int(data['wiid'])]['key']
+    keys = [x if x != data['key'] else data['new_tag'] for x in keys]
+    koboldai_vars.worldinfo_v2[int(data['wiid'])]['key'] = keys
+
+#==================================================================#
+# Event triggered when user adds world info tag
+#==================================================================#
+@socketio.on('new_wi_tag')
+def UI_2_new_wi_tag(data):
+    print("Add: {}".format(data))
+    keys = koboldai_vars.worldinfo_v2[int(data['wiid'])]['key']
+    keys.append(data['key'])
+    koboldai_vars.worldinfo_v2[int(data['wiid'])]['key'] = keys
+
+#==================================================================#
+# Event triggered when user deletes world info secondary tag
+#==================================================================#
+@socketio.on('delete_wi_secondary_tag')
+def UI_2_delete_wi_secondary_tag(data):
+    keys = koboldai_vars.worldinfo_v2[int(data['wiid'])]['keysecondary']
+    keys = [x for x in keys if x != data['key']]
+    koboldai_vars.worldinfo_v2[int(data['wiid'])]['keysecondary'] = keys
+
+#==================================================================#
+# Event triggered when user updates world info secondary tag
+#==================================================================#
+@socketio.on('change_wi_secondary_tag')
+def UI_2_change_wi_secondary_tag(data):
+    keys = koboldai_vars.worldinfo_v2[int(data['wiid'])]['keysecondary']
+    keys = [x if x != data['key'] else data['new_tag'] for x in keys]
+    koboldai_vars.worldinfo_v2[int(data['wiid'])]['keysecondary'] = keys
+
+#==================================================================#
+# Event triggered when user adds world info tag
+#==================================================================#
+@socketio.on('new_wi_secondary_tag')
+def UI_2_new_wi_secondary_tag(data):
+    keys = koboldai_vars.worldinfo_v2[int(data['wiid'])]['keysecondary']
+    keys.append(data['key'])
+    koboldai_vars.worldinfo_v2[int(data['wiid'])]['keysecondary'] = keys
+
+#==================================================================#
+# Event triggered when user adds world info text
+#==================================================================#
+@socketio.on('change_wi_text')
+def UI_2_change_wi_text(data):
+    koboldai_vars.worldinfo_v2[int(data['wiid'])]['content'] = data['text']
+    
+#==================================================================#
+# Event triggered when user moves world info
+#==================================================================#
+@socketio.on('move_wi')
+def UI_2_move_wi(data):
+    print(data)
+    koboldai_vars.worldinfo_v2.reorder(int(data['dragged_id']), int(data['drop_id']))
+    
 
 #==================================================================#
 # Event triggered to rely a message

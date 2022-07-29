@@ -33,6 +33,10 @@
 	--disabled_button_border_color: #686c68;
 	--menu_button_level_1_bg_color: #337ab7;
 	--menu_button_level_2_bg_color: #285070;
+	--wi_card_border_color: white;
+	--wi_card_bg_color: #262626;
+	--wi_card_tag_bg_color: #404040;
+	--wi_tag_color: #337ab7;
 	
 }
 
@@ -213,6 +217,7 @@
 	background: var(--setting_text);
 	border: 1px solid white;
 	text-decoration: none;
+	cursor: help;
 }
 
 .helpicon .helptext {
@@ -388,6 +393,35 @@ td.server_vars {
 }
 
 
+.WI_Folder {
+	/*color: black;*/
+}
+
+.WI_Folder table {
+	margin: 5px;
+}
+
+.world_info_card {
+	width: 100%;
+	border: 2px outset var(--wi_card_border_color);
+	background-color: var(--wi_card_bg_color)
+}
+
+.world_info_tag_area {
+	border: 2px inset var(--wi_card_border_color);
+	background-color: var(--wi_card_tag_bg_color);
+	padding-bottom : 5px;
+}
+
+.tag {
+	background-color: var(--wi_tag_color);
+	border: solid;
+	border-color: var(--wi_card_tag_bg_color);
+}
+
+.tag .delete_icon {
+	cursor: pointer;
+}
 
 
 /* ---------------------------- OVERALL PAGE CONFIG ------------------------------*/
@@ -900,4 +934,8 @@ button.disabled {
     transform: scale(0.95);
     box-shadow: 0 0 0 0 rgba(255, 255, 255, 0);
   }
+}
+
+.drag-over {
+    border-top: dashed 3px red;
 }
