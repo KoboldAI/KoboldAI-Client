@@ -2,6 +2,7 @@ import os, re, time, threading, json, pickle, base64, copy, tqdm, datetime
 from io import BytesIO
 from flask import has_request_context
 import socketio as socketio_client
+from collections import OrderedDict
 
 rely_clients = {}
 serverstarted = False
@@ -32,9 +33,7 @@ def process_variable_changes(socketio, classname, name, value, old_value, debug_
                     socketio.emit("var_changed", {"classname": "actions", "name": "Options", "old_value": None, "value": {"id": i, "options": value.actions[i]['Options']}}, include_self=True, broadcast=True, room="UI_2")
                     socketio.emit("var_changed", {"classname": "actions", "name": "Selected Text Length", "old_value": None, "value": {"id": i, 'length': value.actions[i]['Selected Text Length']}}, include_self=True, broadcast=True, room="UI_2")
             elif isinstance(value, KoboldWorldInfo):
-                data = value.to_json()
-                for uid in data:
-                    process_variable_changes(socketio, "world_info", uid, data[uid], None)
+                value.send_to_ui()
             else:
                 #If we got a variable change from a thread other than what the app is run it, eventlet seems to block and no further messages are sent. Instead, we'll rely the message to the app and have the main thread send it
                 if not has_request_context():
@@ -116,6 +115,7 @@ class koboldai_vars(object):
             #    setattr(self._story_settings[self._sessions['story']], name, value)
             elif name == 'tokenizer':
                 setattr(self._story_settings['default'].actions, name, value)
+                setattr(self._story_settings['default'].worldinfo_v2, name, value)
                 setattr(self._story_settings['default'], name, value)
             else:
                 setattr(self._story_settings['default'], name, value)
@@ -288,6 +288,7 @@ class story_settings(settings):
     settings_name = "story"
     def __init__(self, socketio, tokenizer=None):
         self.socketio = socketio
+        self.tokenizer = tokenizer
         self.story_name  = None   # Title of the story
         self.lastact     = ""     # The last action received from the user
         self.submission  = ""     # Same as above, but after applying input formatting
@@ -307,7 +308,7 @@ class story_settings(settings):
                               # Selected Text: (text the user had selected. None when this is a newly generated action)
                               # Alternative Generated Text: {Text, Pinned, Previous Selection, Edited}
                               # 
-        self.worldinfo_v2 = KoboldWorldInfo(socketio, self.actions)
+        self.worldinfo_v2 = KoboldWorldInfo(socketio, self.tokenizer)
         self.worldinfo   = []     # List of World Info key/value objects
         self.worldinfo_i = []     # List of World Info key/value objects sans uninitialized entries
         self.worldinfo_u = {}     # Dictionary of World Info UID - key/value pairs
@@ -330,7 +331,6 @@ class story_settings(settings):
         self.actionmode  = 0
         self.dynamicscan = False
         self.recentedit  = False
-        self.tokenizer = tokenizer
         self.notes       = ""    #Notes for the story. Does nothing but save
         
     def reset(self):
@@ -338,55 +338,50 @@ class story_settings(settings):
         
     def __setattr__(self, name, value):
         new_variable = name not in self.__dict__
-        if name == 'worldinfo_v2' and not new_variable:
-            super().__setattr__('worldinfo', KoboldWorldInfo(self.socketio, self.actions))
-            for i in range(len(value)):
-                self.worldinfo[i] = value[i]
-        else:
-            old_value = getattr(self, name, None)
-            super().__setattr__(name, value)
-            #Put variable change actions here
-            if name not in self.local_only_variables and name[0] != "_" and not new_variable:
-                process_variable_changes(self.socketio, self.__class__.__name__.replace("_settings", ""), name, value, old_value)
-            #We want to automatically set gamesaved to false if something happens to the actions list (pins, redos, generations, text, etc)
-            #To do that we need to give the actions list a copy of this data so it can set the gamesaved variable as needed
-            if not new_variable and old_value != value:
-                if name == 'actions':
-                    self.actions.story_settings = self
-                #Recalc token length
-                if name in ['authornote', 'memory' ,'prompt', 'tokenizer'] and self.tokenizer is not None:
-                    if name == 'tokenizer' and not new_variable:
-                        self.memory_length = len(self.tokenizer.encode(self.memory))
-                        self.prompt_length = len(self.tokenizer.encode(self.prompt))
-                        self.authornote_length = len(self.tokenizer.encode(self.authornotetemplate.replace("<|>", self.authornote)))
-                    elif name == 'authornote' or name == 'authornotetemplate':
-                        self.authornote_length = len(self.tokenizer.encode(self.authornotetemplate.replace("<|>", self.authornote)))
-                    elif name == 'memory':
-                        self.memory_length = len(self.tokenizer.encode(self.memory))
-                    elif name == 'prompt':
-                        self.prompt_length = len(self.tokenizer.encode(self.prompt))
-                
-                #Because we have seperate variables for action types, this syncs them
-                if name == 'actionmode':
-                    if value == 0:
-                        self.adventure = False
-                        self.chatmode = False
-                    elif value == 1:
-                        self.adventure = True
-                        self.chatmode = False
-                    elif value == 2:
-                        self.adventure = False
-                        self.chatmode = True
-                elif name == 'adventure' and value == True:
-                    self.chatmode = False
-                    self.actionmode = 1
-                elif name == 'adventure' and value == False and self.chatmode == False:
-                    self.actionmode = 0
-                elif name == 'chatmode' and value == True:
+        old_value = getattr(self, name, None)
+        super().__setattr__(name, value)
+        #Put variable change actions here
+        if name not in self.local_only_variables and name[0] != "_" and not new_variable:
+            process_variable_changes(self.socketio, self.__class__.__name__.replace("_settings", ""), name, value, old_value)
+        #We want to automatically set gamesaved to false if something happens to the actions list (pins, redos, generations, text, etc)
+        #To do that we need to give the actions list a copy of this data so it can set the gamesaved variable as needed
+        if not new_variable and old_value != value:
+            if name == 'actions':
+                self.actions.story_settings = self
+            #Recalc token length
+            if name in ['authornote', 'memory' ,'prompt', 'tokenizer'] and self.tokenizer is not None:
+                if name == 'tokenizer' and not new_variable:
+                    self.memory_length = len(self.tokenizer.encode(self.memory))
+                    self.prompt_length = len(self.tokenizer.encode(self.prompt))
+                    self.authornote_length = len(self.tokenizer.encode(self.authornotetemplate.replace("<|>", self.authornote)))
+                elif name == 'authornote' or name == 'authornotetemplate':
+                    self.authornote_length = len(self.tokenizer.encode(self.authornotetemplate.replace("<|>", self.authornote)))
+                elif name == 'memory':
+                    self.memory_length = len(self.tokenizer.encode(self.memory))
+                elif name == 'prompt':
+                    self.prompt_length = len(self.tokenizer.encode(self.prompt))
+            
+            #Because we have seperate variables for action types, this syncs them
+            if name == 'actionmode':
+                if value == 0:
                     self.adventure = False
-                    self.actionmode = 2
-                elif name == 'chatmode' and value == False and self.adventure == False:
-                    self.actionmode = 0
+                    self.chatmode = False
+                elif value == 1:
+                    self.adventure = True
+                    self.chatmode = False
+                elif value == 2:
+                    self.adventure = False
+                    self.chatmode = True
+            elif name == 'adventure' and value == True:
+                self.chatmode = False
+                self.actionmode = 1
+            elif name == 'adventure' and value == False and self.chatmode == False:
+                self.actionmode = 0
+            elif name == 'chatmode' and value == True:
+                self.adventure = False
+                self.actionmode = 2
+            elif name == 'chatmode' and value == False and self.adventure == False:
+                self.actionmode = 0
                 
 class user_settings(settings):
     local_only_variables = ['socketio']
@@ -574,16 +569,6 @@ class KoboldStoryRegister(object):
         self.set_game_saved()
         self.recalc_token_length()
             
-    def get_action(self, action_id):
-        if action_id not in actions:
-            return None
-        if "Selected Text" not in self.actions[action_id]:
-            return None
-        return self.actions[action_id]["Selected Text"]
-        
-    def get_action_list(self):
-        return [x['Selected Text'] for ignore, x in sorted(self.actions.items()) if x['Selected Text'] is not None]
-    
     def append(self, text):
         self.clear_unused_options()
         self.action_count+=1
@@ -639,14 +624,6 @@ class KoboldStoryRegister(object):
             new_options = self.actions[pointer]["Options"]
         process_variable_changes(self.socketio, "actions", "Options", {"id": pointer, "options": new_options}, {"id": pointer, "options": old_options})
         self.set_game_saved()
-    
-    def toggle_pin(self, action_step, option_number):
-        if action_step in self.actions:
-            if option_number < len(self.actions[action_step]['Options']):
-                if self.actions[action_step]["Options"]['Pinned']:
-                    self.unset_pin(action_step, option_number)
-                else:                
-                    self.set_pin(action_step, option_number)
     
     def set_pin(self, action_step, option_number):
         if action_step in self.actions:
@@ -721,38 +698,9 @@ class KoboldStoryRegister(object):
         else:
             return None
             
-    def get_first_key(self):
-        if self.action_count >= 0:
-            text = ""
-            i = 0
-            while text == "" and i <= self.action_count:
-                if "selected Text" in self.actions[i]:
-                    text = self.actions[i]["Selected Text"]
-                i+=1
-            return text
-
     def get_last_key(self):
         return self.action_count
-    
-    def get_last_item(self):
-        if self.action_count >= 0:
-            return self.actions[self.action_count]
-     
-    def increment_id(self):
-        self.action_count += 1
-        
-    def get_next_id(self):
-        return self.action_count+1
-        
-    def set_next_id(self, x: int):
-        self.action_count = x
-        
-    def get_options(self, action_id):
-        if action_id in self.actions:
-            return self.actions[action_id]["Options"]
-        else:
-            return []
-    
+            
     def get_current_options(self):
         if self.action_count+1 in self.actions:
             return self.actions[self.action_count+1]["Options"]
@@ -771,24 +719,6 @@ class KoboldStoryRegister(object):
             else:
                 return []
     
-    def get_pins(self, action_id):
-        if action_id in self.actions:
-            return [x for x in self.actions[action_id]["Options"] if x["Pinned"]]
-        else:
-            return []
-            
-    def get_prev_selections(self, action_id):
-        if action_id in self.actions:
-            return [x for x in self.actions[action_id]["Options"] if x["Previous Selection"]]
-        else:
-            return []
-    
-    def get_edits(self, action_id):
-        if action_id in self.actions:
-            return [x for x in self.actions[action_id]["Options"] if x["Edited"]]
-        else:
-            return []
-
     def get_redo_options(self):
         if self.action_count+1 in self.actions:
             return [x for x in self.actions[self.action_count+1]['Options'] if x['Pinned'] or x['Previous Selection']]
@@ -804,9 +734,14 @@ class KoboldStoryRegister(object):
             for key in self.actions:
                 self.actions[key]['Selected Text Length'] = len(self.tokenizer.encode(self.actions[key]['Selected Text']))
                 process_variable_changes(self.socketio, "actions", 'Selected Text Length', {"id": key, 'length': self.actions[key]['Selected Text Length']}, None)
+            for uid in self.world_info:
+                self.world_info[uid]['token_length'] = len(self.tokenizer.encode(self.world_info[uid]['content']))
         else:
             for key in self.actions:
                 self.actions[key]['Selected Text Length'] = None
+            for uid in self.world_info:
+                self.world_info[uid]['token_length'] = None
+    
     
     def __setattr__(self, name, value):
         new_variable = name not in self.__dict__
@@ -817,8 +752,6 @@ class KoboldStoryRegister(object):
         elif name == 'tokenizer' and not new_variable:
             #We set the tokenizer, recalculate all of the item lengths
             self.recalc_token_length()
-
-    
 
 class KoboldWorldInfoEntry(object):
     #if we call info with a [x] get the world info data for x
@@ -872,111 +805,127 @@ class KoboldWorldInfoEntry(object):
 
 class KoboldWorldInfo(object):
     
-    def __init__(self, socketio, actions):
+    def __init__(self, socketio, tokenizer=None):
+        self.socketio = socketio
+        self.tokenizer = tokenizer
         self.world_info = {}
-        self._socketio = socketio
-        self.maxuid = 0
-        self._actions = actions
-    
+        self.world_info_folder = OrderedDict()
+        
     def reset(self):
-        self.__init__(self._socketio, self._actions)
+        self.__init__(self.socketio, self.tokenizer)
     
-    #if we call info with a [x] get the world info data for x as a dictionary
-    def __getitem__(self, i):
-        return self.world_info[i]
-        
-    #allow for setting the entire world info to a dictionary of values
-    def __setitem__(self, i, data):
-        if i not in self.world_info:
-            i = self.append(data)
-        for key in data:
-            if (key == 'key' or key == 'keysecondary') and isinstance(value, str):
-                self.world_info[i][key] = [x.strip() for x in data[key].split(",")]
-            else:
-                self.world_info[i][key] = data[key]
-            
-    def __len__(self):
-        return len(self.world_info)
-            
-    def __iter__(self):
-        self._itter = -1
-        return self
-        
-    def __next__(self):
-        self._itter += 1
-        if self._itter < len(self.world_info):
-            return {x: self.world_info[self._itter].__dict__[x] for x in self.world_info[self._itter].__dict__ if x[0] != "_"}
+    def recalc_token_length(self):
+        if self.tokenizer is not None:
+            for uid in self.world_info:
+                self.world_info[uid]['token_length'] = len(self.tokenizer.encode(self.world_info[uid]['content']))
         else:
-            raise StopIteration
-        
-    def get_folders(self, ui_version=2):
-        if ui_version == 1:
-            return {i: {'collapsed': True, 'name': x} for i, x in enumerate(set([self.world_info[x]['folder'] for x in self.world_info]))}
-        return list(set([self.world_info[x]['folder'] for x in self.world_info]))
-        
-    def get_folder_items(self, folder):
-        items = [item.to_dict() for item in self.world_info if item['folder'] == folder]
-        return sorted(items, key=lambda d: d['sort_order'])
+            for uid in self.world_info:
+                self.world_info[uid]['token_length'] = None
     
-    def reorder(self, uid, before_uid):
-        if uid not in self.world_info or before_uid not in self.world_info:
-            return
-        folder = self.world_info[uid]['folder']
-        before_sort_number = self.world_info[before_uid]['sort']
-        for key, item in self.world_info.items():
-            if item['folder'] == folder and item['sort'] >= before_sort_number:
-                item['sort'] = item['sort']+1
-        self.world_info[uid]['sort'] = before_sort_number
+    def add_folder(self, folder):
+        if folder in self.world_info_folder:
+            i=0
+            while "{} {}".format(folder, i) in self.world_info_folder:
+                i+=1
+            folder = "{} {}".format(folder, i)
+        self.world_info_folder[folder] = []
         
-    def set_folder(self, uid, folder, before_uid=None):
-        max_sort = max([self.world_info[x]['sort'] for x in self.world_info if self.world_info[x]['folder'] == folder]+[-1])
-        old_folder = self.world_info[uid]['folder']
-        self.world_info[uid]['folder'] = folder
-        self.world_info[uid]['sort'] = max_sort+1
-        if before_uid is not None:
-            self.reorder(uid, before_uid)
-        self.resort(folder)
-        self.resort(old_folder)
-        
-    def rename_folder(self, old_folder, new_folder):
-        while new_folder in self.get_folders():
-            new_folder = "{}-1".format(new_folder)
-        for x in self.world_info:
-            if self.world_info[x]['folder'] == old_folder:
-                self.world_info[x]['folder'] = new_folder
-            
-        
-    def resort(self, folder):
-        for i in range(max([self.world_info[x]['sort'] for x in self.world_info if self.world_info[x]['folder'] == folder])+1):
-            if i > len([self.world_info[x]['sort'] for x in self.world_info if self.world_info[x]['folder'] == folder]):
-                break
-            elif i not in [self.world_info[x]['sort'] for x in self.world_info if self.world_info[x]['folder'] == folder]:
-                for item in world_info:
-                    if item['folder'] == folder and item['sort'] > i:
-                        item['sort'] = item['sort']-1
-    
-    def append(self, data):
-        uid = self.maxuid+1
-        self.maxuid += 1
-        self.world_info[uid] = KoboldWorldInfoEntry(self._socketio, uid, self._actions)
-        if 'folder' not in data:
-            data['folder'] = "root"
-        if data['key'] == "":
-            data['key'] = []
-        if 'keysecondary' in data:
-            if data['keysecondary'] == "":
-                data['keysecondary'] = []
-        data['sort'] = max([self.world_info[x]['sort'] for x in self.world_info if self.world_info[x]['folder'] == data['folder']]+[-1])+1
-        for key in data:
-            if (key == 'key' or key == 'keysecondary') and isinstance(data[key], str):
-                self.world_info[uid][key] = [x.strip() for x in data[key].split(",")]
+    def add_item_to_folder(self, uid, folder, at=None):
+        if uid in self.world_info:
+            #fiirst we need to remove the item from whatever folder it's in
+            for temp in self.world_info_folder:
+                if uid in self.world_info_folder[temp]:
+                    self.world_info_folder[temp].remove(uid)
+            #Now we add it to the folder list
+            if folder not in self.world_info_folder:
+                self.world_info_folder[folder] = []
+            if at is None:
+                self.world_info_folder[folder].append(uid)
             else:
-                self.world_info[uid][key] = data[key]
-        return uid
+                self.world_info_folder[folder].insert(at, uid)
+                
+    def add_item(self, title, key, keysecondary, folder, constant, content, comment):
+        if len(self.world_info) == 0:
+            uid = 0
+        else:
+            uid = max(self.world_info)+1
+        if self.tokenizer is not None:
+            token_length = len(self.tokenizer.encode(content))
+        else:
+            token_length = None
+        if folder is None:
+            folder = "root"
+        
+        if isinstance(key, str):
+            key = [x.strip() for x in key.split(",")]
+            if key == [""]:
+                key = []
+        if isinstance(keysecondary, str):
+            keysecondary = [x.strip() for x in keysecondary.split(",")]
+            if keysecondary == [""]:
+                keysecondary = []
+        
+        try:
+            self.world_info[uid] = {"title": title,
+                                    "key": key,
+                                    "keysecondary": keysecondary,
+                                    "folder": folder,
+                                    "constant": constant,
+                                    "content": content,
+                                    "comment": comment,
+                                    "token_length": token_length
+                                    }
+        except:
+            print("Error:")
+            print(key)
+            print(title)
+            raise
+        if folder not in self.world_info_folder:
+            self.world_info_folder[folder] = []
+        self.world_info_folder[folder].append(uid)
+        
+        self.socketio.emit("world_info_entry", self.world_info[uid])
+        
+    def edit_item(self, uid, title, key, keysecondary, folder, constant, content, comment, at=None):
+        old_folder = self.world_info[uid]
+        #move the world info entry if the folder changed or if there is a new order requested
+        if old_folder != folder or at is not None:
+            self.add_item_to_world_info_folder(uid, folder, at=at)
+        if self.tokenizer is not None:
+            token_length = len(self.tokenizer.encode(content))
+        else:
+            token_length = None
+        if folder is None:
+            folder = "root"
+            
+        self.world_info[uid] = {"title": title,
+                                "key": key,
+                                "keysecondary": keysecondary,
+                                "folder": folder,
+                                "constant": constant,
+                                "content": content,
+                                "comment": comment,
+                                "token_length": token_length
+                                }
+                                
+        self.socketio.emit("world_info_entry", self.world_info[uid])
+    
+    def send_to_ui(self):
+        for uid in self.world_info:
+            self.socketio.emit("world_info_entry", self.world_info[uid])
     
     def to_json(self):
-        return {x: self.world_info[x].to_dict() for x in self.world_info}
+        return {
+                "folders": {x: self.world_info_folder[x] for x in self.world_info_folder},
+                "entries": self.world_info
+               }
     
+    def __setattr__(self, name, value):
+        new_variable = name not in self.__dict__
+        super().__setattr__(name, value)
+        if name == 'tokenizer' and not new_variable:
+            #We set the tokenizer, recalculate all of the item lengths
+            self.recalc_token_length()
     
 
 badwordsids_default = [[13460], [6880], [50256], [42496], [4613], [17414], [22039], [16410], [27], [29], [38430], [37922], [15913], [24618], [28725], [58], [47175], [36937], [26700], [12878], [16471], [37981], [5218], [29795], [13412], [45160], [3693], [49778], [4211], [20598], [36475], [33409], [44167], [32406], [29847], [29342], [42669], [685], [25787], [7359], [3784], [5320], [33994], [33490], [34516], [43734], [17635], [24293], [9959], [23785], [21737], [28401], [18161], [26358], [32509], [1279], [38155], [18189], [26894], [6927], [14610], [23834], [11037], [14631], [26933], [46904], [22330], [25915], [47934], [38214], [1875], [14692], [41832], [13163], [25970], [29565], [44926], [19841], [37250], [49029], [9609], [44438], [16791], [17816], [30109], [41888], [47527], [42924], [23984], [49074], [33717], [31161], [49082], [30138], [31175], [12240], [14804], [7131], [26076], [33250], [3556], [38381], [36338], [32756], [46581], [17912], [49146]] # Tokenized array of badwords used to prevent AI artifacting

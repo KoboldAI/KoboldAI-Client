@@ -17,6 +17,7 @@ socket.on('selected_model_info', function(data){selected_model_info(data);});
 socket.on('oai_engines', function(data){oai_engines(data);});
 socket.on('buildload', function(data){buildload(data);});
 socket.on('error_popup', function(data){error_popup(data);});
+socket.on("world_info_entry", function(data){world_info_entry(data);});
 //socket.onAny(function(event_name, data) {console.log({"event": event_name, "class": data.classname, "data": data});});
 
 var backend_vars = {};
@@ -1221,6 +1222,10 @@ function world_info(data) {
 	
 	//Now let's see if we can find this key in the body of text
 	assign_world_info_to_action(wiid=wiid);
+}
+
+function world_info_entry(data) {
+	console.log(data);
 }
 
 //--------------------------------------------UI to Server Functions----------------------------------
