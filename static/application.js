@@ -2351,7 +2351,12 @@ $(document).ready(function(){
 			var element = game_text.children('#n' + index);
 			if(element.length) {
 				unbindGametext();
-				if((element[0].nextSibling === null || element[0].nextSibling.nodeType !== 1 || element[0].nextSibling.tagName !== "CHUNK") && element[0].previousSibling !== null && element[0].previousSibling.tagName === "CHUNK") {
+				if(
+					(element[0].nextSibling === null || element[0].nextSibling.nodeType !== 1 || element[0].nextSibling.tagName !== "CHUNK")
+					&& element[0].previousSibling !== null
+					&& element[0].previousSibling.tagName === "CHUNK"
+					&& !$("#setoutputstreaming")[0].checked
+				) {
 					element[0].previousSibling.appendChild(document.createElement("br"));
 				}
 				element.remove();  // Remove the chunk
