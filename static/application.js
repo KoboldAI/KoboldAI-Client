@@ -78,6 +78,7 @@ var rs_accept;
 var rs_close;
 var seqselmenu;
 var seqselcontents;
+var stream_preview;
 
 var storyname = null;
 var memorymode = false;
@@ -103,6 +104,7 @@ var gamestate = "";
 var gamesaved = true;
 var modelname = null;
 var model = "";
+var ignore_stream = false;
 
 // This is true iff [we're in macOS and the browser is Safari] or [we're in iOS]
 var using_webkit_patch = true;
@@ -888,6 +890,7 @@ function formatChunkInnerText(chunk) {
 }
 
 function dosubmit(disallow_abort) {
+	ignore_stream = false;
 	submit_start = Date.now();
 	var txt = input_text.val().replace(/\u00a0/g, " ");
 	if((disallow_abort || gamestate !== "wait") && !memorymode && !gamestarted && ((!adventure || !action_mode) && txt.trim().length == 0)) {
@@ -902,6 +905,7 @@ function dosubmit(disallow_abort) {
 }
 
 function _dosubmit() {
+	ignore_stream = false;
 	var txt = submit_throttle.txt;
 	var disallow_abort = submit_throttle.disallow_abort;
 	submit_throttle = null;
@@ -2082,6 +2086,15 @@ function unbindGametext() {
 	gametext_bound = false;
 }
 
+function endStream() {
+	// Clear stream, the real text is about to be displayed.
+	ignore_stream = true;
+	if (stream_preview) {
+		stream_preview.remove();
+		stream_preview = null;
+	}
+}
+
 function update_gpu_layers() {
 	var gpu_layers
 	gpu_layers = 0;
@@ -2258,6 +2271,21 @@ $(document).ready(function(){
 				active_element.focus();
 			})();
 			$("body").addClass("connected");
+		} else if (msg.cmd == "streamtoken") {
+			// Sometimes the stream_token messages will come in too late, after
+			// we have recieved the full text. This leads to some stray tokens
+			// appearing after the output. To combat this, we only allow tokens
+			// to be displayed after requesting and before recieving text.
+			if (ignore_stream) return;
+			if (!$("#setoutputstreaming")[0].checked) return;
+
+			if (!stream_preview) {
+				stream_preview = document.createElement("span");
+				game_text.append(stream_preview);
+			}
+
+			stream_preview.innerText += msg.data.join("");
+			scrollToBottom();
 		} else if(msg.cmd == "updatescreen") {
 			var _gamestarted = gamestarted;
 			gamestarted = msg.gamestarted;
@@ -2333,6 +2361,7 @@ $(document).ready(function(){
 		} else if(msg.cmd == "setgamestate") {
 			// Enable or Disable buttons
 			if(msg.data == "ready") {
+				endStream();
 				enableSendBtn();
 				enableButtons([button_actmem, button_actwi, button_actback, button_actfwd, button_actretry]);
 				hideWaitAnimation();
@@ -2519,6 +2548,9 @@ $(document).ready(function(){
 		} else if(msg.cmd == "updatesingleline") {
 			// Update toggle state
 			$("#singleline").prop('checked', msg.data).change();
+		} else if(msg.cmd == "updateoutputstreaming") {
+			// Update toggle state
+			$("#setoutputstreaming").prop('checked', msg.data).change();
 		} else if(msg.cmd == "allowtoggle") {
 			// Allow toggle change states to propagate
 			allowtoggle = msg.data;
@@ -2914,6 +2946,7 @@ $(document).ready(function(){
 	});
 	
 	button_actretry.on("click", function(ev) {
+		ignore_stream = false;
 		hideMessage();
 		socket.send({'cmd': 'retry', 'chatname': chatmode ? chat_name.val() : undefined, 'data': ''});
 		hidegenseqs();
@@ -3160,6 +3193,7 @@ $(document).ready(function(){
 	});
 	
 	rs_accept.on("click", function(ev) {
+		ignore_stream = false;
 		hideMessage();
 		socket.send({'cmd': 'rndgame', 'memory': $("#rngmemory").val(), 'data': topic.val()});
 		hideRandomStoryPopup();
