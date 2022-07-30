@@ -404,7 +404,8 @@ td.server_vars {
 .world_info_card {
 	width: 100%;
 	border: 2px outset var(--wi_card_border_color);
-	background-color: var(--wi_card_bg_color)
+	background-color: var(--wi_card_bg_color);
+	margin-bottom: 10px;
 }
 
 .world_info_tag_area {
@@ -421,6 +422,14 @@ td.server_vars {
 
 .tag .delete_icon {
 	cursor: pointer;
+}
+
+.oi[folder] {
+	margin-right: 5px;
+}
+
+.oi[data-glyph="folder"] {
+	margin-right: 5px;
 }
 
 
@@ -939,3 +948,4 @@ button.disabled {
 .drag-over {
     border-top: dashed 3px red;
 }
+

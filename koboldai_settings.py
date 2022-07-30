@@ -911,8 +911,8 @@ class KoboldWorldInfo(object):
         
     def get_folders(self, ui_version=2):
         if ui_version == 1:
-            return {i: {'collapsed': True, 'name': x} for i, x in enumerate(set([x['folder'] for x in self.world_info]))}
-        return list(set([x['folder'] for x in self.world_info]))
+            return {i: {'collapsed': True, 'name': x} for i, x in enumerate(set([self.world_info[x]['folder'] for x in self.world_info]))}
+        return list(set([self.world_info[x]['folder'] for x in self.world_info]))
         
     def get_folder_items(self, folder):
         items = [item.to_dict() for item in self.world_info if item['folder'] == folder]
@@ -929,20 +929,28 @@ class KoboldWorldInfo(object):
         self.world_info[uid]['sort'] = before_sort_number
         
     def set_folder(self, uid, folder, before_uid=None):
-        max_sort = max([x['sort'] for x in self.world_info if x['folder'] == folder])
+        max_sort = max([self.world_info[x]['sort'] for x in self.world_info if self.world_info[x]['folder'] == folder]+[-1])
         old_folder = self.world_info[uid]['folder']
         self.world_info[uid]['folder'] = folder
-        self.world_info[uid]['sort'] = max_sort
+        self.world_info[uid]['sort'] = max_sort+1
         if before_uid is not None:
-            self.reorder(folder, uid, before_uid)
+            self.reorder(uid, before_uid)
         self.resort(folder)
         self.resort(old_folder)
         
+    def rename_folder(self, old_folder, new_folder):
+        while new_folder in self.get_folders():
+            new_folder = "{}-1".format(new_folder)
+        for x in self.world_info:
+            if self.world_info[x]['folder'] == old_folder:
+                self.world_info[x]['folder'] = new_folder
+            
+        
     def resort(self, folder):
-        for i in range(max([x['sort'] for x in self.world_info if x['folder'] == folder])+1):
-            if i > len([x['sort'] for x in self.world_info if x['folder'] == folder]):
+        for i in range(max([self.world_info[x]['sort'] for x in self.world_info if self.world_info[x]['folder'] == folder])+1):
+            if i > len([self.world_info[x]['sort'] for x in self.world_info if self.world_info[x]['folder'] == folder]):
                 break
-            elif i not in [x['sort'] for x in self.world_info if x['folder'] == folder]:
+            elif i not in [self.world_info[x]['sort'] for x in self.world_info if self.world_info[x]['folder'] == folder]:
                 for item in world_info:
                     if item['folder'] == folder and item['sort'] > i:
                         item['sort'] = item['sort']-1
