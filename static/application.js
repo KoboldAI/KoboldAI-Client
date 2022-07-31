@@ -2335,7 +2335,11 @@ $(document).ready(function(){
 			} else if (!empty_chunks.has(index.toString())) {
 				// Append at the end
 				unbindGametext();
-				var lc = game_text[0].lastChild;
+
+				// game_text can contain things other than chunks (stream
+				// preview), so we use querySelector to get the last chunk.
+				var lc = game_text[0].querySelector("chunk:last-of-type");
+
 				if(lc.tagName === "CHUNK" && lc.lastChild !== null && lc.lastChild.tagName === "BR") {
 					lc.removeChild(lc.lastChild);
 				}
@@ -2355,7 +2359,6 @@ $(document).ready(function(){
 					(element[0].nextSibling === null || element[0].nextSibling.nodeType !== 1 || element[0].nextSibling.tagName !== "CHUNK")
 					&& element[0].previousSibling !== null
 					&& element[0].previousSibling.tagName === "CHUNK"
-					&& !$("#setoutputstreaming")[0].checked
 				) {
 					element[0].previousSibling.appendChild(document.createElement("br"));
 				}
