@@ -3275,6 +3275,32 @@ $(document).ready(function(){
 			return true;
 		}
 	});
+
+	// Shortcuts
+	$(window).keydown(function (ev) {
+		// Only ctrl prefixed (for now)
+		if (!ev.ctrlKey) return;
+
+		let handled = true;
+		switch (ev.key) {
+			// Ctrl+Z - Back
+			case "z":
+				button_actback.click();
+				break;
+			// Ctrl+Y - Forward
+			case "y":
+				button_actfwd.click();
+				break;
+			// Ctrl+E - Retry
+			case "e":
+				button_actretry.click();
+				break;
+			default:
+				handled = false;
+		}
+
+		if (handled) ev.preventDefault();
+	});
 });
 
 
