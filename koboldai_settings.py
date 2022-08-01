@@ -799,7 +799,8 @@ class KoboldWorldInfo(object):
                         self.world_info_folder[folder].insert(i, uid)
                         break
                 
-        print({x: self.world_info_folder[x] for x in self.world_info_folder})
+            #Finally, adjust the folder tag in the element
+            self.world_info[uid]['folder'] = folder
         self.socketio.emit("world_info_folder", {x: self.world_info_folder[x] for x in self.world_info_folder}, broadcast=True, room="UI_2")
                 
     def add_item(self, title, key, keysecondary, folder, constant, content, comment):
@@ -847,10 +848,10 @@ class KoboldWorldInfo(object):
         self.socketio.emit("world_info_entry", self.world_info[uid], broadcast=True, room="UI_2")
         
     def edit_item(self, uid, title, key, keysecondary, folder, constant, content, comment, before=None):
-        old_folder = self.world_info[uid]
+        old_folder = self.world_info[uid]['folder']
         #move the world info entry if the folder changed or if there is a new order requested
         if old_folder != folder or before is not None:
-            self.add_item_to_world_info_folder(uid, folder, before=before)
+            self.add_item_to_folder(uid, folder, before=before)
         if self.tokenizer is not None:
             token_length = len(self.tokenizer.encode(content))
         else:
@@ -899,7 +900,6 @@ class KoboldWorldInfo(object):
         self.socketio.emit("world_info_folder", {x: self.world_info_folder[x] for x in self.world_info_folder}, broadcast=True, room="UI_2")
     
     def reorder(self, uid, before):
-        print("reorder")
         self.add_item_to_folder(uid, self.world_info[before]['folder'], before=before)
     
     def send_to_ui(self):

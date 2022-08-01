@@ -1243,6 +1243,16 @@ function world_info_entry(data) {
 	title = world_info_card.querySelector('#world_info_title_')
 	title.id = "world_info_title_"+data.uid;
 	title.textContent = data.title;
+	title.setAttribute("uid", data.uid);
+	title.setAttribute("original_text", data.title);
+	title.setAttribute("contenteditable", true);
+	title.onblur = function () {
+				if (this.textContent != this.getAttribute("original_text")) {
+					world_info_data[this.getAttribute('uid')]['title'] = this.textContent;
+					send_world_info(this.getAttribute('uid'));
+					this.classList.add("pulse");
+				}
+			}
 	world_info_card.addEventListener('dragstart', dragStart);
 	title.addEventListener('dragenter', dragEnter)
 	title.addEventListener('dragover', dragOver);
@@ -1259,10 +1269,22 @@ function world_info_entry(data) {
 	add_secondary_tags(secondarytags, data);
 	content = world_info_card.querySelector('#world_info_entry_text_');
 	content.id = "world_info_entry_text_"+data.uid;
+	content.setAttribute("uid", data.uid);
 	content.value = data.content;
+	content.onchange = function () {
+							world_info_data[this.getAttribute('uid')]['content'] = this.textContent;
+							send_world_info(this.getAttribute('uid'));
+							this.classList.add("pulse");
+						}
 	comment = world_info_card.querySelector('#world_info_comment_');
 	comment.id = "world_info_comment_"+data.uid;
+	content.setAttribute("uid", data.uid);
 	comment.value = data.comment;
+	comment.onchange = function () {
+							world_info_data[this.getAttribute('uid')]['comment'] = this.textContent;
+							send_world_info(this.getAttribute('uid'));
+							this.classList.add("pulse");
+						}
 	if (!(document.getElementById("world_info_folder_"+data.folder))) {
 		folder = document.createElement("div");
 		console.log("Didn't find folder " + data.folder);
@@ -1438,7 +1460,24 @@ function upload_file(file_box) {
 	}
 }
 
+function send_world_info(uid) {
+	console.log("Upload World Info "+uid);
+	console.log(world_info_data[uid]);
+	socket.emit("edit_world_info", world_info_data[uid]);
+}
+
 //--------------------------------------------General UI Functions------------------------------------
+function removeA(arr) {
+    var what, a = arguments, L = a.length, ax;
+    while (L > 1 && arr.length) {
+        what = a[--L];
+        while ((ax= arr.indexOf(what)) !== -1) {
+            arr.splice(ax, 1);
+        }
+    }
+    return arr;
+}
+
 function add_tags(tags, data) {
 	for (tag of data.key) {
 		tag_item = document.createElement("span");
@@ -1449,7 +1488,9 @@ function add_tags(tags, data) {
 		x.setAttribute("uid", data.uid);
 		x.setAttribute("tag", tag);
 		x.onclick = function () {
-						socket.emit('delete_wi_tag', {'uid': this.getAttribute('data.uid'), 'key': this.getAttribute('tag')});
+						removeA(world_info_data[this.getAttribute('uid')]['key'], this.getAttribute('tag'));
+						send_world_info(this.getAttribute('uid'));
+						this.classList.add("pulse");
 					};
 		text = document.createElement("span");
 		text.textContent = tag;
@@ -1457,7 +1498,12 @@ function add_tags(tags, data) {
 		text.setAttribute("uid", data.uid);
 		text.setAttribute("tag", tag);
 		text.onblur = function () {
-						socket.emit('change_wi_tag', {'uid': this.getAttribute('uid'), 'key': this.getAttribute('tag'), 'new_tag': this.textContent});
+						for (var i = 0; i < world_info_data[this.getAttribute('uid')]['key'].length; i++) {
+							if (world_info_data[this.getAttribute('uid')]['key'][i] == this.getAttribute("tag")) {
+								world_info_data[this.getAttribute('uid')]['key'][i] = this.textContent;
+							}
+						}
+						send_world_info(this.getAttribute('uid'));
 						this.classList.add("pulse");
 					};
 		tag_item.append(x);
@@ -1477,8 +1523,9 @@ function add_tags(tags, data) {
 	text.setAttribute("uid", data.uid);
 	text.setAttribute("contenteditable", true);
 	text.onblur = function () {
-					socket.emit('new_wi_tag', {'uid': this.getAttribute('uid'), 'key': this.textContent});
-					this.parentElement.remove();
+					world_info_data[this.getAttribute('uid')]['key'].push(this.textContent);
+					send_world_info(this.getAttribute('uid'));
+					this.classList.add("pulse");
 				};
 	text.onclick = function () {
 					this.textContent = "";
@@ -1498,7 +1545,9 @@ function add_secondary_tags(tags, data) {
 		x.setAttribute("uid", data.uid);
 		x.setAttribute("tag", tag);
 		x.onclick = function () {
-						socket.emit('delete_wi_secondary_tag', {'uid': this.getAttribute('uid'), 'key': this.getAttribute('tag')});
+						removeA(world_info_data[this.getAttribute('uid')]['keysecondary'], this.getAttribute('tag'));
+						send_world_info(this.getAttribute('uid'));
+						this.classList.add("pulse");
 					};
 		text = document.createElement("span");
 		text.textContent = tag;
@@ -1506,7 +1555,12 @@ function add_secondary_tags(tags, data) {
 		text.setAttribute("uid", data.uid);
 		text.setAttribute("tag", tag);
 		text.onblur = function () {
-						socket.emit('change_wi_secondary_tag', {'uid': this.getAttribute('uid'), 'key': this.getAttribute('tag'), 'new_tag': this.textContent});
+						for (var i = 0; i < world_info_data[this.getAttribute('uid')]['keysecondary'].length; i++) {
+							if (world_info_data[this.getAttribute('uid')]['keysecondary'][i] == this.getAttribute("tag")) {
+								world_info_data[this.getAttribute('uid')]['keysecondary'][i] = this.textContent;
+							}
+						}
+						send_world_info(this.getAttribute('uid'));
 						this.classList.add("pulse");
 					};
 		tag_item.append(x);
@@ -1526,8 +1580,9 @@ function add_secondary_tags(tags, data) {
 	text.setAttribute("uid", data.uid);
 	text.setAttribute("contenteditable", true);
 	text.onblur = function () {
-					socket.emit('new_wi_secondary_tag', {'uid': this.getAttribute('uid'), 'key': this.textContent});
-					this.parentElement.remove();
+					world_info_data[this.getAttribute('uid')]['keysecondary'].push(this.textContent);
+					send_world_info(this.getAttribute('uid'));
+					this.classList.add("pulse");
 				};
 	text.onclick = function () {
 					this.textContent = "";

@@ -6360,6 +6360,19 @@ def UI_2_Rename_World_Info_Folder(data):
     print(data)
     koboldai_vars.worldinfo_v2.rename_folder(data['old_folder'], data['new_folder'])
 
+#==================================================================#
+# Event triggered when user edits world info item
+#==================================================================#
+@socketio.on('edit_world_info')
+def UI_2_edit_world_info(data):
+    print("Rename_World_Info_Folder")
+    print(data)
+    koboldai_vars.worldinfo_v2.edit_item(data['uid'], data['title'], data['key'], 
+                                         data['keysecondary'], data['folder'], 
+                                         data['constant'], data['content'], 
+                                         data['comment'])
+
+
 
 #==================================================================#
 # Event triggered to rely a message
