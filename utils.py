@@ -21,7 +21,7 @@ try:
 except ImportError:
     HAS_ACCELERATE = False
 
-vars = None
+koboldai_vars = None
 num_shards: Optional[int] = None
 current_shard = 0
 from_pretrained_model_name = ""
@@ -93,8 +93,8 @@ def replaceblanklines(txt):
 #==================================================================#
 # 
 #==================================================================#
-def removespecialchars(txt, vars=None):
-    if vars is None or koboldai_vars.actionmode == 0:
+def removespecialchars(txt, koboldai_vars=None):
+    if koboldai_vars is None or koboldai_vars.actionmode == 0:
         txt = re.sub(r"[#/@%<>{}+=~|\^]", "", txt)
     else:
         txt = re.sub(r"[#/@%{}+=~|\^]", "", txt)
@@ -103,7 +103,10 @@ def removespecialchars(txt, vars=None):
 #==================================================================#
 # If the next action follows a sentence closure, add a space
 #==================================================================#
-def addsentencespacing(txt, vars):
+def addsentencespacing(txt, koboldai_vars):
+    # Don't add sentence spacing if submission is empty or starts with whitespace
+    if(len(txt) == 0 or len(txt) != len(txt.lstrip())):
+        return txt
     # Get last character of last action
     if(len(koboldai_vars.actions) > 0):
         if(len(koboldai_vars.actions[koboldai_vars.actions.get_last_key()]) > 0):
@@ -116,11 +119,11 @@ def addsentencespacing(txt, vars):
     else:
         action = koboldai_vars.prompt
         lastchar = action[-1] if len(action) else ""
-    if(lastchar == "." or lastchar == "!" or lastchar == "?" or lastchar == "," or lastchar == ";" or lastchar == ":"):
+    if(lastchar != " "):
         txt = " " + txt
     return txt
 	
-def singlelineprocessing(txt, vars):
+def singlelineprocessing(txt, koboldai_vars):
     txt = koboldai_vars.regex_sl.sub('', txt)
     if(len(koboldai_vars.actions) > 0):
         if(len(koboldai_vars.actions[koboldai_vars.actions.get_last_key()]) > 0):
@@ -178,7 +181,7 @@ class Send_to_socketio(object):
             emit('from_server', {'cmd': 'model_load_status', 'data': bar.replace(" ", "&nbsp;")}, broadcast=True, room="UI_1")
         except:
             pass
-
+            
 def aria2_hook(pretrained_model_name_or_path: str, force_download=False, cache_dir=None, proxies=None, resume_download=False, local_files_only=False, use_auth_token=None, user_agent=None, revision=None, mirror=None, **kwargs):
     import transformers
     import transformers.modeling_utils
@@ -207,7 +210,7 @@ def aria2_hook(pretrained_model_name_or_path: str, force_download=False, cache_d
     def is_cached(url):
         try:
             transformers.file_utils.get_from_cache(url, cache_dir=cache_dir, local_files_only=True)
-        except FileNotFoundError:
+        except (FileNotFoundError, transformers.file_utils.EntryNotFoundError):
             return False
         return True
     while True:  # Try to get the huggingface.co URL of the model's pytorch_model.bin or pytorch_model.bin.index.json file

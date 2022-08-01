@@ -406,7 +406,7 @@ td.server_vars {
 	width: 100%;
 	border: 2px outset var(--wi_card_border_color);
 	background-color: var(--wi_card_bg_color);
-	margin-bottom: 10px;
+	margin-bottom: 20px;
 }
 
 .world_info_card.world_info_included {
