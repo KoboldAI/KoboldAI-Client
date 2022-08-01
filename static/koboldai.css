@@ -34,6 +34,7 @@
 	--menu_button_level_1_bg_color: #337ab7;
 	--menu_button_level_2_bg_color: #285070;
 	--wi_card_border_color: white;
+	--wi_card_border_color_to_ai: green;
 	--wi_card_bg_color: #262626;
 	--wi_card_tag_bg_color: #404040;
 	--wi_tag_color: #337ab7;
@@ -408,6 +409,10 @@ td.server_vars {
 	margin-bottom: 10px;
 }
 
+.world_info_card.world_info_included {
+	border: 2px outset var(--wi_card_border_color_to_ai);
+}
+	
 .world_info_tag_area {
 	border: 2px inset var(--wi_card_border_color);
 	background-color: var(--wi_card_tag_bg_color);

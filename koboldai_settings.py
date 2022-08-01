@@ -732,13 +732,9 @@ class KoboldStoryRegister(object):
             for key in self.actions:
                 self.actions[key]['Selected Text Length'] = len(self.tokenizer.encode(self.actions[key]['Selected Text']))
                 process_variable_changes(self.socketio, "actions", 'Selected Text Length', {"id": key, 'length': self.actions[key]['Selected Text Length']}, None)
-            for uid in self.world_info:
-                self.world_info[uid]['token_length'] = len(self.tokenizer.encode(self.world_info[uid]['content']))
         else:
             for key in self.actions:
                 self.actions[key]['Selected Text Length'] = None
-            for uid in self.world_info:
-                self.world_info[uid]['token_length'] = None
     
     
     def __setattr__(self, name, value):
@@ -833,7 +829,8 @@ class KoboldWorldInfo(object):
                                     "constant": constant,
                                     "content": content,
                                     "comment": comment,
-                                    "token_length": token_length
+                                    "token_length": token_length,
+                                    "selective": len(keysecondary) > 0
                                     }
         except:
             print("Error:")
@@ -867,7 +864,8 @@ class KoboldWorldInfo(object):
                                 "constant": constant,
                                 "content": content,
                                 "comment": comment,
-                                "token_length": token_length
+                                "token_length": token_length,
+                                "selective": len(keysecondary) > 0
                                 }
                                 
         self.socketio.emit("world_info_folder", {x: self.world_info_folder[x] for x in self.world_info_folder}, broadcast=True, room="UI_2")

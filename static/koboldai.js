@@ -57,6 +57,7 @@ function reset_story() {
 	}
 	world_info_data = {};
 	world_info_folder_data = {};
+	document.getElementById("story_prompt").setAttribute("world_info_uids", "");
 }
 
 function fix_text(val) {
@@ -169,10 +170,11 @@ function create_options(data) {
 	
 	
 	//make sure our last updated chunk is in view
-	document.getElementById('Selected Text Chunk '+current_chunk_number).scrollIntoView();
+	option_chunk.scrollIntoView();
 }
 
 function do_story_text_updates(data) {
+	console.log(data);
 	story_area = document.getElementById('Selected Text');
 	current_chunk_number = data.value.id;
 	if (document.getElementById('Selected Text Chunk '+data.value.id)) {
@@ -194,6 +196,7 @@ function do_story_text_updates(data) {
 			
 		});
 		item.original_text = data.value.text;
+		item.setAttribute("world_info_uids", "");
 		item.classList.remove("pulse")
 		item.scrollIntoView();
 		assign_world_info_to_action(action_item = item);
@@ -366,9 +369,6 @@ function var_changed(data) {
 		do_presets(data);
 	} else if ((data.classname == "model") && (data.name == "selected_preset")) {
 		selected_preset(data);
-	//Special Case for World Info
-	} else if (data.classname == 'world_info') {
-		world_info(data);
 	} else if ((data.classname == 'story') && (data.name == 'prompt')) {
 		do_prompt(data);
 	//Basic Data Syncing
@@ -992,241 +992,6 @@ function buildload(data) {
 	console.log(data);
 }
 
-function world_info(data) {
-	var world_info_area = document.getElementById("story_menu_wi");
-	var wiid = data.value.uid;
-	var folder = data.value.folder;
-	
-	//first check to see if we have the world info id already
-	if (!(document.getElementById("world_info_"+wiid))) {
-		world_info_card = create_wi_card(wiid);
-	} else {
-		world_info_card = document.getElementById("world_info_"+wiid);
-	}
-	
-	//create folder if needed
-	if (folder == null) {
-		folder = 'root';
-	}
-	if (!(document.getElementById("world_info_folder_"+folder))) {
-		var folder_item = document.createElement("span");
-		folder_item.id = "world_info_folder_"+folder;
-		folder_item.classList.add("WI_Folder");
-		title = document.createElement("h2");
-		title.addEventListener('dragenter', dragEnter)
-		title.addEventListener('dragover', dragOver);
-		title.addEventListener('dragleave', dragLeave);
-		title.addEventListener('drop', drop);
-		collapse_icon = document.createElement("span");
-		collapse_icon.id = "world_info_folder_collapse_"+folder;
-		collapse_icon.classList.add("oi");
-		collapse_icon.setAttribute("data-glyph", "chevron-bottom");
-		collapse_icon.setAttribute("folder", folder);
-		collapse_icon.onclick = function () {
-							hide_wi_folder(this.getAttribute("folder"));
-							document.getElementById('world_info_folder_expand_'+this.getAttribute("folder")).classList.remove('hidden');
-							this.classList.add("hidden");
-						};
-		title.append(collapse_icon);
-		expand_icon = document.createElement("span");
-		expand_icon.id = "world_info_folder_expand_"+folder;
-		expand_icon.classList.add("oi");
-		expand_icon.setAttribute("data-glyph", "chevron-right");
-		expand_icon.setAttribute("folder", folder);
-		expand_icon.onclick = function () {
-							unhide_wi_folder(this.getAttribute("folder"));
-							document.getElementById('world_info_folder_collapse_'+this.getAttribute("folder")).classList.remove('hidden');
-							this.classList.add("hidden");
-						};
-		expand_icon.classList.add("hidden");
-		title.append(expand_icon);
-		icon = document.createElement("span");
-		icon.classList.add("oi");
-		icon.setAttribute("data-glyph", "folder");
-		title.append(icon);
-		title_text = document.createElement("span");
-		title_text.setAttribute("contenteditable", true);
-		title_text.setAttribute("original_text", folder);
-		title_text.textContent = folder;
-		title_text.onblur = function () {
-			if (this.textContent != this.getAttribute("original_text")) {
-				//Need to check if the new folder name is already in use
-				folder_name = this.textContent;
-				while (folder_name in Array(document.getElementById("story_menu_wi").children).filter(folder => folder.id.replace("world_info_folder_", ""))) {
-					folder_name = folder_name + " 1";
-				}
-				this.parentElement.parentElement.id = "world_info_folder_" + folder_name;
-				socket.emit("Rename_World_Info_Folder", {"old_folder": this.getAttribute("original_text"), "new_folder": folder_name});
-				this.setAttribute("original_text", folder_name);
-			}
-		}
-		title.append(title_text);
-		folder_item.append(title);
-		world_info_area.append(folder_item);
-	} else {
-		folder_item = document.getElementById("world_info_folder_"+folder);
-	}
-	world_info_card.setAttribute("folder", folder);
-	
-	
-	
-	
-	//we'll need to move the item to the appropriate section (folder and location in folder)
-	cards = folder_item.children
-	for (var i = 0; i < cards.length; i++) {
-		if ((cards[i].tagName == 'DIV') & (cards[i].getAttribute("wi_sort") > data.value.sort)) {
-			//check to see if we've exceeded our sort #
-			folder_item.insertBefore(world_info_card, cards[i]);
-			break;
-		} else if (cards.length-1 == i) {
-			folder_item.append(world_info_card);
-		}
-	}
-	
-	//set sort
-	world_info_card.setAttribute("wi_sort", data.value.sort);
-	
-	//set title
-	title = document.getElementById("world_info_title_"+wiid);
-	if ('title' in data.value) {
-		title.textContent = data.value.title;
-	} else if ((data.value.comment != "") & (data.value.comment != null)) {
-		title.textContent = data.value;
-	}
-	
-	//set content
-	entry_text = document.getElementById("world_info_entry_text_"+wiid);
-	entry_text.value = data.value.content;
-	entry_text.setAttribute("wiid", wiid);
-	entry_text.classList.remove("pulse");
-	
-	//setup keys
-	//use the first key as the title if there isn't one
-	title = document.getElementById("world_info_title_"+wiid);
-	if (title.textContent == "") {
-		title.textContent = data.value.key[0];
-	}
-	tags = document.getElementById("world_info_tags_"+wiid);
-	while (tags.firstChild) {
-		tags.removeChild(tags.firstChild);
-	} 
-	tags_title = document.createElement("div");
-	tags_title.textContent = "Primary Keys:";
-	tags.append(tags_title);
-	for (tag of data.value.key) {
-		if (!(document.getElementById("world_info_tags_"+wiid+"_"+tag))) {
-			tag_item = document.createElement("span");
-			tag_item.classList.add("tag");
-			x = document.createElement("span");
-			x.textContent = "x ";
-			x.classList.add("delete_icon");
-			x.setAttribute("wii", wiid);
-			x.setAttribute("tag", tag);
-			x.onclick = function () {
-							socket.emit('delete_wi_tag', {'wiid': this.getAttribute('wii'), 'key': this.getAttribute('tag')});
-						};
-			text = document.createElement("span");
-			text.textContent = tag;
-			text.setAttribute("contenteditable", true);
-			text.setAttribute("wii", wiid);
-			text.setAttribute("tag", tag);
-			text.onblur = function () {
-							socket.emit('change_wi_tag', {'wiid': this.getAttribute('wii'), 'key': this.getAttribute('tag'), 'new_tag': this.textContent});
-							this.classList.add("pulse");
-						};
-			tag_item.append(x);
-			tag_item.append(text);
-			tag_item.id = "world_info_tags_"+wiid+"_"+tag;
-			tags.append(tag_item);
-		}
-	}
-	//add the blank tag
-	tag_item = document.createElement("span");
-	tag_item.classList.add("tag");
-	x = document.createElement("span");
-	x.textContent = "+ ";
-	tag_item.append(x);
-	text = document.createElement("span");
-	text.classList.add("rawtext");
-	text.textContent = "    ";
-	text.setAttribute("wii", wiid);
-	text.setAttribute("contenteditable", true);
-	text.onblur = function () {
-					socket.emit('new_wi_tag', {'wiid': this.getAttribute('wii'), 'key': this.textContent});
-					this.parentElement.remove();
-				};
-	text.onclick = function () {
-					this.textContent = "";
-				};
-	tag_item.append(text);
-	tag_item.id = "world_info_secondtags_"+wiid+"_new";
-	tags.append(tag_item);
-	
-	
-	//secondary key
-	tags = document.getElementById("world_info_secondtags_"+wiid);
-	while (tags.firstChild) {
-		tags.removeChild(tags.firstChild);
-	} 
-	tags_title = document.createElement("div");
-	tags_title.textContent = "Secondary Keys:";
-	tags.append(tags_title);
-	for (tag of data.value.keysecondary) {
-		if (!(document.getElementById("world_info_secondtags_"+wiid+"_"+tag))) {
-			tag_item = document.createElement("span");
-			tag_item.classList.add("tag");
-			x = document.createElement("span");
-			x.textContent = "x ";
-			x.classList.add("delete_icon");
-			x.setAttribute("wii", wiid);
-			x.setAttribute("tag", tag);
-			x.onclick = function () {
-							socket.emit('delete_wi_secondary_tag', {'wiid': this.getAttribute('wii'), 'key': this.getAttribute('tag')});
-						};
-			text = document.createElement("span");
-			text.textContent = tag;
-			text.setAttribute("contenteditable", true);
-			text.setAttribute("wii", wiid);
-			text.setAttribute("tag", tag);
-			text.onblur = function () {
-							socket.emit('change_wi_secondary_tag', {'wiid': this.getAttribute('wii'), 'key': this.getAttribute('tag'), 'new_tag': this.textContent});
-							this.classList.add("pulse");
-						};
-			tag_item.append(x);
-			tag_item.append(text);
-			tag_item.id = "world_info_secondtags_"+wiid+"_"+tag;
-			tags.append(tag_item);
-		}
-	}
-	//add the blank tag
-	tag_item = document.createElement("span");
-	tag_item.classList.add("tag");
-	x = document.createElement("span");
-	x.textContent = "+ ";
-	tag_item.append(x);
-	text = document.createElement("span");
-	text.classList.add("rawtext");
-	text.textContent = "    ";
-	text.setAttribute("wii", wiid);
-	text.setAttribute("contenteditable", true);
-	text.onblur = function () {
-					socket.emit('new_wi_secondary_tag', {'wiid': this.getAttribute('wii'), 'key': this.textContent});
-					this.parentElement.remove();
-				};
-	text.onclick = function () {
-					this.textContent = "";
-				};
-	tag_item.append(text);
-	tag_item.id = "world_info_secondtags_"+wiid+"_new";
-	tags.append(tag_item);
-	
-	//save the world info data into an object in javascript so we can reference it later
-	world_info_data[wiid] = data.value;
-	
-	//Now let's see if we can find this key in the body of text
-	assign_world_info_to_action(wiid=wiid);
-}
-
 function world_info_entry(data) {
 	//console.log(data);
 	
@@ -1285,6 +1050,23 @@ function world_info_entry(data) {
 							send_world_info(this.getAttribute('uid'));
 							this.classList.add("pulse");
 						}
+	constant_area = world_info_card.querySelector('#world_info_toggle_area_');
+	constant_area.id = "world_info_toggle_area_"+data.uid;
+	constant = document.createElement("input");
+	constant.id = "world_info_constant_"+data.uid;
+	constant.setAttribute("type", "checkbox");
+	constant.setAttribute("uid", data.uid);
+	constant.checked = data.constant;
+	constant.setAttribute("data-size", "mini");
+	constant.setAttribute("data-onstyle", "success"); 
+	constant.setAttribute("data-toggle", "toggle");
+	constant.onchange = function () {
+							world_info_data[this.getAttribute('uid')]['constant'] = this.checked;
+							send_world_info(this.getAttribute('uid'));
+							this.classList.add("pulse");
+						}
+	constant_area.append(constant);
+						
 	if (!(document.getElementById("world_info_folder_"+data.folder))) {
 		folder = document.createElement("div");
 		console.log("Didn't find folder " + data.folder);
@@ -1313,7 +1095,13 @@ function world_info_entry(data) {
 		folder.append(world_info_card);
 	}
 	
+	//hide keys if constant set
+	if (data.constant) {
+		document.getElementById("world_info_tags_"+data.uid).classList.add("hidden");
+		document.getElementById("world_info_secondtags_"+data.uid).classList.add("hidden");
+	}
 	
+	$('#world_info_constant_'+data.uid).bootstrapToggle();
 	assign_world_info_to_action(uid=data.uid);
 	
 }
@@ -1766,7 +1554,7 @@ function dragend(e) {
 }
 
 function assign_world_info_to_action(uid=null, action_item=null) {
-	if (world_info_data.length != undefined) {
+	if (Object.keys(world_info_data).length > 0) {
 		if (uid != null) {
 			var worldinfo_to_check = {};
 			worldinfo_to_check[uid] = world_info_data[uid]
@@ -1790,6 +1578,9 @@ function assign_world_info_to_action(uid=null, action_item=null) {
 				for (tag of action.getElementsByClassName("tag_uid_"+uid)) {
 					tag.classList.remove("tag_uid_"+uid);
 					tag.removeAttribute("title");
+					current_ids = tag.parentElement.getAttribute("world_info_uids").split(",");
+					removeA(current_ids, uid);
+					tag.parentElement.setAttribute("world_info_uids", current_ids.join(","));
 				}
 				for (keyword of worldinfo['key']) {
 					if ((action.textContent.replace(/[^0-9a-z \'\"]/gi, '')).includes(keyword)) {
@@ -1797,6 +1588,12 @@ function assign_world_info_to_action(uid=null, action_item=null) {
 						if (worldinfo['keysecondary'].length > 0) {
 							for (second_key of worldinfo['keysecondary']) {
 								if (action.textContent.replace(/[^0-9a-z \'\"]/gi, '').includes(second_key)) {
+									//First let's assign our world info id to the action so we know to count the tokens for the world info
+									current_ids = action.getAttribute("world_info_uids")?action.getAttribute("world_info_uids").split(','):[];
+									if (!(current_ids.includes(uid))) {
+										current_ids.push(uid);
+									}
+									action.setAttribute("world_info_uids", current_ids.join(","));
 									//OK we have the phrase in our action. Let's see if we can identify the word(s) that are triggering
 									for (var i = 0; i < words.length; i++) {
 										key_words = keyword.split(" ").length;
@@ -1811,6 +1608,13 @@ function assign_world_info_to_action(uid=null, action_item=null) {
 								}
 							}
 						} else {
+							//First let's assign our world info id to the action so we know to count the tokens for the world info
+							console.log("matched");
+							current_ids = action.getAttribute("world_info_uids")?action.getAttribute("world_info_uids").split(','):[];
+							if (!(current_ids.includes(uid))) {
+								current_ids.push(uid);
+							}
+							action.setAttribute("world_info_uids", current_ids.join(","));
 							//OK we have the phrase in our action. Let's see if we can identify the word(s) that are triggering
 							for (var i = 0; i < words.length; i++) {
 								key_words = keyword.split(" ").length;
@@ -1833,10 +1637,22 @@ function assign_world_info_to_action(uid=null, action_item=null) {
 
 function update_token_lengths() {
 	max_token_length = parseInt(document.getElementById("model_max_length_cur").value);
+	included_world_info = [];
+	for (item of document.getElementsByClassName("world_info_included")) {
+		item.classList.remove("world_info_included");
+	}
 	if ((document.getElementById("memory").getAttribute("story_memory_length") == null) || (document.getElementById("memory").getAttribute("story_memory_length") == "")) {
 		memory_length = 0;
 	} else {
 		memory_length = parseInt(document.getElementById("memory").getAttribute("story_memory_length"));
+	}
+	for (uid in world_info_data) {
+		if (world_info_data[uid].constant) {
+			if (world_info_data[uid].token_length != null) {
+				memory_length += world_info_data[uid].token_length;
+				included_world_info.push(uid);
+			}
+		}
 	}
 	if ((document.getElementById("authors_notes").getAttribute("story_authornote_length") == null) || (document.getElementById("authors_notes").getAttribute("story_authornote_length") == "")) {
 		authors_notes = 0;
@@ -1844,7 +1660,7 @@ function update_token_lengths() {
 		authors_notes = parseInt(document.getElementById("authors_notes").getAttribute("story_authornote_length"));
 	}
 	if ((document.getElementById("story_prompt").getAttribute("story_prompt_length") == null) || (document.getElementById("story_prompt").getAttribute("story_prompt_length") == "")) {
-		prompt_length = 0;
+		prompt_length = 999999999999;
 	} else {
 		prompt_length = parseInt(document.getElementById("story_prompt").getAttribute("story_prompt_length"));
 	}
@@ -1855,6 +1671,14 @@ function update_token_lengths() {
 	if (always_prompt) {
 		token_length += prompt_length
 		document.getElementById("story_prompt").classList.add("within_max_length");
+		uids = document.getElementById("story_prompt").getAttribute("world_info_uids")
+		for (uid of uids?uids.split(','):[]) {
+			if (!(included_world_info.includes(uid))) {
+				token_length += world_info_data[uid].token_length;
+				included_world_info.push(uid);
+				document.getElementById("world_info_"+uid).classList.add("world_info_included");
+			}
+		}
 	} else {
 		document.getElementById("story_prompt").classList.remove("within_max_length");
 	}
@@ -1871,10 +1695,22 @@ function update_token_lengths() {
 	}
 	
 	for (var chunk=max_chunk;chunk >= 0;chunk--) {
-		current_chunk_length = parseInt(document.getElementById("Selected Text Chunk "+chunk).getAttribute("token_length"));
+		if (document.getElementById("Selected Text Chunk "+chunk).getAttribute("token_length") == null) {
+			current_chunk_length = 999999999999;
+		} else {
+			current_chunk_length = parseInt(document.getElementById("Selected Text Chunk "+chunk).getAttribute("token_length"));
+		}
 		if (token_length+current_chunk_length < max_token_length) {
 			token_length += current_chunk_length;
 			document.getElementById("Selected Text Chunk "+chunk).classList.add("within_max_length");
+			uids = document.getElementById("Selected Text Chunk "+chunk).getAttribute("world_info_uids")
+			for (uid of uids?uids.split(','):[]) {
+				if (!(included_world_info.includes(uid))) {
+					token_length += world_info_data[uid].token_length;
+					included_world_info.push(uid);
+					document.getElementById("world_info_"+uid).classList.add("world_info_included");
+				}
+			}
 		} else {
 			document.getElementById("Selected Text Chunk "+chunk).classList.remove("within_max_length");
 		}
@@ -1883,6 +1719,14 @@ function update_token_lengths() {
 	if ((!always_prompt) && (token_length+prompt_length < max_token_length)) {
 		token_length += prompt_length
 		document.getElementById("story_prompt").classList.add("within_max_length");
+		uids = document.getElementById("story_prompt").getAttribute("world_info_uids")
+		for (uid of uids?uids.split(','):[]) {
+			if (!(included_world_info.includes(uid))) {
+				token_length += world_info_data[uid].token_length;
+				included_world_info.push(uid);
+				document.getElementById("world_info_"+uid).classList.add("world_info_included");
+			}
+		}
 	} else if (!always_prompt) {
 		document.getElementById("story_prompt").classList.remove("within_max_length");
 	}
