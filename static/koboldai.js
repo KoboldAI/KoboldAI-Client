@@ -1243,6 +1243,7 @@ function world_info_entry(data) {
 	title = world_info_card.querySelector('#world_info_title_')
 	title.id = "world_info_title_"+data.uid;
 	title.textContent = data.title;
+	world_info_card.addEventListener('dragstart', dragStart);
 	title.addEventListener('dragenter', dragEnter)
 	title.addEventListener('dragover', dragOver);
 	title.addEventListener('dragleave', dragLeave);
@@ -1268,7 +1269,28 @@ function world_info_entry(data) {
 	} else {
 		folder = document.getElementById("world_info_folder_"+data.folder);
 	}
-	folder.append(world_info_card);
+	//Let's figure out the order to insert this card
+	var found = false;
+	var moved = false;
+	for (var i = 0; i < world_info_folder_data[data.folder].length; i++) {
+		//first find where our current card is in the list
+		if (!(found)) {
+			if (world_info_folder_data[data.folder][i] == data.uid) {
+				found = true;
+			}
+		} else {
+			//We have more folders, so let's see if any of them exist so we can insert before that
+			if (document.getElementById("world_info_"+world_info_folder_data[data.folder][i])) {
+				moved = true;
+				folder.insertBefore(world_info_card, document.getElementById("world_info_"+world_info_folder_data[data.folder][i]));
+				break;
+			}
+		}
+	}
+	if (!(found) | !(moved)) {
+		folder.append(world_info_card);
+	}
+	
 	
 	assign_world_info_to_action(uid=data.uid);
 	
@@ -1352,6 +1374,7 @@ function world_info_folder(data) {
 		for (uid of world_info_folder_data[folder_name]) {
 			if (document.getElementById("world_info_"+uid)) {
 				item = document.getElementById("world_info_"+uid);
+				item.classList.remove("pulse");
 				if (item.parentElement != folder) {
 					item.classList.remove("hidden");
 					folder.append(item);
@@ -1654,6 +1677,7 @@ function drop(e) {
     // get the draggable element
     const id = e.dataTransfer.getData('text/plain');
     const draggable = document.getElementById(id);
+	console.log(id);
 	dragged_id = draggable.id.split("_").slice(-1)[0];
 	drop_id = element.id.split("_").slice(-1)[0];
 
@@ -1662,11 +1686,12 @@ function drop(e) {
 	
 	//check if we're droping on a folder, and then append it to the folder
 	if (element.children[0].tagName == "H2") {
-		element.append(draggable);
+		//element.append(draggable);
 		socket.emit("wi_set_folder", {'dragged_id': dragged_id, 'folder': drop_id});
 	} else {
 		//insert the draggable element before the drop element
 		element.parentElement.insertBefore(draggable, element);
+		draggable.classList.add("pulse");
 
 		// display the draggable element
 		draggable.classList.remove('hidden');

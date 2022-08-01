@@ -782,7 +782,7 @@ class KoboldWorldInfo(object):
         
         self.socketio.emit("world_info_folder", {x: self.world_info_folder[x] for x in self.world_info_folder}, broadcast=True, room="UI_2")
         
-    def add_item_to_folder(self, uid, folder, at=None):
+    def add_item_to_folder(self, uid, folder, before=None):
         if uid in self.world_info:
             #fiirst we need to remove the item from whatever folder it's in
             for temp in self.world_info_folder:
@@ -791,11 +791,15 @@ class KoboldWorldInfo(object):
             #Now we add it to the folder list
             if folder not in self.world_info_folder:
                 self.world_info_folder[folder] = []
-            if at is None:
+            if before is None:
                 self.world_info_folder[folder].append(uid)
             else:
-                self.world_info_folder[folder].insert(at, uid)
+                for i in range(len(self.world_info_folder[folder])):
+                    if self.world_info_folder[folder][i] == before:
+                        self.world_info_folder[folder].insert(i, uid)
+                        break
                 
+        print({x: self.world_info_folder[x] for x in self.world_info_folder})
         self.socketio.emit("world_info_folder", {x: self.world_info_folder[x] for x in self.world_info_folder}, broadcast=True, room="UI_2")
                 
     def add_item(self, title, key, keysecondary, folder, constant, content, comment):
@@ -842,11 +846,11 @@ class KoboldWorldInfo(object):
         self.socketio.emit("world_info_folder", {x: self.world_info_folder[x] for x in self.world_info_folder}, broadcast=True, room="UI_2")
         self.socketio.emit("world_info_entry", self.world_info[uid], broadcast=True, room="UI_2")
         
-    def edit_item(self, uid, title, key, keysecondary, folder, constant, content, comment, at=None):
+    def edit_item(self, uid, title, key, keysecondary, folder, constant, content, comment, before=None):
         old_folder = self.world_info[uid]
         #move the world info entry if the folder changed or if there is a new order requested
-        if old_folder != folder or at is not None:
-            self.add_item_to_world_info_folder(uid, folder, at=at)
+        if old_folder != folder or before is not None:
+            self.add_item_to_world_info_folder(uid, folder, before=before)
         if self.tokenizer is not None:
             token_length = len(self.tokenizer.encode(content))
         else:
@@ -893,7 +897,10 @@ class KoboldWorldInfo(object):
                 self.world_info[uid]['folder'] = folder
         
         self.socketio.emit("world_info_folder", {x: self.world_info_folder[x] for x in self.world_info_folder}, broadcast=True, room="UI_2")
-        
+    
+    def reorder(self, uid, before):
+        print("reorder")
+        self.add_item_to_folder(uid, self.world_info[before]['folder'], before=before)
     
     def send_to_ui(self):
         self.socketio.emit("world_info_folder", {x: self.world_info_folder[x] for x in self.world_info_folder}, broadcast=True, room="UI_2")

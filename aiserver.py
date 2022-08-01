@@ -6341,7 +6341,7 @@ def UI_2_move_wi(data):
     if data['folder'] is None:
         koboldai_vars.worldinfo_v2.reorder(int(data['dragged_id']), int(data['drop_id']))
     else:
-        koboldai_vars.worldinfo_v2.set_folder(int(data['dragged_id']), data['folder'], before_uid=int(data['drop_id']))
+        koboldai_vars.worldinfo_v2.add_item_to_folder(int(data['dragged_id']), data['folder'], before=int(data['drop_id']))
 
 #==================================================================#
 # Event triggered when user moves world info
@@ -6349,7 +6349,7 @@ def UI_2_move_wi(data):
 @socketio.on('wi_set_folder')
 def UI_2_wi_set_folder(data):
     print(data)
-    koboldai_vars.worldinfo_v2.set_folder(int(data['dragged_id']), data['folder'])
+    koboldai_vars.worldinfo_v2.add_item_to_folder(int(data['dragged_id']), data['folder'])
 
 #==================================================================#
 # Event triggered when user renames world info folder
