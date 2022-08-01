@@ -12,8 +12,6 @@ port = 5000
 def clean_var_for_emit(value):
     if isinstance(value, KoboldStoryRegister) or isinstance(value, KoboldWorldInfo):
         return value.to_json()
-    elif isinstance(value, KoboldWorldInfoEntry):
-        return value.to_dict()
     elif isinstance(value, set):
         return list(value)
     else:
@@ -753,56 +751,6 @@ class KoboldStoryRegister(object):
             #We set the tokenizer, recalculate all of the item lengths
             self.recalc_token_length()
 
-class KoboldWorldInfoEntry(object):
-    #if we call info with a [x] get the world info data for x
-    local_only_variables = ['selective', 'num']
-    _required_variables = ['uid', 'sort', 'key', 'keysecondary', 'folder', 'content', 'constant']
-    def __init__(self, socketio, uid, actions):
-        self._socketio = socketio
-        self.uid = uid
-        self.folder = "root"
-        self._actions = actions
-        
-    
-    def __getitem__(self, i):
-        return getattr(self, i)
-        
-    def to_dict(self):
-        return {name: value for (name, value) in vars(self).items() if name[0] != "_"}
-        
-    def __str__(self):
-        return str(self.to_dict())
-        
-    def __repr__(self):
-        return str(self.to_dict())
-        
-    #allow for setting the entire world info to a dictionary of values
-    def __setitem__(self, i, data):
-        setattr(self, i, data)
-        
-    def __setattr__(self, name, value):
-        new_variable = name not in self.__dict__
-        if isinstance(value, list):
-            old_value = None
-        else:
-            old_value = getattr(self, name, None)
-        #if we set secondary keys we set selective
-        if name == 'keysecondary':
-            if value == "" or value == [] or value == [""] or value is None:
-                self.selective = False
-            else:
-                self.selective = True
-        super().__setattr__(name, value)
-        #Put variable change actions here
-        if name[0] != "_" and name not in self.local_only_variables:
-            send = True
-            for var in self._required_variables:
-                if var not in self.__dict__:
-                    send = False
-                    break
-            if send:
-                process_variable_changes(self._socketio, "world_info", self.uid, self.to_dict(), None)
-
 class KoboldWorldInfo(object):
     
     def __init__(self, socketio, tokenizer=None):
@@ -821,6 +769,8 @@ class KoboldWorldInfo(object):
         else:
             for uid in self.world_info:
                 self.world_info[uid]['token_length'] = None
+                
+        self.send_to_ui()
     
     def add_folder(self, folder):
         if folder in self.world_info_folder:
@@ -829,6 +779,8 @@ class KoboldWorldInfo(object):
                 i+=1
             folder = "{} {}".format(folder, i)
         self.world_info_folder[folder] = []
+        
+        self.socketio.emit("world_info_folder", {x: self.world_info_folder[x] for x in self.world_info_folder}, broadcast=True, room="UI_2")
         
     def add_item_to_folder(self, uid, folder, at=None):
         if uid in self.world_info:
@@ -843,6 +795,8 @@ class KoboldWorldInfo(object):
                 self.world_info_folder[folder].append(uid)
             else:
                 self.world_info_folder[folder].insert(at, uid)
+                
+        self.socketio.emit("world_info_folder", {x: self.world_info_folder[x] for x in self.world_info_folder}, broadcast=True, room="UI_2")
                 
     def add_item(self, title, key, keysecondary, folder, constant, content, comment):
         if len(self.world_info) == 0:
@@ -866,7 +820,8 @@ class KoboldWorldInfo(object):
                 keysecondary = []
         
         try:
-            self.world_info[uid] = {"title": title,
+            self.world_info[uid] = {"uid": uid,
+                                    "title": title,
                                     "key": key,
                                     "keysecondary": keysecondary,
                                     "folder": folder,
@@ -884,7 +839,8 @@ class KoboldWorldInfo(object):
             self.world_info_folder[folder] = []
         self.world_info_folder[folder].append(uid)
         
-        self.socketio.emit("world_info_entry", self.world_info[uid])
+        self.socketio.emit("world_info_folder", {x: self.world_info_folder[x] for x in self.world_info_folder}, broadcast=True, room="UI_2")
+        self.socketio.emit("world_info_entry", self.world_info[uid], broadcast=True, room="UI_2")
         
     def edit_item(self, uid, title, key, keysecondary, folder, constant, content, comment, at=None):
         old_folder = self.world_info[uid]
@@ -898,7 +854,8 @@ class KoboldWorldInfo(object):
         if folder is None:
             folder = "root"
             
-        self.world_info[uid] = {"title": title,
+        self.world_info[uid] = {"uid": uid,
+                                "title": title,
                                 "key": key,
                                 "keysecondary": keysecondary,
                                 "folder": folder,
@@ -908,11 +865,40 @@ class KoboldWorldInfo(object):
                                 "token_length": token_length
                                 }
                                 
-        self.socketio.emit("world_info_entry", self.world_info[uid])
+        self.socketio.emit("world_info_folder", {x: self.world_info_folder[x] for x in self.world_info_folder}, broadcast=True, room="UI_2")
+        self.socketio.emit("world_info_entry", self.world_info[uid], broadcast=True, room="UI_2")
+        
+    def rename_folder(self, old_folder, folder):
+        if folder in self.world_info_folder:
+            i=0
+            while "{} {}".format(folder, i) in self.world_info_folder:
+                i+=1
+            folder = "{} {}".format(folder, i)
+        
+        self.world_info_folder[folder] = self.world_info_folder[old_folder]
+        #The folder dict is ordered and we want the new key to be in the same location as the last key. To do that we need to find all of the keys after old_folder
+        after_old = False
+        folder_order = [x for x in self.world_info_folder]
+        for check_folder in folder_order:
+            if check_folder == old_folder:
+                after_old = True
+            elif after_old and check_folder != folder:
+                self.world_info_folder.move_to_end(check_folder)
+        del self.world_info_folder[old_folder]
+        
+        print(self.world_info_folder)
+        # Need to change the folder properties on each affected world info item
+        for uid in self.world_info:
+            if self.world_info[uid]['folder'] == old_folder:
+                self.world_info[uid]['folder'] = folder
+        
+        self.socketio.emit("world_info_folder", {x: self.world_info_folder[x] for x in self.world_info_folder}, broadcast=True, room="UI_2")
+        
     
     def send_to_ui(self):
+        self.socketio.emit("world_info_folder", {x: self.world_info_folder[x] for x in self.world_info_folder}, broadcast=True, room="UI_2")
         for uid in self.world_info:
-            self.socketio.emit("world_info_entry", self.world_info[uid])
+            self.socketio.emit("world_info_entry", self.world_info[uid], broadcast=True, room="UI_2")
     
     def to_json(self):
         return {
