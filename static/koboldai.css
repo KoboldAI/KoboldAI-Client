@@ -14,6 +14,7 @@
 	--flyout_menu_closed_width: 0px;
 	--background: #474B4F;
 	--text: white;
+	--text_to_ai_color: #CCECFF;
 	--text_edit: #cdf;
 	--flyout_background: #6B6E70;
 	--setting_background: #474b4f;
@@ -924,7 +925,7 @@ button.disabled {
 }
 
 .within_max_length {
-	color: #CCECFF;
+	color: var(--text_to_ai_color);
 	font-weight: bold;
 }
 

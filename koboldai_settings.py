@@ -161,18 +161,19 @@ class settings(object):
                     if value[:7] == 'base64:':
                         value = pickle.loads(base64.b64decode(value[7:]))
                 #Need to fix the data type of value to match the module
+                print("{} <- {}".format(key, value))
                 if type(getattr(self, key)) == int:
-                    value = int(value)
+                    setattr(self, key, int(value))
                 elif type(getattr(self, key)) == float:
-                    value = float(value)
+                    setattr(self, key, float(value))
                 elif type(getattr(self, key)) == bool:
-                    value = bool(value)
+                    setattr(self, key, bool(value))
                 elif type(getattr(self, key)) == str:
-                    value = str(value)
+                    setattr(self, key, str(value))
                 elif isinstance(getattr(self, key), KoboldStoryRegister):
-                    self.actions.load_json(value)
+                    getattr(self, key).load_json(value)
                 elif isinstance(getattr(self, key), KoboldWorldInfo):
-                    self.world_info.load_json(value)
+                    getattr(self, key).load_json(value)
                 else:
                     setattr(self, key, value)
         
@@ -299,14 +300,14 @@ class story_settings(settings):
         self.authornotetemplate = "[Author's note: <|>]"  # Author's note template
         self.setauthornotetemplate = self.authornotetemplate  # Saved author's note template in settings
         self.andepth     = 3      # How far back in history to append author's note
-        self.actions     = KoboldStoryRegister(socketio, tokenizer=tokenizer)  # Actions submitted by user and AI
+        self.actions     = KoboldStoryRegister(socketio, story_settings, tokenizer=tokenizer)  # Actions submitted by user and AI
         self.actions_metadata = {} # List of dictonaries, one dictonary for every action that contains information about the action like alternative options.
                               # Contains at least the same number of items as actions. Back action will remove an item from actions, but not actions_metadata
                               # Dictonary keys are:
                               # Selected Text: (text the user had selected. None when this is a newly generated action)
                               # Alternative Generated Text: {Text, Pinned, Previous Selection, Edited}
                               # 
-        self.worldinfo_v2 = KoboldWorldInfo(socketio, self.tokenizer)
+        self.worldinfo_v2 = KoboldWorldInfo(socketio, story_settings, tokenizer=self.tokenizer)
         self.worldinfo   = []     # List of World Info key/value objects
         self.worldinfo_i = []     # List of World Info key/value objects sans uninitialized entries
         self.worldinfo_u = {}     # Dictionary of World Info UID - key/value pairs
@@ -478,16 +479,17 @@ class system_settings(settings):
             process_variable_changes(self.socketio, self.__class__.__name__.replace("_settings", ""), name, value, old_value)
         
 class KoboldStoryRegister(object):
-    def __init__(self, socketio, tokenizer=None, sequence=[]):
+    def __init__(self, socketio, story_settings, tokenizer=None, sequence=[]):
         self.socketio = socketio
         self.actions = {} #keys = "Selected Text", "Options", "Selected Text Length" with options being a dict with keys of "text", "Pinned", "Previous Selection", "Edited"
         self.action_count = -1
         self.tokenizer = tokenizer
+        self.story_settings = story_settings
         for item in sequence:
             self.append(item)
     
     def reset(self, sequence=[]):
-        self.__init__(self.socketio, sequence=sequence, tokenizer=self.tokenizer)
+        self.__init__(self.socketio, self.story_settings, sequence=sequence, tokenizer=self.tokenizer)
         
     def __str__(self):
         return "".join([x['Selected Text'] for ignore, x in sorted(self.actions.items())])
@@ -749,14 +751,15 @@ class KoboldStoryRegister(object):
 
 class KoboldWorldInfo(object):
     
-    def __init__(self, socketio, tokenizer=None):
+    def __init__(self, socketio, story_settings, tokenizer=None):
         self.socketio = socketio
         self.tokenizer = tokenizer
         self.world_info = {}
         self.world_info_folder = OrderedDict()
+        self.story_settings = story_settings
         
     def reset(self):
-        self.__init__(self.socketio, self.tokenizer)
+        self.__init__(self.socketio, self.story_settings, self.tokenizer)
     
     def recalc_token_length(self):
         if self.tokenizer is not None:
@@ -769,6 +772,7 @@ class KoboldWorldInfo(object):
         self.send_to_ui()
     
     def add_folder(self, folder):
+        self.story_settings.gamesaved = False
         if folder in self.world_info_folder:
             i=0
             while "{} {}".format(folder, i) in self.world_info_folder:
@@ -779,6 +783,7 @@ class KoboldWorldInfo(object):
         self.socketio.emit("world_info_folder", {x: self.world_info_folder[x] for x in self.world_info_folder}, broadcast=True, room="UI_2")
         
     def add_item_to_folder(self, uid, folder, before=None):
+        self.story_settings.gamesaved = False
         if uid in self.world_info:
             #fiirst we need to remove the item from whatever folder it's in
             for temp in self.world_info_folder:
@@ -800,6 +805,7 @@ class KoboldWorldInfo(object):
         self.socketio.emit("world_info_folder", {x: self.world_info_folder[x] for x in self.world_info_folder}, broadcast=True, room="UI_2")
                 
     def add_item(self, title, key, keysecondary, folder, constant, content, comment):
+        self.story_settings.gamesaved = False
         if len(self.world_info) == 0:
             uid = 0
         else:
@@ -845,6 +851,7 @@ class KoboldWorldInfo(object):
         self.socketio.emit("world_info_entry", self.world_info[uid], broadcast=True, room="UI_2")
         
     def edit_item(self, uid, title, key, keysecondary, folder, constant, content, comment, before=None):
+        self.story_settings.gamesaved = False
         old_folder = self.world_info[uid]['folder']
         #move the world info entry if the folder changed or if there is a new order requested
         if old_folder != folder or before is not None:
@@ -872,6 +879,7 @@ class KoboldWorldInfo(object):
         self.socketio.emit("world_info_entry", self.world_info[uid], broadcast=True, room="UI_2")
         
     def rename_folder(self, old_folder, folder):
+        self.story_settings.gamesaved = False
         if folder in self.world_info_folder:
             i=0
             while "{} {}".format(folder, i) in self.world_info_folder:
@@ -910,6 +918,10 @@ class KoboldWorldInfo(object):
                 "folders": {x: self.world_info_folder[x] for x in self.world_info_folder},
                 "entries": self.world_info
                }
+    
+    def load_json(self, data):
+        self.world_info = data['entries']
+        self.world_info_folder = data['folders']
     
     def __setattr__(self, name, value):
         new_variable = name not in self.__dict__
