@@ -351,6 +351,8 @@ class vars:
     lazy_load   = True  # Whether or not to use torch_lazy_loader.py for transformers models in order to reduce CPU memory usage
     use_colab_tpu = os.environ.get("COLAB_TPU_ADDR", "") != "" or os.environ.get("TPU_NAME", "") != ""  # Whether or not we're in a Colab TPU instance or Kaggle TPU instance and are going to use the TPU rather than the CPU
     revision    = None
+    output_streaming = False
+    token_stream_queue = [] # Queue for the token streaming
 
 utils.vars = vars
 
@@ -800,6 +802,7 @@ def savesettings():
     js["fulldeterminism"] = vars.full_determinism
     js["autosave"]    = vars.autosave
     js["welcome"]     = vars.welcome
+    js["output_streaming"] = vars.output_streaming
 
     if(vars.seed_specified):
         js["seed"]    = vars.seed
@@ -911,6 +914,8 @@ def processsettings(js):
         vars.newlinemode = js["newlinemode"]
     if("welcome" in js):
         vars.welcome = js["welcome"]
+    if("output_streaming" in js):
+        vars.output_streaming = js["output_streaming"]
     
     if("seed" in js):
         vars.seed = js["seed"]
@@ -943,11 +948,19 @@ def processsettings(js):
 
 def check_for_sp_change():
     while(True):
-        time.sleep(0.1)
+        time.sleep(0.05)
+
         if(vars.sp_changed):
             with app.app_context():
                 emit('from_server', {'cmd': 'spstatitems', 'data': {vars.spfilename: vars.spmeta} if vars.allowsp and len(vars.spfilename) else {}}, namespace=None, broadcast=True)
             vars.sp_changed = False
+
+        if(vars.output_streaming and vars.token_stream_queue):
+            # If emit blocks, waiting for it to complete before clearing could
+            # introduce a race condition that drops tokens.
+            queued_tokens = list(vars.token_stream_queue)
+            vars.token_stream_queue.clear()
+            socketio.emit("from_server", {"cmd": "streamtoken", "data": queued_tokens}, namespace=None, broadcast=True)
 
 socketio.start_background_task(check_for_sp_change)
 
@@ -1044,6 +1057,7 @@ def general_startup(override_args=None):
     parser.add_argument("--no_aria2", action='store_true', default=False, help="Prevents KoboldAI from using aria2 to download huggingface models more efficiently, in case aria2 is causing you issues")
     parser.add_argument("--lowmem", action='store_true', help="Extra Low Memory loading for the GPU, slower but memory does not peak to twice the usage")
     parser.add_argument("--savemodel", action='store_true', help="Saves the model to the models folder even if --colab is used (Allows you to save models to Google Drive)")
+    parser.add_argument("--customsettings", help="Preloads arguements from json file. You only need to provide the location of the json file. Use customsettings.json template file. It can be renamed if you wish so that you can store multiple configurations. Leave any settings you want as default as null. Any values you wish to set need to be in double quotation marks")
     #args: argparse.Namespace = None
     if "pytest" in sys.modules and override_args is None:
         args = parser.parse_args([])
@@ -1056,6 +1070,14 @@ def general_startup(override_args=None):
         args = parser.parse_args(shlex.split(os.environ["KOBOLDAI_ARGS"]))
     else:
         args = parser.parse_args()
+
+    if args.customsettings:
+        f = open (args.customsettings)
+        importedsettings = json.load(f)
+        for items in importedsettings:
+            if importedsettings[items] is not None:
+                setattr(args, items, importedsettings[items])            
+        f.close()
 
     vars.model = args.model;
     vars.revision = args.revision
@@ -1533,6 +1555,27 @@ def patch_transformers():
     new_init.old_init = transformers.generation_logits_process.NoBadWordsLogitsProcessor.__init__
     transformers.generation_logits_process.NoBadWordsLogitsProcessor.__init__ = new_init
 
+    class TokenStreamer(StoppingCriteria):
+        # A StoppingCriteria is used here because it seems to run after
+        # everything has been evaluated score-wise. 
+        def __init__(self, tokenizer):
+            self.tokenizer = tokenizer
+
+        def __call__(
+            self,
+            input_ids: torch.LongTensor,
+            scores: torch.FloatTensor,
+            **kwargs,
+        ) -> bool:
+            # Do not intermingle multiple generations' outputs!
+            if(vars.numseqs > 1):
+                return False
+
+            tokenizer_text = utils.decodenewlines(tokenizer.decode(input_ids[0, -1]))
+
+            vars.token_stream_queue.append(tokenizer_text)
+            return False
+
 
     # Sets up dynamic world info scanner
     class DynamicWorldInfoScanCriteria(StoppingCriteria):
@@ -1587,7 +1630,10 @@ def patch_transformers():
             tokenizer=tokenizer,
             excluded_world_info=self.kai_scanner_excluded_world_info,
         )
+        token_streamer = TokenStreamer(tokenizer=tokenizer)
+
         stopping_criteria.insert(0, self.kai_scanner)
+        stopping_criteria.insert(0, token_streamer)
         return stopping_criteria
     transformers.generation_utils.GenerationMixin._get_stopping_criteria = new_get_stopping_criteria
 
@@ -2689,6 +2735,7 @@ def lua_has_setting(setting):
         "rmspch",
         "adsnsp",
         "singleline",
+        "output_streaming"
     )
 
 #==================================================================#
@@ -2720,6 +2767,7 @@ def lua_get_setting(setting):
     if(setting in ("frmtrmspch", "rmspch")): return vars.formatoptns["frmttrmspch"]
     if(setting in ("frmtadsnsp", "adsnsp")): return vars.formatoptns["frmtadsnsp"]
     if(setting in ("frmtsingleline", "singleline")): return vars.formatoptns["singleline"]
+    if(setting == "output_streaming"): return vars.output_streaming
 
 #==================================================================#
 #  Set the setting with the given name if it exists
@@ -2756,6 +2804,7 @@ def lua_set_setting(setting, v):
     if(setting in ("frmtrmspch", "rmspch")): vars.formatoptns["frmttrmspch"] = v
     if(setting in ("frmtadsnsp", "adsnsp")): vars.formatoptns["frmtadsnsp"] = v
     if(setting in ("frmtsingleline", "singleline")): vars.formatoptns["singleline"] = v
+    if(setting == "output_streaming"): vars.output_streaming = v
 
 #==================================================================#
 #  Get contents of memory
@@ -3466,6 +3515,10 @@ def get_message(msg):
         refresh_settings()
     elif(msg['cmd'] == 'setfulldeterminism'):
         vars.full_determinism = msg['data']
+        settingschanged()
+        refresh_settings()
+    elif(msg['cmd'] == 'setoutputstreaming'):
+        vars.output_streaming = msg['data']
         settingschanged()
         refresh_settings()
     elif(not vars.host and msg['cmd'] == 'importwi'):
@@ -4665,6 +4718,7 @@ def refresh_settings():
     emit('from_server', {'cmd': 'updatefrmtrmspch', 'data': vars.formatoptns["frmtrmspch"]}, broadcast=True)
     emit('from_server', {'cmd': 'updatefrmtadsnsp', 'data': vars.formatoptns["frmtadsnsp"]}, broadcast=True)
     emit('from_server', {'cmd': 'updatesingleline', 'data': vars.formatoptns["singleline"]}, broadcast=True)
+    emit('from_server', {'cmd': 'updateoutputstreaming', 'data': vars.output_streaming}, broadcast=True)
     
     # Allow toggle events again
     emit('from_server', {'cmd': 'allowtoggle', 'data': True}, broadcast=True)
@@ -5838,7 +5892,7 @@ def importgame():
 def importAidgRequest(id):    
     exitModes()
     
-    urlformat = "https://prompts.aidg.club/api/"
+    urlformat = "https://aetherroom.club/api/"
     req = requests.get(urlformat+id)
 
     if(req.status_code == 200):
