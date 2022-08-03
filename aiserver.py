@@ -1478,6 +1478,7 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
     global tokenizer
     if not utils.HAS_ACCELERATE:
         disk_layers = None
+    koboldai_vars.reset_model()
     koboldai_vars.noai = False
     if not initial_load:
         set_aibusy(True)
@@ -6367,12 +6368,25 @@ def UI_2_Rename_World_Info_Folder(data):
 def UI_2_edit_world_info(data):
     print("Rename_World_Info_Folder")
     print(data)
-    koboldai_vars.worldinfo_v2.edit_item(data['uid'], data['title'], data['key'], 
-                                         data['keysecondary'], data['folder'], 
-                                         data['constant'], data['content'], 
-                                         data['comment'])
+    if data['uid'] == -1:
+        koboldai_vars.worldinfo_v2.add_item(data['title'], data['key'], 
+                                             data['keysecondary'], data['folder'], 
+                                             data['constant'], data['content'], 
+                                             data['comment'])
+        emit("delete_new_world_info_entry", {})
+    else:
+        koboldai_vars.worldinfo_v2.edit_item(data['uid'], data['title'], data['key'], 
+                                             data['keysecondary'], data['folder'], 
+                                             data['constant'], data['content'], 
+                                             data['comment'])
 
 
+#==================================================================#
+# Event triggered when user edits world info item
+#==================================================================#
+@socketio.on('create_world_info_folder')
+def UI_2_create_world_info_folder(data):
+    koboldai_vars.worldinfo_v2.add_folder("New Folder")
 
 #==================================================================#
 # Event triggered to rely a message

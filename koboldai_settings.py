@@ -99,6 +99,9 @@ class koboldai_vars(object):
         #    self._story_settings['default'].send_to_ui()
         self._story_settings['default'].send_to_ui()
     
+    def reset_model(self):
+        self._model_settings.reset_for_model_load()
+    
     def __setattr__(self, name, value):
         if name[0] == "_":
             super().__setattr__(name, value)
@@ -192,10 +195,27 @@ class model_settings(settings):
     settings_name = "model"
     def __init__(self, socketio):
         self.socketio = socketio
+        self.reset_for_model_load()
         self.model       = ""     # Model ID string chosen at startup
         self.model_type  = ""     # Model Type (Automatically taken from the model config)
         self.modelconfig = {}     # Raw contents of the model's config.json, or empty dictionary if none found
         self.custmodpth  = ""     # Filesystem location of custom model to run
+        self.generated_tkns = 0    # If using a backend that supports Lua generation modifiers, how many tokens have already been generated, otherwise 0
+        self.loaded_layers = 0     # Used in UI 2 to show model loading progress
+        self.total_layers = 0      # Same as above
+        self.total_download_chunks = 0 # tracks how much of the model has downloaded for the UI 2
+        self.downloaded_chunks = 0 #as above
+        self.tqdm        = tqdm.tqdm(total=self.genamt, file=self.ignore_tqdm())    # tqdm agent for generating tokens. This will allow us to calculate the remaining time
+        self.tqdm_progress = 0     # TQDP progress
+        self.tqdm_rem_time = 0     # tqdm calculated reemaining time
+        self.url         = "https://api.inferkit.com/v1/models/standard/generate" # InferKit API URL
+        self.oaiurl      = "" # OpenAI API URL
+        self.oaiengines  = "https://api.openai.com/v1/engines"
+        self.colaburl    = ""     # Ngrok url for Google Colab mode
+        self.apikey      = ""     # API key to use for InferKit API calls
+        self.oaiapikey   = ""     # API key to use for OpenAI API calls
+        
+    def reset_for_model_load(self):
         self.max_length  = 2048    # Maximum number of tokens to submit per action
         self.ikmax       = 3000    # Maximum number of characters to submit to InferKit
         self.genamt      = 80      # Amount of text for each action to generate
@@ -210,22 +230,8 @@ class model_settings(settings):
         self.tfs         = 1.0     # Default generator tfs (tail-free sampling)
         self.typical     = 1.0     # Default generator typical sampling threshold
         self.numseqs     = 1       # Number of sequences to ask the generator to create
-        self.generated_tkns = 0    # If using a backend that supports Lua generation modifiers, how many tokens have already been generated, otherwise 0
-        self.loaded_layers = 0     # Used in UI 2 to show model loading progress
-        self.total_layers = 0      # Same as above
-        self.total_download_chunks = 0 # tracks how much of the model has downloaded for the UI 2
-        self.downloaded_chunks = 0 #as above
-        self.tqdm        = tqdm.tqdm(total=self.genamt, file=self.ignore_tqdm())    # tqdm agent for generating tokens. This will allow us to calculate the remaining time
-        self.tqdm_progress = 0     # TQDP progress
-        self.tqdm_rem_time = 0     # tqdm calculated reemaining time
         self.badwordsids = []
         self.fp32_model  = False  # Whether or not the most recently loaded HF model was in fp32 format
-        self.url         = "https://api.inferkit.com/v1/models/standard/generate" # InferKit API URL
-        self.oaiurl      = "" # OpenAI API URL
-        self.oaiengines  = "https://api.openai.com/v1/engines"
-        self.colaburl    = ""     # Ngrok url for Google Colab mode
-        self.apikey      = ""     # API key to use for InferKit API calls
-        self.oaiapikey   = ""     # API key to use for OpenAI API calls
         self.modeldim    = -1     # Embedding dimension of your model (e.g. it's 4096 for GPT-J-6B and 2560 for GPT-Neo-2.7B)
         self.sampler_order = [0, 1, 2, 3, 4, 5]
         self.newlinemode = "n"
@@ -234,7 +240,6 @@ class model_settings(settings):
         self.presets     = []   # Holder for presets
         self.selected_preset = ""
         self.default_preset = {}
-        
         
     #dummy class to eat the tqdm output
     class ignore_tqdm(object):
@@ -756,6 +761,7 @@ class KoboldWorldInfo(object):
         self.tokenizer = tokenizer
         self.world_info = {}
         self.world_info_folder = OrderedDict()
+        self.world_info_folder['root'] = []
         self.story_settings = story_settings
         
     def reset(self):
@@ -920,8 +926,9 @@ class KoboldWorldInfo(object):
                }
     
     def load_json(self, data):
-        self.world_info = data['entries']
+        self.world_info = {int(x): data['entries'][x] for x in data['entries']}
         self.world_info_folder = data['folders']
+        self.send_to_ui()
     
     def __setattr__(self, name, value):
         new_variable = name not in self.__dict__

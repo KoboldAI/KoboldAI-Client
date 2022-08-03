@@ -19,6 +19,7 @@ socket.on('buildload', function(data){buildload(data);});
 socket.on('error_popup', function(data){error_popup(data);});
 socket.on("world_info_entry", function(data){world_info_entry(data);});
 socket.on("world_info_folder", function(data){world_info_folder(data);});
+socket.on("delete_new_world_info_entry", function(data){document.getElementById("world_info_-1").remove();});
 //socket.onAny(function(event_name, data) {console.log({"event": event_name, "class": data.classname, "data": data});});
 
 var backend_vars = {};
@@ -56,7 +57,7 @@ function reset_story() {
 		world_info_area.removeChild(world_info_area.firstChild);
 	}
 	world_info_data = {};
-	world_info_folder_data = {};
+	world_info_folder({"root": []});
 	document.getElementById("story_prompt").setAttribute("world_info_uids", "");
 }
 
@@ -1161,6 +1162,17 @@ function world_info_folder(data) {
 			}
 			title.append(title_text);
 			folder.append(title);
+			//create add button
+			add_icon = document.createElement("span");
+			add_icon.classList.add("oi");
+			add_icon.setAttribute("data-glyph", "plus");
+			add_icon.textContent = "Add World Info Entry";
+			add_icon.setAttribute("folder", folder_name);
+			add_icon.onclick = function() {
+											create_new_wi_entry(this.getAttribute("folder"));
+										  }
+			folder.append(add_icon);
+			
 			//We want to insert this folder before the next folder
 			if (i+1 < folders.length) {
 				//We have more folders, so let's see if any of them exist so we can insert before that
@@ -1173,10 +1185,18 @@ function world_info_folder(data) {
 					}
 				}
 				if (!(found)) {
-					document.getElementById("story_menu_wi").append(folder);
+					if (document.getElementById("new_world_info_button")) {
+						document.getElementById("story_menu_wi").insertBefore(folder, document.getElementById("new_world_info_button"));
+					} else {
+						document.getElementById("story_menu_wi").append(folder);
+					}
 				}
 			} else {
-				document.getElementById("story_menu_wi").append(folder);
+				if (document.getElementById("new_world_info_button")) {
+					document.getElementById("story_menu_wi").insertBefore(folder, document.getElementById("new_world_info_button"));
+				} else {
+					document.getElementById("story_menu_wi").append(folder);
+				}
 			}
 		} else {
 			folder = document.getElementById("world_info_folder_"+folder_name);
@@ -1197,6 +1217,25 @@ function world_info_folder(data) {
 		if (!(item.id.replace("world_info_folder_", "") in world_info_folder_data)) {
 			item.parentNode.removeChild(item);
 		}
+	}
+	
+	//Add new world info folder button
+	if (!(document.getElementById("new_world_info_button"))) {
+		console.log("adding new folder button");
+		add_folder = document.createElement("div");
+		add_folder.id = "new_world_info_button";
+		temp = document.createElement("h2");
+		add_icon = document.createElement("span");
+		add_icon.classList.add("oi");
+		add_icon.setAttribute("data-glyph", "plus");
+		add_icon.textContent = "Add World Info Folder";
+		add_icon.onclick = function() {
+										socket.emit("create_world_info_folder", {});
+									  }
+		temp.append(add_icon);
+		add_folder.append(temp);
+		console.log(add_folder);
+		document.getElementById("story_menu_wi").append(add_folder);
 	}
 }
 
@@ -1380,71 +1419,19 @@ function add_secondary_tags(tags, data) {
 	tags.append(tag_item);
 }
 	
-function create_world_info_folder() {
-	var world_info_area = document.getElementById("story_menu_wi");
-	
-	var i=0;
-	while (document.getElementById("world_info_folder_New "+i) != null) {
-		console.log("New "+i);
-		console.log(document.getElementById("world_info_folder_New "+i));
-		i+=1;
-	}
-	folder = "New "+i;
-	//create new folder
-	var folder_item = document.createElement("span");
-	folder_item.id = "world_info_folder_"+folder;
-	folder_item.classList.add("WI_Folder");
-	title = document.createElement("h2");
-	title.addEventListener('dragenter', dragEnter)
-	title.addEventListener('dragover', dragOver);
-	title.addEventListener('dragleave', dragLeave);
-	title.addEventListener('drop', drop);
-	collapse_icon = document.createElement("span");
-	collapse_icon.id = "world_info_folder_collapse_"+folder;
-	collapse_icon.classList.add("oi");
-	collapse_icon.setAttribute("data-glyph", "chevron-bottom");
-	collapse_icon.setAttribute("folder", folder);
-	collapse_icon.onclick = function () {
-						hide_wi_folder(this.getAttribute("folder"));
-						document.getElementById('world_info_folder_expand_'+this.getAttribute("folder")).classList.remove('hidden');
-						this.classList.add("hidden");
-					};
-	title.append(collapse_icon);
-	expand_icon = document.createElement("span");
-	expand_icon.id = "world_info_folder_expand_"+folder;
-	expand_icon.classList.add("oi");
-	expand_icon.setAttribute("data-glyph", "chevron-right");
-	expand_icon.setAttribute("folder", folder);
-	expand_icon.onclick = function () {
-						unhide_wi_folder(this.getAttribute("folder"));
-						document.getElementById('world_info_folder_collapse_'+this.getAttribute("folder")).classList.remove('hidden');
-						this.classList.add("hidden");
-					};
-	expand_icon.classList.add("hidden");
-	title.append(expand_icon);
-	icon = document.createElement("span");
-	icon.classList.add("oi");
-	icon.setAttribute("data-glyph", "folder");
-	title.append(icon);
-	title_text = document.createElement("span");
-	title_text.setAttribute("contenteditable", true);
-	title_text.setAttribute("original_text", folder);
-	title_text.textContent = folder;
-	title_text.onblur = function () {
-		if (this.textContent != this.getAttribute("original_text")) {
-			//Need to check if the new folder name is already in use
-			folder_name = this.textContent;
-			while (folder_name in document.getElementById("story_menu_wi").children.filter(animal => folder.id.replace("world_info_folder_", ""))) {
-				folder_name = folder_name + " 1";
-			}
-			this.parentElement.parentElement.id = "world_info_folder_" + folder_name;
-			socket.emit("Rename_World_Info_Folder", {"old_folder": this.getAttribute("original_text"), "new_folder": folder_name});
-			this.setAttribute("original_text", folder_name);
-		}
-	}
-	title.append(title_text);
-	folder_item.append(title);
-	world_info_area.append(folder_item);
+function create_new_wi_entry(folder) {
+	data = {"uid": -1,
+                                    "title": "New World Info Entry",
+                                    "key": [],
+                                    "keysecondary": [],
+                                    "folder": folder,
+                                    "constant": false,
+                                    "content": "",
+                                    "comment": "",
+                                    "token_length": 0,
+                                    "selective": false
+                                    };
+	world_info_entry(data);
 }
 
 function hide_wi_folder(folder) {
