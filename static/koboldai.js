@@ -5,6 +5,7 @@ socket = io.connect(window.location.origin, {transports: ['polling', 'websocket'
 socket.on('connect', function(){connect();});
 socket.on("disconnect", (reason, details) => {
   console.log("Lost connection from: "+reason); // "transport error"
+  disconnect();
 });
 socket.on('reset_story', function(){reset_story();});
 socket.on('var_changed', function(data){var_changed(data);});
@@ -20,6 +21,7 @@ socket.on('error_popup', function(data){error_popup(data);});
 socket.on("world_info_entry", function(data){world_info_entry(data);});
 socket.on("world_info_folder", function(data){world_info_folder(data);});
 socket.on("delete_new_world_info_entry", function(data){document.getElementById("world_info_-1").remove();});
+socket.on("delete_world_info_entry", function(data){document.getElementById("world_info_"+data).remove();});
 //socket.onAny(function(event_name, data) {console.log({"event": event_name, "class": data.classname, "data": data});});
 
 var backend_vars = {};
@@ -35,10 +37,18 @@ var world_info_folder_data = {};
 //-----------------------------------Server to UI  Functions-----------------------------------------------
 function connect() {
 	console.log("connected");
+	for (item of document.getElementsByTagName("body")) {
+		item.classList.remove("NotConnected");
+	}
+	document.getElementById("disconnect_message").classList.add("hidden");
 }
 
 function disconnect() {
 	console.log("disconnected");
+	for (item of document.getElementsByTagName("body")) {
+		item.classList.add("NotConnected");
+	}
+	document.getElementById("disconnect_message").classList.remove("hidden");
 }
 
 function reset_story() {
@@ -989,10 +999,6 @@ function load_model() {
 	document.getElementById("loadmodelcontainer").classList.add("hidden");
 }
 
-function buildload(data) {
-	console.log(data);
-}
-
 function world_info_entry(data) {
 	//console.log(data);
 	
@@ -1024,6 +1030,15 @@ function world_info_entry(data) {
 	title.addEventListener('dragover', dragOver);
 	title.addEventListener('dragleave', dragLeave);
 	title.addEventListener('drop', drop);
+	delete_icon = world_info_card.querySelector('#world_info_delete_');
+	delete_icon.id = "world_info_delete_"+data.uid;
+	delete_icon.setAttribute("uid", data.uid);
+	delete_icon.setAttribute("title", data.title);
+	delete_icon.onclick = function () {
+		if (confirm("This will delete world info "+this.getAttribute("title"))) {
+			socket.emit("delete_world_info", this.getAttribute("uid"));
+		}
+	}
 	tags = world_info_card.querySelector('#world_info_tags_');
 	tags.id = "world_info_tags_"+data.uid;
 	//add tag content here
@@ -1104,6 +1119,8 @@ function world_info_entry(data) {
 	
 	$('#world_info_constant_'+data.uid).bootstrapToggle();
 	assign_world_info_to_action(uid=data.uid);
+	
+	update_token_lengths();
 	
 }
 
@@ -1221,7 +1238,6 @@ function world_info_folder(data) {
 	
 	//Add new world info folder button
 	if (!(document.getElementById("new_world_info_button"))) {
-		console.log("adding new folder button");
 		add_folder = document.createElement("div");
 		add_folder.id = "new_world_info_button";
 		temp = document.createElement("h2");
@@ -1234,7 +1250,6 @@ function world_info_folder(data) {
 									  }
 		temp.append(add_icon);
 		add_folder.append(temp);
-		console.log(add_folder);
 		document.getElementById("story_menu_wi").append(add_folder);
 	}
 }
@@ -1288,8 +1303,6 @@ function upload_file(file_box) {
 }
 
 function send_world_info(uid) {
-	console.log("Upload World Info "+uid);
-	console.log(world_info_data[uid]);
 	socket.emit("edit_world_info", world_info_data[uid]);
 }
 
@@ -1596,7 +1609,6 @@ function assign_world_info_to_action(uid=null, action_item=null) {
 							}
 						} else {
 							//First let's assign our world info id to the action so we know to count the tokens for the world info
-							console.log("matched");
 							current_ids = action.getAttribute("world_info_uids")?action.getAttribute("world_info_uids").split(','):[];
 							if (!(current_ids.includes(uid))) {
 								current_ids.push(uid);
@@ -1638,6 +1650,7 @@ function update_token_lengths() {
 			if (world_info_data[uid].token_length != null) {
 				memory_length += world_info_data[uid].token_length;
 				included_world_info.push(uid);
+				document.getElementById("world_info_"+uid).classList.add("world_info_included");
 			}
 		}
 	}
@@ -1716,6 +1729,9 @@ function update_token_lengths() {
 		}
 	} else if (!always_prompt) {
 		document.getElementById("story_prompt").classList.remove("within_max_length");
+	}
+	for (item of document.getElementsByClassName("used_token_length")) {
+		item.textContent = "Used Tokens: " + token_length;
 	}
 }
 

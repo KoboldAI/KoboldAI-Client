@@ -6389,6 +6389,14 @@ def UI_2_create_world_info_folder(data):
     koboldai_vars.worldinfo_v2.add_folder("New Folder")
 
 #==================================================================#
+# Event triggered when user edits world info item
+#==================================================================#
+@socketio.on('delete_world_info')
+def UI_2_delete_world_info(uid):
+    koboldai_vars.worldinfo_v2.delete(int(uid))
+
+
+#==================================================================#
 # Event triggered to rely a message
 #==================================================================#
 @socketio.on('relay')

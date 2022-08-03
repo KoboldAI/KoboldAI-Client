@@ -404,14 +404,30 @@ td.server_vars {
 }
 
 .world_info_card {
-	width: 100%;
+	width: 95%;
 	border: 2px outset var(--wi_card_border_color);
 	background-color: var(--wi_card_bg_color);
 	margin-bottom: 20px;
+	margin-left: 20px;
 }
 
 .world_info_card.world_info_included {
 	border: 2px outset var(--wi_card_border_color_to_ai);
+}
+	
+.world_info_title_area {
+	display: grid;
+	grid-template-areas: "title delete";
+	grid-template-columns: auto 20px;
+}
+
+.world_info_title {
+	grid-area: title;
+}
+
+.world_info_delete {
+	grid-area: delete;
+	cursor: pointer;
 }
 	
 .world_info_tag_area {
@@ -955,3 +971,6 @@ button.disabled {
     border-top: dashed 3px red;
 }
 
+body.NotConnected {
+	filter: grayscale(80%);
+}

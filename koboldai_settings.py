@@ -72,9 +72,12 @@ class koboldai_vars(object):
     def load_story(self, story_name, json_data):
         story_name = 'default'
         if story_name in self._story_settings:
+            self._story_settings[story_name].socketio.emit("reset_story", {}, broadcast=True, room="UI_2")
             self._story_settings[story_name].from_json(json_data)
         else:
             self.create_story(story_name, json_data=json_data)
+            
+        
     
     def create_story(self, story_name, json_data=None):
         story_name = 'default'
@@ -164,7 +167,6 @@ class settings(object):
                     if value[:7] == 'base64:':
                         value = pickle.loads(base64.b64decode(value[7:]))
                 #Need to fix the data type of value to match the module
-                print("{} <- {}".format(key, value))
                 if type(getattr(self, key)) == int:
                     setattr(self, key, int(value))
                 elif type(getattr(self, key)) == float:
@@ -884,6 +886,15 @@ class KoboldWorldInfo(object):
         self.socketio.emit("world_info_folder", {x: self.world_info_folder[x] for x in self.world_info_folder}, broadcast=True, room="UI_2")
         self.socketio.emit("world_info_entry", self.world_info[uid], broadcast=True, room="UI_2")
         
+    def delete(self, uid):
+        del self.world_info[uid]
+        for folder in self.world_info_folder:
+            if uid in self.world_info_folder[folder]:
+                self.world_info_folder[folder].remove(uid)
+        
+        self.socketio.emit("world_info_folder", {x: self.world_info_folder[x] for x in self.world_info_folder}, broadcast=True, room="UI_2")
+        self.socketio.emit("delete_world_info_entry", uid, broadcast=True, room="UI_2")
+    
     def rename_folder(self, old_folder, folder):
         self.story_settings.gamesaved = False
         if folder in self.world_info_folder:

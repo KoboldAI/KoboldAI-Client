@@ -33,6 +33,7 @@
 		</div>
 		<!------------ Game Text Screen--------------------->
 		<div class="gamescreen" id="gamescreen">
+			<div id="disconnect_message"><center><h1>Disconnected</h1></center></div>
 			<div class="gametext" id="Selected Text">
 				<span id="story_prompt" class="var_sync_story_prompt var_sync_alt_story_prompt_length rawtext" contenteditable=true onblur="if (getAttribute(this, 'old_text') != this.textContent) {sync_to_server(this);}" onkeydown="detect_enter_text"></span>
 			</div>
@@ -69,8 +70,10 @@
 	<!------------- World Info Template ------------------------------->
 	<div class="hidden">
 		<div draggable="true" class="world_info_card" id="world_info_">
-			<h4 id="world_info_title_">
-			</h4>
+			<div class="world_info_title_area">
+				<h4 id="world_info_title_" class="world_info_title"></h4>
+				<span id="world_info_delete_" class="world_info_delete">X</span>
+			</div>
 			<div class="world_info_tag_area" id="world_info_toggle_area_">
 				Always Include
 			</div>
