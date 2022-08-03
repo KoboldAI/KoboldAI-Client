@@ -2335,7 +2335,11 @@ $(document).ready(function(){
 			} else if (!empty_chunks.has(index.toString())) {
 				// Append at the end
 				unbindGametext();
-				var lc = game_text[0].lastChild;
+
+				// game_text can contain things other than chunks (stream
+				// preview), so we use querySelector to get the last chunk.
+				var lc = game_text[0].querySelector("chunk:last-of-type");
+
 				if(lc.tagName === "CHUNK" && lc.lastChild !== null && lc.lastChild.tagName === "BR") {
 					lc.removeChild(lc.lastChild);
 				}
@@ -2351,7 +2355,11 @@ $(document).ready(function(){
 			var element = game_text.children('#n' + index);
 			if(element.length) {
 				unbindGametext();
-				if((element[0].nextSibling === null || element[0].nextSibling.nodeType !== 1 || element[0].nextSibling.tagName !== "CHUNK") && element[0].previousSibling !== null && element[0].previousSibling.tagName === "CHUNK") {
+				if(
+					(element[0].nextSibling === null || element[0].nextSibling.nodeType !== 1 || element[0].nextSibling.tagName !== "CHUNK")
+					&& element[0].previousSibling !== null
+					&& element[0].previousSibling.tagName === "CHUNK"
+				) {
 					element[0].previousSibling.appendChild(document.createElement("br"));
 				}
 				element.remove();  // Remove the chunk
@@ -3266,6 +3274,32 @@ $(document).ready(function(){
 		if(!gamesaved) {
 			return true;
 		}
+	});
+
+	// Shortcuts
+	$(window).keydown(function (ev) {
+		// Only ctrl prefixed (for now)
+		if (!ev.ctrlKey) return;
+
+		let handled = true;
+		switch (ev.key) {
+			// Ctrl+Z - Back
+			case "z":
+				button_actback.click();
+				break;
+			// Ctrl+Y - Forward
+			case "y":
+				button_actfwd.click();
+				break;
+			// Ctrl+E - Retry
+			case "e":
+				button_actretry.click();
+				break;
+			default:
+				handled = false;
+		}
+
+		if (handled) ev.preventDefault();
 	});
 });
 
