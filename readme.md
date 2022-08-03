@@ -4,11 +4,11 @@ This is a browser-based front-end for AI-assisted writing with multiple local & 
 
 ## Multiple ways to play
 
-Stories can be played like a Novel, a text adventure game or used as a chatbot with an easy toggles to change between the multiple gameplay styles. This makes KoboldAI both a writing assistant, a game and a platform for so much more. The way you play and how good the AI will be depends on the model or service you decide to use. No matter if you want to use the free, fast power of Google Colab, your own high end graphics card, an online service you have an API key for (Like OpenAI or Inferkit) or if you rather just run it slower on your CPU you will be able to find a way to use KoboldAI that works for you.
+Stories can be played like a Novel or a text adventure game with an easy toggles to change between the multiple gameplay styles. This makes KoboldAI both a writing assistant, a game and a platform for so much more. The way you play and how good the AI will be depends on the model or service you decide to use. No matter if you want to use the free, fast power of Google Colab, your own high end graphics card, an online service you have an API key for (Like OpenAI or Inferkit) or if you rather just run it slower on your CPU you will be able to find a way to use KoboldAI that works for you.
 
 ### Adventure mode
 
-By default KoboldAI will run in a generic mode optimized for writing, but with the right model you can play this like AI Dungeon without any issues. You can enable this in the settings and bring your own prompt, try generating a random prompt or download one of the prompts available at [prompts.aidg.club](https://prompts.aidg.club) .
+By default KoboldAI will run in a generic mode optimized for writing, but with the right model you can play this like AI Dungeon without any issues. You can enable this in the settings and bring your own prompt, try generating a random prompt or download one of the prompts available at [/aids/ Prompts](https://aetherroom.club/).
 
 The gameplay will be slightly different than the gameplay in AI Dungeon because we adopted the Type of the Unleashed fork, giving you full control over all the characters because we do not automatically adapt your sentences behind the scenes. This means you can more reliably control characters that are not you.
 
@@ -21,26 +21,7 @@ If you want to do this with your friends we advise using the main character as Y
 
 ### Writing assistant
 
-If you want to use KoboldAI as a writing assistant this is best done in the regular mode with a model optimized for Novels. These models do not make the assumption that there is a You character and focus on Novel like writing. For writing these will often give you better results than Adventure or Generic models. That said, if you give it a good introduction to the story large generic models like 6B can be used if a more specific model is not available for what you wish to write. You can also try to use models that are not specific to what you wish to do, for example a NSFW Novel model for a SFW story if a SFW model is unavailable. This will mean you will have to correct the model more often because of its bias, but can still produce good enough results if it is familiar enough with your topic.
-
-### Chatbot Mode
-
-In chatbot mode you can use a suitable model as a chatbot, this mode automatically adds your name to the beginning of the sentences and prevents the AI from talking as you. To use it properly you must write your story opening as both characters in the following format (You can use your own text) :
-
-```plaintext
-Bot : Hey!
-You : Hey Boyname, how have you been?
-Bot : Been good! How about you?
-You : Been great to, excited to try out KoboldAI
-Bot : KoboldAI is really fun!
-You : For sure! What is your favorite game?
-```
-
-Its recommended to have your own input be the last input, especially in the beginning its possible that the AI mixes up the names. In that case either retry or manually correct the name. This behavior improves as the chat progresses. Some models may swap names if they are more familiar with a different name that is similar to the name you defined for the bot. In that case you can either do the occasional manual correction or choose a name for your chatbot that the AI likes better.
-
-This mode works the best on either a Generic model or a chatbot model specifically designed for it, some models like the AvrilAI model are instead designed to be used in Adventure mode and do not conform to the format above. These models typically ship with adventure mode enabled by default and should not be switched over to chatbot mode.
-
-Novel or Adventure models are not recommended for this feature but might still work but can derail away from the conversation format quickly.
+If you want to use KoboldAI as a writing assistant this is best done in the regular mode with a model optimized for Novels. These models do not make the assumption that there is a You character and focus on Novel like writing. For writing these will often give you better results than Adventure or Generic models. That said, if you give it a good introduction to the story large generic models like 13B can be used if a more specific model is not available for what you wish to write. You can also try to use models that are not specific to what you wish to do, for example a NSFW Novel model for a SFW story if a SFW model is unavailable. This will mean you will have to correct the model more often because of its bias, but can still produce good enough results if it is familiar enough with your topic.
 
 ## Play KoboldAI online for free on Google Colab (The easiest way to play)
 
@@ -48,18 +29,16 @@ If you would like to play KoboldAI online for free on a powerful computer you ca
 
 Each edition features different models and requires different hardware to run, this means that if you are unable to obtain a TPU or a GPU you might still be able to use the other version. The models you can use are listed underneath the edition. To open a Colab click the big link featuring the editions name.
 
-### [Click here for the TPU Edition Colab](https://colab.research.google.com/github/KoboldAI/KoboldAI-Client/blob/main/colab/TPU.ipynb)
+## [TPU Edition Model Descriptions](https://colab.research.google.com/github/KoboldAI/KoboldAI-Client/blob/main/colab/TPU.ipynb)
 
 | Model | Size | Style | Description |
 | --- | --- | --- | --- |
-| [Nerys](https://huggingface.co/KoboldAI/fairseq-dense-13B-Nerys) by Mr Seeker | 13B | Novel/Adventure | Nerys is a hybrid model based on Pike (A newer Janeway), on top of the Pike dataset you also get some Light Novels, Adventure mode support and a little bit of shinen thrown in the mix. The end result is a very diverse model that is heavily biased towards SFW novel writing, but one that can go beyond its novel training and make for an excellent adventure model to. Adventure mode is best played from a second person perspective, but can be played in first or third person as well. Novel writing can be done best from the first or third person. |
+| [Nerys](https://huggingface.co/KoboldAI/fairseq-dense-13B-Nerys) by Mr Seeker | 13B | Novel/Adventure | Nerys is a hybrid model based on Pike (A newer Janeway), on top of the Pike dataset you also get some Light Novels, Adventure mode support and a little bit of Shinen thrown in the mix. The end result is a very diverse model that is heavily biased towards SFW novel writing, but one that can go beyond its novel training and make for an excellent adventure model to. Adventure mode is best played from a second person perspective, but can be played in first or third person as well. Novel writing can be done best from the first or third person. |
 | [Janeway](https://huggingface.co/KoboldAI/fairseq-dense-13B-Janeway) by Mr Seeker | 13B | Novel | Janeway is a model created from Picard's dataset combined with a brand new collection of ebooks. This model is trained on 20% more content than Picard and has been trained on literature from various genres. Although the model is mainly focussed on SFW, romantic scenes might involve a degree of nudity. |
 | [Shinen](https://huggingface.co/KoboldAI/fairseq-dense-13B-Shinen) by Mr Seeker | 13B | NSFW | Shinen is an NSFW model designed to be more explicit. Trained on a variety of stories from the website Sexstories it contains many different kinks. |
 | [Skein](https://huggingface.co/KoboldAI/GPT-J-6B-Skein) by VE\_FORBRYDERNE | 6B | Adventure | Skein is best used with Adventure mode enabled, it consists of a 4 times larger adventure dataset than the Adventure model making it excellent for text adventure gaming. On top of that it also consists of light novel training further expanding its knowledge and writing capabilities. It can be used with the You filter bias if you wish to write Novels with it, but dedicated Novel models can perform better for this task. |
 | [Adventure](https://huggingface.co/KoboldAI/GPT-J-6B-Adventure) by VE\_FORBRYDERNE | 6B | Adventure | Adventure is a 6B model designed to mimick the behavior of AI Dungeon. It is exclusively for Adventure Mode and can take you on the epic and wackey adventures that AI Dungeon players love. It also features the many tropes of AI Dungeon as it has been trained on very similar data. It must be used in second person (You). |
 | [Lit](https://huggingface.co/hakurei/lit-6B) by Haru | 6B | NSFW | Lit is a great NSFW model trained by Haru on both a large set of Literotica stories and high quality novels along with tagging support. Creating a high quality model for your NSFW stories. This model is exclusively a novel model and is best used in third person. |
-| [Convo](https://huggingface.co/hitomi-team/convo-6B) by Hitomi Team | 6B | Chatbot | Convo-6B is a GPT-J 6B model fine-tuned on a collection of high quality open source datasets which amount to 6 million messages. The primary goal of the model is to provide improved performance and generalization when generating multi-turn dialogue for characters that were not present from within the fine tuning data. The prompted performance has especially improved over the predecessor model [C1-6B](https://huggingface.co/hakurei/c1-6B). |
-| [C1](https://huggingface.co/hakurei/c1-6B) by Haru | 6B | Chatbot | C1 has been trained on various internet chatrooms, it makes the basis for an interesting chatbot model and has been optimized to be used in the Chatmode. |
 | Neo(X) by EleutherAI | 20B | Generic | NeoX is the largest EleutherAI model currently available, being a generic model it is not particularly trained towards anything and can do a variety of writing, Q&A and coding tasks. 20B's performance is closely compared to the 13B models and it is worth trying both especially if you have a task that does not involve english writing. Its behavior will be similar to the GPT-J-6B model since they are trained on the same dataset but with more sensitivity towards repetition penalty and with more knowledge. |
 | [Fairseq Dense](https://huggingface.co/KoboldAI/fairseq-dense-13B) | 13B | Generic | Trained by Facebook Researchers this model stems from the MOE research project within Fairseq. This particular version has been converted by us for use in KoboldAI. It is known to be on par with the larger 20B model from EleutherAI and considered as better for pop culture and language tasks. Because the model has never seen a new line (enter) it may perform worse on formatting and paragraphing. |
 | [GPT-J-6B](https://huggingface.co/EleutherAI/gpt-j-6B) by EleutherAI | 6B | Generic | This model serves as the basis for most other 6B models (Some being based on Fairseq Dense instead). Being trained on the Pile and not biased towards anything in particular it is suitable for a variety of tasks such as writing, Q&A and coding tasks. You will likely get better result with larger generic models or finetuned models. |
@@ -68,21 +47,23 @@ Each edition features different models and requires different hardware to run, t
 
 | Model | Size | Style | Description |
 | --- | --- | --- | --- |
-| [Fairseq-Dense-2.7B-Nerys](https://huggingface.co/KoboldAI/fairseq-dense-2.7B-Nerys) by Mr Seeker | 2.7B | Novel/Adventure | Nerys is a hybrid model based on Pike (A newer Janeway), on top of the Pike dataset you also get some Light Novels, Adventure mode support and a little bit of shinen thrown in the mix. The end result is a very diverse model that is heavily biased towards SFW novel writing, but one that can go beyond its novel training and make for an excellent adventure model to. Adventure mode is best played from a second person perspective, but can be played in first or third person as well. Novel writing can be done best from the first or third person. |
-| [GPT-Neo-2.7B-Janeway](https://huggingface.co/KoboldAI/GPT-Neo-2.7B-Janeway) by Mr Seeker | 2.7B | Novel | Janeway is a model created from Picard's dataset combined with a brand new collection of ebooks. This model is trained on 20% more content than Picard and has been trained on literature from various genres. Although the model is mainly focussed on SFW, romantic scenes might involve a degree of nudity. |
-| [GPT-Neo-2.7B-Picard](https://huggingface.co/KoboldAI/GPT-Neo-2.7B-Picard) by Mr Seeker | 2.7B | Novel | Picard is a model trained for SFW Novels based on GPT-Neo-2.7B. It is focused on Novel style writing without the NSFW bias. While the name suggests a sci-fi model this model is designed for Novels of a variety of genre's. It is meant to be used in KoboldAI's regular mode. |
-| [GPT-Neo-2.7B-AID](https://huggingface.co/KoboldAI/GPT-Neo-2.7B-AID) by melastacho | 2.7B | Adventure | Also know as Adventure 2.7B this is a clone of the AI Dungeon Classic model and is best known for the epic wackey adventures that AI Dungeon Classic players love. |
-| [GPT-Neo-2.7B-Horni-LN](https://huggingface.co/KoboldAI/GPT-Neo-2.7B-Horni-LN) by finetune | 2.7B | Novel | This model is based on GPT-Neo-2.7B-Horni and retains its NSFW knowledge, but was then further biased towards SFW novel stories. If you seek a balance between a SFW Novel model and a NSFW model this model should be a good choice. |
-| [GPT-Neo-2.7B-Horni](https://huggingface.co/KoboldAI/GPT-Neo-2.7B-Horni) by finetune | 2.7B | NSFW | This model is tuned on Literotica to produce a Novel style model biased towards NSFW content. Can still be used for SFW stories but will have a bias towards NSFW content. It is meant to be used in KoboldAI's regular mode. |
-| [GPT-Neo-2.7B-Shinen](https://huggingface.co/KoboldAI/GPT-Neo-2.7B-Shinen) by Mr Seeker | 2.7B | NSFW | Shinen is an alternative to the Horni model designed to be more explicit. If Horni is to tame for you shinen might produce better results. While it is a Novel model it is unsuitable for SFW stories due to its heavy NSFW bias. Shinen will not hold back. It is meant to be used in KoboldAI's regular mode. |
-| [GPT-Neo-2.7B](https://huggingface.co/EleutherAI/gpt-neo-2.7B) by EleutherAI | 2.7B | Generic | This is the base model for all the other 2.7B models, it is best used when you have a use case that we have no other models available for, such as writing blog articles or programming. It can also be a good basis for the experience of some of the softprompts if your softprompt is not about a subject the other models cover. |
+| [Nerys 2.7B](https://huggingface.co/KoboldAI/fairseq-dense-2.7B-Nerys) by Mr Seeker | 2.7B | Novel/Adventure | Nerys is a hybrid model based on Pike (A newer Janeway), on top of the Pike dataset you also get some Light Novels, Adventure mode support and a little bit of Shinen thrown in the mix. The end result is a very diverse model that is heavily biased towards SFW novel writing, but one that can go beyond its novel training and make for an excellent adventure model to. Adventure mode is best played from a second person perspective, but can be played in first or third person as well. Novel writing can be done best from the first or third person. |
+| [Janeway 2.7B](https://huggingface.co/KoboldAI/GPT-Neo-2.7B-Janeway) by Mr Seeker | 2.7B | Novel | Janeway is a model created from Picard's dataset combined with a brand new collection of ebooks. This model is trained on 20% more content than Picard and has been trained on literature from various genres. Although the model is mainly focussed on SFW, romantic scenes might involve a degree of nudity. |
+| [Picard 2.7B](https://huggingface.co/KoboldAI/GPT-Neo-2.7B-Picard) by Mr Seeker | 2.7B | Novel | Picard is a model trained for SFW Novels based on Neo 2.7B. It is focused on Novel style writing without the NSFW bias. While the name suggests a sci-fi model this model is designed for Novels of a variety of genre's. It is meant to be used in KoboldAI's regular mode. |
+| [AID 2.7B](https://huggingface.co/KoboldAI/GPT-Neo-2.7B-AID) by melastacho | 2.7B | Adventure | Also know as Adventure 2.7B this is a clone of the AI Dungeon Classic model and is best known for the epic wackey adventures that AI Dungeon Classic players love. |
+| [Horni LN 2.7B](https://huggingface.co/KoboldAI/GPT-Neo-2.7B-Horni-LN) by finetune | 2.7B | Novel | This model is based on Horni 2.7B and retains its NSFW knowledge, but was then further biased towards SFW novel stories. If you seek a balance between a SFW Novel model and a NSFW model this model should be a good choice. |
+| [Horni 2.7B](https://huggingface.co/KoboldAI/GPT-Neo-2.7B-Horni) by finetune | 2.7B | NSFW | This model is tuned on Literotica to produce a Novel style model biased towards NSFW content. Can still be used for SFW stories but will have a bias towards NSFW content. It is meant to be used in KoboldAI's regular mode. |
+| [Shinen 2.7B ](https://huggingface.co/KoboldAI/GPT-Neo-2.7B-Shinen) by Mr Seeker | 2.7B | NSFW | Shinen is an alternative to the Horni model designed to be more explicit. If Horni is to tame for you Shinen might produce better results. While it is a Novel model it is unsuitable for SFW stories due to its heavy NSFW bias. Shinen will not hold back. It is meant to be used in KoboldAI's regular mode. |
+| [Neo 2.7B](https://huggingface.co/EleutherAI/gpt-neo-2.7B) by EleutherAI | 2.7B | Generic | This is the base model for all the other 2.7B models, it is best used when you have a use case that we have no other models available for, such as writing blog articles or programming. It can also be a good basis for the experience of some of the softprompts if your softprompt is not about a subject the other models cover. |
 
-| Style | Description |
+### Styles
+
+| Type | Description |
 | --- | --- |
 | Novel | For regular story writing, not compatible with Adventure mode or other specialty modes. |
 | NSFW | Indicates that the model is strongly biased towards NSFW content and is not suitable for children, work environments or livestreaming. Most NSFW models are also Novel models in nature. |
-| Adventure | These models are excellent for people willing to play KoboldAI like a Text Adventure game and are meant to be used with Adventure mode enabled. Even if you wish to use it as a Novel style model you should always have Adventure mode on and set it to story. These models typically have a strong bias towards the use of the word You and without Adventure mode enabled break the story flow and write actions on your behalf. |
-| Chatbot | These models are specifically trained for chatting and are best used with the Chatmode enabled. Typically trained on either public chatrooms or private chats. |
+| Adventure | These models are excellent for people willing to play KoboldAI like a Text Adventure game and are meant to be used with Adventure mode enabled. Even if you wish to use it as a Novel Type model you should always have Adventure mode on and set it to story. These models typically have a strong bias towards the use of the word You and without Adventure mode enabled break the story flow and write actions on your behalf. |
+| Hybrid | Hybrid models are a blend between different Types, for example they are trained on both Novel stories and Adventure stories. These models are great variety models that you can use for multiple different playTypes and modes, but depending on your usage you may need to enable Adventure Mode or the You bias (in userscripts). |
 | Generic | Generic models are not trained towards anything specific, typically used as a basis for other tasks and models. They can do everything the other models can do, but require much more handholding to work properly. Generic models are an ideal basis for tasks that we have no specific model for, or for experiencing a softprompt in its raw form. |
 
 ## Tips to get the most out of Google Colab
@@ -93,28 +74,6 @@ Each edition features different models and requires different hardware to run, t
 *   Google shut your instance down unexpectedly? You can still make use of the Download as .json button to recover your story as long as you did not close the KoboldAI window. You can then load this back up in your next session.
 *   Done with KoboldAI? Go to the Runtime menu, click on Manage Sessions and terminate your open sessions that you no longer need. This trick can help you maintain higher priority towards getting a TPU.
 *   Models stored on Google Drive typically load faster than models we need to download from the internet.
-
-### [Click here for the GPU Edition Colab](https://colab.research.google.com/github/KoboldAI/KoboldAI-Client/blob/main/colab/GPU.ipynb)
-
-| Model | Size | Type | Description |
-| --- | --- | --- | --- |
-| [GPT-Neo-2.7B-Picard](https://huggingface.co/KoboldAI/GPT-Neo-2.7B-Picard) by Mr Seeker | 2.7B GPU | Novel | Picard is a model trained for SFW Novels based on GPT-Neo-2.7B. It is focused on Novel Type writing without the NSFW bias. While the name suggests a sci-fi model this model is designed for Novels of a variety of genre's. It is meant to be used in KoboldAI's regular mode. |
-| [GPT-Neo-2.7B-AID](https://huggingface.co/KoboldAI/GPT-Neo-2.7B-AID) by melastacho | 2.7B GPU | Adventure | Also know as Adventure 2.7B this is a clone of the AI Dungeon Classic model and is best known for the epic wackey adventures that AI Dungeon Classic players love. |
-| [GPT-Neo-2.7B-Horni-LN](https://huggingface.co/KoboldAI/GPT-Neo-2.7B-Horni-LN) by finetune | 2.7B GPU | Novel | This model is based on GPT-Neo-2.7B-Horni and retains its NSFW knowledge, but was then further biased towards SFW novel stories. If you seek a balance between a SFW Novel model and a NSFW model this model should be a good choice. |
-| [GPT-Neo-2.7B-Horni](https://huggingface.co/KoboldAI/GPT-Neo-2.7B-Horni) by finetune | 2.7B GPU | NSFW | This model is tuned on Literotica to produce a Novel Type model biased towards NSFW content. Can still be used for SFW stories but will have a bias towards NSFW content. It is meant to be used in KoboldAI's regular mode. |
-| [GPT-Neo-2.7B-Shinen](https://huggingface.co/KoboldAI/GPT-Neo-2.7B-Shinen) by Mr Seeker | 2.7B GPU | NSFW | Shinen is an alternative to the Horni model designed to be more explicit. If Horni is to tame for you shinen might produce better results. While it is a Novel model it is unsuitable for SFW stories due to its heavy NSFW bias. Shinen will not hold back. It is meant to be used in KoboldAI's regular mode. |
-| [GPT-Neo-2.7B](https://huggingface.co/EleutherAI/gpt-neo-2.7B) by EleutherAI | 2.7B GPU | Generic | This is the base model for all the other 2.7B models, it is best used when you have a use case that we have no other models available for, such as writing blog articles or programming. It can also be a good basis for the experience of some of the softprompts if your softprompt is not about a subject the other models cover. |
-
-### Model Types
-
-| Type | Description |
-| --- | --- |
-| Novel | For regular story writing, not compatible with Adventure mode or other specialty modes. |
-| NSFW | Indicates that the model is strongly biased towards NSFW content and is not suitable for children, work environments or livestreaming. Most NSFW models are also Novel models in nature. |
-| Adventure | These models are excellent for people willing to play KoboldAI like a Text Adventure game and are meant to be used with Adventure mode enabled. Even if you wish to use it as a Novel Type model you should always have Adventure mode on and set it to story. These models typically have a strong bias towards the use of the word You and without Adventure mode enabled break the story flow and write actions on your behalf. |
-| Chatbot | These models are specifically trained for chatting and are best used with the Chatmode enabled. Typically trained on either public chatrooms or private chats. |
-| Hybrid | Hybrid models are a blend between different Types, for example they are trained on both Novel stories and Adventure stories. These models are great variety models that you can use for multiple different playTypes and modes, but depending on your usage you may need to enable Adventure Mode or the You bias (in userscripts). |
-| Generic | Generic models are not trained towards anything specific, typically used as a basis for other tasks and models. They can do everything the other models can do, but require much more handholding to work properly. Generic models are an ideal basis for tasks that we have no specific model for, or for experiencing a softprompt in its raw form. |
 
 ## Install KoboldAI on your own computer
 
@@ -195,11 +154,11 @@ If you get these errors you either did not select the correct folder for your cu
 
 Softprompts (also known as Modules in other products) are addons that can change the output of existing models. For example you may load a softprompt that biases the AI towards a certain subject and style like transcripts from your favorite TV show.
 
-Since these softprompts are often based on existing franchises we currently do not bundle any of them with KoboldAI due to copyright concerns (We do not want to put the entire project at risk). Instead look at community resources like #softprompts on the [KoboldAI Discord](https://discord.gg/XuQWadgU9k) or the [community hosted mirror](https://storage.henk.tech/KoboldAI/softprompts/) .
+Since these softprompts are often based on existing franchises we currently do not bundle any of them with KoboldAI due to copyright concerns (We do not want to put the entire project at risk). Instead look at community resources like #softprompts on the [KoboldAI Discord](https://discord.gg/XuQWadgU9k) or the [community hosted mirror](https://storage.henk.tech/KoboldAI/softprompts/).
 
 That way we are better protected from any DMCA claims as things can be taken down easier than directly on Github. If you have a copyright free softprompt that you made from scratch and is not based on existing IP that you would like to see officially bundled with KoboldAI issue a pull request with your softprompt.
 
-Training softprompts can be done for free with the [mtj-softtuner colab](https://colab.research.google.com/github/VE-FORBRYDERNE/mtj-softtuner/blob/main/mtj-softtuner.ipynb) , in that case you can leave most of the settings default. Your source data needs to be a folder with text files that are UTF-8 formatted and contain Unix line endings.
+Training softprompts can be done for free with the [Easy Softprompt Tuner](https://colab.research.google.com/gist/henk717/281fd57ebd2e88d852ef9dcc3f29bebf/easy-softprompt-tuner.ipynb#sandboxMode=true), in that case you can leave most of the settings default. Your source data needs to be a folder with text files that are UTF-8 formatted and contain Unix line endings.
 
 ## Userscripts
 
