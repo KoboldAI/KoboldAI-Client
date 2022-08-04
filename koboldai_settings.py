@@ -70,6 +70,8 @@ class koboldai_vars(object):
         return self.__dict__["_{}".format(classname)].to_json()
         
     def load_story(self, story_name, json_data):
+        #Story name here is intended for multiple users on multiple stories. Now always uses default
+        #If we can figure out a way to get flask sessions into/through the lua bridge we could re-enable
         story_name = 'default'
         if story_name in self._story_settings:
             self._story_settings[story_name].socketio.emit("reset_story", {}, broadcast=True, room="UI_2")
@@ -81,6 +83,8 @@ class koboldai_vars(object):
         self._story_settings['default'].save_story()
     
     def create_story(self, story_name, json_data=None):
+        #Story name here is intended for multiple users on multiple stories. Now always uses default
+        #If we can figure out a way to get flask sessions into/through the lua bridge we could re-enable
         story_name = 'default'
         if story_name in self._story_settings:
             
@@ -312,7 +316,7 @@ class story_settings(settings):
     def __init__(self, socketio, tokenizer=None):
         self.socketio = socketio
         self.tokenizer = tokenizer
-        self.story_name  = None   # Title of the story
+        self.story_name  = ""   # Title of the story
         self.lastact     = ""     # The last action received from the user
         self.submission  = ""     # Same as above, but after applying input formatting
         self.lastctx     = ""     # The last context submitted to the generator
@@ -359,7 +363,7 @@ class story_settings(settings):
         
     def save_story(self):
         print("Saving")
-        save_name = self.story_name if self.story_name is not None else "untitled"
+        save_name = self.story_name if self.story_name is not "" else "untitled"
         with open("stories/{}_v2.json".format(save_name), "w") as settings_file:
             settings_file.write(self.to_json())
         self.gamesaved = True
