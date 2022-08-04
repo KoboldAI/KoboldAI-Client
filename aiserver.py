@@ -2192,9 +2192,9 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
             print("Found: {} - {} -> {}".format(preset['Model Size'] in koboldai_vars.model, preset['Model Size'], koboldai_vars.model))
             if preset['Model Size'] in koboldai_vars.model.replace("6.7B", "6B") and preset['uid'] not in used_ids:
                 if preset['Model Category'] == 'Custom':
-                    to_use['Recommended']['Custom'].append(preset)
+                    to_use['Same Class']['Custom'].append(preset)
                 else:
-                    to_use['Recommended']['Official'].append(preset)
+                    to_use['Same Class']['Official'].append(preset)
                 used_ids.append(preset['uid'])
         #Build the rest of the stuff
         for preset in presets:
