@@ -325,6 +325,10 @@
 	margin-right: 25px;
 }
 
+.preset_item {
+	color: white; /*#2b2a33;*/
+}
+
 .menubar1, .menubar2, .menubar3 {
   width: 21px;
   height: 3px;

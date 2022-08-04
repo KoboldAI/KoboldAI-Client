@@ -37,7 +37,7 @@
 	<div id="Model_Info">
 		<div>
 			Running Model: <span class="var_sync_model_model">ReadOnly</span>
-			<select id=presets class="var_sync_model_selected_preset settings_select" onchange='selected_preset(this)'><option>Preset</option></select>
+			<select id=presets class="var_sync_model_selected_preset settings_select" onchange='sync_to_server(this)'><option>Preset</option></select>
 		</div>
 		<div><button class="btn action_button" onclick="socket.emit('load_model_button', {});">Load Model</button></div>
 	</div>

@@ -38,6 +38,7 @@ import bisect
 import functools
 import traceback
 from collections.abc import Iterable
+from collections import OrderedDict
 from typing import Any, Callable, TypeVar, Tuple, Union, Dict, Set, List
 
 import requests
@@ -2167,21 +2168,44 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
     #Let's load the presets
     with open('settings/preset/official.presets') as f:
         presets = json.load(f)
-        to_use = {"Recommended": {"Default": koboldai_vars.default_preset}}
-        #Check for 6B in title
-        if '6B' in koboldai_vars.model or '6.7B' in koboldai_vars.model or '1.3B' in koboldai_vars.model:
-            to_use['Recommended'].update(presets['6B'])
-            for key in presets:
-                if key != '6B':
-                    to_use[key] = presets[key]
-        elif '13B' in koboldai_vars.model:
-            to_use['Recommended'].update(presets['13B'])
-            for key in presets:
-                if key != '13B':
-                    to_use[key] = presets[key]
-        else:
-            for key in presets:
-                to_use[key] = presets[key]
+        koboldai_vars.uid_presets = {x['uid']: x for x in presets}
+        #We want our data to be a 2 deep dict. Top level is "Recommended", "Same Class", "Model 1", "Model 2", etc
+        #Next layer is "Official", "Custom"
+        #Then the preset name
+        
+        to_use = OrderedDict()
+        
+        to_use["Recommended"] = {"Official": [], "Custom": []}
+        to_use["Same Class"] = {"Official": [], "Custom": []}
+        used_ids = []
+        #Build recommended first:
+        for preset in presets:
+            if preset['Model Type'] == koboldai_vars.model and preset['uid'] not in used_ids:
+                if preset['Model Category'] == 'Custom':
+                    to_use['Recommended']['Custom'].append(preset)
+                else:
+                    to_use['Recommended']['Official'].append(preset)
+                used_ids.append(preset['uid'])
+        #Build Same Class
+        for preset in presets:
+            if preset['Model Size'] == koboldai_vars.model and preset['uid'] not in used_ids:
+                if preset['Model Category'] == 'Custom':
+                    to_use['Recommended']['Custom'].append(preset)
+                else:
+                    to_use['Recommended']['Official'].append(preset)
+                used_ids.append(preset['uid'])
+        #Build the rest of the stuff
+        for preset in presets:
+            if preset['uid'] not in used_ids:
+                used_ids.append(preset['uid'])
+                if preset['Model Type'] not in to_use:
+                    to_use[preset['Model Type']] = {"Official": [], "Custom": []}
+                
+                if preset['Model Category'] == 'Custom':
+                    to_use[preset['Model Type']]['Custom'].append(preset)
+                else:
+                    to_use[preset['Model Type']]['Official'].append(preset)
+        
         koboldai_vars.presets = to_use
 
 # Set up Flask routes
@@ -6150,6 +6174,8 @@ def get_files_folders(starting_folder):
 #==================================================================#
 @socketio.on('var_change')
 def UI_2_var_change(data):
+    if 'value' not in data:
+        return
     classname = data['ID'].split("_")[0]
     name = data['ID'][len(classname)+1:]
     classname += "_settings"

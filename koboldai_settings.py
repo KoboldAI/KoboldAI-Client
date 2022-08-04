@@ -109,6 +109,7 @@ class koboldai_vars(object):
         if name[0] == "_":
             super().__setattr__(name, value)
         if name[0] != "_":
+            #Send it to the corrent _setting class
             if name in self._model_settings.__dict__:
                 setattr(self._model_settings, name, value)
             elif name in self._user_settings.__dict__:
@@ -241,6 +242,7 @@ class model_settings(settings):
         self.revision    = None
         self.presets     = []   # Holder for presets
         self.selected_preset = ""
+        self.uid_presets = []
         self.default_preset = {}
         
     #dummy class to eat the tqdm output
@@ -254,8 +256,22 @@ class model_settings(settings):
         super().__setattr__(name, value)
         #Put variable change actions here
         
+        #set preset values
+        if name == 'selected_preset' and value != "":
+            if int(value) in self.uid_presets:
+                for preset_key, preset_value in self.uid_presets[int(value)].items():
+                    if preset_key in self.__dict__:
+                        if type(getattr(self, preset_key)) == int:
+                            preset_value = int(preset_value)
+                        elif type(getattr(self, preset_key)) == float:
+                            preset_value = float(preset_value)
+                        elif type(getattr(self, preset_key)) == bool:
+                            preset_value = bool(preset_value)
+                        elif type(getattr(self, preset_key)) == str:
+                            preset_value = str(preset_value)
+                        setattr(self, preset_key, preset_value)
         #Setup TQDP for token generation
-        if name == "generated_tkns" and 'tqdm' in self.__dict__:
+        elif name == "generated_tkns" and 'tqdm' in self.__dict__:
             if value == 0:
                 self.tqdm.reset(total=self.genamt)
                 self.tqdm_progress = 0

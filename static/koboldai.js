@@ -291,43 +291,27 @@ function do_presets(data) {
 	option.text="presets";
 	select.append(option);
 	presets = data.value;
+	
+	
 	for (const [key, value] of Object.entries(data.value)) {
 		var option_group = document.createElement("optgroup");
 		option_group.label = key;
-		for (const [preset, preset_value] of Object.entries(value)) {
+		for (const [group, group_value] of Object.entries(value)) {
 			var option = document.createElement("option");
-			option.value=key+"|"+preset;
-			option.text=preset;
-			option.title = preset_value.description;
+			option.text=group;
+			option.disabled = true;
+			option.classList.add("preset_group");
 			option_group.append(option);
+			for (const [preset, preset_value] of Object.entries(group_value)) {
+				var option = document.createElement("option");
+				option.value=preset;
+				option.text=preset_value.preset;
+				option.title = preset_value.description;
+				option_group.append(option);
+			}
 		}
 		select.append(option_group);
 	}
-}
-
-function selected_preset(data) {
-	
-	preset_key = data.value.split("|")[0];
-	preset = data.value.split("|")[1];
-	if ((data.value == undefined) || (presets[preset_key] == undefined)) {
-		return;
-	}
-	if (presets[preset_key][preset] == undefined) {
-		return;
-	}
-	for (const [key, value] of Object.entries(presets[preset_key][preset])) {
-		if (key.charAt(0) != '_') {
-			var elements_to_change = document.getElementsByClassName("var_sync_model_"+key);
-			for (item of elements_to_change) {
-				if (item.tagName.toLowerCase() === 'input') {
-					item.value = value;
-				} else {
-					item.textContent = fix_text(value);
-				}
-			}
-		}
-	}
-	socket.emit("var_change", {"ID": "model_selected_preset", "value": data.value});
 }
 
 function update_status_bar(data) {
@@ -378,8 +362,6 @@ function var_changed(data) {
 	//Special Case for Presets
 	} else if ((data.classname == 'model') && (data.name == 'presets')) {
 		do_presets(data);
-	} else if ((data.classname == "model") && (data.name == "selected_preset")) {
-		selected_preset(data);
 	} else if ((data.classname == 'story') && (data.name == 'prompt')) {
 		do_prompt(data);
 	//Basic Data Syncing
@@ -1259,7 +1241,7 @@ function sync_to_server(item) {
 	//get value
 	value = null;
 	name = null;
-	if ((item.tagName.toLowerCase() === 'input') || (item.tagName.toLowerCase() === 'select') || (item.tagName.toLowerCase() == 'textarea')) {
+	if ((item.tagName.toLowerCase() === 'checkbox') || (item.tagName.toLowerCase() === 'input') || (item.tagName.toLowerCase() === 'select') || (item.tagName.toLowerCase() == 'textarea')) {
 		if (item.getAttribute("type") == "checkbox") {
 			value = item.checked;
 		} else {
