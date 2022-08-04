@@ -2189,7 +2189,6 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
                 used_ids.append(preset['uid'])
         #Build Same Class
         for preset in presets:
-            print("Found: {} - {} -> {}".format(preset['Model Size'] in koboldai_vars.model, preset['Model Size'], koboldai_vars.model))
             if preset['Model Size'] in koboldai_vars.model.replace("6.7B", "6B") and preset['uid'] not in used_ids:
                 if preset['Model Category'] == 'Custom':
                     to_use['Same Class']['Custom'].append(preset)
@@ -6206,11 +6205,8 @@ def UI_2_var_change(data):
 #==================================================================#
 @socketio.on('save_story')
 def UI_2_save_story(data):
-    json_data = koboldai_vars.to_json('story_settings')
-    save_name = koboldai_vars.story_name if koboldai_vars.story_name is not None else "untitled"
-    with open("stories/{}_v2.json".format(save_name), "w") as settings_file:
-        settings_file.write(json_data)
-    koboldai_vars.gamesaved = True
+    koboldai_vars.save_story()
+    
     
     
 #==================================================================#

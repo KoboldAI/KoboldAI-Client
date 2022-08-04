@@ -77,7 +77,8 @@ class koboldai_vars(object):
         else:
             self.create_story(story_name, json_data=json_data)
             
-        
+    def save_story(self):
+        self._story_settings['default'].save_story()
     
     def create_story(self, story_name, json_data=None):
         story_name = 'default'
@@ -317,20 +318,21 @@ class story_settings(settings):
         self.lastctx     = ""     # The last context submitted to the generator
         self.gamestarted = False  # Whether the game has started (disables UI elements)
         self.gamesaved   = True   # Whether or not current game is saved
+        self.autosave    = False             # Whether or not to automatically save after each action
         self.prompt      = ""     # Prompt
         self.memory      = ""     # Text submitted to memory field
         self.authornote  = ""     # Text submitted to Author's Note field
         self.authornotetemplate = "[Author's note: <|>]"  # Author's note template
         self.setauthornotetemplate = self.authornotetemplate  # Saved author's note template in settings
         self.andepth     = 3      # How far back in history to append author's note
-        self.actions     = KoboldStoryRegister(socketio, story_settings, tokenizer=tokenizer)  # Actions submitted by user and AI
+        self.actions     = KoboldStoryRegister(socketio, self, tokenizer=tokenizer)  # Actions submitted by user and AI
         self.actions_metadata = {} # List of dictonaries, one dictonary for every action that contains information about the action like alternative options.
                               # Contains at least the same number of items as actions. Back action will remove an item from actions, but not actions_metadata
                               # Dictonary keys are:
                               # Selected Text: (text the user had selected. None when this is a newly generated action)
                               # Alternative Generated Text: {Text, Pinned, Previous Selection, Edited}
                               # 
-        self.worldinfo_v2 = KoboldWorldInfo(socketio, story_settings, tokenizer=self.tokenizer)
+        self.worldinfo_v2 = KoboldWorldInfo(socketio, self, tokenizer=self.tokenizer)
         self.worldinfo   = []     # List of World Info key/value objects
         self.worldinfo_i = []     # List of World Info key/value objects sans uninitialized entries
         self.worldinfo_u = {}     # Dictionary of World Info UID - key/value pairs
@@ -355,6 +357,13 @@ class story_settings(settings):
         self.recentedit  = False
         self.notes       = ""    #Notes for the story. Does nothing but save
         
+    def save_story(self):
+        print("Saving")
+        save_name = self.story_name if self.story_name is not None else "untitled"
+        with open("stories/{}_v2.json".format(save_name), "w") as settings_file:
+            settings_file.write(self.to_json())
+        self.gamesaved = True
+    
     def reset(self):
         self.__init__(self.socketio, tokenizer=self.tokenizer)
         
@@ -362,16 +371,21 @@ class story_settings(settings):
         new_variable = name not in self.__dict__
         old_value = getattr(self, name, None)
         super().__setattr__(name, value)
+        print("Changing {} from {} to {}".format(name, old_value, value))
         #Put variable change actions here
         if name not in self.local_only_variables and name[0] != "_" and not new_variable:
             process_variable_changes(self.socketio, self.__class__.__name__.replace("_settings", ""), name, value, old_value)
         #We want to automatically set gamesaved to false if something happens to the actions list (pins, redos, generations, text, etc)
         #To do that we need to give the actions list a copy of this data so it can set the gamesaved variable as needed
+        
+        #autosave action
+        if name == "gamesaved" and value == False and self.autosave:
+            self.save_story()
         if not new_variable and old_value != value:
             if name == 'actions':
                 self.actions.story_settings = self
             #Recalc token length
-            if name in ['authornote', 'memory' ,'prompt', 'tokenizer'] and self.tokenizer is not None:
+            elif name in ['authornote', 'memory' ,'prompt', 'tokenizer'] and self.tokenizer is not None:
                 if name == 'tokenizer' and not new_variable:
                     self.memory_length = len(self.tokenizer.encode(self.memory))
                     self.prompt_length = len(self.tokenizer.encode(self.prompt))
@@ -384,7 +398,7 @@ class story_settings(settings):
                     self.prompt_length = len(self.tokenizer.encode(self.prompt))
             
             #Because we have seperate variables for action types, this syncs them
-            if name == 'actionmode':
+            elif name == 'actionmode':
                 if value == 0:
                     self.adventure = False
                     self.chatmode = False
@@ -420,7 +434,6 @@ class user_settings(settings):
         self.spselect    = ""                # Temporary storage for soft prompt filename to load
         self.svowname    = ""                # Filename that was flagged for overwrite confirm
         self.saveow      = False             # Whether or not overwrite confirm has been displayed
-        self.autosave    = False             # Whether or not to automatically save after each action
         self.laststory   = None              # Filename (without extension) of most recent story JSON file we loaded
         self.sid         = ""                # session id for the socketio client (request.sid)
         self.username    = "Default User"    # Displayed Username
@@ -796,18 +809,16 @@ class KoboldWorldInfo(object):
         self.send_to_ui()
     
     def add_folder(self, folder):
-        self.story_settings.gamesaved = False
         if folder in self.world_info_folder:
             i=0
             while "{} {}".format(folder, i) in self.world_info_folder:
                 i+=1
             folder = "{} {}".format(folder, i)
         self.world_info_folder[folder] = []
-        
+        self.story_settings.gamesaved = False
         self.socketio.emit("world_info_folder", {x: self.world_info_folder[x] for x in self.world_info_folder}, broadcast=True, room="UI_2")
         
     def add_item_to_folder(self, uid, folder, before=None):
-        self.story_settings.gamesaved = False
         if uid in self.world_info:
             #fiirst we need to remove the item from whatever folder it's in
             for temp in self.world_info_folder:
@@ -826,10 +837,10 @@ class KoboldWorldInfo(object):
                 
             #Finally, adjust the folder tag in the element
             self.world_info[uid]['folder'] = folder
+            self.story_settings.gamesaved = False
         self.socketio.emit("world_info_folder", {x: self.world_info_folder[x] for x in self.world_info_folder}, broadcast=True, room="UI_2")
                 
     def add_item(self, title, key, keysecondary, folder, constant, content, comment):
-        self.story_settings.gamesaved = False
         if len(self.world_info) == 0:
             uid = 0
         else:
@@ -870,12 +881,12 @@ class KoboldWorldInfo(object):
         if folder not in self.world_info_folder:
             self.world_info_folder[folder] = []
         self.world_info_folder[folder].append(uid)
+        self.story_settings.gamesaved = False
         
         self.socketio.emit("world_info_folder", {x: self.world_info_folder[x] for x in self.world_info_folder}, broadcast=True, room="UI_2")
         self.socketio.emit("world_info_entry", self.world_info[uid], broadcast=True, room="UI_2")
         
     def edit_item(self, uid, title, key, keysecondary, folder, constant, content, comment, before=None):
-        self.story_settings.gamesaved = False
         old_folder = self.world_info[uid]['folder']
         #move the world info entry if the folder changed or if there is a new order requested
         if old_folder != folder or before is not None:
@@ -899,6 +910,7 @@ class KoboldWorldInfo(object):
                                 "selective": len(keysecondary) > 0
                                 }
                                 
+        self.story_settings.gamesaved = False
         self.socketio.emit("world_info_folder", {x: self.world_info_folder[x] for x in self.world_info_folder}, broadcast=True, room="UI_2")
         self.socketio.emit("world_info_entry", self.world_info[uid], broadcast=True, room="UI_2")
         
@@ -908,6 +920,7 @@ class KoboldWorldInfo(object):
             if uid in self.world_info_folder[folder]:
                 self.world_info_folder[folder].remove(uid)
         
+        self.story_settings.gamesaved = False
         self.socketio.emit("world_info_folder", {x: self.world_info_folder[x] for x in self.world_info_folder}, broadcast=True, room="UI_2")
         self.socketio.emit("delete_world_info_entry", uid, broadcast=True, room="UI_2")
     
@@ -930,12 +943,12 @@ class KoboldWorldInfo(object):
                 self.world_info_folder.move_to_end(check_folder)
         del self.world_info_folder[old_folder]
         
-        print(self.world_info_folder)
         # Need to change the folder properties on each affected world info item
         for uid in self.world_info:
             if self.world_info[uid]['folder'] == old_folder:
                 self.world_info[uid]['folder'] = folder
         
+        self.story_settings.gamesaved = False
         self.socketio.emit("world_info_folder", {x: self.world_info_folder[x] for x in self.world_info_folder}, broadcast=True, room="UI_2")
     
     def reorder(self, uid, before):

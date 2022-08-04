@@ -204,8 +204,8 @@ gensettingstf = [
 	"step": 1,
 	"default": 0,
     "tooltip": "Whether the game is saved after each action.",
-    "menu_path": "User",
-    "classname": "user",
+    "menu_path": "Story",
+    "classname": "story",
     "name": "autosave"
 	},
     {
@@ -433,8 +433,8 @@ gensettingsik =[{
 	"step": 1,
 	"default": 0,
     "tooltip": "Whether the game is saved after each action.",
-    "menu_path": "User",
-    "classname": "user",
+    "menu_path": "Story",
+    "classname": "story",
     "name": "autosave"
 	},
     {
