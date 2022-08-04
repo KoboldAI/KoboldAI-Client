@@ -2188,7 +2188,7 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
                 used_ids.append(preset['uid'])
         #Build Same Class
         for preset in presets:
-            if preset['Model Size'] == koboldai_vars.model and preset['uid'] not in used_ids:
+            if preset['Model Size'] in koboldai_vars.model and preset['uid'] not in used_ids:
                 if preset['Model Category'] == 'Custom':
                     to_use['Recommended']['Custom'].append(preset)
                 else:
