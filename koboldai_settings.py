@@ -371,7 +371,6 @@ class story_settings(settings):
         new_variable = name not in self.__dict__
         old_value = getattr(self, name, None)
         super().__setattr__(name, value)
-        print("Changing {} from {} to {}".format(name, old_value, value))
         #Put variable change actions here
         if name not in self.local_only_variables and name[0] != "_" and not new_variable:
             process_variable_changes(self.socketio, self.__class__.__name__.replace("_settings", ""), name, value, old_value)
@@ -816,6 +815,7 @@ class KoboldWorldInfo(object):
             folder = "{} {}".format(folder, i)
         self.world_info_folder[folder] = []
         self.story_settings.gamesaved = False
+        self.sync_world_info_to_old_format()
         self.socketio.emit("world_info_folder", {x: self.world_info_folder[x] for x in self.world_info_folder}, broadcast=True, room="UI_2")
         
     def add_item_to_folder(self, uid, folder, before=None):
@@ -838,6 +838,7 @@ class KoboldWorldInfo(object):
             #Finally, adjust the folder tag in the element
             self.world_info[uid]['folder'] = folder
             self.story_settings.gamesaved = False
+            self.sync_world_info_to_old_format()
         self.socketio.emit("world_info_folder", {x: self.world_info_folder[x] for x in self.world_info_folder}, broadcast=True, room="UI_2")
                 
     def add_item(self, title, key, keysecondary, folder, constant, content, comment):
@@ -882,6 +883,7 @@ class KoboldWorldInfo(object):
             self.world_info_folder[folder] = []
         self.world_info_folder[folder].append(uid)
         self.story_settings.gamesaved = False
+        self.sync_world_info_to_old_format()
         
         self.socketio.emit("world_info_folder", {x: self.world_info_folder[x] for x in self.world_info_folder}, broadcast=True, room="UI_2")
         self.socketio.emit("world_info_entry", self.world_info[uid], broadcast=True, room="UI_2")
@@ -911,6 +913,8 @@ class KoboldWorldInfo(object):
                                 }
                                 
         self.story_settings.gamesaved = False
+        self.sync_world_info_to_old_format()
+        
         self.socketio.emit("world_info_folder", {x: self.world_info_folder[x] for x in self.world_info_folder}, broadcast=True, room="UI_2")
         self.socketio.emit("world_info_entry", self.world_info[uid], broadcast=True, room="UI_2")
         
@@ -921,6 +925,7 @@ class KoboldWorldInfo(object):
                 self.world_info_folder[folder].remove(uid)
         
         self.story_settings.gamesaved = False
+        self.sync_world_info_to_old_format()
         self.socketio.emit("world_info_folder", {x: self.world_info_folder[x] for x in self.world_info_folder}, broadcast=True, room="UI_2")
         self.socketio.emit("delete_world_info_entry", uid, broadcast=True, room="UI_2")
     
@@ -949,6 +954,7 @@ class KoboldWorldInfo(object):
                 self.world_info[uid]['folder'] = folder
         
         self.story_settings.gamesaved = False
+        self.sync_world_info_to_old_format()
         self.socketio.emit("world_info_folder", {x: self.world_info_folder[x] for x in self.world_info_folder}, broadcast=True, room="UI_2")
     
     def reorder(self, uid, before):
@@ -968,7 +974,66 @@ class KoboldWorldInfo(object):
     def load_json(self, data):
         self.world_info = {int(x): data['entries'][x] for x in data['entries']}
         self.world_info_folder = data['folders']
+        try:
+            self.sync_world_info_to_old_format()
+        except:
+            print(self.world_info)
+            print(data)
+            raise
         self.send_to_ui()
+    
+    def sync_world_info_to_old_format(self):
+        #Since the old UI uses world info entries for folders, we need to make some up
+        folder_entries = {}
+        i=-1
+        for folder in self.world_info_folder:
+            folder_entries[folder] = i
+            i-=1
+    
+    
+        #self.worldinfo_i = []     # List of World Info key/value objects sans uninitialized entries
+        self.story_settings.worldinfo_i = [{
+                                            "comment": self.world_info[x]['comment'],
+                                            "constant": self.world_info[x]['constant'],
+                                            "content": self.world_info[x]['content'],
+                                            "folder": self.world_info[x]['folder'],
+                                            "init": True,
+                                            "key": ",".join(self.world_info[x]['key']),
+                                            "keysecondary": ",".join(self.world_info[x]['keysecondary']),
+                                            "num": x,
+                                            "selective": len(self.world_info[x]['keysecondary'])>0,
+                                            "uid": self.world_info[x]['uid']
+                                        } for x in self.world_info]
+                                        
+        #self.worldinfo   = []     # List of World Info key/value objects
+        self.story_settings.worldinfo = [x for x in self.story_settings.worldinfo_i]
+        for folder in folder_entries:
+            self.story_settings.worldinfo.append({
+                                            "comment": "",
+                                            "constant": False,
+                                            "content": "",
+                                            "folder": None,
+                                            "init": False,
+                                            "key": "",
+                                            "keysecondary": "",
+                                            "num": (0 if len(self.world_info) == 0 else max(self.world_info))+(folder_entries[folder]*-1),
+                                            "selective": False,
+                                            "uid": folder_entries[folder]
+                                        })
+        
+        #self.wifolders_d = {}     # Dictionary of World Info folder UID-info pairs
+        self.story_settings.wifolders_d = {folder_entries[x]: {'collapsed': False, 'name': x} for x in folder_entries}
+        
+        #self.worldinfo_u = {}     # Dictionary of World Info UID - key/value pairs
+        self.story_settings.worldinfo_u = {x['uid']: x for x in self.story_settings.worldinfo_i}
+        
+        #self.wifolders_l = []     # List of World Info folder UIDs
+        self.story_settings.wifolders_l = [folder_entries[x] for x in folder_entries]
+        
+        #self.wifolders_u = {}     # Dictionary of pairs of folder UID - list of WI UID
+        self.story_settings.wifolders_u = {folder_entries[x]: [y for y in self.story_settings.worldinfo if y['folder'] == x] for x in folder_entries}
+        
+        
     
     def __setattr__(self, name, value):
         new_variable = name not in self.__dict__
