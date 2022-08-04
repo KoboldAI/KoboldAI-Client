@@ -2177,6 +2177,7 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
         
         to_use["Recommended"] = {"Official": [], "Custom": []}
         to_use["Same Class"] = {"Official": [], "Custom": []}
+        to_use["Other"] = {"Official": [], "Custom": []}
         used_ids = []
         #Build recommended first:
         for preset in presets:
@@ -2188,7 +2189,8 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
                 used_ids.append(preset['uid'])
         #Build Same Class
         for preset in presets:
-            if preset['Model Size'] in koboldai_vars.model and preset['uid'] not in used_ids:
+            print("Found: {} - {} -> {}".format(preset['Model Size'] in koboldai_vars.model, preset['Model Size'], koboldai_vars.model))
+            if preset['Model Size'] in koboldai_vars.model.replace("6.7B", "6B") and preset['uid'] not in used_ids:
                 if preset['Model Category'] == 'Custom':
                     to_use['Recommended']['Custom'].append(preset)
                 else:
@@ -2198,13 +2200,10 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
         for preset in presets:
             if preset['uid'] not in used_ids:
                 used_ids.append(preset['uid'])
-                if preset['Model Type'] not in to_use:
-                    to_use[preset['Model Type']] = {"Official": [], "Custom": []}
-                
                 if preset['Model Category'] == 'Custom':
-                    to_use[preset['Model Type']]['Custom'].append(preset)
+                    to_use["Other"]['Custom'].append(preset)
                 else:
-                    to_use[preset['Model Type']]['Official'].append(preset)
+                    to_use["Other"]['Official'].append(preset)
         
         koboldai_vars.presets = to_use
 
