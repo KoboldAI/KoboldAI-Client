@@ -2166,7 +2166,7 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
         koboldai_vars.tokenizer = tokenizer
     
     #Let's load the presets
-    with open('settings/preset/official.presets') as f:
+    with open('official.presets') as f:
         presets = json.load(f)
         koboldai_vars.uid_presets = {x['uid']: x for x in presets}
         #We want our data to be a 2 deep dict. Top level is "Recommended", "Same Class", "Model 1", "Model 2", etc
