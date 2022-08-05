@@ -79,6 +79,7 @@ var rs_close;
 var seqselmenu;
 var seqselcontents;
 var stream_preview;
+var token_prob_container;
 
 var storyname = null;
 var memorymode = false;
@@ -890,7 +891,7 @@ function formatChunkInnerText(chunk) {
 }
 
 function dosubmit(disallow_abort) {
-	ignore_stream = false;
+	beginStream();
 	submit_start = Date.now();
 	var txt = input_text.val().replace(/\u00a0/g, " ");
 	if((disallow_abort || gamestate !== "wait") && !memorymode && !gamestarted && ((!adventure || !action_mode) && txt.trim().length == 0)) {
@@ -905,7 +906,7 @@ function dosubmit(disallow_abort) {
 }
 
 function _dosubmit() {
-	ignore_stream = false;
+	beginStream();
 	var txt = submit_throttle.txt;
 	var disallow_abort = submit_throttle.disallow_abort;
 	submit_throttle = null;
@@ -2088,6 +2089,11 @@ function unbindGametext() {
 	gametext_bound = false;
 }
 
+function beginStream() {
+	ignore_stream = false;
+	token_prob_container[0].innerHTML = "";
+}
+
 function endStream() {
 	// Clear stream, the real text is about to be displayed.
 	ignore_stream = true;
@@ -2123,6 +2129,14 @@ function RemoveAllButFirstOption(selectElement) {
    for(i = L; i >= 1; i--) {
       selectElement.remove(i);
    }
+}
+
+function interpolateRGB(color0, color1, t) {
+	return [
+		color0[0] + ((color1[0] - color0[0]) * t),
+		color0[1] + ((color1[1] - color0[1]) * t),
+		color0[2] + ((color1[2] - color0[2]) * t),
+	]
 }
 
 //=================================================================//
@@ -2216,6 +2230,8 @@ $(document).ready(function(){
 	rs_close          = $("#btn_rsclose");
 	seqselmenu        = $("#seqselmenu");
 	seqselcontents    = $("#seqselcontents");
+	token_prob_container = $("#token_prob_container");
+	token_prob_menu = $("#token_prob_menu");
 
 	// Connect to SocketIO server
 	socket = io.connect(window.document.origin, {transports: ['polling', 'websocket'], closeOnBeforeunload: false});
@@ -2279,14 +2295,68 @@ $(document).ready(function(){
 			// appearing after the output. To combat this, we only allow tokens
 			// to be displayed after requesting and before recieving text.
 			if (ignore_stream) return;
-			if (!$("#setoutputstreaming")[0].checked) return;
 
-			if (!stream_preview) {
+			let streamingEnabled = $("#setoutputstreaming")[0].checked;
+			let probabilitiesEnabled = $("#setshowprobs")[0].checked;
+
+			if (!streamingEnabled && !probabilitiesEnabled) return;
+
+			if (!stream_preview && streamingEnabled) {
 				stream_preview = document.createElement("span");
 				game_text.append(stream_preview);
 			}
 
-			stream_preview.innerText += msg.data.join("");
+			for (const token of msg.data) {
+				if (streamingEnabled) stream_preview.innerText += token.decoded;
+
+				if (probabilitiesEnabled) {
+					// Probability display
+					let probDiv = document.createElement("div");
+					probDiv.classList.add("token-probs");
+
+					let probTokenSpan = document.createElement("span");
+					probTokenSpan.classList.add("token-probs-header");
+					probTokenSpan.innerText = token.decoded.replaceAll("\n", "\\n");
+					probDiv.appendChild(probTokenSpan);
+
+					let probTable = document.createElement("table");
+					let probTBody = document.createElement("tbody");
+					probTable.appendChild(probTBody);
+
+					for (const probToken of token.probabilities) {
+						let tr = document.createElement("tr");
+						let rgb = interpolateRGB(
+							[255, 255, 255],
+							[0, 255, 0],
+							probToken.score
+						).map(Math.round);
+						let color = `rgb(${rgb.join(", ")})`;
+
+						if (probToken.decoded === token.decoded) {
+							tr.classList.add("token-probs-final-token");
+						}
+
+						let tds = {};
+
+						for (const property of ["tokenId", "decoded", "score"]) {
+							let td = document.createElement("td");
+							td.style.color = color;
+							tds[property] = td;
+							tr.appendChild(td);
+						}
+
+						tds.tokenId.innerText = probToken.tokenId;
+						tds.decoded.innerText = probToken.decoded.toString().replaceAll("\n", "\\n");
+						tds.score.innerText = (probToken.score * 100).toFixed(2) + "%";
+
+						probTBody.appendChild(tr);
+					}
+
+					probDiv.appendChild(probTable);
+					token_prob_container.append(probDiv);
+				}
+			}
+
 			scrollToBottom();
 		} else if(msg.cmd == "updatescreen") {
 			var _gamestarted = gamestarted;
@@ -2561,6 +2631,14 @@ $(document).ready(function(){
 		} else if(msg.cmd == "updateoutputstreaming") {
 			// Update toggle state
 			$("#setoutputstreaming").prop('checked', msg.data).change();
+		} else if(msg.cmd == "updateshowprobs") {
+			$("#setshowprobs").prop('checked', msg.data).change();
+
+			if(msg.data) {
+				token_prob_menu.removeClass("hidden");
+			} else {
+				token_prob_menu.addClass("hidden");
+			}
 		} else if(msg.cmd == "allowtoggle") {
 			// Allow toggle change states to propagate
 			allowtoggle = msg.data;
@@ -2956,7 +3034,7 @@ $(document).ready(function(){
 	});
 	
 	button_actretry.on("click", function(ev) {
-		ignore_stream = false;
+		beginStream();
 		hideMessage();
 		socket.send({'cmd': 'retry', 'chatname': chatmode ? chat_name.val() : undefined, 'data': ''});
 		hidegenseqs();
@@ -3203,7 +3281,7 @@ $(document).ready(function(){
 	});
 	
 	rs_accept.on("click", function(ev) {
-		ignore_stream = false;
+		beginStream();
 		hideMessage();
 		socket.send({'cmd': 'rndgame', 'memory': $("#rngmemory").val(), 'data': topic.val()});
 		hideRandomStoryPopup();

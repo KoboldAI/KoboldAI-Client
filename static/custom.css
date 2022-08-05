@@ -1648,3 +1648,50 @@ body.connected .popupfooter, .popupfooter.always-available {
 	cursor: pointer;
 	background-color: #688f1f;
 }
+
+#token_prob_menu {
+	color: white;
+	background-color: #262626;
+}
+
+.token-probs {
+	display: inline-block;
+	text-align: center;
+	margin-right: 5px;
+}
+
+.token-probs > table {
+	width: 100%;
+}
+
+.token-probs > table > tbody > tr > td {
+	border: 1px solid #262626;
+	border-collapse: collapse;
+	padding: 2px 15px;
+}
+
+.token-probs > table > tbody > tr {
+	background-color: #3e3e3e;
+}
+
+.token-probs > table > tbody > tr:nth-child(2n) {
+	background-color: #575757;
+}
+
+.token-probs-final-token {
+	font-weight: bold;
+	text-decoration: underline;
+}
+
+.token-probs-final-token > td {
+	background: #5c8a5a;
+}
+
+.token-probs-header {
+	display: block;
+}
+
+#token_prob_container {
+	overflow-x: scroll;
+	white-space: nowrap;
+}
