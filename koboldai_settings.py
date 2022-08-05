@@ -444,6 +444,7 @@ class user_settings(settings):
         self.rngpersist  = False
         self.nogenmod    = False
         self.debug       = False    # If set to true, will send debug information to the client for display
+        self.output_streaming = True
         
         
     def __setattr__(self, name, value):
@@ -563,6 +564,7 @@ class KoboldStoryRegister(object):
                 self.actions[i]["Options"].append({"text": old_text, "Pinned": False, "Previous Selection": False, "Edited": True})
         else:
             old_text = None
+            old_length = None
             self.actions[i] = {"Selected Text": text, "Options": []}
             
         if self.tokenizer is not None:
@@ -730,9 +732,6 @@ class KoboldStoryRegister(object):
             text = self.actions[self.action_count]['Selected Text']
             length = self.actions[self.action_count]['Selected Text Length']
             self.delete_action(self.action_count)
-            process_variable_changes(self.socketio, "actions", "Selected Text", {"id": self.action_count, "text": None}, {"id": self.action_count, "text": text})
-            process_variable_changes(self.socketio, "actions", 'Selected Text Length', {"id": self.action_count, 'length': 0}, {"id": self.action_count, 'length': length})
-            self.set_game_saved()
             return text
         else:
             return None
@@ -777,6 +776,33 @@ class KoboldStoryRegister(object):
             for key in self.actions:
                 self.actions[key]['Selected Text Length'] = None
     
+    def stream_tokens(self, text_list):
+        if len(text_list) > 1:
+            if self.action_count+1 in self.actions:
+                for i in range(len(text_list)):
+                    for j in range(len(self.actions[self.action_count+1]['Options'])):
+                        if 'stream_id' in self.actions[self.action_count+1]['Options'][j]:
+                            if self.actions[self.action_count+1]['Options'][j]['stream_id'] == i:
+                                self.actions[self.action_count+1]['Options'][i]['text'] = "{}{}".format(self.actions[self.action_count+1]['Options'][i]['text'], text_list[i])
+            else:
+                self.actions[self.action_count+1] = {"Selected Text": "", "Selected Text Length": 0, "Options": []}
+                for i in range(len(text_list)):
+                    self.actions[self.action_count+1]['Options'].append({"text": text_list[i], "Pinned": False, "Previous Selection": False, "Edited": False, "stream_id": i})
+            
+            process_variable_changes(self.socketio, "actions", "Options", {"id": self.action_count+1, "options": self.actions[self.action_count+1]["Options"]}, {"id": self.action_count+1, "options": None})
+        else:
+            #We're streaming single options so our output is our selected
+            if self.tokenizer is not None:
+                selected_text_length = len(self.tokenizer.encode(text_list[0]))
+            else:
+                selected_text_length = 0
+            if self.action_count+1 in self.actions:
+                self.actions[self.action_count+1]['Selected Text'] = "{}{}".format(self.actions[self.action_count+1]['Selected Text'], text_list[0])
+            else:
+                self.actions[self.action_count+1] = {"Selected Text": text_list[0], "Selected Text Length": selected_text_length, "Options": []}
+            
+            process_variable_changes(self.socketio, "actions", "Selected Text", {"id": self.action_count+1, "text": self.actions[self.action_count+1]['Selected Text']}, None)
+            process_variable_changes(self.socketio, "actions", 'Selected Text Length', {"id": self.action_count+1, 'length': self.actions[self.action_count+1]['Selected Text Length']}, {"id": self.action_count, 'length': 0})
     
     def __setattr__(self, name, value):
         new_variable = name not in self.__dict__

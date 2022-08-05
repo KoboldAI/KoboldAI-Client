@@ -331,7 +331,21 @@ gensettingstf = [
     "classname": "story",
     "name": "actionmode",
     'children': [{'text': 'Story', 'value': 0}, {'text':'Adventure','value':1}, {'text':'Chat', 'value':2}]
-    }
+    },
+    {
+ 	"uitype": "toggle",
+ 	"unit": "bool",
+ 	"label": "Token Streaming",
+ 	"id": "setoutputstreaming",
+ 	"min": 0,
+ 	"max": 1,
+ 	"step": 1,
+ 	"default": 0,
+	"tooltip": "Shows outputs to you as they are made.",
+    "menu_path": "User",
+    "classname": "user",
+    "name": "output_streaming"
+ 	}
 ]
 
 gensettingsik =[{
@@ -520,7 +534,21 @@ gensettingsik =[{
     "menu_path": "User",
     "classname": "user",
     "name": "debug"
-	}
+	},
+    {
+ 	"uitype": "toggle",
+ 	"unit": "bool",
+ 	"label": "Token Streaming",
+ 	"id": "setoutputstreaming",
+ 	"min": 0,
+ 	"max": 1,
+ 	"step": 1,
+ 	"default": 0,
+	"tooltip": "Shows outputs to you as they are made.",
+    "menu_path": "User",
+    "classname": "user",
+    "name": "output_streaming"
+ 	}
 ]
 
 formatcontrols = [{

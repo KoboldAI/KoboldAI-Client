@@ -675,6 +675,7 @@ def savesettings():
     js["autosave"]    = koboldai_vars.autosave
     js["welcome"]     = koboldai_vars.welcome
     js["newlinemode"] = koboldai_vars.newlinemode
+    js["output_streaming"] = koboldai_vars.output_streaming
 
     js["antemplate"]  = koboldai_vars.setauthornotetemplate
 
@@ -779,6 +780,8 @@ def processsettings(js):
         koboldai_vars.newlinemode = js["newlinemode"]
     if("welcome" in js):
         koboldai_vars.welcome = js["welcome"]
+    if("output_streaming" in js):
+        koboldai_vars.autosave = js["output_streaming"]
 
     if("antemplate" in js):
         koboldai_vars.setauthornotetemplate = js["antemplate"]
@@ -1412,6 +1415,33 @@ def patch_transformers():
     new_init.old_init = transformers.generation_logits_process.NoBadWordsLogitsProcessor.__init__
     transformers.generation_logits_process.NoBadWordsLogitsProcessor.__init__ = new_init
 
+    class TokenStreamer(StoppingCriteria):
+        # A StoppingCriteria is used here because it seems to run after
+        # everything has been evaluated score-wise.
+        def __init__(self, tokenizer):
+            self.tokenizer = tokenizer
+
+        def __call__(
+            self,
+            input_ids: torch.LongTensor,
+            scores: torch.FloatTensor,
+            **kwargs,
+        ) -> bool:
+            if (not koboldai_vars.output_streaming):
+                return False
+
+            #for batch, ids in enumerate(input_ids):
+                #tokenizer_text = utils.decodenewlines(tokenizer.decode(ids[-1]))
+                #koboldai_vars.actions.stream_token(tokenizer_text, batch=batch)
+               
+            koboldai_vars.actions.stream_tokens([utils.decodenewlines(tokenizer.decode(x[-1])) for x in input_ids])
+            #if len(input_ids) > 1:
+            #    koboldai_vars.actions.clear_unused_options()
+            #    koboldai_vars.actions.append_options([utils.decodenewlines(tokenizer.decode(x[-1])) for x in input_ids])
+            #else:
+            #    koboldai_vars.actions[koboldai_vars.actions.action_count+1] = utils.decodenewlines(tokenizer.decode(input_ids[0, -1]))
+                
+            return False
 
     # Sets up dynamic world info scanner
     class DynamicWorldInfoScanCriteria(StoppingCriteria):
@@ -1467,6 +1497,8 @@ def patch_transformers():
             excluded_world_info=self.kai_scanner_excluded_world_info,
         )
         stopping_criteria.insert(0, self.kai_scanner)
+        token_streamer = TokenStreamer(tokenizer=tokenizer)
+        stopping_criteria.insert(0, token_streamer)
         return stopping_criteria
     transformers.generation_utils.GenerationMixin._get_stopping_criteria = new_get_stopping_criteria
 
@@ -2616,6 +2648,7 @@ def lua_has_setting(setting):
         "rmspch",
         "adsnsp",
         "singleline",
+        "output_streaming",
     )
 
 #==================================================================#
@@ -2647,6 +2680,7 @@ def lua_get_setting(setting):
     if(setting in ("frmtrmspch", "rmspch")): return koboldai_vars.formatoptns["frmttrmspch"]
     if(setting in ("frmtadsnsp", "adsnsp")): return koboldai_vars.formatoptns["frmtadsnsp"]
     if(setting in ("frmtsingleline", "singleline")): return koboldai_vars.formatoptns["singleline"]
+    if(setting == "outputstreaming"): koboldai_vars.output_streaming = v
 
 #==================================================================#
 #  Set the setting with the given name if it exists
@@ -3389,6 +3423,10 @@ def get_message(msg):
         refresh_settings()
     elif(msg['cmd'] == 'setnogenmod'):
         koboldai_vars.nogenmod = msg['data']
+        settingschanged()
+        refresh_settings()
+    elif(msg['cmd'] == 'setoutputstreaming'):
+        koboldai_vars.output_streaming = msg['data']
         settingschanged()
         refresh_settings()
     elif(not koboldai_vars.host and msg['cmd'] == 'importwi'):
@@ -4513,6 +4551,7 @@ def refresh_settings():
     emit('from_server', {'cmd': 'updatefrmtrmspch', 'data': koboldai_vars.formatoptns["frmtrmspch"]}, broadcast=True, room="UI_1")
     emit('from_server', {'cmd': 'updatefrmtadsnsp', 'data': koboldai_vars.formatoptns["frmtadsnsp"]}, broadcast=True, room="UI_1")
     emit('from_server', {'cmd': 'updatesingleline', 'data': koboldai_vars.formatoptns["singleline"]}, broadcast=True, room="UI_1")
+    emit('from_server', {'cmd': 'updateoutputstreaming', 'data': koboldai_vars.output_streaming}, broadcast=True, room="UI_1")
     
     # Allow toggle events again
     emit('from_server', {'cmd': 'allowtoggle', 'data': True}, broadcast=True, room="UI_1")

@@ -25,7 +25,7 @@ socket.on("delete_world_info_entry", function(data){document.getElementById("wor
 //socket.onAny(function(event_name, data) {console.log({"event": event_name, "class": data.classname, "data": data});});
 
 var backend_vars = {};
-var presets = {}
+var presets = {};
 var current_chunk_number = null;
 var ai_busy_start = Date.now();
 var popup_deleteable = false;

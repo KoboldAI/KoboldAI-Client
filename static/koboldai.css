@@ -591,6 +591,7 @@ body {
 .sequence {
 	border: 1px solid #959595;
 	border-radius: 5px;
+	width=100%;
 	grid-area: text;
 	padding: 0px;
 	background-color: var(--options_background);
