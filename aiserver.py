@@ -1637,6 +1637,30 @@ def patch_transformers():
         return stopping_criteria
     transformers.generation_utils.GenerationMixin._get_stopping_criteria = new_get_stopping_criteria
 
+def reset_model_settings():
+    vars.socketio = socketio
+    vars.max_length  = 2048    # Maximum number of tokens to submit per action
+    vars.ikmax       = 3000    # Maximum number of characters to submit to InferKit
+    vars.genamt      = 80      # Amount of text for each action to generate
+    vars.ikgen       = 200     # Number of characters for InferKit to generate
+    vars.rep_pen     = 1.1     # Default generator repetition_penalty
+    vars.rep_pen_slope = 0.7   # Default generator repetition penalty slope
+    vars.rep_pen_range = 1024  # Default generator repetition penalty range
+    vars.temp        = 0.5     # Default generator temperature
+    vars.top_p       = 0.9     # Default generator top_p
+    vars.top_k       = 0       # Default generator top_k
+    vars.top_a       = 0.0     # Default generator top-a
+    vars.tfs         = 1.0     # Default generator tfs (tail-free sampling)
+    vars.typical     = 1.0     # Default generator typical sampling threshold
+    vars.numseqs     = 1       # Number of sequences to ask the generator to create
+    vars.generated_tkns = 0    # If using a backend that supports Lua generation modifiers, how many tokens have already been generated, otherwise 0
+    vars.badwordsids = []
+    vars.fp32_model  = False  # Whether or not the most recently loaded HF model was in fp32 format
+    vars.modeldim    = -1     # Embedding dimension of your model (e.g. it's 4096 for GPT-J-6B and 2560 for GPT-Neo-2.7B)
+    vars.sampler_order = [0, 1, 2, 3, 4, 5]
+    vars.newlinemode = "n"
+    vars.revision    = None
+
 def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=False, online_model=""):
     global model
     global generator
@@ -1644,6 +1668,7 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
     global model_config
     global GPT2TokenizerFast
     global tokenizer
+    reset_model_settings()
     if not utils.HAS_ACCELERATE:
         disk_layers = None
     vars.noai = False

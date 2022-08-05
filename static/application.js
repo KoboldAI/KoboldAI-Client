@@ -1048,6 +1048,18 @@ function buildLoadModelList(ar, menu, breadcrumbs, showdelete) {
 	if (breadcrumbs.length > 0) {
 		$("#loadmodellistbreadcrumbs").append("<hr size='1'>")  
 	}
+	//If we're in the custom load menu (we need to send the path data back in that case)
+	if(['NeoCustom', 'GPT2Custom'].includes(menu)) {
+		$("#loadmodel"+i).off("click").on("click", (function () {
+			return function () {
+				socket.send({'cmd': 'selectmodel', 'data': $(this).attr("name"), 'path': $(this).attr("pretty_name")});
+				highlightLoadLine($(this));
+			}
+		})(i));
+		$("#custommodelname").removeClass("hidden");
+		$("#custommodelname")[0].setAttribute("menu", menu);
+	}
+	
 	for(i=0; i<ar.length; i++) {
 		if (Array.isArray(ar[i][0])) {
 			full_path = ar[i][0][0];
@@ -1090,16 +1102,6 @@ function buildLoadModelList(ar, menu, breadcrumbs, showdelete) {
 					disableButtons([load_model_accept]);
 				}
 			})(i));
-		//If we're in the custom load menu (we need to send the path data back in that case)
-		} else if(['NeoCustom', 'GPT2Custom'].includes(menu)) {
-			$("#loadmodel"+i).off("click").on("click", (function () {
-				return function () {
-					socket.send({'cmd': 'selectmodel', 'data': $(this).attr("name"), 'path': $(this).attr("pretty_name")});
-					highlightLoadLine($(this));
-				}
-			})(i));
-			$("#custommodelname").removeClass("hidden");
-			$("#custommodelname")[0].setAttribute("menu", menu);
 		//Normal load
 		} else {
 			$("#loadmodel"+i).off("click").on("click", (function () {
