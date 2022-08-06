@@ -364,7 +364,7 @@ class vars:
     lazy_load   = True  # Whether or not to use torch_lazy_loader.py for transformers models in order to reduce CPU memory usage
     use_colab_tpu = os.environ.get("COLAB_TPU_ADDR", "") != "" or os.environ.get("TPU_NAME", "") != ""  # Whether or not we're in a Colab TPU instance or Kaggle TPU instance and are going to use the TPU rather than the CPU
     revision    = None
-    output_streaming = False
+    output_streaming = True
     token_stream_queue = TokenStreamQueue() # Queue for the token streaming
     show_probs = False # Whether or not to show token probabilities
 
