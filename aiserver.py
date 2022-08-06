@@ -1687,7 +1687,7 @@ def patch_transformers():
 
 def reset_model_settings():
     vars.socketio = socketio
-    vars.max_length  = 2048    # Maximum number of tokens to submit per action
+    vars.max_length  = 1024    # Maximum number of tokens to submit per action
     vars.ikmax       = 3000    # Maximum number of characters to submit to InferKit
     vars.genamt      = 80      # Amount of text for each action to generate
     vars.ikgen       = 200     # Number of characters for InferKit to generate
