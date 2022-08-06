@@ -266,7 +266,7 @@ gensettingstf = [
     {
 	"uitype": "toggle",
 	"unit": "bool",
-	"label": "Show Token Probabilities",
+	"label": "Probability Viewer",
 	"id": "setshowprobs",
 	"min": 0,
 	"max": 1,

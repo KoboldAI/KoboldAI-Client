@@ -1692,6 +1692,6 @@ body.connected .popupfooter, .popupfooter.always-available {
 }
 
 #token_prob_container {
-	overflow-x: scroll;
+	overflow-x: auto;
 	white-space: nowrap;
 }
