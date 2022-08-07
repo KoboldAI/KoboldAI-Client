@@ -148,7 +148,7 @@ gensettingstf = [
     "menu_path": "Model",
     "sub_path":  "Repetition",
     "classname": "model",
-    "name": "repo_pen_slope"
+    "name": "rep_pen_slope"
 	},
     {
 	"uitype": "slider",

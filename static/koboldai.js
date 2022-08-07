@@ -24,7 +24,6 @@ socket.on("delete_new_world_info_entry", function(data){document.getElementById(
 socket.on("delete_world_info_entry", function(data){document.getElementById("world_info_"+data).remove();});
 //socket.onAny(function(event_name, data) {console.log({"event": event_name, "class": data.classname, "data": data});});
 
-var backend_vars = {};
 var presets = {};
 var current_chunk_number = null;
 var ai_busy_start = Date.now();
@@ -34,6 +33,7 @@ var popup_renameable = false;
 var shift_down = false;
 var world_info_data = {};
 var world_info_folder_data = {};
+var saved_settings = {};
 //-----------------------------------Server to UI  Functions-----------------------------------------------
 function connect() {
 	console.log("connected");
@@ -194,7 +194,11 @@ function do_story_text_updates(data) {
 		while (item.firstChild) { 
 			item.removeChild(item.firstChild);
 		}
-		var text_array = data.value.text.split(" ");
+		if (data.value.text == null) {
+			var text_array = [];
+		} else {
+			var text_array = data.value.text.split(" ");
+		}
 		text_array.forEach(function (text, i) {
 			var word = document.createElement("span");
 			word.classList.add("rawtext");
@@ -1289,6 +1293,58 @@ function send_world_info(uid) {
 }
 
 //--------------------------------------------General UI Functions------------------------------------
+function save_model_settings() {
+	for (item of document.getElementsByClassName('setting_item_input')) {
+		if (item.id.includes("model")) {
+			if ((item.tagName.toLowerCase() === 'checkbox') || (item.tagName.toLowerCase() === 'input') || (item.tagName.toLowerCase() === 'select') || (item.tagName.toLowerCase() == 'textarea')) {
+				if (item.getAttribute("type") == "checkbox") {
+					value = item.checked;
+				} else {
+					value = item.value;
+				}
+			} else {
+				value = item.textContent;
+			}
+			saved_settings[item.id] = value;
+		}
+	}
+	for (item of document.getElementsByClassName('settings_select')) {
+		if (item.id.includes("model")) {
+			saved_settings[item.id] = item.value;
+		}
+	}
+}
+
+function restore_model_settings(settings = saved_settings) {
+	for (const [key, value] of Object.entries(settings)) {
+		item = document.getElementById(key);
+		if ((item.tagName.toLowerCase() === 'input') || (item.tagName.toLowerCase() === 'select')) {
+			if (item.getAttribute("type") == "checkbox") {
+				if (item.checked != value) {
+					//not sure why the bootstrap-toggle won't respect a standard item.checked = true/false, so....
+					item.parentNode.click();
+				}
+			} else {
+				item.value = fix_text(value);
+			}
+		} else {
+			item.textContent = fix_text(value);
+		}
+		if (typeof item.onclick == "function") {
+			item.onclick.apply(item);
+		}
+		if (typeof item.onblur == "function") {
+			item.onblur.apply(item);
+		}
+		if (typeof item.onchange == "function") {
+			item.onchange.apply(item);
+		}
+		if (typeof item.oninput == "function") {
+			item.oninput.apply(item);
+		}
+	}
+}
+
 function removeA(arr) {
     var what, a = arguments, L = a.length, ax;
     while (L > 1 && arr.length) {

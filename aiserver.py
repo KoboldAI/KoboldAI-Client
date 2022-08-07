@@ -6270,6 +6270,7 @@ def UI_2_Set_Selected_Text(data):
 #==================================================================#
 @socketio.on('submit')
 def UI_2_submit(data):
+    koboldai_vars.actions.clear_unused_options()
     koboldai_vars.lua_koboldbridge.feedback = None
     koboldai_vars.recentrng = koboldai_vars.recentrngm = None
     actionsubmit(data['data'], actionmode=koboldai_vars.actionmode)

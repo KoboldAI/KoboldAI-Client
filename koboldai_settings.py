@@ -780,10 +780,14 @@ class KoboldStoryRegister(object):
         if len(text_list) > 1:
             if self.action_count+1 in self.actions:
                 for i in range(len(text_list)):
+                    found = False
                     for j in range(len(self.actions[self.action_count+1]['Options'])):
                         if 'stream_id' in self.actions[self.action_count+1]['Options'][j]:
                             if self.actions[self.action_count+1]['Options'][j]['stream_id'] == i:
-                                self.actions[self.action_count+1]['Options'][i]['text'] = "{}{}".format(self.actions[self.action_count+1]['Options'][i]['text'], text_list[i])
+                                found = True
+                                self.actions[self.action_count+1]['Options'][j]['text'] = "{}{}".format(self.actions[self.action_count+1]['Options'][i]['text'], text_list[i])
+                    if not found:
+                        self.actions[self.action_count+1]['Options'].append({"text": text_list[i], "Pinned": False, "Previous Selection": False, "Edited": False, "stream_id": i})
             else:
                 self.actions[self.action_count+1] = {"Selected Text": "", "Selected Text Length": 0, "Options": []}
                 for i in range(len(text_list)):
