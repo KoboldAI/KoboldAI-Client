@@ -1252,16 +1252,16 @@ function save_bias(item) {
 	//get all of our biases
 	for (bias of document.getElementsByClassName("bias")) {
 		//phrase
-		phrase = bias.querySelector(".bias_phrase").querySelector("input").value;
+		var phrase = bias.querySelector(".bias_phrase").querySelector("input").value;
 		
 		//percent
-		percent = parseFloat(bias.querySelector(".bias_percent").querySelector("input").value);
+		var percent = parseFloat(bias.querySelector(".bias_score").querySelector("input").value);
 		
-		//max occurance
-		max_occurance = parseInt(bias.querySelector(".bias_max").querySelector("input").value);
+		//completion threshold
+		var comp_threshold = parseInt(bias.querySelector(".bias_comp_threshold").querySelector("input").value);
 		
 		if (phrase != "") {
-			biases[phrase] = [percent, max_occurance];
+			biases[phrase] = [percent, comp_threshold];
 		} else {
 			//mark that we have a blank line, or delete it if we have more than one
 			if (have_blank) {
@@ -1276,8 +1276,8 @@ function save_bias(item) {
 		console.log("Create new bias line");
 		bias_line = document.getElementsByClassName("bias")[0].cloneNode(true);
 		bias_line.querySelector(".bias_phrase").querySelector("input").value = "";
-		bias_line.querySelector(".bias_percent").querySelector("input").value = 1;
-		bias_line.querySelector(".bias_max").querySelector("input").value = 50;
+		bias_line.querySelector(".bias_score").querySelector("input").value = 0;
+		bias_line.querySelector(".bias_comp_threshold").querySelector("input").value = 50;
 		document.getElementById('biasing').append(bias_line);
 	}
 	

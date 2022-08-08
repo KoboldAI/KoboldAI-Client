@@ -249,7 +249,7 @@ class model_settings(settings):
         self.selected_preset = ""
         self.uid_presets = []
         self.default_preset = {}
-        self.biases      = {} # should look like {"phrase": [percent, max_occurances]}
+        self.biases      = {} # should look like {"phrase": [score, completion_threshold]}
         
     #dummy class to eat the tqdm output
     class ignore_tqdm(object):
