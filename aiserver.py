@@ -6877,6 +6877,8 @@ def post_completion_standalone(body: GenerationInputSchema):
       description: |-2
         Generates text given a submission, sampler settings, soft prompt and number of return sequences.
 
+        By default, the story, userscripts, memory, author's note and world info are disabled.
+
         Unless otherwise specified, optional values default to the values in the KoboldAI GUI.
       requestBody:
         required: true
