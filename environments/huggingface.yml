@@ -17,6 +17,8 @@ dependencies:
   - git=2.35.1
   - sentencepiece
   - protobuf
+  - marshmallow>=3.13
+  - apispec-webframeworks
   - pip:
     - flask-cloudflared
     - flask-ngrok

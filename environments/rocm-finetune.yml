@@ -12,6 +12,8 @@ dependencies:
   - bleach=4.1.0
   - pip
   - git=2.35.1
+  - marshmallow>=3.13
+  - apispec-webframeworks
   - pip:
     - --find-links https://download.pytorch.org/whl/rocm4.2/torch_stable.html
     - torch
