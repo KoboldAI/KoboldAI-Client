@@ -249,7 +249,6 @@ class model_settings(settings):
         self.selected_preset = ""
         self.uid_presets = []
         self.default_preset = {}
-        self.biases      = {} # should look like {"phrase": [percent, max_occurances]}
         
     #dummy class to eat the tqdm output
     class ignore_tqdm(object):
@@ -361,6 +360,7 @@ class story_settings(settings):
         self.dynamicscan = False
         self.recentedit  = False
         self.notes       = ""    #Notes for the story. Does nothing but save
+        self.biases      = {} # should look like {"phrase": [percent, max_occurances]}
         
     def save_story(self):
         print("Saving")

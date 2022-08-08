@@ -372,6 +372,9 @@ function var_changed(data) {
 		do_presets(data);
 	} else if ((data.classname == 'story') && (data.name == 'prompt')) {
 		do_prompt(data);
+	//Special Case for phrase biasing
+	} else if ((data.classname == 'story') && (data.name == 'biases')) {
+		do_biases(data);
 	//Basic Data Syncing
 	} else {
 		var elements_to_change = document.getElementsByClassName("var_sync_"+data.classname.replace(" ", "_")+"_"+data.name.replace(" ", "_"));
@@ -1274,7 +1277,9 @@ function save_bias(item) {
 	//add another bias line if this is the phrase and it's not blank
 	if ((item.tagName == "INPUT") & !(have_blank)) {
 		console.log("Create new bias line");
-		bias_line = document.getElementsByClassName("bias")[0].cloneNode(true);
+		bias_line = document.getElementById("empty_bias").cloneNode(true);
+		bias_line.id = "";
+		bias_line.classList.add("bias");
 		bias_line.querySelector(".bias_phrase").querySelector("input").value = "";
 		bias_line.querySelector(".bias_percent").querySelector("input").value = 1;
 		bias_line.querySelector(".bias_max").querySelector("input").value = 50;
@@ -1337,6 +1342,34 @@ function send_world_info(uid) {
 }
 
 //--------------------------------------------General UI Functions------------------------------------
+function do_biases(data) {
+	console.log(data);
+	//clear out our old bias lines
+	while (document.getElementsByClassName("bias").firstChild) {
+		document.getElementsByClassName("bias").removeChild(document.getElementsByClassName("bias").firstChild);
+	}
+	
+	//add our bias lines
+	for (const [key, value] of Object.entries(data.value)) {
+		bias_line = document.getElementById("empty_bias").cloneNode(true);
+		bias_line.id = "";
+		bias_line.classList.add("bias");
+		bias_line.querySelector(".bias_phrase").querySelector("input").value = key;
+		bias_line.querySelector(".bias_percent").querySelector("input").value = value[0];
+		bias_line.querySelector(".bias_max").querySelector("input").value = value[1];
+		document.getElementById('biasing').append(bias_line);
+	}
+	
+	//add another bias line if this is the phrase and it's not blank
+	bias_line = document.getElementById("empty_bias").cloneNode(true);
+	bias_line.id = "";
+	bias_line.classList.add("bias");
+	bias_line.querySelector(".bias_phrase").querySelector("input").value = "";
+	bias_line.querySelector(".bias_percent").querySelector("input").value = 1;
+	bias_line.querySelector(".bias_max").querySelector("input").value = 50;
+	document.getElementById('biasing').append(bias_line);
+}
+
 function update_bias_slider_value(slider) {
 	slider.parentElement.parentElement.querySelector(".bias_slider_cur").textContent = slider.value;
 }

@@ -10,7 +10,7 @@
 	}
 }
 
-:root {
+/* :root {
 	--flyout_menu_closed_width: 0px;
 	--background: #474B4F;
 	--text: white;
@@ -40,6 +40,37 @@
 	--wi_card_tag_bg_color: #404040;
 	--wi_tag_color: #337ab7;
 	
+} */
+
+:root {
+    --flyout_menu_closed_width: 0px;
+    --background: #222f39;
+    --text: white;
+    --text_to_ai_color: #CCECFF;
+    --text_edit: #cdf;
+    --flyout_background: #18222a;
+    --setting_background: #2c3a51;
+    --setting_text: white;
+    --tooltip_text: white;
+    --tooltip_background: #212734;
+    --gamescreen_background: #121a1e;
+    --textarea_background: #1a242b;
+    --options_background: #404040;
+    --enabled_button_text: #fff;
+    --enabled_button_background_color: #4259a0;
+    --enabled_button_border_color: #91acd4;
+    --popup_title_bar_color: #337ab7;
+    --popup_item_color: #262626;
+    --disabled_button_text: #303030;
+    --disabled_button_background_color: #495762;
+    --disabled_button_border_color: #686c68;
+    --menu_button_level_1_bg_color: #2b5471;
+    --menu_button_level_2_bg_color: #285070;
+    --wi_card_border_color: white;
+    --wi_card_border_color_to_ai: green;
+    --wi_card_bg_color: #262626;
+    --wi_card_tag_bg_color: #404040;
+    --wi_tag_color: #337ab7;
 }
 
 /*----------------Folder Tabs--------------------*/
@@ -1020,6 +1051,11 @@ button.disabled {
 .within_max_length {
 	color: var(--text_to_ai_color);
 	font-weight: bold;
+}
+
+textarea {
+	background-color: var(--textarea_background);
+	color: var(--text);
 }
 
 .pulse {
