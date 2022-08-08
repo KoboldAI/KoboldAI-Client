@@ -360,7 +360,7 @@ class story_settings(settings):
         self.dynamicscan = False
         self.recentedit  = False
         self.notes       = ""    #Notes for the story. Does nothing but save
-        self.biases      = {} # should look like {"phrase": [percent, max_occurances]}
+        self.biases      = {} # should look like {"phrase": [score, completion_threshold]}
         
     def save_story(self):
         print("Saving")
