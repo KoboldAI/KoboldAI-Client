@@ -428,7 +428,7 @@ def new_make_min_max_attributes(validators, min_attr, max_attr) -> dict:
 make_min_max_attributes.__code__ = new_make_min_max_attributes.__code__
 
 def api_format_docstring(f):
-    f.__doc__ = eval('f"""{}"""'.format(f.__doc__))
+    f.__doc__ = eval('f"""{}"""'.format(f.__doc__.replace("\\", "\\\\")))
     return f
 
 def api_catch_out_of_memory_errors(f):
