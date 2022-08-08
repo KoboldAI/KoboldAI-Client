@@ -6708,6 +6708,9 @@ class BasicErrorSchema(KoboldSchema):
 class StoryEmptyErrorSchema(KoboldSchema):
     detail: BasicErrorSchema = fields.Nested(BasicErrorSchema, required=True)
 
+class StoryTooShortErrorSchema(KoboldSchema):
+    detail: BasicErrorSchema = fields.Nested(BasicErrorSchema, required=True)
+
 class OutOfMemoryErrorSchema(KoboldSchema):
     detail: BasicErrorSchema = fields.Nested(BasicErrorSchema, required=True)
 
@@ -6825,6 +6828,9 @@ class GenerationResultSchema(KoboldSchema):
 
 class GenerationOutputSchema(KoboldSchema):
     results: List[GenerationResultSchema] = fields.List(fields.Nested(GenerationResultSchema), required=True, metadata={"description": "Array of generated outputs."})
+
+class StorySchema(KoboldSchema):
+    results: List[BasicTextResultInnerSchema] = fields.List(fields.Nested(BasicTextResultInnerSchema), required=True, metadata={"description": "Array of story actions. The array is sorted such that actions closer to the end of this array are closer to the end of the story."})
 
 def _generate_text(body: GenerationInputSchema):
     if vars.aibusy or vars.genseqs:
@@ -7036,6 +7042,78 @@ def get_story_end():
     if len(vars.actions) == 0:
         return {"result": {"text": vars.prompt}}
     return {"result": {"text": vars.actions[vars.actions.get_last_key()]}}
+
+
+@api_v1.post("/story/end/delete")
+@api_schema_wrap
+def post_story_end_delete(body: EmptySchema):
+    """---
+    post:
+      summary: Remove the last action of the story
+      tags:
+        - story
+      description: |-2
+        Removes the last action of the story in the KoboldAI GUI.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: EmptySchema
+      responses:
+        200:
+          description: Successful request
+          content:
+            application/json:
+              schema: EmptySchema
+        510:
+          description: Story too short
+          content:
+            application/json:
+              schema: StoryTooShortErrorSchema
+              example:
+                detail:
+                  msg: Could not delete the last action of the story because the number of actions in the story is less than or equal to 1.
+                  type: story_too_short
+        {api_validation_error_response}
+        {api_server_busy_response}
+    """
+    if vars.aibusy or vars.genseqs:
+        abort(Response(json.dumps({"detail": {
+            "msg": "Server is busy; please try again later.",
+            "type": "service_unavailable",
+        }}), mimetype="application/json", status=503))
+    if not vars.gamestarted or not len(vars.actions):
+        abort(Response(json.dumps({"detail": {
+            "msg": "Could not delete the last action of the story because the number of actions in the story is less than or equal to 1.",
+            "type": "story_too_short",
+        }}), mimetype="application/json", status=510))
+    actionback()
+    return {}
+
+
+@api_v1.get("/story")
+@api_schema_wrap
+def get_story():
+    """---
+    get:
+      summary: Retrieve the entire story
+      tags:
+        - story
+      description: |-2
+        Returns the entire story currently shown in the KoboldAI GUI.
+      responses:
+        200:
+          description: Successful request
+          content:
+            application/json:
+              schema: StorySchema
+    """
+    chunks = []
+    if vars.gamestarted:
+        chunks.append({"text": vars.prompt})
+    for action in vars.actions.values():
+        chunks.append({"text": action})
+    return {"results": chunks}
 
 
 def _make_f_get(obj, _var_name, _name, _schema, _example_yaml_value):
