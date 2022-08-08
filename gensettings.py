@@ -263,6 +263,17 @@ gensettingstf = [
 	"default": 0,
   "tooltip": "Shows outputs to you as they are made. Does not work with more than one gens per action."
 	},
+    {
+	"uitype": "toggle",
+	"unit": "bool",
+	"label": "Probability Viewer",
+	"id": "setshowprobs",
+	"min": 0,
+	"max": 1,
+	"step": 1,
+	"default": 0,
+  "tooltip": "Shows token selection probabilities. Does not work with more than one gens per action."
+	},
 ]
 
 gensettingsik =[{

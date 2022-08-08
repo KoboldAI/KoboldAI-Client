@@ -131,6 +131,7 @@ model_menu = {
         ["Nerys FSD 13B V2 (Hybrid)", "KoboldAI/fairseq-dense-13B-Nerys-v2", "32GB", False],
         ["Nerys FSD 13B (Hybrid)", "KoboldAI/fairseq-dense-13B-Nerys", "32GB", False],
         ["Skein 6B", "KoboldAI/GPT-J-6B-Skein", "16GB", False],
+        ["OPT Nerys 6B V2", "KoboldAI/OPT-6B-nerys-v2", "16GB", False],
         ["Adventure 6B", "KoboldAI/GPT-J-6B-Adventure", "16GB", False],
         ["Nerys FSD 2.7B (Hybrid)", "KoboldAI/fairseq-dense-2.7B-Nerys", "8GB", False],
         ["Adventure 2.7B", "KoboldAI/GPT-Neo-2.7B-AID", "8GB", False],
@@ -142,6 +143,7 @@ model_menu = {
         ["Nerys FSD 13B V2 (Hybrid)", "KoboldAI/fairseq-dense-13B-Nerys-v2", "32GB", False],
         ["Janeway FSD 13B", "KoboldAI/fairseq-dense-13B-Janeway", "32GB", False],
         ["Nerys FSD 13B (Hybrid)", "KoboldAI/fairseq-dense-13B-Nerys", "32GB", False],
+        ["OPT Nerys 6B V2", "KoboldAI/OPT-6B-nerys-v2", "16GB", False],
         ["Janeway FSD 6.7B", "KoboldAI/fairseq-dense-6.7B-Janeway", "16GB", False],
         ["Janeway Neo 6B", "KoboldAI/GPT-J-6B-Janeway", "16GB", False],
         ["Janeway Neo 2.7B", "KoboldAI/GPT-Neo-2.7B-Janeway", "8GB", False],
@@ -216,6 +218,19 @@ model_menu = {
         ["Return to Main Menu", "mainmenu", "", True],
     ]
     }
+
+class TokenStreamQueue:
+    def __init__(self):
+        self.probability_buffer = None
+        self.queue = []
+
+    def add_text(self, text):
+        self.queue.append({
+            "decoded": text,
+            "probabilities": self.probability_buffer
+        })
+        self.probability_buffer = None
+
 # Variables
 class vars:
     lastact     = ""     # The last action received from the user
@@ -352,12 +367,13 @@ class vars:
     lazy_load   = True  # Whether or not to use torch_lazy_loader.py for transformers models in order to reduce CPU memory usage
     use_colab_tpu = os.environ.get("COLAB_TPU_ADDR", "") != "" or os.environ.get("TPU_NAME", "") != ""  # Whether or not we're in a Colab TPU instance or Kaggle TPU instance and are going to use the TPU rather than the CPU
     revision    = None
-    output_streaming = False
     standalone = False
     disable_set_aibusy = False
     disable_input_formatting = False
     disable_output_formatting = False
-    token_stream_queue = [] # Queue for the token streaming
+    output_streaming = True
+    token_stream_queue = TokenStreamQueue() # Queue for the token streaming
+    show_probs = False # Whether or not to show token probabilities
 
 utils.vars = vars
 
@@ -969,6 +985,7 @@ def savesettings():
     js["autosave"]    = vars.autosave
     js["welcome"]     = vars.welcome
     js["output_streaming"] = vars.output_streaming
+    js["show_probs"] = vars.show_probs
 
     if(vars.seed_specified):
         js["seed"]    = vars.seed
@@ -1082,6 +1099,8 @@ def processsettings(js):
         vars.welcome = js["welcome"]
     if("output_streaming" in js):
         vars.output_streaming = js["output_streaming"]
+    if("show_probs" in js):
+        vars.show_probs = js["show_probs"]
     
     if("seed" in js):
         vars.seed = js["seed"]
@@ -1121,11 +1140,11 @@ def check_for_sp_change():
                 emit('from_server', {'cmd': 'spstatitems', 'data': {vars.spfilename: vars.spmeta} if vars.allowsp and len(vars.spfilename) else {}}, namespace=None, broadcast=True)
             vars.sp_changed = False
 
-        if(vars.output_streaming and vars.token_stream_queue):
+        if(vars.token_stream_queue.queue):
             # If emit blocks, waiting for it to complete before clearing could
             # introduce a race condition that drops tokens.
-            queued_tokens = list(vars.token_stream_queue)
-            vars.token_stream_queue.clear()
+            queued_tokens = list(vars.token_stream_queue.queue)
+            vars.token_stream_queue.queue.clear()
             socketio.emit("from_server", {"cmd": "streamtoken", "data": queued_tokens}, namespace=None, broadcast=True)
 
 socketio.start_background_task(check_for_sp_change)
@@ -1678,10 +1697,37 @@ def patch_transformers():
             assert scores.shape == scores_shape
 
             return scores
+
+    from torch.nn import functional as F
+
+    class ProbabilityVisualizerLogitsProcessor(LogitsProcessor):
+        def __init__(self):
+            pass
+
+        def __call__(self, input_ids: torch.LongTensor, scores: torch.FloatTensor) -> torch.FloatTensor:
+            assert scores.ndim == 2
+            assert input_ids.ndim == 2
+
+            if vars.numseqs > 1 or not vars.show_probs:
+                return scores
+
+            probs = F.softmax(scores, dim = -1).cpu().numpy()[0]
+
+            token_prob_info = []
+            for token_id, score in sorted(enumerate(probs), key=lambda x: x[1], reverse=True)[:8]:
+                token_prob_info.append({
+                    "tokenId": token_id,
+                    "decoded": utils.decodenewlines(tokenizer.decode(token_id)),
+                    "score": float(score),
+                })
+
+            vars.token_stream_queue.probability_buffer = token_prob_info
+            return scores
     
     def new_get_logits_processor(*args, **kwargs) -> LogitsProcessorList:
         processors = new_get_logits_processor.old_get_logits_processor(*args, **kwargs)
         processors.insert(0, LuaLogitsProcessor())
+        processors.append(ProbabilityVisualizerLogitsProcessor())
         return processors
     new_get_logits_processor.old_get_logits_processor = transformers.generation_utils.GenerationMixin._get_logits_processor
     transformers.generation_utils.GenerationMixin._get_logits_processor = new_get_logits_processor
@@ -1737,12 +1783,14 @@ def patch_transformers():
             **kwargs,
         ) -> bool:
             # Do not intermingle multiple generations' outputs!
-            if(vars.numseqs > 1):
+            if vars.numseqs > 1:
+                return False
+
+            if not (vars.show_probs or vars.output_streaming):
                 return False
 
             tokenizer_text = utils.decodenewlines(tokenizer.decode(input_ids[0, -1]))
-
-            vars.token_stream_queue.append(tokenizer_text)
+            vars.token_stream_queue.add_text(tokenizer_text)
             return False
 
 
@@ -1808,6 +1856,30 @@ def patch_transformers():
         return stopping_criteria
     transformers.generation_utils.GenerationMixin._get_stopping_criteria = new_get_stopping_criteria
 
+def reset_model_settings():
+    vars.socketio = socketio
+    vars.max_length  = 1024    # Maximum number of tokens to submit per action
+    vars.ikmax       = 3000    # Maximum number of characters to submit to InferKit
+    vars.genamt      = 80      # Amount of text for each action to generate
+    vars.ikgen       = 200     # Number of characters for InferKit to generate
+    vars.rep_pen     = 1.1     # Default generator repetition_penalty
+    vars.rep_pen_slope = 0.7   # Default generator repetition penalty slope
+    vars.rep_pen_range = 1024  # Default generator repetition penalty range
+    vars.temp        = 0.5     # Default generator temperature
+    vars.top_p       = 0.9     # Default generator top_p
+    vars.top_k       = 0       # Default generator top_k
+    vars.top_a       = 0.0     # Default generator top-a
+    vars.tfs         = 1.0     # Default generator tfs (tail-free sampling)
+    vars.typical     = 1.0     # Default generator typical sampling threshold
+    vars.numseqs     = 1       # Number of sequences to ask the generator to create
+    vars.generated_tkns = 0    # If using a backend that supports Lua generation modifiers, how many tokens have already been generated, otherwise 0
+    vars.badwordsids = []
+    vars.fp32_model  = False  # Whether or not the most recently loaded HF model was in fp32 format
+    vars.modeldim    = -1     # Embedding dimension of your model (e.g. it's 4096 for GPT-J-6B and 2560 for GPT-Neo-2.7B)
+    vars.sampler_order = [0, 1, 2, 3, 4, 5]
+    vars.newlinemode = "n"
+    vars.revision    = None
+
 def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=False, online_model=""):
     global model
     global generator
@@ -1815,6 +1887,7 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
     global model_config
     global GPT2TokenizerFast
     global tokenizer
+    reset_model_settings()
     if not utils.HAS_ACCELERATE:
         disk_layers = None
     vars.noai = False
@@ -2906,7 +2979,8 @@ def lua_has_setting(setting):
         "rmspch",
         "adsnsp",
         "singleline",
-        "output_streaming"
+        "output_streaming",
+        "show_probs"
     )
 
 #==================================================================#
@@ -2939,6 +3013,7 @@ def lua_get_setting(setting):
     if(setting in ("frmtadsnsp", "adsnsp")): return vars.formatoptns["frmtadsnsp"]
     if(setting in ("frmtsingleline", "singleline")): return vars.formatoptns["singleline"]
     if(setting == "output_streaming"): return vars.output_streaming
+    if(setting == "show_probs"): return vars.show_probs
 
 #==================================================================#
 #  Set the setting with the given name if it exists
@@ -2976,6 +3051,7 @@ def lua_set_setting(setting, v):
     if(setting in ("frmtadsnsp", "adsnsp")): vars.formatoptns["frmtadsnsp"] = v
     if(setting in ("frmtsingleline", "singleline")): vars.formatoptns["singleline"] = v
     if(setting == "output_streaming"): vars.output_streaming = v
+    if(setting == "show_probs"): vars.show_probs = v
 
 #==================================================================#
 #  Get contents of memory
@@ -3690,6 +3766,10 @@ def get_message(msg):
         refresh_settings()
     elif(msg['cmd'] == 'setoutputstreaming'):
         vars.output_streaming = msg['data']
+        settingschanged()
+        refresh_settings()
+    elif(msg['cmd'] == 'setshowprobs'):
+        vars.show_probs = msg['data']
         settingschanged()
         refresh_settings()
     elif(not vars.host and msg['cmd'] == 'importwi'):
@@ -4989,6 +5069,7 @@ def refresh_settings():
     emit('from_server', {'cmd': 'updatefrmtadsnsp', 'data': vars.formatoptns["frmtadsnsp"]}, broadcast=True)
     emit('from_server', {'cmd': 'updatesingleline', 'data': vars.formatoptns["singleline"]}, broadcast=True)
     emit('from_server', {'cmd': 'updateoutputstreaming', 'data': vars.output_streaming}, broadcast=True)
+    emit('from_server', {'cmd': 'updateshowprobs', 'data': vars.show_probs}, broadcast=True)
     
     # Allow toggle events again
     emit('from_server', {'cmd': 'allowtoggle', 'data': True}, broadcast=True)
