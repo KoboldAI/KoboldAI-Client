@@ -6713,7 +6713,7 @@ api_out_of_memory_response = """507:
                       type: out_of_memory.unknown.unknown"""
 
 class ValidationErrorSchema(KoboldSchema):
-    detail: Dict[str, List[str]] = fields.Dict(keys=fields.String(), values=fields.List(fields.String()), required=True)
+    detail: Dict[str, List[str]] = fields.Dict(keys=fields.String(), values=fields.List(fields.String(), validate=validate.Length(min=1)), required=True)
 
 api_validation_error_response = """422:
           description: Validation error
