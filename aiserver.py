@@ -377,7 +377,7 @@ log.setLevel(logging.ERROR)
 
 # Start flask & SocketIO
 print("{0}Initializing Flask... {1}".format(colors.PURPLE, colors.END), end="")
-from flask import Flask, render_template, Response, request, copy_current_request_context, send_from_directory, session, jsonify, abort
+from flask import Flask, render_template, Response, request, copy_current_request_context, send_from_directory, session, jsonify, abort, redirect
 from flask_socketio import SocketIO
 from flask_socketio import emit as _emit
 from flask_session import Session
@@ -500,11 +500,14 @@ class KoboldAPISpec(APISpec):
         self._prefixes = prefixes if prefixes is not None else [""]
         super().__init__(*args, title=title, openapi_version=openapi_version, plugins=plugins, servers=[{"url": self._prefixes[0]}], **kwargs)
         for prefix in self._prefixes:
-            app.route(prefix + "/docs", endpoint="~KoboldAPISpec~" + prefix + "/docs")(lambda: render_template("swagger-ui.html", url=self._prefixes[0] + "/openapi.json"))
+            app.route(prefix, endpoint="~KoboldAPISpec~" + prefix, strict_slashes=False)(app.route(prefix + "/docs", endpoint="~KoboldAPISpec~" + prefix + "/docs")(lambda: redirect(prefix + "/docs/")))
+            app.route(prefix + "/docs/", endpoint="~KoboldAPISpec~" + prefix + "/docs/")(lambda: render_template("swagger-ui.html", url=self._prefixes[0] + "/openapi.json"))
             app.route(prefix + "/openapi.json", endpoint="~KoboldAPISpec~" + prefix + "/openapi.json")(lambda: jsonify(self.to_dict()))
 
     def route(self, rule: str, methods=["GET"], **kwargs):
         __F = TypeVar("__F", bound=Callable[..., Any])
+        if "strict_slashes" not in kwargs:
+            kwargs["strict_slashes"] = False
         def new_decorator(f: __F) -> __F:
             for prefix in self._prefixes:
                 f = app.route(prefix + rule, methods=methods, **kwargs)(f)
