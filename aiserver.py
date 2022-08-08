@@ -4824,6 +4824,9 @@ def getnewcontent(txt):
 # Applies chosen formatting options to text submitted to AI
 #==================================================================#
 def applyinputformatting(txt):
+    if(vars.disable_input_formatting):
+        return txt
+
     # Add sentence spacing
     if(vars.formatoptns["frmtadsnsp"]):
         txt = utils.addsentencespacing(txt, vars)
@@ -4836,6 +4839,9 @@ def applyinputformatting(txt):
 def applyoutputformatting(txt):
     # Use standard quotes and apostrophes
     txt = utils.fixquotes(txt)
+
+    if(vars.disable_output_formatting):
+        return txt
 
     # Adventure mode clipping of all characters after '>'
     if(vars.adventure):
