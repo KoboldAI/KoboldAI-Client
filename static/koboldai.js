@@ -200,14 +200,17 @@ function do_story_text_updates(data) {
 			var text_array = data.value.text.split(" ");
 		}
 		text_array.forEach(function (text, i) {
-			var word = document.createElement("span");
-			word.classList.add("rawtext");
-			if (i == text_array.length) {
-				word.textContent = text;
-			} else {
-				word.textContent = text+" ";
+			if (text != "") {
+				var word = document.createElement("span");
+				word.classList.add("rawtext");
+				console.log("Item: "+i+" '"+text+"' Adding Space: "+(i == text_array.length));
+				if (i == text_array.length) {
+					word.textContent = text;
+				} else {
+					word.textContent = text+" ";
+				}
+				item.append(word);
 			}
-			item.append(word);
 			
 		});
 		item.original_text = data.value.text;
@@ -232,15 +235,18 @@ function do_story_text_updates(data) {
 		span.onkeydown = detect_enter_text;
 		var text_array = data.value.text.split(" ");
 		text_array.forEach(function (text, i) {
-			var word = document.createElement("span");
-			word.classList.add("rawtext");
-			word.classList.add("world_info_tag");
-			if (i == text_array.length) {
-				word.textContent = text;
-			} else {
-				word.textContent = text+" ";
+			if (text != "") {
+				console.log("Item: "+i+" '"+text+"' Adding Space: "+(i == text_array.length));
+				var word = document.createElement("span");
+				word.classList.add("rawtext");
+				word.classList.add("world_info_tag");
+				if (i == text_array.length) {
+					word.textContent = text;
+				} else {
+					word.textContent = text+" ";
+				}
+				span.append(word);
 			}
-			span.append(word);
 			
 		});
 		
@@ -263,15 +269,16 @@ function do_prompt(data) {
 		
 		var text_array = data.value.split(" ");
 		text_array.forEach(function (text, i) {
-			var word = document.createElement("span");
-			word.classList.add("rawtext");
-			if (i == text_array.length) {
-				word.textContent = text;
-			} else {
-				word.textContent = text+" ";
+			if (text != "") {
+				var word = document.createElement("span");
+				word.classList.add("rawtext");
+				if (i == text_array.length) {
+					word.textContent = text;
+				} else {
+					word.textContent = text+" ";
+				}
+				item.append(word);
 			}
-			item.append(word);
-			
 		});
 		item.setAttribute("old_text", data.value)
 		item.classList.remove("pulse");
@@ -1293,7 +1300,11 @@ function send_world_info(uid) {
 }
 
 //--------------------------------------------General UI Functions------------------------------------
-function save_model_settings() {
+function update_bias_slider_value(slider) {
+	slider.parentElement.parentElement.querySelector(".bias_slider_cur").textContent = slider.value;
+}
+
+function save_model_settings(settings = saved_settings) {
 	for (item of document.getElementsByClassName('setting_item_input')) {
 		if (item.id.includes("model")) {
 			if ((item.tagName.toLowerCase() === 'checkbox') || (item.tagName.toLowerCase() === 'input') || (item.tagName.toLowerCase() === 'select') || (item.tagName.toLowerCase() == 'textarea')) {
@@ -1305,12 +1316,12 @@ function save_model_settings() {
 			} else {
 				value = item.textContent;
 			}
-			saved_settings[item.id] = value;
+			settings[item.id] = value;
 		}
 	}
 	for (item of document.getElementsByClassName('settings_select')) {
 		if (item.id.includes("model")) {
-			saved_settings[item.id] = item.value;
+			settings[item.id] = item.value;
 		}
 	}
 }

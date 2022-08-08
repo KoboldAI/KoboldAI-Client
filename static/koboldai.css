@@ -347,6 +347,59 @@
   transform: translate(0px, -6px) rotate(45deg);
 }
 
+/* -----------------------------------------Bias-------------------------------------- */
+.bias {
+	display: grid;
+	grid-template-areas: "phrase percent max";
+	grid-template-columns: auto 100px 100px;
+}
+
+.bias_phrase {
+	grid-area: phrase;
+	margin-right: 5px;
+}
+
+.bias_phrase input {
+	width: 100%;
+}
+
+.bias_percent {
+	grid-area: percent;
+	margin-right: 5px;
+}
+
+.bias_max {
+	grid-area: max;
+	margin-right: 5px;
+}
+
+.bias_slider {
+	display: grid;
+	grid-template-areas: "bar bar bar"
+						 "min cur max";
+	grid-template-columns: 33px 34px 33px;
+}
+
+.bias_slider_bar {
+	grid-area: bar;
+}
+
+.bias_slider_min {
+	grid-area: min;
+	font-size: x-small;
+}
+
+.bias_slider_cur {
+	grid-area: cur;
+}
+
+.bias_slider_max {
+	grid-area: max;
+	font-size: x-small;
+}
+
+
+
 /*----------------RIGHT FLYOUT MENU------------------*/
 .right_menu_icon {
 	position: fixed;
@@ -884,7 +937,7 @@ body {
 	display: none;
 }
 
-textarea {
+#input_text {
 	grid-area: textarea;
 	background-color: var(--textarea_background);
 	color: var(--text);
@@ -895,7 +948,6 @@ textarea {
 }
 
 input {
-	grid-area: textarea;
 	background-color: var(--textarea_background);
 	color: var(--text);
 	resize: none;
