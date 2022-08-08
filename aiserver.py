@@ -6456,6 +6456,15 @@ def UI_2_create_world_info_folder(data):
 def UI_2_delete_world_info(uid):
     koboldai_vars.worldinfo_v2.delete(int(uid))
 
+#==================================================================#
+# Event triggered when user edits phrase biases
+#==================================================================#
+@socketio.on('phrase_bias_update')
+def UI_2_phrase_bias_update(biases):
+    print(biases)
+    koboldai_vars.biases = biases
+
+
 
 #==================================================================#
 # Event triggered to rely a message

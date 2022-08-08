@@ -185,7 +185,6 @@ function create_options(data) {
 }
 
 function do_story_text_updates(data) {
-	console.log(data);
 	story_area = document.getElementById('Selected Text');
 	current_chunk_number = data.value.id;
 	if (document.getElementById('Selected Text Chunk '+data.value.id)) {
@@ -203,7 +202,6 @@ function do_story_text_updates(data) {
 			if (text != "") {
 				var word = document.createElement("span");
 				word.classList.add("rawtext");
-				console.log("Item: "+i+" '"+text+"' Adding Space: "+(i == text_array.length));
 				if (i == text_array.length) {
 					word.textContent = text;
 				} else {
@@ -236,7 +234,6 @@ function do_story_text_updates(data) {
 		var text_array = data.value.text.split(" ");
 		text_array.forEach(function (text, i) {
 			if (text != "") {
-				console.log("Item: "+i+" '"+text+"' Adding Space: "+(i == text_array.length));
 				var word = document.createElement("span");
 				word.classList.add("rawtext");
 				word.classList.add("world_info_tag");
@@ -1248,6 +1245,46 @@ function world_info_folder(data) {
 }
 
 //--------------------------------------------UI to Server Functions----------------------------------
+function save_bias(item) {
+	
+	var have_blank = false;
+	var biases = {};
+	//get all of our biases
+	for (bias of document.getElementsByClassName("bias")) {
+		//phrase
+		phrase = bias.querySelector(".bias_phrase").querySelector("input").value;
+		
+		//percent
+		percent = parseFloat(bias.querySelector(".bias_percent").querySelector("input").value);
+		
+		//max occurance
+		max_occurance = parseInt(bias.querySelector(".bias_max").querySelector("input").value);
+		
+		if (phrase != "") {
+			biases[phrase] = [percent, max_occurance];
+		} else {
+			//mark that we have a blank line, or delete it if we have more than one
+			if (have_blank) {
+				bias.remove();
+			} else {
+				have_blank = true;
+			}
+		}
+	}
+	//add another bias line if this is the phrase and it's not blank
+	if ((item.tagName == "INPUT") & !(have_blank)) {
+		console.log("Create new bias line");
+		bias_line = document.getElementsByClassName("bias")[0].cloneNode(true);
+		bias_line.querySelector(".bias_phrase").querySelector("input").value = "";
+		bias_line.querySelector(".bias_percent").querySelector("input").value = 1;
+		bias_line.querySelector(".bias_max").querySelector("input").value = 50;
+		document.getElementById('biasing').append(bias_line);
+	}
+	
+	//send the biases to the backend
+	socket.emit("phrase_bias_update", biases);
+}
+
 function sync_to_server(item) {
 	//get value
 	value = null;

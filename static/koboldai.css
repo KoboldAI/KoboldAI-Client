@@ -398,6 +398,26 @@
 	font-size: x-small;
 }
 
+.bias_header {
+	display: grid;
+	grid-template-areas: "phrase percent max";
+	grid-template-columns: auto 100px 100px;
+}
+
+.bias_header_phrase {
+	grid-area: phrase;
+	font-size: small;
+}
+
+.bias_header_percent {
+	grid-area: percent;
+	font-size: small;
+}
+
+.bias_header_max {
+	grid-area: max;
+	font-size: small;
+}
 
 
 /*----------------RIGHT FLYOUT MENU------------------*/
