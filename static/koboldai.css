@@ -363,12 +363,12 @@
 	width: 100%;
 }
 
-.bias_percent {
+.bias_score {
 	grid-area: percent;
 	margin-right: 5px;
 }
 
-.bias_max {
+.bias_comp_threshold {
 	grid-area: max;
 	margin-right: 5px;
 }
@@ -409,7 +409,7 @@
 	font-size: small;
 }
 
-.bias_header_percent {
+.bias_header_score {
 	grid-area: percent;
 	font-size: small;
 }
