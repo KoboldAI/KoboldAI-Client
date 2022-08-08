@@ -2316,6 +2316,7 @@ $(document).ready(function(){
 			scrollToBottom();
 		} else if(msg.cmd == "updatechunk") {
 			hideMessage();
+			game_text.attr('contenteditable', allowedit);
 			if (typeof submit_start !== 'undefined') {
 				$("#runtime")[0].innerHTML = `Generation time: ${Math.round((Date.now() - submit_start)/1000)} sec`;
 				delete submit_start;
