@@ -7276,7 +7276,7 @@ def create_config_endpoint(method="GET", schema="MemorySchema"):
         f = api.route(f"/config/{_route_name}", methods=[method])(f)
 
 class SoftPromptSettingSchema(KoboldSchema):
-    value: str = fields.String(required=True, validate=[soft_prompt_validator, validate.Regexp(r"^[^/\\]*$")], metadata={"description": "Soft prompt name, or a string containing only whitespace for no soft prompt. If using the PUT method and no soft prompt is loaded, this will always be the empty string."})
+    value: str = fields.String(required=True, validate=[soft_prompt_validator, validate.Regexp(r"^[^/\\]*$")], metadata={"description": "Soft prompt name, or a string containing only whitespace for no soft prompt. If using the GET method and no soft prompt is loaded, this will always be the empty string."})
 
 @api_v1.get("/config/soft_prompt")
 @api_schema_wrap
