@@ -418,15 +418,21 @@
 .bias_slider_min {
 	grid-area: min;
 	font-size: x-small;
+	margin-right: 5px;
+	margin-left: 5px;
 }
 
 .bias_slider_cur {
 	grid-area: cur;
+	text-align: center;
 }
 
 .bias_slider_max {
 	grid-area: max;
 	font-size: x-small;
+	text-align: right;
+	margin-right: 5px;
+	margin-left: 5px;
 }
 
 .bias_header {

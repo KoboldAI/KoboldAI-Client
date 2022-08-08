@@ -46,6 +46,20 @@
 		{% include 'settings item.html' %}
 	{% endwith %}
 	</div>
+</div>
+<div id="setting_menu_story" class="hidden settings_category_area">
+	<div id="Story_Info">
+		<div>Story Name: <span class="var_sync_story_story_name"></span></div>
+		<div>
+			<button id="load_story" class="btn action_button" onclick="socket.emit('load_story_list', '');">Load Story</button>
+			<button id="save_story" class="btn action_button var_sync_alt_story_gamesaved" onclick='socket.emit("save_story", "");'>Save Story</button>
+		</div>
+	</div>
+	<div class="setting_tile_area">
+	{% with menu='Story' %}
+		{% include 'settings item.html' %}
+	{% endwith %}
+	</div>
 	<h4>
 		<span id="bias_open" class="oi" data-glyph="chevron-bottom" onclick='this.classList.add("hidden"); 
 																			 document.getElementById("bias_close").classList.remove("hidden"); 
@@ -60,24 +74,6 @@
 			<div class="bias_header_score">Score</div>
 			<div class="bias_header_comp_threshold">Completion Threshold</div>
 		</div>
-		
-		
-	</div>
-</div>
-<div id="setting_menu_story" class="hidden settings_category_area">
-	<div id="Story_Info">
-		<div>Story Name: <span class="var_sync_story_story_name"></span></div>
-		<div>
-			<button id="load_story" class="btn action_button" onclick="socket.emit('load_story_list', '');">Load Story</button>
-			<button id="save_story" class="btn action_button var_sync_alt_story_gamesaved" onclick='socket.emit("save_story", "");'>Save Story</button>
-		</div>
-
-		
-	</div>
-	<div class="setting_tile_area">
-	{% with menu='Story' %}
-		{% include 'settings item.html' %}
-	{% endwith %}
 	</div>
 </div>
 <div id="setting_menu_user" class="hidden settings_category_area">

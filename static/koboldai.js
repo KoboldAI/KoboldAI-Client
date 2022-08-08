@@ -1257,7 +1257,7 @@ function save_bias(item) {
 		//phrase
 		var phrase = bias.querySelector(".bias_phrase").querySelector("input").value;
 		
-		//percent
+		//Score
 		var percent = parseFloat(bias.querySelector(".bias_score").querySelector("input").value);
 		
 		//completion threshold
@@ -1265,29 +1265,13 @@ function save_bias(item) {
 		
 		if (phrase != "") {
 			biases[phrase] = [percent, comp_threshold];
-		} else {
-			//mark that we have a blank line, or delete it if we have more than one
-			if (have_blank) {
-				bias.remove();
-			} else {
-				have_blank = true;
-			}
 		}
-	}
-	//add another bias line if this is the phrase and it's not blank
-	if ((item.tagName == "INPUT") & !(have_blank)) {
-		console.log("Create new bias line");
-		bias_line = document.getElementById("empty_bias").cloneNode(true);
-		bias_line.id = "";
-		bias_line.classList.add("bias");
-		bias_line.querySelector(".bias_phrase").querySelector("input").value = "";
-		bias_line.querySelector(".bias_score").querySelector("input").value = 0;
-		bias_line.querySelector(".bias_comp_threshold").querySelector("input").value = 50;
-		document.getElementById('biasing').append(bias_line);
+		bias.classList.add("pulse");
 	}
 	
 	//send the biases to the backend
 	socket.emit("phrase_bias_update", biases);
+	
 }
 
 function sync_to_server(item) {
@@ -1345,8 +1329,10 @@ function send_world_info(uid) {
 function do_biases(data) {
 	console.log(data);
 	//clear out our old bias lines
-	while (document.getElementsByClassName("bias").firstChild) {
-		document.getElementsByClassName("bias").removeChild(document.getElementsByClassName("bias").firstChild);
+	let bias_list = Object.assign([], document.getElementsByClassName("bias"));
+	for (item of bias_list) {
+		console.log(item);
+		item.parentNode.removeChild(item);
 	}
 	
 	//add our bias lines
@@ -1355,8 +1341,10 @@ function do_biases(data) {
 		bias_line.id = "";
 		bias_line.classList.add("bias");
 		bias_line.querySelector(".bias_phrase").querySelector("input").value = key;
-		bias_line.querySelector(".bias_percent").querySelector("input").value = value[0];
-		bias_line.querySelector(".bias_max").querySelector("input").value = value[1];
+		bias_line.querySelector(".bias_score").querySelector("input").value = value[0];
+		update_bias_slider_value(bias_line.querySelector(".bias_score").querySelector("input"));
+		bias_line.querySelector(".bias_comp_threshold").querySelector("input").value = value[1];
+		update_bias_slider_value(bias_line.querySelector(".bias_comp_threshold").querySelector("input"));
 		document.getElementById('biasing').append(bias_line);
 	}
 	
@@ -1365,8 +1353,8 @@ function do_biases(data) {
 	bias_line.id = "";
 	bias_line.classList.add("bias");
 	bias_line.querySelector(".bias_phrase").querySelector("input").value = "";
-	bias_line.querySelector(".bias_percent").querySelector("input").value = 1;
-	bias_line.querySelector(".bias_max").querySelector("input").value = 50;
+	bias_line.querySelector(".bias_score").querySelector("input").value = 1;
+	bias_line.querySelector(".bias_comp_threshold").querySelector("input").value = 50;
 	document.getElementById('biasing').append(bias_line);
 }
 
