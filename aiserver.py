@@ -6952,6 +6952,10 @@ def _generate_text(body: GenerationInputSchema):
     vars.disable_set_aibusy = True
     _standalone = vars.standalone
     vars.standalone = True
+    show_probs = vars.show_probs
+    vars.show_probs = False
+    output_streaming = vars.output_streaming
+    vars.output_streaming = False
     for key, entry in mapping.items():
         obj = {"vars": vars, "vars.formatoptns": vars.formatoptns}[entry[0]]
         if getattr(body, key, None) is not None:
@@ -6983,6 +6987,8 @@ def _generate_text(body: GenerationInputSchema):
                         setattr(obj, entry[1], saved_settings[key])
         vars.disable_set_aibusy = disable_set_aibusy
         vars.standalone = _standalone
+        vars.show_probs = show_probs
+        vars.output_streaming = output_streaming
         if vars.allowsp and getattr(body, "soft_prompt", None) is not None:
             spRequest(old_spfilename)
         set_aibusy(0)
