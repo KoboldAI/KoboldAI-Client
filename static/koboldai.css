@@ -10,38 +10,6 @@
 	}
 }
 
-/* :root {
-	--flyout_menu_closed_width: 0px;
-	--background: #474B4F;
-	--text: white;
-	--text_to_ai_color: #CCECFF;
-	--text_edit: #cdf;
-	--flyout_background: #6B6E70;
-	--setting_background: #474b4f;
-	--setting_text: white;
-	--tooltip_text: white;
-	--tooltip_background: #1f2931;
-	--gamescreen_background: #262626;
-	--textbox_background: #404040;
-	--options_background: #404040;
-	--enabled_button_text: #fff;
-	--enabled_button_background_color: #337ab7;
-	--enabled_button_border_color: #2e6da4;
-	--popup_title_bar_color: #337AB7;
-	--popup_item_color: #262626;
-	--disabled_button_text: #303030;
-	--disabled_button_background_color: #686c68;
-	--disabled_button_border_color: #686c68;
-	--menu_button_level_1_bg_color: #337ab7;
-	--menu_button_level_2_bg_color: #285070;
-	--wi_card_border_color: white;
-	--wi_card_border_color_to_ai: green;
-	--wi_card_bg_color: #262626;
-	--wi_card_tag_bg_color: #404040;
-	--wi_tag_color: #337ab7;
-	
-} */
-
 :root {
     --flyout_menu_closed_width: 0px;
     --background: #222f39;
@@ -51,6 +19,9 @@
     --flyout_background: #18222a;
     --setting_background: #2c3a51;
     --setting_text: white;
+	--dropdown-select: white;
+	--dropdown-background: #212734;
+	--preset-item-background: black;
     --tooltip_text: white;
     --tooltip_background: #212734;
     --gamescreen_background: #121a1e;
@@ -351,10 +322,28 @@
 }
 
 .settings_select {
-	color: black;
+	color: var(--dropdown-select);
+	background: var(--dropdown-background);
 	margin-left: auto;
 	margin-right: 25px;
 }
+
+.presets option {
+	color: var(--dropdown-select);
+	background: var(--preset-item-background);
+}
+
+.presets optgroup {
+	color: var(--dropdown-select);
+	background: var(--dropdown-background);
+	font-weight: bold;
+}
+
+.presets .preset_group {
+	font-style: italic;
+	background: var(--dropdown-background);
+}
+
 
 .preset_item {
 	color: white; /*#2b2a33;*/
