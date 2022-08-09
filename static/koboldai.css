@@ -91,7 +91,10 @@
 	overflow: hidden;
 	font-size: 12px;
 	font-family: verdana;
-	position: relative;
+	grid-row: 1;
+	position: fixed;
+	width: var(--flyout_menu_closed_width);
+	background: var(--background);
 }
 .tabrow.nomenu_icon {
 	padding-left: 10px;
@@ -107,11 +110,11 @@
 						  supported by Chrome, Edge, Opera and Firefox */
 	border: 1px solid var(--primary);
 	background: var(--menu_button_level_1_bg_color);
-	/*background: -o-linear-gradient(top, #337ab70 50%, #28507 100%);
-	background: -ms-linear-gradient(top, #337ab70 50%, #28507 100%);
-	background: -moz-linear-gradient(top, #337ab70 50%, #28507 100%);
-	background: -webkit-linear-gradient(top, #337ab70 50%, #28507 100%);
-	background: linear-gradient(top, #337ab7 50%, #28507 100%);*/
+	background: -o-linear-gradient(top, #337ab7 50%, #285070 100%);
+	background: -ms-linear-gradient(top, #337ab7 50%, #285070 100%);
+	background: -moz-linear-gradient(top, #337ab7 50%, #285070 100%);
+	background: -webkit-linear-gradient(top, #337ab7 50%, #285070 100%);
+	background: linear-gradient(top, #337ab7 50%, #285070 100%);
 	display: inline-block;
 	position: relative;
 	z-index: 0;
@@ -179,10 +182,17 @@
 	width: 100%;
 }
 
+.settings_category_area {
+	width: 100%;
+	background: #82007e;
+	grid-row: 2;
+}
+
+
 .setting_tile_area {
 	padding: 0px 10px 0px 10px;
 	display: grid;
-	grid-template-columns: auto auto;
+	grid-template-columns: auto;
 	/*flex;
 	flex-direction: row;
 	flex-wrap: wrap;*/
@@ -371,6 +381,9 @@ input[type="range"]::-ms-fill-upper {
 .SideMenu {
 	height: 100%;
 	width: var(--flyout_menu_closed_width);
+	display: grid;
+	grid-template-columns: var(--flyout_menu_width);
+	grid-template-rows: 30px auto;
 	box-shadow: 0 0px 8px 0 rgba(0, 0, 0, 0.2), 0px 0px 20px 0 rgba(0, 0, 0, 0.19);
 	position: fixed;
 	z-index: 1;
@@ -387,6 +400,9 @@ input[type="range"]::-ms-fill-upper {
 .SideMenu.pinned {
 	height: 100%;
 	width: var(--flyout_menu_width);
+	display: grid;
+	grid-template-columns: var(--flyout_menu_width);
+	grid-template-rows: 30px auto;
 	position: fixed;
 	z-index: 1;
 	top: 0;
