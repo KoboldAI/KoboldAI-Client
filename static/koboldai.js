@@ -304,6 +304,7 @@ function do_presets(data) {
 	for (const [key, value] of Object.entries(data.value)) {
 		var option_group = document.createElement("optgroup");
 		option_group.label = key;
+		option_group.classList.add("preset_group");
 		for (const [group, group_value] of Object.entries(value)) {
 			var option = document.createElement("option");
 			option.text=group;
