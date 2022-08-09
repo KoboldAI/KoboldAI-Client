@@ -6365,6 +6365,8 @@ def UI_2_redo(data):
 #==================================================================#
 @socketio.on('retry')
 def UI_2_retry(data):
+    if koboldai_vars.numseqs == 1:
+        UI_2_back(None)
     koboldai_vars.actions.clear_unused_options()
     koboldai_vars.lua_koboldbridge.feedback = None
     koboldai_vars.recentrng = koboldai_vars.recentrngm = None

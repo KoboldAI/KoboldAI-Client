@@ -361,6 +361,7 @@ class story_settings(settings):
         self.recentedit  = False
         self.notes       = ""    #Notes for the story. Does nothing but save
         self.biases      = {} # should look like {"phrase": [score, completion_threshold]}
+        self.story_id    = int.from_bytes(os.urandom(16), 'little', signed=True) # this is a unique ID for the story. We'll use this to ensure when we save that we're saving the same story
         
     def save_story(self):
         print("Saving")

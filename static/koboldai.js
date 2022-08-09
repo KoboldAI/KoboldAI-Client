@@ -1249,6 +1249,11 @@ function world_info_folder(data) {
 }
 
 //--------------------------------------------UI to Server Functions----------------------------------
+function save_as_story() {
+	
+	
+}
+
 function save_bias(item) {
 	
 	var have_blank = false;
