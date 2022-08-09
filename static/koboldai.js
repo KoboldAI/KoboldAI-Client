@@ -1249,6 +1249,13 @@ function world_info_folder(data) {
 }
 
 //--------------------------------------------UI to Server Functions----------------------------------
+function save_as_story(response) {
+	if (response == "overwrite?") {
+		document.getElementById('save-confirm').classList.remove('hidden')
+	}
+	
+}
+
 function save_bias(item) {
 	
 	var have_blank = false;
@@ -1745,14 +1752,22 @@ function assign_world_info_to_action(uid=null, action_item=null) {
 function update_token_lengths() {
 	max_token_length = parseInt(document.getElementById("model_max_length_cur").value);
 	included_world_info = [];
+	//clear out the world info included tags
 	for (item of document.getElementsByClassName("world_info_included")) {
 		item.classList.remove("world_info_included");
 	}
+	//clear out the text tags
+	for (item of document.getElementsByClassName("within_max_length")) {
+		item.classList.remove("within_max_length");
+	}
+	
+	//figure out memory length
 	if ((document.getElementById("memory").getAttribute("story_memory_length") == null) || (document.getElementById("memory").getAttribute("story_memory_length") == "")) {
 		memory_length = 0;
 	} else {
 		memory_length = parseInt(document.getElementById("memory").getAttribute("story_memory_length"));
 	}
+	//figure out and tag the length of all the constant world infos
 	for (uid in world_info_data) {
 		if (world_info_data[uid].constant) {
 			if (world_info_data[uid].token_length != null) {
@@ -1762,19 +1777,23 @@ function update_token_lengths() {
 			}
 		}
 	}
+	//Figure out author's notes length
 	if ((document.getElementById("authors_notes").getAttribute("story_authornote_length") == null) || (document.getElementById("authors_notes").getAttribute("story_authornote_length") == "")) {
 		authors_notes = 0;
 	} else {
 		authors_notes = parseInt(document.getElementById("authors_notes").getAttribute("story_authornote_length"));
 	}
+	//figure out prompt length
 	if ((document.getElementById("story_prompt").getAttribute("story_prompt_length") == null) || (document.getElementById("story_prompt").getAttribute("story_prompt_length") == "")) {
 		prompt_length = 999999999999;
 	} else {
 		prompt_length = parseInt(document.getElementById("story_prompt").getAttribute("story_prompt_length"));
 	}
 	
+	//used token length
 	token_length = memory_length + authors_notes;
 	
+	//add in the prompt length if it's set to always add, otherwise add it later
 	always_prompt = document.getElementById("story_useprompt").value == "true";
 	if (always_prompt) {
 		token_length += prompt_length
@@ -1790,6 +1809,7 @@ function update_token_lengths() {
 	} else {
 		document.getElementById("story_prompt").classList.remove("within_max_length");
 	}
+	//figure out how many chunks we have
 	max_chunk = -1;
 	for (item of document.getElementById("Selected Text").childNodes) {
 		if (item.id != undefined) {
@@ -1802,13 +1822,14 @@ function update_token_lengths() {
 		}
 	}
 	
+	//go backwards through the text chunks and tag them if we still have space
 	for (var chunk=max_chunk;chunk >= 0;chunk--) {
 		if (document.getElementById("Selected Text Chunk "+chunk).getAttribute("token_length") == null) {
 			current_chunk_length = 999999999999;
 		} else {
 			current_chunk_length = parseInt(document.getElementById("Selected Text Chunk "+chunk).getAttribute("token_length"));
 		}
-		if (token_length+current_chunk_length < max_token_length) {
+		if ((current_chunk_length != 0) && (token_length+current_chunk_length < max_token_length)) {
 			token_length += current_chunk_length;
 			document.getElementById("Selected Text Chunk "+chunk).classList.add("within_max_length");
 			uids = document.getElementById("Selected Text Chunk "+chunk).getAttribute("world_info_uids")
@@ -1824,6 +1845,7 @@ function update_token_lengths() {
 		}
 	}
 	
+	//if we don't always add prompts
 	if ((!always_prompt) && (token_length+prompt_length < max_token_length)) {
 		token_length += prompt_length
 		document.getElementById("story_prompt").classList.add("within_max_length");
@@ -1838,6 +1860,7 @@ function update_token_lengths() {
 	} else if (!always_prompt) {
 		document.getElementById("story_prompt").classList.remove("within_max_length");
 	}
+	//Add token count to used_token_length tags
 	for (item of document.getElementsByClassName("used_token_length")) {
 		item.textContent = "Used Tokens: " + token_length;
 	}

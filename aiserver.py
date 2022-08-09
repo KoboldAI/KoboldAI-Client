@@ -6306,8 +6306,38 @@ def UI_2_var_change(data):
 #==================================================================#
 @socketio.on('save_story')
 def UI_2_save_story(data):
-    koboldai_vars.save_story()
     
+    if data is None:
+        #We need to check to see if there is a file already and if it's not the same story so we can ask the client if this is OK
+        save_name = koboldai_vars.story_name if koboldai_vars.story_name != "" else "untitled"
+        same_story = True
+        if os.path.exists("stories/{}_v2.json".format(save_name)):
+            with open("stories/{}_v2.json".format(save_name), "r") as settings_file:
+                json_data = json.load(settings_file)
+                if 'story_id' in json_data:
+                    same_story = json_data['story_id'] == koboldai_vars.story_id
+                else:
+                    same_story = False
+        
+        if same_story:
+            koboldai_vars.save_story()
+            return "OK"
+        else:
+            return "overwrite?"
+    else:    
+        #We have an ack that it's OK to save over the file if one exists
+        koboldai_vars.save_story()
+    
+#==================================================================#
+# Save story to json
+#==================================================================#
+@app.route("/json")
+def UI_2_save_to_json():
+    return Response(
+        koboldai_vars.to_json('story_settings'),
+        mimetype="application/json",
+        headers={"Content-disposition":
+                 "attachment; filename={}_v2.json".format(koboldai_vars.story_name)})
     
     
 #==================================================================#
@@ -6365,6 +6395,8 @@ def UI_2_redo(data):
 #==================================================================#
 @socketio.on('retry')
 def UI_2_retry(data):
+    if koboldai_vars.numseqs == 1:
+        UI_2_back(None)
     koboldai_vars.actions.clear_unused_options()
     koboldai_vars.lua_koboldbridge.feedback = None
     koboldai_vars.recentrng = koboldai_vars.recentrngm = None

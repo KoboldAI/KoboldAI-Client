@@ -361,10 +361,11 @@ class story_settings(settings):
         self.recentedit  = False
         self.notes       = ""    #Notes for the story. Does nothing but save
         self.biases      = {} # should look like {"phrase": [score, completion_threshold]}
+        self.story_id    = int.from_bytes(os.urandom(16), 'little', signed=True) # this is a unique ID for the story. We'll use this to ensure when we save that we're saving the same story
         
     def save_story(self):
         print("Saving")
-        save_name = self.story_name if self.story_name is not "" else "untitled"
+        save_name = self.story_name if self.story_name != "" else "untitled"
         with open("stories/{}_v2.json".format(save_name), "w") as settings_file:
             settings_file.write(self.to_json())
         self.gamesaved = True
@@ -386,8 +387,16 @@ class story_settings(settings):
         if name == "gamesaved" and value == False and self.autosave:
             self.save_story()
         if not new_variable and old_value != value:
+            #Change game save state
+            if name in ['story_name', 'prompt', 'memory', 'authornote', 'authornotetemplate', 'andepth', 'chatname', 'actionmode', 'dynamicscan', 'notes', 'biases']:
+                self.gamesaved = False
+        
             if name == 'actions':
                 self.actions.story_settings = self
+            elif name == 'story_name':
+                #reset the story id if we change the name
+                self.story_id = int.from_bytes(os.urandom(16), 'little', signed=True)
+            
             #Recalc token length
             elif name in ['authornote', 'memory' ,'prompt', 'tokenizer'] and self.tokenizer is not None:
                 if name == 'tokenizer' and not new_variable:
