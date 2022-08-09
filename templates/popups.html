@@ -67,3 +67,17 @@
 		<button type="button" class="btn btn-primary" id="btn_loadclose">Cancel</button>
 	</div>
 </div>
+
+<!---------------- Story overwrite screen ---------------------->
+<div class="popup hidden" id="save-confirm">
+	<div class="title">
+		<div class="popuptitletext">Overwrite</div>
+	</div>
+	<div id="popup_list_area">
+		The story name you have entered already exists. Would you like to overwrite?
+	</div>
+	<div class="popup_load_cancel">
+		<button type="button" class="btn btn-primary" onclick='socket.emit("save_story", "overwrite"); document.getElementById("save-confirm").classList.add("hidden");'>Overwrite</button>
+		<button type="button" class="btn btn-primary" onclick="document.getElementById('save-confirm').classList.add('hidden');">Cancel</button>
+	</div>
+</div>

@@ -49,10 +49,12 @@
 </div>
 <div id="setting_menu_story" class="hidden settings_category_area">
 	<div id="Story_Info">
-		<div>Story Name: <span class="var_sync_story_story_name"></span></div>
+		<div><b>Story Name: </b><span class="var_sync_story_story_name" contenteditable=true onblur="sync_to_server(this);"></span></div>
 		<div>
 			<button id="load_story" class="btn action_button" onclick="socket.emit('load_story_list', '');">Load Story</button>
-			<button id="save_story" class="btn action_button var_sync_alt_story_gamesaved" onclick='socket.emit("save_story", "");'>Save Story</button>
+			<button id="save_story" class="btn action_button var_sync_alt_story_gamesaved" onclick='socket.emit("save_story", null, (response) => {save_as_story(response);});'>Save Story</button>
+			<!---<button id="download_story" class="btn action_button" onclick="document.getElementById('download_iframe').src = 'json';">Download Story</button>--->
+			<a class='cursor' onclick="document.getElementById('download_iframe').src = 'json';">Download Story</a>
 		</div>
 	</div>
 	<div class="setting_tile_area">

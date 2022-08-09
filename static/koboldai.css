@@ -466,6 +466,7 @@
 	right: 0;
 	background-color: var(--flyout_background);
 	overflow-x: hidden;
+	overflow-y: hidden;
 	transition: 0.5s;
 	padding-top: 20px;
 	padding-bottom: 10px;
@@ -883,6 +884,7 @@ body {
 
 .popup .popup_load_cancel {
 	text-align: center;
+	vertical-align: bottom;
 	background-color: var(--popup_title_bar_color);
 }
 
@@ -1081,4 +1083,14 @@ textarea {
 
 body.NotConnected {
 	filter: grayscale(80%);
+}
+
+.cursor {
+	cursor: pointer;
+}
+
+.flout_menu_contents {
+	overflow-x: hidden;
+	overflow-y: auto;
+	height: 80vh;
 }
