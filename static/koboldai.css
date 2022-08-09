@@ -316,6 +316,12 @@
   width: var(--flyout_menu_width);
 }
 
+.SideMenu .flyout_menu_contents {
+	overflow-x: hidden;
+	overflow-y: auto;
+	height: calc(100vh - 40px);
+}
+
 .settings_menu {
 	padding-left: 30px;
 	padding-top: 7px;
@@ -477,6 +483,14 @@
   width: var(--flyout_menu_width);
 }
 
+.rightSideMenu .flyout_menu_contents {
+	overflow-x: hidden;
+	overflow-y: auto;
+	height: calc(100vh - 150px);
+}
+
+
+
 table.server_vars {
 	border: 1px solid #959595;
 }
@@ -566,37 +580,53 @@ body {
 }
 
 @media only screen and (min-aspect-ratio: 7/5) {
+/* ------------------- Desktop Mode --------------------------- */
 .main-grid {
 	transition: margin-left .5s;
 	display: grid;
 	height: 98vh;
-	margin-left: var(--flyout_menu_closed_width);
+	margin-left: var(--flyout_menu_width);
+	margin-right: var(--flyout_menu_closed_width);
 	grid-template-areas: "menuicon gamescreen options lefticon"
 						 "menuicon inputrow inputrow lefticon";
-	grid-template-columns: 30px auto fit-content(30%) 20px;
+	grid-template-columns: 30px auto 30% 30px;
 	grid-template-rows: auto 100px;
+}
+.main-grid.settings_pinned {
+	margin-left: var(--flyout_menu_width);
+}
+.main-grid.story_pinned {
+	margin-left: var(--flyout_menu_closed_width);
+	margin-right: var(--flyout_menu_width);
+	grid-template-areas: "menuicon options gamescreen lefticon"
+						 "menuicon inputrow inputrow lefticon";
+	grid-template-columns: 30px 30% auto 30px;
+}
+.main-grid.settings_pinned.story_pinned {
+	margin-left: var(--flyout_menu_width);
+	margin-right: var(--flyout_menu_width);
+	grid-template-areas: "menuicon gamescreen options lefticon"
+						 "menuicon inputrow inputrow lefticon";
+	grid-template-columns: 30px auto 30% 30px;
 }
 }
 
 @media only screen and (max-aspect-ratio: 7/5) {
+/* mobile */
 .main-grid {
 	transition: margin-left .5s;
 	display: grid;
 	height: 98vh;
 	margin-left: var(--flyout_menu_closed_width);
 	grid-template-areas: "menuicon gamescreen lefticon"
-					     "menuicon mobile_options lefticon"
+					     "menuicon options lefticon"
 						 "menuicon inputrow lefticon";
 	grid-template-columns: 30px auto 20px;
 	grid-template-rows: auto min-content 100px;
 }
 }
 
-@media only screen and (min-aspect-ratio: 7/5) {
-.main-grid.pinned {
-	margin-left: var(--flyout_menu_width);
-}
-}
+
 
 /* ---------------------------------- GAME SCREEN ----------------------------------*/
 .gamescreen {
@@ -638,22 +668,11 @@ body {
 	font-style: italic;
 }
 
-@media only screen and (min-aspect-ratio: 7/5) {
 .sequence_area {
 	margin-top: 10px;
 	grid-area: options;
 	background-color: var(--gamescreen_background);
 	overflow-y: scroll;
-}
-}
-
-@media only screen and (max-aspect-ratio: 7/5) {
-.sequence_area {
-	margin-top: 5px;
-	grid-area: mobile_options;
-	background-color: var(--gamescreen_background);
-	overflow-y: hidden;
-}
 }
 
 @media only screen and (max-aspect-ratio: 7/5) {
@@ -1087,10 +1106,4 @@ body.NotConnected {
 
 .cursor {
 	cursor: pointer;
-}
-
-.flout_menu_contents {
-	overflow-x: hidden;
-	overflow-y: auto;
-	height: 80vh;
 }

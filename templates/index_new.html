@@ -20,14 +20,14 @@
 	<!------------ Left Flyout Menu--------------------->
 	<div id="SideMenu" class="SideMenu pinned">
 		<!------------ Menu Pin --------------------->
-		<span id="menu_pin" class="oi menu_pin" onclick="toggle_pin_flyout()" data-glyph="pin"></span>
+		<span id="menu_pin" class="oi menu_pin" onclick="toggle_settings_pin_flyout()" data-glyph="pin"></span>
 		{% include 'settings flyout.html' %}
 	</div>
 
 	<!------------ Main Screen--------------------->
-	<div id="main-grid" class="main-grid pinned">
+	<div id="main-grid" class="main-grid settings_pinned">
 		<!------------ Left Menu Icon--------------------->
-		<div class="menu_icon" onclick="toggle_flyout(this)"> 
+		<div id="setting_menu_icon" class="menu_icon hidden changed" onclick="toggle_flyout(this)"> 
 			<div class="menubar1"></div>
 			<div class="menubar2"></div>
 			<div class="menubar3"></div>
@@ -57,11 +57,17 @@
 			<button type="button" class="btn action_button retry" onclick="socket.emit('retry', {});"><span class="oi" data-glyph="loop-circular"></span></button>
 		</div>
 		<!------------ Right Menu Icon--------------------->
-		<span class="oi right_menu_icon" data-glyph="chevron-left" onclick="toggle_flyout_right(this)"></span>
+		<div id="story_menu_icon" class="right_menu_icon" onclick="toggle_flyout_right(this)"> 
+			<div class="menubar1"></div>
+			<div class="menubar2"></div>
+			<div class="menubar3"></div>
+		</div>
+		<!----<span class="oi right_menu_icon" data-glyph="chevron-left" onclick="toggle_flyout_right(this)"></span>--->
 	</div>
 	
 	<!------------ Right Flyout Menu--------------------->
 	<div id="rightSideMenu" class="rightSideMenu">
+		<span id="story_menu_pin" class="oi story_menu_pin" onclick="toggle_story_pin_flyout()" data-glyph="pin"></span>
 		{% include 'story flyout.html' %}
 	</div>
 	
