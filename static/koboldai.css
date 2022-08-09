@@ -419,6 +419,12 @@ input[type="range"]::-ms-fill-upper {
   width: var(--flyout_menu_width);
 }
 
+.SideMenu .flyout_menu_contents {
+	overflow-x: hidden;
+	overflow-y: auto;
+	height: calc(100vh - 40px);
+}
+
 .settings_menu {
 	padding-left: 30px;
 	padding-top: 7px;
@@ -582,6 +588,14 @@ input[type="range"]::-ms-fill-upper {
   width: var(--flyout_menu_width);
 }
 
+.rightSideMenu .flyout_menu_contents {
+	overflow-x: hidden;
+	overflow-y: auto;
+	height: calc(100vh - 150px);
+}
+
+
+
 table.server_vars {
 	border: 1px solid #959595;
 }
@@ -671,37 +685,53 @@ body {
 }
 
 @media only screen and (min-aspect-ratio: 7/5) {
+/* ------------------- Desktop Mode --------------------------- */
 .main-grid {
 	transition: margin-left .5s;
 	display: grid;
 	height: 98vh;
-	margin-left: var(--flyout_menu_closed_width);
+	margin-left: var(--flyout_menu_width);
+	margin-right: var(--flyout_menu_closed_width);
 	grid-template-areas: "menuicon gamescreen options lefticon"
 						 "menuicon inputrow inputrow lefticon";
-	grid-template-columns: 420px auto 400px 20px;
+	grid-template-columns: 30px auto 30% 30px;
 	grid-template-rows: auto 100px;
+}
+.main-grid.settings_pinned {
+	margin-left: var(--flyout_menu_width);
+}
+.main-grid.story_pinned {
+	margin-left: var(--flyout_menu_closed_width);
+	margin-right: var(--flyout_menu_width);
+	grid-template-areas: "menuicon options gamescreen lefticon"
+						 "menuicon inputrow inputrow lefticon";
+	grid-template-columns: 30px 30% auto 30px;
+}
+.main-grid.settings_pinned.story_pinned {
+	margin-left: var(--flyout_menu_width);
+	margin-right: var(--flyout_menu_width);
+	grid-template-areas: "menuicon gamescreen options lefticon"
+						 "menuicon inputrow inputrow lefticon";
+	grid-template-columns: 30px auto 30% 30px;
 }
 }
 
 @media only screen and (max-aspect-ratio: 7/5) {
+/* mobile */
 .main-grid {
 	transition: margin-left .5s;
 	display: grid;
 	height: 98vh;
 	margin-left: var(--flyout_menu_closed_width);
 	grid-template-areas: "menuicon gamescreen lefticon"
-					     "menuicon mobile_options lefticon"
+					     "menuicon options lefticon"
 						 "menuicon inputrow lefticon";
 	grid-template-columns: 30px auto 20px;
 	grid-template-rows: auto min-content 100px;
 }
 }
 
-@media only screen and (min-aspect-ratio: 7/5) {
-.main-grid.pinned {
-	margin-left: calc(-var(--flyout_menu_width));
-}
-}
+
 
 /* ---------------------------------- GAME SCREEN ----------------------------------*/
 .gamescreen {
@@ -748,7 +778,6 @@ body {
 	display: none;
   }
 
-@media only screen and (min-aspect-ratio: 7/5) {
 .sequence_area {
 	margin-top: 10px;
 	grid-area: options;
@@ -756,16 +785,6 @@ body {
 	/*border-left: 5px solid var(--primary);*/
 	box-shadow: 4px 0 8px 0 rgba(0, 0, 0, 0.2), 5px 0px 25px 0 rgba(0, 0, 0, 0.19);
 	overflow-y: scroll;
-}
-}
-
-@media only screen and (max-aspect-ratio: 7/5) {
-.sequence_area {
-	margin-top: 5px;
-	grid-area: mobile_options;
-	background-color: var(--gamescreen_background);
-	overflow-y: hidden;
-}
 }
 
 @media only screen and (max-aspect-ratio: 7/5) {
@@ -1219,6 +1238,7 @@ body.NotConnected {
 
 .cursor {
 	cursor: pointer;
+<<<<<<< HEAD
 }
 
 .flout_menu_contents {

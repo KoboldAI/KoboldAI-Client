@@ -1879,41 +1879,62 @@ String.prototype.toHHMMSS = function () {
 }
 
 function toggle_flyout(x) {
-	if (document.getElementById("SideMenu").classList.contains("open")) {
-		x.classList.remove("change");
-		document.getElementById("SideMenu").classList.remove("open");
-		document.getElementById("main-grid").classList.remove("menu-open");
-		//if pinned
-		if (document.getElementById("SideMenu").classList.contains("pinned")) {
-			document.getElementById("menu_pin").classList.remove("hidden");
-		} else {
-			document.getElementById("menu_pin").classList.add("hidden");
-		}
+	if (document.getElementById("SideMenu").classList.contains("pinned")) {
+		//do nothing
 	} else {
-		x.classList.add("change");
-		document.getElementById("SideMenu").classList.add("open");
-		document.getElementById("main-grid").classList.add("menu-open");
-		document.getElementById("menu_pin").classList.remove("hidden");
-	}
+		if (document.getElementById("SideMenu").classList.contains("open")) {
+			x.classList.remove("change");
+			document.getElementById("SideMenu").classList.remove("open");
+			document.getElementById("main-grid").classList.remove("menu-open");
+		} else {
+			x.classList.add("change");
+			document.getElementById("SideMenu").classList.add("open");
+			document.getElementById("main-grid").classList.add("menu-open");
+			document.getElementById("menu_pin").classList.remove("hidden");
+		}
+}
 }
 
 function toggle_flyout_right(x) {
-	if (document.getElementById("rightSideMenu").classList.contains("open")) {
-		document.getElementById("rightSideMenu").classList.remove("open");
-		x.setAttribute("data-glyph", "chevron-left");
+	if (document.getElementById("rightSideMenu").classList.contains("pinned")) {
+		//do nothing
 	} else {
-		document.getElementById("rightSideMenu").classList.add("open");
-		x.setAttribute("data-glyph", "chevron-right");
+		if (document.getElementById("rightSideMenu").classList.contains("open")) {
+			x.classList.remove("change");
+			document.getElementById("rightSideMenu").classList.remove("open");
+			document.getElementById("main-grid").classList.remove("story_menu-open");
+		} else {
+			x.classList.add("change");
+			document.getElementById("rightSideMenu").classList.add("open");
+			document.getElementById("main-grid").classList.add("story_menu-open");
+			document.getElementById("story_menu_pin").classList.remove("hidden");
+		}
 	}
 }
 
-function toggle_pin_flyout() {
+function toggle_settings_pin_flyout() {
 	if (document.getElementById("SideMenu").classList.contains("pinned")) {
 		document.getElementById("SideMenu").classList.remove("pinned");
-		document.getElementById("main-grid").classList.remove("pinned");
+		document.getElementById("main-grid").classList.remove("settings_pinned");
+		document.getElementById("setting_menu_icon").classList.remove("hidden");
 	} else {
+		document.getElementById("setting_menu_icon").classList.remove("change");
+		document.getElementById("setting_menu_icon").classList.add("hidden");
 		document.getElementById("SideMenu").classList.add("pinned");
-		document.getElementById("main-grid").classList.add("pinned");
+		document.getElementById("main-grid").classList.add("settings_pinned");
+	}
+}
+
+function toggle_story_pin_flyout() {
+	if (document.getElementById("rightSideMenu").classList.contains("pinned")) {
+		document.getElementById("rightSideMenu").classList.remove("pinned");
+		document.getElementById("main-grid").classList.remove("story_pinned");
+		document.getElementById("story_menu_icon").classList.remove("hidden");
+	} else {
+		document.getElementById("rightSideMenu").classList.add("pinned");
+		document.getElementById("main-grid").classList.add("story_pinned");
+		document.getElementById("story_menu_icon").classList.remove("change");
+		document.getElementById("story_menu_icon").classList.add("hidden");
 	}
 }
 
