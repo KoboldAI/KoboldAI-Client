@@ -56,8 +56,9 @@
 	--preset-item-background: var(--secondary);
     --tooltip_text: var(--on_primary);
     --tooltip_background: var(--primary);
-    --gamescreen_background: var(--layer1);
-    --textarea_background: var(--layer2);
+    --gamescreen_background: var(--layer2);
+    --textarea_background: var(--layer3);
+	--sequece_background: var(--layer1);
     --sequence: var(--primary);
 	--on_sequence: var(--on_primary);
     --enabled_button_text: var(--on_primary);
@@ -91,10 +92,7 @@
 	overflow: hidden;
 	font-size: 12px;
 	font-family: verdana;
-	grid-row: 1;
-	position: fixed;
-	width: var(--flyout_menu_closed_width);
-	background: var(--background);
+	position: relative;
 }
 .tabrow.nomenu_icon {
 	padding-left: 10px;
@@ -184,7 +182,7 @@
 
 .settings_category_area {
 	width: 100%;
-	background: #82007e;
+	background: var(--layer1);
 	grid-row: 2;
 }
 
@@ -192,7 +190,7 @@
 .setting_tile_area {
 	padding: 0px 10px 0px 10px;
 	display: grid;
-	grid-template-columns: auto;
+	grid-template-columns: auto auto;
 	/*flex;
 	flex-direction: row;
 	flex-wrap: wrap;*/
@@ -380,10 +378,8 @@ input[type="range"]::-ms-fill-upper {
 
 .SideMenu {
 	height: 100%;
+	z-index: 4;
 	width: var(--flyout_menu_closed_width);
-	display: grid;
-	grid-template-columns: var(--flyout_menu_width);
-	grid-template-rows: 30px auto;
 	box-shadow: 0 0px 8px 0 rgba(0, 0, 0, 0.2), 0px 0px 20px 0 rgba(0, 0, 0, 0.19);
 	position: fixed;
 	z-index: 1;
@@ -400,11 +396,8 @@ input[type="range"]::-ms-fill-upper {
 .SideMenu.pinned {
 	height: 100%;
 	width: var(--flyout_menu_width);
-	display: grid;
-	grid-template-columns: var(--flyout_menu_width);
-	grid-template-rows: 30px auto;
 	position: fixed;
-	z-index: 1;
+	z-index: 3;
 	top: 0;
 	left: 0;
 	background-color: var(--flyout_background_pinned);
@@ -417,6 +410,7 @@ input[type="range"]::-ms-fill-upper {
 
 .SideMenu.open {
   width: var(--flyout_menu_width);
+  z-index: 3;
 }
 
 .SideMenu .flyout_menu_contents {
@@ -567,6 +561,7 @@ input[type="range"]::-ms-fill-upper {
 }
 
 .rightSideMenu {
+	z-index: 3;
 	height: 100%;
 	width: 0;
 	position: fixed;
@@ -586,6 +581,7 @@ input[type="range"]::-ms-fill-upper {
 
 .rightSideMenu.open {
   width: var(--flyout_menu_width);
+  z-index: 3;
 }
 
 .rightSideMenu .flyout_menu_contents {
@@ -692,13 +688,14 @@ body {
 	height: 98vh;
 	margin-left: var(--flyout_menu_width);
 	margin-right: var(--flyout_menu_closed_width);
-	grid-template-areas: "menuicon gamescreen options lefticon"
+	grid-template-areas: "enuicon gamescreen options lefticon"
 						 "menuicon inputrow inputrow lefticon";
 	grid-template-columns: 30px auto 30% 30px;
 	grid-template-rows: auto 100px;
 }
 .main-grid.settings_pinned {
 	margin-left: var(--flyout_menu_width);
+	grid-template-columns: 30px auto 30% 30px;
 }
 .main-grid.story_pinned {
 	margin-left: var(--flyout_menu_closed_width);
@@ -734,9 +731,19 @@ body {
 
 
 /* ---------------------------------- GAME SCREEN ----------------------------------*/
+.sequence_area {
+	margin-top: 10px;
+	z-index: 1;
+	grid-area: options;
+	background-color: var(--sequece_background);
+	/*border-left: 5px solid var(--primary);*/
+	/*box-shadow: 4px 0 8px 0 rgba(0, 0, 0, 0.2), 0px 0px 25px 0 rgba(0, 0, 0, 0.19);*/
+	overflow-y: scroll;
+}
 .gamescreen {
 	background-color: var(--gamescreen_background);
-	box-shadow: 0 0px 8px 0 rgba(0, 0, 0, 0.2), -25px 0px 20px 0 rgba(0, 0, 0, 0.19);
+	z-index: 2;
+	box-shadow: 0 0px 8px 0 rgba(0, 0, 0, 0.2), 0px 0px 20px 0 rgba(0, 0, 0, 0.19);
 	color: white;
 	width: 100%;
 	grid-area: gamescreen;
@@ -777,15 +784,6 @@ body {
 .sequence_area::-webkit-scrollbar {
 	display: none;
   }
-
-.sequence_area {
-	margin-top: 10px;
-	grid-area: options;
-	background-color: var(--gamescreen_background);
-	/*border-left: 5px solid var(--primary);*/
-	box-shadow: 4px 0 8px 0 rgba(0, 0, 0, 0.2), 5px 0px 25px 0 rgba(0, 0, 0, 0.19);
-	overflow-y: scroll;
-}
 
 @media only screen and (max-aspect-ratio: 7/5) {
 .sequences {
@@ -860,6 +858,7 @@ body {
 
 .inputrow {
 	grid-area: inputrow;
+	z-index: 2;
 	display: grid;
 	grid-template-areas: "textarea statusbar statusbar statusbar"
 						 "textarea submit submit submit"
@@ -955,9 +954,10 @@ body {
 
 @media only screen and (min-aspect-ratio: 7/5) {
 	.paddingimage {
-		grid-area: 1 / 1 / span 2 ;
-		margin: auto auto 5px auto;
+		grid-area: paddingimage;
+		margin: auto auto auto auto;
 	}
+
 }
 
 @media only screen and (max-aspect-ratio: 7/5) {
@@ -1238,7 +1238,6 @@ body.NotConnected {
 
 .cursor {
 	cursor: pointer;
-<<<<<<< HEAD
 }
 
 .flout_menu_contents {
