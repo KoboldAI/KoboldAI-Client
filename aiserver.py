@@ -400,6 +400,7 @@ from flask_session import Session
 from werkzeug.exceptions import HTTPException, ServiceUnavailable
 import secrets
 app = Flask(__name__, root_path=os.getcwd())
+app_methods_map: Dict[str, List[str]] = {}
 app.secret_key = secrets.token_hex()
 app.config['SESSION_TYPE'] = 'filesystem'
 app.config['TEMPLATES_AUTO_RELOAD'] = True
@@ -487,7 +488,10 @@ def api_schema_wrap(f):
 
 @app.errorhandler(HTTPException)
 def handler(e):
-    return jsonify(detail={"type": "generic.error_" + str(e.code), "msg": str(e)}), e.code
+    resp = jsonify(detail={"msg": str(e), "type": "generic.error_" + str(e.code)})
+    if e.code == 405:
+        resp.headers["Allow"] = ", ".join(app_methods_map[request.path])
+    return resp, e.code
 
 class KoboldOutOfMemoryError(HTTPException):
     code = 507
@@ -536,6 +540,7 @@ class KoboldAPISpec(APISpec):
         def new_decorator(f: __F) -> __F:
             for prefix in self._prefixes:
                 f = app.route(prefix + rule, methods=methods, **kwargs)(f)
+                app_methods_map.setdefault(prefix + rule, set()).update(methods)
             with app.test_request_context():
                 self.path(view=f, **kwargs)
             return f
@@ -7513,6 +7518,8 @@ for schema in config_endpoint_schemas:
 #  Final startup commands to launch Flask app
 #==================================================================#
 print("", end="", flush=True)
+for rule in app.url_map.iter_rules():
+    app_methods_map[rule.rule] = rule.methods
 if __name__ == "__main__":
     print("{0}\nStarting webserver...{1}".format(colors.GREEN, colors.END), flush=True)
 
