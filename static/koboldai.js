@@ -22,6 +22,7 @@ socket.on("world_info_entry", function(data){world_info_entry(data);});
 socket.on("world_info_folder", function(data){world_info_folder(data);});
 socket.on("delete_new_world_info_entry", function(data){document.getElementById("world_info_-1").remove();});
 socket.on("delete_world_info_entry", function(data){document.getElementById("world_info_"+data).remove();});
+socket.on("error", function(data){show_error_message(data);});
 //socket.onAny(function(event_name, data) {console.log({"event": event_name, "class": data.classname, "data": data});});
 
 var presets = {};
@@ -1079,7 +1080,7 @@ function world_info_entry(data) {
 						
 	if (!(document.getElementById("world_info_folder_"+data.folder))) {
 		folder = document.createElement("div");
-		console.log("Didn't find folder " + data.folder);
+		//console.log("Didn't find folder " + data.folder);
 	} else {
 		folder = document.getElementById("world_info_folder_"+data.folder);
 	}
@@ -1248,6 +1249,11 @@ function world_info_folder(data) {
 	}
 }
 
+function show_error_message(data) {
+	error_message_box = document.getElementById('error_message');
+	error_message_box.classList.remove("hidden");
+	error_message_box.querySelector("#popup_list_area").textContent = data;
+}
 //--------------------------------------------UI to Server Functions----------------------------------
 function save_as_story(response) {
 	if (response == "overwrite?") {
@@ -1335,11 +1341,11 @@ function send_world_info(uid) {
 
 //--------------------------------------------General UI Functions------------------------------------
 function do_biases(data) {
-	console.log(data);
+	//console.log(data);
 	//clear out our old bias lines
 	let bias_list = Object.assign([], document.getElementsByClassName("bias"));
 	for (item of bias_list) {
-		console.log(item);
+		//console.log(item);
 		item.parentNode.removeChild(item);
 	}
 	
@@ -1586,7 +1592,7 @@ function unhide_wi_folder(folder) {
 
 function dragStart(e) {
     e.dataTransfer.setData('text/plain', e.target.id);
-	console.log(e.target.id);
+	//console.log(e.target.id);
 	e.dataTransfer.dropEffect = "move";
     setTimeout(() => {
         e.target.classList.add('hidden');
@@ -1635,7 +1641,7 @@ function drop(e) {
     // get the draggable element
     const id = e.dataTransfer.getData('text/plain');
     const draggable = document.getElementById(id);
-	console.log(id);
+	//console.log(id);
 	dragged_id = draggable.id.split("_").slice(-1)[0];
 	drop_id = element.id.split("_").slice(-1)[0];
 
@@ -1958,8 +1964,8 @@ function detect_enter_text(e) {
 			e.cancelBubble = true;
 		}
 		//get element
-		console.log("Doing Text Enter");
-		console.log(e.currentTarget.activeElement);
+		//console.log("Doing Text Enter");
+		//console.log(e.currentTarget.activeElement);
 		if (e.currentTarget.activeElement != undefined) {
 			var item = $(e.currentTarget.activeElement);
 			item.onchange();
