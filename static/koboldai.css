@@ -107,13 +107,13 @@
 	-ms-user-select: none; /* Internet Explorer/Edge */
 	user-select: none; /* Non-prefixed version, currently
 						  supported by Chrome, Edge, Opera and Firefox */
-	border: 1px solid var(--primary);
+	border: 1px solid var(--menu_button_level_1_bg_color);
 	background: var(--menu_button_level_1_bg_color);
-	background: -o-linear-gradient(top, #337ab7 50%, #285070 100%);
+	/*background: -o-linear-gradient(top, #337ab7 50%, #285070 100%);
 	background: -ms-linear-gradient(top, #337ab7 50%, #285070 100%);
 	background: -moz-linear-gradient(top, #337ab7 50%, #285070 100%);
 	background: -webkit-linear-gradient(top, #337ab7 50%, #285070 100%);
-	background: linear-gradient(top, #337ab7 50%, #285070 100%);
+	background: linear-gradient(top, #337ab7 50%, #285070 100%);*/
 	display: inline-block;
 	position: relative;
 	z-index: 0;
@@ -121,8 +121,8 @@
 	border-top-right-radius: 6px;
 	box-shadow: 0 3px 3px rgba(0, 0, 0, 0.4), inset 0 1px 0 #AAA;
 	text-shadow: 0 1px #AAA;
-	margin: 0 -5px;
-	padding: 0 20px;
+	margin: 0 -1px;
+	padding: 0 15px;
 }
 .tabrow span.selected {
 	background: #FFF;
@@ -190,9 +190,10 @@
 
 .setting_tile_area {
 	padding-left: 10px;
-	display: flex;
+	padding-right: 10px;
+	/*display: flex;
 	flex-direction: row;
-	flex-wrap: wrap;
+	flex-wrap: wrap;*/
 	width: 100%;
 }
 

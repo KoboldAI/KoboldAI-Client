@@ -55,8 +55,8 @@
 			<div>
 				<button id="load_story" class="btn action_button" onclick="socket.emit('load_story_list', '');">Load Story</button>
 				<button id="save_story" class="btn action_button var_sync_alt_story_gamesaved" onclick='socket.emit("save_story", null, (response) => {save_as_story(response);});'>Save Story</button>
-				<!---<button id="download_story" class="btn action_button" onclick="document.getElementById('download_iframe').src = 'json';">Download Story</button>--->
-				<a class='cursor' onclick="document.getElementById('download_iframe').src = 'json';">Download Story</a>
+				<button id="download_story" class="btn action_button" onclick="document.getElementById('download_iframe').src = 'json';">Download Story</button>
+				<!---<a class='cursor' onclick="document.getElementById('download_iframe').src = 'json';">Download Story</a>--->
 			</div>
 		</div>
 		<div class="setting_tile_area">
