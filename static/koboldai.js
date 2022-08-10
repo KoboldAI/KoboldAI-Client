@@ -1898,6 +1898,16 @@ String.prototype.toHHMMSS = function () {
     return hours+':'+minutes+':'+seconds;
 }
 
+function close_menus() {
+	document.getElementById("setting_menu_icon").classList.remove("change");
+	document.getElementById("SideMenu").classList.remove("open");
+	document.getElementById("main-grid").classList.remove("menu-open");
+	
+	document.getElementById("story_menu_icon").classList.remove("change");
+	document.getElementById("rightSideMenu").classList.remove("open");
+	document.getElementById("main-grid").classList.remove("story_menu-open");
+}
+
 function toggle_flyout(x) {
 	if (document.getElementById("SideMenu").classList.contains("pinned")) {
 		//do nothing
