@@ -1349,7 +1349,7 @@ function preserve_game_space(preserve) {
 		document.getElementById('preserve_game_space_setting').checked = true;
 	} else {
 		setCookie("preserve_game_space", "false");
-		r.style.setProperty('--setting_menu_closed_width_no_pins_width', '450px');
+		r.style.setProperty('--setting_menu_closed_width_no_pins_width', '400px');
 		document.getElementById('preserve_game_space_setting').checked = false;
 	}
 }

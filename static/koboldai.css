@@ -703,9 +703,9 @@ body {
 .main-grid.story_pinned {
 	margin-left: var(--flyout_menu_closed_width);
 	margin-right: var(--flyout_menu_width);
-	grid-template-areas: "menuicon gamescreen options lefticon"
+	grid-template-areas: "menuicon options gamescreen lefticon"
 						 "menuicon inputrow inputrow lefticon";
-	grid-template-columns: 30px auto 30% 30px;
+	grid-template-columns: 30px 30% auto 30px;
 }
 .main-grid.settings_pinned.story_pinned {
 	margin-left: var(--flyout_menu_width);
