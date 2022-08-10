@@ -401,6 +401,17 @@ function var_changed(data) {
 		}
 	}
 	
+	//if we changed the gen amount, make sure our option area is set/not set
+	if ((data.classname == 'model') && (data.name == 'numseqs')) {
+		if (data.value == 1) {
+			var r = document.querySelector(':root');
+			r.style.setProperty('--story_options_size', 'fit-content(30%)');
+		} else {
+			var r = document.querySelector(':root');
+			r.style.setProperty('--story_options_size', '30%');
+		}
+	}
+	
 	//if we're updating generated tokens, let's show that in our status bar
 	if ((data.classname == 'model') && (data.name == 'tqdm_progress')) {
 		update_status_bar(data);
@@ -1380,12 +1391,12 @@ function options_on_right(data) {
 	if (data) {
 		setCookie("options_on_right", "true");
 		r.style.setProperty('--story_pinned_areas', '"menuicon gamescreen options lefticon"\n"menuicon inputrow inputrow lefticon"');
-		r.style.setProperty('--story_pinned_area_widths', '30px auto 30% 30px');
+		r.style.setProperty('--story_pinned_area_widths', '30px auto var(--story_options_size) 30px');
 		document.getElementById('preserve_game_space_setting').checked = true;
 	} else {
 		setCookie("options_on_right", "false");
 		r.style.setProperty('--story_pinned_areas', '"menuicon options gamescreen lefticon"\n"menuicon inputrow inputrow lefticon"');
-		r.style.setProperty('--story_pinned_area_widths', '30px 30% auto 30px');
+		r.style.setProperty('--story_pinned_area_widths', '30px var(--story_options_size) auto 30px');
 		document.getElementById('preserve_game_space_setting').checked = false;
 	}
 }
