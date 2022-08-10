@@ -6495,6 +6495,13 @@ def UI_2_load_story(file):
     print("loading {}".format(file))
     loadRequest(file)
 
+#==================================================================#
+# Event triggered on load story
+#==================================================================#
+@socketio.on('new_story')
+def UI_2_new_story(data):
+    koboldai_vars.create_story("")
+    
     
 #==================================================================#
 # Event triggered when user moves world info

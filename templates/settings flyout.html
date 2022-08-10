@@ -53,6 +53,7 @@
 		<div id="Story_Info">
 			<div><b>Story Name: </b><span class="var_sync_story_story_name" contenteditable=true onblur="sync_to_server(this);"></span></div>
 			<div>
+				<button id="new_story" class="btn action_button" onclick="new_story();">New Story</button>
 				<button id="load_story" class="btn action_button" onclick="socket.emit('load_story_list', '');">Load Story</button>
 				<button id="save_story" class="btn action_button var_sync_alt_story_gamesaved" onclick='socket.emit("save_story", null, (response) => {save_as_story(response);});'>Save Story</button>
 				<!---<button id="download_story" class="btn action_button" onclick="document.getElementById('download_iframe').src = 'json';">Download Story</button>--->
@@ -101,6 +102,23 @@
 				</span>
 				<span class="setting_item">
 					<input type=checkbox id="preserve_game_space_setting" data-size=mini data-onstyle=success data-toggle=toggle onchange="preserve_game_space(this.checked)"/>
+				</span>
+				<!---Slider Labels--->
+				<span class="setting_minlabel"><span style="top: -4px; position: relative;"></span></span>
+				<span class="setting_maxlabel"><span style="top: -4px; position: relative;"></span></span>
+			</div>
+			<div class="setting_container">
+				<span class="setting_label">
+					Keep options on Right: 
+					<span class="helpicon">
+						?
+						<span class="helptext">
+							When enabled and only the story menu is pinned, the generated story options will be shown on the right instead of the left of the game text.
+						</span>
+					</span>
+				</span>
+				<span class="setting_item">
+					<input type=checkbox id="options_on_right" data-size=mini data-onstyle=success data-toggle=toggle onchange="options_on_right(this.checked)"/>
 				</span>
 				<!---Slider Labels--->
 				<span class="setting_minlabel"><span style="top: -4px; position: relative;"></span></span>

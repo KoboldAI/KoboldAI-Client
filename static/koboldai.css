@@ -43,6 +43,10 @@
     --wi_card_bg_color: #262626;
     --wi_card_tag_bg_color: #404040;
     --wi_tag_color: #337ab7;
+	
+	--story_pinned_areas: "menuicon options gamescreen lefticon"
+						 "menuicon inputrow inputrow lefticon";
+	--story_pinned_area_widths: 30px 30% auto 30px;
 }
 
 /*----------------Folder Tabs--------------------*/
@@ -603,9 +607,8 @@ body {
 .main-grid.story_pinned {
 	margin-left: var(--flyout_menu_closed_width);
 	margin-right: var(--flyout_menu_width);
-	grid-template-areas: "menuicon gamescreen options lefticon"
-						 "menuicon inputrow inputrow lefticon";
-	grid-template-columns: 30px auto 30% 30px;
+	grid-template-areas: var(--story_pinned_areas);
+	grid-template-columns: var(--story_pinned_area_widths);
 }
 .main-grid.settings_pinned.story_pinned {
 	margin-left: var(--flyout_menu_width);

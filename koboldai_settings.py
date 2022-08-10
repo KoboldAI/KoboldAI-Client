@@ -316,7 +316,7 @@ class story_settings(settings):
     def __init__(self, socketio, tokenizer=None):
         self.socketio = socketio
         self.tokenizer = tokenizer
-        self.story_name  = ""   # Title of the story
+        self.story_name  = "New Game"   # Title of the story
         self.lastact     = ""     # The last action received from the user
         self.submission  = ""     # Same as above, but after applying input formatting
         self.lastctx     = ""     # The last context submitted to the generator
