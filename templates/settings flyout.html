@@ -88,6 +88,24 @@
 		</div>
 	</div>
 	<div id="setting_menu_ui" class="hidden settings_category_area">
-		Maximize Game Text Space: <input type=checkbox id="preserve_game_space_setting" data-size=mini data-onstyle=success data-toggle=toggle onchange="preserve_game_space(this.checked)"/>
+		<div class="setting_tile_area">
+			<div class="setting_container">
+				<span class="setting_label">
+					Maximize Game Text Space: 
+					<span class="helpicon">
+						?
+						<span class="helptext">
+							When enabled and both menus are un-pinned, the game screen will take up all avaialable space. When disabled, the game screen will be centered.
+						</span>
+					</span>
+				</span>
+				<span class="setting_item">
+					<input type=checkbox id="preserve_game_space_setting" data-size=mini data-onstyle=success data-toggle=toggle onchange="preserve_game_space(this.checked)"/>
+				</span>
+				<!---Slider Labels--->
+				<span class="setting_minlabel"><span style="top: -4px; position: relative;"></span></span>
+				<span class="setting_maxlabel"><span style="top: -4px; position: relative;"></span></span>
+			</div>
+		</div>
 	</div>
 </div>

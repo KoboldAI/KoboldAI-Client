@@ -24,14 +24,15 @@
 		{% include 'settings flyout.html' %}
 	</div>
 
+	<!------------ Left Menu Icon--------------------->
+	<div id="setting_menu_icon" class="menu_icon hidden changed" onclick="toggle_flyout(this)"> 
+		<div class="menubar1"></div>
+		<div class="menubar2"></div>
+		<div class="menubar3"></div>
+	</div>
+
 	<!------------ Main Screen--------------------->
-	<div id="main-grid" class="main-grid settings_pinned">
-		<!------------ Left Menu Icon--------------------->
-		<div id="setting_menu_icon" class="menu_icon hidden changed" onclick="toggle_flyout(this)"> 
-			<div class="menubar1"></div>
-			<div class="menubar2"></div>
-			<div class="menubar3"></div>
-		</div>
+	<div id="main-grid" class="main-grid settings_pinned" onclick="close_menus();">
 		<!------------ Game Text Screen--------------------->
 		<div class="gamescreen" id="gamescreen">
 			<div id="disconnect_message"><center><h1>Disconnected</h1></center></div>
@@ -56,17 +57,13 @@
 			<button type="button" class="btn action_button redo" onclick="socket.emit('redo', {});"><span class="oi" data-glyph="action-redo"></span></button>
 			<button type="button" class="btn action_button retry" onclick="socket.emit('retry', {});"><span class="oi" data-glyph="loop-circular"></span></button>
 		</div>
-		<!------------ Right Menu Icon--------------------->
-		<div id="story_menu_icon" class="right_menu_icon" onclick="toggle_flyout_right(this)"> 
-			<div class="menubar1"></div>
-			<div class="menubar2"></div>
-			<div class="menubar3"></div>
-		</div>
-		<!----<span class="oi right_menu_icon" data-glyph="chevron-left" onclick="toggle_flyout_right(this)"></span>--->
-		<!------------ Padding Image--------------------->
-		<div class="paddingimage hidden">
-			<img src="/static/padding_image.png" alt="Padding Image">
-		</div>
+	</div>
+	
+	<!------------ Right Menu Icon--------------------->
+	<div id="story_menu_icon" class="right_menu_icon" onclick="toggle_flyout_right(this)"> 
+		<div class="menubar1"></div>
+		<div class="menubar2"></div>
+		<div class="menubar3"></div>
 	</div>
 	
 	<!------------ Right Flyout Menu--------------------->
@@ -78,7 +75,7 @@
 	<!------------- Pop-Ups ------------------------------->
 	{% include 'popups.html' %}
 	
-	<!------------- World Info Template ------------------------------->
+	<!------------- Templates ------------------------------->
 	<div class="hidden">
 		<div draggable="true" class="world_info_card" id="world_info_">
 			<div class="world_info_title_area">
