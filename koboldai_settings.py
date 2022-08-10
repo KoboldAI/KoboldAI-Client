@@ -38,7 +38,7 @@ def process_variable_changes(socketio, classname, name, value, old_value, debug_
                     if threading.get_ident() in rely_clients:
                         sio = rely_clients[threading.get_ident()]
                     else:
-                        sio = socketio_client.Client()
+                        sio = socketio_client.Client(logger=True, engineio_logger=True)
                         @sio.event
                         def connect():
                             pass

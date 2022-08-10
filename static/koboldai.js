@@ -404,9 +404,11 @@ function var_changed(data) {
 	//if we changed the gen amount, make sure our option area is set/not set
 	if ((data.classname == 'model') && (data.name == 'numseqs')) {
 		if (data.value == 1) {
+			//allow our options to collapse to 0%, but no more than 30% (in case there is a redo or the like)
 			var r = document.querySelector(':root');
 			r.style.setProperty('--story_options_size', 'fit-content(30%)');
 		} else {
+			//static 30%
 			var r = document.querySelector(':root');
 			r.style.setProperty('--story_options_size', '30%');
 		}
