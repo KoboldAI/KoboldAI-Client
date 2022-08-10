@@ -579,7 +579,7 @@ tags = [
     {"name": "config", "description": "Allows you to get/set various setting values"},
 ]
 
-api_version: Optional[str] = None
+api_version = None
 
 api_latest_version = "1.1.0"
 
