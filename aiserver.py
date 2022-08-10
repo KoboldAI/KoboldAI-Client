@@ -2599,6 +2599,9 @@ def index():
         return render_template('index_new.html', hide_ai_menu=args.noaimenu)
     else:
         return render_template('index.html', hide_ai_menu=args.noaimenu, flaskwebgui=vars.flaskwebgui)
+@app.route('/api', strict_slashes=False)
+def api():
+    return redirect('/api/latest')
 @app.route('/favicon.ico')
 def favicon():
     return send_from_directory(app.root_path,
