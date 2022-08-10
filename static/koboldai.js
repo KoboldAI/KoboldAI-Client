@@ -1342,10 +1342,15 @@ function send_world_info(uid) {
 //--------------------------------------------General UI Functions------------------------------------
 function preserve_game_space(preserve) {
 	var r = document.querySelector(':root');
+	console.log("Setting cookie to: "+preserve);
 	if (preserve) {
+		setCookie("preserve_game_space", "true");
 		r.style.setProperty('--setting_menu_closed_width_no_pins_width', '0px');
+		document.getElementById('preserve_game_space_setting').checked = true;
 	} else {
+		setCookie("preserve_game_space", "false");
 		r.style.setProperty('--setting_menu_closed_width_no_pins_width', '450px');
+		document.getElementById('preserve_game_space_setting').checked = false;
 	}
 }
 
@@ -2054,4 +2059,6 @@ $(document).ready(function(){
 	} else {
 		story_unpin();
 	}
+	console.log("cookie: "+getCookie("preserve_game_space"));
+	preserve_game_space((getCookie("preserve_game_space") == "true"));
 });

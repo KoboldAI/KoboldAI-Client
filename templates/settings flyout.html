@@ -30,6 +30,7 @@
 	<span class="setting_menu_button selected" onclick="show_setting_menu(this);">Model</span>
 	<span class="setting_menu_button" onclick="show_setting_menu(this);">Story</span>
 	<span class="setting_menu_button" onclick="show_setting_menu(this);">User</span>
+	<span class="setting_menu_button" onclick="show_setting_menu(this);">UI</span>
 	<span style="float: right;margin-right: 30px;" onclick="window.open('https://github.com/KoboldAI/KoboldAI-Client/wiki');">Help</span>
 </div>
 <div class="flyout_menu_contents">
@@ -85,5 +86,8 @@
 			{% include 'settings item.html' %}
 		{% endwith %}
 		</div>
+	</div>
+	<div id="setting_menu_ui" class="hidden settings_category_area">
+		Maximize Game Text Space: <input type=checkbox id="preserve_game_space_setting" data-size=mini data-onstyle=success data-toggle=toggle onchange="preserve_game_space(this.checked)"/>
 	</div>
 </div>
