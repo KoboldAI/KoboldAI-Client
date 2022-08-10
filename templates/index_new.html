@@ -77,64 +77,7 @@
 	
 	<!------------- Templates ------------------------------->
 	<div class="hidden">
-		<div draggable="true" class="world_info_card" id="world_info_">
-			<div class="world_info_title_area">
-				<h4 id="world_info_title_" class="world_info_title"></h4>
-				<span id="world_info_delete_" class="world_info_delete">X</span>
-			</div>
-			<div class="world_info_tag_area" id="world_info_toggle_area_">
-				Always Include
-			</div>
-			<div id="world_info_tags_" class="world_info_tag_area">
-				<div>Requires one of:</div>
-			</div>
-			<div id="world_info_secondtags_" class="world_info_tag_area">
-				<div>And (if present):</div>
-			</div>
-			<div>
-				Text:
-				<textarea id="world_info_entry_text_" class="world_info_text fullwidth"></textarea>
-			</div>
-			<div id="world_info_entry_w++_" class="hidden">
-				<input type=text placeholder="Type"/><input type=text placeholder="Name"/>
-				<div>
-					<input type=text placeholder="attribute"/><input type=text placeholder="value"/>
-				</div>
-			</div>
-			<div>
-				Comment:
-				<textarea rows=1 id="world_info_comment_" class="world_info_text fullwidth"></textarea>
-			</div>
-		</div>
-		<div id="empty_bias">
-			<div class="bias_phrase">
-				<input type=text placeholder="Word or Phrase to Bias" onchange="save_bias(this);"/>
-			</div>
-			<div class="bias_score">
-				<div class="bias_slider">
-					<div class="bias_slider_bar">
-						<input type="range" min="-12" max="12" step="0.01" value="0" class="setting_item_input" 
-							oninput="update_bias_slider_value(this);"
-							onchange="save_bias(this);"/>
-					</div>
-					<div class="bias_slider_min">-12</div>
-					<div class="bias_slider_cur">0</div>
-					<div class="bias_slider_max">12</div>
-				</div>
-			</div>
-			<div class="bias_comp_threshold">
-				<div class="bias_slider">
-					<div class="bias_slider_bar">
-						<input type="range" min="0" max="10" step="1" value="10" class="setting_item_input"
-							oninput="update_bias_slider_value(this);" 
-							onchange="save_bias(this);"/>
-					</div>
-					<div class="bias_slider_min">0</div>
-					<div class="bias_slider_cur">10</div>
-					<div class="bias_slider_max">10</div>
-				</div>
-			</div>
-		</div>
+		{% include 'templates.html' %}
 	</div>
 	<iframe id="download_iframe" style="display:none;"></iframe>
 </body>

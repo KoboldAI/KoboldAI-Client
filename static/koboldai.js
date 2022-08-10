@@ -401,6 +401,19 @@ function var_changed(data) {
 		}
 	}
 	
+	//if we changed the gen amount, make sure our option area is set/not set
+	if ((data.classname == 'model') && (data.name == 'numseqs')) {
+		if (data.value == 1) {
+			//allow our options to collapse to 0%, but no more than 30% (in case there is a redo or the like)
+			var r = document.querySelector(':root');
+			r.style.setProperty('--story_options_size', 'fit-content(30%)');
+		} else {
+			//static 30%
+			var r = document.querySelector(':root');
+			r.style.setProperty('--story_options_size', '30%');
+		}
+	}
+	
 	//if we're updating generated tokens, let's show that in our status bar
 	if ((data.classname == 'model') && (data.name == 'tqdm_progress')) {
 		update_status_bar(data);
@@ -1255,6 +1268,18 @@ function show_error_message(data) {
 	error_message_box.querySelector("#popup_list_area").textContent = data;
 }
 //--------------------------------------------UI to Server Functions----------------------------------
+function new_story() {
+	//check if the story is saved
+	if (document.getElementById('save_story').getAttribute('story_gamesaved') == "false") {
+		//ask the user if they want to continue
+		if (window.confirm("You asked for a new story but your current story has not been saved. If you continue you will loose your changes.")) {
+			socket.emit('new_story', '');
+		}
+	} else {
+		socket.emit('new_story', '');
+	}
+}
+
 function save_as_story(response) {
 	if (response == "overwrite?") {
 		document.getElementById('save-confirm').classList.remove('hidden')
@@ -1346,10 +1371,34 @@ function preserve_game_space(preserve) {
 	if (preserve) {
 		setCookie("preserve_game_space", "true");
 		r.style.setProperty('--setting_menu_closed_width_no_pins_width', '0px');
+		if (!(document.getElementById('preserve_game_space_setting').checked)) {
+			//not sure why the bootstrap-toggle won't respect a standard item.checked = true/false, so....
+			document.getElementById('preserve_game_space_setting').parentNode.click();
+		}
 		document.getElementById('preserve_game_space_setting').checked = true;
 	} else {
 		setCookie("preserve_game_space", "false");
-		r.style.setProperty('--setting_menu_closed_width_no_pins_width', '400px');
+		r.style.setProperty('--setting_menu_closed_width_no_pins_width', '450px');
+		if (document.getElementById('preserve_game_space_setting').checked) {
+			//not sure why the bootstrap-toggle won't respect a standard item.checked = true/false, so....
+			document.getElementById('preserve_game_space_setting').parentNode.click();
+		}
+		document.getElementById('preserve_game_space_setting').checked = false;
+	}
+}
+
+function options_on_right(data) {
+	var r = document.querySelector(':root');
+	console.log("Setting cookie to: "+data);
+	if (data) {
+		setCookie("options_on_right", "true");
+		r.style.setProperty('--story_pinned_areas', '"menuicon gamescreen options lefticon"\n"menuicon inputrow inputrow lefticon"');
+		r.style.setProperty('--story_pinned_area_widths', '30px auto var(--story_options_size) 30px');
+		document.getElementById('preserve_game_space_setting').checked = true;
+	} else {
+		setCookie("options_on_right", "false");
+		r.style.setProperty('--story_pinned_areas', '"menuicon options gamescreen lefticon"\n"menuicon inputrow inputrow lefticon"');
+		r.style.setProperty('--story_pinned_area_widths', '30px var(--story_options_size) auto 30px');
 		document.getElementById('preserve_game_space_setting').checked = false;
 	}
 }
@@ -2071,4 +2120,5 @@ $(document).ready(function(){
 	}
 	console.log("cookie: "+getCookie("preserve_game_space"));
 	preserve_game_space((getCookie("preserve_game_space") == "true"));
+	options_on_right((getCookie("options_on_right") == "true"));
 });

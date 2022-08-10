@@ -38,7 +38,7 @@ def process_variable_changes(socketio, classname, name, value, old_value, debug_
                     if threading.get_ident() in rely_clients:
                         sio = rely_clients[threading.get_ident()]
                     else:
-                        sio = socketio_client.Client()
+                        sio = socketio_client.Client(logger=True, engineio_logger=True)
                         @sio.event
                         def connect():
                             pass
@@ -316,7 +316,7 @@ class story_settings(settings):
     def __init__(self, socketio, tokenizer=None):
         self.socketio = socketio
         self.tokenizer = tokenizer
-        self.story_name  = ""   # Title of the story
+        self.story_name  = "New Game"   # Title of the story
         self.lastact     = ""     # The last action received from the user
         self.submission  = ""     # Same as above, but after applying input formatting
         self.lastctx     = ""     # The last context submitted to the generator
