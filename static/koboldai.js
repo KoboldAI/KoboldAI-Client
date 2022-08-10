@@ -1340,6 +1340,15 @@ function send_world_info(uid) {
 }
 
 //--------------------------------------------General UI Functions------------------------------------
+function preserve_game_space(preserve) {
+	var r = document.querySelector(':root');
+	if (preserve) {
+		r.style.setProperty('--setting_menu_closed_width_no_pins_width', '0px');
+	} else {
+		r.style.setProperty('--setting_menu_closed_width_no_pins_width', '450px');
+	}
+}
+
 function do_biases(data) {
 	//console.log(data);
 	//clear out our old bias lines
@@ -1920,28 +1929,74 @@ function toggle_flyout_right(x) {
 
 function toggle_settings_pin_flyout() {
 	if (document.getElementById("SideMenu").classList.contains("pinned")) {
-		document.getElementById("SideMenu").classList.remove("pinned");
-		document.getElementById("main-grid").classList.remove("settings_pinned");
-		document.getElementById("setting_menu_icon").classList.remove("hidden");
+		settings_unpin();
 	} else {
-		document.getElementById("setting_menu_icon").classList.remove("change");
-		document.getElementById("setting_menu_icon").classList.add("hidden");
-		document.getElementById("SideMenu").classList.add("pinned");
-		document.getElementById("main-grid").classList.add("settings_pinned");
+		settings_pin();
 	}
 }
 
+function settings_pin() {
+	setCookie("Settings_Pin", "true");
+	document.getElementById("SideMenu").classList.remove("open");
+	document.getElementById("main-grid").classList.remove("menu-open");
+	document.getElementById("setting_menu_icon").classList.remove("change");
+	document.getElementById("setting_menu_icon").classList.add("hidden");
+	document.getElementById("SideMenu").classList.add("pinned");
+	document.getElementById("main-grid").classList.add("settings_pinned");
+}
+
+function settings_unpin() {
+	setCookie("Settings_Pin", "false");
+	document.getElementById("SideMenu").classList.remove("pinned");
+	document.getElementById("main-grid").classList.remove("settings_pinned");
+	document.getElementById("setting_menu_icon").classList.remove("hidden");
+}	
+
 function toggle_story_pin_flyout() {
 	if (document.getElementById("rightSideMenu").classList.contains("pinned")) {
-		document.getElementById("rightSideMenu").classList.remove("pinned");
-		document.getElementById("main-grid").classList.remove("story_pinned");
-		document.getElementById("story_menu_icon").classList.remove("hidden");
+		story_unpin();
 	} else {
-		document.getElementById("rightSideMenu").classList.add("pinned");
-		document.getElementById("main-grid").classList.add("story_pinned");
-		document.getElementById("story_menu_icon").classList.remove("change");
-		document.getElementById("story_menu_icon").classList.add("hidden");
+		story_pin();
 	}
+}
+
+function story_pin() {
+	setCookie("Story_Pin", "true");
+	document.getElementById("rightSideMenu").classList.remove("open");
+	document.getElementById("main-grid").classList.remove("story_menu-open");
+	document.getElementById("rightSideMenu").classList.add("pinned");
+	document.getElementById("main-grid").classList.add("story_pinned");
+	document.getElementById("story_menu_icon").classList.remove("change");
+	document.getElementById("story_menu_icon").classList.add("hidden");
+}
+
+function story_unpin() {
+	setCookie("Story_Pin", "false");
+	document.getElementById("rightSideMenu").classList.remove("pinned");
+	document.getElementById("main-grid").classList.remove("story_pinned");
+	document.getElementById("story_menu_icon").classList.remove("hidden");
+}
+
+function setCookie(cname, cvalue, exdays=60) {
+  const d = new Date();
+  d.setTime(d.getTime() + (exdays * 24 * 60 * 60 * 1000));
+  let expires = "expires="+d.toUTCString();
+  document.cookie = cname + "=" + cvalue + ";" + expires + ";path=/";
+}
+
+function getCookie(cname) {
+  let name = cname + "=";
+  let ca = document.cookie.split(';');
+  for(let i = 0; i < ca.length; i++) {
+	let c = ca[i];
+	while (c.charAt(0) == ' ') {
+	  c = c.substring(1);
+	}
+	if (c.indexOf(name) == 0) {
+	  return c.substring(name.length, c.length);
+	}
+  }
+  return "";
 }
 
 function detect_enter_submit(e) {
@@ -1989,4 +2044,14 @@ $(document).ready(function(){
 	document.onkeydown = detect_shift_down;
 	document.onkeyup = detect_shift_up;
 	document.getElementById("input_text").onkeydown = detect_enter_submit;
+	if (getCookie("Settings_Pin") == "false") {
+		settings_unpin();
+	} else {
+		settings_pin();
+	}
+	if (getCookie("Story_Pin") == "true") {
+		story_pin();
+	} else {
+		story_unpin();
+	}
 });
