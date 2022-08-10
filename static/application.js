@@ -2901,6 +2901,7 @@ $(document).ready(function(){
 			$("#showmodelnamecontainer").removeClass("hidden");
 		} else if(msg.cmd == 'hide_model_name') {
 			$("#showmodelnamecontainer").addClass("hidden");
+			location.reload();
 			//console.log("Closing window");
 		} else if(msg.cmd == 'model_load_status') {
 			$("#showmodelnamecontent").html("<div class=\"flex\"><div class=\"loadlistpadding\"></div><div class=\"loadlistitem\" style='align: left'>" + msg.data + "</div></div>");
