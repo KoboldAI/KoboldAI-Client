@@ -860,6 +860,9 @@ body {
 .popup .popup_list_area {
 	height: 70vh;
 	overflow-x: hidden;
+	flex-grow: 1;
+	flex-shrink: 0;
+	flex-basis: auto;
 }
 
 .popup .item {
