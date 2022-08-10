@@ -15,12 +15,12 @@
 		<script src="/static/swagger-ui/swagger-ui-bundle.js" charset="UTF-8"></script>
 		<script>
 			window.onload = function() {
-				
 				window.ui = SwaggerUIBundle({
 					url: "{{ url }}",
 					oauth2RedirectUrl: "/static/swagger-ui/oauth2-redirect.html",
 					dom_id: "#swagger-ui",
 					deepLinking: true,
+					defaultModelsExpandDepth: 0,  // Causes the "Schemas" section at the bottom to be collapsed by default
 					presets: [
 						SwaggerUIBundle.presets.apis
 					],

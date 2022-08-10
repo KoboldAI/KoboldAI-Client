@@ -397,10 +397,9 @@ from flask import Flask, render_template, Response, request, copy_current_reques
 from flask_socketio import SocketIO
 from flask_socketio import emit as _emit
 from flask_session import Session
-from werkzeug.exceptions import HTTPException, ServiceUnavailable
+from werkzeug.exceptions import HTTPException
 import secrets
 app = Flask(__name__, root_path=os.getcwd())
-app_methods_map: Dict[str, List[str]] = {}
 app.secret_key = secrets.token_hex()
 app.config['SESSION_TYPE'] = 'filesystem'
 app.config['TEMPLATES_AUTO_RELOAD'] = True
@@ -423,8 +422,7 @@ from marshmallow import Schema, fields, validate, EXCLUDE
 from marshmallow.exceptions import ValidationError
 
 class KoboldSchema(Schema):
-    class Meta:
-        unknown = EXCLUDE  # If there are unknown values in the input to an API endpoint, ignore them instead of raising error 422.
+    pass
 
 def new_make_min_max_attributes(validators, min_attr, max_attr) -> dict:
     # Patched apispec function that creates "exclusiveMinimum"/"exclusiveMaximum" OpenAPI attributes insteaed of "minimum"/"maximum" when using validators.Range or validators.Length with min_inclusive=False or max_inclusive=False
@@ -474,13 +472,13 @@ def api_schema_wrap(f):
     f = api_format_docstring(f)
     f = api_catch_out_of_memory_errors(f)
     @functools.wraps(f)
-    def decorated(*args, **Kwargs):
+    def decorated(*args, **kwargs):
         if HAS_SCHEMA:
             body = request.get_json()
             schema = input_schema.from_dict(input_schema().load(body))
-            response = f(schema)
+            response = f(schema, *args, **kwargs)
         else:
-            response = f()
+            response = f(*args, **kwargs)
         if not isinstance(response, Response):
             response = jsonify(response)
         return response
@@ -489,8 +487,8 @@ def api_schema_wrap(f):
 @app.errorhandler(HTTPException)
 def handler(e):
     resp = jsonify(detail={"msg": str(e), "type": "generic.error_" + str(e.code)})
-    if e.code == 405:
-        resp.headers["Allow"] = ", ".join(app_methods_map[request.path])
+    if e.code == 405 and e.valid_methods is not None:
+        resp.headers["Allow"] = ", ".join(e.valid_methods)
     return resp, e.code
 
 class KoboldOutOfMemoryError(HTTPException):
@@ -513,6 +511,8 @@ def handler(e):
 def handler(e):
     return jsonify(detail={"type": "not_implemented", "msg": str(e).strip()}), 501
 
+api_versions: List[str] = []
+
 class KoboldAPISpec(APISpec):
     class KoboldFlaskPlugin(FlaskPlugin):
         def __init__(self, api: "KoboldAPISpec", *args, **kwargs):
@@ -522,10 +522,13 @@ class KoboldAPISpec(APISpec):
         def path_helper(self, *args, **kwargs):
             return super().path_helper(*args, **kwargs)[len(self._kobold_api_spec._prefixes[0]):]
 
-    def __init__(self, *args, title: str = "KoboldAI API", openapi_version: str = "3.0.3", prefixes: List[str] = None, **kwargs):
+    def __init__(self, *args, title: str = "KoboldAI API", openapi_version: str = "3.0.3", version: str = "1.0.0", prefixes: List[str] = None, **kwargs):
         plugins = [KoboldAPISpec.KoboldFlaskPlugin(self), MarshmallowPlugin()]
         self._prefixes = prefixes if prefixes is not None else [""]
-        super().__init__(*args, title=title, openapi_version=openapi_version, plugins=plugins, servers=[{"url": self._prefixes[0]}], **kwargs)
+        self._kobold_api_spec_version = version
+        api_versions.append(version)
+        api_versions.sort(key=lambda x: [int(e) for e in x.split(".")])
+        super().__init__(*args, title=title, openapi_version=openapi_version, version=version, plugins=plugins, servers=[{"url": self._prefixes[0]}], **kwargs)
         for prefix in self._prefixes:
             app.route(prefix, endpoint="~KoboldAPISpec~" + prefix)(lambda: redirect(request.path + "/docs/"))
             app.route(prefix + "/", endpoint="~KoboldAPISpec~" + prefix + "/")(lambda: redirect("docs/"))
@@ -538,12 +541,19 @@ class KoboldAPISpec(APISpec):
         if "strict_slashes" not in kwargs:
             kwargs["strict_slashes"] = False
         def new_decorator(f: __F) -> __F:
+            @functools.wraps(f)
+            def g(*args, **kwargs):
+                global api_version
+                api_version = self._kobold_api_spec_version
+                try:
+                    return f(*args, **kwargs)
+                finally:
+                    api_version = None
             for prefix in self._prefixes:
-                f = app.route(prefix + rule, methods=methods, **kwargs)(f)
-                app_methods_map.setdefault(prefix + rule, set()).update(methods)
+                g = app.route(prefix + rule, methods=methods, **kwargs)(g)
             with app.test_request_context():
-                self.path(view=f, **kwargs)
-            return f
+                self.path(view=g, **kwargs)
+            return g
         return new_decorator
 
     def get(self, rule: str, **kwargs):
@@ -562,13 +572,19 @@ class KoboldAPISpec(APISpec):
         return self.route(rule, methods=["DELETE"], **kwargs)
 
 tags = [
+    {"name": "info", "description": "Metadata about this API"},
     {"name": "generate", "description": "Text generation endpoints"},
     {"name": "story", "description": "Endpoints for managing the story in the KoboldAI GUI"},
+    {"name": "world_info", "description": "Endpoints for managing the world info in the KoboldAI GUI"},
     {"name": "config", "description": "Allows you to get/set various setting values"},
 ]
 
+api_version: Optional[str] = None
+
+api_latest_version = "1.1.0"
+
 api_v1 = KoboldAPISpec(
-    version="1.0.0",
+    version="1.1.0",
     prefixes=["/api/v1", "/api/latest"],
     tags=tags,
 )
@@ -4091,7 +4107,7 @@ def apiactionsubmit_tpumtjgenerate(txt, minimum, maximum):
 
     return genout
 
-def apiactionsubmit(data, use_memory=False):
+def apiactionsubmit(data, use_memory=False, use_world_info=False, use_story=False, use_authors_note=False):
     if(vars.model == "Colab"):
         raise NotImplementedError("API generation is not supported in old Colab API mode.")
     elif(vars.model == "OAI"):
@@ -4103,11 +4119,42 @@ def apiactionsubmit(data, use_memory=False):
         mem = vars.memory + "\n"
     else:
         mem = vars.memory
-    tokens = []
-    if(use_memory):
-        tokens += tokenizer.encode(utils.encodenewlines(mem))[-(vars.max_length - vars.sp_length - vars.genamt - len(tokenizer._koboldai_header) - len(tokens)):]
-    tokens += tokenizer.encode(utils.encodenewlines(data))[-(vars.max_length - vars.sp_length - vars.genamt - len(tokenizer._koboldai_header) - len(tokens)):]
-    tokens = tokenizer._koboldai_header + tokens
+    if(use_authors_note and vars.authornote != ""):
+        anotetxt  = ("\n" + vars.authornotetemplate + "\n").replace("<|>", vars.authornote)
+    else:
+        anotetxt = ""
+    MIN_STORY_TOKENS = 8
+    story_tokens = []
+    mem_tokens = []
+    wi_tokens = []
+    story_budget = lambda: vars.max_length - vars.sp_length - vars.genamt - len(tokenizer._koboldai_header) - len(story_tokens) - len(mem_tokens) - len(wi_tokens)
+    budget = lambda: story_budget() + MIN_STORY_TOKENS
+    if budget() < 0:
+        abort(Response(json.dumps({"detail": {
+            "msg": f"Your Max Tokens setting is too low for your current soft prompt and tokenizer to handle. It needs to be at least {vars.max_length - budget()}.",
+            "type": "token_overflow",
+        }}), mimetype="application/json", status=500))
+    if use_memory:
+        mem_tokens = tokenizer.encode(utils.encodenewlines(mem))[-budget():]
+    if use_world_info:
+        world_info, _ = checkworldinfo(data, force_use_txt=True, scan_story=use_story)
+        wi_tokens = tokenizer.encode(utils.encodenewlines(world_info))[-budget():]
+    if use_story:
+        if vars.useprompt:
+            story_tokens = tokenizer.encode(utils.encodenewlines(vars.prompt))[-budget():]
+    story_tokens = tokenizer.encode(utils.encodenewlines(data))[-story_budget():] + story_tokens
+    if use_story:
+        for i, action in enumerate(reversed(vars.actions.values())):
+            if story_budget() <= 0:
+                assert story_budget() == 0
+                break
+            story_tokens = tokenizer.encode(utils.encodenewlines(action))[-story_budget():] + story_tokens
+            if i == vars.andepth - 1:
+                story_tokens = tokenizer.encode(utils.encodenewlines(anotetxt))[-story_budget():] + story_tokens
+        if not vars.useprompt:
+            story_tokens = tokenizer.encode(utils.encodenewlines(vars.prompt))[-budget():] + story_tokens
+    tokens = tokenizer._koboldai_header + mem_tokens + wi_tokens + story_tokens
+    assert story_budget() >= 0
     minimum = len(tokens) + 1
     maximum = len(tokens) + vars.genamt
 
@@ -5190,7 +5237,7 @@ def inlinedelete(chunk):
                                                                              "Previous Selection": True, 
                                                                              "Edited": False}] + vars.actions_metadata[chunk-1]['Alternative Text']
             vars.actions_metadata[chunk-1]['Selected Text'] = ''
-            vars.actions[chunk-1] = ''
+            del vars.actions[chunk-1]
         else:
             print(f"WARNING: Attempted to delete non-existent chunk {chunk}")
         setgamesaved(False)
@@ -6789,6 +6836,24 @@ class BasicTextResultInnerSchema(KoboldSchema):
 class BasicTextResultSchema(KoboldSchema):
     result: BasicTextResultInnerSchema = fields.Nested(BasicTextResultInnerSchema)
 
+class BasicResultInnerSchema(KoboldSchema):
+    result: str = fields.String(required=True)
+
+class BasicResultSchema(KoboldSchema):
+    result: BasicResultInnerSchema = fields.Nested(BasicResultInnerSchema, required=True)
+
+class BasicResultsSchema(KoboldSchema):
+    results: BasicResultInnerSchema = fields.List(fields.Nested(BasicResultInnerSchema), required=True)
+
+class BasicStringSchema(KoboldSchema):
+    value: str = fields.String(required=True)
+
+class BasicBooleanSchema(KoboldSchema):
+    value: bool = fields.Boolean(required=True)
+
+class BasicUIDSchema(KoboldSchema):
+    uid: str = fields.Integer(required=True, validate=validate.Range(min=-2147483648, max=2147483647), metadata={"description": "32-bit signed integer unique to this world info entry/folder."})
+
 class BasicErrorSchema(KoboldSchema):
     msg: str = fields.String(required=True)
     type: str = fields.String(required=True)
@@ -6800,6 +6865,9 @@ class StoryTooShortErrorSchema(KoboldSchema):
     detail: BasicErrorSchema = fields.Nested(BasicErrorSchema, required=True)
 
 class OutOfMemoryErrorSchema(KoboldSchema):
+    detail: BasicErrorSchema = fields.Nested(BasicErrorSchema, required=True)
+
+class NotFoundErrorSchema(KoboldSchema):
     detail: BasicErrorSchema = fields.Nested(BasicErrorSchema, required=True)
 
 api_out_of_memory_response = """507:
@@ -6893,12 +6961,20 @@ def soft_prompt_validator(soft_prompt: str):
     z.close()
     return True
 
+def story_load_validator(name: str):
+    if any(q in name for q in ("/", "\\")):
+        return
+    if len(name.strip()) == 0 or not os.path.isfile(fileops.storypath(name)):
+        raise ValidationError("Must be a valid story name.")
+    return True
+
 class GenerationInputSchema(SamplerSettingsSchema):
     prompt: str = fields.String(required=True, metadata={"description": "This is the submission."})
     use_memory: bool = fields.Boolean(load_default=False, metadata={"description": "Whether or not to use the memory from the KoboldAI GUI when generating text."})
-    use_story: bool = fields.Boolean(load_default=False, metadata={"description": "Whether or not to use the story from the KoboldAI GUI when generating text. NOTE: Currently unimplemented."})
-    use_world_info: bool = fields.Boolean(load_default=False, metadata={"description": "Whether or not to use the world info from the KoboldAI GUI when generating text. NOTE: Currently unimplemented."})
-    use_userscripts: bool = fields.Boolean(load_default=False, metadata={"description": "Whether or not to use the userscripts from the KoboldAI GUI when generating text. NOTE: Currently unimplemented."})
+    use_story: bool = fields.Boolean(load_default=False, metadata={"description": "Whether or not to use the story from the KoboldAI GUI when generating text."})
+    use_authors_note: bool = fields.Boolean(load_default=False, metadata={"description": "Whether or not to use the author's note from the KoboldAI GUI when generating text. This has no effect unless `use_story` is also enabled."})
+    use_world_info: bool = fields.Boolean(load_default=False, metadata={"description": "Whether or not to use the world info from the KoboldAI GUI when generating text."})
+    use_userscripts: bool = fields.Boolean(load_default=False, metadata={"description": "Whether or not to use the userscripts from the KoboldAI GUI when generating text."})
     soft_prompt: Optional[str] = fields.String(metadata={"description": "Soft prompt to use when generating. If set to the empty string or any other string containing no non-whitespace characters, uses no soft prompt."}, validate=[soft_prompt_validator, validate.Regexp(r"^[^/\\]*$")])
     max_length: int = fields.Integer(validate=validate.Range(min=1, max=512), metadata={"description": "Number of tokens to generate."})
     max_context_length: int = fields.Integer(validate=validate.Range(min=512, max=2048), metadata={"description": "Maximum number of tokens to send to the model."})
@@ -6917,8 +6993,79 @@ class GenerationResultSchema(KoboldSchema):
 class GenerationOutputSchema(KoboldSchema):
     results: List[GenerationResultSchema] = fields.List(fields.Nested(GenerationResultSchema), required=True, metadata={"description": "Array of generated outputs."})
 
+class StoryNumsChunkSchema(KoboldSchema):
+    num: int = fields.Integer(required=True, metadata={"description": "Guaranteed to not equal the `num` of any other active story chunk. Equals 0 iff this is the first action of the story (the prompt)."})
+
+class StoryChunkSchema(StoryNumsChunkSchema, KoboldSchema):
+    text: str = fields.String(required=True, metadata={"description": "The text inside this story chunk."})
+
 class StorySchema(KoboldSchema):
-    results: List[BasicTextResultInnerSchema] = fields.List(fields.Nested(BasicTextResultInnerSchema), required=True, metadata={"description": "Array of story actions. The array is sorted such that actions closer to the end of this array are closer to the end of the story."})
+    results: List[StoryChunkSchema] = fields.List(fields.Nested(StoryChunkSchema), required=True, metadata={"description": "Array of story actions. The array is sorted such that actions closer to the end of this array are closer to the end of the story."})
+
+class BasicBooleanSchema(KoboldSchema):
+    result: bool = fields.Boolean(required=True)
+
+class StoryNumsSchema(KoboldSchema):
+    results: List[int] = fields.List(fields.Integer(), required=True, metadata={"description": "Array of story action nums. The array is sorted such that actions closer to the end of this array are closer to the end of the story."})
+
+class StoryChunkResultSchema(KoboldSchema):
+    result: StoryChunkSchema = fields.Nested(StoryChunkSchema, required=True)
+
+class StoryChunkNumSchema(KoboldSchema):
+    value: int = fields.Integer(required=True)
+
+class StoryChunkTextSchema(KoboldSchema):
+    value: str = fields.String(required=True)
+
+class StoryChunkSetTextSchema(KoboldSchema):
+    value: str = fields.String(required=True, validate=validate.Regexp(r"^(.|\n)*\S$"))
+
+class StoryLoadSchema(KoboldSchema):
+    name: str = fields.String(required=True, validate=[story_load_validator, validate.Regexp(r"^[^/\\]*$")])
+
+class StorySaveSchema(KoboldSchema):
+    name: str = fields.String(required=True, validate=validate.Regexp(r"^(?=.*\S)(?!.*[/\\]).*$"))
+
+class WorldInfoEntrySchema(KoboldSchema):
+    uid: int = fields.Integer(required=True, validate=validate.Range(min=-2147483648, max=2147483647), metadata={"description": "32-bit signed integer unique to this world info entry."})
+    content: str = fields.String(required=True, metadata={"description": "The \"What To Remember\" for this entry."})
+    key: str = fields.String(required=True, metadata={"description": "Comma-separated list of keys, or of primary keys if selective mode is enabled."})
+    keysecondary: str = fields.String(metadata={"description": "Comma-separated list of secondary keys if selective mode is enabled."})
+    selective: bool = fields.Boolean(required=True, metadata={"description": "Whether or not selective mode is enabled for this world info entry."})
+    constant: bool = fields.Boolean(required=True, metadata={"description": "Whether or not constant mode is enabled for this world info entry."})
+    comment: bool = fields.String(required=True, metadata={"description": "The comment/description/title for this world info entry."})
+
+class WorldInfoEntryResultSchema(KoboldSchema):
+    result: WorldInfoEntrySchema = fields.Nested(WorldInfoEntrySchema, required=True)
+
+class WorldInfoFolderBasicSchema(KoboldSchema):
+    uid: int = fields.Integer(required=True, validate=validate.Range(min=-2147483648, max=2147483647), metadata={"description": "32-bit signed integer unique to this world info folder."})
+    name: str = fields.String(required=True, metadata={"description": "Name of this world info folder."})
+
+class WorldInfoFolderSchema(WorldInfoFolderBasicSchema):
+    entries: List[WorldInfoEntrySchema] = fields.List(fields.Nested(WorldInfoEntrySchema), required=True)
+
+class WorldInfoFolderUIDsSchema(KoboldSchema):
+    uid: int = fields.Integer(required=True, validate=validate.Range(min=-2147483648, max=2147483647), metadata={"description": "32-bit signed integer unique to this world info folder."})
+    entries: List[int] = fields.List(fields.Integer(required=True, validate=validate.Range(min=-2147483648, max=2147483647), metadata={"description": "32-bit signed integer unique to this world info entry."}), required=True)
+
+class WorldInfoEntriesSchema(KoboldSchema):
+    entries: List[WorldInfoEntrySchema] = fields.List(fields.Nested(WorldInfoEntrySchema), required=True)
+
+class WorldInfoFoldersSchema(KoboldSchema):
+    folders: List[WorldInfoFolderBasicSchema] = fields.List(fields.Nested(WorldInfoFolderBasicSchema), required=True)
+
+class WorldInfoSchema(WorldInfoEntriesSchema):
+    folders: List[WorldInfoFolderSchema] = fields.List(fields.Nested(WorldInfoFolderSchema), required=True)
+
+class WorldInfoEntriesUIDsSchema(KoboldSchema):
+    entries: List[int] = fields.List(fields.Integer(required=True, validate=validate.Range(min=-2147483648, max=2147483647), metadata={"description": "32-bit signed integer unique to this world info entry."}), required=True)
+
+class WorldInfoFoldersUIDsSchema(KoboldSchema):
+    folders: List[int] = fields.List(fields.Integer(required=True, validate=validate.Range(min=-2147483648, max=2147483647), metadata={"description": "32-bit signed integer unique to this world info folder."}), required=True)
+
+class WorldInfoUIDsSchema(WorldInfoEntriesUIDsSchema):
+    folders: List[WorldInfoFolderSchema] = fields.List(fields.Nested(WorldInfoFolderUIDsSchema), required=True)
 
 def _generate_text(body: GenerationInputSchema):
     if vars.aibusy or vars.genseqs:
@@ -6926,12 +7073,6 @@ def _generate_text(body: GenerationInputSchema):
             "msg": "Server is busy; please try again later.",
             "type": "service_unavailable",
         }}), mimetype="application/json", status=503))
-    if body.use_story:
-        raise NotImplementedError("use_story is not currently supported.")
-    if body.use_world_info:
-        raise NotImplementedError("use_world_info is not currently supported.")
-    if body.use_userscripts:
-        raise NotImplementedError("use_userscripts is not currently supported.")
     mapping = {
         "rep_pen": ("vars", "rep_pen"),
         "rep_pen_range": ("vars", "rep_pen_range"),
@@ -6979,7 +7120,7 @@ def _generate_text(body: GenerationInputSchema):
                 raise RuntimeError
             old_spfilename = vars.spfilename
             spRequest(body.soft_prompt.strip())
-        genout = apiactionsubmit(body.prompt, use_memory=body.use_memory)
+        genout = apiactionsubmit(body.prompt, use_memory=body.use_memory, use_story=body.use_story, use_world_info=body.use_world_info, use_authors_note=body.use_authors_note)
         output = {"results": [{"text": txt} for txt in genout]}
     finally:
         for key in saved_settings:
@@ -7001,9 +7142,77 @@ def _generate_text(body: GenerationInputSchema):
         set_aibusy(0)
     return output
 
+
+@api_v1.get("/info/version")
+@api_schema_wrap
+def get_version():
+    """---
+    get:
+      summary: Current API version
+      tags:
+        - info
+      description: |-2
+        Returns the version of the API that you are currently using.
+      responses:
+        200:
+          description: Successful request
+          content:
+            application/json:
+              schema: BasicResultSchema
+              example:
+                result: 1.0.0
+    """
+    return {"result": api_version}
+
+
+@api_v1.get("/info/version/latest")
+@api_schema_wrap
+def get_version_latest():
+    """---
+    get:
+      summary: Latest API version
+      tags:
+        - info
+      description: |-2
+        Returns the latest API version available.
+      responses:
+        200:
+          description: Successful request
+          content:
+            application/json:
+              schema: BasicResultSchema
+              example:
+                result: 1.0.0
+    """
+    return {"result": api_latest_version}
+
+
+@api_v1.get("/info/version/list")
+@api_schema_wrap
+def get_version_list():
+    """---
+    get:
+      summary: List API versions
+      tags:
+        - info
+      description: |-2
+        Returns a list of available API versions sorted in ascending order.
+      responses:
+        200:
+          description: Successful request
+          content:
+            application/json:
+              schema: BasicResultsSchema
+              example:
+                results:
+                  - 1.0.0
+    """
+    return {"results": api_versions}
+
+
 @api_v1.post("/generate")
 @api_schema_wrap
-def post_completion_standalone(body: GenerationInputSchema):
+def post_generate(body: GenerationInputSchema):
     """---
     post:
       summary: Generate text
@@ -7117,7 +7326,79 @@ def get_story_end():
           description: Successful request
           content:
             application/json:
-              schema: BasicTextResultSchema
+              schema: StoryChunkResultSchema
+        510:
+          description: Story is empty
+          content:
+            application/json:
+              schema: StoryEmptyErrorSchema
+              example:
+                detail:
+                  msg: Could not retrieve the last action of the story because the story is empty.
+                  type: story_empty
+    """
+    if not vars.gamestarted:
+        abort(Response(json.dumps({"detail": {
+            "msg": "Could not retrieve the last action of the story because the story is empty.",
+            "type": "story_empty",
+        }}), mimetype="application/json", status=510))
+    if len(vars.actions) == 0:
+        return {"result": {"text": vars.prompt, "num": 0}}
+    return {"result": {"text": vars.actions[vars.actions.get_last_key()], "num": vars.actions.get_last_key() + 1}}
+
+
+@api_v1.get("/story/end/num")
+@api_schema_wrap
+def get_story_end_num():
+    """---
+    get:
+      summary: Retrieve the num of the last action of the story
+      tags:
+        - story
+      description: |-2
+        Returns the `num` of the last action of the story in the KoboldAI GUI.
+      responses:
+        200:
+          description: Successful request
+          content:
+            application/json:
+              schema: StoryChunkNumSchema
+        510:
+          description: Story is empty
+          content:
+            application/json:
+              schema: StoryEmptyErrorSchema
+              example:
+                detail:
+                  msg: Could not retrieve the last action of the story because the story is empty.
+                  type: story_empty
+    """
+    if not vars.gamestarted:
+        abort(Response(json.dumps({"detail": {
+            "msg": "Could not retrieve the last action of the story because the story is empty.",
+            "type": "story_empty",
+        }}), mimetype="application/json", status=510))
+    if len(vars.actions) == 0:
+        return {"result": {"text": 0}}
+    return {"result": {"text": vars.actions.get_last_key() + 1}}
+
+
+@api_v1.get("/story/end/text")
+@api_schema_wrap
+def get_story_end_text():
+    """---
+    get:
+      summary: Retrieve the text of the last action of the story
+      tags:
+        - story
+      description: |-2
+        Returns the text of the last action of the story in the KoboldAI GUI.
+      responses:
+        200:
+          description: Successful request
+          content:
+            application/json:
+              schema: StoryChunkTextSchema
         510:
           description: Story is empty
           content:
@@ -7136,6 +7417,53 @@ def get_story_end():
     if len(vars.actions) == 0:
         return {"result": {"text": vars.prompt}}
     return {"result": {"text": vars.actions[vars.actions.get_last_key()]}}
+
+
+@api_v1.put("/story/end/text")
+@api_schema_wrap
+def put_story_end_text(body: StoryChunkSetTextSchema):
+    """---
+    put:
+      summary: Set the text of the last action of the story
+      tags:
+        - story
+      description: |-2
+        Sets the text of the last action of the story in the KoboldAI GUI to the desired value.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: StoryChunkSetTextSchema
+            example:
+              value: string
+      responses:
+        200:
+          description: Successful request
+          content:
+            application/json:
+              schema: EmptySchema
+        510:
+          description: Story is empty
+          content:
+            application/json:
+              schema: StoryEmptyErrorSchema
+              example:
+                detail:
+                  msg: Could not retrieve the last action of the story because the story is empty.
+                  type: story_empty
+        {api_validation_error_response}
+    """
+    if not vars.gamestarted:
+        abort(Response(json.dumps({"detail": {
+            "msg": "Could not retrieve the last action of the story because the story is empty.",
+            "type": "story_empty",
+        }}), mimetype="application/json", status=510))
+    value = body.value.rstrip()
+    if len(vars.actions) == 0:
+        inlineedit(0, value)
+    else:
+        inlineedit(vars.actions.get_last_key() + 1, value)
+    return {}
 
 
 @api_v1.post("/story/end/delete")
@@ -7204,10 +7532,1601 @@ def get_story():
     """
     chunks = []
     if vars.gamestarted:
-        chunks.append({"text": vars.prompt})
-    for action in vars.actions.values():
-        chunks.append({"text": action})
+        chunks.append({"num": 0, "text": vars.prompt})
+    for num, action in vars.actions.items():
+        chunks.append({"num": num + 1, "text": action})
     return {"results": chunks}
+
+
+@api_v1.get("/story/nums")
+@api_schema_wrap
+def get_story_nums():
+    """---
+    get:
+      summary: Retrieve a list of the nums of the chunks in the current story
+      tags:
+        - story
+      description: |-2
+        Returns the `num`s of the story chunks currently shown in the KoboldAI GUI.
+      responses:
+        200:
+          description: Successful request
+          content:
+            application/json:
+              schema: StorySchema
+    """
+    chunks = []
+    if vars.gamestarted:
+        chunks.append(0)
+    for num in vars.actions.keys():
+        chunks.append(num + 1)
+    return {"results": chunks}
+
+
+@api_v1.get("/story/nums/<int(signed=True):num>")
+@api_schema_wrap
+def get_story_nums_num(num: int):
+    """---
+    get:
+      summary: Determine whether or not there is a story chunk with the given num
+      tags:
+        - story
+      responses:
+        200:
+          description: Successful request
+          content:
+            application/json:
+              schema: StorySchema
+    """
+    if num == 0:
+        return {"result": vars.gamestarted}
+    return {"result": num - 1 in vars.actions}
+
+
+@api_v1.get("/story/<int(signed=True):num>")
+@api_schema_wrap
+def get_story_num(num: int):
+    """---
+    get:
+      summary: Retrieve a story chunk
+      tags:
+        - story
+      description: |-2
+        Returns information about a story chunk given its `num`.
+      parameters:
+        - name: num
+          in: path
+          description: |-2
+            `num` of the desired story chunk.
+          schema:
+            type: integer
+      responses:
+        200:
+          description: Successful request
+          content:
+            application/json:
+              schema: StoryChunkResultSchema
+        404:
+          description: Not found
+          content:
+            application/json:
+              schema: NotFoundErrorSchema
+              example:
+                detail:
+                  msg: No chunk with the given num exists.
+                  type: key_error
+    """
+    if num == 0:
+        if not vars.gamestarted:
+            abort(Response(json.dumps({"detail": {
+                "msg": "No chunk with the given num exists.",
+                "type": "key_error",
+            }}), mimetype="application/json", status=404))
+        return {"result": {"text": vars.prompt, "num": num}}
+    if num - 1 not in vars.actions:
+        abort(Response(json.dumps({"detail": {
+            "msg": "No chunk with the given num exists.",
+            "type": "key_error",
+        }}), mimetype="application/json", status=404))
+    return {"result": {"text": vars.actions[num - 1], "num": num}}
+
+
+@api_v1.get("/story/<int(signed=True):num>/text")
+@api_schema_wrap
+def get_story_num_text(num: int):
+    """---
+    get:
+      summary: Retrieve the text of a story chunk
+      tags:
+        - story
+      description: |-2
+        Returns the text inside a story chunk given its `num`.
+      parameters:
+        - name: num
+          in: path
+          description: |-2
+            `num` of the desired story chunk.
+          schema:
+            type: integer
+      responses:
+        200:
+          description: Successful request
+          content:
+            application/json:
+              schema: StoryChunkTextSchema
+        404:
+          description: Not found
+          content:
+            application/json:
+              schema: NotFoundErrorSchema
+              example:
+                detail:
+                  msg: No chunk with the given num exists.
+                  type: key_error
+    """
+    if num == 0:
+        if not vars.gamestarted:
+            abort(Response(json.dumps({"detail": {
+                "msg": "No chunk with the given num exists.",
+                "type": "key_error",
+            }}), mimetype="application/json", status=404))
+        return {"value": vars.prompt}
+    if num - 1 not in vars.actions:
+        abort(Response(json.dumps({"detail": {
+            "msg": "No chunk with the given num exists.",
+            "type": "key_error",
+        }}), mimetype="application/json", status=404))
+    return {"value": vars.actions[num - 1]}
+
+
+@api_v1.put("/story/<int(signed=True):num>/text")
+@api_schema_wrap
+def put_story_num_text(body: StoryChunkSetTextSchema, num: int):
+    """---
+    put:
+      summary: Set the text of a story chunk
+      tags:
+        - story
+      description: |-2
+        Sets the text inside a story chunk given its `num`.
+      parameters:
+        - name: num
+          in: path
+          description: |-2
+            `num` of the desired story chunk.
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: StoryChunkSetTextSchema
+            example:
+              value: string
+      responses:
+        200:
+          description: Successful request
+          content:
+            application/json:
+              schema: EmptySchema
+        404:
+          description: Not found
+          content:
+            application/json:
+              schema: NotFoundErrorSchema
+              example:
+                detail:
+                  msg: No chunk with the given num exists.
+                  type: key_error
+        {api_validation_error_response}
+    """
+    if num == 0:
+        if not vars.gamestarted:
+            abort(Response(json.dumps({"detail": {
+                "msg": "No chunk with the given num exists.",
+                "type": "key_error",
+            }}), mimetype="application/json", status=404))
+        inlineedit(0, body.value.rstrip())
+        return {}
+    if num - 1 not in vars.actions:
+        abort(Response(json.dumps({"detail": {
+            "msg": "No chunk with the given num exists.",
+            "type": "key_error",
+        }}), mimetype="application/json", status=404))
+    inlineedit(num, body.value.rstrip())
+    return {}
+
+
+@api_v1.delete("/story/<int(signed=True):num>")
+@api_schema_wrap
+def post_story_num_delete(num: int):
+    """---
+    delete:
+      summary: Remove a story chunk
+      tags:
+        - story
+      description: |-2
+        Removes a story chunk from the story in the KoboldAI GUI given its `num`. Cannot be used to delete the first action (the prompt).
+      parameters:
+        - name: num
+          in: path
+          description: |-2
+            `num` of the desired story chunk. Must be larger than or equal to 1.
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        200:
+          description: Successful request
+          content:
+            application/json:
+              schema: EmptySchema
+        404:
+          description: Not found
+          content:
+            application/json:
+              schema: NotFoundErrorSchema
+              example:
+                detail:
+                  msg: No chunk with the given num exists.
+                  type: key_error
+        {api_validation_error_response}
+        {api_server_busy_response}
+    """
+    if num < 1:
+        abort(Response(json.dumps({"detail": {
+            "num": ["Must be greater than or equal to 1."],
+        }}), mimetype="application/json", status=422))
+    if num - 1 not in vars.actions:
+        abort(Response(json.dumps({"detail": {
+            "msg": "No chunk with the given num exists.",
+            "type": "key_error",
+        }}), mimetype="application/json", status=404))
+    if vars.aibusy or vars.genseqs:
+        abort(Response(json.dumps({"detail": {
+            "msg": "Server is busy; please try again later.",
+            "type": "service_unavailable",
+        }}), mimetype="application/json", status=503))
+    inlinedelete(num)
+    return {}
+
+
+@api_v1.delete("/story")
+@api_schema_wrap
+def delete_story():
+    """---
+    delete:
+      summary: Clear the story
+      tags:
+        - story
+      description: |-2
+        Starts a new blank story.
+      responses:
+        200:
+          description: Successful request
+          content:
+            application/json:
+              schema: EmptySchema
+        {api_validation_error_response}
+        {api_server_busy_response}
+    """
+    if vars.aibusy or vars.genseqs:
+        abort(Response(json.dumps({"detail": {
+            "msg": "Server is busy; please try again later.",
+            "type": "service_unavailable",
+        }}), mimetype="application/json", status=503))
+    newGameRequest()
+    return {}
+
+
+@api_v1.put("/story/load")
+@api_schema_wrap
+def put_story_load(body: StoryLoadSchema):
+    """---
+    put:
+      summary: Load a story
+      tags:
+        - story
+      description: |-2
+        Loads a story given its filename (without the .json).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: StoryLoadSchema
+            example:
+              name: string
+      responses:
+        200:
+          description: Successful request
+          content:
+            application/json:
+              schema: EmptySchema
+        {api_validation_error_response}
+        {api_server_busy_response}
+    """
+    if vars.aibusy or vars.genseqs:
+        abort(Response(json.dumps({"detail": {
+            "msg": "Server is busy; please try again later.",
+            "type": "service_unavailable",
+        }}), mimetype="application/json", status=503))
+    loadRequest(fileops.storypath(body.name.strip()))
+    return {}
+
+
+@api_v1.put("/story/save")
+@api_schema_wrap
+def put_story_save(body: StorySaveSchema):
+    """---
+    put:
+      summary: Save the current story
+      tags:
+        - story
+      description: |-2
+        Saves the current story given its destination filename (without the .json).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: StorySaveSchema
+            example:
+              name: string
+      responses:
+        200:
+          description: Successful request
+          content:
+            application/json:
+              schema: EmptySchema
+        {api_validation_error_response}
+    """
+    saveRequest(fileops.storypath(body.name.strip()))
+    return {}
+
+
+@api_v1.get("/world_info")
+@api_schema_wrap
+def get_world_info():
+    """---
+    get:
+      summary: Retrieve all world info entries
+      tags:
+        - world_info
+      description: |-2
+        Returns all world info entries currently shown in the KoboldAI GUI.
+
+        The `folders` are sorted in the same order as they are in the GUI and the `entries` within the folders and within the parent `result` object are all sorted in the same order as they are in their respective parts of the GUI.
+      responses:
+        200:
+          description: Successful request
+          content:
+            application/json:
+              schema: WorldInfoSchema
+    """
+    folders = []
+    entries = []
+    ln = len(vars.worldinfo)
+    stablesortwi()
+    vars.worldinfo_i = [wi for wi in vars.worldinfo if wi["init"]]
+    folder: Optional[list] = None
+    if ln:
+        last_folder = ...
+        for wi in vars.worldinfo_i:
+            if wi["folder"] != last_folder:
+                folder = []
+                if wi["folder"] is not None:
+                    folders.append({"uid": wi["folder"], "name": vars.wifolders_d[wi["folder"]]["name"], "entries": folder})
+                last_folder = wi["folder"]
+            (folder if wi["folder"] is not None else entries).append({k: v for k, v in wi.items() if k not in ("init", "folder", "num") and (wi["selective"] or k != "keysecondary")})
+    return {"folders": folders, "entries": entries}
+
+@api_v1.get("/world_info/uids")
+@api_schema_wrap
+def get_world_info_uids():
+    """---
+    get:
+      summary: Retrieve the UIDs of all world info entries
+      tags:
+        - world_info
+      description: |-2
+        Returns in a similar format as GET /world_info except only the `uid`s are returned.
+      responses:
+        200:
+          description: Successful request
+          content:
+            application/json:
+              schema: WorldInfoUIDsSchema
+    """
+    folders = []
+    entries = []
+    ln = len(vars.worldinfo)
+    stablesortwi()
+    vars.worldinfo_i = [wi for wi in vars.worldinfo if wi["init"]]
+    folder: Optional[list] = None
+    if ln:
+        last_folder = ...
+        for wi in vars.worldinfo_i:
+            if wi["folder"] != last_folder:
+                folder = []
+                if wi["folder"] is not None:
+                    folders.append({"uid": wi["folder"], "entries": folder})
+                last_folder = wi["folder"]
+            (folder if wi["folder"] is not None else entries).append(wi["uid"])
+    return {"folders": folders, "entries": entries}
+
+
+@api_v1.get("/world_info/uids/<int(signed=True):uid>")
+@api_schema_wrap
+def get_world_info_uids_uid(uid: int):
+    """---
+    get:
+      summary: Determine whether or not there is a world info entry with the given UID
+      tags:
+        - world_info
+      parameters:
+        - name: uid
+          in: path
+          description: |-2
+            `uid` of the desired world info entry.
+          schema:
+            type: integer
+            minimum: -2147483648
+            maximum: 2147483647
+      responses:
+        200:
+          description: Successful request
+          content:
+            application/json:
+              schema: BasicBooleanSchema
+    """
+    return {"result": uid in vars.worldinfo_u and vars.worldinfo_u[uid]["init"]}
+
+
+@api_v1.get("/world_info/folders")
+@api_schema_wrap
+def get_world_info_folders():
+    """---
+    get:
+      summary: Retrieve all world info folders
+      tags:
+        - world_info
+      description: |-2
+        Returns details about all world info folders currently shown in the KoboldAI GUI.
+
+        The `folders` are sorted in the same order as they are in the GUI.
+      responses:
+        200:
+          description: Successful request
+          content:
+            application/json:
+              schema: WorldInfoFoldersSchema
+    """
+    stablesortwi()
+    vars.worldinfo_i = [wi for wi in vars.worldinfo if wi["init"]]
+    return {"folders": [{"uid": folder, **{k: v for k, v in vars.wifolders_d[folder].items() if k != "collapsed"}} for folder in vars.wifolders_l]}
+
+
+@api_v1.get("/world_info/folders/uids")
+@api_schema_wrap
+def get_world_info_folders_uids():
+    """---
+    get:
+      summary: Retrieve the UIDs all world info folders
+      tags:
+        - world_info
+      description: |-2
+        Returns the `uid`s of all world info folders currently shown in the KoboldAI GUI.
+
+        The `folders` are sorted in the same order as they are in the GUI.
+      responses:
+        200:
+          description: Successful request
+          content:
+            application/json:
+              schema: WorldInfoFoldersUIDsSchema
+    """
+    stablesortwi()
+    vars.worldinfo_i = [wi for wi in vars.worldinfo if wi["init"]]
+    return {"folders": vars.wifolders_l}
+
+
+@api_v1.get("/world_info/folders/none")
+@api_schema_wrap
+def get_world_info_folders_none():
+    """---
+    get:
+      summary: Retrieve all world info entries not in a folder
+      tags:
+        - world_info
+      description: |-2
+        Returns all world info entries that are not in a world info folder.
+
+        The `entries` are sorted in the same order as they are in the KoboldAI GUI.
+      responses:
+        200:
+          description: Successful request
+          content:
+            application/json:
+              schema: WorldInfoEntriesSchema
+    """
+    entries = []
+    stablesortwi()
+    vars.worldinfo_i = [wi for wi in vars.worldinfo if wi["init"]]
+    for wi in reversed(vars.worldinfo_i):
+        if wi["folder"] is not None:
+            break
+        entries.append({k: v for k, v in wi.items() if k not in ("init", "folder", "num") and (wi["selective"] or k != "keysecondary")})
+    return {"entries": list(reversed(entries))}
+
+
+@api_v1.get("/world_info/folders/none/uids")
+@api_schema_wrap
+def get_world_info_folders_none_uids():
+    """---
+    get:
+      summary: Retrieve the UIDs of all world info entries not in a folder
+      tags:
+        - world_info
+      description: |-2
+        Returns the `uid`s of all world info entries that are not in a world info folder.
+
+        The `entries` are sorted in the same order as they are in the KoboldAI GUI.
+      responses:
+        200:
+          description: Successful request
+          content:
+            application/json:
+              schema: WorldInfoEntriesUIDsSchema
+    """
+    entries = []
+    stablesortwi()
+    vars.worldinfo_i = [wi for wi in vars.worldinfo if wi["init"]]
+    for wi in reversed(vars.worldinfo_i):
+        if wi["folder"] is not None:
+            break
+        entries.append(wi["uid"])
+    return {"entries": list(reversed(entries))}
+
+
+@api_v1.get("/world_info/folders/none/uids/<int(signed=True):uid>")
+@api_schema_wrap
+def get_world_info_folders_none_uids_uid(uid: int):
+    """---
+    get:
+      summary: Determine whether or not there is a world info entry with the given UID that is not in a world info folder
+      tags:
+        - world_info
+      parameters:
+        - name: uid
+          in: path
+          description: |-2
+            `uid` of the desired world info entry.
+          schema:
+            type: integer
+            minimum: -2147483648
+            maximum: 2147483647
+      responses:
+        200:
+          description: Successful request
+          content:
+            application/json:
+              schema: BasicBooleanSchema
+    """
+    return {"result": uid in vars.worldinfo_u and vars.worldinfo_u[uid]["folder"] is None and vars.worldinfo_u[uid]["init"]}
+
+
+@api_v1.get("/world_info/folders/<int(signed=True):uid>")
+@api_schema_wrap
+def get_world_info_folders_uid(uid: int):
+    """---
+    get:
+      summary: Retrieve all world info entries in the given folder
+      tags:
+        - world_info
+      parameters:
+        - name: uid
+          in: path
+          description: |-2
+            `uid` of the desired world info folder.
+          schema:
+            type: integer
+            minimum: -2147483648
+            maximum: 2147483647
+      description: |-2
+        Returns all world info entries that are in the world info folder with the given `uid`.
+
+        The `entries` are sorted in the same order as they are in the KoboldAI GUI.
+      responses:
+        200:
+          description: Successful request
+          content:
+            application/json:
+              schema: WorldInfoEntriesSchema
+        404:
+          description: Not found
+          content:
+            application/json:
+              schema: NotFoundErrorSchema
+              example:
+                detail:
+                  msg: No world info folder with the given uid exists.
+                  type: key_error
+    """
+    if uid not in vars.wifolders_d:
+        abort(Response(json.dumps({"detail": {
+            "msg": "No world info folder with the given uid exists.",
+            "type": "key_error",
+        }}), mimetype="application/json", status=404))
+    entries = []
+    stablesortwi()
+    vars.worldinfo_i = [wi for wi in vars.worldinfo if wi["init"]]
+    for wi in vars.wifolders_u[uid]:
+        if wi["init"]:
+            entries.append({k: v for k, v in wi.items() if k not in ("init", "folder", "num") and (wi["selective"] or k != "keysecondary")})
+    return {"entries": entries}
+
+
+@api_v1.get("/world_info/folders/<int(signed=True):uid>/uids")
+@api_schema_wrap
+def get_world_info_folders_uid_uids(uid: int):
+    """---
+    get:
+      summary: Retrieve the UIDs of all world info entries in the given folder
+      tags:
+        - world_info
+      parameters:
+        - name: uid
+          in: path
+          description: |-2
+            `uid` of the desired world info folder.
+          schema:
+            type: integer
+            minimum: -2147483648
+            maximum: 2147483647
+      description: |-2
+        Returns the `uid`s of all world info entries that are in the world info folder with the given `uid`.
+
+        The `entries` are sorted in the same order as they are in the KoboldAI GUI.
+      responses:
+        200:
+          description: Successful request
+          content:
+            application/json:
+              schema: WorldInfoEntriesUIDsSchema
+        404:
+          description: Not found
+          content:
+            application/json:
+              schema: NotFoundErrorSchema
+              example:
+                detail:
+                  msg: No world info folder with the given uid exists.
+                  type: key_error
+    """
+    if uid not in vars.wifolders_d:
+        abort(Response(json.dumps({"detail": {
+            "msg": "No world info folder with the given uid exists.",
+            "type": "key_error",
+        }}), mimetype="application/json", status=404))
+    entries = []
+    stablesortwi()
+    vars.worldinfo_i = [wi for wi in vars.worldinfo if wi["init"]]
+    for wi in vars.wifolders_u[uid]:
+        if wi["init"]:
+            entries.append(wi["uid"])
+    return {"entries": entries}
+
+
+@api_v1.get("/world_info/folders/<int(signed=True):folder_uid>/uids/<int(signed=True):entry_uid>")
+@api_schema_wrap
+def get_world_info_folders_folder_uid_uids_entry_uid(folder_uid: int, entry_uid: int):
+    """---
+    get:
+      summary: Determine whether or not there is a world info entry with the given UID in the world info folder with the given UID
+      tags:
+        - world_info
+      parameters:
+        - name: folder_uid
+          in: path
+          description: |-2
+            `uid` of the desired world info folder.
+          schema:
+            type: integer
+            minimum: -2147483648
+            maximum: 2147483647
+        - name: entry_uid
+          in: path
+          description: |-2
+            `uid` of the desired world info entry.
+          schema:
+            type: integer
+            minimum: -2147483648
+            maximum: 2147483647
+      responses:
+        200:
+          description: Successful request
+          content:
+            application/json:
+              schema: BasicBooleanSchema
+    """
+    return {"result": entry_uid in vars.worldinfo_u and vars.worldinfo_u[entry_uid]["folder"] == folder_uid and vars.worldinfo_u[entry_uid]["init"]}
+
+
+@api_v1.get("/world_info/folders/<int(signed=True):uid>/name")
+@api_schema_wrap
+def get_world_info_folders_uid_name(uid: int):
+    """---
+    get:
+      summary: Retrieve the name of the world info folder with the given UID
+      tags:
+        - world_info
+      parameters:
+        - name: uid
+          in: path
+          description: |-2
+            `uid` of the desired world info folder.
+          schema:
+            type: integer
+            minimum: -2147483648
+            maximum: 2147483647
+      responses:
+        200:
+          description: Successful request
+          content:
+            application/json:
+              schema: BasicStringSchema
+        404:
+          description: Not found
+          content:
+            application/json:
+              schema: NotFoundErrorSchema
+              example:
+                detail:
+                  msg: No world info folder with the given uid exists.
+                  type: key_error
+    """
+    if uid not in vars.wifolders_d:
+        abort(Response(json.dumps({"detail": {
+            "msg": "No world info folder with the given uid exists.",
+            "type": "key_error",
+        }}), mimetype="application/json", status=404))
+    return vars.wifolders_d[uid]["name"]
+
+
+@api_v1.put("/world_info/folders/<int(signed=True):uid>/name")
+@api_schema_wrap
+def put_world_info_folders_uid_name(body: BasicStringSchema, uid: int):
+    """---
+    put:
+      summary: Set the name of the world info folder with the given UID to the specified value
+      tags:
+        - world_info
+      parameters:
+        - name: uid
+          in: path
+          description: |-2
+            `uid` of the desired world info folder.
+          schema:
+            type: integer
+            minimum: -2147483648
+            maximum: 2147483647
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: BasicStringSchema
+            example:
+              value: string
+      responses:
+        200:
+          description: Successful request
+          content:
+            application/json:
+              schema: EmptySchema
+        404:
+          description: Not found
+          content:
+            application/json:
+              schema: NotFoundErrorSchema
+              example:
+                detail:
+                  msg: No world info folder with the given uid exists.
+                  type: key_error
+        {api_validation_error_response}
+    """
+    if uid not in vars.wifolders_d:
+        abort(Response(json.dumps({"detail": {
+            "msg": "No world info folder with the given uid exists.",
+            "type": "key_error",
+        }}), mimetype="application/json", status=404))
+    vars.wifolders_d[uid]["name"] = body.value
+    setgamesaved(False)
+    return {}
+
+
+@api_v1.get("/world_info/<int(signed=True):uid>")
+@api_schema_wrap
+def get_world_info_uid(uid: int):
+    """---
+    get:
+      summary: Retrieve information about the world info entry with the given UID
+      tags:
+        - world_info
+      parameters:
+        - name: uid
+          in: path
+          description: |-2
+            `uid` of the desired world info entry.
+          schema:
+            type: integer
+            minimum: -2147483648
+            maximum: 2147483647
+      responses:
+        200:
+          description: Successful request
+          content:
+            application/json:
+              schema: WorldInfoEntrySchema
+        404:
+          description: Not found
+          content:
+            application/json:
+              schema: NotFoundErrorSchema
+              example:
+                detail:
+                  msg: No world info entry with the given uid exists.
+                  type: key_error
+    """
+    if uid not in vars.worldinfo_u:
+        abort(Response(json.dumps({"detail": {
+            "msg": "No world info entry with the given uid exists.",
+            "type": "key_error",
+        }}), mimetype="application/json", status=404))
+    wi = vars.worldinfo_u[uid]
+    return {k: v for k, v in wi.items() if k not in ("init", "folder", "num") and (wi["selective"] or k != "keysecondary")}
+
+
+@api_v1.get("/world_info/<int(signed=True):uid>/comment")
+@api_schema_wrap
+def get_world_info_uid_comment(uid: int):
+    """---
+    get:
+      summary: Retrieve the comment of the world info entry with the given UID
+      tags:
+        - world_info
+      parameters:
+        - name: uid
+          in: path
+          description: |-2
+            `uid` of the desired world info entry.
+          schema:
+            type: integer
+            minimum: -2147483648
+            maximum: 2147483647
+      responses:
+        200:
+          description: Successful request
+          content:
+            application/json:
+              schema: BasicStringSchema
+        404:
+          description: Not found
+          content:
+            application/json:
+              schema: NotFoundErrorSchema
+              example:
+                detail:
+                  msg: No world info entry with the given uid exists.
+                  type: key_error
+    """
+    if uid not in vars.worldinfo_u:
+        abort(Response(json.dumps({"detail": {
+            "msg": "No world info entry with the given uid exists.",
+            "type": "key_error",
+        }}), mimetype="application/json", status=404))
+    return {"value": vars.worldinfo_u[uid]["comment"]}
+
+
+@api_v1.put("/world_info/<int(signed=True):uid>/comment")
+@api_schema_wrap
+def put_world_info_uid_comment(body: BasicStringSchema, uid: int):
+    """---
+    put:
+      summary: Set the comment of the world info entry with the given UID to the specified value
+      tags:
+        - world_info
+      parameters:
+        - name: uid
+          in: path
+          description: |-2
+            `uid` of the desired world info entry.
+          schema:
+            type: integer
+            minimum: -2147483648
+            maximum: 2147483647
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: BasicStringSchema
+            example:
+              value: string
+      responses:
+        200:
+          description: Successful request
+          content:
+            application/json:
+              schema: EmptySchema
+        404:
+          description: Not found
+          content:
+            application/json:
+              schema: NotFoundErrorSchema
+              example:
+                detail:
+                  msg: No world info entry with the given uid exists.
+                  type: key_error
+        {api_validation_error_response}
+    """
+    if uid not in vars.worldinfo_u:
+        abort(Response(json.dumps({"detail": {
+            "msg": "No world info entry with the given uid exists.",
+            "type": "key_error",
+        }}), mimetype="application/json", status=404))
+    vars.worldinfo_u[uid]["comment"] = body.value
+    setgamesaved(False)
+    return {}
+
+
+@api_v1.get("/world_info/<int(signed=True):uid>/content")
+@api_schema_wrap
+def get_world_info_uid_content(uid: int):
+    """---
+    get:
+      summary: Retrieve the content of the world info entry with the given UID
+      tags:
+        - world_info
+      parameters:
+        - name: uid
+          in: path
+          description: |-2
+            `uid` of the desired world info entry.
+          schema:
+            type: integer
+            minimum: -2147483648
+            maximum: 2147483647
+      responses:
+        200:
+          description: Successful request
+          content:
+            application/json:
+              schema: BasicStringSchema
+        404:
+          description: Not found
+          content:
+            application/json:
+              schema: NotFoundErrorSchema
+              example:
+                detail:
+                  msg: No world info entry with the given uid exists.
+                  type: key_error
+    """
+    if uid not in vars.worldinfo_u:
+        abort(Response(json.dumps({"detail": {
+            "msg": "No world info entry with the given uid exists.",
+            "type": "key_error",
+        }}), mimetype="application/json", status=404))
+    return {"value": vars.worldinfo_u[uid]["content"]}
+
+
+@api_v1.put("/world_info/<int(signed=True):uid>/content")
+@api_schema_wrap
+def put_world_info_uid_content(body: BasicStringSchema, uid: int):
+    """---
+    put:
+      summary: Set the content of the world info entry with the given UID to the specified value
+      tags:
+        - world_info
+      parameters:
+        - name: uid
+          in: path
+          description: |-2
+            `uid` of the desired world info entry.
+          schema:
+            type: integer
+            minimum: -2147483648
+            maximum: 2147483647
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: BasicStringSchema
+            example:
+              value: string
+      responses:
+        200:
+          description: Successful request
+          content:
+            application/json:
+              schema: EmptySchema
+        404:
+          description: Not found
+          content:
+            application/json:
+              schema: NotFoundErrorSchema
+              example:
+                detail:
+                  msg: No world info entry with the given uid exists.
+                  type: key_error
+        {api_validation_error_response}
+    """
+    if uid not in vars.worldinfo_u:
+        abort(Response(json.dumps({"detail": {
+            "msg": "No world info entry with the given uid exists.",
+            "type": "key_error",
+        }}), mimetype="application/json", status=404))
+    vars.worldinfo_u[uid]["content"] = body.value
+    setgamesaved(False)
+    return {}
+
+
+@api_v1.get("/world_info/<int(signed=True):uid>/key")
+@api_schema_wrap
+def get_world_info_uid_key(uid: int):
+    """---
+    get:
+      summary: Retrieve the keys or primary keys of the world info entry with the given UID
+      tags:
+        - world_info
+      parameters:
+        - name: uid
+          in: path
+          description: |-2
+            `uid` of the desired world info entry.
+          schema:
+            type: integer
+            minimum: -2147483648
+            maximum: 2147483647
+      responses:
+        200:
+          description: Successful request
+          content:
+            application/json:
+              schema: BasicStringSchema
+        404:
+          description: Not found
+          content:
+            application/json:
+              schema: NotFoundErrorSchema
+              example:
+                detail:
+                  msg: No world info entry with the given uid exists.
+                  type: key_error
+    """
+    if uid not in vars.worldinfo_u:
+        abort(Response(json.dumps({"detail": {
+            "msg": "No world info entry with the given uid exists.",
+            "type": "key_error",
+        }}), mimetype="application/json", status=404))
+    return {"value": vars.worldinfo_u[uid]["key"]}
+
+
+@api_v1.put("/world_info/<int(signed=True):uid>/key")
+@api_schema_wrap
+def put_world_info_uid_key(body: BasicStringSchema, uid: int):
+    """---
+    put:
+      summary: Set the keys or primary keys of the world info entry with the given UID to the specified value
+      tags:
+        - world_info
+      parameters:
+        - name: uid
+          in: path
+          description: |-2
+            `uid` of the desired world info entry.
+          schema:
+            type: integer
+            minimum: -2147483648
+            maximum: 2147483647
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: BasicStringSchema
+            example:
+              value: string
+      responses:
+        200:
+          description: Successful request
+          content:
+            application/json:
+              schema: EmptySchema
+        404:
+          description: Not found
+          content:
+            application/json:
+              schema: NotFoundErrorSchema
+              example:
+                detail:
+                  msg: No world info entry with the given uid exists.
+                  type: key_error
+        {api_validation_error_response}
+    """
+    if uid not in vars.worldinfo_u:
+        abort(Response(json.dumps({"detail": {
+            "msg": "No world info entry with the given uid exists.",
+            "type": "key_error",
+        }}), mimetype="application/json", status=404))
+    vars.worldinfo_u[uid]["key"] = body.value
+    setgamesaved(False)
+    return {}
+
+
+@api_v1.get("/world_info/<int(signed=True):uid>/keysecondary")
+@api_schema_wrap
+def get_world_info_uid_keysecondary(uid: int):
+    """---
+    get:
+      summary: Retrieve the secondary keys of the world info entry with the given UID
+      tags:
+        - world_info
+      parameters:
+        - name: uid
+          in: path
+          description: |-2
+            `uid` of the desired world info entry.
+          schema:
+            type: integer
+            minimum: -2147483648
+            maximum: 2147483647
+      responses:
+        200:
+          description: Successful request
+          content:
+            application/json:
+              schema: BasicStringSchema
+        404:
+          description: Not found
+          content:
+            application/json:
+              schema: NotFoundErrorSchema
+              example:
+                detail:
+                  msg: No world info entry with the given uid exists.
+                  type: key_error
+    """
+    if uid not in vars.worldinfo_u:
+        abort(Response(json.dumps({"detail": {
+            "msg": "No world info entry with the given uid exists.",
+            "type": "key_error",
+        }}), mimetype="application/json", status=404))
+    return {"value": vars.worldinfo_u[uid]["keysecondary"]}
+
+
+@api_v1.put("/world_info/<int(signed=True):uid>/keysecondary")
+@api_schema_wrap
+def put_world_info_uid_keysecondary(body: BasicStringSchema, uid: int):
+    """---
+    put:
+      summary: Set the secondary keys of the world info entry with the given UID to the specified value
+      tags:
+        - world_info
+      parameters:
+        - name: uid
+          in: path
+          description: |-2
+            `uid` of the desired world info entry.
+          schema:
+            type: integer
+            minimum: -2147483648
+            maximum: 2147483647
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: BasicStringSchema
+            example:
+              value: string
+      responses:
+        200:
+          description: Successful request
+          content:
+            application/json:
+              schema: EmptySchema
+        404:
+          description: Not found
+          content:
+            application/json:
+              schema: NotFoundErrorSchema
+              example:
+                detail:
+                  msg: No world info entry with the given uid exists.
+                  type: key_error
+        {api_validation_error_response}
+    """
+    if uid not in vars.worldinfo_u:
+        abort(Response(json.dumps({"detail": {
+            "msg": "No world info entry with the given uid exists.",
+            "type": "key_error",
+        }}), mimetype="application/json", status=404))
+    vars.worldinfo_u[uid]["keysecondary"] = body.value
+    setgamesaved(False)
+    return {}
+
+
+@api_v1.get("/world_info/<int(signed=True):uid>/selective")
+@api_schema_wrap
+def get_world_info_uid_selective(uid: int):
+    """---
+    get:
+      summary: Retrieve the selective mode state of the world info entry with the given UID
+      tags:
+        - world_info
+      parameters:
+        - name: uid
+          in: path
+          description: |-2
+            `uid` of the desired world info entry.
+          schema:
+            type: integer
+            minimum: -2147483648
+            maximum: 2147483647
+      responses:
+        200:
+          description: Successful request
+          content:
+            application/json:
+              schema: BasicBooleanSchema
+        404:
+          description: Not found
+          content:
+            application/json:
+              schema: NotFoundErrorSchema
+              example:
+                detail:
+                  msg: No world info entry with the given uid exists.
+                  type: key_error
+    """
+    if uid not in vars.worldinfo_u:
+        abort(Response(json.dumps({"detail": {
+            "msg": "No world info entry with the given uid exists.",
+            "type": "key_error",
+        }}), mimetype="application/json", status=404))
+    return {"value": vars.worldinfo_u[uid]["selective"]}
+
+
+@api_v1.put("/world_info/<int(signed=True):uid>/selective")
+@api_schema_wrap
+def put_world_info_uid_selective(body: BasicBooleanSchema, uid: int):
+    """---
+    put:
+      summary: Set the selective mode state of the world info entry with the given UID to the specified value
+      tags:
+        - world_info
+      parameters:
+        - name: uid
+          in: path
+          description: |-2
+            `uid` of the desired world info entry.
+          schema:
+            type: integer
+            minimum: -2147483648
+            maximum: 2147483647
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: BasicBooleanSchema
+            example:
+              value: true
+      responses:
+        200:
+          description: Successful request
+          content:
+            application/json:
+              schema: EmptySchema
+        404:
+          description: Not found
+          content:
+            application/json:
+              schema: NotFoundErrorSchema
+              example:
+                detail:
+                  msg: No world info entry with the given uid exists.
+                  type: key_error
+        {api_validation_error_response}
+    """
+    if uid not in vars.worldinfo_u:
+        abort(Response(json.dumps({"detail": {
+            "msg": "No world info entry with the given uid exists.",
+            "type": "key_error",
+        }}), mimetype="application/json", status=404))
+    vars.worldinfo_u[uid]["selective"] = body.value
+    setgamesaved(False)
+    return {}
+
+
+@api_v1.get("/world_info/<int(signed=True):uid>/constant")
+@api_schema_wrap
+def get_world_info_uid_constant(uid: int):
+    """---
+    get:
+      summary: Retrieve the constant mode state of the world info entry with the given UID
+      tags:
+        - world_info
+      parameters:
+        - name: uid
+          in: path
+          description: |-2
+            `uid` of the desired world info entry.
+          schema:
+            type: integer
+            minimum: -2147483648
+            maximum: 2147483647
+      responses:
+        200:
+          description: Successful request
+          content:
+            application/json:
+              schema: BasicBooleanSchema
+        404:
+          description: Not found
+          content:
+            application/json:
+              schema: NotFoundErrorSchema
+              example:
+                detail:
+                  msg: No world info entry with the given uid exists.
+                  type: key_error
+    """
+    if uid not in vars.worldinfo_u:
+        abort(Response(json.dumps({"detail": {
+            "msg": "No world info entry with the given uid exists.",
+            "type": "key_error",
+        }}), mimetype="application/json", status=404))
+    return {"value": vars.worldinfo_u[uid]["constant"]}
+
+
+@api_v1.put("/world_info/<int(signed=True):uid>/constant")
+@api_schema_wrap
+def put_world_info_uid_constant(body: BasicBooleanSchema, uid: int):
+    """---
+    put:
+      summary: Set the constant mode state of the world info entry with the given UID to the specified value
+      tags:
+        - world_info
+      parameters:
+        - name: uid
+          in: path
+          description: |-2
+            `uid` of the desired world info entry.
+          schema:
+            type: integer
+            minimum: -2147483648
+            maximum: 2147483647
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: BasicBooleanSchema
+            example:
+              value: true
+      responses:
+        200:
+          description: Successful request
+          content:
+            application/json:
+              schema: EmptySchema
+        404:
+          description: Not found
+          content:
+            application/json:
+              schema: NotFoundErrorSchema
+              example:
+                detail:
+                  msg: No world info entry with the given uid exists.
+                  type: key_error
+        {api_validation_error_response}
+    """
+    if uid not in vars.worldinfo_u:
+        abort(Response(json.dumps({"detail": {
+            "msg": "No world info entry with the given uid exists.",
+            "type": "key_error",
+        }}), mimetype="application/json", status=404))
+    vars.worldinfo_u[uid]["constant"] = body.value
+    setgamesaved(False)
+    return {}
+
+
+@api_v1.post("/world_info/folders/none")
+@api_schema_wrap
+def post_world_info_folders_none(body: EmptySchema):
+    """---
+    post:
+      summary: Create a new world info entry outside of a world info folder, at the end of the world info
+      tags:
+        - world_info
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: EmptySchema
+      responses:
+        200:
+          description: Successful request
+          content:
+            application/json:
+              schema: BasicUIDSchema
+        {api_validation_error_response}
+    """
+    stablesortwi()
+    vars.worldinfo_i = [wi for wi in vars.worldinfo if wi["init"]]
+    setgamesaved(False)
+    emit('from_server', {'cmd': 'wiexpand', 'data': vars.worldinfo[-1]["num"]}, broadcast=True)
+    vars.worldinfo[-1]["init"] = True
+    addwiitem(folder_uid=None)
+    return {"uid": vars.worldinfo[-2]["uid"]}
+
+
+@api_v1.post("/world_info/folders/<int(signed=True):uid>")
+@api_schema_wrap
+def post_world_info_folders_uid(body: EmptySchema, uid: int):
+    """---
+    post:
+      summary: Create a new world info entry at the end of the world info folder with the given UID
+      tags:
+        - world_info
+      parameters:
+        - name: uid
+          in: path
+          description: |-2
+            `uid` of the desired world info folder.
+          schema:
+            type: integer
+            minimum: -2147483648
+            maximum: 2147483647
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: EmptySchema
+      responses:
+        200:
+          description: Successful request
+          content:
+            application/json:
+              schema: BasicUIDSchema
+        404:
+          description: Not found
+          content:
+            application/json:
+              schema: NotFoundErrorSchema
+              example:
+                detail:
+                  msg: No world info folder with the given uid exists.
+                  type: key_error
+        {api_validation_error_response}
+    """
+    if uid not in vars.wifolders_d:
+        abort(Response(json.dumps({"detail": {
+            "msg": "No world info folder with the given uid exists.",
+            "type": "key_error",
+        }}), mimetype="application/json", status=404))
+    stablesortwi()
+    vars.worldinfo_i = [wi for wi in vars.worldinfo if wi["init"]]
+    setgamesaved(False)
+    emit('from_server', {'cmd': 'wiexpand', 'data': vars.wifolders_u[uid][-1]["num"]}, broadcast=True)
+    vars.wifolders_u[uid][-1]["init"] = True
+    addwiitem(folder_uid=uid)
+    return {"uid": vars.wifolders_u[uid][-2]["uid"]}
+
+
+@api_v1.delete("/world_info/<int(signed=True):uid>")
+@api_schema_wrap
+def delete_world_info_uid(uid: int):
+    """---
+    delete:
+      summary: Delete the world info entry with the given UID
+      tags:
+        - world_info
+      parameters:
+        - name: uid
+          in: path
+          description: |-2
+            `uid` of the desired world info entry.
+          schema:
+            type: integer
+            minimum: -2147483648
+            maximum: 2147483647
+      responses:
+        200:
+          description: Successful request
+          content:
+            application/json:
+              schema: EmptySchema
+        404:
+          description: Not found
+          content:
+            application/json:
+              schema: NotFoundErrorSchema
+              example:
+                detail:
+                  msg: No world info entry with the given uid exists.
+                  type: key_error
+    """
+    if uid not in vars.worldinfo_u:
+        abort(Response(json.dumps({"detail": {
+            "msg": "No world info entry with the given uid exists.",
+            "type": "key_error",
+        }}), mimetype="application/json", status=404))
+    deletewi(uid)
+    return {}
+
+
+@api_v1.post("/world_info/folders")
+@api_schema_wrap
+def post_world_info_folders(body: EmptySchema):
+    """---
+    post:
+      summary: Create a new world info folder at the end of the world info
+      tags:
+        - world_info
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: EmptySchema
+      responses:
+        200:
+          description: Successful request
+          content:
+            application/json:
+              schema: BasicUIDSchema
+        {api_validation_error_response}
+    """
+    addwifolder()
+    return {"uid": vars.wifolders_l[-1]}
+
+
+@api_v1.delete("/world_info/folders/<int(signed=True):uid>")
+@api_schema_wrap
+def delete_world_info_folders_uid(uid: int):
+    """---
+    delete:
+      summary: Delete the world info folder with the given UID
+      tags:
+        - world_info
+      parameters:
+        - name: uid
+          in: path
+          description: |-2
+            `uid` of the desired world info folder.
+          schema:
+            type: integer
+            minimum: -2147483648
+            maximum: 2147483647
+      responses:
+        200:
+          description: Successful request
+          content:
+            application/json:
+              schema: EmptySchema
+        404:
+          description: Not found
+          content:
+            application/json:
+              schema: NotFoundErrorSchema
+              example:
+                detail:
+                  msg: No world info folders with the given uid exists.
+                  type: key_error
+    """
+    if uid not in vars.wifolders_d:
+        abort(Response(json.dumps({"detail": {
+            "msg": "No world info folder with the given uid exists.",
+            "type": "key_error",
+        }}), mimetype="application/json", status=404))
+    deletewifolder(uid)
+    return {}
 
 
 def _make_f_get(obj, _var_name, _name, _schema, _example_yaml_value):
@@ -7448,6 +9367,26 @@ class MaxLengthSettingSchema(KoboldSchema):
         example_yaml_value = "80"
 
 @config_endpoint_schema
+class WorldInfoDepthSettingSchema(KoboldSchema):
+    value = fields.Integer(validate=validate.Range(min=1, max=5), required=True)
+    class KoboldMeta:
+        route_name = "world_info_depth"
+        obj = "vars"
+        var_name = "widepth"
+        name = "world info depth"
+        example_yaml_value = "3"
+
+@config_endpoint_schema
+class AuthorsNoteDepthSettingSchema(KoboldSchema):
+    value = fields.Integer(validate=validate.Range(min=1, max=5), required=True)
+    class KoboldMeta:
+        route_name = "authors_note_depth"
+        obj = "vars"
+        var_name = "andepth"
+        name = "author's note depth"
+        example_yaml_value = "3"
+
+@config_endpoint_schema
 class MaxContextLengthSettingSchema(KoboldSchema):
     value = fields.Integer(validate=validate.Range(min=512, max=2048), required=True)
     class KoboldMeta:
@@ -7518,8 +9457,6 @@ for schema in config_endpoint_schemas:
 #  Final startup commands to launch Flask app
 #==================================================================#
 print("", end="", flush=True)
-for rule in app.url_map.iter_rules():
-    app_methods_map[rule.rule] = rule.methods
 if __name__ == "__main__":
     print("{0}\nStarting webserver...{1}".format(colors.GREEN, colors.END), flush=True)
 
