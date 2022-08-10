@@ -22,6 +22,7 @@ socket.on("world_info_entry", function(data){world_info_entry(data);});
 socket.on("world_info_folder", function(data){world_info_folder(data);});
 socket.on("delete_new_world_info_entry", function(data){document.getElementById("world_info_-1").remove();});
 socket.on("delete_world_info_entry", function(data){document.getElementById("world_info_"+data).remove();});
+socket.on("error", function(data){show_error_message(data);});
 //socket.onAny(function(event_name, data) {console.log({"event": event_name, "class": data.classname, "data": data});});
 
 var presets = {};
@@ -1079,7 +1080,7 @@ function world_info_entry(data) {
 						
 	if (!(document.getElementById("world_info_folder_"+data.folder))) {
 		folder = document.createElement("div");
-		console.log("Didn't find folder " + data.folder);
+		//console.log("Didn't find folder " + data.folder);
 	} else {
 		folder = document.getElementById("world_info_folder_"+data.folder);
 	}
@@ -1248,6 +1249,11 @@ function world_info_folder(data) {
 	}
 }
 
+function show_error_message(data) {
+	error_message_box = document.getElementById('error_message');
+	error_message_box.classList.remove("hidden");
+	error_message_box.querySelector("#popup_list_area").textContent = data;
+}
 //--------------------------------------------UI to Server Functions----------------------------------
 function save_as_story(response) {
 	if (response == "overwrite?") {
@@ -1334,12 +1340,26 @@ function send_world_info(uid) {
 }
 
 //--------------------------------------------General UI Functions------------------------------------
+function preserve_game_space(preserve) {
+	var r = document.querySelector(':root');
+	console.log("Setting cookie to: "+preserve);
+	if (preserve) {
+		setCookie("preserve_game_space", "true");
+		r.style.setProperty('--setting_menu_closed_width_no_pins_width', '0px');
+		document.getElementById('preserve_game_space_setting').checked = true;
+	} else {
+		setCookie("preserve_game_space", "false");
+		r.style.setProperty('--setting_menu_closed_width_no_pins_width', '450px');
+		document.getElementById('preserve_game_space_setting').checked = false;
+	}
+}
+
 function do_biases(data) {
-	console.log(data);
+	//console.log(data);
 	//clear out our old bias lines
 	let bias_list = Object.assign([], document.getElementsByClassName("bias"));
 	for (item of bias_list) {
-		console.log(item);
+		//console.log(item);
 		item.parentNode.removeChild(item);
 	}
 	
@@ -1586,7 +1606,7 @@ function unhide_wi_folder(folder) {
 
 function dragStart(e) {
     e.dataTransfer.setData('text/plain', e.target.id);
-	console.log(e.target.id);
+	//console.log(e.target.id);
 	e.dataTransfer.dropEffect = "move";
     setTimeout(() => {
         e.target.classList.add('hidden');
@@ -1635,7 +1655,7 @@ function drop(e) {
     // get the draggable element
     const id = e.dataTransfer.getData('text/plain');
     const draggable = document.getElementById(id);
-	console.log(id);
+	//console.log(id);
 	dragged_id = draggable.id.split("_").slice(-1)[0];
 	drop_id = element.id.split("_").slice(-1)[0];
 
@@ -1914,28 +1934,74 @@ function toggle_flyout_right(x) {
 
 function toggle_settings_pin_flyout() {
 	if (document.getElementById("SideMenu").classList.contains("pinned")) {
-		document.getElementById("SideMenu").classList.remove("pinned");
-		document.getElementById("main-grid").classList.remove("settings_pinned");
-		document.getElementById("setting_menu_icon").classList.remove("hidden");
+		settings_unpin();
 	} else {
-		document.getElementById("setting_menu_icon").classList.remove("change");
-		document.getElementById("setting_menu_icon").classList.add("hidden");
-		document.getElementById("SideMenu").classList.add("pinned");
-		document.getElementById("main-grid").classList.add("settings_pinned");
+		settings_pin();
 	}
 }
 
+function settings_pin() {
+	setCookie("Settings_Pin", "true");
+	document.getElementById("SideMenu").classList.remove("open");
+	document.getElementById("main-grid").classList.remove("menu-open");
+	document.getElementById("setting_menu_icon").classList.remove("change");
+	document.getElementById("setting_menu_icon").classList.add("hidden");
+	document.getElementById("SideMenu").classList.add("pinned");
+	document.getElementById("main-grid").classList.add("settings_pinned");
+}
+
+function settings_unpin() {
+	setCookie("Settings_Pin", "false");
+	document.getElementById("SideMenu").classList.remove("pinned");
+	document.getElementById("main-grid").classList.remove("settings_pinned");
+	document.getElementById("setting_menu_icon").classList.remove("hidden");
+}	
+
 function toggle_story_pin_flyout() {
 	if (document.getElementById("rightSideMenu").classList.contains("pinned")) {
-		document.getElementById("rightSideMenu").classList.remove("pinned");
-		document.getElementById("main-grid").classList.remove("story_pinned");
-		document.getElementById("story_menu_icon").classList.remove("hidden");
+		story_unpin();
 	} else {
-		document.getElementById("rightSideMenu").classList.add("pinned");
-		document.getElementById("main-grid").classList.add("story_pinned");
-		document.getElementById("story_menu_icon").classList.remove("change");
-		document.getElementById("story_menu_icon").classList.add("hidden");
+		story_pin();
 	}
+}
+
+function story_pin() {
+	setCookie("Story_Pin", "true");
+	document.getElementById("rightSideMenu").classList.remove("open");
+	document.getElementById("main-grid").classList.remove("story_menu-open");
+	document.getElementById("rightSideMenu").classList.add("pinned");
+	document.getElementById("main-grid").classList.add("story_pinned");
+	document.getElementById("story_menu_icon").classList.remove("change");
+	document.getElementById("story_menu_icon").classList.add("hidden");
+}
+
+function story_unpin() {
+	setCookie("Story_Pin", "false");
+	document.getElementById("rightSideMenu").classList.remove("pinned");
+	document.getElementById("main-grid").classList.remove("story_pinned");
+	document.getElementById("story_menu_icon").classList.remove("hidden");
+}
+
+function setCookie(cname, cvalue, exdays=60) {
+  const d = new Date();
+  d.setTime(d.getTime() + (exdays * 24 * 60 * 60 * 1000));
+  let expires = "expires="+d.toUTCString();
+  document.cookie = cname + "=" + cvalue + ";" + expires + ";path=/";
+}
+
+function getCookie(cname) {
+  let name = cname + "=";
+  let ca = document.cookie.split(';');
+  for(let i = 0; i < ca.length; i++) {
+	let c = ca[i];
+	while (c.charAt(0) == ' ') {
+	  c = c.substring(1);
+	}
+	if (c.indexOf(name) == 0) {
+	  return c.substring(name.length, c.length);
+	}
+  }
+  return "";
 }
 
 function detect_enter_submit(e) {
@@ -1958,8 +2024,8 @@ function detect_enter_text(e) {
 			e.cancelBubble = true;
 		}
 		//get element
-		console.log("Doing Text Enter");
-		console.log(e.currentTarget.activeElement);
+		//console.log("Doing Text Enter");
+		//console.log(e.currentTarget.activeElement);
 		if (e.currentTarget.activeElement != undefined) {
 			var item = $(e.currentTarget.activeElement);
 			item.onchange();
@@ -1983,4 +2049,16 @@ $(document).ready(function(){
 	document.onkeydown = detect_shift_down;
 	document.onkeyup = detect_shift_up;
 	document.getElementById("input_text").onkeydown = detect_enter_submit;
+	if (getCookie("Settings_Pin") == "false") {
+		settings_unpin();
+	} else {
+		settings_pin();
+	}
+	if (getCookie("Story_Pin") == "true") {
+		story_pin();
+	} else {
+		story_unpin();
+	}
+	console.log("cookie: "+getCookie("preserve_game_space"));
+	preserve_game_space((getCookie("preserve_game_space") == "true"));
 });

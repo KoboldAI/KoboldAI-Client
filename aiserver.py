@@ -2410,6 +2410,7 @@ def lua_startup():
         koboldai_vars.lua_koboldbridge.obliterate_multiverse()
         print("{0}{1}{2}".format(colors.RED, "***LUA ERROR***: ", colors.END), end="", file=sys.stderr)
         print("{0}{1}{2}".format(colors.RED, str(e).replace("\033", ""), colors.END), file=sys.stderr)
+        socketio.emit("error", str(e), broadcast=True, room="UI_2")
         exit(1)
     print(colors.GREEN + "OK!" + colors.END)
 
@@ -2470,6 +2471,7 @@ def load_lua_scripts():
         print("{0}{1}{2}".format(colors.RED, "***LUA ERROR***: ", colors.END), end="", file=sys.stderr)
         print("{0}{1}{2}".format(colors.RED, str(e).replace("\033", ""), colors.END), file=sys.stderr)
         print("{0}{1}{2}".format(colors.YELLOW, "Lua engine stopped; please open 'Userscripts' and press Load to reinitialize scripts.", colors.END), file=sys.stderr)
+        socketio.emit("error", str(e), broadcast=True, room="UI_2")
         if(koboldai_vars.serverstarted):
             set_aibusy(0)
 
@@ -2960,6 +2962,7 @@ def execute_inmod():
         print("{0}{1}{2}".format(colors.RED, "***LUA ERROR***: ", colors.END), end="", file=sys.stderr)
         print("{0}{1}{2}".format(colors.RED, str(e).replace("\033", ""), colors.END), file=sys.stderr)
         print("{0}{1}{2}".format(colors.YELLOW, "Lua engine stopped; please open 'Userscripts' and press Load to reinitialize scripts.", colors.END), file=sys.stderr)
+        socketio.emit("error", str(e), broadcast=True, room="UI_2")
         set_aibusy(0)
 
 def execute_genmod():
@@ -2978,6 +2981,7 @@ def execute_outmod():
         print("{0}{1}{2}".format(colors.RED, "***LUA ERROR***: ", colors.END), end="", file=sys.stderr)
         print("{0}{1}{2}".format(colors.RED, str(e).replace("\033", ""), colors.END), file=sys.stderr)
         print("{0}{1}{2}".format(colors.YELLOW, "Lua engine stopped; please open 'Userscripts' and press Load to reinitialize scripts.", colors.END), file=sys.stderr)
+        socketio.emit("error", str(e), broadcast=True, room="UI_2")
         set_aibusy(0)
     if(koboldai_vars.lua_koboldbridge.resend_settings_required):
         koboldai_vars.lua_koboldbridge.resend_settings_required = False
@@ -4112,9 +4116,11 @@ def generate(txt, minimum, maximum, found_entries=None):
             print("{0}{1}{2}".format(colors.RED, "***LUA ERROR***: ", colors.END), end="", file=sys.stderr)
             print("{0}{1}{2}".format(colors.RED, str(e).replace("\033", ""), colors.END), file=sys.stderr)
             print("{0}{1}{2}".format(colors.YELLOW, "Lua engine stopped; please open 'Userscripts' and press Load to reinitialize scripts.", colors.END), file=sys.stderr)
+            socketio.emit("error", str(e), broadcast=True, room="UI_2")
         else:
             emit('from_server', {'cmd': 'errmsg', 'data': 'Error occurred during generator call; please check console.'}, broadcast=True, room="UI_1")
             print("{0}{1}{2}".format(colors.RED, traceback.format_exc().replace("\033", ""), colors.END), file=sys.stderr)
+            socketio.emit("error", str(e), broadcast=True, room="UI_2")
         set_aibusy(0)
         return
 
@@ -4417,9 +4423,11 @@ def tpumtjgenerate(txt, minimum, maximum, found_entries=None):
             print("{0}{1}{2}".format(colors.RED, "***LUA ERROR***: ", colors.END), end="", file=sys.stderr)
             print("{0}{1}{2}".format(colors.RED, str(e).replace("\033", ""), colors.END), file=sys.stderr)
             print("{0}{1}{2}".format(colors.YELLOW, "Lua engine stopped; please open 'Userscripts' and press Load to reinitialize scripts.", colors.END), file=sys.stderr)
+            socketio.emit("error", str(e), broadcast=True, room="UI_2")
         else:
             emit('from_server', {'cmd': 'errmsg', 'data': 'Error occurred during generator call; please check console.'}, broadcast=True, room="UI_1")
             print("{0}{1}{2}".format(colors.RED, traceback.format_exc().replace("\033", ""), colors.END), file=sys.stderr)
+            socketio.emit("error", str(e), broadcast=True, room="UI_2")
         set_aibusy(0)
         return
 
@@ -6202,7 +6210,7 @@ def file_popup(popup_title, starting_folder, return_event, upload=True, jailed=T
     
 def get_files_folders(starting_folder):
     import stat
-    session['current_folder'] = starting_folder
+    session['current_folder'] = os.path.abspath(starting_folder).replace("\\", "/")
     item_check = session['popup_item_check']
     show_breadcrumbs = session['popup_show_breadcrumbs']
     show_hidden = session['popup_show_hidden']
@@ -6566,6 +6574,15 @@ def UI_2_phrase_bias_update(biases):
 @socketio.on('relay')
 def UI_2_relay(data):
     socketio.emit(data[0], data[1], **data[2])
+
+#==================================================================#
+# Event triggered when program errors out
+#==================================================================#
+def my_except_hook(exctype, value, traceback):
+    print("sending error to clients")
+    socketio.emit("error", "{}: {}".format(exctype, value), broadcast=True, room="UI_2")
+    sys.__excepthook__(exctype, value, traceback)
+sys.excepthook = my_except_hook
 
 
 #==================================================================#

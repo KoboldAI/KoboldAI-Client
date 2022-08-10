@@ -43,6 +43,7 @@
 
 /*----------------Advanced Theme--------------------*/
     --flyout_menu_closed_width: 0px;
+	--setting_menu_closed_width_no_pins_width:  0px;
     --background: var(--p_background);
     --text: var(--on_background);
     --text_to_ai_color: var(--on_background);
@@ -188,12 +189,10 @@
 
 
 .setting_tile_area {
-	padding: 0px 10px 0px 10px;
-	display: grid;
-	grid-template-columns: auto auto;
-	/*flex;
+	padding-left: 10px;
+	display: flex;
 	flex-direction: row;
-	flex-wrap: wrap;*/
+	flex-wrap: wrap;
 	width: 100%;
 }
 
@@ -584,6 +583,10 @@ input[type="range"]::-ms-fill-upper {
   z-index: 3;
 }
 
+.rightSideMenu.pinned {
+  width: var(--flyout_menu_width);
+}
+
 .rightSideMenu .flyout_menu_contents {
 	overflow-x: hidden;
 	overflow-y: auto;
@@ -686,9 +689,9 @@ body {
 	transition: margin-left .5s;
 	display: grid;
 	height: 98vh;
-	margin-left: var(--flyout_menu_width);
+	margin-left: var(--setting_menu_closed_width_no_pins_width);
 	margin-right: var(--flyout_menu_closed_width);
-	grid-template-areas: "enuicon gamescreen options lefticon"
+	grid-template-areas: "menuicon gamescreen options lefticon"
 						 "menuicon inputrow inputrow lefticon";
 	grid-template-columns: 30px auto 30% 30px;
 	grid-template-rows: auto 100px;
@@ -700,9 +703,9 @@ body {
 .main-grid.story_pinned {
 	margin-left: var(--flyout_menu_closed_width);
 	margin-right: var(--flyout_menu_width);
-	grid-template-areas: "menuicon options gamescreen lefticon"
+	grid-template-areas: "menuicon gamescreen options lefticon"
 						 "menuicon inputrow inputrow lefticon";
-	grid-template-columns: 30px 30% auto 30px;
+	grid-template-columns: 30px auto 30% 30px;
 }
 .main-grid.settings_pinned.story_pinned {
 	margin-left: var(--flyout_menu_width);
@@ -731,15 +734,6 @@ body {
 
 
 /* ---------------------------------- GAME SCREEN ----------------------------------*/
-.sequence_area {
-	margin-top: 10px;
-	z-index: 1;
-	grid-area: options;
-	background-color: var(--sequece_background);
-	/*border-left: 5px solid var(--primary);*/
-	/*box-shadow: 4px 0 8px 0 rgba(0, 0, 0, 0.2), 0px 0px 25px 0 rgba(0, 0, 0, 0.19);*/
-	overflow-y: scroll;
-}
 .gamescreen {
 	background-color: var(--gamescreen_background);
 	z-index: 2;
@@ -781,9 +775,16 @@ body {
 	font-style: italic;
 }
 
+.sequence_area {
+	margin-top: 10px;
+	grid-area: options;
+	background-color: var(--gamescreen_background);
+	overflow-y: scroll;
+}
+
 .sequence_area::-webkit-scrollbar {
 	display: none;
-  }
+}
 
 @media only screen and (max-aspect-ratio: 7/5) {
 .sequences {
@@ -990,6 +991,9 @@ body {
 .popup .popup_list_area {
 	height: 70vh;
 	overflow-x: hidden;
+	flex-grow: 1;
+	flex-shrink: 0;
+	flex-basis: auto;
 }
 
 .popup .item {
@@ -1239,9 +1243,3 @@ body.NotConnected {
 .cursor {
 	cursor: pointer;
 }
-
-.flout_menu_contents {
-	overflow-x: hidden;
-	overflow-y: auto;
-	height: 80vh;
-} 
