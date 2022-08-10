@@ -795,7 +795,7 @@ class KoboldStoryRegister(object):
                         if 'stream_id' in self.actions[self.action_count+1]['Options'][j]:
                             if self.actions[self.action_count+1]['Options'][j]['stream_id'] == i:
                                 found = True
-                                self.actions[self.action_count+1]['Options'][j]['text'] = "{}{}".format(self.actions[self.action_count+1]['Options'][i]['text'], text_list[i])
+                                self.actions[self.action_count+1]['Options'][j]['text'] = "{}{}".format(self.actions[self.action_count+1]['Options'][j]['text'], text_list[i])
                     if not found:
                         self.actions[self.action_count+1]['Options'].append({"text": text_list[i], "Pinned": False, "Previous Selection": False, "Edited": False, "stream_id": i})
             else:
