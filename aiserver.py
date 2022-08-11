@@ -4351,7 +4351,7 @@ def calcsubmitbudget(actionlen, winfo, mem, anotetxt, actions, submission=None, 
 
     if(actionlen == 0):
         # First/Prompt action
-        tokens = tokenizer._koboldai_header + memtokens + witokens + anotetkns + prompttkns
+        tokens = (tokenizer._koboldai_header if vars.model not in ("Colab", "API", "OAI") else []) + memtokens + witokens + anotetkns + prompttkns
         assert len(tokens) <= vars.max_length - lnsp - vars.genamt - budget_deduction
         ln = len(tokens) + lnsp
         return tokens, ln+1, ln+vars.genamt
@@ -4399,12 +4399,12 @@ def calcsubmitbudget(actionlen, winfo, mem, anotetxt, actions, submission=None, 
         # Did we get to add the A.N.? If not, do it here
         if(anotetxt != ""):
             if((not anoteadded) or forceanote):
-                tokens = tokenizer._koboldai_header + memtokens + witokens + anotetkns + prompttkns + tokens
+                tokens = (tokenizer._koboldai_header if vars.model not in ("Colab", "API", "OAI") else []) + memtokens + witokens + anotetkns + prompttkns + tokens
             else:
-                tokens = tokenizer._koboldai_header + memtokens + witokens + prompttkns + tokens
+                tokens = (tokenizer._koboldai_header if vars.model not in ("Colab", "API", "OAI") else []) + memtokens + witokens + prompttkns + tokens
         else:
             # Prepend Memory, WI, and Prompt before action tokens
-            tokens = tokenizer._koboldai_header + memtokens + witokens + prompttkns + tokens
+            tokens = (tokenizer._koboldai_header if vars.model not in ("Colab", "API", "OAI") else []) + memtokens + witokens + prompttkns + tokens
 
         # Send completed bundle to generator
         assert len(tokens) <= vars.max_length - lnsp - vars.genamt - budget_deduction
