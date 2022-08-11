@@ -575,6 +575,7 @@ class KoboldAPISpec(APISpec):
 tags = [
     {"name": "info", "description": "Metadata about this API"},
     {"name": "generate", "description": "Text generation endpoints"},
+    {"name": "model", "description": "Information about the current text generation model"},
     {"name": "story", "description": "Endpoints for managing the story in the KoboldAI GUI"},
     {"name": "world_info", "description": "Endpoints for managing the world info in the KoboldAI GUI"},
     {"name": "config", "description": "Allows you to get/set various setting values"},
@@ -583,7 +584,7 @@ tags = [
 api_version = None  # This gets set automatically so don't change this value
 
 api_v1 = KoboldAPISpec(
-    version="1.1.3",
+    version="1.1.4",
     prefixes=["/api/v1", "/api/latest"],
     tags=tags,
 )
@@ -7356,6 +7357,28 @@ def post_generate(body: GenerationInputSchema):
     return _generate_text(body)
 
 
+@api_v1.get("/model")
+@api_schema_wrap
+def get_model():
+    """---
+    get:
+      summary: Retrieve the current model string
+      description: |-2
+        Gets the current model string, which is shown in the title of the KoboldAI GUI in parentheses, e.g. "KoboldAI Client (KoboldAI/fairseq-dense-13B-Nerys-v2)".
+      tags:
+        - model
+      responses:
+        200:
+          description: Successful request
+          content:
+            application/json:
+              schema: BasicResultSchema
+              example:
+                result: KoboldAI/fairseq-dense-13B-Nerys-v2
+    """
+    return {"result": vars.model}
+
+
 def prompt_validator(prompt: str):
     if len(prompt.strip()) == 0:
         raise ValidationError("String does not match expected pattern.")
@@ -8397,7 +8420,7 @@ def get_world_info_folders_uid_name(uid: int):
             "msg": "No world info folder with the given uid exists.",
             "type": "key_error",
         }}), mimetype="application/json", status=404))
-    return vars.wifolders_d[uid]["name"]
+    return {"value": vars.wifolders_d[uid]["name"]}
 
 
 @api_v1.put("/world_info/folders/<int(signed=True):uid>/name")
