@@ -543,7 +543,9 @@ def device_config(config):
     global breakmodel, generator
     import breakmodel
     n_layers = utils.num_layers(config)
-    if(args.breakmodel_gpulayers is not None or (utils.HAS_ACCELERATE and args.breakmodel_disklayers is not None)):
+    if args.cpu:
+        breakmodel.gpu_blocks = [0]*n_layers
+    elif(args.breakmodel_gpulayers is not None or (utils.HAS_ACCELERATE and args.breakmodel_disklayers is not None)):
         try:
             if(not args.breakmodel_gpulayers):
                 breakmodel.gpu_blocks = []
@@ -1730,8 +1732,12 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
             time.sleep(0.1)
     if gpu_layers is not None:
         args.breakmodel_gpulayers = gpu_layers
+    elif initial_load:
+        gpu_layers = args.breakmodel_gpulayers
     if disk_layers is not None:
         args.breakmodel_disklayers = int(disk_layers)
+    elif initial_load:
+        disk_layers = args.breakmodel_disklayers
     
     #We need to wipe out the existing model and refresh the cuda cache
     model = None
@@ -1840,41 +1846,19 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
         else:
             print("{0}NOT FOUND!{1}".format(colors.YELLOW, colors.END))
         
-        if args.model:
-            if(vars.hascuda):
-                genselected = True
+        if args.cpu:
+            vars.usegpu = False
+            gpu_layers = None
+            disk_layers = None
+            vars.breakmodel = False
+        elif vars.hascuda:
+            if(vars.bmsupported):
+                vars.usegpu = False
+                vars.breakmodel = True
+            else:
+                vars.breakmodel = False
                 vars.usegpu = True
-                vars.breakmodel = utils.HAS_ACCELERATE
-            if(vars.bmsupported):
-                vars.usegpu = False
-                vars.breakmodel = True
-            if(args.cpu):
-                vars.usegpu = False
-                vars.breakmodel = utils.HAS_ACCELERATE
-        elif(vars.hascuda):    
-            if(vars.bmsupported):
-                genselected = True
-                vars.usegpu = False
-                vars.breakmodel = True
-            else:
-                genselected = False
-        else:
-            genselected = False
 
-        if(vars.hascuda):
-            if(use_gpu):
-                if(vars.bmsupported):
-                    vars.breakmodel = True
-                    vars.usegpu = False
-                    genselected = True
-                else:
-                    vars.breakmodel = False
-                    vars.usegpu = True
-                    genselected = True
-            else:
-                vars.breakmodel = utils.HAS_ACCELERATE
-                vars.usegpu = False
-                genselected = True
 
     # Ask for API key if InferKit was selected
     if(vars.model == "InferKit"):
