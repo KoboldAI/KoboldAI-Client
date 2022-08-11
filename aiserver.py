@@ -546,9 +546,6 @@ def device_config(config):
     if args.cpu:
         breakmodel.gpu_blocks = [0]*n_layers
         return
-    elif vars.nobreakmodel:
-        breakmodel.gpu_blocks = [0]*n_layers
-        return
     elif(args.breakmodel_gpulayers is not None or (utils.HAS_ACCELERATE and args.breakmodel_disklayers is not None)):
         try:
             if(not args.breakmodel_gpulayers):
@@ -2081,7 +2078,8 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
                 
                 # If we're using torch_lazy_loader, we need to get breakmodel config
                 # early so that it knows where to load the individual model tensors
-                if(utils.HAS_ACCELERATE or vars.lazy_load and vars.hascuda and vars.breakmodel):
+                if (utils.HAS_ACCELERATE or vars.lazy_load and vars.hascuda and vars.breakmodel) and not vars.nobreakmodel:
+                    print(1)
                     device_config(model_config)
 
                 # Download model from Huggingface if it does not exist, otherwise load locally
@@ -2212,6 +2210,7 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
                     elif(vars.breakmodel):  # Use both RAM and VRAM (breakmodel)
                         vars.modeldim = get_hidden_size_from_model(model)
                         if(not vars.lazy_load):
+                            print(2)
                             device_config(model.config)
                         move_model_to_devices(model)
                     elif(utils.HAS_ACCELERATE and __import__("breakmodel").disk_blocks > 0):
