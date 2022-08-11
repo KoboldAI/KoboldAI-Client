@@ -1078,7 +1078,7 @@ function buildLoadModelList(ar, menu, breadcrumbs, showdelete) {
 			html = html + "<span class=\"loadlisticon loadmodellisticon-folder oi oi-folder allowed\"  aria-hidden=\"true\"></span>"
 		} else {
 		//this is a model
-			html = html + "<div class=\"loadlistpadding\"></div>"
+			html = html + "<div class=\"loadlisticon oi oi-caret-right allowed\"></div>"
 		}
 		
 		//now let's do the delete icon if applicable
@@ -1096,6 +1096,7 @@ function buildLoadModelList(ar, menu, breadcrumbs, showdelete) {
 					</div>"
 		loadmodelcontent.append(html);
 		//If this is a menu
+		console.log(ar[i]);
 		if(ar[i][3]) {
 			$("#loadmodel"+i).off("click").on("click", (function () {
 				return function () {
@@ -1105,15 +1106,27 @@ function buildLoadModelList(ar, menu, breadcrumbs, showdelete) {
 			})(i));
 		//Normal load
 		} else {
-			$("#loadmodel"+i).off("click").on("click", (function () {
-				return function () {
-					$("#use_gpu_div").addClass("hidden");
-					$("#modelkey").addClass("hidden");
-					$("#modellayers").addClass("hidden");
-					socket.send({'cmd': 'selectmodel', 'data': $(this).attr("name")});
-					highlightLoadLine($(this));
-				}
-			})(i));
+			if (['NeoCustom', 'GPT2Custom'].includes(menu)) {
+				$("#loadmodel"+i).off("click").on("click", (function () {
+					return function () {
+						$("#use_gpu_div").addClass("hidden");
+						$("#modelkey").addClass("hidden");
+						$("#modellayers").addClass("hidden");
+						socket.send({'cmd': 'selectmodel', 'data': $(this).attr("name"), 'path': $(this).attr("pretty_name")});
+						highlightLoadLine($(this));
+					}
+				})(i));
+			} else {
+				$("#loadmodel"+i).off("click").on("click", (function () {
+					return function () {
+						$("#use_gpu_div").addClass("hidden");
+						$("#modelkey").addClass("hidden");
+						$("#modellayers").addClass("hidden");
+						socket.send({'cmd': 'selectmodel', 'data': $(this).attr("name")});
+						highlightLoadLine($(this));
+					}
+				})(i));
+			}
 		}
 	}
 }
@@ -2841,6 +2854,8 @@ $(document).ready(function(){
 			if (msg.key) {
 				$("#modelkey").removeClass("hidden");
 				$("#modelkey")[0].value = msg.key_value;
+				//if we're in the API list, disable to load button until the model is selected (after the API Key is entered)
+				disableButtons([load_model_accept]);
 			} else {
 				$("#modelkey").addClass("hidden");
 				
@@ -2878,6 +2893,7 @@ $(document).ready(function(){
 			}
 		} else if(msg.cmd == 'oai_engines') {
 			$("#oaimodel").removeClass("hidden")
+			enableButtons([load_model_accept]);
 			selected_item = 0;
 			length = $("#oaimodel")[0].options.length;
 			for (let i = 0; i < length; i++) {
@@ -2914,6 +2930,7 @@ $(document).ready(function(){
 				opt.innerHTML = engine[1];
 				$("#oaimodel")[0].appendChild(opt);
 			}
+			enableButtons([load_model_accept]);
 		}
 	});
 	
