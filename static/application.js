@@ -512,6 +512,16 @@ function addWiLine(ob) {
 		$(".wisortable-excluded-dynamic").removeClass("wisortable-excluded-dynamic");
 		$(this).parent().css("max-height", "").find(".wicomment").find(".form-control").css("max-height", "");
 	});
+
+	for (const wientry of document.getElementsByClassName("wientry")) {
+		// If we are uninitialized, skip.
+		if ($(wientry).closest(".wilistitem-uninitialized").length) continue;
+
+		// add() will not add if the class is already present
+		wientry.classList.add("tokens-counted");
+	}
+
+	registerTokenCounters();
 }
 
 function addWiFolder(uid, ob) {
@@ -835,6 +845,7 @@ function exitMemoryMode() {
 	button_actmem.html("Memory");
 	show([button_actback, button_actfwd, button_actretry, button_actwi]);
 	input_text.val("");
+	updateInputBudget(input_text[0]);
 	// Hide Author's Note field
 	anote_menu.slideUp("fast");
 }
@@ -2152,6 +2163,37 @@ function interpolateRGB(color0, color1, t) {
 	]
 }
 
+function updateInputBudget(inputElement) {
+	let data = {"unencoded": inputElement.value, "field": inputElement.id};
+
+	if (inputElement.id === "anoteinput") {
+		data["anotetemplate"] = $("#anotetemplate").val();
+	}
+
+	socket.send({"cmd": "getfieldbudget", "data": data});
+}
+
+function registerTokenCounters() {
+	// Add token counters to all input containers with the class of "tokens-counted",
+	// if a token counter is not already a child of said container.
+	for (const el of document.getElementsByClassName("tokens-counted")) {
+		if (el.getElementsByClassName("input-token-usage").length) continue;
+
+		let span = document.createElement("span");
+		span.classList.add("input-token-usage");
+		span.innerText = "?/? Tokens";
+		el.appendChild(span);
+
+		let inputElement = el.querySelector("input, textarea");
+
+		inputElement.addEventListener("input", function() {
+			updateInputBudget(this);
+		});
+		
+		updateInputBudget(inputElement);
+	}
+}
+
 //=================================================================//
 //  READY/RUNTIME
 //=================================================================//
@@ -2494,6 +2536,7 @@ $(document).ready(function(){
 				memorytext = msg.data;
 				input_text.val(msg.data);
 			}
+			updateInputBudget(input_text[0]);
 		} else if(msg.cmd == "setmemory") {
 			memorytext = msg.data;
 			if(memorymode) {
@@ -2615,6 +2658,7 @@ $(document).ready(function(){
 		} else if(msg.cmd == "setanote") {
 			// Set contents of Author's Note field
 			anote_input.val(msg.data);
+			updateInputBudget(anote_input[0]);
 		} else if(msg.cmd == "setanotetemplate") {
 			// Set contents of Author's Note Template field
 			$("#anotetemplate").val(msg.data);
@@ -2930,8 +2974,18 @@ $(document).ready(function(){
 				opt.innerHTML = engine[1];
 				$("#oaimodel")[0].appendChild(opt);
 			}
-			enableButtons([load_model_accept]);
+		} else if(msg.cmd == 'showfieldbudget') {
+			let inputElement = document.getElementById(msg.data.field);
+			let tokenBudgetElement = inputElement.parentNode.getElementsByClassName("input-token-usage")[0];
+			if (msg.data.max === null) {
+				tokenBudgetElement.innerText = "";
+			} else {
+				let tokenLength = msg.data.length ?? "?";
+				let tokenMax = msg.data.max ?? "?";
+				tokenBudgetElement.innerText = `${tokenLength}/${tokenMax} Tokens`;
+			}
 		}
+		enableButtons([load_model_accept]);
 	});
 	
 	socket.on('disconnect', function() {
@@ -3399,6 +3453,15 @@ $(document).ready(function(){
 
 		if (handled) ev.preventDefault();
 	});
+
+	$("#anotetemplate").on("input", function() {
+		updateInputBudget(anote_input[0]);
+	})
+
+	registerTokenCounters();
+
+	updateInputBudget(input_text[0]);
+
 });
 
 
