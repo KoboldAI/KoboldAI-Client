@@ -7676,12 +7676,19 @@ def get_story_nums_num(num: int):
       summary: Determine whether or not there is a story chunk with the given num
       tags:
         - story
+      parameters:
+        - name: num
+          in: path
+          description: |-2
+            `num` of the desired story chunk.
+          schema:
+            type: integer
       responses:
         200:
           description: Successful request
           content:
             application/json:
-              schema: StorySchema
+              schema: BasicBooleanSchema
     """
     if num == 0:
         return {"result": vars.gamestarted}
