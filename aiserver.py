@@ -3608,6 +3608,37 @@ def get_message(msg):
         emit('from_server', {'cmd': 'set_debug', 'data': msg['data']}, broadcast=True)
         if vars.debug:
             send_debug()
+    elif(msg['cmd'] == 'getfieldbudget'):
+        unencoded = msg["data"]["unencoded"]
+        field = msg["data"]["field"]
+
+        # Tokenizer may be undefined here when a model has not been chosen.
+        if "tokenizer" not in globals():
+            # We don't have a tokenizer, just return nulls.
+            emit(
+                'from_server',
+                {'cmd': 'showfieldbudget', 'data': {"length": None, "max": None, "field": field}},
+                broadcast=True
+            )
+            return
+
+        header_length = len(tokenizer._koboldai_header)
+        max_tokens = vars.max_length - header_length - vars.sp_length - vars.genamt
+
+        if not unencoded:
+            # Unencoded is empty, just return 0
+            emit(
+                'from_server',
+                {'cmd': 'showfieldbudget', 'data': {"length": 0, "max": max_tokens, "field": field}},
+                broadcast=True
+            )
+        else:
+            tokens_length = len(tokenizer.encode(unencoded))
+            emit(
+                'from_server',
+                {'cmd': 'showfieldbudget', 'data': {"length": tokens_length, "max": max_tokens, "field": field}},
+                broadcast=True
+            )
 
 #==================================================================#
 #  Send userscripts list to client
