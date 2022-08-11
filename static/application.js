@@ -2954,9 +2954,13 @@ $(document).ready(function(){
 		} else if(msg.cmd == 'showfieldbudget') {
 			let inputElement = document.getElementById(msg.data.field);
 			let tokenBudgetElement = inputElement.parentNode.getElementsByClassName("input-token-usage")[0];
-			let tokenLength = msg.data.length ?? "?";
-			let tokenMax = msg.data.max ?? "?";
-			tokenBudgetElement.innerText = `${tokenLength}/${tokenMax} Tokens`;
+			if (msg.data.max === null) {
+				tokenBudgetElement.innerText = "";
+			} else {
+				let tokenLength = msg.data.length ?? "?";
+				let tokenMax = msg.data.max ?? "?";
+				tokenBudgetElement.innerText = `${tokenLength}/${tokenMax} Tokens`;
+			}
 		}
 	});
 	
