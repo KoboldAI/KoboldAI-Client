@@ -4140,6 +4140,8 @@ def apiactionsubmit(data, use_memory=False, use_world_info=False, use_story=Fals
     elif(vars.model == "ReadOnly"):
         raise NotImplementedError("API generation is not supported in read-only mode; please load a model and then try again.")
 
+    data = applyinputformatting(data)
+
     if(vars.memory != "" and vars.memory[-1] != "\n"):
         mem = vars.memory + "\n"
     else:
