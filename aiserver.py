@@ -3634,7 +3634,7 @@ def get_message(msg):
             )
         else:
             if field == "anoteinput":
-                unencoded = buildauthorsnote(unencoded)
+                unencoded = buildauthorsnote(unencoded, msg["data"]["anotetemplate"])
             tokens_length = len(tokenizer.encode(unencoded))
 
             emit(
@@ -3972,11 +3972,11 @@ def actionredo():
 #==================================================================#
 #  
 #==================================================================#
-def buildauthorsnote(authorsnote):
+def buildauthorsnote(authorsnote, template):
     # Build Author's Note if set
     if authorsnote == "":
         return ""
-    return ("\n" + vars.authornotetemplate + "\n").replace("<|>", authorsnote)
+    return ("\n" + template + "\n").replace("<|>", authorsnote)
 
 def calcsubmitbudgetheader(txt, **kwargs):
     # Scan for WorldInfo matches
@@ -3988,7 +3988,7 @@ def calcsubmitbudgetheader(txt, **kwargs):
     else:
         mem = vars.memory
 
-    anotetxt = buildauthorsnote(vars.authornote)
+    anotetxt = buildauthorsnote(vars.authornote, vars.authornotetemplate)
 
     return winfo, mem, anotetxt, found_entries
 

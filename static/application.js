@@ -2151,7 +2151,13 @@ function interpolateRGB(color0, color1, t) {
 }
 
 function updateInputBudget(inputElement) {
-	socket.send({"cmd": "getfieldbudget", "data": {"unencoded": inputElement.value, "field": inputElement.id}});
+	let data = {"unencoded": inputElement.value, "field": inputElement.id};
+
+	if (inputElement.id === "anoteinput") {
+		data["anotetemplate"] = $("#anotetemplate").val();
+	}
+
+	socket.send({"cmd": "getfieldbudget", "data": data});
 }
 
 function registerTokenCounters() {
@@ -3429,6 +3435,10 @@ $(document).ready(function(){
 
 		if (handled) ev.preventDefault();
 	});
+
+	$("#anotetemplate").on("input", function() {
+		updateInputBudget(anote_input[0]);
+	})
 
 	registerTokenCounters();
 
