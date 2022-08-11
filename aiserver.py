@@ -582,8 +582,6 @@ tags = [
 
 api_version = None  # This gets set automatically so don't change this value
 
-api_latest_version = "1.1.1"  # Set this to the latest API version available
-
 api_v1 = KoboldAPISpec(
     version="1.1.1",
     prefixes=["/api/v1", "/api/latest"],
@@ -7290,7 +7288,7 @@ def get_version_latest():
               example:
                 result: 1.0.0
     """
-    return {"result": api_latest_version}
+    return {"result": api_versions[-1]}
 
 
 @api_v1.get("/info/version/list")
