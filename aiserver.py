@@ -545,6 +545,10 @@ def device_config(config):
     n_layers = utils.num_layers(config)
     if args.cpu:
         breakmodel.gpu_blocks = [0]*n_layers
+        return
+    elif vars.nobreakmodel:
+        breakmodel.gpu_blocks = [0]*n_layers
+        return
     elif(args.breakmodel_gpulayers is not None or (utils.HAS_ACCELERATE and args.breakmodel_disklayers is not None)):
         try:
             if(not args.breakmodel_gpulayers):
