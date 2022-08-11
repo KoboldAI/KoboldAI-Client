@@ -399,7 +399,7 @@ from flask import Flask, render_template, Response, request, copy_current_reques
 from flask_socketio import SocketIO
 from flask_socketio import emit as _emit
 from flask_session import Session
-from werkzeug.exceptions import HTTPException
+from werkzeug.exceptions import HTTPException, NotFound, InternalServerError
 import secrets
 app = Flask(__name__, root_path=os.getcwd())
 app.secret_key = secrets.token_hex()
@@ -408,6 +408,19 @@ app.config['TEMPLATES_AUTO_RELOAD'] = True
 Session(app)
 socketio = SocketIO(app, async_method="eventlet")
 print("{0}OK!{1}".format(colors.GREEN, colors.END))
+
+old_socketio_on = socketio.on
+def new_socketio_on(*a, **k):
+    decorator = old_socketio_on(*a, **k)
+    def new_decorator(f):
+        @functools.wraps(f)
+        def g(*a, **k):
+            if args.no_ui:
+                return
+            return f(*a, **k)
+        return decorator(g)
+    return new_decorator
+socketio.on = new_socketio_on
 
 def emit(*args, **kwargs):
     try:
@@ -488,6 +501,8 @@ def api_schema_wrap(f):
 
 @app.errorhandler(HTTPException)
 def handler(e):
+    if request.path != "/api" and not request.path.startswith("/api/"):
+        return e
     resp = jsonify(detail={"msg": str(e), "type": "generic.error_" + str(e.code)})
     if e.code == 405 and e.valid_methods is not None:
         resp.headers["Allow"] = ", ".join(e.valid_methods)
@@ -503,14 +518,20 @@ class KoboldOutOfMemoryError(HTTPException):
             self.type = type
 @app.errorhandler(KoboldOutOfMemoryError)
 def handler(e):
+    if request.path != "/api" and not request.path.startswith("/api/"):
+        return InternalServerError()
     return jsonify(detail={"type": e.type, "msg": e.description}), e.code
 
 @app.errorhandler(ValidationError)
 def handler(e):
+    if request.path != "/api" and not request.path.startswith("/api/"):
+        return InternalServerError()
     return jsonify(detail=e.messages), 422
 
 @app.errorhandler(NotImplementedError)
 def handler(e):
+    if request.path != "/api" and not request.path.startswith("/api/"):
+        return InternalServerError()
     return jsonify(detail={"type": "not_implemented", "msg": str(e).strip()}), 501
 
 api_versions: List[str] = []
@@ -1267,6 +1288,7 @@ def general_startup(override_args=None):
     parser.add_argument("--lowmem", action='store_true', help="Extra Low Memory loading for the GPU, slower but memory does not peak to twice the usage")
     parser.add_argument("--savemodel", action='store_true', help="Saves the model to the models folder even if --colab is used (Allows you to save models to Google Drive)")
     parser.add_argument("--customsettings", help="Preloads arguements from json file. You only need to provide the location of the json file. Use customsettings.json template file. It can be renamed if you wish so that you can store multiple configurations. Leave any settings you want as default as null. Any values you wish to set need to be in double quotation marks")
+    parser.add_argument("--no_ui", action='store_true', default=False, help="Disables the GUI and Socket.IO server while leaving the API server running.")
     #args: argparse.Namespace = None
     if "pytest" in sys.modules and override_args is None:
         args = parser.parse_args([])
@@ -1287,6 +1309,12 @@ def general_startup(override_args=None):
             if importedsettings[items] is not None:
                 setattr(args, items, importedsettings[items])            
         f.close()
+    
+    if args.no_ui:
+        def new_emit(*args, **kwargs):
+            return
+        old_emit = socketio.emit
+        socketio.emit = new_emit
 
     vars.model = args.model;
     vars.revision = args.revision
@@ -2596,6 +2624,8 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
 @app.route('/')
 @app.route('/index')
 def index():
+    if args.no_ui:
+        return redirect('/api/latest')
     if 'new_ui' in request.args:
         return render_template('index_new.html', hide_ai_menu=args.noaimenu)
     else:
@@ -2609,6 +2639,9 @@ def favicon():
                                    'koboldai.ico', mimetype='image/vnd.microsoft.icon')    
 @app.route('/download')
 def download():
+    if args.no_ui:
+        raise NotFound()
+
     save_format = request.args.get("format", "json").strip().lower()
 
     if(save_format == "plaintext"):
@@ -9643,8 +9676,9 @@ if __name__ == "__main__":
         socketio.run(app, host='0.0.0.0', port=port)
     else:
         if args.unblock:
-            import webbrowser
-            webbrowser.open_new('http://localhost:{0}'.format(port))
+            if not args.no_ui:
+                import webbrowser
+                webbrowser.open_new('http://localhost:{0}'.format(port))
             print("{0}Server started!\nYou may now connect with a browser at http://127.0.0.1:{1}/{2}"
                   .format(colors.GREEN, port, colors.END))
             vars.serverstarted = True
@@ -9656,9 +9690,9 @@ if __name__ == "__main__":
                 vars.flaskwebgui = True
                 FlaskUI(app, socketio=socketio, start_server="flask-socketio", maximized=True, close_server_on_exit=True).run()
             except:
-                pass
-                import webbrowser
-                webbrowser.open_new('http://localhost:{0}'.format(port))
+                if not args.no_ui:
+                    import webbrowser
+                    webbrowser.open_new('http://localhost:{0}'.format(port))
                 print("{0}Server started!\nYou may now connect with a browser at http://127.0.0.1:{1}/{2}"
                         .format(colors.GREEN, port, colors.END))
                 vars.serverstarted = True
