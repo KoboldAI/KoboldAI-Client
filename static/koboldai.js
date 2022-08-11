@@ -2110,7 +2110,6 @@ $(document).ready(function(){
 	} else {
 		story_unpin();
 	}
-	console.log("cookie: "+getCookie("preserve_game_space"));
-	preserve_game_space((getCookie("preserve_game_space") == "true"));
-	options_on_right((getCookie("options_on_right") == "true"));
+	preserve_game_space(!(getCookie("preserve_game_space") == "false"));
+	options_on_right(!(getCookie("options_on_right") == "false"));
 });
