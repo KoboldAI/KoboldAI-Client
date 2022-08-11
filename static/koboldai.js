@@ -1958,36 +1958,28 @@ function close_menus() {
 }
 
 function toggle_flyout(x) {
-	if (document.getElementById("SideMenu").classList.contains("pinned")) {
-		//do nothing
+	if (document.getElementById("SideMenu").classList.contains("open")) {
+		x.classList.remove("change");
+		document.getElementById("SideMenu").classList.remove("open");
+		document.getElementById("main-grid").classList.remove("menu-open");
 	} else {
-		if (document.getElementById("SideMenu").classList.contains("open")) {
-			x.classList.remove("change");
-			document.getElementById("SideMenu").classList.remove("open");
-			document.getElementById("main-grid").classList.remove("menu-open");
-		} else {
-			x.classList.add("change");
-			document.getElementById("SideMenu").classList.add("open");
-			document.getElementById("main-grid").classList.add("menu-open");
-			document.getElementById("menu_pin").classList.remove("hidden");
-		}
-}
+		x.classList.add("change");
+		document.getElementById("SideMenu").classList.add("open");
+		document.getElementById("main-grid").classList.add("menu-open");
+		document.getElementById("menu_pin").classList.remove("hidden");
+	}
 }
 
 function toggle_flyout_right(x) {
-	if (document.getElementById("rightSideMenu").classList.contains("pinned")) {
-		//do nothing
+	if (document.getElementById("rightSideMenu").classList.contains("open")) {
+		x.classList.remove("change");
+		document.getElementById("rightSideMenu").classList.remove("open");
+		document.getElementById("main-grid").classList.remove("story_menu-open");
 	} else {
-		if (document.getElementById("rightSideMenu").classList.contains("open")) {
-			x.classList.remove("change");
-			document.getElementById("rightSideMenu").classList.remove("open");
-			document.getElementById("main-grid").classList.remove("story_menu-open");
-		} else {
-			x.classList.add("change");
-			document.getElementById("rightSideMenu").classList.add("open");
-			document.getElementById("main-grid").classList.add("story_menu-open");
-			document.getElementById("story_menu_pin").classList.remove("hidden");
-		}
+		x.classList.add("change");
+		document.getElementById("rightSideMenu").classList.add("open");
+		document.getElementById("main-grid").classList.add("story_menu-open");
+		document.getElementById("story_menu_pin").classList.remove("hidden");
 	}
 }
 
@@ -2045,7 +2037,7 @@ function setCookie(cname, cvalue, exdays=60) {
   const d = new Date();
   d.setTime(d.getTime() + (exdays * 24 * 60 * 60 * 1000));
   let expires = "expires="+d.toUTCString();
-  document.cookie = cname + "=" + cvalue + ";" + expires + ";path=/";
+  document.cookie = cname + "=" + cvalue + ";" + expires + ";path=/;samesite=none;domain=koboldai.org";
 }
 
 function getCookie(cname) {

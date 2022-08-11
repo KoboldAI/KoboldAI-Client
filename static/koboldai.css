@@ -264,6 +264,13 @@
 }
 
 @media only screen and (max-aspect-ratio: 7/5) {
+/* mobile */
+.menu_icon.hidden {
+	display: inline-block !important;
+}
+}
+
+@media only screen and (max-aspect-ratio: 7/5) {
 .menu_pin {
 	display: none;
 }
@@ -468,6 +475,13 @@
 	grid-area: lefticon;
 }
 
+@media only screen and (max-aspect-ratio: 7/5) {
+/* mobile */
+.right_menu_icon.hidden {
+	display: inline-block !important;
+}
+}
+
 .rightSideMenu {
 	height: 100%;
 	width: 0;
@@ -488,8 +502,11 @@
   width: var(--flyout_menu_width);
 }
 
+@media only screen and (min-aspect-ratio: 7/5) {
+/*  Desktop Mode  */
 .rightSideMenu.pinned {
   width: var(--flyout_menu_width);
+}
 }
 
 .rightSideMenu .flyout_menu_contents {
@@ -498,6 +515,12 @@
 	height: calc(100vh - 150px);
 }
 
+@media only screen and (max-aspect-ratio: 7/5) {
+/* mobile */
+.story_menu_pin {
+	display: none;
+}
+}
 
 
 table.server_vars {
@@ -629,7 +652,7 @@ body {
 	grid-template-areas: "menuicon gamescreen lefticon"
 					     "menuicon options lefticon"
 						 "menuicon inputrow lefticon";
-	grid-template-columns: 30px auto 20px;
+	grid-template-columns: 30px auto 30px;
 	grid-template-rows: auto min-content 100px;
 }
 }
@@ -1117,4 +1140,10 @@ body.NotConnected {
 
 .cursor {
 	cursor: pointer;
+}
+
+@font-face {
+  font-family: 'Material Symbols Outlined';
+  font-style: normal;
+  src: url(/material-symbols.woff) format('woff');
 }
