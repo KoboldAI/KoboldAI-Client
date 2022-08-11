@@ -6374,7 +6374,15 @@ def UI_2_submit(data):
     koboldai_vars.lua_koboldbridge.feedback = None
     koboldai_vars.recentrng = koboldai_vars.recentrngm = None
     actionsubmit(data['data'], actionmode=koboldai_vars.actionmode)
-    
+ 
+ #==================================================================#
+# Event triggered when user clicks the submit button
+#==================================================================#
+@socketio.on('abort')
+def UI_2_abort(data):
+    koboldai_vars.abort = True
+
+ 
 #==================================================================#
 # Event triggered when user clicks the pin button
 #==================================================================#
