@@ -583,7 +583,7 @@ tags = [
 api_version = None  # This gets set automatically so don't change this value
 
 api_v1 = KoboldAPISpec(
-    version="1.1.2",
+    version="1.1.3",
     prefixes=["/api/v1", "/api/latest"],
     tags=tags,
 )
@@ -5087,9 +5087,6 @@ def getnewcontent(txt):
 # Applies chosen formatting options to text submitted to AI
 #==================================================================#
 def applyinputformatting(txt):
-    if(vars.disable_input_formatting):
-        return txt
-
     # Add sentence spacing
     if(vars.formatoptns["frmtadsnsp"]):
         txt = utils.addsentencespacing(txt, vars)
@@ -5102,9 +5099,6 @@ def applyinputformatting(txt):
 def applyoutputformatting(txt):
     # Use standard quotes and apostrophes
     txt = utils.fixquotes(txt)
-
-    if(vars.disable_output_formatting):
-        return txt
 
     # Adventure mode clipping of all characters after '>'
     if(vars.adventure):
@@ -7085,13 +7079,13 @@ class GenerationInputSchema(SamplerSettingsSchema):
     max_length: int = fields.Integer(validate=validate.Range(min=1, max=512), metadata={"description": "Number of tokens to generate."})
     max_context_length: int = fields.Integer(validate=validate.Range(min=512, max=2048), metadata={"description": "Maximum number of tokens to send to the model."})
     n: int = fields.Integer(validate=validate.Range(min=1, max=5), metadata={"description": "Number of outputs to generate."})
-    disable_output_formatting: bool = fields.Boolean(load_default=True, metadata={"description": "When enabled, disables all output formatting options, overriding their individual enabled/disabled states."})
-    frmttriminc: Optional[bool] = fields.Boolean(metadata={"description": "Output formatting option. When enabled, removes some characters from the end of the output such that the output doesn't end in the middle of a sentence. If the output is less than one sentence long, does nothing.\n\nWARNING: This has no effect unless `disable_output_formatting` is set to `false`."})
-    frmtrmblln: Optional[bool] = fields.Boolean(metadata={"description": "Output formatting option. When enabled, replaces all occurrences of two or more consecutive newlines in the output with one newline.\n\nWARNING: This has no effect unless `disable_output_formatting` is set to `false`."})
-    frmtrmspch: Optional[bool] = fields.Boolean(metadata={"description": "Output formatting option. When enabled, removes `#/@%{}+=~|\^<>` from the output.\n\nWARNING: This has no effect unless `disable_output_formatting` is set to `false`."})
-    singleline: Optional[bool] = fields.Boolean(metadata={"description": "Output formatting option. When enabled, removes everything after the first line of the output, including the newline.\n\nWARNING: This has no effect unless `disable_output_formatting` is set to `false`."})
-    disable_input_formatting: bool = fields.Boolean(load_default=True, metadata={"description": "When enabled, disables all input formatting options, overriding their individual enabled/disabled states."})
-    frmtadsnsp: Optional[bool] = fields.Boolean(metadata={"description": "Input formatting option. When enabled, adds a leading space to your input if there is no trailing whitespace at the end of the previous action.\n\nWARNING: This has no effect unless `disable_input_formatting` is set to `false`."})
+    disable_output_formatting: bool = fields.Boolean(load_default=True, metadata={"description": "When enabled, all output formatting options default to `false` instead of the value in the KoboldAI GUI."})
+    frmttriminc: Optional[bool] = fields.Boolean(metadata={"description": "Output formatting option. When enabled, removes some characters from the end of the output such that the output doesn't end in the middle of a sentence. If the output is less than one sentence long, does nothing.\n\nIf `disable_output_formatting` is `true`, this defaults to `false` instead of the value in the KoboldAI GUI."})
+    frmtrmblln: Optional[bool] = fields.Boolean(metadata={"description": "Output formatting option. When enabled, replaces all occurrences of two or more consecutive newlines in the output with one newline.\n\nIf `disable_output_formatting` is `true`, this defaults to `false` instead of the value in the KoboldAI GUI."})
+    frmtrmspch: Optional[bool] = fields.Boolean(metadata={"description": "Output formatting option. When enabled, removes `#/@%{}+=~|\^<>` from the output.\n\nIf `disable_output_formatting` is `true`, this defaults to `false` instead of the value in the KoboldAI GUI."})
+    singleline: Optional[bool] = fields.Boolean(metadata={"description": "Output formatting option. When enabled, removes everything after the first line of the output, including the newline.\n\nIf `disable_output_formatting` is `true`, this defaults to `false` instead of the value in the KoboldAI GUI."})
+    disable_input_formatting: bool = fields.Boolean(load_default=True, metadata={"description": "When enabled, all input formatting options default to `false` instead of the value in the KoboldAI GUI"})
+    frmtadsnsp: Optional[bool] = fields.Boolean(metadata={"description": "Input formatting option. When enabled, adds a leading space to your input if there is no trailing whitespace at the end of the previous action.\n\nIf `disable_input_formatting` is `true`, this defaults to `false` instead of the value in the KoboldAI GUI."})
 
 class GenerationResultSchema(KoboldSchema):
     text: str = fields.String(required=True, metadata={"description": "Generated output as plain text."})
@@ -7180,25 +7174,25 @@ def _generate_text(body: GenerationInputSchema):
             "type": "service_unavailable",
         }}), mimetype="application/json", status=503))
     mapping = {
-        "rep_pen": ("vars", "rep_pen"),
-        "rep_pen_range": ("vars", "rep_pen_range"),
-        "rep_pen_slope": ("vars", "rep_pen_slope"),
-        "top_k": ("vars", "top_k"),
-        "top_a": ("vars", "top_a"),
-        "top_p": ("vars", "top_p"),
-        "tfs": ("vars", "tfs"),
-        "typical": ("vars", "typical"),
-        "temperature": ("vars", "temp"),
-        "frmtadnsp": ("vars.formatoptns", "@frmtadnsp"),
-        "frmttriminc": ("vars.formatoptns", "@frmttriminc"),
-        "frmtrmblln": ("vars.formatoptns", "@frmtrmblln"),
-        "frmtrmspch": ("vars.formatoptns", "@frmtrmspch"),
-        "singleline": ("vars.formatoptns", "@singleline"),
-        "disable_input_formatting": ("vars", "disable_input_formatting"),
-        "disable_output_formatting": ("vars", "disable_output_formatting"),
-        "max_length": ("vars", "genamt"),
-        "max_context_length": ("vars", "max_length"),
-        "n": ("vars", "numseqs"),
+        "disable_input_formatting": ("vars", "disable_input_formatting", None),
+        "disable_output_formatting": ("vars", "disable_output_formatting", None),
+        "rep_pen": ("vars", "rep_pen", None),
+        "rep_pen_range": ("vars", "rep_pen_range", None),
+        "rep_pen_slope": ("vars", "rep_pen_slope", None),
+        "top_k": ("vars", "top_k", None),
+        "top_a": ("vars", "top_a", None),
+        "top_p": ("vars", "top_p", None),
+        "tfs": ("vars", "tfs", None),
+        "typical": ("vars", "typical", None),
+        "temperature": ("vars", "temp", None),
+        "frmtadsnsp": ("vars.formatoptns", "@frmtadsnsp", "input"),
+        "frmttriminc": ("vars.formatoptns", "@frmttriminc", "output"),
+        "frmtrmblln": ("vars.formatoptns", "@frmtrmblln", "output"),
+        "frmtrmspch": ("vars.formatoptns", "@frmtrmspch", "output"),
+        "singleline": ("vars.formatoptns", "@singleline", "output"),
+        "max_length": ("vars", "genamt", None),
+        "max_context_length": ("vars", "max_length", None),
+        "n": ("vars", "numseqs", None),
     }
     saved_settings = {}
     set_aibusy(1)
@@ -7212,6 +7206,10 @@ def _generate_text(body: GenerationInputSchema):
     vars.output_streaming = False
     for key, entry in mapping.items():
         obj = {"vars": vars, "vars.formatoptns": vars.formatoptns}[entry[0]]
+        if entry[2] == "input" and vars.disable_input_formatting and not hasattr(body, key):
+            setattr(body, key, False)
+        if entry[2] == "output" and vars.disable_output_formatting and not hasattr(body, key):
+            setattr(body, key, False)
         if getattr(body, key, None) is not None:
             if entry[1].startswith("@"):
                 saved_settings[key] = obj[entry[1][1:]]
