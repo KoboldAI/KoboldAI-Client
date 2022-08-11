@@ -4864,6 +4864,7 @@ def sendtoapi(txt, min, max):
     reqdata = {
         'prompt': txt,
         'max_length': max - min + 1,
+        'max_context_length': vars.max_length,
         'rep_pen': vars.rep_pen,
         'rep_pen_slope': vars.rep_pen_slope,
         'rep_pen_range': vars.rep_pen_range,
@@ -4879,7 +4880,7 @@ def sendtoapi(txt, min, max):
     # Create request
     while True:
         req = requests.post(
-            vars.colaburl.replace("/request", "/api/v1/generate"),
+            vars.colaburl[:-8] + "/api/v1/generate",
             json=reqdata,
         )
         if(req.status_code == 503):  # Server is currently generating something else so poll until it's our turn
