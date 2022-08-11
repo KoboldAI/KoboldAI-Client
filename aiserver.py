@@ -543,7 +543,10 @@ def device_config(config):
     global breakmodel, generator
     import breakmodel
     n_layers = utils.num_layers(config)
-    if(args.breakmodel_gpulayers is not None or (utils.HAS_ACCELERATE and args.breakmodel_disklayers is not None)):
+    if args.cpu:
+        breakmodel.gpu_blocks = [0]*n_layers
+        return
+    elif(args.breakmodel_gpulayers is not None or (utils.HAS_ACCELERATE and args.breakmodel_disklayers is not None)):
         try:
             if(not args.breakmodel_gpulayers):
                 breakmodel.gpu_blocks = []
@@ -1209,6 +1212,8 @@ def get_model_info(model, directory=""):
         url = True
     elif not utils.HAS_ACCELERATE and not torch.cuda.is_available():
         pass
+    elif args.cpu:
+        pass
     else:
         layer_count = get_layer_count(model, directory=directory)
         if layer_count is None:
@@ -1728,8 +1733,12 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
             time.sleep(0.1)
     if gpu_layers is not None:
         args.breakmodel_gpulayers = gpu_layers
+    elif initial_load:
+        gpu_layers = args.breakmodel_gpulayers
     if disk_layers is not None:
         args.breakmodel_disklayers = int(disk_layers)
+    elif initial_load:
+        disk_layers = args.breakmodel_disklayers
     
     #We need to wipe out the existing model and refresh the cuda cache
     model = None
@@ -1838,41 +1847,19 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
         else:
             print("{0}NOT FOUND!{1}".format(colors.YELLOW, colors.END))
         
-        if args.model:
-            if(vars.hascuda):
-                genselected = True
+        if args.cpu:
+            vars.usegpu = False
+            gpu_layers = None
+            disk_layers = None
+            vars.breakmodel = False
+        elif vars.hascuda:
+            if(vars.bmsupported):
+                vars.usegpu = False
+                vars.breakmodel = True
+            else:
+                vars.breakmodel = False
                 vars.usegpu = True
-                vars.breakmodel = utils.HAS_ACCELERATE
-            if(vars.bmsupported):
-                vars.usegpu = False
-                vars.breakmodel = True
-            if(args.cpu):
-                vars.usegpu = False
-                vars.breakmodel = utils.HAS_ACCELERATE
-        elif(vars.hascuda):    
-            if(vars.bmsupported):
-                genselected = True
-                vars.usegpu = False
-                vars.breakmodel = True
-            else:
-                genselected = False
-        else:
-            genselected = False
 
-        if(vars.hascuda):
-            if(use_gpu):
-                if(vars.bmsupported):
-                    vars.breakmodel = True
-                    vars.usegpu = False
-                    genselected = True
-                else:
-                    vars.breakmodel = False
-                    vars.usegpu = True
-                    genselected = True
-            else:
-                vars.breakmodel = utils.HAS_ACCELERATE
-                vars.usegpu = False
-                genselected = True
 
     # Ask for API key if InferKit was selected
     if(vars.model == "InferKit"):
@@ -2091,7 +2078,8 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
                 
                 # If we're using torch_lazy_loader, we need to get breakmodel config
                 # early so that it knows where to load the individual model tensors
-                if(utils.HAS_ACCELERATE or vars.lazy_load and vars.hascuda and vars.breakmodel):
+                if (utils.HAS_ACCELERATE or vars.lazy_load and vars.hascuda and vars.breakmodel) and not vars.nobreakmodel:
+                    print(1)
                     device_config(model_config)
 
                 # Download model from Huggingface if it does not exist, otherwise load locally
@@ -2222,6 +2210,7 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
                     elif(vars.breakmodel):  # Use both RAM and VRAM (breakmodel)
                         vars.modeldim = get_hidden_size_from_model(model)
                         if(not vars.lazy_load):
+                            print(2)
                             device_config(model.config)
                         move_model_to_devices(model)
                     elif(utils.HAS_ACCELERATE and __import__("breakmodel").disk_blocks > 0):
@@ -3460,7 +3449,7 @@ def get_message(msg):
             else:
                 filename = "settings/{}.breakmodel".format(vars.model.replace('/', '_'))
             f = open(filename, "w")
-            f.write(msg['gpu_layers'] + '\n' + msg['disk_layers'])
+            f.write(str(msg['gpu_layers']) + '\n' + str(msg['disk_layers']))
             f.close()
         vars.colaburl = msg['url'] + "/request"
         load_model(use_gpu=msg['use_gpu'], gpu_layers=msg['gpu_layers'], disk_layers=msg['disk_layers'], online_model=msg['online_model'])
