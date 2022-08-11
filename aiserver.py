@@ -495,7 +495,7 @@ def handler(e):
 class KoboldOutOfMemoryError(HTTPException):
     code = 507
     description = "KoboldAI ran out of memory."
-    type = "out_of_memory.unknown"
+    type = "out_of_memory.unknown.unknown"
     def __init__(self, *args, type=None, **kwargs):
         super().__init__(*args, **kwargs)
         if type is not None:
@@ -580,12 +580,12 @@ tags = [
     {"name": "config", "description": "Allows you to get/set various setting values"},
 ]
 
-api_version = None
+api_version = None  # This gets set automatically so don't change this value
 
-api_latest_version = "1.1.0"
+api_latest_version = "1.1.1"  # Set this to the latest API version available
 
 api_v1 = KoboldAPISpec(
-    version="1.1.0",
+    version="1.1.1",
     prefixes=["/api/v1", "/api/latest"],
     tags=tags,
 )
@@ -7883,7 +7883,6 @@ def post_story_num_delete(num: int):
                 detail:
                   msg: No chunk with the given num exists.
                   type: key_error
-        {api_validation_error_response}
         {api_server_busy_response}
     """
     if num < 1:
@@ -7920,7 +7919,6 @@ def delete_story():
           content:
             application/json:
               schema: EmptySchema
-        {api_validation_error_response}
         {api_server_busy_response}
     """
     if vars.aibusy or vars.genseqs:
