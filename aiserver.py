@@ -1209,6 +1209,8 @@ def get_model_info(model, directory=""):
         url = True
     elif not utils.HAS_ACCELERATE and not torch.cuda.is_available():
         pass
+    elif args.cpu:
+        pass
     else:
         layer_count = get_layer_count(model, directory=directory)
         if layer_count is None:
@@ -3460,7 +3462,7 @@ def get_message(msg):
             else:
                 filename = "settings/{}.breakmodel".format(vars.model.replace('/', '_'))
             f = open(filename, "w")
-            f.write(msg['gpu_layers'] + '\n' + msg['disk_layers'])
+            f.write(str(msg['gpu_layers']) + '\n' + str(msg['disk_layers']))
             f.close()
         vars.colaburl = msg['url'] + "/request"
         load_model(use_gpu=msg['use_gpu'], gpu_layers=msg['gpu_layers'], disk_layers=msg['disk_layers'], online_model=msg['online_model'])
