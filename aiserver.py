@@ -369,6 +369,7 @@ class vars:
     use_colab_tpu = os.environ.get("COLAB_TPU_ADDR", "") != "" or os.environ.get("TPU_NAME", "") != ""  # Whether or not we're in a Colab TPU instance or Kaggle TPU instance and are going to use the TPU rather than the CPU
     revision    = None
     standalone = False
+    api_tokenizer_id = None
     disable_set_aibusy = False
     disable_input_formatting = False
     disable_output_formatting = False
@@ -1259,7 +1260,6 @@ def general_startup(override_args=None):
     parser.add_argument("--override_rename", action='store_true', help="Renaming stories from inside the browser is disabled if you are using --remote and enabled otherwise. Using this option will instead allow renaming stories if using --remote and prevent renaming stories otherwise.")
     parser.add_argument("--configname", help="Force a fixed configuration name to aid with config management.")
     parser.add_argument("--colab", action='store_true', help="Optimize for Google Colab.")
-    parser.add_argument("--tokenizer", type=str, help="When using the \"KoboldAI API\" backend option, this controls the tokenizer to use. This can be set to a Hugging Face model ID or the path to a folder under \"models\" in the KoboldAI folder.")
     parser.add_argument("--nobreakmodel", action='store_true', help="Disables Breakmodel support completely.")
     parser.add_argument("--unblock", action='store_true', default=False, help="Unblocks the KoboldAI port to be accessible from other machines without optimizing for remote play (It is recommended to use --host instead)")
     parser.add_argument("--quiet", action='store_true', default=False, help="If present will suppress any story related text from showing on the console")
@@ -2539,29 +2539,9 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
             }
 
         # If we're running Colab or OAI, we still need a tokenizer.
-        if(vars.model == "Colab"):
+        if(vars.model in ("Colab", "API")):
             from transformers import GPT2TokenizerFast
             tokenizer = GPT2TokenizerFast.from_pretrained("EleutherAI/gpt-neo-2.7B", revision=vars.revision, cache_dir="cache")
-            loadsettings()
-        elif(vars.model == "API"):
-            tokenizer_id = getattr(args, "tokenizer", None)
-            if tokenizer_id is None:
-                tokenizer_id = "EleutherAI/gpt-neo-2.7B"
-            if(os.path.isdir(tokenizer_id)):
-                try:
-                    tokenizer = AutoTokenizer.from_pretrained(tokenizer_id, revision=vars.revision, cache_dir="cache")
-                except:
-                    tokenizer = AutoTokenizer.from_pretrained(tokenizer_id, revision=vars.revision, cache_dir="cache", use_fast=False)
-            elif(os.path.isdir("models/{}".format(args.tokenizer.replace('/', '_')))):
-                try:
-                    tokenizer = AutoTokenizer.from_pretrained("models/{}".format(tokenizer_id.replace('/', '_')), revision=vars.revision, cache_dir="cache")
-                except:
-                    tokenizer = AutoTokenizer.from_pretrained("models/{}".format(tokenizer_id.replace('/', '_')), revision=vars.revision, cache_dir="cache", use_fast=False)
-            else:
-                try:
-                    tokenizer = AutoTokenizer.from_pretrained(tokenizer_id, revision=vars.revision, cache_dir="cache")
-                except:
-                    tokenizer = AutoTokenizer.from_pretrained(tokenizer_id, revision=vars.revision, cache_dir="cache", use_fast=False)
             loadsettings()
         elif(vars.model == "OAI"):
             from transformers import GPT2TokenizerFast
@@ -3911,6 +3891,32 @@ def actionsubmit(data, actionmode=0, force_submit=False, force_prompt_gen=False,
     
     while(True):
         set_aibusy(1)
+
+        if(vars.model == "API"):
+            global tokenizer
+            tokenizer_id = requests.get(
+                vars.colaburl[:-8] + "/api/v1/model",
+            ).json()["result"]
+            if tokenizer_id != vars.api_tokenizer_id:
+                try:
+                    if(os.path.isdir(tokenizer_id)):
+                        try:
+                            tokenizer = AutoTokenizer.from_pretrained(tokenizer_id, revision=vars.revision, cache_dir="cache")
+                        except:
+                            tokenizer = AutoTokenizer.from_pretrained(tokenizer_id, revision=vars.revision, cache_dir="cache", use_fast=False)
+                    elif(os.path.isdir("models/{}".format(tokenizer_id.replace('/', '_')))):
+                        try:
+                            tokenizer = AutoTokenizer.from_pretrained("models/{}".format(tokenizer_id.replace('/', '_')), revision=vars.revision, cache_dir="cache")
+                        except:
+                            tokenizer = AutoTokenizer.from_pretrained("models/{}".format(tokenizer_id.replace('/', '_')), revision=vars.revision, cache_dir="cache", use_fast=False)
+                    else:
+                        try:
+                            tokenizer = AutoTokenizer.from_pretrained(tokenizer_id, revision=vars.revision, cache_dir="cache")
+                        except:
+                            tokenizer = AutoTokenizer.from_pretrained(tokenizer_id, revision=vars.revision, cache_dir="cache", use_fast=False)
+                except:
+                    print(f"WARNING:  Unknown tokenizer {repr(tokenizer_id)}")
+                vars.api_tokenizer_id = tokenizer_id
 
         if(disable_recentrng):
             vars.recentrng = vars.recentrngm = None
