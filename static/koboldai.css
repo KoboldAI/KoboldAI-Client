@@ -925,6 +925,7 @@ body {
 .popup .item .file {
 	grid-area: file;
 	display: grid;
+	cursor: pointer;
 }
 
 .popup .item .file:hover {
@@ -969,6 +970,7 @@ body {
 	display: grid;
 	grid-template-areas: "item gpu_size";
 	grid-template-columns: auto 40px;
+	cursor: pointer;
 }
 
 .popup .item .model:hover {
