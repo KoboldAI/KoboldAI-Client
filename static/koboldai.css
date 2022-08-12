@@ -386,6 +386,10 @@
 }
 
 /* -----------------------------------------Bias-------------------------------------- */
+#biases_label {
+	cursor: pointer;
+}
+
 .bias {
 	display: grid;
 	grid-template-areas: "phrase percent max";
@@ -551,6 +555,11 @@
 }
 }
 
+.story_menu_pin {
+	color: #999;
+	cursor: pointer;
+}
+
 
 table.server_vars {
 	border: 1px solid #959595;
@@ -580,6 +589,10 @@ td.server_vars {
 
 .WI_Folder table {
 	margin: 5px;
+}
+
+.wi_folder_collapser, .wi_add_button {
+	cursor: pointer;
 }
 
 .world_info_card {
@@ -953,6 +966,7 @@ body {
 .popup .item .file {
 	grid-area: file;
 	display: grid;
+	cursor: pointer;
 }
 
 .popup .item .file:hover {
@@ -997,6 +1011,7 @@ body {
 	display: grid;
 	grid-template-areas: "item gpu_size";
 	grid-template-columns: auto 40px;
+	cursor: pointer;
 }
 
 .popup .item .model:hover {
