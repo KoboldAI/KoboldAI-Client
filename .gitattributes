@@ -1,2 +1,3 @@
 *.min.lua linguist-vendored
 *documentation.html linguist-vendored
+/static/swagger-ui/* linguist-vendored
