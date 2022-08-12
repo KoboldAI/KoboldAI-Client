@@ -1061,7 +1061,7 @@ function world_info_entry(data) {
 	content.setAttribute("uid", data.uid);
 	content.value = data.content;
 	content.onchange = function () {
-							world_info_data[this.getAttribute('uid')]['content'] = this.textContent;
+							world_info_data[this.getAttribute('uid')]['content'] = this.value;
 							send_world_info(this.getAttribute('uid'));
 							this.classList.add("pulse");
 						}
