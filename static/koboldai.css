@@ -516,8 +516,6 @@
 }
 
 .story_title_area {
-	display: flex;
-	justify-content: space-between;
 }
 
 .story_title_area .var_sync_story_story_name {

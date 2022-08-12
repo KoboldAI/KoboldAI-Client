@@ -27,42 +27,28 @@
 <!-- top menu bar-->
 <div class="menu_pin_area"></div>
 <div class="tabrow">
-	<span class="setting_menu_button selected" onclick="show_setting_menu(this);">Model</span>
-	<span class="setting_menu_button" onclick="show_setting_menu(this);">Story</span>
+	<span class="setting_menu_button selected" onclick="show_setting_menu(this);">Story</span>
+	<span class="setting_menu_button" onclick="show_setting_menu(this);">Model</span>
 	<span class="setting_menu_button" onclick="show_setting_menu(this);">User</span>
 	<span class="setting_menu_button" onclick="show_setting_menu(this);">UI</span>
 	<span style="float: right;margin-right: 30px;" onclick="window.open('https://github.com/KoboldAI/KoboldAI-Client/wiki');">Help</span>
 </div>
 <div class="flyout_menu_contents">
 
-	<div id="setting_menu_model" class="settings_category_area">
-		<div id="Model_Info">
-			<div>
-				Running Model: <span class="var_sync_model_model">ReadOnly</span>
-				<select id=presets class="var_sync_model_selected_preset settings_select presets" onchange='sync_to_server(this)'><option>Preset</option></select>
-			</div>
-			<div><button class="btn action_button" onclick="socket.emit('load_model_button', {});">Load Model</button></div>
-		</div>
-		<div class="setting_tile_area">
-		{% with menu='Model' %}
-			{% include 'settings item.html' %}
-		{% endwith %}
-		</div>
-	</div>
-	<div id="setting_menu_story" class="hidden settings_category_area">
+	<div id="setting_menu_story" class="settings_category_area">
 		<div id="Story_Info">
 			<hr/>
 			<div class="story_title_area">
 				<span class="story_title">
 					<b>Story Name: </b>
-					<span class="var_sync_story_story_name" contenteditable=true onblur="sync_to_server(this);"></span>
+					<span class="var_sync_story_story_name fullwidth" contenteditable=true onblur="sync_to_server(this);"></span>
 				</span>
-				<span class="story_title_icons">
+				<div class="story_title_icons">
 					<span class="material-icons-outlined cursor" title="Load Story" onclick="socket.emit('load_story_list', '');">file_open</span>
 					<span class="material-icons-outlined cursor var_sync_alt_story_gamesaved" title="Save Story">save</span>
 					<span class="material-icons-outlined cursor" title="Import Story">cloud_download</span>
 					<span class="material-icons-outlined cursor" title="Download Story" onclick="document.getElementById('download_iframe').src = 'json';">file_download</span>
-				</span>
+				</div>
 			</div>
 			<hr/>
 		</div>
@@ -85,6 +71,20 @@
 				<div class="bias_header_score">Score</div>
 				<div class="bias_header_comp_threshold">Completion Threshold</div>
 			</div>
+		</div>
+	</div>
+	<div id="setting_menu_model" class="hidden settings_category_area">
+		<div id="Model_Info">
+			<div>
+				Running Model: <span class="var_sync_model_model">ReadOnly</span>
+				<select id=presets class="var_sync_model_selected_preset settings_select presets" onchange='sync_to_server(this)'><option>Preset</option></select>
+			</div>
+			<div><button class="btn action_button" onclick="socket.emit('load_model_button', {});">Load Model</button></div>
+		</div>
+		<div class="setting_tile_area">
+		{% with menu='Model' %}
+			{% include 'settings item.html' %}
+		{% endwith %}
 		</div>
 	</div>
 	<div id="setting_menu_user" class="hidden settings_category_area">
