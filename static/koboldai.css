@@ -386,6 +386,10 @@
 }
 
 /* -----------------------------------------Bias-------------------------------------- */
+#biases_label {
+	cursor: pointer;
+}
+
 .bias {
 	display: grid;
 	grid-template-areas: "phrase percent max";
