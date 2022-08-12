@@ -526,6 +526,11 @@
 }
 }
 
+.story_menu_pin {
+	color: #999;
+	cursor: pointer;
+}
+
 
 table.server_vars {
 	border: 1px solid #959595;
