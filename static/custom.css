@@ -1695,3 +1695,30 @@ body.connected .popupfooter, .popupfooter.always-available {
 	overflow-x: auto;
 	white-space: nowrap;
 }
+
+.tokens-counted {
+	position: relative;
+}
+
+.input-token-usage {
+	color: white;
+	position: absolute;
+	font-size: 10px;
+	bottom: 2px;
+	right: 5px;
+
+	-webkit-user-select: none;
+	-moz-user-select: none;
+	-ms-user-select: none;
+	user-select: none;
+}
+
+/* Override needed here due to the 10px right padding on inputrowleft; add 10 px. */
+#inputrowleft > .input-token-usage {
+	right: 15px;
+	bottom: 1px;
+}
+
+.wientry > .input-token-usage {
+	bottom: 8px;
+}
