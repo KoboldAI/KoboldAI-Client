@@ -1859,6 +1859,11 @@ function update_token_lengths() {
 		prompt_length = parseInt(document.getElementById("story_prompt").getAttribute("story_prompt_length"));
 	}
 	
+	//prompt is truncated at 512 tokens
+	if (prompt_length > 512) {
+		prompt_length = 512;
+	}
+	
 	//used token length
 	token_length = memory_length + authors_notes;
 	

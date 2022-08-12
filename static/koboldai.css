@@ -515,6 +515,37 @@
 	height: calc(100vh - 150px);
 }
 
+.story_title_area {
+	display: flex;
+	justify-content: space-between;
+}
+
+.story_title_area .var_sync_story_story_name {
+	border-bottom: 1px solid;
+	padding-bottom: 5px;
+}
+
+.story_title_area .var_sync_story_story_name[contenteditable="true"]:active,
+.story_title_area .var_sync_story_story_name[contenteditable="true"]:focus{
+	border:none;
+	outline:none;
+	color: var(--text_edit);
+	border-bottom: 1px solid var(--text);
+	padding-bottom: 5px;
+}
+
+.story_title {
+	font-size: x-large;
+}
+
+.story_title_icons {
+	font-size: 18px;
+}
+
+.material-icons-outlined[story_gamesaved="true"] {
+	filter: brightness(40%);
+}
+
 @media only screen and (max-aspect-ratio: 7/5) {
 /* mobile */
 .story_menu_pin {
@@ -889,7 +920,6 @@ body {
 }
 
 .popup .popup_list_area {
-	height: 70vh;
 	overflow-x: hidden;
 	flex-grow: 1;
 	flex-shrink: 0;
@@ -1143,7 +1173,32 @@ body.NotConnected {
 }
 
 @font-face {
-  font-family: 'Material Symbols Outlined';
+  font-family: 'Material Icons Outlined';
   font-style: normal;
-  src: url(/material-symbols.woff) format('woff');
+  src: url(/static/MaterialSymbolsOutlined.ttf) format('truetype');
+}
+
+.material-icons-outlined {
+  font-family: 'Material Icons Outlined';
+  font-weight: normal;
+  font-style: normal;
+  font-size: 24px;  /* Preferred icon size */
+  display: inline-block;
+  line-height: 1;
+  text-transform: none;
+  letter-spacing: normal;
+  word-wrap: normal;
+  white-space: nowrap;
+  direction: ltr;
+
+  /* Support for all WebKit browsers. */
+  -webkit-font-smoothing: antialiased;
+  /* Support for Safari and Chrome. */
+  text-rendering: optimizeLegibility;
+
+  /* Support for Firefox. */
+  -moz-osx-font-smoothing: grayscale;
+
+  /* Support for IE. */
+  font-feature-settings: 'liga';
 }
