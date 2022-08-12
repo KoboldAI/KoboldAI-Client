@@ -562,6 +562,10 @@ td.server_vars {
 	margin: 5px;
 }
 
+.wi_folder_collapser, .wi_add_button {
+	cursor: pointer;
+}
+
 .world_info_card {
 	width: 95%;
 	border: 2px outset var(--wi_card_border_color);

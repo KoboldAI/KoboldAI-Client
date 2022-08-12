@@ -1151,6 +1151,7 @@ function world_info_folder(data) {
 			collapse_icon = document.createElement("span");
 			collapse_icon.id = "world_info_folder_collapse_"+folder_name;
 			collapse_icon.classList.add("oi");
+			collapse_icon.classList.add("wi_folder_collapser");
 			collapse_icon.setAttribute("data-glyph", "chevron-bottom");
 			collapse_icon.setAttribute("folder", folder_name);
 			collapse_icon.onclick = function () {
@@ -1162,6 +1163,7 @@ function world_info_folder(data) {
 			expand_icon = document.createElement("span");
 			expand_icon.id = "world_info_folder_expand_"+folder_name;
 			expand_icon.classList.add("oi");
+			expand_icon.classList.add("wi_folder_collapser");
 			expand_icon.setAttribute("data-glyph", "chevron-right");
 			expand_icon.setAttribute("folder", folder_name);
 			expand_icon.onclick = function () {
@@ -1190,6 +1192,7 @@ function world_info_folder(data) {
 			//create add button
 			add_icon = document.createElement("span");
 			add_icon.classList.add("oi");
+			add_icon.classList.add("wi_add_button");
 			add_icon.setAttribute("data-glyph", "plus");
 			add_icon.textContent = "Add World Info Entry";
 			add_icon.setAttribute("folder", folder_name);
