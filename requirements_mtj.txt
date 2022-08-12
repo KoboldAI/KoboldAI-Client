@@ -18,3 +18,5 @@ lupa==1.10
 markdown
 bleach==4.1.0
 flask-session
+marshmallow>=3.13
+apispec-webframeworks

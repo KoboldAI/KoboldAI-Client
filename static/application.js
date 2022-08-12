@@ -79,6 +79,7 @@ var rs_close;
 var seqselmenu;
 var seqselcontents;
 var stream_preview;
+var token_prob_container;
 
 var storyname = null;
 var memorymode = false;
@@ -511,6 +512,16 @@ function addWiLine(ob) {
 		$(".wisortable-excluded-dynamic").removeClass("wisortable-excluded-dynamic");
 		$(this).parent().css("max-height", "").find(".wicomment").find(".form-control").css("max-height", "");
 	});
+
+	for (const wientry of document.getElementsByClassName("wientry")) {
+		// If we are uninitialized, skip.
+		if ($(wientry).closest(".wilistitem-uninitialized").length) continue;
+
+		// add() will not add if the class is already present
+		wientry.classList.add("tokens-counted");
+	}
+
+	registerTokenCounters();
 }
 
 function addWiFolder(uid, ob) {
@@ -834,6 +845,7 @@ function exitMemoryMode() {
 	button_actmem.html("Memory");
 	show([button_actback, button_actfwd, button_actretry, button_actwi]);
 	input_text.val("");
+	updateInputBudget(input_text[0]);
 	// Hide Author's Note field
 	anote_menu.slideUp("fast");
 }
@@ -890,7 +902,7 @@ function formatChunkInnerText(chunk) {
 }
 
 function dosubmit(disallow_abort) {
-	ignore_stream = false;
+	beginStream();
 	submit_start = Date.now();
 	var txt = input_text.val().replace(/\u00a0/g, " ");
 	if((disallow_abort || gamestate !== "wait") && !memorymode && !gamestarted && ((!adventure || !action_mode) && txt.trim().length == 0)) {
@@ -905,7 +917,7 @@ function dosubmit(disallow_abort) {
 }
 
 function _dosubmit() {
-	ignore_stream = false;
+	beginStream();
 	var txt = submit_throttle.txt;
 	var disallow_abort = submit_throttle.disallow_abort;
 	submit_throttle = null;
@@ -1048,6 +1060,18 @@ function buildLoadModelList(ar, menu, breadcrumbs, showdelete) {
 	if (breadcrumbs.length > 0) {
 		$("#loadmodellistbreadcrumbs").append("<hr size='1'>")  
 	}
+	//If we're in the custom load menu (we need to send the path data back in that case)
+	if(['NeoCustom', 'GPT2Custom'].includes(menu)) {
+		$("#loadmodel"+i).off("click").on("click", (function () {
+			return function () {
+				socket.send({'cmd': 'selectmodel', 'data': $(this).attr("name"), 'path': $(this).attr("pretty_name")});
+				highlightLoadLine($(this));
+			}
+		})(i));
+		$("#custommodelname").removeClass("hidden");
+		$("#custommodelname")[0].setAttribute("menu", menu);
+	}
+	
 	for(i=0; i<ar.length; i++) {
 		if (Array.isArray(ar[i][0])) {
 			full_path = ar[i][0][0];
@@ -1065,7 +1089,7 @@ function buildLoadModelList(ar, menu, breadcrumbs, showdelete) {
 			html = html + "<span class=\"loadlisticon loadmodellisticon-folder oi oi-folder allowed\"  aria-hidden=\"true\"></span>"
 		} else {
 		//this is a model
-			html = html + "<div class=\"loadlistpadding\"></div>"
+			html = html + "<div class=\"loadlisticon oi oi-caret-right allowed\"></div>"
 		}
 		
 		//now let's do the delete icon if applicable
@@ -1083,6 +1107,7 @@ function buildLoadModelList(ar, menu, breadcrumbs, showdelete) {
 					</div>"
 		loadmodelcontent.append(html);
 		//If this is a menu
+		console.log(ar[i]);
 		if(ar[i][3]) {
 			$("#loadmodel"+i).off("click").on("click", (function () {
 				return function () {
@@ -1090,27 +1115,29 @@ function buildLoadModelList(ar, menu, breadcrumbs, showdelete) {
 					disableButtons([load_model_accept]);
 				}
 			})(i));
-		//If we're in the custom load menu (we need to send the path data back in that case)
-		} else if(['NeoCustom', 'GPT2Custom'].includes(menu)) {
-			$("#loadmodel"+i).off("click").on("click", (function () {
-				return function () {
-					socket.send({'cmd': 'selectmodel', 'data': $(this).attr("name"), 'path': $(this).attr("pretty_name")});
-					highlightLoadLine($(this));
-				}
-			})(i));
-			$("#custommodelname").removeClass("hidden");
-			$("#custommodelname")[0].setAttribute("menu", menu);
 		//Normal load
 		} else {
-			$("#loadmodel"+i).off("click").on("click", (function () {
-				return function () {
-					$("#use_gpu_div").addClass("hidden");
-					$("#modelkey").addClass("hidden");
-					$("#modellayers").addClass("hidden");
-					socket.send({'cmd': 'selectmodel', 'data': $(this).attr("name")});
-					highlightLoadLine($(this));
-				}
-			})(i));
+			if (['NeoCustom', 'GPT2Custom'].includes(menu)) {
+				$("#loadmodel"+i).off("click").on("click", (function () {
+					return function () {
+						$("#use_gpu_div").addClass("hidden");
+						$("#modelkey").addClass("hidden");
+						$("#modellayers").addClass("hidden");
+						socket.send({'cmd': 'selectmodel', 'data': $(this).attr("name"), 'path': $(this).attr("pretty_name")});
+						highlightLoadLine($(this));
+					}
+				})(i));
+			} else {
+				$("#loadmodel"+i).off("click").on("click", (function () {
+					return function () {
+						$("#use_gpu_div").addClass("hidden");
+						$("#modelkey").addClass("hidden");
+						$("#modellayers").addClass("hidden");
+						socket.send({'cmd': 'selectmodel', 'data': $(this).attr("name")});
+						highlightLoadLine($(this));
+					}
+				})(i));
+			}
 		}
 	}
 }
@@ -2086,6 +2113,11 @@ function unbindGametext() {
 	gametext_bound = false;
 }
 
+function beginStream() {
+	ignore_stream = false;
+	token_prob_container[0].innerHTML = "";
+}
+
 function endStream() {
 	// Clear stream, the real text is about to be displayed.
 	ignore_stream = true;
@@ -2121,6 +2153,45 @@ function RemoveAllButFirstOption(selectElement) {
    for(i = L; i >= 1; i--) {
       selectElement.remove(i);
    }
+}
+
+function interpolateRGB(color0, color1, t) {
+	return [
+		color0[0] + ((color1[0] - color0[0]) * t),
+		color0[1] + ((color1[1] - color0[1]) * t),
+		color0[2] + ((color1[2] - color0[2]) * t),
+	]
+}
+
+function updateInputBudget(inputElement) {
+	let data = {"unencoded": inputElement.value, "field": inputElement.id};
+
+	if (inputElement.id === "anoteinput") {
+		data["anotetemplate"] = $("#anotetemplate").val();
+	}
+
+	socket.send({"cmd": "getfieldbudget", "data": data});
+}
+
+function registerTokenCounters() {
+	// Add token counters to all input containers with the class of "tokens-counted",
+	// if a token counter is not already a child of said container.
+	for (const el of document.getElementsByClassName("tokens-counted")) {
+		if (el.getElementsByClassName("input-token-usage").length) continue;
+
+		let span = document.createElement("span");
+		span.classList.add("input-token-usage");
+		span.innerText = "?/? Tokens";
+		el.appendChild(span);
+
+		let inputElement = el.querySelector("input, textarea");
+
+		inputElement.addEventListener("input", function() {
+			updateInputBudget(this);
+		});
+		
+		updateInputBudget(inputElement);
+	}
 }
 
 //=================================================================//
@@ -2214,6 +2285,8 @@ $(document).ready(function(){
 	rs_close          = $("#btn_rsclose");
 	seqselmenu        = $("#seqselmenu");
 	seqselcontents    = $("#seqselcontents");
+	token_prob_container = $("#token_prob_container");
+	token_prob_menu = $("#token_prob_menu");
 
 	// Connect to SocketIO server
 	socket = io.connect(window.document.origin, {transports: ['polling', 'websocket'], closeOnBeforeunload: false});
@@ -2277,14 +2350,68 @@ $(document).ready(function(){
 			// appearing after the output. To combat this, we only allow tokens
 			// to be displayed after requesting and before recieving text.
 			if (ignore_stream) return;
-			if (!$("#setoutputstreaming")[0].checked) return;
 
-			if (!stream_preview) {
+			let streamingEnabled = $("#setoutputstreaming")[0].checked;
+			let probabilitiesEnabled = $("#setshowprobs")[0].checked;
+
+			if (!streamingEnabled && !probabilitiesEnabled) return;
+
+			if (!stream_preview && streamingEnabled) {
 				stream_preview = document.createElement("span");
 				game_text.append(stream_preview);
 			}
 
-			stream_preview.innerText += msg.data.join("");
+			for (const token of msg.data) {
+				if (streamingEnabled) stream_preview.innerText += token.decoded;
+
+				if (probabilitiesEnabled) {
+					// Probability display
+					let probDiv = document.createElement("div");
+					probDiv.classList.add("token-probs");
+
+					let probTokenSpan = document.createElement("span");
+					probTokenSpan.classList.add("token-probs-header");
+					probTokenSpan.innerText = token.decoded.replaceAll("\n", "\\n");
+					probDiv.appendChild(probTokenSpan);
+
+					let probTable = document.createElement("table");
+					let probTBody = document.createElement("tbody");
+					probTable.appendChild(probTBody);
+
+					for (const probToken of token.probabilities) {
+						let tr = document.createElement("tr");
+						let rgb = interpolateRGB(
+							[255, 255, 255],
+							[0, 255, 0],
+							probToken.score
+						).map(Math.round);
+						let color = `rgb(${rgb.join(", ")})`;
+
+						if (probToken.decoded === token.decoded) {
+							tr.classList.add("token-probs-final-token");
+						}
+
+						let tds = {};
+
+						for (const property of ["tokenId", "decoded", "score"]) {
+							let td = document.createElement("td");
+							td.style.color = color;
+							tds[property] = td;
+							tr.appendChild(td);
+						}
+
+						tds.tokenId.innerText = probToken.tokenId;
+						tds.decoded.innerText = probToken.decoded.toString().replaceAll("\n", "\\n");
+						tds.score.innerText = (probToken.score * 100).toFixed(2) + "%";
+
+						probTBody.appendChild(tr);
+					}
+
+					probDiv.appendChild(probTable);
+					token_prob_container.append(probDiv);
+				}
+			}
+
 			scrollToBottom();
 		} else if(msg.cmd == "updatescreen") {
 			var _gamestarted = gamestarted;
@@ -2316,6 +2443,7 @@ $(document).ready(function(){
 			scrollToBottom();
 		} else if(msg.cmd == "updatechunk") {
 			hideMessage();
+			game_text.attr('contenteditable', allowedit);
 			if (typeof submit_start !== 'undefined') {
 				$("#runtime")[0].innerHTML = `Generation time: ${Math.round((Date.now() - submit_start)/1000)} sec`;
 				delete submit_start;
@@ -2409,6 +2537,7 @@ $(document).ready(function(){
 				memorytext = msg.data;
 				input_text.val(msg.data);
 			}
+			updateInputBudget(input_text[0]);
 		} else if(msg.cmd == "setmemory") {
 			memorytext = msg.data;
 			if(memorymode) {
@@ -2530,6 +2659,7 @@ $(document).ready(function(){
 		} else if(msg.cmd == "setanote") {
 			// Set contents of Author's Note field
 			anote_input.val(msg.data);
+			updateInputBudget(anote_input[0]);
 		} else if(msg.cmd == "setanotetemplate") {
 			// Set contents of Author's Note Template field
 			$("#anotetemplate").val(msg.data);
@@ -2559,6 +2689,14 @@ $(document).ready(function(){
 		} else if(msg.cmd == "updateoutputstreaming") {
 			// Update toggle state
 			$("#setoutputstreaming").prop('checked', msg.data).change();
+		} else if(msg.cmd == "updateshowprobs") {
+			$("#setshowprobs").prop('checked', msg.data).change();
+
+			if(msg.data) {
+				token_prob_menu.removeClass("hidden");
+			} else {
+				token_prob_menu.addClass("hidden");
+			}
 		} else if(msg.cmd == "allowtoggle") {
 			// Allow toggle change states to propagate
 			allowtoggle = msg.data;
@@ -2761,6 +2899,8 @@ $(document).ready(function(){
 			if (msg.key) {
 				$("#modelkey").removeClass("hidden");
 				$("#modelkey")[0].value = msg.key_value;
+				//if we're in the API list, disable to load button until the model is selected (after the API Key is entered)
+				disableButtons([load_model_accept]);
 			} else {
 				$("#modelkey").addClass("hidden");
 				
@@ -2798,6 +2938,7 @@ $(document).ready(function(){
 			}
 		} else if(msg.cmd == 'oai_engines') {
 			$("#oaimodel").removeClass("hidden")
+			enableButtons([load_model_accept]);
 			selected_item = 0;
 			length = $("#oaimodel")[0].options.length;
 			for (let i = 0; i < length; i++) {
@@ -2820,6 +2961,7 @@ $(document).ready(function(){
 			$("#showmodelnamecontainer").removeClass("hidden");
 		} else if(msg.cmd == 'hide_model_name') {
 			$("#showmodelnamecontainer").addClass("hidden");
+			location.reload();
 			//console.log("Closing window");
 		} else if(msg.cmd == 'model_load_status') {
 			$("#showmodelnamecontent").html("<div class=\"flex\"><div class=\"loadlistpadding\"></div><div class=\"loadlistitem\" style='align: left'>" + msg.data + "</div></div>");
@@ -2833,7 +2975,18 @@ $(document).ready(function(){
 				opt.innerHTML = engine[1];
 				$("#oaimodel")[0].appendChild(opt);
 			}
+		} else if(msg.cmd == 'showfieldbudget') {
+			let inputElement = document.getElementById(msg.data.field);
+			let tokenBudgetElement = inputElement.parentNode.getElementsByClassName("input-token-usage")[0];
+			if (msg.data.max === null) {
+				tokenBudgetElement.innerText = "";
+			} else {
+				let tokenLength = msg.data.length ?? "?";
+				let tokenMax = msg.data.max ?? "?";
+				tokenBudgetElement.innerText = `${tokenLength}/${tokenMax} Tokens`;
+			}
 		}
+		enableButtons([load_model_accept]);
 	});
 	
 	socket.on('disconnect', function() {
@@ -2954,7 +3107,7 @@ $(document).ready(function(){
 	});
 	
 	button_actretry.on("click", function(ev) {
-		ignore_stream = false;
+		beginStream();
 		hideMessage();
 		socket.send({'cmd': 'retry', 'chatname': chatmode ? chat_name.val() : undefined, 'data': ''});
 		hidegenseqs();
@@ -3201,7 +3354,7 @@ $(document).ready(function(){
 	});
 	
 	rs_accept.on("click", function(ev) {
-		ignore_stream = false;
+		beginStream();
 		hideMessage();
 		socket.send({'cmd': 'rndgame', 'memory': $("#rngmemory").val(), 'data': topic.val()});
 		hideRandomStoryPopup();
@@ -3301,6 +3454,15 @@ $(document).ready(function(){
 
 		if (handled) ev.preventDefault();
 	});
+
+	$("#anotetemplate").on("input", function() {
+		updateInputBudget(anote_input[0]);
+	})
+
+	registerTokenCounters();
+
+	updateInputBudget(input_text[0]);
+
 });
 
 

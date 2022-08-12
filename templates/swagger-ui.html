@@ -1,0 +1,35 @@
+{# This is the HTML template for Swagger UI (the GUI for the API documentation at /api/latest/docs) #}
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<title>KoboldAI API</title>
+		<meta charset="UTF-8">
+		<link rel="stylesheet" type="text/css" href="/static/swagger-ui/swagger-ui.css" />
+		<link rel="stylesheet" type="text/css" href="/static/swagger-ui/index.css" />
+		<script>
+			if (window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches) document.write('<link rel="stylesheet" type="text/css" href="/static/swagger-ui/SwaggerDark.css" />');
+		</script>
+	</head>
+	<body>
+		<div id="swagger-ui"></div>
+		<script src="/static/swagger-ui/swagger-ui-bundle.js" charset="UTF-8"></script>
+		<script>
+			window.onload = function() {
+				window.ui = SwaggerUIBundle({
+					url: "{{ url }}",
+					oauth2RedirectUrl: "/static/swagger-ui/oauth2-redirect.html",
+					dom_id: "#swagger-ui",
+					deepLinking: true,
+					defaultModelsExpandDepth: 0,  // Causes the "Schemas" section at the bottom to be collapsed by default
+					presets: [
+						SwaggerUIBundle.presets.apis
+					],
+					plugins: [
+						SwaggerUIBundle.plugins.DownloadUrl
+					],
+					layout: "BaseLayout"
+				});
+			};
+		</script>
+	</body>
+</html>
