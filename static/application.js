@@ -1085,11 +1085,12 @@ function buildLoadModelList(ar, menu, breadcrumbs, showdelete) {
 		html = "<div class=\"flex\">\
 			<div class=\"loadlistpadding\"></div>"
 		//if the menu item is a link to another menu
-		if(ar[i][3]) {
+		console.log(ar[i]);
+		if((ar[i][3]) || (['Load a model from its directory', 'Load an old GPT-2 model (eg CloverEdition)'].includes(ar[i][0]))) {
 			html = html + "<span class=\"loadlisticon loadmodellisticon-folder oi oi-folder allowed\"  aria-hidden=\"true\"></span>"
 		} else {
 		//this is a model
-			html = html + "<div class=\"loadlisticon oi oi-caret-right allowed\"></div>"
+			html = html + "<div class=\"loadlisticon oi oi-caret-right allowed\"></div>&nbsp;&nbsp;&nbsp;"
 		}
 		
 		//now let's do the delete icon if applicable
