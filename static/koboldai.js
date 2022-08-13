@@ -1962,13 +1962,14 @@ function update_token_lengths() {
 	}
 	
 	//go backwards through the text chunks and tag them if we still have space
+	passed_token_limit = false;
 	for (var chunk=max_chunk;chunk >= 0;chunk--) {
 		if (document.getElementById("Selected Text Chunk "+chunk).getAttribute("token_length") == null) {
 			current_chunk_length = 999999999999;
 		} else {
 			current_chunk_length = parseInt(document.getElementById("Selected Text Chunk "+chunk).getAttribute("token_length"));
 		}
-		if ((current_chunk_length != 0) && (token_length+current_chunk_length < max_token_length)) {
+		if ((current_chunk_length != 0) && (token_length+current_chunk_length < max_token_length)&& (!(passed_token_limit))) {
 			token_length += current_chunk_length;
 			document.getElementById("Selected Text Chunk "+chunk).classList.add("within_max_length");
 			uids = document.getElementById("Selected Text Chunk "+chunk).getAttribute("world_info_uids")
@@ -1979,6 +1980,9 @@ function update_token_lengths() {
 					document.getElementById("world_info_"+uid).classList.add("world_info_included");
 				}
 			}
+		} else if (!(passed_token_limit) && (current_chunk_length != 0)) {
+			passed_token_limit = true;
+			document.getElementById("Selected Text Chunk "+chunk).classList.remove("within_max_length");
 		} else {
 			document.getElementById("Selected Text Chunk "+chunk).classList.remove("within_max_length");
 		}
