@@ -2018,13 +2018,28 @@ String.prototype.toHHMMSS = function () {
 }
 
 function close_menus() {
+	//close settings menu
 	document.getElementById("setting_menu_icon").classList.remove("change");
 	document.getElementById("SideMenu").classList.remove("open");
 	document.getElementById("main-grid").classList.remove("menu-open");
 	
+	//close story menu
 	document.getElementById("story_menu_icon").classList.remove("change");
 	document.getElementById("rightSideMenu").classList.remove("open");
 	document.getElementById("main-grid").classList.remove("story_menu-open");
+	
+	//close popup menus
+	document.getElementById('popup').classList.add("hidden");
+	document.getElementById('loadmodelcontainer').classList.add("hidden");
+	document.getElementById('loadcontainer').classList.add("hidden");
+	document.getElementById('save-confirm').classList.add("hidden");
+	document.getElementById('error_message').classList.add("hidden");
+	
+	
+	//unselect sampler items
+	for (temp of document.getElementsByClassName("sample_order")) {
+		temp.classList.remove("selected");
+	}
 }
 
 function toggle_flyout(x) {
@@ -2154,21 +2169,23 @@ function detect_enter_text(e) {
 	}
 }
 
-function detect_shift_down(e) {
+function detect_key_down(e) {
 	if ((e.code == "ShiftLeft") || (e.code == "ShiftRight")) {
 		shift_down = true;
+	} else if (e.code == "Escape") {
+		close_menus();
 	}
 }
 
-function detect_shift_up(e) {
+function detect_key_up(e) {
 	if ((e.code == "ShiftLeft") || (e.code == "ShiftRight")) {
 		shift_down = false;
 	}
 }
 
 $(document).ready(function(){
-	document.onkeydown = detect_shift_down;
-	document.onkeyup = detect_shift_up;
+	document.onkeydown = detect_key_down;
+	document.onkeyup = detect_key_up;
 	document.getElementById("input_text").onkeydown = detect_enter_submit;
 	if (getCookie("Settings_Pin") == "false") {
 		settings_unpin();
