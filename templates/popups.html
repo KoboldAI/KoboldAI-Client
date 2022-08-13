@@ -10,8 +10,8 @@
 	</div>
 	<div>Drag file(s) above or click here to Upload File<input id="popup_upload_input" type=file onchange="upload_file(this)"></div>
 	<div class="popup_load_cancel" id="popup_load_cancel">
-		<button class="btn popup_load_cancel_button" id="popup_accept">Load</button>
 		<button class="btn popup_load_cancel_button" id="popup_cancel" onclick='document.getElementById("popup").classList.add("hidden");'>Cancel</button>
+		<button class="btn popup_load_cancel_button" id="popup_accept">Load</button>
 	</div>
 </div>
 
@@ -46,8 +46,8 @@
 			<input type="checkbox" data-toggle="toggle" data-onstyle="success" id="use_gpu" checked>
 			<div class="box-label">Use GPU</div>
 		</div>
-		<button type="button" class="btn popup_load_cancel_button disabled" onclick="load_model()" id="btn_loadmodelaccept">Load</button>
 		<button type="button" class="btn popup_load_cancel_button" onclick='document.getElementById("loadmodelcontainer").classList.add("hidden");' id="btn_loadmodelclose">Cancel</button>
+		<button type="button" class="btn popup_load_cancel_button disabled" onclick="load_model()" id="btn_loadmodelaccept">Load</button>
 	</div>
 </div>
 
@@ -63,8 +63,8 @@
 	<div id="popup_list_area" class="popup_list_area">
 	</div>
 	<div class="popup_load_cancel">
-		<button type="button" class="btn btn-primary" id="btn_loadaccept">Load</button>
 		<button type="button" class="btn btn-primary" id="btn_loadclose">Cancel</button>
+		<button type="button" class="btn btn-primary" id="btn_loadaccept">Load</button>
 	</div>
 </div>
 
@@ -91,6 +91,6 @@
 		
 	</div>
 	<div class="popup_load_cancel">
-		<button type="button" class="btn btn-primary" onclick="document.getElementById('error_message').classList.add('hidden');">ok</button>
+		<button type="button" class="btn btn-primary" onclick="document.getElementById('error_message').classList.add('hidden');">Ok</button>
 	</div>
 </div>
