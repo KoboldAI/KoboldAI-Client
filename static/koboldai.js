@@ -35,6 +35,20 @@ var shift_down = false;
 var world_info_data = {};
 var world_info_folder_data = {};
 var saved_settings = {};
+const map1 = new Map()
+map1.set('Top-k Sampling', 0)
+map1.set('Top-a Sampling', 1)
+map1.set('Top-p Sampling', 2)
+map1.set('Tail-free Sampling', 3)
+map1.set('Typical Sampling', 4)
+map1.set('Temperature', 5)
+const map2 = new Map()
+map2.set(0, 'Top-k Sampling')
+map2.set(1, 'Top-a Sampling')
+map2.set(2, 'Top-p Sampling')
+map2.set(3, 'Tail-free Sampling')
+map2.set(4, 'Typical Sampling')
+map2.set(5, 'Temperature')
 //-----------------------------------Server to UI  Functions-----------------------------------------------
 function connect() {
 	console.log("connected");
@@ -289,38 +303,39 @@ function do_story_text_length_updates(data) {
 }
 
 function do_presets(data) {
-	var select = document.getElementById('presets');
-	//clear out the preset list
-	while (select.firstChild) {
-		select.removeChild(select.firstChild);
-	}
-	//add our blank option
-	var option = document.createElement("option");
-	option.value="";
-	option.text="presets";
-	select.append(option);
-	presets = data.value;
-	
-	
-	for (const [key, value] of Object.entries(data.value)) {
-		var option_group = document.createElement("optgroup");
-		option_group.label = key;
-		option_group.classList.add("preset_group");
-		for (const [group, group_value] of Object.entries(value)) {
-			var option = document.createElement("option");
-			option.text=group;
-			option.disabled = true;
-			option.classList.add("preset_group");
-			option_group.append(option);
-			for (const [preset, preset_value] of Object.entries(group_value)) {
-				var option = document.createElement("option");
-				option.value=preset;
-				option.text=preset_value.preset;
-				option.title = preset_value.description;
-				option_group.append(option);
-			}
+	for (select of document.getElementsByClassName('presets')) {
+		//clear out the preset list
+		while (select.firstChild) {
+			select.removeChild(select.firstChild);
 		}
-		select.append(option_group);
+		//add our blank option
+		var option = document.createElement("option");
+		option.value="";
+		option.text="presets";
+		select.append(option);
+		presets = data.value;
+		
+		
+		for (const [key, value] of Object.entries(data.value)) {
+			var option_group = document.createElement("optgroup");
+			option_group.label = key;
+			option_group.classList.add("preset_group");
+			for (const [group, group_value] of Object.entries(value)) {
+				var option = document.createElement("option");
+				option.text=group;
+				option.disabled = true;
+				option.classList.add("preset_group");
+				option_group.append(option);
+				for (const [preset, preset_value] of Object.entries(group_value)) {
+					var option = document.createElement("option");
+					option.value=preset;
+					option.text=preset_value.preset;
+					option.title = preset_value.description;
+					option_group.append(option);
+				}
+			}
+			select.append(option_group);
+		}
 	}
 }
 
@@ -372,11 +387,17 @@ function var_changed(data) {
 	//Special Case for Presets
 	} else if ((data.classname == 'model') && (data.name == 'presets')) {
 		do_presets(data);
+	//Special Case for prompt
 	} else if ((data.classname == 'story') && (data.name == 'prompt')) {
 		do_prompt(data);
 	//Special Case for phrase biasing
 	} else if ((data.classname == 'story') && (data.name == 'biases')) {
 		do_biases(data);
+	//Special Case for sample_order
+	} else if ((data.classname == 'model') && (data.name == 'sampler_order')) {
+		for (const [index, item] of data.value.entries()) {
+			Array.from(document.getElementsByClassName("sample_order"))[index].textContent = map2.get(item);
+		}
 	//Basic Data Syncing
 	} else {
 		var elements_to_change = document.getElementsByClassName("var_sync_"+data.classname.replace(" ", "_")+"_"+data.name.replace(" ", "_"));
@@ -1061,7 +1082,7 @@ function world_info_entry(data) {
 	content.setAttribute("uid", data.uid);
 	content.value = data.content;
 	content.onchange = function () {
-							world_info_data[this.getAttribute('uid')]['content'] = this.textContent;
+							world_info_data[this.getAttribute('uid')]['content'] = this.value;
 							send_world_info(this.getAttribute('uid'));
 							this.classList.add("pulse");
 						}
@@ -1151,6 +1172,7 @@ function world_info_folder(data) {
 			collapse_icon = document.createElement("span");
 			collapse_icon.id = "world_info_folder_collapse_"+folder_name;
 			collapse_icon.classList.add("oi");
+			collapse_icon.classList.add("wi_folder_collapser");
 			collapse_icon.setAttribute("data-glyph", "chevron-bottom");
 			collapse_icon.setAttribute("folder", folder_name);
 			collapse_icon.onclick = function () {
@@ -1162,6 +1184,7 @@ function world_info_folder(data) {
 			expand_icon = document.createElement("span");
 			expand_icon.id = "world_info_folder_expand_"+folder_name;
 			expand_icon.classList.add("oi");
+			expand_icon.classList.add("wi_folder_collapser");
 			expand_icon.setAttribute("data-glyph", "chevron-right");
 			expand_icon.setAttribute("folder", folder_name);
 			expand_icon.onclick = function () {
@@ -1190,6 +1213,7 @@ function world_info_folder(data) {
 			//create add button
 			add_icon = document.createElement("span");
 			add_icon.classList.add("oi");
+			add_icon.classList.add("wi_add_button");
 			add_icon.setAttribute("data-glyph", "plus");
 			add_icon.textContent = "Add World Info Entry";
 			add_icon.setAttribute("folder", folder_name);
@@ -1267,7 +1291,30 @@ function show_error_message(data) {
 	error_message_box.classList.remove("hidden");
 	error_message_box.querySelector("#popup_list_area").textContent = data;
 }
+
 //--------------------------------------------UI to Server Functions----------------------------------
+function move_sample(direction) {
+	var previous = null;
+	console.log(direction);
+	for (const [index, temp] of Array.from(document.getElementsByClassName("sample_order")).entries()) {
+		if (temp.classList.contains("selected")) {
+			if ((direction == 'up') && (index > 0)) {
+				temp.parentElement.insertBefore(temp, previous);
+				break;
+			} else if ((direction == 'down') && (index+1 < Array.from(document.getElementsByClassName("sample_order")).length)) {
+				temp.parentElement.insertBefore(temp, Array.from(document.getElementsByClassName("sample_order"))[index+2]);
+				break;
+			}
+		}
+		previous = temp;
+	}
+	var sample_order = []
+	for (item of document.getElementsByClassName("sample_order")) {
+		sample_order.push(map1.get(item.textContent));
+	}
+	socket.emit("var_change", {"ID": 'model_sampler_order', "value": sample_order});
+}
+
 function new_story() {
 	//check if the story is saved
 	if (document.getElementById('save_story').getAttribute('story_gamesaved') == "false") {
@@ -1365,6 +1412,24 @@ function send_world_info(uid) {
 }
 
 //--------------------------------------------General UI Functions------------------------------------
+function select_sample(item) {
+	for (temp of document.getElementsByClassName("sample_order")) {
+		temp.classList.remove("selected");
+	}
+	item.classList.add("selected");
+}
+
+function toggle_setting_category(element) {
+	item = element.nextSibling.nextSibling;
+	if (item.classList.contains('hidden')) {
+		item.classList.remove("hidden");
+		element.firstChild.nextSibling.firstChild.textContent = "expand_more";
+	} else {
+		item.classList.add("hidden");
+		element.firstChild.nextSibling.firstChild.textContent = "navigate_next";
+	}
+}
+
 function preserve_game_space(preserve) {
 	var r = document.querySelector(':root');
 	console.log("Setting cookie to: "+preserve);
@@ -1859,6 +1924,11 @@ function update_token_lengths() {
 		prompt_length = parseInt(document.getElementById("story_prompt").getAttribute("story_prompt_length"));
 	}
 	
+	//prompt is truncated at 512 tokens
+	if (prompt_length > 512) {
+		prompt_length = 512;
+	}
+	
 	//used token length
 	token_length = memory_length + authors_notes;
 	
@@ -1892,13 +1962,14 @@ function update_token_lengths() {
 	}
 	
 	//go backwards through the text chunks and tag them if we still have space
+	passed_token_limit = false;
 	for (var chunk=max_chunk;chunk >= 0;chunk--) {
 		if (document.getElementById("Selected Text Chunk "+chunk).getAttribute("token_length") == null) {
 			current_chunk_length = 999999999999;
 		} else {
 			current_chunk_length = parseInt(document.getElementById("Selected Text Chunk "+chunk).getAttribute("token_length"));
 		}
-		if ((current_chunk_length != 0) && (token_length+current_chunk_length < max_token_length)) {
+		if ((current_chunk_length != 0) && (token_length+current_chunk_length < max_token_length)&& (!(passed_token_limit))) {
 			token_length += current_chunk_length;
 			document.getElementById("Selected Text Chunk "+chunk).classList.add("within_max_length");
 			uids = document.getElementById("Selected Text Chunk "+chunk).getAttribute("world_info_uids")
@@ -1909,6 +1980,9 @@ function update_token_lengths() {
 					document.getElementById("world_info_"+uid).classList.add("world_info_included");
 				}
 			}
+		} else if (!(passed_token_limit) && (current_chunk_length != 0)) {
+			passed_token_limit = true;
+			document.getElementById("Selected Text Chunk "+chunk).classList.remove("within_max_length");
 		} else {
 			document.getElementById("Selected Text Chunk "+chunk).classList.remove("within_max_length");
 		}
@@ -1948,46 +2022,53 @@ String.prototype.toHHMMSS = function () {
 }
 
 function close_menus() {
+	//close settings menu
 	document.getElementById("setting_menu_icon").classList.remove("change");
 	document.getElementById("SideMenu").classList.remove("open");
 	document.getElementById("main-grid").classList.remove("menu-open");
 	
+	//close story menu
 	document.getElementById("story_menu_icon").classList.remove("change");
 	document.getElementById("rightSideMenu").classList.remove("open");
 	document.getElementById("main-grid").classList.remove("story_menu-open");
+	
+	//close popup menus
+	document.getElementById('popup').classList.add("hidden");
+	document.getElementById('loadmodelcontainer').classList.add("hidden");
+	document.getElementById('loadcontainer').classList.add("hidden");
+	document.getElementById('save-confirm').classList.add("hidden");
+	document.getElementById('error_message').classList.add("hidden");
+	
+	
+	//unselect sampler items
+	for (temp of document.getElementsByClassName("sample_order")) {
+		temp.classList.remove("selected");
+	}
 }
 
 function toggle_flyout(x) {
-	if (document.getElementById("SideMenu").classList.contains("pinned")) {
-		//do nothing
+	if (document.getElementById("SideMenu").classList.contains("open")) {
+		x.classList.remove("change");
+		document.getElementById("SideMenu").classList.remove("open");
+		document.getElementById("main-grid").classList.remove("menu-open");
 	} else {
-		if (document.getElementById("SideMenu").classList.contains("open")) {
-			x.classList.remove("change");
-			document.getElementById("SideMenu").classList.remove("open");
-			document.getElementById("main-grid").classList.remove("menu-open");
-		} else {
-			x.classList.add("change");
-			document.getElementById("SideMenu").classList.add("open");
-			document.getElementById("main-grid").classList.add("menu-open");
-			document.getElementById("menu_pin").classList.remove("hidden");
-		}
-}
+		x.classList.add("change");
+		document.getElementById("SideMenu").classList.add("open");
+		document.getElementById("main-grid").classList.add("menu-open");
+		document.getElementById("menu_pin").classList.remove("hidden");
+	}
 }
 
 function toggle_flyout_right(x) {
-	if (document.getElementById("rightSideMenu").classList.contains("pinned")) {
-		//do nothing
+	if (document.getElementById("rightSideMenu").classList.contains("open")) {
+		x.classList.remove("change");
+		document.getElementById("rightSideMenu").classList.remove("open");
+		document.getElementById("main-grid").classList.remove("story_menu-open");
 	} else {
-		if (document.getElementById("rightSideMenu").classList.contains("open")) {
-			x.classList.remove("change");
-			document.getElementById("rightSideMenu").classList.remove("open");
-			document.getElementById("main-grid").classList.remove("story_menu-open");
-		} else {
-			x.classList.add("change");
-			document.getElementById("rightSideMenu").classList.add("open");
-			document.getElementById("main-grid").classList.add("story_menu-open");
-			document.getElementById("story_menu_pin").classList.remove("hidden");
-		}
+		x.classList.add("change");
+		document.getElementById("rightSideMenu").classList.add("open");
+		document.getElementById("main-grid").classList.add("story_menu-open");
+		document.getElementById("story_menu_pin").classList.remove("hidden");
 	}
 }
 
@@ -2045,7 +2126,7 @@ function setCookie(cname, cvalue, exdays=60) {
   const d = new Date();
   d.setTime(d.getTime() + (exdays * 24 * 60 * 60 * 1000));
   let expires = "expires="+d.toUTCString();
-  document.cookie = cname + "=" + cvalue + ";" + expires + ";path=/";
+  document.cookie = cname + "=" + cvalue + ";" + expires + ";path=/;samesite=none;domain=koboldai.org";
 }
 
 function getCookie(cname) {
@@ -2092,21 +2173,23 @@ function detect_enter_text(e) {
 	}
 }
 
-function detect_shift_down(e) {
+function detect_key_down(e) {
 	if ((e.code == "ShiftLeft") || (e.code == "ShiftRight")) {
 		shift_down = true;
+	} else if (e.code == "Escape") {
+		close_menus();
 	}
 }
 
-function detect_shift_up(e) {
+function detect_key_up(e) {
 	if ((e.code == "ShiftLeft") || (e.code == "ShiftRight")) {
 		shift_down = false;
 	}
 }
 
 $(document).ready(function(){
-	document.onkeydown = detect_shift_down;
-	document.onkeyup = detect_shift_up;
+	document.onkeydown = detect_key_down;
+	document.onkeyup = detect_key_up;
 	document.getElementById("input_text").onkeydown = detect_enter_submit;
 	if (getCookie("Settings_Pin") == "false") {
 		settings_unpin();
@@ -2118,7 +2201,6 @@ $(document).ready(function(){
 	} else {
 		story_unpin();
 	}
-	console.log("cookie: "+getCookie("preserve_game_space"));
-	preserve_game_space((getCookie("preserve_game_space") == "true"));
-	options_on_right((getCookie("options_on_right") == "true"));
+	preserve_game_space(!(getCookie("preserve_game_space") == "false"));
+	options_on_right(!(getCookie("options_on_right") == "false"));
 });

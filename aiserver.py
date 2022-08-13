@@ -6296,6 +6296,8 @@ def UI_2_var_change(data):
         value = bool(data['value'])
     elif type(getattr(koboldai_vars, name)) == str:
         value = str(data['value'])
+    elif type(getattr(koboldai_vars, name)) == list:
+        value = list(data['value'])
     else:
         print("Unknown Type {} = {}".format(name, type(getattr(koboldai_vars, name))))
     
@@ -6374,7 +6376,15 @@ def UI_2_submit(data):
     koboldai_vars.lua_koboldbridge.feedback = None
     koboldai_vars.recentrng = koboldai_vars.recentrngm = None
     actionsubmit(data['data'], actionmode=koboldai_vars.actionmode)
-    
+ 
+ #==================================================================#
+# Event triggered when user clicks the submit button
+#==================================================================#
+@socketio.on('abort')
+def UI_2_abort(data):
+    koboldai_vars.abort = True
+
+ 
 #==================================================================#
 # Event triggered when user clicks the pin button
 #==================================================================#
@@ -6399,7 +6409,7 @@ def UI_2_redo(data):
         koboldai_vars.actions.use_option(0)
 
 #==================================================================#
-# Event triggered when user clicks the redo button
+# Event triggered when user clicks the retry button
 #==================================================================#
 @socketio.on('retry')
 def UI_2_retry(data):

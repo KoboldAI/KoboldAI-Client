@@ -27,52 +27,132 @@
 <!-- top menu bar-->
 <div class="menu_pin_area"></div>
 <div class="tabrow">
-	<span class="setting_menu_button selected" onclick="show_setting_menu(this);">Model</span>
-	<span class="setting_menu_button" onclick="show_setting_menu(this);">Story</span>
-	<span class="setting_menu_button" onclick="show_setting_menu(this);">User</span>
-	<span class="setting_menu_button" onclick="show_setting_menu(this);">UI</span>
+	<span class="setting_menu_button selected" onclick="show_setting_menu(this);">Home</span>
+	<span class="setting_menu_button" onclick="show_setting_menu(this);">Settings</span>
+	<span class="setting_menu_button" onclick="show_setting_menu(this);">Interface</span>
 	<span style="float: right;margin-right: 30px;" onclick="window.open('https://github.com/KoboldAI/KoboldAI-Client/wiki');">Help</span>
 </div>
 <div class="flyout_menu_contents">
 
-	<div id="setting_menu_model" class="settings_category_area">
+	<div id="setting_menu_home" class="settings_category_area">
 		<div id="Model_Info">
 			<div>
 				Running Model: <span class="var_sync_model_model">ReadOnly</span>
-				<select id=presets class="var_sync_model_selected_preset settings_select presets" onchange='sync_to_server(this)'><option>Preset</option></select>
 			</div>
-			<div><button class="btn action_button" onclick="socket.emit('load_model_button', {});">Load Model</button></div>
+			<div>
+				<button class="btn action_button" onclick="socket.emit('load_model_button', {});">Load Model</button>
+				<select class="var_sync_model_selected_preset settings_select presets" onchange='sync_to_server(this)'><option>Preset</option></select>
+			</div>
+		</div>
+		<div id="Story_Info">
+			<hr/>
+			<div class="story_title_area">
+				<span class="story_title">
+					<b>Story Name: </b>
+					<span class="var_sync_story_story_name fullwidth" contenteditable=true onblur="sync_to_server(this);"></span>
+				</span>
+				<div class="story_title_icons">
+					<span class="material-icons-outlined cursor" title="New Story" onclick="socket.emit('new_story', '');">description</span>
+					<span class="material-icons-outlined cursor" title="Load Story" onclick="socket.emit('load_story_list', '');">folder_open</span>
+					<span class="material-icons-outlined cursor var_sync_alt_story_gamesaved" title="Save Story">save</span>
+					<span class="material-icons-outlined cursor" title="Import Story">cloud_download</span>
+					<span class="material-icons-outlined cursor" title="Download Story" onclick="document.getElementById('download_iframe').src = 'json';">file_download</span>
+				</div>
+			</div>
+			<hr/>
 		</div>
 		<div class="setting_tile_area">
-		{% with menu='Model' %}
-			{% include 'settings item.html' %}
+		{% with menu='Home' %}
+			{% with sub_path='' %}
+				{% include 'settings item.html' %}
+			{% endwith %}
 		{% endwith %}
 		</div>
 	</div>
-	<div id="setting_menu_story" class="hidden settings_category_area">
-		<div id="Story_Info">
-			<div><b>Story Name: </b><span class="var_sync_story_story_name" contenteditable=true onblur="sync_to_server(this);"></span></div>
-			<div>
-				<button id="new_story" class="btn action_button" onclick="new_story();">New Story</button>
-				<button id="load_story" class="btn action_button" onclick="socket.emit('load_story_list', '');">Load Story</button>
-				<button id="save_story" class="btn action_button var_sync_alt_story_gamesaved" onclick='socket.emit("save_story", null, (response) => {save_as_story(response);});'>Save Story</button>
-				<button id="download_story" class="btn action_button" onclick="document.getElementById('download_iframe').src = 'json';">Download Story</button>
-				<!---<a class='cursor' onclick="document.getElementById('download_iframe').src = 'json';">Download Story</a>--->
+	<div id="setting_menu_settings" class="hidden settings_category_area">
+		<div><select class="var_sync_model_selected_preset settings_select presets" onchange='sync_to_server(this)'><option>Preset</option></select></div>
+		{% with menu='Settings' %}
+			<div onclick="toggle_setting_category(this);">
+				<h4 style="width:var(--flyout_menu_width);"><span class="material-icons-outlined cursor">expand_more</span> Generation</h4>
 			</div>
-		</div>
-		<div class="setting_tile_area">
-		{% with menu='Story' %}
-			{% include 'settings item.html' %}
+			<div class="setting_tile_area">
+				{% with sub_path='Generation' %}
+					{% include 'settings item.html' %}
+				{% endwith %}
+			</div>
+			
+			<div onclick="toggle_setting_category(this);">
+				<h4 style="width:var(--flyout_menu_width);"><span class="material-icons-outlined cursor">expand_more</span> Sampling</h4>
+			</div>
+			<div class="setting_tile_area">
+				<div class="setting_container_single">
+					<!---Top Row---->
+					<span class="setting_label">
+						Sample Order: 
+						<span class="helpicon">
+							?
+							<span class="helptext">
+								Sample Order Tooltip
+							</span>
+						</span>
+					</span>
+					<!---Bottom Row---->
+					<span class="setting_item">
+						<div style="display:flex;flex-direction:row;">
+							<ul id="sample_order_list" style="width:calc(var(--flyout_menu_width) - 60px);">
+								<li class="sample_order cursor" onclick="select_sample(this);">Top-k Sampling</li>
+								<li class="sample_order cursor" onclick="select_sample(this);">Top-a Sampling</li>
+								<li class="sample_order cursor" onclick="select_sample(this);">Top-p Sampling</li>
+								<li class="sample_order cursor" onclick="select_sample(this);">Tail-free Sampling</li>
+								<li class="sample_order cursor" onclick="select_sample(this);">Typical Sampling</li>
+								<li class="sample_order cursor" onclick="select_sample(this);">Temperature</li>
+							</ul>
+							<div style="display:flex;flex-direction:column;justify-content:center;align-items:center;">
+								<div class="material-icons-outlined cursor" onclick="move_sample('up');">arrow_upward</div>
+								<div class="material-icons-outlined cursor" onclick="move_sample('down');">arrow_downward</div>
+								
+							</div>
+						</div>
+					</span>
+					<!---Slider Labels--->
+					<span class="setting_minlabel"><span style="top: -4px; position: relative;"></span></span>
+					<span class="setting_maxlabel"><span style="top: -4px; position: relative;"></span></span>
+				</div>
+				{% with sub_path='Sampling' %}
+					{% include 'settings item.html' %}
+				{% endwith %}
+			</div>
+			
+			<div onclick="toggle_setting_category(this);">
+				<h4 style="width:var(--flyout_menu_width);"><span class="material-icons-outlined cursor">expand_more</span> Repetition</h4>
+			</div>
+			<div class="setting_tile_area">
+				{% with sub_path='Repetition' %}
+					{% include 'settings item.html' %}
+				{% endwith %}
+			</div>
+			
+			<div onclick="toggle_setting_category(this);">
+				<h4 style="width:var(--flyout_menu_width);"><span class="material-icons-outlined cursor">expand_more</span> Other</h4>
+			</div>
+			<div class="setting_tile_area">
+				{% with sub_path='Other' %}
+					{% include 'settings item.html' %}
+				{% endwith %}
+			</div>
+			
+			<div onclick="toggle_setting_category(this);">
+				<h4 style="width:var(--flyout_menu_width);"><span class="material-icons-outlined cursor">expand_more</span> Modifiers</h4>
+			</div>
+			<div class="setting_tile_area">
+				{% with sub_path='Modifiers' %}
+					{% include 'settings item.html' %}
+				{% endwith %}
+			</div>
 		{% endwith %}
+		<div onclick="toggle_setting_category(this);">
+			<h4 style="width:var(--flyout_menu_width);"><span class="material-icons-outlined cursor">expand_more</span> Biasing</h4>
 		</div>
-		<h4>
-			<span id="bias_open" class="oi" data-glyph="chevron-bottom" onclick='this.classList.add("hidden"); 
-																				 document.getElementById("bias_close").classList.remove("hidden"); 
-																				 document.getElementById("biasing").classList.add("hidden");'> Biasing:</span>
-			<span id="bias_close" class="oi hidden" data-glyph="chevron-right" onclick='this.classList.add("hidden"); 
-																				 document.getElementById("bias_open").classList.remove("hidden"); 
-																				 document.getElementById("biasing").classList.remove("hidden");'> Biasing:</span>
-		</h4>
 		<div id="biasing">
 			<div class="bias_header">
 				<div class="bias_header_phrase">Phrase</div>
@@ -81,16 +161,14 @@
 			</div>
 		</div>
 	</div>
-	<div id="setting_menu_user" class="hidden settings_category_area">
+	<div id="setting_menu_interface" class="hidden settings_category_area">
 		<div class="setting_tile_area">
-		{% with menu='User' %}
-			{% include 'settings item.html' %}
+		{% with menu='Interface' %}
+			{% with sub_path='UI' %}
+				{% include 'settings item.html' %}
+			{% endwith %}
 		{% endwith %}
-		</div>
-	</div>
-	<div id="setting_menu_ui" class="hidden settings_category_area">
-		<div class="setting_tile_area">
-			<div class="setting_container">
+		<div class="setting_container">
 				<span class="setting_label">
 					Maximize Game Text Space: 
 					<span class="helpicon">
@@ -124,6 +202,11 @@
 				<span class="setting_minlabel"><span style="top: -4px; position: relative;"></span></span>
 				<span class="setting_maxlabel"><span style="top: -4px; position: relative;"></span></span>
 			</div>
+		</div>
+	</div>
+	<div id="setting_menu_ui" class="hidden settings_category_area">
+		<div class="setting_tile_area">
+			
 		</div>
 	</div>
 </div>

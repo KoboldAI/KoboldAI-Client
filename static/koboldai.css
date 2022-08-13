@@ -79,6 +79,7 @@
     --wi_card_bg_color: #262626;
     --wi_card_tag_bg_color: #404040;
     --wi_tag_color: #337ab7;
+	--sample_order_select_color: blue;
 	--story_options_size: 30%;
 	--story_pinned_areas: "menuicon options gamescreen lefticon"
 						 "menuicon inputrow inputrow lefticon";
@@ -213,6 +214,19 @@
 	color: var(--text);
 	margin: 2px;
 }
+
+.setting_container_single {
+	display: grid;
+	grid-template-areas: "label"
+						 "item";
+	grid-template-rows: 20px 120px;
+	grid-template-columns: var(--flyout_menu_width);
+	row-gap: 0.2em;
+	background-color: var(--setting_background);
+	color: var(--text);
+	margin: 2px;
+}
+
 
 .setting_minlabel {
 	padding-top: 6px;
@@ -353,6 +367,13 @@ input[type="range"]::-ms-fill-upper {
 }
 
 @media only screen and (max-aspect-ratio: 7/5) {
+/* mobile */
+.menu_icon.hidden {
+	display: inline-block !important;
+}
+}
+
+@media only screen and (max-aspect-ratio: 7/5) {
 .menu_pin {
 	display: none;
 }
@@ -435,6 +456,10 @@ input[type="range"]::-ms-fill-upper {
 	margin-right: 25px;
 }
 
+.sample_order.selected {
+	background-color: var(--sample_order_select_color);
+}
+
 .presets option {
 	color: var(--dropdown-select);
 	background: var(--preset-item-background);
@@ -475,6 +500,10 @@ input[type="range"]::-ms-fill-upper {
 }
 
 /* -----------------------------------------Bias-------------------------------------- */
+#biases_label {
+	cursor: pointer;
+}
+
 .bias {
 	display: grid;
 	grid-template-areas: "phrase percent max";
@@ -564,6 +593,13 @@ input[type="range"]::-ms-fill-upper {
 	grid-area: lefticon;
 }
 
+@media only screen and (max-aspect-ratio: 7/5) {
+/* mobile */
+.right_menu_icon.hidden {
+	display: inline-block !important;
+}
+}
+
 .rightSideMenu {
 	z-index: 3;
 	height: 100%;
@@ -588,8 +624,11 @@ input[type="range"]::-ms-fill-upper {
   z-index: 3;
 }
 
+@media only screen and (min-aspect-ratio: 7/5) {
+/*  Desktop Mode  */
 .rightSideMenu.pinned {
   width: var(--flyout_menu_width);
+}
 }
 
 .rightSideMenu .flyout_menu_contents {
@@ -598,6 +637,46 @@ input[type="range"]::-ms-fill-upper {
 	height: calc(100vh - 150px);
 }
 
+.story_title_area {
+}
+
+.story_title_area .var_sync_story_story_name {
+	border-bottom: 1px solid;
+	padding-bottom: 5px;
+}
+
+.story_title_area .var_sync_story_story_name[contenteditable="true"]:active,
+.story_title_area .var_sync_story_story_name[contenteditable="true"]:focus{
+	border:none;
+	outline:none;
+	color: var(--text_edit);
+	border-bottom: 1px solid var(--text);
+	padding-bottom: 5px;
+}
+
+.story_title {
+	font-size: x-large;
+}
+
+.story_title_icons {
+	font-size: 18px;
+}
+
+.material-icons-outlined[story_gamesaved="true"] {
+	filter: brightness(40%);
+}
+
+@media only screen and (max-aspect-ratio: 7/5) {
+/* mobile */
+.story_menu_pin {
+	display: none;
+}
+}
+
+.story_menu_pin {
+	color: #999;
+	cursor: pointer;
+}
 
 
 table.server_vars {
@@ -628,6 +707,10 @@ td.server_vars {
 
 .WI_Folder table {
 	margin: 5px;
+}
+
+.wi_folder_collapser, .wi_add_button {
+	cursor: pointer;
 }
 
 .world_info_card {
@@ -730,7 +813,7 @@ body {
 	grid-template-areas: "menuicon gamescreen lefticon"
 					     "menuicon options lefticon"
 						 "menuicon inputrow lefticon";
-	grid-template-columns: 30px auto 20px;
+	grid-template-columns: 30px auto 30px;
 	grid-template-rows: auto min-content 100px;
 }
 }
@@ -993,7 +1076,6 @@ body {
 }
 
 .popup .popup_list_area {
-	height: 70vh;
 	overflow-x: hidden;
 	flex-grow: 1;
 	flex-shrink: 0;
@@ -1029,6 +1111,7 @@ body {
 .popup .item .file {
 	grid-area: file;
 	display: grid;
+	cursor: pointer;
 }
 
 .popup .item .file:hover {
@@ -1073,6 +1156,7 @@ body {
 	display: grid;
 	grid-template-areas: "item gpu_size";
 	grid-template-columns: auto 40px;
+	cursor: pointer;
 }
 
 .popup .item .model:hover {
@@ -1246,4 +1330,35 @@ body.NotConnected {
 
 .cursor {
 	cursor: pointer;
+}
+
+@font-face {
+  font-family: 'Material Icons Outlined';
+  font-style: normal;
+  src: url(/static/MaterialSymbolsOutlined.ttf) format('truetype');
+}
+
+.material-icons-outlined {
+  font-family: 'Material Icons Outlined';
+  font-weight: normal;
+  font-style: normal;
+  font-size: 24px;  /* Preferred icon size */
+  display: inline-block;
+  line-height: 1;
+  text-transform: none;
+  letter-spacing: normal;
+  word-wrap: normal;
+  white-space: nowrap;
+  direction: ltr;
+
+  /* Support for all WebKit browsers. */
+  -webkit-font-smoothing: antialiased;
+  /* Support for Safari and Chrome. */
+  text-rendering: optimizeLegibility;
+
+  /* Support for Firefox. */
+  -moz-osx-font-smoothing: grayscale;
+
+  /* Support for IE. */
+  font-feature-settings: 'liga';
 }

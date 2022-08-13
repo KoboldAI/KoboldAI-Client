@@ -30,15 +30,15 @@
 	<div id="story_menu_memory" class="story_category_area">
 		<div id="Memory">
 			Memory:<br/>
-			<textarea rows=20 id="memory" class="var_sync_story_memory var_sync_alt_story_memory_length fullwidth" onchange='sync_to_server(this);'></textarea>
+			<textarea rows=20 id="memory" class="var_sync_story_memory var_sync_alt_story_memory_length fullwidth" onchange='sync_to_server(this);' autocomplete="off"></textarea>
 		</div>
 	</div>
 	<div id="story_menu_author" class="story_category_area hidden">
 		<div id="author_notes">
 			Author's Notes:<br/>
-			<textarea rows=5 id="authors_notes" class="var_sync_story_authornote var_sync_alt_story_authornote_length fullwidth" onchange='sync_to_server(this);'></textarea><br/>
+			<textarea autocomplete="off" rows=5 id="authors_notes" class="var_sync_story_authornote var_sync_alt_story_authornote_length fullwidth" onchange='sync_to_server(this);'></textarea><br/>
 			Template:<br/>
-			<input type=text class="var_sync_story_authornotetemplate fullwidth" onchange='sync_to_server(this);'><br/>
+			<input autocomplete="off" type=text class="var_sync_story_authornotetemplate fullwidth" onchange='sync_to_server(this);'><br/>
 			andepth<br/>
 			<input type="range" min="0" max="5" step="1" 
 						   value="3" class="setting_item_input var_sync_story_andepth"
@@ -52,7 +52,7 @@
 	<div id="story_menu_notes" class="story_category_area hidden">
 		<div id="Notes">
 			Notes (ignored by AI):<br/>
-			<textarea rows=20 class="var_sync_story_notes fullwidth" onchange='sync_to_server(this);'></textarea>
+			<textarea autocomplete="off" rows=20 class="var_sync_story_notes fullwidth" onchange='sync_to_server(this);'></textarea>
 		</div>
 	</div>
 	<div id="story_menu_wi" class="story_category_area hidden">

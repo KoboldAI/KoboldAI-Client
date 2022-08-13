@@ -38,7 +38,7 @@ def process_variable_changes(socketio, classname, name, value, old_value, debug_
                     if threading.get_ident() in rely_clients:
                         sio = rely_clients[threading.get_ident()]
                     else:
-                        sio = socketio_client.Client(logger=True, engineio_logger=True)
+                        sio = socketio_client.Client()
                         @sio.event
                         def connect():
                             pass
@@ -93,6 +93,7 @@ class koboldai_vars(object):
             self._story_settings[story_name] = story_settings(self.socketio)
         if json_data is not None:
             self._story_settings[story_name].from_json(json_data)
+        self._story_settings['default'].send_to_ui()
     
     def story_list(self):
         return [x for x in self._story_settings]
@@ -795,7 +796,7 @@ class KoboldStoryRegister(object):
                         if 'stream_id' in self.actions[self.action_count+1]['Options'][j]:
                             if self.actions[self.action_count+1]['Options'][j]['stream_id'] == i:
                                 found = True
-                                self.actions[self.action_count+1]['Options'][j]['text'] = "{}{}".format(self.actions[self.action_count+1]['Options'][i]['text'], text_list[i])
+                                self.actions[self.action_count+1]['Options'][j]['text'] = "{}{}".format(self.actions[self.action_count+1]['Options'][j]['text'], text_list[i])
                     if not found:
                         self.actions[self.action_count+1]['Options'].append({"text": text_list[i], "Pinned": False, "Previous Selection": False, "Edited": False, "stream_id": i})
             else:

@@ -9,7 +9,7 @@ gensettingstf = [
 	"step": 2,
 	"default": 80,
     "tooltip": "Number of tokens the AI should generate. Higher numbers will take longer to generate.",
-    "menu_path": "Model",
+    "menu_path": "Settings",
     "sub_path":  "Generation",
     "classname": "model",
     "name": "genamt"
@@ -24,7 +24,7 @@ gensettingstf = [
 	"step": 0.05,
 	"default": 0.5,
     "tooltip": "Randomness of sampling. High values can increase creativity but may make text less sensible. Lower values will make text more predictable but can become repetitious.",
-    "menu_path": "Model",
+    "menu_path": "Settings",
     "sub_path":  "Generation",
     "classname": "model",
     "name": "temp"
@@ -39,7 +39,7 @@ gensettingstf = [
 	"step": 0.05,
 	"default": 0.9,
     "tooltip": "Used to discard unlikely text in the sampling process. Lower values will make text more predictable but can become repetitious. (Put this value on 1 to disable its effect)",
-    "menu_path": "Model",
+    "menu_path": "Settings",
     "sub_path":  "Sampling",
     "classname": "model",
     "name": "top_p"
@@ -55,7 +55,7 @@ gensettingstf = [
 	"step": 1,
 	"default": 0,
     "tooltip": "Alternative sampling method, can be combined with top_p. (Put this value on 0 to disable its effect)",
-    "menu_path": "Model",
+    "menu_path": "Settings",
     "sub_path":  "Sampling",
     "classname": "model",
     "name": "top_k"
@@ -70,7 +70,7 @@ gensettingstf = [
 	"step": 0.05,
 	"default": 1.0,
     "tooltip": "Alternative sampling method; it is recommended to disable top_p and top_k (set top_p to 1 and top_k to 0) if using this. 0.95 is thought to be a good value. (Put this value on 1 to disable its effect)",
-    "menu_path": "Model",
+    "menu_path": "Settings",
     "sub_path":  "Sampling",
     "classname": "model",
     "name": "tfs"
@@ -85,7 +85,7 @@ gensettingstf = [
 	"step": 0.05,
 	"default": 1.0,
     "tooltip": "Alternative sampling method described in the paper \"Typical Decoding for Natural Language Generation\" (10.48550/ARXIV.2202.00666). The paper suggests 0.2 as a good value for this setting. Set this setting to 1 to disable its effect.",
-    "menu_path": "Model",
+    "menu_path": "Settings",
     "sub_path":  "Sampling",
     "classname": "model",
     "name": "typical"
@@ -100,7 +100,7 @@ gensettingstf = [
 	"step": 0.01,
 	"default": 0.0,
     "tooltip": "Alternative sampling method that reduces the randomness of the AI whenever the probability of one token is much higher than all the others. Higher values have a stronger effect. Set this setting to 0 to disable its effect.",
-    "menu_path": "Model",
+    "menu_path": "Settings",
     "sub_path":  "Sampling",
     "classname": "model",
     "name": "top_a"
@@ -115,7 +115,7 @@ gensettingstf = [
 	"step": 0.01,
 	"default": 1.1,
     "tooltip": "Used to penalize words that were already generated or belong to the context (Going over 1.2 breaks 6B models).",
-    "menu_path": "Model",
+    "menu_path": "Settings",
     "sub_path":  "Repetition",
     "classname": "model",
     "name": "rep_pen"
@@ -130,7 +130,7 @@ gensettingstf = [
 	"step": 4,
 	"default": 0,
     "tooltip": "Repetition penalty range. If set higher than 0, only applies repetition penalty to the last few tokens of your story rather than applying it to the entire story. This slider controls the amount of tokens at the end of your story to apply it to.",
-    "menu_path": "Model",
+    "menu_path": "Settings",
     "sub_path":  "Repetition",
     "classname": "model",
     "name": "rep_pen_range"
@@ -145,7 +145,7 @@ gensettingstf = [
 	"step": 0.1,
 	"default": 0.0,
     "tooltip": "Repetition penalty slope. If BOTH this setting and Rep Penalty Range are set higher than 0, will use sigmoid interpolation to apply repetition penalty more strongly on tokens that are closer to the end of your story. This setting controls the tension of the sigmoid curve; higher settings will result in the repetition penalty difference between the start and end of your story being more apparent. Setting this to 1 uses linear interpolation; setting this to 0 disables interpolation.",
-    "menu_path": "Model",
+    "menu_path": "Settings",
     "sub_path":  "Repetition",
     "classname": "model",
     "name": "rep_pen_slope"
@@ -160,7 +160,7 @@ gensettingstf = [
 	"step": 8,
 	"default": 1024,
     "tooltip": "Max number of tokens of context to submit to the AI for sampling. Make sure this is higher than Amount to Generate. Higher values increase VRAM/RAM usage.",
-    "menu_path": "Model",
+    "menu_path": "Settings",
     "sub_path":  "Generation",
     "classname": "model",
     "name": "max_length"
@@ -175,7 +175,7 @@ gensettingstf = [
 	"step": 1,
 	"default": 1,
     "tooltip": "Number of results to generate per submission. Increases VRAM/RAM usage.",
-    "menu_path": "Model",
+    "menu_path": "Settings",
     "sub_path":  "Generation",
     "classname": "model",
     "name": "numseqs"
@@ -190,7 +190,8 @@ gensettingstf = [
 	"step": 1,
 	"default": 3,
     "tooltip": "Number of historic actions to scan for W Info keys.",
-    "menu_path": "User",
+    "menu_path": "World Info",
+    "sub_path": "",
     "classname": "user",
     "name": "widepth"
 	},
@@ -204,7 +205,8 @@ gensettingstf = [
 	"step": 1,
 	"default": 0,
     "tooltip": "Whether the game is saved after each action.",
-    "menu_path": "Story",
+    "menu_path": "Home",
+    "sub_path": "",
     "classname": "story",
     "name": "autosave"
 	},
@@ -218,7 +220,8 @@ gensettingstf = [
 	"step": 1,
 	"default": 1,
     "tooltip": "Whether the prompt should be sent in the context of every action.",
-    "menu_path": "Story",
+    "menu_path": "Settings",
+    "sub_path": "Other",
     "classname": "story",
     "name": "useprompt"
 	},
@@ -233,6 +236,7 @@ gensettingstf = [
 	"default": 0,
     "tooltip": "Turn this on if you are playing a Choose your Adventure model.",
     #"menu_path": "Story",
+    #"sub_path": "",
     #"classname": "story",
     #"name": "adventure"
 	},
@@ -247,6 +251,7 @@ gensettingstf = [
 	"default": 0,
     "tooltip": "This mode optimizes KoboldAI for chatting.",
     #"menu_path": "Story",
+    #"sub_path": "",
     #"classname": "story",
     #"name": "chatmode"
 	},
@@ -260,7 +265,8 @@ gensettingstf = [
 	"step": 1,
 	"default": 0,
     "tooltip": "Scan the AI's output for world info keys as it's generating the output.",
-    "menu_path": "Story",
+    "menu_path": "World Info",
+    "sub_path": "",
     "classname": "story",
     "name": "dynamicscan"
 	},
@@ -274,7 +280,8 @@ gensettingstf = [
 	"step": 1,
 	"default": 0,
     "tooltip": "When enabled the AI does not generate when you enter the prompt, instead you need to do an action first.",
-    "menu_path": "User",
+    "menu_path": "Settings",
+    "sub_path": "Other",
     "classname": "user",
     "name": "nopromptgen"
 	},
@@ -288,7 +295,8 @@ gensettingstf = [
 	"step": 1,
 	"default": 0,
     "tooltip": "When enabled, the Memory text box in the Random Story dialog will be prefilled by default with your current story's memory instead of being empty.",
-    "menu_path": "User",
+    "menu_path": "Settings",
+    "sub_path": "Other",
     "classname": "user",
     "name": "rngpersist"
 	},
@@ -302,7 +310,8 @@ gensettingstf = [
 	"step": 1,
 	"default": 0,
   "tooltip": "Disables userscript generation modifiers.",
-    "menu_path": "User",
+    "menu_path": "Settings",
+    "sub_path": "Modifiers",
     "classname": "user",
     "name": "nogenmod"
 	},
@@ -316,7 +325,8 @@ gensettingstf = [
 	"step": 1,
 	"default": 0,
   "tooltip": "Show debug info",
-    "menu_path": "user",
+    "menu_path": "",
+    "sub_path": "",
     "classname": "user",
     "name": "debug"
 	},
@@ -327,7 +337,8 @@ gensettingstf = [
 	"id": "actionmode",
 	"default": 0,
     "tooltip": "Choose the mode of KoboldAI",
-    "menu_path": "Story",
+    "menu_path": "Home",
+    "sub_path": "",
     "classname": "story",
     "name": "actionmode",
     'children': [{'text': 'Story', 'value': 0}, {'text':'Adventure','value':1}, {'text':'Chat', 'value':2}]
@@ -342,7 +353,8 @@ gensettingstf = [
  	"step": 1,
  	"default": 0,
 	"tooltip": "Shows outputs to you as they are made.",
-    "menu_path": "User",
+    "menu_path": "Interface",
+    "sub_path": "UI",
     "classname": "user",
     "name": "output_streaming"
  	}
