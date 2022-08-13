@@ -6296,6 +6296,8 @@ def UI_2_var_change(data):
         value = bool(data['value'])
     elif type(getattr(koboldai_vars, name)) == str:
         value = str(data['value'])
+    elif type(getattr(koboldai_vars, name)) == list:
+        value = list(data['value'])
     else:
         print("Unknown Type {} = {}".format(name, type(getattr(koboldai_vars, name))))
     
@@ -6407,7 +6409,7 @@ def UI_2_redo(data):
         koboldai_vars.actions.use_option(0)
 
 #==================================================================#
-# Event triggered when user clicks the redo button
+# Event triggered when user clicks the retry button
 #==================================================================#
 @socketio.on('retry')
 def UI_2_retry(data):

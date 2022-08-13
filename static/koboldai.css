@@ -43,6 +43,7 @@
     --wi_card_bg_color: #262626;
     --wi_card_tag_bg_color: #404040;
     --wi_tag_color: #337ab7;
+	--sample_order_select_color: blue;
 	--story_options_size: 30%;
 	--story_pinned_areas: "menuicon options gamescreen lefticon"
 						 "menuicon inputrow inputrow lefticon";
@@ -169,6 +170,19 @@
 	color: var(--text);
 	margin: 2px;
 }
+
+.setting_container_single {
+	display: grid;
+	grid-template-areas: "label"
+						 "item";
+	grid-template-rows: 20px 120px;
+	grid-template-columns: var(--flyout_menu_width);
+	row-gap: 0.2em;
+	background-color: var(--setting_background);
+	color: var(--text);
+	margin: 2px;
+}
+
 
 .setting_minlabel {
 	grid-area: minlabel;
@@ -344,6 +358,10 @@
 	background: var(--dropdown-background);
 	margin-left: auto;
 	margin-right: 25px;
+}
+
+.sample_order.selected {
+	background-color: var(--sample_order_select_color);
 }
 
 .presets option {

@@ -35,6 +35,20 @@ var shift_down = false;
 var world_info_data = {};
 var world_info_folder_data = {};
 var saved_settings = {};
+const map1 = new Map()
+map1.set('Top-k Sampling', 0)
+map1.set('Top-a Sampling', 1)
+map1.set('Top-p Sampling', 2)
+map1.set('Tail-free Sampling', 3)
+map1.set('Typical Sampling', 4)
+map1.set('Temperature', 5)
+const map2 = new Map()
+map2.set(0, 'Top-k Sampling')
+map2.set(1, 'Top-a Sampling')
+map2.set(2, 'Top-p Sampling')
+map2.set(3, 'Tail-free Sampling')
+map2.set(4, 'Typical Sampling')
+map2.set(5, 'Temperature')
 //-----------------------------------Server to UI  Functions-----------------------------------------------
 function connect() {
 	console.log("connected");
@@ -289,38 +303,39 @@ function do_story_text_length_updates(data) {
 }
 
 function do_presets(data) {
-	var select = document.getElementById('presets');
-	//clear out the preset list
-	while (select.firstChild) {
-		select.removeChild(select.firstChild);
-	}
-	//add our blank option
-	var option = document.createElement("option");
-	option.value="";
-	option.text="presets";
-	select.append(option);
-	presets = data.value;
-	
-	
-	for (const [key, value] of Object.entries(data.value)) {
-		var option_group = document.createElement("optgroup");
-		option_group.label = key;
-		option_group.classList.add("preset_group");
-		for (const [group, group_value] of Object.entries(value)) {
-			var option = document.createElement("option");
-			option.text=group;
-			option.disabled = true;
-			option.classList.add("preset_group");
-			option_group.append(option);
-			for (const [preset, preset_value] of Object.entries(group_value)) {
-				var option = document.createElement("option");
-				option.value=preset;
-				option.text=preset_value.preset;
-				option.title = preset_value.description;
-				option_group.append(option);
-			}
+	for (select of document.getElementsByClassName('presets')) {
+		//clear out the preset list
+		while (select.firstChild) {
+			select.removeChild(select.firstChild);
 		}
-		select.append(option_group);
+		//add our blank option
+		var option = document.createElement("option");
+		option.value="";
+		option.text="presets";
+		select.append(option);
+		presets = data.value;
+		
+		
+		for (const [key, value] of Object.entries(data.value)) {
+			var option_group = document.createElement("optgroup");
+			option_group.label = key;
+			option_group.classList.add("preset_group");
+			for (const [group, group_value] of Object.entries(value)) {
+				var option = document.createElement("option");
+				option.text=group;
+				option.disabled = true;
+				option.classList.add("preset_group");
+				option_group.append(option);
+				for (const [preset, preset_value] of Object.entries(group_value)) {
+					var option = document.createElement("option");
+					option.value=preset;
+					option.text=preset_value.preset;
+					option.title = preset_value.description;
+					option_group.append(option);
+				}
+			}
+			select.append(option_group);
+		}
 	}
 }
 
@@ -372,11 +387,17 @@ function var_changed(data) {
 	//Special Case for Presets
 	} else if ((data.classname == 'model') && (data.name == 'presets')) {
 		do_presets(data);
+	//Special Case for prompt
 	} else if ((data.classname == 'story') && (data.name == 'prompt')) {
 		do_prompt(data);
 	//Special Case for phrase biasing
 	} else if ((data.classname == 'story') && (data.name == 'biases')) {
 		do_biases(data);
+	//Special Case for sample_order
+	} else if ((data.classname == 'model') && (data.name == 'sampler_order')) {
+		for (const [index, item] of data.value.entries()) {
+			Array.from(document.getElementsByClassName("sample_order"))[index].textContent = map2.get(item);
+		}
 	//Basic Data Syncing
 	} else {
 		var elements_to_change = document.getElementsByClassName("var_sync_"+data.classname.replace(" ", "_")+"_"+data.name.replace(" ", "_"));
@@ -1270,7 +1291,30 @@ function show_error_message(data) {
 	error_message_box.classList.remove("hidden");
 	error_message_box.querySelector("#popup_list_area").textContent = data;
 }
+
 //--------------------------------------------UI to Server Functions----------------------------------
+function move_sample(direction) {
+	var previous = null;
+	console.log(direction);
+	for (const [index, temp] of Array.from(document.getElementsByClassName("sample_order")).entries()) {
+		if (temp.classList.contains("selected")) {
+			if ((direction == 'up') && (index > 0)) {
+				temp.parentElement.insertBefore(temp, previous);
+				break;
+			} else if ((direction == 'down') && (index+1 < Array.from(document.getElementsByClassName("sample_order")).length)) {
+				temp.parentElement.insertBefore(temp, Array.from(document.getElementsByClassName("sample_order"))[index+2]);
+				break;
+			}
+		}
+		previous = temp;
+	}
+	var sample_order = []
+	for (item of document.getElementsByClassName("sample_order")) {
+		sample_order.push(map1.get(item.textContent));
+	}
+	socket.emit("var_change", {"ID": 'model_sampler_order', "value": sample_order});
+}
+
 function new_story() {
 	//check if the story is saved
 	if (document.getElementById('save_story').getAttribute('story_gamesaved') == "false") {
@@ -1368,6 +1412,24 @@ function send_world_info(uid) {
 }
 
 //--------------------------------------------General UI Functions------------------------------------
+function select_sample(item) {
+	for (temp of document.getElementsByClassName("sample_order")) {
+		temp.classList.remove("selected");
+	}
+	item.classList.add("selected");
+}
+
+function toggle_setting_category(element) {
+	item = element.nextSibling.nextSibling;
+	if (item.classList.contains('hidden')) {
+		item.classList.remove("hidden");
+		element.firstChild.nextSibling.firstChild.textContent = "expand_more";
+	} else {
+		item.classList.add("hidden");
+		element.firstChild.nextSibling.firstChild.textContent = "navigate_next";
+	}
+}
+
 function preserve_game_space(preserve) {
 	var r = document.querySelector(':root');
 	console.log("Setting cookie to: "+preserve);
