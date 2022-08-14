@@ -375,6 +375,7 @@ function do_ai_busy(data) {
 }
 
 function var_changed(data) {
+	//console.log({"name": data.name, "data": data});
 	//Special Case for Story Text
 	if ((data.classname == "actions") && (data.name == "Selected Text")) {
 		do_story_text_updates(data);
@@ -526,6 +527,7 @@ function load_popup(data) {
 }
 
 function popup_items(data) {
+	console.log(data);
 	var popup_list = document.getElementById('popup_list');
 	//first, let's clear out our existing data
 	while (popup_list.firstChild) {
@@ -533,9 +535,45 @@ function popup_items(data) {
 	}
 	document.getElementById('popup_upload_input').value = "";
 	
-	for (item of data) {
-		var list_item = document.createElement("span");
-		list_item.classList.add("item");
+	//create the column widths
+	var style = 'width: 80vw; display: grid; grid-template-areas: "icons';
+	for (i=0; i < data.column_widths.length; i++) {
+		style = style + " p"+i;
+	}
+	style = style + '"; grid-template-columns: 30px';
+	for (column_width of data.column_widths) {
+		style = style + " "+column_width;
+	}
+	style = style + ';';
+	
+	//create titles
+	var tr = document.createElement("div");
+	tr.style = style;
+	//icon area
+	var td = document.createElement("span");
+	td.style = "grid-area: icons;";
+	tr.append(td)
+	
+	//add dynamic columns
+	var i = 0;
+	for (column of data.column_names) {
+		td = document.createElement("span");
+		td.textContent = column;
+		td.style = "grid-area: p"+i+";";
+		i+=1;
+		tr.append(td)
+	}
+	popup_list.append(tr);
+	
+	//create lines
+	for (item of data.items) {
+		var tr = document.createElement("div");
+		tr.classList.add("item");
+		tr.setAttribute("folder", item[0]);
+		tr.setAttribute("valid", item[3]);
+		tr.style = style;
+		var icon_area = document.createElement("span");
+		icon_area.style = "grid-area: icons;";
 		
 		//create the folder icon
 		var folder_icon = document.createElement("span");
@@ -544,7 +582,7 @@ function popup_items(data) {
 			folder_icon.classList.add("oi");
 			folder_icon.setAttribute('data-glyph', "folder");
 		}
-		list_item.append(folder_icon);
+		icon_area.append(folder_icon);
 		
 		//create the edit icon
 		var edit_icon = document.createElement("span");
@@ -558,7 +596,7 @@ function popup_items(data) {
 							socket.emit("popup_edit", this.id);
 					  };
 		}
-		list_item.append(edit_icon);
+		icon_area.append(edit_icon);
 		
 		//create the rename icon
 		var rename_icon = document.createElement("span");
@@ -576,7 +614,7 @@ function popup_items(data) {
 							}
 					  };
 		}
-		list_item.append(rename_icon);
+		icon_area.append(rename_icon);
 		
 		//create the delete icon
 		var delete_icon = document.createElement("span");
@@ -599,40 +637,76 @@ function popup_items(data) {
 							}
 					  };
 		}
-		list_item.append(delete_icon);
+		icon_area.append(delete_icon);
+		tr.append(icon_area);
 		
 		//create the actual item
-		var popup_item = document.createElement("span");
-		popup_item.classList.add("file");
-		popup_item.id = item[1];
-		popup_item.setAttribute("folder", item[0]);
-		popup_item.setAttribute("valid", item[3]);
-		popup_item.textContent = item[2];
-		popup_item.onclick = function () {
-						var accept = document.getElementById("popup_accept");
-						if (this.getAttribute("valid") == "true") {
-							accept.classList.remove("disabled");
-							accept.setAttribute("selected_value", this.id);
-						} else {
-							accept.setAttribute("selected_value", "");
-							accept.classList.add("disabled");
-							if (this.getAttribute("folder") == "true") {
-								socket.emit("popup_change_folder", this.id);
+		i=0;
+		if (data.show_filename) {
+			var popup_item = document.createElement("span");
+			popup_item.style = "grid-area: p"+i+";";
+			i+=1;
+			popup_item.id = item[1];
+			popup_item.setAttribute("folder", item[0]);
+			popup_item.setAttribute("valid", item[3]);
+			popup_item.textContent = item[2];
+			popup_item.onclick = function () {
+							var accept = document.getElementById("popup_accept");
+							if (this.getAttribute("valid") == "true") {
+								accept.classList.remove("disabled");
+								accept.setAttribute("selected_value", this.id);
+							} else {
+								accept.setAttribute("selected_value", "");
+								accept.classList.add("disabled");
+								if (this.getAttribute("folder") == "true") {
+									socket.emit("popup_change_folder", this.id);
+								}
 							}
-						}
-						var popup_list = document.getElementById('popup_list').getElementsByClassName("selected");
-						for (item of popup_list) {
-							item.classList.remove("selected");
-						}
-						this.classList.add("selected");
-				  };
-		list_item.append(popup_item);
+							var popup_list = document.getElementById('popup_list').getElementsByClassName("selected");
+							for (item of popup_list) {
+								item.classList.remove("selected");
+							}
+							this.parentElement.classList.add("selected");
+					  };
+			tr.append(popup_item);
+		}
+		
+		for (extra_data of item[4]) {
+			td = document.createElement("span");
+			td.style = "grid-area: p"+i+";";
+			i+=1;
+			td.id = item[1];
+			td.setAttribute("folder", item[0]);
+			td.setAttribute("valid", item[3]);
+			td.textContent = extra_data;
+			td.onclick = function () {
+							var accept = document.getElementById("popup_accept");
+							if (this.getAttribute("valid") == "true") {
+								accept.classList.remove("disabled");
+								accept.setAttribute("selected_value", this.id);
+							} else {
+								accept.setAttribute("selected_value", "");
+								accept.classList.add("disabled");
+								if (this.getAttribute("folder") == "true") {
+									socket.emit("popup_change_folder", this.id);
+								}
+							}
+							var popup_list = document.getElementById('popup_list').getElementsByClassName("selected");
+							for (item of popup_list) {
+								item.classList.remove("selected");
+							}
+							this.classList.add("selected");
+					  };
+			tr.append(td);
+		}
 		
 		
-		popup_list.append(list_item);
+		popup_list.append(tr);
 		
 		
 	}
+	
+	
 }
 
 function popup_breadcrumbs(data) {
@@ -749,38 +823,19 @@ function show_model_menu(data) {
 	//add items
 	for (item of data.data) {
 		var list_item = document.createElement("span");
-		list_item.classList.add("item");
+		list_item.classList.add("model_item");
 		
 		//create the folder icon
 		var folder_icon = document.createElement("span");
-		folder_icon.classList.add("folder_icon");
-		if (item[3]) {
-			folder_icon.classList.add("oi");
-			folder_icon.setAttribute('data-glyph', "folder");
+		folder_icon.classList.add("material-icons-outlined");
+		folder_icon.classList.add("cursor");
+		if ((item[3]) || (item[0] == 'Load a model from its directory') || (item[0] == 'Load an old GPT-2 model (eg CloverEdition)')) {
+			folder_icon.textContent = "folder";
+		} else {
+			folder_icon.textContent = "psychology";
 		}
 		list_item.append(folder_icon);
 		
-		//create the delete icon
-		//var delete_icon = document.createElement("span");
-		//delete_icon.classList.add("delete_icon");
-		//if (popup_deleteable) {
-		//	delete_icon.classList.add("oi");
-		//	delete_icon.setAttribute('data-glyph', "x");
-		//	delete_icon.id = item[1];
-		//	delete_icon.setAttribute("folder", item[0]);
-		//	delete_icon.onclick = function () {
-		//					if (this.getAttribute("folder") == "true") {
-		//						if (window.confirm("Do you really want to delete this folder and ALL files under it?")) {
-		//							socket.emit("popup_delete", this.id);
-		//						}
-		//					} else {
-		//						if (window.confirm("Do you really want to delete this file?")) {
-		//							socket.emit("popup_delete", this.id);
-		//						}
-		//					}
-		//			  };
-		//}
-		//list_item.append(delete_icon);
 		
 		//create the actual item
 		var popup_item = document.createElement("span");
@@ -1919,7 +1974,7 @@ function update_token_lengths() {
 	}
 	//figure out prompt length
 	if ((document.getElementById("story_prompt").getAttribute("story_prompt_length") == null) || (document.getElementById("story_prompt").getAttribute("story_prompt_length") == "")) {
-		prompt_length = 999999999999;
+		prompt_length = 0;
 	} else {
 		prompt_length = parseInt(document.getElementById("story_prompt").getAttribute("story_prompt_length"));
 	}

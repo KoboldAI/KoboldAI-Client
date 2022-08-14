@@ -17,6 +17,15 @@ def clean_var_for_emit(value):
     else:
         return value
 
+def create_loopback_socketio():
+    sio = socketio_client.Client()
+    @sio.event
+    def connect():
+        pass
+    sio.connect('ws://localhost:{}/?rely=true'.format(port))
+    rely_clients[threading.get_ident()] = sio
+    return sio
+    
 def process_variable_changes(socketio, classname, name, value, old_value, debug_message=None):
     if serverstarted and name != "serverstarted":
         if debug_message is not None:
@@ -37,13 +46,10 @@ def process_variable_changes(socketio, classname, name, value, old_value, debug_
                 if not has_request_context():
                     if threading.get_ident() in rely_clients:
                         sio = rely_clients[threading.get_ident()]
+                        if not sio.connected:
+                            sio = create_loopback_socketio()
                     else:
-                        sio = socketio_client.Client()
-                        @sio.event
-                        def connect():
-                            pass
-                        sio.connect('ws://localhost:{}/?rely=true'.format(port))
-                        rely_clients[threading.get_ident()] = sio
+                        sio = create_loopback_socketio()
                     #release no longer used clients
                     for thread in rely_clients:
                         if thread not in [x.ident for x in threading.enumerate()]:
@@ -496,6 +502,7 @@ class system_settings(settings):
         self.usegpu      = False  # Whether to launch pipeline with GPU support
         self.spselect    = ""     # Temporary storage for soft prompt filename to load
         self.spmeta      = None   # Metadata of current soft prompt, or None if not using a soft prompt
+        self.spname      = "Not in Use"     # Name of the soft prompt    
         self.sp          = None   # Current soft prompt tensor (as a NumPy array)
         self.sp_length   = 0      # Length of current soft prompt in tokens, or 0 if not using a soft prompt
         self.has_genmod  = False  # Whether or not at least one loaded Lua userscript has a generation modifier

@@ -148,6 +148,25 @@
 				{% with sub_path='Modifiers' %}
 					{% include 'settings item.html' %}
 				{% endwith %}
+				<div class="setting_container">
+					<!---Top Row---->
+					<span class="setting_label">
+						Soft Prompt: 
+						<span class="helpicon">
+							?
+							<span class="helptext">
+								Soft Prompt Tooltip
+							</span>
+						</span>
+					</span>
+					<!---Bottom Row---->
+					<span class="setting_item">
+						<span class="material-icons-outlined cursor" onclick="socket.emit('load_softprompt_list', '');">folder_open</span> <span class="var_sync_system_spname"></span>
+					</span>
+					<!---Slider Labels--->
+					<span class="setting_minlabel"><span style="top: -4px; position: relative;"></span></span>
+					<span class="setting_maxlabel"><span style="top: -4px; position: relative;"></span></span>
+				</div>
 			</div>
 		{% endwith %}
 		<div onclick="toggle_setting_category(this);">
@@ -162,13 +181,16 @@
 		</div>
 	</div>
 	<div id="setting_menu_interface" class="hidden settings_category_area">
+		<div onclick="toggle_setting_category(this);">
+			<h4 style="width:var(--flyout_menu_width);"><span class="material-icons-outlined cursor">expand_more</span> UI</h4>
+		</div>
 		<div class="setting_tile_area">
-		{% with menu='Interface' %}
-			{% with sub_path='UI' %}
-				{% include 'settings item.html' %}
+			{% with menu='Interface' %}
+				{% with sub_path='UI' %}
+					{% include 'settings item.html' %}
+				{% endwith %}
 			{% endwith %}
-		{% endwith %}
-		<div class="setting_container">
+			<div class="setting_container">
 				<span class="setting_label">
 					Maximize Game Text Space: 
 					<span class="helpicon">
@@ -203,8 +225,15 @@
 				<span class="setting_maxlabel"><span style="top: -4px; position: relative;"></span></span>
 			</div>
 		</div>
-	</div>
-	<div id="setting_menu_ui" class="hidden settings_category_area">
+		<div onclick="toggle_setting_category(this);">
+			<h4 style="width:var(--flyout_menu_width);"><span class="material-icons-outlined cursor">expand_more</span> Theme</h4>
+		</div>
+		<div class="setting_tile_area">
+			
+		</div>
+		<div onclick="toggle_setting_category(this);">
+			<h4 style="width:var(--flyout_menu_width);"><span class="material-icons-outlined cursor">expand_more</span> Formatting</h4>
+		</div>
 		<div class="setting_tile_area">
 			
 		</div>

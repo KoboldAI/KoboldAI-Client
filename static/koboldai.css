@@ -176,7 +176,7 @@
 	grid-template-areas: "label"
 						 "item";
 	grid-template-rows: 20px 120px;
-	grid-template-columns: var(--flyout_menu_width);
+	grid-template-columns: 200px;
 	row-gap: 0.2em;
 	background-color: var(--setting_background);
 	color: var(--text);
@@ -933,7 +933,7 @@ body {
 	top: 10vh;
 	left: 10%;
 	z-index: 999;
-	width: 80%;
+	width: 80vw;
 	height: 80vh;
 	background-color: black;
 	display: flex;
@@ -955,43 +955,50 @@ body {
 	flex-basis: auto;
 }
 
-.popup .item {
+.popup .model_item {
 	width: 100%;
 	background-color: var(--popup_item_color);
 	padding: 2px;
 	display: grid;
-	grid-template-areas: "folder_icon delete_icon edit_icon rename_icon file";
-	grid-template-columns: 20px 20px 20px 20px auto;
+	grid-template-areas: "folder_icon delete_icon edit_icon rename_icon file gpu_size";
+	grid-template-columns: 30px 0px 0px 0px auto 50px;
 	
 }
 
-.popup .item .folder_icon {
+.popup .model_item .folder_icon {
 	grid-area: folder_icon;
 }
 
-.popup .item .edit_icon {
+.popup .model_item .edit_icon {
 	grid-area: edit_icon;
 }
 
-.popup .item .rename_icon {
+.popup .model_item .rename_icon {
 	grid-area: rename_icon;
 }
 
-.popup .item .delete_icon {
+.popup .model_item .delete_icon {
 	grid-area: delete_icon;
 }
 
-.popup .item .file {
-	grid-area: file;
-	display: grid;
+.popup .model_item .model {
 	cursor: pointer;
+	grid-area: file;
 }
 
-.popup .item .file:hover {
+.popup .model_item .model:hover {
 	background-color: #688f1f;
 }
 
-.popup .item .file.selected {
+.popup .model_item .model.selected {
+	background: #688f1f;
+}
+
+.popup .item:hover {
+	background-color: #688f1f;
+}
+
+.popup .item.selected {
 	background: #688f1f;
 }
 
@@ -1024,7 +1031,7 @@ body {
 }
 /*----------------------------- Model Load Popup ------------------------------------------*/
 
-.popup .item .model {
+.popup_list_area .model_item .model {
 	grid-area: file;
 	display: grid;
 	grid-template-areas: "item gpu_size";
@@ -1032,11 +1039,11 @@ body {
 	cursor: pointer;
 }
 
-.popup .item .model:hover {
+.popup_list_area .model_item .model:hover {
 	background-color: #688f1f;
 }
 
-.popup .item .model.selected {
+.popup_list_area .model_item .model.selected {
 	background-color: #688f1f;
 }
 
