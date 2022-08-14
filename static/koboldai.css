@@ -48,6 +48,8 @@
 	--story_pinned_areas: "menuicon options gamescreen lefticon"
 						 "menuicon inputrow inputrow lefticon";
 	--story_pinned_area_widths: 30px var(--story_options_size) auto 30px;
+	--scrollbar-color: #9b9b9b80;
+	--scrollbar-size: 6px;
 }
 
 /*----------------Folder Tabs--------------------*/
@@ -669,6 +671,30 @@ td.server_vars {
 body {
 	background-color: var(--background);
 	color: var(--text);
+
+	/* Firefox scroll */
+	scrollbar-width: thin;
+	scrollbar-color: var(--scrollbar-color);
+}
+
+/* Chrome, Safari scrollbar */
+::-webkit-scrollbar {
+	width: var(--scrollbar-size);
+	height: var(--scrollbar-size);
+}
+
+::-webkit-scrollbar-track {
+	background: #9b9b9b80;
+}
+
+::-webkit-scrollbar-thumb {
+	background-color: var(--scrollbar-color);
+	border-radius: 20px;
+	border: transparent;
+}
+
+::-webkit-scrollbar-thumb:hover {
+	background-color: #cacaca80;
 }
 
 @media only screen and (min-aspect-ratio: 7/5) {
