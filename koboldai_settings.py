@@ -1011,6 +1011,7 @@ class KoboldWorldInfo(object):
     
     def reorder(self, uid, before):
         self.add_item_to_folder(uid, self.world_info[before]['folder'], before=before)
+        self.sync_world_info_to_old_format()
     
     def send_to_ui(self):
         self.socketio.emit("world_info_folder", {x: self.world_info_folder[x] for x in self.world_info_folder}, broadcast=True, room="UI_2")
@@ -1048,7 +1049,7 @@ class KoboldWorldInfo(object):
                                             "comment": self.world_info[x]['comment'],
                                             "constant": self.world_info[x]['constant'],
                                             "content": self.world_info[x]['content'],
-                                            "folder": self.world_info[x]['folder'],
+                                            "folder": folder_entries[self.world_info[x]['folder']],
                                             "init": True,
                                             "key": ",".join(self.world_info[x]['key']),
                                             "keysecondary": ",".join(self.world_info[x]['keysecondary']),

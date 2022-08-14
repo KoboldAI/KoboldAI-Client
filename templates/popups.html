@@ -52,23 +52,6 @@
 	</div>
 </div>
 
-<!---------------- Story Load Screen ---------------------->
-<div class="popup  hidden" id="loadcontainer">
-	<div class="title">
-		<div class="popuptitletext">Select A Story To Load</div>
-	</div>
-	<div style="display: flex;">
-		<div>Save Name</div>
-		<div style="margin-left: auto;"># Actions</div>
-	</div>
-	<div id="popup_list_area" class="popup_list_area">
-	</div>
-	<div class="popup_load_cancel">
-		<button type="button" class="btn btn-primary" id="btn_loadaccept">Load</button>
-		<button type="button" class="btn btn-primary" id="btn_loadclose">Cancel</button>
-	</div>
-</div>
-
 <!---------------- Story overwrite screen ---------------------->
 <div class="popup hidden" id="save-confirm">
 	<div class="title">
@@ -82,8 +65,24 @@
 		<button type="button" class="btn btn-primary" onclick="document.getElementById('save-confirm').classList.add('hidden');">Cancel</button>
 	</div>
 </div>
+<!---------------- Import aidg.club Prompt ---------------------->
+<div class="popup hidden" id="import_aidg_club_popup">
+	<div class="title">
+		<div class="popuptitletext">Enter the Prompt Number</div>
+	</div>
+	<div class="popup_list_area">
+		<br/>
+		<div style="text-align: center;"><a href="https://aetherroom.club/" target="_blank" rel="noopener noreferrer">https://aetherroom.club/</a></div>
+		<br/>
+		<input autocomplete="off" class="form-control" type="text" placeholder="Prompt Number (4-digit number at the end of aetherroom.club URL)" id="aidgpromptnum">
+	</div>
+	<div class="popup_load_cancel">
+		<button type="button" class="btn btn-primary" onclick="socket.emit('load_aidg_club', document.getElementById('aidgpromptnum').value); this.parentElement.parentElement.classList.add('hidden');">Accept</button>
+		<button type="button" class="btn btn-primary" onclick="this.parentElement.parentElement.classList.add('hidden');">Cancel</button>
+	</div>
+</div>
 
-<!---------------- Story overwrite screen ---------------------->
+<!---------------- error screen ---------------------->
 <div class="popup hidden" id="error_message">
 	<div class="title">
 		<div class="popuptitletext">Error</div>

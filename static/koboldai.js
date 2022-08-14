@@ -1498,7 +1498,7 @@ function preserve_game_space(preserve) {
 		document.getElementById('preserve_game_space_setting').checked = true;
 	} else {
 		setCookie("preserve_game_space", "false");
-		r.style.setProperty('--setting_menu_closed_width_no_pins_width', '450px');
+		r.style.setProperty('--setting_menu_closed_width_no_pins_width', 'var(--flyout_menu_width)');
 		if (document.getElementById('preserve_game_space_setting').checked) {
 			//not sure why the bootstrap-toggle won't respect a standard item.checked = true/false, so....
 			document.getElementById('preserve_game_space_setting').parentNode.click();
@@ -2090,7 +2090,6 @@ function close_menus() {
 	//close popup menus
 	document.getElementById('popup').classList.add("hidden");
 	document.getElementById('loadmodelcontainer').classList.add("hidden");
-	document.getElementById('loadcontainer').classList.add("hidden");
 	document.getElementById('save-confirm').classList.add("hidden");
 	document.getElementById('error_message').classList.add("hidden");
 	

@@ -5538,48 +5538,9 @@ def load_story_v1(js):
     if("worldinfo" in js):
         num = 0
         for wi in js["worldinfo"]:
-            koboldai_vars.worldinfo.append({
-                "key": wi["key"],
-                "keysecondary": wi.get("keysecondary", ""),
-                "content": wi["content"],
-                "comment": wi.get("comment", ""),
-                "folder": wi.get("folder", None),
-                "num": num,
-                "init": True,
-                "selective": wi.get("selective", False),
-                "constant": wi.get("constant", False),
-                "uid": None,
-            })
             koboldai_vars.worldinfo_v2.add_item([x.strip() for x in wi["key"].split(",")][0], wi["key"], wi.get("keysecondary", ""), 
                                                 wi.get("folder", "root"), wi.get("constant", False), 
                                                 wi["content"], wi.get("comment", ""))
-            
-            
-            while(True):
-                uid = int.from_bytes(os.urandom(4), "little", signed=True)
-                if(uid not in koboldai_vars.worldinfo_u):
-                    break
-            koboldai_vars.worldinfo_u[uid] = koboldai_vars.worldinfo[-1]
-            koboldai_vars.worldinfo[-1]["uid"] = uid
-            if(koboldai_vars.worldinfo[-1]["folder"] is not None):
-                koboldai_vars.wifolders_u[koboldai_vars.worldinfo[-1]["folder"]].append(koboldai_vars.worldinfo[-1])
-            num += 1
-
-    for uid in koboldai_vars.wifolders_l + [None]:
-        koboldai_vars.worldinfo.append({"key": "", "keysecondary": "", "content": "", "comment": "", "folder": uid, "num": None, "init": False, "selective": False, "constant": False, "uid": None})
-        while(True):
-            uid = int.from_bytes(os.urandom(4), "little", signed=True)
-            if(uid not in koboldai_vars.worldinfo_u):
-                break
-        try:
-            koboldai_vars.worldinfo_u[uid] = koboldai_vars.worldinfo[-1]
-        except:
-            print(koboldai_vars.worldinfo)
-        koboldai_vars.worldinfo[-1]["uid"] = uid
-        if(koboldai_vars.worldinfo[-1]["folder"] is not None):
-            koboldai_vars.wifolders_u[koboldai_vars.worldinfo[-1]["folder"]].append(koboldai_vars.worldinfo[-1])
-    stablesortwi()
-    koboldai_vars.worldinfo_i = [wi for wi in koboldai_vars.worldinfo if wi["init"]]
 
     # Save path for save button
     koboldai_vars.savedir = loadpath
@@ -5766,29 +5727,24 @@ def importgame():
 def importAidgRequest(id):    
     exitModes()
     
-    urlformat = "https://prompts.aidg.club/api/"
+    urlformat = "https://aetherroom.club/api/"
     req = requests.get(urlformat+id)
-
     if(req.status_code == 200):
         js = req.json()
         
         # Import game state
+        
+        koboldai_vars.create_story("")
         koboldai_vars.gamestarted = True
         koboldai_vars.prompt      = js["promptContent"]
         koboldai_vars.memory      = js["memory"]
         koboldai_vars.authornote  = js["authorsNote"]
-        koboldai_vars.authornotetemplate = "[Author's note: <|>]"
-        koboldai_vars.actions.reset()
-        koboldai_vars.actions_metadata = {}
-        koboldai_vars.worldinfo   = []
-        koboldai_vars.worldinfo_i = []
-        koboldai_vars.worldinfo_u = {}
-        koboldai_vars.wifolders_d = {}
-        koboldai_vars.wifolders_l = []
-        koboldai_vars.wifolders_u = {uid: [] for uid in koboldai_vars.wifolders_d}
-        koboldai_vars.lastact     = ""
-        koboldai_vars.submission  = ""
-        koboldai_vars.lastctx     = ""
+        
+        
+        if not koboldai_vars.memory:
+            koboldai_vars.memory = ""
+        if not koboldai_vars.authornote:
+            koboldai_vars.authornote = ""
         
         num = 0
         for wi in js["worldInfos"]:
@@ -5804,28 +5760,12 @@ def importAidgRequest(id):
                 "constant": wi.get("constant", False),
                 "uid": None,
             })
-            while(True):
-                uid = int.from_bytes(os.urandom(4), "little", signed=True)
-                if(uid not in koboldai_vars.worldinfo_u):
-                    break
-            koboldai_vars.worldinfo_u[uid] = koboldai_vars.worldinfo[-1]
-            koboldai_vars.worldinfo[-1]["uid"] = uid
-            if(koboldai_vars.worldinfo[-1]["folder"]) is not None:
-                koboldai_vars.wifolders_u[koboldai_vars.worldinfo[-1]["folder"]].append(koboldai_vars.worldinfo[-1])
-            num += 1
-
-        for uid in koboldai_vars.wifolders_l + [None]:
-            koboldai_vars.worldinfo.append({"key": "", "keysecondary": "", "content": "", "comment": "", "folder": uid, "num": None, "init": False, "selective": False, "constant": False, "uid": None})
-            while(True):
-                uid = int.from_bytes(os.urandom(4), "little", signed=True)
-                if(uid not in koboldai_vars.worldinfo_u):
-                    break
-            koboldai_vars.worldinfo_u[uid] = koboldai_vars.worldinfo[-1]
-            koboldai_vars.worldinfo[-1]["uid"] = uid
-            if(koboldai_vars.worldinfo[-1]["folder"] is not None):
-                koboldai_vars.wifolders_u[koboldai_vars.worldinfo[-1]["folder"]].append(koboldai_vars.worldinfo[-1])
-        stablesortwi()
-        koboldai_vars.worldinfo_i = [wi for wi in koboldai_vars.worldinfo if wi["init"]]
+            
+            koboldai_vars.worldinfo_v2.add_item([x.strip() for x in wi["keys"].split(",")][0], wi["keys"], wi.get("keysecondary", ""), 
+                                                wi.get("folder", "root"), wi.get("constant", False), 
+                                                wi["entry"], wi.get("comment", ""))
+                                                
+            
 
         # Reset current save
         koboldai_vars.savedir = getcwd()+"\\stories"
@@ -6673,6 +6613,17 @@ def get_softprompt_desc(item_full_path, item, valid_selection):
 def UI_2_load_softprompt(data):
     print("Load softprompt: {}".format(data))
     spRequest(data)
+
+#==================================================================#
+# Event triggered when aidg.club loaded
+#==================================================================#
+@socketio.on('load_aidg_club')
+def UI_2_load_aidg_club(data):
+    print("Load aidg.club: {}".format(data))
+    importAidgRequest(data)
+    
+        
+    
 
 #==================================================================#
 # Test
