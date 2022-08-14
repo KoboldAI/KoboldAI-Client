@@ -5965,7 +5965,7 @@ def final_startup():
     if(path.exists("settings/" + getmodelname().replace('/', '_') + ".settings")):
         file = open("settings/" + getmodelname().replace('/', '_') + ".settings", "r")
         js   = json.load(file)
-        if(koboldai_vars.allowsp and "softprompt" in js and type(js["softprompt"]) is str and all(q not in js["softprompt"] for q in ("..", ":")) and (len(js["softprompt"]) == 0 or all(js["softprompt"][0] not in q for q in ("/", "\\")))):
+        if(koboldai_vars.allowsp and "softprompt" in js and type(js["softprompt"]) is str and all(q not in js["softprompt"] for q in ("..", ":")) and (len(js["softprompt"]) != 0 and all(js["softprompt"][0] not in q for q in ("/", "\\")))):
             spRequest("softprompts/"+js["softprompt"])
         else:
             koboldai_vars.spfilename = ""
