@@ -45,20 +45,25 @@
 		<div id="Select Options" class="sequence_area"></div>
 		<!------------ Theme Area--------------------->
 		<div class="themerow" id="themerow">
-			<h4>If you want to generate a random prompt, insert a theme here:</h4>
-			<input type="text" autocomplete="off" style="width: 100%;" id="themetext" placeholder="Theme for Random Story" oninput='if (this.value != "") {
-																													document.getElementById("input_text").disabled = true;
-																												} else {
-																													document.getElementById("input_text").disabled = false;
-																												}'/>
-			<h4>If you want to write your prompt, insert it here:</h4>
+			<div class="tabrow nomenu_icon">
+				<span class="prompt_menu selected" id="prompt_menu_random" onclick="this.classList.add('selected');
+															document.getElementById('prompt_menu_normal').classList.remove('selected');
+															document.getElementById('random_game_prompt').classList.add('hidden');
+															document.getElementById('input_text').classList.remove('hidden');">Prompt</span>
+				<span class="prompt_menu" id="prompt_menu_normal" onclick="this.classList.add('selected');
+															document.getElementById('prompt_menu_random').classList.remove('selected');
+															document.getElementById('random_game_prompt').classList.remove('hidden');
+															document.getElementById('input_text').classList.add('hidden');">Random Prompt</span>
+			</div>
 		</div>
 		<!------------ Input Area--------------------->
 		<div class="inputrow" id="inputrow_container">
+			<div id="random_game_prompt" class="hidden">
+				<input type="text" autocomplete="off" style="width: 100%;" id="themetext" placeholder="Theme for Random Story" oninput='if (this.value != "") {
+																													document.getElementById("input_text").value = "";'/>
+			</div>
 			<textarea autocomplete="off" row=5 id="input_text" placeholder="Enter Prompt Here" oninput='if (this.value != "") {
-																											document.getElementById("themetext").disabled = true;
-																										} else {
-																											document.getElementById("themetext").disabled = false;
+																											document.getElementById("themetext").value = "";
 																										}'></textarea>
 			<div class="statusbar_outer hidden">
 				<div class="statusbar_inner" style="width:0%">0%</div>

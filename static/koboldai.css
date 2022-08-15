@@ -102,6 +102,8 @@
 	z-index: 2;
 	border-bottom-color: #FFF;
 }
+
+
 .tabrow:before {
 	position: absolute;
 	content: " ";
@@ -166,7 +168,7 @@
 	grid-template-areas: "label value"
 						 "item item"
 						 "minlabel maxlabel";
-	grid-template-rows: 20px 25px 10px;
+	grid-template-rows: 20px 25px 15px;
 	grid-template-columns: 160px 40px;
 	row-gap: 0.2em;
 	background-color: var(--setting_background);
@@ -190,12 +192,16 @@
 .setting_minlabel {
 	grid-area: minlabel;
 	overflow: hidden;
+	padding: 5px;
+	padding-top: 0px;
 	font-size: 0.8em;
 }
 
 .setting_maxlabel {
 	grid-area: maxlabel;
 	overflow: hidden;
+	padding: 5px;
+	padding-top: 0px;
 	text-align: right;
 	font-size: 0.8em;
 }
@@ -203,11 +209,15 @@
 .setting_label {
 	grid-area: label;
 	overflow: hidden;
+	padding: 5px;
+	padding-top: 0px;
 }
 
 .setting_value {
 	text-align: right;
 	grid-area: value;
+	padding: 5px;
+	padding-top: 0px;
 	background-color: inherit;
 	color: inherit;
 	border: none; 
@@ -319,7 +329,7 @@
 	height: 100%;
 	width: var(--flyout_menu_closed_width);
 	position: fixed;
-	z-index: 1;
+	z-index: 3;
 	top: 0;
 	left: 0;
 	background-color: var(--flyout_background);
@@ -332,7 +342,7 @@
 	height: 100%;
 	width: var(--flyout_menu_width);
 	position: fixed;
-	z-index: 1;
+	z-index: 2;
 	top: 0;
 	left: 0;
 	background-color: var(--flyout_background);
@@ -511,7 +521,7 @@
 	height: 100%;
 	width: 0;
 	position: fixed;
-	z-index: 1;
+	z-index: 3;
 	top: 0;
 	right: 0;
 	background-color: var(--flyout_background);
