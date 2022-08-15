@@ -16,7 +16,7 @@
 	--on_primary: #002d6c;
 	--primary_container: #004397;
 	--on_primary_container: #d9e2ff;
-	--secondary: #ffabf0;
+	--secondary: #f7c5ee;
 	--on_secondary: #5c0059;
 	--secondary_container: #82007e;
 	--on_secondary_container: #ffd7f4;
@@ -33,9 +33,9 @@
 	--outline: #8e9099;
 	--middle: #232328;
 	--on_middle: #232328;
-	--surface: #232328;
+	--surface: #28282e;
 	--on_surface: #e3e2e6;
-	--surface_variant: rgb(58, 61, 68);
+	--surface_variant: #2f2f36;
 	--on_surface_variant: #c5c6d0;
 	--layer1: #212126;
 	--layer2: #28282D;
@@ -47,15 +47,15 @@
     --text: var(--on_background);
     --text_to_ai_color: var(--on_background);
     --text_edit: var(--on_background);
-    --flyout_background: var(--layer2);
+    --flyout_background: var(--layer1);
 	--flyout_background_pinned: var(--layer1);
-    --setting_background: transparent;
+    --setting_background: var(--surface_variant);
     --setting_text: var(--on_surface);
 	--dropdown-select: var(--on_secondary);
 	--dropdown-background: var(--secondary);
 	--preset-item-background: var(--secondary);
-    --tooltip_text: var(--on_primary);
-    --tooltip_background: var(--primary);
+    --tooltip_text: var(--on_secondary);
+    --tooltip_background: var(--secondary);
     --gamescreen_background: var(--layer2);
     --textarea_background: var(--layer3);
 	--sequence_background: var(--layer1);
@@ -92,8 +92,11 @@
 	--setting_menu_closed_width_no_pins_width:  0px;
 	--story_options_size: 30%;
 	--story_pinned_areas: "menuicon options gamescreen lefticon"
+						 "menuicon theme theme lefticon"
 						 "menuicon inputrow inputrow lefticon";
 	--story_pinned_area_widths: 30px var(--story_options_size) auto 30px;
+	--scrollbar-color: #9b9b9b80;
+	--scrollbar-size: 6px;
 }
 
 /*----------------Folder Tabs--------------------*/
@@ -102,9 +105,9 @@
 	list-style: none;
 	/*margin: 200px 0 20px;*/
 	padding: 0;
-	padding-left: 30px; /*Gui: should change when pinned*/
+	padding-left: 30px; /*Gui: this value should change to 10px when pinned*/
 	line-height: 24px;
-	height: 32px;
+	height: 26px;
 	overflow: hidden;
 	font-size: 14px;
 	font-family: verdana;
@@ -133,9 +136,9 @@
 	position: relative;
 	z-index: 0;
 	border-radius: 6px 6px 6px 6px;
-	/*border-top-left-radius: 6px;
+	border-top-left-radius: 6px;
 	border-top-right-radius: 6px;
-	box-shadow: 0 3px 3px rgba(0, 0, 0, 0.4), inset 0 1px 0 #AAA;*/
+	box-shadow: 0 3px 3px rgba(0, 0, 0, 0.4), inset 0 1px 0 var(--menu_button_level_1_bg_color);
 	text-shadow: 0 1px #AAA;
 	margin: 0 -1px;
 	padding: 0 12px;
@@ -157,24 +160,24 @@
 }
 .tabrow span:before,
 .tabrow span:after {
-	border: 1px solid #AAA;
+	border: 1px solid var(--menu_button_level_1_bg_color);
 	position: absolute;
 	bottom: -1px;
 	width: 5px;
 	height: 5px;
-	/*content: " ";*/
+	content: " ";
 }
 .tabrow span:before {
 	left: -6px;
 	border-bottom-right-radius: 6px;
 	border-width: 0 1px 1px 0;
-	box-shadow: 2px 2px 0 #D1D1D1;
+	box-shadow: 2px 2px 0 var(--menu_button_level_1_bg_color);
 }
 .tabrow span:after {
-	right: 6px;
+	right: -6px;
 	border-bottom-left-radius: 6px;
 	border-width: 0 0 1px 1px;
-	box-shadow: -2px 2px 0 #D1D1D1;
+	box-shadow: -2px 2px 0 var(--menu_button_level_1_bg_color);
 }
 .tabrow span.selected:before {
 	box-shadow: 2px 2px 0 #FFF;
@@ -207,9 +210,9 @@
 .setting_tile_area {
 	padding-left: 10px;
 	padding-right: 10px;
-	/*display: flex;
+	display: flex;
 	flex-direction: row;
-	flex-wrap: wrap;*/
+	flex-wrap: wrap;
 	width: 100%;
 }
 
@@ -219,10 +222,12 @@
 						 "item item"
 						 "minlabel maxlabel";
 	grid-template-rows: 20px 20px 20px;
-	grid-template-columns: 80% 20%;
+	grid-template-columns: 135px 42px;
 	row-gap: 0.2em;
 	background-color: var(--setting_background);
 	color: var(--text);
+	border-radius: 5px;
+	padding: 3px;
 	margin: 2px;
 }
 
@@ -231,10 +236,12 @@
 	grid-template-areas: "label"
 						 "item";
 	grid-template-rows: 20px 120px;
-	grid-template-columns: var(--flyout_menu_width);
+	grid-template-columns: 177px;
 	row-gap: 0.2em;
 	background-color: var(--setting_background);
 	color: var(--text);
+	border-radius: 5px;
+	padding: 3px;
 	margin: 2px;
 }
 
@@ -280,50 +287,6 @@
 .setting_item_input {
 	width:95%;
 }
-/*----------------Custom Range Slider------------------*/
-/*Chrome*/
-@media screen and (-webkit-min-device-pixel-ratio:0) {
-    input[type='range'] {
-      overflow: hidden;
-      -webkit-appearance: none;
-      background-color: var(--primary);
-	  border-radius: 5px;
-    }
-    
-    input[type='range']::-webkit-slider-runnable-track {
-      height: 10px;
-      -webkit-appearance: none;
-      color: var(--primary_container);
-      margin-top: -1px;
-    }
-    
-    input[type='range']::-webkit-slider-thumb {
-      width: 10px;
-	  overflow: visible;
-      -webkit-appearance: none;
-      height: 10px;
-      cursor: ew-resize;
-      background: var(--primary_container);
-      box-shadow: -800px 0 0 800px var(--primary_container);
-	  border: 5px solid var(--primary_container);
-	  border-radius: 5px;
-    }
-
-}
-/** FF*/
-input[type="range"]::-moz-range-progress {
-  background-color: var(--primary); 
-}
-input[type="range"]::-moz-range-track {  
-  background-color: var(--primary_container);
-}
-/* IE*/
-input[type="range"]::-ms-fill-lower {
-  background-color: var(--primary); 
-}
-input[type="range"]::-ms-fill-upper {  
-  background-color: var(--primary_container);
-}
 /*-----------------------------------------------*/
 .helpicon {
 	display: inline-block;
@@ -365,7 +328,7 @@ input[type="range"]::-ms-fill-upper {
 	border-radius: 6px;
 	padding: 5px;
 	margin-left:10px;
-	border: 1px solid #337ab7;
+	border: 1px solid var(--tooltip_text);
 }
 
 /*----------------LEFT FLYOUT MENU------------------*/
@@ -417,7 +380,7 @@ input[type="range"]::-ms-fill-upper {
 	height: 100%;
 	z-index: 4;
 	width: var(--flyout_menu_closed_width);
-	box-shadow: 0 0px 8px 0 rgba(0, 0, 0, 0.2), 0px 0px 20px 0 rgba(0, 0, 0, 0.19);
+	box-shadow: 0 0px 8px 0 rgba(0, 0, 0, 0.2), 25px 0px 20px 0 rgba(0, 0, 0, 0.19);
 	position: fixed;
 	z-index: 3;
 	top: 0;
@@ -438,7 +401,7 @@ input[type="range"]::-ms-fill-upper {
 	top: 0;
 	left: 0;
 	background-color: var(--flyout_background_pinned);
-	box-shadow: 0 0px 8px 0 rgba(0, 0, 0, 0.2), 25px 0px 20px 0 rgba(0, 0, 0, 0.19);
+	box-shadow: 0 0px 8px 0 rgba(0, 0, 0, 0.2), 0px 0px 20px 0 rgba(0, 0, 0, 0.19);
 	overflow-x: hidden;
 	transition: 0.5s;
 	border-radius: 0px;
@@ -471,6 +434,7 @@ input[type="range"]::-ms-fill-upper {
 .sample_order.selected {
 	background-color: var(--sample_order_select_color);
 	color: var(--sample_order_select_color_text);
+	padding-left: 3px;
 }
 
 .presets option {
@@ -523,6 +487,10 @@ input[type="range"]::-ms-fill-upper {
 
 .material-icons-outlined .cursor{
 	margin: auto;
+}
+
+.var_sync_system_spname{
+	bottom: 5px;
 }
 
 /* -----------------------------------------Bias-------------------------------------- */
@@ -711,6 +679,8 @@ input[type="range"]::-ms-fill-upper {
 
 .story_title_icons {
 	font-size: 18px;
+	padding: 10px 0 0 0;
+	margin-left: 125px;
 }
 
 .material-icons-outlined[story_gamesaved="true"] {
@@ -820,6 +790,30 @@ td.server_vars {
 body {
 	background-color: var(--background);
 	color: var(--text);
+
+	/* Firefox scroll */
+	scrollbar-width: thin;
+	scrollbar-color: var(--scrollbar-color);
+}
+
+/* Chrome, Safari scrollbar */
+::-webkit-scrollbar {
+	width: var(--scrollbar-size);
+	height: var(--scrollbar-size);
+}
+
+::-webkit-scrollbar-track {
+	background: #9b9b9b80;
+}
+
+::-webkit-scrollbar-thumb {
+	background-color: var(--scrollbar-color);
+	border-radius: 20px;
+	border: transparent;
+}
+
+::-webkit-scrollbar-thumb:hover {
+	background-color: #cacaca80;
 }
 
 @media only screen and (min-aspect-ratio: 7/5) {
@@ -831,9 +825,10 @@ body {
 	margin-left: var(--setting_menu_closed_width_no_pins_width);
 	margin-right: var(--flyout_menu_closed_width);
 	grid-template-areas: "menuicon gamescreen options lefticon"
+						 "menuicon theme theme lefticon"
 						 "menuicon inputrow inputrow lefticon";
 	grid-template-columns: 30px auto var(--story_options_size) 30px;
-	grid-template-rows: auto 100px;
+	grid-template-rows: auto min-content 100px;
 }
 .main-grid.settings_pinned {
 	margin-left: var(--flyout_menu_width);
@@ -849,6 +844,7 @@ body {
 	margin-left: var(--flyout_menu_width);
 	margin-right: var(--flyout_menu_width);
 	grid-template-areas: "menuicon gamescreen options lefticon"
+						 "menuicon theme theme lefticon"
 						 "menuicon inputrow inputrow lefticon";
 	grid-template-columns: 30px auto var(--story_options_size) 30px;
 }
@@ -863,9 +859,10 @@ body {
 	margin-left: var(--flyout_menu_closed_width);
 	grid-template-areas: "menuicon gamescreen lefticon"
 					     "menuicon options lefticon"
+						 "menuicon theme lefticon"
 						 "menuicon inputrow lefticon";
 	grid-template-columns: 30px auto 30px;
-	grid-template-rows: auto min-content 100px;
+	grid-template-rows: auto min-content min-content 100px;
 }
 }
 
@@ -887,6 +884,11 @@ body {
 	font-family: "Helvetica Neue",Helvetica,Arial,sans-serif;
 	font-size: 14px;
 	line-height: 1.42857143;
+}
+
+#story_prompt[story_prompt_in_ai="true"] {
+	color: var(--text_to_ai_color);
+	font-weight: bold;
 }
 
 .gametext {
@@ -995,6 +997,10 @@ body {
 	margin-right: 2px;
 }
 
+.themerow {
+	grid-area: theme;
+}
+
 .inputrow {
 	grid-area: inputrow;
 	z-index: 2;
@@ -1006,6 +1012,16 @@ body {
 	grid-template-rows: 0px 60px 40px;
 	gap: 1px;
 	
+}
+
+#input_text {
+	grid-area: textarea;
+	background-color: var(--textarea_background);
+	color: var(--text);
+	resize: none;
+	border-color: white;
+	border-width: 1px;
+	border-style:solid;
 }
 
 .inputrow.status_bar {
@@ -1156,37 +1172,36 @@ body {
 	flex-basis: auto;
 }
 
-.popup .item {
+.popup .model_item {
 	width: 100%;
 	background-color: var(--popup_item_color);
 	color: var(--popup_item_color_text);
 	padding: 2px;
 	display: grid;
-	grid-template-areas: "folder_icon delete_icon edit_icon rename_icon file";
-	grid-template-columns: 20px 20px 20px 20px auto;
+	grid-template-areas: "folder_icon delete_icon edit_icon rename_icon file gpu_size";
+	grid-template-columns: 30px 0px 0px 0px auto 50px;
 	
 }
 
-.popup .item .folder_icon {
+.popup .model_item .folder_icon {
 	grid-area: folder_icon;
 }
 
-.popup .item .edit_icon {
+.popup .model_item .edit_icon {
 	grid-area: edit_icon;
 }
 
-.popup .item .rename_icon {
+.popup .model_item .rename_icon {
 	grid-area: rename_icon;
 }
 
-.popup .item .delete_icon {
+.popup .model_item .delete_icon {
 	grid-area: delete_icon;
 }
 
-.popup .item .file {
-	grid-area: file;
-	display: grid;
+.popup .model_item .model {
 	cursor: pointer;
+	grid-area: file;
 }
 
 .popup .item .file:hover {
@@ -1228,7 +1243,7 @@ body {
 }
 /*----------------------------- Model Load Popup ------------------------------------------*/
 
-.popup .item .model {
+.popup_list_area .model_item .model {
 	grid-area: file;
 	display: grid;
 	grid-template-areas: "item gpu_size";
@@ -1313,7 +1328,7 @@ body {
 	resize: none;
 	border-color: white;
 	border-width: 1px;
-	border-radius: 15px;
+	border-radius: 10px;
 	border-style:solid;
 }
 

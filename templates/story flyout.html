@@ -56,6 +56,15 @@
 		</div>
 	</div>
 	<div id="story_menu_wi" class="story_category_area hidden">
-		<span id="world_info_folder_root" class="WI_Folder"><h2>root</h2></span>
+		<div class="setting_tile_area">
+		{% with menu='World Info' %}
+			{% with sub_path='' %}
+				{% include 'settings item.html' %}
+			{% endwith %}
+		{% endwith %}
+		</div>
+		<div id="WI_Area">
+			<span id="world_info_folder_root" class="WI_Folder"><h2>root</h2></span>
+		</div>
 	</div>
 </div>

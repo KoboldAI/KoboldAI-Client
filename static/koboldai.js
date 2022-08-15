@@ -52,6 +52,7 @@ map2.set(5, 'Temperature')
 //-----------------------------------Server to UI  Functions-----------------------------------------------
 function connect() {
 	console.log("connected");
+	//reset_story();
 	for (item of document.getElementsByTagName("body")) {
 		item.classList.remove("NotConnected");
 	}
@@ -77,13 +78,15 @@ function reset_story() {
 	while (option_area.firstChild) {
 		option_area.removeChild(option_area.firstChild);
 	}
-	var world_info_area = document.getElementById("story_menu_wi");
+	var world_info_area = document.getElementById("WI_Area");
 	while (world_info_area.firstChild) {
 		world_info_area.removeChild(world_info_area.firstChild);
 	}
 	world_info_data = {};
 	world_info_folder({"root": []});
 	document.getElementById("story_prompt").setAttribute("world_info_uids", "");
+	document.getElementById('themerow').classList.remove("hidden");
+	document.getElementById('input_text').placeholder = "Enter Prompt Here";
 }
 
 function fix_text(val) {
@@ -295,6 +298,16 @@ function do_prompt(data) {
 		item.setAttribute("old_text", data.value)
 		item.classList.remove("pulse");
 	}
+	//if we have a prompt we need to disable the theme area, or enable it if we don't
+	if (data.value != "") {
+		document.getElementById('input_text').placeholder = "Enter text here";
+		document.getElementById('themerow').classList.add("hidden");
+		document.getElementById('themetext').value = "";
+	} else {
+		document.getElementById('input_text').placeholder = "Enter Prompt Here";
+		document.getElementById('input_text').disabled = false;
+		document.getElementById('themerow').classList.remove("hidden");
+	}
 }
 
 function do_story_text_length_updates(data) {
@@ -375,6 +388,7 @@ function do_ai_busy(data) {
 }
 
 function var_changed(data) {
+	//console.log({"name": data.name, "data": data});
 	//Special Case for Story Text
 	if ((data.classname == "actions") && (data.name == "Selected Text")) {
 		do_story_text_updates(data);
@@ -384,6 +398,14 @@ function var_changed(data) {
 	//Special Case for Story Text Length
 	} else if ((data.classname == "actions") && (data.name == "Selected Text Length")) {
 		do_story_text_length_updates(data);
+	//Special Case for Story Text Length
+	} else if ((data.classname == "actions") && (data.name == "In AI Input")) {
+		//console.log(data.value);
+		if (data.value['In AI Input']) {
+			document.getElementById('Selected Text Chunk '+data.value.id).classList.add("within_max_length");
+		} else {
+			document.getElementById('Selected Text Chunk '+data.value.id).classList.remove("within_max_length");
+		}
 	//Special Case for Presets
 	} else if ((data.classname == 'model') && (data.name == 'presets')) {
 		do_presets(data);
@@ -526,6 +548,7 @@ function load_popup(data) {
 }
 
 function popup_items(data) {
+	console.log(data);
 	var popup_list = document.getElementById('popup_list');
 	//first, let's clear out our existing data
 	while (popup_list.firstChild) {
@@ -533,9 +556,45 @@ function popup_items(data) {
 	}
 	document.getElementById('popup_upload_input').value = "";
 	
-	for (item of data) {
-		var list_item = document.createElement("span");
-		list_item.classList.add("item");
+	//create the column widths
+	var style = 'width: 80vw; display: grid; grid-template-areas: "icons';
+	for (i=0; i < data.column_widths.length; i++) {
+		style = style + " p"+i;
+	}
+	style = style + '"; grid-template-columns: 30px';
+	for (column_width of data.column_widths) {
+		style = style + " "+column_width;
+	}
+	style = style + ';';
+	
+	//create titles
+	var tr = document.createElement("div");
+	tr.style = style;
+	//icon area
+	var td = document.createElement("span");
+	td.style = "grid-area: icons;";
+	tr.append(td)
+	
+	//add dynamic columns
+	var i = 0;
+	for (column of data.column_names) {
+		td = document.createElement("span");
+		td.textContent = column;
+		td.style = "grid-area: p"+i+";";
+		i+=1;
+		tr.append(td)
+	}
+	popup_list.append(tr);
+	
+	//create lines
+	for (item of data.items) {
+		var tr = document.createElement("div");
+		tr.classList.add("item");
+		tr.setAttribute("folder", item[0]);
+		tr.setAttribute("valid", item[3]);
+		tr.style = style;
+		var icon_area = document.createElement("span");
+		icon_area.style = "grid-area: icons;";
 		
 		//create the folder icon
 		var folder_icon = document.createElement("span");
@@ -544,7 +603,7 @@ function popup_items(data) {
 			folder_icon.classList.add("oi");
 			folder_icon.setAttribute('data-glyph', "folder");
 		}
-		list_item.append(folder_icon);
+		icon_area.append(folder_icon);
 		
 		//create the edit icon
 		var edit_icon = document.createElement("span");
@@ -558,7 +617,7 @@ function popup_items(data) {
 							socket.emit("popup_edit", this.id);
 					  };
 		}
-		list_item.append(edit_icon);
+		icon_area.append(edit_icon);
 		
 		//create the rename icon
 		var rename_icon = document.createElement("span");
@@ -576,7 +635,7 @@ function popup_items(data) {
 							}
 					  };
 		}
-		list_item.append(rename_icon);
+		icon_area.append(rename_icon);
 		
 		//create the delete icon
 		var delete_icon = document.createElement("span");
@@ -599,40 +658,76 @@ function popup_items(data) {
 							}
 					  };
 		}
-		list_item.append(delete_icon);
+		icon_area.append(delete_icon);
+		tr.append(icon_area);
 		
 		//create the actual item
-		var popup_item = document.createElement("span");
-		popup_item.classList.add("file");
-		popup_item.id = item[1];
-		popup_item.setAttribute("folder", item[0]);
-		popup_item.setAttribute("valid", item[3]);
-		popup_item.textContent = item[2];
-		popup_item.onclick = function () {
-						var accept = document.getElementById("popup_accept");
-						if (this.getAttribute("valid") == "true") {
-							accept.classList.remove("disabled");
-							accept.setAttribute("selected_value", this.id);
-						} else {
-							accept.setAttribute("selected_value", "");
-							accept.classList.add("disabled");
-							if (this.getAttribute("folder") == "true") {
-								socket.emit("popup_change_folder", this.id);
+		i=0;
+		if (data.show_filename) {
+			var popup_item = document.createElement("span");
+			popup_item.style = "grid-area: p"+i+";";
+			i+=1;
+			popup_item.id = item[1];
+			popup_item.setAttribute("folder", item[0]);
+			popup_item.setAttribute("valid", item[3]);
+			popup_item.textContent = item[2];
+			popup_item.onclick = function () {
+							var accept = document.getElementById("popup_accept");
+							if (this.getAttribute("valid") == "true") {
+								accept.classList.remove("disabled");
+								accept.setAttribute("selected_value", this.id);
+							} else {
+								accept.setAttribute("selected_value", "");
+								accept.classList.add("disabled");
+								if (this.getAttribute("folder") == "true") {
+									socket.emit("popup_change_folder", this.id);
+								}
 							}
-						}
-						var popup_list = document.getElementById('popup_list').getElementsByClassName("selected");
-						for (item of popup_list) {
-							item.classList.remove("selected");
-						}
-						this.classList.add("selected");
-				  };
-		list_item.append(popup_item);
+							var popup_list = document.getElementById('popup_list').getElementsByClassName("selected");
+							for (item of popup_list) {
+								item.classList.remove("selected");
+							}
+							this.parentElement.classList.add("selected");
+					  };
+			tr.append(popup_item);
+		}
+		
+		for (extra_data of item[4]) {
+			td = document.createElement("span");
+			td.style = "grid-area: p"+i+";";
+			i+=1;
+			td.id = item[1];
+			td.setAttribute("folder", item[0]);
+			td.setAttribute("valid", item[3]);
+			td.textContent = extra_data;
+			td.onclick = function () {
+							var accept = document.getElementById("popup_accept");
+							if (this.getAttribute("valid") == "true") {
+								accept.classList.remove("disabled");
+								accept.setAttribute("selected_value", this.id);
+							} else {
+								accept.setAttribute("selected_value", "");
+								accept.classList.add("disabled");
+								if (this.getAttribute("folder") == "true") {
+									socket.emit("popup_change_folder", this.id);
+								}
+							}
+							var popup_list = document.getElementById('popup_list').getElementsByClassName("selected");
+							for (item of popup_list) {
+								item.classList.remove("selected");
+							}
+							this.classList.add("selected");
+					  };
+			tr.append(td);
+		}
 		
 		
-		popup_list.append(list_item);
+		popup_list.append(tr);
 		
 		
 	}
+	
+	
 }
 
 function popup_breadcrumbs(data) {
@@ -749,38 +844,19 @@ function show_model_menu(data) {
 	//add items
 	for (item of data.data) {
 		var list_item = document.createElement("span");
-		list_item.classList.add("item");
+		list_item.classList.add("model_item");
 		
 		//create the folder icon
 		var folder_icon = document.createElement("span");
-		folder_icon.classList.add("folder_icon");
-		if (item[3]) {
-			folder_icon.classList.add("oi");
-			folder_icon.setAttribute('data-glyph', "folder");
+		folder_icon.classList.add("material-icons-outlined");
+		folder_icon.classList.add("cursor");
+		if ((item[3]) || (item[0] == 'Load a model from its directory') || (item[0] == 'Load an old GPT-2 model (eg CloverEdition)')) {
+			folder_icon.textContent = "folder";
+		} else {
+			folder_icon.textContent = "psychology";
 		}
 		list_item.append(folder_icon);
 		
-		//create the delete icon
-		//var delete_icon = document.createElement("span");
-		//delete_icon.classList.add("delete_icon");
-		//if (popup_deleteable) {
-		//	delete_icon.classList.add("oi");
-		//	delete_icon.setAttribute('data-glyph', "x");
-		//	delete_icon.id = item[1];
-		//	delete_icon.setAttribute("folder", item[0]);
-		//	delete_icon.onclick = function () {
-		//					if (this.getAttribute("folder") == "true") {
-		//						if (window.confirm("Do you really want to delete this folder and ALL files under it?")) {
-		//							socket.emit("popup_delete", this.id);
-		//						}
-		//					} else {
-		//						if (window.confirm("Do you really want to delete this file?")) {
-		//							socket.emit("popup_delete", this.id);
-		//						}
-		//					}
-		//			  };
-		//}
-		//list_item.append(delete_icon);
 		
 		//create the actual item
 		var popup_item = document.createElement("span");
@@ -1229,22 +1305,22 @@ function world_info_folder(data) {
 				for (var j = i+1; j < folders.length; j++) {
 					if (document.getElementById("world_info_folder_"+folders[j])) {
 						found = true;
-						document.getElementById("story_menu_wi").insertBefore(folder, document.getElementById("world_info_folder_"+folders[j]));
+						document.getElementById("WI_Area").insertBefore(folder, document.getElementById("world_info_folder_"+folders[j]));
 						break;
 					}
 				}
 				if (!(found)) {
 					if (document.getElementById("new_world_info_button")) {
-						document.getElementById("story_menu_wi").insertBefore(folder, document.getElementById("new_world_info_button"));
+						document.getElementById("WI_Area").insertBefore(folder, document.getElementById("new_world_info_button"));
 					} else {
-						document.getElementById("story_menu_wi").append(folder);
+						document.getElementById("WI_Area").append(folder);
 					}
 				}
 			} else {
 				if (document.getElementById("new_world_info_button")) {
-					document.getElementById("story_menu_wi").insertBefore(folder, document.getElementById("new_world_info_button"));
+					document.getElementById("WI_Area").insertBefore(folder, document.getElementById("new_world_info_button"));
 				} else {
-					document.getElementById("story_menu_wi").append(folder);
+					document.getElementById("WI_Area").append(folder);
 				}
 			}
 		} else {
@@ -1282,7 +1358,7 @@ function world_info_folder(data) {
 									  }
 		temp.append(add_icon);
 		add_folder.append(temp);
-		document.getElementById("story_menu_wi").append(add_folder);
+		document.getElementById("WI_Area").append(add_folder);
 	}
 }
 
@@ -1432,7 +1508,6 @@ function toggle_setting_category(element) {
 
 function preserve_game_space(preserve) {
 	var r = document.querySelector(':root');
-	console.log("Setting cookie to: "+preserve);
 	if (preserve) {
 		setCookie("preserve_game_space", "true");
 		r.style.setProperty('--setting_menu_closed_width_no_pins_width', '0px');
@@ -1443,7 +1518,7 @@ function preserve_game_space(preserve) {
 		document.getElementById('preserve_game_space_setting').checked = true;
 	} else {
 		setCookie("preserve_game_space", "false");
-		r.style.setProperty('--setting_menu_closed_width_no_pins_width', '400px');
+		r.style.setProperty('--setting_menu_closed_width_no_pins_width', 'var(--flyout_menu_width)');
 		if (document.getElementById('preserve_game_space_setting').checked) {
 			//not sure why the bootstrap-toggle won't respect a standard item.checked = true/false, so....
 			document.getElementById('preserve_game_space_setting').parentNode.click();
@@ -1884,6 +1959,7 @@ function assign_world_info_to_action(uid=null, action_item=null) {
 }
 
 function update_token_lengths() {
+	return
 	max_token_length = parseInt(document.getElementById("model_max_length_cur").value);
 	included_world_info = [];
 	//clear out the world info included tags
@@ -1919,7 +1995,7 @@ function update_token_lengths() {
 	}
 	//figure out prompt length
 	if ((document.getElementById("story_prompt").getAttribute("story_prompt_length") == null) || (document.getElementById("story_prompt").getAttribute("story_prompt_length") == "")) {
-		prompt_length = 999999999999;
+		prompt_length = 0;
 	} else {
 		prompt_length = parseInt(document.getElementById("story_prompt").getAttribute("story_prompt_length"));
 	}
@@ -2035,7 +2111,6 @@ function close_menus() {
 	//close popup menus
 	document.getElementById('popup').classList.add("hidden");
 	document.getElementById('loadmodelcontainer').classList.add("hidden");
-	document.getElementById('loadcontainer').classList.add("hidden");
 	document.getElementById('save-confirm').classList.add("hidden");
 	document.getElementById('error_message').classList.add("hidden");
 	

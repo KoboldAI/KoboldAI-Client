@@ -37,20 +37,34 @@
 		<div class="gamescreen" id="gamescreen">
 			<div id="disconnect_message"><center><h1>Disconnected</h1></center></div>
 			<div class="gametext" id="Selected Text">
-				<span id="story_prompt" class="var_sync_story_prompt var_sync_alt_story_prompt_length rawtext" contenteditable=true onblur="if (getAttribute(this, 'old_text') != this.textContent) {sync_to_server(this);}" onkeydown="detect_enter_text"></span>
+				<span id="story_prompt" class="var_sync_story_prompt var_sync_alt_story_prompt_length var_sync_alt_story_prompt_in_ai rawtext" contenteditable=true onblur="if (getAttribute(this, 'old_text') != this.textContent) {sync_to_server(this);}" onkeydown="detect_enter_text"></span>
 			</div>
 		</div>
 		<!------------ Sequences --------------------->
 		<div id="action_count" class="var_sync_actions_Action_Count hidden"></div>
 		<div id="Select Options" class="sequence_area"></div>
+		<!------------ Theme Area--------------------->
+		<div class="themerow" id="themerow">
+			<h4>If you want to generate a random prompt, insert a theme here:</h4>
+			<input type="text" autocomplete="off" style="width: 100%; border-radius: 5px;" id="themetext" placeholder="Theme for Random Story" oninput='if (this.value != "") {
+																													document.getElementById("input_text").disabled = true;
+																												} else {
+																													document.getElementById("input_text").disabled = false;
+																												}'/>
+			<h4>If you want to write your prompt, insert it here:</h4>
+		</div>
 		<!------------ Input Area--------------------->
 		<div class="inputrow" id="inputrow_container">
-			<textarea autocomplete="off" row=5 id="input_text" placeholder="Enter text here"></textarea>
+			<textarea autocomplete="off" row=5 id="input_text" placeholder="Enter Prompt Here" oninput='if (this.value != "") {
+																											document.getElementById("themetext").disabled = true;
+																										} else {
+																											document.getElementById("themetext").disabled = false;
+																										}'></textarea>
 			<div class="statusbar_outer hidden">
 				<div class="statusbar_inner" style="width:0%">0%</div>
 			</div><br>
 			<button type="button" class="btn action_button submit var_sync_alt_system_aibusy" system_aibusy=False id="btnsend" 
-				onclick="socket.emit('submit', {'data': document.getElementById('input_text').value});document.getElementById('input_text').value = '';"
+				onclick="socket.emit('submit', {'data': document.getElementById('input_text').value, 'theme': document.getElementById('themetext').value});document.getElementById('input_text').value = '';"
 				>Submit</button>
 			<button type="button" class="btn action_button submited var_sync_alt_system_aibusy"  system_aibusy=False id="btnsend"><img src="static/thinking.gif" class="force_center" onclick="socket.emit('abort','');"></button>
 			<button type="button" class="btn action_button back" onclick="socket.emit('back', {});"><span class="oi" data-glyph="action-undo"></span></button>

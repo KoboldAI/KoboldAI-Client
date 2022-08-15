@@ -119,7 +119,7 @@ def checksp(filename: str, model_dimension: int) -> Tuple[Union[zipfile.ZipFile,
     if 'np' not in globals():
         import numpy as np
     try:
-        z = zipfile.ZipFile("softprompts/"+filename)
+        z = zipfile.ZipFile(filename)
         with z.open('tensor.npy') as f:
             # Read only the header of the npy file, for efficiency reasons
             version: Tuple[int, int] = np.lib.format.read_magic(f)

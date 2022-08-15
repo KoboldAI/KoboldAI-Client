@@ -841,6 +841,7 @@ def spRequest(filename):
         raise RuntimeError(f"{repr(filename)} is not a valid soft prompt file")
     with z.open('meta.json') as f:
         koboldai_vars.spmeta = json.load(f)
+        koboldai_vars.spname = koboldai_vars.spmeta['name']
     z.close()
 
     with np.load(fileops.sppath(filename), allow_pickle=False) as f:
@@ -1156,7 +1157,7 @@ def get_oai_models(data):
                 file.write(json.dumps(js, indent=3), room="UI_1")
             
         emit('from_server', {'cmd': 'oai_engines', 'data': engines, 'online_model': online_model}, broadcast=True, room="UI_1")
-        emit('oai_engines', {'data': engines, 'online_model': online_model}, room="UI_2")
+        emit('oai_engines', {'data': engines, 'online_model': online_model}, broadcast=False, room="UI_2")
     else:
         # Something went wrong, print the message and quit since we can't initialize an engine
         print("{0}ERROR!{1}".format(colors.RED, colors.END), room="UI_1")
@@ -2941,7 +2942,7 @@ def lua_set_spfilename(filename: Union[str, None]):
     filename = str(filename).strip()
     changed = lua_get_spfilename() != filename
     assert all(q not in filename for q in ("/", "\\"))
-    spRequest(filename)
+    spRequest("softprompts/"+filename)
     return changed
 
 #==================================================================#
@@ -3435,7 +3436,7 @@ def get_message(msg):
     elif(msg['cmd'] == 'loadrequest'):
         loadRequest(fileops.storypath(koboldai_vars.loadselect))
     elif(msg['cmd'] == 'sprequest'):
-        spRequest(koboldai_vars.spselect)
+        spRequest("softprompts/"+koboldai_vars.spselect)
     elif(msg['cmd'] == 'deletestory'):
         deletesave(msg['data'])
     elif(msg['cmd'] == 'renamestory'):
@@ -5537,48 +5538,9 @@ def load_story_v1(js):
     if("worldinfo" in js):
         num = 0
         for wi in js["worldinfo"]:
-            koboldai_vars.worldinfo.append({
-                "key": wi["key"],
-                "keysecondary": wi.get("keysecondary", ""),
-                "content": wi["content"],
-                "comment": wi.get("comment", ""),
-                "folder": wi.get("folder", None),
-                "num": num,
-                "init": True,
-                "selective": wi.get("selective", False),
-                "constant": wi.get("constant", False),
-                "uid": None,
-            })
             koboldai_vars.worldinfo_v2.add_item([x.strip() for x in wi["key"].split(",")][0], wi["key"], wi.get("keysecondary", ""), 
                                                 wi.get("folder", "root"), wi.get("constant", False), 
                                                 wi["content"], wi.get("comment", ""))
-            
-            
-            while(True):
-                uid = int.from_bytes(os.urandom(4), "little", signed=True)
-                if(uid not in koboldai_vars.worldinfo_u):
-                    break
-            koboldai_vars.worldinfo_u[uid] = koboldai_vars.worldinfo[-1]
-            koboldai_vars.worldinfo[-1]["uid"] = uid
-            if(koboldai_vars.worldinfo[-1]["folder"] is not None):
-                koboldai_vars.wifolders_u[koboldai_vars.worldinfo[-1]["folder"]].append(koboldai_vars.worldinfo[-1])
-            num += 1
-
-    for uid in koboldai_vars.wifolders_l + [None]:
-        koboldai_vars.worldinfo.append({"key": "", "keysecondary": "", "content": "", "comment": "", "folder": uid, "num": None, "init": False, "selective": False, "constant": False, "uid": None})
-        while(True):
-            uid = int.from_bytes(os.urandom(4), "little", signed=True)
-            if(uid not in koboldai_vars.worldinfo_u):
-                break
-        try:
-            koboldai_vars.worldinfo_u[uid] = koboldai_vars.worldinfo[-1]
-        except:
-            print(koboldai_vars.worldinfo)
-        koboldai_vars.worldinfo[-1]["uid"] = uid
-        if(koboldai_vars.worldinfo[-1]["folder"] is not None):
-            koboldai_vars.wifolders_u[koboldai_vars.worldinfo[-1]["folder"]].append(koboldai_vars.worldinfo[-1])
-    stablesortwi()
-    koboldai_vars.worldinfo_i = [wi for wi in koboldai_vars.worldinfo if wi["init"]]
 
     # Save path for save button
     koboldai_vars.savedir = loadpath
@@ -5765,29 +5727,24 @@ def importgame():
 def importAidgRequest(id):    
     exitModes()
     
-    urlformat = "https://prompts.aidg.club/api/"
+    urlformat = "https://aetherroom.club/api/"
     req = requests.get(urlformat+id)
-
     if(req.status_code == 200):
         js = req.json()
         
         # Import game state
+        
+        koboldai_vars.create_story("")
         koboldai_vars.gamestarted = True
         koboldai_vars.prompt      = js["promptContent"]
         koboldai_vars.memory      = js["memory"]
         koboldai_vars.authornote  = js["authorsNote"]
-        koboldai_vars.authornotetemplate = "[Author's note: <|>]"
-        koboldai_vars.actions.reset()
-        koboldai_vars.actions_metadata = {}
-        koboldai_vars.worldinfo   = []
-        koboldai_vars.worldinfo_i = []
-        koboldai_vars.worldinfo_u = {}
-        koboldai_vars.wifolders_d = {}
-        koboldai_vars.wifolders_l = []
-        koboldai_vars.wifolders_u = {uid: [] for uid in koboldai_vars.wifolders_d}
-        koboldai_vars.lastact     = ""
-        koboldai_vars.submission  = ""
-        koboldai_vars.lastctx     = ""
+        
+        
+        if not koboldai_vars.memory:
+            koboldai_vars.memory = ""
+        if not koboldai_vars.authornote:
+            koboldai_vars.authornote = ""
         
         num = 0
         for wi in js["worldInfos"]:
@@ -5803,28 +5760,12 @@ def importAidgRequest(id):
                 "constant": wi.get("constant", False),
                 "uid": None,
             })
-            while(True):
-                uid = int.from_bytes(os.urandom(4), "little", signed=True)
-                if(uid not in koboldai_vars.worldinfo_u):
-                    break
-            koboldai_vars.worldinfo_u[uid] = koboldai_vars.worldinfo[-1]
-            koboldai_vars.worldinfo[-1]["uid"] = uid
-            if(koboldai_vars.worldinfo[-1]["folder"]) is not None:
-                koboldai_vars.wifolders_u[koboldai_vars.worldinfo[-1]["folder"]].append(koboldai_vars.worldinfo[-1])
-            num += 1
-
-        for uid in koboldai_vars.wifolders_l + [None]:
-            koboldai_vars.worldinfo.append({"key": "", "keysecondary": "", "content": "", "comment": "", "folder": uid, "num": None, "init": False, "selective": False, "constant": False, "uid": None})
-            while(True):
-                uid = int.from_bytes(os.urandom(4), "little", signed=True)
-                if(uid not in koboldai_vars.worldinfo_u):
-                    break
-            koboldai_vars.worldinfo_u[uid] = koboldai_vars.worldinfo[-1]
-            koboldai_vars.worldinfo[-1]["uid"] = uid
-            if(koboldai_vars.worldinfo[-1]["folder"] is not None):
-                koboldai_vars.wifolders_u[koboldai_vars.worldinfo[-1]["folder"]].append(koboldai_vars.worldinfo[-1])
-        stablesortwi()
-        koboldai_vars.worldinfo_i = [wi for wi in koboldai_vars.worldinfo if wi["init"]]
+            
+            koboldai_vars.worldinfo_v2.add_item([x.strip() for x in wi["keys"].split(",")][0], wi["keys"], wi.get("keysecondary", ""), 
+                                                wi.get("folder", "root"), wi.get("constant", False), 
+                                                wi["entry"], wi.get("comment", ""))
+                                                
+            
 
         # Reset current save
         koboldai_vars.savedir = getcwd()+"\\stories"
@@ -5964,8 +5905,8 @@ def final_startup():
     if(path.exists("settings/" + getmodelname().replace('/', '_') + ".settings")):
         file = open("settings/" + getmodelname().replace('/', '_') + ".settings", "r")
         js   = json.load(file)
-        if(koboldai_vars.allowsp and "softprompt" in js and type(js["softprompt"]) is str and all(q not in js["softprompt"] for q in ("..", ":")) and (len(js["softprompt"]) == 0 or all(js["softprompt"][0] not in q for q in ("/", "\\")))):
-            spRequest(js["softprompt"])
+        if(koboldai_vars.allowsp and "softprompt" in js and type(js["softprompt"]) is str and all(q not in js["softprompt"] for q in ("..", ":")) and (len(js["softprompt"]) != 0 and all(js["softprompt"][0] not in q for q in ("/", "\\")))):
+            spRequest("softprompts/"+js["softprompt"])
         else:
             koboldai_vars.spfilename = ""
         file.close()
@@ -6036,6 +5977,19 @@ def send_debug():
 #==================================================================#
 # UI V2 CODE
 #==================================================================#
+@app.route('/ai_text')
+def ai_text():
+    start_time = time.time()
+    text = koboldai_vars.calc_ai_text()
+    print("Generating Game Text took {} seconds".format(time.time()-start_time))
+    return text
+    
+    
+    
+
+#==================================================================#
+# UI V2 CODE
+#==================================================================#
 @app.route('/new_ui')
 def new_ui_index():
     if 'story' in session:
@@ -6062,14 +6016,14 @@ def upload_file(data):
             print("Someone is trying to upload a file to your server. Blocked.")
         elif session['popup_jailed_dir'] is None:
             if os.path.exists(path):
-                emit("error_popup", "The file already exists. Please delete it or rename the file before uploading", room="UI_2");
+                emit("error_popup", "The file already exists. Please delete it or rename the file before uploading", broadcast=False, room="UI_2");
             else:
                 with open(path, "wb") as f:
                     f.write(data['data'])
                 get_files_folders(session['current_folder'])
         elif session['popup_jailed_dir'] in session['current_folder']:
             if os.path.exists(path):
-                emit("error_popup", "The file already exists. Please delete it or rename the file before uploading", room="UI_2");
+                emit("error_popup", "The file already exists. Please delete it or rename the file before uploading", broadcast=False,  room="UI_2");
             else:
                 with open(path, "wb") as f:
                     f.write(data['data'])
@@ -6176,7 +6130,9 @@ def popup_change_file(data):
 
 def file_popup(popup_title, starting_folder, return_event, upload=True, jailed=True, folder_only=True, renameable=False, deleteable=False, 
                                                            editable=False, show_breadcrumbs=True, item_check=None, show_hidden=False,
-                                                           valid_only=False, hide_extention=False):
+                                                           valid_only=False, hide_extention=False, extra_parameter_function=None,
+                                                           column_names=['File Name'], show_filename=True,
+                                                           column_widths=["100%"]):
     #starting_folder = The folder we're going to get folders and/or items from
     #return_event = the socketio event that will be emitted when the load button is clicked
     #jailed = if set to true will look for the session variable jailed_folder and prevent navigation outside of that folder
@@ -6197,11 +6153,15 @@ def file_popup(popup_title, starting_folder, return_event, upload=True, jailed=T
     session['popup_editable'] = editable
     session['popup_show_hidden'] = show_hidden
     session['popup_item_check'] = item_check
+    session['extra_parameter_function'] = extra_parameter_function
+    session['column_names'] = column_names
     session['popup_folder_only'] = folder_only
     session['popup_show_breadcrumbs'] = show_breadcrumbs
     session['upload'] = upload
     session['valid_only'] = valid_only
     session['hide_extention'] = hide_extention
+    session['show_filename'] = show_filename
+    session['column_widths'] = column_widths
     
     socketio.emit("load_popup", {"popup_title": popup_title, "call_back": return_event, "renameable": renameable, "deleteable": deleteable, "editable": editable, 'upload': upload}, broadcast=False, room="UI_2")
     socketio.emit("load_popup", {"popup_title": popup_title, "call_back": return_event, "renameable": renameable, "deleteable": deleteable, "editable": editable, 'upload': upload}, broadcast=True, room="UI_1")
@@ -6212,11 +6172,15 @@ def get_files_folders(starting_folder):
     import stat
     session['current_folder'] = os.path.abspath(starting_folder).replace("\\", "/")
     item_check = session['popup_item_check']
+    extra_parameter_function = session['extra_parameter_function']
     show_breadcrumbs = session['popup_show_breadcrumbs']
     show_hidden = session['popup_show_hidden']
     folder_only = session['popup_folder_only']
     valid_only = session['valid_only']
+    column_names = session['column_names']
     hide_extention = session['hide_extention']
+    show_filename = session['show_filename']
+    column_widths = session['column_widths']
     
     if starting_folder == 'This PC':
         breadcrumbs = [['This PC', 'This PC']]
@@ -6253,24 +6217,29 @@ def get_files_folders(starting_folder):
                 valid_selection = True
             else:
                 valid_selection = item_check(item_full_path)
+            if extra_parameter_function is None:
+                extra_parameters = []
+            else:
+                extra_parameters = extra_parameter_function(item_full_path, item, valid_selection)
                 
             if (show_hidden and hidden) or not hidden:
                 if os.path.isdir(os.path.join(base_path, item)):
-                    folders.append([True, item_full_path, item,  valid_selection])
+                    folders.append([True, item_full_path, item,  valid_selection, extra_parameters])
                 else:
                     if hide_extention:
                         item = ".".join(item.split(".")[:-1])
                     if valid_only:
                         if valid_selection:
-                            files.append([False, item_full_path, item,  valid_selection])
+                            files.append([False, item_full_path, item,  valid_selection, extra_parameters])
                     else:
-                        files.append([False, item_full_path, item,  valid_selection])
+                        files.append([False, item_full_path, item,  valid_selection, extra_parameters])
                         
         items = folders
         if not folder_only:
             items += files
             
-    socketio.emit("popup_items", items, broadcast=False, include_self=True, room="UI_2")
+    #items is a list of [Folder True/False, full path, file/folder name, validity of item to load, [list of extra columns]]
+    socketio.emit("popup_items", {"items": items, "column_names": column_names, "show_filename": show_filename, "column_widths": column_widths}, broadcast=False, include_self=True, room="UI_2")
     socketio.emit("popup_items", items, broadcast=True, include_self=True, room="UI_1")
     if show_breadcrumbs:
         socketio.emit("popup_breadcrumbs", breadcrumbs, broadcast=False, room="UI_2")
@@ -6364,7 +6333,11 @@ def UI_2_Set_Selected_Text(data):
 @socketio.on('Use Option Text')
 def UI_2_Set_Selected_Text(data):
     print("Using Option Text: {}".format(data))
-    koboldai_vars.actions.use_option(int(data['option']), action_step=int(data['chunk']))
+    if koboldai_vars.prompt == "":
+        koboldai_vars.prompt = koboldai_vars.actions.get_current_options()[int(data['option'])]['text']
+        koboldai_vars.actions.clear_unused_options()
+    else:
+        koboldai_vars.actions.use_option(int(data['option']), action_step=int(data['chunk']))
 
 
 #==================================================================#
@@ -6372,10 +6345,18 @@ def UI_2_Set_Selected_Text(data):
 #==================================================================#
 @socketio.on('submit')
 def UI_2_submit(data):
-    koboldai_vars.actions.clear_unused_options()
-    koboldai_vars.lua_koboldbridge.feedback = None
-    koboldai_vars.recentrng = koboldai_vars.recentrngm = None
-    actionsubmit(data['data'], actionmode=koboldai_vars.actionmode)
+    print(data)
+    if not koboldai_vars.noai and data['theme'] != "":
+        memory = koboldai_vars.memory
+        koboldai_vars.memory = "{}\n\nYou generate the following {} story concept :".format(koboldai_vars.memory, data['theme'])
+        koboldai_vars.lua_koboldbridge.feedback = None
+        actionsubmit("", force_submit=True, force_prompt_gen=True)
+        koboldai_vars.memory = memory
+    else:
+        koboldai_vars.actions.clear_unused_options()
+        koboldai_vars.lua_koboldbridge.feedback = None
+        koboldai_vars.recentrng = koboldai_vars.recentrngm = None
+        actionsubmit(data['data'], actionmode=koboldai_vars.actionmode)
  
  #==================================================================#
 # Event triggered when user clicks the submit button
@@ -6484,7 +6465,21 @@ def UI_2_load_model(data):
 def UI_2_load_story_list(data):
     file_popup("Select Story to Load", "./stories", "load_story", upload=True, jailed=True, folder_only=False, renameable=True, 
                                                                   deleteable=True, show_breadcrumbs=True, item_check=valid_story,
-                                                                  valid_only=True, hide_extention=True)
+                                                                  valid_only=True, hide_extention=True, extra_parameter_function=get_story_length,
+                                                                  column_names=['Story Name', 'Action Count'],
+                                                                  column_widths=['auto', '100px'])
+                                                                  
+def get_story_length(item_full_path, item, valid_selection):
+    if not valid_selection:
+        return [""]
+    with open(item_full_path, "r") as f:
+        js = json.load(f)
+        if 'file_version' not in js:
+            return [len(js['actions'])]
+        if js['file_version'] == 1:
+            return [len(js['actions'])]
+        return [0 if js['actions']['action_count'] == -1 else js['actions']['action_count'] ]
+    
 
 def valid_story(file):
         if file.endswith(".json"):
@@ -6601,6 +6596,59 @@ def my_except_hook(exctype, value, traceback):
     sys.__excepthook__(exctype, value, traceback)
 sys.excepthook = my_except_hook
 
+
+#==================================================================#
+# Event triggered when Softprompt is clicked
+#==================================================================#
+@socketio.on('load_softprompt_list')
+def UI_2_load_softprompt_list(data):
+    if not koboldai_vars.allowsp:
+        socketio.emit("error", "Soft prompts are not supported by your current model/backend", broadcast=True, room="UI_2")
+    assert koboldai_vars.allowsp, "Soft prompts are not supported by your current model/backend"
+    file_popup("Select Softprompt to Load", "./softprompts", "load_softprompt", upload=True, jailed=True, folder_only=False, renameable=True, 
+                                                                  deleteable=True, show_breadcrumbs=True, item_check=valid_softprompt,
+                                                                  valid_only=True, hide_extention=True, extra_parameter_function=get_softprompt_desc,
+                                                                  column_names=['Softprompt Name', 'Softprompt Description'],
+                                                                  show_filename=False,
+                                                                  column_widths=['150px', 'auto'])
+                                                                
+def valid_softprompt(file):
+    z, version, shape, fortran_order, dtype = fileops.checksp(file, koboldai_vars.modeldim)
+    if z in [1, 2, 3, 4]:
+        return False
+    elif not isinstance(z, zipfile.ZipFile):
+        print("not zip")
+        return False
+    else:
+        return True
+
+def get_softprompt_desc(item_full_path, item, valid_selection):
+    if not valid_selection:
+        return [None, None]
+    z = zipfile.ZipFile(item_full_path)
+    with z.open('meta.json') as f:
+        ob = json.load(f)
+        return [ob['name'], ob['description']]
+        
+
+#==================================================================#
+# Event triggered when Softprompt is clicked
+#==================================================================#
+@socketio.on('load_softprompt')
+def UI_2_load_softprompt(data):
+    print("Load softprompt: {}".format(data))
+    spRequest(data)
+
+#==================================================================#
+# Event triggered when aidg.club loaded
+#==================================================================#
+@socketio.on('load_aidg_club')
+def UI_2_load_aidg_club(data):
+    print("Load aidg.club: {}".format(data))
+    importAidgRequest(data)
+    
+        
+    
 
 #==================================================================#
 # Test
