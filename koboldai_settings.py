@@ -121,7 +121,7 @@ class koboldai_vars(object):
     def calc_ai_text(self):
         token_budget = self.max_length
         used_world_info = []
-        used_tokens = 0
+        used_tokens = self.sp_length
         text = ""
         
         self.worldinfo_v2.reset_used_in_game()
@@ -845,7 +845,10 @@ class KoboldStoryRegister(object):
         self.set_game_saved()
     
     def set_action_in_ai(self, action_id, used=True):
-        old = self.actions[action_id]['In AI Input']
+        if 'In AI Input' in self.actions[action_id]:
+            old = self.actions[action_id]['In AI Input']
+        else:
+            old = None
         self.actions[action_id]['In AI Input'] = used
         if old != used:
             process_variable_changes(self.socketio, "actions", 'In AI Input', {"id": action_id, 'In AI Input':  self.actions[action_id]["In AI Input"]}, None)
