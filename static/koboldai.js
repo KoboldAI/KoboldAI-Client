@@ -52,7 +52,7 @@ map2.set(5, 'Temperature')
 //-----------------------------------Server to UI  Functions-----------------------------------------------
 function connect() {
 	console.log("connected");
-	reset_story();
+	//reset_story();
 	for (item of document.getElementsByTagName("body")) {
 		item.classList.remove("NotConnected");
 	}
@@ -398,6 +398,14 @@ function var_changed(data) {
 	//Special Case for Story Text Length
 	} else if ((data.classname == "actions") && (data.name == "Selected Text Length")) {
 		do_story_text_length_updates(data);
+	//Special Case for Story Text Length
+	} else if ((data.classname == "actions") && (data.name == "In AI Input")) {
+		//console.log(data.value);
+		if (data.value['In AI Input']) {
+			document.getElementById('Selected Text Chunk '+data.value.id).classList.add("within_max_length");
+		} else {
+			document.getElementById('Selected Text Chunk '+data.value.id).classList.remove("within_max_length");
+		}
 	//Special Case for Presets
 	} else if ((data.classname == 'model') && (data.name == 'presets')) {
 		do_presets(data);
@@ -1951,6 +1959,7 @@ function assign_world_info_to_action(uid=null, action_item=null) {
 }
 
 function update_token_lengths() {
+	return
 	max_token_length = parseInt(document.getElementById("model_max_length_cur").value);
 	included_world_info = [];
 	//clear out the world info included tags

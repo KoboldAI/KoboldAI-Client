@@ -765,6 +765,11 @@ body {
 	line-height: 1.42857143;
 }
 
+#story_prompt[story_prompt_in_ai="true"] {
+	color: var(--text_to_ai_color);
+	font-weight: bold;
+}
+
 .gametext {
 	margin-top: auto;
 	padding-bottom: 1px;

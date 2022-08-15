@@ -5977,6 +5977,19 @@ def send_debug():
 #==================================================================#
 # UI V2 CODE
 #==================================================================#
+@app.route('/ai_text')
+def ai_text():
+    start_time = time.time()
+    text = koboldai_vars.calc_ai_text()
+    print("Generating Game Text took {} seconds".format(time.time()-start_time))
+    return text
+    
+    
+    
+
+#==================================================================#
+# UI V2 CODE
+#==================================================================#
 @app.route('/new_ui')
 def new_ui_index():
     if 'story' in session:
