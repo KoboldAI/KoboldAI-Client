@@ -1095,7 +1095,10 @@ def get_layer_count(model, directory=""):
         else:
             from transformers import AutoConfig
             if directory == "":
-                model_config = AutoConfig.from_pretrained(model, cache_dir="cache")
+                if os.path.isdir("./models/{}".format(model.replace("/", "_"))):
+                    model_config = AutoConfig.from_pretrained("./models/{}".format(model.replace("/", "_")), cache_dir="cache")
+                else:
+                    model_config = AutoConfig.from_pretrained(model, cache_dir="cache")
             elif os.path.isdir(directory):
                 model_config = AutoConfig.from_pretrained(directory, cache_dir="cache")
             else:
