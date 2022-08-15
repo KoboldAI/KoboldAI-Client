@@ -46,6 +46,7 @@
 	--sample_order_select_color: blue;
 	--story_options_size: 30%;
 	--story_pinned_areas: "menuicon options gamescreen lefticon"
+						 "menuicon theme theme lefticon"
 						 "menuicon inputrow inputrow lefticon";
 	--story_pinned_area_widths: 30px var(--story_options_size) auto 30px;
 	--scrollbar-color: #9b9b9b80;
@@ -706,9 +707,10 @@ body {
 	margin-left: var(--setting_menu_closed_width_no_pins_width);
 	margin-right: var(--flyout_menu_closed_width);
 	grid-template-areas: "menuicon gamescreen options lefticon"
+						 "menuicon theme theme lefticon"
 						 "menuicon inputrow inputrow lefticon";
 	grid-template-columns: 30px auto var(--story_options_size) 30px;
-	grid-template-rows: auto 100px;
+	grid-template-rows: auto min-content 100px;
 }
 .main-grid.settings_pinned {
 	margin-left: var(--flyout_menu_width);
@@ -723,6 +725,7 @@ body {
 	margin-left: var(--flyout_menu_width);
 	margin-right: var(--flyout_menu_width);
 	grid-template-areas: "menuicon gamescreen options lefticon"
+						 "menuicon theme theme lefticon"
 						 "menuicon inputrow inputrow lefticon";
 	grid-template-columns: 30px auto var(--story_options_size) 30px;
 }
@@ -737,9 +740,10 @@ body {
 	margin-left: var(--flyout_menu_closed_width);
 	grid-template-areas: "menuicon gamescreen lefticon"
 					     "menuicon options lefticon"
+						 "menuicon theme lefticon"
 						 "menuicon inputrow lefticon";
 	grid-template-columns: 30px auto 30px;
-	grid-template-rows: auto min-content 100px;
+	grid-template-rows: auto min-content min-content 100px;
 }
 }
 
@@ -857,6 +861,10 @@ body {
 	margin-right: 2px;
 }
 
+.themerow {
+	grid-area: theme;
+}
+
 .inputrow {
 	grid-area: inputrow;
 	display: grid;
@@ -867,6 +875,16 @@ body {
 	grid-template-rows: 0px 60px 40px;
 	gap: 1px;
 	
+}
+
+#input_text {
+	grid-area: textarea;
+	background-color: var(--textarea_background);
+	color: var(--text);
+	resize: none;
+	border-color: white;
+	border-width: 1px;
+	border-style:solid;
 }
 
 .inputrow.status_bar {
@@ -1130,16 +1148,6 @@ body {
 /*---------------------------------- Global ------------------------------------------------*/
 .hidden {
 	display: none;
-}
-
-#input_text {
-	grid-area: textarea;
-	background-color: var(--textarea_background);
-	color: var(--text);
-	resize: none;
-	border-color: white;
-	border-width: 1px;
-	border-style:solid;
 }
 
 input {

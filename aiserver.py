@@ -6320,7 +6320,12 @@ def UI_2_Set_Selected_Text(data):
 @socketio.on('Use Option Text')
 def UI_2_Set_Selected_Text(data):
     print("Using Option Text: {}".format(data))
-    koboldai_vars.actions.use_option(int(data['option']), action_step=int(data['chunk']))
+    if koboldai_vars.prompt == "":
+        print(koboldai_vars.actions.get_current_options())
+        koboldai_vars.prompt = koboldai_vars.actions.get_current_options()[int(data['option'])]['text']
+        koboldai_vars.actions.clear_unused_options()
+    else:
+        koboldai_vars.actions.use_option(int(data['option']), action_step=int(data['chunk']))
 
 
 #==================================================================#
@@ -6328,10 +6333,18 @@ def UI_2_Set_Selected_Text(data):
 #==================================================================#
 @socketio.on('submit')
 def UI_2_submit(data):
-    koboldai_vars.actions.clear_unused_options()
-    koboldai_vars.lua_koboldbridge.feedback = None
-    koboldai_vars.recentrng = koboldai_vars.recentrngm = None
-    actionsubmit(data['data'], actionmode=koboldai_vars.actionmode)
+    print(data)
+    if not koboldai_vars.noai and data['theme'] != "":
+        memory = koboldai_vars.memory
+        koboldai_vars.memory = "{}\n\nYou generate the following {} story concept :".format(koboldai_vars.memory, data['theme'])
+        koboldai_vars.lua_koboldbridge.feedback = None
+        actionsubmit("", force_submit=True, force_prompt_gen=True)
+        koboldai_vars.memory = memory
+    else:
+        koboldai_vars.actions.clear_unused_options()
+        koboldai_vars.lua_koboldbridge.feedback = None
+        koboldai_vars.recentrng = koboldai_vars.recentrngm = None
+        actionsubmit(data['data'], actionmode=koboldai_vars.actionmode)
  
  #==================================================================#
 # Event triggered when user clicks the submit button

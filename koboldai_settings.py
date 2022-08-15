@@ -33,7 +33,6 @@ def process_variable_changes(socketio, classname, name, value, old_value, debug_
         if value != old_value:
             #Special Case for KoboldStoryRegister
             if isinstance(value, KoboldStoryRegister):
-                socketio.emit("reset_story", {}, broadcast=True, room="UI_2")
                 socketio.emit("var_changed", {"classname": "actions", "name": "Action Count", "old_value": None, "value":value.action_count}, broadcast=True, room="UI_2")
                 for i in range(len(value.actions)):
                     socketio.emit("var_changed", {"classname": "actions", "name": "Selected Text", "old_value": None, "value": {"id": i, "text": value[i]}}, include_self=True, broadcast=True, room="UI_2")
@@ -378,6 +377,7 @@ class story_settings(settings):
         self.gamesaved = True
     
     def reset(self):
+        self.socketio.emit("reset_story", {}, broadcast=True, room="UI_2")
         self.__init__(self.socketio, tokenizer=self.tokenizer)
         
     def __setattr__(self, name, value):
@@ -848,6 +848,7 @@ class KoboldWorldInfo(object):
         
     def reset(self):
         self.__init__(self.socketio, self.story_settings, self.tokenizer)
+        
     
     def recalc_token_length(self):
         if self.tokenizer is not None:

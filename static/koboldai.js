@@ -52,6 +52,7 @@ map2.set(5, 'Temperature')
 //-----------------------------------Server to UI  Functions-----------------------------------------------
 function connect() {
 	console.log("connected");
+	reset_story();
 	for (item of document.getElementsByTagName("body")) {
 		item.classList.remove("NotConnected");
 	}
@@ -84,6 +85,8 @@ function reset_story() {
 	world_info_data = {};
 	world_info_folder({"root": []});
 	document.getElementById("story_prompt").setAttribute("world_info_uids", "");
+	document.getElementById('themerow').classList.remove("hidden");
+	document.getElementById('input_text').placeholder = "Enter Prompt Here";
 }
 
 function fix_text(val) {
@@ -294,6 +297,16 @@ function do_prompt(data) {
 		});
 		item.setAttribute("old_text", data.value)
 		item.classList.remove("pulse");
+	}
+	//if we have a prompt we need to disable the theme area, or enable it if we don't
+	if (data.value != "") {
+		document.getElementById('input_text').placeholder = "Enter text here";
+		document.getElementById('themerow').classList.add("hidden");
+		document.getElementById('themetext').value = "";
+	} else {
+		document.getElementById('input_text').placeholder = "Enter Prompt Here";
+		document.getElementById('input_text').disabled = false;
+		document.getElementById('themerow').classList.remove("hidden");
 	}
 }
 
@@ -1487,7 +1500,6 @@ function toggle_setting_category(element) {
 
 function preserve_game_space(preserve) {
 	var r = document.querySelector(':root');
-	console.log("Setting cookie to: "+preserve);
 	if (preserve) {
 		setCookie("preserve_game_space", "true");
 		r.style.setProperty('--setting_menu_closed_width_no_pins_width', '0px');
