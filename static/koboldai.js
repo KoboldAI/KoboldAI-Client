@@ -78,7 +78,7 @@ function reset_story() {
 	while (option_area.firstChild) {
 		option_area.removeChild(option_area.firstChild);
 	}
-	var world_info_area = document.getElementById("story_menu_wi");
+	var world_info_area = document.getElementById("WI_Area");
 	while (world_info_area.firstChild) {
 		world_info_area.removeChild(world_info_area.firstChild);
 	}
@@ -1297,22 +1297,22 @@ function world_info_folder(data) {
 				for (var j = i+1; j < folders.length; j++) {
 					if (document.getElementById("world_info_folder_"+folders[j])) {
 						found = true;
-						document.getElementById("story_menu_wi").insertBefore(folder, document.getElementById("world_info_folder_"+folders[j]));
+						document.getElementById("WI_Area").insertBefore(folder, document.getElementById("world_info_folder_"+folders[j]));
 						break;
 					}
 				}
 				if (!(found)) {
 					if (document.getElementById("new_world_info_button")) {
-						document.getElementById("story_menu_wi").insertBefore(folder, document.getElementById("new_world_info_button"));
+						document.getElementById("WI_Area").insertBefore(folder, document.getElementById("new_world_info_button"));
 					} else {
-						document.getElementById("story_menu_wi").append(folder);
+						document.getElementById("WI_Area").append(folder);
 					}
 				}
 			} else {
 				if (document.getElementById("new_world_info_button")) {
-					document.getElementById("story_menu_wi").insertBefore(folder, document.getElementById("new_world_info_button"));
+					document.getElementById("WI_Area").insertBefore(folder, document.getElementById("new_world_info_button"));
 				} else {
-					document.getElementById("story_menu_wi").append(folder);
+					document.getElementById("WI_Area").append(folder);
 				}
 			}
 		} else {
@@ -1350,7 +1350,7 @@ function world_info_folder(data) {
 									  }
 		temp.append(add_icon);
 		add_folder.append(temp);
-		document.getElementById("story_menu_wi").append(add_folder);
+		document.getElementById("WI_Area").append(add_folder);
 	}
 }
 

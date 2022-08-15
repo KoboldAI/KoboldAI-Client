@@ -6321,7 +6321,6 @@ def UI_2_Set_Selected_Text(data):
 def UI_2_Set_Selected_Text(data):
     print("Using Option Text: {}".format(data))
     if koboldai_vars.prompt == "":
-        print(koboldai_vars.actions.get_current_options())
         koboldai_vars.prompt = koboldai_vars.actions.get_current_options()[int(data['option'])]['text']
         koboldai_vars.actions.clear_unused_options()
     else:
