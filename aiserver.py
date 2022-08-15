@@ -6382,6 +6382,7 @@ def UI_2_Pinning(data):
 @socketio.on('back')
 def UI_2_back(data):
     print("back")
+    koboldai_vars.actions.clear_unused_options()
     ignore = koboldai_vars.actions.pop()
     
 #==================================================================#
@@ -6391,13 +6392,15 @@ def UI_2_back(data):
 def UI_2_redo(data):
     if len(koboldai_vars.actions.get_current_options()) == 1:
         koboldai_vars.actions.use_option(0)
+    
 
 #==================================================================#
 # Event triggered when user clicks the retry button
 #==================================================================#
 @socketio.on('retry')
 def UI_2_retry(data):
-    if koboldai_vars.numseqs == 1:
+    
+    if len(koboldai_vars.actions.get_current_options()) == 0:
         UI_2_back(None)
     koboldai_vars.actions.clear_unused_options()
     koboldai_vars.lua_koboldbridge.feedback = None
