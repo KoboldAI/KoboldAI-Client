@@ -87,7 +87,8 @@
     --wi_tag_color: #337ab7;
 	--sample_order_select_color: var(--primary);
 	--sample_order_select_color_text: var(--on_primary);
-/*----------------Positioning--------------------*/
+	--scrollbar-color: #9b9b9b80;
+/*----------------Parameters--------------------*/
 	--flyout_menu_closed_width: 0px;
 	--setting_menu_closed_width_no_pins_width:  0px;
 	--story_options_size: 30%;
@@ -95,10 +96,59 @@
 						 "menuicon theme theme lefticon"
 						 "menuicon inputrow inputrow lefticon";
 	--story_pinned_area_widths: 30px var(--story_options_size) auto 30px;
-	--scrollbar-color: #9b9b9b80;
 	--scrollbar-size: 6px;
+	--light_shadow_value: 0 0px 8px 0 rgba(0, 0, 0, 0.2), 0px 0px 20px 0 rgba(0, 0, 0, 0.19);
+	--left_menu_strong_shadow: 0 0px 8px 0 rgba(0, 0, 0, 0.2), 25px 0px 20px 0 rgba(0, 0, 0, 0.19);
+	--right_menu_light_shadow: 0 0px 8px 0 rgba(0, 0, 0, 0.2), 0px 0px 20px 0 rgba(0, 0, 0, 0.19);
+	--right_menu_strong_shadow: 0 0px 8px 0 rgba(0, 0, 0, 0.2), -25px 0px 20px 0 rgba(0, 0, 0, 0.19);
 }
+/*----------------Custom Range SLiders--------------------*/
+/*Chrome*/
+@media screen and (-webkit-min-device-pixel-ratio:0) {
+    input[type='range'] {
+      overflow: hidden;
+	  border-color: var(--setting_background);
+      width: 100%;
+      -webkit-appearance: none;
+      background-color: var(--on_primary_container);
+	  border-radius: 16px;
+    }
+	 
+    input[type='range']::-webkit-slider-runnable-track {
+      height: 16px;
+      -webkit-appearance: none;
+      color: var(--setting_background);
+      margin-top: -1px;
+	  border-radius: 16px;
+    }
+    
+    input[type='range']::-webkit-slider-thumb {
+      width: 16px;
+      -webkit-appearance: none;
+      height: 16px;
+      cursor: ew-resize;
+      background: var(--on_primary);
+      box-shadow: -1928px 0 0 1920px var(--primary_container);
+	  border-radius: 50%;
+    }
 
+}
+/** FF*/
+input[type="range"]::-moz-range-progress {
+  background-color: var(--primary_container); 
+  border-color: var(--setting_background);
+}
+input[type="range"]::-moz-range-track {  
+  background-color: var(--on_primary_container);
+}
+/* IE*/
+input[type="range"]::-ms-fill-lower {
+  background-color: var(--primary_container); 
+  border-color: var(--setting_background);
+}
+input[type="range"]::-ms-fill-upper {  
+  background-color: var(--on_primary_container);
+}
 /*----------------Folder Tabs--------------------*/
 .tabrow {
 	text-align: left;
@@ -138,7 +188,7 @@
 	border-radius: 6px 6px 6px 6px;
 	border-top-left-radius: 6px;
 	border-top-right-radius: 6px;
-	box-shadow: 0 3px 3px rgba(0, 0, 0, 0.4), inset 0 1px 0 var(--menu_button_level_1_bg_color);
+	/*box-shadow: 0 3px 3px rgba(0, 0, 0, 0.4), inset 0 1px 0 var(--menu_button_level_1_bg_color);*/
 	text-shadow: 0 1px #AAA;
 	margin: 0 -1px;
 	padding: 0 12px;
@@ -380,7 +430,7 @@
 	height: 100%;
 	z-index: 4;
 	width: var(--flyout_menu_closed_width);
-	box-shadow: 0 0px 8px 0 rgba(0, 0, 0, 0.2), 25px 0px 20px 0 rgba(0, 0, 0, 0.19);
+	box-shadow: var(--left_menu_strong_shadow);
 	position: fixed;
 	z-index: 3;
 	top: 0;
@@ -401,7 +451,7 @@
 	top: 0;
 	left: 0;
 	background-color: var(--flyout_background_pinned);
-	box-shadow: 0 0px 8px 0 rgba(0, 0, 0, 0.2), 0px 0px 20px 0 rgba(0, 0, 0, 0.19);
+	box-shadow: var(--light_shadow_value);
 	overflow-x: hidden;
 	transition: 0.5s;
 	border-radius: 0px;
@@ -599,7 +649,7 @@
 	height: 100%;
 	width: 0;
 	position: fixed;
-	box-shadow: 0 0px 8px 0 rgba(0, 0, 0, 0.2), -25px 0px 20px 0 rgba(0, 0, 0, 0.19);
+	box-shadow: var(--right_menu_strong_shadow);
 	z-index: 3;
 	top: 0;
 	right: 0;
@@ -622,6 +672,8 @@
 /*  Desktop Mode  */
 .rightSideMenu.pinned {
   width: var(--flyout_menu_width);
+  box-shadow: var(--right_menu_light_shadow);
+  border-radius: 0px 0px 0px 0px;
 }
 }
 
@@ -872,7 +924,7 @@ body {
 .gamescreen {
 	background-color: var(--gamescreen_background);
 	z-index: 2;
-	box-shadow: 0 0px 8px 0 rgba(0, 0, 0, 0.2), 0px 0px 20px 0 rgba(0, 0, 0, 0.19);
+	box-shadow: var(--light_shadow_value);
 	color: white;
 	width: 100%;
 	grid-area: gamescreen;
@@ -963,6 +1015,7 @@ body {
 .sequence {
 	margin: 5px 0px 5px 10px;
 	border: 2px solid var(--on_sequence);
+	box-shadow: var(--light_shadow_value);
 	border-radius: 10px;
 	width:100%;
 	grid-area: text;
