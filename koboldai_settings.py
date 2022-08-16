@@ -3,11 +3,12 @@ from io import BytesIO
 from flask import has_request_context
 import socketio as socketio_client
 from collections import OrderedDict
+import requests
 
 rely_clients = {}
 serverstarted = False
 port = 5000
-
+queue = None
 
 def clean_var_for_emit(value):
     if isinstance(value, KoboldStoryRegister) or isinstance(value, KoboldWorldInfo):
@@ -45,17 +46,8 @@ def process_variable_changes(socketio, classname, name, value, old_value, debug_
             else:
                 #If we got a variable change from a thread other than what the app is run it, eventlet seems to block and no further messages are sent. Instead, we'll rely the message to the app and have the main thread send it
                 if not has_request_context():
-                    if threading.get_ident() in rely_clients:
-                        sio = rely_clients[threading.get_ident()]
-                        if not sio.connected:
-                            sio = create_loopback_socketio()
-                    else:
-                        sio = create_loopback_socketio()
-                    #release no longer used clients
-                    for thread in rely_clients:
-                        if thread not in [x.ident for x in threading.enumerate()]:
-                            del rely_clients[thread]
-                    sio.emit("relay", ["var_changed", {"classname": classname, "name": name, "old_value": clean_var_for_emit(old_value), "value": clean_var_for_emit(value)}, {"include_self":True, "broadcast":True, "room":"UI_2"}])
+                    data = ["var_changed", {"classname": classname, "name": name, "old_value": clean_var_for_emit(old_value), "value": clean_var_for_emit(value)}, {"include_self":True, "broadcast":True, "room":"UI_2"}]
+                    queue.put(data)
                 else:
                     socketio.emit("var_changed", {"classname": classname, "name": name, "old_value": clean_var_for_emit(old_value), "value": clean_var_for_emit(value)}, include_self=True, broadcast=True, room="UI_2")
 
