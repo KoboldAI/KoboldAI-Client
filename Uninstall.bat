@@ -11,7 +11,8 @@ IF EXIST "Uninstall\unins000.exe" (
    start Uninstall\unins000.exe
    exit
 ) ELSE (
-   echo This will remove all KoboldAI folders that do not contain user data
+   echo This will remove all KoboldAI folders that do not contain user data.
+   echo DO NOT CONTINUE IF KOBOLDAI IS NOT IN ITS OWN FOLDER! OTHERWISE YOUR OTHER DATA IN THE FOLDER WILL BE DELETED AS WELL!
 	pause
 	GOTO UNINSTALL
 )
