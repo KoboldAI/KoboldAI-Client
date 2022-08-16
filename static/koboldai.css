@@ -45,12 +45,18 @@
     --wi_tag_color: #337ab7;
 	--sample_order_select_color: blue;
 	--story_options_size: 30%;
-	--story_pinned_areas: "menuicon options gamescreen lefticon"
-						 "menuicon theme theme lefticon"
-						 "menuicon inputrow inputrow lefticon";
-	--story_pinned_area_widths: 30px var(--story_options_size) auto 30px;
+	--story_pinned_areas_left: "menuicon options gamescreen lefticon"
+								 "menuicon theme theme lefticon"
+								 "menuicon inputrow inputrow lefticon";
+	--story_pinned_areas_right: "menuicon gamescreen options lefticon"
+								 "menuicon theme theme lefticon"
+								 "menuicon inputrow inputrow lefticon";
+	--story_pinned_area_widths_left: 30px var(--story_options_size) auto 30px;
+	--story_pinned_area_widths_right: 30px auto var(--story_options_size) 30px;
 	--scrollbar-color: #9b9b9b80;
 	--scrollbar-size: 6px;
+	--story_pinned_areas: var(--story_pinned_areas_left);
+	--story_pinned_area_widths: var(--story_pinned_area_widths_left);
 }
 
 /*----------------Folder Tabs--------------------*/

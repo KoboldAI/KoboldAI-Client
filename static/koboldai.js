@@ -1532,13 +1532,13 @@ function options_on_right(data) {
 	console.log("Setting cookie to: "+data);
 	if (data) {
 		setCookie("options_on_right", "true");
-		r.style.setProperty('--story_pinned_areas', '"menuicon gamescreen options lefticon"\n"menuicon inputrow inputrow lefticon"');
-		r.style.setProperty('--story_pinned_area_widths', '30px auto var(--story_options_size) 30px');
+		r.style.setProperty('--story_pinned_areas', 'var(--story_pinned_areas_right)');
+		r.style.setProperty('--story_pinned_area_widths', 'var(--story_pinned_area_widths_right)');
 		document.getElementById('preserve_game_space_setting').checked = true;
 	} else {
 		setCookie("options_on_right", "false");
-		r.style.setProperty('--story_pinned_areas', '"menuicon options gamescreen lefticon"\n"menuicon inputrow inputrow lefticon"');
-		r.style.setProperty('--story_pinned_area_widths', '30px var(--story_options_size) auto 30px');
+		r.style.setProperty('--story_pinned_areas', 'var(--story_pinned_areas_left)');
+		r.style.setProperty('--story_pinned_area_widths', 'var(--story_pinned_area_widths_left)');
 		document.getElementById('preserve_game_space_setting').checked = false;
 	}
 }
