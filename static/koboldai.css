@@ -137,6 +137,10 @@
 	  border-radius: 50%;
     }
 
+	input[type="range"]::-moz-range-progress {
+		height: 100%;
+	}
+
 }
 /** FF*/
 input[type="range"]::-moz-range-progress {
