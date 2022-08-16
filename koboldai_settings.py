@@ -38,7 +38,8 @@ def process_variable_changes(socketio, classname, name, value, old_value, debug_
                     socketio.emit("var_changed", {"classname": "actions", "name": "Selected Text", "old_value": None, "value": {"id": i, "text": value[i]}}, include_self=True, broadcast=True, room="UI_2")
                     socketio.emit("var_changed", {"classname": "actions", "name": "Options", "old_value": None, "value": {"id": i, "options": value.actions[i]['Options']}}, include_self=True, broadcast=True, room="UI_2")
                     socketio.emit("var_changed", {"classname": "actions", "name": "Selected Text Length", "old_value": None, "value": {"id": i, 'length': value.actions[i]['Selected Text Length']}}, include_self=True, broadcast=True, room="UI_2")
-                    socketio.emit("var_changed", {"classname": "actions", "name": "In AI Input", "old_value": None, "value": {"id": i, 'In AI Input': value.actions[i]['In AI Input']}}, include_self=True, broadcast=True, room="UI_2")
+                    if 'In AI Input' in value.actions[i]:
+                        socketio.emit("var_changed", {"classname": "actions", "name": "In AI Input", "old_value": None, "value": {"id": i, 'In AI Input': value.actions[i]['In AI Input']}}, include_self=True, broadcast=True, room="UI_2")
             elif isinstance(value, KoboldWorldInfo):
                 value.send_to_ui()
             else:
@@ -519,7 +520,21 @@ class story_settings(settings):
     def save_story(self):
         print("Saving")
         save_name = self.story_name if self.story_name != "" else "untitled"
-        with open("stories/{}_v2.json".format(save_name), "w") as settings_file:
+        adder = ""
+        while True:
+            if os.path.exists("stories/{}{}_v2.json".format(save_name, adder)):
+                with open("stories/{}{}_v2.json".format(save_name, adder), "r") as f:
+                    temp = json.load(f)
+                if 'story_id' in temp:
+                    if self.story_id != temp['story_id']:
+                        adder = 0 if adder == "" else adder+1
+                    else:
+                        break
+                else:
+                    adder = 0 if adder == "" else adder+1
+            else:
+                break
+        with open("stories/{}{}_v2.json".format(save_name, adder), "w") as settings_file:
             settings_file.write(self.to_json())
         self.gamesaved = True
     
@@ -1019,7 +1034,7 @@ class KoboldWorldInfo(object):
         self.story_settings = story_settings
         
     def reset(self):
-        self.__init__(self.socketio, self.story_settings, self.tokenizer)
+        self.__init__(self.socketio, self.story_settings, self.koboldai_vars, self.tokenizer)
     
     def __iter__(self):
         self.itter = -1

@@ -69,7 +69,7 @@
 				<div class="statusbar_inner" style="width:0%">0%</div>
 			</div><br>
 			<button type="button" class="btn action_button submit var_sync_alt_system_aibusy" system_aibusy=False id="btnsend" 
-				onclick="socket.emit('submit', {'data': document.getElementById('input_text').value, 'theme': document.getElementById('themetext').value});document.getElementById('input_text').value = '';"
+				onclick="socket.emit('submit', {'data': document.getElementById('input_text').value, 'theme': document.getElementById('themetext').value});document.getElementById('input_text').value = '';document.getElementById('themetext').value = '';"
 				>Submit</button>
 			<button type="button" class="btn action_button submited var_sync_alt_system_aibusy"  system_aibusy=False id="btnsend"><img src="static/thinking.gif" class="force_center" onclick="socket.emit('abort','');"></button>
 			<button type="button" class="btn action_button back" onclick="socket.emit('back', {});"><span class="oi" data-glyph="action-undo"></span></button>
