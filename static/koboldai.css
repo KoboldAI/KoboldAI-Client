@@ -101,6 +101,11 @@
 	--left_menu_strong_shadow: 0 0px 8px 0 rgba(0, 0, 0, 0.2), 25px 0px 20px 0 rgba(0, 0, 0, 0.19);
 	--right_menu_light_shadow: 0 0px 8px 0 rgba(0, 0, 0, 0.2), 0px 0px 20px 0 rgba(0, 0, 0, 0.19);
 	--right_menu_strong_shadow: 0 0px 8px 0 rgba(0, 0, 0, 0.2), -25px 0px 20px 0 rgba(0, 0, 0, 0.19);
+	--radius_inputbox: 10px;
+	--radius_unpinned_menu: 20px;
+	--radius_sequence: 10px;
+	--radius_settings_background: 5px;
+	--radius_buttons: 5px;
 }
 /*----------------Custom Range SLiders--------------------*/
 /*Chrome*/
@@ -190,7 +195,7 @@ input[type="range"]::-ms-fill-upper {
 	border-top-right-radius: 6px;
 	/*box-shadow: 0 3px 3px rgba(0, 0, 0, 0.4), inset 0 1px 0 var(--menu_button_level_1_bg_color);*/
 	text-shadow: 0 1px #AAA;
-	margin: 0 -1px;
+	margin: 0 -2px;
 	padding: 0 12px;
 }
 .tabrow span.selected {
@@ -232,10 +237,22 @@ input[type="range"]::-ms-fill-upper {
 	box-shadow: -2px 2px 0 var(--menu_button_level_1_bg_color);
 }
 .tabrow span.selected:before {
-	box-shadow: 2px 2px 0 #FFF;
+	box-shadow: 4px 2px 0 #FFF;
 }
 .tabrow span.selected:after {
-	box-shadow: -2px 2px 0 #FFF;
+	box-shadow: -4px 2px 0 #FFF;
+}
+.themerow .tabrow{
+	margin-top: 5px;
+}
+.themerow .tabrow:before {
+	position: absolute;
+	content: " ";
+	width: 100%;
+	bottom: 0;
+	left: 0;
+	border-bottom: 0px solid rgb(195, 50, 50);
+	z-index: 1;
 }
 
 
@@ -278,7 +295,7 @@ input[type="range"]::-ms-fill-upper {
 	row-gap: 0.2em;
 	background-color: var(--setting_background);
 	color: var(--text);
-	border-radius: 5px;
+	border-radius: var(--radius_settings_background);
 	padding: 3px;
 	margin: 2px;
 }
@@ -287,14 +304,18 @@ input[type="range"]::-ms-fill-upper {
 	display: grid;
 	grid-template-areas: "label"
 						 "item";
-	grid-template-rows: 20px 120px;
-	grid-template-columns: 177px;
+	grid-template-rows: 20px 110px;
+	grid-template-columns: 167px;
 	row-gap: 0.2em;
 	background-color: var(--setting_background);
 	color: var(--text);
-	border-radius: 5px;
+	border-radius: var(--radius_settings_background);
 	padding: 3px;
 	margin: 2px;
+}
+.setting_container_single .setting_item{
+	font-size: 0.93em;
+	margin-left: -10px;
 }
 
 
@@ -448,7 +469,7 @@ input[type="range"]::-ms-fill-upper {
 	background-color: var(--flyout_background);
 	overflow-x: hidden;
 	transition: 0.5s;
-	border-radius: 0px 20px 20px 0px;
+	border-radius: 0px var(--radius_unpinned_menu) var(--radius_unpinned_menu) 0px;
 	
 }
 
@@ -669,7 +690,7 @@ input[type="range"]::-ms-fill-upper {
 	transition: 0.5s;
 	padding-top: 20px;
 	padding-bottom: 10px;
-	border-radius: 20px 0px 0px 20px;
+	border-radius: var(--radius_unpinned_menu) 0px 0px var(--radius_unpinned_menu);
 	
 }
 
@@ -865,7 +886,8 @@ body {
 }
 
 ::-webkit-scrollbar-track {
-	background: #9b9b9b80;
+	/*background: #9b9b9b80;*/
+	background: transparent;
 }
 
 ::-webkit-scrollbar-thumb {
@@ -1026,7 +1048,7 @@ body {
 	margin: 5px 0px 5px 10px;
 	border: 2px solid var(--on_sequence);
 	box-shadow: var(--light_shadow_value);
-	border-radius: 10px;
+	border-radius: var(--radius_sequence);
 	width:100%;
 	grid-area: text;
 	padding: 5px;
@@ -1075,6 +1097,17 @@ body {
 	grid-template-rows: 0px 60px 40px;
 	gap: 1px;
 	
+}
+#random_game_prompt{
+	grid-area: textarea;
+}
+
+#themetext{
+	grid-area: textarea;
+	height: 100%;
+	width: 100%;
+	padding: 5px;
+	border-radius: var(--radius_inputbox);
 }
 
 #input_text {
@@ -1391,7 +1424,7 @@ body {
 	resize: none;
 	border-color: white;
 	border-width: 1px;
-	border-radius: 10px;
+	border-radius: var(--radius_inputbox);
 	border-style:solid;
 }
 
