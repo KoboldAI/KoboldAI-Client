@@ -19,7 +19,7 @@
     --text_edit: #cdf;
     --flyout_background: #18222a;
     --setting_background: #273141;
-    --setting_text: #f2ff65;
+    --setting_text: white;
     --dropdown-select: white;
     --dropdown-background: #1a242b;
     --preset-item-background: black;
@@ -178,7 +178,7 @@
 	grid-template-columns: 160px 40px;
 	row-gap: 0.2em;
 	background-color: var(--setting_background);
-	color: var(--text);
+	color: var(--setting_text);
 	margin: 2px;
 }
 
@@ -187,7 +187,7 @@
 	grid-template-areas: "label"
 						 "item";
 	grid-template-rows: 20px 120px;
-	grid-template-columns: 200px;
+	grid-template-columns: 190px;
 	row-gap: 0.2em;
 	background-color: var(--setting_background);
 	color: var(--text);
@@ -213,6 +213,7 @@
 }
 
 .setting_label {
+	display: flex;
 	grid-area: label;
 	overflow: hidden;
 	padding: 5px;
@@ -244,46 +245,12 @@
 }
 
 .helpicon {
-	display: inline-block;
-	font-family: sans-serif;
-	font-weight: bold;
-	text-align: center;
-	width: 2ex;
-	height: 2ex;
-	font-size: 1.4ex;
-	line-height: 1.8ex;
-	border-radius: 1.2ex;
-	margin-right: 4px;
-	padding: 1px;
-	color: var(--setting_background);
-	background: var(--setting_text);
-	border: 1px solid white;
-	text-decoration: none;
+	color: var(--setting_text);
 	cursor: help;
-}
-
-.helpicon .helptext {
-	display: none;
-	font-family: sans-serif;
-	position: absolute;
-	z-index: 100;
-	text-shadow: none !important;
-}
-
-.helpicon:hover .helptext {
-	display: inline-block;
-	position: fixed;
-	width: 250px;
-	background-color: var(--tooltip_background);
-	color: var(--tooltip_text);
-	font-size: 11pt;
-	z-index: 100;
-	font-weight: normal;
-	line-height: normal;
-	border-radius: 6px;
-	padding: 5px;
-	margin-left:10px;
-	border: 1px solid #337ab7;
+	font-size: 14px !important;
+	flex: auto;
+	width: 15px;
+	align-self: flex-end;
 }
 
 /*----------------LEFT FLYOUT MENU------------------*/

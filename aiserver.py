@@ -6285,7 +6285,12 @@ def UI_2_var_change(data):
     
     #Now let's save except for story changes
     if classname != "story_settings":
-        with open("settings/{}.v2_settings".format(classname), "w") as settings_file:
+        if classname == "model_settings":
+            filename = "settings/{}.v2_settings".format(koboldai_vars.model.replace("/", "_"))
+        else:
+            filename = "settings/{}.v2_settings".format(classname)
+        
+        with open(filename, "w") as settings_file:
             settings_file.write(getattr(koboldai_vars, "_{}".format(classname)).to_json())
     
     return {'id': data['ID'], 'status': "Saved"}
@@ -6295,7 +6300,7 @@ def UI_2_var_change(data):
 #==================================================================#
 @socketio.on('save_story')
 def UI_2_save_story(data):
-    
+    print("Saving Story")
     if data is None:
         #We need to check to see if there is a file already and if it's not the same story so we can ask the client if this is OK
         save_name = koboldai_vars.story_name if koboldai_vars.story_name != "" else "untitled"
