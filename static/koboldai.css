@@ -199,6 +199,8 @@ input[type="range"]::-ms-fill-upper {
 	z-index: 2;
 	border-bottom-color: #FFF;
 }
+
+
 .tabrow:before {
 	position: absolute;
 	content: " ";
@@ -300,6 +302,8 @@ input[type="range"]::-ms-fill-upper {
 	padding-top: 6px;
 	grid-area: minlabel;
 	overflow: hidden;
+	padding: 5px;
+	padding-top: 0px;
 	font-size: 0.8em;
 }
 
@@ -307,6 +311,8 @@ input[type="range"]::-ms-fill-upper {
 	padding-top: 6px;
 	grid-area: maxlabel;
 	overflow: hidden;
+	padding: 5px;
+	padding-top: 0px;
 	text-align: right;
 	font-size: 0.8em;
 }
@@ -314,11 +320,15 @@ input[type="range"]::-ms-fill-upper {
 .setting_label {
 	grid-area: label;
 	overflow: hidden;
+	padding: 5px;
+	padding-top: 0px;
 }
 
 .setting_value {
 	text-align: right;
 	grid-area: value;
+	padding: 5px;
+	padding-top: 0px;
 	background-color: inherit;
 	color: inherit;
 	border: none; 
