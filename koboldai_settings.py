@@ -625,6 +625,7 @@ class user_settings(settings):
         self.nogenmod    = False
         self.debug       = False    # If set to true, will send debug information to the client for display
         self.output_streaming = True
+        self.show_probs = False # Whether or not to show token probabilities
         
         
     def __setattr__(self, name, value):
@@ -686,6 +687,11 @@ class system_settings(settings):
         self.quiet       = False # If set will suppress any story text from being printed to the console (will only be seen on the client web page)
         self.use_colab_tpu  = os.environ.get("COLAB_TPU_ADDR", "") != "" or os.environ.get("TPU_NAME", "") != ""  # Whether or not we're in a Colab TPU instance or Kaggle TPU instance and are going to use the TPU rather than the CPU
         self.aria2_port  = 6799 #Specify the port on which aria2's RPC interface will be open if aria2 is installed (defaults to 6799)
+        self.standalone = False
+        self.api_tokenizer_id = None
+        self.disable_set_aibusy = False
+        self.disable_input_formatting = False
+        self.disable_output_formatting = False
         
         
     def __setattr__(self, name, value):
