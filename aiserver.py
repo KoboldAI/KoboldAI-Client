@@ -2197,6 +2197,7 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
             koboldai_vars.compiling = True
 
         def tpumtjgenerate_stopped_compiling_callback() -> None:
+            print(colors.GREEN + "TPU backend compilation stopped" + colors.END)
             koboldai_vars.compiling = False
         
         def tpumtjgenerate_settings_callback() -> dict:
