@@ -222,8 +222,6 @@ model_menu = {
     }
 
 
-utils.koboldai_vars = koboldai_vars
-
 class Send_to_socketio(object):
     def write(self, bar):
         print(bar, end="")
