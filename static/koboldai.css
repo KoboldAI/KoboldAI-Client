@@ -410,7 +410,7 @@ input[type="range"]::-ms-fill-upper {
 }
 /*-----------------------------------------------*/
 .helpicon {
-	color: var(--help_icon);
+	color: var(--setting_text);
 	cursor: help;
 	font-size: 14px !important;
 	flex: auto;
