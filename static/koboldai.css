@@ -331,7 +331,7 @@ input[type="range"]::-ms-fill-upper {
 	grid-template-columns: 135px 42px;
 	row-gap: 0.2em;
 	background-color: var(--setting_background);
-	color: var(--text);
+	color: var(--setting_text);
 	border-radius: var(--radius_settings_background);
 	padding: 3px;
 	margin: 2px;
@@ -376,6 +376,7 @@ input[type="range"]::-ms-fill-upper {
 }
 
 .setting_label {
+	display: flex;
 	grid-area: label;
 	overflow: hidden;
 	padding: 5px;
@@ -407,46 +408,12 @@ input[type="range"]::-ms-fill-upper {
 }
 /*-----------------------------------------------*/
 .helpicon {
-	display: inline-block;
-	font-family: sans-serif;
-	font-weight: bold;
-	text-align: center;
-	width: 2ex;
-	height: 2ex;
-	font-size: 1.8ex;
-	line-height: 1.8ex;
-	border-radius: 1.2ex;
-	margin-right: 4px;
-	padding: 1px;
-	color: var(--help_icon_text);
-	background: var(--help_icon);
-	border: 1px solid var(--help_icon_text);
-	text-decoration: none;
+	color: var(--setting_text);
 	cursor: help;
-}
-
-.helpicon .helptext {
-	display: none;
-	font-family: sans-serif;
-	position: absolute;
-	z-index: 100;
-	text-shadow: none !important;
-}
-
-.helpicon:hover .helptext {
-	display: inline-block;
-	position: fixed;
-	width: 250px;
-	background-color: var(--tooltip_background);
-	color: var(--tooltip_text);
-	font-size: 11pt;
-	z-index: 100;
-	font-weight: normal;
-	line-height: normal;
-	border-radius: 6px;
-	padding: 5px;
-	margin-left:10px;
-	border: 1px solid var(--tooltip_text);
+	font-size: 14px !important;
+	flex: auto;
+	width: 15px;
+	align-self: flex-end;
 }
 
 /*----------------LEFT FLYOUT MENU------------------*/
@@ -1642,4 +1609,8 @@ body.NotConnected {
 
   /* Support for IE. */
   font-feature-settings: 'liga';
+}
+
+h2 .material-icons-outlined {
+	font-size: 32px;
 }

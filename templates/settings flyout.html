@@ -63,7 +63,7 @@
 				<div class="story_title_icons">
 					<span class="material-icons-outlined cursor" title="New Story" onclick="socket.emit('new_story', '');">description</span>
 					<span class="material-icons-outlined cursor" title="Load Story" onclick="socket.emit('load_story_list', '');">folder_open</span>
-					<span class="material-icons-outlined cursor var_sync_alt_story_gamesaved" title="Save Story">save</span>
+					<span class="material-icons-outlined cursor var_sync_alt_story_gamesaved" title="Save Story" onclick='socket.emit("save_story", null, (response) => {save_as_story(response);});'>save</span>
 					<span class="material-icons-outlined cursor" title="Import Story" onclick="document.getElementById('import_aidg_club_popup').classList.remove('hidden');">cloud_download</span>
 					<span class="material-icons-outlined cursor" title="Download Story" onclick="document.getElementById('download_iframe').src = 'json';">file_download</span>
 				</div>
@@ -99,18 +99,12 @@
 				<div class="setting_container_single">
 					<!---Top Row---->
 					<span class="setting_label">
-						Sample Order: 
-						<span class="helpicon">
-							?
-							<span class="helptext">
-								Sample Order Tooltip
-							</span>
-						</span>
+						<span>Sample Order:&nbsp;</span><span class="helpicon material-icons-outlined" title="Help Text Here">help_icon</span>
 					</span>
 					<!---Bottom Row---->
 					<span class="setting_item">
 						<div style="display:flex;flex-direction:row;">
-							<ul id="sample_order_list" style="width:calc(var(--flyout_menu_width) - 60px);">
+							<ul id="sample_order_list" style="width:calc(var(--flyout_menu_width) - 60px);list-style-position: inside; padding: 0;">
 								<li class="sample_order cursor" onclick="select_sample(this);">Top-k Sampling</li>
 								<li class="sample_order cursor" onclick="select_sample(this);">Top-a Sampling</li>
 								<li class="sample_order cursor" onclick="select_sample(this);">Top-p Sampling</li>
@@ -203,13 +197,7 @@
 			{% endwith %}
 			<div class="setting_container">
 				<span class="setting_label">
-					Maximize Game Text Space: 
-					<span class="helpicon">
-						?
-						<span class="helptext">
-							When enabled and both menus are un-pinned, the game screen will take up all avaialable space. When disabled, the game screen will be centered.
-						</span>
-					</span>
+					<span>Maximize Game Text Space: &nbsp;</span><span class="helpicon material-icons-outlined" title="When enabled and both menus are un-pinned, the game screen will take up all avaialable space. When disabled, the game screen will be centered.">help_icon</span> 
 				</span>
 				<span class="setting_item">
 					<input type=checkbox id="preserve_game_space_setting" data-size=mini data-onstyle=success data-toggle=toggle onchange="preserve_game_space(this.checked)"/>
@@ -220,13 +208,7 @@
 			</div>
 			<div class="setting_container">
 				<span class="setting_label">
-					Keep options on Right: 
-					<span class="helpicon">
-						?
-						<span class="helptext">
-							When enabled and only the story menu is pinned, the generated story options will be shown on the right instead of the left of the game text.
-						</span>
-					</span>
+					<span>Keep options on Right:&nbsp;</span><span class="helpicon material-icons-outlined" title="When enabled and only the story menu is pinned, the generated story options will be shown on the right instead of the left of the game text.">help_icon</span> 
 				</span>
 				<span class="setting_item">
 					<input type=checkbox id="options_on_right" data-size=mini data-onstyle=success data-toggle=toggle onchange="options_on_right(this.checked)"/>

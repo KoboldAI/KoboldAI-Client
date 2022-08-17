@@ -298,7 +298,7 @@ class settings(object):
             pickle.dump(data, output)
             output.seek(0)
             return "base64:{}".format(base64.encodebytes(output.read()).decode())
-        return json.dumps(json_data, default=to_base64)
+        return json.dumps(json_data, default=to_base64, indent="\t")
     
     def from_json(self, data):
         if isinstance(data, str):
@@ -337,7 +337,8 @@ class settings(object):
 
 class model_settings(settings):
     local_only_variables = ['badwordsids', 'apikey', 'tqdm', 'socketio', 'default_preset']
-    no_save_variables = ['tqdm', 'socketio']
+    no_save_variables = ['tqdm', 'tqdm_progress', 'tqdm_rem_time', 'socketio', 'modelconfig', 'custmodpth', 'generated_tkns', 
+                         'loaded_layers', 'total_layers', 'total_download_chunks', 'downloaded_chunks']
     settings_name = "model"
     def __init__(self, socketio):
         self.socketio = socketio
@@ -600,8 +601,8 @@ class story_settings(settings):
                 self.actionmode = 0
                 
 class user_settings(settings):
-    local_only_variables = ['socketio']
-    no_save_variables = ['socketio']
+    local_only_variables = ['socketio', 'importjs']
+    no_save_variables = ['socketio', 'importnum', 'importjs', 'loadselect', 'spselect', 'svowname', 'saveow', 'laststory', 'sid']
     settings_name = "user"
     def __init__(self, socketio):
         self.socketio = socketio
