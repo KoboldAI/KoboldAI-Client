@@ -1027,12 +1027,16 @@ class KoboldStoryRegister(object):
             process_variable_changes(self.socketio, "actions", "Selected Text", {"id": self.action_count+1, "text": self.actions[self.action_count+1]['Selected Text']}, None)
             process_variable_changes(self.socketio, "actions", 'Selected Text Length', {"id": self.action_count+1, 'length': self.actions[self.action_count+1]['Selected Text Length']}, {"id": self.action_count, 'length': 0})
     
-    def set_probabilites(self, probabilities, action_id=self.action_count):
+    def set_probabilites(self, probabilities, action_id=None):
+        if action_id is None:
+            action_id = self.action_count
         if action_id in self.actions:
             self.actions[action_id]['Probabilities'] = probabilities
             process_variable_changes(self.socketio, "actions", 'Probabilities', {"id": action_id, 'Probabilities':  self.actions[action_id]['Probabilities']}, None)
             
-    def set_option_probabilities(self, probabilities, option_number, action_id=self.action_count+1):
+    def set_option_probabilities(self, probabilities, option_number, action_id=None):
+        if action_id is None:
+            action_id = self.action_count+1
         if action_id in self.actions:
             old_options = self.actions[action_id]["options"]
             if option_number < len(self.actions[action_id]["options"]):
