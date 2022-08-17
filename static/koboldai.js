@@ -388,6 +388,9 @@ function do_ai_busy(data) {
 }
 
 function var_changed(data) {
+	if ((data.classname =="actions") && (data.name == 'Probabilities')) {
+		console.log(data);
+	}
 	//console.log({"name": data.name, "data": data});
 	//Special Case for Story Text
 	if ((data.classname == "actions") && (data.name == "Selected Text")) {

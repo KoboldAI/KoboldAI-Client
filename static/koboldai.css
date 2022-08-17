@@ -1235,7 +1235,7 @@ body.NotConnected {
 @font-face {
   font-family: 'Material Icons Outlined';
   font-style: normal;
-  src: url(/static/MaterialSymbolsOutlined.ttf) format('truetype');
+  src: url(/static/MaterialIconsOutlined-Regular.otf) format('opentype');
 }
 
 .material-icons-outlined {
