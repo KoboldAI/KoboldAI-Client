@@ -7256,7 +7256,7 @@ def socket_io_relay(queue, socketio):
             socketio.emit(data[0], data[1], **data[2])
             #socketio.emit(data[0], data[1], broadcast=True, room="UI_2")
             print("sent")
-        time.sleep(0)
+        time.sleep(0.05)
         
 
 #==================================================================#
