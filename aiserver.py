@@ -1716,20 +1716,26 @@ def patch_transformers():
             assert scores.ndim == 2
             assert input_ids.ndim == 2
 
-            if koboldai_vars.numseqs > 1 or not koboldai_vars.show_probs:
+            if not koboldai_vars.show_probs:
                 return scores
 
-            probs = F.softmax(scores, dim = -1).cpu().numpy()[0]
+            for batch_index, batch in enumerate(scores):
+                probs = F.softmax(batch, dim = -1).cpu().numpy()
 
-            token_prob_info = []
-            for token_id, score in sorted(enumerate(probs), key=lambda x: x[1], reverse=True)[:8]:
-                token_prob_info.append({
-                    "tokenId": token_id,
-                    "decoded": utils.decodenewlines(tokenizer.decode(token_id)),
-                    "score": float(score),
-                })
+                token_prob_info = []
+                for token_id, score in sorted(enumerate(probs), key=lambda x: x[1], reverse=True)[:8]:
+                    token_prob_info.append({
+                        "tokenId": token_id,
+                        "decoded": utils.decodenewlines(tokenizer.decode(token_id)),
+                        "score": float(score),
+                    })
 
-            #koboldai_vars.token_stream_queue.probability_buffer = token_prob_info
+
+                if len(scores) == 1:
+                    koboldai_vars.actions.set_probabilities(token_prob_info)
+                else:
+                    koboldai_vars.actions.set_option_probabilities(token_prob_info, batch_index)
+
             return scores
     
     def new_get_logits_processor(*args, **kwargs) -> LogitsProcessorList:
