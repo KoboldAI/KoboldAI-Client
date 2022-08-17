@@ -222,8 +222,6 @@ model_menu = {
     }
 
 
-utils.koboldai_vars = koboldai_vars
-
 class Send_to_socketio(object):
     def write(self, bar):
         print(bar, end="")
@@ -1058,12 +1056,6 @@ def check_for_sp_change():
                 emit('from_server', {'cmd': 'spstatitems', 'data': {koboldai_vars.spfilename: koboldai_vars.spmeta} if koboldai_vars.allowsp and len(koboldai_vars.spfilename) else {}}, namespace=None, broadcast=True, room="UI_1")
             koboldai_vars.sp_changed = False
 
-        if(koboldai_vars.token_stream_queue.queue):
-            # If emit blocks, waiting for it to complete before clearing could
-            # introduce a race condition that drops tokens.
-            queued_tokens = list(koboldai_vars.token_stream_queue.queue)
-            koboldai_vars.token_stream_queue.queue.clear()
-            socketio.emit("from_server", {"cmd": "streamtoken", "data": queued_tokens}, namespace=None, broadcast=True)
 
 socketio.start_background_task(check_for_sp_change)
 
