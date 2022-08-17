@@ -3,11 +3,12 @@ from io import BytesIO
 from flask import has_request_context
 import socketio as socketio_client
 from collections import OrderedDict
+import requests
 
 rely_clients = {}
 serverstarted = False
 port = 5000
-
+queue = None
 
 def clean_var_for_emit(value):
     if isinstance(value, KoboldStoryRegister) or isinstance(value, KoboldWorldInfo):
@@ -38,23 +39,15 @@ def process_variable_changes(socketio, classname, name, value, old_value, debug_
                     socketio.emit("var_changed", {"classname": "actions", "name": "Selected Text", "old_value": None, "value": {"id": i, "text": value[i]}}, include_self=True, broadcast=True, room="UI_2")
                     socketio.emit("var_changed", {"classname": "actions", "name": "Options", "old_value": None, "value": {"id": i, "options": value.actions[i]['Options']}}, include_self=True, broadcast=True, room="UI_2")
                     socketio.emit("var_changed", {"classname": "actions", "name": "Selected Text Length", "old_value": None, "value": {"id": i, 'length': value.actions[i]['Selected Text Length']}}, include_self=True, broadcast=True, room="UI_2")
-                    socketio.emit("var_changed", {"classname": "actions", "name": "In AI Input", "old_value": None, "value": {"id": i, 'In AI Input': value.actions[i]['In AI Input']}}, include_self=True, broadcast=True, room="UI_2")
+                    if 'In AI Input' in value.actions[i]:
+                        socketio.emit("var_changed", {"classname": "actions", "name": "In AI Input", "old_value": None, "value": {"id": i, 'In AI Input': value.actions[i]['In AI Input']}}, include_self=True, broadcast=True, room="UI_2")
             elif isinstance(value, KoboldWorldInfo):
                 value.send_to_ui()
             else:
                 #If we got a variable change from a thread other than what the app is run it, eventlet seems to block and no further messages are sent. Instead, we'll rely the message to the app and have the main thread send it
                 if not has_request_context():
-                    if threading.get_ident() in rely_clients:
-                        sio = rely_clients[threading.get_ident()]
-                        if not sio.connected:
-                            sio = create_loopback_socketio()
-                    else:
-                        sio = create_loopback_socketio()
-                    #release no longer used clients
-                    for thread in rely_clients:
-                        if thread not in [x.ident for x in threading.enumerate()]:
-                            del rely_clients[thread]
-                    sio.emit("relay", ["var_changed", {"classname": classname, "name": name, "old_value": clean_var_for_emit(old_value), "value": clean_var_for_emit(value)}, {"include_self":True, "broadcast":True, "room":"UI_2"}])
+                    data = ["var_changed", {"classname": classname, "name": name, "old_value": clean_var_for_emit(old_value), "value": clean_var_for_emit(value)}, {"include_self":True, "broadcast":True, "room":"UI_2"}]
+                    queue.put(data)
                 else:
                     socketio.emit("var_changed", {"classname": classname, "name": name, "old_value": clean_var_for_emit(old_value), "value": clean_var_for_emit(value)}, include_self=True, broadcast=True, room="UI_2")
 
@@ -519,7 +512,21 @@ class story_settings(settings):
     def save_story(self):
         print("Saving")
         save_name = self.story_name if self.story_name != "" else "untitled"
-        with open("stories/{}_v2.json".format(save_name), "w") as settings_file:
+        adder = ""
+        while True:
+            if os.path.exists("stories/{}{}_v2.json".format(save_name, adder)):
+                with open("stories/{}{}_v2.json".format(save_name, adder), "r") as f:
+                    temp = json.load(f)
+                if 'story_id' in temp:
+                    if self.story_id != temp['story_id']:
+                        adder = 0 if adder == "" else adder+1
+                    else:
+                        break
+                else:
+                    adder = 0 if adder == "" else adder+1
+            else:
+                break
+        with open("stories/{}{}_v2.json".format(save_name, adder), "w") as settings_file:
             settings_file.write(self.to_json())
         self.gamesaved = True
     
@@ -1019,7 +1026,7 @@ class KoboldWorldInfo(object):
         self.story_settings = story_settings
         
     def reset(self):
-        self.__init__(self.socketio, self.story_settings, self.tokenizer)
+        self.__init__(self.socketio, self.story_settings, self.koboldai_vars, self.tokenizer)
     
     def __iter__(self):
         self.itter = -1

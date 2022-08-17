@@ -37,6 +37,7 @@ import itertools
 import bisect
 import functools
 import traceback
+import multiprocessing
 from collections.abc import Iterable
 from collections import OrderedDict
 from typing import Any, Callable, Optional, TypeVar, Tuple, Union, Dict, Set, List
@@ -993,6 +994,12 @@ def general_startup(override_args=None):
             print("You have selected the following path for your Model :", args.path)
             koboldai_vars.custmodpth = args.path;
             koboldai_vars.colaburl = args.path + "/request"; # Lets just use the same parameter to keep it simple
+            
+    #setup socketio relay queue
+    koboldai_settings.queue = multiprocessing.Queue()
+    #t = threading.Thread(target=socket_io_relay, args=(koboldai_settings.queue, socketio))
+    socketio.start_background_task(socket_io_relay, koboldai_settings.queue, socketio)
+    print("continued")
 #==================================================================#
 # Load Model
 #==================================================================# 
@@ -6350,12 +6357,14 @@ def UI_2_Set_Selected_Text(data):
 def UI_2_submit(data):
     print(data)
     if not koboldai_vars.noai and data['theme'] != "":
+        print("doing random prompt")
         memory = koboldai_vars.memory
         koboldai_vars.memory = "{}\n\nYou generate the following {} story concept :".format(koboldai_vars.memory, data['theme'])
         koboldai_vars.lua_koboldbridge.feedback = None
         actionsubmit("", force_submit=True, force_prompt_gen=True)
         koboldai_vars.memory = memory
     else:
+        print("doing normal input")
         koboldai_vars.actions.clear_unused_options()
         koboldai_vars.lua_koboldbridge.feedback = None
         koboldai_vars.recentrng = koboldai_vars.recentrngm = None
@@ -6589,9 +6598,14 @@ def UI_2_phrase_bias_update(biases):
 #==================================================================#
 # Event triggered to rely a message
 #==================================================================#
-@socketio.on('relay')
-def UI_2_relay(data):
-    socketio.emit(data[0], data[1], **data[2])
+def socket_io_relay(queue, socketio):
+    while True:
+        if not queue.empty():
+            data = queue.get()
+            #socketio.emit(data[0], data[1], **data[2])
+            socketio.emit(data[0], data[1], broadcast=True, room="UI_2")
+        time.sleep(0)
+        
 
 #==================================================================#
 # Event triggered when program errors out
