@@ -6604,11 +6604,14 @@ def UI_2_phrase_bias_update(biases):
 # Event triggered to rely a message
 #==================================================================#
 def socket_io_relay(queue, socketio):
+    print("started relay")
     while True:
         if not queue.empty():
+            print("got relay message")
             data = queue.get()
             #socketio.emit(data[0], data[1], **data[2])
             socketio.emit(data[0], data[1], broadcast=True, room="UI_2")
+            print("sent")
         time.sleep(0)
         
 
