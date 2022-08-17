@@ -1798,7 +1798,8 @@ def patch_transformers():
                 #tokenizer_text = utils.decodenewlines(tokenizer.decode(ids[-1]))
                 #koboldai_vars.actions.stream_token(tokenizer_text, batch=batch)
                
-            koboldai_vars.actions.stream_tokens([utils.decodenewlines(tokenizer.decode(x[-1])) for x in input_ids])
+            if koboldai_vars.output_streaming:
+                koboldai_vars.actions.stream_tokens([utils.decodenewlines(tokenizer.decode(x[-1])) for x in input_ids])
             #if len(input_ids) > 1:
             #    koboldai_vars.actions.clear_unused_options()
             #    koboldai_vars.actions.append_options([utils.decodenewlines(tokenizer.decode(x[-1])) for x in input_ids])
@@ -7081,6 +7082,9 @@ def UI_2_load_model_button(data):
     #We've selected a custom line
     elif data['menu'] in ("NeoCustom", "GPT2Custom"):
         get_model_info(data['menu'], directory=data['display_name'])
+    #We've selected a custom menu folder
+    elif data['model'] in ("NeoCustom", "GPT2Custom") and 'path' in data:
+        sendModelSelection(menu=data['model'], folder=data['path'])
     #We've selected a custom menu
     elif data['model'] in ("NeoCustom", "GPT2Custom"):
         sendModelSelection(menu=data['model'], folder="./models")

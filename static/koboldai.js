@@ -822,13 +822,15 @@ function show_model_menu(data) {
 		breadcrumbs.removeChild(breadcrumbs.firstChild);
 	}
 	//add breadcrumbs
+	console.log(data.breadcrumbs);
 	for (item of data.breadcrumbs) {
 		var button = document.createElement("button");
 		button.classList.add("breadcrumbitem");
-		button.id = item[0];
-		button.value = item[1];
+		button.setAttribute("model", data.menu);
+		button.setAttribute("folder", item[0]);
+		button.textContent = item[1];
 		button.onclick = function () {
-					socket.emit('selectmodel', {'data': this.id, 'folder': this.value});
+					socket.emit('select_model', {'menu': "", 'model': this.getAttribute("model"), 'path': this.getAttribute("folder")});
 				};
 		breadcrumbs.append(button);
 		var span = document.createElement("span");
