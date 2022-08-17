@@ -1497,9 +1497,9 @@ def get_layer_count(model, directory=""):
 
 def get_oai_models(key):
     vars.oaiapikey = key
-    if vars.model == 'OAI':
+    if vars.model_selected == 'OAI':
         url = "https://api.openai.com/v1/engines"
-    elif vars.model == 'GooseAI':
+    elif vars.model_selected == 'GooseAI':
         url = "https://api.goose.ai/v1/engines"
     else:
         return
@@ -1528,8 +1528,8 @@ def get_oai_models(key):
             # If the client settings file doesn't exist, create it
             # Write API key to file
             os.makedirs('settings', exist_ok=True)
-        if path.exists("settings/{}.settings".format(vars.model)):
-            with open("settings/{}.settings".format(vars.model), "r") as file:
+        if path.exists("settings/{}.settings".format(vars.model_selected)):
+            with open("settings/{}.settings".format(vars.model_selected), "r") as file:
                 js = json.load(file)
                 if 'online_model' in js:
                     online_model = js['online_model']
@@ -1537,7 +1537,7 @@ def get_oai_models(key):
                     if js['apikey'] != key:
                         changed=True
         if changed:
-            with open("settings/{}.settings".format(vars.model), "w") as file:
+            with open("settings/{}.settings".format(vars.model_selected), "w") as file:
                 js["apikey"] = key
                 file.write(json.dumps(js, indent=3))
             
