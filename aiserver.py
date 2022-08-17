@@ -1157,6 +1157,7 @@ def general_startup(override_args=None):
     parser.add_argument("--savemodel", action='store_true', help="Saves the model to the models folder even if --colab is used (Allows you to save models to Google Drive)")
     parser.add_argument("--customsettings", help="Preloads arguements from json file. You only need to provide the location of the json file. Use customsettings.json template file. It can be renamed if you wish so that you can store multiple configurations. Leave any settings you want as default as null. Any values you wish to set need to be in double quotation marks")
     parser.add_argument("--no_ui", action='store_true', default=False, help="Disables the GUI and Socket.IO server while leaving the API server running.")
+    parser.add_argument("--use_relay", action='store_true', default=False, help="Use messaging relay when the thread is busy (can loose data to UI if not used)")
     #args: argparse.Namespace = None
     if "pytest" in sys.modules and override_args is None:
         args = parser.parse_args([])
@@ -1253,10 +1254,13 @@ def general_startup(override_args=None):
             koboldai_vars.colaburl = args.path + "/request"; # Lets just use the same parameter to keep it simple
             
     #setup socketio relay queue
-    koboldai_settings.queue = multiprocessing.Queue()
-    #t = threading.Thread(target=socket_io_relay, args=(koboldai_settings.queue, socketio))
-    socketio.start_background_task(socket_io_relay, koboldai_settings.queue, socketio)
-    print("continued")
+    if args.use_relay:
+        koboldai_settings.no_relay = False
+        koboldai_settings.queue = multiprocessing.Queue()
+        socketio.start_background_task(socket_io_relay, koboldai_settings.queue, socketio)
+    else:
+        koboldai_settings.no_relay = True
+        
 #==================================================================#
 # Load Model
 #==================================================================# 
@@ -7255,7 +7259,6 @@ def socket_io_relay(queue, socketio):
             data = queue.get()
             socketio.emit(data[0], data[1], **data[2])
             #socketio.emit(data[0], data[1], broadcast=True, room="UI_2")
-            print("sent")
         time.sleep(0.05)
         
 
