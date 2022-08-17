@@ -1039,6 +1039,8 @@ def savesettings():
 
     if(vars.seed_specified):
         js["seed"]    = vars.seed
+    else:
+        js["seed"]    = None
 
     js["newlinemode"] = vars.newlinemode
 
@@ -1154,7 +1156,10 @@ def processsettings(js):
     
     if("seed" in js):
         vars.seed = js["seed"]
-        vars.seed_specified = True
+        if(vars.seed is not None):
+            vars.seed_specified = True
+        else:
+            vars.seed_specified = False
     else:
         vars.seed_specified = False
 
