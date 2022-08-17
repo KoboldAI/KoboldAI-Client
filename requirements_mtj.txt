@@ -21,3 +21,4 @@ python-socketio[client]
 flask-session
 marshmallow>=3.13
 apispec-webframeworks
+gevent
