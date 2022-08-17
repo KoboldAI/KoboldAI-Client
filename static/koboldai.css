@@ -1262,3 +1262,7 @@ body.NotConnected {
   /* Support for IE. */
   font-feature-settings: 'liga';
 }
+
+h2 .material-icons-outlined {
+	font-size: 32px;
+}
