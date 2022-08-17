@@ -557,7 +557,7 @@ function popup_items(data) {
 	document.getElementById('popup_upload_input').value = "";
 	
 	//create the column widths
-	var style = 'width: 80vw; display: grid; grid-template-areas: "icons';
+	var style = /*width: 50vw;*/'display: grid; grid-template-areas: "icons';
 	for (i=0; i < data.column_widths.length; i++) {
 		style = style + " p"+i;
 	}
