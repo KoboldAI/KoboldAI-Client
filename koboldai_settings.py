@@ -692,6 +692,9 @@ class system_settings(settings):
         self.disable_set_aibusy = False
         self.disable_input_formatting = False
         self.disable_output_formatting = False
+        self.full_determinism = False  # Whether or not full determinism is enabled
+        self.seed_specified = False  # Whether or not the current RNG seed was specified by the user (in their settings file)
+        self.seed        = None   # The current RNG seed (as an int), or None if unknown
         
         
     def __setattr__(self, name, value):
