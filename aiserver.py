@@ -14,6 +14,7 @@ __file__ = os.path.dirname(os.path.realpath(__file__))
 os.chdir(__file__)
 os.environ['EVENTLET_THREADPOOL_SIZE'] = '1'
 os.environ['TOKENIZERS_PARALLELISM'] = 'false'
+from eventlet import tpool
 
 import logging
 logging.getLogger("urllib3").setLevel(logging.ERROR)
