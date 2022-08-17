@@ -1157,7 +1157,7 @@ def general_startup(override_args=None):
     parser.add_argument("--savemodel", action='store_true', help="Saves the model to the models folder even if --colab is used (Allows you to save models to Google Drive)")
     parser.add_argument("--customsettings", help="Preloads arguements from json file. You only need to provide the location of the json file. Use customsettings.json template file. It can be renamed if you wish so that you can store multiple configurations. Leave any settings you want as default as null. Any values you wish to set need to be in double quotation marks")
     parser.add_argument("--no_ui", action='store_true', default=False, help="Disables the GUI and Socket.IO server while leaving the API server running.")
-    parser.add_argument("--use_relay", action='store_true', default=False, help="Use messaging relay when the thread is busy (can loose data to UI if not used)")
+    parser.add_argument("--use_relay", action='store_false', default=True, help="Use messaging relay when the thread is busy (can loose data to UI if not used)")
     #args: argparse.Namespace = None
     if "pytest" in sys.modules and override_args is None:
         args = parser.parse_args([])
@@ -1256,7 +1256,9 @@ def general_startup(override_args=None):
     #setup socketio relay queue
     if args.use_relay:
         koboldai_settings.no_relay = False
-        koboldai_settings.queue = multiprocessing.Queue()
+        #koboldai_settings.queue = multiprocessing.Queue()
+        import gevent.queue
+        koboldai_settings.queue = gevent.queue.Queue()
         socketio.start_background_task(socket_io_relay, koboldai_settings.queue, socketio)
     else:
         koboldai_settings.no_relay = True

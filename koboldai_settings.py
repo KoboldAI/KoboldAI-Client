@@ -2,6 +2,7 @@ import os, re, time, threading, json, pickle, base64, copy, tqdm, datetime
 from io import BytesIO
 from flask import has_request_context
 import socketio as socketio_client
+from flask_socketio import SocketIO
 from collections import OrderedDict
 import requests
 
@@ -52,6 +53,7 @@ def process_variable_changes(socketio, classname, name, value, old_value, debug_
                         print("putting data in queue")
                         queue.put(data)
                         print("put data in queue")
+                        
                 else:
                     socketio.emit("var_changed", {"classname": classname, "name": name, "old_value": clean_var_for_emit(old_value), "value": clean_var_for_emit(value)}, include_self=True, broadcast=True, room="UI_2")
 
