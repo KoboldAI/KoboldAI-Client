@@ -328,7 +328,7 @@ input[type="range"]::-ms-fill-upper {
 						 "item item"
 						 "minlabel maxlabel";
 	grid-template-rows: 20px 20px 20px;
-	grid-template-columns: 135px 42px;
+	grid-template-columns: 147px 30px;
 	row-gap: 0.2em;
 	background-color: var(--setting_background);
 	color: var(--setting_text);
@@ -352,7 +352,7 @@ input[type="range"]::-ms-fill-upper {
 }
 .setting_container_single .setting_item{
 	font-size: 0.93em;
-	margin-left: -10px;
+	margin-left: 10px;
 }
 
 
@@ -380,13 +380,15 @@ input[type="range"]::-ms-fill-upper {
 	grid-area: label;
 	overflow: hidden;
 	padding: 5px;
+	padding-right: 0px;
 	padding-top: 0px;
 }
 
 .setting_value {
 	text-align: right;
 	grid-area: value;
-	padding: 5px;
+	font-size: 12px;
+	padding: 2px;
 	padding-top: 0px;
 	background-color: inherit;
 	color: inherit;
@@ -408,7 +410,7 @@ input[type="range"]::-ms-fill-upper {
 }
 /*-----------------------------------------------*/
 .helpicon {
-	color: var(--setting_text);
+	color: var(--help_icon);
 	cursor: help;
 	font-size: 14px !important;
 	flex: auto;
