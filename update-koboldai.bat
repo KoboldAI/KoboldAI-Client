@@ -1,6 +1,5 @@
 @echo off
-%~d0
-cd %~dp0
+cd /d %~dp0
 TITLE KoboldAI - Updater
 SET /P M=<loader.settings
 IF %M%==1 GOTO drivemap
@@ -50,4 +49,9 @@ git remote add origin %origin%
 git fetch --all
 git checkout %branch% -f
 git reset --hard origin/%branch%
+IF %M%==1 umamba.exe install --no-shortcuts -r K:\python\ -n base -f "%~dp0\environments\huggingface.yml" -y --always-copy
+IF %M%==2 umamba.exe install --no-shortcuts -r miniconda3 -n base -f environments\huggingface.yml -y --always-copy
+IF %M%==3 umamba.exe install --no-shortcuts -r B:\python\ -n base -f "%~dp0\environments\huggingface.yml" -y --always-copy
+
+
 %windir%\system32\timeout -t 10

@@ -21,7 +21,7 @@ gensettingstf = [
 	"id": "settemp", 
 	"min": 0.1,
 	"max": 2.0,
-	"step": 0.05,
+	"step": 0.01,
 	"default": 0.5,
     "tooltip": "Randomness of sampling. High values can increase creativity but may make text less sensible. Lower values will make text more predictable but can become repetitious.",
     "menu_path": "Settings",
@@ -36,7 +36,7 @@ gensettingstf = [
 	"id": "settopp", 
 	"min": 0.0,
 	"max": 1.0,
-	"step": 0.05,
+	"step": 0.01,
 	"default": 0.9,
     "tooltip": "Used to discard unlikely text in the sampling process. Lower values will make text more predictable but can become repetitious. (Put this value on 1 to disable its effect)",
     "menu_path": "Settings",
@@ -67,7 +67,7 @@ gensettingstf = [
 	"id": "settfs", 
 	"min": 0.0,
 	"max": 1.0,
-	"step": 0.05,
+	"step": 0.01,
 	"default": 1.0,
     "tooltip": "Alternative sampling method; it is recommended to disable top_p and top_k (set top_p to 1 and top_k to 0) if using this. 0.95 is thought to be a good value. (Put this value on 1 to disable its effect)",
     "menu_path": "Settings",
@@ -82,7 +82,7 @@ gensettingstf = [
 	"id": "settypical", 
 	"min": 0.0,
 	"max": 1.0,
-	"step": 0.05,
+	"step": 0.01,
 	"default": 1.0,
     "tooltip": "Alternative sampling method described in the paper \"Typical Decoding for Natural Language Generation\" (10.48550/ARXIV.2202.00666). The paper suggests 0.2 as a good value for this setting. Set this setting to 1 to disable its effect.",
     "menu_path": "Settings",
@@ -314,6 +314,17 @@ gensettingstf = [
     "sub_path": "Modifiers",
     "classname": "user",
     "name": "nogenmod"
+	},
+	{
+	"uitype": "toggle",
+	"unit": "bool",
+	"label": "Full Determinism",
+	"id": "setfulldeterminism",
+	"min": 0,
+	"max": 1,
+	"step": 1,
+	"default": 0,
+  "tooltip": "Causes generation to be fully deterministic -- the model will always output the same thing as long as your story, settings and RNG seed are the same. If this is off, only the sequence of outputs that the model makes will be deterministic."
 	},
     {
 	"uitype": "toggle",
@@ -579,9 +590,9 @@ formatcontrols = [{
     "tooltip": "Remove special characters (@,#,%,^, etc)"
     },
     {
-    "label": "Add sentence spacing",
+    "label": "Automatic spacing",
     "id": "frmtadsnsp",
-    "tooltip": "If the last action ended with punctuation, add a space to the beginning of the next action."
+    "tooltip": "Add spaces automatically if needed"
     },
     {
     "label": "Single Line",

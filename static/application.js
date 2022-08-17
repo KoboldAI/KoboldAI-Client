@@ -78,6 +78,8 @@ var rs_accept;
 var rs_close;
 var seqselmenu;
 var seqselcontents;
+var stream_preview;
+var token_prob_container;
 
 var storyname = null;
 var memorymode = false;
@@ -87,6 +89,7 @@ var wiscroll = 0;
 var editmode = false;
 var connected = false;
 var newly_loaded = true;
+var all_modified_chunks = new Set();
 var modified_chunks = new Set();
 var empty_chunks = new Set();
 var gametext_bound = false;
@@ -102,6 +105,7 @@ var gamestate = "";
 var gamesaved = true;
 var modelname = null;
 var model = "";
+var ignore_stream = false;
 
 // This is true iff [we're in macOS and the browser is Safari] or [we're in iOS]
 var using_webkit_patch = true;
@@ -129,6 +133,7 @@ var adventure = false;
 var chatmode = false;
 
 var sliders_throttle = getThrottle(200);
+var submit_throttle = null;
 
 //=================================================================//
 //  METHODS
@@ -507,6 +512,16 @@ function addWiLine(ob) {
 		$(".wisortable-excluded-dynamic").removeClass("wisortable-excluded-dynamic");
 		$(this).parent().css("max-height", "").find(".wicomment").find(".form-control").css("max-height", "");
 	});
+
+	for (const wientry of document.getElementsByClassName("wientry")) {
+		// If we are uninitialized, skip.
+		if ($(wientry).closest(".wilistitem-uninitialized").length) continue;
+
+		// add() will not add if the class is already present
+		wientry.classList.add("tokens-counted");
+	}
+
+	registerTokenCounters();
 }
 
 function addWiFolder(uid, ob) {
@@ -830,6 +845,7 @@ function exitMemoryMode() {
 	button_actmem.html("Memory");
 	show([button_actback, button_actfwd, button_actretry, button_actwi]);
 	input_text.val("");
+	updateInputBudget(input_text[0]);
 	// Hide Author's Note field
 	anote_menu.slideUp("fast");
 }
@@ -886,11 +902,25 @@ function formatChunkInnerText(chunk) {
 }
 
 function dosubmit(disallow_abort) {
+	beginStream();
 	submit_start = Date.now();
 	var txt = input_text.val().replace(/\u00a0/g, " ");
 	if((disallow_abort || gamestate !== "wait") && !memorymode && !gamestarted && ((!adventure || !action_mode) && txt.trim().length == 0)) {
 		return;
 	}
+	chunkOnFocusOut("override");
+	// Wait for editor changes to be applied before submitting
+	submit_throttle = getThrottle(70);
+	submit_throttle.txt = txt;
+	submit_throttle.disallow_abort = disallow_abort;
+	submit_throttle(0, _dosubmit);
+}
+
+function _dosubmit() {
+	beginStream();
+	var txt = submit_throttle.txt;
+	var disallow_abort = submit_throttle.disallow_abort;
+	submit_throttle = null;
 	input_text.val("");
 	hideMessage();
 	hidegenseqs();
@@ -1030,6 +1060,18 @@ function buildLoadModelList(ar, menu, breadcrumbs, showdelete) {
 	if (breadcrumbs.length > 0) {
 		$("#loadmodellistbreadcrumbs").append("<hr size='1'>")  
 	}
+	//If we're in the custom load menu (we need to send the path data back in that case)
+	if(['NeoCustom', 'GPT2Custom'].includes(menu)) {
+		$("#loadmodel"+i).off("click").on("click", (function () {
+			return function () {
+				socket.send({'cmd': 'selectmodel', 'data': $(this).attr("name"), 'path': $(this).attr("pretty_name")});
+				highlightLoadLine($(this));
+			}
+		})(i));
+		$("#custommodelname").removeClass("hidden");
+		$("#custommodelname")[0].setAttribute("menu", menu);
+	}
+	
 	for(i=0; i<ar.length; i++) {
 		if (Array.isArray(ar[i][0])) {
 			full_path = ar[i][0][0];
@@ -1043,11 +1085,12 @@ function buildLoadModelList(ar, menu, breadcrumbs, showdelete) {
 		html = "<div class=\"flex\">\
 			<div class=\"loadlistpadding\"></div>"
 		//if the menu item is a link to another menu
-		if(ar[i][3]) {
+		console.log(ar[i]);
+		if((ar[i][3]) || (['Load a model from its directory', 'Load an old GPT-2 model (eg CloverEdition)'].includes(ar[i][0]))) {
 			html = html + "<span class=\"loadlisticon loadmodellisticon-folder oi oi-folder allowed\"  aria-hidden=\"true\"></span>"
 		} else {
 		//this is a model
-			html = html + "<div class=\"loadlistpadding\"></div>"
+			html = html + "<div class=\"loadlisticon oi oi-caret-right allowed\"></div>&nbsp;&nbsp;&nbsp;"
 		}
 		
 		//now let's do the delete icon if applicable
@@ -1065,6 +1108,7 @@ function buildLoadModelList(ar, menu, breadcrumbs, showdelete) {
 					</div>"
 		loadmodelcontent.append(html);
 		//If this is a menu
+		console.log(ar[i]);
 		if(ar[i][3]) {
 			$("#loadmodel"+i).off("click").on("click", (function () {
 				return function () {
@@ -1072,27 +1116,29 @@ function buildLoadModelList(ar, menu, breadcrumbs, showdelete) {
 					disableButtons([load_model_accept]);
 				}
 			})(i));
-		//If we're in the custom load menu (we need to send the path data back in that case)
-		} else if(['NeoCustom', 'GPT2Custom'].includes(menu)) {
-			$("#loadmodel"+i).off("click").on("click", (function () {
-				return function () {
-					socket.send({'cmd': 'selectmodel', 'data': $(this).attr("name"), 'path': $(this).attr("pretty_name")});
-					highlightLoadLine($(this));
-				}
-			})(i));
-			$("#custommodelname").removeClass("hidden");
-			$("#custommodelname")[0].setAttribute("menu", menu);
 		//Normal load
 		} else {
-			$("#loadmodel"+i).off("click").on("click", (function () {
-				return function () {
-					$("#use_gpu_div").addClass("hidden");
-					$("#modelkey").addClass("hidden");
-					$("#modellayers").addClass("hidden");
-					socket.send({'cmd': 'selectmodel', 'data': $(this).attr("name")});
-					highlightLoadLine($(this));
-				}
-			})(i));
+			if (['NeoCustom', 'GPT2Custom'].includes(menu)) {
+				$("#loadmodel"+i).off("click").on("click", (function () {
+					return function () {
+						$("#use_gpu_div").addClass("hidden");
+						$("#modelkey").addClass("hidden");
+						$("#modellayers").addClass("hidden");
+						socket.send({'cmd': 'selectmodel', 'data': $(this).attr("name"), 'path': $(this).attr("pretty_name")});
+						highlightLoadLine($(this));
+					}
+				})(i));
+			} else {
+				$("#loadmodel"+i).off("click").on("click", (function () {
+					return function () {
+						$("#use_gpu_div").addClass("hidden");
+						$("#modelkey").addClass("hidden");
+						$("#modellayers").addClass("hidden");
+						socket.send({'cmd': 'selectmodel', 'data': $(this).attr("name")});
+						highlightLoadLine($(this));
+					}
+				})(i));
+			}
 		}
 	}
 }
@@ -1522,13 +1568,29 @@ function chunkOnTextInput(event) {
 			r.deleteContents();
 		}
 
-		// In Chrome the added <br/> will go outside of the chunks if we press
+		// In Chrome and Safari the added <br/> will go outside of the chunks if we press
 		// enter at the end of the story in the editor, so this is here
 		// to put the <br/> back in the right place
 		var br = $("#_EDITOR_LINEBREAK_")[0];
 		if(br.parentNode === game_text[0]) {
+			var parent = br.previousSibling;
 			if(br.previousSibling.nodeType !== 1) {
+				parent = br.previousSibling.previousSibling;
 				br.previousSibling.previousSibling.appendChild(br.previousSibling);
+			}
+			if(parent.lastChild.tagName === "BR") {
+				parent.lastChild.remove();  // Chrome and Safari also insert an extra <br/> in this case for some reason so we need to remove it
+				if(using_webkit_patch) {
+					// Safari on iOS has a bug where it selects all text in the last chunk of the story when this happens so we collapse the selection to the end of the chunk in that case
+					setTimeout(function() {
+						var s = getSelection();
+						var r = s.getRangeAt(0);
+						r.selectNodeContents(parent);
+						r.collapse(false);
+						s.removeAllRanges();
+						s.addRange(r);
+					}, 2);
+				}
 			}
 			br.previousSibling.appendChild(br);
 			r.selectNodeContents(br.parentNode);
@@ -1711,22 +1773,29 @@ function applyChunkDeltas(nodes) {
 	var chunks = Array.from(buildChunkSetFromNodeArray(nodes));
 	for(var i = 0; i < chunks.length; i++) {
 		modified_chunks.add(chunks[i]);
+		all_modified_chunks.add(chunks[i]);
 	}
 	setTimeout(function() {
 		var chunks = Array.from(modified_chunks);
 		var selected_chunks = buildChunkSetFromNodeArray(getSelectedNodes());
 		for(var i = 0; i < chunks.length; i++) {
 			var chunk = document.getElementById("n" + chunks[i]);
-			if(chunk && formatChunkInnerText(chunk).length != 0 && chunks[i] != '0') {
+			if(chunk && formatChunkInnerText(chunk).trim().length != 0 && chunks[i] != '0') {
 				if(!selected_chunks.has(chunks[i])) {
 					modified_chunks.delete(chunks[i]);
 					socket.send({'cmd': 'inlineedit', 'chunk': chunks[i], 'data': formatChunkInnerText(chunk)});
+					if(submit_throttle !== null) {
+						submit_throttle(0, _dosubmit);
+					}
 				}
 				empty_chunks.delete(chunks[i]);
 			} else {
 				if(!selected_chunks.has(chunks[i])) {
 					modified_chunks.delete(chunks[i]);
-					socket.send({'cmd': 'inlineedit', 'chunk': chunks[i], 'data': ''});
+					socket.send({'cmd': 'inlineedit', 'chunk': chunks[i], 'data': formatChunkInnerText(chunk)});
+					if(submit_throttle !== null) {
+						submit_throttle(0, _dosubmit);
+					}
 				}
 				empty_chunks.add(chunks[i]);
 			}
@@ -1748,6 +1817,9 @@ function syncAllModifiedChunks(including_selected_chunks=false) {
 				empty_chunks.delete(chunks[i]);
 			}
 			socket.send({'cmd': 'inlineedit', 'chunk': chunks[i], 'data': data});
+			if(submit_throttle !== null) {
+				submit_throttle(0, _dosubmit);
+			}
 		}
 	}
 }
@@ -1800,10 +1872,16 @@ function restorePrompt() {
 			if(this.innerText.trim().length) {
 				saved_prompt = this.innerText.trim();
 				socket.send({'cmd': 'inlinedelete', 'data': this.getAttribute("n")});
+				if(submit_throttle !== null) {
+					submit_throttle(0, _dosubmit);
+				}
 				this.parentNode.removeChild(this);
 				return false;
 			}
 			socket.send({'cmd': 'inlinedelete', 'data': this.getAttribute("n")});
+			if(submit_throttle !== null) {
+				submit_throttle(0, _dosubmit);
+			}
 			this.parentNode.removeChild(this);
 		});
 	}
@@ -1818,6 +1896,9 @@ function restorePrompt() {
 	modified_chunks.delete('0');
 	empty_chunks.delete('0');
 	socket.send({'cmd': 'inlineedit', 'chunk': '0', 'data': saved_prompt});
+	if(submit_throttle !== null) {
+		submit_throttle(0, _dosubmit);
+	}
 }
 
 function deleteEmptyChunks() {
@@ -1829,13 +1910,21 @@ function deleteEmptyChunks() {
 			restorePrompt();
 		} else {
 			socket.send({'cmd': 'inlinedelete', 'data': chunks[i]});
+			if(submit_throttle !== null) {
+				submit_throttle(0, _dosubmit);
+			}
 		}
 	}
 	if(modified_chunks.has('0')) {
 		modified_chunks.delete(chunks[i]);
 		socket.send({'cmd': 'inlineedit', 'chunk': chunks[i], 'data': formatChunkInnerText(document.getElementById("n0"))});
+		if(submit_throttle !== null) {
+			submit_throttle(0, _dosubmit);
+		}
 	}
-	saved_prompt = formatChunkInnerText($("#n0")[0]);
+	if(gamestarted) {
+		saved_prompt = formatChunkInnerText($("#n0")[0]);
+	}
 }
 
 function highlightEditingChunks() {
@@ -1856,6 +1945,70 @@ function highlightEditingChunks() {
 		chunk.addClass('editing');
 		bindGametext();
 	}
+}
+
+function cleanupChunkWhitespace() {
+	unbindGametext();
+
+	var chunks = Array.from(all_modified_chunks);
+	for(var i = 0; i < chunks.length; i++) {
+		var original_chunk = document.getElementById("n" + chunks[i]);
+		if(original_chunk === null || original_chunk.innerText.trim().length === 0) {
+			all_modified_chunks.delete(chunks[i]);
+			modified_chunks.delete(chunks[i]);
+			empty_chunks.add(chunks[i]);
+		}
+	}
+
+	// Merge empty chunks with the next chunk
+	var chunks = Array.from(empty_chunks);
+	chunks.sort(function(e) {parseInt(e)});
+	for(var i = 0; i < chunks.length; i++) {
+		if(chunks[i] == "0") {
+			continue;
+		}
+		var original_chunk = document.getElementById("n" + chunks[i]);
+		if(original_chunk === null) {
+			continue;
+		}
+		var chunk = original_chunk.nextSibling;
+		while(chunk) {
+			if(chunk.tagName === "CHUNK") {
+				break;
+			}
+			chunk = chunk.nextSibling;
+		}
+		if(chunk) {
+			chunk.innerText = original_chunk.innerText + chunk.innerText;
+			if(original_chunk.innerText.length != 0 && !modified_chunks.has(chunk.getAttribute("n"))) {
+				modified_chunks.add(chunk.getAttribute("n"));
+			}
+		}
+		original_chunk.innerText = "";
+	}
+	// Move whitespace at the end of non-empty chunks into the beginning of the next non-empty chunk
+	var chunks = Array.from(all_modified_chunks);
+	chunks.sort(function(e) {parseInt(e)});
+	for(var i = 0; i < chunks.length; i++) {
+		var original_chunk = document.getElementById("n" + chunks[i]);
+		var chunk = original_chunk.nextSibling;
+		while(chunk) {
+			if(chunk.tagName === "CHUNK" && !empty_chunks.has(chunk.getAttribute("n"))) {
+				break;
+			}
+			chunk = chunk.nextSibling;
+		}
+		var ln = original_chunk.innerText.trimEnd().length;
+		if (chunk) {
+			chunk.innerText = original_chunk.innerText.substring(ln) + chunk.innerText;
+			if(ln != original_chunk.innerText.length && !modified_chunks.has(chunk.getAttribute("n"))) {
+				modified_chunks.add(chunk.getAttribute("n"));
+			}
+		}
+		original_chunk.innerText = original_chunk.innerText.substring(0, ln);
+	}
+
+	bindGametext();
 }
 
 // This gets run every time the text in a chunk is edited
@@ -1929,13 +2082,15 @@ function chunkOnKeyDownSelectionChange(event) {
 // This gets run when you defocus the editor by clicking
 // outside of the editor or by pressing escape or tab
 function chunkOnFocusOut(event) {
-	if(!gametext_bound || !allowedit || event.target !== game_text[0]) {
+	if(event !== "override" && (!gametext_bound || !allowedit || event.target !== game_text[0])) {
 		return;
 	}
 	setTimeout(function() {
 		if(document.activeElement === game_text[0] || game_text[0].contains(document.activeElement)) {
 			return;
 		}
+		cleanupChunkWhitespace();
+		all_modified_chunks = new Set();
 		syncAllModifiedChunks(true);
 		setTimeout(function() {
 			var blurred = game_text[0] !== document.activeElement;
@@ -1957,6 +2112,20 @@ function bindGametext() {
 function unbindGametext() {
 	mutation_observer.disconnect();
 	gametext_bound = false;
+}
+
+function beginStream() {
+	ignore_stream = false;
+	token_prob_container[0].innerHTML = "";
+}
+
+function endStream() {
+	// Clear stream, the real text is about to be displayed.
+	ignore_stream = true;
+	if (stream_preview) {
+		stream_preview.remove();
+		stream_preview = null;
+	}
 }
 
 function update_gpu_layers() {
@@ -1985,6 +2154,45 @@ function RemoveAllButFirstOption(selectElement) {
    for(i = L; i >= 1; i--) {
       selectElement.remove(i);
    }
+}
+
+function interpolateRGB(color0, color1, t) {
+	return [
+		color0[0] + ((color1[0] - color0[0]) * t),
+		color0[1] + ((color1[1] - color0[1]) * t),
+		color0[2] + ((color1[2] - color0[2]) * t),
+	]
+}
+
+function updateInputBudget(inputElement) {
+	let data = {"unencoded": inputElement.value, "field": inputElement.id};
+
+	if (inputElement.id === "anoteinput") {
+		data["anotetemplate"] = $("#anotetemplate").val();
+	}
+
+	socket.send({"cmd": "getfieldbudget", "data": data});
+}
+
+function registerTokenCounters() {
+	// Add token counters to all input containers with the class of "tokens-counted",
+	// if a token counter is not already a child of said container.
+	for (const el of document.getElementsByClassName("tokens-counted")) {
+		if (el.getElementsByClassName("input-token-usage").length) continue;
+
+		let span = document.createElement("span");
+		span.classList.add("input-token-usage");
+		span.innerText = "?/? Tokens";
+		el.appendChild(span);
+
+		let inputElement = el.querySelector("input, textarea");
+
+		inputElement.addEventListener("input", function() {
+			updateInputBudget(this);
+		});
+		
+		updateInputBudget(inputElement);
+	}
 }
 
 //=================================================================//
@@ -2078,9 +2286,16 @@ $(document).ready(function(){
 	rs_close          = $("#btn_rsclose");
 	seqselmenu        = $("#seqselmenu");
 	seqselcontents    = $("#seqselcontents");
+	token_prob_container = $("#token_prob_container");
+	token_prob_menu = $("#token_prob_menu");
 
 	// Connect to SocketIO server
 	socket = io.connect(window.document.origin, {transports: ['polling', 'websocket'], closeOnBeforeunload: false, query:{"ui":  "1"}});
+	socket.on('load_popup', function(data){load_popup(data);});
+	socket.on('popup_items', function(data){popup_items(data);});
+	socket.on('popup_breadcrumbs', function(data){popup_breadcrumbs(data);});
+	socket.on('popup_edit_file', function(data){popup_edit_file(data);});
+	socket.on('error_popup', function(data){error_popup(data);});
 
 	socket.on('from_server', function(msg) {
 		//console.log(msg);
@@ -2130,6 +2345,75 @@ $(document).ready(function(){
 				active_element.focus();
 			})();
 			$("body").addClass("connected");
+		} else if (msg.cmd == "streamtoken") {
+			// Sometimes the stream_token messages will come in too late, after
+			// we have recieved the full text. This leads to some stray tokens
+			// appearing after the output. To combat this, we only allow tokens
+			// to be displayed after requesting and before recieving text.
+			if (ignore_stream) return;
+
+			let streamingEnabled = $("#setoutputstreaming")[0].checked;
+			let probabilitiesEnabled = $("#setshowprobs")[0].checked;
+
+			if (!streamingEnabled && !probabilitiesEnabled) return;
+
+			if (!stream_preview && streamingEnabled) {
+				stream_preview = document.createElement("span");
+				game_text.append(stream_preview);
+			}
+
+			for (const token of msg.data) {
+				if (streamingEnabled) stream_preview.innerText += token.decoded;
+
+				if (probabilitiesEnabled) {
+					// Probability display
+					let probDiv = document.createElement("div");
+					probDiv.classList.add("token-probs");
+
+					let probTokenSpan = document.createElement("span");
+					probTokenSpan.classList.add("token-probs-header");
+					probTokenSpan.innerText = token.decoded.replaceAll("\n", "\\n");
+					probDiv.appendChild(probTokenSpan);
+
+					let probTable = document.createElement("table");
+					let probTBody = document.createElement("tbody");
+					probTable.appendChild(probTBody);
+
+					for (const probToken of token.probabilities) {
+						let tr = document.createElement("tr");
+						let rgb = interpolateRGB(
+							[255, 255, 255],
+							[0, 255, 0],
+							probToken.score
+						).map(Math.round);
+						let color = `rgb(${rgb.join(", ")})`;
+
+						if (probToken.decoded === token.decoded) {
+							tr.classList.add("token-probs-final-token");
+						}
+
+						let tds = {};
+
+						for (const property of ["tokenId", "decoded", "score"]) {
+							let td = document.createElement("td");
+							td.style.color = color;
+							tds[property] = td;
+							tr.appendChild(td);
+						}
+
+						tds.tokenId.innerText = probToken.tokenId;
+						tds.decoded.innerText = probToken.decoded.toString().replaceAll("\n", "\\n");
+						tds.score.innerText = (probToken.score * 100).toFixed(2) + "%";
+
+						probTBody.appendChild(tr);
+					}
+
+					probDiv.appendChild(probTable);
+					token_prob_container.append(probDiv);
+				}
+			}
+
+			scrollToBottom();
 		} else if(msg.cmd == "updatescreen") {
 			var _gamestarted = gamestarted;
 			gamestarted = msg.gamestarted;
@@ -2140,6 +2424,7 @@ $(document).ready(function(){
 			unbindGametext();
 			allowedit = gamestarted && $("#allowediting").prop('checked');
 			game_text.attr('contenteditable', allowedit);
+			all_modified_chunks = new Set();
 			modified_chunks = new Set();
 			empty_chunks = new Set();
 			game_text.html(msg.data);
@@ -2159,6 +2444,7 @@ $(document).ready(function(){
 			scrollToBottom();
 		} else if(msg.cmd == "updatechunk") {
 			hideMessage();
+			game_text.attr('contenteditable', allowedit);
 			if (typeof submit_start !== 'undefined') {
 				$("#runtime")[0].innerHTML = `Generation time: ${Math.round((Date.now() - submit_start)/1000)} sec`;
 				delete submit_start;
@@ -2178,7 +2464,11 @@ $(document).ready(function(){
 			} else if (!empty_chunks.has(index.toString())) {
 				// Append at the end
 				unbindGametext();
-				var lc = game_text[0].lastChild;
+
+				// game_text can contain things other than chunks (stream
+				// preview), so we use querySelector to get the last chunk.
+				var lc = game_text[0].querySelector("chunk:last-of-type");
+
 				if(lc.tagName === "CHUNK" && lc.lastChild !== null && lc.lastChild.tagName === "BR") {
 					lc.removeChild(lc.lastChild);
 				}
@@ -2194,7 +2484,11 @@ $(document).ready(function(){
 			var element = game_text.children('#n' + index);
 			if(element.length) {
 				unbindGametext();
-				if((element[0].nextSibling === null || element[0].nextSibling.nodeType !== 1 || element[0].nextSibling.tagName !== "CHUNK") && element[0].previousSibling !== null && element[0].previousSibling.tagName === "CHUNK") {
+				if(
+					(element[0].nextSibling === null || element[0].nextSibling.nodeType !== 1 || element[0].nextSibling.tagName !== "CHUNK")
+					&& element[0].previousSibling !== null
+					&& element[0].previousSibling.tagName === "CHUNK"
+				) {
 					element[0].previousSibling.appendChild(document.createElement("br"));
 				}
 				element.remove();  // Remove the chunk
@@ -2204,6 +2498,7 @@ $(document).ready(function(){
 		} else if(msg.cmd == "setgamestate") {
 			// Enable or Disable buttons
 			if(msg.data == "ready") {
+				endStream();
 				enableSendBtn();
 				enableButtons([button_actmem, button_actwi, button_actback, button_actfwd, button_actretry]);
 				hideWaitAnimation();
@@ -2243,6 +2538,7 @@ $(document).ready(function(){
 				memorytext = msg.data;
 				input_text.val(msg.data);
 			}
+			updateInputBudget(input_text[0]);
 		} else if(msg.cmd == "setmemory") {
 			memorytext = msg.data;
 			if(memorymode) {
@@ -2364,6 +2660,7 @@ $(document).ready(function(){
 		} else if(msg.cmd == "setanote") {
 			// Set contents of Author's Note field
 			anote_input.val(msg.data);
+			updateInputBudget(anote_input[0]);
 		} else if(msg.cmd == "setanotetemplate") {
 			// Set contents of Author's Note Template field
 			$("#anotetemplate").val(msg.data);
@@ -2390,6 +2687,17 @@ $(document).ready(function(){
 		} else if(msg.cmd == "updatesingleline") {
 			// Update toggle state
 			$("#singleline").prop('checked', msg.data).change();
+		} else if(msg.cmd == "updateoutputstreaming") {
+			// Update toggle state
+			$("#setoutputstreaming").prop('checked', msg.data).change();
+		} else if(msg.cmd == "updateshowprobs") {
+			$("#setshowprobs").prop('checked', msg.data).change();
+
+			if(msg.data) {
+				token_prob_menu.removeClass("hidden");
+			} else {
+				token_prob_menu.addClass("hidden");
+			}
 		} else if(msg.cmd == "allowtoggle") {
 			// Allow toggle change states to propagate
 			allowtoggle = msg.data;
@@ -2564,6 +2872,9 @@ $(document).ready(function(){
 		} else if(msg.cmd == "updatenogenmod") {
 			// Update toggle state
 			$("#setnogenmod").prop('checked', msg.data).change();
+		} else if(msg.cmd == "updatefulldeterminism") {
+			// Update toggle state
+			$("#setfulldeterminism").prop('checked', msg.data).change();
 		} else if(msg.cmd == "runs_remotely") {
 			remote = true;
 			hide([button_savetofile, button_import, button_importwi]);
@@ -2589,6 +2900,8 @@ $(document).ready(function(){
 			if (msg.key) {
 				$("#modelkey").removeClass("hidden");
 				$("#modelkey")[0].value = msg.key_value;
+				//if we're in the API list, disable to load button until the model is selected (after the API Key is entered)
+				disableButtons([load_model_accept]);
 			} else {
 				$("#modelkey").addClass("hidden");
 				
@@ -2626,6 +2939,7 @@ $(document).ready(function(){
 			}
 		} else if(msg.cmd == 'oai_engines') {
 			$("#oaimodel").removeClass("hidden")
+			enableButtons([load_model_accept]);
 			selected_item = 0;
 			length = $("#oaimodel")[0].options.length;
 			for (let i = 0; i < length; i++) {
@@ -2648,6 +2962,7 @@ $(document).ready(function(){
 			$("#showmodelnamecontainer").removeClass("hidden");
 		} else if(msg.cmd == 'hide_model_name') {
 			$("#showmodelnamecontainer").addClass("hidden");
+			location.reload();
 			//console.log("Closing window");
 		} else if(msg.cmd == 'model_load_status') {
 			$("#showmodelnamecontent").html("<div class=\"flex\"><div class=\"loadlistpadding\"></div><div class=\"loadlistitem\" style='align: left'>" + msg.data + "</div></div>");
@@ -2661,7 +2976,18 @@ $(document).ready(function(){
 				opt.innerHTML = engine[1];
 				$("#oaimodel")[0].appendChild(opt);
 			}
+		} else if(msg.cmd == 'showfieldbudget') {
+			let inputElement = document.getElementById(msg.data.field);
+			let tokenBudgetElement = inputElement.parentNode.getElementsByClassName("input-token-usage")[0];
+			if (msg.data.max === null) {
+				tokenBudgetElement.innerText = "";
+			} else {
+				let tokenLength = msg.data.length ?? "?";
+				let tokenMax = msg.data.max ?? "?";
+				tokenBudgetElement.innerText = `${tokenLength}/${tokenMax} Tokens`;
+			}
 		}
+		enableButtons([load_model_accept]);
 	});
 	
 	socket.on('disconnect', function() {
@@ -2691,6 +3017,12 @@ $(document).ready(function(){
 		chunkOnFocusOut
 	);
 	mutation_observer = new MutationObserver(chunkOnDOMMutate);
+	$("#gamescreen").on('click', function(e) {
+		if(this !== e.target) {
+			return;
+		}
+		document.activeElement.blur();
+	});
 
 	// This is required for the editor to work correctly in Firefox on desktop
 	// because the gods of HTML and JavaScript say so
@@ -2776,6 +3108,7 @@ $(document).ready(function(){
 	});
 	
 	button_actretry.on("click", function(ev) {
+		beginStream();
 		hideMessage();
 		socket.send({'cmd': 'retry', 'chatname': chatmode ? chat_name.val() : undefined, 'data': ''});
 		hidegenseqs();
@@ -3022,6 +3355,7 @@ $(document).ready(function(){
 	});
 	
 	rs_accept.on("click", function(ev) {
+		beginStream();
 		hideMessage();
 		socket.send({'cmd': 'rndgame', 'memory': $("#rngmemory").val(), 'data': topic.val()});
 		hideRandomStoryPopup();
@@ -3095,4 +3429,287 @@ $(document).ready(function(){
 			return true;
 		}
 	});
+
+	// Shortcuts
+	$(window).keydown(function (ev) {
+		// Only ctrl prefixed (for now)
+		if (!ev.ctrlKey) return;
+
+		let handled = true;
+		switch (ev.key) {
+			// Ctrl+Z - Back
+			case "z":
+				button_actback.click();
+				break;
+			// Ctrl+Y - Forward
+			case "y":
+				button_actfwd.click();
+				break;
+			// Ctrl+E - Retry
+			case "e":
+				button_actretry.click();
+				break;
+			default:
+				handled = false;
+		}
+
+		if (handled) ev.preventDefault();
+	});
+
+	$("#anotetemplate").on("input", function() {
+		updateInputBudget(anote_input[0]);
+	})
+
+	registerTokenCounters();
+
+	updateInputBudget(input_text[0]);
+
 });
+
+
+
+var popup_deleteable = false;
+var popup_editable = false;
+var popup_renameable = false;
+
+function load_popup(data) {
+	document.getElementById('spcontainer').classList.add('hidden');
+	document.getElementById('uscontainer').classList.add('hidden');
+	popup_deleteable = data.deleteable;
+	popup_editable = data.editable;
+	popup_renameable = data.renameable;
+	var popup = document.getElementById("popup");
+	var popup_title = document.getElementById("popup_title");
+	popup_title.textContent = data.popup_title;
+	var popup_list = document.getElementById("popup_list");
+	//first, let's clear out our existing data
+	while (popup_list.firstChild) {
+		popup_list.removeChild(popup_list.firstChild);
+	}
+	var breadcrumbs = document.getElementById('popup_breadcrumbs');
+	while (breadcrumbs.firstChild) {
+		breadcrumbs.removeChild(breadcrumbs.firstChild);
+	}
+	
+	if (data.upload) {
+		const dropArea = document.getElementById('popup_list');
+		dropArea.addEventListener('dragover', (event) => {
+			event.stopPropagation();
+			event.preventDefault();
+			// Style the drag-and-drop as a "copy file" operation.
+			event.dataTransfer.dropEffect = 'copy';
+		});
+
+		dropArea.addEventListener('drop', (event) => {
+			event.stopPropagation();
+			event.preventDefault();
+			const fileList = event.dataTransfer.files;
+			for (file of fileList) {
+				reader = new FileReader();
+				reader.onload = function (event) {
+					socket.emit("upload_file", {'filename': file.name, "data": event.target.result});
+				};
+				reader.readAsArrayBuffer(file);
+			}
+		});
+	} else {
+		
+	}
+	
+	popup.classList.remove("hidden");
+	
+	//adjust accept button
+	if (data.call_back == "") {
+		document.getElementById("popup_accept").classList.add("hidden");
+	} else {
+		document.getElementById("popup_accept").classList.remove("hidden");
+		var accept = document.getElementById("popup_accept");
+		accept.classList.add("disabled");
+		accept.setAttribute("emit", data.call_back);
+		accept.setAttribute("selected_value", "");
+		accept.onclick = function () {
+								socket.emit(this.emit, this.getAttribute("selected_value"));
+								document.getElementById("popup").classList.add("hidden");
+						  };
+	}
+					  
+}
+
+function popup_items(data) {
+	var popup_list = document.getElementById('popup_list');
+	//first, let's clear out our existing data
+	while (popup_list.firstChild) {
+		popup_list.removeChild(popup_list.firstChild);
+	}
+	document.getElementById('popup_upload_input').value = "";
+	
+	for (item of data) {
+		var list_item = document.createElement("span");
+		list_item.classList.add("item");
+		
+		//create the folder icon
+		var folder_icon = document.createElement("span");
+		folder_icon.classList.add("folder_icon");
+		if (item[0]) {
+			folder_icon.classList.add("oi");
+			folder_icon.setAttribute('data-glyph', "folder");
+		}
+		list_item.append(folder_icon);
+		
+		//create the edit icon
+		var edit_icon = document.createElement("span");
+		edit_icon.classList.add("edit_icon");
+		if ((popup_editable) && !(item[0])) {
+			edit_icon.classList.add("oi");
+			edit_icon.setAttribute('data-glyph', "spreadsheet");
+			edit_icon.title = "Edit"
+			edit_icon.id = item[1];
+			edit_icon.onclick = function () {
+							socket.emit("popup_edit", this.id);
+					  };
+		}
+		list_item.append(edit_icon);
+		
+		//create the rename icon
+		var rename_icon = document.createElement("span");
+		rename_icon.classList.add("rename_icon");
+		if ((popup_renameable) && !(item[0])) {
+			rename_icon.classList.add("oi");
+			rename_icon.setAttribute('data-glyph', "pencil");
+			rename_icon.title = "Rename"
+			rename_icon.id = item[1];
+			rename_icon.setAttribute("filename", item[2]);
+			rename_icon.onclick = function () {
+							var new_name = prompt("Please enter new filename for \n"+ this.getAttribute("filename"));
+							if (new_name != null) {
+								socket.emit("popup_rename", {"file": this.id, "new_name": new_name});
+							}
+					  };
+		}
+		list_item.append(rename_icon);
+		
+		//create the delete icon
+		var delete_icon = document.createElement("span");
+		delete_icon.classList.add("delete_icon");
+		if (popup_deleteable) {
+			delete_icon.classList.add("oi");
+			delete_icon.setAttribute('data-glyph', "x");
+			delete_icon.title = "Delete"
+			delete_icon.id = item[1];
+			delete_icon.setAttribute("folder", item[0]);
+			delete_icon.onclick = function () {
+							if (this.getAttribute("folder") == "true") {
+								if (window.confirm("Do you really want to delete this folder and ALL files under it?")) {
+									socket.emit("popup_delete", this.id);
+								}
+							} else {
+								if (window.confirm("Do you really want to delete this file?")) {
+									socket.emit("popup_delete", this.id);
+								}
+							}
+					  };
+		}
+		list_item.append(delete_icon);
+		
+		//create the actual item
+		var popup_item = document.createElement("span");
+		popup_item.classList.add("file");
+		popup_item.id = item[1];
+		popup_item.setAttribute("folder", item[0]);
+		popup_item.setAttribute("valid", item[3]);
+		popup_item.textContent = item[2];
+		popup_item.onclick = function () {
+						var accept = document.getElementById("popup_accept");
+						if (this.getAttribute("valid") == "true") {
+							accept.classList.remove("disabled");
+							accept.setAttribute("selected_value", this.id);
+						} else {
+							console.log("not valid");
+							accept.setAttribute("selected_value", "");
+							accept.classList.add("disabled");
+							if (this.getAttribute("folder") == "true") {
+								console.log("folder");
+								socket.emit("popup_change_folder", this.id);
+							}
+						}
+				  };
+		list_item.append(popup_item);
+		
+		
+		popup_list.append(list_item);
+		
+		
+	}
+}
+
+function popup_breadcrumbs(data) {
+	var breadcrumbs = document.getElementById('popup_breadcrumbs')
+	while (breadcrumbs.firstChild) {
+		breadcrumbs.removeChild(breadcrumbs.firstChild);
+	}
+	
+	for (item of data) {
+		var button = document.createElement("button");
+		button.id = item[0];
+		button.textContent = item[1];
+		button.classList.add("breadcrumbitem");
+		button.onclick = function () {
+							socket.emit("popup_change_folder", this.id);
+					  };
+		breadcrumbs.append(button);
+		var span = document.createElement("span");
+		span.textContent = "\\";
+		breadcrumbs.append(span);
+	}
+}
+
+function popup_edit_file(data) {
+	var popup_list = document.getElementById('popup_list');
+	var accept = document.getElementById("popup_accept");
+	accept.classList.add("btn-secondary");
+	accept.classList.remove("btn-primary");
+	accept.textContent = "Save";
+	//first, let's clear out our existing data
+	while (popup_list.firstChild) {
+		popup_list.removeChild(popup_list.firstChild);
+	}
+	var accept = document.getElementById("popup_accept");
+	accept.setAttribute("selected_value", "");
+	accept.onclick = function () {
+							var textarea = document.getElementById("filecontents");
+							socket.emit("popup_change_file", {"file": textarea.getAttribute("filename"), "data": textarea.value});
+							document.getElementById("popup").classList.add("hidden");
+							this.classList.add("hidden");
+					  };
+	
+	var textarea = document.createElement("textarea");
+	textarea.classList.add("fullwidth");
+	textarea.rows = 25;
+	textarea.id = "filecontents"
+	textarea.setAttribute("filename", data.file);
+	textarea.value = data.text;
+	textarea.onblur = function () {
+						var accept = document.getElementById("popup_accept");
+						accept.classList.remove("hidden");
+						accept.classList.remove("btn-secondary");
+						accept.classList.add("btn-primary");
+					};
+	popup_list.append(textarea);
+	
+}
+
+function error_popup(data) {
+	alert(data);
+}
+
+function upload_file(file_box) {
+	var fileList = file_box.files;
+	for (file of fileList) {
+		reader = new FileReader();
+		reader.onload = function (event) {
+			socket.emit("upload_file", {'filename': file.name, "data": event.target.result});
+		};
+		reader.readAsArrayBuffer(file);
+	}
+}
+

@@ -9,7 +9,8 @@
 	<link rel="stylesheet" href="static/bootstrap.min.css">
 	<link rel="stylesheet" href="static/bootstrap-toggle.min.css">
 	<link rel="stylesheet" href="static/open-iconic-bootstrap.min.css">
-	<link rel="stylesheet" href="static/custom.css?ver=1.18.1b">
+	<link href="static/open-iconic/css/open-iconic.css" rel="stylesheet">
+	<link rel="stylesheet" href="static/custom.css?ver=1.18.1c">
 
 	<script src="static/jquery-3.6.0.min.js"></script>
 	<script src="static/jquery-ui.sortable.min.js"></script>
@@ -17,7 +18,7 @@
 	<script src="static/bootstrap.min.js"></script>
 	<script src="static/bootstrap-toggle.min.js"></script>
 	<script src="static/rangy-core.min.js"></script>
-	<script src="static/application.js?ver=1.18.1c"></script>
+	<script src="static/application.js?ver=1.18.1e"></script>
 	<script src="static/favicon.js"></script>
 	{% if flaskwebgui %}
 	<script src="static/flask_web_gui.js"></script>
@@ -38,12 +39,8 @@
 						<div class="collapse navbar-collapse" id="navbarNavDropdown">
 							<ul class="nav navbar-nav">
 								{% if not hide_ai_menu %}
-								<li class="nav-item dropdown">
-									<a class="nav-link dropdown-toggle" href="#" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">AI</a>
-									<div class="dropdown-menu">
-										<a class="dropdown-item" href="#" id="btn_loadmodel">Load Model</a>
-										<a class="dropdown-item" href="#" id="btn_showmodel">Model Info</a>
-									</div>
+								<li class="nav-item">
+									<a class="nav-link" href="#" id="btn_loadmodel">AI</a>
 								</li>
 								{% endif %}
 								<li class="nav-item dropdown">
@@ -75,7 +72,7 @@
 									<div class="dropdown-menu">
 										<a class="dropdown-item" href="#" id="btn_import">AI Dungeon Adventure</a>
 										<a class="dropdown-item" href="#" id="btn_importwi">AI Dungeon World Info</a>
-										<a class="dropdown-item" href="#" id="btn_impaidg">aidg.club Prompt</a>
+										<a class="dropdown-item" href="#" id="btn_impaidg">aetherroom.club Prompt</a>
 									</div>
 								</li>
 								<li class="nav-item">
@@ -123,6 +120,11 @@
 		</div>
 		<div class="row" id="formatmenu">
 		</div>
+
+		<div id="token_prob_menu" class="row hidden">
+			<div id="token_prob_container"></div>
+		</div>
+
 		<div class="layer-container">
 			<div class="layer-bottom row" id="gamescreen">
 				<span id="gametext" contenteditable="true"><p>...</p></span>
@@ -156,7 +158,7 @@
 				<div id="inputrowmode">
 					<button type="button" class="btn btn-secondary hidden" id="btnmode">Mode:<br/><b id="btnmode_label">Story</b></button>
 				</div>
-				<div id="inputrowleft">
+				<div id="inputrowleft" class="tokens-counted">
 					<textarea class="form-control" id="input_text" placeholder="Enter text here"></textarea>
 				</div>
 				<div id="inputrowright">
@@ -169,7 +171,7 @@
 						<div class="anotelabel no-padding">
 							Author's Note
 						</div>
-						<div class="anotefield">
+						<div class="anotefield tokens-counted">
 							<textarea class="form-control" placeholder="Author's Note" id="anoteinput"></textarea>
 						</div>
 					</div>
@@ -210,7 +212,7 @@
 		</div>
 	</div>
 	<div class="hidden" id="popupcontainer">
-		<div id="popup">
+		<div id="popup_old">
 			<div id="popuptitlebar">
 				<div id="popuptitletext">Select an Adventure to Import</div>
 			</div>
@@ -233,7 +235,7 @@
 				<div class="popuptitletext">Enter the Prompt Number</div>
 			</div>
 			<div class="aidgpopuplistheader">
-				(4-digit number at the end of aidg.club URL)
+				(4-digit number at the end of aetherroom.club URL)
 			</div>
 			<div class="aidgpopupcontent">
 				<input class="form-control" type="text" placeholder="Prompt Number" id="aidgpromptnum">
@@ -291,7 +293,7 @@
 			<div id="loadmodellistbreadcrumbs">
 				
 			</div>
-			<div id="loadmodellistcontent" style="overflow: scroll; height: 300px;">
+			<div id="loadmodellistcontent" style="overflow: auto; height: 300px;">
 			</div>
 			<div class="popupfooter">
 				<input class="form-control hidden" type="text" placeholder="key" id="modelkey" onblur="socket.send({'cmd': 'OAI_Key_Update', 'key': $('#modelkey')[0].value});">
@@ -340,6 +342,7 @@
 		<div id="sppopup">
 			<div class="popuptitlebar">
 				<div class="popuptitletext">Select A Soft Prompt To Use</div>
+				<button class="btn btn-primary" onclick="socket.emit('show_folder_soft_prompt', {});"><span class="oi" style="color: white;" data-glyph="folder"></span></button>
 			</div>
 			<div id="splistcontent">
 			</div>
@@ -353,6 +356,7 @@
 		<div id="uspopup">
 			<div class="popuptitlebar">
 				<div class="popuptitletext">Select userscripts to load; drag-and-drop to reorder</div>
+				<button class="btn btn-primary" onclick="socket.emit('show_folder_usersripts', {});"><span class="oi" style="color: white;" data-glyph="folder"></span></button>
 			</div>
 			<div class="usheadergrid">
 				<div>[AVAILABLE]</div>
@@ -441,10 +445,10 @@
 				<div class="popuptitletext">Model Info</div>
 			</div>
 			<div id=showmodelnamecontent style="width:50%;">
-				Read Only
+				Model Info Missing
 			</div>
 			<div class="popupfooter" style="width:50% center;">
-				<button type="button" class="btn btn-primary" onclick='$("#showmodelnamecontainer").addClass("hidden");'>OK</button>
+				
 			</div>
 		</div>
 	</div>
@@ -471,6 +475,27 @@
 			<div class="popupfooter">
 				<button type="button" class="btn btn-primary" id="btn_rsaccept">Accept</button>
 				<button type="button" class="btn btn-primary" id="btn_rsclose">Cancel</button>
+			</div>
+		</div>
+	</div>
+	
+	<!------------- Pop-Up ------------------------------->
+	<div class="popupcontainer hidden" id="popup">
+		<div class="new_popup">
+			<div style="height:100%;">
+				<div class="title" id="popup_title">
+					Popup Title
+				</div>
+				<div id="popup_breadcrumbs"></div>
+				<div class="popup_list_area" id="popup_list"></div>
+				<div class="popup_load_cancel hidden" id="popup_upload">
+				<input type=file id="popup_upload_file">
+			</div>
+			<div style="background-color: black">Drag file(s) above or click here to Upload File<input id="popup_upload_input" type=file onchange="upload_file(this)"></div>
+			<div class="popup_load_cancel" id="popup_load_cancel">
+					<button class="btn btn-secondary popup_load_cancel_button" id="popup_accept">Load</button>
+					<button class="btn btn-primary popup_load_cancel_button" id="popup_cancel" onclick='document.getElementById("popup").classList.add("hidden");'>Cancel</button>
+				</div>
 			</div>
 		</div>
 	</div>

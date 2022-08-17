@@ -56,6 +56,22 @@ from mesh_transformer.util import to_bf16
 
 params: Dict[str, Any] = {}
 
+__seed = random.randrange(sys.maxsize)
+rng = random.Random(__seed)
+
+
+def get_rng_seed():
+    return __seed
+
+def set_rng_seed(seed: int):
+    global __seed, rng
+    rng = random.Random(seed)
+    __seed = seed
+    return seed
+
+def randomize_rng_seed():
+    return set_rng_seed(random.randrange(sys.maxsize))
+
 
 def warper_callback(logits) -> np.array:
     raise NotImplementedError("`tpu_mtj_backend.warper_callback()` needs to be defined")
@@ -547,7 +563,7 @@ class PenalizingCausalTransformer(CausalTransformer):
             compiling_callback()
             numseqs = numseqs_aux.shape[0]
             # These are the tokens that we don't want the AI to ever write
-            self.badwords = jnp.array(koboldai_vars.badwordsids).squeeze()
+            badwords = jnp.array(koboldai_vars.badwordsids).squeeze()
             @hk.transform
             def generate_sample(context, ctx_length):
                 # Give the initial context to the transformer
@@ -605,7 +621,7 @@ class PenalizingCausalTransformer(CausalTransformer):
                     # Remove any tokens in the badwords list by setting
                     # their logits to negative infinity which effectively
                     # makes their probabilities of being chosen zero
-                    logits = logits.at[self.badwords].set(-jnp.inf)
+                    logits = logits.at[badwords].set(-jnp.inf)
                     # Use the sampler (kobold_sample_static) to pick one token
                     # based on the logits array as a 0D uint32 array
                     # (higher logit means higher probability of being
@@ -728,7 +744,7 @@ class PenalizingCausalTransformer(CausalTransformer):
         assert not return_logits
         assert gen_length.ndim == 1
         assert soft_embeddings is not None
-        key = hk.PRNGSequence(random.randint(0, 2 ** 60))
+        key = hk.PRNGSequence(rng.randint(0, 2 ** 60))
         batch_size = ctx.shape[0]
         self.batch_size = batch_size
         _numseqs_aux = jnp.empty((batch_size, numseqs), dtype=np.uint32)
@@ -776,7 +792,7 @@ class PenalizingCausalTransformer(CausalTransformer):
         return sample_data, n_generated, regeneration_required, halt
     def generate_static(self, ctx, ctx_length, gen_length, numseqs, sampler_options, return_logits=False, soft_embeddings=None):
         assert not return_logits
-        key = hk.PRNGSequence(random.randint(0, 2 ** 60))
+        key = hk.PRNGSequence(rng.randint(0, 2 ** 60))
         batch_size = ctx.shape[0]
         self.batch_size = batch_size
         started_compiling_callback()
@@ -1025,7 +1041,7 @@ def load_model(path: str, driver_version="tpu_driver0.1_dev20210607", hf_checkpo
     elif "eos_token_id" in kwargs:
         pad_token_id = kwargs["eos_token_id"]
 
-    if not hasattr(vars, "sampler_order") or not koboldai_vars.sampler_order:
+    if not hasattr(koboldai_vars, "sampler_order") or not koboldai_vars.sampler_order:
         koboldai_vars.sampler_order = utils.default_sampler_order.copy()
 
     default_params = {
@@ -1145,9 +1161,9 @@ def load_model(path: str, driver_version="tpu_driver0.1_dev20210607", hf_checkpo
     tpu_address = tpu_address.replace("grpc://", "")
     tpu_address_without_port = tpu_address.split(':', 1)[0]
     url = f'http://{tpu_address_without_port}:8475/requestversion/{driver_version}'
+    requests.post(url)
     config.FLAGS.jax_xla_backend = "tpu_driver"
     config.FLAGS.jax_backend_target = "grpc://" + tpu_address
-    requests.post(url)
     spinner.terminate()
     print()
 
@@ -1230,13 +1246,14 @@ def load_model(path: str, driver_version="tpu_driver0.1_dev20210607", hf_checkpo
                 if utils.num_shards is not None:
                     utils.current_shard += 1
                 for key in sorted(model_dict.keys(), key=lambda k: (model_dict[k].key, model_dict[k].seek_offset)):
+                    model_spec_key = max((k for k in model_spec.keys() if key.endswith(k)), key=len, default=None)
 
                     # Some model weights are used by transformers but not by MTJ.
                     # We have to materialize these weights anyways because
                     # transformers will throw a tantrum otherwise.  To attain
                     # the least possible memory usage, we create them as meta
                     # tensors, which don't take up any actual CPU or TPU memory.
-                    if key not in model_spec:
+                    if model_spec_key is None:
                         model_dict[key] = torch.empty(model_dict[key].shape, dtype=model_dict[key].dtype, device="meta")
                         utils.bar.update(1)
                         continue
@@ -1251,7 +1268,7 @@ def load_model(path: str, driver_version="tpu_driver0.1_dev20210607", hf_checkpo
                     if current_offset != model_dict[key].seek_offset:
                         f.read(model_dict[key].seek_offset - current_offset)
                         current_offset = model_dict[key].seek_offset
-                    spec = model_spec[key]
+                    spec = model_spec[model_spec_key]
                     transforms = set(spec.get("transforms", ()))
                     if not isinstance(model_dict[key], torch_lazy_loader.LazyTensor):
                         error = f"Duplicate key {repr(key)}"

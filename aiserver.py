@@ -1,4 +1,4 @@
-    #!/usr/bin/python3
+#!/usr/bin/python3
 #==================================================================#
 # KoboldAI
 # Version: 1.18.1
@@ -7,9 +7,7 @@
 
 # External packages
 import eventlet
-from eventlet import tpool
 eventlet.monkey_patch(all=True, thread=False, os=False)
-#eventlet.monkey_patch(os=True, select=True, socket=True, thread=True, time=True, psycopg=True)
 import os
 os.system("")
 __file__ = os.path.dirname(os.path.realpath(__file__))
@@ -37,10 +35,11 @@ import itertools
 import bisect
 import functools
 import traceback
+import inspect
+import warnings
 import multiprocessing
 from collections.abc import Iterable
-from collections import OrderedDict
-from typing import Any, Callable, Optional, TypeVar, Tuple, Union, Dict, Set, List
+from typing import Any, Callable, TypeVar, Tuple, Union, Dict, Set, List, Optional, Type
 
 import requests
 import html
@@ -121,17 +120,19 @@ model_menu = {
         ["Adventure Models", "adventurelist", "", True],
         ["Novel Models", "novellist", "", True],
         ["NSFW Models", "nsfwlist", "", True],
+        ["Untuned OPT", "optlist", "", True],
         ["Untuned GPT-Neo/J", "gptneolist", "", True],
         ["Untuned Fairseq Dense", "fsdlist", "", True],
-        ["Untuned OPT", "optlist", "", True],
         ["Untuned XGLM", "xglmlist", "", True],
         ["Untuned GPT2", "gpt2list", "", True],
         ["Online Services", "apilist", "", True],
         ["Read Only (No AI)", "ReadOnly", "", False]
         ],
     'adventurelist': [
+        ["Nerys FSD 13B V2 (Hybrid)", "KoboldAI/fairseq-dense-13B-Nerys-v2", "32GB", False],
         ["Nerys FSD 13B (Hybrid)", "KoboldAI/fairseq-dense-13B-Nerys", "32GB", False],
         ["Skein 6B", "KoboldAI/GPT-J-6B-Skein", "16GB", False],
+        ["OPT Nerys 6B V2", "KoboldAI/OPT-6B-nerys-v2", "16GB", False],
         ["Adventure 6B", "KoboldAI/GPT-J-6B-Adventure", "16GB", False],
         ["Nerys FSD 2.7B (Hybrid)", "KoboldAI/fairseq-dense-2.7B-Nerys", "8GB", False],
         ["Adventure 2.7B", "KoboldAI/GPT-Neo-2.7B-AID", "8GB", False],
@@ -140,8 +141,10 @@ model_menu = {
         ["Return to Main Menu", "mainmenu", "", True],
         ],
     'novellist': [
-        ["Nerys FSD 13B (Hybrid)", "KoboldAI/fairseq-dense-13B-Nerys", "32GB", False],
+        ["Nerys FSD 13B V2 (Hybrid)", "KoboldAI/fairseq-dense-13B-Nerys-v2", "32GB", False],
         ["Janeway FSD 13B", "KoboldAI/fairseq-dense-13B-Janeway", "32GB", False],
+        ["Nerys FSD 13B (Hybrid)", "KoboldAI/fairseq-dense-13B-Nerys", "32GB", False],
+        ["OPT Nerys 6B V2", "KoboldAI/OPT-6B-nerys-v2", "16GB", False],
         ["Janeway FSD 6.7B", "KoboldAI/fairseq-dense-6.7B-Janeway", "16GB", False],
         ["Janeway Neo 6B", "KoboldAI/GPT-J-6B-Janeway", "16GB", False],
         ["Janeway Neo 2.7B", "KoboldAI/GPT-Neo-2.7B-Janeway", "8GB", False],
@@ -181,6 +184,7 @@ model_menu = {
         ["Return to Main Menu", "mainmenu", "", True],
         ],
     'optlist': [
+        ["OPT 66B", "facebook/opt-66b", "128GB", False],
         ["OPT 30B", "facebook/opt-30b", "64GB", False],
         ["OPT 13B", "facebook/opt-13b", "32GB", False],
         ["OPT 6.7B", "facebook/opt-6.7b", "16GB", False],
@@ -211,10 +215,14 @@ model_menu = {
         ["GooseAI API (requires API key)", "GooseAI", "", False],
         ["OpenAI API (requires API key)", "OAI", "", False],
         ["InferKit API (requires API key)", "InferKit", "", False],
-        ["KoboldAI Server API (Old Google Colab)", "Colab", "", False],
+        # ["KoboldAI Server API (Old Google Colab)", "Colab", "", False],
+        ["KoboldAI API", "API", "", False],
         ["Return to Main Menu", "mainmenu", "", True],
     ]
     }
+
+
+utils.koboldai_vars = koboldai_vars
 
 class Send_to_socketio(object):
     def write(self, bar):
@@ -232,9 +240,12 @@ log.setLevel(logging.ERROR)
 
 # Start flask & SocketIO
 print("{0}Initializing Flask... {1}".format(colors.PURPLE, colors.END), end="")
-from flask import Flask, render_template, Response, request, copy_current_request_context, send_from_directory, session, has_request_context
+from flask import Flask, render_template, Response, request, copy_current_request_context, send_from_directory, session, jsonify, abort, redirect, has_request_context
 from flask_socketio import SocketIO, emit, join_room, leave_room
+from flask_socketio import emit as _emit
 from flask_session import Session
+import secrets
+from werkzeug.exceptions import HTTPException, NotFound, InternalServerError
 import secrets
 app = Flask(__name__, root_path=os.getcwd())
 app.secret_key = secrets.token_hex()
@@ -248,6 +259,208 @@ koboldai_vars = koboldai_settings.koboldai_vars(session, socketio)
 utils.koboldai_vars = koboldai_vars
 
 print("{0}OK!{1}".format(colors.GREEN, colors.END))
+
+old_socketio_on = socketio.on
+def new_socketio_on(*a, **k):
+    decorator = old_socketio_on(*a, **k)
+    def new_decorator(f):
+        @functools.wraps(f)
+        def g(*a, **k):
+            if args.no_ui:
+                return
+            return f(*a, **k)
+        return decorator(g)
+    return new_decorator
+socketio.on = new_socketio_on
+
+def emit(*args, **kwargs):
+    try:
+        return _emit(*args, **kwargs)
+    except AttributeError:
+        return socketio.emit(*args, **kwargs)
+
+# marshmallow/apispec setup
+from apispec import APISpec
+from apispec.ext.marshmallow import MarshmallowPlugin
+from apispec.ext.marshmallow.field_converter import make_min_max_attributes
+from apispec_webframeworks.flask import FlaskPlugin
+from marshmallow import Schema, fields, validate, EXCLUDE
+from marshmallow.exceptions import ValidationError
+
+class KoboldSchema(Schema):
+    pass
+
+def new_make_min_max_attributes(validators, min_attr, max_attr) -> dict:
+    # Patched apispec function that creates "exclusiveMinimum"/"exclusiveMaximum" OpenAPI attributes insteaed of "minimum"/"maximum" when using validators.Range or validators.Length with min_inclusive=False or max_inclusive=False
+    attributes = {}
+    min_list = [validator.min for validator in validators if validator.min is not None]
+    max_list = [validator.max for validator in validators if validator.max is not None]
+    min_inclusive_list = [getattr(validator, "min_inclusive", True) for validator in validators if validator.min is not None]
+    max_inclusive_list = [getattr(validator, "max_inclusive", True) for validator in validators if validator.max is not None]
+    if min_list:
+        if min_attr == "minimum" and not min_inclusive_list[max(range(len(min_list)), key=min_list.__getitem__)]:
+            min_attr = "exclusiveMinimum"
+        attributes[min_attr] = max(min_list)
+    if max_list:
+        if min_attr == "maximum" and not max_inclusive_list[min(range(len(max_list)), key=max_list.__getitem__)]:
+            min_attr = "exclusiveMaximum"
+        attributes[max_attr] = min(max_list)
+    return attributes
+make_min_max_attributes.__code__ = new_make_min_max_attributes.__code__
+
+def api_format_docstring(f):
+    f.__doc__ = eval('f"""{}"""'.format(f.__doc__.replace("\\", "\\\\")))
+    return f
+
+def api_catch_out_of_memory_errors(f):
+    @functools.wraps(f)
+    def decorated(*args, **kwargs):
+        try:
+            return f(*args, **kwargs)
+        except Exception as e:
+            if any (s in traceback.format_exc().lower() for s in ("out of memory", "not enough memory")):
+                for line in reversed(traceback.format_exc().split("\n")):
+                    if any(s in line.lower() for s in ("out of memory", "not enough memory")) and line.count(":"):
+                        line = line.split(":", 1)[1]
+                        line = re.sub(r"\[.+?\] +data\.", "", line).strip()
+                        raise KoboldOutOfMemoryError("KoboldAI ran out of memory: " + line, type="out_of_memory.gpu.cuda" if "cuda out of memory" in line.lower() else "out_of_memory.gpu.hip" if "hip out of memory" in line.lower() else "out_of_memory.tpu.hbm" if "memory space hbm" in line.lower() else "out_of_memory.cpu.default_memory_allocator" if "defaultmemoryallocator" in line.lower() else "out_of_memory.unknown.unknown")
+                raise KoboldOutOfMemoryError(type="out_of_memory.unknown.unknown")
+            raise e
+    return decorated
+
+def api_schema_wrap(f):
+    try:
+        input_schema: Type[Schema] = next(iter(inspect.signature(f).parameters.values())).annotation
+    except:
+        HAS_SCHEMA = False
+    else:
+        HAS_SCHEMA = inspect.isclass(input_schema) and issubclass(input_schema, Schema)
+    f = api_format_docstring(f)
+    f = api_catch_out_of_memory_errors(f)
+    @functools.wraps(f)
+    def decorated(*args, **kwargs):
+        if HAS_SCHEMA:
+            body = request.get_json()
+            schema = input_schema.from_dict(input_schema().load(body))
+            response = f(schema, *args, **kwargs)
+        else:
+            response = f(*args, **kwargs)
+        if not isinstance(response, Response):
+            response = jsonify(response)
+        return response
+    return decorated
+
+@app.errorhandler(HTTPException)
+def handler(e):
+    if request.path != "/api" and not request.path.startswith("/api/"):
+        return e
+    resp = jsonify(detail={"msg": str(e), "type": "generic.error_" + str(e.code)})
+    if e.code == 405 and e.valid_methods is not None:
+        resp.headers["Allow"] = ", ".join(e.valid_methods)
+    return resp, e.code
+
+class KoboldOutOfMemoryError(HTTPException):
+    code = 507
+    description = "KoboldAI ran out of memory."
+    type = "out_of_memory.unknown.unknown"
+    def __init__(self, *args, type=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        if type is not None:
+            self.type = type
+@app.errorhandler(KoboldOutOfMemoryError)
+def handler(e):
+    if request.path != "/api" and not request.path.startswith("/api/"):
+        return InternalServerError()
+    return jsonify(detail={"type": e.type, "msg": e.description}), e.code
+
+@app.errorhandler(ValidationError)
+def handler(e):
+    if request.path != "/api" and not request.path.startswith("/api/"):
+        return InternalServerError()
+    return jsonify(detail=e.messages), 422
+
+@app.errorhandler(NotImplementedError)
+def handler(e):
+    if request.path != "/api" and not request.path.startswith("/api/"):
+        return InternalServerError()
+    return jsonify(detail={"type": "not_implemented", "msg": str(e).strip()}), 501
+
+api_versions: List[str] = []
+
+class KoboldAPISpec(APISpec):
+    class KoboldFlaskPlugin(FlaskPlugin):
+        def __init__(self, api: "KoboldAPISpec", *args, **kwargs):
+            self._kobold_api_spec = api
+            super().__init__(*args, **kwargs)
+
+        def path_helper(self, *args, **kwargs):
+            return super().path_helper(*args, **kwargs)[len(self._kobold_api_spec._prefixes[0]):]
+
+    def __init__(self, *args, title: str = "KoboldAI API", openapi_version: str = "3.0.3", version: str = "1.0.0", prefixes: List[str] = None, **kwargs):
+        plugins = [KoboldAPISpec.KoboldFlaskPlugin(self), MarshmallowPlugin()]
+        self._prefixes = prefixes if prefixes is not None else [""]
+        self._kobold_api_spec_version = version
+        api_versions.append(version)
+        api_versions.sort(key=lambda x: [int(e) for e in x.split(".")])
+        super().__init__(*args, title=title, openapi_version=openapi_version, version=version, plugins=plugins, servers=[{"url": self._prefixes[0]}], **kwargs)
+        for prefix in self._prefixes:
+            app.route(prefix, endpoint="~KoboldAPISpec~" + prefix)(lambda: redirect(request.path + "/docs/"))
+            app.route(prefix + "/", endpoint="~KoboldAPISpec~" + prefix + "/")(lambda: redirect("docs/"))
+            app.route(prefix + "/docs", endpoint="~KoboldAPISpec~" + prefix + "/docs")(lambda: redirect("docs/"))
+            app.route(prefix + "/docs/", endpoint="~KoboldAPISpec~" + prefix + "/docs/")(lambda: render_template("swagger-ui.html", url=self._prefixes[0] + "/openapi.json"))
+            app.route(prefix + "/openapi.json", endpoint="~KoboldAPISpec~" + prefix + "/openapi.json")(lambda: jsonify(self.to_dict()))
+
+    def route(self, rule: str, methods=["GET"], **kwargs):
+        __F = TypeVar("__F", bound=Callable[..., Any])
+        if "strict_slashes" not in kwargs:
+            kwargs["strict_slashes"] = False
+        def new_decorator(f: __F) -> __F:
+            @functools.wraps(f)
+            def g(*args, **kwargs):
+                global api_version
+                api_version = self._kobold_api_spec_version
+                try:
+                    return f(*args, **kwargs)
+                finally:
+                    api_version = None
+            for prefix in self._prefixes:
+                g = app.route(prefix + rule, methods=methods, **kwargs)(g)
+            with app.test_request_context():
+                self.path(view=g, **kwargs)
+            return g
+        return new_decorator
+
+    def get(self, rule: str, **kwargs):
+        return self.route(rule, methods=["GET"], **kwargs)
+    
+    def post(self, rule: str, **kwargs):
+        return self.route(rule, methods=["POST"], **kwargs)
+    
+    def put(self, rule: str, **kwargs):
+        return self.route(rule, methods=["PUT"], **kwargs)
+    
+    def patch(self, rule: str, **kwargs):
+        return self.route(rule, methods=["PATCH"], **kwargs)
+    
+    def delete(self, rule: str, **kwargs):
+        return self.route(rule, methods=["DELETE"], **kwargs)
+
+tags = [
+    {"name": "info", "description": "Metadata about this API"},
+    {"name": "generate", "description": "Text generation endpoints"},
+    {"name": "model", "description": "Information about the current text generation model"},
+    {"name": "story", "description": "Endpoints for managing the story in the KoboldAI GUI"},
+    {"name": "world_info", "description": "Endpoints for managing the world info in the KoboldAI GUI"},
+    {"name": "config", "description": "Allows you to get/set various setting values"},
+]
+
+api_version = None  # This gets set automatically so don't change this value
+
+api_v1 = KoboldAPISpec(
+    version="1.1.4",
+    prefixes=["/api/v1", "/api/latest"],
+    tags=tags,
+)
 
 #==================================================================#
 # Function to get model selection at startup
@@ -327,7 +540,7 @@ def getModelSelection(modellist):
             modpath = fileops.getdirpath(getcwd() + "/models", "Select Model Folder")
         
             if(modpath):
-                # Save directory to vars
+                # Save directory to koboldai_vars
                 koboldai_vars.custmodpth = modpath
             else:
                 # Print error and retry model selection
@@ -396,7 +609,10 @@ def device_config(config):
     global breakmodel, generator
     import breakmodel
     n_layers = utils.num_layers(config)
-    if(args.breakmodel_gpulayers is not None or (utils.HAS_ACCELERATE and args.breakmodel_disklayers is not None)):
+    if args.cpu:
+        breakmodel.gpu_blocks = [0]*n_layers
+        return
+    elif(args.breakmodel_gpulayers is not None or (utils.HAS_ACCELERATE and args.breakmodel_disklayers is not None)):
         try:
             if(not args.breakmodel_gpulayers):
                 breakmodel.gpu_blocks = []
@@ -517,6 +733,11 @@ def move_model_to_devices(model):
     import breakmodel
 
     if(utils.HAS_ACCELERATE):
+        import accelerate.utils
+        for key, value in model.state_dict().items():
+            target_dtype = torch.float32 if breakmodel.primary_device == "cpu" else torch.float16
+            if(value.dtype is not target_dtype):
+                accelerate.utils.set_module_tensor_to_device(model, key, target_dtype)
         disk_blocks = breakmodel.disk_blocks
         gpu_blocks = breakmodel.gpu_blocks
         ram_blocks = len(utils.layers_module_names) - sum(gpu_blocks)
@@ -642,7 +863,7 @@ def loadmodelsettings():
             koboldai_vars.authornotetemplate = koboldai_vars.setauthornotetemplate
 
 #==================================================================#
-#  Take settings from vars and write them to client settings file
+#  Take settings from koboldai_vars and write them to client settings file
 #==================================================================#
 def savesettings():
      # Build json to write
@@ -673,10 +894,18 @@ def savesettings():
     js["nopromptgen"] = koboldai_vars.nopromptgen
     js["rngpersist"]  = koboldai_vars.rngpersist
     js["nogenmod"]    = koboldai_vars.nogenmod
+    js["fulldeterminism"] = koboldai_vars.full_determinism
     js["autosave"]    = koboldai_vars.autosave
     js["welcome"]     = koboldai_vars.welcome
-    js["newlinemode"] = koboldai_vars.newlinemode
     js["output_streaming"] = koboldai_vars.output_streaming
+    js["show_probs"] = koboldai_vars.show_probs
+
+    if(koboldai_vars.seed_specified):
+        js["seed"]    = koboldai_vars.seed
+    else:
+        js["seed"]    = None
+
+    js["newlinemode"] = koboldai_vars.newlinemode
 
     js["antemplate"]  = koboldai_vars.setauthornotetemplate
 
@@ -702,7 +931,7 @@ def settingschanged():
     savesettings()
 
 #==================================================================#
-#  Read settings from client file JSON and send to vars
+#  Read settings from client file JSON and send to koboldai_vars
 #==================================================================#
 
 def loadsettings():
@@ -722,7 +951,7 @@ def loadsettings():
         file.close()
         
 def processsettings(js):
-# Copy file contents to vars
+# Copy file contents to koboldai_vars
     if("apikey" in js):
         koboldai_vars.apikey     = js["apikey"]
     if("andepth" in js):
@@ -775,6 +1004,8 @@ def processsettings(js):
         koboldai_vars.rngpersist = js["rngpersist"]
     if("nogenmod" in js):
         koboldai_vars.nogenmod = js["nogenmod"]
+    if("fulldeterminism" in js):
+        koboldai_vars.full_determinism = js["fulldeterminism"]
     if("autosave" in js):
         koboldai_vars.autosave = js["autosave"]
     if("newlinemode" in js):
@@ -782,7 +1013,18 @@ def processsettings(js):
     if("welcome" in js):
         koboldai_vars.welcome = js["welcome"]
     if("output_streaming" in js):
-        koboldai_vars.autosave = js["output_streaming"]
+        koboldai_vars.output_streaming = js["output_streaming"]
+    if("show_probs" in js):
+        koboldai_vars.show_probs = js["show_probs"]
+    
+    if("seed" in js):
+        koboldai_vars.seed = js["seed"]
+        if(koboldai_vars.seed is not None):
+            koboldai_vars.seed_specified = True
+        else:
+            koboldai_vars.seed_specified = False
+    else:
+        koboldai_vars.seed_specified = False
 
     if("antemplate" in js):
         koboldai_vars.setauthornotetemplate = js["antemplate"]
@@ -809,11 +1051,19 @@ def processsettings(js):
 
 def check_for_sp_change():
     while(True):
-        time.sleep(0.1)
+        time.sleep(0.05)
+
         if(koboldai_vars.sp_changed):
             with app.app_context():
                 emit('from_server', {'cmd': 'spstatitems', 'data': {koboldai_vars.spfilename: koboldai_vars.spmeta} if koboldai_vars.allowsp and len(koboldai_vars.spfilename) else {}}, namespace=None, broadcast=True, room="UI_1")
             koboldai_vars.sp_changed = False
+
+        if(koboldai_vars.token_stream_queue.queue):
+            # If emit blocks, waiting for it to complete before clearing could
+            # introduce a race condition that drops tokens.
+            queued_tokens = list(koboldai_vars.token_stream_queue.queue)
+            koboldai_vars.token_stream_queue.queue.clear()
+            socketio.emit("from_server", {"cmd": "streamtoken", "data": queued_tokens}, namespace=None, broadcast=True)
 
 socketio.start_background_task(check_for_sp_change)
 
@@ -911,6 +1161,8 @@ def general_startup(override_args=None):
     parser.add_argument("--no_aria2", action='store_true', default=False, help="Prevents KoboldAI from using aria2 to download huggingface models more efficiently, in case aria2 is causing you issues")
     parser.add_argument("--lowmem", action='store_true', help="Extra Low Memory loading for the GPU, slower but memory does not peak to twice the usage")
     parser.add_argument("--savemodel", action='store_true', help="Saves the model to the models folder even if --colab is used (Allows you to save models to Google Drive)")
+    parser.add_argument("--customsettings", help="Preloads arguements from json file. You only need to provide the location of the json file. Use customsettings.json template file. It can be renamed if you wish so that you can store multiple configurations. Leave any settings you want as default as null. Any values you wish to set need to be in double quotation marks")
+    parser.add_argument("--no_ui", action='store_true', default=False, help="Disables the GUI and Socket.IO server while leaving the API server running.")
     #args: argparse.Namespace = None
     if "pytest" in sys.modules and override_args is None:
         args = parser.parse_args([])
@@ -938,8 +1190,19 @@ def general_startup(override_args=None):
                         setattr(args, arg, False)
                 else:
                     setattr(args, arg, os.environ[arg])
-
-   
+    if args.customsettings:
+        f = open (args.customsettings)
+        importedsettings = json.load(f)
+        for items in importedsettings:
+            if importedsettings[items] is not None:
+                setattr(args, items, importedsettings[items])            
+        f.close()
+    
+    if args.no_ui:
+        def new_emit(*args, **kwargs):
+            return
+        old_emit = socketio.emit
+        socketio.emit = new_emit
 
     koboldai_vars.model = args.model;
     koboldai_vars.revision = args.revision
@@ -985,7 +1248,7 @@ def general_startup(override_args=None):
         modpath = fileops.getdirpath(getcwd() + "/models", "Select Model Folder")
     
         if(modpath):
-            # Save directory to vars
+            # Save directory to koboldai_vars
             koboldai_vars.model = "NeoCustom"
             koboldai_vars.custmodpth = modpath
     elif args.model:
@@ -1060,6 +1323,8 @@ def get_model_info(model, directory=""):
         url = True
     elif not utils.HAS_ACCELERATE and not torch.cuda.is_available():
         pass
+    elif args.cpu:
+        pass
     else:
         layer_count = get_layer_count(model, directory=directory)
         if layer_count is None:
@@ -1067,7 +1332,7 @@ def get_model_info(model, directory=""):
         else:
             breakmodel = True
             if model in ["NeoCustom", "GPT2Custom"]:
-                filename = os.path.basename(os.path.normpath(directory))
+                filename = "settings/{}.breakmodel".format(os.path.basename(os.path.normpath(directory)))
             else:
                 filename = "settings/{}.breakmodel".format(model.replace("/", "_"))
             if path.exists(filename):
@@ -1102,14 +1367,13 @@ def get_layer_count(model, directory=""):
         else:
             from transformers import AutoConfig
             if directory == "":
-                if os.path.isdir("./models/{}".format(model.replace("/", "_"))):
-                    model_config = AutoConfig.from_pretrained("./models/{}".format(model.replace("/", "_")), cache_dir="cache")
-                else:
-                    model_config = AutoConfig.from_pretrained(model, cache_dir="cache")
-            elif os.path.isdir(directory):
-                model_config = AutoConfig.from_pretrained(directory, cache_dir="cache")
+                model_config = AutoConfig.from_pretrained(koboldai_vars.model, revision=koboldai_vars.revision, cache_dir="cache")
+            elif(os.path.isdir(koboldai_vars.custmodpth.replace('/', '_'))):
+                model_config = AutoConfig.from_pretrained(koboldai_vars.custmodpth.replace('/', '_'), revision=koboldai_vars.revision, cache_dir="cache")
+            elif(os.path.isdir(directory)):
+                model_config = AutoConfig.from_pretrained(directory, revision=koboldai_vars.revision, cache_dir="cache")
             else:
-                assert "Selected Model directory doesn't exist"
+                model_config = AutoConfig.from_pretrained(koboldai_vars.custmodpth, revision=koboldai_vars.revision, cache_dir="cache")
         
         
         
@@ -1235,28 +1499,32 @@ def patch_transformers_download():
         total = resume_size + int(content_length) if content_length is not None else None
         # `tqdm` behavior is determined by `utils.logging.is_progress_bar_enabled()`
         # and can be set using `utils.logging.enable/disable_progress_bar()`
-        koboldai_vars.total_download_chunks = total
-        progress = tqdm.tqdm(
-            unit="B",
-            unit_scale=True,
-            unit_divisor=1024,
-            total=total,
-            initial=resume_size,
-            desc=f"Downloading {file_name}" if file_name is not None else "Downloading",
-            file=Send_to_socketio(),
-        )
+        if url[-11:] != 'config.json':
+            progress = tqdm.tqdm(
+                unit="B",
+                unit_scale=True,
+                unit_divisor=1024,
+                total=total,
+                initial=resume_size,
+                desc=f"Downloading {file_name}" if file_name is not None else "Downloading",
+                file=Send_to_socketio(),
+            )
         for chunk in r.iter_content(chunk_size=1024):
             if chunk:  # filter out keep-alive new chunks
-                progress.update(len(chunk))
-                koboldai_vars.downloaded_chunks += len(chunk)
+                if url[-11:] != 'config.json':
+                    progress.update(len(chunk))
                 temp_file.write(chunk)
-        progress.close()
+        if url[-11:] != 'config.json':
+            progress.close()
 
     transformers.utils.hub.http_get = http_get
+    
 
 def patch_transformers():
     global transformers
+    
     patch_transformers_download()
+    
     old_from_pretrained = PreTrainedModel.from_pretrained.__func__
     @classmethod
     def new_from_pretrained(cls, pretrained_model_name_or_path, *model_args, **kwargs):
@@ -1424,6 +1692,9 @@ def patch_transformers():
             self.regeneration_required = False
             self.halt = False
 
+            if(koboldai_vars.standalone):
+                return scores
+
             scores_shape = scores.shape
             scores_list = scores.tolist()
             koboldai_vars.lua_koboldbridge.logits = koboldai_vars.lua_state.table()
@@ -1441,11 +1712,37 @@ def patch_transformers():
             assert scores.shape == scores_shape
 
             return scores
+
+    from torch.nn import functional as F
+
+    class ProbabilityVisualizerLogitsProcessor(LogitsProcessor):
+        def __init__(self):
+            pass
+
+        def __call__(self, input_ids: torch.LongTensor, scores: torch.FloatTensor) -> torch.FloatTensor:
+            assert scores.ndim == 2
+            assert input_ids.ndim == 2
+
+            if koboldai_vars.numseqs > 1 or not koboldai_vars.show_probs:
+                return scores
+
+            probs = F.softmax(scores, dim = -1).cpu().numpy()[0]
+
+            token_prob_info = []
+            for token_id, score in sorted(enumerate(probs), key=lambda x: x[1], reverse=True)[:8]:
+                token_prob_info.append({
+                    "tokenId": token_id,
+                    "decoded": utils.decodenewlines(tokenizer.decode(token_id)),
+                    "score": float(score),
+                })
+
+            koboldai_vars.token_stream_queue.probability_buffer = token_prob_info
+            return scores
     
     def new_get_logits_processor(*args, **kwargs) -> LogitsProcessorList:
         processors = new_get_logits_processor.old_get_logits_processor(*args, **kwargs)
         processors.insert(0, LuaLogitsProcessor())
-        processors.insert(0, PhraseBiasLogitsProcessor())
+        processors.append(ProbabilityVisualizerLogitsProcessor())
         return processors
     new_get_logits_processor.old_get_logits_processor = transformers.generation_utils.GenerationMixin._get_logits_processor
     transformers.generation_utils.GenerationMixin._get_logits_processor = new_get_logits_processor
@@ -1490,7 +1787,7 @@ def patch_transformers():
 
     class TokenStreamer(StoppingCriteria):
         # A StoppingCriteria is used here because it seems to run after
-        # everything has been evaluated score-wise.
+        # everything has been evaluated score-wise. 
         def __init__(self, tokenizer):
             self.tokenizer = tokenizer
 
@@ -1534,12 +1831,14 @@ def patch_transformers():
             **kwargs,
         ) -> bool:
             koboldai_vars.generated_tkns += 1
-            if(koboldai_vars.lua_koboldbridge.generated_cols and koboldai_vars.generated_tkns != koboldai_vars.lua_koboldbridge.generated_cols):
+            if(not koboldai_vars.standalone and koboldai_vars.lua_koboldbridge.generated_cols and koboldai_vars.generated_tkns != koboldai_vars.lua_koboldbridge.generated_cols):
                 raise RuntimeError(f"Inconsistency detected between KoboldAI Python and Lua backends ({koboldai_vars.generated_tkns} != {koboldai_vars.lua_koboldbridge.generated_cols})")
             if(koboldai_vars.abort or koboldai_vars.generated_tkns >= koboldai_vars.genamt):
                 self.regeneration_required = False
                 self.halt = False
                 return True
+            if(koboldai_vars.standalone):
+                return False
 
             assert input_ids.ndim == 2
             assert len(self.excluded_world_info) == input_ids.shape[0]
@@ -1569,11 +1868,37 @@ def patch_transformers():
             tokenizer=tokenizer,
             excluded_world_info=self.kai_scanner_excluded_world_info,
         )
+        token_streamer = TokenStreamer(tokenizer=tokenizer)
+
         stopping_criteria.insert(0, self.kai_scanner)
         token_streamer = TokenStreamer(tokenizer=tokenizer)
         stopping_criteria.insert(0, token_streamer)
         return stopping_criteria
     transformers.generation_utils.GenerationMixin._get_stopping_criteria = new_get_stopping_criteria
+
+def reset_model_settings():
+    koboldai_vars.socketio = socketio
+    koboldai_vars.max_length  = 1024    # Maximum number of tokens to submit per action
+    koboldai_vars.ikmax       = 3000    # Maximum number of characters to submit to InferKit
+    koboldai_vars.genamt      = 80      # Amount of text for each action to generate
+    koboldai_vars.ikgen       = 200     # Number of characters for InferKit to generate
+    koboldai_vars.rep_pen     = 1.1     # Default generator repetition_penalty
+    koboldai_vars.rep_pen_slope = 0.7   # Default generator repetition penalty slope
+    koboldai_vars.rep_pen_range = 1024  # Default generator repetition penalty range
+    koboldai_vars.temp        = 0.5     # Default generator temperature
+    koboldai_vars.top_p       = 0.9     # Default generator top_p
+    koboldai_vars.top_k       = 0       # Default generator top_k
+    koboldai_vars.top_a       = 0.0     # Default generator top-a
+    koboldai_vars.tfs         = 1.0     # Default generator tfs (tail-free sampling)
+    koboldai_vars.typical     = 1.0     # Default generator typical sampling threshold
+    koboldai_vars.numseqs     = 1       # Number of sequences to ask the generator to create
+    koboldai_vars.generated_tkns = 0    # If using a backend that supports Lua generation modifiers, how many tokens have already been generated, otherwise 0
+    koboldai_vars.badwordsids = []
+    koboldai_vars.fp32_model  = False  # Whether or not the most recently loaded HF model was in fp32 format
+    koboldai_vars.modeldim    = -1     # Embedding dimension of your model (e.g. it's 4096 for GPT-J-6B and 2560 for GPT-Neo-2.7B)
+    koboldai_vars.sampler_order = [0, 1, 2, 3, 4, 5]
+    koboldai_vars.newlinemode = "n"
+    koboldai_vars.revision    = None
 
 def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=False, online_model=""):
     global model
@@ -1582,6 +1907,7 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
     global model_config
     global GPT2TokenizerFast
     global tokenizer
+    reset_model_settings()
     if not utils.HAS_ACCELERATE:
         disk_layers = None
     koboldai_vars.reset_model()
@@ -1589,25 +1915,31 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
     if not initial_load:
         set_aibusy(True)
         if koboldai_vars.model != 'ReadOnly':
-            emit('from_server', {'cmd': 'model_load_status', 'data': "Loading {}".format(koboldai_vars.model)}, broadcast=True, room="UI_1")
+            emit('from_server', {'cmd': 'model_load_status', 'data': "Loading {}".format(koboldai_vars.model)}, broadcast=True)
             #Have to add a sleep so the server will send the emit for some reason
             time.sleep(0.1)
     if gpu_layers is not None:
         args.breakmodel_gpulayers = gpu_layers
+    elif initial_load:
+        gpu_layers = args.breakmodel_gpulayers
     if disk_layers is not None:
         args.breakmodel_disklayers = int(disk_layers)
+    elif initial_load:
+        disk_layers = args.breakmodel_disklayers
     
     #We need to wipe out the existing model and refresh the cuda cache
     model = None
     generator = None
     model_config = None
-    for tensor in gc.get_objects():
-        try:
-            if torch.is_tensor(tensor):
-                with torch.no_grad():
-                    tensor.set_(torch.tensor((), device=tensor.device, dtype=tensor.dtype))
-        except:
-            pass
+    with torch.no_grad():
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore", message="torch.distributed.reduce_op is deprecated")
+            for tensor in gc.get_objects():
+                try:
+                    if torch.is_tensor(tensor):
+                        tensor.set_(torch.tensor((), device=tensor.device, dtype=tensor.dtype))
+                except:
+                    pass
     gc.collect()
     try:
         with torch.no_grad():
@@ -1646,7 +1978,7 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
     
     
     # If transformers model was selected & GPU available, ask to use CPU or GPU
-    if(koboldai_vars.model not in ["InferKit", "Colab", "OAI", "GooseAI" , "ReadOnly", "TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX"]):
+    if(koboldai_vars.model not in ["InferKit", "Colab", "API", "OAI", "GooseAI" , "ReadOnly", "TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX"]):
         koboldai_vars.allowsp = True
         # Test for GPU support
         
@@ -1685,7 +2017,7 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
             print("WARNING: No model type detected, assuming Neo (If this is a GPT2 model use the other menu option or --model GPT2Custom)")
             koboldai_vars.model_type = "gpt_neo"
 
-    if(not koboldai_vars.use_colab_tpu and koboldai_vars.model not in ["InferKit", "Colab", "OAI", "GooseAI" , "ReadOnly", "TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX"]):
+    if(not koboldai_vars.use_colab_tpu and koboldai_vars.model not in ["InferKit", "Colab", "API", "OAI", "GooseAI" , "ReadOnly", "TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX"]):
         loadmodelsettings()
         loadsettings()
         print("{0}Looking for GPU support...{1}".format(colors.PURPLE, colors.END), end="")
@@ -1705,41 +2037,19 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
         else:
             print("{0}NOT FOUND!{1}".format(colors.YELLOW, colors.END))
         
-        if args.model:
-            if(koboldai_vars.hascuda):
-                genselected = True
+        if args.cpu:
+            koboldai_vars.usegpu = False
+            gpu_layers = None
+            disk_layers = None
+            koboldai_vars.breakmodel = False
+        elif koboldai_vars.hascuda:
+            if(koboldai_vars.bmsupported):
+                koboldai_vars.usegpu = False
+                koboldai_vars.breakmodel = True
+            else:
+                koboldai_vars.breakmodel = False
                 koboldai_vars.usegpu = True
-                koboldai_vars.breakmodel = utils.HAS_ACCELERATE
-            if(koboldai_vars.bmsupported):
-                koboldai_vars.usegpu = False
-                koboldai_vars.breakmodel = True
-            if(args.cpu):
-                koboldai_vars.usegpu = False
-                koboldai_vars.breakmodel = utils.HAS_ACCELERATE
-        elif(koboldai_vars.hascuda):    
-            if(koboldai_vars.bmsupported):
-                genselected = True
-                koboldai_vars.usegpu = False
-                koboldai_vars.breakmodel = True
-            else:
-                genselected = False
-        else:
-            genselected = False
 
-        if(koboldai_vars.hascuda):
-            if(use_gpu):
-                if(koboldai_vars.bmsupported):
-                    koboldai_vars.breakmodel = True
-                    koboldai_vars.usegpu = False
-                    genselected = True
-                else:
-                    koboldai_vars.breakmodel = False
-                    koboldai_vars.usegpu = True
-                    genselected = True
-            else:
-                koboldai_vars.breakmodel = utils.HAS_ACCELERATE
-                koboldai_vars.usegpu = False
-                genselected = True
 
     # Ask for API key if InferKit was selected
     if(koboldai_vars.model == "InferKit"):
@@ -1760,7 +2070,7 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
         koboldai_vars.noai = True
 
     # Start transformers and create pipeline
-    if(not koboldai_vars.use_colab_tpu and koboldai_vars.model not in ["InferKit", "Colab", "OAI", "GooseAI" , "ReadOnly", "TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX"]):
+    if(not koboldai_vars.use_colab_tpu and koboldai_vars.model not in ["InferKit", "Colab", "API", "OAI", "GooseAI" , "ReadOnly", "TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX"]):
         if(not koboldai_vars.noai):
             print("{0}Initializing transformers, please wait...{1}".format(colors.PURPLE, colors.END))
             for m in ("GPTJModel", "XGLMModel"):
@@ -2079,7 +2389,7 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
                                         shutil.move(transformers.file_utils.get_from_cache(transformers.file_utils.hf_bucket_url(koboldai_vars.model, filename, revision=koboldai_vars.revision), cache_dir="cache", local_files_only=True), os.path.join("models/{}".format(koboldai_vars.model.replace('/', '_')), filename))
                             shutil.rmtree("cache/")
 
-                if(koboldai_vars.badwordsids is koboldai_settings.badwordsids_default and koboldai_vars.model_type not in ("gpt2", "gpt_neo", "gptj")):
+                if(koboldai_vars.badwordsids is koboldai_vars.badwordsids_default and koboldai_vars.model_type not in ("gpt2", "gpt_neo", "gptj")):
                     koboldai_vars.badwordsids = [[v] for k, v in tokenizer.get_vocab().items() if any(c in str(k) for c in "<>[]") if koboldai_vars.newlinemode != "s" or str(k) != "</s>"]
 
                 patch_causallm(model)
@@ -2114,8 +2424,8 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
             # Suppress Author's Note by flagging square brackets (Old implementation)
             #vocab         = tokenizer.get_vocab()
             #vocab_keys    = vocab.keys()
-            #vars.badwords = gettokenids("[")
-            #for key in vars.badwords:
+            #koboldai_vars.badwords = gettokenids("[")
+            #for key in koboldai_vars.badwords:
             #    koboldai_vars.badwordsids.append([vocab[key]])
             
             print("{0}OK! {1} pipeline created!{2}".format(colors.GREEN, koboldai_vars.model, colors.END))
@@ -2215,7 +2525,7 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
             }
 
         # If we're running Colab or OAI, we still need a tokenizer.
-        if(koboldai_vars.model == "Colab"):
+        if(koboldai_vars.model in ("Colab", "API")):
             from transformers import GPT2TokenizerFast
             tokenizer = GPT2TokenizerFast.from_pretrained("EleutherAI/gpt-neo-2.7B", revision=koboldai_vars.revision, cache_dir="cache")
             loadsettings()
@@ -2228,7 +2538,7 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
             global tpu_mtj_backend
             import tpu_mtj_backend
             if(koboldai_vars.model == "TPUMeshTransformerGPTNeoX"):
-                koboldai_vars.badwordsids = koboldai_settings.badwordsids_neox
+                koboldai_vars.badwordsids = koboldai_vars.badwordsids_neox
             print("{0}Initializing Mesh Transformer JAX, please wait...{1}".format(colors.PURPLE, colors.END))
             if koboldai_vars.model in ("TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX") and (not koboldai_vars.custmodpth or not os.path.isdir(koboldai_vars.custmodpth)):
                 raise FileNotFoundError(f"The specified model path {repr(koboldai_vars.custmodpth)} is not the path to a valid folder")
@@ -2247,7 +2557,7 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
             tpu_mtj_backend.load_model(koboldai_vars.custmodpth, hf_checkpoint=koboldai_vars.model not in ("TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX") and koboldai_vars.use_colab_tpu, **koboldai_vars.modelconfig)
             koboldai_vars.modeldim = int(tpu_mtj_backend.params.get("d_embed", tpu_mtj_backend.params["d_model"]))
             tokenizer = tpu_mtj_backend.tokenizer
-            if(koboldai_vars.badwordsids is koboldai_settings.badwordsids_default and koboldai_vars.model_type not in ("gpt2", "gpt_neo", "gptj")):
+            if(koboldai_vars.badwordsids is koboldai_vars.badwordsids_default and koboldai_vars.model_type not in ("gpt2", "gpt_neo", "gptj")):
                 koboldai_vars.badwordsids = [[v] for k, v in tokenizer.get_vocab().items() if any(c in str(k) for c in "<>[]") if koboldai_vars.newlinemode != "s" or str(k) != "</s>"]
         else:
             loadsettings()
@@ -2316,16 +2626,24 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
 @app.route('/')
 @app.route('/index')
 def index():
-    if 'story' in session:
-        if session['story'] not in koboldai_vars.story_list():
-            session['story'] = 'default'
-    return render_template('index.html', hide_ai_menu=args.noaimenu, flaskwebgui=koboldai_vars.flaskwebgui)
+    if args.no_ui:
+        return redirect('/api/latest')
+    if 'new_ui' in request.args:
+        return render_template('index_new.html', hide_ai_menu=args.noaimenu)
+    else:
+        return render_template('index.html', hide_ai_menu=args.noaimenu, flaskwebgui=koboldai_vars.flaskwebgui)
+@app.route('/api', strict_slashes=False)
+def api():
+    return redirect('/api/latest')
 @app.route('/favicon.ico')
 def favicon():
     return send_from_directory(app.root_path,
                                    'koboldai.ico', mimetype='image/vnd.microsoft.icon')    
 @app.route('/download')
 def download():
+    if args.no_ui:
+        raise NotFound()
+
     save_format = request.args.get("format", "json").strip().lower()
 
     if(save_format == "plaintext"):
@@ -2408,7 +2726,7 @@ def lua_startup():
         "userscript_path": "userscripts",
         "config_path": "userscripts",
         "lib_paths": koboldai_vars.lua_state.table("lualibs", os.path.join("extern", "lualibs")),
-        "koboldai_vars": koboldai_vars
+        "koboldai_vars": koboldai_vars,
     }
     for kwarg in _bridged:
         bridged[kwarg] = _bridged[kwarg]
@@ -2725,6 +3043,7 @@ def lua_has_setting(setting):
         "adsnsp",
         "singleline",
         "output_streaming",
+        "show_probs"
     )
 
 #==================================================================#
@@ -2756,7 +3075,8 @@ def lua_get_setting(setting):
     if(setting in ("frmtrmspch", "rmspch")): return koboldai_vars.formatoptns["frmttrmspch"]
     if(setting in ("frmtadsnsp", "adsnsp")): return koboldai_vars.formatoptns["frmtadsnsp"]
     if(setting in ("frmtsingleline", "singleline")): return koboldai_vars.formatoptns["singleline"]
-    if(setting == "outputstreaming"): koboldai_vars.output_streaming = v
+    if(setting == "output_streaming"): return koboldai_vars.output_streaming
+    if(setting == "show_probs"): return koboldai_vars.show_probs
 
 #==================================================================#
 #  Set the setting with the given name if it exists
@@ -2793,6 +3113,8 @@ def lua_set_setting(setting, v):
     if(setting in ("frmtrmspch", "rmspch")): koboldai_vars.formatoptns["frmttrmspch"] = v
     if(setting in ("frmtadsnsp", "adsnsp")): koboldai_vars.formatoptns["frmtadsnsp"] = v
     if(setting in ("frmtsingleline", "singleline")): koboldai_vars.formatoptns["singleline"] = v
+    if(setting == "output_streaming"): koboldai_vars.output_streaming = v
+    if(setting == "show_probs"): koboldai_vars.show_probs = v
 
 #==================================================================#
 #  Get contents of memory
@@ -2891,7 +3213,7 @@ def lua_set_chunk(k, v):
 def lua_get_modeltype():
     if(koboldai_vars.noai):
         return "readonly"
-    if(koboldai_vars.model in ("Colab", "OAI", "InferKit")):
+    if(koboldai_vars.model in ("Colab", "API", "OAI", "InferKit")):
         return "api"
     if(not koboldai_vars.use_colab_tpu and koboldai_vars.model not in ("TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX") and (koboldai_vars.model in ("GPT2Custom", "NeoCustom") or koboldai_vars.model_type in ("gpt2", "gpt_neo", "gptj"))):
         hidden_size = get_hidden_size_from_model(model)
@@ -2920,7 +3242,7 @@ def lua_get_modeltype():
 def lua_get_modelbackend():
     if(koboldai_vars.noai):
         return "readonly"
-    if(koboldai_vars.model in ("Colab", "OAI", "InferKit")):
+    if(koboldai_vars.model in ("Colab", "API", "OAI", "InferKit")):
         return "api"
     if(koboldai_vars.use_colab_tpu or koboldai_vars.model in ("TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX")):
         return "mtj"
@@ -3373,8 +3695,12 @@ def get_message(msg):
                 if gpu_layers == msg['gpu_layers'] and disk_layers == msg['disk_layers']:
                     changed = False
         if changed:
-            f = open("settings/" + koboldai_vars.model.replace('/', '_') + ".breakmodel", "w")
-            f.write(msg['gpu_layers'] + '\n' + msg['disk_layers'])
+            if koboldai_vars.model in ["NeoCustom", "GPT2Custom"]:
+                filename = "settings/{}.breakmodel".format(os.path.basename(os.path.normpath(koboldai_vars.custmodpth)))
+            else:
+                filename = "settings/{}.breakmodel".format(koboldai_vars.model.replace('/', '_'))
+            f = open(filename, "w")
+            f.write(str(msg['gpu_layers']) + '\n' + str(msg['disk_layers']))
             f.close()
         koboldai_vars.colaburl = msg['url'] + "/request"
         load_model(use_gpu=msg['use_gpu'], gpu_layers=msg['gpu_layers'], disk_layers=msg['disk_layers'], online_model=msg['online_model'])
@@ -3503,8 +3829,16 @@ def get_message(msg):
         koboldai_vars.nogenmod = msg['data']
         settingschanged()
         refresh_settings()
+    elif(msg['cmd'] == 'setfulldeterminism'):
+        koboldai_vars.full_determinism = msg['data']
+        settingschanged()
+        refresh_settings()
     elif(msg['cmd'] == 'setoutputstreaming'):
         koboldai_vars.output_streaming = msg['data']
+        settingschanged()
+        refresh_settings()
+    elif(msg['cmd'] == 'setshowprobs'):
+        koboldai_vars.show_probs = msg['data']
         settingschanged()
         refresh_settings()
     elif(not koboldai_vars.host and msg['cmd'] == 'importwi'):
@@ -3514,6 +3848,40 @@ def get_message(msg):
         emit('from_server', {'cmd': 'set_debug', 'data': msg['data']}, broadcast=True, room="UI_1")
         if koboldai_vars.debug:
             send_debug()
+    elif(msg['cmd'] == 'getfieldbudget'):
+        unencoded = msg["data"]["unencoded"]
+        field = msg["data"]["field"]
+
+        # Tokenizer may be undefined here when a model has not been chosen.
+        if "tokenizer" not in globals():
+            # We don't have a tokenizer, just return nulls.
+            emit(
+                'from_server',
+                {'cmd': 'showfieldbudget', 'data': {"length": None, "max": None, "field": field}},
+                broadcast=True
+            )
+            return
+
+        header_length = len(tokenizer._koboldai_header)
+        max_tokens = koboldai_vars.max_length - header_length - koboldai_vars.sp_length - koboldai_vars.genamt
+
+        if not unencoded:
+            # Unencoded is empty, just return 0
+            emit(
+                'from_server',
+                {'cmd': 'showfieldbudget', 'data': {"length": 0, "max": max_tokens, "field": field}},
+                broadcast=True
+            )
+        else:
+            if field == "anoteinput":
+                unencoded = buildauthorsnote(unencoded, msg["data"]["anotetemplate"])
+            tokens_length = len(tokenizer.encode(unencoded))
+
+            emit(
+                'from_server',
+                {'cmd': 'showfieldbudget', 'data': {"length": tokens_length, "max": max_tokens, "field": field}},
+                broadcast=True
+            )
 
 #==================================================================#
 #  Send userscripts list to client
@@ -3592,13 +3960,39 @@ def check_for_backend_compilation():
             break
     koboldai_vars.checking = False
 
-def actionsubmit(data, actionmode=0, force_submit=False, force_prompt_gen=False, disable_recentrng=False):
+def actionsubmit(data, actionmode=0, force_submit=False, force_prompt_gen=False, disable_recentrng=False, no_generate=False):
     # Ignore new submissions if the AI is currently busy
     if(koboldai_vars.aibusy):
         return
     
     while(True):
         set_aibusy(1)
+
+        if(koboldai_vars.model == "API"):
+            global tokenizer
+            tokenizer_id = requests.get(
+                koboldai_vars.colaburl[:-8] + "/api/v1/model",
+            ).json()["result"]
+            if tokenizer_id != koboldai_vars.api_tokenizer_id:
+                try:
+                    if(os.path.isdir(tokenizer_id)):
+                        try:
+                            tokenizer = AutoTokenizer.from_pretrained(tokenizer_id, revision=koboldai_vars.revision, cache_dir="cache")
+                        except:
+                            tokenizer = AutoTokenizer.from_pretrained(tokenizer_id, revision=koboldai_vars.revision, cache_dir="cache", use_fast=False)
+                    elif(os.path.isdir("models/{}".format(tokenizer_id.replace('/', '_')))):
+                        try:
+                            tokenizer = AutoTokenizer.from_pretrained("models/{}".format(tokenizer_id.replace('/', '_')), revision=koboldai_vars.revision, cache_dir="cache")
+                        except:
+                            tokenizer = AutoTokenizer.from_pretrained("models/{}".format(tokenizer_id.replace('/', '_')), revision=koboldai_vars.revision, cache_dir="cache", use_fast=False)
+                    else:
+                        try:
+                            tokenizer = AutoTokenizer.from_pretrained(tokenizer_id, revision=koboldai_vars.revision, cache_dir="cache")
+                        except:
+                            tokenizer = AutoTokenizer.from_pretrained(tokenizer_id, revision=koboldai_vars.revision, cache_dir="cache", use_fast=False)
+                except:
+                    print(f"WARNING:  Unknown tokenizer {repr(tokenizer_id)}")
+                koboldai_vars.api_tokenizer_id = tokenizer_id
 
         if(disable_recentrng):
             koboldai_vars.recentrng = koboldai_vars.recentrngm = None
@@ -3626,7 +4020,9 @@ def actionsubmit(data, actionmode=0, force_submit=False, force_prompt_gen=False,
         
         if(not koboldai_vars.gamestarted):
             koboldai_vars.submission = data
-            execute_inmod()
+            if(not no_generate):
+                execute_inmod()
+            koboldai_vars.submission = re.sub(r"[^\S\r\n]*([\r\n]*)$", r"\1", koboldai_vars.submission)  # Remove trailing whitespace, excluding newlines
             data = koboldai_vars.submission
             if(not force_submit and len(data.strip()) == 0):
                 assert False
@@ -3650,7 +4046,8 @@ def actionsubmit(data, actionmode=0, force_submit=False, force_prompt_gen=False,
                 koboldai_vars.prompt = data if len(data) > 0 else '"'
                 for i in range(koboldai_vars.numseqs):
                     koboldai_vars.lua_koboldbridge.outputs[i+1] = ""
-                execute_outmod()
+                if(not no_generate):
+                    execute_outmod()
                 koboldai_vars.lua_koboldbridge.regeneration_required = False
                 genout = []
                 for i in range(koboldai_vars.numseqs):
@@ -3687,7 +4084,9 @@ def actionsubmit(data, actionmode=0, force_submit=False, force_prompt_gen=False,
             if(koboldai_vars.actionmode == 0):
                 data = applyinputformatting(data)
             koboldai_vars.submission = data
-            execute_inmod()
+            if(not no_generate):
+                execute_inmod()
+            koboldai_vars.submission = re.sub(r"[^\S\r\n]*([\r\n]*)$", r"\1", koboldai_vars.submission)  # Remove trailing whitespace, excluding newlines
             data = koboldai_vars.submission
             # Dont append submission if it's a blank/continue action
             if(data != ""):
@@ -3699,7 +4098,7 @@ def actionsubmit(data, actionmode=0, force_submit=False, force_prompt_gen=False,
                 update_story_chunk('last')
                 send_debug()
 
-            if(not koboldai_vars.noai and koboldai_vars.lua_koboldbridge.generating):
+            if(not no_generate and not koboldai_vars.noai and koboldai_vars.lua_koboldbridge.generating):
                 # Off to the tokenizer!
                 calcsubmit(data)
                 if(not koboldai_vars.abort and koboldai_vars.lua_koboldbridge.restart_sequence is not None and len(koboldai_vars.genseqs) == 0):
@@ -3710,26 +4109,27 @@ def actionsubmit(data, actionmode=0, force_submit=False, force_prompt_gen=False,
                 emit('from_server', {'cmd': 'scrolldown', 'data': ''}, broadcast=True, room="UI_1")
                 break
             else:
-                for i in range(koboldai_vars.numseqs):
-                    koboldai_vars.lua_koboldbridge.outputs[i+1] = ""
-                execute_outmod()
-                koboldai_vars.lua_koboldbridge.regeneration_required = False
+                if(not no_generate):
+                    for i in range(koboldai_vars.numseqs):
+                        koboldai_vars.lua_koboldbridge.outputs[i+1] = ""
+                    execute_outmod()
+                    koboldai_vars.lua_koboldbridge.regeneration_required = False
                 genout = []
                 for i in range(koboldai_vars.numseqs):
-                    genout.append({"generated_text": koboldai_vars.lua_koboldbridge.outputs[i+1]})
+                    genout.append({"generated_text": koboldai_vars.lua_koboldbridge.outputs[i+1] if not no_generate else ""})
                     assert type(genout[-1]["generated_text"]) is str
                 koboldai_vars.actions.clear_unused_options()
                 koboldai_vars.actions.append_options([x["generated_text"] for x in genout])
                 genout = [{"generated_text": x['text']} for x in koboldai_vars.actions.get_current_options()]
                 if(len(genout) == 1):
                     genresult(genout[0]["generated_text"])
-                    if(not koboldai_vars.abort and koboldai_vars.lua_koboldbridge.restart_sequence is not None):
+                    if(not no_generate and not koboldai_vars.abort and koboldai_vars.lua_koboldbridge.restart_sequence is not None):
                         data = ""
                         force_submit = True
                         disable_recentrng = True
                         continue
                 else:
-                    if(not koboldai_vars.abort and koboldai_vars.lua_koboldbridge.restart_sequence is not None and koboldai_vars.lua_koboldbridge.restart_sequence > 0):
+                    if(not no_generate and not koboldai_vars.abort and koboldai_vars.lua_koboldbridge.restart_sequence is not None and koboldai_vars.lua_koboldbridge.restart_sequence > 0):
                         genresult(genout[koboldai_vars.lua_koboldbridge.restart_sequence-1]["generated_text"])
                         data = ""
                         force_submit = True
@@ -3739,6 +4139,130 @@ def actionsubmit(data, actionmode=0, force_submit=False, force_prompt_gen=False,
                 set_aibusy(0)
                 emit('from_server', {'cmd': 'scrolldown', 'data': ''}, broadcast=True, room="UI_1")
                 break
+
+def apiactionsubmit_generate(txt, minimum, maximum):
+    koboldai_vars.generated_tkns = 0
+
+    if not koboldai_vars.quiet:
+        print("{0}Min:{1}, Max:{2}, Txt:{3}{4}".format(colors.YELLOW, minimum, maximum, utils.decodenewlines(tokenizer.decode(txt)), colors.END))
+
+    # Clear CUDA cache if using GPU
+    if(koboldai_vars.hascuda and (koboldai_vars.usegpu or koboldai_vars.breakmodel)):
+        gc.collect()
+        torch.cuda.empty_cache()
+
+    # Submit input text to generator
+    _genout, already_generated = tpool.execute(_generate, txt, minimum, maximum, set())
+
+    genout = [applyoutputformatting(utils.decodenewlines(tokenizer.decode(tokens[-already_generated:]))) for tokens in _genout]
+
+    # Clear CUDA cache again if using GPU
+    if(koboldai_vars.hascuda and (koboldai_vars.usegpu or koboldai_vars.breakmodel)):
+        del _genout
+        gc.collect()
+        torch.cuda.empty_cache()
+
+    return genout
+
+def apiactionsubmit_tpumtjgenerate(txt, minimum, maximum):
+    koboldai_vars.generated_tkns = 0
+
+    if(koboldai_vars.full_determinism):
+        tpu_mtj_backend.set_rng_seed(koboldai_vars.seed)
+
+    if not koboldai_vars.quiet:
+        print("{0}Min:{1}, Max:{2}, Txt:{3}{4}".format(colors.YELLOW, minimum, maximum, utils.decodenewlines(tokenizer.decode(txt)), colors.END))
+
+    koboldai_vars._actions = koboldai_vars.actions
+    koboldai_vars._prompt = koboldai_vars.prompt
+    if(koboldai_vars.dynamicscan):
+        koboldai_vars._actions = koboldai_vars._actions.copy()
+
+    # Submit input text to generator
+    soft_tokens = tpumtjgetsofttokens()
+    genout = tpool.execute(
+        tpu_mtj_backend.infer_static,
+        np.uint32(txt),
+        gen_len = maximum-minimum+1,
+        temp=koboldai_vars.temp,
+        top_p=koboldai_vars.top_p,
+        top_k=koboldai_vars.top_k,
+        tfs=koboldai_vars.tfs,
+        typical=koboldai_vars.typical,
+        top_a=koboldai_vars.top_a,
+        numseqs=koboldai_vars.numseqs,
+        repetition_penalty=koboldai_vars.rep_pen,
+        rpslope=koboldai_vars.rep_pen_slope,
+        rprange=koboldai_vars.rep_pen_range,
+        soft_embeddings=koboldai_vars.sp,
+        soft_tokens=soft_tokens,
+        sampler_order=koboldai_vars.sampler_order,
+    )
+    genout = [applyoutputformatting(utils.decodenewlines(tokenizer.decode(txt))) for txt in genout]
+
+    return genout
+
+def apiactionsubmit(data, use_memory=False, use_world_info=False, use_story=False, use_authors_note=False):
+    if(koboldai_vars.model == "Colab"):
+        raise NotImplementedError("API generation is not supported in old Colab API mode.")
+    elif(koboldai_vars.model == "API"):
+        raise NotImplementedError("API generation is not supported in API mode.")
+    elif(koboldai_vars.model == "OAI"):
+        raise NotImplementedError("API generation is not supported in OpenAI/GooseAI mode.")
+    elif(koboldai_vars.model == "ReadOnly"):
+        raise NotImplementedError("API generation is not supported in read-only mode; please load a model and then try again.")
+
+    data = applyinputformatting(data)
+
+    if(koboldai_vars.memory != "" and koboldai_vars.memory[-1] != "\n"):
+        mem = koboldai_vars.memory + "\n"
+    else:
+        mem = koboldai_vars.memory
+    if(use_authors_note and koboldai_vars.authornote != ""):
+        anotetxt  = ("\n" + koboldai_vars.authornotetemplate + "\n").replace("<|>", koboldai_vars.authornote)
+    else:
+        anotetxt = ""
+    MIN_STORY_TOKENS = 8
+    story_tokens = []
+    mem_tokens = []
+    wi_tokens = []
+    story_budget = lambda: koboldai_vars.max_length - koboldai_vars.sp_length - koboldai_vars.genamt - len(tokenizer._koboldai_header) - len(story_tokens) - len(mem_tokens) - len(wi_tokens)
+    budget = lambda: story_budget() + MIN_STORY_TOKENS
+    if budget() < 0:
+        abort(Response(json.dumps({"detail": {
+            "msg": f"Your Max Tokens setting is too low for your current soft prompt and tokenizer to handle. It needs to be at least {koboldai_vars.max_length - budget()}.",
+            "type": "token_overflow",
+        }}), mimetype="application/json", status=500))
+    if use_memory:
+        mem_tokens = tokenizer.encode(utils.encodenewlines(mem))[-budget():]
+    if use_world_info:
+        world_info, _ = checkworldinfo(data, force_use_txt=True, scan_story=use_story)
+        wi_tokens = tokenizer.encode(utils.encodenewlines(world_info))[-budget():]
+    if use_story:
+        if koboldai_vars.useprompt:
+            story_tokens = tokenizer.encode(utils.encodenewlines(koboldai_vars.prompt))[-budget():]
+    story_tokens = tokenizer.encode(utils.encodenewlines(data))[-story_budget():] + story_tokens
+    if use_story:
+        for i, action in enumerate(reversed(koboldai_vars.actions.values())):
+            if story_budget() <= 0:
+                assert story_budget() == 0
+                break
+            story_tokens = tokenizer.encode(utils.encodenewlines(action))[-story_budget():] + story_tokens
+            if i == koboldai_vars.andepth - 1:
+                story_tokens = tokenizer.encode(utils.encodenewlines(anotetxt))[-story_budget():] + story_tokens
+        if not koboldai_vars.useprompt:
+            story_tokens = tokenizer.encode(utils.encodenewlines(koboldai_vars.prompt))[-budget():] + story_tokens
+    tokens = tokenizer._koboldai_header + mem_tokens + wi_tokens + story_tokens
+    assert story_budget() >= 0
+    minimum = len(tokens) + 1
+    maximum = len(tokens) + koboldai_vars.genamt
+
+    if(not koboldai_vars.use_colab_tpu and koboldai_vars.model not in ["Colab", "API", "OAI", "TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX"]):
+        genout = apiactionsubmit_generate(tokens, minimum, maximum)
+    elif(koboldai_vars.use_colab_tpu or koboldai_vars.model in ("TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX")):
+        genout = apiactionsubmit_tpumtjgenerate(tokens, minimum, maximum)
+
+    return genout
 
 #==================================================================#
 #  
@@ -3793,6 +4317,12 @@ def actionredo():
 #==================================================================#
 #  
 #==================================================================#
+def buildauthorsnote(authorsnote, template):
+    # Build Author's Note if set
+    if authorsnote == "":
+        return ""
+    return ("\n" + template + "\n").replace("<|>", authorsnote)
+
 def calcsubmitbudgetheader(txt, **kwargs):
     # Scan for WorldInfo matches
     winfo, found_entries = checkworldinfo(txt, **kwargs)
@@ -3803,11 +4333,7 @@ def calcsubmitbudgetheader(txt, **kwargs):
     else:
         mem = koboldai_vars.memory
 
-    # Build Author's Note if set
-    if(koboldai_vars.authornote != ""):
-        anotetxt  = ("\n" + koboldai_vars.authornotetemplate + "\n").replace("<|>", koboldai_vars.authornote)
-    else:
-        anotetxt = ""
+    anotetxt = buildauthorsnote(koboldai_vars.authornote, koboldai_vars.authornotetemplate)
 
     return winfo, mem, anotetxt, found_entries
 
@@ -3849,7 +4375,7 @@ def calcsubmitbudget(actionlen, winfo, mem, anotetxt, actions, submission=None, 
     if(koboldai_vars.useprompt):
         budget = koboldai_vars.max_length - lnsp - lnprompt - lnmem - lnanote - lnwi - koboldai_vars.genamt - budget_deduction
     else:
-        budget = koboldai_vars.max_length - lnsp - lnmem - lnanote - lnwi - koboldai_vars.genamt - budget_deduction
+        budget = koboldai_vars.max_length - lnheader - lnsp - lnmem - lnanote - lnwi - koboldai_vars.genamt - budget_deduction
 
     lnsubmission = len(tokenizer.encode(utils.encodenewlines(koboldai_vars.comregex_ai.sub('', submission)), max_length=int(2e9), truncation=True)) if submission is not None else 0
     maybe_lnprompt = lnprompt if koboldai_vars.useprompt and actionlen > 0 else 0
@@ -3861,7 +4387,7 @@ def calcsubmitbudget(actionlen, winfo, mem, anotetxt, actions, submission=None, 
 
     if(actionlen == 0):
         # First/Prompt action
-        tokens = tokenizer._koboldai_header + memtokens + witokens + anotetkns + prompttkns
+        tokens = (tokenizer._koboldai_header if koboldai_vars.model not in ("Colab", "API", "OAI") else []) + memtokens + witokens + anotetkns + prompttkns
         assert len(tokens) <= koboldai_vars.max_length - lnsp - koboldai_vars.genamt - budget_deduction
         ln = len(tokens) + lnsp
         return tokens, ln+1, ln+koboldai_vars.genamt
@@ -3909,12 +4435,12 @@ def calcsubmitbudget(actionlen, winfo, mem, anotetxt, actions, submission=None, 
         # Did we get to add the A.N.? If not, do it here
         if(anotetxt != ""):
             if((not anoteadded) or forceanote):
-                tokens = tokenizer._koboldai_header + memtokens + witokens + anotetkns + prompttkns + tokens
+                tokens = (tokenizer._koboldai_header if koboldai_vars.model not in ("Colab", "API", "OAI") else []) + memtokens + witokens + anotetkns + prompttkns + tokens
             else:
-                tokens = tokenizer._koboldai_header + memtokens + witokens + prompttkns + tokens
+                tokens = (tokenizer._koboldai_header if koboldai_vars.model not in ("Colab", "API", "OAI") else []) + memtokens + witokens + prompttkns + tokens
         else:
             # Prepend Memory, WI, and Prompt before action tokens
-            tokens = tokenizer._koboldai_header + memtokens + witokens + prompttkns + tokens
+            tokens = (tokenizer._koboldai_header if koboldai_vars.model not in ("Colab", "API", "OAI") else []) + memtokens + witokens + prompttkns + tokens
 
         # Send completed bundle to generator
         assert len(tokens) <= koboldai_vars.max_length - lnsp - koboldai_vars.genamt - budget_deduction
@@ -3936,19 +4462,23 @@ def calcsubmit(txt):
     if(koboldai_vars.model != "InferKit"):
         subtxt, min, max = calcsubmitbudget(actionlen, winfo, mem, anotetxt, koboldai_vars.actions, submission=txt)
         if(actionlen == 0):
-            if(not koboldai_vars.use_colab_tpu and koboldai_vars.model not in ["Colab", "OAI", "TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX"]):
+            if(not koboldai_vars.use_colab_tpu and koboldai_vars.model not in ["Colab", "API", "OAI", "TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX"]):
                 generate(subtxt, min, max, found_entries=found_entries)
             elif(koboldai_vars.model == "Colab"):
                 sendtocolab(utils.decodenewlines(tokenizer.decode(subtxt)), min, max)
+            elif(koboldai_vars.model == "API"):
+                sendtoapi(utils.decodenewlines(tokenizer.decode(subtxt)), min, max)
             elif(koboldai_vars.model == "OAI"):
                 oairequest(utils.decodenewlines(tokenizer.decode(subtxt)), min, max)
             elif(koboldai_vars.use_colab_tpu or koboldai_vars.model in ("TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX")):
                 tpumtjgenerate(subtxt, min, max, found_entries=found_entries)
         else:
-            if(not koboldai_vars.use_colab_tpu and koboldai_vars.model not in ["Colab", "OAI", "TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX"]):
+            if(not koboldai_vars.use_colab_tpu and koboldai_vars.model not in ["Colab", "API", "OAI", "TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX"]):
                 generate(subtxt, min, max, found_entries=found_entries)
             elif(koboldai_vars.model == "Colab"):
                 sendtocolab(utils.decodenewlines(tokenizer.decode(subtxt)), min, max)
+            elif(koboldai_vars.model == "API"):
+                sendtoapi(utils.decodenewlines(tokenizer.decode(subtxt)), min, max)
             elif(koboldai_vars.model == "OAI"):
                 oairequest(utils.decodenewlines(tokenizer.decode(subtxt)), min, max)
             elif(koboldai_vars.use_colab_tpu or koboldai_vars.model in ("TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX")):
@@ -4015,6 +4545,9 @@ def calcsubmit(txt):
 #==================================================================#
 
 def _generate(txt, minimum, maximum, found_entries):
+    if(koboldai_vars.full_determinism):
+        torch.manual_seed(koboldai_vars.seed)
+
     gen_in = torch.tensor(txt, dtype=torch.long)[None]
     if(koboldai_vars.sp is not None):
         soft_tokens = torch.arange(
@@ -4333,10 +4866,88 @@ def sendtocolab(txt, min, max):
         emit('from_server', {'cmd': 'errmsg', 'data': errmsg}, broadcast=True, room="UI_1")
         set_aibusy(0)
 
+
+#==================================================================#
+#  Send transformers-style request to KoboldAI API
+#==================================================================#
+def sendtoapi(txt, min, max):
+    # Log request to console
+    if not koboldai_vars.quiet:
+        print("{0}Tokens:{1}, Txt:{2}{3}".format(colors.YELLOW, min-1, txt, colors.END))
+    
+    # Store context in memory to use it for comparison with generated content
+    koboldai_vars.lastctx = txt
+    
+    # Build request JSON data
+    reqdata = {
+        'prompt': txt,
+        'max_length': max - min + 1,
+        'max_context_length': koboldai_vars.max_length,
+        'rep_pen': koboldai_vars.rep_pen,
+        'rep_pen_slope': koboldai_vars.rep_pen_slope,
+        'rep_pen_range': koboldai_vars.rep_pen_range,
+        'temperature': koboldai_vars.temp,
+        'top_p': koboldai_vars.top_p,
+        'top_k': koboldai_vars.top_k,
+        'top_a': koboldai_vars.top_a,
+        'tfs': koboldai_vars.tfs,
+        'typical': koboldai_vars.typical,
+        'n': koboldai_vars.numseqs,
+    }
+    
+    # Create request
+    while True:
+        req = requests.post(
+            koboldai_vars.colaburl[:-8] + "/api/v1/generate",
+            json=reqdata,
+        )
+        if(req.status_code == 503):  # Server is currently generating something else so poll until it's our turn
+            time.sleep(1)
+            continue
+        js = req.json()
+        if(req.status_code != 200):
+            errmsg = "KoboldAI API Error: Failed to get a reply from the server. Please check the console."
+            print("{0}{1}{2}".format(colors.RED, json.dumps(js, indent=2), colors.END))
+            emit('from_server', {'cmd': 'errmsg', 'data': errmsg}, broadcast=True)
+            set_aibusy(0)
+            return
+
+        genout = [obj["text"] for obj in js["results"]]
+
+        for i in range(koboldai_vars.numseqs):
+            koboldai_vars.lua_koboldbridge.outputs[i+1] = genout[i]
+
+        execute_outmod()
+        if(koboldai_vars.lua_koboldbridge.regeneration_required):
+            koboldai_vars.lua_koboldbridge.regeneration_required = False
+            genout = []
+            for i in range(koboldai_vars.numseqs):
+                genout.append(koboldai_vars.lua_koboldbridge.outputs[i+1])
+                assert type(genout[-1]) is str
+
+        if(len(genout) == 1):
+            genresult(genout[0])
+        else:
+            # Convert torch output format to transformers
+            seqs = []
+            for seq in genout:
+                seqs.append({"generated_text": seq})
+            if(koboldai_vars.lua_koboldbridge.restart_sequence is not None and koboldai_vars.lua_koboldbridge.restart_sequence > 0):
+                genresult(genout[koboldai_vars.lua_koboldbridge.restart_sequence-1]["generated_text"])
+            else:
+                genselect(genout)
+
+        set_aibusy(0)
+        return
+
+
 #==================================================================#
 #  Send text to TPU mesh transformer backend
 #==================================================================#
 def tpumtjgenerate(txt, minimum, maximum, found_entries=None):
+    if(koboldai_vars.full_determinism):
+        tpu_mtj_backend.set_rng_seed(koboldai_vars.seed)
+
     koboldai_vars.generated_tkns = 0
 
     if(found_entries is None):
@@ -4627,6 +5238,7 @@ def refresh_settings():
     emit('from_server', {'cmd': 'updatenopromptgen', 'data': koboldai_vars.nopromptgen}, broadcast=True, room="UI_1")
     emit('from_server', {'cmd': 'updaterngpersist', 'data': koboldai_vars.rngpersist}, broadcast=True, room="UI_1")
     emit('from_server', {'cmd': 'updatenogenmod', 'data': koboldai_vars.nogenmod}, broadcast=True, room="UI_1")
+    emit('from_server', {'cmd': 'updatefulldeterminism', 'data': koboldai_vars.full_determinism}, broadcast=True, room="UI_1")
     
     emit('from_server', {'cmd': 'updatefrmttriminc', 'data': koboldai_vars.formatoptns["frmttriminc"]}, broadcast=True, room="UI_1")
     emit('from_server', {'cmd': 'updatefrmtrmblln', 'data': koboldai_vars.formatoptns["frmtrmblln"]}, broadcast=True, room="UI_1")
@@ -4634,6 +5246,7 @@ def refresh_settings():
     emit('from_server', {'cmd': 'updatefrmtadsnsp', 'data': koboldai_vars.formatoptns["frmtadsnsp"]}, broadcast=True, room="UI_1")
     emit('from_server', {'cmd': 'updatesingleline', 'data': koboldai_vars.formatoptns["singleline"]}, broadcast=True, room="UI_1")
     emit('from_server', {'cmd': 'updateoutputstreaming', 'data': koboldai_vars.output_streaming}, broadcast=True, room="UI_1")
+    emit('from_server', {'cmd': 'updateshowprobs', 'data': koboldai_vars.show_probs}, broadcast=True, room="UI_1")
     
     # Allow toggle events again
     emit('from_server', {'cmd': 'allowtoggle', 'data': True}, broadcast=True, room="UI_1")
@@ -4642,6 +5255,8 @@ def refresh_settings():
 #  Sets the logical and display states for the AI Busy condition
 #==================================================================#
 def set_aibusy(state):
+    if(koboldai_vars.disable_set_aibusy):
+        return
     if(state):
         koboldai_vars.aibusy = True
         emit('from_server', {'cmd': 'setgamestate', 'data': 'wait'}, broadcast=True, room="UI_1")
@@ -5599,7 +6214,7 @@ def importRequest():
         # Clear Popup Contents
         emit('from_server', {'cmd': 'clearpopup', 'data': ''}, broadcast=True, room="UI_1")
         
-        # Initialize vars
+        # Initialize koboldai_vars
         num = 0
         koboldai_vars.importnum = -1
         
@@ -5633,7 +6248,7 @@ def importgame():
         # Cache reference to selected game
         ref = koboldai_vars.importjs[koboldai_vars.importnum]
         
-        # Copy game contents to vars
+        # Copy game contents to koboldai_vars
         koboldai_vars.gamestarted = True
         
         # Support for different versions of export script
@@ -5950,9 +6565,27 @@ def final_startup():
                 },
             ).start()
 
+    # Set the initial RNG seed
+    if(koboldai_vars.seed is not None):
+        if(koboldai_vars.use_colab_tpu):
+            if(koboldai_vars.seed_specified):
+                __import__("tpu_mtj_backend").set_rng_seed(koboldai_vars.seed)
+            else:
+                __import__("tpu_mtj_backend").randomize_rng_seed()
+        else:
+            if(koboldai_vars.seed_specified):
+                __import__("torch").manual_seed(koboldai_vars.seed)
+            else:
+                __import__("torch").seed()
+    koboldai_vars.seed = __import__("tpu_mtj_backend").get_rng_seed() if koboldai_vars.use_colab_tpu else __import__("torch").initial_seed()
+
 def send_debug():
     if koboldai_vars.debug:
         debug_info = ""
+        try:
+            debug_info = "{}Seed: {} ({})\n".format(debug_info, repr(__import__("tpu_mtj_backend").get_rng_seed() if koboldai_vars.use_colab_tpu else __import__("torch").initial_seed()), "specified by user in settings file" if koboldai_vars.seed_specified else "randomly generated")
+        except:
+            pass
         try:
             debug_info = "{}Newline Mode: {}\n".format(debug_info, koboldai_vars.newlinemode)
         except:
@@ -5986,6 +6619,18 @@ def send_debug():
 
 
 #==================================================================#
+# Load file browser for soft prompts
+#==================================================================#
+@socketio.on('show_folder_soft_prompt')
+def show_folder_soft_prompt(data):
+    file_popup("Load Softprompt", "./softprompts", "", renameable=True, folder_only=False, editable=False, deleteable=True, jailed=True, item_check=None)
+
+#==================================================================#
+# Load file browser for user scripts
+#==================================================================#
+@socketio.on('show_folder_usersripts')
+def show_folder_usersripts(data):
+    file_popup("Load Softprompt", "./userscripts", "", renameable=True, folder_only=False, editable=True, deleteable=True, jailed=True, item_check=None)
 # UI V2 CODE
 #==================================================================#
 @app.route('/ai_text')
@@ -6698,6 +7343,2663 @@ def show_vars():
     
 
 #==================================================================#
+class EmptySchema(KoboldSchema):
+    pass
+
+class BasicTextResultInnerSchema(KoboldSchema):
+    text: str = fields.String(required=True)
+
+class BasicTextResultSchema(KoboldSchema):
+    result: BasicTextResultInnerSchema = fields.Nested(BasicTextResultInnerSchema)
+
+class BasicResultInnerSchema(KoboldSchema):
+    result: str = fields.String(required=True)
+
+class BasicResultSchema(KoboldSchema):
+    result: BasicResultInnerSchema = fields.Nested(BasicResultInnerSchema, required=True)
+
+class BasicResultsSchema(KoboldSchema):
+    results: BasicResultInnerSchema = fields.List(fields.Nested(BasicResultInnerSchema), required=True)
+
+class BasicStringSchema(KoboldSchema):
+    value: str = fields.String(required=True)
+
+class BasicBooleanSchema(KoboldSchema):
+    value: bool = fields.Boolean(required=True)
+
+class BasicUIDSchema(KoboldSchema):
+    uid: str = fields.Integer(required=True, validate=validate.Range(min=-2147483648, max=2147483647), metadata={"description": "32-bit signed integer unique to this world info entry/folder."})
+
+class BasicErrorSchema(KoboldSchema):
+    msg: str = fields.String(required=True)
+    type: str = fields.String(required=True)
+
+class StoryEmptyErrorSchema(KoboldSchema):
+    detail: BasicErrorSchema = fields.Nested(BasicErrorSchema, required=True)
+
+class StoryTooShortErrorSchema(KoboldSchema):
+    detail: BasicErrorSchema = fields.Nested(BasicErrorSchema, required=True)
+
+class OutOfMemoryErrorSchema(KoboldSchema):
+    detail: BasicErrorSchema = fields.Nested(BasicErrorSchema, required=True)
+
+class NotFoundErrorSchema(KoboldSchema):
+    detail: BasicErrorSchema = fields.Nested(BasicErrorSchema, required=True)
+
+api_out_of_memory_response = """507:
+          description: Out of memory
+          content:
+            application/json:
+              schema: OutOfMemoryErrorSchema
+              examples:
+                gpu.cuda:
+                  value:
+                    detail:
+                      msg: "KoboldAI ran out of memory: CUDA out of memory. Tried to allocate 20.00 MiB (GPU 0; 4.00 GiB total capacity; 2.97 GiB already allocated; 0 bytes free; 2.99 GiB reserved in total by PyTorch)"
+                      type: out_of_memory.gpu.cuda
+                gpu.hip:
+                  value:
+                    detail:
+                      msg: "KoboldAI ran out of memory: HIP out of memory. Tried to allocate 20.00 MiB (GPU 0; 4.00 GiB total capacity; 2.97 GiB already allocated; 0 bytes free; 2.99 GiB reserved in total by PyTorch)"
+                      type: out_of_memory.gpu.hip
+                tpu.hbm:
+                  value:
+                    detail:
+                      msg: "KoboldAI ran out of memory: Compilation failed: Compilation failure: Ran out of memory in memory space hbm. Used 8.83G of 8.00G hbm. Exceeded hbm capacity by 848.88M."
+                      type: out_of_memory.tpu.hbm
+                cpu.default_cpu_allocator:
+                  value:
+                    detail:
+                      msg: "KoboldAI ran out of memory: DefaultCPUAllocator: not enough memory: you tried to allocate 209715200 bytes."
+                      type: out_of_memory.cpu.default_cpu_allocator
+                unknown.unknown:
+                  value:
+                    detail:
+                      msg: "KoboldAI ran out of memory."
+                      type: out_of_memory.unknown.unknown"""
+
+class ValidationErrorSchema(KoboldSchema):
+    detail: Dict[str, List[str]] = fields.Dict(keys=fields.String(), values=fields.List(fields.String(), validate=validate.Length(min=1)), required=True)
+
+api_validation_error_response = """422:
+          description: Validation error
+          content:
+            application/json:
+              schema: ValidationErrorSchema"""
+
+class ServerBusyErrorSchema(KoboldSchema):
+    detail: BasicErrorSchema = fields.Nested(BasicErrorSchema, required=True)
+
+api_server_busy_response = """503:
+          description: Server is busy
+          content:
+            application/json:
+              schema: ServerBusyErrorSchema
+              example:
+                detail:
+                  msg: Server is busy; please try again later.
+                  type: service_unavailable"""
+
+class NotImplementedErrorSchema(KoboldSchema):
+    detail: BasicErrorSchema = fields.Nested(BasicErrorSchema, required=True)
+
+api_not_implemented_response = """501:
+          description: Not implemented
+          content:
+            application/json:
+              schema: NotImplementedErrorSchema
+              example:
+                detail:
+                  msg: API generation is not supported in read-only mode; please load a model and then try again.
+                  type: not_implemented"""
+
+class SamplerSettingsSchema(KoboldSchema):
+    rep_pen: Optional[float] = fields.Float(validate=validate.Range(min=1), metadata={"description": "Base repetition penalty value."})
+    rep_pen_range: Optional[int] = fields.Integer(validate=validate.Range(min=0), metadata={"description": "Repetition penalty range."})
+    rep_pen_slope: Optional[float] = fields.Float(validate=validate.Range(min=0), metadata={"description": "Repetition penalty slope."})
+    top_k: Optional[int] = fields.Integer(validate=validate.Range(min=0), metadata={"description": "Top-k sampling value."})
+    top_a: Optional[float] = fields.Float(validate=validate.Range(min=0), metadata={"description": "Top-a sampling value."})
+    top_p: Optional[float] = fields.Float(validate=validate.Range(min=0, max=1), metadata={"description": "Top-p sampling value."})
+    tfs: Optional[float] = fields.Float(validate=validate.Range(min=0, max=1), metadata={"description": "Tail free sampling value."})
+    typical: Optional[float] = fields.Float(validate=validate.Range(min=0, max=1), metadata={"description": "Typical sampling value."})
+    temperature: Optional[float] = fields.Float(validate=validate.Range(min=0, min_inclusive=False), metadata={"description": "Temperature value."})
+
+def soft_prompt_validator(soft_prompt: str):
+    if len(soft_prompt.strip()) == 0:
+        return
+    if not koboldai_vars.allowsp:
+        raise ValidationError("Cannot use soft prompts with current backend.")
+    if any(q in soft_prompt for q in ("/", "\\")):
+        return
+    z, _, _, _, _ = fileops.checksp(soft_prompt.strip(), koboldai_vars.modeldim)
+    if isinstance(z, int):
+        raise ValidationError("Must be a valid soft prompt name.")
+    z.close()
+    return True
+
+def story_load_validator(name: str):
+    if any(q in name for q in ("/", "\\")):
+        return
+    if len(name.strip()) == 0 or not os.path.isfile(fileops.storypath(name)):
+        raise ValidationError("Must be a valid story name.")
+    return True
+
+class GenerationInputSchema(SamplerSettingsSchema):
+    prompt: str = fields.String(required=True, metadata={"description": "This is the submission."})
+    use_memory: bool = fields.Boolean(load_default=False, metadata={"description": "Whether or not to use the memory from the KoboldAI GUI when generating text."})
+    use_story: bool = fields.Boolean(load_default=False, metadata={"description": "Whether or not to use the story from the KoboldAI GUI when generating text."})
+    use_authors_note: bool = fields.Boolean(load_default=False, metadata={"description": "Whether or not to use the author's note from the KoboldAI GUI when generating text. This has no effect unless `use_story` is also enabled."})
+    use_world_info: bool = fields.Boolean(load_default=False, metadata={"description": "Whether or not to use the world info from the KoboldAI GUI when generating text."})
+    use_userscripts: bool = fields.Boolean(load_default=False, metadata={"description": "Whether or not to use the userscripts from the KoboldAI GUI when generating text."})
+    soft_prompt: Optional[str] = fields.String(metadata={"description": "Soft prompt to use when generating. If set to the empty string or any other string containing no non-whitespace characters, uses no soft prompt."}, validate=[soft_prompt_validator, validate.Regexp(r"^[^/\\]*$")])
+    max_length: int = fields.Integer(validate=validate.Range(min=1, max=512), metadata={"description": "Number of tokens to generate."})
+    max_context_length: int = fields.Integer(validate=validate.Range(min=512, max=2048), metadata={"description": "Maximum number of tokens to send to the model."})
+    n: int = fields.Integer(validate=validate.Range(min=1, max=5), metadata={"description": "Number of outputs to generate."})
+    disable_output_formatting: bool = fields.Boolean(load_default=True, metadata={"description": "When enabled, all output formatting options default to `false` instead of the value in the KoboldAI GUI."})
+    frmttriminc: Optional[bool] = fields.Boolean(metadata={"description": "Output formatting option. When enabled, removes some characters from the end of the output such that the output doesn't end in the middle of a sentence. If the output is less than one sentence long, does nothing.\n\nIf `disable_output_formatting` is `true`, this defaults to `false` instead of the value in the KoboldAI GUI."})
+    frmtrmblln: Optional[bool] = fields.Boolean(metadata={"description": "Output formatting option. When enabled, replaces all occurrences of two or more consecutive newlines in the output with one newline.\n\nIf `disable_output_formatting` is `true`, this defaults to `false` instead of the value in the KoboldAI GUI."})
+    frmtrmspch: Optional[bool] = fields.Boolean(metadata={"description": "Output formatting option. When enabled, removes `#/@%{}+=~|\^<>` from the output.\n\nIf `disable_output_formatting` is `true`, this defaults to `false` instead of the value in the KoboldAI GUI."})
+    singleline: Optional[bool] = fields.Boolean(metadata={"description": "Output formatting option. When enabled, removes everything after the first line of the output, including the newline.\n\nIf `disable_output_formatting` is `true`, this defaults to `false` instead of the value in the KoboldAI GUI."})
+    disable_input_formatting: bool = fields.Boolean(load_default=True, metadata={"description": "When enabled, all input formatting options default to `false` instead of the value in the KoboldAI GUI"})
+    frmtadsnsp: Optional[bool] = fields.Boolean(metadata={"description": "Input formatting option. When enabled, adds a leading space to your input if there is no trailing whitespace at the end of the previous action.\n\nIf `disable_input_formatting` is `true`, this defaults to `false` instead of the value in the KoboldAI GUI."})
+
+class GenerationResultSchema(KoboldSchema):
+    text: str = fields.String(required=True, metadata={"description": "Generated output as plain text."})
+
+class GenerationOutputSchema(KoboldSchema):
+    results: List[GenerationResultSchema] = fields.List(fields.Nested(GenerationResultSchema), required=True, metadata={"description": "Array of generated outputs."})
+
+class StoryNumsChunkSchema(KoboldSchema):
+    num: int = fields.Integer(required=True, metadata={"description": "Guaranteed to not equal the `num` of any other active story chunk. Equals 0 iff this is the first action of the story (the prompt)."})
+
+class StoryChunkSchema(StoryNumsChunkSchema, KoboldSchema):
+    text: str = fields.String(required=True, metadata={"description": "The text inside this story chunk."})
+
+class StorySchema(KoboldSchema):
+    results: List[StoryChunkSchema] = fields.List(fields.Nested(StoryChunkSchema), required=True, metadata={"description": "Array of story actions. The array is sorted such that actions closer to the end of this array are closer to the end of the story."})
+
+class BasicBooleanSchema(KoboldSchema):
+    result: bool = fields.Boolean(required=True)
+
+class StoryNumsSchema(KoboldSchema):
+    results: List[int] = fields.List(fields.Integer(), required=True, metadata={"description": "Array of story action nums. The array is sorted such that actions closer to the end of this array are closer to the end of the story."})
+
+class StoryChunkResultSchema(KoboldSchema):
+    result: StoryChunkSchema = fields.Nested(StoryChunkSchema, required=True)
+
+class StoryChunkNumSchema(KoboldSchema):
+    value: int = fields.Integer(required=True)
+
+class StoryChunkTextSchema(KoboldSchema):
+    value: str = fields.String(required=True)
+
+class StoryChunkSetTextSchema(KoboldSchema):
+    value: str = fields.String(required=True, validate=validate.Regexp(r"^(.|\n)*\S$"))
+
+class StoryLoadSchema(KoboldSchema):
+    name: str = fields.String(required=True, validate=[story_load_validator, validate.Regexp(r"^[^/\\]*$")])
+
+class StorySaveSchema(KoboldSchema):
+    name: str = fields.String(required=True, validate=validate.Regexp(r"^(?=.*\S)(?!.*[/\\]).*$"))
+
+class WorldInfoEntrySchema(KoboldSchema):
+    uid: int = fields.Integer(required=True, validate=validate.Range(min=-2147483648, max=2147483647), metadata={"description": "32-bit signed integer unique to this world info entry."})
+    content: str = fields.String(required=True, metadata={"description": "The \"What To Remember\" for this entry."})
+    key: str = fields.String(required=True, metadata={"description": "Comma-separated list of keys, or of primary keys if selective mode is enabled."})
+    keysecondary: str = fields.String(metadata={"description": "Comma-separated list of secondary keys if selective mode is enabled."})
+    selective: bool = fields.Boolean(required=True, metadata={"description": "Whether or not selective mode is enabled for this world info entry."})
+    constant: bool = fields.Boolean(required=True, metadata={"description": "Whether or not constant mode is enabled for this world info entry."})
+    comment: bool = fields.String(required=True, metadata={"description": "The comment/description/title for this world info entry."})
+
+class WorldInfoEntryResultSchema(KoboldSchema):
+    result: WorldInfoEntrySchema = fields.Nested(WorldInfoEntrySchema, required=True)
+
+class WorldInfoFolderBasicSchema(KoboldSchema):
+    uid: int = fields.Integer(required=True, validate=validate.Range(min=-2147483648, max=2147483647), metadata={"description": "32-bit signed integer unique to this world info folder."})
+    name: str = fields.String(required=True, metadata={"description": "Name of this world info folder."})
+
+class WorldInfoFolderSchema(WorldInfoFolderBasicSchema):
+    entries: List[WorldInfoEntrySchema] = fields.List(fields.Nested(WorldInfoEntrySchema), required=True)
+
+class WorldInfoFolderUIDsSchema(KoboldSchema):
+    uid: int = fields.Integer(required=True, validate=validate.Range(min=-2147483648, max=2147483647), metadata={"description": "32-bit signed integer unique to this world info folder."})
+    entries: List[int] = fields.List(fields.Integer(required=True, validate=validate.Range(min=-2147483648, max=2147483647), metadata={"description": "32-bit signed integer unique to this world info entry."}), required=True)
+
+class WorldInfoEntriesSchema(KoboldSchema):
+    entries: List[WorldInfoEntrySchema] = fields.List(fields.Nested(WorldInfoEntrySchema), required=True)
+
+class WorldInfoFoldersSchema(KoboldSchema):
+    folders: List[WorldInfoFolderBasicSchema] = fields.List(fields.Nested(WorldInfoFolderBasicSchema), required=True)
+
+class WorldInfoSchema(WorldInfoEntriesSchema):
+    folders: List[WorldInfoFolderSchema] = fields.List(fields.Nested(WorldInfoFolderSchema), required=True)
+
+class WorldInfoEntriesUIDsSchema(KoboldSchema):
+    entries: List[int] = fields.List(fields.Integer(required=True, validate=validate.Range(min=-2147483648, max=2147483647), metadata={"description": "32-bit signed integer unique to this world info entry."}), required=True)
+
+class WorldInfoFoldersUIDsSchema(KoboldSchema):
+    folders: List[int] = fields.List(fields.Integer(required=True, validate=validate.Range(min=-2147483648, max=2147483647), metadata={"description": "32-bit signed integer unique to this world info folder."}), required=True)
+
+class WorldInfoUIDsSchema(WorldInfoEntriesUIDsSchema):
+    folders: List[WorldInfoFolderSchema] = fields.List(fields.Nested(WorldInfoFolderUIDsSchema), required=True)
+
+def _generate_text(body: GenerationInputSchema):
+    if koboldai_vars.aibusy or koboldai_vars.genseqs:
+        abort(Response(json.dumps({"detail": {
+            "msg": "Server is busy; please try again later.",
+            "type": "service_unavailable",
+        }}), mimetype="application/json", status=503))
+    mapping = {
+        "disable_input_formatting": ("koboldai_vars", "disable_input_formatting", None),
+        "disable_output_formatting": ("koboldai_vars", "disable_output_formatting", None),
+        "rep_pen": ("koboldai_vars", "rep_pen", None),
+        "rep_pen_range": ("koboldai_vars", "rep_pen_range", None),
+        "rep_pen_slope": ("koboldai_vars", "rep_pen_slope", None),
+        "top_k": ("koboldai_vars", "top_k", None),
+        "top_a": ("koboldai_vars", "top_a", None),
+        "top_p": ("koboldai_vars", "top_p", None),
+        "tfs": ("koboldai_vars", "tfs", None),
+        "typical": ("koboldai_vars", "typical", None),
+        "temperature": ("koboldai_vars", "temp", None),
+        "frmtadsnsp": ("koboldai_vars.formatoptns", "@frmtadsnsp", "input"),
+        "frmttriminc": ("koboldai_vars.formatoptns", "@frmttriminc", "output"),
+        "frmtrmblln": ("koboldai_vars.formatoptns", "@frmtrmblln", "output"),
+        "frmtrmspch": ("koboldai_vars.formatoptns", "@frmtrmspch", "output"),
+        "singleline": ("koboldai_vars.formatoptns", "@singleline", "output"),
+        "max_length": ("koboldai_vars", "genamt", None),
+        "max_context_length": ("koboldai_vars", "max_length", None),
+        "n": ("koboldai_vars", "numseqs", None),
+    }
+    saved_settings = {}
+    set_aibusy(1)
+    disable_set_aibusy = koboldai_vars.disable_set_aibusy
+    koboldai_vars.disable_set_aibusy = True
+    _standalone = koboldai_vars.standalone
+    koboldai_vars.standalone = True
+    show_probs = koboldai_vars.show_probs
+    koboldai_vars.show_probs = False
+    output_streaming = koboldai_vars.output_streaming
+    koboldai_vars.output_streaming = False
+    for key, entry in mapping.items():
+        obj = {"koboldai_vars": koboldai_vars, "koboldai_vars.formatoptns": koboldai_vars.formatoptns}[entry[0]]
+        if entry[2] == "input" and koboldai_vars.disable_input_formatting and not hasattr(body, key):
+            setattr(body, key, False)
+        if entry[2] == "output" and koboldai_vars.disable_output_formatting and not hasattr(body, key):
+            setattr(body, key, False)
+        if getattr(body, key, None) is not None:
+            if entry[1].startswith("@"):
+                saved_settings[key] = obj[entry[1][1:]]
+                obj[entry[1][1:]] = getattr(body, key)
+            else:
+                saved_settings[key] = getattr(obj, entry[1])
+                setattr(obj, entry[1], getattr(body, key))
+    try:
+        if koboldai_vars.allowsp and getattr(body, "soft_prompt", None) is not None:
+            if any(q in body.soft_prompt for q in ("/", "\\")):
+                raise RuntimeError
+            old_spfilename = koboldai_vars.spfilename
+            spRequest(body.soft_prompt.strip())
+        genout = apiactionsubmit(body.prompt, use_memory=body.use_memory, use_story=body.use_story, use_world_info=body.use_world_info, use_authors_note=body.use_authors_note)
+        output = {"results": [{"text": txt} for txt in genout]}
+    finally:
+        for key in saved_settings:
+            entry = mapping[key]
+            obj = {"koboldai_vars": koboldai_vars, "koboldai_vars.formatoptns": koboldai_vars.formatoptns}[entry[0]]
+            if getattr(body, key, None) is not None:
+                if entry[1].startswith("@"):
+                    if obj[entry[1][1:]] == getattr(body, key):
+                        obj[entry[1][1:]] = saved_settings[key]
+                else:
+                    if getattr(obj, entry[1]) == getattr(body, key):
+                        setattr(obj, entry[1], saved_settings[key])
+        koboldai_vars.disable_set_aibusy = disable_set_aibusy
+        koboldai_vars.standalone = _standalone
+        koboldai_vars.show_probs = show_probs
+        koboldai_vars.output_streaming = output_streaming
+        if koboldai_vars.allowsp and getattr(body, "soft_prompt", None) is not None:
+            spRequest(old_spfilename)
+        set_aibusy(0)
+    return output
+
+
+@api_v1.get("/info/version")
+@api_schema_wrap
+def get_version():
+    """---
+    get:
+      summary: Current API version
+      tags:
+        - info
+      description: |-2
+        Returns the version of the API that you are currently using.
+      responses:
+        200:
+          description: Successful request
+          content:
+            application/json:
+              schema: BasicResultSchema
+              example:
+                result: 1.0.0
+    """
+    return {"result": api_version}
+
+
+@api_v1.get("/info/version/latest")
+@api_schema_wrap
+def get_version_latest():
+    """---
+    get:
+      summary: Latest API version
+      tags:
+        - info
+      description: |-2
+        Returns the latest API version available.
+      responses:
+        200:
+          description: Successful request
+          content:
+            application/json:
+              schema: BasicResultSchema
+              example:
+                result: 1.0.0
+    """
+    return {"result": api_versions[-1]}
+
+
+@api_v1.get("/info/version/list")
+@api_schema_wrap
+def get_version_list():
+    """---
+    get:
+      summary: List API versions
+      tags:
+        - info
+      description: |-2
+        Returns a list of available API versions sorted in ascending order.
+      responses:
+        200:
+          description: Successful request
+          content:
+            application/json:
+              schema: BasicResultsSchema
+              example:
+                results:
+                  - 1.0.0
+    """
+    return {"results": api_versions}
+
+
+@api_v1.post("/generate")
+@api_schema_wrap
+def post_generate(body: GenerationInputSchema):
+    """---
+    post:
+      summary: Generate text
+      tags:
+        - generate
+      description: |-2
+        Generates text given a submission, sampler settings, soft prompt and number of return sequences.
+
+        By default, the story, userscripts, memory, author's note and world info are disabled.
+
+        Unless otherwise specified, optional values default to the values in the KoboldAI GUI.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: GenerationInputSchema
+            example:
+              prompt: |-2
+                Explosions of suspicious origin occur at AMNAT satellite-receiver stations from Turkey to Labrador as three high-level Canadian defense ministers vanish and then a couple of days later are photographed at a Volgograd bistro hoisting shots of Stolichnaya with Slavic bimbos on their knee.
+              top_p: 0.9
+              temperature: 0.5
+      responses:
+        200:
+          description: Successful request
+          content:
+            application/json:
+              schema: GenerationOutputSchema
+              example:
+                results:
+                  - text: |-2
+                       It is later established that all of the cabinet members have died of old age.
+                      MEGAMATRIX becomes involved in the growing number of mass abductions and kidnappings. Many disappearances occur along highways in western Canada, usually when traffic has come to a standstill because of a stalled truck or snowstorm. One or two abducted individuals will be released within a day or so but never
+        {api_validation_error_response}
+        {api_not_implemented_response}
+        {api_server_busy_response}
+        {api_out_of_memory_response}
+    """
+    return _generate_text(body)
+
+
+@api_v1.get("/model")
+@api_schema_wrap
+def get_model():
+    """---
+    get:
+      summary: Retrieve the current model string
+      description: |-2
+        Gets the current model string, which is shown in the title of the KoboldAI GUI in parentheses, e.g. "KoboldAI Client (KoboldAI/fairseq-dense-13B-Nerys-v2)".
+      tags:
+        - model
+      responses:
+        200:
+          description: Successful request
+          content:
+            application/json:
+              schema: BasicResultSchema
+              example:
+                result: KoboldAI/fairseq-dense-13B-Nerys-v2
+    """
+    return {"result": koboldai_vars.model}
+
+
+def prompt_validator(prompt: str):
+    if len(prompt.strip()) == 0:
+        raise ValidationError("String does not match expected pattern.")
+
+class SubmissionInputSchema(KoboldSchema):
+    prompt: str = fields.String(required=True, validate=prompt_validator, metadata={"pattern": r"^.*\S.*$", "description": "This is the submission."})
+    disable_input_formatting: bool = fields.Boolean(load_default=True, metadata={"description": "When enabled, disables all input formatting options, overriding their individual enabled/disabled states."})
+    frmtadsnsp: Optional[bool] = fields.Boolean(metadata={"description": "Input formatting option. When enabled, adds a leading space to your input if there is no trailing whitespace at the end of the previous action."})
+
+@api_v1.post("/story/end")
+@api_schema_wrap
+def post_story_end(body: SubmissionInputSchema):
+    """---
+    post:
+      summary: Add an action to the end of the story
+      tags:
+        - story
+      description: |-2
+        Inserts a single action at the end of the story in the KoboldAI GUI without generating text.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: SubmissionInputSchema
+            example:
+              prompt: |-2
+                 This is some text to put at the end of the story.
+      responses:
+        200:
+          description: Successful request
+          content:
+            application/json:
+              schema: EmptySchema
+        {api_validation_error_response}
+        {api_server_busy_response}
+    """
+    if koboldai_vars.aibusy or koboldai_vars.genseqs:
+        abort(Response(json.dumps({"detail": {
+            "msg": "Server is busy; please try again later.",
+            "type": "service_unavailable",
+        }}), mimetype="application/json", status=503))
+    set_aibusy(1)
+    disable_set_aibusy = koboldai_vars.disable_set_aibusy
+    koboldai_vars.disable_set_aibusy = True
+    _standalone = koboldai_vars.standalone
+    koboldai_vars.standalone = True
+    numseqs = koboldai_vars.numseqs
+    koboldai_vars.numseqs = 1
+    try:
+        actionsubmit(body.prompt, force_submit=True, no_generate=True)
+    finally:
+        koboldai_vars.disable_set_aibusy = disable_set_aibusy
+        koboldai_vars.standalone = _standalone
+        koboldai_vars.numseqs = numseqs
+    set_aibusy(0)
+    return {}
+
+
+@api_v1.get("/story/end")
+@api_schema_wrap
+def get_story_end():
+    """---
+    get:
+      summary: Retrieve the last action of the story
+      tags:
+        - story
+      description: |-2
+        Returns the last action of the story in the KoboldAI GUI.
+      responses:
+        200:
+          description: Successful request
+          content:
+            application/json:
+              schema: StoryChunkResultSchema
+        510:
+          description: Story is empty
+          content:
+            application/json:
+              schema: StoryEmptyErrorSchema
+              example:
+                detail:
+                  msg: Could not retrieve the last action of the story because the story is empty.
+                  type: story_empty
+    """
+    if not koboldai_vars.gamestarted:
+        abort(Response(json.dumps({"detail": {
+            "msg": "Could not retrieve the last action of the story because the story is empty.",
+            "type": "story_empty",
+        }}), mimetype="application/json", status=510))
+    if len(koboldai_vars.actions) == 0:
+        return {"result": {"text": koboldai_vars.prompt, "num": 0}}
+    return {"result": {"text": koboldai_vars.actions[koboldai_vars.actions.get_last_key()], "num": koboldai_vars.actions.get_last_key() + 1}}
+
+
+@api_v1.get("/story/end/num")
+@api_schema_wrap
+def get_story_end_num():
+    """---
+    get:
+      summary: Retrieve the num of the last action of the story
+      tags:
+        - story
+      description: |-2
+        Returns the `num` of the last action of the story in the KoboldAI GUI.
+      responses:
+        200:
+          description: Successful request
+          content:
+            application/json:
+              schema: StoryChunkNumSchema
+        510:
+          description: Story is empty
+          content:
+            application/json:
+              schema: StoryEmptyErrorSchema
+              example:
+                detail:
+                  msg: Could not retrieve the last action of the story because the story is empty.
+                  type: story_empty
+    """
+    if not koboldai_vars.gamestarted:
+        abort(Response(json.dumps({"detail": {
+            "msg": "Could not retrieve the last action of the story because the story is empty.",
+            "type": "story_empty",
+        }}), mimetype="application/json", status=510))
+    if len(koboldai_vars.actions) == 0:
+        return {"result": {"text": 0}}
+    return {"result": {"text": koboldai_vars.actions.get_last_key() + 1}}
+
+
+@api_v1.get("/story/end/text")
+@api_schema_wrap
+def get_story_end_text():
+    """---
+    get:
+      summary: Retrieve the text of the last action of the story
+      tags:
+        - story
+      description: |-2
+        Returns the text of the last action of the story in the KoboldAI GUI.
+      responses:
+        200:
+          description: Successful request
+          content:
+            application/json:
+              schema: StoryChunkTextSchema
+        510:
+          description: Story is empty
+          content:
+            application/json:
+              schema: StoryEmptyErrorSchema
+              example:
+                detail:
+                  msg: Could not retrieve the last action of the story because the story is empty.
+                  type: story_empty
+    """
+    if not koboldai_vars.gamestarted:
+        abort(Response(json.dumps({"detail": {
+            "msg": "Could not retrieve the last action of the story because the story is empty.",
+            "type": "story_empty",
+        }}), mimetype="application/json", status=510))
+    if len(koboldai_vars.actions) == 0:
+        return {"result": {"text": koboldai_vars.prompt}}
+    return {"result": {"text": koboldai_vars.actions[koboldai_vars.actions.get_last_key()]}}
+
+
+@api_v1.put("/story/end/text")
+@api_schema_wrap
+def put_story_end_text(body: StoryChunkSetTextSchema):
+    """---
+    put:
+      summary: Set the text of the last action of the story
+      tags:
+        - story
+      description: |-2
+        Sets the text of the last action of the story in the KoboldAI GUI to the desired value.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: StoryChunkSetTextSchema
+            example:
+              value: string
+      responses:
+        200:
+          description: Successful request
+          content:
+            application/json:
+              schema: EmptySchema
+        510:
+          description: Story is empty
+          content:
+            application/json:
+              schema: StoryEmptyErrorSchema
+              example:
+                detail:
+                  msg: Could not retrieve the last action of the story because the story is empty.
+                  type: story_empty
+        {api_validation_error_response}
+    """
+    if not koboldai_vars.gamestarted:
+        abort(Response(json.dumps({"detail": {
+            "msg": "Could not retrieve the last action of the story because the story is empty.",
+            "type": "story_empty",
+        }}), mimetype="application/json", status=510))
+    value = body.value.rstrip()
+    if len(koboldai_vars.actions) == 0:
+        inlineedit(0, value)
+    else:
+        inlineedit(koboldai_vars.actions.get_last_key() + 1, value)
+    return {}
+
+
+@api_v1.post("/story/end/delete")
+@api_schema_wrap
+def post_story_end_delete(body: EmptySchema):
+    """---
+    post:
+      summary: Remove the last action of the story
+      tags:
+        - story
+      description: |-2
+        Removes the last action of the story in the KoboldAI GUI.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: EmptySchema
+      responses:
+        200:
+          description: Successful request
+          content:
+            application/json:
+              schema: EmptySchema
+        510:
+          description: Story too short
+          content:
+            application/json:
+              schema: StoryTooShortErrorSchema
+              example:
+                detail:
+                  msg: Could not delete the last action of the story because the number of actions in the story is less than or equal to 1.
+                  type: story_too_short
+        {api_validation_error_response}
+        {api_server_busy_response}
+    """
+    if koboldai_vars.aibusy or koboldai_vars.genseqs:
+        abort(Response(json.dumps({"detail": {
+            "msg": "Server is busy; please try again later.",
+            "type": "service_unavailable",
+        }}), mimetype="application/json", status=503))
+    if not koboldai_vars.gamestarted or not len(koboldai_vars.actions):
+        abort(Response(json.dumps({"detail": {
+            "msg": "Could not delete the last action of the story because the number of actions in the story is less than or equal to 1.",
+            "type": "story_too_short",
+        }}), mimetype="application/json", status=510))
+    actionback()
+    return {}
+
+
+@api_v1.get("/story")
+@api_schema_wrap
+def get_story():
+    """---
+    get:
+      summary: Retrieve the entire story
+      tags:
+        - story
+      description: |-2
+        Returns the entire story currently shown in the KoboldAI GUI.
+      responses:
+        200:
+          description: Successful request
+          content:
+            application/json:
+              schema: StorySchema
+    """
+    chunks = []
+    if koboldai_vars.gamestarted:
+        chunks.append({"num": 0, "text": koboldai_vars.prompt})
+    for num, action in koboldai_vars.actions.items():
+        chunks.append({"num": num + 1, "text": action})
+    return {"results": chunks}
+
+
+@api_v1.get("/story/nums")
+@api_schema_wrap
+def get_story_nums():
+    """---
+    get:
+      summary: Retrieve a list of the nums of the chunks in the current story
+      tags:
+        - story
+      description: |-2
+        Returns the `num`s of the story chunks currently shown in the KoboldAI GUI.
+      responses:
+        200:
+          description: Successful request
+          content:
+            application/json:
+              schema: StorySchema
+    """
+    chunks = []
+    if koboldai_vars.gamestarted:
+        chunks.append(0)
+    for num in koboldai_vars.actions.keys():
+        chunks.append(num + 1)
+    return {"results": chunks}
+
+
+@api_v1.get("/story/nums/<int(signed=True):num>")
+@api_schema_wrap
+def get_story_nums_num(num: int):
+    """---
+    get:
+      summary: Determine whether or not there is a story chunk with the given num
+      tags:
+        - story
+      parameters:
+        - name: num
+          in: path
+          description: |-2
+            `num` of the desired story chunk.
+          schema:
+            type: integer
+      responses:
+        200:
+          description: Successful request
+          content:
+            application/json:
+              schema: BasicBooleanSchema
+    """
+    if num == 0:
+        return {"result": koboldai_vars.gamestarted}
+    return {"result": num - 1 in koboldai_vars.actions}
+
+
+@api_v1.get("/story/<int(signed=True):num>")
+@api_schema_wrap
+def get_story_num(num: int):
+    """---
+    get:
+      summary: Retrieve a story chunk
+      tags:
+        - story
+      description: |-2
+        Returns information about a story chunk given its `num`.
+      parameters:
+        - name: num
+          in: path
+          description: |-2
+            `num` of the desired story chunk.
+          schema:
+            type: integer
+      responses:
+        200:
+          description: Successful request
+          content:
+            application/json:
+              schema: StoryChunkResultSchema
+        404:
+          description: Not found
+          content:
+            application/json:
+              schema: NotFoundErrorSchema
+              example:
+                detail:
+                  msg: No chunk with the given num exists.
+                  type: key_error
+    """
+    if num == 0:
+        if not koboldai_vars.gamestarted:
+            abort(Response(json.dumps({"detail": {
+                "msg": "No chunk with the given num exists.",
+                "type": "key_error",
+            }}), mimetype="application/json", status=404))
+        return {"result": {"text": koboldai_vars.prompt, "num": num}}
+    if num - 1 not in koboldai_vars.actions:
+        abort(Response(json.dumps({"detail": {
+            "msg": "No chunk with the given num exists.",
+            "type": "key_error",
+        }}), mimetype="application/json", status=404))
+    return {"result": {"text": koboldai_vars.actions[num - 1], "num": num}}
+
+
+@api_v1.get("/story/<int(signed=True):num>/text")
+@api_schema_wrap
+def get_story_num_text(num: int):
+    """---
+    get:
+      summary: Retrieve the text of a story chunk
+      tags:
+        - story
+      description: |-2
+        Returns the text inside a story chunk given its `num`.
+      parameters:
+        - name: num
+          in: path
+          description: |-2
+            `num` of the desired story chunk.
+          schema:
+            type: integer
+      responses:
+        200:
+          description: Successful request
+          content:
+            application/json:
+              schema: StoryChunkTextSchema
+        404:
+          description: Not found
+          content:
+            application/json:
+              schema: NotFoundErrorSchema
+              example:
+                detail:
+                  msg: No chunk with the given num exists.
+                  type: key_error
+    """
+    if num == 0:
+        if not koboldai_vars.gamestarted:
+            abort(Response(json.dumps({"detail": {
+                "msg": "No chunk with the given num exists.",
+                "type": "key_error",
+            }}), mimetype="application/json", status=404))
+        return {"value": koboldai_vars.prompt}
+    if num - 1 not in koboldai_vars.actions:
+        abort(Response(json.dumps({"detail": {
+            "msg": "No chunk with the given num exists.",
+            "type": "key_error",
+        }}), mimetype="application/json", status=404))
+    return {"value": koboldai_vars.actions[num - 1]}
+
+
+@api_v1.put("/story/<int(signed=True):num>/text")
+@api_schema_wrap
+def put_story_num_text(body: StoryChunkSetTextSchema, num: int):
+    """---
+    put:
+      summary: Set the text of a story chunk
+      tags:
+        - story
+      description: |-2
+        Sets the text inside a story chunk given its `num`.
+      parameters:
+        - name: num
+          in: path
+          description: |-2
+            `num` of the desired story chunk.
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: StoryChunkSetTextSchema
+            example:
+              value: string
+      responses:
+        200:
+          description: Successful request
+          content:
+            application/json:
+              schema: EmptySchema
+        404:
+          description: Not found
+          content:
+            application/json:
+              schema: NotFoundErrorSchema
+              example:
+                detail:
+                  msg: No chunk with the given num exists.
+                  type: key_error
+        {api_validation_error_response}
+    """
+    if num == 0:
+        if not koboldai_vars.gamestarted:
+            abort(Response(json.dumps({"detail": {
+                "msg": "No chunk with the given num exists.",
+                "type": "key_error",
+            }}), mimetype="application/json", status=404))
+        inlineedit(0, body.value.rstrip())
+        return {}
+    if num - 1 not in koboldai_vars.actions:
+        abort(Response(json.dumps({"detail": {
+            "msg": "No chunk with the given num exists.",
+            "type": "key_error",
+        }}), mimetype="application/json", status=404))
+    inlineedit(num, body.value.rstrip())
+    return {}
+
+
+@api_v1.delete("/story/<int(signed=True):num>")
+@api_schema_wrap
+def post_story_num_delete(num: int):
+    """---
+    delete:
+      summary: Remove a story chunk
+      tags:
+        - story
+      description: |-2
+        Removes a story chunk from the story in the KoboldAI GUI given its `num`. Cannot be used to delete the first action (the prompt).
+      parameters:
+        - name: num
+          in: path
+          description: |-2
+            `num` of the desired story chunk. Must be larger than or equal to 1.
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        200:
+          description: Successful request
+          content:
+            application/json:
+              schema: EmptySchema
+        404:
+          description: Not found
+          content:
+            application/json:
+              schema: NotFoundErrorSchema
+              example:
+                detail:
+                  msg: No chunk with the given num exists.
+                  type: key_error
+        {api_server_busy_response}
+    """
+    if num < 1:
+        abort(Response(json.dumps({"detail": {
+            "num": ["Must be greater than or equal to 1."],
+        }}), mimetype="application/json", status=422))
+    if num - 1 not in koboldai_vars.actions:
+        abort(Response(json.dumps({"detail": {
+            "msg": "No chunk with the given num exists.",
+            "type": "key_error",
+        }}), mimetype="application/json", status=404))
+    if koboldai_vars.aibusy or koboldai_vars.genseqs:
+        abort(Response(json.dumps({"detail": {
+            "msg": "Server is busy; please try again later.",
+            "type": "service_unavailable",
+        }}), mimetype="application/json", status=503))
+    inlinedelete(num)
+    return {}
+
+
+@api_v1.delete("/story")
+@api_schema_wrap
+def delete_story():
+    """---
+    delete:
+      summary: Clear the story
+      tags:
+        - story
+      description: |-2
+        Starts a new blank story.
+      responses:
+        200:
+          description: Successful request
+          content:
+            application/json:
+              schema: EmptySchema
+        {api_server_busy_response}
+    """
+    if koboldai_vars.aibusy or koboldai_vars.genseqs:
+        abort(Response(json.dumps({"detail": {
+            "msg": "Server is busy; please try again later.",
+            "type": "service_unavailable",
+        }}), mimetype="application/json", status=503))
+    newGameRequest()
+    return {}
+
+
+@api_v1.put("/story/load")
+@api_schema_wrap
+def put_story_load(body: StoryLoadSchema):
+    """---
+    put:
+      summary: Load a story
+      tags:
+        - story
+      description: |-2
+        Loads a story given its filename (without the .json).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: StoryLoadSchema
+            example:
+              name: string
+      responses:
+        200:
+          description: Successful request
+          content:
+            application/json:
+              schema: EmptySchema
+        {api_validation_error_response}
+        {api_server_busy_response}
+    """
+    if koboldai_vars.aibusy or koboldai_vars.genseqs:
+        abort(Response(json.dumps({"detail": {
+            "msg": "Server is busy; please try again later.",
+            "type": "service_unavailable",
+        }}), mimetype="application/json", status=503))
+    loadRequest(fileops.storypath(body.name.strip()))
+    return {}
+
+
+@api_v1.put("/story/save")
+@api_schema_wrap
+def put_story_save(body: StorySaveSchema):
+    """---
+    put:
+      summary: Save the current story
+      tags:
+        - story
+      description: |-2
+        Saves the current story given its destination filename (without the .json).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: StorySaveSchema
+            example:
+              name: string
+      responses:
+        200:
+          description: Successful request
+          content:
+            application/json:
+              schema: EmptySchema
+        {api_validation_error_response}
+    """
+    saveRequest(fileops.storypath(body.name.strip()))
+    return {}
+
+
+@api_v1.get("/world_info")
+@api_schema_wrap
+def get_world_info():
+    """---
+    get:
+      summary: Retrieve all world info entries
+      tags:
+        - world_info
+      description: |-2
+        Returns all world info entries currently shown in the KoboldAI GUI.
+
+        The `folders` are sorted in the same order as they are in the GUI and the `entries` within the folders and within the parent `result` object are all sorted in the same order as they are in their respective parts of the GUI.
+      responses:
+        200:
+          description: Successful request
+          content:
+            application/json:
+              schema: WorldInfoSchema
+    """
+    folders = []
+    entries = []
+    ln = len(koboldai_vars.worldinfo)
+    stablesortwi()
+    koboldai_vars.worldinfo_i = [wi for wi in koboldai_vars.worldinfo if wi["init"]]
+    folder: Optional[list] = None
+    if ln:
+        last_folder = ...
+        for wi in koboldai_vars.worldinfo_i:
+            if wi["folder"] != last_folder:
+                folder = []
+                if wi["folder"] is not None:
+                    folders.append({"uid": wi["folder"], "name": koboldai_vars.wifolders_d[wi["folder"]]["name"], "entries": folder})
+                last_folder = wi["folder"]
+            (folder if wi["folder"] is not None else entries).append({k: v for k, v in wi.items() if k not in ("init", "folder", "num") and (wi["selective"] or k != "keysecondary")})
+    return {"folders": folders, "entries": entries}
+
+@api_v1.get("/world_info/uids")
+@api_schema_wrap
+def get_world_info_uids():
+    """---
+    get:
+      summary: Retrieve the UIDs of all world info entries
+      tags:
+        - world_info
+      description: |-2
+        Returns in a similar format as GET /world_info except only the `uid`s are returned.
+      responses:
+        200:
+          description: Successful request
+          content:
+            application/json:
+              schema: WorldInfoUIDsSchema
+    """
+    folders = []
+    entries = []
+    ln = len(koboldai_vars.worldinfo)
+    stablesortwi()
+    koboldai_vars.worldinfo_i = [wi for wi in koboldai_vars.worldinfo if wi["init"]]
+    folder: Optional[list] = None
+    if ln:
+        last_folder = ...
+        for wi in koboldai_vars.worldinfo_i:
+            if wi["folder"] != last_folder:
+                folder = []
+                if wi["folder"] is not None:
+                    folders.append({"uid": wi["folder"], "entries": folder})
+                last_folder = wi["folder"]
+            (folder if wi["folder"] is not None else entries).append(wi["uid"])
+    return {"folders": folders, "entries": entries}
+
+
+@api_v1.get("/world_info/uids/<int(signed=True):uid>")
+@api_schema_wrap
+def get_world_info_uids_uid(uid: int):
+    """---
+    get:
+      summary: Determine whether or not there is a world info entry with the given UID
+      tags:
+        - world_info
+      parameters:
+        - name: uid
+          in: path
+          description: |-2
+            `uid` of the desired world info entry.
+          schema:
+            type: integer
+            minimum: -2147483648
+            maximum: 2147483647
+      responses:
+        200:
+          description: Successful request
+          content:
+            application/json:
+              schema: BasicBooleanSchema
+    """
+    return {"result": uid in koboldai_vars.worldinfo_u and koboldai_vars.worldinfo_u[uid]["init"]}
+
+
+@api_v1.get("/world_info/folders")
+@api_schema_wrap
+def get_world_info_folders():
+    """---
+    get:
+      summary: Retrieve all world info folders
+      tags:
+        - world_info
+      description: |-2
+        Returns details about all world info folders currently shown in the KoboldAI GUI.
+
+        The `folders` are sorted in the same order as they are in the GUI.
+      responses:
+        200:
+          description: Successful request
+          content:
+            application/json:
+              schema: WorldInfoFoldersSchema
+    """
+    stablesortwi()
+    koboldai_vars.worldinfo_i = [wi for wi in koboldai_vars.worldinfo if wi["init"]]
+    return {"folders": [{"uid": folder, **{k: v for k, v in koboldai_vars.wifolders_d[folder].items() if k != "collapsed"}} for folder in koboldai_vars.wifolders_l]}
+
+
+@api_v1.get("/world_info/folders/uids")
+@api_schema_wrap
+def get_world_info_folders_uids():
+    """---
+    get:
+      summary: Retrieve the UIDs all world info folders
+      tags:
+        - world_info
+      description: |-2
+        Returns the `uid`s of all world info folders currently shown in the KoboldAI GUI.
+
+        The `folders` are sorted in the same order as they are in the GUI.
+      responses:
+        200:
+          description: Successful request
+          content:
+            application/json:
+              schema: WorldInfoFoldersUIDsSchema
+    """
+    stablesortwi()
+    koboldai_vars.worldinfo_i = [wi for wi in koboldai_vars.worldinfo if wi["init"]]
+    return {"folders": koboldai_vars.wifolders_l}
+
+
+@api_v1.get("/world_info/folders/none")
+@api_schema_wrap
+def get_world_info_folders_none():
+    """---
+    get:
+      summary: Retrieve all world info entries not in a folder
+      tags:
+        - world_info
+      description: |-2
+        Returns all world info entries that are not in a world info folder.
+
+        The `entries` are sorted in the same order as they are in the KoboldAI GUI.
+      responses:
+        200:
+          description: Successful request
+          content:
+            application/json:
+              schema: WorldInfoEntriesSchema
+    """
+    entries = []
+    stablesortwi()
+    koboldai_vars.worldinfo_i = [wi for wi in koboldai_vars.worldinfo if wi["init"]]
+    for wi in reversed(koboldai_vars.worldinfo_i):
+        if wi["folder"] is not None:
+            break
+        entries.append({k: v for k, v in wi.items() if k not in ("init", "folder", "num") and (wi["selective"] or k != "keysecondary")})
+    return {"entries": list(reversed(entries))}
+
+
+@api_v1.get("/world_info/folders/none/uids")
+@api_schema_wrap
+def get_world_info_folders_none_uids():
+    """---
+    get:
+      summary: Retrieve the UIDs of all world info entries not in a folder
+      tags:
+        - world_info
+      description: |-2
+        Returns the `uid`s of all world info entries that are not in a world info folder.
+
+        The `entries` are sorted in the same order as they are in the KoboldAI GUI.
+      responses:
+        200:
+          description: Successful request
+          content:
+            application/json:
+              schema: WorldInfoEntriesUIDsSchema
+    """
+    entries = []
+    stablesortwi()
+    koboldai_vars.worldinfo_i = [wi for wi in koboldai_vars.worldinfo if wi["init"]]
+    for wi in reversed(koboldai_vars.worldinfo_i):
+        if wi["folder"] is not None:
+            break
+        entries.append(wi["uid"])
+    return {"entries": list(reversed(entries))}
+
+
+@api_v1.get("/world_info/folders/none/uids/<int(signed=True):uid>")
+@api_schema_wrap
+def get_world_info_folders_none_uids_uid(uid: int):
+    """---
+    get:
+      summary: Determine whether or not there is a world info entry with the given UID that is not in a world info folder
+      tags:
+        - world_info
+      parameters:
+        - name: uid
+          in: path
+          description: |-2
+            `uid` of the desired world info entry.
+          schema:
+            type: integer
+            minimum: -2147483648
+            maximum: 2147483647
+      responses:
+        200:
+          description: Successful request
+          content:
+            application/json:
+              schema: BasicBooleanSchema
+    """
+    return {"result": uid in koboldai_vars.worldinfo_u and koboldai_vars.worldinfo_u[uid]["folder"] is None and koboldai_vars.worldinfo_u[uid]["init"]}
+
+
+@api_v1.get("/world_info/folders/<int(signed=True):uid>")
+@api_schema_wrap
+def get_world_info_folders_uid(uid: int):
+    """---
+    get:
+      summary: Retrieve all world info entries in the given folder
+      tags:
+        - world_info
+      parameters:
+        - name: uid
+          in: path
+          description: |-2
+            `uid` of the desired world info folder.
+          schema:
+            type: integer
+            minimum: -2147483648
+            maximum: 2147483647
+      description: |-2
+        Returns all world info entries that are in the world info folder with the given `uid`.
+
+        The `entries` are sorted in the same order as they are in the KoboldAI GUI.
+      responses:
+        200:
+          description: Successful request
+          content:
+            application/json:
+              schema: WorldInfoEntriesSchema
+        404:
+          description: Not found
+          content:
+            application/json:
+              schema: NotFoundErrorSchema
+              example:
+                detail:
+                  msg: No world info folder with the given uid exists.
+                  type: key_error
+    """
+    if uid not in koboldai_vars.wifolders_d:
+        abort(Response(json.dumps({"detail": {
+            "msg": "No world info folder with the given uid exists.",
+            "type": "key_error",
+        }}), mimetype="application/json", status=404))
+    entries = []
+    stablesortwi()
+    koboldai_vars.worldinfo_i = [wi for wi in koboldai_vars.worldinfo if wi["init"]]
+    for wi in koboldai_vars.wifolders_u[uid]:
+        if wi["init"]:
+            entries.append({k: v for k, v in wi.items() if k not in ("init", "folder", "num") and (wi["selective"] or k != "keysecondary")})
+    return {"entries": entries}
+
+
+@api_v1.get("/world_info/folders/<int(signed=True):uid>/uids")
+@api_schema_wrap
+def get_world_info_folders_uid_uids(uid: int):
+    """---
+    get:
+      summary: Retrieve the UIDs of all world info entries in the given folder
+      tags:
+        - world_info
+      parameters:
+        - name: uid
+          in: path
+          description: |-2
+            `uid` of the desired world info folder.
+          schema:
+            type: integer
+            minimum: -2147483648
+            maximum: 2147483647
+      description: |-2
+        Returns the `uid`s of all world info entries that are in the world info folder with the given `uid`.
+
+        The `entries` are sorted in the same order as they are in the KoboldAI GUI.
+      responses:
+        200:
+          description: Successful request
+          content:
+            application/json:
+              schema: WorldInfoEntriesUIDsSchema
+        404:
+          description: Not found
+          content:
+            application/json:
+              schema: NotFoundErrorSchema
+              example:
+                detail:
+                  msg: No world info folder with the given uid exists.
+                  type: key_error
+    """
+    if uid not in koboldai_vars.wifolders_d:
+        abort(Response(json.dumps({"detail": {
+            "msg": "No world info folder with the given uid exists.",
+            "type": "key_error",
+        }}), mimetype="application/json", status=404))
+    entries = []
+    stablesortwi()
+    koboldai_vars.worldinfo_i = [wi for wi in koboldai_vars.worldinfo if wi["init"]]
+    for wi in koboldai_vars.wifolders_u[uid]:
+        if wi["init"]:
+            entries.append(wi["uid"])
+    return {"entries": entries}
+
+
+@api_v1.get("/world_info/folders/<int(signed=True):folder_uid>/uids/<int(signed=True):entry_uid>")
+@api_schema_wrap
+def get_world_info_folders_folder_uid_uids_entry_uid(folder_uid: int, entry_uid: int):
+    """---
+    get:
+      summary: Determine whether or not there is a world info entry with the given UID in the world info folder with the given UID
+      tags:
+        - world_info
+      parameters:
+        - name: folder_uid
+          in: path
+          description: |-2
+            `uid` of the desired world info folder.
+          schema:
+            type: integer
+            minimum: -2147483648
+            maximum: 2147483647
+        - name: entry_uid
+          in: path
+          description: |-2
+            `uid` of the desired world info entry.
+          schema:
+            type: integer
+            minimum: -2147483648
+            maximum: 2147483647
+      responses:
+        200:
+          description: Successful request
+          content:
+            application/json:
+              schema: BasicBooleanSchema
+    """
+    return {"result": entry_uid in koboldai_vars.worldinfo_u and koboldai_vars.worldinfo_u[entry_uid]["folder"] == folder_uid and koboldai_vars.worldinfo_u[entry_uid]["init"]}
+
+
+@api_v1.get("/world_info/folders/<int(signed=True):uid>/name")
+@api_schema_wrap
+def get_world_info_folders_uid_name(uid: int):
+    """---
+    get:
+      summary: Retrieve the name of the world info folder with the given UID
+      tags:
+        - world_info
+      parameters:
+        - name: uid
+          in: path
+          description: |-2
+            `uid` of the desired world info folder.
+          schema:
+            type: integer
+            minimum: -2147483648
+            maximum: 2147483647
+      responses:
+        200:
+          description: Successful request
+          content:
+            application/json:
+              schema: BasicStringSchema
+        404:
+          description: Not found
+          content:
+            application/json:
+              schema: NotFoundErrorSchema
+              example:
+                detail:
+                  msg: No world info folder with the given uid exists.
+                  type: key_error
+    """
+    if uid not in koboldai_vars.wifolders_d:
+        abort(Response(json.dumps({"detail": {
+            "msg": "No world info folder with the given uid exists.",
+            "type": "key_error",
+        }}), mimetype="application/json", status=404))
+    return {"value": koboldai_vars.wifolders_d[uid]["name"]}
+
+
+@api_v1.put("/world_info/folders/<int(signed=True):uid>/name")
+@api_schema_wrap
+def put_world_info_folders_uid_name(body: BasicStringSchema, uid: int):
+    """---
+    put:
+      summary: Set the name of the world info folder with the given UID to the specified value
+      tags:
+        - world_info
+      parameters:
+        - name: uid
+          in: path
+          description: |-2
+            `uid` of the desired world info folder.
+          schema:
+            type: integer
+            minimum: -2147483648
+            maximum: 2147483647
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: BasicStringSchema
+            example:
+              value: string
+      responses:
+        200:
+          description: Successful request
+          content:
+            application/json:
+              schema: EmptySchema
+        404:
+          description: Not found
+          content:
+            application/json:
+              schema: NotFoundErrorSchema
+              example:
+                detail:
+                  msg: No world info folder with the given uid exists.
+                  type: key_error
+        {api_validation_error_response}
+    """
+    if uid not in koboldai_vars.wifolders_d:
+        abort(Response(json.dumps({"detail": {
+            "msg": "No world info folder with the given uid exists.",
+            "type": "key_error",
+        }}), mimetype="application/json", status=404))
+    koboldai_vars.wifolders_d[uid]["name"] = body.value
+    setgamesaved(False)
+    return {}
+
+
+@api_v1.get("/world_info/<int(signed=True):uid>")
+@api_schema_wrap
+def get_world_info_uid(uid: int):
+    """---
+    get:
+      summary: Retrieve information about the world info entry with the given UID
+      tags:
+        - world_info
+      parameters:
+        - name: uid
+          in: path
+          description: |-2
+            `uid` of the desired world info entry.
+          schema:
+            type: integer
+            minimum: -2147483648
+            maximum: 2147483647
+      responses:
+        200:
+          description: Successful request
+          content:
+            application/json:
+              schema: WorldInfoEntrySchema
+        404:
+          description: Not found
+          content:
+            application/json:
+              schema: NotFoundErrorSchema
+              example:
+                detail:
+                  msg: No world info entry with the given uid exists.
+                  type: key_error
+    """
+    if uid not in koboldai_vars.worldinfo_u:
+        abort(Response(json.dumps({"detail": {
+            "msg": "No world info entry with the given uid exists.",
+            "type": "key_error",
+        }}), mimetype="application/json", status=404))
+    wi = koboldai_vars.worldinfo_u[uid]
+    return {k: v for k, v in wi.items() if k not in ("init", "folder", "num") and (wi["selective"] or k != "keysecondary")}
+
+
+@api_v1.get("/world_info/<int(signed=True):uid>/comment")
+@api_schema_wrap
+def get_world_info_uid_comment(uid: int):
+    """---
+    get:
+      summary: Retrieve the comment of the world info entry with the given UID
+      tags:
+        - world_info
+      parameters:
+        - name: uid
+          in: path
+          description: |-2
+            `uid` of the desired world info entry.
+          schema:
+            type: integer
+            minimum: -2147483648
+            maximum: 2147483647
+      responses:
+        200:
+          description: Successful request
+          content:
+            application/json:
+              schema: BasicStringSchema
+        404:
+          description: Not found
+          content:
+            application/json:
+              schema: NotFoundErrorSchema
+              example:
+                detail:
+                  msg: No world info entry with the given uid exists.
+                  type: key_error
+    """
+    if uid not in koboldai_vars.worldinfo_u:
+        abort(Response(json.dumps({"detail": {
+            "msg": "No world info entry with the given uid exists.",
+            "type": "key_error",
+        }}), mimetype="application/json", status=404))
+    return {"value": koboldai_vars.worldinfo_u[uid]["comment"]}
+
+
+@api_v1.put("/world_info/<int(signed=True):uid>/comment")
+@api_schema_wrap
+def put_world_info_uid_comment(body: BasicStringSchema, uid: int):
+    """---
+    put:
+      summary: Set the comment of the world info entry with the given UID to the specified value
+      tags:
+        - world_info
+      parameters:
+        - name: uid
+          in: path
+          description: |-2
+            `uid` of the desired world info entry.
+          schema:
+            type: integer
+            minimum: -2147483648
+            maximum: 2147483647
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: BasicStringSchema
+            example:
+              value: string
+      responses:
+        200:
+          description: Successful request
+          content:
+            application/json:
+              schema: EmptySchema
+        404:
+          description: Not found
+          content:
+            application/json:
+              schema: NotFoundErrorSchema
+              example:
+                detail:
+                  msg: No world info entry with the given uid exists.
+                  type: key_error
+        {api_validation_error_response}
+    """
+    if uid not in koboldai_vars.worldinfo_u:
+        abort(Response(json.dumps({"detail": {
+            "msg": "No world info entry with the given uid exists.",
+            "type": "key_error",
+        }}), mimetype="application/json", status=404))
+    koboldai_vars.worldinfo_u[uid]["comment"] = body.value
+    setgamesaved(False)
+    return {}
+
+
+@api_v1.get("/world_info/<int(signed=True):uid>/content")
+@api_schema_wrap
+def get_world_info_uid_content(uid: int):
+    """---
+    get:
+      summary: Retrieve the content of the world info entry with the given UID
+      tags:
+        - world_info
+      parameters:
+        - name: uid
+          in: path
+          description: |-2
+            `uid` of the desired world info entry.
+          schema:
+            type: integer
+            minimum: -2147483648
+            maximum: 2147483647
+      responses:
+        200:
+          description: Successful request
+          content:
+            application/json:
+              schema: BasicStringSchema
+        404:
+          description: Not found
+          content:
+            application/json:
+              schema: NotFoundErrorSchema
+              example:
+                detail:
+                  msg: No world info entry with the given uid exists.
+                  type: key_error
+    """
+    if uid not in koboldai_vars.worldinfo_u:
+        abort(Response(json.dumps({"detail": {
+            "msg": "No world info entry with the given uid exists.",
+            "type": "key_error",
+        }}), mimetype="application/json", status=404))
+    return {"value": koboldai_vars.worldinfo_u[uid]["content"]}
+
+
+@api_v1.put("/world_info/<int(signed=True):uid>/content")
+@api_schema_wrap
+def put_world_info_uid_content(body: BasicStringSchema, uid: int):
+    """---
+    put:
+      summary: Set the content of the world info entry with the given UID to the specified value
+      tags:
+        - world_info
+      parameters:
+        - name: uid
+          in: path
+          description: |-2
+            `uid` of the desired world info entry.
+          schema:
+            type: integer
+            minimum: -2147483648
+            maximum: 2147483647
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: BasicStringSchema
+            example:
+              value: string
+      responses:
+        200:
+          description: Successful request
+          content:
+            application/json:
+              schema: EmptySchema
+        404:
+          description: Not found
+          content:
+            application/json:
+              schema: NotFoundErrorSchema
+              example:
+                detail:
+                  msg: No world info entry with the given uid exists.
+                  type: key_error
+        {api_validation_error_response}
+    """
+    if uid not in koboldai_vars.worldinfo_u:
+        abort(Response(json.dumps({"detail": {
+            "msg": "No world info entry with the given uid exists.",
+            "type": "key_error",
+        }}), mimetype="application/json", status=404))
+    koboldai_vars.worldinfo_u[uid]["content"] = body.value
+    setgamesaved(False)
+    return {}
+
+
+@api_v1.get("/world_info/<int(signed=True):uid>/key")
+@api_schema_wrap
+def get_world_info_uid_key(uid: int):
+    """---
+    get:
+      summary: Retrieve the keys or primary keys of the world info entry with the given UID
+      tags:
+        - world_info
+      parameters:
+        - name: uid
+          in: path
+          description: |-2
+            `uid` of the desired world info entry.
+          schema:
+            type: integer
+            minimum: -2147483648
+            maximum: 2147483647
+      responses:
+        200:
+          description: Successful request
+          content:
+            application/json:
+              schema: BasicStringSchema
+        404:
+          description: Not found
+          content:
+            application/json:
+              schema: NotFoundErrorSchema
+              example:
+                detail:
+                  msg: No world info entry with the given uid exists.
+                  type: key_error
+    """
+    if uid not in koboldai_vars.worldinfo_u:
+        abort(Response(json.dumps({"detail": {
+            "msg": "No world info entry with the given uid exists.",
+            "type": "key_error",
+        }}), mimetype="application/json", status=404))
+    return {"value": koboldai_vars.worldinfo_u[uid]["key"]}
+
+
+@api_v1.put("/world_info/<int(signed=True):uid>/key")
+@api_schema_wrap
+def put_world_info_uid_key(body: BasicStringSchema, uid: int):
+    """---
+    put:
+      summary: Set the keys or primary keys of the world info entry with the given UID to the specified value
+      tags:
+        - world_info
+      parameters:
+        - name: uid
+          in: path
+          description: |-2
+            `uid` of the desired world info entry.
+          schema:
+            type: integer
+            minimum: -2147483648
+            maximum: 2147483647
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: BasicStringSchema
+            example:
+              value: string
+      responses:
+        200:
+          description: Successful request
+          content:
+            application/json:
+              schema: EmptySchema
+        404:
+          description: Not found
+          content:
+            application/json:
+              schema: NotFoundErrorSchema
+              example:
+                detail:
+                  msg: No world info entry with the given uid exists.
+                  type: key_error
+        {api_validation_error_response}
+    """
+    if uid not in koboldai_vars.worldinfo_u:
+        abort(Response(json.dumps({"detail": {
+            "msg": "No world info entry with the given uid exists.",
+            "type": "key_error",
+        }}), mimetype="application/json", status=404))
+    koboldai_vars.worldinfo_u[uid]["key"] = body.value
+    setgamesaved(False)
+    return {}
+
+
+@api_v1.get("/world_info/<int(signed=True):uid>/keysecondary")
+@api_schema_wrap
+def get_world_info_uid_keysecondary(uid: int):
+    """---
+    get:
+      summary: Retrieve the secondary keys of the world info entry with the given UID
+      tags:
+        - world_info
+      parameters:
+        - name: uid
+          in: path
+          description: |-2
+            `uid` of the desired world info entry.
+          schema:
+            type: integer
+            minimum: -2147483648
+            maximum: 2147483647
+      responses:
+        200:
+          description: Successful request
+          content:
+            application/json:
+              schema: BasicStringSchema
+        404:
+          description: Not found
+          content:
+            application/json:
+              schema: NotFoundErrorSchema
+              example:
+                detail:
+                  msg: No world info entry with the given uid exists.
+                  type: key_error
+    """
+    if uid not in koboldai_vars.worldinfo_u:
+        abort(Response(json.dumps({"detail": {
+            "msg": "No world info entry with the given uid exists.",
+            "type": "key_error",
+        }}), mimetype="application/json", status=404))
+    return {"value": koboldai_vars.worldinfo_u[uid]["keysecondary"]}
+
+
+@api_v1.put("/world_info/<int(signed=True):uid>/keysecondary")
+@api_schema_wrap
+def put_world_info_uid_keysecondary(body: BasicStringSchema, uid: int):
+    """---
+    put:
+      summary: Set the secondary keys of the world info entry with the given UID to the specified value
+      tags:
+        - world_info
+      parameters:
+        - name: uid
+          in: path
+          description: |-2
+            `uid` of the desired world info entry.
+          schema:
+            type: integer
+            minimum: -2147483648
+            maximum: 2147483647
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: BasicStringSchema
+            example:
+              value: string
+      responses:
+        200:
+          description: Successful request
+          content:
+            application/json:
+              schema: EmptySchema
+        404:
+          description: Not found
+          content:
+            application/json:
+              schema: NotFoundErrorSchema
+              example:
+                detail:
+                  msg: No world info entry with the given uid exists.
+                  type: key_error
+        {api_validation_error_response}
+    """
+    if uid not in koboldai_vars.worldinfo_u:
+        abort(Response(json.dumps({"detail": {
+            "msg": "No world info entry with the given uid exists.",
+            "type": "key_error",
+        }}), mimetype="application/json", status=404))
+    koboldai_vars.worldinfo_u[uid]["keysecondary"] = body.value
+    setgamesaved(False)
+    return {}
+
+
+@api_v1.get("/world_info/<int(signed=True):uid>/selective")
+@api_schema_wrap
+def get_world_info_uid_selective(uid: int):
+    """---
+    get:
+      summary: Retrieve the selective mode state of the world info entry with the given UID
+      tags:
+        - world_info
+      parameters:
+        - name: uid
+          in: path
+          description: |-2
+            `uid` of the desired world info entry.
+          schema:
+            type: integer
+            minimum: -2147483648
+            maximum: 2147483647
+      responses:
+        200:
+          description: Successful request
+          content:
+            application/json:
+              schema: BasicBooleanSchema
+        404:
+          description: Not found
+          content:
+            application/json:
+              schema: NotFoundErrorSchema
+              example:
+                detail:
+                  msg: No world info entry with the given uid exists.
+                  type: key_error
+    """
+    if uid not in koboldai_vars.worldinfo_u:
+        abort(Response(json.dumps({"detail": {
+            "msg": "No world info entry with the given uid exists.",
+            "type": "key_error",
+        }}), mimetype="application/json", status=404))
+    return {"value": koboldai_vars.worldinfo_u[uid]["selective"]}
+
+
+@api_v1.put("/world_info/<int(signed=True):uid>/selective")
+@api_schema_wrap
+def put_world_info_uid_selective(body: BasicBooleanSchema, uid: int):
+    """---
+    put:
+      summary: Set the selective mode state of the world info entry with the given UID to the specified value
+      tags:
+        - world_info
+      parameters:
+        - name: uid
+          in: path
+          description: |-2
+            `uid` of the desired world info entry.
+          schema:
+            type: integer
+            minimum: -2147483648
+            maximum: 2147483647
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: BasicBooleanSchema
+            example:
+              value: true
+      responses:
+        200:
+          description: Successful request
+          content:
+            application/json:
+              schema: EmptySchema
+        404:
+          description: Not found
+          content:
+            application/json:
+              schema: NotFoundErrorSchema
+              example:
+                detail:
+                  msg: No world info entry with the given uid exists.
+                  type: key_error
+        {api_validation_error_response}
+    """
+    if uid not in koboldai_vars.worldinfo_u:
+        abort(Response(json.dumps({"detail": {
+            "msg": "No world info entry with the given uid exists.",
+            "type": "key_error",
+        }}), mimetype="application/json", status=404))
+    koboldai_vars.worldinfo_u[uid]["selective"] = body.value
+    setgamesaved(False)
+    return {}
+
+
+@api_v1.get("/world_info/<int(signed=True):uid>/constant")
+@api_schema_wrap
+def get_world_info_uid_constant(uid: int):
+    """---
+    get:
+      summary: Retrieve the constant mode state of the world info entry with the given UID
+      tags:
+        - world_info
+      parameters:
+        - name: uid
+          in: path
+          description: |-2
+            `uid` of the desired world info entry.
+          schema:
+            type: integer
+            minimum: -2147483648
+            maximum: 2147483647
+      responses:
+        200:
+          description: Successful request
+          content:
+            application/json:
+              schema: BasicBooleanSchema
+        404:
+          description: Not found
+          content:
+            application/json:
+              schema: NotFoundErrorSchema
+              example:
+                detail:
+                  msg: No world info entry with the given uid exists.
+                  type: key_error
+    """
+    if uid not in koboldai_vars.worldinfo_u:
+        abort(Response(json.dumps({"detail": {
+            "msg": "No world info entry with the given uid exists.",
+            "type": "key_error",
+        }}), mimetype="application/json", status=404))
+    return {"value": koboldai_vars.worldinfo_u[uid]["constant"]}
+
+
+@api_v1.put("/world_info/<int(signed=True):uid>/constant")
+@api_schema_wrap
+def put_world_info_uid_constant(body: BasicBooleanSchema, uid: int):
+    """---
+    put:
+      summary: Set the constant mode state of the world info entry with the given UID to the specified value
+      tags:
+        - world_info
+      parameters:
+        - name: uid
+          in: path
+          description: |-2
+            `uid` of the desired world info entry.
+          schema:
+            type: integer
+            minimum: -2147483648
+            maximum: 2147483647
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: BasicBooleanSchema
+            example:
+              value: true
+      responses:
+        200:
+          description: Successful request
+          content:
+            application/json:
+              schema: EmptySchema
+        404:
+          description: Not found
+          content:
+            application/json:
+              schema: NotFoundErrorSchema
+              example:
+                detail:
+                  msg: No world info entry with the given uid exists.
+                  type: key_error
+        {api_validation_error_response}
+    """
+    if uid not in koboldai_vars.worldinfo_u:
+        abort(Response(json.dumps({"detail": {
+            "msg": "No world info entry with the given uid exists.",
+            "type": "key_error",
+        }}), mimetype="application/json", status=404))
+    koboldai_vars.worldinfo_u[uid]["constant"] = body.value
+    setgamesaved(False)
+    return {}
+
+
+@api_v1.post("/world_info/folders/none")
+@api_schema_wrap
+def post_world_info_folders_none(body: EmptySchema):
+    """---
+    post:
+      summary: Create a new world info entry outside of a world info folder, at the end of the world info
+      tags:
+        - world_info
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: EmptySchema
+      responses:
+        200:
+          description: Successful request
+          content:
+            application/json:
+              schema: BasicUIDSchema
+        {api_validation_error_response}
+    """
+    stablesortwi()
+    koboldai_vars.worldinfo_i = [wi for wi in koboldai_vars.worldinfo if wi["init"]]
+    setgamesaved(False)
+    emit('from_server', {'cmd': 'wiexpand', 'data': koboldai_vars.worldinfo[-1]["num"]}, broadcast=True)
+    koboldai_vars.worldinfo[-1]["init"] = True
+    addwiitem(folder_uid=None)
+    return {"uid": koboldai_vars.worldinfo[-2]["uid"]}
+
+
+@api_v1.post("/world_info/folders/<int(signed=True):uid>")
+@api_schema_wrap
+def post_world_info_folders_uid(body: EmptySchema, uid: int):
+    """---
+    post:
+      summary: Create a new world info entry at the end of the world info folder with the given UID
+      tags:
+        - world_info
+      parameters:
+        - name: uid
+          in: path
+          description: |-2
+            `uid` of the desired world info folder.
+          schema:
+            type: integer
+            minimum: -2147483648
+            maximum: 2147483647
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: EmptySchema
+      responses:
+        200:
+          description: Successful request
+          content:
+            application/json:
+              schema: BasicUIDSchema
+        404:
+          description: Not found
+          content:
+            application/json:
+              schema: NotFoundErrorSchema
+              example:
+                detail:
+                  msg: No world info folder with the given uid exists.
+                  type: key_error
+        {api_validation_error_response}
+    """
+    if uid not in koboldai_vars.wifolders_d:
+        abort(Response(json.dumps({"detail": {
+            "msg": "No world info folder with the given uid exists.",
+            "type": "key_error",
+        }}), mimetype="application/json", status=404))
+    stablesortwi()
+    koboldai_vars.worldinfo_i = [wi for wi in koboldai_vars.worldinfo if wi["init"]]
+    setgamesaved(False)
+    emit('from_server', {'cmd': 'wiexpand', 'data': koboldai_vars.wifolders_u[uid][-1]["num"]}, broadcast=True)
+    koboldai_vars.wifolders_u[uid][-1]["init"] = True
+    addwiitem(folder_uid=uid)
+    return {"uid": koboldai_vars.wifolders_u[uid][-2]["uid"]}
+
+
+@api_v1.delete("/world_info/<int(signed=True):uid>")
+@api_schema_wrap
+def delete_world_info_uid(uid: int):
+    """---
+    delete:
+      summary: Delete the world info entry with the given UID
+      tags:
+        - world_info
+      parameters:
+        - name: uid
+          in: path
+          description: |-2
+            `uid` of the desired world info entry.
+          schema:
+            type: integer
+            minimum: -2147483648
+            maximum: 2147483647
+      responses:
+        200:
+          description: Successful request
+          content:
+            application/json:
+              schema: EmptySchema
+        404:
+          description: Not found
+          content:
+            application/json:
+              schema: NotFoundErrorSchema
+              example:
+                detail:
+                  msg: No world info entry with the given uid exists.
+                  type: key_error
+    """
+    if uid not in koboldai_vars.worldinfo_u:
+        abort(Response(json.dumps({"detail": {
+            "msg": "No world info entry with the given uid exists.",
+            "type": "key_error",
+        }}), mimetype="application/json", status=404))
+    deletewi(uid)
+    return {}
+
+
+@api_v1.post("/world_info/folders")
+@api_schema_wrap
+def post_world_info_folders(body: EmptySchema):
+    """---
+    post:
+      summary: Create a new world info folder at the end of the world info
+      tags:
+        - world_info
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: EmptySchema
+      responses:
+        200:
+          description: Successful request
+          content:
+            application/json:
+              schema: BasicUIDSchema
+        {api_validation_error_response}
+    """
+    addwifolder()
+    return {"uid": koboldai_vars.wifolders_l[-1]}
+
+
+@api_v1.delete("/world_info/folders/<int(signed=True):uid>")
+@api_schema_wrap
+def delete_world_info_folders_uid(uid: int):
+    """---
+    delete:
+      summary: Delete the world info folder with the given UID
+      tags:
+        - world_info
+      parameters:
+        - name: uid
+          in: path
+          description: |-2
+            `uid` of the desired world info folder.
+          schema:
+            type: integer
+            minimum: -2147483648
+            maximum: 2147483647
+      responses:
+        200:
+          description: Successful request
+          content:
+            application/json:
+              schema: EmptySchema
+        404:
+          description: Not found
+          content:
+            application/json:
+              schema: NotFoundErrorSchema
+              example:
+                detail:
+                  msg: No world info folders with the given uid exists.
+                  type: key_error
+    """
+    if uid not in koboldai_vars.wifolders_d:
+        abort(Response(json.dumps({"detail": {
+            "msg": "No world info folder with the given uid exists.",
+            "type": "key_error",
+        }}), mimetype="application/json", status=404))
+    deletewifolder(uid)
+    return {}
+
+
+def _make_f_get(obj, _var_name, _name, _schema, _example_yaml_value):
+    def f_get():
+        """---
+    get:
+      summary: Retrieve the current {} setting value
+      tags:
+        - config
+      responses:
+        200:
+          description: Successful request
+          content:
+            application/json:
+              schema: {}
+              example:
+                value: {}
+        """
+        _obj = {"koboldai_vars": koboldai_vars, "koboldai_vars.formatoptns": koboldai_vars.formatoptns}[obj]
+        if _var_name.startswith("@"):
+            return {"value": _obj[_var_name[1:]]}
+        else:
+            return {"value": getattr(_obj, _var_name)}
+    f_get.__doc__ = f_get.__doc__.format(_name, _schema, _example_yaml_value)
+    return f_get
+
+def _make_f_put(schema_class: Type[KoboldSchema], obj, _var_name, _name, _schema, _example_yaml_value):
+    def f_put(body: schema_class):
+        """---
+    put:
+      summary: Set {} setting to specified value
+      tags:
+        - config
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {}
+            example:
+              value: {}
+      responses:
+        200:
+          description: Successful request
+          content:
+            application/json:
+              schema: EmptySchema
+        {api_validation_error_response}
+        """
+        _obj = {"koboldai_vars": koboldai_vars, "koboldai_vars.formatoptns": koboldai_vars.formatoptns}[obj]
+        if _var_name.startswith("@"):
+            _obj[_var_name[1:]] = body.value
+        else:
+            setattr(_obj, _var_name, body.value)
+        settingschanged()
+        refresh_settings()
+        return {}
+    f_put.__doc__ = f_put.__doc__.format(_name, _schema, _example_yaml_value, api_validation_error_response=api_validation_error_response)
+    return f_put
+
+def create_config_endpoint(method="GET", schema="MemorySchema"):
+    _name = globals()[schema].KoboldMeta.name
+    _var_name = globals()[schema].KoboldMeta.var_name
+    _route_name = globals()[schema].KoboldMeta.route_name
+    _obj = globals()[schema].KoboldMeta.obj
+    _example_yaml_value = globals()[schema].KoboldMeta.example_yaml_value
+    _schema = schema
+    f = _make_f_get(_obj, _var_name, _name, _schema, _example_yaml_value) if method == "GET" else _make_f_put(globals()[schema], _obj, _var_name, _name, _schema, _example_yaml_value)
+    f.__name__ = f"{method.lower()}_config_{_name}"
+    f = api_schema_wrap(f)
+    for api in (api_v1,):
+        f = api.route(f"/config/{_route_name}", methods=[method])(f)
+
+class SoftPromptSettingSchema(KoboldSchema):
+    value: str = fields.String(required=True, validate=[soft_prompt_validator, validate.Regexp(r"^[^/\\]*$")], metadata={"description": "Soft prompt name, or a string containing only whitespace for no soft prompt. If using the GET method and no soft prompt is loaded, this will always be the empty string."})
+
+@api_v1.get("/config/soft_prompt")
+@api_schema_wrap
+def get_config_soft_prompt():
+    """---
+    get:
+      summary: Retrieve the current soft prompt name
+      tags:
+        - config
+      responses:
+        200:
+          description: Successful request
+          content:
+            application/json:
+              schema: SoftPromptSettingSchema
+              example:
+                value: ""
+    """
+    return {"value": koboldai_vars.spfilename.strip()}
+
+@api_v1.put("/config/soft_prompt")
+@api_schema_wrap
+def put_config_soft_prompt(body: SoftPromptSettingSchema):
+    """---
+    put:
+      summary: Set soft prompt by name
+      tags:
+        - config
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: SoftPromptSettingSchema
+            example:
+              value: ""
+      responses:
+        200:
+          description: Successful request
+          content:
+            application/json:
+              schema: EmptySchema
+        {api_validation_error_response}
+    """
+    if koboldai_vars.allowsp:
+        spRequest(body.value)
+        settingschanged()
+    return {}
+
+config_endpoint_schemas: List[Type[KoboldSchema]] = []
+
+def config_endpoint_schema(c: Type[KoboldSchema]):
+    config_endpoint_schemas.append(c)
+    return c
+
+
+@config_endpoint_schema
+class MemorySettingSchema(KoboldSchema):
+    value = fields.String(required=True)
+    class KoboldMeta:
+        route_name = "memory"
+        obj = "koboldai_vars"
+        var_name = "memory"
+        name = "memory"
+        example_yaml_value = "Memory"
+
+@config_endpoint_schema
+class AuthorsNoteSettingSchema(KoboldSchema):
+    value = fields.String(required=True)
+    class KoboldMeta:
+        route_name = "authors_note"
+        obj = "koboldai_vars"
+        var_name = "authornote"
+        name = "author's note"
+        example_yaml_value = "''"
+
+@config_endpoint_schema
+class AuthorsNoteTemplateSettingSchema(KoboldSchema):
+    value = fields.String(required=True)
+    class KoboldMeta:
+        route_name = "authors_note_template"
+        obj = "koboldai_vars"
+        var_name = "authornotetemplate"
+        name = "author's note template"
+        example_yaml_value = "\"[Author's note: <|>]\""
+
+@config_endpoint_schema
+class TopKSamplingSettingSchema(KoboldSchema):
+    value = fields.Integer(validate=validate.Range(min=0), required=True)
+    class KoboldMeta:
+        route_name = "top_k"
+        obj = "koboldai_vars"
+        var_name = "top_k"
+        name = "top-k sampling"
+        example_yaml_value = "0"
+
+@config_endpoint_schema
+class TopASamplingSettingSchema(KoboldSchema):
+    value = fields.Float(validate=validate.Range(min=0), required=True)
+    class KoboldMeta:
+        route_name = "top_a"
+        obj = "koboldai_vars"
+        var_name = "top_a"
+        name = "top-a sampling"
+        example_yaml_value = "0.0"
+
+@config_endpoint_schema
+class TopPSamplingSettingSchema(KoboldSchema):
+    value = fields.Float(validate=validate.Range(min=0, max=1), required=True)
+    class KoboldMeta:
+        route_name = "top_p"
+        obj = "koboldai_vars"
+        var_name = "top_p"
+        name = "top-p sampling"
+        example_yaml_value = "0.9"
+
+@config_endpoint_schema
+class TailFreeSamplingSettingSchema(KoboldSchema):
+    value = fields.Float(validate=validate.Range(min=0, max=1), required=True)
+    class KoboldMeta:
+        route_name = "tfs"
+        obj = "koboldai_vars"
+        var_name = "tfs"
+        name = "tail free sampling"
+        example_yaml_value = "1.0"
+
+@config_endpoint_schema
+class TypicalSamplingSettingSchema(KoboldSchema):
+    value = fields.Float(validate=validate.Range(min=0, max=1), required=True)
+    class KoboldMeta:
+        route_name = "typical"
+        obj = "koboldai_vars"
+        var_name = "typical"
+        name = "typical sampling"
+        example_yaml_value = "1.0"
+
+@config_endpoint_schema
+class TemperatureSamplingSettingSchema(KoboldSchema):
+    value = fields.Float(validate=validate.Range(min=0, min_inclusive=False), required=True)
+    class KoboldMeta:
+        route_name = "temperature"
+        obj = "koboldai_vars"
+        var_name = "temp"
+        name = "temperature"
+        example_yaml_value = "0.5"
+
+@config_endpoint_schema
+class GensPerActionSettingSchema(KoboldSchema):
+    value = fields.Integer(validate=validate.Range(min=0, max=5), required=True)
+    class KoboldMeta:
+        route_name = "n"
+        obj = "koboldai_vars"
+        var_name = "numseqs"
+        name = "Gens Per Action"
+        example_yaml_value = "1"
+
+@config_endpoint_schema
+class MaxLengthSettingSchema(KoboldSchema):
+    value = fields.Integer(validate=validate.Range(min=1, max=512), required=True)
+    class KoboldMeta:
+        route_name = "max_length"
+        obj = "koboldai_vars"
+        var_name = "genamt"
+        name = "max length"
+        example_yaml_value = "80"
+
+@config_endpoint_schema
+class WorldInfoDepthSettingSchema(KoboldSchema):
+    value = fields.Integer(validate=validate.Range(min=1, max=5), required=True)
+    class KoboldMeta:
+        route_name = "world_info_depth"
+        obj = "koboldai_vars"
+        var_name = "widepth"
+        name = "world info depth"
+        example_yaml_value = "3"
+
+@config_endpoint_schema
+class AuthorsNoteDepthSettingSchema(KoboldSchema):
+    value = fields.Integer(validate=validate.Range(min=1, max=5), required=True)
+    class KoboldMeta:
+        route_name = "authors_note_depth"
+        obj = "koboldai_vars"
+        var_name = "andepth"
+        name = "author's note depth"
+        example_yaml_value = "3"
+
+@config_endpoint_schema
+class MaxContextLengthSettingSchema(KoboldSchema):
+    value = fields.Integer(validate=validate.Range(min=512, max=2048), required=True)
+    class KoboldMeta:
+        route_name = "max_context_length"
+        obj = "koboldai_vars"
+        var_name = "max_length"
+        name = "max context length"
+        example_yaml_value = "2048"
+
+@config_endpoint_schema
+class TrimIncompleteSentencesSettingsSchema(KoboldSchema):
+    value = fields.Boolean(required=True)
+    class KoboldMeta:
+        route_name = "frmttriminc"
+        obj = "koboldai_vars.formatoptns"
+        var_name = "@frmttriminc"
+        name = "trim incomplete sentences (output formatting)"
+        example_yaml_value = "false"
+
+@config_endpoint_schema
+class RemoveBlankLinesSettingsSchema(KoboldSchema):
+    value = fields.Boolean(required=True)
+    class KoboldMeta:
+        route_name = "frmtrmblln"
+        obj = "koboldai_vars.formatoptns"
+        var_name = "@frmtrmblln"
+        name = "remove blank lines (output formatting)"
+        example_yaml_value = "false"
+
+@config_endpoint_schema
+class RemoveSpecialCharactersSettingsSchema(KoboldSchema):
+    value = fields.Boolean(required=True)
+    class KoboldMeta:
+        route_name = "frmtrmspch"
+        obj = "koboldai_vars.formatoptns"
+        var_name = "@frmtrmspch"
+        name = "remove special characters (output formatting)"
+        example_yaml_value = "false"
+
+@config_endpoint_schema
+class SingleLineSettingsSchema(KoboldSchema):
+    value = fields.Boolean(required=True)
+    class KoboldMeta:
+        route_name = "singleline"
+        obj = "koboldai_vars.formatoptns"
+        var_name = "@singleline"
+        name = "single line (output formatting)"
+        example_yaml_value = "false"
+
+@config_endpoint_schema
+class AddSentenceSpacingSettingsSchema(KoboldSchema):
+    value = fields.Boolean(required=True)
+    class KoboldMeta:
+        route_name = "frmtadsnsp"
+        obj = "koboldai_vars.formatoptns"
+        var_name = "@frmtadsnsp"
+        name = "add sentence spacing (input formatting)"
+        example_yaml_value = "false"
+
+
+
+for schema in config_endpoint_schemas:
+    create_config_endpoint(schema=schema.__name__, method="GET")
+    create_config_endpoint(schema=schema.__name__, method="PUT")
+
+
+#==================================================================#
 #  Final startup commands to launch Flask app
 #==================================================================#
 print("", end="", flush=True)
@@ -6750,8 +10052,9 @@ if __name__ == "__main__":
         socketio.run(app, host='0.0.0.0', port=port)
     else:
         if args.unblock:
-            import webbrowser
-            webbrowser.open_new('http://localhost:{0}'.format(port))
+            if not args.no_ui:
+                import webbrowser
+                webbrowser.open_new('http://localhost:{0}'.format(port))
             print("{0}Server started!\nYou may now connect with a browser at http://127.0.0.1:{1}/{2}"
                   .format(colors.GREEN, port, colors.END))
             koboldai_vars.serverstarted = True
@@ -6763,8 +10066,9 @@ if __name__ == "__main__":
                 koboldai_vars.flaskwebgui = True
                 FlaskUI(app, socketio=socketio, start_server="flask-socketio", maximized=True, close_server_on_exit=True).run()
             except:
-                import webbrowser
-                webbrowser.open_new('http://localhost:{0}'.format(port))
+                if not args.no_ui:
+                    import webbrowser
+                    webbrowser.open_new('http://localhost:{0}'.format(port))
                 print("{0}Server started!\nYou may now connect with a browser at http://127.0.0.1:{1}/{2}"
                         .format(colors.GREEN, port, colors.END))
                 koboldai_vars.serverstarted = True

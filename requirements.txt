@@ -14,3 +14,5 @@ protobuf
 accelerate
 python-socketio[client]
 flask_session
+marshmallow>=3.13
+apispec-webframeworks
