@@ -1247,10 +1247,10 @@ function world_info_folder(data) {
 			title.addEventListener('drop', drop);
 			collapse_icon = document.createElement("span");
 			collapse_icon.id = "world_info_folder_collapse_"+folder_name;
-			collapse_icon.classList.add("oi");
 			collapse_icon.classList.add("wi_folder_collapser");
-			collapse_icon.setAttribute("data-glyph", "chevron-bottom");
+			collapse_icon.classList.add("material-icons-outlined");
 			collapse_icon.setAttribute("folder", folder_name);
+			collapse_icon.textContent = "expand_more";
 			collapse_icon.onclick = function () {
 								hide_wi_folder(this.getAttribute("folder"));
 								document.getElementById('world_info_folder_expand_'+this.getAttribute("folder")).classList.remove('hidden');
@@ -1259,10 +1259,10 @@ function world_info_folder(data) {
 			title.append(collapse_icon);
 			expand_icon = document.createElement("span");
 			expand_icon.id = "world_info_folder_expand_"+folder_name;
-			expand_icon.classList.add("oi");
 			expand_icon.classList.add("wi_folder_collapser");
-			expand_icon.setAttribute("data-glyph", "chevron-right");
+			expand_icon.classList.add("material-icons-outlined");
 			expand_icon.setAttribute("folder", folder_name);
+			expand_icon.textContent = "chevron_right";
 			expand_icon.onclick = function () {
 								unhide_wi_folder(this.getAttribute("folder"));
 								document.getElementById('world_info_folder_collapse_'+this.getAttribute("folder")).classList.remove('hidden');
@@ -1271,8 +1271,9 @@ function world_info_folder(data) {
 			expand_icon.classList.add("hidden");
 			title.append(expand_icon);
 			icon = document.createElement("span");
-			icon.classList.add("oi");
-			icon.setAttribute("data-glyph", "folder");
+			icon.classList.add("material-icons-outlined");
+			icon.setAttribute("folder", folder_name);
+			icon.textContent = "folder";
 			title.append(icon);
 			title_text = document.createElement("span");
 			title_text.setAttribute("contenteditable", true);
@@ -1287,16 +1288,20 @@ function world_info_folder(data) {
 			title.append(title_text);
 			folder.append(title);
 			//create add button
+			new_icon = document.createElement("span");
+			new_icon.classList.add("wi_add_button");
 			add_icon = document.createElement("span");
-			add_icon.classList.add("oi");
-			add_icon.classList.add("wi_add_button");
-			add_icon.setAttribute("data-glyph", "plus");
-			add_icon.textContent = "Add World Info Entry";
-			add_icon.setAttribute("folder", folder_name);
-			add_icon.onclick = function() {
+			add_icon.classList.add("material-icons-outlined");
+			add_icon.textContent = "post_add";
+			new_icon.append(add_icon);
+			add_text = document.createElement("span");
+			add_text.textContent = "Add World Info Entry";
+			add_text.setAttribute("folder", folder_name);
+			add_text.onclick = function() {
 											create_new_wi_entry(this.getAttribute("folder"));
 										  }
-			folder.append(add_icon);
+			new_icon.append(add_text);
+			folder.append(new_icon);
 			
 			//We want to insert this folder before the next folder
 			if (i+1 < folders.length) {
@@ -1350,12 +1355,16 @@ function world_info_folder(data) {
 		add_folder.id = "new_world_info_button";
 		temp = document.createElement("h2");
 		add_icon = document.createElement("span");
-		add_icon.classList.add("oi");
-		add_icon.setAttribute("data-glyph", "plus");
-		add_icon.textContent = "Add World Info Folder";
+		icon = document.createElement("span");
+		icon.classList.add("material-icons-outlined");
+		icon.textContent = "create_new_folder";
+		add_icon.append(icon);
+		text_span = document.createElement("span");
+		text_span.textContent = "Add World Info Folder";
 		add_icon.onclick = function() {
 										socket.emit("create_world_info_folder", {});
 									  }
+		add_icon.append(text_span);
 		temp.append(add_icon);
 		add_folder.append(temp);
 		document.getElementById("WI_Area").append(add_folder);

@@ -3,13 +3,7 @@
 <div class="setting_container">
 	<!---Top Row---->
 	<span class="setting_label">
-		{{ item['label'] }}: 
-		<span class="helpicon">
-			?
-			<span class="helptext">
-				{{ item['tooltip'] }}
-			</span>
-		</span>
+		<span>{{ item['label'] }}:&nbsp;</span><span class="helpicon material-icons-outlined" title="{{ item['tooltip'] }}">help_icon</span>
 	</span>
 	{% if (item['unit'] != 'bool') and (item['unit'] != 'text') %}
 		<input autocomplete="off" class="setting_value var_sync_{{ item['classname'] }}_{{ item['name'] }}" id="{{ item['classname'] }}_{{ item['name'] }}_cur"
