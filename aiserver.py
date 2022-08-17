@@ -1254,9 +1254,8 @@ def general_startup(override_args=None):
             
     #setup socketio relay queue
     koboldai_settings.queue = multiprocessing.Queue()
-    #t = threading.Thread(target=socket_io_relay, args=(koboldai_settings.queue, socketio))
     socketio.start_background_task(socket_io_relay, koboldai_settings.queue, socketio)
-    print("continued")
+        
 #==================================================================#
 # Load Model
 #==================================================================# 
@@ -1731,10 +1730,12 @@ def patch_transformers():
                         "score": float(score),
                     })
 
+
                 if len(scores) == 1:
                     koboldai_vars.actions.set_probabilities(token_prob_info)
                 else:
                     koboldai_vars.actions.set_option_probabilities(token_prob_info, batch_index)
+
             return scores
     
     def new_get_logits_processor(*args, **kwargs) -> LogitsProcessorList:
@@ -7256,11 +7257,11 @@ def socket_io_relay(queue, socketio):
     while True:
         if not queue.empty():
             print("got relay message")
-            data = queue.get()
-            socketio.emit(data[0], data[1], **data[2])
-            #socketio.emit(data[0], data[1], broadcast=True, room="UI_2")
-            print("sent")
-        time.sleep(0.05)
+            while not queue.empty():
+                data = queue.get()
+                socketio.emit(data[0], data[1], **data[2])
+                #socketio.emit(data[0], data[1], broadcast=True, room="UI_2")
+        time.sleep(0.2)
         
 
 #==================================================================#
