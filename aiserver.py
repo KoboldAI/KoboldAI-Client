@@ -1361,11 +1361,11 @@ def get_layer_count(model, directory=""):
         else:
             from transformers import AutoConfig
             if directory == "":
-                model_config = AutoConfig.from_pretrained(koboldai_vars.model, revision=koboldai_vars.revision, cache_dir="cache")
-            elif(os.path.isdir(koboldai_vars.custmodpth.replace('/', '_'))):
-                model_config = AutoConfig.from_pretrained(koboldai_vars.custmodpth.replace('/', '_'), revision=koboldai_vars.revision, cache_dir="cache")
+                model_config = AutoConfig.from_pretrained(model, revision=koboldai_vars.revision, cache_dir="cache")
             elif(os.path.isdir(directory)):
                 model_config = AutoConfig.from_pretrained(directory, revision=koboldai_vars.revision, cache_dir="cache")
+            elif(os.path.isdir(koboldai_vars.custmodpth.replace('/', '_'))):
+                model_config = AutoConfig.from_pretrained(koboldai_vars.custmodpth.replace('/', '_'), revision=koboldai_vars.revision, cache_dir="cache")
             else:
                 model_config = AutoConfig.from_pretrained(koboldai_vars.custmodpth, revision=koboldai_vars.revision, cache_dir="cache")
         
@@ -2383,7 +2383,7 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
                                         shutil.move(transformers.file_utils.get_from_cache(transformers.file_utils.hf_bucket_url(koboldai_vars.model, filename, revision=koboldai_vars.revision), cache_dir="cache", local_files_only=True), os.path.join("models/{}".format(koboldai_vars.model.replace('/', '_')), filename))
                             shutil.rmtree("cache/")
 
-                if(koboldai_vars.badwordsids is koboldai_vars.badwordsids_default and koboldai_vars.model_type not in ("gpt2", "gpt_neo", "gptj")):
+                if(koboldai_vars.badwordsids is koboldai_settings.badwordsids_default and koboldai_vars.model_type not in ("gpt2", "gpt_neo", "gptj")):
                     koboldai_vars.badwordsids = [[v] for k, v in tokenizer.get_vocab().items() if any(c in str(k) for c in "<>[]") if koboldai_vars.newlinemode != "s" or str(k) != "</s>"]
 
                 patch_causallm(model)
