@@ -1157,7 +1157,6 @@ def general_startup(override_args=None):
     parser.add_argument("--savemodel", action='store_true', help="Saves the model to the models folder even if --colab is used (Allows you to save models to Google Drive)")
     parser.add_argument("--customsettings", help="Preloads arguements from json file. You only need to provide the location of the json file. Use customsettings.json template file. It can be renamed if you wish so that you can store multiple configurations. Leave any settings you want as default as null. Any values you wish to set need to be in double quotation marks")
     parser.add_argument("--no_ui", action='store_true', default=False, help="Disables the GUI and Socket.IO server while leaving the API server running.")
-    parser.add_argument("--use_relay", action='store_false', default=True, help="Use messaging relay when the thread is busy (can loose data to UI if not used)")
     #args: argparse.Namespace = None
     if "pytest" in sys.modules and override_args is None:
         args = parser.parse_args([])
@@ -1254,14 +1253,8 @@ def general_startup(override_args=None):
             koboldai_vars.colaburl = args.path + "/request"; # Lets just use the same parameter to keep it simple
             
     #setup socketio relay queue
-    if args.use_relay:
-        koboldai_settings.no_relay = False
-        #koboldai_settings.queue = multiprocessing.Queue()
-        import gevent.queue
-        koboldai_settings.queue = gevent.queue.Queue()
-        socketio.start_background_task(socket_io_relay, koboldai_settings.queue, socketio)
-    else:
-        koboldai_settings.no_relay = True
+    koboldai_settings.queue = multiprocessing.Queue()
+    socketio.start_background_task(socket_io_relay, koboldai_settings.queue, socketio)
         
 #==================================================================#
 # Load Model
@@ -1736,7 +1729,7 @@ def patch_transformers():
                     "score": float(score),
                 })
 
-            koboldai_vars.token_stream_queue.probability_buffer = token_prob_info
+            #koboldai_vars.token_stream_queue.probability_buffer = token_prob_info
             return scores
     
     def new_get_logits_processor(*args, **kwargs) -> LogitsProcessorList:
@@ -7258,10 +7251,11 @@ def socket_io_relay(queue, socketio):
     while True:
         if not queue.empty():
             print("got relay message")
-            data = queue.get()
-            socketio.emit(data[0], data[1], **data[2])
-            #socketio.emit(data[0], data[1], broadcast=True, room="UI_2")
-        time.sleep(0.05)
+            while not queue.empty():
+                data = queue.get()
+                socketio.emit(data[0], data[1], **data[2])
+                #socketio.emit(data[0], data[1], broadcast=True, room="UI_2")
+        time.sleep(0.2)
         
 
 #==================================================================#

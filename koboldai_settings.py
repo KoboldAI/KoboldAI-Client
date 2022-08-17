@@ -10,7 +10,6 @@ rely_clients = {}
 serverstarted = False
 port = 5000
 queue = None
-no_relay=False
 
 def clean_var_for_emit(value):
     if isinstance(value, KoboldStoryRegister) or isinstance(value, KoboldWorldInfo):
@@ -48,11 +47,10 @@ def process_variable_changes(socketio, classname, name, value, old_value, debug_
             else:
                 #If we got a variable change from a thread other than what the app is run it, eventlet seems to block and no further messages are sent. Instead, we'll rely the message to the app and have the main thread send it
                 if not has_request_context():
-                    if not no_relay:
-                        data = ["var_changed", {"classname": classname, "name": name, "old_value": clean_var_for_emit(old_value), "value": clean_var_for_emit(value)}, {"include_self":True, "broadcast":True, "room":"UI_2"}]
-                        print("putting data in queue")
-                        queue.put(data)
-                        print("put data in queue")
+                    data = ["var_changed", {"classname": classname, "name": name, "old_value": clean_var_for_emit(old_value), "value": clean_var_for_emit(value)}, {"include_self":True, "broadcast":True, "room":"UI_2"}]
+                    print("putting data in queue")
+                    queue.put(data)
+                    print("put data in queue")
                         
                 else:
                     socketio.emit("var_changed", {"classname": classname, "name": name, "old_value": clean_var_for_emit(old_value), "value": clean_var_for_emit(value)}, include_self=True, broadcast=True, room="UI_2")
