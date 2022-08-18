@@ -233,7 +233,7 @@ function do_story_text_updates(data) {
 		item.setAttribute("world_info_uids", "");
 		item.classList.remove("pulse")
 		item.scrollIntoView();
-		assign_world_info_to_action(action_item = item);
+		assign_world_info_to_action(item, null);
 	} else {
 		var span = document.createElement("span");
 		span.id = 'Selected Text Chunk '+data.value.id;
@@ -268,7 +268,7 @@ function do_story_text_updates(data) {
 		
 		story_area.append(span);
 		span.scrollIntoView();
-		assign_world_info_to_action(action_item = span);
+		assign_world_info_to_action(span, null);
 	}
 	
 	
@@ -312,6 +312,49 @@ function do_prompt(data) {
 
 function do_story_text_length_updates(data) {
 	document.getElementById('Selected Text Chunk '+data.value.id).setAttribute("token_length", data.value.action["Selected Text Length"]);
+	
+}
+
+function do_probabilities(data) {
+	console.log(data);
+	if (document.getElementById('probabilities_'+data.value.id)) {
+		prob_area = document.getElementById('probabilities_'+data.value.id)
+	} else {
+		probabilities = document.getElementById('probabilities');
+		prob_area = document.createElement('span');
+		prob_area.id = 'probabilities_'+data.value.id;
+		probabilities.append(prob_area);
+	}
+	//Clear
+	while (prob_area.firstChild) { 
+		prob_area.removeChild(prob_area.lastChild);
+	}
+	//create table
+	table = document.createElement("table");
+	table.border=1;
+	if ("Probabilities" in data.value.action) {
+		for (token of data.value.action.Probabilities) {
+			actual_text = document.createElement("td");
+			actual_text.setAttribute("rowspan", token.length);
+			actual_text.textContent = "Word Goes Here";
+			for (const [index, word] of token.entries()) {
+				tr = document.createElement("tr");
+				if (index == 0) {
+					tr.append(actual_text);
+				}
+				decoded = document.createElement("td");
+				decoded.textContent = word.decoded;
+				tr.append(decoded);
+				score = document.createElement("td");
+				score.textContent = (word.score*100).toFixed(2)+"%";
+				tr.append(score);
+				table.append(tr);
+			}
+		}
+	}
+	prob_area.append(table);
+	
+	//prob_area.textContent = data.value.action["Probabilities"];
 	
 }
 
@@ -388,38 +431,18 @@ function do_ai_busy(data) {
 }
 
 function var_changed(data) {
-	if ((data.classname =="actions") && (data.name == 'Probabilities')) {
-		console.log(data);
-	}
 	//console.log({"name": data.name, "data": data});
 	//Special Case for Actions
 	if ((data.classname == "story") && (data.name == "actions")) {
-		console.log(data);
 		do_story_text_updates(data);
 		create_options(data);
 		do_story_text_length_updates(data);
+		do_probabilities(data);
 		if (data.value.action['In AI Input']) {
 			document.getElementById('Selected Text Chunk '+data.value.id).classList.add("within_max_length");
 		} else {
 			document.getElementById('Selected Text Chunk '+data.value.id).classList.remove("within_max_length");
 		}
-	//Special Case for Story Text
-	} else if ((data.classname == "actions") && (data.name == "Selected Text")) {
-		//do_story_text_updates(data);
-	//Special Case for Story Options
-	} else if ((data.classname == "actions") && (data.name == "Options")) {
-		//create_options(data);
-	//Special Case for Story Text Length
-	} else if ((data.classname == "actions") && (data.name == "Selected Text Length")) {
-		//do_story_text_length_updates(data);
-	//Special Case for Story Text Length
-	} else if ((data.classname == "actions") && (data.name == "In AI Input")) {
-		//console.log(data.value);
-		//if (data.value['In AI Input']) {
-		//	document.getElementById('Selected Text Chunk '+data.value.id).classList.add("within_max_length");
-		//} else {
-		//	document.getElementById('Selected Text Chunk '+data.value.id).classList.remove("within_max_length");
-		//}
 	//Special Case for Presets
 	} else if ((data.classname == 'model') && (data.name == 'presets')) {
 		do_presets(data);
@@ -1239,7 +1262,7 @@ function world_info_entry(data) {
 	}
 	
 	$('#world_info_constant_'+data.uid).bootstrapToggle();
-	assign_world_info_to_action(uid=data.uid);
+	assign_world_info_to_action(null, data.uid);
 	
 	update_token_lengths();
 	
@@ -1902,11 +1925,11 @@ function dragend(e) {
 	e.preventDefault();
 }
 
-function assign_world_info_to_action(uid=null, action_item=null) {
+function assign_world_info_to_action(action_item, uid) {
 	if (Object.keys(world_info_data).length > 0) {
 		if (uid != null) {
 			var worldinfo_to_check = {};
-			worldinfo_to_check[uid] = world_info_data[uid]
+			worldinfo_to_check[uid] = world_info_data[uid];
 		} else {
 			var worldinfo_to_check = world_info_data;
 		}
@@ -1915,6 +1938,7 @@ function assign_world_info_to_action(uid=null, action_item=null) {
 		} else {
 			var actions = document.getElementById("Selected Text").children;
 		}
+		
 		for (action of actions) {
 			//First check to see if we have a key in the text
 			var words = Array.prototype.slice.call( action.children );

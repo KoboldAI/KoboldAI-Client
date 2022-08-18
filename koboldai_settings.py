@@ -36,7 +36,6 @@ def process_variable_changes(socketio, classname, name, value, old_value, debug_
                 socketio.emit("var_changed", {"classname": "actions", "name": "Action Count", "old_value": None, "value":value.action_count}, broadcast=True, room="UI_2")
                 
                 for i in range(len(value.actions)):
-                    print(value.actions[i])
                     socketio.emit("var_changed", {"classname": "story", "name": "actions", "old_value": None, "value":{"id": i, "action": value.actions[i]}}, broadcast=True, room="UI_2")
             elif isinstance(value, KoboldWorldInfo):
                 value.send_to_ui()
@@ -109,7 +108,7 @@ class koboldai_vars(object):
     def reset_model(self):
         self._model_settings.reset_for_model_load()
     
-    def calc_ai_text(self):
+    def calc_ai_text(self, submitted_text=""):
         token_budget = self.max_length
         used_world_info = []
         used_tokens = self.sp_length
@@ -180,7 +179,7 @@ class koboldai_vars(object):
         game_text = ""
         used_all_tokens = False
         for i in range(len(self.actions)-1, -1, -1):
-            if len(self.actions) - i == self.andepth:
+            if len(self.actions) - i == self.andepth and self.authornote != "":
                 game_text = "{}{}".format(self.authornotetemplate.replace("<|>", self.authornote), game_text)
             if self.actions.actions[i]["Selected Text Length"]+used_tokens <= token_budget and not used_all_tokens:
                 used_tokens += self.actions.actions[i]["Selected Text Length"]
@@ -212,7 +211,7 @@ class koboldai_vars(object):
                 used_all_tokens = True
              
         #if we don't have enough actions to get to author's note depth then we just add it right before the game text
-        if len(self.actions) < self.andepth:
+        if len(self.actions) < self.andepth and self.authornote != "":
             game_text = "{}{}".format(self.authornotetemplate.replace("<|>", self.authornote), game_text)
             
         if not self.useprompt:
@@ -244,7 +243,11 @@ class koboldai_vars(object):
             text += self.prompt
         
         text += game_text
-        return text
+        if self.tokenizer is None:
+            tokens = []
+        else:
+            tokens = self.tokenizer.encode(text)
+        return tokens, used_tokens, used_tokens+self.genamt
     
     def __setattr__(self, name, value):
         if name[0] == "_" or name == "tokenizer":
@@ -691,6 +694,7 @@ class system_settings(settings):
         self.full_determinism = False  # Whether or not full determinism is enabled
         self.seed_specified = False  # Whether or not the current RNG seed was specified by the user (in their settings file)
         self.seed        = None   # The current RNG seed (as an int), or None if unknown
+        self.alt_gen = False # Use the calc_ai_text method for generating text to go to the AI
         
         
     def __setattr__(self, name, value):
@@ -1040,6 +1044,8 @@ class KoboldStoryRegister(object):
         if action_id in self.actions:
             old_options = self.actions[action_id]["Options"]
             if option_number < len(self.actions[action_id]["Options"]):
+                if "Probabilities" not in self.actions[action_id]["Options"][option_number]:
+                    self.actions[action_id]["Options"][option_number]["Probabilities"] = []
                 self.actions[action_id]["Options"][option_number]['Probabilities'].append(probabilities)
                 process_variable_changes(self.socketio, "story", 'actions', {"id": action_id, 'action':  self.actions[action_id]}, None)
     
@@ -1329,8 +1335,8 @@ class KoboldWorldInfo(object):
         
     def reset_used_in_game(self):
         for key in self.world_info:
-            if self.world_info[key]["used_in_game"] != constant:
-                self.world_info[key]["used_in_game"] = constant
+            if self.world_info[key]["used_in_game"] != self.world_info[key]["constant"]:
+                self.world_info[key]["used_in_game"] = self.world_info[key]["constant"]
                 self.socketio.emit("world_info_entry", self.world_info[key], broadcast=True, room="UI_2")
         
     def set_world_info_used(self, uid):
