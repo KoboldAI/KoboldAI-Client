@@ -1536,6 +1536,33 @@ function send_world_info(uid) {
 }
 
 //--------------------------------------------General UI Functions------------------------------------
+function getAllCSSVariableNames(styleSheets = document.styleSheets){
+   var cssVars = [];
+   var r = document.querySelector(':root');
+   // loop each stylesheet
+   for(var i = 0; i < styleSheets.length; i++){
+      // loop stylesheet's cssRules
+      try{ // try/catch used because 'hasOwnProperty' doesn't work
+         for( var j = 0; j < styleSheets[i].cssRules.length; j++){
+            try{
+               // loop stylesheet's cssRules' style (property names)
+               for(var k = 0; k < styleSheets[i].cssRules[j].style.length; k++){
+                  let name = styleSheets[i].cssRules[j].style[k];
+                  // test name for css variable signiture and uniqueness
+                  if(name.startsWith('--') && cssVars.indexOf(name) == -1){
+					let value = styleSheets[i].cssRules[j].style.getPropertyValue(name);
+					value.replace(/(\r\n|\r|\n){2,}/g, '$1\n');
+					value = value.replaceAll("\t", "");
+                    cssVars.push([name, value]);
+                  }
+               }
+            } catch (error) {}
+         }
+      } catch (error) {}
+   }
+   return cssVars;
+}
+
 function select_sample(item) {
 	for (temp of document.getElementsByClassName("sample_order")) {
 		temp.classList.remove("selected");
@@ -2250,7 +2277,7 @@ function setCookie(cname, cvalue, exdays=60) {
   const d = new Date();
   d.setTime(d.getTime() + (exdays * 24 * 60 * 60 * 1000));
   let expires = "expires="+d.toUTCString();
-  document.cookie = cname + "=" + cvalue + ";" + expires + ";path=/;samesite=none;domain=koboldai.org";
+  document.cookie = cname + "=" + cvalue + ";" + expires + ";path=/;samesite=none;";
 }
 
 function getCookie(cname) {
@@ -2315,11 +2342,13 @@ $(document).ready(function(){
 	document.onkeydown = detect_key_down;
 	document.onkeyup = detect_key_up;
 	document.getElementById("input_text").onkeydown = detect_enter_submit;
+	console.log(getCookie("Settings_Pin"));
 	if (getCookie("Settings_Pin") == "false") {
 		settings_unpin();
 	} else {
 		settings_pin();
 	}
+	console.log(getCookie("Story_Pin"));
 	if (getCookie("Story_Pin") == "true") {
 		story_pin();
 	} else {
