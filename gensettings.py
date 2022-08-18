@@ -383,6 +383,21 @@ gensettingstf = [
     "sub_path": "UI",
     "classname": "user",
     "name": "show_probs"
+ 	},
+    {
+ 	"uitype": "toggle",
+ 	"unit": "bool",
+ 	"label": "Alt Text Generation",
+ 	"id": "alttextgen",
+ 	"min": 0,
+ 	"max": 1,
+ 	"step": 1,
+ 	"default": 0,
+	"tooltip": "Inserts world info entries behind text that first triggers them for better context with unlimited depth",
+    "menu_path": "Settings",
+    "sub_path": "Other",
+    "classname": "system",
+    "name": "alt_gen"
  	}
 ]
 
@@ -601,6 +616,21 @@ gensettingsik =[{
     "sub_path": "UI",
     "classname": "user",
     "name": "show_probs"
+ 	},
+    {
+ 	"uitype": "toggle",
+ 	"unit": "bool",
+ 	"label": "Alt Text Generation",
+ 	"id": "alttextgen",
+ 	"min": 0,
+ 	"max": 1,
+ 	"step": 1,
+ 	"default": 0,
+	"tooltip": "Inserts world info entries behind text that first triggers them for better context with unlimited depth",
+    "menu_path": "Settings",
+    "sub_path": "Other",
+    "classname": "system",
+    "name": "alt_gen"
  	}
 ]
 
