@@ -17,5 +17,6 @@ eventlet
 lupa==1.10
 markdown
 bleach==4.1.0
-python-socketio[client]
-flask_session
+flask-session
+marshmallow>=3.13
+apispec-webframeworks

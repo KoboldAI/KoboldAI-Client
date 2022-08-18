@@ -133,7 +133,7 @@ function create_options(data) {
 	table.classList.add("sequences");
 	//Add Redo options
 	i=0;
-	for (item of data.value.options) {
+	for (item of data.value.action.Options) {
 		if ((item['Previous Selection'])) {
 			var row = document.createElement("div");
 			row.classList.add("sequence_row");
@@ -162,7 +162,7 @@ function create_options(data) {
 	}
 	//Add general options
 	i=0;
-	for (item of data.value.options) {
+	for (item of data.value.action.Options) {
 		if (!(item.Edited) && !(item['Previous Selection'])) {
 			var row = document.createElement("div");
 			row.classList.add("sequence_row");
@@ -211,10 +211,10 @@ function do_story_text_updates(data) {
 		while (item.firstChild) { 
 			item.removeChild(item.firstChild);
 		}
-		if (data.value.text == null) {
+		if (data.value.action['Selected Text'] == null) {
 			var text_array = [];
 		} else {
-			var text_array = data.value.text.split(" ");
+			var text_array = data.value.action['Selected Text'].split(" ");
 		}
 		text_array.forEach(function (text, i) {
 			if (text != "") {
@@ -229,7 +229,7 @@ function do_story_text_updates(data) {
 			}
 			
 		});
-		item.original_text = data.value.text;
+		item.original_text = data.value.action['Selected Text'];
 		item.setAttribute("world_info_uids", "");
 		item.classList.remove("pulse")
 		item.scrollIntoView();
@@ -239,7 +239,7 @@ function do_story_text_updates(data) {
 		span.id = 'Selected Text Chunk '+data.value.id;
 		span.classList.add("rawtext");
 		span.chunk = data.value.id;
-		span.original_text = data.value.text;
+		span.original_text = data.value.action['Selected Text'];
 		span.setAttribute("contenteditable", true);
 		span.onblur = function () {
 			if (this.textContent != this.original_text) {
@@ -249,7 +249,7 @@ function do_story_text_updates(data) {
 			}
 		}
 		span.onkeydown = detect_enter_text;
-		var text_array = data.value.text.split(" ");
+		var text_array = data.value.action['Selected Text'].split(" ");
 		text_array.forEach(function (text, i) {
 			if (text != "") {
 				var word = document.createElement("span");
@@ -311,7 +311,7 @@ function do_prompt(data) {
 }
 
 function do_story_text_length_updates(data) {
-	document.getElementById('Selected Text Chunk '+data.value.id).setAttribute("token_length", data.value.length);
+	document.getElementById('Selected Text Chunk '+data.value.id).setAttribute("token_length", data.value.action["Selected Text Length"]);
 	
 }
 
@@ -388,24 +388,38 @@ function do_ai_busy(data) {
 }
 
 function var_changed(data) {
+	if ((data.classname =="actions") && (data.name == 'Probabilities')) {
+		console.log(data);
+	}
 	//console.log({"name": data.name, "data": data});
-	//Special Case for Story Text
-	if ((data.classname == "actions") && (data.name == "Selected Text")) {
+	//Special Case for Actions
+	if ((data.classname == "story") && (data.name == "actions")) {
+		console.log(data);
 		do_story_text_updates(data);
-	//Special Case for Story Options
-	} else if ((data.classname == "actions") && (data.name == "Options")) {
 		create_options(data);
-	//Special Case for Story Text Length
-	} else if ((data.classname == "actions") && (data.name == "Selected Text Length")) {
 		do_story_text_length_updates(data);
-	//Special Case for Story Text Length
-	} else if ((data.classname == "actions") && (data.name == "In AI Input")) {
-		//console.log(data.value);
-		if (data.value['In AI Input']) {
+		if (data.value.action['In AI Input']) {
 			document.getElementById('Selected Text Chunk '+data.value.id).classList.add("within_max_length");
 		} else {
 			document.getElementById('Selected Text Chunk '+data.value.id).classList.remove("within_max_length");
 		}
+	//Special Case for Story Text
+	} else if ((data.classname == "actions") && (data.name == "Selected Text")) {
+		//do_story_text_updates(data);
+	//Special Case for Story Options
+	} else if ((data.classname == "actions") && (data.name == "Options")) {
+		//create_options(data);
+	//Special Case for Story Text Length
+	} else if ((data.classname == "actions") && (data.name == "Selected Text Length")) {
+		//do_story_text_length_updates(data);
+	//Special Case for Story Text Length
+	} else if ((data.classname == "actions") && (data.name == "In AI Input")) {
+		//console.log(data.value);
+		//if (data.value['In AI Input']) {
+		//	document.getElementById('Selected Text Chunk '+data.value.id).classList.add("within_max_length");
+		//} else {
+		//	document.getElementById('Selected Text Chunk '+data.value.id).classList.remove("within_max_length");
+		//}
 	//Special Case for Presets
 	} else if ((data.classname == 'model') && (data.name == 'presets')) {
 		do_presets(data);
@@ -822,13 +836,15 @@ function show_model_menu(data) {
 		breadcrumbs.removeChild(breadcrumbs.firstChild);
 	}
 	//add breadcrumbs
+	console.log(data.breadcrumbs);
 	for (item of data.breadcrumbs) {
 		var button = document.createElement("button");
 		button.classList.add("breadcrumbitem");
-		button.id = item[0];
-		button.value = item[1];
+		button.setAttribute("model", data.menu);
+		button.setAttribute("folder", item[0]);
+		button.textContent = item[1];
 		button.onclick = function () {
-					socket.emit('selectmodel', {'data': this.id, 'folder': this.value});
+					socket.emit('select_model', {'menu': "", 'model': this.getAttribute("model"), 'path': this.getAttribute("folder")});
 				};
 		breadcrumbs.append(button);
 		var span = document.createElement("span");

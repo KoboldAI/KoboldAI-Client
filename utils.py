@@ -175,10 +175,9 @@ def num_layers(config):
 from flask_socketio import emit
 class Send_to_socketio(object):
     def write(self, bar):
-        print("should be emitting: ", bar, end="")
         time.sleep(0.01)
         try:
-            emit('from_server', {'cmd': 'model_load_status', 'data': bar.replace(" ", "&nbsp;")}, broadcast=True, room="UI_1")
+            emit('from_server', {'cmd': 'model_load_status', 'data': bar.replace(" ", "&nbsp;")}, broadcast=True)
         except:
             pass
             

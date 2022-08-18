@@ -1,0 +1,17 @@
+/*! Swagger UI 4.13.2 | https://swagger.io/tools/swagger-ui/ | Apache License 2.0 (license file can be found at ./LICENSE) */
+html {
+    box-sizing: border-box;
+    overflow: -moz-scrollbars-vertical;
+    overflow-y: scroll;
+}
+
+*,
+*:before,
+*:after {
+    box-sizing: inherit;
+}
+
+body {
+    margin: 0;
+    background: #fafafa;
+}
