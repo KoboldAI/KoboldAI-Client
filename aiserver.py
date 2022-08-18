@@ -3967,7 +3967,7 @@ def actionsubmit(data, actionmode=0, force_submit=False, force_prompt_gen=False,
     
     while(True):
         set_aibusy(1)
-
+        koboldai_vars.actions.clear_unused_options()
         if(koboldai_vars.model == "API"):
             global tokenizer
             tokenizer_id = requests.get(
@@ -4053,7 +4053,6 @@ def actionsubmit(data, actionmode=0, force_submit=False, force_prompt_gen=False,
                 for i in range(koboldai_vars.numseqs):
                     genout.append({"generated_text": koboldai_vars.lua_koboldbridge.outputs[i+1]})
                     assert type(genout[-1]["generated_text"]) is str
-                koboldai_vars.actions.clear_unused_options()
                 koboldai_vars.actions.append_options([x["generated_text"] for x in genout])
                 genout = [{"generated_text": x['text']} for x in koboldai_vars.actions.get_current_options()]
                 if(len(genout) == 1):
@@ -4118,7 +4117,6 @@ def actionsubmit(data, actionmode=0, force_submit=False, force_prompt_gen=False,
                 for i in range(koboldai_vars.numseqs):
                     genout.append({"generated_text": koboldai_vars.lua_koboldbridge.outputs[i+1] if not no_generate else ""})
                     assert type(genout[-1]["generated_text"]) is str
-                koboldai_vars.actions.clear_unused_options()
                 koboldai_vars.actions.append_options([x["generated_text"] for x in genout])
                 genout = [{"generated_text": x['text']} for x in koboldai_vars.actions.get_current_options()]
                 if(len(genout) == 1):
@@ -4683,7 +4681,6 @@ def generate(txt, minimum, maximum, found_entries=None):
     else:
         genout = [{"generated_text": utils.decodenewlines(tokenizer.decode(tokens[-already_generated:]))} for tokens in genout]
     
-    koboldai_vars.actions.clear_unused_options()
     koboldai_vars.actions.append_options([x["generated_text"] for x in genout])
     genout = [{"generated_text": x['text']} for x in koboldai_vars.actions.get_current_options()]
     if(len(genout) == 1):
@@ -5068,7 +5065,6 @@ def tpumtjgenerate(txt, minimum, maximum, found_entries=None):
     else:
         genout = [{"generated_text": utils.decodenewlines(tokenizer.decode(txt))} for txt in genout]
 
-    koboldai_vars.actions.clear_unused_options()
     koboldai_vars.actions.append_options([x["generated_text"] for x in genout])
     genout = [{"generated_text": x['text']} for x in koboldai_vars.actions.get_current_options()]
     if(len(koboldai_vars.actions.get_current_options()) == 1):
@@ -5825,7 +5821,6 @@ def oairequest(txt, min, max):
                 {"generated_text": utils.decodenewlines(txt)}
                 for txt in outputs]
 
-        koboldai_vars.actions.clear_unused_options()
         koboldai_vars.actions.append_options([x["generated_text"] for x in genout])
         genout = [{"generated_text": x['text']} for x in koboldai_vars.actions.get_current_options()]
         if (len(genout) == 1):
@@ -7253,10 +7248,8 @@ def UI_2_phrase_bias_update(biases):
 # Event triggered to rely a message
 #==================================================================#
 def socket_io_relay(queue, socketio):
-    print("started relay")
     while True:
         if not queue.empty():
-            print("got relay message")
             while not queue.empty():
                 data = queue.get()
                 socketio.emit(data[0], data[1], **data[2])
@@ -10047,7 +10040,8 @@ if __name__ == "__main__":
         if(args.localtunnel or args.ngrok or args.remote):
             with open('cloudflare.log', 'w') as cloudflarelog:
                 cloudflarelog.write("KoboldAI has finished loading and is available at the following link : " + cloudflare)
-                print(format(colors.GREEN) + "KoboldAI has finished loading and is available at the following link : " + cloudflare + format(colors.END))
+                print(format(colors.GREEN) + "KoboldAI has finished loading and is available at the following link for UI 1: " + cloudflare + format(colors.END))
+                print(format(colors.GREEN) + "KoboldAI has finished loading and is available at the following link for UI 2: " + cloudflare + "/new_ui" + format(colors.END))
         else:
             print("{0}Webserver has started, you can now connect to this machine at port {1}{2}"
                   .format(colors.GREEN, port, colors.END))

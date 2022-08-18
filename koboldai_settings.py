@@ -48,9 +48,7 @@ def process_variable_changes(socketio, classname, name, value, old_value, debug_
                 #If we got a variable change from a thread other than what the app is run it, eventlet seems to block and no further messages are sent. Instead, we'll rely the message to the app and have the main thread send it
                 if not has_request_context():
                     data = ["var_changed", {"classname": classname, "name": name, "old_value": clean_var_for_emit(old_value), "value": clean_var_for_emit(value)}, {"include_self":True, "broadcast":True, "room":"UI_2"}]
-                    print("putting data in queue")
                     queue.put(data)
-                    print("put data in queue")
                         
                 else:
                     socketio.emit("var_changed", {"classname": classname, "name": name, "old_value": clean_var_for_emit(old_value), "value": clean_var_for_emit(value)}, include_self=True, broadcast=True, room="UI_2")
@@ -751,7 +749,9 @@ class KoboldStoryRegister(object):
         if i in self.actions:
             old_text = self.actions[i]["Selected Text"]
             old_length = self.actions[i]["Selected Text Length"]
-            self.actions[i]["Selected Text"] = text
+            if self.actions[i]["Selected Text"] != text:
+                self.actions[i]["Selected Text"] = text
+                self.actions[i]["Probabilities"] = []
             if "Options" in self.actions[i]:
                 for j in range(len(self.actions[i]["Options"])):
                     if self.actions[i]["Options"][j]["text"] == text:
@@ -761,14 +761,13 @@ class KoboldStoryRegister(object):
         else:
             old_text = None
             old_length = None
-            self.actions[i] = {"Selected Text": text, "Options": []}
+            self.actions[i] = {"Selected Text": text, "Probabilities": [], "Options": []}
             
         if self.tokenizer is not None:
             self.actions[i]['Selected Text Length'] = len(self.tokenizer.encode(text))
         else:
             self.actions[i]['Selected Text Length'] = None
         self.actions[i]["In AI Input"] = False
-        self.actions[i]['Probabilities'] = []
         process_variable_changes(self.socketio, "actions", "Selected Text", {"id": i, "text": text}, {"id": i, "text": old_text})
         process_variable_changes(self.socketio, "actions", 'Selected Text Length', {"id": i, 'length':  self.actions[i]['Selected Text Length']}, {"id": i, 'length': old_length})
         process_variable_changes(self.socketio, "actions", 'Probabilities', {"id": i, 'Probabilities':  self.actions[i]['Probabilities']}, None)
@@ -815,14 +814,15 @@ class KoboldStoryRegister(object):
         self.clear_unused_options()
         self.action_count+=1
         if self.action_count in self.actions:
-            self.actions[self.action_count]["Selected Text"] = text
+            if self.actions[self.action_count]["Selected Text"] != text:
+                self.actions[self.action_count]["Selected Text"] = text
+                self.actions[self.action_count]["Probabilities"] = []
             if self.tokenizer is not None:
                 selected_text_length = len(self.tokenizer.encode(text))
             else:
                 selected_text_length = 0
             self.actions[self.action_count]["Selected Text Length"] = selected_text_length
             self.actions[self.action_count]["In AI Input"] = False
-            self.actions[self.action_count]["Probabilities"] = []
             for item in self.actions[self.action_count]["Options"]:
                 if item['text'] == text:
                     old_options = self.actions[self.action_count]["Options"]
@@ -847,7 +847,10 @@ class KoboldStoryRegister(object):
     def append_options(self, option_list):
         if self.action_count+1 in self.actions:
             old_options = copy.deepcopy(self.actions[self.action_count+1]["Options"])
-            self.actions[self.action_count+1]['Options'].extend([{"text": x, "Pinned": False, "Previous Selection": False, "Edited": False, "Probabilities": []} for x in option_list])
+            old_options_text = [x['text'] for x in old_options]
+            for item in option_list:
+                if item not in old_options_text:
+                    self.actions[self.action_count+1]['Options'].append({"text": item, "Pinned": False, "Previous Selection": False, "Edited": False, "Probabilities": []})
         else:
             old_options = None
             self.actions[self.action_count+1] = {"Selected Text": "", "Selected Text Length": 0, "In AI Input": False, "Options": [{"text": x, "Pinned": False, "Previous Selection": False, "Edited": False, "Probabilities": []} for x in option_list]}
@@ -860,7 +863,13 @@ class KoboldStoryRegister(object):
             self.action_id[action_id] = {"Selected Text": "", "Options": option_list}
         else:
             old_options = self.actions[action_id]["Options"]
-            self.action_id[action_id]['Options'] = option_list
+            self.actions[action_id]["Options"] = []
+            for item in option_list:
+                for old_item in old_options:
+                    if item['text'] == old_item['text']:
+                        #We already have this option, so we need to save the probabilities
+                        item['Probabilities'] = old_item['Probabilities']
+                    self.actions[action_id]["Options"].append(item)
         process_variable_changes(self.socketio, "actions", "Options", {"id": action_id, "options": self.actions[action_id]["Options"]}, {"id": action_id, "options": old_options})
     
     def clear_unused_options(self, pointer=None):
@@ -1008,11 +1017,11 @@ class KoboldStoryRegister(object):
                                 found = True
                                 self.actions[self.action_count+1]['Options'][j]['text'] = "{}{}".format(self.actions[self.action_count+1]['Options'][j]['text'], text_list[i])
                     if not found:
-                        self.actions[self.action_count+1]['Options'].append({"text": text_list[i], "Pinned": False, "Previous Selection": False, "Edited": False, "stream_id": i})
+                        self.actions[self.action_count+1]['Options'].append({"text": text_list[i], "Pinned": False, "Previous Selection": False, "Edited": False, "Probabilities": [], "stream_id": i})
             else:
                 self.actions[self.action_count+1] = {"Selected Text": "", "Selected Text Length": 0, "Options": []}
                 for i in range(len(text_list)):
-                    self.actions[self.action_count+1]['Options'].append({"text": text_list[i], "Pinned": False, "Previous Selection": False, "Edited": False, "stream_id": i})
+                    self.actions[self.action_count+1]['Options'].append({"text": text_list[i], "Pinned": False, "Previous Selection": False, "Edited": False, "Probabilities": [], "stream_id": i})
             
             process_variable_changes(self.socketio, "actions", "Options", {"id": self.action_count+1, "options": self.actions[self.action_count+1]["Options"]}, {"id": self.action_count+1, "options": None})
         else:
@@ -1030,19 +1039,20 @@ class KoboldStoryRegister(object):
             process_variable_changes(self.socketio, "actions", 'Selected Text Length', {"id": self.action_count+1, 'length': self.actions[self.action_count+1]['Selected Text Length']}, {"id": self.action_count, 'length': 0})
     
     def set_probabilites(self, probabilities, action_id=None):
+        print(probabilities)
         if action_id is None:
             action_id = self.action_count
         if action_id in self.actions:
-            self.actions[action_id]['Probabilities'] = probabilities
+            self.actions[action_id]['Probabilities'].append(probabilities)
             process_variable_changes(self.socketio, "actions", 'Probabilities', {"id": action_id, 'Probabilities':  self.actions[action_id]['Probabilities']}, None)
             
     def set_option_probabilities(self, probabilities, option_number, action_id=None):
         if action_id is None:
             action_id = self.action_count+1
         if action_id in self.actions:
-            old_options = self.actions[action_id]["options"]
-            if option_number < len(self.actions[action_id]["options"]):
-                self.actions[action_id]["options"][option_number]['Probabilities'] = probabilities
+            old_options = self.actions[action_id]["Options"]
+            if option_number < len(self.actions[action_id]["Options"]):
+                self.actions[action_id]["Options"][option_number]['Probabilities'].append(probabilities)
                 process_variable_changes(self.socketio, "actions", "Options", {"id": action_id, "options": self.actions[action_id]["Options"]}, {"id": action_id, "options": old_options})
     
     def __setattr__(self, name, value):

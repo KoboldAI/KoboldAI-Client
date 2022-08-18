@@ -368,6 +368,21 @@ gensettingstf = [
     "sub_path": "UI",
     "classname": "user",
     "name": "output_streaming"
+ 	},
+    {
+ 	"uitype": "toggle",
+ 	"unit": "bool",
+ 	"label": "Probability Calc",
+ 	"id": "setshowprobs",
+ 	"min": 0,
+ 	"max": 1,
+ 	"step": 1,
+ 	"default": 0,
+	"tooltip": "Adds context menu to outputs showing what other words were considered as it was built.",
+    "menu_path": "Interface",
+    "sub_path": "UI",
+    "classname": "user",
+    "name": "show_probs"
  	}
 ]
 
@@ -571,6 +586,21 @@ gensettingsik =[{
     "menu_path": "User",
     "classname": "user",
     "name": "output_streaming"
+ 	},
+    {
+ 	"uitype": "toggle",
+ 	"unit": "bool",
+ 	"label": "Probability Calculation",
+ 	"id": "setshowprobs",
+ 	"min": 0,
+ 	"max": 1,
+ 	"step": 1,
+ 	"default": 0,
+	"tooltip": "Adds context menu to outputs showing what other words were considered as it was built.",
+    "menu_path": "Interface",
+    "sub_path": "UI",
+    "classname": "user",
+    "name": "show_probs"
  	}
 ]
 
