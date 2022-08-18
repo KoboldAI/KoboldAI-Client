@@ -37,3 +37,7 @@ accelerate-disk-cache
 
 # Don't ignore defaults
 !defaults/*
+flask_session/1074228e7055acfb7de9d07a471d0b92
+.gitignore
+flask_session/2029240f6d1128be89ddc32729463129
+flask_session

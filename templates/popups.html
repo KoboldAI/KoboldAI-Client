@@ -11,7 +11,7 @@
 	</div>
 	<div>Drag file(s) above or click here to Upload File<input id="popup_upload_input" type=file onchange="upload_file(this)"></div>
 	<div class="popup_load_cancel" id="popup_load_cancel">
-		<button class="btn popup_load_cancel_button" id="popup_accept">Load</button>
+		<button class="btn popup_load_cancel_button action_button" id="popup_accept">Load</button>
 		<button class="btn popup_load_cancel_button" id="popup_cancel" onclick='document.getElementById("popup").classList.add("hidden");'>Cancel</button>
 	</div>
 </div>
@@ -44,7 +44,7 @@
 			<input type="checkbox" data-toggle="toggle" data-onstyle="success" id="use_gpu" checked>
 			<div class="box-label">Use GPU</div>
 		</div>
-		<button type="button" class="btn popup_load_cancel_button disabled" onclick="load_model()" id="btn_loadmodelaccept">Load</button>
+		<button type="button" class="btn popup_load_cancel_button action_button disabled" onclick="load_model()" id="btn_loadmodelaccept">Load</button>
 		<button type="button" class="btn popup_load_cancel_button" onclick='document.getElementById("loadmodelcontainer").classList.add("hidden");' id="btn_loadmodelclose">Cancel</button>
 	</div>
 </div>
@@ -78,6 +78,22 @@
 		<button type="button" class="btn btn-primary" onclick="this.parentElement.parentElement.classList.add('hidden');">Cancel</button>
 	</div>
 </div>
+<!---------------- Import aidg.club Prompt ---------------------->
+<div class="popup hidden" id="import_aidg_club_popup">
+	<div class="title">
+		<div class="popuptitletext">Enter the Prompt Number</div>
+	</div>
+	<div class="popup_list_area">
+		<br/>
+		<div style="text-align: center;"><a href="https://aetherroom.club/" target="_blank" rel="noopener noreferrer">https://aetherroom.club/</a></div>
+		<br/>
+		<input autocomplete="off" class="form-control" type="text" placeholder="Prompt Number (4-digit number at the end of aetherroom.club URL)" id="aidgpromptnum">
+	</div>
+	<div class="popup_load_cancel">
+		<button type="button" class="btn btn-primary" onclick="socket.emit('load_aidg_club', document.getElementById('aidgpromptnum').value); this.parentElement.parentElement.classList.add('hidden');">Accept</button>
+		<button type="button" class="btn btn-primary" onclick="this.parentElement.parentElement.classList.add('hidden');">Cancel</button>
+	</div>
+</div>
 
 <!---------------- error screen ---------------------->
 <div class="popup hidden" id="error_message">
@@ -88,6 +104,6 @@
 		
 	</div>
 	<div class="popup_load_cancel">
-		<button type="button" class="btn btn-primary" onclick="document.getElementById('error_message').classList.add('hidden');">ok</button>
+		<button type="button" class="btn btn-primary" onclick="document.getElementById('error_message').classList.add('hidden');">Ok</button>
 	</div>
 </div>

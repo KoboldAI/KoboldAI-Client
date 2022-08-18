@@ -35,9 +35,14 @@
 <div class="flyout_menu_contents">
 
 	<div id="setting_menu_home" class="settings_category_area">
-		<div id="Model_Info">
-			<div>
-				Running Model: <span class="var_sync_model_model">ReadOnly</span>
+		<div class="Model_Info">
+			<div id="model_title">
+				<span>
+					<span class="var_sync_model_model">ReadOnly</span>
+				</span>
+			</div>
+			<div id="text_runningmodel">
+					<b>Running Model: </b>
 			</div>
 			<div>
 				<button class="btn action_button" onclick="socket.emit('load_model_button', {});">Load Model</button>
@@ -47,10 +52,14 @@
 		<div id="Story_Info">
 			<hr/>
 			<div class="story_title_area">
-				<span class="story_title">
+				<div class="story_title">
+					<span>
+						<span class="var_sync_story_story_name fullwidth" contenteditable=true onblur="sync_to_server(this);"></span>
+					</span>
+				</div>
+				<div id="text_storyname">
 					<b>Story Name: </b>
-					<span class="var_sync_story_story_name fullwidth" contenteditable=true onblur="sync_to_server(this);"></span>
-				</span>
+				</div>
 				<div class="story_title_icons">
 					<span class="material-icons-outlined cursor" title="New Story" onclick="socket.emit('new_story', '');">description</span>
 					<span class="material-icons-outlined cursor" title="Load Story" onclick="socket.emit('load_story_list', '');">folder_open</span>
@@ -73,7 +82,9 @@
 		</div>
 	</div>
 	<div id="setting_menu_settings" class="hidden settings_category_area">
-		<div><select class="var_sync_model_selected_preset settings_select presets" onchange='sync_to_server(this)'><option>Preset</option></select></div>
+		<div class="force_center">
+			<select class="var_sync_model_selected_preset settings_select presets" onchange='sync_to_server(this)'><option>Preset</option></select>
+		</div>
 		{% with menu='Settings' %}
 			<div onclick="toggle_setting_category(this);">
 				<h4 style="width:var(--flyout_menu_width);"><span class="material-icons-outlined cursor">expand_more</span> Generation</h4>
