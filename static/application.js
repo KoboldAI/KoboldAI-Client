@@ -2962,6 +2962,7 @@ $(document).ready(function(){
 			$("#showmodelnamecontainer").removeClass("hidden");
 		} else if(msg.cmd == 'hide_model_name') {
 			$("#showmodelnamecontainer").addClass("hidden");
+			$(window).off('beforeunload');
 			location.reload();
 			//console.log("Closing window");
 		} else if(msg.cmd == 'model_load_status') {
