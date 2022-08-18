@@ -12,120 +12,120 @@
 
 :root {
 /*----------------Palette Theme--------------------*/
-	--primary: #afc6ff;
-	--on_primary: #002d6c;
-	--primary_container: #004397;
-	--on_primary_container: #d9e2ff;
+	--primary_palette: #afc6ff;
+	--on_primary_palette: #002d6c;
+	--primary_containter_palette: #004397;
+	--on_primary_containter_palette: #d9e2ff;
 
-	--secondary: #f7c5ee;
-	--on_secondary: #5c0059;
-	--secondary_container: #d663bd;
-	--on_secondary_container: #4e0039;
+	--secondary_palette: #f7c5ee;
+	--on_secondary_palette: #5c0059;
+	--secondary_container_palette: #d663bd;
+	--on_secondary_container_palette: #4e0039;
 
-	--tertiary: #a8d473;
-	--on_tertiary: #1f3700;
-	--tertiary_container: #2f4f00;
-	--on_tertiary_container: #c3f18c; 
+	--tertiary_palette: #a8d473;
+	--on_tertiary_palette: #1f3700;
+	--tertiary_container_palette: #2f4f00;
+	--on_tertiary_container_palette: #c3f18c; 
 
-	--error: #ffb4ab;
-	--on_error: #690005;
-	--error_container: #93000a;
-	--on_error_container: #ffdad6;
+	--error_palette: #ffb4ab;
+	--on_error_palette: #690005;
+	--error_container_palette: #93000a;
+	--on_error_container_palette: #ffdad6;
 
-	--p_background: #1b1b1f;
-	--on_background:#e3e2e6;
-	--layer1: #212126;
-	--layer2: #28282D;
-	--layer3: #2F2F35;
-	--layer4: #35353D;
-	--outline: #8e9099;
+	--background_palette: #1b1b1f;
+	--on_background_palette:#e3e2e6;
+	--layer1_palette: #212126;
+	--layer2_palette: #28282D;
+	--layer3_palette: #2F2F35;
+	--layer4_palette: #35353D;
+	--outline_palette: #8e9099;
 
-	--middle: #232328;
-	--on_middle: #86868e;
-	--surface: #2f2f36;
-	--on_surface: #e3e2e6;
+	--middle_palette: #232328;
+	--on_middle_palette: #86868e;
+	--surface_palette: #2f2f36;
+	--on_surface_palette: #e3e2e6;
 
 /*----------------Advanced Theme--------------------*/
 	/*General*/
-	--background: var(--p_background);
-	--gamescreen_background: var(--layer2);
-    --input_background: var(--layer3);
+	--background: var(--background_palette);
+	--gamescreen_background: var(--layer2_palette);
+    --input_background: var(--layer3_palette);
 
-    --text: var(--on_background);
-    --text_to_ai_color: var(--on_background);
-    --text_edit: var(--on_background);
+    --text: var(--on_background_palette);
+    --text_to_ai_color: var(--on_background_palette);
+    --text_edit: var(--on_background_palette);
 
 	--statusbar_color: #002d6ca1;
 	--scrollbar-color: #9b9b9b80;
 
 	/*Buttons*/
-	--enabled_button_text: var(--on_primary);
-    --enabled_button_background_color: var(--primary);
-    --enabled_button_border_color: var(--on_primary);
+	--enabled_button_text: var(--on_primary_palette);
+    --enabled_button_background_color: var(--primary_palette);
+    --enabled_button_border_color: var(--on_primary_palette);
 	--disabled_button_text: #303030;
     --disabled_button_background_color: #495762;
     --disabled_button_border_color: #686c68;
 
 	/*Sequence, AKA Gens Per Action*/
-	--sequence_area_background: var(--layer1);
-    --sequence_background: var(--primary);
-	--sequence_text: var(--on_primary);
+	--sequence_area_background: var(--layer1_palette);
+    --sequence_background: var(--primary_palette);
+	--sequence_text: var(--on_primary_palette);
 
 	/*Side Menus*/
-	--tab_color: var(--primary_container);
+	--tab_color: var(--primary_containter_palette);
 
-	--flyout_background: var(--layer1);
-	--flyout_background_pinned: var(--layer1);
+	--flyout_background: var(--layer1_palette);
+	--flyout_background_pinned: var(--layer1_palette);
 
-	--setting_background: var(--surface);
-    --setting_text: var(--on_surface);
+	--setting_background: var(--surface_palette);
+    --setting_text: var(--on_surface_palette);
 
-	--sample_order_select_color: var(--primary);
-	--sample_order_select_color_text: var(--on_primary);
+	--sample_order_select_color: var(--primary_palette);
+	--sample_order_select_color_text: var(--on_primary_palette);
 
-	--dropdown_text: var(--on_secondary);
-	--dropdown_background: var(--secondary);
+	--dropdown_text: var(--on_secondary_palette);
+	--dropdown_background: var(--secondary_palette);
 
-	--rangeslider_background_color: var(--on_primary_container);
-	--rangeslider_color: var(--primary_container);
-	--rangeslider_circle_color: var(--on_primary);
+	--rangeslider_background_color: var(--on_primary_containter_palette);
+	--rangeslider_color: var(--primary_containter_palette);
+	--rangeslider_circle_color: var(--on_primary_palette);
 
-	--help_icon: var(--secondary);
-	--help_icon_text: var(--on_secondary);
-    --tooltip_text: var(--on_secondary);
-    --tooltip_background: var(--secondary);
+	--help_icon: var(--secondary_palette);
+	--help_icon_text: var(--on_secondary_palette);
+    --tooltip_text: var(--on_secondary_palette);
+    --tooltip_background: var(--secondary_palette);
 
 	/*World Info*/
-	--wi_card_border_color: var(--on_primary);
-    --wi_card_border_color_to_ai: var(--on_secondary);
+	--wi_card_border_color: var(--on_primary_palette);
+    --wi_card_border_color_to_ai: var(--on_secondary_palette);
 
-    --wi_card_bg_color: var(--primary);
-	--wi_card_text_color: var(--on_primary);
+    --wi_card_bg_color: var(--primary_palette);
+	--wi_card_text_color: var(--on_primary_palette);
 
-    --wi_card_tag_bg_color: var(--primary);
-	--wi_card_tag_text_color:var(--on_primary);
+    --wi_card_tag_bg_color: var(--primary_palette);
+	--wi_card_tag_text_color:var(--on_primary_palette);
 	
-    --wi_tag_color: var(--primary_container);
-	--wi_tag_text_color: var(--on_primary_container);
-	--wi_folder_background: var(--middle);
+    --wi_tag_color: var(--primary_containter_palette);
+	--wi_tag_text_color: var(--on_primary_containter_palette);
+	--wi_folder_background: var(--middle_palette);
 	
 	/*Popup*/
-	--popup_background_color: var(--layer4);
-    --popup_title_bar_color: var(--primary);
-	--popup_title_bar_color_text: var(--on_primary);
+	--popup_background_color: var(--layer4_palette);
+    --popup_title_bar_color: var(--primary_palette);
+	--popup_title_bar_color_text: var(--on_primary_palette);
 
-    --popup_item_color: var(--surface);
-	--popup_item_color_text: var(--on_surface);
+    --popup_item_color: var(--surface_palette);
+	--popup_item_color_text: var(--on_surface_palette);
 
-	--popup_hover_color: var(--secondary);
-	--popup_hover_color_text: var(--on_secondary);
-	--popup_selected_color: var(--secondary_container);
-	--popup_selected_color_text: var(--on_secondary_container);
+	--popup_hover_color: var(--secondary_palette);
+	--popup_hover_color_text: var(--on_secondary_palette);
+	--popup_selected_color: var(--secondary_container_palette);
+	--popup_selected_color_text: var(--on_secondary_container_palette_palette);
 
-	--popup_button_color: var(--primary_container);
-	--popup_button_color_text: var(--on_primary_container);
-	--popup_cancel_button_color: var(--primary);
-	--popup_cancel_button_color_text: var(--on_primary);
+	--popup_button_color: var(--primary_containter_palette);
+	--popup_button_color_text: var(--on_primary_containter_palette);
+	--popup_cancel_button_color: var(--primary_palette);
+	--popup_cancel_button_color_text: var(--on_primary_palette);
 
     /*Parameters*/
 	--scrollbar-size: 6px;
@@ -330,7 +330,7 @@ input[type="range"]::-ms-fill-upper {
 
 .settings_category_area {
 	width: 100%;
-	background: var(--layer1);
+	background: var(--layer1_palette);
 	grid-row: 2;
 }
 
@@ -1336,8 +1336,8 @@ body {
 }
 
 .popup#error_message {
-	background-color: var(--error);
-	color: var(--on_error);
+	background-color: var(--error_palette);
+	color: var(--on_error_palette);
 	height: 30vh;
 	top: 35vh;
 }
@@ -1352,8 +1352,8 @@ body {
 
 #error_message .title {
 	width: 100%;
-	background-color: var(--error_container);
-	color: var(--on_error_container);
+	background-color: var(--error_container_palette);
+	color: var(--on_error_container_palette);
 	text-align: center;
 	font-size: 1.3em;
 }
@@ -1364,9 +1364,9 @@ body {
 }
 
 .popup#error_message .btn-primary {
-	background-color: var(--error);
-	color: var(--on_error);
-	border-color: var(--on_error);
+	background-color: var(--error_palette);
+	color: var(--on_error_palette);
+	border-color: var(--on_error_palette);
 }
 
 
@@ -1440,8 +1440,8 @@ body {
 }
 
 #error_message .popup_load_cancel{
-	background-color: var(--error_container);
-	color: var(--on_error_container);
+	background-color: var(--error_container_palette);
+	color: var(--on_error_container_palette);
 }
 
 .popup_load_cancel_button {
