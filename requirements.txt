@@ -12,8 +12,6 @@ bleach==4.1.0
 sentencepiece
 protobuf
 accelerate
-python-socketio[client]
 flask_session
 marshmallow>=3.13
 apispec-webframeworks
-gevent
