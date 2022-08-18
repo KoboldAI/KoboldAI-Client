@@ -16,31 +16,34 @@
 	--on_primary: #002d6c;
 	--primary_container: #004397;
 	--on_primary_container: #d9e2ff;
+
 	--secondary: #f7c5ee;
 	--on_secondary: #5c0059;
 	--secondary_container: #d663bd;
 	--on_secondary_container: #4e0039;
+
 	--tertiary: #a8d473;
 	--on_tertiary: #1f3700;
 	--tertiary_container: #2f4f00;
 	--on_tertiary_container: #c3f18c; 
+
 	--error: #ffb4ab;
 	--on_error: #690005;
 	--error_container: #93000a;
 	--on_error_container: #ffdad6;
+
 	--p_background: #1b1b1f;
 	--on_background:#e3e2e6;
-	--outline: #8e9099;
-	--middle: #232328;
-	--on_middle: #86868e;
-	--surface: #28282e;
-	--on_surface: #e3e2e6;
-	--surface_variant: #2f2f36;
-	--on_surface_variant: #c5c6d0;
 	--layer1: #212126;
 	--layer2: #28282D;
 	--layer3: #2F2F35;
 	--layer4: #35353D;
+	--outline: #8e9099;
+
+	--middle: #232328;
+	--on_middle: #86868e;
+	--surface: #2f2f36;
+	--on_surface: #e3e2e6;
 
 /*----------------Advanced Theme--------------------*/
 	/*General*/
@@ -51,6 +54,8 @@
     --text: var(--on_background);
     --text_to_ai_color: var(--on_background);
     --text_edit: var(--on_background);
+
+	--statusbar_color: #002d6ca1;
 	--scrollbar-color: #9b9b9b80;
 
 	/*Buttons*/
@@ -72,7 +77,7 @@
 	--flyout_background: var(--layer1);
 	--flyout_background_pinned: var(--layer1);
 
-	--setting_background: var(--surface_variant);
+	--setting_background: var(--surface);
     --setting_text: var(--on_surface);
 
 	--sample_order_select_color: var(--primary);
@@ -81,6 +86,10 @@
 	--dropdown_text: var(--on_secondary);
 	--dropdown_background: var(--secondary);
 
+	--rangeslider_background_color: var(--on_primary_container);
+	--rangeslider_color: var(--primary_container);
+	--rangeslider_circle_color: var(--on_primary);
+
 	--help_icon: var(--secondary);
 	--help_icon_text: var(--on_secondary);
     --tooltip_text: var(--on_secondary);
@@ -88,7 +97,7 @@
 
 	/*World Info*/
 	--wi_card_border_color: var(--on_primary);
-    --wi_card_border_color_to_ai: green;
+    --wi_card_border_color_to_ai: var(--on_secondary);
 
     --wi_card_bg_color: var(--primary);
 	--wi_card_text_color: var(--on_primary);
@@ -102,17 +111,42 @@
 	
 	/*Popup*/
 	--popup_background_color: var(--layer4);
-    --popup_title_bar_color: var(--secondary_container);
-	--popup_title_bar_color_text: var(--on_secondary_container);
-    --popup_item_color: var(--surface_variant);
-	--popup_item_color_text: var(--on_surface_variant);
+    --popup_title_bar_color: var(--primary);
+	--popup_title_bar_color_text: var(--on_primary);
+
+    --popup_item_color: var(--surface);
+	--popup_item_color_text: var(--on_surface);
+
 	--popup_hover_color: var(--secondary);
 	--popup_hover_color_text: var(--on_secondary);
 	--popup_selected_color: var(--secondary_container);
 	--popup_selected_color_text: var(--on_secondary_container);
-    
 
-/*----------------Parameters--------------------*/
+	--popup_button_color: var(--primary_container);
+	--popup_button_color_text: var(--on_primary_container);
+	--popup_cancel_button_color: var(--primary);
+	--popup_cancel_button_color_text: var(--on_primary);
+
+    /*Parameters*/
+	--scrollbar-size: 6px;
+	--light_shadow_value: 0 0px 8px 0 rgba(0, 0, 0, 0.2), 0px 0px 20px 0 rgba(0, 0, 0, 0.19);
+	--left_menu_strong_shadow: 0 0px 8px 0 rgba(0, 0, 0, 0.2), 25px 0px 20px 0 rgba(0, 0, 0, 0.19);
+	--right_menu_light_shadow: 0 0px 8px 0 rgba(0, 0, 0, 0.2), 0px 0px 20px 0 rgba(0, 0, 0, 0.19);
+	--right_menu_strong_shadow: 0 0px 8px 0 rgba(0, 0, 0, 0.2), -25px 0px 20px 0 rgba(0, 0, 0, 0.19);
+	--radius_inputbox: 10px;
+	--radius_unpinned_menu: 20px;
+	--radius_sequence: 10px;
+	--radius_settings_background: 5px;
+	--radius_buttons: 5px;
+	--radius_item_popup: 2px;
+	--radius_wi_card: 5px;
+
+
+
+
+
+
+/*----------------VARIABLES--------------------*/
 	--flyout_menu_closed_width: 0px;
 	--setting_menu_closed_width_no_pins_width:  0px;
 	--story_options_size: 30%;
@@ -126,21 +160,9 @@
 	--story_pinned_area_widths_right: 30px auto var(--story_options_size) 30px;
 	--story_pinned_areas: var(--story_pinned_areas_left);
 	--story_pinned_area_widths: var(--story_pinned_area_widths_left);
-	--scrollbar-color: #9b9b9b80;
-	--scrollbar-size: 6px;
-	--light_shadow_value: 0 0px 8px 0 rgba(0, 0, 0, 0.2), 0px 0px 20px 0 rgba(0, 0, 0, 0.19);
-	--left_menu_strong_shadow: 0 0px 8px 0 rgba(0, 0, 0, 0.2), 25px 0px 20px 0 rgba(0, 0, 0, 0.19);
-	--right_menu_light_shadow: 0 0px 8px 0 rgba(0, 0, 0, 0.2), 0px 0px 20px 0 rgba(0, 0, 0, 0.19);
-	--right_menu_strong_shadow: 0 0px 8px 0 rgba(0, 0, 0, 0.2), -25px 0px 20px 0 rgba(0, 0, 0, 0.19);
-	--radius_inputbox: 10px;
-	--radius_unpinned_menu: 20px;
-	--radius_sequence: 10px;
-	--radius_settings_background: 5px;
-	--radius_buttons: 5px;
-	--radius_item_popup: 2px;
-	--radius_wi_card: 5px;
 }
-/*----------------Custom Range SLiders--------------------*/
+
+/*----------------Custom Range Sliders--------------------*/
 /*Chrome*/
 @media screen and (-webkit-min-device-pixel-ratio:0) {
     input[type='range'] {
@@ -148,7 +170,7 @@
 	  border-color: var(--setting_background);
       width: 100%;
       -webkit-appearance: none;
-      background-color: var(--on_primary_container);
+      background-color: var(--rangeslider_background_color);
 	  border-radius: 16px;
     }
 	 
@@ -165,8 +187,8 @@
       -webkit-appearance: none;
       height: 16px;
       cursor: ew-resize;
-      background: var(--on_primary);
-      box-shadow: -1928px 0 0 1920px var(--primary_container);
+      background: var(--rangeslider_circle_color);
+      box-shadow: -1928px 0 0 1920px var(--rangeslider_color);
 	  border-radius: 50%;
     }
 
@@ -177,19 +199,19 @@
 }
 /** FF*/
 input[type="range"]::-moz-range-progress {
-  background-color: var(--primary_container); 
+  background-color: var(--rangeslider_color);
   border-color: var(--setting_background);
 }
 input[type="range"]::-moz-range-track {  
-  background-color: var(--on_primary_container);
+  background-color: var(--rangeslider_background_color);
 }
 /* IE*/
 input[type="range"]::-ms-fill-lower {
-  background-color: var(--primary_container); 
+  background-color: var(--rangeslider_color);
   border-color: var(--setting_background);
 }
 input[type="range"]::-ms-fill-upper {  
-  background-color: var(--on_primary_container);
+  background-color: var(--rangeslider_background_color);
 }
 /*----------------Folder Tabs--------------------*/
 .tabrow {
@@ -506,6 +528,58 @@ input[type="range"]::-ms-fill-upper {
 	height: calc(100vh - 40px);
 }
 
+.Model_Info{
+	position: relative;
+	margin: 25px 0 0 10px;
+}
+
+#model_title{
+	font-size: x-large;
+	text-align: center;
+}
+
+#text_runningmodel{
+	position: absolute;
+	font-size: small;
+	top: -15px;
+}
+
+
+.story_title_area {
+	position: relative;
+}
+
+.story_title_area .var_sync_story_story_name {
+	border-bottom: 1px solid;
+	padding-bottom: 3px;
+}
+
+.story_title_area .var_sync_story_story_name[contenteditable="true"]:active,
+.story_title_area .var_sync_story_story_name[contenteditable="true"]:focus{
+	border:none;
+	outline:none;
+	color: var(--text_edit);
+	border-bottom: 1px solid var(--text);
+	padding-bottom: 3px;
+}
+
+.story_title {
+	font-size: x-large;
+	text-align: center;
+}
+#text_storyname{
+	font-size: small;
+	top: -10px;
+	position: absolute;
+	margin: 0 0 0 10px;
+}
+
+.story_title_icons {
+	font-size: 18px;
+	padding: 10px 0 0 0;
+	margin-left: 125px;
+}
+
 .settings_menu {
 	padding-left: 30px;
 	padding-top: 7px;
@@ -580,7 +654,7 @@ input[type="range"]::-ms-fill-upper {
 	bottom: 5px;
 }
 
-/* -----------------------------------------Bias-------------------------------------- */
+/* Bias */
 #biases_label {
 	cursor: pointer;
 }
@@ -720,57 +794,6 @@ input[type="range"]::-ms-fill-upper {
 	height: calc(100vh - 150px);
 }
 
-.Model_Info{
-	position: relative;
-	margin: 25px 0 0 10px;
-}
-
-#model_title{
-	font-size: x-large;
-	text-align: center;
-}
-
-#text_runningmodel{
-	position: absolute;
-	font-size: small;
-	top: -15px;
-}
-
-
-.story_title_area {
-	position: relative;
-}
-
-.story_title_area .var_sync_story_story_name {
-	border-bottom: 1px solid;
-	padding-bottom: 3px;
-}
-
-.story_title_area .var_sync_story_story_name[contenteditable="true"]:active,
-.story_title_area .var_sync_story_story_name[contenteditable="true"]:focus{
-	border:none;
-	outline:none;
-	color: var(--text_edit);
-	border-bottom: 1px solid var(--text);
-	padding-bottom: 3px;
-}
-
-.story_title {
-	font-size: x-large;
-	text-align: center;
-}
-#text_storyname{
-	font-size: small;
-	top: -10px;
-	position: absolute;
-	margin: 0 0 0 10px;
-}
-
-.story_title_icons {
-	font-size: 18px;
-	padding: 10px 0 0 0;
-	margin-left: 125px;
-}
 
 .material-icons-outlined[story_gamesaved="true"] {
 	filter: brightness(40%);
@@ -812,6 +835,19 @@ td.server_vars {
 
 .story_category_area{
 	margin-top: 10px;
+}
+
+#story_menu_notes{
+	margin: 10px 10px 0 10px;
+}
+
+#story_menu_memory{
+	margin: 10px 10px 0 10px;
+}
+
+
+#story_menu_author{
+	margin: 10px 10px 0 10px;
 }
 
 #world_info_folder_root.WI_Folder {
@@ -1195,7 +1231,7 @@ body {
 }
 
 .statusbar_outer {
-	color: var(--primary_container);
+	color: var(--statusbar_color);
 	background-color: transparent;
 	grid-area: submit;
 	z-index: 4;
@@ -1207,7 +1243,7 @@ body {
 }
 
 .statusbar_inner {
-	background-color: #002d6ca1;/*var(--primary_container);*/
+	background-color: var(--statusbar_color);
 	border-radius: 5px;
 	z-index: 0;
 	height: 100%;
@@ -1215,9 +1251,9 @@ body {
 	font-size: 0.875em;
 }
 
-#btnsend{
+/*#btnsend{
 
-}
+}*/
 
 #thinking{
 	z-index: 9999;
@@ -1264,7 +1300,7 @@ body {
 	}
 }
 
-/*---------------------------------- Popup -------------------------------------------------*/
+/*---------------------------------- Popups -------------------------------------------------*/
 @media only screen and (max-aspect-ratio: 7/5) {
 	.popup {
 		position: absolute;
@@ -1299,6 +1335,12 @@ body {
 	}
 }
 
+.popup#error_message {
+	background-color: var(--error);
+	color: var(--on_error);
+	height: 30vh;
+	top: 35vh;
+}
 
 .popup .title {
 	width: 100%;
@@ -1307,6 +1349,26 @@ body {
 	text-align: center;
 	font-size: 1.3em;
 }
+
+#error_message .title {
+	width: 100%;
+	background-color: var(--error_container);
+	color: var(--on_error_container);
+	text-align: center;
+	font-size: 1.3em;
+}
+
+.popup .action_button {
+	background-color: var(--popup_button_color);
+	color: var(--popup_button_color_text);
+}
+
+.popup#error_message .btn-primary {
+	background-color: var(--error);
+	color: var(--on_error);
+	border-color: var(--on_error);
+}
+
 
 .popup .popup_list_area {
 	overflow-x: hidden;
@@ -1372,11 +1434,20 @@ body {
 .popup .popup_load_cancel {
 	text-align: center;
 	vertical-align: bottom;
-	color: var(--popup_item_color_text);
+	color: var(--popup_title_bar_color_text);
 	background-color: var(--popup_title_bar_color);
+	padding: 0 10px 0 10px;
+}
+
+#error_message .popup_load_cancel{
+	background-color: var(--error_container);
+	color: var(--on_error_container);
 }
 
 .popup_load_cancel_button {
+	color: var(--popup_cancel_button_color_text);
+	border-color: var(--popup_cancel_button_color_text);
+	background-color: var(--popup_cancel_button_color);
 	vertical-align: bottom;
 	display: inline;
 }
@@ -1412,7 +1483,7 @@ body {
 	color: var(--popup_hover_color_text);
 }
 
-.popup .model_item.selected {
+.popup .model_item .selected {
 	background: var(--popup_selected_color);
 	color: var(--popup_selected_color_text);
 }
@@ -1422,7 +1493,7 @@ body {
 	grid-template-areas: "label label"
 						 "item item"
 						 "minlabel maxlabel";
-	grid-template-rows: 20px 25px 10px;
+	grid-template-rows: 20px 16px 19px;
 	grid-template-columns: auto 40px;
 	row-gap: 0.2em;
 	border: 1px;
@@ -1431,12 +1502,16 @@ body {
 
 .model_setting_minlabel {
 	grid-area: minlabel;
+	padding-top: 3px;
+	color: var(--popup_title_bar_color_text);
 	overflow: hidden;
 	text-align: left;
 	font-size: 0.8em;
 }
 
 .model_setting_maxlabel {
+	color: var(--popup_title_bar_color_text);
+	padding-top: 3px;
 	grid-area: maxlabel;
 	overflow: hidden;
 	text-align: right;
@@ -1444,12 +1519,14 @@ body {
 }
 
 .model_setting_label {
+	color: var(--popup_title_bar_color_text);
 	grid-area: label;
 	overflow: hidden;
 	text-align: left;
 }
 
 .model_setting_value {
+	color: var(--popup_title_bar_color_text);
 	text-align: left;
 	grid-area: label;
 	background-color: inherit;
@@ -1463,6 +1540,7 @@ body {
 }
 
 .model_setting_item {
+
 	grid-area: item;
 	overflow: hidden;
 }
