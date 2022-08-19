@@ -176,7 +176,9 @@ from flask_socketio import emit
 class Send_to_socketio(object):
     def write(self, bar):
         time.sleep(0.01)
+        print("got bar data")
         try:
+            print(bar, end="\r")
             emit('from_server', {'cmd': 'model_load_status', 'data': bar.replace(" ", "&nbsp;")}, broadcast=True)
         except:
             pass
