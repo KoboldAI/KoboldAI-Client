@@ -1465,6 +1465,7 @@ def patch_transformers_download():
     class Send_to_socketio(object):
         def write(self, bar):
             bar = bar.replace("\r", "").replace("\n", "")
+            
             if bar != "":
                 try:
                     print(bar, end="\r")
@@ -10033,17 +10034,18 @@ for schema in config_endpoint_schemas:
 #==================================================================#
 #  Final startup commands to launch Flask app
 #==================================================================#
+@app.before_first_request
+def startup():
+    if koboldai_vars.model == "" or koboldai_vars.model is None:
+        koboldai_vars.model = "ReadOnly"
+    socketio.start_background_task(load_model, **{'initial_load':True})
+            
 print("", end="", flush=True)
 if __name__ == "__main__":
     print("{0}\nStarting webserver...{1}".format(colors.GREEN, colors.END), flush=True)
 
     general_startup()
     patch_transformers()
-    #show_select_model_list()
-    if koboldai_vars.model == "" or koboldai_vars.model is None:
-        koboldai_vars.model = "ReadOnly"
-    load_model(initial_load=True)
-
     # Start Flask/SocketIO (Blocking, so this must be last method!)
     port = args.port if "port" in args and args.port is not None else 5000
     koboldai_settings.port = port
@@ -10081,6 +10083,7 @@ if __name__ == "__main__":
             print("{0}Webserver has started, you can now connect to this machine at port {1}{2}"
                   .format(colors.GREEN, port, colors.END))
         koboldai_vars.serverstarted = True
+        
         socketio.run(app, host='0.0.0.0', port=port)
     else:
         if args.unblock:
@@ -10109,10 +10112,7 @@ if __name__ == "__main__":
 else:
     general_startup()
     patch_transformers()
-    #show_select_model_list()
-    if koboldai_vars.model == "" or koboldai_vars.model is None:
-        koboldai_vars.model = "ReadOnly"
-    load_model(initial_load=True)
+    startup()
     koboldai_settings.port = args.port if "port" in args and args.port is not None else 5000
     print("{0}\nServer started in WSGI mode!{1}".format(colors.GREEN, colors.END), flush=True)
     
