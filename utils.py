@@ -178,7 +178,7 @@ class Send_to_socketio(object):
         time.sleep(0.01)
         print("got bar data")
         try:
-            print(bar, end="\r")
+            print("Bar data: {}".format(bar))
             emit('from_server', {'cmd': 'model_load_status', 'data': bar.replace(" ", "&nbsp;")}, broadcast=True)
         except:
             raise
