@@ -74,6 +74,13 @@ function reset_story() {
 	while (story_area.lastChild.id != 'story_prompt') { 
 		story_area.removeChild(story_area.lastChild);
 	}
+	dummy_span = document.createElement("span");
+	text = "";
+	for (i=0;i<154;i++) {
+		text += "\xa0";
+	}
+	dummy_span.textContent = text;
+	story_area.append(dummy_span);
 	var option_area = document.getElementById("Select Options");
 	while (option_area.firstChild) {
 		option_area.removeChild(option_area.firstChild);
