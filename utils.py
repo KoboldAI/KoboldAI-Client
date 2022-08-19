@@ -181,6 +181,7 @@ class Send_to_socketio(object):
             print(bar, end="\r")
             emit('from_server', {'cmd': 'model_load_status', 'data': bar.replace(" ", "&nbsp;")}, broadcast=True)
         except:
+            raise
             pass
             
 def aria2_hook(pretrained_model_name_or_path: str, force_download=False, cache_dir=None, proxies=None, resume_download=False, local_files_only=False, use_auth_token=None, user_agent=None, revision=None, mirror=None, **kwargs):
@@ -279,6 +280,7 @@ def aria2_hook(pretrained_model_name_or_path: str, force_download=False, cache_d
                     done = True
                     break
                 if bar is None:
+                    print("setting up status bar for aria2 download")
                     bar = tqdm(total=total_length, desc=f"[aria2] Downloading model", unit="B", unit_scale=True, unit_divisor=1000, file=Send_to_socketio())
                 visited = set()
                 for x in r:
