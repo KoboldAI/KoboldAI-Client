@@ -707,6 +707,9 @@ class system_settings(settings):
             serverstarted = value
         if name not in self.local_only_variables and name[0] != "_" and not new_variable:
             process_variable_changes(self.socketio, self.__class__.__name__.replace("_settings", ""), name, value, old_value)
+            
+            if name == "aibusy" and value == False:
+                koboldai_vars.abort = False
         
 class KoboldStoryRegister(object):
     def __init__(self, socketio, story_settings, koboldai_vars, tokenizer=None, sequence=[]):

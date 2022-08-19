@@ -427,6 +427,9 @@ function do_ai_busy(data) {
 		}
 		favicon.stop_swap()
 		document.getElementById('btnsend').textContent = "Submit";
+		for (item of document.getElementsByClassName('statusbar_outer')) {
+			item.classList.add("hidden");
+		}
 	}
 }
 
