@@ -1536,6 +1536,13 @@ function send_world_info(uid) {
 }
 
 //--------------------------------------------General UI Functions------------------------------------
+function Change_Theme(theme) {
+	console.log(theme);
+	var css = document.getElementById("CSSTheme");
+
+    css.setAttribute("href", "/themes/"+theme+".css");
+}
+
 function palette_color(item) {
 	console.log(item);
 	console.log(item.id);

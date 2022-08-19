@@ -1,0 +1,150 @@
+:root {
+/*----------------Palette Theme--------------------*/--primary_palette: #afc6ff;
+	--on_primary_palette: #002d6c;
+	--primary_containter_palette: #004397;
+	--on_primary_containter_palette: #d9e2ff;
+
+	--secondary_palette: #f7c5ee;
+	--on_secondary_palette: #5c0059;
+	--secondary_container_palette: #d663bd;
+	--on_secondary_container_palette: #4e0039;
+
+	--tertiary_palette: #a8d473;
+	--on_tertiary_palette: #1f3700;
+	--tertiary_container_palette: #2f4f00;
+	--on_tertiary_container_palette: #c3f18c; 
+
+	--error_palette: #ffb4ab;
+	--on_error_palette: #690005;
+	--error_container_palette: #93000a;
+	--on_error_container_palette: #ffdad6;
+
+	--background_palette: #1b1b1f;
+	--on_background_palette:#e3e2e6;
+	--layer1_palette: #18222a;
+	--layer2_palette: #28282D;
+	--layer3_palette: #2F2F35;
+	--layer4_palette: #35353D;
+	--outline_palette: #8e9099;
+
+	--middle_palette: #232328;
+	--on_middle_palette: #86868e;
+	--surface_palette: #2f2f36;
+	--on_surface_palette: #e3e2e6;
+
+/*----------------Advanced Theme--------------------*/
+	/*General*/
+	--background: #222f39;
+	--gamescreen_background: #12181c;
+    --input_background: #111b22;
+
+    --text: #e0e0e0;
+    --text_to_ai_color: #cdd9e0;
+    --text_edit: #759bc5;
+
+	--statusbar_color: #002d6ca1;
+	--scrollbar-color: #3e536780;
+
+	/*Buttons*/
+	--enabled_button_text: #e0e0e0;
+    --enabled_button_background_color: #446899;
+    --enabled_button_border_color: #91acd4;
+	--disabled_button_text: #303030;
+    --disabled_button_background_color: #495762;
+    --disabled_button_border_color: #686c68;
+
+	/*Sequence, AKA Gens Per Action*/
+	--sequence_area_background: #161e24;
+    --sequence_background: #222f39;
+	--sequence_text: #e0e0e0;
+
+	/*Side Menus*/
+	--tab_color: #2b5471;
+
+	--flyout_background: #18222a;
+	--flyout_background_pinned:var(--layer1_palette);
+
+	--setting_background: #273141;
+    --setting_text: #e0e0e0;
+
+	--sample_order_select_color: #244c65;
+	--sample_order_select_color_text: #e0e0e0;
+
+	--dropdown_text: #cfd7a2;
+	--dropdown_background: #151e26;
+
+	--rangeslider_background_color: #1f2934;
+	--rangeslider_color: #244c65;
+	--rangeslider_circle_color: #1b354d;
+
+	--help_icon: #cfd7a2;
+	--help_icon_text: #282c2c;
+    --tooltip_text:var(--on_secondary_palette);
+    --tooltip_background:var(--secondary_palette);
+
+	/*World Info*/
+	--wi_card_border_color: #002d6c;
+    --wi_card_border_color_to_ai:var(--on_secondary_palette);
+
+    --wi_card_bg_color: #afc6ff;
+	--wi_card_text_color:var(--on_primary_palette);
+
+    --wi_card_tag_bg_color: #afc6ff;
+	--wi_card_tag_text_color:var(--on_primary_palette);
+	
+    --wi_tag_color: #004397;
+	--wi_tag_text_color:var(--on_primary_containter_palette);
+	--wi_folder_background: #232328;
+	
+	/*Popup*/
+	--popup_background_color: #1f262e;
+    --popup_title_bar_color: #2b5471;
+	--popup_title_bar_color_text: #e0e0e0;
+
+    --popup_item_color: #272f38;
+	--popup_item_color_text: #e0e0e0;
+
+	--popup_hover_color: #244c65;
+	--popup_hover_color_text: #e0e0e0;
+	--popup_selected_color: #2f677f;
+	--popup_selected_color_text:var(--on_secondary_container_palette_palette);
+
+	--popup_button_color: #446899;
+	--popup_button_color_text: #e0e0e0;
+	--popup_cancel_button_color: #446899;
+	--popup_cancel_button_color_text: #e0e0e0;
+
+    /*Parameters*/
+	--scrollbar-size: 6px;
+	--light_shadow_value: 0;
+	--left_menu_strong_shadow: 0;
+	--right_menu_light_shadow: 0;
+	--right_menu_strong_shadow: 0;
+	--radius_inputbox: 5px;
+	--radius_unpinned_menu: 10px;
+	--radius_sequence: 10px;
+	--radius_settings_background: 5px;
+	--radius_buttons: 5px;
+	--radius_item_popup: 2px;
+	--radius_wi_card: 5px;
+
+
+
+
+
+
+/*----------------VARIABLES--------------------*/
+	--flyout_menu_closed_width: 0px;
+	--setting_menu_closed_width_no_pins_width:  0px;
+	--story_options_size: 30%;
+	--story_pinned_areas_left: "menuicon options gamescreen lefticon"
+								 "menuicon theme theme lefticon"
+								 "menuicon inputrow inputrow lefticon";
+	--story_pinned_areas_right: "menuicon gamescreen options lefticon"
+								 "menuicon theme theme lefticon"
+								 "menuicon inputrow inputrow lefticon";
+	--story_pinned_area_widths_left: 30px var(--story_options_size) auto 30px;
+	--story_pinned_area_widths_right: 30px auto var(--story_options_size) 30px;
+	--story_pinned_areas: var(--story_pinned_areas_left);
+	--story_pinned_area_widths: var(--story_pinned_area_widths_left);
+}

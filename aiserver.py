@@ -6669,6 +6669,14 @@ def ui2_connect():
     koboldai_vars.send_to_ui()
     
     pass
+    
+#==================================================================#
+# UI V2 CODE Themes
+#==================================================================#
+@app.route('/themes/<path:path>')
+def ui2_serve_themes(path):
+    return send_from_directory('themes', path)
+    
 
 #==================================================================#
 # File Popup options
