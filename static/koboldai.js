@@ -1539,14 +1539,11 @@ function send_world_info(uid) {
 function Change_Theme(theme) {
 	console.log(theme);
 	var css = document.getElementById("CSSTheme");
-
     css.setAttribute("href", "/themes/"+theme+".css");
+	create_theming_elements();
 }
 
 function palette_color(item) {
-	console.log(item);
-	console.log(item.id);
-	console.log(item.value);
 	var r = document.querySelector(':root');
 	r.style.setProperty("--"+item.id, item.value);
 	socket.emit("theme_change", getAllCSSVariableNames());
@@ -1554,9 +1551,11 @@ function palette_color(item) {
 
 function getAllCSSVariableNames(styleSheets = document.styleSheets){
    var cssVars = [];
-   var r = document.querySelector(':root');
    // loop each stylesheet
+   console.log(styleSheets);
    for(var i = 0; i < styleSheets.length; i++){
+	   console.log(styleSheets[i]);
+	   console.log(styleSheets[i].ownerNode.attributes.id);
       // loop stylesheet's cssRules
       try{ // try/catch used because 'hasOwnProperty' doesn't work
          for( var j = 0; j < styleSheets[i].cssRules.length; j++){
@@ -1565,7 +1564,7 @@ function getAllCSSVariableNames(styleSheets = document.styleSheets){
                for(var k = 0; k < styleSheets[i].cssRules[j].style.length; k++){
                   let name = styleSheets[i].cssRules[j].style[k];
                   // test name for css variable signiture and uniqueness
-                  if(name.startsWith('--') && cssVars.indexOf(name) == -1){
+                  if(name.startsWith('--') && (styleSheets[i].ownerNode.id == "CSSTheme")){
 					let value = styleSheets[i].cssRules[j].style.getPropertyValue(name);
 					value.replace(/(\r\n|\r|\n){2,}/g, '$1\n');
 					value = value.replaceAll("\t", "");
@@ -1580,11 +1579,13 @@ function getAllCSSVariableNames(styleSheets = document.styleSheets){
 }
 
 function create_theming_elements() {
+	console.log("Running theme editor");
 	var cssVars = getAllCSSVariableNames();
 	palette_table = document.createElement("table");
 	advanced_table = document.createElement("table");
 	theme_area = document.getElementById("Palette");
 	theme_area.append(palette_table);
+	console.log(cssVars);
 	//theme_area.append(advanced_table);
 	for (css_item of cssVars) {
 		if (css_item[0].includes("_palette")) {
@@ -2427,13 +2428,11 @@ $(document).ready(function(){
 	document.onkeydown = detect_key_down;
 	document.onkeyup = detect_key_up;
 	document.getElementById("input_text").onkeydown = detect_enter_submit;
-	console.log(getCookie("Settings_Pin"));
 	if (getCookie("Settings_Pin") == "false") {
 		settings_unpin();
 	} else {
 		settings_pin();
 	}
-	console.log(getCookie("Story_Pin"));
 	if (getCookie("Story_Pin") == "true") {
 		story_pin();
 	} else {

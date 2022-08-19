@@ -252,7 +252,7 @@ app.secret_key = secrets.token_hex()
 app.config['SESSION_TYPE'] = 'filesystem'
 app.config['TEMPLATES_AUTO_RELOAD'] = True
 Session(app)
-socketio = SocketIO(app, async_method="eventlet", manage_session=False)
+socketio = SocketIO(app, async_method="eventlet", manage_session=False, cors_allowed_origins='*')
 #socketio = SocketIO(app, async_method="eventlet", logger=True, engineio_logger=True, manage_session=False)
 koboldai_vars = koboldai_settings.koboldai_vars(session, socketio)
 
@@ -7347,7 +7347,12 @@ def UI_2_load_aidg_club(data):
 #==================================================================#
 @socketio.on('theme_change')
 def UI_2_theme_change(data):
-    print("Theme Changed: {}".format(data))
+    with open("themes/user.css", "w") as f:
+        f.write(":root {")
+        for var in data:
+            f.write("\t{}: {};\n".format(var[0], var[1].replace(";", "")))
+        f.write("}")
+    print("Theme Saved")
     
 
 #==================================================================#
