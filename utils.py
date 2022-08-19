@@ -176,9 +176,8 @@ from flask_socketio import emit
 class Send_to_socketio(object):
     def write(self, bar):
         time.sleep(0.01)
-        print("got bar data")
         try:
-            print("Bar data: {}".format(bar))
+            print(bar)
             emit('from_server', {'cmd': 'model_load_status', 'data': bar.replace(" ", "&nbsp;")}, broadcast=True)
         except:
             pass
@@ -279,7 +278,6 @@ def aria2_hook(pretrained_model_name_or_path: str, force_download=False, cache_d
                     done = True
                     break
                 if bar is None:
-                    print("setting up status bar for aria2 download")
                     bar = tqdm(total=total_length, desc=f"[aria2] Downloading model", unit="B", unit_scale=True, unit_divisor=1000, file=Send_to_socketio())
                 visited = set()
                 for x in r:
