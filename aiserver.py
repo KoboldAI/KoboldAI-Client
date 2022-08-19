@@ -7331,9 +7331,15 @@ def UI_2_load_softprompt(data):
 @socketio.on('load_aidg_club')
 def UI_2_load_aidg_club(data):
     print("Load aidg.club: {}".format(data))
-    importAidgRequest(data)
-    
-        
+    importAidgRequest(data) 
+
+
+#==================================================================#
+# Event triggered when Theme Changed
+#==================================================================#
+@socketio.on('theme_change')
+def UI_2_theme_change(data):
+    print("Theme Changed: {}".format(data))
     
 
 #==================================================================#

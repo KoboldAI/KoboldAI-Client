@@ -1536,6 +1536,15 @@ function send_world_info(uid) {
 }
 
 //--------------------------------------------General UI Functions------------------------------------
+function palette_color(item) {
+	console.log(item);
+	console.log(item.id);
+	console.log(item.value);
+	var r = document.querySelector(':root');
+	r.style.setProperty("--"+item.id, item.value);
+	socket.emit("theme_change", getAllCSSVariableNames());
+}
+
 function getAllCSSVariableNames(styleSheets = document.styleSheets){
    var cssVars = [];
    var r = document.querySelector(':root');
@@ -1561,6 +1570,74 @@ function getAllCSSVariableNames(styleSheets = document.styleSheets){
       } catch (error) {}
    }
    return cssVars;
+}
+
+function create_theming_elements() {
+	var cssVars = getAllCSSVariableNames();
+	palette_table = document.createElement("table");
+	advanced_table = document.createElement("table");
+	theme_area = document.getElementById("Palette");
+	theme_area.append(palette_table);
+	//theme_area.append(advanced_table);
+	for (css_item of cssVars) {
+		if (css_item[0].includes("_palette")) {
+			if (document.getElementById(css_item[0].replace("--", ""))) {
+				input = document.getElementById(css_item[0].replace("--", ""));
+				input.setAttribute("title", css_item[0].replace("--", "").replace("_palette", ""));
+				input.value = css_item[1];
+			}
+		} else {
+			tr = document.createElement("tr");
+			tr.style = "width:100%;";
+			title = document.createElement("td");
+			title.textContent = css_item[0].replace("--", "").replace("_palette", "");
+			tr.append(title);
+			select = document.createElement("select");
+			select.style = "width: 100px; color:black;";
+			var option = document.createElement("option");
+			option.value="";
+			option.text="Use Color";
+			select.append(option);
+			for (css_item2 of cssVars) {
+			   if (css_item2 != css_item) {
+					var option = document.createElement("option");
+					option.value=css_item2[0];
+					option.text=css_item2[0].replace("--", "");
+					select.append(option);
+			   }
+			}
+			select_td = document.createElement("td");
+			select_td.append(select);
+			tr.append(select_td);
+			td = document.createElement("td");
+			tr.append(td);
+			if (css_item[1].includes("#")) {
+				input = document.createElement("input");
+				input.setAttribute("type", "color");
+				input.id = css_item[0];
+				input.setAttribute("title", css_item[0].replace("--", "").replace("_palette", ""));
+				input.value = css_item[1];
+				input.onchange = function () {
+									var r = document.querySelector(':root');
+									r.style.setProperty(this.id, this.value);
+								}
+				td.append(input);
+			} else {
+			   input = document.createElement("input");
+				input.setAttribute("type", "text");
+				input.id = css_item[0];
+				input.setAttribute("title", css_item[0].replace("--", "").replace("_palette", ""));
+				input.value = css_item[1];
+				input.onchange = function () {
+									var r = document.querySelector(':root');
+									r.style.setProperty(this.id, this.value);
+								}
+				td.append(input);
+			}
+			
+			advanced_table.append(tr);
+		}
+	}
 }
 
 function select_sample(item) {
@@ -2339,6 +2416,7 @@ function detect_key_up(e) {
 }
 
 $(document).ready(function(){
+	create_theming_elements();
 	document.onkeydown = detect_key_down;
 	document.onkeyup = detect_key_up;
 	document.getElementById("input_text").onkeydown = detect_enter_submit;

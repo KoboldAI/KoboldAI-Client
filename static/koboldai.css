@@ -6,7 +6,7 @@
 }
 @media only screen and (min-aspect-ratio: 7/5) {
 	:root {
-		--flyout_menu_width: 400px;
+		--flyout_menu_width: 402px;
 	}
 }
 
@@ -1693,4 +1693,8 @@ body.NotConnected {
 
 h2 .material-icons-outlined {
 	font-size: 32px;
+}
+
+.flyout_menu_contents {
+  scrollbar-width: thin;
 }
