@@ -1908,6 +1908,7 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
     global model_config
     global GPT2TokenizerFast
     global tokenizer
+    koboldai_vars.aibusy = True
     reset_model_settings()
     if not utils.HAS_ACCELERATE:
         disk_layers = None
@@ -2622,6 +2623,7 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
                     to_use["Other"]['Official'].append(preset)
         
         koboldai_vars.presets = to_use
+    koboldai_vars.aibusy = False
 
 # Set up Flask routes
 @app.route('/')

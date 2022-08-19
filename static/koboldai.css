@@ -837,7 +837,7 @@ body {
 }
 .main-grid.settings_pinned {
 	margin-left: var(--flyout_menu_width);
-	grid-template-columns: 30px auto 30% 30px;
+	grid-template-columns: 30px auto var(--story_options_size) 30px;
 }
 .main-grid.story_pinned {
 	margin-left: var(--flyout_menu_closed_width);
@@ -1092,6 +1092,7 @@ body {
 
 .statusbar_inner {
 	background-color: var(--statusbar_color);
+	color: var(--statusbar_text_color);
 	border-radius: 5px;
 	z-index: 0;
 	height: 100%;

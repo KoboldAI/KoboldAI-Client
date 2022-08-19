@@ -2291,6 +2291,7 @@ $(document).ready(function(){
 
 	// Connect to SocketIO server
 	socket = io.connect(window.document.origin, {transports: ['polling', 'websocket'], closeOnBeforeunload: false, query:{"ui":  "1"}});
+	//console.log(socket);
 	socket.on('load_popup', function(data){load_popup(data);});
 	socket.on('popup_items', function(data){popup_items(data);});
 	socket.on('popup_breadcrumbs', function(data){popup_breadcrumbs(data);});

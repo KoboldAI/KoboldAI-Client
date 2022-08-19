@@ -44,6 +44,7 @@
     --text_edit: var(--on_background_palette);
 
 	--statusbar_color: #002d6ca1;
+	--statusbar_text_color: white;
 	--scrollbar-color: #9b9b9b80;
 
 	/*Buttons*/
