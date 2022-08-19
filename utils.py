@@ -178,10 +178,9 @@ class Send_to_socketio(object):
         time.sleep(0.01)
         print("got bar data")
         try:
-            print(bar, end="\r")
+            print("Bar data: {}".format(bar))
             emit('from_server', {'cmd': 'model_load_status', 'data': bar.replace(" ", "&nbsp;")}, broadcast=True)
         except:
-            raise
             pass
             
 def aria2_hook(pretrained_model_name_or_path: str, force_download=False, cache_dir=None, proxies=None, resume_download=False, local_files_only=False, use_auth_token=None, user_agent=None, revision=None, mirror=None, **kwargs):
