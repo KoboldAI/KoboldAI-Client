@@ -34,30 +34,30 @@
 
 /*----------------Advanced Theme--------------------*/
 	/*General*/
-	--background: #222f39;
+	--background: #222f3a;
 	--gamescreen_background: #12181c;
-    --input_background: #111b22;
+    --input_background: #121b21;
 
     --text: #e0e0e0;
     --text_to_ai_color: #cdd9e0;
     --text_edit: #759bc5;
 
-	--statusbar_color: #002d6ca1;
+	--statusbar_color: #1a2f4da1;
 	--statusbar_text_color: white;
 	--scrollbar-color: #3e536780;
 
 	/*Buttons*/
 	--enabled_button_text: #e0e0e0;
-    --enabled_button_background_color: #446899;
-    --enabled_button_border_color: #91acd4;
+    --enabled_button_background_color: #2f4563;
+    --enabled_button_border_color: #263a54;
 	--disabled_button_text: #303030;
     --disabled_button_background_color: #495762;
     --disabled_button_border_color: #686c68;
 
 	/*Sequence, AKA Gens Per Action*/
-	--sequence_area_background: #161e24;
-    --sequence_background: #222f39;
-	--sequence_text: #e0e0e0;
+	--sequence_area_background: #121b21;
+    --sequence_background: #131c22;
+	--sequence_text: #cfd7a2;
 
 	/*Side Menus*/
 	--tab_color: #2b5471;
@@ -72,14 +72,14 @@
 	--sample_order_select_color_text: #e0e0e0;
 
 	--dropdown_text: #cfd7a2;
-	--dropdown_background: #151e26;
+	--dropdown_background: #131c22;
 
 	--rangeslider_background_color: #1f2934;
 	--rangeslider_color: #244c65;
 	--rangeslider_circle_color: #1b354d;
 
 	--help_icon: #cfd7a2;
-	--help_icon_text: #282c2c;
+	--help_icon_text: #121b21;
     --tooltip_text:var(--on_secondary_palette);
     --tooltip_background:var(--secondary_palette);
 
@@ -98,21 +98,21 @@
 	--wi_folder_background: #232328;
 	
 	/*Popup*/
-	--popup_background_color: #1f262e;
+	--popup_background_color: #18222a;
     --popup_title_bar_color: #2b5471;
 	--popup_title_bar_color_text: #e0e0e0;
 
-    --popup_item_color: #272f38;
+    --popup_item_color: #252f3a;
 	--popup_item_color_text: #e0e0e0;
 
-	--popup_hover_color: #244c65;
+	--popup_hover_color: #1f4358;
 	--popup_hover_color_text: #e0e0e0;
-	--popup_selected_color: #2f677f;
+	--popup_selected_color: #295c72;
 	--popup_selected_color_text:var(--on_secondary_container_palette_palette);
 
-	--popup_button_color: #446899;
+	--popup_button_color: #406494;
 	--popup_button_color_text: #e0e0e0;
-	--popup_cancel_button_color: #446899;
+	--popup_cancel_button_color: #406494;
 	--popup_cancel_button_color_text: #e0e0e0;
 
     /*Parameters*/
