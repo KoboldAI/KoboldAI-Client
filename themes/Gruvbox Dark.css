@@ -1,0 +1,240 @@
+:root {
+    --gruvbox-dark0-hard: #1d2021;
+    --gruvbox-dark0: #282828;
+    --gruvbox-dark0-soft: #32302f;
+    --gruvbox-dark1: #3c3836;
+    --gruvbox-dark2: #504945;
+    --gruvbox-dark3: #665c54;
+    --gruvbox-dark4: #7c6f64;
+    --gruvbox-gray-245: #928374;
+    --gruvbox-gray-244: #928374;
+    --gruvbox-light0-hard: #f9f5d7;
+    --gruvbox-light0: #fbf1c7;
+    --gruvbox-light0-soft: #f2e5bc;
+    --gruvbox-light1: #ebdbb2;
+    --gruvbox-light2: #d5c4a1;
+    --gruvbox-light3: #bdae93;
+    --gruvbox-light4: #a89984;
+    --gruvbox-bright-red: #fb4934;
+    --gruvbox-bright-green: #b8bb26;
+    --gruvbox-bright-yellow: #fabd2f;
+    --gruvbox-bright-blue: #83a598;
+    --gruvbox-bright-purple: #d3869b;
+    --gruvbox-bright-aqua: #8ec07c;
+    --gruvbox-bright-orange: #fe8019;
+    --gruvbox-neutral-red: #cc241d;
+    --gruvbox-neutral-green: #98971a;
+    --gruvbox-neutral-yellow: #d79921;
+    --gruvbox-neutral-blue: #458588;
+    --gruvbox-neutral-purple: #b16286;
+    --gruvbox-neutral-aqua: #689d6a;
+    --gruvbox-neutral-orange: #d65d0e;
+    --gruvbox-faded-red: #9d0006;
+    --gruvbox-faded-green: #79740e;
+    --gruvbox-faded-yellow: #b57614;
+    --gruvbox-faded-blue: #076678;
+    --gruvbox-faded-purple: #8f3f71;
+    --gruvbox-faded-aqua: #427b58;
+    --gruvbox-faded-orange: #af3a03;
+
+	/* Palette */
+	--primary_palette: #afc6ff;
+	--on_primary_palette: #002d6c;
+	--primary_containter_palette: #004397;
+	--on_primary_containter_palette: #d9e2ff;
+
+	--secondary_palette: #f7c5ee;
+	--on_secondary_palette: #5c0059;
+	--secondary_container_palette: #d663bd;
+	--on_secondary_container_palette: #4e0039;
+
+	--tertiary_palette: #a8d473;
+	--on_tertiary_palette: #1f3700;
+	--tertiary_container_palette: #2f4f00;
+	--on_tertiary_container_palette: #c3f18c; 
+
+	--error_palette: #ffb4ab;
+	--on_error_palette: #690005;
+	--error_container_palette: #93000a;
+	--on_error_container_palette: #ffdad6;
+
+	--background_palette: #1b1b1f;
+	--on_background_palette:#e3e2e6;
+	--layer1_palette: var(--gruvbox-dark1);
+	--layer2_palette: var(--gruvbox-dark2);
+	--layer3_palette: var(--gruvbox-dark3);
+	--layer4_palette: var(--gruvbox-dark4);
+	--outline_palette: #8e9099;
+
+	--middle_palette: #232328;
+	--on_middle_palette: #86868e;
+	--surface_palette: #2f2f36;
+	--on_surface_palette: #e3e2e6;
+
+	/* Advanced */
+	/* General */
+	--background: var(--gruvbox-dark0);
+	--gamescreen_background: var(--gruvbox-dark0-soft);
+    --input_background: var(--gruvbox-dark1);
+
+    --text: var(--gruvbox-light0);
+    --text_to_ai_color: var(--gruvbox-bright-blue);
+    --text_edit: var(--gruvbox-neutral-aqua);
+
+	--statusbar_color: #002d6ca1;
+	--statusbar_text_color: white;
+	--scrollbar-color: #3e536780;
+
+	/* Buttons */
+	--enabled_button_text: var(--gruvbox-light0);
+    --enabled_button_background_color: var(--gruvbox-dark1);
+    --enabled_button_border_color: transparent;
+	--disabled_button_text: var(--gruvbox-dark4);
+    --disabled_button_background_color: var(--gruvbox-dark1);
+    --disabled_button_border_color: transparent;
+
+	/* Sequence, AKA Gens Per Action */
+	--sequence_area_background: #161e24;
+    --sequence_background: #222f39;
+	--sequence_text: #e0e0e0;
+
+	/* Side Menus */
+	--tab_color: var(--gruvbox-faded-blue);
+
+	--flyout_background: #18222a;
+	--flyout_background_pinned: var(--gruvbox-dark0-soft);
+
+	--setting_background: var(--gruvbox-dark0-soft);
+    --setting_text: var(--gruvbox-light0);
+
+	--sample_order_select_color: #244c65;
+	--sample_order_select_color_text: #e0e0e0;
+
+	--dropdown_text: var(--gruvbox-light0);
+	--dropdown_background: var(--gruvbox-dark0-soft);
+
+	--rangeslider_background_color: var(--gruvbox-dark0-soft);
+	--rangeslider_color: var(--gruvbox-neutral-blue);
+	--rangeslider_circle_color: var(--gruvbox-light2);
+
+	--help_icon: #cfd7a2;
+	--help_icon_text: #282c2c;
+    --tooltip_text:var(--on_secondary_palette);
+    --tooltip_background:var(--secondary_palette);
+
+	/* World Info */
+	--wi_card_border_color: #002d6c;
+    --wi_card_border_color_to_ai:var(--on_secondary_palette);
+
+    --wi_card_bg_color: #afc6ff;
+	--wi_card_text_color:var(--on_primary_palette);
+
+    --wi_card_tag_bg_color: #afc6ff;
+	--wi_card_tag_text_color:var(--on_primary_palette);
+	
+    --wi_tag_color: #004397;
+	--wi_tag_text_color:var(--on_primary_containter_palette);
+	--wi_folder_background: #232328;
+	
+	/* Popup */
+	--popup_background_color: #1f262e;
+    --popup_title_bar_color: #2b5471;
+	--popup_title_bar_color_text: #e0e0e0;
+
+    --popup_item_color: #272f38;
+	--popup_item_color_text: #e0e0e0;
+
+	--popup_hover_color: #244c65;
+	--popup_hover_color_text: #e0e0e0;
+	--popup_selected_color: #2f677f;
+	--popup_selected_color_text:var(--on_secondary_container_palette_palette);
+
+	--popup_button_color: #446899;
+	--popup_button_color_text: #e0e0e0;
+	--popup_cancel_button_color: #446899;
+	--popup_cancel_button_color_text: #e0e0e0;
+
+    /* Parameters */
+	--scrollbar-size: 6px;
+	--light_shadow_value: 0;
+	--left_menu_strong_shadow: 0;
+	--right_menu_light_shadow: 0;
+	--right_menu_strong_shadow: 0;
+
+	--radius_inputbox: 0px;
+	--radius_unpinned_menu: 0px;
+	--radius_sequence: 0px;
+	--radius_settings_background: 0px;
+	--radius_buttons: 0px;
+	--radius_item_popup: 0px;
+	--radius_wi_card: 0px;
+
+	/* Variables */
+	--flyout_menu_closed_width: 0px;
+	--setting_menu_closed_width_no_pins_width:  0px;
+	--story_options_size: 30%;
+	--story_pinned_areas_left: "menuicon options gamescreen lefticon"
+								 "menuicon theme theme lefticon"
+								 "menuicon inputrow inputrow lefticon";
+	--story_pinned_areas_right: "menuicon gamescreen options lefticon"
+								 "menuicon theme theme lefticon"
+								 "menuicon inputrow inputrow lefticon";
+	--story_pinned_area_widths_left: 30px var(--story_options_size) auto 30px;
+	--story_pinned_area_widths_right: 30px auto var(--story_options_size) 30px;
+	--story_pinned_areas: var(--story_pinned_areas_left);
+	--story_pinned_area_widths: var(--story_pinned_area_widths_left);
+}
+
+/* Overrides */
+select {
+	color: var(--gruvbox-light0) !important;
+	background-color: var(--gruvbox-dark0-soft);
+	border: 1px solid var(--gruvbox-dark2);
+	border-radius: 0px;
+	padding: 8px;
+}
+
+.setting_item > select {
+	background-color: var(--gruvbox-dark1);
+}
+
+#inputrow_container {
+	margin-top: 7px;
+}
+
+#input_text {
+	border: none !important;
+
+	/* TODO: Upstream! */
+	outline: none;
+}
+
+.settings_category_area .action_button {
+    --enabled_button_background_color: var(--gruvbox-dark0-soft);
+    --disabled_button_background_color: var(--gruvbox-dark0-soft);
+}
+
+.action_button {
+	border: none;
+}
+
+.action_button {
+	border-radius: 0px;
+	border: 1px solid var(--gruvbox-dark2);
+}
+
+.btn-success {
+	background-color: var(--gruvbox-neutral-aqua);
+	border-color: var(--gruvbox-neutral-aqua);
+}
+
+/* Firefox hacks, add this to upstream when done testing */
+input[type="range"]::-moz-range-thumb {
+    background-color: var(--rangeslider_circle_color);
+    border-radius: 50%;
+	border-color: transparent;
+    box-shadow: calc(-100vw - 8px) 0 0 100vw var(--rangeslider_color);
+    appearance: none;
+    width: 16px;
+    height: 16px;
+}
