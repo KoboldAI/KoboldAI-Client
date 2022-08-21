@@ -699,6 +699,7 @@ class system_settings(settings):
         self.seed_specified = False  # Whether or not the current RNG seed was specified by the user (in their settings file)
         self.seed        = None   # The current RNG seed (as an int), or None if unknown
         self.alt_gen = False # Use the calc_ai_text method for generating text to go to the AI
+        self.theme_list = [".".join(f.split(".")[:-1]) for f in os.listdir("./themes") if os.path.isfile(os.path.join("./themes", f))]
         
         
     def __setattr__(self, name, value):

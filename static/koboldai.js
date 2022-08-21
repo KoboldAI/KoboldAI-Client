@@ -446,9 +446,9 @@ function do_ai_busy(data) {
 }
 
 function var_changed(data) {
-	if (data.name == "sp") {
-		console.log({"name": data.name, "data": data});
-	}
+	//if (data.name == "sp") {
+	//	console.log({"name": data.name, "data": data});
+	//}
 	//Special Case for Actions
 	if ((data.classname == "story") && (data.name == "actions")) {
 		do_story_text_updates(data);
@@ -474,6 +474,23 @@ function var_changed(data) {
 		for (const [index, item] of data.value.entries()) {
 			Array.from(document.getElementsByClassName("sample_order"))[index].textContent = map2.get(item);
 		}
+	//Special Case for SP
+	} else if ((data.classname == 'system') && (data.name == 'splist')) {
+		item = document.getElementById("sp");
+		while (item.firstChild) {
+			item.removeChild(item.firstChild);
+		}
+		option = document.createElement("option");
+		option.textContent = "Not in Use";
+		option.value = "";
+		item.append(option);
+		for (sp of data.value) {
+			option = document.createElement("option");
+			option.textContent = sp[1][0];
+			option.value = sp[0];
+			option.setAttribute("title", sp[1][1]);
+			item.append(option);
+		}
 	//Basic Data Syncing
 	} else {
 		var elements_to_change = document.getElementsByClassName("var_sync_"+data.classname.replace(" ", "_")+"_"+data.name.replace(" ", "_"));
@@ -483,15 +500,10 @@ function var_changed(data) {
 					while (item.firstChild) {
 						item.removeChild(item.firstChild);
 					}
-					option = document.createElement("option");
-					option.textContent = "Not in Use";
-					option.value = "";
-					item.append(option);
-					for (sp of data.value) {
+					for (option_data of data.value) {
 						option = document.createElement("option");
-						option.textContent = sp[1][0];
-						option.value = sp[0];
-						option.setAttribute("title", sp[1][1]);
+						option.textContent = option_data;
+						option.value = option_data;
 						item.append(option);
 					}
 				} else if (item.tagName.toLowerCase() === 'input') {
@@ -1461,6 +1473,18 @@ function show_error_message(data) {
 }
 
 //--------------------------------------------UI to Server Functions----------------------------------
+function save_theme() {
+	var cssVars = getAllCSSVariableNames();
+	console.log(cssVars);
+	for (item of document.getElementsByClassName("Theme_Input")) {
+		cssVars["--"+item.id] = item.value;
+	}
+	console.log(cssVars);
+	socket.emit("theme_change", {"name": document.getElementById("save_theme_name").value, "theme": cssVars});
+	document.getElementById("save_theme_name").value = "";
+	socket.emit('theme_list_refresh', '');
+}
+
 function move_sample(direction) {
 	var previous = null;
 	//console.log(direction);
@@ -1592,11 +1616,11 @@ function Change_Theme(theme) {
 function palette_color(item) {
 	var r = document.querySelector(':root');
 	r.style.setProperty("--"+item.id, item.value);
-	socket.emit("theme_change", getAllCSSVariableNames());
+	//socket.emit("theme_change", getAllCSSVariableNames());
 }
 
 function getAllCSSVariableNames(styleSheets = document.styleSheets){
-   var cssVars = [];
+   var cssVars = {};
    // loop each stylesheet
    //console.log(styleSheets);
    for(var i = 0; i < styleSheets.length; i++){
@@ -1611,8 +1635,8 @@ function getAllCSSVariableNames(styleSheets = document.styleSheets){
                   if(name.startsWith('--') && (styleSheets[i].ownerNode.id == "CSSTheme")){
 					let value = styleSheets[i].cssRules[j].style.getPropertyValue(name);
 					value.replace(/(\r\n|\r|\n){2,}/g, '$1\n');
-					value = value.replaceAll("\t", "");
-                    cssVars.push([name, value]);
+					value = value.replaceAll("\t", "").trim();
+                    cssVars[name] = value;
                   }
                }
             } catch (error) {}
@@ -1629,23 +1653,20 @@ function create_theming_elements() {
 	advanced_table = document.createElement("table");
 	theme_area = document.getElementById("Palette");
 	theme_area.append(palette_table);
-	console.log(cssVars);
+	//console.log(cssVars);
 	//theme_area.append(advanced_table);
-	for (css_item of cssVars) {
-		if (css_item[0].includes("_palette")) {
-			if (document.getElementById(css_item[0].replace("--", ""))) {
-				input = document.getElementById(css_item[0].replace("--", ""));
-				input.setAttribute("title", css_item[0].replace("--", "").replace("_palette", ""));
-				input.value = css_item[1];
-				console.log("Set "+css_item[0].replace("--", "")+" to "+css_item[1]);
-				console.log(input);
-				
+	for (const [css_item, css_value] of Object.entries(cssVars)) {
+		if (css_item.includes("_palette")) {
+			if (document.getElementById(css_item.replace("--", ""))) {
+				input = document.getElementById(css_item.replace("--", ""));
+				input.setAttribute("title", css_item.replace("--", "").replace("_palette", ""));
+				input.value = css_value;
 			}
 		} else {
 			tr = document.createElement("tr");
 			tr.style = "width:100%;";
 			title = document.createElement("td");
-			title.textContent = css_item[0].replace("--", "").replace("_palette", "");
+			title.textContent = css_item.replace("--", "").replace("_palette", "");
 			tr.append(title);
 			select = document.createElement("select");
 			select.style = "width: 100px; color:black;";
@@ -1653,11 +1674,11 @@ function create_theming_elements() {
 			option.value="";
 			option.text="Use Color";
 			select.append(option);
-			for (css_item2 of cssVars) {
+			for (const [css_item2, css_value2] of Object.entries(cssVars)) {
 			   if (css_item2 != css_item) {
 					var option = document.createElement("option");
-					option.value=css_item2[0];
-					option.text=css_item2[0].replace("--", "");
+					option.value=css_item2;
+					option.text=css_item2.replace("--", "");
 					select.append(option);
 			   }
 			}
@@ -1666,12 +1687,12 @@ function create_theming_elements() {
 			tr.append(select_td);
 			td = document.createElement("td");
 			tr.append(td);
-			if (css_item[1].includes("#")) {
+			if (css_value.includes("#")) {
 				input = document.createElement("input");
 				input.setAttribute("type", "color");
-				input.id = css_item[0];
-				input.setAttribute("title", css_item[0].replace("--", "").replace("_palette", ""));
-				input.value = css_item[1];
+				input.id = css_item;
+				input.setAttribute("title", css_item.replace("--", "").replace("_palette", ""));
+				input.value = css_value;
 				input.onchange = function () {
 									var r = document.querySelector(':root');
 									r.style.setProperty(this.id, this.value);
@@ -1680,9 +1701,9 @@ function create_theming_elements() {
 			} else {
 			   input = document.createElement("input");
 				input.setAttribute("type", "text");
-				input.id = css_item[0];
-				input.setAttribute("title", css_item[0].replace("--", "").replace("_palette", ""));
-				input.value = css_item[1];
+				input.id = css_item;
+				input.setAttribute("title", css_item.replace("--", "").replace("_palette", ""));
+				input.value = css_value;
 				input.onchange = function () {
 									var r = document.querySelector(':root');
 									r.style.setProperty(this.id, this.value);
@@ -2410,7 +2431,7 @@ function setCookie(cname, cvalue, exdays=60) {
   const d = new Date();
   d.setTime(d.getTime() + (exdays * 24 * 60 * 60 * 1000));
   let expires = "expires="+d.toUTCString();
-  document.cookie = cname + "=" + cvalue + ";" + expires + ";path=/;samesite=none;";
+  document.cookie = cname + "=" + cvalue + ";" + expires + ";";
 }
 
 function getCookie(cname) {

@@ -169,8 +169,9 @@
 					<!---Bottom Row---->
 					<span class="setting_item">
 						<!---<span class="material-icons-outlined cursor" onclick="socket.emit('load_softprompt_list', '');">folder_open</span> <span class="var_sync_system_spname"></span>--->
-						<select autocomplete="off" id="sp" class="var_sync_system_splist var_sync_system_spfilename" style="width: 150px;color:black;" onclick="socket.emit('load_softprompt', this.value);">
+						<select autocomplete="off" id="sp" class="var_sync_system_splist var_sync_system_spfilename" style="width: 140px;color:black;" onclick="socket.emit('load_softprompt', this.value);">
 						</select>
+						<span class="material-icons-outlined cursor" style="font-size: 18px;" title="Refresh List" onclick="socket.emit('sp_list_refresh', '');">autorenew</span>
 					</span>
 					<!---Slider Labels--->
 					<span class="setting_minlabel"><span style="top: -4px; position: relative;"></span></span>
@@ -227,15 +228,13 @@
 			<h4 style="width:var(--flyout_menu_width);"><span class="material-icons-outlined cursor">expand_more</span> Theme</h4>
 		</div>
 		<div class="setting_tile_area" id="Theme">
-			<select autocomplete="off" style="color: black;" onchange="Change_Theme(this.value);">
-				<option selected>Monochrome</option>
-				<option>Material You</option>
-				<option>Darkness</option>
-				<option>user</option>
-			</select>
+			<select class="var_sync_system_theme_list" autocomplete="off" style="color: black;" onchange="Change_Theme(this.value);">
+			</select><span class="material-icons-outlined cursor" title="Refresh List" onclick="socket.emit('theme_list_refresh', '');">autorenew</span>
 			<div class="collapsable_header" onclick="toggle_setting_category(this);">
 				<h4 style="width:var(--flyout_menu_width);"><span class="material-icons-outlined cursor">expand_more</span> Palette</h4>
 			</div>
+			<input type="text" id="save_theme_name" autocomplete="off" placeholder="New Theme Name"/>
+			<span class="material-icons-outlined cursor" title="Save Theme" onclick='save_theme();'>save</span>
 			<div class="setting_tile_area" id="Palette">
 				<table border=1>
 					<tr>
@@ -252,31 +251,31 @@
 					</tr>
 					<tr>
 						<td>Primary</td>
-						<td><input autocomplete="off" type=color id="primary_palette" onchange="palette_color(this)"></td>
-						<td><input autocomplete="off" type=color id="on_primary_palette" onchange="palette_color(this)"></td>
-						<td><input autocomplete="off" type=color id="primary_containter_palette" onchange="palette_color(this)"></td>
-						<td><input autocomplete="off" type=color id="on_primary_containter_palette" onchange="palette_color(this)"></td>
+						<td><input class="Theme_Input" autocomplete="off" type=color id="primary_palette" onchange="palette_color(this)"></td>
+						<td><input class="Theme_Input" autocomplete="off" type=color id="on_primary_palette" onchange="palette_color(this)"></td>
+						<td><input class="Theme_Input" autocomplete="off" type=color id="primary_containter_palette" onchange="palette_color(this)"></td>
+						<td><input class="Theme_Input" autocomplete="off" type=color id="on_primary_containter_palette" onchange="palette_color(this)"></td>
 					</tr>
 					<tr>
 						<td>Secondary</td>
-						<td><input autocomplete="off" type=color id="secondary_palette" onchange="palette_color(this)"></td>
-						<td><input autocomplete="off" type=color id="on_secondary_palette" onchange="palette_color(this)"></td>
-						<td><input autocomplete="off" type=color id="secondary_containter_palette" onchange="palette_color(this)"></td>
-						<td><input autocomplete="off" type=color id="on_secondary_containter_palette" onchange="palette_color(this)"></td>
+						<td><input class="Theme_Input" autocomplete="off" type=color id="secondary_palette" onchange="palette_color(this)"></td>
+						<td><input class="Theme_Input" autocomplete="off" type=color id="on_secondary_palette" onchange="palette_color(this)"></td>
+						<td><input class="Theme_Input" autocomplete="off" type=color id="secondary_containter_palette" onchange="palette_color(this)"></td>
+						<td><input class="Theme_Input" autocomplete="off" type=color id="on_secondary_containter_palette" onchange="palette_color(this)"></td>
 					</tr>
 					<tr>
 						<td>Tertiary</td>
-						<td><input autocomplete="off" type=color id="tertiary_palette" onchange="palette_color(this)"></td>
-						<td><input autocomplete="off" type=color id="on_tertiary_palette" onchange="palette_color(this)"></td>
-						<td><input autocomplete="off" type=color id="tertiary_containter_palette" onchange="palette_color(this)"></td>
-						<td><input autocomplete="off" type=color id="on_tertiary_containter_palette" onchange="palette_color(this)"></td>
+						<td><input class="Theme_Input" autocomplete="off" type=color id="tertiary_palette" onchange="palette_color(this)"></td>
+						<td><input class="Theme_Input" autocomplete="off" type=color id="on_tertiary_palette" onchange="palette_color(this)"></td>
+						<td><input class="Theme_Input" autocomplete="off" type=color id="tertiary_containter_palette" onchange="palette_color(this)"></td>
+						<td><input class="Theme_Input" autocomplete="off" type=color id="on_tertiary_containter_palette" onchange="palette_color(this)"></td>
 					</tr>
 					<tr>
 						<td>Error</td>
-						<td><input autocomplete="off" type=color id="error_palette" onchange="palette_color(this)"></td>
-						<td><input autocomplete="off" type=color id="on_error_palette" onchange="palette_color(this)"></td>
-						<td><input autocomplete="off" type=color id="error_containter_palette" onchange="palette_color(this)"></td>
-						<td><input autocomplete="off" type=color id="on_error_containter_palette" onchange="palette_color(this)"></td>
+						<td><input class="Theme_Input" autocomplete="off" type=color id="error_palette" onchange="palette_color(this)"></td>
+						<td><input class="Theme_Input" autocomplete="off" type=color id="on_error_palette" onchange="palette_color(this)"></td>
+						<td><input class="Theme_Input" autocomplete="off" type=color id="error_containter_palette" onchange="palette_color(this)"></td>
+						<td><input class="Theme_Input" autocomplete="off" type=color id="on_error_containter_palette" onchange="palette_color(this)"></td>
 					</tr>
 				</table>
 				
