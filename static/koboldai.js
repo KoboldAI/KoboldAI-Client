@@ -1584,7 +1584,9 @@ function Change_Theme(theme) {
 	//console.log(theme);
 	var css = document.getElementById("CSSTheme");
     css.setAttribute("href", "/themes/"+theme+".css");
-	create_theming_elements();
+	setTimeout(() => {
+		create_theming_elements();
+	}, "1000")
 }
 
 function palette_color(item) {
@@ -1598,8 +1600,6 @@ function getAllCSSVariableNames(styleSheets = document.styleSheets){
    // loop each stylesheet
    //console.log(styleSheets);
    for(var i = 0; i < styleSheets.length; i++){
-	   //console.log(styleSheets[i]);
-	   //console.log(styleSheets[i].ownerNode.attributes.id);
       // loop stylesheet's cssRules
       try{ // try/catch used because 'hasOwnProperty' doesn't work
          for( var j = 0; j < styleSheets[i].cssRules.length; j++){
@@ -1629,7 +1629,7 @@ function create_theming_elements() {
 	advanced_table = document.createElement("table");
 	theme_area = document.getElementById("Palette");
 	theme_area.append(palette_table);
-	//console.log(cssVars);
+	console.log(cssVars);
 	//theme_area.append(advanced_table);
 	for (css_item of cssVars) {
 		if (css_item[0].includes("_palette")) {
@@ -1637,6 +1637,9 @@ function create_theming_elements() {
 				input = document.getElementById(css_item[0].replace("--", ""));
 				input.setAttribute("title", css_item[0].replace("--", "").replace("_palette", ""));
 				input.value = css_item[1];
+				console.log("Set "+css_item[0].replace("--", "")+" to "+css_item[1]);
+				console.log(input);
+				
 			}
 		} else {
 			tr = document.createElement("tr");

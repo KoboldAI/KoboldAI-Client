@@ -1,5 +1,6 @@
 :root {
-/*----------------Palette Theme--------------------*/--primary_palette: #afc6ff;
+/*----------------Palette Theme--------------------*/
+	--primary_palette: #afc6ff;
 	--on_primary_palette: #002d6c;
 	--primary_containter_palette: #004397;
 	--on_primary_containter_palette: #d9e2ff;
