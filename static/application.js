@@ -1085,11 +1085,12 @@ function buildLoadModelList(ar, menu, breadcrumbs, showdelete) {
 		html = "<div class=\"flex\">\
 			<div class=\"loadlistpadding\"></div>"
 		//if the menu item is a link to another menu
-		if(ar[i][3]) {
+		console.log(ar[i]);
+		if((ar[i][3]) || (['Load a model from its directory', 'Load an old GPT-2 model (eg CloverEdition)'].includes(ar[i][0]))) {
 			html = html + "<span class=\"loadlisticon loadmodellisticon-folder oi oi-folder allowed\"  aria-hidden=\"true\"></span>"
 		} else {
 		//this is a model
-			html = html + "<div class=\"loadlisticon oi oi-caret-right allowed\"></div>"
+			html = html + "<div class=\"loadlisticon oi oi-caret-right allowed\"></div>&nbsp;&nbsp;&nbsp;"
 		}
 		
 		//now let's do the delete icon if applicable
@@ -2444,10 +2445,6 @@ $(document).ready(function(){
 		} else if(msg.cmd == "updatechunk") {
 			hideMessage();
 			game_text.attr('contenteditable', allowedit);
-			if (typeof submit_start !== 'undefined') {
-				$("#runtime")[0].innerHTML = `Generation time: ${Math.round((Date.now() - submit_start)/1000)} sec`;
-				delete submit_start;
-			}
 			var index = msg.data.index;
 			var html = msg.data.html;
 			var existingChunk = game_text.children('#n' + index);
@@ -2961,6 +2958,7 @@ $(document).ready(function(){
 			$("#showmodelnamecontainer").removeClass("hidden");
 		} else if(msg.cmd == 'hide_model_name') {
 			$("#showmodelnamecontainer").addClass("hidden");
+			$(window).off('beforeunload');
 			location.reload();
 			//console.log("Closing window");
 		} else if(msg.cmd == 'model_load_status') {
