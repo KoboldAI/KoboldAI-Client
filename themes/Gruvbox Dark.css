@@ -1,3 +1,9 @@
+/*
+	Name: Gruvbox Dark
+	Author: one-some
+	Description: Port of the standard dark Gruvbox theme.
+*/
+
 :root {
     --gruvbox-dark0-hard: #1d2021;
     --gruvbox-dark0: #282828;
@@ -37,6 +43,9 @@
     --gruvbox-faded-aqua: #427b58;
     --gruvbox-faded-orange: #af3a03;
 
+
+	--main_accent: var(--gruvbox-neutral-purple);
+
 	/* Palette */
 	--primary_palette: #afc6ff;
 	--on_primary_palette: #002d6c;
@@ -53,13 +62,13 @@
 	--tertiary_container_palette: #2f4f00;
 	--on_tertiary_container_palette: #c3f18c; 
 
-	--error_palette: #ffb4ab;
-	--on_error_palette: #690005;
-	--error_container_palette: #93000a;
-	--on_error_container_palette: #ffdad6;
+	--error_palette: var(--gruvbox-bright-purple);
+	--on_error_palette: var(--gruvbox-neutral-red);
+	--error_container_palette: var(--gruvbox-faded-red);
+	--on_error_container_palette: var(--gruvbox-bright-purple);
 
-	--background_palette: #1b1b1f;
-	--on_background_palette:#e3e2e6;
+	--background_palette: var(--gruvbox-dark0-soft);
+	--on_background_palette: var(--gruvbox-light0);
 	--layer1_palette: var(--gruvbox-dark1);
 	--layer2_palette: var(--gruvbox-dark2);
 	--layer3_palette: var(--gruvbox-dark3);
@@ -94,12 +103,12 @@
     --disabled_button_border_color: transparent;
 
 	/* Sequence, AKA Gens Per Action */
-	--sequence_area_background: #161e24;
-    --sequence_background: #222f39;
-	--sequence_text: #e0e0e0;
+	--sequence_area_background: var(--gruvbox-dark1);
+    --sequence_background: var(--gruvbox-dark2);
+	--sequence_text: var(--gruvbox-light0);
 
 	/* Side Menus */
-	--tab_color: var(--gruvbox-faded-blue);
+	--tab_color: var(--main_accent);
 
 	--flyout_background: #18222a;
 	--flyout_background_pinned: var(--gruvbox-dark0-soft);
@@ -107,14 +116,14 @@
 	--setting_background: var(--gruvbox-dark0-soft);
     --setting_text: var(--gruvbox-light0);
 
-	--sample_order_select_color: #244c65;
-	--sample_order_select_color_text: #e0e0e0;
+	--sample_order_select_color: var(--gruvbox-dark2);
+	--sample_order_select_color_text: var(--gruvbox-light2);
 
 	--dropdown_text: var(--gruvbox-light0);
 	--dropdown_background: var(--gruvbox-dark0-soft);
 
 	--rangeslider_background_color: var(--gruvbox-dark0-soft);
-	--rangeslider_color: var(--gruvbox-neutral-blue);
+	--rangeslider_color: var(--main_accent);
 	--rangeslider_circle_color: var(--gruvbox-light2);
 
 	--help_icon: #cfd7a2;
@@ -190,7 +199,7 @@ select {
 	color: var(--gruvbox-light0) !important;
 	background-color: var(--gruvbox-dark0-soft);
 	border: 1px solid var(--gruvbox-dark2);
-	border-radius: 0px;
+	border-radius: 0px !important;
 	padding: 8px;
 }
 
@@ -202,7 +211,7 @@ select {
 	margin-top: 7px;
 }
 
-#input_text {
+#input_text, #themetext {
 	border: none !important;
 
 	/* TODO: Upstream! */
@@ -237,4 +246,15 @@ input[type="range"]::-moz-range-thumb {
     appearance: none;
     width: 16px;
     height: 16px;
+}
+
+/* Sequence stuff */
+.sequence {
+	border: 2px solid var(--gruvbox-dark3) !important;
+}
+
+.sequence_row {
+	/* TODO: Upstream */
+	grid-gap: 5px;
+	padding-right: 5px;
 }
