@@ -228,7 +228,7 @@
 			<h4 style="width:var(--flyout_menu_width);"><span class="material-icons-outlined cursor">expand_more</span> Theme</h4>
 		</div>
 		<div class="setting_tile_area" id="Theme">
-			<select class="var_sync_system_theme_list" autocomplete="off" style="color: black;" onchange="Change_Theme(this.value);">
+			<select id="selected_theme" class="var_sync_system_theme_list" autocomplete="off" style="color: black;" onchange="Change_Theme(this.value);">
 			</select><span class="material-icons-outlined cursor" title="Refresh List" onclick="socket.emit('theme_list_refresh', '');">autorenew</span>
 			<div class="collapsable_header" onclick="toggle_setting_category(this);">
 				<h4 style="width:var(--flyout_menu_width);"><span class="material-icons-outlined cursor">expand_more</span> Palette</h4>

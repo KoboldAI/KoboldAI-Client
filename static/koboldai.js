@@ -556,6 +556,11 @@ function var_changed(data) {
 		do_ai_busy(data);
 	}
 	
+	//set the selected theme to the cookie value
+	if ((data.classname == "system") && (data.name == "theme_list")) {
+		Change_Theme(getCookie("theme", "Monochrome"));
+	}
+	
 	//Set all options before the next chunk to hidden
 	if ((data.classname == "actions") && (data.name == "Action Count")) {
 		var option_container = document.getElementById("Select Options");
@@ -1615,12 +1620,22 @@ function send_world_info(uid) {
 
 //--------------------------------------------General UI Functions------------------------------------
 function Change_Theme(theme) {
-	//console.log(theme);
+	console.log(theme);
 	var css = document.getElementById("CSSTheme");
     css.setAttribute("href", "/themes/"+theme+".css");
 	setTimeout(() => {
 		create_theming_elements();
 	}, "1000")
+	setCookie("theme", theme);
+	select = document.getElementById("selected_theme");
+	for (element of select.childNodes) {
+		if (element.value == theme) {
+			element.selected = true;
+			console.log(element);
+		} else {
+			element.selected = false;
+		}
+	}
 }
 
 function palette_color(item) {
@@ -2456,7 +2471,7 @@ function setCookie(cname, cvalue, exdays=60) {
   document.cookie = cname + "=" + cvalue + ";" + expires + ";";
 }
 
-function getCookie(cname) {
+function getCookie(cname, default_return=null) {
   let name = cname + "=";
   let ca = document.cookie.split(';');
   for(let i = 0; i < ca.length; i++) {
@@ -2468,7 +2483,7 @@ function getCookie(cname) {
 	  return c.substring(name.length, c.length);
 	}
   }
-  return "";
+  return default_return;
 }
 
 function detect_enter_submit(e) {
