@@ -233,54 +233,58 @@
 			<div class="collapsable_header" onclick="toggle_setting_category(this);">
 				<h4 style="width:var(--flyout_menu_width);"><span class="material-icons-outlined cursor">expand_more</span> Palette</h4>
 			</div>
-			<input type="text" id="save_theme_name" autocomplete="off" placeholder="New Theme Name"/>
-			<span class="material-icons-outlined cursor" title="Save Theme" onclick='save_theme();'>save</span>
-			<div class="setting_tile_area" id="Palette">
-				<table border=1>
-					<tr>
-						<th></th>
-						<th colspan=2>Main</th>
-						<th colspan=2>Alternative</th>
-					</tr>
-					<tr>
-						<th></th>
-						<th>Background</th>
-						<th>Text</th>
-						<th>Background</th>
-						<th>Text</th>
-					</tr>
-					<tr>
-						<td>Primary</td>
-						<td><input class="Theme_Input" autocomplete="off" type=color id="primary_palette" onchange="palette_color(this)"></td>
-						<td><input class="Theme_Input" autocomplete="off" type=color id="on_primary_palette" onchange="palette_color(this)"></td>
-						<td><input class="Theme_Input" autocomplete="off" type=color id="primary_containter_palette" onchange="palette_color(this)"></td>
-						<td><input class="Theme_Input" autocomplete="off" type=color id="on_primary_containter_palette" onchange="palette_color(this)"></td>
-					</tr>
-					<tr>
-						<td>Secondary</td>
-						<td><input class="Theme_Input" autocomplete="off" type=color id="secondary_palette" onchange="palette_color(this)"></td>
-						<td><input class="Theme_Input" autocomplete="off" type=color id="on_secondary_palette" onchange="palette_color(this)"></td>
-						<td><input class="Theme_Input" autocomplete="off" type=color id="secondary_containter_palette" onchange="palette_color(this)"></td>
-						<td><input class="Theme_Input" autocomplete="off" type=color id="on_secondary_containter_palette" onchange="palette_color(this)"></td>
-					</tr>
-					<tr>
-						<td>Tertiary</td>
-						<td><input class="Theme_Input" autocomplete="off" type=color id="tertiary_palette" onchange="palette_color(this)"></td>
-						<td><input class="Theme_Input" autocomplete="off" type=color id="on_tertiary_palette" onchange="palette_color(this)"></td>
-						<td><input class="Theme_Input" autocomplete="off" type=color id="tertiary_containter_palette" onchange="palette_color(this)"></td>
-						<td><input class="Theme_Input" autocomplete="off" type=color id="on_tertiary_containter_palette" onchange="palette_color(this)"></td>
-					</tr>
-					<tr>
-						<td>Error</td>
-						<td><input class="Theme_Input" autocomplete="off" type=color id="error_palette" onchange="palette_color(this)"></td>
-						<td><input class="Theme_Input" autocomplete="off" type=color id="on_error_palette" onchange="palette_color(this)"></td>
-						<td><input class="Theme_Input" autocomplete="off" type=color id="error_containter_palette" onchange="palette_color(this)"></td>
-						<td><input class="Theme_Input" autocomplete="off" type=color id="on_error_containter_palette" onchange="palette_color(this)"></td>
-					</tr>
-				</table>
-				
+			<div>
+				<input type="text" id="save_theme_name" autocomplete="off" placeholder="New Theme Name"/>
+				<span class="material-icons-outlined cursor" title="Save Theme" onclick='save_theme();'>save</span>
+				<div class="setting_tile_area" id="Palette">
+					<table border=1>
+						<tr>
+							<th></th>
+							<th colspan=2>Main</th>
+							<th colspan=2>Alternative</th>
+						</tr>
+						<tr>
+							<th></th>
+							<th>Background</th>
+							<th>Text</th>
+							<th>Background</th>
+							<th>Text</th>
+						</tr>
+						<tr>
+							<td>Primary</td>
+							<td><input class="Theme_Input" autocomplete="off" type=color id="primary_palette" onchange="palette_color(this)"></td>
+							<td><input class="Theme_Input" autocomplete="off" type=color id="on_primary_palette" onchange="palette_color(this)"></td>
+							<td><input class="Theme_Input" autocomplete="off" type=color id="primary_containter_palette" onchange="palette_color(this)"></td>
+							<td><input class="Theme_Input" autocomplete="off" type=color id="on_primary_containter_palette" onchange="palette_color(this)"></td>
+						</tr>
+						<tr>
+							<td>Secondary</td>
+							<td><input class="Theme_Input" autocomplete="off" type=color id="secondary_palette" onchange="palette_color(this)"></td>
+							<td><input class="Theme_Input" autocomplete="off" type=color id="on_secondary_palette" onchange="palette_color(this)"></td>
+							<td><input class="Theme_Input" autocomplete="off" type=color id="secondary_containter_palette" onchange="palette_color(this)"></td>
+							<td><input class="Theme_Input" autocomplete="off" type=color id="on_secondary_containter_palette" onchange="palette_color(this)"></td>
+						</tr>
+						<tr>
+							<td>Tertiary</td>
+							<td><input class="Theme_Input" autocomplete="off" type=color id="tertiary_palette" onchange="palette_color(this)"></td>
+							<td><input class="Theme_Input" autocomplete="off" type=color id="on_tertiary_palette" onchange="palette_color(this)"></td>
+							<td><input class="Theme_Input" autocomplete="off" type=color id="tertiary_containter_palette" onchange="palette_color(this)"></td>
+							<td><input class="Theme_Input" autocomplete="off" type=color id="on_tertiary_containter_palette" onchange="palette_color(this)"></td>
+						</tr>
+						<tr>
+							<td>Error</td>
+							<td><input class="Theme_Input" autocomplete="off" type=color id="error_palette" onchange="palette_color(this)"></td>
+							<td><input class="Theme_Input" autocomplete="off" type=color id="on_error_palette" onchange="palette_color(this)"></td>
+							<td><input class="Theme_Input" autocomplete="off" type=color id="error_containter_palette" onchange="palette_color(this)"></td>
+							<td><input class="Theme_Input" autocomplete="off" type=color id="on_error_containter_palette" onchange="palette_color(this)"></td>
+						</tr>
+					</table>
+					
+				</div>
 			</div>
-			
+			<div class="collapsable_header" onclick='document.getElementById("advanced_theme_editor").classList.remove("hidden");'>
+				<h4 style="width:var(--flyout_menu_width);"><span class="material-icons-outlined cursor">navigate_next</span> Advanced Theme</h4>
+			</div>
 		</div>
 		<div class="collapsable_header" onclick="toggle_setting_category(this);">
 			<h4 style="width:var(--flyout_menu_width);"><span class="material-icons-outlined cursor">expand_more</span> Formatting</h4>

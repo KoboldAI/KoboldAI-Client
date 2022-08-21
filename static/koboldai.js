@@ -1476,6 +1476,16 @@ function show_error_message(data) {
 function save_theme() {
 	var cssVars = getAllCSSVariableNames();
 	console.log(cssVars);
+	for (const [key, value] of Object.entries(cssVars)) {
+		if (document.getElementById(key)) {
+			if (document.getElementById(key+"_select").value == "") {
+				cssVars[key] = document.getElementById(key).value;
+			} else {
+				cssVars[key] = "var(--"+document.getElementById(key+"_select").value+")";
+			}
+			
+		}
+	}
 	for (item of document.getElementsByClassName("Theme_Input")) {
 		cssVars["--"+item.id] = item.value;
 	}
@@ -1650,9 +1660,10 @@ function create_theming_elements() {
 	//console.log("Running theme editor");
 	var cssVars = getAllCSSVariableNames();
 	palette_table = document.createElement("table");
-	advanced_table = document.createElement("table");
+	advanced_table = document.getElementById("advanced_theme_editor_table");
 	theme_area = document.getElementById("Palette");
 	theme_area.append(palette_table);
+	
 	//console.log(cssVars);
 	//theme_area.append(advanced_table);
 	for (const [css_item, css_value] of Object.entries(cssVars)) {
@@ -1669,16 +1680,24 @@ function create_theming_elements() {
 			title.textContent = css_item.replace("--", "").replace("_palette", "");
 			tr.append(title);
 			select = document.createElement("select");
-			select.style = "width: 100px; color:black;";
+			select.style = "width: 150px; color:black;";
 			var option = document.createElement("option");
 			option.value="";
-			option.text="Use Color";
+			option.text="User Value ->";
 			select.append(option);
+			select.id = css_item+"_select";
+			select.onchange = function () {
+									var r = document.querySelector(':root');
+									r.style.setProperty(this.id.replace("_select", ""), this.value);
+								}
 			for (const [css_item2, css_value2] of Object.entries(cssVars)) {
 			   if (css_item2 != css_item) {
 					var option = document.createElement("option");
 					option.value=css_item2;
 					option.text=css_item2.replace("--", "");
+					if (css_item2 == css_value.replace("var(", "").replace(")", "")) {
+						option.selected = true;
+					}
 					select.append(option);
 			   }
 			}
@@ -1703,7 +1722,9 @@ function create_theming_elements() {
 				input.setAttribute("type", "text");
 				input.id = css_item;
 				input.setAttribute("title", css_item.replace("--", "").replace("_palette", ""));
-				input.value = css_value;
+				if (select.value != css_value.replace("var(", "").replace(")", "")) {
+					input.value = css_value;
+				}
 				input.onchange = function () {
 									var r = document.querySelector(':root');
 									r.style.setProperty(this.id, this.value);
@@ -2343,6 +2364,7 @@ function close_menus() {
 	document.getElementById('loadmodelcontainer').classList.add("hidden");
 	document.getElementById('save-confirm').classList.add("hidden");
 	document.getElementById('error_message').classList.add("hidden");
+	document.getElementById("advanced_theme_editor").classList.add("hidden");
 	
 	
 	//unselect sampler items
