@@ -283,7 +283,7 @@ class koboldai_vars(object):
         else:
             return getattr(self._story_settings['default'], name)
         
-                    
+                    z
 class settings(object):
     def to_json(self):
         json_data = {'file_version': 2}
@@ -1277,6 +1277,11 @@ class KoboldWorldInfo(object):
     def load_json(self, data):
         self.world_info = {int(x): data['entries'][x] for x in data['entries']}
         self.world_info_folder = data['folders']
+        #Make sure we have all the appropriate variables:
+        for item in self.world_info:
+            for column in ["uid","title","key","keysecondary","folder","constant","content","comment","token_length","selective","used_in_game"]:
+                if column not in item:
+                    item[column] = None
         try:
             self.sync_world_info_to_old_format()
         except:
