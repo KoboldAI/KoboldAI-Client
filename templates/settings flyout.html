@@ -44,8 +44,10 @@
 			<div id="text_runningmodel">
 					<b>Running Model: </b>
 			</div>
-			<div>
-				<button class="btn action_button" onclick="socket.emit('load_model_button', {});">Load Model</button>
+			<div class="Model_Icon">
+				<span class="material-icons-outlined cursor" title="Load Model" onclick="socket.emit('load_model_button', {});">folder_open</span>
+			</div>
+			<div style="text-align: center;">
 				<select class="var_sync_model_selected_preset settings_select presets" onchange='sync_to_server(this)'><option>Preset</option></select>
 			</div>
 		</div>

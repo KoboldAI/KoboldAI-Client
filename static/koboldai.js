@@ -1195,7 +1195,11 @@ function world_info_entry(data) {
 	delete_icon.setAttribute("title", data.title);
 	delete_icon.onclick = function () {
 		if (confirm("This will delete world info "+this.getAttribute("title"))) {
-			socket.emit("delete_world_info", this.getAttribute("uid"));
+			if (this.getAttribute("uid") == "-1") {
+				this.parentElement.parentElement.remove();
+			} else {
+				socket.emit("delete_world_info", this.getAttribute("uid"));
+			}
 		}
 	}
 	tags = world_info_card.querySelector('#world_info_tags_');
@@ -1280,7 +1284,7 @@ function world_info_entry(data) {
 	assign_world_info_to_action(null, data.uid);
 	
 	update_token_lengths();
-	
+	return world_info_card;
 }
 
 function world_info_folder(data) {
@@ -1943,7 +1947,8 @@ function create_new_wi_entry(folder) {
                                     "token_length": 0,
                                     "selective": false
                                     };
-	world_info_entry(data);
+	card = world_info_entry(data);
+	card.scrollIntoView(false);
 }
 
 function hide_wi_folder(folder) {

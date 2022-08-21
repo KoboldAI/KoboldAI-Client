@@ -182,7 +182,7 @@ input[type="range"]::-ms-fill-upper {
 	grid-template-areas: "label value"
 						 "item item"
 						 "minlabel maxlabel";
-	grid-template-rows: 20px 20px 20px;
+	grid-template-rows: 20px 23px 20px;
 	grid-template-columns: 147px 30px;
 	row-gap: 0.2em;
 	background-color: var(--setting_background);
@@ -366,6 +366,10 @@ input[type="range"]::-ms-fill-upper {
 	margin: 25px 0 0 10px;
 }
 
+.Model_Icon{
+	text-align: center;
+}
+
 #model_title{
 	font-size: x-large;
 	text-align: center;
@@ -382,10 +386,12 @@ input[type="range"]::-ms-fill-upper {
 	position: relative;
 }
 
+/*
 .story_title_area .var_sync_story_story_name {
 	border-bottom: 1px solid;
 	padding-bottom: 3px;
 }
+*/
 
 .story_title_area .var_sync_story_story_name[contenteditable="true"]:active,
 .story_title_area .var_sync_story_story_name[contenteditable="true"]:focus{
@@ -399,6 +405,10 @@ input[type="range"]::-ms-fill-upper {
 .story_title {
 	font-size: x-large;
 	text-align: center;
+	border-bottom: 1px;
+	border-bottom-style: solid;
+	margin-left: 40px;
+	margin-right: 40px;
 }
 #text_storyname{
 	font-size: small;

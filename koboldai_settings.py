@@ -111,7 +111,10 @@ class koboldai_vars(object):
     def calc_ai_text(self, submitted_text=""):
         token_budget = self.max_length
         used_world_info = []
-        used_tokens = self.sp_length
+        if self.tokenizer is None:
+            used_tokens = 99999999999999999999999
+        else:
+            used_tokens = self.sp_length
         text = ""
         
         self.worldinfo_v2.reset_used_in_game()
