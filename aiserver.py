@@ -7353,13 +7353,28 @@ def UI_2_load_aidg_club(data):
 #==================================================================#
 @socketio.on('theme_change')
 def UI_2_theme_change(data):
-    with open("themes/user.css", "w") as f:
-        f.write(":root {")
-        for var in data:
-            f.write("\t{}: {};\n".format(var[0], var[1].replace(";", "")))
+    with open("themes/{}.css".format(data['name']), "w") as f:
+        f.write(":root {\n")
+        for key, value in data['theme'].items():
+            f.write("\t{}: {};\n".format(key, value.replace(";", "")))
         f.write("}")
     print("Theme Saved")
-    
+
+
+#==================================================================#
+# Refresh SP List
+#==================================================================#
+@socketio.on('sp_list_refresh')
+def UI_2_sp_list_refresh(data):
+    koboldai_vars.splist = [[f, get_softprompt_desc(os.path.join("./softprompts", f),None,True)] for f in os.listdir("./softprompts") if os.path.isfile(os.path.join("./softprompts", f)) and valid_softprompt(os.path.join("./softprompts", f))]
+
+
+#==================================================================#
+# Refresh Theme List
+#==================================================================#
+@socketio.on('theme_list_refresh')
+def UI_2_theme_list_refresh(data):
+    koboldai_vars.theme_list = [".".join(f.split(".")[:-1]) for f in os.listdir("./themes") if os.path.isfile(os.path.join("./themes", f))]
 
 #==================================================================#
 # Test
