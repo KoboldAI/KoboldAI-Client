@@ -1548,7 +1548,11 @@ h2 .material-icons-outlined {
   scrollbar-width: thin;
 }
 
-.section_header, .help_text {
+.collapsable_header {
+	cursor: pointer;
+}
+
+.collapsable_header, .section_header, .help_text {
 	-webkit-touch-callout: none;
 	-webkit-user-select: none;
 	-khtml-user-select: none;
