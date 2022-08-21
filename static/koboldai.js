@@ -446,7 +446,9 @@ function do_ai_busy(data) {
 }
 
 function var_changed(data) {
-	//console.log({"name": data.name, "data": data});
+	if (data.name == "sp") {
+		console.log({"name": data.name, "data": data});
+	}
 	//Special Case for Actions
 	if ((data.classname == "story") && (data.name == "actions")) {
 		do_story_text_updates(data);
@@ -476,17 +478,40 @@ function var_changed(data) {
 	} else {
 		var elements_to_change = document.getElementsByClassName("var_sync_"+data.classname.replace(" ", "_")+"_"+data.name.replace(" ", "_"));
 		for (item of elements_to_change) {
-			if ((item.tagName.toLowerCase() === 'input') || (item.tagName.toLowerCase() === 'select')) {
-				if (item.getAttribute("type") == "checkbox") {
-					if (item.checked != data.value) {
-						//not sure why the bootstrap-toggle won't respect a standard item.checked = true/false, so....
-						item.parentNode.click();
+			if (Array.isArray(data.value)) {
+				if (item.tagName.toLowerCase() === 'select') {
+					while (item.firstChild) {
+						item.removeChild(item.firstChild);
 					}
-				} else {
+					option = document.createElement("option");
+					option.textContent = "Not in Use";
+					option.value = "";
+					item.append(option);
+					for (sp of data.value) {
+						option = document.createElement("option");
+						option.textContent = sp[1][0];
+						option.value = sp[0];
+						option.setAttribute("title", sp[1][1]);
+						item.append(option);
+					}
+				} else if (item.tagName.toLowerCase() === 'input') {
 					item.value = fix_text(data.value);
+				} else {
+					item.textContent = fix_text(data.value);
 				}
 			} else {
-				item.textContent = fix_text(data.value);
+				if ((item.tagName.toLowerCase() === 'input') || (item.tagName.toLowerCase() === 'select')) {
+					if (item.getAttribute("type") == "checkbox") {
+						if (item.checked != data.value) {
+							//not sure why the bootstrap-toggle won't respect a standard item.checked = true/false, so....
+							item.parentNode.click();
+						}
+					} else {
+						item.value = fix_text(data.value);
+					}
+				} else {
+					item.textContent = fix_text(data.value);
+				}
 			}
 		}
 		//alternative syncing method

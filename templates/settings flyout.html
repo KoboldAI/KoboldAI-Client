@@ -166,7 +166,9 @@
 					</span>
 					<!---Bottom Row---->
 					<span class="setting_item">
-						<span class="material-icons-outlined cursor" onclick="socket.emit('load_softprompt_list', '');">folder_open</span> <span class="var_sync_system_spname"></span>
+						<!---<span class="material-icons-outlined cursor" onclick="socket.emit('load_softprompt_list', '');">folder_open</span> <span class="var_sync_system_spname"></span>--->
+						<select id="sp" class="var_sync_system_splist var_sync_system_spfilename" style="width: 150px;color:black;" onclick="socket.emit('load_softprompt', this.value);">
+						</select>
 					</span>
 					<!---Slider Labels--->
 					<span class="setting_minlabel"><span style="top: -4px; position: relative;"></span></span>

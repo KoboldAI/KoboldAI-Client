@@ -75,7 +75,7 @@
 			<textarea autocomplete="off" row=5 id="input_text" placeholder="Enter Prompt Here" oninput='if (this.value != "") {
 																											document.getElementById("themetext").value = "";
 																										}'></textarea>
-			<div class="statusbar_outer hidden">
+			<div class="statusbar_outer hidden" onclick="socket.emit('abort','');">
 				<div class="statusbar_inner" style="width:0%">0%</div>
 			</div><br>
 			<button type="button" class="btn action_button submit var_sync_alt_system_aibusy" system_aibusy=False id="btnsend" 

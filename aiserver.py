@@ -1081,7 +1081,7 @@ def spRequest(filename):
     if 'np' not in globals():
         import numpy as np
 
-    z, version, shape, fortran_order, dtype = fileops.checksp(filename, koboldai_vars.modeldim)
+    z, version, shape, fortran_order, dtype = fileops.checksp("./softprompts/"+filename, koboldai_vars.modeldim)
     if not isinstance(z, zipfile.ZipFile):
         raise RuntimeError(f"{repr(filename)} is not a valid soft prompt file")
     with z.open('meta.json') as f:
@@ -2624,6 +2624,7 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
         
         koboldai_vars.presets = to_use
     koboldai_vars.aibusy = False
+    koboldai_vars.splist = [[f, get_softprompt_desc(os.path.join("./softprompts", f),None,True)] for f in os.listdir("./softprompts") if os.path.isfile(os.path.join("./softprompts", f)) and valid_softprompt(os.path.join("./softprompts", f))]
 
 # Set up Flask routes
 @app.route('/')
@@ -7335,6 +7336,8 @@ def get_softprompt_desc(item_full_path, item, valid_selection):
 def UI_2_load_softprompt(data):
     print("Load softprompt: {}".format(data))
     spRequest(data)
+
+
 
 #==================================================================#
 # Event triggered when aidg.club loaded

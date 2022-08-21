@@ -666,6 +666,7 @@ class system_settings(settings):
         self.savedir     = os.getcwd()+"\\stories"
         self.hascuda     = False  # Whether torch has detected CUDA on the system
         self.usegpu      = False  # Whether to launch pipeline with GPU support
+        self.splist      = []
         self.spselect    = ""     # Temporary storage for soft prompt filename to load
         self.spmeta      = None   # Metadata of current soft prompt, or None if not using a soft prompt
         self.spname      = "Not in Use"     # Name of the soft prompt    

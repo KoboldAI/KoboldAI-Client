@@ -154,7 +154,7 @@ def getspfiles(model_dimension: int):
     for file in listdir("softprompts"):
         if not file.endswith(".zip"):
             continue
-        z, version, shape, fortran_order, dtype = checksp(file, model_dimension)
+        z, version, shape, fortran_order, dtype = checksp("./softprompts/"+file, model_dimension)
         if z == 1:
             print(f"Browser SP loading error: {file} is malformed or not a soft prompt ZIP file.")
             continue
