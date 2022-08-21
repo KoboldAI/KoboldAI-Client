@@ -64,8 +64,18 @@
 		{% endwith %}
 		</div>
 		<div id="WI_Area">
-			<span id="world_info_folder_root" class="WI_Folder"><h2>root</h2></span>
-			<span class="wi_add_button" folder="root" onclick='create_new_wi_entry(this.getAttribute("folder"));'><span class="material-icons-outlined">post_add</span><span folder="New Folder">Add World Info Entry</span></span>
+			<span id="world_info_folder_New Folder" class="WI_Folder">
+				<h2>
+					<span id="world_info_folder_collapse_root" class="wi_folder_collapser material-icons-outlined" folder="root">expand_more</span>
+					<span id="world_info_folder_expand_root" class="wi_folder_collapser material-icons-outlined hidden" folder="root">chevron_right</span>
+					<span class="material-icons-outlined" folder="root">folder</span>
+					<span original_text="root" contenteditable="true">root</span>
+				</h2>
+				<span class="wi_add_button">
+					<span class="material-icons-outlined">post_add</span>
+					<span folder="root">Add World Info Entry</span>
+				</span>
+			</span>
 		</div>
 	</div>
 </div>
