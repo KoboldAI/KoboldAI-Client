@@ -42,8 +42,8 @@
     --text_to_ai_color: #cdd9e0;
     --text_edit: #759bc5;
 
-	--statusbar_color: #1a2f4da1;
-	--statusbar_text_color: white;
+	--statusbar_color: #3e53679e;
+	--statusbar_text_color: #e0e0e0;
 	--scrollbar-color: #3e536780;
 
 	/*Buttons*/
@@ -84,17 +84,17 @@
     --tooltip_background:var(--secondary_palette);
 
 	/*World Info*/
-	--wi_card_border_color: #002d6c;
-    --wi_card_border_color_to_ai:var(--on_secondary_palette);
+	--wi_card_border_color: #eeeeeead;
+    --wi_card_border_color_to_ai: #eeeeeead;
 
-    --wi_card_bg_color: #afc6ff;
-	--wi_card_text_color:var(--on_primary_palette);
+    --wi_card_bg_color: #273141;
+	--wi_card_text_color: #e0e0e0;
 
-    --wi_card_tag_bg_color: #afc6ff;
-	--wi_card_tag_text_color:var(--on_primary_palette);
+    --wi_card_tag_bg_color: #273141;
+	--wi_card_tag_text_color: #e0e0e0;
 	
     --wi_tag_color: #004397;
-	--wi_tag_text_color:var(--on_primary_containter_palette);
+	--wi_tag_text_color: #e0e0e0;
 	--wi_folder_background: #232328;
 	
 	/*Popup*/
@@ -135,17 +135,3 @@
 
 
 /*----------------VARIABLES--------------------*/
-	--flyout_menu_closed_width: 0px;
-	--setting_menu_closed_width_no_pins_width:  0px;
-	--story_options_size: 30%;
-	--story_pinned_areas_left: "menuicon options gamescreen lefticon"
-								 "menuicon theme theme lefticon"
-								 "menuicon inputrow inputrow lefticon";
-	--story_pinned_areas_right: "menuicon gamescreen options lefticon"
-								 "menuicon theme theme lefticon"
-								 "menuicon inputrow inputrow lefticon";
-	--story_pinned_area_widths_left: 30px var(--story_options_size) auto 30px;
-	--story_pinned_area_widths_right: 30px auto var(--story_options_size) 30px;
-	--story_pinned_areas: var(--story_pinned_areas_left);
-	--story_pinned_area_widths: var(--story_pinned_area_widths_left);
-}

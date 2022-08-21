@@ -84,17 +84,17 @@
     --tooltip_background:var(--secondary_palette);
 
 	/*World Info*/
-	--wi_card_border_color: #002d6c;
-    --wi_card_border_color_to_ai:var(--on_secondary_palette);
+	--wi_card_border_color: #002d6c00;
+    --wi_card_border_color_to_ai: #002d6c00;
 
-    --wi_card_bg_color: #afc6ff;
-	--wi_card_text_color:var(--on_primary_palette);
+    --wi_card_bg_color: #181818;
+	--wi_card_text_color: #e0e0e0;
 
-    --wi_card_tag_bg_color: #afc6ff;
-	--wi_card_tag_text_color:var(--on_primary_palette);
+    --wi_card_tag_bg_color: #242424;
+	--wi_card_tag_text_color: #e0e0e0;
 	
     --wi_tag_color: #004397;
-	--wi_tag_text_color:var(--on_primary_containter_palette);
+	--wi_tag_text_color: #e0e0e0;
 	--wi_folder_background: #232328;
 	
 	/*Popup*/
