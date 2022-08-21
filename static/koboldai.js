@@ -49,6 +49,7 @@ map2.set(2, 'Top-p Sampling')
 map2.set(3, 'Tail-free Sampling')
 map2.set(4, 'Typical Sampling')
 map2.set(5, 'Temperature')
+var use_word_highlighting = true;
 //-----------------------------------Server to UI  Functions-----------------------------------------------
 function connect() {
 	console.log("connected");
@@ -218,24 +219,28 @@ function do_story_text_updates(data) {
 		while (item.firstChild) { 
 			item.removeChild(item.firstChild);
 		}
-		if (data.value.action['Selected Text'] == null) {
-			var text_array = [];
-		} else {
-			var text_array = data.value.action['Selected Text'].split(" ");
-		}
-		text_array.forEach(function (text, i) {
-			if (text != "") {
-				var word = document.createElement("span");
-				word.classList.add("rawtext");
-				if (i == text_array.length) {
-					word.textContent = text;
-				} else {
-					word.textContent = text+" ";
-				}
-				item.append(word);
+		if (use_word_highlighting) {
+			if (data.value.action['Selected Text'] == null) {
+				var text_array = [];
+			} else {
+				var text_array = data.value.action['Selected Text'].split(" ");
 			}
-			
-		});
+			text_array.forEach(function (text, i) {
+				if (text != "") {
+					var word = document.createElement("span");
+					word.classList.add("rawtext");
+					if (i == text_array.length) {
+						word.textContent = text;
+					} else {
+						word.textContent = text+" ";
+					}
+					item.append(word);
+				}
+				
+			});
+		} else {
+			item.textContent = data.value.action['Selected Text'];
+		}
 		item.original_text = data.value.action['Selected Text'];
 		item.setAttribute("world_info_uids", "");
 		item.classList.remove("pulse")
@@ -274,7 +279,7 @@ function do_story_text_updates(data) {
 		
 		
 		story_area.append(span);
-		span.scrollIntoView();
+		span.scrollIntoView(false);
 		assign_world_info_to_action(span, null);
 	}
 	
@@ -323,7 +328,7 @@ function do_story_text_length_updates(data) {
 }
 
 function do_probabilities(data) {
-	console.log(data);
+	//console.log(data);
 	if (document.getElementById('probabilities_'+data.value.id)) {
 		prob_area = document.getElementById('probabilities_'+data.value.id)
 	} else {
@@ -595,7 +600,7 @@ function load_popup(data) {
 }
 
 function popup_items(data) {
-	console.log(data);
+	//console.log(data);
 	var popup_list = document.getElementById('popup_list');
 	//first, let's clear out our existing data
 	while (popup_list.firstChild) {
@@ -869,7 +874,7 @@ function show_model_menu(data) {
 		breadcrumbs.removeChild(breadcrumbs.firstChild);
 	}
 	//add breadcrumbs
-	console.log(data.breadcrumbs);
+	//console.log(data.breadcrumbs);
 	for (item of data.breadcrumbs) {
 		var button = document.createElement("button");
 		button.classList.add("breadcrumbitem");
@@ -1429,7 +1434,7 @@ function show_error_message(data) {
 //--------------------------------------------UI to Server Functions----------------------------------
 function move_sample(direction) {
 	var previous = null;
-	console.log(direction);
+	//console.log(direction);
 	for (const [index, temp] of Array.from(document.getElementsByClassName("sample_order")).entries()) {
 		if (temp.classList.contains("selected")) {
 			if ((direction == 'up') && (index > 0)) {
@@ -1547,7 +1552,7 @@ function send_world_info(uid) {
 
 //--------------------------------------------General UI Functions------------------------------------
 function Change_Theme(theme) {
-	console.log(theme);
+	//console.log(theme);
 	var css = document.getElementById("CSSTheme");
     css.setAttribute("href", "/themes/"+theme+".css");
 	create_theming_elements();
@@ -1562,10 +1567,10 @@ function palette_color(item) {
 function getAllCSSVariableNames(styleSheets = document.styleSheets){
    var cssVars = [];
    // loop each stylesheet
-   console.log(styleSheets);
+   //console.log(styleSheets);
    for(var i = 0; i < styleSheets.length; i++){
-	   console.log(styleSheets[i]);
-	   console.log(styleSheets[i].ownerNode.attributes.id);
+	   //console.log(styleSheets[i]);
+	   //console.log(styleSheets[i].ownerNode.attributes.id);
       // loop stylesheet's cssRules
       try{ // try/catch used because 'hasOwnProperty' doesn't work
          for( var j = 0; j < styleSheets[i].cssRules.length; j++){
@@ -1589,13 +1594,13 @@ function getAllCSSVariableNames(styleSheets = document.styleSheets){
 }
 
 function create_theming_elements() {
-	console.log("Running theme editor");
+	//console.log("Running theme editor");
 	var cssVars = getAllCSSVariableNames();
 	palette_table = document.createElement("table");
 	advanced_table = document.createElement("table");
 	theme_area = document.getElementById("Palette");
 	theme_area.append(palette_table);
-	console.log(cssVars);
+	//console.log(cssVars);
 	//theme_area.append(advanced_table);
 	for (css_item of cssVars) {
 		if (css_item[0].includes("_palette")) {
@@ -1699,7 +1704,7 @@ function preserve_game_space(preserve) {
 
 function options_on_right(data) {
 	var r = document.querySelector(':root');
-	console.log("Setting cookie to: "+data);
+	//console.log("Setting cookie to: "+data);
 	if (data) {
 		setCookie("options_on_right", "true");
 		r.style.setProperty('--story_pinned_areas', 'var(--story_pinned_areas_right)');

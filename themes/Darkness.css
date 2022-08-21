@@ -62,7 +62,7 @@
 	/*Side Menus*/
 	--tab_color: #1a625f;
 
-	--flyout_background: #1c1c1c;
+	--flyout_background: #181818;
 	--flyout_background_pinned:var(--layer1_palette);
 
 	--setting_background: #242424;
@@ -87,7 +87,7 @@
 	--wi_card_border_color: #002d6c00;
     --wi_card_border_color_to_ai: #002d6c00;
 
-    --wi_card_bg_color: #181818;
+    --wi_card_bg_color: #1c1c1c;
 	--wi_card_text_color: #e0e0e0;
 
     --wi_card_tag_bg_color: #242424;
@@ -127,7 +127,7 @@
 	--radius_settings_background: 10px;
 	--radius_buttons: 5px;
 	--radius_item_popup: 5px;
-	--radius_wi_card: 5px;
+	--radius_wi_card: 10px;
 
 
 
