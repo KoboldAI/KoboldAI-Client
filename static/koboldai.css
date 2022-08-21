@@ -1547,3 +1547,25 @@ h2 .material-icons-outlined {
 .flyout_menu_contents {
   scrollbar-width: thin;
 }
+
+.section_header, .help_text {
+	-webkit-touch-callout: none;
+	-webkit-user-select: none;
+	-khtml-user-select: none;
+	-moz-user-select: none;
+	-ms-user-select: none;
+	user-select: none;
+}
+
+.section_header {
+	margin-left: 2px;
+	margin-bottom: 4px;
+}
+
+.help_text {
+	margin-left: 6px;
+	margin-bottom: 0.7em;
+	opacity: 0.7;
+	font-size: 0.9em;
+	display: block;
+}

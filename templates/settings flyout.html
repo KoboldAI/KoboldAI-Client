@@ -98,6 +98,7 @@
 			<div onclick="toggle_setting_category(this);">
 				<h4 style="width:var(--flyout_menu_width);"><span class="material-icons-outlined cursor">expand_more</span> Sampling</h4>
 			</div>
+			<span class="help_text">Change how the AI decides what to say.</span>
 			<div class="setting_tile_area">
 				<div class="setting_container_single">
 					<!---Top Row---->
@@ -134,6 +135,7 @@
 			<div onclick="toggle_setting_category(this);">
 				<h4 style="width:var(--flyout_menu_width);"><span class="material-icons-outlined cursor">expand_more</span> Repetition</h4>
 			</div>
+			<span class="help_text">Change how the AI combats repetition.</span>
 			<div class="setting_tile_area">
 				{% with sub_path='Repetition' %}
 					{% include 'settings item.html' %}
@@ -175,6 +177,7 @@
 		<div onclick="toggle_setting_category(this);">
 			<h4 style="width:var(--flyout_menu_width);"><span class="material-icons-outlined cursor">expand_more</span> Biasing</h4>
 		</div>
+		<span class="help_text">Influence the likelyhood for the AI to output certain phrases.</span>
 		<div id="biasing">
 			<div class="bias_header">
 				<div class="bias_header_phrase">Phrase</div>
