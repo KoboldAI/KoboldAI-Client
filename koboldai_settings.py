@@ -283,7 +283,7 @@ class koboldai_vars(object):
         else:
             return getattr(self._story_settings['default'], name)
         
-                    z
+
 class settings(object):
     def to_json(self):
         json_data = {'file_version': 2}
