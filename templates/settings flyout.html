@@ -88,7 +88,7 @@
 			<select class="var_sync_model_selected_preset settings_select presets" onchange='sync_to_server(this)'><option>Preset</option></select>
 		</div>
 		{% with menu='Settings' %}
-			<div onclick="toggle_setting_category(this);">
+			<div class="collapsable_header" onclick="toggle_setting_category(this);">
 				<h4 style="width:var(--flyout_menu_width);"><span class="material-icons-outlined cursor">expand_more</span> Generation</h4>
 			</div>
 			<div class="setting_tile_area">
@@ -97,9 +97,10 @@
 				{% endwith %}
 			</div>
 			
-			<div onclick="toggle_setting_category(this);">
+			<div class="collapsable_header" onclick="toggle_setting_category(this);">
 				<h4 style="width:var(--flyout_menu_width);"><span class="material-icons-outlined cursor">expand_more</span> Sampling</h4>
 			</div>
+			<span class="help_text">Change how the AI decides what to say.</span>
 			<div class="setting_tile_area">
 				<div class="setting_container_single">
 					<!---Top Row---->
@@ -133,16 +134,17 @@
 				{% endwith %}
 			</div>
 			
-			<div onclick="toggle_setting_category(this);">
+			<div class="collapsable_header" onclick="toggle_setting_category(this);">
 				<h4 style="width:var(--flyout_menu_width);"><span class="material-icons-outlined cursor">expand_more</span> Repetition</h4>
 			</div>
+			<span class="help_text">Change how the AI combats repetition.</span>
 			<div class="setting_tile_area">
 				{% with sub_path='Repetition' %}
 					{% include 'settings item.html' %}
 				{% endwith %}
 			</div>
 			
-			<div onclick="toggle_setting_category(this);">
+			<div class="collapsable_header" onclick="toggle_setting_category(this);">
 				<h4 style="width:var(--flyout_menu_width);"><span class="material-icons-outlined cursor">expand_more</span> Other</h4>
 			</div>
 			<div class="setting_tile_area">
@@ -151,7 +153,7 @@
 				{% endwith %}
 			</div>
 			
-			<div onclick="toggle_setting_category(this);">
+			<div class="collapsable_header" onclick="toggle_setting_category(this);">
 				<h4 style="width:var(--flyout_menu_width);"><span class="material-icons-outlined cursor">expand_more</span> Modifiers</h4>
 			</div>
 			<div class="setting_tile_area">
@@ -176,9 +178,10 @@
 				</div>
 			</div>
 		{% endwith %}
-		<div onclick="toggle_setting_category(this);">
+		<div class="collapsable_header" onclick="toggle_setting_category(this);">
 			<h4 style="width:var(--flyout_menu_width);"><span class="material-icons-outlined cursor">expand_more</span> Biasing</h4>
 		</div>
+		<span class="help_text">Influence the likelihood for the AI to output certain phrases.</span>
 		<div id="biasing">
 			<div class="bias_header">
 				<div class="bias_header_phrase">Phrase</div>
@@ -188,7 +191,7 @@
 		</div>
 	</div>
 	<div id="setting_menu_interface" class="hidden settings_category_area">
-		<div onclick="toggle_setting_category(this);">
+		<div class="collapsable_header" onclick="toggle_setting_category(this);">
 			<h4 style="width:var(--flyout_menu_width);"><span class="material-icons-outlined cursor">expand_more</span> UI</h4>
 		</div>
 		<div class="setting_tile_area">
@@ -220,7 +223,7 @@
 				<span class="setting_maxlabel"><span style="top: -4px; position: relative;"></span></span>
 			</div>
 		</div>
-		<div onclick="toggle_setting_category(this);">
+		<div class="collapsable_header" onclick="toggle_setting_category(this);">
 			<h4 style="width:var(--flyout_menu_width);"><span class="material-icons-outlined cursor">expand_more</span> Theme</h4>
 		</div>
 		<div class="setting_tile_area" id="Theme">
@@ -230,7 +233,7 @@
 				<option>Darkness</option>
 				<option>user</option>
 			</select>
-			<div onclick="toggle_setting_category(this);">
+			<div class="collapsable_header" onclick="toggle_setting_category(this);">
 				<h4 style="width:var(--flyout_menu_width);"><span class="material-icons-outlined cursor">expand_more</span> Palette</h4>
 			</div>
 			<div class="setting_tile_area" id="Palette">
@@ -280,7 +283,7 @@
 			</div>
 			
 		</div>
-		<div onclick="toggle_setting_category(this);">
+		<div class="collapsable_header" onclick="toggle_setting_category(this);">
 			<h4 style="width:var(--flyout_menu_width);"><span class="material-icons-outlined cursor">expand_more</span> Formatting</h4>
 		</div>
 		<div class="setting_tile_area">
