@@ -613,6 +613,11 @@ class user_settings(settings):
         self.wirmvwhtsp  = False             # Whether to remove leading whitespace from WI entries
         self.widepth     = 3                 # How many historical actions to scan for WI hits
         self.formatoptns = {'frmttriminc': True, 'frmtrmblln': False, 'frmtrmspch': False, 'frmtadsnsp': False, 'singleline': False}     # Container for state of formatting options
+        self.frmttriminc = True
+        self.frmtrmblln  = False
+        self.frmtrmspch  = False
+        self.frmtadsnsp  = False
+        self.singleline  = False
         self.importnum   = -1                # Selection on import popup list
         self.importjs    = {}                # Temporary storage for import data
         self.loadselect  = ""                # Temporary storage for story filename to load
@@ -847,15 +852,32 @@ class KoboldStoryRegister(object):
     
     def append_options(self, option_list):
         if self.action_count+1 in self.actions:
+            #First let's check if we did streaming, as we can just replace those items with these
             old_options = copy.deepcopy(self.actions[self.action_count+1]["Options"])
-            old_options_text = [x['text'] for x in old_options]
-            for item in option_list:
-                if item not in old_options_text:
+            i=-1
+            for option in option_list:
+                i+=1
+                found = False
+                for item in self.actions[self.action_count+1]["Options"]:
+                    if 'stream_id' in item and item['stream_id'] == i:
+                        item['text'] = option
+                        del item['stream_id']
+                        found = True
+                        break
+                    elif item['text'] == option:
+                        found = True
+                        if 'stream_id' in item:
+                            del item['stream_id']
+                        found = True
+                        break
+                        
+                if not found:
                     self.actions[self.action_count+1]['Options'].append({"text": item, "Pinned": False, "Previous Selection": False, "Edited": False, "Probabilities": []})
         else:
             old_options = None
             self.actions[self.action_count+1] = {"Selected Text": "", "Selected Text Length": 0, "In AI Input": False, "Options": [{"text": x, "Pinned": False, "Previous Selection": False, "Edited": False, "Probabilities": []} for x in option_list]}
         process_variable_changes(self.socketio, "story", 'actions', {"id": self.action_count+1, 'action':  self.actions[self.action_count+1]}, None)
+        print(self.actions[self.action_count+1])
         self.set_game_saved()
             
     def set_options(self, option_list, action_id):

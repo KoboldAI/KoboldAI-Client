@@ -290,7 +290,11 @@
 			<h4 style="width:var(--flyout_menu_width);"><span class="material-icons-outlined cursor">expand_more</span> Formatting</h4>
 		</div>
 		<div class="setting_tile_area">
-			
+			{% with menu='Interface' %}
+				{% with sub_path='Formatting' %}
+					{% include 'settings item.html' %}
+				{% endwith %}
+			{% endwith %}
 		</div>
 	</div>
 </div>

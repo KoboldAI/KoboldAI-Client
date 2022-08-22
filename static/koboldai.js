@@ -315,6 +315,9 @@ function do_prompt(data) {
 		document.getElementById('input_text').placeholder = "Enter text here";
 		document.getElementById('themerow').classList.add("hidden");
 		document.getElementById('themetext').value = "";
+		if (document.getElementById("Delete Me")) {
+			document.getElementById("Delete Me").remove();
+		}
 	} else {
 		document.getElementById('input_text').placeholder = "Enter Prompt Here";
 		document.getElementById('input_text').disabled = false;

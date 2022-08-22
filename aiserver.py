@@ -852,7 +852,9 @@ def loadmodelsettings():
     if("dynamicscan" in js):
         koboldai_vars.dynamicscan = js["dynamicscan"]
     if("formatoptns" in js):
-        koboldai_vars.formatoptns = js["formatoptns"]
+        for setting in ['frmttriminc', 'frmtrmblln', 'frmtrmspch', 'frmtadsnsp', 'singleline']:
+            if setting in js["formatoptns"]:
+                setattr(koboldai_vars, setting, js["formatoptns"][setting])
     if("welcome" in js):
         koboldai_vars.welcome = js["welcome"]
     if("newlinemode" in js):
@@ -883,7 +885,8 @@ def savesettings():
     js["genamt"]      = koboldai_vars.genamt
     js["max_length"]  = koboldai_vars.max_length
     js["ikgen"]       = koboldai_vars.ikgen
-    js["formatoptns"] = koboldai_vars.formatoptns
+    js["formatoptns"] = {'frmttriminc': koboldai_vars.frmttriminc, 'frmtrmblln': koboldai_vars.frmtrmblln, 
+                         'frmtrmspch': koboldai_vars.frmtrmspch, 'frmtadsnsp': koboldai_vars.frmtadsnsp, 'singleline': koboldai_vars.singleline}
     js["numseqs"]     = koboldai_vars.numseqs
     js["widepth"]     = koboldai_vars.widepth
     js["useprompt"]   = koboldai_vars.useprompt
@@ -983,7 +986,9 @@ def processsettings(js):
     if("ikgen" in js):
         koboldai_vars.ikgen      = js["ikgen"]
     if("formatoptns" in js):
-        koboldai_vars.formatoptns = js["formatoptns"]
+        for setting in ['frmttriminc', 'frmtrmblln', 'frmtrmspch', 'frmtadsnsp', 'singleline']:
+            if setting in js["formatoptns"]:
+                setattr(koboldai_vars, setting, js["formatoptns"][setting])
     if("numseqs" in js):
         koboldai_vars.numseqs = js["numseqs"]
     if("widepth" in js):
@@ -3078,11 +3083,11 @@ def lua_get_setting(setting):
     if(setting in ("setnopromptgen", "nopromptgen")): return koboldai_vars.nopromptgen
     if(setting in ("autosave", "autosave")): return koboldai_vars.autosave
     if(setting in ("setrngpersist", "rngpersist")): return koboldai_vars.rngpersist
-    if(setting in ("frmttriminc", "triminc")): return koboldai_vars.formatoptns["frmttriminc"]
-    if(setting in ("frmtrmblln", "rmblln")): return koboldai_vars.formatoptns["frmttrmblln"]
-    if(setting in ("frmtrmspch", "rmspch")): return koboldai_vars.formatoptns["frmttrmspch"]
-    if(setting in ("frmtadsnsp", "adsnsp")): return koboldai_vars.formatoptns["frmtadsnsp"]
-    if(setting in ("frmtsingleline", "singleline")): return koboldai_vars.formatoptns["singleline"]
+    if(setting in ("frmttriminc", "triminc")): return koboldai_vars.frmttriminc
+    if(setting in ("frmtrmblln", "rmblln")): return koboldai_vars.frmttrmblln
+    if(setting in ("frmtrmspch", "rmspch")): return koboldai_vars.frmttrmspch
+    if(setting in ("frmtadsnsp", "adsnsp")): return koboldai_vars.frmtadsnsp
+    if(setting in ("frmtsingleline", "singleline")): return koboldai_vars.singleline
     if(setting == "output_streaming"): return koboldai_vars.output_streaming
     if(setting == "show_probs"): return koboldai_vars.show_probs
 
@@ -3116,11 +3121,11 @@ def lua_set_setting(setting, v):
     if(setting in ("autosave", "noautosave")): koboldai_vars.autosave = v
     if(setting in ("setrngpersist", "rngpersist")): koboldai_vars.rngpersist = v
     if(setting in ("setchatmode", "chatmode")): koboldai_vars.chatmode = v
-    if(setting in ("frmttriminc", "triminc")): koboldai_vars.formatoptns["frmttriminc"] = v
-    if(setting in ("frmtrmblln", "rmblln")): koboldai_vars.formatoptns["frmttrmblln"] = v
-    if(setting in ("frmtrmspch", "rmspch")): koboldai_vars.formatoptns["frmttrmspch"] = v
-    if(setting in ("frmtadsnsp", "adsnsp")): koboldai_vars.formatoptns["frmtadsnsp"] = v
-    if(setting in ("frmtsingleline", "singleline")): koboldai_vars.formatoptns["singleline"] = v
+    if(setting in ("frmttriminc", "triminc")): koboldai_vars.frmttriminc = v
+    if(setting in ("frmtrmblln", "rmblln")): koboldai_vars.frmttrmblln = v
+    if(setting in ("frmtrmspch", "rmspch")): koboldai_vars.frmttrmspch = v
+    if(setting in ("frmtadsnsp", "adsnsp")): koboldai_vars.frmtadsnsp = v
+    if(setting in ("frmtsingleline", "singleline")): koboldai_vars.singleline = v
     if(setting == "output_streaming"): koboldai_vars.output_streaming = v
     if(setting == "show_probs"): koboldai_vars.show_probs = v
 
@@ -3549,28 +3554,23 @@ def get_message(msg):
         refresh_settings()
     # Format - Trim incomplete sentences
     elif(msg['cmd'] == 'frmttriminc'):
-        if('frmttriminc' in koboldai_vars.formatoptns):
-            koboldai_vars.formatoptns["frmttriminc"] = msg['data']
+        koboldai_vars.frmttriminc = msg['data']
         settingschanged()
         refresh_settings()
     elif(msg['cmd'] == 'frmtrmblln'):
-        if('frmtrmblln' in koboldai_vars.formatoptns):
-            koboldai_vars.formatoptns["frmtrmblln"] = msg['data']
+        koboldai_vars.frmtrmblln = msg['data']
         settingschanged()
         refresh_settings()
     elif(msg['cmd'] == 'frmtrmspch'):
-        if('frmtrmspch' in koboldai_vars.formatoptns):
-            koboldai_vars.formatoptns["frmtrmspch"] = msg['data']
+        koboldai_vars.frmtrmspch = msg['data']
         settingschanged()
         refresh_settings()
     elif(msg['cmd'] == 'frmtadsnsp'):
-        if('frmtadsnsp' in koboldai_vars.formatoptns):
-            koboldai_vars.formatoptns["frmtadsnsp"] = msg['data']
+        koboldai_vars.frmtadsnsp = msg['data']
         settingschanged()
         refresh_settings()
     elif(msg['cmd'] == 'singleline'):
-        if('singleline' in koboldai_vars.formatoptns):
-            koboldai_vars.formatoptns["singleline"] = msg['data']
+        koboldai_vars.singleline = msg['data']
         settingschanged()
         refresh_settings()
     elif(msg['cmd'] == 'importselect'):
@@ -3932,17 +3932,19 @@ def sendsettings():
     emit('from_server', {'cmd': 'reset_menus'}, room="UI_1")
     if(koboldai_vars.model != "InferKit"):
         for set in gensettings.gensettingstf:
-            emit('from_server', {'cmd': 'addsetting', 'data': set}, room="UI_1")
+            if 'UI_V2_Only' not in set:
+                emit('from_server', {'cmd': 'addsetting', 'data': set}, room="UI_1")
     else:
         for set in gensettings.gensettingsik:
-            emit('from_server', {'cmd': 'addsetting', 'data': set}, room="UI_1")
+            if 'UI_V2_Only' not in set:
+                emit('from_server', {'cmd': 'addsetting', 'data': set}, room="UI_1")
     
     # Send formatting options
     for frm in gensettings.formatcontrols:
         emit('from_server', {'cmd': 'addformat', 'data': frm}, room="UI_1")
         # Add format key to vars if it wasn't loaded with client.settings
-        if(not frm["id"] in koboldai_vars.formatoptns):
-            koboldai_vars.formatoptns[frm["id"]] = False;
+        if(not hasattr(koboldai_vars, frm["id"])):
+            setattr(koboldai_vars, frm["id"], False)
 
 #==================================================================#
 #  Set value of gamesaved
@@ -4061,7 +4063,7 @@ def actionsubmit(data, actionmode=0, force_submit=False, force_prompt_gen=False,
                 for i in range(koboldai_vars.numseqs):
                     genout.append({"generated_text": koboldai_vars.lua_koboldbridge.outputs[i+1]})
                     assert type(genout[-1]["generated_text"]) is str
-                koboldai_vars.actions.append_options([x["generated_text"] for x in genout])
+                koboldai_vars.actions.append_options([applyoutputformatting(x["generated_text"]) for x in genout])
                 genout = [{"generated_text": x['text']} for x in koboldai_vars.actions.get_current_options()]
                 if(len(genout) == 1):
                     genresult(genout[0]["generated_text"], flash=False)
@@ -4125,7 +4127,7 @@ def actionsubmit(data, actionmode=0, force_submit=False, force_prompt_gen=False,
                 for i in range(koboldai_vars.numseqs):
                     genout.append({"generated_text": koboldai_vars.lua_koboldbridge.outputs[i+1] if not no_generate else ""})
                     assert type(genout[-1]["generated_text"]) is str
-                koboldai_vars.actions.append_options([x["generated_text"] for x in genout])
+                koboldai_vars.actions.append_options([applyoutputformatting(x["generated_text"]) for x in genout])
                 genout = [{"generated_text": x['text']} for x in koboldai_vars.actions.get_current_options()]
                 if(len(genout) == 1):
                     genresult(genout[0]["generated_text"])
@@ -4696,8 +4698,8 @@ def generate(txt, minimum, maximum, found_entries=None):
             assert type(genout[-1]["generated_text"]) is str
     else:
         genout = [{"generated_text": utils.decodenewlines(tokenizer.decode(tokens[-already_generated:]))} for tokens in genout]
-    
-    koboldai_vars.actions.append_options([x["generated_text"] for x in genout])
+    print([applyoutputformatting(x["generated_text"]) for x in genout])
+    koboldai_vars.actions.append_options([applyoutputformatting(x["generated_text"]) for x in genout])
     genout = [{"generated_text": x['text']} for x in koboldai_vars.actions.get_current_options()]
     if(len(genout) == 1):
         genresult(genout[0]["generated_text"])
@@ -4849,7 +4851,7 @@ def sendtocolab(txt, min, max):
                 assert type(genout[-1]) is str
 
         koboldai_vars.actions.clear_unused_options()
-        koboldai_vars.actions.append_options([x["generated_text"] for x in genout])
+        koboldai_vars.actions.append_options([applyoutputformatting(x["generated_text"]) for x in genout])
         genout = [{"generated_text": x['text']} for x in koboldai_vars.actions.get_current_options()]
         if(len(genout) == 1):
             
@@ -5085,7 +5087,7 @@ def tpumtjgenerate(txt, minimum, maximum, found_entries=None):
     else:
         genout = [{"generated_text": utils.decodenewlines(tokenizer.decode(txt))} for txt in genout]
 
-    koboldai_vars.actions.append_options([x["generated_text"] for x in genout])
+    koboldai_vars.actions.append_options([applyoutputformatting(x["generated_text"]) for x in genout])
     genout = [{"generated_text": x['text']} for x in koboldai_vars.actions.get_current_options()]
     if(len(koboldai_vars.actions.get_current_options()) == 1):
         genresult(koboldai_vars.actions.get_current_options()[0]['text'])
@@ -5127,7 +5129,7 @@ def getnewcontent(txt):
 #==================================================================#
 def applyinputformatting(txt):
     # Add sentence spacing
-    if(koboldai_vars.formatoptns["frmtadsnsp"]):
+    if(koboldai_vars.frmtadsnsp):
         txt = utils.addsentencespacing(txt, koboldai_vars)
  
     return txt
@@ -5144,16 +5146,16 @@ def applyoutputformatting(txt):
         txt = koboldai_vars.acregex_ai.sub('', txt)
     
     # Trim incomplete sentences
-    if(koboldai_vars.formatoptns["frmttriminc"] and not koboldai_vars.chatmode):
+    if(koboldai_vars.frmttriminc and not koboldai_vars.chatmode):
         txt = utils.trimincompletesentence(txt)
     # Replace blank lines
-    if(koboldai_vars.formatoptns["frmtrmblln"] or koboldai_vars.chatmode):
+    if(koboldai_vars.frmtrmblln or koboldai_vars.chatmode):
         txt = utils.replaceblanklines(txt)
     # Remove special characters
-    if(koboldai_vars.formatoptns["frmtrmspch"]):
+    if(koboldai_vars.frmtrmspch):
         txt = utils.removespecialchars(txt, koboldai_vars)
 	# Single Line Mode
-    if(koboldai_vars.formatoptns["singleline"] or koboldai_vars.chatmode):
+    if(koboldai_vars.singleline or koboldai_vars.chatmode):
         txt = utils.singlelineprocessing(txt, koboldai_vars)
     
     return txt
@@ -5256,11 +5258,11 @@ def refresh_settings():
     emit('from_server', {'cmd': 'updatenogenmod', 'data': koboldai_vars.nogenmod}, broadcast=True, room="UI_1")
     emit('from_server', {'cmd': 'updatefulldeterminism', 'data': koboldai_vars.full_determinism}, broadcast=True, room="UI_1")
     
-    emit('from_server', {'cmd': 'updatefrmttriminc', 'data': koboldai_vars.formatoptns["frmttriminc"]}, broadcast=True, room="UI_1")
-    emit('from_server', {'cmd': 'updatefrmtrmblln', 'data': koboldai_vars.formatoptns["frmtrmblln"]}, broadcast=True, room="UI_1")
-    emit('from_server', {'cmd': 'updatefrmtrmspch', 'data': koboldai_vars.formatoptns["frmtrmspch"]}, broadcast=True, room="UI_1")
-    emit('from_server', {'cmd': 'updatefrmtadsnsp', 'data': koboldai_vars.formatoptns["frmtadsnsp"]}, broadcast=True, room="UI_1")
-    emit('from_server', {'cmd': 'updatesingleline', 'data': koboldai_vars.formatoptns["singleline"]}, broadcast=True, room="UI_1")
+    emit('from_server', {'cmd': 'updatefrmttriminc', 'data': koboldai_vars.frmttriminc}, broadcast=True, room="UI_1")
+    emit('from_server', {'cmd': 'updatefrmtrmblln', 'data': koboldai_vars.frmtrmblln}, broadcast=True, room="UI_1")
+    emit('from_server', {'cmd': 'updatefrmtrmspch', 'data': koboldai_vars.frmtrmspch}, broadcast=True, room="UI_1")
+    emit('from_server', {'cmd': 'updatefrmtadsnsp', 'data': koboldai_vars.frmtadsnsp}, broadcast=True, room="UI_1")
+    emit('from_server', {'cmd': 'updatesingleline', 'data': koboldai_vars.singleline}, broadcast=True, room="UI_1")
     emit('from_server', {'cmd': 'updateoutputstreaming', 'data': koboldai_vars.output_streaming}, broadcast=True, room="UI_1")
     emit('from_server', {'cmd': 'updateshowprobs', 'data': koboldai_vars.show_probs}, broadcast=True, room="UI_1")
     
@@ -5841,7 +5843,7 @@ def oairequest(txt, min, max):
                 {"generated_text": utils.decodenewlines(txt)}
                 for txt in outputs]
 
-        koboldai_vars.actions.append_options([x["generated_text"] for x in genout])
+        koboldai_vars.actions.append_options([applyoutputformatting(x["generated_text"]) for x in genout])
         genout = [{"generated_text": x['text']} for x in koboldai_vars.actions.get_current_options()]
         if (len(genout) == 1):
             genresult(genout[0]["generated_text"])
@@ -7656,11 +7658,11 @@ def _generate_text(body: GenerationInputSchema):
         "tfs": ("koboldai_vars", "tfs", None),
         "typical": ("koboldai_vars", "typical", None),
         "temperature": ("koboldai_vars", "temp", None),
-        "frmtadsnsp": ("koboldai_vars.formatoptns", "@frmtadsnsp", "input"),
-        "frmttriminc": ("koboldai_vars.formatoptns", "@frmttriminc", "output"),
-        "frmtrmblln": ("koboldai_vars.formatoptns", "@frmtrmblln", "output"),
-        "frmtrmspch": ("koboldai_vars.formatoptns", "@frmtrmspch", "output"),
-        "singleline": ("koboldai_vars.formatoptns", "@singleline", "output"),
+        "frmtadsnsp": ("koboldai_vars", "frmtadsnsp", "input"),
+        "frmttriminc": ("koboldai_vars", "frmttriminc", "output"),
+        "frmtrmblln": ("koboldai_vars", "frmtrmblln", "output"),
+        "frmtrmspch": ("koboldai_vars", "frmtrmspch", "output"),
+        "singleline": ("koboldai_vars", "singleline", "output"),
         "max_length": ("koboldai_vars", "genamt", None),
         "max_context_length": ("koboldai_vars", "max_length", None),
         "n": ("koboldai_vars", "numseqs", None),
@@ -7676,7 +7678,7 @@ def _generate_text(body: GenerationInputSchema):
     output_streaming = koboldai_vars.output_streaming
     koboldai_vars.output_streaming = False
     for key, entry in mapping.items():
-        obj = {"koboldai_vars": koboldai_vars, "koboldai_vars.formatoptns": koboldai_vars.formatoptns}[entry[0]]
+        obj = {"koboldai_vars": koboldai_vars}[entry[0]]
         if entry[2] == "input" and koboldai_vars.disable_input_formatting and not hasattr(body, key):
             setattr(body, key, False)
         if entry[2] == "output" and koboldai_vars.disable_output_formatting and not hasattr(body, key):
@@ -7699,7 +7701,7 @@ def _generate_text(body: GenerationInputSchema):
     finally:
         for key in saved_settings:
             entry = mapping[key]
-            obj = {"koboldai_vars": koboldai_vars, "koboldai_vars.formatoptns": koboldai_vars.formatoptns}[entry[0]]
+            obj = {"koboldai_vars": koboldai_vars}[entry[0]]
             if getattr(body, key, None) is not None:
                 if entry[1].startswith("@"):
                     if obj[entry[1][1:]] == getattr(body, key):
@@ -9746,7 +9748,7 @@ def _make_f_get(obj, _var_name, _name, _schema, _example_yaml_value):
               example:
                 value: {}
         """
-        _obj = {"koboldai_vars": koboldai_vars, "koboldai_vars.formatoptns": koboldai_vars.formatoptns}[obj]
+        _obj = {"koboldai_vars": koboldai_vars}[obj]
         if _var_name.startswith("@"):
             return {"value": _obj[_var_name[1:]]}
         else:
@@ -9776,7 +9778,7 @@ def _make_f_put(schema_class: Type[KoboldSchema], obj, _var_name, _name, _schema
               schema: EmptySchema
         {api_validation_error_response}
         """
-        _obj = {"koboldai_vars": koboldai_vars, "koboldai_vars.formatoptns": koboldai_vars.formatoptns}[obj]
+        _obj = {"koboldai_vars": koboldai_vars}[obj]
         if _var_name.startswith("@"):
             _obj[_var_name[1:]] = body.value
         else:
@@ -10002,8 +10004,8 @@ class TrimIncompleteSentencesSettingsSchema(KoboldSchema):
     value = fields.Boolean(required=True)
     class KoboldMeta:
         route_name = "frmttriminc"
-        obj = "koboldai_vars.formatoptns"
-        var_name = "@frmttriminc"
+        obj = "koboldai_vars"
+        var_name = "frmttriminc"
         name = "trim incomplete sentences (output formatting)"
         example_yaml_value = "false"
 
@@ -10012,8 +10014,8 @@ class RemoveBlankLinesSettingsSchema(KoboldSchema):
     value = fields.Boolean(required=True)
     class KoboldMeta:
         route_name = "frmtrmblln"
-        obj = "koboldai_vars.formatoptns"
-        var_name = "@frmtrmblln"
+        obj = "koboldai_vars"
+        var_name = "frmtrmblln"
         name = "remove blank lines (output formatting)"
         example_yaml_value = "false"
 
@@ -10022,8 +10024,8 @@ class RemoveSpecialCharactersSettingsSchema(KoboldSchema):
     value = fields.Boolean(required=True)
     class KoboldMeta:
         route_name = "frmtrmspch"
-        obj = "koboldai_vars.formatoptns"
-        var_name = "@frmtrmspch"
+        obj = "koboldai_vars"
+        var_name = "frmtrmspch"
         name = "remove special characters (output formatting)"
         example_yaml_value = "false"
 
@@ -10032,8 +10034,8 @@ class SingleLineSettingsSchema(KoboldSchema):
     value = fields.Boolean(required=True)
     class KoboldMeta:
         route_name = "singleline"
-        obj = "koboldai_vars.formatoptns"
-        var_name = "@singleline"
+        obj = "koboldai_vars"
+        var_name = "singleline"
         name = "single line (output formatting)"
         example_yaml_value = "false"
 
@@ -10042,8 +10044,8 @@ class AddSentenceSpacingSettingsSchema(KoboldSchema):
     value = fields.Boolean(required=True)
     class KoboldMeta:
         route_name = "frmtadsnsp"
-        obj = "koboldai_vars.formatoptns"
-        var_name = "@frmtadsnsp"
+        obj = "koboldai_vars"
+        var_name = "frmtadsnsp"
         name = "add sentence spacing (input formatting)"
         example_yaml_value = "false"
 
