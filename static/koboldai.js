@@ -1295,12 +1295,55 @@ function world_info_entry(data) {
 	if ("wpp" in data) {
 		wpp_name.value = data.wpp.name;
 	}
-	if (data.wpp == undefined) {
-		do_wpp_attributes(null, world_info_wpp_area, data.uid);
-	} else {
-		do_wpp_attributes(data.wpp, world_info_wpp_area, data.uid);
-		
+	if (data.wpp != null) {
+		for (attribute of data.wpp.attributes) {
+			attribute_area = document.createElement("div");
+			label = document.createElement("span");
+			label.textContent = "Attribute: ";
+			attribute_area.append(label);
+			input = document.createElement("input");
+			input.value = attribute.attribute;
+			input.setAttribute("uid", data.uid);
+			input.setAttribute("attribute", attribute.attribute);
+			input.onchange = function() {do_wpp(this.parentElement.parentElement)};
+			attribute_area.append(input);
+			world_info_wpp_area.append(attribute_area);
+			for (value of attribute.values) {
+				value_area = document.createElement("div");
+				label = document.createElement("span");
+				label.textContent = "    Value: ";
+				value_area.append(label);
+				input = document.createElement("input");
+				input.onchange = function() {do_wpp(this.parentElement.parentElement)};
+				input.value = value;
+				input.setAttribute("uid", data.uid);
+				input.setAttribute("attribute", attribute.attribute);
+				value_area.append(input);
+				world_info_wpp_area.append(value_area);
+			}
+			value_area = document.createElement("div");
+			label = document.createElement("span");
+			label.textContent = "    Value: ";
+			value_area.append(label);
+			input = document.createElement("input");
+			input.setAttribute("uid", data.uid);
+			input.setAttribute("attribute", attribute.attribute);
+			input.onchange = function() {do_wpp(this.parentElement.parentElement)};
+			value_area.append(input);
+			world_info_wpp_area.append(value_area);
+		}
 	}
+	attribute_area = document.createElement("div");
+	label = document.createElement("span");
+	label.textContent = "Attribute: ";
+	attribute_area.append(label);
+	input = document.createElement("input");
+	input.value = "";
+	input.setAttribute("uid", data.uid);
+	input.setAttribute("attribute", "");
+	input.onchange = function() {do_wpp(this.parentElement.parentElement)};
+	attribute_area.append(input);
+	world_info_wpp_area.append(attribute_area);
 	
 	
 	
@@ -1532,46 +1575,8 @@ function show_error_message(data) {
 	error_message_box.querySelector("#popup_list_area").textContent = data;
 }
 
-function do_wpp_attributes(wpp, world_info_wpp_area, uid) {
-	table = document.createElement("table");
-	if (wpp != null) {
-		for (attribute of wpp.attributes) {
-			tr = document.createElement("tr");
-			td = document.createElement("td");
-			input = document.createElement("input");
-			input.value = attribute.attribute;
-			input.setAttribute("uid", uid);
-			input.setAttribute("attribute", attribute.attribute);
-			td.append(input);
-			tr.append(td);
-			for (value of attribute.values) {
-				td = document.createElement("td");
-				input = document.createElement("input");
-				input.value = attribute.attribute;
-				input.setAttribute("uid", uid);
-				input.setAttribute("attribute", attribute.attribute);
-				td.append(input);
-				tr.append(td);
-			}
-			td = document.createElement("td");
-			input = document.createElement("input");
-			input.setAttribute("uid", uid);
-			input.setAttribute("attribute", attribute.attribute);
-			input.value = "";
-			td.append(input);
-			tr.append(td);
-			table.append(tr);
-		}
-	}
-	tr = document.createElement("tr");
-	td = document.createElement("td");
-	input = document.createElement("input");
-	input.setAttribute("uid", uid);
-	input.setAttribute("attribute", "");
-	td.append(input);
-	tr.append(td);
-	table.append(tr);
-	world_info_wpp_area.append(table);
+function do_wpp(wpp_area) {
+	console.log(wpp_area);
 }
 
 //--------------------------------------------UI to Server Functions----------------------------------
