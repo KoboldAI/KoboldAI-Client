@@ -251,7 +251,7 @@ class TrainerBase(abc.ABC):
         return True
 
     def get_tokenizer(self) -> transformers.PreTrainedTokenizerBase:
-        return get_tokenizer(self.ckpt_path)
+        return get_tokenizer(self.data.ckpt_path)
     
     def save_data(self):
         pass
