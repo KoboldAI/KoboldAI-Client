@@ -1257,6 +1257,56 @@ function world_info_entry(data) {
 	secondarytags.id = "world_info_secondtags_"+data.uid;
 	//add second tag content here
 	add_secondary_tags(secondarytags, data);
+	//w++ toggle
+	wpp_toggle_area = world_info_card.querySelector('#world_info_wpp_toggle_area_');
+	wpp_toggle_area.id = "world_info_wpp_toggle_area_"+data.uid;
+	wpp_toggle = document.createElement("input");
+	wpp_toggle.id = "world_info_wpp_toggle_"+data.uid;
+	wpp_toggle.setAttribute("type", "checkbox");
+	wpp_toggle.setAttribute("uid", data.uid);
+	wpp_toggle.checked = ((data.wpp != "") && (data.wpp != undefined));
+	wpp_toggle.setAttribute("data-size", "mini");
+	wpp_toggle.setAttribute("data-onstyle", "success"); 
+	wpp_toggle.setAttribute("data-toggle", "toggle");
+	wpp_toggle.onchange = function () {
+							if (this.checked) {
+								document.getElementById("world_info_wpp_area_"+this.getAttribute('uid')).classList.remove("hidden");
+								document.getElementById("world_info_basic_text_"+this.getAttribute('uid')).classList.add("hidden");
+							} else {
+								document.getElementById("world_info_wpp_area_"+this.getAttribute('uid')).classList.add("hidden");
+								document.getElementById("world_info_basic_text_"+this.getAttribute('uid')).classList.remove("hidden");
+							}
+							//send_world_info(this.getAttribute('uid'));
+							this.classList.add("pulse");
+						}
+	wpp_toggle_area.append(wpp_toggle);
+	//w++ data
+	world_info_wpp_area = world_info_card.querySelector('#world_info_wpp_area_');
+	world_info_wpp_area.id = "world_info_wpp_area_"+data.uid;
+	wpp_type = world_info_card.querySelector('#wpp_type_');
+	wpp_type.id = "wpp_type_"+data.uid;
+	wpp_type.setAttribute("uid", data.uid);
+	if ("wpp" in data) {
+		wpp_type.value = data.wpp.type;
+	}
+	wpp_name = world_info_card.querySelector('#wpp_name_');
+	wpp_name.id = "wpp_name_"+data.uid;
+	wpp_name.setAttribute("uid", data.uid);
+	if ("wpp" in data) {
+		wpp_name.value = data.wpp.name;
+	}
+	if (data.wpp == undefined) {
+		do_wpp_attributes(null, world_info_wpp_area, data.uid);
+	} else {
+		do_wpp_attributes(data.wpp, world_info_wpp_area, data.uid);
+		
+	}
+	
+	
+	
+	//regular data
+	content_area = world_info_card.querySelector('#world_info_basic_text_');
+	content_area.id = "world_info_basic_text_"+data.uid;
 	content = world_info_card.querySelector('#world_info_entry_text_');
 	content.id = "world_info_entry_text_"+data.uid;
 	content.setAttribute("uid", data.uid);
@@ -1327,6 +1377,7 @@ function world_info_entry(data) {
 	}
 	
 	$('#world_info_constant_'+data.uid).bootstrapToggle();
+	$('#world_info_wpp_toggle_'+data.uid).bootstrapToggle();
 	assign_world_info_to_action(null, data.uid);
 	
 	update_token_lengths();
@@ -1479,6 +1530,48 @@ function show_error_message(data) {
 	error_message_box = document.getElementById('error_message');
 	error_message_box.classList.remove("hidden");
 	error_message_box.querySelector("#popup_list_area").textContent = data;
+}
+
+function do_wpp_attributes(wpp, world_info_wpp_area, uid) {
+	table = document.createElement("table");
+	if (wpp != null) {
+		for (attribute of wpp.attributes) {
+			tr = document.createElement("tr");
+			td = document.createElement("td");
+			input = document.createElement("input");
+			input.value = attribute.attribute;
+			input.setAttribute("uid", uid);
+			input.setAttribute("attribute", attribute.attribute);
+			td.append(input);
+			tr.append(td);
+			for (value of attribute.values) {
+				td = document.createElement("td");
+				input = document.createElement("input");
+				input.value = attribute.attribute;
+				input.setAttribute("uid", uid);
+				input.setAttribute("attribute", attribute.attribute);
+				td.append(input);
+				tr.append(td);
+			}
+			td = document.createElement("td");
+			input = document.createElement("input");
+			input.setAttribute("uid", uid);
+			input.setAttribute("attribute", attribute.attribute);
+			input.value = "";
+			td.append(input);
+			tr.append(td);
+			table.append(tr);
+		}
+	}
+	tr = document.createElement("tr");
+	td = document.createElement("td");
+	input = document.createElement("input");
+	input.setAttribute("uid", uid);
+	input.setAttribute("attribute", "");
+	td.append(input);
+	tr.append(td);
+	table.append(tr);
+	world_info_wpp_area.append(table);
 }
 
 //--------------------------------------------UI to Server Functions----------------------------------
