@@ -535,7 +535,7 @@ class TrainerBase(abc.ABC):
             assert z["tensor"].shape[0] < self.data.params["max_batch_size"]
             self.data.soft_in_dim = z["tensor"].shape[0]
         except AssertionError:
-            self.raise_configuration_error("MTJSP file is corrupted.", code=14)
+            self.raise_configuration_error("MKUSP file is corrupted.", code=14)
 
         tensor = z["tensor"]
 
@@ -565,7 +565,7 @@ class TrainerBase(abc.ABC):
             self.data.soft_in_dim = z["tensor"].shape[0]
             _step = z["step"]
         except AssertionError:
-            self.raise_configuration_error("MTJSP file is corrupted.", code=14)
+            self.raise_configuration_error("MKUSP file is corrupted.", code=14)
 
         tensor = z["tensor"]
 
@@ -739,7 +739,7 @@ class TrainerBase(abc.ABC):
                 step = z["step"]
                 opt_state = z["opt_state"]
             except AssertionError:
-                self.raise_configuration_error("MTJSP file is corrupted.", code=14)
+                self.raise_configuration_error("MKUSP file is corrupted.", code=14)
             print(f"We're resuming a previous soft-tuning session at step {step+1}.\n")
             self.startup(step=step + 1)
             soft_embeddings = z["tensor"]
