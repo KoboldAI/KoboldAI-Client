@@ -76,6 +76,7 @@ function reset_story() {
 		story_area.removeChild(story_area.lastChild);
 	}
 	dummy_span = document.createElement("span");
+	dummy_span.id = "Delete Me";
 	text = "";
 	for (i=0;i<154;i++) {
 		text += "\xa0";
