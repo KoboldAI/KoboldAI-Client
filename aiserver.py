@@ -429,6 +429,7 @@ def emit(*args, **kwargs):
         return _emit(*args, **kwargs)
     except AttributeError:
         return socketio.emit(*args, **kwargs)
+utils.emit = emit
 
 # marshmallow/apispec setup
 from apispec import APISpec
@@ -1311,6 +1312,8 @@ def general_startup(override_args=None):
         args = parser.parse_args(shlex.split(os.environ["KOBOLDAI_ARGS"]))
     else:
         args = parser.parse_args()
+    
+    utils.args = args
 
     if args.customsettings:
         f = open (args.customsettings)
@@ -1648,7 +1651,9 @@ def patch_transformers():
         if not args.no_aria2:
             utils.aria2_hook(pretrained_model_name_or_path, **kwargs)
         return old_from_pretrained(cls, pretrained_model_name_or_path, *model_args, **kwargs)
-    PreTrainedModel.from_pretrained = new_from_pretrained
+    if(not hasattr(PreTrainedModel, "_kai_patched")):
+        PreTrainedModel.from_pretrained = new_from_pretrained
+        PreTrainedModel._kai_patched = True
     if(hasattr(modeling_utils, "get_checkpoint_shard_files")):
         old_get_checkpoint_shard_files = modeling_utils.get_checkpoint_shard_files
         def new_get_checkpoint_shard_files(pretrained_model_name_or_path, index_filename, *args, **kwargs):
@@ -2490,7 +2495,9 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
             if not args.no_aria2:
                 utils.aria2_hook(pretrained_model_name_or_path, **kwargs)
             return old_from_pretrained(cls, pretrained_model_name_or_path, *model_args, **kwargs)
-        PreTrainedModel.from_pretrained = new_from_pretrained
+        if(not hasattr(PreTrainedModel, "_kai_patched")):
+            PreTrainedModel.from_pretrained = new_from_pretrained
+            PreTrainedModel._kai_patched = True
         if(hasattr(modeling_utils, "get_checkpoint_shard_files")):
             old_get_checkpoint_shard_files = modeling_utils.get_checkpoint_shard_files
             def new_get_checkpoint_shard_files(pretrained_model_name_or_path, index_filename, *args, **kwargs):

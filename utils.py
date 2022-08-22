@@ -22,6 +22,7 @@ except ImportError:
     HAS_ACCELERATE = False
 
 vars = None
+args = None
 num_shards: Optional[int] = None
 current_shard = 0
 from_pretrained_model_name = ""
@@ -34,6 +35,8 @@ module_names: Optional[List[str]] = None
 named_buffers: Optional[List[tuple]] = None
 
 default_sampler_order = [0, 1, 2, 3, 4, 5]
+
+emit = None
 
 #==================================================================#
 # Decorator to prevent a function's actions from being run until

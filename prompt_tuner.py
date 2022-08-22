@@ -15,15 +15,249 @@ import base64
 import pickle
 import hashlib
 import itertools
+import functools
+import bisect
+import eventlet
+import packaging
+import gc
+import time
 from tqdm.auto import tqdm
 import torch
 import torch.nn.functional as F
 from torch.nn import Embedding, CrossEntropyLoss
 import transformers
-from transformers import AutoTokenizer, GPT2TokenizerFast, AutoConfig
+from transformers import __version__ as transformers_version
+from transformers import AutoTokenizer, GPT2TokenizerFast, AutoConfig, AutoModelForCausalLM, GPTNeoForCausalLM, PreTrainedModel, modeling_utils, GPTNeoModel, GPTJModel
+import accelerate
+import accelerate.utils
 from mkultra.tuning import GPTPromptTuningMixin, GPTNeoPromptTuningLM
 from mkultra.soft_prompt import SoftPrompt
-from typing import List, Optional, TextIO, Union
+from typing import Dict, List, Optional, TextIO, Union
+
+try:
+    from transformers import XGLMModel
+except:
+    pass
+try:
+    from transformers.models.opt.modeling_opt import OPTDecoder
+except:
+    pass
+
+import breakmodel
+import torch_lazy_loader
+import utils
+
+USE_BREAKMODEL = True
+
+
+class Send_to_socketio(object):
+    def write(self, bar):
+        print(bar, end="")
+        time.sleep(0.01)
+        try:
+            if utils.emit is not None:
+                utils.emit('from_server', {'cmd': 'model_load_status', 'data': bar.replace(" ", "&nbsp;")}, broadcast=True)
+        except:
+            pass
+
+def patch_transformers_download():
+    global transformers
+    import copy, requests, tqdm, time
+    class Send_to_socketio(object):
+        def write(self, bar):
+            bar = bar.replace("\r", "").replace("\n", "")
+            if bar != "":
+                try:
+                    print(bar, end="\r")
+                    if utils.emit is not None:
+                        utils.emit('from_server', {'cmd': 'model_load_status', 'data': bar.replace(" ", "&nbsp;")}, broadcast=True)
+                    eventlet.sleep(seconds=0)
+                except:
+                    pass
+    def http_get(
+        url: str,
+        temp_file: transformers.utils.hub.BinaryIO,
+        proxies=None,
+        resume_size=0,
+        headers: transformers.utils.hub.Optional[transformers.utils.hub.Dict[str, str]] = None,
+        file_name: transformers.utils.hub.Optional[str] = None,
+    ):
+        """
+        Download remote file. Do not gobble up errors.
+        """
+        headers = copy.deepcopy(headers)
+        if resume_size > 0:
+            headers["Range"] = f"bytes={resume_size}-"
+        r = requests.get(url, stream=True, proxies=proxies, headers=headers)
+        transformers.utils.hub._raise_for_status(r)
+        content_length = r.headers.get("Content-Length")
+        total = resume_size + int(content_length) if content_length is not None else None
+        # `tqdm` behavior is determined by `utils.logging.is_progress_bar_enabled()`
+        # and can be set using `utils.logging.enable/disable_progress_bar()`
+        if url[-11:] != 'config.json':
+            progress = tqdm.tqdm(
+                unit="B",
+                unit_scale=True,
+                unit_divisor=1024,
+                total=total,
+                initial=resume_size,
+                desc=f"Downloading {file_name}" if file_name is not None else "Downloading",
+                file=Send_to_socketio(),
+            )
+        for chunk in r.iter_content(chunk_size=1024):
+            if chunk:  # filter out keep-alive new chunks
+                if url[-11:] != 'config.json':
+                    progress.update(len(chunk))
+                temp_file.write(chunk)
+        if url[-11:] != 'config.json':
+            progress.close()
+
+    transformers.utils.hub.http_get = http_get
+
+
+def patch_transformers():
+    global transformers
+    
+    patch_transformers_download()
+    
+    old_from_pretrained = PreTrainedModel.from_pretrained.__func__
+    @classmethod
+    def new_from_pretrained(cls, pretrained_model_name_or_path, *model_args, **kwargs):
+        utils.num_shards = None
+        utils.current_shard = 0
+        utils.from_pretrained_model_name = pretrained_model_name_or_path
+        utils.from_pretrained_index_filename = None
+        utils.from_pretrained_kwargs = kwargs
+        utils.bar = None
+        if utils.args is None or not utils.args.no_aria2:
+            utils.aria2_hook(pretrained_model_name_or_path, **kwargs)
+        return old_from_pretrained(cls, pretrained_model_name_or_path, *model_args, **kwargs)
+    if(not hasattr(PreTrainedModel, "_kai_patched")):
+        PreTrainedModel.from_pretrained = new_from_pretrained
+        PreTrainedModel._kai_patched = True
+    if(hasattr(modeling_utils, "get_checkpoint_shard_files")):
+        old_get_checkpoint_shard_files = modeling_utils.get_checkpoint_shard_files
+        def new_get_checkpoint_shard_files(pretrained_model_name_or_path, index_filename, *args, **kwargs):
+            utils.num_shards = utils.get_num_shards(index_filename)
+            utils.from_pretrained_index_filename = index_filename
+            return old_get_checkpoint_shard_files(pretrained_model_name_or_path, index_filename, *args, **kwargs)
+        modeling_utils.get_checkpoint_shard_files = new_get_checkpoint_shard_files
+        
+    # Some versions of transformers 4.17.0.dev0 are affected by
+    # https://github.com/huggingface/transformers/issues/15736
+    # This is a workaround for those versions of transformers.
+    if(transformers_version == "4.17.0.dev0"):
+        try:
+            from transformers.models.xglm.modeling_xglm import XGLMSinusoidalPositionalEmbedding
+        except ImportError:
+            pass
+        else:
+            @torch.no_grad()
+            def new_forward(self, input_ids: torch.Tensor = None, inputs_embeds: torch.Tensor = None, past_key_values_length: int = 0):
+                bsz, seq_len = inputs_embeds.size()[:-1]
+                input_shape = inputs_embeds.size()[:-1]
+                sequence_length = input_shape[1]
+                position_ids = torch.arange(
+                    past_key_values_length + self.padding_idx + 1, past_key_values_length + sequence_length + self.padding_idx + 1, dtype=torch.long, device=inputs_embeds.device
+                ).unsqueeze(0).expand(input_shape).contiguous()
+                max_pos = self.padding_idx + 1 + seq_len + past_key_values_length
+                if max_pos > self.weights.size(0):
+                    self.make_weights(max_pos + self.offset, self.embedding_dim, self.padding_idx)
+                return self.weights.index_select(0, position_ids.view(-1)).view(bsz, seq_len, -1).detach()
+            XGLMSinusoidalPositionalEmbedding.forward = new_forward
+
+
+    # Fix a bug in OPTForCausalLM where self.lm_head is the wrong size
+    if(packaging.version.parse("4.19.0.dev0") <= packaging.version.parse(transformers_version) < packaging.version.parse("4.20.0")):
+        try:
+            from transformers import OPTForCausalLM, OPTModel
+        except ImportError:
+            pass
+        else:
+            # This is the same as the original __init__ but with
+            # config.hidden_size
+            # replaced with
+            # config.word_embed_proj_dim
+            def new_init(self, config):
+                super(OPTForCausalLM, self).__init__(config)
+                self.model = OPTModel(config)
+                self.lm_head = torch.nn.Linear(config.word_embed_proj_dim, config.vocab_size, bias=False)
+                self.post_init()
+            OPTForCausalLM.__init__ = new_init
+
+
+def move_model_to_devices(model, usegpu, gpu_device):
+    global generator
+
+    if(not utils.HAS_ACCELERATE and not USE_BREAKMODEL):
+        if(usegpu):
+            model = model.half().to(gpu_device)
+        else:
+            model = model.to('cpu').float()
+        generator = model.generate
+        return
+
+    import breakmodel
+
+    if(utils.HAS_ACCELERATE):
+        import accelerate.utils
+        for key, value in model.state_dict().items():
+            target_dtype = torch.float32 if breakmodel.primary_device == "cpu" else torch.float16
+            if(value.dtype is not target_dtype):
+                accelerate.utils.set_module_tensor_to_device(model, key, target_dtype)
+        disk_blocks = breakmodel.disk_blocks
+        gpu_blocks = breakmodel.gpu_blocks
+        ram_blocks = len(utils.layers_module_names) - sum(gpu_blocks)
+        cumulative_gpu_blocks = tuple(itertools.accumulate(gpu_blocks))
+        device_map = {}
+        for name in utils.layers_module_names:
+            layer = int(name.rsplit(".", 1)[1])
+            device = ("disk" if layer < disk_blocks else "cpu") if layer < ram_blocks else bisect.bisect_right(cumulative_gpu_blocks, layer - ram_blocks)
+            device_map[name] = device
+        for name in utils.get_missing_module_names(model, list(device_map.keys())):
+            device_map[name] = breakmodel.primary_device
+        breakmodel.dispatch_model_ex(model, device_map, main_device=breakmodel.primary_device, offload_buffers=True, offload_dir="accelerate-disk-cache")
+        gc.collect()
+        generator = model.generate
+        return
+
+    model.half()
+    gc.collect()
+
+    if(hasattr(model, "transformer")):
+        model.transformer.wte.to(breakmodel.primary_device)
+        model.transformer.ln_f.to(breakmodel.primary_device)
+        if(hasattr(model, 'lm_head')):
+            model.lm_head.to(breakmodel.primary_device)
+        if(hasattr(model.transformer, 'wpe')):
+            model.transformer.wpe.to(breakmodel.primary_device)
+    elif(not hasattr(model.model, "decoder")):
+        model.model.embed_tokens.to(breakmodel.primary_device)
+        model.model.layer_norm.to(breakmodel.primary_device)
+        model.lm_head.to(breakmodel.primary_device)
+        model.model.embed_positions.to(breakmodel.primary_device)
+    else:
+        model.model.decoder.embed_tokens.to(breakmodel.primary_device)
+        if(model.model.decoder.project_in is not None):
+            model.model.decoder.project_in.to(breakmodel.primary_device)
+        if(model.model.decoder.project_out is not None):
+            model.model.decoder.project_out.to(breakmodel.primary_device)
+        model.model.decoder.embed_positions.to(breakmodel.primary_device)
+    gc.collect()
+    GPTNeoModel.forward = breakmodel.new_forward_neo
+    if("GPTJModel" in globals()):
+        GPTJModel.forward = breakmodel.new_forward_neo # type: ignore
+    if("XGLMModel" in globals()):
+        XGLMModel.forward = breakmodel.new_forward_xglm # type: ignore
+    if("OPTDecoder" in globals()):
+        OPTDecoder.forward = breakmodel.new_forward_opt # type: ignore
+    generator = model.generate
+    if(hasattr(model, "transformer")):
+        breakmodel.move_hidden_layers(model.transformer)
+    elif(not hasattr(model.model, "decoder")):
+        breakmodel.move_hidden_layers(model.model, model.model.layers)
+    else:
+        breakmodel.move_hidden_layers(model.model.decoder, model.model.decoder.layers)
 
 
 _PromptTuningPreTrainedModel = Union["UniversalPromptTuningMixin", GPTPromptTuningMixin, transformers.PreTrainedModel]
@@ -259,16 +493,20 @@ class TrainerBase(abc.ABC):
         if "quiet" not in kwargs:
             kwargs["quiet"] = self.quiet
         raise ConfigurationError(msg, **kwargs)
-
-    def get_hf_checkpoint_metadata(self) -> bool:
+    
+    def _get_model_config(self) -> transformers.configuration_utils.PretrainedConfig:
         REVISION = None
-        params = {}
         if(os.path.isdir(self.data.ckpt_path)):
             model_config     = AutoConfig.from_pretrained(self.data.ckpt_path, revision=REVISION, cache_dir="cache")
         elif(os.path.isdir("models/{}".format(self.data.ckpt_path.replace('/', '_')))):
             model_config     = AutoConfig.from_pretrained("models/{}".format(self.data.ckpt_path.replace('/', '_')), revision=REVISION, cache_dir="cache")
         else:
             model_config     = AutoConfig.from_pretrained(self.data.ckpt_path, revision=REVISION, cache_dir="cache")
+        return model_config
+
+    def get_hf_checkpoint_metadata(self) -> bool:
+        params = {}
+        model_config = self._get_model_config()
         params["tokenizer_id"] = self.data.ckpt_path
         tokenizer = get_tokenizer(self.data.ckpt_path)
         params["newlinemode"] = params.get(
@@ -467,7 +705,17 @@ class TrainerBase(abc.ABC):
             if isinstance(output_file, str):
                 f.close()
 
-    def train(self):
+    def train(
+        self,
+        breakmodel_primary_device: Optional[Union[str, int, torch.device]] = None,
+        breakmodel_gpulayers: Optional[List[int]] = None,
+        breakmodel_disklayers = 0,
+    ):
+        if breakmodel_gpulayers is None:
+            breakmodel_gpulayers = []
+        if breakmodel_primary_device is None:
+            breakmodel_primary_device = 0 if breakmodel_gpulayers else "cpu"
+
         if self.data.params is not None and "max_batch_size" not in self.data.params:
             self.data.params["max_batch_size"] = 2048
 
@@ -498,30 +746,169 @@ class TrainerBase(abc.ABC):
 
         REVISION = None
 
-        tokenizer = self.get_tokenizer()
+        patch_transformers()
+
         model: _PromptTuningPreTrainedModel
 
-        if(os.path.isdir(self.data.ckpt_path)):
+        model_config = self._get_model_config()
+        n_layers = utils.num_layers(model_config)
+        convert_to_float16 = True
+        hascuda = torch.cuda.is_available()
+        usegpu = not breakmodel_disklayers and len(breakmodel_gpulayers) == 1 and breakmodel_gpulayers[0] == n_layers
+        gpu_device = breakmodel_primary_device
+
+        breakmodel.disk_blocks = breakmodel_disklayers
+        disk_blocks = breakmodel.disk_blocks
+        gpu_blocks = breakmodel.gpu_blocks
+        ram_blocks = ram_blocks = n_layers - sum(gpu_blocks)
+        cumulative_gpu_blocks = tuple(itertools.accumulate(gpu_blocks))
+
+        def lazy_load_callback(model_dict: Dict[str, Union[torch_lazy_loader.LazyTensor, torch.Tensor]], f, **_):
+            if lazy_load_callback.nested:
+                return
+            lazy_load_callback.nested = True
+
+            device_map: Dict[str, Union[str, int]] = {}
+
+            @functools.lru_cache(maxsize=None)
+            def get_original_key(key):
+                return max((original_key for original_key in utils.module_names if original_key.endswith(key)), key=len)
+
+            for key, value in model_dict.items():
+                original_key = get_original_key(key)
+                if isinstance(value, torch_lazy_loader.LazyTensor) and not any(original_key.startswith(n) for n in utils.layers_module_names):
+                    device_map[key] = gpu_device if hascuda and usegpu else "cpu" if not hascuda or not USE_BREAKMODEL else breakmodel.primary_device
+                else:
+                    layer = int(max((n for n in utils.layers_module_names if original_key.startswith(n)), key=len).rsplit(".", 1)[1])
+                    device = gpu_device if hascuda and usegpu else "disk" if layer < disk_blocks and layer < ram_blocks else "cpu" if not hascuda or not USE_BREAKMODEL else "shared" if layer < ram_blocks else bisect.bisect_right(cumulative_gpu_blocks, layer - ram_blocks)
+                    device_map[key] = device
+
+            if utils.num_shards is None or utils.current_shard == 0:
+                utils.offload_index = {}
+                if utils.HAS_ACCELERATE:
+                    if os.path.isdir("accelerate-disk-cache"):
+                        # Delete all of the files in the disk cache folder without deleting the folder itself to allow people to create symbolic links for this folder
+                        # (the folder doesn't contain any subfolders so os.remove will do just fine)
+                        for filename in os.listdir("accelerate-disk-cache"):
+                            try:
+                                os.remove(os.path.join("accelerate-disk-cache", filename))
+                            except OSError:
+                                pass
+                    os.makedirs("accelerate-disk-cache", exist_ok=True)
+                if utils.num_shards is not None:
+                    num_tensors = len(utils.get_sharded_checkpoint_num_tensors(utils.from_pretrained_model_name, utils.from_pretrained_index_filename, **utils.from_pretrained_kwargs))
+                else:
+                    num_tensors = len(device_map)
+                print(flush=True)
+                utils.bar = tqdm(total=num_tensors, desc="Loading model tensors", file=Send_to_socketio())
+
+            with zipfile.ZipFile(f, "r") as z:
+                try:
+                    last_storage_key = None
+                    f = None
+                    current_offset = 0
+                    able_to_pin_layers = True
+                    if utils.num_shards is not None:
+                        utils.current_shard += 1
+                    for key in sorted(device_map.keys(), key=lambda k: (model_dict[k].key, model_dict[k].seek_offset)):
+                        storage_key = model_dict[key].key
+                        if storage_key != last_storage_key or model_dict[key].seek_offset < current_offset:
+                            last_storage_key = storage_key
+                            if isinstance(f, zipfile.ZipExtFile):
+                                f.close()
+                            f = z.open(f"archive/data/{storage_key}")
+                            current_offset = 0
+                        if current_offset != model_dict[key].seek_offset:
+                            f.read(model_dict[key].seek_offset - current_offset)
+                            current_offset = model_dict[key].seek_offset
+                        device = device_map[key]
+                        size = functools.reduce(lambda x, y: x * y, model_dict[key].shape, 1)
+                        dtype = model_dict[key].dtype
+                        nbytes = size if dtype is torch.bool else size * ((torch.finfo if dtype.is_floating_point else torch.iinfo)(dtype).bits >> 3)
+                        #print(f"Transferring <{key}>  to  {f'({device.upper()})' if isinstance(device, str) else '[device ' + str(device) + ']'} ... ", end="", flush=True)
+                        model_dict[key] = model_dict[key].materialize(f, map_location="cpu")
+                        # if model_dict[key].dtype is torch.float32:
+                        #     fp32_model = True
+                        if convert_to_float16 and breakmodel.primary_device != "cpu" and hascuda and (USE_BREAKMODEL or usegpu) and model_dict[key].dtype is torch.float32:
+                            model_dict[key] = model_dict[key].to(torch.float16)
+                        if breakmodel.primary_device == "cpu" or (not usegpu and not USE_BREAKMODEL and model_dict[key].dtype is torch.float16):
+                            model_dict[key] = model_dict[key].to(torch.float32)
+                        if device == "shared":
+                            model_dict[key] = model_dict[key].to("cpu").detach_()
+                            if able_to_pin_layers and utils.HAS_ACCELERATE:
+                                try:
+                                    model_dict[key] = model_dict[key].pin_memory()
+                                except:
+                                    able_to_pin_layers = False
+                        elif device == "disk":
+                            accelerate.utils.offload_weight(model_dict[key], get_original_key(key), "accelerate-disk-cache", index=utils.offload_index)
+                            model_dict[key] = model_dict[key].to("meta")
+                        else:
+                            model_dict[key] = model_dict[key].to(device)
+                        #print("OK", flush=True)
+                        current_offset += nbytes
+                        utils.bar.update(1)
+                finally:
+                    if utils.num_shards is None or utils.current_shard >= utils.num_shards:
+                        if utils.offload_index:
+                            for name, tensor in utils.named_buffers:
+                                if name not in utils.offload_index:
+                                    accelerate.utils.offload_weight(tensor, name, "accelerate-disk-cache", index=utils.offload_index)
+                            accelerate.utils.save_offload_index(utils.offload_index, "accelerate-disk-cache")
+                        utils.bar.close()
+                        utils.bar = None
+                    lazy_load_callback.nested = False
+                    if isinstance(f, zipfile.ZipExtFile):
+                        f.close()
+
+        lazy_load_callback.nested = False
+
+        # Since we're using lazy loader, we need to figure out what the model's hidden layers are called
+        with torch_lazy_loader.use_lazy_torch_load(dematerialized_modules=True, use_accelerate_init_empty_weights=True):
             try:
-                model     = AutoPromptTuningLM.from_pretrained(self.data.ckpt_path, revision=REVISION, cache_dir="cache")
+                metamodel = AutoModelForCausalLM.from_config(model_config)
             except Exception as e:
-                if("out of memory" in traceback.format_exc().lower()):
-                    raise RuntimeError("One of your GPUs ran out of memory when KoboldAI tried to load your model.")
-                model     = GPTNeoPromptTuningLM.from_pretrained(self.data.ckpt_path, revision=REVISION, cache_dir="cache")
-        elif(os.path.isdir("models/{}".format(self.data.ckpt_path.replace('/', '_')))):
-            try:
-                model     = AutoPromptTuningLM.from_pretrained("models/{}".format(self.data.ckpt_path.replace('/', '_')), revision=REVISION, cache_dir="cache")
-            except Exception as e:
-                if("out of memory" in traceback.format_exc().lower()):
-                    raise RuntimeError("One of your GPUs ran out of memory when KoboldAI tried to load your model.")
-                model     = GPTNeoPromptTuningLM.from_pretrained("models/{}".format(self.data.ckpt_path.replace('/', '_')), revision=REVISION, cache_dir="cache")
+                metamodel = GPTNeoForCausalLM.from_config(model_config)
+            utils.layers_module_names = utils.get_layers_module_names(metamodel)
+            utils.module_names = list(metamodel.state_dict().keys())
+            utils.named_buffers = list(metamodel.named_buffers(recurse=True))
+
+        with torch_lazy_loader.use_lazy_torch_load(callback=lazy_load_callback, dematerialized_modules=True):
+            if(os.path.isdir(self.data.ckpt_path)):
+                try:
+                    model     = AutoPromptTuningLM.from_pretrained(self.data.ckpt_path, revision=REVISION, cache_dir="cache")
+                except Exception as e:
+                    if("out of memory" in traceback.format_exc().lower()):
+                        raise RuntimeError("One of your GPUs ran out of memory when KoboldAI tried to load your model.")
+                    model     = GPTNeoPromptTuningLM.from_pretrained(self.data.ckpt_path, revision=REVISION, cache_dir="cache")
+            elif(os.path.isdir("models/{}".format(self.data.ckpt_path.replace('/', '_')))):
+                try:
+                    model     = AutoPromptTuningLM.from_pretrained("models/{}".format(self.data.ckpt_path.replace('/', '_')), revision=REVISION, cache_dir="cache")
+                except Exception as e:
+                    if("out of memory" in traceback.format_exc().lower()):
+                        raise RuntimeError("One of your GPUs ran out of memory when KoboldAI tried to load your model.")
+                    model     = GPTNeoPromptTuningLM.from_pretrained("models/{}".format(self.data.ckpt_path.replace('/', '_')), revision=REVISION, cache_dir="cache")
+            else:
+                try:
+                    model     = AutoPromptTuningLM.from_pretrained(self.data.ckpt_path, revision=REVISION, cache_dir="cache")
+                except Exception as e:
+                    if("out of memory" in traceback.format_exc().lower()):
+                        raise RuntimeError("One of your GPUs ran out of memory when KoboldAI tried to load your model.")
+                    model     = GPTNeoPromptTuningLM.from_pretrained(self.data.ckpt_path, revision=REVISION, cache_dir="cache")
+        
+        if(hascuda):
+            if(usegpu):
+                model = model.half().to(gpu_device)
+            elif(breakmodel):  # Use both RAM and VRAM (breakmodel)
+                move_model_to_devices(model, usegpu, gpu_device)
+            elif(__import__("breakmodel").disk_blocks > 0):
+                move_model_to_devices(model, usegpu, gpu_device)
+            else:
+                model = model.to('cpu').float()
+        elif(__import__("breakmodel").disk_blocks > 0):
+            move_model_to_devices(model, usegpu, gpu_device)
         else:
-            try:
-                model     = AutoPromptTuningLM.from_pretrained(self.data.ckpt_path, revision=REVISION, cache_dir="cache")
-            except Exception as e:
-                if("out of memory" in traceback.format_exc().lower()):
-                    raise RuntimeError("One of your GPUs ran out of memory when KoboldAI tried to load your model.")
-                model     = GPTNeoPromptTuningLM.from_pretrained(self.data.ckpt_path, revision=REVISION, cache_dir="cache")
+            model.to('cpu').float()
 
         if step == 0:
             soft_embeddings = self.get_initial_soft_embeddings(model)
