@@ -109,7 +109,7 @@
 	--popup_hover_color: var(--secondary_palette);
 	--popup_hover_color_text: var(--on_secondary_palette);
 	--popup_selected_color: var(--secondary_container_palette);
-	--popup_selected_color_text: var(--on_secondary_container_palette_palette);
+	--popup_selected_color_text: var(--on_secondary_container_palette);
 
 	--popup_button_color: var(--primary_containter_palette);
 	--popup_button_color_text: var(--on_primary_containter_palette);

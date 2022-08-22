@@ -877,7 +877,6 @@ class KoboldStoryRegister(object):
             old_options = None
             self.actions[self.action_count+1] = {"Selected Text": "", "Selected Text Length": 0, "In AI Input": False, "Options": [{"text": x, "Pinned": False, "Previous Selection": False, "Edited": False, "Probabilities": []} for x in option_list]}
         process_variable_changes(self.socketio, "story", 'actions', {"id": self.action_count+1, 'action':  self.actions[self.action_count+1]}, None)
-        print(self.actions[self.action_count+1])
         self.set_game_saved()
             
     def set_options(self, option_list, action_id):
