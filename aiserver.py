@@ -3848,7 +3848,6 @@ def get_message(msg):
             emit(
                 'from_server',
                 {'cmd': 'showfieldbudget', 'data': {"length": None, "max": None, "field": field}},
-                broadcast=True
             )
             return
 
