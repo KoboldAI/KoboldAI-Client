@@ -288,7 +288,7 @@ gensettingstf = [
 	{
 	"uitype": "toggle",
 	"unit": "bool",
-	"label": "Random Story Persist",
+	"label": "Prefilled Memory",
 	"id": "setrngpersist",
 	"min": 0,
 	"max": 1,
@@ -643,7 +643,7 @@ gensettingsik =[{
 	{
 	"uitype": "toggle",
 	"unit": "bool",
-	"label": "Random Story Persist",
+	"label": "Prefilled Memory",
 	"id": "setrngpersist",
 	"min": 0,
 	"max": 1,
