@@ -1264,7 +1264,7 @@ function world_info_entry(data) {
 	wpp_toggle.id = "world_info_wpp_toggle_"+data.uid;
 	wpp_toggle.setAttribute("type", "checkbox");
 	wpp_toggle.setAttribute("uid", data.uid);
-	wpp_toggle.checked = ((data.wpp.type != ""));
+	wpp_toggle.checked = data.use_wpp;
 	wpp_toggle.setAttribute("data-size", "mini");
 	wpp_toggle.setAttribute("data-onstyle", "success"); 
 	wpp_toggle.setAttribute("data-toggle", "toggle");
@@ -1276,7 +1276,9 @@ function world_info_entry(data) {
 								document.getElementById("world_info_wpp_area_"+this.getAttribute('uid')).classList.add("hidden");
 								document.getElementById("world_info_basic_text_"+this.getAttribute('uid')).classList.remove("hidden");
 							}
-							//send_world_info(this.getAttribute('uid'));
+							
+							world_info_data[this.getAttribute('uid')]['use_wpp'] = this.checked;
+							send_world_info(this.getAttribute('uid'));
 							this.classList.add("pulse");
 						}
 	wpp_toggle_area.append(wpp_toggle);
@@ -1284,13 +1286,25 @@ function world_info_entry(data) {
 	world_info_wpp_area = world_info_card.querySelector('#world_info_wpp_area_');
 	world_info_wpp_area.id = "world_info_wpp_area_"+data.uid;
 	world_info_wpp_area.setAttribute("uid", data.uid);
+	wpp_format = world_info_card.querySelector('#wpp_format_');
+	wpp_format.id = "wpp_format_"+data.uid;
+	wpp_format.setAttribute("uid", data.uid);
+	wpp_format.setAttribute("data_type", "format");
+	wpp_format.onchange = function () {
+							do_wpp(this.parentElement);
+						}
+	console.log(data.wpp['format']);
+	console.log(data.wpp);
+	if (data.wpp.format == "W++") {
+		wpp_format.selectedIndex = 0;
+	} else {
+		wpp_format.selectedIndex = 1;
+	}
 	wpp_type = world_info_card.querySelector('#wpp_type_');
 	wpp_type.id = "wpp_type_"+data.uid;
 	wpp_type.setAttribute("uid", data.uid);
 	wpp_type.setAttribute("data_type", "type");
-	if ("wpp" in data) {
-		wpp_type.value = data.wpp.type;
-	}
+	wpp_type.value = data.wpp.type;
 	wpp_name = world_info_card.querySelector('#wpp_name_');
 	wpp_name.id = "wpp_name_"+data.uid;
 	wpp_name.setAttribute("uid", data.uid);
@@ -1299,11 +1313,11 @@ function world_info_entry(data) {
 		wpp_name.value = data.wpp.name;
 	}
 	if ('attributes' in data.wpp) {
-		for (const [attribute, value] of Object.entries(data.wpp.attributes)) {
+		for (const [attribute, values] of Object.entries(data.wpp.attributes)) {
 			if (attribute != '') {
 				attribute_area = document.createElement("div");
 				label = document.createElement("span");
-				label.textContent = "Attribute: ";
+				label.textContent = "\xa0\xa0\xa0\xa0Attribute: ";
 				attribute_area.append(label);
 				input = document.createElement("input");
 				input.value = attribute;
@@ -1313,10 +1327,10 @@ function world_info_entry(data) {
 				input.onchange = function() {do_wpp(this.parentElement.parentElement)};
 				attribute_area.append(input);
 				world_info_wpp_area.append(attribute_area);
-				for (value of value) {
+				for (value of values) {
 					value_area = document.createElement("div");
 					label = document.createElement("span");
-					label.textContent = "    Value: ";
+					label.textContent = "\xa0\xa0\xa0\xa0\xa0\xa0\xa0\xa0\xa0\xa0Value: ";
 					value_area.append(label);
 					input = document.createElement("input");
 					input.type = "text";
@@ -1329,7 +1343,7 @@ function world_info_entry(data) {
 				}
 				value_area = document.createElement("div");
 				label = document.createElement("span");
-				label.textContent = "    Value: ";
+				label.textContent = "\xa0\xa0\xa0\xa0\xa0\xa0\xa0\xa0\xa0\xa0Value: ";
 				value_area.append(label);
 				input = document.createElement("input");
 				input.type = "text";
@@ -1343,7 +1357,7 @@ function world_info_entry(data) {
 	}
 	attribute_area = document.createElement("div");
 	label = document.createElement("span");
-	label.textContent = "Attribute: ";
+	label.textContent = "\xa0\xa0\xa0\xa0Attribute: ";
 	attribute_area.append(label);
 	input = document.createElement("input");
 	input.value = "";
@@ -1359,18 +1373,18 @@ function world_info_entry(data) {
 	//regular data
 	content_area = world_info_card.querySelector('#world_info_basic_text_');
 	content_area.id = "world_info_basic_text_"+data.uid;
-	content = world_info_card.querySelector('#world_info_entry_text_');
-	content.id = "world_info_entry_text_"+data.uid;
-	content.setAttribute("uid", data.uid);
-	content.value = data.content;
-	content.onchange = function () {
-							world_info_data[this.getAttribute('uid')]['content'] = this.value;
+	manual_text = world_info_card.querySelector('#world_info_entry_text_');
+	manual_text.id = "world_info_entry_text_"+data.uid;
+	manual_text.setAttribute("uid", data.uid);
+	manual_text.value = data.manual_text;
+	manual_text.onchange = function () {
+							world_info_data[this.getAttribute('uid')]['manual_text'] = this.value;
 							send_world_info(this.getAttribute('uid'));
 							this.classList.add("pulse");
 						}
 	comment = world_info_card.querySelector('#world_info_comment_');
 	comment.id = "world_info_comment_"+data.uid;
-	content.setAttribute("uid", data.uid);
+	comment.setAttribute("uid", data.uid);
 	comment.value = data.comment;
 	comment.onchange = function () {
 							world_info_data[this.getAttribute('uid')]['comment'] = this.textContent;
@@ -1432,12 +1446,12 @@ function world_info_entry(data) {
 	$('#world_info_wpp_toggle_'+data.uid).bootstrapToggle();
 	
 	//hide/unhide w++
-	if (data.wpp.type != "") {
-		world_info_wpp_area.classList.remove("hidden");
-		content_area.classList.add("hidden");
+	if (wpp_toggle.checked) {
+		document.getElementById("world_info_wpp_area_"+wpp_toggle.getAttribute('uid')).classList.remove("hidden");
+		document.getElementById("world_info_basic_text_"+wpp_toggle.getAttribute('uid')).classList.add("hidden");
 	} else {
-		world_info_wpp_area.classList.add("hidden");
-		content_area.classList.remove("hidden");
+		document.getElementById("world_info_wpp_area_"+wpp_toggle.getAttribute('uid')).classList.add("hidden");
+		document.getElementById("world_info_basic_text_"+wpp_toggle.getAttribute('uid')).classList.remove("hidden");
 	}
 	
 	assign_world_info_to_action(null, data.uid);
@@ -1599,6 +1613,7 @@ function do_wpp(wpp_area) {
 	wpp['attributes'] = {};
 	uid = wpp_area.getAttribute("uid");
 	attribute = "";
+	wpp['format'] = document.getElementById("wpp_format_"+uid).value;
 	for (input of wpp_area.querySelectorAll('input')) {
 		if (input.getAttribute("data_type") == "name") {
 			wpp['name'] = input.value;
@@ -1606,13 +1621,14 @@ function do_wpp(wpp_area) {
 			wpp['type'] = input.value;
 		} else if (input.getAttribute("data_type") == "attribute") {
 			attribute = input.value;
-			if (!(input.value in wpp['attributes'])) {
-				console.log("adding attribute");
+			if (!(input.value in wpp['attributes']) && (input.value != "")) {
 				wpp['attributes'][input.value] = [];
 			} 
 			
-		} else if (input.getAttribute("data_type") == "value") {
-			wpp['attributes'][attribute].push(input.value);
+		} else if ((input.getAttribute("data_type") == "value") && (attribute != "")) {
+			if (input.value != "") {
+				wpp['attributes'][attribute].push(input.value);
+			}
 		}
 	}
 	world_info_data[uid]['wpp'] = wpp;
@@ -2173,10 +2189,12 @@ function create_new_wi_entry(folder) {
                                     "folder": folder,
                                     "constant": false,
                                     "content": "",
+									"manual_text": "",
                                     "comment": "",
                                     "token_length": 0,
                                     "selective": false,
-									"wpp": {'name': "", 'type': "", 'attributes': {}}
+									"wpp": {'name': "", 'type': "", 'format': 'W++', 'attributes': {}},
+									'use_wpp': false,
                                     };
 	card = world_info_entry(data);
 	card.scrollIntoView(false);

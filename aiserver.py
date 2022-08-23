@@ -7240,21 +7240,18 @@ def UI_2_Rename_World_Info_Folder(data):
 def UI_2_edit_world_info(data):
     print("edit_world_info")
     print(data)
-    if 'wpp' not in data:
-        wpp = {'name': "", 'type': "", 'attributes': {}}
-    else:
-        wpp = data['wpp']
+    
     if data['uid'] == -1:
         koboldai_vars.worldinfo_v2.add_item(data['title'], data['key'], 
                                              data['keysecondary'], data['folder'], 
-                                             data['constant'], data['content'], 
-                                             data['comment'], wpp=wpp)
+                                             data['constant'], data['manual_text'], 
+                                             data['comment'], wpp=data['wpp'], use_wpp=data['use_wpp'])
         emit("delete_new_world_info_entry", {})
     else:
         koboldai_vars.worldinfo_v2.edit_item(data['uid'], data['title'], data['key'], 
                                              data['keysecondary'], data['folder'], 
-                                             data['constant'], data['content'], 
-                                             data['comment'], wpp=wpp)
+                                             data['constant'], data['manual_text'], 
+                                             data['comment'], wpp=data['wpp'], use_wpp=data['use_wpp'])
 
 
 #==================================================================#

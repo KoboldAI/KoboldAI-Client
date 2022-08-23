@@ -16,6 +16,11 @@
 		Use W++
 	</div>
 	<div class="world_info_tag_area hidden" id="world_info_wpp_area_">
+		<!--this part is very sensitive to location. Javascript uses parents to find the above tag for each of the inputs, so don't add stuff without messing with JS-->
+		<select id="wpp_format_" style="color:black;">
+			<option>W++</option>
+			<option>Square Bracket Format (SBF)</option>
+		</select>
 		<table>
 			<tr>
 				<td>Type:</td>

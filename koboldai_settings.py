@@ -1166,11 +1166,24 @@ class KoboldWorldInfo(object):
             self.sync_world_info_to_old_format()
         self.socketio.emit("world_info_folder", {x: self.world_info_folder[x] for x in self.world_info_folder}, broadcast=True, room="UI_2")
                 
-    def add_item(self, title, key, keysecondary, folder, constant, content, comment, wpp={'name': "", 'type': "", 'attributes': {}}):
+    def add_item(self, title, key, keysecondary, folder, constant, manual_text, comment, use_wpp=False, wpp={'name': "", 'type': "", 'format': "W++", 'attributes': {}}):
         if len(self.world_info) == 0:
             uid = 0
         else:
             uid = max(self.world_info)+1
+        if use_wpp:
+            if wpp['format'] == "W++":
+                content = '[{}("{}")\n{{\n'.format(wpp['type'], wpp['name'])
+                for attribute in wpp['attributes']:
+                    content = "{}{}({})\n".format(content, attribute, " + ".join(['"{}"'.format(x) for x in wpp['attributes'][attribute]]))
+                content = "{}}}]".format(content)
+            else:
+                content = '[ {}: "{}";'.format(wpp['type'], wpp['name'])
+                for attribute in wpp['attributes']:
+                    content = "{} {}: {};".format(content, attribute, ", ".join(['"{}"'.format(x) for x in wpp['attributes'][attribute]]))
+                content = "{} ]".format(content[:-1])
+        else:
+            content = manual_text
         if self.tokenizer is not None:
             token_length = len(self.tokenizer.encode(content))
         else:
@@ -1194,12 +1207,14 @@ class KoboldWorldInfo(object):
                                     "keysecondary": keysecondary,
                                     "folder": folder,
                                     "constant": constant,
+                                    'manual_text': manual_text,
                                     "content": content,
                                     "comment": comment,
                                     "token_length": token_length,
                                     "selective": len(keysecondary) > 0,
                                     "used_in_game": constant,
-                                    'wpp': wpp
+                                    'wpp': wpp,
+                                    'use_wpp': use_wpp
                                     }
         except:
             print("Error:")
@@ -1216,11 +1231,24 @@ class KoboldWorldInfo(object):
         self.socketio.emit("world_info_entry", self.world_info[uid], broadcast=True, room="UI_2")
         ignore = self.koboldai_vars.calc_ai_text()
         
-    def edit_item(self, uid, title, key, keysecondary, folder, constant, content, comment, before=None, wpp={'name': "", 'type': "", 'attributes': {}}):
+    def edit_item(self, uid, title, key, keysecondary, folder, constant, manual_text, comment, use_wpp=False, before=None, wpp={'name': "", 'type': "", 'format': "W++", 'attributes': {}}):
         old_folder = self.world_info[uid]['folder']
         #move the world info entry if the folder changed or if there is a new order requested
         if old_folder != folder or before is not None:
             self.add_item_to_folder(uid, folder, before=before)
+        if use_wpp:
+            if wpp['format'] == "W++":
+                content = '[{}("{}")\n{{\n'.format(wpp['type'], wpp['name'])
+                for attribute in wpp['attributes']:
+                    content = "{}{}({})\n".format(content, attribute, " + ".join(['"{}"'.format(x) for x in wpp['attributes'][attribute]]))
+                content = "{}}}]".format(content)
+            else:
+                content = '[ {}: "{}";'.format(wpp['type'], wpp['name'])
+                for attribute in wpp['attributes']:
+                    content = "{} {}: {};".format(content, attribute, ", ".join(['"{}"'.format(x) for x in wpp['attributes'][attribute]]))
+                content = "{} ]".format(content[:-1])
+        else:
+            content = manual_text
         if self.tokenizer is not None:
             token_length = len(self.tokenizer.encode(content))
         else:
@@ -1234,12 +1262,14 @@ class KoboldWorldInfo(object):
                                 "keysecondary": keysecondary,
                                 "folder": folder,
                                 "constant": constant,
+                                'manual_text': manual_text,
                                 "content": content,
                                 "comment": comment,
                                 "token_length": token_length,
                                 "selective": len(keysecondary) > 0,
                                 "used_in_game": constant,
-                                'wpp': wpp
+                                'wpp': wpp,
+                                'use_wpp': use_wpp
                                 }
                                 
         self.story_settings.gamesaved = False
