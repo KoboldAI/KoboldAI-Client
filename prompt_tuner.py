@@ -34,6 +34,9 @@ from mkultra.tuning import GPTPromptTuningMixin, GPTNeoPromptTuningLM
 from mkultra.soft_prompt import SoftPrompt
 from typing import Dict, List, Optional, TextIO, Union
 
+import logging
+logging.getLogger("urllib3").setLevel(logging.ERROR)
+
 import breakmodel
 import torch_lazy_loader
 import utils
