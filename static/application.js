@@ -256,7 +256,7 @@ function addSetting(ob) {
 			}
 		});
 
-		if (!$("#input-token-usage")[0].checked) {
+		if (!$("#setshowbudget")[0].checked) {
 			for (const el of document.getElementsByClassName("input-token-usage")) {
 				el.classList.add("hidden");
 			}
