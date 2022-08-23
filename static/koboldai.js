@@ -535,6 +535,12 @@ function var_changed(data) {
 		for (item of elements_to_change) {
 			item.setAttribute(data.classname.replace(" ", "_")+"_"+data.name.replace(" ", "_"), fix_text(data.value));
 		}
+		
+		//alternative syncing method to tooltip
+		var elements_to_change = document.getElementsByClassName("var_sync_tooltip_"+data.classname.replace(" ", "_")+"_"+data.name.replace(" ", "_"));
+		for (item of elements_to_change) {
+			item.title = fix_text(data.value);
+		}
 	}
 	
 	//if we changed the gen amount, make sure our option area is set/not set

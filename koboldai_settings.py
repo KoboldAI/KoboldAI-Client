@@ -872,7 +872,7 @@ class KoboldStoryRegister(object):
                         break
                         
                 if not found:
-                    self.actions[self.action_count+1]['Options'].append({"text": item, "Pinned": False, "Previous Selection": False, "Edited": False, "Probabilities": []})
+                    self.actions[self.action_count+1]['Options'].append({"text": option, "Pinned": False, "Previous Selection": False, "Edited": False, "Probabilities": []})
         else:
             old_options = None
             self.actions[self.action_count+1] = {"Selected Text": "", "Selected Text Length": 0, "In AI Input": False, "Options": [{"text": x, "Pinned": False, "Previous Selection": False, "Edited": False, "Probabilities": []} for x in option_list]}
