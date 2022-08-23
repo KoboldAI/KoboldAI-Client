@@ -177,6 +177,8 @@ input[type="range"]::-ms-fill-upper {
 	width: 100%;
 }
 
+
+
 .setting_container {
 	display: grid;
 	grid-template-areas: "label value"
@@ -676,11 +678,7 @@ td.server_vars {
 	white-space: pre-wrap;
 }
 
-.story_category_area{
-	margin-top: 10px;
-}
-
-.story_category_area{
+.story_category_area:not(#story_menu_wi){
 	margin: 10px 10px 0 10px;
 }
 

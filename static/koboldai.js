@@ -2175,7 +2175,8 @@ function create_new_wi_entry(folder) {
                                     "content": "",
                                     "comment": "",
                                     "token_length": 0,
-                                    "selective": false
+                                    "selective": false,
+									"wpp": {'name': "", 'type': "", 'attributes': {}}
                                     };
 	card = world_info_entry(data);
 	card.scrollIntoView(false);
