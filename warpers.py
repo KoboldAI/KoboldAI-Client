@@ -28,7 +28,7 @@ SOFTWARE.
 '''
 
 import torch
-from transformers import LogitsWarper, LogitsProcessor
+from transformers import LogitsWarper
 
 
 class AdvancedRepetitionPenaltyLogitsProcessor(LogitsWarper):
