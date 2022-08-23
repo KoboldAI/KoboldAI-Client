@@ -680,16 +680,7 @@ td.server_vars {
 	margin-top: 10px;
 }
 
-#story_menu_notes{
-	margin: 10px 10px 0 10px;
-}
-
-#story_menu_memory{
-	margin: 10px 10px 0 10px;
-}
-
-
-#story_menu_author{
+.story_category_area{
 	margin: 10px 10px 0 10px;
 }
 

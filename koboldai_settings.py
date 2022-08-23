@@ -1166,7 +1166,7 @@ class KoboldWorldInfo(object):
             self.sync_world_info_to_old_format()
         self.socketio.emit("world_info_folder", {x: self.world_info_folder[x] for x in self.world_info_folder}, broadcast=True, room="UI_2")
                 
-    def add_item(self, title, key, keysecondary, folder, constant, content, comment):
+    def add_item(self, title, key, keysecondary, folder, constant, content, comment, wpp={'name': "", 'type': "", 'attributes': {}}):
         if len(self.world_info) == 0:
             uid = 0
         else:
@@ -1198,7 +1198,8 @@ class KoboldWorldInfo(object):
                                     "comment": comment,
                                     "token_length": token_length,
                                     "selective": len(keysecondary) > 0,
-                                    "used_in_game": constant
+                                    "used_in_game": constant,
+                                    'wpp': wpp
                                     }
         except:
             print("Error:")
@@ -1215,7 +1216,7 @@ class KoboldWorldInfo(object):
         self.socketio.emit("world_info_entry", self.world_info[uid], broadcast=True, room="UI_2")
         ignore = self.koboldai_vars.calc_ai_text()
         
-    def edit_item(self, uid, title, key, keysecondary, folder, constant, content, comment, before=None):
+    def edit_item(self, uid, title, key, keysecondary, folder, constant, content, comment, before=None, wpp={'name': "", 'type': "", 'attributes': {}}):
         old_folder = self.world_info[uid]['folder']
         #move the world info entry if the folder changed or if there is a new order requested
         if old_folder != folder or before is not None:
@@ -1236,7 +1237,9 @@ class KoboldWorldInfo(object):
                                 "content": content,
                                 "comment": comment,
                                 "token_length": token_length,
-                                "selective": len(keysecondary) > 0
+                                "selective": len(keysecondary) > 0,
+                                "used_in_game": constant,
+                                'wpp': wpp
                                 }
                                 
         self.story_settings.gamesaved = False

@@ -19,15 +19,11 @@
 		<table>
 			<tr>
 				<td>Type:</td>
-				<td><input type=text id="wpp_type_" onchange="world_info_data[this.getAttribute('uid')]['wpp_type'] = this.value;
-																send_world_info(this.getAttribute('uid'));
-																this.classList.add('pulse');"></td>
+				<td><input type=text id="wpp_type_" onchange="do_wpp(this.parentElement.parentElement.parentElement.parentElement.parentElement)"></td>
 			</tr>
 			<tr>
 				<td>Name:</td>
-				<td><input type=text id="wpp_name_" onchange="world_info_data[this.getAttribute('uid')]['wpp_type'] = this.value;
-																send_world_info(this.getAttribute('uid'));
-																this.classList.add('pulse');"></td>
+				<td><input type=text id="wpp_name_" onchange="do_wpp(this.parentElement.parentElement.parentElement.parentElement.parentElement)"></td>
 			</tr>
 		</table>
 		

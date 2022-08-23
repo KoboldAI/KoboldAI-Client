@@ -1264,7 +1264,7 @@ function world_info_entry(data) {
 	wpp_toggle.id = "world_info_wpp_toggle_"+data.uid;
 	wpp_toggle.setAttribute("type", "checkbox");
 	wpp_toggle.setAttribute("uid", data.uid);
-	wpp_toggle.checked = ((data.wpp != "") && (data.wpp != undefined));
+	wpp_toggle.checked = ((data.wpp.type != ""));
 	wpp_toggle.setAttribute("data-size", "mini");
 	wpp_toggle.setAttribute("data-onstyle", "success"); 
 	wpp_toggle.setAttribute("data-toggle", "toggle");
@@ -1283,54 +1283,62 @@ function world_info_entry(data) {
 	//w++ data
 	world_info_wpp_area = world_info_card.querySelector('#world_info_wpp_area_');
 	world_info_wpp_area.id = "world_info_wpp_area_"+data.uid;
+	world_info_wpp_area.setAttribute("uid", data.uid);
 	wpp_type = world_info_card.querySelector('#wpp_type_');
 	wpp_type.id = "wpp_type_"+data.uid;
 	wpp_type.setAttribute("uid", data.uid);
+	wpp_type.setAttribute("data_type", "type");
 	if ("wpp" in data) {
 		wpp_type.value = data.wpp.type;
 	}
 	wpp_name = world_info_card.querySelector('#wpp_name_');
 	wpp_name.id = "wpp_name_"+data.uid;
 	wpp_name.setAttribute("uid", data.uid);
+	wpp_name.setAttribute("data_type", "name");
 	if ("wpp" in data) {
 		wpp_name.value = data.wpp.name;
 	}
-	if (data.wpp != null) {
-		for (attribute of data.wpp.attributes) {
-			attribute_area = document.createElement("div");
-			label = document.createElement("span");
-			label.textContent = "Attribute: ";
-			attribute_area.append(label);
-			input = document.createElement("input");
-			input.value = attribute.attribute;
-			input.setAttribute("uid", data.uid);
-			input.setAttribute("attribute", attribute.attribute);
-			input.onchange = function() {do_wpp(this.parentElement.parentElement)};
-			attribute_area.append(input);
-			world_info_wpp_area.append(attribute_area);
-			for (value of attribute.values) {
+	if ('attributes' in data.wpp) {
+		for (const [attribute, value] of Object.entries(data.wpp.attributes)) {
+			if (attribute != '') {
+				attribute_area = document.createElement("div");
+				label = document.createElement("span");
+				label.textContent = "Attribute: ";
+				attribute_area.append(label);
+				input = document.createElement("input");
+				input.value = attribute;
+				input.type = "text";
+				input.setAttribute("uid", data.uid);
+				input.setAttribute("data_type", "attribute");
+				input.onchange = function() {do_wpp(this.parentElement.parentElement)};
+				attribute_area.append(input);
+				world_info_wpp_area.append(attribute_area);
+				for (value of value) {
+					value_area = document.createElement("div");
+					label = document.createElement("span");
+					label.textContent = "    Value: ";
+					value_area.append(label);
+					input = document.createElement("input");
+					input.type = "text";
+					input.onchange = function() {do_wpp(this.parentElement.parentElement)};
+					input.value = value;
+					input.setAttribute("uid", data.uid);
+					input.setAttribute("data_type", "value");
+					value_area.append(input);
+					world_info_wpp_area.append(value_area);
+				}
 				value_area = document.createElement("div");
 				label = document.createElement("span");
 				label.textContent = "    Value: ";
 				value_area.append(label);
 				input = document.createElement("input");
-				input.onchange = function() {do_wpp(this.parentElement.parentElement)};
-				input.value = value;
+				input.type = "text";
 				input.setAttribute("uid", data.uid);
-				input.setAttribute("attribute", attribute.attribute);
+				input.setAttribute("data_type", "value");
+				input.onchange = function() {do_wpp(this.parentElement.parentElement)};
 				value_area.append(input);
 				world_info_wpp_area.append(value_area);
 			}
-			value_area = document.createElement("div");
-			label = document.createElement("span");
-			label.textContent = "    Value: ";
-			value_area.append(label);
-			input = document.createElement("input");
-			input.setAttribute("uid", data.uid);
-			input.setAttribute("attribute", attribute.attribute);
-			input.onchange = function() {do_wpp(this.parentElement.parentElement)};
-			value_area.append(input);
-			world_info_wpp_area.append(value_area);
 		}
 	}
 	attribute_area = document.createElement("div");
@@ -1339,8 +1347,9 @@ function world_info_entry(data) {
 	attribute_area.append(label);
 	input = document.createElement("input");
 	input.value = "";
+	input.type = "text";
 	input.setAttribute("uid", data.uid);
-	input.setAttribute("attribute", "");
+	input.setAttribute("data_type", "attribute");
 	input.onchange = function() {do_wpp(this.parentElement.parentElement)};
 	attribute_area.append(input);
 	world_info_wpp_area.append(attribute_area);
@@ -1421,6 +1430,16 @@ function world_info_entry(data) {
 	
 	$('#world_info_constant_'+data.uid).bootstrapToggle();
 	$('#world_info_wpp_toggle_'+data.uid).bootstrapToggle();
+	
+	//hide/unhide w++
+	if (data.wpp.type != "") {
+		world_info_wpp_area.classList.remove("hidden");
+		content_area.classList.add("hidden");
+	} else {
+		world_info_wpp_area.classList.add("hidden");
+		content_area.classList.remove("hidden");
+	}
+	
 	assign_world_info_to_action(null, data.uid);
 	
 	update_token_lengths();
@@ -1576,7 +1595,28 @@ function show_error_message(data) {
 }
 
 function do_wpp(wpp_area) {
-	console.log(wpp_area);
+	wpp = {};
+	wpp['attributes'] = {};
+	uid = wpp_area.getAttribute("uid");
+	attribute = "";
+	for (input of wpp_area.querySelectorAll('input')) {
+		if (input.getAttribute("data_type") == "name") {
+			wpp['name'] = input.value;
+		} else if (input.getAttribute("data_type") == "type") {
+			wpp['type'] = input.value;
+		} else if (input.getAttribute("data_type") == "attribute") {
+			attribute = input.value;
+			if (!(input.value in wpp['attributes'])) {
+				console.log("adding attribute");
+				wpp['attributes'][input.value] = [];
+			} 
+			
+		} else if (input.getAttribute("data_type") == "value") {
+			wpp['attributes'][attribute].push(input.value);
+		}
+	}
+	world_info_data[uid]['wpp'] = wpp;
+	send_world_info(uid);
 }
 
 //--------------------------------------------UI to Server Functions----------------------------------

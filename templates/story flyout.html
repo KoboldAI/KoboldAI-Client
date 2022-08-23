@@ -67,31 +67,33 @@
 		</div>
 	</div>
 	<div id="story_menu_wi" class="story_category_area hidden">
-		<h4 class="section_header">World Info</h4>
-		<span class="help_text">
-			Lore information. Recalled by the AI when certain words are used.
-			<span class="helpicon material-icons-outlined" title="Use this instead of Memory for information on things like characters, objects, events, places, and anything else with detail.">help_icon</span>
-		</span>
-		<div class="setting_tile_area">
-		{% with menu='World Info' %}
-			{% with sub_path='' %}
-				{% include 'settings item.html' %}
-			{% endwith %}
-		{% endwith %}
-		</div>
-		<div id="WI_Area">
-			<span id="world_info_folder_New Folder" class="WI_Folder">
-				<h2>
-					<span id="world_info_folder_collapse_root" class="wi_folder_collapser material-icons-outlined" folder="root">expand_more</span>
-					<span id="world_info_folder_expand_root" class="wi_folder_collapser material-icons-outlined hidden" folder="root">chevron_right</span>
-					<span class="material-icons-outlined" folder="root">folder</span>
-					<span original_text="root" contenteditable="true">root</span>
-				</h2>
-				<span class="wi_add_button">
-					<span class="material-icons-outlined">post_add</span>
-					<span folder="root">Add World Info Entry</span>
-				</span>
+		<div>
+			<h4 class="section_header">World Info</h4>
+			<span class="help_text">
+				Lore information, which AI recalls using certain words.
+				<span class="helpicon material-icons-outlined" title="Use this instead of Memory for information on things like characters, objects, events, places, and anything else with detail.">help_icon</span>
 			</span>
+			<div class="setting_tile_area">
+			{% with menu='World Info' %}
+				{% with sub_path='' %}
+					{% include 'settings item.html' %}
+				{% endwith %}
+			{% endwith %}
+			</div>
+			<div id="WI_Area">
+				<span id="world_info_folder_New Folder" class="WI_Folder">
+					<h2>
+						<span id="world_info_folder_collapse_root" class="wi_folder_collapser material-icons-outlined" folder="root">expand_more</span>
+						<span id="world_info_folder_expand_root" class="wi_folder_collapser material-icons-outlined hidden" folder="root">chevron_right</span>
+						<span class="material-icons-outlined" folder="root">folder</span>
+						<span original_text="root" contenteditable="true">root</span>
+					</h2>
+					<span class="wi_add_button">
+						<span class="material-icons-outlined">post_add</span>
+						<span folder="root">Add World Info Entry</span>
+					</span>
+				</span>
+			</div>
 		</div>
 	</div>
 </div>
