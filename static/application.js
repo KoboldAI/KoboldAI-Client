@@ -241,7 +241,26 @@ function addSetting(ob) {
 			if(ob.id == "setadventure"){
 				setadventure($(this).prop('checked'));
 			}
+
 		});
+	}
+
+	if (ob.id === "setshowbudget") {
+		$("#setshowbudget").on("change", function () {
+			for (const el of document.getElementsByClassName("input-token-usage")) {
+				if (this.checked) {
+					el.classList.remove("hidden");
+				} else {
+					el.classList.add("hidden");
+				}
+			}
+		});
+
+		if (!$("#input-token-usage")[0].checked) {
+			for (const el of document.getElementsByClassName("input-token-usage")) {
+				el.classList.add("hidden");
+			}
+		}
 	}
 }
 
@@ -2165,6 +2184,9 @@ function interpolateRGB(color0, color1, t) {
 }
 
 function updateInputBudget(inputElement) {
+	let budgetElement = document.getElementById("setshowbudget");
+	if (budgetElement && !budgetElement.checked) return;
+
 	let data = {"unencoded": inputElement.value, "field": inputElement.id};
 
 	if (inputElement.id === "anoteinput") {
@@ -2182,7 +2204,6 @@ function registerTokenCounters() {
 
 		let span = document.createElement("span");
 		span.classList.add("input-token-usage");
-		span.innerText = "?/? Tokens";
 		el.appendChild(span);
 
 		let inputElement = el.querySelector("input, textarea");
