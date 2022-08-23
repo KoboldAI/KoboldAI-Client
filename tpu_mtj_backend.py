@@ -176,7 +176,7 @@ def apply_repetition_penalty_dynamic(logits, tokens, repetition_penalty, generat
     logits[tokens] = penalty_logits
     return logits
 
-def kobold_sample_dynamic(key, logits, sampler_order: Optional[np.ndarray] = None, top_p=0.9, temp=0.5, top_k=0, tfs=1.0, typical=1.0, top_a=0.0):
+def kobold_sample_dynamic(key, logits, rpargs, sampler_order: Optional[np.ndarray] = None, top_p=0.9, temp=0.5, top_k=0, tfs=1.0, typical=1.0, top_a=0.0):
     '''
     This gets called by generate_loop_fn to apply a series of 6 filters
     to the logits (top-k, then top-a, then top-p, then TFS, then typical, then temperature)
@@ -312,6 +312,7 @@ def kobold_sample_dynamic(key, logits, sampler_order: Optional[np.ndarray] = Non
         if k == 3 and tfs < 1.0: logits = tail_free_filter(logits)
         if k == 4 and typical < 1.0: logits = typical_filter(logits)
         if k == 5 and temp != 1.0: logits = temp_filter(logits)
+        if k == 6 and rpargs[1] != 1.0: logits = apply_repetition_penalty_dynamic(logits, *rpargs)
     # Finally, pick one token using the softmax thingy again (it gives
     # an array whose elements sum to 1 so it can be used nicely as a
     # probability distribution)
@@ -362,7 +363,7 @@ def apply_repetition_penalty_static(logits, tokens, repetition_penalty, generate
     # positions in the logits array
     return logits.at[tokens].set(penalty_logits)
 
-def kobold_sample_static(key, logits, sampler_order: Optional[np.ndarray] = None, top_p=0.9, temp=0.5, top_k=0, tfs=1.0, typical=1.0, top_a=0.0):
+def kobold_sample_static(key, logits, rpargs, sampler_order: Optional[np.ndarray] = None, top_p=0.9, temp=0.5, top_k=0, tfs=1.0, typical=1.0, top_a=0.0):
     '''
     This gets called by generate_loop_fn to apply a series of 6 filters
     to the logits (top-k, then top-a, then top-p, then TFS, then typical, then temperature)
@@ -497,6 +498,7 @@ def kobold_sample_static(key, logits, sampler_order: Optional[np.ndarray] = None
         logits = jax.lax.cond(jnp.logical_and(k == 3, tfs < 1.0), tail_free_filter, lambda x: x, logits)
         logits = jax.lax.cond(jnp.logical_and(k == 4, typical < 1.0), typical_filter, lambda x: x, logits)
         logits = jax.lax.cond(jnp.logical_and(k == 5, temp != 1.0), temp_filter, lambda x: x, logits)
+        logits = jax.lax.cond(jnp.logical_and(k == 6, rpargs[1] != 1.0), lambda x: apply_repetition_penalty_static(*x), lambda x: x[0], (logits, *rpargs))
     # Finally, pick one token using the softmax thingy again (it gives
     # an array whose elements sum to 1 so it can be used nicely as a
     # probability distribution)
@@ -513,17 +515,6 @@ def sample_func(data, key, numseqs_aux, badwords, repetition_penalty, generated_
         # Get the pseudo-random number generator key that will
         # be used by kobold_sample_dynamic to randomly pick a token
         sample_key, new_key = jax.random.split(sample_key, num=2)
-        # Apply repetition penalty to all tokens that are
-        # currently inside the "generated" array
-        logits = apply_repetition_penalty_dynamic(
-            logits,
-            generated,
-            repetition_penalty,
-            generated_index, 
-            gen_length,
-            rpslope,
-            rprange,
-        )
         # Remove any tokens in the badwords list by setting
         # their logits to negative infinity which effectively
         # makes their probabilities of being chosen zero
@@ -535,6 +526,14 @@ def sample_func(data, key, numseqs_aux, badwords, repetition_penalty, generated_
         next_token = kobold_sample_dynamic(
             sample_key,
             logits,
+            (
+                generated,
+                repetition_penalty,
+                generated_index, 
+                gen_length,
+                rpslope,
+                rprange,
+            )
             **sampler_options,
         )
         # Remember what token was picked
@@ -606,18 +605,6 @@ class PenalizingCausalTransformer(CausalTransformer):
                     assert logits.shape == (1, config["n_vocab"])
                     # Flatten it into a 1D array to make it easier to use
                     logits = logits[0]
-                    # Apply repetition penalty to all tokens that are
-                    # currently inside the "generated" array
-                    if repetition_penalty is not None:
-                        logits = apply_repetition_penalty_static(
-                            logits,
-                            generated,
-                            repetition_penalty,
-                            generated_index,
-                            gen_length,
-                            rpslope,
-                            rprange,
-                        )
                     # Remove any tokens in the badwords list by setting
                     # their logits to negative infinity which effectively
                     # makes their probabilities of being chosen zero
@@ -629,6 +616,14 @@ class PenalizingCausalTransformer(CausalTransformer):
                     next_token = kobold_sample_static(
                         sample_key,
                         logits,
+                        (
+                            generated,
+                            repetition_penalty,
+                            generated_index,
+                            gen_length,
+                            rpslope,
+                            rprange,
+                        ),
                         **sampler_options,
                     )
                     # Remember what token was picked
@@ -863,6 +858,9 @@ def infer_static(
     maps.thread_resources.env = thread_resources_env
     if sampler_order is None:
         sampler_order = utils.default_sampler_order.copy()
+    sampler_order = sampler_order[:]
+    if len(sampler_order) < 7:  # Add repetition penalty at beginning if it's not present
+        sampler_order = [6] + sampler_order
     sampler_order = np.uint32(sampler_order)
     total_batch = 1
     tokens = context
