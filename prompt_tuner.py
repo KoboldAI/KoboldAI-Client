@@ -38,8 +38,18 @@ import breakmodel
 import torch_lazy_loader
 import utils
 
-USE_BREAKMODEL = True
+use_breakmodel = True
 
+
+class colors:
+    PURPLE    = '\033[95m'
+    BLUE      = '\033[94m'
+    CYAN      = '\033[96m'
+    GREEN     = '\033[92m'
+    YELLOW    = '\033[93m'
+    RED       = '\033[91m'
+    END       = '\033[0m'
+    UNDERLINE = '\033[4m'
 
 class Send_to_socketio(object):
     def write(self, bar):
@@ -177,10 +187,29 @@ def patch_transformers():
             OPTForCausalLM.__init__ = new_init
 
 
+def device_list(n_layers, primary=None, selected=None):
+    device_count = torch.cuda.device_count()
+    if(device_count < 2):
+        primary = None
+    gpu_blocks = breakmodel.gpu_blocks + (device_count - len(breakmodel.gpu_blocks))*[0]
+    print(f"{colors.YELLOW}       DEVICE ID  |  LAYERS  |  DEVICE NAME{colors.END}")
+    for i in range(device_count):
+        name = torch.cuda.get_device_name(i)
+        if(len(name) > 47):
+            name = "..." + name[-44:]
+        row_color = colors.END
+        sep_color = colors.YELLOW
+        print(f"{row_color}{colors.YELLOW + '->' + row_color if i == selected else '  '} {'(primary)' if i == primary else ' '*9} {i:3}  {sep_color}|{row_color}     {gpu_blocks[i]:3}  {sep_color}|{row_color}  {name}{colors.END}")
+    row_color = colors.END
+    sep_color = colors.YELLOW
+    print(f"{row_color}{colors.YELLOW + '->' + row_color if -1 == selected else '  '} {' '*9} N/A  {sep_color}|{row_color}     {breakmodel.disk_blocks:3}  {sep_color}|{row_color}  (Disk cache){colors.END}")
+    print(f"{row_color}   {' '*9} N/A  {sep_color}|{row_color}     {n_layers:3}  {sep_color}|{row_color}  (CPU){colors.END}")
+
+
 def move_model_to_devices(model, usegpu, gpu_device):
     global generator
 
-    if(not USE_BREAKMODEL):
+    if(not use_breakmodel):
         if(usegpu):
             model = model.half().to(gpu_device)
         else:
@@ -703,14 +732,20 @@ class TrainerBase(abc.ABC):
         n_layers = utils.num_layers(model_config)
         convert_to_float16 = True
         hascuda = torch.cuda.is_available()
-        usegpu = not breakmodel_disklayers and len(breakmodel_gpulayers) == 1 and breakmodel_gpulayers[0] == n_layers
+        usegpu = hascuda and not breakmodel_disklayers and len(breakmodel_gpulayers) == 1 and breakmodel_gpulayers[0] == n_layers
         gpu_device = breakmodel_primary_device
+        use_breakmodel = bool(hascuda or breakmodel_disklayers or sum(breakmodel_gpulayers))
+
+        assert len(breakmodel_gpulayers) <= torch.cuda.device_count()
+        assert sum(breakmodel_gpulayers) + breakmodel_disklayers <= n_layers
 
         breakmodel.disk_blocks = breakmodel_disklayers
         disk_blocks = breakmodel.disk_blocks
         gpu_blocks = breakmodel.gpu_blocks
         ram_blocks = ram_blocks = n_layers - sum(gpu_blocks)
         cumulative_gpu_blocks = tuple(itertools.accumulate(gpu_blocks))
+
+        device_list(n_layers, primary=breakmodel.primary_device)
 
         def lazy_load_callback(model_dict: Dict[str, Union[torch_lazy_loader.LazyTensor, torch.Tensor]], f, **_):
             if lazy_load_callback.nested:
@@ -726,10 +761,10 @@ class TrainerBase(abc.ABC):
             for key, value in model_dict.items():
                 original_key = get_original_key(key)
                 if isinstance(value, torch_lazy_loader.LazyTensor) and not any(original_key.startswith(n) for n in utils.layers_module_names):
-                    device_map[key] = gpu_device if hascuda and usegpu else "cpu" if not hascuda or not USE_BREAKMODEL else breakmodel.primary_device
+                    device_map[key] = gpu_device if hascuda and usegpu else "cpu" if not hascuda or not use_breakmodel else breakmodel.primary_device
                 else:
                     layer = int(max((n for n in utils.layers_module_names if original_key.startswith(n)), key=len).rsplit(".", 1)[1])
-                    device = gpu_device if hascuda and usegpu else "disk" if layer < disk_blocks and layer < ram_blocks else "cpu" if not hascuda or not USE_BREAKMODEL else "shared" if layer < ram_blocks else bisect.bisect_right(cumulative_gpu_blocks, layer - ram_blocks)
+                    device = gpu_device if hascuda and usegpu else "disk" if layer < disk_blocks and layer < ram_blocks else "cpu" if not hascuda or not use_breakmodel else "shared" if layer < ram_blocks else bisect.bisect_right(cumulative_gpu_blocks, layer - ram_blocks)
                     device_map[key] = device
 
             if utils.num_shards is None or utils.current_shard == 0:
@@ -777,9 +812,9 @@ class TrainerBase(abc.ABC):
                         model_dict[key] = model_dict[key].materialize(f, map_location="cpu")
                         # if model_dict[key].dtype is torch.float32:
                         #     fp32_model = True
-                        if convert_to_float16 and breakmodel.primary_device != "cpu" and hascuda and (USE_BREAKMODEL or usegpu) and model_dict[key].dtype is torch.float32:
+                        if convert_to_float16 and breakmodel.primary_device != "cpu" and hascuda and (use_breakmodel or usegpu) and model_dict[key].dtype is torch.float32:
                             model_dict[key] = model_dict[key].to(torch.float16)
-                        if breakmodel.primary_device == "cpu" or (not usegpu and not USE_BREAKMODEL and model_dict[key].dtype is torch.float16):
+                        if breakmodel.primary_device == "cpu" or (not usegpu and not use_breakmodel and model_dict[key].dtype is torch.float16):
                             model_dict[key] = model_dict[key].to(torch.float32)
                         if device == "shared":
                             model_dict[key] = model_dict[key].to("cpu").detach_()

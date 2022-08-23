@@ -848,7 +848,7 @@ def device_config(config):
                     print(f"{colors.RED}Please enter an integer between -1 and {n_layers}.{colors.END}")
 
     print(colors.PURPLE + "\nFinal device configuration:")
-    device_list(n_layers)
+    device_list(n_layers, primary=breakmodel.primary_device)
 
     # If all layers are on the same device, use the old GPU generation mode
     while(len(breakmodel.gpu_blocks) and breakmodel.gpu_blocks[-1] == 0):
