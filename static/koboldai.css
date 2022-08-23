@@ -694,7 +694,7 @@ td.server_vars {
 	margin: 0 0 0 10px;
 	padding: 4px 4px 4px 4px;
 	border-radius: var(--radius_wi_card);
-	background-color: #004397;
+	background-color: var(--wi_tag_color);
 }
 
 .wi_folder_collapser, .wi_add_button, #new_world_info_button {
@@ -1170,14 +1170,6 @@ body {
 	}
 }
 
-.popup#error_message {
-	background-color: var(--error_palette);
-	color: var(--on_error_palette);
-	height: 30vh;
-	top: 35vh;
-	overflow: hidden;
-}
-
 .popup .title {
 	width: 100%;
 	background-color: var(--popup_title_bar_color);
@@ -1186,25 +1178,10 @@ body {
 	font-size: 1.3em;
 }
 
-#error_message .title {
-	width: 100%;
-	background-color: var(--error_container_palette);
-	color: var(--on_error_container_palette);
-	text-align: center;
-	font-size: 1.3em;
-}
-
 .popup .action_button {
 	background-color: var(--popup_button_color);
 	color: var(--popup_button_color_text);
 }
-
-.popup#error_message .btn-primary {
-	background-color: var(--error_palette);
-	color: var(--on_error_palette);
-	border-color: var(--on_error_palette);
-}
-
 
 .popup .popup_list_area {
 	overflow-x: hidden;
@@ -1276,10 +1253,6 @@ body {
 	padding: 0 10px 0 10px;
 }
 
-#error_message .popup_load_cancel{
-	background-color: var(--error_container_palette);
-	color: var(--on_error_container_palette);
-}
 
 .popup_load_cancel_button {
 	color: var(--popup_cancel_button_color_text);
@@ -1287,6 +1260,45 @@ body {
 	background-color: var(--popup_cancel_button_color);
 	vertical-align: bottom;
 	display: inline;
+}
+
+#error_message.popup {
+	background-color: var(--error_palette);
+	color: var(--on_error_palette);
+	height: 30vh;
+	top: 35vh;
+	overflow: hidden;
+}
+
+#error_message .title {
+	width: 100%;
+	background-color: var(--error_container_palette);
+	color: var(--on_error_container_palette);
+	text-align: center;
+	font-size: 1.3em;
+}
+
+#error_message.popup .btn-primary {
+	background-color: var(--error_palette);
+	color: var(--on_error_palette);
+	border-color: var(--on_error_palette);
+}
+
+
+#error_message .popup_load_cancel{
+	background-color: var(--error_container_palette);
+	color: var(--on_error_container_palette);
+}
+
+
+#error_message.popup .popup_list_area {
+	overflow-x: hidden;
+	overflow-y: scroll;
+	flex-grow: 1;
+	flex-shrink: 1;
+	flex-basis: auto;
+	background-color: var(--error_container_palette);
+	color: var(--on_error_container_palette);
 }
 
 .breadcrumbitem {
@@ -1560,4 +1572,5 @@ h2 .material-icons-outlined {
 	opacity: 0.7;
 	font-size: 0.9em;
 	display: block;
+	color: var(--setting_category_help_text_color);
 }

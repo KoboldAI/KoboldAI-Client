@@ -80,9 +80,9 @@
 	--rangeslider_circle_color: #1b354d;
 
 	--help_icon: #cfd7a2;
-	--help_icon_text: #121b21;
     --tooltip_text:var(--on_secondary_palette);
     --tooltip_background:var(--secondary_palette);
+	--setting_category_help_text_color: #E0E0E0;
 
 	/*World Info*/
 	--wi_card_border_color: #eeeeeead;
@@ -96,7 +96,6 @@
 	
     --wi_tag_color: #004397;
 	--wi_tag_text_color: #e0e0e0;
-	--wi_folder_background: #232328;
 	
 	/*Popup*/
 	--popup_background_color: #18222a;

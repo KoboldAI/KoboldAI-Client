@@ -438,11 +438,12 @@ function do_ai_busy(data) {
 		favicon.start_swap()
 	} else {
 		runtime = Date.now() - ai_busy_start;
-		if (document.getElementById("Execution Time")) {
-			document.getElementById("Execution Time").textContent = Math.round(runtime/1000).toString().toHHMMSS();
-		}
+		//if (document.getElementById("Execution Time")) {
+		//	document.getElementById("Execution Time").textContent = Math.round(runtime/1000).toString().toHHMMSS();
+		//}
+		document.getElementById("btnsubmit").title = "Execution Time: "+Math.round(runtime/1000).toString().toHHMMSS();
 		favicon.stop_swap()
-		document.getElementById('btnsend').textContent = "Submit";
+		document.getElementById('btnsubmit').textContent = "Submit";
 		for (item of document.getElementsByClassName('statusbar_outer')) {
 			item.classList.add("hidden");
 		}
@@ -536,11 +537,12 @@ function var_changed(data) {
 			item.setAttribute(data.classname.replace(" ", "_")+"_"+data.name.replace(" ", "_"), fix_text(data.value));
 		}
 		
-		//alternative syncing method to tooltip
-		var elements_to_change = document.getElementsByClassName("var_sync_tooltip_"+data.classname.replace(" ", "_")+"_"+data.name.replace(" ", "_"));
-		for (item of elements_to_change) {
-			item.title = fix_text(data.value);
+		//add execution time and remaining time
+		if ((data.classname == 'model') && (data.name == 'tqdm_rem_time')) {
+			document.getElementById('status_bar').title = "Remainging Time: " + data.value;
 		}
+		
+		
 	}
 	
 	//if we changed the gen amount, make sure our option area is set/not set

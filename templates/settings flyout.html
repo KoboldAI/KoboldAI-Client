@@ -169,7 +169,7 @@
 					<!---Bottom Row---->
 					<span class="setting_item">
 						<!---<span class="material-icons-outlined cursor" onclick="socket.emit('load_softprompt_list', '');">folder_open</span> <span class="var_sync_system_spname"></span>--->
-						<select autocomplete="off" id="sp" class="var_sync_system_splist var_sync_system_spfilename" style="width: 140px;color:black;" onclick="socket.emit('load_softprompt', this.value);">
+						<select autocomplete="off" id="sp" class="var_sync_system_splist var_sync_system_spfilename settings_select" style="width: 140px;" onclick="socket.emit('load_softprompt', this.value);">
 						</select>
 						<span class="material-icons-outlined cursor" style="font-size: 18px;" title="Refresh List" onclick="socket.emit('sp_list_refresh', '');">autorenew</span>
 					</span>

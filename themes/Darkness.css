@@ -1,5 +1,6 @@
 :root {
-/*----------------Palette Theme--------------------*/--primary_palette: #afc6ff;
+/*----------------Palette Theme--------------------*/
+	--primary_palette: #afc6ff;
 	--on_primary_palette: #002d6c;
 	--primary_containter_palette: #004397;
 	--on_primary_containter_palette: #d9e2ff;
@@ -79,9 +80,9 @@
 	--rangeslider_circle_color: #385262;
 
 	--help_icon: #c07ec5;
-	--help_icon_text: #1b1b1b;
     --tooltip_text:var(--on_secondary_palette);
     --tooltip_background:var(--secondary_palette);
+	--setting_category_help_text_color: #E0E0E0;
 
 	/*World Info*/
 	--wi_card_border_color: #002d6c00;
@@ -95,7 +96,6 @@
 	
     --wi_tag_color: #004397;
 	--wi_tag_text_color: #e0e0e0;
-	--wi_folder_background: #232328;
 	
 	/*Popup*/
 	--popup_background_color: #151717;
