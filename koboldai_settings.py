@@ -948,7 +948,8 @@ class KoboldStoryRegister(object):
             old_length = self.actions[action_step]["Selected Text Length"]
             if option_number < len(self.actions[action_step]['Options']):
                 self.actions[action_step]["Selected Text"] = self.actions[action_step]['Options'][option_number]['text']
-                self.actions[action_step]["Probabilities"] = self.actions[action_step]['Options'][option_number]['Probabilities']
+                if 'Probabilities' in self.actions[action_step]['Options'][option_number]:
+                    self.actions[action_step]["Probabilities"] = self.actions[action_step]['Options'][option_number]['Probabilities']
                 if self.tokenizer is not None:
                     self.actions[action_step]['Selected Text Length'] = len(self.tokenizer.encode(self.actions[action_step]['Options'][option_number]['text']))
                 else:
