@@ -53,6 +53,7 @@ map2.set(5, 'Temperature')
 var use_word_highlighting = true;
 var calc_token_usage_timeout;
 var game_text_scroll_timeout;
+var var_processing_time = 0;
 //-----------------------------------Server to UI  Functions-----------------------------------------------
 function connect() {
 	console.log("connected");
@@ -454,6 +455,7 @@ function do_ai_busy(data) {
 }
 
 function var_changed(data) {
+	start_processing_time = Date.now();
 	//if (data.name == "sp") {
 	//	console.log({"name": data.name, "data": data});
 	//}
@@ -589,7 +591,8 @@ function var_changed(data) {
 	
 	
 	update_token_lengths();
-
+	var_processing_time += Date.now() - start_processing_time;
+	document.getElementById('var_time').textContent = var_processing_time;
 }
 
 function load_popup(data) {
@@ -1652,7 +1655,6 @@ function do_wpp(wpp_area) {
 //--------------------------------------------UI to Server Functions----------------------------------
 function save_theme() {
 	var cssVars = getAllCSSVariableNames();
-	console.log(cssVars);
 	for (const [key, value] of Object.entries(cssVars)) {
 		if (document.getElementById(key)) {
 			if (document.getElementById(key+"_select").value == "") {
@@ -1666,7 +1668,6 @@ function save_theme() {
 	for (item of document.getElementsByClassName("Theme_Input")) {
 		cssVars["--"+item.id] = item.value;
 	}
-	console.log(cssVars);
 	socket.emit("theme_change", {"name": document.getElementById("save_theme_name").value, "theme": cssVars});
 	document.getElementById("save_theme_name").value = "";
 	socket.emit('theme_list_refresh', '');
@@ -2394,7 +2395,6 @@ function assign_world_info_to_action(action_item, uid) {
 				words_text.push(word.textContent);
 			}
 			for (const [key, worldinfo] of  Object.entries(worldinfo_to_check)) {
-				console.log(worldinfo);
 				//remove any world info tags
 				for (tag of action.getElementsByClassName("tag_uid_"+uid)) {
 					tag.classList.remove("tag_uid_"+uid);
