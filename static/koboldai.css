@@ -715,6 +715,7 @@ td.server_vars {
 	padding-left: 20px;
 	padding-right: 35px;
 	margin-bottom: 10px;
+	flex-shrink: 0;
 }
 
 .token_breakdown div {
