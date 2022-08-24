@@ -571,10 +571,10 @@ class story_settings(settings):
                 if name == 'tokenizer' and not new_variable:
                     self.memory_length = len(self.tokenizer.encode(self.memory))
                     self.prompt_length = len(self.tokenizer.encode(self.prompt))
-                    self.authornote_length = 0 if self.authornote="" else len(self.tokenizer.encode(self.authornotetemplate.replace("<|>", self.authornote)))
+                    self.authornote_length = 0 if self.authornote=="" else len(self.tokenizer.encode(self.authornotetemplate.replace("<|>", self.authornote)))
                     ignore = self.koboldai_vars.calc_ai_text()
                 elif name == 'authornote' or name == 'authornotetemplate':
-                    self.authornote_length = 0 if self.authornote="" else len(self.tokenizer.encode(self.authornotetemplate.replace("<|>", self.authornote)))
+                    self.authornote_length = 0 if self.authornote=="" else len(self.tokenizer.encode(self.authornotetemplate.replace("<|>", self.authornote)))
                     ignore = self.koboldai_vars.calc_ai_text()
                 elif name == 'memory':
                     self.memory_length = len(self.tokenizer.encode(self.memory))
