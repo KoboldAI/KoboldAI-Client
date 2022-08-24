@@ -52,6 +52,7 @@ map2.set(4, 'Typical Sampling')
 map2.set(5, 'Temperature')
 var use_word_highlighting = true;
 var calc_token_usage_timeout;
+var game_text_scroll_timeout;
 //-----------------------------------Server to UI  Functions-----------------------------------------------
 function connect() {
 	console.log("connected");
@@ -282,7 +283,8 @@ function do_story_text_updates(data) {
 		
 		
 		story_area.append(span);
-		span.scrollIntoView(false);
+		clearTimeout(game_text_scroll_timeout);
+		game_text_scroll_timeout = setTimeout(function() {span.scrollIntoView(false);}, 200);
 		assign_world_info_to_action(span, null);
 	}
 	
@@ -2392,6 +2394,7 @@ function assign_world_info_to_action(action_item, uid) {
 				words_text.push(word.textContent);
 			}
 			for (const [key, worldinfo] of  Object.entries(worldinfo_to_check)) {
+				console.log(worldinfo);
 				//remove any world info tags
 				for (tag of action.getElementsByClassName("tag_uid_"+uid)) {
 					tag.classList.remove("tag_uid_"+uid);
