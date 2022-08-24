@@ -1789,6 +1789,11 @@ function send_world_info(uid) {
 }
 
 //--------------------------------------------General UI Functions------------------------------------
+function autoResize(element) {
+	element.style.height = 'auto';
+	element.style.height = element.scrollHeight + 'px';
+}
+
 function token_length(text) {
 	return encode(text).length;
 }

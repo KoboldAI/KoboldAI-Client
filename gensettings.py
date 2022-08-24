@@ -479,6 +479,22 @@ gensettingstf = [
     "classname": "user",
     "name": "singleline"
  	},
+    {
+    "UI_V2_Only": True,
+ 	"uitype": "slider",
+ 	"unit": "int",
+ 	"label": "Insert Depth",
+ 	"id": "singleline",
+ 	"min": 0,
+ 	"max": 5,
+ 	"step": 1,
+ 	"default": 3,
+	"tooltip": "The Author's Note will be entered this many actions back from the end of the game text",
+    "menu_path": "author_notes",
+    "sub_path": "",
+    "classname": "story",
+    "name": "andepth"
+ 	},
 ]
 
 gensettingsik =[{

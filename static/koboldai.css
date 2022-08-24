@@ -165,6 +165,10 @@ input[type="range"]::-ms-fill-upper {
 	width: 100%;
 	background: var(--layer1_palette);
 	grid-row: 2;
+	overflow-y: scroll;
+	overflow-x: hidden;
+	scrollbar-width: thin;
+	scrollbar-color: var(--scrollbar-color);
 }
 
 
@@ -613,7 +617,7 @@ input[type="range"]::-ms-fill-upper {
 	overflow-x: hidden;
 	overflow-y: hidden;
 	transition: 0.5s;
-	padding-top: 20px;
+	padding-top: 35px;
 	border-radius: var(--radius_unpinned_menu) 0px 0px var(--radius_unpinned_menu);
 	
 }
@@ -634,7 +638,7 @@ input[type="range"]::-ms-fill-upper {
 
 .rightSideMenu .flyout_menu_contents {
 	overflow-x: hidden;
-	overflow-y: auto;
+	overflow-y: hidden;
 	height: calc(100vh - 70px);
 }
 
@@ -689,6 +693,18 @@ td.server_vars {
 
 .story_category_area:not(#story_menu_wi){
 	margin: 10px 10px 0 10px;
+	overflow-y: scroll;
+	overflow-x: hidden;
+	scrollbar-width: thin;
+	scrollbar-color: var(--scrollbar-color);
+}
+
+.story_category_area {
+	padding-bottom: 10px;
+	overflow-y: scroll;
+	overflow-x: hidden;
+	scrollbar-width: thin;
+	scrollbar-color: var(--scrollbar-color);
 }
 
 .token_breakdown {
