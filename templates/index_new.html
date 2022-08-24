@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
+	<script type="module">import {encode, decode} from "./static/tokenizer.js";window.encode = encode;window.decode = decode;</script>
 	<link href="static/open-iconic/css/open-iconic.css" rel="stylesheet">
 	<link rel="stylesheet" href="static/bootstrap-toggle.min.css">
 	<link rel="stylesheet" href="static/bootstrap.min.css">
@@ -74,7 +75,8 @@
 			</div>
 			<textarea autocomplete="off" row=5 id="input_text" placeholder="Enter Prompt Here" oninput='if (this.value != "") {
 																											document.getElementById("themetext").value = "";
-																										}'></textarea>
+																										}'
+																										onkeyup="calc_token_usage()"></textarea>
 			<div class="statusbar_outer hidden" id="status_bar" onclick="socket.emit('abort','');">
 				<div class="statusbar_inner" style="width:0%">0%</div>
 			</div><br>

@@ -1,6 +1,7 @@
 var socket;
 socket = io.connect(window.location.origin, {transports: ['polling', 'websocket'], closeOnBeforeunload: false, query:{"ui":  "2"}});
 
+
 //Let's register our server communications
 socket.on('connect', function(){connect();});
 socket.on("disconnect", (reason, details) => {
@@ -585,6 +586,7 @@ function var_changed(data) {
 	
 	
 	update_token_lengths();
+
 }
 
 function load_popup(data) {
@@ -1220,6 +1222,11 @@ function world_info_entry(data) {
 	world_info_card = world_info_card_template.cloneNode(true);
 	world_info_card.id = "world_info_"+data.uid;
 	world_info_card.setAttribute("uid", data.uid);
+	if (data.used_in_game) {
+		world_info_card.classList.add("used_in_game");
+	} else {
+		world_info_card.classList.remove("used_in_game");
+	}
 	title = world_info_card.querySelector('#world_info_title_')
 	title.id = "world_info_title_"+data.uid;
 	title.textContent = data.title;
@@ -1460,6 +1467,8 @@ function world_info_entry(data) {
 	assign_world_info_to_action(null, data.uid);
 	
 	update_token_lengths();
+	
+	calc_token_usage();
 	return world_info_card;
 }
 
@@ -1780,6 +1789,55 @@ function send_world_info(uid) {
 }
 
 //--------------------------------------------General UI Functions------------------------------------
+function token_length(text) {
+	return encode(text).length;
+}
+
+function calc_token_usage() {
+	memory_tokens = parseInt(document.getElementById("memory").getAttribute("story_memory_length"));
+    authors_notes_tokens = parseInt(document.getElementById("authors_notes").getAttribute("story_authornote_length"));
+	prompt_tokens = parseInt(document.getElementById("story_prompt").getAttribute("story_prompt_length"));
+    game_text_tokens = 0;
+    submit_tokens = token_length(document.getElementById("input_text").value);
+	total_tokens = parseInt(document.getElementById('model_max_length_cur').value);
+	
+	//find world info entries set to go to AI
+	world_info_tokens = 0;
+	for (wi of document.querySelectorAll(".world_info_card.used_in_game")) {
+		if (wi.getAttribute("uid") in world_info_data) {
+			world_info_tokens += world_info_data[wi.getAttribute("uid")].token_length;
+		}
+	}
+	
+	//find game text tokens
+	var game_text_tokens = 0;
+	var game_text = document.getElementById('Selected Text').querySelectorAll(".within_max_length");
+	var game_text = Array.prototype.slice.call(game_text).reverse();
+	for (item of game_text) {
+		if (total_tokens - memory_tokens - authors_notes_tokens - world_info_tokens - prompt_tokens - game_text_tokens - submit_tokens > parseInt(item.getAttribute("token_length"))) {
+			game_text_tokens += parseInt(item.getAttribute("token_length"));
+		}
+	}
+	
+	
+	unused_tokens = total_tokens - memory_tokens - authors_notes_tokens - world_info_tokens - prompt_tokens - game_text_tokens - submit_tokens;
+	
+	document.getElementById("memory_tokens").style.width = (memory_tokens/total_tokens)*100 + "%";
+	document.getElementById("memory_tokens").title = "Memory: "+memory_tokens;
+	document.getElementById("authors_notes_tokens").style.width = (authors_notes_tokens/total_tokens)*100 + "%";
+	document.getElementById("authors_notes_tokens").title = "Author's Notes: "+authors_notes_tokens
+	document.getElementById("world_info_tokens").style.width = (world_info_tokens/total_tokens)*100 + "%";
+	document.getElementById("world_info_tokens").title = "World Info: "+world_info_tokens
+	document.getElementById("prompt_tokens").style.width = (prompt_tokens/total_tokens)*100 + "%";
+	document.getElementById("prompt_tokens").title = "Prompt: "+prompt_tokens
+	document.getElementById("game_text_tokens").style.width = (game_text_tokens/total_tokens)*100 + "%";
+	document.getElementById("game_text_tokens").title = "Game Text: "+game_text_tokens
+	document.getElementById("submit_tokens").style.width = (submit_tokens/total_tokens)*100 + "%";
+	document.getElementById("submit_tokens").title = "Submit Text: "+submit_tokens
+	document.getElementById("unused_tokens").style.width = (unused_tokens/total_tokens)*100 + "%";
+	document.getElementById("unused_tokens").title = "Remaining: "+unused_tokens
+}
+
 function Change_Theme(theme) {
 	console.log(theme);
 	var css = document.getElementById("CSSTheme");
@@ -2392,6 +2450,7 @@ function assign_world_info_to_action(action_item, uid) {
 }
 
 function update_token_lengths() {
+	calc_token_usage();
 	return
 	max_token_length = parseInt(document.getElementById("model_max_length_cur").value);
 	included_world_info = [];

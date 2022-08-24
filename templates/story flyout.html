@@ -16,10 +16,16 @@
 		}
 	}
 </script>
-<div>Execution Time: <span id="Execution Time"></span></div>
-<div>Remaining Time: <span class="var_sync_model_tqdm_rem_time"></span></div>
-<div class="used_token_length"></div>
-<hr/>
+
+<div class="token_breakdown">
+	<div id="memory_tokens" style="width:40%; background-color: #3572A5;"></div>
+	<div id="authors_notes_tokens" style="width:10%; background-color: #f1e05a;"></div>
+	<div id="world_info_tokens" style="width:20%; background-color: #563d7c;"></div>
+	<div id="prompt_tokens" style="width:40%; background-color: #e34c26;"></div>
+	<div id="game_text_tokens" style="width:10%; background-color: #c6538c ;"></div>
+	<div id="submit_tokens" style="width:20%; background-color: #ededed ;"></div>
+	<div id="unused_tokens" style="width:20%; background-color: white;"></div>
+</div>
 <div class="tabrow nomenu_icon">
 	<span class="story_menu_button selected" onclick="show_story_menu(this, 'story_menu_memory');">Memory</span>
 	<span class="story_menu_button" onclick="show_story_menu(this, 'story_menu_author');">Author's Note</span>
