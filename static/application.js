@@ -256,7 +256,7 @@ function addSetting(ob) {
 			}
 		});
 
-		if (!$("#input-token-usage")[0].checked) {
+		if (!$("#setshowbudget")[0].checked) {
 			for (const el of document.getElementsByClassName("input-token-usage")) {
 				el.classList.add("hidden");
 			}
@@ -1306,12 +1306,13 @@ function buildSamplerList(samplers) {
 		"Tail-free Sampling",
 		"Typical Sampling",
 		"Temperature",
+		"Repetition Penalty",
 	]
 	for(i=0; i<samplers.length; i++) {
 		samplerslist.append("<div class=\"flex\">\
 			<div class=\"samplerslistitem flex-row-container\" sid=\""+samplers[i]+"\">\
 				<div class=\"flex-row\">\
-					<div>"+samplers_lookup_table[samplers[i]]+"</div>\
+					<div>"+(samplers[i] < samplers_lookup_table.length ? samplers_lookup_table[samplers[i]] : "Unknown sampler #" + samplers[i])+"</div>\
 				</div>\
 			</div>\
 		</div>");
