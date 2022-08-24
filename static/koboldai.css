@@ -731,11 +731,27 @@ td.server_vars {
 	margin: 5px;
 }
 
+.wi_title {
+	position: relative;
+	bottom: 4px;
+	margin-left: 4px;
+}
+
+.wi_add_text {
+	position: relative;
+	top: 1px;
+}
+
 .wi_add_button{
 	margin: 0 0 0 10px;
 	padding: 4px 4px 4px 4px;
 	border-radius: var(--radius_wi_card);
 	background-color: var(--wi_tag_color);
+}
+
+.wi_add_button .material-icons-outlined{
+	position: relative;
+	top: 7px;
 }
 
 .wi_folder_collapser, .wi_add_button, #new_world_info_button {
@@ -1596,7 +1612,7 @@ h2 .material-icons-outlined {
 	cursor: pointer;
 }
 
-.collapsable_header, .section_header, .help_text {
+.material-icons-outlined, .collapsable_header, .section_header, .help_text {
 	-webkit-touch-callout: none;
 	-webkit-user-select: none;
 	-khtml-user-select: none;
