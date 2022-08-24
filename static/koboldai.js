@@ -1515,6 +1515,7 @@ function world_info_folder(data) {
 			icon.textContent = "folder";
 			title.append(icon);
 			title_text = document.createElement("span");
+			title_text.classList.add("wi_title");
 			title_text.setAttribute("contenteditable", true);
 			title_text.setAttribute("original_text", folder_name);
 			title_text.textContent = folder_name;
@@ -1535,6 +1536,7 @@ function world_info_folder(data) {
 			new_icon.append(add_icon);
 			add_text = document.createElement("span");
 			add_text.textContent = "Add World Info Entry";
+			add_text.classList.add("wi_add_text");
 			add_text.setAttribute("folder", folder_name);
 			add_text.onclick = function() {
 											create_new_wi_entry(this.getAttribute("folder"));
@@ -1600,6 +1602,7 @@ function world_info_folder(data) {
 		add_icon.append(icon);
 		text_span = document.createElement("span");
 		text_span.textContent = "Add World Info Folder";
+		text_span.classList.add("wi_title");
 		add_icon.onclick = function() {
 										socket.emit("create_world_info_folder", {});
 									  }
