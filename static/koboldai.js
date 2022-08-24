@@ -83,7 +83,7 @@ function reset_story() {
 	dummy_span.id = "Delete Me";
 	text = "";
 	for (i=0;i<154;i++) {
-		text += "\xa0";
+		text += "\xa0 ";
 	}
 	dummy_span.textContent = text;
 	story_area.append(dummy_span);
@@ -455,12 +455,12 @@ function do_ai_busy(data) {
 }
 
 function var_changed(data) {
-	start_processing_time = Date.now();
 	//if (data.name == "sp") {
 	//	console.log({"name": data.name, "data": data});
 	//}
 	//Special Case for Actions
 	if ((data.classname == "story") && (data.name == "actions")) {
+		start_processing_time = Date.now();
 		do_story_text_updates(data);
 		create_options(data);
 		do_story_text_length_updates(data);
@@ -470,6 +470,8 @@ function var_changed(data) {
 		} else {
 			document.getElementById('Selected Text Chunk '+data.value.id).classList.remove("within_max_length");
 		}
+		var_processing_time += Date.now() - start_processing_time;
+		document.getElementById('var_time').textContent = var_processing_time;
 	//Special Case for Presets
 	} else if ((data.classname == 'model') && (data.name == 'presets')) {
 		do_presets(data);
@@ -591,8 +593,6 @@ function var_changed(data) {
 	
 	
 	update_token_lengths();
-	var_processing_time += Date.now() - start_processing_time;
-	document.getElementById('var_time').textContent = var_processing_time;
 }
 
 function load_popup(data) {
