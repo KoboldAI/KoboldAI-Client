@@ -51,6 +51,7 @@ map2.set(3, 'Tail Free Sampling')
 map2.set(4, 'Typical Sampling')
 map2.set(5, 'Temperature')
 var use_word_highlighting = true;
+var calc_token_usage_timeout;
 //-----------------------------------Server to UI  Functions-----------------------------------------------
 function connect() {
 	console.log("connected");
@@ -1466,7 +1467,8 @@ function world_info_entry(data) {
 	
 	update_token_lengths();
 	
-	calc_token_usage();
+	clearTimeout(calc_token_usage_timeout);
+	calc_token_usage_timeout = setTimeout(calc_token_usage, 200);
 	return world_info_card;
 }
 
@@ -2451,7 +2453,8 @@ function assign_world_info_to_action(action_item, uid) {
 }
 
 function update_token_lengths() {
-	calc_token_usage();
+	clearTimeout(calc_token_usage_timeout);
+	calc_token_usage_timeout = setTimeout(calc_token_usage, 200);
 	return
 	max_token_length = parseInt(document.getElementById("model_max_length_cur").value);
 	included_world_info = [];

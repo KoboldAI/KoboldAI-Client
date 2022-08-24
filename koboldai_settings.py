@@ -133,7 +133,7 @@ class koboldai_vars(object):
         #Add constant world info entries to memory
         for wi in self.worldinfo_v2:
             if wi['constant']:
-                if used_tokens+wi['token_length'] <= token_budget:
+                if used_tokens+0 if 'token_length' not in wi else wi['token_length'] <= token_budget:
                     used_tokens+=wi['token_length']
                     used_world_info.append(wi['uid'])
                     self.worldinfo_v2.set_world_info_used(wi['uid'])
@@ -159,7 +159,7 @@ class koboldai_vars(object):
                                     match=True
                                     break
                         if match:
-                            if used_tokens+wi['token_length'] <= token_budget:
+                            if used_tokens+0 if 'token_length' not in wi else wi['token_length'] <= token_budget:
                                 used_tokens+=wi['token_length']
                                 used_world_info.append(wi['uid'])
                                 text += wi['content']
@@ -236,7 +236,7 @@ class koboldai_vars(object):
                                     match=True
                                     break
                         if match:
-                            if used_tokens+wi['token_length'] <= token_budget:
+                            if used_tokens+0 if 'token_length' not in wi else wi['token_length'] <= token_budget:
                                 used_tokens+=wi['token_length']
                                 used_world_info.append(wi['uid'])
                                 text += wi['content']
