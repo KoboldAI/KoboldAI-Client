@@ -50,10 +50,11 @@ map2.set(2, 'Top P Sampling')
 map2.set(3, 'Tail Free Sampling')
 map2.set(4, 'Typical Sampling')
 map2.set(5, 'Temperature')
-var use_word_highlighting = true;
+var use_word_highlighting = false;
 var calc_token_usage_timeout;
 var game_text_scroll_timeout;
 var var_processing_time = 0;
+var current_action = -1;
 //-----------------------------------Server to UI  Functions-----------------------------------------------
 function connect() {
 	console.log("connected");
@@ -244,7 +245,9 @@ function do_story_text_updates(data) {
 				
 			});
 		} else {
-			item.textContent = data.value.action['Selected Text'];
+			span = document.createElement("span");
+			span.textContent = data.value.action['Selected Text'];
+			item.append(span);
 		}
 		item.original_text = data.value.action['Selected Text'];
 		item.setAttribute("world_info_uids", "");
@@ -266,21 +269,27 @@ function do_story_text_updates(data) {
 			}
 		}
 		span.onkeydown = detect_enter_text;
-		var text_array = data.value.action['Selected Text'].split(" ");
-		text_array.forEach(function (text, i) {
-			if (text != "") {
-				var word = document.createElement("span");
-				word.classList.add("rawtext");
-				word.classList.add("world_info_tag");
-				if (i == text_array.length) {
-					word.textContent = text;
-				} else {
-					word.textContent = text+" ";
+		if (use_word_highlighting) {
+			var text_array = data.value.action['Selected Text'].split(" ");
+			text_array.forEach(function (text, i) {
+				if (text != "") {
+					var word = document.createElement("span");
+					word.classList.add("rawtext");
+					word.classList.add("world_info_tag");
+					if (i == text_array.length) {
+						word.textContent = text;
+					} else {
+						word.textContent = text+" ";
+					}
+					span.append(word);
 				}
-				span.append(word);
-			}
-			
-		});
+				
+			});
+		} else {
+			new_span = document.createElement("span");
+			new_span.textContent = data.value.action['Selected Text'];
+			span.append(new_span);
+		}
 		
 		
 		story_area.append(span);
@@ -300,19 +309,25 @@ function do_prompt(data) {
 			item.removeChild(item.firstChild);
 		}
 		
-		var text_array = data.value.split(" ");
-		text_array.forEach(function (text, i) {
-			if (text != "") {
-				var word = document.createElement("span");
-				word.classList.add("rawtext");
-				if (i == text_array.length) {
-					word.textContent = text;
-				} else {
-					word.textContent = text+" ";
+		if (use_word_highlighting) {
+			var text_array = data.value.split(" ");
+			text_array.forEach(function (text, i) {
+				if (text != "") {
+					var word = document.createElement("span");
+					word.classList.add("rawtext");
+					if (i == text_array.length) {
+						word.textContent = text;
+					} else {
+						word.textContent = text+" ";
+					}
+					item.append(word);
 				}
-				item.append(word);
-			}
-		});
+			});
+		} else {
+			span = document.createElement("span");
+			span.textContent = data.value;
+			item.append(span);
+		}
 		item.setAttribute("old_text", data.value)
 		item.classList.remove("pulse");
 	}
@@ -458,6 +473,10 @@ function var_changed(data) {
 	//if (data.name == "sp") {
 	//	console.log({"name": data.name, "data": data});
 	//}
+	
+	if ((data.classname == 'actions') && (data.name == 'Action Count')) {
+		current_action = data.value;
+	}
 	//Special Case for Actions
 	if ((data.classname == "story") && (data.name == "actions")) {
 		start_processing_time = Date.now();
@@ -472,6 +491,7 @@ function var_changed(data) {
 		}
 		var_processing_time += Date.now() - start_processing_time;
 		document.getElementById('var_time').textContent = var_processing_time;
+		
 	//Special Case for Presets
 	} else if ((data.classname == 'model') && (data.name == 'presets')) {
 		do_presets(data);
@@ -2389,10 +2409,15 @@ function assign_world_info_to_action(action_item, uid) {
 		
 		for (action of actions) {
 			//First check to see if we have a key in the text
-			var words = Array.prototype.slice.call( action.children );
-			words_text = [];
-			for (word of words) {
-				words_text.push(word.textContent);
+			if (use_word_highlighting) {
+				var words = Array.prototype.slice.call( action.children );
+				words_text = [];
+				for (word of words) {
+					words_text.push(word.textContent);
+				}
+			} else {
+				var words = action.textContent.split(" ");
+				var words_text = words;
 			}
 			for (const [key, worldinfo] of  Object.entries(worldinfo_to_check)) {
 				//remove any world info tags
@@ -2421,8 +2446,9 @@ function assign_world_info_to_action(action_item, uid) {
 										var to_check = words_text.slice(i, i+key_words).join("").replace(/[^0-9a-z \'\"]/gi, '').trim();
 										if (keyword == to_check) {
 											for (var j = i; j < key_words+i; j++) {
-												words[j].title = worldinfo['content'];
-												words[j].classList.add("tag_uid_"+uid);
+												action.innerHTML = action.innerHTML.replaceAll(keyword, '<i title="'+worldinfo['content']+'">'+keyword+'</i>')
+												//words[j].title = worldinfo['content'];
+												//words[j].classList.add("tag_uid_"+uid);
 											}
 										}
 									}
@@ -2441,8 +2467,9 @@ function assign_world_info_to_action(action_item, uid) {
 								var to_check = words_text.slice(i, i+key_words).join("").replace(/[^0-9a-z \'\"]/gi, '').trim();
 								if (keyword == to_check) {
 									for (var j = i; j < key_words+i; j++) {
-										words[j].title = worldinfo.content;
-										words[j].classList.add("tag_uid_"+uid);
+										action.innerHTML = action.innerHTML.replaceAll(keyword, '<i title="'+worldinfo['content']+'">'+keyword+'</i>')
+										//words[j].title = worldinfo.content;
+										//words[j].classList.add("tag_uid_"+uid);
 									}
 								}
 							}
