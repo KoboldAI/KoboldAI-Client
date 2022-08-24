@@ -202,7 +202,7 @@ input[type="range"]::-ms-fill-upper {
 	display: grid;
 	grid-template-areas: "label"
 						 "item";
-	grid-template-rows: 20px 110px;
+	grid-template-rows: 20px auto;
 	grid-template-columns: 167px;
 	row-gap: 0.2em;
 	background-color: var(--setting_background);
@@ -715,6 +715,7 @@ td.server_vars {
 	padding-left: 20px;
 	padding-right: 35px;
 	margin-bottom: 10px;
+	flex-shrink: 0;
 }
 
 .token_breakdown div {
