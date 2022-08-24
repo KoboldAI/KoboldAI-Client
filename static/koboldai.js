@@ -1303,8 +1303,6 @@ function world_info_entry(data) {
 	wpp_format.onchange = function () {
 							do_wpp(this.parentElement);
 						}
-	console.log(data.wpp['format']);
-	console.log(data.wpp);
 	if (data.wpp.format == "W++") {
 		wpp_format.selectedIndex = 0;
 	} else {
@@ -1844,7 +1842,6 @@ function calc_token_usage() {
 }
 
 function Change_Theme(theme) {
-	console.log(theme);
 	var css = document.getElementById("CSSTheme");
     css.setAttribute("href", "/themes/"+theme+".css");
 	setTimeout(() => {
@@ -1855,7 +1852,6 @@ function Change_Theme(theme) {
 	for (element of select.childNodes) {
 		if (element.value == theme) {
 			element.selected = true;
-			console.log(element);
 		} else {
 			element.selected = false;
 		}

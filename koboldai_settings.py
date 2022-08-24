@@ -240,6 +240,7 @@ class koboldai_vars(object):
                                 used_tokens+=wi['token_length']
                                 used_world_info.append(wi['uid'])
                                 text += wi['content']
+                                self.worldinfo_v2.set_world_info_used(wi['uid'])
                 self.prompt_in_ai = True
             else:
                 self.prompt_in_ai = False
@@ -508,7 +509,7 @@ class story_settings(settings):
         self.story_id    = int.from_bytes(os.urandom(16), 'little', signed=True) # this is a unique ID for the story. We'll use this to ensure when we save that we're saving the same story
         self.memory_length = 0
         self.prompt_length = 0
-        self.authornote_length = 512
+        self.authornote_length = 0
         self.max_memory_length = 512
         self.max_prompt_length = 512
         self.max_authornote_length = 512
