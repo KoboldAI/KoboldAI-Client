@@ -54,7 +54,6 @@ var use_word_highlighting = false;
 var calc_token_usage_timeout;
 var game_text_scroll_timeout;
 var var_processing_time = 0;
-var current_action = -1;
 //-----------------------------------Server to UI  Functions-----------------------------------------------
 function connect() {
 	console.log("connected");
@@ -297,8 +296,6 @@ function do_story_text_updates(data) {
 		game_text_scroll_timeout = setTimeout(function() {span.scrollIntoView(false);}, 200);
 		assign_world_info_to_action(span, null);
 	}
-	
-	
 }
 
 function do_prompt(data) {
