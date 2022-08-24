@@ -614,7 +614,6 @@ input[type="range"]::-ms-fill-upper {
 	overflow-y: hidden;
 	transition: 0.5s;
 	padding-top: 20px;
-	padding-bottom: 10px;
 	border-radius: var(--radius_unpinned_menu) 0px 0px var(--radius_unpinned_menu);
 	
 }
@@ -636,7 +635,7 @@ input[type="range"]::-ms-fill-upper {
 .rightSideMenu .flyout_menu_contents {
 	overflow-x: hidden;
 	overflow-y: auto;
-	height: calc(100vh - 150px);
+	height: calc(100vh - 70px);
 }
 
 
@@ -651,9 +650,19 @@ input[type="range"]::-ms-fill-upper {
 }
 }
 
+@media only screen and (min-aspect-ratio: 7/5) {
 .story_menu_pin {
+	position: absolute;
+	top:10px;
+	right: calc(var(--flyout_menu_width) - 25px);
+	z-index:50;
+	width: 25px;
+	height: 25px;
 	color: #999;
+	display: inline-block;
+	transition: left 0.5s;
 	cursor: pointer;
+}
 }
 
 
@@ -680,6 +689,22 @@ td.server_vars {
 
 .story_category_area:not(#story_menu_wi){
 	margin: 10px 10px 0 10px;
+}
+
+.token_breakdown {
+	height: 5px;
+	overflow: hidden;
+	display: block;
+	width: 100%;
+	padding-left: 20px;
+	padding-right: 35px;
+	margin-bottom: 10px;
+}
+
+.token_breakdown div {
+	float: left;
+	height: 100%;
+	text-align: center;
 }
 
 #world_info_folder_root.WI_Folder {
@@ -1546,6 +1571,9 @@ h2 .material-icons-outlined {
 
 .flyout_menu_contents {
   scrollbar-width: thin;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
 }
 
 .collapsable_header {

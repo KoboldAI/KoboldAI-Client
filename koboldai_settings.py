@@ -204,7 +204,7 @@ class koboldai_vars(object):
                                     match=True
                                     break
                         if match:
-                            if used_tokens+wi['token_length'] <= token_budget:
+                            if used_tokens+0 if 'token_length' not in wi else wi['token_length'] <= token_budget:
                                 used_tokens+=wi['token_length']
                                 used_world_info.append(wi['uid'])
                                 game_text = "{}{}".format(wi['content'], game_text)

@@ -69,6 +69,7 @@
 					<span class="material-icons-outlined cursor" title="Import Story" onclick="document.getElementById('import_aidg_club_popup').classList.remove('hidden');">cloud_download</span>
 					<span class="material-icons-outlined cursor" title="Download Story" onclick="document.getElementById('download_iframe').src = 'json';">file_download</span>
 				</div>
+				<input id=testtoken type=text onchange="this.value = token_length(this.value)"/>
 			</div>
 			<hr/>
 		</div>
@@ -296,5 +297,9 @@
 				<h4 style="width:var(--flyout_menu_width);"><span class="material-icons-outlined cursor">navigate_next</span> Advanced Theme</h4>
 			</div>
 		</div>
+	</div>
+	<div id="footer">
+		<span>Execution Time: <span id="Execution Time"></span></span> | 
+		<span>Remaining Time: <span class="var_sync_model_tqdm_rem_time"></span></span>
 	</div>
 </div>
