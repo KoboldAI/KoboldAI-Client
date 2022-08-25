@@ -1481,7 +1481,8 @@ input {
 	resize: none;
 	border-color: white;
 	border-width: 1px;
-	border-style:solid;
+	border-style: solid;
+	outline: none;
 }
 
 .action_button {
@@ -1533,6 +1534,7 @@ button.disabled {
 textarea {
 	background-color: var(--input_background);
 	color: var(--text);
+	outline: none;
 }
 
 .pulse {
