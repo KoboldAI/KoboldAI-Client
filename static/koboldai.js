@@ -2269,7 +2269,13 @@ function add_secondary_tags(tags, data) {
 }
 	
 function create_new_wi_entry(folder) {
-	data = {"uid": -1,
+	var uid = -1;
+	for (item of document.getElementsByClassName('world_info_card')) {
+		if (parseInt(item.getAttribute("uid")) <= uid) {
+			uid = parseInt(item.getAttribute("uid")) - 1;
+		}
+	}
+	data = {"uid": uid,
                                     "title": "New World Info Entry",
                                     "key": [],
                                     "keysecondary": [],

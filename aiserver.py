@@ -7241,7 +7241,7 @@ def UI_2_edit_world_info(data):
     print("edit_world_info")
     print(data)
     
-    if data['uid'] == -1:
+    if data['uid'] < 0:
         koboldai_vars.worldinfo_v2.add_item(data['title'], data['key'], 
                                              data['keysecondary'], data['folder'], 
                                              data['constant'], data['manual_text'], 
