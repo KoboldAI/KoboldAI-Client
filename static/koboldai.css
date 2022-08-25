@@ -595,7 +595,7 @@ input[type="range"]::-ms-fill-upper {
 
 .var_sync_system_theme_list{
 	padding: 6px 0 9px 0;
-	margin-left: 5px;
+	margin-left: 10px;
 	border-radius: 5px;
 	color: var(--dropdown_text);
 	background: var(--dropdown_background);
@@ -608,6 +608,7 @@ input[type="range"]::-ms-fill-upper {
 
 #save_theme_area {
 	width: 100%;
+	position: relative;
 }
 
 #save_theme_name {
@@ -693,7 +694,7 @@ input[type="range"]::-ms-fill-upper {
 .rightSideMenu .flyout_menu_contents {
 	overflow-x: hidden;
 	overflow-y: hidden;
-	height: calc(100vh - 70px);
+	height: calc(100vh - 34px);
 }
 
 
@@ -1107,6 +1108,15 @@ body {
 	grid-area: theme;
 	width: 500px;
 	margin-left: 10px;
+}
+
+.themerow .tabrow:before {
+	border-bottom: 0;
+}
+.themerow .tabrow {
+	line-height: 25px;
+	padding-left: 10px;
+	margin-top: 2px;
 }
 
 .inputrow {
@@ -1654,6 +1664,10 @@ body.NotConnected {
 
   /* Support for IE. */
   font-feature-settings: 'liga';
+}
+
+.material-icons-outlined.cursor:hover{
+	filter: brightness(85%);
 }
 
 h2 .material-icons-outlined {

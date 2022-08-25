@@ -240,10 +240,8 @@
 		<div class="setting_tile_area" id="Theme">
 			<select id="selected_theme" class="var_sync_system_theme_list" autocomplete="off" onchange="Change_Theme(this.value);">
 			</select><span class="material-icons-outlined cursor" title="Refresh List" onclick="socket.emit('theme_list_refresh', '');">autorenew</span>
-			<div class="collapsable_header" onclick="toggle_setting_category(this);">
-				<h4 style="width:var(--flyout_menu_width);"><span class="material-icons-outlined cursor">navigate_next</span> Palette</h4>
-			</div>
-			<div id="palette_area" class="hidden">
+			<div id="palette_area">
+				<b style="font-size: 20px;">Palette</b>
 				<div id="save_theme_area" >
 					<input type="text" id="save_theme_name" autocomplete="off" placeholder="New Theme Name"/>
 					<span class="material-icons-outlined cursor" title="Save Theme" onclick='save_theme();'>save</span>
