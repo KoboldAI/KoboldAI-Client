@@ -76,7 +76,7 @@ input[type="range"]::-ms-fill-upper {
 	position: relative;
 }
 .tabrow.nomenu_icon {
-	padding-left: 10px;
+	padding-left: 25px;
 }
 .tabrow span {
 	cursor: pointer;
@@ -89,11 +89,11 @@ input[type="range"]::-ms-fill-upper {
 						  supported by Chrome, Edge, Opera and Firefox */
 	border: 1px solid #888;
 	background: var(--tab_color);
-	background: -o-linear-gradient(top, #337ab70 50%, #28507 100%);
+	/*background: -o-linear-gradient(top, #337ab70 50%, #28507 100%);
 	background: -ms-linear-gradient(top, #337ab70 50%, #28507 100%);
 	background: -moz-linear-gradient(top, #337ab70 50%, #28507 100%);
 	background: -webkit-linear-gradient(top, #337ab70 50%, #28507 100%);
-	background: linear-gradient(top, #337ab70 50%, #28507 100%);
+	background: linear-gradient(top, #337ab70 50%, #28507 100%);*/
 	display: inline-block;
 	position: relative;
 	z-index: 0;
@@ -102,7 +102,7 @@ input[type="range"]::-ms-fill-upper {
 	box-shadow: 0 3px 3px rgba(0, 0, 0, 0.4), inset 0 1px 0 #AAA;
 	text-shadow: 0 1px #AAA;
 	margin: 0 -5px;
-	padding: 0 20px;
+	padding: 0 17px;
 }
 .tabrow span.selected {
 	background: #FFF;
@@ -203,7 +203,7 @@ input[type="range"]::-ms-fill-upper {
 	grid-template-areas: "label"
 						 "item";
 	grid-template-rows: 20px auto;
-	grid-template-columns: 167px;
+	grid-template-columns: 177px;
 	row-gap: 0.2em;
 	background-color: var(--setting_background);
 	color: var(--text);
@@ -269,6 +269,8 @@ input[type="range"]::-ms-fill-upper {
 .setting_item_input {
 	width:95%;
 }
+
+
 /*-----------------------------------------------*/
 .helpicon {
 	color: var(--help_icon);
@@ -349,7 +351,7 @@ input[type="range"]::-ms-fill-upper {
 	top: 0;
 	left: 0;
 	background-color: var(--flyout_background_pinned);
-	box-shadow: var(--light_shadow_value);
+	box-shadow: var(--left_menu_light_shadow);
 	overflow-x: hidden;
 	transition: 0.5s;
 	border-radius: 0px;
@@ -585,6 +587,58 @@ input[type="range"]::-ms-fill-upper {
 	font-size: small;
 }
 
+/* Theme */
+
+.collapsable_header .material-icons-outlined {
+	padding-top: 5px;
+} 
+
+.var_sync_system_theme_list{
+	padding: 6px 0 9px 0;
+	margin-left: 5px;
+	border-radius: 5px;
+	color: var(--dropdown_text);
+	background: var(--dropdown_background);
+}
+
+#palette_area {
+	width: 100%;
+	text-align: center;
+}
+
+#save_theme_area {
+	width: 100%;
+}
+
+#save_theme_name {
+	width: 88%;
+	margin: 0 0 5px -25px;
+}
+
+#palette_area .material-icons-outlined {
+	position: absolute;
+}
+
+#Palette {
+	width: 100%;
+}
+#Palette_Table{
+	width: 100%;
+}
+
+.Theme_Input {
+	width: 100%;
+}
+
+.advanced_theme {
+	margin: 10px 10px 0 auto;
+	padding: 2px 4px 2px 4px;
+	border-radius: var(--radius_wi_card);
+	background-color: var(--wi_tag_color);
+}
+.advanced_theme:hover {
+	filter: brightness(85%);
+}
 
 /*----------------RIGHT FLYOUT MENU------------------*/
 .right_menu_icon {
@@ -617,7 +671,7 @@ input[type="range"]::-ms-fill-upper {
 	overflow-x: hidden;
 	overflow-y: hidden;
 	transition: 0.5s;
-	padding-top: 35px;
+	padding-top: 8px;
 	border-radius: var(--radius_unpinned_menu) 0px 0px var(--radius_unpinned_menu);
 	
 }
@@ -697,6 +751,10 @@ td.server_vars {
 	overflow-x: hidden;
 	scrollbar-width: thin;
 	scrollbar-color: var(--scrollbar-color);
+}
+
+#story_menu_wi{
+	margin-top: 10px;
 }
 
 .story_category_area {
@@ -1203,7 +1261,7 @@ body {
 		width: 80%;
 		height: 80vh;
 		border-radius: 15px;
-		box-shadow: 0 0 35px 20px#1b1b1f;
+		box-shadow: var(--popup_shadow);
 		background-color: var(--popup_background_color);
 		display: flex;
 		flex-direction: column;
@@ -1220,7 +1278,7 @@ body {
 		width: 50%;
 		height: 80vh;
 		border-radius: 15px;
-		box-shadow: 0 0 35px 20px#1b1b1f;
+		box-shadow: var(--popup_shadow);
 		background-color: var(--popup_background_color);
 		display: flex;
 		flex-direction: column;
