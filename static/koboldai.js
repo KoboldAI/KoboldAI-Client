@@ -400,7 +400,7 @@ function do_presets(data) {
 		//add our blank option
 		var option = document.createElement("option");
 		option.value="";
-		option.text="presets";
+		option.text="Presets";
 		select.append(option);
 		presets = data.value;
 		
