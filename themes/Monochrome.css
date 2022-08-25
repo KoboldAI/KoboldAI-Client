@@ -83,6 +83,10 @@
     --tooltip_text:var(--on_secondary_palette);
     --tooltip_background:var(--secondary_palette);
 	--setting_category_help_text_color: #E0E0E0;
+	
+	--setting_footer_border_color: grey;
+	--setting_footer_text_color: #e0e0e0;
+	--setting_footer_background_color: var(--layer1_palette);
 
 	/*World Info*/
 	--wi_card_border_color: #eeeeeead;

@@ -369,6 +369,21 @@ input[type="range"]::-ms-fill-upper {
 	height: calc(100vh - 40px);
 }
 
+.settings_footer {
+	border-top:2px;
+	border-top-color: var(--setting_footer_border_color);
+	border-top-style: solid;
+	color: var(--setting_footer_text_color);
+	background-color: var(--setting_footer_background_color);
+}
+
+.show_footer_icon {
+	position: absolute;
+	left: calc(var(--flyout_menu_width) - 30px);
+	bottom: 0px;
+	background-color: var(--flyout_background_pinned);
+}
+
 .Model_Info{
 	position: relative;
 	margin: 25px 0 0 10px;
