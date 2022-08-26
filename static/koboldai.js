@@ -1274,7 +1274,7 @@ function world_info_entry(data) {
 	delete_icon.setAttribute("title", data.title);
 	delete_icon.onclick = function () {
 		if (confirm("This will delete world info "+this.getAttribute("title"))) {
-			if (this.getAttribute("uid") == "-1") {
+			if (parseInt(this.getAttribute("uid")) < 0) {
 				this.parentElement.parentElement.remove();
 			} else {
 				socket.emit("delete_world_info", this.getAttribute("uid"));

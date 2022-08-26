@@ -102,7 +102,7 @@ input[type="range"]::-ms-fill-upper {
 	box-shadow: 0 3px 3px rgba(0, 0, 0, 0.4), inset 0 1px 0 #AAA;
 	text-shadow: 0 1px #AAA;
 	margin: 0 -5px;
-	padding: 0 17px;
+	padding: 0 15px;
 }
 .tabrow span.selected {
 	background: #FFF;
