@@ -307,7 +307,7 @@ input[type="range"]::-ms-fill-upper {
 .menu_pin {
 	position: absolute;
 	top:10px;
-	left: calc(var(--flyout_menu_width) - 25px);
+	left: calc(var(--flyout_menu_width) - 20px);
 	z-index:50;
 	width: 25px;
 	height: 25px;
@@ -375,13 +375,6 @@ input[type="range"]::-ms-fill-upper {
 	border-top-style: solid;
 	color: var(--setting_footer_text_color);
 	background-color: var(--setting_footer_background_color);
-}
-
-.show_footer_icon {
-	position: absolute;
-	left: calc(var(--flyout_menu_width) - 30px);
-	bottom: 0px;
-	background-color: var(--flyout_background_pinned);
 }
 
 .Model_Info{
@@ -728,7 +721,7 @@ input[type="range"]::-ms-fill-upper {
 .story_menu_pin {
 	position: absolute;
 	top:10px;
-	right: calc(var(--flyout_menu_width) - 25px);
+	right: calc(var(--flyout_menu_width) - 29px);
 	z-index:50;
 	width: 25px;
 	height: 25px;
