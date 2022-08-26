@@ -483,7 +483,7 @@ gensettingstf = [
     "UI_V2_Only": True,
  	"uitype": "slider",
  	"unit": "int",
- 	"label": "Insert Depth",
+ 	"label": "AN Depth",
  	"id": "singleline",
  	"min": 0,
  	"max": 5,

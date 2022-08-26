@@ -307,7 +307,7 @@ input[type="range"]::-ms-fill-upper {
 .menu_pin {
 	position: absolute;
 	top:10px;
-	left: calc(var(--flyout_menu_width) - 25px);
+	left: calc(var(--flyout_menu_width) - 20px);
 	z-index:50;
 	width: 25px;
 	height: 25px;
@@ -747,7 +747,7 @@ input[type="range"]::-ms-fill-upper {
 .story_menu_pin {
 	position: absolute;
 	top:10px;
-	right: calc(var(--flyout_menu_width) - 25px);
+	right: calc(var(--flyout_menu_width) - 29px);
 	z-index:50;
 	width: 25px;
 	height: 25px;
