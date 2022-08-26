@@ -377,6 +377,13 @@ input[type="range"]::-ms-fill-upper {
 	background-color: var(--setting_footer_background_color);
 }
 
+.show_footer_icon {
+	position: absolute;
+	left: calc(var(--flyout_menu_width) - 30px);
+	bottom: 0px;
+	background-color: var(--flyout_background_pinned);
+}
+
 .Model_Info{
 	position: relative;
 	margin: 25px 0 0 10px;
