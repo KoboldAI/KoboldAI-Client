@@ -649,6 +649,25 @@ input[type="range"]::-ms-fill-upper {
 	filter: brightness(85%);
 }
 
+/* Tweaks */
+.tweak-container {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+
+	color: var(--setting_text);
+	background-color: var(--setting_background);
+	border-radius: var(--radius_settings_background);
+	padding: 10px 8px;
+	margin-bottom: 5px;
+	width: 100%;
+}
+
+#Tweaks {
+	/* Don't add space under last tweak-container. Also, CSS, why no last-of-class!?!? */
+	margin-bottom: 0px;
+}
+
 /*----------------RIGHT FLYOUT MENU------------------*/
 .right_menu_icon {
 	position: fixed;
@@ -1140,6 +1159,8 @@ body {
 	
 }
 #random_game_prompt{
+	display: flex;
+	flex-direction: column;
 	grid-area: textarea;
 }
 
@@ -1555,7 +1576,8 @@ input {
 	resize: none;
 	border-color: white;
 	border-width: 1px;
-	border-style:solid;
+	border-style: solid;
+	outline: none;
 }
 
 .action_button {
@@ -1607,6 +1629,7 @@ button.disabled {
 textarea {
 	background-color: var(--input_background);
 	color: var(--text);
+	outline: none;
 }
 
 .pulse {

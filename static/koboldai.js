@@ -400,7 +400,7 @@ function do_presets(data) {
 		//add our blank option
 		var option = document.createElement("option");
 		option.value="";
-		option.text="presets";
+		option.text="Presets";
 		select.append(option);
 		presets = data.value;
 		
@@ -2812,4 +2812,46 @@ $(document).ready(function(){
 	}
 	preserve_game_space(!(getCookie("preserve_game_space") == "false"));
 	options_on_right(!(getCookie("options_on_right") == "false"));
+
+
+	// Tweak registering
+	let enabledTweaks = JSON.parse(getCookie("enabledTweaks", "[]"));
+
+	function saveTweaks() {
+		let out = [];
+
+		// TODO: Better saving
+		for (const tweakContainer of document.getElementsByClassName("tweak-container")) {
+			let toggle = tweakContainer.querySelector("input");
+			let path = tweakContainer.getAttribute("tweak-path");
+			if (toggle.checked) out.push(path);
+		}
+
+		setCookie("enabledTweaks", JSON.stringify(out));
+	}
+
+
+	for (const tweakContainer of document.getElementsByClassName("tweak-container")) {
+		let toggle = tweakContainer.querySelector("input");
+		let path = tweakContainer.getAttribute("tweak-path");
+
+		$(toggle).change(function(e) {
+			let path = $(this).closest(".tweak-container")[0].getAttribute("tweak-path");
+			let id = `tweak-${path}`;
+
+			if (this.checked) {
+				let style = document.createElement("link");
+				style.rel = "stylesheet";
+				style.href = `/themes/tweaks/${path}.css`;
+				style.id = id;
+				document.head.appendChild(style);
+			} else {
+				document.getElementById(id).remove();
+			}
+
+			saveTweaks();
+		});
+
+		if (enabledTweaks.includes(path)) toggle.click();
+	}
 });

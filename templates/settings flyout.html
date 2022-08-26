@@ -296,8 +296,23 @@
 				<span>Advanced Theme</h4>
 			</div>
 		</div>
+
+		<div class="collapsable_header" onclick="toggle_setting_category(this);">
+			<h4 style="width:var(--flyout_menu_width);"><span class="material-icons-outlined cursor">expand_more</span> Tweaks</h4>
+		</div>
+		<div class="setting_tile_area" id="Tweaks">
+			<span class="help_text">Small UI changes that can be mixed and matched.</span>
+			<div class="tweak-container" tweak-path="hide-timing">
+				<span>Hide timing information</span>
+				<input type=checkbox class="setting_item_input" data-size="mini" data-onstyle="success" data-toggle="toggle">
+			</div>
+		</div>
 	</div>
-	<span class=>
+	<span class="material-icons-outlined cursor show_footer_icon" onclick='if (document.getElementById("settings_footer").classList.contains("hidden")){
+																		       document.getElementById("settings_footer").classList.remove("hidden");
+																		   } else {
+																			   document.getElementById("settings_footer").classList.add("hidden");
+																		   }'>timer</span>
 	<div id="settings_footer" class="settings_footer">
 		<span>Execution Time: <span id="Execution Time"></span></span> | 
 		<span>Remaining Time: <span class="var_sync_model_tqdm_rem_time"></span></span> | <span id="var_time"></span>
