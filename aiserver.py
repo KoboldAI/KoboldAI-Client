@@ -6168,7 +6168,7 @@ def load_story_v1(js):
     if "actions_metadata" in js:
         if type(js["actions_metadata"]) == dict:
             for key in js["actions_metadata"]:
-                if js["actions_metadata"][key]["Alternative Text"] != []:
+                if js["actions_metadata"][key]["Alternative Text"] != [] and js["actions_metadata"][key]["Alternative Text"] != {}:
                     data = js["actions_metadata"][key]["Alternative Text"]
                     data["text"] = data.pop("Text")
                     koboldai_vars.actions.set_options(self, data, key)
