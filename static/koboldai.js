@@ -2866,7 +2866,8 @@ $(document).ready(function(){
 				style.id = id;
 				document.head.appendChild(style);
 			} else {
-				document.getElementById(id).remove();
+				let el = document.getElementById(id);
+				if (el) el.remove();
 			}
 
 			saveTweaks();
