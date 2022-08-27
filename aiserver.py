@@ -270,7 +270,7 @@ class vars:
     setauthornotetemplate = authornotetemplate  # Saved author's note template in settings
     andepth     = 3      # How far back in history to append author's note
     actions     = structures.KoboldStoryRegister()  # Actions submitted by user and AI
-    actions_metadata = [] # List of dictonaries, one dictonary for every action that contains information about the action like alternative options.
+    actions_metadata = {} # List of dictonaries, one dictonary for every action that contains information about the action like alternative options.
                           # Contains at least the same number of items as actions. Back action will remove an item from actions, but not actions_metadata
                           # Dictonary keys are:
                           # Selected Text: (text the user had selected. None when this is a newly generated action)
