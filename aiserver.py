@@ -6168,7 +6168,7 @@ def load_story_v1(js):
     if "actions_metadata" in js:
         if type(js["actions_metadata"]) == dict:
             for key in js["actions_metadata"]:
-                if js["actions_metadata"][key]["Alternative Text"] != [] and js["actions_metadata"][key]["Alternative Text"] != {}:
+                if js["actions_metadata"][key]["Alternative Text"] != []:
                     data = js["actions_metadata"][key]["Alternative Text"]
                     data["text"] = data.pop("Text")
                     koboldai_vars.actions.set_options(self, data, key)
@@ -7304,6 +7304,19 @@ def my_except_hook(exctype, value, traceback):
     socketio.emit("error", "{}: {}".format(exctype, value), broadcast=True, room="UI_2")
     sys.__excepthook__(exctype, value, traceback)
 sys.excepthook = my_except_hook
+
+from werkzeug.exceptions import HTTPException
+
+@app.errorhandler(Exception)
+def handle_exception(e):
+    # pass through HTTP errors
+    if isinstance(e, HTTPException):
+        return e
+
+    # now you're handling non-HTTP exceptions only
+    print("sending error to clients")
+    socketio.emit("error", "{}: {}".format(e.message, e.args), broadcast=True, room="UI_2")
+    return render_template("500_generic.html", e=e), 500
 
 
 #==================================================================#

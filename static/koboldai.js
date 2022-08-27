@@ -2417,7 +2417,7 @@ function assign_world_info_to_action(action_item, uid) {
 														if (end_word-passed_words <= span_text.length) {
 															highlight_text += " ";
 														}
-														var after_highlight_text = span_text.slice((end_word-passed_words)).join(" ")+" ";
+														var after_highlight_text = span_text.slice((end_word-passed_words)).join(" ");
 														//console.log(span.textContent);
 														//console.log(keyword);
 														//console.log(before_highlight_text);
