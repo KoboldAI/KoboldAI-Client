@@ -232,6 +232,9 @@ class Send_to_socketio(object):
             emit('from_server', {'cmd': 'model_load_status', 'data': bar.replace(" ", "&nbsp;")}, broadcast=True, room="UI_1")
         except:
             pass
+        
+    def flush(self):
+        pass
                                 
 # Set logging level to reduce chatter from Flask
 import logging
@@ -1478,6 +1481,8 @@ def patch_transformers_download():
                     eventlet.sleep(seconds=0)
                 except:
                     pass
+        def flush(self):
+            pass
     def http_get(
         url: str,
         temp_file: transformers.utils.hub.BinaryIO,
