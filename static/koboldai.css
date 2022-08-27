@@ -102,7 +102,7 @@ input[type="range"]::-ms-fill-upper {
 	box-shadow: 0 3px 3px rgba(0, 0, 0, 0.4), inset 0 1px 0 #AAA;
 	text-shadow: 0 1px #AAA;
 	margin: 0 -5px;
-	padding: 0 17px;
+	padding: 0 15px;
 }
 .tabrow span.selected {
 	background: #FFF;
@@ -307,7 +307,7 @@ input[type="range"]::-ms-fill-upper {
 .menu_pin {
 	position: absolute;
 	top:10px;
-	left: calc(var(--flyout_menu_width) - 25px);
+	left: calc(var(--flyout_menu_width) - 20px);
 	z-index:50;
 	width: 25px;
 	height: 25px;
@@ -656,6 +656,25 @@ input[type="range"]::-ms-fill-upper {
 	filter: brightness(85%);
 }
 
+/* Tweaks */
+.tweak-container {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+
+	color: var(--setting_text);
+	background-color: var(--setting_background);
+	border-radius: var(--radius_settings_background);
+	padding: 10px 8px;
+	margin-bottom: 5px;
+	width: 100%;
+}
+
+#Tweaks {
+	/* Don't add space under last tweak-container. Also, CSS, why no last-of-class!?!? */
+	margin-bottom: 0px;
+}
+
 /*----------------RIGHT FLYOUT MENU------------------*/
 .right_menu_icon {
 	position: fixed;
@@ -728,7 +747,7 @@ input[type="range"]::-ms-fill-upper {
 .story_menu_pin {
 	position: absolute;
 	top:10px;
-	right: calc(var(--flyout_menu_width) - 25px);
+	right: calc(var(--flyout_menu_width) - 29px);
 	z-index:50;
 	width: 25px;
 	height: 25px;
@@ -1147,6 +1166,8 @@ body {
 	
 }
 #random_game_prompt{
+	display: flex;
+	flex-direction: column;
 	grid-area: textarea;
 }
 
@@ -1562,7 +1583,8 @@ input {
 	resize: none;
 	border-color: white;
 	border-width: 1px;
-	border-style:solid;
+	border-style: solid;
+	outline: none;
 }
 
 .action_button {
@@ -1614,6 +1636,7 @@ button.disabled {
 textarea {
 	background-color: var(--input_background);
 	color: var(--text);
+	outline: none;
 }
 
 .pulse {
