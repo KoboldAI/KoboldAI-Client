@@ -1212,6 +1212,7 @@ function world_info_entry(data) {
 				}
 			}
 	world_info_card.addEventListener('dragstart', dragStart);
+	world_info_card.addEventListener('dragend', dragend);
 	title.addEventListener('dragenter', dragEnter)
 	title.addEventListener('dragover', dragOver);
 	title.addEventListener('dragleave', dragLeave);
@@ -2324,7 +2325,7 @@ function drop(e) {
 	if (element.children[0].tagName == "H2") {
 		//element.append(draggable);
 		socket.emit("wi_set_folder", {'dragged_id': dragged_id, 'folder': drop_id});
-	} else if (checkifancestorhasclass(element, "WI_Folder")) {
+	} else {
 		//insert the draggable element before the drop element
 		element.parentElement.insertBefore(draggable, element);
 		draggable.classList.add("pulse");
@@ -2337,14 +2338,15 @@ function drop(e) {
 		} else {
 			socket.emit("move_wi", {'dragged_id': dragged_id, 'drop_id': drop_id, 'folder': element.getAttribute("folder")});
 		}
-	} else {
-		draggable.classList.remove('hidden');
 	}
 }
 
 function dragend(e) {
-	element = find_wi_container(e.target);
-	element.classList.remove('hidden');
+	// get the draggable element
+    const id = e.dataTransfer.getData('text/plain');
+    const draggable = document.getElementById(id);
+	// display the draggable element
+	draggable.classList.remove('hidden');
 	e.preventDefault();
 }
 
