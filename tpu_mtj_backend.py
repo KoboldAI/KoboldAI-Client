@@ -533,7 +533,7 @@ def sample_func(data, key, numseqs_aux, badwords, repetition_penalty, generated_
                 gen_length,
                 rpslope,
                 rprange,
-            )
+            ),
             **sampler_options,
         )
         # Remember what token was picked
