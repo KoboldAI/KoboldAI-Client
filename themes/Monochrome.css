@@ -118,6 +118,16 @@
 	--popup_button_color_text: #e0e0e0;
 	--popup_cancel_button_color: #406494;
 	--popup_cancel_button_color_text: #e0e0e0;
+	
+	/*Context Bar Colors*/
+	--context_colors_memory: #3572A5;
+	--context_colors_authors_notes: #f1e05a;
+	--context_colors_world_info: #563d7c;
+	--context_colors_prompt: #e34c26;
+	--context_colors_game_text: #c6538c;
+	--context_colors_submit: #ededed;
+	--context_colors_unused: white;
+	--context_colors_soft_prompt: #000080;
 
     /*Parameters*/
 	--scrollbar-size: 6px;
