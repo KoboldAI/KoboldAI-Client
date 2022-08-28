@@ -109,6 +109,7 @@ class koboldai_vars(object):
         self._model_settings.reset_for_model_load()
     
     def calc_ai_text(self, submitted_text=""):
+        context = []
         token_budget = self.max_length
         used_world_info = []
         if self.tokenizer is None:
@@ -116,6 +117,11 @@ class koboldai_vars(object):
         else:
             used_tokens = self.sp_length
         text = ""
+
+        if koboldai_vars.sp:
+            context.append({"type": "soft_prompt", "text": f"<{self.sp_length} tokens of Soft Prompt.>"})
+        if koboldai_vars.model not in ("Colab", "API", "OAI") and self.tokenizer._koboldai_header:
+            context.append({"type": "header", "tokens": self.tokenizer._koboldai_header})
         
         self.worldinfo_v2.reset_used_in_game()
         
@@ -124,11 +130,14 @@ class koboldai_vars(object):
         if memory_length+used_tokens <= token_budget:
             if self.memory_length > self.max_memory_length:
                 if self.tokenizer is None:
-                    text = self.memory
+                    memory_text = self.memory
                 else:
-                    text += self.tokenizer.decode(self.tokenizer.encode(self.memory)[-self.max_memory_length-1:])
+                    memory_text += self.tokenizer.decode(self.tokenizer.encode(self.memory)[-self.max_memory_length-1:])
             else:
-                text += self.memory
+                memory_text += self.memory
+         
+        context.append({"type": "memory", "text": })
+        text += memory_text
         
         #Add constant world info entries to memory
         for wi in self.worldinfo_v2:
@@ -455,7 +464,7 @@ class model_settings(settings):
             
 class story_settings(settings):
     local_only_variables = ['socketio', 'tokenizer', 'koboldai_vars']
-    no_save_variables = ['socketio', 'tokenizer', 'koboldai_vars']
+    no_save_variables = ['socketio', 'tokenizer', 'koboldai_vars', 'context']
     settings_name = "story"
     def __init__(self, socketio, koboldai_vars, tokenizer=None):
         self.socketio = socketio
@@ -514,6 +523,7 @@ class story_settings(settings):
         self.max_prompt_length = 512
         self.max_authornote_length = 512
         self.prompt_in_ai = False
+        self.context = []
         
     def save_story(self):
         print("Saving")

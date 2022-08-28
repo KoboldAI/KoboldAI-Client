@@ -468,6 +468,10 @@ function var_changed(data) {
 			option.setAttribute("title", sp[1][1]);
 			item.append(option);
 		}
+	//Special case for context viewer
+	} else if (data.classname == "story" && data.name == "context") {
+		console.log("HELLO FRIENDS!!!")
+		console.log(data.value)
 	//Basic Data Syncing
 	} else {
 		var elements_to_change = document.getElementsByClassName("var_sync_"+data.classname.replace(" ", "_")+"_"+data.name.replace(" ", "_"));

@@ -4394,6 +4394,8 @@ def calcsubmitbudget(actionlen, winfo, mem, anotetxt, actions, submission=None, 
     anotetkns    = []  # Placeholder for Author's Note tokens
     lnanote      = 0   # Placeholder for Author's Note length
 
+    context = []
+
     lnsp = koboldai_vars.sp_length
 
     if("tokenizer" not in globals()):
@@ -4436,14 +4438,34 @@ def calcsubmitbudget(actionlen, winfo, mem, anotetxt, actions, submission=None, 
 
     assert budget >= 0
 
+    # Context behavior shared
+    if lnsp:
+        context.append({"type": "soft_prompt", "tokens": koboldai_vars.sp})
+    if koboldai_vars.model not in ("Colab", "API", "OAI") and tokenizer._koboldai_header:
+        context.append({"type": "header", "tokens": tokenizer._koboldai_header})
+    if memtokens:
+        context.append({"type": "memory", "tokens": memtokens})
+    if witokens:
+        context.append({"type": "world_info", "tokens": witokens})
+
     if(actionlen == 0):
         # First/Prompt action
         tokens = (tokenizer._koboldai_header if koboldai_vars.model not in ("Colab", "API", "OAI") else []) + memtokens + witokens + anotetkns + prompttkns
         assert len(tokens) <= koboldai_vars.max_length - lnsp - koboldai_vars.genamt - budget_deduction
         ln = len(tokens) + lnsp
+
+        if anotetkns:
+            context.append({"type": "authors_note", "tokens": anotetkns})
+
+        if prompttkns:
+            context.append({"type": "prompt", "tokens": prompttkns})
+
+
+        koboldai_vars.context = context
         return tokens, ln+1, ln+koboldai_vars.genamt
     else:
         tokens     = []
+        local_context = []
         
         # Check if we have the action depth to hit our A.N. depth
         if(anotetxt != "" and actionlen < koboldai_vars.andepth):
@@ -4462,10 +4484,13 @@ def calcsubmitbudget(actionlen, winfo, mem, anotetxt, actions, submission=None, 
             if(tknlen < budget):
                 tokens = acttkns + tokens
                 budget -= tknlen
+                local_context.insert(0, {"type": "action", "tokens": acttkns})
             else:
                 count = budget * -1
-                tokens = acttkns[count:] + tokens
+                truncated_action_tokens = acttkns[count:]
+                tokens = truncated_action_tokens + tokens
                 budget = 0
+                local_context.insert(0, {"type": "action", "tokens": truncated_action_tokens})
                 break
             
             # Inject Author's Note if we've reached the desired depth
@@ -4473,6 +4498,7 @@ def calcsubmitbudget(actionlen, winfo, mem, anotetxt, actions, submission=None, 
                 if(anotetxt != ""):
                     tokens = anotetkns + tokens # A.N. len already taken from bdgt
                     anoteadded = True
+                    local_context.insert(0, {"type": "authors_note", "tokens": anotetkns})
             n += 1
         
         # If we're not using the prompt every time and there's still budget left,
@@ -4486,16 +4512,25 @@ def calcsubmitbudget(actionlen, winfo, mem, anotetxt, actions, submission=None, 
         # Did we get to add the A.N.? If not, do it here
         if(anotetxt != ""):
             if((not anoteadded) or forceanote):
+                # header, mem, wi, anote, prompt, actions
+                local_context.insert(0, {"type": "authors_note", "tokens": anotetkns})
+                local_context.insert(0, {"type": "prompt", "tokens": prompttkns})
                 tokens = (tokenizer._koboldai_header if koboldai_vars.model not in ("Colab", "API", "OAI") else []) + memtokens + witokens + anotetkns + prompttkns + tokens
             else:
+                local_context.insert(0, {"type": "prompt", "tokens": prompttkns})
                 tokens = (tokenizer._koboldai_header if koboldai_vars.model not in ("Colab", "API", "OAI") else []) + memtokens + witokens + prompttkns + tokens
         else:
             # Prepend Memory, WI, and Prompt before action tokens
+            local_context.insert(0, {"type": "prompt", "tokens": prompttkns})
             tokens = (tokenizer._koboldai_header if koboldai_vars.model not in ("Colab", "API", "OAI") else []) + memtokens + witokens + prompttkns + tokens
 
         # Send completed bundle to generator
         assert len(tokens) <= koboldai_vars.max_length - lnsp - koboldai_vars.genamt - budget_deduction
         ln = len(tokens) + lnsp
+
+        context += local_context
+        koboldai_vars.context = context
+
         return tokens, ln+1, ln+koboldai_vars.genamt
 
 #==================================================================#
