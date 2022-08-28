@@ -275,7 +275,7 @@ input[type="range"]::-ms-fill-upper {
 .helpicon {
 	color: var(--help_icon);
 	cursor: help;
-	font-size: calc(14px + var(--font_size_adjustment)); !important;
+	font-size: calc(14px + var(--font_size_adjustment)) !important;
 	flex: auto;
 	width: 15px;
 	align-self: flex-end;
