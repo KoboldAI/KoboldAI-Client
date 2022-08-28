@@ -76,7 +76,7 @@ input[type="range"]::-ms-fill-upper {
 	position: relative;
 }
 .tabrow.nomenu_icon {
-	padding-left: 25px;
+	padding-left: 35px;
 }
 .tabrow span {
 	cursor: pointer;
@@ -377,13 +377,6 @@ input[type="range"]::-ms-fill-upper {
 	background-color: var(--setting_footer_background_color);
 }
 
-.show_footer_icon {
-	position: absolute;
-	left: calc(var(--flyout_menu_width) - 30px);
-	bottom: 0px;
-	background-color: var(--flyout_background_pinned);
-}
-
 .Model_Info{
 	position: relative;
 	margin: 25px 0 0 10px;
@@ -396,6 +389,7 @@ input[type="range"]::-ms-fill-upper {
 #model_title{
 	font-size: calc(1.8em + var(--font_size_adjustment));
 	text-align: center;
+	padding: 5px 0 0 0;
 }
 
 #text_runningmodel{
@@ -432,6 +426,7 @@ input[type="range"]::-ms-fill-upper {
 	border-bottom-style: solid;
 	margin-left: 40px;
 	margin-right: 40px;
+	padding: 10px 0 0 0;
 }
 #text_storyname{
 	font-size: calc(0.9em + var(--font_size_adjustment));
@@ -747,7 +742,7 @@ input[type="range"]::-ms-fill-upper {
 .story_menu_pin {
 	position: absolute;
 	top:10px;
-	right: calc(var(--flyout_menu_width) - 29px);
+	right: calc(var(--flyout_menu_width) - 35px);
 	z-index:50;
 	width: 25px;
 	height: 25px;
