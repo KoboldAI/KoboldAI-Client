@@ -804,6 +804,7 @@ td.server_vars {
 	padding-right: 35px;
 	margin-bottom: 10px;
 	flex-shrink: 0;
+	cursor: pointer;
 }
 
 .token_breakdown div {
@@ -1555,6 +1556,87 @@ body {
 .model_setting_item_input {
 	width:95%;
 }
+/*------------------------------ Context Viewer --------------------------------------------*/
+#context-viewer-container {
+	position: absolute;
+	left: 0px;
+	top: 0px;
+
+	display: flex;
+	justify-content: center;
+	align-items: center;
+
+	background-color: rgba(0, 0, 0, 0.7);
+
+	width: 100vw;
+	height: 100vh;
+
+	z-index: 20;
+}
+
+#context-viewer {
+	display: flex;
+	flex-direction: column;
+
+	width: 50%;
+	height: 75%;
+	padding-bottom: 10px;
+	background-color: var(--layer1_palette);
+}
+
+#context-viewer-header {
+	display: flex;
+	justify-content: space-between;
+
+	padding: 5px;
+
+	background-color: var(--background);
+	margin-bottom: 3px;
+}
+
+#context-viewer-header-right {
+	display: flex;
+	flex-direction: row;
+}
+
+#context-viewer-close {
+	cursor: pointer;
+	float: right;
+}
+
+#context-viewer-header > h3 {
+	margin: 0px;
+	margin-top: 3px;
+}
+
+#context-container {
+	overflow-y: auto;
+	height: 100%;
+	flex-grow: 1;
+	padding: 0px 10px;
+}
+
+.context-symbol {
+	font-size: 1em !important;
+	position: relative;
+	top: 3px;
+	opacity: 0.5;
+}
+
+.context-block, .context-block-example{
+	margin: 0px 2px;
+}
+
+.context-block:hover {
+	outline: 1px solid gray;
+}
+
+.context-sp {background-color: var(--context_colors_soft_prompt);}
+.context-prompt {background-color: var(--context_colors_prompt);}
+.context-wi {background-color: var(--context_colors_world_info);}
+.context-memory {background-color: var(--context_colors_memory);}
+.context-an {background-color: var(--context_colors_authors_notes);}
+.context-action {background-color: var(--context_colors_game_text);}
 
 /*---------------------------------- Global ------------------------------------------------*/
 .hidden {
@@ -1719,7 +1801,11 @@ h2 .material-icons-outlined {
 	cursor: pointer;
 }
 
-.material-icons-outlined, .collapsable_header, .section_header, .help_text {
+.material-icons-outlined,
+.collapsable_header,
+.section_header,
+.help_text,
+.noselect {
 	-webkit-touch-callout: none;
 	-webkit-user-select: none;
 	-khtml-user-select: none;

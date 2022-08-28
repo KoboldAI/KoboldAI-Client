@@ -470,6 +470,9 @@ function var_changed(data) {
 			option.setAttribute("title", sp[1][1]);
 			item.append(option);
 		}
+	//Special case for context viewer
+	} else if (data.classname == "story" && data.name == "context") {
+		update_context(data.value);
 	//Basic Data Syncing
 	} else {
 		var elements_to_change = document.getElementsByClassName("var_sync_"+data.classname.replace(" ", "_")+"_"+data.name.replace(" ", "_"));
@@ -2042,6 +2045,33 @@ function update_bias_slider_value(slider) {
 	slider.parentElement.parentElement.querySelector(".bias_slider_cur").textContent = slider.value;
 }
 
+function update_context(data) {
+	$(".context-block").remove();
+
+	for (const entry of data) {
+		console.log(entry);
+		let contextClass = "context-" + ({
+			soft_prompt: "sp",
+			prompt: "prompt",
+			world_info: "wi",
+			memory: "memory",
+			authors_note: "an",
+			action: "action"
+		}[entry.type]);
+
+		let el = document.createElement("span");
+		el.classList.add("context-block");
+		el.classList.add(contextClass);
+		el.innerText = entry.text;
+
+		el.innerHTML = el.innerHTML.replaceAll("<br>", '<span class="material-icons-outlined context-symbol">keyboard_return</span>');
+
+		document.getElementById("context-container").appendChild(el);
+	}
+
+
+}
+
 function save_model_settings(settings = saved_settings) {
 	for (item of document.getElementsByClassName('setting_item_input')) {
 		if (item.id.includes("model")) {
@@ -2877,4 +2907,12 @@ $(document).ready(function(){
 
 		if (enabledTweaks.includes(path)) $(toggle).bootstrapToggle("on");
 	}
+
+	$("#context-viewer-close").click(function() {
+		document.getElementById("context-viewer-container").classList.add("hidden");
+	});
+
+	$(".token_breakdown").click(function() {
+		document.getElementById("context-viewer-container").classList.remove("hidden");
+	});
 });
