@@ -2044,10 +2044,7 @@ function update_bias_slider_value(slider) {
 }
 
 function update_context(data) {
-	for (const el of document.getElementsByClassName("context-block")) {
-		if (el.classList.contains("example")) continue;
-		el.remove();
-	}
+	$(".context-block").remove();
 
 	for (const entry of data) {
 		console.log(entry);

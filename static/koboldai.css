@@ -1627,16 +1627,12 @@ body {
 	opacity: 0.5;
 }
 
-.context-block {
+.context-block, .context-block-example{
 	margin: 0px 2px;
 }
 
 .context-block:hover {
 	outline: 1px solid gray;
-}
-
-.context-block.example:hover {
-	outline: none !important;
 }
 
 .context-sp {background-color: orangered;}
