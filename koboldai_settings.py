@@ -35,7 +35,7 @@ def process_variable_changes(socketio, classname, name, value, old_value, debug_
             if isinstance(value, KoboldStoryRegister):
                 socketio.emit("var_changed", {"classname": "actions", "name": "Action Count", "old_value": None, "value":value.action_count}, broadcast=True, room="UI_2")
                 
-                for i in range(len(value.actions)):
+                for i in value.actions:
                     socketio.emit("var_changed", {"classname": "story", "name": "actions", "old_value": None, "value":{"id": i, "action": value.actions[i]}}, broadcast=True, room="UI_2")
             elif isinstance(value, KoboldWorldInfo):
                 value.send_to_ui()
