@@ -112,5 +112,25 @@
 		{% include 'templates.html' %}
 	</div>
 	<iframe id="download_iframe" style="display:none;"></iframe>
+
+	<div id="context-viewer-container">
+		<div id="context-viewer">
+			<div id="context-viewer-header">
+				<h3>Context Viewer</h3>
+				<div id="context-viewer-key">
+					<span>Key:</span>
+					<div>
+						<span class="example context-block context-sp">Soft Prompt</span>
+						<span class="example context-block context-prompt">Prompt</span>
+						<span class="example context-block context-wi">World Info</span>
+						<span class="example context-block context-memory">Memory</span>
+						<span class="example context-block context-an">Author's Note</span>
+						<span class="example context-block context-action">Action</span>
+					</div>
+				</div>
+			</div>
+			<div id="context-container"></div>
+		</div>
+	</div>
 </body>
 </html>

@@ -1559,6 +1559,66 @@ body {
 .model_setting_item_input {
 	width:95%;
 }
+/*------------------------------ Context Viewer --------------------------------------------*/
+#context-viewer-container {
+	position: absolute;
+	left: 0px;
+	top: 0px;
+
+	display: flex;
+	justify-content: center;
+	align-items: center;
+
+	background-color: rgba(0, 0, 0, 0.7);
+
+	width: 100vw;
+	height: 100vh;
+
+	z-index: 20;
+}
+
+#context-viewer {
+	display: flex;
+	flex-direction: column;
+
+	width: 50%;
+	height: 75%;
+	padding-bottom: 10px;
+	background-color: var(--layer1_palette);
+}
+
+#context-viewer-header {
+	display: flex;
+	justify-content: space-between;
+
+	padding: 5px;
+
+	background-color: var(--background);
+	margin-bottom: 3px;
+}
+
+#context-viewer-header > h3 {
+	margin: 0px;
+	margin-top: 3px;
+}
+
+#context-container {
+	overflow-y: auto;
+	height: 100%;
+	flex-grow: 1;
+	padding: 0px 10px
+}
+
+.context-block {
+	margin: 0px 2px;
+}
+
+.context-sp {background-color: orangered;}
+.context-prompt {background-color: orange;}
+.context-wi {background-color: #1751b9;}
+.context-memory {background-color: #5e4395;}
+.context-an {background-color: palevioletred;}
+.context-action {background-color: #7d3737;}
 
 /*---------------------------------- Global ------------------------------------------------*/
 .hidden {

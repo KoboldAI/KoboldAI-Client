@@ -470,8 +470,7 @@ function var_changed(data) {
 		}
 	//Special case for context viewer
 	} else if (data.classname == "story" && data.name == "context") {
-		console.log("HELLO FRIENDS!!!")
-		console.log(data.value)
+		update_context(data.value);
 	//Basic Data Syncing
 	} else {
 		var elements_to_change = document.getElementsByClassName("var_sync_"+data.classname.replace(" ", "_")+"_"+data.name.replace(" ", "_"));
@@ -2042,6 +2041,34 @@ function do_biases(data) {
 
 function update_bias_slider_value(slider) {
 	slider.parentElement.parentElement.querySelector(".bias_slider_cur").textContent = slider.value;
+}
+
+function update_context(data) {
+	for (const el of document.getElementsByClassName("context-block")) {
+		if (el.classList.contains("example")) continue;
+		el.remove();
+	}
+
+	for (const entry of data) {
+		console.log(entry);
+		let contextClass = "context-" + ({
+			soft_prompt: "sp",
+			prompt: "prompt",
+			world_info: "wi",
+			memory: "memory",
+			authors_note: "an",
+			action: "action"
+		}[entry.type]);
+
+		let el = document.createElement("span");
+		el.classList.add("context-block");
+		el.classList.add(contextClass);
+		el.innerText = entry.text;
+
+		document.getElementById("context-container").appendChild(el);
+	}
+
+
 }
 
 function save_model_settings(settings = saved_settings) {
