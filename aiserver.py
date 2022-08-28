@@ -6118,57 +6118,43 @@ def loadJSON(json_text_or_dict):
         load_story_v1(json_data)
 
 def load_story_v1(js):
-    print("loading V1 story")
     loadpath = js['v1_loadpath']
-    print("set loadpath")
     filename = js['v1_filename']
-    print("set filename")
     
     _filename = filename
     if(filename.endswith('.json')):
         _filename = filename[:-5]
     session['story'] = _filename
-    print("set story name")
     #create the story
     #koboldai_vars.create_story(session['story'])
     koboldai_vars.create_story('default')
-    print("created blank story")     
     
     koboldai_vars.laststory = _filename
-    print("set last story")
     #set the story_name
     koboldai_vars.story_name = _filename
-    print("set story name")
     
 
     # Copy file contents to vars
     koboldai_vars.gamestarted = js["gamestarted"]
-    print("set game started")
     koboldai_vars.prompt      = js["prompt"]
-    print("set prompt")
     koboldai_vars.memory      = js["memory"]
-    print("set memory")
     koboldai_vars.worldinfo_v2.reset()
-    print("reset world info")
     koboldai_vars.worldinfo   = []
     koboldai_vars.worldinfo_i = []
     koboldai_vars.worldinfo_u = {}
     koboldai_vars.wifolders_d = {int(k): v for k, v in js.get("wifolders_d", {}).items()}
     koboldai_vars.wifolders_l = js.get("wifolders_l", [])
     koboldai_vars.wifolders_u = {uid: [] for uid in koboldai_vars.wifolders_d}
-    print("set world info folders")
     koboldai_vars.lastact     = ""
     koboldai_vars.submission  = ""
     koboldai_vars.lastctx     = ""
     koboldai_vars.genseqs = []
 
     actions = collections.deque(js["actions"])
-    print("set local actions")
     
 
 
     if(len(koboldai_vars.prompt.strip()) == 0):
-        print("prompt empty and have actions, setting first action to prompt")
         while(len(actions)):
             action = actions.popleft()
             if(len(action.strip()) != 0):
@@ -6179,21 +6165,15 @@ def load_story_v1(js):
     if(koboldai_vars.gamestarted):
         for s in actions:
             koboldai_vars.actions.append(s)
-        print("set actions")
 
     if "actions_metadata" in js:
-        print("have actions_metadata")
         if type(js["actions_metadata"]) == dict:
-            print("metadata is a dict")
             for key in js["actions_metadata"]:
-                print("actions_metadata key: {}".format(key))
                 if js["actions_metadata"][key]["Alternative Text"] != []:
                     data = js["actions_metadata"][key]["Alternative Text"]
-                    print("data: {}".format(data))
-                    data["text"] = data.pop("Text")
-                    print("data after pop: {}".format(data))
-                    koboldai_vars.actions.set_options(self, data, key)
-            print("set actions metadata")
+                    for i in range(len(js["actions_metadata"][key]["Alternative Text"])):
+                        data[i]["text"] = data[i].pop("Text")
+                    koboldai_vars.actions.set_options(data, key)
     
     # Try not to break older save files
     if("authorsnote" in js):

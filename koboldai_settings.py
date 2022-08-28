@@ -883,7 +883,7 @@ class KoboldStoryRegister(object):
     def set_options(self, option_list, action_id):
         if action_id not in self.actions:
             old_options = None
-            self.action_id[action_id] = {"Selected Text": "", "Options": option_list}
+            self.actions[action_id] = {"Selected Text": "", "Options": option_list}
         else:
             old_options = self.actions[action_id]["Options"]
             self.actions[action_id]["Options"] = []
