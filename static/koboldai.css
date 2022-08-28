@@ -1635,12 +1635,12 @@ body {
 	outline: 1px solid gray;
 }
 
-.context-sp {background-color: orangered;}
-.context-prompt {background-color: orange;}
-.context-wi {background-color: #1751b9;}
-.context-memory {background-color: #5e4395;}
-.context-an {background-color: palevioletred;}
-.context-action {background-color: #7d3737;}
+.context-sp {background-color: var(--context_colors_soft_prompt);}
+.context-prompt {background-color: var(--context_colors_prompt);}
+.context-wi {background-color: var(--context_colors_world_info);}
+.context-memory {background-color: var(--context_colors_memory);}
+.context-an {background-color: var(--context_colors_authors_notes);}
+.context-action {background-color: var(--context_colors_game_text);}
 
 /*---------------------------------- Global ------------------------------------------------*/
 .hidden {
