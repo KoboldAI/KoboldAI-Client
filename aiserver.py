@@ -39,8 +39,6 @@ import traceback
 import inspect
 import warnings
 import multiprocessing
-from enum import Enum
-from dataclasses import dataclass
 from collections.abc import Iterable
 from collections import OrderedDict
 from typing import Any, Callable, TypeVar, Tuple, Union, Dict, Set, List, Optional, Type
@@ -3971,19 +3969,6 @@ def check_for_backend_compilation():
             emit('from_server', {'cmd': 'warnmsg', 'data': 'Compiling TPU backend&mdash;this usually takes 1&ndash;2 minutes...'}, broadcast=True, room="UI_1")
             break
     koboldai_vars.checking = False
-
-class ContextType(Enum):
-    SOFT_PROMPT = 1
-    STORY = 2
-    WORLD_INFO = 3
-    MEMORY = 4
-    HEADER = 5
-
-@dataclass
-class ContextChunk:
-    def __init__(self, value, context_type: ContextType) -> None:
-        self.value = value
-        self.context_type = context_type
 
 def actionsubmit(data, actionmode=0, force_submit=False, force_prompt_gen=False, disable_recentrng=False, no_generate=False):
     # Ignore new submissions if the AI is currently busy
