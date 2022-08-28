@@ -40,6 +40,7 @@ import traceback
 import inspect
 import warnings
 import multiprocessing
+import copy
 from collections.abc import Iterable
 from collections import OrderedDict
 from typing import Any, Callable, TypeVar, Tuple, Union, Dict, Set, List, Optional, Type
@@ -4587,7 +4588,7 @@ def _generate(txt, minimum, maximum, found_entries):
     koboldai_vars._actions = koboldai_vars.actions
     koboldai_vars._prompt = koboldai_vars.prompt
     if(koboldai_vars.dynamicscan):
-        koboldai_vars._actions = koboldai_vars._actions.copy()
+        koboldai_vars._actions = copy.deepcopy(koboldai_vars._actions)
 
     with torch.no_grad():
         already_generated = 0
@@ -7045,7 +7046,6 @@ def UI_2_Set_Selected_Text(data):
 #==================================================================#
 @socketio.on('Use Option Text')
 def UI_2_Use_Option_Text(data):
-    print("Using Option Text: {}".format(data))
     if koboldai_vars.prompt == "":
         koboldai_vars.prompt = koboldai_vars.actions.get_current_options()[int(data['option'])]['text']
         koboldai_vars.actions.clear_unused_options()
