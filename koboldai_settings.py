@@ -782,7 +782,7 @@ class KoboldStoryRegister(object):
         if self.tokenizer is not None:
             self.actions[i]['Selected Text Length'] = len(self.tokenizer.encode(text))
         else:
-            self.actions[i]['Selected Text Length'] = None
+            self.actions[i]['Selected Text Length'] = 0
         self.actions[i]["In AI Input"] = False
         process_variable_changes(self.socketio, "story", 'actions', {"id": i, 'action':  self.actions[i]}, old)
         ignore = self.koboldai_vars.calc_ai_text()
@@ -954,7 +954,7 @@ class KoboldStoryRegister(object):
                 if self.tokenizer is not None:
                     self.actions[action_step]['Selected Text Length'] = len(self.tokenizer.encode(self.actions[action_step]['Options'][option_number]['text']))
                 else:
-                    self.actions[action_step]['Selected Text Length'] = None
+                    self.actions[action_step]['Selected Text Length'] = 0
                 del self.actions[action_step]['Options'][option_number]
                 #If this is the current spot in the story, advance
                 if action_step-1 == self.action_count:
@@ -1023,7 +1023,7 @@ class KoboldStoryRegister(object):
                 process_variable_changes(self.socketio, "story", 'actions', {"id": key, 'action':  self.actions[key]}, None)
         else:
             for key in self.actions:
-                self.actions[key]['Selected Text Length'] = None
+                self.actions[key]['Selected Text Length'] = 0
                 process_variable_changes(self.socketio, "story", 'actions', {"id": key, 'action':  self.actions[key]}, None)
         ignore = self.koboldai_vars.calc_ai_text()
     
@@ -1254,7 +1254,7 @@ class KoboldWorldInfo(object):
         if self.tokenizer is not None:
             token_length = len(self.tokenizer.encode(content))
         else:
-            token_length = None
+            token_length = 0
         if folder is None:
             folder = "root"
             

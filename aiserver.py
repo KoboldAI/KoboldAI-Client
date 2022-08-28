@@ -23,6 +23,7 @@ from os import path, getcwd
 import time
 import re
 import json
+import datetime
 import collections
 import zipfile
 import packaging
@@ -6117,43 +6118,57 @@ def loadJSON(json_text_or_dict):
         load_story_v1(json_data)
 
 def load_story_v1(js):
+    print("loading V1 story")
     loadpath = js['v1_loadpath']
+    print("set loadpath")
     filename = js['v1_filename']
+    print("set filename")
     
     _filename = filename
     if(filename.endswith('.json')):
         _filename = filename[:-5]
     session['story'] = _filename
+    print("set story name")
     #create the story
     #koboldai_vars.create_story(session['story'])
     koboldai_vars.create_story('default')
-     
+    print("created blank story")     
+    
     koboldai_vars.laststory = _filename
+    print("set last story")
     #set the story_name
     koboldai_vars.story_name = _filename
+    print("set story name")
     
 
     # Copy file contents to vars
     koboldai_vars.gamestarted = js["gamestarted"]
+    print("set game started")
     koboldai_vars.prompt      = js["prompt"]
+    print("set prompt")
     koboldai_vars.memory      = js["memory"]
+    print("set memory")
     koboldai_vars.worldinfo_v2.reset()
+    print("reset world info")
     koboldai_vars.worldinfo   = []
     koboldai_vars.worldinfo_i = []
     koboldai_vars.worldinfo_u = {}
     koboldai_vars.wifolders_d = {int(k): v for k, v in js.get("wifolders_d", {}).items()}
     koboldai_vars.wifolders_l = js.get("wifolders_l", [])
     koboldai_vars.wifolders_u = {uid: [] for uid in koboldai_vars.wifolders_d}
+    print("set world info folders")
     koboldai_vars.lastact     = ""
     koboldai_vars.submission  = ""
     koboldai_vars.lastctx     = ""
     koboldai_vars.genseqs = []
 
     actions = collections.deque(js["actions"])
+    print("set local actions")
     
 
 
     if(len(koboldai_vars.prompt.strip()) == 0):
+        print("prompt empty and have actions, setting first action to prompt")
         while(len(actions)):
             action = actions.popleft()
             if(len(action.strip()) != 0):
@@ -6164,14 +6179,21 @@ def load_story_v1(js):
     if(koboldai_vars.gamestarted):
         for s in actions:
             koboldai_vars.actions.append(s)
+        print("set actions")
 
     if "actions_metadata" in js:
+        print("have actions_metadata")
         if type(js["actions_metadata"]) == dict:
+            print("metadata is a dict")
             for key in js["actions_metadata"]:
+                print("actions_metadata key: {}".format(key))
                 if js["actions_metadata"][key]["Alternative Text"] != []:
                     data = js["actions_metadata"][key]["Alternative Text"]
+                    print("data: {}".format(data))
                     data["text"] = data.pop("Text")
+                    print("data after pop: {}".format(data))
                     koboldai_vars.actions.set_options(self, data, key)
+            print("set actions metadata")
     
     # Try not to break older save files
     if("authorsnote" in js):
@@ -6818,7 +6840,8 @@ def file_popup(popup_title, starting_folder, return_event, upload=True, jailed=T
                                                            editable=False, show_breadcrumbs=True, item_check=None, show_hidden=False,
                                                            valid_only=False, hide_extention=False, extra_parameter_function=None,
                                                            column_names=['File Name'], show_filename=True,
-                                                           column_widths=["100%"]):
+                                                           column_widths=["100%"],
+                                                           sort="Modified", desc=False):
     #starting_folder = The folder we're going to get folders and/or items from
     #return_event = the socketio event that will be emitted when the load button is clicked
     #jailed = if set to true will look for the session variable jailed_folder and prevent navigation outside of that folder
@@ -6848,6 +6871,8 @@ def file_popup(popup_title, starting_folder, return_event, upload=True, jailed=T
     session['hide_extention'] = hide_extention
     session['show_filename'] = show_filename
     session['column_widths'] = column_widths
+    session['sort'] = sort
+    session['desc'] = desc
     
     socketio.emit("load_popup", {"popup_title": popup_title, "call_back": return_event, "renameable": renameable, "deleteable": deleteable, "editable": editable, 'upload': upload}, broadcast=False, room="UI_2")
     socketio.emit("load_popup", {"popup_title": popup_title, "call_back": return_event, "renameable": renameable, "deleteable": deleteable, "editable": editable, 'upload': upload}, broadcast=True, room="UI_1")
@@ -6867,6 +6892,8 @@ def get_files_folders(starting_folder):
     hide_extention = session['hide_extention']
     show_filename = session['show_filename']
     column_widths = session['column_widths']
+    sort = session['sort']
+    desc = session['desc']
     
     if starting_folder == 'This PC':
         breadcrumbs = [['This PC', 'This PC']]
@@ -6893,7 +6920,7 @@ def get_files_folders(starting_folder):
         folders = []
         files = []
         base_path = os.path.abspath(starting_folder).replace("\\", "/")
-        for item in os.listdir(base_path):
+        for item in get_files_sorted(base_path, sort, desc=desc):
             item_full_path = os.path.join(base_path, item).replace("\\", "/")
             if hasattr(os.stat(item_full_path), "st_file_attributes"):
                 hidden = bool(os.stat(item_full_path).st_file_attributes & stat.FILE_ATTRIBUTE_HIDDEN)
@@ -6930,6 +6957,21 @@ def get_files_folders(starting_folder):
     if show_breadcrumbs:
         socketio.emit("popup_breadcrumbs", breadcrumbs, broadcast=False, room="UI_2")
         socketio.emit("popup_breadcrumbs", breadcrumbs, broadcast=True, room="UI_1")
+
+def get_files_sorted(path, sort, desc=False):
+    data = {}
+    for file in os.scandir(path=path):
+        if sort == "Modified":
+            data[file.name] = datetime.datetime.fromtimestamp(file.stat().st_mtime)
+        elif sort == "Accessed":
+            data[file.name] = datetime.datetime.fromtimestamp(file.stat().st_atime)
+        elif sort == "Created":
+            data[file.name] = datetime.datetime.fromtimestamp(file.stat().st_ctime)
+        elif sort == "Name":
+            data[file.name] = file.name
+            
+    return [key[0] for key in sorted(data.items(), key=lambda kv: (kv[1], kv[0]), reverse=desc)]
+        
 
 #==================================================================#
 # Event triggered when browser SocketIO detects a variable change
@@ -7022,7 +7064,7 @@ def UI_2_Set_Selected_Text(data):
 # Event triggered when Option is Selected
 #==================================================================#
 @socketio.on('Use Option Text')
-def UI_2_Set_Selected_Text(data):
+def UI_2_Use_Option_Text(data):
     print("Using Option Text: {}".format(data))
     if koboldai_vars.prompt == "":
         koboldai_vars.prompt = koboldai_vars.actions.get_current_options()[int(data['option'])]['text']
@@ -7111,7 +7153,7 @@ def UI_2_load_model_button(data):
 # Event triggered when user clicks the a model
 #==================================================================#
 @socketio.on('select_model')
-def UI_2_load_model_button(data):
+def UI_2_select_model(data):
     print(data)
     
     #We've selected a menu
@@ -7169,7 +7211,8 @@ def UI_2_load_story_list(data):
                                                                   deleteable=True, show_breadcrumbs=True, item_check=valid_story,
                                                                   valid_only=True, hide_extention=True, extra_parameter_function=get_story_length,
                                                                   column_names=['Story Name', 'Action Count'],
-                                                                  column_widths=['auto', '100px'])
+                                                                  column_widths=['auto', '100px'],
+                                                                  sort="Modified", desc=True)
                                                                   
 def get_story_length(item_full_path, item, valid_selection):
     if not valid_selection:
