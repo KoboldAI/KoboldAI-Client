@@ -2065,6 +2065,8 @@ function update_context(data) {
 		el.classList.add(contextClass);
 		el.innerText = entry.text;
 
+		el.innerHTML = el.innerHTML.replaceAll("<br>", '<span class="material-icons-outlined context-symbol">keyboard_return</span>');
+
 		document.getElementById("context-container").appendChild(el);
 	}
 
@@ -2905,4 +2907,12 @@ $(document).ready(function(){
 
 		if (enabledTweaks.includes(path)) toggle.click();
 	}
+
+	$("#context-viewer-close").click(function() {
+		document.getElementById("context-viewer-container").classList.add("hidden");
+	});
+
+	$(".token_breakdown").click(function() {
+		document.getElementById("context-viewer-container").classList.remove("hidden");
+	});
 });

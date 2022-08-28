@@ -809,6 +809,7 @@ td.server_vars {
 	padding-right: 35px;
 	margin-bottom: 10px;
 	flex-shrink: 0;
+	cursor: pointer;
 }
 
 .token_breakdown div {
@@ -1597,6 +1598,16 @@ body {
 	margin-bottom: 3px;
 }
 
+#context-viewer-header-right {
+	display: flex;
+	flex-direction: row;
+}
+
+#context-viewer-close {
+	cursor: pointer;
+	float: right;
+}
+
 #context-viewer-header > h3 {
 	margin: 0px;
 	margin-top: 3px;
@@ -1606,11 +1617,26 @@ body {
 	overflow-y: auto;
 	height: 100%;
 	flex-grow: 1;
-	padding: 0px 10px
+	padding: 0px 10px;
+}
+
+.context-symbol {
+	font-size: 1em !important;
+	position: relative;
+	top: 3px;
+	opacity: 0.5;
 }
 
 .context-block {
 	margin: 0px 2px;
+}
+
+.context-block:hover {
+	outline: 1px solid gray;
+}
+
+.context-block.example:hover {
+	outline: none !important;
 }
 
 .context-sp {background-color: orangered;}
@@ -1783,7 +1809,11 @@ h2 .material-icons-outlined {
 	cursor: pointer;
 }
 
-.material-icons-outlined, .collapsable_header, .section_header, .help_text {
+.material-icons-outlined,
+.collapsable_header,
+.section_header,
+.help_text,
+.noselect {
 	-webkit-touch-callout: none;
 	-webkit-user-select: none;
 	-khtml-user-select: none;
