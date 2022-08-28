@@ -1952,18 +1952,20 @@ def reset_model_settings():
     vars.newlinemode = "n"
     vars.revision    = None
 
-def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=False, online_model=""):
+def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=False, online_model="", use_breakmodel_args=False, breakmodel_args_default_to_cpu=False):
     global model
     global generator
     global torch
     global model_config
     global GPT2TokenizerFast
     global tokenizer
+    if(initial_load):
+        use_breakmodel_args = True
     reset_model_settings()
     if not utils.HAS_ACCELERATE:
         disk_layers = None
     vars.noai = False
-    if not initial_load:
+    if not use_breakmodel_args:
         set_aibusy(True)
         if vars.model != 'ReadOnly':
             emit('from_server', {'cmd': 'model_load_status', 'data': "Loading {}".format(vars.model)}, broadcast=True)
@@ -1971,12 +1973,16 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
             time.sleep(0.1)
     if gpu_layers is not None:
         args.breakmodel_gpulayers = gpu_layers
-    elif initial_load:
+    elif use_breakmodel_args:
         gpu_layers = args.breakmodel_gpulayers
+    if breakmodel_args_default_to_cpu and gpu_layers is None:
+        gpu_layers = args.breakmodel_gpulayers = []
     if disk_layers is not None:
         args.breakmodel_disklayers = int(disk_layers)
-    elif initial_load:
+    elif use_breakmodel_args:
         disk_layers = args.breakmodel_disklayers
+    if breakmodel_args_default_to_cpu and disk_layers is None:
+        disk_layers = args.breakmodel_disklayers = 0
     
     #We need to wipe out the existing model and refresh the cuda cache
     model = None
@@ -2070,6 +2076,7 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
     if(not vars.use_colab_tpu and vars.model not in ["InferKit", "Colab", "API", "OAI", "GooseAI" , "ReadOnly", "TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX"]):
         loadmodelsettings()
         loadsettings()
+        print(2)
         print("{0}Looking for GPU support...{1}".format(colors.PURPLE, colors.END), end="")
         vars.hascuda = torch.cuda.is_available()
         vars.bmsupported = (utils.HAS_ACCELERATE or vars.model_type in ("gpt_neo", "gptj", "xglm", "opt")) and not vars.nobreakmodel
@@ -2319,7 +2326,6 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
                 # If we're using torch_lazy_loader, we need to get breakmodel config
                 # early so that it knows where to load the individual model tensors
                 if (utils.HAS_ACCELERATE or vars.lazy_load and vars.hascuda and vars.breakmodel) and not vars.nobreakmodel:
-                    print(1)
                     device_config(model_config)
 
                 # Download model from Huggingface if it does not exist, otherwise load locally
@@ -7256,6 +7262,9 @@ class WorldInfoFoldersUIDsSchema(KoboldSchema):
 class WorldInfoUIDsSchema(WorldInfoEntriesUIDsSchema):
     folders: List[WorldInfoFolderSchema] = fields.List(fields.Nested(WorldInfoFolderUIDsSchema), required=True)
 
+class ModelSelectionSchema(KoboldSchema):
+    model: str = fields.String(required=True, validate=validate.Regexp(r"^(?!\s*NeoCustom)(?!\s*GPT2Custom)(?!\s*TPUMeshTransformerGPTJ)(?!\s*TPUMeshTransformerGPTNeoX)(?!\s*GooseAI)(?!\s*OAI)(?!\s*InferKit)(?!\s*Colab)(?!\s*API).*$"), metadata={"description": 'Hugging Face model ID, the path to a model folder (relative to the "models" folder in the KoboldAI root folder) or "ReadOnly" for no model'})
+
 def _generate_text(body: GenerationInputSchema):
     if vars.aibusy or vars.genseqs:
         abort(Response(json.dumps({"detail": {
@@ -7465,6 +7474,44 @@ def get_model():
                 result: KoboldAI/fairseq-dense-13B-Nerys-v2
     """
     return {"result": vars.model}
+
+
+@api_v1.put("/model")
+@api_schema_wrap
+def put_model(body: ModelSelectionSchema):
+    """---
+    put:
+      summary: Load a model
+      description: |-2
+        Loads a model given its Hugging Face model ID, the path to a model folder (relative to the "models" folder in the KoboldAI root folder) or "ReadOnly" for no model.
+      tags:
+        - model
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: ModelSelectionSchema
+            example:
+              model: ReadOnly
+      responses:
+        200:
+          description: Successful request
+          content:
+            application/json:
+              schema: EmptySchema
+        {api_validation_error_response}
+        {api_server_busy_response}
+    """
+    set_aibusy(1)
+    old_model = vars.model
+    vars.model = body.model.strip()
+    try:
+        load_model(use_breakmodel_args=True, breakmodel_args_default_to_cpu=True)
+    except Exception as e:
+        vars.model = old_model
+        raise e
+    set_aibusy(0)
+    return {}
 
 
 def prompt_validator(prompt: str):
