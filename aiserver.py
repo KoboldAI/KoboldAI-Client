@@ -4588,7 +4588,7 @@ def _generate(txt, minimum, maximum, found_entries):
     koboldai_vars._actions = koboldai_vars.actions
     koboldai_vars._prompt = koboldai_vars.prompt
     if(koboldai_vars.dynamicscan):
-        koboldai_vars._actions = copy.deepcopy(koboldai_vars._actions)
+        koboldai_vars._actions = [x for x in koboldai_vars.actions]
 
     with torch.no_grad():
         already_generated = 0

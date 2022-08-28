@@ -4,9 +4,7 @@ from flask import has_request_context
 from flask_socketio import SocketIO
 from collections import OrderedDict
 
-rely_clients = {}
 serverstarted = False
-port = 5000
 queue = None
 
 def clean_var_for_emit(value):
@@ -17,15 +15,6 @@ def clean_var_for_emit(value):
     else:
         return value
 
-def create_loopback_socketio():
-    sio = socketio_client.Client()
-    @sio.event
-    def connect():
-        pass
-    sio.connect('ws://localhost:{}/?rely=true'.format(port))
-    rely_clients[threading.get_ident()] = sio
-    return sio
-    
 def process_variable_changes(socketio, classname, name, value, old_value, debug_message=None):
     if serverstarted and name != "serverstarted":
         if debug_message is not None:
