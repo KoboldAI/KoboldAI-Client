@@ -1189,7 +1189,7 @@ class KoboldWorldInfo(object):
         if self.tokenizer is not None:
             token_length = len(self.tokenizer.encode(content))
         else:
-            token_length = None
+            token_length = 0
         if folder is None:
             folder = "root"
         

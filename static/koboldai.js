@@ -275,6 +275,7 @@ function do_prompt(data) {
 		item.append(span);
 		item.setAttribute("old_text", data.value)
 		item.classList.remove("pulse");
+		assign_world_info_to_action(item, null);
 	}
 	//if we have a prompt we need to disable the theme area, or enable it if we don't
 	if (data.value != "") {
@@ -289,6 +290,7 @@ function do_prompt(data) {
 		document.getElementById('input_text').disabled = false;
 		document.getElementById('themerow').classList.remove("hidden");
 	}
+	
 }
 
 function do_story_text_length_updates(data) {
