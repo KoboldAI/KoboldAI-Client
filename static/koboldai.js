@@ -2875,6 +2875,6 @@ $(document).ready(function(){
 			saveTweaks();
 		});
 
-		if (enabledTweaks.includes(path)) toggle.click();
+		if (enabledTweaks.includes(path)) $(toggle).bootstrapToggle("on");
 	}
 });
