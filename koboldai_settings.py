@@ -366,7 +366,7 @@ class settings(object):
 class model_settings(settings):
     local_only_variables = ['badwordsids', 'apikey', 'tqdm', 'socketio', 'default_preset']
     no_save_variables = ['tqdm', 'tqdm_progress', 'tqdm_rem_time', 'socketio', 'modelconfig', 'custmodpth', 'generated_tkns', 
-                         'loaded_layers', 'total_layers', 'total_download_chunks', 'downloaded_chunks']
+                         'loaded_layers', 'total_layers', 'total_download_chunks', 'downloaded_chunks', 'presets', 'default_preset']
     settings_name = "model"
     def __init__(self, socketio):
         self.socketio = socketio
@@ -733,9 +733,14 @@ class system_settings(settings):
         
         
     def __setattr__(self, name, value):
+        if name == "abort":
+            print("setting abort")
         new_variable = name not in self.__dict__
         old_value = getattr(self, name, None)
         super().__setattr__(name, value)
+        if name == "abort":
+            print("set abort to {}".format(self.abort))
+        
         #Put variable change actions here
         if name == 'serverstarted':
             global serverstarted
@@ -744,7 +749,11 @@ class system_settings(settings):
             process_variable_changes(self.socketio, self.__class__.__name__.replace("_settings", ""), name, value, old_value)
             
             if name == "aibusy" and value == False:
+                print("resetting abort as AI busy was set to false")
                 koboldai_vars.abort = False
+                
+        if name == "abort":
+            print("set abort to {}".format(self.abort))
         
 class KoboldStoryRegister(object):
     def __init__(self, socketio, story_settings, koboldai_vars, tokenizer=None, sequence=[]):

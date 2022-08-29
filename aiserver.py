@@ -4042,6 +4042,8 @@ def actionsubmit(data, actionmode=0, force_submit=False, force_prompt_gen=False,
             koboldai_vars.submission = re.sub(r"[^\S\r\n]*([\r\n]*)$", r"\1", koboldai_vars.submission)  # Remove trailing whitespace, excluding newlines
             data = koboldai_vars.submission
             if(not force_submit and len(data.strip()) == 0):
+                set_aibusy(0)
+                socketio.emit("error", "No prompt or random story theme entered", broadcast=True, room="UI_2")
                 assert False
             # Start the game
             koboldai_vars.gamestarted = True
@@ -7096,7 +7098,9 @@ def UI_2_submit(data):
 #==================================================================#
 @socketio.on('abort')
 def UI_2_abort(data):
+    print("got abort")
     koboldai_vars.abort = True
+    print(koboldai_vars.abort)
 
  
 #==================================================================#
