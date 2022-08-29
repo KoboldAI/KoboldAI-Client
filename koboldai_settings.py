@@ -812,6 +812,7 @@ class KoboldStoryRegister(object):
             
     def append(self, text):
         self.clear_unused_options()
+        print("setting action_count {} -> {}".format(self.action_count, self.action_count+1))
         self.action_count+=1
         if self.action_count in self.actions:
             if self.actions[self.action_count]["Selected Text"] != text:
@@ -947,6 +948,7 @@ class KoboldStoryRegister(object):
                 del self.actions[action_step]['Options'][option_number]
                 #If this is the current spot in the story, advance
                 if action_step-1 == self.action_count:
+                    print("setting action_count {} -> {}".format(self.action_count, self.action_count+1))
                     self.action_count+=1
                     self.socketio.emit("var_changed", {"classname": "actions", "name": "Action Count", "old_value": None, "value":self.action_count}, broadcast=True, room="UI_2")
                 process_variable_changes(self.socketio, "story", 'actions', {"id": action_step, 'action':  self.actions[action_step]}, None)
@@ -961,6 +963,7 @@ class KoboldStoryRegister(object):
             self.actions[action_id]["Options"].append({"text": self.actions[action_id]["Selected Text"], "Pinned": False, "Previous Selection": True, "Edited": False})
             self.actions[action_id]["Selected Text"] = ""
             self.actions[action_id]['Selected Text Length'] = 0
+            print("setting action_count {} -> {}".format(self.action_count, self.action_count-1))
             self.action_count -= 1
             process_variable_changes(self.socketio, "story", 'actions', {"id": action_id, 'action':  self.actions[action_id]}, None)
             self.set_game_saved()
@@ -1051,7 +1054,6 @@ class KoboldStoryRegister(object):
             process_variable_changes(self.socketio, "story", 'actions', {"id": self.action_count+1, 'action':  self.actions[self.action_count+1]}, None)
     
     def set_probabilites(self, probabilities, action_id=None):
-        print(probabilities)
         if action_id is None:
             action_id = self.action_count
         if action_id in self.actions:

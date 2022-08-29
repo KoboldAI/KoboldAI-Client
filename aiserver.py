@@ -4706,11 +4706,13 @@ def generate(txt, minimum, maximum, found_entries=None):
     else:
         genout = [{"generated_text": utils.decodenewlines(tokenizer.decode(tokens[-already_generated:]))} for tokens in genout]
     print([applyoutputformatting(x["generated_text"]) for x in genout])
-    koboldai_vars.actions.append_options([applyoutputformatting(x["generated_text"]) for x in genout])
-    genout = [{"generated_text": x['text']} for x in koboldai_vars.actions.get_current_options()]
+    
     if(len(genout) == 1):
         genresult(genout[0]["generated_text"])
+        #koboldai_vars.actions.append(applyoutputformatting(genout[0]["generated_text"]))
     else:
+        koboldai_vars.actions.append_options([applyoutputformatting(x["generated_text"]) for x in genout])
+        genout = [{"generated_text": x['text']} for x in koboldai_vars.actions.get_current_options()]
         if(koboldai_vars.lua_koboldbridge.restart_sequence is not None and koboldai_vars.lua_koboldbridge.restart_sequence > 0):
             genresult(genout[koboldai_vars.lua_koboldbridge.restart_sequence-1]["generated_text"])
         else:
@@ -7115,7 +7117,7 @@ def UI_2_redo(data):
 @socketio.on('retry')
 def UI_2_retry(data):
     
-    if len(koboldai_vars.actions.get_current_options()) == 0:
+    if len(koboldai_vars.actions.get_current_options_no_edits()) == 0:
         UI_2_back(None)
     koboldai_vars.actions.clear_unused_options()
     koboldai_vars.lua_koboldbridge.feedback = None
