@@ -7322,12 +7322,21 @@ def UI_2_export_world_info_folder():
     else:
         data = koboldai_vars.worldinfo_v2.to_json()
         folder = koboldai_vars.story_name
-        
     return Response(
-        data,
+        json.dumps(data, indent="\t"),
         mimetype="application/json",
         headers={"Content-disposition":
-                 "attachment; filename={}_world_info.json".format(folder)})
+                 "attachment; filename={}_world_info.json".format(folder)}
+        )
+
+#==================================================================#
+# Event triggered when user exports world info folder
+#==================================================================#
+@socketio.on('upload_world_info_folder')
+def UI_2_upload_world_info_folder(data):
+    json_data = json.loads(data['data'])
+    koboldai_vars.worldinfo_v2.load_json(json_data, folder=data['folder'])
+
 
 #==================================================================#
 # Event triggered when user edits phrase biases

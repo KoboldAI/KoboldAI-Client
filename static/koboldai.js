@@ -1479,6 +1479,7 @@ function world_info_folder(data) {
 			title.addEventListener('dragover', dragOver);
 			title.addEventListener('dragleave', dragLeave);
 			title.addEventListener('drop', drop);
+			title.classList.add("WI_Folder_Header");
 			collapse_icon = document.createElement("span");
 			collapse_icon.id = "world_info_folder_collapse_"+folder_name;
 			collapse_icon.classList.add("wi_folder_collapser");
@@ -1490,6 +1491,7 @@ function world_info_folder(data) {
 								document.getElementById('world_info_folder_expand_'+this.getAttribute("folder")).classList.remove('hidden');
 								this.classList.add("hidden");
 							};
+			collapse_icon.classList.add("expand")
 			title.append(collapse_icon);
 			expand_icon = document.createElement("span");
 			expand_icon.id = "world_info_folder_expand_"+folder_name;
@@ -1502,12 +1504,14 @@ function world_info_folder(data) {
 								document.getElementById('world_info_folder_collapse_'+this.getAttribute("folder")).classList.remove('hidden');
 								this.classList.add("hidden");
 							};
+			expand_icon.classList.add("expand")
 			expand_icon.classList.add("hidden");
 			title.append(expand_icon);
 			icon = document.createElement("span");
 			icon.classList.add("material-icons-outlined");
 			icon.setAttribute("folder", folder_name);
 			icon.textContent = "folder";
+			icon.classList.add("folder");
 			title.append(icon);
 			title_text = document.createElement("span");
 			title_text.classList.add("wi_title");
@@ -1520,16 +1524,52 @@ function world_info_folder(data) {
 					socket.emit("Rename_World_Info_Folder", {"old_folder": this.getAttribute("original_text"), "new_folder": this.textContent});
 				}
 			}
+			title_text.classList.add("title");
 			title.append(title_text);
 			//create download button
 			download = document.createElement("span");
 			download.classList.add("material-icons-outlined");
+			download.classList.add("cursor");
 			download.setAttribute("folder", folder_name);
 			download.textContent = "file_download";
 			download.onclick = function () {
 								document.getElementById('download_iframe').src = 'export_world_info_folder?folder='+this.getAttribute("folder");
 							};
+			download.classList.add("download");
 			title.append(download);
+			
+			//upload element
+			upload_element = document.createElement("input");
+			upload_element.id = "wi_upload_element_"+folder_name;
+			upload_element.type = "file";
+			upload_element.setAttribute("folder", folder_name);
+			upload_element.classList.add("upload_box");
+			upload_element.onchange = function () {
+											var fileList = this.files;
+											for (file of fileList) {
+												reader = new FileReader();
+												reader.folder = this.getAttribute("folder");
+												reader.onload = function (event) {
+													socket.emit("upload_world_info_folder", {'folder': event.target.folder, 'filename': file.name, "data": event.target.result});
+												};
+												reader.readAsArrayBuffer(file);
+												
+											}
+										};
+			title.append(upload_element);
+			
+			//create upload button
+			upload = document.createElement("span");
+			upload.classList.add("material-icons-outlined");
+			upload.classList.add("cursor");
+			upload.setAttribute("folder", folder_name);
+			upload.textContent = "file_upload";
+			upload.onclick = function () {
+								document.getElementById('wi_upload_element_'+this.getAttribute("folder")).click();
+								//document.getElementById('download_iframe').src = 'export_world_info_folder?folder='+this.getAttribute("folder");
+							};
+			upload.classList.add("upload");
+			title.append(upload);
 			folder.append(title);
 			
 			//create add button

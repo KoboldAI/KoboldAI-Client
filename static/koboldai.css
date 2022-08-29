@@ -829,6 +829,36 @@ td.server_vars {
 	text-align: center;
 }
 
+.WI_Folder_Header {
+	margin-left: 10px;
+	display: grid;
+	grid-template-areas: "folder expand title upload_box upload download";
+	grid-template-columns: 15px 30px auto  0px 25px 25px;
+}
+
+.WI_Folder_Header .folder {
+	grid-area: folder;
+}
+
+.WI_Folder_Header .expand {
+	grid-area: expand;
+}
+
+.WI_Folder_Header .title {
+	grid-area: title;
+}
+
+.WI_Folder_Header .upload_box {
+	grid-area: upload_box;
+	display: none;
+}
+
+.WI_Folder_Header .download {
+	grid-area: download;
+}
+
+
+
 #world_info_folder_root.WI_Folder {
 	margin-left: 10px;
 }
