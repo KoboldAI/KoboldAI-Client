@@ -345,12 +345,12 @@ input[type="range"]::-ms-fill-upper {
 .SideMenu {
 	height: 100%;
 	z-index: 4;
-	width: var(--flyout_menu_closed_width);
+	width: var(--flyout_menu_width);
 	box-shadow: var(--left_menu_strong_shadow);
 	position: fixed;
 	z-index: 3;
 	top: 0;
-	left: 0;
+	right: 100%;
 	background-color: var(--flyout_background);
 	overflow-x: hidden;
 	transition: 0.5s;
@@ -360,23 +360,15 @@ input[type="range"]::-ms-fill-upper {
 
 @media only screen and (min-aspect-ratio: 7/5) {
 .SideMenu.pinned {
-	height: 100%;
-	width: var(--flyout_menu_width);
-	position: fixed;
-	z-index: 3;
-	top: 0;
-	left: 0;
+	right: calc(100% - var(--flyout_menu_width));
 	background-color: var(--flyout_background_pinned);
 	box-shadow: var(--left_menu_light_shadow);
-	overflow-x: hidden;
-	transition: 0.5s;
 	border-radius: 0px;
 }
 }
 
 .SideMenu.open {
-  width: var(--flyout_menu_width);
-  z-index: 3;
+	right: calc(100% - var(--flyout_menu_width));
 }
 
 .SideMenu .flyout_menu_contents {
@@ -707,7 +699,6 @@ input[type="range"]::-ms-fill-upper {
 .rightSideMenu {
 	z-index: 3;
 	height: 100%;
-	width: 0;
 	position: fixed;
 	box-shadow: var(--right_menu_strong_shadow);
 	z-index: 3;
@@ -719,20 +710,20 @@ input[type="range"]::-ms-fill-upper {
 	transition: 0.5s;
 	padding-top: 8px;
 	border-radius: var(--radius_unpinned_menu) 0px 0px var(--radius_unpinned_menu);
-	
+	width: var(--flyout_menu_width);
+	left: 100%;
 }
 
 .rightSideMenu.open {
-  width: var(--flyout_menu_width);
-  z-index: 3;
+	left: calc(100% - var(--flyout_menu_width));
 }
 
 @media only screen and (min-aspect-ratio: 7/5) {
 /*  Desktop Mode  */
 .rightSideMenu.pinned {
-  width: var(--flyout_menu_width);
-  box-shadow: var(--right_menu_light_shadow);
-  border-radius: 0px 0px 0px 0px;
+	left: calc(100% - var(--flyout_menu_width));
+	box-shadow: var(--right_menu_light_shadow);
+	border-radius: 0px 0px 0px 0px;
 }
 }
 
