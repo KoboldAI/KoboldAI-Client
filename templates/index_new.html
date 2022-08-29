@@ -112,5 +112,32 @@
 		{% include 'templates.html' %}
 	</div>
 	<iframe id="download_iframe" style="display:none;"></iframe>
+
+	<div id="context-viewer-container" class="hidden">
+		<div id="context-viewer">
+			<div id="context-viewer-header">
+				<h3 class="noselect">Context Viewer</h3>
+				<div id="context-viewer-header-right">
+					<div>
+						<span class="noselect">Key:</span>
+						<div>
+							<span class="noselect context-block-example context-sp">Soft Prompt</span>
+							<span class="noselect context-block-example context-prompt">Prompt</span>
+							<span class="noselect context-block-example context-wi">World Info</span>
+							<span class="noselect context-block-example context-memory">Memory</span>
+							<span class="noselect context-block-example context-an">Author's Note</span>
+							<span class="noselect context-block-example context-action">Action</span>
+						</div>
+					</div>
+					<span id="context-viewer-close" class="material-icons-outlined">close</span>
+				</div>
+			</div>
+			<span class="help_text">
+				Context is the text the AI is sent when you ask it to generate text.
+				As the context is limited in size, you can use the Context Viewer to check if things you want the AI to know are in the context.
+			</span>
+			<div id="context-container"></div>
+		</div>
+	</div>
 </body>
 </html>
