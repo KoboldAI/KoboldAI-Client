@@ -1035,7 +1035,7 @@ body {
 	margin-top: 10px;
 	vertical-align: bottom;
 	font-family: "Helvetica Neue",Helvetica,Arial,sans-serif;
-	font-size: calc(14px + var(--font_size_adjustment));
+	font-size: calc((1em*var(--game_screen_font_size_adjustment)) + var(--font_size_adjustment));
 	line-height: 1.42857143;
 }
 
