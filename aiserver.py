@@ -7341,6 +7341,30 @@ def UI_2_upload_world_info_folder(data):
     json_data = json.loads(data['data'])
     koboldai_vars.worldinfo_v2.load_json(json_data, folder=data['folder'])
 
+@socketio.on('import_world_info')
+def UI_2_import_world_info(data):
+    wi_data = data["data"]
+    uids = {}
+
+    for folder_name, children in wi_data["folders"].items():
+        koboldai_vars.worldinfo_v2.add_folder(folder_name)
+        for child in children:
+            # Child is index
+            if child not in uids:
+                entry_data = wi_data["entries"][str(child)]
+                uids[child] = koboldai_vars.worldinfo_v2.add_item(
+                    title=entry_data["title"],
+                    key=entry_data["key"],
+                    keysecondary=entry_data["keysecondary"],
+                    folder=folder_name,
+                    constant=entry_data["constant"],
+                    manual_text=entry_data["manual_text"],
+                    comment=entry_data["comment"],
+                    use_wpp=entry_data["use_wpp"],
+                    wpp=entry_data["wpp"],
+                )
+            koboldai_vars.worldinfo_v2.add_item_to_folder(uids[child], folder_name)
+
 
 #==================================================================#
 # Event triggered when user edits phrase biases
