@@ -4718,11 +4718,13 @@ def generate(txt, minimum, maximum, found_entries=None):
     else:
         genout = [{"generated_text": utils.decodenewlines(tokenizer.decode(tokens[-already_generated:]))} for tokens in genout]
     print([applyoutputformatting(x["generated_text"]) for x in genout])
-    koboldai_vars.actions.append_options([applyoutputformatting(x["generated_text"]) for x in genout])
-    genout = [{"generated_text": x['text']} for x in koboldai_vars.actions.get_current_options()]
+    
     if(len(genout) == 1):
         genresult(genout[0]["generated_text"])
+        #koboldai_vars.actions.append(applyoutputformatting(genout[0]["generated_text"]))
     else:
+        koboldai_vars.actions.append_options([applyoutputformatting(x["generated_text"]) for x in genout])
+        genout = [{"generated_text": x['text']} for x in koboldai_vars.actions.get_current_options()]
         if(koboldai_vars.lua_koboldbridge.restart_sequence is not None and koboldai_vars.lua_koboldbridge.restart_sequence > 0):
             genresult(genout[koboldai_vars.lua_koboldbridge.restart_sequence-1]["generated_text"])
         else:
@@ -6569,7 +6571,8 @@ def final_startup():
         file = open("settings/" + getmodelname().replace('/', '_') + ".settings", "r")
         js   = json.load(file)
         if(koboldai_vars.allowsp and "softprompt" in js and type(js["softprompt"]) is str and all(q not in js["softprompt"] for q in ("..", ":")) and (len(js["softprompt"]) != 0 and all(js["softprompt"][0] not in q for q in ("/", "\\")))):
-            spRequest("softprompts/"+js["softprompt"])
+            if valid_softprompt("softprompts/"+js["softprompt"]):
+                spRequest("softprompts/"+js["softprompt"])
         else:
             koboldai_vars.spfilename = ""
         file.close()
@@ -7127,7 +7130,7 @@ def UI_2_redo(data):
 @socketio.on('retry')
 def UI_2_retry(data):
     
-    if len(koboldai_vars.actions.get_current_options()) == 0:
+    if len(koboldai_vars.actions.get_current_options_no_edits()) == 0:
         UI_2_back(None)
     koboldai_vars.actions.clear_unused_options()
     koboldai_vars.lua_koboldbridge.feedback = None
@@ -7307,6 +7310,33 @@ def UI_2_create_world_info_folder(data):
 @socketio.on('delete_world_info')
 def UI_2_delete_world_info(uid):
     koboldai_vars.worldinfo_v2.delete(int(uid))
+
+#==================================================================#
+# Event triggered when user exports world info folder
+#==================================================================#
+@app.route('/export_world_info_folder')
+def UI_2_export_world_info_folder():
+    if 'folder' in request.args:
+        data = koboldai_vars.worldinfo_v2.to_json(folder=request.args['folder'])
+        folder = request.args['folder']
+    else:
+        data = koboldai_vars.worldinfo_v2.to_json()
+        folder = koboldai_vars.story_name
+    return Response(
+        json.dumps(data, indent="\t"),
+        mimetype="application/json",
+        headers={"Content-disposition":
+                 "attachment; filename={}_world_info.json".format(folder)}
+        )
+
+#==================================================================#
+# Event triggered when user exports world info folder
+#==================================================================#
+@socketio.on('upload_world_info_folder')
+def UI_2_upload_world_info_folder(data):
+    json_data = json.loads(data['data'])
+    koboldai_vars.worldinfo_v2.load_json(json_data, folder=data['folder'])
+
 
 #==================================================================#
 # Event triggered when user edits phrase biases

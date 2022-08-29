@@ -198,6 +198,22 @@ input[type="range"]::-ms-fill-upper {
 	margin: 2px;
 }
 
+#story_menu_author .setting_container {
+	display: grid;
+	grid-template-areas: "label value"
+						 "item item"
+						 "minlabel maxlabel";
+	grid-template-rows: 20px 23px 20px;
+	grid-template-columns: 288px 60px;
+	row-gap: 0.2em;
+	background-color: var(--setting_background);
+	color: var(--setting_text);
+	border-radius: var(--radius_settings_background);
+	padding: 3px;
+	margin: 2px;
+}
+
+
 .setting_container_single {
 	display: grid;
 	grid-template-areas: "label"
@@ -813,6 +829,36 @@ td.server_vars {
 	text-align: center;
 }
 
+.WI_Folder_Header {
+	margin-left: 10px;
+	display: grid;
+	grid-template-areas: "folder expand title upload_box upload download";
+	grid-template-columns: 15px 30px auto  0px 25px 25px;
+}
+
+.WI_Folder_Header .folder {
+	grid-area: folder;
+}
+
+.WI_Folder_Header .expand {
+	grid-area: expand;
+}
+
+.WI_Folder_Header .title {
+	grid-area: title;
+}
+
+.WI_Folder_Header .upload_box {
+	grid-area: upload_box;
+	display: none;
+}
+
+.WI_Folder_Header .download {
+	grid-area: download;
+}
+
+
+
 #world_info_folder_root.WI_Folder {
 	margin-left: 10px;
 }
@@ -1019,7 +1065,7 @@ body {
 	margin-top: 10px;
 	vertical-align: bottom;
 	font-family: "Helvetica Neue",Helvetica,Arial,sans-serif;
-	font-size: calc(14px + var(--font_size_adjustment));
+	font-size: calc((1em*var(--game_screen_font_size_adjustment)) + var(--font_size_adjustment));
 	line-height: 1.42857143;
 }
 

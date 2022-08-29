@@ -20,6 +20,7 @@ socket.on('oai_engines', function(data){oai_engines(data);});
 socket.on('buildload', function(data){buildload(data);});
 socket.on('error_popup', function(data){error_popup(data);});
 socket.on("world_info_entry", function(data){world_info_entry(data);});
+socket.on("world_info_entry_used_in_game", function(data){world_info_entry_used_in_game(data);});
 socket.on("world_info_folder", function(data){world_info_folder(data);});
 socket.on("delete_new_world_info_entry", function(data){document.getElementById("world_info_-1").remove();});
 socket.on("delete_world_info_entry", function(data){document.getElementById("world_info_"+data).remove();});
@@ -232,7 +233,9 @@ function do_story_text_updates(data) {
 		item.setAttribute("world_info_uids", "");
 		item.classList.remove("pulse")
 		item.scrollIntoView();
-		assign_world_info_to_action(item, null);
+		if (item.textContent != "") {
+			assign_world_info_to_action(item, null);
+		}
 	} else {
 		var span = document.createElement("span");
 		span.id = 'Selected Text Chunk '+data.value.id;
@@ -256,7 +259,9 @@ function do_story_text_updates(data) {
 		story_area.append(span);
 		clearTimeout(game_text_scroll_timeout);
 		game_text_scroll_timeout = setTimeout(function() {span.scrollIntoView(false);}, 200);
-		assign_world_info_to_action(span, null);
+		if (span.textContent != "") {
+			assign_world_info_to_action(span, null);
+		}
 	}
 }
 
@@ -1185,8 +1190,18 @@ function load_model() {
 	document.getElementById("loadmodelcontainer").classList.add("hidden");
 }
 
+function world_info_entry_used_in_game(data) {
+	world_info_data[data.uid]['used_in_game'] = data['used_in_game'];
+	world_info_card = document.getElementById("world_info_"+data.uid);
+	if (data.used_in_game) {
+		world_info_card.classList.add("used_in_game");
+	} else {
+		world_info_card.classList.remove("used_in_game");
+	}
+}
+
 function world_info_entry(data) {
-	//console.log(data);
+
 	
 	world_info_data[data.uid] = data;
 	
@@ -1464,6 +1479,7 @@ function world_info_folder(data) {
 			title.addEventListener('dragover', dragOver);
 			title.addEventListener('dragleave', dragLeave);
 			title.addEventListener('drop', drop);
+			title.classList.add("WI_Folder_Header");
 			collapse_icon = document.createElement("span");
 			collapse_icon.id = "world_info_folder_collapse_"+folder_name;
 			collapse_icon.classList.add("wi_folder_collapser");
@@ -1475,6 +1491,7 @@ function world_info_folder(data) {
 								document.getElementById('world_info_folder_expand_'+this.getAttribute("folder")).classList.remove('hidden');
 								this.classList.add("hidden");
 							};
+			collapse_icon.classList.add("expand")
 			title.append(collapse_icon);
 			expand_icon = document.createElement("span");
 			expand_icon.id = "world_info_folder_expand_"+folder_name;
@@ -1487,12 +1504,14 @@ function world_info_folder(data) {
 								document.getElementById('world_info_folder_collapse_'+this.getAttribute("folder")).classList.remove('hidden');
 								this.classList.add("hidden");
 							};
+			expand_icon.classList.add("expand")
 			expand_icon.classList.add("hidden");
 			title.append(expand_icon);
 			icon = document.createElement("span");
 			icon.classList.add("material-icons-outlined");
 			icon.setAttribute("folder", folder_name);
 			icon.textContent = "folder";
+			icon.classList.add("folder");
 			title.append(icon);
 			title_text = document.createElement("span");
 			title_text.classList.add("wi_title");
@@ -1505,8 +1524,54 @@ function world_info_folder(data) {
 					socket.emit("Rename_World_Info_Folder", {"old_folder": this.getAttribute("original_text"), "new_folder": this.textContent});
 				}
 			}
+			title_text.classList.add("title");
 			title.append(title_text);
+			//create download button
+			download = document.createElement("span");
+			download.classList.add("material-icons-outlined");
+			download.classList.add("cursor");
+			download.setAttribute("folder", folder_name);
+			download.textContent = "file_download";
+			download.onclick = function () {
+								document.getElementById('download_iframe').src = 'export_world_info_folder?folder='+this.getAttribute("folder");
+							};
+			download.classList.add("download");
+			title.append(download);
+			
+			//upload element
+			upload_element = document.createElement("input");
+			upload_element.id = "wi_upload_element_"+folder_name;
+			upload_element.type = "file";
+			upload_element.setAttribute("folder", folder_name);
+			upload_element.classList.add("upload_box");
+			upload_element.onchange = function () {
+											var fileList = this.files;
+											for (file of fileList) {
+												reader = new FileReader();
+												reader.folder = this.getAttribute("folder");
+												reader.onload = function (event) {
+													socket.emit("upload_world_info_folder", {'folder': event.target.folder, 'filename': file.name, "data": event.target.result});
+												};
+												reader.readAsArrayBuffer(file);
+												
+											}
+										};
+			title.append(upload_element);
+			
+			//create upload button
+			upload = document.createElement("span");
+			upload.classList.add("material-icons-outlined");
+			upload.classList.add("cursor");
+			upload.setAttribute("folder", folder_name);
+			upload.textContent = "file_upload";
+			upload.onclick = function () {
+								document.getElementById('wi_upload_element_'+this.getAttribute("folder")).click();
+								//document.getElementById('download_iframe').src = 'export_world_info_folder?folder='+this.getAttribute("folder");
+							};
+			upload.classList.add("upload");
+			title.append(upload);
 			folder.append(title);
+			
 			//create add button
 			new_icon = document.createElement("span");
 			new_icon.classList.add("wi_add_button");
@@ -2049,7 +2114,7 @@ function update_context(data) {
 	$(".context-block").remove();
 
 	for (const entry of data) {
-		console.log(entry);
+		//console.log(entry);
 		let contextClass = "context-" + ({
 			soft_prompt: "sp",
 			prompt: "prompt",
@@ -2310,6 +2375,8 @@ function find_wi_container(e) {
 	while (true) {
 		if (e.parentElement == document) {
 			return e;
+		} else if (e.classList.contains('WI_Folder')) {
+			return e;
 		} else if (e.tagName == 'H2') {
 			return e.parentElement;
 		} else if (typeof e.id == 'undefined') {
@@ -2330,6 +2397,7 @@ function dragEnter(e) {
 
 function dragOver(e) {
     e.preventDefault();
+	//console.log(e.target);
 	element = find_wi_container(e.target);
     element.classList.add('drag-over');
 }
@@ -2354,7 +2422,7 @@ function drop(e) {
 
 	
 	//check if we're droping on a folder, and then append it to the folder
-	if (element.children[0].tagName == "H2") {
+	if (element.classList.contains('WI_Folder')) {
 		//element.append(draggable);
 		socket.emit("wi_set_folder", {'dragged_id': dragged_id, 'folder': drop_id});
 	} else {
@@ -2507,11 +2575,14 @@ function assign_world_info_to_action(action_item, uid) {
 													highlight_text += " ";
 												}
 												var after_highlight_text = span_text.slice((end_word-passed_words)).join(" ")+" ";
-												//console.log(span.textContent);
+												if (after_highlight_text[0] == ' ') {
+													after_highlight_text = after_highlight_text.substring(1);
+												}
+												//console.log("'"+span.textContent+"'");
 												//console.log(keyword);
-												//console.log(before_highlight_text);
-												//console.log(highlight_text);
-												//console.log(after_highlight_text);
+												//console.log("'"+before_highlight_text+"'");
+												//console.log("'"+highlight_text+"'");
+												//console.log("'"+after_highlight_text+"'");
 												//console.log("passed: "+passed_words+" start:" + start_word + " end: "+end_word+" continue: "+(end_word-passed_words));
 												//console.log(null);
 												var before_span = document.createElement("span");

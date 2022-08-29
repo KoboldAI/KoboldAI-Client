@@ -847,6 +847,7 @@ class KoboldStoryRegister(object):
             
     def append(self, text):
         self.clear_unused_options()
+        print("setting action_count {} -> {}".format(self.action_count, self.action_count+1))
         self.action_count+=1
         if self.action_count in self.actions:
             if self.actions[self.action_count]["Selected Text"] != text:
@@ -982,6 +983,7 @@ class KoboldStoryRegister(object):
                 del self.actions[action_step]['Options'][option_number]
                 #If this is the current spot in the story, advance
                 if action_step-1 == self.action_count:
+                    print("setting action_count {} -> {}".format(self.action_count, self.action_count+1))
                     self.action_count+=1
                     self.socketio.emit("var_changed", {"classname": "actions", "name": "Action Count", "old_value": None, "value":self.action_count}, broadcast=True, room="UI_2")
                 process_variable_changes(self.socketio, "story", 'actions', {"id": action_step, 'action':  self.actions[action_step]}, None)
@@ -996,6 +998,7 @@ class KoboldStoryRegister(object):
             self.actions[action_id]["Options"].append({"text": self.actions[action_id]["Selected Text"], "Pinned": False, "Previous Selection": True, "Edited": False})
             self.actions[action_id]["Selected Text"] = ""
             self.actions[action_id]['Selected Text Length'] = 0
+            print("setting action_count {} -> {}".format(self.action_count, self.action_count-1))
             self.action_count -= 1
             process_variable_changes(self.socketio, "story", 'actions', {"id": action_id, 'action':  self.actions[action_id]}, None)
             self.set_game_saved()
@@ -1086,7 +1089,6 @@ class KoboldStoryRegister(object):
             process_variable_changes(self.socketio, "story", 'actions', {"id": self.action_count+1, 'action':  self.actions[self.action_count+1]}, None)
     
     def set_probabilites(self, probabilities, action_id=None):
-        print(probabilities)
         if action_id is None:
             action_id = self.action_count
         if action_id in self.actions:
@@ -1353,27 +1355,38 @@ class KoboldWorldInfo(object):
         for uid in self.world_info:
             self.socketio.emit("world_info_entry", self.world_info[uid], broadcast=True, room="UI_2")
     
-    def to_json(self):
-        return {
-                "folders": {x: self.world_info_folder[x] for x in self.world_info_folder},
-                "entries": self.world_info
-               }
+    def to_json(self, folder=None):
+        if folder is None:
+            return {
+                    "folders": {x: self.world_info_folder[x] for x in self.world_info_folder},
+                    "entries": self.world_info
+                   }
+        else:
+            return {
+                    "folders": {x: self.world_info_folder[x] for x in self.world_info_folder if x == folder},
+                    "entries": {x: self.world_info[x] for x in self.world_info if self.world_info[x]['folder'] == folder}
+                   }
     
-    def load_json(self, data):
-        self.world_info = {int(x): data['entries'][x] for x in data['entries']}
-        self.world_info_folder = data['folders']
-        #Make sure we have all the appropriate variables:
-        for item in self.world_info:
-            for column in ["uid","title","key","keysecondary","folder","constant","content","comment","token_length","selective","used_in_game"]:
-                if column not in item:
-                    item[column] = None
-        try:
-            self.sync_world_info_to_old_format()
-        except:
-            print(self.world_info)
-            print(data)
-            raise
-        self.send_to_ui()
+    def load_json(self, data, folder=None):
+        if folder is None:
+            self.world_info = {int(x): data['entries'][x] for x in data['entries']}
+            self.world_info_folder = data['folders']
+            #Make sure we have all the appropriate variables:
+            for item in self.world_info:
+                for column in ["uid","title","key","keysecondary","folder","constant","content","comment","token_length","selective","used_in_game"]:
+                    if column not in item:
+                        item[column] = None
+            try:
+                self.sync_world_info_to_old_format()
+            except:
+                print(self.world_info)
+                print(data)
+                raise
+            self.send_to_ui()
+        else:
+            for uid, item in data['entries'].items():
+                self.add_item(item['title'], item['key'], item['keysecondary'], folder, item['constant'], item['manual_text'], item['comment'], 
+                                use_wpp=item['use_wpp'], wpp=item['wpp'])
     
     def sync_world_info_to_old_format(self):
         #Since the old UI uses world info entries for folders, we need to make some up
@@ -1430,11 +1443,11 @@ class KoboldWorldInfo(object):
         for key in self.world_info:
             if self.world_info[key]["used_in_game"] != self.world_info[key]["constant"]:
                 self.world_info[key]["used_in_game"] = self.world_info[key]["constant"]
-                self.socketio.emit("world_info_entry", self.world_info[key], broadcast=True, room="UI_2")
+                self.socketio.emit("world_info_entry_used_in_game", {"uid": key, "used_in_game": False}, broadcast=True, room="UI_2")
         
     def set_world_info_used(self, uid):
         self.world_info[uid]["used_in_game"] = True
-        self.socketio.emit("world_info_entry", self.world_info[uid], broadcast=True, room="UI_2")
+        self.socketio.emit("world_info_entry_used_in_game", {"uid": uid, "used_in_game": True}, broadcast=True, room="UI_2")
     
     def __setattr__(self, name, value):
         new_variable = name not in self.__dict__
