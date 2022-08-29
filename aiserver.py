@@ -7311,6 +7311,24 @@ def UI_2_delete_world_info(uid):
     koboldai_vars.worldinfo_v2.delete(int(uid))
 
 #==================================================================#
+# Event triggered when user exports world info folder
+#==================================================================#
+@app.route('/export_world_info_folder')
+def UI_2_export_world_info_folder():
+    if 'folder' in request.args:
+        data = koboldai_vars.worldinfo_v2.to_json(folder=request.args['folder'])
+        folder = request.args['folder']
+    else:
+        data = koboldai_vars.worldinfo_v2.to_json()
+        folder = koboldai_vars.story_name
+        
+    return Response(
+        data,
+        mimetype="application/json",
+        headers={"Content-disposition":
+                 "attachment; filename={}_world_info.json".format(folder)})
+
+#==================================================================#
 # Event triggered when user edits phrase biases
 #==================================================================#
 @socketio.on('phrase_bias_update')

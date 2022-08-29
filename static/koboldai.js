@@ -1506,7 +1506,18 @@ function world_info_folder(data) {
 				}
 			}
 			title.append(title_text);
+			//create download button
+			download = document.createElement("span");
+			download.classList.add("material-icons-outlined");
+			download.setAttribute("folder", folder_name);
+			download.textContent = "file_download";
+			download.onclick = function () {
+								console.log('export_world_info_folder?folder='+this.getAttribute("folder"));
+								document.getElementById('download_iframe').src = 'export_world_info_folder?folder='+this.getAttribute("folder");
+							};
+			title.append(download);
 			folder.append(title);
+			
 			//create add button
 			new_icon = document.createElement("span");
 			new_icon.classList.add("wi_add_button");
@@ -2049,7 +2060,7 @@ function update_context(data) {
 	$(".context-block").remove();
 
 	for (const entry of data) {
-		console.log(entry);
+		//console.log(entry);
 		let contextClass = "context-" + ({
 			soft_prompt: "sp",
 			prompt: "prompt",
@@ -2310,6 +2321,8 @@ function find_wi_container(e) {
 	while (true) {
 		if (e.parentElement == document) {
 			return e;
+		} else if (e.classList.contains('WI_Folder')) {
+			return e;
 		} else if (e.tagName == 'H2') {
 			return e.parentElement;
 		} else if (typeof e.id == 'undefined') {
@@ -2330,6 +2343,7 @@ function dragEnter(e) {
 
 function dragOver(e) {
     e.preventDefault();
+	//console.log(e.target);
 	element = find_wi_container(e.target);
     element.classList.add('drag-over');
 }
@@ -2354,7 +2368,7 @@ function drop(e) {
 
 	
 	//check if we're droping on a folder, and then append it to the folder
-	if (element.children[0].tagName == "H2") {
+	if (element.classList.contains('WI_Folder')) {
 		//element.append(draggable);
 		socket.emit("wi_set_folder", {'dragged_id': dragged_id, 'folder': drop_id});
 	} else {

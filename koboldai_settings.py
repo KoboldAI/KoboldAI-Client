@@ -1355,11 +1355,17 @@ class KoboldWorldInfo(object):
         for uid in self.world_info:
             self.socketio.emit("world_info_entry", self.world_info[uid], broadcast=True, room="UI_2")
     
-    def to_json(self):
-        return {
-                "folders": {x: self.world_info_folder[x] for x in self.world_info_folder},
-                "entries": self.world_info
-               }
+    def to_json(self, folder=None):
+        if folder is None:
+            return {
+                    "folders": {x: self.world_info_folder[x] for x in self.world_info_folder},
+                    "entries": self.world_info
+                   }
+        else:
+            return {
+                    "folders": {x: self.world_info_folder[x] for x in self.world_info_folder if x == folder},
+                    "entries": {x: self.world_info[x] for x in self.world_info if self.world_info[x]['folder'] == folder}
+                   }
     
     def load_json(self, data):
         self.world_info = {int(x): data['entries'][x] for x in data['entries']}
