@@ -7502,6 +7502,11 @@ def put_model(body: ModelSelectionSchema):
         {api_validation_error_response}
         {api_server_busy_response}
     """
+    if vars.aibusy or vars.genseqs:
+        abort(Response(json.dumps({"detail": {
+            "msg": "Server is busy; please try again later.",
+            "type": "service_unavailable",
+        }}), mimetype="application/json", status=503))
     set_aibusy(1)
     old_model = vars.model
     vars.model = body.model.strip()
