@@ -204,7 +204,7 @@ input[type="range"]::-ms-fill-upper {
 						 "item item"
 						 "minlabel maxlabel";
 	grid-template-rows: 20px 23px 20px;
-	grid-template-columns: 294px 60px;
+	grid-template-columns: 288px 60px;
 	row-gap: 0.2em;
 	background-color: var(--setting_background);
 	color: var(--setting_text);
