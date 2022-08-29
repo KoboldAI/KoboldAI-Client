@@ -2847,6 +2847,75 @@ function detect_key_up(e) {
 	}
 }
 
+function loadNAILorebook(data) {
+	let lorebookVersion = data.lorebookVersion;
+	console.log(`Loading NAI lorebook version ${lorebookVersion}`);
+
+	// TODO: Make folder
+	let folder = "root";
+
+	let uid = -1;
+	for (item of document.getElementsByClassName('world_info_card')) {
+		if (parseInt(item.getAttribute("uid")) <= uid) {
+			uid = parseInt(item.getAttribute("uid")) - 1;
+		}
+	}
+
+	for (const entry of data.entries) {
+		console.log(entry);
+		// contextConfig: Object { suffix: "\n", tokenBudget: 2048, reservedTokens: 0, … }
+		// displayName: "Aboleth"
+		// enabled: true
+		// forceActivation: false
+		// keys: Array [ "Aboleth" ]
+		// lastUpdatedAt: 1624443329051
+		// searchRange: 1000
+		// text
+		data = {
+			"uid": uid,
+			"title": entry.displayName,
+			"key": entry.keys,
+			"keysecondary": [],
+			"folder": folder,
+			"constant": entry.forceActivation,
+			"content": "",//entry.text,
+			"manual_text": entry.text,
+			"comment": "",
+			"token_length": 0,
+			"selective": false,
+			"wpp": {"name": "", "type": "", "format": "W++", "attributes": {}},
+			"use_wpp": false,
+		};
+		uid--;
+		card = world_info_entry(data);
+		card.scrollIntoView(false);
+		console.log(card);
+	}
+
+}
+
+async function processDroppedFile(file) {
+	let extension = /.*\.(.*)/.exec(file.name)[1];
+	console.log("file is", file)
+
+	switch (extension) {
+		case "png":
+			// TODO: Support NovelAI's image lorebook cards. The format for those
+			// is base64-encoded JSON under a TXT key called "naidata".
+			console.warn("TODO: NAI LORECARDS");
+			return;
+		case "json":
+			// KoboldAI story (probably, parse to be sure.);
+			console.warn("TODO: KOBOLD STORY");
+			break;
+		case "lorebook":
+			// NovelAI lorebook, JSON encoded.
+			let data = JSON.parse(await file.text());
+			loadNAILorebook(data);
+			break;
+	}
+}
+
 $(document).ready(function(){
 	create_theming_elements();
 	document.onkeydown = detect_key_down;
@@ -2914,5 +2983,42 @@ $(document).ready(function(){
 
 	$(".token_breakdown").click(function() {
 		document.getElementById("context-viewer-container").classList.remove("hidden");
+	});
+
+	document.body.addEventListener("drop", function(e) {
+		e.preventDefault();
+		$("#file-upload-notice")[0].classList.add("hidden");
+
+		// items api
+		if (e.dataTransfer.items) {
+			for (const item of e.dataTransfer.items) {
+				if (item.kind !== "file") continue;
+				let file = item.getAsFile();
+				processDroppedFile(file);
+			}
+		} else {
+			for (const file of e.dataTransfer.files) {
+				processDroppedFile(file);
+			}
+		}
+	});
+
+	let lastTarget = null;
+
+	document.body.addEventListener("dragover", function(e) {
+		e.preventDefault();
+	});
+
+	document.body.addEventListener("dragenter", function(e) {
+		lastTarget = e.target;
+		console.log("start");
+		$("#file-upload-notice")[0].classList.remove("hidden");
+	});
+
+	document.body.addEventListener("dragleave", function(e) {
+		if (!(e.target === document || e.target === lastTarget)) return;
+
+		console.log("end")
+		$("#file-upload-notice")[0].classList.add("hidden");
 	});
 });
