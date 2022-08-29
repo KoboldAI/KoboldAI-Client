@@ -20,6 +20,7 @@ socket.on('oai_engines', function(data){oai_engines(data);});
 socket.on('buildload', function(data){buildload(data);});
 socket.on('error_popup', function(data){error_popup(data);});
 socket.on("world_info_entry", function(data){world_info_entry(data);});
+socket.on("world_info_entry_used_in_game", function(data){world_info_entry_used_in_game(data);});
 socket.on("world_info_folder", function(data){world_info_folder(data);});
 socket.on("delete_new_world_info_entry", function(data){document.getElementById("world_info_-1").remove();});
 socket.on("delete_world_info_entry", function(data){document.getElementById("world_info_"+data).remove();});
@@ -232,7 +233,9 @@ function do_story_text_updates(data) {
 		item.setAttribute("world_info_uids", "");
 		item.classList.remove("pulse")
 		item.scrollIntoView();
-		assign_world_info_to_action(item, null);
+		if (item.textContent != "") {
+			assign_world_info_to_action(item, null);
+		}
 	} else {
 		var span = document.createElement("span");
 		span.id = 'Selected Text Chunk '+data.value.id;
@@ -256,7 +259,9 @@ function do_story_text_updates(data) {
 		story_area.append(span);
 		clearTimeout(game_text_scroll_timeout);
 		game_text_scroll_timeout = setTimeout(function() {span.scrollIntoView(false);}, 200);
-		assign_world_info_to_action(span, null);
+		if (span.textContent != "") {
+			assign_world_info_to_action(span, null);
+		}
 	}
 }
 
@@ -1185,8 +1190,18 @@ function load_model() {
 	document.getElementById("loadmodelcontainer").classList.add("hidden");
 }
 
+function world_info_entry_used_in_game(data) {
+	world_info_data[data.uid]['used_in_game'] = data['used_in_game'];
+	world_info_card = document.getElementById("world_info_"+data.uid);
+	if (data.used_in_game) {
+		world_info_card.classList.add("used_in_game");
+	} else {
+		world_info_card.classList.remove("used_in_game");
+	}
+}
+
 function world_info_entry(data) {
-	//console.log(data);
+
 	
 	world_info_data[data.uid] = data;
 	
@@ -1512,7 +1527,6 @@ function world_info_folder(data) {
 			download.setAttribute("folder", folder_name);
 			download.textContent = "file_download";
 			download.onclick = function () {
-								console.log('export_world_info_folder?folder='+this.getAttribute("folder"));
 								document.getElementById('download_iframe').src = 'export_world_info_folder?folder='+this.getAttribute("folder");
 							};
 			title.append(download);
@@ -2521,11 +2535,14 @@ function assign_world_info_to_action(action_item, uid) {
 													highlight_text += " ";
 												}
 												var after_highlight_text = span_text.slice((end_word-passed_words)).join(" ")+" ";
-												//console.log(span.textContent);
+												if (after_highlight_text[0] == ' ') {
+													after_highlight_text = after_highlight_text.substring(1);
+												}
+												//console.log("'"+span.textContent+"'");
 												//console.log(keyword);
-												//console.log(before_highlight_text);
-												//console.log(highlight_text);
-												//console.log(after_highlight_text);
+												//console.log("'"+before_highlight_text+"'");
+												//console.log("'"+highlight_text+"'");
+												//console.log("'"+after_highlight_text+"'");
 												//console.log("passed: "+passed_words+" start:" + start_word + " end: "+end_word+" continue: "+(end_word-passed_words));
 												//console.log(null);
 												var before_span = document.createElement("span");

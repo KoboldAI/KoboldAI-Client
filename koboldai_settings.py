@@ -1438,11 +1438,11 @@ class KoboldWorldInfo(object):
         for key in self.world_info:
             if self.world_info[key]["used_in_game"] != self.world_info[key]["constant"]:
                 self.world_info[key]["used_in_game"] = self.world_info[key]["constant"]
-                self.socketio.emit("world_info_entry", self.world_info[key], broadcast=True, room="UI_2")
+                self.socketio.emit("world_info_entry_used_in_game", {"uid": key, "used_in_game": False}, broadcast=True, room="UI_2")
         
     def set_world_info_used(self, uid):
         self.world_info[uid]["used_in_game"] = True
-        self.socketio.emit("world_info_entry", self.world_info[uid], broadcast=True, room="UI_2")
+        self.socketio.emit("world_info_entry_used_in_game", {"uid": uid, "used_in_game": True}, broadcast=True, room="UI_2")
     
     def __setattr__(self, name, value):
         new_variable = name not in self.__dict__
