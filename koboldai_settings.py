@@ -1258,6 +1258,7 @@ class KoboldWorldInfo(object):
         self.socketio.emit("world_info_folder", {x: self.world_info_folder[x] for x in self.world_info_folder}, broadcast=True, room="UI_2")
         self.socketio.emit("world_info_entry", self.world_info[uid], broadcast=True, room="UI_2")
         ignore = self.koboldai_vars.calc_ai_text()
+        return uid
         
     def edit_item(self, uid, title, key, keysecondary, folder, constant, manual_text, comment, use_wpp=False, before=None, wpp={'name': "", 'type': "", 'format': "W++", 'attributes': {}}):
         old_folder = self.world_info[uid]['folder']

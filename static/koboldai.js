@@ -2918,6 +2918,89 @@ function detect_key_up(e) {
 	}
 }
 
+function loadNAILorebook(data, filename) {
+	let lorebookVersion = data.lorebookVersion;
+	let wi_data = {folders: {[filename]: []}, entries: {}};
+	console.log(`Loading NAI lorebook version ${lorebookVersion}`);
+
+	let i = 0;
+	for (const entry of data.entries) {
+		// contextConfig: Object { suffix: "\n", tokenBudget: 2048, reservedTokens: 0, … }
+		// displayName: "Aboleth"
+		// enabled: true
+		// forceActivation: false
+		// keys: Array [ "Aboleth" ]
+		// lastUpdatedAt: 1624443329051
+		// searchRange: 1000
+		// text
+
+		wi_data.entries[i.toString()] = {
+			"uid": uid,
+			"title": entry.displayName,
+			"key": entry.keys,
+			"keysecondary": [],
+			"folder": folder,
+			"constant": entry.forceActivation,
+			"content": "",
+			"manual_text": entry.text,
+			"comment": "",
+			"token_length": 0,
+			"selective": false,
+			"wpp": {"name": "", "type": "", "format": "W++", "attributes": {}},
+			"use_wpp": false,
+		};
+		wi_data.folders[filename].push(i);
+
+		i++;
+	}
+	socket.emit("import_world_info", {data: wi_data});
+}
+
+async function loadKoboldData(data, filename) {
+	if (data.gamestarted !== undefined) {
+		// Story
+		socket.emit("upload_file", {"filename": filename, "data": JSON.stringify(data)});
+		socket.emit("load_story_list", "");
+	} else if (data.folders !== undefined && data.entries !== undefined) {
+		// World Info Folder
+		socket.emit("import_world_info", {data: data});
+	} else {
+		// Bad data
+		console.error("Bad data!");
+		return;
+	}
+}
+
+async function processDroppedFile(file) {
+	let extension = /.*\.(.*)/.exec(file.name)[1];
+	console.log("file is", file)
+	let data;
+
+	switch (extension) {
+		case "png":
+			// TODO: Support NovelAI's image lorebook cards. The format for those
+			// is base64-encoded JSON under a TXT key called "naidata".
+			console.warn("TODO: NAI LORECARDS");
+			return;
+		case "json":
+			// KoboldAI file
+			data = JSON.parse(await file.text());
+			loadKoboldData(data, file.name);
+			break;
+		case "lorebook":
+			// NovelAI lorebook, JSON encoded.
+			data = JSON.parse(await file.text());
+			loadNAILorebook(data, file.name);
+			break;
+		case "css":
+			console.warn("TODO: THEME");
+			break;
+		case "lua":
+			console.warn("TODO: USERSCRIPT");
+			break
+	}
+}
+
 $(document).ready(function(){
 	create_theming_elements();
 	document.onkeydown = detect_key_down;
@@ -2985,5 +3068,42 @@ $(document).ready(function(){
 
 	$(".token_breakdown").click(function() {
 		document.getElementById("context-viewer-container").classList.remove("hidden");
+	});
+
+	document.body.addEventListener("drop", function(e) {
+		e.preventDefault();
+		$("#file-upload-notice")[0].classList.add("hidden");
+
+		// items api
+		if (e.dataTransfer.items) {
+			for (const item of e.dataTransfer.items) {
+				if (item.kind !== "file") continue;
+				let file = item.getAsFile();
+				processDroppedFile(file);
+			}
+		} else {
+			for (const file of e.dataTransfer.files) {
+				processDroppedFile(file);
+			}
+		}
+	});
+
+	let lastTarget = null;
+
+	document.body.addEventListener("dragover", function(e) {
+		e.preventDefault();
+	});
+
+	document.body.addEventListener("dragenter", function(e) {
+		lastTarget = e.target;
+		console.log("start");
+		$("#file-upload-notice")[0].classList.remove("hidden");
+	});
+
+	document.body.addEventListener("dragleave", function(e) {
+		if (!(e.target === document || e.target === lastTarget)) return;
+
+		console.log("end")
+		$("#file-upload-notice")[0].classList.add("hidden");
 	});
 });
