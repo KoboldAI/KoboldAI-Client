@@ -1695,7 +1695,7 @@ body {
 	top: 0px;
 
 	background-color: rgba(0, 0, 0, 0.5);
-	z-index: 20;
+	z-index: 99999999;
 
 	width: 100vw;
 	height: 100vh;

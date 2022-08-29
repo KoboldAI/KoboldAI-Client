@@ -2918,22 +2918,13 @@ function detect_key_up(e) {
 	}
 }
 
-function loadNAILorebook(data) {
+function loadNAILorebook(data, filename) {
 	let lorebookVersion = data.lorebookVersion;
+	let wi_data = {folders: {[filename]: []}, entries: {}};
 	console.log(`Loading NAI lorebook version ${lorebookVersion}`);
 
-	// TODO: Make folder
-	let folder = "root";
-
-	let uid = -1;
-	for (item of document.getElementsByClassName('world_info_card')) {
-		if (parseInt(item.getAttribute("uid")) <= uid) {
-			uid = parseInt(item.getAttribute("uid")) - 1;
-		}
-	}
-
+	let i = 0;
 	for (const entry of data.entries) {
-		console.log(entry);
 		// contextConfig: Object { suffix: "\n", tokenBudget: 2048, reservedTokens: 0, … }
 		// displayName: "Aboleth"
 		// enabled: true
@@ -2942,14 +2933,15 @@ function loadNAILorebook(data) {
 		// lastUpdatedAt: 1624443329051
 		// searchRange: 1000
 		// text
-		data = {
+
+		wi_data.entries[i.toString()] = {
 			"uid": uid,
 			"title": entry.displayName,
 			"key": entry.keys,
 			"keysecondary": [],
 			"folder": folder,
 			"constant": entry.forceActivation,
-			"content": "",//entry.text,
+			"content": "",
 			"manual_text": entry.text,
 			"comment": "",
 			"token_length": 0,
@@ -2957,17 +2949,32 @@ function loadNAILorebook(data) {
 			"wpp": {"name": "", "type": "", "format": "W++", "attributes": {}},
 			"use_wpp": false,
 		};
-		uid--;
-		card = world_info_entry(data);
-		card.scrollIntoView(false);
-		console.log(card);
-	}
+		wi_data.folders[filename].push(i);
 
+		i++;
+	}
+	socket.emit("import_world_info", {data: wi_data});
+}
+
+async function loadKoboldData(data, filename) {
+	if (data.gamestarted !== undefined) {
+		// Story
+		socket.emit("upload_file", {"filename": filename, "data": JSON.stringify(data)});
+		socket.emit("load_story_list", "");
+	} else if (data.folders !== undefined && data.entries !== undefined) {
+		// World Info Folder
+		socket.emit("import_world_info", {data: data});
+	} else {
+		// Bad data
+		console.error("Bad data!");
+		return;
+	}
 }
 
 async function processDroppedFile(file) {
 	let extension = /.*\.(.*)/.exec(file.name)[1];
 	console.log("file is", file)
+	let data;
 
 	switch (extension) {
 		case "png":
@@ -2976,14 +2983,21 @@ async function processDroppedFile(file) {
 			console.warn("TODO: NAI LORECARDS");
 			return;
 		case "json":
-			// KoboldAI story (probably, parse to be sure.);
-			console.warn("TODO: KOBOLD STORY");
+			// KoboldAI file
+			data = JSON.parse(await file.text());
+			loadKoboldData(data, file.name);
 			break;
 		case "lorebook":
 			// NovelAI lorebook, JSON encoded.
-			let data = JSON.parse(await file.text());
-			loadNAILorebook(data);
+			data = JSON.parse(await file.text());
+			loadNAILorebook(data, file.name);
 			break;
+		case "css":
+			console.warn("TODO: THEME");
+			break;
+		case "lua":
+			console.warn("TODO: USERSCRIPT");
+			break
 	}
 }
 
