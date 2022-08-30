@@ -232,6 +232,24 @@ input[type="range"]::-ms-fill-upper {
 	margin-left: 10px;
 }
 
+.setting_container_single_wide {
+	display: grid;
+	grid-template-areas: "label"
+						 "item";
+	grid-template-rows: 20px auto;
+	grid-template-columns: 354px;
+	row-gap: 0.2em;
+	background-color: var(--setting_background);
+	color: var(--text);
+	border-radius: var(--radius_settings_background);
+	padding: 3px;
+	margin: 2px;
+}
+.setting_container_single_wide .setting_item{
+	font-size: calc(0.93em + var(--font_size_adjustment));
+	margin-left: 10px;
+}
+
 
 .setting_minlabel {
 	padding-top: 6px;
@@ -1051,7 +1069,7 @@ body {
 	background-color: var(--gamescreen_background);
 	z-index: 2;
 	box-shadow: var(--light_shadow_value);
-	color: white;
+	color: var(--text);
 	width: 100%;
 	grid-area: gamescreen;
 	display: flex;

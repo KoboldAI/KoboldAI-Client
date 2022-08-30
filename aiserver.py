@@ -7471,10 +7471,11 @@ def UI_2_load_userscripts_list(data):
                                                                   column_widths=['200px', '150px', 'auto'])
                                                                 
 def valid_userscripts_to_load(file):
-    return file.endswith(".lua") and file not in koboldai_vars.userscripts
+    print("{} is valid: {}".format(file, file.endswith(".lua") and os.path.basename(file) not in koboldai_vars.userscripts))
+    return file.endswith(".lua") and os.path.basename(file) not in koboldai_vars.userscripts
     
 def valid_userscripts_to_unload(file):
-    return file.endswith(".lua") and file in koboldai_vars.userscripts
+    return file.endswith(".lua") and os.path.basename(file) in koboldai_vars.userscripts
 
 def get_userscripts_desc(item_full_path, item, valid_selection):
     if not valid_selection:

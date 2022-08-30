@@ -645,7 +645,7 @@ function popup_items(data) {
 	for (i=0; i < data.column_widths.length; i++) {
 		style = style + " p"+i;
 	}
-	style = style + '"; grid-template-columns: 30px';
+	style = style + '"; grid-template-columns: 50px';
 	for (column_width of data.column_widths) {
 		style = style + " "+column_width;
 	}
