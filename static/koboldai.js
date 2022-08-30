@@ -661,6 +661,13 @@ function popup_items(data) {
 	
 	//add dynamic columns
 	var i = 0;
+	if (data.show_filename) {
+		td = document.createElement("span");
+		td.textContent = "File Name";
+		td.style = "grid-area: p"+i+";";
+		i+=1;
+		tr.append(td)
+	}
 	for (column of data.column_names) {
 		td = document.createElement("span");
 		td.textContent = column;
@@ -1692,6 +1699,15 @@ function do_wpp(wpp_area) {
 }
 
 //--------------------------------------------UI to Server Functions----------------------------------
+function unload_userscripts() {
+	files_to_unload = document.getElementById('loaded_userscripts');
+	for (var i=0; i<files_to_unload.options.length; i++) {
+		if (files_to_unload.options[i].selected) {
+			socket.emit("unload_userscripts", files_to_unload.options[i].value);
+		}
+	}
+}
+
 function save_theme() {
 	var cssVars = getAllCSSVariableNames();
 	for (const [key, value] of Object.entries(cssVars)) {

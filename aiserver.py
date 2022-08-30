@@ -6837,7 +6837,7 @@ def popup_change_file(data):
 def file_popup(popup_title, starting_folder, return_event, upload=True, jailed=True, folder_only=True, renameable=False, deleteable=False, 
                                                            editable=False, show_breadcrumbs=True, item_check=None, show_hidden=False,
                                                            valid_only=False, hide_extention=False, extra_parameter_function=None,
-                                                           column_names=['File Name'], show_filename=True,
+                                                           column_names=['File Name'], show_filename=True, show_folders=True,
                                                            column_widths=["100%"],
                                                            sort="Modified", desc=False):
     #starting_folder = The folder we're going to get folders and/or items from
@@ -6871,6 +6871,7 @@ def file_popup(popup_title, starting_folder, return_event, upload=True, jailed=T
     session['column_widths'] = column_widths
     session['sort'] = sort
     session['desc'] = desc
+    session['show_folders'] = show_folders
     
     socketio.emit("load_popup", {"popup_title": popup_title, "call_back": return_event, "renameable": renameable, "deleteable": deleteable, "editable": editable, 'upload': upload}, broadcast=False, room="UI_2")
     socketio.emit("load_popup", {"popup_title": popup_title, "call_back": return_event, "renameable": renameable, "deleteable": deleteable, "editable": editable, 'upload': upload}, broadcast=True, room="UI_1")
@@ -6892,6 +6893,7 @@ def get_files_folders(starting_folder):
     column_widths = session['column_widths']
     sort = session['sort']
     desc = session['desc']
+    show_folders = session['show_folders']
     
     if starting_folder == 'This PC':
         breadcrumbs = [['This PC', 'This PC']]
@@ -6945,7 +6947,10 @@ def get_files_folders(starting_folder):
                     else:
                         files.append([False, item_full_path, item,  valid_selection, extra_parameters])
                         
-        items = folders
+        if show_folders:
+            items = folders
+        else:
+            items = []
         if not folder_only:
             items += files
             
@@ -7413,7 +7418,7 @@ def handle_exception(e):
 
 
 #==================================================================#
-# Event triggered when Softprompt is clicked
+# Event triggered when Softprompt load menu is clicked
 #==================================================================#
 @socketio.on('load_softprompt_list')
 def UI_2_load_softprompt_list(data):
@@ -7444,15 +7449,90 @@ def get_softprompt_desc(item_full_path, item, valid_selection):
     with z.open('meta.json') as f:
         ob = json.load(f)
         return [ob['name'], ob['description']]
-        
 
 #==================================================================#
-# Event triggered when Softprompt is clicked
+# Event triggered when Softprompt is loaded
 #==================================================================#
 @socketio.on('load_softprompt')
 def UI_2_load_softprompt(data):
     print("Load softprompt: {}".format(data))
     spRequest(data)
+
+#==================================================================#
+# Event triggered when load userscripts is clicked
+#==================================================================#
+@socketio.on('load_userscripts_list')
+def UI_2_load_userscripts_list(data):
+    file_popup("Select Userscripts to Load", "./userscripts", "load_userscripts", upload=True, jailed=True, folder_only=False, renameable=True, editable=True, 
+                                                                  deleteable=True, show_breadcrumbs=False, item_check=valid_userscripts_to_load,
+                                                                  valid_only=True, hide_extention=True, extra_parameter_function=get_userscripts_desc,
+                                                                  column_names=['Module Name', 'Description'],
+                                                                  show_filename=True, show_folders=False,
+                                                                  column_widths=['200px', '150px', 'auto'])
+                                                                
+def valid_userscripts_to_load(file):
+    return file.endswith(".lua") and file not in koboldai_vars.userscripts
+    
+def valid_userscripts_to_unload(file):
+    return file.endswith(".lua") and file in koboldai_vars.userscripts
+
+def get_userscripts_desc(item_full_path, item, valid_selection):
+    if not valid_selection:
+        return [None, None]
+    ob = ["", ""]
+    description = []
+    multiline = False
+    with open(item_full_path) as f:
+        ob[0] = f.readline().strip().replace("\033", "")
+        if ob[0][:2] != "--":
+            ob[0] = file
+        else:
+            ob[0] = ob[0][2:]
+            if ob[0][:2] == "[[":
+                ob[0] = ob[0][2:]
+                multiline = True
+            ob[0] = ob[0].lstrip("-").strip()
+            for line in f:
+                line = line.strip().replace("\033", "")
+                if multiline:
+                    index = line.find("]]")
+                    if index > -1:
+                        description.append(line[:index])
+                        if index != len(line) - 2:
+                            break
+                        multiline = False
+                    else:
+                        description.append(line)
+                else:
+                    if line[:2] != "--":
+                        break
+                    line = line[2:]
+                    if line[:2] == "[[":
+                        multiline = True
+                        line = line[2:]
+                    description.append(line.strip())
+    ob[1] = "\n".join(description)
+    if len(ob[1]) > 250:
+        ob[1] = ob[1][:247] + "..."
+    return ob
+
+#==================================================================#
+# Event triggered when userscript's are loaded
+#==================================================================#
+@socketio.on('load_userscripts')
+def UI_2_load_userscripts(data):
+    print("Loading Userscripts: {}".format(os.path.basename(data)))
+    koboldai_vars.userscripts = [x for x in koboldai_vars.userscripts if x != os.path.basename(data)]+[os.path.basename(data)]
+    load_lua_scripts()
+    
+#==================================================================#
+# Event triggered when userscript's are unloaded
+#==================================================================#
+@socketio.on('unload_userscripts')
+def UI_2_unload_userscripts(data):
+    print("Unloading Userscript: {}".format(data))
+    koboldai_vars.userscripts = [x for x in koboldai_vars.userscripts if x != data]
+    load_lua_scripts()
 
 
 

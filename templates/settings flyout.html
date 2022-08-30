@@ -177,6 +177,24 @@
 					<span class="setting_minlabel"><span style="top: -4px; position: relative;"></span></span>
 					<span class="setting_maxlabel"><span style="top: -4px; position: relative;"></span></span>
 				</div>
+				<div class="setting_container_single">
+					<!---Top Row---->
+					<span class="setting_label">
+						<span style="white-space: pre-wrap;">User Scripts: </span>
+						<span class="helpicon material-icons-outlined" title="Allows for user scripts that modify the way the game functions">help_icon</span>
+					</span>
+					<!---Bottom Row---->
+					<span class="setting_item">
+						<div style="display: flex;flex-direction: row;">
+							<select id="loaded_userscripts" class="var_sync_system_userscripts settings_select" multiple></select>
+							<span class="material-icons-outlined cursor" style="font-size: 18px;" title="Unload File(s)" onclick="unload_userscripts();">delete</span>
+							<span class="material-icons-outlined cursor" style="font-size: 18px;" title="Load File" onclick="socket.emit('load_userscripts_list', '');">upload_file</span>
+						</div>
+					</span>
+					<!---Slider Labels--->
+					<span class="setting_minlabel"><span style="top: -4px; position: relative;"></span></span>
+					<span class="setting_maxlabel"><span style="top: -4px; position: relative;"></span></span>
+				</div>
 			</div>
 		{% endwith %}
 		<div class="collapsable_header" onclick="toggle_setting_category(this);">
