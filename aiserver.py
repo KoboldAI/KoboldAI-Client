@@ -1312,7 +1312,9 @@ def get_model_info(model, directory=""):
     gpu_names = []
     for i in range(gpu_count):
         gpu_names.append(torch.cuda.get_device_name(i))
-    if model in [x[1] for x in model_menu['apilist']]:
+    if model in ['Colab', 'API']:
+        url = True
+    elif model in [x[1] for x in model_menu['apilist']]:
         if path.exists("settings/{}.settings".format(model)):
             with open("settings/{}.settings".format(model), "r") as file:
                 # Check if API key exists
@@ -1327,8 +1329,6 @@ def get_model_info(model, directory=""):
         key = True
     elif model == 'ReadOnly':
         pass
-    elif model == 'Colab':
-        url = True
     elif not utils.HAS_ACCELERATE and not torch.cuda.is_available():
         pass
     elif args.cpu:
@@ -1922,7 +1922,7 @@ def reset_model_settings():
     koboldai_vars.newlinemode = "n"
     koboldai_vars.revision    = None
 
-def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=False, online_model=""):
+def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=False, online_model="", use_breakmodel_args=False, breakmodel_args_default_to_cpu=False):
     global model
     global generator
     global torch
@@ -1930,12 +1930,14 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
     global GPT2TokenizerFast
     global tokenizer
     koboldai_vars.aibusy = True
+    if(initial_load):
+        use_breakmodel_args = True
     reset_model_settings()
     if not utils.HAS_ACCELERATE:
         disk_layers = None
     koboldai_vars.reset_model()
     koboldai_vars.noai = False
-    if not initial_load:
+    if not use_breakmodel_args:
         set_aibusy(True)
         if koboldai_vars.model != 'ReadOnly':
             emit('from_server', {'cmd': 'model_load_status', 'data': "Loading {}".format(koboldai_vars.model)}, broadcast=True)
@@ -1943,12 +1945,16 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
             time.sleep(0.1)
     if gpu_layers is not None:
         args.breakmodel_gpulayers = gpu_layers
-    elif initial_load:
+    elif use_breakmodel_args:
         gpu_layers = args.breakmodel_gpulayers
+    if breakmodel_args_default_to_cpu and gpu_layers is None:
+        gpu_layers = args.breakmodel_gpulayers = []
     if disk_layers is not None:
         args.breakmodel_disklayers = int(disk_layers)
-    elif initial_load:
+    elif use_breakmodel_args:
         disk_layers = args.breakmodel_disklayers
+    if breakmodel_args_default_to_cpu and disk_layers is None:
+        disk_layers = args.breakmodel_disklayers = 0
     
     #We need to wipe out the existing model and refresh the cuda cache
     model = None
@@ -2043,6 +2049,7 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
     if(not koboldai_vars.use_colab_tpu and koboldai_vars.model not in ["InferKit", "Colab", "API", "OAI", "GooseAI" , "ReadOnly", "TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX"]):
         loadmodelsettings()
         loadsettings()
+        print(2)
         print("{0}Looking for GPU support...{1}".format(colors.PURPLE, colors.END), end="")
         koboldai_vars.hascuda = torch.cuda.is_available()
         koboldai_vars.bmsupported = (utils.HAS_ACCELERATE or koboldai_vars.model_type in ("gpt_neo", "gptj", "xglm", "opt")) and not koboldai_vars.nobreakmodel
@@ -2294,7 +2301,7 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
                 
                 # If we're using torch_lazy_loader, we need to get breakmodel config
                 # early so that it knows where to load the individual model tensors
-                if(utils.HAS_ACCELERATE or koboldai_vars.lazy_load and koboldai_vars.hascuda and koboldai_vars.breakmodel):
+                if (utils.HAS_ACCELERATE or koboldai_vars.lazy_load and koboldai_vars.hascuda and koboldai_vars.breakmodel) and not koboldai_vars.nobreakmodel:
                     device_config(model_config)
 
                 # Download model from Huggingface if it does not exist, otherwise load locally
@@ -7849,6 +7856,9 @@ class WorldInfoFoldersUIDsSchema(KoboldSchema):
 class WorldInfoUIDsSchema(WorldInfoEntriesUIDsSchema):
     folders: List[WorldInfoFolderSchema] = fields.List(fields.Nested(WorldInfoFolderUIDsSchema), required=True)
 
+class ModelSelectionSchema(KoboldSchema):
+    model: str = fields.String(required=True, validate=validate.Regexp(r"^(?!\s*NeoCustom)(?!\s*GPT2Custom)(?!\s*TPUMeshTransformerGPTJ)(?!\s*TPUMeshTransformerGPTNeoX)(?!\s*GooseAI)(?!\s*OAI)(?!\s*InferKit)(?!\s*Colab)(?!\s*API).*$"), metadata={"description": 'Hugging Face model ID, the path to a model folder (relative to the "models" folder in the KoboldAI root folder) or "ReadOnly" for no model'})
+
 def _generate_text(body: GenerationInputSchema):
     if koboldai_vars.aibusy or koboldai_vars.genseqs:
         abort(Response(json.dumps({"detail": {
@@ -8058,6 +8068,49 @@ def get_model():
                 result: KoboldAI/fairseq-dense-13B-Nerys-v2
     """
     return {"result": koboldai_vars.model}
+
+
+@api_v1.put("/model")
+@api_schema_wrap
+def put_model(body: ModelSelectionSchema):
+    """---
+    put:
+      summary: Load a model
+      description: |-2
+        Loads a model given its Hugging Face model ID, the path to a model folder (relative to the "models" folder in the KoboldAI root folder) or "ReadOnly" for no model.
+      tags:
+        - model
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: ModelSelectionSchema
+            example:
+              model: ReadOnly
+      responses:
+        200:
+          description: Successful request
+          content:
+            application/json:
+              schema: EmptySchema
+        {api_validation_error_response}
+        {api_server_busy_response}
+    """
+    if vars.aibusy or vars.genseqs:
+        abort(Response(json.dumps({"detail": {
+            "msg": "Server is busy; please try again later.",
+            "type": "service_unavailable",
+        }}), mimetype="application/json", status=503))
+    set_aibusy(1)
+    old_model = vars.model
+    vars.model = body.model.strip()
+    try:
+        load_model(use_breakmodel_args=True, breakmodel_args_default_to_cpu=True)
+    except Exception as e:
+        vars.model = old_model
+        raise e
+    set_aibusy(0)
+    return {}
 
 
 def prompt_validator(prompt: str):
