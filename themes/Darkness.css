@@ -120,14 +120,14 @@
 	--popup_cancel_button_color_text: #e0e0e0;
 	
 	/*Context Bar Colors*/
-	--context_colors_memory: #3572A5;
-	--context_colors_authors_notes: #f1e05a;
-	--context_colors_world_info: #563d7c;
-	--context_colors_prompt: #e34c26;
-	--context_colors_game_text: #c6538c;
+	--context_colors_memory: #133a5c;
+	--context_colors_authors_notes: #672b6a;
+	--context_colors_world_info: #1b5a58;
+	--context_colors_prompt: #898888;
+	--context_colors_game_text: #197f91;
 	--context_colors_submit: #ededed;
-	--context_colors_unused: white;
-	--context_colors_soft_prompt: #000080;
+	--context_colors_unused: #ffffff24;
+	--context_colors_soft_prompt: #132b30;
 	
 
     /*Parameters*/
