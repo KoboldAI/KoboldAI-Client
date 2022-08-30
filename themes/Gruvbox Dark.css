@@ -194,6 +194,16 @@
 	--story_pinned_area_widths: var(--story_pinned_area_widths_left);
 	--font_size_adjustment: 0px;
 	--game_screen_font_size_adjustment: 1;
+
+	/*Context Bar Colors*/
+	--context_colors_memory: var(--gruvbox-faded-blue);
+	--context_colors_authors_notes: var(--gruvbox-faded-yellow);
+	--context_colors_world_info: var(--gruvbox-faded-purple);
+	--context_colors_prompt: var(--gruvbox-faded-orange);
+	--context_colors_game_text: var(--gruvbox-neutral-purple);
+	--context_colors_submit: var(--gruvbox-light4);
+	--context_colors_unused: var(--gruvbox-light0);
+	--context_colors_soft_prompt: var(--gruvbox-neutral-aqua);
 }
 
 /* Overrides */
