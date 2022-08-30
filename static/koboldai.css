@@ -844,6 +844,10 @@ td.server_vars {
 	display: none;
 }
 
+.WI_Folder_Header .upload {
+	grid-area: upload;
+}
+
 .WI_Folder_Header .download {
 	grid-area: download;
 }

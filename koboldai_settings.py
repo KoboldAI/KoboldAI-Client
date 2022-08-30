@@ -441,6 +441,9 @@ class model_settings(settings):
                             preset_value = bool(preset_value)
                         elif type(getattr(self, preset_key)) == str:
                             preset_value = str(preset_value)
+                        if preset_key == "sampler_order":
+                            if 6 not in preset_value:
+                                preset_value.insert(0, 6)
                         setattr(self, preset_key, preset_value)
         #Setup TQDP for token generation
         elif name == "generated_tkns" and 'tqdm' in self.__dict__:
