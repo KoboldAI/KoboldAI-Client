@@ -824,7 +824,7 @@ td.server_vars {
 	margin-left: 10px;
 	display: grid;
 	grid-template-areas: "folder expand title upload_box upload download";
-	grid-template-columns: 15px 30px auto  0px 25px 25px;
+	grid-template-columns: 15px 30px auto  0px 25px 35px;
 }
 
 .WI_Folder_Header .folder {
