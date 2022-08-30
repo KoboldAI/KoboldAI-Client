@@ -217,6 +217,7 @@ model_menu = {
         ["InferKit API (requires API key)", "InferKit", "", False],
         # ["KoboldAI Server API (Old Google Colab)", "Colab", "", False],
         ["KoboldAI API", "API", "", False],
+        ["KoboldAI Cluster", "CLUSTER", "", False],
         ["Return to Main Menu", "mainmenu", "", True],
     ]
     }
@@ -1479,7 +1480,7 @@ def get_model_info(model, directory=""):
     
 
 def get_layer_count(model, directory=""):
-    if(model not in ["InferKit", "Colab", "API", "OAI", "GooseAI" , "ReadOnly", "TPUMeshTransformerGPTJ"]):
+    if(model not in ["InferKit", "Colab", "API", "CLUSTER", "OAI", "GooseAI" , "ReadOnly", "TPUMeshTransformerGPTJ"]):
         if(model == "GPT2Custom"):
             with open(os.path.join(directory, "config.json"), "r") as f:
                 model_config = json.load(f)
@@ -2034,7 +2035,7 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
     
     
     # If transformers model was selected & GPU available, ask to use CPU or GPU
-    if(vars.model not in ["InferKit", "Colab", "API", "OAI", "GooseAI" , "ReadOnly", "TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX"]):
+    if(vars.model not in ["InferKit", "Colab", "API", "CLUSTER", "OAI", "GooseAI" , "ReadOnly", "TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX"]):
         vars.allowsp = True
         # Test for GPU support
         
@@ -2073,7 +2074,7 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
             print("WARNING: No model type detected, assuming Neo (If this is a GPT2 model use the other menu option or --model GPT2Custom)")
             vars.model_type = "gpt_neo"
 
-    if(not vars.use_colab_tpu and vars.model not in ["InferKit", "Colab", "API", "OAI", "GooseAI" , "ReadOnly", "TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX"]):
+    if(not vars.use_colab_tpu and vars.model not in ["InferKit", "Colab", "API", "CLUSTER", "OAI", "GooseAI" , "ReadOnly", "TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX"]):
         loadmodelsettings()
         loadsettings()
         print(2)
@@ -2127,7 +2128,7 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
         vars.noai = True
 
     # Start transformers and create pipeline
-    if(not vars.use_colab_tpu and vars.model not in ["InferKit", "Colab", "API", "OAI", "GooseAI" , "ReadOnly", "TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX"]):
+    if(not vars.use_colab_tpu and vars.model not in ["InferKit", "Colab", "API", "CLUSTER", "OAI", "GooseAI" , "ReadOnly", "TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX"]):
         if(not vars.noai):
             print("{0}Initializing transformers, please wait...{1}".format(colors.PURPLE, colors.END))
             for m in ("GPTJModel", "XGLMModel"):
@@ -2582,7 +2583,7 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
             }
 
         # If we're running Colab or OAI, we still need a tokenizer.
-        if(vars.model in ("Colab", "API")):
+        if(vars.model in ("Colab", "API", "CLUSTER")):
             from transformers import GPT2TokenizerFast
             tokenizer = GPT2TokenizerFast.from_pretrained("EleutherAI/gpt-neo-2.7B", revision=vars.revision, cache_dir="cache")
             loadsettings()
@@ -3228,7 +3229,7 @@ def lua_set_chunk(k, v):
 def lua_get_modeltype():
     if(vars.noai):
         return "readonly"
-    if(vars.model in ("Colab", "API", "OAI", "InferKit")):
+    if(vars.model in ("Colab", "API", "CLUSTER", "OAI", "InferKit")):
         return "api"
     if(not vars.use_colab_tpu and vars.model not in ("TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX") and (vars.model in ("GPT2Custom", "NeoCustom") or vars.model_type in ("gpt2", "gpt_neo", "gptj"))):
         hidden_size = get_hidden_size_from_model(model)
@@ -3257,7 +3258,7 @@ def lua_get_modeltype():
 def lua_get_modelbackend():
     if(vars.noai):
         return "readonly"
-    if(vars.model in ("Colab", "API", "OAI", "InferKit")):
+    if(vars.model in ("Colab", "API", "CLUSTER", "OAI", "InferKit")):
         return "api"
     if(vars.use_colab_tpu or vars.model in ("TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX")):
         return "mtj"
@@ -4228,6 +4229,8 @@ def apiactionsubmit(data, use_memory=False, use_world_info=False, use_story=Fals
         raise NotImplementedError("API generation is not supported in old Colab API mode.")
     elif(vars.model == "API"):
         raise NotImplementedError("API generation is not supported in API mode.")
+    elif(vars.model == "CLUSTER"):
+        raise NotImplementedError("API generation is not supported in API mode.")
     elif(vars.model == "OAI"):
         raise NotImplementedError("API generation is not supported in OpenAI/GooseAI mode.")
     elif(vars.model == "ReadOnly"):
@@ -4278,7 +4281,7 @@ def apiactionsubmit(data, use_memory=False, use_world_info=False, use_story=Fals
     minimum = len(tokens) + 1
     maximum = len(tokens) + vars.genamt
 
-    if(not vars.use_colab_tpu and vars.model not in ["Colab", "API", "OAI", "TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX"]):
+    if(not vars.use_colab_tpu and vars.model not in ["Colab", "API", "CLUSTER", "OAI", "TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX"]):
         genout = apiactionsubmit_generate(tokens, minimum, maximum)
     elif(vars.use_colab_tpu or vars.model in ("TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX")):
         genout = apiactionsubmit_tpumtjgenerate(tokens, minimum, maximum)
@@ -4446,7 +4449,7 @@ def calcsubmitbudget(actionlen, winfo, mem, anotetxt, actions, submission=None, 
 
     if(actionlen == 0):
         # First/Prompt action
-        tokens = (tokenizer._koboldai_header if vars.model not in ("Colab", "API", "OAI") else []) + memtokens + witokens + anotetkns + prompttkns
+        tokens = (tokenizer._koboldai_header if vars.model not in ("Colab", "API", "CLUSTER", "OAI") else []) + memtokens + witokens + anotetkns + prompttkns
         assert len(tokens) <= vars.max_length - lnsp - vars.genamt - budget_deduction
         ln = len(tokens) + lnsp
         return tokens, ln+1, ln+vars.genamt
@@ -4494,12 +4497,12 @@ def calcsubmitbudget(actionlen, winfo, mem, anotetxt, actions, submission=None, 
         # Did we get to add the A.N.? If not, do it here
         if(anotetxt != ""):
             if((not anoteadded) or forceanote):
-                tokens = (tokenizer._koboldai_header if vars.model not in ("Colab", "API", "OAI") else []) + memtokens + witokens + anotetkns + prompttkns + tokens
+                tokens = (tokenizer._koboldai_header if vars.model not in ("Colab", "API", "CLUSTER", "OAI") else []) + memtokens + witokens + anotetkns + prompttkns + tokens
             else:
-                tokens = (tokenizer._koboldai_header if vars.model not in ("Colab", "API", "OAI") else []) + memtokens + witokens + prompttkns + tokens
+                tokens = (tokenizer._koboldai_header if vars.model not in ("Colab", "API", "CLUSTER", "OAI") else []) + memtokens + witokens + prompttkns + tokens
         else:
             # Prepend Memory, WI, and Prompt before action tokens
-            tokens = (tokenizer._koboldai_header if vars.model not in ("Colab", "API", "OAI") else []) + memtokens + witokens + prompttkns + tokens
+            tokens = (tokenizer._koboldai_header if vars.model not in ("Colab", "API", "CLUSTER", "OAI") else []) + memtokens + witokens + prompttkns + tokens
 
         # Send completed bundle to generator
         assert len(tokens) <= vars.max_length - lnsp - vars.genamt - budget_deduction
@@ -4521,23 +4524,27 @@ def calcsubmit(txt):
     if(vars.model != "InferKit"):
         subtxt, min, max = calcsubmitbudget(actionlen, winfo, mem, anotetxt, vars.actions, submission=txt)
         if(actionlen == 0):
-            if(not vars.use_colab_tpu and vars.model not in ["Colab", "API", "OAI", "TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX"]):
+            if(not vars.use_colab_tpu and vars.model not in ["Colab", "API", "CLUSTER", "OAI", "TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX"]):
                 generate(subtxt, min, max, found_entries=found_entries)
             elif(vars.model == "Colab"):
                 sendtocolab(utils.decodenewlines(tokenizer.decode(subtxt)), min, max)
             elif(vars.model == "API"):
                 sendtoapi(utils.decodenewlines(tokenizer.decode(subtxt)), min, max)
+            elif(vars.model == "CLUSTER"):
+                sendtocluster(utils.decodenewlines(tokenizer.decode(subtxt)), min, max)
             elif(vars.model == "OAI"):
                 oairequest(utils.decodenewlines(tokenizer.decode(subtxt)), min, max)
             elif(vars.use_colab_tpu or vars.model in ("TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX")):
                 tpumtjgenerate(subtxt, min, max, found_entries=found_entries)
         else:
-            if(not vars.use_colab_tpu and vars.model not in ["Colab", "API", "OAI", "TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX"]):
+            if(not vars.use_colab_tpu and vars.model not in ["Colab", "API", "CLUSTER", "OAI", "TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX"]):
                 generate(subtxt, min, max, found_entries=found_entries)
             elif(vars.model == "Colab"):
                 sendtocolab(utils.decodenewlines(tokenizer.decode(subtxt)), min, max)
             elif(vars.model == "API"):
                 sendtoapi(utils.decodenewlines(tokenizer.decode(subtxt)), min, max)
+            elif(vars.model == "CLUSTER"):
+                sendtocluster(utils.decodenewlines(tokenizer.decode(subtxt)), min, max)
             elif(vars.model == "OAI"):
                 oairequest(utils.decodenewlines(tokenizer.decode(subtxt)), min, max)
             elif(vars.use_colab_tpu or vars.model in ("TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX")):
