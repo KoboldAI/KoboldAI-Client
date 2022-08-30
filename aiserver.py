@@ -1426,7 +1426,9 @@ def get_model_info(model, directory=""):
     gpu_names = []
     for i in range(gpu_count):
         gpu_names.append(torch.cuda.get_device_name(i))
-    if model in [x[1] for x in model_menu['apilist']]:
+    if model in ['Colab', 'API']:
+        url = True
+    elif model in [x[1] for x in model_menu['apilist']]:
         if path.exists("settings/{}.settings".format(model)):
             with open("settings/{}.settings".format(model), "r") as file:
                 # Check if API key exists
@@ -1439,8 +1441,6 @@ def get_model_info(model, directory=""):
         key = True
     elif model == 'ReadOnly':
         pass
-    elif model == 'Colab':
-        url = True
     elif not utils.HAS_ACCELERATE and not torch.cuda.is_available():
         pass
     elif args.cpu:
