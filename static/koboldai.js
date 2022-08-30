@@ -1174,13 +1174,14 @@ function update_gpu_layers() {
 function load_model() {
 	var accept = document.getElementById('btn_loadmodelaccept');
 	gpu_layers = []
-	for (let i=0; i < document.getElementById("gpu_count").value; i++) {
-		gpu_layers.push(document.getElementById("gpu_layers_"+i).value);
-	}
-	if (document.getElementById("disk_layers")) {
-		disk_layers = document.getElementById("disk_layers").value;
-	} else {
-		disk_layers = "0";
+	disk_layers = 0;
+	if (!(document.getElementById("modellayers").classList.contains("hidden"))) {
+		for (let i=0; i < document.getElementById("gpu_count").value; i++) {
+			gpu_layers.push(document.getElementById("gpu_layers_"+i).value);
+		}
+		if (document.getElementById("disk_layers")) {
+			disk_layers = document.getElementById("disk_layers").value;
+		}
 	}
 	//Need to do different stuff with custom models
 	if ((accept.getAttribute('menu') == 'GPT2Custom') || (accept.getAttribute('menu') == 'NeoCustom')) {

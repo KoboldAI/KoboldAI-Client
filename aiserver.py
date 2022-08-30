@@ -1438,7 +1438,7 @@ def get_oai_models(data):
         if changed:
             with open("settings/{}.settings".format(model), "w") as file:
                 js["apikey"] = key
-                file.write(json.dumps(js, indent=3), room="UI_1")
+                file.write(json.dumps(js, indent=3))
             
         emit('from_server', {'cmd': 'oai_engines', 'data': engines, 'online_model': online_model}, broadcast=True, room="UI_1")
         emit('oai_engines', {'data': engines, 'online_model': online_model}, broadcast=False, room="UI_2")
@@ -7221,7 +7221,7 @@ def UI_2_load_model(data):
                 changed = False
     if changed:
         f = open("settings/" + data['model'].replace('/', '_') + ".breakmodel", "w")
-        f.write(data['gpu_layers'] + '\n' + data['disk_layers'])
+        f.write("{}\n{}".format(data['gpu_layers'], data['disk_layers']))
         f.close()
     koboldai_vars.colaburl = data['url'] + "/request"
     koboldai_vars.model = data['model']
