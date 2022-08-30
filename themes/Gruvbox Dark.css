@@ -301,7 +301,7 @@ input[type="range"]::-moz-range-thumb {
 	background-color: var(--gruvbox-light4) !important;
 }
 
-#loadmodelcontainer {
+#loadmodelcontainer, #popup {
 	border: 2px solid var(--gruvbox-dark3);
 	border-radius: 0px !important;
 }
