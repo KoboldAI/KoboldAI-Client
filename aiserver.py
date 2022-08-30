@@ -821,8 +821,10 @@ def loadmodelsettings():
     if("nobreakmodel" in js):
         koboldai_vars.nobreakmodel = js["nobreakmodel"]
     if("sampler_order" in js):
-        koboldai_vars.sampler_order = js["sampler_order"]
-        koboldai_vars.default_preset['sampler_order'] = js["sampler_order"]
+        sampler_order = koboldai_vars.sampler_order
+        if(len(sampler_order) < 7):
+            sampler_order = [6] + sampler_order
+        koboldai_vars.sampler_order = sampler_order
     if("temp" in js):
         koboldai_vars.temp       = js["temp"]
         koboldai_vars.default_preset['temp'] = js["temp"]
@@ -965,7 +967,10 @@ def processsettings(js):
     if("andepth" in js):
         koboldai_vars.andepth    = js["andepth"]
     if("sampler_order" in js):
-        koboldai_vars.sampler_order = js["sampler_order"]
+        sampler_order = koboldai_vars.sampler_order
+        if(len(sampler_order) < 7):
+            sampler_order = [6] + sampler_order
+        koboldai_vars.sampler_order = sampler_order
     if("temp" in js):
         koboldai_vars.temp       = js["temp"]
     if("top_p" in js):
@@ -1363,23 +1368,25 @@ def get_model_info(model, directory=""):
     
 
 def get_layer_count(model, directory=""):
-    if(model not in ["InferKit", "Colab", "OAI", "GooseAI" , "ReadOnly", "TPUMeshTransformerGPTJ"]):
-        if(koboldai_vars.model == "GPT2Custom"):
-            model_config = open(directory + "/config.json", "r")
+    if(model not in ["InferKit", "Colab", "API", "OAI", "GooseAI" , "ReadOnly", "TPUMeshTransformerGPTJ"]):
+        if(model == "GPT2Custom"):
+            with open(os.path.join(directory, "config.json"), "r") as f:
+                model_config = json.load(f)
         # Get the model_type from the config or assume a model type if it isn't present
         else:
+            if(directory):
+                model = directory
             from transformers import AutoConfig
-            if directory == "":
-                model_config = AutoConfig.from_pretrained(model, revision=koboldai_vars.revision, cache_dir="cache")
+            if(os.path.isdir(model.replace('/', '_'))):
+                model_config = AutoConfig.from_pretrained(model.replace('/', '_'), revision=koboldai_vars.revision, cache_dir="cache")
+            elif(os.path.isdir("models/{}".format(model.replace('/', '_')))):
+                model_config = AutoConfig.from_pretrained("models/{}".format(model.replace('/', '_')), revision=koboldai_vars.revision, cache_dir="cache")
             elif(os.path.isdir(directory)):
                 model_config = AutoConfig.from_pretrained(directory, revision=koboldai_vars.revision, cache_dir="cache")
             elif(os.path.isdir(koboldai_vars.custmodpth.replace('/', '_'))):
                 model_config = AutoConfig.from_pretrained(koboldai_vars.custmodpth.replace('/', '_'), revision=koboldai_vars.revision, cache_dir="cache")
             else:
-                model_config = AutoConfig.from_pretrained(koboldai_vars.custmodpth, revision=koboldai_vars.revision, cache_dir="cache")
-        
-        
-        
+                model_config = AutoConfig.from_pretrained(model, revision=koboldai_vars.revision, cache_dir="cache")
         return utils.num_layers(model_config)
     else:
         return None
@@ -1623,8 +1630,6 @@ def patch_transformers():
     dynamic_processor_wrap(TailFreeLogitsWarper, "tfs", "tfs", cond=lambda x: x < 1.0)
     dynamic_processor_wrap(TypicalLogitsWarper, "typical", "typical", cond=lambda x: x < 1.0)
     dynamic_processor_wrap(TemperatureLogitsWarper, "temperature", "temp", cond=lambda x: x != 1.0)
-    RepetitionPenaltyLogitsProcessor.__init__ = AdvancedRepetitionPenaltyLogitsProcessor.__init__
-    RepetitionPenaltyLogitsProcessor.__call__ = AdvancedRepetitionPenaltyLogitsProcessor.__call__
 
     class PhraseBiasLogitsProcessor(LogitsProcessor):
         def __init__(self):
@@ -1768,9 +1773,13 @@ def patch_transformers():
             self.__warper_list.append(TailFreeLogitsWarper(tfs=0.5, min_tokens_to_keep=1 + (beams > 1)))
             self.__warper_list.append(TypicalLogitsWarper(typical=0.5, min_tokens_to_keep=1 + (beams > 1)))
             self.__warper_list.append(TemperatureLogitsWarper(temperature=0.5))
+            self.__warper_list.append(AdvancedRepetitionPenaltyLogitsProcessor())
 
         def __call__(self, input_ids: torch.LongTensor, scores: torch.FloatTensor, *args, **kwargs):
-            for k in koboldai_vars.sampler_order:
+            sampler_order = koboldai_vars.sampler_order[:]
+            if len(sampler_order) < 7:  # Add repetition penalty at beginning if it's not present
+                sampler_order = [6] + sampler_order
+            for k in sampler_order:
                 scores = self.__warper_list[k](input_ids, scores, *args, **kwargs)
             return scores
 
@@ -2525,6 +2534,9 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
             koboldai_vars.compiling = False
         
         def tpumtjgenerate_settings_callback() -> dict:
+            sampler_order = vars.sampler_order[:]
+            if len(sampler_order) < 7:  # Add repetition penalty at beginning if it's not present
+                sampler_order = [6] + sampler_order
             return {
                 "sampler_order": koboldai_vars.sampler_order,
                 "top_p": float(koboldai_vars.top_p),
@@ -3685,12 +3697,16 @@ def get_message(msg):
         sendUSStatItems()
     elif(msg['cmd'] == 'samplers'):
         sampler_order = msg["data"]
+        sampler_order_min_length = 6
+        sampler_order_max_length = 7
         if(not isinstance(sampler_order, list)):
             raise ValueError(f"Sampler order must be a list, but got a {type(sampler_order)}")
-        if(len(sampler_order) != len(koboldai_vars.sampler_order)):
-            raise ValueError(f"Sampler order must be a list of length {len(koboldai_vars.sampler_order)}, but got a list of length {len(sampler_order)}")
+        if(not (sampler_order_min_length <= len(sampler_order) <= sampler_order_max_length)):
+            raise ValueError(f"Sampler order must be a list of length greater than or equal to {sampler_order_min_length} and less than or equal to {sampler_order_max_length}, but got a list of length {len(sampler_order)}")
         if(not all(isinstance(e, int) for e in sampler_order)):
             raise ValueError(f"Sampler order must be a list of ints, but got a list with at least one non-int element")
+        if(min(sampler_order) != 0 or max(sampler_order) != len(sampler_order) - 1 or len(set(sampler_order)) != len(sampler_order)):
+            raise ValueError(f"Sampler order list of length {len(sampler_order)} must be a permutation of the first {len(sampler_order)} nonnegative integers")
         koboldai_vars.sampler_order = sampler_order
         settingschanged()
     elif(msg['cmd'] == 'list_model'):
@@ -3701,8 +3717,8 @@ def get_message(msg):
         changed = True
         if not utils.HAS_ACCELERATE:
             msg['disk_layers'] = "0"
-        if os.path.exists("settings/" + koboldai_vars.model.replace('/', '_') + ".breakmodel"):
-            with open("settings/" + koboldai_vars.model.replace('/', '_') + ".breakmodel", "r") as file:
+        if os.path.exists("settings/" + koboldai_vars.model_selected.replace('/', '_') + ".breakmodel"):
+            with open("settings/" + koboldai_vars.model_selected.replace('/', '_') + ".breakmodel", "r") as file:
                 data = file.read().split('\n')[:2]
                 if len(data) < 2:
                     data.append("0")
@@ -3710,14 +3726,15 @@ def get_message(msg):
                 if gpu_layers == msg['gpu_layers'] and disk_layers == msg['disk_layers']:
                     changed = False
         if changed:
-            if koboldai_vars.model in ["NeoCustom", "GPT2Custom"]:
+            if koboldai_vars.model_selected in ["NeoCustom", "GPT2Custom"]:
                 filename = "settings/{}.breakmodel".format(os.path.basename(os.path.normpath(koboldai_vars.custmodpth)))
             else:
-                filename = "settings/{}.breakmodel".format(koboldai_vars.model.replace('/', '_'))
+                filename = "settings/{}.breakmodel".format(koboldai_vars.model_selected.replace('/', '_'))
             f = open(filename, "w")
             f.write(str(msg['gpu_layers']) + '\n' + str(msg['disk_layers']))
             f.close()
         koboldai_vars.colaburl = msg['url'] + "/request"
+        vars.model = vars.model_selected
         load_model(use_gpu=msg['use_gpu'], gpu_layers=msg['gpu_layers'], disk_layers=msg['disk_layers'], online_model=msg['online_model'])
     elif(msg['cmd'] == 'show_model'):
         print("Model Name: {}".format(getmodelname()))
@@ -3742,18 +3759,18 @@ def get_message(msg):
         elif msg['data'] in ('NeoCustom', 'GPT2Custom') and 'path_modelname' in msg:
             #Here the user entered custom text in the text box. This could be either a model name or a path.
             if check_if_dir_is_model(msg['path_modelname']):
-                koboldai_vars.model = msg['data']
+                koboldai_vars.model_selected = msg['data']
                 koboldai_vars.custmodpth = msg['path_modelname']
                 get_model_info(msg['data'], directory=msg['path'])
             else:
-                koboldai_vars.model = msg['path_modelname']
+                koboldai_vars.model_selected = msg['path_modelname']
                 try:
-                    get_model_info(koboldai_vars.model)
+                    get_model_info(koboldai_vars.model_selected)
                 except:
                     emit('from_server', {'cmd': 'errmsg', 'data': "The model entered doesn't exist."}, room="UI_1")
         elif msg['data'] in ('NeoCustom', 'GPT2Custom'):
             if check_if_dir_is_model(msg['path']):
-                koboldai_vars.model = msg['data']
+                koboldai_vars.model_selected = msg['data']
                 koboldai_vars.custmodpth = msg['path']
                 get_model_info(msg['data'], directory=msg['path'])
             else:
@@ -3762,12 +3779,12 @@ def get_message(msg):
                 else:
                     sendModelSelection(menu=msg['data'], folder=msg['path'])
         else:
-            koboldai_vars.model = msg['data']
+            koboldai_vars.model_selected = msg['data']
             if 'path' in msg:
                 koboldai_vars.custmodpth = msg['path']
                 get_model_info(msg['data'], directory=msg['path'])
             else:
-                get_model_info(koboldai_vars.model)
+                get_model_info(koboldai_vars.model_selected)
     elif(msg['cmd'] == 'delete_model'):
         if "{}/models".format(os.getcwd()) in os.path.abspath(msg['data']) or "{}\\models".format(os.getcwd()) in os.path.abspath(msg['data']):
             if check_if_dir_is_model(msg['data']):
@@ -3873,7 +3890,6 @@ def get_message(msg):
             emit(
                 'from_server',
                 {'cmd': 'showfieldbudget', 'data': {"length": None, "max": None, "field": field}},
-                broadcast=True
             )
             return
 
@@ -4612,7 +4628,7 @@ def _generate(txt, minimum, maximum, found_entries):
                 gen_in, 
                 do_sample=True, 
                 max_length=int(2e9),
-                repetition_penalty=1.1,
+                repetition_penalty=1.0,
                 bad_words_ids=koboldai_vars.badwordsids,
                 use_cache=True,
                 num_return_sequences=numseqs

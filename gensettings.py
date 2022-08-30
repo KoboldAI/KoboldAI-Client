@@ -495,6 +495,17 @@ gensettingstf = [
     "classname": "story",
     "name": "andepth"
  	},
+    {
+	"uitype": "toggle",
+	"unit": "bool",
+	"label": "Show Field Budget",
+	"id": "setshowbudget",
+	"min": 0,
+	"max": 1,
+	"step": 1,
+	"default": 0,
+  "tooltip": "Shows token usage when typing in relevant text boxes. <b>May lag slower devices.</b>"
+	},
 ]
 
 gensettingsik =[{

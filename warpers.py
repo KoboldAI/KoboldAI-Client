@@ -28,10 +28,10 @@ SOFTWARE.
 '''
 
 import torch
-from transformers import LogitsWarper, LogitsProcessor
+from transformers import LogitsWarper
 
 
-class AdvancedRepetitionPenaltyLogitsProcessor(LogitsProcessor):
+class AdvancedRepetitionPenaltyLogitsProcessor(LogitsWarper):
     def __init__(self, *args, **kwargs):
         pass
 

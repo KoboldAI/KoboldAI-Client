@@ -473,7 +473,7 @@ body.connected #popupfooter, #popupfooter.always-available {
 }
 
 #samplerslist {
-	height: 300px;
+	height: 310px;
 	overflow-y: scroll;
 	overflow-wrap: anywhere;
 }

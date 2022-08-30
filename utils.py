@@ -33,7 +33,7 @@ layers_module_names: Optional[List[str]] = None
 module_names: Optional[List[str]] = None
 named_buffers: Optional[List[tuple]] = None
 
-default_sampler_order = [0, 1, 2, 3, 4, 5]
+default_sampler_order = [6, 0, 1, 2, 3, 4, 5]
 
 #==================================================================#
 # Decorator to prevent a function's actions from being run until
@@ -167,7 +167,7 @@ def decodenewlines(txt):
 #  Returns number of layers given an HF model config
 #==================================================================#
 def num_layers(config):
-    return config.num_layers if hasattr(config, "num_layers") else config.n_layer if hasattr(config, "n_layer") else config.num_hidden_layers if hasattr(config, 'num_hidden_layers') else None
+    return config["n_layer"] if isinstance(config, dict) else config.num_layers if hasattr(config, "num_layers") else config.n_layer if hasattr(config, "n_layer") else config.num_hidden_layers if hasattr(config, 'num_hidden_layers') else None
 
 #==================================================================#
 #  Downloads huggingface checkpoints using aria2c if possible
@@ -177,6 +177,7 @@ class Send_to_socketio(object):
     def write(self, bar):
         time.sleep(0.01)
         try:
+            print(bar)
             emit('from_server', {'cmd': 'model_load_status', 'data': bar.replace(" ", "&nbsp;")}, broadcast=True)
         except:
             pass
