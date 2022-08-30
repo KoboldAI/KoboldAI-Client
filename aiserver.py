@@ -963,7 +963,10 @@ def loadmodelsettings():
     if("nobreakmodel" in js):
         vars.nobreakmodel = js["nobreakmodel"]
     if("sampler_order" in js):
-        vars.sampler_order = js["sampler_order"]
+        sampler_order = vars.sampler_order
+        if(len(sampler_order) < 7):
+            sampler_order = [6] + sampler_order
+        vars.sampler_order = sampler_order
     if("temp" in js):
         vars.temp       = js["temp"]
     if("top_p" in js):
@@ -1094,7 +1097,10 @@ def processsettings(js):
     if("andepth" in js):
         vars.andepth    = js["andepth"]
     if("sampler_order" in js):
-        vars.sampler_order = js["sampler_order"]
+        sampler_order = vars.sampler_order
+        if(len(sampler_order) < 7):
+            sampler_order = [6] + sampler_order
+        vars.sampler_order = sampler_order
     if("temp" in js):
         vars.temp       = js["temp"]
     if("top_p" in js):
@@ -1474,22 +1480,22 @@ def get_model_info(model, directory=""):
 
 def get_layer_count(model, directory=""):
     if(model not in ["InferKit", "Colab", "API", "OAI", "GooseAI" , "ReadOnly", "TPUMeshTransformerGPTJ"]):
-        if(vars.model == "GPT2Custom"):
-            model_config = open(vars.custmodpth + "/config.json", "r")
+        if(model == "GPT2Custom"):
+            with open(os.path.join(directory, "config.json"), "r") as f:
+                model_config = json.load(f)
         # Get the model_type from the config or assume a model type if it isn't present
         else:
+            if(directory):
+                model = directory
             from transformers import AutoConfig
-            if directory == "":
-                model_config = AutoConfig.from_pretrained(model, revision=vars.revision, cache_dir="cache")
+            if(os.path.isdir(model.replace('/', '_'))):
+                model_config = AutoConfig.from_pretrained(model.replace('/', '_'), revision=vars.revision, cache_dir="cache")
+            elif(os.path.isdir("models/{}".format(model.replace('/', '_')))):
+                model_config = AutoConfig.from_pretrained("models/{}".format(model.replace('/', '_')), revision=vars.revision, cache_dir="cache")
             elif(os.path.isdir(directory)):
                 model_config = AutoConfig.from_pretrained(directory, revision=vars.revision, cache_dir="cache")
-            elif(os.path.isdir(vars.custmodpth.replace('/', '_'))):
-                model_config = AutoConfig.from_pretrained(vars.custmodpth.replace('/', '_'), revision=vars.revision, cache_dir="cache")
             else:
-                model_config = AutoConfig.from_pretrained(vars.custmodpth, revision=vars.revision, cache_dir="cache")
-        
-        
-        
+                model_config = AutoConfig.from_pretrained(model, revision=vars.revision, cache_dir="cache")
         return utils.num_layers(model_config)
     else:
         return None
@@ -1727,8 +1733,6 @@ def patch_transformers():
     dynamic_processor_wrap(TailFreeLogitsWarper, "tfs", "tfs", cond=lambda x: x < 1.0)
     dynamic_processor_wrap(TypicalLogitsWarper, "typical", "typical", cond=lambda x: x < 1.0)
     dynamic_processor_wrap(TemperatureLogitsWarper, "temperature", "temp", cond=lambda x: x != 1.0)
-    RepetitionPenaltyLogitsProcessor.__init__ = AdvancedRepetitionPenaltyLogitsProcessor.__init__
-    RepetitionPenaltyLogitsProcessor.__call__ = AdvancedRepetitionPenaltyLogitsProcessor.__call__
 
     class LuaLogitsProcessor(LogitsProcessor):
 
@@ -1805,9 +1809,13 @@ def patch_transformers():
             self.__warper_list.append(TailFreeLogitsWarper(tfs=0.5, min_tokens_to_keep=1 + (beams > 1)))
             self.__warper_list.append(TypicalLogitsWarper(typical=0.5, min_tokens_to_keep=1 + (beams > 1)))
             self.__warper_list.append(TemperatureLogitsWarper(temperature=0.5))
+            self.__warper_list.append(AdvancedRepetitionPenaltyLogitsProcessor())
 
         def __call__(self, input_ids: torch.LongTensor, scores: torch.FloatTensor, *args, **kwargs):
-            for k in vars.sampler_order:
+            sampler_order = vars.sampler_order[:]
+            if len(sampler_order) < 7:  # Add repetition penalty at beginning if it's not present
+                sampler_order = [6] + sampler_order
+            for k in sampler_order:
                 scores = self.__warper_list[k](input_ids, scores, *args, **kwargs)
             return scores
 
@@ -1940,22 +1948,24 @@ def reset_model_settings():
     vars.badwordsids = []
     vars.fp32_model  = False  # Whether or not the most recently loaded HF model was in fp32 format
     vars.modeldim    = -1     # Embedding dimension of your model (e.g. it's 4096 for GPT-J-6B and 2560 for GPT-Neo-2.7B)
-    vars.sampler_order = [0, 1, 2, 3, 4, 5]
+    vars.sampler_order = [6, 0, 1, 2, 3, 4, 5]
     vars.newlinemode = "n"
     vars.revision    = None
 
-def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=False, online_model=""):
+def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=False, online_model="", use_breakmodel_args=False, breakmodel_args_default_to_cpu=False):
     global model
     global generator
     global torch
     global model_config
     global GPT2TokenizerFast
     global tokenizer
+    if(initial_load):
+        use_breakmodel_args = True
     reset_model_settings()
     if not utils.HAS_ACCELERATE:
         disk_layers = None
     vars.noai = False
-    if not initial_load:
+    if not use_breakmodel_args:
         set_aibusy(True)
         if vars.model != 'ReadOnly':
             emit('from_server', {'cmd': 'model_load_status', 'data': "Loading {}".format(vars.model)}, broadcast=True)
@@ -1963,12 +1973,16 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
             time.sleep(0.1)
     if gpu_layers is not None:
         args.breakmodel_gpulayers = gpu_layers
-    elif initial_load:
+    elif use_breakmodel_args:
         gpu_layers = args.breakmodel_gpulayers
+    if breakmodel_args_default_to_cpu and gpu_layers is None:
+        gpu_layers = args.breakmodel_gpulayers = []
     if disk_layers is not None:
         args.breakmodel_disklayers = int(disk_layers)
-    elif initial_load:
+    elif use_breakmodel_args:
         disk_layers = args.breakmodel_disklayers
+    if breakmodel_args_default_to_cpu and disk_layers is None:
+        disk_layers = args.breakmodel_disklayers = 0
     
     #We need to wipe out the existing model and refresh the cuda cache
     model = None
@@ -2062,6 +2076,7 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
     if(not vars.use_colab_tpu and vars.model not in ["InferKit", "Colab", "API", "OAI", "GooseAI" , "ReadOnly", "TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX"]):
         loadmodelsettings()
         loadsettings()
+        print(2)
         print("{0}Looking for GPU support...{1}".format(colors.PURPLE, colors.END), end="")
         vars.hascuda = torch.cuda.is_available()
         vars.bmsupported = (utils.HAS_ACCELERATE or vars.model_type in ("gpt_neo", "gptj", "xglm", "opt")) and not vars.nobreakmodel
@@ -2311,7 +2326,6 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
                 # If we're using torch_lazy_loader, we need to get breakmodel config
                 # early so that it knows where to load the individual model tensors
                 if (utils.HAS_ACCELERATE or vars.lazy_load and vars.hascuda and vars.breakmodel) and not vars.nobreakmodel:
-                    print(1)
                     device_config(model_config)
 
                 # Download model from Huggingface if it does not exist, otherwise load locally
@@ -2551,8 +2565,11 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
             vars.compiling = False
         
         def tpumtjgenerate_settings_callback() -> dict:
+            sampler_order = vars.sampler_order[:]
+            if len(sampler_order) < 7:  # Add repetition penalty at beginning if it's not present
+                sampler_order = [6] + sampler_order
             return {
-                "sampler_order": vars.sampler_order,
+                "sampler_order": sampler_order,
                 "top_p": float(vars.top_p),
                 "temp": float(vars.temp),
                 "top_k": int(vars.top_k),
@@ -3659,12 +3676,16 @@ def get_message(msg):
         sendUSStatItems()
     elif(msg['cmd'] == 'samplers'):
         sampler_order = msg["data"]
+        sampler_order_min_length = 6
+        sampler_order_max_length = 7
         if(not isinstance(sampler_order, list)):
             raise ValueError(f"Sampler order must be a list, but got a {type(sampler_order)}")
-        if(len(sampler_order) != len(vars.sampler_order)):
-            raise ValueError(f"Sampler order must be a list of length {len(vars.sampler_order)}, but got a list of length {len(sampler_order)}")
+        if(not (sampler_order_min_length <= len(sampler_order) <= sampler_order_max_length)):
+            raise ValueError(f"Sampler order must be a list of length greater than or equal to {sampler_order_min_length} and less than or equal to {sampler_order_max_length}, but got a list of length {len(sampler_order)}")
         if(not all(isinstance(e, int) for e in sampler_order)):
             raise ValueError(f"Sampler order must be a list of ints, but got a list with at least one non-int element")
+        if(min(sampler_order) != 0 or max(sampler_order) != len(sampler_order) - 1 or len(set(sampler_order)) != len(sampler_order)):
+            raise ValueError(f"Sampler order list of length {len(sampler_order)} must be a permutation of the first {len(sampler_order)} nonnegative integers")
         vars.sampler_order = sampler_order
         settingschanged()
     elif(msg['cmd'] == 'list_model'):
@@ -3848,7 +3869,6 @@ def get_message(msg):
             emit(
                 'from_server',
                 {'cmd': 'showfieldbudget', 'data': {"length": None, "max": None, "field": field}},
-                broadcast=True
             )
             return
 
@@ -4618,7 +4638,7 @@ def _generate(txt, minimum, maximum, found_entries):
                 gen_in, 
                 do_sample=True, 
                 max_length=int(2e9),
-                repetition_penalty=1.1,
+                repetition_penalty=1.0,
                 bad_words_ids=vars.badwordsids,
                 use_cache=True,
                 num_return_sequences=numseqs
@@ -7242,6 +7262,9 @@ class WorldInfoFoldersUIDsSchema(KoboldSchema):
 class WorldInfoUIDsSchema(WorldInfoEntriesUIDsSchema):
     folders: List[WorldInfoFolderSchema] = fields.List(fields.Nested(WorldInfoFolderUIDsSchema), required=True)
 
+class ModelSelectionSchema(KoboldSchema):
+    model: str = fields.String(required=True, validate=validate.Regexp(r"^(?!\s*NeoCustom)(?!\s*GPT2Custom)(?!\s*TPUMeshTransformerGPTJ)(?!\s*TPUMeshTransformerGPTNeoX)(?!\s*GooseAI)(?!\s*OAI)(?!\s*InferKit)(?!\s*Colab)(?!\s*API).*$"), metadata={"description": 'Hugging Face model ID, the path to a model folder (relative to the "models" folder in the KoboldAI root folder) or "ReadOnly" for no model'})
+
 def _generate_text(body: GenerationInputSchema):
     if vars.aibusy or vars.genseqs:
         abort(Response(json.dumps({"detail": {
@@ -7451,6 +7474,49 @@ def get_model():
                 result: KoboldAI/fairseq-dense-13B-Nerys-v2
     """
     return {"result": vars.model}
+
+
+@api_v1.put("/model")
+@api_schema_wrap
+def put_model(body: ModelSelectionSchema):
+    """---
+    put:
+      summary: Load a model
+      description: |-2
+        Loads a model given its Hugging Face model ID, the path to a model folder (relative to the "models" folder in the KoboldAI root folder) or "ReadOnly" for no model.
+      tags:
+        - model
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: ModelSelectionSchema
+            example:
+              model: ReadOnly
+      responses:
+        200:
+          description: Successful request
+          content:
+            application/json:
+              schema: EmptySchema
+        {api_validation_error_response}
+        {api_server_busy_response}
+    """
+    if vars.aibusy or vars.genseqs:
+        abort(Response(json.dumps({"detail": {
+            "msg": "Server is busy; please try again later.",
+            "type": "service_unavailable",
+        }}), mimetype="application/json", status=503))
+    set_aibusy(1)
+    old_model = vars.model
+    vars.model = body.model.strip()
+    try:
+        load_model(use_breakmodel_args=True, breakmodel_args_default_to_cpu=True)
+    except Exception as e:
+        vars.model = old_model
+        raise e
+    set_aibusy(0)
+    return {}
 
 
 def prompt_validator(prompt: str):

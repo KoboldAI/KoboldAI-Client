@@ -241,7 +241,26 @@ function addSetting(ob) {
 			if(ob.id == "setadventure"){
 				setadventure($(this).prop('checked'));
 			}
+
 		});
+	}
+
+	if (ob.id === "setshowbudget") {
+		$("#setshowbudget").on("change", function () {
+			for (const el of document.getElementsByClassName("input-token-usage")) {
+				if (this.checked) {
+					el.classList.remove("hidden");
+				} else {
+					el.classList.add("hidden");
+				}
+			}
+		});
+
+		if (!$("#setshowbudget")[0].checked) {
+			for (const el of document.getElementsByClassName("input-token-usage")) {
+				el.classList.add("hidden");
+			}
+		}
 	}
 }
 
@@ -1287,12 +1306,13 @@ function buildSamplerList(samplers) {
 		"Tail-free Sampling",
 		"Typical Sampling",
 		"Temperature",
+		"Repetition Penalty",
 	]
 	for(i=0; i<samplers.length; i++) {
 		samplerslist.append("<div class=\"flex\">\
 			<div class=\"samplerslistitem flex-row-container\" sid=\""+samplers[i]+"\">\
 				<div class=\"flex-row\">\
-					<div>"+samplers_lookup_table[samplers[i]]+"</div>\
+					<div>"+(samplers[i] < samplers_lookup_table.length ? samplers_lookup_table[samplers[i]] : "Unknown sampler #" + samplers[i])+"</div>\
 				</div>\
 			</div>\
 		</div>");
@@ -2165,6 +2185,9 @@ function interpolateRGB(color0, color1, t) {
 }
 
 function updateInputBudget(inputElement) {
+	let budgetElement = document.getElementById("setshowbudget");
+	if (budgetElement && !budgetElement.checked) return;
+
 	let data = {"unencoded": inputElement.value, "field": inputElement.id};
 
 	if (inputElement.id === "anoteinput") {
@@ -2182,7 +2205,6 @@ function registerTokenCounters() {
 
 		let span = document.createElement("span");
 		span.classList.add("input-token-usage");
-		span.innerText = "?/? Tokens";
 		el.appendChild(span);
 
 		let inputElement = el.querySelector("input, textarea");
@@ -2958,6 +2980,7 @@ $(document).ready(function(){
 			$("#showmodelnamecontainer").removeClass("hidden");
 		} else if(msg.cmd == 'hide_model_name') {
 			$("#showmodelnamecontainer").addClass("hidden");
+			$(window).off('beforeunload');
 			location.reload();
 			//console.log("Closing window");
 		} else if(msg.cmd == 'model_load_status') {
