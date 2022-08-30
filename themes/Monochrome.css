@@ -120,11 +120,11 @@
 	--popup_cancel_button_color_text: #e0e0e0;
 	
 	/*Context Bar Colors*/
-	--context_colors_memory: #08365f;
+	--context_colors_memory: #04325c;
 	--context_colors_authors_notes: #165a62;
 	--context_colors_world_info: #1864a3;
 	--context_colors_prompt: #868686;
-	--context_colors_game_text: #787f4d;
+	--context_colors_game_text: #63710e;
 	--context_colors_submit: #ededed;
 	--context_colors_unused: #ffffff24;
 	--context_colors_soft_prompt: #141414;
