@@ -16,10 +16,7 @@
 		}
 	}
 </script>
-<div>Execution Time: <span id="Execution Time"></span></div>
-<div>Remaining Time: <span class="var_sync_model_tqdm_rem_time"></span></div>
-<div class="used_token_length"></div>
-<hr/>
+
 <div class="tabrow nomenu_icon">
 	<span class="story_menu_button selected" onclick="show_story_menu(this, 'story_menu_memory');">Memory</span>
 	<span class="story_menu_button" onclick="show_story_menu(this, 'story_menu_author');">Author's Note</span>
@@ -29,34 +26,49 @@
 <div class="flyout_menu_contents">
 	<div id="story_menu_memory" class="story_category_area">
 		<div id="Memory">
-			Memory:<br/>
-			<textarea rows=20 id="memory" class="var_sync_story_memory var_sync_alt_story_memory_length fullwidth" onchange='sync_to_server(this);' autocomplete="off"></textarea>
+			<h4 class="section_header">Memory</h4>
+			<span class="help_text">
+				Important information the AI should always keep in mind.
+			</span>
+			<textarea rows=20 id="memory" class="var_sync_story_memory var_sync_alt_story_memory_length fullwidth" onchange='sync_to_server(this);' oninput="autoResize(this)" autocomplete="off"></textarea>
 		</div>
 	</div>
 	<div id="story_menu_author" class="story_category_area hidden">
 		<div id="author_notes">
+			<h4 class="section_header">Author's Note</h4>
+			<span class="help_text">
+				Heavily influences the direction and style of the AI's writing.
+			</span>
+
 			Template:<br/>
 			<input autocomplete="off" type=text class="var_sync_story_authornotetemplate fullwidth" onchange='sync_to_server(this);'><br/>
 			Author's Notes:<br/>
-			<textarea autocomplete="off" rows=5 id="authors_notes" class="var_sync_story_authornote var_sync_alt_story_authornote_length fullwidth" onchange='sync_to_server(this);'></textarea><br/>
-			Depth<br/>
-			<input type="range" min="0" max="5" step="1" 
-						   value="3" class="setting_item_input var_sync_story_andepth"
-						   onchange='sync_to_server(this);'>
-			<span style='display: grid; grid-template-areas: "minlabel maxlabel"'>
-				<span class=setting_minlabel>0</span>
-				<span class=setting_maxlabel>5</span>
-			</span>
+			<textarea autocomplete="off" rows=17 id="authors_notes" class="var_sync_story_authornote var_sync_alt_story_authornote_length fullwidth" oninput="autoResize(this)" onchange='sync_to_server(this);'></textarea><br/>
+			<div class="setting_tile_area">
+				{% with menu='author_notes' %}
+					{% with sub_path='' %}
+						{% include 'settings item.html' %}
+					{% endwith %}
+				{% endwith %}
+			</div>
 		</div>
 	</div>
 	<div id="story_menu_notes" class="story_category_area hidden">
 		<div id="Notes">
-			Notes (ignored by AI):<br/>
-			<textarea autocomplete="off" rows=20 class="var_sync_story_notes fullwidth" onchange='sync_to_server(this);'></textarea>
+			<h4 class="section_header">Notes</h4>
+			<span class="help_text">
+				Notes about the story. These notes are not read by the AI!
+			</span>
+			<textarea autocomplete="off" rows=20 class="var_sync_story_notes fullwidth" onchange='sync_to_server(this);' oninput="autoResize(this)"></textarea>
 		</div>
 	</div>
 	<div id="story_menu_wi" class="story_category_area hidden">
-		<div class="setting_tile_area">
+		<h4 class="section_header" style="margin-left: 10px;">World Info</h4>
+		<span class="help_text" style="margin-left: 20px;">
+			Lore information, which the AI recalls by certain words.
+			<span class="helpicon material-icons-outlined" title="Use this instead of Memory for information on things like characters, objects, events, places, and anything else with detail.">help_icon</span>
+		</span>
+		<div class="setting_tile_area wi_settings">
 		{% with menu='World Info' %}
 			{% with sub_path='' %}
 				{% include 'settings item.html' %}
@@ -64,7 +76,30 @@
 		{% endwith %}
 		</div>
 		<div id="WI_Area">
-			<span id="world_info_folder_root" class="WI_Folder"><h2>root</h2></span>
+			<span id="world_info_folder_New Folder" class="WI_Folder">
+				<h2>
+					<span id="world_info_folder_collapse_root" class="wi_folder_collapser material-icons-outlined" folder="root">expand_more</span>
+					<span id="world_info_folder_expand_root" class="wi_folder_collapser material-icons-outlined hidden" folder="root">chevron_right</span>
+					<span class="material-icons-outlined" folder="root">folder</span>
+					<span class="wi_title" original_text="root" contenteditable="true">root</span>
+				</h2>
+				<span class="wi_add_button" onclick='create_new_wi_entry(this.getAttribute("folder"));'>
+					<span class="material-icons-outlined">post_add</span>
+					<span class="wi_add_text" folder="root">Add World Info Entry</span>
+				</span>
+			</span>
+		</div>
+	</div>
+	<div id="token-breakdown-container" style="border-top:2px;border-top-color:grey;border-top-style: solid;padding-top: 10px;">
+		<div class="token_breakdown">
+			<div id="soft_prompt_tokens" style="width:0%; background-color: var(--context_colors_soft_prompt);"></div>
+			<div id="memory_tokens" style="width:40%; background-color: var(--context_colors_memory);"></div>
+			<div id="authors_notes_tokens" style="width:10%; background-color: var(--context_colors_authors_notes);"></div>
+			<div id="world_info_tokens" style="width:20%; background-color: var(--context_colors_world_info);"></div>
+			<div id="prompt_tokens" style="width:40%; background-color: var(--context_colors_prompt);"></div>
+			<div id="game_text_tokens" style="width:10%; background-color: var(--context_colors_game_text);"></div>
+			<div id="submit_tokens" style="width:20%; background-color: var(--context_colors_submit);"></div>
+			<div id="unused_tokens" style="width:20%; background-color: var(--context_colors_unused);"></div>
 		</div>
 	</div>
 </div>

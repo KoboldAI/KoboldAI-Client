@@ -30,7 +30,10 @@
 	<span class="setting_menu_button selected" onclick="show_setting_menu(this);">Home</span>
 	<span class="setting_menu_button" onclick="show_setting_menu(this);">Settings</span>
 	<span class="setting_menu_button" onclick="show_setting_menu(this);">Interface</span>
-	<span style="float: right;margin-right: 30px;" onclick="window.open('https://github.com/KoboldAI/KoboldAI-Client/wiki');">Help</span>
+	<span style="float: right;margin-right: 30px;padding: 0px 10px;" onclick="window.open('https://github.com/KoboldAI/KoboldAI-Client/wiki');">
+		Help
+		<icon class="material-icons-outlined" style="font-size:14px;position:relative;top:2px;">open_in_new</icon>
+	</span>
 </div>
 <div class="flyout_menu_contents">
 
@@ -44,8 +47,10 @@
 			<div id="text_runningmodel">
 					<b>Running Model: </b>
 			</div>
-			<div>
-				<button class="btn action_button" onclick="socket.emit('load_model_button', {});">Load Model</button>
+			<div class="Model_Icon">
+				<span class="material-icons-outlined cursor" title="Load Model" onclick="socket.emit('load_model_button', {});">folder_open</span>
+			</div>
+			<div style="text-align: center;">
 				<select class="var_sync_model_selected_preset settings_select presets" onchange='sync_to_server(this)'><option>Preset</option></select>
 			</div>
 		</div>
@@ -86,7 +91,7 @@
 			<select class="var_sync_model_selected_preset settings_select presets" onchange='sync_to_server(this)'><option>Preset</option></select>
 		</div>
 		{% with menu='Settings' %}
-			<div onclick="toggle_setting_category(this);">
+			<div class="collapsable_header" onclick="toggle_setting_category(this);">
 				<h4 style="width:var(--flyout_menu_width);"><span class="material-icons-outlined cursor">expand_more</span> Generation</h4>
 			</div>
 			<div class="setting_tile_area">
@@ -95,23 +100,24 @@
 				{% endwith %}
 			</div>
 			
-			<div onclick="toggle_setting_category(this);">
+			<div class="collapsable_header" onclick="toggle_setting_category(this);">
 				<h4 style="width:var(--flyout_menu_width);"><span class="material-icons-outlined cursor">expand_more</span> Sampling</h4>
 			</div>
+			<span class="help_text">Change how the AI decides what to say.</span>
 			<div class="setting_tile_area">
 				<div class="setting_container_single">
 					<!---Top Row---->
 					<span class="setting_label">
-						<span>Sample Order:&nbsp;</span><span class="helpicon material-icons-outlined" title="Help Text Here">help_icon</span>
+						<span>Samplers Order:&nbsp;</span><span class="helpicon material-icons-outlined" title="Changes the order of the samplers to have a considerably different effect than just leaving the samplers at their default order.">help_icon</span>
 					</span>
 					<!---Bottom Row---->
 					<span class="setting_item">
 						<div style="display:flex;flex-direction:row;">
 							<ul id="sample_order_list" style="width:calc(var(--flyout_menu_width) - 60px);list-style-position: inside; padding: 0;">
-								<li class="sample_order cursor" onclick="select_sample(this);">Top-k Sampling</li>
-								<li class="sample_order cursor" onclick="select_sample(this);">Top-a Sampling</li>
-								<li class="sample_order cursor" onclick="select_sample(this);">Top-p Sampling</li>
-								<li class="sample_order cursor" onclick="select_sample(this);">Tail-free Sampling</li>
+								<li class="sample_order cursor" onclick="select_sample(this);">Top K Sampling</li>
+								<li class="sample_order cursor" onclick="select_sample(this);">Top A Sampling</li>
+								<li class="sample_order cursor" onclick="select_sample(this);">Top P Sampling</li>
+								<li class="sample_order cursor" onclick="select_sample(this);">Tail Free Sampling</li>
 								<li class="sample_order cursor" onclick="select_sample(this);">Typical Sampling</li>
 								<li class="sample_order cursor" onclick="select_sample(this);">Temperature</li>
 							</ul>
@@ -122,25 +128,23 @@
 							</div>
 						</div>
 					</span>
-					<!---Slider Labels--->
-					<span class="setting_minlabel"><span style="top: -4px; position: relative;"></span></span>
-					<span class="setting_maxlabel"><span style="top: -4px; position: relative;"></span></span>
 				</div>
 				{% with sub_path='Sampling' %}
 					{% include 'settings item.html' %}
 				{% endwith %}
 			</div>
 			
-			<div onclick="toggle_setting_category(this);">
+			<div class="collapsable_header" onclick="toggle_setting_category(this);">
 				<h4 style="width:var(--flyout_menu_width);"><span class="material-icons-outlined cursor">expand_more</span> Repetition</h4>
 			</div>
+			<span class="help_text">Change how the AI combats repetition.</span>
 			<div class="setting_tile_area">
 				{% with sub_path='Repetition' %}
 					{% include 'settings item.html' %}
 				{% endwith %}
 			</div>
 			
-			<div onclick="toggle_setting_category(this);">
+			<div class="collapsable_header" onclick="toggle_setting_category(this);">
 				<h4 style="width:var(--flyout_menu_width);"><span class="material-icons-outlined cursor">expand_more</span> Other</h4>
 			</div>
 			<div class="setting_tile_area">
@@ -149,7 +153,7 @@
 				{% endwith %}
 			</div>
 			
-			<div onclick="toggle_setting_category(this);">
+			<div class="collapsable_header" onclick="toggle_setting_category(this);">
 				<h4 style="width:var(--flyout_menu_width);"><span class="material-icons-outlined cursor">expand_more</span> Modifiers</h4>
 			</div>
 			<div class="setting_tile_area">
@@ -160,11 +164,14 @@
 					<!---Top Row---->
 					<span class="setting_label">
 						<span style="white-space: pre-wrap;">Soft Prompt: </span>
-						<span class="helpicon material-icons-outlined" title="Changes how the AI decides what to output">help_icon</span>
+						<span class="helpicon material-icons-outlined" title="Changes how the AI decides what to output.">help_icon</span>
 					</span>
 					<!---Bottom Row---->
 					<span class="setting_item">
-						<span class="material-icons-outlined cursor" onclick="socket.emit('load_softprompt_list', '');">folder_open</span> <span class="var_sync_system_spname"></span>
+						<!---<span class="material-icons-outlined cursor" onclick="socket.emit('load_softprompt_list', '');">folder_open</span> <span class="var_sync_system_spname"></span>--->
+						<select autocomplete="off" id="sp" class="var_sync_system_splist var_sync_system_spfilename settings_select" style="width: 140px;margin-right:0px;padding-bottom: 0px;" onclick="socket.emit('load_softprompt', this.value);">
+						</select>
+						<span class="material-icons-outlined cursor" style="font-size: 18px;" title="Refresh List" onclick="socket.emit('sp_list_refresh', '');">autorenew</span>
 					</span>
 					<!---Slider Labels--->
 					<span class="setting_minlabel"><span style="top: -4px; position: relative;"></span></span>
@@ -172,9 +179,10 @@
 				</div>
 			</div>
 		{% endwith %}
-		<div onclick="toggle_setting_category(this);">
+		<div class="collapsable_header" onclick="toggle_setting_category(this);">
 			<h4 style="width:var(--flyout_menu_width);"><span class="material-icons-outlined cursor">expand_more</span> Biasing</h4>
 		</div>
+		<span class="help_text">Influence the likelihood for the AI to output certain phrases.</span>
 		<div id="biasing">
 			<div class="bias_header">
 				<div class="bias_header_phrase">Phrase</div>
@@ -184,7 +192,7 @@
 		</div>
 	</div>
 	<div id="setting_menu_interface" class="hidden settings_category_area">
-		<div onclick="toggle_setting_category(this);">
+		<div class="collapsable_header" onclick="toggle_setting_category(this);">
 			<h4 style="width:var(--flyout_menu_width);"><span class="material-icons-outlined cursor">expand_more</span> UI</h4>
 		</div>
 		<div class="setting_tile_area">
@@ -195,7 +203,7 @@
 			{% endwith %}
 			<div class="setting_container">
 				<span class="setting_label">
-					<span>Maximize Game Text Space: &nbsp;</span><span class="helpicon material-icons-outlined" title="When enabled and both menus are un-pinned, the game screen will take up all avaialable space. When disabled, the game screen will be centered.">help_icon</span> 
+					<span>Max Game Screen: &nbsp;</span><span class="helpicon material-icons-outlined" title="When enabled and both menus are un-pinned, the game screen will take up all avaialable space. When disabled, the game screen will be centered.">help_icon</span> 
 				</span>
 				<span class="setting_item">
 					<input type=checkbox id="preserve_game_space_setting" data-size=mini data-onstyle=success data-toggle=toggle onchange="preserve_game_space(this.checked)"/>
@@ -206,7 +214,7 @@
 			</div>
 			<div class="setting_container">
 				<span class="setting_label">
-					<span>Keep options on Right:&nbsp;</span><span class="helpicon material-icons-outlined" title="When enabled and only the story menu is pinned, the generated story options will be shown on the right instead of the left of the game text.">help_icon</span> 
+					<span>Options on Right:&nbsp;</span><span class="helpicon material-icons-outlined" title="When enabled and only the story menu is pinned, the generated story options will be shown on the right instead of the left of the game text.">help_icon</span> 
 				</span>
 				<span class="setting_item">
 					<input type=checkbox id="options_on_right" data-size=mini data-onstyle=success data-toggle=toggle onchange="options_on_right(this.checked)"/>
@@ -216,73 +224,96 @@
 				<span class="setting_maxlabel"><span style="top: -4px; position: relative;"></span></span>
 			</div>
 		</div>
-		<div onclick="toggle_setting_category(this);">
-			<h4 style="width:var(--flyout_menu_width);"><span class="material-icons-outlined cursor">expand_more</span> Theme</h4>
-		</div>
-		<div class="setting_tile_area" id="Theme">
-			<select style="color: black;" onchange="Change_Theme(this.value);">
-				<option selected>Monochrome</option>
-				<option>Material You</option>
-				<option>user</option>
-				<option>Gruvbox Dark</option>
-			</select>
-			<!-- REMOVE THIS-->
-			<script>Change_Theme("Gruvbox Dark");</script>
-			<div onclick="toggle_setting_category(this);">
-				<h4 style="width:var(--flyout_menu_width);"><span class="material-icons-outlined cursor">expand_more</span> Palette</h4>
-			</div>
-			<div class="setting_tile_area" id="Palette">
-				<table border=1>
-					<tr>
-						<th></th>
-						<th colspan=2>Main</th>
-						<th colspan=2>Alternative</th>
-					</tr>
-					<tr>
-						<th></th>
-						<th>Background</th>
-						<th>Text</th>
-						<th>Background</th>
-						<th>Text</th>
-					</tr>
-					<tr>
-						<td>Primary</td>
-						<td><input type=color id="primary_palette" onchange="palette_color(this)"></td>
-						<td><input type=color id="on_primary_palette" onchange="palette_color(this)"></td>
-						<td><input type=color id="primary_containter_palette" onchange="palette_color(this)"></td>
-						<td><input type=color id="on_primary_containter_palette" onchange="palette_color(this)"></td>
-					</tr>
-					<tr>
-						<td>Secondary</td>
-						<td><input type=color id="secondary_palette" onchange="palette_color(this)"></td>
-						<td><input type=color id="on_secondary_palette" onchange="palette_color(this)"></td>
-						<td><input type=color id="secondary_containter_palette" onchange="palette_color(this)"></td>
-						<td><input type=color id="on_secondary_containter_palette" onchange="palette_color(this)"></td>
-					</tr>
-					<tr>
-						<td>Tertiary</td>
-						<td><input type=color id="tertiary_palette" onchange="palette_color(this)"></td>
-						<td><input type=color id="on_tertiary_palette" onchange="palette_color(this)"></td>
-						<td><input type=color id="tertiary_containter_palette" onchange="palette_color(this)"></td>
-						<td><input type=color id="on_tertiary_containter_palette" onchange="palette_color(this)"></td>
-					</tr>
-					<tr>
-						<td>Error</td>
-						<td><input type=color id="error_palette" onchange="palette_color(this)"></td>
-						<td><input type=color id="on_error_palette" onchange="palette_color(this)"></td>
-						<td><input type=color id="error_containter_palette" onchange="palette_color(this)"></td>
-						<td><input type=color id="on_error_containter_palette" onchange="palette_color(this)"></td>
-					</tr>
-				</table>
-				
-			</div>
-			
-		</div>
-		<div onclick="toggle_setting_category(this);">
+		<div class="collapsable_header" onclick="toggle_setting_category(this);">
 			<h4 style="width:var(--flyout_menu_width);"><span class="material-icons-outlined cursor">expand_more</span> Formatting</h4>
 		</div>
 		<div class="setting_tile_area">
-			
+			{% with menu='Interface' %}
+				{% with sub_path='Formatting' %}
+					{% include 'settings item.html' %}
+				{% endwith %}
+			{% endwith %}
 		</div>
+		<div class="collapsable_header" onclick="toggle_setting_category(this);">
+			<h4 style="width:var(--flyout_menu_width);"><span class="material-icons-outlined cursor">expand_more</span> Theme</h4>
+		</div>
+		<div class="setting_tile_area" id="Theme">
+			<select id="selected_theme" class="var_sync_system_theme_list" autocomplete="off" onchange="Change_Theme(this.value);">
+			</select><span class="material-icons-outlined cursor" title="Refresh List" onclick="socket.emit('theme_list_refresh', '');">autorenew</span>
+			<div id="palette_area">
+				<b style="font-size: 20px;">Palette</b>
+				<div id="save_theme_area" >
+					<input type="text" id="save_theme_name" autocomplete="off" placeholder="New Theme Name"/>
+					<span class="material-icons-outlined cursor" title="Save Theme" onclick='save_theme();'>save</span>
+				</div>
+				<div class="setting_tile_area" id="Palette">
+					<table id="Palette_Table" border=1>
+						<tr>
+							<td></td>
+							<td colspan=2><b>Main</b></td>
+							<td colspan=2><b>Alternative</b></td>
+						</tr>
+						<tr>
+							<td></td>
+							<td>Background</td>
+							<td>Text</td>
+							<td>Background</td>
+							<td>Text</td>
+						</tr>
+						<tr>
+							<td>Primary</td>
+							<td><input class="Theme_Input" autocomplete="off" type=color id="primary_palette" onchange="palette_color(this)"></td>
+							<td><input class="Theme_Input" autocomplete="off" type=color id="on_primary_palette" onchange="palette_color(this)"></td>
+							<td><input class="Theme_Input" autocomplete="off" type=color id="primary_container_palette" onchange="palette_color(this)"></td>
+							<td><input class="Theme_Input" autocomplete="off" type=color id="on_primary_container_palette" onchange="palette_color(this)"></td>
+						</tr>
+						<tr>
+							<td>Secondary</td>
+							<td><input class="Theme_Input" autocomplete="off" type=color id="secondary_palette" onchange="palette_color(this)"></td>
+							<td><input class="Theme_Input" autocomplete="off" type=color id="on_secondary_palette" onchange="palette_color(this)"></td>
+							<td><input class="Theme_Input" autocomplete="off" type=color id="secondary_container_palette" onchange="palette_color(this)"></td>
+							<td><input class="Theme_Input" autocomplete="off" type=color id="on_secondary_container_palette" onchange="palette_color(this)"></td>
+						</tr>
+						<tr>
+							<td>Tertiary</td>
+							<td><input class="Theme_Input" autocomplete="off" type=color id="tertiary_palette" onchange="palette_color(this)"></td>
+							<td><input class="Theme_Input" autocomplete="off" type=color id="on_tertiary_palette" onchange="palette_color(this)"></td>
+							<td><input class="Theme_Input" autocomplete="off" type=color id="tertiary_container_palette" onchange="palette_color(this)"></td>
+							<td><input class="Theme_Input" autocomplete="off" type=color id="on_tertiary_container_palette" onchange="palette_color(this)"></td>
+						</tr>
+						<tr>
+							<td>Error</td>
+							<td><input class="Theme_Input" autocomplete="off" type=color id="error_palette" onchange="palette_color(this)"></td>
+							<td><input class="Theme_Input" autocomplete="off" type=color id="on_error_palette" onchange="palette_color(this)"></td>
+							<td><input class="Theme_Input" autocomplete="off" type=color id="error_container_palette" onchange="palette_color(this)"></td>
+							<td><input class="Theme_Input" autocomplete="off" type=color id="on_error_container_palette" onchange="palette_color(this)"></td>
+						</tr>
+					</table>
+					
+				</div>
+			</div>
+			<div class="advanced_theme cursor" onclick='document.getElementById("advanced_theme_editor").classList.remove("hidden");'>
+				<span>Advanced Theme</h4>
+			</div>
+		</div>
+
+		<div class="collapsable_header" onclick="toggle_setting_category(this);">
+			<h4 style="width:var(--flyout_menu_width);"><span class="material-icons-outlined cursor">expand_more</span> Tweaks</h4>
+		</div>
+		<div class="setting_tile_area" id="Tweaks">
+			<span class="help_text">Small UI changes that can be mixed and matched.</span>
+			<div class="tweak-container" tweak-path="hide-timing">
+				<span>Hide timing information</span>
+				<input type=checkbox class="setting_item_input" data-size="mini" data-onstyle="success" data-toggle="toggle">
+			</div>
+			<div class="tweak-container" tweak-path="hide-token-bar">
+				<span>Hide token bar</span>
+				<input type=checkbox class="setting_item_input" data-size="mini" data-onstyle="success" data-toggle="toggle">
+			</div>
+		</div>
+	</div>
+	<div id="settings_footer" class="settings_footer">
+		<span>Execution Time: <span id="Execution Time"></span></span> | 
+		<span>Remaining Time: <span class="var_sync_model_tqdm_rem_time"></span></span> | <span id="var_time"></span>
 	</div>
 </div>

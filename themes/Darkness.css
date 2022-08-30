@@ -22,7 +22,7 @@
 
 	--background_palette: #1b1b1f;
 	--on_background_palette:#e3e2e6;
-	--layer1_palette: #18222a;
+	--layer1_palette: #181818;
 	--layer2_palette: #28282D;
 	--layer3_palette: #2F2F35;
 	--layer4_palette: #35353D;
@@ -35,51 +35,51 @@
 
 /*----------------Advanced Theme--------------------*/
 	/*General*/
-	--background: #222f3a;
-	--gamescreen_background: #12181c;
-    --input_background: #121b21;
+	--background: #1c1e1f;
+	--gamescreen_background: #1c1e1f;
+    --input_background: #151717;
 
     --text: #e0e0e0;
-    --text_to_ai_color: #cdd9e0;
-    --text_edit: #759bc5;
+    --text_to_ai_color: #34c5d0;
+    --text_edit: #187275;
 
-	--statusbar_color: #3e53679e;
+	--statusbar_color: #1a625fa1;
 	--statusbar_text_color: #e0e0e0;
-	--scrollbar-color: #3e536780;
+	--scrollbar-color: #1a615e7a;
 
 	/*Buttons*/
 	--enabled_button_text: #e0e0e0;
-    --enabled_button_background_color: #2f4563;
-    --enabled_button_border_color: #263a54;
+    --enabled_button_background_color: #424243;
+    --enabled_button_border_color: #2e2e2fe8;
 	--disabled_button_text: #303030;
     --disabled_button_background_color: #495762;
     --disabled_button_border_color: #686c68;
 
 	/*Sequence, AKA Gens Per Action*/
-	--sequence_area_background: #121b21;
-    --sequence_background: #131c22;
-	--sequence_text: #cfd7a2;
+	--sequence_area_background: #1c1e1f;
+    --sequence_background: #1c1e1f;
+	--sequence_text: #e0e0e0;
 
 	/*Side Menus*/
-	--tab_color: #2b5471;
+	--tab_color: #1a625f;
 
-	--flyout_background: #18222a;
+	--flyout_background: #181818;
 	--flyout_background_pinned:var(--layer1_palette);
 
-	--setting_background: #273141;
+	--setting_background: #242424;
     --setting_text: #e0e0e0;
 
-	--sample_order_select_color: #244c65;
+	--sample_order_select_color: #1d434a;
 	--sample_order_select_color_text: #e0e0e0;
 
-	--dropdown_text: #cfd7a2;
-	--dropdown_background: #131c22;
+	--dropdown_text: #e0e0e0;
+	--dropdown_background: #181818;
 
-	--rangeslider_background_color: #1f2934;
-	--rangeslider_color: #244c65;
-	--rangeslider_circle_color: #1b354d;
+	--rangeslider_background_color: #1b1b1b;
+	--rangeslider_color: #1d434a;
+	--rangeslider_circle_color: #385262;
 
-	--help_icon: #cfd7a2;
+	--help_icon: #c07ec5;
     --tooltip_text:var(--on_secondary_palette);
     --tooltip_background:var(--secondary_palette);
 	--setting_category_help_text_color: #E0E0E0;
@@ -89,34 +89,34 @@
 	--setting_footer_background_color: var(--layer1_palette);
 
 	/*World Info*/
-	--wi_card_border_color: #eeeeeead;
-    --wi_card_border_color_to_ai: #eeeeeead;
+	--wi_card_border_color: #002d6c00;
+    --wi_card_border_color_to_ai: #002d6c00;
 
-    --wi_card_bg_color: #273141;
+    --wi_card_bg_color: #1c1c1c;
 	--wi_card_text_color: #e0e0e0;
 
-    --wi_card_tag_bg_color: #273141;
+    --wi_card_tag_bg_color: #242424;
 	--wi_card_tag_text_color: #e0e0e0;
 	
-    --wi_tag_color: #244c65;
+    --wi_tag_color: #1d434a;
 	--wi_tag_text_color: #e0e0e0;
 	
 	/*Popup*/
-	--popup_background_color: #141c23;
-    --popup_title_bar_color: #2b5471;
+	--popup_background_color: #121414;
+    --popup_title_bar_color: #1a625f;
 	--popup_title_bar_color_text: #e0e0e0;
 
-    --popup_item_color: #252f3a;
+    --popup_item_color: #1c1c1c;
 	--popup_item_color_text: #e0e0e0;
 
-	--popup_hover_color: #1f4358;
+	--popup_hover_color: #1a2e30;
 	--popup_hover_color_text: #e0e0e0;
-	--popup_selected_color: #295c72;
+	--popup_selected_color: #2c5357;
 	--popup_selected_color_text:var(--on_secondary_container_palette_palette);
 
-	--popup_button_color: #406494;
+	--popup_button_color: #1a625f;
 	--popup_button_color_text: #e0e0e0;
-	--popup_cancel_button_color: #406494;
+	--popup_cancel_button_color: #1a625f;
 	--popup_cancel_button_color_text: #e0e0e0;
 	
 	/*Context Bar Colors*/
@@ -128,20 +128,21 @@
 	--context_colors_submit: #ededed;
 	--context_colors_unused: white;
 	--context_colors_soft_prompt: #000080;
+	
 
     /*Parameters*/
-	--scrollbar-size: 6px;
+	--scrollbar-size: 7px;
 	--light_shadow_value: 0;
 	--left_menu_strong_shadow: 0;
 	--right_menu_light_shadow: 0;
 	--right_menu_strong_shadow: 0;
-	--radius_inputbox: 5px;
-	--radius_unpinned_menu: 10px;
+	--radius_inputbox: 10px;
+	--radius_unpinned_menu: 20px;
 	--radius_sequence: 10px;
-	--radius_settings_background: 5px;
+	--radius_settings_background: 10px;
 	--radius_buttons: 5px;
-	--radius_item_popup: 2px;
-	--radius_wi_card: 5px;
+	--radius_item_popup: 5px;
+	--radius_wi_card: 10px;
 
 
 

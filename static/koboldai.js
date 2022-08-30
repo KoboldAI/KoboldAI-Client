@@ -1,6 +1,7 @@
 var socket;
 socket = io.connect(window.location.origin, {transports: ['polling', 'websocket'], closeOnBeforeunload: false, query:{"ui":  "2"}});
 
+
 //Let's register our server communications
 socket.on('connect', function(){connect();});
 socket.on("disconnect", (reason, details) => {
@@ -19,6 +20,7 @@ socket.on('oai_engines', function(data){oai_engines(data);});
 socket.on('buildload', function(data){buildload(data);});
 socket.on('error_popup', function(data){error_popup(data);});
 socket.on("world_info_entry", function(data){world_info_entry(data);});
+socket.on("world_info_entry_used_in_game", function(data){world_info_entry_used_in_game(data);});
 socket.on("world_info_folder", function(data){world_info_folder(data);});
 socket.on("delete_new_world_info_entry", function(data){document.getElementById("world_info_-1").remove();});
 socket.on("delete_world_info_entry", function(data){document.getElementById("world_info_"+data).remove();});
@@ -36,19 +38,22 @@ var world_info_data = {};
 var world_info_folder_data = {};
 var saved_settings = {};
 const map1 = new Map()
-map1.set('Top-k Sampling', 0)
-map1.set('Top-a Sampling', 1)
-map1.set('Top-p Sampling', 2)
-map1.set('Tail-free Sampling', 3)
+map1.set('Top K Sampling', 0)
+map1.set('Top A Sampling', 1)
+map1.set('Top P Sampling', 2)
+map1.set('Tail Free Sampling', 3)
 map1.set('Typical Sampling', 4)
 map1.set('Temperature', 5)
 const map2 = new Map()
-map2.set(0, 'Top-k Sampling')
-map2.set(1, 'Top-a Sampling')
-map2.set(2, 'Top-p Sampling')
-map2.set(3, 'Tail-free Sampling')
+map2.set(0, 'Top K Sampling')
+map2.set(1, 'Top A Sampling')
+map2.set(2, 'Top P Sampling')
+map2.set(3, 'Tail Free Sampling')
 map2.set(4, 'Typical Sampling')
 map2.set(5, 'Temperature')
+var calc_token_usage_timeout;
+var game_text_scroll_timeout;
+var var_processing_time = 0;
 //-----------------------------------Server to UI  Functions-----------------------------------------------
 function connect() {
 	console.log("connected");
@@ -74,6 +79,14 @@ function reset_story() {
 	while (story_area.lastChild.id != 'story_prompt') { 
 		story_area.removeChild(story_area.lastChild);
 	}
+	dummy_span = document.createElement("span");
+	dummy_span.id = "Delete Me";
+	text = "";
+	for (i=0;i<154;i++) {
+		text += "\xa0 ";
+	}
+	dummy_span.textContent = text;
+	story_area.append(dummy_span);
 	var option_area = document.getElementById("Select Options");
 	while (option_area.firstChild) {
 		option_area.removeChild(option_area.firstChild);
@@ -210,30 +223,19 @@ function do_story_text_updates(data) {
 		//clear out the item first
 		while (item.firstChild) { 
 			item.removeChild(item.firstChild);
-		}
-		if (data.value.action['Selected Text'] == null) {
-			var text_array = [];
-		} else {
-			var text_array = data.value.action['Selected Text'].split(" ");
-		}
-		text_array.forEach(function (text, i) {
-			if (text != "") {
-				var word = document.createElement("span");
-				word.classList.add("rawtext");
-				if (i == text_array.length) {
-					word.textContent = text;
-				} else {
-					word.textContent = text+" ";
-				}
-				item.append(word);
-			}
-			
-		});
+		}		
+		span = document.createElement("span");
+		span2 = document.createElement("span");
+		span2.textContent = data.value.action['Selected Text'];
+		span.append(span2);
+		item.append(span);
 		item.original_text = data.value.action['Selected Text'];
 		item.setAttribute("world_info_uids", "");
 		item.classList.remove("pulse")
 		item.scrollIntoView();
-		assign_world_info_to_action(item, null);
+		if (item.textContent != "") {
+			assign_world_info_to_action(item, null);
+		}
 	} else {
 		var span = document.createElement("span");
 		span.id = 'Selected Text Chunk '+data.value.id;
@@ -249,29 +251,18 @@ function do_story_text_updates(data) {
 			}
 		}
 		span.onkeydown = detect_enter_text;
-		var text_array = data.value.action['Selected Text'].split(" ");
-		text_array.forEach(function (text, i) {
-			if (text != "") {
-				var word = document.createElement("span");
-				word.classList.add("rawtext");
-				word.classList.add("world_info_tag");
-				if (i == text_array.length) {
-					word.textContent = text;
-				} else {
-					word.textContent = text+" ";
-				}
-				span.append(word);
-			}
-			
-		});
+		new_span = document.createElement("span");
+		new_span.textContent = data.value.action['Selected Text'];
+		span.append(new_span);
 		
 		
 		story_area.append(span);
-		span.scrollIntoView();
-		assign_world_info_to_action(span, null);
+		clearTimeout(game_text_scroll_timeout);
+		game_text_scroll_timeout = setTimeout(function() {span.scrollIntoView(false);}, 200);
+		if (span.textContent != "") {
+			assign_world_info_to_action(span, null);
+		}
 	}
-	
-	
 }
 
 function do_prompt(data) {
@@ -282,32 +273,29 @@ function do_prompt(data) {
 			item.removeChild(item.firstChild);
 		}
 		
-		var text_array = data.value.split(" ");
-		text_array.forEach(function (text, i) {
-			if (text != "") {
-				var word = document.createElement("span");
-				word.classList.add("rawtext");
-				if (i == text_array.length) {
-					word.textContent = text;
-				} else {
-					word.textContent = text+" ";
-				}
-				item.append(word);
-			}
-		});
+		span = document.createElement("span");
+		span2 = document.createElement("span");
+		span2.textContent = data.value;
+		span.append(span2);
+		item.append(span);
 		item.setAttribute("old_text", data.value)
 		item.classList.remove("pulse");
+		assign_world_info_to_action(item, null);
 	}
 	//if we have a prompt we need to disable the theme area, or enable it if we don't
 	if (data.value != "") {
 		document.getElementById('input_text').placeholder = "Enter text here";
 		document.getElementById('themerow').classList.add("hidden");
 		document.getElementById('themetext').value = "";
+		if (document.getElementById("Delete Me")) {
+			document.getElementById("Delete Me").remove();
+		}
 	} else {
 		document.getElementById('input_text').placeholder = "Enter Prompt Here";
 		document.getElementById('input_text').disabled = false;
 		document.getElementById('themerow').classList.remove("hidden");
 	}
+	
 }
 
 function do_story_text_length_updates(data) {
@@ -316,7 +304,7 @@ function do_story_text_length_updates(data) {
 }
 
 function do_probabilities(data) {
-	console.log(data);
+	//console.log(data);
 	if (document.getElementById('probabilities_'+data.value.id)) {
 		prob_area = document.getElementById('probabilities_'+data.value.id)
 	} else {
@@ -367,7 +355,7 @@ function do_presets(data) {
 		//add our blank option
 		var option = document.createElement("option");
 		option.value="";
-		option.text="presets";
+		option.text="Presets";
 		select.append(option);
 		presets = data.value;
 		
@@ -426,14 +414,24 @@ function do_ai_busy(data) {
 			document.getElementById("Execution Time").textContent = Math.round(runtime/1000).toString().toHHMMSS();
 		}
 		favicon.stop_swap()
-		document.getElementById('btnsend').textContent = "Submit";
+		document.getElementById('btnsubmit').textContent = "Submit";
+		for (item of document.getElementsByClassName('statusbar_outer')) {
+			item.classList.add("hidden");
+		}
 	}
 }
 
 function var_changed(data) {
-	//console.log({"name": data.name, "data": data});
+	//if (data.name == "sp") {
+	//	console.log({"name": data.name, "data": data});
+	//}
+	
+	if ((data.classname == 'actions') && (data.name == 'Action Count')) {
+		current_action = data.value;
+	}
 	//Special Case for Actions
 	if ((data.classname == "story") && (data.name == "actions")) {
+		start_processing_time = Date.now();
 		do_story_text_updates(data);
 		create_options(data);
 		do_story_text_length_updates(data);
@@ -443,6 +441,9 @@ function var_changed(data) {
 		} else {
 			document.getElementById('Selected Text Chunk '+data.value.id).classList.remove("within_max_length");
 		}
+		var_processing_time += Date.now() - start_processing_time;
+		document.getElementById('var_time').textContent = var_processing_time;
+		
 	//Special Case for Presets
 	} else if ((data.classname == 'model') && (data.name == 'presets')) {
 		do_presets(data);
@@ -457,21 +458,59 @@ function var_changed(data) {
 		for (const [index, item] of data.value.entries()) {
 			Array.from(document.getElementsByClassName("sample_order"))[index].textContent = map2.get(item);
 		}
+	//Special Case for SP
+	} else if ((data.classname == 'system') && (data.name == 'splist')) {
+		item = document.getElementById("sp");
+		while (item.firstChild) {
+			item.removeChild(item.firstChild);
+		}
+		option = document.createElement("option");
+		option.textContent = "Not in Use";
+		option.value = "";
+		item.append(option);
+		for (sp of data.value) {
+			option = document.createElement("option");
+			option.textContent = sp[1][0];
+			option.value = sp[0];
+			option.setAttribute("title", sp[1][1]);
+			item.append(option);
+		}
+	//Special case for context viewer
+	} else if (data.classname == "story" && data.name == "context") {
+		update_context(data.value);
 	//Basic Data Syncing
 	} else {
 		var elements_to_change = document.getElementsByClassName("var_sync_"+data.classname.replace(" ", "_")+"_"+data.name.replace(" ", "_"));
 		for (item of elements_to_change) {
-			if ((item.tagName.toLowerCase() === 'input') || (item.tagName.toLowerCase() === 'select')) {
-				if (item.getAttribute("type") == "checkbox") {
-					if (item.checked != data.value) {
-						//not sure why the bootstrap-toggle won't respect a standard item.checked = true/false, so....
-						item.parentNode.click();
+			if (Array.isArray(data.value)) {
+				if (item.tagName.toLowerCase() === 'select') {
+					while (item.firstChild) {
+						item.removeChild(item.firstChild);
 					}
-				} else {
+					for (option_data of data.value) {
+						option = document.createElement("option");
+						option.textContent = option_data;
+						option.value = option_data;
+						item.append(option);
+					}
+				} else if (item.tagName.toLowerCase() === 'input') {
 					item.value = fix_text(data.value);
+				} else {
+					item.textContent = fix_text(data.value);
 				}
 			} else {
-				item.textContent = fix_text(data.value);
+				if ((item.tagName.toLowerCase() === 'input') || (item.tagName.toLowerCase() === 'select')) {
+					if (item.getAttribute("type") == "checkbox") {
+						if (item.checked != data.value) {
+							//not sure why the bootstrap-toggle won't respect a standard item.checked = true/false, so....
+							item.parentNode.click();
+						}
+					} else {
+						item.value = fix_text(data.value);
+					}
+				} else {
+					item.textContent = fix_text(data.value);
+				}
 			}
 		}
 		//alternative syncing method
@@ -479,6 +518,9 @@ function var_changed(data) {
 		for (item of elements_to_change) {
 			item.setAttribute(data.classname.replace(" ", "_")+"_"+data.name.replace(" ", "_"), fix_text(data.value));
 		}
+		
+		
+		
 	}
 	
 	//if we changed the gen amount, make sure our option area is set/not set
@@ -502,6 +544,11 @@ function var_changed(data) {
 	//If we have ai_busy, start the favicon swapping
 	if ((data.classname == 'system') && (data.name == 'aibusy')) {
 		do_ai_busy(data);
+	}
+	
+	//set the selected theme to the cookie value
+	if ((data.classname == "system") && (data.name == "theme_list")) {
+		Change_Theme(getCookie("theme", "Monochrome"));
 	}
 	
 	//Set all options before the next chunk to hidden
@@ -585,7 +632,7 @@ function load_popup(data) {
 }
 
 function popup_items(data) {
-	console.log(data);
+	//console.log(data);
 	var popup_list = document.getElementById('popup_list');
 	//first, let's clear out our existing data
 	while (popup_list.firstChild) {
@@ -859,7 +906,7 @@ function show_model_menu(data) {
 		breadcrumbs.removeChild(breadcrumbs.firstChild);
 	}
 	//add breadcrumbs
-	console.log(data.breadcrumbs);
+	//console.log(data.breadcrumbs);
 	for (item of data.breadcrumbs) {
 		var button = document.createElement("button");
 		button.classList.add("breadcrumbitem");
@@ -1143,8 +1190,18 @@ function load_model() {
 	document.getElementById("loadmodelcontainer").classList.add("hidden");
 }
 
+function world_info_entry_used_in_game(data) {
+	world_info_data[data.uid]['used_in_game'] = data['used_in_game'];
+	world_info_card = document.getElementById("world_info_"+data.uid);
+	if (data.used_in_game) {
+		world_info_card.classList.add("used_in_game");
+	} else {
+		world_info_card.classList.remove("used_in_game");
+	}
+}
+
 function world_info_entry(data) {
-	//console.log(data);
+
 	
 	world_info_data[data.uid] = data;
 	
@@ -1156,6 +1213,11 @@ function world_info_entry(data) {
 	world_info_card = world_info_card_template.cloneNode(true);
 	world_info_card.id = "world_info_"+data.uid;
 	world_info_card.setAttribute("uid", data.uid);
+	if (data.used_in_game) {
+		world_info_card.classList.add("used_in_game");
+	} else {
+		world_info_card.classList.remove("used_in_game");
+	}
 	title = world_info_card.querySelector('#world_info_title_')
 	title.id = "world_info_title_"+data.uid;
 	title.textContent = data.title;
@@ -1170,6 +1232,7 @@ function world_info_entry(data) {
 				}
 			}
 	world_info_card.addEventListener('dragstart', dragStart);
+	world_info_card.addEventListener('dragend', dragend);
 	title.addEventListener('dragenter', dragEnter)
 	title.addEventListener('dragover', dragOver);
 	title.addEventListener('dragleave', dragLeave);
@@ -1180,7 +1243,11 @@ function world_info_entry(data) {
 	delete_icon.setAttribute("title", data.title);
 	delete_icon.onclick = function () {
 		if (confirm("This will delete world info "+this.getAttribute("title"))) {
-			socket.emit("delete_world_info", this.getAttribute("uid"));
+			if (parseInt(this.getAttribute("uid")) < 0) {
+				this.parentElement.parentElement.remove();
+			} else {
+				socket.emit("delete_world_info", this.getAttribute("uid"));
+			}
 		}
 	}
 	tags = world_info_card.querySelector('#world_info_tags_');
@@ -1192,18 +1259,132 @@ function world_info_entry(data) {
 	secondarytags.id = "world_info_secondtags_"+data.uid;
 	//add second tag content here
 	add_secondary_tags(secondarytags, data);
-	content = world_info_card.querySelector('#world_info_entry_text_');
-	content.id = "world_info_entry_text_"+data.uid;
-	content.setAttribute("uid", data.uid);
-	content.value = data.content;
-	content.onchange = function () {
-							world_info_data[this.getAttribute('uid')]['content'] = this.value;
+	//w++ toggle
+	wpp_toggle_area = world_info_card.querySelector('#world_info_wpp_toggle_area_');
+	wpp_toggle_area.id = "world_info_wpp_toggle_area_"+data.uid;
+	wpp_toggle = document.createElement("input");
+	wpp_toggle.id = "world_info_wpp_toggle_"+data.uid;
+	wpp_toggle.setAttribute("type", "checkbox");
+	wpp_toggle.setAttribute("uid", data.uid);
+	wpp_toggle.checked = data.use_wpp;
+	wpp_toggle.setAttribute("data-size", "mini");
+	wpp_toggle.setAttribute("data-onstyle", "success"); 
+	wpp_toggle.setAttribute("data-toggle", "toggle");
+	wpp_toggle.onchange = function () {
+							if (this.checked) {
+								document.getElementById("world_info_wpp_area_"+this.getAttribute('uid')).classList.remove("hidden");
+								document.getElementById("world_info_basic_text_"+this.getAttribute('uid')).classList.add("hidden");
+							} else {
+								document.getElementById("world_info_wpp_area_"+this.getAttribute('uid')).classList.add("hidden");
+								document.getElementById("world_info_basic_text_"+this.getAttribute('uid')).classList.remove("hidden");
+							}
+							
+							world_info_data[this.getAttribute('uid')]['use_wpp'] = this.checked;
+							send_world_info(this.getAttribute('uid'));
+							this.classList.add("pulse");
+						}
+	wpp_toggle_area.append(wpp_toggle);
+	//w++ data
+	world_info_wpp_area = world_info_card.querySelector('#world_info_wpp_area_');
+	world_info_wpp_area.id = "world_info_wpp_area_"+data.uid;
+	world_info_wpp_area.setAttribute("uid", data.uid);
+	wpp_format = world_info_card.querySelector('#wpp_format_');
+	wpp_format.id = "wpp_format_"+data.uid;
+	wpp_format.setAttribute("uid", data.uid);
+	wpp_format.setAttribute("data_type", "format");
+	wpp_format.onchange = function () {
+							do_wpp(this.parentElement);
+						}
+	if (data.wpp.format == "W++") {
+		wpp_format.selectedIndex = 0;
+	} else {
+		wpp_format.selectedIndex = 1;
+	}
+	wpp_type = world_info_card.querySelector('#wpp_type_');
+	wpp_type.id = "wpp_type_"+data.uid;
+	wpp_type.setAttribute("uid", data.uid);
+	wpp_type.setAttribute("data_type", "type");
+	wpp_type.value = data.wpp.type;
+	wpp_name = world_info_card.querySelector('#wpp_name_');
+	wpp_name.id = "wpp_name_"+data.uid;
+	wpp_name.setAttribute("uid", data.uid);
+	wpp_name.setAttribute("data_type", "name");
+	if ("wpp" in data) {
+		wpp_name.value = data.wpp.name;
+	}
+	if ('attributes' in data.wpp) {
+		for (const [attribute, values] of Object.entries(data.wpp.attributes)) {
+			if (attribute != '') {
+				attribute_area = document.createElement("div");
+				label = document.createElement("span");
+				label.textContent = "\xa0\xa0\xa0\xa0Attribute: ";
+				attribute_area.append(label);
+				input = document.createElement("input");
+				input.value = attribute;
+				input.type = "text";
+				input.setAttribute("uid", data.uid);
+				input.setAttribute("data_type", "attribute");
+				input.onchange = function() {do_wpp(this.parentElement.parentElement)};
+				attribute_area.append(input);
+				world_info_wpp_area.append(attribute_area);
+				for (value of values) {
+					value_area = document.createElement("div");
+					label = document.createElement("span");
+					label.textContent = "\xa0\xa0\xa0\xa0\xa0\xa0\xa0\xa0\xa0\xa0Value: ";
+					value_area.append(label);
+					input = document.createElement("input");
+					input.type = "text";
+					input.onchange = function() {do_wpp(this.parentElement.parentElement)};
+					input.value = value;
+					input.setAttribute("uid", data.uid);
+					input.setAttribute("data_type", "value");
+					value_area.append(input);
+					world_info_wpp_area.append(value_area);
+				}
+				value_area = document.createElement("div");
+				label = document.createElement("span");
+				label.textContent = "\xa0\xa0\xa0\xa0\xa0\xa0\xa0\xa0\xa0\xa0Value: ";
+				value_area.append(label);
+				input = document.createElement("input");
+				input.type = "text";
+				input.setAttribute("uid", data.uid);
+				input.setAttribute("data_type", "value");
+				input.onchange = function() {do_wpp(this.parentElement.parentElement)};
+				value_area.append(input);
+				world_info_wpp_area.append(value_area);
+			}
+		}
+	}
+	attribute_area = document.createElement("div");
+	label = document.createElement("span");
+	label.textContent = "\xa0\xa0\xa0\xa0Attribute: ";
+	attribute_area.append(label);
+	input = document.createElement("input");
+	input.value = "";
+	input.type = "text";
+	input.setAttribute("uid", data.uid);
+	input.setAttribute("data_type", "attribute");
+	input.onchange = function() {do_wpp(this.parentElement.parentElement)};
+	attribute_area.append(input);
+	world_info_wpp_area.append(attribute_area);
+	
+	
+	
+	//regular data
+	content_area = world_info_card.querySelector('#world_info_basic_text_');
+	content_area.id = "world_info_basic_text_"+data.uid;
+	manual_text = world_info_card.querySelector('#world_info_entry_text_');
+	manual_text.id = "world_info_entry_text_"+data.uid;
+	manual_text.setAttribute("uid", data.uid);
+	manual_text.value = data.manual_text;
+	manual_text.onchange = function () {
+							world_info_data[this.getAttribute('uid')]['manual_text'] = this.value;
 							send_world_info(this.getAttribute('uid'));
 							this.classList.add("pulse");
 						}
 	comment = world_info_card.querySelector('#world_info_comment_');
 	comment.id = "world_info_comment_"+data.uid;
-	content.setAttribute("uid", data.uid);
+	comment.setAttribute("uid", data.uid);
 	comment.value = data.comment;
 	comment.onchange = function () {
 							world_info_data[this.getAttribute('uid')]['comment'] = this.textContent;
@@ -1262,10 +1443,24 @@ function world_info_entry(data) {
 	}
 	
 	$('#world_info_constant_'+data.uid).bootstrapToggle();
+	$('#world_info_wpp_toggle_'+data.uid).bootstrapToggle();
+	
+	//hide/unhide w++
+	if (wpp_toggle.checked) {
+		document.getElementById("world_info_wpp_area_"+wpp_toggle.getAttribute('uid')).classList.remove("hidden");
+		document.getElementById("world_info_basic_text_"+wpp_toggle.getAttribute('uid')).classList.add("hidden");
+	} else {
+		document.getElementById("world_info_wpp_area_"+wpp_toggle.getAttribute('uid')).classList.add("hidden");
+		document.getElementById("world_info_basic_text_"+wpp_toggle.getAttribute('uid')).classList.remove("hidden");
+	}
+	
 	assign_world_info_to_action(null, data.uid);
 	
 	update_token_lengths();
 	
+	clearTimeout(calc_token_usage_timeout);
+	calc_token_usage_timeout = setTimeout(calc_token_usage, 200);
+	return world_info_card;
 }
 
 function world_info_folder(data) {
@@ -1279,11 +1474,12 @@ function world_info_folder(data) {
 			var folder = document.createElement("span");
 			folder.id = "world_info_folder_"+folder_name;
 			folder.classList.add("WI_Folder");
-			title = document.createElement("h2");
+			title = document.createElement("h3");
 			title.addEventListener('dragenter', dragEnter)
 			title.addEventListener('dragover', dragOver);
 			title.addEventListener('dragleave', dragLeave);
 			title.addEventListener('drop', drop);
+			title.classList.add("WI_Folder_Header");
 			collapse_icon = document.createElement("span");
 			collapse_icon.id = "world_info_folder_collapse_"+folder_name;
 			collapse_icon.classList.add("wi_folder_collapser");
@@ -1295,6 +1491,7 @@ function world_info_folder(data) {
 								document.getElementById('world_info_folder_expand_'+this.getAttribute("folder")).classList.remove('hidden');
 								this.classList.add("hidden");
 							};
+			collapse_icon.classList.add("expand")
 			title.append(collapse_icon);
 			expand_icon = document.createElement("span");
 			expand_icon.id = "world_info_folder_expand_"+folder_name;
@@ -1307,14 +1504,17 @@ function world_info_folder(data) {
 								document.getElementById('world_info_folder_collapse_'+this.getAttribute("folder")).classList.remove('hidden');
 								this.classList.add("hidden");
 							};
+			expand_icon.classList.add("expand")
 			expand_icon.classList.add("hidden");
 			title.append(expand_icon);
 			icon = document.createElement("span");
 			icon.classList.add("material-icons-outlined");
 			icon.setAttribute("folder", folder_name);
 			icon.textContent = "folder";
+			icon.classList.add("folder");
 			title.append(icon);
 			title_text = document.createElement("span");
+			title_text.classList.add("wi_title");
 			title_text.setAttribute("contenteditable", true);
 			title_text.setAttribute("original_text", folder_name);
 			title_text.textContent = folder_name;
@@ -1324,8 +1524,54 @@ function world_info_folder(data) {
 					socket.emit("Rename_World_Info_Folder", {"old_folder": this.getAttribute("original_text"), "new_folder": this.textContent});
 				}
 			}
+			title_text.classList.add("title");
 			title.append(title_text);
+			//create download button
+			download = document.createElement("span");
+			download.classList.add("material-icons-outlined");
+			download.classList.add("cursor");
+			download.setAttribute("folder", folder_name);
+			download.textContent = "file_download";
+			download.onclick = function () {
+								document.getElementById('download_iframe').src = 'export_world_info_folder?folder='+this.getAttribute("folder");
+							};
+			download.classList.add("download");
+			title.append(download);
+			
+			//upload element
+			upload_element = document.createElement("input");
+			upload_element.id = "wi_upload_element_"+folder_name;
+			upload_element.type = "file";
+			upload_element.setAttribute("folder", folder_name);
+			upload_element.classList.add("upload_box");
+			upload_element.onchange = function () {
+											var fileList = this.files;
+											for (file of fileList) {
+												reader = new FileReader();
+												reader.folder = this.getAttribute("folder");
+												reader.onload = function (event) {
+													socket.emit("upload_world_info_folder", {'folder': event.target.folder, 'filename': file.name, "data": event.target.result});
+												};
+												reader.readAsArrayBuffer(file);
+												
+											}
+										};
+			title.append(upload_element);
+			
+			//create upload button
+			upload = document.createElement("span");
+			upload.classList.add("material-icons-outlined");
+			upload.classList.add("cursor");
+			upload.setAttribute("folder", folder_name);
+			upload.textContent = "file_upload";
+			upload.onclick = function () {
+								document.getElementById('wi_upload_element_'+this.getAttribute("folder")).click();
+								//document.getElementById('download_iframe').src = 'export_world_info_folder?folder='+this.getAttribute("folder");
+							};
+			upload.classList.add("upload");
+			title.append(upload);
 			folder.append(title);
+			
 			//create add button
 			new_icon = document.createElement("span");
 			new_icon.classList.add("wi_add_button");
@@ -1335,6 +1581,7 @@ function world_info_folder(data) {
 			new_icon.append(add_icon);
 			add_text = document.createElement("span");
 			add_text.textContent = "Add World Info Entry";
+			add_text.classList.add("wi_add_text");
 			add_text.setAttribute("folder", folder_name);
 			add_text.onclick = function() {
 											create_new_wi_entry(this.getAttribute("folder"));
@@ -1392,7 +1639,7 @@ function world_info_folder(data) {
 	if (!(document.getElementById("new_world_info_button"))) {
 		add_folder = document.createElement("div");
 		add_folder.id = "new_world_info_button";
-		temp = document.createElement("h2");
+		temp = document.createElement("h3");
 		add_icon = document.createElement("span");
 		icon = document.createElement("span");
 		icon.classList.add("material-icons-outlined");
@@ -1400,6 +1647,7 @@ function world_info_folder(data) {
 		add_icon.append(icon);
 		text_span = document.createElement("span");
 		text_span.textContent = "Add World Info Folder";
+		text_span.classList.add("wi_title");
 		add_icon.onclick = function() {
 										socket.emit("create_world_info_folder", {});
 									  }
@@ -1416,10 +1664,57 @@ function show_error_message(data) {
 	error_message_box.querySelector("#popup_list_area").textContent = data;
 }
 
+function do_wpp(wpp_area) {
+	wpp = {};
+	wpp['attributes'] = {};
+	uid = wpp_area.getAttribute("uid");
+	attribute = "";
+	wpp['format'] = document.getElementById("wpp_format_"+uid).value;
+	for (input of wpp_area.querySelectorAll('input')) {
+		if (input.getAttribute("data_type") == "name") {
+			wpp['name'] = input.value;
+		} else if (input.getAttribute("data_type") == "type") {
+			wpp['type'] = input.value;
+		} else if (input.getAttribute("data_type") == "attribute") {
+			attribute = input.value;
+			if (!(input.value in wpp['attributes']) && (input.value != "")) {
+				wpp['attributes'][input.value] = [];
+			} 
+			
+		} else if ((input.getAttribute("data_type") == "value") && (attribute != "")) {
+			if (input.value != "") {
+				wpp['attributes'][attribute].push(input.value);
+			}
+		}
+	}
+	world_info_data[uid]['wpp'] = wpp;
+	send_world_info(uid);
+}
+
 //--------------------------------------------UI to Server Functions----------------------------------
+function save_theme() {
+	var cssVars = getAllCSSVariableNames();
+	for (const [key, value] of Object.entries(cssVars)) {
+		if (document.getElementById(key)) {
+			if (document.getElementById(key+"_select").value == "") {
+				cssVars[key] = document.getElementById(key).value;
+			} else {
+				cssVars[key] = "var(--"+document.getElementById(key+"_select").value+")";
+			}
+			
+		}
+	}
+	for (item of document.getElementsByClassName("Theme_Input")) {
+		cssVars["--"+item.id] = item.value;
+	}
+	socket.emit("theme_change", {"name": document.getElementById("save_theme_name").value, "theme": cssVars});
+	document.getElementById("save_theme_name").value = "";
+	socket.emit('theme_list_refresh', '');
+}
+
 function move_sample(direction) {
 	var previous = null;
-	console.log(direction);
+	//console.log(direction);
 	for (const [index, temp] of Array.from(document.getElementsByClassName("sample_order")).entries()) {
 		if (temp.classList.contains("selected")) {
 			if ((direction == 'up') && (index > 0)) {
@@ -1536,26 +1831,88 @@ function send_world_info(uid) {
 }
 
 //--------------------------------------------General UI Functions------------------------------------
+function autoResize(element) {
+	element.style.height = 'auto';
+	element.style.height = element.scrollHeight + 'px';
+}
+
+function token_length(text) {
+	return encode(text).length;
+}
+
+function calc_token_usage() {
+	memory_tokens = parseInt(document.getElementById("memory").getAttribute("story_memory_length"));
+    authors_notes_tokens = parseInt(document.getElementById("authors_notes").getAttribute("story_authornote_length"));
+	prompt_tokens = parseInt(document.getElementById("story_prompt").getAttribute("story_prompt_length"));
+    game_text_tokens = 0;
+    submit_tokens = token_length(document.getElementById("input_text").value);
+	total_tokens = parseInt(document.getElementById('model_max_length_cur').value);
+	
+	//find world info entries set to go to AI
+	world_info_tokens = 0;
+	for (wi of document.querySelectorAll(".world_info_card.used_in_game")) {
+		if (wi.getAttribute("uid") in world_info_data) {
+			world_info_tokens += world_info_data[wi.getAttribute("uid")].token_length;
+		}
+	}
+	
+	//find game text tokens
+	var game_text_tokens = 0;
+	var game_text = document.getElementById('Selected Text').querySelectorAll(".within_max_length");
+	var game_text = Array.prototype.slice.call(game_text).reverse();
+	for (item of game_text) {
+		if (total_tokens - memory_tokens - authors_notes_tokens - world_info_tokens - prompt_tokens - game_text_tokens - submit_tokens > parseInt(item.getAttribute("token_length"))) {
+			game_text_tokens += parseInt(item.getAttribute("token_length"));
+		}
+	}
+	
+	
+	unused_tokens = total_tokens - memory_tokens - authors_notes_tokens - world_info_tokens - prompt_tokens - game_text_tokens - submit_tokens;
+	
+	document.getElementById("memory_tokens").style.width = (memory_tokens/total_tokens)*100 + "%";
+	document.getElementById("memory_tokens").title = "Memory: "+memory_tokens;
+	document.getElementById("authors_notes_tokens").style.width = (authors_notes_tokens/total_tokens)*100 + "%";
+	document.getElementById("authors_notes_tokens").title = "Author's Notes: "+authors_notes_tokens
+	document.getElementById("world_info_tokens").style.width = (world_info_tokens/total_tokens)*100 + "%";
+	document.getElementById("world_info_tokens").title = "World Info: "+world_info_tokens
+	document.getElementById("prompt_tokens").style.width = (prompt_tokens/total_tokens)*100 + "%";
+	document.getElementById("prompt_tokens").title = "Prompt: "+prompt_tokens
+	document.getElementById("game_text_tokens").style.width = (game_text_tokens/total_tokens)*100 + "%";
+	document.getElementById("game_text_tokens").title = "Game Text: "+game_text_tokens
+	document.getElementById("submit_tokens").style.width = (submit_tokens/total_tokens)*100 + "%";
+	document.getElementById("submit_tokens").title = "Submit Text: "+submit_tokens
+	document.getElementById("unused_tokens").style.width = (unused_tokens/total_tokens)*100 + "%";
+	document.getElementById("unused_tokens").title = "Remaining: "+unused_tokens
+}
+
 function Change_Theme(theme) {
-	console.log(theme);
 	var css = document.getElementById("CSSTheme");
     css.setAttribute("href", "/themes/"+theme+".css");
-	create_theming_elements();
+	setTimeout(() => {
+		create_theming_elements();
+	}, "1000")
+	setCookie("theme", theme);
+	select = document.getElementById("selected_theme");
+	for (element of select.childNodes) {
+		if (element.value == theme) {
+			element.selected = true;
+		} else {
+			element.selected = false;
+		}
+	}
 }
 
 function palette_color(item) {
 	var r = document.querySelector(':root');
 	r.style.setProperty("--"+item.id, item.value);
-	socket.emit("theme_change", getAllCSSVariableNames());
+	//socket.emit("theme_change", getAllCSSVariableNames());
 }
 
 function getAllCSSVariableNames(styleSheets = document.styleSheets){
-   var cssVars = [];
+   var cssVars = {};
    // loop each stylesheet
-   console.log(styleSheets);
+   //console.log(styleSheets);
    for(var i = 0; i < styleSheets.length; i++){
-	   console.log(styleSheets[i]);
-	   console.log(styleSheets[i].ownerNode.attributes.id);
       // loop stylesheet's cssRules
       try{ // try/catch used because 'hasOwnProperty' doesn't work
          for( var j = 0; j < styleSheets[i].cssRules.length; j++){
@@ -1567,8 +1924,8 @@ function getAllCSSVariableNames(styleSheets = document.styleSheets){
                   if(name.startsWith('--') && (styleSheets[i].ownerNode.id == "CSSTheme")){
 					let value = styleSheets[i].cssRules[j].style.getPropertyValue(name);
 					value.replace(/(\r\n|\r|\n){2,}/g, '$1\n');
-					value = value.replaceAll("\t", "");
-                    cssVars.push([name, value]);
+					value = value.replaceAll("\t", "").trim();
+                    cssVars[name] = value;
                   }
                }
             } catch (error) {}
@@ -1579,38 +1936,50 @@ function getAllCSSVariableNames(styleSheets = document.styleSheets){
 }
 
 function create_theming_elements() {
-	console.log("Running theme editor");
+	//console.log("Running theme editor");
 	var cssVars = getAllCSSVariableNames();
 	palette_table = document.createElement("table");
-	advanced_table = document.createElement("table");
+	advanced_table = document.getElementById("advanced_theme_editor_table");
 	theme_area = document.getElementById("Palette");
 	theme_area.append(palette_table);
-	console.log(cssVars);
-	//theme_area.append(advanced_table);
-	for (css_item of cssVars) {
-		if (css_item[0].includes("_palette")) {
-			if (document.getElementById(css_item[0].replace("--", ""))) {
-				input = document.getElementById(css_item[0].replace("--", ""));
-				input.setAttribute("title", css_item[0].replace("--", "").replace("_palette", ""));
-				input.value = css_item[1];
+	
+	//clear advanced_table
+	while (advanced_table.firstChild) {
+		advanced_table.removeChild(advanced_table.firstChild);
+	}
+	
+	for (const [css_item, css_value] of Object.entries(cssVars)) {
+		if (css_item.includes("_palette")) {
+			if (document.getElementById(css_item.replace("--", ""))) {
+				input = document.getElementById(css_item.replace("--", ""));
+				input.setAttribute("title", css_item.replace("--", "").replace("_palette", ""));
+				input.value = css_value;
 			}
 		} else {
 			tr = document.createElement("tr");
 			tr.style = "width:100%;";
 			title = document.createElement("td");
-			title.textContent = css_item[0].replace("--", "").replace("_palette", "");
+			title.textContent = css_item.replace("--", "").replace("_palette", "");
 			tr.append(title);
 			select = document.createElement("select");
-			select.style = "width: 100px; color:black;";
+			select.style = "width: 150px; color:black;";
 			var option = document.createElement("option");
 			option.value="";
-			option.text="Use Color";
+			option.text="User Value ->";
 			select.append(option);
-			for (css_item2 of cssVars) {
+			select.id = css_item+"_select";
+			select.onchange = function () {
+									var r = document.querySelector(':root');
+									r.style.setProperty(this.id.replace("_select", ""), this.value);
+								}
+			for (const [css_item2, css_value2] of Object.entries(cssVars)) {
 			   if (css_item2 != css_item) {
 					var option = document.createElement("option");
-					option.value=css_item2[0];
-					option.text=css_item2[0].replace("--", "");
+					option.value=css_item2;
+					option.text=css_item2.replace("--", "");
+					if (css_item2 == css_value.replace("var(", "").replace(")", "")) {
+						option.selected = true;
+					}
 					select.append(option);
 			   }
 			}
@@ -1619,12 +1988,12 @@ function create_theming_elements() {
 			tr.append(select_td);
 			td = document.createElement("td");
 			tr.append(td);
-			if (css_item[1].includes("#")) {
+			if (css_value.includes("#")) {
 				input = document.createElement("input");
 				input.setAttribute("type", "color");
-				input.id = css_item[0];
-				input.setAttribute("title", css_item[0].replace("--", "").replace("_palette", ""));
-				input.value = css_item[1];
+				input.id = css_item;
+				input.setAttribute("title", css_item.replace("--", "").replace("_palette", ""));
+				input.value = css_value;
 				input.onchange = function () {
 									var r = document.querySelector(':root');
 									r.style.setProperty(this.id, this.value);
@@ -1633,9 +2002,11 @@ function create_theming_elements() {
 			} else {
 			   input = document.createElement("input");
 				input.setAttribute("type", "text");
-				input.id = css_item[0];
-				input.setAttribute("title", css_item[0].replace("--", "").replace("_palette", ""));
-				input.value = css_item[1];
+				input.id = css_item;
+				input.setAttribute("title", css_item.replace("--", "").replace("_palette", ""));
+				if (select.value != css_value.replace("var(", "").replace(")", "")) {
+					input.value = css_value;
+				}
 				input.onchange = function () {
 									var r = document.querySelector(':root');
 									r.style.setProperty(this.id, this.value);
@@ -1689,7 +2060,7 @@ function preserve_game_space(preserve) {
 
 function options_on_right(data) {
 	var r = document.querySelector(':root');
-	console.log("Setting cookie to: "+data);
+	//console.log("Setting cookie to: "+data);
 	if (data) {
 		setCookie("options_on_right", "true");
 		r.style.setProperty('--story_pinned_areas', 'var(--story_pinned_areas_right)');
@@ -1737,6 +2108,33 @@ function do_biases(data) {
 
 function update_bias_slider_value(slider) {
 	slider.parentElement.parentElement.querySelector(".bias_slider_cur").textContent = slider.value;
+}
+
+function update_context(data) {
+	$(".context-block").remove();
+
+	for (const entry of data) {
+		//console.log(entry);
+		let contextClass = "context-" + ({
+			soft_prompt: "sp",
+			prompt: "prompt",
+			world_info: "wi",
+			memory: "memory",
+			authors_note: "an",
+			action: "action"
+		}[entry.type]);
+
+		let el = document.createElement("span");
+		el.classList.add("context-block");
+		el.classList.add(contextClass);
+		el.innerText = entry.text;
+
+		el.innerHTML = el.innerHTML.replaceAll("<br>", '<span class="material-icons-outlined context-symbol">keyboard_return</span>');
+
+		document.getElementById("context-container").appendChild(el);
+	}
+
+
 }
 
 function save_model_settings(settings = saved_settings) {
@@ -1917,25 +2315,35 @@ function add_secondary_tags(tags, data) {
 }
 	
 function create_new_wi_entry(folder) {
-	data = {"uid": -1,
+	var uid = -1;
+	for (item of document.getElementsByClassName('world_info_card')) {
+		if (parseInt(item.getAttribute("uid")) <= uid) {
+			uid = parseInt(item.getAttribute("uid")) - 1;
+		}
+	}
+	data = {"uid": uid,
                                     "title": "New World Info Entry",
                                     "key": [],
                                     "keysecondary": [],
                                     "folder": folder,
                                     "constant": false,
                                     "content": "",
+									"manual_text": "",
                                     "comment": "",
                                     "token_length": 0,
-                                    "selective": false
+                                    "selective": false,
+									"wpp": {'name': "", 'type': "", 'format': 'W++', 'attributes': {}},
+									'use_wpp': false,
                                     };
-	world_info_entry(data);
+	card = world_info_entry(data);
+	card.scrollIntoView(false);
 }
 
 function hide_wi_folder(folder) {
 	if (document.getElementById("world_info_folder_"+folder)) {
 		folder_item = document.getElementById("world_info_folder_"+folder);
 		for (card of folder_item.children) {
-			if (card.tagName != "H2") {
+			if (card.tagName != "H3") {
 				card.classList.add("hidden");
 			}
 		}
@@ -1946,7 +2354,7 @@ function unhide_wi_folder(folder) {
 	if (document.getElementById("world_info_folder_"+folder)) {
 		folder_item = document.getElementById("world_info_folder_"+folder);
 		for (card of folder_item.children) {
-			if (card.tagName != "H2") {
+			if (card.tagName != "H3") {
 				card.classList.remove("hidden");
 			}
 		}
@@ -1966,6 +2374,8 @@ function find_wi_container(e) {
 	
 	while (true) {
 		if (e.parentElement == document) {
+			return e;
+		} else if (e.classList.contains('WI_Folder')) {
 			return e;
 		} else if (e.tagName == 'H2') {
 			return e.parentElement;
@@ -1987,6 +2397,7 @@ function dragEnter(e) {
 
 function dragOver(e) {
     e.preventDefault();
+	//console.log(e.target);
 	element = find_wi_container(e.target);
     element.classList.add('drag-over');
 }
@@ -1998,7 +2409,8 @@ function dragLeave(e) {
 
 function drop(e) {
 	e.preventDefault();
-    element = find_wi_container(e.target);
+    // get the drop element
+	element = find_wi_container(e.target);
     element.classList.remove('drag-over');
 
     // get the draggable element
@@ -2008,11 +2420,9 @@ function drop(e) {
 	dragged_id = draggable.id.split("_").slice(-1)[0];
 	drop_id = element.id.split("_").slice(-1)[0];
 
-    // get the drop element
-	element = find_wi_container(e.target);
 	
 	//check if we're droping on a folder, and then append it to the folder
-	if (element.children[0].tagName == "H2") {
+	if (element.classList.contains('WI_Folder')) {
 		//element.append(draggable);
 		socket.emit("wi_set_folder", {'dragged_id': dragged_id, 'folder': drop_id});
 	} else {
@@ -2032,9 +2442,20 @@ function drop(e) {
 }
 
 function dragend(e) {
-	element = find_wi_container(e.target);
-	element.classList.remove('hidden');
+	// get the draggable element
+    const id = e.dataTransfer.getData('text/plain');
+    const draggable = document.getElementById(id);
+	// display the draggable element
+	draggable.classList.remove('hidden');
 	e.preventDefault();
+}
+
+function checkifancestorhasclass(element, classname) {
+    if (element.classList.contains(classname)) {
+		return true;
+	} else {
+		return hasSomeParentTheClass(element.parentNode, classname);
+	}
 }
 
 function assign_world_info_to_action(action_item, uid) {
@@ -2053,11 +2474,7 @@ function assign_world_info_to_action(action_item, uid) {
 		
 		for (action of actions) {
 			//First check to see if we have a key in the text
-			var words = Array.prototype.slice.call( action.children );
-			words_text = [];
-			for (word of words) {
-				words_text.push(word.textContent);
-			}
+			var words = action.textContent.split(" ");
 			for (const [key, worldinfo] of  Object.entries(worldinfo_to_check)) {
 				//remove any world info tags
 				for (tag of action.getElementsByClassName("tag_uid_"+uid)) {
@@ -2082,11 +2499,46 @@ function assign_world_info_to_action(action_item, uid) {
 									//OK we have the phrase in our action. Let's see if we can identify the word(s) that are triggering
 									for (var i = 0; i < words.length; i++) {
 										key_words = keyword.split(" ").length;
-										var to_check = words_text.slice(i, i+key_words).join("").replace(/[^0-9a-z \'\"]/gi, '').trim();
+										var to_check = words.slice(i, i+key_words).join("").replace(/[^0-9a-z \'\"]/gi, '').trim();
 										if (keyword == to_check) {
-											for (var j = i; j < key_words+i; j++) {
-												words[j].title = worldinfo['content'];
-												words[j].classList.add("tag_uid_"+uid);
+											var start_word = i;
+											var end_word = i+len_of_keyword;
+											var passed_words = 0;
+											for (span of action.childNodes) {
+												if (passed_words + span.textContent.split(" ").length < start_word) {
+													passed_words += span.textContent.trim().split(" ").length;
+												} else if (passed_words < end_word) {
+													//OK, we have text that matches, let's do the highlighting
+													//we can skip the highlighting if it's already done though
+													if (span.tagName != "I") {
+														var span_text = span.textContent.trim().split(" ");
+														var before_highlight_text = span_text.slice(0, start_word-passed_words).join(" ")+" ";
+														var highlight_text = span_text.slice(start_word-passed_words, end_word-passed_words).join(" ");
+														if (end_word-passed_words <= span_text.length) {
+															highlight_text += " ";
+														}
+														var after_highlight_text = span_text.slice((end_word-passed_words)).join(" ");
+														//console.log(span.textContent);
+														//console.log(keyword);
+														//console.log(before_highlight_text);
+														//console.log(highlight_text);
+														//console.log(after_highlight_text);
+														//console.log("passed: "+passed_words+" start:" + start_word + " end: "+end_word+" continue: "+(end_word-passed_words));
+														//console.log(null);
+														var before_span = document.createElement("span");
+														before_span.textContent = before_highlight_text;
+														var hightlight_span = document.createElement("i");
+														hightlight_span.textContent = highlight_text;
+														hightlight_span.title = worldinfo['content'];
+														var after_span = document.createElement("span");
+														after_span.textContent = after_highlight_text;
+														action.insertBefore(before_span, span);
+														action.insertBefore(hightlight_span, span);
+														action.insertBefore(after_span, span);
+														span.remove();
+													}
+													passed_words += span.textContent.trim().split(" ").length;
+												}
 											}
 										}
 									}
@@ -2100,13 +2552,53 @@ function assign_world_info_to_action(action_item, uid) {
 							}
 							action.setAttribute("world_info_uids", current_ids.join(","));
 							//OK we have the phrase in our action. Let's see if we can identify the word(s) that are triggering
+							var len_of_keyword = keyword.split(" ").length;
+							//go through each word to see where we get a match
 							for (var i = 0; i < words.length; i++) {
-								key_words = keyword.split(" ").length;
-								var to_check = words_text.slice(i, i+key_words).join("").replace(/[^0-9a-z \'\"]/gi, '').trim();
+								//get the words from the ith word to the i+len_of_keyword. Get rid of non-letters/numbers/'/"
+								var to_check = words.slice(i, i+len_of_keyword).join(" ").replace(/[^0-9a-z \'\"]/gi, '').trim();
 								if (keyword == to_check) {
-									for (var j = i; j < key_words+i; j++) {
-										words[j].title = worldinfo.content;
-										words[j].classList.add("tag_uid_"+uid);
+									var start_word = i;
+									var end_word = i+len_of_keyword;
+									var passed_words = 0;
+									for (span of action.childNodes) {
+										if (passed_words + span.textContent.split(" ").length < start_word) {
+											passed_words += span.textContent.trim().split(" ").length;
+										} else if (passed_words < end_word) {
+											//OK, we have text that matches, let's do the highlighting
+											//we can skip the highlighting if it's already done though
+											if (span.tagName != "I") {
+												var span_text = span.textContent.trim().split(" ");
+												var before_highlight_text = span_text.slice(0, start_word-passed_words).join(" ")+" ";
+												var highlight_text = span_text.slice(start_word-passed_words, end_word-passed_words).join(" ");
+												if (end_word-passed_words <= span_text.length) {
+													highlight_text += " ";
+												}
+												var after_highlight_text = span_text.slice((end_word-passed_words)).join(" ")+" ";
+												if (after_highlight_text[0] == ' ') {
+													after_highlight_text = after_highlight_text.substring(1);
+												}
+												//console.log("'"+span.textContent+"'");
+												//console.log(keyword);
+												//console.log("'"+before_highlight_text+"'");
+												//console.log("'"+highlight_text+"'");
+												//console.log("'"+after_highlight_text+"'");
+												//console.log("passed: "+passed_words+" start:" + start_word + " end: "+end_word+" continue: "+(end_word-passed_words));
+												//console.log(null);
+												var before_span = document.createElement("span");
+												before_span.textContent = before_highlight_text;
+												var hightlight_span = document.createElement("i");
+												hightlight_span.textContent = highlight_text;
+												hightlight_span.title = worldinfo['content'];
+												var after_span = document.createElement("span");
+												after_span.textContent = after_highlight_text;
+												action.insertBefore(before_span, span);
+												action.insertBefore(hightlight_span, span);
+												action.insertBefore(after_span, span);
+												span.remove();
+											}
+											passed_words += span.textContent.trim().split(" ").length;
+										}
 									}
 								}
 							}
@@ -2120,6 +2612,8 @@ function assign_world_info_to_action(action_item, uid) {
 }
 
 function update_token_lengths() {
+	clearTimeout(calc_token_usage_timeout);
+	calc_token_usage_timeout = setTimeout(calc_token_usage, 200);
 	return
 	max_token_length = parseInt(document.getElementById("model_max_length_cur").value);
 	included_world_info = [];
@@ -2274,6 +2768,7 @@ function close_menus() {
 	document.getElementById('loadmodelcontainer').classList.add("hidden");
 	document.getElementById('save-confirm').classList.add("hidden");
 	document.getElementById('error_message').classList.add("hidden");
+	document.getElementById("advanced_theme_editor").classList.add("hidden");
 	
 	
 	//unselect sampler items
@@ -2362,10 +2857,10 @@ function setCookie(cname, cvalue, exdays=60) {
   const d = new Date();
   d.setTime(d.getTime() + (exdays * 24 * 60 * 60 * 1000));
   let expires = "expires="+d.toUTCString();
-  document.cookie = cname + "=" + cvalue + ";" + expires + ";path=/;samesite=none;";
+  document.cookie = cname + "=" + cvalue + ";" + expires + ";";
 }
 
-function getCookie(cname) {
+function getCookie(cname, default_return=null) {
   let name = cname + "=";
   let ca = document.cookie.split(';');
   for(let i = 0; i < ca.length; i++) {
@@ -2377,7 +2872,7 @@ function getCookie(cname) {
 	  return c.substring(name.length, c.length);
 	}
   }
-  return "";
+  return default_return;
 }
 
 function detect_enter_submit(e) {
@@ -2423,6 +2918,89 @@ function detect_key_up(e) {
 	}
 }
 
+function loadNAILorebook(data, filename) {
+	let lorebookVersion = data.lorebookVersion;
+	let wi_data = {folders: {[filename]: []}, entries: {}};
+	console.log(`Loading NAI lorebook version ${lorebookVersion}`);
+
+	let i = 0;
+	for (const entry of data.entries) {
+		// contextConfig: Object { suffix: "\n", tokenBudget: 2048, reservedTokens: 0, … }
+		// displayName: "Aboleth"
+		// enabled: true
+		// forceActivation: false
+		// keys: Array [ "Aboleth" ]
+		// lastUpdatedAt: 1624443329051
+		// searchRange: 1000
+		// text
+
+		wi_data.entries[i.toString()] = {
+			"uid": uid,
+			"title": entry.displayName,
+			"key": entry.keys,
+			"keysecondary": [],
+			"folder": folder,
+			"constant": entry.forceActivation,
+			"content": "",
+			"manual_text": entry.text,
+			"comment": "",
+			"token_length": 0,
+			"selective": false,
+			"wpp": {"name": "", "type": "", "format": "W++", "attributes": {}},
+			"use_wpp": false,
+		};
+		wi_data.folders[filename].push(i);
+
+		i++;
+	}
+	socket.emit("import_world_info", {data: wi_data});
+}
+
+async function loadKoboldData(data, filename) {
+	if (data.gamestarted !== undefined) {
+		// Story
+		socket.emit("upload_file", {"filename": filename, "data": JSON.stringify(data)});
+		socket.emit("load_story_list", "");
+	} else if (data.folders !== undefined && data.entries !== undefined) {
+		// World Info Folder
+		socket.emit("import_world_info", {data: data});
+	} else {
+		// Bad data
+		console.error("Bad data!");
+		return;
+	}
+}
+
+async function processDroppedFile(file) {
+	let extension = /.*\.(.*)/.exec(file.name)[1];
+	console.log("file is", file)
+	let data;
+
+	switch (extension) {
+		case "png":
+			// TODO: Support NovelAI's image lorebook cards. The format for those
+			// is base64-encoded JSON under a TXT key called "naidata".
+			console.warn("TODO: NAI LORECARDS");
+			return;
+		case "json":
+			// KoboldAI file
+			data = JSON.parse(await file.text());
+			loadKoboldData(data, file.name);
+			break;
+		case "lorebook":
+			// NovelAI lorebook, JSON encoded.
+			data = JSON.parse(await file.text());
+			loadNAILorebook(data, file.name);
+			break;
+		case "css":
+			console.warn("TODO: THEME");
+			break;
+		case "lua":
+			console.warn("TODO: USERSCRIPT");
+			break
+	}
+}
+
 $(document).ready(function(){
 	create_theming_elements();
 	document.onkeydown = detect_key_down;
@@ -2440,4 +3018,92 @@ $(document).ready(function(){
 	}
 	preserve_game_space(!(getCookie("preserve_game_space") == "false"));
 	options_on_right(!(getCookie("options_on_right") == "false"));
+
+
+	// Tweak registering
+	let enabledTweaks = JSON.parse(getCookie("enabledTweaks", "[]"));
+
+	function saveTweaks() {
+		let out = [];
+
+		// TODO: Better saving
+		for (const tweakContainer of document.getElementsByClassName("tweak-container")) {
+			let toggle = tweakContainer.querySelector("input");
+			let path = tweakContainer.getAttribute("tweak-path");
+			if (toggle.checked) out.push(path);
+		}
+
+		setCookie("enabledTweaks", JSON.stringify(out));
+	}
+
+
+	for (const tweakContainer of document.getElementsByClassName("tweak-container")) {
+		let toggle = tweakContainer.querySelector("input");
+		let path = tweakContainer.getAttribute("tweak-path");
+
+		$(toggle).change(function(e) {
+			let path = $(this).closest(".tweak-container")[0].getAttribute("tweak-path");
+			let id = `tweak-${path}`;
+
+			if (this.checked) {
+				let style = document.createElement("link");
+				style.rel = "stylesheet";
+				style.href = `/themes/tweaks/${path}.css`;
+				style.id = id;
+				document.head.appendChild(style);
+			} else {
+				let el = document.getElementById(id);
+				if (el) el.remove();
+			}
+
+			saveTweaks();
+		});
+
+		if (enabledTweaks.includes(path)) $(toggle).bootstrapToggle("on");
+	}
+
+	$("#context-viewer-close").click(function() {
+		document.getElementById("context-viewer-container").classList.add("hidden");
+	});
+
+	$(".token_breakdown").click(function() {
+		document.getElementById("context-viewer-container").classList.remove("hidden");
+	});
+
+	document.body.addEventListener("drop", function(e) {
+		e.preventDefault();
+		$("#file-upload-notice")[0].classList.add("hidden");
+
+		// items api
+		if (e.dataTransfer.items) {
+			for (const item of e.dataTransfer.items) {
+				if (item.kind !== "file") continue;
+				let file = item.getAsFile();
+				processDroppedFile(file);
+			}
+		} else {
+			for (const file of e.dataTransfer.files) {
+				processDroppedFile(file);
+			}
+		}
+	});
+
+	let lastTarget = null;
+
+	document.body.addEventListener("dragover", function(e) {
+		e.preventDefault();
+	});
+
+	document.body.addEventListener("dragenter", function(e) {
+		lastTarget = e.target;
+		console.log("start");
+		$("#file-upload-notice")[0].classList.remove("hidden");
+	});
+
+	document.body.addEventListener("dragleave", function(e) {
+		if (!(e.target === document || e.target === lastTarget)) return;
+
+		console.log("end")
+		$("#file-upload-notice")[0].classList.add("hidden");
+	});
 });

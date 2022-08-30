@@ -12,9 +12,30 @@
 	<div id="world_info_secondtags_" class="world_info_tag_area">
 		<div>And (if present):</div>
 	</div>
-	<div>
+	<div class="world_info_tag_area" id="world_info_wpp_toggle_area_">
+		Use W++
+	</div>
+	<div class="world_info_tag_area hidden" id="world_info_wpp_area_">
+		<!--this part is very sensitive to location. Javascript uses parents to find the above tag for each of the inputs, so don't add stuff without messing with JS-->
+		<select id="wpp_format_" class="settings_select">
+			<option>W++</option>
+			<option>Square Bracket Format (SBF)</option>
+		</select>
+		<table>
+			<tr>
+				<td>Type:</td>
+				<td><input type=text id="wpp_type_" onchange="do_wpp(this.parentElement.parentElement.parentElement.parentElement.parentElement)"></td>
+			</tr>
+			<tr>
+				<td>Name:</td>
+				<td><input type=text id="wpp_name_" onchange="do_wpp(this.parentElement.parentElement.parentElement.parentElement.parentElement)"></td>
+			</tr>
+		</table>
+		
+	</div>
+	<div id="world_info_basic_text_">
 		Text:
-		<textarea id="world_info_entry_text_" class="world_info_text fullwidth"></textarea>
+		<textarea id="world_info_entry_text_" class="world_info_text fullwidth" oninput="autoResize(this)"></textarea>
 	</div>
 	<div id="world_info_entry_w++_" class="hidden">
 		<input type=text placeholder="Type"/><input type=text placeholder="Name"/>
@@ -24,7 +45,7 @@
 	</div>
 	<div>
 		Comment:
-		<textarea rows=1 id="world_info_comment_" class="world_info_text fullwidth"></textarea>
+		<textarea rows=1 id="world_info_comment_" class="world_info_text fullwidth" oninput="autoResize(this)"></textarea>
 	</div>
 </div>
 <div id="empty_bias">

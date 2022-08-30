@@ -4,9 +4,7 @@ from flask import has_request_context
 from flask_socketio import SocketIO
 from collections import OrderedDict
 
-rely_clients = {}
 serverstarted = False
-port = 5000
 queue = None
 
 def clean_var_for_emit(value):
@@ -17,15 +15,6 @@ def clean_var_for_emit(value):
     else:
         return value
 
-def create_loopback_socketio():
-    sio = socketio_client.Client()
-    @sio.event
-    def connect():
-        pass
-    sio.connect('ws://localhost:{}/?rely=true'.format(port))
-    rely_clients[threading.get_ident()] = sio
-    return sio
-    
 def process_variable_changes(socketio, classname, name, value, old_value, debug_message=None):
     if serverstarted and name != "serverstarted":
         if debug_message is not None:
@@ -35,7 +24,7 @@ def process_variable_changes(socketio, classname, name, value, old_value, debug_
             if isinstance(value, KoboldStoryRegister):
                 socketio.emit("var_changed", {"classname": "actions", "name": "Action Count", "old_value": None, "value":value.action_count}, broadcast=True, room="UI_2")
                 
-                for i in range(len(value.actions)):
+                for i in value.actions:
                     socketio.emit("var_changed", {"classname": "story", "name": "actions", "old_value": None, "value":{"id": i, "action": value.actions[i]}}, broadcast=True, room="UI_2")
             elif isinstance(value, KoboldWorldInfo):
                 value.send_to_ui()
@@ -109,32 +98,51 @@ class koboldai_vars(object):
         self._model_settings.reset_for_model_load()
     
     def calc_ai_text(self, submitted_text=""):
+        context = []
         token_budget = self.max_length
         used_world_info = []
-        used_tokens = self.sp_length
+        if self.tokenizer is None:
+            used_tokens = 99999999999999999999999
+        else:
+            used_tokens = self.sp_length
         text = ""
+
+        # TODO: We may want to replace the "text" variable with a list-type
+        # class of context blocks, the class having a __str__ function.
+        if self.sp:
+            context.append({"type": "soft_prompt", "text": f"<{self.sp_length} tokens of Soft Prompt.>"})
+        # Header is never used?
+        # if koboldai_vars.model not in ("Colab", "API", "OAI") and self.tokenizer._koboldai_header:
+        #     context.append({"type": "header", "text": f"{len(self.tokenizer._koboldai_header})
         
         self.worldinfo_v2.reset_used_in_game()
         
         #Add memory
         memory_length = self.max_memory_length if self.memory_length > self.max_memory_length else self.memory_length
+        memory_text = None
         if memory_length+used_tokens <= token_budget:
             if self.memory_length > self.max_memory_length:
                 if self.tokenizer is None:
-                    text = self.memory
+                    memory_text = self.memory
                 else:
-                    text += self.tokenizer.decode(self.tokenizer.encode(self.memory)[-self.max_memory_length-1:])
+                    memory_text = self.tokenizer.decode(self.tokenizer.encode(self.memory)[-self.max_memory_length-1:])
             else:
-                text += self.memory
+                memory_text = self.memory
+         
+        context.append({"type": "memory", "text": memory_text})
+        if memory_text:
+            text += memory_text
         
         #Add constant world info entries to memory
         for wi in self.worldinfo_v2:
             if wi['constant']:
-                if used_tokens+wi['token_length'] <= token_budget:
+                if used_tokens+0 if 'token_length' not in wi else wi['token_length'] <= token_budget:
                     used_tokens+=wi['token_length']
                     used_world_info.append(wi['uid'])
                     self.worldinfo_v2.set_world_info_used(wi['uid'])
-                    text += wi['content']
+                    wi_text = wi['content']
+                    context.append({"type": "world_info", "text": wi_text})
+                    text += wi_text
         
         #Add prompt lenght/text if we're set to always use prompt
         if self.useprompt:
@@ -156,18 +164,21 @@ class koboldai_vars(object):
                                     match=True
                                     break
                         if match:
-                            if used_tokens+wi['token_length'] <= token_budget:
+                            if used_tokens+0 if 'token_length' not in wi else wi['token_length'] <= token_budget:
                                 used_tokens+=wi['token_length']
                                 used_world_info.append(wi['uid'])
-                                text += wi['content']
+                                wi_text = wi['content']
+                                context.append({"type": "world_info", "text": wi_text})
+                                text += wi_text
                                 self.worldinfo_v2.set_world_info_used(wi['uid'])
-                if self.prompt_length > self.max_prompt_length:
-                    if self.tokenizer is None:
-                        text += self.prompt
-                    else:
-                        text += self.tokenizer.decode(self.tokenizer.encode(self.prompt)[-self.max_prompt_length-1:])
-                else:
-                    text += self.prompt
+
+                prompt_text = self.prompt
+                if self.tokenizer and self.prompt_length > self.max_prompt_length:
+                    if self.tokenizer:
+                        prompt_text += self.tokenizer.decode(self.tokenizer.encode(self.prompt)[-self.max_prompt_length-1:])
+
+                text += prompt_text
+                context.append({"type": "prompt", "text": self.prompt})
                 self.prompt_in_ai = True
             else:
                 self.prompt_in_ai = False
@@ -177,13 +188,18 @@ class koboldai_vars(object):
         
         #Start going through the actions backwards, adding it to the text if it fits and look for world info entries
         game_text = ""
+        game_context = []
+        authors_note_final = self.authornotetemplate.replace("<|>", self.authornote)
         used_all_tokens = False
         for i in range(len(self.actions)-1, -1, -1):
             if len(self.actions) - i == self.andepth and self.authornote != "":
-                game_text = "{}{}".format(self.authornotetemplate.replace("<|>", self.authornote), game_text)
+                game_text = "{}{}".format(authors_note_final, game_text)
+                game_context.insert(0, {"type": "authors_note", "text": authors_note_final})
             if self.actions.actions[i]["Selected Text Length"]+used_tokens <= token_budget and not used_all_tokens:
                 used_tokens += self.actions.actions[i]["Selected Text Length"]
-                game_text = "{}{}".format(self.actions.actions[i]["Selected Text"], game_text)
+                selected_text = self.actions.actions[i]["Selected Text"]
+                game_text = "{}{}".format(selected_text, game_text)
+                game_context.insert(0, {"type": "action", "text": selected_text})
                 self.actions.set_action_in_ai(i)
                 #Now we need to check for used world info entries
                 for wi in self.worldinfo_v2:
@@ -201,10 +217,12 @@ class koboldai_vars(object):
                                     match=True
                                     break
                         if match:
-                            if used_tokens+wi['token_length'] <= token_budget:
+                            if used_tokens+0 if 'token_length' not in wi else wi['token_length'] <= token_budget:
                                 used_tokens+=wi['token_length']
                                 used_world_info.append(wi['uid'])
-                                game_text = "{}{}".format(wi['content'], game_text)
+                                wi_text = wi["content"]
+                                game_text = "{}{}".format(wi_text, game_text)
+                                game_context.insert(0, {"type": "world_info", "text": wi_text})
                                 self.worldinfo_v2.set_world_info_used(wi['uid'])
             else:
                 self.actions.set_action_in_ai(i, used=False)
@@ -212,7 +230,8 @@ class koboldai_vars(object):
              
         #if we don't have enough actions to get to author's note depth then we just add it right before the game text
         if len(self.actions) < self.andepth and self.authornote != "":
-            game_text = "{}{}".format(self.authornotetemplate.replace("<|>", self.authornote), game_text)
+            game_text = "{}{}".format(authors_note_final, game_text)
+            game_context.insert(0, {"type": "authors_note", "text": authors_note_final})
             
         if not self.useprompt:
             if self.prompt_length + used_tokens < token_budget:
@@ -233,20 +252,28 @@ class koboldai_vars(object):
                                     match=True
                                     break
                         if match:
-                            if used_tokens+wi['token_length'] <= token_budget:
+                            if used_tokens+0 if 'token_length' not in wi else wi['token_length'] <= token_budget:
                                 used_tokens+=wi['token_length']
                                 used_world_info.append(wi['uid'])
-                                text += wi['content']
+                                wi_text = wi["content"]
+                                text += wi_text
+                                context.append({"type": "world_info", "text": wi_text})
+                                self.worldinfo_v2.set_world_info_used(wi['uid'])
                 self.prompt_in_ai = True
             else:
                 self.prompt_in_ai = False
             text += self.prompt
+            context.append({"type": "prompt", "text": self.prompt})
         
         text += game_text
+        context += game_context
+
         if self.tokenizer is None:
             tokens = []
         else:
             tokens = self.tokenizer.encode(text)
+        
+        self.context = context
         return tokens, used_tokens, used_tokens+self.genamt
     
     def __setattr__(self, name, value):
@@ -283,7 +310,7 @@ class koboldai_vars(object):
         else:
             return getattr(self._story_settings['default'], name)
         
-                    
+
 class settings(object):
     def to_json(self):
         json_data = {'file_version': 2}
@@ -339,7 +366,7 @@ class settings(object):
 class model_settings(settings):
     local_only_variables = ['badwordsids', 'apikey', 'tqdm', 'socketio', 'default_preset']
     no_save_variables = ['tqdm', 'tqdm_progress', 'tqdm_rem_time', 'socketio', 'modelconfig', 'custmodpth', 'generated_tkns', 
-                         'loaded_layers', 'total_layers', 'total_download_chunks', 'downloaded_chunks']
+                         'loaded_layers', 'total_layers', 'total_download_chunks', 'downloaded_chunks', 'presets', 'default_preset']
     settings_name = "model"
     def __init__(self, socketio):
         self.socketio = socketio
@@ -451,7 +478,7 @@ class model_settings(settings):
             
 class story_settings(settings):
     local_only_variables = ['socketio', 'tokenizer', 'koboldai_vars']
-    no_save_variables = ['socketio', 'tokenizer', 'koboldai_vars']
+    no_save_variables = ['socketio', 'tokenizer', 'koboldai_vars', 'context']
     settings_name = "story"
     def __init__(self, socketio, koboldai_vars, tokenizer=None):
         self.socketio = socketio
@@ -505,11 +532,12 @@ class story_settings(settings):
         self.story_id    = int.from_bytes(os.urandom(16), 'little', signed=True) # this is a unique ID for the story. We'll use this to ensure when we save that we're saving the same story
         self.memory_length = 0
         self.prompt_length = 0
-        self.authornote_length = 512
+        self.authornote_length = 0
         self.max_memory_length = 512
         self.max_prompt_length = 512
         self.max_authornote_length = 512
         self.prompt_in_ai = False
+        self.context = []
         
     def save_story(self):
         print("Saving")
@@ -567,10 +595,10 @@ class story_settings(settings):
                 if name == 'tokenizer' and not new_variable:
                     self.memory_length = len(self.tokenizer.encode(self.memory))
                     self.prompt_length = len(self.tokenizer.encode(self.prompt))
-                    self.authornote_length = len(self.tokenizer.encode(self.authornotetemplate.replace("<|>", self.authornote)))
+                    self.authornote_length = 0 if self.authornote=="" else len(self.tokenizer.encode(self.authornotetemplate.replace("<|>", self.authornote)))
                     ignore = self.koboldai_vars.calc_ai_text()
                 elif name == 'authornote' or name == 'authornotetemplate':
-                    self.authornote_length = len(self.tokenizer.encode(self.authornotetemplate.replace("<|>", self.authornote)))
+                    self.authornote_length = 0 if self.authornote=="" else len(self.tokenizer.encode(self.authornotetemplate.replace("<|>", self.authornote)))
                     ignore = self.koboldai_vars.calc_ai_text()
                 elif name == 'memory':
                     self.memory_length = len(self.tokenizer.encode(self.memory))
@@ -610,6 +638,11 @@ class user_settings(settings):
         self.wirmvwhtsp  = False             # Whether to remove leading whitespace from WI entries
         self.widepth     = 3                 # How many historical actions to scan for WI hits
         self.formatoptns = {'frmttriminc': True, 'frmtrmblln': False, 'frmtrmspch': False, 'frmtadsnsp': False, 'singleline': False}     # Container for state of formatting options
+        self.frmttriminc = True
+        self.frmtrmblln  = False
+        self.frmtrmspch  = False
+        self.frmtadsnsp  = False
+        self.singleline  = False
         self.importnum   = -1                # Selection on import popup list
         self.importjs    = {}                # Temporary storage for import data
         self.loadselect  = ""                # Temporary storage for story filename to load
@@ -663,6 +696,7 @@ class system_settings(settings):
         self.savedir     = os.getcwd()+"\\stories"
         self.hascuda     = False  # Whether torch has detected CUDA on the system
         self.usegpu      = False  # Whether to launch pipeline with GPU support
+        self.splist      = []
         self.spselect    = ""     # Temporary storage for soft prompt filename to load
         self.spmeta      = None   # Metadata of current soft prompt, or None if not using a soft prompt
         self.spname      = "Not in Use"     # Name of the soft prompt    
@@ -695,18 +729,31 @@ class system_settings(settings):
         self.seed_specified = False  # Whether or not the current RNG seed was specified by the user (in their settings file)
         self.seed        = None   # The current RNG seed (as an int), or None if unknown
         self.alt_gen = False # Use the calc_ai_text method for generating text to go to the AI
+        self.theme_list = [".".join(f.split(".")[:-1]) for f in os.listdir("./themes") if os.path.isfile(os.path.join("./themes", f))]
         
         
     def __setattr__(self, name, value):
+        if name == "abort":
+            print("setting abort")
         new_variable = name not in self.__dict__
         old_value = getattr(self, name, None)
         super().__setattr__(name, value)
+        if name == "abort":
+            print("set abort to {}".format(self.abort))
+        
         #Put variable change actions here
         if name == 'serverstarted':
             global serverstarted
             serverstarted = value
         if name not in self.local_only_variables and name[0] != "_" and not new_variable:
             process_variable_changes(self.socketio, self.__class__.__name__.replace("_settings", ""), name, value, old_value)
+            
+            if name == "aibusy" and value == False:
+                print("resetting abort as AI busy was set to false")
+                koboldai_vars.abort = False
+                
+        if name == "abort":
+            print("set abort to {}".format(self.abort))
         
 class KoboldStoryRegister(object):
     def __init__(self, socketio, story_settings, koboldai_vars, tokenizer=None, sequence=[]):
@@ -768,7 +815,7 @@ class KoboldStoryRegister(object):
         if self.tokenizer is not None:
             self.actions[i]['Selected Text Length'] = len(self.tokenizer.encode(text))
         else:
-            self.actions[i]['Selected Text Length'] = None
+            self.actions[i]['Selected Text Length'] = 0
         self.actions[i]["In AI Input"] = False
         process_variable_changes(self.socketio, "story", 'actions', {"id": i, 'action':  self.actions[i]}, old)
         ignore = self.koboldai_vars.calc_ai_text()
@@ -809,6 +856,7 @@ class KoboldStoryRegister(object):
             
     def append(self, text):
         self.clear_unused_options()
+        print("setting action_count {} -> {}".format(self.action_count, self.action_count+1))
         self.action_count+=1
         if self.action_count in self.actions:
             if self.actions[self.action_count]["Selected Text"] != text:
@@ -839,11 +887,27 @@ class KoboldStoryRegister(object):
     
     def append_options(self, option_list):
         if self.action_count+1 in self.actions:
+            #First let's check if we did streaming, as we can just replace those items with these
             old_options = copy.deepcopy(self.actions[self.action_count+1]["Options"])
-            old_options_text = [x['text'] for x in old_options]
-            for item in option_list:
-                if item not in old_options_text:
-                    self.actions[self.action_count+1]['Options'].append({"text": item, "Pinned": False, "Previous Selection": False, "Edited": False, "Probabilities": []})
+            i=-1
+            for option in option_list:
+                i+=1
+                found = False
+                for item in self.actions[self.action_count+1]["Options"]:
+                    if 'stream_id' in item and item['stream_id'] == i:
+                        item['text'] = option
+                        del item['stream_id']
+                        found = True
+                        break
+                    elif item['text'] == option:
+                        found = True
+                        if 'stream_id' in item:
+                            del item['stream_id']
+                        found = True
+                        break
+                        
+                if not found:
+                    self.actions[self.action_count+1]['Options'].append({"text": option, "Pinned": False, "Previous Selection": False, "Edited": False, "Probabilities": []})
         else:
             old_options = None
             self.actions[self.action_count+1] = {"Selected Text": "", "Selected Text Length": 0, "In AI Input": False, "Options": [{"text": x, "Pinned": False, "Previous Selection": False, "Edited": False, "Probabilities": []} for x in option_list]}
@@ -853,7 +917,7 @@ class KoboldStoryRegister(object):
     def set_options(self, option_list, action_id):
         if action_id not in self.actions:
             old_options = None
-            self.action_id[action_id] = {"Selected Text": "", "Options": option_list}
+            self.actions[action_id] = {"Selected Text": "", "Options": option_list}
         else:
             old_options = self.actions[action_id]["Options"]
             self.actions[action_id]["Options"] = []
@@ -919,14 +983,16 @@ class KoboldStoryRegister(object):
             old_length = self.actions[action_step]["Selected Text Length"]
             if option_number < len(self.actions[action_step]['Options']):
                 self.actions[action_step]["Selected Text"] = self.actions[action_step]['Options'][option_number]['text']
-                self.actions[action_step]["Probabilities"] = self.actions[action_step]['Options'][option_number]['Probabilities']
+                if 'Probabilities' in self.actions[action_step]['Options'][option_number]:
+                    self.actions[action_step]["Probabilities"] = self.actions[action_step]['Options'][option_number]['Probabilities']
                 if self.tokenizer is not None:
                     self.actions[action_step]['Selected Text Length'] = len(self.tokenizer.encode(self.actions[action_step]['Options'][option_number]['text']))
                 else:
-                    self.actions[action_step]['Selected Text Length'] = None
+                    self.actions[action_step]['Selected Text Length'] = 0
                 del self.actions[action_step]['Options'][option_number]
                 #If this is the current spot in the story, advance
                 if action_step-1 == self.action_count:
+                    print("setting action_count {} -> {}".format(self.action_count, self.action_count+1))
                     self.action_count+=1
                     self.socketio.emit("var_changed", {"classname": "actions", "name": "Action Count", "old_value": None, "value":self.action_count}, broadcast=True, room="UI_2")
                 process_variable_changes(self.socketio, "story", 'actions', {"id": action_step, 'action':  self.actions[action_step]}, None)
@@ -941,6 +1007,7 @@ class KoboldStoryRegister(object):
             self.actions[action_id]["Options"].append({"text": self.actions[action_id]["Selected Text"], "Pinned": False, "Previous Selection": True, "Edited": False})
             self.actions[action_id]["Selected Text"] = ""
             self.actions[action_id]['Selected Text Length'] = 0
+            print("setting action_count {} -> {}".format(self.action_count, self.action_count-1))
             self.action_count -= 1
             process_variable_changes(self.socketio, "story", 'actions', {"id": action_id, 'action':  self.actions[action_id]}, None)
             self.set_game_saved()
@@ -992,7 +1059,7 @@ class KoboldStoryRegister(object):
                 process_variable_changes(self.socketio, "story", 'actions', {"id": key, 'action':  self.actions[key]}, None)
         else:
             for key in self.actions:
-                self.actions[key]['Selected Text Length'] = None
+                self.actions[key]['Selected Text Length'] = 0
                 process_variable_changes(self.socketio, "story", 'actions', {"id": key, 'action':  self.actions[key]}, None)
         ignore = self.koboldai_vars.calc_ai_text()
     
@@ -1031,7 +1098,6 @@ class KoboldStoryRegister(object):
             process_variable_changes(self.socketio, "story", 'actions', {"id": self.action_count+1, 'action':  self.actions[self.action_count+1]}, None)
     
     def set_probabilites(self, probabilities, action_id=None):
-        print(probabilities)
         if action_id is None:
             action_id = self.action_count
         if action_id in self.actions:
@@ -1137,15 +1203,28 @@ class KoboldWorldInfo(object):
             self.sync_world_info_to_old_format()
         self.socketio.emit("world_info_folder", {x: self.world_info_folder[x] for x in self.world_info_folder}, broadcast=True, room="UI_2")
                 
-    def add_item(self, title, key, keysecondary, folder, constant, content, comment):
+    def add_item(self, title, key, keysecondary, folder, constant, manual_text, comment, use_wpp=False, wpp={'name': "", 'type': "", 'format': "W++", 'attributes': {}}):
         if len(self.world_info) == 0:
             uid = 0
         else:
             uid = max(self.world_info)+1
+        if use_wpp:
+            if wpp['format'] == "W++":
+                content = '[{}("{}")\n{{\n'.format(wpp['type'], wpp['name'])
+                for attribute in wpp['attributes']:
+                    content = "{}{}({})\n".format(content, attribute, " + ".join(['"{}"'.format(x) for x in wpp['attributes'][attribute]]))
+                content = "{}}}]".format(content)
+            else:
+                content = '[ {}: "{}";'.format(wpp['type'], wpp['name'])
+                for attribute in wpp['attributes']:
+                    content = "{} {}: {};".format(content, attribute, ", ".join(['"{}"'.format(x) for x in wpp['attributes'][attribute]]))
+                content = "{} ]".format(content[:-1])
+        else:
+            content = manual_text
         if self.tokenizer is not None:
             token_length = len(self.tokenizer.encode(content))
         else:
-            token_length = None
+            token_length = 0
         if folder is None:
             folder = "root"
         
@@ -1165,11 +1244,14 @@ class KoboldWorldInfo(object):
                                     "keysecondary": keysecondary,
                                     "folder": folder,
                                     "constant": constant,
+                                    'manual_text': manual_text,
                                     "content": content,
                                     "comment": comment,
                                     "token_length": token_length,
                                     "selective": len(keysecondary) > 0,
-                                    "used_in_game": constant
+                                    "used_in_game": constant,
+                                    'wpp': wpp,
+                                    'use_wpp': use_wpp
                                     }
         except:
             print("Error:")
@@ -1185,16 +1267,30 @@ class KoboldWorldInfo(object):
         self.socketio.emit("world_info_folder", {x: self.world_info_folder[x] for x in self.world_info_folder}, broadcast=True, room="UI_2")
         self.socketio.emit("world_info_entry", self.world_info[uid], broadcast=True, room="UI_2")
         ignore = self.koboldai_vars.calc_ai_text()
+        return uid
         
-    def edit_item(self, uid, title, key, keysecondary, folder, constant, content, comment, before=None):
+    def edit_item(self, uid, title, key, keysecondary, folder, constant, manual_text, comment, use_wpp=False, before=None, wpp={'name': "", 'type': "", 'format': "W++", 'attributes': {}}):
         old_folder = self.world_info[uid]['folder']
         #move the world info entry if the folder changed or if there is a new order requested
         if old_folder != folder or before is not None:
             self.add_item_to_folder(uid, folder, before=before)
+        if use_wpp:
+            if wpp['format'] == "W++":
+                content = '[{}("{}")\n{{\n'.format(wpp['type'], wpp['name'])
+                for attribute in wpp['attributes']:
+                    content = "{}{}({})\n".format(content, attribute, " + ".join(['"{}"'.format(x) for x in wpp['attributes'][attribute]]))
+                content = "{}}}]".format(content)
+            else:
+                content = '[ {}: "{}";'.format(wpp['type'], wpp['name'])
+                for attribute in wpp['attributes']:
+                    content = "{} {}: {};".format(content, attribute, ", ".join(['"{}"'.format(x) for x in wpp['attributes'][attribute]]))
+                content = "{} ]".format(content[:-1])
+        else:
+            content = manual_text
         if self.tokenizer is not None:
             token_length = len(self.tokenizer.encode(content))
         else:
-            token_length = None
+            token_length = 0
         if folder is None:
             folder = "root"
             
@@ -1204,10 +1300,14 @@ class KoboldWorldInfo(object):
                                 "keysecondary": keysecondary,
                                 "folder": folder,
                                 "constant": constant,
+                                'manual_text': manual_text,
                                 "content": content,
                                 "comment": comment,
                                 "token_length": token_length,
-                                "selective": len(keysecondary) > 0
+                                "selective": len(keysecondary) > 0,
+                                "used_in_game": constant,
+                                'wpp': wpp,
+                                'use_wpp': use_wpp
                                 }
                                 
         self.story_settings.gamesaved = False
@@ -1265,22 +1365,38 @@ class KoboldWorldInfo(object):
         for uid in self.world_info:
             self.socketio.emit("world_info_entry", self.world_info[uid], broadcast=True, room="UI_2")
     
-    def to_json(self):
-        return {
-                "folders": {x: self.world_info_folder[x] for x in self.world_info_folder},
-                "entries": self.world_info
-               }
+    def to_json(self, folder=None):
+        if folder is None:
+            return {
+                    "folders": {x: self.world_info_folder[x] for x in self.world_info_folder},
+                    "entries": self.world_info
+                   }
+        else:
+            return {
+                    "folders": {x: self.world_info_folder[x] for x in self.world_info_folder if x == folder},
+                    "entries": {x: self.world_info[x] for x in self.world_info if self.world_info[x]['folder'] == folder}
+                   }
     
-    def load_json(self, data):
-        self.world_info = {int(x): data['entries'][x] for x in data['entries']}
-        self.world_info_folder = data['folders']
-        try:
-            self.sync_world_info_to_old_format()
-        except:
-            print(self.world_info)
-            print(data)
-            raise
-        self.send_to_ui()
+    def load_json(self, data, folder=None):
+        if folder is None:
+            self.world_info = {int(x): data['entries'][x] for x in data['entries']}
+            self.world_info_folder = data['folders']
+            #Make sure we have all the appropriate variables:
+            for item in self.world_info:
+                for column in ["uid","title","key","keysecondary","folder","constant","content","comment","token_length","selective","used_in_game"]:
+                    if column not in item:
+                        item[column] = None
+            try:
+                self.sync_world_info_to_old_format()
+            except:
+                print(self.world_info)
+                print(data)
+                raise
+            self.send_to_ui()
+        else:
+            for uid, item in data['entries'].items():
+                self.add_item(item['title'], item['key'], item['keysecondary'], folder, item['constant'], item['manual_text'], item['comment'], 
+                                use_wpp=item['use_wpp'], wpp=item['wpp'])
     
     def sync_world_info_to_old_format(self):
         #Since the old UI uses world info entries for folders, we need to make some up
@@ -1337,11 +1453,11 @@ class KoboldWorldInfo(object):
         for key in self.world_info:
             if self.world_info[key]["used_in_game"] != self.world_info[key]["constant"]:
                 self.world_info[key]["used_in_game"] = self.world_info[key]["constant"]
-                self.socketio.emit("world_info_entry", self.world_info[key], broadcast=True, room="UI_2")
+                self.socketio.emit("world_info_entry_used_in_game", {"uid": key, "used_in_game": False}, broadcast=True, room="UI_2")
         
     def set_world_info_used(self, uid):
         self.world_info[uid]["used_in_game"] = True
-        self.socketio.emit("world_info_entry", self.world_info[uid], broadcast=True, room="UI_2")
+        self.socketio.emit("world_info_entry_used_in_game", {"uid": uid, "used_in_game": True}, broadcast=True, room="UI_2")
     
     def __setattr__(self, name, value):
         new_variable = name not in self.__dict__

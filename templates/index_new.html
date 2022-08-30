@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
+	<script type="module">import {encode, decode} from "./static/tokenizer.js";window.encode = encode;window.decode = decode;</script>
 	<link href="static/open-iconic/css/open-iconic.css" rel="stylesheet">
 	<link rel="stylesheet" href="static/bootstrap-toggle.min.css">
 	<link rel="stylesheet" href="static/bootstrap.min.css">
@@ -39,6 +40,15 @@
 			<div id="disconnect_message"><center><h1>Disconnected</h1></center></div>
 			<div class="gametext" id="Selected Text">
 				<span id="story_prompt" class="var_sync_story_prompt var_sync_alt_story_prompt_length var_sync_alt_story_prompt_in_ai rawtext" contenteditable=true onblur="if (getAttribute(this, 'old_text') != this.textContent) {sync_to_server(this);}" onkeydown="detect_enter_text"></span>
+				<span id="Delete Me">
+					&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+					&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+					&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+					&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+					&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+					&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+					&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+				</span>
 			</div>
 		</div>
 		<!------------ Sequences --------------------->
@@ -60,19 +70,21 @@
 		<!------------ Input Area--------------------->
 		<div class="inputrow" id="inputrow_container">
 			<div id="random_game_prompt" class="hidden">
-				<input type="text" autocomplete="off" style="width: 100%;" id="themetext" placeholder="Theme for Random Story" oninput='if (this.value != "") {
-																													document.getElementById("input_text").value = "";'/>
+				<input type="text" autocomplete="off" id="themetext" placeholder="Theme for Random Story" oninput='if (this.value != "") {
+																													document.getElementById("input_text").value = "";}'/>
+				<span class="help_text" style="margin:0px;margin-top:5px;">The AI can create a prompt for you! Optionally type in one or more themes above, or let the AI do it's thing.</span>
 			</div>
 			<textarea autocomplete="off" row=5 id="input_text" placeholder="Enter Prompt Here" oninput='if (this.value != "") {
 																											document.getElementById("themetext").value = "";
-																										}'></textarea>
-			<div class="statusbar_outer hidden">
-				<div class="statusbar_inner" style="width:0%">0%</div>
+																										}'
+																										onkeyup="calc_token_usage()"></textarea>
+			<div class="statusbar_outer hidden" id="status_bar" onclick="socket.emit('abort','');">
+				<div class="statusbar_inner" style="width:0%" onclick="socket.emit('abort','');">0%</div>
 			</div><br>
-			<button type="button" class="btn action_button submit var_sync_alt_system_aibusy" system_aibusy=False id="btnsend" 
+			<button type="button" class="btn action_button submit var_sync_alt_system_aibusy" system_aibusy=False id="btnsubmit" 
 				onclick="socket.emit('submit', {'data': document.getElementById('input_text').value, 'theme': document.getElementById('themetext').value});document.getElementById('input_text').value = '';document.getElementById('themetext').value = '';"
 				>Submit</button>
-			<button type="button" class="btn action_button submited var_sync_alt_system_aibusy"  system_aibusy=False id="btnsend"><img id="thinking" src="static/thinking.gif" class="force_center" onclick="socket.emit('abort','');"></button>
+			<button type="button" class="btn action_button submited var_sync_alt_system_aibusy"  system_aibusy=False id="btnsent"><img id="thinking" src="static/thinking.gif" class="force_center" onclick="socket.emit('abort','');"></button>
 			<button type="button" class="btn action_button back" onclick="socket.emit('back', {});"><span class="oi" data-glyph="action-undo"></span></button>
 			<button type="button" class="btn action_button redo" onclick="socket.emit('redo', {});"><span class="oi" data-glyph="action-redo"></span></button>
 			<button type="button" class="btn action_button retry" onclick="socket.emit('retry', {});"><span class="oi" data-glyph="loop-circular"></span></button>
@@ -100,5 +112,36 @@
 		{% include 'templates.html' %}
 	</div>
 	<iframe id="download_iframe" style="display:none;"></iframe>
+
+	<div id="context-viewer-container" class="hidden">
+		<div id="context-viewer">
+			<div id="context-viewer-header">
+				<h3 class="noselect">Context Viewer</h3>
+				<div id="context-viewer-header-right">
+					<div>
+						<span class="noselect">Key:</span>
+						<div>
+							<span class="noselect context-block-example context-sp">Soft Prompt</span>
+							<span class="noselect context-block-example context-prompt">Prompt</span>
+							<span class="noselect context-block-example context-wi">World Info</span>
+							<span class="noselect context-block-example context-memory">Memory</span>
+							<span class="noselect context-block-example context-an">Author's Note</span>
+							<span class="noselect context-block-example context-action">Action</span>
+						</div>
+					</div>
+					<span id="context-viewer-close" class="material-icons-outlined">close</span>
+				</div>
+			</div>
+			<span class="help_text">
+				Context is the text the AI is sent when you ask it to generate text.
+				As the context is limited in size, you can use the Context Viewer to check if things you want the AI to know are in the context.
+			</span>
+			<div id="context-container"></div>
+		</div>
+	</div>
+
+	<div id="file-upload-notice" class="hidden">
+		<span class="material-icons-outlined">upload_file</span>
+	</div>
 </body>
 </html>
