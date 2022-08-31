@@ -50,7 +50,7 @@
 			<div style="text-align: center;">
 				<button class="settings_button" onclick="socket.emit('load_model_button', {});">
 					<span class="material-icons-outlined cursor" title="Load Model" style="font-size: 1.4em;">folder_open</span>
-					<span> Load Model</span>
+					<span class="button_label">Load Model</span>
 				</button>
 				<select class="var_sync_model_selected_preset settings_select presets" onchange='sync_to_server(this)'><option>Preset</option></select>
 			</div>
@@ -72,15 +72,15 @@
 				<div class="story_title_icons">
 					<button class="settings_button" onclick="socket.emit('new_story', '');">
 						<span class="material-icons-outlined cursor" title="New Story">description</span>
-						<span> New Story</span>
+						<span class="button_label">New Story</span>
 					</button>
 					<button class="settings_button" onclick="socket.emit('load_story_list', '');">
 						<span class="material-icons-outlined cursor" title="Load Story">folder_open</span>
-						<span> Load Story</span>
+						<span class="button_label">Load Story</span>
 					</button>
 					<button class="settings_button var_sync_alt_story_gamesaved" onclick='socket.emit("save_story", null, (response) => {save_as_story(response);});'>
 						<span class="material-icons-outlined cursor var_sync_alt_story_gamesaved" title="Save Story">save</span>
-						<span> Save Story</span>
+						<span class="button_label">Save Story</span>
 					</button>
 					
 					
