@@ -1611,11 +1611,11 @@ def get_cluster_models(msg):
                 if 'online_model' in js:
                     online_model = js['online_model']
                 if "apikey" in js:
-                    if js['apikey'] != key:
+                    if js['apikey'] != vars.oaiapikey:
                         changed=True
         if changed:
             with open("settings/{}.settings".format(vars.model_selected), "w") as file:
-                js["apikey"] = key
+                js["apikey"] = vars.oaiapikey
                 file.write(json.dumps(js, indent=3))
             
         emit('from_server', {'cmd': 'oai_engines', 'data': engines, 'online_model': online_model}, broadcast=True)
