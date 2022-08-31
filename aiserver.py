@@ -1570,6 +1570,7 @@ def get_oai_models(key):
         else:
             changed=True
         if changed:
+            js={}
             with open("settings/{}.settings".format(vars.model_selected), "w") as file:
                 js["apikey"] = key
                 file.write(json.dumps(js, indent=3))
@@ -1583,6 +1584,7 @@ def get_oai_models(key):
 
 def get_cluster_models(msg):
     vars.oaiapikey = msg['key']
+    vars.apikey = vars.oaiapikey
     url = msg['url']
     
         
@@ -1618,6 +1620,7 @@ def get_cluster_models(msg):
         else:
             changed=True
         if changed:
+            js={}
             with open("settings/{}.settings".format(vars.model_selected), "w") as file:
                 js["apikey"] = vars.oaiapikey
                 file.write(json.dumps(js, indent=3))
