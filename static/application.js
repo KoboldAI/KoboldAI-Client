@@ -2914,6 +2914,7 @@ $(document).ready(function(){
 		} else if(msg.cmd == 'selected_model_info') {
 			enableButtons([load_model_accept]);
 			$("#oaimodel").addClass("hidden")
+			$("#oaimodel")[0].options[0].selected = true;
 			if (msg.key) {
 				$("#modelkey").removeClass("hidden");
 				$("#modelkey")[0].value = msg.key_value;
@@ -2931,9 +2932,10 @@ $(document).ready(function(){
 			console.log(msg.multi_online_models);
 			if (msg.multi_online_models) {
 				$("#oaimodel")[0].setAttribute("multiple", "");
-				console.log($("#oaimodel")[0])
+				$("#oaimodel")[0].options[0].textContent = "All"
 			} else {
 				$("#oaimodel")[0].removeAttribute("multiple");
+				$("#oaimodel")[0].options[0].textContent = "Select Model(s)"
 			}
 			
 			

@@ -300,7 +300,7 @@
 				<input class="form-control hidden" type="text" placeholder="Model Path or Hugging Face Name" id="custommodelname" menu="" onblur="socket.send({'cmd': 'selectmodel', 'data': $(this).attr('menu'), 'path_modelname': $('#custommodelname')[0].value});">
 			</div>
 			<div class="popupfooter">
-				<select class="form-control hidden" id="oaimodel"></select>
+				<select class="form-control hidden" id="oaimodel"><option value="">Select Model(s)</option></select>
 			</div>
 			<div class="popupfooter hidden" id=modellayers>
 				<div class='settingitem' style="width:100%">
