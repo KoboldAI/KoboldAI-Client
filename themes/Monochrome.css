@@ -68,6 +68,9 @@
 
 	--setting_background: #273141;
     --setting_text: #e0e0e0;
+	
+	--button_text: var(--setting_text);
+	--button_background: var(--setting_background);
 
 	--sample_order_select_color: #244c65;
 	--sample_order_select_color_text: #e0e0e0;
@@ -142,6 +145,7 @@
 	--radius_buttons: 5px;
 	--radius_item_popup: 2px;
 	--radius_wi_card: 5px;
+	--radius_settings_button: 5px;
 
 
 

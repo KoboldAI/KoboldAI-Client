@@ -447,6 +447,8 @@ input[type="range"]::-ms-fill-upper {
 }
 
 .story_title {
+	display: flex;
+	justify-content: space-between;
 	font-size: calc(1.8em + var(--font_size_adjustment));
 	text-align: center;
 	border-bottom: 1px;
@@ -463,14 +465,29 @@ input[type="range"]::-ms-fill-upper {
 }
 
 .story_title_icons {
-	font-size: calc(18px + var(--font_size_adjustment));
-	padding: 10px 0 0 0;
-	margin-left: 125px;
+	display: flex;
+	width: 100%;
+	padding: 10px;
+	justify-content: space-between;
 }
 
 .settings_menu {
 	padding-left: 30px;
 	padding-top: 7px;
+}
+
+.settings_button {
+	color: var(--button_text);
+	background: var(--button_background);
+	border-color: white;
+	border-width: 1px;
+	border-radius: var(--radius_settings_button);
+	border-style:solid;
+	height: 35px;
+}
+
+.settings_button[story_gamesaved="true"] {
+	filter: brightness(40%);
 }
 
 .settings_select {

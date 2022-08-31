@@ -80,6 +80,9 @@
 
 	--setting_background: var(--surface_palette);
     --setting_text: var(--on_surface_palette);
+	
+	--button_text: var(--setting_text);
+	--button_background: var(--setting_background);
 
 	--sample_order_select_color: var(--primary_palette);
 	--sample_order_select_color_text: var(--on_primary_palette);
@@ -156,6 +159,7 @@
 	--radius_buttons: 5px;
 	--radius_item_popup: 2px;
 	--radius_wi_card: 5px;
+	--radius_settings_button: 5px;
 
 
 
