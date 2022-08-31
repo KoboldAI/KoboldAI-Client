@@ -9,7 +9,14 @@
 	<div class="popup_load_cancel hidden" id="popup_upload">
 		<input type=file id="popup_upload_file">
 	</div>
-	<div>Drag file(s) above or click here to Upload File<input id="popup_upload_input" type=file onchange="upload_file(this)"></div>
+	<div style="display:flex;justify-content: space-between;">
+		<span>Drag file(s) above or click here to Upload File<input id="popup_upload_input" type=file onchange="upload_file(this)"></span>
+		<button id="import_story_button" class="settings_button hidden" onclick="document.getElementById('import_aidg_club_popup').classList.remove('hidden');">
+			<span class="material-icons-outlined cursor" title="Import Story">cloud_download</span>
+			<span> Import Story</span>
+		</button>
+		
+	</div>
 	<div class="popup_load_cancel" id="popup_load_cancel">
 		<button class="btn popup_load_cancel_button action_button" id="popup_accept">Load</button>
 		<button class="btn popup_load_cancel_button" id="popup_cancel" onclick='document.getElementById("popup").classList.add("hidden");'>Cancel</button>

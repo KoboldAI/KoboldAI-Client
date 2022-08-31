@@ -579,6 +579,11 @@ function load_popup(data) {
 	var popup = document.getElementById("popup");
 	var popup_title = document.getElementById("popup_title");
 	popup_title.textContent = data.popup_title;
+	if (data.popup_title == "Select Story to Load") {
+		document.getElementById("import_story_button").classList.remove("hidden");
+	} else {
+		document.getElementById("import_story_button").classList.add("hidden");
+	}
 	var popup_list = document.getElementById("popup_list");
 	//first, let's clear out our existing data
 	while (popup_list.firstChild) {

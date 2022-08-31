@@ -465,10 +465,9 @@ input[type="range"]::-ms-fill-upper {
 }
 
 .story_title_icons {
-	display: flex;
 	width: 100%;
 	padding: 10px;
-	justify-content: space-between;
+	text-align: center;
 }
 
 .settings_menu {
