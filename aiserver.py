@@ -1567,6 +1567,8 @@ def get_oai_models(key):
                 if "apikey" in js:
                     if js['apikey'] != key:
                         changed=True
+        else:
+            changed=True
         if changed:
             with open("settings/{}.settings".format(vars.model_selected), "w") as file:
                 js["apikey"] = key
@@ -1613,6 +1615,8 @@ def get_cluster_models(msg):
                 if "apikey" in js:
                     if js['apikey'] != vars.oaiapikey:
                         changed=True
+        else:
+            changed=True
         if changed:
             with open("settings/{}.settings".format(vars.model_selected), "w") as file:
                 js["apikey"] = vars.oaiapikey
@@ -3787,8 +3791,13 @@ def get_message(msg):
         vars.colaburl = msg['url'] + "/request"
         vars.model = vars.model_selected
         if vars.model == "CLUSTER":
-            vars.cluster_requested_models = msg['online_model']
-            print(vars.cluster_requested_models)
+            if type(msg['online_model']) is not list:
+                if msg['online_model'] == '':
+                    vars.cluster_requested_models = []
+                else:
+                    vars.cluster_requested_models = [msg['online_model']]
+            else:
+                vars.cluster_requested_models = msg['online_model']
         load_model(use_gpu=msg['use_gpu'], gpu_layers=msg['gpu_layers'], disk_layers=msg['disk_layers'], online_model=msg['online_model'])
     elif(msg['cmd'] == 'show_model'):
         print("Model Name: {}".format(getmodelname()))
