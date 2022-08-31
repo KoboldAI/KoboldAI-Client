@@ -579,6 +579,11 @@ function load_popup(data) {
 	var popup = document.getElementById("popup");
 	var popup_title = document.getElementById("popup_title");
 	popup_title.textContent = data.popup_title;
+	if (data.popup_title == "Select Story to Load") {
+		document.getElementById("import_story_button").classList.remove("hidden");
+	} else {
+		document.getElementById("import_story_button").classList.add("hidden");
+	}
 	var popup_list = document.getElementById("popup_list");
 	//first, let's clear out our existing data
 	while (popup_list.firstChild) {
@@ -634,7 +639,7 @@ function load_popup(data) {
 }
 
 function popup_items(data) {
-	//console.log(data);
+	console.log(data);
 	var popup_list = document.getElementById('popup_list');
 	//first, let's clear out our existing data
 	while (popup_list.firstChild) {
@@ -645,6 +650,9 @@ function popup_items(data) {
 	//create the column widths
 	var style = /*width: 50vw;*/'display: grid; grid-template-areas: "icons';
 	for (i=0; i < data.column_widths.length; i++) {
+		style = style + " p"+i;
+	}
+	if (data.show_filename) {
 		style = style + " p"+i;
 	}
 	style = style + '"; grid-template-columns: 50px';

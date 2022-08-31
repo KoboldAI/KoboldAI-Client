@@ -1,37 +1,44 @@
+/*
+	Name: Monochrome
+	Author: LightSaveUs
+	Version: 0.4.5
+	Description: A theme inspired by the NovelAI interface.
+*/
+
 :root {
 /*----------------Palette Theme--------------------*/
-	--primary_palette: #afc6ff;
-	--on_primary_palette: #002d6c;
-	--primary_container_palette: #004397;
-	--on_primary_container_palette: #d9e2ff;
+	--primary_palette: #000000;
+	--on_primary_palette: #000000;
+	--primary_container_palette: #000000;
+	--on_primary_container_palette: #000000;
 
-	--secondary_palette: #f7c5ee;
-	--on_secondary_palette: #5c0059;
-	--secondary_container_palette: #d663bd;
-	--on_secondary_container_palette: #4e0039;
+	--secondary_palette: #000000;
+	--on_secondary_palette: #000000;
+	--secondary_container_palette: #000000;
+	--on_secondary_container_palette: #000000;
 
-	--tertiary_palette: #a8d473;
-	--on_tertiary_palette: #1f3700;
-	--tertiary_container_palette: #2f4f00;
-	--on_tertiary_container_palette: #c3f18c; 
+	--tertiary_palette: #000000;
+	--on_tertiary_palette: #000000;
+	--tertiary_container_palette: #000000;
+	--on_tertiary_container_palette: #000000;
 
 	--error_palette: #ffb4ab;
 	--on_error_palette: #690005;
 	--error_container_palette: #93000a;
 	--on_error_container_palette: #ffdad6;
 
-	--background_palette: #1b1b1f;
-	--on_background_palette:#e3e2e6;
+	--background_palette: #000000;
+	--on_background_palette:#000000;
 	--layer1_palette: #18222a;
-	--layer2_palette: #28282D;
-	--layer3_palette: #2F2F35;
-	--layer4_palette: #35353D;
-	--outline_palette: #8e9099;
+	--layer2_palette: #000000;
+	--layer3_palette: #000000;
+	--layer4_palette: #000000;
+	--outline_palette: #000000;
 
-	--middle_palette: #232328;
-	--on_middle_palette: #86868e;
-	--surface_palette: #2f2f36;
-	--on_surface_palette: #e3e2e6;
+	--middle_palette: #000000;
+	--on_middle_palette: #000000;
+	--surface_palette: #000000;
+	--on_surface_palette: #000000;
 
 /*----------------Advanced Theme--------------------*/
 	/*General*/
@@ -68,6 +75,9 @@
 
 	--setting_background: #273141;
     --setting_text: #e0e0e0;
+	
+	--button_text: var(--setting_text);
+	--button_background: var(--setting_background);
 
 	--sample_order_select_color: #244c65;
 	--sample_order_select_color_text: #e0e0e0;
@@ -80,8 +90,8 @@
 	--rangeslider_circle_color: #1b354d;
 
 	--help_icon: #cfd7a2;
-    --tooltip_text:var(--on_secondary_palette);
-    --tooltip_background:var(--secondary_palette);
+    --tooltip_text: #000000;
+    --tooltip_background: #000000;
 	--setting_category_help_text_color: #E0E0E0;
 	
 	--setting_footer_border_color: grey;
@@ -135,13 +145,14 @@
 	--left_menu_strong_shadow: 0;
 	--right_menu_light_shadow: 0;
 	--right_menu_strong_shadow: 0;
-	--radius_inputbox: 5px;
-	--radius_unpinned_menu: 10px;
-	--radius_sequence: 10px;
-	--radius_settings_background: 5px;
-	--radius_buttons: 5px;
+	--radius_inputbox: 2px;
+	--radius_unpinned_menu: 0px;
+	--radius_sequence: 5px;
+	--radius_settings_background: 2px;
+	--radius_buttons: 2px;
 	--radius_item_popup: 2px;
 	--radius_wi_card: 5px;
+	--radius_settings_button: 5px;
 
 
 

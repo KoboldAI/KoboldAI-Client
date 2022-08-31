@@ -45,12 +45,13 @@
 				</span>
 			</div>
 			<div id="text_runningmodel">
-					<b>Running Model: </b>
-			</div>
-			<div class="Model_Icon">
-				<span class="material-icons-outlined cursor" title="Load Model" onclick="socket.emit('load_model_button', {});">folder_open</span>
+					<b>1) Model: </b>
 			</div>
 			<div style="text-align: center;">
+				<button class="settings_button" onclick="socket.emit('load_model_button', {});">
+					<span class="material-icons-outlined cursor" title="Load Model" style="font-size: 1.4em;">folder_open</span>
+					<span> Load Model</span>
+				</button>
 				<select class="var_sync_model_selected_preset settings_select presets" onchange='sync_to_server(this)'><option>Preset</option></select>
 			</div>
 		</div>
@@ -61,16 +62,28 @@
 					<span>
 						<span class="var_sync_story_story_name fullwidth" contenteditable=true onblur="sync_to_server(this);"></span>
 					</span>
+					<span>
+						<span class="material-icons-outlined cursor" title="Download Story" onclick="document.getElementById('download_iframe').src = 'json';">file_download</span>
+					</span>
 				</div>
 				<div id="text_storyname">
-					<b>Story Name: </b>
+					<b>2) Story: </b>
 				</div>
 				<div class="story_title_icons">
-					<span class="material-icons-outlined cursor" title="New Story" onclick="socket.emit('new_story', '');">description</span>
-					<span class="material-icons-outlined cursor" title="Load Story" onclick="socket.emit('load_story_list', '');">folder_open</span>
-					<span class="material-icons-outlined cursor var_sync_alt_story_gamesaved" title="Save Story" onclick='socket.emit("save_story", null, (response) => {save_as_story(response);});'>save</span>
-					<span class="material-icons-outlined cursor" title="Import Story" onclick="document.getElementById('import_aidg_club_popup').classList.remove('hidden');">cloud_download</span>
-					<span class="material-icons-outlined cursor" title="Download Story" onclick="document.getElementById('download_iframe').src = 'json';">file_download</span>
+					<button class="settings_button" onclick="socket.emit('new_story', '');">
+						<span class="material-icons-outlined cursor" title="New Story">description</span>
+						<span> New Story</span>
+					</button>
+					<button class="settings_button" onclick="socket.emit('load_story_list', '');">
+						<span class="material-icons-outlined cursor" title="Load Story">folder_open</span>
+						<span> Load Story</span>
+					</button>
+					<button class="settings_button var_sync_alt_story_gamesaved" onclick='socket.emit("save_story", null, (response) => {save_as_story(response);});'>
+						<span class="material-icons-outlined cursor var_sync_alt_story_gamesaved" title="Save Story">save</span>
+						<span> Save Story</span>
+					</button>
+					
+					
 				</div>
 			</div>
 			<hr/>

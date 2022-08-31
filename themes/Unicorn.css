@@ -1,0 +1,185 @@
+/*
+	Name: Unicorn
+	Author: LightSaveUs
+	Version: 0.1.1
+	Description: A theme inspired by the DreamilyAI interface.
+*/
+
+:root {
+/*----------------Palette Theme--------------------*/
+	--primary_palette:#000000;
+	--on_primary_palette: #000000;
+	--primary_container_palette: #000000;
+	--on_primary_container_palette: #000000;
+
+	--secondary_palette: #000000;
+	--on_secondary_palette: #000000;
+	--secondary_container_palette: #000000;
+	--on_secondary_container_palette: #000000;
+
+	--tertiary_palette: #000000;
+	--on_tertiary_palette: #000000;
+	--tertiary_container_palette: #000000;
+	--on_tertiary_container_palette: #000000;
+
+	--error_palette: #ffb4ab;
+	--on_error_palette: #690005;
+	--error_container_palette: #93000a;
+	--on_error_container_palette: #ffdad6;
+
+	--background_palette: #000000;
+	--on_background_palette:#000000;
+	--layer1_palette: #e2e2e2;
+	--layer2_palette: #000000;
+	--layer3_palette: #000000;
+	--layer4_palette: #000000;
+	--outline_palette: #000000;
+
+	--middle_palette: #000000;
+	--on_middle_palette: #000000;
+	--surface_palette: #000000;
+	--on_surface_palette: #000000;
+
+/*----------------Advanced Theme--------------------*/
+	/*General*/
+	--background: #e8e7ec;
+
+	--gamescreen_background: #e8e7ec;
+	--gamescreen_text: #222224;
+
+    --input_background: #e1e1e1;
+	--input_text: #222224;
+
+    --text: #f2f1f1;
+    --text_to_ai_color: #464646;
+    --text_edit: #464646;
+
+	--statusbar_color: #f2f2f499;
+	--statusbar_text_color: white;
+	--scrollbar-color: #e267717a;
+
+	/*Buttons*/
+	--enabled_button_text: #f2f1f1;
+    --enabled_button_background_color: #e26771;
+    --enabled_button_border_color: #99454c;
+	--disabled_button_text: #303030;
+    --disabled_button_background_color: #495762;
+    --disabled_button_border_color: #686c68;
+
+	/*Sequence, AKA Gens Per Action*/
+	--sequence_area_background:var(--layer1_palette);
+    --sequence_background: #ececec;
+	--sequence_text: #a8a8a8;
+
+	/*Side Menus*/
+	--tab_color: #b4525a;
+	--tab_text: #f2f1f1;
+
+	--flyout_background: #dcd9d9;
+	--flyout_background_pinned: #dcd9d9;
+	--flyout_text: #464646;
+
+	--setting_background: #e1c5c5;
+    --setting_text: #421d1d;
+	
+	--button_text: var(--setting_text);
+	--button_background: var(--setting_background);
+
+	--sample_order_select_color: #dc6872;
+	--sample_order_select_color_text: #f2f1f1;
+
+	--dropdown_text: #e26771;
+	--dropdown_background: #d9d9dc;
+
+	--rangeslider_background_color: #818181;
+	--rangeslider_color: #dc6872;
+	--rangeslider_circle_color: #f2f1f1;
+
+	--help_icon: #f2f1f1;
+    --tooltip_text: #000000;
+    --tooltip_background: #000000;
+	--setting_category_help_text_color: #464646;
+	
+	--setting_footer_border_color: #4646466b;
+	--setting_footer_text_color: #464646;
+	--setting_footer_background_color: #e1c5c5;
+
+	/*World Info*/
+	--wi_card_border_color: #dc6872;
+    --wi_card_border_color_to_ai: #dc6872;
+
+    --wi_card_bg_color: #e26771;
+	--wi_card_text_color: #f2f1f1;
+
+    --wi_card_tag_bg_color: #f2f1f1;
+	--wi_card_tag_text_color: #5c5c5c;
+	
+    --wi_tag_color: #e2c4c4;
+	--wi_tag_text_color: #5c5c5c;
+	
+	/*Popup*/
+	--popup_background_color: #bb9c9c;
+    --popup_title_bar_color: #cfb6b6;
+	--popup_title_bar_color_text: #421d1d;
+
+    --popup_item_color: #f2f1f1;
+	--popup_item_color_text: #e26771;
+
+	--popup_hover_color: #e26771;
+	--popup_hover_color_text: #f2f1f1;
+	--popup_selected_color: #e26771;
+	--popup_selected_color_text: #f2f1f1;
+
+	--popup_button_color: #cfb6b6;
+	--popup_button_color_text: #421d1d;
+	--popup_cancel_button_color: #cfb6b6;
+	--popup_cancel_button_color_text: #421d1d;
+	
+	/*Context Bar Colors*/
+	--context_colors_memory: #8e4147;
+	--context_colors_authors_notes: #d8656e;
+	--context_colors_world_info: #d28b8b;
+	--context_colors_prompt: #cbb6b6;
+	--context_colors_game_text: #e7c2c2;
+	--context_colors_submit: #ededed;
+	--context_colors_unused: #ffffffad;
+	--context_colors_soft_prompt: #464646;
+
+    /*Parameters*/
+	--scrollbar-size: 6px;
+	--light_shadow_value: 0;
+	--left_menu_light_shadow: 0;
+	--left_menu_strong_shadow: 0;
+	--right_menu_light_shadow: 0;
+	--right_menu_strong_shadow: 0;
+	--popup_shadow: 0;
+	--radius_inputbox: 15px;
+	--radius_unpinned_menu: 20px;
+	--radius_sequence: 15px;
+	--radius_settings_background: 10px;
+	--radius_buttons: 10px;
+	--radius_item_popup: 5px;
+	--radius_wi_card: 10px;
+	--radius_settings_button: 5px;
+
+
+
+
+
+
+/*----------------VARIABLES--------------------*/
+	--flyout_menu_closed_width: 0px;
+	--setting_menu_closed_width_no_pins_width:  0px;
+	--story_options_size: 30%;
+	--story_pinned_areas_left:"menuicon options gamescreen lefticon"
+								 "menuicon theme theme lefticon"
+								 "menuicon inputrow inputrow lefticon";
+	--story_pinned_areas_right:"menuicon gamescreen options lefticon"
+								 "menuicon theme theme lefticon"
+								 "menuicon inputrow inputrow lefticon";
+	--story_pinned_area_widths_left: 30pxvar(--story_options_size) auto 30px;
+	--story_pinned_area_widths_right: 30pxautovar(--story_options_size) 30px;
+	--story_pinned_areas:var(--story_pinned_areas_left);
+	--story_pinned_area_widths:var(--story_pinned_area_widths_left);
+	--font_size_adjustment: 0px;
+	--game_screen_font_size_adjustment: 1;}

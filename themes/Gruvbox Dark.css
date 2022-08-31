@@ -115,6 +115,9 @@
 
 	--setting_background: var(--gruvbox-dark0-soft);
     --setting_text: var(--gruvbox-light0);
+	
+	--button_text: var(--setting_text);
+	--button_background: var(--setting_background);
 
 	--sample_order_select_color: var(--gruvbox-dark2);
 	--sample_order_select_color_text: var(--gruvbox-light2);
@@ -177,6 +180,7 @@
 	--radius_buttons: 0px;
 	--radius_item_popup: 0px;
 	--radius_wi_card: 0px;
+	--radius_settings_button: 5px;
 
 	/* Variables */
 	--flyout_menu_closed_width: 0px;
