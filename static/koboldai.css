@@ -89,6 +89,7 @@ input[type="range"]::-ms-fill-upper {
 						  supported by Chrome, Edge, Opera and Firefox */
 	border: 1px solid #888;
 	background: var(--tab_color);
+	color: var(--tab_text);
 	/*background: -o-linear-gradient(top, #337ab70 50%, #28507 100%);
 	background: -ms-linear-gradient(top, #337ab70 50%, #28507 100%);
 	background: -moz-linear-gradient(top, #337ab70 50%, #28507 100%);
@@ -163,7 +164,7 @@ input[type="range"]::-ms-fill-upper {
 
 .settings_category_area {
 	width: 100%;
-	background: var(--layer1_palette);
+	/*background: var(--flyout_background);*/
 	grid-row: 2;
 	overflow-y: scroll;
 	overflow-x: hidden;
@@ -222,7 +223,7 @@ input[type="range"]::-ms-fill-upper {
 	grid-template-columns: 177px;
 	row-gap: 0.2em;
 	background-color: var(--setting_background);
-	color: var(--text);
+	color: var(--setting_text);
 	border-radius: var(--radius_settings_background);
 	padding: 3px;
 	margin: 2px;
@@ -240,7 +241,7 @@ input[type="range"]::-ms-fill-upper {
 	grid-template-columns: 354px;
 	row-gap: 0.2em;
 	background-color: var(--setting_background);
-	color: var(--text);
+	color: var(--setting_text);
 	border-radius: var(--radius_settings_background);
 	padding: 3px;
 	margin: 2px;
@@ -441,7 +442,7 @@ input[type="range"]::-ms-fill-upper {
 	border:none;
 	outline:none;
 	color: var(--text_edit);
-	border-bottom: 1px solid var(--text);
+	border-bottom: 1px solid var(--text_edit);
 	padding-bottom: 3px;
 }
 
@@ -740,6 +741,7 @@ input[type="range"]::-ms-fill-upper {
 /*  Desktop Mode  */
 .rightSideMenu.pinned {
 	left: calc(100% - var(--flyout_menu_width));
+	background-color: var(--flyout_background_pinned);
 	box-shadow: var(--right_menu_light_shadow);
 	border-radius: 0px 0px 0px 0px;
 }
@@ -1069,7 +1071,7 @@ body {
 	background-color: var(--gamescreen_background);
 	z-index: 2;
 	box-shadow: var(--light_shadow_value);
-	color: var(--text);
+	color: var(--gamescreen_text);
 	width: 100%;
 	grid-area: gamescreen;
 	display: flex;
@@ -1238,7 +1240,7 @@ body {
 #input_text {
 	grid-area: textarea;
 	background-color: var(--input_background);
-	color: var(--text);
+	color: var(--input_text);
 	resize: none;
 	border-color: white;
 	border-width: 1px;
@@ -1727,7 +1729,7 @@ body {
 #input_text {
 	grid-area: textarea;
 	background-color: var(--input_background);
-	color: var(--text);
+	color: var(--input_text);
 	padding: 5px;
 	resize: none;
 	border-color: white;
@@ -1738,7 +1740,7 @@ body {
 
 input {
 	background-color: var(--input_background);
-	color: var(--text);
+	color: var(--input_text);
 	resize: none;
 	border-color: white;
 	border-width: 1px;
@@ -1794,7 +1796,7 @@ button.disabled {
 
 textarea {
 	background-color: var(--input_background);
-	color: var(--text);
+	color: var(--input_text);
 	outline: none;
 }
 
@@ -1907,4 +1909,12 @@ h2 .material-icons-outlined {
 	font-size: calc(0.9em + var(--font_size_adjustment));
 	display: block;
 	color: var(--setting_category_help_text_color);
+}
+
+.SideMenu{
+	color: var(--flyout_text);
+}
+
+.rightSideMenu{
+	color: var(--flyout_text);
 }

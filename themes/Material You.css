@@ -1,3 +1,9 @@
+/*
+	Name: Material You
+	Author: GuiAworld
+	Description: A theme that demonstrates the power of the Palette system. Based off of Google's Material You.
+*/
+
 :root {
 /*----------------Palette Theme--------------------*/
 	--primary_palette: #afc6ff;
@@ -36,8 +42,12 @@
 /*----------------Advanced Theme--------------------*/
 	/*General*/
 	--background: var(--background_palette);
+
 	--gamescreen_background: var(--layer2_palette);
+	--gamescreen_text: var(--on_background_palette);
+
     --input_background: var(--layer3_palette);
+	--input_text: var(--on_background_palette);
 
     --text: var(--on_background_palette);
     --text_to_ai_color: var(--on_background_palette);
@@ -62,9 +72,11 @@
 
 	/*Side Menus*/
 	--tab_color: var(--primary_container_palette);
+	--tab_text: var(--on_background_palette);
 
 	--flyout_background: var(--layer1_palette);
 	--flyout_background_pinned: var(--layer1_palette);
+	--flyout_text: var(--on_background_palette);
 
 	--setting_background: var(--surface_palette);
     --setting_text: var(--on_surface_palette);
