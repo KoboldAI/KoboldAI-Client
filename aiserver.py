@@ -5028,14 +5028,17 @@ def sendtoapi(txt, min, max):
         if(len(genout) == 1):
             genresult(genout[0])
         else:
+            adjusted_genout = []
+            for item in genout:
+                adjusted_genout.append({"generated_text": item})
             # Convert torch output format to transformers
             seqs = []
-            for seq in genout:
+            for seq in adjusted_genout:
                 seqs.append({"generated_text": seq})
             if(vars.lua_koboldbridge.restart_sequence is not None and vars.lua_koboldbridge.restart_sequence > 0):
-                genresult(genout[vars.lua_koboldbridge.restart_sequence-1]["generated_text"])
+                genresult(adjusted_genout[vars.lua_koboldbridge.restart_sequence-1]["generated_text"])
             else:
-                genselect(genout)
+                genselect(adjusted_genout)
 
         set_aibusy(0)
         return
@@ -5107,14 +5110,17 @@ def sendtocluster(txt, min, max):
     if(len(genout) == 1):
         genresult(genout[0])
     else:
+        adjusted_genout = []
+        for item in genout:
+            adjusted_genout.append({"generated_text": item})
         # Convert torch output format to transformers
         seqs = []
-        for seq in genout:
+        for seq in adjusted_genout:
             seqs.append({"generated_text": seq})
         if(vars.lua_koboldbridge.restart_sequence is not None and vars.lua_koboldbridge.restart_sequence > 0):
-            genresult(genout[vars.lua_koboldbridge.restart_sequence-1]["generated_text"])
+            genresult(adjusted_genout[vars.lua_koboldbridge.restart_sequence-1]["generated_text"])
         else:
-            genselect(genout)
+            genselect(adjusted_genout)
 
     set_aibusy(0)
     return
