@@ -7237,7 +7237,7 @@ def UI_2_load_story_list(data):
     file_popup("Select Story to Load", "./stories", "load_story", upload=True, jailed=True, folder_only=False, renameable=True, 
                                                                   deleteable=True, show_breadcrumbs=True, item_check=valid_story,
                                                                   valid_only=True, hide_extention=True, extra_parameter_function=get_story_length,
-                                                                  column_names=['Story Name', 'Action Count'],
+                                                                  column_names=['Story Name', 'Action Count'], show_filename=False,
                                                                   column_widths=['auto', '100px'],
                                                                   sort="Modified", desc=True)
                                                                   
@@ -7246,10 +7246,11 @@ def get_story_length(item_full_path, item, valid_selection):
         return [""]
     with open(item_full_path, "r") as f:
         js = json.load(f)
+        title = js['story_name'] if 'story_name' in js else ".".join(item.split(".")[:-1])
         if 'file_version' not in js:
-            return [len(js['actions'])]
+            return [title, len(js['actions'])]
         if js['file_version'] == 1:
-            return [len(js['actions'])]
+            return [title, len(js['actions'])]
         return [0 if js['actions']['action_count'] == -1 else js['actions']['action_count'] ]
     
 

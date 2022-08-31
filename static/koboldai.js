@@ -634,7 +634,7 @@ function load_popup(data) {
 }
 
 function popup_items(data) {
-	//console.log(data);
+	console.log(data);
 	var popup_list = document.getElementById('popup_list');
 	//first, let's clear out our existing data
 	while (popup_list.firstChild) {
@@ -645,6 +645,9 @@ function popup_items(data) {
 	//create the column widths
 	var style = /*width: 50vw;*/'display: grid; grid-template-areas: "icons';
 	for (i=0; i < data.column_widths.length; i++) {
+		style = style + " p"+i;
+	}
+	if (data.show_filename) {
 		style = style + " p"+i;
 	}
 	style = style + '"; grid-template-columns: 50px';
