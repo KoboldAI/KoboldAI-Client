@@ -227,8 +227,8 @@ class koboldai_vars(object):
             game_context.insert(0, {"type": "authors_note", "text": authors_note_final})
             
         if not self.useprompt:
-            if self.prompt_length + used_tokens < token_budget:
-                used_tokens = self.prompt_length
+            if self.max_prompt_length if self.prompt_length > self.max_prompt_length else self.prompt_length + used_tokens < token_budget:
+                used_tokens += self.max_prompt_length if self.prompt_length > self.max_prompt_length else self.prompt_length
                 #Find World Info entries in prompt
                 for wi in self.worldinfo_v2:
                     if wi['uid'] not in used_world_info:
@@ -253,10 +253,14 @@ class koboldai_vars(object):
                                 context.append({"type": "world_info", "text": wi_text})
                                 self.worldinfo_v2.set_world_info_used(wi['uid'])
                 self.prompt_in_ai = True
+                prompt_text = self.prompt
+                if self.tokenizer and self.prompt_length > self.max_prompt_length:
+                    prompt_text = self.tokenizer.decode(self.tokenizer.encode(self.prompt)[-self.max_prompt_length-1:])
             else:
                 self.prompt_in_ai = False
-            text += self.prompt_text
-            context.append({"type": "prompt", "text": self.prompt_text})
+                prompt_text = ""
+            text += prompt_text
+            context.append({"type": "prompt", "text": prompt_text})
         
         text += game_text
         context += game_context
