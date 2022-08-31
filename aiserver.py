@@ -1432,6 +1432,7 @@ def get_model_info(model, directory=""):
     break_values = []
     url = False
     models_on_url = False
+    multi_online_models = False
     gpu_count = torch.cuda.device_count()
     gpu_names = []
     for i in range(gpu_count):
@@ -1442,6 +1443,16 @@ def get_model_info(model, directory=""):
         models_on_url = True
         url = True
         key = True
+        multi_online_models = True
+        if path.exists("settings/{}.settings".format(model)):
+            with open("settings/{}.settings".format(model), "r") as file:
+                # Check if API key exists
+                js = json.load(file)
+                if("apikey" in js and js["apikey"] != ""):
+                    # API key exists, grab it and close the file
+                    key_value = js["apikey"]
+                elif 'oaiapikey' in js and js['oaiapikey'] != "":
+                    key_value = js["oaiapikey"]
     elif model in [x[1] for x in model_menu['apilist']]:
         if path.exists("settings/{}.settings".format(model)):
             with open("settings/{}.settings".format(model), "r") as file:
@@ -1486,7 +1497,7 @@ def get_model_info(model, directory=""):
     emit('from_server', {'cmd': 'selected_model_info', 'key_value': key_value, 'key':key, 
                          'gpu':gpu, 'layer_count':layer_count, 'breakmodel':breakmodel, 
                          'disk_break_value': disk_blocks, 'accelerate': utils.HAS_ACCELERATE,
-                         'break_values': break_values, 'gpu_count': gpu_count,
+                         'break_values': break_values, 'gpu_count': gpu_count, 'multi_online_models': multi_online_models,
                          'url': url, 'gpu_names': gpu_names, 'models_on_url': models_on_url}, broadcast=True)
     if key_value != "":
         get_oai_models(key_value)
@@ -1573,21 +1584,18 @@ def get_cluster_models(msg):
     url = msg['url']
     
         
-    # Get list of models from OAI
+    # Get list of models from public cluster
     print("{0}Retrieving engine list...{1}".format(colors.PURPLE, colors.END), end="")
-    req = requests.get(
-        url, 
-        headers = {
-            'Authorization': 'Bearer '+key
-            }
-        )
+    req = requests.get("{}/models".format(url))
     if(req.status_code == 200):
-        engines = req.json()["data"]
+        engines = req.json()
+        print(engines)
         try:
-            engines = [[en["id"], "{} ({})".format(en['id'], "Ready" if en["ready"] == True else "Not Ready")] for en in engines]
+            engines = [[en, en] for en in engines]
         except:
             print(engines)
             raise
+        print(engines)
         
         online_model = ""
         changed=False
@@ -3753,6 +3761,8 @@ def get_message(msg):
     elif(msg['cmd'] == 'list_model'):
         sendModelSelection(menu=msg['data'])
     elif(msg['cmd'] == 'load_model'):
+        print(msg)
+        print(vars.model_selected)
         if not os.path.exists("settings/"):
             os.mkdir("settings")
         changed = True
@@ -3776,6 +3786,9 @@ def get_message(msg):
             f.close()
         vars.colaburl = msg['url'] + "/request"
         vars.model = vars.model_selected
+        if vars.model == "CLUSTER":
+            vars.cluster_requested_models = msg['online_model']
+            print(vars.cluster_requested_models)
         load_model(use_gpu=msg['use_gpu'], gpu_layers=msg['gpu_layers'], disk_layers=msg['disk_layers'], online_model=msg['online_model'])
     elif(msg['cmd'] == 'show_model'):
         print("Model Name: {}".format(getmodelname()))
