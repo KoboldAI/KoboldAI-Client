@@ -97,7 +97,7 @@ class koboldai_vars(object):
     def reset_model(self):
         self._model_settings.reset_for_model_load()
     
-    def calc_ai_text(self, submitted_text=""):
+    def calc_ai_text(self, submitted_text="", method=2):
         context = []
         token_budget = self.max_length
         used_world_info = []
@@ -119,19 +119,13 @@ class koboldai_vars(object):
         
         #Add memory
         memory_length = self.max_memory_length if self.memory_length > self.max_memory_length else self.memory_length
-        memory_text = None
+        memory_text = self.memory
         if memory_length+used_tokens <= token_budget:
-            if self.memory_length > self.max_memory_length:
-                if self.tokenizer is None:
-                    memory_text = self.memory
-                else:
-                    memory_text = self.tokenizer.decode(self.tokenizer.encode(self.memory)[-self.max_memory_length-1:])
-            else:
-                memory_text = self.memory
+            if self.tokenizer is not  None and self.memory_length > self.max_memory_length:
+                memory_text = self.tokenizer.decode(self.tokenizer.encode(self.memory)[-self.max_memory_length-1:])
          
         context.append({"type": "memory", "text": memory_text})
-        if memory_text:
-            text += memory_text
+        text += memory_text
         
         #Add constant world info entries to memory
         for wi in self.worldinfo_v2:
@@ -174,11 +168,10 @@ class koboldai_vars(object):
 
                 prompt_text = self.prompt
                 if self.tokenizer and self.prompt_length > self.max_prompt_length:
-                    if self.tokenizer:
-                        prompt_text += self.tokenizer.decode(self.tokenizer.encode(self.prompt)[-self.max_prompt_length-1:])
+                    prompt_text = self.tokenizer.decode(self.tokenizer.encode(self.prompt)[-self.max_prompt_length-1:])
 
                 text += prompt_text
-                context.append({"type": "prompt", "text": self.prompt})
+                context.append({"type": "prompt", "text": self.prompt_text})
                 self.prompt_in_ai = True
             else:
                 self.prompt_in_ai = False
@@ -262,8 +255,8 @@ class koboldai_vars(object):
                 self.prompt_in_ai = True
             else:
                 self.prompt_in_ai = False
-            text += self.prompt
-            context.append({"type": "prompt", "text": self.prompt})
+            text += self.prompt_text
+            context.append({"type": "prompt", "text": self.prompt_text})
         
         text += game_text
         context += game_context
@@ -736,13 +729,9 @@ class system_settings(settings):
         
         
     def __setattr__(self, name, value):
-        if name == "abort":
-            print("setting abort")
         new_variable = name not in self.__dict__
         old_value = getattr(self, name, None)
         super().__setattr__(name, value)
-        if name == "abort":
-            print("set abort to {}".format(self.abort))
         
         #Put variable change actions here
         if name == 'serverstarted':
@@ -752,11 +741,8 @@ class system_settings(settings):
             process_variable_changes(self.socketio, self.__class__.__name__.replace("_settings", ""), name, value, old_value)
             
             if name == "aibusy" and value == False:
-                print("resetting abort as AI busy was set to false")
                 koboldai_vars.abort = False
                 
-        if name == "abort":
-            print("set abort to {}".format(self.abort))
         
 class KoboldStoryRegister(object):
     def __init__(self, socketio, story_settings, koboldai_vars, tokenizer=None, sequence=[]):
@@ -859,7 +845,6 @@ class KoboldStoryRegister(object):
             
     def append(self, text):
         self.clear_unused_options()
-        print("setting action_count {} -> {}".format(self.action_count, self.action_count+1))
         self.action_count+=1
         if self.action_count in self.actions:
             if self.actions[self.action_count]["Selected Text"] != text:
@@ -995,7 +980,6 @@ class KoboldStoryRegister(object):
                 del self.actions[action_step]['Options'][option_number]
                 #If this is the current spot in the story, advance
                 if action_step-1 == self.action_count:
-                    print("setting action_count {} -> {}".format(self.action_count, self.action_count+1))
                     self.action_count+=1
                     self.socketio.emit("var_changed", {"classname": "actions", "name": "Action Count", "old_value": None, "value":self.action_count}, broadcast=True, room="UI_2")
                 process_variable_changes(self.socketio, "story", 'actions', {"id": action_step, 'action':  self.actions[action_step]}, None)
@@ -1010,7 +994,6 @@ class KoboldStoryRegister(object):
             self.actions[action_id]["Options"].append({"text": self.actions[action_id]["Selected Text"], "Pinned": False, "Previous Selection": True, "Edited": False})
             self.actions[action_id]["Selected Text"] = ""
             self.actions[action_id]['Selected Text Length'] = 0
-            print("setting action_count {} -> {}".format(self.action_count, self.action_count-1))
             self.action_count -= 1
             process_variable_changes(self.socketio, "story", 'actions', {"id": action_id, 'action':  self.actions[action_id]}, None)
             self.set_game_saved()
