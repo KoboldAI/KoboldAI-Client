@@ -2920,8 +2920,10 @@ $(document).ready(function(){
 				$("#modelkey")[0].value = msg.key_value;
 				if (msg.models_on_url) {
 					$("#modelkey")[0].onblur = function () {socket.send({'cmd': 'Cluster_Key_Update', 'key': this.value, 'url': document.getElementById("modelurl").value});};
+					$("#modelurl")[0].onblur = function () {socket.send({'cmd': 'Cluster_Key_Update', 'key': document.getElementById("modelkey").value, 'url': this.value});};
 				} else {
 					$("#modelkey")[0].onblur = function () {socket.send({'cmd': 'OAI_Key_Update', 'key': $('#modelkey')[0].value});};
+					$("#modelurl")[0].onblur = null;
 				}
 				//if we're in the API list, disable to load button until the model is selected (after the API Key is entered)
 				disableButtons([load_model_accept]);
