@@ -128,21 +128,21 @@
 
 	--help_icon: var(--gruvbox-light0);
 	--help_icon_text: #282c2c;
-    --tooltip_text:var(--on_secondary_palette);
+    --tooltip_text:var(--gruvbox-light0);
     --tooltip_background:var(--secondary_palette);
 
 	/* World Info */
 	--wi_card_border_color: var(--gruvbox-dark3);
-    --wi_card_border_color_to_ai:var(--on_secondary_palette);
+    --wi_card_border_color_to_ai:var(--gruvbox-light0);
 
     --wi_card_bg_color: var(--gruvbox-dark0);
-	--wi_card_text_color:var(--on_primary_palette);
+	--wi_card_text_color:var(--gruvbox-light0);
 
     --wi_card_tag_bg_color: var(--gruvbox-dark0);
-	--wi_card_tag_text_color: var(--on_primary_palette);
+	--wi_card_tag_text_color: var(--gruvbox-light0);
 	
     --wi_tag_color: var(--gruvbox-neutral-blue);
-	--wi_tag_text_color:var(--on_primary_containter_palette);
+	--wi_tag_text_color:var(--gruvbox-light0);
 	--wi_folder_background: var(--gruvbox-dark0);
 	
 	/* Popup */
