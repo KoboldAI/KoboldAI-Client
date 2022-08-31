@@ -2954,11 +2954,11 @@ function loadNAILorebook(data, filename) {
 		// text
 
 		wi_data.entries[i.toString()] = {
-			"uid": uid,
+			"uid": i,
 			"title": entry.displayName,
 			"key": entry.keys,
 			"keysecondary": [],
-			"folder": folder,
+			"folder": filename,
 			"constant": entry.forceActivation,
 			"content": "",
 			"manual_text": entry.text,
