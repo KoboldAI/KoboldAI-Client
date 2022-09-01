@@ -37,6 +37,7 @@ var shift_down = false;
 var world_info_data = {};
 var world_info_folder_data = {};
 var saved_settings = {};
+var settings_data = {};
 const map1 = new Map()
 map1.set('Top K Sampling', 0)
 map1.set('Top A Sampling', 1)
@@ -3028,6 +3029,29 @@ async function processDroppedFile(file) {
 	}
 }
 
+// By p01 - https://gist.github.com/p01/1127070
+function levenshteinDistance(a, b){
+	let c,d,e,f,g;
+	for(d=[e=0];a[e];e++) {
+		for(c=[f=0];b[++f];) {
+			g=d[f]= e ? 1+Math.min(d[--f], c[f]-(a[e-1]==b[f]), c[++f]=d[f]) : f;
+		}
+	}
+	return g;
+}
+
+function updateSearchListings() {
+	let query = this.value.toLowerCase();
+
+	if (!query) return;
+
+	for (const settingName of Object.keys(settings_data)) {
+		let compare = settingName.toLowerCase().slice(0, query.length);
+		let distance = levenshteinDistance(query, compare);
+		console.log(distance, settingName, query, compare);
+	}
+}
+
 $(document).ready(function(){
 	create_theming_elements();
 	document.onkeydown = detect_key_down;
@@ -3133,4 +3157,29 @@ $(document).ready(function(){
 		console.log("end")
 		$("#file-upload-notice")[0].classList.add("hidden");
 	});
+
+	// Parse settings for search thingey
+	for (const el of document.getElementsByClassName("setting_label")) {
+		let name = el.children[0].innerText;
+
+		let tooltipEl = el.getElementsByClassName("helpicon")[0];
+		let tooltip = tooltipEl ? tooltipEl.getAttribute("title") : null;
+
+		settings_data[name] = {tooltip: tooltip, element: el.parentElement}
+	}
+
+	document.getElementById("finder-input").addEventListener("keyup", updateSearchListings);
+});
+
+document.addEventListener("keydown", function(event) {
+	if (!event.ctrlKey) return;
+
+	switch (event.key) {
+		// TODO: Add other shortcuts
+		case "k":
+			let finderContainer = document.getElementById("finder-container");
+			finderContainer.classList.remove("hidden");
+			event.preventDefault();
+			break;
+	}
 });
