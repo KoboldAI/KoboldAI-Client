@@ -783,7 +783,11 @@ class KoboldStoryRegister(object):
             raise StopIteration
         
     def __getitem__(self, i):
-        return self.actions[i]["Selected Text"]
+        if isinstance(i, slice):
+            temp = [self.actions[x]["Selected Text"] for x in list(self.actions)[i]]
+            return temp
+        else:
+            return self.actions[i]["Selected Text"]
         
     def __setitem__(self, i, text):
         if i in self.actions:

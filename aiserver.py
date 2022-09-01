@@ -1878,7 +1878,7 @@ def patch_transformers():
             tail = input_ids[..., -koboldai_vars.generated_tkns:]
             for i, t in enumerate(tail):
                 decoded = utils.decodenewlines(tokenizer.decode(t))
-                _, found = checkworldinfo(decoded, force_use_txt=True, actions=koboldai_vars._actions)
+                _, found = checkworldinfo(decoded, force_use_txt=True, actions=koboldai_vars.actions)
                 found -= self.excluded_world_info[i]
                 if(len(found) != 0):
                     self.regeneration_required = True
@@ -2527,7 +2527,7 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
 
             for i, t in enumerate(generated):
                 decoded = utils.decodenewlines(tokenizer.decode(past[i])) + utils.decodenewlines(tokenizer.decode(t[tpu_mtj_backend.params["seq"] : tpu_mtj_backend.params["seq"] + n_generated]))
-                _, found = checkworldinfo(decoded, force_use_txt=True, actions=koboldai_vars._actions)
+                _, found = checkworldinfo(decoded, force_use_txt=True, actions=koboldai_vars.actions)
                 found -= excluded_world_info[i]
                 if(len(found) != 0):
                     regeneration_required = True
@@ -2543,7 +2543,7 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
             koboldai_vars.compiling = False
         
         def tpumtjgenerate_settings_callback() -> dict:
-            sampler_order = vars.sampler_order[:]
+            sampler_order = koboldai_vars.sampler_order[:]
             if len(sampler_order) < 7:  # Add repetition penalty at beginning if it's not present
                 sampler_order = [6] + sampler_order
             return {
@@ -2896,7 +2896,7 @@ def lua_compute_context(submission, entries, folders, kwargs):
     assert type(submission) is str
     if(kwargs is None):
         kwargs = koboldai_vars.lua_state.table()
-    actions = koboldai_vars._actions if koboldai_vars.lua_koboldbridge.userstate == "genmod" else koboldai_vars.actions
+    actions = koboldai_vars.actions
     allowed_entries = None
     allowed_folders = None
     if(entries is not None):
@@ -3222,13 +3222,9 @@ def lua_set_chunk(k, v):
     if(len(v) == 0):
         print(colors.GREEN + f"{lua_log_format_name(koboldai_vars.lua_koboldbridge.logging_name)} deleted story chunk {k}" + colors.END)
         chunk = int(k)
-        if(koboldai_vars.lua_koboldbridge.userstate == "genmod"):
-            del koboldai_vars._actions[chunk-1]
+        koboldai_vars.actions.delete_action(chunk-1)
         koboldai_vars.lua_deleted.add(chunk)
-        if(not hasattr(koboldai_vars, "_actions") or koboldai_vars._actions is not koboldai_vars.actions):
-            #Instead of deleting we'll blank out the text. This way our actions and actions_metadata stay in sync and we can restore the chunk on an undo
-            koboldai_vars.actions[chunk-1] = ""
-            send_debug()
+        send_debug()
     else:
         if(k == 0):
             print(colors.GREEN + f"{lua_log_format_name(koboldai_vars.lua_koboldbridge.logging_name)} edited prompt chunk" + colors.END)
@@ -3241,8 +3237,6 @@ def lua_set_chunk(k, v):
             koboldai_vars.lua_edited.add(chunk)
             koboldai_vars.prompt = v
         else:
-            if(koboldai_vars.lua_koboldbridge.userstate == "genmod"):
-                koboldai_vars._actions[chunk-1] = v
             koboldai_vars.lua_edited.add(chunk)
             koboldai_vars.actions[chunk-1] = v
             send_debug()
@@ -4215,10 +4209,7 @@ def apiactionsubmit_tpumtjgenerate(txt, minimum, maximum):
     if not koboldai_vars.quiet:
         print("{0}Min:{1}, Max:{2}, Txt:{3}{4}".format(colors.YELLOW, minimum, maximum, utils.decodenewlines(tokenizer.decode(txt)), colors.END))
 
-    koboldai_vars._actions = koboldai_vars.actions
     koboldai_vars._prompt = koboldai_vars.prompt
-    if(koboldai_vars.dynamicscan):
-        koboldai_vars._actions = koboldai_vars._actions.copy()
 
     # Submit input text to generator
     soft_tokens = tpumtjgetsofttokens()
@@ -4624,10 +4615,7 @@ def _generate(txt, minimum, maximum, found_entries):
 
     model.kai_scanner_excluded_world_info = found_entries
 
-    koboldai_vars._actions = koboldai_vars.actions
     koboldai_vars._prompt = koboldai_vars.prompt
-    if(koboldai_vars.dynamicscan):
-        koboldai_vars._actions = [x for x in koboldai_vars.actions]
 
     with torch.no_grad():
         already_generated = 0
@@ -4659,13 +4647,13 @@ def _generate(txt, minimum, maximum, found_entries):
             encoded = []
             for i in range(koboldai_vars.numseqs):
                 txt = utils.decodenewlines(tokenizer.decode(genout[i, -already_generated:]))
-                winfo, mem, anotetxt, _found_entries = calcsubmitbudgetheader(txt, force_use_txt=True, actions=koboldai_vars._actions)
+                winfo, mem, anotetxt, _found_entries = calcsubmitbudgetheader(txt, force_use_txt=True, actions=koboldai_vars.actions)
                 found_entries[i].update(_found_entries)
                 if koboldai_vars.alt_gen:
                    txt, _, _ = koboldai_vars.calc_ai_text(submitted_text=txt)
                    print("Using Alt Gen: {}".format(tokenizer.decode(txt)))
                 else:
-                    txt, _, _ = calcsubmitbudget(len(koboldai_vars._actions), winfo, mem, anotetxt, koboldai_vars._actions, submission=txt)
+                    txt, _, _ = calcsubmitbudget(len(koboldai_vars.actions), winfo, mem, anotetxt, koboldai_vars.actions, submission=txt)
                 encoded.append(torch.tensor(txt, dtype=torch.long, device=genout.device))
             max_length = len(max(encoded, key=len))
             encoded = torch.stack(tuple(torch.nn.functional.pad(e, (max_length - len(e), 0), value=model.config.pad_token_id or model.config.eos_token_id) for e in encoded))
@@ -5020,10 +5008,7 @@ def tpumtjgenerate(txt, minimum, maximum, found_entries=None):
     if not koboldai_vars.quiet:
         print("{0}Min:{1}, Max:{2}, Txt:{3}{4}".format(colors.YELLOW, minimum, maximum, utils.decodenewlines(tokenizer.decode(txt)), colors.END))
 
-    koboldai_vars._actions = koboldai_vars.actions
     koboldai_vars._prompt = koboldai_vars.prompt
-    if(koboldai_vars.dynamicscan):
-        koboldai_vars._actions = koboldai_vars._actions.copy()
 
     # Submit input text to generator
     try:
@@ -5062,13 +5047,13 @@ def tpumtjgenerate(txt, minimum, maximum, found_entries=None):
                 encoded = []
                 for i in range(koboldai_vars.numseqs):
                     txt = utils.decodenewlines(tokenizer.decode(past[i]))
-                    winfo, mem, anotetxt, _found_entries = calcsubmitbudgetheader(txt, force_use_txt=True, actions=koboldai_vars._actions)
+                    winfo, mem, anotetxt, _found_entries = calcsubmitbudgetheader(txt, force_use_txt=True, actions=koboldai_vars.actions)
                     found_entries[i].update(_found_entries)
                     if koboldai_vars.alt_gen:
                        txt, _, _ = koboldai_vars.calc_ai_text(submitted_text=txt)
                        print("Using Alt Gen: {}".format(tokenizer.decode(txt)))
                     else:
-                        txt, _, _ = calcsubmitbudget(len(koboldai_vars._actions), winfo, mem, anotetxt, koboldai_vars._actions, submission=txt)
+                        txt, _, _ = calcsubmitbudget(len(koboldai_vars.actions), winfo, mem, anotetxt, koboldai_vars.actions, submission=txt)
                     encoded.append(np.array(txt, dtype=np.uint32))
                 max_length = len(max(encoded, key=len))
                 encoded = np.stack(tuple(np.pad(e, (max_length - len(e), 0), constant_values=tpu_mtj_backend.pad_token_id) for e in encoded))
@@ -5662,15 +5647,14 @@ def checkworldinfo(txt, allowed_entries=None, allowed_folders=None, force_use_tx
             depth += 1
         
         if(ln > 0):
-            chunks = collections.deque()
-            i = 0
-            for key in reversed(actions):
-                chunk = actions[key]
-                chunks.appendleft(chunk)
-                i += 1
-                if(i == depth):
-                    break
-        
+            chunks = actions[-depth:]
+            #i = 0
+            #for key in reversed(actions):
+            #    chunk = actions[key]
+            #    chunks.appendleft(chunk)
+            #    i += 1
+            #    if(i == depth):
+            #        break
         if(ln >= depth):
             txt = "".join(chunks)
         elif(ln > 0):
@@ -8099,18 +8083,18 @@ def put_model(body: ModelSelectionSchema):
         {api_validation_error_response}
         {api_server_busy_response}
     """
-    if vars.aibusy or vars.genseqs:
+    if koboldai_vars.aibusy or koboldai_vars.genseqs:
         abort(Response(json.dumps({"detail": {
             "msg": "Server is busy; please try again later.",
             "type": "service_unavailable",
         }}), mimetype="application/json", status=503))
     set_aibusy(1)
-    old_model = vars.model
-    vars.model = body.model.strip()
+    old_model = koboldai_vars.model
+    koboldai_vars.model = body.model.strip()
     try:
         load_model(use_breakmodel_args=True, breakmodel_args_default_to_cpu=True)
     except Exception as e:
-        vars.model = old_model
+        koboldai_vars.model = old_model
         raise e
     set_aibusy(0)
     return {}
