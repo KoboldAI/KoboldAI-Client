@@ -350,6 +350,10 @@ input[type="range"]::-ms-fill-upper {
 	display: inline-block;
 	transition: left 0.5s;
 	cursor: pointer;
+	filter: brightness(85%);
+}
+.pinned .menu_pin {
+	filter: brightness(200%);
 }
 }
 
@@ -815,6 +819,10 @@ input[type="range"]::-ms-fill-upper {
 	display: inline-block;
 	transition: left 0.5s;
 	cursor: pointer;
+	filter: brightness(85%);
+}
+.pinned .story_menu_pin {
+	filter: brightness(200%);
 }
 }
 
