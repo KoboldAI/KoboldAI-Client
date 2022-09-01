@@ -9679,6 +9679,32 @@ def get_config_soft_prompt():
     """
     return {"value": vars.spfilename.strip()}
 
+class SoftPromptsListSchema(KoboldSchema):
+    values: List[SoftPromptSettingSchema] = fields.List(fields.Nested(SoftPromptSettingSchema), required=True, metadata={"description": "Array of available softprompts."})
+
+@api_v1.get("/config/soft_prompts_list")
+@api_schema_wrap
+def get_config_soft_prompts_list():
+    """---
+    get:
+      summary: Retrieve all available softprompt filenames
+      tags:
+        - config
+      responses:
+        200:
+          description: Successful request
+          content:
+            application/json:
+              schema: SoftPromptsListSchema
+              example:
+                values: []
+    """
+    splist = []
+    for sp in fileops.getspfiles(vars.modeldim):
+
+        splist.append({"value":sp["filename"]})
+    return {"values": splist}
+
 @api_v1.put("/config/soft_prompt")
 @api_schema_wrap
 def put_config_soft_prompt(body: SoftPromptSettingSchema):
