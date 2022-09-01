@@ -1352,6 +1352,8 @@ def get_model_info(model, directory=""):
                     break_values = break_values.split(",")
             else:
                 break_values = [layer_count]
+            if break_values == ['']:
+                break_values = []
             break_values = [int(x) for x in break_values]
             break_values += [0] * (gpu_count - len(break_values))
     emit('from_server', {'cmd': 'selected_model_info', 'key_value': key_value, 'key':key, 
