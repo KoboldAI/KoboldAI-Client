@@ -485,6 +485,14 @@ input[type="range"]::-ms-fill-upper {
 	height: 35px;
 }
 
+.Model_Info .settings_button {
+	
+}
+
+#import_story_button {
+	
+}
+
 .settings_button[story_gamesaved="true"] {
 	filter: brightness(40%);
 }
