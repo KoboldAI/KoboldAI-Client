@@ -763,7 +763,7 @@ class KoboldStoryRegister(object):
             self.append(item)
     
     def reset(self, sequence=[]):
-        self.__init__(self.socketio, self.story_settings, sequence=sequence, tokenizer=self.tokenizer)
+        self.__init__(self.socketio, self.story_settings, self.koboldai_vars, sequence=sequence, tokenizer=self.tokenizer)
         
     def __str__(self):
         return "".join([x['Selected Text'] for ignore, x in sorted(self.actions.items())])
@@ -1053,7 +1053,7 @@ class KoboldStoryRegister(object):
                 process_variable_changes(self.socketio, "story", 'actions', {"id": key, 'action':  self.actions[key]}, None)
         ignore = self.koboldai_vars.calc_ai_text()
     
-    def stream_tokens(self, text_list, max_tokens):
+    def stream_tokens(self, text_list):
         if len(text_list) > 1:
             if self.action_count+1 in self.actions:
                 for i in range(len(text_list)):
@@ -1069,26 +1069,30 @@ class KoboldStoryRegister(object):
                 self.actions[self.action_count+1] = {"Selected Text": "", "Selected Text Length": 0, "Options": []}
                 for i in range(len(text_list)):
                     self.actions[self.action_count+1]['Options'].append({"text": text_list[i], "Pinned": False, "Previous Selection": False, "Edited": False, "Probabilities": [], "stream_id": i})
-            
+        
             #We need to see if this is the last token being streamed. If so due to the rely it will come in AFTER the actual trimmed final text overwriting it in the UI
             if self.tokenizer is not None:
-                if len(self.tokenizer.encode(self.actions[self.action_count+1]["Options"][0]['text'])) != max_tokens:
+                if len(self.tokenizer.encode(self.actions[self.action_count+1]["Options"][0]['text'])) != self.koboldai_vars.genamt:
                     #process_variable_changes(self.socketio, "actions", "Options", {"id": self.action_count+1, "options": self.actions[self.action_count+1]["Options"]}, {"id": self.action_count+1, "options": None})
                     process_variable_changes(self.socketio, "story", 'actions', {"id": self.action_count+1, 'action':  self.actions[self.action_count+1]}, None)
         else:
             #We're streaming single options so our output is our selected
-            if self.tokenizer is not None:
-                selected_text_length = len(self.tokenizer.encode(text_list[0]))
-            else:
-                selected_text_length = 0
-            if self.action_count+1 in self.actions:
-                self.actions[self.action_count+1]['Selected Text'] = "{}{}".format(self.actions[self.action_count+1]['Selected Text'], text_list[0])
-            else:
-                self.actions[self.action_count+1] = {"Selected Text": text_list[0], "Selected Text Length": selected_text_length, "Options": []}
-            
-            process_variable_changes(self.socketio, "actions", "Selected Text", {"id": self.action_count+1, "text": self.actions[self.action_count+1]['Selected Text']}, None)
-            process_variable_changes(self.socketio, "actions", 'Selected Text Length', {"id": self.action_count+1, 'length': self.actions[self.action_count+1]['Selected Text Length']}, {"id": self.action_count, 'length': 0})
-            process_variable_changes(self.socketio, "story", 'actions', {"id": self.action_count+1, 'action':  self.actions[self.action_count+1]}, None)
+            #First we need to see if this is actually the prompt. If so we'll just not do streaming:
+            if self.story_settings.prompt != "":
+                if self.action_count+1 in self.actions:
+                    self.actions[self.action_count+1]['Selected Text'] = "{}{}".format(self.actions[self.action_count+1]['Selected Text'], text_list[0])
+                else:
+                    self.actions[self.action_count+1] = {"Selected Text": text_list[0], "Selected Text Length": selected_text_length, "Options": []}
+                
+                if self.tokenizer is not None:
+                    selected_text_length = len(self.tokenizer.encode(self.actions[self.action_count+1]['Selected Text']))
+                else:
+                    selected_text_length = 0
+                
+                if self.tokenizer is not None:
+                    if len(self.tokenizer.encode(self.actions[self.action_count+1]['Selected Text'])) != self.koboldai_vars.genamt:
+                        #process_variable_changes(self.socketio, "actions", "Options", {"id": self.action_count+1, "options": self.actions[self.action_count+1]["Options"]}, {"id": self.action_count+1, "options": None})
+                        process_variable_changes(self.socketio, "story", 'actions', {"id": self.action_count+1, 'action':  self.actions[self.action_count+1]}, None)
     
     def set_probabilites(self, probabilities, action_id=None):
         if action_id is None:

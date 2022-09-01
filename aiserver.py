@@ -1828,7 +1828,7 @@ def patch_transformers():
                 #koboldai_vars.actions.stream_token(tokenizer_text, batch=batch)
                
             if koboldai_vars.output_streaming:
-                koboldai_vars.actions.stream_tokens([utils.decodenewlines(tokenizer.decode(x[-1])) for x in input_ids], koboldai_vars.genamt)
+                koboldai_vars.actions.stream_tokens([utils.decodenewlines(tokenizer.decode(x[-1])) for x in input_ids])
             #if len(input_ids) > 1:
             #    koboldai_vars.actions.clear_unused_options()
             #    koboldai_vars.actions.append_options([utils.decodenewlines(tokenizer.decode(x[-1])) for x in input_ids])
@@ -3743,7 +3743,7 @@ def get_message(msg):
             f.write(str(msg['gpu_layers']) + '\n' + str(msg['disk_layers']))
             f.close()
         koboldai_vars.colaburl = msg['url'] + "/request"
-        vars.model = vars.model_selected
+        koboldai_vars.model = koboldai_vars.model_selected
         load_model(use_gpu=msg['use_gpu'], gpu_layers=msg['gpu_layers'], disk_layers=msg['disk_layers'], online_model=msg['online_model'])
     elif(msg['cmd'] == 'show_model'):
         print("Model Name: {}".format(getmodelname()))
