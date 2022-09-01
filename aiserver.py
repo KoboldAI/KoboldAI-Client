@@ -217,7 +217,7 @@ model_menu = {
         ["InferKit API (requires API key)", "InferKit", "", False],
         # ["KoboldAI Server API (Old Google Colab)", "Colab", "", False],
         ["KoboldAI API", "API", "", False],
-        ["KoboldAI Cluster", "CLUSTER", "", False],
+        ["KoboldAI Horde", "CLUSTER", "", False],
         ["Return to Main Menu", "mainmenu", "", True],
     ]
     }
