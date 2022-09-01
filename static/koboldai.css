@@ -1737,6 +1737,68 @@ body {
 	font-size: 50vh;
 	opacity: 0.7;
 }
+
+/* Finder */
+
+#finder-container {
+	display: flex;
+	justify-content: center;
+	align-items: center;
+
+	position: absolute;
+	left: 0px;
+	top: 0px;
+
+	background-color: rgba(0, 0, 0, 0.5);
+	z-index: 99999999;
+
+	width: 100vw;
+	height: 100vh;
+}
+
+#finder {
+	width: 25%;
+	background-color: var(--flyout_background_pinned);
+	padding: 10px;
+	border-radius: 4px;
+}
+
+#finder-input {
+	width: 100%;
+	padding: 5px;
+	border: none;
+}
+
+.finder-result {
+	display: flex;
+	flex-direction: row;
+	justify-content: space-between;
+
+	padding: 3px;
+	margin-top: 5px;
+	background-color: var(--input_background);
+	cursor: pointer;
+}
+
+.finder-result > .result-textblock > span {
+	display: block;
+}
+
+.result-title {
+	font-weight: bold;
+	font-size: 15px;
+}
+
+.result-details {
+	margin-left: 15px;
+	opacity: 0.7;
+}
+
+.result-icon {
+	display: flex !important;
+	align-items: center;
+}
+
 /*---------------------------------- Global ------------------------------------------------*/
 .hidden {
 	display: none;
