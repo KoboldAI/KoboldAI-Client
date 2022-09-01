@@ -494,16 +494,17 @@ input[type="range"]::-ms-fill-upper {
 
 .settings_button > .material-icons-outlined {
 	position: relative;
-	top: 3px;
+	top: 1px;
 	right: 2px;
 }
 
 .Model_Info .settings_button {
-	
+	transform: translateY(7%);
+	margin: -5px;
 }
 
 #import_story_button {
-	
+	transform: translateY(22%);
 }
 
 .settings_button[story_gamesaved="true"] {
