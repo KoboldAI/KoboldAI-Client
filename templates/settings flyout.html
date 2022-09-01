@@ -63,7 +63,7 @@
 						<span class="var_sync_story_story_name fullwidth" contenteditable=true onblur="sync_to_server(this);"></span>
 					</span>
 					<span>
-						<span class="material-icons-outlined cursor" title="Download Story" onclick="document.getElementById('download_iframe').src = 'json';">file_download</span>
+						<span class="material-icons-outlined cursor" style="padding-top: 8px;" title="Download Story" onclick="document.getElementById('download_iframe').src = 'json';">file_download</span>
 					</span>
 				</div>
 				<div id="text_storyname">
@@ -221,7 +221,10 @@
 			<div class="bias_header">
 				<div class="bias_header_phrase">Phrase</div>
 				<div class="bias_header_score">Score</div>
-				<div class="bias_header_comp_threshold">Completion Threshold</div>
+				<div class="bias_header_comp_threshold">
+					Completion Threshold
+					<span class="helpicon material-icons-outlined" title="Amount of tokens that must match the phrase before it is force-completed.">help_icon</span>
+				</div>
 			</div>
 		</div>
 	</div>

@@ -485,6 +485,7 @@ input[type="range"]::-ms-fill-upper {
 	height: 35px;
 }
 
+
 .settings_button > .button_label {
 	position: relative;
 	bottom: 3px;
@@ -495,6 +496,14 @@ input[type="range"]::-ms-fill-upper {
 	position: relative;
 	top: 3px;
 	right: 2px;
+}
+
+.Model_Info .settings_button {
+	
+}
+
+#import_story_button {
+	
 }
 
 .settings_button[story_gamesaved="true"] {

@@ -1352,6 +1352,8 @@ def get_model_info(model, directory=""):
                     break_values = break_values.split(",")
             else:
                 break_values = [layer_count]
+            if break_values == ['']:
+                break_values = []
             break_values = [int(x) for x in break_values]
             break_values += [0] * (gpu_count - len(break_values))
     emit('from_server', {'cmd': 'selected_model_info', 'key_value': key_value, 'key':key, 
@@ -7243,7 +7245,7 @@ def UI_2_load_story_list(data):
                                                                   
 def get_story_length(item_full_path, item, valid_selection):
     if not valid_selection:
-        return [""]
+        return ["", ""]
     with open(item_full_path, "r") as f:
         js = json.load(f)
         title = js['story_name'] if 'story_name' in js else ".".join(item.split(".")[:-1])
@@ -7251,7 +7253,7 @@ def get_story_length(item_full_path, item, valid_selection):
             return [title, len(js['actions'])]
         if js['file_version'] == 1:
             return [title, len(js['actions'])]
-        return [0 if js['actions']['action_count'] == -1 else js['actions']['action_count'] ]
+        return [title, 0 if js['actions']['action_count'] == -1 else js['actions']['action_count'] ]
     
 
 def valid_story(file):
