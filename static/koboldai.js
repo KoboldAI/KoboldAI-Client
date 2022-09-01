@@ -120,14 +120,11 @@ function create_options(data) {
 	//Set all options before the next chunk to hidden
 	var option_container = document.getElementById("Select Options");
 	var current_chunk = parseInt(document.getElementById("action_count").textContent)+1;
-	var children = option_container.children;
-	for (var i = 0; i < children.length; i++) {
-		var chunk = children[i];
-		if (chunk.id == "Select Options Chunk " + current_chunk) {
-			chunk.classList.remove("hidden");
-		} else {
-			chunk.classList.add("hidden");
-		}
+	if (document.getElementById("Select Options Chunk " + current_chunk)) {
+		document.getElementById("Select Options Chunk " + current_chunk).classList.remove("hidden")
+	}
+	if (document.getElementById("Select Options Chunk " + (current_chunk-1))) {
+		document.getElementById("Select Options Chunk " + (current_chunk-1)).classList.add("hidden")
 	}
 	
 	if (document.getElementById("Select Options Chunk "+data.value.id)) {
@@ -410,6 +407,10 @@ function do_ai_busy(data) {
 	if (data.value) {
 		ai_busy_start = Date.now();
 		favicon.start_swap()
+		current_chunk = parseInt(document.getElementById("action_count").textContent)+1;
+		if (document.getElementById("Select Options Chunk " + current_chunk)) {
+			document.getElementById("Select Options Chunk " + current_chunk).classList.add("hidden")
+		}
 	} else {
 		runtime = Date.now() - ai_busy_start;
 		if (document.getElementById("Execution Time")) {
