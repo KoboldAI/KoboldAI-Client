@@ -1828,7 +1828,7 @@ def patch_transformers():
                 #koboldai_vars.actions.stream_token(tokenizer_text, batch=batch)
                
             if koboldai_vars.output_streaming:
-                koboldai_vars.actions.stream_tokens([utils.decodenewlines(tokenizer.decode(x[-1])) for x in input_ids])
+                koboldai_vars.actions.stream_tokens([utils.decodenewlines(tokenizer.decode(x[-1])) for x in input_ids], koboldai_vars.genamt)
             #if len(input_ids) > 1:
             #    koboldai_vars.actions.clear_unused_options()
             #    koboldai_vars.actions.append_options([utils.decodenewlines(tokenizer.decode(x[-1])) for x in input_ids])

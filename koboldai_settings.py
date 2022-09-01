@@ -1053,7 +1053,7 @@ class KoboldStoryRegister(object):
                 process_variable_changes(self.socketio, "story", 'actions', {"id": key, 'action':  self.actions[key]}, None)
         ignore = self.koboldai_vars.calc_ai_text()
     
-    def stream_tokens(self, text_list):
+    def stream_tokens(self, text_list, max_tokens):
         if len(text_list) > 1:
             if self.action_count+1 in self.actions:
                 for i in range(len(text_list)):
@@ -1070,8 +1070,11 @@ class KoboldStoryRegister(object):
                 for i in range(len(text_list)):
                     self.actions[self.action_count+1]['Options'].append({"text": text_list[i], "Pinned": False, "Previous Selection": False, "Edited": False, "Probabilities": [], "stream_id": i})
             
-            process_variable_changes(self.socketio, "actions", "Options", {"id": self.action_count+1, "options": self.actions[self.action_count+1]["Options"]}, {"id": self.action_count+1, "options": None})
-            process_variable_changes(self.socketio, "story", 'actions', {"id": self.action_count+1, 'action':  self.actions[self.action_count+1]}, None)
+            #We need to see if this is the last token being streamed. If so due to the rely it will come in AFTER the actual trimmed final text overwriting it in the UI
+            if self.tokenizer is not None:
+                if len(self.tokenizer.encode(self.actions[self.action_count+1]["Options"][0]['text'])) != max_tokens:
+                    #process_variable_changes(self.socketio, "actions", "Options", {"id": self.action_count+1, "options": self.actions[self.action_count+1]["Options"]}, {"id": self.action_count+1, "options": None})
+                    process_variable_changes(self.socketio, "story", 'actions', {"id": self.action_count+1, 'action':  self.actions[self.action_count+1]}, None)
         else:
             #We're streaming single options so our output is our selected
             if self.tokenizer is not None:
