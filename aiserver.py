@@ -2658,6 +2658,9 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
         koboldai_vars.presets = to_use
     koboldai_vars.aibusy = False
     koboldai_vars.splist = [[f, get_softprompt_desc(os.path.join("./softprompts", f),None,True)] for f in os.listdir("./softprompts") if os.path.isfile(os.path.join("./softprompts", f)) and valid_softprompt(os.path.join("./softprompts", f))]
+    if initial_load and koboldai_vars.cloudflare_link != "":
+        print(format(colors.GREEN) + "KoboldAI has finished loading and is available at the following link for UI 1: " + koboldai_vars.cloudflare_link + format(colors.END))
+        print(format(colors.GREEN) + "KoboldAI has finished loading and is available at the following link for UI 2: " + koboldai_vars.cloudflare_link + "/new_ui" + format(colors.END))
 
 # Set up Flask routes
 @app.route('/')
@@ -10351,6 +10354,7 @@ if __name__ == "__main__":
         if(args.localtunnel or args.ngrok or args.remote):
             with open('cloudflare.log', 'w') as cloudflarelog:
                 cloudflarelog.write("KoboldAI has finished loading and is available at the following link : " + cloudflare)
+                koboldai_vars.cloudflare_link = cloudflare
                 print(format(colors.GREEN) + "KoboldAI has finished loading and is available at the following link for UI 1: " + cloudflare + format(colors.END))
                 print(format(colors.GREEN) + "KoboldAI has finished loading and is available at the following link for UI 2: " + cloudflare + "/new_ui" + format(colors.END))
         else:
