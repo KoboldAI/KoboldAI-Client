@@ -3050,15 +3050,34 @@ function highlightEl(element) {
 		console.error("Bad jump!")
 		return;
 	}
+	
+	let settingArea = $(element).closest(".settings_category_area")[0];
+	
+	// HACK: This really sucks, we should probably have an easier way to select tabs.
+	if (settingArea) {
+		let tabName = settingArea.id.replace("setting_menu_", "");
+		for (const tab of $(".setting_menu_button")) {
+			if (tab.innerText.toLowerCase() === tabName) {
+				tab.click();
+				break;
+			}
+		}
+		element.scrollIntoView();
+	}
 
 	console.log("uhoh", element);
 }
 
 function addSearchListing(action, highlight) {
+	const finderContainer = document.getElementById("finder-container");
 	const finder = document.getElementById("finder");
 
 	let result = document.createElement("div");
 	result.classList.add("finder-result");
+	result.addEventListener("click", function(event) {
+		finderContainer.classList.add("hidden");
+		action.func();
+	});
 
 	let textblock = document.createElement("div");
 	textblock.classList.add("result-textbox");
@@ -3271,8 +3290,12 @@ $(document).ready(function(){
 	finderInput.addEventListener("keyup", updateSearchListings);
 	finderInput.addEventListener("keydown", function(event) {
 		let delta = 0;
-
-		if (event.key === "ArrowUp") {
+		const actions = document.getElementsByClassName("finder-result");
+		
+		if (event.key === "Enter") {
+			let index = finder_selection_index >= 0 ? finder_selection_index : 0;
+			actions[index].click();
+		} else if (event.key === "ArrowUp") {
 			delta = -1;
 		} else if (event.key === "ArrowDown") {
 			delta = 1
@@ -3282,7 +3305,7 @@ $(document).ready(function(){
 			return;
 		}
 
-		const actionsCount = document.getElementsByClassName("finder-result").length;
+		const actionsCount = actions.length;
 		let future = finder_selection_index + delta;
 
 		event.preventDefault();
