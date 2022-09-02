@@ -3310,7 +3310,9 @@ $(document).ready(function(){
 		});
 	}
 
+	const finderContainer = document.getElementById("finder-container");
 	const finderInput = document.getElementById("finder-input");
+	const finder = document.getElementById("finder");
 	let lastInput;
 
 	finderInput.addEventListener("keyup", updateSearchListings);
@@ -3345,19 +3347,33 @@ $(document).ready(function(){
 		finder_selection_index = future;
 		updateFinderSelection(delta);
 	});
+	
+	finderContainer.addEventListener("click", function(e) {
+		finderContainer.classList.add("hidden");
+	});
+	
+	finder.addEventListener("click", function(e) {
+		e.stopPropagation();
+	});
 });
 
 document.addEventListener("keydown", function(event) {
+	const finderContainer = document.getElementById("finder-container");
+	if (event.key === "Escape") finderContainer.classList.add("hidden");
+	
 	if (!event.ctrlKey) return;
 
 	switch (event.key) {
 		// TODO: Add other shortcuts
 		case "k":
-			const finderContainer = document.getElementById("finder-container");
 			const finderInput = document.getElementById("finder-input");
+			finderInput.value = "";
+			$(".finder-result").remove();
+			finder_selection_index = -1;
+			
 			finderContainer.classList.remove("hidden");
 			finderInput.focus();
-			finder_selection_index = -1;
+			
 			event.preventDefault();
 			break;
 }
