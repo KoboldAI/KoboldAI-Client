@@ -49,6 +49,10 @@ const finder_actions = [
 
 	// Locations
 	{name: "Setting Presets", icon: "open_in_new", func: function() { highlightEl(".var_sync_model_selected_preset") }},
+	{name: "Memory", icon: "open_in_new", func: function() { highlightEl("#memory") }},
+	{name: "Author's Note", icon: "open_in_new", func: function() { highlightEl("#authors_notes") }},
+	{name: "Notes", icon: "open_in_new", func: function() { highlightEl(".var_sync_story_notes") }},
+	{name: "World Info", icon: "open_in_new", func: function() { highlightEl("#WI_Area") }},
 	
 	// TODO: Direct theme selection
 	// {name: "", icon: "palette", func: function() { highlightEl("#biasing") }},
@@ -3065,24 +3069,15 @@ function highlightEl(element) {
 		return;
 	}
 	
-	let settingArea = $(element).closest(".settings_category_area")[0];
-	let area = settingArea ? settingArea : $(element).closest(".story_category_area")[0];
-	let classBit = settingArea ? "setting" : "story";
+	let area = $(element).closest(".tab-target")[0];
 	
 	if (!area) {
 		console.error("No error? :^(");
 		return;
 	}
 	
-	// HACK: This really sucks, we should probably have an easier way to select tabs.
-	let tabName = area.id.replace(`${classBit}_menu_`, "");
-	for (const tab of $(`.${classBit}_menu_button`)) {
-		if (tab.innerText.toLowerCase() === tabName) {
-			tab.click();
-			console.log("clicking", tab)
-			break;
-		}
-	}
+	let tab = Array.from($(".tab")).filter((c) => c.getAttribute("tab-target") === area.id)[0];
+	tab.click();
 	element.scrollIntoView();
 }
 
