@@ -37,7 +37,21 @@ var shift_down = false;
 var world_info_data = {};
 var world_info_folder_data = {};
 var saved_settings = {};
-var settings_data = {};
+var finder_selection_index = -1;
+
+// name, desc, icon, func
+const finder_actions = [
+	{name: "Load Model", icon: "folder_open", func: function() { socket.emit('load_model_button', {}); }},
+	{name: "New Story", icon: "description", func: function() { socket.emit('new_story', ''); }},
+	{name: "Load Story", icon: "folder_open", func: function() { socket.emit('load_story_list', ''); }},
+	{name: "Save Story", icon: "save", func: function() { socket.emit("save_story", null, (response) => {save_as_story(response);}); }},
+	{name: "Download Story", icon: "file_download", func: function() { document.getElementById('download_iframe').src = 'json'; }},
+
+	// Locations
+	{name: "Setting Presets", icon: "open_in_new", func: function() { highlightEl(".var_sync_model_selected_preset") }},
+	{name: "Phrase Biases", icon: "open_in_new", func: function() { highlightEl("#biasing") }},
+];
+
 const map1 = new Map()
 map1.set('Top K Sampling', 0)
 map1.set('Top A Sampling', 1)
@@ -57,6 +71,7 @@ map2.set(6, 'Repetition Penalty')
 var calc_token_usage_timeout;
 var game_text_scroll_timeout;
 var var_processing_time = 0;
+var finder_last_input;
 //-----------------------------------Server to UI  Functions-----------------------------------------------
 function connect() {
 	console.log("connected");
@@ -3029,27 +3044,104 @@ async function processDroppedFile(file) {
 	}
 }
 
-// By p01 - https://gist.github.com/p01/1127070
-function levenshteinDistance(a, b){
-	let c,d,e,f,g;
-	for(d=[e=0];a[e];e++) {
-		for(c=[f=0];b[++f];) {
-			g=d[f]= e ? 1+Math.min(d[--f], c[f]-(a[e-1]==b[f]), c[++f]=d[f]) : f;
-		}
+function highlightEl(element) {
+	if (typeof element === "string") element = document.querySelector(element);
+	if (!element) {
+		console.error("Bad jump!")
+		return;
 	}
-	return g;
+
+	console.log("uhoh", element);
+}
+
+function addSearchListing(action, highlight) {
+	const finder = document.getElementById("finder");
+
+	let result = document.createElement("div");
+	result.classList.add("finder-result");
+
+	let textblock = document.createElement("div");
+	textblock.classList.add("result-textbox");
+	result.appendChild(textblock);
+
+	let titleEl = document.createElement("span");
+	titleEl.classList.add("result-title");
+	titleEl.innerText = action.name;
+
+	// TODO: Sanitation
+	titleEl.innerHTML = titleEl.innerHTML.replace(
+		new RegExp(`(${highlight})`, "i"),
+		'<span class="result-highlight">$1</span>'
+	);
+	textblock.appendChild(titleEl);
+
+	if (action.desc) {
+		let descriptionEl = document.createElement("span");
+		descriptionEl.classList.add("result-details");
+		descriptionEl.innerText = action.desc;
+		descriptionEl.innerHTML = descriptionEl.innerHTML.replace(
+			new RegExp(`(${highlight})`, "i"),
+			'<span class="result-highlight">$1</span>'
+		);
+
+		// It can get cut off by CSS, so let's add a tooltip.
+		descriptionEl.setAttribute("title", action.desc);
+		textblock.appendChild(descriptionEl);
+	}
+
+	let icon = document.createElement("span");
+	icon.classList.add("result-icon");
+	icon.classList.add("material-icons-outlined");
+
+	// TODO: Change depending on what pressing enter does
+	icon.innerText = action.icon;
+	result.appendChild(icon)
+
+	finder.appendChild(result);
+
+	return result;
 }
 
 function updateSearchListings() {
+	const maxResultCount = 5;
+
+	if (this.value === finder_last_input) return;
+	finder_last_input = this.value;
+	finder_selection_index = -1;
+
 	let query = this.value.toLowerCase();
+
+	// TODO: Maybe reuse the element? Would it give better performance?
+	$(".finder-result").remove();
 
 	if (!query) return;
 
-	for (const settingName of Object.keys(settings_data)) {
-		let compare = settingName.toLowerCase().slice(0, query.length);
-		let distance = levenshteinDistance(query, compare);
-		console.log(distance, settingName, query, compare);
+	const actionMatches = {name: [], desc: []};
+
+	for (const action of finder_actions) {
+		if (action.name.toLowerCase().includes(query)) {
+			actionMatches.name.push(action);
+		} else if (action.desc && action.desc.toLowerCase().includes(query)) {
+			actionMatches.desc.push(action);
+		}
 	}
+
+	// Title matches over desc matches
+	const matchingActions = actionMatches.name.concat(actionMatches.desc);
+
+
+	for (let i=0;i<maxResultCount && i<matchingActions.length;i++) {
+		let action = matchingActions[i];
+		addSearchListing(action, query);
+	}
+}
+
+function updateFinderSelection() {
+	let former = document.getElementsByClassName("result-selected")[0];
+	if (former) former.classList.remove("result-selected");
+
+	let newSelection = document.getElementsByClassName("finder-result")[finder_selection_index];
+	newSelection.classList.add("result-selected");
 }
 
 $(document).ready(function(){
@@ -3165,10 +3257,45 @@ $(document).ready(function(){
 		let tooltipEl = el.getElementsByClassName("helpicon")[0];
 		let tooltip = tooltipEl ? tooltipEl.getAttribute("title") : null;
 
-		settings_data[name] = {tooltip: tooltip, element: el.parentElement}
+		finder_actions.push({
+			name: name,
+			desc: tooltip,
+			icon: "open_in_new",
+			func: function () { highlightEl(el.parentElement) },
+		})
 	}
 
-	document.getElementById("finder-input").addEventListener("keyup", updateSearchListings);
+	const finderInput = document.getElementById("finder-input");
+	let lastInput;
+
+	finderInput.addEventListener("keyup", updateSearchListings);
+	finderInput.addEventListener("keydown", function(event) {
+		let delta = 0;
+
+		if (event.key === "ArrowUp") {
+			delta = -1;
+		} else if (event.key === "ArrowDown") {
+			delta = 1
+		} else if (event.key === "Tab") {
+			delta = event.shiftKey ? -1 : 1;
+		} else {
+			return;
+		}
+
+		const actionsCount = document.getElementsByClassName("finder-result").length;
+		let future = finder_selection_index + delta;
+
+		event.preventDefault();
+
+		if (future >= actionsCount) {
+			future = 0;
+		} else if (future < 0) {
+			future = actionsCount - 1;
+		}
+
+		finder_selection_index = future;
+		updateFinderSelection(delta);
+	});
 });
 
 document.addEventListener("keydown", function(event) {
@@ -3177,8 +3304,11 @@ document.addEventListener("keydown", function(event) {
 	switch (event.key) {
 		// TODO: Add other shortcuts
 		case "k":
-			let finderContainer = document.getElementById("finder-container");
+			const finderContainer = document.getElementById("finder-container");
+			const finderInput = document.getElementById("finder-input");
 			finderContainer.classList.remove("hidden");
+			finderInput.focus();
+			finder_selection_index = -1;
 			event.preventDefault();
 			break;
 	}
