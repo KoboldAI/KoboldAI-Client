@@ -965,7 +965,7 @@ td.server_vars {
 	margin: 10px;
 }
 
-.world_info_card.world_info_included {
+.world_info_card.used_in_game {
 	border: 2px outset var(--wi_card_border_color_to_ai);
 }
 	
@@ -1963,4 +1963,23 @@ h2 .material-icons-outlined {
 
 .rightSideMenu{
 	color: var(--flyout_text);
+}
+
+
+@media (pointer: coarse), (hover: none) {
+	[title] {
+		position: relative;
+		display: inline-flex;
+		justify-content: center;
+	}
+	[title]:focus::after {
+		content: attr(title);
+		position: absolute;
+		top: 90%;
+		color: #000;
+		background-color: #fff;
+		border: 1px solid;
+		width: fit-content;
+		padding: 3px;
+	}
 }
