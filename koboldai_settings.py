@@ -109,7 +109,7 @@ class koboldai_vars(object):
 
         # TODO: We may want to replace the "text" variable with a list-type
         # class of context blocks, the class having a __str__ function.
-        if self.sp:
+        if self.sp_length > 0:
             context.append({"type": "soft_prompt", "text": f"<{self.sp_length} tokens of Soft Prompt.>"})
         # Header is never used?
         # if koboldai_vars.model not in ("Colab", "API", "OAI") and self.tokenizer._koboldai_header:
