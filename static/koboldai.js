@@ -780,10 +780,12 @@ function popup_items(data) {
 							var accept = document.getElementById("popup_accept");
 							if (this.getAttribute("valid") == "true") {
 								accept.classList.remove("disabled");
+								accept.disabled = false;
 								accept.setAttribute("selected_value", this.id);
 							} else {
 								accept.setAttribute("selected_value", "");
 								accept.classList.add("disabled");
+								accept.disabled = true;
 								if (this.getAttribute("folder") == "true") {
 									socket.emit("popup_change_folder", this.id);
 								}
@@ -809,10 +811,12 @@ function popup_items(data) {
 							var accept = document.getElementById("popup_accept");
 							if (this.getAttribute("valid") == "true") {
 								accept.classList.remove("disabled");
+								accept.disabled = false;
 								accept.setAttribute("selected_value", this.id);
 							} else {
 								accept.setAttribute("selected_value", "");
 								accept.classList.add("disabled");
+								accept.disabled = true;
 								if (this.getAttribute("folder") == "true") {
 									socket.emit("popup_change_folder", this.id);
 								}
@@ -1001,6 +1005,8 @@ function show_model_menu(data) {
 		
 		model_list.append(list_item);
 	}
+	var accept = document.getElementById("btn_loadmodelaccept");
+	accept.disabled = true;
 	
 }
 
@@ -1157,6 +1163,7 @@ function selected_model_info(data) {
 		document.getElementById("modellayers").classList.add("hidden");
 		accept.classList.remove("disabled");
 	}
+	accept.disabled = false;
 	
 	
 }
