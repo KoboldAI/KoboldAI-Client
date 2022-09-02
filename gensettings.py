@@ -506,6 +506,22 @@ gensettingstf = [
 	"default": 0,
   "tooltip": "Shows token usage when typing in relevant text boxes. <b>May lag slower devices.</b>"
 	},
+    {
+    "UI_V2_Only": True,
+ 	"uitype": "toggle",
+ 	"unit": "bool",
+ 	"label": "Beep on Complete",
+ 	"id": "beep_on_complete",
+ 	"min": 1,
+ 	"max": 5,
+ 	"step": 1,
+ 	"default": 3,
+	"tooltip": "When enabled the UI will beep when completing an action such as generation or model loading.",
+    "menu_path": "Interface",
+    "sub_path": "UI",
+    "classname": "user",
+    "name": "beep_on_complete"
+ 	},
 ]
 
 gensettingsik =[{

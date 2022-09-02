@@ -658,6 +658,7 @@ class user_settings(settings):
         self.debug       = False    # If set to true, will send debug information to the client for display
         self.output_streaming = True
         self.show_probs = False # Whether or not to show token probabilities
+        self.beep_on_complete = False
         
         
     def __setattr__(self, name, value):
