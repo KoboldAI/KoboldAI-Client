@@ -818,7 +818,7 @@ function popup_items(data) {
 							for (item of popup_list) {
 								item.classList.remove("selected");
 							}
-							this.classList.add("selected");
+							this.parentElement.classList.add("selected");
 					  };
 			tr.append(td);
 		}
