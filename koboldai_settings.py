@@ -330,8 +330,11 @@ class settings(object):
             json_data = json.loads(data)
         else:
             json_data = data
-        for key, value in data.items():
+        for key, value in json_data.items():
             if key in self.__dict__:
+                if key == 'sampler_order':
+                    if(len(value) < 7):
+                        value = [6] + value
                 if isinstance(value, str):
                     if value[:7] == 'base64:':
                         value = pickle.loads(base64.b64decode(value[7:]))

@@ -876,61 +876,14 @@ def loadmodelsettings():
 #==================================================================#
 def savesettings():
      # Build json to write
-    js = {}
-    js["apikey"]      = koboldai_vars.apikey
-    js["andepth"]     = koboldai_vars.andepth
-    js["sampler_order"] = koboldai_vars.sampler_order
-    js["temp"]        = koboldai_vars.temp
-    js["top_p"]       = koboldai_vars.top_p
-    js["top_k"]       = koboldai_vars.top_k
-    js["tfs"]         = koboldai_vars.tfs
-    js["typical"]     = koboldai_vars.typical
-    js["top_a"]       = koboldai_vars.top_a
-    js["rep_pen"]     = koboldai_vars.rep_pen
-    js["rep_pen_slope"] = koboldai_vars.rep_pen_slope
-    js["rep_pen_range"] = koboldai_vars.rep_pen_range
-    js["genamt"]      = koboldai_vars.genamt
-    js["max_length"]  = koboldai_vars.max_length
-    js["ikgen"]       = koboldai_vars.ikgen
-    js["formatoptns"] = {'frmttriminc': koboldai_vars.frmttriminc, 'frmtrmblln': koboldai_vars.frmtrmblln, 
-                         'frmtrmspch': koboldai_vars.frmtrmspch, 'frmtadsnsp': koboldai_vars.frmtadsnsp, 'singleline': koboldai_vars.singleline}
-    js["numseqs"]     = koboldai_vars.numseqs
-    js["widepth"]     = koboldai_vars.widepth
-    js["useprompt"]   = koboldai_vars.useprompt
-    js["adventure"]   = koboldai_vars.adventure
-    js["chatmode"]    = koboldai_vars.chatmode
-    js["chatname"]    = koboldai_vars.chatname
-    js["dynamicscan"] = koboldai_vars.dynamicscan
-    js["nopromptgen"] = koboldai_vars.nopromptgen
-    js["rngpersist"]  = koboldai_vars.rngpersist
-    js["nogenmod"]    = koboldai_vars.nogenmod
-    js["fulldeterminism"] = koboldai_vars.full_determinism
-    js["autosave"]    = koboldai_vars.autosave
-    js["welcome"]     = koboldai_vars.welcome
-    js["output_streaming"] = koboldai_vars.output_streaming
-    js["show_probs"] = koboldai_vars.show_probs
-
-    if(koboldai_vars.seed_specified):
-        js["seed"]    = koboldai_vars.seed
-    else:
-        js["seed"]    = None
-
-    js["newlinemode"] = koboldai_vars.newlinemode
-
-    js["antemplate"]  = koboldai_vars.setauthornotetemplate
-
-    js["userscripts"] = koboldai_vars.userscripts
-    js["corescript"]  = koboldai_vars.corescript
-    js["softprompt"]  = koboldai_vars.spfilename
-
-    # Write it
-    if not os.path.exists('settings'):
-        os.mkdir('settings')
-    file = open("settings/" + getmodelname().replace('/', '_') + ".settings", "w")
-    try:
-        file.write(json.dumps(js, indent=3))
-    finally:
-        file.close()
+    for setting in ['model_settings', 'user_settings', 'system_settings']:
+        if setting == "model_settings":
+            filename = "settings/{}.v2_settings".format(koboldai_vars.model.replace("/", "_"))
+        else:
+            filename = "settings/{}.v2_settings".format(setting)
+        with open(filename, "w") as settings_file:
+            settings_file.write(getattr(koboldai_vars, "_{}".format(setting)).to_json())
+    
 
 #==================================================================#
 #  Don't save settings unless 2 seconds have passed without modification
@@ -945,121 +898,10 @@ def settingschanged():
 #==================================================================#
 
 def loadsettings():
-    if(path.exists("defaults/" + getmodelname().replace('/', '_') + ".settings")):
-        # Read file contents into JSON object
-        file = open("defaults/" + getmodelname().replace('/', '_') + ".settings", "r")
-        js   = json.load(file)
+    if(path.exists("settings/" + getmodelname().replace('/', '_') + ".v2_settings")):
+        with open("settings/" + getmodelname().replace('/', '_') + ".v2_settings", "r") as file:
+            getattr(koboldai_vars, "_model_settings").from_json(file.read())
         
-        processsettings(js)
-        file.close()
-    if(path.exists("settings/" + getmodelname().replace('/', '_') + ".settings")):
-        # Read file contents into JSON object
-        file = open("settings/" + getmodelname().replace('/', '_') + ".settings", "r")
-        js   = json.load(file)
-        
-        processsettings(js)
-        file.close()
-        
-def processsettings(js):
-# Copy file contents to koboldai_vars
-    if("apikey" in js):
-        koboldai_vars.apikey     = js["apikey"]
-    if("andepth" in js):
-        koboldai_vars.andepth    = js["andepth"]
-    if("sampler_order" in js):
-        sampler_order = koboldai_vars.sampler_order
-        if(len(sampler_order) < 7):
-            sampler_order = [6] + sampler_order
-        koboldai_vars.sampler_order = sampler_order
-    if("temp" in js):
-        koboldai_vars.temp       = js["temp"]
-    if("top_p" in js):
-        koboldai_vars.top_p      = js["top_p"]
-    if("top_k" in js):
-        koboldai_vars.top_k      = js["top_k"]
-    if("tfs" in js):
-        koboldai_vars.tfs        = js["tfs"]
-    if("typical" in js):
-        koboldai_vars.typical    = js["typical"]
-    if("top_a" in js):
-        koboldai_vars.top_a      = js["top_a"]
-    if("rep_pen" in js):
-        koboldai_vars.rep_pen    = js["rep_pen"]
-    if("rep_pen_slope" in js):
-        koboldai_vars.rep_pen_slope = js["rep_pen_slope"]
-    if("rep_pen_range" in js):
-        koboldai_vars.rep_pen_range = js["rep_pen_range"]
-    if("genamt" in js):
-        koboldai_vars.genamt     = js["genamt"]
-    if("max_length" in js):
-        koboldai_vars.max_length = js["max_length"]
-    if("ikgen" in js):
-        koboldai_vars.ikgen      = js["ikgen"]
-    if("formatoptns" in js):
-        for setting in ['frmttriminc', 'frmtrmblln', 'frmtrmspch', 'frmtadsnsp', 'singleline']:
-            if setting in js["formatoptns"]:
-                setattr(koboldai_vars, setting, js["formatoptns"][setting])
-    if("numseqs" in js):
-        koboldai_vars.numseqs = js["numseqs"]
-    if("widepth" in js):
-        koboldai_vars.widepth = js["widepth"]
-    if("useprompt" in js):
-        koboldai_vars.useprompt = js["useprompt"]
-    if("adventure" in js):
-        koboldai_vars.adventure = js["adventure"]
-    if("chatmode" in js):
-        koboldai_vars.chatmode = js["chatmode"]
-    if("chatname" in js):
-        koboldai_vars.chatname = js["chatname"]
-    if("dynamicscan" in js):
-        koboldai_vars.dynamicscan = js["dynamicscan"]
-    if("nopromptgen" in js):
-        koboldai_vars.nopromptgen = js["nopromptgen"]
-    if("rngpersist" in js):
-        koboldai_vars.rngpersist = js["rngpersist"]
-    if("nogenmod" in js):
-        koboldai_vars.nogenmod = js["nogenmod"]
-    if("fulldeterminism" in js):
-        koboldai_vars.full_determinism = js["fulldeterminism"]
-    if("autosave" in js):
-        koboldai_vars.autosave = js["autosave"]
-    if("newlinemode" in js):
-        koboldai_vars.newlinemode = js["newlinemode"]
-    if("welcome" in js):
-        koboldai_vars.welcome = js["welcome"]
-    if("output_streaming" in js):
-        koboldai_vars.output_streaming = js["output_streaming"]
-    if("show_probs" in js):
-        koboldai_vars.show_probs = js["show_probs"]
-    
-    if("seed" in js):
-        koboldai_vars.seed = js["seed"]
-        if(koboldai_vars.seed is not None):
-            koboldai_vars.seed_specified = True
-        else:
-            koboldai_vars.seed_specified = False
-    else:
-        koboldai_vars.seed_specified = False
-
-    if("antemplate" in js):
-        koboldai_vars.setauthornotetemplate = js["antemplate"]
-        if(not koboldai_vars.gamestarted):
-            koboldai_vars.authornotetemplate = koboldai_vars.setauthornotetemplate
-    
-    if("userscripts" in js):
-        koboldai_vars.userscripts = []
-        for userscript in js["userscripts"]:
-            if type(userscript) is not str:
-                continue
-            userscript = userscript.strip()
-            if len(userscript) != 0 and all(q not in userscript for q in ("..", ":")) and all(userscript[0] not in q for q in ("/", "\\")) and os.path.exists(fileops.uspath(userscript)):
-                koboldai_vars.userscripts.append(userscript)
-
-    if("corescript" in js and type(js["corescript"]) is str and all(q not in js["corescript"] for q in ("..", ":")) and all(js["corescript"][0] not in q for q in ("/", "\\"))):
-        koboldai_vars.corescript = js["corescript"]
-    else:
-        koboldai_vars.corescript = "default.lua"
-
 #==================================================================#
 #  Load a soft prompt from a file
 #==================================================================#
@@ -1270,6 +1112,12 @@ def general_startup(override_args=None):
     #setup socketio relay queue
     koboldai_settings.queue = multiprocessing.Queue()
     socketio.start_background_task(socket_io_relay, koboldai_settings.queue, socketio)
+    
+    #load system and user settings
+    for setting in ['user_settings', 'system_settings']:
+        if os.path.exists("settings/{}.v2_settings".format(setting)):
+            with open("settings/{}.v2_settings".format(setting), "r") as settings_file:
+                getattr(koboldai_vars, "_{}".format(setting)).from_json(settings_file.read())
         
 #==================================================================#
 # Load Model
@@ -1315,8 +1163,8 @@ def get_model_info(model, directory=""):
     if model in ['Colab', 'API']:
         url = True
     elif model in [x[1] for x in model_menu['apilist']]:
-        if path.exists("settings/{}.settings".format(model)):
-            with open("settings/{}.settings".format(model), "r") as file:
+        if path.exists("settings/{}.v2_settings".format(model)):
+            with open("settings/{}.v2_settings".format(model), "r") as file:
                 # Check if API key exists
                 js = json.load(file)
                 if("apikey" in js and js["apikey"] != ""):
@@ -1429,8 +1277,8 @@ def get_oai_models(data):
             # If the client settings file doesn't exist, create it
             # Write API key to file
             os.makedirs('settings', exist_ok=True)
-        if path.exists("settings/{}.settings".format(model)):
-            with open("settings/{}.settings".format(model), "r") as file:
+        if path.exists("settings/{}.v2_settings".format(model)):
+            with open("settings/{}.v2_settings".format(model), "r") as file:
                 js = json.load(file)
                 if 'online_model' in js:
                     online_model = js['online_model']
@@ -1438,7 +1286,7 @@ def get_oai_models(data):
                     if js['apikey'] != key:
                         changed=True
         if changed:
-            with open("settings/{}.settings".format(model), "w") as file:
+            with open("settings/{}.v2_settings".format(model), "w") as file:
                 js["apikey"] = key
                 file.write(json.dumps(js, indent=3))
             
@@ -1983,9 +1831,9 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
     
     #Let's set the GooseAI or OpenAI server URLs if that's applicable
     if online_model != "":
-        if path.exists("settings/{}.settings".format(koboldai_vars.model)):
+        if path.exists("settings/{}.v2_settings".format(koboldai_vars.model)):
             changed=False
-            with open("settings/{}.settings".format(koboldai_vars.model), "r") as file:
+            with open("settings/{}.v2_settings".format(koboldai_vars.model), "r") as file:
                 # Check if API key exists
                 js = json.load(file)
                 if 'online_model' in js:
@@ -1996,7 +1844,7 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
                     changed=True
                     js['online_model'] = online_model
             if changed:
-                with open("settings/{}.settings".format(koboldai_vars.model), "w") as file:
+                with open("settings/{}.v2_settings".format(koboldai_vars.model), "w") as file:
                     file.write(json.dumps(js, indent=3))
         # Swap OAI Server if GooseAI was selected
         if(koboldai_vars.model == "GooseAI"):
@@ -2733,22 +2581,22 @@ def lua_startup():
     global _bridged
     global F
     global bridged
-    if(path.exists("settings/" + getmodelname().replace('/', '_') + ".settings")):
-        file = open("settings/" + getmodelname().replace('/', '_') + ".settings", "r")
-        js   = json.load(file)
-        if("userscripts" in js):
-            koboldai_vars.userscripts = []
-            for userscript in js["userscripts"]:
-                if type(userscript) is not str:
-                    continue
-                userscript = userscript.strip()
-                if len(userscript) != 0 and all(q not in userscript for q in ("..", ":")) and all(userscript[0] not in q for q in ("/", "\\")) and os.path.exists(fileops.uspath(userscript)):
-                    koboldai_vars.userscripts.append(userscript)
-        if("corescript" in js and type(js["corescript"]) is str and all(q not in js["corescript"] for q in ("..", ":")) and all(js["corescript"][0] not in q for q in ("/", "\\"))):
-            koboldai_vars.corescript = js["corescript"]
-        else:
-            koboldai_vars.corescript = "default.lua"
-        file.close()
+    #if(path.exists("settings/" + getmodelname().replace('/', '_') + ".settings")):
+    #    file = open("settings/" + getmodelname().replace('/', '_') + ".settings", "r")
+    #    js   = json.load(file)
+    #    if("userscripts" in js):
+    #        koboldai_vars.userscripts = []
+    #        for userscript in js["userscripts"]:
+    #            if type(userscript) is not str:
+    #               continue
+    #            userscript = userscript.strip()
+    #            if len(userscript) != 0 and all(q not in userscript for q in ("..", ":")) and all(userscript[0] not in q for q in ("/", "\\")) and os.path.exists(fileops.uspath(userscript)):
+    #                koboldai_vars.userscripts.append(userscript)
+    #    if("corescript" in js and type(js["corescript"]) is str and all(q not in js["corescript"] for q in ("..", ":")) and all(js["corescript"][0] not in q for q in ("/", "\\"))):
+    #        koboldai_vars.corescript = js["corescript"]
+    #    else:
+    #        koboldai_vars.corescript = "default.lua"
+    #    file.close()
         
     #==================================================================#
     #  Lua runtime startup
@@ -6581,8 +6429,8 @@ def final_startup():
     threading.Thread(target=__preempt_tokenizer).start()
 
     # Load soft prompt specified by the settings file, if applicable
-    if(path.exists("settings/" + getmodelname().replace('/', '_') + ".settings")):
-        file = open("settings/" + getmodelname().replace('/', '_') + ".settings", "r")
+    if(path.exists("settings/" + getmodelname().replace('/', '_') + ".v2_settings")):
+        file = open("settings/" + getmodelname().replace('/', '_') + ".v2_settings", "r")
         js   = json.load(file)
         if(koboldai_vars.allowsp and "softprompt" in js and type(js["softprompt"]) is str and all(q not in js["softprompt"] for q in ("..", ":")) and (len(js["softprompt"]) != 0 and all(js["softprompt"][0] not in q for q in ("/", "\\")))):
             if valid_softprompt("softprompts/"+js["softprompt"]):
