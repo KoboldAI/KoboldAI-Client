@@ -3271,14 +3271,12 @@ $(document).ready(function(){
 
 	document.body.addEventListener("dragenter", function(e) {
 		lastTarget = e.target;
-		console.log("start");
 		$("#file-upload-notice")[0].classList.remove("hidden");
 	});
 
 	document.body.addEventListener("dragleave", function(e) {
 		if (!(e.target === document || e.target === lastTarget)) return;
 
-		console.log("end")
 		$("#file-upload-notice")[0].classList.add("hidden");
 	});
 
