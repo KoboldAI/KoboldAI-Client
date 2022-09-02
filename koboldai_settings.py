@@ -1084,14 +1084,20 @@ class KoboldStoryRegister(object):
             #First we need to see if this is actually the prompt. If so we'll just not do streaming:
             if self.story_settings.prompt != "":
                 if self.action_count+1 in self.actions:
+                    if self.tokenizer is not None:
+                        selected_text_length = len(self.tokenizer.encode(self.actions[self.action_count+1]['Selected Text']))
+                    else:
+                        selected_text_length = 0
                     self.actions[self.action_count+1]['Selected Text'] = "{}{}".format(self.actions[self.action_count+1]['Selected Text'], text_list[0])
+                    self.actions[self.action_count+1]['Selected Text Length'] = selected_text_length
                 else:
+                    if self.tokenizer is not None:
+                        selected_text_length = len(self.tokenizer.encode(text_list[0]))
+                    else:
+                        selected_text_length = 0
                     self.actions[self.action_count+1] = {"Selected Text": text_list[0], "Selected Text Length": selected_text_length, "Options": []}
                 
-                if self.tokenizer is not None:
-                    selected_text_length = len(self.tokenizer.encode(self.actions[self.action_count+1]['Selected Text']))
-                else:
-                    selected_text_length = 0
+                
                 
                 if self.tokenizer is not None:
                     if len(self.tokenizer.encode(self.actions[self.action_count+1]['Selected Text'])) != self.koboldai_vars.genamt:
