@@ -1396,8 +1396,8 @@ class KoboldWorldInfo(object):
             #Make sure we have all the appropriate variables:
             for item in self.world_info:
                 for column in ["uid","title","key","keysecondary","folder","constant","content","comment","token_length","selective","used_in_game"]:
-                    if column not in item:
-                        item[column] = None
+                    if column not in self.world_info[item]:
+                        self.world_info[item][column] = None
             try:
                 self.sync_world_info_to_old_format()
             except:
