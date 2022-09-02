@@ -10311,7 +10311,6 @@ for schema in config_endpoint_schemas:
 #==================================================================#
 #  Final startup commands to launch Flask app
 #==================================================================#
-@app.before_first_request
 def startup():
     if koboldai_vars.model == "" or koboldai_vars.model is None:
         koboldai_vars.model = "ReadOnly"
@@ -10323,6 +10322,7 @@ if __name__ == "__main__":
 
     general_startup()
     patch_transformers()
+    startup()
     # Start Flask/SocketIO (Blocking, so this must be last method!)
     port = args.port if "port" in args and args.port is not None else 5000
     koboldai_settings.port = port
