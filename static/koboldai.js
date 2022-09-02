@@ -49,7 +49,9 @@ const finder_actions = [
 
 	// Locations
 	{name: "Setting Presets", icon: "open_in_new", func: function() { highlightEl(".var_sync_model_selected_preset") }},
-	{name: "Phrase Biases", icon: "open_in_new", func: function() { highlightEl("#biasing") }},
+	
+	// TODO: Direct theme selection
+	// {name: "", icon: "palette", func: function() { highlightEl("#biasing") }},
 ];
 
 const map1 = new Map()
@@ -3052,20 +3054,24 @@ function highlightEl(element) {
 	}
 	
 	let settingArea = $(element).closest(".settings_category_area")[0];
+	let area = settingArea ? settingArea : $(element).closest(".story_category_area")[0];
+	let classBit = settingArea ? "setting" : "story";
+	
+	if (!area) {
+		console.error("No error? :^(");
+		return;
+	}
 	
 	// HACK: This really sucks, we should probably have an easier way to select tabs.
-	if (settingArea) {
-		let tabName = settingArea.id.replace("setting_menu_", "");
-		for (const tab of $(".setting_menu_button")) {
-			if (tab.innerText.toLowerCase() === tabName) {
-				tab.click();
-				break;
-			}
+	let tabName = area.id.replace(`${classBit}_menu_`, "");
+	for (const tab of $(`.${classBit}_menu_button`)) {
+		if (tab.innerText.toLowerCase() === tabName) {
+			tab.click();
+			console.log("clicking", tab)
+			break;
 		}
-		element.scrollIntoView();
 	}
-
-	console.log("uhoh", element);
+	element.scrollIntoView();
 }
 
 function addSearchListing(action, highlight) {
@@ -3270,7 +3276,7 @@ $(document).ready(function(){
 	});
 
 	// Parse settings for search thingey
-	for (const el of document.getElementsByClassName("setting_label")) {
+	for (const el of $(".setting_label")) {
 		let name = el.children[0].innerText;
 
 		let tooltipEl = el.getElementsByClassName("helpicon")[0];
@@ -3281,7 +3287,20 @@ $(document).ready(function(){
 			desc: tooltip,
 			icon: "open_in_new",
 			func: function () { highlightEl(el.parentElement) },
-		})
+		});
+	}
+	
+	for (const el of $(".collapsable_header")) {
+		// https://stackoverflow.com/a/11347962
+		let headerText = $(el.children[0]).contents().filter(function() {
+			return this.nodeType == 3;
+		}).text().trim();
+		
+		finder_actions.push({
+			name: headerText,
+			icon: "open_in_new",
+			func: function () { highlightEl(el) },
+		});
 	}
 
 	const finderInput = document.getElementById("finder-input");
