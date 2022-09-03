@@ -22,14 +22,9 @@
 	--tertiary_container_palette: #000000;
 	--on_tertiary_container_palette: #000000;
 
-	--error_palette: #ffb4ab;
-	--on_error_palette: #690005;
-	--error_container_palette: #93000a;
-	--on_error_container_palette: #ffdad6;
-
 	--background_palette: #000000;
 	--on_background_palette:#000000;
-	--layer1_palette: #181818;
+	--layer1_palette: #000000;
 	--layer2_palette: #000000;
 	--layer3_palette: #000000;
 	--layer4_palette: #000000;
@@ -55,12 +50,23 @@
 	--scrollbar-color: #1a615e7a;
 
 	/*Buttons*/
+		/*General*/
 	--enabled_button_text: #e0e0e0;
     --enabled_button_background_color: #424243;
     --enabled_button_border_color: #2e2e2fe8;
+
 	--disabled_button_text: #303030;
     --disabled_button_background_color: #495762;
     --disabled_button_border_color: #686c68;
+
+		/*Home Tab*/
+	--button_text: #e0e0e0;
+	--button_background: #424243;
+		
+		/*Alternate Button*/
+	--alternate_button_text: #e0e0e0;
+	--alternate_button_background: #1a625f;
+
 
 	/*Sequence, AKA Gens Per Action*/
 	--sequence_area_background: #1c1e1f;
@@ -71,13 +77,10 @@
 	--tab_color: #1a625f;
 
 	--flyout_background: #181818;
-	--flyout_background_pinned:var(--layer1_palette);
+	--flyout_background_pinned: #181818;
 
 	--setting_background: #242424;
     --setting_text: #e0e0e0;
-	
-	--button_text: var(--setting_text);
-	--button_background: var(--setting_background);
 
 	--sample_order_select_color: #1d434a;
 	--sample_order_select_color_text: #e0e0e0;
@@ -90,13 +93,18 @@
 	--rangeslider_circle_color: #385262;
 
 	--help_icon: #c07ec5;
-    --tooltip_text: #000000;
-    --tooltip_background: #000000;
+    /*--tooltip_text: #000000;
+    --tooltip_background: #000000;*/
 	--setting_category_help_text_color: #E0E0E0;
 	
 	--setting_footer_border_color: grey;
 	--setting_footer_text_color: #e0e0e0;
-	--setting_footer_background_color: var(--layer1_palette);
+	--setting_footer_background_color: #181818;
+
+	/*Palette Card*/
+	--palette_card_background: #1b1b1b;
+	--palette_card_text: #e0e0e0;
+	--palette_table_border: #e0e0e0;
 
 	/*World Info*/
 	--wi_card_border_color: #1a625f;
@@ -122,12 +130,17 @@
 	--popup_hover_color: #1a2e30;
 	--popup_hover_color_text: #e0e0e0;
 	--popup_selected_color: #2c5357;
-	--popup_selected_color_text:var(--on_secondary_container_palette_palette);
+	--popup_selected_color_text: #e0e0e0;
 
 	--popup_button_color: #1a625f;
 	--popup_button_color_text: #e0e0e0;
 	--popup_cancel_button_color: #1a625f;
 	--popup_cancel_button_color_text: #e0e0e0;
+
+	--error: #ffb4ab;
+	--error_text: #690005;
+	--error_title: #93000a;
+	--error_title_text: #ffdad6;
 	
 	/*Context Bar Colors*/
 	--context_colors_memory: #133a5c;
@@ -142,6 +155,8 @@
 
     /*Parameters*/
 	--scrollbar-size: 7px;
+	--palette_card_shadow: 0;
+	--wi_card_shadow: 0;
 	--light_shadow_value: 0;
 	--left_menu_strong_shadow: 0;
 	--right_menu_light_shadow: 0;
@@ -150,9 +165,11 @@
 	--radius_unpinned_menu: 15px;
 	--radius_sequence: 10px;
 	--radius_settings_background: 10px;
-	--radius_buttons: 5px;
+	--radius_button: 5px;
+	--radius_alternate_button: 5px;
 	--radius_item_popup: 5px;
 	--radius_wi_card: 10px;
+	--radius_palette_card: 10px;
 	--radius_settings_button: 5px;
 
 
