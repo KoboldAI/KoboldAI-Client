@@ -205,13 +205,17 @@ input[type="range"]::-ms-fill-upper {
 						 "item item"
 						 "minlabel maxlabel";
 	grid-template-rows: 20px 23px 20px;
-	grid-template-columns: 288px 60px;
+	grid-template-columns: 310px 60px;
 	row-gap: 0.2em;
 	background-color: var(--setting_background);
 	color: var(--setting_text);
 	border-radius: var(--radius_settings_background);
 	padding: 3px;
-	margin: 2px;
+	margin-top: 5px;
+}
+
+#story_menu_author .setting_tile_area{
+	padding: 0;
 }
 
 
@@ -482,7 +486,7 @@ input[type="range"]::-ms-fill-upper {
 .settings_button {
 	color: var(--button_text);
 	background: var(--button_background);
-	border-color: white;
+	border-color: var(--button_text);
 	border-width: 1px;
 	border-radius: var(--radius_settings_button);
 	border-style:solid;
@@ -683,6 +687,13 @@ input[type="range"]::-ms-fill-upper {
 #palette_area {
 	width: 100%;
 	text-align: center;
+	border: 2px solid var(--palette_card_text);
+	border-radius: var(--radius_palette_card);
+	box-shadow: var(--palette_card_shadow);
+	margin: 5px;
+	padding: 5px 0 10px 0;
+	background: var(--palette_card_background);
+	color: var(--palette_card_text);
 }
 
 #save_theme_area {
@@ -693,6 +704,10 @@ input[type="range"]::-ms-fill-upper {
 #save_theme_name {
 	width: 88%;
 	margin: 0 0 5px -25px;
+	background-color: var(--palette_card_background);
+	filter: brightness(90%);
+	border-color: var(--palette_card_text);
+	color: var(--palette_card_text);
 }
 
 #palette_area .material-icons-outlined {
@@ -705,17 +720,22 @@ input[type="range"]::-ms-fill-upper {
 }
 #Palette_Table{
 	width: 100%;
+	color: var(--palette_card_text);
 }
 
-.Theme_Input {
+#Palette .Theme_Input {
 	width: 100%;
+	background-color: var(--palette_card_background);
+	border-color: var(--palette_card_text);
+	border-width: 0px;
 }
 
 .advanced_theme {
 	margin: 10px 10px 0 auto;
 	padding: 2px 4px 2px 4px;
-	border-radius: var(--radius_wi_card);
-	background-color: var(--wi_tag_color);
+	border-radius: var(--radius_alternate_button);
+	background-color: var(--alternate_button_background);
+	color: var(--alternate_button_text);
 }
 .advanced_theme:hover {
 	filter: brightness(85%);
@@ -943,8 +963,9 @@ td.server_vars {
 .wi_add_button{
 	margin: 0 0 0 10px;
 	padding: 4px 4px 4px 4px;
-	border-radius: var(--radius_wi_card);
-	background-color: var(--wi_tag_color);
+	border-radius: var(--radius_alternate_button);
+	background-color: var(--alternate_button_background);
+	color: var(--alternate_button_text);
 }
 
 .wi_add_button .material-icons-outlined{
@@ -963,6 +984,7 @@ td.server_vars {
 	border: 2px outset var(--wi_card_border_color);
 	background-color: var(--wi_card_bg_color);
 	color:var(--wi_card_text_color);
+	box-shadow: var(--wi_card_shadow);
 	margin: 10px;
 }
 
@@ -1530,8 +1552,8 @@ body {
 }
 
 #error_message.popup {
-	background-color: var(--error_palette);
-	color: var(--on_error_palette);
+	background-color: var(--error);
+	color: var(--error_text);
 	height: 30vh;
 	top: 35vh;
 	overflow: hidden;
@@ -1539,22 +1561,22 @@ body {
 
 #error_message .title {
 	width: 100%;
-	background-color: var(--error_container_palette);
-	color: var(--on_error_container_palette);
+	background-color: var(--error_title);
+	color: var(--error_title_text);
 	text-align: center;
 	font-size: calc(1.3em + var(--font_size_adjustment));
 }
 
 #error_message.popup .btn-primary {
-	background-color: var(--error_palette);
-	color: var(--on_error_palette);
-	border-color: var(--on_error_palette);
+	background-color: var(--error);
+	color: var(--error_text);
+	border-color: var(--error_text);
 }
 
 
 #error_message .popup_load_cancel{
-	background-color: var(--error_container_palette);
-	color: var(--on_error_container_palette);
+	background-color: var(--error_title);
+	color: var(--error_title_text);
 }
 
 
@@ -1564,8 +1586,8 @@ body {
 	flex-grow: 1;
 	flex-shrink: 1;
 	flex-basis: auto;
-	background-color: var(--error_container_palette);
-	color: var(--on_error_container_palette);
+	background-color: var(--error);
+	color: var(--error_text);
 }
 
 .breadcrumbitem {
@@ -1689,7 +1711,7 @@ body {
 	width: 50%;
 	height: 75%;
 	padding-bottom: 10px;
-	background-color: var(--layer1_palette);
+	background-color: var(--popup_background_color);
 }
 
 #context-viewer-header {
@@ -1698,7 +1720,7 @@ body {
 
 	padding: 5px;
 
-	background-color: var(--background);
+	background-color: var(--popup_background_color);
 	margin-bottom: 3px;
 }
 
@@ -1874,6 +1896,7 @@ input {
 	color: var(--enabled_button_text);
 	background-color: var(--enabled_button_background_color);
 	border-color: var(--enabled_button_border_color);
+	border-radius: var(--radius_button);
 }
 
 .action_button:hover {
