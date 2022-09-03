@@ -350,6 +350,10 @@ input[type="range"]::-ms-fill-upper {
 	display: inline-block;
 	transition: left 0.5s;
 	cursor: pointer;
+	filter: brightness(85%);
+}
+.pinned .menu_pin {
+	filter: brightness(200%);
 }
 }
 
@@ -483,6 +487,28 @@ input[type="range"]::-ms-fill-upper {
 	border-radius: var(--radius_settings_button);
 	border-style:solid;
 	height: 35px;
+}
+
+
+.settings_button > .button_label {
+	position: relative;
+	bottom: 3px;
+	right: 4px;
+}
+
+.settings_button > .material-icons-outlined {
+	position: relative;
+	top: 1px;
+	right: 2px;
+}
+
+.Model_Info .settings_button {
+	transform: translateY(7%);
+	margin: -5px;
+}
+
+#import_story_button {
+	transform: translateY(22%);
 }
 
 .settings_button[story_gamesaved="true"] {
@@ -793,6 +819,10 @@ input[type="range"]::-ms-fill-upper {
 	display: inline-block;
 	transition: left 0.5s;
 	cursor: pointer;
+	filter: brightness(85%);
+}
+.pinned .story_menu_pin {
+	filter: brightness(200%);
 }
 }
 

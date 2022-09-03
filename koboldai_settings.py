@@ -109,7 +109,7 @@ class koboldai_vars(object):
 
         # TODO: We may want to replace the "text" variable with a list-type
         # class of context blocks, the class having a __str__ function.
-        if self.sp:
+        if self.sp_length > 0:
             context.append({"type": "soft_prompt", "text": f"<{self.sp_length} tokens of Soft Prompt.>"})
         # Header is never used?
         # if koboldai_vars.model not in ("Colab", "API", "OAI") and self.tokenizer._koboldai_header:
@@ -330,8 +330,11 @@ class settings(object):
             json_data = json.loads(data)
         else:
             json_data = data
-        for key, value in data.items():
+        for key, value in json_data.items():
             if key in self.__dict__:
+                if key == 'sampler_order':
+                    if(len(value) < 7):
+                        value = [6] + value
                 if isinstance(value, str):
                     if value[:7] == 'base64:':
                         value = pickle.loads(base64.b64decode(value[7:]))
@@ -658,6 +661,7 @@ class user_settings(settings):
         self.debug       = False    # If set to true, will send debug information to the client for display
         self.output_streaming = True
         self.show_probs = False # Whether or not to show token probabilities
+        self.beep_on_complete = False
         
         
     def __setattr__(self, name, value):
@@ -730,6 +734,7 @@ class system_settings(settings):
         self.seed        = None   # The current RNG seed (as an int), or None if unknown
         self.alt_gen = False # Use the calc_ai_text method for generating text to go to the AI
         self.theme_list = [".".join(f.split(".")[:-1]) for f in os.listdir("./themes") if os.path.isfile(os.path.join("./themes", f))]
+        self.cloudflare_link = ""
         
         
     def __setattr__(self, name, value):
@@ -763,7 +768,7 @@ class KoboldStoryRegister(object):
             self.append(item)
     
     def reset(self, sequence=[]):
-        self.__init__(self.socketio, self.story_settings, sequence=sequence, tokenizer=self.tokenizer)
+        self.__init__(self.socketio, self.story_settings, self.koboldai_vars, sequence=sequence, tokenizer=self.tokenizer)
         
     def __str__(self):
         return "".join([x['Selected Text'] for ignore, x in sorted(self.actions.items())])
@@ -783,7 +788,11 @@ class KoboldStoryRegister(object):
             raise StopIteration
         
     def __getitem__(self, i):
-        return self.actions[i]["Selected Text"]
+        if isinstance(i, slice):
+            temp = [self.actions[x]["Selected Text"] for x in list(self.actions)[i]]
+            return temp
+        else:
+            return self.actions[i]["Selected Text"]
         
     def __setitem__(self, i, text):
         if i in self.actions:
@@ -1069,23 +1078,36 @@ class KoboldStoryRegister(object):
                 self.actions[self.action_count+1] = {"Selected Text": "", "Selected Text Length": 0, "Options": []}
                 for i in range(len(text_list)):
                     self.actions[self.action_count+1]['Options'].append({"text": text_list[i], "Pinned": False, "Previous Selection": False, "Edited": False, "Probabilities": [], "stream_id": i})
-            
-            process_variable_changes(self.socketio, "actions", "Options", {"id": self.action_count+1, "options": self.actions[self.action_count+1]["Options"]}, {"id": self.action_count+1, "options": None})
-            process_variable_changes(self.socketio, "story", 'actions', {"id": self.action_count+1, 'action':  self.actions[self.action_count+1]}, None)
+        
+            #We need to see if this is the last token being streamed. If so due to the rely it will come in AFTER the actual trimmed final text overwriting it in the UI
+            if self.tokenizer is not None:
+                if len(self.tokenizer.encode(self.actions[self.action_count+1]["Options"][0]['text'])) != self.koboldai_vars.genamt:
+                    #process_variable_changes(self.socketio, "actions", "Options", {"id": self.action_count+1, "options": self.actions[self.action_count+1]["Options"]}, {"id": self.action_count+1, "options": None})
+                    process_variable_changes(self.socketio, "story", 'actions', {"id": self.action_count+1, 'action':  self.actions[self.action_count+1]}, None)
         else:
             #We're streaming single options so our output is our selected
-            if self.tokenizer is not None:
-                selected_text_length = len(self.tokenizer.encode(text_list[0]))
-            else:
-                selected_text_length = 0
-            if self.action_count+1 in self.actions:
-                self.actions[self.action_count+1]['Selected Text'] = "{}{}".format(self.actions[self.action_count+1]['Selected Text'], text_list[0])
-            else:
-                self.actions[self.action_count+1] = {"Selected Text": text_list[0], "Selected Text Length": selected_text_length, "Options": []}
-            
-            process_variable_changes(self.socketio, "actions", "Selected Text", {"id": self.action_count+1, "text": self.actions[self.action_count+1]['Selected Text']}, None)
-            process_variable_changes(self.socketio, "actions", 'Selected Text Length', {"id": self.action_count+1, 'length': self.actions[self.action_count+1]['Selected Text Length']}, {"id": self.action_count, 'length': 0})
-            process_variable_changes(self.socketio, "story", 'actions', {"id": self.action_count+1, 'action':  self.actions[self.action_count+1]}, None)
+            #First we need to see if this is actually the prompt. If so we'll just not do streaming:
+            if self.story_settings.prompt != "":
+                if self.action_count+1 in self.actions:
+                    if self.tokenizer is not None:
+                        selected_text_length = len(self.tokenizer.encode(self.actions[self.action_count+1]['Selected Text']))
+                    else:
+                        selected_text_length = 0
+                    self.actions[self.action_count+1]['Selected Text'] = "{}{}".format(self.actions[self.action_count+1]['Selected Text'], text_list[0])
+                    self.actions[self.action_count+1]['Selected Text Length'] = selected_text_length
+                else:
+                    if self.tokenizer is not None:
+                        selected_text_length = len(self.tokenizer.encode(text_list[0]))
+                    else:
+                        selected_text_length = 0
+                    self.actions[self.action_count+1] = {"Selected Text": text_list[0], "Selected Text Length": selected_text_length, "Options": []}
+                
+                
+                
+                if self.tokenizer is not None:
+                    if len(self.tokenizer.encode(self.actions[self.action_count+1]['Selected Text'])) != self.koboldai_vars.genamt:
+                        #process_variable_changes(self.socketio, "actions", "Options", {"id": self.action_count+1, "options": self.actions[self.action_count+1]["Options"]}, {"id": self.action_count+1, "options": None})
+                        process_variable_changes(self.socketio, "story", 'actions', {"id": self.action_count+1, 'action':  self.actions[self.action_count+1]}, None)
     
     def set_probabilites(self, probabilities, action_id=None):
         if action_id is None:
@@ -1374,8 +1396,8 @@ class KoboldWorldInfo(object):
             #Make sure we have all the appropriate variables:
             for item in self.world_info:
                 for column in ["uid","title","key","keysecondary","folder","constant","content","comment","token_length","selective","used_in_game"]:
-                    if column not in item:
-                        item[column] = None
+                    if column not in self.world_info[item]:
+                        self.world_info[item][column] = None
             try:
                 self.sync_world_info_to_old_format()
             except:
