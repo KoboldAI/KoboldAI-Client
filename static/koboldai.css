@@ -697,6 +697,7 @@ input[type="range"]::-ms-fill-upper {
 
 #palette_area .material-icons-outlined {
 	position: absolute;
+	margin-left: 2px;
 }
 
 #Palette {
