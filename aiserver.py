@@ -1431,6 +1431,7 @@ def get_model_info(model, directory=""):
     key_value = ""
     break_values = []
     url = False
+    default_url = None
     models_on_url = False
     multi_online_models = False
     gpu_count = torch.cuda.device_count()
@@ -1443,6 +1444,7 @@ def get_model_info(model, directory=""):
         models_on_url = True
         url = True
         key = True
+        default_url = 'https://koboldai.net'
         multi_online_models = True
         if path.exists("settings/{}.settings".format(model)):
             with open("settings/{}.settings".format(model), "r") as file:
@@ -1498,7 +1500,7 @@ def get_model_info(model, directory=""):
                          'gpu':gpu, 'layer_count':layer_count, 'breakmodel':breakmodel, 
                          'disk_break_value': disk_blocks, 'accelerate': utils.HAS_ACCELERATE,
                          'break_values': break_values, 'gpu_count': gpu_count, 'multi_online_models': multi_online_models,
-                         'url': url, 'gpu_names': gpu_names, 'models_on_url': models_on_url}, broadcast=True)
+                         'url': url, 'default_url': default_url, 'gpu_names': gpu_names, 'models_on_url': models_on_url}, broadcast=True)
     if key_value != "":
         get_oai_models(key_value)
     
@@ -2105,7 +2107,7 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
             vars.oaiengines = "https://api.goose.ai/v1/engines"
             vars.model = "OAI"
             args.configname = "GooseAI" + "/" + online_model
-        else:
+        elif vars.model != "CLUSTER":
             args.configname = vars.model + "/" + online_model
         vars.oaiurl = vars.oaiengines + "/{0}/completions".format(online_model)
     
