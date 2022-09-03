@@ -21,11 +21,6 @@
 	--tertiary_container_palette: #2f4f00;
 	--on_tertiary_container_palette: #c3f18c; 
 
-	--error_palette: #ffb4ab;
-	--on_error_palette: #690005;
-	--error_container_palette: #93000a;
-	--on_error_container_palette: #ffdad6;
-
 	--background_palette: #1b1b1f;
 	--on_background_palette:#e3e2e6;
 	--layer1_palette: #212126;
@@ -58,12 +53,23 @@
 	--scrollbar-color: #9b9b9b80;
 
 	/*Buttons*/
+		/*General*/
 	--enabled_button_text: var(--on_primary_palette);
     --enabled_button_background_color: var(--primary_palette);
     --enabled_button_border_color: var(--on_primary_palette);
+
 	--disabled_button_text: #303030;
     --disabled_button_background_color: #495762;
     --disabled_button_border_color: #686c68;
+
+		/*Home Tab*/
+	--button_text: var(--on_primary_palette);
+	--button_background: var(--primary_palette);
+		
+		/*Alternate Button*/
+	--alternate_button_text: var(--on_primary_container_palette);
+	--alternate_button_background: var(--primary_container_palette);
+
 
 	/*Sequence, AKA Gens Per Action*/
 	--sequence_area_background: var(--layer1_palette);
@@ -81,9 +87,6 @@
 	--setting_background: var(--surface_palette);
     --setting_text: var(--on_surface_palette);
 	
-	--button_text: var(--setting_text);
-	--button_background: var(--setting_background);
-
 	--sample_order_select_color: var(--primary_palette);
 	--sample_order_select_color_text: var(--on_primary_palette);
 
@@ -95,13 +98,18 @@
 	--rangeslider_circle_color: var(--on_primary_palette);
 
 	--help_icon: var(--secondary_palette);
-    --tooltip_text: var(--on_secondary_palette);
-    --tooltip_background: var(--secondary_palette);
+    /*--tooltip_text: var(--on_secondary_palette);
+    --tooltip_background: var(--secondary_palette);*/
 	--setting_category_help_text_color: #E0E0E0;
 	
 	--setting_footer_border_color: grey;
 	--setting_footer_text_color: var(--on_surface_palette);
 	--setting_footer_background_color: var(--layer1_palette);
+
+	/*Palette Card*/
+	--palette_card_background: var(--primary_palette);
+	--palette_card_text: var(--on_primary_palette);
+	--palette_table_border: var(--on_primary_palette);
 
 	/*World Info*/
 	--wi_card_border_color: var(--on_primary_palette);
@@ -134,6 +142,11 @@
 	--popup_cancel_button_color: var(--primary_palette);
 	--popup_cancel_button_color_text: var(--on_primary_palette);
 	
+	--error: #ffb4ab;
+	--error_text: #690005;
+	--error_title: #93000a;
+	--error_title_text: #ffdad6;
+	
 	/*Context Bar Colors*/
 	--context_colors_memory: #3572A5;
 	--context_colors_authors_notes: #f1e05a;
@@ -147,6 +160,8 @@
     /*Parameters*/
 	--scrollbar-size: 6px;
 	--light_shadow_value: 0 0px 8px 0 rgba(0, 0, 0, 0.2), 0px 0px 20px 0 rgba(0, 0, 0, 0.19);
+	--palette_card_shadow: 0 0px 8px 0 rgb(0 0 0 / 20%), 0px 11px 20px 8px rgb(0 0 0 / 19%);
+	--wi_card_shadow: 0 0px 8px 0 rgb(0 0 0 / 20%), 0px 11px 20px 8px rgb(0 0 0 / 19%);
 	--left_menu_light_shadow: 0 0px 8px 0 rgba(0, 0, 0, 0.2), 0px 0px 20px 0 rgba(0, 0, 0, 0.19);
 	--left_menu_strong_shadow: 0 0px 8px 0 rgba(0, 0, 0, 0.2), 25px 0px 20px 0 rgba(0, 0, 0, 0.19);
 	--right_menu_light_shadow: 0 0px 8px 0 rgba(0, 0, 0, 0.2), 0px 0px 20px 0 rgba(0, 0, 0, 0.19);
@@ -156,9 +171,11 @@
 	--radius_unpinned_menu: 20px;
 	--radius_sequence: 10px;
 	--radius_settings_background: 5px;
-	--radius_buttons: 5px;
+	--radius_button: 5px;
+	--radius_alternate_button: 5px;
 	--radius_item_popup: 2px;
 	--radius_wi_card: 5px;
+	--radius_palette_card: 5px;
 	--radius_settings_button: 5px;
 
 
