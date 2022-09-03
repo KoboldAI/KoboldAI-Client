@@ -12,6 +12,8 @@ def clean_var_for_emit(value):
         return value.to_json()
     elif isinstance(value, set):
         return list(value)
+    elif isinstance(value, datetime.datetime):
+        return str(value)
     else:
         return value
 
@@ -58,12 +60,21 @@ class koboldai_vars(object):
     def load_story(self, story_name, json_data):
         #Story name here is intended for multiple users on multiple stories. Now always uses default
         #If we can figure out a way to get flask sessions into/through the lua bridge we could re-enable
+        original_story_name = story_name
         story_name = 'default'
         if story_name in self._story_settings:
             self._story_settings[story_name].socketio.emit("reset_story", {}, broadcast=True, room="UI_2")
+            self._story_settings[story_name].no_save = True
             self._story_settings[story_name].from_json(json_data)
+            self._story_settings[story_name].no_save = False
         else:
+            self._story_settings[story_name].no_save = True
             self.create_story(story_name, json_data=json_data)
+            self._story_settings[story_name].no_save = False
+        self._system_settings.story_loads[original_story_name] = datetime.datetime.now().strftime("%m/%d/%Y, %H:%M:%S")
+        with open("settings/system_settings.v2_settings", "w") as settings_file:
+            settings_file.write(self._system_settings.to_json())
+        
             
     def save_story(self):
         self._story_settings['default'].save_story()
@@ -319,6 +330,8 @@ class settings(object):
                 return data.to_json()
             elif isinstance(data, KoboldWorldInfo):
                 return data.to_json()
+            elif isinstance(data, datetime.datetime):
+                return str(data)
             output = BytesIO()
             pickle.dump(data, output)
             output.seek(0)
@@ -330,11 +343,16 @@ class settings(object):
             json_data = json.loads(data)
         else:
             json_data = data
+        #since loading will trigger the autosave, we need to disable it
+        if 'no_save' in self.__dict__:
+            setattr(self, 'no_save', True)
         for key, value in json_data.items():
             if key in self.__dict__:
                 if key == 'sampler_order':
                     if(len(value) < 7):
                         value = [6] + value
+                if key == 'autosave':
+                    autosave = value
                 if isinstance(value, str):
                     if value[:7] == 'base64:':
                         value = pickle.loads(base64.b64decode(value[7:]))
@@ -353,6 +371,9 @@ class settings(object):
                     getattr(self, key).load_json(value)
                 else:
                     setattr(self, key, value)
+        
+        if 'no_save' in self.__dict__:
+            setattr(self, 'no_save', False)
         
     def send_to_ui(self):
         for (name, value) in vars(self).items():
@@ -480,8 +501,8 @@ class model_settings(settings):
             process_variable_changes(self.socketio, self.__class__.__name__.replace("_settings", ""), name, value, old_value)
             
 class story_settings(settings):
-    local_only_variables = ['socketio', 'tokenizer', 'koboldai_vars']
-    no_save_variables = ['socketio', 'tokenizer', 'koboldai_vars', 'context']
+    local_only_variables = ['socketio', 'tokenizer', 'koboldai_vars', 'no_save']
+    no_save_variables = ['socketio', 'tokenizer', 'koboldai_vars', 'context', 'no_save']
     settings_name = "story"
     def __init__(self, socketio, koboldai_vars, tokenizer=None):
         self.socketio = socketio
@@ -494,6 +515,7 @@ class story_settings(settings):
         self.gamestarted = False  # Whether the game has started (disables UI elements)
         self.gamesaved   = True   # Whether or not current game is saved
         self.autosave    = False             # Whether or not to automatically save after each action
+        self.no_save = False  #Temporary disable save (doesn't save with the file)
         self.prompt      = ""     # Prompt
         self.memory      = ""     # Text submitted to memory field
         self.authornote  = ""     # Text submitted to Author's Note field
@@ -541,27 +563,30 @@ class story_settings(settings):
         self.max_authornote_length = 512
         self.prompt_in_ai = False
         self.context = []
+        self.last_story_load = None
         
     def save_story(self):
-        print("Saving")
-        save_name = self.story_name if self.story_name != "" else "untitled"
-        adder = ""
-        while True:
-            if os.path.exists("stories/{}{}_v2.json".format(save_name, adder)):
-                with open("stories/{}{}_v2.json".format(save_name, adder), "r") as f:
-                    temp = json.load(f)
-                if 'story_id' in temp:
-                    if self.story_id != temp['story_id']:
-                        adder = 0 if adder == "" else adder+1
+        if not self.no_save:
+            if self.prompt != "" or self.memory != "" or self.authornote != "" or len(self.actions) > 0 or len(self.worldinfo_v2) > 0:
+                print("Saving")
+                save_name = self.story_name if self.story_name != "" else "untitled"
+                adder = ""
+                while True:
+                    if os.path.exists("stories/{}{}_v2.json".format(save_name, adder)):
+                        with open("stories/{}{}_v2.json".format(save_name, adder), "r") as f:
+                            temp = json.load(f)
+                        if 'story_id' in temp:
+                            if self.story_id != temp['story_id']:
+                                adder = 0 if adder == "" else adder+1
+                            else:
+                                break
+                        else:
+                            adder = 0 if adder == "" else adder+1
                     else:
                         break
-                else:
-                    adder = 0 if adder == "" else adder+1
-            else:
-                break
-        with open("stories/{}{}_v2.json".format(save_name, adder), "w") as settings_file:
-            settings_file.write(self.to_json())
-        self.gamesaved = True
+                with open("stories/{}{}_v2.json".format(save_name, adder), "w") as settings_file:
+                    settings_file.write(self.to_json())
+                self.gamesaved = True
     
     def reset(self):
         self.socketio.emit("reset_story", {}, broadcast=True, room="UI_2")
@@ -735,6 +760,7 @@ class system_settings(settings):
         self.alt_gen = False # Use the calc_ai_text method for generating text to go to the AI
         self.theme_list = [".".join(f.split(".")[:-1]) for f in os.listdir("./themes") if os.path.isfile(os.path.join("./themes", f))]
         self.cloudflare_link = ""
+        self.story_loads = {} #dict of when each story was last loaded
         
         
     def __setattr__(self, name, value):
@@ -855,6 +881,8 @@ class KoboldStoryRegister(object):
         self.actions = temp
         self.set_game_saved()
         self.recalc_token_length()
+        self.story_settings.save_story()
+        
             
     def append(self, text):
         self.clear_unused_options()
@@ -1169,6 +1197,9 @@ class KoboldWorldInfo(object):
         
     def __getitem__(self, i):
         return self.self.world_info[i].copy()
+    
+    def __len__(self):
+        return len(self.world_info)
     
     def recalc_token_length(self):
         if self.tokenizer is not None:

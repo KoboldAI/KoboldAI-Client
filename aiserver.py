@@ -6698,8 +6698,7 @@ def file_popup(popup_title, starting_folder, return_event, upload=True, jailed=T
                                                            editable=False, show_breadcrumbs=True, item_check=None, show_hidden=False,
                                                            valid_only=False, hide_extention=False, extra_parameter_function=None,
                                                            column_names=['File Name'], show_filename=True, show_folders=True,
-                                                           column_widths=["100%"],
-                                                           sort="Modified", desc=False):
+                                                           column_widths=["100%"], sort="Modified", advanced_sort=None, desc=False):
     #starting_folder = The folder we're going to get folders and/or items from
     #return_event = the socketio event that will be emitted when the load button is clicked
     #jailed = if set to true will look for the session variable jailed_folder and prevent navigation outside of that folder
@@ -6732,6 +6731,7 @@ def file_popup(popup_title, starting_folder, return_event, upload=True, jailed=T
     session['sort'] = sort
     session['desc'] = desc
     session['show_folders'] = show_folders
+    session['advanced_sort'] = advanced_sort
     
     socketio.emit("load_popup", {"popup_title": popup_title, "call_back": return_event, "renameable": renameable, "deleteable": deleteable, "editable": editable, 'upload': upload}, broadcast=False, room="UI_2")
     socketio.emit("load_popup", {"popup_title": popup_title, "call_back": return_event, "renameable": renameable, "deleteable": deleteable, "editable": editable, 'upload': upload}, broadcast=True, room="UI_1")
@@ -6754,6 +6754,7 @@ def get_files_folders(starting_folder):
     sort = session['sort']
     desc = session['desc']
     show_folders = session['show_folders']
+    advanced_sort = session['advanced_sort']
     
     if starting_folder == 'This PC':
         breadcrumbs = [['This PC', 'This PC']]
@@ -6780,7 +6781,11 @@ def get_files_folders(starting_folder):
         folders = []
         files = []
         base_path = os.path.abspath(starting_folder).replace("\\", "/")
-        for item in get_files_sorted(base_path, sort, desc=desc):
+        if advanced_sort is not None:
+            files_to_check = advanced_sort(base_path, desc=desc)
+        else:
+            files_to_check = get_files_sorted(base_path, sort, desc=desc)
+        for item in files_to_check:
             item_full_path = os.path.join(base_path, item).replace("\\", "/")
             if hasattr(os.stat(item_full_path), "st_file_attributes"):
                 hidden = bool(os.stat(item_full_path).st_file_attributes & stat.FILE_ATTRIBUTE_HIDDEN)
@@ -7075,7 +7080,7 @@ def UI_2_load_story_list(data):
                                                                   deleteable=True, show_breadcrumbs=True, item_check=valid_story,
                                                                   valid_only=True, hide_extention=True, extra_parameter_function=get_story_length,
                                                                   column_names=['Story Name', 'Action Count'], show_filename=False,
-                                                                  column_widths=['auto', '100px'],
+                                                                  column_widths=['auto', '100px'], advanced_sort=story_sort,
                                                                   sort="Modified", desc=True)
                                                                   
 def get_story_length(item_full_path, item, valid_selection):
@@ -7101,6 +7106,24 @@ def valid_story(file):
                     return False
                 
                 return 'actions' in js
+
+def story_sort(base_path, desc=False):
+    files = {}
+    for file in os.scandir(path=base_path):
+        if file.name.endswith(".json"):
+            filename = os.path.join(base_path, file.name).replace("\\", "/")
+            with open(filename, "r") as f:
+                try:
+                    js = json.load(f)
+                except:
+                    pass
+                
+                if 'story_name' in js and js['story_name'] in koboldai_vars.story_loads:
+                    files[file.name] = datetime.datetime.strptime(koboldai_vars.story_loads[js['story_name']], "%m/%d/%Y, %H:%M:%S")
+                else:
+                    files[file.name] = datetime.datetime.fromtimestamp(file.stat().st_mtime)
+    return [key[0] for key in sorted(files.items(), key=lambda kv: (kv[1], kv[0]), reverse=desc)]
+
 
 #==================================================================#
 # Event triggered on load story
