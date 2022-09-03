@@ -37,6 +37,27 @@ var shift_down = false;
 var world_info_data = {};
 var world_info_folder_data = {};
 var saved_settings = {};
+var finder_selection_index = -1;
+
+// name, desc, icon, func
+const finder_actions = [
+	{name: "Load Model", icon: "folder_open", func: function() { socket.emit('load_model_button', {}); }},
+	{name: "New Story", icon: "description", func: function() { socket.emit('new_story', ''); }},
+	{name: "Load Story", icon: "folder_open", func: function() { socket.emit('load_story_list', ''); }},
+	{name: "Save Story", icon: "save", func: function() { socket.emit("save_story", null, (response) => {save_as_story(response);}); }},
+	{name: "Download Story", icon: "file_download", func: function() { document.getElementById('download_iframe').src = 'json'; }},
+
+	// Locations
+	{name: "Setting Presets", icon: "open_in_new", func: function() { highlightEl(".var_sync_model_selected_preset") }},
+	{name: "Memory", icon: "open_in_new", func: function() { highlightEl("#memory") }},
+	{name: "Author's Note", icon: "open_in_new", func: function() { highlightEl("#authors_notes") }},
+	{name: "Notes", icon: "open_in_new", func: function() { highlightEl(".var_sync_story_notes") }},
+	{name: "World Info", icon: "open_in_new", func: function() { highlightEl("#WI_Area") }},
+	
+	// TODO: Direct theme selection
+	// {name: "", icon: "palette", func: function() { highlightEl("#biasing") }},
+];
+
 const map1 = new Map()
 map1.set('Top K Sampling', 0)
 map1.set('Top A Sampling', 1)
@@ -56,6 +77,7 @@ map2.set(6, 'Repetition Penalty')
 var calc_token_usage_timeout;
 var game_text_scroll_timeout;
 var var_processing_time = 0;
+var finder_last_input;
 //-----------------------------------Server to UI  Functions-----------------------------------------------
 function connect() {
 	console.log("connected");
@@ -2956,6 +2978,18 @@ function detect_key_up(e) {
 	}
 }
 
+function selectTab(tab) {
+	let tabTarget = document.getElementById(tab.getAttribute("tab-target"));
+	let tabClass = Array.from(tab.classList).filter((c) => c.startsWith("tab-"))[0];
+	let targetClass = Array.from(tabTarget.classList).filter((c) => c.startsWith("tab-target-"))[0];
+	
+	$(`.${tabClass}`).removeClass("selected");
+	tab.classList.add("selected");
+	
+	$(`.${targetClass}`).addClass("hidden");
+	tabTarget.classList.remove("hidden");
+}
+
 function beep() {
     var snd = new Audio("data:audio/wav;base64,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qJrx4KOQjahZxWbcZgztj2c49nKmkId44S71j0c8eV9yDK6uPRzx5X18eDvjvQ6yKo9ZSS6l//8elePK/Lf//IInrOF/FvDoADYAGBMGb7FtErm5MXMlmPAJQVgWta7Zx2go+8xJ0UiCb8LHHdftWyLJE0QIAIsI+UbXu67dZMjmgDGCGl1H+vpF4NSDckSIkk7Vd+sxEhBQMRU8j/12UIRhzSaUdQ+rQU5kGeFxm+hb1oh6pWWmv3uvmReDl0UnvtapVaIzo1jZbf/pD6ElLqSX+rUmOQNpJFa/r+sa4e/pBlAABoAAAAA3CUgShLdGIxsY7AUABPRrgCABdDuQ5GC7DqPQCgbbJUAoRSUj+NIEig0YfyWUho1VBBBA//uQZB4ABZx5zfMakeAAAAmwAAAAF5F3P0w9GtAAACfAAAAAwLhMDmAYWMgVEG1U0FIGCBgXBXAtfMH10000EEEEEECUBYln03TTTdNBDZopopYvrTTdNa325mImNg3TTPV9q3pmY0xoO6bv3r00y+IDGid/9aaaZTGMuj9mpu9Mpio1dXrr5HERTZSmqU36A3CumzN/9Robv/Xx4v9ijkSRSNLQhAWumap82WRSBUqXStV/YcS+XVLnSS+WLDroqArFkMEsAS+eWmrUzrO0oEmE40RlMZ5+ODIkAyKAGUwZ3mVKmcamcJnMW26MRPgUw6j+LkhyHGVGYjSUUKNpuJUQoOIAyDvEyG8S5yfK6dhZc0Tx1KI/gviKL6qvvFs1+bWtaz58uUNnryq6kt5RzOCkPWlVqVX2a/EEBUdU1KrXLf40GoiiFXK///qpoiDXrOgqDR38JB0bw7SoL+ZB9o1RCkQjQ2CBYZKd/+VJxZRRZlqSkKiws0WFxUyCwsKiMy7hUVFhIaCrNQsKkTIsLivwKKigsj8XYlwt/WKi2N4d//uQRCSAAjURNIHpMZBGYiaQPSYyAAABLAAAAAAAACWAAAAApUF/Mg+0aohSIRobBAsMlO//Kk4soosy1JSFRYWaLC4qZBYWFRGZdwqKiwkNBVmoWFSJkWFxX4FFRQWR+LsS4W/rFRb/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////VEFHAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAU291bmRib3kuZGUAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMjAwNGh0dHA6Ly93d3cuc291bmRib3kuZGUAAAAAAAAAACU=");  
     snd.play();
@@ -3042,6 +3076,120 @@ async function processDroppedFile(file) {
 			console.warn("TODO: USERSCRIPT");
 			break
 	}
+}
+
+function highlightEl(element) {
+	if (typeof element === "string") element = document.querySelector(element);
+	if (!element) {
+		console.error("Bad jump!")
+		return;
+	}
+	
+	let area = $(element).closest(".tab-target")[0];
+	
+	if (!area) {
+		console.error("No error? :^(");
+		return;
+	}
+	
+	let tab = Array.from($(".tab")).filter((c) => c.getAttribute("tab-target") === area.id)[0];
+	tab.click();
+	element.scrollIntoView();
+}
+
+function addSearchListing(action, highlight) {
+	const finderContainer = document.getElementById("finder-container");
+	const finder = document.getElementById("finder");
+
+	let result = document.createElement("div");
+	result.classList.add("finder-result");
+	result.addEventListener("click", function(event) {
+		finderContainer.classList.add("hidden");
+		action.func();
+	});
+
+	let textblock = document.createElement("div");
+	textblock.classList.add("result-textbox");
+	result.appendChild(textblock);
+
+	let titleEl = document.createElement("span");
+	titleEl.classList.add("result-title");
+	titleEl.innerText = action.name;
+
+	// TODO: Sanitation
+	titleEl.innerHTML = titleEl.innerHTML.replace(
+		new RegExp(`(${highlight})`, "i"),
+		'<span class="result-highlight">$1</span>'
+	);
+	textblock.appendChild(titleEl);
+
+	if (action.desc) {
+		let descriptionEl = document.createElement("span");
+		descriptionEl.classList.add("result-details");
+		descriptionEl.innerText = action.desc;
+		descriptionEl.innerHTML = descriptionEl.innerHTML.replace(
+			new RegExp(`(${highlight})`, "i"),
+			'<span class="result-highlight">$1</span>'
+		);
+
+		// It can get cut off by CSS, so let's add a tooltip.
+		descriptionEl.setAttribute("title", action.desc);
+		textblock.appendChild(descriptionEl);
+	}
+
+	let icon = document.createElement("span");
+	icon.classList.add("result-icon");
+	icon.classList.add("material-icons-outlined");
+
+	// TODO: Change depending on what pressing enter does
+	icon.innerText = action.icon;
+	result.appendChild(icon)
+
+	finder.appendChild(result);
+
+	return result;
+}
+
+function updateSearchListings() {
+	const maxResultCount = 5;
+
+	if (this.value === finder_last_input) return;
+	finder_last_input = this.value;
+	finder_selection_index = -1;
+
+	let query = this.value.toLowerCase();
+
+	// TODO: Maybe reuse the element? Would it give better performance?
+	$(".finder-result").remove();
+
+	if (!query) return;
+
+	const actionMatches = {name: [], desc: []};
+
+	for (const action of finder_actions) {
+		if (action.name.toLowerCase().includes(query)) {
+			actionMatches.name.push(action);
+		} else if (action.desc && action.desc.toLowerCase().includes(query)) {
+			actionMatches.desc.push(action);
+		}
+	}
+
+	// Title matches over desc matches
+	const matchingActions = actionMatches.name.concat(actionMatches.desc);
+
+
+	for (let i=0;i<maxResultCount && i<matchingActions.length;i++) {
+		let action = matchingActions[i];
+		addSearchListing(action, query);
+	}
+}
+
+function updateFinderSelection() {
+	let former = document.getElementsByClassName("result-selected")[0];
+	if (former) former.classList.remove("result-selected");
+
+	let newSelection = document.getElementsByClassName("finder-result")[finder_selection_index];
+	newSelection.classList.add("result-selected");
 }
 
 $(document).ready(function(){
@@ -3139,14 +3287,108 @@ $(document).ready(function(){
 
 	document.body.addEventListener("dragenter", function(e) {
 		lastTarget = e.target;
-		console.log("start");
 		$("#file-upload-notice")[0].classList.remove("hidden");
 	});
 
 	document.body.addEventListener("dragleave", function(e) {
 		if (!(e.target === document || e.target === lastTarget)) return;
 
-		console.log("end")
 		$("#file-upload-notice")[0].classList.add("hidden");
 	});
+
+	// Parse settings for search thingey
+	for (const el of $(".setting_label")) {
+		let name = el.children[0].innerText;
+
+		let tooltipEl = el.getElementsByClassName("helpicon")[0];
+		let tooltip = tooltipEl ? tooltipEl.getAttribute("title") : null;
+
+		finder_actions.push({
+			name: name,
+			desc: tooltip,
+			icon: "open_in_new",
+			func: function () { highlightEl(el.parentElement) },
+		});
+	}
+	
+	for (const el of $(".collapsable_header")) {
+		// https://stackoverflow.com/a/11347962
+		let headerText = $(el.children[0]).contents().filter(function() {
+			return this.nodeType == 3;
+		}).text().trim();
+		
+		finder_actions.push({
+			name: headerText,
+			icon: "open_in_new",
+			func: function () { highlightEl(el) },
+		});
+	}
+
+	const finderContainer = document.getElementById("finder-container");
+	const finderInput = document.getElementById("finder-input");
+	const finder = document.getElementById("finder");
+	let lastInput;
+
+	finderInput.addEventListener("keyup", updateSearchListings);
+	finderInput.addEventListener("keydown", function(event) {
+		let delta = 0;
+		const actions = document.getElementsByClassName("finder-result");
+		
+		if (event.key === "Enter") {
+			let index = finder_selection_index >= 0 ? finder_selection_index : 0;
+			actions[index].click();
+		} else if (event.key === "ArrowUp") {
+			delta = -1;
+		} else if (event.key === "ArrowDown") {
+			delta = 1
+		} else if (event.key === "Tab") {
+			delta = event.shiftKey ? -1 : 1;
+		} else {
+			return;
+		}
+
+		const actionsCount = actions.length;
+		let future = finder_selection_index + delta;
+
+		event.preventDefault();
+
+		if (future >= actionsCount) {
+			future = 0;
+		} else if (future < 0) {
+			future = actionsCount - 1;
+		}
+
+		finder_selection_index = future;
+		updateFinderSelection(delta);
+	});
+	
+	finderContainer.addEventListener("click", function(e) {
+		finderContainer.classList.add("hidden");
+	});
+	
+	finder.addEventListener("click", function(e) {
+		e.stopPropagation();
+	});
+});
+
+document.addEventListener("keydown", function(event) {
+	const finderContainer = document.getElementById("finder-container");
+	if (event.key === "Escape") finderContainer.classList.add("hidden");
+	
+	if (!event.ctrlKey) return;
+
+	switch (event.key) {
+		// TODO: Add other shortcuts
+		case "k":
+			const finderInput = document.getElementById("finder-input");
+			finderInput.value = "";
+			$(".finder-result").remove();
+			finder_selection_index = -1;
+			
+			finderContainer.classList.remove("hidden");
+			finderInput.focus();
+			
+			event.preventDefault();
+			break;
+}
 });

@@ -1,30 +1,11 @@
-<script>
-	function show_story_menu(menu_button, span) {
-		for (item of document.getElementsByClassName("story_menu_button")) {
-			if (item === menu_button) {
-				item.classList.add("selected");
-			} else {
-				item.classList.remove("selected");
-			}
-		}
-		for (item of document.getElementsByClassName("story_category_area")) {
-			if (item.id == span) {
-				item.classList.remove("hidden");
-			} else {
-				item.classList.add("hidden");
-			}
-		}
-	}
-</script>
-
 <div class="tabrow nomenu_icon">
-	<span class="story_menu_button selected" onclick="show_story_menu(this, 'story_menu_memory');">Memory</span>
-	<span class="story_menu_button" onclick="show_story_menu(this, 'story_menu_author');">Author's Note</span>
-	<span class="story_menu_button" onclick="show_story_menu(this, 'story_menu_notes');">Notes</span>
-	<span class="story_menu_button" onclick="show_story_menu(this, 'story_menu_wi');">World Info</span>
+	<span class="story_menu_button tab tab-story selected" tab-target="story_menu_memory" onclick="selectTab(this);">Memory</span>
+	<span class="story_menu_button tab tab-story" tab-target="story_menu_author" onclick="selectTab(this);">Author's Note</span>
+	<span class="story_menu_button tab tab-story" tab-target="story_menu_notes" onclick="selectTab(this);">Notes</span>
+	<span class="story_menu_button tab tab-story" tab-target="story_menu_wi" onclick="selectTab(this);">World Info</span>
 </div>
 <div class="flyout_menu_contents">
-	<div id="story_menu_memory" class="story_category_area">
+	<div id="story_menu_memory" class="story_category_area tab-target tab-target-story">
 		<div id="Memory">
 			<h4 class="section_header">Memory</h4>
 			<span class="help_text">
@@ -33,7 +14,7 @@
 			<textarea rows=20 id="memory" class="var_sync_story_memory var_sync_alt_story_memory_length fullwidth" onchange='sync_to_server(this);' oninput="autoResize(this)" autocomplete="off"></textarea>
 		</div>
 	</div>
-	<div id="story_menu_author" class="story_category_area hidden">
+	<div id="story_menu_author" class="story_category_area tab-target tab-target-story hidden">
 		<div id="author_notes">
 			<h4 class="section_header">Author's Note</h4>
 			<span class="help_text">
@@ -53,7 +34,7 @@
 			</div>
 		</div>
 	</div>
-	<div id="story_menu_notes" class="story_category_area hidden">
+	<div id="story_menu_notes" class="story_category_area tab-target tab-target-story hidden">
 		<div id="Notes">
 			<h4 class="section_header">Notes</h4>
 			<span class="help_text">
@@ -62,7 +43,7 @@
 			<textarea autocomplete="off" rows=20 class="var_sync_story_notes fullwidth" onchange='sync_to_server(this);' oninput="autoResize(this)"></textarea>
 		</div>
 	</div>
-	<div id="story_menu_wi" class="story_category_area hidden">
+	<div id="story_menu_wi" class="story_category_area tab-target tab-target-story hidden">
 		<h4 class="section_header" style="margin-left: 10px;">World Info</h4>
 		<span class="help_text" style="margin-left: 20px;">
 			Lore information, which the AI recalls by certain words.
