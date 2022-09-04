@@ -1,7 +1,7 @@
 /*
 	Name: Monochrome
 	Author: LightSaveUs
-	Version: 0.4.5
+	Version: 0.5
 	Description: A theme inspired by the NovelAI interface.
 */
 
@@ -65,7 +65,7 @@
 		
 		/*Alternate Button*/
 	--alternate_button_text: #e0e0e0;
-	--alternate_button_background: #2b5471;
+	--alternate_button_background: #244c65;
 
 
 	/*Sequence, AKA Gens Per Action*/
@@ -161,15 +161,15 @@
 	--right_menu_light_shadow: 0;
 	--right_menu_strong_shadow: 0;
 	--radius_inputbox: 2px;
-	--radius_unpinned_menu: 0px;
+	--radius_unpinned_menu: 2px;
 	--radius_sequence: 5px;
 	--radius_settings_background: 2px;
-	--radius_button: 5px;
-	--radius_alternate_button: 5px;
+	--radius_button: 2px;
+	--radius_alternate_button: 2px;
 	--radius_item_popup: 2px;
 	--radius_wi_card: 5px;
 	--radius_palette_card: 5px;
-	--radius_settings_button: 5px;
+	--radius_settings_button: 2px;
 
 
 
