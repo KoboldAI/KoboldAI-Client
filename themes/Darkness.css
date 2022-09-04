@@ -1,7 +1,7 @@
 /*
 	Name: Darkness
 	Author: LightSaveUs
-	Version: 0.1.5
+	Version: 0.2
 	Description: A theme inspired by the AI Dungeon interface.
 */
 
@@ -65,7 +65,7 @@
 		
 		/*Alternate Button*/
 	--alternate_button_text: #e0e0e0;
-	--alternate_button_background: #1a625f;
+	--alternate_button_background: #1d434a;
 
 
 	/*Sequence, AKA Gens Per Action*/
@@ -95,20 +95,20 @@
 	--help_icon: #c07ec5;
     /*--tooltip_text: #000000;
     --tooltip_background: #000000;*/
-	--setting_category_help_text_color: #E0E0E0;
+	--setting_category_help_text_color: #e0e0e0;
 	
 	--setting_footer_border_color: grey;
 	--setting_footer_text_color: #e0e0e0;
 	--setting_footer_background_color: #181818;
 
 	/*Palette Card*/
-	--palette_card_background: #1b1b1b;
+	--palette_card_background: #181818;
 	--palette_card_text: #e0e0e0;
 	--palette_table_border: #e0e0e0;
 
 	/*World Info*/
 	--wi_card_border_color: #1a625f;
-    --wi_card_border_color_to_ai: #002d6c00;
+    --wi_card_border_color_to_ai: #1a625f;
 
     --wi_card_bg_color: #1b1b1b;
 	--wi_card_text_color: #e0e0e0;
@@ -154,7 +154,7 @@
 	
 
     /*Parameters*/
-	--scrollbar-size: 7px;
+	--scrollbar-size: 6px;
 	--palette_card_shadow: 0;
 	--wi_card_shadow: 0;
 	--light_shadow_value: 0;
@@ -162,7 +162,7 @@
 	--right_menu_light_shadow: 0;
 	--right_menu_strong_shadow: 0;
 	--radius_inputbox: 10px;
-	--radius_unpinned_menu: 15px;
+	--radius_unpinned_menu: 10px;
 	--radius_sequence: 10px;
 	--radius_settings_background: 10px;
 	--radius_button: 5px;
