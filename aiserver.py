@@ -623,9 +623,9 @@ def get_config_filename(model_name = None):
     if model_name:
         return(f"settings/{model_name.replace('/', '_')}.settings")
     elif args.configname:
-        return(f"settings/{args.configname}.settings")
+        return(f"settings/{args.configname.replace('/', '_')}.settings")
     elif vars.configname != '':
-        return(f"settings/{vars.configname}.settings")
+        return(f"settings/{vars.configname.replace('/', '_')}.settings")
     else:
         print(f"Empty configfile name sent back. Defaulting to ReadOnly")
         return(f"settings/ReadOnly.settings")
