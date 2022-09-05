@@ -4081,9 +4081,9 @@ def check_for_backend_compilation():
             break
     vars.checking = False
 
-def actionsubmit(data, actionmode=0, force_submit=False, force_prompt_gen=False, disable_recentrng=False, no_generate=False):
+def actionsubmit(data, actionmode=0, force_submit=False, force_prompt_gen=False, disable_recentrng=False, no_generate=False, ignore_aibusy=False):
     # Ignore new submissions if the AI is currently busy
-    if(vars.aibusy):
+    if(not ignore_aibusy and vars.aibusy):
         return
     
     while(True):
@@ -7779,7 +7779,7 @@ def post_story_end(body: SubmissionInputSchema):
     numseqs = vars.numseqs
     vars.numseqs = 1
     try:
-        actionsubmit(body.prompt, force_submit=True, no_generate=True)
+        actionsubmit(body.prompt, force_submit=True, no_generate=True, ignore_aibusy=True)
     finally:
         vars.disable_set_aibusy = disable_set_aibusy
         vars.standalone = _standalone
