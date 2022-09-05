@@ -2131,7 +2131,7 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
             if changed:
                 with open(get_config_filename(), "w") as file:
                     file.write(json.dumps(js, indent=3))
-<<<<<<< HEAD
+
         # Swap OAI Server if GooseAI was selected
         if(vars.model == "GooseAI"):
             vars.oaiengines = "https://api.goose.ai/v1/engines"
@@ -2139,8 +2139,6 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
             args.configname = "GooseAI" + "/" + online_model
         elif vars.model != "CLUSTER":
             args.configname = vars.model + "/" + online_model
-=======
->>>>>>> 296481f4aae46ce3d665537744460f1d3c0947a2
         vars.oaiurl = vars.oaiengines + "/{0}/completions".format(online_model)
     
     
