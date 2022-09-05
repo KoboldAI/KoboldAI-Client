@@ -621,7 +621,7 @@ api_v1 = KoboldAPISpec(
 # If the model_name is specified, it returns what the settings file would be for that model
 def get_config_filename(model_name = None):
     if model_name:
-         return(f"settings/{model_name.replace('/', '_')}.settings")
+        return(f"settings/{model_name.replace('/', '_')}.settings")
     elif args.configname:
         return(f"settings/{args.configname}.settings")
     elif vars.configname != '':
@@ -2098,7 +2098,7 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
     vars.badwordsids = vars.badwordsids_default
     
     if online_model == "":
-        vars.configname = vars.model
+        vars.configname = vars.model.replace('/', '_')
     #Let's set the GooseAI or OpenAI server URLs if that's applicable
     else:
         vars.online_model = online_model
