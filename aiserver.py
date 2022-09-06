@@ -1866,6 +1866,7 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
     global GPT2TokenizerFast
     global tokenizer
     koboldai_vars.aibusy = True
+    koboldai_vars.horde_share = False
     if(initial_load):
         use_breakmodel_args = True
     reset_model_settings()

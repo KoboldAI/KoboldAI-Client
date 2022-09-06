@@ -799,17 +799,18 @@ class system_settings(settings):
                 if self.on_colab == False:
                     if os.path.exists("./KoboldAI-Horde"):
                         if value == True:
-                            import subprocess
-                            import random
-                            random.seed()
-                            if os.path.exists('./KoboldAI-Horde/venv/scripts/python.exe'):
-                                self._horde_pid = subprocess.Popen(['./KoboldAI-Horde/venv/scripts/python.exe', './KoboldAI-Horde/bridge.py', 
-                                                                        '--username', '{}'.format(random.randint(-1000000000000, 1000000000000)), '--password', '{}'.format(random.randint(-1000000000000, 1000000000000)), 
-                                                                        '--kai_name', '{}'.format(random.randint(-1000000000000, 1000000000000)), '--kai_url', 'http://127.0.0.1:{}'.format(self.port), '--cluster_url', "http://koboldai.net"])
-                            else:
-                                self._horde_pid = subprocess.Popen(['./KoboldAI-Horde/venv/bin/python', './KoboldAI-Horde/bridge.py', 
-                                                                        '--username', '{}'.format(random.randint(-1000000000000, 1000000000000)), '--password', '{}'.format(random.randint(-1000000000000, 1000000000000)), 
-                                                                        '--kai_name', '{}'.format(random.randint(-1000000000000, 1000000000000)), '--kai_url', 'http://127.0.0.1:{}'.format(self.port), '--cluster_url', "http://koboldai.net"])
+                            if self._horde_pid is None:
+                                import subprocess
+                                import random
+                                random.seed()
+                                if os.path.exists('./KoboldAI-Horde/venv/scripts/python.exe'):
+                                    self._horde_pid = subprocess.Popen(['./KoboldAI-Horde/venv/scripts/python.exe', './KoboldAI-Horde/bridge.py', 
+                                                                            '--username', '{}'.format(random.randint(-1000000000000, 1000000000000)), '--password', '{}'.format(random.randint(-1000000000000, 1000000000000)), 
+                                                                            '--kai_name', '{}'.format(random.randint(-1000000000000, 1000000000000)), '--kai_url', 'http://127.0.0.1:{}'.format(self.port), '--cluster_url', "http://koboldai.net"])
+                                else:
+                                    self._horde_pid = subprocess.Popen(['./KoboldAI-Horde/venv/bin/python', './KoboldAI-Horde/bridge.py', 
+                                                                            '--username', '{}'.format(random.randint(-1000000000000, 1000000000000)), '--password', '{}'.format(random.randint(-1000000000000, 1000000000000)), 
+                                                                            '--kai_name', '{}'.format(random.randint(-1000000000000, 1000000000000)), '--kai_url', 'http://127.0.0.1:{}'.format(self.port), '--cluster_url', "http://koboldai.net"])
                         else:
                             if self._horde_pid is not None:
                                 print("kill bridge")
