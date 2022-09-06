@@ -2829,7 +2829,7 @@ function close_menus() {
 	document.getElementById('save-confirm').classList.add("hidden");
 	document.getElementById('error_message').classList.add("hidden");
 	document.getElementById("advanced_theme_editor").classList.add("hidden");
-	
+	document.getElementById("context-viewer-container").classList.add("hidden");
 	
 	//unselect sampler items
 	for (temp of document.getElementsByClassName("sample_order")) {
