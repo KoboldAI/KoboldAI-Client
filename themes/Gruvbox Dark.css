@@ -113,11 +113,11 @@
 	--flyout_background: var(--layer1_palette);
 	--flyout_background_pinned: var(--gruvbox-dark0-soft);
 
-	--setting_background: var(--gruvbox-dark0-soft);
+	--setting_background: var(--gruvbox-dark1);
     --setting_text: var(--gruvbox-light0);
 	
 	--button_text: var(--setting_text);
-	--button_background: var(--setting_background);
+	--button_background: var(--gruvbox-dark2);
 
 	--sample_order_select_color: var(--gruvbox-dark2);
 	--sample_order_select_color_text: var(--gruvbox-light2);
@@ -181,6 +181,9 @@
 	--radius_item_popup: 0px;
 	--radius_wi_card: 0px;
 	--radius_settings_button: 5px;
+	--radius_settings_button: 0px;
+	--radius_alternate_button: 0px;
+	--radius_palette_card: 0px;
 
 	/* Variables */
 	--flyout_menu_closed_width: 0px;
@@ -217,8 +220,6 @@ input, textarea{
 }
 
 select {
-	color: var(--gruvbox-light0) !important;
-	background-color: var(--gruvbox-dark0-soft);
 	border: 1px solid var(--gruvbox-dark2);
 	border-radius: 0px !important;
 	padding: 8px;
@@ -262,6 +263,10 @@ hr, #token-breakdown-container, .tabrow::before {
 .btn-success {
 	background-color: var(--gruvbox-neutral-aqua);
 	border-color: var(--gruvbox-neutral-aqua);
+}
+
+.settings_button {
+	border: 0px !important;
 }
 
 /* Firefox hacks, add this to upstream when done testing */
