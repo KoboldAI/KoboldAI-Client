@@ -1,7 +1,7 @@
 /*
 	Name: Monochrome
 	Author: LightSaveUs
-	Version: 0.4.5
+	Version: 0.5
 	Description: A theme inspired by the NovelAI interface.
 */
 
@@ -22,14 +22,9 @@
 	--tertiary_container_palette: #000000;
 	--on_tertiary_container_palette: #000000;
 
-	--error_palette: #ffb4ab;
-	--on_error_palette: #690005;
-	--error_container_palette: #93000a;
-	--on_error_container_palette: #ffdad6;
-
 	--background_palette: #000000;
 	--on_background_palette:#000000;
-	--layer1_palette: #18222a;
+	--layer1_palette: #000000;
 	--layer2_palette: #000000;
 	--layer3_palette: #000000;
 	--layer4_palette: #000000;
@@ -55,12 +50,23 @@
 	--scrollbar-color: #3e536780;
 
 	/*Buttons*/
+		/*General*/
 	--enabled_button_text: #e0e0e0;
     --enabled_button_background_color: #2f4563;
     --enabled_button_border_color: #263a54;
+
 	--disabled_button_text: #303030;
     --disabled_button_background_color: #495762;
     --disabled_button_border_color: #686c68;
+
+		/*Home Tab*/
+	--button_text: #e0e0e0;
+	--button_background: #2f4563;
+		
+		/*Alternate Button*/
+	--alternate_button_text: #e0e0e0;
+	--alternate_button_background: #244c65;
+
 
 	/*Sequence, AKA Gens Per Action*/
 	--sequence_area_background: #121b21;
@@ -71,13 +77,10 @@
 	--tab_color: #2b5471;
 
 	--flyout_background: #18222a;
-	--flyout_background_pinned:var(--layer1_palette);
+	--flyout_background_pinned: #18222a;
 
 	--setting_background: #273141;
     --setting_text: #e0e0e0;
-	
-	--button_text: var(--setting_text);
-	--button_background: var(--setting_background);
 
 	--sample_order_select_color: #244c65;
 	--sample_order_select_color_text: #e0e0e0;
@@ -90,13 +93,18 @@
 	--rangeslider_circle_color: #1b354d;
 
 	--help_icon: #cfd7a2;
-    --tooltip_text: #000000;
-    --tooltip_background: #000000;
+    /*--tooltip_text: #000000;
+    --tooltip_background: #000000;*/
 	--setting_category_help_text_color: #E0E0E0;
 	
 	--setting_footer_border_color: grey;
 	--setting_footer_text_color: #e0e0e0;
-	--setting_footer_background_color: var(--layer1_palette);
+	--setting_footer_background_color: #18222a;
+
+	/*Palette Card*/
+	--palette_card_background: #273141;
+	--palette_card_text: #e0e0e0;
+	--palette_table_border: #eeeeeead;
 
 	/*World Info*/
 	--wi_card_border_color: #eeeeeead;
@@ -122,12 +130,17 @@
 	--popup_hover_color: #1f4358;
 	--popup_hover_color_text: #e0e0e0;
 	--popup_selected_color: #295c72;
-	--popup_selected_color_text:var(--on_secondary_container_palette_palette);
+	--popup_selected_color_text:#e0e0e0;
 
 	--popup_button_color: #406494;
 	--popup_button_color_text: #e0e0e0;
 	--popup_cancel_button_color: #406494;
 	--popup_cancel_button_color_text: #e0e0e0;
+
+	--error: #ffb4ab;
+	--error_text: #690005;
+	--error_title: #93000a;
+	--error_title_text: #ffdad6;
 	
 	/*Context Bar Colors*/
 	--context_colors_memory: #04325c;
@@ -141,18 +154,22 @@
 
     /*Parameters*/
 	--scrollbar-size: 6px;
+	--palette_card_shadow: 0;
+	--wi_card_shadow: 0;
 	--light_shadow_value: 0;
 	--left_menu_strong_shadow: 0;
 	--right_menu_light_shadow: 0;
 	--right_menu_strong_shadow: 0;
 	--radius_inputbox: 2px;
-	--radius_unpinned_menu: 0px;
+	--radius_unpinned_menu: 2px;
 	--radius_sequence: 5px;
 	--radius_settings_background: 2px;
-	--radius_buttons: 2px;
+	--radius_button: 2px;
+	--radius_alternate_button: 2px;
 	--radius_item_popup: 2px;
 	--radius_wi_card: 5px;
-	--radius_settings_button: 5px;
+	--radius_palette_card: 5px;
+	--radius_settings_button: 2px;
 
 
 

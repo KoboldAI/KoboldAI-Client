@@ -730,7 +730,7 @@ return function(_python, _bridged)
                     return prompt
                 end
             end
-            local actions = koboldbridge.userstate == "genmod" and bridged.koboldai_vars._actions or bridged.koboldai_vars.actions
+            local actions = koboldbridge.userstate == "genmod" and bridged.koboldai_vars.actions
             return _python.as_attrgetter(actions).get(math.tointeger(rawget(t, "_num")) - 1)
         end
     end
@@ -752,7 +752,7 @@ return function(_python, _bridged)
                 error("Attempted to set the prompt chunk's content to the empty string; this is not allowed")
                 return
             end
-            local actions = koboldbridge.userstate == "genmod" and bridged.koboldai_vars._actions or bridged.koboldai_vars.actions
+            local actions = koboldbridge.userstate == "genmod" and bridged.koboldai_vars.actions
             if _k ~= 0 and _python.as_attrgetter(actions).get(_k-1) == nil then
                 return
             end
@@ -777,7 +777,7 @@ return function(_python, _bridged)
 
     ---@return fun(): KoboldStoryChunk, table, nil
     function KoboldStory:forward_iter()
-        local actions = koboldbridge.userstate == "genmod" and bridged.koboldai_vars._actions or bridged.koboldai_vars.actions
+        local actions = koboldbridge.userstate == "genmod" and bridged.koboldai_vars.actions
         local nxt, iterator = _python.iter(actions)
         local run_once = false
         local function f()
@@ -805,7 +805,7 @@ return function(_python, _bridged)
 
     ---@return fun(): KoboldStoryChunk, table, nil
     function KoboldStory:reverse_iter()
-        local actions = koboldbridge.userstate == "genmod" and bridged.koboldai_vars._actions or bridged.koboldai_vars.actions
+        local actions = koboldbridge.userstate == "genmod" and bridged.koboldai_vars.actions
         local nxt, iterator = _python.iter(_python.builtins.reversed(actions))
         local last_run = false
         local function f()

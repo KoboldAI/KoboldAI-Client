@@ -1,14 +1,3 @@
-<script>
-	function show_setting_menu(span) {
-		menu = span.textContent.toLowerCase()
-		for (item of document.getElementsByClassName("setting_menu_button")) {
-			document.getElementById("setting_menu_"+item.textContent.toLowerCase()).classList.add("hidden");
-			item.classList.remove("selected");
-		}
-		span.classList.add("selected");
-		document.getElementById("setting_menu_"+menu).classList.remove("hidden");
-	}
-</script>
 <style>
 	#Model_Info {
 		width: 100%;
@@ -27,9 +16,9 @@
 <!-- top menu bar-->
 <div class="menu_pin_area"></div>
 <div class="tabrow">
-	<span class="setting_menu_button selected" onclick="show_setting_menu(this);">Home</span>
-	<span class="setting_menu_button" onclick="show_setting_menu(this);">Settings</span>
-	<span class="setting_menu_button" onclick="show_setting_menu(this);">Interface</span>
+	<span class="setting_menu_button tab tab-settings selected" tab-target="setting_menu_home" onclick="selectTab(this);">Home</span>
+	<span class="setting_menu_button tab tab-settings" tab-target="setting_menu_settings" onclick="selectTab(this);">Settings</span>
+	<span class="setting_menu_button tab tab-settings" tab-target="setting_menu_interface" onclick="selectTab(this);">Interface</span>
 	<span style="float: right;margin-right: 30px;padding: 0px 10px;" onclick="window.open('https://github.com/KoboldAI/KoboldAI-Client/wiki');">
 		Help
 		<icon class="material-icons-outlined" style="font-size:14px;position:relative;top:2px;">open_in_new</icon>
@@ -37,7 +26,7 @@
 </div>
 <div class="flyout_menu_contents">
 
-	<div id="setting_menu_home" class="settings_category_area">
+	<div id="setting_menu_home" class="settings_category_area tab-target tab-target-settings">
 		<div class="Model_Info">
 			<div id="model_title">
 				<span>
@@ -45,12 +34,12 @@
 				</span>
 			</div>
 			<div id="text_runningmodel">
-					<b>1) Model: </b>
+					<b class="noselect">1) Model: </b>
 			</div>
 			<div style="text-align: center;">
 				<button class="settings_button" onclick="socket.emit('load_model_button', {});">
 					<span class="material-icons-outlined cursor" title="Load Model" style="font-size: 1.4em;">folder_open</span>
-					<span> Load Model</span>
+					<span class="button_label">Load Model</span>
 				</button>
 				<select class="var_sync_model_selected_preset settings_select presets" onchange='sync_to_server(this)'><option>Preset</option></select>
 				{% if not on_colab %}
@@ -67,24 +56,24 @@
 						<span class="var_sync_story_story_name fullwidth" contenteditable=true onblur="sync_to_server(this);"></span>
 					</span>
 					<span>
-						<span class="material-icons-outlined cursor" title="Download Story" onclick="document.getElementById('download_iframe').src = 'json';">file_download</span>
+						<span class="material-icons-outlined cursor" style="padding-top: 8px;" title="Download Story" onclick="document.getElementById('download_iframe').src = 'json';">file_download</span>
 					</span>
 				</div>
 				<div id="text_storyname">
-					<b>2) Story: </b>
+					<b class="noselect">2) Story: </b>
 				</div>
 				<div class="story_title_icons">
 					<button class="settings_button" onclick="socket.emit('new_story', '');">
 						<span class="material-icons-outlined cursor" title="New Story">description</span>
-						<span> New Story</span>
+						<span class="button_label">New Story</span>
 					</button>
 					<button class="settings_button" onclick="socket.emit('load_story_list', '');">
 						<span class="material-icons-outlined cursor" title="Load Story">folder_open</span>
-						<span> Load Story</span>
+						<span class="button_label">Load Story</span>
 					</button>
 					<button class="settings_button var_sync_alt_story_gamesaved" onclick='socket.emit("save_story", null, (response) => {save_as_story(response);});'>
 						<span class="material-icons-outlined cursor var_sync_alt_story_gamesaved" title="Save Story">save</span>
-						<span> Save Story</span>
+						<span class="button_label">Save Story</span>
 					</button>
 					
 					
@@ -103,7 +92,7 @@
 			
 		</div>
 	</div>
-	<div id="setting_menu_settings" class="hidden settings_category_area">
+	<div id="setting_menu_settings" class="hidden settings_category_area tab-target tab-target-settings">
 		<div class="force_center">
 			<select class="var_sync_model_selected_preset settings_select presets" onchange='sync_to_server(this)'><option>Preset</option></select>
 		</div>
@@ -120,8 +109,8 @@
 			<div class="collapsable_header" onclick="toggle_setting_category(this);">
 				<h4 style="width:var(--flyout_menu_width);"><span class="material-icons-outlined cursor">expand_more</span> Sampling</h4>
 			</div>
-			<span class="help_text">Change how the AI decides what to say.</span>
 			<div class="setting_tile_area">
+				<span class="help_text">Change how the AI decides what to say.</span>
 				<div class="setting_container_single">
 					<!---Top Row---->
 					<span class="setting_label">
@@ -155,8 +144,8 @@
 			<div class="collapsable_header" onclick="toggle_setting_category(this);">
 				<h4 style="width:var(--flyout_menu_width);"><span class="material-icons-outlined cursor">expand_more</span> Repetition</h4>
 			</div>
-			<span class="help_text">Change how the AI combats repetition.</span>
 			<div class="setting_tile_area">
+				<span class="help_text">Change how the AI combats repetition.</span>
 				{% with sub_path='Repetition' %}
 					{% include 'settings item.html' %}
 				{% endwith %}
@@ -220,16 +209,19 @@
 		<div class="collapsable_header" onclick="toggle_setting_category(this);">
 			<h4 style="width:var(--flyout_menu_width);"><span class="material-icons-outlined cursor">expand_more</span> Biasing</h4>
 		</div>
-		<span class="help_text">Influence the likelihood for the AI to output certain phrases.</span>
 		<div id="biasing">
+			<span class="help_text">Influence the likelihood for the AI to output certain phrases.</span>
 			<div class="bias_header">
 				<div class="bias_header_phrase">Phrase</div>
 				<div class="bias_header_score">Score</div>
-				<div class="bias_header_comp_threshold">Completion Threshold</div>
+				<div class="bias_header_comp_threshold">
+					Completion Threshold
+					<span class="helpicon material-icons-outlined" title="Amount of tokens that must match the phrase before it is force-completed.">help_icon</span>
+				</div>
 			</div>
 		</div>
 	</div>
-	<div id="setting_menu_interface" class="hidden settings_category_area">
+	<div id="setting_menu_interface" class="hidden settings_category_area tab-target tab-target-settings">
 		<div class="collapsable_header" onclick="toggle_setting_category(this);">
 			<h4 style="width:var(--flyout_menu_width);"><span class="material-icons-outlined cursor">expand_more</span> UI</h4>
 		</div>
@@ -285,14 +277,14 @@
 					<span class="material-icons-outlined cursor" title="Save Theme" onclick='save_theme();'>save</span>
 				</div>
 				<div class="setting_tile_area" id="Palette">
-					<table id="Palette_Table" border=1>
+					<table id="Palette_Table" border=1 style="border-color: var(--palette_table_border);">
 						<tr>
-							<td></td>
+							<td style="border-top-color: transparent; border-left-color: transparent; border-bottom-color: transparent;"></td>
 							<td colspan=2><b>Main</b></td>
 							<td colspan=2><b>Alternative</b></td>
 						</tr>
 						<tr>
-							<td></td>
+							<td style="border-top-color: transparent; border-left-color: transparent;"></td>
 							<td>Background</td>
 							<td>Text</td>
 							<td>Background</td>
@@ -346,6 +338,10 @@
 			</div>
 			<div class="tweak-container" tweak-path="hide-token-bar">
 				<span>Hide token bar</span>
+				<input type=checkbox class="setting_item_input" data-size="mini" data-onstyle="success" data-toggle="toggle">
+			</div>
+			<div class="tweak-container" tweak-path="hide-max-length">
+				<span>Hide text highlighting</span>
 				<input type=checkbox class="setting_item_input" data-size="mini" data-onstyle="success" data-toggle="toggle">
 			</div>
 		</div>

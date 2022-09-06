@@ -13,6 +13,8 @@ def clean_var_for_emit(value):
         return value.to_json()
     elif isinstance(value, set):
         return list(value)
+    elif isinstance(value, datetime.datetime):
+        return str(value)
     else:
         return value
 
@@ -59,12 +61,21 @@ class koboldai_vars(object):
     def load_story(self, story_name, json_data):
         #Story name here is intended for multiple users on multiple stories. Now always uses default
         #If we can figure out a way to get flask sessions into/through the lua bridge we could re-enable
+        original_story_name = story_name
         story_name = 'default'
         if story_name in self._story_settings:
             self._story_settings[story_name].socketio.emit("reset_story", {}, broadcast=True, room="UI_2")
+            self._story_settings[story_name].no_save = True
             self._story_settings[story_name].from_json(json_data)
+            self._story_settings[story_name].no_save = False
         else:
+            self._story_settings[story_name].no_save = True
             self.create_story(story_name, json_data=json_data)
+            self._story_settings[story_name].no_save = False
+        self._system_settings.story_loads[original_story_name] = datetime.datetime.now().strftime("%m/%d/%Y, %H:%M:%S")
+        with open("settings/system_settings.v2_settings", "w") as settings_file:
+            settings_file.write(self._system_settings.to_json())
+        
             
     def save_story(self):
         self._story_settings['default'].save_story()
@@ -110,7 +121,7 @@ class koboldai_vars(object):
 
         # TODO: We may want to replace the "text" variable with a list-type
         # class of context blocks, the class having a __str__ function.
-        if self.sp:
+        if self.sp_length > 0:
             context.append({"type": "soft_prompt", "text": f"<{self.sp_length} tokens of Soft Prompt.>"})
         # Header is never used?
         # if koboldai_vars.model not in ("Colab", "API", "OAI") and self.tokenizer._koboldai_header:
@@ -320,6 +331,8 @@ class settings(object):
                 return data.to_json()
             elif isinstance(data, KoboldWorldInfo):
                 return data.to_json()
+            elif isinstance(data, datetime.datetime):
+                return str(data)
             output = BytesIO()
             pickle.dump(data, output)
             output.seek(0)
@@ -331,8 +344,16 @@ class settings(object):
             json_data = json.loads(data)
         else:
             json_data = data
-        for key, value in data.items():
+        #since loading will trigger the autosave, we need to disable it
+        if 'no_save' in self.__dict__:
+            setattr(self, 'no_save', True)
+        for key, value in json_data.items():
             if key in self.__dict__:
+                if key == 'sampler_order':
+                    if(len(value) < 7):
+                        value = [6] + value
+                if key == 'autosave':
+                    autosave = value
                 if isinstance(value, str):
                     if value[:7] == 'base64:':
                         value = pickle.loads(base64.b64decode(value[7:]))
@@ -351,6 +372,9 @@ class settings(object):
                     getattr(self, key).load_json(value)
                 else:
                     setattr(self, key, value)
+        
+        if 'no_save' in self.__dict__:
+            setattr(self, 'no_save', False)
         
     def send_to_ui(self):
         for (name, value) in vars(self).items():
@@ -478,8 +502,8 @@ class model_settings(settings):
             process_variable_changes(self.socketio, self.__class__.__name__.replace("_settings", ""), name, value, old_value)
             
 class story_settings(settings):
-    local_only_variables = ['socketio', 'tokenizer', 'koboldai_vars']
-    no_save_variables = ['socketio', 'tokenizer', 'koboldai_vars', 'context']
+    local_only_variables = ['socketio', 'tokenizer', 'koboldai_vars', 'no_save']
+    no_save_variables = ['socketio', 'tokenizer', 'koboldai_vars', 'context', 'no_save']
     settings_name = "story"
     def __init__(self, socketio, koboldai_vars, tokenizer=None):
         self.socketio = socketio
@@ -492,6 +516,7 @@ class story_settings(settings):
         self.gamestarted = False  # Whether the game has started (disables UI elements)
         self.gamesaved   = True   # Whether or not current game is saved
         self.autosave    = False             # Whether or not to automatically save after each action
+        self.no_save = False  #Temporary disable save (doesn't save with the file)
         self.prompt      = ""     # Prompt
         self.memory      = ""     # Text submitted to memory field
         self.authornote  = ""     # Text submitted to Author's Note field
@@ -539,27 +564,30 @@ class story_settings(settings):
         self.max_authornote_length = 512
         self.prompt_in_ai = False
         self.context = []
+        self.last_story_load = None
         
     def save_story(self):
-        print("Saving")
-        save_name = self.story_name if self.story_name != "" else "untitled"
-        adder = ""
-        while True:
-            if os.path.exists("stories/{}{}_v2.json".format(save_name, adder)):
-                with open("stories/{}{}_v2.json".format(save_name, adder), "r") as f:
-                    temp = json.load(f)
-                if 'story_id' in temp:
-                    if self.story_id != temp['story_id']:
-                        adder = 0 if adder == "" else adder+1
+        if not self.no_save:
+            if self.prompt != "" or self.memory != "" or self.authornote != "" or len(self.actions) > 0 or len(self.worldinfo_v2) > 0:
+                print("Saving")
+                save_name = self.story_name if self.story_name != "" else "untitled"
+                adder = ""
+                while True:
+                    if os.path.exists("stories/{}{}_v2.json".format(save_name, adder)):
+                        with open("stories/{}{}_v2.json".format(save_name, adder), "r") as f:
+                            temp = json.load(f)
+                        if 'story_id' in temp:
+                            if self.story_id != temp['story_id']:
+                                adder = 0 if adder == "" else adder+1
+                            else:
+                                break
+                        else:
+                            adder = 0 if adder == "" else adder+1
                     else:
                         break
-                else:
-                    adder = 0 if adder == "" else adder+1
-            else:
-                break
-        with open("stories/{}{}_v2.json".format(save_name, adder), "w") as settings_file:
-            settings_file.write(self.to_json())
-        self.gamesaved = True
+                with open("stories/{}{}_v2.json".format(save_name, adder), "w") as settings_file:
+                    settings_file.write(self.to_json())
+                self.gamesaved = True
     
     def reset(self):
         self.socketio.emit("reset_story", {}, broadcast=True, room="UI_2")
@@ -659,6 +687,7 @@ class user_settings(settings):
         self.debug       = False    # If set to true, will send debug information to the client for display
         self.output_streaming = True
         self.show_probs = False # Whether or not to show token probabilities
+        self.beep_on_complete = False
         
         
     def __setattr__(self, name, value):
@@ -731,6 +760,8 @@ class system_settings(settings):
         self.seed        = None   # The current RNG seed (as an int), or None if unknown
         self.alt_gen = False # Use the calc_ai_text method for generating text to go to the AI
         self.theme_list = [".".join(f.split(".")[:-1]) for f in os.listdir("./themes") if os.path.isfile(os.path.join("./themes", f))]
+        self.cloudflare_link = ""
+        self.story_loads = {} #dict of when each story was last loaded
         self.port = 5000
         self.on_colab = 'google.colab' in sys.modules
         self.horde_share = False
@@ -790,7 +821,7 @@ class KoboldStoryRegister(object):
             self.append(item)
     
     def reset(self, sequence=[]):
-        self.__init__(self.socketio, self.story_settings, sequence=sequence, tokenizer=self.tokenizer)
+        self.__init__(self.socketio, self.story_settings, self.koboldai_vars, sequence=sequence, tokenizer=self.tokenizer)
         
     def __str__(self):
         return "".join([x['Selected Text'] for ignore, x in sorted(self.actions.items())])
@@ -810,7 +841,11 @@ class KoboldStoryRegister(object):
             raise StopIteration
         
     def __getitem__(self, i):
-        return self.actions[i]["Selected Text"]
+        if isinstance(i, slice):
+            temp = [self.actions[x]["Selected Text"] for x in list(self.actions)[i]]
+            return temp
+        else:
+            return self.actions[i]["Selected Text"]
         
     def __setitem__(self, i, text):
         if i in self.actions:
@@ -873,6 +908,8 @@ class KoboldStoryRegister(object):
         self.actions = temp
         self.set_game_saved()
         self.recalc_token_length()
+        self.story_settings.save_story()
+        
             
     def append(self, text):
         self.clear_unused_options()
@@ -1096,23 +1133,36 @@ class KoboldStoryRegister(object):
                 self.actions[self.action_count+1] = {"Selected Text": "", "Selected Text Length": 0, "Options": []}
                 for i in range(len(text_list)):
                     self.actions[self.action_count+1]['Options'].append({"text": text_list[i], "Pinned": False, "Previous Selection": False, "Edited": False, "Probabilities": [], "stream_id": i})
-            
-            process_variable_changes(self.socketio, "actions", "Options", {"id": self.action_count+1, "options": self.actions[self.action_count+1]["Options"]}, {"id": self.action_count+1, "options": None})
-            process_variable_changes(self.socketio, "story", 'actions', {"id": self.action_count+1, 'action':  self.actions[self.action_count+1]}, None)
+        
+            #We need to see if this is the last token being streamed. If so due to the rely it will come in AFTER the actual trimmed final text overwriting it in the UI
+            if self.tokenizer is not None:
+                if len(self.tokenizer.encode(self.actions[self.action_count+1]["Options"][0]['text'])) != self.koboldai_vars.genamt:
+                    #process_variable_changes(self.socketio, "actions", "Options", {"id": self.action_count+1, "options": self.actions[self.action_count+1]["Options"]}, {"id": self.action_count+1, "options": None})
+                    process_variable_changes(self.socketio, "story", 'actions', {"id": self.action_count+1, 'action':  self.actions[self.action_count+1]}, None)
         else:
             #We're streaming single options so our output is our selected
-            if self.tokenizer is not None:
-                selected_text_length = len(self.tokenizer.encode(text_list[0]))
-            else:
-                selected_text_length = 0
-            if self.action_count+1 in self.actions:
-                self.actions[self.action_count+1]['Selected Text'] = "{}{}".format(self.actions[self.action_count+1]['Selected Text'], text_list[0])
-            else:
-                self.actions[self.action_count+1] = {"Selected Text": text_list[0], "Selected Text Length": selected_text_length, "Options": []}
-            
-            process_variable_changes(self.socketio, "actions", "Selected Text", {"id": self.action_count+1, "text": self.actions[self.action_count+1]['Selected Text']}, None)
-            process_variable_changes(self.socketio, "actions", 'Selected Text Length', {"id": self.action_count+1, 'length': self.actions[self.action_count+1]['Selected Text Length']}, {"id": self.action_count, 'length': 0})
-            process_variable_changes(self.socketio, "story", 'actions', {"id": self.action_count+1, 'action':  self.actions[self.action_count+1]}, None)
+            #First we need to see if this is actually the prompt. If so we'll just not do streaming:
+            if self.story_settings.prompt != "":
+                if self.action_count+1 in self.actions:
+                    if self.tokenizer is not None:
+                        selected_text_length = len(self.tokenizer.encode(self.actions[self.action_count+1]['Selected Text']))
+                    else:
+                        selected_text_length = 0
+                    self.actions[self.action_count+1]['Selected Text'] = "{}{}".format(self.actions[self.action_count+1]['Selected Text'], text_list[0])
+                    self.actions[self.action_count+1]['Selected Text Length'] = selected_text_length
+                else:
+                    if self.tokenizer is not None:
+                        selected_text_length = len(self.tokenizer.encode(text_list[0]))
+                    else:
+                        selected_text_length = 0
+                    self.actions[self.action_count+1] = {"Selected Text": text_list[0], "Selected Text Length": selected_text_length, "Options": []}
+                
+                
+                
+                if self.tokenizer is not None:
+                    if len(self.tokenizer.encode(self.actions[self.action_count+1]['Selected Text'])) != self.koboldai_vars.genamt:
+                        #process_variable_changes(self.socketio, "actions", "Options", {"id": self.action_count+1, "options": self.actions[self.action_count+1]["Options"]}, {"id": self.action_count+1, "options": None})
+                        process_variable_changes(self.socketio, "story", 'actions', {"id": self.action_count+1, 'action':  self.actions[self.action_count+1]}, None)
     
     def set_probabilites(self, probabilities, action_id=None):
         if action_id is None:
@@ -1174,6 +1224,9 @@ class KoboldWorldInfo(object):
         
     def __getitem__(self, i):
         return self.self.world_info[i].copy()
+    
+    def __len__(self):
+        return len(self.world_info)
     
     def recalc_token_length(self):
         if self.tokenizer is not None:
@@ -1401,8 +1454,8 @@ class KoboldWorldInfo(object):
             #Make sure we have all the appropriate variables:
             for item in self.world_info:
                 for column in ["uid","title","key","keysecondary","folder","constant","content","comment","token_length","selective","used_in_game"]:
-                    if column not in item:
-                        item[column] = None
+                    if column not in self.world_info[item]:
+                        self.world_info[item][column] = None
             try:
                 self.sync_world_info_to_old_format()
             except:
