@@ -894,8 +894,8 @@ td.server_vars {
 	overflow: hidden;
 	display: block;
 	width: 100%;
-	padding-left: 20px;
-	padding-right: 35px;
+	padding-left: 15px;
+	padding-right: 15px;
 	margin-bottom: 10px;
 	flex-shrink: 0;
 	cursor: pointer;
