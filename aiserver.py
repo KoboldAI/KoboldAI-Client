@@ -221,6 +221,7 @@ model_menu = {
         ["InferKit API (requires API key)", "InferKit", "", False],
         # ["KoboldAI Server API (Old Google Colab)", "Colab", "", False],
         ["KoboldAI API", "API", "", False],
+        ["KoboldAI Horde", "CLUSTER", "", False],
         ["Return to Main Menu", "mainmenu", "", True],
     ]
     }
@@ -467,6 +468,18 @@ api_v1 = KoboldAPISpec(
     tags=tags,
 )
 
+# Returns the expected config filename for the current setup.
+# If the model_name is specified, it returns what the settings file would be for that model
+def get_config_filename(model_name = None):
+    if model_name:
+        return(f"settings/{model_name.replace('/', '_')}.settings")
+    elif args.configname:
+        return(f"settings/{args.configname.replace('/', '_')}.settings")
+    elif vars.configname != '':
+        return(f"settings/{vars.configname.replace('/', '_')}.settings")
+    else:
+        print(f"Empty configfile name sent back. Defaulting to ReadOnly")
+        return(f"settings/ReadOnly.settings")
 #==================================================================#
 # Function to get model selection at startup
 #==================================================================#
@@ -578,9 +591,8 @@ def check_if_dir_is_model(path):
 # Return Model Name
 #==================================================================#
 def getmodelname():
-    if(args.configname):
-       modelname = args.configname
-       return modelname
+    if(vars.online_model != ''):
+       return(f"{vars.model}/{vars.online_model}")
     if(koboldai_vars.model in ("NeoCustom", "GPT2Custom", "TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX")):
         modelname = os.path.basename(os.path.normpath(koboldai_vars.custmodpth))
         return modelname
@@ -996,6 +1008,8 @@ def general_startup(override_args=None):
     parser.add_argument("--aria2_port", type=int, help="Specify the port on which aria2's RPC interface will be open if aria2 is installed (defaults to 6799)")
     parser.add_argument("--model", help="Specify the Model Type to skip the Menu")
     parser.add_argument("--path", help="Specify the Path for local models (For model NeoCustom or GPT2Custom)")
+    parser.add_argument("--apikey", help="Specify the API key to use for online services")
+    parser.add_argument("--req_model", type=str, action='append', required=False, help="Which models which we allow to generate for us during cluster mode. Can be specified multiple times.")
     parser.add_argument("--revision", help="Specify the model revision for huggingface models (can be a git branch/tag name or a git commit hash)")
     parser.add_argument("--cpu", action='store_true', help="By default unattended launches are on the GPU use this option to force CPU usage.")
     parser.add_argument("--breakmodel", action='store_true', help=argparse.SUPPRESS)
@@ -1057,6 +1071,11 @@ def general_startup(override_args=None):
 
     koboldai_vars.model = args.model;
     koboldai_vars.revision = args.revision
+
+    if args.apikey:
+        vars.apikey = args.apikey
+    if args.req_model:
+        vars.cluster_requested_models = args.req_model
 
     if args.colab:
         args.remote = True;
@@ -1156,12 +1175,30 @@ def get_model_info(model, directory=""):
     key_value = ""
     break_values = []
     url = False
+    default_url = None
+    models_on_url = False
+    multi_online_models = False
     gpu_count = torch.cuda.device_count()
     gpu_names = []
     for i in range(gpu_count):
         gpu_names.append(torch.cuda.get_device_name(i))
     if model in ['Colab', 'API']:
         url = True
+    elif model == 'CLUSTER':
+        models_on_url = True
+        url = True
+        key = True
+        default_url = 'https://koboldai.net'
+        multi_online_models = True
+        if path.exists(get_config_filename(model)):
+            with open(get_config_filename(model), "r") as file:
+                # Check if API key exists
+                js = json.load(file)
+                if("apikey" in js and js["apikey"] != ""):
+                    # API key exists, grab it and close the file
+                    key_value = js["apikey"]
+                elif 'oaiapikey' in js and js['oaiapikey'] != "":
+                    key_value = js["oaiapikey"]
     elif model in [x[1] for x in model_menu['apilist']]:
         if path.exists("settings/{}.v2_settings".format(model)):
             with open("settings/{}.v2_settings".format(model), "r") as file:
@@ -1202,13 +1239,13 @@ def get_model_info(model, directory=""):
                 break_values = [layer_count]
             break_values = [int(x) for x in break_values if x != '']
             break_values += [0] * (gpu_count - len(break_values))
-    emit('from_server', {'cmd': 'selected_model_info', 'key_value': key_value, 'key':key, 
+    emit('from_server', {'cmd': 'selected_model_info', 'key_value': key_value, 'key':key, 'multi_online_models': multi_online_models, 'default_url': default_url, 
                          'gpu':gpu, 'layer_count':layer_count, 'breakmodel':breakmodel, 
                          'disk_break_value': disk_blocks, 'accelerate': utils.HAS_ACCELERATE,
                          'break_values': break_values, 'gpu_count': gpu_count,
                          'url': url, 'gpu_names': gpu_names}, broadcast=True, room="UI_1")
     emit('selected_model_info', {'key_value': key_value, 'key':key, 
-                         'gpu':gpu, 'layer_count':layer_count, 'breakmodel':breakmodel, 
+                         'gpu':gpu, 'layer_count':layer_count, 'breakmodel':breakmodel, 'multi_online_models': multi_online_models, 'default_url': default_url, 
                          'disk_break_value': disk_blocks, 'disk_break': utils.HAS_ACCELERATE,
                          'break_values': break_values, 'gpu_count': gpu_count,
                          'url': url, 'gpu_names': gpu_names}, broadcast=False, room="UI_2")
@@ -1216,7 +1253,7 @@ def get_model_info(model, directory=""):
     
 
 def get_layer_count(model, directory=""):
-    if(model not in ["InferKit", "Colab", "API", "OAI", "GooseAI" , "ReadOnly", "TPUMeshTransformerGPTJ"]):
+    if(model not in ["InferKit", "Colab", "API", "CLUSTER", "OAI", "GooseAI" , "ReadOnly", "TPUMeshTransformerGPTJ"]):
         if(model == "GPT2Custom"):
             with open(os.path.join(directory, "config.json"), "r") as f:
                 model_config = json.load(f)
@@ -1283,6 +1320,8 @@ def get_oai_models(data):
                 if "apikey" in js:
                     if js['apikey'] != key:
                         changed=True
+        else:
+            changed=True
         if changed:
             with open("settings/{}.v2_settings".format(model), "w") as file:
                 js["apikey"] = key
@@ -1296,6 +1335,55 @@ def get_oai_models(data):
         print(req.json())
         emit('from_server', {'cmd': 'errmsg', 'data': req.json()})
 
+def get_cluster_models(msg):
+    vars.oaiapikey = msg['key']
+    vars.apikey = vars.oaiapikey
+    url = msg['url']
+    
+        
+    # Get list of models from public cluster
+    print("{0}Retrieving engine list...{1}".format(colors.PURPLE, colors.END), end="")
+    req = requests.get("{}/models".format(url))
+    if(req.status_code == 200):
+        engines = req.json()
+        print(engines)
+        try:
+            engines = [[en, en] for en in engines]
+        except:
+            print(engines)
+            raise
+        print(engines)
+        
+        online_model = ""
+        changed=False
+        
+        #Save the key
+        if not path.exists("settings"):
+            # If the client settings file doesn't exist, create it
+            # Write API key to file
+            os.makedirs('settings', exist_ok=True)
+        if path.exists(get_config_filename(vars.model_selected)):
+            with open(get_config_filename(vars.model_selected), "r") as file:
+                js = json.load(file)
+                if 'online_model' in js:
+                    online_model = js['online_model']
+                if "apikey" in js:
+                    if js['apikey'] != vars.oaiapikey:
+                        changed=True
+        else:
+            changed=True
+        if changed:
+            js={}
+            with open(get_config_filename(vars.model_selected), "w") as file:
+                js["apikey"] = vars.oaiapikey
+                file.write(json.dumps(js, indent=3))
+            
+        emit('from_server', {'cmd': 'oai_engines', 'data': engines, 'online_model': online_model}, broadcast=True)
+    else:
+        # Something went wrong, print the message and quit since we can't initialize an engine
+        print("{0}ERROR!{1}".format(colors.RED, colors.END))
+        print(req.json())
+        emit('from_server', {'cmd': 'errmsg', 'data': req.json()})
 
 # Function to patch transformers to use our soft prompt
 def patch_causallm(model):
@@ -1808,6 +1896,7 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
     model = None
     generator = None
     model_config = None
+    vars.online_model = ''
     with torch.no_grad():
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore", message="torch.distributed.reduce_op is deprecated")
@@ -1827,9 +1916,24 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
     #Reload our badwords
     koboldai_vars.badwordsids = koboldai_settings.badwordsids_default
     
+    if online_model == "":
+        vars.configname = vars.model.replace('/', '_')
     #Let's set the GooseAI or OpenAI server URLs if that's applicable
-    if online_model != "":
-        if path.exists("settings/{}.v2_settings".format(koboldai_vars.model)):
+    else:
+        koboldai_vars.online_model = online_model
+        # Swap OAI Server if GooseAI was selected
+        if(koboldai_vars.model == "GooseAI"):
+            koboldai_vars.oaiengines = "https://api.goose.ai/v1/engines"
+            koboldai_vars.model = "OAI"
+            koboldai_vars.configname = f"GooseAI_{online_model.replace('/', '_')}"
+        elif(koboldai_vars.model == "CLUSTER") and type(online_model) is list:
+                if len(online_model) != 1:
+                    koboldai_vars.configname = koboldai_vars.model
+                else:
+                    koboldai_vars.configname = f"{koboldai_vars.model}_{online_model[0].replace('/', '_')}"
+        else:
+            koboldai_vars.configname = f"{koboldai_vars.model}_{online_model.replace('/', '_')}"
+        if path.exists(get_config_filename()):
             changed=False
             with open("settings/{}.v2_settings".format(koboldai_vars.model), "r") as file:
                 # Check if API key exists
@@ -1844,18 +1948,19 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
             if changed:
                 with open("settings/{}.v2_settings".format(koboldai_vars.model), "w") as file:
                     file.write(json.dumps(js, indent=3))
+
         # Swap OAI Server if GooseAI was selected
         if(koboldai_vars.model == "GooseAI"):
             koboldai_vars.oaiengines = "https://api.goose.ai/v1/engines"
             koboldai_vars.model = "OAI"
             args.configname = "GooseAI" + "/" + online_model
-        else:
+        elif vars.model != "CLUSTER":
             args.configname = koboldai_vars.model + "/" + online_model
         koboldai_vars.oaiurl = koboldai_vars.oaiengines + "/{0}/completions".format(online_model)
     
     
     # If transformers model was selected & GPU available, ask to use CPU or GPU
-    if(koboldai_vars.model not in ["InferKit", "Colab", "API", "OAI", "GooseAI" , "ReadOnly", "TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX"]):
+    if(koboldai_vars.model not in ["InferKit", "Colab", "API", "CLUSTER", "OAI", "GooseAI" , "ReadOnly", "TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX"]):
         koboldai_vars.allowsp = True
         # Test for GPU support
         
@@ -1894,7 +1999,7 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
             print("WARNING: No model type detected, assuming Neo (If this is a GPT2 model use the other menu option or --model GPT2Custom)")
             koboldai_vars.model_type = "gpt_neo"
 
-    if(not koboldai_vars.use_colab_tpu and koboldai_vars.model not in ["InferKit", "Colab", "API", "OAI", "GooseAI" , "ReadOnly", "TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX"]):
+    if(not koboldai_vars.use_colab_tpu and koboldai_vars.model not in ["InferKit", "Colab", "API", "CLUSTER", "OAI", "GooseAI" , "ReadOnly", "TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX"]):
         loadmodelsettings()
         loadsettings()
         print(2)
@@ -1937,18 +2042,18 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
     if(koboldai_vars.model == "GooseAI"):
         koboldai_vars.oaiengines = "https://api.goose.ai/v1/engines"
         koboldai_vars.model = "OAI"
-        args.configname = "GooseAI"
+        vars.configname = "GooseAI"
 
     # Ask for API key if OpenAI was selected
     if(koboldai_vars.model == "OAI"):
-        if not args.configname:
-            args.configname = "OAI"
+        if not vars.configname:
+            vars.configname = "OAI"
         
     if(koboldai_vars.model == "ReadOnly"):
         koboldai_vars.noai = True
 
     # Start transformers and create pipeline
-    if(not koboldai_vars.use_colab_tpu and koboldai_vars.model not in ["InferKit", "Colab", "API", "OAI", "GooseAI" , "ReadOnly", "TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX"]):
+    if(not koboldai_vars.use_colab_tpu and koboldai_vars.model not in ["InferKit", "Colab", "API", "CLUSTER", "OAI", "GooseAI" , "ReadOnly", "TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX"]):
         if(not koboldai_vars.noai):
             print("{0}Initializing transformers, please wait...{1}".format(colors.PURPLE, colors.END))
             for m in ("GPTJModel", "XGLMModel"):
@@ -2406,7 +2511,7 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
             }
 
         # If we're running Colab or OAI, we still need a tokenizer.
-        if(koboldai_vars.model in ("Colab", "API")):
+        if(koboldai_vars.model in ("Colab", "API", "CLUSTER")):
             from transformers import GPT2TokenizerFast
             tokenizer = GPT2TokenizerFast.from_pretrained("EleutherAI/gpt-neo-2.7B", revision=koboldai_vars.revision, cache_dir="cache")
             loadsettings()
@@ -3097,7 +3202,7 @@ def lua_set_chunk(k, v):
 def lua_get_modeltype():
     if(koboldai_vars.noai):
         return "readonly"
-    if(koboldai_vars.model in ("Colab", "API", "OAI", "InferKit")):
+    if(koboldai_vars.model in ("Colab", "API", "CLUSTER", "OAI", "InferKit")):
         return "api"
     if(not koboldai_vars.use_colab_tpu and koboldai_vars.model not in ("TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX") and (koboldai_vars.model in ("GPT2Custom", "NeoCustom") or koboldai_vars.model_type in ("gpt2", "gpt_neo", "gptj"))):
         hidden_size = get_hidden_size_from_model(model)
@@ -3126,7 +3231,7 @@ def lua_get_modeltype():
 def lua_get_modelbackend():
     if(koboldai_vars.noai):
         return "readonly"
-    if(koboldai_vars.model in ("Colab", "API", "OAI", "InferKit")):
+    if(koboldai_vars.model in ("Colab", "API", "CLUSTER", "OAI", "InferKit")):
         return "api"
     if(koboldai_vars.use_colab_tpu or koboldai_vars.model in ("TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX")):
         return "mtj"
@@ -3564,6 +3669,8 @@ def get_message(msg):
     elif(msg['cmd'] == 'list_model'):
         sendModelSelection(menu=msg['data'])
     elif(msg['cmd'] == 'load_model'):
+        print(msg)
+        print(vars.model_selected)
         if not os.path.exists("settings/"):
             os.mkdir("settings")
         changed = True
@@ -3587,6 +3694,14 @@ def get_message(msg):
             f.close()
         koboldai_vars.colaburl = msg['url'] + "/request"
         koboldai_vars.model = koboldai_vars.model_selected
+        if vars.model == "CLUSTER":
+            if type(msg['online_model']) is not list:
+                if msg['online_model'] == '':
+                    vars.cluster_requested_models = []
+                else:
+                    vars.cluster_requested_models = [msg['online_model']]
+            else:
+                vars.cluster_requested_models = msg['online_model']
         load_model(use_gpu=msg['use_gpu'], gpu_layers=msg['gpu_layers'], disk_layers=msg['disk_layers'], online_model=msg['online_model'])
     elif(msg['cmd'] == 'show_model'):
         print("Model Name: {}".format(getmodelname()))
@@ -3650,6 +3765,8 @@ def get_message(msg):
             print(colors.RED + "WARNING!!: Someone maliciously attempted to delete " + msg['data'] + " the attempt has been blocked.")
     elif(msg['cmd'] == 'OAI_Key_Update'):
         get_oai_models({'model': koboldai_vars.model, 'key': msg['key']})
+    elif(msg['cmd'] == 'Cluster_Key_Update'):
+        get_cluster_models(msg)
     elif(msg['cmd'] == 'loadselect'):
         koboldai_vars.loadselect = msg["data"]
     elif(msg['cmd'] == 'spselect'):
@@ -3845,7 +3962,7 @@ def check_for_backend_compilation():
             break
     koboldai_vars.checking = False
 
-def actionsubmit(data, actionmode=0, force_submit=False, force_prompt_gen=False, disable_recentrng=False, no_generate=False):
+def actionsubmit(data, actionmode=0, force_submit=False, force_prompt_gen=False, disable_recentrng=False, no_generate=False, ignore_aibusy=False):
     # Ignore new submissions if the AI is currently busy
     if(koboldai_vars.aibusy):
         return
@@ -3853,11 +3970,19 @@ def actionsubmit(data, actionmode=0, force_submit=False, force_prompt_gen=False,
     while(True):
         set_aibusy(1)
         koboldai_vars.actions.clear_unused_options()
-        if(koboldai_vars.model == "API"):
+        if(koboldai_vars.model in ["API","CLUSTER"]):
             global tokenizer
-            tokenizer_id = requests.get(
-                koboldai_vars.colaburl[:-8] + "/api/v1/model",
-            ).json()["result"]
+            if koboldai_vars.model == "API":
+                tokenizer_id = requests.get(
+                    koboldai_vars.colaburl[:-8] + "/api/v1/model",
+                ).json()["result"]
+            elif len(koboldai_vars.cluster_requested_models) >= 1:
+                # If the player has requested one or more models, we use the first one for the tokenizer
+                tokenizer_id = koboldai_vars.cluster_requested_models[0]
+            # The cluster can return any number of possible models for each gen, but this happens after this step
+            # So at this point, this is unknown
+            else:
+                tokenizer_id = ""
             if tokenizer_id != koboldai_vars.api_tokenizer_id:
                 try:
                     if(os.path.isdir(tokenizer_id)):
@@ -4089,6 +4214,8 @@ def apiactionsubmit(data, use_memory=False, use_world_info=False, use_story=Fals
         raise NotImplementedError("API generation is not supported in old Colab API mode.")
     elif(koboldai_vars.model == "API"):
         raise NotImplementedError("API generation is not supported in API mode.")
+    elif(koboldai_vars.model == "CLUSTER"):
+        raise NotImplementedError("API generation is not supported in API mode.")
     elif(koboldai_vars.model == "OAI"):
         raise NotImplementedError("API generation is not supported in OpenAI/GooseAI mode.")
     elif(koboldai_vars.model == "ReadOnly"):
@@ -4148,7 +4275,7 @@ def apiactionsubmit(data, use_memory=False, use_world_info=False, use_story=Fals
     minimum = len(tokens) + 1
     maximum = len(tokens) + koboldai_vars.genamt
 
-    if(not koboldai_vars.use_colab_tpu and koboldai_vars.model not in ["Colab", "API", "OAI", "TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX"]):
+    if(not koboldai_vars.use_colab_tpu and koboldai_vars.model not in ["Colab", "API", "CLUSTER", "OAI", "TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX"]):
         genout = apiactionsubmit_generate(tokens, minimum, maximum)
     elif(koboldai_vars.use_colab_tpu or koboldai_vars.model in ("TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX")):
         genout = apiactionsubmit_tpumtjgenerate(tokens, minimum, maximum)
@@ -4278,8 +4405,8 @@ def calcsubmitbudget(actionlen, winfo, mem, anotetxt, actions, submission=None, 
 
     if(actionlen == 0):
         # First/Prompt action
-        tokens = (tokenizer._koboldai_header if koboldai_vars.model not in ("Colab", "API", "OAI") else []) + memtokens + witokens + anotetkns + prompttkns
-        assert len(tokens) <= koboldai_vars.max_length - lnsp - koboldai_vars.genamt - budget_deduction
+        tokens = (tokenizer._koboldai_header if koboldai_vars.model not in ("Colab", "API", "CLUSTER", "OAI") else []) + memtokens + witokens + anotetkns + prompttkns
+        assert len(tokens) <= koboldai_vars.max_length - lnsp - vars.genamt - budget_deduction
         ln = len(tokens) + lnsp
         return tokens, ln+1, ln+koboldai_vars.genamt
     else:
@@ -4327,13 +4454,12 @@ def calcsubmitbudget(actionlen, winfo, mem, anotetxt, actions, submission=None, 
         # Did we get to add the A.N.? If not, do it here
         if(anotetxt != ""):
             if((not anoteadded) or forceanote):
-                # header, mem, wi, anote, prompt, actions
-                tokens = (tokenizer._koboldai_header if koboldai_vars.model not in ("Colab", "API", "OAI") else []) + memtokens + witokens + anotetkns + prompttkns + tokens
+                tokens = (tokenizer._koboldai_header if koboldai_vars.model not in ("Colab", "API", "CLUSTER", "OAI") else []) + memtokens + witokens + anotetkns + prompttkns + tokens
             else:
-                tokens = (tokenizer._koboldai_header if koboldai_vars.model not in ("Colab", "API", "OAI") else []) + memtokens + witokens + prompttkns + tokens
+                tokens = (tokenizer._koboldai_header if koboldai_vars.model not in ("Colab", "API", "CLUSTER", "OAI") else []) + memtokens + witokens + prompttkns + tokens
         else:
             # Prepend Memory, WI, and Prompt before action tokens
-            tokens = (tokenizer._koboldai_header if koboldai_vars.model not in ("Colab", "API", "OAI") else []) + memtokens + witokens + prompttkns + tokens
+            tokens = (tokenizer._koboldai_header if koboldai_vars.model not in ("Colab", "API", "CLUSTER", "OAI") else []) + memtokens + witokens + prompttkns + tokens
 
         # Send completed bundle to generator
         assert len(tokens) <= koboldai_vars.max_length - lnsp - koboldai_vars.genamt - budget_deduction
@@ -4360,23 +4486,27 @@ def calcsubmit(txt):
         else:
             subtxt, min, max = calcsubmitbudget(actionlen, winfo, mem, anotetxt, koboldai_vars.actions, submission=txt)
         if(actionlen == 0):
-            if(not koboldai_vars.use_colab_tpu and koboldai_vars.model not in ["Colab", "API", "OAI", "TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX"]):
+            if(not koboldai_vars.use_colab_tpu and koboldai_vars.model not in ["Colab", "API", "CLUSTER", "OAI", "TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX"]):
                 generate(subtxt, min, max, found_entries=found_entries)
             elif(koboldai_vars.model == "Colab"):
                 sendtocolab(utils.decodenewlines(tokenizer.decode(subtxt)), min, max)
             elif(koboldai_vars.model == "API"):
                 sendtoapi(utils.decodenewlines(tokenizer.decode(subtxt)), min, max)
+            elif(koboldai_vars.model == "CLUSTER"):
+                sendtocluster(utils.decodenewlines(tokenizer.decode(subtxt)), min, max)
             elif(koboldai_vars.model == "OAI"):
                 oairequest(utils.decodenewlines(tokenizer.decode(subtxt)), min, max)
             elif(koboldai_vars.use_colab_tpu or koboldai_vars.model in ("TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX")):
                 tpumtjgenerate(subtxt, min, max, found_entries=found_entries)
         else:
-            if(not koboldai_vars.use_colab_tpu and koboldai_vars.model not in ["Colab", "API", "OAI", "TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX"]):
+            if(not koboldai_vars.use_colab_tpu and koboldai_vars.model not in ["Colab", "API", "CLUSTER", "OAI", "TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX"]):
                 generate(subtxt, min, max, found_entries=found_entries)
             elif(koboldai_vars.model == "Colab"):
                 sendtocolab(utils.decodenewlines(tokenizer.decode(subtxt)), min, max)
             elif(koboldai_vars.model == "API"):
                 sendtoapi(utils.decodenewlines(tokenizer.decode(subtxt)), min, max)
+            elif(koboldai_vars.model == "CLUSTER"):
+                sendtocluster(utils.decodenewlines(tokenizer.decode(subtxt)), min, max)
             elif(koboldai_vars.model == "OAI"):
                 oairequest(utils.decodenewlines(tokenizer.decode(subtxt)), min, max)
             elif(koboldai_vars.use_colab_tpu or koboldai_vars.model in ("TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX")):
@@ -4828,18 +4958,102 @@ def sendtoapi(txt, min, max):
         if(len(genout) == 1):
             genresult(genout[0])
         else:
+            adjusted_genout = []
+            for item in genout:
+                adjusted_genout.append({"generated_text": item})
             # Convert torch output format to transformers
             seqs = []
-            for seq in genout:
+            for seq in adjusted_genout:
                 seqs.append({"generated_text": seq})
             if(koboldai_vars.lua_koboldbridge.restart_sequence is not None and koboldai_vars.lua_koboldbridge.restart_sequence > 0):
-                genresult(genout[koboldai_vars.lua_koboldbridge.restart_sequence-1]["generated_text"])
+                genresult(adjusted_genout[koboldai_vars.lua_koboldbridge.restart_sequence-1]["generated_text"])
             else:
-                genselect(genout)
+                genselect(adjusted_genout)
 
         set_aibusy(0)
         return
 
+#==================================================================#
+#  Send transformers-style request to KoboldAI Cluster
+#==================================================================#
+def sendtocluster(txt, min, max):
+    # Log request to console
+    if not vars.quiet:
+        print("{0}Tokens:{1}, Txt:{2}{3}".format(colors.YELLOW, min-1, txt, colors.END))
+
+    # Store context in memory to use it for comparison with generated content
+    vars.lastctx = txt
+
+    # Build request JSON data
+    reqdata = {
+        'max_length': max - min + 1,
+        'max_context_length': vars.max_length,
+        'rep_pen': vars.rep_pen,
+        'rep_pen_slope': vars.rep_pen_slope,
+        'rep_pen_range': vars.rep_pen_range,
+        'temperature': vars.temp,
+        'top_p': vars.top_p,
+        'top_k': vars.top_k,
+        'top_a': vars.top_a,
+        'tfs': vars.tfs,
+        'typical': vars.typical,
+        'n': vars.numseqs,
+    }
+    cluster_metadata = {
+        'prompt': txt,
+        'params': reqdata,
+        'username': vars.apikey,
+        'models': vars.cluster_requested_models,
+    }
+
+    # Create request
+    req = requests.post(
+        vars.colaburl[:-8] + "/generate/sync",
+        json=cluster_metadata,
+    )
+    js = req.json()
+    if(req.status_code == 503):
+        errmsg = "KoboldAI API Error: No available KoboldAI servers found in cluster to fulfil this request using the selected models and requested lengths."
+        print("{0}{1}{2}".format(colors.RED, json.dumps(js, indent=2), colors.END))
+        emit('from_server', {'cmd': 'errmsg', 'data': errmsg}, broadcast=True)
+        set_aibusy(0)
+        return
+    if(req.status_code != 200):
+        errmsg = "KoboldAI API Error: Failed to get a reply from the server. Please check the console."
+        print("{0}{1}{2}".format(colors.RED, json.dumps(js, indent=2), colors.END))
+        emit('from_server', {'cmd': 'errmsg', 'data': errmsg}, broadcast=True)
+        set_aibusy(0)
+        return
+    genout = js
+
+    for i in range(vars.numseqs):
+        vars.lua_koboldbridge.outputs[i+1] = genout[i]
+
+    execute_outmod()
+    if(vars.lua_koboldbridge.regeneration_required):
+        vars.lua_koboldbridge.regeneration_required = False
+        genout = []
+        for i in range(vars.numseqs):
+            genout.append(vars.lua_koboldbridge.outputs[i+1])
+            assert type(genout[-1]) is str
+
+    if(len(genout) == 1):
+        genresult(genout[0])
+    else:
+        adjusted_genout = []
+        for item in genout:
+            adjusted_genout.append({"generated_text": item})
+        # Convert torch output format to transformers
+        seqs = []
+        for seq in adjusted_genout:
+            seqs.append({"generated_text": seq})
+        if(vars.lua_koboldbridge.restart_sequence is not None and vars.lua_koboldbridge.restart_sequence > 0):
+            genresult(adjusted_genout[vars.lua_koboldbridge.restart_sequence-1]["generated_text"])
+        else:
+            genselect(adjusted_genout)
+
+    set_aibusy(0)
+    return
 
 #==================================================================#
 #  Send text to TPU mesh transformer backend
@@ -5669,7 +5883,9 @@ def oairequest(txt, min, max):
     koboldai_vars.lastctx = txt
     
     # Build request JSON data
-    if 'GooseAI' in args.configname:
+    # GooseAI is a subntype of OAI. So to check if it's this type, we check the configname as a workaround
+    # as the vars.model will always be OAI
+    if 'GooseAI' in vars.configname:
         reqdata = {
             'prompt': txt,
             'max_tokens': koboldai_vars.genamt,
@@ -8021,7 +8237,7 @@ def post_story_end(body: SubmissionInputSchema):
     numseqs = koboldai_vars.numseqs
     koboldai_vars.numseqs = 1
     try:
-        actionsubmit(body.prompt, force_submit=True, no_generate=True)
+        actionsubmit(body.prompt, force_submit=True, no_generate=True, ignore_aibusy=True)
     finally:
         koboldai_vars.disable_set_aibusy = disable_set_aibusy
         koboldai_vars.standalone = _standalone
@@ -9944,6 +10160,32 @@ def get_config_soft_prompt():
                 value: ""
     """
     return {"value": koboldai_vars.spfilename.strip()}
+
+class SoftPromptsListSchema(KoboldSchema):
+    values: List[SoftPromptSettingSchema] = fields.List(fields.Nested(SoftPromptSettingSchema), required=True, metadata={"description": "Array of available softprompts."})
+
+@api_v1.get("/config/soft_prompts_list")
+@api_schema_wrap
+def get_config_soft_prompts_list():
+    """---
+    get:
+      summary: Retrieve all available softprompt filenames
+      tags:
+        - config
+      responses:
+        200:
+          description: Successful request
+          content:
+            application/json:
+              schema: SoftPromptsListSchema
+              example:
+                values: []
+    """
+    splist = []
+    for sp in fileops.getspfiles(vars.modeldim):
+
+        splist.append({"value":sp["filename"]})
+    return {"values": splist}
 
 @api_v1.put("/config/soft_prompt")
 @api_schema_wrap

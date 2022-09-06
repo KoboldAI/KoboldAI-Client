@@ -2919,14 +2919,35 @@ $(document).ready(function(){
 			if (msg.key) {
 				$("#modelkey").removeClass("hidden");
 				$("#modelkey")[0].value = msg.key_value;
+				if (msg.models_on_url) {
+					$("#modelkey")[0].onblur = function () {socket.send({'cmd': 'Cluster_Key_Update', 'key': this.value, 'url': document.getElementById("modelurl").value});};
+					$("#modelurl")[0].onblur = function () {socket.send({'cmd': 'Cluster_Key_Update', 'key': document.getElementById("modelkey").value, 'url': this.value});};
+				} else {
+					$("#modelkey")[0].onblur = function () {socket.send({'cmd': 'OAI_Key_Update', 'key': $('#modelkey')[0].value});};
+					$("#modelurl")[0].onblur = null;
+				}
 				//if we're in the API list, disable to load button until the model is selected (after the API Key is entered)
 				disableButtons([load_model_accept]);
 			} else {
 				$("#modelkey").addClass("hidden");
-				
 			}
+			
+			console.log(msg.multi_online_models);
+			if (msg.multi_online_models) {
+				$("#oaimodel")[0].setAttribute("multiple", "");
+				$("#oaimodel")[0].options[0].textContent = "All"
+			} else {
+				$("#oaimodel")[0].removeAttribute("multiple");
+				$("#oaimodel")[0].options[0].textContent = "Select Model(s)"
+			}
+			
+			
+			
 			if (msg.url) {
 				$("#modelurl").removeClass("hidden");
+				if (msg.default_url != null) {
+					$("#modelurl").value = msg.default_url;
+				}
 			} else {
 				$("#modelurl").addClass("hidden");
 			}
@@ -3287,7 +3308,11 @@ $(document).ready(function(){
 			}
 		}
 		var disk_layers = $("#disk_layers").length > 0 ? $("#disk_layers")[0].value : 0;
-		message = {'cmd': 'load_model', 'use_gpu': $('#use_gpu')[0].checked, 'key': $('#modelkey')[0].value, 'gpu_layers': gpu_layers.slice(0, -1), 'disk_layers': disk_layers, 'url': $('#modelurl')[0].value, 'online_model': $('#oaimodel')[0].value};
+		models = getSelectedOptions(document.getElementById('oaimodel'));
+		if (models.length == 1) {
+			models = models[0];
+		}
+		message = {'cmd': 'load_model', 'use_gpu': $('#use_gpu')[0].checked, 'key': $('#modelkey')[0].value, 'gpu_layers': gpu_layers.slice(0, -1), 'disk_layers': disk_layers, 'url': $('#modelurl')[0].value, 'online_model': models};
 		socket.send(message);
 		loadmodelcontent.html("");
 		hideLoadModelPopup();
@@ -3733,3 +3758,27 @@ function upload_file(file_box) {
 	}
 }
 
+function getSelectedOptions(element) {
+    // validate element
+    if(!element || !element.options)
+        return []; //or null?
+
+    // return HTML5 implementation of selectedOptions instead.
+    if (element.selectedOptions) {
+        selectedOptions = element.selectedOptions;
+	} else {
+		// you are here because your browser doesn't have the HTML5 selectedOptions
+		var opts = element.options;
+		var selectedOptions = [];
+		for(var i = 0; i < opts.length; i++) {
+			 if(opts[i].selected) {
+				 selectedOptions.push(opts[i]);
+			 }
+		}
+	}
+	output = []
+	for (item of selectedOptions) {
+		output.push(item.value);
+	}
+    return output;
+}

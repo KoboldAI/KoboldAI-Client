@@ -296,12 +296,12 @@
 			<div id="loadmodellistcontent" style="overflow: auto; height: 300px;">
 			</div>
 			<div class="popupfooter">
-				<input class="form-control hidden" type="text" placeholder="key" id="modelkey" onblur="socket.send({'cmd': 'OAI_Key_Update', 'key': $('#modelkey')[0].value});">
 				<input class="form-control hidden" type="text" placeholder="Enter the URL of the server (For example a trycloudflare link)" id="modelurl" onchange="check_enable_model_load()">
+				<input class="form-control hidden" type="text" placeholder="key" id="modelkey" onblur="socket.send({'cmd': 'OAI_Key_Update', 'key': $('#modelkey')[0].value});">
 				<input class="form-control hidden" type="text" placeholder="Model Path or Hugging Face Name" id="custommodelname" menu="" onblur="socket.send({'cmd': 'selectmodel', 'data': $(this).attr('menu'), 'path_modelname': $('#custommodelname')[0].value});">
 			</div>
 			<div class="popupfooter">
-				<select class="form-control hidden" id="oaimodel"><option value="">Select OAI Model</option></select>
+				<select class="form-control hidden" id="oaimodel"><option value="">Select Model(s)</option></select>
 			</div>
 			<div class="popupfooter hidden" id=modellayers>
 				<div class='settingitem' style="width:100%">
