@@ -5184,7 +5184,7 @@ def sendtocluster(txt, min, max):
     cluster_metadata = {
         'prompt': txt,
         'params': reqdata,
-        'username': vars.apikey,
+        'api_key': vars.apikey,
         'models': vars.cluster_requested_models,
     }
 
