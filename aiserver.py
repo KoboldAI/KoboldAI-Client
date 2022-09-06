@@ -7651,7 +7651,7 @@ def UI_2_theme_change(data):
     with open("themes/{}.css".format(data['name']), "w") as f:
         f.write(":root {\n")
         for key, value in data['theme'].items():
-            f.write("\t{}: {};\n".format(key, value.replace(";", "")))
+            f.write("\t{}: {};\n".format(key, value.replace(";", "").replace("--", "-")))
         f.write("}")
     print("Theme Saved")
 

@@ -373,7 +373,7 @@ input[type="range"]::-ms-fill-upper {
 	position: absolute;
 	top:10px;
 	color: var(--text);
-	left: calc(var(--flyout_menu_width) - 130px);
+	left: calc(var(--flyout_menu_width) - 132px);
 	z-index:50;
 	width: 25px;
 	height: 25px;
