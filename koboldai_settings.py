@@ -801,9 +801,11 @@ class system_settings(settings):
                         if value == True:
                             import subprocess
                             if os.path.exists('./KoboldAI-Horde/venv/scripts/python.exe'):
+                                import random
+                                random.seed()
                                 self._horde_pid = subprocess.Popen(['./KoboldAI-Horde/venv/scripts/python.exe', './KoboldAI-Horde/bridge.py', 
-                                                                        '--username', 'new_ui_user', '--password', '3589yhusd*YT$^', '--kai_name', 'Test New UI', 
-                                                                        '--kai_url', 'http://127.0.0.1:{}'.format(self.port), '--cluster_url', "http://koboldai.net"])
+                                                                        '--username', '{}'.format(random.randint(-1000000000000, 1000000000000)), '--password', '{}'.format(random.randint(-1000000000000, 1000000000000)), 
+                                                                        '--kai_name', '{}'.format(random.randint(-1000000000000, 1000000000000)), '--kai_url', 'http://127.0.0.1:{}'.format(self.port), '--cluster_url', "http://koboldai.net"])
                             else:
                                 self._horde_pid = subprocess.Popen(['./KoboldAI-Horde/venv/bin/python', './KoboldAI-Horde/bridge.py', 
                                                                         '--username', 'new_ui_user', '--password', '3589yhusd*YT$^', '--kai_name', 'Test New UI', 
