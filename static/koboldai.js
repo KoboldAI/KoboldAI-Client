@@ -821,14 +821,30 @@ function popup_items(data) {
 			tr.append(popup_item);
 		}
 		
+		let dataIndex = -1;
 		for (extra_data of item[4]) {
 			td = document.createElement("span");
 			td.style = "grid-area: p"+i+";";
 			i+=1;
+			dataIndex++;
 			td.id = item[1];
 			td.setAttribute("folder", item[0]);
 			td.setAttribute("valid", item[3]);
-			td.textContent = extra_data;
+
+			// HACK: We should probably not use an index-based approach to check this...
+			if (dataIndex === 2 && extra_data.startsWith("DATE:")) {
+				let timestamp = parseInt(extra_data.replace("DATE:", ""));
+
+				// When sorting by date, we don't want to sort alphabetically!
+				td.setAttribute("sort-value", timestamp);
+
+				// Date expects unix timestamps to be in milligilliaseconds or something
+				const date = new Date(timestamp * 1000)
+				td.textContent = date.toLocaleString();
+			} else {
+				td.textContent = extra_data;
+			}
+
 			td.onclick = function () {
 							var accept = document.getElementById("popup_accept");
 							if (this.getAttribute("valid") == "true") {

@@ -7290,34 +7290,47 @@ def UI_2_load_model(data):
 def UI_2_load_story_list(data):
     file_popup("Select Story to Load", "./stories", "load_story", upload=True, jailed=True, folder_only=False, renameable=True, 
                                                                   deleteable=True, show_breadcrumbs=True, item_check=valid_story,
-                                                                  valid_only=True, hide_extention=True, extra_parameter_function=get_story_length,
-                                                                  column_names=['Story Name', 'Action Count'], show_filename=False,
-                                                                  column_widths=['auto', '100px'], advanced_sort=story_sort,
+                                                                  valid_only=True, hide_extention=True, extra_parameter_function=get_story_listing_data,
+                                                                  column_names=['Story Name', 'Action Count', 'Last Loaded'], show_filename=False,
+                                                                  column_widths=['auto', '100px', '150px'], advanced_sort=story_sort,
                                                                   sort="Modified", desc=True)
                                                                   
-def get_story_length(item_full_path, item, valid_selection):
+def get_story_listing_data(item_full_path, item, valid_selection):
+    title = ""
+    action_count = -1
+    last_loaded = ""
+
     if not valid_selection:
-        return ["", ""]
+        return [title, action_count, last_loaded]
+
     with open(item_full_path, "r") as f:
         js = json.load(f)
-        title = js['story_name'] if 'story_name' in js else ".".join(item.split(".")[:-1])
-        if 'file_version' not in js:
-            return [title, len(js['actions'])]
-        if js['file_version'] == 1:
-            return [title, len(js['actions'])]
-        return [title, 0 if js['actions']['action_count'] == -1 else js['actions']['action_count'] ]
+
+    title = js['story_name'] if 'story_name' in js else ".".join(item.split(".")[:-1])
+    action_count = len(js["actions"])
+
+    if title in koboldai_vars._system_settings.story_loads:
+        timestamp = int(time.mktime(time.strptime(koboldai_vars._system_settings.story_loads[title], "%m/%d/%Y, %H:%M:%S")))
+        last_loaded = f"DATE:{timestamp}"
+
+    if js.get("file_version", 1) == 1:
+        return [title, action_count, last_loaded]
+
+    action_count = 0 if js['actions']['action_count'] == -1 else js['actions']['action_count']
+
+    return [title, action_count, last_loaded]
     
 
 def valid_story(file):
-        if file.endswith(".json"):
-            with open(file, "r") as f:
-                try:
-                    js = json.load(f)
-                except:
-                    pass
-                    return False
-                
-                return 'actions' in js
+    if file.endswith(".json"):
+        with open(file, "r") as f:
+            try:
+                js = json.load(f)
+            except:
+                pass
+                return False
+
+            return 'actions' in js
 
 def story_sort(base_path, desc=False):
     files = {}
