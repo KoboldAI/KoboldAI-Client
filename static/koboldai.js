@@ -2835,6 +2835,9 @@ function close_menus() {
 	for (temp of document.getElementsByClassName("sample_order")) {
 		temp.classList.remove("selected");
 	}
+	
+	const finderContainer = document.getElementById("finder-container");
+	finderContainer.classList.add("hidden");
 }
 
 function toggle_flyout(x) {
@@ -3192,6 +3195,17 @@ function updateFinderSelection() {
 	newSelection.classList.add("result-selected");
 }
 
+function open_finder() {
+	const finderContainer = document.getElementById("finder-container");
+	const finderInput = document.getElementById("finder-input");
+	finderInput.value = "";
+	$(".finder-result").remove();
+	finder_selection_index = -1;
+	
+	finderContainer.classList.remove("hidden");
+	finderInput.focus();
+}
+
 $(document).ready(function(){
 	create_theming_elements();
 	document.onkeydown = detect_key_down;
@@ -3372,21 +3386,13 @@ $(document).ready(function(){
 });
 
 document.addEventListener("keydown", function(event) {
-	const finderContainer = document.getElementById("finder-container");
-	if (event.key === "Escape") finderContainer.classList.add("hidden");
-	
+		
 	if (!event.ctrlKey) return;
 
 	switch (event.key) {
 		// TODO: Add other shortcuts
 		case "k":
-			const finderInput = document.getElementById("finder-input");
-			finderInput.value = "";
-			$(".finder-result").remove();
-			finder_selection_index = -1;
-			
-			finderContainer.classList.remove("hidden");
-			finderInput.focus();
+			open_finder()
 			
 			event.preventDefault();
 			break;

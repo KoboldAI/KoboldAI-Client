@@ -369,6 +369,19 @@ input[type="range"]::-ms-fill-upper {
 	transition: left 0.5s;
 }
 
+.search_icon {
+	position: absolute;
+	top:10px;
+	color: var(--text);
+	left: calc(var(--flyout_menu_width) - 130px);
+	z-index:50;
+	width: 25px;
+	height: 25px;
+	display: inline-block;
+	transition: left 0.5s;
+	cursor: pointer;
+}
+
 .SideMenu {
 	height: 100%;
 	z-index: 4;
