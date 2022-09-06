@@ -53,6 +53,10 @@
 					<span> Load Model</span>
 				</button>
 				<select class="var_sync_model_selected_preset settings_select presets" onchange='sync_to_server(this)'><option>Preset</option></select>
+				{% if not on_colab %}
+					<br/><input type=checkbox data-size="mini" data-onstyle="success" data-toggle="toggle" class='var_sync_system_horde_share' onchange='sync_to_server(this)'> Share with Horde 
+					<span class="helpicon material-icons-outlined" title="Shares your GPU with other KoboldAI users. Does not share data/stories.">help_icon</span>
+				{% endif %}
 			</div>
 		</div>
 		<div id="Story_Info">

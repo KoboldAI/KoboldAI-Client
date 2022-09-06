@@ -1345,14 +1345,14 @@ def get_model_info(model, directory=""):
                 filename = "settings/{}.breakmodel".format(model.replace("/", "_"))
             if path.exists(filename):
                 with open(filename, "r") as file:
-                    data = file.read().split("\n")[:2]
+                    data = [x for x in file.read().split("\n")[:2] if x != '']
                     if len(data) < 2:
                         data.append("0")
                     break_values, disk_blocks = data
                     break_values = break_values.split(",")
             else:
                 break_values = [layer_count]
-            break_values = [int(x) for x in break_values]
+            break_values = [int(x) for x in break_values if x != '']
             break_values += [0] * (gpu_count - len(break_values))
     emit('from_server', {'cmd': 'selected_model_info', 'key_value': key_value, 'key':key, 
                          'gpu':gpu, 'layer_count':layer_count, 'breakmodel':breakmodel, 
@@ -6716,7 +6716,7 @@ def new_ui_index():
     if 'story' in session:
         if session['story'] not in koboldai_vars.story_list():
             session['story'] = 'default'
-    return render_template('index_new.html', settings=gensettings.gensettingstf if koboldai_vars.model != "InferKit" else gensettings.gensettingsik )
+    return render_template('index_new.html', settings=gensettings.gensettingstf, on_colab=koboldai_vars.on_colab )
 
 def ui2_connect():
     #Send all variables to client
@@ -10336,7 +10336,7 @@ if __name__ == "__main__":
     patch_transformers()
     # Start Flask/SocketIO (Blocking, so this must be last method!)
     port = args.port if "port" in args and args.port is not None else 5000
-    koboldai_settings.port = port
+    koboldai_vars.port = port
     
     if(koboldai_vars.host):
         if(args.localtunnel):

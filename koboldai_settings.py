@@ -1,8 +1,9 @@
-import os, re, time, threading, json, pickle, base64, copy, tqdm, datetime
+import os, re, time, threading, json, pickle, base64, copy, tqdm, datetime, sys
 from io import BytesIO
 from flask import has_request_context
 from flask_socketio import SocketIO
 from collections import OrderedDict
+import multiprocessing
 
 serverstarted = False
 queue = None
@@ -669,8 +670,8 @@ class user_settings(settings):
             process_variable_changes(self.socketio, self.__class__.__name__.replace("_settings", ""), name, value, old_value)
         
 class system_settings(settings):
-    local_only_variables = ['socketio', 'lua_state', 'lua_logname', 'lua_koboldbridge', 'lua_kobold', 'lua_koboldcore', 'regex_sl', 'acregex_ai', 'acregex_ui', 'comregex_ai', 'comregex_ui', 'sp']
-    no_save_variables = ['socketio', 'lua_state', 'lua_logname', 'lua_koboldbridge', 'lua_kobold', 'lua_koboldcore', 'sp']
+    local_only_variables = ['socketio', 'lua_state', 'lua_logname', 'lua_koboldbridge', 'lua_kobold', 'lua_koboldcore', 'regex_sl', 'acregex_ai', 'acregex_ui', 'comregex_ai', 'comregex_ui', 'sp', '_horde_pid']
+    no_save_variables = ['socketio', 'lua_state', 'lua_logname', 'lua_koboldbridge', 'lua_kobold', 'lua_koboldcore', 'sp', '_horde_pid']
     settings_name = "system"
     def __init__(self, socketio):
         self.socketio = socketio
@@ -730,7 +731,16 @@ class system_settings(settings):
         self.seed        = None   # The current RNG seed (as an int), or None if unknown
         self.alt_gen = False # Use the calc_ai_text method for generating text to go to the AI
         self.theme_list = [".".join(f.split(".")[:-1]) for f in os.listdir("./themes") if os.path.isfile(os.path.join("./themes", f))]
+        self.port = 5000
+        self.on_colab = 'google.colab' in sys.modules
+        self.horde_share = False
+        self._horde_pid = None
         
+        
+    def start_horde_bridge(port):
+        while True:
+            print("Running horde")
+            time.sleep(10)
         
     def __setattr__(self, name, value):
         new_variable = name not in self.__dict__
@@ -746,6 +756,23 @@ class system_settings(settings):
             
             if name == "aibusy" and value == False:
                 koboldai_vars.abort = False
+                
+            if name == 'horde_share':
+                if self.on_colab == False:
+                    if os.path.exists("./KoboldAI-Horde"):
+                        if value == True:
+                            import subprocess
+                            if os.path.exists('./KoboldAI-Horde/venv/scripts/python.exe'):
+                                self._horde_pid = subprocess.Popen(['./KoboldAI-Horde/venv/scripts/python.exe', './KoboldAI-Horde/bridge.py', 
+                                                                        '--username', 'new_ui_user', '--password', '3589yhusd*YT$^', '--kai_name', 'Test New UI', 
+                                                                        '--kai_url', 'http://127.0.0.1:{}'.format(self.port), '--cluster_url', "http://koboldai.net"])
+                            else:
+                                self._horde_pid = subprocess.Popen(['./KoboldAI-Horde/venv/bin/python', './KoboldAI-Horde/bridge.py', 
+                                                                        '--username', 'new_ui_user', '--password', '3589yhusd*YT$^', '--kai_name', 'Test New UI', 
+                                                                        '--kai_url', 'http://127.0.0.1:{}'.format(self.port), '--cluster_url', "http://koboldai.net"])
+                        else:
+                            print("kill bridge")
+                            self._horde_pid.terminate()
                 
         
 class KoboldStoryRegister(object):
