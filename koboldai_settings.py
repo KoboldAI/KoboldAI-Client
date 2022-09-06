@@ -768,11 +768,6 @@ class system_settings(settings):
         self._horde_pid = None
         
         
-    def start_horde_bridge(port):
-        while True:
-            print("Running horde")
-            time.sleep(10)
-        
     def __setattr__(self, name, value):
         new_variable = name not in self.__dict__
         old_value = getattr(self, name, None)
@@ -802,8 +797,10 @@ class system_settings(settings):
                                                                         '--username', 'new_ui_user', '--password', '3589yhusd*YT$^', '--kai_name', 'Test New UI', 
                                                                         '--kai_url', 'http://127.0.0.1:{}'.format(self.port), '--cluster_url', "http://koboldai.net"])
                         else:
-                            print("kill bridge")
-                            self._horde_pid.terminate()
+                            if self._horde_pid is not None:
+                                print("kill bridge")
+                                self._horde_pid.terminate()
+                                self._horde_pid = None
                 
         
 class KoboldStoryRegister(object):

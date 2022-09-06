@@ -475,8 +475,8 @@ def get_config_filename(model_name = None):
         return(f"settings/{model_name.replace('/', '_')}.settings")
     elif args.configname:
         return(f"settings/{args.configname.replace('/', '_')}.settings")
-    elif vars.configname != '':
-        return(f"settings/{vars.configname.replace('/', '_')}.settings")
+    elif koboldai_vars.configname != '':
+        return(f"settings/{koboldai_vars.configname.replace('/', '_')}.settings")
     else:
         print(f"Empty configfile name sent back. Defaulting to ReadOnly")
         return(f"settings/ReadOnly.settings")
@@ -591,8 +591,8 @@ def check_if_dir_is_model(path):
 # Return Model Name
 #==================================================================#
 def getmodelname():
-    if(vars.online_model != ''):
-       return(f"{vars.model}/{vars.online_model}")
+    if(koboldai_vars.online_model != ''):
+       return(f"{koboldai_vars.model}/{koboldai_vars.online_model}")
     if(koboldai_vars.model in ("NeoCustom", "GPT2Custom", "TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX")):
         modelname = os.path.basename(os.path.normpath(koboldai_vars.custmodpth))
         return modelname
@@ -1073,9 +1073,9 @@ def general_startup(override_args=None):
     koboldai_vars.revision = args.revision
 
     if args.apikey:
-        vars.apikey = args.apikey
+        koboldai_vars.apikey = args.apikey
     if args.req_model:
-        vars.cluster_requested_models = args.req_model
+        koboldai_vars.cluster_requested_models = args.req_model
 
     if args.colab:
         args.remote = True;
@@ -1336,8 +1336,8 @@ def get_oai_models(data):
         emit('from_server', {'cmd': 'errmsg', 'data': req.json()})
 
 def get_cluster_models(msg):
-    vars.oaiapikey = msg['key']
-    vars.apikey = vars.oaiapikey
+    koboldai_vars.oaiapikey = msg['key']
+    koboldai_vars.apikey = koboldai_vars.oaiapikey
     url = msg['url']
     
         
@@ -1362,20 +1362,20 @@ def get_cluster_models(msg):
             # If the client settings file doesn't exist, create it
             # Write API key to file
             os.makedirs('settings', exist_ok=True)
-        if path.exists(get_config_filename(vars.model_selected)):
-            with open(get_config_filename(vars.model_selected), "r") as file:
+        if path.exists(get_config_filename(koboldai_vars.model_selected)):
+            with open(get_config_filename(koboldai_vars.model_selected), "r") as file:
                 js = json.load(file)
                 if 'online_model' in js:
                     online_model = js['online_model']
                 if "apikey" in js:
-                    if js['apikey'] != vars.oaiapikey:
+                    if js['apikey'] != koboldai_vars.oaiapikey:
                         changed=True
         else:
             changed=True
         if changed:
             js={}
-            with open(get_config_filename(vars.model_selected), "w") as file:
-                js["apikey"] = vars.oaiapikey
+            with open(get_config_filename(koboldai_vars.model_selected), "w") as file:
+                js["apikey"] = koboldai_vars.oaiapikey
                 file.write(json.dumps(js, indent=3))
             
         emit('from_server', {'cmd': 'oai_engines', 'data': engines, 'online_model': online_model}, broadcast=True)
@@ -1896,7 +1896,7 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
     model = None
     generator = None
     model_config = None
-    vars.online_model = ''
+    koboldai_vars.online_model = ''
     with torch.no_grad():
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore", message="torch.distributed.reduce_op is deprecated")
@@ -1917,7 +1917,7 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
     koboldai_vars.badwordsids = koboldai_settings.badwordsids_default
     
     if online_model == "":
-        vars.configname = vars.model.replace('/', '_')
+        koboldai_vars.configname = koboldai_vars.model.replace('/', '_')
     #Let's set the GooseAI or OpenAI server URLs if that's applicable
     else:
         koboldai_vars.online_model = online_model
@@ -1954,7 +1954,7 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
             koboldai_vars.oaiengines = "https://api.goose.ai/v1/engines"
             koboldai_vars.model = "OAI"
             args.configname = "GooseAI" + "/" + online_model
-        elif vars.model != "CLUSTER":
+        elif koboldai_vars.model != "CLUSTER":
             args.configname = koboldai_vars.model + "/" + online_model
         koboldai_vars.oaiurl = koboldai_vars.oaiengines + "/{0}/completions".format(online_model)
     
@@ -2042,12 +2042,12 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
     if(koboldai_vars.model == "GooseAI"):
         koboldai_vars.oaiengines = "https://api.goose.ai/v1/engines"
         koboldai_vars.model = "OAI"
-        vars.configname = "GooseAI"
+        koboldai_vars.configname = "GooseAI"
 
     # Ask for API key if OpenAI was selected
     if(koboldai_vars.model == "OAI"):
-        if not vars.configname:
-            vars.configname = "OAI"
+        if not koboldai_vars.configname:
+            koboldai_vars.configname = "OAI"
         
     if(koboldai_vars.model == "ReadOnly"):
         koboldai_vars.noai = True
@@ -3670,7 +3670,7 @@ def get_message(msg):
         sendModelSelection(menu=msg['data'])
     elif(msg['cmd'] == 'load_model'):
         print(msg)
-        print(vars.model_selected)
+        print(koboldai_vars.model_selected)
         if not os.path.exists("settings/"):
             os.mkdir("settings")
         changed = True
@@ -3694,14 +3694,14 @@ def get_message(msg):
             f.close()
         koboldai_vars.colaburl = msg['url'] + "/request"
         koboldai_vars.model = koboldai_vars.model_selected
-        if vars.model == "CLUSTER":
+        if koboldai_vars.model == "CLUSTER":
             if type(msg['online_model']) is not list:
                 if msg['online_model'] == '':
-                    vars.cluster_requested_models = []
+                    koboldai_vars.cluster_requested_models = []
                 else:
-                    vars.cluster_requested_models = [msg['online_model']]
+                    koboldai_vars.cluster_requested_models = [msg['online_model']]
             else:
-                vars.cluster_requested_models = msg['online_model']
+                koboldai_vars.cluster_requested_models = msg['online_model']
         load_model(use_gpu=msg['use_gpu'], gpu_layers=msg['gpu_layers'], disk_layers=msg['disk_layers'], online_model=msg['online_model'])
     elif(msg['cmd'] == 'show_model'):
         print("Model Name: {}".format(getmodelname()))
@@ -4406,7 +4406,7 @@ def calcsubmitbudget(actionlen, winfo, mem, anotetxt, actions, submission=None, 
     if(actionlen == 0):
         # First/Prompt action
         tokens = (tokenizer._koboldai_header if koboldai_vars.model not in ("Colab", "API", "CLUSTER", "OAI") else []) + memtokens + witokens + anotetkns + prompttkns
-        assert len(tokens) <= koboldai_vars.max_length - lnsp - vars.genamt - budget_deduction
+        assert len(tokens) <= koboldai_vars.max_length - lnsp - koboldai_vars.genamt - budget_deduction
         ln = len(tokens) + lnsp
         return tokens, ln+1, ln+koboldai_vars.genamt
     else:
@@ -4978,37 +4978,37 @@ def sendtoapi(txt, min, max):
 #==================================================================#
 def sendtocluster(txt, min, max):
     # Log request to console
-    if not vars.quiet:
+    if not koboldai_vars.quiet:
         print("{0}Tokens:{1}, Txt:{2}{3}".format(colors.YELLOW, min-1, txt, colors.END))
 
     # Store context in memory to use it for comparison with generated content
-    vars.lastctx = txt
+    koboldai_vars.lastctx = txt
 
     # Build request JSON data
     reqdata = {
         'max_length': max - min + 1,
-        'max_context_length': vars.max_length,
-        'rep_pen': vars.rep_pen,
-        'rep_pen_slope': vars.rep_pen_slope,
-        'rep_pen_range': vars.rep_pen_range,
-        'temperature': vars.temp,
-        'top_p': vars.top_p,
-        'top_k': vars.top_k,
-        'top_a': vars.top_a,
-        'tfs': vars.tfs,
-        'typical': vars.typical,
-        'n': vars.numseqs,
+        'max_context_length': koboldai_vars.max_length,
+        'rep_pen': koboldai_vars.rep_pen,
+        'rep_pen_slope': koboldai_vars.rep_pen_slope,
+        'rep_pen_range': koboldai_vars.rep_pen_range,
+        'temperature': koboldai_vars.temp,
+        'top_p': koboldai_vars.top_p,
+        'top_k': koboldai_vars.top_k,
+        'top_a': koboldai_vars.top_a,
+        'tfs': koboldai_vars.tfs,
+        'typical': koboldai_vars.typical,
+        'n': koboldai_vars.numseqs,
     }
     cluster_metadata = {
         'prompt': txt,
         'params': reqdata,
-        'username': vars.apikey,
-        'models': vars.cluster_requested_models,
+        'username': koboldai_vars.apikey,
+        'models': koboldai_vars.cluster_requested_models,
     }
 
     # Create request
     req = requests.post(
-        vars.colaburl[:-8] + "/generate/sync",
+        koboldai_vars.colaburl[:-8] + "/generate/sync",
         json=cluster_metadata,
     )
     js = req.json()
@@ -5026,15 +5026,15 @@ def sendtocluster(txt, min, max):
         return
     genout = js
 
-    for i in range(vars.numseqs):
-        vars.lua_koboldbridge.outputs[i+1] = genout[i]
+    for i in range(koboldai_vars.numseqs):
+        koboldai_vars.lua_koboldbridge.outputs[i+1] = genout[i]
 
     execute_outmod()
-    if(vars.lua_koboldbridge.regeneration_required):
-        vars.lua_koboldbridge.regeneration_required = False
+    if(koboldai_vars.lua_koboldbridge.regeneration_required):
+        koboldai_vars.lua_koboldbridge.regeneration_required = False
         genout = []
-        for i in range(vars.numseqs):
-            genout.append(vars.lua_koboldbridge.outputs[i+1])
+        for i in range(koboldai_vars.numseqs):
+            genout.append(koboldai_vars.lua_koboldbridge.outputs[i+1])
             assert type(genout[-1]) is str
 
     if(len(genout) == 1):
@@ -5047,8 +5047,8 @@ def sendtocluster(txt, min, max):
         seqs = []
         for seq in adjusted_genout:
             seqs.append({"generated_text": seq})
-        if(vars.lua_koboldbridge.restart_sequence is not None and vars.lua_koboldbridge.restart_sequence > 0):
-            genresult(adjusted_genout[vars.lua_koboldbridge.restart_sequence-1]["generated_text"])
+        if(koboldai_vars.lua_koboldbridge.restart_sequence is not None and koboldai_vars.lua_koboldbridge.restart_sequence > 0):
+            genresult(adjusted_genout[koboldai_vars.lua_koboldbridge.restart_sequence-1]["generated_text"])
         else:
             genselect(adjusted_genout)
 
@@ -5884,8 +5884,8 @@ def oairequest(txt, min, max):
     
     # Build request JSON data
     # GooseAI is a subntype of OAI. So to check if it's this type, we check the configname as a workaround
-    # as the vars.model will always be OAI
-    if 'GooseAI' in vars.configname:
+    # as the koboldai_vars.model will always be OAI
+    if 'GooseAI' in koboldai_vars.configname:
         reqdata = {
             'prompt': txt,
             'max_tokens': koboldai_vars.genamt,
@@ -10182,7 +10182,7 @@ def get_config_soft_prompts_list():
                 values: []
     """
     splist = []
-    for sp in fileops.getspfiles(vars.modeldim):
+    for sp in fileops.getspfiles(koboldai_vars.modeldim):
 
         splist.append({"value":sp["filename"]})
     return {"values": splist}
