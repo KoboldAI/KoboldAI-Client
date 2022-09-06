@@ -767,6 +767,7 @@ class system_settings(settings):
         self.disable_input_formatting = False
         self.disable_output_formatting = False
         self.port = 5000
+        print("Colab Check: {}".format('google.colab' in sys.modules))
         self.on_colab = 'google.colab' in sys.modules
         self.horde_share = False
         self._horde_pid = None
