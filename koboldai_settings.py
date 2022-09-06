@@ -411,6 +411,7 @@ class model_settings(settings):
         self.colaburl    = ""     # Ngrok url for Google Colab mode
         self.apikey      = ""     # API key to use for InferKit API calls
         self.oaiapikey   = ""     # API key to use for OpenAI API calls
+        self.configname = None
         
     def reset_for_model_load(self):
         self.max_length  = 2048    # Maximum number of tokens to submit per action
@@ -766,6 +767,7 @@ class system_settings(settings):
         self.disable_set_aibusy = False
         self.disable_input_formatting = False
         self.disable_output_formatting = False
+        self.api_tokenizer_id = None
         self.port = 5000
         try:
             import google.colab
