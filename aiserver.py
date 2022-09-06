@@ -2619,8 +2619,6 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
 def index():
     if args.no_ui:
         return redirect('/api/latest')
-    if 'new_ui' in request.args:
-        return render_template('index_new.html', hide_ai_menu=args.noaimenu)
     else:
         return render_template('index.html', hide_ai_menu=args.noaimenu, flaskwebgui=koboldai_vars.flaskwebgui)
 @app.route('/api', strict_slashes=False)

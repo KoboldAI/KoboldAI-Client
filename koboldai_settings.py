@@ -762,6 +762,10 @@ class system_settings(settings):
         self.theme_list = [".".join(f.split(".")[:-1]) for f in os.listdir("./themes") if os.path.isfile(os.path.join("./themes", f))]
         self.cloudflare_link = ""
         self.story_loads = {} #dict of when each story was last loaded
+        self.standalone = False
+        self.disable_set_aibusy = False
+        self.disable_input_formatting = False
+        self.disable_output_formatting = False
         self.port = 5000
         self.on_colab = 'google.colab' in sys.modules
         self.horde_share = False
