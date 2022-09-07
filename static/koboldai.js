@@ -249,6 +249,8 @@ function create_options(data) {
 			icon.setAttribute('data-glyph', "pin");
 			if (!(item.Pinned)) {
 				icon.setAttribute('style', "filter: brightness(50%);");
+			} else {
+				icon.removeAttribute('style');
 			}
 			iconcell.onclick = function () {
 									socket.emit("Pinning", {"chunk": this.getAttribute("option_chunk"), "option": this.getAttribute("option_id")});
