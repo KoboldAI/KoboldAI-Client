@@ -110,7 +110,7 @@
 	/* Side Menus */
 	--tab_color: var(--gruvbox-dark2);
 
-	--flyout_background: var(--layer1_palette);
+	--flyout_background: var(--gruvbox-dark0-soft);
 	--flyout_background_pinned: var(--gruvbox-dark0-soft);
 
 	--setting_background: var(--gruvbox-dark1);
