@@ -2370,19 +2370,7 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
 
 
             def get_hidden_size_from_model(model):
-                try:
-                    return int(model.model.decoder.project_in.in_features)
-                except:
-                    try:
-                        return int(model.model.decoder.embed_tokens.out_features)
-                    except:
-                        try:
-                            return int(model.transformer.hidden_size)
-                        except:
-                            try:
-                                return int(model.transformer.embed_dim)
-                            except:
-                                return int(model.lm_head.in_features)
+                return model.get_input_embeddings().embedding_dim
             
             def maybe_low_cpu_mem_usage() -> Dict[str, Any]:
                 if(packaging.version.parse(transformers_version) < packaging.version.parse("4.11.0")):
