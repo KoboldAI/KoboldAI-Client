@@ -431,7 +431,7 @@ class model_settings(settings):
         self.badwordsids = []
         self.fp32_model  = False  # Whether or not the most recently loaded HF model was in fp32 format
         self.modeldim    = -1     # Embedding dimension of your model (e.g. it's 4096 for GPT-J-6B and 2560 for GPT-Neo-2.7B)
-        self.sampler_order = [0, 1, 2, 3, 4, 5]
+        self.sampler_order = [6, 0, 1, 2, 3, 4, 5]
         self.newlinemode = "n"
         self.lazy_load   = True # Whether or not to use torch_lazy_loader.py for transformers models in order to reduce CPU memory usage
         self.revision    = None
@@ -552,6 +552,7 @@ class story_settings(settings):
         self.chatname    = "You"
         self.adventure   = False
         self.actionmode  = 0
+        self.storymode   = 0
         self.dynamicscan = False
         self.recentedit  = False
         self.notes       = ""    #Notes for the story. Does nothing but save
@@ -638,7 +639,7 @@ class story_settings(settings):
                     ignore = self.koboldai_vars.calc_ai_text()
             
             #Because we have seperate variables for action types, this syncs them
-            elif name == 'actionmode':
+            elif name == 'storymode':
                 if value == 0:
                     self.adventure = False
                     self.chatmode = False
@@ -650,14 +651,14 @@ class story_settings(settings):
                     self.chatmode = True
             elif name == 'adventure' and value == True:
                 self.chatmode = False
-                self.actionmode = 1
+                self.storymode = 1
             elif name == 'adventure' and value == False and self.chatmode == False:
-                self.actionmode = 0
+                self.storymode = 0
             elif name == 'chatmode' and value == True:
                 self.adventure = False
-                self.actionmode = 2
+                self.storymode = 2
             elif name == 'chatmode' and value == False and self.adventure == False:
-                self.actionmode = 0
+                self.storymode = 0
                 
 class user_settings(settings):
     local_only_variables = ['socketio', 'importjs']

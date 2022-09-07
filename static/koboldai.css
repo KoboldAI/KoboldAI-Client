@@ -199,6 +199,10 @@ border-top-right-radius: var(--tabs_rounding);
 	margin: 2px;
 }
 
+.chat_mode[story_chatmode="false"] {
+	display: none;
+}
+
 #story_menu_author .setting_container {
 	display: grid;
 	grid-template-areas: "label value"
@@ -1305,6 +1309,17 @@ body {
 	gap: 1px;
 	
 }
+
+.inputrow[story_storymode="1"] {
+	grid-template-areas: "adventure_mode textarea statusbar statusbar statusbar"
+						 "adventure_mode textarea submit submit submit"
+	                     "adventure_mode textarea back redo retry";
+	grid-template-columns: 80px auto 30px 30px 30px;
+	grid-template-rows: 0px 60px 40px;
+	gap: 1px;
+	
+}
+
 #random_game_prompt{
 	display: flex;
 	flex-direction: column;
@@ -1318,6 +1333,16 @@ body {
 	padding: 5px;
 	border-radius: var(--radius_inputbox);
 }
+
+#adventure_mode {
+	grid-area: adventure_mode
+}
+
+#adventure_mode[story_storymode]:not([story_storymode="1"]) {
+	display: none;
+}
+
+
 
 #input_text {
 	grid-area: textarea;

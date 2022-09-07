@@ -511,6 +511,14 @@ function var_changed(data) {
 	//Special case for context viewer
 	} else if (data.classname == "story" && data.name == "context") {
 		update_context(data.value);
+	//special case for story_actionmode
+	} else if (data.classname == "story" && data.name == "actionmode") {
+		const button = document.getElementById('adventure_mode');
+		if (data.value == 1) {
+			button.childNodes[1].textContent = "Adventure";
+		} else {
+			button.childNodes[1].textContent = "Story";
+		}
 	//Basic Data Syncing
 	} else {
 		var elements_to_change = document.getElementsByClassName("var_sync_"+data.classname.replace(" ", "_")+"_"+data.name.replace(" ", "_"));
@@ -2009,6 +2017,25 @@ function send_world_info(uid) {
 }
 
 function load_tweaks(data) {
+	
+}
+
+function toggle_adventure_mode(button) {
+	if (button.textContent == "Mode: Story") {
+		button.childNodes[1].textContent = "Adventure";
+		var actionmode = 1
+	} else {
+		button.childNodes[1].textContent = "Story";
+		var actionmode = 0
+	}
+	button.classList.add("pulse");
+	socket.emit("var_change", {"ID": "story_actionmode", "value": actionmode}, (response) => {
+			if ('status' in response) {
+				if (response['status'] == 'Saved') {
+					document.getElementById("adventure_mode").classList.remove("pulse");
+				}
+			}
+		});
 	
 }
 

@@ -69,12 +69,13 @@
 			</div>
 		</div>
 		<!------------ Input Area--------------------->
-		<div class="inputrow" id="inputrow_container">
+		<div class="inputrow var_sync_alt_story_storymode" id="inputrow_container">
 			<div id="random_game_prompt" class="hidden">
 				<input type="text" autocomplete="off" id="themetext" placeholder="Theme for Random Story" oninput='if (this.value != "") {
 																													document.getElementById("input_text").value = "";}'/>
 				<span class="help_text" style="margin:0px;margin-top:5px;">The AI can create a prompt for you! Optionally type in one or more themes above, or let the AI do it's thing.</span>
 			</div>
+			<button class="var_sync_alt_story_storymode action_button" id="adventure_mode" onclick="toggle_adventure_mode(this);"><span style="font-weight: bold;">Mode: </span><span>Story</span></button>
 			<textarea autocomplete="off" row=5 id="input_text" placeholder="Enter Prompt Here" oninput='if (this.value != "") {
 																											document.getElementById("themetext").value = "";
 																										}'

@@ -76,8 +76,6 @@
 						<span class="material-icons-outlined cursor var_sync_alt_story_gamesaved" title="Save Story">save</span>
 						<span class="button_label">Save Story</span>
 					</button>
-					
-					
 				</div>
 			</div>
 			<hr/>
@@ -88,6 +86,20 @@
 				{% include 'settings item.html' %}
 			{% endwith %}
 		{% endwith %}
+			<div class="setting_container chat_mode var_sync_alt_story_chatmode">
+				<!---Top Row---->
+				<span class="setting_label">
+					<span style="white-space: pre-wrap;">Chat Name: </span>
+					<span class="helpicon material-icons-outlined" title="Your name for chat mode.">help_icon</span>
+				</span>
+				<!---Bottom Row---->
+				<span class="setting_item" style="height: 25px;">
+					<input autocomplete="off" id="var_sync_story_chatname" class="var_sync_story_chatname settings_select" onclick="sync_to_server(this);">
+				</span>
+				<!---Slider Labels--->
+				<span class="setting_minlabel"><span style="top: -4px; position: relative;"></span></span>
+				<span class="setting_maxlabel"><span style="top: -4px; position: relative;"></span></span>
+			</div>
 		</div>
 		<div id="probabilities">
 			
@@ -112,6 +124,9 @@
 			</div>
 			<div class="setting_tile_area">
 				<span class="help_text">Change how the AI decides what to say.</span>
+				{% with sub_path='Sampling' %}
+					{% include 'settings item.html' %}
+				{% endwith %}
 				<div class="setting_container_single">
 					<!---Top Row---->
 					<span class="setting_label">
@@ -137,9 +152,6 @@
 						</div>
 					</span>
 				</div>
-				{% with sub_path='Sampling' %}
-					{% include 'settings item.html' %}
-				{% endwith %}
 			</div>
 			
 			<div class="collapsable_header" onclick="toggle_setting_category(this);">
