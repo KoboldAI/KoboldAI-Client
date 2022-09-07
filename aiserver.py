@@ -4018,10 +4018,13 @@ def actionsubmit(data, actionmode=0, force_submit=False, force_prompt_gen=False,
                 data = f"\n\n> {data}\n"
         
         # "Chat" mode
+        print(koboldai_vars.chatmode)
+        print(koboldai_vars.gamestarted)
         if(koboldai_vars.chatmode and koboldai_vars.gamestarted):
             data = re.sub(r'\n+', ' ', data)
             if(len(data)):
                 data = f"\n{koboldai_vars.chatname}: {data}\n"
+            print("Chat Mode Data: {}".format(data))
         
         # If we're not continuing, store a copy of the raw input
         if(data != ""):
@@ -7172,7 +7175,7 @@ def UI_2_submit(data):
         koboldai_vars.lua_koboldbridge.feedback = None
         koboldai_vars.recentrng = koboldai_vars.recentrngm = None
         if koboldai_vars.actions.action_count == -1:
-            actionsubmit(data['data'], actionmode=0)
+            actionsubmit(data['data'], actionmode=koboldai_vars.actionmode)
         else:
             actionsubmit(data['data'], actionmode=koboldai_vars.actionmode)
  

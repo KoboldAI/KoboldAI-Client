@@ -85,12 +85,11 @@ class koboldai_vars(object):
         #If we can figure out a way to get flask sessions into/through the lua bridge we could re-enable
         story_name = 'default'
         if story_name in self._story_settings:
-            
             self._story_settings[story_name].reset()
         else:
             self._story_settings[story_name] = story_settings(self.socketio)
         if json_data is not None:
-            self._story_settings[story_name].from_json(json_data)
+            self.load_story(sotry_name, json_data)
         self._story_settings['default'].send_to_ui()
     
     def story_list(self):
@@ -517,7 +516,6 @@ class story_settings(settings):
         self.gamestarted = False  # Whether the game has started (disables UI elements)
         self.gamesaved   = True   # Whether or not current game is saved
         self.autosave    = False             # Whether or not to automatically save after each action
-        self.no_save = False  #Temporary disable save (doesn't save with the file)
         self.prompt      = ""     # Prompt
         self.memory      = ""     # Text submitted to memory field
         self.authornote  = ""     # Text submitted to Author's Note field
@@ -568,6 +566,9 @@ class story_settings(settings):
         self.context = []
         self.last_story_load = None
         
+        #must be at bottom
+        self.no_save = False  #Temporary disable save (doesn't save with the file)
+        
     def save_story(self):
         if not self.no_save:
             if self.prompt != "" or self.memory != "" or self.authornote != "" or len(self.actions) > 0 or len(self.worldinfo_v2) > 0:
@@ -592,8 +593,10 @@ class story_settings(settings):
                 self.gamesaved = True
     
     def reset(self):
+        self.no_save = True
         self.socketio.emit("reset_story", {}, broadcast=True, room="UI_2")
         self.__init__(self.socketio, self.koboldai_vars, tokenizer=self.tokenizer)
+        self.no_save = False
         
     def __setattr__(self, name, value):
         new_variable = name not in self.__dict__
