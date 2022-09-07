@@ -312,15 +312,26 @@
 							<td><input class="Theme_Input" autocomplete="off" type=color id="tertiary_container_palette" onchange="palette_color(this)"></td>
 							<td><input class="Theme_Input" autocomplete="off" type=color id="on_tertiary_container_palette" onchange="palette_color(this)"></td>
 						</tr>
+					</table>
+					<table id="Palette_Table" border=1 style="border-color: var(--palette_table_border);">
 						<tr>
-							<td>Error</td>
-							<td><input class="Theme_Input" autocomplete="off" type=color id="error_palette" onchange="palette_color(this)"></td>
-							<td><input class="Theme_Input" autocomplete="off" type=color id="on_error_palette" onchange="palette_color(this)"></td>
-							<td><input class="Theme_Input" autocomplete="off" type=color id="error_container_palette" onchange="palette_color(this)"></td>
-							<td><input class="Theme_Input" autocomplete="off" type=color id="on_error_container_palette" onchange="palette_color(this)"></td>
+							<td colspan=5 style="text-align: center;">Backgrounds</td>
+						</tr>
+						<tr>
+							<td>Base</td>
+							<td>Layer 1</td>
+							<td>Layer 2</td>
+							<td>Layer 3</td>
+							<td>Layer 4</td>
+						</tr>
+						<tr>
+							<td><input class="Theme_Input" autocomplete="off" type=color id="background_palette" onchange="palette_color(this)"></td>
+							<td><input class="Theme_Input" autocomplete="off" type=color id="layer1_palette" onchange="palette_color(this)"></td>
+							<td><input class="Theme_Input" autocomplete="off" type=color id="layer2_palette" onchange="palette_color(this)"></td>
+							<td><input class="Theme_Input" autocomplete="off" type=color id="layer3_palette" onchange="palette_color(this)"></td>
+							<td><input class="Theme_Input" autocomplete="off" type=color id="layer4_palette" onchange="palette_color(this)"></td>
 						</tr>
 					</table>
-					
 				</div>
 			</div>
 			<div class="advanced_theme cursor" onclick='document.getElementById("advanced_theme_editor").classList.remove("hidden");'>
