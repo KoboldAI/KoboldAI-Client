@@ -918,17 +918,17 @@ def loadsettings():
 #  Load a soft prompt from a file
 #==================================================================#
 
-def check_for_sp_change():
-    while(True):
-        time.sleep(0.05)
+#def check_for_sp_change():
+#    while(True):
+#        time.sleep(0.05)
+#
+#        if(koboldai_vars.sp_changed):
+#            with app.app_context():
+#                emit('from_server', {'cmd': 'spstatitems', 'data': {koboldai_vars.spfilename: koboldai_vars.spmeta} if koboldai_vars.allowsp and len(koboldai_vars.spfilename) else {}}, namespace=None, broadcast=True, room="UI_1")
+#            koboldai_vars.sp_changed = False
 
-        if(koboldai_vars.sp_changed):
-            with app.app_context():
-                emit('from_server', {'cmd': 'spstatitems', 'data': {koboldai_vars.spfilename: koboldai_vars.spmeta} if koboldai_vars.allowsp and len(koboldai_vars.spfilename) else {}}, namespace=None, broadcast=True, room="UI_1")
-            koboldai_vars.sp_changed = False
 
-
-socketio.start_background_task(check_for_sp_change)
+#socketio.start_background_task(check_for_sp_change)
 
 def spRequest(filename):
     if(not koboldai_vars.allowsp):
@@ -1798,6 +1798,7 @@ def patch_transformers():
             if(koboldai_vars.abort or koboldai_vars.generated_tkns >= koboldai_vars.genamt):
                 self.regeneration_required = False
                 self.halt = False
+                koboldai_vars.abort = False
                 return True
             if(koboldai_vars.standalone):
                 return False

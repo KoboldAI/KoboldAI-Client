@@ -317,7 +317,7 @@ class koboldai_vars(object):
         #    return getattr(self._story_settings[self._sessions['story']], name)
         else:
             return getattr(self._story_settings['default'], name)
-        
+
 
 class settings(object):
     def to_json(self):
@@ -796,9 +796,14 @@ class system_settings(settings):
         if name not in self.local_only_variables and name[0] != "_" and not new_variable:
             process_variable_changes(self.socketio, self.__class__.__name__.replace("_settings", ""), name, value, old_value)
             
-            if name == "aibusy" and value == False:
-                koboldai_vars.abort = False
-                
+            #if name == "aibusy" and value == False and self.abort == True:
+            #    koboldai_vars.abort = False
+            
+            #for original UI
+            if name == 'sp_changed':
+                self.socketio.emit('from_server', {'cmd': 'spstatitems', 'data': {koboldai_vars.spfilename: koboldai_vars.spmeta} if koboldai_vars.allowsp and len(koboldai_vars.spfilename) else {}}, namespace=None, broadcast=True, room="UI_1")
+                self.sp_changed = False
+            
             if name == 'horde_share':
                 if self.on_colab == False:
                     if os.path.exists("./KoboldAI-Horde"):
