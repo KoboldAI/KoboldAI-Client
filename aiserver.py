@@ -7696,9 +7696,10 @@ def UI_2_save_tweaks(data):
 # Load Tweaks
 #==================================================================#
 def UI_2_load_tweaks():
-    if os.path.exists("./settings/tweaks.settings"):
-        with open("./settings/tweaks.settings", "r") as f:
-            socketio.emit('load_tweaks', f.read(), room="UI2")
+    if koboldai_vars.on_colab:
+        if os.path.exists("./settings/tweaks.settings"):
+            with open("./settings/tweaks.settings", "r") as f:
+                socketio.emit('load_tweaks', f.read(), room="UI2")
 
 #==================================================================#
 # Test
