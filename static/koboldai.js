@@ -128,7 +128,7 @@ function reset_story() {
 	world_info_folder({"root": []});
 	document.getElementById("story_prompt").setAttribute("world_info_uids", "");
 	document.getElementById('themerow').classList.remove("hidden");
-	document.getElementById('input_text').placeholder = "Enter Prompt Here";
+	document.getElementById('input_text').placeholder = "Enter Prompt Here (shift+enter for new line)";
 }
 
 function fix_text(val) {
@@ -164,18 +164,37 @@ function create_options(data) {
 		}
 		option_container.append(option_chunk);
 	}
-	//first, let's clear out our existing data
-	while (option_chunk.firstChild) {
-		option_chunk.removeChild(option_chunk.firstChild);
+	//first, let's clear out any extra options
+	options = [];
+	if (option_chunk.firstChild) {
+		for (child of option_chunk.firstChild.childNodes) {
+			options.push(child.firstChild);
+		}
 	}
-	var table = document.createElement("div");
-	table.classList.add("sequences");
+	for (item of options) {
+		if (item.getAttribute("option_id") >= data.value.action.Options.length) { 
+			item.parentElement.remove()
+		}
+	}
+	if (option_chunk.firstChild) {
+		var table = option_chunk.firstChild;
+	} else {
+		var table = document.createElement("div");
+		table.classList.add("sequences");
+	}
 	//Add Redo options
 	i=0;
 	for (item of data.value.action.Options) {
 		if ((item['Previous Selection'])) {
-			var row = document.createElement("div");
-			row.classList.add("sequence_row");
+			if (i < options.length) {
+				var row = options[i];
+				while (row.firstChild) {
+					row.removeChild(row.firstChild);
+				}
+			} else {
+				var row = document.createElement("div");
+				row.classList.add("sequence_row");
+			}
 			var textcell = document.createElement("span");
 			textcell.textContent = item.text;
 			textcell.classList.add("sequence");
@@ -200,11 +219,18 @@ function create_options(data) {
 		i+=1;
 	}
 	//Add general options
-	i=0;
+	//i=0;
 	for (item of data.value.action.Options) {
 		if (!(item.Edited) && !(item['Previous Selection'])) {
-			var row = document.createElement("div");
-			row.classList.add("sequence_row");
+			if (i < options.length) {
+				var row = options[i];
+				while (row.firstChild) {
+					row.removeChild(row.firstChild);
+				}
+			} else {
+				var row = document.createElement("div");
+				row.classList.add("sequence_row");
+			}
 			var textcell = document.createElement("span");
 			textcell.textContent = item.text;
 			textcell.classList.add("sequence");
@@ -310,14 +336,14 @@ function do_prompt(data) {
 	}
 	//if we have a prompt we need to disable the theme area, or enable it if we don't
 	if (data.value != "") {
-		document.getElementById('input_text').placeholder = "Enter text here";
+		document.getElementById('input_text').placeholder = "Enter text here (shift+enter for new line)";
 		document.getElementById('themerow').classList.add("hidden");
 		document.getElementById('themetext').value = "";
 		if (document.getElementById("Delete Me")) {
 			document.getElementById("Delete Me").remove();
 		}
 	} else {
-		document.getElementById('input_text').placeholder = "Enter Prompt Here";
+		document.getElementById('input_text').placeholder = "Enter Prompt Here (shift+enter for new line)";
 		document.getElementById('input_text').disabled = false;
 		document.getElementById('themerow').classList.remove("hidden");
 	}
