@@ -3094,8 +3094,9 @@ function detect_enter_submit(e) {
 		} else {
 			e.cancelBubble = true;
 		}
-		document.getElementById("btnsend").onclick();
-		document.getElementById('input_text').value = ''
+		console.log("submitting");
+		document.getElementById("btnsubmit").onclick();
+		setTimeout(function() {document.getElementById('input_text').value = '';}, 1);
 	}
 }
 
