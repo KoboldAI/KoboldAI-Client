@@ -3356,6 +3356,9 @@ $(document).ready(function(){
 		}
 
 		setCookie("enabledTweaks", JSON.stringify(out));
+		if (document.getElementById("on_colab").textContent == "true") {
+			socket.emit("save_tweaks", JSON.stringify(out));
+		}
 	}
 
 
