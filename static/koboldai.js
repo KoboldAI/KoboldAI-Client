@@ -2017,8 +2017,31 @@ function send_world_info(uid) {
 	socket.emit("edit_world_info", world_info_data[uid]);
 }
 
+function save_tweaks() {
+	let out = [];
+
+	for (const tweakContainer of document.getElementsByClassName("tweak-container")) {
+		let toggle = tweakContainer.querySelector("input");
+		let path = tweakContainer.getAttribute("tweak-path");
+		if (toggle.checked) out.push(path);
+	}
+
+	if (on_colab) {
+		socket.emit("save_tweaks", JSON.stringify(out));
+	} else {
+		setCookie("enabledTweaks", JSON.stringify(out));
+	}
+}
+
+
 function load_tweaks(data) {
-	
+	let enabledTweaks = JSON.parse(data);
+
+	for (const tweakContainer of document.getElementsByClassName("tweak-container")) {
+		let toggle = tweakContainer.querySelector("input");
+		let path = tweakContainer.getAttribute("tweak-path");
+		if (enabledTweaks.includes(path)) $(toggle).bootstrapToggle("on");
+	}
 }
 
 function toggle_adventure_mode(button) {
@@ -3379,28 +3402,8 @@ $(document).ready(function(){
 
 
 	// Tweak registering
-	let enabledTweaks = JSON.parse(getCookie("enabledTweaks", "[]"));
-
-	function saveTweaks() {
-		let out = [];
-
-		// TODO: Better saving
-		for (const tweakContainer of document.getElementsByClassName("tweak-container")) {
-			let toggle = tweakContainer.querySelector("input");
-			let path = tweakContainer.getAttribute("tweak-path");
-			if (toggle.checked) out.push(path);
-		}
-
-		setCookie("enabledTweaks", JSON.stringify(out));
-		if (document.getElementById("on_colab").textContent == "true") {
-			socket.emit("save_tweaks", JSON.stringify(out));
-		}
-	}
-
-
 	for (const tweakContainer of document.getElementsByClassName("tweak-container")) {
 		let toggle = tweakContainer.querySelector("input");
-		let path = tweakContainer.getAttribute("tweak-path");
 
 		$(toggle).change(function(e) {
 			let path = $(this).closest(".tweak-container")[0].getAttribute("tweak-path");
@@ -3417,11 +3420,12 @@ $(document).ready(function(){
 				if (el) el.remove();
 			}
 
-			saveTweaks();
+			save_tweaks();
 		});
-
-		if (enabledTweaks.includes(path)) $(toggle).bootstrapToggle("on");
 	}
+
+	// Load tweaks from cookies if not on Colab; Colab uses the server for persistant storage.
+	if (!on_colab) load_tweaks(getCookie("enabledTweaks", "[]"));
 
 	$("#context-viewer-close").click(function() {
 		document.getElementById("context-viewer-container").classList.add("hidden");
