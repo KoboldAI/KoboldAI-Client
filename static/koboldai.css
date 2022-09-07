@@ -2139,3 +2139,7 @@ h2 .material-icons-outlined {
 		padding: 3px;
 	}
 }
+
+.horde_trigger[model_model="ReadOnly"] {
+	display: none;
+}
