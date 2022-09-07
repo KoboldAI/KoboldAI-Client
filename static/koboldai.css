@@ -98,8 +98,8 @@ input[type="range"]::-ms-fill-upper {
 	display: inline-block;
 	position: relative;
 	z-index: 0;
-	border-top-left-radius: 6px;
-	border-top-right-radius: 6px;
+	border-top-left-radius: var(--tabs_rounding);
+border-top-right-radius: var(--tabs_rounding);
 	box-shadow: 0 3px 3px rgba(0, 0, 0, 0.4), inset 0 1px 0 #AAA;
 	text-shadow: 0 1px #AAA;
 	margin: 0 -5px;
@@ -1491,6 +1491,8 @@ body {
 	flex-grow: 1;
 	flex-shrink: 1;
 	flex-basis: auto;
+	color: var(--popup_item_color_text);
+	
 }
 
 .popup .model_item {
