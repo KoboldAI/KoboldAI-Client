@@ -6771,7 +6771,7 @@ def new_ui_index():
 def ui2_connect():
     #Send all variables to client
     koboldai_vars.send_to_ui()
-    
+    UI_2_load_tweaks()
     pass
     
 #==================================================================#
@@ -7683,6 +7683,22 @@ def UI_2_sp_list_refresh(data):
 @socketio.on('theme_list_refresh')
 def UI_2_theme_list_refresh(data):
     koboldai_vars.theme_list = [".".join(f.split(".")[:-1]) for f in os.listdir("./themes") if os.path.isfile(os.path.join("./themes", f))]
+
+#==================================================================#
+# Save Tweaks
+#==================================================================#
+@socketio.on('save_tweaks')
+def UI_2_save_tweaks(data):
+    with open("./settings/tweaks.settings", "w") as f:
+        f.write(data)
+
+#==================================================================#
+# Load Tweaks
+#==================================================================#
+def UI_2_load_tweaks():
+    if os.path.exists("./settings/tweaks.settings"):
+        with open("./settings/tweaks.settings", "r") as f:
+            socketio.emit('load_tweaks', f.read(), room="UI2")
 
 #==================================================================#
 # Test

@@ -65,8 +65,8 @@
 		The story name you have entered already exists. Would you like to overwrite?
 	</div>
 	<div class="popup_load_cancel">
-		<button type="button" class="btn btn-primary" onclick='socket.emit("save_story", "overwrite"); document.getElementById("save-confirm").classList.add("hidden");'>Overwrite</button>
-		<button type="button" class="btn btn-primary" onclick="document.getElementById('save-confirm').classList.add('hidden');">Cancel</button>
+		<button type="button" class="btn btn-primary popup_load_cancel_button" onclick='socket.emit("save_story", "overwrite"); document.getElementById("save-confirm").classList.add("hidden");'>Overwrite</button>
+		<button type="button" class="btn btn-primary popup_load_cancel_button" onclick="document.getElementById('save-confirm').classList.add('hidden');">Cancel</button>
 	</div>
 </div>
 <!---------------- Import aidg.club Prompt ---------------------->
@@ -81,8 +81,8 @@
 		<input autocomplete="off" class="form-control" type="text" placeholder="Prompt Number (4-digit number at the end of aetherroom.club URL)" id="aidgpromptnum">
 	</div>
 	<div class="popup_load_cancel">
-		<button type="button" class="btn btn-primary" onclick="socket.emit('load_aidg_club', document.getElementById('aidgpromptnum').value); this.parentElement.parentElement.classList.add('hidden');">Accept</button>
-		<button type="button" class="btn btn-primary" onclick="this.parentElement.parentElement.classList.add('hidden');">Cancel</button>
+		<button type="button" class="btn btn-primary popup_load_cancel_button" onclick="socket.emit('load_aidg_club', document.getElementById('aidgpromptnum').value); this.parentElement.parentElement.classList.add('hidden');">Accept</button>
+		<button type="button" class="btn btn-primary popup_load_cancel_button" onclick="this.parentElement.parentElement.classList.add('hidden');">Cancel</button>
 	</div>
 </div>
 
@@ -95,7 +95,7 @@
 		
 	</div>
 	<div class="popup_load_cancel">
-		<button type="button" class="btn btn-primary" onclick="document.getElementById('error_message').classList.add('hidden');">Ok</button>
+		<button type="button" class="btn btn-primary popup_load_cancel_button" onclick="document.getElementById('error_message').classList.add('hidden');">Ok</button>
 	</div>
 </div>
 <!---------------- Advanced Theme Editor ---------------------->

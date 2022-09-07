@@ -25,6 +25,7 @@ socket.on("world_info_folder", function(data){world_info_folder(data);});
 socket.on("delete_new_world_info_entry", function(data){document.getElementById("world_info_-1").remove();});
 socket.on("delete_world_info_entry", function(data){document.getElementById("world_info_"+data).remove();});
 socket.on("error", function(data){show_error_message(data);});
+socket.on('load_tweaks', function(data){load_tweaks(data);});
 //socket.onAny(function(event_name, data) {console.log({"event": event_name, "class": data.classname, "data": data});});
 
 var presets = {};
@@ -2007,6 +2008,10 @@ function send_world_info(uid) {
 	socket.emit("edit_world_info", world_info_data[uid]);
 }
 
+function load_tweaks(data) {
+	
+}
+
 //--------------------------------------------General UI Functions------------------------------------
 function autoResize(element) {
 	element.style.height = 'auto';
@@ -3356,6 +3361,9 @@ $(document).ready(function(){
 		}
 
 		setCookie("enabledTweaks", JSON.stringify(out));
+		if (document.getElementById("on_colab").textContent == "true") {
+			socket.emit("save_tweaks", JSON.stringify(out));
+		}
 	}
 
 
