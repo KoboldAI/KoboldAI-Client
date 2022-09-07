@@ -845,6 +845,8 @@ function sortPopup(key) {
 	for (const sKey of Object.keys(popup_sort)) {
 		if (sKey === key) continue;
 		popup_sort[sKey] = null;
+
+		document.getElementById(`sort-icon-${sKey.toLowerCase().replaceAll(" ", "-")}`).innerText = "filter_list";
 	}
 
 	// True is asc, false is asc
@@ -863,6 +865,11 @@ function sortPopup(key) {
 		return 0;
 	});
 	if (sortState) popup_rows.reverse();
+	
+	// Change icons
+	let icon = document.getElementById(`sort-icon-${key.toLowerCase().replaceAll(" ", "-")}`);
+	icon.innerText = sortState ? "arrow_drop_up" : "arrow_drop_down";
+
 	redrawPopup();
 }
 
@@ -951,6 +958,7 @@ function popup_items(data) {
 		td.textContent = columnName;
 
 		// TODO: Better unsorted icon
+		icon.id = `sort-icon-${columnName.toLowerCase().replaceAll(" ", "-")}`;
 		icon.innerText = "filter_list";
 		icon.classList.add("material-icons-outlined");
 		icon.classList.add("table-header-sort-icon");
