@@ -7293,7 +7293,7 @@ def UI_2_load_story_list(data):
                                                                   deleteable=True, show_breadcrumbs=True, item_check=valid_story,
                                                                   valid_only=True, hide_extention=True, extra_parameter_function=get_story_listing_data,
                                                                   column_names=['Story Name', 'Action Count', 'Last Loaded'], show_filename=False,
-                                                                  column_widths=['auto', '150px', '150px'], advanced_sort=story_sort,
+                                                                  column_widths=['minmax(150px, auto)', '150px', '150px'], advanced_sort=story_sort,
                                                                   sort="Modified", desc=True)
                                                                   
 def get_story_listing_data(item_full_path, item, valid_selection):
