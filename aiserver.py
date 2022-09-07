@@ -1040,7 +1040,14 @@ def general_startup(override_args=None):
         args = parser.parse_args(shlex.split(os.environ["KOBOLDAI_ARGS"]))
     else:
         args = parser.parse_args()
-
+    
+    #load system and user settings
+    for setting in ['user_settings', 'system_settings']:
+        if os.path.exists("settings/{}.v2_settings".format(setting)):
+            with open("settings/{}.v2_settings".format(setting), "r") as settings_file:
+                getattr(koboldai_vars, "_{}".format(setting)).from_json(settings_file.read())
+    
+    
     temp = [x for x in vars(args)]
     for arg in temp:
         if arg == "path":
@@ -1102,7 +1109,9 @@ def general_startup(override_args=None):
         koboldai_vars.host = True;
 
     if args.host:
+        print("setting host")
         koboldai_vars.host = True;
+        print("koboldai_vars.host: {}".format(koboldai_vars.host))
 
     if args.cpu:
         koboldai_vars.use_colab_tpu = False
@@ -1132,11 +1141,6 @@ def general_startup(override_args=None):
     koboldai_settings.queue = multiprocessing.Queue()
     socketio.start_background_task(socket_io_relay, koboldai_settings.queue, socketio)
     
-    #load system and user settings
-    for setting in ['user_settings', 'system_settings']:
-        if os.path.exists("settings/{}.v2_settings".format(setting)):
-            with open("settings/{}.v2_settings".format(setting), "r") as settings_file:
-                getattr(koboldai_vars, "_{}".format(setting)).from_json(settings_file.read())
         
 #==================================================================#
 # Load Model
@@ -10501,7 +10505,6 @@ if __name__ == "__main__":
             print("{0}Webserver has started, you can now connect to this machine at port {1}{2}"
                   .format(colors.GREEN, port, colors.END))
         koboldai_vars.serverstarted = True
-        
         socketio.run(app, host='0.0.0.0', port=port)
     else:
         if args.unblock:
