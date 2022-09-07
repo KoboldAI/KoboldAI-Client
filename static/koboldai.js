@@ -33,6 +33,9 @@ var ai_busy_start = Date.now();
 var popup_deleteable = false;
 var popup_editable = false;
 var popup_renameable = false;
+var popup_rows = [];
+var popup_style = "";
+var popup_sort = {};
 var shift_down = false;
 var world_info_data = {};
 var world_info_folder_data = {};
@@ -57,6 +60,7 @@ const finder_actions = [
 	// TODO: Direct theme selection
 	// {name: "", icon: "palette", func: function() { highlightEl("#biasing") }},
 ];
+
 
 const map1 = new Map()
 map1.set('Top K Sampling', 0)
@@ -664,8 +668,238 @@ function load_popup(data) {
 					  
 }
 
+function redrawPopup() {
+	// This is its own function as it's used to show newly-sorted rows as well.
+
+	// Clear old items, not anything else
+	$(".item").remove();
+
+	// Create lines
+	for (const row of popup_rows) {
+		let tr = document.createElement("div");
+		tr.classList.add("item");
+		tr.setAttribute("folder", row.isFolder);
+		tr.setAttribute("valid", row.isValid);
+		tr.style = popup_style;
+
+		let icon_area = document.createElement("span");
+		icon_area.style = "grid-area: icons;";
+		
+		// Create the folder icon
+		let folder_icon = document.createElement("span");
+		folder_icon.classList.add("folder_icon");
+		if (row.isFolder) {
+			folder_icon.classList.add("oi");
+			folder_icon.setAttribute('data-glyph', "folder");
+		}
+		icon_area.append(folder_icon);
+		
+		// Create the edit icon
+		let edit_icon = document.createElement("span");
+		edit_icon.classList.add("edit_icon");
+		if (popup_editable && !row.isValid) {
+			edit_icon.classList.add("oi");
+			edit_icon.setAttribute('data-glyph', "spreadsheet");
+			edit_icon.title = "Edit"
+			edit_icon.id = row.path;
+			edit_icon.onclick = function () {
+				socket.emit("popup_edit", this.id);
+			};
+		}
+		icon_area.append(edit_icon);
+		
+		// Create the rename icon
+		let rename_icon = document.createElement("span");
+		rename_icon.classList.add("rename_icon");
+		if (popup_renameable && !row.isFolder) {
+			rename_icon.classList.add("oi");
+			rename_icon.setAttribute('data-glyph', "pencil");
+			rename_icon.title = "Rename"
+			rename_icon.id = row.path;
+			rename_icon.setAttribute("filename", row.fileName);
+			rename_icon.onclick = function () {
+				let new_name = prompt("Please enter new filename for \n"+ this.getAttribute("filename"));
+				if (new_name != null) {
+					socket.emit("popup_rename", {"file": this.id, "new_name": new_name});
+				}
+			};
+		}
+		icon_area.append(rename_icon);
+		
+		// Create the delete icon
+		let delete_icon = document.createElement("span");
+		delete_icon.classList.add("delete_icon");
+		if (popup_deleteable) {
+			delete_icon.classList.add("oi");
+			delete_icon.setAttribute('data-glyph', "x");
+			delete_icon.title = "Delete"
+			delete_icon.id = row.path;
+			delete_icon.setAttribute("folder", row.isFolder);
+			delete_icon.onclick = function () {
+				if (this.getAttribute("folder") == "true") {
+					if (window.confirm("Do you really want to delete this folder and ALL files under it?")) {
+						socket.emit("popup_delete", this.id);
+					}
+				} else {
+					if (window.confirm("Do you really want to delete this file?")) {
+						socket.emit("popup_delete", this.id);
+					}
+				}
+			};
+		}
+		icon_area.append(delete_icon);
+		tr.append(icon_area);
+		
+		//create the actual item
+		let gridIndex = 0;
+		if (row.showFilename) {
+			let popup_item = document.createElement("span");
+			popup_item.style = `grid-area: p${gridIndex};`;
+			gridIndex += 1;
+
+			popup_item.id = row.path;
+			popup_item.setAttribute("folder", row.isFolder);
+			popup_item.setAttribute("valid", row.isValid);
+			popup_item.textContent = row.fileName;
+			popup_item.onclick = function () {
+				let accept = document.getElementById("popup_accept");
+
+				if (this.getAttribute("valid") == "true") {
+					accept.classList.remove("disabled");
+					accept.disabled = false;
+					accept.setAttribute("selected_value", this.id);
+				} else {
+					accept.setAttribute("selected_value", "");
+					accept.classList.add("disabled");
+					accept.disabled = true;
+					if (this.getAttribute("folder") == "true") {
+						socket.emit("popup_change_folder", this.id);
+					}
+				}
+
+				let popup_list = document.getElementById('popup_list').getElementsByClassName("selected");
+				for (const item of popup_list) {
+					item.classList.remove("selected");
+				}
+				this.parentElement.classList.add("selected");
+			};
+			tr.append(popup_item);
+		}
+		
+		let dataIndex = -1;
+		for (const columnName of Object.keys(row.data)) {
+			const dataValue = row.data[columnName];
+
+			let td = document.createElement("span");
+			td.style = `grid-area: p${gridIndex};`;
+
+			gridIndex += 1;
+			dataIndex++;
+
+			td.id = row.path;
+			td.setAttribute("folder", row.isFolder);
+			td.setAttribute("valid", row.isValid);
+
+			if (columnName === "Last Loaded") {
+				let timestamp = parseInt(dataValue);
+
+				if (timestamp) {
+					// Date expects unix timestamps to be in milligilliaseconds or something
+					const date = new Date(timestamp * 1000)
+					td.textContent = date.toLocaleString();
+				}
+			} else {
+				td.textContent = dataValue;
+			}
+
+			td.onclick = function () {
+				let accept = document.getElementById("popup_accept");
+				if (this.getAttribute("valid") == "true") {
+					accept.classList.remove("disabled");
+					accept.disabled = false;
+					accept.setAttribute("selected_value", this.id);
+				} else {
+					accept.setAttribute("selected_value", "");
+					accept.classList.add("disabled");
+					accept.disabled = true;
+					if (this.getAttribute("folder") == "true") {
+						socket.emit("popup_change_folder", this.id);
+					}
+				}
+
+				let popup_list = document.getElementById('popup_list').getElementsByClassName("selected");
+				for (item of popup_list) {
+					item.classList.remove("selected");
+				}
+				this.parentElement.classList.add("selected");
+			};
+			tr.append(td);
+		}
+
+		popup_list.append(tr);
+	}
+}
+
+function sortPopup(key) {
+	// Nullify the others
+	for (const sKey of Object.keys(popup_sort)) {
+		if (sKey === key) continue;
+		popup_sort[sKey] = null;
+
+		document.getElementById(`sort-icon-${sKey.toLowerCase().replaceAll(" ", "-")}`).innerText = "filter_list";
+	}
+
+	// True is asc, false is asc
+	let sortState = !popup_sort[key];
+
+	popup_sort[key] = sortState;
+
+	popup_rows.sort(function(x, y) {
+		let xDat = x.data[key];
+		let yDat = y.data[key];
+
+		if (typeof xDat == "string" && typeof yDat == "string") return xDat.toLowerCase().localeCompare(yDat.toLowerCase());
+
+		if (xDat < yDat) return -1;
+		if (xDat > yDat) return 1;
+		return 0;
+	});
+	if (sortState) popup_rows.reverse();
+	
+	// Change icons
+	let icon = document.getElementById(`sort-icon-${key.toLowerCase().replaceAll(" ", "-")}`);
+	icon.innerText = sortState ? "arrow_drop_up" : "arrow_drop_down";
+
+	redrawPopup();
+}
+
 function popup_items(data) {
-	console.log(data);
+	// The data as we recieve it is not very fit for sorting, let's do some cleaning.
+	popup_rows = [];
+	popup_sort = {};
+
+	for (const name of data.column_names) {
+		popup_sort[name] = null;
+	}
+
+	for (const item of data.items) {
+		let itemData = item[4];
+		let dataRow = {data: {}};
+
+		for (const i in data.column_names) {
+			dataRow.data[data.column_names[i]] = itemData[i];
+		}
+
+		dataRow.isFolder = item[0];
+		dataRow.path = item[1];
+		dataRow.fileName = item[2];
+		dataRow.isValid = item[3];
+		dataRow.showFilename = item.show_filename;
+
+		popup_rows.push(dataRow);
+	}
+
+
 	var popup_list = document.getElementById('popup_list');
 	//first, let's clear out our existing data
 	while (popup_list.firstChild) {
@@ -674,22 +908,24 @@ function popup_items(data) {
 	document.getElementById('popup_upload_input').value = "";
 	
 	//create the column widths
-	var style = /*width: 50vw;*/'display: grid; grid-template-areas: "icons';
-	for (i=0; i < data.column_widths.length; i++) {
-		style = style + " p"+i;
+	popup_style = 'display: grid; grid-template-areas: "icons';
+	for (let i=0; i < data.column_widths.length; i++) {
+		popup_style += ` p${i}`;
 	}
+
 	if (data.show_filename) {
-		style = style + " p"+i;
+		popup_style += ` p${i}`;
 	}
-	style = style + '"; grid-template-columns: 50px';
-	for (column_width of data.column_widths) {
-		style = style + " "+column_width;
+
+	popup_style += '"; grid-template-columns: 50px';
+	for (const column_width of data.column_widths) {
+		popup_style += " "+column_width;
 	}
-	style = style + ';';
+	popup_style += ';';
 	
 	//create titles
 	var tr = document.createElement("div");
-	tr.style = style;
+	tr.style = popup_style;
 	//icon area
 	var td = document.createElement("span");
 	td.style = "grid-area: icons;";
@@ -704,160 +940,41 @@ function popup_items(data) {
 		i+=1;
 		tr.append(td)
 	}
-	for (column of data.column_names) {
-		td = document.createElement("span");
-		td.textContent = column;
-		td.style = "grid-area: p"+i+";";
-		i+=1;
-		tr.append(td)
+
+	for (const columnName of data.column_names) {
+		const container = document.createElement("div");
+		const td = document.createElement("span");
+		const icon = document.createElement("span");
+
+		container.addEventListener("click", function(c) {
+			return (function() {
+				sortPopup(c);
+			});
+		}(columnName));
+		container.classList.add("table-header-container")
+		container.style = `grid-area: p${i};`;
+
+		td.classList.add("table-header-label");
+		td.textContent = columnName;
+
+		// TODO: Better unsorted icon
+		icon.id = `sort-icon-${columnName.toLowerCase().replaceAll(" ", "-")}`;
+		icon.innerText = "filter_list";
+		icon.classList.add("material-icons-outlined");
+		icon.classList.add("table-header-sort-icon");
+
+
+		container.appendChild(document.createElement("spacer-dummy"));
+		container.appendChild(td);
+		container.appendChild(icon);
+
+		tr.append(container);
+
+		i++;
 	}
 	popup_list.append(tr);
 	
-	//create lines
-	for (item of data.items) {
-		var tr = document.createElement("div");
-		tr.classList.add("item");
-		tr.setAttribute("folder", item[0]);
-		tr.setAttribute("valid", item[3]);
-		tr.style = style;
-		var icon_area = document.createElement("span");
-		icon_area.style = "grid-area: icons;";
-		
-		//create the folder icon
-		var folder_icon = document.createElement("span");
-		folder_icon.classList.add("folder_icon");
-		if (item[0]) {
-			folder_icon.classList.add("oi");
-			folder_icon.setAttribute('data-glyph', "folder");
-		}
-		icon_area.append(folder_icon);
-		
-		//create the edit icon
-		var edit_icon = document.createElement("span");
-		edit_icon.classList.add("edit_icon");
-		if ((popup_editable) && !(item[0])) {
-			edit_icon.classList.add("oi");
-			edit_icon.setAttribute('data-glyph', "spreadsheet");
-			edit_icon.title = "Edit"
-			edit_icon.id = item[1];
-			edit_icon.onclick = function () {
-							socket.emit("popup_edit", this.id);
-					  };
-		}
-		icon_area.append(edit_icon);
-		
-		//create the rename icon
-		var rename_icon = document.createElement("span");
-		rename_icon.classList.add("rename_icon");
-		if ((popup_renameable) && !(item[0])) {
-			rename_icon.classList.add("oi");
-			rename_icon.setAttribute('data-glyph', "pencil");
-			rename_icon.title = "Rename"
-			rename_icon.id = item[1];
-			rename_icon.setAttribute("filename", item[2]);
-			rename_icon.onclick = function () {
-							var new_name = prompt("Please enter new filename for \n"+ this.getAttribute("filename"));
-							if (new_name != null) {
-								socket.emit("popup_rename", {"file": this.id, "new_name": new_name});
-							}
-					  };
-		}
-		icon_area.append(rename_icon);
-		
-		//create the delete icon
-		var delete_icon = document.createElement("span");
-		delete_icon.classList.add("delete_icon");
-		if (popup_deleteable) {
-			delete_icon.classList.add("oi");
-			delete_icon.setAttribute('data-glyph', "x");
-			delete_icon.title = "Delete"
-			delete_icon.id = item[1];
-			delete_icon.setAttribute("folder", item[0]);
-			delete_icon.onclick = function () {
-							if (this.getAttribute("folder") == "true") {
-								if (window.confirm("Do you really want to delete this folder and ALL files under it?")) {
-									socket.emit("popup_delete", this.id);
-								}
-							} else {
-								if (window.confirm("Do you really want to delete this file?")) {
-									socket.emit("popup_delete", this.id);
-								}
-							}
-					  };
-		}
-		icon_area.append(delete_icon);
-		tr.append(icon_area);
-		
-		//create the actual item
-		i=0;
-		if (data.show_filename) {
-			var popup_item = document.createElement("span");
-			popup_item.style = "grid-area: p"+i+";";
-			i+=1;
-			popup_item.id = item[1];
-			popup_item.setAttribute("folder", item[0]);
-			popup_item.setAttribute("valid", item[3]);
-			popup_item.textContent = item[2];
-			popup_item.onclick = function () {
-							var accept = document.getElementById("popup_accept");
-							if (this.getAttribute("valid") == "true") {
-								accept.classList.remove("disabled");
-								accept.disabled = false;
-								accept.setAttribute("selected_value", this.id);
-							} else {
-								accept.setAttribute("selected_value", "");
-								accept.classList.add("disabled");
-								accept.disabled = true;
-								if (this.getAttribute("folder") == "true") {
-									socket.emit("popup_change_folder", this.id);
-								}
-							}
-							var popup_list = document.getElementById('popup_list').getElementsByClassName("selected");
-							for (item of popup_list) {
-								item.classList.remove("selected");
-							}
-							this.parentElement.classList.add("selected");
-					  };
-			tr.append(popup_item);
-		}
-		
-		for (extra_data of item[4]) {
-			td = document.createElement("span");
-			td.style = "grid-area: p"+i+";";
-			i+=1;
-			td.id = item[1];
-			td.setAttribute("folder", item[0]);
-			td.setAttribute("valid", item[3]);
-			td.textContent = extra_data;
-			td.onclick = function () {
-							var accept = document.getElementById("popup_accept");
-							if (this.getAttribute("valid") == "true") {
-								accept.classList.remove("disabled");
-								accept.disabled = false;
-								accept.setAttribute("selected_value", this.id);
-							} else {
-								accept.setAttribute("selected_value", "");
-								accept.classList.add("disabled");
-								accept.disabled = true;
-								if (this.getAttribute("folder") == "true") {
-									socket.emit("popup_change_folder", this.id);
-								}
-							}
-							var popup_list = document.getElementById('popup_list').getElementsByClassName("selected");
-							for (item of popup_list) {
-								item.classList.remove("selected");
-							}
-							this.parentElement.classList.add("selected");
-					  };
-			tr.append(td);
-		}
-		
-		
-		popup_list.append(tr);
-		
-		
-	}
-	
+	redrawPopup();
 	
 }
 

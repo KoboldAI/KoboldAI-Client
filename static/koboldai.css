@@ -907,8 +907,8 @@ td.server_vars {
 	overflow: hidden;
 	display: block;
 	width: 100%;
-	padding-left: 20px;
-	padding-right: 35px;
+	padding-left: 15px;
+	padding-right: 15px;
 	margin-bottom: 10px;
 	flex-shrink: 0;
 	cursor: pointer;
@@ -1564,6 +1564,21 @@ body {
 	display: inline;
 }
 
+.table-header-container {
+	display: flex;
+	justify-content: space-between;
+	cursor: pointer;
+}
+
+.table-header-sort-icon {
+	margin-right: 10px;
+	margin-top: 2px;
+}
+
+.table-header-label {
+	margin-top: 4px;
+}
+
 #error_message.popup {
 	background-color: var(--error);
 	color: var(--error_text);
@@ -2047,6 +2062,7 @@ h2 .material-icons-outlined {
 .section_header,
 .help_text,
 .sample_order,
+.table-header-label,
 .noselect {
 	-webkit-touch-callout: none;
 	-webkit-user-select: none;
