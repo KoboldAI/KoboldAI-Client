@@ -3497,7 +3497,6 @@ $(document).ready(function(){
 	const finderContainer = document.getElementById("finder-container");
 	const finderInput = document.getElementById("finder-input");
 	const finder = document.getElementById("finder");
-	let lastInput;
 
 	finderInput.addEventListener("keyup", updateSearchListings);
 	finderInput.addEventListener("keydown", function(event) {
