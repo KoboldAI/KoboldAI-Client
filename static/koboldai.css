@@ -98,8 +98,8 @@ input[type="range"]::-ms-fill-upper {
 	display: inline-block;
 	position: relative;
 	z-index: 0;
-	border-top-left-radius: 6px;
-	border-top-right-radius: 6px;
+	border-top-left-radius: var(--tabs_rounding);
+border-top-right-radius: var(--tabs_rounding);
 	box-shadow: 0 3px 3px rgba(0, 0, 0, 0.4), inset 0 1px 0 #AAA;
 	text-shadow: 0 1px #AAA;
 	margin: 0 -5px;
@@ -197,6 +197,10 @@ input[type="range"]::-ms-fill-upper {
 	border-radius: var(--radius_settings_background);
 	padding: 3px;
 	margin: 2px;
+}
+
+.chat_mode[story_chatmode="false"] {
+	display: none;
 }
 
 #story_menu_author .setting_container {
@@ -1305,6 +1309,17 @@ body {
 	gap: 1px;
 	
 }
+
+.inputrow[story_storymode="1"] {
+	grid-template-areas: "adventure_mode textarea statusbar statusbar statusbar"
+						 "adventure_mode textarea submit submit submit"
+	                     "adventure_mode textarea back redo retry";
+	grid-template-columns: 80px auto 30px 30px 30px;
+	grid-template-rows: 0px 60px 40px;
+	gap: 1px;
+	
+}
+
 #random_game_prompt{
 	display: flex;
 	flex-direction: column;
@@ -1318,6 +1333,16 @@ body {
 	padding: 5px;
 	border-radius: var(--radius_inputbox);
 }
+
+#adventure_mode {
+	grid-area: adventure_mode
+}
+
+#adventure_mode[story_storymode]:not([story_storymode="1"]) {
+	display: none;
+}
+
+
 
 #input_text {
 	grid-area: textarea;
@@ -1491,6 +1516,8 @@ body {
 	flex-grow: 1;
 	flex-shrink: 1;
 	flex-basis: auto;
+	color: var(--popup_item_color_text);
+	
 }
 
 .popup .model_item {
@@ -2111,4 +2138,8 @@ h2 .material-icons-outlined {
 		width: fit-content;
 		padding: 3px;
 	}
+}
+
+.horde_trigger[model_model="ReadOnly"] {
+	display: none;
 }

@@ -85,12 +85,11 @@ class koboldai_vars(object):
         #If we can figure out a way to get flask sessions into/through the lua bridge we could re-enable
         story_name = 'default'
         if story_name in self._story_settings:
-            
             self._story_settings[story_name].reset()
         else:
             self._story_settings[story_name] = story_settings(self.socketio)
         if json_data is not None:
-            self._story_settings[story_name].from_json(json_data)
+            self.load_story(sotry_name, json_data)
         self._story_settings['default'].send_to_ui()
     
     def story_list(self):
@@ -431,7 +430,7 @@ class model_settings(settings):
         self.badwordsids = []
         self.fp32_model  = False  # Whether or not the most recently loaded HF model was in fp32 format
         self.modeldim    = -1     # Embedding dimension of your model (e.g. it's 4096 for GPT-J-6B and 2560 for GPT-Neo-2.7B)
-        self.sampler_order = [0, 1, 2, 3, 4, 5]
+        self.sampler_order = [6, 0, 1, 2, 3, 4, 5]
         self.newlinemode = "n"
         self.lazy_load   = True # Whether or not to use torch_lazy_loader.py for transformers models in order to reduce CPU memory usage
         self.revision    = None
@@ -517,7 +516,6 @@ class story_settings(settings):
         self.gamestarted = False  # Whether the game has started (disables UI elements)
         self.gamesaved   = True   # Whether or not current game is saved
         self.autosave    = False             # Whether or not to automatically save after each action
-        self.no_save = False  #Temporary disable save (doesn't save with the file)
         self.prompt      = ""     # Prompt
         self.memory      = ""     # Text submitted to memory field
         self.authornote  = ""     # Text submitted to Author's Note field
@@ -552,6 +550,7 @@ class story_settings(settings):
         self.chatname    = "You"
         self.adventure   = False
         self.actionmode  = 0
+        self.storymode   = 0
         self.dynamicscan = False
         self.recentedit  = False
         self.notes       = ""    #Notes for the story. Does nothing but save
@@ -566,6 +565,9 @@ class story_settings(settings):
         self.prompt_in_ai = False
         self.context = []
         self.last_story_load = None
+        
+        #must be at bottom
+        self.no_save = False  #Temporary disable save (doesn't save with the file)
         
     def save_story(self):
         if not self.no_save:
@@ -591,8 +593,10 @@ class story_settings(settings):
                 self.gamesaved = True
     
     def reset(self):
+        self.no_save = True
         self.socketio.emit("reset_story", {}, broadcast=True, room="UI_2")
         self.__init__(self.socketio, self.koboldai_vars, tokenizer=self.tokenizer)
+        self.no_save = False
         
     def __setattr__(self, name, value):
         new_variable = name not in self.__dict__
@@ -638,7 +642,7 @@ class story_settings(settings):
                     ignore = self.koboldai_vars.calc_ai_text()
             
             #Because we have seperate variables for action types, this syncs them
-            elif name == 'actionmode':
+            elif name == 'storymode':
                 if value == 0:
                     self.adventure = False
                     self.chatmode = False
@@ -650,14 +654,14 @@ class story_settings(settings):
                     self.chatmode = True
             elif name == 'adventure' and value == True:
                 self.chatmode = False
-                self.actionmode = 1
+                self.storymode = 1
             elif name == 'adventure' and value == False and self.chatmode == False:
-                self.actionmode = 0
+                self.storymode = 0
             elif name == 'chatmode' and value == True:
                 self.adventure = False
-                self.actionmode = 2
+                self.storymode = 2
             elif name == 'chatmode' and value == False and self.adventure == False:
-                self.actionmode = 0
+                self.storymode = 0
                 
 class user_settings(settings):
     local_only_variables = ['socketio', 'importjs']
@@ -805,12 +809,10 @@ class system_settings(settings):
                                 random.seed()
                                 if os.path.exists('./KoboldAI-Horde/venv/scripts/python.exe'):
                                     self._horde_pid = subprocess.Popen(['./KoboldAI-Horde/venv/scripts/python.exe', './KoboldAI-Horde/bridge.py', 
-                                                                            '--username', '{}'.format(random.randint(-1000000000000, 1000000000000)), '--password', '{}'.format(random.randint(-1000000000000, 1000000000000)), 
-                                                                            '--kai_name', '{}'.format(random.randint(-1000000000000, 1000000000000)), '--kai_url', 'http://127.0.0.1:{}'.format(self.port), '--cluster_url', "http://koboldai.net"])
+                                                                            '--kai_url', 'http://127.0.0.1:{}'.format(self.port), '--cluster_url', "http://koboldai.net"])
                                 else:
                                     self._horde_pid = subprocess.Popen(['./KoboldAI-Horde/venv/bin/python', './KoboldAI-Horde/bridge.py', 
-                                                                            '--username', '{}'.format(random.randint(-1000000000000, 1000000000000)), '--password', '{}'.format(random.randint(-1000000000000, 1000000000000)), 
-                                                                            '--kai_name', '{}'.format(random.randint(-1000000000000, 1000000000000)), '--kai_url', 'http://127.0.0.1:{}'.format(self.port), '--cluster_url', "http://koboldai.net"])
+                                                                            '--kai_url', 'http://127.0.0.1:{}'.format(self.port), '--cluster_url', "http://koboldai.net"])
                         else:
                             if self._horde_pid is not None:
                                 print("kill bridge")

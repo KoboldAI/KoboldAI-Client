@@ -25,6 +25,7 @@ socket.on("world_info_folder", function(data){world_info_folder(data);});
 socket.on("delete_new_world_info_entry", function(data){document.getElementById("world_info_-1").remove();});
 socket.on("delete_world_info_entry", function(data){document.getElementById("world_info_"+data).remove();});
 socket.on("error", function(data){show_error_message(data);});
+socket.on('load_tweaks', function(data){load_tweaks(data);});
 //socket.onAny(function(event_name, data) {console.log({"event": event_name, "class": data.classname, "data": data});});
 
 var presets = {};
@@ -127,7 +128,7 @@ function reset_story() {
 	world_info_folder({"root": []});
 	document.getElementById("story_prompt").setAttribute("world_info_uids", "");
 	document.getElementById('themerow').classList.remove("hidden");
-	document.getElementById('input_text').placeholder = "Enter Prompt Here";
+	document.getElementById('input_text').placeholder = "Enter Prompt Here (shift+enter for new line)";
 }
 
 function fix_text(val) {
@@ -309,14 +310,14 @@ function do_prompt(data) {
 	}
 	//if we have a prompt we need to disable the theme area, or enable it if we don't
 	if (data.value != "") {
-		document.getElementById('input_text').placeholder = "Enter text here";
+		document.getElementById('input_text').placeholder = "Enter text here (shift+enter for new line)";
 		document.getElementById('themerow').classList.add("hidden");
 		document.getElementById('themetext').value = "";
 		if (document.getElementById("Delete Me")) {
 			document.getElementById("Delete Me").remove();
 		}
 	} else {
-		document.getElementById('input_text').placeholder = "Enter Prompt Here";
+		document.getElementById('input_text').placeholder = "Enter Prompt Here (shift+enter for new line)";
 		document.getElementById('input_text').disabled = false;
 		document.getElementById('themerow').classList.remove("hidden");
 	}
@@ -510,6 +511,14 @@ function var_changed(data) {
 	//Special case for context viewer
 	} else if (data.classname == "story" && data.name == "context") {
 		update_context(data.value);
+	//special case for story_actionmode
+	} else if (data.classname == "story" && data.name == "actionmode") {
+		const button = document.getElementById('adventure_mode');
+		if (data.value == 1) {
+			button.childNodes[1].textContent = "Adventure";
+		} else {
+			button.childNodes[1].textContent = "Story";
+		}
 	//Basic Data Syncing
 	} else {
 		var elements_to_change = document.getElementsByClassName("var_sync_"+data.classname.replace(" ", "_")+"_"+data.name.replace(" ", "_"));
@@ -2007,6 +2016,29 @@ function send_world_info(uid) {
 	socket.emit("edit_world_info", world_info_data[uid]);
 }
 
+function load_tweaks(data) {
+	
+}
+
+function toggle_adventure_mode(button) {
+	if (button.textContent == "Mode: Story") {
+		button.childNodes[1].textContent = "Adventure";
+		var actionmode = 1
+	} else {
+		button.childNodes[1].textContent = "Story";
+		var actionmode = 0
+	}
+	button.classList.add("pulse");
+	socket.emit("var_change", {"ID": "story_actionmode", "value": actionmode}, (response) => {
+			if ('status' in response) {
+				if (response['status'] == 'Saved') {
+					document.getElementById("adventure_mode").classList.remove("pulse");
+				}
+			}
+		});
+	
+}
+
 //--------------------------------------------General UI Functions------------------------------------
 function autoResize(element) {
 	element.style.height = 'auto';
@@ -3062,8 +3094,9 @@ function detect_enter_submit(e) {
 		} else {
 			e.cancelBubble = true;
 		}
-		document.getElementById("btnsend").onclick();
-		document.getElementById('input_text').value = ''
+		console.log("submitting");
+		document.getElementById("btnsubmit").onclick();
+		setTimeout(function() {document.getElementById('input_text').value = '';}, 1);
 	}
 }
 
@@ -3356,6 +3389,9 @@ $(document).ready(function(){
 		}
 
 		setCookie("enabledTweaks", JSON.stringify(out));
+		if (document.getElementById("on_colab").textContent == "true") {
+			socket.emit("save_tweaks", JSON.stringify(out));
+		}
 	}
 
 

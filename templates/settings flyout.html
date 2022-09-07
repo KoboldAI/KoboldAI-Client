@@ -44,7 +44,7 @@
 				</button>
 				<select class="var_sync_model_selected_preset settings_select presets" onchange='sync_to_server(this)'><option>Preset</option></select>
 				{% if not on_colab %}
-					<br/><input type=checkbox data-size="mini" data-onstyle="success" data-toggle="toggle" class='var_sync_system_horde_share' onchange='sync_to_server(this)'> Share with Horde 
+					<div class="horde_trigger var_sync_alt_model_model"><input type=checkbox data-size="mini" data-onstyle="success" data-toggle="toggle" class='var_sync_system_horde_share' onchange='sync_to_server(this)'> Share with Horde </div>
 					<span class="helpicon material-icons-outlined" title="Shares your GPU with other KoboldAI users. Does not share data/stories.">help_icon</span>
 				{% endif %}
 			</div>
@@ -76,8 +76,6 @@
 						<span class="material-icons-outlined cursor var_sync_alt_story_gamesaved" title="Save Story">save</span>
 						<span class="button_label">Save Story</span>
 					</button>
-					
-					
 				</div>
 			</div>
 			<hr/>
@@ -88,6 +86,20 @@
 				{% include 'settings item.html' %}
 			{% endwith %}
 		{% endwith %}
+			<div class="setting_container chat_mode var_sync_alt_story_chatmode">
+				<!---Top Row---->
+				<span class="setting_label">
+					<span style="white-space: pre-wrap;">Chat Name: </span>
+					<span class="helpicon material-icons-outlined" title="Your name for chat mode.">help_icon</span>
+				</span>
+				<!---Bottom Row---->
+				<span class="setting_item" style="height: 25px;">
+					<input autocomplete="off" id="var_sync_story_chatname" class="var_sync_story_chatname settings_select" onclick="sync_to_server(this);">
+				</span>
+				<!---Slider Labels--->
+				<span class="setting_minlabel"><span style="top: -4px; position: relative;"></span></span>
+				<span class="setting_maxlabel"><span style="top: -4px; position: relative;"></span></span>
+			</div>
 		</div>
 		<div id="probabilities">
 			
@@ -112,6 +124,9 @@
 			</div>
 			<div class="setting_tile_area">
 				<span class="help_text">Change how the AI decides what to say.</span>
+				{% with sub_path='Sampling' %}
+					{% include 'settings item.html' %}
+				{% endwith %}
 				<div class="setting_container_single">
 					<!---Top Row---->
 					<span class="setting_label">
@@ -137,9 +152,6 @@
 						</div>
 					</span>
 				</div>
-				{% with sub_path='Sampling' %}
-					{% include 'settings item.html' %}
-				{% endwith %}
 			</div>
 			
 			<div class="collapsable_header" onclick="toggle_setting_category(this);">
@@ -312,15 +324,26 @@
 							<td><input class="Theme_Input" autocomplete="off" type=color id="tertiary_container_palette" onchange="palette_color(this)"></td>
 							<td><input class="Theme_Input" autocomplete="off" type=color id="on_tertiary_container_palette" onchange="palette_color(this)"></td>
 						</tr>
+					</table>
+					<table id="Palette_Table" border=1 style="border-color: var(--palette_table_border);">
 						<tr>
-							<td>Error</td>
-							<td><input class="Theme_Input" autocomplete="off" type=color id="error_palette" onchange="palette_color(this)"></td>
-							<td><input class="Theme_Input" autocomplete="off" type=color id="on_error_palette" onchange="palette_color(this)"></td>
-							<td><input class="Theme_Input" autocomplete="off" type=color id="error_container_palette" onchange="palette_color(this)"></td>
-							<td><input class="Theme_Input" autocomplete="off" type=color id="on_error_container_palette" onchange="palette_color(this)"></td>
+							<td colspan=5 style="text-align: center;">Backgrounds</td>
+						</tr>
+						<tr>
+							<td>Base</td>
+							<td>Layer 1</td>
+							<td>Layer 2</td>
+							<td>Layer 3</td>
+							<td>Layer 4</td>
+						</tr>
+						<tr>
+							<td><input class="Theme_Input" autocomplete="off" type=color id="background_palette" onchange="palette_color(this)"></td>
+							<td><input class="Theme_Input" autocomplete="off" type=color id="layer1_palette" onchange="palette_color(this)"></td>
+							<td><input class="Theme_Input" autocomplete="off" type=color id="layer2_palette" onchange="palette_color(this)"></td>
+							<td><input class="Theme_Input" autocomplete="off" type=color id="layer3_palette" onchange="palette_color(this)"></td>
+							<td><input class="Theme_Input" autocomplete="off" type=color id="layer4_palette" onchange="palette_color(this)"></td>
 						</tr>
 					</table>
-					
 				</div>
 			</div>
 			<div class="advanced_theme cursor" onclick='document.getElementById("advanced_theme_editor").classList.remove("hidden");'>

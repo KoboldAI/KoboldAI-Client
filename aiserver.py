@@ -259,7 +259,7 @@ app.config['SESSION_TYPE'] = 'filesystem'
 app.config['TEMPLATES_AUTO_RELOAD'] = True
 Session(app)
 socketio = SocketIO(app, async_method="eventlet", manage_session=False, cors_allowed_origins='*')
-#socketio = SocketIO(app, async_method="eventlet", logger=True, engineio_logger=True, manage_session=False)
+#socketio = SocketIO(app, async_method="eventlet", manage_session=False, cors_allowed_origins='*', logger=True, engineio_logger=True)
 koboldai_vars = koboldai_settings.koboldai_vars(session, socketio)
 
 utils.koboldai_vars = koboldai_vars
@@ -6771,7 +6771,7 @@ def new_ui_index():
 def ui2_connect():
     #Send all variables to client
     koboldai_vars.send_to_ui()
-    
+    UI_2_load_tweaks()
     pass
     
 #==================================================================#
@@ -7172,7 +7172,7 @@ def UI_2_submit(data):
         koboldai_vars.lua_koboldbridge.feedback = None
         koboldai_vars.recentrng = koboldai_vars.recentrngm = None
         if koboldai_vars.actions.action_count == -1:
-            actionsubmit(data['data'], actionmode=0)
+            actionsubmit(data['data'], actionmode=koboldai_vars.actionmode)
         else:
             actionsubmit(data['data'], actionmode=koboldai_vars.actionmode)
  
@@ -7293,7 +7293,7 @@ def UI_2_load_story_list(data):
                                                                   deleteable=True, show_breadcrumbs=True, item_check=valid_story,
                                                                   valid_only=True, hide_extention=True, extra_parameter_function=get_story_listing_data,
                                                                   column_names=['Story Name', 'Action Count', 'Last Loaded'], show_filename=False,
-                                                                  column_widths=['auto', '150px', '150px'], advanced_sort=story_sort,
+                                                                  column_widths=['minmax(150px, auto)', '150px', '150px'], advanced_sort=story_sort,
                                                                   sort="Modified", desc=True)
                                                                   
 def get_story_listing_data(item_full_path, item, valid_selection):
@@ -7683,6 +7683,23 @@ def UI_2_sp_list_refresh(data):
 @socketio.on('theme_list_refresh')
 def UI_2_theme_list_refresh(data):
     koboldai_vars.theme_list = [".".join(f.split(".")[:-1]) for f in os.listdir("./themes") if os.path.isfile(os.path.join("./themes", f))]
+
+#==================================================================#
+# Save Tweaks
+#==================================================================#
+@socketio.on('save_tweaks')
+def UI_2_save_tweaks(data):
+    with open("./settings/tweaks.settings", "w") as f:
+        f.write(data)
+
+#==================================================================#
+# Load Tweaks
+#==================================================================#
+def UI_2_load_tweaks():
+    if koboldai_vars.on_colab:
+        if os.path.exists("./settings/tweaks.settings"):
+            with open("./settings/tweaks.settings", "r") as f:
+                socketio.emit('load_tweaks', f.read(), room="UI2")
 
 #==================================================================#
 # Test
