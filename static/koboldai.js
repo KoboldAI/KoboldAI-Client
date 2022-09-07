@@ -184,34 +184,35 @@ function create_options(data) {
 		if ((item['Previous Selection'])) {
 			if (document.getElementById("option_row_"+i)) {
 				var row = document.getElementById("option_row_"+i);
-				while (row.firstChild) {
-					row.removeChild(row.firstChild);
-				}
+				var textcell = row.firstChild;
+				var iconcell = row.lastChild;
+				var icon = iconcell.firstChild;
 			} else {
 				var row = document.createElement("div");
 				row.classList.add("sequence_row");
 				row.id="option_row_"+i;
+				var textcell = document.createElement("span");
+				var iconcell = document.createElement("span");
+				var icon = document.createElement("span");
+				iconcell.append(icon);
+				row.append(textcell);
+				row.append(iconcell);
+				table.append(row);
 			}
-			var textcell = document.createElement("span");
-			textcell.textContent = item.text;
 			textcell.classList.add("sequence");
 			textcell.setAttribute("option_id", i);
 			textcell.setAttribute("option_chunk", data.value.id);
-			var iconcell = document.createElement("span");
 			iconcell.setAttribute("option_id", i);
 			iconcell.setAttribute("option_chunk", data.value.id);
 			iconcell.classList.add("sequnce_icon");
-			var icon = document.createElement("span");
 			icon.id = "Pin_"+i;
 			icon.classList.add("oi");
 			icon.setAttribute('data-glyph', "loop-circular");
-			iconcell.append(icon);
+			iconcell.onclick = null;
 			textcell.onclick = function () {
 									socket.emit("Use Option Text", {"chunk": this.getAttribute("option_chunk"), "option": this.getAttribute("option_id")});
 							  };
-			row.append(textcell);
-			row.append(iconcell);
-			table.append(row);
+			
 		}
 		i+=1;
 	}
@@ -221,39 +222,40 @@ function create_options(data) {
 		if (!(item.Edited) && !(item['Previous Selection'])) {
 			if (document.getElementById("option_row_"+i)) {
 				var row = document.getElementById("option_row_"+i);
-				while (row.firstChild) {
-					row.removeChild(row.firstChild);
-				}
+				var textcell = row.firstChild;
+				var iconcell = row.lastChild;
+				var icon = iconcell.firstChild;
 			} else {
 				var row = document.createElement("div");
 				row.classList.add("sequence_row");
 				row.id="option_row_"+i;
+				var textcell = document.createElement("span");
+				var iconcell = document.createElement("span");
+				var icon = document.createElement("span");
+				iconcell.append(icon);
+				row.append(textcell);
+				row.append(iconcell);
+				table.append(row);
 			}
-			var textcell = document.createElement("span");
 			textcell.textContent = item.text;
 			textcell.classList.add("sequence");
 			textcell.setAttribute("option_id", i);
 			textcell.setAttribute("option_chunk", data.value.id);
-			var iconcell = document.createElement("span");
 			iconcell.setAttribute("option_id", i);
 			iconcell.setAttribute("option_chunk", data.value.id);
 			iconcell.classList.add("sequnce_icon");
-			var icon = document.createElement("span");
 			icon.id = "Pin_"+i;
 			icon.classList.add("oi");
 			icon.setAttribute('data-glyph', "pin");
 			if (!(item.Pinned)) {
 				icon.setAttribute('style', "filter: brightness(50%);");
 			}
-			iconcell.append(icon);
 			iconcell.onclick = function () {
 									socket.emit("Pinning", {"chunk": this.getAttribute("option_chunk"), "option": this.getAttribute("option_id")});
 							   };
 			textcell.onclick = function () {
 									socket.emit("Use Option Text", {"chunk": this.getAttribute("option_chunk"), "option": this.getAttribute("option_id")});
 							  };
-			row.append(textcell);
-			row.append(iconcell);
 			table.append(row);
 		}
 		i+=1;
