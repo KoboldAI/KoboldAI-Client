@@ -219,7 +219,7 @@ function create_options(data) {
 		i+=1;
 	}
 	//Add general options
-	//i=0;
+	i=0;
 	for (item of data.value.action.Options) {
 		if (!(item.Edited) && !(item['Previous Selection'])) {
 			if (i < options.length) {

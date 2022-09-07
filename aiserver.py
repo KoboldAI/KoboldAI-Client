@@ -259,7 +259,7 @@ app.config['SESSION_TYPE'] = 'filesystem'
 app.config['TEMPLATES_AUTO_RELOAD'] = True
 Session(app)
 socketio = SocketIO(app, async_method="eventlet", manage_session=False, cors_allowed_origins='*')
-#socketio = SocketIO(app, async_method="eventlet", logger=True, engineio_logger=True, manage_session=False)
+#socketio = SocketIO(app, async_method="eventlet", manage_session=False, cors_allowed_origins='*', logger=True, engineio_logger=True)
 koboldai_vars = koboldai_settings.koboldai_vars(session, socketio)
 
 utils.koboldai_vars = koboldai_vars
