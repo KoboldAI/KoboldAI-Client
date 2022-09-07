@@ -7310,8 +7310,8 @@ def get_story_listing_data(item_full_path, item, valid_selection):
     action_count = len(js["actions"])
 
     if title in koboldai_vars._system_settings.story_loads:
-        timestamp = int(time.mktime(time.strptime(koboldai_vars._system_settings.story_loads[title], "%m/%d/%Y, %H:%M:%S")))
-        last_loaded = f"DATE:{timestamp}"
+        # UNIX Timestamp
+        last_loaded = int(time.mktime(time.strptime(koboldai_vars._system_settings.story_loads[title], "%m/%d/%Y, %H:%M:%S")))
 
     if js.get("file_version", 1) == 1:
         return [title, action_count, last_loaded]
