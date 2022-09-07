@@ -42,6 +42,7 @@ var world_info_data = {};
 var world_info_folder_data = {};
 var saved_settings = {};
 var finder_selection_index = -1;
+var on_colab;
 
 // name, desc, icon, func
 const finder_actions = [
@@ -3357,6 +3358,8 @@ function open_finder() {
 }
 
 $(document).ready(function(){
+	on_colab = document.getElementById("on_colab").textContent == "true";
+
 	create_theming_elements();
 	document.onkeydown = detect_key_down;
 	document.onkeyup = detect_key_up;
