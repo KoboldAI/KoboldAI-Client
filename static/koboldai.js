@@ -164,36 +164,33 @@ function create_options(data) {
 		}
 		option_container.append(option_chunk);
 	}
-	//first, let's clear out any extra options
-	options = [];
-	if (option_chunk.firstChild) {
-		for (child of option_chunk.firstChild.childNodes) {
-			options.push(child.firstChild);
-		}
-	}
-	for (item of options) {
-		if (item.getAttribute("option_id") >= data.value.action.Options.length) { 
-			item.parentElement.remove()
-		}
-	}
+	//get our option area
 	if (option_chunk.firstChild) {
 		var table = option_chunk.firstChild;
 	} else {
 		var table = document.createElement("div");
 		table.classList.add("sequences");
 	}
+	
+	//first, let's clear out any extra options
+	for (item of table.childNodes) {
+		if (item.getAttribute("option_id") >= data.value.action.Options.length) { 
+			item.parentElement.remove()
+		}
+	}
 	//Add Redo options
 	i=0;
 	for (item of data.value.action.Options) {
 		if ((item['Previous Selection'])) {
-			if (i < options.length) {
-				var row = options[i];
+			if (document.getElementById("option_row_"+i)) {
+				var row = document.getElementById("option_row_"+i);
 				while (row.firstChild) {
 					row.removeChild(row.firstChild);
 				}
 			} else {
 				var row = document.createElement("div");
 				row.classList.add("sequence_row");
+				row.id="option_row_"+i;
 			}
 			var textcell = document.createElement("span");
 			textcell.textContent = item.text;
@@ -222,14 +219,15 @@ function create_options(data) {
 	i=0;
 	for (item of data.value.action.Options) {
 		if (!(item.Edited) && !(item['Previous Selection'])) {
-			if (i < options.length) {
-				var row = options[i];
+			if (document.getElementById("option_row_"+i)) {
+				var row = document.getElementById("option_row_"+i);
 				while (row.firstChild) {
 					row.removeChild(row.firstChild);
 				}
 			} else {
 				var row = document.createElement("div");
 				row.classList.add("sequence_row");
+				row.id="option_row_"+i;
 			}
 			var textcell = document.createElement("span");
 			textcell.textContent = item.text;
