@@ -1920,6 +1920,25 @@ body {
 	align-items: center;
 }
 
+#finder-wi-carousel {
+	height: 40%;
+	width: 100vw;
+	position: absolute;
+	bottom: 0px;
+	right: 0px;
+}
+
+.finder-wi-block {
+	background-color: var(--flyout_background_pinned);
+	width: 33%;
+	height: 100%;
+	overflow-y: scroll;
+}
+
+.finder-wi-block > * {
+	display: block;
+}
+
 /*---------------------------------- Global ------------------------------------------------*/
 .hidden {
 	display: none;
