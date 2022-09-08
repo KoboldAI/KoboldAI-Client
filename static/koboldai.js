@@ -25,7 +25,7 @@ socket.on("world_info_folder", function(data){world_info_folder(data);});
 socket.on("delete_new_world_info_entry", function(data){document.getElementById("world_info_-1").remove();});
 socket.on("delete_world_info_entry", function(data){document.getElementById("world_info_"+data).remove();});
 socket.on("error", function(data){show_error_message(data);});
-socket.on('load_tweaks', function(data){load_tweaks(data);});
+socket.on('load_cookies', function(data){load_cookies(data);});
 //socket.onAny(function(event_name, data) {console.log({"event": event_name, "class": data.classname, "data": data});});
 
 var presets = {};
@@ -2025,17 +2025,20 @@ function save_tweaks() {
 		let path = tweakContainer.getAttribute("tweak-path");
 		if (toggle.checked) out.push(path);
 	}
-
-	if (on_colab) {
-		socket.emit("save_tweaks", JSON.stringify(out));
-	} else {
-		setCookie("enabledTweaks", JSON.stringify(out));
-	}
+	setCookie("enabledTweaks", JSON.stringify(out));
 }
 
 
-function load_tweaks(data) {
-	let enabledTweaks = JSON.parse(data);
+function load_cookies(data) {
+	for (cookie of data) {
+		setCookie(cookie, data[cookie]);
+	}
+	process_cookies();
+}
+
+function load_tweaks() {
+	
+	let enabledTweaks = JSON.parse(getCookie("enabledTweaks", "[]"));
 
 	for (const tweakContainer of document.getElementsByClassName("tweak-container")) {
 		let toggle = tweakContainer.querySelector("input");
@@ -3093,6 +3096,9 @@ function setCookie(cname, cvalue, exdays=60) {
   const d = new Date();
   d.setTime(d.getTime() + (exdays * 24 * 60 * 60 * 1000));
   let expires = "expires="+d.toUTCString();
+  if (document.getElementById("on_colab").textContent == "true") {
+	socket.emit("save_cookies", {cname: cvavlue});
+  }
   document.cookie = cname + "=" + cvalue + ";" + expires + ";";
 }
 
@@ -3380,13 +3386,7 @@ function open_finder() {
 	finderInput.focus();
 }
 
-$(document).ready(function(){
-	on_colab = document.getElementById("on_colab").textContent == "true";
-
-	create_theming_elements();
-	document.onkeydown = detect_key_down;
-	document.onkeyup = detect_key_up;
-	document.getElementById("input_text").onkeydown = detect_enter_submit;
+function process_cookies() {
 	if (getCookie("Settings_Pin") == "false") {
 		settings_unpin();
 	} else {
@@ -3399,6 +3399,19 @@ $(document).ready(function(){
 	}
 	preserve_game_space(!(getCookie("preserve_game_space") == "false"));
 	options_on_right(!(getCookie("options_on_right") == "false"));
+	
+	load_tweaks();
+}
+
+$(document).ready(function(){
+	on_colab = document.getElementById("on_colab").textContent == "true";
+
+	create_theming_elements();
+	document.onkeydown = detect_key_down;
+	document.onkeyup = detect_key_up;
+	document.getElementById("input_text").onkeydown = detect_enter_submit;
+	
+	process_cookies();
 
 
 	// Tweak registering

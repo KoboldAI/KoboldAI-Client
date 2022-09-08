@@ -6776,7 +6776,7 @@ def new_ui_index():
 def ui2_connect():
     #Send all variables to client
     koboldai_vars.send_to_ui()
-    UI_2_load_tweaks()
+    UI_2_load_cookies()
     pass
     
 #==================================================================#
@@ -7692,19 +7692,22 @@ def UI_2_theme_list_refresh(data):
 #==================================================================#
 # Save Tweaks
 #==================================================================#
-@socketio.on('save_tweaks')
-def UI_2_save_tweaks(data):
-    with open("./settings/tweaks.settings", "w") as f:
-        f.write(data)
+@socketio.on('save_cookies')
+def UI_2_save_cookies(data):
+    for key in data:
+        #Note this won't sync to the client automatically as we're modifying a variable rather than setting it
+        koboldai_vars.cookies[key] = data[key]
+    with open("./settings/cookies.settings", "w") as f:
+        f.write(json.dumps(koboldai_vars.cookies))
 
 #==================================================================#
 # Load Tweaks
 #==================================================================#
-def UI_2_load_tweaks():
+def UI_2_load_cookies():
     if koboldai_vars.on_colab:
-        if os.path.exists("./settings/tweaks.settings"):
-            with open("./settings/tweaks.settings", "r") as f:
-                socketio.emit('load_tweaks', f.read(), room="UI2")
+        if os.path.exists("./settings/cookies.settings"):
+            with open("./settings/cookies.settings", "r") as f:
+                socketio.emit('load_cookies', json.load(f), room="UI2")
 
 #==================================================================#
 # Test

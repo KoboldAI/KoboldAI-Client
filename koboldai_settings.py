@@ -782,6 +782,7 @@ class system_settings(settings):
         print("Colab Check: {}".format(self.on_colab))
         self.horde_share = False
         self._horde_pid = None
+        self.cookies = {} #cookies for colab since colab's URL changes, cookies are lost
         
         
     def __setattr__(self, name, value):
