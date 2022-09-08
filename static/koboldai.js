@@ -285,7 +285,7 @@ function do_story_text_updates(data) {
 		
 		story_area.append(span);
 		clearTimeout(game_text_scroll_timeout);
-		game_text_scroll_timeout = setTimeout(function() {span.scrollIntoView(false);}, 200);
+		game_text_scroll_timeout = setTimeout(function() {document.getElementById('gamescreen').scrollTo(0, document.body.scrollHeight);}, 200);
 		if (span.textContent != "") {
 			assign_world_info_to_action(span, null);
 		}
@@ -2030,7 +2030,7 @@ function save_tweaks() {
 
 
 function load_cookies(data) {
-	for (cookie of data) {
+	for (const cookie of Object.keys(data)) {
 		setCookie(cookie, data[cookie]);
 	}
 	process_cookies();
