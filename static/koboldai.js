@@ -3389,16 +3389,24 @@ function open_finder() {
 function process_cookies() {
 	if (getCookie("Settings_Pin") == "false") {
 		settings_unpin();
-	} else {
+	} else if (getCookie("Settings_Pin") == "true") {
 		settings_pin();
 	}
 	if (getCookie("Story_Pin") == "true") {
 		story_pin();
-	} else {
+	} else if (getCookie("Story_Pin") == "false") {
 		story_unpin();
 	}
-	preserve_game_space(!(getCookie("preserve_game_space") == "false"));
-	options_on_right(!(getCookie("options_on_right") == "false"));
+	if (getCookie("preserve_game_space") == "false") {
+		preserve_game_space(false);
+	} else if (getCookie("preserve_game_space") == "true") {
+		preserve_game_space(true);
+	}
+	if (getCookie("options_on_right") == "false") {
+		options_on_right(false);
+	} else if (getCookie("options_on_right") == "true") {
+		options_on_right(true);
+	}
 	
 	load_tweaks();
 }
