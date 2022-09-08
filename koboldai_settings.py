@@ -804,7 +804,7 @@ class system_settings(settings):
             #for original UI
             if name == 'sp_changed':
                 self.socketio.emit('from_server', {'cmd': 'spstatitems', 'data': {self.spfilename: self.spmeta} if self.allowsp and len(self.spfilename) else {}}, namespace=None, broadcast=True, room="UI_1")
-                self.sp_changed = False
+                super().__setattr__("sp_changed", False)
             
             if name == 'horde_share':
                 if self.on_colab == False:
