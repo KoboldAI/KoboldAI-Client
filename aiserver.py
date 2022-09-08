@@ -7694,9 +7694,12 @@ def UI_2_theme_list_refresh(data):
 #==================================================================#
 @socketio.on('save_cookies')
 def UI_2_save_cookies(data):
+    print("Adding: {}".format(data))
+    print("to: {}".format(koboldai_vars.cookies))
     for key in data:
         #Note this won't sync to the client automatically as we're modifying a variable rather than setting it
         koboldai_vars.cookies[key] = data[key]
+    print("Updated: {}".format(koboldai_vars.cookies))
     with open("./settings/cookies.settings", "w") as f:
         f.write(json.dumps(koboldai_vars.cookies))
 

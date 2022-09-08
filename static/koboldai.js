@@ -3097,7 +3097,7 @@ function setCookie(cname, cvalue, exdays=60) {
   d.setTime(d.getTime() + (exdays * 24 * 60 * 60 * 1000));
   let expires = "expires="+d.toUTCString();
   if (document.getElementById("on_colab").textContent == "true") {
-	socket.emit("save_cookies", {cname: cvavlue});
+	socket.emit("save_cookies", {[cname]: cvalue});
   }
   document.cookie = cname + "=" + cvalue + ";" + expires + ";";
 }
