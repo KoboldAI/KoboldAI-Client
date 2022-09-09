@@ -1109,9 +1109,7 @@ def general_startup(override_args=None):
         koboldai_vars.host = True;
 
     if args.host:
-        print("setting host")
         koboldai_vars.host = True;
-        print("koboldai_vars.host: {}".format(koboldai_vars.host))
 
     if args.cpu:
         koboldai_vars.use_colab_tpu = False
@@ -2878,7 +2876,7 @@ def lua_compute_context(submission, entries, folders, kwargs):
     )
     if koboldai_vars.alt_gen:
        txt, _, _ = koboldai_vars.calc_ai_text()
-       print("Using Alt Gen: {}".format(tokenizer.decode(txt)))
+       print("Using Alt Gen")
     else:
         txt, _, _ = calcsubmitbudget(
             len(actions),
@@ -4486,7 +4484,7 @@ def calcsubmit(txt):
     if(koboldai_vars.model != "InferKit"):
         if koboldai_vars.alt_gen:
             subtxt, min, max  = koboldai_vars.calc_ai_text(submitted_text=txt)
-            print("Using Alt Gen: {}".format(tokenizer.decode(subtxt)))
+            print("Using Alt Gen")
         else:
             subtxt, min, max = calcsubmitbudget(actionlen, winfo, mem, anotetxt, koboldai_vars.actions, submission=txt)
         if(actionlen == 0):
@@ -4634,7 +4632,7 @@ def _generate(txt, minimum, maximum, found_entries):
                 found_entries[i].update(_found_entries)
                 if koboldai_vars.alt_gen:
                    txt, _, _ = koboldai_vars.calc_ai_text(submitted_text=txt)
-                   print("Using Alt Gen: {}".format(tokenizer.decode(txt)))
+                   print("Using Alt Gen")
                 else:
                     txt, _, _ = calcsubmitbudget(len(koboldai_vars.actions), winfo, mem, anotetxt, koboldai_vars.actions, submission=txt)
                 encoded.append(torch.tensor(txt, dtype=torch.long, device=genout.device))
@@ -4715,7 +4713,6 @@ def generate(txt, minimum, maximum, found_entries=None):
             assert type(genout[-1]["generated_text"]) is str
     else:
         genout = [{"generated_text": utils.decodenewlines(tokenizer.decode(tokens[-already_generated:]))} for tokens in genout]
-    print([applyoutputformatting(x["generated_text"]) for x in genout])
     
     if(len(genout) == 1):
         genresult(genout[0]["generated_text"])
