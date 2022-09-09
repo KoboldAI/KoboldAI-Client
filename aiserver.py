@@ -7707,7 +7707,8 @@ def UI_2_load_cookies():
     if koboldai_vars.on_colab:
         if os.path.exists("./settings/cookies.settings"):
             with open("./settings/cookies.settings", "r") as f:
-                socketio.emit('load_cookies', json.load(f), room="UI2")
+                data = json.load(f)
+                socketio.emit('load_cookies', data, room="UI_2")
 
 #==================================================================#
 # Test
