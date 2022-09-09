@@ -7698,7 +7698,7 @@ def UI_2_save_cookies(data):
         #Note this won't sync to the client automatically as we're modifying a variable rather than setting it
         koboldai_vars.cookies[key] = data[key]
     with open("./settings/cookies.settings", "w") as f:
-        f.write(json.dumps(koboldai_vars.cookies))
+        json.dump(koboldai_vars.cookies, f)
 
 #==================================================================#
 # Load Tweaks
