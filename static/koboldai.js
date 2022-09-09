@@ -25,7 +25,7 @@ socket.on("world_info_folder", function(data){world_info_folder(data);});
 socket.on("delete_new_world_info_entry", function(data){document.getElementById("world_info_-1").remove();});
 socket.on("delete_world_info_entry", function(data){document.getElementById("world_info_"+data).remove();});
 socket.on("error", function(data){show_error_message(data);});
-socket.on('load_cookies', function(data){load_cookies(data);});
+socket.on('load_cookies', function(data){colab_cookies = data;});
 //socket.onAny(function(event_name, data) {console.log({"event": event_name, "class": data.classname, "data": data});});
 
 var presets = {};
@@ -43,6 +43,7 @@ var world_info_folder_data = {};
 var saved_settings = {};
 var finder_selection_index = -1;
 var on_colab;
+var colab_cookies = null;
 
 // name, desc, icon, func
 const finder_actions = [
@@ -2029,13 +2030,6 @@ function save_tweaks() {
 }
 
 
-function load_cookies(data) {
-	for (const cookie of Object.keys(data)) {
-		setCookie(cookie, data[cookie]);
-	}
-	process_cookies();
-}
-
 function load_tweaks() {
 	
 	let enabledTweaks = JSON.parse(getCookie("enabledTweaks", "[]"));
@@ -3413,6 +3407,13 @@ function process_cookies() {
 
 $(document).ready(function(){
 	on_colab = document.getElementById("on_colab").textContent == "true";
+
+	if (colab_cookies != null) {
+		for (const cookie of Object.keys(colab_cookies)) {
+			setCookie(cookie, colab_cookies[cookie]);
+		}	
+		colab_cookies = null;
+	}
 
 	create_theming_elements();
 	document.onkeydown = detect_key_down;
