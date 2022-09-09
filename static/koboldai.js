@@ -25,7 +25,7 @@ socket.on("world_info_folder", function(data){world_info_folder(data);});
 socket.on("delete_new_world_info_entry", function(data){document.getElementById("world_info_-1").remove();});
 socket.on("delete_world_info_entry", function(data){document.getElementById("world_info_"+data).remove();});
 socket.on("error", function(data){show_error_message(data);});
-socket.on('load_cookies', function(data){colab_cookies = data;});
+socket.on('load_cookies', function(data){load_cookies(data)});
 //socket.onAny(function(event_name, data) {console.log({"event": event_name, "class": data.classname, "data": data});});
 
 var presets = {};
@@ -1868,6 +1868,17 @@ function do_wpp(wpp_area) {
 	}
 	world_info_data[uid]['wpp'] = wpp;
 	send_world_info(uid);
+}
+
+function load_cookies(data) {
+	colab_cookies = data;
+	if (document.readyState === 'complete') {
+		for (const cookie of Object.keys(colab_cookies)) {
+			setCookie(cookie, colab_cookies[cookie]);
+		}
+		process_cookies();
+		colab_cookies = null;
+	}
 }
 
 //--------------------------------------------UI to Server Functions----------------------------------
