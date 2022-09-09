@@ -7643,8 +7643,8 @@ def get_userscripts_desc(item_full_path, item, valid_selection):
 #==================================================================#
 @socketio.on('load_userscripts')
 def UI_2_load_userscripts(data):
-        if koboldai_vars.debug:
-    print("Loading Userscripts: {}".format(os.path.basename(data)))
+    if koboldai_vars.debug:
+        print("Loading Userscripts: {}".format(os.path.basename(data)))
     koboldai_vars.userscripts = [x for x in koboldai_vars.userscripts if x != os.path.basename(data)]+[os.path.basename(data)]
     load_lua_scripts()
     
