@@ -3183,6 +3183,135 @@ function beep() {
     snd.play();
 }
 
+function downloadString(string, fileName) {
+	let a = document.createElement("a");
+	a.setAttribute("download", fileName);
+	a.href = URL.createObjectURL(new Blob([string]));
+	a.click();
+}
+
+function getRedactedValue(value) {
+	if (typeof value === "string") return `[Redacted string with length ${value.length}]`;
+	if (value instanceof Array) return `[Redacted array with length ${value.length}]`;
+
+	if (typeof value === "object") {
+		if (value === null) return null;
+
+		let built = {};
+		for (const key of Object.keys(value)) {
+			built[getRedactedValue(key)] = getRedactedValue(value[key]);
+		}
+
+		return built;
+	}
+
+	return "[Redacted value]"
+}
+
+async function downloadDebugFile(redact=true) {
+	let r = await fetch("/vars");
+	let varsData = await r.json();
+
+	// Redact sensitive user info
+
+	// [redacted string n characters long]
+	// [redacted array with n elements]
+
+	let redactables = [
+		"model_settings.apikey",
+		"model_settings.colaburl",
+		"model_settings.oaiapikey",
+		"system_settings.story_loads",
+		"user_settings.username",
+	];
+
+	if (redact) {
+		// TODO: genseqs, splist(?)
+		redactables = redactables.concat([
+			"story_settings.authornote",
+			"story_settings.chatname",
+			"story_settings.last_story_load",
+			"story_settings.lastact",
+			"story_settings.lastctx",
+			"story_settings.memory",
+			"story_settings.notes",
+			"story_settings.prompt",
+			"story_settings.story_name",
+			"story_settings.submission",
+			"story_settings.biases",
+			"story_settings.genseqs",
+
+			// System
+			"system_settings.savedir", // Can reveal username
+			"system_settings.spfilename",
+			"system_settings.spname",
+		]);
+
+		// Redact more complex things
+
+		// wifolders_d - name
+		for (const key of Object.keys(varsData.story_settings.wifolders_d)) {
+			varsData.story_settings.wifolders_d[key].name = getRedactedValue(varsData.story_settings.wifolders_d[key].name);
+		}
+
+		// worldinfo - comment, content, key, keysecondary
+		for (const key of Object.keys(varsData.story_settings.worldinfo)) {
+			for (const redactKey of ["comment", "content", "key", "keysecondary"]) {
+				varsData.story_settings.worldinfo[key][redactKey] = getRedactedValue(varsData.story_settings.worldinfo[key][redactKey]);
+			}
+		}
+
+		// worldinfo_i - comment, content, key, keysecondary
+		for (const key of Object.keys(varsData.story_settings.worldinfo_i)) {
+			for (const redactKey of ["comment", "content", "key", "keysecondary"]) {
+				varsData.story_settings.worldinfo_i[key][redactKey] = getRedactedValue(varsData.story_settings.worldinfo_i[key][redactKey]);
+			}
+		}
+
+		// worldinfo_u - comment, content, key, keysecondary
+		for (const key of Object.keys(varsData.story_settings.worldinfo_u)) {
+			for (const redactKey of ["comment", "content", "key", "keysecondary"]) {
+				varsData.story_settings.worldinfo_u[key][redactKey] = getRedactedValue(varsData.story_settings.worldinfo_u[key][redactKey]);
+			}
+		}
+
+		// worldinfo_v2 entries - comment, content, folder, key, keysecondary, manual_text, title, wpp
+		for (const key of Object.keys(varsData.story_settings.worldinfo_v2.entries)) {
+			for (const redactKey of ["comment", "content", "folder", "key", "keysecondary", "manual_text", "title", "wpp"]) {
+				varsData.story_settings.worldinfo_v2.entries[key][redactKey] = getRedactedValue(varsData.story_settings.worldinfo_v2.entries[key][redactKey]);
+			}
+		}
+
+		varsData.story_settings.worldinfo_v2.folders = getRedactedValue(varsData.story_settings.worldinfo_v2.folders);
+
+		// actions - "Selected Text", Options, Probabilities
+		for (const key of Object.keys(varsData.story_settings.actions.actions)) {
+			for (const redactKey of ["Selected Text", "Options", "Probabilities"]) {
+				varsData.story_settings.actions.actions[key][redactKey] = getRedactedValue(varsData.story_settings.actions.actions[key][redactKey]);
+			}
+		}
+
+	}
+
+	for (const varPath of redactables) {
+		let ref = varsData;
+		const parts = varPath.split(".");
+
+		for (const part of parts.slice(0, -1)) {
+			ref = ref[part];
+		}
+
+		const lastPart = parts[parts.length - 1];
+
+		ref[lastPart] = getRedactedValue(ref[lastPart]);
+	}
+
+	debug_info.currentVars = varsData;
+	console.log(debug_info);
+
+	downloadString(JSON.stringify(debug_info, null, 4), "kobold_debug.json");
+}
+
 function loadNAILorebook(data, filename) {
 	let lorebookVersion = data.lorebookVersion;
 	let wi_data = {folders: {[filename]: []}, entries: {}};
@@ -3574,6 +3703,17 @@ $(document).ready(function(){
 	
 	finder.addEventListener("click", function(e) {
 		e.stopPropagation();
+	});
+
+	// Debug file
+	// TODO: All of this generic backdrop code really sucks. There should be a
+	// standardised thing for popups that adds the dimmed backdrop and standard
+	// closing, etc.
+
+	const debugContainer = document.getElementById("debug-file-container");
+
+	debugContainer.addEventListener("click", function(e) {
+		debugContainer.classList.add("hidden");
 	});
 });
 
