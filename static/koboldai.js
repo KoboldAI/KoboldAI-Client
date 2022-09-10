@@ -3536,11 +3536,8 @@ $(document).ready(function(){
 	});
 	
 	finderContainer.addEventListener("click", function(e) {
+		if (e.target !== this) return;
 		finderContainer.classList.add("hidden");
-	});
-	
-	finder.addEventListener("click", function(e) {
-		e.stopPropagation();
 	});
 });
 
