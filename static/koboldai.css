@@ -1921,22 +1921,38 @@ body {
 }
 
 #finder-wi-carousel {
-	height: 40%;
-	width: 100vw;
 	position: absolute;
+	height: 35%;
+	width: 100vw;
 	bottom: 0px;
 	right: 0px;
+
+	display: flex;
+	column-gap: 20px;
+}
+
+.finder-wi-focus {
+	/* This MUST be a percentage before pushing. The 100px is a workaround but
+	i've got to find a solution otherwiseit causes visual bugs on shorter screens */
+	margin-top: -100px;
+	height: calc(100% + 100px) !important;
+
+	overflow-y: scroll !important;
+	filter: none !important;
 }
 
 .finder-wi-block {
 	background-color: var(--flyout_background_pinned);
-	width: 33%;
 	height: 100%;
-	overflow-y: scroll;
+	flex-grow: 1;
+	overflow-y: hidden;
+	filter: brightness(70%);
 }
 
-.finder-wi-block > * {
-	display: block;
+.finder-wi-content {
+	width: 100%;
+	height: 30%;
+	border: none;
 }
 
 /*---------------------------------- Global ------------------------------------------------*/

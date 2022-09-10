@@ -26,6 +26,7 @@ socket.on("delete_new_world_info_entry", function(data){document.getElementById(
 socket.on("delete_world_info_entry", function(data){document.getElementById("world_info_"+data).remove();});
 socket.on("error", function(data){show_error_message(data);});
 socket.on('load_tweaks', function(data){load_tweaks(data);});
+socket.on("wi_results", updateWISearchListings);
 //socket.onAny(function(event_name, data) {console.log({"event": event_name, "class": data.classname, "data": data});});
 
 var presets = {};
@@ -3327,20 +3328,8 @@ function addSearchListing(action, highlight) {
 	return result;
 }
 
-function updateSearchListings() {
+function updateStandardSearchListings(query) {
 	const maxResultCount = 5;
-
-	if (this.value === finder_last_input) return;
-	finder_last_input = this.value;
-	finder_selection_index = -1;
-
-	let query = this.value.toLowerCase();
-
-	// TODO: Maybe reuse the element? Would it give better performance?
-	$(".finder-result").remove();
-
-	if (!query) return;
-
 	const actionMatches = {name: [], desc: []};
 
 	for (const action of finder_actions) {
@@ -3358,6 +3347,99 @@ function updateSearchListings() {
 	for (let i=0;i<maxResultCount && i<matchingActions.length;i++) {
 		let action = matchingActions[i];
 		addSearchListing(action, query);
+	}
+}
+
+function $e(tag, parent, attributes) {
+	// Small helper function for dynamic UI creation
+	// TODO: Support nested attributed with "." syntax.
+
+	let element = document.createElement(tag);
+
+	if ("classes" in attributes) {
+		if (!Array.isArray(attributes.classes)) throw Error("Classes was not array!");
+		for (const className of attributes.classes) {
+			element.classList.add(className);
+		}
+		delete attributes.classes;
+	}
+
+
+	for (const [attribute, value] of Object.entries(attributes)) {
+		if (attribute.includes(".")) {
+			console.warn("TODO: Dot syntax");
+			throw Error("No dot syntax");
+		}
+
+		if (attribute in element) {
+			element[attribute] = value;
+		} else {
+			element.setAttribute(attribute, value);
+		}
+	}
+
+	parent.appendChild(element);
+	return element;
+}
+
+function updateWISearchListings(entry) {
+	const wiCarousel = document.getElementById("finder-wi-carousel");
+
+	let entries = Object.values(entry).flat().slice(0, 3);
+
+	// Visual spacing-- this kinda sucks
+	if (entries.length == 1) entries = [null, entries[0], null];
+	if (entries.length == 2) entries = [null, ...entries];
+
+	for (const [i, entry] of entries.entries()) {
+		let wiBlock = $e("div", wiCarousel, {classes: ["finder-wi-block"]});
+
+		// Spacer hack
+		if (!entry) {
+			wiBlock.style.visibility = "hidden";
+			continue;
+		}
+
+		if ((i == 1 && entries.length == 3) || (i == 0 && entries.length < 3)) {
+			wiBlock.classList.add("finder-wi-focus");
+		}
+
+		let wiTitle = $e("h2", wiBlock, {classes: ["finder-wi-title"], innerText: entry.title});
+		let wiAlwaysLabel = $e("span", wiBlock, {innerText: "Always Activate"});
+
+		let wiAlways = $e("input", wiBlock, {type: "checkbox", "data-toggle": "toggle", "data-size": "mini"});
+		$(wiAlways).bootstrapToggle();
+
+		// Tags
+		//let wiTagContainer = document.createElement("")
+
+		let wiContent = $e("textarea", wiBlock, {classes: ["finder-wi-content"], value: entry.content});
+	}
+}
+
+function updateSearchListings() {
+	if (this.value === finder_last_input) return;
+	finder_last_input = this.value;
+	finder_selection_index = -1;
+
+	const wiCarousel = document.getElementById("finder-wi-carousel");
+	wiCarousel.classList.add("hidden");
+
+	let query = this.value.toLowerCase();
+
+	// TODO: Maybe reuse the element? Would it give better performance?
+	$(".finder-result").remove();
+
+	if (!query || query === ">") return;
+
+	if (query.startsWith(">")) {
+		wiCarousel.classList.remove("hidden");
+		$(".finder-wi-block").remove();
+
+		let wiQuery = query.replace(">", "");
+		socket.emit("search_wi", {query: wiQuery});
+	} else {
+		updateStandardSearchListings(query)
 	}
 }
 

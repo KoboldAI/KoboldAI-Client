@@ -7480,6 +7480,28 @@ def UI_2_import_world_info(data):
                 )
             koboldai_vars.worldinfo_v2.add_item_to_folder(uids[child], folder_name)
 
+@socketio.on("search_wi")
+def UI_2_load_softprompt_list(data):
+    query = data["query"].lower()
+    full_data = koboldai_vars.worldinfo_v2.to_json()
+
+    results = {"title": [], "key": [], "keysecondary": [], "manual_text": []}
+
+    for entry in full_data["entries"].values():
+        # Order matters for what's more important.
+        if query in entry["title"].lower():
+            results["title"].append(entry)
+        elif any([query in k.lower() for k in entry["key"]]):
+            results["key"].append(entry)
+        elif any([query in k.lower() for k in entry["keysecondary"]]):
+            results["keysecondary"].append(entry)
+        elif query in entry["content"].lower():
+            results["manual_text"].append(entry)
+        elif query in entry["manual_text"].lower():
+            results["comment"].append(entry)
+
+    socketio.emit("wi_results", results, broadcast=True, room="UI_2")
+
 
 #==================================================================#
 # Event triggered when user edits phrase biases
