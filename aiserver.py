@@ -5175,21 +5175,33 @@ def sendtocluster(txt, min, max):
         'api_key': vars.apikey,
         'models': vars.cluster_requested_models,
     }
-
-    # Create request
-    req = requests.post(
-        vars.colaburl[:-8] + "/generate/sync",
-        json=cluster_metadata,
-    )
-    js = req.json()
+    try:
+        # Create request
+        req = requests.post(
+            vars.colaburl[:-8] + "/generate/sync",
+            json=cluster_metadata,
+        )
+        js = req.json()
+    except requests.exceptions.ConnectionError:
+        errmsg ="Horde unavailable. Please try again later"
+        print("{0}{1}{2}".format(colors.RED, json.dumps(js, indent=2), colors.END))
+        emit('from_server', {'cmd': 'errmsg', 'data': errmsg}, broadcast=True)
+        set_aibusy(0)
+        return
+    except requests.exceptions.JSONDecodeError:
+        errmsg ="Unexpected message received from the Horde: '{req.text}'"
+        print("{0}{1}{2}".format(colors.RED, json.dumps(js, indent=2), colors.END))
+        emit('from_server', {'cmd': 'errmsg', 'data': errmsg}, broadcast=True)
+        set_aibusy(0)
+        return
     if(req.status_code == 503):
-        errmsg = "KoboldAI API Error: No available KoboldAI servers found in cluster to fulfil this request using the selected models and requested lengths."
+        errmsg = "KoboldAI API Error: No available KoboldAI servers found in Horde to fulfil this request using the selected models or other properties."
         print("{0}{1}{2}".format(colors.RED, json.dumps(js, indent=2), colors.END))
         emit('from_server', {'cmd': 'errmsg', 'data': errmsg}, broadcast=True)
         set_aibusy(0)
         return
     if(req.status_code != 200):
-        errmsg = "KoboldAI API Error: Failed to get a reply from the server. Please check the console."
+        errmsg = "KoboldAI API Error: Failed to get a standard from the Horde. Please check the console."
         print("{0}{1}{2}".format(colors.RED, json.dumps(js, indent=2), colors.END))
         emit('from_server', {'cmd': 'errmsg', 'data': errmsg}, broadcast=True)
         set_aibusy(0)
