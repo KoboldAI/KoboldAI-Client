@@ -3223,6 +3223,8 @@ async function downloadDebugFile(redact=true) {
 		"model_settings.oaiapikey",
 		"system_settings.story_loads",
 		"user_settings.username",
+		"system_settings.savedir", // Can reveal username
+		"story_settings.last_story_load",
 	];
 
 	if (redact) {
@@ -3230,7 +3232,6 @@ async function downloadDebugFile(redact=true) {
 		redactables = redactables.concat([
 			"story_settings.authornote",
 			"story_settings.chatname",
-			"story_settings.last_story_load",
 			"story_settings.lastact",
 			"story_settings.lastctx",
 			"story_settings.memory",
@@ -3242,7 +3243,6 @@ async function downloadDebugFile(redact=true) {
 			"story_settings.genseqs",
 
 			// System
-			"system_settings.savedir", // Can reveal username
 			"system_settings.spfilename",
 			"system_settings.spname",
 		]);
