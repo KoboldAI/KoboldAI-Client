@@ -5184,13 +5184,13 @@ def sendtocluster(txt, min, max):
         js = req.json()
     except requests.exceptions.ConnectionError:
         errmsg ="Horde unavailable. Please try again later"
-        print("{0}{1}{2}".format(colors.RED, json.dumps(errmsg, indent=2), colors.END))
+        print("{0}{1}{2}".format(colors.RED, errmsg, colors.END))
         emit('from_server', {'cmd': 'errmsg', 'data': errmsg}, broadcast=True)
         set_aibusy(0)
         return
     except requests.exceptions.JSONDecodeError:
         errmsg ="Unexpected message received from the Horde: '{req.text}'"
-        print("{0}{1}{2}".format(colors.RED, json.dumps(errmsg, indent=2), colors.END))
+        print("{0}{1}{2}".format(colors.RED, errmsg, colors.END))
         emit('from_server', {'cmd': 'errmsg', 'data': errmsg}, broadcast=True)
         set_aibusy(0)
         return
