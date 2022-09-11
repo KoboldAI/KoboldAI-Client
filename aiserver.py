@@ -18,12 +18,6 @@ from eventlet import tpool
 
 import logging
 from logger import logger
-logger.generation("This is a generation message")
-logger.debug("That's it, beautiful and simple logging!")
-logger.info("That's it, beautiful and simple logging!")
-logger.error("That's it, beautiful and simple logging!")
-logger.critical("That's it, beautiful and simple logging!")
-
 
 logging.getLogger("urllib3").setLevel(logging.ERROR)
 
@@ -78,7 +72,7 @@ global tpu_mtj_backend
 
 
 if lupa.LUA_VERSION[:2] != (5, 4):
-    print(f"Please install lupa==1.10. You have lupa {lupa.__version__}.", file=sys.stderr)
+    logging.error(f"Please install lupa==1.10. You have lupa {lupa.__version__}.")
 
 patch_causallm_patched = False
 
@@ -409,7 +403,7 @@ log = logging.getLogger('werkzeug')
 log.setLevel(logging.ERROR)
 
 # Start flask & SocketIO
-print("{0}Initializing Flask... {1}".format(colors.PURPLE, colors.END), end="")
+logger.init("Flask Initialization", status="Starting")
 from flask import Flask, render_template, Response, request, copy_current_request_context, send_from_directory, session, jsonify, abort, redirect
 from flask_socketio import SocketIO
 from flask_socketio import emit as _emit
@@ -422,7 +416,7 @@ app.config['SESSION_TYPE'] = 'filesystem'
 app.config['TEMPLATES_AUTO_RELOAD'] = True
 Session(app)
 socketio = SocketIO(app, async_method="eventlet")
-print("{0}OK!{1}".format(colors.GREEN, colors.END))
+logger.init("Flask Initialization", status="OK")
 
 old_socketio_on = socketio.on
 def new_socketio_on(*a, **k):
