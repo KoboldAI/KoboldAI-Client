@@ -17,7 +17,8 @@ os.environ['TOKENIZERS_PARALLELISM'] = 'false'
 from eventlet import tpool
 
 import logging
-logging.basicConfig(format='%(levelname)s - %(module)s:%(lineno)d - %(message)s',level=logging.WARNING)
+from loguru import logger
+logger.debug("That's it, beautiful and simple logging!")
 logging.getLogger("urllib3").setLevel(logging.ERROR)
 
 from os import path, getcwd
@@ -66,6 +67,7 @@ try:
 except:
     pass
 import transformers.generation_utils
+
 global tpu_mtj_backend
 
 
