@@ -17,8 +17,14 @@ os.environ['TOKENIZERS_PARALLELISM'] = 'false'
 from eventlet import tpool
 
 import logging
-from loguru import logger
+from logger import logger
+logger.generation("This is a generation message")
 logger.debug("That's it, beautiful and simple logging!")
+logger.info("That's it, beautiful and simple logging!")
+logger.error("That's it, beautiful and simple logging!")
+logger.critical("That's it, beautiful and simple logging!")
+
+
 logging.getLogger("urllib3").setLevel(logging.ERROR)
 
 from os import path, getcwd
