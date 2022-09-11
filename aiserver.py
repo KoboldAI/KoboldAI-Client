@@ -798,7 +798,7 @@ def device_config(config):
                 breakmodel.disk_blocks = args.breakmodel_disklayers
                 n_layers -= args.breakmodel_disklayers
         except:
-            print("WARNING: --breakmodel_gpulayers is malformatted. Please use the --help option to see correct usage of --breakmodel_gpulayers. Defaulting to all layers on device 0.", file=sys.stderr)
+            logger.warning("--breakmodel_gpulayers is malformatted. Please use the --help option to see correct usage of --breakmodel_gpulayers. Defaulting to all layers on device 0.")
             breakmodel.gpu_blocks = [n_layers]
             n_layers = 0
     elif(args.breakmodel_layers is not None):
@@ -2183,7 +2183,7 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
         elif(vars.model_type == "not_found" and vars.model == "GPT2Custom"):
             vars.model_type = "gpt2"
         elif(vars.model_type == "not_found"):
-            print("WARNING: No model type detected, assuming Neo (If this is a GPT2 model use the other menu option or --model GPT2Custom)")
+            logger.warning("No model type detected, assuming Neo (If this is a GPT2 model use the other menu option or --model GPT2Custom)")
             vars.model_type = "gpt_neo"
 
     if(not vars.use_colab_tpu and vars.model not in ["InferKit", "Colab", "API", "CLUSTER", "OAI", "GooseAI" , "ReadOnly", "TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX"]):
@@ -2193,14 +2193,14 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
         vars.hascuda = torch.cuda.is_available()
         vars.bmsupported = (utils.HAS_ACCELERATE or vars.model_type in ("gpt_neo", "gptj", "xglm", "opt")) and not vars.nobreakmodel
         if(args.breakmodel is not None and args.breakmodel):
-            logger.warning("WARNING: --breakmodel is no longer supported. Breakmodel mode is now automatically enabled when --breakmodel_gpulayers is used (see --help for details).")
+            logger.warning("--breakmodel is no longer supported. Breakmodel mode is now automatically enabled when --breakmodel_gpulayers is used (see --help for details).")
         if(args.breakmodel_layers is not None):
-            logger.warning("WARNING: --breakmodel_layers is deprecated. Use --breakmodel_gpulayers instead (see --help for details).")
+            logger.warning("--breakmodel_layers is deprecated. Use --breakmodel_gpulayers instead (see --help for details).")
         if(args.model and vars.bmsupported and not args.breakmodel_gpulayers and not args.breakmodel_layers and (not utils.HAS_ACCELERATE or not args.breakmodel_disklayers)):
-            logger.warning("WARNING: Model launched without the --breakmodel_gpulayers argument, defaulting to GPU only mode.")
+            logger.warning("Model launched without the --breakmodel_gpulayers argument, defaulting to GPU only mode.")
             vars.bmsupported = False
         if(not vars.bmsupported and (args.breakmodel_gpulayers is not None or args.breakmodel_layers is not None or args.breakmodel_disklayers is not None)):
-            logger.warning("WARNING: This model does not support hybrid generation. --breakmodel_gpulayers will be ignored.")
+            logger.warning("This model does not support hybrid generation. --breakmodel_gpulayers will be ignored.")
         if(vars.hascuda):
             logger.init_ok("GPU support", status="Found")
         else:
@@ -3874,14 +3874,14 @@ def get_message(msg):
     elif(msg['cmd'] == 'delete_model'):
         if "{}/models".format(os.getcwd()) in os.path.abspath(msg['data']) or "{}\\models".format(os.getcwd()) in os.path.abspath(msg['data']):
             if check_if_dir_is_model(msg['data']):
-                print(colors.YELLOW + "WARNING: Someone deleted " + msg['data'])
+                logger.warning(f"Someone deleted {msg['data']}")
                 import shutil
                 shutil.rmtree(msg['data'])
                 sendModelSelection(menu=msg['menu'])
             else:
-                print(colors.RED + "ERROR: Someone attempted to delete " + msg['data'] + " but this is not a valid model")
+                logger.error(f"Someone attempted to delete {msg['data']} but this is not a valid model")
         else:
-            print(colors.RED + "WARNING!!: Someone maliciously attempted to delete " + msg['data'] + " the attempt has been blocked.")
+            logger.critical(f"Someone maliciously attempted to delete {msg['data']}. The attempt has been blocked.")
     elif(msg['cmd'] == 'OAI_Key_Update'):
         get_oai_models(msg['key'])
     elif(msg['cmd'] == 'Cluster_Key_Update'):
@@ -4118,7 +4118,7 @@ def actionsubmit(data, actionmode=0, force_submit=False, force_prompt_gen=False,
                         except:
                             tokenizer = AutoTokenizer.from_pretrained(tokenizer_id, revision=vars.revision, cache_dir="cache", use_fast=False)
                 except:
-                    print(f"WARNING:  Unknown tokenizer {repr(tokenizer_id)}")
+                    logger.warning(f"Unknown tokenizer {repr(tokenizer_id)}")
                 vars.api_tokenizer_id = tokenizer_id
 
         if(disable_recentrng):
@@ -5631,7 +5631,7 @@ def inlineedit(chunk, data):
             vars.actions_metadata[chunk-1]['Selected Text'] = data
             vars.actions[chunk-1] = data
         else:
-            print(f"WARNING: Attempted to edit non-existent chunk {chunk}")
+            logger.warning(f"Attempted to edit non-existent chunk {chunk}")
 
     setgamesaved(False)
     update_story_chunk(chunk)
@@ -5659,7 +5659,7 @@ def inlinedelete(chunk):
             vars.actions_metadata[chunk-1]['Selected Text'] = ''
             del vars.actions[chunk-1]
         else:
-            print(f"WARNING: Attempted to delete non-existent chunk {chunk}")
+            logger.warning(f"Attempted to delete non-existent chunk {chunk}")
         setgamesaved(False)
         remove_story_chunk(chunk)
         emit('from_server', {'cmd': 'editmode', 'data': 'false'}, broadcast=True)
