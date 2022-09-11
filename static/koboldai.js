@@ -3356,6 +3356,8 @@ function $e(tag, parent, attributes) {
 
 	let element = document.createElement(tag);
 
+	if (!attributes) attributes = {};
+
 	if ("classes" in attributes) {
 		if (!Array.isArray(attributes.classes)) throw Error("Classes was not array!");
 		for (const className of attributes.classes) {
@@ -3367,8 +3369,15 @@ function $e(tag, parent, attributes) {
 
 	for (const [attribute, value] of Object.entries(attributes)) {
 		if (attribute.includes(".")) {
-			console.warn("TODO: Dot syntax");
-			throw Error("No dot syntax");
+			let ref = element;
+			const parts = attribute.split(".");
+
+			for (const part of parts.slice(0, -1)) {
+				ref = ref[part];
+			}
+
+			ref[parts[parts.length - 1]] = value;
+			continue;
 		}
 
 		if (attribute in element) {
