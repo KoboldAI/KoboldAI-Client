@@ -3391,6 +3391,17 @@ function $e(tag, parent, attributes) {
 	return element;
 }
 
+function makeFinderWITag(name, container, isPrimary) {
+	let wiTag = $e("span", container, {classes: ["tag"]});
+	let wiTagIcon = $e("span", wiTag, {classes: ["finder-wi-tag-icon", "material-icons-outlined"], innerText: "close"});
+	let wiTagText = $e("span", wiTag, {innerText: name, contenteditable: true});
+
+	wiTagIcon.addEventListener("click", function(e) {
+		// TODO: Server
+		wiTag.remove();
+	});
+}
+
 function updateWISearchListings(entry) {
 	const wiCarousel = document.getElementById("finder-wi-carousel");
 
@@ -3399,6 +3410,8 @@ function updateWISearchListings(entry) {
 	// Visual spacing-- this kinda sucks
 	if (entries.length == 1) entries = [null, entries[0], null];
 	if (entries.length == 2) entries = [null, ...entries];
+
+	console.log(entries);
 
 	for (const [i, entry] of entries.entries()) {
 		let wiBlock = $e("div", wiCarousel, {classes: ["finder-wi-block"]});
@@ -3409,20 +3422,85 @@ function updateWISearchListings(entry) {
 			continue;
 		}
 
+		// Focus is the center highlighted one. If there is 3 entries (max),
+		// the important one is at the center. Otherwise, the important one is
+		// in the front.
 		if ((i == 1 && entries.length == 3) || (i == 0 && entries.length < 3)) {
 			wiBlock.classList.add("finder-wi-focus");
 		}
 
-		let wiTitle = $e("h2", wiBlock, {classes: ["finder-wi-title"], innerText: entry.title});
-		let wiAlwaysLabel = $e("span", wiBlock, {innerText: "Always Activate"});
 
-		let wiAlways = $e("input", wiBlock, {type: "checkbox", "data-toggle": "toggle", "data-size": "mini"});
+		let wiTitle = $e("span", wiBlock, {classes: ["finder-wi-title"], innerText: entry.title, contenteditable: true, "data-placeholder": "Entry"});
+		wiTitle.addEventListener("keydown", function(e) {
+			if (e.key === "Enter") e.preventDefault();
+		});
+
+		let wiTextLabel = $e("h3", wiBlock, {innerText: "Text", "style.margin": "10px 0px 5px 0px"});
+		/*
+		let wiContentLabel = $e("span", wiBlock, {
+			classes: ["block"], innerText: "Text: "
+		});
+		*/
+		let wiContent = $e("textarea", wiBlock, {classes: ["finder-wi-content"], value: entry.content, placeholder: "Write your World Info here!"});
+		let wiComment = $e("textarea", wiBlock, {placeholder: "Comment"});
+
+		let wiActivationHeaderContainer = $e("div", wiBlock, {classes: ["finder-wi-activation-header-container"]});
+		let wiActivationLabel = $e("h3", wiActivationHeaderContainer, {innerText: "Activation", "style.display": "inline"});
+		let wiAlwaysContainer = $e("div", wiActivationHeaderContainer, {classes: ["finder-wi-always-container"]});
+		let wiAlwaysLabel = $e("span", wiAlwaysContainer, {innerText: "Always Activate"});
+
+		let wiAlways = $e("input", wiAlwaysContainer, {type: "checkbox", "data-toggle": "toggle", "data-size": "mini", "data-onstyle": "success"});
+		$(wiAlways).change(function(e) {
+			console.log("<3!!")
+			if (this.checked) {
+				wiTagActivationContainer.classList.add("disabled");
+			} else {
+				wiTagActivationContainer.classList.remove("disabled");
+			}
+		});
 		$(wiAlways).bootstrapToggle();
 
-		// Tags
-		//let wiTagContainer = document.createElement("")
+		let wiActivationHelp = $e("span", wiBlock, {classes: ["help_text"], innerText: "Change when the AI reads this World Info entry"})
+		let wiTagActivationContainer = $e("div", wiBlock);
 
-		let wiContent = $e("textarea", wiBlock, {classes: ["finder-wi-content"], value: entry.content});
+		for (const isPrimary of [true, false]) {
+			let wiTagLabel = $e("span", wiTagActivationContainer, {
+				classes: ["block"],
+				innerText: isPrimary ? "Requires one of:" : "And (if present):"
+			});
+
+			let wiTagContainer = $e("div", wiTagActivationContainer, {
+				id: isPrimary ? "finder-wi-required-keys" : "finder-wi-secondary-keys",
+				classes: ["finder-wi-keys"]
+			});
+			let wiAddedTagContainer = $e("div", wiTagContainer, {classes: ["finder-wi-added-keys"]});
+
+			// Existing keys
+			for (const key of entry.key) {
+				makeFinderWITag(key, wiAddedTagContainer);
+			}
+
+			// The "fake key" add button
+			let wiNewTag = $e("span", wiTagContainer, {classes: ["tag"]});
+			let wiNewTagIcon = $e("span", wiNewTag, {classes: ["finder-wi-tag-icon", "material-icons-outlined"], innerText: "add"});
+			let wiNewTagText = $e("span", wiNewTag, {classes: ["tag-text"], contenteditable: true, "data-placeholder": "Key"});
+
+			function newTag() {
+				// TODO: Server
+				let tagName = wiNewTagText.innerText;
+				wiNewTagText.innerText = "";
+				if (!tagName.trim()) return;
+				makeFinderWITag(tagName, wiAddedTagContainer, isPrimary)
+			}
+
+			wiNewTagText.addEventListener("blur", newTag);
+			wiNewTagText.addEventListener("keydown", function(e) {
+				if (e.key === "Enter") {
+					newTag();
+					e.preventDefault();
+				}
+			});
+		}
 	}
 }
 

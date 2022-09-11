@@ -1947,17 +1947,76 @@ body {
 	flex-grow: 1;
 	overflow-y: hidden;
 	filter: brightness(70%);
+	padding: 0px 7px;
+}
+
+.finder-wi-block > textarea {
+	width: 100%;
+	border: none;
+	resize: none;
+}
+
+.finder-wi-title {
+	/* Cannot use display: block here, it will add a <br> to the contenteditable. */
+	display: inline-block;
+	width: 100%;
+	font-size: 32px;
+	background-color: var(--input_background);
+	padding: 7px 5px 0px 5px;
+	margin: 10px 0px;
 }
 
 .finder-wi-content {
-	width: 100%;
 	height: 30%;
-	border: none;
+}
+
+.finder-wi-added-keys {
+	display: inline-block;
+}
+
+.finder-wi-tag-icon {
+	position: relative;
+	top: 4px;
+	right: 2px;
+	font-size: 18px !important;
+	cursor: pointer;
+}
+
+.tag-text { cursor: text; }
+
+[data-placeholder]:empty:before {
+	content: attr(data-placeholder);
+	opacity: 0.6;
+}
+
+.finder-wi-activation-header-container {
+	display: flex;
+	justify-content: space-between;
+	margin-top: 10px;
+}
+
+.finder-wi-activation-header-container > h3 {
+	margin: 0px;
+}
+
+.finder-wi-always-container {
+	display: flex;
+	align-items: center;
+	column-gap: 5px;
 }
 
 /*---------------------------------- Global ------------------------------------------------*/
 .hidden {
 	display: none;
+}
+
+.block {
+	display: block;
+}
+
+.disabled {
+	opacity: 0.4;
+	pointer-events: none;
 }
 
 #input_text {
