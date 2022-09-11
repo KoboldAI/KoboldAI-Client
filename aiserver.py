@@ -416,7 +416,7 @@ app.config['SESSION_TYPE'] = 'filesystem'
 app.config['TEMPLATES_AUTO_RELOAD'] = True
 Session(app)
 socketio = SocketIO(app, async_method="eventlet")
-logger.init("Flask", status="OK")
+logger.init_ok("Flask", status="OK")
 
 old_socketio_on = socketio.on
 def new_socketio_on(*a, **k):
@@ -1405,9 +1405,10 @@ def general_startup(override_args=None):
             vars.model = "NeoCustom"
             vars.custmodpth = modpath
     elif args.model:
-        print("Welcome to KoboldAI!\nYou have selected the following Model:", vars.model)
+        logger.message(f"Welcome to KoboldAI!")
+        logger.message(f"You have selected the following Model: {vars.model}")
         if args.path:
-            print("You have selected the following path for your Model :", args.path)
+            logger.message(f"You have selected the following path for your Model: {args.path}")
             vars.custmodpth = args.path;
             vars.colaburl = args.path + "/request"; # Lets just use the same parameter to keep it simple
 #==================================================================#
@@ -2188,8 +2189,7 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
     if(not vars.use_colab_tpu and vars.model not in ["InferKit", "Colab", "API", "CLUSTER", "OAI", "GooseAI" , "ReadOnly", "TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX"]):
         loadmodelsettings()
         loadsettings()
-        print(2)
-        print("{0}Looking for GPU support...{1}".format(colors.PURPLE, colors.END), end="")
+        logger.init("GPU support", status="Searching")
         vars.hascuda = torch.cuda.is_available()
         vars.bmsupported = (utils.HAS_ACCELERATE or vars.model_type in ("gpt_neo", "gptj", "xglm", "opt")) and not vars.nobreakmodel
         if(args.breakmodel is not None and args.breakmodel):
@@ -2202,9 +2202,9 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
         if(not vars.bmsupported and (args.breakmodel_gpulayers is not None or args.breakmodel_layers is not None or args.breakmodel_disklayers is not None)):
             print("WARNING: This model does not support hybrid generation. --breakmodel_gpulayers will be ignored.", file=sys.stderr)
         if(vars.hascuda):
-            print("{0}FOUND!{1}".format(colors.GREEN, colors.END))
+            logger.init_ok("GPU support", status="<yellow>Found</yellow>")
         else:
-            print("{0}NOT FOUND!{1}".format(colors.YELLOW, colors.END))
+            logger.init_warn("GPU support", status="<yellow>Not Found</>")
         
         if args.cpu:
             vars.usegpu = False
@@ -2855,7 +2855,7 @@ def lua_startup():
         print("{0}{1}{2}".format(colors.RED, "***LUA ERROR***: ", colors.END), end="", file=sys.stderr)
         print("{0}{1}{2}".format(colors.RED, str(e).replace("\033", ""), colors.END), file=sys.stderr)
         exit(1)
-    logger.init("LUA bridge", status="OK")
+    logger.init_ok("LUA bridge", status="OK")
 
 
 def lua_log_format_name(name):
@@ -2915,7 +2915,7 @@ def load_lua_scripts():
         logger.warning("Lua engine stopped; please open 'Userscripts' and press Load to reinitialize scripts.")
         if(vars.serverstarted):
             set_aibusy(0)
-    logger.init("LUA Scripts", status="OK")
+    logger.init_ok("LUA Scripts", status="OK")
 
 #==================================================================#
 #  Print message that originates from the userscript with the given name
