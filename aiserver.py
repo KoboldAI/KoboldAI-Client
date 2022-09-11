@@ -1085,7 +1085,7 @@ def savesettings():
 #==================================================================#
 @debounce(2)
 def settingschanged():
-    print("{0}Saving settings!{1}".format(colors.GREEN, colors.END))
+    logger.info("Saving settings.")
     savesettings()
 
 #==================================================================#
@@ -9987,7 +9987,7 @@ for schema in config_endpoint_schemas:
 #  Final startup commands to launch Flask app
 #==================================================================#
 if __name__ == "__main__":
-    logger.init("Webserver", status="Begin")
+    logger.init("Webserver", status="Starting")
 
     general_startup()
     patch_transformers()

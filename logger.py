@@ -28,7 +28,7 @@ def is_stderr_log(record):
 
 logfmt = "<level>{level: <10}</level> | <green>{name}</green>:<green>{function}</green>:<green>{line}</green> - <level>{message}</level>"
 genfmt = "<level>{level: <10}</level> @ <green>{time:YYYY-MM-DD HH:mm:ss}</green> | <level>{message}</level>"
-initfmt = "<magenta>INIT      </magenta> | <level>{extra[status]: <8}</level> | <magenta>{message}</magenta>"
+initfmt = "<magenta>INIT      </magenta> | <level>{extra[status]: <10}</level> | <magenta>{message}</magenta>"
 msgfmt = "<level>{level: <10}</level> | <level>{message}</level>"
 
 logger.level("GENERATION", no=24, color="<cyan>")
