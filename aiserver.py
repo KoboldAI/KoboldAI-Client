@@ -805,7 +805,7 @@ def device_config(config):
         breakmodel.gpu_blocks = [n_layers - max(0, min(n_layers, args.breakmodel_layers))]
         n_layers -= sum(breakmodel.gpu_blocks)
     elif(args.model is not None):
-        print("Breakmodel not specified, assuming GPU 0")
+        logger.info("Breakmodel not specified, assuming GPU 0")
         breakmodel.gpu_blocks = [n_layers]
         n_layers = 0
     else:
@@ -864,7 +864,7 @@ def device_config(config):
                 else:
                     print(f"{colors.RED}Please enter an integer between -1 and {n_layers}.{colors.END}")
 
-    print(colors.PURPLE + "\nFinal device configuration:")
+    logger.init_ok("Final device configuration:", status="Info")
     device_list(n_layers)
 
     # If all layers are on the same device, use the old GPU generation mode
@@ -2193,18 +2193,18 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
         vars.hascuda = torch.cuda.is_available()
         vars.bmsupported = (utils.HAS_ACCELERATE or vars.model_type in ("gpt_neo", "gptj", "xglm", "opt")) and not vars.nobreakmodel
         if(args.breakmodel is not None and args.breakmodel):
-            print("WARNING: --breakmodel is no longer supported. Breakmodel mode is now automatically enabled when --breakmodel_gpulayers is used (see --help for details).", file=sys.stderr)
+            logger.warning("WARNING: --breakmodel is no longer supported. Breakmodel mode is now automatically enabled when --breakmodel_gpulayers is used (see --help for details).")
         if(args.breakmodel_layers is not None):
-            print("WARNING: --breakmodel_layers is deprecated. Use --breakmodel_gpulayers instead (see --help for details).", file=sys.stderr)
+            logger.warning("WARNING: --breakmodel_layers is deprecated. Use --breakmodel_gpulayers instead (see --help for details).")
         if(args.model and vars.bmsupported and not args.breakmodel_gpulayers and not args.breakmodel_layers and (not utils.HAS_ACCELERATE or not args.breakmodel_disklayers)):
-            print("WARNING: Model launched without the --breakmodel_gpulayers argument, defaulting to GPU only mode.", file=sys.stderr)
+            logger.warning("WARNING: Model launched without the --breakmodel_gpulayers argument, defaulting to GPU only mode.")
             vars.bmsupported = False
         if(not vars.bmsupported and (args.breakmodel_gpulayers is not None or args.breakmodel_layers is not None or args.breakmodel_disklayers is not None)):
-            print("WARNING: This model does not support hybrid generation. --breakmodel_gpulayers will be ignored.", file=sys.stderr)
+            logger.warning("WARNING: This model does not support hybrid generation. --breakmodel_gpulayers will be ignored.")
         if(vars.hascuda):
-            logger.init_ok("GPU support", status="<yellow>Found</yellow>")
+            logger.init_ok("GPU support", status="Found")
         else:
-            logger.init_warn("GPU support", status="<yellow>Not Found</>")
+            logger.init_warn("GPU support", status="Not Found")
         
         if args.cpu:
             vars.usegpu = False
@@ -2241,7 +2241,7 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
     # Start transformers and create pipeline
     if(not vars.use_colab_tpu and vars.model not in ["InferKit", "Colab", "API", "CLUSTER", "OAI", "GooseAI" , "ReadOnly", "TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX"]):
         if(not vars.noai):
-            print("{0}Initializing transformers, please wait...{1}".format(colors.PURPLE, colors.END))
+            logger.init("Transformers", status='Starting')
             for m in ("GPTJModel", "XGLMModel"):
                 try:
                     globals()[m] = getattr(__import__("transformers"), m)
@@ -2306,7 +2306,6 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
                             num_tensors = len(utils.get_sharded_checkpoint_num_tensors(utils.from_pretrained_model_name, utils.from_pretrained_index_filename, **utils.from_pretrained_kwargs))
                         else:
                             num_tensors = len(device_map)
-                        print(flush=True)
                         utils.bar = tqdm(total=num_tensors, desc="Loading model tensors", file=Send_to_socketio())
 
                     with zipfile.ZipFile(f, "r") as z:
@@ -2377,7 +2376,7 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
             
             def maybe_low_cpu_mem_usage() -> Dict[str, Any]:
                 if(packaging.version.parse(transformers_version) < packaging.version.parse("4.11.0")):
-                    print(f"\nWARNING:  Please upgrade to transformers 4.11.0 for lower RAM usage.  You have transformers {transformers_version}.", file=sys.stderr)
+                    logger.warning(f"Please upgrade to transformers 4.11.0 for lower RAM usage. You have transformers {transformers_version}.")
                     return {}
                 return {"low_cpu_mem_usage": True}
             
@@ -2434,7 +2433,6 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
                 if os.path.isdir(vars.model.replace('/', '_')):
                     import shutil
                     shutil.move(vars.model.replace('/', '_'), "models/{}".format(vars.model.replace('/', '_')))
-                print("\n", flush=True)
                 if(vars.lazy_load):  # If we're using lazy loader, we need to figure out what the model's hidden layers are called
                     with torch_lazy_loader.use_lazy_torch_load(dematerialized_modules=True, use_accelerate_init_empty_weights=True):
                         try:
@@ -2556,7 +2554,6 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
                     elif(vars.breakmodel):  # Use both RAM and VRAM (breakmodel)
                         vars.modeldim = get_hidden_size_from_model(model)
                         if(not vars.lazy_load):
-                            print(2)
                             device_config(model.config)
                         move_model_to_devices(model)
                     elif(utils.HAS_ACCELERATE and __import__("breakmodel").disk_blocks > 0):
@@ -2583,7 +2580,7 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
             #for key in vars.badwords:
             #    vars.badwordsids.append([vocab[key]])
             
-            print("{0}OK! {1} pipeline created!{2}".format(colors.GREEN, vars.model, colors.END))
+            logger.info(f"Pipeline created: {vars.model}")
         
         else:
             from transformers import GPT2TokenizerFast

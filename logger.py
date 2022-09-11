@@ -33,10 +33,10 @@ msgfmt = "<level>{level: <10}</level> | <level>{message}</level>"
 
 logger.level("GENERATION", no=24, color="<cyan>")
 logger.level("PROMPT", no=23, color="<yellow>")
-logger.level("INIT", no=21, color="<white>")
-logger.level("INIT_OK", no=21, color="<green>")
-logger.level("INIT_WARN", no=21, color="<yellow>")
-logger.level("INIT_ERR", no=21, color="<red>")
+logger.level("INIT", no=31, color="<white>")
+logger.level("INIT_OK", no=31, color="<green>")
+logger.level("INIT_WARN", no=31, color="<yellow>")
+logger.level("INIT_ERR", no=31, color="<red>")
 logger.level("MESSAGE", no=20, color="<green>")
 
 logger.__class__.generation = partialmethod(logger.__class__.log, "GENERATION")
