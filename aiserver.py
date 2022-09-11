@@ -2849,8 +2849,8 @@ def lua_startup():
     except lupa.LuaError as e:
         print(colors.RED + "ERROR!" + colors.END)
         vars.lua_koboldbridge.obliterate_multiverse()
-        print("{0}{1}{2}".format(colors.RED, "***LUA ERROR***: ", colors.END), end="", file=sys.stderr)
-        print("{0}{1}{2}".format(colors.RED, str(e).replace("\033", ""), colors.END), file=sys.stderr)
+        logger.debug('LUA ERROR: ' + str(e).replace("\033", ""))
+        logger.warning("Lua engine stopped; please open 'Userscripts' and press Load to reinitialize scripts.")
         exit(1)
     logger.init_ok("LUA bridge", status="OK")
 
@@ -2908,7 +2908,7 @@ def load_lua_scripts():
         if(vars.serverstarted):
             emit('from_server', {'cmd': 'errmsg', 'data': 'Lua script error; please check console.'}, broadcast=True)
             sendUSStatItems()
-        logger.error('LUA ERROR: ' + str(e).replace("\033", ""))
+        logger.debug('LUA ERROR: ' + str(e).replace("\033", ""))
         logger.warning("Lua engine stopped; please open 'Userscripts' and press Load to reinitialize scripts.")
         if(vars.serverstarted):
             set_aibusy(0)
@@ -3405,9 +3405,8 @@ def execute_inmod():
         vars.lua_running = False
         emit('from_server', {'cmd': 'errmsg', 'data': 'Lua script error; please check console.'}, broadcast=True)
         sendUSStatItems()
-        print("{0}{1}{2}".format(colors.RED, "***LUA ERROR***: ", colors.END), end="", file=sys.stderr)
-        print("{0}{1}{2}".format(colors.RED, str(e).replace("\033", ""), colors.END), file=sys.stderr)
-        print("{0}{1}{2}".format(colors.YELLOW, "Lua engine stopped; please open 'Userscripts' and press Load to reinitialize scripts.", colors.END), file=sys.stderr)
+        logger.debug('LUA ERROR: ' + str(e).replace("\033", ""))
+        logger.warning("Lua engine stopped; please open 'Userscripts' and press Load to reinitialize scripts.")
         set_aibusy(0)
 
 def execute_genmod():
@@ -3423,9 +3422,8 @@ def execute_outmod():
         vars.lua_running = False
         emit('from_server', {'cmd': 'errmsg', 'data': 'Lua script error; please check console.'}, broadcast=True)
         sendUSStatItems()
-        print("{0}{1}{2}".format(colors.RED, "***LUA ERROR***: ", colors.END), end="", file=sys.stderr)
-        print("{0}{1}{2}".format(colors.RED, str(e).replace("\033", ""), colors.END), file=sys.stderr)
-        print("{0}{1}{2}".format(colors.YELLOW, "Lua engine stopped; please open 'Userscripts' and press Load to reinitialize scripts.", colors.END), file=sys.stderr)
+        logger.debug('LUA ERROR: ' + str(e).replace("\033", ""))
+        logger.warning("Lua engine stopped; please open 'Userscripts' and press Load to reinitialize scripts.")
         set_aibusy(0)
     if(vars.lua_koboldbridge.resend_settings_required):
         vars.lua_koboldbridge.resend_settings_required = False
@@ -3445,7 +3443,7 @@ def execute_outmod():
 #==================================================================#
 @socketio.on('connect')
 def do_connect():
-    print("{0}Client connected!{1}".format(colors.GREEN, colors.END))
+    logger.info("Client connected!")
     emit('from_server', {'cmd': 'setchatname', 'data': vars.chatname})
     emit('from_server', {'cmd': 'setanotetemplate', 'data': vars.authornotetemplate})
     emit('from_server', {'cmd': 'connected', 'smandelete': vars.smandelete, 'smanrename': vars.smanrename, 'modelname': getmodelname()})
@@ -3498,7 +3496,7 @@ def do_connect():
 @socketio.on('message')
 def get_message(msg):
     if not vars.quiet:
-        print("{0}Data received:{1}{2}".format(colors.GREEN, msg, colors.END))
+        logger.debug(f"Data received: {msg}")
     # Submit action
     if(msg['cmd'] == 'submit'):
         if(vars.mode == "play"):
@@ -3788,8 +3786,7 @@ def get_message(msg):
     elif(msg['cmd'] == 'list_model'):
         sendModelSelection(menu=msg['data'])
     elif(msg['cmd'] == 'load_model'):
-        print(msg)
-        print(vars.model_selected)
+        logger.debug(vars.model_selected)
         if not os.path.exists("settings/"):
             os.mkdir("settings")
         changed = True
@@ -3823,7 +3820,7 @@ def get_message(msg):
                 vars.cluster_requested_models = msg['online_model']
         load_model(use_gpu=msg['use_gpu'], gpu_layers=msg['gpu_layers'], disk_layers=msg['disk_layers'], online_model=msg['online_model'])
     elif(msg['cmd'] == 'show_model'):
-        print("Model Name: {}".format(getmodelname()))
+        logger.info(f"Model Name: {getmodelname()}")
         emit('from_server', {'cmd': 'show_model_name', 'data': getmodelname()}, broadcast=True)
     elif(msg['cmd'] == 'selectmodel'):
         # This is run when a model line is selected from the UI (line from the model_menu variable) that is tagged as not a menu
@@ -4229,8 +4226,8 @@ def actionsubmit(data, actionmode=0, force_submit=False, force_prompt_gen=False,
                         try:
                             alternatives = [item['Text'] for item in vars.actions_metadata[len(vars.actions)-1]["Alternative Text"]]
                         except:
-                            print(len(vars.actions))
-                            print(vars.actions_metadata)
+                            logger.debug(len(vars.actions))
+                            logger.debug(vars.actions_metadata)
                             raise
                         if data in alternatives:
                             alternatives = [item for item in vars.actions_metadata[vars.actions.get_last_key() ]["Alternative Text"] if item['Text'] != data]
@@ -4282,7 +4279,10 @@ def apiactionsubmit_generate(txt, minimum, maximum):
     vars.generated_tkns = 0
 
     if not vars.quiet:
-        print("{0}Min:{1}, Max:{2}, Txt:{3}{4}".format(colors.YELLOW, minimum, maximum, utils.decodenewlines(tokenizer.decode(txt)), colors.END))
+        logger.debug(f"Prompt Min:{minimum}, Max:{maximum}")
+        split_prompt = utils.decodenewlines(tokenizer.decode(txt)).split('\n')
+        for line in split_prompt:
+            logger.prompt(line)
 
     # Clear CUDA cache if using GPU
     if(vars.hascuda and (vars.usegpu or vars.breakmodel)):
@@ -4309,7 +4309,10 @@ def apiactionsubmit_tpumtjgenerate(txt, minimum, maximum):
         tpu_mtj_backend.set_rng_seed(vars.seed)
 
     if not vars.quiet:
-        print("{0}Min:{1}, Max:{2}, Txt:{3}{4}".format(colors.YELLOW, minimum, maximum, utils.decodenewlines(tokenizer.decode(txt)), colors.END))
+        logger.debug(f"Prompt Min:{minimum}, Max:{maximum}")
+        split_prompt = utils.decodenewlines(tokenizer.decode(txt)).split('\n')
+        for line in split_prompt:
+            logger.prompt(line)
 
     vars._actions = vars.actions
     vars._prompt = vars.prompt
@@ -4821,7 +4824,10 @@ def generate(txt, minimum, maximum, found_entries=None):
     found_entries = tuple(found_entries.copy() for _ in range(vars.numseqs))
 
     if not vars.quiet:
-        print("{0}Min:{1}, Max:{2}, Txt:{3}{4}".format(colors.YELLOW, minimum, maximum, utils.decodenewlines(tokenizer.decode(txt)), colors.END))
+        logger.debug(f"Prompt Min:{minimum}, Max:{maximum}")
+        split_prompt = utils.decodenewlines(tokenizer.decode(txt)).split('\n')
+        for line in split_prompt:
+            logger.prompt(line)
 
     # Store context in memory to use it for comparison with generated content
     vars.lastctx = utils.decodenewlines(tokenizer.decode(txt))
@@ -4840,12 +4846,11 @@ def generate(txt, minimum, maximum, found_entries=None):
             vars.lua_running = False
             emit('from_server', {'cmd': 'errmsg', 'data': 'Lua script error; please check console.'}, broadcast=True)
             sendUSStatItems()
-            print("{0}{1}{2}".format(colors.RED, "***LUA ERROR***: ", colors.END), end="", file=sys.stderr)
-            print("{0}{1}{2}".format(colors.RED, str(e).replace("\033", ""), colors.END), file=sys.stderr)
-            print("{0}{1}{2}".format(colors.YELLOW, "Lua engine stopped; please open 'Userscripts' and press Load to reinitialize scripts.", colors.END), file=sys.stderr)
+            logger.debug('LUA ERROR: ' + str(e).replace("\033", ""))
+            logger.warning("Lua engine stopped; please open 'Userscripts' and press Load to reinitialize scripts.")
         else:
             emit('from_server', {'cmd': 'errmsg', 'data': 'Error occurred during generator call; please check console.'}, broadcast=True)
-            print("{0}{1}{2}".format(colors.RED, traceback.format_exc().replace("\033", ""), colors.END), file=sys.stderr)
+            logger.error(traceback.format_exc().replace("\033", ""))
         set_aibusy(0)
         return
 
@@ -4884,7 +4889,9 @@ def generate(txt, minimum, maximum, found_entries=None):
 #==================================================================#
 def genresult(genout, flash=True, ignore_formatting=False):
     if not vars.quiet:
-        print("{0}{1}{2}".format(colors.CYAN, genout, colors.END))
+        split_gen = genout.split('\n')
+        for line in split_gen:
+            logger.generation(line)
     
     # Format output before continuing
     if not ignore_formatting:
@@ -4918,7 +4925,10 @@ def genselect(genout):
         # Apply output formatting rules to sequences
         result["generated_text"] = applyoutputformatting(result["generated_text"])
         if not vars.quiet:
-            print("{0}[Result {1}]\n{2}{3}".format(colors.CYAN, i, result["generated_text"], colors.END))
+            logger.info(f"Generation Result {i}")
+            split_gen = result["generated_text"].split('\n')
+            for line in split_gen:
+                logger.generation(line)
         i += 1
     
     # Add the options to the actions metadata
@@ -5257,7 +5267,10 @@ def tpumtjgenerate(txt, minimum, maximum, found_entries=None):
     found_entries = tuple(found_entries.copy() for _ in range(vars.numseqs))
 
     if not vars.quiet:
-        print("{0}Min:{1}, Max:{2}, Txt:{3}{4}".format(colors.YELLOW, minimum, maximum, utils.decodenewlines(tokenizer.decode(txt)), colors.END))
+        logger.debug(f"Prompt Min:{minimum}, Max:{maximum}")
+        split_prompt = utils.decodenewlines(tokenizer.decode(txt)).split('\n')
+        for line in split_prompt:
+            logger.prompt(line)
 
     vars._actions = vars.actions
     vars._prompt = vars.prompt
@@ -5345,9 +5358,8 @@ def tpumtjgenerate(txt, minimum, maximum, found_entries=None):
             vars.lua_running = False
             emit('from_server', {'cmd': 'errmsg', 'data': 'Lua script error; please check console.'}, broadcast=True)
             sendUSStatItems()
-            print("{0}{1}{2}".format(colors.RED, "***LUA ERROR***: ", colors.END), end="", file=sys.stderr)
-            print("{0}{1}{2}".format(colors.RED, str(e).replace("\033", ""), colors.END), file=sys.stderr)
-            print("{0}{1}{2}".format(colors.YELLOW, "Lua engine stopped; please open 'Userscripts' and press Load to reinitialize scripts.", colors.END), file=sys.stderr)
+            logger.debug('LUA ERROR: ' + str(e).replace("\033", ""))
+            logger.warning("Lua engine stopped; please open 'Userscripts' and press Load to reinitialize scripts.")
         else:
             emit('from_server', {'cmd': 'errmsg', 'data': 'Error occurred during generator call; please check console.'}, broadcast=True)
             print("{0}{1}{2}".format(colors.RED, traceback.format_exc().replace("\033", ""), colors.END), file=sys.stderr)
