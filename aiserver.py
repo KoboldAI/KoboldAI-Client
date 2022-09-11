@@ -2306,7 +2306,7 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
                             num_tensors = len(utils.get_sharded_checkpoint_num_tensors(utils.from_pretrained_model_name, utils.from_pretrained_index_filename, **utils.from_pretrained_kwargs))
                         else:
                             num_tensors = len(device_map)
-                        utils.bar = tqdm(total=num_tensors, desc="Loading model tensors", file=Send_to_socketio())
+                        utils.bar = tqdm(total=num_tensors, desc=f"{colors.PURPLE}INIT{colors.END}       | Loading model tensors", file=Send_to_socketio())
 
                     with zipfile.ZipFile(f, "r") as z:
                         try:
@@ -10027,10 +10027,11 @@ if __name__ == "__main__":
         if(args.localtunnel or args.ngrok or args.remote):
             with open('cloudflare.log', 'w') as cloudflarelog:
                 cloudflarelog.write("KoboldAI has finished loading and is available at the following link : " + cloudflare)
-                print(format(colors.GREEN) + "KoboldAI has finished loading and is available at the following link : " + cloudflare + format(colors.END))
+                logger.init_ok("Webserver", status="OK")
+                logger.message(f"KoboldAI has finished loading and is available at the following link: {cloudflare}")
         else:
-            print("{0}Webserver has started, you can now connect to this machine at port {1}{2}"
-                  .format(colors.GREEN, port, colors.END))
+            logger.init_ok("Webserver", status="OK")
+            logger.message(f"Webserver has started, you can now connect to this machine at port: {port}")
         vars.serverstarted = True
         socketio.run(app, host='0.0.0.0', port=port)
     else:
@@ -10038,8 +10039,8 @@ if __name__ == "__main__":
             if not args.no_ui:
                 import webbrowser
                 webbrowser.open_new('http://localhost:{0}'.format(port))
-            print("{0}Server started!\nYou may now connect with a browser at http://127.0.0.1:{1}/{2}"
-                  .format(colors.GREEN, port, colors.END))
+            logger.init_ok("Webserver", status="OK")
+            logger.message(f"Webserver started! You may now connect with a browser at http://127.0.0.1:{port}")
             vars.serverstarted = True
             socketio.run(app, port=port, host='0.0.0.0')
         else:
@@ -10052,8 +10053,8 @@ if __name__ == "__main__":
                 if not args.no_ui:
                     import webbrowser
                     webbrowser.open_new('http://localhost:{0}'.format(port))
-                print("{0}Server started!\nYou may now connect with a browser at http://127.0.0.1:{1}/{2}"
-                        .format(colors.GREEN, port, colors.END))
+                logger.init_ok("Webserver", status="OK")
+                logger.message(f"Webserver started! You may now connect with a browser at http://127.0.0.1:{port}")
                 vars.serverstarted = True
                 socketio.run(app, port=port)
     logger.init("Webserver", status="Closed")
