@@ -403,7 +403,7 @@ log = logging.getLogger('werkzeug')
 log.setLevel(logging.ERROR)
 
 # Start flask & SocketIO
-logger.init("Flask Initialization", status="Starting")
+logger.init("Flask", status="Starting")
 from flask import Flask, render_template, Response, request, copy_current_request_context, send_from_directory, session, jsonify, abort, redirect
 from flask_socketio import SocketIO
 from flask_socketio import emit as _emit
@@ -416,7 +416,7 @@ app.config['SESSION_TYPE'] = 'filesystem'
 app.config['TEMPLATES_AUTO_RELOAD'] = True
 Session(app)
 socketio = SocketIO(app, async_method="eventlet")
-logger.init("Flask Initialization", status="OK")
+logger.init("Flask", status="OK")
 
 old_socketio_on = socketio.on
 def new_socketio_on(*a, **k):
@@ -2829,7 +2829,7 @@ def lua_startup():
     #==================================================================#
 
     print("", end="", flush=True)
-    print(colors.PURPLE + "Initializing Lua Bridge... " + colors.END, end="", flush=True)
+    logger.init("LUA bridge", status="Starting")
 
     # Set up Lua state
     vars.lua_state = lupa.LuaRuntime(unpack_returned_tuples=True)
@@ -2855,7 +2855,7 @@ def lua_startup():
         print("{0}{1}{2}".format(colors.RED, "***LUA ERROR***: ", colors.END), end="", file=sys.stderr)
         print("{0}{1}{2}".format(colors.RED, str(e).replace("\033", ""), colors.END), file=sys.stderr)
         exit(1)
-    print(colors.GREEN + "OK!" + colors.END)
+    logger.init("LUA bridge", status="OK")
 
 
 def lua_log_format_name(name):
@@ -2879,7 +2879,7 @@ def load_callback(filename, modulename):
 #  Load all Lua scripts
 #==================================================================#
 def load_lua_scripts():
-    print(colors.GREEN + "Loading Core Script" + colors.END)
+    logger.init("LUA Scripts", status="Starting")
 
     filenames = []
     modulenames = []
@@ -2911,11 +2911,11 @@ def load_lua_scripts():
         if(vars.serverstarted):
             emit('from_server', {'cmd': 'errmsg', 'data': 'Lua script error; please check console.'}, broadcast=True)
             sendUSStatItems()
-        print("{0}{1}{2}".format(colors.RED, "***LUA ERROR***: ", colors.END), end="", file=sys.stderr)
-        print("{0}{1}{2}".format(colors.RED, str(e).replace("\033", ""), colors.END), file=sys.stderr)
-        print("{0}{1}{2}".format(colors.YELLOW, "Lua engine stopped; please open 'Userscripts' and press Load to reinitialize scripts.", colors.END), file=sys.stderr)
+        logger.error('LUA ERROR: ' + str(e).replace("\033", ""))
+        logger.warning("Lua engine stopped; please open 'Userscripts' and press Load to reinitialize scripts.")
         if(vars.serverstarted):
             set_aibusy(0)
+    logger.init("LUA Scripts", status="OK")
 
 #==================================================================#
 #  Print message that originates from the userscript with the given name
@@ -9989,9 +9989,8 @@ for schema in config_endpoint_schemas:
 #==================================================================#
 #  Final startup commands to launch Flask app
 #==================================================================#
-print("", end="", flush=True)
 if __name__ == "__main__":
-    print("{0}\nStarting webserver...{1}".format(colors.GREEN, colors.END), flush=True)
+    logger.init("Webserver", status="Begin")
 
     general_startup()
     patch_transformers()
@@ -10060,6 +10059,8 @@ if __name__ == "__main__":
                         .format(colors.GREEN, port, colors.END))
                 vars.serverstarted = True
                 socketio.run(app, port=port)
+    logger.init("Webserver", status="Closed")
+
 
 else:
     general_startup()
