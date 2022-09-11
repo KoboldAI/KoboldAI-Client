@@ -3435,7 +3435,7 @@ function updateWISearchListings(entry) {
 			if (e.key === "Enter") e.preventDefault();
 		});
 
-		let wiTextLabel = $e("h3", wiBlock, {innerText: "Text", "style.margin": "10px 0px 5px 0px"});
+		let wiTextLabel = $e("h3", wiBlock, {innerText: "Info", "style.margin": "10px 0px 5px 0px"});
 		/*
 		let wiContentLabel = $e("span", wiBlock, {
 			classes: ["block"], innerText: "Text: "
