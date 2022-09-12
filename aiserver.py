@@ -402,8 +402,6 @@ import logging
 log = logging.getLogger('werkzeug')
 log.setLevel(logging.ERROR)
 
-# Start flask & SocketIO
-logger.init("Flask", status="Starting")
 from flask import Flask, render_template, Response, request, copy_current_request_context, send_from_directory, session, jsonify, abort, redirect
 from flask_socketio import SocketIO
 from flask_socketio import emit as _emit
@@ -414,9 +412,7 @@ app = Flask(__name__, root_path=os.getcwd())
 app.secret_key = secrets.token_hex()
 app.config['SESSION_TYPE'] = 'filesystem'
 app.config['TEMPLATES_AUTO_RELOAD'] = True
-Session(app)
 socketio = SocketIO(app, async_method="eventlet")
-logger.init_ok("Flask", status="OK")
 
 old_socketio_on = socketio.on
 def new_socketio_on(*a, **k):
@@ -9992,9 +9988,13 @@ for schema in config_endpoint_schemas:
 #  Final startup commands to launch Flask app
 #==================================================================#
 if __name__ == "__main__":
-    logger.init("Webserver", status="Starting")
 
     general_startup()
+    # Start flask & SocketIO
+    logger.init("Flask", status="Starting")
+    Session(app)
+    logger.init_ok("Flask", status="OK")
+    logger.init("Webserver", status="Starting")
     patch_transformers()
     #show_select_model_list()
     if vars.model == "" or vars.model is None:
@@ -10067,6 +10067,10 @@ if __name__ == "__main__":
 
 else:
     general_startup()
+    # Start flask & SocketIO
+    logger.init("Flask", status="Starting")
+    Session(app)
+    logger.init_ok("Flask", status="OK")
     patch_transformers()
     #show_select_model_list()
     if vars.model == "" or vars.model is None:
