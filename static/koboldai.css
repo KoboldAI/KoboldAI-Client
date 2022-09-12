@@ -1932,8 +1932,6 @@ body {
 }
 
 .finder-wi-focus {
-	/* This MUST be a percentage before pushing. The 100px is a workaround but
-	i've got to find a solution otherwiseit causes visual bugs on shorter screens */
 	margin-top: -100px;
 	height: calc(100% + 100px) !important;
 
@@ -1945,6 +1943,7 @@ body {
 	background-color: var(--flyout_background_pinned);
 	height: 100%;
 	flex-grow: 1;
+	flex-basis: 50%;
 	overflow-y: hidden;
 	filter: brightness(70%);
 	padding: 0px 7px;
@@ -1970,6 +1969,10 @@ body {
 	height: 30%;
 }
 
+.finder-wi-keys {
+	margin-bottom: 8px;
+}
+
 .finder-wi-added-keys {
 	display: inline-block;
 }
@@ -1983,11 +1986,6 @@ body {
 }
 
 .tag-text { cursor: text; }
-
-[data-placeholder]:empty:before {
-	content: attr(data-placeholder);
-	opacity: 0.6;
-}
 
 .finder-wi-activation-header-container {
 	display: flex;
@@ -2005,18 +2003,27 @@ body {
 	column-gap: 5px;
 }
 
+.finder-wi-blanket {
+	position: absolute;
+	/* Hack */
+	width: 99%;
+	height: 100%;
+	cursor: pointer;
+}
+
 /*---------------------------------- Global ------------------------------------------------*/
 .hidden {
 	display: none;
 }
 
-.block {
-	display: block;
-}
-
 .disabled {
 	opacity: 0.4;
 	pointer-events: none;
+}
+
+[data-placeholder]:empty:before {
+	content: attr(data-placeholder);
+	opacity: 0.6;
 }
 
 #input_text {
