@@ -37,7 +37,7 @@ logger.level("INIT", no=31, color="<white>")
 logger.level("INIT_OK", no=31, color="<green>")
 logger.level("INIT_WARN", no=31, color="<yellow>")
 logger.level("INIT_ERR", no=31, color="<red>")
-logger.level("MESSAGE", no=20, color="<green>")
+logger.level("MESSAGE", no=51, color="<green>")
 
 logger.__class__.generation = partialmethod(logger.__class__.log, "GENERATION")
 logger.__class__.prompt = partialmethod(logger.__class__.log, "PROMPT")
