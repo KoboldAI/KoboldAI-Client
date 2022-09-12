@@ -5,26 +5,65 @@ from loguru import logger
 STDOUT_LEVELS = ["GENERATION", "PROMPT"]
 INIT_LEVELS = ["INIT", "INIT_OK", "INIT_WARN", "INIT_ERR"]
 MESSAGE_LEVELS = ["MESSAGE"]
+# By default we're at error level or higher
+verbosity = 40
+quiet = 0
+
+def set_logger_verbosity(count):
+    global verbosity
+    # The count comes reversed. So count = 0 means minimum verbosity
+    # While count 5 means maximum verbosity
+    # So the more count we have, the lowe we drop the versbosity maximum
+    verbosity = 40 - (count * 10)
+
+def quiesce_logger(count):
+    global quiet
+    # The bigger the count, the more silent we want our logger
+    quiet = count * 10
 
 def is_stdout_log(record):
-    if record["level"].name in STDOUT_LEVELS:
-        return(True)
-    return(False)
+    if record["level"].name not in STDOUT_LEVELS:
+        return(False)
+    if record["level"].no < verbosity + quiet:
+        return(False)
+    return(True)
 
 def is_init_log(record):
-    if record["level"].name in INIT_LEVELS:
-        return(True)
-    return(False)
+    if record["level"].name not in INIT_LEVELS:
+        return(False)
+    if record["level"].no < verbosity + quiet:
+        return(False)
+    return(True)
 
 def is_msg_log(record):
-    if record["level"].name in MESSAGE_LEVELS:
-        return(True)
-    return(False)
+    if record["level"].name not in MESSAGE_LEVELS:
+        return(False)
+    if record["level"].no < verbosity + quiet:
+        return(False)
+    return(True)
 
 def is_stderr_log(record):
-    if record["level"].name not in STDOUT_LEVELS + INIT_LEVELS + MESSAGE_LEVELS:
-        return(True)
-    return(False)
+    if record["level"].name in STDOUT_LEVELS + INIT_LEVELS + MESSAGE_LEVELS:
+        return(False)
+    if record["level"].no < verbosity + quiet:
+        return(False)
+    return(True)
+
+def test_logger():
+    logger.generation("This is a generation message\nIt is typically multiline\nThee Lines".encode("unicode_escape").decode("utf-8"))
+    logger.prompt("This is a prompt message")
+    logger.debug("Debug Message")
+    logger.info("Info Message")
+    logger.warning("Info Warning")
+    logger.error("Error Message")
+    logger.critical("Critical Message")
+    logger.init("This is an init message", status="Starting")
+    logger.init_ok("This is an init message", status="OK")
+    logger.init_warn("This is an init message", status="Warning")
+    logger.init_err("This is an init message", status="Error")
+    logger.message("This is user message")
+    sys.exit()
+
 
 logfmt = "<level>{level: <10}</level> | <green>{name}</green>:<green>{function}</green>:<green>{line}</green> - <level>{message}</level>"
 genfmt = "<level>{level: <10}</level> @ <green>{time:YYYY-MM-DD HH:mm:ss}</green> | <level>{message}</level>"
@@ -37,7 +76,9 @@ logger.level("INIT", no=31, color="<white>")
 logger.level("INIT_OK", no=31, color="<green>")
 logger.level("INIT_WARN", no=31, color="<yellow>")
 logger.level("INIT_ERR", no=31, color="<red>")
-logger.level("MESSAGE", no=51, color="<green>")
+# Messages contain important information without which this application might not be able to be used
+# As such, they have the highest priority
+logger.level("MESSAGE", no=61, color="<green>")
 
 logger.__class__.generation = partialmethod(logger.__class__.log, "GENERATION")
 logger.__class__.prompt = partialmethod(logger.__class__.log, "PROMPT")
