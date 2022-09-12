@@ -1403,6 +1403,11 @@ body {
 	height: 0px;
 }
 
+.statusbar_outer[system_aibusy="false"] {
+	display: none;
+	height: 0px;
+}
+
 .statusbar_inner {
 	background-color: var(--statusbar_color);
 	color: var(--statusbar_text_color);
@@ -1848,7 +1853,8 @@ body {
 
 /* Finder */
 
-#finder-container {
+#finder-container,
+#debug-file-container {
 	display: flex;
 	justify-content: center;
 	align-items: center;
@@ -2009,6 +2015,48 @@ body {
 	width: 99%;
 	height: 100%;
 	cursor: pointer;
+
+/* Debug File */
+#debug-dump {
+	opacity: 0.7;
+	font-size: small;
+	float: right;
+}
+
+#debug-file-prompt {
+	width: 25%;
+	max-height: 500px;
+	height: 30%;
+	background-color: var(--flyout_background_pinned);
+	padding: 10px;
+	border-radius: 4px;
+
+	display: flex;
+	flex-direction: column;
+}
+
+#debug-file-prompt > div {
+	display: flex;
+	text-align: center;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	padding: 10px;
+	cursor: pointer;
+}
+
+#debug-file-prompt > div > .focus {
+	font-size: 20px;
+}
+
+#debug-file-prompt > #redacted {
+	background-color: #407497;
+	flex-grow: 1;
+}
+
+#debug-file-prompt > #unredacted {
+	margin-top: 8px;
+	background-color: rgb(158, 2, 2);
 }
 
 /*---------------------------------- Global ------------------------------------------------*/

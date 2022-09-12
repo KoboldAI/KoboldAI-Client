@@ -25,6 +25,7 @@ socket.on("world_info_folder", function(data){world_info_folder(data);});
 socket.on("delete_new_world_info_entry", function(data){document.getElementById("world_info_-1").remove();});
 socket.on("delete_world_info_entry", function(data){document.getElementById("world_info_"+data).remove();});
 socket.on("error", function(data){show_error_message(data);});
+socket.on('load_cookies', function(data){load_cookies(data)});
 socket.on('load_tweaks', function(data){load_tweaks(data);});
 socket.on("wi_results", updateWISearchListings);
 //socket.onAny(function(event_name, data) {console.log({"event": event_name, "class": data.classname, "data": data});});
@@ -44,6 +45,7 @@ var world_info_folder_data = {};
 var saved_settings = {};
 var finder_selection_index = -1;
 var on_colab;
+var colab_cookies = null;
 var wi_finder_data = [];
 var wi_finder_offset = 0;
 
@@ -288,7 +290,7 @@ function do_story_text_updates(data) {
 		
 		story_area.append(span);
 		clearTimeout(game_text_scroll_timeout);
-		game_text_scroll_timeout = setTimeout(function() {span.scrollIntoView(false);}, 200);
+		game_text_scroll_timeout = setTimeout(function() {document.getElementById("Selected Text").scrollTop = document.getElementById("Selected Text").scrollHeight;}, 200);
 		if (span.textContent != "") {
 			assign_world_info_to_action(span, null);
 		}
@@ -1872,6 +1874,17 @@ function do_wpp(wpp_area) {
 	send_world_info(uid);
 }
 
+function load_cookies(data) {
+	colab_cookies = data;
+	if (document.readyState === 'complete') {
+		for (const cookie of Object.keys(colab_cookies)) {
+			setCookie(cookie, colab_cookies[cookie]);
+		}
+		process_cookies();
+		colab_cookies = null;
+	}
+}
+
 //--------------------------------------------UI to Server Functions----------------------------------
 function unload_userscripts() {
 	files_to_unload = document.getElementById('loaded_userscripts');
@@ -2028,17 +2041,13 @@ function save_tweaks() {
 		let path = tweakContainer.getAttribute("tweak-path");
 		if (toggle.checked) out.push(path);
 	}
-
-	if (on_colab) {
-		socket.emit("save_tweaks", JSON.stringify(out));
-	} else {
-		setCookie("enabledTweaks", JSON.stringify(out));
-	}
+	setCookie("enabledTweaks", JSON.stringify(out));
 }
 
 
-function load_tweaks(data) {
-	let enabledTweaks = JSON.parse(data);
+function load_tweaks() {
+	
+	let enabledTweaks = JSON.parse(getCookie("enabledTweaks", "[]"));
 
 	for (const tweakContainer of document.getElementsByClassName("tweak-container")) {
 		let toggle = tweakContainer.querySelector("input");
@@ -3096,6 +3105,9 @@ function setCookie(cname, cvalue, exdays=60) {
   const d = new Date();
   d.setTime(d.getTime() + (exdays * 24 * 60 * 60 * 1000));
   let expires = "expires="+d.toUTCString();
+  if (document.getElementById("on_colab").textContent == "true") {
+	socket.emit("save_cookies", {[cname]: cvalue});
+  }
   document.cookie = cname + "=" + cvalue + ";" + expires + ";";
 }
 
@@ -3173,6 +3185,135 @@ function selectTab(tab) {
 function beep() {
     var snd = new Audio("data:audio/wav;base64,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qJrx4KOQjahZxWbcZgztj2c49nKmkId44S71j0c8eV9yDK6uPRzx5X18eDvjvQ6yKo9ZSS6l//8elePK/Lf//IInrOF/FvDoADYAGBMGb7FtErm5MXMlmPAJQVgWta7Zx2go+8xJ0UiCb8LHHdftWyLJE0QIAIsI+UbXu67dZMjmgDGCGl1H+vpF4NSDckSIkk7Vd+sxEhBQMRU8j/12UIRhzSaUdQ+rQU5kGeFxm+hb1oh6pWWmv3uvmReDl0UnvtapVaIzo1jZbf/pD6ElLqSX+rUmOQNpJFa/r+sa4e/pBlAABoAAAAA3CUgShLdGIxsY7AUABPRrgCABdDuQ5GC7DqPQCgbbJUAoRSUj+NIEig0YfyWUho1VBBBA//uQZB4ABZx5zfMakeAAAAmwAAAAF5F3P0w9GtAAACfAAAAAwLhMDmAYWMgVEG1U0FIGCBgXBXAtfMH10000EEEEEECUBYln03TTTdNBDZopopYvrTTdNa325mImNg3TTPV9q3pmY0xoO6bv3r00y+IDGid/9aaaZTGMuj9mpu9Mpio1dXrr5HERTZSmqU36A3CumzN/9Robv/Xx4v9ijkSRSNLQhAWumap82WRSBUqXStV/YcS+XVLnSS+WLDroqArFkMEsAS+eWmrUzrO0oEmE40RlMZ5+ODIkAyKAGUwZ3mVKmcamcJnMW26MRPgUw6j+LkhyHGVGYjSUUKNpuJUQoOIAyDvEyG8S5yfK6dhZc0Tx1KI/gviKL6qvvFs1+bWtaz58uUNnryq6kt5RzOCkPWlVqVX2a/EEBUdU1KrXLf40GoiiFXK///qpoiDXrOgqDR38JB0bw7SoL+ZB9o1RCkQjQ2CBYZKd/+VJxZRRZlqSkKiws0WFxUyCwsKiMy7hUVFhIaCrNQsKkTIsLivwKKigsj8XYlwt/WKi2N4d//uQRCSAAjURNIHpMZBGYiaQPSYyAAABLAAAAAAAACWAAAAApUF/Mg+0aohSIRobBAsMlO//Kk4soosy1JSFRYWaLC4qZBYWFRGZdwqKiwkNBVmoWFSJkWFxX4FFRQWR+LsS4W/rFRb/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////VEFHAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAU291bmRib3kuZGUAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMjAwNGh0dHA6Ly93d3cuc291bmRib3kuZGUAAAAAAAAAACU=");  
     snd.play();
+}
+
+function downloadString(string, fileName) {
+	let a = document.createElement("a");
+	a.setAttribute("download", fileName);
+	a.href = URL.createObjectURL(new Blob([string]));
+	a.click();
+}
+
+function getRedactedValue(value) {
+	if (typeof value === "string") return `[Redacted string with length ${value.length}]`;
+	if (value instanceof Array) return `[Redacted array with length ${value.length}]`;
+
+	if (typeof value === "object") {
+		if (value === null) return null;
+
+		let built = {};
+		for (const key of Object.keys(value)) {
+			built[getRedactedValue(key)] = getRedactedValue(value[key]);
+		}
+
+		return built;
+	}
+
+	return "[Redacted value]"
+}
+
+async function downloadDebugFile(redact=true) {
+	let r = await fetch("/vars");
+	let varsData = await r.json();
+
+	// Redact sensitive user info
+
+	// [redacted string n characters long]
+	// [redacted array with n elements]
+
+	let redactables = [
+		"model_settings.apikey",
+		"model_settings.colaburl",
+		"model_settings.oaiapikey",
+		"system_settings.story_loads",
+		"user_settings.username",
+		"system_settings.savedir", // Can reveal username
+		"story_settings.last_story_load",
+	];
+
+	if (redact) {
+		// TODO: genseqs, splist(?)
+		redactables = redactables.concat([
+			"story_settings.authornote",
+			"story_settings.chatname",
+			"story_settings.lastact",
+			"story_settings.lastctx",
+			"story_settings.memory",
+			"story_settings.notes",
+			"story_settings.prompt",
+			"story_settings.story_name",
+			"story_settings.submission",
+			"story_settings.biases",
+			"story_settings.genseqs",
+
+			// System
+			"system_settings.spfilename",
+			"system_settings.spname",
+		]);
+
+		// Redact more complex things
+
+		// wifolders_d - name
+		for (const key of Object.keys(varsData.story_settings.wifolders_d)) {
+			varsData.story_settings.wifolders_d[key].name = getRedactedValue(varsData.story_settings.wifolders_d[key].name);
+		}
+
+		// worldinfo - comment, content, key, keysecondary
+		for (const key of Object.keys(varsData.story_settings.worldinfo)) {
+			for (const redactKey of ["comment", "content", "key", "keysecondary"]) {
+				varsData.story_settings.worldinfo[key][redactKey] = getRedactedValue(varsData.story_settings.worldinfo[key][redactKey]);
+			}
+		}
+
+		// worldinfo_i - comment, content, key, keysecondary
+		for (const key of Object.keys(varsData.story_settings.worldinfo_i)) {
+			for (const redactKey of ["comment", "content", "key", "keysecondary"]) {
+				varsData.story_settings.worldinfo_i[key][redactKey] = getRedactedValue(varsData.story_settings.worldinfo_i[key][redactKey]);
+			}
+		}
+
+		// worldinfo_u - comment, content, key, keysecondary
+		for (const key of Object.keys(varsData.story_settings.worldinfo_u)) {
+			for (const redactKey of ["comment", "content", "key", "keysecondary"]) {
+				varsData.story_settings.worldinfo_u[key][redactKey] = getRedactedValue(varsData.story_settings.worldinfo_u[key][redactKey]);
+			}
+		}
+
+		// worldinfo_v2 entries - comment, content, folder, key, keysecondary, manual_text, title, wpp
+		for (const key of Object.keys(varsData.story_settings.worldinfo_v2.entries)) {
+			for (const redactKey of ["comment", "content", "folder", "key", "keysecondary", "manual_text", "title", "wpp"]) {
+				varsData.story_settings.worldinfo_v2.entries[key][redactKey] = getRedactedValue(varsData.story_settings.worldinfo_v2.entries[key][redactKey]);
+			}
+		}
+
+		varsData.story_settings.worldinfo_v2.folders = getRedactedValue(varsData.story_settings.worldinfo_v2.folders);
+
+		// actions - "Selected Text", Options, Probabilities
+		for (const key of Object.keys(varsData.story_settings.actions.actions)) {
+			for (const redactKey of ["Selected Text", "Options", "Probabilities"]) {
+				varsData.story_settings.actions.actions[key][redactKey] = getRedactedValue(varsData.story_settings.actions.actions[key][redactKey]);
+			}
+		}
+
+	}
+
+	for (const varPath of redactables) {
+		let ref = varsData;
+		const parts = varPath.split(".");
+
+		for (const part of parts.slice(0, -1)) {
+			ref = ref[part];
+		}
+
+		const lastPart = parts[parts.length - 1];
+
+		ref[lastPart] = getRedactedValue(ref[lastPart]);
+	}
+
+	debug_info.currentVars = varsData;
+	console.log(debug_info);
+
+	downloadString(JSON.stringify(debug_info, null, 4), "kobold_debug.json");
 }
 
 function loadNAILorebook(data, filename) {
@@ -3648,25 +3789,47 @@ function open_finder() {
 	finderInput.focus();
 }
 
+function process_cookies() {
+	if (getCookie("Settings_Pin") == "false") {
+		settings_unpin();
+	} else if (getCookie("Settings_Pin") == "true") {
+		settings_pin();
+	}
+	if (getCookie("Story_Pin") == "true") {
+		story_pin();
+	} else if (getCookie("Story_Pin") == "false") {
+		story_unpin();
+	}
+	if (getCookie("preserve_game_space") == "false") {
+		preserve_game_space(false);
+	} else if (getCookie("preserve_game_space") == "true") {
+		preserve_game_space(true);
+	}
+	if (getCookie("options_on_right") == "false") {
+		options_on_right(false);
+	} else if (getCookie("options_on_right") == "true") {
+		options_on_right(true);
+	}
+	
+	load_tweaks();
+}
+
 $(document).ready(function(){
 	on_colab = document.getElementById("on_colab").textContent == "true";
+
+	if (colab_cookies != null) {
+		for (const cookie of Object.keys(colab_cookies)) {
+			setCookie(cookie, colab_cookies[cookie]);
+		}	
+		colab_cookies = null;
+	}
 
 	create_theming_elements();
 	document.onkeydown = detect_key_down;
 	document.onkeyup = detect_key_up;
 	document.getElementById("input_text").onkeydown = detect_enter_submit;
-	if (getCookie("Settings_Pin") == "false") {
-		settings_unpin();
-	} else {
-		settings_pin();
-	}
-	if (getCookie("Story_Pin") == "true") {
-		story_pin();
-	} else {
-		story_unpin();
-	}
-	preserve_game_space(!(getCookie("preserve_game_space") == "false"));
-	options_on_right(!(getCookie("options_on_right") == "false"));
+	
+	process_cookies();
 
 
 	// Tweak registering
@@ -3806,6 +3969,17 @@ $(document).ready(function(){
 	finderContainer.addEventListener("click", function(e) {
 		if (e.target !== this) return;
 		finderContainer.classList.add("hidden");
+	});
+
+	// Debug file
+	// TODO: All of this generic backdrop code really sucks. There should be a
+	// standardised thing for popups that adds the dimmed backdrop and standard
+	// closing, etc.
+
+	const debugContainer = document.getElementById("debug-file-container");
+
+	debugContainer.addEventListener("click", function(e) {
+		debugContainer.classList.add("hidden");
 	});
 });
 

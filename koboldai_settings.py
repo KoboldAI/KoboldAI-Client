@@ -35,7 +35,8 @@ def process_variable_changes(socketio, classname, name, value, old_value, debug_
                 #If we got a variable change from a thread other than what the app is run it, eventlet seems to block and no further messages are sent. Instead, we'll rely the message to the app and have the main thread send it
                 if not has_request_context():
                     data = ["var_changed", {"classname": classname, "name": name, "old_value": clean_var_for_emit(old_value), "value": clean_var_for_emit(value)}, {"include_self":True, "broadcast":True, "room":"UI_2"}]
-                    queue.put(data)
+                    if queue is not None:
+                        queue.put(data)
                         
                 else:
                     socketio.emit("var_changed", {"classname": classname, "name": name, "old_value": clean_var_for_emit(old_value), "value": clean_var_for_emit(value)}, include_self=True, broadcast=True, room="UI_2")
@@ -317,7 +318,7 @@ class koboldai_vars(object):
         #    return getattr(self._story_settings[self._sessions['story']], name)
         else:
             return getattr(self._story_settings['default'], name)
-        
+
 
 class settings(object):
     def to_json(self):
@@ -705,7 +706,7 @@ class user_settings(settings):
         
 class system_settings(settings):
     local_only_variables = ['socketio', 'lua_state', 'lua_logname', 'lua_koboldbridge', 'lua_kobold', 'lua_koboldcore', 'regex_sl', 'acregex_ai', 'acregex_ui', 'comregex_ai', 'comregex_ui', 'sp', '_horde_pid']
-    no_save_variables = ['socketio', 'lua_state', 'lua_logname', 'lua_koboldbridge', 'lua_kobold', 'lua_koboldcore', 'sp', '_horde_pid', 'horde_share']
+    no_save_variables = ['socketio', 'lua_state', 'lua_logname', 'lua_koboldbridge', 'lua_kobold', 'lua_koboldcore', 'sp', '_horde_pid', 'horde_share', 'aibusy', 'serverstarted']
     settings_name = "system"
     def __init__(self, socketio):
         self.socketio = socketio
@@ -782,6 +783,7 @@ class system_settings(settings):
         print("Colab Check: {}".format(self.on_colab))
         self.horde_share = False
         self._horde_pid = None
+        self.cookies = {} #cookies for colab since colab's URL changes, cookies are lost
         
         
     def __setattr__(self, name, value):
@@ -796,9 +798,14 @@ class system_settings(settings):
         if name not in self.local_only_variables and name[0] != "_" and not new_variable:
             process_variable_changes(self.socketio, self.__class__.__name__.replace("_settings", ""), name, value, old_value)
             
-            if name == "aibusy" and value == False:
-                koboldai_vars.abort = False
-                
+            #if name == "aibusy" and value == False and self.abort == True:
+            #    koboldai_vars.abort = False
+            
+            #for original UI
+            if name == 'sp_changed':
+                self.socketio.emit('from_server', {'cmd': 'spstatitems', 'data': {self.spfilename: self.spmeta} if self.allowsp and len(self.spfilename) else {}}, namespace=None, broadcast=True, room="UI_1")
+                super().__setattr__("sp_changed", False)
+            
             if name == 'horde_share':
                 if self.on_colab == False:
                     if os.path.exists("./KoboldAI-Horde"):

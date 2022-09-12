@@ -142,6 +142,22 @@
 	<div id="finder">
 		<input id="finder-input" placeholder="Search for something..."></input>
 	</div>
-
 	<div id="finder-wi-carousel" class="hidden"></div>
+</div>
+
+<!---------------- Debug File ---------------------->
+<div id="debug-file-container" class="hidden">
+	<div id="debug-file-prompt">
+		<div id="redacted" onclick="downloadDebugFile(true);">
+			<span class="focus">Download debug file</span>
+			<span class="help_text">Sensitive information, including any story data, is redacted.</span>
+		</div>
+		<div id="unredacted" onclick="downloadDebugFile(false);">
+			<span class="focus">Download unredacted debug file</span>
+			<span class="help_text">
+				Extremely sensitive information, such as API keys or information about other stories, is still redacted.
+				<br><b>This file will contain your story.</b>
+			</span>
+		</div>
+	</div>
 </div>

@@ -1,6 +1,14 @@
 <!DOCTYPE html>
 <html>
 <head>
+	<script>
+		// Error handler before all
+		var debug_info = {errors: []};
+
+		window.addEventListener('error', function(event) {
+			debug_info.push({msg: message, url: url, line: line});
+		});
+	</script>
 	<script type="module">import {encode, decode} from "./static/tokenizer.js";window.encode = encode;window.decode = decode;</script>
 	<link href="static/open-iconic/css/open-iconic.css" rel="stylesheet">
 	<link rel="stylesheet" href="static/bootstrap-toggle.min.css">
@@ -80,7 +88,7 @@
 																											document.getElementById("themetext").value = "";
 																										}'
 																										onkeyup="calc_token_usage()"></textarea>
-			<div class="statusbar_outer hidden" id="status_bar" onclick="socket.emit('abort','');">
+			<div class="statusbar_outer hidden var_sync_alt_system_aibusy" id="status_bar" onclick="socket.emit('abort','');">
 				<div class="statusbar_inner" style="width:0%" onclick="socket.emit('abort','');">0%</div>
 			</div><br>
 			<button type="button" class="btn action_button submit var_sync_alt_system_aibusy" system_aibusy=False id="btnsubmit" 

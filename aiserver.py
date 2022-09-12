@@ -258,7 +258,7 @@ app.secret_key = secrets.token_hex()
 app.config['SESSION_TYPE'] = 'filesystem'
 app.config['TEMPLATES_AUTO_RELOAD'] = True
 Session(app)
-socketio = SocketIO(app, async_method="eventlet", manage_session=False, cors_allowed_origins='*')
+socketio = SocketIO(app, async_method="eventlet", manage_session=False, cors_allowed_origins='*', max_http_buffer_size=10_000_000)
 #socketio = SocketIO(app, async_method="eventlet", manage_session=False, cors_allowed_origins='*', logger=True, engineio_logger=True)
 koboldai_vars = koboldai_settings.koboldai_vars(session, socketio)
 
@@ -918,17 +918,17 @@ def loadsettings():
 #  Load a soft prompt from a file
 #==================================================================#
 
-def check_for_sp_change():
-    while(True):
-        time.sleep(0.05)
+#def check_for_sp_change():
+#    while(True):
+#        time.sleep(0.05)
+#
+#        if(koboldai_vars.sp_changed):
+#            with app.app_context():
+#                emit('from_server', {'cmd': 'spstatitems', 'data': {koboldai_vars.spfilename: koboldai_vars.spmeta} if koboldai_vars.allowsp and len(koboldai_vars.spfilename) else {}}, namespace=None, broadcast=True, room="UI_1")
+#            koboldai_vars.sp_changed = False
 
-        if(koboldai_vars.sp_changed):
-            with app.app_context():
-                emit('from_server', {'cmd': 'spstatitems', 'data': {koboldai_vars.spfilename: koboldai_vars.spmeta} if koboldai_vars.allowsp and len(koboldai_vars.spfilename) else {}}, namespace=None, broadcast=True, room="UI_1")
-            koboldai_vars.sp_changed = False
 
-
-socketio.start_background_task(check_for_sp_change)
+#socketio.start_background_task(check_for_sp_change)
 
 def spRequest(filename):
     if(not koboldai_vars.allowsp):
@@ -1040,7 +1040,14 @@ def general_startup(override_args=None):
         args = parser.parse_args(shlex.split(os.environ["KOBOLDAI_ARGS"]))
     else:
         args = parser.parse_args()
-
+    
+    #load system and user settings
+    for setting in ['user_settings', 'system_settings']:
+        if os.path.exists("settings/{}.v2_settings".format(setting)):
+            with open("settings/{}.v2_settings".format(setting), "r") as settings_file:
+                getattr(koboldai_vars, "_{}".format(setting)).from_json(settings_file.read())
+    
+    
     temp = [x for x in vars(args)]
     for arg in temp:
         if arg == "path":
@@ -1132,11 +1139,6 @@ def general_startup(override_args=None):
     koboldai_settings.queue = multiprocessing.Queue()
     socketio.start_background_task(socket_io_relay, koboldai_settings.queue, socketio)
     
-    #load system and user settings
-    for setting in ['user_settings', 'system_settings']:
-        if os.path.exists("settings/{}.v2_settings".format(setting)):
-            with open("settings/{}.v2_settings".format(setting), "r") as settings_file:
-                getattr(koboldai_vars, "_{}".format(setting)).from_json(settings_file.read())
         
 #==================================================================#
 # Load Model
@@ -1794,6 +1796,7 @@ def patch_transformers():
             if(koboldai_vars.abort or koboldai_vars.generated_tkns >= koboldai_vars.genamt):
                 self.regeneration_required = False
                 self.halt = False
+                koboldai_vars.abort = False
                 return True
             if(koboldai_vars.standalone):
                 return False
@@ -2873,7 +2876,7 @@ def lua_compute_context(submission, entries, folders, kwargs):
     )
     if koboldai_vars.alt_gen:
        txt, _, _ = koboldai_vars.calc_ai_text()
-       print("Using Alt Gen: {}".format(tokenizer.decode(txt)))
+       print("Using Alt Gen")
     else:
         txt, _, _ = calcsubmitbudget(
             len(actions),
@@ -4481,7 +4484,7 @@ def calcsubmit(txt):
     if(koboldai_vars.model != "InferKit"):
         if koboldai_vars.alt_gen:
             subtxt, min, max  = koboldai_vars.calc_ai_text(submitted_text=txt)
-            print("Using Alt Gen: {}".format(tokenizer.decode(subtxt)))
+            print("Using Alt Gen")
         else:
             subtxt, min, max = calcsubmitbudget(actionlen, winfo, mem, anotetxt, koboldai_vars.actions, submission=txt)
         if(actionlen == 0):
@@ -4629,7 +4632,7 @@ def _generate(txt, minimum, maximum, found_entries):
                 found_entries[i].update(_found_entries)
                 if koboldai_vars.alt_gen:
                    txt, _, _ = koboldai_vars.calc_ai_text(submitted_text=txt)
-                   print("Using Alt Gen: {}".format(tokenizer.decode(txt)))
+                   print("Using Alt Gen")
                 else:
                     txt, _, _ = calcsubmitbudget(len(koboldai_vars.actions), winfo, mem, anotetxt, koboldai_vars.actions, submission=txt)
                 encoded.append(torch.tensor(txt, dtype=torch.long, device=genout.device))
@@ -4710,7 +4713,6 @@ def generate(txt, minimum, maximum, found_entries=None):
             assert type(genout[-1]["generated_text"]) is str
     else:
         genout = [{"generated_text": utils.decodenewlines(tokenizer.decode(tokens[-already_generated:]))} for tokens in genout]
-    print([applyoutputformatting(x["generated_text"]) for x in genout])
     
     if(len(genout) == 1):
         genresult(genout[0]["generated_text"])
@@ -6771,7 +6773,7 @@ def new_ui_index():
 def ui2_connect():
     #Send all variables to client
     koboldai_vars.send_to_ui()
-    UI_2_load_tweaks()
+    UI_2_load_cookies()
     pass
     
 #==================================================================#
@@ -6787,10 +6789,12 @@ def ui2_serve_themes(path):
 #==================================================================#
 @socketio.on('upload_file')
 def upload_file(data):
-    print("upload_file {}".format(data['filename']))
+    if koboldai_vars.debug:
+        print("upload_file {}".format(data['filename']))
     if 'current_folder' in session:
         path = os.path.abspath(os.path.join(session['current_folder'], data['filename']).replace("\\", "/")).replace("\\", "/")
-        print("Want to save to {}".format(path))
+        if koboldai_vars.debug:
+            print("Want to save to {}".format(path))
         if 'popup_jailed_dir' not in session:
             print("Someone is trying to upload a file to your server. Blocked.")
         elif session['popup_jailed_dir'] is None:
@@ -6810,7 +6814,8 @@ def upload_file(data):
 
 @socketio.on('popup_change_folder')
 def popup_change_folder(data):
-    print("Doing popup change folder: {}".format(data))
+    if koboldai_vars.debug:
+        print("Doing popup change folder: {}".format(data))
     if 'popup_jailed_dir' not in session:
         print("Someone is trying to get at files in your server. Blocked.")
         return
@@ -7099,7 +7104,8 @@ def UI_2_var_change(data):
 #==================================================================#
 @socketio.on('save_story')
 def UI_2_save_story(data):
-    print("Saving Story")
+    if koboldai_vars.debug:
+        print("Saving Story")
     if data is None:
         #We need to check to see if there is a file already and if it's not the same story so we can ask the client if this is OK
         save_name = koboldai_vars.story_name if koboldai_vars.story_name != "" else "untitled"
@@ -7138,7 +7144,8 @@ def UI_2_save_to_json():
 #==================================================================#
 @socketio.on('Set Selected Text')
 def UI_2_Set_Selected_Text(data):
-    print("Updating Selected Text: {}".format(data))
+    if koboldai_vars.quiet:
+        print("Updating Selected Text: {}".format(data))
     koboldai_vars.actions[int(data['id'])] = data['text']
 
 #==================================================================#
@@ -7158,16 +7165,17 @@ def UI_2_Use_Option_Text(data):
 #==================================================================#
 @socketio.on('submit')
 def UI_2_submit(data):
-    print(data)
     if not koboldai_vars.noai and data['theme'] != "":
-        print("doing random prompt")
+        if koboldai_vars.debug:
+            print("doing random prompt")
         memory = koboldai_vars.memory
         koboldai_vars.memory = "{}\n\nYou generate the following {} story concept :".format(koboldai_vars.memory, data['theme'])
         koboldai_vars.lua_koboldbridge.feedback = None
         actionsubmit("", force_submit=True, force_prompt_gen=True)
         koboldai_vars.memory = memory
     else:
-        print("doing normal input")
+        if koboldai_vars.debug:
+            print("doing normal input")
         koboldai_vars.actions.clear_unused_options()
         koboldai_vars.lua_koboldbridge.feedback = None
         koboldai_vars.recentrng = koboldai_vars.recentrngm = None
@@ -7181,9 +7189,9 @@ def UI_2_submit(data):
 #==================================================================#
 @socketio.on('abort')
 def UI_2_abort(data):
-    print("got abort")
+    if koboldai_vars.debug:
+        print("got abort")
     koboldai_vars.abort = True
-    print(koboldai_vars.abort)
 
  
 #==================================================================#
@@ -7198,7 +7206,8 @@ def UI_2_Pinning(data):
 #==================================================================#
 @socketio.on('back')
 def UI_2_back(data):
-    print("back")
+    if koboldai_vars.debug:
+        print("back")
     koboldai_vars.actions.clear_unused_options()
     ignore = koboldai_vars.actions.pop()
     
@@ -7236,7 +7245,6 @@ def UI_2_load_model_button(data):
 #==================================================================#
 @socketio.on('select_model')
 def UI_2_select_model(data):
-    print(data)
     
     #We've selected a menu
     if data['model'] in model_menu:
@@ -7260,7 +7268,6 @@ def UI_2_select_model(data):
 #==================================================================#
 @socketio.on('load_model')
 def UI_2_load_model(data):
-    print(data)
     if not os.path.exists("settings/"):
         os.mkdir("settings")
     changed = True
@@ -7356,7 +7363,8 @@ def story_sort(base_path, desc=False):
 #==================================================================#
 @socketio.on('load_story')
 def UI_2_load_story(file):
-    print("loading {}".format(file))
+    if koboldai_vars.debug:
+        print("loading {}".format(file))
     loadRequest(file)
 
 #==================================================================#
@@ -7372,7 +7380,6 @@ def UI_2_new_story(data):
 #==================================================================#
 @socketio.on('move_wi')
 def UI_2_move_wi(data):
-    print(data)
     if data['folder'] is None:
         koboldai_vars.worldinfo_v2.reorder(int(data['dragged_id']), int(data['drop_id']))
     else:
@@ -7383,7 +7390,6 @@ def UI_2_move_wi(data):
 #==================================================================#
 @socketio.on('wi_set_folder')
 def UI_2_wi_set_folder(data):
-    print(data)
     koboldai_vars.worldinfo_v2.add_item_to_folder(int(data['dragged_id']), data['folder'])
 
 #==================================================================#
@@ -7391,8 +7397,9 @@ def UI_2_wi_set_folder(data):
 #==================================================================#
 @socketio.on('Rename_World_Info_Folder')
 def UI_2_Rename_World_Info_Folder(data):
-    print("Rename_World_Info_Folder")
-    print(data)
+    if koboldai_vars.debug:
+        print("Rename_World_Info_Folder")
+        print(data)
     koboldai_vars.worldinfo_v2.rename_folder(data['old_folder'], data['new_folder'])
 
 #==================================================================#
@@ -7400,8 +7407,9 @@ def UI_2_Rename_World_Info_Folder(data):
 #==================================================================#
 @socketio.on('edit_world_info')
 def UI_2_edit_world_info(data):
-    print("edit_world_info")
-    print(data)
+    if koboldai_vars.debug:
+        print("edit_world_info")
+        print(data)
     
     if data['uid'] < 0:
         koboldai_vars.worldinfo_v2.add_item(data['title'], data['key'], 
@@ -7534,7 +7542,6 @@ def UI_2_update_wi_attribute(data):
 #==================================================================#
 @socketio.on('phrase_bias_update')
 def UI_2_phrase_bias_update(biases):
-    print(biases)
     koboldai_vars.biases = biases
 
 
@@ -7556,7 +7563,8 @@ def socket_io_relay(queue, socketio):
 # Event triggered when program errors out
 #==================================================================#
 def my_except_hook(exctype, value, traceback):
-    print("sending error to clients")
+    if koboldai_vars.debug:
+        print("sending error to clients")
     socketio.emit("error", "{}: {}".format(exctype, value), broadcast=True, room="UI_2")
     sys.__excepthook__(exctype, value, traceback)
 sys.excepthook = my_except_hook
@@ -7570,7 +7578,8 @@ def handle_exception(e):
         return e
 
     # now you're handling non-HTTP exceptions only
-    print("sending error to clients")
+    if koboldai_vars.debug:
+        print("sending error to clients")
     socketio.emit("error", "{}: {}".format(e.message, e.args), broadcast=True, room="UI_2")
     return render_template("500_generic.html", e=e), 500
 
@@ -7613,7 +7622,8 @@ def get_softprompt_desc(item_full_path, item, valid_selection):
 #==================================================================#
 @socketio.on('load_softprompt')
 def UI_2_load_softprompt(data):
-    print("Load softprompt: {}".format(data))
+    if koboldai_vars.debug:
+        print("Load softprompt: {}".format(data))
     spRequest(data)
 
 #==================================================================#
@@ -7629,7 +7639,8 @@ def UI_2_load_userscripts_list(data):
                                                                   column_widths=['200px', '150px', 'auto'])
                                                                 
 def valid_userscripts_to_load(file):
-    print("{} is valid: {}".format(file, file.endswith(".lua") and os.path.basename(file) not in koboldai_vars.userscripts))
+    if koboldai_vars.debug:
+        print("{} is valid: {}".format(file, file.endswith(".lua") and os.path.basename(file) not in koboldai_vars.userscripts))
     return file.endswith(".lua") and os.path.basename(file) not in koboldai_vars.userscripts
     
 def valid_userscripts_to_unload(file):
@@ -7680,7 +7691,8 @@ def get_userscripts_desc(item_full_path, item, valid_selection):
 #==================================================================#
 @socketio.on('load_userscripts')
 def UI_2_load_userscripts(data):
-    print("Loading Userscripts: {}".format(os.path.basename(data)))
+    if koboldai_vars.debug:
+        print("Loading Userscripts: {}".format(os.path.basename(data)))
     koboldai_vars.userscripts = [x for x in koboldai_vars.userscripts if x != os.path.basename(data)]+[os.path.basename(data)]
     load_lua_scripts()
     
@@ -7689,7 +7701,8 @@ def UI_2_load_userscripts(data):
 #==================================================================#
 @socketio.on('unload_userscripts')
 def UI_2_unload_userscripts(data):
-    print("Unloading Userscript: {}".format(data))
+    if koboldai_vars.debug:
+        print("Unloading Userscript: {}".format(data))
     koboldai_vars.userscripts = [x for x in koboldai_vars.userscripts if x != data]
     load_lua_scripts()
 
@@ -7700,7 +7713,8 @@ def UI_2_unload_userscripts(data):
 #==================================================================#
 @socketio.on('load_aidg_club')
 def UI_2_load_aidg_club(data):
-    print("Load aidg.club: {}".format(data))
+    if koboldai_vars.debug:
+        print("Load aidg.club: {}".format(data))
     importAidgRequest(data) 
 
 
@@ -7714,7 +7728,8 @@ def UI_2_theme_change(data):
         for key, value in data['theme'].items():
             f.write("\t{}: {};\n".format(key, value.replace(";", "").replace("--", "-")))
         f.write("}")
-    print("Theme Saved")
+    if koboldai_vars.debug:
+        print("Theme Saved")
 
 
 #==================================================================#
@@ -7735,19 +7750,23 @@ def UI_2_theme_list_refresh(data):
 #==================================================================#
 # Save Tweaks
 #==================================================================#
-@socketio.on('save_tweaks')
-def UI_2_save_tweaks(data):
-    with open("./settings/tweaks.settings", "w") as f:
-        f.write(data)
+@socketio.on('save_cookies')
+def UI_2_save_cookies(data):
+    for key in data:
+        #Note this won't sync to the client automatically as we're modifying a variable rather than setting it
+        koboldai_vars.cookies[key] = data[key]
+    with open("./settings/cookies.settings", "w") as f:
+        json.dump(koboldai_vars.cookies, f)
 
 #==================================================================#
 # Load Tweaks
 #==================================================================#
-def UI_2_load_tweaks():
+def UI_2_load_cookies():
     if koboldai_vars.on_colab:
-        if os.path.exists("./settings/tweaks.settings"):
-            with open("./settings/tweaks.settings", "r") as f:
-                socketio.emit('load_tweaks', f.read(), room="UI2")
+        if os.path.exists("./settings/cookies.settings"):
+            with open("./settings/cookies.settings", "r") as f:
+                data = json.load(f)
+                socketio.emit('load_cookies', data, room="UI_2")
 
 #==================================================================#
 # Test
@@ -10549,7 +10568,6 @@ if __name__ == "__main__":
             print("{0}Webserver has started, you can now connect to this machine at port {1}{2}"
                   .format(colors.GREEN, port, colors.END))
         koboldai_vars.serverstarted = True
-        
         socketio.run(app, host='0.0.0.0', port=port)
     else:
         if args.unblock:
