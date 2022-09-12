@@ -6,7 +6,7 @@ STDOUT_LEVELS = ["GENERATION", "PROMPT"]
 INIT_LEVELS = ["INIT", "INIT_OK", "INIT_WARN", "INIT_ERR"]
 MESSAGE_LEVELS = ["MESSAGE"]
 # By default we're at error level or higher
-verbosity = 40
+verbosity = 20
 quiet = 0
 
 def set_logger_verbosity(count):
@@ -14,7 +14,7 @@ def set_logger_verbosity(count):
     # The count comes reversed. So count = 0 means minimum verbosity
     # While count 5 means maximum verbosity
     # So the more count we have, the lowe we drop the versbosity maximum
-    verbosity = 40 - (count * 10)
+    verbosity = 20 - (count * 10)
 
 def quiesce_logger(count):
     global quiet
