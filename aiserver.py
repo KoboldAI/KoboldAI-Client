@@ -4280,9 +4280,7 @@ def apiactionsubmit_generate(txt, minimum, maximum):
 
     if not vars.quiet:
         logger.debug(f"Prompt Min:{minimum}, Max:{maximum}")
-        split_prompt = utils.decodenewlines(tokenizer.decode(txt)).split('\n')
-        for line in split_prompt:
-            logger.prompt(line)
+        logger.prompt(utils.decodenewlines(tokenizer.decode(txt)).encode("unicode_escape").decode("utf-8"))
 
     # Clear CUDA cache if using GPU
     if(vars.hascuda and (vars.usegpu or vars.breakmodel)):
@@ -4310,9 +4308,7 @@ def apiactionsubmit_tpumtjgenerate(txt, minimum, maximum):
 
     if not vars.quiet:
         logger.debug(f"Prompt Min:{minimum}, Max:{maximum}")
-        split_prompt = utils.decodenewlines(tokenizer.decode(txt)).split('\n')
-        for line in split_prompt:
-            logger.prompt(line)
+        logger.prompt(utils.decodenewlines(tokenizer.decode(txt)).encode("unicode_escape").decode("utf-8"))
 
     vars._actions = vars.actions
     vars._prompt = vars.prompt
@@ -4825,9 +4821,7 @@ def generate(txt, minimum, maximum, found_entries=None):
 
     if not vars.quiet:
         logger.debug(f"Prompt Min:{minimum}, Max:{maximum}")
-        split_prompt = utils.decodenewlines(tokenizer.decode(txt)).split('\n')
-        for line in split_prompt:
-            logger.prompt(line)
+        logger.prompt(utils.decodenewlines(tokenizer.decode(txt)).encode("unicode_escape").decode("utf-8"))
 
     # Store context in memory to use it for comparison with generated content
     vars.lastctx = utils.decodenewlines(tokenizer.decode(txt))
@@ -4889,9 +4883,7 @@ def generate(txt, minimum, maximum, found_entries=None):
 #==================================================================#
 def genresult(genout, flash=True, ignore_formatting=False):
     if not vars.quiet:
-        split_gen = genout.split('\n')
-        for line in split_gen:
-            logger.generation(line)
+        logger.generation(genout.encode("unicode_escape").decode("utf-8"))
     
     # Format output before continuing
     if not ignore_formatting:
@@ -4926,9 +4918,7 @@ def genselect(genout):
         result["generated_text"] = applyoutputformatting(result["generated_text"])
         if not vars.quiet:
             logger.info(f"Generation Result {i}")
-            split_gen = result["generated_text"].split('\n')
-            for line in split_gen:
-                logger.generation(line)
+            logger.generation(result["generated_text"].encode("unicode_escape").decode("utf-8"))
         i += 1
     
     # Add the options to the actions metadata
@@ -5268,9 +5258,7 @@ def tpumtjgenerate(txt, minimum, maximum, found_entries=None):
 
     if not vars.quiet:
         logger.debug(f"Prompt Min:{minimum}, Max:{maximum}")
-        split_prompt = utils.decodenewlines(tokenizer.decode(txt)).split('\n')
-        for line in split_prompt:
-            logger.prompt(line)
+        logger.prompt(utils.decodenewlines(tokenizer.decode(txt)).encode("unicode_escape").decode("utf-8"))
 
     vars._actions = vars.actions
     vars._prompt = vars.prompt
