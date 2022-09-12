@@ -72,7 +72,7 @@ global tpu_mtj_backend
 
 
 if lupa.LUA_VERSION[:2] != (5, 4):
-    logging.error(f"Please install lupa==1.10. You have lupa {lupa.__version__}.")
+    logger.error(f"Please install lupa==1.10. You have lupa {lupa.__version__}.")
 
 patch_causallm_patched = False
 
@@ -626,7 +626,7 @@ def get_config_filename(model_name = None):
     elif vars.configname != '':
         return(f"settings/{vars.configname.replace('/', '_')}.settings")
     else:
-        print(f"Empty configfile name sent back. Defaulting to ReadOnly")
+        logger.warning(f"Empty configfile name sent back. Defaulting to ReadOnly")
         return(f"settings/ReadOnly.settings")
 #==================================================================#
 # Function to get model selection at startup
@@ -873,7 +873,7 @@ def device_config(config):
         return
 
     if(not breakmodel.gpu_blocks):
-        print("Nothing assigned to a GPU, reverting to CPU only mode")
+        logger.warning("Nothing assigned to a GPU, reverting to CPU only mode")
         import breakmodel
         breakmodel.primary_device = "cpu"
         vars.breakmodel = False
@@ -1556,7 +1556,7 @@ def get_oai_models(key):
         return
         
     # Get list of models from OAI
-    print("{0}Retrieving engine list...{1}".format(colors.PURPLE, colors.END), end="")
+    logger.init("OAI Engines", status="Retrieving")
     req = requests.get(
         url, 
         headers = {
@@ -1568,7 +1568,7 @@ def get_oai_models(key):
         try:
             engines = [[en["id"], "{} ({})".format(en['id'], "Ready" if en["ready"] == True else "Not Ready")] for en in engines]
         except:
-            print(engines)
+            logger.error(engines)
             raise
         
         online_model = ""
@@ -1595,11 +1595,12 @@ def get_oai_models(key):
                 js["apikey"] = key
                 file.write(json.dumps(js, indent=3))
             
+        logger.init_ok("OAI Engines", status="OK")
         emit('from_server', {'cmd': 'oai_engines', 'data': engines, 'online_model': online_model}, broadcast=True)
     else:
         # Something went wrong, print the message and quit since we can't initialize an engine
-        print("{0}ERROR!{1}".format(colors.RED, colors.END))
-        print(req.json())
+        logger.init_err("OAI Engines", status="Failed")
+        logger.error(req.json())
         emit('from_server', {'cmd': 'errmsg', 'data': req.json()})
 
 def get_cluster_models(msg):
@@ -1609,17 +1610,16 @@ def get_cluster_models(msg):
     
         
     # Get list of models from public cluster
-    print("{0}Retrieving engine list...{1}".format(colors.PURPLE, colors.END), end="")
+    logger.init("KAI Horde Models", status="Retrieving")
     req = requests.get("{}/models".format(url))
     if(req.status_code == 200):
         engines = req.json()
-        print(engines)
+        logger.debug(engines)
         try:
             engines = [[en, en] for en in engines]
         except:
-            print(engines)
+            logger.error(engines)
             raise
-        print(engines)
         
         online_model = ""
         changed=False
@@ -1645,11 +1645,12 @@ def get_cluster_models(msg):
                 js["apikey"] = vars.oaiapikey
                 file.write(json.dumps(js, indent=3))
             
+        logger.init_ok("KAI Horde Models", status="OK")
         emit('from_server', {'cmd': 'oai_engines', 'data': engines, 'online_model': online_model}, broadcast=True)
     else:
         # Something went wrong, print the message and quit since we can't initialize an engine
-        print("{0}ERROR!{1}".format(colors.RED, colors.END))
-        print(req.json())
+        logger.init_err("KAI Horde Models", status="Failed")
+        logger.error(req.json())
         emit('from_server', {'cmd': 'errmsg', 'data': req.json()})
 
 # Function to patch transformers to use our soft prompt
@@ -5150,7 +5151,8 @@ def sendtoapi(txt, min, max):
 def sendtocluster(txt, min, max):
     # Log request to console
     if not vars.quiet:
-        print("{0}Tokens:{1}, Txt:{2}{3}".format(colors.YELLOW, min-1, txt, colors.END))
+        logger.debug(f"Tokens Min:{min-1}")
+        logger.prompt(txt.encode("unicode_escape").decode("utf-8"))
 
     # Store context in memory to use it for comparison with generated content
     vars.lastctx = txt
@@ -5185,30 +5187,30 @@ def sendtocluster(txt, min, max):
         js = req.json()
     except requests.exceptions.ConnectionError:
         errmsg = f"Horde unavailable. Please try again later"
-        print("{0}{1}{2}".format(colors.RED, errmsg, colors.END))
+        logger.error(errmsg)
         emit('from_server', {'cmd': 'errmsg', 'data': errmsg}, broadcast=True)
         set_aibusy(0)
         return
     except requests.exceptions.JSONDecodeError:
         errmsg = f"Unexpected message received from the Horde: '{req.text}'"
-        print("{0}{1}{2}".format(colors.RED, errmsg, colors.END))
+        logger.error(errmsg)
         emit('from_server', {'cmd': 'errmsg', 'data': errmsg}, broadcast=True)
         set_aibusy(0)
         return
     if(req.status_code == 503):
         errmsg = f"KoboldAI API Error: No available KoboldAI servers found in Horde to fulfil this request using the selected models or other properties."
-        print("{0}{1}{2}".format(colors.RED, json.dumps(js, indent=2), colors.END))
+        logger.error(json.dumps(js))
         emit('from_server', {'cmd': 'errmsg', 'data': errmsg}, broadcast=True)
         set_aibusy(0)
         return
     if(req.status_code != 200):
         errmsg = f"KoboldAI API Error: Failed to get a standard reply from the Horde. Please check the console."
-        print("{0}{1}{2}".format(colors.RED, json.dumps(js, indent=2), colors.END))
+        logger.error(json.dumps(js))
         emit('from_server', {'cmd': 'errmsg', 'data': errmsg}, broadcast=True)
         set_aibusy(0)
         return
     gen_servers = [(cgen['server_name'],cgen['server_id']) for cgen in js]
-    print(f"{colors.GREEN}Generations by: {gen_servers}{colors.END}")
+    logger.info(f"Generations by: {gen_servers}")
     # Just in case we want to announce it to the user
     if len(js) == 1:        
         warnmsg = f"Text generated by {js[0]['server_name']}"
