@@ -17,3 +17,4 @@ eventlet
 lupa==1.10
 markdown
 bleach==4.1.0
+chex==0.1.4
