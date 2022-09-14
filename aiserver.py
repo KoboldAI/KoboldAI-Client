@@ -7330,6 +7330,8 @@ def get_story_listing_data(item_full_path, item, valid_selection):
     if title in koboldai_vars._system_settings.story_loads:
         # UNIX Timestamp
         last_loaded = int(time.mktime(time.strptime(koboldai_vars._system_settings.story_loads[title], "%m/%d/%Y, %H:%M:%S")))
+    else:
+        last_loaded = os.path.getmtime(item_full_path)
 
     if js.get("file_version", 1) == 1:
         return [title, action_count, last_loaded]
@@ -7783,7 +7785,6 @@ def UI_2_load_cookies():
 #==================================================================#
 @socketio.on('save_new_preset')
 def UI_2_save_new_preset(data):
-    print(data)
     preset = {}
     #Data to get from current settings
     for item in ["genamt", "rep_pen", "rep_pen_range", "rep_pen_slope", "sampler_order", "temp", "tfs", "top_a", "top_k", "top_p", "typical"]:
@@ -7796,7 +7797,6 @@ def UI_2_save_new_preset(data):
     preset['Model Type'] = koboldai_vars.model
     preset['uid'] = 0
     preset = [preset]
-    print(preset)
     with open("./presets/{}.presets".format(data['preset']), "w") as f:
         json.dump(preset, f, indent="\t")
 
