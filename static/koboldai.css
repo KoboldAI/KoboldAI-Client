@@ -1926,6 +1926,96 @@ body {
 	align-items: center;
 }
 
+#finder-wi-carousel {
+	position: absolute;
+	height: 35%;
+	width: 100vw;
+	bottom: 0px;
+	right: 0px;
+
+	display: flex;
+	column-gap: 20px;
+}
+
+.finder-wi-focus {
+	margin-top: -100px;
+	height: calc(100% + 100px) !important;
+
+	overflow-y: scroll !important;
+	filter: none !important;
+}
+
+.finder-wi-block {
+	background-color: var(--flyout_background_pinned);
+	height: 100%;
+	flex-grow: 1;
+	flex-basis: 50%;
+	overflow-y: hidden;
+	filter: brightness(70%);
+	padding: 0px 7px;
+}
+
+.finder-wi-block > textarea {
+	width: 100%;
+	border: none;
+	resize: none;
+}
+
+.finder-wi-title {
+	/* Cannot use display: block here, it will add a <br> to the contenteditable. */
+	display: inline-block;
+	width: 100%;
+	font-size: 32px;
+	background-color: var(--input_background);
+	padding: 7px 5px 0px 5px;
+	margin: 10px 0px;
+}
+
+.finder-wi-content {
+	height: 30%;
+}
+
+.finder-wi-keys {
+	margin-bottom: 8px;
+}
+
+.finder-wi-added-keys {
+	display: inline-block;
+}
+
+.finder-wi-tag-icon {
+	position: relative;
+	top: 4px;
+	right: 2px;
+	font-size: 18px !important;
+	cursor: pointer;
+}
+
+.tag-text { cursor: text; }
+
+.finder-wi-activation-header-container {
+	display: flex;
+	justify-content: space-between;
+	margin-top: 10px;
+}
+
+.finder-wi-activation-header-container > h3 {
+	margin: 0px;
+}
+
+.finder-wi-always-container {
+	display: flex;
+	align-items: center;
+	column-gap: 5px;
+}
+
+.finder-wi-blanket {
+	position: absolute;
+	/* Hack */
+	width: 99%;
+	height: 100%;
+	cursor: pointer;
+
 /* Debug File */
 #debug-dump {
 	opacity: 0.7;
@@ -1972,6 +2062,16 @@ body {
 /*---------------------------------- Global ------------------------------------------------*/
 .hidden {
 	display: none;
+}
+
+.disabled {
+	opacity: 0.4;
+	pointer-events: none;
+}
+
+[data-placeholder]:empty:before {
+	content: attr(data-placeholder);
+	opacity: 0.6;
 }
 
 #input_text {

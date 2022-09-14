@@ -26,6 +26,8 @@ socket.on("delete_new_world_info_entry", function(data){document.getElementById(
 socket.on("delete_world_info_entry", function(data){document.getElementById("world_info_"+data).remove();});
 socket.on("error", function(data){show_error_message(data);});
 socket.on('load_cookies', function(data){load_cookies(data)});
+socket.on('load_tweaks', function(data){load_tweaks(data);});
+socket.on("wi_results", updateWISearchListings);
 //socket.onAny(function(event_name, data) {console.log({"event": event_name, "class": data.classname, "data": data});});
 
 var presets = {};
@@ -44,6 +46,8 @@ var saved_settings = {};
 var finder_selection_index = -1;
 var on_colab;
 var colab_cookies = null;
+var wi_finder_data = [];
+var wi_finder_offset = 0;
 
 // name, desc, icon, func
 const finder_actions = [
@@ -3467,20 +3471,8 @@ function addSearchListing(action, highlight) {
 	return result;
 }
 
-function updateSearchListings() {
+function updateStandardSearchListings(query) {
 	const maxResultCount = 5;
-
-	if (this.value === finder_last_input) return;
-	finder_last_input = this.value;
-	finder_selection_index = -1;
-
-	let query = this.value.toLowerCase();
-
-	// TODO: Maybe reuse the element? Would it give better performance?
-	$(".finder-result").remove();
-
-	if (!query) return;
-
 	const actionMatches = {name: [], desc: []};
 
 	for (const action of finder_actions) {
@@ -3498,6 +3490,283 @@ function updateSearchListings() {
 	for (let i=0;i<maxResultCount && i<matchingActions.length;i++) {
 		let action = matchingActions[i];
 		addSearchListing(action, query);
+	}
+}
+
+function $e(tag, parent, attributes) {
+	// Small helper function for dynamic UI creation
+	// TODO: Support nested attributed with "." syntax.
+
+	let element = document.createElement(tag);
+
+	if (!attributes) attributes = {};
+
+	if ("classes" in attributes) {
+		if (!Array.isArray(attributes.classes)) throw Error("Classes was not array!");
+		for (const className of attributes.classes) {
+			element.classList.add(className);
+		}
+		delete attributes.classes;
+	}
+
+
+	for (const [attribute, value] of Object.entries(attributes)) {
+		if (attribute.includes(".")) {
+			let ref = element;
+			const parts = attribute.split(".");
+
+			for (const part of parts.slice(0, -1)) {
+				ref = ref[part];
+			}
+
+			ref[parts[parts.length - 1]] = value;
+			continue;
+		}
+
+		if (attribute in element) {
+			element[attribute] = value;
+		} else {
+			element.setAttribute(attribute, value);
+		}
+	}
+
+	parent.appendChild(element);
+	return element;
+}
+
+function makeFinderWITag(name, container, isPrimary, uid) {
+	let wiTag = $e("span", container, {classes: ["tag"]});
+	let wiTagIcon = $e("span", wiTag, {classes: ["finder-wi-tag-icon", "material-icons-outlined"], innerText: "close"});
+	let wiTagText = $e("span", wiTag, {innerText: name, contenteditable: true});
+
+	wiTagIcon.addEventListener("click", function(e) {
+		socket.emit(
+			"update_wi_keys",
+			{uid: parseInt(uid), key: name, is_secondary: !isPrimary, operation: "remove"}
+		);
+		wiTag.remove();
+	});
+}
+
+function updateWIInfo(event) {
+	// Should be a change event or something similar. This WILL send an update
+	// packet on each unfocus in some cases. It's not that big of a deal, right? :p
+
+	let key = event.target.getAttribute("wi-sync");
+
+	if ("checked" in event.target) {
+		// checkbox / toggle
+		value = event.target.checked;
+	} else if ("value" in event.target) {
+		// standard inputs
+		value = event.target.value;
+	} else {
+		// contenteditable
+		value = event.target.innerText
+	}
+
+	let uid = $(event.target).closest(".finder-wi-block")[0].getAttribute("wi-uid");
+	socket.emit("update_wi_attribute", {uid: parseInt(uid), key: key, value: value});
+}
+
+function updateWISearchListings(data) {
+	wi_finder_offset = 0;
+	wi_finder_data = Object.values(data).flat();
+	renderWISearchListings();
+}
+
+function renderWISearchListings() {
+	const wiCarousel = document.getElementById("finder-wi-carousel");
+	$(".finder-wi-block").remove();
+
+	let data = Array.from(wi_finder_data);
+
+	// No need for excessive shifting
+	let realOffset = wi_finder_offset % data.length;
+
+	// Make first be central
+	if (data.length > 2) realOffset--;
+
+	// Wrap around
+	if (realOffset < 0) realOffset += data.length;
+
+	// Actual data wrap
+	for (let i=0;i<realOffset;i++) {
+		data.push(data.shift());
+	}
+	let entries = data.slice(0, 3);
+
+	// Visual spacing-- this kinda sucks
+	if (entries.length == 1) entries = [null, entries[0], null];
+	if (entries.length == 2) entries = [null, ...entries];
+
+	for (const [i, entry] of entries.entries()) {
+		let wiBlock = $e("div", wiCarousel, {classes: ["finder-wi-block"], "wi-uid": entry ? entry.uid : "null"});
+
+		// Spacer hack
+		if (!entry) {
+			wiBlock.style.visibility = "hidden";
+			continue;
+		}
+
+		// The "position" relative to others.
+		let current = "center";
+
+		if (entries.length == 3) {
+			if (i !== 1) current = (i == 0) ? "left" : "right";
+		} else if (entries.length == 2) {
+			if (i === 1) current = "right";
+		}
+
+		if (current !== "center") {
+			let blanket = $e("div", wiBlock, {classes: ["finder-wi-blanket"]});
+		}
+
+		if (current === "left") {
+			wiBlock.addEventListener("click", function(event) {
+				wi_finder_offset--;
+				renderWISearchListings();
+				event.preventDefault();
+			});
+		} else if (current === "right") {
+			wiBlock.addEventListener("click", function(event) {
+				wi_finder_offset++;
+				renderWISearchListings();
+				event.preventDefault();
+			});
+		} else if (current === "center") {
+			// Focus is the center highlighted one. If there is 3 entries (max),
+			// the important one is at the center. Otherwise, the important one
+			// is in the front.
+			wiBlock.classList.add("finder-wi-focus");
+		}
+
+
+		let wiTitle = $e("span", wiBlock, {
+			classes: ["finder-wi-title"],
+			innerText: entry.title,
+			contenteditable: true,
+			"data-placeholder": "Entry",
+			"wi-sync": "title",
+		});
+		wiTitle.addEventListener("keydown", function(e) {
+			if (e.key === "Enter") {
+				e.preventDefault();
+				wiTitle.blur();
+			}
+		});
+		wiTitle.addEventListener("blur", updateWIInfo);
+
+		let wiTextLabel = $e("h3", wiBlock, {innerText: "Info", "style.margin": "10px 0px 5px 0px"});
+		let wiContent = $e("textarea", wiBlock, {
+			classes: ["finder-wi-content"],
+			value: entry.content,
+			placeholder: "Write your World Info here!",
+			"wi-sync": "content",
+		});
+		wiContent.addEventListener("blur", updateWIInfo);
+
+		let wiComment = $e("textarea", wiBlock, {
+			placeholder: "Comment",
+			value: entry.comment,
+			"wi-sync": "comment",
+		});
+		wiComment.addEventListener("blur", updateWIInfo);
+
+		let wiActivationHeaderContainer = $e("div", wiBlock, {classes: ["finder-wi-activation-header-container"]});
+		let wiActivationLabel = $e("h3", wiActivationHeaderContainer, {innerText: "Activation", "style.display": "inline"});
+		let wiAlwaysContainer = $e("div", wiActivationHeaderContainer, {classes: ["finder-wi-always-container"]});
+		let wiAlwaysLabel = $e("span", wiAlwaysContainer, {innerText: "Always Activate"});
+
+		let wiActivationHelp = $e("span", wiBlock, {classes: ["help_text"], innerText: "Change when the AI reads this World Info entry"})
+		let wiTagActivationContainer = $e("div", wiBlock);
+
+		let wiAlways = $e("input", wiAlwaysContainer, {
+			type: "checkbox",
+			"wi-sync": "constant",
+		});
+		$(wiAlways).change(function(e) {
+			updateWIInfo(e);
+			if (this.checked) {
+				wiTagActivationContainer.classList.add("disabled");
+			} else {
+				wiTagActivationContainer.classList.remove("disabled");
+			}
+		});
+		$(wiAlways).bootstrapToggle({
+			size: "mini",
+			onstyle: "success",
+		});
+		$(wiAlways).bootstrapToggle(entry.constant ? "on" : "off");
+
+		for (const isPrimary of [true, false]) {
+			let wiTagLabel = $e("span", wiTagActivationContainer, {
+				"style.display": "block",
+				innerText: isPrimary ? "Requires one of:" : "And (if present):"
+			});
+
+			let wiTagContainer = $e("div", wiTagActivationContainer, {
+				id: isPrimary ? "finder-wi-required-keys" : "finder-wi-secondary-keys",
+				classes: ["finder-wi-keys"]
+			});
+			let wiAddedTagContainer = $e("div", wiTagContainer, {classes: ["finder-wi-added-keys"]});
+
+			// Existing keys
+			for (const key of entry.key) {
+				makeFinderWITag(key, wiAddedTagContainer, isPrimary, entry.uid);
+			}
+
+			// The "fake key" add button
+			let wiNewTag = $e("span", wiTagContainer, {classes: ["tag"]});
+			let wiNewTagIcon = $e("span", wiNewTag, {classes: ["finder-wi-tag-icon", "material-icons-outlined"], innerText: "add"});
+			let wiNewTagText = $e("span", wiNewTag, {classes: ["tag-text"], contenteditable: true, "data-placeholder": "Key"});
+
+			function newTag() {
+				let tagName = wiNewTagText.innerText;
+				wiNewTagText.innerText = "";
+				if (!tagName.trim()) return;
+				makeFinderWITag(tagName, wiAddedTagContainer, isPrimary, entry.uid)
+
+				socket.emit(
+					"update_wi_keys",
+					{uid: parseInt(entry.uid), key: tagName, is_secondary: !isPrimary, operation: "add"}
+				);
+			}
+
+			wiNewTagText.addEventListener("blur", newTag);
+			wiNewTagText.addEventListener("keydown", function(e) {
+				if (e.key === "Enter") {
+					newTag();
+					e.preventDefault();
+				}
+			});
+		}
+	}
+}
+
+function updateSearchListings() {
+	if (this.value === finder_last_input) return;
+	finder_last_input = this.value;
+	finder_selection_index = -1;
+
+	const wiCarousel = document.getElementById("finder-wi-carousel");
+	wiCarousel.classList.add("hidden");
+
+	let query = this.value.toLowerCase();
+
+	// TODO: Maybe reuse the element? Would it give better performance?
+	$(".finder-result").remove();
+
+	if (!query || query === ">") return;
+
+	if (query.startsWith(">")) {
+		wiCarousel.classList.remove("hidden");
+		$(".finder-wi-block").remove();
+
+		let wiQuery = query.replace(">", "");
+		socket.emit("search_wi", {query: wiQuery});
+	} else {
+		updateStandardSearchListings(query)
 	}
 }
 
@@ -3698,11 +3967,8 @@ $(document).ready(function(){
 	});
 	
 	finderContainer.addEventListener("click", function(e) {
+		if (e.target !== this) return;
 		finderContainer.classList.add("hidden");
-	});
-	
-	finder.addEventListener("click", function(e) {
-		e.stopPropagation();
 	});
 
 	// Debug file
