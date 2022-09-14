@@ -45,18 +45,16 @@
 	<!------------ Main Screen--------------------->
 	<div id="main-grid" class="main-grid settings_pinned" onclick="close_menus();">
 		<!------------ Game Text Screen--------------------->
-		<div id="main-container">
-			<div class="gamescreen" id="gamescreen">
-				<div id="disconnect_message"><center><h1>Disconnected</h1></center></div>
-				<div class="gametext" id="Selected Text" contenteditable=true onblur="edit_game_text();selected_game_chunk = null;clear_edit_game_text_tag();" onclick="select_game_text(null);" onkeyup="select_game_text(event);">
-					<span id="story_prompt" class="var_sync_story_prompt var_sync_alt_story_prompt_length var_sync_alt_story_prompt_in_ai rawtext"></span>
-				</div>
+		<div class="gamescreen" id="gamescreen">
+			<div id="disconnect_message"><center><h1>Disconnected</h1></center></div>
+			<div class="gametext" id="Selected Text" contenteditable=true onblur="edit_game_text();selected_game_chunk = null;clear_edit_game_text_tag();" onclick="select_game_text(null);" onkeyup="select_game_text(event);">
+				<span id="story_prompt" class="var_sync_story_prompt var_sync_alt_story_prompt_length var_sync_alt_story_prompt_in_ai rawtext"></span>
 			</div>
-
-			<!------------ Sequences --------------------->
-			<div id="action_count" class="var_sync_actions_Action_Count hidden"></div>
-			<div id="Select Options" class="sequence_area"></div>
 		</div>
+
+		<!------------ Sequences --------------------->
+		<div id="action_count" class="var_sync_actions_Action_Count hidden"></div>
+		<div id="Select Options" class="sequence_area"></div>
 
 		<!------------ Theme Area--------------------->
 		<div class="themerow" id="themerow">

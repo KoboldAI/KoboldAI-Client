@@ -1104,15 +1104,15 @@ body {
 /* ------------------- Desktop Mode --------------------------- */
 .main-grid {
 	transition: margin-left .5s;
-
-	display: flex;
-	flex-direction: column;
-
-	height: 100vh;
-	padding: 10px 30px;
-
+	display: grid;
+	height: 98vh;
 	margin-left: var(--setting_menu_closed_width_no_pins_width);
 	margin-right: var(--flyout_menu_closed_width);
+	grid-template-areas: "menuicon gamescreen options lefticon"
+						 "menuicon theme theme lefticon"
+						 "menuicon inputrow inputrow lefticon";
+	grid-template-columns: 30px auto var(--story_options_size) 30px;
+	grid-template-rows: auto min-content 100px;
 }
 
 .main-grid.settings_pinned {
@@ -1151,16 +1151,6 @@ body {
 }
 }
 
-#main-container {
-	display: flex;
-
-	/* Don't expand! */
-	min-height: 0;
-
-	/* Grow vertically as a child; take up as much space as we can! */
-	flex-grow: 1;
-}
-
 
 
 /* ---------------------------------- GAME SCREEN ----------------------------------*/
@@ -1170,10 +1160,11 @@ body {
 	box-shadow: var(--light_shadow_value);
 	color: var(--gamescreen_text);
 	width: 100%;
-	flex-grow: 1;
+	grid-area: gamescreen;
 	display: flex;
 	flex-direction: column;
 	overflow-x: hidden;
+	margin-top: 10px;
 	vertical-align: bottom;
 	font-family: "Helvetica Neue",Helvetica,Arial,sans-serif;
 	font-size: calc((1em*var(--game_screen_font_size_adjustment)) + var(--font_size_adjustment));
@@ -1186,6 +1177,7 @@ body {
 }
 
 .gametext {
+	margin-top: auto;
 	padding: 0px 5px 10px 10px;
 	vertical-align: bottom;
 	overflow-y: scroll;
@@ -1208,7 +1200,8 @@ body {
 }
 
 .sequence_area {
-	max-width: var(--story_options_size);
+	margin-top: 10px;
+	grid-area: options;
 	background-color: var(--sequence_area_background);
 	overflow-y: scroll;
 }
@@ -1305,6 +1298,7 @@ body {
 }
 
 .inputrow {
+	grid-area: inputrow;
 	z-index: 2;
 	display: grid;
 	grid-template-areas: "textarea statusbar statusbar statusbar"
