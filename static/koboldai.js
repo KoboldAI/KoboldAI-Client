@@ -258,9 +258,7 @@ function do_story_text_updates(data) {
 			item.removeChild(item.firstChild);
 		}		
 		span = document.createElement("span");
-		span2 = document.createElement("span");
-		span2.textContent = data.value.action['Selected Text'];
-		span.append(span2);
+		span.textContent = data.value.action['Selected Text'];
 		item.append(span);
 		item.original_text = data.value.action['Selected Text'];
 		item.setAttribute("world_info_uids", "");
