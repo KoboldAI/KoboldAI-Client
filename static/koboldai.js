@@ -2140,9 +2140,6 @@ function clear_edit_game_text_tag() {
 			id = window.getSelection().anchorNode.parentNode.parentNode.id;
 		}
 	}
-	console.log(id);
-	console.log(id != 'story_prompt');
-	console.log(id.slice(0, 20) != "Selected Text Chunk ");
 	if ((id != 'story_prompt') && (id.slice(0, 20) != "Selected Text Chunk ")) {
 		for (item of document.getElementsByClassName("editing")) {
 			item.classList.remove("editing");
