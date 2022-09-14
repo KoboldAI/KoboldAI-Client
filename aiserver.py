@@ -2572,45 +2572,52 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
         koboldai_vars.tokenizer = tokenizer
     
     #Let's load the presets
-    with open('official.presets') as f:
-        presets = json.load(f)
-        koboldai_vars.uid_presets = {x['uid']: x for x in presets}
-        #We want our data to be a 2 deep dict. Top level is "Recommended", "Same Class", "Model 1", "Model 2", etc
-        #Next layer is "Official", "Custom"
-        #Then the preset name
-        
-        to_use = OrderedDict()
-        
-        to_use["Recommended"] = {"Official": [], "Custom": []}
-        to_use["Same Class"] = {"Official": [], "Custom": []}
-        to_use["Other"] = {"Official": [], "Custom": []}
-        used_ids = []
-        #Build recommended first:
-        for preset in presets:
-            if preset['Model Type'] == koboldai_vars.model and preset['uid'] not in used_ids:
-                if preset['Model Category'] == 'Custom':
-                    to_use['Recommended']['Custom'].append(preset)
-                else:
-                    to_use['Recommended']['Official'].append(preset)
-                used_ids.append(preset['uid'])
-        #Build Same Class
-        for preset in presets:
-            if preset['Model Size'] in koboldai_vars.model.replace("6.7B", "6B") and preset['uid'] not in used_ids:
-                if preset['Model Category'] == 'Custom':
-                    to_use['Same Class']['Custom'].append(preset)
-                else:
-                    to_use['Same Class']['Official'].append(preset)
-                used_ids.append(preset['uid'])
-        #Build the rest of the stuff
-        for preset in presets:
-            if preset['uid'] not in used_ids:
-                used_ids.append(preset['uid'])
-                if preset['Model Category'] == 'Custom':
-                    to_use["Other"]['Custom'].append(preset)
-                else:
-                    to_use["Other"]['Official'].append(preset)
-        
-        koboldai_vars.presets = to_use
+    presets = []
+    for file in os.listdir("./presets"):
+        if file[-8:] == '.presets':
+            with open("./presets/{}".format(file)) as f:
+                data = json.load(f)
+            for preset in data:
+                presets.append(preset)
+    
+    koboldai_vars.uid_presets = {x['uid']: x for x in presets}
+    #We want our data to be a 2 deep dict. Top level is "Recommended", "Same Class", "Model 1", "Model 2", etc
+    #Next layer is "Official", "Custom"
+    #Then the preset name
+    
+    to_use = OrderedDict()
+    
+    to_use["Recommended"] = {"Official": [], "Custom": []}
+    to_use["Same Class"] = {"Official": [], "Custom": []}
+    to_use["Other"] = {"Official": [], "Custom": []}
+    used_ids = []
+    #Build recommended first:
+    for preset in presets:
+        if preset['Model Type'] == koboldai_vars.model and preset['uid'] not in used_ids:
+            if preset['Model Category'] == 'Custom':
+                to_use['Recommended']['Custom'].append(preset)
+            else:
+                to_use['Recommended']['Official'].append(preset)
+            used_ids.append(preset['uid'])
+    #Build Same Class
+    for preset in presets:
+        if preset['Model Size'] in koboldai_vars.model.replace("6.7B", "6B") and preset['uid'] not in used_ids:
+            if preset['Model Category'] == 'Custom':
+                to_use['Same Class']['Custom'].append(preset)
+            else:
+                to_use['Same Class']['Official'].append(preset)
+            used_ids.append(preset['uid'])
+    #Build the rest of the stuff
+    for preset in presets:
+        if preset['uid'] not in used_ids:
+            used_ids.append(preset['uid'])
+            if preset['Model Category'] == 'Custom':
+                to_use["Other"]['Custom'].append(preset)
+            else:
+                to_use["Other"]['Official'].append(preset)
+    
+    koboldai_vars.presets = to_use
+    
     koboldai_vars.aibusy = False
     koboldai_vars.splist = [[f, get_softprompt_desc(os.path.join("./softprompts", f),None,True)] for f in os.listdir("./softprompts") if os.path.isfile(os.path.join("./softprompts", f)) and valid_softprompt(os.path.join("./softprompts", f))]
     if initial_load and koboldai_vars.cloudflare_link != "":
@@ -7767,6 +7774,17 @@ def UI_2_load_cookies():
             with open("./settings/cookies.settings", "r") as f:
                 data = json.load(f)
                 socketio.emit('load_cookies', data, room="UI_2")
+
+#==================================================================#
+# Save New Preset
+#==================================================================#
+@socketio.on('save_new_preset')
+def UI_2_save_new_preset(data):
+    print(data)
+    preset = {}
+    for item in ["genamt", "rep_pen", "rep_pen_range", "rep_pen_slope", "sampler_order", "temp", "tfs", "top_a", "top_k", "top_p", "typical"]
+        preset[item] = getattr(koboldai_vars, item)
+    print(preset)
 
 #==================================================================#
 # Test
