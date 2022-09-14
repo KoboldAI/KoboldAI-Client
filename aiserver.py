@@ -1204,7 +1204,7 @@ def get_model_info(model, directory=""):
                     key_value = js["oaiapikey"]
                 if 'oaiurl' in js and js['oaiurl'] != "":
                     default_url = js['oaiurl']
-                get_cluster_models({'key': key_value, 'url': default_url})
+                get_cluster_models({'model': model, 'key': key_value, 'url': default_url})
     elif model in [x[1] for x in model_menu['apilist']]:
         if path.exists("settings/{}.v2_settings".format(model)):
             with open("settings/{}.v2_settings".format(model), "r") as file:
@@ -1337,7 +1337,7 @@ def get_oai_models(data):
         emit('oai_engines', {'data': engines, 'online_model': online_model}, broadcast=False, room="UI_2")
     else:
         # Something went wrong, print the message and quit since we can't initialize an engine
-        print("{0}ERROR!{1}".format(colors.RED, colors.END), room="UI_1")
+        print("{0}ERROR!{1}".format(colors.RED, colors.END))
         print(req.json())
         emit('from_server', {'cmd': 'errmsg', 'data': req.json()})
 
@@ -1345,6 +1345,7 @@ def get_oai_models(data):
 def get_cluster_models(msg):
     koboldai_vars.oaiapikey = msg['key']
     koboldai_vars.apikey = koboldai_vars.oaiapikey
+    model = msg['model']
     url = msg['url']
     
         
@@ -1369,8 +1370,8 @@ def get_cluster_models(msg):
             # If the client settings file doesn't exist, create it
             # Write API key to file
             os.makedirs('settings', exist_ok=True)
-        if path.exists(get_config_filename(koboldai_vars.model_selected)):
-            with open(get_config_filename(koboldai_vars.model_selected), "r") as file:
+        if path.exists(get_config_filename(model)):
+            with open(get_config_filename(model), "r") as file:
                 js = json.load(file)
                 if 'online_model' in js:
                     online_model = js['online_model']
@@ -1381,11 +1382,12 @@ def get_cluster_models(msg):
             changed=True
         if changed:
             js={}
-            with open(get_config_filename(koboldai_vars.model_selected), "w") as file:
+            with open(get_config_filename(model), "w") as file:
                 js["apikey"] = koboldai_vars.oaiapikey
                 file.write(json.dumps(js, indent=3))
             
-        emit('from_server', {'cmd': 'oai_engines', 'data': engines, 'online_model': online_model}, broadcast=True)
+        emit('from_server', {'cmd': 'oai_engines', 'data': engines, 'online_model': online_model}, broadcast=True, room="UI_1")
+        emit('oai_engines', {'data': engines, 'online_model': online_model}, broadcast=False, room="UI_2")
     else:
         # Something went wrong, print the message and quit since we can't initialize an engine
         print("{0}ERROR!{1}".format(colors.RED, colors.END))
@@ -3771,7 +3773,7 @@ def get_message(msg):
     elif(msg['cmd'] == 'OAI_Key_Update'):
         get_oai_models({'model': koboldai_vars.model, 'key': msg['key']})
     elif(msg['cmd'] == 'Cluster_Key_Update'):
-        get_cluster_models(msg)
+        get_cluster_models({'model': koboldai_vars.model, 'key': msg['key'], 'url': msg['url']})
     elif(msg['cmd'] == 'loadselect'):
         koboldai_vars.loadselect = msg["data"]
     elif(msg['cmd'] == 'spselect'):

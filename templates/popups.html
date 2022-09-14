@@ -34,7 +34,7 @@
 	<div id="loadmodellistcontent" class="popup_list_area"></div>
 	<div class="popup_load_cancel">
 		<div>
-			<input class="hidden fullwidth" type="text" placeholder="key" id="modelkey" onblur="socket.emit('OAI_Key_Update', {'model': document.getElementById('btn_loadmodelaccept').getAttribute('selected_model'), 'key': this.value});">
+			<input class="hidden fullwidth" type="text" placeholder="key" id="modelkey" onchange="socket.emit('OAI_Key_Update', {'model': document.getElementById('btn_loadmodelaccept').getAttribute('selected_model'), 'key': this.value});">
 			<input class="hidden fullwidth" type="text" placeholder="Enter the URL of the server (For example a trycloudflare link)" id="modelurl" onchange="check_enable_model_load()">
 			<input class="hidden fullwidth" type="text" placeholder="Model Path or Hugging Face Name" id="custommodelname" menu="" onblur="socket.send({'cmd': 'selectmodel', 'data': $(this).attr('menu'), 'path_modelname': $('#custommodelname')[0].value});">
 			<select class="hidden fullwidth settings_select" id="oaimodel"><option value="">Select OAI Model</option></select>

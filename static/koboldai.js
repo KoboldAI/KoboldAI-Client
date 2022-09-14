@@ -1168,6 +1168,25 @@ function selected_model_info(data) {
 	} else {
 		document.getElementById("modelurl").classList.add("hidden");
 	}
+	
+	//change model loading on url if needed
+	if (data.models_on_url) {
+		document.getElementById("modelurl").onchange = function () {socket.emit('get_cluster_models', {'key': document.getElementById("modelkey").value, 'url': this.value});};
+		document.getElementById("modelkey").onchange = function () {socket.emit('get_cluster_models', {'key': this.value, 'url': document.getElementById("modelurl").value});};
+	} else {
+		document.getElementById("modelkey").ochange = function () {socket.emit('OAI_Key_Update', {'model': document.getElementById('btn_loadmodelaccept').getAttribute('selected_model'), 'key': this.value});};
+		document.getElementById("modelurl").ochange = null;
+	}
+	
+	//Multiple Model Select?
+	if (data.multi_online_models) {
+		document.getElementById("oaimodel").setAttribute("multiple", "");
+		document.getElementById("oaimodel").options[0].textContent = "All"
+	} else {
+		document.getElementById("oaimodel").removeAttribute("multiple");
+		document.getElementById("oaimodel").options[0].textContent = "Select Model(s)"
+	}
+	
 	//hide or unhide the use gpu checkbox
 	if  (data.gpu) {
 		document.getElementById("use_gpu_div").classList.remove("hidden");
