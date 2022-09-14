@@ -1202,6 +1202,9 @@ def get_model_info(model, directory=""):
                     key_value = js["apikey"]
                 elif 'oaiapikey' in js and js['oaiapikey'] != "":
                     key_value = js["oaiapikey"]
+                if 'oaiurl' in js and js['oaiurl'] != "":
+                    default_url = js['oaiurl']
+                get_cluster_models({'key': key_value, 'url': default_url})
     elif model in [x[1] for x in model_menu['apilist']]:
         if path.exists("settings/{}.v2_settings".format(model)):
             with open("settings/{}.v2_settings".format(model), "r") as file:
@@ -1246,12 +1249,12 @@ def get_model_info(model, directory=""):
                          'gpu':gpu, 'layer_count':layer_count, 'breakmodel':breakmodel, 
                          'disk_break_value': disk_blocks, 'accelerate': utils.HAS_ACCELERATE,
                          'break_values': break_values, 'gpu_count': gpu_count,
-                         'url': url, 'gpu_names': gpu_names}, broadcast=True, room="UI_1")
+                         'url': url, 'gpu_names': gpu_names, 'models_on_url': models_on_url}, broadcast=True, room="UI_1")
     emit('selected_model_info', {'key_value': key_value, 'key':key, 
                          'gpu':gpu, 'layer_count':layer_count, 'breakmodel':breakmodel, 'multi_online_models': multi_online_models, 'default_url': default_url, 
                          'disk_break_value': disk_blocks, 'disk_break': utils.HAS_ACCELERATE,
                          'break_values': break_values, 'gpu_count': gpu_count,
-                         'url': url, 'gpu_names': gpu_names}, broadcast=False, room="UI_2")
+                         'url': url, 'gpu_names': gpu_names, 'models_on_url': models_on_url}, broadcast=False, room="UI_2")
     
     
 
@@ -1338,6 +1341,7 @@ def get_oai_models(data):
         print(req.json())
         emit('from_server', {'cmd': 'errmsg', 'data': req.json()})
 
+@socketio.on("get_cluster_models")
 def get_cluster_models(msg):
     koboldai_vars.oaiapikey = msg['key']
     koboldai_vars.apikey = koboldai_vars.oaiapikey
@@ -1386,7 +1390,7 @@ def get_cluster_models(msg):
         # Something went wrong, print the message and quit since we can't initialize an engine
         print("{0}ERROR!{1}".format(colors.RED, colors.END))
         print(req.json())
-        emit('from_server', {'cmd': 'errmsg', 'data': req.json()})
+        emit('from_server', {'cmd': 'errmsg', 'data': req.json()}, room="UI_1")
 
 # Function to patch transformers to use our soft prompt
 def patch_causallm(model):
