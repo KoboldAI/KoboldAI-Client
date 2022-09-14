@@ -2573,12 +2573,15 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
     
     #Let's load the presets
     presets = []
+    current_max_uid = 0
     for file in os.listdir("./presets"):
         if file[-8:] == '.presets':
             with open("./presets/{}".format(file)) as f:
                 data = json.load(f)
             for preset in data:
+                preset['uid'] += current_max_uid
                 presets.append(preset)
+            current_max_uid = max([preset['uid'] for preset in presets])
     
     koboldai_vars.uid_presets = {x['uid']: x for x in presets}
     #We want our data to be a 2 deep dict. Top level is "Recommended", "Same Class", "Model 1", "Model 2", etc
@@ -2601,7 +2604,7 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
             used_ids.append(preset['uid'])
     #Build Same Class
     for preset in presets:
-        if preset['Model Size'] in koboldai_vars.model.replace("6.7B", "6B") and preset['uid'] not in used_ids:
+        if preset['Model Size'] == get_model_size(koboldai_vars.model) and preset['uid'] not in used_ids:
             if preset['Model Category'] == 'Custom':
                 to_use['Same Class']['Custom'].append(preset)
             else:
@@ -7782,9 +7785,33 @@ def UI_2_load_cookies():
 def UI_2_save_new_preset(data):
     print(data)
     preset = {}
-    for item in ["genamt", "rep_pen", "rep_pen_range", "rep_pen_slope", "sampler_order", "temp", "tfs", "top_a", "top_k", "top_p", "typical"]
+    #Data to get from current settings
+    for item in ["genamt", "rep_pen", "rep_pen_range", "rep_pen_slope", "sampler_order", "temp", "tfs", "top_a", "top_k", "top_p", "typical"]:
         preset[item] = getattr(koboldai_vars, item)
+    #Data to get from UI
+    for item in ['preset', 'description']:
+        preset[item] = data[item]
+    preset['Model Size'] = get_model_size(koboldai_vars.model)
+    preset['Model Category'] = 'Custom'
+    preset['uid'] = 0
+    preset = [preset]
     print(preset)
+    with open("./presets/{}.presets".format(data['preset']), "w") as f:
+        json.dump(preset, f, indent="\t")
+
+def get_model_size(model_name):
+    if "30B" in model_name:
+        return "30B"
+    elif "20B" in model_name:
+        return "20B"
+    elif "13B" in model_name:
+        return "13B"
+    elif "6B" in model_name.replace("6.7B", "6B"):
+        return "6B"
+    elif "2.7B" in model_name:
+        return "2.7B"
+    elif "1.3B" in model_name:
+        return "1.3B"
 
 #==================================================================#
 # Test
