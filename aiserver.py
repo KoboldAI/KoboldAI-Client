@@ -7517,7 +7517,7 @@ def UI_2_update_wi_attribute(data):
     socketio.emit("world_info_entry", koboldai_vars.worldinfo_v2.world_info[uid], broadcast=True, room="UI_2")
 
 @socketio.on("update_wi_keys")
-def UI_2_update_wi_attribute(data):
+def UI_2_update_wi_keys(data):
     uid, key, is_secondary, operation = data["uid"], data["key"], data["is_secondary"], data["operation"]
 
     keykey = "key" if not is_secondary else "keysecondary"
