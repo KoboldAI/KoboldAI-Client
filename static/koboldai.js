@@ -3887,9 +3887,6 @@ $(document).ready(function(){
 	
 	process_cookies();
 
-	// Load tweaks from cookies if not on Colab; Colab uses the server for persistant storage.
-	if (!on_colab) load_tweaks(getCookie("enabledTweaks", "[]"));
-
 	$("#context-viewer-close").click(function() {
 		document.getElementById("context-viewer-container").classList.add("hidden");
 	});
