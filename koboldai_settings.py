@@ -116,7 +116,7 @@ class koboldai_vars(object):
         if self.tokenizer is None:
             used_tokens = 99999999999999999999999
         else:
-            used_tokens = self.sp_length
+            used_tokens = 0 if self.sp_length is None else self.sp_length
         text = ""
 
         # TODO: We may want to replace the "text" variable with a list-type
@@ -222,7 +222,7 @@ class koboldai_vars(object):
                                     match=True
                                     break
                         if match:
-                            if used_tokens+0 if 'token_length' not in wi else wi['token_length'] <= token_budget:
+                            if used_tokens+0 if 'token_length' not in wi or wi['token_length'] is None else wi['token_length'] <= token_budget:
                                 used_tokens+=wi['token_length']
                                 used_world_info.append(wi['uid'])
                                 wi_text = wi["content"]
@@ -257,7 +257,7 @@ class koboldai_vars(object):
                                     match=True
                                     break
                         if match:
-                            if used_tokens+0 if 'token_length' not in wi else wi['token_length'] <= token_budget:
+                            if used_tokens+0 if 'token_length' not in wi or wi['token_length'] is None else wi['token_length'] <= token_budget:
                                 used_tokens+=wi['token_length']
                                 used_world_info.append(wi['uid'])
                                 wi_text = wi["content"]
@@ -1477,6 +1477,8 @@ class KoboldWorldInfo(object):
                 for column in ["uid","title","key","keysecondary","folder","constant","content","comment","token_length","selective","used_in_game"]:
                     if column not in self.world_info[item]:
                         self.world_info[item][column] = None
+                if "wpp" not in self.world_info[item]:
+                    self.world_info[item]['wpp'] = {'name': "", 'type': "", 'format': "W++", 'attributes': {}}
             try:
                 self.sync_world_info_to_old_format()
             except:

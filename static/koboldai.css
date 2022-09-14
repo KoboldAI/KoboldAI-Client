@@ -1191,7 +1191,7 @@ body {
 .editing{
   border:none;
   outline:none;
-  color: var(--text_edit);
+  color: var(--text_edit) !important;
 }
 
 .gametext span span[title]:not([title=""]) {
