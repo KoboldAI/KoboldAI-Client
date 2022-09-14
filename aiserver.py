@@ -7144,7 +7144,7 @@ def UI_2_save_to_json():
 #==================================================================#
 @socketio.on('Set Selected Text')
 def UI_2_Set_Selected_Text(data):
-    if koboldai_vars.quiet:
+    if not koboldai_vars.quiet:
         print("Updating Selected Text: {}".format(data))
     koboldai_vars.actions[int(data['id'])] = data['text']
 

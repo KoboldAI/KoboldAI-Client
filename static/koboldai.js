@@ -48,6 +48,7 @@ var on_colab;
 var colab_cookies = null;
 var wi_finder_data = [];
 var wi_finder_offset = 0;
+var selected_game_chunk = null;
 
 // name, desc, icon, func
 const finder_actions = [
@@ -272,17 +273,8 @@ function do_story_text_updates(data) {
 		var span = document.createElement("span");
 		span.id = 'Selected Text Chunk '+data.value.id;
 		span.classList.add("rawtext");
-		span.chunk = data.value.id;
+		span.setAttribute("chunk", data.value.id);
 		span.original_text = data.value.action['Selected Text'];
-		span.setAttribute("contenteditable", true);
-		span.onblur = function () {
-			if (this.textContent != this.original_text) {
-				socket.emit("Set Selected Text", {"id": this.chunk, "text": this.textContent});
-				this.original_text = this.textContent;
-				this.classList.add("pulse");
-			}
-		}
-		span.onkeydown = detect_enter_text;
 		new_span = document.createElement("span");
 		new_span.textContent = data.value.action['Selected Text'];
 		span.append(new_span);
@@ -306,9 +298,7 @@ function do_prompt(data) {
 		}
 		
 		span = document.createElement("span");
-		span2 = document.createElement("span");
-		span2.textContent = data.value;
-		span.append(span2);
+		span.textContent = data.value;
 		item.append(span);
 		item.setAttribute("old_text", data.value)
 		item.classList.remove("pulse");
@@ -2044,7 +2034,6 @@ function save_tweaks() {
 	setCookie("enabledTweaks", JSON.stringify(out));
 }
 
-
 function load_tweaks() {
 	
 	let enabledTweaks = JSON.parse(getCookie("enabledTweaks", "[]"));
@@ -2073,6 +2062,52 @@ function toggle_adventure_mode(button) {
 			}
 		});
 	
+}
+
+function select_game_text(event) {
+	if ((event == null) || (event.code == 'ArrowRight') || (event.code == 'ArrowLeft') || (event.code == 'ArrowDown') || (event.code == 'ArrowUp')) {
+		let new_selected_game_chunk = null;
+		if (document.selection) {
+			if (document.selection.createRange().parentElement().id == 'story_prompt') {
+				new_selected_game_chunk = document.selection.createRange().parentElement();
+			} else {
+				new_selected_game_chunk = document.selection.createRange().parentElement().parentElement();
+			}
+		} else {
+			if (window.getSelection().anchorNode.parentNode.id == 'story_prompt') {
+				new_selected_game_chunk = window.getSelection().anchorNode.parentNode;
+			} else {
+				new_selected_game_chunk = window.getSelection().anchorNode.parentNode.parentNode;
+			}
+		}
+		//if we've moved to a new game chunk we need to save the old chunk
+		if ((new_selected_game_chunk != selected_game_chunk) && (selected_game_chunk != null)) {
+			edit_game_text();
+		}
+		if (new_selected_game_chunk != selected_game_chunk) {
+			selected_game_chunk = new_selected_game_chunk
+		}
+		
+		//set editting class
+		for (item of document.getElementsByClassName("editing")) {
+			item.classList.remove("editing");
+		}
+		selected_game_chunk.classList.add("editing");
+	}
+}
+
+function edit_game_text() {
+	if ((selected_game_chunk != null) && (selected_game_chunk.textContent != selected_game_chunk.original_text)) {
+		console.log("selected_chunk_id: "+selected_game_chunk.id);
+		console.log(selected_game_chunk);
+		if (selected_game_chunk.id == "story_prompt") {
+			sync_to_server(selected_game_chunk);
+		} else {
+			socket.emit("Set Selected Text", {"id": selected_game_chunk.getAttribute("chunk"), "text": selected_game_chunk.textContent});
+		}
+		selected_game_chunk.original_text = selected_game_chunk.textContent;
+		selected_game_chunk.classList.add("pulse");
+	}
 }
 
 //--------------------------------------------General UI Functions------------------------------------

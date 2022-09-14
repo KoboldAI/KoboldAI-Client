@@ -1188,8 +1188,7 @@ body {
   display: none;
 }
 
-[contenteditable="true"]:active,
-[contenteditable="true"]:focus{
+.editing{
   border:none;
   outline:none;
   color: var(--text_edit);
