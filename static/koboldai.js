@@ -3862,9 +3862,6 @@ $(document).ready(function(){
 	document.onkeyup = detect_key_up;
 	document.getElementById("input_text").onkeydown = detect_enter_submit;
 	
-	process_cookies();
-
-
 	// Tweak registering
 	for (const tweakContainer of document.getElementsByClassName("tweak-container")) {
 		let toggle = tweakContainer.querySelector("input");
@@ -3887,6 +3884,8 @@ $(document).ready(function(){
 			save_tweaks();
 		});
 	}
+	
+	process_cookies();
 
 	// Load tweaks from cookies if not on Colab; Colab uses the server for persistant storage.
 	if (!on_colab) load_tweaks(getCookie("enabledTweaks", "[]"));
