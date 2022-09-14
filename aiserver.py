@@ -7793,6 +7793,7 @@ def UI_2_save_new_preset(data):
         preset[item] = data[item]
     preset['Model Size'] = get_model_size(koboldai_vars.model)
     preset['Model Category'] = 'Custom'
+    preset['Model Type'] = koboldai_vars.model
     preset['uid'] = 0
     preset = [preset]
     print(preset)

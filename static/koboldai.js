@@ -2108,7 +2108,16 @@ function edit_game_text() {
 	}
 }
 
+function save_preset() {
+	socket.emit("save_new_preset", {"preset": document.getElementById("new_preset_name").value, "description": document.getElementById("new_preset_description").value});
+	document.getElementById('save_preset').classList.add('hidden');
+}
+
 //--------------------------------------------General UI Functions------------------------------------
+function show_save_preset() {
+	document.getElementById("save_preset").classList.remove("hidden");
+}
+
 function autoResize(element) {
 	element.style.height = 'auto';
 	element.style.height = element.scrollHeight + 'px';
@@ -3048,6 +3057,7 @@ function close_menus() {
 	document.getElementById('error_message').classList.add("hidden");
 	document.getElementById("advanced_theme_editor").classList.add("hidden");
 	document.getElementById("context-viewer-container").classList.add("hidden");
+	document.getElementById("save_preset").classList.add("hidden");
 	
 	//unselect sampler items
 	for (temp of document.getElementsByClassName("sample_order")) {

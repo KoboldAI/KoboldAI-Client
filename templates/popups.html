@@ -69,6 +69,38 @@
 		<button type="button" class="btn btn-primary popup_load_cancel_button" onclick="document.getElementById('save-confirm').classList.add('hidden');">Cancel</button>
 	</div>
 </div>
+
+<!---------------- Save Preset screen ---------------------->
+<div class="popup hidden" id="save_preset">
+	<div class="title">
+		<div class="popuptitletext">Save Preset</div>
+	</div>
+	<div id="popup_list_area" class="popup_list_area">
+		<table>
+			<tr>
+				<td>
+					Name: 
+				</td>
+				<td>
+					<input type="text" id="new_preset_name"/>
+				</td>
+			</tr>
+			<tr>
+				<td>
+					Description:
+				</td>
+				<td>
+					<input type="text" id="new_preset_description"/>
+				</td>
+			</tr>
+		</table>
+	</div>
+	<div class="popup_load_cancel">
+		<button type="button" class="btn btn-primary popup_load_cancel_button" onclick='save_preset()'>Save</button>
+		<button type="button" class="btn btn-primary popup_load_cancel_button" onclick="document.getElementById('save_preset').classList.add('hidden');">Cancel</button>
+	</div>
+</div>
+
 <!---------------- Import aidg.club Prompt ---------------------->
 <div class="popup hidden" id="import_aidg_club_popup">
 	<div class="title">
