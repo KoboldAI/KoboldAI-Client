@@ -3844,7 +3844,7 @@ function process_cookies() {
 		options_on_right(true);
 	}
 	
-	Change_Theme(getCookie("theme", "Monochrome"))
+	Change_Theme(getCookie("theme", "Monochrome"));
 	
 	load_tweaks();
 }
