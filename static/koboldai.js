@@ -1381,6 +1381,9 @@ function load_model() {
 }
 
 function world_info_entry_used_in_game(data) {
+	if (!(data.uid in world_info_data)) {
+		world_info_data[data.uid] = {};
+	}
 	world_info_data[data.uid]['used_in_game'] = data['used_in_game'];
 	world_info_card = document.getElementById("world_info_"+data.uid);
 	if (data.used_in_game) {
