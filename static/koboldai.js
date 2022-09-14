@@ -2115,8 +2115,6 @@ function select_game_text(event) {
 
 function edit_game_text() {
 	if ((selected_game_chunk != null) && (selected_game_chunk.textContent != selected_game_chunk.original_text)) {
-		console.log("selected_chunk_id: "+selected_game_chunk.id);
-		console.log(selected_game_chunk);
 		if (selected_game_chunk.id == "story_prompt") {
 			sync_to_server(selected_game_chunk);
 		} else {
@@ -2124,6 +2122,31 @@ function edit_game_text() {
 		}
 		selected_game_chunk.original_text = selected_game_chunk.textContent;
 		selected_game_chunk.classList.add("pulse");
+	}
+}
+
+function clear_edit_game_text_tag() {
+	let id = null;
+	if (document.selection) {
+		if (document.selection.createRange().parentElement().id == 'story_prompt') {
+			id = document.selection.createRange().parentElement().id;
+		} else {
+			id = document.selection.createRange().parentElement().parentElement().id;
+		}
+	} else {
+		if (window.getSelection().anchorNode.parentNode.id == 'story_prompt') {
+			id = window.getSelection().anchorNode.parentNode.id;
+		} else {
+			id = window.getSelection().anchorNode.parentNode.parentNode.id;
+		}
+	}
+	console.log(id);
+	console.log(id != 'story_prompt');
+	console.log(id.slice(0, 20) != "Selected Text Chunk ");
+	if ((id != 'story_prompt') && (id.slice(0, 20) != "Selected Text Chunk ")) {
+		for (item of document.getElementsByClassName("editing")) {
+			item.classList.remove("editing");
+		}
 	}
 }
 
