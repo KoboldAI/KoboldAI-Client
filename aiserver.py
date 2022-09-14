@@ -1841,6 +1841,10 @@ def patch_transformers():
             scores: torch.FloatTensor,
             **kwargs,
         ) -> bool:
+
+            if koboldai_vars.inference_config.do_dynamic_wi:
+                pass
+
             koboldai_vars.generated_tkns += 1
             if(not koboldai_vars.standalone and koboldai_vars.lua_koboldbridge.generated_cols and koboldai_vars.generated_tkns != koboldai_vars.lua_koboldbridge.generated_cols):
                 raise RuntimeError(f"Inconsistency detected between KoboldAI Python and Lua backends ({koboldai_vars.generated_tkns} != {koboldai_vars.lua_koboldbridge.generated_cols})")
@@ -1874,8 +1878,9 @@ def patch_transformers():
             return self.regeneration_required or self.halt
     old_get_stopping_criteria = transformers.generation_utils.GenerationMixin._get_stopping_criteria
     def new_get_stopping_criteria(self, *args, **kwargs):
-        stopping_criteria = old_get_stopping_criteria(self, *args, **kwargs)
         global tokenizer
+        stopping_criteria = old_get_stopping_criteria(self, *args, **kwargs)
+
         self.kai_scanner = DynamicWorldInfoScanCriteria(
             tokenizer=tokenizer,
             excluded_world_info=self.kai_scanner_excluded_world_info,
@@ -2605,6 +2610,11 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
             setStartState()
             sendsettings()
             refresh_settings()
+    
+        prompto = "What does 1+1 equal?\n"
+        print("Hehe")
+        out = raw_generate(prompto, 80)
+        print(f"{out=}")
     
     #Saving the tokenizer to the KoboldStoryRegister class so we can do token counting on the story data
     if 'tokenizer' in [x for x in globals()]:
@@ -4618,6 +4628,40 @@ def calcsubmit(txt):
         
         # Send it!
         ikrequest(subtxt)
+
+def raw_generate(
+    prompt: str,
+    max_length: int,
+
+    do_streaming: bool = False,
+    do_dynamic_wi: bool = False,
+):
+
+    koboldai_vars.inference_config.do_streaming = do_streaming
+    koboldai_vars.inference_config.do_dynamic_wi = do_dynamic_wi
+
+    prompt_tokens = tokenizer.encode(prompt)
+    gen_in = torch.tensor(prompt_tokens, dtype=torch.long)[None]
+
+    device = "cpu"
+    if koboldai_vars.hascuda and koboldai_vars.usegpu:
+        device = koboldai_vars.gpu_device
+    elif koboldai_vars.hascuda and koboldai_vars.breakmodel:
+        device = breakmodel.primary_device
+    gen_in = gen_in.to(device)
+
+    with torch.no_grad():
+        genout = generator(
+            gen_in, 
+            do_sample=True, 
+            max_length=max_length,
+            repetition_penalty=1.0,
+            bad_words_ids=koboldai_vars.badwordsids,
+            use_cache=True,
+        )
+    
+    text_out = tokenizer.decode(genout[0])
+    return text_out
 
 #==================================================================#
 # Send text to generator and deal with output

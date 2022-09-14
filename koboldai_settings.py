@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 import os, re, time, threading, json, pickle, base64, copy, tqdm, datetime, sys
 from io import BytesIO
 from flask import has_request_context
@@ -705,8 +706,8 @@ class user_settings(settings):
             process_variable_changes(self.socketio, self.__class__.__name__.replace("_settings", ""), name, value, old_value)
         
 class system_settings(settings):
-    local_only_variables = ['socketio', 'lua_state', 'lua_logname', 'lua_koboldbridge', 'lua_kobold', 'lua_koboldcore', 'regex_sl', 'acregex_ai', 'acregex_ui', 'comregex_ai', 'comregex_ui', 'sp', '_horde_pid']
-    no_save_variables = ['socketio', 'lua_state', 'lua_logname', 'lua_koboldbridge', 'lua_kobold', 'lua_koboldcore', 'sp', '_horde_pid', 'horde_share', 'aibusy', 'serverstarted']
+    local_only_variables = ['socketio', 'lua_state', 'lua_logname', 'lua_koboldbridge', 'lua_kobold', 'lua_koboldcore', 'regex_sl', 'acregex_ai', 'acregex_ui', 'comregex_ai', 'comregex_ui', 'sp', '_horde_pid', 'inference_config']
+    no_save_variables = ['socketio', 'lua_state', 'lua_logname', 'lua_koboldbridge', 'lua_kobold', 'lua_koboldcore', 'sp', '_horde_pid', 'horde_share', 'aibusy', 'serverstarted', 'inference_config']
     settings_name = "system"
     def __init__(self, socketio):
         self.socketio = socketio
@@ -784,6 +785,16 @@ class system_settings(settings):
         self.horde_share = False
         self._horde_pid = None
         self.cookies = {} #cookies for colab since colab's URL changes, cookies are lost
+
+        @dataclass
+        class _inference_config:
+            do_streaming: bool = False
+
+            # NOTE: DynamicWorldInfoScanCriteria handles not only dynamic world
+            # info, but also max length, aborting, regeneration requests, etc
+            # for kobold-rooted stuff. This would be nice to change in the future.
+            do_dynamic_wi: bool = False
+        self.inference_config = _inference_config()
         
         
     def __setattr__(self, name, value):
