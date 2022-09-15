@@ -393,7 +393,8 @@ class Send_to_socketio(object):
         print(bar, end="")
         time.sleep(0.01)
         try:
-            emit('from_server', {'cmd': 'model_load_status', 'data': bar.replace(" ", "&nbsp;")}, broadcast=True)
+            gui_msg = bar.replace(f"{colors.PURPLE}INIT{colors.END}       | ","").replace(" ", "&nbsp;")
+            emit('from_server', {'cmd': 'model_load_status', 'data': gui_msg}, broadcast=True)
         except:
             pass
                                 
