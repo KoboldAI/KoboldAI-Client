@@ -1062,6 +1062,7 @@ function show_model_menu(data) {
 	document.getElementById("modelurl").classList.add("hidden");
 	document.getElementById("use_gpu_div").classList.add("hidden");
 	document.getElementById("modellayers").classList.add("hidden");
+	document.getElementById("oaimodel").classList.add("hidden");
 	var model_layer_bars = document.getElementById('model_layer_bars');
 	while (model_layer_bars.firstChild) {
 		model_layer_bars.removeChild(model_layer_bars.firstChild);
@@ -1169,13 +1170,25 @@ function selected_model_info(data) {
 		document.getElementById("modelurl").classList.add("hidden");
 	}
 	
+	//default URL loading
+	if (data.default_url != null) {
+		document.getElementById("modelurl").value = data.default_url;
+	}
+	
 	//change model loading on url if needed
 	if (data.models_on_url) {
-		document.getElementById("modelurl").onchange = function () {socket.emit('get_cluster_models', {'key': document.getElementById("modelkey").value, 'url': this.value});};
-		document.getElementById("modelkey").onchange = function () {socket.emit('get_cluster_models', {'key': this.value, 'url': document.getElementById("modelurl").value});};
+		document.getElementById("modelurl").onchange = function () {socket.emit('get_cluster_models', {'model': document.getElementById('btn_loadmodelaccept').getAttribute('selected_model'), 'key': document.getElementById("modelkey").value, 'url': this.value});};
+		document.getElementById("modelkey").onchange = function () {socket.emit('get_cluster_models', {'model': document.getElementById('btn_loadmodelaccept').getAttribute('selected_model'), 'key': this.value, 'url': document.getElementById("modelurl").value});};
 	} else {
 		document.getElementById("modelkey").ochange = function () {socket.emit('OAI_Key_Update', {'model': document.getElementById('btn_loadmodelaccept').getAttribute('selected_model'), 'key': this.value});};
 		document.getElementById("modelurl").ochange = null;
+	}
+	
+	//show model select for APIs
+	if (data.show_online_model_select) {
+		document.getElementById("oaimodel").classList.remove("hidden");
+	} else {
+		document.getElementById("oaimodel").classList.add("hidden");
 	}
 	
 	//Multiple Model Select?
@@ -1372,10 +1385,20 @@ function load_model() {
 		var path = "";
 	}
 	
+	let selected_models = [];
+	for (item of document.getElementById("oaimodel").selectedOptions) {
+		selected_models.push(item.value);
+	}
+	if (selected_models == []) {
+		selected_models = "";
+	} else if (selected_models.length == 1) {
+		selected_models = selected_models[0];
+	}
+	
 	message = {'model': model, 'path': path, 'use_gpu': document.getElementById("use_gpu").checked, 
 			   'key': document.getElementById('modelkey').value, 'gpu_layers': gpu_layers.join(), 
 			   'disk_layers': disk_layers, 'url': document.getElementById("modelurl").value, 
-			   'online_model': document.getElementById("oaimodel").value};
+			   'online_model': selected_models};
 	socket.emit("load_model", message);
 	document.getElementById("loadmodelcontainer").classList.add("hidden");
 }

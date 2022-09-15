@@ -2290,6 +2290,7 @@ h2 .material-icons-outlined {
 	}
 }
 
-.horde_trigger[model_model="ReadOnly"] {
+.horde_trigger[model_model="ReadOnly"],
+.horde_trigger[model_model="CLUSTER"] {
 	display: none;
 }

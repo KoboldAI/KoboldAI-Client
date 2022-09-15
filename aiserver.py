@@ -1181,6 +1181,7 @@ def get_model_info(model, directory=""):
     default_url = None
     models_on_url = False
     multi_online_models = False
+    show_online_model_select=False
     gpu_count = torch.cuda.device_count()
     gpu_names = []
     for i in range(gpu_count):
@@ -1189,6 +1190,7 @@ def get_model_info(model, directory=""):
         url = True
     elif model == 'CLUSTER':
         models_on_url = True
+        show_online_model_select=True
         url = True
         key = True
         default_url = 'https://koboldai.net'
@@ -1206,6 +1208,7 @@ def get_model_info(model, directory=""):
                     default_url = js['oaiurl']
                 get_cluster_models({'model': model, 'key': key_value, 'url': default_url})
     elif model in [x[1] for x in model_menu['apilist']]:
+        show_online_model_select=True
         if path.exists("settings/{}.v2_settings".format(model)):
             with open("settings/{}.v2_settings".format(model), "r") as file:
                 # Check if API key exists
@@ -1254,7 +1257,7 @@ def get_model_info(model, directory=""):
                          'gpu':gpu, 'layer_count':layer_count, 'breakmodel':breakmodel, 'multi_online_models': multi_online_models, 'default_url': default_url, 
                          'disk_break_value': disk_blocks, 'disk_break': utils.HAS_ACCELERATE,
                          'break_values': break_values, 'gpu_count': gpu_count,
-                         'url': url, 'gpu_names': gpu_names, 'models_on_url': models_on_url}, broadcast=False, room="UI_2")
+                         'url': url, 'gpu_names': gpu_names, 'models_on_url': models_on_url, 'show_online_model_select': show_online_model_select}, broadcast=False, room="UI_2")
     
     
 
@@ -1927,6 +1930,7 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
     if not utils.HAS_ACCELERATE:
         disk_layers = None
     koboldai_vars.reset_model()
+    koboldai_vars.cluster_requested_models = online_model
     koboldai_vars.noai = False
     if not use_breakmodel_args:
         set_aibusy(True)
@@ -1990,7 +1994,7 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
             koboldai_vars.configname = f"{koboldai_vars.model}_{online_model.replace('/', '_')}"
         if path.exists(get_config_filename()):
             changed=False
-            with open("settings/{}.v2_settings".format(koboldai_vars.model), "r") as file:
+            with open(get_config_filename(), "r") as file:
                 # Check if API key exists
                 js = json.load(file)
                 if 'online_model' in js:

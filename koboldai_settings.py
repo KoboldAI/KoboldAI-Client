@@ -439,7 +439,7 @@ class model_settings(settings):
         self.selected_preset = ""
         self.uid_presets = []
         self.default_preset = {}
-        cluster_requested_models = [] # The models which we allow to generate during cluster mode
+        self.cluster_requested_models = [] # The models which we allow to generate during cluster mode
         
         
     #dummy class to eat the tqdm output
