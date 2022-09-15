@@ -2108,16 +2108,24 @@ function select_game_text(event) {
 			selected_game_chunk = new_selected_game_chunk
 		}
 		
+		//since we have that delete me span for initial spacing, we don't want that to be editable, so let's fix that here
+		if (selected_game_chunk == document.getElementById("Delete Me")) {
+			selected_game_chunk = null;
+		}
+		
 		//set editting class
 		for (item of document.getElementsByClassName("editing")) {
 			item.classList.remove("editing");
 		}
-		selected_game_chunk.classList.add("editing");
+		if (selected_game_chunk != null) {
+			selected_game_chunk.classList.add("editing");
+		}
 	}
 }
 
 function edit_game_text() {
-	if ((selected_game_chunk != null) && (selected_game_chunk.textContent != selected_game_chunk.original_text)) {
+	if ((selected_game_chunk != null) && (selected_game_chunk.textContent != selected_game_chunk.original_text) && (selected_game_chunk != document.getElementById("Delete Me"))) {
+		console.log(selected_game_chunk);
 		if (selected_game_chunk.id == "story_prompt") {
 			sync_to_server(selected_game_chunk);
 		} else {
