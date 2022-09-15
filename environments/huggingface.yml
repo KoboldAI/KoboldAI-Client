@@ -23,6 +23,6 @@ dependencies:
     - flask-cloudflared
     - flask-ngrok
     - lupa==1.10
-    - transformers>=4.20.1
+    - transformers==4.21.3
     - accelerate
     - loguru
