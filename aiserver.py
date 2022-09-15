@@ -17,7 +17,8 @@ os.environ['TOKENIZERS_PARALLELISM'] = 'false'
 from eventlet import tpool
 
 import logging
-logging.basicConfig(format='%(levelname)s - %(module)s:%(lineno)d - %(message)s',level=logging.WARNING)
+from logger import logger, set_logger_verbosity, quiesce_logger
+
 logging.getLogger("urllib3").setLevel(logging.ERROR)
 
 from os import path, getcwd
@@ -66,11 +67,12 @@ try:
 except:
     pass
 import transformers.generation_utils
+
 global tpu_mtj_backend
 
 
 if lupa.LUA_VERSION[:2] != (5, 4):
-    print(f"Please install lupa==1.10. You have lupa {lupa.__version__}.", file=sys.stderr)
+    logger.error(f"Please install lupa==1.10. You have lupa {lupa.__version__}.")
 
 patch_causallm_patched = False
 
@@ -400,8 +402,6 @@ import logging
 log = logging.getLogger('werkzeug')
 log.setLevel(logging.ERROR)
 
-# Start flask & SocketIO
-print("{0}Initializing Flask... {1}".format(colors.PURPLE, colors.END), end="")
 from flask import Flask, render_template, Response, request, copy_current_request_context, send_from_directory, session, jsonify, abort, redirect
 from flask_socketio import SocketIO
 from flask_socketio import emit as _emit
@@ -412,9 +412,7 @@ app = Flask(__name__, root_path=os.getcwd())
 app.secret_key = secrets.token_hex()
 app.config['SESSION_TYPE'] = 'filesystem'
 app.config['TEMPLATES_AUTO_RELOAD'] = True
-Session(app)
 socketio = SocketIO(app, async_method="eventlet")
-print("{0}OK!{1}".format(colors.GREEN, colors.END))
 
 old_socketio_on = socketio.on
 def new_socketio_on(*a, **k):
@@ -628,7 +626,7 @@ def get_config_filename(model_name = None):
     elif vars.configname != '':
         return(f"settings/{vars.configname.replace('/', '_')}.settings")
     else:
-        print(f"Empty configfile name sent back. Defaulting to ReadOnly")
+        logger.warning(f"Empty configfile name sent back. Defaulting to ReadOnly")
         return(f"settings/ReadOnly.settings")
 #==================================================================#
 # Function to get model selection at startup
@@ -796,14 +794,14 @@ def device_config(config):
                 breakmodel.disk_blocks = args.breakmodel_disklayers
                 n_layers -= args.breakmodel_disklayers
         except:
-            print("WARNING: --breakmodel_gpulayers is malformatted. Please use the --help option to see correct usage of --breakmodel_gpulayers. Defaulting to all layers on device 0.", file=sys.stderr)
+            logger.warning("--breakmodel_gpulayers is malformatted. Please use the --help option to see correct usage of --breakmodel_gpulayers. Defaulting to all layers on device 0.")
             breakmodel.gpu_blocks = [n_layers]
             n_layers = 0
     elif(args.breakmodel_layers is not None):
         breakmodel.gpu_blocks = [n_layers - max(0, min(n_layers, args.breakmodel_layers))]
         n_layers -= sum(breakmodel.gpu_blocks)
     elif(args.model is not None):
-        print("Breakmodel not specified, assuming GPU 0")
+        logger.info("Breakmodel not specified, assuming GPU 0")
         breakmodel.gpu_blocks = [n_layers]
         n_layers = 0
     else:
@@ -862,7 +860,7 @@ def device_config(config):
                 else:
                     print(f"{colors.RED}Please enter an integer between -1 and {n_layers}.{colors.END}")
 
-    print(colors.PURPLE + "\nFinal device configuration:")
+    logger.init_ok("Final device configuration:", status="Info")
     device_list(n_layers)
 
     # If all layers are on the same device, use the old GPU generation mode
@@ -875,7 +873,7 @@ def device_config(config):
         return
 
     if(not breakmodel.gpu_blocks):
-        print("Nothing assigned to a GPU, reverting to CPU only mode")
+        logger.warning("Nothing assigned to a GPU, reverting to CPU only mode")
         import breakmodel
         breakmodel.primary_device = "cpu"
         vars.breakmodel = False
@@ -1083,7 +1081,7 @@ def savesettings():
 #==================================================================#
 @debounce(2)
 def settingschanged():
-    print("{0}Saving settings!{1}".format(colors.GREEN, colors.END))
+    logger.info("Saving settings.")
     savesettings()
 
 #==================================================================#
@@ -1323,6 +1321,9 @@ def general_startup(override_args=None):
     parser.add_argument("--savemodel", action='store_true', help="Saves the model to the models folder even if --colab is used (Allows you to save models to Google Drive)")
     parser.add_argument("--customsettings", help="Preloads arguements from json file. You only need to provide the location of the json file. Use customsettings.json template file. It can be renamed if you wish so that you can store multiple configurations. Leave any settings you want as default as null. Any values you wish to set need to be in double quotation marks")
     parser.add_argument("--no_ui", action='store_true', default=False, help="Disables the GUI and Socket.IO server while leaving the API server running.")
+    parser.add_argument('-v', '--verbosity', action='count', default=0, help="The default logging level is ERROR or higher. This value increases the amount of logging seen in your screen")
+    parser.add_argument('-q', '--quiesce', action='count', default=0, help="The default logging level is ERROR or higher. This value decreases the amount of logging seen in your screen")
+
     #args: argparse.Namespace = None
     if "pytest" in sys.modules and override_args is None:
         args = parser.parse_args([])
@@ -1336,6 +1337,8 @@ def general_startup(override_args=None):
     else:
         args = parser.parse_args()
 
+    set_logger_verbosity(args.verbosity)
+    quiesce_logger(args.quiesce)
     if args.customsettings:
         f = open (args.customsettings)
         importedsettings = json.load(f)
@@ -1403,9 +1406,10 @@ def general_startup(override_args=None):
             vars.model = "NeoCustom"
             vars.custmodpth = modpath
     elif args.model:
-        print("Welcome to KoboldAI!\nYou have selected the following Model:", vars.model)
+        logger.message(f"Welcome to KoboldAI!")
+        logger.message(f"You have selected the following Model: {vars.model}")
         if args.path:
-            print("You have selected the following path for your Model :", args.path)
+            logger.message(f"You have selected the following path for your Model: {args.path}")
             vars.custmodpth = args.path;
             vars.colaburl = args.path + "/request"; # Lets just use the same parameter to keep it simple
 #==================================================================#
@@ -1552,7 +1556,7 @@ def get_oai_models(key):
         return
         
     # Get list of models from OAI
-    print("{0}Retrieving engine list...{1}".format(colors.PURPLE, colors.END), end="")
+    logger.init("OAI Engines", status="Retrieving")
     req = requests.get(
         url, 
         headers = {
@@ -1564,7 +1568,7 @@ def get_oai_models(key):
         try:
             engines = [[en["id"], "{} ({})".format(en['id'], "Ready" if en["ready"] == True else "Not Ready")] for en in engines]
         except:
-            print(engines)
+            logger.error(engines)
             raise
         
         online_model = ""
@@ -1591,11 +1595,12 @@ def get_oai_models(key):
                 js["apikey"] = key
                 file.write(json.dumps(js, indent=3))
             
+        logger.init_ok("OAI Engines", status="OK")
         emit('from_server', {'cmd': 'oai_engines', 'data': engines, 'online_model': online_model}, broadcast=True)
     else:
         # Something went wrong, print the message and quit since we can't initialize an engine
-        print("{0}ERROR!{1}".format(colors.RED, colors.END))
-        print(req.json())
+        logger.init_err("OAI Engines", status="Failed")
+        logger.error(req.json())
         emit('from_server', {'cmd': 'errmsg', 'data': req.json()})
 
 def get_cluster_models(msg):
@@ -1605,17 +1610,16 @@ def get_cluster_models(msg):
     
         
     # Get list of models from public cluster
-    print("{0}Retrieving engine list...{1}".format(colors.PURPLE, colors.END), end="")
+    logger.init("KAI Horde Models", status="Retrieving")
     req = requests.get("{}/models".format(url))
     if(req.status_code == 200):
         engines = req.json()
-        print(engines)
+        logger.debug(engines)
         try:
             engines = [[en, en] for en in engines]
         except:
-            print(engines)
+            logger.error(engines)
             raise
-        print(engines)
         
         online_model = ""
         changed=False
@@ -1641,11 +1645,12 @@ def get_cluster_models(msg):
                 js["apikey"] = vars.oaiapikey
                 file.write(json.dumps(js, indent=3))
             
+        logger.init_ok("KAI Horde Models", status="OK")
         emit('from_server', {'cmd': 'oai_engines', 'data': engines, 'online_model': online_model}, broadcast=True)
     else:
         # Something went wrong, print the message and quit since we can't initialize an engine
-        print("{0}ERROR!{1}".format(colors.RED, colors.END))
-        print(req.json())
+        logger.init_err("KAI Horde Models", status="Failed")
+        logger.error(req.json())
         emit('from_server', {'cmd': 'errmsg', 'data': req.json()})
 
 # Function to patch transformers to use our soft prompt
@@ -2180,29 +2185,28 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
         elif(vars.model_type == "not_found" and vars.model == "GPT2Custom"):
             vars.model_type = "gpt2"
         elif(vars.model_type == "not_found"):
-            print("WARNING: No model type detected, assuming Neo (If this is a GPT2 model use the other menu option or --model GPT2Custom)")
+            logger.warning("No model type detected, assuming Neo (If this is a GPT2 model use the other menu option or --model GPT2Custom)")
             vars.model_type = "gpt_neo"
 
     if(not vars.use_colab_tpu and vars.model not in ["InferKit", "Colab", "API", "CLUSTER", "OAI", "GooseAI" , "ReadOnly", "TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX"]):
         loadmodelsettings()
         loadsettings()
-        print(2)
-        print("{0}Looking for GPU support...{1}".format(colors.PURPLE, colors.END), end="")
+        logger.init("GPU support", status="Searching")
         vars.hascuda = torch.cuda.is_available()
         vars.bmsupported = (utils.HAS_ACCELERATE or vars.model_type in ("gpt_neo", "gptj", "xglm", "opt")) and not vars.nobreakmodel
         if(args.breakmodel is not None and args.breakmodel):
-            print("WARNING: --breakmodel is no longer supported. Breakmodel mode is now automatically enabled when --breakmodel_gpulayers is used (see --help for details).", file=sys.stderr)
+            logger.warning("--breakmodel is no longer supported. Breakmodel mode is now automatically enabled when --breakmodel_gpulayers is used (see --help for details).")
         if(args.breakmodel_layers is not None):
-            print("WARNING: --breakmodel_layers is deprecated. Use --breakmodel_gpulayers instead (see --help for details).", file=sys.stderr)
+            logger.warning("--breakmodel_layers is deprecated. Use --breakmodel_gpulayers instead (see --help for details).")
         if(args.model and vars.bmsupported and not args.breakmodel_gpulayers and not args.breakmodel_layers and (not utils.HAS_ACCELERATE or not args.breakmodel_disklayers)):
-            print("WARNING: Model launched without the --breakmodel_gpulayers argument, defaulting to GPU only mode.", file=sys.stderr)
+            logger.warning("Model launched without the --breakmodel_gpulayers argument, defaulting to GPU only mode.")
             vars.bmsupported = False
         if(not vars.bmsupported and (args.breakmodel_gpulayers is not None or args.breakmodel_layers is not None or args.breakmodel_disklayers is not None)):
-            print("WARNING: This model does not support hybrid generation. --breakmodel_gpulayers will be ignored.", file=sys.stderr)
+            logger.warning("This model does not support hybrid generation. --breakmodel_gpulayers will be ignored.")
         if(vars.hascuda):
-            print("{0}FOUND!{1}".format(colors.GREEN, colors.END))
+            logger.init_ok("GPU support", status="Found")
         else:
-            print("{0}NOT FOUND!{1}".format(colors.YELLOW, colors.END))
+            logger.init_warn("GPU support", status="Not Found")
         
         if args.cpu:
             vars.usegpu = False
@@ -2239,7 +2243,7 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
     # Start transformers and create pipeline
     if(not vars.use_colab_tpu and vars.model not in ["InferKit", "Colab", "API", "CLUSTER", "OAI", "GooseAI" , "ReadOnly", "TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX"]):
         if(not vars.noai):
-            print("{0}Initializing transformers, please wait...{1}".format(colors.PURPLE, colors.END))
+            logger.init("Transformers", status='Starting')
             for m in ("GPTJModel", "XGLMModel"):
                 try:
                     globals()[m] = getattr(__import__("transformers"), m)
@@ -2304,8 +2308,7 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
                             num_tensors = len(utils.get_sharded_checkpoint_num_tensors(utils.from_pretrained_model_name, utils.from_pretrained_index_filename, **utils.from_pretrained_kwargs))
                         else:
                             num_tensors = len(device_map)
-                        print(flush=True)
-                        utils.bar = tqdm(total=num_tensors, desc="Loading model tensors", file=Send_to_socketio())
+                        utils.bar = tqdm(total=num_tensors, desc=f"{colors.PURPLE}INIT{colors.END}       | Loading model tensors", file=Send_to_socketio())
 
                     with zipfile.ZipFile(f, "r") as z:
                         try:
@@ -2375,7 +2378,7 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
             
             def maybe_low_cpu_mem_usage() -> Dict[str, Any]:
                 if(packaging.version.parse(transformers_version) < packaging.version.parse("4.11.0")):
-                    print(f"\nWARNING:  Please upgrade to transformers 4.11.0 for lower RAM usage.  You have transformers {transformers_version}.", file=sys.stderr)
+                    logger.warning(f"Please upgrade to transformers 4.11.0 for lower RAM usage. You have transformers {transformers_version}.")
                     return {}
                 return {"low_cpu_mem_usage": True}
             
@@ -2432,7 +2435,6 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
                 if os.path.isdir(vars.model.replace('/', '_')):
                     import shutil
                     shutil.move(vars.model.replace('/', '_'), "models/{}".format(vars.model.replace('/', '_')))
-                print("\n", flush=True)
                 if(vars.lazy_load):  # If we're using lazy loader, we need to figure out what the model's hidden layers are called
                     with torch_lazy_loader.use_lazy_torch_load(dematerialized_modules=True, use_accelerate_init_empty_weights=True):
                         try:
@@ -2556,7 +2558,6 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
                     elif(vars.breakmodel):  # Use both RAM and VRAM (breakmodel)
                         vars.modeldim = get_hidden_size_from_model(model)
                         if(not vars.lazy_load):
-                            print(2)
                             device_config(model.config)
                         move_model_to_devices(model)
                     elif(utils.HAS_ACCELERATE and __import__("breakmodel").disk_blocks > 0):
@@ -2583,7 +2584,7 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
             #for key in vars.badwords:
             #    vars.badwordsids.append([vocab[key]])
             
-            print("{0}OK! {1} pipeline created!{2}".format(colors.GREEN, vars.model, colors.END))
+            logger.info(f"Pipeline created: {vars.model}")
         
         else:
             from transformers import GPT2TokenizerFast
@@ -2829,7 +2830,7 @@ def lua_startup():
     #==================================================================#
 
     print("", end="", flush=True)
-    print(colors.PURPLE + "Initializing Lua Bridge... " + colors.END, end="", flush=True)
+    logger.init("LUA bridge", status="Starting")
 
     # Set up Lua state
     vars.lua_state = lupa.LuaRuntime(unpack_returned_tuples=True)
@@ -2852,10 +2853,10 @@ def lua_startup():
     except lupa.LuaError as e:
         print(colors.RED + "ERROR!" + colors.END)
         vars.lua_koboldbridge.obliterate_multiverse()
-        print("{0}{1}{2}".format(colors.RED, "***LUA ERROR***: ", colors.END), end="", file=sys.stderr)
-        print("{0}{1}{2}".format(colors.RED, str(e).replace("\033", ""), colors.END), file=sys.stderr)
+        logger.debug('LUA ERROR: ' + str(e).replace("\033", ""))
+        logger.warning("Lua engine stopped; please open 'Userscripts' and press Load to reinitialize scripts.")
         exit(1)
-    print(colors.GREEN + "OK!" + colors.END)
+    logger.init_ok("LUA bridge", status="OK")
 
 
 def lua_log_format_name(name):
@@ -2879,7 +2880,7 @@ def load_callback(filename, modulename):
 #  Load all Lua scripts
 #==================================================================#
 def load_lua_scripts():
-    print(colors.GREEN + "Loading Core Script" + colors.END)
+    logger.init("LUA Scripts", status="Starting")
 
     filenames = []
     modulenames = []
@@ -2911,11 +2912,11 @@ def load_lua_scripts():
         if(vars.serverstarted):
             emit('from_server', {'cmd': 'errmsg', 'data': 'Lua script error; please check console.'}, broadcast=True)
             sendUSStatItems()
-        print("{0}{1}{2}".format(colors.RED, "***LUA ERROR***: ", colors.END), end="", file=sys.stderr)
-        print("{0}{1}{2}".format(colors.RED, str(e).replace("\033", ""), colors.END), file=sys.stderr)
-        print("{0}{1}{2}".format(colors.YELLOW, "Lua engine stopped; please open 'Userscripts' and press Load to reinitialize scripts.", colors.END), file=sys.stderr)
+        logger.debug('LUA ERROR: ' + str(e).replace("\033", ""))
+        logger.warning("Lua engine stopped; please open 'Userscripts' and press Load to reinitialize scripts.")
         if(vars.serverstarted):
             set_aibusy(0)
+    logger.init_ok("LUA Scripts", status="OK")
 
 #==================================================================#
 #  Print message that originates from the userscript with the given name
@@ -3408,9 +3409,8 @@ def execute_inmod():
         vars.lua_running = False
         emit('from_server', {'cmd': 'errmsg', 'data': 'Lua script error; please check console.'}, broadcast=True)
         sendUSStatItems()
-        print("{0}{1}{2}".format(colors.RED, "***LUA ERROR***: ", colors.END), end="", file=sys.stderr)
-        print("{0}{1}{2}".format(colors.RED, str(e).replace("\033", ""), colors.END), file=sys.stderr)
-        print("{0}{1}{2}".format(colors.YELLOW, "Lua engine stopped; please open 'Userscripts' and press Load to reinitialize scripts.", colors.END), file=sys.stderr)
+        logger.debug('LUA ERROR: ' + str(e).replace("\033", ""))
+        logger.warning("Lua engine stopped; please open 'Userscripts' and press Load to reinitialize scripts.")
         set_aibusy(0)
 
 def execute_genmod():
@@ -3426,9 +3426,8 @@ def execute_outmod():
         vars.lua_running = False
         emit('from_server', {'cmd': 'errmsg', 'data': 'Lua script error; please check console.'}, broadcast=True)
         sendUSStatItems()
-        print("{0}{1}{2}".format(colors.RED, "***LUA ERROR***: ", colors.END), end="", file=sys.stderr)
-        print("{0}{1}{2}".format(colors.RED, str(e).replace("\033", ""), colors.END), file=sys.stderr)
-        print("{0}{1}{2}".format(colors.YELLOW, "Lua engine stopped; please open 'Userscripts' and press Load to reinitialize scripts.", colors.END), file=sys.stderr)
+        logger.debug('LUA ERROR: ' + str(e).replace("\033", ""))
+        logger.warning("Lua engine stopped; please open 'Userscripts' and press Load to reinitialize scripts.")
         set_aibusy(0)
     if(vars.lua_koboldbridge.resend_settings_required):
         vars.lua_koboldbridge.resend_settings_required = False
@@ -3448,7 +3447,7 @@ def execute_outmod():
 #==================================================================#
 @socketio.on('connect')
 def do_connect():
-    print("{0}Client connected!{1}".format(colors.GREEN, colors.END))
+    logger.info("Client connected!")
     emit('from_server', {'cmd': 'setchatname', 'data': vars.chatname})
     emit('from_server', {'cmd': 'setanotetemplate', 'data': vars.authornotetemplate})
     emit('from_server', {'cmd': 'connected', 'smandelete': vars.smandelete, 'smanrename': vars.smanrename, 'modelname': getmodelname()})
@@ -3501,7 +3500,7 @@ def do_connect():
 @socketio.on('message')
 def get_message(msg):
     if not vars.quiet:
-        print("{0}Data received:{1}{2}".format(colors.GREEN, msg, colors.END))
+        logger.debug(f"Data received: {msg}")
     # Submit action
     if(msg['cmd'] == 'submit'):
         if(vars.mode == "play"):
@@ -3791,8 +3790,7 @@ def get_message(msg):
     elif(msg['cmd'] == 'list_model'):
         sendModelSelection(menu=msg['data'])
     elif(msg['cmd'] == 'load_model'):
-        print(msg)
-        print(vars.model_selected)
+        logger.debug(vars.model_selected)
         if not os.path.exists("settings/"):
             os.mkdir("settings")
         changed = True
@@ -3826,7 +3824,7 @@ def get_message(msg):
                 vars.cluster_requested_models = msg['online_model']
         load_model(use_gpu=msg['use_gpu'], gpu_layers=msg['gpu_layers'], disk_layers=msg['disk_layers'], online_model=msg['online_model'])
     elif(msg['cmd'] == 'show_model'):
-        print("Model Name: {}".format(getmodelname()))
+        logger.info(f"Model Name: {getmodelname()}")
         emit('from_server', {'cmd': 'show_model_name', 'data': getmodelname()}, broadcast=True)
     elif(msg['cmd'] == 'selectmodel'):
         # This is run when a model line is selected from the UI (line from the model_menu variable) that is tagged as not a menu
@@ -3877,14 +3875,14 @@ def get_message(msg):
     elif(msg['cmd'] == 'delete_model'):
         if "{}/models".format(os.getcwd()) in os.path.abspath(msg['data']) or "{}\\models".format(os.getcwd()) in os.path.abspath(msg['data']):
             if check_if_dir_is_model(msg['data']):
-                print(colors.YELLOW + "WARNING: Someone deleted " + msg['data'])
+                logger.warning(f"Someone deleted {msg['data']}")
                 import shutil
                 shutil.rmtree(msg['data'])
                 sendModelSelection(menu=msg['menu'])
             else:
-                print(colors.RED + "ERROR: Someone attempted to delete " + msg['data'] + " but this is not a valid model")
+                logger.error(f"Someone attempted to delete {msg['data']} but this is not a valid model")
         else:
-            print(colors.RED + "WARNING!!: Someone maliciously attempted to delete " + msg['data'] + " the attempt has been blocked.")
+            logger.critical(f"Someone maliciously attempted to delete {msg['data']}. The attempt has been blocked.")
     elif(msg['cmd'] == 'OAI_Key_Update'):
         get_oai_models(msg['key'])
     elif(msg['cmd'] == 'Cluster_Key_Update'):
@@ -4121,7 +4119,7 @@ def actionsubmit(data, actionmode=0, force_submit=False, force_prompt_gen=False,
                         except:
                             tokenizer = AutoTokenizer.from_pretrained(tokenizer_id, revision=vars.revision, cache_dir="cache", use_fast=False)
                 except:
-                    print(f"WARNING:  Unknown tokenizer {repr(tokenizer_id)}")
+                    logger.warning(f"Unknown tokenizer {repr(tokenizer_id)}")
                 vars.api_tokenizer_id = tokenizer_id
 
         if(disable_recentrng):
@@ -4232,8 +4230,8 @@ def actionsubmit(data, actionmode=0, force_submit=False, force_prompt_gen=False,
                         try:
                             alternatives = [item['Text'] for item in vars.actions_metadata[len(vars.actions)-1]["Alternative Text"]]
                         except:
-                            print(len(vars.actions))
-                            print(vars.actions_metadata)
+                            logger.debug(len(vars.actions))
+                            logger.debug(vars.actions_metadata)
                             raise
                         if data in alternatives:
                             alternatives = [item for item in vars.actions_metadata[vars.actions.get_last_key() ]["Alternative Text"] if item['Text'] != data]
@@ -4285,7 +4283,8 @@ def apiactionsubmit_generate(txt, minimum, maximum):
     vars.generated_tkns = 0
 
     if not vars.quiet:
-        print("{0}Min:{1}, Max:{2}, Txt:{3}{4}".format(colors.YELLOW, minimum, maximum, utils.decodenewlines(tokenizer.decode(txt)), colors.END))
+        logger.debug(f"Prompt Min:{minimum}, Max:{maximum}")
+        logger.prompt(utils.decodenewlines(tokenizer.decode(txt)).encode("unicode_escape").decode("utf-8"))
 
     # Clear CUDA cache if using GPU
     if(vars.hascuda and (vars.usegpu or vars.breakmodel)):
@@ -4312,7 +4311,8 @@ def apiactionsubmit_tpumtjgenerate(txt, minimum, maximum):
         tpu_mtj_backend.set_rng_seed(vars.seed)
 
     if not vars.quiet:
-        print("{0}Min:{1}, Max:{2}, Txt:{3}{4}".format(colors.YELLOW, minimum, maximum, utils.decodenewlines(tokenizer.decode(txt)), colors.END))
+        logger.debug(f"Prompt Min:{minimum}, Max:{maximum}")
+        logger.prompt(utils.decodenewlines(tokenizer.decode(txt)).encode("unicode_escape").decode("utf-8"))
 
     vars._actions = vars.actions
     vars._prompt = vars.prompt
@@ -4824,7 +4824,8 @@ def generate(txt, minimum, maximum, found_entries=None):
     found_entries = tuple(found_entries.copy() for _ in range(vars.numseqs))
 
     if not vars.quiet:
-        print("{0}Min:{1}, Max:{2}, Txt:{3}{4}".format(colors.YELLOW, minimum, maximum, utils.decodenewlines(tokenizer.decode(txt)), colors.END))
+        logger.debug(f"Prompt Min:{minimum}, Max:{maximum}")
+        logger.prompt(utils.decodenewlines(tokenizer.decode(txt)).encode("unicode_escape").decode("utf-8"))
 
     # Store context in memory to use it for comparison with generated content
     vars.lastctx = utils.decodenewlines(tokenizer.decode(txt))
@@ -4843,12 +4844,11 @@ def generate(txt, minimum, maximum, found_entries=None):
             vars.lua_running = False
             emit('from_server', {'cmd': 'errmsg', 'data': 'Lua script error; please check console.'}, broadcast=True)
             sendUSStatItems()
-            print("{0}{1}{2}".format(colors.RED, "***LUA ERROR***: ", colors.END), end="", file=sys.stderr)
-            print("{0}{1}{2}".format(colors.RED, str(e).replace("\033", ""), colors.END), file=sys.stderr)
-            print("{0}{1}{2}".format(colors.YELLOW, "Lua engine stopped; please open 'Userscripts' and press Load to reinitialize scripts.", colors.END), file=sys.stderr)
+            logger.debug('LUA ERROR: ' + str(e).replace("\033", ""))
+            logger.warning("Lua engine stopped; please open 'Userscripts' and press Load to reinitialize scripts.")
         else:
             emit('from_server', {'cmd': 'errmsg', 'data': 'Error occurred during generator call; please check console.'}, broadcast=True)
-            print("{0}{1}{2}".format(colors.RED, traceback.format_exc().replace("\033", ""), colors.END), file=sys.stderr)
+            logger.error(traceback.format_exc().replace("\033", ""))
         set_aibusy(0)
         return
 
@@ -4887,7 +4887,7 @@ def generate(txt, minimum, maximum, found_entries=None):
 #==================================================================#
 def genresult(genout, flash=True, ignore_formatting=False):
     if not vars.quiet:
-        print("{0}{1}{2}".format(colors.CYAN, genout, colors.END))
+        logger.generation(genout.encode("unicode_escape").decode("utf-8"))
     
     # Format output before continuing
     if not ignore_formatting:
@@ -4921,7 +4921,8 @@ def genselect(genout):
         # Apply output formatting rules to sequences
         result["generated_text"] = applyoutputformatting(result["generated_text"])
         if not vars.quiet:
-            print("{0}[Result {1}]\n{2}{3}".format(colors.CYAN, i, result["generated_text"], colors.END))
+            logger.info(f"Generation Result {i}")
+            logger.generation(result["generated_text"].encode("unicode_escape").decode("utf-8"))
         i += 1
     
     # Add the options to the actions metadata
@@ -5152,7 +5153,8 @@ def sendtoapi(txt, min, max):
 def sendtocluster(txt, min, max):
     # Log request to console
     if not vars.quiet:
-        print("{0}Tokens:{1}, Txt:{2}{3}".format(colors.YELLOW, min-1, txt, colors.END))
+        logger.debug(f"Tokens Min:{min-1}")
+        logger.prompt(txt.encode("unicode_escape").decode("utf-8"))
 
     # Store context in memory to use it for comparison with generated content
     vars.lastctx = txt
@@ -5187,30 +5189,30 @@ def sendtocluster(txt, min, max):
         js = req.json()
     except requests.exceptions.ConnectionError:
         errmsg = f"Horde unavailable. Please try again later"
-        print("{0}{1}{2}".format(colors.RED, errmsg, colors.END))
+        logger.error(errmsg)
         emit('from_server', {'cmd': 'errmsg', 'data': errmsg}, broadcast=True)
         set_aibusy(0)
         return
     except requests.exceptions.JSONDecodeError:
         errmsg = f"Unexpected message received from the Horde: '{req.text}'"
-        print("{0}{1}{2}".format(colors.RED, errmsg, colors.END))
+        logger.error(errmsg)
         emit('from_server', {'cmd': 'errmsg', 'data': errmsg}, broadcast=True)
         set_aibusy(0)
         return
     if(req.status_code == 503):
         errmsg = f"KoboldAI API Error: No available KoboldAI servers found in Horde to fulfil this request using the selected models or other properties."
-        print("{0}{1}{2}".format(colors.RED, json.dumps(js, indent=2), colors.END))
+        logger.error(json.dumps(js))
         emit('from_server', {'cmd': 'errmsg', 'data': errmsg}, broadcast=True)
         set_aibusy(0)
         return
     if(req.status_code != 200):
         errmsg = f"KoboldAI API Error: Failed to get a standard reply from the Horde. Please check the console."
-        print("{0}{1}{2}".format(colors.RED, json.dumps(js, indent=2), colors.END))
+        logger.error(json.dumps(js))
         emit('from_server', {'cmd': 'errmsg', 'data': errmsg}, broadcast=True)
         set_aibusy(0)
         return
     gen_servers = [(cgen['server_name'],cgen['server_id']) for cgen in js]
-    print(f"{colors.GREEN}Generations by: {gen_servers}{colors.END}")
+    logger.info(f"Generations by: {gen_servers}")
     # Just in case we want to announce it to the user
     if len(js) == 1:        
         warnmsg = f"Text generated by {js[0]['server_name']}"
@@ -5260,7 +5262,8 @@ def tpumtjgenerate(txt, minimum, maximum, found_entries=None):
     found_entries = tuple(found_entries.copy() for _ in range(vars.numseqs))
 
     if not vars.quiet:
-        print("{0}Min:{1}, Max:{2}, Txt:{3}{4}".format(colors.YELLOW, minimum, maximum, utils.decodenewlines(tokenizer.decode(txt)), colors.END))
+        logger.debug(f"Prompt Min:{minimum}, Max:{maximum}")
+        logger.prompt(utils.decodenewlines(tokenizer.decode(txt)).encode("unicode_escape").decode("utf-8"))
 
     vars._actions = vars.actions
     vars._prompt = vars.prompt
@@ -5348,9 +5351,8 @@ def tpumtjgenerate(txt, minimum, maximum, found_entries=None):
             vars.lua_running = False
             emit('from_server', {'cmd': 'errmsg', 'data': 'Lua script error; please check console.'}, broadcast=True)
             sendUSStatItems()
-            print("{0}{1}{2}".format(colors.RED, "***LUA ERROR***: ", colors.END), end="", file=sys.stderr)
-            print("{0}{1}{2}".format(colors.RED, str(e).replace("\033", ""), colors.END), file=sys.stderr)
-            print("{0}{1}{2}".format(colors.YELLOW, "Lua engine stopped; please open 'Userscripts' and press Load to reinitialize scripts.", colors.END), file=sys.stderr)
+            logger.debug('LUA ERROR: ' + str(e).replace("\033", ""))
+            logger.warning("Lua engine stopped; please open 'Userscripts' and press Load to reinitialize scripts.")
         else:
             emit('from_server', {'cmd': 'errmsg', 'data': 'Error occurred during generator call; please check console.'}, broadcast=True)
             print("{0}{1}{2}".format(colors.RED, traceback.format_exc().replace("\033", ""), colors.END), file=sys.stderr)
@@ -5634,7 +5636,7 @@ def inlineedit(chunk, data):
             vars.actions_metadata[chunk-1]['Selected Text'] = data
             vars.actions[chunk-1] = data
         else:
-            print(f"WARNING: Attempted to edit non-existent chunk {chunk}")
+            logger.warning(f"Attempted to edit non-existent chunk {chunk}")
 
     setgamesaved(False)
     update_story_chunk(chunk)
@@ -5662,7 +5664,7 @@ def inlinedelete(chunk):
             vars.actions_metadata[chunk-1]['Selected Text'] = ''
             del vars.actions[chunk-1]
         else:
-            print(f"WARNING: Attempted to delete non-existent chunk {chunk}")
+            logger.warning(f"Attempted to delete non-existent chunk {chunk}")
         setgamesaved(False)
         remove_story_chunk(chunk)
         emit('from_server', {'cmd': 'editmode', 'data': 'false'}, broadcast=True)
@@ -9989,11 +9991,14 @@ for schema in config_endpoint_schemas:
 #==================================================================#
 #  Final startup commands to launch Flask app
 #==================================================================#
-print("", end="", flush=True)
 if __name__ == "__main__":
-    print("{0}\nStarting webserver...{1}".format(colors.GREEN, colors.END), flush=True)
 
     general_startup()
+    # Start flask & SocketIO
+    logger.init("Flask", status="Starting")
+    Session(app)
+    logger.init_ok("Flask", status="OK")
+    logger.init("Webserver", status="Starting")
     patch_transformers()
     #show_select_model_list()
     if vars.model == "" or vars.model is None:
@@ -10031,10 +10036,11 @@ if __name__ == "__main__":
         if(args.localtunnel or args.ngrok or args.remote):
             with open('cloudflare.log', 'w') as cloudflarelog:
                 cloudflarelog.write("KoboldAI has finished loading and is available at the following link : " + cloudflare)
-                print(format(colors.GREEN) + "KoboldAI has finished loading and is available at the following link : " + cloudflare + format(colors.END))
+                logger.init_ok("Webserver", status="OK")
+                logger.message(f"KoboldAI has finished loading and is available at the following link: {cloudflare}")
         else:
-            print("{0}Webserver has started, you can now connect to this machine at port {1}{2}"
-                  .format(colors.GREEN, port, colors.END))
+            logger.init_ok("Webserver", status="OK")
+            logger.message(f"Webserver has started, you can now connect to this machine at port: {port}")
         vars.serverstarted = True
         socketio.run(app, host='0.0.0.0', port=port)
     else:
@@ -10042,8 +10048,8 @@ if __name__ == "__main__":
             if not args.no_ui:
                 import webbrowser
                 webbrowser.open_new('http://localhost:{0}'.format(port))
-            print("{0}Server started!\nYou may now connect with a browser at http://127.0.0.1:{1}/{2}"
-                  .format(colors.GREEN, port, colors.END))
+            logger.init_ok("Webserver", status="OK")
+            logger.message(f"Webserver started! You may now connect with a browser at http://127.0.0.1:{port}")
             vars.serverstarted = True
             socketio.run(app, port=port, host='0.0.0.0')
         else:
@@ -10056,13 +10062,19 @@ if __name__ == "__main__":
                 if not args.no_ui:
                     import webbrowser
                     webbrowser.open_new('http://localhost:{0}'.format(port))
-                print("{0}Server started!\nYou may now connect with a browser at http://127.0.0.1:{1}/{2}"
-                        .format(colors.GREEN, port, colors.END))
+                logger.init_ok("Webserver", status="OK")
+                logger.message(f"Webserver started! You may now connect with a browser at http://127.0.0.1:{port}")
                 vars.serverstarted = True
                 socketio.run(app, port=port)
+    logger.init("Webserver", status="Closed")
+
 
 else:
     general_startup()
+    # Start flask & SocketIO
+    logger.init("Flask", status="Starting")
+    Session(app)
+    logger.init_ok("Flask", status="OK")
     patch_transformers()
     #show_select_model_list()
     if vars.model == "" or vars.model is None:
