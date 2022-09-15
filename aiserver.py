@@ -4993,6 +4993,7 @@ def sendtoapi(txt, min, max):
             errmsg = "KoboldAI API Error: Failed to get a reply from the server. Please check the console."
             print("{0}{1}{2}".format(colors.RED, json.dumps(js, indent=2), colors.END))
             emit('from_server', {'cmd': 'errmsg', 'data': errmsg}, broadcast=True)
+            emit("error", errmsg, broadcast=True, room="UI_2")
             set_aibusy(0)
             return
 
