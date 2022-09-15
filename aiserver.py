@@ -1690,11 +1690,11 @@ def patch_transformers_download():
                     pass
     def http_get(
         url: str,
-        temp_file: transformers.utils.hub.BinaryIO,
+        temp_file,
         proxies=None,
         resume_size=0,
-        headers: transformers.utils.hub.Optional[transformers.utils.hub.Dict[str, str]] = None,
-        file_name: transformers.utils.hub.Optional[str] = None,
+        headers=None,
+        file_name=None,
     ):
         """
         Download remote file. Do not gobble up errors.
