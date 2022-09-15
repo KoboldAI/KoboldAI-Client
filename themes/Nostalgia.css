@@ -1,0 +1,194 @@
+/*
+	Name: Nostalgia
+	Author: LightSaveUs
+	Version: 0.1
+	Description: A theme inspired by the previous KoboldAI interface.
+*/
+
+:root {
+/*----------------Palette Theme--------------------*/
+	--primary_palette: #000000;
+	--on_primary_palette: #000000;
+	--primary_container_palette: #000000;
+	--on_primary_container_palette: #000000;
+
+	--secondary_palette: #000000;
+	--on_secondary_palette: #000000;
+	--secondary_container_palette: #000000;
+	--on_secondary_container_palette: #000000;
+
+	--tertiary_palette: #000000;
+	--on_tertiary_palette: #000000;
+	--tertiary_container_palette: #000000;
+	--on_tertiary_container_palette: #000000;
+
+	--background_palette: #000000;
+	--on_background_palette:#000000;
+	--layer1_palette: #000000;
+	--layer2_palette: #000000;
+	--layer3_palette: #000000;
+	--layer4_palette: #000000;
+	--outline_palette: #000000;
+
+	--middle_palette: #000000;
+	--on_middle_palette: #000000;
+	--surface_palette: #000000;
+	--on_surface_palette: #000000;
+
+/*----------------Advanced Theme--------------------*/
+	/*General*/
+	--background: #303030;
+	--gamescreen_background: #262626;
+    --input_background: #404040;
+
+    --text: #fff;
+    --text_to_ai_color: #cdd9e0;
+    --text_edit: #cdf;
+
+	--statusbar_color: #6c6c6e99;
+	--statusbar_text_color: #ffffff;
+	--scrollbar-color: #74747400;
+
+	/*Buttons*/
+		/*General*/
+	--enabled_button_text: #ffffff;
+    --enabled_button_background_color: #337ab7;
+    --enabled_button_border_color: #2e6da4;
+
+	--disabled_button_text: #303030;
+    --disabled_button_background_color: #495762;
+    --disabled_button_border_color: #686c68;
+
+		/*Home Tab*/
+	--button_text: #ffffff;
+	--button_background: #285f90;
+		
+		/*Alternate Button*/
+	--alternate_button_text: #ffffff;
+	--alternate_button_background: #285f90;
+
+
+	/*Sequence, AKA Gens Per Action*/
+	--sequence_area_background: #303030;
+    --sequence_background: #262626;
+	--sequence_text: #ffffff;
+
+	/*Side Menus*/
+	--tab_color: #337ab7;
+
+	--flyout_background: #212122;
+	--flyout_background_pinned: #212122;
+
+	--setting_background: #295071;
+    --setting_text: #ffffff;
+
+	--sample_order_select_color: #98bcdb;
+	--sample_order_select_color_text: #23527c;
+
+	--dropdown_text: #ffffff;
+	--dropdown_background: #337ab7;
+
+	--rangeslider_background_color: #ffffff;
+	--rangeslider_color: #005dc8;
+	--rangeslider_circle_color: #0077ff;
+
+	--help_icon: #ffffff;/*--tooltip_text: #000000;
+    --tooltip_background: #000000;*/
+	--setting_category_help_text_color: #3bf723;
+	
+	--setting_footer_border_color: grey;
+	--setting_footer_text_color: #ffffff;
+	--setting_footer_background_color: #212122;
+
+	/*Palette Card*/
+	--palette_card_background: #295071;
+	--palette_card_text: #ffffff;
+	--palette_table_border: #12324f;
+
+	/*World Info*/
+	--wi_card_border_color: #12324f;
+    --wi_card_border_color_to_ai: #eeeeeead;
+
+    --wi_card_bg_color: #395c7c;
+	--wi_card_text_color: #ffffff;
+
+    --wi_card_tag_bg_color: #295071;
+	--wi_card_tag_text_color: #ffffff;
+	
+    --wi_tag_color: #3379b7;
+	--wi_tag_text_color: #ffffff;
+	
+	/*Popup*/
+	--popup_background_color: #333;
+    --popup_title_bar_color: #337ab7;
+	--popup_title_bar_color_text: #ffffff;
+
+    --popup_item_color: #333333;
+	--popup_item_color_text: #ffffff;
+
+	--popup_hover_color: #688f1f;
+	--popup_hover_color_text: #ffffff;
+	--popup_selected_color: #688f1f;
+	--popup_selected_color_text: #ffffff;
+
+	--popup_button_color: #337ab7;
+	--popup_button_color_text: #ffffff;
+	--popup_cancel_button_color: #337ab7;
+	--popup_cancel_button_color_text: #ffffff;
+
+	--error: #ffb4ab;
+	--error_text: #690005;
+	--error_title: #93000a;
+	--error_title_text: #ffdad6;
+	
+	/*Context Bar Colors*/
+	--context_colors_memory: #295071;
+	--context_colors_authors_notes: #337ab7;
+	--context_colors_world_info: #98bcdb;
+	--context_colors_prompt: #3bf723;
+	--context_colors_game_text: #688f1f;
+	--context_colors_submit: #ededed;
+	--context_colors_unused: #ffffff24;
+	--context_colors_soft_prompt: #262626;
+
+    /*Parameters*/
+	--scrollbar-size: 6px;
+	--palette_card_shadow: 0;
+	--wi_card_shadow: 0;
+	--light_shadow_value: 0;
+	--left_menu_strong_shadow: 0;
+	--right_menu_light_shadow: 0;
+	--right_menu_strong_shadow: 0;
+	--radius_inputbox: 5px;
+	--radius_unpinned_menu: 5px;
+	--radius_sequence: 5px;
+	--radius_settings_background: 5px;
+	--radius_button: 5px;
+	--radius_alternate_button: 5px;
+	--radius_item_popup: 5px;
+	--radius_wi_card: 5px;
+	--radius_palette_card: 5px;
+	--radius_settings_button: 5px;
+	--tabs_rounding: 5px;
+
+
+
+
+
+
+/*----------------VARIABLES--------------------*/
+	--flyout_menu_closed_width: 0px;
+	--setting_menu_closed_width_no_pins_width:  0px;
+	--story_options_size: 30%;
+	--story_pinned_areas_left:"menuicon options gamescreen lefticon"
+								 "menuicon theme theme lefticon"
+								 "menuicon inputrow inputrow lefticon";
+	--story_pinned_areas_right:"menuicon gamescreen options lefticon"
+								 "menuicon theme theme lefticon"
+								 "menuicon inputrow inputrow lefticon";
+	--story_pinned_area_widths_left: 30pxvar(--story_options_size) auto 30px;
+	--story_pinned_area_widths_right: 30pxautovar(--story_options_size) 30px;
+	--story_pinned_areas:var(--story_pinned_areas_left);
+	--story_pinned_area_widths:var(--story_pinned_area_widths_left);
+	--font_size_adjustment: 0px;
+	--game_screen_font_size_adjustment: 1;}
