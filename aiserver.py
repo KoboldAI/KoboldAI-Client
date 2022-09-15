@@ -1807,21 +1807,14 @@ def patch_transformers():
             scores: torch.FloatTensor,
             **kwargs,
         ) -> bool:
-            if (not koboldai_vars.output_streaming):
+            if not koboldai_vars.inference_config.do_dynamic_wi:
                 return False
 
-            #for batch, ids in enumerate(input_ids):
-                #tokenizer_text = utils.decodenewlines(tokenizer.decode(ids[-1]))
-                #koboldai_vars.actions.stream_token(tokenizer_text, batch=batch)
-               
-            if koboldai_vars.output_streaming:
-                koboldai_vars.actions.stream_tokens([utils.decodenewlines(tokenizer.decode(x[-1])) for x in input_ids])
-            #if len(input_ids) > 1:
-            #    koboldai_vars.actions.clear_unused_options()
-            #    koboldai_vars.actions.append_options([utils.decodenewlines(tokenizer.decode(x[-1])) for x in input_ids])
-            #else:
-            #    koboldai_vars.actions[koboldai_vars.actions.action_count+1] = utils.decodenewlines(tokenizer.decode(input_ids[0, -1]))
-                
+            if not koboldai_vars.output_streaming:
+                return False
+
+            koboldai_vars.actions.stream_tokens([utils.decodenewlines(tokenizer.decode(x[-1])) for x in input_ids])
+
             return False
 
     # Sets up dynamic world info scanner
@@ -1842,8 +1835,8 @@ def patch_transformers():
             **kwargs,
         ) -> bool:
 
-            if koboldai_vars.inference_config.do_dynamic_wi:
-                pass
+            if not koboldai_vars.inference_config.do_dynamic_wi:
+                return False
 
             koboldai_vars.generated_tkns += 1
             if(not koboldai_vars.standalone and koboldai_vars.lua_koboldbridge.generated_cols and koboldai_vars.generated_tkns != koboldai_vars.lua_koboldbridge.generated_cols):
@@ -2610,11 +2603,6 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
             setStartState()
             sendsettings()
             refresh_settings()
-    
-        prompto = "What does 1+1 equal?\n"
-        print("Hehe")
-        out = raw_generate(prompto, 80)
-        print(f"{out=}")
     
     #Saving the tokenizer to the KoboldStoryRegister class so we can do token counting on the story data
     if 'tokenizer' in [x for x in globals()]:
@@ -4636,11 +4624,75 @@ def raw_generate(
     do_streaming: bool = False,
     do_dynamic_wi: bool = False,
 ):
+    prompt_tokens = tokenizer.encode(prompt)
+
+    if koboldai_vars.model == "Colab":
+        raise NotImplementedError("Colab API raw_generate unsupported")
+    elif koboldai_vars.model == "API":
+        raise NotImplementedError("API raw_generate unsupported")
+    elif koboldai_vars.model == "CLUSTER":
+        raise NotImplementedError("Cluster raw_generate unsupported")
+    elif koboldai_vars.model == "OAI":
+        raise NotImplementedError("OpenAI raw_generate unsupported")
+    elif koboldai_vars.model == "ReadOnly":
+        raise NotImplementedError("No loaded model")
+
+    if koboldai_vars.use_colab_tpu or model in ("TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX"):
+        out_tokens = tpu_raw_generate(
+            prompt_tokens=prompt_tokens,
+            max_length=max_length,
+        )
+    else:
+        out_tokens = torch_raw_generate(
+            prompt_tokens=prompt_tokens,
+            max_length=max_length,
+            do_streaming=do_streaming,
+            do_dynamic_wi=do_dynamic_wi,
+        )
+
+    return utils.decodenewlines(tokenizer.decode(out_tokens))
+
+def tpu_raw_generate(
+    prompt_tokens: list[int],
+    max_length: int
+):
+    # Mostly lifted from apiactionsubmit_tpumtjgenerate
+    soft_tokens = tpumtjgetsofttokens()
+    genout = tpool.execute(
+        tpu_mtj_backend.infer_static,
+        np.uint32(prompt_tokens),
+        gen_len = max_length,
+        temp=koboldai_vars.temp,
+        top_p=koboldai_vars.top_p,
+        top_k=koboldai_vars.top_k,
+        tfs=koboldai_vars.tfs,
+        typical=koboldai_vars.typical,
+        top_a=koboldai_vars.top_a,
+        numseqs=1,
+        repetition_penalty=koboldai_vars.rep_pen,
+        rpslope=koboldai_vars.rep_pen_slope,
+        rprange=koboldai_vars.rep_pen_range,
+        soft_embeddings=koboldai_vars.sp,
+        soft_tokens=soft_tokens,
+        sampler_order=koboldai_vars.sampler_order,
+    )
+
+    return genout[0]
+
+def torch_raw_generate(
+    prompt_tokens: list[int],
+    max_length: int,
+
+    do_streaming: bool = False,
+    do_dynamic_wi: bool = False,
+):
 
     koboldai_vars.inference_config.do_streaming = do_streaming
     koboldai_vars.inference_config.do_dynamic_wi = do_dynamic_wi
 
-    prompt_tokens = tokenizer.encode(prompt)
+    # Makes stopping criteria hook happy
+    model.kai_scanner_excluded_world_info = []
+
     gen_in = torch.tensor(prompt_tokens, dtype=torch.long)[None]
 
     device = "cpu"
@@ -4660,8 +4712,7 @@ def raw_generate(
             use_cache=True,
         )
     
-    text_out = tokenizer.decode(genout[0])
-    return text_out
+    return genout[0]
 
 #==================================================================#
 # Send text to generator and deal with output
@@ -7870,6 +7921,24 @@ def UI_2_save_cookies(data):
         koboldai_vars.cookies[key] = data[key]
     with open("./settings/cookies.settings", "w") as f:
         json.dump(koboldai_vars.cookies, f)
+
+@app.route("/generate_raw", methods=["GET"])
+def UI_2_generate_raw():
+    prompt = request.args.get("prompt")
+
+    if not prompt:
+        return Response(json.dumps({"error": "No prompt"}), status=400)
+
+    if not model:
+        return Response(json.dumps({"error": "No model"}), status=500)
+
+    try:
+        out = raw_generate(prompt, max_length=80)
+    except NotImplementedError as e:
+        return Response(json.dumps({"error": str(e)}), status=500)
+
+    print(f"{out=}")
+    return out
 
 #==================================================================#
 # Load Tweaks
