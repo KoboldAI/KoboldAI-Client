@@ -21,3 +21,4 @@ chex==0.1.4
 flask-session
 marshmallow>=3.13
 apispec-webframeworks
+loguru

@@ -25,3 +25,4 @@ dependencies:
     - lupa==1.10
     - transformers==4.21.3
     - accelerate
+    - loguru
