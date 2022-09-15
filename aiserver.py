@@ -6846,6 +6846,7 @@ def ui2_connect():
     #Send all variables to client
     koboldai_vars.send_to_ui()
     UI_2_load_cookies()
+    UI_2_theme_list_refresh(None)
     pass
     
 #==================================================================#

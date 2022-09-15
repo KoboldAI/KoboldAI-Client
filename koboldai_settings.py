@@ -197,7 +197,7 @@ class koboldai_vars(object):
         authors_note_final = self.authornotetemplate.replace("<|>", self.authornote)
         used_all_tokens = False
         for i in range(len(self.actions)-1, -1, -1):
-            if len(self.actions) - i == self.andepth and self.authornote != "":
+            if len(self.actions) - i - 1 == self.andepth and self.authornote != "":
                 game_text = "{}{}".format(authors_note_final, game_text)
                 game_context.insert(0, {"type": "authors_note", "text": authors_note_final})
             if self.actions.actions[i]["Selected Text Length"]+used_tokens <= token_budget and not used_all_tokens:
