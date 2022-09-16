@@ -118,6 +118,7 @@ function reset_story() {
 	}
 	dummy_span = document.createElement("span");
 	dummy_span.id = "Delete Me";
+	dummy_span.classList.add("noselect");
 	text = "";
 	for (i=0;i<154;i++) {
 		text += "\xa0 ";
