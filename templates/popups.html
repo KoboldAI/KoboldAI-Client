@@ -193,3 +193,34 @@
 		</div>
 	</div>
 </div>
+
+<!---------------- Prompt Config ------------------->
+<div id="prompt-config-container">
+	<div id="prompt-config">
+		<div id="prompt-config-header">
+			<h3 class="noselect">Prompt Configuration</h3>
+			<span class="help_text">This prompt has placeholders you need to fill in before starting.</span>
+		</div>
+
+		<!-- Order, default, title, description -->
+		<div id="prompt-config-placeholders">
+			<div class="prompt-config-ph">
+				<span class="prompt-config-title">Name</span>
+				<span class="help_text prompt-config-desc">What is your name?</span>
+				<input class="prompt-config-value" value="Mark"></input>
+			</div>
+		</div>
+
+		<div id="prompt-config-done">Done</div>
+	</div>
+</div>
+
+<script>
+	const c = document.querySelector(".prompt-config-ph");
+	const cont = document.querySelector("#prompt-config-placeholders");
+
+	for (let i=0;i<30;i++) {
+		let j = c.cloneNode(true);
+		cont.appendChild(j);
+	}
+</script>
