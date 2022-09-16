@@ -295,8 +295,8 @@ class ImportBuffer:
                 for char in "${}[]":
                     if char in ph_text:
                         print("[eph] Weird char")
-                        print(f"{char=}")
-                        print(f"{ph_id=}")
+                        print(f"Char: {char}")
+                        print(f"Ph_id: {ph_id}")
                         return
 
                 placeholders.append(self.PromptPlaceholder(
