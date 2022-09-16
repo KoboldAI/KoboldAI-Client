@@ -1854,7 +1854,8 @@ body {
 /* Finder */
 
 #finder-container,
-#debug-file-container {
+#debug-file-container,
+#prompt-config-container {
 	display: flex;
 	justify-content: center;
 	align-items: center;
@@ -2058,6 +2059,66 @@ body {
 #debug-file-prompt > #unredacted {
 	margin-top: 8px;
 	background-color: rgb(158, 2, 2);
+}
+
+/* Prompt Config */
+#prompt-config {
+	display: flex;
+	flex-direction: column;
+	position: relative;
+	background-color: var(--popup_background_color);
+	width: 25%;
+	height: 75%;
+}
+
+#prompt-config-header {
+	/* HACK: Need to add (or use) a theme color for this! */
+	background-color: #212a33;
+	padding: 7px;
+}
+
+#prompt-config-header > h3 {
+	margin-top: 5px;
+	margin-bottom: 5px;
+}
+
+#prompt-config-placeholders {
+	display: flex;
+	flex-direction: column;
+	row-gap: 16px;
+	overflow-y: scroll;
+	padding: 7px;
+	padding-left: 14px
+}
+
+.prompt-config-title {
+	display: block;
+	font-size: 20px;
+	font-weight: bold;
+}
+
+.prompt-config-value {
+	padding: 7px;
+}
+
+#prompt-config-done {
+	display: flex;
+	justify-content: center;
+	align-items: center;
+
+	width: 100px;
+	height: 32px;
+
+	position: absolute;
+
+	right: 10px;
+	bottom: 10px;
+
+
+	cursor: pointer;
+	color: var(--button_text);
+	background-color: var(--button_background);
+	border-radius: var(--radius_settings_button);
 }
 
 /*---------------------------------- Global ------------------------------------------------*/
