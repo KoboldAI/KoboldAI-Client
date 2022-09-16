@@ -1181,6 +1181,7 @@ body {
 	padding: 0px 5px 10px 10px;
 	vertical-align: bottom;
 	overflow-y: scroll;
+	outline: none;
 	-ms-overflow-style: none;  /* IE and Edge */
 	scrollbar-width: none;  /* Firefox */
 }
