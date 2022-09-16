@@ -2119,10 +2119,14 @@ function select_game_text(event) {
 				new_selected_game_chunk = document.selection.createRange().parentElement().parentElement();
 			}
 		} else {
-			if (window.getSelection().anchorNode.parentNode.id == 'story_prompt') {
-				new_selected_game_chunk = window.getSelection().anchorNode.parentNode;
+			if(window.getSelection().anchorNode.parentNode) {
+				if (window.getSelection().anchorNode.parentNode.id == 'story_prompt') {
+					new_selected_game_chunk = window.getSelection().anchorNode.parentNode;
+				} else {
+					new_selected_game_chunk = window.getSelection().anchorNode.parentNode.parentNode;
+				}
 			} else {
-				new_selected_game_chunk = window.getSelection().anchorNode.parentNode.parentNode;
+				new_selected_game_chunk = null;
 			}
 		}
 		//if we've moved to a new game chunk we need to save the old chunk
