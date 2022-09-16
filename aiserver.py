@@ -247,6 +247,7 @@ class ImportBuffer:
     prompt: Optional[str] = None
     memory: Optional[str] = None
     authors_note: Optional[str] = None
+    notes: Optional[str] = None
     world_infos: Optional[dict] = None
 
     @dataclass
@@ -284,6 +285,10 @@ class ImportBuffer:
             if "[" not in ph_text:
                 ph_id = ph_text
 
+                # Already have it!
+                if any([x.id == ph_id for x in placeholders]):
+                    continue
+
                 # Apparently, none of these characters are supported:
                 # "${}[]#:@^|", however I have found some prompts using these,
                 # so they will be allowed.
@@ -302,6 +307,10 @@ class ImportBuffer:
 
             ph_id, _ = ph_text.split("[")
             ph_text = ph_text.replace(ph_id, "", 1)
+
+            # Already have it!
+            if any([x.id == ph_id for x in placeholders]):
+                continue
 
             # Match won't match it for some reason (???), so we use finditer and next()
             try:
@@ -330,12 +339,15 @@ class ImportBuffer:
 
     def _replace_placeholders(self, text: str, ph_ids: dict):
         for ph_id, value in ph_ids.items():
-            pattern = "\${(?:\d#)?{}.*}".format(ph_id)
+            print(f"iterating upon {ph_id=}")
+            pattern = "\${(?:\d#)?%s.*?}" % ph_id
             for ph_text in re.findall(pattern, text):
+                print(f"instance of {ph_id} in text, replaceing with {value}")
                 text = text.replace(ph_text, value)
         return text
 
     def replace_placeholders(self, ph_ids: dict):
+        print(f"Replacing with {ph_ids}")
         self.prompt = self._replace_placeholders(self.prompt, ph_ids)
         self.memory = self._replace_placeholders(self.memory, ph_ids)
         self.authors_note = self._replace_placeholders(self.authors_note, ph_ids)
@@ -358,6 +370,7 @@ class ImportBuffer:
         self.prompt = j["promptContent"]
         self.memory = j["memory"]
         self.authors_note = j["authorsNote"]
+        self.notes = j["description"]
 
         self.world_infos = []
 
@@ -390,6 +403,7 @@ class ImportBuffer:
         koboldai_vars.prompt = self.prompt
         koboldai_vars.memory = self.memory or ""
         koboldai_vars.authornote = self.authors_note or ""
+        koboldai_vars.notes = self.notes
 
         # ???: Was this supposed to increment?
         num = 0
