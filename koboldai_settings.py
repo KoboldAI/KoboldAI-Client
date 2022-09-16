@@ -77,9 +77,11 @@ class koboldai_vars(object):
         with open("settings/system_settings.v2_settings", "w") as settings_file:
             settings_file.write(self._system_settings.to_json())
         
-            
     def save_story(self):
         self._story_settings['default'].save_story()
+    
+    def save_revision(self):
+        self._story_settings['default'].save_revision()
     
     def create_story(self, story_name, json_data=None):
         #Story name here is intended for multiple users on multiple stories. Now always uses default
@@ -505,7 +507,7 @@ class model_settings(settings):
             process_variable_changes(self.socketio, self.__class__.__name__.replace("_settings", ""), name, value, old_value)
             
 class story_settings(settings):
-    local_only_variables = ['socketio', 'tokenizer', 'koboldai_vars', 'no_save']
+    local_only_variables = ['socketio', 'tokenizer', 'koboldai_vars', 'no_save', 'revisions']
     no_save_variables = ['socketio', 'tokenizer', 'koboldai_vars', 'context', 'no_save']
     settings_name = "story"
     def __init__(self, socketio, koboldai_vars, tokenizer=None):
@@ -568,6 +570,7 @@ class story_settings(settings):
         self.prompt_in_ai = False
         self.context = []
         self.last_story_load = None
+        self.revisions = []
         
         #must be at bottom
         self.no_save = False  #Temporary disable save (doesn't save with the file)
@@ -594,6 +597,12 @@ class story_settings(settings):
                 with open("stories/{}{}_v2.json".format(save_name, adder), "w") as settings_file:
                     settings_file.write(self.to_json())
                 self.gamesaved = True
+    
+    def save_revision(self):
+        game = json.loads(self.to_json())
+        del game['revisions']
+        self.revisions.append(game)
+        self.gamesaved = False
     
     def reset(self):
         self.no_save = True

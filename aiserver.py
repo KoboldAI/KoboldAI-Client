@@ -268,74 +268,74 @@ class ImportBuffer:
                 "description"
             ]}
     
-    def request_client_configuration(self, placeholders: list[PromptPlaceholder]) -> None:
-        emit("request_prompt_config", [x.to_json() for x in placeholders], broadcast=False,  room="UI_2")
+    #def request_client_configuration(self, placeholders: list[PromptPlaceholder]) -> None:
+    #    emit("request_prompt_config", [x.to_json() for x in placeholders], broadcast=False,  room="UI_2")
 
-    def extract_placeholders(self, text: str) -> list[PromptPlaceholder]:
-        placeholders = []
+    #def extract_placeholders(self, text: str) -> list[PromptPlaceholder]:
+    #    placeholders = []
 
-        for match in re.finditer(r"\${(.*?)}", text):
-            ph_text = match.group(1)
+    #    for match in re.finditer(r"\${(.*?)}", text):
+    #        ph_text = match.group(1)
 
-            try:
-                ph_order, ph_text = ph_text.split("#")
-            except ValueError:
-                ph_order = None
+    #        try:
+    #            ph_order, ph_text = ph_text.split("#")
+    #        except ValueError:
+    #            ph_order = None
 
-            if "[" not in ph_text:
-                ph_id = ph_text
+    #        if "[" not in ph_text:
+    #            ph_id = ph_text
 
                 # Already have it!
-                if any([x.id == ph_id for x in placeholders]):
-                    continue
+    #            if any([x.id == ph_id for x in placeholders]):
+    #                continue
 
                 # Apparently, none of these characters are supported:
                 # "${}[]#:@^|", however I have found some prompts using these,
                 # so they will be allowed.
-                for char in "${}[]":
-                    if char in ph_text:
-                        print("[eph] Weird char")
-                        print(f"{char=}")
-                        print(f"{ph_id=}")
-                        return
+    #            for char in "${}[]":
+    #                if char in ph_text:
+    #                    print("[eph] Weird char")
+    #                    print(f"{char=}")
+    #                    print(f"{ph_id=}")
+    #                    return
 
-                placeholders.append(self.PromptPlaceholder(
-                    id=ph_id,
-                    order=int(ph_order) if ph_order else None,
-                ))
-                continue
+    #            placeholders.append(self.PromptPlaceholder(
+    #                id=ph_id,
+    #                order=int(ph_order) if ph_order else None,
+    #            ))
+    #            continue
 
-            ph_id, _ = ph_text.split("[")
-            ph_text = ph_text.replace(ph_id, "", 1)
+    #        ph_id, _ = ph_text.split("[")
+    #        ph_text = ph_text.replace(ph_id, "", 1)
 
             # Already have it!
-            if any([x.id == ph_id for x in placeholders]):
-                continue
+    #        if any([x.id == ph_id for x in placeholders]):
+    #            continue
 
             # Match won't match it for some reason (???), so we use finditer and next()
-            try:
-                default_match = next(re.finditer(r"\[(.*?)\]", ph_text))
-            except StopIteration:
-                print("[eph] Weird brackets")
-                return placeholders
+    #        try:
+    #            default_match = next(re.finditer(r"\[(.*?)\]", ph_text))
+    #        except StopIteration:
+    #            print("[eph] Weird brackets")
+    #            return placeholders
 
-            ph_default = default_match.group(1)
-            ph_text = ph_text.replace(default_match.group(0), "")
+    #        ph_default = default_match.group(1)
+    #        ph_text = ph_text.replace(default_match.group(0), "")
 
-            try:
-                ph_title, ph_desc = ph_text.split(":")
-            except ValueError:
-                ph_title = ph_text or None
-                ph_desc=None
+    #        try:
+    #            ph_title, ph_desc = ph_text.split(":")
+    #        except ValueError:
+    #            ph_title = ph_text or None
+    #            ph_desc=None
 
-            placeholders.append(self.PromptPlaceholder(
-                id=ph_id,
-                order=int(ph_order) if ph_order else None,
-                default=ph_default,
-                title=ph_title,
-                description=ph_desc
-            ))
-        return placeholders
+    #        placeholders.append(self.PromptPlaceholder(
+    #            id=ph_id,
+    #            order=int(ph_order) if ph_order else None,
+    #            default=ph_default,
+    #            title=ph_title,
+    #            description=ph_desc
+    #        ))
+    #    return placeholders
 
     def _replace_placeholders(self, text: str, ph_ids: dict):
         for ph_id, value in ph_ids.items():
@@ -7592,7 +7592,7 @@ def get_story_listing_data(item_full_path, item, valid_selection):
     if js.get("file_version", 1) == 1:
         return [title, action_count, last_loaded]
 
-    action_count = 0 if js['actions']['action_count'] == -1 else js['actions']['action_count']
+    action_count = js['actions']['action_count']+1
 
     return [title, action_count, last_loaded]
     
@@ -8070,6 +8070,13 @@ def get_model_size(model_name):
         return "2.7B"
     elif "1.3B" in model_name:
         return "1.3B"
+
+#==================================================================#
+# Save New Preset
+#==================================================================#
+@socketio.on('save_revision')
+def UI_2_save_revision(data):
+    koboldai_vars.save_revision()
 
 #==================================================================#
 # Test
