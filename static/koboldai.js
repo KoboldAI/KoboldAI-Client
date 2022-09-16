@@ -28,6 +28,7 @@ socket.on("error", function(data){show_error_message(data);});
 socket.on('load_cookies', function(data){load_cookies(data)});
 socket.on('load_tweaks', function(data){load_tweaks(data);});
 socket.on("wi_results", updateWISearchListings);
+socket.on("request_prompt_config", configurePrompt);
 //socket.onAny(function(event_name, data) {console.log({"event": event_name, "class": data.classname, "data": data});});
 
 var presets = {};
@@ -3409,6 +3410,51 @@ async function downloadDebugFile(redact=true) {
 	console.log(debug_info);
 
 	downloadString(JSON.stringify(debug_info, null, 4), "kobold_debug.json");
+}
+
+function configurePrompt(placeholderData) {
+	console.log(placeholderData);
+	const container = document.querySelector("#prompt-config-container");
+	container.classList.remove("hidden");
+
+	const placeholders = document.querySelector("#prompt-config-placeholders");
+
+	for (const phData of placeholderData) {
+		let placeholder = $e("div", placeholders, {classes: ["prompt-config-ph"]});
+
+
+		// ${character.name} is an AI Dungeon thing, although I believe NAI
+		// supports it as well. Many prompts use it. I think this is the only
+		// hardcoded thing like this.
+		let titleText = phData.title || phData.id;
+		if (titleText === "character.name") titleText = "Character Name";
+
+		let title = $e("span", placeholder, {classes: ["prompt-config-title"], innerText: titleText});
+
+		if (phData.description) $e("span", placeholder, {
+			classes: ["prompt-config-desc", "help_text"],
+			innerText: phData.description
+		});
+
+		let input = $e("input", placeholder, {
+			classes: ["prompt-config-value"],
+			value: phData.default || "",
+			placeholder: phData.default || "",
+			"placeholder-id": phData.id
+		});
+	}
+}
+
+function sendPromptConfiguration() {
+	let data = {};
+	for (const configInput of document.querySelectorAll(".prompt-config-value")) {
+		data[configInput.getAttribute("placeholder-id")] = configInput.value;
+	}
+
+	socket.emit("configure_prompt", data);
+
+	document.querySelector("#prompt-config-container").classList.add("hidden");
+	$(".prompt-config-ph").remove();
 }
 
 function loadNAILorebook(data, filename) {
