@@ -4617,14 +4617,56 @@ def calcsubmit(txt):
         # Send it!
         ikrequest(subtxt)
 
+def legacy_generate(text):
+    # Architected after oairequest
+
+    koboldai_vars.lastctx = text
+
+    outputs = raw_generate(text)
+
+    # Lua bridge, genmod
+    for i, output in enumerate(outputs):
+        koboldai_vars.lua_koboldbridge.outputs[i + 1] = output
+    
+    execute_genmod()
+
+    if koboldai_vars.lua_koboldbridge.regeneration_required:
+        koboldai_vars.lua_koboldbridge.regeneration_required = False
+        genout = []
+        for i in range(len(outputs)):
+            out = koboldai_vars.lua_koboldbridge.outputs[i + 1]
+            genout.append({"generated_text": out})
+            assert isinstance(out, str)
+    else:
+        genout = [{"generated_text": utils.decodenewlines(x)} for x in outputs]
+    
+    koboldai_vars.actions.append_options([applyoutputformatting(x["generated_text"]) for x in genout])
+    genout = [{"generated_text": x['text']} for x in koboldai_vars.actions.get_current_options()]
+
+    if len(genout) == 1:
+        genresult(genout[0]["generated_text"])
+    else:
+        restart_seq = koboldai_vars.lua_koboldbridge.restart_sequence
+        if restart_seq and restart_seq > 0:
+            genresult(genout[restart_seq - 1]["generated_text"])
+        else:
+            genselect(genout)
+    set_aibusy(0)
+
 def raw_generate(
-    prompt: str,
+    # prompt is either a string (text) or a list (token ids)
+    prompt: Union[str, list],
     max_length: int,
 
     do_streaming: bool = False,
     do_dynamic_wi: bool = False,
-):
-    prompt_tokens = tokenizer.encode(prompt)
+    batch_count: int = 1,
+) -> List:
+
+    if isinstance(prompt, str):
+        prompt_tokens = tokenizer.encode(prompt)
+    else:
+        prompt_tokens = prompt
 
     if koboldai_vars.model == "Colab":
         raise NotImplementedError("Colab API raw_generate unsupported")
@@ -4638,23 +4680,26 @@ def raw_generate(
         raise NotImplementedError("No loaded model")
 
     if koboldai_vars.use_colab_tpu or model in ("TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX"):
-        out_tokens = tpu_raw_generate(
+        batch_out = tpu_raw_generate(
             prompt_tokens=prompt_tokens,
             max_length=max_length,
+            batch_count=batch_count
         )
     else:
-        out_tokens = torch_raw_generate(
+        batch_out = torch_raw_generate(
             prompt_tokens=prompt_tokens,
             max_length=max_length,
             do_streaming=do_streaming,
             do_dynamic_wi=do_dynamic_wi,
+            batch_count=batch_count
         )
 
-    return utils.decodenewlines(tokenizer.decode(out_tokens))
+    return [utils.decodenewlines(tokenizer.decode(x)) for x in batch_out]
 
 def tpu_raw_generate(
     prompt_tokens: list[int],
-    max_length: int
+    max_length: int,
+    batch_count: int,
 ):
     # Mostly lifted from apiactionsubmit_tpumtjgenerate
     soft_tokens = tpumtjgetsofttokens()
@@ -4668,7 +4713,7 @@ def tpu_raw_generate(
         tfs=koboldai_vars.tfs,
         typical=koboldai_vars.typical,
         top_a=koboldai_vars.top_a,
-        numseqs=1,
+        numseqs=batch_count,
         repetition_penalty=koboldai_vars.rep_pen,
         rpslope=koboldai_vars.rep_pen_slope,
         rprange=koboldai_vars.rep_pen_range,
@@ -4677,7 +4722,7 @@ def tpu_raw_generate(
         sampler_order=koboldai_vars.sampler_order,
     )
 
-    return genout[0]
+    return genout
 
 def torch_raw_generate(
     prompt_tokens: list[int],
@@ -4685,6 +4730,7 @@ def torch_raw_generate(
 
     do_streaming: bool = False,
     do_dynamic_wi: bool = False,
+    batch_count: int = 1
 ):
 
     koboldai_vars.inference_config.do_streaming = do_streaming
@@ -4710,6 +4756,7 @@ def torch_raw_generate(
             repetition_penalty=1.0,
             bad_words_ids=koboldai_vars.badwordsids,
             use_cache=True,
+            num_return_sequences=batch_count,
         )
     
     return genout[0]
