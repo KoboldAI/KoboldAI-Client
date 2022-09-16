@@ -113,7 +113,7 @@
 		<input autocomplete="off" class="form-control" type="text" placeholder="Prompt Number (4-digit number at the end of aetherroom.club URL)" id="aidgpromptnum">
 	</div>
 	<div class="popup_load_cancel">
-		<button type="button" class="btn btn-primary popup_load_cancel_button" onclick="socket.emit('load_aidg_club', document.getElementById('aidgpromptnum').value); this.parentElement.parentElement.classList.add('hidden');">Accept</button>
+		<button type="button" class="btn btn-primary popup_load_cancel_button" onclick="socket.emit('load_aidg_club', document.getElementById('aidgpromptnum').value); $('.popup').addClass('hidden');">Accept</button>
 		<button type="button" class="btn btn-primary popup_load_cancel_button" onclick="this.parentElement.parentElement.classList.add('hidden');">Cancel</button>
 	</div>
 </div>

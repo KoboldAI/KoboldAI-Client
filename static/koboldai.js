@@ -3474,7 +3474,6 @@ function sendPromptConfiguration() {
 
 	socket.emit("configure_prompt", data);
 
-	document.querySelector("#popup").classList.add("hidden");
 	document.querySelector("#prompt-config-container").classList.add("hidden");
 	$(".prompt-config-ph").remove();
 }

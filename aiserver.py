@@ -339,15 +339,12 @@ class ImportBuffer:
 
     def _replace_placeholders(self, text: str, ph_ids: dict):
         for ph_id, value in ph_ids.items():
-            print(f"iterating upon {ph_id=}")
-            pattern = "\${(?:\d#)?%s.*?}" % ph_id
+            pattern = "\${(?:\d#)?%s.*?}" % re.escape(ph_id)
             for ph_text in re.findall(pattern, text):
-                print(f"instance of {ph_id} in text, replaceing with {value}")
                 text = text.replace(ph_text, value)
         return text
 
     def replace_placeholders(self, ph_ids: dict):
-        print(f"Replacing with {ph_ids}")
         self.prompt = self._replace_placeholders(self.prompt, ph_ids)
         self.memory = self._replace_placeholders(self.memory, ph_ids)
         self.authors_note = self._replace_placeholders(self.authors_note, ph_ids)
