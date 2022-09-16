@@ -470,6 +470,14 @@ def emit(*args, **kwargs):
     except AttributeError:
         return socketio.emit(*args, **kwargs)
 
+#replacement for tpool.execute to maintain request contexts
+def replacement_tpool_execute(function, *args, **kwargs):
+    
+    
+def replacement_tpool_execute_2(function, queue, *args, **kwargs):
+    return_data = function(*args, **kwargs)
+    queue.put(return_data)
+
 # marshmallow/apispec setup
 from apispec import APISpec
 from apispec.ext.marshmallow import MarshmallowPlugin

@@ -116,7 +116,7 @@ function reset_story() {
 	while (story_area.lastChild.id != 'story_prompt') { 
 		story_area.removeChild(story_area.lastChild);
 	}
-	dummy_span = document.createElement("span");
+	dummy_span = document.createElement("div");
 	dummy_span.id = "Delete Me";
 	dummy_span.classList.add("noselect");
 	text = "";
@@ -2116,6 +2116,9 @@ function select_game_text(event) {
 		if (document.selection) {
 			if (document.selection.createRange().parentElement().id == 'story_prompt') {
 				new_selected_game_chunk = document.selection.createRange().parentElement();
+			} else if (document.selection.createRange().parentElement().id == 'gamescreen') {
+				new_selected_game_chunk = null;
+				console.log("Do nothing");
 			} else {
 				new_selected_game_chunk = document.selection.createRange().parentElement().parentElement();
 			}
@@ -2123,6 +2126,9 @@ function select_game_text(event) {
 			if(window.getSelection().anchorNode.parentNode) {
 				if (window.getSelection().anchorNode.parentNode.id == 'story_prompt') {
 					new_selected_game_chunk = window.getSelection().anchorNode.parentNode;
+				} else if (window.getSelection().anchorNode.parentNode.id == "gamescreen") {
+					new_selected_game_chunk = null;
+					console.log("Do nothing");
 				} else {
 					new_selected_game_chunk = window.getSelection().anchorNode.parentNode.parentNode;
 				}
@@ -2137,7 +2143,7 @@ function select_game_text(event) {
 		
 		//Check to see if new selection is a game chunk or something else
 		
-		if (((new_selected_game_chunk.id == "story_prompt") || (new_selected_game_chunk.id.slice(0,20) == "Selected Text Chunk ")) && (document.activeElement.isContentEditable)) {
+		if ((new_selected_game_chunk == null) || (((new_selected_game_chunk.id == "story_prompt") || (new_selected_game_chunk.id.slice(0,20) == "Selected Text Chunk ")) && (document.activeElement.isContentEditable))) {
 			if (new_selected_game_chunk != selected_game_chunk) {
 				for (item of document.getElementsByClassName("editing")) {
 					item.classList.remove("editing");
