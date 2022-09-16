@@ -2146,6 +2146,7 @@ function select_game_text(event) {
 			for (item of document.getElementsByClassName("editing")) {
 				item.classList.remove("editing");
 			}
+			window.getSelection().removeAllRanges()
 		}
 	}
 }
