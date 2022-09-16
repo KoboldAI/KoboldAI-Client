@@ -123,6 +123,7 @@ function reset_story() {
 		text += "\xa0 ";
 	}
 	dummy_span.textContent = text;
+	dummy_span.setAttribute("contenteditable", false);
 	story_area.append(dummy_span);
 	var option_area = document.getElementById("Select Options");
 	while (option_area.firstChild) {
