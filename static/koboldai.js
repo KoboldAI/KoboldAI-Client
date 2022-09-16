@@ -2127,28 +2127,29 @@ function select_game_text(event) {
 		if ((new_selected_game_chunk != selected_game_chunk) && (selected_game_chunk != null)) {
 			edit_game_text();
 		}
-		if (new_selected_game_chunk != selected_game_chunk) {
-			selected_game_chunk = new_selected_game_chunk
-		}
 		
-		//since we have that delete me span for initial spacing, we don't want that to be editable, so let's fix that here
-		if (selected_game_chunk == document.getElementById("Delete Me")) {
+		//Check to see if new selection is a game chunk or something else
+		
+		if (((new_selected_game_chunk.id == "story_prompt") || (new_selected_game_chunk.id.slice(0,20) == "Selected Text Chunk ")) && (document.activeElement.isContentEditable)) {
+			if (new_selected_game_chunk != selected_game_chunk) {
+				for (item of document.getElementsByClassName("editing")) {
+					item.classList.remove("editing");
+				}
+				selected_game_chunk = new_selected_game_chunk;
+				selected_game_chunk.classList.add("editing");
+			}
+			
+		} else {
 			selected_game_chunk = null;
-		}
-		
-		//set editting class
-		for (item of document.getElementsByClassName("editing")) {
-			item.classList.remove("editing");
-		}
-		if (selected_game_chunk != null) {
-			selected_game_chunk.classList.add("editing");
+			for (item of document.getElementsByClassName("editing")) {
+				item.classList.remove("editing");
+			}
 		}
 	}
 }
 
 function edit_game_text() {
 	if ((selected_game_chunk != null) && (selected_game_chunk.textContent != selected_game_chunk.original_text) && (selected_game_chunk != document.getElementById("Delete Me"))) {
-		console.log(selected_game_chunk);
 		if (selected_game_chunk.id == "story_prompt") {
 			sync_to_server(selected_game_chunk);
 		} else {
@@ -2156,28 +2157,6 @@ function edit_game_text() {
 		}
 		selected_game_chunk.original_text = selected_game_chunk.textContent;
 		selected_game_chunk.classList.add("pulse");
-	}
-}
-
-function clear_edit_game_text_tag() {
-	let id = null;
-	if (document.selection) {
-		if (document.selection.createRange().parentElement().id == 'story_prompt') {
-			id = document.selection.createRange().parentElement().id;
-		} else {
-			id = document.selection.createRange().parentElement().parentElement().id;
-		}
-	} else {
-		if (window.getSelection().anchorNode.parentNode.id == 'story_prompt') {
-			id = window.getSelection().anchorNode.parentNode.id;
-		} else {
-			id = window.getSelection().anchorNode.parentNode.parentNode.id;
-		}
-	}
-	if ((id != 'story_prompt') && (id.slice(0, 20) != "Selected Text Chunk ")) {
-		for (item of document.getElementsByClassName("editing")) {
-			item.classList.remove("editing");
-		}
 	}
 }
 
