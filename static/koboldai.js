@@ -1059,6 +1059,18 @@ function oai_engines(data) {
 	}
 }
 
+function getModelParameterCount(modelName) {
+	// The "T" and "K" may be a little optimistic...
+	let paramsString = modelName.toUpperCase().match(/[\d.]+[TBMK]/)
+	if (!paramsString) return null;
+	paramsString = paramsString[0];
+
+	let base = parseFloat(paramsString);
+	let multiplier = {T: 1_000_000_000_000, B: 1_000_000_000, M: 1_000_000, K: 1_000}[paramsString[paramsString.length - 1]];
+
+	return base * multiplier;
+}
+
 function show_model_menu(data) {
 	document.getElementById("loadmodelcontainer").classList.remove("hidden");
 	
@@ -1135,6 +1147,28 @@ function show_model_menu(data) {
 		text.textContent = item[2];
 		text.style="grid-area: gpu_size;padding: 2px;";
 		popup_item.append(text);
+
+		(function() {
+			// Anon function to avoid unreasonable indentation
+			if (folder_icon.innerText !== "psychology") return;
+
+			let parameterCount = getModelParameterCount(item[0]);
+			if (!parameterCount) return;
+
+			let warningText = "";
+
+			if (parameterCount > 25_000_000_000) warningText = "This is a very high-end model and will likely not run without a specialized setup."; // 25B
+			if (parameterCount < 5_000_000_000) warningText = "This is a lower-end model and may perform poorly.";			// 5B
+			if (parameterCount < 1_000_000_000) warningText = "This is a very low-end model and may perform incoherently.";	// 1B
+
+			if (!warningText) return;
+			$e("span", list_item, {
+				classes: ["material-icons-outlined"],
+				innerText: "warning",
+				"style.grid-area": "warning_icon",
+				title: warningText
+			});
+		})();
 		
 		popup_item.onclick = function () {
 						var accept = document.getElementById("btn_loadmodelaccept");

@@ -1534,8 +1534,8 @@ body {
 	border-radius: var(--radius_item_popup);
 	padding: 2px;
 	display: grid;
-	grid-template-areas: "folder_icon delete_icon edit_icon rename_icon file gpu_size";
-	grid-template-columns: 30px 0px 0px 0px auto 50px;
+	grid-template-areas: "folder_icon delete_icon edit_icon rename_icon file gpu_size warning_icon";
+	grid-template-columns: 30px 0px 0px 0px auto 50px 30px;
 	
 }
 
