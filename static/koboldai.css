@@ -2356,3 +2356,13 @@ h2 .material-icons-outlined {
 .horde_trigger[model_model="CLUSTER"] {
 	display: none;
 }
+
+.preset_area {
+	width: 100%;
+	padding: 10px;
+	text-align: center;
+}
+
+.preset_area .settings_button {
+	transform: translateY(6px);
+}
