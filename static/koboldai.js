@@ -119,6 +119,7 @@ function reset_story() {
 	dummy_span = document.createElement("div");
 	dummy_span.id = "Delete Me";
 	dummy_span.classList.add("noselect");
+	document.getElementById("Selected Text").setAttribute("contenteditable", "false");
 	text = "";
 	for (i=0;i<154;i++) {
 		text += "\xa0 ";
@@ -313,6 +314,8 @@ function do_prompt(data) {
 		if (document.getElementById("Delete Me")) {
 			document.getElementById("Delete Me").remove();
 		}
+		//enable editing
+		document.getElementById("Selected Text").setAttribute("contenteditable", "true");
 	} else {
 		document.getElementById('input_text').placeholder = "Enter Prompt Here (shift+enter for new line)";
 		document.getElementById('input_text').disabled = false;
