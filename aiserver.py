@@ -471,13 +471,13 @@ def emit(*args, **kwargs):
         return socketio.emit(*args, **kwargs)
 
 #replacement for tpool.execute to maintain request contexts
-def replacement_tpool_execute(function, *args, **kwargs):
+def tpool.execute(function, *args, **kwargs):
     temp = {}
-    socketio.start_background_task(replacement_tpool_execute_2, function, temp, *args, **kwargs).join()
+    socketio.start_background_task(tpool.execute_2, function, temp, *args, **kwargs).join()
     print(temp)
     return temp[1]
     
-def replacement_tpool_execute_2(function, temp, *args, **kwargs):
+def tpool.execute_2(function, temp, *args, **kwargs):
     temp[1] = function(*args, **kwargs)
 
 # marshmallow/apispec setup
@@ -3026,8 +3026,8 @@ def load_lua_scripts():
 
     try:
         koboldai_vars.lua_koboldbridge.obliterate_multiverse()
-        replacement_tpool_execute(koboldai_vars.lua_koboldbridge.load_corescript, koboldai_vars.corescript)
-        koboldai_vars.has_genmod = replacement_tpool_execute(koboldai_vars.lua_koboldbridge.load_userscripts, filenames, modulenames, descriptions)
+        tpool.execute(koboldai_vars.lua_koboldbridge.load_corescript, koboldai_vars.corescript)
+        koboldai_vars.has_genmod = tpool.execute(koboldai_vars.lua_koboldbridge.load_userscripts, filenames, modulenames, descriptions)
         koboldai_vars.lua_running = True
     except lupa.LuaError as e:
         try:
@@ -3525,7 +3525,7 @@ def execute_inmod():
     koboldai_vars.lua_edited = set()
     koboldai_vars.lua_deleted = set()
     try:
-        replacement_tpool_execute(koboldai_vars.lua_koboldbridge.execute_inmod)
+        tpool.execute(koboldai_vars.lua_koboldbridge.execute_inmod)
     except lupa.LuaError as e:
         koboldai_vars.lua_koboldbridge.obliterate_multiverse()
         koboldai_vars.lua_running = False
@@ -3544,7 +3544,7 @@ def execute_outmod():
     setgamesaved(False)
     emit('from_server', {'cmd': 'hidemsg', 'data': ''}, broadcast=True, room="UI_1")
     try:
-        replacement_tpool_execute(koboldai_vars.lua_koboldbridge.execute_outmod)
+        tpool.execute(koboldai_vars.lua_koboldbridge.execute_outmod)
     except lupa.LuaError as e:
         koboldai_vars.lua_koboldbridge.obliterate_multiverse()
         koboldai_vars.lua_running = False
@@ -4411,7 +4411,7 @@ def apiactionsubmit_generate(txt, minimum, maximum):
         torch.cuda.empty_cache()
 
     # Submit input text to generator
-    _genout, already_generated = replacement_tpool_execute(_generate, txt, minimum, maximum, set())
+    _genout, already_generated = tpool.execute(_generate, txt, minimum, maximum, set())
 
     genout = [applyoutputformatting(utils.decodenewlines(tokenizer.decode(tokens[-already_generated:]))) for tokens in _genout]
 
@@ -4436,7 +4436,7 @@ def apiactionsubmit_tpumtjgenerate(txt, minimum, maximum):
 
     # Submit input text to generator
     soft_tokens = tpumtjgetsofttokens()
-    genout = replacement_tpool_execute(
+    genout = tpool.execute(
         tpu_mtj_backend.infer_static,
         np.uint32(txt),
         gen_len = maximum-minimum+1,
@@ -4929,7 +4929,7 @@ def generate(txt, minimum, maximum, found_entries=None):
 
     # Submit input text to generator
     try:
-        genout, already_generated = replacement_tpool_execute(_generate, txt, minimum, maximum, found_entries)
+        genout, already_generated = tpool.execute(_generate, txt, minimum, maximum, found_entries)
     except Exception as e:
         if(issubclass(type(e), lupa.LuaError)):
             koboldai_vars.lua_koboldbridge.obliterate_multiverse()
@@ -5354,7 +5354,7 @@ def tpumtjgenerate(txt, minimum, maximum, found_entries=None):
             past = np.empty((koboldai_vars.numseqs, 0), dtype=np.uint32)
 
             while(True):
-                genout, n_generated, regeneration_required, halt = replacement_tpool_execute(
+                genout, n_generated, regeneration_required, halt = tpool.execute(
                     tpu_mtj_backend.infer_dynamic,
                     context,
                     gen_len = maximum-minimum+1,
@@ -5396,7 +5396,7 @@ def tpumtjgenerate(txt, minimum, maximum, found_entries=None):
                 )
 
         else:
-            genout = replacement_tpool_execute(
+            genout = tpool.execute(
                 tpu_mtj_backend.infer_static,
                 np.uint32(txt),
                 gen_len = maximum-minimum+1,
