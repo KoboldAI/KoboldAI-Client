@@ -1158,7 +1158,7 @@ function show_model_menu(data) {
 			let warningText = "";
 
 			if (parameterCount > 25_000_000_000) warningText = "This is a very high-end model and will likely not run without a specialized setup."; // 25B
-			if (parameterCount < 5_000_000_000) warningText = "This is a lower-end model and may perform poorly.";			// 5B
+			if (parameterCount < 2_000_000_000) warningText = "This is a lower-end model and may perform poorly.";			// 2B
 			if (parameterCount < 1_000_000_000) warningText = "This is a very low-end model and may perform incoherently.";	// 1B
 
 			if (!warningText) return;
