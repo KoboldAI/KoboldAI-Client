@@ -471,13 +471,13 @@ def emit(*args, **kwargs):
         return socketio.emit(*args, **kwargs)
 
 #replacement for tpool.execute to maintain request contexts
-def tpool.execute(function, *args, **kwargs):
+def replacement_tpool_execute(function, *args, **kwargs):
     temp = {}
     socketio.start_background_task(tpool.execute_2, function, temp, *args, **kwargs).join()
     print(temp)
     return temp[1]
     
-def tpool.execute_2(function, temp, *args, **kwargs):
+def replacement_tpool_execute_2(function, temp, *args, **kwargs):
     temp[1] = function(*args, **kwargs)
 
 # marshmallow/apispec setup
