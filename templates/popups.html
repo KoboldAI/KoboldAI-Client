@@ -113,7 +113,7 @@
 		<input autocomplete="off" class="form-control" type="text" placeholder="Prompt Number (4-digit number at the end of aetherroom.club URL)" id="aidgpromptnum">
 	</div>
 	<div class="popup_load_cancel">
-		<button type="button" class="btn btn-primary popup_load_cancel_button" onclick="socket.emit('load_aidg_club', document.getElementById('aidgpromptnum').value); this.parentElement.parentElement.classList.add('hidden');">Accept</button>
+		<button type="button" class="btn btn-primary popup_load_cancel_button" onclick="socket.emit('load_aidg_club', document.getElementById('aidgpromptnum').value); $('.popup').addClass('hidden');">Accept</button>
 		<button type="button" class="btn btn-primary popup_load_cancel_button" onclick="this.parentElement.parentElement.classList.add('hidden');">Cancel</button>
 	</div>
 </div>
@@ -191,5 +191,19 @@
 				<br><b>This file will contain your story.</b>
 			</span>
 		</div>
+	</div>
+</div>
+
+<!---------------- Prompt Config ------------------->
+<div id="prompt-config-container" class="hidden">
+	<div id="prompt-config">
+		<div id="prompt-config-header">
+			<h3 class="noselect">Prompt Configuration</h3>
+			<span class="help_text">This prompt has placeholders you need to fill in before starting.</span>
+		</div>
+
+		<!-- Order, default, title, description -->
+		<div id="prompt-config-placeholders"></div>
+		<div id="prompt-config-done" onclick="sendPromptConfiguration();">Done</div>
 	</div>
 </div>

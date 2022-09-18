@@ -1114,6 +1114,7 @@ body {
 	grid-template-columns: 30px auto var(--story_options_size) 30px;
 	grid-template-rows: auto min-content 100px;
 }
+
 .main-grid.settings_pinned {
 	margin-left: var(--flyout_menu_width);
 	grid-template-columns: 30px auto var(--story_options_size) 30px;
@@ -1180,6 +1181,7 @@ body {
 	padding: 0px 5px 10px 10px;
 	vertical-align: bottom;
 	overflow-y: scroll;
+	outline: none;
 	-ms-overflow-style: none;  /* IE and Edge */
 	scrollbar-width: none;  /* Firefox */
 }
@@ -1326,10 +1328,10 @@ body {
 }
 
 #themetext{
-	grid-area: textarea;
 	height: 100%;
 	width: 100%;
 	padding: 5px;
+	grid-area: textarea;
 	border-radius: var(--radius_inputbox);
 }
 
@@ -1853,7 +1855,8 @@ body {
 /* Finder */
 
 #finder-container,
-#debug-file-container {
+#debug-file-container,
+#prompt-config-container {
 	display: flex;
 	justify-content: center;
 	align-items: center;
@@ -2057,6 +2060,66 @@ body {
 #debug-file-prompt > #unredacted {
 	margin-top: 8px;
 	background-color: rgb(158, 2, 2);
+}
+
+/* Prompt Config */
+#prompt-config {
+	display: flex;
+	flex-direction: column;
+	position: relative;
+	background-color: var(--popup_background_color);
+	width: 25%;
+	height: 75%;
+}
+
+#prompt-config-header {
+	/* HACK: Need to add (or use) a theme color for this! */
+	background-color: #212a33;
+	padding: 7px;
+}
+
+#prompt-config-header > h3 {
+	margin-top: 5px;
+	margin-bottom: 5px;
+}
+
+#prompt-config-placeholders {
+	display: flex;
+	flex-direction: column;
+	row-gap: 16px;
+	overflow-y: scroll;
+	padding: 7px;
+	padding-left: 14px
+}
+
+.prompt-config-title {
+	display: block;
+	font-size: 20px;
+	font-weight: bold;
+}
+
+.prompt-config-value {
+	padding: 7px;
+}
+
+#prompt-config-done {
+	display: flex;
+	justify-content: center;
+	align-items: center;
+
+	width: 100px;
+	height: 32px;
+
+	position: absolute;
+
+	right: 10px;
+	bottom: 10px;
+
+
+	cursor: pointer;
+	color: var(--button_text);
+	background-color: var(--button_background);
+	border-radius: var(--radius_settings_button);
 }
 
 /*---------------------------------- Global ------------------------------------------------*/
@@ -2289,6 +2352,21 @@ h2 .material-icons-outlined {
 	}
 }
 
-.horde_trigger[model_model="ReadOnly"] {
+.horde_trigger[model_model="ReadOnly"],
+.horde_trigger[model_model="CLUSTER"] {
 	display: none;
+}
+
+.preset_area {
+	width: 100%;
+	padding: 10px;
+	text-align: center;
+}
+
+.preset_area .settings_button {
+	transform: translateY(6px);
+}
+
+input[type='range'] {
+    border: none !important;
 }

@@ -28,6 +28,7 @@ socket.on("error", function(data){show_error_message(data);});
 socket.on('load_cookies', function(data){load_cookies(data)});
 socket.on('load_tweaks', function(data){load_tweaks(data);});
 socket.on("wi_results", updateWISearchListings);
+socket.on("request_prompt_config", configurePrompt);
 //socket.onAny(function(event_name, data) {console.log({"event": event_name, "class": data.classname, "data": data});});
 
 var presets = {};
@@ -115,13 +116,16 @@ function reset_story() {
 	while (story_area.lastChild.id != 'story_prompt') { 
 		story_area.removeChild(story_area.lastChild);
 	}
-	dummy_span = document.createElement("span");
+	dummy_span = document.createElement("div");
 	dummy_span.id = "Delete Me";
+	dummy_span.classList.add("noselect");
+	document.getElementById("Selected Text").setAttribute("contenteditable", "false");
 	text = "";
 	for (i=0;i<154;i++) {
 		text += "\xa0 ";
 	}
 	dummy_span.textContent = text;
+	dummy_span.setAttribute("contenteditable", false);
 	story_area.append(dummy_span);
 	var option_area = document.getElementById("Select Options");
 	while (option_area.firstChild) {
@@ -310,6 +314,8 @@ function do_prompt(data) {
 		if (document.getElementById("Delete Me")) {
 			document.getElementById("Delete Me").remove();
 		}
+		//enable editing
+		document.getElementById("Selected Text").setAttribute("contenteditable", "true");
 	} else {
 		document.getElementById('input_text').placeholder = "Enter Prompt Here (shift+enter for new line)";
 		document.getElementById('input_text').disabled = false;
@@ -1062,6 +1068,7 @@ function show_model_menu(data) {
 	document.getElementById("modelurl").classList.add("hidden");
 	document.getElementById("use_gpu_div").classList.add("hidden");
 	document.getElementById("modellayers").classList.add("hidden");
+	document.getElementById("oaimodel").classList.add("hidden");
 	var model_layer_bars = document.getElementById('model_layer_bars');
 	while (model_layer_bars.firstChild) {
 		model_layer_bars.removeChild(model_layer_bars.firstChild);
@@ -1169,13 +1176,25 @@ function selected_model_info(data) {
 		document.getElementById("modelurl").classList.add("hidden");
 	}
 	
+	//default URL loading
+	if (data.default_url != null) {
+		document.getElementById("modelurl").value = data.default_url;
+	}
+	
 	//change model loading on url if needed
 	if (data.models_on_url) {
-		document.getElementById("modelurl").onchange = function () {socket.emit('get_cluster_models', {'key': document.getElementById("modelkey").value, 'url': this.value});};
-		document.getElementById("modelkey").onchange = function () {socket.emit('get_cluster_models', {'key': this.value, 'url': document.getElementById("modelurl").value});};
+		document.getElementById("modelurl").onchange = function () {socket.emit('get_cluster_models', {'model': document.getElementById('btn_loadmodelaccept').getAttribute('selected_model'), 'key': document.getElementById("modelkey").value, 'url': this.value});};
+		document.getElementById("modelkey").onchange = function () {socket.emit('get_cluster_models', {'model': document.getElementById('btn_loadmodelaccept').getAttribute('selected_model'), 'key': this.value, 'url': document.getElementById("modelurl").value});};
 	} else {
 		document.getElementById("modelkey").ochange = function () {socket.emit('OAI_Key_Update', {'model': document.getElementById('btn_loadmodelaccept').getAttribute('selected_model'), 'key': this.value});};
 		document.getElementById("modelurl").ochange = null;
+	}
+	
+	//show model select for APIs
+	if (data.show_online_model_select) {
+		document.getElementById("oaimodel").classList.remove("hidden");
+	} else {
+		document.getElementById("oaimodel").classList.add("hidden");
 	}
 	
 	//Multiple Model Select?
@@ -1372,15 +1391,28 @@ function load_model() {
 		var path = "";
 	}
 	
+	let selected_models = [];
+	for (item of document.getElementById("oaimodel").selectedOptions) {
+		selected_models.push(item.value);
+	}
+	if (selected_models == []) {
+		selected_models = "";
+	} else if (selected_models.length == 1) {
+		selected_models = selected_models[0];
+	}
+	
 	message = {'model': model, 'path': path, 'use_gpu': document.getElementById("use_gpu").checked, 
 			   'key': document.getElementById('modelkey').value, 'gpu_layers': gpu_layers.join(), 
 			   'disk_layers': disk_layers, 'url': document.getElementById("modelurl").value, 
-			   'online_model': document.getElementById("oaimodel").value};
+			   'online_model': selected_models};
 	socket.emit("load_model", message);
 	document.getElementById("loadmodelcontainer").classList.add("hidden");
 }
 
 function world_info_entry_used_in_game(data) {
+	if (!(data.uid in world_info_data)) {
+		world_info_data[data.uid] = {};
+	}
 	world_info_data[data.uid]['used_in_game'] = data['used_in_game'];
 	world_info_card = document.getElementById("world_info_"+data.uid);
 	if (data.used_in_game) {
@@ -2087,34 +2119,54 @@ function select_game_text(event) {
 		if (document.selection) {
 			if (document.selection.createRange().parentElement().id == 'story_prompt') {
 				new_selected_game_chunk = document.selection.createRange().parentElement();
+			} else if (document.selection.createRange().parentElement().id == 'gamescreen') {
+				new_selected_game_chunk = null;
+				console.log("Do nothing");
 			} else {
 				new_selected_game_chunk = document.selection.createRange().parentElement().parentElement();
 			}
 		} else {
-			if (window.getSelection().anchorNode.parentNode.id == 'story_prompt') {
-				new_selected_game_chunk = window.getSelection().anchorNode.parentNode;
+			if(window.getSelection().anchorNode.parentNode) {
+				if (window.getSelection().anchorNode.parentNode.id == 'story_prompt') {
+					new_selected_game_chunk = window.getSelection().anchorNode.parentNode;
+				} else if (window.getSelection().anchorNode.parentNode.id == "gamescreen") {
+					new_selected_game_chunk = null;
+					console.log("Do nothing");
+				} else {
+					new_selected_game_chunk = window.getSelection().anchorNode.parentNode.parentNode;
+				}
 			} else {
-				new_selected_game_chunk = window.getSelection().anchorNode.parentNode.parentNode;
+				new_selected_game_chunk = null;
 			}
 		}
 		//if we've moved to a new game chunk we need to save the old chunk
 		if ((new_selected_game_chunk != selected_game_chunk) && (selected_game_chunk != null)) {
 			edit_game_text();
 		}
-		if (new_selected_game_chunk != selected_game_chunk) {
-			selected_game_chunk = new_selected_game_chunk
-		}
 		
-		//set editting class
-		for (item of document.getElementsByClassName("editing")) {
-			item.classList.remove("editing");
+		//Check to see if new selection is a game chunk or something else
+		
+		if ((new_selected_game_chunk == null) || (((new_selected_game_chunk.id == "story_prompt") || (new_selected_game_chunk.id.slice(0,20) == "Selected Text Chunk ")) && (document.activeElement.isContentEditable))) {
+			if (new_selected_game_chunk != selected_game_chunk) {
+				for (item of document.getElementsByClassName("editing")) {
+					item.classList.remove("editing");
+				}
+				selected_game_chunk = new_selected_game_chunk;
+				selected_game_chunk.classList.add("editing");
+			}
+			
+		} else {
+			selected_game_chunk = null;
+			for (item of document.getElementsByClassName("editing")) {
+				item.classList.remove("editing");
+			}
+			window.getSelection().removeAllRanges()
 		}
-		selected_game_chunk.classList.add("editing");
 	}
 }
 
 function edit_game_text() {
-	if ((selected_game_chunk != null) && (selected_game_chunk.textContent != selected_game_chunk.original_text)) {
+	if ((selected_game_chunk != null) && (selected_game_chunk.textContent != selected_game_chunk.original_text) && (selected_game_chunk != document.getElementById("Delete Me"))) {
 		if (selected_game_chunk.id == "story_prompt") {
 			sync_to_server(selected_game_chunk);
 		} else {
@@ -2122,28 +2174,6 @@ function edit_game_text() {
 		}
 		selected_game_chunk.original_text = selected_game_chunk.textContent;
 		selected_game_chunk.classList.add("pulse");
-	}
-}
-
-function clear_edit_game_text_tag() {
-	let id = null;
-	if (document.selection) {
-		if (document.selection.createRange().parentElement().id == 'story_prompt') {
-			id = document.selection.createRange().parentElement().id;
-		} else {
-			id = document.selection.createRange().parentElement().parentElement().id;
-		}
-	} else {
-		if (window.getSelection().anchorNode.parentNode.id == 'story_prompt') {
-			id = window.getSelection().anchorNode.parentNode.id;
-		} else {
-			id = window.getSelection().anchorNode.parentNode.parentNode.id;
-		}
-	}
-	if ((id != 'story_prompt') && (id.slice(0, 20) != "Selected Text Chunk ")) {
-		for (item of document.getElementsByClassName("editing")) {
-			item.classList.remove("editing");
-		}
 	}
 }
 
@@ -3396,6 +3426,51 @@ async function downloadDebugFile(redact=true) {
 	console.log(debug_info);
 
 	downloadString(JSON.stringify(debug_info, null, 4), "kobold_debug.json");
+}
+
+function configurePrompt(placeholderData) {
+	console.log(placeholderData);
+	const container = document.querySelector("#prompt-config-container");
+	container.classList.remove("hidden");
+
+	const placeholders = document.querySelector("#prompt-config-placeholders");
+
+	for (const phData of placeholderData) {
+		let placeholder = $e("div", placeholders, {classes: ["prompt-config-ph"]});
+
+
+		// ${character.name} is an AI Dungeon thing, although I believe NAI
+		// supports it as well. Many prompts use it. I think this is the only
+		// hardcoded thing like this.
+		let titleText = phData.title || phData.id;
+		if (titleText === "character.name") titleText = "Character Name";
+
+		let title = $e("span", placeholder, {classes: ["prompt-config-title"], innerText: titleText});
+
+		if (phData.description) $e("span", placeholder, {
+			classes: ["prompt-config-desc", "help_text"],
+			innerText: phData.description
+		});
+
+		let input = $e("input", placeholder, {
+			classes: ["prompt-config-value"],
+			value: phData.default || "",
+			placeholder: phData.default || "",
+			"placeholder-id": phData.id
+		});
+	}
+}
+
+function sendPromptConfiguration() {
+	let data = {};
+	for (const configInput of document.querySelectorAll(".prompt-config-value")) {
+		data[configInput.getAttribute("placeholder-id")] = configInput.value;
+	}
+
+	socket.emit("configure_prompt", data);
+
+	document.querySelector("#prompt-config-container").classList.add("hidden");
+	$(".prompt-config-ph").remove();
 }
 
 function loadNAILorebook(data, filename) {
