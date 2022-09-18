@@ -3,6 +3,7 @@ from typing import Tuple, Union, Optional
 import os
 import json
 import zipfile
+from logger import logger
 
 #==================================================================#
 #  Generic Method for prompting for file path
@@ -156,16 +157,16 @@ def getspfiles(model_dimension: int):
             continue
         z, version, shape, fortran_order, dtype = checksp("./softprompts/"+file, model_dimension)
         if z == 1:
-            print(f"Browser SP loading error: {file} is malformed or not a soft prompt ZIP file.")
+            logger.warning(f"Softprompt {file} is malformed or not a soft prompt ZIP file.")
             continue
         if z == 2:
-            print(f"Browser SP loading error: {file} tensor.npy has unsupported dtype '{dtype.name}'.")
+            logger.warning(f"Softprompt {file} tensor.npy has unsupported dtype '{dtype.name}'.")
             continue
         if z == 3:
-            print(f"Browser SP loading error: {file} tensor.npy has model dimension {shape[1]} which does not match your model's model dimension of {model_dimension}. This usually means this soft prompt is not compatible with your model.")
+            logger.debug(f"Softprompt {file} tensor.npy has model dimension {shape[1]} which does not match your model's model dimension of {model_dimension}. This usually means this soft prompt is not compatible with your model.")
             continue
         if z == 4:
-            print(f"Browser SP loading error: {file} tensor.npy has {shape[0]} tokens but it is supposed to have less than 2048 tokens.")
+            logger.warning(f"Softprompt {file} tensor.npy has {shape[0]} tokens but it is supposed to have less than 2048 tokens.")
             continue
         assert isinstance(z, zipfile.ZipFile)
         try:

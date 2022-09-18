@@ -2913,6 +2913,7 @@ $(document).ready(function(){
 			$("#oaimodel").addClass("hidden")
 			buildLoadModelList(msg.data, msg.menu, msg.breadcrumbs, msg.showdelete);
 		} else if(msg.cmd == 'selected_model_info') {
+			console.log(msg);
 			enableButtons([load_model_accept]);
 			$("#oaimodel").addClass("hidden")
 			$("#oaimodel")[0].options[0].selected = true;
@@ -2946,7 +2947,7 @@ $(document).ready(function(){
 			if (msg.url) {
 				$("#modelurl").removeClass("hidden");
 				if (msg.default_url != null) {
-					$("#modelurl").value = msg.default_url;
+					document.getElementById("modelurl").value = msg.default_url;
 				}
 			} else {
 				$("#modelurl").addClass("hidden");

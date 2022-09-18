@@ -14,6 +14,7 @@ dependencies:
   - git=2.35.1
   - marshmallow>=3.13
   - apispec-webframeworks
+  - loguru
   - pip:
     - --find-links https://download.pytorch.org/whl/rocm4.2/torch_stable.html
     - torch
