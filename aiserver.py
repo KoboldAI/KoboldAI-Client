@@ -2009,11 +2009,8 @@ def patch_transformers():
 
             if not koboldai_vars.output_streaming:
                 return False
-            
-            print([utils.decodenewlines(tokenizer.decode(x[-1])) for x in input_ids])
 
             koboldai_vars.actions.stream_tokens([utils.decodenewlines(tokenizer.decode(x[-1])) for x in input_ids])
-
             return False
 
     # Sets up dynamic world info scanner
@@ -4744,7 +4741,6 @@ def calcsubmit(txt):
             "TPUMeshTransformerGPTNeoX"
         ):
             legacy_generate(subtxt, min, max)
-            # generate(subtxt, min, max, found_entries=found_entries)
         elif koboldai_vars.model == "Colab":
             sendtocolab(utils.decodenewlines(tokenizer.decode(subtxt)), min, max)
         elif koboldai_vars.model == "API":
@@ -4813,11 +4809,10 @@ def calcsubmit(txt):
         ikrequest(subtxt)
 
 def legacy_generate(text: Union[str, list], min: int, max: int):
-    # Architected after oairequest
-
     koboldai_vars.lastctx = text
 
-    outputs = raw_generate(
+    outputs = tpool.execute(
+        raw_generate,
         text,
         max_length=koboldai_vars.genamt,
         do_streaming=True
