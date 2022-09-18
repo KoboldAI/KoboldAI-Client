@@ -2365,6 +2365,7 @@ h2 .material-icons-outlined {
 
 .preset_area .settings_button {
 	transform: translateY(6px);
+	width: 155px;
 }
 
 input[type='range'] {
