@@ -1553,9 +1553,9 @@ def get_cluster_models(msg):
     # Get list of models from public cluster
     print("{0}Retrieving engine list...{1}".format(colors.PURPLE, colors.END), end="")
     try:
-		req = requests.get("{}/models".format(url))
-	except:
-		logger.init_err("KAI Horde Models", status="Failed")
+        req = requests.get("{}/models".format(url))
+    except:
+        logger.init_err("KAI Horde Models", status="Failed")
         logger.error("Provided KoboldAI Horde URL unreachable")
         emit('from_server', {'cmd': 'errmsg', 'data': "Provided KoboldAI Horde URL unreachable"})
         return
@@ -10939,7 +10939,7 @@ if __name__ == "__main__":
                 cloudflarelog.write("KoboldAI has finished loading and is available at the following link : " + cloudflare)
                 logger.init_ok("Webserver", status="OK")
                 logger.message(f"KoboldAI has finished loading and is available at the following link for UI 1: {cloudflare}")
-				logger.message(f"KoboldAI has finished loading and is available at the following link for UI 2: {cloudflare}" + " "/new_ui")
+                logger.message(f"KoboldAI has finished loading and is available at the following link for UI 2: {cloudflare}/new_ui")
         else:
             logger.init_ok("Webserver", status="OK")
             logger.message(f"Webserver has started, you can now connect to this machine at port: {port}")
