@@ -104,6 +104,7 @@ mainmenu = [
     ["Untuned OPT", "optlist", ""],
     ["Untuned GPT-Neo/J", "gptneolist", ""],
     ["Untuned Fairseq Dense", "fsdlist", ""],
+    ["Untuned Bloom", "bloomlist", ""],
     ["Untuned XGLM", "xglmlist", ""],
     ["Untuned GPT2", "gpt2list", ""],
     ["Online Services", "apilist", ""],
@@ -139,8 +140,12 @@ novellist= [
 ]
 
 nsfwlist= [
+    ["Erebus 20B (NSFW)", "KoboldAI/GPT-NeoX-20B-Erebus", "64GB"],
+    ["Erebus 13B (NSFW)", "KoboldAI/OPT-13B-Erebus", "32GB"],
     ["Shinen FSD 13B (NSFW)", "KoboldAI/fairseq-dense-13B-Shinen", "32GB"],
+    ["Erebus 6.7B (NSFW)", "KoboldAI/OPT-6.7B-Erebus", "16GB"],
     ["Shinen FSD 6.7B (NSFW)", "KoboldAI/fairseq-dense-6.7B-Shinen", "16GB"],
+    ["Lit V2 6B (NSFW)", "hakurei/litv2-6B-rev3", "16GB"],
     ["Lit 6B (NSFW)", "hakurei/lit-6B", "16GB"],
     ["Shinen 6B (NSFW)", "KoboldAI/GPT-J-6B-Shinen", "16GB"],
     ["Horni 2.7B (NSFW)", "KoboldAI/GPT-Neo-2.7B-Horni", "8GB"],
@@ -155,6 +160,7 @@ chatlist= [
     ["Return to Main Menu", "Return", ""],
 ]
 gptneolist = [
+    ["GPT-NeoX 20B", "EleutherAI/gpt-neox-20b", "64GB"],
     ["GPT-J 6B", "EleutherAI/gpt-j-6B", "16GB"],
     ["GPT-Neo 2.7B", "EleutherAI/gpt-neo-2.7B", "8GB"],
     ["GPT-Neo 1.3B", "EleutherAI/gpt-neo-1.3B", "6GB"],
@@ -170,6 +176,15 @@ gpt2list = [
     ["Return to Main Menu", "Return", ""],
     ]
 
+bloomlist = [
+    ["Bloom 176B", "bigscience/bloom", ""],
+    ["Bloom 7.1B", "bigscience/bloom-7b1", ""],   
+    ["Bloom 3B", "bigscience/bloom-3b", ""], 
+    ["Bloom 1.7B", "bigscience/bloom-1b7", ""], 
+    ["Bloom 560M", "bigscience/bloom-560m", ""], 
+    ["Return to Main Menu", "Return", ""],
+    ]
+    
 optlist = [
     ["OPT 66B", "facebook/opt-66b", "128GB"],
     ["OPT 30B", "facebook/opt-30b", "64GB"],
