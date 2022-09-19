@@ -213,7 +213,7 @@ def _download_with_aria2(aria2_config: str, total_length: int, directory: str = 
                     done = True
                     break
                 if bar is None:
-                    bar = tqdm.tqdm(total=total_length, desc=f"[aria2] Downloading model", unit="B", unit_scale=True, unit_divisor=1000)
+                    bar = tqdm(total=total_length, desc=f"[aria2] Downloading model", unit="B", unit_scale=True, unit_divisor=1000)
                     koboldai_vars.total_download_chunks = total_length
                 visited = set()
                 for x in r:
