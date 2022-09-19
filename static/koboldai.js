@@ -29,6 +29,7 @@ socket.on('load_cookies', function(data){load_cookies(data)});
 socket.on('load_tweaks', function(data){load_tweaks(data);});
 socket.on("wi_results", updateWISearchListings);
 socket.on("request_prompt_config", configurePrompt);
+socket.on("Action_Image", function(data){Action_Image(data);});
 //socket.onAny(function(event_name, data) {console.log({"event": event_name, "class": data.classname, "data": data});});
 
 var presets = {};
@@ -1956,6 +1957,18 @@ function load_cookies(data) {
 		process_cookies();
 		colab_cookies = null;
 	}
+}
+
+function Action_Image(data) {
+	var image = new Image();
+	image.src = 'data:image/png;base64,'+data['b64'];
+	image.setAttribute("title", data['prompt']);
+	image.classList.add("action_image");
+	image_area = document.getElementById("action image");
+	while (image_area.firstChild) { 
+		image_area.removeChild(image_area.firstChild);
+	}
+	image_area.appendChild(image);
 }
 
 //--------------------------------------------UI to Server Functions----------------------------------

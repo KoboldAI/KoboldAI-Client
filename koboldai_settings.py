@@ -883,6 +883,8 @@ class KoboldStoryRegister(object):
             temp = [self.actions[x]["Selected Text"] for x in list(self.actions)[i]]
             return temp
         else:
+            if i < 0:
+                return self.actions[self.action_count+i+1]["Selected Text"]
             return self.actions[i]["Selected Text"]
         
     def __setitem__(self, i, text):

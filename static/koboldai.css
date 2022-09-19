@@ -2375,3 +2375,13 @@ h2 .material-icons-outlined {
 input[type='range'] {
     border: none !important;
 }
+
+.settings_button[system_generating_image="true"] {
+	filter: brightness(35%);
+	cursor: not-allowed;
+	pointer-events:none;
+}
+
+.action_image {
+	width: var(--flyout_menu_width);
+}
