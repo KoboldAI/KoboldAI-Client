@@ -212,10 +212,6 @@ def _download_with_aria2(aria2_config: str, total_length: int, directory: str = 
                     p.terminate()
                     done = True
                     break
-                if bar is None:
-                    bar = tqdm(total=total_length, desc=f"[aria2] Downloading model", unit="B", unit_scale=True, unit_divisor=1000)
-                    koboldai_vars.total_download_chunks = total_length
-                visited = set()
                 for x in r:
                     filename = x["files"][0]["path"]
                     lengths[filename] = (int(x["completedLength"]), int(x["totalLength"]))
@@ -223,8 +219,11 @@ def _download_with_aria2(aria2_config: str, total_length: int, directory: str = 
                 for k, v in lengths.items():
                     if k not in visited:
                         lengths[k] = (v[1], v[1])
+                if bar is None:
+                    bar = tqdm(total=total_length, desc=f"[aria2] Downloading model", unit="B", unit_scale=True, unit_divisor=1000)
+                    koboldai_vars.total_download_chunks = sum(v[1] for v in lengths.values())
+                visited = set()
                 koboldai_vars.downloaded_chunks = sum(v[0] for v in lengths.values())
-                koboldai_vars.total_download_chunks = sum(v[1] for v in lengths.values())
                 bar.n = koboldai_vars.downloaded_chunks
                 bar.update()
                 time.sleep(0.1)
