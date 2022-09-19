@@ -1674,7 +1674,7 @@ def patch_transformers_download():
             
             if bar != "":
                 try:
-                    print(bar, end="")
+                    print(bar, end="\n")
                     emit('from_server', {'cmd': 'model_load_status', 'data': bar.replace(" ", "&nbsp;")}, broadcast=True, room="UI_1")
                     eventlet.sleep(seconds=0)
                 except:
