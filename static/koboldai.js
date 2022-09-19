@@ -1429,8 +1429,8 @@ function load_model() {
 	for (item of document.getElementById("oaimodel").selectedOptions) {
 		selected_models.push(item.value);
 	}
-	if (selected_models == []) {
-		selected_models = "";
+	if (selected_models == ['']) {
+		selected_models = [];
 	} else if (selected_models.length == 1) {
 		selected_models = selected_models[0];
 	}
