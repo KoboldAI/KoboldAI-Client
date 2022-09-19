@@ -208,7 +208,7 @@ def _download_with_aria2(aria2_config: str, total_length: int, directory: str = 
                     if bar is not None:
                         bar.n = bar.total
                         bar.close()
-                        koboldai_vars.downloaded_chunks = total
+                        koboldai_vars.downloaded_chunks = bar.total
                     p.terminate()
                     done = True
                     break
