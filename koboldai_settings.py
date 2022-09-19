@@ -111,7 +111,7 @@ class koboldai_vars(object):
     def reset_model(self):
         self._model_settings.reset_for_model_load()
     
-    def calc_ai_text(self, submitted_text="", method=2):
+    def calc_ai_text(self, submitted_text="", method=2, return_text=False):
         context = []
         token_budget = self.max_length
         used_world_info = []
@@ -285,6 +285,8 @@ class koboldai_vars(object):
             tokens = self.tokenizer.encode(text)
         
         self.context = context
+        if return_text:
+            return text
         return tokens, used_tokens, used_tokens+self.genamt
     
     def __setattr__(self, name, value):
@@ -741,7 +743,6 @@ class system_settings(settings):
         self.userscripts = []     # List of userscripts to load
         self.last_userscripts = []  # List of previous userscript filenames from the previous time userscripts were send via usstatitems
         self.corescript  = "default.lua"  # Filename of corescript to load
-        
         self.gpu_device  = 0      # Which PyTorch device to use when using pure GPU generation
         self.savedir     = os.getcwd()+"\\stories"
         self.hascuda     = False  # Whether torch has detected CUDA on the system
@@ -797,6 +798,8 @@ class system_settings(settings):
         print("Colab Check: {}".format(self.on_colab))
         self.horde_share = False
         self._horde_pid = None
+        self.sh_apikey   = ""     # API key to use for txt2img from the Stable Horde.
+        self.generating_image = False #The current status of image generation
         self.cookies = {} #cookies for colab since colab's URL changes, cookies are lost
         
         

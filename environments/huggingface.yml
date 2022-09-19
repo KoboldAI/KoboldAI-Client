@@ -20,6 +20,7 @@ dependencies:
   - marshmallow>=3.13
   - apispec-webframeworks
   - loguru
+  - Pillow
   - pip:
     - flask-cloudflared
     - flask-ngrok

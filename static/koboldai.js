@@ -2917,7 +2917,8 @@ function assign_world_info_to_action(action_item, uid) {
 														//console.log(null);
 														var before_span = document.createElement("span");
 														before_span.textContent = before_highlight_text;
-														var hightlight_span = document.createElement("i");
+														var hightlight_span = document.createElement("span");
+														hightlight_span.classList.add("italics");
 														hightlight_span.textContent = highlight_text;
 														hightlight_span.title = worldinfo['content'];
 														var after_span = document.createElement("span");
@@ -2977,7 +2978,8 @@ function assign_world_info_to_action(action_item, uid) {
 												//console.log(null);
 												var before_span = document.createElement("span");
 												before_span.textContent = before_highlight_text;
-												var hightlight_span = document.createElement("i");
+												var hightlight_span = document.createElement("span");
+												hightlight_span.classList.add("italics");
 												hightlight_span.textContent = highlight_text;
 												hightlight_span.title = worldinfo['content'];
 												var after_span = document.createElement("span");

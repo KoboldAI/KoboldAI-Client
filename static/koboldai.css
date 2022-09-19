@@ -2201,6 +2201,10 @@ button.disabled {
 	color: red;
 }
 
+.italics {
+	font-style: italic;
+}
+
 .within_max_length {
 	color: var(--text_to_ai_color);
 	font-weight: bold;

@@ -105,6 +105,9 @@
 			
 		</div>
 		<span id="debug-dump" class="cursor" onclick="document.getElementById('debug-file-container').classList.remove('hidden');">Download debug dump</span>
+		<div id="Images">
+			<button onclick="socket.emit('text2img', {})">Generate Image</button>
+		</div>
 	</div>
 	<div id="setting_menu_settings" class="hidden settings_category_area tab-target tab-target-settings">
 		<div class="preset_area">

@@ -64,7 +64,7 @@ from utils import debounce
 import utils
 import koboldai_settings
 import torch
-from transformers import StoppingCriteria, GPT2TokenizerFast, GPT2LMHeadModel, GPTNeoForCausalLM, GPTNeoModel, AutoModelForCausalLM, AutoTokenizer, PreTrainedModel, modeling_utils
+from transformers import StoppingCriteria, GPT2TokenizerFast, GPT2LMHeadModel, GPTNeoForCausalLM, GPTNeoModel, AutoModelForCausalLM, AutoTokenizer, PreTrainedModel, modeling_utils, AutoModelForTokenClassification
 from transformers import __version__ as transformers_version
 import transformers
 try:
@@ -72,6 +72,11 @@ try:
 except:
     pass
 import transformers.generation_utils
+
+# Text2img
+import base64
+from PIL import Image, ImageFont, ImageDraw, ImageFilter, ImageOps
+from io import BytesIO
 
 global tpu_mtj_backend
 
@@ -8135,6 +8140,104 @@ def get_model_size(model_name):
 @socketio.on('save_revision')
 def UI_2_save_revision(data):
     koboldai_vars.save_revision()
+
+
+#==================================================================#
+# Generate Image
+#==================================================================#
+@socketio.on("generate_image")
+def UI_2_generate_image(data):
+    prompt = koboldai_vars.calc_ai_text(return_text=True)
+    print(prompt)
+    get_items_locations_from_text(prompt)
+    if 'art_guide' not in data:
+        art_guide = 'fantasy illustration, artstation, by jason felix by steve argyle by tyler jacobson by peter mohrbacher, cinematic lighting', 
+    else:
+        art_guide = data['art_guide']
+    #text2img(prompt, art_guide = art_guide)
+    
+
+@logger.catch
+def text2img(prompt, 
+             art_guide = 'fantasy illustration, artstation, by jason felix by steve argyle by tyler jacobson by peter mohrbacher, cinematic lighting', 
+             filename = "story_art.png"):
+    print("Generating Image")
+    koboldai_vars.generating_image = True
+    final_imgen_params = {
+        "n": 1,
+        "width": 512,
+        "height": 512,
+        "steps": 50,
+    }
+
+    final_submit_dict = {
+        "prompt": "{}, {}".format(prompt, art_guide),
+        "api_key": koboldai_vars.sh_apikey if koboldai_vars.sh_apikey != '' else "0000000000",
+        "params": final_imgen_params,
+    }
+    logger.debug(final_submit_dict)
+    submit_req = requests.post('https://stablehorde.net/api/v1/generate/sync', json = final_submit_dict)
+    if submit_req.ok:
+        results = submit_req.json()
+        for iter in range(len(results)):
+            b64img = results[iter]["img"]
+            base64_bytes = b64img.encode('utf-8')
+            img_bytes = base64.b64decode(base64_bytes)
+            img = Image.open(BytesIO(img_bytes))
+            if len(results) > 1:
+                final_filename = f"{iter}_{filename}"
+            else:
+                final_filename = filename
+            img.save(final_filename)
+            return(img)
+            print("Saved Image")
+            koboldai_vars.generating_image = False
+    else:
+        koboldai_vars.generating_image = False
+        print(submit_req.text)
+
+def get_items_locations_from_text(text):
+    # load model and tokenizer
+    tokenizer = AutoTokenizer.from_pretrained("dslim/bert-base-NER")
+    model = AutoModelForTokenClassification.from_pretrained("dslim/bert-base-NER")
+    nlp = transformers.pipeline("ner", model=model, tokenizer=tokenizer)
+    # input example sentence
+    ner_results = nlp(text)
+    orgs = []
+    last_org_position = -2
+    loc = []
+    last_loc_position = -2
+    per = []
+    last_per_position = -2
+    for i, result in enumerate(ner_results):
+        if result['entity'] in ('B-ORG', 'I-ORG'):
+            if result['start']-1 <= last_org_position:
+                if result['start'] != last_org_position:
+                    orgs[-1] = "{} ".format(orgs[-1])
+                orgs[-1] = "{}{}".format(orgs[-1], result['word'].replace("##", ""))
+            else:
+                orgs.append(result['word'])
+            last_org_position = result['end']
+        elif result['entity'] in ('B-LOC', 'I-LOC'):
+            if result['start']-1 <= last_loc_position:
+                if result['start'] != last_loc_position:
+                    loc[-1] = "{} ".format(loc[-1])
+                loc[-1] = "{}{}".format(loc[-1], result['word'].replace("##", ""))
+            else:
+                loc.append(result['word'])
+            last_loc_position = result['end']
+        elif result['entity'] in ('B-PER', 'I-PER'):
+            if result['start']-1 <= last_per_position:
+                if result['start'] != last_per_position:
+                    per[-1] = "{} ".format(per[-1])
+                per[-1] = "{}{}".format(per[-1], result['word'].replace("##", ""))
+            else:
+                per.append(result['word'])
+            last_per_position = result['end']
+
+    print("Orgs: {}".format(orgs))
+    print("Locations: {}".format(loc))
+    print("People: {}".format(per))
 
 #==================================================================#
 # Test
