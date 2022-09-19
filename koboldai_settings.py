@@ -493,6 +493,9 @@ class model_settings(settings):
                 if self.tqdm.format_dict['rate'] is not None:
                     self.tqdm_rem_time = str(datetime.timedelta(seconds=int(float(self.total_layers-self.loaded_layers)/self.tqdm.format_dict['rate'])))  
         #Setup TQDP for model downloading
+        elif name == "total_download_chunks" and 'tqdm' in self.__dict__:
+            self.tqdm.reset(total=value)
+            self.tqdm_progress = 0
         elif name == "downloaded_chunks" and 'tqdm' in self.__dict__:
             if value == 0:
                 self.tqdm.reset(total=self.total_download_chunks)

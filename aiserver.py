@@ -1618,8 +1618,8 @@ def get_cluster_models(msg):
         # If the client settings file doesn't exist, create it
         # Write API key to file
         os.makedirs('settings', exist_ok=True)
-    if path.exists(get_config_filename(koboldai_vars.model_selected)):
-        with open(get_config_filename(koboldai_vars.model_selected), "r") as file:
+    if path.exists(get_config_filename(model)):
+        with open(get_config_filename(model), "r") as file:
             js = json.load(file)
             if 'online_model' in js:
                 online_model = js['online_model']
@@ -1630,7 +1630,7 @@ def get_cluster_models(msg):
         changed=True
     if changed:
         js={}
-        with open(get_config_filename(koboldai_vars.model_selected), "w") as file:
+        with open(get_config_filename(model), "w") as file:
             js["apikey"] = koboldai_vars.oaiapikey
             file.write(json.dumps(js, indent=3))
         
@@ -1674,7 +1674,7 @@ def patch_transformers_download():
             
             if bar != "":
                 try:
-                    print(bar, end="\r")
+                    print(bar, end="")
                     emit('from_server', {'cmd': 'model_load_status', 'data': bar.replace(" ", "&nbsp;")}, broadcast=True, room="UI_1")
                     eventlet.sleep(seconds=0)
                 except:
@@ -1712,10 +1712,12 @@ def patch_transformers_download():
                 desc=f"Downloading {file_name}" if file_name is not None else "Downloading",
                 file=Send_to_socketio(),
             )
+            koboldai_vars.total_download_chunks = total
         for chunk in r.iter_content(chunk_size=1024):
             if chunk:  # filter out keep-alive new chunks
                 if url[-11:] != 'config.json':
                     progress.update(len(chunk))
+                    koboldai_vars.downloaded_chunks += len(chunk)
                 temp_file.write(chunk)
         if url[-11:] != 'config.json':
             progress.close()
