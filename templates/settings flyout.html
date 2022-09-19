@@ -107,12 +107,12 @@
 		<span id="debug-dump" class="cursor" onclick="document.getElementById('debug-file-container').classList.remove('hidden');">Download debug dump</span>
 	</div>
 	<div id="setting_menu_settings" class="hidden settings_category_area tab-target tab-target-settings">
-		<div class="force_center">
-			<select class="var_sync_model_selected_preset settings_select presets" onchange='sync_to_server(this)'><option>Preset</option></select>
+		<div class="preset_area">
 			<button class="settings_button" onclick="show_save_preset();">
 				<span class="material-icons-outlined cursor" title="Save Preset">save</span>
 				<span class="button_label">Save Preset</span>
 			</button>
+			<select class="var_sync_model_selected_preset settings_select presets" onchange='sync_to_server(this)'><option>Preset</option></select>
 		</div>
 		{% with menu='Settings' %}
 			<div class="collapsable_header" onclick="toggle_setting_category(this);">

@@ -185,7 +185,7 @@ class koboldai_vars(object):
                     prompt_text = self.tokenizer.decode(self.tokenizer.encode(self.prompt)[-self.max_prompt_length-1:])
 
                 text += prompt_text
-                context.append({"type": "prompt", "text": self.prompt_text})
+                context.append({"type": "prompt", "text": prompt_text})
                 self.prompt_in_ai = True
             else:
                 self.prompt_in_ai = False
