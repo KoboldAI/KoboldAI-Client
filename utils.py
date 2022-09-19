@@ -190,6 +190,7 @@ class Send_to_socketio(object):
 def _download_with_aria2(aria2_config: str, total_length: int, directory: str = ".", user_agent=None, force_download=False, use_auth_token=None):
     import transformers
     lengths = {}
+    path = None
     s = requests.Session()
     s.mount("http://", requests.adapters.HTTPAdapter(max_retries=requests.adapters.Retry(total=120, backoff_factor=1)))
     bar = None
@@ -232,8 +233,9 @@ def _download_with_aria2(aria2_config: str, total_length: int, directory: str = 
         raise e
     finally:
         try:
-            if os.path.exists(path):
-                os.remove(path)
+            if path is not None:
+                if os.path.exists(path):
+                    os.remove(path)
         except OSError:
             pass
     code = p.wait()
