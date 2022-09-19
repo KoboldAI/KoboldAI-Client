@@ -229,7 +229,8 @@ def _download_with_aria2(aria2_config: str, total_length: int, directory: str = 
         raise e
     finally:
         try:
-            os.remove(path)
+            if os.path.exists(path):
+                os.remove(path)
         except OSError:
             pass
     code = p.wait()
