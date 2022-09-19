@@ -10921,6 +10921,7 @@ if __name__ == "__main__":
                 try:
                     cloudflare = str(localtunnel.stdout.readline())
                     cloudflare = (re.search("(?P<url>https?:\/\/[^\s]+loca.lt)", cloudflare).group("url"))
+                    koboldai_vars.cloudflare_link = cloudflare
                     break
                 except:
                     attempts += 1
@@ -10930,12 +10931,15 @@ if __name__ == "__main__":
                 print("LocalTunnel could not be created, falling back to cloudflare...")
                 from flask_cloudflared import _run_cloudflared
                 cloudflare = _run_cloudflared(port)
+                koboldai_vars.cloudflare_link = cloudflare
         elif(args.ngrok):
             from flask_ngrok import _run_ngrok
             cloudflare = _run_ngrok()
+            koboldai_vars.cloudflare_link = cloudflare
         elif(args.remote):
            from flask_cloudflared import _run_cloudflared
            cloudflare = _run_cloudflared(port)
+           koboldai_vars.cloudflare_link = cloudflare
         if(args.localtunnel or args.ngrok or args.remote):
             with open('cloudflare.log', 'w') as cloudflarelog:
                 cloudflarelog.write("KoboldAI has finished loading and is available at the following link : " + cloudflare)
