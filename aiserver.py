@@ -1208,6 +1208,8 @@ def general_startup(override_args=None):
     parser.add_argument("--model", help="Specify the Model Type to skip the Menu")
     parser.add_argument("--path", help="Specify the Path for local models (For model NeoCustom or GPT2Custom)")
     parser.add_argument("--apikey", help="Specify the API key to use for online services")
+    parser.add_argument("--sh_apikey", help="Specify the API key to use for txt2img from the Stable Horde. Get a key from https://stablehorde.net/register")
+    parser.add_argument("--text2img", action='store_true', default=False, help="Will convert the sent prompt into an image, using Stable Horde")
     parser.add_argument("--req_model", type=str, action='append', required=False, help="Which models which we allow to generate for us during cluster mode. Can be specified multiple times.")
     parser.add_argument("--revision", help="Specify the model revision for huggingface models (can be a git branch/tag name or a git commit hash)")
     parser.add_argument("--cpu", action='store_true', help="By default unattended launches are on the GPU use this option to force CPU usage.")
@@ -1285,6 +1287,9 @@ def general_startup(override_args=None):
 
     if args.apikey:
         koboldai_vars.apikey = args.apikey
+    if args.sh_apikey:
+        koboldai_vars.sh_apikey = args.sh_apikey
+    koboldai_vars.text2img = args.text2img
     if args.req_model:
         koboldai_vars.cluster_requested_models = args.req_model
 
