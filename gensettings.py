@@ -534,7 +534,7 @@ gensettingstf = [
     "sub_path": "Images",
     "classname": "user",
     "name": "img_gen_priority",
-    'children': [{'text': 'Use Local Only', 'value': 0}, {'text':'Perfer Local','value':1}, {'text':'Perfer Horde', 'value':2}, {'text':'Use Horde Only', 'value':3}]
+    'children': [{'text': 'Use Local Only', 'value': 0}, {'text':'Prefer Local','value':1}, {'text':'Prefer Horde', 'value':2}, {'text':'Use Horde Only', 'value':3}]
  	},
     {
     "UI_V2_Only": True,
