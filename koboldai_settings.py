@@ -111,7 +111,7 @@ class koboldai_vars(object):
     def reset_model(self):
         self._model_settings.reset_for_model_load()
     
-    def calc_ai_text(self, submitted_text="", method=2):
+    def calc_ai_text(self, submitted_text="", method=2, return_text=False):
         context = []
         token_budget = self.max_length
         used_world_info = []
@@ -285,6 +285,8 @@ class koboldai_vars(object):
             tokens = self.tokenizer.encode(text)
         
         self.context = context
+        if return_text:
+            return text
         return tokens, used_tokens, used_tokens+self.genamt
     
     def __setattr__(self, name, value):
@@ -493,13 +495,16 @@ class model_settings(settings):
                 if self.tqdm.format_dict['rate'] is not None:
                     self.tqdm_rem_time = str(datetime.timedelta(seconds=int(float(self.total_layers-self.loaded_layers)/self.tqdm.format_dict['rate'])))  
         #Setup TQDP for model downloading
+        elif name == "total_download_chunks" and 'tqdm' in self.__dict__:
+            self.tqdm.reset(total=value)
+            self.tqdm_progress = 0
         elif name == "downloaded_chunks" and 'tqdm' in self.__dict__:
             if value == 0:
                 self.tqdm.reset(total=self.total_download_chunks)
                 self.tqdm_progress = 0
             else:
                 self.tqdm.update(value-old_value)
-                self.tqdm_progress = round(float(self.downloaded_chunks)/float(self.total_download_chunks)*100, 1)
+                self.tqdm_progress = 0 if self.total_download_chunks==0 else round(float(self.downloaded_chunks)/float(self.total_download_chunks)*100, 1)
                 if self.tqdm.format_dict['rate'] is not None:
                     self.tqdm_rem_time = str(datetime.timedelta(seconds=int(float(self.total_download_chunks-self.downloaded_chunks)/self.tqdm.format_dict['rate'])))  
         
@@ -738,7 +743,6 @@ class system_settings(settings):
         self.userscripts = []     # List of userscripts to load
         self.last_userscripts = []  # List of previous userscript filenames from the previous time userscripts were send via usstatitems
         self.corescript  = "default.lua"  # Filename of corescript to load
-        
         self.gpu_device  = 0      # Which PyTorch device to use when using pure GPU generation
         self.savedir     = os.getcwd()+"\\stories"
         self.hascuda     = False  # Whether torch has detected CUDA on the system
@@ -794,6 +798,8 @@ class system_settings(settings):
         print("Colab Check: {}".format(self.on_colab))
         self.horde_share = False
         self._horde_pid = None
+        self.sh_apikey   = ""     # API key to use for txt2img from the Stable Horde.
+        self.generating_image = False #The current status of image generation
         self.cookies = {} #cookies for colab since colab's URL changes, cookies are lost
         
         
@@ -877,6 +883,8 @@ class KoboldStoryRegister(object):
             temp = [self.actions[x]["Selected Text"] for x in list(self.actions)[i]]
             return temp
         else:
+            if i < 0:
+                return self.actions[self.action_count+i+1]["Selected Text"]
             return self.actions[i]["Selected Text"]
         
     def __setitem__(self, i, text):

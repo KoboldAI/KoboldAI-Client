@@ -17,6 +17,7 @@ dependencies:
   - marshmallow>=3.13
   - apispec-webframeworks
   - loguru
+  - Pillow
   - pip:
     - --find-links https://download.pytorch.org/whl/rocm4.2/torch_stable.html
     - torch==1.10.*

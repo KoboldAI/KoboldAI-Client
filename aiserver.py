@@ -64,7 +64,7 @@ from utils import debounce
 import utils
 import koboldai_settings
 import torch
-from transformers import StoppingCriteria, GPT2TokenizerFast, GPT2LMHeadModel, GPTNeoForCausalLM, GPTNeoModel, AutoModelForCausalLM, AutoTokenizer, PreTrainedModel, modeling_utils
+from transformers import StoppingCriteria, GPT2TokenizerFast, GPT2LMHeadModel, GPTNeoForCausalLM, GPTNeoModel, AutoModelForCausalLM, AutoTokenizer, PreTrainedModel, modeling_utils, AutoModelForTokenClassification
 from transformers import __version__ as transformers_version
 import transformers
 try:
@@ -72,6 +72,11 @@ try:
 except:
     pass
 import transformers.generation_utils
+
+# Text2img
+import base64
+from PIL import Image, ImageFont, ImageDraw, ImageFilter, ImageOps
+from io import BytesIO
 
 global tpu_mtj_backend
 
@@ -1618,8 +1623,8 @@ def get_cluster_models(msg):
         # If the client settings file doesn't exist, create it
         # Write API key to file
         os.makedirs('settings', exist_ok=True)
-    if path.exists(get_config_filename(koboldai_vars.model_selected)):
-        with open(get_config_filename(koboldai_vars.model_selected), "r") as file:
+    if path.exists(get_config_filename(model)):
+        with open(get_config_filename(model), "r") as file:
             js = json.load(file)
             if 'online_model' in js:
                 online_model = js['online_model']
@@ -1630,7 +1635,7 @@ def get_cluster_models(msg):
         changed=True
     if changed:
         js={}
-        with open(get_config_filename(koboldai_vars.model_selected), "w") as file:
+        with open(get_config_filename(model), "w") as file:
             js["apikey"] = koboldai_vars.oaiapikey
             file.write(json.dumps(js, indent=3))
         
@@ -1674,7 +1679,7 @@ def patch_transformers_download():
             
             if bar != "":
                 try:
-                    print(bar, end="\r")
+                    print(bar, end="\n")
                     emit('from_server', {'cmd': 'model_load_status', 'data': bar.replace(" ", "&nbsp;")}, broadcast=True, room="UI_1")
                     eventlet.sleep(seconds=0)
                 except:
@@ -1712,10 +1717,12 @@ def patch_transformers_download():
                 desc=f"Downloading {file_name}" if file_name is not None else "Downloading",
                 file=Send_to_socketio(),
             )
+            koboldai_vars.total_download_chunks = total
         for chunk in r.iter_content(chunk_size=1024):
             if chunk:  # filter out keep-alive new chunks
                 if url[-11:] != 'config.json':
                     progress.update(len(chunk))
+                    koboldai_vars.downloaded_chunks += len(chunk)
                 temp_file.write(chunk)
         if url[-11:] != 'config.json':
             progress.close()
@@ -1768,6 +1775,8 @@ def patch_transformers_download():
 
 def patch_transformers():
     global transformers
+    global old_transfomers_functions
+    old_transfomers_functions = {}
     
     patch_transformers_download()
     
@@ -1784,9 +1793,11 @@ def patch_transformers():
         if not args.no_aria2:
             utils.aria2_hook(pretrained_model_name_or_path, **kwargs)
         return old_from_pretrained(cls, pretrained_model_name_or_path, *model_args, **kwargs)
+    old_transfomers_functions['PreTrainedModel.from_pretrained'] = PreTrainedModel.from_pretrained
     PreTrainedModel.from_pretrained = new_from_pretrained
     if(hasattr(modeling_utils, "get_checkpoint_shard_files")):
         old_get_checkpoint_shard_files = modeling_utils.get_checkpoint_shard_files
+        old_transfomers_functions['modeling_utils.get_checkpoint_shard_files'] = old_get_checkpoint_shard_files
         def new_get_checkpoint_shard_files(pretrained_model_name_or_path, index_filename, *args, **kwargs):
             utils.num_shards = utils.get_num_shards(index_filename)
             utils.from_pretrained_index_filename = index_filename
@@ -1814,6 +1825,7 @@ def patch_transformers():
                 if max_pos > self.weights.size(0):
                     self.make_weights(max_pos + self.offset, self.embedding_dim, self.padding_idx)
                 return self.weights.index_select(0, position_ids.view(-1)).view(bsz, seq_len, -1).detach()
+            old_transfomers_functions['XGLMSinusoidalPositionalEmbedding.forward'] = XGLMSinusoidalPositionalEmbedding.forward
             XGLMSinusoidalPositionalEmbedding.forward = new_forward
 
 
@@ -1833,6 +1845,7 @@ def patch_transformers():
                 self.model = OPTModel(config)
                 self.lm_head = torch.nn.Linear(config.word_embed_proj_dim, config.vocab_size, bias=False)
                 self.post_init()
+            old_transfomers_functions['OPTForCausalLM.__init__'] = OPTForCausalLM.__init__
             OPTForCausalLM.__init__ = new_init
 
 
@@ -2117,6 +2130,7 @@ def patch_transformers():
                     break
             return self.regeneration_required or self.halt
     old_get_stopping_criteria = transformers.generation_utils.GenerationMixin._get_stopping_criteria
+    old_transfomers_functions['transformers.generation_utils.GenerationMixin._get_stopping_criteria'] = old_get_stopping_criteria
     def new_get_stopping_criteria(self, *args, **kwargs):
         stopping_criteria = old_get_stopping_criteria(self, *args, **kwargs)
         global tokenizer
@@ -2171,7 +2185,7 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
     if not utils.HAS_ACCELERATE:
         disk_layers = None
     koboldai_vars.reset_model()
-    koboldai_vars.cluster_requested_models = online_model
+    koboldai_vars.cluster_requested_models = [online_model] if isinstance(online_model, str) else online_model
     koboldai_vars.noai = False
     if not use_breakmodel_args:
         set_aibusy(True)
@@ -8134,6 +8148,138 @@ def get_model_size(model_name):
 def UI_2_save_revision(data):
     koboldai_vars.save_revision()
 
+
+#==================================================================#
+# Generate Image
+#==================================================================#
+@socketio.on("generate_image")
+def UI_2_generate_image(data):
+    koboldai_vars.generating_image = True
+    #get latest action
+    if len(koboldai_vars.actions) > 0:
+        action = koboldai_vars.actions[-1]
+    else:
+        action = koboldai_vars.prompt
+    #Get matching world info entries
+    keys = []
+    for wi in koboldai_vars.worldinfo_v2:
+        for key in wi['key']:
+            if key in action:
+                #Check to make sure secondary keys are present if needed
+                if len(wi['keysecondary']) > 0:
+                    for keysecondary in wi['keysecondary']:
+                        if keysecondary in action:
+                            keys.append(key)
+                            break
+                    break
+                else:
+                    keys.append(key)
+                    break
+    
+    
+    #If we have > 4 keys, use those otherwise use sumarization
+    if len(keys) < 4:
+        from transformers import pipeline as summary_pipeline
+        summarizer = summary_pipeline("summarization")
+        #text to summarize:
+        if len(koboldai_vars.actions) < 5:
+            text = "".join(koboldai_vars.actions[:-5]+[koboldai_vars.prompt])
+        else:
+            text = "".join(koboldai_vars.actions[:-5])
+        global old_transfomers_functions
+        temp = transformers.generation_utils.GenerationMixin._get_stopping_criteria
+        transformers.generation_utils.GenerationMixin._get_stopping_criteria = old_transfomers_functions['transformers.generation_utils.GenerationMixin._get_stopping_criteria']
+        keys = [summarizer(text, max_length=100, min_length=30, do_sample=False)[0]['summary_text']]
+        transformers.generation_utils.GenerationMixin._get_stopping_criteria = temp
+    
+    art_guide = 'fantasy illustration, artstation, by jason felix by steve argyle by tyler jacobson by peter mohrbacher, cinematic lighting', 
+
+    b64_data = text2img(", ".join(keys), art_guide = art_guide)
+    emit("Action_Image", {'b64': b64_data, 'prompt': ", ".join(keys)})
+    
+
+@logger.catch
+def text2img(prompt, 
+             art_guide = 'fantasy illustration, artstation, by jason felix by steve argyle by tyler jacobson by peter mohrbacher, cinematic lighting', 
+             filename = "story_art.png"):
+    print("Generating Image")
+    koboldai_vars.generating_image = True
+    final_imgen_params = {
+        "n": 1,
+        "width": 512,
+        "height": 512,
+        "steps": 50,
+    }
+
+    final_submit_dict = {
+        "prompt": "{}, {}".format(prompt, art_guide),
+        "api_key": koboldai_vars.sh_apikey if koboldai_vars.sh_apikey != '' else "0000000000",
+        "params": final_imgen_params,
+    }
+    logger.debug(final_submit_dict)
+    submit_req = requests.post('https://stablehorde.net/api/v1/generate/sync', json = final_submit_dict)
+    if submit_req.ok:
+        results = submit_req.json()
+        for iter in range(len(results)):
+            b64img = results[iter]["img"]
+            base64_bytes = b64img.encode('utf-8')
+            img_bytes = base64.b64decode(base64_bytes)
+            img = Image.open(BytesIO(img_bytes))
+            if len(results) > 1:
+                final_filename = f"{iter}_{filename}"
+            else:
+                final_filename = filename
+            img.save(final_filename)
+            print("Saved Image")
+            koboldai_vars.generating_image = False
+            return(b64img)
+    else:
+        koboldai_vars.generating_image = False
+        print(submit_req.text)
+
+def get_items_locations_from_text(text):
+    # load model and tokenizer
+    tokenizer = AutoTokenizer.from_pretrained("dslim/bert-base-NER")
+    model = AutoModelForTokenClassification.from_pretrained("dslim/bert-base-NER")
+    nlp = transformers.pipeline("ner", model=model, tokenizer=tokenizer)
+    # input example sentence
+    ner_results = nlp(text)
+    orgs = []
+    last_org_position = -2
+    loc = []
+    last_loc_position = -2
+    per = []
+    last_per_position = -2
+    for i, result in enumerate(ner_results):
+        if result['entity'] in ('B-ORG', 'I-ORG'):
+            if result['start']-1 <= last_org_position:
+                if result['start'] != last_org_position:
+                    orgs[-1] = "{} ".format(orgs[-1])
+                orgs[-1] = "{}{}".format(orgs[-1], result['word'].replace("##", ""))
+            else:
+                orgs.append(result['word'])
+            last_org_position = result['end']
+        elif result['entity'] in ('B-LOC', 'I-LOC'):
+            if result['start']-1 <= last_loc_position:
+                if result['start'] != last_loc_position:
+                    loc[-1] = "{} ".format(loc[-1])
+                loc[-1] = "{}{}".format(loc[-1], result['word'].replace("##", ""))
+            else:
+                loc.append(result['word'])
+            last_loc_position = result['end']
+        elif result['entity'] in ('B-PER', 'I-PER'):
+            if result['start']-1 <= last_per_position:
+                if result['start'] != last_per_position:
+                    per[-1] = "{} ".format(per[-1])
+                per[-1] = "{}{}".format(per[-1], result['word'].replace("##", ""))
+            else:
+                per.append(result['word'])
+            last_per_position = result['end']
+
+    print("Orgs: {}".format(orgs))
+    print("Locations: {}".format(loc))
+    print("People: {}".format(per))
+
 #==================================================================#
 # Test
 #==================================================================#
@@ -10919,6 +11065,7 @@ if __name__ == "__main__":
                 try:
                     cloudflare = str(localtunnel.stdout.readline())
                     cloudflare = (re.search("(?P<url>https?:\/\/[^\s]+loca.lt)", cloudflare).group("url"))
+                    koboldai_vars.cloudflare_link = cloudflare
                     break
                 except:
                     attempts += 1
@@ -10928,12 +11075,15 @@ if __name__ == "__main__":
                 print("LocalTunnel could not be created, falling back to cloudflare...")
                 from flask_cloudflared import _run_cloudflared
                 cloudflare = _run_cloudflared(port)
+                koboldai_vars.cloudflare_link = cloudflare
         elif(args.ngrok):
             from flask_ngrok import _run_ngrok
             cloudflare = _run_ngrok()
+            koboldai_vars.cloudflare_link = cloudflare
         elif(args.remote):
            from flask_cloudflared import _run_cloudflared
            cloudflare = _run_cloudflared(port)
+           koboldai_vars.cloudflare_link = cloudflare
         if(args.localtunnel or args.ngrok or args.remote):
             with open('cloudflare.log', 'w') as cloudflarelog:
                 cloudflarelog.write("KoboldAI has finished loading and is available at the following link : " + cloudflare)
