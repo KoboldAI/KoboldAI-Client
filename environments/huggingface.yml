@@ -22,6 +22,7 @@ dependencies:
   - loguru
   - Pillow
   - diffusers
+  - psutil
   - pip:
     - flask-cloudflared
     - flask-ngrok

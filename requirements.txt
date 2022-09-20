@@ -18,3 +18,4 @@ apispec-webframeworks
 loguru
 Pillow
 diffusers
+psutil

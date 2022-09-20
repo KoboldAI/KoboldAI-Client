@@ -714,6 +714,8 @@ class user_settings(settings):
         self.output_streaming = True
         self.show_probs = False # Whether or not to show token probabilities
         self.beep_on_complete = False
+        self.img_gen_priority = 1
+        self.keep_img_gen_in_memory = False
         
         
     def __setattr__(self, name, value):
@@ -725,8 +727,8 @@ class user_settings(settings):
             process_variable_changes(self.socketio, self.__class__.__name__.replace("_settings", ""), name, value, old_value)
         
 class system_settings(settings):
-    local_only_variables = ['socketio', 'lua_state', 'lua_logname', 'lua_koboldbridge', 'lua_kobold', 'lua_koboldcore', 'regex_sl', 'acregex_ai', 'acregex_ui', 'comregex_ai', 'comregex_ui', 'sp', '_horde_pid']
-    no_save_variables = ['socketio', 'lua_state', 'lua_logname', 'lua_koboldbridge', 'lua_kobold', 'lua_koboldcore', 'sp', '_horde_pid', 'horde_share', 'aibusy', 'serverstarted']
+    local_only_variables = ['socketio', 'lua_state', 'lua_logname', 'lua_koboldbridge', 'lua_kobold', 'lua_koboldcore', 'regex_sl', 'acregex_ai', 'acregex_ui', 'comregex_ai', 'comregex_ui', 'sp', '_horde_pid', 'image_pipeline']
+    no_save_variables = ['socketio', 'lua_state', 'lua_logname', 'lua_koboldbridge', 'lua_kobold', 'lua_koboldcore', 'sp', '_horde_pid', 'horde_share', 'aibusy', 'serverstarted', 'image_pipeline']
     settings_name = "system"
     def __init__(self, socketio):
         self.socketio = socketio
@@ -804,6 +806,7 @@ class system_settings(settings):
         self._horde_pid = None
         self.sh_apikey   = ""     # API key to use for txt2img from the Stable Horde.
         self.generating_image = False #The current status of image generation
+        self.image_pipeline = None
         self.cookies = {} #cookies for colab since colab's URL changes, cookies are lost
         
         

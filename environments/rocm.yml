@@ -19,6 +19,7 @@ dependencies:
   - loguru
   - Pillow
   - diffusers
+  - psutil
   - pip:
     - --find-links https://download.pytorch.org/whl/rocm4.2/torch_stable.html
     - torch==1.10.*

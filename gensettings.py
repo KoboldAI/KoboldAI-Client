@@ -522,6 +522,36 @@ gensettingstf = [
     "classname": "user",
     "name": "beep_on_complete"
  	},
+    {
+    "UI_V2_Only": True,
+ 	"uitype": "dropdown",
+	"unit": "text",
+	"label": "Image Priority",
+	"id": "img_gen_priority",
+	"default": 1,
+    "tooltip": "Determine where images will be generated.",
+    "menu_path": "Interface",
+    "sub_path": "Images",
+    "classname": "user",
+    "name": "img_gen_priority",
+    'children': [{'text': 'Use Local Only', 'value': 0}, {'text':'Perfer Local','value':1}, {'text':'Perfer Horde', 'value':2}, {'text':'Use Horde Only', 'value':3}]
+ 	},
+    {
+    "UI_V2_Only": True,
+ 	"uitype": "toggle",
+ 	"unit": "bool",
+ 	"label": "Model in memory",
+ 	"id": "keep_img_gen_in_memory",
+ 	"min": 0,
+ 	"max": 1,
+ 	"step": 1,
+ 	"default": 0,
+	"tooltip": "If enabled, the system will keep the model in memory speeding up image generation times",
+    "menu_path": "Interface",
+    "sub_path": "Images",
+    "classname": "user",
+    "name": "keep_img_gen_in_memory"
+ 	},
 ]
 
 gensettingsik =[{
