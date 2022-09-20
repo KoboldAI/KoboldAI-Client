@@ -8212,7 +8212,7 @@ def generate_image_in_background():
                 koboldai_vars.summarizer.save_pretrained("models/{}".format(args.summarizer_model.replace('/', '_')), max_shard_size="500MiB")
 
         #Try GPU accel
-        if koboldai_vars.hascuda and torch.cuda.get_device_properties(0).total_memory - torch.cuda.memory_reserved(0) >= 6000000000:
+        if koboldai_vars.hascuda and torch.cuda.get_device_properties(0).total_memory - torch.cuda.memory_reserved(0) >= 1645778560:
             koboldai_vars.summarizer.to(0)
             device=0
         else:
@@ -8229,6 +8229,8 @@ def generate_image_in_background():
         transformers.generation_utils.GenerationMixin._get_stopping_criteria = temp
         logger.debug("Time to summarize: {}".format(time.time()-start_time))
         #move model back to CPU to save precious vram
+        torch.cuda.empty_cache()
+        logger.debug("VRAM used by summarization: {}".format(torch.cuda.memory_reserved(0)))
         koboldai_vars.summarizer.to("cpu")
         torch.cuda.empty_cache()
         
