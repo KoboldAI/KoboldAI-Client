@@ -154,7 +154,8 @@ class koboldai_vars(object):
         
         #Add prompt lenght/text if we're set to always use prompt
         if self.useprompt:
-            if self.max_prompt_length if self.prompt_length > self.max_prompt_length else self.prompt_length + used_tokens < token_budget:
+            self.max_prompt_length if self.prompt_length > self.max_prompt_length else self.prompt_length
+            if prompt_length + used_tokens < token_budget:
                 used_tokens += self.max_prompt_length if self.prompt_length > self.max_prompt_length else self.prompt_length
                 #Find World Info entries in prompt
                 for wi in self.worldinfo_v2:
@@ -241,7 +242,8 @@ class koboldai_vars(object):
             game_context.insert(0, {"type": "authors_note", "text": authors_note_final})
             
         if not self.useprompt:
-            if self.max_prompt_length if self.prompt_length > self.max_prompt_length else self.prompt_length + used_tokens < token_budget:
+            prompt_length = self.max_prompt_length if self.prompt_length > self.max_prompt_length else self.prompt_length
+            if prompt_length + used_tokens < token_budget:
                 used_tokens += self.max_prompt_length if self.prompt_length > self.max_prompt_length else self.prompt_length
                 #Find World Info entries in prompt
                 for wi in self.worldinfo_v2:
