@@ -506,7 +506,10 @@ class model_settings(settings):
                 self.tqdm_progress = 0
             else:
                 self.tqdm.update(value-old_value)
-                self.tqdm_progress = 0 if self.total_download_chunks==0 else round(float(self.downloaded_chunks)/float(self.total_download_chunks)*100, 1)
+                if self.total_download_chunks is not None:
+                    self.tqdm_progress = 0 if self.total_download_chunks==0 else round(float(self.downloaded_chunks)/float(self.total_download_chunks)*100, 1)
+                else:
+                    self.tqdm_progress = 0
                 if self.tqdm.format_dict['rate'] is not None:
                     self.tqdm_rem_time = str(datetime.timedelta(seconds=int(float(self.total_download_chunks-self.downloaded_chunks)/self.tqdm.format_dict['rate'])))  
         
@@ -715,7 +718,6 @@ class user_settings(settings):
         self.show_probs = False # Whether or not to show token probabilities
         self.beep_on_complete = False
         self.img_gen_priority = 1
-        self.keep_img_gen_in_memory = False
         
         
     def __setattr__(self, name, value):
@@ -727,8 +729,8 @@ class user_settings(settings):
             process_variable_changes(self.socketio, self.__class__.__name__.replace("_settings", ""), name, value, old_value)
         
 class system_settings(settings):
-    local_only_variables = ['socketio', 'lua_state', 'lua_logname', 'lua_koboldbridge', 'lua_kobold', 'lua_koboldcore', 'regex_sl', 'acregex_ai', 'acregex_ui', 'comregex_ai', 'comregex_ui', 'sp', '_horde_pid', 'image_pipeline']
-    no_save_variables = ['socketio', 'lua_state', 'lua_logname', 'lua_koboldbridge', 'lua_kobold', 'lua_koboldcore', 'sp', '_horde_pid', 'horde_share', 'aibusy', 'serverstarted', 'image_pipeline']
+    local_only_variables = ['socketio', 'lua_state', 'lua_logname', 'lua_koboldbridge', 'lua_kobold', 'lua_koboldcore', 'regex_sl', 'acregex_ai', 'acregex_ui', 'comregex_ai', 'comregex_ui', 'sp', '_horde_pid', 'image_pipeline', 'summarizer']
+    no_save_variables = ['socketio', 'lua_state', 'lua_logname', 'lua_koboldbridge', 'lua_kobold', 'lua_koboldcore', 'sp', '_horde_pid', 'horde_share', 'aibusy', 'serverstarted', 'image_pipeline', 'summarizer']
     settings_name = "system"
     def __init__(self, socketio):
         self.socketio = socketio
@@ -807,6 +809,8 @@ class system_settings(settings):
         self.sh_apikey   = ""     # API key to use for txt2img from the Stable Horde.
         self.generating_image = False #The current status of image generation
         self.image_pipeline = None
+        self.summarizer = None
+        self.keep_img_gen_in_memory = False
         self.cookies = {} #cookies for colab since colab's URL changes, cookies are lost
         
         
@@ -829,6 +833,9 @@ class system_settings(settings):
             if name == 'sp_changed':
                 self.socketio.emit('from_server', {'cmd': 'spstatitems', 'data': {self.spfilename: self.spmeta} if self.allowsp and len(self.spfilename) else {}}, namespace=None, broadcast=True, room="UI_1")
                 super().__setattr__("sp_changed", False)
+            
+            if name == 'keep_img_gen_in_memory' and value == False:
+                self.image_pipeline = None
             
             if name == 'horde_share':
                 if self.on_colab == False:

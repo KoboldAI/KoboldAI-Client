@@ -549,7 +549,7 @@ gensettingstf = [
 	"tooltip": "If enabled, the system will keep the model in memory speeding up image generation times",
     "menu_path": "Interface",
     "sub_path": "Images",
-    "classname": "user",
+    "classname": "system",
     "name": "keep_img_gen_in_memory"
  	},
 ]
