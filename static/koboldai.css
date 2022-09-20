@@ -927,8 +927,12 @@ td.server_vars {
 .WI_Folder_Header {
 	margin-left: 10px;
 	display: grid;
-	grid-template-areas: "folder expand title upload_box upload download";
-	grid-template-columns: 15px 30px auto  0px 25px 35px;
+	grid-template-areas: "folder expand title delete upload_box upload download";
+	grid-template-columns: 15px 30px auto 25px 0px 25px 35px;
+}
+
+.WI_Folder_Header .delete {
+	grid-area: delete;
 }
 
 .WI_Folder_Header .folder {

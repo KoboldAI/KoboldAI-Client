@@ -1305,6 +1305,15 @@ class KoboldWorldInfo(object):
         self.sync_world_info_to_old_format()
         self.socketio.emit("world_info_folder", {x: self.world_info_folder[x] for x in self.world_info_folder}, broadcast=True, room="UI_2")
         
+    def delete_folder(self, folder):
+        keys = [key for key in self.world_info]
+        for key in keys:
+            if self.world_info[key]['folder'] == folder:
+                self.delete(key)
+        if folder in self.world_info_folder:
+            del self.world_info_folder[folder]
+        self.socketio.emit("delete_world_info_folder", folder, broadcast=True, room="UI_2")
+        
     def add_item_to_folder(self, uid, folder, before=None):
         if uid in self.world_info:
             #fiirst we need to remove the item from whatever folder it's in

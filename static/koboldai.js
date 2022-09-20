@@ -24,6 +24,7 @@ socket.on("world_info_entry_used_in_game", function(data){world_info_entry_used_
 socket.on("world_info_folder", function(data){world_info_folder(data);});
 socket.on("delete_new_world_info_entry", function(data){document.getElementById("world_info_-1").remove();});
 socket.on("delete_world_info_entry", function(data){document.getElementById("world_info_"+data).remove();});
+socket.on("delete_world_info_folder", function(data){document.getElementById("world_info_folder_"+data).remove();});
 socket.on("error", function(data){show_error_message(data);});
 socket.on('load_cookies', function(data){load_cookies(data)});
 socket.on('load_tweaks', function(data){load_tweaks(data);});
@@ -1446,6 +1447,7 @@ function load_model() {
 		selected_models.push(item.value);
 	}
 	if (selected_models == ['']) {
+
 		selected_models = [];
 	} else if (selected_models.length == 1) {
 		selected_models = selected_models[0];
@@ -1798,6 +1800,21 @@ function world_info_folder(data) {
 			}
 			title_text.classList.add("title");
 			title.append(title_text);
+			
+			//create delete button
+			delete_button = document.createElement("span");
+			delete_button.classList.add("material-icons-outlined");
+			delete_button.classList.add("cursor");
+			delete_button.setAttribute("folder", folder_name);
+			delete_button.textContent = "delete";
+			delete_button.onclick = function () {
+								if (window.confirm("Do you really want to delete this World Info folder and ALL entries under it?")) {
+									socket.emit("delete_wi_folder", this.getAttribute("folder"));
+								}
+							};
+			delete_button.classList.add("delete");
+			title.append(delete_button);
+			
 			//create download button
 			download = document.createElement("span");
 			download.classList.add("material-icons-outlined");

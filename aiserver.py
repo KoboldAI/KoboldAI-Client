@@ -7789,18 +7789,27 @@ def UI_2_edit_world_info(data):
 
 
 #==================================================================#
-# Event triggered when user edits world info item
+# Event triggered when user creates world info folder
 #==================================================================#
 @socketio.on('create_world_info_folder')
 def UI_2_create_world_info_folder(data):
     koboldai_vars.worldinfo_v2.add_folder("New Folder")
 
 #==================================================================#
-# Event triggered when user edits world info item
+# Event triggered when user deletes world info item
 #==================================================================#
 @socketio.on('delete_world_info')
 def UI_2_delete_world_info(uid):
     koboldai_vars.worldinfo_v2.delete(int(uid))
+
+
+#==================================================================#
+# Event triggered when user deletes world info folder
+#==================================================================#
+@socketio.on('delete_wi_folder')
+def UI_2_delete_wi_folder(folder):
+    koboldai_vars.worldinfo_v2.delete_folder(folder)
+
 
 #==================================================================#
 # Event triggered when user exports world info folder
