@@ -1209,7 +1209,6 @@ def general_startup(override_args=None):
     parser.add_argument("--path", help="Specify the Path for local models (For model NeoCustom or GPT2Custom)")
     parser.add_argument("--apikey", help="Specify the API key to use for online services")
     parser.add_argument("--sh_apikey", help="Specify the API key to use for txt2img from the Stable Horde. Get a key from https://stablehorde.net/register")
-    parser.add_argument("--text2img", action='store_true', default=False, help="Will convert the sent prompt into an image, using Stable Horde")
     parser.add_argument("--req_model", type=str, action='append', required=False, help="Which models which we allow to generate for us during cluster mode. Can be specified multiple times.")
     parser.add_argument("--revision", help="Specify the model revision for huggingface models (can be a git branch/tag name or a git commit hash)")
     parser.add_argument("--cpu", action='store_true', help="By default unattended launches are on the GPU use this option to force CPU usage.")
@@ -1289,7 +1288,6 @@ def general_startup(override_args=None):
         koboldai_vars.apikey = args.apikey
     if args.sh_apikey:
         koboldai_vars.sh_apikey = args.sh_apikey
-    koboldai_vars.text2img = args.text2img
     if args.req_model:
         koboldai_vars.cluster_requested_models = args.req_model
 
@@ -8185,7 +8183,7 @@ def UI_2_generate_image(data):
     #If we have > 4 keys, use those otherwise use sumarization
     if len(keys) < 4:
         from transformers import pipeline as summary_pipeline
-        summarizer = summary_pipeline("summarization", model="sshleifer/distilbart-cnn-12-1")
+        summarizer = summary_pipeline("summarization", model="sshleifer/distilbart-xsum-12-1")
         #text to summarize:
         if len(koboldai_vars.actions) < 5:
             text = "".join(koboldai_vars.actions[:-5]+[koboldai_vars.prompt])
@@ -8249,7 +8247,7 @@ def text2img_local(prompt, art_guide="", filename="new.png"):
         koboldai_vars.image_pipeline = None
         del pipe
     koboldai_vars.generating_image = False
-    koboldai_vars.aibusy = True
+    koboldai_vars.aibusy = False
     print("time to unload: {}".format(time.time() - start_time))
     return img_str
 
