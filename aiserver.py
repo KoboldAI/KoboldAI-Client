@@ -2069,8 +2069,6 @@ def patch_transformers():
             tokenizer,
             excluded_world_info: List[Set],
         ):
-            # self.regeneration_required = False
-            # self.halt = False
             self.tokenizer = tokenizer
             self.excluded_world_info = excluded_world_info
 
@@ -4968,8 +4966,10 @@ def raw_generate(
 ) -> List:
 
     if isinstance(prompt, str):
+        prompt_decoded = prompt
         prompt_tokens = tokenizer.encode(prompt)
     else:
+        prompt_decoded = tokenizer.decode(prompt)
         prompt_tokens = prompt
     
     # Some gen methods such as OAI don't return tokens.
