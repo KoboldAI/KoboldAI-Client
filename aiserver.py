@@ -8239,7 +8239,7 @@ def text2img_local(prompt, art_guide="", filename="new.png"):
     if koboldai_vars.keep_img_gen_in_memory:
         pipe.to("cpu")
         if koboldai_vars.image_pipeline is None:
-        koboldai_vars.image_pipeline = pipe
+            koboldai_vars.image_pipeline = pipe
     else:
         koboldai_vars.image_pipeline = None
         del pipe
