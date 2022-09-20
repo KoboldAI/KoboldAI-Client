@@ -1,4 +1,5 @@
-.within_max_length {
+.within_max_length,
+#story_prompt[story_prompt_in_ai="true"] {
     color: inherit;
     font-weight: inherit;
 }
