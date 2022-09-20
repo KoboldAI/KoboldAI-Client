@@ -21,6 +21,7 @@ dependencies:
   - apispec-webframeworks
   - loguru
   - Pillow
+  - diffusers
   - pip:
     - flask-cloudflared
     - flask-ngrok

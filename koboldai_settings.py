@@ -576,6 +576,8 @@ class story_settings(settings):
         self.context = []
         self.last_story_load = None
         self.revisions = []
+        self.picture = "" #base64 of the image shown for the story
+        self.picture_prompt = "" #Prompt used to create picture
         
         #must be at bottom
         self.no_save = False  #Temporary disable save (doesn't save with the file)

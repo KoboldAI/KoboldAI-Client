@@ -29,7 +29,6 @@ socket.on('load_cookies', function(data){load_cookies(data)});
 socket.on('load_tweaks', function(data){load_tweaks(data);});
 socket.on("wi_results", updateWISearchListings);
 socket.on("request_prompt_config", configurePrompt);
-socket.on("Action_Image", function(data){Action_Image(data);});
 //socket.onAny(function(event_name, data) {console.log({"event": event_name, "class": data.classname, "data": data});});
 
 var presets = {};
@@ -519,6 +518,22 @@ function var_changed(data) {
 			button.childNodes[1].textContent = "Adventure";
 		} else {
 			button.childNodes[1].textContent = "Story";
+		}
+	//Special Case for story picture
+	} else if (data.classname == "story" && data.name == "picture") {
+		image_area = document.getElementById("action image");
+		while (image_area.firstChild) { 
+			image_area.removeChild(image_area.firstChild);
+		}
+		if (data.value != "") {
+			var image = new Image();
+			image.src = 'data:image/png;base64,'+data.value;
+			image.classList.add("action_image");
+			image_area.appendChild(image);
+		}
+	}  else if (data.classname == "story" && data.name == "picture_prompt") {
+		if (document.getElementById("action image").firstChild) {
+			document.getElementById("action image").firstChild.setAttribute("title", data.value);
 		}
 	//Basic Data Syncing
 	} else {
@@ -1959,18 +1974,6 @@ function load_cookies(data) {
 	}
 }
 
-function Action_Image(data) {
-	var image = new Image();
-	image.src = 'data:image/png;base64,'+data['b64'];
-	image.setAttribute("title", data['prompt']);
-	image.classList.add("action_image");
-	image_area = document.getElementById("action image");
-	while (image_area.firstChild) { 
-		image_area.removeChild(image_area.firstChild);
-	}
-	image_area.appendChild(image);
-}
-
 //--------------------------------------------UI to Server Functions----------------------------------
 function unload_userscripts() {
 	files_to_unload = document.getElementById('loaded_userscripts');
@@ -2877,9 +2880,8 @@ function assign_world_info_to_action(action_item, uid) {
 		
 		for (action of actions) {
 			//First check to see if we have a key in the text
-			var words = action.textContent.split(" ");
 			for (const [key, worldinfo] of  Object.entries(worldinfo_to_check)) {
-				//remove any world info tags
+				//remove any world info tags on the overall chunk
 				for (tag of action.getElementsByClassName("tag_uid_"+uid)) {
 					tag.classList.remove("tag_uid_"+uid);
 					tag.removeAttribute("title");
@@ -2893,123 +2895,91 @@ function assign_world_info_to_action(action_item, uid) {
 						if (worldinfo['keysecondary'].length > 0) {
 							for (second_key of worldinfo['keysecondary']) {
 								if (action.textContent.replace(/[^0-9a-z \'\"]/gi, '').includes(second_key)) {
-									//First let's assign our world info id to the action so we know to count the tokens for the world info
-									current_ids = action.getAttribute("world_info_uids")?action.getAttribute("world_info_uids").split(','):[];
-									if (!(current_ids.includes(uid))) {
-										current_ids.push(uid);
-									}
-									action.setAttribute("world_info_uids", current_ids.join(","));
-									//OK we have the phrase in our action. Let's see if we can identify the word(s) that are triggering
-									for (var i = 0; i < words.length; i++) {
-										key_words = keyword.split(" ").length;
-										var to_check = words.slice(i, i+key_words).join("").replace(/[^0-9a-z \'\"]/gi, '').trim();
-										if (keyword == to_check) {
-											var start_word = i;
-											var end_word = i+len_of_keyword;
-											var passed_words = 0;
-											for (span of action.childNodes) {
-												if (passed_words + span.textContent.split(" ").length < start_word) {
-													passed_words += span.textContent.trim().split(" ").length;
-												} else if (passed_words < end_word) {
-													//OK, we have text that matches, let's do the highlighting
-													//we can skip the highlighting if it's already done though
-													if (span.tagName != "I") {
-														var span_text = span.textContent.trim().split(" ");
-														var before_highlight_text = span_text.slice(0, start_word-passed_words).join(" ")+" ";
-														var highlight_text = span_text.slice(start_word-passed_words, end_word-passed_words).join(" ");
-														if (end_word-passed_words <= span_text.length) {
-															highlight_text += " ";
-														}
-														var after_highlight_text = span_text.slice((end_word-passed_words)).join(" ");
-														//console.log(span.textContent);
-														//console.log(keyword);
-														//console.log(before_highlight_text);
-														//console.log(highlight_text);
-														//console.log(after_highlight_text);
-														//console.log("passed: "+passed_words+" start:" + start_word + " end: "+end_word+" continue: "+(end_word-passed_words));
-														//console.log(null);
-														var before_span = document.createElement("span");
-														before_span.textContent = before_highlight_text;
-														var hightlight_span = document.createElement("span");
-														hightlight_span.classList.add("italics");
-														hightlight_span.textContent = highlight_text;
-														hightlight_span.title = worldinfo['content'];
-														var after_span = document.createElement("span");
-														after_span.textContent = after_highlight_text;
-														action.insertBefore(before_span, span);
-														action.insertBefore(hightlight_span, span);
-														action.insertBefore(after_span, span);
-														span.remove();
-													}
-													passed_words += span.textContent.trim().split(" ").length;
-												}
-											}
-										}
-									}
+									highlight_world_info_text_in_chunk(action, worldinfo);
+									break;
 								}
 							}
 						} else {
-							//First let's assign our world info id to the action so we know to count the tokens for the world info
-							current_ids = action.getAttribute("world_info_uids")?action.getAttribute("world_info_uids").split(','):[];
-							if (!(current_ids.includes(uid))) {
-								current_ids.push(uid);
-							}
-							action.setAttribute("world_info_uids", current_ids.join(","));
-							//OK we have the phrase in our action. Let's see if we can identify the word(s) that are triggering
-							var len_of_keyword = keyword.split(" ").length;
-							//go through each word to see where we get a match
-							for (var i = 0; i < words.length; i++) {
-								//get the words from the ith word to the i+len_of_keyword. Get rid of non-letters/numbers/'/"
-								var to_check = words.slice(i, i+len_of_keyword).join(" ").replace(/[^0-9a-z \'\"]/gi, '').trim();
-								if (keyword == to_check) {
-									var start_word = i;
-									var end_word = i+len_of_keyword;
-									var passed_words = 0;
-									for (span of action.childNodes) {
-										if (passed_words + span.textContent.split(" ").length < start_word) {
-											passed_words += span.textContent.trim().split(" ").length;
-										} else if (passed_words < end_word) {
-											//OK, we have text that matches, let's do the highlighting
-											//we can skip the highlighting if it's already done though
-											if (span.tagName != "I") {
-												var span_text = span.textContent.trim().split(" ");
-												var before_highlight_text = span_text.slice(0, start_word-passed_words).join(" ")+" ";
-												var highlight_text = span_text.slice(start_word-passed_words, end_word-passed_words).join(" ");
-												if (end_word-passed_words <= span_text.length) {
-													highlight_text += " ";
-												}
-												var after_highlight_text = span_text.slice((end_word-passed_words)).join(" ")+" ";
-												if (after_highlight_text[0] == ' ') {
-													after_highlight_text = after_highlight_text.substring(1);
-												}
-												//console.log("'"+span.textContent+"'");
-												//console.log(keyword);
-												//console.log("'"+before_highlight_text+"'");
-												//console.log("'"+highlight_text+"'");
-												//console.log("'"+after_highlight_text+"'");
-												//console.log("passed: "+passed_words+" start:" + start_word + " end: "+end_word+" continue: "+(end_word-passed_words));
-												//console.log(null);
-												var before_span = document.createElement("span");
-												before_span.textContent = before_highlight_text;
-												var hightlight_span = document.createElement("span");
-												hightlight_span.classList.add("italics");
-												hightlight_span.textContent = highlight_text;
-												hightlight_span.title = worldinfo['content'];
-												var after_span = document.createElement("span");
-												after_span.textContent = after_highlight_text;
-												action.insertBefore(before_span, span);
-												action.insertBefore(hightlight_span, span);
-												action.insertBefore(after_span, span);
-												span.remove();
-											}
-											passed_words += span.textContent.trim().split(" ").length;
-										}
-									}
-								}
-							}
+							highlight_world_info_text_in_chunk(action, worldinfo);
+							break;
 						}
 						
 					}
+				}
+			}
+		}
+	}
+}
+
+function highlight_world_info_text_in_chunk(action, wi) {
+	//First let's assign our world info id to the action so we know to count the tokens for the world info
+	let uid = wi['uid'];
+	let words = action.textContent.split(" ");
+	current_ids = action.getAttribute("world_info_uids")?action.getAttribute("world_info_uids").split(','):[];
+	if (!(current_ids.includes(uid))) {
+		current_ids.push(uid);
+	}
+	action.setAttribute("world_info_uids", current_ids.join(","));
+	//OK we have the phrase in our action. 
+	//First let's find the largest key that matches
+	let largest_key = "";
+	for (keyword of wi['key']) {
+		if ((keyword.length > largest_key.length) && (action.textContent.replace(/[^0-9a-z \'\"]/gi, '').includes(keyword))) {
+			largest_key = keyword;
+		}
+	}
+	//console.log(largest_key);
+	
+	
+	//Let's see if we can identify the word(s) that are triggering
+	var len_of_keyword = largest_key.split(" ").length;
+	//go through each word to see where we get a match
+	for (var i = 0; i < words.length; i++) {
+		//get the words from the ith word to the i+len_of_keyword. Get rid of non-letters/numbers/'/"
+		var to_check = words.slice(i, i+len_of_keyword).join(" ").replace(/[^0-9a-z \'\"]/gi, '').trim();
+		if (largest_key == to_check) {
+			var start_word = i;
+			var end_word = i+len_of_keyword;
+			var passed_words = 0;
+			for (span of action.childNodes) {
+				if (passed_words + span.textContent.split(" ").length < start_word) {
+					passed_words += span.textContent.trim().split(" ").length;
+				} else if (passed_words < end_word) {
+					//OK, we have text that matches, let's do the highlighting
+					//we can skip the highlighting if it's already done though
+					if (~(span.classList.contains('wi_match'))) {
+						var span_text = span.textContent.trim().split(" ");
+						var before_highlight_text = span_text.slice(0, start_word-passed_words).join(" ")+" ";
+						var highlight_text = span_text.slice(start_word-passed_words, end_word-passed_words).join(" ");
+						if (end_word-passed_words <= span_text.length) {
+							highlight_text += " ";
+						}
+						var after_highlight_text = span_text.slice((end_word-passed_words)).join(" ")+" ";
+						if (after_highlight_text[0] == ' ') {
+							after_highlight_text = after_highlight_text.substring(1);
+						}
+						if (before_highlight_text != "") {
+							//console.log("'"+before_highlight_text+"'");
+							var before_span = document.createElement("span");
+							before_span.textContent = before_highlight_text;
+							action.insertBefore(before_span, span);
+						}
+						//console.log("'"+highlight_text+"'");
+						var hightlight_span = document.createElement("span");
+						hightlight_span.classList.add("wi_match");
+						hightlight_span.textContent = highlight_text;
+						hightlight_span.title = wi['content'];
+						action.insertBefore(hightlight_span, span);
+						if (after_highlight_text != "") {
+							//console.log("'"+after_highlight_text+"'");
+							var after_span = document.createElement("span");
+							after_span.textContent = after_highlight_text;
+							action.insertBefore(after_span, span);
+						}
+						//console.log("Done");
+						span.remove();
+					}
+					passed_words += span.textContent.trim().split(" ").length;
 				}
 			}
 		}

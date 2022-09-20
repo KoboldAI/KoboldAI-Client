@@ -8180,7 +8180,7 @@ def UI_2_generate_image(data):
     #If we have > 4 keys, use those otherwise use sumarization
     if len(keys) < 4:
         from transformers import pipeline as summary_pipeline
-        summarizer = summary_pipeline("summarization")
+        summarizer = summary_pipeline("summarization", model="sshleifer/distilbart-cnn-12-6")
         #text to summarize:
         if len(koboldai_vars.actions) < 5:
             text = "".join(koboldai_vars.actions[:-5]+[koboldai_vars.prompt])
@@ -8191,18 +8191,54 @@ def UI_2_generate_image(data):
         transformers.generation_utils.GenerationMixin._get_stopping_criteria = old_transfomers_functions['transformers.generation_utils.GenerationMixin._get_stopping_criteria']
         keys = [summarizer(text, max_length=100, min_length=30, do_sample=False)[0]['summary_text']]
         transformers.generation_utils.GenerationMixin._get_stopping_criteria = temp
+        del summarizer
     
     art_guide = 'fantasy illustration, artstation, by jason felix by steve argyle by tyler jacobson by peter mohrbacher, cinematic lighting', 
 
-    b64_data = text2img(", ".join(keys), art_guide = art_guide)
-    emit("Action_Image", {'b64': b64_data, 'prompt': ", ".join(keys)})
+    #If we don't have a GPU, use horde
+    if not koboldai_vars.hascuda:
+        b64_data = text2img(", ".join(keys), art_guide = art_guide)
+    else:
+        if torch.cuda.get_device_properties(0).total_memory - torch.cuda.memory_reserved(0) >= 6000000000:
+            #He have enough vram, just do it locally
+            b64_data = text2img_local(", ".join(keys), art_guide = art_guide)
+        elif torch.cuda.get_device_properties(0).total_memory > 6000000000:
+            #We could do it locally by swapping the model out
+            print("Could do local or online")
+        else:
+            b64_data = text2img_local(", ".join(keys), art_guide = art_guide)
+    koboldai_vars.picture = b64_data
+    koboldai_vars.picture_prompt = ", ".join(keys)
+    #emit("Action_Image", {'b64': b64_data, 'prompt': ", ".join(keys)})
     
+
+@logger.catch
+def text2img_local(prompt, art_guide="", filename="new.png"):
+    start_time = time.time()
+    print("Generating Image")
+    koboldai_vars.generating_image = True
+    from diffusers import StableDiffusionPipeline
+    import base64
+    from io import BytesIO
+    pipe = StableDiffusionPipeline.from_pretrained("CompVis/stable-diffusion-v1-4", revision="fp16", torch_dtype=torch.float16, cache="./stable-diffusion-v1-4").to("cuda")
+    print("time to load: {}".format(time.time() - start_time))
+    from torch import autocast
+    with autocast("cuda"):
+        image = pipe(prompt)["sample"][0]
+    buffered = BytesIO()
+    image.save(buffered, format="JPEG")
+    img_str = base64.b64encode(buffered.getvalue()).decode('ascii')
+    print("time to generate: {}".format(time.time() - start_time))
+    pipe.to("cpu")
+    koboldai_vars.generating_image = False
+    print("time to unload: {}".format(time.time() - start_time))
+    return img_str
 
 @logger.catch
 def text2img(prompt, 
              art_guide = 'fantasy illustration, artstation, by jason felix by steve argyle by tyler jacobson by peter mohrbacher, cinematic lighting', 
              filename = "story_art.png"):
-    print("Generating Image")
+    print("Generating Image using Horde")
     koboldai_vars.generating_image = True
     final_imgen_params = {
         "n": 1,
