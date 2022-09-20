@@ -800,11 +800,9 @@ class system_settings(settings):
         @dataclass
         class _inference_config:
             do_streaming: bool = False
-
-            # NOTE: DynamicWorldInfoScanCriteria handles not only dynamic world
-            # info, but also max length, aborting, regeneration requests, etc
-            # for kobold-rooted stuff. This would be nice to change in the future.
             do_dynamic_wi: bool = False
+            # Genamt stopping is mostly tied to Dynamic WI
+            stop_at_genamt: bool = False
         self.inference_config = _inference_config()
         
         
