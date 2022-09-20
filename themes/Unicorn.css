@@ -1,7 +1,7 @@
 /*
 	Name: Unicorn
 	Author: LightSaveUs
-	Version: 0.2
+	Version: 0.3.2
 	Description: A theme inspired by the DreamilyAI interface.
 */
 
@@ -42,16 +42,16 @@
 	--gamescreen_background: #eeeeee;
 	--gamescreen_text: #222224;
 
-    --input_background: #e2e2e2;
+    --input_background: #eeeeee;
 	--input_text: #222224;
 
     --text: #f2f1f1;
-    --text_to_ai_color: #464646;
-    --text_edit: #464646;
+    --text_to_ai_color: #222224;
+    --text_edit: #222224;
 
 	--statusbar_color: #f2f2f499;
 	--statusbar_text_color: white;
-	--scrollbar-color: #da4f5a7a;
+	--scrollbar-color: #da4f5a00;
 
 	/*Buttons*/
 		/*General*/
@@ -73,60 +73,59 @@
 
 
 	/*Sequence, AKA Gens Per Action*/
-	--sequence_area_background:#e2e2e2;
-    --sequence_background: #ececec;
-	--sequence_text: #828282;
+	--sequence_area_background: #e8e8e8;
+    --sequence_background: #eeeeee;
+	--sequence_text: #222224;
 
 	/*Side Menus*/
 	--tab_color: #a04a51;
 	--tab_text: #f2f1f1;
 
-	--flyout_background: #dcd9d9;
-	--flyout_background_pinned: #dcd9d9;
+	--flyout_background: #e8e8e8;
+	--flyout_background_pinned: #e8e8e8;
 	--flyout_text: #464646;
 
-	--setting_background: #e1c5c5;
+	--setting_background: #e9cece;
     --setting_text: #421d1d;
 
 	--sample_order_select_color: #dc6872;
 	--sample_order_select_color_text: #f2f1f1;
 
 	--dropdown_text: #dc6872;
-	--dropdown_background: #e2e2e2;
+	--dropdown_background: #eeeeee;
 
-	--rangeslider_background_color: #818181;
+	--rangeslider_background_color: #828282;
 	--rangeslider_color: #dc6872;
 	--rangeslider_circle_color: #f2f1f1;
 
-	--help_icon: #f2f1f1;
-    /*--tooltip_text: #000000;
+	--help_icon: #f2f1f1;/*--tooltip_text: #000000;
     --tooltip_background: #000000;*/
 	--setting_category_help_text_color: #464646;
 	
-	--setting_footer_border_color: #4646466b;
+	--setting_footer_border_color: #acacac;
 	--setting_footer_text_color: #464646;
-	--setting_footer_background_color: #e1c5c5;
+	--setting_footer_background_color: #dccccc;
 
 	/*Palette Card*/
-	--palette_card_background: #e1c5c5;
-	--palette_card_text:  #5c5c5c;
+	--palette_card_background: #e9cece;
+	--palette_card_text: #5c5c5c;
 	--palette_table_border: #5c5c5c;
 
 	/*World Info*/
-	--wi_card_border_color: #dc6872;
-    --wi_card_border_color_to_ai: #dc6872;
+	--wi_card_border_color: #acacac;
+    --wi_card_border_color_to_ai: #acacac;
 
-    --wi_card_bg_color: #e1c5c5;
-	--wi_card_text_color: #dc6872;
+    --wi_card_bg_color: #ebebeb;
+	--wi_card_text_color: #e26771;
 
-    --wi_card_tag_bg_color: #f2f1f1;
+    --wi_card_tag_bg_color: #eeeeee;
 	--wi_card_tag_text_color: #5c5c5c;
 	
-    --wi_tag_color: #e1c5c5;
+    --wi_tag_color: #e26771;
 	--wi_tag_text_color: #5c5c5c;
 	
 	/*Popup*/
-	--popup_background_color: #e1c5c5;
+	--popup_background_color: #e9cece;
     --popup_title_bar_color: #dc6872;
 	--popup_title_bar_color_text: #f2f1f1;
 
@@ -138,25 +137,25 @@
 	--popup_selected_color: #e26771;
 	--popup_selected_color_text: #f2f1f1;
 
-	--popup_button_color: #e1c5c5;
+	--popup_button_color: #e9cece;
 	--popup_button_color_text: #e26771;
-	--popup_cancel_button_color: #e1c5c5;
+	--popup_cancel_button_color: #e9cece;
 	--popup_cancel_button_color_text: #e26771;
 
-	--error: #ffb4ab;
-	--error_text: #690005;
-	--error_title: #93000a;
-	--error_title_text: #ffdad6;
+	--error: #e9cece;
+	--error_text: #e26771;
+	--error_title: #dc6872;
+	--error_title_text: #f2f1f1;
 	
 	/*Context Bar Colors*/
-	--context_colors_memory: #8e4147;
-	--context_colors_authors_notes: #d8656e;
-	--context_colors_world_info: #d28b8b;
-	--context_colors_prompt: #cbb6b6;
-	--context_colors_game_text: #e7c2c2;
-	--context_colors_submit: #ededed;
-	--context_colors_unused: #ffffffad;
-	--context_colors_soft_prompt: #464646;
+	--context_colors_memory: #464646;
+	--context_colors_authors_notes: #5c5c5c;
+	--context_colors_world_info: #b1535a;
+	--context_colors_prompt: #e1636e;
+	--context_colors_game_text: #c89797;
+	--context_colors_submit: #ffffff00;
+	--context_colors_unused: #ffffff5c;
+	--context_colors_soft_prompt: #222224;
 
     /*Parameters*/
 	--scrollbar-size: 6px;
@@ -169,7 +168,7 @@
 	--right_menu_strong_shadow: 0;
 	--popup_shadow: 0;
 	--radius_inputbox: 15px;
-	--radius_unpinned_menu: 15px;
+	--radius_unpinned_menu: 0px;
 	--radius_sequence: 15px;
 	--radius_settings_background: 10px;
 	--radius_button: 10px;
@@ -201,3 +200,184 @@
 	--story_pinned_area_widths:var(--story_pinned_area_widths_left);
 	--font_size_adjustment: 0px;
 	--game_screen_font_size_adjustment: 1;}
+
+/* Boxes */
+
+#input_text, #themetext {
+    border-color: #c9c9c9 !important;
+}
+
+.fullwidth {
+	border-radius: 10px;
+    border-color: #c9c9c9 !important;
+}
+
+.fullwidth:focus {
+    border-color: #dc6872 !important;
+}
+
+.bias_phrase input {
+    border-color: #c9c9c9 !important;
+}
+
+.sequence {
+    border-color: #c9c9c9 !important;
+}
+
+/* Buttons */
+
+.settings_button {
+    border: none !important;
+}
+
+.btn-success {
+	color: #f2f1f1 !important;
+    background-color: #dc6872 !important;
+    border-color: #dc6872 !important;
+}
+
+.toggle-off.btn {
+	color: #f2f1f1 !important;
+    background-color: #828282 !important;
+	border-color: #828282 !important;
+}
+
+.advanced_theme:hover {
+	filter: brightness(100%) !important;
+}
+
+/* Context Viewer */
+
+#context-viewer-header {
+    background-color: #a04a51 !important;
+}
+
+#context-container {
+	background-color: #e8e8e8 !important;
+}
+
+/* Icons */
+
+span.material-icons-outlined.cursor.search_icon {
+	color: #464646e0 !important;
+}
+
+.collapsable_header .material-icons-outlined {
+    transform: translateY(7px) translateX(4px)!important;
+}
+
+.pinned .menu_pin, .pinned .story_menu_pin {
+    filter: brightness(100%) !important;
+    color: #464646 !important;
+}
+
+.material-icons-outlined:hover {
+	filter: brightness(100%) !important;
+}
+
+/* Import */
+
+a {
+    color: #e26771 !important;
+}
+
+.form-control {
+	transform: translateX(6px)!important;
+    background-color: #e2e2e2 !important;
+	border: none;
+}
+
+/* Lines */
+
+.story_title, hr {
+    border-color: #c9c9c9 !important;
+}
+
+/* Lists */
+
+.settings_select, .var_sync_system_theme_list {
+	border-color: #c9c9c9 !important;
+}
+
+select#wpp_format_0.settings_select {
+    background-color: #f8f4f4 !important;
+}
+
+/* Padding */
+
+.story_title_area {
+    padding-top: 3px;
+}
+
+/* Palette */
+
+#palette_area {
+    border-color: #e26771 !important;
+}
+
+/* Popup */
+
+.popup .action_button {
+    border-radius: 10px;
+	border-color:#e26771
+}
+
+.popup_load_cancel_button {
+    border-radius: 10px;
+}
+
+.popup .action_button:hover {
+	filter: brightness(100%) !important;
+	background-color: #e9cece !important;
+}
+
+.popup_load_cancel_button:hover {
+	color: #e26771 !important;
+    background-color: #e9cece !important;
+	border-color: #e26771 !important;
+}
+
+/* Tabs */
+
+.tabrow span {
+	border: none !important;
+	box-shadow: inset 0px 0px 2px !important;
+}
+
+.tabrow span::before, .tabrow span::after {
+	display: none;
+	border: none !important;
+}
+
+.tabrow span.selected {
+    background: #e26771 !important;
+    color: #f2f1f1 !important;
+}
+
+/* Text */
+
+.rawtext {
+    font-family: helvetica !important;
+}
+
+/* World Info */
+
+.tag {
+    color: #f2f1f1 !important;
+}
+
+.world_info_tag_area {
+    filter: brightness(100%) !important;
+}
+
+.world_info_delete {
+	color: #acacac !important;
+}
+
+.world_info_text {
+	color: #222224 !important;
+	filter: brightness(100%) !important;
+	background-color: #eeeeee !important;
+    border-color: #acacac !important;
+	margin: 0 0px 0px !important;
+}
