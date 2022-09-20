@@ -8246,6 +8246,7 @@ def text2img_local(prompt, art_guide="", filename="new.png"):
     else:
         koboldai_vars.image_pipeline = None
         del pipe
+    torch.cuda.empty_cache()
     koboldai_vars.generating_image = False
     koboldai_vars.aibusy = False
     print("time to unload: {}".format(time.time() - start_time))
