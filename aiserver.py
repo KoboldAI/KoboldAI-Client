@@ -112,6 +112,7 @@ mainmenu = [
     ]
 
 adventurelist= [
+    ["Nerys OPT 13B V2 (Hybrid)", "KoboldAI/OPT-13B-Nerys-v2", "32GB"],
     ["Nerys FSD 13B V2 (Hybrid)", "KoboldAI/fairseq-dense-13B-Nerys-v2", "32GB"],
     ["Nerys FSD 13B (Hybrid)", "KoboldAI/fairseq-dense-13B-Nerys", "32GB"],
     ["Skein 6B", "KoboldAI/GPT-J-6B-Skein", "16GB"],
@@ -125,6 +126,7 @@ adventurelist= [
 ]
 
 novellist= [
+    ["Nerys OPT 13B V2 (Hybrid)", "KoboldAI/OPT-13B-Nerys-v2", "32GB"],
     ["Nerys FSD 13B V2 (Hybrid)", "KoboldAI/fairseq-dense-13B-Nerys-v2", "32GB"],
     ["Janeway FSD 13B", "KoboldAI/fairseq-dense-13B-Janeway", "32GB"],
     ["Nerys FSD 13B (Hybrid)", "KoboldAI/fairseq-dense-13B-Nerys", "32GB"],
@@ -148,6 +150,7 @@ nsfwlist= [
     ["Lit V2 6B (NSFW)", "hakurei/litv2-6B-rev3", "16GB"],
     ["Lit 6B (NSFW)", "hakurei/lit-6B", "16GB"],
     ["Shinen 6B (NSFW)", "KoboldAI/GPT-J-6B-Shinen", "16GB"],
+    ["Erebus 2.7B (NSFW)", "KoboldAI/OPT-2.7B-Erebus", "8GB"],
     ["Horni 2.7B (NSFW)", "KoboldAI/GPT-Neo-2.7B-Horni", "8GB"],
     ["Shinen 2.7B (NSFW)", "KoboldAI/GPT-Neo-2.7B-Shinen", "8GB"],
     ["Return to Main Menu", "Return", ""],
