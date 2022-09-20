@@ -729,8 +729,8 @@ class user_settings(settings):
             process_variable_changes(self.socketio, self.__class__.__name__.replace("_settings", ""), name, value, old_value)
         
 class system_settings(settings):
-    local_only_variables = ['socketio', 'lua_state', 'lua_logname', 'lua_koboldbridge', 'lua_kobold', 'lua_koboldcore', 'regex_sl', 'acregex_ai', 'acregex_ui', 'comregex_ai', 'comregex_ui', 'sp', '_horde_pid', 'image_pipeline', 'summarizer']
-    no_save_variables = ['socketio', 'lua_state', 'lua_logname', 'lua_koboldbridge', 'lua_kobold', 'lua_koboldcore', 'sp', '_horde_pid', 'horde_share', 'aibusy', 'serverstarted', 'image_pipeline', 'summarizer']
+    local_only_variables = ['socketio', 'lua_state', 'lua_logname', 'lua_koboldbridge', 'lua_kobold', 'lua_koboldcore', 'regex_sl', 'acregex_ai', 'acregex_ui', 'comregex_ai', 'comregex_ui', 'sp', '_horde_pid', 'image_pipeline', 'summarizer', 'summary_tokenizer']
+    no_save_variables = ['socketio', 'lua_state', 'lua_logname', 'lua_koboldbridge', 'lua_kobold', 'lua_koboldcore', 'sp', '_horde_pid', 'horde_share', 'aibusy', 'serverstarted', 'image_pipeline', 'summarizer', 'summary_tokenizer']
     settings_name = "system"
     def __init__(self, socketio):
         self.socketio = socketio
@@ -810,6 +810,7 @@ class system_settings(settings):
         self.generating_image = False #The current status of image generation
         self.image_pipeline = None
         self.summarizer = None
+        self.summary_tokenizer = None
         self.keep_img_gen_in_memory = False
         self.cookies = {} #cookies for colab since colab's URL changes, cookies are lost
         
