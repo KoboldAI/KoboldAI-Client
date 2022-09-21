@@ -715,10 +715,10 @@ def sendModelSelection(menu="mainmenu", folder="./models"):
         else:
             showdelete=False
         emit('from_server', {'cmd': 'show_model_menu', 'data': menu_list, 'menu': menu, 'breadcrumbs': breadcrumbs, "showdelete": showdelete}, broadcast=True, room="UI_1")
-        emit('show_model_menu', {'data': menu_list_ui_2, 'menu': menu, 'breadcrumbs': breadcrumbs, "showdelete": showdelete}, broadcast=False, room="UI_2")
+        emit('show_model_menu', {'data': menu_list_ui_2, 'menu': menu, 'breadcrumbs': breadcrumbs, "showdelete": showdelete}, broadcast=False)
     else:
         emit('from_server', {'cmd': 'show_model_menu', 'data': model_menu[menu], 'menu': menu, 'breadcrumbs': [], "showdelete": False}, broadcast=True, room="UI_1")
-        emit('show_model_menu', {'data': model_menu[menu], 'menu': menu, 'breadcrumbs': [], "showdelete": False}, broadcast=False, room="UI_2")
+        emit('show_model_menu', {'data': model_menu[menu], 'menu': menu, 'breadcrumbs': [], "showdelete": False}, broadcast=False)
 
 def get_folder_path_info(base):
     if base == 'This PC':
@@ -1487,7 +1487,7 @@ def get_model_info(model, directory=""):
                          'gpu':gpu, 'layer_count':layer_count, 'breakmodel':breakmodel, 'multi_online_models': multi_online_models, 'default_url': default_url, 
                          'disk_break_value': disk_blocks, 'disk_break': utils.HAS_ACCELERATE,
                          'break_values': break_values, 'gpu_count': gpu_count,
-                         'url': url, 'gpu_names': gpu_names, 'models_on_url': models_on_url, 'show_online_model_select': show_online_model_select}, broadcast=False, room="UI_2")
+                         'url': url, 'gpu_names': gpu_names, 'models_on_url': models_on_url, 'show_online_model_select': show_online_model_select})
     
     
 
@@ -7327,7 +7327,7 @@ def file_popup(popup_title, starting_folder, return_event, upload=True, jailed=T
     session['show_folders'] = show_folders
     session['advanced_sort'] = advanced_sort
     
-    socketio.emit("load_popup", {"popup_title": popup_title, "call_back": return_event, "renameable": renameable, "deleteable": deleteable, "editable": editable, 'upload': upload}, broadcast=False, room="UI_2")
+    emit("load_popup", {"popup_title": popup_title, "call_back": return_event, "renameable": renameable, "deleteable": deleteable, "editable": editable, 'upload': upload}, broadcast=False)
     socketio.emit("load_popup", {"popup_title": popup_title, "call_back": return_event, "renameable": renameable, "deleteable": deleteable, "editable": editable, 'upload': upload}, broadcast=True, room="UI_1")
     
     get_files_folders(starting_folder)
@@ -7414,10 +7414,10 @@ def get_files_folders(starting_folder):
             items += files
             
     #items is a list of [Folder True/False, full path, file/folder name, validity of item to load, [list of extra columns]]
-    socketio.emit("popup_items", {"items": items, "column_names": column_names, "show_filename": show_filename, "column_widths": column_widths}, broadcast=False, include_self=True, room="UI_2")
+    emit("popup_items", {"items": items, "column_names": column_names, "show_filename": show_filename, "column_widths": column_widths}, broadcast=False)
     socketio.emit("popup_items", items, broadcast=True, include_self=True, room="UI_1")
     if show_breadcrumbs:
-        socketio.emit("popup_breadcrumbs", breadcrumbs, broadcast=False, room="UI_2")
+        emit("popup_breadcrumbs", breadcrumbs, broadcast=False)
         socketio.emit("popup_breadcrumbs", breadcrumbs, broadcast=True, room="UI_1")
 
 def get_files_sorted(path, sort, desc=False):
@@ -8432,10 +8432,6 @@ def get_items_locations_from_text(text):
 #==================================================================#
 # Test
 #==================================================================#
-@app.route("/actions")
-def show_actions():
-    return koboldai_vars.actions.actions
-    
 @app.route("/vars")
 def show_vars():
     json_data = {}
