@@ -2002,7 +2002,7 @@ function unload_userscripts() {
 }
 
 function save_theme() {
-	var cssVars = getAllCSSVariableNames();
+	var [cssVars, rules] = getAllCSSVariableNames();
 	for (const [key, value] of Object.entries(cssVars)) {
 		if (document.getElementById(key)) {
 			if (document.getElementById(key+"_select").value == "") {
@@ -2016,7 +2016,7 @@ function save_theme() {
 	for (item of document.getElementsByClassName("Theme_Input")) {
 		cssVars["--"+item.id] = item.value;
 	}
-	socket.emit("theme_change", {"name": document.getElementById("save_theme_name").value, "theme": cssVars});
+	socket.emit("theme_change", {"name": document.getElementById("save_theme_name").value, "theme": cssVars, 'special_rules': rules});
 	document.getElementById("save_theme_name").value = "";
 	socket.emit('theme_list_refresh', '');
 }
@@ -2328,39 +2328,46 @@ function Change_Theme(theme) {
 function palette_color(item) {
 	var r = document.querySelector(':root');
 	r.style.setProperty("--"+item.id, item.value);
-	//socket.emit("theme_change", getAllCSSVariableNames());
 }
 
 function getAllCSSVariableNames(styleSheets = document.styleSheets){
-   var cssVars = {};
-   // loop each stylesheet
-   //console.log(styleSheets);
-   for(var i = 0; i < styleSheets.length; i++){
-      // loop stylesheet's cssRules
-      try{ // try/catch used because 'hasOwnProperty' doesn't work
-         for( var j = 0; j < styleSheets[i].cssRules.length; j++){
-            try{
-               // loop stylesheet's cssRules' style (property names)
-               for(var k = 0; k < styleSheets[i].cssRules[j].style.length; k++){
-                  let name = styleSheets[i].cssRules[j].style[k];
-                  // test name for css variable signiture and uniqueness
-                  if(name.startsWith('--') && (styleSheets[i].ownerNode.id == "CSSTheme")){
-					let value = styleSheets[i].cssRules[j].style.getPropertyValue(name);
-					value.replace(/(\r\n|\r|\n){2,}/g, '$1\n');
-					value = value.replaceAll("\t", "").trim();
-                    cssVars[name] = value;
-                  }
-               }
-            } catch (error) {}
-         }
-      } catch (error) {}
-   }
-   return cssVars;
+	let cssVars = {};
+	let rules = [];
+	// loop each stylesheet
+	for(let i = 0; i < styleSheets.length; i++){
+		// loop stylesheet's cssRules
+		if ((styleSheets[i].href != null) && (styleSheets[i].href.includes("/themes/"))) {
+		  //if we're in the theme css, grab all the non root variables in case there are som
+		  for( let j = 0; j < styleSheets[i].cssRules.length; j++){
+				if (styleSheets[i].cssRules[j].selectorText != ":root") {
+					rules.push(styleSheets[i].cssRules[j].cssText);
+				}
+			}
+		}
+		try{ // try/catch used because 'hasOwnProperty' doesn't work
+			for( let j = 0; j < styleSheets[i].cssRules.length; j++){
+				try{
+					// loop stylesheet's cssRules' style (property names)
+					for(let k = 0; k < styleSheets[i].cssRules[j].style.length; k++){
+						let name = styleSheets[i].cssRules[j].style[k];
+						// test name for css variable signiture and uniqueness
+						if(name.startsWith('--') && (styleSheets[i].ownerNode.id == "CSSTheme")){
+							let value = styleSheets[i].cssRules[j].style.getPropertyValue(name);
+							value.replace(/(\r\n|\r|\n){2,}/g, '$1\n');
+							value = value.replaceAll("\t", "").trim();
+							cssVars[name] = value;
+						}
+					}
+				} catch (error) {}
+			}
+		} catch (error) {}
+	}
+	return [cssVars, rules];
 }
 
 function create_theming_elements() {
 	//console.log("Running theme editor");
-	var cssVars = getAllCSSVariableNames();
+	var [cssVars, rules] = getAllCSSVariableNames();
 	palette_table = document.createElement("table");
 	advanced_table = document.getElementById("advanced_theme_editor_table");
 	theme_area = document.getElementById("Palette");
