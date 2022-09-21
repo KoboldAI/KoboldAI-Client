@@ -7900,7 +7900,7 @@ def UI_2_search_wi(data):
         elif query in entry["manual_text"].lower():
             results["comment"].append(entry)
 
-    socketio.emit("wi_results", results, broadcast=True, room="UI_2")
+    emit("wi_results", results, broadcast=True, room="UI_2")
 
 @socketio.on("update_wi_attribute")
 def UI_2_update_wi_attribute(data):

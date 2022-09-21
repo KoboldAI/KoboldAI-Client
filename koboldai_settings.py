@@ -1525,6 +1525,11 @@ class KoboldWorldInfo(object):
                         self.world_info[item][column] = None
                 if "wpp" not in self.world_info[item]:
                     self.world_info[item]['wpp'] = {'name': "", 'type': "", 'format': "W++", 'attributes': {}}
+                
+                #If we have content but not manual_text, let's move it over:
+                if 'manual_text' not in self.world_info[item]:
+                    self.world_info[item]['manual_text'] = self.world_info[item]['content']
+                
             try:
                 self.sync_world_info_to_old_format()
             except:
