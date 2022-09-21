@@ -186,7 +186,7 @@ def _download_with_aria2(aria2_config: str, total_length: int, directory: str = 
             
             if bar != "":
                 try:
-                    print(bar, end="\r")
+                    print('\r' + bar, end='')
                     try:
                         emit('from_server', {'cmd': 'model_load_status', 'data': bar.replace(" ", "&nbsp;")}, broadcast=True)
                     except:
