@@ -182,7 +182,7 @@ class Send_to_socketio(object):
     def write(self, bar):
         time.sleep(0.01)
         try:
-            print(bar)
+            print(bar, end = "\r")
             emit('from_server', {'cmd': 'model_load_status', 'data': bar.replace(" ", "&nbsp;")}, broadcast=True)
         except:
             pass
@@ -429,7 +429,7 @@ def _transformers22_aria2_hook(pretrained_model_name_or_path: str, force_downloa
     headers = [requests.head(u, headers=headers, allow_redirects=True, proxies=proxies, timeout=10).headers for u in urls]
 
     for n in filenames:
-        prefix, suffix = n.rsplit("/", 1)
+        prefix, suffix = n.rsplit(os.sep, 1)
         path = os.path.join(prefix, "kai-tempfile." + suffix + ".aria2")
         if os.path.exists(path):
             os.remove(path)
@@ -437,10 +437,10 @@ def _transformers22_aria2_hook(pretrained_model_name_or_path: str, force_downloa
         if os.path.exists(path):
             os.remove(path)
     total_length = sum(int(h["Content-Length"]) for h in headers)
-    aria2_config = "\n".join(f"{u}\n  out={os.path.join(prefix, 'kai-tempfile.' + suffix)}" for u, n in zip(urls, filenames) for prefix, suffix in [n.rsplit("/", 1)]).encode()
+    aria2_config = "\n".join(f"{u}\n  out={os.path.join(prefix, 'kai-tempfile.' + suffix)}" for u, n in zip(urls, filenames) for prefix, suffix in [n.rsplit(os.sep, 1)]).encode()
     _download_with_aria2(aria2_config, total_length, use_auth_token=token if use_auth_token else None, user_agent=user_agent, force_download=force_download)
     for u, n in zip(urls, filenames):
-        prefix, suffix = n.rsplit("/", 1)
+        prefix, suffix = n.rsplit(os.sep, 1)
         os.rename(os.path.join(prefix, "kai-tempfile." + suffix), os.path.join(prefix, suffix))
 
 def aria2_hook(pretrained_model_name_or_path: str, force_download=False, cache_dir=None, proxies=None, resume_download=False, local_files_only=False, use_auth_token=None, user_agent=None, revision=None, **kwargs):
