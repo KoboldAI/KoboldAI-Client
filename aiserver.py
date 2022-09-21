@@ -8396,7 +8396,7 @@ def generate_image_in_background():
 
     #If we don't have a GPU, use horde if we're allowed to
     start_time = time.time()
-    if (not koboldai_vars.hascuda and koboldai_vars.img_gen_priority != 0) or  koboldai_vars.img_gen_priority == 3:
+    if ((not koboldai_vars.hascuda or not os.path.exists("models/stable-diffusion-v1-4")) and koboldai_vars.img_gen_priority != 0) or  koboldai_vars.img_gen_priority == 3:
         b64_data = text2img_horde(", ".join(keys), art_guide = art_guide)
     else:
         import psutil
@@ -8426,7 +8426,7 @@ def text2img_local(prompt, art_guide="", filename="new.png"):
     import base64
     from io import BytesIO
     if koboldai_vars.image_pipeline is None:
-        pipe = StableDiffusionPipeline.from_pretrained("CompVis/stable-diffusion-v1-4", revision="fp16", torch_dtype=torch.float16, cache="./stable-diffusion-v1-4").to("cuda")
+        pipe = StableDiffusionPipeline.from_pretrained("CompVis/stable-diffusion-v1-4", revision="fp16", torch_dtype=torch.float16, cache="models/stable-diffusion-v1-4").to("cuda")
     else:
         pipe = koboldai_vars.image_pipeline.to("cuda")
     logger.debug("time to load: {}".format(time.time() - start_time))

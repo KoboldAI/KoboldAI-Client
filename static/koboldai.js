@@ -2321,6 +2321,21 @@ function retry_from_here() {
 	}
 }
 
+function push_to_clipboard() {
+	navigator.permissions.query({name: "clipboard-write"}).then((result) => {
+		if (result.state === "granted" || result.state === "prompt") {
+			navigator.clipboard.writeText(getSelectionText());
+		}
+	});
+}
+
+function push_from_clipboard(el = document.activeElement) {
+	const [start, end] = [el.selectionStart, el.selectionEnd];
+	navigator.clipboard.readText().then(
+		(clipText) => el.setRangeText(clipText, start, end, 'select'));
+	
+}
+
 function getSelectionText() {
     var text = "";
     var activeEl = document.activeElement;
