@@ -188,6 +188,20 @@ class Send_to_socketio(object):
             pass
             
 def _download_with_aria2(aria2_config: str, total_length: int, directory: str = ".", user_agent=None, force_download=False, use_auth_token=None):
+    class Send_to_socketio(object):
+        def write(self, bar):
+            bar = bar.replace("\r", "").replace("\n", "")
+            
+            if bar != "":
+                try:
+                    print(bar, end="\n")
+                    emit('from_server', {'cmd': 'model_load_status', 'data': bar.replace(" ", "&nbsp;")}, broadcast=True)
+                    eventlet.sleep(seconds=0)
+                except:
+                    pass
+        def flush(self):
+            pass
+    
     import transformers
     lengths = {}
     s = requests.Session()
@@ -211,7 +225,7 @@ def _download_with_aria2(aria2_config: str, total_length: int, directory: str = 
                     done = True
                     break
                 if bar is None:
-                    bar = tqdm(total=total_length, desc=f"[aria2] Downloading model", unit="B", unit_scale=True, unit_divisor=1000)
+                    bar = tqdm(total=total_length, desc=f"[aria2] Downloading model", unit="B", unit_scale=True, unit_divisor=1000, file=Send_to_socketio())
                 visited = set()
                 for x in r:
                     filename = x["files"][0]["path"]
