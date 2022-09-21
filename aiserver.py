@@ -467,6 +467,7 @@ app.secret_key = secrets.token_hex()
 app.config['SESSION_TYPE'] = 'filesystem'
 app.config['TEMPLATES_AUTO_RELOAD'] = True
 socketio = SocketIO(app, async_method="eventlet", manage_session=False, cors_allowed_origins='*', max_http_buffer_size=10_000_000)
+logger.add(lambda msg: socketio.emit("log_message", json.loads(msg), broadcast=True, room="UI_2"), serialize=True, colorize=True)
 #socketio = SocketIO(app, async_method="eventlet", manage_session=False, cors_allowed_origins='*', logger=True, engineio_logger=True)
 koboldai_vars = koboldai_settings.koboldai_vars(session, socketio)
 
@@ -8441,7 +8442,10 @@ def show_vars():
     json_data['system_settings'] = json.loads(koboldai_vars.to_json("system_settings"))
     return json_data
 
-    
+@socketio.on("trigger_error")
+@logger.catch
+def trigger_error(data):
+    temp = this_var_doesnt_exist
 
 #==================================================================#
 class EmptySchema(KoboldSchema):
@@ -11187,8 +11191,9 @@ def startup():
     socketio.start_background_task(load_model, **{'initial_load':True})
             
 print("", end="", flush=True)
-if __name__ == "__main__":
 
+@logger.catch
+def run():
     general_startup()
     # Start flask & SocketIO
     logger.init("Flask", status="Starting")
@@ -11264,8 +11269,9 @@ if __name__ == "__main__":
                 koboldai_vars.serverstarted = True
                 socketio.run(app, port=port)
     logger.init("Webserver", status="Closed")
-
-
+    
+if __name__ == "__main__":
+    run()
 else:
     general_startup()
     # Start flask & SocketIO

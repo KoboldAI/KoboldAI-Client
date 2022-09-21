@@ -1643,8 +1643,6 @@ body {
 #error_message.popup {
 	background-color: var(--error);
 	color: var(--error_text);
-	height: 30vh;
-	top: 35vh;
 	overflow: hidden;
 }
 

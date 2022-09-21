@@ -30,6 +30,7 @@ socket.on('load_cookies', function(data){load_cookies(data)});
 socket.on('load_tweaks', function(data){load_tweaks(data);});
 socket.on("wi_results", updateWISearchListings);
 socket.on("request_prompt_config", configurePrompt);
+socket.on("log_message", function(data){process_log_message(data)});
 //socket.onAny(function(event_name, data) {console.log({"event": event_name, "class": data.classname, "data": data});});
 
 var presets = {};
@@ -51,6 +52,7 @@ var colab_cookies = null;
 var wi_finder_data = [];
 var wi_finder_offset = 0;
 var selected_game_chunk = null;
+var log = [];
 
 // name, desc, icon, func
 const finder_actions = [
@@ -1952,7 +1954,14 @@ function world_info_folder(data) {
 function show_error_message(data) {
 	error_message_box = document.getElementById('error_message');
 	error_message_box.classList.remove("hidden");
-	error_message_box.querySelector("#popup_list_area").textContent = data;
+	error_box_data = error_message_box.querySelector("#popup_list_area")
+	//clear out the error box
+	while (error_box_data.firstChild) {
+		error_box_data.removeChild(error_box_data.firstChild);
+	}
+	for (item of data.split("\n")) {
+		$e("div", error_box_data, {'textContent': item})
+	}
 }
 
 function do_wpp(wpp_area) {
@@ -1990,6 +1999,17 @@ function load_cookies(data) {
 		}
 		process_cookies();
 		colab_cookies = null;
+	}
+}
+
+function process_log_message(data) {
+	let level = data['record']['level']['name'];
+	let message = data['record']['message'];
+	let time = data['record']['time']['repr'];
+	let full_log = data['text'];
+	log.push({'level': level, 'message': message, 'time': time, 'full_log': full_log});
+	if (level == 'ERROR') {
+		show_error_message(full_log);
 	}
 }
 
