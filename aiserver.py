@@ -8337,9 +8337,10 @@ def UI_2_save_revision(data):
 # Generate Image
 #==================================================================#
 @socketio.on("generate_image")
-#@logger.catch
+@logger.catch
 def UI_2_generate_image(data):
     koboldai_vars.generating_image = True
+    eventlet.sleep(0)
     
     #get latest action
     if len(koboldai_vars.actions) > 0:
@@ -8435,7 +8436,7 @@ def UI_2_generate_image(data):
     koboldai_vars.generating_image = False
     
 
-#@logger.catch
+@logger.catch
 def text2img_local(prompt, art_guide="", filename="new.png"):
     start_time = time.time()
     logger.debug("Generating Image")
@@ -8450,9 +8451,12 @@ def text2img_local(prompt, art_guide="", filename="new.png"):
         pipe = koboldai_vars.image_pipeline.to("cuda")
     logger.debug("time to load: {}".format(time.time() - start_time))
     start_time = time.time()
-    from torch import autocast
-    with autocast("cuda"):
-        image = tpool.execute(pipe, prompt, num_inference_steps=35)["sample"][0]
+    
+    def get_image(pipe, prompt, num_inference_steps):
+        from torch import autocast
+        with autocast("cuda"):
+            return pipe(prompt, num_inference_steps=num_inference_steps)["sample"][0]
+    image = tpool.execute(get_image, pipe, prompt, num_inference_steps=35)
     buffered = BytesIO()
     image.save(buffered, format="JPEG")
     img_str = base64.b64encode(buffered.getvalue()).decode('ascii')
@@ -8471,7 +8475,7 @@ def text2img_local(prompt, art_guide="", filename="new.png"):
     logger.debug("time to unload: {}".format(time.time() - start_time))
     return img_str
 
-#@logger.catch
+@logger.catch
 def text2img_horde(prompt, 
              art_guide = 'fantasy illustration, artstation, by jason felix by steve argyle by tyler jacobson by peter mohrbacher, cinematic lighting', 
              filename = "story_art.png"):
