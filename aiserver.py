@@ -1198,7 +1198,7 @@ def processsettings(js):
     if("show_probs" in js):
         vars.show_probs = js["show_probs"]
     if("show_budget" in js):
-        vars.show_probs = js["show_budget"]
+        vars.show_budget = js["show_budget"]
     
     if("seed" in js):
         vars.seed = js["seed"]
