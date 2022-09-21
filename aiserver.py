@@ -402,6 +402,7 @@ class vars:
     output_streaming = True
     token_stream_queue = TokenStreamQueue() # Queue for the token streaming
     show_probs = False # Whether or not to show token probabilities
+    show_budget = False # Whether or not to show token probabilities
     configname = None
 
 utils.vars = vars
@@ -1072,6 +1073,7 @@ def savesettings():
     js["welcome"]     = vars.welcome
     js["output_streaming"] = vars.output_streaming
     js["show_probs"] = vars.show_probs
+    js["show_budget"] = vars.show_budget
 
     if(vars.seed_specified):
         js["seed"]    = vars.seed
@@ -1195,6 +1197,8 @@ def processsettings(js):
         vars.output_streaming = js["output_streaming"]
     if("show_probs" in js):
         vars.show_probs = js["show_probs"]
+    if("show_budget" in js):
+        vars.show_probs = js["show_budget"]
     
     if("seed" in js):
         vars.seed = js["seed"]
@@ -3986,6 +3990,10 @@ def get_message(msg):
         vars.output_streaming = msg['data']
         settingschanged()
         refresh_settings()
+    elif(msg['cmd'] == 'setshowbudget'):
+        vars.show_budget = msg['data']
+        settingschanged()
+        refresh_settings()
     elif(msg['cmd'] == 'setshowprobs'):
         vars.show_probs = msg['data']
         settingschanged()
@@ -5577,6 +5585,7 @@ def refresh_settings():
     emit('from_server', {'cmd': 'updatefrmtadsnsp', 'data': vars.formatoptns["frmtadsnsp"]}, broadcast=True)
     emit('from_server', {'cmd': 'updatesingleline', 'data': vars.formatoptns["singleline"]}, broadcast=True)
     emit('from_server', {'cmd': 'updateoutputstreaming', 'data': vars.output_streaming}, broadcast=True)
+    emit('from_server', {'cmd': 'updateshowbudget', 'data': vars.show_budget}, broadcast=True)
     emit('from_server', {'cmd': 'updateshowprobs', 'data': vars.show_probs}, broadcast=True)
     
     # Allow toggle events again

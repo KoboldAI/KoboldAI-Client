@@ -2708,6 +2708,9 @@ $(document).ready(function(){
 		} else if(msg.cmd == "updateoutputstreaming") {
 			// Update toggle state
 			$("#setoutputstreaming").prop('checked', msg.data).change();
+		} else if(msg.cmd == "updateshowbudget") {
+			// Update toggle state
+			$("#setshowbudget").prop('checked', msg.data).change();
 		} else if(msg.cmd == "updateshowprobs") {
 			$("#setshowprobs").prop('checked', msg.data).change();
 
