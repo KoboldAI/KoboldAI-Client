@@ -445,6 +445,9 @@ class model_settings(settings):
         self.selected_preset = ""
         self.uid_presets = []
         self.default_preset = {}
+        self.horde_wait_time = 0
+        self.horde_queue_position = 0
+        self.horde_queue_size = 0
         self.cluster_requested_models = [] # The models which we allow to generate during cluster mode
         
         

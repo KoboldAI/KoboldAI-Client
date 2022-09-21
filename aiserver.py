@@ -2212,6 +2212,8 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
         disk_layers = None
     koboldai_vars.reset_model()
     koboldai_vars.cluster_requested_models = [online_model] if isinstance(online_model, str) else online_model
+    if koboldai_vars.cluster_requested_models == [""]:
+        koboldai_vars.cluster_requested_models = []
     koboldai_vars.noai = False
     if not use_breakmodel_args:
         set_aibusy(True)
@@ -5346,7 +5348,7 @@ def sendtocluster(txt, min, max):
     try:
         # Create request
         req = requests.post(
-            koboldai_vars.colaburl[:-8] + "/api/v1/generate/sync",
+            koboldai_vars.colaburl[:-8] + "/api/v1/generate/async",
             json=cluster_metadata,
         )
     except requests.exceptions.ConnectionError:
@@ -5367,6 +5369,7 @@ def sendtocluster(txt, min, max):
         emit('from_server', {'cmd': 'errmsg', 'data': errmsg}, broadcast=True)
         set_aibusy(0)
         return
+    
     try:
         js = req.json()
     except requests.exceptions.JSONDecodeError:
@@ -5375,6 +5378,22 @@ def sendtocluster(txt, min, max):
         emit('from_server', {'cmd': 'errmsg', 'data': errmsg}, broadcast=True)
         set_aibusy(0)
         return
+    request_id = js['id']
+    logger.debug("Horde Request ID: {}".format(request_id))
+    #We've sent the request and got the ID back, now we need to watch it to see when it finishes
+    finished = False
+    while not finished:
+        js = requests.get(koboldai_vars.colaburl[:-8] + "/api/v1/generate/check/" + request_id).json()
+        finished = js["done"]
+        koboldai_vars.horde_wait_time = js["wait_time"]
+        koboldai_vars.horde_queue_position = js["queue_position"]
+        koboldai_vars.horde_queue_size = js["waiting"]
+        time.sleep(0.1)
+    
+    logger.debug("Last Horde Status Message: {}".format(js))
+    js = requests.get(koboldai_vars.colaburl[:-8] + "/api/v1/generate/prompt/" + request_id).json()['generations']
+    logger.debug("Horde Result: {}".format(js))
+    
     gen_servers = [(cgen['server_name'],cgen['server_id']) for cgen in js]
     logger.info(f"Generations by: {gen_servers}")
     # Just in case we want to announce it to the user
