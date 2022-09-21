@@ -8102,7 +8102,7 @@ def UI_2_theme_change(data):
         for key, value in data['theme'].items():
             f.write("\t{}: {};\n".format(key, value.replace(";", "").replace("--", "-")))
         f.write("}")
-        f.write("--------Special Rules from Original Theme---------")
+        f.write("--------Special Rules from Original Theme---------\n")
         for rule in data['special_rules']:
             f.write(rule)
             f.write("\n")
