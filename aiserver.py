@@ -7059,7 +7059,8 @@ def final_startup():
             return
         utils.decodenewlines(tokenizer.decode([25678, 559]))
         tokenizer.encode(utils.encodenewlines("eunoia"))
-    threading.Thread(target=__preempt_tokenizer).start()
+    #threading.Thread(target=__preempt_tokenizer).start()
+    tpool.execute(__preempt_tokenizer)
 
     # Load soft prompt specified by the settings file, if applicable
     if(path.exists("settings/" + getmodelname().replace('/', '_') + ".v2_settings")):
@@ -7076,29 +7077,45 @@ def final_startup():
     if(koboldai_vars.use_colab_tpu or koboldai_vars.model in ("TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX")):
         soft_tokens = tpumtjgetsofttokens()
         if(koboldai_vars.dynamicscan or (not koboldai_vars.nogenmod and koboldai_vars.has_genmod)):
-            threading.Thread(
-                target=tpu_mtj_backend.infer_dynamic,
-                args=(np.tile(np.uint32((23403, 727, 20185)), (koboldai_vars.numseqs, 1)),),
-                kwargs={
-                    "soft_embeddings": koboldai_vars.sp,
-                    "soft_tokens": soft_tokens,
-                    "gen_len": 1,
-                    "use_callback": False,
-                    "numseqs": koboldai_vars.numseqs,
-                    "excluded_world_info": list(set() for _ in range(koboldai_vars.numseqs)),
-                },
-            ).start()
+            #threading.Thread(
+            #    target=tpu_mtj_backend.infer_dynamic,
+            #    args=(np.tile(np.uint32((23403, 727, 20185)), (koboldai_vars.numseqs, 1)),),
+            #    kwargs={
+            #        "soft_embeddings": koboldai_vars.sp,
+            #        "soft_tokens": soft_tokens,
+            #        "gen_len": 1,
+            #        "use_callback": False,
+            #        "numseqs": koboldai_vars.numseqs,
+            #        "excluded_world_info": list(set() for _ in range(koboldai_vars.numseqs)),
+            #    },
+            #).start()
+            tpool.execute(tpu_mtj_backend.infer_dynamic, np.tile(np.uint32((23403, 727, 20185)), (koboldai_vars.numseqs, 1)), 
+                    soft_embeddings= koboldai_vars.sp,
+                    soft_tokens= soft_tokens,
+                    gen_len= 1,
+                    use_callback= False,
+                    numseqs= koboldai_vars.numseqs,
+                    excluded_world_info= list(set() for _ in range(koboldai_vars.numseqs))
+            )
         else:
-            threading.Thread(
-                target=tpu_mtj_backend.infer_static,
-                args=(np.uint32((23403, 727, 20185)),),
-                kwargs={
-                    "soft_embeddings": koboldai_vars.sp,
-                    "soft_tokens": soft_tokens,
-                    "gen_len": 1,
-                    "numseqs": koboldai_vars.numseqs,
-                },
-            ).start()
+            #threading.Thread(
+            #    target=tpu_mtj_backend.infer_static,
+            #    args=(np.uint32((23403, 727, 20185)),),
+            #    kwargs={
+            #        "soft_embeddings": koboldai_vars.sp,
+            #        "soft_tokens": soft_tokens,
+            #        "gen_len": 1,
+            #        "numseqs": koboldai_vars.numseqs,
+            #    },
+            #).start()
+            tpool.execute(
+                tpu_mtj_backend.infer_static,
+                np.uint32((23403, 727, 20185)),
+                    soft_embeddings= koboldai_vars.sp,
+                    soft_tokens= soft_tokens,
+                    gen_len= 1,
+                    numseqs= koboldai_vars.numseqs
+            )
 
     # Set the initial RNG seed
     if(koboldai_vars.seed is not None):
@@ -8320,14 +8337,10 @@ def UI_2_save_revision(data):
 # Generate Image
 #==================================================================#
 @socketio.on("generate_image")
-@logger.catch
+#@logger.catch
 def UI_2_generate_image(data):
     koboldai_vars.generating_image = True
-    tpool.execute(generate_image_in_background)
-
-@logger.catch
-def generate_image_in_background():
-    koboldai_vars.generating_image = True
+    
     #get latest action
     if len(koboldai_vars.actions) > 0:
         action = koboldai_vars.actions[-1]
@@ -8378,7 +8391,7 @@ def generate_image_in_background():
             device=0
         else:
             device=-1
-        summarizer = summary_pipeline(task="summarization", model=koboldai_vars.summarizer, tokenizer=koboldai_vars.summary_tokenizer, device=device)
+        summarizer = tpool.execute(summary_pipeline, task="summarization", model=koboldai_vars.summarizer, tokenizer=koboldai_vars.summary_tokenizer, device=device)
         logger.debug("Time to load summarizer: {}".format(time.time()-start_time))
         
         #Actual sumarization
@@ -8386,7 +8399,7 @@ def generate_image_in_background():
         global old_transfomers_functions
         temp = transformers.generation_utils.GenerationMixin._get_stopping_criteria
         transformers.generation_utils.GenerationMixin._get_stopping_criteria = old_transfomers_functions['transformers.generation_utils.GenerationMixin._get_stopping_criteria']
-        keys = [summarizer(text, max_length=args.max_summary_length, min_length=30, do_sample=False)[0]['summary_text']]
+        keys = [tpool.execute(summarizer, text, max_length=args.max_summary_length, min_length=30, do_sample=False)[0]['summary_text']]
         transformers.generation_utils.GenerationMixin._get_stopping_criteria = temp
         logger.debug("Time to summarize: {}".format(time.time()-start_time))
         #move model back to CPU to save precious vram
@@ -8422,7 +8435,7 @@ def generate_image_in_background():
     koboldai_vars.generating_image = False
     
 
-@logger.catch
+#@logger.catch
 def text2img_local(prompt, art_guide="", filename="new.png"):
     start_time = time.time()
     logger.debug("Generating Image")
@@ -8432,14 +8445,14 @@ def text2img_local(prompt, art_guide="", filename="new.png"):
     import base64
     from io import BytesIO
     if koboldai_vars.image_pipeline is None:
-        pipe = StableDiffusionPipeline.from_pretrained("CompVis/stable-diffusion-v1-4", revision="fp16", torch_dtype=torch.float16, cache="models/stable-diffusion-v1-4").to("cuda")
+        pipe = tpool.execute(StableDiffusionPipeline.from_pretrained, "CompVis/stable-diffusion-v1-4", revision="fp16", torch_dtype=torch.float16, cache="models/stable-diffusion-v1-4").to("cuda")
     else:
         pipe = koboldai_vars.image_pipeline.to("cuda")
     logger.debug("time to load: {}".format(time.time() - start_time))
     start_time = time.time()
     from torch import autocast
     with autocast("cuda"):
-        image = pipe(prompt, num_inference_steps=35)["sample"][0]
+        image = tpool.execute(pipe, prompt, num_inference_steps=35)["sample"][0]
     buffered = BytesIO()
     image.save(buffered, format="JPEG")
     img_str = base64.b64encode(buffered.getvalue()).decode('ascii')
@@ -8458,7 +8471,7 @@ def text2img_local(prompt, art_guide="", filename="new.png"):
     logger.debug("time to unload: {}".format(time.time() - start_time))
     return img_str
 
-@logger.catch
+#@logger.catch
 def text2img_horde(prompt, 
              art_guide = 'fantasy illustration, artstation, by jason felix by steve argyle by tyler jacobson by peter mohrbacher, cinematic lighting', 
              filename = "story_art.png"):
@@ -8497,7 +8510,7 @@ def text2img_horde(prompt,
         koboldai_vars.generating_image = False
         logger.error(submit_req.text)
 
-@logger.catch
+#@logger.catch
 def get_items_locations_from_text(text):
     # load model and tokenizer
     tokenizer = AutoTokenizer.from_pretrained("dslim/bert-base-NER")
