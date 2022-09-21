@@ -721,6 +721,7 @@ class user_settings(settings):
         self.show_probs = False # Whether or not to show token probabilities
         self.beep_on_complete = False
         self.img_gen_priority = 1
+        self.show_budget = False
         
         
     def __setattr__(self, name, value):

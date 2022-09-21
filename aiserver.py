@@ -255,6 +255,12 @@ model_menu = {
     }
 
 
+    def add_text(self, text):
+        self.queue.append({
+            "decoded": text,
+            "probabilities": self.probability_buffer
+        })
+        self.probability_buffer = None
 class Send_to_socketio(object):
     def write(self, bar):
         print(bar, end="")
@@ -1119,6 +1125,7 @@ def savesettings():
         with open(filename, "w") as settings_file:
             settings_file.write(getattr(koboldai_vars, "_{}".format(setting)).to_json())
     
+    js["show_budget"] = koboldai_vars.show_budget
 
 #==================================================================#
 #  Don't save settings unless 2 seconds have passed without modification
@@ -4178,6 +4185,10 @@ def get_message(msg):
         refresh_settings()
     elif(msg['cmd'] == 'setoutputstreaming'):
         koboldai_vars.output_streaming = msg['data']
+        settingschanged()
+        refresh_settings()
+    elif(msg['cmd'] == 'setshowbudget'):
+        koboldai_vars.show_budget = msg['data']
         settingschanged()
         refresh_settings()
     elif(msg['cmd'] == 'setshowprobs'):

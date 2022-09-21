@@ -2709,6 +2709,9 @@ $(document).ready(function(){
 		} else if(msg.cmd == "updateoutputstreaming") {
 			// Update toggle state
 			$("#setoutputstreaming").prop('checked', msg.data).change();
+		} else if(msg.cmd == "updateshowbudget") {
+			// Update toggle state
+			$("#setshowbudget").prop('checked', msg.data).change();
 		} else if(msg.cmd == "updateshowprobs") {
 			$("#setshowprobs").prop('checked', msg.data).change();
 
@@ -2848,17 +2851,17 @@ $(document).ready(function(){
 			chat_name.val(msg.data);
 		} else if(msg.cmd == "setlabelnumseq") {
 			// Update setting label with value from server
-			$("#setnumseqcur").html(msg.data);
+			$("#setnumseqcur").val(msg.data);
 		} else if(msg.cmd == "updatenumseq") {
 			// Send current max tokens value to input
-			$("#setnumseqcur").html(msg.data);
+			$("#setnumseqcur").val(msg.data);
 			$("#setnumseq").val(parseInt(msg.data)).trigger("change");
 		} else if(msg.cmd == "setlabelwidepth") {
 			// Update setting label with value from server
-			$("#setwidepthcur").html(msg.data);
+			$("#setwidepthcur").val(msg.data);
 		} else if(msg.cmd == "updatewidepth") {
 			// Send current max tokens value to input
-			$("#setwidepthcur").html(msg.data);
+			$("#setwidepthcur").val(msg.data);
 			$("#setwidepth").val(parseInt(msg.data)).trigger("change");
 		} else if(msg.cmd == "updateuseprompt") {
 			// Update toggle state
