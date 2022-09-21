@@ -4290,6 +4290,33 @@ $(document).ready(function(){
 	debugContainer.addEventListener("click", function(e) {
 		debugContainer.classList.add("hidden");
 	});
+
+	// Context menu
+	const contextMenu = document.getElementById("context-menu");
+
+	$("#gamescreen").contextmenu(function(event) {
+		contextMenu.classList.remove("hidden");
+
+		// Set position to click position
+		contextMenu.style.left = `${event.originalEvent.x}px`;
+		contextMenu.style.top = `${event.originalEvent.y}px`;
+
+		// Don't open browser context menu
+		event.preventDefault();
+
+		// Don't let the document contextmenu catch us and close our context menu
+		event.stopPropagation();
+	});
+
+	// When we make a browser context menu, close ours.
+	$(document).contextmenu(function(event) {
+		contextMenu.classList.add("hidden");
+	});
+
+	// When we click outside of our context menu, close ours.
+	$(document).click(function(event) {
+		contextMenu.classList.add("hidden");
+	});
 });
 
 document.addEventListener("keydown", function(event) {

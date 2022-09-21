@@ -2148,6 +2148,42 @@ body {
 	border-radius: var(--radius_settings_button);
 }
 
+/* Context Menu */
+#context-menu {
+	position: absolute;
+	cursor: default;
+
+	/* Nothing should be above the context menu (that I can think of) */
+	z-index: 9999999;
+
+	/* TODO: Theme */
+	background-color: #222f3a;
+	border: 1px solid #485e6d;
+}
+
+#context-menu > hr {
+	/* TODO: Theme */
+	border-top: 2px solid #485e6d;
+	margin: 5px 5px;
+}
+
+.context-menu-item {
+	padding: 5px;
+	padding-right: 25px;
+	min-width: 100px;
+}
+
+.context-menu-item:hover {
+	/* TODO: Theme */
+	background-color: #273b48;
+}
+
+.context-menu-item > .material-icons-outlined {
+	position: relative;
+	top: 2px;
+	font-size: 15px;
+}
+
 /*---------------------------------- Global ------------------------------------------------*/
 .hidden {
 	display: none;
