@@ -8298,7 +8298,7 @@ def generate_image_in_background():
             koboldai_vars.summarizer.to(0)
             device=0
         else:
-            device="cpu"
+            device=-1
         summarizer = summary_pipeline(task="summarization", model=koboldai_vars.summarizer, tokenizer=koboldai_vars.summary_tokenizer, device=device)
         logger.debug("Time to load summarizer: {}".format(time.time()-start_time))
         

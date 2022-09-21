@@ -2003,6 +2003,7 @@ function load_cookies(data) {
 }
 
 function process_log_message(data) {
+	pattern = '\u001b[?m'
 	let level = data['record']['level']['name'];
 	let message = data['record']['message'];
 	let time = data['record']['time']['repr'];
