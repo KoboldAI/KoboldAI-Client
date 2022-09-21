@@ -1467,10 +1467,12 @@ function world_info_entry_used_in_game(data) {
 	}
 	world_info_data[data.uid]['used_in_game'] = data['used_in_game'];
 	world_info_card = document.getElementById("world_info_"+data.uid);
-	if (data.used_in_game) {
-		world_info_card.classList.add("used_in_game");
-	} else {
-		world_info_card.classList.remove("used_in_game");
+	if (world_info_card) {
+		if (data.used_in_game) {
+			world_info_card.classList.add("used_in_game");
+		} else {
+			world_info_card.classList.remove("used_in_game");
+		}
 	}
 }
 
@@ -2250,6 +2252,70 @@ function save_preset() {
 }
 
 //--------------------------------------------General UI Functions------------------------------------
+function push_selection_to_memory() {
+	document.getElementById("memory").value += "\n" + getSelectionText();
+	document.getElementById("memory").onchange();
+}
+
+function push_selection_to_world_info() {
+	let menu = document.getElementById("rightSideMenu");
+	if ((~menu.classList.contains("open")) && (~menu.classList.contains("pinned"))) {
+		menu.classList.add("open");
+	}
+	document.getElementById("story_flyout_tab_wi").onclick();
+	create_new_wi_entry("root");
+	document.getElementById("world_info_entry_text_-1").value = getSelectionText();
+}
+
+function push_selection_to_phrase_bias() {
+	let menu = document.getElementById("SideMenu");
+	if ((~menu.classList.contains("open")) && (~menu.classList.contains("pinned"))) {
+		menu.classList.add("open");
+	}
+	document.getElementById("settings_flyout_tab_settings").onclick();
+	document.getElementById("empty_bias_phrase").value = getSelectionText();
+	document.getElementById("empty_bias_phrase").scrollIntoView(false)
+	document.getElementById("empty_bias_phrase").onchange()
+}
+
+function retry_from_here() {
+	let chunk = null;
+	for (element of document.getElementsByClassName("editing")) {
+		if (element.id == 'story_prompt') {
+			chunk = -1
+		} else {
+			chunk = parseInt(element.id.split(" ").at(-1));
+		}
+		element.classList.remove("editing");
+	}
+	if (chunk != null) {
+		action_count = parseInt(document.getElementById("action_count").textContent);
+		console.log(chunk);
+		for (let i = 0; i < (action_count-chunk); i++) {
+			socket.emit('back', {});
+		}
+		socket.emit('submit', {'data': "", 'theme': ""});
+		document.getElementById('input_text').value = '';
+		document.getElementById('themetext').value = '';
+	}
+}
+
+function getSelectionText() {
+    var text = "";
+    var activeEl = document.activeElement;
+    var activeElTagName = activeEl ? activeEl.tagName.toLowerCase() : null;
+    if (
+      (activeElTagName == "textarea") || (activeElTagName == "input" &&
+      /^(?:text|search|password|tel|url)$/i.test(activeEl.type)) &&
+      (typeof activeEl.selectionStart == "number")
+    ) {
+        text = activeEl.value.slice(activeEl.selectionStart, activeEl.selectionEnd);
+    } else if (window.getSelection) {
+        text = window.getSelection().toString();
+    }
+    return text;
+}
+
 function show_save_preset() {
 	document.getElementById("save_preset").classList.remove("hidden");
 }
@@ -2531,6 +2597,7 @@ function do_biases(data) {
 	bias_line.id = "";
 	bias_line.classList.add("bias");
 	bias_line.querySelector(".bias_phrase").querySelector("input").value = "";
+	bias_line.querySelector(".bias_phrase").querySelector("input").id = "empty_bias_phrase";
 	bias_line.querySelector(".bias_score").querySelector("input").value = 1;
 	bias_line.querySelector(".bias_comp_threshold").querySelector("input").value = 50;
 	document.getElementById('biasing').append(bias_line);
