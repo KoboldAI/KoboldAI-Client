@@ -2016,7 +2016,6 @@ function process_log_message(data) {
 	
 	//put log message in log popup
 	log_popup = document.getElementById('log_popup');
-	log_popup.classList.remove("hidden");
 	log_popup_data = log_popup.querySelector("#popup_list_area")
 	//clear out the error box
 	for (item of data['html']) {
@@ -3281,6 +3280,7 @@ function close_menus() {
 	document.getElementById("advanced_theme_editor").classList.add("hidden");
 	document.getElementById("context-viewer-container").classList.add("hidden");
 	document.getElementById("save_preset").classList.add("hidden");
+	document.getElementById("log_popup").classList.add("hidden");
 	
 	//unselect sampler items
 	for (temp of document.getElementsByClassName("sample_order")) {
