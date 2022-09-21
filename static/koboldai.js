@@ -316,6 +316,7 @@ function do_prompt(data) {
 		document.getElementById('themetext').value = "";
 		if (document.getElementById("Delete Me")) {
 			document.getElementById("Delete Me").remove();
+			document.getElementById("Selected Text").setAttribute("contenteditable", "true");
 		}
 		//enable editing
 		document.getElementById("Selected Text").setAttribute("contenteditable", "true");
