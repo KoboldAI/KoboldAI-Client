@@ -1959,8 +1959,9 @@ function show_error_message(data) {
 	while (error_box_data.firstChild) {
 		error_box_data.removeChild(error_box_data.firstChild);
 	}
-	for (item of data.split("\n")) {
-		$e("div", error_box_data, {'textContent': item})
+	for (item of data) {
+		$e("div", error_box_data, {'innerHTML': item, 'classes': ['console_text']})
+		$e("br", error_box_data)
 	}
 }
 
@@ -2003,14 +2004,13 @@ function load_cookies(data) {
 }
 
 function process_log_message(data) {
-	pattern = '\u001b[?m'
 	let level = data['record']['level']['name'];
 	let message = data['record']['message'];
 	let time = data['record']['time']['repr'];
 	let full_log = data['text'];
 	log.push({'level': level, 'message': message, 'time': time, 'full_log': full_log});
 	if (level == 'ERROR') {
-		show_error_message(full_log);
+		show_error_message(data['html']);
 	}
 }
 

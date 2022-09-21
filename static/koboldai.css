@@ -2223,6 +2223,11 @@ button.disabled {
 	white-space: pre-wrap;
 }
 
+.console_text {
+	white-space: pre-wrap;
+	display: inline-block;
+}
+
 .text_red {
 	color: red;
 }

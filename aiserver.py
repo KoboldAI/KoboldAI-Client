@@ -19,6 +19,7 @@ from eventlet import tpool
 
 import logging
 from logger import logger, set_logger_verbosity, quiesce_logger
+from ansi2html import Ansi2HTMLConverter
 
 logging.getLogger("urllib3").setLevel(logging.ERROR)
 
@@ -454,6 +455,11 @@ import_buffer = ImportBuffer()
 import logging
 log = logging.getLogger('werkzeug')
 log.setLevel(logging.ERROR)
+def UI_2_logger(message):
+    conv = Ansi2HTMLConverter(inline=True, dark_bg=True)
+    data = json.loads(message)
+    data['html'] = [conv.convert(text, full=False) for text in data['text'].split("\n")]   
+    socketio.emit("log_message", data, broadcast=True, room="UI_2")
 
 from flask import Flask, render_template, Response, request, copy_current_request_context, send_from_directory, session, jsonify, abort, redirect, has_request_context
 from flask_socketio import SocketIO, emit, join_room, leave_room
@@ -467,12 +473,11 @@ app.secret_key = secrets.token_hex()
 app.config['SESSION_TYPE'] = 'filesystem'
 app.config['TEMPLATES_AUTO_RELOAD'] = True
 socketio = SocketIO(app, async_method="eventlet", manage_session=False, cors_allowed_origins='*', max_http_buffer_size=10_000_000)
-logger.add(lambda msg: socketio.emit("log_message", json.loads(msg), broadcast=True, room="UI_2"), serialize=True, colorize=True)
+logger.add(UI_2_logger, serialize=True, colorize=True)
 #socketio = SocketIO(app, async_method="eventlet", manage_session=False, cors_allowed_origins='*', logger=True, engineio_logger=True)
 koboldai_vars = koboldai_settings.koboldai_vars(session, socketio)
 
 utils.koboldai_vars = koboldai_vars
-
 
 old_socketio_on = socketio.on
 def new_socketio_on(*a, **k):
@@ -7171,12 +7176,14 @@ def ai_text():
 # UI V2 CODE
 #==================================================================#
 @app.route('/new_ui')
+@logger.catch
 def new_ui_index():
     if 'story' in session:
         if session['story'] not in koboldai_vars.story_list():
             session['story'] = 'default'
     return render_template('index_new.html', settings=gensettings.gensettingstf, on_colab=koboldai_vars.on_colab )
 
+@logger.catch
 def ui2_connect():
     #Send all variables to client
     koboldai_vars.send_to_ui()
@@ -7188,6 +7195,7 @@ def ui2_connect():
 # UI V2 CODE Themes
 #==================================================================#
 @app.route('/themes/<path:path>')
+@logger.catch
 def ui2_serve_themes(path):
     return send_from_directory('themes', path)
     
@@ -7196,6 +7204,7 @@ def ui2_serve_themes(path):
 # File Popup options
 #==================================================================#
 @socketio.on('upload_file')
+@logger.catch
 def upload_file(data):
     if koboldai_vars.debug:
         print("upload_file {}".format(data['filename']))
@@ -7221,6 +7230,7 @@ def upload_file(data):
                 get_files_folders(session['current_folder'])
 
 @socketio.on('popup_change_folder')
+@logger.catch
 def popup_change_folder(data):
     if koboldai_vars.debug:
         print("Doing popup change folder: {}".format(data))
@@ -7235,6 +7245,7 @@ def popup_change_folder(data):
         print("User is trying to get at files in your server outside the jail. Blocked. Jailed Dir: {}  Requested Dir: {}".format(session['popup_jailed_dir'], data))
 
 @socketio.on('popup_rename')
+@logger.catch
 def popup_rename(data):
     if 'popup_renameable' not in session:
         print("Someone is trying to rename a file in your server. Blocked.")
@@ -7253,6 +7264,7 @@ def popup_rename(data):
         print("User is trying to rename files in your server outside the jail. Blocked. Jailed Dir: {}  Requested Dir: {}".format(session['popup_jailed_dir'], data['file']))
 
 @socketio.on('popup_delete')
+@logger.catch
 def popup_delete(data):
     if 'popup_deletable' not in session:
         print("Someone is trying to delete a file in your server. Blocked.")
@@ -7287,6 +7299,7 @@ def popup_delete(data):
         print("User is trying to delete files in your server outside the jail. Blocked. Jailed Dir: {}  Requested Dir: {}".format(session['popup_jailed_dir'], data))
 
 @socketio.on('popup_edit')
+@logger.catch
 def popup_edit(data):
     if 'popup_editable' not in session:
         print("Someone is trying to edit a file in your server. Blocked.")
@@ -7303,6 +7316,7 @@ def popup_edit(data):
         print("User is trying to delete files in your server outside the jail. Blocked. Jailed Dir: {}  Requested Dir: {}".format(session['popup_jailed_dir'], data))
 
 @socketio.on('popup_change_file')
+@logger.catch
 def popup_change_file(data):
     if 'popup_editable' not in session:
         print("Someone is trying to edit a file in your server. Blocked.")
@@ -7320,6 +7334,7 @@ def popup_change_file(data):
     else:
         print("User is trying to delete files in your server outside the jail. Blocked. Jailed Dir: {}  Requested Dir: {}".format(session['popup_jailed_dir'], data))
 
+@logger.catch
 def file_popup(popup_title, starting_folder, return_event, upload=True, jailed=True, folder_only=True, renameable=False, deleteable=False, 
                                                            editable=False, show_breadcrumbs=True, item_check=None, show_hidden=False,
                                                            valid_only=False, hide_extention=False, extra_parameter_function=None,
@@ -7363,7 +7378,8 @@ def file_popup(popup_title, starting_folder, return_event, upload=True, jailed=T
     socketio.emit("load_popup", {"popup_title": popup_title, "call_back": return_event, "renameable": renameable, "deleteable": deleteable, "editable": editable, 'upload': upload}, broadcast=True, room="UI_1")
     
     get_files_folders(starting_folder)
-    
+
+@logger.catch
 def get_files_folders(starting_folder):
     import stat
     session['current_folder'] = os.path.abspath(starting_folder).replace("\\", "/")
@@ -7452,6 +7468,7 @@ def get_files_folders(starting_folder):
         emit("popup_breadcrumbs", breadcrumbs, broadcast=False)
         socketio.emit("popup_breadcrumbs", breadcrumbs, broadcast=True, room="UI_1")
 
+@logger.catch
 def get_files_sorted(path, sort, desc=False):
     data = {}
     for file in os.scandir(path=path):
@@ -7468,6 +7485,7 @@ def get_files_sorted(path, sort, desc=False):
         
 
 @socketio.on("configure_prompt")
+@logger.catch
 def UI_2_configure_prompt(data):
     import_buffer.replace_placeholders(data)
     import_buffer.commit()
@@ -7476,6 +7494,7 @@ def UI_2_configure_prompt(data):
 # Event triggered when browser SocketIO detects a variable change
 #==================================================================#
 @socketio.on('var_change')
+@logger.catch
 def UI_2_var_change(data):
     if 'value' not in data:
         return
@@ -7516,6 +7535,7 @@ def UI_2_var_change(data):
 # Saving Story
 #==================================================================#
 @socketio.on('save_story')
+@logger.catch
 def UI_2_save_story(data):
     if koboldai_vars.debug:
         print("Saving Story")
@@ -7544,6 +7564,7 @@ def UI_2_save_story(data):
 # Save story to json
 #==================================================================#
 @app.route("/json")
+@logger.catch
 def UI_2_save_to_json():
     return Response(
         koboldai_vars.to_json('story_settings'),
@@ -7556,6 +7577,7 @@ def UI_2_save_to_json():
 # Event triggered when Selected Text is edited
 #==================================================================#
 @socketio.on('Set Selected Text')
+@logger.catch
 def UI_2_Set_Selected_Text(data):
     if not koboldai_vars.quiet:
         print("Updating Selected Text: {}".format(data))
@@ -7565,6 +7587,7 @@ def UI_2_Set_Selected_Text(data):
 # Event triggered when Option is Selected
 #==================================================================#
 @socketio.on('Use Option Text')
+@logger.catch
 def UI_2_Use_Option_Text(data):
     if koboldai_vars.prompt == "":
         koboldai_vars.prompt = koboldai_vars.actions.get_current_options()[int(data['option'])]['text']
@@ -7577,6 +7600,7 @@ def UI_2_Use_Option_Text(data):
 # Event triggered when user clicks the submit button
 #==================================================================#
 @socketio.on('submit')
+@logger.catch
 def UI_2_submit(data):
     if not koboldai_vars.noai and data['theme'] != "":
         if koboldai_vars.debug:
@@ -7601,6 +7625,7 @@ def UI_2_submit(data):
 # Event triggered when user clicks the submit button
 #==================================================================#
 @socketio.on('abort')
+@logger.catch
 def UI_2_abort(data):
     if koboldai_vars.debug:
         print("got abort")
@@ -7611,6 +7636,7 @@ def UI_2_abort(data):
 # Event triggered when user clicks the pin button
 #==================================================================#
 @socketio.on('Pinning')
+@logger.catch
 def UI_2_Pinning(data):
     koboldai_vars.actions.toggle_pin(int(data['chunk']), int(data['option']))
     
@@ -7618,6 +7644,7 @@ def UI_2_Pinning(data):
 # Event triggered when user clicks the back button
 #==================================================================#
 @socketio.on('back')
+@logger.catch
 def UI_2_back(data):
     if koboldai_vars.debug:
         print("back")
@@ -7628,6 +7655,7 @@ def UI_2_back(data):
 # Event triggered when user clicks the redo button
 #==================================================================#
 @socketio.on('redo')
+@logger.catch
 def UI_2_redo(data):
     if len(koboldai_vars.actions.get_current_options()) == 1:
         koboldai_vars.actions.use_option(0)
@@ -7637,6 +7665,7 @@ def UI_2_redo(data):
 # Event triggered when user clicks the retry button
 #==================================================================#
 @socketio.on('retry')
+@logger.catch
 def UI_2_retry(data):
     
     if len(koboldai_vars.actions.get_current_options_no_edits()) == 0:
@@ -7650,6 +7679,7 @@ def UI_2_retry(data):
 # Event triggered when user clicks the load model button
 #==================================================================#
 @socketio.on('load_model_button')
+@logger.catch
 def UI_2_load_model_button(data):
     sendModelSelection()
     
@@ -7657,6 +7687,7 @@ def UI_2_load_model_button(data):
 # Event triggered when user clicks the a model
 #==================================================================#
 @socketio.on('select_model')
+@logger.catch
 def UI_2_select_model(data):
     
     #We've selected a menu
@@ -7680,6 +7711,7 @@ def UI_2_select_model(data):
 # Event triggered when user loads a model
 #==================================================================#
 @socketio.on('load_model')
+@logger.catch
 def UI_2_load_model(data):
     if not os.path.exists("settings/"):
         os.mkdir("settings")
@@ -7708,6 +7740,7 @@ def UI_2_load_model(data):
 # Event triggered when load story is clicked
 #==================================================================#
 @socketio.on('load_story_list')
+@logger.catch
 def UI_2_load_story_list(data):
     file_popup("Select Story to Load", "./stories", "load_story", upload=True, jailed=True, folder_only=False, renameable=True, 
                                                                   deleteable=True, show_breadcrumbs=True, item_check=valid_story,
@@ -7715,7 +7748,8 @@ def UI_2_load_story_list(data):
                                                                   column_names=['Story Name', 'Action Count', 'Last Loaded'], show_filename=False,
                                                                   column_widths=['minmax(150px, auto)', '150px', '150px'], advanced_sort=story_sort,
                                                                   sort="Modified", desc=True)
-                                                                  
+
+@logger.catch
 def get_story_listing_data(item_full_path, item, valid_selection):
     title = ""
     action_count = -1
@@ -7743,7 +7777,7 @@ def get_story_listing_data(item_full_path, item, valid_selection):
 
     return [title, action_count, last_loaded]
     
-
+@logger.catch
 def valid_story(file):
     if file.endswith(".json"):
         with open(file, "r") as f:
@@ -7755,6 +7789,7 @@ def valid_story(file):
 
             return 'actions' in js
 
+@logger.catch
 def story_sort(base_path, desc=False):
     files = {}
     for file in os.scandir(path=base_path):
@@ -7777,6 +7812,7 @@ def story_sort(base_path, desc=False):
 # Event triggered on load story
 #==================================================================#
 @socketio.on('load_story')
+@logger.catch
 def UI_2_load_story(file):
     if koboldai_vars.debug:
         print("loading {}".format(file))
@@ -7786,6 +7822,7 @@ def UI_2_load_story(file):
 # Event triggered on load story
 #==================================================================#
 @socketio.on('new_story')
+@logger.catch
 def UI_2_new_story(data):
     koboldai_vars.create_story("")
     
@@ -7794,6 +7831,7 @@ def UI_2_new_story(data):
 # Event triggered when user moves world info
 #==================================================================#
 @socketio.on('move_wi')
+@logger.catch
 def UI_2_move_wi(data):
     if data['folder'] is None:
         koboldai_vars.worldinfo_v2.reorder(int(data['dragged_id']), int(data['drop_id']))
@@ -7804,6 +7842,7 @@ def UI_2_move_wi(data):
 # Event triggered when user moves world info
 #==================================================================#
 @socketio.on('wi_set_folder')
+@logger.catch
 def UI_2_wi_set_folder(data):
     koboldai_vars.worldinfo_v2.add_item_to_folder(int(data['dragged_id']), data['folder'])
 
@@ -7811,6 +7850,7 @@ def UI_2_wi_set_folder(data):
 # Event triggered when user renames world info folder
 #==================================================================#
 @socketio.on('Rename_World_Info_Folder')
+@logger.catch
 def UI_2_Rename_World_Info_Folder(data):
     if koboldai_vars.debug:
         print("Rename_World_Info_Folder")
@@ -7821,6 +7861,7 @@ def UI_2_Rename_World_Info_Folder(data):
 # Event triggered when user edits world info item
 #==================================================================#
 @socketio.on('edit_world_info')
+@logger.catch
 def UI_2_edit_world_info(data):
     if koboldai_vars.debug:
         print("edit_world_info")
@@ -7843,6 +7884,7 @@ def UI_2_edit_world_info(data):
 # Event triggered when user creates world info folder
 #==================================================================#
 @socketio.on('create_world_info_folder')
+@logger.catch
 def UI_2_create_world_info_folder(data):
     koboldai_vars.worldinfo_v2.add_folder("New Folder")
 
@@ -7850,6 +7892,7 @@ def UI_2_create_world_info_folder(data):
 # Event triggered when user deletes world info item
 #==================================================================#
 @socketio.on('delete_world_info')
+@logger.catch
 def UI_2_delete_world_info(uid):
     koboldai_vars.worldinfo_v2.delete(int(uid))
 
@@ -7858,6 +7901,7 @@ def UI_2_delete_world_info(uid):
 # Event triggered when user deletes world info folder
 #==================================================================#
 @socketio.on('delete_wi_folder')
+@logger.catch
 def UI_2_delete_wi_folder(folder):
     koboldai_vars.worldinfo_v2.delete_folder(folder)
 
@@ -7866,6 +7910,7 @@ def UI_2_delete_wi_folder(folder):
 # Event triggered when user exports world info folder
 #==================================================================#
 @app.route('/export_world_info_folder')
+@logger.catch
 def UI_2_export_world_info_folder():
     if 'folder' in request.args:
         data = koboldai_vars.worldinfo_v2.to_json(folder=request.args['folder'])
@@ -7884,11 +7929,13 @@ def UI_2_export_world_info_folder():
 # Event triggered when user exports world info folder
 #==================================================================#
 @socketio.on('upload_world_info_folder')
+@logger.catch
 def UI_2_upload_world_info_folder(data):
     json_data = json.loads(data['data'])
     koboldai_vars.worldinfo_v2.load_json(json_data, folder=data['folder'])
 
 @socketio.on('import_world_info')
+@logger.catch
 def UI_2_import_world_info(data):
     wi_data = data["data"]
     uids = {}
@@ -7913,6 +7960,7 @@ def UI_2_import_world_info(data):
             koboldai_vars.worldinfo_v2.add_item_to_folder(uids[child], folder_name)
 
 @socketio.on("search_wi")
+@logger.catch
 def UI_2_search_wi(data):
     query = data["query"].lower()
     full_data = koboldai_vars.worldinfo_v2.to_json()
@@ -7935,12 +7983,14 @@ def UI_2_search_wi(data):
     emit("wi_results", results, broadcast=True, room="UI_2")
 
 @socketio.on("update_wi_attribute")
+@logger.catch
 def UI_2_update_wi_attribute(data):
     uid, key, value = data["uid"], data["key"], data["value"]
     koboldai_vars.worldinfo_v2.world_info[uid][key] = value
     socketio.emit("world_info_entry", koboldai_vars.worldinfo_v2.world_info[uid], broadcast=True, room="UI_2")
 
 @socketio.on("update_wi_keys")
+@logger.catch
 def UI_2_update_wi_keys(data):
     uid, key, is_secondary, operation = data["uid"], data["key"], data["is_secondary"], data["operation"]
 
@@ -7965,6 +8015,7 @@ def UI_2_update_wi_keys(data):
 # Event triggered when user edits phrase biases
 #==================================================================#
 @socketio.on('phrase_bias_update')
+@logger.catch
 def UI_2_phrase_bias_update(biases):
     koboldai_vars.biases = biases
 
@@ -7973,6 +8024,7 @@ def UI_2_phrase_bias_update(biases):
 #==================================================================#
 # Event triggered to rely a message
 #==================================================================#
+@logger.catch
 def socket_io_relay(queue, socketio):
     while True:
         if not queue.empty():
@@ -8012,6 +8064,7 @@ def handle_exception(e):
 # Event triggered when Softprompt load menu is clicked
 #==================================================================#
 @socketio.on('load_softprompt_list')
+@logger.catch
 def UI_2_load_softprompt_list(data):
     if not koboldai_vars.allowsp:
         socketio.emit("error", "Soft prompts are not supported by your current model/backend", broadcast=True, room="UI_2")
@@ -8022,7 +8075,8 @@ def UI_2_load_softprompt_list(data):
                                                                   column_names=['Softprompt Name', 'Softprompt Description'],
                                                                   show_filename=False,
                                                                   column_widths=['150px', 'auto'])
-                                                                
+
+@logger.catch
 def valid_softprompt(file):
     z, version, shape, fortran_order, dtype = fileops.checksp(file, koboldai_vars.modeldim)
     if z in [1, 2, 3, 4]:
@@ -8033,6 +8087,7 @@ def valid_softprompt(file):
     else:
         return True
 
+@logger.catch
 def get_softprompt_desc(item_full_path, item, valid_selection):
     if not valid_selection:
         return [None, None]
@@ -8045,6 +8100,7 @@ def get_softprompt_desc(item_full_path, item, valid_selection):
 # Event triggered when Softprompt is loaded
 #==================================================================#
 @socketio.on('load_softprompt')
+@logger.catch
 def UI_2_load_softprompt(data):
     if koboldai_vars.debug:
         print("Load softprompt: {}".format(data))
@@ -8054,6 +8110,7 @@ def UI_2_load_softprompt(data):
 # Event triggered when load userscripts is clicked
 #==================================================================#
 @socketio.on('load_userscripts_list')
+@logger.catch
 def UI_2_load_userscripts_list(data):
     file_popup("Select Userscripts to Load", "./userscripts", "load_userscripts", upload=True, jailed=True, folder_only=False, renameable=True, editable=True, 
                                                                   deleteable=True, show_breadcrumbs=False, item_check=valid_userscripts_to_load,
@@ -8062,14 +8119,17 @@ def UI_2_load_userscripts_list(data):
                                                                   show_filename=True, show_folders=False,
                                                                   column_widths=['200px', '150px', 'auto'])
                                                                 
+@logger.catch
 def valid_userscripts_to_load(file):
     if koboldai_vars.debug:
         print("{} is valid: {}".format(file, file.endswith(".lua") and os.path.basename(file) not in koboldai_vars.userscripts))
     return file.endswith(".lua") and os.path.basename(file) not in koboldai_vars.userscripts
     
+@logger.catch
 def valid_userscripts_to_unload(file):
     return file.endswith(".lua") and os.path.basename(file) in koboldai_vars.userscripts
 
+@logger.catch
 def get_userscripts_desc(item_full_path, item, valid_selection):
     if not valid_selection:
         return [None, None]
@@ -8114,6 +8174,7 @@ def get_userscripts_desc(item_full_path, item, valid_selection):
 # Event triggered when userscript's are loaded
 #==================================================================#
 @socketio.on('load_userscripts')
+@logger.catch
 def UI_2_load_userscripts(data):
     if koboldai_vars.debug:
         print("Loading Userscripts: {}".format(os.path.basename(data)))
@@ -8124,6 +8185,7 @@ def UI_2_load_userscripts(data):
 # Event triggered when userscript's are unloaded
 #==================================================================#
 @socketio.on('unload_userscripts')
+@logger.catch
 def UI_2_unload_userscripts(data):
     if koboldai_vars.debug:
         print("Unloading Userscript: {}".format(data))
@@ -8136,6 +8198,7 @@ def UI_2_unload_userscripts(data):
 # Event triggered when aidg.club loaded
 #==================================================================#
 @socketio.on('load_aidg_club')
+@logger.catch
 def UI_2_load_aidg_club(data):
     if koboldai_vars.debug:
         print("Load aidg.club: {}".format(data))
@@ -8147,6 +8210,7 @@ def UI_2_load_aidg_club(data):
 # Event triggered when Theme Changed
 #==================================================================#
 @socketio.on('theme_change')
+@logger.catch
 def UI_2_theme_change(data):
     with open("themes/{}.css".format(data['name']), "w") as f:
         f.write(":root {\n")
@@ -8165,6 +8229,7 @@ def UI_2_theme_change(data):
 # Refresh SP List
 #==================================================================#
 @socketio.on('sp_list_refresh')
+@logger.catch
 def UI_2_sp_list_refresh(data):
     koboldai_vars.splist = [[f, get_softprompt_desc(os.path.join("./softprompts", f),None,True)] for f in os.listdir("./softprompts") if os.path.isfile(os.path.join("./softprompts", f)) and valid_softprompt(os.path.join("./softprompts", f))]
 
@@ -8173,6 +8238,7 @@ def UI_2_sp_list_refresh(data):
 # Refresh Theme List
 #==================================================================#
 @socketio.on('theme_list_refresh')
+@logger.catch
 def UI_2_theme_list_refresh(data):
     koboldai_vars.theme_list = [".".join(f.split(".")[:-1]) for f in os.listdir("./themes") if os.path.isfile(os.path.join("./themes", f))]
 
@@ -8180,6 +8246,7 @@ def UI_2_theme_list_refresh(data):
 # Save Tweaks
 #==================================================================#
 @socketio.on('save_cookies')
+@logger.catch
 def UI_2_save_cookies(data):
     for key in data:
         #Note this won't sync to the client automatically as we're modifying a variable rather than setting it
@@ -8190,6 +8257,7 @@ def UI_2_save_cookies(data):
 #==================================================================#
 # Load Tweaks
 #==================================================================#
+@logger.catch
 def UI_2_load_cookies():
     if koboldai_vars.on_colab:
         if os.path.exists("./settings/cookies.settings"):
@@ -8201,6 +8269,7 @@ def UI_2_load_cookies():
 # Save New Preset
 #==================================================================#
 @socketio.on('save_new_preset')
+@logger.catch
 def UI_2_save_new_preset(data):
     preset = {}
     #Data to get from current settings
@@ -8217,6 +8286,7 @@ def UI_2_save_new_preset(data):
     with open("./presets/{}.presets".format(data['preset']), "w") as f:
         json.dump(preset, f, indent="\t")
 
+@logger.catch
 def get_model_size(model_name):
     if "30B" in model_name:
         return "30B"
@@ -8235,6 +8305,7 @@ def get_model_size(model_name):
 # Save New Preset
 #==================================================================#
 @socketio.on('save_revision')
+@logger.catch
 def UI_2_save_revision(data):
     koboldai_vars.save_revision()
 
@@ -8243,10 +8314,12 @@ def UI_2_save_revision(data):
 # Generate Image
 #==================================================================#
 @socketio.on("generate_image")
+@logger.catch
 def UI_2_generate_image(data):
     koboldai_vars.generating_image = True
     tpool.execute(generate_image_in_background)
 
+@logger.catch
 def generate_image_in_background():
     koboldai_vars.generating_image = True
     #get latest action
@@ -8418,6 +8491,7 @@ def text2img_horde(prompt,
         koboldai_vars.generating_image = False
         logger.error(submit_req.text)
 
+@logger.catch
 def get_items_locations_from_text(text):
     # load model and tokenizer
     tokenizer = AutoTokenizer.from_pretrained("dslim/bert-base-NER")
@@ -8465,6 +8539,7 @@ def get_items_locations_from_text(text):
 # Test
 #==================================================================#
 @app.route("/vars")
+@logger.catch
 def show_vars():
     json_data = {}
     json_data['story_settings'] = json.loads(koboldai_vars.to_json("story_settings"))

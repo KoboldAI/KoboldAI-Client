@@ -31,3 +31,4 @@ dependencies:
     - accelerate
     - flask-session
     - python-socketio[client]
+    - ansi2html

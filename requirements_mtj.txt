@@ -23,3 +23,4 @@ loguru
 Pillow
 diffusers
 psutil
+ansi2html
