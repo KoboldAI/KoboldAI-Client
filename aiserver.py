@@ -255,12 +255,7 @@ model_menu = {
     }
 
 
-    def add_text(self, text):
-        self.queue.append({
-            "decoded": text,
-            "probabilities": self.probability_buffer
-        })
-        self.probability_buffer = None
+
 class Send_to_socketio(object):
     def write(self, bar):
         print(bar, end="")

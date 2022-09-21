@@ -2013,6 +2013,16 @@ function process_log_message(data) {
 	if (level == 'ERROR') {
 		show_error_message(data['html']);
 	}
+	
+	//put log message in log popup
+	log_popup = document.getElementById('log_popup');
+	log_popup.classList.remove("hidden");
+	log_popup_data = log_popup.querySelector("#popup_list_area")
+	//clear out the error box
+	for (item of data['html']) {
+		$e("div", log_popup_data, {'innerHTML': item, 'classes': ['console_text']})
+		$e("br", log_popup_data)
+	}
 }
 
 //--------------------------------------------UI to Server Functions----------------------------------
