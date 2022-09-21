@@ -5344,6 +5344,8 @@ def sendtocluster(txt, min, max):
         'api_key': koboldai_vars.apikey,
         'models': koboldai_vars.cluster_requested_models,
     }
+    if cluster_metadata["models"] == [""]:
+        cluster_metadata["models"] = []
     logger.debug(f"Horde Payload: {cluster_metadata}")
     try:
         # Create request
@@ -5373,7 +5375,7 @@ def sendtocluster(txt, min, max):
     try:
         js = req.json()
     except requests.exceptions.JSONDecodeError:
-        errmsg = f"Unexpected message received from the Horde: '{req.text}'"
+        errmsg = f"Unexpected message received from the KoboldAI Horde: '{req.text}'"
         logger.error(errmsg)
         emit('from_server', {'cmd': 'errmsg', 'data': errmsg}, broadcast=True)
         set_aibusy(0)
@@ -5383,12 +5385,41 @@ def sendtocluster(txt, min, max):
     #We've sent the request and got the ID back, now we need to watch it to see when it finishes
     finished = False
     while not finished:
-        js = requests.get(koboldai_vars.colaburl[:-8] + "/api/v1/generate/check/" + request_id).json()
+        try:
+            req = requests.get(koboldai_vars.colaburl[:-8] + "/api/v1/generate/check/" + request_id)
+        except requests.exceptions.ConnectionError:
+            errmsg = f"Horde unavailable. Please try again later"
+            logger.error(errmsg)
+            emit('from_server', {'cmd': 'errmsg', 'data': errmsg}, broadcast=True)
+            set_aibusy(0)
+            return
+        if(not req.ok):
+            errmsg = f"KoboldAI API Error: Failed to get a standard reply from the Horde. Please check the console."
+            logger.error(req.text)
+            emit('from_server', {'cmd': 'errmsg', 'data': errmsg}, broadcast=True)
+            set_aibusy(0)
+            return
+        try:
+            js = req.json()
+        except requests.exceptions.JSONDecodeError:
+            errmsg = f"Unexpected message received from the KoboldAI Horde: '{req.text}'"
+            logger.error(errmsg)
+            emit('from_server', {'cmd': 'errmsg', 'data': errmsg}, broadcast=True)
+            set_aibusy(0)
+            return
+        if not "done" in js:
+            errmsg = f"Unexpected response received from the KoboldAI Horde: '{js}'"
+            logger.error(errmsg )
+            emit('from_server', {'cmd': 'errmsg', 'data': errmsg}, broadcast=True)
+            set_aibusy(0)
+            return
         finished = js["done"]
         koboldai_vars.horde_wait_time = js["wait_time"]
         koboldai_vars.horde_queue_position = js["queue_position"]
         koboldai_vars.horde_queue_size = js["waiting"]
-        time.sleep(0.1)
+        if not finished:
+            logger.debug(js)
+            time.sleep(1)
     
     logger.debug("Last Horde Status Message: {}".format(js))
     js = requests.get(koboldai_vars.colaburl[:-8] + "/api/v1/generate/prompt/" + request_id).json()['generations']
