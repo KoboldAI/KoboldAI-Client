@@ -145,7 +145,7 @@ class koboldai_vars(object):
         for wi in self.worldinfo_v2:
             if wi['constant']:
                 if used_tokens+0 if 'token_length' not in wi else wi['token_length'] <= token_budget:
-                    used_tokens+=wi['token_length']
+                    used_tokens+=0 if  wi['token_length'] is None else wi['token_length']
                     used_world_info.append(wi['uid'])
                     self.worldinfo_v2.set_world_info_used(wi['uid'])
                     wi_text = wi['content']
@@ -226,7 +226,7 @@ class koboldai_vars(object):
                                     break
                         if match:
                             if used_tokens+0 if 'token_length' not in wi else wi['token_length'] <= token_budget:
-                                used_tokens+=wi['token_length']
+                                used_tokens+=0 if  wi['token_length'] is None else wi['token_length']
                                 used_world_info.append(wi['uid'])
                                 wi_text = wi['content']
                                 context.append({"type": "world_info", "text": wi_text})
@@ -291,7 +291,7 @@ class koboldai_vars(object):
                                 match = False
                         if match:
                             if used_tokens+0 if 'token_length' not in wi or wi['token_length'] is None else wi['token_length'] <= token_budget:
-                                used_tokens+=wi['token_length']
+                                used_tokens+=0 if  wi['token_length'] is None else wi['token_length']
                                 used_world_info.append(wi['uid'])
                                 wi_text = wi["content"]
                                 if method == 1:
@@ -342,7 +342,7 @@ class koboldai_vars(object):
                                     break
                         if match:
                             if used_tokens+0 if 'token_length' not in wi else wi['token_length'] <= token_budget:
-                                used_tokens+=wi['token_length']
+                                used_tokens+=0 if  wi['token_length'] is None else wi['token_length']
                                 used_world_info.append(wi['uid'])
                                 wi_text = wi['content']
                                 context.append({"type": "world_info", "text": wi_text})

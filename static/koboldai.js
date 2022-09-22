@@ -3113,39 +3113,50 @@ function highlight_world_info_text_in_chunk(action, wi) {
 		var to_check = words.slice(i, i+len_of_keyword).join(" ").replace(/[^0-9a-z \'\"]/gi, '').trim();
 		if (largest_key == to_check) {
 			var start_word = i;
-			var end_word = i+len_of_keyword;
+			var end_word = i+len_of_keyword-1;
 			var passed_words = 0;
+			//console.log("Finding "+to_check);
 			for (span of action.childNodes) {
-				if (passed_words + span.textContent.split(" ").length < start_word) {
+				//console.log(span);
+				//console.log("passed_words("+passed_words+")+span("+(span.textContent.trim().split(" ").length)+")<start_word("+start_word+"): "+(passed_words + span.textContent.trim().split(" ").length < start_word));
+				if (passed_words + span.textContent.trim().split(" ").length < start_word+1) {
 					passed_words += span.textContent.trim().split(" ").length;
-				} else if (passed_words < end_word) {
+				} else if (passed_words <= end_word) {
 					//OK, we have text that matches, let's do the highlighting
 					//we can skip the highlighting if it's already done though
+					//console.log(span.textContent.trim().split(" "));
+					//console.log("start_word: "+start_word+" end_word: "+end_word+" passed_words: "+passed_words);
+					//console.log(span.textContent.trim().split(" ").slice(start_word-passed_words, end_word-passed_words+1).join(" "));
 					if (~(span.classList.contains('wi_match'))) {
 						var span_text = span.textContent.trim().split(" ");
-						var before_highlight_text = span_text.slice(0, start_word-passed_words).join(" ")+" ";
-						var highlight_text = span_text.slice(start_word-passed_words, end_word-passed_words).join(" ");
-						if (end_word-passed_words <= span_text.length) {
+						//console.log(span_text);
+						if (start_word-passed_words == 0) {
+							var before_highlight_text = "";
+						} else {
+							var before_highlight_text = span_text.slice(0, start_word-passed_words).join(" ")+" ";
+						}
+						var highlight_text = span_text.slice(start_word-passed_words, end_word-passed_words+1).join(" ");
+						if (end_word-passed_words-1 <= span_text.length) {
 							highlight_text += " ";
 						}
-						var after_highlight_text = span_text.slice((end_word-passed_words)).join(" ")+" ";
+						var after_highlight_text = span_text.slice((end_word-passed_words+1)).join(" ")+" ";
 						if (after_highlight_text[0] == ' ') {
 							after_highlight_text = after_highlight_text.substring(1);
 						}
 						if (before_highlight_text != "") {
-							//console.log("'"+before_highlight_text+"'");
+							//console.log("Before Text:'"+before_highlight_text+"'");
 							var before_span = document.createElement("span");
 							before_span.textContent = before_highlight_text;
 							action.insertBefore(before_span, span);
 						}
-						//console.log("'"+highlight_text+"'");
+						//console.log("Highlight Text: '"+highlight_text+"'");
 						var hightlight_span = document.createElement("span");
 						hightlight_span.classList.add("wi_match");
 						hightlight_span.textContent = highlight_text;
 						hightlight_span.title = wi['content'];
 						action.insertBefore(hightlight_span, span);
 						if (after_highlight_text != "") {
-							//console.log("'"+after_highlight_text+"'");
+							//console.log("After Text: '"+after_highlight_text+"'");
 							var after_span = document.createElement("span");
 							after_span.textContent = after_highlight_text;
 							action.insertBefore(after_span, span);
