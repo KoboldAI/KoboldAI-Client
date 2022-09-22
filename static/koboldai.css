@@ -2461,7 +2461,7 @@ input[type='range'] {
 }
 
 /*Tooltip based on attribute*/
-    [tooltip] {
+[tooltip] {
   cursor: pointer;
   display: inline-block;
   line-height: 1;

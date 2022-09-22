@@ -7549,6 +7549,8 @@ def UI_2_var_change(data):
         else:
             filename = "settings/{}.v2_settings".format(classname)
         
+        if not os.path.exists("settings"):
+            os.mkdir("settings")
         with open(filename, "w") as settings_file:
             settings_file.write(getattr(koboldai_vars, "_{}".format(classname)).to_json())
     
