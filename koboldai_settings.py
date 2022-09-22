@@ -312,7 +312,7 @@ class koboldai_vars(object):
         if self.useprompt:
             text += prompt_text
             context.append({"type": "prompt", "text": prompt_text})
-        else self.useprompt:
+        else:
             prompt_length = 0
             prompt_text = ""
             for item in action_text_split:
