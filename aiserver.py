@@ -5,7 +5,6 @@
 # By: KoboldAIDev and the KoboldAI Community
 #==================================================================#
 
-print("CTest")
 # External packages
 from dataclasses import dataclass
 import eventlet
