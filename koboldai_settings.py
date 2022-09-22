@@ -370,7 +370,7 @@ class koboldai_vars(object):
         self.context = context
         if return_text:
             return text
-        return tokens, used_tokens, used_tokens+self.genamt
+        return tokens, used_tokens, used_tokens+self.genamt, used_world_info
     
     def __setattr__(self, name, value):
         if name[0] == "_" or name == "tokenizer":
