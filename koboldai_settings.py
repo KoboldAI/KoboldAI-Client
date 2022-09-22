@@ -156,7 +156,8 @@ class koboldai_vars(object):
         #we're going to split our actions by sentence for better context. We'll add in which actions the sentence covers. Prompt will be added at a -1 ID
         actions = {i: self.actions[i] for i in range(len(self.actions))}
         actions[-1] = self.prompt
-        action_text = self.prompt + str(self.actions)
+        action_text = str(self.actions)
+        action_text = "{}{}".format(self.prompt, action_text)
         ###########action_text_split = [sentence, actions used in sentence, token length, included in AI context]################
         action_text_split = [[x+" ", [], 0 if self.tokenizer is None else len(self.tokenizer.encode(x+" ")), False] for x in re.split("(?<=[.!?])\s+", action_text)]
         #The last action shouldn't have the extra space from the sentence splitting, so let's remove it

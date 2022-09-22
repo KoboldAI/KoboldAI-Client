@@ -4254,7 +4254,7 @@ def kml(txt):
 #  Send start message and tell Javascript to set UI state
 #==================================================================#
 def setStartState():
-    if(koboldai_vars.welcome):
+    if koboldai_vars.welcome and isinstance(koboldai_vars.welcome, str):
         txt = kml(koboldai_vars.welcome) + "<br/>"
     else:
         txt = "<span>Welcome to <span class=\"color_cyan\">KoboldAI</span>! You are running <span class=\"color_green\">"+getmodelname()+"</span>.<br/>"
@@ -6687,7 +6687,7 @@ def load_story_v1(js):
                     data = js["actions_metadata"][key]["Alternative Text"]
                     for i in range(len(js["actions_metadata"][key]["Alternative Text"])):
                         data[i]["text"] = data[i].pop("Text")
-                    koboldai_vars.actions.set_options(data, key)
+                    koboldai_vars.actions.set_options(data, int(key))
     
     # Try not to break older save files
     if("authorsnote" in js):
