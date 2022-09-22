@@ -7624,6 +7624,13 @@ def UI_2_Use_Option_Text(data):
     else:
         koboldai_vars.actions.use_option(int(data['option']), action_step=int(data['chunk']))
 
+#==================================================================#
+# Event triggered when Option is Selected
+#==================================================================#
+@socketio.on('delete_option')
+@logger.catch
+def UI_2_delete_option(data):
+    koboldai_vars.actions.delete_option(int(data['option']), action_step=int(data['chunk']))
 
 #==================================================================#
 # Event triggered when user clicks the submit button

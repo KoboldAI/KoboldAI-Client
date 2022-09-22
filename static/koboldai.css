@@ -1270,6 +1270,12 @@ body {
 	grid-area: icon;
 	padding-left: 10px;
 	margin: auto auto auto auto;
+	display: flex;
+	flex-direction: column;
+}
+
+.delete_option_icon {
+	font-size: 1.2em !important;
 }
 
 .sequence:hover {

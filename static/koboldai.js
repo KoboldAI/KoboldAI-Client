@@ -220,6 +220,12 @@ function create_options(data) {
 			icon.classList.add("oi");
 			icon.setAttribute('data-glyph', "loop-circular");
 			iconcell.append(icon);
+			delete_icon = $e("span", iconcell, {"classes": ["material-icons-outlined", "cursor", 'delete_option_icon'], 
+												"title": "delete option", 'option_id': i, 
+												'option_chunk': data.value.id, 'textContent': 'delete'});
+			delete_icon.onclick = function () {
+									socket.emit("delete_option", {"chunk": this.getAttribute("option_chunk"), "option": this.getAttribute("option_id")});
+							  };
 			textcell.onclick = function () {
 									socket.emit("Use Option Text", {"chunk": this.getAttribute("option_chunk"), "option": this.getAttribute("option_id")});
 							  };

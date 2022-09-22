@@ -1141,6 +1141,7 @@ class KoboldStoryRegister(object):
             process_variable_changes(self.socketio, "story", 'actions', {"id": pointer, 'action':  self.actions[pointer]}, None)
         self.set_game_saved()
     
+    
     def set_action_in_ai(self, action_id, used=True):
         if 'In AI Input' in self.actions[action_id]:
             old = self.actions[action_id]['In AI Input']
@@ -1194,6 +1195,17 @@ class KoboldStoryRegister(object):
                 if action_step-1 == self.action_count:
                     self.action_count+=1
                     self.socketio.emit("var_changed", {"classname": "actions", "name": "Action Count", "old_value": None, "value":self.action_count}, broadcast=True, room="UI_2")
+                process_variable_changes(self.socketio, "story", 'actions', {"id": action_step, 'action':  self.actions[action_step]}, None)
+                self.clear_unused_options(pointer=action_step)
+                ignore = self.koboldai_vars.calc_ai_text()
+                self.set_game_saved()
+    
+    def delete_option(self, option_number, action_step=None):
+        if action_step is None:
+            action_step = self.action_count+1
+        if action_step in self.actions:
+            if option_number < len(self.actions[action_step]['Options']):
+                del self.actions[action_step]['Options'][option_number]
                 process_variable_changes(self.socketio, "story", 'actions', {"id": action_step, 'action':  self.actions[action_step]}, None)
                 ignore = self.koboldai_vars.calc_ai_text()
                 self.set_game_saved()
