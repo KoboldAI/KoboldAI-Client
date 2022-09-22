@@ -73,6 +73,22 @@ const finder_actions = [
 	// {name: "", icon: "palette", func: function() { highlightEl("#biasing") }},
 ];
 
+const context_menu_actions = [
+	{label: "Cut", icon: "content_cut", visibilityCondition: "SELECTION", click: cut},
+	{label: "Copy", icon: "content_copy", visibilityCondition: "SELECTION", click: copy},
+	{label: "Paste", icon: "content_paste", visibilityCondition: "SELECTION", click: paste},
+	// Null makes a seperation bar
+	null,
+	{label: "Add to Memory", icon: "assignment", visibilityCondition: "SELECTION", click: push_selection_to_memory},
+	{label: "Add to World Info Entry", icon: "auto_stories", visibilityCondition: "SELECTION", click: push_selection_to_world_info},
+	{label: "Add as Bias", icon: "insights", visibilityCondition: "SELECTION", click: push_selection_to_phrase_bias},
+	{label: "Retry from here", icon: "refresh", visibilityCondition: "CARET", click: retry_from_here},
+	// Not implemented! See view_selection_probabiltiies
+	// null,
+	// {label: "View Token Probabilities", icon: "assessment", visibilityCondition: "SELECTION", click: view_selection_probabilities},
+	// {label: "View Token Probabilities", icon: "account_tree", visibilityCondition: "SELECTION", click: view_selection_probabilities},
+];
+
 
 const map1 = new Map()
 map1.set('Top K Sampling', 0)
@@ -2310,6 +2326,9 @@ function push_selection_to_phrase_bias() {
 }
 
 function retry_from_here() {
+	// TODO: Make this from the caret position (get_caret_position()) instead
+	// of per action. Actions may start out well, but go off the rails later, so
+	// we should be able to retry from any position.
 	let chunk = null;
 	for (element of document.getElementsByClassName("editing")) {
 		if (element.id == 'story_prompt') {
@@ -2331,16 +2350,25 @@ function retry_from_here() {
 	}
 }
 
+function view_selection_probabilities() {
+	// Not quite sure how this should work yet. Probabilities are obviously on
+	// the token level, which we have no UI representation of. There are other
+	// token-level visualization features I'd like to implement (like something
+	// for self-attention), so if that works out it might be best to have a
+	// modifier key (i.e. alt) enter a "token selection mode" when held.
+	console.log("Not implemented! :(");
+}
+
 function copy() {
-	document.execCommand("copy")
+	document.execCommand("copy");
 }
 
 function paste() {
-	document.execCommand("paste")
+	document.execCommand("paste");
 }
 
 function cut() {
-	document.execCommand("cut")
+	document.execCommand("cut");
 }
 
 function getSelectionText() {
@@ -2357,6 +2385,15 @@ function getSelectionText() {
         text = window.getSelection().toString();
     }
     return text;
+}
+
+function get_caret_position(target) {
+	if (
+		document.activeElement !== target &&
+		!$.contains(target, document.activeElement)
+	) return null;
+
+	return getSelection().focusOffset;
 }
 
 function show_save_preset() {
@@ -3806,7 +3843,6 @@ function updateStandardSearchListings(query) {
 
 function $e(tag, parent, attributes) {
 	// Small helper function for dynamic UI creation
-	// TODO: Support nested attributed with "." syntax.
 
 	let element = document.createElement(tag);
 
@@ -4127,6 +4163,34 @@ function process_cookies() {
 	load_tweaks();
 }
 
+function position_context_menu(contextMenu, x, y) {
+	// Calculate where to position context menu based on window confines and
+	// menu size.
+
+	let height = contextMenu.clientHeight;
+	let width = contextMenu.clientWidth;
+
+	let bounds = {
+		top: 0,
+		bottom: window.innerHeight,
+		left: 0,
+		right: window.innerWidth,
+	};
+
+	let farMenuBounds = {
+		top: y,
+		bottom: y + height,
+		left: x,
+		right: x + width,
+	};
+
+	if (farMenuBounds.right > bounds.right) x -= farMenuBounds.right - bounds.right;
+	if (farMenuBounds.bottom > bounds.bottom) y -= farMenuBounds.bottom - bounds.bottom;
+
+	contextMenu.style.left = `${x}px`;
+	contextMenu.style.top = `${y}px`;
+}
+
 $(document).ready(function(){
 	on_colab = document.getElementById("on_colab").textContent == "true";
 
@@ -4289,6 +4353,69 @@ $(document).ready(function(){
 
 	debugContainer.addEventListener("click", function(e) {
 		debugContainer.classList.add("hidden");
+	});
+
+	// Context menu
+	const contextMenu = $e("div", document.body, {id: "context-menu"});
+
+	for (const action of context_menu_actions) {
+		// Null adds horizontal rule
+		if (!action) {
+			$e("hr", contextMenu);
+			continue;
+		}
+
+		let item = $e("div", contextMenu, {
+			classes: ["context-menu-item", "noselect"],
+			"visibility-condition": action.visibilityCondition
+		});
+		let icon = $e("span", item, {classes: ["material-icons-outlined"], innerText: action.icon});
+		item.append(action.label);
+
+		item.addEventListener("mousedown", (e) => (e.preventDefault()));
+		item.addEventListener("click", action.click);
+	}
+
+	$("#gamescreen").contextmenu(function(event) {
+		// Don't open browser context menu
+		event.preventDefault();
+
+		// Close if open
+		if (!contextMenu.classList.contains("hidden")) {
+			contextMenu.classList.add("hidden");
+			return;
+		}
+
+		// Disable non-applicable items
+		$(".context-menu-item").addClass("disabled");
+		
+		// A selection is made
+		if (getSelectionText()) $(".context-menu-item[visibility-condition=SELECTION]").removeClass("disabled");
+		
+		// The caret is placed
+		if (get_caret_position($("#gamescreen")[0]) !== null) $(".context-menu-item[visibility-condition=CARET]").removeClass("disabled");
+
+		contextMenu.classList.remove("hidden");
+
+		// Set position to click position
+		position_context_menu(contextMenu, event.originalEvent.x, event.originalEvent.y);
+
+		// Don't let the document contextmenu catch us and close our context menu
+		event.stopPropagation();
+	});
+
+	// When we make a browser context menu, close ours.
+	$(document).contextmenu(function(event) {
+		contextMenu.classList.add("hidden");
+	});
+
+	// When we click outside of our context menu, close ours.
+	$(document).click(function(event) {
+		contextMenu.classList.add("hidden");
+	});
+
+	window.addEventListener("blur", function(event) {
+		contextMenu.classList.add("hidden");
 	});
 });
 
