@@ -156,16 +156,7 @@ class koboldai_vars(object):
         #we're going to split our actions by sentence for better context. We'll add in which actions the sentence covers. Prompt will be added at a -1 ID
         actions = {i: self.actions[i] for i in range(len(self.actions))}
         actions[-1] = self.prompt
-        try:
-            action_text = self.prompt + str(self.actions)
-        except:
-            print("=====================DEBUG=======================")
-            print(self.prompt)
-            print(str(self.actions))
-            print("=====================END DEBUG=======================")
-            print()
-            print()
-            raise
+        action_text = self.prompt + str(self.actions)
         ###########action_text_split = [sentence, actions used in sentence, token length, included in AI context]################
         action_text_split = [[x+" ", [], 0 if self.tokenizer is None else len(self.tokenizer.encode(x+" ")), False] for x in re.split("(?<=[.!?])\s+", action_text)]
         #The last action shouldn't have the extra space from the sentence splitting, so let's remove it
@@ -972,7 +963,10 @@ class KoboldStoryRegister(object):
         self.__init__(self.socketio, self.story_settings, self.koboldai_vars, sequence=sequence, tokenizer=self.tokenizer)
         
     def __str__(self):
-        return "".join([x['Selected Text'] for ignore, x in sorted(self.actions.items())])
+        if len(self.actions) > 0:
+            return "".join([x['Selected Text'] for ignore, x in sorted(self.actions.items())])
+        else:
+            return ""
         
     def __repr__(self):
         return self.__str__()
