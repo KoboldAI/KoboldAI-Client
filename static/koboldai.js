@@ -468,7 +468,6 @@ function var_changed(data) {
 	}
 	//Special Case for Actions
 	if ((data.classname == "story") && (data.name == "actions")) {
-		start_processing_time = Date.now();
 		do_story_text_updates(data);
 		create_options(data);
 		do_story_text_length_updates(data);
@@ -478,8 +477,6 @@ function var_changed(data) {
 		} else {
 			document.getElementById('Selected Text Chunk '+data.value.id).classList.remove("within_max_length");
 		}
-		var_processing_time += Date.now() - start_processing_time;
-		document.getElementById('var_time').textContent = var_processing_time;
 		
 	//Special Case for Presets
 	} else if ((data.classname == 'model') && (data.name == 'presets')) {

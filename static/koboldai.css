@@ -1359,6 +1359,8 @@ body {
 	border-style:solid;
 }
 
+
+
 .inputrow.status_bar {
 	grid-template-rows: 0px 60px 40px;
 }
@@ -2419,4 +2421,51 @@ input[type='range'] {
 
 .action_image {
 	width: var(--flyout_menu_width);
+}
+
+/*Tooltip based on attribute*/
+    [tooltip] {
+  cursor: pointer;
+  display: inline-block;
+  line-height: 1;
+  position: relative;
+}
+[tooltip]::after {
+  background-color: rgba(51, 51, 51, 0.9);
+  border-radius: 0.3rem;
+  color: #fff;
+  content: attr(tooltip);
+  font-size: 1rem;
+  font-size: 85%;
+  font-weight: normal;
+  line-height: 1.15rem;
+  opacity: 0;
+  padding: 0.25rem 0.5rem;
+  position: absolute;
+  text-align: center;
+  text-transform: none;
+  transition: opacity 0.2s;
+  visibility: hidden;
+  white-space: nowrap;
+  z-index: 1;
+}
+@media (max-width: 767px) {
+  [tooltip].tooltip::before {
+    display: none;
+  }
+  [tooltip].tooltip:after {
+    font-size: 1rem;
+    max-width: 20rem;
+    position: fixed;
+    bottom: auto;
+    top: 50%;
+    left: 50%;
+    text-align: left;
+    transform: translate(-50%);
+    white-space: normal;
+  }
+}
+[tooltip]:hover::after, [tooltip][class*=tooltip]:hover::before {
+  visibility: visible;
+  opacity: 1;
 }
