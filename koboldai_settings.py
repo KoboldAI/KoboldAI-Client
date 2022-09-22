@@ -118,7 +118,7 @@ class koboldai_vars(object):
         if self.tokenizer is None:
             used_tokens = 99999999999999999999999
         else:
-            used_tokens = 0 if self.sp_length is None else self.sp_length
+            used_tokens = 0 if self.sp_length is None else self.sp_length + len(self.tokenizer._koboldai_header)
         text = ""
 
         # TODO: We may want to replace the "text" variable with a list-type
@@ -152,24 +152,76 @@ class koboldai_vars(object):
                     context.append({"type": "world_info", "text": wi_text})
                     text += wi_text
         
+        
+        #we're going to split our actions by sentence for better context. We'll add in which actions the sentence covers. Prompt will be added at a -1 ID
+        actions = {i: self.actions[i] for i in range(len(self.actions))}
+        actions[-1] = self.prompt
+        action_text = self.prompt + str(self.actions)
+        ###########action_text_split = [sentence, actions used in sentence, token length, included in AI context]################
+        action_text_split = [[x+" ", [], 0 if self.tokenizer is None else len(self.tokenizer.encode(x+" ")), False] for x in re.split("(?<=[.!?])\s+", action_text)]
+        #The last action shouldn't have the extra space from the sentence splitting, so let's remove it
+        action_text_split[-1][0] = action_text_split[-1][0][:-1]
+        action_text_split[-1][2] = 0 if self.tokenizer is None else len(self.tokenizer.encode(action_text_split[-1][0]))
+        
+        Action_Position = [-1, len(actions[-1])] #First element is the action item, second is how much text is left
+        Sentence_Position = [0, len(action_text_split[0][0])]
+        while True:
+            advance_action = False
+            advance_sentence = False
+            if Action_Position[1] <= Sentence_Position[1]:
+                #We have enough text in the sentence to completely cover the action. Advance it to the next action
+                advance_action = True
+            if Sentence_Position[1] <= Action_Position[1]:
+                advance_sentence = True
+            if Action_Position[0] not in action_text_split[Sentence_Position[0]][1]:
+                #Since this action is in the sentence, add it to the list if it's not already there
+                action_text_split[Sentence_Position[0]][1].append(Action_Position[0])
+            #Fix the text length leftovers first since they interact with each other
+            if not advance_action:
+                Action_Position[1] -= Sentence_Position[1]
+            if not advance_sentence:
+                Sentence_Position[1] -= Action_Position[1]
+                
+            if advance_action:
+                Action_Position[0] += 1
+                if Action_Position[0] >= max(actions):
+                    break
+                Action_Position[1] = len(actions[Action_Position[0]])
+            if advance_sentence:
+                Sentence_Position[0] += 1
+                if Sentence_Position[0] >= len(action_text_split):
+                    break
+                Sentence_Position[1] = len(action_text_split[Sentence_Position[0]][0])
+        #OK, action_text_split now contains a list of [sentence including trailing space if needed, [action IDs that sentence includes]]
+        
+        
         #Add prompt lenght/text if we're set to always use prompt
         if self.useprompt:
-            self.max_prompt_length if self.prompt_length > self.max_prompt_length else self.prompt_length
+            prompt_length = 0
+            prompt_text = ""
+            for item in action_text_split:
+                if -1 not in item[1]:
+                    #We've finished going through our prompt. Stop
+                    break
+                if prompt_length + item[2] < self.max_prompt_length:
+                    prompt_length += item[2]
+                    item[3] = True
+                    prompt_text += item[0]
             if prompt_length + used_tokens < token_budget:
-                used_tokens += self.max_prompt_length if self.prompt_length > self.max_prompt_length else self.prompt_length
+                used_tokens += prompt_length
                 #Find World Info entries in prompt
                 for wi in self.worldinfo_v2:
                     if wi['uid'] not in used_world_info:
                         #Check to see if we have the keys/secondary keys in the text so far
                         match = False
                         for key in wi['key']:
-                            if key in self.prompt:
+                            if key in prompt_text:
                                 match = True
                                 break
                         if wi['selective'] and match:
                             match = False
                             for key in wi['keysecondary']:
-                                if key in self.prompt:
+                                if key in prompt_text:
                                     match=True
                                     break
                         if match:
@@ -181,7 +233,123 @@ class koboldai_vars(object):
                                 text += wi_text
                                 self.worldinfo_v2.set_world_info_used(wi['uid'])
 
-                prompt_text = self.prompt
+                prompt_text = prompt_text
+                if self.tokenizer and self.prompt_length > self.max_prompt_length:
+                    prompt_text = self.tokenizer.decode(self.tokenizer.encode(self.prompt)[-self.max_prompt_length-1:])
+                   
+                #We'll add the prompt text AFTER we go through the game text as the world info needs to come first if we're in method 1 rather than method 2
+                self.prompt_in_ai = True
+            else:
+                self.prompt_in_ai = False
+        
+        #remove author's notes token length (Add the text later)
+        used_tokens += self.authornote_length
+
+
+
+        
+        #Start going through the actions backwards, adding it to the text if it fits and look for world info entries
+        game_text = ""
+        game_context = []
+        authors_note_final = self.authornotetemplate.replace("<|>", self.authornote)
+        used_all_tokens = False
+        for action in range(len(self.actions)):
+            self.actions.set_action_in_ai(action, used=False)
+        for i in range(len(action_text_split)-1, -1, -1):
+            if action_text_split[i][3]:
+                #We've hit an item we've already included. Stop
+                break;
+            if len(action_text_split) - i - 1 == self.andepth and self.authornote != "":
+                game_text = "{}{}".format(authors_note_final, game_text)
+                game_context.insert(0, {"type": "authors_note", "text": authors_note_final})
+            length = 0 if self.tokenizer is None else len(self.tokenizer.encode(action_text_split[i][0]))
+            if length+used_tokens <= token_budget and not used_all_tokens:
+                used_tokens += length
+                selected_text = action_text_split[i][0]
+                game_text = "{}{}".format(selected_text, game_text)
+                game_context.insert(0, {"type": "action", "text": selected_text})
+                for action in action_text_split[i][1]:
+                    if action >= 0:
+                        self.actions.set_action_in_ai(action)
+                #Now we need to check for used world info entries
+                for wi in self.worldinfo_v2:
+                    if wi['uid'] not in used_world_info:
+                        #Check to see if we have the keys/secondary keys in the text so far
+                        match = False
+                        for key in wi['key']:
+                            if key in selected_text:
+                                match = True
+                                break
+                        if wi['selective'] and match:
+                            match = False
+                            for key in wi['keysecondary']:
+                                if key in selected_text:
+                                    match=True
+                                    break
+                        if method == 1:
+                            if len(action_text_split) - i > self.widepth:
+                                match = False
+                        if match:
+                            if used_tokens+0 if 'token_length' not in wi or wi['token_length'] is None else wi['token_length'] <= token_budget:
+                                used_tokens+=wi['token_length']
+                                used_world_info.append(wi['uid'])
+                                wi_text = wi["content"]
+                                if method == 1:
+                                    text = "{}{}".format(wi_text, game_text)
+                                    context.insert(0, {"type": "world_info", "text": wi_text})
+                                else:
+                                    game_text = "{}{}".format(wi_text, game_text)
+                                    game_context.insert(0, {"type": "world_info", "text": wi_text})
+                                self.worldinfo_v2.set_world_info_used(wi['uid'])
+            else:
+                used_all_tokens = True
+             
+        #if we don't have enough actions to get to author's note depth then we just add it right before the game text
+        if len(action_text_split) < self.andepth and self.authornote != "":
+            game_text = "{}{}".format(authors_note_final, game_text)
+            game_context.insert(0, {"type": "authors_note", "text": authors_note_final})
+        
+        if self.useprompt:
+            text += prompt_text
+            context.append({"type": "prompt", "text": prompt_text})
+        else self.useprompt:
+            prompt_length = 0
+            prompt_text = ""
+            for item in action_text_split:
+                if -1 not in item[1]:
+                    #We've finished going through our prompt. Stop
+                    break
+                if prompt_length + item[2] < self.max_prompt_length:
+                    prompt_length += item[2]
+                    item[3] = True
+                    prompt_text += item[0]
+            if prompt_length + used_tokens < token_budget:
+                used_tokens += prompt_length
+                #Find World Info entries in prompt
+                for wi in self.worldinfo_v2:
+                    if wi['uid'] not in used_world_info:
+                        #Check to see if we have the keys/secondary keys in the text so far
+                        match = False
+                        for key in wi['key']:
+                            if key in prompt_text:
+                                match = True
+                                break
+                        if wi['selective'] and match:
+                            match = False
+                            for key in wi['keysecondary']:
+                                if key in prompt_text:
+                                    match=True
+                                    break
+                        if match:
+                            if used_tokens+0 if 'token_length' not in wi else wi['token_length'] <= token_budget:
+                                used_tokens+=wi['token_length']
+                                used_world_info.append(wi['uid'])
+                                wi_text = wi['content']
+                                context.append({"type": "world_info", "text": wi_text})
+                                text += wi_text
+                                self.worldinfo_v2.set_world_info_used(wi['uid'])
+
+                prompt_text = prompt_text
                 if self.tokenizer and self.prompt_length > self.max_prompt_length:
                     prompt_text = self.tokenizer.decode(self.tokenizer.encode(self.prompt)[-self.max_prompt_length-1:])
 
@@ -190,136 +358,6 @@ class koboldai_vars(object):
                 self.prompt_in_ai = True
             else:
                 self.prompt_in_ai = False
-        
-        #remove author's notes token length (Add the text later)
-        used_tokens += self.authornote_length
-        
-        #Start going through the actions backwards, adding it to the text if it fits and look for world info entries
-        game_text = ""
-        game_context = []
-        authors_note_final = self.authornotetemplate.replace("<|>", self.authornote)
-        used_all_tokens = False
-        #we're going to split our actions by sentence for better context. We'll add in which actions the sentence covers
-        if self.actions.action_count >= 0:
-            action_text = str(self.actions)
-            action_text_split = [[x+" ", []] for x in re.split("(?<=[.!?])\s+", action_text)]
-            action_text_split[-1][0] = action_text_split[-1][0][:-1]
-            Action_Position = [0, len(self.actions[0])] #First element is the action item, second is how much text is left
-            Sentence_Position = [0, len(action_text_split[0][0])]
-            while True:
-                advance_action = False
-                advance_sentence = False
-                if Action_Position[1] <= Sentence_Position[1]:
-                    #We have enough text in the sentence to completely cover the action. Advance it to the next action
-                    advance_action = True
-                if Sentence_Position[1] <= Action_Position[1]:
-                    advance_sentence = True
-                if Action_Position[0] not in action_text_split[Sentence_Position[0]][1]:
-                    #Since this action is in the sentence, add it to the list if it's not already there
-                    action_text_split[Sentence_Position[0]][1].append(Action_Position[0])
-                #Fix the text length leftovers first since they interact with each other
-                if not advance_action:
-                    Action_Position[1] -= Sentence_Position[1]
-                if not advance_sentence:
-                    Sentence_Position[1] -= Action_Position[1]
-                    
-                if advance_action:
-                    Action_Position[0] += 1
-                    if Action_Position[0] >= len(self.actions):
-                        break
-                    Action_Position[1] = len(self.actions[Action_Position[0]])
-                if advance_sentence:
-                    Sentence_Position[0] += 1
-                    if Sentence_Position[0] >= len(action_text_split):
-                        break
-                    Sentence_Position[1] = len(action_text_split[Sentence_Position[0]][0])
-                    
-                    
-            #OK, action_text_split now contains a list of [sentence including trailing space if needed, [action IDs that sentence includes]]
-                
-            for action in range(len(self.actions)):
-                self.actions.set_action_in_ai(action, used=False)
-            for i in range(len(action_text_split)-1, -1, -1):
-                if len(action_text_split) - i - 1 == self.andepth and self.authornote != "":
-                    game_text = "{}{}".format(authors_note_final, game_text)
-                    game_context.insert(0, {"type": "authors_note", "text": authors_note_final})
-                length = 0 if self.tokenizer is None else len(self.tokenizer.encode(action_text_split[i][0]))
-                if length+used_tokens <= token_budget and not used_all_tokens:
-                    used_tokens += length
-                    selected_text = action_text_split[i][0]
-                    game_text = "{}{}".format(selected_text, game_text)
-                    game_context.insert(0, {"type": "action", "text": selected_text})
-                    for action in action_text_split[i][1]:
-                        self.actions.set_action_in_ai(action)
-                    #Now we need to check for used world info entries
-                    for wi in self.worldinfo_v2:
-                        if wi['uid'] not in used_world_info:
-                            #Check to see if we have the keys/secondary keys in the text so far
-                            match = False
-                            for key in wi['key']:
-                                if key in selected_text:
-                                    match = True
-                                    break
-                            if wi['selective'] and match:
-                                match = False
-                                for key in wi['keysecondary']:
-                                    if key in selected_text:
-                                        match=True
-                                        break
-                            if match:
-                                if used_tokens+0 if 'token_length' not in wi or wi['token_length'] is None else wi['token_length'] <= token_budget:
-                                    used_tokens+=wi['token_length']
-                                    used_world_info.append(wi['uid'])
-                                    wi_text = wi["content"]
-                                    game_text = "{}{}".format(wi_text, game_text)
-                                    game_context.insert(0, {"type": "world_info", "text": wi_text})
-                                    self.worldinfo_v2.set_world_info_used(wi['uid'])
-                else:
-                    used_all_tokens = True
-        else:
-            action_text_split = []
-             
-        #if we don't have enough actions to get to author's note depth then we just add it right before the game text
-        if len(action_text_split) < self.andepth and self.authornote != "":
-            game_text = "{}{}".format(authors_note_final, game_text)
-            game_context.insert(0, {"type": "authors_note", "text": authors_note_final})
-            
-        if not self.useprompt:
-            prompt_length = self.max_prompt_length if self.prompt_length > self.max_prompt_length else self.prompt_length
-            if prompt_length + used_tokens < token_budget:
-                used_tokens += self.max_prompt_length if self.prompt_length > self.max_prompt_length else self.prompt_length
-                #Find World Info entries in prompt
-                for wi in self.worldinfo_v2:
-                    if wi['uid'] not in used_world_info:
-                        #Check to see if we have the keys/secondary keys in the text so far
-                        match = False
-                        for key in wi['key']:
-                            if key in self.prompt:
-                                match = True
-                                break
-                        if wi['selective'] and match:
-                            match = False
-                            for key in wi['keysecondary']:
-                                if key in self.prompt:
-                                    match=True
-                                    break
-                        if match:
-                            if used_tokens+0 if 'token_length' not in wi or wi['token_length'] is None else wi['token_length'] <= token_budget:
-                                used_tokens+=wi['token_length']
-                                used_world_info.append(wi['uid'])
-                                wi_text = wi["content"]
-                                text += wi_text
-                                context.append({"type": "world_info", "text": wi_text})
-                                self.worldinfo_v2.set_world_info_used(wi['uid'])
-                self.prompt_in_ai = True
-                prompt_text = self.prompt
-                if self.tokenizer and self.prompt_length > self.max_prompt_length:
-                    prompt_text = self.tokenizer.decode(self.tokenizer.encode(self.prompt)[-self.max_prompt_length-1:])
-            else:
-                self.prompt_in_ai = False
-                prompt_text = ""
-            text += prompt_text
-            context.append({"type": "prompt", "text": prompt_text})
         
         text += game_text
         context += game_context

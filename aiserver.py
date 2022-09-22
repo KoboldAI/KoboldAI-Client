@@ -3211,24 +3211,25 @@ def lua_compute_context(submission, entries, folders, kwargs):
         while(folders[i] is not None):
             allowed_folders.add(int(folders[i]))
             i += 1
-    winfo, mem, anotetxt, _ = calcsubmitbudgetheader(
-        submission,
-        allowed_entries=allowed_entries,
-        allowed_folders=allowed_folders,
-        force_use_txt=True,
-        scan_story=kwargs["scan_story"] if kwargs["scan_story"] != None else True,
-    )
+    #winfo, mem, anotetxt, _ = calcsubmitbudgetheader(
+    #    submission,
+    #    allowed_entries=allowed_entries,
+    #    allowed_folders=allowed_folders,
+    #    force_use_txt=True,
+    #    scan_story=kwargs["scan_story"] if kwargs["scan_story"] != None else True,
+    #)
     if koboldai_vars.alt_gen:
        txt, _, _ = koboldai_vars.calc_ai_text()
        print("Using Alt Gen")
     else:
-        txt, _, _ = calcsubmitbudget(
-            len(actions),
-            winfo,
-            mem,
-            anotetxt,
-            actions,
-        )
+        #txt, _, _ = calcsubmitbudget(
+        #    len(actions),
+        #    winfo,
+        #    mem,
+        #    anotetxt,
+        #    actions,
+        #)
+        txt, _, _ = koboldai_vars.calc_ai_text(method=1)
     return utils.decodenewlines(tokenizer.decode(txt))
 
 #==================================================================#
@@ -4826,15 +4827,16 @@ def calcsubmit(txt):
     anoteadded   = False # In case our budget runs out before we hit A.N. depth
     actionlen    = len(koboldai_vars.actions)
 
-    winfo, mem, anotetxt, found_entries = calcsubmitbudgetheader(txt)
+    #winfo, mem, anotetxt, found_entries = calcsubmitbudgetheader(txt)
  
     # For all transformers models
     if(koboldai_vars.model != "InferKit"):
         if koboldai_vars.alt_gen:
             subtxt, min, max  = koboldai_vars.calc_ai_text(submitted_text=txt)
-            print("Using Alt Gen")
+            logger.debug("Using Alt Gen")
         else:
-            subtxt, min, max = calcsubmitbudget(actionlen, winfo, mem, anotetxt, koboldai_vars.actions, submission=txt)
+            #subtxt, min, max = calcsubmitbudget(actionlen, winfo, mem, anotetxt, koboldai_vars.actions, submission=txt)
+            subtxt, min, max  = koboldai_vars.calc_ai_text(submitted_text=txt, method=1)
         if(actionlen == 0):
             if(not koboldai_vars.use_colab_tpu and koboldai_vars.model not in ["Colab", "API", "CLUSTER", "OAI", "TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX"]):
                 generate(subtxt, min, max, found_entries=found_entries)
@@ -4976,13 +4978,14 @@ def _generate(txt, minimum, maximum, found_entries):
             encoded = []
             for i in range(koboldai_vars.numseqs):
                 txt = utils.decodenewlines(tokenizer.decode(genout[i, -already_generated:]))
-                winfo, mem, anotetxt, _found_entries = calcsubmitbudgetheader(txt, force_use_txt=True, actions=koboldai_vars.actions)
+                #winfo, mem, anotetxt, _found_entries = calcsubmitbudgetheader(txt, force_use_txt=True, actions=koboldai_vars.actions)
                 found_entries[i].update(_found_entries)
                 if koboldai_vars.alt_gen:
                    txt, _, _ = koboldai_vars.calc_ai_text(submitted_text=txt)
-                   print("Using Alt Gen")
+                   logger.debug("Using Alt Gen")
                 else:
-                    txt, _, _ = calcsubmitbudget(len(koboldai_vars.actions), winfo, mem, anotetxt, koboldai_vars.actions, submission=txt)
+                    #txt, _, _ = calcsubmitbudget(len(koboldai_vars.actions), winfo, mem, anotetxt, koboldai_vars.actions, submission=txt)
+                    txt, _, _ = koboldai_vars.calc_ai_text(submitted_text=txt, method=1)
                 encoded.append(torch.tensor(txt, dtype=torch.long, device=genout.device))
             max_length = len(max(encoded, key=len))
             encoded = torch.stack(tuple(torch.nn.functional.pad(e, (max_length - len(e), 0), value=model.config.pad_token_id or model.config.eos_token_id) for e in encoded))
@@ -5530,13 +5533,14 @@ def tpumtjgenerate(txt, minimum, maximum, found_entries=None):
                 encoded = []
                 for i in range(koboldai_vars.numseqs):
                     txt = utils.decodenewlines(tokenizer.decode(past[i]))
-                    winfo, mem, anotetxt, _found_entries = calcsubmitbudgetheader(txt, force_use_txt=True, actions=koboldai_vars.actions)
+                    #winfo, mem, anotetxt, _found_entries = calcsubmitbudgetheader(txt, force_use_txt=True, actions=koboldai_vars.actions)
                     found_entries[i].update(_found_entries)
                     if koboldai_vars.alt_gen:
                        txt, _, _ = koboldai_vars.calc_ai_text(submitted_text=txt)
-                       print("Using Alt Gen: {}".format(tokenizer.decode(txt)))
+                       logger.debug("Using Alt Gen")
                     else:
-                        txt, _, _ = calcsubmitbudget(len(koboldai_vars.actions), winfo, mem, anotetxt, koboldai_vars.actions, submission=txt)
+                        #txt, _, _ = calcsubmitbudget(len(koboldai_vars.actions), winfo, mem, anotetxt, koboldai_vars.actions, submission=txt)
+                        txt, _, _ = koboldai_vars.calc_ai_text(submitted_text=txt, method=1)
                     encoded.append(np.array(txt, dtype=np.uint32))
                 max_length = len(max(encoded, key=len))
                 encoded = np.stack(tuple(np.pad(e, (max_length - len(e), 0), constant_values=tpu_mtj_backend.pad_token_id) for e in encoded))
