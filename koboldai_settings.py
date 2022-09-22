@@ -199,45 +199,88 @@ class koboldai_vars(object):
         game_context = []
         authors_note_final = self.authornotetemplate.replace("<|>", self.authornote)
         used_all_tokens = False
-        for i in range(len(self.actions)-1, -1, -1):
-            if len(self.actions) - i - 1 == self.andepth and self.authornote != "":
-                game_text = "{}{}".format(authors_note_final, game_text)
-                game_context.insert(0, {"type": "authors_note", "text": authors_note_final})
-            if self.actions.actions[i]["Selected Text Length"]+used_tokens <= token_budget and not used_all_tokens:
-                used_tokens += self.actions.actions[i]["Selected Text Length"]
-                selected_text = self.actions.actions[i]["Selected Text"]
-                game_text = "{}{}".format(selected_text, game_text)
-                game_context.insert(0, {"type": "action", "text": selected_text})
-                self.actions.set_action_in_ai(i)
-                #Now we need to check for used world info entries
-                for wi in self.worldinfo_v2:
-                    if wi['uid'] not in used_world_info:
-                        #Check to see if we have the keys/secondary keys in the text so far
-                        match = False
-                        for key in wi['key']:
-                            if key in self.actions.actions[i]["Selected Text"]:
-                                match = True
-                                break
-                        if wi['selective'] and match:
+        #we're going to split our actions by sentence for better context. We'll add in which actions the sentence covers
+        if self.actions.action_count >= 0:
+            action_text = str(self.actions)
+            action_text_split = [[x+" ", []] for x in re.split("(?<=[.!?])\s+", action_text)]
+            action_text_split[-1][0] = action_text_split[-1][0][:-1]
+            Action_Position = [0, len(self.actions[0])] #First element is the action item, second is how much text is left
+            Sentence_Position = [0, len(action_text_split[0][0])]
+            while True:
+                advance_action = False
+                advance_sentence = False
+                if Action_Position[1] <= Sentence_Position[1]:
+                    #We have enough text in the sentence to completely cover the action. Advance it to the next action
+                    advance_action = True
+                if Sentence_Position[1] <= Action_Position[1]:
+                    advance_sentence = True
+                if Action_Position[0] not in action_text_split[Sentence_Position[0]][1]:
+                    #Since this action is in the sentence, add it to the list if it's not already there
+                    action_text_split[Sentence_Position[0]][1].append(Action_Position[0])
+                #Fix the text length leftovers first since they interact with each other
+                if not advance_action:
+                    Action_Position[1] -= Sentence_Position[1]
+                if not advance_sentence:
+                    Sentence_Position[1] -= Action_Position[1]
+                    
+                if advance_action:
+                    Action_Position[0] += 1
+                    if Action_Position[0] >= len(self.actions):
+                        break
+                    Action_Position[1] = len(self.actions[Action_Position[0]])
+                if advance_sentence:
+                    Sentence_Position[0] += 1
+                    if Sentence_Position[0] >= len(action_text_split):
+                        break
+                    Sentence_Position[1] = len(action_text_split[Sentence_Position[0]][0])
+                    
+                    
+            #OK, action_text_split now contains a list of [sentence including trailing space if needed, [action IDs that sentence includes]]
+                
+            for action in range(len(self.actions)):
+                self.actions.set_action_in_ai(action, used=False)
+            for i in range(len(action_text_split)-1, -1, -1):
+                if len(action_text_split) - i - 1 == self.andepth and self.authornote != "":
+                    game_text = "{}{}".format(authors_note_final, game_text)
+                    game_context.insert(0, {"type": "authors_note", "text": authors_note_final})
+                length = 0 if self.tokenizer is None else len(self.tokenizer.encode(action_text_split[i][0]))
+                if length+used_tokens <= token_budget and not used_all_tokens:
+                    used_tokens += length
+                    selected_text = action_text_split[i][0]
+                    game_text = "{}{}".format(selected_text, game_text)
+                    game_context.insert(0, {"type": "action", "text": selected_text})
+                    for action in action_text_split[i][1]:
+                        self.actions.set_action_in_ai(action)
+                    #Now we need to check for used world info entries
+                    for wi in self.worldinfo_v2:
+                        if wi['uid'] not in used_world_info:
+                            #Check to see if we have the keys/secondary keys in the text so far
                             match = False
-                            for key in wi['keysecondary']:
-                                if key in self.actions.actions[i]["Selected Text"]:
-                                    match=True
+                            for key in wi['key']:
+                                if key in selected_text:
+                                    match = True
                                     break
-                        if match:
-                            if used_tokens+0 if 'token_length' not in wi or wi['token_length'] is None else wi['token_length'] <= token_budget:
-                                used_tokens+=wi['token_length']
-                                used_world_info.append(wi['uid'])
-                                wi_text = wi["content"]
-                                game_text = "{}{}".format(wi_text, game_text)
-                                game_context.insert(0, {"type": "world_info", "text": wi_text})
-                                self.worldinfo_v2.set_world_info_used(wi['uid'])
-            else:
-                self.actions.set_action_in_ai(i, used=False)
-                used_all_tokens = True
+                            if wi['selective'] and match:
+                                match = False
+                                for key in wi['keysecondary']:
+                                    if key in selected_text:
+                                        match=True
+                                        break
+                            if match:
+                                if used_tokens+0 if 'token_length' not in wi or wi['token_length'] is None else wi['token_length'] <= token_budget:
+                                    used_tokens+=wi['token_length']
+                                    used_world_info.append(wi['uid'])
+                                    wi_text = wi["content"]
+                                    game_text = "{}{}".format(wi_text, game_text)
+                                    game_context.insert(0, {"type": "world_info", "text": wi_text})
+                                    self.worldinfo_v2.set_world_info_used(wi['uid'])
+                else:
+                    used_all_tokens = True
+        else:
+            action_text_split = []
              
         #if we don't have enough actions to get to author's note depth then we just add it right before the game text
-        if len(self.actions) < self.andepth and self.authornote != "":
+        if len(action_text_split) < self.andepth and self.authornote != "":
             game_text = "{}{}".format(authors_note_final, game_text)
             game_context.insert(0, {"type": "authors_note", "text": authors_note_final})
             
@@ -448,7 +491,7 @@ class model_settings(settings):
         self.horde_wait_time = 0
         self.horde_queue_position = 0
         self.horde_queue_size = 0
-        self.cluster_requested_models = [] # The models which we allow to generate during cluster mode
+        
         
         
     #dummy class to eat the tqdm output
@@ -722,6 +765,7 @@ class user_settings(settings):
         self.beep_on_complete = False
         self.img_gen_priority = 1
         self.show_budget = False
+        self.cluster_requested_models = [] # The models which we allow to generate during cluster mode
         
         
     def __setattr__(self, name, value):
