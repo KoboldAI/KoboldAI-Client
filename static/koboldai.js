@@ -4370,7 +4370,7 @@ $(document).ready(function(){
 	});
 
 	// Context menu
-	const contextMenu = $e("div", document.body, {id: "context-menu"});
+	const contextMenu = $e("div", document.body, {id: "context-menu", classes: ["hidden"]});
 
 	for (const action of context_menu_actions) {
 		// Null adds horizontal rule
