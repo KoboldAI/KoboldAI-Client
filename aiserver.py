@@ -3277,6 +3277,8 @@ def lua_set_attr(uid, k, v):
     assert type(koboldai_vars.worldinfo_u[uid][k]) is type(v)
     koboldai_vars.worldinfo_u[uid][k] = v
     print(colors.GREEN + f"{lua_log_format_name(koboldai_vars.lua_koboldbridge.logging_name)} set {k} of world info entry {uid} to {v}" + colors.END)
+    koboldai_vars.sync_worldinfo_v1_to_v2()
+    sendwi()
 
 #==================================================================#
 #  Get property of a world info folder given its UID and property name
@@ -3303,6 +3305,8 @@ def lua_folder_set_attr(uid, k, v):
     assert type(koboldai_vars.wifolders_d[uid][k]) is type(v)
     koboldai_vars.wifolders_d[uid][k] = v
     print(colors.GREEN + f"{lua_log_format_name(koboldai_vars.lua_koboldbridge.logging_name)} set {k} of world info folder {uid} to {v}" + colors.END)
+    koboldai_vars.sync_worldinfo_v1_to_v2()
+    sendwi()
 
 #==================================================================#
 #  Get the "Amount to Generate"
@@ -6059,6 +6063,8 @@ def commitwi(ar):
         koboldai_vars.worldinfo_u[ob["uid"]]["constant"]     = ob.get("constant", False)
     stablesortwi()
     koboldai_vars.worldinfo_i = [wi for wi in koboldai_vars.worldinfo if wi["init"]]
+    koboldai_vars.sync_worldinfo_v1_to_v2()
+    sendwi()
 
 #==================================================================#
 #  
@@ -6699,7 +6705,7 @@ def load_story_v1(js):
         num = 0
         for wi in js["worldinfo"]:
             koboldai_vars.worldinfo_v2.add_item([x.strip() for x in wi["key"].split(",")][0], wi["key"], wi.get("keysecondary", ""), 
-                                                wi.get("folder", "root"), wi.get("constant", False), 
+                                                "root" if wi.get("folder", "root") == 'root' else js['wifolders_d'][wi['folder']]['name'], wi.get("constant", False), 
                                                 wi["content"], wi.get("comment", ""))
 
     # Save path for save button
@@ -8580,10 +8586,8 @@ def summarize(text, max_length=100, min_length=30):
     
     return output
 
-
-
 #==================================================================#
-# Test
+# Auto-memory function
 #==================================================================#
 @socketio.on("refresh_auto_memory")
 @logger.catch
@@ -8619,6 +8623,11 @@ def UI_2_refresh_auto_memory(data):
     logger.debug("OK, doing final summarization")
     output = summarize(" ".join(sentences))
     koboldai_vars.auto_memory += "\n\n Final Result:\n" + output
+
+
+#==================================================================#
+# Test
+#==================================================================#
 
 @app.route("/vars")
 @logger.catch

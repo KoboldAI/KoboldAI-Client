@@ -675,7 +675,19 @@ class story_settings(settings):
         self.socketio.emit("reset_story", {}, broadcast=True, room="UI_2")
         self.__init__(self.socketio, self.koboldai_vars, tokenizer=self.tokenizer)
         self.no_save = False
+      
+    def sync_worldinfo_v1_to_v2(self):
+        new_world_info = KoboldWorldInfo(None, self, self.koboldai_vars, tokenizer=self.tokenizer)
+        for wi in self.worldinfo:
+            if wi['init'] == True:
+                new_world_info.add_item([x.strip() for x in wi["key"].split(",")][0], wi["key"], wi.get("keysecondary", ""), 
+                                                    "root" if wi["folder"] is None else self.wifolders_d[wi['folder']]['name'], wi.get("constant", False), 
+                                                    wi["content"], wi.get("comment", ""), v1_uid=wi['uid'])
         
+        new_world_info.socketio = self.socketio
+        self.worldinfo_v2 = new_world_info
+        
+    
     def __setattr__(self, name, value):
         new_variable = name not in self.__dict__
         old_value = getattr(self, name, None)
@@ -1422,7 +1434,8 @@ class KoboldWorldInfo(object):
         self.world_info_folder[folder] = []
         self.story_settings.gamesaved = False
         self.sync_world_info_to_old_format()
-        self.socketio.emit("world_info_folder", {x: self.world_info_folder[x] for x in self.world_info_folder}, broadcast=True, room="UI_2")
+        if self.socketio is not None:
+            self.socketio.emit("world_info_folder", {x: self.world_info_folder[x] for x in self.world_info_folder}, broadcast=True, room="UI_2")
         
     def delete_folder(self, folder):
         keys = [key for key in self.world_info]
@@ -1431,7 +1444,8 @@ class KoboldWorldInfo(object):
                 self.delete(key)
         if folder in self.world_info_folder:
             del self.world_info_folder[folder]
-        self.socketio.emit("delete_world_info_folder", folder, broadcast=True, room="UI_2")
+        if self.socketio is not None:
+            self.socketio.emit("delete_world_info_folder", folder, broadcast=True, room="UI_2")
         
     def add_item_to_folder(self, uid, folder, before=None):
         if uid in self.world_info:
@@ -1454,9 +1468,10 @@ class KoboldWorldInfo(object):
             self.world_info[uid]['folder'] = folder
             self.story_settings.gamesaved = False
             self.sync_world_info_to_old_format()
-        self.socketio.emit("world_info_folder", {x: self.world_info_folder[x] for x in self.world_info_folder}, broadcast=True, room="UI_2")
+        if self.socketio is not None:
+            self.socketio.emit("world_info_folder", {x: self.world_info_folder[x] for x in self.world_info_folder}, broadcast=True, room="UI_2")
                 
-    def add_item(self, title, key, keysecondary, folder, constant, manual_text, comment, use_wpp=False, wpp={'name': "", 'type': "", 'format': "W++", 'attributes': {}}):
+    def add_item(self, title, key, keysecondary, folder, constant, manual_text, comment, use_wpp=False, wpp={'name': "", 'type': "", 'format': "W++", 'attributes': {}}, v1_uid=None):
         if len(self.world_info) == 0:
             uid = 0
         else:
@@ -1504,7 +1519,8 @@ class KoboldWorldInfo(object):
                                     "selective": len(keysecondary) > 0,
                                     "used_in_game": constant,
                                     'wpp': wpp,
-                                    'use_wpp': use_wpp
+                                    'use_wpp': use_wpp,
+                                    'v1_uid': v1_uid
                                     }
         except:
             print("Error:")
@@ -1517,8 +1533,9 @@ class KoboldWorldInfo(object):
         self.story_settings.gamesaved = False
         self.sync_world_info_to_old_format()
         
-        self.socketio.emit("world_info_folder", {x: self.world_info_folder[x] for x in self.world_info_folder}, broadcast=True, room="UI_2")
-        self.socketio.emit("world_info_entry", self.world_info[uid], broadcast=True, room="UI_2")
+        if self.socketio is not None:
+            self.socketio.emit("world_info_folder", {x: self.world_info_folder[x] for x in self.world_info_folder}, broadcast=True, room="UI_2")
+            self.socketio.emit("world_info_entry", self.world_info[uid], broadcast=True, room="UI_2")
         ignore = self.koboldai_vars.calc_ai_text()
         return uid
         
@@ -1566,8 +1583,9 @@ class KoboldWorldInfo(object):
         self.story_settings.gamesaved = False
         self.sync_world_info_to_old_format()
         
-        self.socketio.emit("world_info_folder", {x: self.world_info_folder[x] for x in self.world_info_folder}, broadcast=True, room="UI_2")
-        self.socketio.emit("world_info_entry", self.world_info[uid], broadcast=True, room="UI_2")
+        if self.socketio is not None:
+            self.socketio.emit("world_info_folder", {x: self.world_info_folder[x] for x in self.world_info_folder}, broadcast=True, room="UI_2")
+            self.socketio.emit("world_info_entry", self.world_info[uid], broadcast=True, room="UI_2")
         ignore = self.koboldai_vars.calc_ai_text()
         
     def delete(self, uid):
@@ -1578,8 +1596,9 @@ class KoboldWorldInfo(object):
         
         self.story_settings.gamesaved = False
         self.sync_world_info_to_old_format()
-        self.socketio.emit("world_info_folder", {x: self.world_info_folder[x] for x in self.world_info_folder}, broadcast=True, room="UI_2")
-        self.socketio.emit("delete_world_info_entry", uid, broadcast=True, room="UI_2")
+        if self.socketio is not None:
+            self.socketio.emit("world_info_folder", {x: self.world_info_folder[x] for x in self.world_info_folder}, broadcast=True, room="UI_2")
+            self.socketio.emit("delete_world_info_entry", uid, broadcast=True, room="UI_2")
     
     def rename_folder(self, old_folder, folder):
         self.story_settings.gamesaved = False
@@ -1607,16 +1626,18 @@ class KoboldWorldInfo(object):
         
         self.story_settings.gamesaved = False
         self.sync_world_info_to_old_format()
-        self.socketio.emit("world_info_folder", {x: self.world_info_folder[x] for x in self.world_info_folder}, broadcast=True, room="UI_2")
+        if self.socketio is not None:
+            self.socketio.emit("world_info_folder", {x: self.world_info_folder[x] for x in self.world_info_folder}, broadcast=True, room="UI_2")
     
     def reorder(self, uid, before):
         self.add_item_to_folder(uid, self.world_info[before]['folder'], before=before)
         self.sync_world_info_to_old_format()
     
     def send_to_ui(self):
-        self.socketio.emit("world_info_folder", {x: self.world_info_folder[x] for x in self.world_info_folder}, broadcast=True, room="UI_2")
-        for uid in self.world_info:
-            self.socketio.emit("world_info_entry", self.world_info[uid], broadcast=True, room="UI_2")
+        if self.socketio is not None:
+            self.socketio.emit("world_info_folder", {x: self.world_info_folder[x] for x in self.world_info_folder}, broadcast=True, room="UI_2")
+            for uid in self.world_info:
+                self.socketio.emit("world_info_entry", self.world_info[uid], broadcast=True, room="UI_2")
     
     def to_json(self, folder=None):
         if folder is None:
@@ -1636,7 +1657,7 @@ class KoboldWorldInfo(object):
             self.world_info_folder = data['folders']
             #Make sure we have all the appropriate variables:
             for item in self.world_info:
-                for column in ["uid","title","key","keysecondary","folder","constant","content","comment","token_length","selective","used_in_game"]:
+                for column in ["uid","title","key","keysecondary","folder","constant","content","comment","token_length","selective","used_in_game", 'v1_uid']:
                     if column not in self.world_info[item]:
                         self.world_info[item][column] = None
                 if "wpp" not in self.world_info[item]:
@@ -1678,17 +1699,18 @@ class KoboldWorldInfo(object):
                                             "keysecondary": ",".join(self.world_info[x]['keysecondary']),
                                             "num": x,
                                             "selective": len(self.world_info[x]['keysecondary'])>0,
-                                            "uid": self.world_info[x]['uid']
+                                            "uid": self.world_info[x]['uid'] if self.world_info[x]['v1_uid'] is None else self.world_info[x]['v1_uid']
                                         } for x in self.world_info]
                                         
         #self.worldinfo   = []     # List of World Info key/value objects
         self.story_settings.worldinfo = [x for x in self.story_settings.worldinfo_i]
+        #We have to have an uninitialized blank entry for every folder or the old method craps out
         for folder in folder_entries:
             self.story_settings.worldinfo.append({
                                             "comment": "",
                                             "constant": False,
                                             "content": "",
-                                            "folder": None,
+                                            "folder": folder_entries[folder],
                                             "init": False,
                                             "key": "",
                                             "keysecondary": "",
@@ -1701,7 +1723,7 @@ class KoboldWorldInfo(object):
         self.story_settings.wifolders_d = {folder_entries[x]: {'collapsed': False, 'name': x} for x in folder_entries}
         
         #self.worldinfo_u = {}     # Dictionary of World Info UID - key/value pairs
-        self.story_settings.worldinfo_u = {x['uid']: x for x in self.story_settings.worldinfo_i}
+        self.story_settings.worldinfo_u = {x['uid']: x for x in self.story_settings.worldinfo}
         
         #self.wifolders_l = []     # List of World Info folder UIDs
         self.story_settings.wifolders_l = [folder_entries[x] for x in folder_entries]
@@ -1709,15 +1731,19 @@ class KoboldWorldInfo(object):
         #self.wifolders_u = {}     # Dictionary of pairs of folder UID - list of WI UID
         self.story_settings.wifolders_u = {folder_entries[x]: [y for y in self.story_settings.worldinfo if y['folder'] == x] for x in folder_entries}
         
+        print(self.story_settings.worldinfo)
+        
     def reset_used_in_game(self):
         for key in self.world_info:
             if self.world_info[key]["used_in_game"] != self.world_info[key]["constant"]:
                 self.world_info[key]["used_in_game"] = self.world_info[key]["constant"]
-                self.socketio.emit("world_info_entry_used_in_game", {"uid": key, "used_in_game": False}, broadcast=True, room="UI_2")
+                if self.socketio is not None:
+                    self.socketio.emit("world_info_entry_used_in_game", {"uid": key, "used_in_game": False}, broadcast=True, room="UI_2")
         
     def set_world_info_used(self, uid):
         self.world_info[uid]["used_in_game"] = True
-        self.socketio.emit("world_info_entry_used_in_game", {"uid": uid, "used_in_game": True}, broadcast=True, room="UI_2")
+        if self.socketio is not None:
+            self.socketio.emit("world_info_entry_used_in_game", {"uid": uid, "used_in_game": True}, broadcast=True, room="UI_2")
     
     def get_used_wi(self):
         return [x['content'] for x in self.world_info if x['used_in_game']]
