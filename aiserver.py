@@ -4905,14 +4905,14 @@ def core_generate(text: list, min: int, max: int, found_entries: set):
 
             __debug("generate result", result.__dict__)
 
-            if result.is_whole_generation:
-                __debug("Outa here")
-                break
-
             genout = result.encoded
 
             already_generated += len(genout[0]) - len(gen_in[0])
             assert already_generated <= koboldai_vars.genamt
+
+            if result.is_whole_generation:
+                __debug("Outa here")
+                break
 
             # Generation stopped; why?
             # If we have been told to halt, we have reached our target token
@@ -5058,6 +5058,7 @@ def tpu_raw_generate(
     # Mostly lifted from apiactionsubmit_tpumtjgenerate
     soft_tokens = tpumtjgetsofttokens()
     __debug("we are generating with", prompt_tokens, "batch", batch_count, "soft tokens", soft_tokens)
+
     genout = tpool.execute(
         tpu_mtj_backend.infer_static,
         np.uint32(prompt_tokens),
