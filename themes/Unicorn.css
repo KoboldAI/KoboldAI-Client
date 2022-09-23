@@ -1,7 +1,7 @@
 /*
 	Name: Unicorn
 	Author: LightSaveUs
-	Version: 0.3.2
+	Version: 0.3.3
 	Description: A theme inspired by the DreamilyAI interface.
 */
 
@@ -246,6 +246,23 @@
 	filter: brightness(100%) !important;
 }
 
+/* Context Menu */
+
+#context-menu {
+	color: #222224;
+	border-color: #c9c9c9 !important;
+	background-color: #e8e8e8 !important;
+}
+
+#context-menu > hr {
+	border-color: #c9c9c9 !important;
+}
+
+.context-menu-item:hover {
+	color: #222224;
+	background-color:#c9c9c9 !important;
+}
+
 /* Context Viewer */
 
 #context-viewer-header {
@@ -254,6 +271,20 @@
 
 #context-container {
 	background-color: #e8e8e8 !important;
+}
+
+/* Finder */
+
+#finder {
+	color: #222224!important;
+}
+
+.result-highlight {
+    background-color: #e26771 !important;
+}
+
+.finder-wi-block {
+	color: #222224;
 }
 
 /* Icons */
@@ -267,8 +298,8 @@ span.material-icons-outlined.cursor.search_icon {
 }
 
 .pinned .menu_pin, .pinned .story_menu_pin {
-    filter: brightness(100%) !important;
     color: #464646 !important;
+    filter: brightness(100%) !important;
 }
 
 .material-icons-outlined:hover {
@@ -282,9 +313,9 @@ a {
 }
 
 .form-control {
+	border: none;
 	transform: translateX(6px)!important;
     background-color: #e2e2e2 !important;
-	border: none;
 }
 
 /* Lines */
@@ -333,8 +364,8 @@ select#wpp_format_0.settings_select {
 
 .popup_load_cancel_button:hover {
 	color: #e26771 !important;
-    background-color: #e9cece !important;
 	border-color: #e26771 !important;
+    background-color: #e9cece !important;
 }
 
 /* Tabs */
@@ -350,8 +381,8 @@ select#wpp_format_0.settings_select {
 }
 
 .tabrow span.selected {
+     color: #f2f1f1 !important;
     background: #e26771 !important;
-    color: #f2f1f1 !important;
 }
 
 /* Text */
@@ -376,8 +407,8 @@ select#wpp_format_0.settings_select {
 
 .world_info_text {
 	color: #222224 !important;
+	margin: 0 0px 0px !important;
+    border-color: #acacac !important;
 	filter: brightness(100%) !important;
 	background-color: #eeeeee !important;
-    border-color: #acacac !important;
-	margin: 0 0px 0px !important;
 }

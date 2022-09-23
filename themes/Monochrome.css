@@ -1,7 +1,7 @@
 /*
 	Name: Monochrome
 	Author: LightSaveUs
-	Version: 0.6
+	Version: 0.6.1
 	Description: A theme inspired by the NovelAI interface.
 */
 
@@ -220,8 +220,8 @@
 
 .btn-success {
 	color: #131c22 !important;
-    background-color: #cfd7a2 !important;
     border-color: #cfd7a2 !important;
+    background-color: #cfd7a2 !important;
 }
 
 .toggle-off.btn {
@@ -242,6 +242,21 @@
 	filter: brightness(120%) !important;
 }
 
+/* Context Menu */
+
+#context-menu {
+	border-color: #334552 !important;
+	background-color: #18222a !important;
+}
+
+#context-menu > hr {
+	border-color: #334552 !important;
+}
+
+.context-menu-item:hover {
+	background-color:#334552 !important;
+}
+
 /* Context Viewer */
 
 #context-viewer-header {
@@ -250,6 +265,12 @@
 
 #context-container {
 	background-color: #273141 !important;
+}
+
+/* Finder */
+
+.result-highlight {
+    background-color: #9ba950 !important;
 }
 
 /* Icons */
@@ -278,8 +299,8 @@ a {
 }
 
 .form-control {
-    background-color: #25323d !important;
 	border: none;
+    background-color: #25323d !important;
 }
 
 /* Lines */
@@ -326,10 +347,10 @@ a {
 }
 
 .popup_load_cancel_button:hover {
-	filter: brightness(120%) !important;
 	color: #e0e0e0 !important;
     background-color: #30435b !important;
 	border-color: #ffffff00 !important;
+	filter: brightness(120%) !important;
 }
 
 /* Tabs */
