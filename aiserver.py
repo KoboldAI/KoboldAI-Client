@@ -5051,7 +5051,7 @@ def tpu_raw_generate(
     batch_count: int,
 ):
     # Mostly lifted from apiactionsubmit_tpumtjgenerate
-    print("we are generating")
+    print("we are generating with", prompt_tokens, "batch", batch_count)
     soft_tokens = tpumtjgetsofttokens()
     genout = tpool.execute(
         tpu_mtj_backend.infer_static,
