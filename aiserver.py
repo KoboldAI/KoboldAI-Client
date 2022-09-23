@@ -8582,8 +8582,10 @@ def summarize(text, max_length=100, min_length=30):
 #==================================================================#
 # Test
 #==================================================================#
-@app.route("/summarize")
-def request_summarize():
+@socketio.on("refresh_auto_memory")
+@logger.catch
+def UI_2_refresh_auto_memory(data):
+    koboldai_vars.auto_memory = "Generating..."
     if koboldai_vars.summary_tokenizer is None:
         koboldai_vars.summary_tokenizer = AutoTokenizer.from_pretrained("models/{}".format(args.summarizer_model.replace('/', '_')), cache_dir="cache")
     #first, let's get all of our game text and split it into sentences
@@ -8605,19 +8607,15 @@ def request_summarize():
         new_sentences = []
         i=0
         for summary_chunk in summary_chunks:
-            print("summarizing chunk {}".format(i))
+            logger.debug("summarizing chunk {}".format(i))
             new_sentences.extend(re.split("(?<=[.!?])\s+", summarize(summary_chunk)))
             i+=1
-        print("Summarized to {} sentencees from {}".format(len(new_sentences), len(sentences)))
+        logger.debug("Summarized to {} sentencees from {}".format(len(new_sentences), len(sentences)))
         sentences = new_sentences
-        for sentence in sentences:
-            print(sentence)
-    print("OK, doing final summarization")
+        koboldai_vars.auto_memory = "\n".join(sentences)
+    logger.debug("OK, doing final summarization")
     output = summarize(" ".join(sentences))
-    print(output)
-    return "Input tokens: {}\nOutput tokens: {}\n{}".format(len(koboldai_vars.summary_tokenizer.encode(request.args['text'])), 
-                                                            len(koboldai_vars.summary_tokenizer.encode(output)), 
-                                                            output)
+    koboldai_vars.auto_memory += "\n" + output
 
 @app.route("/vars")
 @logger.catch

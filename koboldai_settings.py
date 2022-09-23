@@ -586,6 +586,7 @@ class story_settings(settings):
         self.autosave    = False             # Whether or not to automatically save after each action
         self.prompt      = ""     # Prompt
         self.memory      = ""     # Text submitted to memory field
+        self.auto_memory = ""
         self.authornote  = ""     # Text submitted to Author's Note field
         self.authornotetemplate = "[Author's note: <|>]"  # Author's note template
         self.setauthornotetemplate = self.authornotetemplate  # Saved author's note template in settings
