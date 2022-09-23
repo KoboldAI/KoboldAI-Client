@@ -459,8 +459,11 @@ log.setLevel(logging.ERROR)
 def UI_2_logger(message):
     conv = Ansi2HTMLConverter(inline=True, dark_bg=True)
     data = json.loads(message)
-    data['html'] = [conv.convert(text, full=False) for text in data['text'].split("\n")]   
-    socketio.emit("log_message", data, broadcast=True, room="UI_2")
+    data['html'] = [conv.convert(text, full=False) for text in data['text'].split("\n")] 
+    if not has_request_context():
+        koboldai_settings.queue.put(["log_message", data, {"broadcast":True, "room":"UI_2"}])
+    else:
+        socketio.emit("log_message", data, broadcast=True, room="UI_2")
 
 from flask import Flask, render_template, Response, request, copy_current_request_context, send_from_directory, session, jsonify, abort, redirect, has_request_context
 from flask_socketio import SocketIO, emit, join_room, leave_room
@@ -474,8 +477,9 @@ app.secret_key = secrets.token_hex()
 app.config['SESSION_TYPE'] = 'filesystem'
 app.config['TEMPLATES_AUTO_RELOAD'] = True
 socketio = SocketIO(app, async_method="eventlet", manage_session=False, cors_allowed_origins='*', max_http_buffer_size=10_000_000)
+#socketio = SocketIO(app, async_method="eventlet", manage_session=False, cors_allowed_origins='*', max_http_buffer_size=10_000_000, logger=logger, engineio_logger=True)
 logger.add(UI_2_logger, serialize=True, colorize=True)
-#socketio = SocketIO(app, async_method="eventlet", manage_session=False, cors_allowed_origins='*', logger=True, engineio_logger=True)
+logger.add("log_file_1.log", rotation="500 MB")    # Automatically rotate too big file
 koboldai_vars = koboldai_settings.koboldai_vars(session, socketio)
 
 utils.koboldai_vars = koboldai_vars
@@ -2151,6 +2155,7 @@ def patch_transformers():
             for i in range(koboldai_vars.numseqs):
                 koboldai_vars.lua_koboldbridge.generated[i+1][koboldai_vars.generated_tkns] = int(input_ids[i, -1].item())
 
+                            
             if(not koboldai_vars.dynamicscan):
                 return self.regeneration_required or self.halt
             tail = input_ids[..., -koboldai_vars.generated_tkns:]
@@ -2158,8 +2163,10 @@ def patch_transformers():
                 decoded = utils.decodenewlines(tokenizer.decode(t))
                 #_, found = checkworldinfo(decoded, force_use_txt=True, actions=koboldai_vars.actions)
                 _, _, _, found = koboldai_vars.calc_ai_text(submitted_text=decoded)
-                found -= self.excluded_world_info[i]
+                #found -= self.excluded_world_info[i]
+                found = list(set(found) - set(self.excluded_world_info[i]))
                 if(len(found) != 0):
+                    print("Found: {}".format(found))
                     self.regeneration_required = True
                     break
             return self.regeneration_required or self.halt

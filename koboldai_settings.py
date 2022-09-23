@@ -4,6 +4,7 @@ from flask import has_request_context
 from flask_socketio import SocketIO
 from collections import OrderedDict
 import multiprocessing
+from logger import logger
 
 serverstarted = False
 queue = None
@@ -25,10 +26,19 @@ def process_variable_changes(socketio, classname, name, value, old_value, debug_
         if value != old_value:
             #Special Case for KoboldStoryRegister
             if isinstance(value, KoboldStoryRegister):
-                socketio.emit("var_changed", {"classname": "actions", "name": "Action Count", "old_value": None, "value":value.action_count}, broadcast=True, room="UI_2")
+                if not has_request_context():
+                    if queue is not None:
+                        #logger.debug("Had to use queue")
+                        queue.put(["var_changed", {"classname": "actions", "name": "Action Count", "old_value": None, "value":value.action_count}, {"broadcast":True, "room":"UI_2"}])
+                        
+                        for i in value.actions:
+                            queue.put(["var_changed", {"classname": "story", "name": "actions", "old_value": None, "value":{"id": i, "action": value.actions[i]}}, {"broadcast":True, "room":"UI_2"}])
                 
-                for i in value.actions:
-                    socketio.emit("var_changed", {"classname": "story", "name": "actions", "old_value": None, "value":{"id": i, "action": value.actions[i]}}, broadcast=True, room="UI_2")
+                else:
+                    socketio.emit("var_changed", {"classname": "actions", "name": "Action Count", "old_value": None, "value":value.action_count}, broadcast=True, room="UI_2")
+                    
+                    for i in value.actions:
+                        socketio.emit("var_changed", {"classname": "story", "name": "actions", "old_value": None, "value":{"id": i, "action": value.actions[i]}}, broadcast=True, room="UI_2")
             elif isinstance(value, KoboldWorldInfo):
                 value.send_to_ui()
             else:
@@ -36,6 +46,7 @@ def process_variable_changes(socketio, classname, name, value, old_value, debug_
                 if not has_request_context():
                     data = ["var_changed", {"classname": classname, "name": name, "old_value": clean_var_for_emit(old_value), "value": clean_var_for_emit(value)}, {"include_self":True, "broadcast":True, "room":"UI_2"}]
                     if queue is not None:
+                        logger.debug("Had to use queue")
                         queue.put(data)
                         
                 else:
@@ -197,9 +208,6 @@ class koboldai_vars(object):
                                 context.append({"type": "world_info", "text": wi_text})
                                 text += wi_text
                                 self.worldinfo_v2.set_world_info_used(wi['uid'])
-
-                if self.tokenizer and self.prompt_length > self.max_prompt_length:
-                    prompt_text = self.tokenizer.decode(self.tokenizer.encode(system_settings))
                    
                 #We'll add the prompt text AFTER we go through the game text as the world info needs to come first if we're in method 1 rather than method 2
                 self.prompt_in_ai = True
@@ -313,9 +321,6 @@ class koboldai_vars(object):
                                 context.append({"type": "world_info", "text": wi_text})
                                 text += wi_text
                                 self.worldinfo_v2.set_world_info_used(wi['uid'])
-
-                if self.tokenizer and self.prompt_length > self.max_prompt_length:
-                    prompt_text = self.tokenizer.decode(self.tokenizer.encode(system_settings))
 
                 text += prompt_text
                 context.append({"type": "prompt", "text": prompt_text})

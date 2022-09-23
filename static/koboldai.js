@@ -31,6 +31,7 @@ socket.on('load_tweaks', function(data){load_tweaks(data);});
 socket.on("wi_results", updateWISearchListings);
 socket.on("request_prompt_config", configurePrompt);
 socket.on("log_message", function(data){process_log_message(data)});
+socket.on("debug_message", function(data){console.log(data);});
 //socket.onAny(function(event_name, data) {console.log({"event": event_name, "class": data.classname, "data": data});});
 
 var presets = {};
