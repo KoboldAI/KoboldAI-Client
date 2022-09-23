@@ -4839,6 +4839,9 @@ def calcsubmit(txt):
         # Send it!
         ikrequest(subtxt)
 
+def __debug(text):
+    print(f"[DBG] {text}")
+
 def core_generate(text: list, min: int, max: int, found_entries: set):
     # This generation function is tangled with koboldai_vars intentionally. It
     # is meant for the story and nothing else.
@@ -4868,6 +4871,7 @@ def core_generate(text: list, min: int, max: int, found_entries: set):
 
     koboldai_vars._prompt = koboldai_vars.prompt
 
+    __debug("generate core", text)
     with torch.no_grad():
         already_generated = 0
         numseqs = koboldai_vars.numseqs
@@ -4875,6 +4879,7 @@ def core_generate(text: list, min: int, max: int, found_entries: set):
         do_loop = True
 
         while do_loop:
+            __debug("generate loop start", text)
             # The reason this is a loop is due to how Dynamic WI works. We
             # cannot simply add the WI to the context mid-generation, so we
             # stop early, and then insert WI, then continue generating. That
@@ -4890,7 +4895,9 @@ def core_generate(text: list, min: int, max: int, found_entries: set):
                 bypass_hf_maxlength=True,
             )
 
+            __debug("generate result", result.__dict__)
             do_loop = not result.is_whole_generation
+            __debug("loop is", do_loop)
             genout = result.encoded
 
             already_generated += len(genout[0]) - len(gen_in[0])
@@ -5006,7 +5013,7 @@ def raw_generate(
             batch_count=batch_count
         )
         return GenerationResult(
-            out_batches=batch_encoded, prompt=prompt_tokens, is_whole_generation=False
+            out_batches=batch_encoded, prompt=prompt_tokens, is_whole_generation=True
         )
     elif model == "OAI":
         batch_encoded = oai_raw_generate(
@@ -5015,7 +5022,7 @@ def raw_generate(
             batch_count=batch_count
         )
         return GenerationResult(
-            out_batches=batch_encoded, prompt=prompt_tokens, is_whole_generation=False
+            out_batches=batch_encoded, prompt=prompt_tokens, is_whole_generation=True
         )
 
     # Torch HF
@@ -5027,7 +5034,7 @@ def raw_generate(
         batch_count=batch_count
     )
     return GenerationResult(
-        out_batches=batch_encoded, prompt=prompt_tokens, is_whole_generation=True
+        out_batches=batch_encoded, prompt=prompt_tokens, is_whole_generation=False
     )
 
 def tpu_raw_generate(
