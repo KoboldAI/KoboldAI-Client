@@ -3482,8 +3482,6 @@ def do_connect():
     emit('from_server', {'cmd': 'connected', 'smandelete': vars.smandelete, 'smanrename': vars.smanrename, 'modelname': getmodelname()})
     if(vars.host):
         emit('from_server', {'cmd': 'runs_remotely'})
-    if(vars.flaskwebgui):
-        emit('from_server', {'cmd': 'flaskwebgui'})
     if(vars.allowsp):
         emit('from_server', {'cmd': 'allowsp', 'data': vars.allowsp})
 
