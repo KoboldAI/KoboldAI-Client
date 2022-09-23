@@ -5077,6 +5077,8 @@ def tpu_raw_generate(
         sampler_order=koboldai_vars.sampler_order,
     )
 
+    genout = np.array(genout)
+
     return genout
 
 def torch_raw_generate(
