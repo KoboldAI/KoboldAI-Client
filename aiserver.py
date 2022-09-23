@@ -4848,12 +4848,13 @@ def core_generate(text: list, min: int, max: int, found_entries: set):
     # This generation function is tangled with koboldai_vars intentionally. It
     # is meant for the story and nothing else.
 
+    gen_in = torch.tensor(text, dtype=torch.long)[None]
+
     if koboldai_vars.is_model_torch():
         # Torch stuff
         if koboldai_vars.full_determinism:
             torch.manual_seed(koboldai_vars.seed)
 
-        gen_in = torch.tensor(text, dtype=torch.long)[None]
         if koboldai_vars.sp is not None:
             soft_tokens = torch.arange(
                 model.config.vocab_size,
