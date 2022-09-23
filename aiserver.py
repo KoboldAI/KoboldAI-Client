@@ -461,7 +461,8 @@ def UI_2_logger(message):
     data = json.loads(message)
     data['html'] = [conv.convert(text, full=False) for text in data['text'].split("\n")] 
     if not has_request_context():
-        koboldai_settings.queue.put(["log_message", data, {"broadcast":True, "room":"UI_2"}])
+        if koboldai_settings.queue is not None:
+            koboldai_settings.queue.put(["log_message", data, {"broadcast":True, "room":"UI_2"}])
     else:
         socketio.emit("log_message", data, broadcast=True, room="UI_2")
 
