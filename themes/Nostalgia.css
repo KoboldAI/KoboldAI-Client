@@ -1,7 +1,7 @@
 /*
 	Name: Nostalgia
 	Author: LightSaveUs
-	Version: 0.2.1
+	Version: 0.2.2
 	Description: A theme inspired by the previous KoboldAI interface.
 */
 
@@ -222,10 +222,19 @@
 	filter: brightness(80%);
 }
 
-/* Flyout */
+/* Context Menu */
 
-.rightSideMenu {
-	background-color: #212122 !important;
+#context-menu {
+	border-color: #12324f !important;
+	background-color: #294f71 !important;
+}
+
+#context-menu > hr {
+	border-color: #12324f !important;
+}
+
+.context-menu-item:hover {
+	background-color:#12324f !important;
 }
 
 /* Context Viewer */
@@ -236,6 +245,18 @@
 
 #context-container {
 	background-color: #404040 !important;
+}
+
+/* Finder */
+
+.result-highlight {
+    background-color: #3bf723f0 !important;
+}
+
+/* Flyout */
+
+.rightSideMenu {
+	background-color: #212122 !important;
 }
 
 /* Icons */
@@ -295,16 +316,16 @@ a {
 }
 
 .popup_load_cancel_button:hover {
-	color: #ffffff !important;
-    background-color: #337ab7 !important;
-	border-color: #ffffff !important;
 	filter: brightness(80%);
+	color: #ffffff !important;
+	border-color: #ffffff !important;
+    background-color: #337ab7 !important;
 }
 
 #error_message.popup .btn-primary {
-    background-color: #337ab7 !important;
     color: #ffffff !important;
     border-color: #ffffff !important;
+    background-color: #337ab7 !important;
 }
 
 /* Tabs */
@@ -342,21 +363,21 @@ a {
 
 div#settings_footer.settings_footer {
 	color: #ffffff !important;
-	background-color: #294f71 !important;
 	border-color: #12324f !important;
+	background-color: #294f71 !important;
 }
 
 /* World Info */
 
 .world_info_tag_area {
+	border-color: #999999!important;
     filter: brightness(100%) !important;
 	background-color: #404040 !important;
-	border-color: #999999!important;
 }
 
 .world_info_text {
+	margin: 0 0px 0px !important;
+    border-color: #999999!important;
 	filter: brightness(100%) !important;
 	background-color: #404040 !important;
-    border-color: #999999!important;
-	margin: 0 0px 0px !important;
 }

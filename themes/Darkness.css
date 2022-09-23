@@ -1,7 +1,7 @@
 /*
 	Name: Darkness
 	Author: LightSaveUs
-	Version: 0.3.1
+	Version: 0.3.2
 	Description: A theme inspired by the AI Dungeon interface.
 */
 
@@ -217,18 +217,33 @@
 
 .btn-success {
 	color: #e0e0e0 !important;
-    background-color: #148883 !important;
     border-color: #148883 !important;
+    background-color: #148883 !important;
 }
 
 .toggle-off.btn {
 	color: #e0e0e0 !important;
-    background-color: #242424 !important;
 	border-color: #242424 !important;
+    background-color: #242424 !important;
 }
 
 .advanced_theme:hover {
 	filter: brightness(100%) !important;
+}
+
+/* Context Menu */
+
+#context-menu {
+	border-color: #333333 !important;
+	background-color: #1c1c1c !important;
+}
+
+#context-menu > hr {
+	border-color: #333333 !important;
+}
+
+.context-menu-item:hover {
+	background-color:#333333 !important;
 }
 
 /* Context Viewer */
@@ -239,6 +254,12 @@
 
 #context-container {
 	background-color: #242424 !important;
+}
+
+/* Finder */
+
+.result-highlight {
+    background-color: #148883 !important;
 }
 
 /* Icons */
@@ -266,9 +287,9 @@ a {
 }
 
 .form-control {
+	border: none;
     color: #555 !important;
     background-color: #424243 !important;
-	border: none;
 }
 
 /* Lines */
@@ -319,14 +340,14 @@ a {
 
 .popup_load_cancel_button:hover {
 	color: #e0e0e0 !important;
-    background-color: #424243 !important;
 	border-color: #e0e0e0 !important;
+    background-color: #424243 !important;
 }
 
 #error_message.popup .btn-primary {
-    background-color: #424243 !important;
     color: #e0e0e0 !important;
     border-color: #e0e0e0 !important;
+    background-color: #424243 !important;
 }
 
 
@@ -343,8 +364,8 @@ a {
 }
 
 .tabrow span.selected {
-    background: #1c1c1c !important;
     color: #e0e0e0 !important;
+    background: #1c1c1c !important;
 }
 
 /* Text */
@@ -356,7 +377,7 @@ a {
 /* World Info */
 
 .world_info_text {
-	border-color: #242424 !important;
 	margin: 0 0px 0px !important;
+	border-color: #242424 !important;
 	background-color: #3b3b3b !important;
 }
