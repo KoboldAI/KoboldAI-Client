@@ -2158,7 +2158,7 @@ body {
 
 /* Context Menu */
 #context-menu {
-	position: absolute;
+	position: fixed;
 	cursor: default;
 
 	/* Nothing should be above the context menu (that I can think of) */
