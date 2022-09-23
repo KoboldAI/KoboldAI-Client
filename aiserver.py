@@ -4766,24 +4766,24 @@ def calcsubmit(txt):
         else:
             subtxt, min, max = calcsubmitbudget(actionlen, winfo, mem, anotetxt, koboldai_vars.actions, submission=txt)
 
-        if not koboldai_vars.use_colab_tpu and koboldai_vars.model not in (
-            "Colab",
-            "API",
-            "CLUSTER",
-            # "TPUMeshTransformerGPTJ",
-            # "TPUMeshTransformerGPTNeoX"
-        ):
-            generate(subtxt, min, max, found_entries)
-        elif koboldai_vars.model == "Colab":
-            sendtocolab(utils.decodenewlines(tokenizer.decode(subtxt)), min, max)
-        elif koboldai_vars.model == "API":
-            sendtoapi(utils.decodenewlines(tokenizer.decode(subtxt)), min, max)
-        elif koboldai_vars.model == "CLUSTER":
-            sendtocluster(utils.decodenewlines(tokenizer.decode(subtxt)), min, max)
+        # if koboldai_vars.model not in (
+        #     "Colab",
+        #     "API",
+        #     "CLUSTER",
+        #     # "TPUMeshTransformerGPTJ",
+        #     # "TPUMeshTransformerGPTNeoX"
+        # ):
+        generate(subtxt, min, max, found_entries)
+        # elif koboldai_vars.model == "Colab":
+        #     sendtocolab(utils.decodenewlines(tokenizer.decode(subtxt)), min, max)
+        # elif koboldai_vars.model == "API":
+        #     sendtoapi(utils.decodenewlines(tokenizer.decode(subtxt)), min, max)
+        # elif koboldai_vars.model == "CLUSTER":
+        #     sendtocluster(utils.decodenewlines(tokenizer.decode(subtxt)), min, max)
         # elif koboldai_vars.use_colab_tpu or koboldai_vars.model in ("TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX"):
         #     tpumtjgenerate(subtxt, min, max, found_entries=found_entries)
-        else:
-            print(":(", koboldai_vars.model)
+        # else:
+        #     print(":(", koboldai_vars.model)
                     
     # For InferKit web API
     else:
