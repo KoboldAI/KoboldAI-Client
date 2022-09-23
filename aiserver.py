@@ -4770,9 +4770,8 @@ def calcsubmit(txt):
             "Colab",
             "API",
             "CLUSTER",
-            "OAI",
-            "TPUMeshTransformerGPTJ",
-            "TPUMeshTransformerGPTNeoX"
+            # "TPUMeshTransformerGPTJ",
+            # "TPUMeshTransformerGPTNeoX"
         ):
             generate(subtxt, min, max, found_entries)
         elif koboldai_vars.model == "Colab":
@@ -4781,10 +4780,8 @@ def calcsubmit(txt):
             sendtoapi(utils.decodenewlines(tokenizer.decode(subtxt)), min, max)
         elif koboldai_vars.model == "CLUSTER":
             sendtocluster(utils.decodenewlines(tokenizer.decode(subtxt)), min, max)
-        elif koboldai_vars.model == "OAI":
-            oairequest(utils.decodenewlines(tokenizer.decode(subtxt)), min, max)
-        elif koboldai_vars.use_colab_tpu or koboldai_vars.model in ("TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX"):
-            tpumtjgenerate(subtxt, min, max, found_entries=found_entries)
+        # elif koboldai_vars.use_colab_tpu or koboldai_vars.model in ("TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX"):
+        #     tpumtjgenerate(subtxt, min, max, found_entries=found_entries)
                     
     # For InferKit web API
     else:
