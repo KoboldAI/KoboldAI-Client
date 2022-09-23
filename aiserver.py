@@ -4872,7 +4872,9 @@ def core_generate(text: list, min: int, max: int, found_entries: set):
         gen_in = gen_in.to("cpu")
     
     found_entries = found_entries or set()
-    model.kai_scanner_excluded_world_info = found_entries
+
+    if model:
+        model.kai_scanner_excluded_world_info = found_entries
 
     koboldai_vars._prompt = koboldai_vars.prompt
 
@@ -4881,9 +4883,7 @@ def core_generate(text: list, min: int, max: int, found_entries: set):
         already_generated = 0
         numseqs = koboldai_vars.numseqs
 
-        do_loop = True
-
-        while do_loop:
+        while True:
             __debug("generate loop start", text)
             # The reason this is a loop is due to how Dynamic WI works. We
             # cannot simply add the WI to the context mid-generation, so we
@@ -4901,8 +4901,11 @@ def core_generate(text: list, min: int, max: int, found_entries: set):
             )
 
             __debug("generate result", result.__dict__)
-            do_loop = not result.is_whole_generation
-            __debug("loop is", do_loop)
+
+            if result.is_whole_generation:
+                __debug("Outa here")
+                break
+
             genout = result.encoded
 
             already_generated += len(genout[0]) - len(gen_in[0])
