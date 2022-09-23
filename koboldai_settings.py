@@ -153,47 +153,7 @@ class koboldai_vars(object):
                     text += wi_text
         
         
-        #we're going to split our actions by sentence for better context. We'll add in which actions the sentence covers. Prompt will be added at a -1 ID
-        actions = {i: self.actions[i] for i in range(len(self.actions))}
-        actions[-1] = self.prompt
-        action_text = str(self.actions)
-        action_text = "{}{}".format(self.prompt, action_text)
-        ###########action_text_split = [sentence, actions used in sentence, token length, included in AI context]################
-        action_text_split = [[x+" ", [], 0 if self.tokenizer is None else len(self.tokenizer.encode(x+" ")), False] for x in re.split("(?<=[.!?])\s+", action_text)]
-        #The last action shouldn't have the extra space from the sentence splitting, so let's remove it
-        action_text_split[-1][0] = action_text_split[-1][0][:-1]
-        action_text_split[-1][2] = 0 if self.tokenizer is None else len(self.tokenizer.encode(action_text_split[-1][0]))
-        
-        Action_Position = [-1, len(actions[-1])] #First element is the action item, second is how much text is left
-        Sentence_Position = [0, len(action_text_split[0][0])]
-        while True:
-            advance_action = False
-            advance_sentence = False
-            if Action_Position[1] <= Sentence_Position[1]:
-                #We have enough text in the sentence to completely cover the action. Advance it to the next action
-                advance_action = True
-            if Sentence_Position[1] <= Action_Position[1]:
-                advance_sentence = True
-            if Action_Position[0] not in action_text_split[Sentence_Position[0]][1]:
-                #Since this action is in the sentence, add it to the list if it's not already there
-                action_text_split[Sentence_Position[0]][1].append(Action_Position[0])
-            #Fix the text length leftovers first since they interact with each other
-            if not advance_action:
-                Action_Position[1] -= Sentence_Position[1]
-            if not advance_sentence:
-                Sentence_Position[1] -= Action_Position[1]
-                
-            if advance_action:
-                Action_Position[0] += 1
-                if Action_Position[0] >= max(actions):
-                    break
-                Action_Position[1] = len(actions[Action_Position[0]])
-            if advance_sentence:
-                Sentence_Position[0] += 1
-                if Sentence_Position[0] >= len(action_text_split):
-                    break
-                Sentence_Position[1] = len(action_text_split[Sentence_Position[0]][0])
-        #OK, action_text_split now contains a list of [sentence including trailing space if needed, [action IDs that sentence includes]]
+        action_text_split = self.actions.to_sentences()
         
         
         #Add prompt lenght/text if we're set to always use prompt
@@ -1338,6 +1298,50 @@ class KoboldStoryRegister(object):
                     self.actions[action_id]["Options"][option_number]["Probabilities"] = []
                 self.actions[action_id]["Options"][option_number]['Probabilities'].append(probabilities)
                 process_variable_changes(self.socketio, "story", 'actions', {"id": action_id, 'action':  self.actions[action_id]}, None)
+    
+    def to_sentences(self):
+        #we're going to split our actions by sentence for better context. We'll add in which actions the sentence covers. Prompt will be added at a -1 ID
+        actions = {i: self.actions[i] for i in range(len(self.actions))}
+        actions[-1] = self.story_settings.prompt
+        action_text = self.__str__()
+        action_text = "{}{}".format(self.story_settings.prompt, action_text)
+        ###########action_text_split = [sentence, actions used in sentence, token length, included in AI context]################
+        action_text_split = [[x+" ", [], 0 if self.tokenizer is None else len(self.tokenizer.encode(x+" ")), False] for x in re.split("(?<=[.!?])\s+", action_text)]
+        #The last action shouldn't have the extra space from the sentence splitting, so let's remove it
+        action_text_split[-1][0] = action_text_split[-1][0][:-1]
+        action_text_split[-1][2] = 0 if self.tokenizer is None else len(self.tokenizer.encode(action_text_split[-1][0]))
+        
+        Action_Position = [-1, len(actions[-1])] #First element is the action item, second is how much text is left
+        Sentence_Position = [0, len(action_text_split[0][0])]
+        while True:
+            advance_action = False
+            advance_sentence = False
+            if Action_Position[1] <= Sentence_Position[1]:
+                #We have enough text in the sentence to completely cover the action. Advance it to the next action
+                advance_action = True
+            if Sentence_Position[1] <= Action_Position[1]:
+                advance_sentence = True
+            if Action_Position[0] not in action_text_split[Sentence_Position[0]][1]:
+                #Since this action is in the sentence, add it to the list if it's not already there
+                action_text_split[Sentence_Position[0]][1].append(Action_Position[0])
+            #Fix the text length leftovers first since they interact with each other
+            if not advance_action:
+                Action_Position[1] -= Sentence_Position[1]
+            if not advance_sentence:
+                Sentence_Position[1] -= Action_Position[1]
+                
+            if advance_action:
+                Action_Position[0] += 1
+                if Action_Position[0] >= max(actions):
+                    break
+                Action_Position[1] = len(actions[Action_Position[0]])
+            if advance_sentence:
+                Sentence_Position[0] += 1
+                if Sentence_Position[0] >= len(action_text_split):
+                    break
+                Sentence_Position[1] = len(action_text_split[Sentence_Position[0]][0])
+        #OK, action_text_split now contains a list of [sentence including trailing space if needed, [action IDs that sentence includes]]
+        return action_text_split
     
     def __setattr__(self, name, value):
         new_variable = name not in self.__dict__

@@ -8379,7 +8379,6 @@ def UI_2_generate_image(data):
     
     #If we have > 4 keys, use those otherwise use sumarization
     if len(keys) < 4:
-        from transformers import pipeline as summary_pipeline
         start_time = time.time()
         #text to summarize:
         if len(koboldai_vars.actions) < 5:
@@ -8389,41 +8388,7 @@ def UI_2_generate_image(data):
             
         
         
-        if koboldai_vars.summarizer is None:
-            if os.path.exists("models/{}".format(args.summarizer_model.replace('/', '_'))):
-                koboldai_vars.summary_tokenizer = AutoTokenizer.from_pretrained("models/{}".format(args.summarizer_model.replace('/', '_')), cache_dir="cache")
-                koboldai_vars.summarizer = AutoModelForSeq2SeqLM.from_pretrained("models/{}".format(args.summarizer_model.replace('/', '_')), cache_dir="cache")
-            else:
-                koboldai_vars.summary_tokenizer = AutoTokenizer.from_pretrained(args.summarizer_model, cache_dir="cache")
-                koboldai_vars.summarizer = AutoModelForSeq2SeqLM.from_pretrained(args.summarizer_model, cache_dir="cache")
-                koboldai_vars.summary_tokenizer.save_pretrained("models/{}".format(args.summarizer_model.replace('/', '_')), max_shard_size="500MiB")
-                koboldai_vars.summarizer.save_pretrained("models/{}".format(args.summarizer_model.replace('/', '_')), max_shard_size="500MiB")
-
-        #Try GPU accel
-        if koboldai_vars.hascuda and torch.cuda.get_device_properties(0).total_memory - torch.cuda.memory_reserved(0) >= 1645778560:
-            koboldai_vars.summarizer.to(0)
-            device=0
-        else:
-            device=-1
-        summarizer = tpool.execute(summary_pipeline, task="summarization", model=koboldai_vars.summarizer, tokenizer=koboldai_vars.summary_tokenizer, device=device)
-        logger.debug("Time to load summarizer: {}".format(time.time()-start_time))
-        
-        #Actual sumarization
-        start_time = time.time()
-        global old_transfomers_functions
-        temp = transformers.generation_utils.GenerationMixin._get_stopping_criteria
-        transformers.generation_utils.GenerationMixin._get_stopping_criteria = old_transfomers_functions['transformers.generation_utils.GenerationMixin._get_stopping_criteria']
-        keys = [tpool.execute(summarizer, text, max_length=args.max_summary_length, min_length=30, do_sample=False)[0]['summary_text']]
-        transformers.generation_utils.GenerationMixin._get_stopping_criteria = temp
-        logger.debug("Time to summarize: {}".format(time.time()-start_time))
-        #move model back to CPU to save precious vram
-        torch.cuda.empty_cache()
-        logger.debug("VRAM used by summarization: {}".format(torch.cuda.memory_reserved(0)))
-        koboldai_vars.summarizer.to("cpu")
-        torch.cuda.empty_cache()
-        
-        logger.debug("Original Text: {}".format(text))
-        logger.debug("Summarized Text: {}".format(keys[0]))
+        keys = [summarize(text, max_length=args.max_summary_length)]
     
     art_guide = 'fantasy illustration, artstation, by jason felix by steve argyle by tyler jacobson by peter mohrbacher, cinematic lighting', 
 
@@ -8572,8 +8537,92 @@ def get_items_locations_from_text(text):
     print("People: {}".format(per))
 
 #==================================================================#
+# summarizer
+#==================================================================#
+def summarize(text, max_length=100, min_length=30):
+    from transformers import pipeline as summary_pipeline
+    start_time = time.time()
+    if koboldai_vars.summarizer is None:
+        if os.path.exists("models/{}".format(args.summarizer_model.replace('/', '_'))):
+            koboldai_vars.summary_tokenizer = AutoTokenizer.from_pretrained("models/{}".format(args.summarizer_model.replace('/', '_')), cache_dir="cache")
+            koboldai_vars.summarizer = AutoModelForSeq2SeqLM.from_pretrained("models/{}".format(args.summarizer_model.replace('/', '_')), cache_dir="cache")
+        else:
+            koboldai_vars.summary_tokenizer = AutoTokenizer.from_pretrained(args.summarizer_model, cache_dir="cache")
+            koboldai_vars.summarizer = AutoModelForSeq2SeqLM.from_pretrained(args.summarizer_model, cache_dir="cache")
+            koboldai_vars.summary_tokenizer.save_pretrained("models/{}".format(args.summarizer_model.replace('/', '_')), max_shard_size="500MiB")
+            koboldai_vars.summarizer.save_pretrained("models/{}".format(args.summarizer_model.replace('/', '_')), max_shard_size="500MiB")
+
+    #Try GPU accel
+    if koboldai_vars.hascuda and torch.cuda.get_device_properties(0).total_memory - torch.cuda.memory_reserved(0) >= 1645778560:
+        koboldai_vars.summarizer.to(0)
+        device=0
+    else:
+        device=-1
+    summarizer = tpool.execute(summary_pipeline, task="summarization", model=koboldai_vars.summarizer, tokenizer=koboldai_vars.summary_tokenizer, device=device)
+    logger.debug("Time to load summarizer: {}".format(time.time()-start_time))
+    
+    #Actual sumarization
+    start_time = time.time()
+    global old_transfomers_functions
+    temp = transformers.generation_utils.GenerationMixin._get_stopping_criteria
+    transformers.generation_utils.GenerationMixin._get_stopping_criteria = old_transfomers_functions['transformers.generation_utils.GenerationMixin._get_stopping_criteria']
+    #make sure text is less than 1024 tokens, otherwise we'll crash
+    if len(koboldai_vars.summary_tokenizer.encode(text)) > 1000:
+        text = koboldai_vars.summary_tokenizer.decode(koboldai_vars.summary_tokenizer.encode(text)[:1000])
+    output = tpool.execute(summarizer, text, max_length=max_length, min_length=min_length, do_sample=False)[0]['summary_text']
+    transformers.generation_utils.GenerationMixin._get_stopping_criteria = temp
+    logger.debug("Time to summarize: {}".format(time.time()-start_time))
+    #move model back to CPU to save precious vram
+    torch.cuda.empty_cache()
+    logger.debug("VRAM used by summarization: {}".format(torch.cuda.memory_reserved(0)))
+    koboldai_vars.summarizer.to("cpu")
+    torch.cuda.empty_cache()
+    
+    logger.debug("Original Text: {}".format(text))
+    logger.debug("Summarized Text: {}".format(output))
+    
+    return output
+
+
+
+#==================================================================#
 # Test
 #==================================================================#
+@app.route("/summarize")
+def request_summarize():
+    if koboldai_vars.summary_tokenizer is None:
+        koboldai_vars.summary_tokenizer = AutoTokenizer.from_pretrained("models/{}".format(args.summarizer_model.replace('/', '_')), cache_dir="cache")
+    #first, let's get all of our game text and split it into sentences
+    sentences = [x[0] for x in koboldai_vars.actions.to_sentences()]
+    sentences_lengths = [len(koboldai_vars.summary_tokenizer.encode(x)) for x in sentences]
+    
+    
+    while len(koboldai_vars.summary_tokenizer.encode("".join(sentences))) > 1000:
+        #Now let's split them into 1000 token chunks
+        summary_chunks = [""]
+        summary_chunk_lengths = [0]
+        for i in range(len(sentences)):
+            if summary_chunk_lengths[-1] + sentences_lengths[i] <= 1000:
+                summary_chunks[-1] += sentences[i]
+                summary_chunk_lengths[-1] += sentences_lengths[i]
+            else:
+                summary_chunks.append(sentences[i])
+                summary_chunk_lengths.append(sentences_lengths[i])
+        new_sentences = []
+        i=0
+        for summary_chunk in summary_chunks:
+            print("summarizing chunk {}".format(i))
+            new_sentences.extend(re.split("(?<=[.!?])\s+", summarize(summary_chunk)))
+            i+=1
+        print("Summarized to {} sentencees from {}".format(len(new_sentences), len(sentences)))
+        sentences = new_sentences
+    print("OK, doing final summarization")
+    output = summarize(" ".join(sentences))
+    print(output)
+    return "Input tokens: {}\nOutput tokens: {}\n{}".format(len(koboldai_vars.summary_tokenizer.encode(request.args['text'])), 
+                                                            len(koboldai_vars.summary_tokenizer.encode(output)), 
+                                                            output)
+
 @app.route("/vars")
 @logger.catch
 def show_vars():
