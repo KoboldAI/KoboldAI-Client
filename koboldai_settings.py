@@ -45,7 +45,7 @@ class koboldai_vars(object):
     def __init__(self, sessions_var, socketio):
         self._model_settings = model_settings(socketio)
         self._user_settings = user_settings(socketio)
-        self._system_settings = system_settings(socketio)
+        self._system_settings = system_settings(socketio, self)
         self._story_settings = {'default': story_settings(socketio, self)}
         self._sessions = sessions_var
         self.socketio = socketio
@@ -111,7 +111,11 @@ class koboldai_vars(object):
     def reset_model(self):
         self._model_settings.reset_for_model_load()
     
-    def calc_ai_text(self, submitted_text="", method=2, return_text=False):
+    def calc_ai_text(self, submitted_text="", return_text=False):
+        if self.alt_gen:
+            method = 2
+        else:
+            method = 1
         context = []
         token_budget = self.max_length
         used_world_info = []
@@ -194,9 +198,8 @@ class koboldai_vars(object):
                                 text += wi_text
                                 self.worldinfo_v2.set_world_info_used(wi['uid'])
 
-                prompt_text = prompt_text
                 if self.tokenizer and self.prompt_length > self.max_prompt_length:
-                    prompt_text = self.tokenizer.decode(self.tokenizer.encode(self.prompt)[-self.max_prompt_length-1:])
+                    prompt_text = self.tokenizer.decode(self.tokenizer.encode(system_settings))
                    
                 #We'll add the prompt text AFTER we go through the game text as the world info needs to come first if we're in method 1 rather than method 2
                 self.prompt_in_ai = True
@@ -217,8 +220,8 @@ class koboldai_vars(object):
         for action in range(len(self.actions)):
             self.actions.set_action_in_ai(action, used=False)
         for i in range(len(action_text_split)-1, -1, -1):
-            if action_text_split[i][3]:
-                #We've hit an item we've already included. Stop
+            if action_text_split[i][3] or action_text_split[i][1] == [-1]:
+                #We've hit an item we've already included or items that are only prompt. Stop
                 break;
             if len(action_text_split) - i - 1 == self.andepth and self.authornote != "":
                 game_text = "{}{}".format(authors_note_final, game_text)
@@ -227,6 +230,7 @@ class koboldai_vars(object):
             if length+used_tokens <= token_budget and not used_all_tokens:
                 used_tokens += length
                 selected_text = action_text_split[i][0]
+                action_text_split[i][3] = True
                 game_text = "{}{}".format(selected_text, game_text)
                 game_context.insert(0, {"type": "action", "text": selected_text})
                 for action in action_text_split[i][1]:
@@ -280,7 +284,7 @@ class koboldai_vars(object):
                 if -1 not in item[1]:
                     #We've finished going through our prompt. Stop
                     break
-                if prompt_length + item[2] < self.max_prompt_length:
+                if prompt_length + item[2] < self.max_prompt_length and not item[3]:
                     prompt_length += item[2]
                     item[3] = True
                     prompt_text += item[0]
@@ -302,7 +306,7 @@ class koboldai_vars(object):
                                     match=True
                                     break
                         if match:
-                            if used_tokens+0 if 'token_length' not in wi else wi['token_length'] <= token_budget:
+                            if used_tokens+0 if 'token_length' not in wi or wi['token_length'] is None else wi['token_length'] <= token_budget:
                                 used_tokens+=0 if  wi['token_length'] is None else wi['token_length']
                                 used_world_info.append(wi['uid'])
                                 wi_text = wi['content']
@@ -310,9 +314,8 @@ class koboldai_vars(object):
                                 text += wi_text
                                 self.worldinfo_v2.set_world_info_used(wi['uid'])
 
-                prompt_text = prompt_text
                 if self.tokenizer and self.prompt_length > self.max_prompt_length:
-                    prompt_text = self.tokenizer.decode(self.tokenizer.encode(self.prompt)[-self.max_prompt_length-1:])
+                    prompt_text = self.tokenizer.decode(self.tokenizer.encode(system_settings))
 
                 text += prompt_text
                 context.append({"type": "prompt", "text": prompt_text})
@@ -372,7 +375,7 @@ class settings(object):
     def to_json(self):
         json_data = {'file_version': 2}
         for (name, value) in vars(self).items():
-            if name not in self.no_save_variables:
+            if name not in self.no_save_variables and name[0] != "_":
                 json_data[name] = value
         def to_base64(data):
             if isinstance(data, KoboldStoryRegister):
@@ -779,7 +782,7 @@ class system_settings(settings):
     local_only_variables = ['socketio', 'lua_state', 'lua_logname', 'lua_koboldbridge', 'lua_kobold', 'lua_koboldcore', 'regex_sl', 'acregex_ai', 'acregex_ui', 'comregex_ai', 'comregex_ui', 'sp', '_horde_pid', 'image_pipeline', 'summarizer', 'summary_tokenizer']
     no_save_variables = ['socketio', 'lua_state', 'lua_logname', 'lua_koboldbridge', 'lua_kobold', 'lua_koboldcore', 'sp', '_horde_pid', 'horde_share', 'aibusy', 'serverstarted', 'image_pipeline', 'summarizer', 'summary_tokenizer']
     settings_name = "system"
-    def __init__(self, socketio):
+    def __init__(self, socketio, koboldai_var):
         self.socketio = socketio
         self.noai        = False  # Runs the script without starting up the transformers pipeline
         self.aibusy      = False  # Stops submissions while the AI is working
@@ -860,6 +863,7 @@ class system_settings(settings):
         self.summary_tokenizer = None
         self.keep_img_gen_in_memory = False
         self.cookies = {} #cookies for colab since colab's URL changes, cookies are lost
+        self._koboldai_var = koboldai_var
         
         
     def __setattr__(self, name, value):
@@ -884,6 +888,9 @@ class system_settings(settings):
             
             if name == 'keep_img_gen_in_memory' and value == False:
                 self.image_pipeline = None
+            
+            if name == 'alt_gen':
+                self._koboldai_var.calc_ai_text()
             
             if name == 'horde_share':
                 if self.on_colab == False:
@@ -1705,6 +1712,9 @@ class KoboldWorldInfo(object):
     def set_world_info_used(self, uid):
         self.world_info[uid]["used_in_game"] = True
         self.socketio.emit("world_info_entry_used_in_game", {"uid": uid, "used_in_game": True}, broadcast=True, room="UI_2")
+    
+    def get_used_wi(self):
+        return [x['content'] for x in self.world_info if x['used_in_game']]
     
     def __setattr__(self, name, value):
         new_variable = name not in self.__dict__
