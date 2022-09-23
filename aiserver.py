@@ -8615,7 +8615,7 @@ def UI_2_refresh_auto_memory(data):
         koboldai_vars.auto_memory = "\n".join(sentences)
     logger.debug("OK, doing final summarization")
     output = summarize(" ".join(sentences))
-    koboldai_vars.auto_memory += "\n" + output
+    koboldai_vars.auto_memory += "\n\n Final Result:\n" + output
 
 @app.route("/vars")
 @logger.catch
