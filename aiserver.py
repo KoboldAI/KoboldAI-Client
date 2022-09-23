@@ -4974,7 +4974,7 @@ class GenerationResult:
     ):
         # Shave prompt off of encoded response. Decoded does not return prompt.
         # TODO: Does MTJ generation shave this off automatically? Test it!
-        __debug("shape", out_batches.shape)
+        print("shape", out_batches.shape)
 
         if output_includes_prompt:
             self.encoded = out_batches[:, len(prompt) - 1:]
