@@ -4442,7 +4442,7 @@ def apiactionsubmit_generate(txt, minimum, maximum):
         torch.cuda.empty_cache()
 
     # Submit input text to generator
-    _genout, already_generated = tpool.execute(_generate, txt, minimum, maximum, set())
+    _genout, already_generated = tpool.execute(core_generate, txt, minimum, maximum, set())
 
     genout = [applyoutputformatting(utils.decodenewlines(tokenizer.decode(tokens[-already_generated:]))) for tokens in _genout]
 
@@ -4861,6 +4861,9 @@ def core_generate(text: list, min: int, max: int, found_entries: set):
                 model.config.vocab_size + koboldai_vars.sp.shape[0],
             )
             gen_in = torch.cat((soft_tokens[None], gen_in), dim=-1)
+    elif koboldai_vars.use_colab_tpu:
+        if koboldai_vars.full_determinism:
+            tpu_mtj_backend.set_rng_seed(koboldai_vars.seed)
 
     assert gen_in.shape[-1] + koboldai_vars.genamt <= koboldai_vars.max_length
 
@@ -5051,8 +5054,8 @@ def tpu_raw_generate(
     batch_count: int,
 ):
     # Mostly lifted from apiactionsubmit_tpumtjgenerate
-    print("we are generating with", prompt_tokens, "batch", batch_count)
     soft_tokens = tpumtjgetsofttokens()
+    __debug("we are generating with", prompt_tokens, "batch", batch_count, "soft tokens", soft_tokens)
     genout = tpool.execute(
         tpu_mtj_backend.infer_static,
         np.uint32(prompt_tokens),
