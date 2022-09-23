@@ -481,7 +481,7 @@ socketio = SocketIO(app, async_method="eventlet", manage_session=False, cors_all
 #socketio = SocketIO(app, async_method="eventlet", manage_session=False, cors_allowed_origins='*', max_http_buffer_size=10_000_000, logger=logger, engineio_logger=True)
 logger.add(UI_2_logger, serialize=True, colorize=True)
 logger.add("log_file_1.log", rotation="500 MB")    # Automatically rotate too big file
-koboldai_vars = koboldai_settings.koboldai_vars(session, socketio)
+koboldai_vars = koboldai_settings.koboldai_vars(socketio)
 
 utils.koboldai_vars = koboldai_vars
 
@@ -1260,6 +1260,7 @@ def general_startup(override_args=None):
     parser.add_argument("--no_ui", action='store_true', default=False, help="Disables the GUI and Socket.IO server while leaving the API server running.")
     parser.add_argument("--summarizer_model", action='store', default="philschmid/bart-large-cnn-samsum", help="Huggingface model to use for summarization. Defaults to sshleifer/distilbart-cnn-12-6")
     parser.add_argument("--max_summary_length", action='store', default=100, help="Maximum size for summary to send to image generation")
+    parser.add_argument("--multi_story", action='store_true', default=False, help="Allow multi-story mode (experimental)")
     
     parser.add_argument('-v', '--verbosity', action='count', default=0, help="The default logging level is ERROR or higher. This value increases the amount of logging seen in your screen")
     parser.add_argument('-q', '--quiesce', action='count', default=0, help="The default logging level is ERROR or higher. This value decreases the amount of logging seen in your screen")
@@ -1318,6 +1319,7 @@ def general_startup(override_args=None):
 
     koboldai_vars.model = args.model;
     koboldai_vars.revision = args.revision
+    koboldai_settings.multi_story = args.multi_story
 
     if args.apikey:
         koboldai_vars.apikey = args.apikey
@@ -3684,7 +3686,11 @@ def do_connect():
     if request.args.get("rely") == "true":
         return
     join_room("UI_{}".format(request.args.get('ui')))
+    if 'story' not in session:
+        session['story'] = 'default'
+    join_room(session['story'])
     logger.debug("Joining Room UI_{}".format(request.args.get('ui')))
+    logger.debug("Session['Story']: {}".format(session['story']))
     if request.args.get("ui") == "2":
         ui2_connect()
         return
@@ -6640,10 +6646,12 @@ def load_story_v1(js):
     _filename = filename
     if(filename.endswith('.json')):
         _filename = filename[:-5]
+    leave_room(session['story'])
     session['story'] = _filename
+    join_room(_filename)
     #create the story
     #koboldai_vars.create_story(session['story'])
-    koboldai_vars.create_story('default')
+    koboldai_vars.create_story(session['story'])
     
     koboldai_vars.laststory = _filename
     #set the story_name
@@ -6729,7 +6737,10 @@ def load_story_v1(js):
     send_debug()
 
 def load_story_v2(js):
+    leave_room(session['story'])
     session['story'] = js['story_name']
+    join_room(session['story'])
+    
     koboldai_vars.load_story(session['story'], js)
     
 
@@ -7216,6 +7227,7 @@ def new_ui_index():
 @logger.catch
 def ui2_connect():
     #Send all variables to client
+    logger.debug("Sending full data to client for story {}".format(session['story']))
     koboldai_vars.send_to_ui()
     UI_2_load_cookies()
     UI_2_theme_list_refresh(None)

@@ -1,6 +1,6 @@
 import os, re, time, threading, json, pickle, base64, copy, tqdm, datetime, sys
 from io import BytesIO
-from flask import has_request_context
+from flask import has_request_context, session
 from flask_socketio import SocketIO
 from collections import OrderedDict
 import multiprocessing
@@ -8,6 +8,8 @@ from logger import logger
 
 serverstarted = False
 queue = None
+multi_story = False
+
 
 def clean_var_for_emit(value):
     if isinstance(value, KoboldStoryRegister) or isinstance(value, KoboldWorldInfo):
@@ -20,91 +22,117 @@ def clean_var_for_emit(value):
         return value
 
 def process_variable_changes(socketio, classname, name, value, old_value, debug_message=None):
+    global multi_story
     if serverstarted and name != "serverstarted":
         if debug_message is not None:
             print("{} {}: {} changed from {} to {}".format(debug_message, classname, name, old_value, value))
         if value != old_value:
+            #Get which room we'll send the messages to
+            if multi_story:
+                if classname != 'story':
+                    room = 'UI_2'
+                else:
+                    if has_request_context():
+                        room = 'default' if 'story' not in session else session['story']
+                    else:
+                        logger.error("We tried to access the story register outside of an http context. Will not work in multi-story mode")
+                        return
+            else:
+                room = "UI_2"
+            logger.debug("sending data to room (multi_story={},classname={}): {}".format(multi_story, classname, room))
             #Special Case for KoboldStoryRegister
             if isinstance(value, KoboldStoryRegister):
                 if not has_request_context():
                     if queue is not None:
                         #logger.debug("Had to use queue")
-                        queue.put(["var_changed", {"classname": "actions", "name": "Action Count", "old_value": None, "value":value.action_count}, {"broadcast":True, "room":"UI_2"}])
+                        queue.put(["var_changed", {"classname": "actions", "name": "Action Count", "old_value": None, "value":value.action_count}, {"broadcast":True, "room":room}])
                         
                         for i in value.actions:
-                            queue.put(["var_changed", {"classname": "story", "name": "actions", "old_value": None, "value":{"id": i, "action": value.actions[i]}}, {"broadcast":True, "room":"UI_2"}])
+                            queue.put(["var_changed", {"classname": "story", "name": "actions", "old_value": None, "value":{"id": i, "action": value.actions[i]}}, {"broadcast":True, "room":room}])
                 
                 else:
-                    socketio.emit("var_changed", {"classname": "actions", "name": "Action Count", "old_value": None, "value":value.action_count}, broadcast=True, room="UI_2")
+                    socketio.emit("var_changed", {"classname": "actions", "name": "Action Count", "old_value": None, "value":value.action_count}, broadcast=True, room=room)
                     
                     for i in value.actions:
-                        socketio.emit("var_changed", {"classname": "story", "name": "actions", "old_value": None, "value":{"id": i, "action": value.actions[i]}}, broadcast=True, room="UI_2")
+                        socketio.emit("var_changed", {"classname": "story", "name": "actions", "old_value": None, "value":{"id": i, "action": value.actions[i]}}, broadcast=True, room=room)
             elif isinstance(value, KoboldWorldInfo):
                 value.send_to_ui()
             else:
                 #If we got a variable change from a thread other than what the app is run it, eventlet seems to block and no further messages are sent. Instead, we'll rely the message to the app and have the main thread send it
                 if not has_request_context():
-                    data = ["var_changed", {"classname": classname, "name": name, "old_value": clean_var_for_emit(old_value), "value": clean_var_for_emit(value)}, {"include_self":True, "broadcast":True, "room":"UI_2"}]
+                    data = ["var_changed", {"classname": classname, "name": name, "old_value": clean_var_for_emit(old_value), "value": clean_var_for_emit(value)}, {"include_self":True, "broadcast":True, "room":room}]
                     if queue is not None:
-                        logger.debug("Had to use queue")
+                        #logger.debug("Had to use queue")
                         queue.put(data)
                         
                 else:
-                    socketio.emit("var_changed", {"classname": classname, "name": name, "old_value": clean_var_for_emit(old_value), "value": clean_var_for_emit(value)}, include_self=True, broadcast=True, room="UI_2")
+                    socketio.emit("var_changed", {"classname": classname, "name": name, "old_value": clean_var_for_emit(old_value), "value": clean_var_for_emit(value)}, include_self=True, broadcast=True, room=room)
 
 class koboldai_vars(object):
-    def __init__(self, sessions_var, socketio):
+    def __init__(self, socketio):
         self._model_settings = model_settings(socketio)
         self._user_settings = user_settings(socketio)
         self._system_settings = system_settings(socketio, self)
         self._story_settings = {'default': story_settings(socketio, self)}
-        self._sessions = sessions_var
         self.socketio = socketio
         self.tokenizer = None
-        
+    
+    def get_story_name(self):
+        global multi_story
+        if multi_story:
+            if has_request_context():
+                story = 'default' if 'story' not in session else session['story']
+            else:
+                logger.error("We tried to access the story register outside of an http context. Will not work in multi-story mode")
+                assert multi_story and has_request_context(), "Tried to access story data outside context in multi_story mode"
+        else:
+            story = "default"
+        return story
+    
     def to_json(self, classname):
         if classname == 'story_settings':
-            #if 'story' in self._sessions:
-            #    return self._story_settings[self._sessions['story']].to_json()
-            #else:
-            return self._story_settings['default'].to_json()
+            data = {}
+            for story in self._story_settings:
+                data[story] = json.loads(self._story_settings[story].to_json())
+            return json.dumps(data)
         return self.__dict__["_{}".format(classname)].to_json()
         
     def load_story(self, story_name, json_data):
         #Story name here is intended for multiple users on multiple stories. Now always uses default
         #If we can figure out a way to get flask sessions into/through the lua bridge we could re-enable
         original_story_name = story_name
-        story_name = 'default'
+        if not self._system_settings.multi_story:
+            story_name = 'default'
         if story_name in self._story_settings:
             self._story_settings[story_name].socketio.emit("reset_story", {}, broadcast=True, room="UI_2")
             self._story_settings[story_name].no_save = True
             self._story_settings[story_name].from_json(json_data)
             self._story_settings[story_name].no_save = False
         else:
-            self._story_settings[story_name].no_save = True
+            #self._story_settings[story_name].no_save = True
             self.create_story(story_name, json_data=json_data)
-            self._story_settings[story_name].no_save = False
+            #self._story_settings[story_name].no_save = False
         self._system_settings.story_loads[original_story_name] = datetime.datetime.now().strftime("%m/%d/%Y, %H:%M:%S")
         with open("settings/system_settings.v2_settings", "w") as settings_file:
             settings_file.write(self._system_settings.to_json())
         
     def save_story(self):
-        self._story_settings['default'].save_story()
+        self._story_settings[self.get_story_name()].save_story()
     
     def save_revision(self):
-        self._story_settings['default'].save_revision()
+        self._story_settings[self.get_story_name()].save_revision()
     
     def create_story(self, story_name, json_data=None):
         #Story name here is intended for multiple users on multiple stories. Now always uses default
         #If we can figure out a way to get flask sessions into/through the lua bridge we could re-enable
-        story_name = 'default'
+        #story_name = 'default'
         if story_name in self._story_settings:
             self._story_settings[story_name].reset()
         else:
-            self._story_settings[story_name] = story_settings(self.socketio)
+            self._story_settings[story_name] = story_settings(self.socketio, self)
         if json_data is not None:
             self.load_story(story_name, json_data)
-        self._story_settings['default'].send_to_ui()
+        self._story_settings[story_name].send_to_ui()
     
     def story_list(self):
         return [x for x in self._story_settings]
@@ -113,11 +141,7 @@ class koboldai_vars(object):
         self._model_settings.send_to_ui()
         self._user_settings.send_to_ui()
         self._system_settings.send_to_ui()
-        #if 'story' in self._sessions:
-        #    self._story_settings[self._sessions['story']].send_to_ui()
-        #else:
-        #    self._story_settings['default'].send_to_ui()
-        self._story_settings['default'].send_to_ui()
+        self._story_settings[self.get_story_name()].send_to_ui()
     
     def reset_model(self):
         self._model_settings.reset_for_model_load()
@@ -352,14 +376,12 @@ class koboldai_vars(object):
                 setattr(self._user_settings, name, value)
             elif name in self._system_settings.__dict__:
                 setattr(self._system_settings, name, value)
-            #elif 'story' in self._sessions:
-            #    setattr(self._story_settings[self._sessions['story']], name, value)
-            elif name == 'tokenizer':
-                setattr(self._story_settings['default'].actions, name, value)
-                setattr(self._story_settings['default'].worldinfo_v2, name, value)
-                setattr(self._story_settings['default'], name, value)
             else:
-                setattr(self._story_settings['default'], name, value)
+                setattr(self._story_settings[self.get_story_name()], name, value)
+            if name == 'tokenizer':
+                setattr(self._story_settings[self.get_story_name()].actions, name, value)
+                setattr(self._story_settings[self.get_story_name()].worldinfo_v2, name, value)
+                setattr(self._story_settings[self.get_story_name()], name, value)
     
     def __getattr__(self, name):
         if name in self.__dict__:
@@ -370,10 +392,8 @@ class koboldai_vars(object):
             return getattr(self._user_settings, name)
         elif name in self._system_settings.__dict__:
             return getattr(self._system_settings, name)
-        #elif 'story' in self._sessions:
-        #    return getattr(self._story_settings[self._sessions['story']], name)
         else:
-            return getattr(self._story_settings['default'], name)
+            return getattr(self._story_settings[self.get_story_name()], name)
 
 
 class settings(object):
@@ -468,6 +488,7 @@ class model_settings(settings):
         self.apikey      = ""     # API key to use for InferKit API calls
         self.oaiapikey   = ""     # API key to use for OpenAI API calls
         self.configname = None
+        self.online_model = ''
         
     def reset_for_model_load(self):
         self.max_length  = 2048    # Maximum number of tokens to submit per action
@@ -1731,7 +1752,6 @@ class KoboldWorldInfo(object):
         #self.wifolders_u = {}     # Dictionary of pairs of folder UID - list of WI UID
         self.story_settings.wifolders_u = {folder_entries[x]: [y for y in self.story_settings.worldinfo if y['folder'] == x] for x in folder_entries}
         
-        print(self.story_settings.worldinfo)
         
     def reset_used_in_game(self):
         for key in self.world_info:
