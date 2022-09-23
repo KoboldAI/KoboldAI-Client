@@ -4782,6 +4782,8 @@ def calcsubmit(txt):
             sendtocluster(utils.decodenewlines(tokenizer.decode(subtxt)), min, max)
         # elif koboldai_vars.use_colab_tpu or koboldai_vars.model in ("TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX"):
         #     tpumtjgenerate(subtxt, min, max, found_entries=found_entries)
+        else:
+            print(":(", koboldai_vars.model)
                     
     # For InferKit web API
     else:
@@ -5043,6 +5045,7 @@ def tpu_raw_generate(
     batch_count: int,
 ):
     # Mostly lifted from apiactionsubmit_tpumtjgenerate
+    print("we are generating")
     soft_tokens = tpumtjgetsofttokens()
     genout = tpool.execute(
         tpu_mtj_backend.infer_static,
@@ -5191,6 +5194,7 @@ def oai_raw_generate(
 #==================================================================#
 
 def generate(txt, minimum, maximum, found_entries=None):    
+    print("ring ring", txt, minimum, maximum, found_entries)
     koboldai_vars.generated_tkns = 0
 
     if(found_entries is None):
