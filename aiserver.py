@@ -383,7 +383,6 @@ class vars:
     actionmode  = 1
     dynamicscan = False
     host        = False
-    flaskwebgui = False
     nopromptgen = False
     rngpersist  = False
     nogenmod    = False
@@ -2774,10 +2773,8 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
 def index():
     if args.no_ui:
         return redirect('/api/latest')
-    if 'new_ui' in request.args:
-        return render_template('index_new.html', hide_ai_menu=args.noaimenu)
     else:
-        return render_template('index.html', hide_ai_menu=args.noaimenu, flaskwebgui=vars.flaskwebgui)
+        return render_template('index.html', hide_ai_menu=args.noaimenu)
 @app.route('/api', strict_slashes=False)
 def api():
     return redirect('/api/latest')
@@ -10094,22 +10091,16 @@ if __name__ == "__main__":
             vars.serverstarted = True
             socketio.run(app, port=port, host='0.0.0.0')
         else:
-            try:
-                from flaskwebgui import FlaskUI
-                vars.serverstarted = True
-                vars.flaskwebgui = True
-                FlaskUI(app, socketio=socketio, start_server="flask-socketio", maximized=True, close_server_on_exit=True).run()
-            except:
-                if not args.no_ui:
-                    try:
-                        import webbrowser
-                        webbrowser.open_new('http://localhost:{0}'.format(port))
-                    except:
-                        pass
-                logger.init_ok("Webserver", status="OK")
-                logger.message(f"Webserver started! You may now connect with a browser at http://127.0.0.1:{port}")
-                vars.serverstarted = True
-                socketio.run(app, port=port)
+            if not args.no_ui:
+                try:
+                    import webbrowser
+                    webbrowser.open_new('http://localhost:{0}'.format(port))
+                except:
+                    pass
+            logger.init_ok("Webserver", status="OK")
+            logger.message(f"Webserver started! You may now connect with a browser at http://127.0.0.1:{port}")
+            vars.serverstarted = True
+            socketio.run(app, port=port)
     logger.init("Webserver", status="Closed")
 
 
