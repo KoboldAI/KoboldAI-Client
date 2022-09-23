@@ -10084,8 +10084,11 @@ if __name__ == "__main__":
     else:
         if args.unblock:
             if not args.no_ui:
-                import webbrowser
-                webbrowser.open_new('http://localhost:{0}'.format(port))
+                try:
+                    import webbrowser
+                    webbrowser.open_new('http://localhost:{0}'.format(port))
+                except:
+                    pass
             logger.init_ok("Webserver", status="OK")
             logger.message(f"Webserver started! You may now connect with a browser at http://127.0.0.1:{port}")
             vars.serverstarted = True
@@ -10098,8 +10101,11 @@ if __name__ == "__main__":
                 FlaskUI(app, socketio=socketio, start_server="flask-socketio", maximized=True, close_server_on_exit=True).run()
             except:
                 if not args.no_ui:
-                    import webbrowser
-                    webbrowser.open_new('http://localhost:{0}'.format(port))
+                    try:
+                        import webbrowser
+                        webbrowser.open_new('http://localhost:{0}'.format(port))
+                    except:
+                        pass
                 logger.init_ok("Webserver", status="OK")
                 logger.message(f"Webserver started! You may now connect with a browser at http://127.0.0.1:{port}")
                 vars.serverstarted = True
