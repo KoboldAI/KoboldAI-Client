@@ -109,6 +109,7 @@ map2.set(5, 'Temperature')
 map2.set(6, 'Repetition Penalty')
 var calc_token_usage_timeout;
 var game_text_scroll_timeout;
+var font_size_cookie_timout;
 var var_processing_time = 0;
 var finder_last_input;
 //-----------------------------------Server to UI  Functions-----------------------------------------------
@@ -2303,6 +2304,14 @@ function save_preset() {
 }
 
 //--------------------------------------------General UI Functions------------------------------------
+function set_font_size(element) {
+	new_font_size = element.value;
+	var r = document.querySelector(':root');
+	r.style.setProperty("--game_screen_font_size_adjustment", new_font_size);
+	clearTimeout(font_size_cookie_timout);
+	font_size_cookie_timout = setTimeout(function() {setCookie("font_size", new_font_size)}, 2000);
+}
+
 function push_selection_to_memory() {
 	document.getElementById("memory").value += "\n" + getSelectionText();
 	document.getElementById("memory").onchange();
@@ -4174,6 +4183,14 @@ function process_cookies() {
 	}
 	
 	Change_Theme(getCookie("theme", "Monochrome"));
+	
+	//set font size
+	new_font_size = getCookie("font_size", 1);
+	var r = document.querySelector(':root');
+	r.style.setProperty("--game_screen_font_size_adjustment", new_font_size);
+	document.getElementById('font_size_cur').value = new_font_size;
+	document.getElementById('font_size').value = new_font_size;
+	
 	
 	load_tweaks();
 }
