@@ -4841,23 +4841,25 @@ def calcsubmit(txt):
         # Send it!
         ikrequest(subtxt)
 
-def __debug(text):
-    print(f"[DBG] {text}")
+def __debug(*args):
+    print("[DBG] ", *args)
 
 def core_generate(text: list, min: int, max: int, found_entries: set):
     # This generation function is tangled with koboldai_vars intentionally. It
     # is meant for the story and nothing else.
 
-    if koboldai_vars.full_determinism:
-        torch.manual_seed(koboldai_vars.seed)
+    if koboldai_vars.is_model_torch():
+        # Torch stuff
+        if koboldai_vars.full_determinism:
+            torch.manual_seed(koboldai_vars.seed)
 
-    gen_in = torch.tensor(text, dtype=torch.long)[None]
-    if koboldai_vars.sp is not None:
-        soft_tokens = torch.arange(
-            model.config.vocab_size,
-            model.config.vocab_size + koboldai_vars.sp.shape[0],
-        )
-        gen_in = torch.cat((soft_tokens[None], gen_in), dim=-1)
+        gen_in = torch.tensor(text, dtype=torch.long)[None]
+        if koboldai_vars.sp is not None:
+            soft_tokens = torch.arange(
+                model.config.vocab_size,
+                model.config.vocab_size + koboldai_vars.sp.shape[0],
+            )
+            gen_in = torch.cat((soft_tokens[None], gen_in), dim=-1)
 
     assert gen_in.shape[-1] + koboldai_vars.genamt <= koboldai_vars.max_length
 

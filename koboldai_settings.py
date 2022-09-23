@@ -287,6 +287,15 @@ class koboldai_vars(object):
         
         self.context = context
         return tokens, used_tokens, used_tokens+self.genamt
+
+    def is_model_torch(self) -> bool:
+        if self.use_colab_tpu:
+            return False
+
+        if self.model in ["Colab", "API", "CLUSTER", "ReadOnly", "OAI"]:
+            return False
+
+        return True
     
     def __setattr__(self, name, value):
         if name[0] == "_" or name == "tokenizer":
@@ -443,7 +452,7 @@ class model_settings(settings):
         self.uid_presets = []
         self.default_preset = {}
         self.cluster_requested_models = [] # The models which we allow to generate during cluster mode
-        
+
         
     #dummy class to eat the tqdm output
     class ignore_tqdm(object):
