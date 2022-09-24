@@ -2570,7 +2570,7 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
                                         map_data = json.load(f)
                                     filenames = set(map_data["weight_map"].values())
                                     # Save the pytorch_model.bin.index.json of a sharded model
-                                    shutil.move(utils.from_pretrained_index_filename, os.path.join("models/{}".format(vars.model.replace('/', '_')), transformers.modeling_utils.WEIGHTS_INDEX_NAME))
+                                    shutil.move(os.path.realpath(utils.from_pretrained_index_filename), os.path.join("models/{}".format(vars.model.replace('/', '_')), transformers.modeling_utils.WEIGHTS_INDEX_NAME))
                                     # Then save the pytorch_model-#####-of-#####.bin files
                                     for filename in filenames:
                                         shutil.move(os.path.realpath(huggingface_hub.hf_hub_download(vars.model, filename, revision=vars.revision, cache_dir="cache", local_files_only=True, legacy_cache_layout=legacy)), os.path.join("models/{}".format(vars.model.replace('/', '_')), filename))
