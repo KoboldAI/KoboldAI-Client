@@ -510,6 +510,11 @@ border-top-right-radius: var(--tabs_rounding);
 	height: 35px;
 }
 
+.settings_button > .material-icons-outlined {
+	margin-right: 2px;
+	top: 2px;
+}
+
 
 .settings_button > .button_label {
 	position: relative;
