@@ -2183,7 +2183,7 @@ function upload_file(file_box) {
 	for (file of fileList) {
 		reader = new FileReader();
 		reader.onload = function (event) {
-			socket.emit("upload_file", {'filename': file.name, "data": event.target.result});
+			socket.emit("upload_file", {'filename': file.name, "data": event.target.result, 'upload_no_save': document.getElementById('upload_no_save').checked});
 		};
 		reader.readAsArrayBuffer(file);
 	}

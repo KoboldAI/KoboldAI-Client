@@ -11,6 +11,11 @@
 	</div>
 	<div style="display:flex;justify-content: space-between;">
 		<span>Drag file(s) above or click here to Upload File<input id="popup_upload_input" type=file onchange="upload_file(this)"></span>
+		<span>
+			Upload file without saving to google: 
+			<input type=checkbox id="upload_no_save" class="setting_item_input"
+			       data-size="mini" data-onstyle="success" data-toggle="toggle">
+		</span>
 		<button id="import_story_button" class="settings_button hidden" onclick="document.getElementById('import_aidg_club_popup').classList.remove('hidden');">
 			<span class="material-icons-outlined cursor" title="Import Story">cloud_download</span>
 			<span class="button_label">Import Story</span>

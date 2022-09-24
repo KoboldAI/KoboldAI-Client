@@ -2889,7 +2889,7 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
             koboldai_vars.allowsp = True
             loadmodelsettings()
             loadsettings()
-            tpu_mtj_backend.load_model(koboldai_vars.custmodpth, hf_checkpoint=koboldai_vars.model not in ("TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX") and koboldai_vars.use_colab_tpu, **koboldai_vars.modelconfig)
+            tpool.execute(tpu_mtj_backend.load_model(koboldai_vars.custmodpth, hf_checkpoint=koboldai_vars.model not in ("TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX") and koboldai_vars.use_colab_tpu, **koboldai_vars.modelconfig))
             koboldai_vars.modeldim = int(tpu_mtj_backend.params.get("d_embed", tpu_mtj_backend.params["d_model"]))
             tokenizer = tpu_mtj_backend.tokenizer
             if(koboldai_vars.badwordsids is koboldai_settings.badwordsids_default and koboldai_vars.model_type not in ("gpt2", "gpt_neo", "gptj")):
@@ -6640,8 +6640,8 @@ def loadJSON(json_text_or_dict):
         load_story_v1(json_data)
 
 def load_story_v1(js):
-    loadpath = js['v1_loadpath']
-    filename = js['v1_filename']
+    loadpath = js['v1_loadpath'] if 'v1_loadpath' in js else koboldai_vars.savedir
+    filename = js['v1_filename'] if 'v1_filename' in js else 'untitled.json'
     
     _filename = filename
     if(filename.endswith('.json')):
@@ -7248,28 +7248,31 @@ def ui2_serve_themes(path):
 @socketio.on('upload_file')
 @logger.catch
 def upload_file(data):
-    if koboldai_vars.debug:
-        print("upload_file {}".format(data['filename']))
-    if 'current_folder' in session:
-        path = os.path.abspath(os.path.join(session['current_folder'], data['filename']).replace("\\", "/")).replace("\\", "/")
-        if koboldai_vars.debug:
-            print("Want to save to {}".format(path))
-        if 'popup_jailed_dir' not in session:
-            print("Someone is trying to upload a file to your server. Blocked.")
-        elif session['popup_jailed_dir'] is None:
-            if os.path.exists(path):
-                emit("error_popup", "The file already exists. Please delete it or rename the file before uploading", broadcast=False, room="UI_2");
-            else:
-                with open(path, "wb") as f:
-                    f.write(data['data'])
-                get_files_folders(session['current_folder'])
-        elif session['popup_jailed_dir'] in session['current_folder']:
-            if os.path.exists(path):
-                emit("error_popup", "The file already exists. Please delete it or rename the file before uploading", broadcast=False,  room="UI_2");
-            else:
-                with open(path, "wb") as f:
-                    f.write(data['data'])
-                get_files_folders(session['current_folder'])
+    logger.debug("upload_file {}".format(data['filename']))
+    if data['upload_no_save']:
+        json_data = json.loads(data['data'].decode("utf-8"))
+        loadJSON(json_data)
+    else:
+        if 'current_folder' in session:
+            path = os.path.abspath(os.path.join(session['current_folder'], data['filename']).replace("\\", "/")).replace("\\", "/")
+            if koboldai_vars.debug:
+                print("Want to save to {}".format(path))
+            if 'popup_jailed_dir' not in session:
+                print("Someone is trying to upload a file to your server. Blocked.")
+            elif session['popup_jailed_dir'] is None:
+                if os.path.exists(path):
+                    emit("error_popup", "The file already exists. Please delete it or rename the file before uploading", broadcast=False, room="UI_2");
+                else:
+                    with open(path, "wb") as f:
+                        f.write(data['data'])
+                    get_files_folders(session['current_folder'])
+            elif session['popup_jailed_dir'] in session['current_folder']:
+                if os.path.exists(path):
+                    emit("error_popup", "The file already exists. Please delete it or rename the file before uploading", broadcast=False,  room="UI_2");
+                else:
+                    with open(path, "wb") as f:
+                        f.write(data['data'])
+                    get_files_folders(session['current_folder'])
 
 @socketio.on('popup_change_folder')
 @logger.catch
