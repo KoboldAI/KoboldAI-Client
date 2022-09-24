@@ -4875,7 +4875,7 @@ def core_generate(text: list, min: int, max: int, found_entries: set):
 
             result = raw_generate(
                 gen_in[0], 
-                max_length=koboldai_vars.genamt,
+                max_new=koboldai_vars.genamt,
                 do_streaming=True,
                 do_dynamic_wi=True,
                 batch_count=numseqs,
@@ -4975,16 +4975,48 @@ class GenerationResult:
 
         self.decoded = [utils.decodenewlines(tokenizer.decode(enc)) for enc in self.encoded]
 
+class GenerationSettings:
+    def __init__(self, **overrides) -> None:
+        for setting in [
+            "temp",
+            "top_p",
+            "top_k",
+            "tfs",
+            "typical",
+            "top_a",
+            "rep_pen",
+            "rep_pen_slope",
+            "rep_pen_range",
+            "sampler_order",
+        ]:
+            setattr(
+                self,
+                setting,
+                overrides.get(setting, getattr(koboldai_vars, setting))
+            )
+
+
 def raw_generate(
     # prompt is either a string (text) or a list (token ids)
     prompt: Union[str, list, np.ndarray],
-    max_length: int,
+    max_new: int,
 
     do_streaming: bool = False,
     do_dynamic_wi: bool = False,
     batch_count: int = 1,
     bypass_hf_maxlength: bool = False,
+    generation_settings: Optional[dict] = None
 ) -> GenerationResult:
+
+    gen_settings = GenerationSettings(*(generation_settings or {}))
+
+    model_functions = {
+        "GooseAI": oai_raw_generate,
+        "OAI": oai_raw_generate,
+        "CLUSTER": cluster_raw_generate,
+        "Colab": colab_raw_generate,
+        "API": api_raw_generate,
+    }
 
     if isinstance(prompt, torch.Tensor):
         prompt_tokens = prompt.cpu().numpy()
@@ -4998,31 +5030,25 @@ def raw_generate(
     assert isinstance(prompt_tokens, np.ndarray)
     assert len(prompt_tokens.shape) == 1
 
-    
-    if koboldai_vars.model == "Colab":
-        raise NotImplementedError("Colab API raw_generate unsupported")
-    elif koboldai_vars.model == "API":
-        raise NotImplementedError("API raw_generate unsupported")
-    elif koboldai_vars.model == "CLUSTER":
-        raise NotImplementedError("Cluster raw_generate unsupported")
-    elif koboldai_vars.model == "ReadOnly":
+    if koboldai_vars.model == "ReadOnly":
         raise NotImplementedError("No loaded model")
 
     if koboldai_vars.use_colab_tpu or koboldai_vars.model in ("TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX"):
         batch_encoded = tpu_raw_generate(
             prompt_tokens=prompt_tokens,
-            max_length=max_length,
-            batch_count=batch_count
+            max_new=max_new,
+            batch_count=batch_count,
+            gen_settings=gen_settings
         )
         return GenerationResult(
             out_batches=batch_encoded, prompt=prompt_tokens, is_whole_generation=True
         )
-    elif koboldai_vars.model in ["GooseAI", "OAI"]:
-        print("kiss")
-        batch_encoded = oai_raw_generate(
+    elif koboldai_vars.model in model_functions:
+        model_functions[koboldai_vars.model](
             prompt_tokens=prompt_tokens,
-            max_length=max_length,
-            batch_count=batch_count
+            max_new=max_new,
+            batch_count=batch_count,
+            gen_settings=gen_settings
         )
         return GenerationResult(
             out_batches=batch_encoded, prompt=prompt_tokens, is_whole_generation=True
@@ -5031,10 +5057,11 @@ def raw_generate(
     # Torch HF
     batch_encoded = torch_raw_generate(
         prompt_tokens=prompt_tokens,
-        max_new=max_length if not bypass_hf_maxlength else int(2e9),
+        max_new=max_new if not bypass_hf_maxlength else int(2e9),
         do_streaming=do_streaming,
         do_dynamic_wi=do_dynamic_wi,
         batch_count=batch_count,
+        gen_settings=gen_settings
     )
     return GenerationResult(
         out_batches=batch_encoded,
@@ -5045,8 +5072,9 @@ def raw_generate(
 
 def tpu_raw_generate(
     prompt_tokens: List[int],
-    max_length: int,
+    max_new: int,
     batch_count: int,
+    gen_settings: GenerationSettings
 ):
 
     # Mostly lifted from apiactionsubmit_tpumtjgenerate
@@ -5055,20 +5083,20 @@ def tpu_raw_generate(
     genout = tpool.execute(
         tpu_mtj_backend.infer_static,
         np.uint32(prompt_tokens),
-        gen_len = max_length,
-        temp=koboldai_vars.temp,
-        top_p=koboldai_vars.top_p,
-        top_k=koboldai_vars.top_k,
-        tfs=koboldai_vars.tfs,
-        typical=koboldai_vars.typical,
-        top_a=koboldai_vars.top_a,
+        gen_len = max_new,
+        temp=gen_settings.temp,
+        top_p=gen_settings.top_p,
+        top_k=gen_settings.top_k,
+        tfs=gen_settings.tfs,
+        typical=gen_settings.typical,
+        top_a=gen_settings.top_a,
         numseqs=batch_count,
-        repetition_penalty=koboldai_vars.rep_pen,
-        rpslope=koboldai_vars.rep_pen_slope,
-        rprange=koboldai_vars.rep_pen_range,
+        repetition_penalty=gen_settings.rep_pen,
+        rpslope=gen_settings.rep_pen_slope,
+        rprange=gen_settings.rep_pen_range,
         soft_embeddings=koboldai_vars.sp,
         soft_tokens=soft_tokens,
-        sampler_order=koboldai_vars.sampler_order,
+        sampler_order=gen_settings.sampler_order,
     )
 
     genout = np.array(genout)
@@ -5078,10 +5106,11 @@ def tpu_raw_generate(
 def torch_raw_generate(
     prompt_tokens: Union[List[int], torch.Tensor],
     max_new: int,
+    gen_settings: GenerationSettings,
 
     do_streaming: bool = False,
     do_dynamic_wi: bool = False,
-    batch_count: int = 1
+    batch_count: int = 1,
 ):
 
     koboldai_vars.inference_config.do_streaming = do_streaming
@@ -5120,8 +5149,9 @@ def torch_raw_generate(
 
 def oai_raw_generate(
     prompt_tokens: List[int],
-    max_length: int,
+    max_new: int,
     batch_count: int,
+    gen_settings: GenerationSettings,
 ):
     # Taken mainly from oairequest()
 
@@ -5140,27 +5170,27 @@ def oai_raw_generate(
     if 'GooseAI' in koboldai_vars.configname:
         reqdata = {
             'prompt': decoded_prompt,
-            'max_tokens': koboldai_vars.genamt,
-            'temperature': koboldai_vars.temp,
-            'top_a': koboldai_vars.top_a,
-            'top_p': koboldai_vars.top_p,
-            'top_k': koboldai_vars.top_k,
-            'tfs': koboldai_vars.tfs,
-            'typical_p': koboldai_vars.typical,
-            'repetition_penalty': koboldai_vars.rep_pen,
-            'repetition_penalty_slope': koboldai_vars.rep_pen_slope,
-            'repetition_penalty_range': koboldai_vars.rep_pen_range,
-            'n': koboldai_vars.numseqs,
+            'max_tokens': max_new,
+            'temperature': gen_settings.temp,
+            'top_a': gen_settings.top_a,
+            'top_p': gen_settings.top_p,
+            'top_k': gen_settings.top_k,
+            'tfs': gen_settings.tfs,
+            'typical_p': gen_settings.typical,
+            'repetition_penalty': gen_settings.rep_pen,
+            'repetition_penalty_slope': gen_settings.rep_pen_slope,
+            'repetition_penalty_range': gen_settings.rep_pen_range,
+            'n': batch_count,
             # TODO: Implement streaming
             'stream': False
         }
     else:
         reqdata = {
             'prompt': decoded_prompt,
-            'max_tokens': koboldai_vars.genamt,
-            'temperature': koboldai_vars.temp,
-            'top_p': koboldai_vars.top_p,
-            'n': koboldai_vars.numseqs,
+            'max_tokens': max_new,
+            'temperature': gen_settings.temp,
+            'top_p': gen_settings.top_p,
+            'n': batch_count,
             'stream': False
         }
     
@@ -5197,6 +5227,173 @@ def oai_raw_generate(
         }, broadcast=True, room="UI_1")
         set_aibusy(0)
         return []
+
+class HordeException(Exception):
+    pass
+
+def cluster_raw_generate(
+    prompt_tokens: List[int],
+    max_new: int,
+    batch_count: int,
+    gen_settings: GenerationSettings,
+):
+    decoded_prompt = utils.decodenewlines(tokenizer.decode(prompt_tokens))
+
+    # Store context in memory to use it for comparison with generated content
+    koboldai_vars.lastctx = decoded_prompt
+
+    # Build request JSON data
+    reqdata = {
+        'max_length': max_new,
+        'max_context_length': koboldai_vars.max_length,
+        'rep_pen': gen_settings.rep_pen,
+        'rep_pen_slope': gen_settings.rep_pen_slope,
+        'rep_pen_range': gen_settings.rep_pen_range,
+        'temperature': gen_settings.temp,
+        'top_p': gen_settings.top_p,
+        'top_k': gen_settings.top_k,
+        'top_a': gen_settings.top_a,
+        'tfs': gen_settings.tfs,
+        'typical': gen_settings.typical,
+        'n': batch_count,
+    }
+
+    cluster_metadata = {
+        'prompt': decoded_prompt,
+        'params': reqdata,
+        'api_key': koboldai_vars.apikey,
+        'models': koboldai_vars.cluster_requested_models,
+    }
+
+    try:
+        # Create request
+        req = requests.post(
+            koboldai_vars.colaburl[:-8] + "/api/v1/generate/sync",
+            json=cluster_metadata,
+        )
+        js = req.json()
+    except requests.exceptions.ConnectionError:
+        errmsg = f"Horde unavailable. Please try again later"
+        print("{0}{1}{2}".format(colors.RED, errmsg, colors.END))
+        raise HordeException(errmsg)
+    except requests.exceptions.JSONDecodeError:
+        errmsg = f"Unexpected message received from the Horde: '{req.text}'"
+        print("{0}{1}{2}".format(colors.RED, errmsg, colors.END))
+        raise HordeException(errmsg)
+    if(req.status_code == 503):
+        errmsg = f"KoboldAI API Error: No available KoboldAI servers found in Horde to fulfil this request using the selected models or other properties."
+        print("{0}{1}{2}".format(colors.RED, json.dumps(js, indent=2), colors.END))
+        raise HordeException(errmsg)
+    if(req.status_code != 200):
+        errmsg = f"KoboldAI API Error: Failed to get a standard reply from the Horde. Please check the console."
+        print("{0}{1}{2}".format(colors.RED, json.dumps(js, indent=2), colors.END))
+        raise HordeException(errmsg)
+    gen_servers = [(cgen['server_name'],cgen['server_id']) for cgen in js]
+    print(f"{colors.GREEN}Generations by: {gen_servers}{colors.END}")
+
+    # TODO: Fix this. Request context issues!!
+    # Just in case we want to announce it to the user
+    # if len(js) == 1:        
+    #     warnmsg = f"Text generated by {js[0]['server_name']}"
+    #     emit('from_server', {'cmd': 'warnmsg', 'data': warnmsg}, broadcast=True)
+    return np.array([tokenizer.encode(cgen["text"]) for cgen in js])
+
+def colab_raw_generate(
+    prompt_tokens: List[int],
+    max_new: int,
+    batch_count: int,
+    gen_settings: GenerationSettings,
+):
+    decoded_prompt = utils.decodenewlines(tokenizer.decode(prompt_tokens))
+
+    # Store context in memory to use it for comparison with generated content
+    koboldai_vars.lastctx = decoded_prompt
+    
+    # Build request JSON data
+    reqdata = {
+        'text': decoded_prompt,
+        'min': 0,
+        'max': max_new,
+        'rep_pen': gen_settings.rep_pen,
+        'rep_pen_slope': gen_settings.rep_pen_slope,
+        'rep_pen_range': gen_settings.rep_pen_range,
+        'temperature': gen_settings.temp,
+        'top_p': gen_settings.top_p,
+        'top_k': gen_settings.top_k,
+        'tfs': gen_settings.tfs,
+        'typical': gen_settings.typical,
+        'topa': gen_settings.top_a,
+        'numseqs': batch_count,
+        'retfultxt': False
+    }
+    
+    # Create request
+    req = requests.post(
+        koboldai_vars.colaburl, 
+        json = reqdata
+    )
+    
+    # Deal with the response
+    if(req.status_code == 200):
+        js = req.json()["data"]
+        
+        # Try to be backwards compatible with outdated colab
+        if("text" in js):
+            genout = [getnewcontent(js["text"])]
+        else:
+            genout = js["seqs"]
+        
+        return np.array([tokenizer.encode(x) for x in genout])
+
+def api_raw_generate(
+    prompt_tokens: List[int],
+    max_new: int,
+    batch_count: int,
+    gen_settings: GenerationSettings,
+):
+    decoded_prompt = utils.decodenewlines(tokenizer.decode(prompt_tokens))
+
+    # Store context in memory to use it for comparison with generated content
+    koboldai_vars.lastctx = decoded_prompt
+    
+    # Build request JSON data
+    reqdata = {
+        'prompt': decoded_prompt,
+        'max_length': max_new,
+        'max_context_length': gen_settings.max_length,
+        'rep_pen': gen_settings.rep_pen,
+        'rep_pen_slope': gen_settings.rep_pen_slope,
+        'rep_pen_range': gen_settings.rep_pen_range,
+        'temperature': gen_settings.temp,
+        'top_p': gen_settings.top_p,
+        'top_k': gen_settings.top_k,
+        'top_a': gen_settings.top_a,
+        'tfs': gen_settings.tfs,
+        'typical': gen_settings.typical,
+        'n': batch_count,
+    }
+    
+    # Create request
+    while True:
+        req = requests.post(
+            koboldai_vars.colaburl[:-8] + "/api/v1/generate",
+            json=reqdata,
+        )
+        if(req.status_code == 503):  # Server is currently generating something else so poll until it's our turn
+            time.sleep(1)
+            continue
+        js = req.json()
+        if(req.status_code != 200):
+            errmsg = "KoboldAI API Error: Failed to get a reply from the server. Please check the console."
+            print("{0}{1}{2}".format(colors.RED, json.dumps(js, indent=2), colors.END))
+            emit('from_server', {'cmd': 'errmsg', 'data': errmsg}, broadcast=True)
+            emit("error", errmsg, broadcast=True, room="UI_2")
+            set_aibusy(0)
+            return
+
+        genout = [obj["text"] for obj in js["results"]]
+        return np.array([tokenizer.encode(x) for x in genout])
+
 
 #==================================================================#
 # Send text to generator and deal with output
@@ -5350,271 +5547,6 @@ def pinsequence(n):
         text = koboldai_vars.genseqs[int(n)]['generated_text']
     send_debug()
 
-
-#==================================================================#
-#  Send transformers-style request to ngrok/colab host
-#==================================================================#
-def sendtocolab(txt, min, max):
-    # Log request to console
-    if not koboldai_vars.quiet:
-        print("{0}Tokens:{1}, Txt:{2}{3}".format(colors.YELLOW, min-1, txt, colors.END))
-    
-    # Store context in memory to use it for comparison with generated content
-    koboldai_vars.lastctx = txt
-    
-    # Build request JSON data
-    reqdata = {
-        'text': txt,
-        'min': min,
-        'max': max,
-        'rep_pen': koboldai_vars.rep_pen,
-        'rep_pen_slope': koboldai_vars.rep_pen_slope,
-        'rep_pen_range': koboldai_vars.rep_pen_range,
-        'temperature': koboldai_vars.temp,
-        'top_p': koboldai_vars.top_p,
-        'top_k': koboldai_vars.top_k,
-        'tfs': koboldai_vars.tfs,
-        'typical': koboldai_vars.typical,
-        'topa': koboldai_vars.top_a,
-        'numseqs': koboldai_vars.numseqs,
-        'retfultxt': False
-    }
-    
-    # Create request
-    req = requests.post(
-        koboldai_vars.colaburl, 
-        json = reqdata
-        )
-    
-    # Deal with the response
-    if(req.status_code == 200):
-        js = req.json()["data"]
-        
-        # Try to be backwards compatible with outdated colab
-        if("text" in js):
-            genout = [getnewcontent(js["text"])]
-        else:
-            genout = js["seqs"]
-        
-        for i in range(koboldai_vars.numseqs):
-            koboldai_vars.lua_koboldbridge.outputs[i+1] = genout[i]
-
-        execute_outmod()
-        if(koboldai_vars.lua_koboldbridge.regeneration_required):
-            koboldai_vars.lua_koboldbridge.regeneration_required = False
-            genout = []
-            for i in range(koboldai_vars.numseqs):
-                genout.append(koboldai_vars.lua_koboldbridge.outputs[i+1])
-                assert type(genout[-1]) is str
-
-        koboldai_vars.actions.clear_unused_options()
-        koboldai_vars.actions.append_options([applyoutputformatting(x["generated_text"]) for x in genout])
-        genout = [{"generated_text": x['text']} for x in koboldai_vars.actions.get_current_options()]
-        if(len(genout) == 1):
-            
-            genresult(genout[0])
-        else:
-            # Convert torch output format to transformers
-            seqs = []
-            for seq in genout:
-                seqs.append({"generated_text": seq})
-            if(koboldai_vars.lua_koboldbridge.restart_sequence is not None and koboldai_vars.lua_koboldbridge.restart_sequence > 0):
-                genresult(genout[koboldai_vars.lua_koboldbridge.restart_sequence-1]["generated_text"])
-            else:
-                genselect(genout)
-        
-        # Format output before continuing
-        #genout = applyoutputformatting(getnewcontent(genout))
-        
-        # Add formatted text to Actions array and refresh the game screen
-        #koboldai_vars.actions.append(genout)
-        #refresh_story()
-        #emit('from_server', {'cmd': 'texteffect', 'data': koboldai_vars.actions.get_last_key() + 1 if len(koboldai_vars.actions) else 0})
-        
-        set_aibusy(0)
-    else:
-        errmsg = "Colab API Error: Failed to get a reply from the server. Please check the colab console."
-        print("{0}{1}{2}".format(colors.RED, errmsg, colors.END))
-        emit('from_server', {'cmd': 'errmsg', 'data': errmsg}, broadcast=True, room="UI_1")
-        set_aibusy(0)
-
-
-#==================================================================#
-#  Send transformers-style request to KoboldAI API
-#==================================================================#
-def sendtoapi(txt, min, max):
-    # Log request to console
-    if not koboldai_vars.quiet:
-        print("{0}Tokens:{1}, Txt:{2}{3}".format(colors.YELLOW, min-1, txt, colors.END))
-    
-    # Store context in memory to use it for comparison with generated content
-    koboldai_vars.lastctx = txt
-    
-    # Build request JSON data
-    reqdata = {
-        'prompt': txt,
-        'max_length': max - min + 1,
-        'max_context_length': koboldai_vars.max_length,
-        'rep_pen': koboldai_vars.rep_pen,
-        'rep_pen_slope': koboldai_vars.rep_pen_slope,
-        'rep_pen_range': koboldai_vars.rep_pen_range,
-        'temperature': koboldai_vars.temp,
-        'top_p': koboldai_vars.top_p,
-        'top_k': koboldai_vars.top_k,
-        'top_a': koboldai_vars.top_a,
-        'tfs': koboldai_vars.tfs,
-        'typical': koboldai_vars.typical,
-        'n': koboldai_vars.numseqs,
-    }
-    
-    # Create request
-    while True:
-        req = requests.post(
-            koboldai_vars.colaburl[:-8] + "/api/v1/generate",
-            json=reqdata,
-        )
-        if(req.status_code == 503):  # Server is currently generating something else so poll until it's our turn
-            time.sleep(1)
-            continue
-        js = req.json()
-        if(req.status_code != 200):
-            errmsg = "KoboldAI API Error: Failed to get a reply from the server. Please check the console."
-            print("{0}{1}{2}".format(colors.RED, json.dumps(js, indent=2), colors.END))
-            emit('from_server', {'cmd': 'errmsg', 'data': errmsg}, broadcast=True)
-            emit("error", errmsg, broadcast=True, room="UI_2")
-            set_aibusy(0)
-            return
-
-        genout = [obj["text"] for obj in js["results"]]
-
-        for i in range(koboldai_vars.numseqs):
-            koboldai_vars.lua_koboldbridge.outputs[i+1] = genout[i]
-
-        execute_outmod()
-        if(koboldai_vars.lua_koboldbridge.regeneration_required):
-            koboldai_vars.lua_koboldbridge.regeneration_required = False
-            genout = []
-            for i in range(koboldai_vars.numseqs):
-                genout.append(koboldai_vars.lua_koboldbridge.outputs[i+1])
-                assert type(genout[-1]) is str
-
-        if(len(genout) == 1):
-            genresult(genout[0])
-        else:
-            adjusted_genout = []
-            for item in genout:
-                adjusted_genout.append({"generated_text": item})
-            # Convert torch output format to transformers
-            seqs = []
-            for seq in adjusted_genout:
-                seqs.append({"generated_text": seq})
-            if(koboldai_vars.lua_koboldbridge.restart_sequence is not None and koboldai_vars.lua_koboldbridge.restart_sequence > 0):
-                genresult(adjusted_genout[koboldai_vars.lua_koboldbridge.restart_sequence-1]["generated_text"])
-            else:
-                genselect(adjusted_genout)
-
-        set_aibusy(0)
-        return
-
-#==================================================================#
-#  Send transformers-style request to KoboldAI Cluster
-#==================================================================#
-def sendtocluster(txt, min, max):
-    # Log request to console
-    if not koboldai_vars.quiet:
-        print("{0}Tokens:{1}, Txt:{2}{3}".format(colors.YELLOW, min-1, txt, colors.END))
-
-    # Store context in memory to use it for comparison with generated content
-    koboldai_vars.lastctx = txt
-
-    # Build request JSON data
-    reqdata = {
-        'max_length': max - min + 1,
-        'max_context_length': koboldai_vars.max_length,
-        'rep_pen': koboldai_vars.rep_pen,
-        'rep_pen_slope': koboldai_vars.rep_pen_slope,
-        'rep_pen_range': koboldai_vars.rep_pen_range,
-        'temperature': koboldai_vars.temp,
-        'top_p': koboldai_vars.top_p,
-        'top_k': koboldai_vars.top_k,
-        'top_a': koboldai_vars.top_a,
-        'tfs': koboldai_vars.tfs,
-        'typical': koboldai_vars.typical,
-        'n': koboldai_vars.numseqs,
-    }
-    cluster_metadata = {
-        'prompt': txt,
-        'params': reqdata,
-        'api_key': koboldai_vars.apikey,
-        'models': koboldai_vars.cluster_requested_models,
-    }
-    try:
-        # Create request
-        req = requests.post(
-            koboldai_vars.colaburl[:-8] + "/api/v1/generate/sync",
-            json=cluster_metadata,
-        )
-        js = req.json()
-    except requests.exceptions.ConnectionError:
-        errmsg = f"Horde unavailable. Please try again later"
-        print("{0}{1}{2}".format(colors.RED, errmsg, colors.END))
-        emit('from_server', {'cmd': 'errmsg', 'data': errmsg}, broadcast=True)
-        set_aibusy(0)
-        return
-    except requests.exceptions.JSONDecodeError:
-        errmsg = f"Unexpected message received from the Horde: '{req.text}'"
-        print("{0}{1}{2}".format(colors.RED, errmsg, colors.END))
-        emit('from_server', {'cmd': 'errmsg', 'data': errmsg}, broadcast=True)
-        set_aibusy(0)
-        return
-    if(req.status_code == 503):
-        errmsg = f"KoboldAI API Error: No available KoboldAI servers found in Horde to fulfil this request using the selected models or other properties."
-        print("{0}{1}{2}".format(colors.RED, json.dumps(js, indent=2), colors.END))
-        emit('from_server', {'cmd': 'errmsg', 'data': errmsg}, broadcast=True)
-        set_aibusy(0)
-        return
-    if(req.status_code != 200):
-        errmsg = f"KoboldAI API Error: Failed to get a standard reply from the Horde. Please check the console."
-        print("{0}{1}{2}".format(colors.RED, json.dumps(js, indent=2), colors.END))
-        emit('from_server', {'cmd': 'errmsg', 'data': errmsg}, broadcast=True)
-        set_aibusy(0)
-        return
-    gen_servers = [(cgen['server_name'],cgen['server_id']) for cgen in js]
-    print(f"{colors.GREEN}Generations by: {gen_servers}{colors.END}")
-    # Just in case we want to announce it to the user
-    if len(js) == 1:        
-        warnmsg = f"Text generated by {js[0]['server_name']}"
-        emit('from_server', {'cmd': 'warnmsg', 'data': warnmsg}, broadcast=True)
-    genout = [cgen['text'] for cgen in js]
-
-    for i in range(koboldai_vars.numseqs):
-        koboldai_vars.lua_koboldbridge.outputs[i+1] = genout[i]
-
-    execute_outmod()
-    if(koboldai_vars.lua_koboldbridge.regeneration_required):
-        koboldai_vars.lua_koboldbridge.regeneration_required = False
-        genout = []
-        for i in range(koboldai_vars.numseqs):
-            genout.append(koboldai_vars.lua_koboldbridge.outputs[i+1])
-            assert type(genout[-1]) is str
-
-    if(len(genout) == 1):
-        genresult(genout[0])
-    else:
-        adjusted_genout = []
-        for item in genout:
-            adjusted_genout.append({"generated_text": item})
-        # Convert torch output format to transformers
-        seqs = []
-        for seq in adjusted_genout:
-            seqs.append({"generated_text": seq})
-        if(koboldai_vars.lua_koboldbridge.restart_sequence is not None and koboldai_vars.lua_koboldbridge.restart_sequence > 0):
-            genresult(adjusted_genout[koboldai_vars.lua_koboldbridge.restart_sequence-1]["generated_text"])
-        else:
-            genselect(adjusted_genout)
-
-    set_aibusy(0)
-    return
 
 #==================================================================#
 #  Send text to TPU mesh transformer backend
@@ -8242,7 +8174,7 @@ def UI_2_generate_raw():
         return Response(json.dumps({"error": "No model"}), status=500)
 
     try:
-        out = raw_generate(prompt, max_length=80)
+        out = raw_generate(prompt, max_new=80)
     except NotImplementedError as e:
         return Response(json.dumps({"error": str(e)}), status=500)
 
