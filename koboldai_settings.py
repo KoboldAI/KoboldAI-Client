@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 import os, re, time, threading, json, pickle, base64, copy, tqdm, datetime, sys
 from io import BytesIO
 from flask import has_request_context, session
@@ -362,9 +363,19 @@ class koboldai_vars(object):
             tokens = self.tokenizer.encode(text)
         
         self.context = context
+
         if return_text:
             return text
         return tokens, used_tokens, used_tokens+self.genamt, used_world_info
+
+    def is_model_torch(self) -> bool:
+        if self.use_colab_tpu:
+            return False
+
+        if self.model in ["Colab", "API", "CLUSTER", "ReadOnly", "OAI"]:
+            return False
+
+        return True
     
     def __setattr__(self, name, value):
         if name[0] == "_" or name == "tokenizer":
@@ -520,8 +531,7 @@ class model_settings(settings):
         self.horde_wait_time = 0
         self.horde_queue_position = 0
         self.horde_queue_size = 0
-        
-        
+
         
     #dummy class to eat the tqdm output
     class ignore_tqdm(object):
@@ -819,8 +829,8 @@ class user_settings(settings):
             process_variable_changes(self.socketio, self.__class__.__name__.replace("_settings", ""), name, value, old_value)
         
 class system_settings(settings):
-    local_only_variables = ['socketio', 'lua_state', 'lua_logname', 'lua_koboldbridge', 'lua_kobold', 'lua_koboldcore', 'regex_sl', 'acregex_ai', 'acregex_ui', 'comregex_ai', 'comregex_ui', 'sp', '_horde_pid', 'image_pipeline', 'summarizer', 'summary_tokenizer']
-    no_save_variables = ['socketio', 'lua_state', 'lua_logname', 'lua_koboldbridge', 'lua_kobold', 'lua_koboldcore', 'sp', '_horde_pid', 'horde_share', 'aibusy', 'serverstarted', 'image_pipeline', 'summarizer', 'summary_tokenizer']
+    local_only_variables = ['socketio', 'lua_state', 'lua_logname', 'lua_koboldbridge', 'lua_kobold', 'lua_koboldcore', 'regex_sl', 'acregex_ai', 'acregex_ui', 'comregex_ai', 'comregex_ui', 'sp', '_horde_pid', 'inference_config', 'image_pipeline', 'summarizer', 'summary_tokenizer']
+    no_save_variables = ['socketio', 'lua_state', 'lua_logname', 'lua_koboldbridge', 'lua_kobold', 'lua_koboldcore', 'sp', '_horde_pid', 'horde_share', 'aibusy', 'serverstarted', 'inference_config', 'image_pipeline', 'summarizer', 'summary_tokenizer']
     settings_name = "system"
     def __init__(self, socketio, koboldai_var):
         self.socketio = socketio
@@ -903,6 +913,15 @@ class system_settings(settings):
         self.summary_tokenizer = None
         self.keep_img_gen_in_memory = False
         self.cookies = {} #cookies for colab since colab's URL changes, cookies are lost
+        
+        @dataclass
+        class _inference_config:
+            do_streaming: bool = False
+            do_dynamic_wi: bool = False
+            # Genamt stopping is mostly tied to Dynamic WI
+            stop_at_genamt: bool = False
+        self.inference_config = _inference_config()
+        
         self._koboldai_var = koboldai_var
         
         
