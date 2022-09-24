@@ -43,6 +43,7 @@ import inspect
 import warnings
 import multiprocessing
 import copy
+import numpy as np
 from collections.abc import Iterable
 from collections import OrderedDict
 from typing import Any, Callable, TypeVar, Tuple, Union, Dict, Set, List, Optional, Type
@@ -1141,10 +1142,6 @@ def spRequest(filename):
             koboldai_vars.sp_changed = True
         return
 
-    global np
-    if 'np' not in globals():
-        import numpy as np
-
     z, version, shape, fortran_order, dtype = fileops.checksp("./softprompts/"+filename, koboldai_vars.modeldim)
     if not isinstance(z, zipfile.ZipFile):
         raise RuntimeError(f"{repr(filename)} is not a valid soft prompt file")
@@ -1342,9 +1339,6 @@ def general_startup(override_args=None):
 def tpumtjgetsofttokens():
     soft_tokens = None
     if(koboldai_vars.sp is None):
-        global np
-        if 'np' not in globals():
-            import numpy as np
         tensor = np.zeros((1, tpu_mtj_backend.params.get("d_embed", tpu_mtj_backend.params["d_model"])), dtype=np.float32)
         rows = tensor.shape[0]
         padding_amount = tpu_mtj_backend.params["seq"] - (tpu_mtj_backend.params["seq"] % -tpu_mtj_backend.params["cores_per_replica"]) - rows
@@ -1406,14 +1400,19 @@ def get_model_info(model, directory=""):
         if path.exists("settings/{}.v2_settings".format(model)):
             with open("settings/{}.v2_settings".format(model), "r") as file:
                 # Check if API key exists
-                js = json.load(file)
-                if("apikey" in js and js["apikey"] != ""):
-                    # API key exists, grab it and close the file
-                    key_value = js["apikey"]
-                elif 'oaiapikey' in js and js['oaiapikey'] != "":
-                    key_value = js["oaiapikey"]
-                if model in ('GooseAI', 'OAI'): 
-                    get_oai_models({'model': model, 'key': key_value})
+                try:
+                    js = json.load(file)
+
+                    if("apikey" in js and js["apikey"] != ""):
+                        # API key exists, grab it and close the file
+                        key_value = js["apikey"]
+                    elif 'oaiapikey' in js and js['oaiapikey'] != "":
+                        key_value = js["oaiapikey"]
+                    if model in ('GooseAI', 'OAI'): 
+                        get_oai_models({'model': model, 'key': key_value})
+                except json.decoder.JSONDecodeError:
+                    print(":(")
+                    pass
         key = True
     elif model == 'ReadOnly':
         pass
@@ -1500,7 +1499,8 @@ def get_oai_models(data):
             }
         )
     if(req.status_code == 200):
-        engines = req.json()["data"]
+        r = req.json()
+        engines = r["data"]
         try:
             engines = [[en["id"], "{} ({})".format(en['id'], "Ready" if en["ready"] == True else "Not Ready")] for en in engines]
         except:
@@ -1524,7 +1524,9 @@ def get_oai_models(data):
                     if js['apikey'] != key:
                         changed=True
         else:
+            js = {}
             changed=True
+
         if changed:
             with open("settings/{}.v2_settings".format(model), "w") as file:
                 js["apikey"] = key
@@ -4877,7 +4879,7 @@ def core_generate(text: list, min: int, max: int, found_entries: set):
             # stopping and continuing is this loop.
 
             result = raw_generate(
-                gen_in, 
+                gen_in[0], 
                 max_length=koboldai_vars.genamt,
                 do_streaming=True,
                 do_dynamic_wi=True,
@@ -4890,7 +4892,7 @@ def core_generate(text: list, min: int, max: int, found_entries: set):
 
             genout = result.encoded
 
-            already_generated += len(genout[0]) - len(gen_in[0])
+            already_generated += len(genout[0]) # - len(gen_in[0])
             assert already_generated <= koboldai_vars.genamt
 
             if result.is_whole_generation:
@@ -4951,12 +4953,13 @@ def core_generate(text: list, min: int, max: int, found_entries: set):
                 )
                 genout = torch.cat((soft_tokens.tile(koboldai_vars.numseqs, 1), genout), dim=-1)
             assert genout.shape[-1] + koboldai_vars.genamt - already_generated <= koboldai_vars.max_length
-            diff = genout.shape[-1] - gen_in.shape[-1]
-            minimum += diff
-            maximum += diff
+            # diff = genout.shape[-1] - gen_in.shape[-1]
+            # minimum += diff
+            # maximum += diff
             gen_in = genout
             numseqs = 1
     
+    __debug("final out", genout, "already_gen", already_generated)
     return genout, already_generated
 
 class GenerationResult:
@@ -4988,7 +4991,7 @@ class GenerationResult:
 
 def raw_generate(
     # prompt is either a string (text) or a list (token ids)
-    prompt: Union[str, list],
+    prompt: Union[str, list, np.ndarray],
     max_length: int,
 
     do_streaming: bool = False,
@@ -4997,7 +5000,18 @@ def raw_generate(
     bypass_hf_maxlength: bool = False,
 ) -> GenerationResult:
 
-    prompt_tokens = tokenizer.encode(prompt) if isinstance(prompt, str) else prompt
+    if isinstance(prompt, torch.Tensor):
+        prompt_tokens = prompt.cpu().numpy()
+    elif isinstance(prompt, list):
+        prompt_tokens = np.array(prompt)
+    elif isinstance(prompt, str):
+        prompt_tokens = tokenizer.encode(prompt)
+    else:
+        raise ValueError(f"Prompt is {type(prompt)}. Not a fan!")
+
+    assert isinstance(prompt_tokens, np.ndarray)
+    assert len(prompt_tokens.shape) == 1
+
     
     if koboldai_vars.model == "Colab":
         raise NotImplementedError("Colab API raw_generate unsupported")
@@ -5008,7 +5022,7 @@ def raw_generate(
     elif koboldai_vars.model == "ReadOnly":
         raise NotImplementedError("No loaded model")
 
-    if koboldai_vars.use_colab_tpu or model in ("TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX"):
+    if koboldai_vars.use_colab_tpu or koboldai_vars.model in ("TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX"):
         batch_encoded = tpu_raw_generate(
             prompt_tokens=prompt_tokens,
             max_length=max_length,
@@ -5017,7 +5031,8 @@ def raw_generate(
         return GenerationResult(
             out_batches=batch_encoded, prompt=prompt_tokens, is_whole_generation=True
         )
-    elif model == "OAI":
+    elif koboldai_vars.model in ["GooseAI", "OAI"]:
+        print("kiss")
         batch_encoded = oai_raw_generate(
             prompt_tokens=prompt_tokens,
             max_length=max_length,
@@ -5026,6 +5041,8 @@ def raw_generate(
         return GenerationResult(
             out_batches=batch_encoded, prompt=prompt_tokens, is_whole_generation=True
         )
+    
+    print("model", model)
 
     # Torch HF
     batch_encoded = torch_raw_generate(
@@ -5048,7 +5065,6 @@ def tpu_raw_generate(
     batch_count: int,
 ):
 
-    prompt_tokens = prompt_tokens[0]
     # Mostly lifted from apiactionsubmit_tpumtjgenerate
     soft_tokens = tpumtjgetsofttokens()
     __debug("we are generating with", prompt_tokens, "batch", batch_count, "soft tokens", soft_tokens)
@@ -5174,26 +5190,28 @@ def oai_raw_generate(
             }
         )
     
+    j = req.json()
     # Deal with the response
-    if(req.status_code == 200):
-        outputs = [out["text"] for out in req.json()["choices"]]
-
-        decoded_genout = [{"generated_text": utils.decodenewlines(txt)}
-            for txt in outputs]
+    if req.ok:
+        outputs = [out["text"] for out in j["choices"]]
 
         if not koboldai_vars.quiet:
-            print("{0}{1}{2}".format(colors.CYAN, decoded_genout, colors.END))
+            print("{0}{1}{2}".format(colors.CYAN, outputs, colors.END))
 
-        return [tokenizer.encode(x) for x in decoded_genout]
+        return np.array([tokenizer.encode(x) for x in outputs])
     else:
-        # Send error message to web client            
-        er = req.json()
-        if("error" in er):
-            type    = er["error"]["type"]
-            message = er["error"]["message"]
+        # Send error message to web client
+        if "error" in j:
+            error_type = j["error"]["type"]
+            error_message = j["error"]["message"]
+        else:
+            error_type = "Unknown"
+            error_message = "Unknown"
             
-        errmsg = "OpenAI API Error: {0} - {1}".format(type, message)
-        emit('from_server', {'cmd': 'errmsg', 'data': errmsg}, broadcast=True, room="UI_1")
+        emit('from_server', {
+            'cmd': 'errmsg',
+            'data': f"OpenAI API Error: {error_type} - {error_message}"
+        }, broadcast=True, room="UI_1")
         set_aibusy(0)
         return []
 
