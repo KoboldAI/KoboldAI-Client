@@ -100,8 +100,9 @@ class koboldai_vars(object):
     def load_story(self, story_name, json_data):
         #Story name here is intended for multiple users on multiple stories. Now always uses default
         #If we can figure out a way to get flask sessions into/through the lua bridge we could re-enable
+        global multi_story
         original_story_name = story_name
-        if not self._system_settings.multi_story:
+        if not multi_story:
             story_name = 'default'
         if story_name in self._story_settings:
             self._story_settings[story_name].socketio.emit("reset_story", {}, broadcast=True, room="UI_2")
