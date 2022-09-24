@@ -2183,7 +2183,18 @@ function upload_file(file_box) {
 	for (file of fileList) {
 		reader = new FileReader();
 		reader.onload = function (event) {
-			socket.emit("upload_file", {'filename': file.name, "data": event.target.result, 'upload_no_save': document.getElementById('upload_no_save').checked});
+			socket.emit("upload_file", {'filename': file.name, "data": event.target.result, 'upload_no_save': false});
+		};
+		reader.readAsArrayBuffer(file);
+	}
+}
+
+function upload_file_without_save(file_box) {
+	var fileList = file_box.files;
+	for (file of fileList) {
+		reader = new FileReader();
+		reader.onload = function (event) {
+			socket.emit("upload_file", {'filename': file.name, "data": event.target.result, 'upload_no_save': true});
 		};
 		reader.readAsArrayBuffer(file);
 	}

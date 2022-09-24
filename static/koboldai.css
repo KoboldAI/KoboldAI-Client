@@ -532,6 +532,10 @@ border-top-right-radius: var(--tabs_rounding);
 	transform: translateY(22%);
 }
 
+#upload_without_save_button {
+	transform: translateY(22%);
+}
+
 .settings_button[story_gamesaved="true"] {
 	filter: brightness(40%);
 }
