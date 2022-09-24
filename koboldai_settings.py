@@ -1720,7 +1720,7 @@ class KoboldWorldInfo(object):
                                             "keysecondary": ",".join(self.world_info[x]['keysecondary']),
                                             "num": x,
                                             "selective": len(self.world_info[x]['keysecondary'])>0,
-                                            "uid": self.world_info[x]['uid'] if self.world_info[x]['v1_uid'] is None else self.world_info[x]['v1_uid']
+                                            "uid": self.world_info[x]['uid'] if 'v1_uid' not in self.world_info[x] or self.world_info[x]['v1_uid'] is None else self.world_info[x]['v1_uid']
                                         } for x in self.world_info]
                                         
         #self.worldinfo   = []     # List of World Info key/value objects
