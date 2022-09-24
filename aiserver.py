@@ -4892,7 +4892,7 @@ def core_generate(text: list, min: int, max: int, found_entries: set):
 
             genout = result.encoded
 
-            already_generated += len(genout[0]) # - len(gen_in[0])
+            already_generated += len(genout[0]) - 1 # - len(gen_in[0])
             assert already_generated <= koboldai_vars.genamt
 
             if result.is_whole_generation:
@@ -5041,8 +5041,6 @@ def raw_generate(
         return GenerationResult(
             out_batches=batch_encoded, prompt=prompt_tokens, is_whole_generation=True
         )
-    
-    print("model", model)
 
     # Torch HF
     batch_encoded = torch_raw_generate(
