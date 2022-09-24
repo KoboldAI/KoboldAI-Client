@@ -510,6 +510,11 @@ border-top-right-radius: var(--tabs_rounding);
 	height: 35px;
 }
 
+.settings_button > .material-icons-outlined {
+	margin-right: 2px;
+	top: 2px;
+}
+
 
 .settings_button > .button_label {
 	position: relative;
@@ -529,6 +534,10 @@ border-top-right-radius: var(--tabs_rounding);
 }
 
 #import_story_button {
+	transform: translateY(22%);
+}
+
+#upload_without_save_button {
 	transform: translateY(22%);
 }
 
@@ -927,8 +936,12 @@ td.server_vars {
 .WI_Folder_Header {
 	margin-left: 10px;
 	display: grid;
-	grid-template-areas: "folder expand title upload_box upload download";
-	grid-template-columns: 15px 30px auto  0px 25px 35px;
+	grid-template-areas: "folder expand title delete upload_box upload download";
+	grid-template-columns: 15px 30px auto 25px 0px 25px 35px;
+}
+
+.WI_Folder_Header .delete {
+	grid-area: delete;
 }
 
 .WI_Folder_Header .folder {
@@ -1266,6 +1279,12 @@ body {
 	grid-area: icon;
 	padding-left: 10px;
 	margin: auto auto auto auto;
+	display: flex;
+	flex-direction: column;
+}
+
+.delete_option_icon {
+	font-size: 1.2em !important;
 }
 
 .sequence:hover {
@@ -1355,6 +1374,8 @@ body {
 	border-style:solid;
 }
 
+
+
 .inputrow.status_bar {
 	grid-template-rows: 0px 60px 40px;
 }
@@ -1407,6 +1428,30 @@ body {
 .statusbar_outer[system_aibusy="false"] {
 	display: none;
 	height: 0px;
+}
+
+.statusbar_outer_horde {
+	display: none;
+	height: 0px;
+}
+
+.statusbar_outer_horde[system_aibusy="true"]:not([model_horde_wait_time="0"]) {
+	display: inline;
+	color: var(--statusbar_color);
+	background-color: transparent;
+	grid-area: submit;
+	z-index: 4;
+	height: 100%;
+}
+
+.statusbar_inner_horde {
+	background-color: var(--statusbar_color);
+	color: var(--statusbar_text_color);
+	border-radius: 5px;
+	z-index: 0;
+	height: 100%;
+	text-align: center;
+	font-size: calc(0.875em + var(--font_size_adjustment));
 }
 
 .statusbar_inner {
@@ -1534,8 +1579,8 @@ body {
 	border-radius: var(--radius_item_popup);
 	padding: 2px;
 	display: grid;
-	grid-template-areas: "folder_icon delete_icon edit_icon rename_icon file gpu_size";
-	grid-template-columns: 30px 0px 0px 0px auto 50px;
+	grid-template-areas: "folder_icon delete_icon edit_icon rename_icon file gpu_size warning_icon";
+	grid-template-columns: 30px 0px 0px 0px auto 50px 30px;
 	
 }
 
@@ -1615,8 +1660,6 @@ body {
 #error_message.popup {
 	background-color: var(--error);
 	color: var(--error_text);
-	height: 30vh;
-	top: 35vh;
 	overflow: hidden;
 }
 
@@ -2122,6 +2165,43 @@ body {
 	border-radius: var(--radius_settings_button);
 }
 
+/* Context Menu */
+#context-menu {
+	position: fixed;
+	cursor: default;
+
+	/* Nothing should be above the context menu (that I can think of) */
+	z-index: 9999999;
+
+	/* TODO: Theme */
+	background-color: #222f3a;
+	border: 1px solid #485e6d;
+}
+
+#context-menu > hr {
+	/* TODO: Theme */
+	border-top: 2px solid #485e6d;
+	margin: 5px 5px;
+}
+
+.context-menu-item {
+	padding: 5px;
+	padding-right: 25px;
+	min-width: 100px;
+}
+
+.context-menu-item:hover {
+	/* TODO: Theme */
+	background-color: #273b48;
+}
+
+.context-menu-item > .material-icons-outlined {
+	position: relative;
+	top: 2px;
+	font-size: 15px;
+	margin-right: 5px;
+}
+
 /*---------------------------------- Global ------------------------------------------------*/
 .hidden {
 	display: none;
@@ -2197,8 +2277,21 @@ button.disabled {
 	white-space: pre-wrap;
 }
 
+.console_text {
+	white-space: pre-wrap;
+	display: inline-block;
+}
+
 .text_red {
 	color: red;
+}
+
+.italics {
+	font-style: italic;
+}
+
+.wi_match {
+	font-style: italic;
 }
 
 .within_max_length {
@@ -2365,8 +2458,66 @@ h2 .material-icons-outlined {
 
 .preset_area .settings_button {
 	transform: translateY(6px);
+	width: 155px;
 }
 
 input[type='range'] {
     border: none !important;
+}
+
+.settings_button[system_generating_image="true"] {
+	filter: brightness(35%);
+	cursor: not-allowed;
+	pointer-events:none;
+}
+
+.action_image {
+	width: var(--flyout_menu_width);
+}
+
+/*Tooltip based on attribute*/
+[tooltip] {
+  cursor: pointer;
+  display: inline-block;
+  line-height: 1;
+  position: relative;
+}
+[tooltip]::after {
+  background-color: rgba(51, 51, 51, 0.9);
+  border-radius: 0.3rem;
+  color: #fff;
+  content: attr(tooltip);
+  font-size: 1rem;
+  font-size: 85%;
+  font-weight: normal;
+  line-height: 1.15rem;
+  opacity: 0;
+  padding: 0.25rem 0.5rem;
+  position: absolute;
+  text-align: center;
+  text-transform: none;
+  transition: opacity 0.2s;
+  visibility: hidden;
+  white-space: nowrap;
+  z-index: 1;
+}
+@media (max-width: 767px) {
+  [tooltip].tooltip::before {
+    display: none;
+  }
+  [tooltip].tooltip:after {
+    font-size: 1rem;
+    max-width: 20rem;
+    position: fixed;
+    bottom: auto;
+    top: 50%;
+    left: 50%;
+    text-align: left;
+    transform: translate(-50%);
+    white-space: normal;
+  }
+}
+[tooltip]:hover::after, [tooltip][class*=tooltip]:hover::before {
+  visibility: visible;
+  opacity: 1;
 }

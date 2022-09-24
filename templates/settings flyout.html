@@ -16,9 +16,9 @@
 <!-- top menu bar-->
 <div class="menu_pin_area"></div>
 <div class="tabrow">
-	<span class="setting_menu_button tab tab-settings selected" tab-target="setting_menu_home" onclick="selectTab(this);">Home</span>
-	<span class="setting_menu_button tab tab-settings" tab-target="setting_menu_settings" onclick="selectTab(this);">Settings</span>
-	<span class="setting_menu_button tab tab-settings" tab-target="setting_menu_interface" onclick="selectTab(this);">Interface</span>
+	<span id="settings_flyout_tab_home" class="setting_menu_button tab tab-settings selected" tab-target="setting_menu_home" onclick="selectTab(this);">Home</span>
+	<span id="settings_flyout_tab_settings" class="setting_menu_button tab tab-settings" tab-target="setting_menu_settings" onclick="selectTab(this);">Settings</span>
+	<span id="settings_flyout_tab_interface" class="setting_menu_button tab tab-settings" tab-target="setting_menu_interface" onclick="selectTab(this);">Interface</span>
 	<span style="float: right;margin-right: 30px;padding: 0px 10px;" onclick="window.open('https://github.com/KoboldAI/KoboldAI-Client/wiki');">
 		Help
 		<icon class="material-icons-outlined" style="font-size:14px;position:relative;top:2px;">open_in_new</icon>
@@ -105,6 +105,10 @@
 			
 		</div>
 		<span id="debug-dump" class="cursor" onclick="document.getElementById('debug-file-container').classList.remove('hidden');">Download debug dump</span>
+		<div id="Images">
+			<button class="settings_button var_sync_alt_system_generating_image" onclick="socket.emit('generate_image', {})">Generate Image</button>
+			<div id="action image"></div>
+		</div>
 	</div>
 	<div id="setting_menu_settings" class="hidden settings_category_area tab-target tab-target-settings">
 		<div class="preset_area">
@@ -271,6 +275,36 @@
 				<span class="setting_minlabel"><span style="top: -4px; position: relative;"></span></span>
 				<span class="setting_maxlabel"><span style="top: -4px; position: relative;"></span></span>
 			</div>
+			<div class="setting_container">
+				<!---Top Row---->
+				<span class="setting_label">
+					<span>Font Size:&nbsp;</span><span class="helpicon material-icons-outlined" title="Change the font size of the game text">help_icon</span>
+				</span>
+				<input autocomplete="off" class="setting_value" id="font_size_cur"
+					   value="1" item_id="font_size" 
+					   inputmode="decimal"
+					   onchange="document.getElementById(this.getAttribute('item_id')).value = this.value; set_font_size(this)">
+				<!---Bottom Row---->
+				<span class="setting_item">
+					<input type="range" min="0.1" max="2" step="0.05" 
+						   value="1" id="font_size" class="setting_item_input "
+						   oninput="document.getElementById(this.id+'_cur').value = this.value;set_font_size(this);"
+						   onclick="">
+				</span>
+				<!---Slider Labels--->
+				<span class="setting_minlabel"><span style="position: relative;">0.1</span></span>
+				<span class="setting_maxlabel"><span style="position: relative;">2</span></span>
+			</div>
+		</div>
+		<div class="collapsable_header" onclick="toggle_setting_category(this);">
+			<h4 style="width:var(--flyout_menu_width);"><span class="material-icons-outlined cursor">expand_more</span> Images</h4>
+		</div>
+		<div class="setting_tile_area">
+			{% with menu='Interface' %}
+				{% with sub_path='Images' %}
+					{% include 'settings item.html' %}
+				{% endwith %}
+			{% endwith %}
 		</div>
 		<div class="collapsable_header" onclick="toggle_setting_category(this);">
 			<h4 style="width:var(--flyout_menu_width);"><span class="material-icons-outlined cursor">expand_more</span> Formatting</h4>
@@ -377,6 +411,6 @@
 	</div>
 	<div id="settings_footer" class="settings_footer">
 		<span>Execution Time: <span id="Execution Time"></span></span> | 
-		<span>Remaining Time: <span class="var_sync_model_tqdm_rem_time"></span></span> | <span id="var_time"></span>
+		<span>Remaining Time: <span class="var_sync_model_tqdm_rem_time"></span></span> | <a onclick='document.getElementById("log_popup").classList.remove("hidden");'>Log</a>
 	</div>
 </div>

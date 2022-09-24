@@ -1,7 +1,7 @@
 /*
 	Name: Nostalgia
 	Author: LightSaveUs
-	Version: 0.1
+	Version: 0.2.2
 	Description: A theme inspired by the previous KoboldAI interface.
 */
 
@@ -42,7 +42,7 @@
     --input_background: #404040;
 
     --text: #fff;
-    --text_to_ai_color: #cdd9e0;
+    --text_to_ai_color: #fff;
     --text_edit: #cdf;
 
 	--statusbar_color: #6c6c6e99;
@@ -61,11 +61,11 @@
 
 		/*Home Tab*/
 	--button_text: #ffffff;
-	--button_background: #285f90;
+	--button_background: #3379b7;
 		
 		/*Alternate Button*/
 	--alternate_button_text: #ffffff;
-	--alternate_button_background: #285f90;
+	--alternate_button_background: #3379b7;
 
 
 	/*Sequence, AKA Gens Per Action*/
@@ -74,12 +74,12 @@
 	--sequence_text: #ffffff;
 
 	/*Side Menus*/
-	--tab_color: #337ab7;
+	--tab_color: #4786be;
 
-	--flyout_background: #212122;
-	--flyout_background_pinned: #212122;
+	--flyout_background: #294f71;
+	--flyout_background_pinned: #294f71;
 
-	--setting_background: #295071;
+	--setting_background: #294f71;
     --setting_text: #ffffff;
 
 	--sample_order_select_color: #98bcdb;
@@ -106,10 +106,10 @@
 	--palette_table_border: #12324f;
 
 	/*World Info*/
-	--wi_card_border_color: #12324f;
-    --wi_card_border_color_to_ai: #eeeeeead;
+	--wi_card_border_color: #262626;
+    --wi_card_border_color_to_ai: #262626;
 
-    --wi_card_bg_color: #395c7c;
+    --wi_card_bg_color: #262626;
 	--wi_card_text_color: #ffffff;
 
     --wi_card_tag_bg_color: #295071;
@@ -136,18 +136,18 @@
 	--popup_cancel_button_color: #337ab7;
 	--popup_cancel_button_color_text: #ffffff;
 
-	--error: #ffb4ab;
-	--error_text: #690005;
-	--error_title: #93000a;
-	--error_title_text: #ffdad6;
+	--error: #333;
+	--error_text: #ffffff;
+	--error_title: #337ab7;
+	--error_title_text: #ffffff;
 	
 	/*Context Bar Colors*/
-	--context_colors_memory: #295071;
-	--context_colors_authors_notes: #337ab7;
-	--context_colors_world_info: #98bcdb;
-	--context_colors_prompt: #3bf723;
-	--context_colors_game_text: #688f1f;
-	--context_colors_submit: #ededed;
+	--context_colors_memory: #303030;
+	--context_colors_authors_notes: #404040;
+	--context_colors_world_info: #295071;
+	--context_colors_prompt: #3379b7;
+	--context_colors_game_text: #26d721ba;
+	--context_colors_submit: #ffffff00;
 	--context_colors_unused: #ffffff24;
 	--context_colors_soft_prompt: #262626;
 
@@ -192,3 +192,192 @@
 	--story_pinned_area_widths:var(--story_pinned_area_widths_left);
 	--font_size_adjustment: 0px;
 	--game_screen_font_size_adjustment: 1;}
+
+/* Boxes */
+
+#input_text, #themetext {
+    border-color: #999999 !important;
+}
+
+.fullwidth {
+	border-radius: 5px;
+    border-color: #999999 !important;
+}
+
+/* Buttons */
+
+.settings_button {
+    border: none !important;
+}
+
+.settings_button:hover {
+   background: #84a8c8 !important;
+}
+
+.settings_button:focus {
+   background: #84a8c8 !important;
+}
+
+.wi_add_button:hover {
+	filter: brightness(80%);
+}
+
+/* Context Menu */
+
+#context-menu {
+	border-color: #12324f !important;
+	background-color: #294f71 !important;
+}
+
+#context-menu > hr {
+	border-color: #12324f !important;
+}
+
+.context-menu-item:hover {
+	background-color:#12324f !important;
+}
+
+/* Context Viewer */
+
+#context-viewer-header {
+    background-color: #262626 !important;
+}
+
+#context-container {
+	background-color: #404040 !important;
+}
+
+/* Finder */
+
+.result-highlight {
+    background-color: #3bf723f0 !important;
+}
+
+/* Flyout */
+
+.rightSideMenu {
+	background-color: #212122 !important;
+}
+
+/* Icons */
+
+.collapsable_header .material-icons-outlined {
+    transform: translateY(7px) translateX(4px)!important;
+}
+
+/* Import */
+
+a {
+    color: #3bf723 !important;
+}
+
+.form-control {
+    background-color: #404040 !important;
+	border: none;
+}
+
+/* Lines */
+
+.story_title, hr {
+    border-color: #12324f !important;
+}
+
+/* Lists */
+
+.settings_select, .var_sync_system_theme_list {
+	border-color: #12324f !important;
+}
+
+/* Padding */
+
+.story_title_area {
+    padding-top: 3px;
+}
+
+/* Palette */
+
+#palette_area {
+    border-color: #12324f00 !important;
+}
+
+/* Popup */
+
+.popup .action_button {
+    border-radius: 5px;
+	border-color:#ffffff
+}
+
+.popup_load_cancel_button {
+    border-radius: 5px;
+}
+
+.popup .action_button:hover {
+	background-color: #337ab7 !important;
+}
+
+.popup_load_cancel_button:hover {
+	filter: brightness(80%);
+	color: #ffffff !important;
+	border-color: #ffffff !important;
+    background-color: #337ab7 !important;
+}
+
+#error_message.popup .btn-primary {
+    color: #ffffff !important;
+    border-color: #ffffff !important;
+    background-color: #337ab7 !important;
+}
+
+/* Tabs */
+
+.tabrow span {
+	border: none !important;
+	box-shadow: inset 0px 0px 2px #20344e !important;
+}
+
+.tabrow span::before, .tabrow span::after {
+	display: none;
+	border: none !important;
+}
+
+.tabrow span:hover {
+	background: #84a8c8 !important;
+}
+
+.tabrow span.selected {
+	color: #ffffff !important;
+	background: #84a8c8 !important;
+}
+
+/* Text */
+
+.help_text {
+    opacity: 1.0 !important;
+}
+
+.rawtext {
+    font-family: helvetica !important;
+}
+
+/* Timer */
+
+div#settings_footer.settings_footer {
+	color: #ffffff !important;
+	border-color: #12324f !important;
+	background-color: #294f71 !important;
+}
+
+/* World Info */
+
+.world_info_tag_area {
+	border-color: #999999!important;
+    filter: brightness(100%) !important;
+	background-color: #404040 !important;
+}
+
+.world_info_text {
+	margin: 0 0px 0px !important;
+    border-color: #999999!important;
+	filter: brightness(100%) !important;
+	background-color: #404040 !important;
+}

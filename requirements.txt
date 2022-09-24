@@ -15,3 +15,8 @@ accelerate
 flask_session
 marshmallow>=3.13
 apispec-webframeworks
+loguru
+Pillow
+diffusers
+psutil
+ansi2html

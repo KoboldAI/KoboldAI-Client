@@ -18,7 +18,9 @@ os.environ['TOKENIZERS_PARALLELISM'] = 'false'
 from eventlet import tpool
 
 import logging
-logging.basicConfig(format='%(levelname)s - %(module)s:%(lineno)d - %(message)s',level=logging.WARNING)
+from logger import logger, set_logger_verbosity, quiesce_logger
+from ansi2html import Ansi2HTMLConverter
+
 logging.getLogger("urllib3").setLevel(logging.ERROR)
 
 from os import path, getcwd
@@ -64,7 +66,7 @@ from utils import debounce
 import utils
 import koboldai_settings
 import torch
-from transformers import StoppingCriteria, GPT2TokenizerFast, GPT2LMHeadModel, GPTNeoForCausalLM, GPTNeoModel, AutoModelForCausalLM, AutoTokenizer, PreTrainedModel, modeling_utils
+from transformers import StoppingCriteria, GPT2TokenizerFast, GPT2LMHeadModel, GPTNeoForCausalLM, GPTNeoModel, AutoModelForCausalLM, AutoModelForSeq2SeqLM, AutoTokenizer, PreTrainedModel, modeling_utils, AutoModelForTokenClassification
 from transformers import __version__ as transformers_version
 import transformers
 try:
@@ -72,11 +74,17 @@ try:
 except:
     pass
 import transformers.generation_utils
+
+# Text2img
+import base64
+from PIL import Image, ImageFont, ImageDraw, ImageFilter, ImageOps
+from io import BytesIO
+
 global tpu_mtj_backend
 
 
 if lupa.LUA_VERSION[:2] != (5, 4):
-    print(f"Please install lupa==1.10. You have lupa {lupa.__version__}.", file=sys.stderr)
+    logger.error(f"Please install lupa==1.10. You have lupa {lupa.__version__}.")
 
 patch_causallm_patched = False
 
@@ -130,16 +138,19 @@ model_menu = {
         ["Untuned OPT", "optlist", "", True],
         ["Untuned GPT-Neo/J", "gptneolist", "", True],
         ["Untuned Fairseq Dense", "fsdlist", "", True],
+        ["Untuned Bloom", "bloomlist", "", True],
         ["Untuned XGLM", "xglmlist", "", True],
         ["Untuned GPT2", "gpt2list", "", True],
         ["Online Services", "apilist", "", True],
         ["Read Only (No AI)", "ReadOnly", "", False]
         ],
     'adventurelist': [
+        ["Skein 20B", "KoboldAI/GPT-NeoX-20B-Skein", "64GB", False],
+        ["Nerys OPT 13B V2 (Hybrid)", "KoboldAI/OPT-13B-Nerys-v2", "32GB", False],
         ["Nerys FSD 13B V2 (Hybrid)", "KoboldAI/fairseq-dense-13B-Nerys-v2", "32GB", False],
         ["Nerys FSD 13B (Hybrid)", "KoboldAI/fairseq-dense-13B-Nerys", "32GB", False],
         ["Skein 6B", "KoboldAI/GPT-J-6B-Skein", "16GB", False],
-        ["OPT Nerys 6B V2", "KoboldAI/OPT-6B-nerys-v2", "16GB", False],
+        ["OPT Nerys 6B V2 (Hybrid)", "KoboldAI/OPT-6B-nerys-v2", "16GB", False],
         ["Adventure 6B", "KoboldAI/GPT-J-6B-Adventure", "16GB", False],
         ["Nerys FSD 2.7B (Hybrid)", "KoboldAI/fairseq-dense-2.7B-Nerys", "8GB", False],
         ["Adventure 2.7B", "KoboldAI/GPT-Neo-2.7B-AID", "8GB", False],
@@ -148,10 +159,11 @@ model_menu = {
         ["Return to Main Menu", "mainmenu", "", True],
         ],
     'novellist': [
+        ["Nerys OPT 13B V2 (Hybrid)", "KoboldAI/OPT-13B-Nerys-v2", "32GB", False],
         ["Nerys FSD 13B V2 (Hybrid)", "KoboldAI/fairseq-dense-13B-Nerys-v2", "32GB", False],
         ["Janeway FSD 13B", "KoboldAI/fairseq-dense-13B-Janeway", "32GB", False],
         ["Nerys FSD 13B (Hybrid)", "KoboldAI/fairseq-dense-13B-Nerys", "32GB", False],
-        ["OPT Nerys 6B V2", "KoboldAI/OPT-6B-nerys-v2", "16GB", False],
+        ["OPT Nerys 6B V2 (Hybrid)", "KoboldAI/OPT-6B-nerys-v2", "16GB", False],
         ["Janeway FSD 6.7B", "KoboldAI/fairseq-dense-6.7B-Janeway", "16GB", False],
         ["Janeway Neo 6B", "KoboldAI/GPT-J-6B-Janeway", "16GB", False],
         ["Janeway Neo 2.7B", "KoboldAI/GPT-Neo-2.7B-Janeway", "8GB", False],
@@ -162,10 +174,15 @@ model_menu = {
         ["Return to Main Menu", "mainmenu", "", True],
         ],
     'nsfwlist': [
+        ["Erebus 20B (NSFW)", "KoboldAI/GPT-NeoX-20B-Erebus", "64GB", False],
+        ["Erebus 13B (NSFW)", "KoboldAI/OPT-13B-Erebus", "32GB", False],
         ["Shinen FSD 13B (NSFW)", "KoboldAI/fairseq-dense-13B-Shinen", "32GB", False],
+        ["Erebus 6.7B (NSFW)", "KoboldAI/OPT-6.7B-Erebus", "16GB", False],
         ["Shinen FSD 6.7B (NSFW)", "KoboldAI/fairseq-dense-6.7B-Shinen", "16GB", False],
+        ["Lit V2 6B (NSFW)", "hakurei/litv2-6B-rev3", "16GB", False],
         ["Lit 6B (NSFW)", "hakurei/lit-6B", "16GB", False],
         ["Shinen 6B (NSFW)", "KoboldAI/GPT-J-6B-Shinen", "16GB", False],
+        ["Erebus 2.7B (NSFW)", "KoboldAI/OPT-2.7B-Erebus", "8GB", False],
         ["Horni 2.7B (NSFW)", "KoboldAI/GPT-Neo-2.7B-Horni", "8GB", False],
         ["Shinen 2.7B (NSFW)", "KoboldAI/GPT-Neo-2.7B-Shinen", "8GB", False],
         ["Return to Main Menu", "mainmenu", "", True],
@@ -177,6 +194,7 @@ model_menu = {
         ["Return to Main Menu", "mainmenu", "", True],
         ],
     'gptneolist': [
+        ["GPT-NeoX 20B", "EleutherAI/gpt-neox-20b", "64GB", False],
         ["GPT-J 6B", "EleutherAI/gpt-j-6B", "16GB", False],
         ["GPT-Neo 2.7B", "EleutherAI/gpt-neo-2.7B", "8GB", False],
         ["GPT-Neo 1.3B", "EleutherAI/gpt-neo-1.3B", "6GB", False],
@@ -188,6 +206,14 @@ model_menu = {
         ["GPT-2 Large", "gpt2-large", "4GB", False],
         ["GPT-2 Med", "gpt2-medium", "2GB", False],
         ["GPT-2", "gpt2", "2GB", False],
+        ["Return to Main Menu", "mainmenu", "", True],
+        ],
+    'bloomlist': [
+        ["Bloom 176B", "bigscience/bloom", "", False],
+        ["Bloom 7.1B", "bigscience/bloom-7b1", "", False],   
+        ["Bloom 3B", "bigscience/bloom-3b", "", False], 
+        ["Bloom 1.7B", "bigscience/bloom-1b7", "", False], 
+        ["Bloom 560M", "bigscience/bloom-560m", "", False], 
         ["Return to Main Menu", "mainmenu", "", True],
         ],
     'optlist': [
@@ -230,12 +256,14 @@ model_menu = {
     }
 
 
+
 class Send_to_socketio(object):
     def write(self, bar):
         print(bar, end="")
         time.sleep(0.01)
         try:
-            emit('from_server', {'cmd': 'model_load_status', 'data': bar.replace(" ", "&nbsp;")}, broadcast=True, room="UI_1")
+            gui_msg = bar.replace(f"{colors.PURPLE}INIT{colors.END}       | ","").replace(" ", "&nbsp;")
+            emit('from_server', {'cmd': 'model_load_status', 'data': gui_msg}, broadcast=True, room="UI_1")
         except:
             pass
         
@@ -429,9 +457,16 @@ import_buffer = ImportBuffer()
 import logging
 log = logging.getLogger('werkzeug')
 log.setLevel(logging.ERROR)
+def UI_2_logger(message):
+    conv = Ansi2HTMLConverter(inline=True, dark_bg=True)
+    data = json.loads(message)
+    data['html'] = [conv.convert(text, full=False) for text in data['text'].split("\n")] 
+    if not has_request_context():
+        if koboldai_settings.queue is not None:
+            koboldai_settings.queue.put(["log_message", data, {"broadcast":True, "room":"UI_2"}])
+    else:
+        socketio.emit("log_message", data, broadcast=True, room="UI_2")
 
-# Start flask & SocketIO
-print("{0}Initializing Flask... {1}".format(colors.PURPLE, colors.END), end="")
 from flask import Flask, render_template, Response, request, copy_current_request_context, send_from_directory, session, jsonify, abort, redirect, has_request_context
 from flask_socketio import SocketIO, emit, join_room, leave_room
 from flask_socketio import emit as _emit
@@ -443,14 +478,13 @@ app = Flask(__name__, root_path=os.getcwd())
 app.secret_key = secrets.token_hex()
 app.config['SESSION_TYPE'] = 'filesystem'
 app.config['TEMPLATES_AUTO_RELOAD'] = True
-Session(app)
 socketio = SocketIO(app, async_method="eventlet", manage_session=False, cors_allowed_origins='*', max_http_buffer_size=10_000_000)
-#socketio = SocketIO(app, async_method="eventlet", manage_session=False, cors_allowed_origins='*', logger=True, engineio_logger=True)
-koboldai_vars = koboldai_settings.koboldai_vars(session, socketio)
+#socketio = SocketIO(app, async_method="eventlet", manage_session=False, cors_allowed_origins='*', max_http_buffer_size=10_000_000, logger=logger, engineio_logger=True)
+logger.add(UI_2_logger, serialize=True, colorize=True)
+logger.add("log_file_1.log", rotation="500 MB")    # Automatically rotate too big file
+koboldai_vars = koboldai_settings.koboldai_vars(socketio)
 
 utils.koboldai_vars = koboldai_vars
-
-print("{0}OK!{1}".format(colors.GREEN, colors.END))
 
 old_socketio_on = socketio.on
 def new_socketio_on(*a, **k):
@@ -674,7 +708,7 @@ def get_config_filename(model_name = None):
     elif koboldai_vars.configname != '':
         return(f"settings/{koboldai_vars.configname.replace('/', '_')}.settings")
     else:
-        print(f"Empty configfile name sent back. Defaulting to ReadOnly")
+        logger.warning(f"Empty configfile name sent back. Defaulting to ReadOnly")
         return(f"settings/ReadOnly.settings")
 #==================================================================#
 # Function to get model selection at startup
@@ -694,10 +728,10 @@ def sendModelSelection(menu="mainmenu", folder="./models"):
         else:
             showdelete=False
         emit('from_server', {'cmd': 'show_model_menu', 'data': menu_list, 'menu': menu, 'breadcrumbs': breadcrumbs, "showdelete": showdelete}, broadcast=True, room="UI_1")
-        emit('show_model_menu', {'data': menu_list_ui_2, 'menu': menu, 'breadcrumbs': breadcrumbs, "showdelete": showdelete}, broadcast=False, room="UI_2")
+        emit('show_model_menu', {'data': menu_list_ui_2, 'menu': menu, 'breadcrumbs': breadcrumbs, "showdelete": showdelete}, broadcast=False)
     else:
         emit('from_server', {'cmd': 'show_model_menu', 'data': model_menu[menu], 'menu': menu, 'breadcrumbs': [], "showdelete": False}, broadcast=True, room="UI_1")
-        emit('show_model_menu', {'data': model_menu[menu], 'menu': menu, 'breadcrumbs': [], "showdelete": False}, broadcast=False, room="UI_2")
+        emit('show_model_menu', {'data': model_menu[menu], 'menu': menu, 'breadcrumbs': [], "showdelete": False}, broadcast=False)
 
 def get_folder_path_info(base):
     if base == 'This PC':
@@ -846,14 +880,14 @@ def device_config(config):
                 breakmodel.disk_blocks = args.breakmodel_disklayers
                 n_layers -= args.breakmodel_disklayers
         except:
-            print("WARNING: --breakmodel_gpulayers is malformatted. Please use the --help option to see correct usage of --breakmodel_gpulayers. Defaulting to all layers on device 0.", file=sys.stderr)
+            logger.warning("--breakmodel_gpulayers is malformatted. Please use the --help option to see correct usage of --breakmodel_gpulayers. Defaulting to all layers on device 0.")
             breakmodel.gpu_blocks = [n_layers]
             n_layers = 0
     elif(args.breakmodel_layers is not None):
         breakmodel.gpu_blocks = [n_layers - max(0, min(n_layers, args.breakmodel_layers))]
         n_layers -= sum(breakmodel.gpu_blocks)
     elif(args.model is not None):
-        print("Breakmodel not specified, assuming GPU 0")
+        logger.info("Breakmodel not specified, assuming GPU 0")
         breakmodel.gpu_blocks = [n_layers]
         n_layers = 0
     else:
@@ -912,7 +946,7 @@ def device_config(config):
                 else:
                     print(f"{colors.RED}Please enter an integer between -1 and {n_layers}.{colors.END}")
 
-    print(colors.PURPLE + "\nFinal device configuration:")
+    logger.init_ok("Final device configuration:", status="Info")
     device_list(n_layers)
 
     # If all layers are on the same device, use the old GPU generation mode
@@ -925,7 +959,7 @@ def device_config(config):
         return
 
     if(not breakmodel.gpu_blocks):
-        print("Nothing assigned to a GPU, reverting to CPU only mode")
+        logger.warning("Nothing assigned to a GPU, reverting to CPU only mode")
         import breakmodel
         breakmodel.primary_device = "cpu"
         koboldai_vars.breakmodel = False
@@ -1098,7 +1132,7 @@ def savesettings():
 #==================================================================#
 @debounce(2)
 def settingschanged():
-    print("{0}Saving settings!{1}".format(colors.GREEN, colors.END))
+    logger.info("Saving settings.")
     savesettings()
 
 #==================================================================#
@@ -1201,6 +1235,7 @@ def general_startup(override_args=None):
     parser.add_argument("--model", help="Specify the Model Type to skip the Menu")
     parser.add_argument("--path", help="Specify the Path for local models (For model NeoCustom or GPT2Custom)")
     parser.add_argument("--apikey", help="Specify the API key to use for online services")
+    parser.add_argument("--sh_apikey", help="Specify the API key to use for txt2img from the Stable Horde. Get a key from https://stablehorde.net/register")
     parser.add_argument("--req_model", type=str, action='append', required=False, help="Which models which we allow to generate for us during cluster mode. Can be specified multiple times.")
     parser.add_argument("--revision", help="Specify the model revision for huggingface models (can be a git branch/tag name or a git commit hash)")
     parser.add_argument("--cpu", action='store_true', help="By default unattended launches are on the GPU use this option to force CPU usage.")
@@ -1220,6 +1255,13 @@ def general_startup(override_args=None):
     parser.add_argument("--savemodel", action='store_true', help="Saves the model to the models folder even if --colab is used (Allows you to save models to Google Drive)")
     parser.add_argument("--customsettings", help="Preloads arguements from json file. You only need to provide the location of the json file. Use customsettings.json template file. It can be renamed if you wish so that you can store multiple configurations. Leave any settings you want as default as null. Any values you wish to set need to be in double quotation marks")
     parser.add_argument("--no_ui", action='store_true', default=False, help="Disables the GUI and Socket.IO server while leaving the API server running.")
+    parser.add_argument("--summarizer_model", action='store', default="philschmid/bart-large-cnn-samsum", help="Huggingface model to use for summarization. Defaults to sshleifer/distilbart-cnn-12-6")
+    parser.add_argument("--max_summary_length", action='store', default=100, help="Maximum size for summary to send to image generation")
+    parser.add_argument("--multi_story", action='store_true', default=False, help="Allow multi-story mode (experimental)")
+    
+    parser.add_argument('-v', '--verbosity', action='count', default=0, help="The default logging level is ERROR or higher. This value increases the amount of logging seen in your screen")
+    parser.add_argument('-q', '--quiesce', action='count', default=0, help="The default logging level is ERROR or higher. This value decreases the amount of logging seen in your screen")
+
     #args: argparse.Namespace = None
     if "pytest" in sys.modules and override_args is None:
         args = parser.parse_args([])
@@ -1254,6 +1296,8 @@ def general_startup(override_args=None):
                         setattr(args, arg, False)
                 else:
                     setattr(args, arg, os.environ[arg])
+    set_logger_verbosity(args.verbosity)
+    quiesce_logger(args.quiesce)
     if args.customsettings:
         f = open (args.customsettings)
         importedsettings = json.load(f)
@@ -1268,11 +1312,16 @@ def general_startup(override_args=None):
         old_emit = socketio.emit
         socketio.emit = new_emit
 
+    args.max_summary_length = int(args.max_summary_length)
+
     koboldai_vars.model = args.model;
     koboldai_vars.revision = args.revision
+    koboldai_settings.multi_story = args.multi_story
 
     if args.apikey:
         koboldai_vars.apikey = args.apikey
+    if args.sh_apikey:
+        koboldai_vars.sh_apikey = args.sh_apikey
     if args.req_model:
         koboldai_vars.cluster_requested_models = args.req_model
 
@@ -1321,9 +1370,10 @@ def general_startup(override_args=None):
             koboldai_vars.model = "NeoCustom"
             koboldai_vars.custmodpth = modpath
     elif args.model:
-        print("Welcome to KoboldAI!\nYou have selected the following Model:", koboldai_vars.model)
+        logger.message(f"Welcome to KoboldAI!")
+        logger.message(f"You have selected the following Model: {koboldai_vars.model}")
         if args.path:
-            print("You have selected the following path for your Model :", args.path)
+            logger.message(f"You have selected the following path for your Model: {args.path}")
             koboldai_vars.custmodpth = args.path;
             koboldai_vars.colaburl = args.path + "/request"; # Lets just use the same parameter to keep it simple
             
@@ -1450,7 +1500,7 @@ def get_model_info(model, directory=""):
                          'gpu':gpu, 'layer_count':layer_count, 'breakmodel':breakmodel, 'multi_online_models': multi_online_models, 'default_url': default_url, 
                          'disk_break_value': disk_blocks, 'disk_break': utils.HAS_ACCELERATE,
                          'break_values': break_values, 'gpu_count': gpu_count,
-                         'url': url, 'gpu_names': gpu_names, 'models_on_url': models_on_url, 'show_online_model_select': show_online_model_select}, broadcast=False, room="UI_2")
+                         'url': url, 'gpu_names': gpu_names, 'models_on_url': models_on_url, 'show_online_model_select': show_online_model_select})
     
     
 
@@ -1491,7 +1541,7 @@ def get_oai_models(data):
         return
         
     # Get list of models from OAI
-    print("{0}Retrieving engine list...{1}".format(colors.PURPLE, colors.END), end="")
+    logger.init("OAI Engines", status="Retrieving")
     req = requests.get(
         url, 
         headers = {
@@ -1504,7 +1554,7 @@ def get_oai_models(data):
         try:
             engines = [[en["id"], "{} ({})".format(en['id'], "Ready" if en["ready"] == True else "Not Ready")] for en in engines]
         except:
-            print(engines)
+            logger.error(engines)
             raise
         
         online_model = ""
@@ -1532,12 +1582,13 @@ def get_oai_models(data):
                 js["apikey"] = key
                 file.write(json.dumps(js, indent=3))
             
+        logger.init_ok("OAI Engines", status="OK")
         emit('from_server', {'cmd': 'oai_engines', 'data': engines, 'online_model': online_model}, broadcast=True, room="UI_1")
         emit('oai_engines', {'data': engines, 'online_model': online_model}, broadcast=False, room="UI_2")
     else:
         # Something went wrong, print the message and quit since we can't initialize an engine
-        print("{0}ERROR!{1}".format(colors.RED, colors.END))
-        print(req.json())
+        logger.init_err("OAI Engines", status="Failed")
+        logger.error(req.json())
         emit('from_server', {'cmd': 'errmsg', 'data': req.json()})
 
 @socketio.on("get_cluster_models")
@@ -1546,11 +1597,15 @@ def get_cluster_models(msg):
     koboldai_vars.apikey = koboldai_vars.oaiapikey
     model = msg['model']
     url = msg['url']
-    
-        
     # Get list of models from public cluster
     print("{0}Retrieving engine list...{1}".format(colors.PURPLE, colors.END), end="")
-    req = requests.get("{}/models".format(url))
+    try:
+        req = requests.get("{}/models".format(url))
+    except:
+        logger.init_err("KAI Horde Models", status="Failed")
+        logger.error("Provided KoboldAI Horde URL unreachable")
+        emit('from_server', {'cmd': 'errmsg', 'data': "Provided KoboldAI Horde URL unreachable"})
+        return
     if(req.status_code == 200):
         engines = req.json()
         print(engines)
@@ -1589,9 +1644,46 @@ def get_cluster_models(msg):
         emit('oai_engines', {'data': engines, 'online_model': online_model}, broadcast=False, room="UI_2")
     else:
         # Something went wrong, print the message and quit since we can't initialize an engine
-        print("{0}ERROR!{1}".format(colors.RED, colors.END))
-        print(req.json())
+        logger.init_err("KAI Horde Models", status="Failed")
+        logger.error(req.json())
         emit('from_server', {'cmd': 'errmsg', 'data': req.json()}, room="UI_1")
+        return
+
+    engines = req.json()
+    logger.debug(engines)
+    try:
+        engines = [[en, en] for en in engines]
+    except:
+        logger.error(engines)
+        raise
+    
+    online_model = ""
+    changed=False
+    
+    #Save the key
+    if not path.exists("settings"):
+        # If the client settings file doesn't exist, create it
+        # Write API key to file
+        os.makedirs('settings', exist_ok=True)
+    if path.exists(get_config_filename(model)):
+        with open(get_config_filename(model), "r") as file:
+            js = json.load(file)
+            if 'online_model' in js:
+                online_model = js['online_model']
+            if "apikey" in js:
+                if js['apikey'] != koboldai_vars.oaiapikey:
+                    changed=True
+    else:
+        changed=True
+    if changed:
+        js={}
+        with open(get_config_filename(model), "w") as file:
+            js["apikey"] = koboldai_vars.oaiapikey
+            file.write(json.dumps(js, indent=3))
+        
+    logger.init_ok("KAI Horde Models", status="OK")
+    emit('from_server', {'cmd': 'oai_engines', 'data': engines, 'online_model': online_model}, broadcast=True)
+
 
 # Function to patch transformers to use our soft prompt
 def patch_causallm(model):
@@ -1629,7 +1721,7 @@ def patch_transformers_download():
             
             if bar != "":
                 try:
-                    print(bar, end="\r")
+                    print(bar, end="\n")
                     emit('from_server', {'cmd': 'model_load_status', 'data': bar.replace(" ", "&nbsp;")}, broadcast=True, room="UI_1")
                     eventlet.sleep(seconds=0)
                 except:
@@ -1639,11 +1731,11 @@ def patch_transformers_download():
     
     def http_get(
         url: str,
-        temp_file: transformers.utils.hub.BinaryIO,
+        temp_file,
         proxies=None,
         resume_size=0,
-        headers: transformers.utils.hub.Optional[transformers.utils.hub.Dict[str, str]] = None,
-        file_name: transformers.utils.hub.Optional[str] = None,
+        headers=None,
+        file_name=None,
     ):
         """
         Download remote file. Do not gobble up errors.
@@ -1667,10 +1759,12 @@ def patch_transformers_download():
                 desc=f"Downloading {file_name}" if file_name is not None else "Downloading",
                 file=Send_to_socketio(),
             )
+            koboldai_vars.total_download_chunks = total
         for chunk in r.iter_content(chunk_size=1024):
             if chunk:  # filter out keep-alive new chunks
                 if url[-11:] != 'config.json':
                     progress.update(len(chunk))
+                    koboldai_vars.downloaded_chunks += len(chunk)
                 temp_file.write(chunk)
         if url[-11:] != 'config.json':
             progress.close()
@@ -1723,6 +1817,8 @@ def patch_transformers_download():
 
 def patch_transformers():
     global transformers
+    global old_transfomers_functions
+    old_transfomers_functions = {}
     
     patch_transformers_download()
     
@@ -1739,9 +1835,11 @@ def patch_transformers():
         if not args.no_aria2:
             utils.aria2_hook(pretrained_model_name_or_path, **kwargs)
         return old_from_pretrained(cls, pretrained_model_name_or_path, *model_args, **kwargs)
+    old_transfomers_functions['PreTrainedModel.from_pretrained'] = PreTrainedModel.from_pretrained
     PreTrainedModel.from_pretrained = new_from_pretrained
     if(hasattr(modeling_utils, "get_checkpoint_shard_files")):
         old_get_checkpoint_shard_files = modeling_utils.get_checkpoint_shard_files
+        old_transfomers_functions['modeling_utils.get_checkpoint_shard_files'] = old_get_checkpoint_shard_files
         def new_get_checkpoint_shard_files(pretrained_model_name_or_path, index_filename, *args, **kwargs):
             utils.num_shards = utils.get_num_shards(index_filename)
             utils.from_pretrained_index_filename = index_filename
@@ -1769,6 +1867,7 @@ def patch_transformers():
                 if max_pos > self.weights.size(0):
                     self.make_weights(max_pos + self.offset, self.embedding_dim, self.padding_idx)
                 return self.weights.index_select(0, position_ids.view(-1)).view(bsz, seq_len, -1).detach()
+            old_transfomers_functions['XGLMSinusoidalPositionalEmbedding.forward'] = XGLMSinusoidalPositionalEmbedding.forward
             XGLMSinusoidalPositionalEmbedding.forward = new_forward
 
 
@@ -1788,6 +1887,7 @@ def patch_transformers():
                 self.model = OPTModel(config)
                 self.lm_head = torch.nn.Linear(config.word_embed_proj_dim, config.vocab_size, bias=False)
                 self.post_init()
+            old_transfomers_functions['OPTForCausalLM.__init__'] = OPTForCausalLM.__init__
             OPTForCausalLM.__init__ = new_init
 
 
@@ -2092,14 +2192,17 @@ def patch_transformers():
             tail = input_ids[..., -koboldai_vars.generated_tkns:]
             for i, t in enumerate(tail):
                 decoded = utils.decodenewlines(tokenizer.decode(t))
-                _, found = checkworldinfo(decoded, force_use_txt=True, actions=koboldai_vars.actions)
-                found -= self.excluded_world_info[i]
+                _, _, _, found = koboldai_vars.calc_ai_text(submitted_text=decoded)
+                found = list(set(found) - set(self.excluded_world_info[i]))
                 if len(found) != 0:
+                    print("Found: {}".format(found))
                     model.core_stopper.regeneration_required = True
                     return True
             return False
 
+
     old_get_stopping_criteria = transformers.generation_utils.GenerationMixin._get_stopping_criteria
+    old_transfomers_functions['transformers.generation_utils.GenerationMixin._get_stopping_criteria'] = old_get_stopping_criteria
     def new_get_stopping_criteria(self, *args, **kwargs):
         global tokenizer
         stopping_criteria = old_get_stopping_criteria(self, *args, **kwargs)
@@ -2157,7 +2260,9 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
     if not utils.HAS_ACCELERATE:
         disk_layers = None
     koboldai_vars.reset_model()
-    koboldai_vars.cluster_requested_models = online_model
+    koboldai_vars.cluster_requested_models = [online_model] if isinstance(online_model, str) else online_model
+    if koboldai_vars.cluster_requested_models == [""]:
+        koboldai_vars.cluster_requested_models = []
     koboldai_vars.noai = False
     if not use_breakmodel_args:
         set_aibusy(True)
@@ -2282,29 +2387,28 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
         elif(koboldai_vars.model_type == "not_found" and koboldai_vars.model == "GPT2Custom"):
             koboldai_vars.model_type = "gpt2"
         elif(koboldai_vars.model_type == "not_found"):
-            print("WARNING: No model type detected, assuming Neo (If this is a GPT2 model use the other menu option or --model GPT2Custom)")
+            logger.warning("No model type detected, assuming Neo (If this is a GPT2 model use the other menu option or --model GPT2Custom)")
             koboldai_vars.model_type = "gpt_neo"
 
     if(not koboldai_vars.use_colab_tpu and koboldai_vars.model not in ["InferKit", "Colab", "API", "CLUSTER", "OAI", "GooseAI" , "ReadOnly", "TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX"]):
         loadmodelsettings()
         loadsettings()
-        print(2)
-        print("{0}Looking for GPU support...{1}".format(colors.PURPLE, colors.END), end="")
+        logger.init("GPU support", status="Searching")
         koboldai_vars.hascuda = torch.cuda.is_available()
         koboldai_vars.bmsupported = (utils.HAS_ACCELERATE or koboldai_vars.model_type in ("gpt_neo", "gptj", "xglm", "opt")) and not koboldai_vars.nobreakmodel
         if(args.breakmodel is not None and args.breakmodel):
-            print("WARNING: --breakmodel is no longer supported. Breakmodel mode is now automatically enabled when --breakmodel_gpulayers is used (see --help for details).", file=sys.stderr)
+            logger.warning("--breakmodel is no longer supported. Breakmodel mode is now automatically enabled when --breakmodel_gpulayers is used (see --help for details).")
         if(args.breakmodel_layers is not None):
-            print("WARNING: --breakmodel_layers is deprecated. Use --breakmodel_gpulayers instead (see --help for details).", file=sys.stderr)
+            logger.warning("--breakmodel_layers is deprecated. Use --breakmodel_gpulayers instead (see --help for details).")
         if(args.model and koboldai_vars.bmsupported and not args.breakmodel_gpulayers and not args.breakmodel_layers and (not utils.HAS_ACCELERATE or not args.breakmodel_disklayers)):
-            print("WARNING: Model launched without the --breakmodel_gpulayers argument, defaulting to GPU only mode.", file=sys.stderr)
+            logger.warning("Model launched without the --breakmodel_gpulayers argument, defaulting to GPU only mode.")
             koboldai_vars.bmsupported = False
         if(not koboldai_vars.bmsupported and (args.breakmodel_gpulayers is not None or args.breakmodel_layers is not None or args.breakmodel_disklayers is not None)):
-            print("WARNING: This model does not support hybrid generation. --breakmodel_gpulayers will be ignored.", file=sys.stderr)
+            logger.warning("This model does not support hybrid generation. --breakmodel_gpulayers will be ignored.")
         if(koboldai_vars.hascuda):
-            print("{0}FOUND!{1}".format(colors.GREEN, colors.END))
+            logger.init_ok("GPU support", status="Found")
         else:
-            print("{0}NOT FOUND!{1}".format(colors.YELLOW, colors.END))
+            logger.init_warn("GPU support", status="Not Found")
         
         if args.cpu:
             koboldai_vars.usegpu = False
@@ -2341,7 +2445,7 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
     # Start transformers and create pipeline
     if(not koboldai_vars.use_colab_tpu and koboldai_vars.model not in ["InferKit", "Colab", "API", "CLUSTER", "OAI", "GooseAI" , "ReadOnly", "TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX"]):
         if(not koboldai_vars.noai):
-            print("{0}Initializing transformers, please wait...{1}".format(colors.PURPLE, colors.END))
+            logger.init("Transformers", status='Starting')
             for m in ("GPTJModel", "XGLMModel"):
                 try:
                     globals()[m] = getattr(__import__("transformers"), m)
@@ -2409,7 +2513,7 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
                         print(flush=True)
                         koboldai_vars.total_layers = num_tensors
                         koboldai_vars.loaded_layers = 0
-                        utils.bar = tqdm(total=num_tensors, desc="Loading model tensors", file=Send_to_socketio())
+                        utils.bar = tqdm(total=num_tensors, desc=f"{colors.PURPLE}INIT{colors.END}       | Loading model tensors", file=Send_to_socketio())
 
                     with zipfile.ZipFile(f, "r") as z:
                         try:
@@ -2480,7 +2584,7 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
             
             def maybe_low_cpu_mem_usage() -> Dict[str, Any]:
                 if(packaging.version.parse(transformers_version) < packaging.version.parse("4.11.0")):
-                    print(f"\nWARNING:  Please upgrade to transformers 4.11.0 for lower RAM usage.  You have transformers {transformers_version}.", file=sys.stderr)
+                    logger.warning(f"Please upgrade to transformers 4.11.0 for lower RAM usage. You have transformers {transformers_version}.")
                     return {}
                 return {"low_cpu_mem_usage": True}
             
@@ -2537,7 +2641,6 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
                 if os.path.isdir(koboldai_vars.model.replace('/', '_')):
                     import shutil
                     shutil.move(koboldai_vars.model.replace('/', '_'), "models/{}".format(koboldai_vars.model.replace('/', '_')))
-                print("\n", flush=True)
                 if(koboldai_vars.lazy_load):  # If we're using lazy loader, we need to figure out what the model's hidden layers are called
                     with torch_lazy_loader.use_lazy_torch_load(dematerialized_modules=True, use_accelerate_init_empty_weights=True):
                         try:
@@ -2630,11 +2733,13 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
                                 import transformers.configuration_utils
                                 import transformers.modeling_utils
                                 import transformers.file_utils
+                                import huggingface_hub
+                                legacy = packaging.version.parse(transformers_version) < packaging.version.parse("4.22.0.dev0")
                                 # Save the config.json
-                                shutil.move(transformers.file_utils.get_from_cache(transformers.file_utils.hf_bucket_url(koboldai_vars.model, transformers.configuration_utils.CONFIG_NAME, revision=koboldai_vars.revision), cache_dir="cache", local_files_only=True), os.path.join("models/{}".format(koboldai_vars.model.replace('/', '_')), transformers.configuration_utils.CONFIG_NAME))
+                                shutil.move(os.path.realpath(huggingface_hub.hf_hub_download(koboldai_vars.model, transformers.configuration_utils.CONFIG_NAME, revision=koboldai_vars.revision, cache_dir="cache", local_files_only=True, legacy_cache_layout=legacy)), os.path.join("models/{}".format(koboldai_vars.model.replace('/', '_')), transformers.configuration_utils.CONFIG_NAME))
                                 if(utils.num_shards is None):
                                     # Save the pytorch_model.bin of an unsharded model
-                                    shutil.move(transformers.file_utils.get_from_cache(transformers.file_utils.hf_bucket_url(koboldai_vars.model, transformers.modeling_utils.WEIGHTS_NAME, revision=koboldai_vars.revision), cache_dir="cache", local_files_only=True), os.path.join("models/{}".format(koboldai_vars.model.replace('/', '_')), transformers.modeling_utils.WEIGHTS_NAME))
+                                    shutil.move(os.path.realpath(huggingface_hub.hf_hub_download(koboldai_vars.model, transformers.modeling_utils.WEIGHTS_NAME, revision=koboldai_vars.revision, cache_dir="cache", local_files_only=True, legacy_cache_layout=legacy)), os.path.join("models/{}".format(koboldai_vars.model.replace('/', '_')), transformers.modeling_utils.WEIGHTS_NAME))
                                 else:
                                     with open(utils.from_pretrained_index_filename) as f:
                                         map_data = json.load(f)
@@ -2643,7 +2748,7 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
                                     shutil.move(utils.from_pretrained_index_filename, os.path.join("models/{}".format(koboldai_vars.model.replace('/', '_')), transformers.modeling_utils.WEIGHTS_INDEX_NAME))
                                     # Then save the pytorch_model-#####-of-#####.bin files
                                     for filename in filenames:
-                                        shutil.move(transformers.file_utils.get_from_cache(transformers.file_utils.hf_bucket_url(koboldai_vars.model, filename, revision=koboldai_vars.revision), cache_dir="cache", local_files_only=True), os.path.join("models/{}".format(koboldai_vars.model.replace('/', '_')), filename))
+                                        shutil.move(os.path.realpath(huggingface_hub.hf_hub_download(koboldai_vars.model, filename, revision=koboldai_vars.revision, cache_dir="cache", local_files_only=True, legacy_cache_layout=legacy)), os.path.join("models/{}".format(koboldai_vars.model.replace('/', '_')), filename))
                             shutil.rmtree("cache/")
 
                 if(koboldai_vars.badwordsids is koboldai_settings.badwordsids_default and koboldai_vars.model_type not in ("gpt2", "gpt_neo", "gptj")):
@@ -2685,7 +2790,7 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
             #for key in koboldai_vars.badwords:
             #    koboldai_vars.badwordsids.append([vocab[key]])
             
-            print("{0}OK! {1} pipeline created!{2}".format(colors.GREEN, koboldai_vars.model, colors.END))
+            logger.info(f"Pipeline created: {koboldai_vars.model}")
         
         else:
             from transformers import GPT2TokenizerFast
@@ -2752,7 +2857,8 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
 
             for i, t in enumerate(generated):
                 decoded = utils.decodenewlines(tokenizer.decode(past[i])) + utils.decodenewlines(tokenizer.decode(t[tpu_mtj_backend.params["seq"] : tpu_mtj_backend.params["seq"] + n_generated]))
-                _, found = checkworldinfo(decoded, force_use_txt=True, actions=koboldai_vars.actions)
+                #_, found = checkworldinfo(decoded, force_use_txt=True, actions=koboldai_vars.actions)
+                _, _, _, found = koboldai_vars.calc_ai_text(submitted_text=decoded)
                 found -= excluded_world_info[i]
                 if(len(found) != 0):
                     regeneration_required = True
@@ -2814,7 +2920,7 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
             koboldai_vars.allowsp = True
             loadmodelsettings()
             loadsettings()
-            tpu_mtj_backend.load_model(koboldai_vars.custmodpth, hf_checkpoint=koboldai_vars.model not in ("TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX") and koboldai_vars.use_colab_tpu, **koboldai_vars.modelconfig)
+            tpool.execute(tpu_mtj_backend.load_model(koboldai_vars.custmodpth, hf_checkpoint=koboldai_vars.model not in ("TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX") and koboldai_vars.use_colab_tpu, **koboldai_vars.modelconfig))
             koboldai_vars.modeldim = int(tpu_mtj_backend.params.get("d_embed", tpu_mtj_backend.params["d_model"]))
             tokenizer = tpu_mtj_backend.tokenizer
             if(koboldai_vars.badwordsids is koboldai_settings.badwordsids_default and koboldai_vars.model_type not in ("gpt2", "gpt_neo", "gptj")):
@@ -2892,6 +2998,8 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
     koboldai_vars.presets = to_use
     
     koboldai_vars.aibusy = False
+    if not os.path.exists("./softprompts"):
+        os.mkdir("./softprompts")
     koboldai_vars.splist = [[f, get_softprompt_desc(os.path.join("./softprompts", f),None,True)] for f in os.listdir("./softprompts") if os.path.isfile(os.path.join("./softprompts", f)) and valid_softprompt(os.path.join("./softprompts", f))]
     if initial_load and koboldai_vars.cloudflare_link != "":
         print(format(colors.GREEN) + "KoboldAI has finished loading and is available at the following link for UI 1: " + koboldai_vars.cloudflare_link + format(colors.END))
@@ -2988,7 +3096,7 @@ def lua_startup():
     #==================================================================#
 
     print("", end="", flush=True)
-    print(colors.PURPLE + "Initializing Lua Bridge... " + colors.END, end="", flush=True)
+    logger.init("LUA bridge", status="Starting")
 
     # Set up Lua state
     koboldai_vars.lua_state = lupa.LuaRuntime(unpack_returned_tuples=True)
@@ -3011,11 +3119,11 @@ def lua_startup():
     except lupa.LuaError as e:
         print(colors.RED + "ERROR!" + colors.END)
         koboldai_vars.lua_koboldbridge.obliterate_multiverse()
-        print("{0}{1}{2}".format(colors.RED, "***LUA ERROR***: ", colors.END), end="", file=sys.stderr)
-        print("{0}{1}{2}".format(colors.RED, str(e).replace("\033", ""), colors.END), file=sys.stderr)
+        logger.debug('LUA ERROR: ' + str(e).replace("\033", ""))
+        logger.warning("Lua engine stopped; please open 'Userscripts' and press Load to reinitialize scripts.")
         socketio.emit("error", str(e), broadcast=True, room="UI_2")
         exit(1)
-    print(colors.GREEN + "OK!" + colors.END)
+    logger.init_ok("LUA bridge", status="OK")
 
 
 def lua_log_format_name(name):
@@ -3039,7 +3147,7 @@ def load_callback(filename, modulename):
 #  Load all Lua scripts
 #==================================================================#
 def load_lua_scripts():
-    print(colors.GREEN + "Loading Core Script" + colors.END)
+    logger.init("LUA Scripts", status="Starting")
 
     filenames = []
     modulenames = []
@@ -3071,12 +3179,12 @@ def load_lua_scripts():
         if(koboldai_vars.serverstarted):
             emit('from_server', {'cmd': 'errmsg', 'data': 'Lua script error; please check console.'}, broadcast=True, room="UI_1")
             sendUSStatItems()
-        print("{0}{1}{2}".format(colors.RED, "***LUA ERROR***: ", colors.END), end="", file=sys.stderr)
-        print("{0}{1}{2}".format(colors.RED, str(e).replace("\033", ""), colors.END), file=sys.stderr)
-        print("{0}{1}{2}".format(colors.YELLOW, "Lua engine stopped; please open 'Userscripts' and press Load to reinitialize scripts.", colors.END), file=sys.stderr)
+        logger.debug('LUA ERROR: ' + str(e).replace("\033", ""))
+        logger.warning("Lua engine stopped; please open 'Userscripts' and press Load to reinitialize scripts.")
         socketio.emit("error", str(e), broadcast=True, room="UI_2")
         if(koboldai_vars.serverstarted):
             set_aibusy(0)
+    logger.init_ok("LUA Scripts", status="OK")
 
 #==================================================================#
 #  Print message that originates from the userscript with the given name
@@ -3147,24 +3255,21 @@ def lua_compute_context(submission, entries, folders, kwargs):
         while(folders[i] is not None):
             allowed_folders.add(int(folders[i]))
             i += 1
-    winfo, mem, anotetxt, _ = calcsubmitbudgetheader(
-        submission,
-        allowed_entries=allowed_entries,
-        allowed_folders=allowed_folders,
-        force_use_txt=True,
-        scan_story=kwargs["scan_story"] if kwargs["scan_story"] != None else True,
-    )
-    if koboldai_vars.alt_gen:
-       txt, _, _ = koboldai_vars.calc_ai_text()
-       print("Using Alt Gen")
-    else:
-        txt, _, _ = calcsubmitbudget(
-            len(actions),
-            winfo,
-            mem,
-            anotetxt,
-            actions,
-        )
+    #winfo, mem, anotetxt, _ = calcsubmitbudgetheader(
+    #    submission,
+    #    allowed_entries=allowed_entries,
+    #    allowed_folders=allowed_folders,
+    #    force_use_txt=True,
+    #    scan_story=kwargs["scan_story"] if kwargs["scan_story"] != None else True,
+    #)
+    txt, _, _, found_entries = koboldai_vars.calc_ai_text()
+    #txt, _, _ = calcsubmitbudget(
+    #    len(actions),
+    #    winfo,
+    #    mem,
+    #    anotetxt,
+    #    actions,
+    #)
     return utils.decodenewlines(tokenizer.decode(txt))
 
 #==================================================================#
@@ -3205,6 +3310,8 @@ def lua_set_attr(uid, k, v):
     assert type(koboldai_vars.worldinfo_u[uid][k]) is type(v)
     koboldai_vars.worldinfo_u[uid][k] = v
     print(colors.GREEN + f"{lua_log_format_name(koboldai_vars.lua_koboldbridge.logging_name)} set {k} of world info entry {uid} to {v}" + colors.END)
+    koboldai_vars.sync_worldinfo_v1_to_v2()
+    sendwi()
 
 #==================================================================#
 #  Get property of a world info folder given its UID and property name
@@ -3231,6 +3338,8 @@ def lua_folder_set_attr(uid, k, v):
     assert type(koboldai_vars.wifolders_d[uid][k]) is type(v)
     koboldai_vars.wifolders_d[uid][k] = v
     print(colors.GREEN + f"{lua_log_format_name(koboldai_vars.lua_koboldbridge.logging_name)} set {k} of world info folder {uid} to {v}" + colors.END)
+    koboldai_vars.sync_worldinfo_v1_to_v2()
+    sendwi()
 
 #==================================================================#
 #  Get the "Amount to Generate"
@@ -3564,9 +3673,8 @@ def execute_inmod():
         koboldai_vars.lua_running = False
         emit('from_server', {'cmd': 'errmsg', 'data': 'Lua script error; please check console.'}, broadcast=True, room="UI_1")
         sendUSStatItems()
-        print("{0}{1}{2}".format(colors.RED, "***LUA ERROR***: ", colors.END), end="", file=sys.stderr)
-        print("{0}{1}{2}".format(colors.RED, str(e).replace("\033", ""), colors.END), file=sys.stderr)
-        print("{0}{1}{2}".format(colors.YELLOW, "Lua engine stopped; please open 'Userscripts' and press Load to reinitialize scripts.", colors.END), file=sys.stderr)
+        logger.debug('LUA ERROR: ' + str(e).replace("\033", ""))
+        logger.warning("Lua engine stopped; please open 'Userscripts' and press Load to reinitialize scripts.")
         socketio.emit("error", str(e), broadcast=True, room="UI_2")
         set_aibusy(0)
 
@@ -3583,9 +3691,8 @@ def execute_outmod():
         koboldai_vars.lua_running = False
         emit('from_server', {'cmd': 'errmsg', 'data': 'Lua script error; please check console.'}, broadcast=True, room="UI_1")
         sendUSStatItems()
-        print("{0}{1}{2}".format(colors.RED, "***LUA ERROR***: ", colors.END), end="", file=sys.stderr)
-        print("{0}{1}{2}".format(colors.RED, str(e).replace("\033", ""), colors.END), file=sys.stderr)
-        print("{0}{1}{2}".format(colors.YELLOW, "Lua engine stopped; please open 'Userscripts' and press Load to reinitialize scripts.", colors.END), file=sys.stderr)
+        logger.debug('LUA ERROR: ' + str(e).replace("\033", ""))
+        logger.warning("Lua engine stopped; please open 'Userscripts' and press Load to reinitialize scripts.")
         socketio.emit("error", str(e), broadcast=True, room="UI_2")
         set_aibusy(0)
     if(koboldai_vars.lua_koboldbridge.resend_settings_required):
@@ -3606,14 +3713,19 @@ def execute_outmod():
 #==================================================================#
 @socketio.on('connect')
 def do_connect():
+    logger.info("Client connected!")
     if request.args.get("rely") == "true":
         return
     join_room("UI_{}".format(request.args.get('ui')))
-    print("Joining Room UI_{}".format(request.args.get('ui')))
+    if 'story' not in session:
+        session['story'] = 'default'
+    join_room(session['story'])
+    logger.debug("Joining Room UI_{}".format(request.args.get('ui')))
+    logger.debug("Session['Story']: {}".format(session['story']))
     if request.args.get("ui") == "2":
         ui2_connect()
         return
-    print("{0}Client connected!{1}".format(colors.GREEN, colors.END))
+    logger.debug("{0}Client connected!{1}".format(colors.GREEN, colors.END))
     emit('from_server', {'cmd': 'setchatname', 'data': koboldai_vars.chatname}, room="UI_1")
     emit('from_server', {'cmd': 'setanotetemplate', 'data': koboldai_vars.authornotetemplate}, room="UI_1")
     emit('from_server', {'cmd': 'connected', 'smandelete': koboldai_vars.smandelete, 'smanrename': koboldai_vars.smanrename, 'modelname': getmodelname()}, room="UI_1")
@@ -3666,7 +3778,7 @@ def do_connect():
 @socketio.on('message')
 def get_message(msg):
     if not koboldai_vars.quiet:
-        print("{0}Data received:{1}{2}".format(colors.GREEN, msg, colors.END))
+        logger.debug(f"Data received: {msg}")
     # Submit action
     if(msg['cmd'] == 'submit'):
         if(koboldai_vars.mode == "play"):
@@ -3951,8 +4063,7 @@ def get_message(msg):
     elif(msg['cmd'] == 'list_model'):
         sendModelSelection(menu=msg['data'])
     elif(msg['cmd'] == 'load_model'):
-        print(msg)
-        print(koboldai_vars.model_selected)
+        logger.debug(f"Selected Model: {koboldai_vars.model_selected}")
         if not os.path.exists("settings/"):
             os.mkdir("settings")
         changed = True
@@ -3986,7 +4097,7 @@ def get_message(msg):
                 koboldai_vars.cluster_requested_models = msg['online_model']
         load_model(use_gpu=msg['use_gpu'], gpu_layers=msg['gpu_layers'], disk_layers=msg['disk_layers'], online_model=msg['online_model'])
     elif(msg['cmd'] == 'show_model'):
-        print("Model Name: {}".format(getmodelname()))
+        logger.info(f"Model Name: {getmodelname()}")
         emit('from_server', {'cmd': 'show_model_name', 'data': getmodelname()}, broadcast=True, room="UI_1")
     elif(msg['cmd'] == 'selectmodel'):
         # This is run when a model line is selected from the UI (line from the model_menu variable) that is tagged as not a menu
@@ -4037,14 +4148,14 @@ def get_message(msg):
     elif(msg['cmd'] == 'delete_model'):
         if "{}/models".format(os.getcwd()) in os.path.abspath(msg['data']) or "{}\\models".format(os.getcwd()) in os.path.abspath(msg['data']):
             if check_if_dir_is_model(msg['data']):
-                print(colors.YELLOW + "WARNING: Someone deleted " + msg['data'])
+                logger.warning(f"Someone deleted {msg['data']}")
                 import shutil
                 shutil.rmtree(msg['data'])
                 sendModelSelection(menu=msg['menu'])
             else:
-                print(colors.RED + "ERROR: Someone attempted to delete " + msg['data'] + " but this is not a valid model")
+                logger.error(f"Someone attempted to delete {msg['data']} but this is not a valid model")
         else:
-            print(colors.RED + "WARNING!!: Someone maliciously attempted to delete " + msg['data'] + " the attempt has been blocked.")
+            logger.critical(f"Someone maliciously attempted to delete {msg['data']}. The attempt has been blocked.")
     elif(msg['cmd'] == 'OAI_Key_Update'):
         get_oai_models({'model': koboldai_vars.model, 'key': msg['key']})
     elif(msg['cmd'] == 'Cluster_Key_Update'):
@@ -4120,6 +4231,10 @@ def get_message(msg):
         koboldai_vars.output_streaming = msg['data']
         settingschanged()
         refresh_settings()
+    elif(msg['cmd'] == 'setshowbudget'):
+        koboldai_vars.show_budget = msg['data']
+        settingschanged()
+        refresh_settings()
     elif(msg['cmd'] == 'setshowprobs'):
         koboldai_vars.show_probs = msg['data']
         settingschanged()
@@ -4187,7 +4302,7 @@ def kml(txt):
 #  Send start message and tell Javascript to set UI state
 #==================================================================#
 def setStartState():
-    if(koboldai_vars.welcome):
+    if koboldai_vars.welcome and isinstance(koboldai_vars.welcome, str):
         txt = kml(koboldai_vars.welcome) + "<br/>"
     else:
         txt = "<span>Welcome to <span class=\"color_cyan\">KoboldAI</span>! You are running <span class=\"color_green\">"+getmodelname()+"</span>.<br/>"
@@ -4283,7 +4398,7 @@ def actionsubmit(data, actionmode=0, force_submit=False, force_prompt_gen=False,
                         except:
                             tokenizer = AutoTokenizer.from_pretrained(tokenizer_id, revision=koboldai_vars.revision, cache_dir="cache", use_fast=False)
                 except:
-                    print(f"WARNING:  Unknown tokenizer {repr(tokenizer_id)}")
+                    logger.warning(f"Unknown tokenizer {repr(tokenizer_id)}")
                 koboldai_vars.api_tokenizer_id = tokenizer_id
 
         if(disable_recentrng):
@@ -4436,7 +4551,8 @@ def apiactionsubmit_generate(txt, minimum, maximum):
     koboldai_vars.generated_tkns = 0
 
     if not koboldai_vars.quiet:
-        print("{0}Min:{1}, Max:{2}, Txt:{3}{4}".format(colors.YELLOW, minimum, maximum, utils.decodenewlines(tokenizer.decode(txt)), colors.END))
+        logger.debug(f"Prompt Min:{minimum}, Max:{maximum}")
+        logger.prompt(utils.decodenewlines(tokenizer.decode(txt)).encode("unicode_escape").decode("utf-8"))
 
     # Clear CUDA cache if using GPU
     if(koboldai_vars.hascuda and (koboldai_vars.usegpu or koboldai_vars.breakmodel)):
@@ -4463,7 +4579,8 @@ def apiactionsubmit_tpumtjgenerate(txt, minimum, maximum):
         tpu_mtj_backend.set_rng_seed(koboldai_vars.seed)
 
     if not koboldai_vars.quiet:
-        print("{0}Min:{1}, Max:{2}, Txt:{3}{4}".format(colors.YELLOW, minimum, maximum, utils.decodenewlines(tokenizer.decode(txt)), colors.END))
+        logger.debug(f"Prompt Min:{minimum}, Max:{maximum}")
+        logger.prompt(utils.decodenewlines(tokenizer.decode(txt)).encode("unicode_escape").decode("utf-8"))
 
     koboldai_vars._prompt = koboldai_vars.prompt
 
@@ -4532,7 +4649,8 @@ def apiactionsubmit(data, use_memory=False, use_world_info=False, use_story=Fals
         mem_tokens = tokenizer.encode(utils.encodenewlines(mem))[-budget():]
 
     if use_world_info:
-        world_info, _ = checkworldinfo(data, force_use_txt=True, scan_story=use_story)
+        #world_info, _ = checkworldinfo(data, force_use_txt=True, scan_story=use_story)
+        world_info = koboldai_vars.worldinfo_v2.get_used_wi()
         wi_tokens = tokenizer.encode(utils.encodenewlines(world_info))[-budget():]
 
     if use_story:
@@ -4758,17 +4876,14 @@ def calcsubmit(txt):
     anoteadded   = False # In case our budget runs out before we hit A.N. depth
     actionlen    = len(koboldai_vars.actions)
 
-    winfo, mem, anotetxt, found_entries = calcsubmitbudgetheader(txt)
+    #winfo, mem, anotetxt, found_entries = calcsubmitbudgetheader(txt)
  
     # For all transformers models
     if(koboldai_vars.model != "InferKit"):
-        if koboldai_vars.alt_gen:
-            subtxt, min, max  = koboldai_vars.calc_ai_text(submitted_text=txt)
-            print("Using Alt Gen")
-        else:
-            subtxt, min, max = calcsubmitbudget(actionlen, winfo, mem, anotetxt, koboldai_vars.actions, submission=txt)
-
+        #subtxt, min, max = calcsubmitbudget(actionlen, winfo, mem, anotetxt, koboldai_vars.actions, submission=txt)
+        subtxt, min, max, found_entries  = koboldai_vars.calc_ai_text(submitted_text=txt)
         generate(subtxt, min, max, found_entries)
+
                     
     # For InferKit web API
     else:
@@ -4918,13 +5033,10 @@ def core_generate(text: list, min: int, max: int, found_entries: set):
 
             for i in range(koboldai_vars.numseqs):
                 txt = utils.decodenewlines(tokenizer.decode(genout[i, -already_generated:]))
-                winfo, mem, anotetxt, _found_entries = calcsubmitbudgetheader(txt, force_use_txt=True, actions=koboldai_vars.actions)
+                #winfo, mem, anotetxt, _found_entries = calcsubmitbudgetheader(txt, force_use_txt=True, actions=koboldai_vars.actions)
                 found_entries[i].update(_found_entries)
-                if koboldai_vars.alt_gen:
-                   txt, _, _ = koboldai_vars.calc_ai_text(submitted_text=txt)
-                   print("Using Alt Gen")
-                else:
-                    txt, _, _ = calcsubmitbudget(len(koboldai_vars.actions), winfo, mem, anotetxt, koboldai_vars.actions, submission=txt)
+                #txt, _, _ = calcsubmitbudget(len(koboldai_vars.actions), winfo, mem, anotetxt, koboldai_vars.actions, submission=txt)
+                txt, _, _, found_entries = koboldai_vars.calc_ai_text(submitted_text=txt)
                 encoded.append(torch.tensor(txt, dtype=torch.long, device=genout.device))
 
             max_length = len(max(encoded, key=len))
@@ -5408,7 +5520,8 @@ def generate(txt, minimum, maximum, found_entries=None):
     found_entries = tuple(found_entries.copy() for _ in range(koboldai_vars.numseqs))
 
     if not koboldai_vars.quiet:
-        print("{0}Min:{1}, Max:{2}, Txt:{3}{4}".format(colors.YELLOW, minimum, maximum, utils.decodenewlines(tokenizer.decode(txt)), colors.END))
+        logger.debug(f"Prompt Min:{minimum}, Max:{maximum}")
+        logger.prompt(utils.decodenewlines(tokenizer.decode(txt)).encode("unicode_escape").decode("utf-8"))
 
     # Store context in memory to use it for comparison with generated content
     koboldai_vars.lastctx = utils.decodenewlines(tokenizer.decode(txt))
@@ -5427,13 +5540,12 @@ def generate(txt, minimum, maximum, found_entries=None):
             koboldai_vars.lua_running = False
             emit('from_server', {'cmd': 'errmsg', 'data': 'Lua script error; please check console.'}, broadcast=True, room="UI_1")
             sendUSStatItems()
-            print("{0}{1}{2}".format(colors.RED, "***LUA ERROR***: ", colors.END), end="", file=sys.stderr)
-            print("{0}{1}{2}".format(colors.RED, str(e).replace("\033", ""), colors.END), file=sys.stderr)
-            print("{0}{1}{2}".format(colors.YELLOW, "Lua engine stopped; please open 'Userscripts' and press Load to reinitialize scripts.", colors.END), file=sys.stderr)
+            logger.debug('LUA ERROR: ' + str(e).replace("\033", ""))
+            logger.warning("Lua engine stopped; please open 'Userscripts' and press Load to reinitialize scripts.")
             socketio.emit("error", str(e), broadcast=True, room="UI_2")
         else:
             emit('from_server', {'cmd': 'errmsg', 'data': 'Error occurred during generator call; please check console.'}, broadcast=True, room="UI_1")
-            print("{0}{1}{2}".format(colors.RED, traceback.format_exc().replace("\033", ""), colors.END), file=sys.stderr)
+            logger.error(traceback.format_exc().replace("\033", ""))
             socketio.emit("error", str(e), broadcast=True, room="UI_2")
         set_aibusy(0)
         return
@@ -5476,7 +5588,7 @@ def generate(txt, minimum, maximum, found_entries=None):
 #==================================================================#
 def genresult(genout, flash=True, ignore_formatting=False):
     if not koboldai_vars.quiet:
-        print("{0}{1}{2}".format(colors.CYAN, genout, colors.END))
+        logger.generation(genout.encode("unicode_escape").decode("utf-8"))
     
     # Format output before continuing
     if not ignore_formatting:
@@ -5506,7 +5618,8 @@ def genselect(genout):
         # Apply output formatting rules to sequences
         result["generated_text"] = applyoutputformatting(result["generated_text"])
         if not koboldai_vars.quiet:
-            print("{0}[Result {1}]\n{2}{3}".format(colors.CYAN, i, result["generated_text"], colors.END))
+            logger.info(f"Generation Result {i}")
+            logger.generation(result["generated_text"].encode("unicode_escape").decode("utf-8"))
         i += 1
     
     
@@ -5549,6 +5662,323 @@ def pinsequence(n):
 
 
 #==================================================================#
+# BEGIN CONFLICT
+#  Send transformers-style request to ngrok/colab host
+#==================================================================#
+def sendtocolab(txt, min, max):
+    # Log request to console
+    if not koboldai_vars.quiet:
+        print("{0}Tokens:{1}, Txt:{2}{3}".format(colors.YELLOW, min-1, txt, colors.END))
+    
+    # Store context in memory to use it for comparison with generated content
+    koboldai_vars.lastctx = txt
+    
+    # Build request JSON data
+    reqdata = {
+        'text': txt,
+        'min': min,
+        'max': max,
+        'rep_pen': koboldai_vars.rep_pen,
+        'rep_pen_slope': koboldai_vars.rep_pen_slope,
+        'rep_pen_range': koboldai_vars.rep_pen_range,
+        'temperature': koboldai_vars.temp,
+        'top_p': koboldai_vars.top_p,
+        'top_k': koboldai_vars.top_k,
+        'tfs': koboldai_vars.tfs,
+        'typical': koboldai_vars.typical,
+        'topa': koboldai_vars.top_a,
+        'numseqs': koboldai_vars.numseqs,
+        'retfultxt': False
+    }
+    
+    # Create request
+    req = requests.post(
+        koboldai_vars.colaburl, 
+        json = reqdata
+        )
+    
+    # Deal with the response
+    if(req.status_code == 200):
+        js = req.json()["data"]
+        
+        # Try to be backwards compatible with outdated colab
+        if("text" in js):
+            genout = [getnewcontent(js["text"])]
+        else:
+            genout = js["seqs"]
+        
+        for i in range(koboldai_vars.numseqs):
+            koboldai_vars.lua_koboldbridge.outputs[i+1] = genout[i]
+
+        execute_outmod()
+        if(koboldai_vars.lua_koboldbridge.regeneration_required):
+            koboldai_vars.lua_koboldbridge.regeneration_required = False
+            genout = []
+            for i in range(koboldai_vars.numseqs):
+                genout.append(koboldai_vars.lua_koboldbridge.outputs[i+1])
+                assert type(genout[-1]) is str
+
+        koboldai_vars.actions.clear_unused_options()
+        koboldai_vars.actions.append_options([applyoutputformatting(x["generated_text"]) for x in genout])
+        genout = [{"generated_text": x['text']} for x in koboldai_vars.actions.get_current_options()]
+        if(len(genout) == 1):
+            
+            genresult(genout[0])
+        else:
+            # Convert torch output format to transformers
+            seqs = []
+            for seq in genout:
+                seqs.append({"generated_text": seq})
+            if(koboldai_vars.lua_koboldbridge.restart_sequence is not None and koboldai_vars.lua_koboldbridge.restart_sequence > 0):
+                genresult(genout[koboldai_vars.lua_koboldbridge.restart_sequence-1]["generated_text"])
+            else:
+                genselect(genout)
+        
+        # Format output before continuing
+        #genout = applyoutputformatting(getnewcontent(genout))
+        
+        # Add formatted text to Actions array and refresh the game screen
+        #koboldai_vars.actions.append(genout)
+        #refresh_story()
+        #emit('from_server', {'cmd': 'texteffect', 'data': koboldai_vars.actions.get_last_key() + 1 if len(koboldai_vars.actions) else 0})
+        
+        set_aibusy(0)
+    else:
+        errmsg = "Colab API Error: Failed to get a reply from the server. Please check the colab console."
+        print("{0}{1}{2}".format(colors.RED, errmsg, colors.END))
+        emit('from_server', {'cmd': 'errmsg', 'data': errmsg}, broadcast=True, room="UI_1")
+        set_aibusy(0)
+
+
+#==================================================================#
+#  Send transformers-style request to KoboldAI API
+#==================================================================#
+def sendtoapi(txt, min, max):
+    # Log request to console
+    if not koboldai_vars.quiet:
+        print("{0}Tokens:{1}, Txt:{2}{3}".format(colors.YELLOW, min-1, txt, colors.END))
+    
+    # Store context in memory to use it for comparison with generated content
+    koboldai_vars.lastctx = txt
+    
+    # Build request JSON data
+    reqdata = {
+        'prompt': txt,
+        'max_length': max - min + 1,
+        'max_context_length': koboldai_vars.max_length,
+        'rep_pen': koboldai_vars.rep_pen,
+        'rep_pen_slope': koboldai_vars.rep_pen_slope,
+        'rep_pen_range': koboldai_vars.rep_pen_range,
+        'temperature': koboldai_vars.temp,
+        'top_p': koboldai_vars.top_p,
+        'top_k': koboldai_vars.top_k,
+        'top_a': koboldai_vars.top_a,
+        'tfs': koboldai_vars.tfs,
+        'typical': koboldai_vars.typical,
+        'n': koboldai_vars.numseqs,
+    }
+    
+    # Create request
+    while True:
+        req = requests.post(
+            koboldai_vars.colaburl[:-8] + "/api/v1/generate",
+            json=reqdata,
+        )
+        if(req.status_code == 503):  # Server is currently generating something else so poll until it's our turn
+            time.sleep(1)
+            continue
+        js = req.json()
+        if(req.status_code != 200):
+            errmsg = "KoboldAI API Error: Failed to get a reply from the server. Please check the console."
+            print("{0}{1}{2}".format(colors.RED, json.dumps(js, indent=2), colors.END))
+            emit('from_server', {'cmd': 'errmsg', 'data': errmsg}, broadcast=True)
+            emit("error", errmsg, broadcast=True, room="UI_2")
+            set_aibusy(0)
+            return
+
+        genout = [obj["text"] for obj in js["results"]]
+
+        for i in range(koboldai_vars.numseqs):
+            koboldai_vars.lua_koboldbridge.outputs[i+1] = genout[i]
+
+        execute_outmod()
+        if(koboldai_vars.lua_koboldbridge.regeneration_required):
+            koboldai_vars.lua_koboldbridge.regeneration_required = False
+            genout = []
+            for i in range(koboldai_vars.numseqs):
+                genout.append(koboldai_vars.lua_koboldbridge.outputs[i+1])
+                assert type(genout[-1]) is str
+
+        if(len(genout) == 1):
+            genresult(genout[0])
+        else:
+            adjusted_genout = []
+            for item in genout:
+                adjusted_genout.append({"generated_text": item})
+            # Convert torch output format to transformers
+            seqs = []
+            for seq in adjusted_genout:
+                seqs.append({"generated_text": seq})
+            if(koboldai_vars.lua_koboldbridge.restart_sequence is not None and koboldai_vars.lua_koboldbridge.restart_sequence > 0):
+                genresult(adjusted_genout[koboldai_vars.lua_koboldbridge.restart_sequence-1]["generated_text"])
+            else:
+                genselect(adjusted_genout)
+
+        set_aibusy(0)
+        return
+
+#==================================================================#
+#  Send transformers-style request to KoboldAI Cluster
+#==================================================================#
+def sendtocluster(txt, min, max):
+    # Log request to console
+    if not koboldai_vars.quiet:
+        logger.debug(f"Tokens Min:{min-1}")
+        logger.prompt(txt.encode("unicode_escape").decode("utf-8"))
+
+    # Store context in memory to use it for comparison with generated content
+    koboldai_vars.lastctx = txt
+    # Build request JSON data
+    reqdata = {
+        'max_length': max - min + 1,
+        'max_context_length': koboldai_vars.max_length,
+        'rep_pen': koboldai_vars.rep_pen,
+        'rep_pen_slope': koboldai_vars.rep_pen_slope,
+        'rep_pen_range': koboldai_vars.rep_pen_range,
+        'temperature': koboldai_vars.temp,
+        'top_p': koboldai_vars.top_p,
+        'top_k': koboldai_vars.top_k,
+        'top_a': koboldai_vars.top_a,
+        'tfs': koboldai_vars.tfs,
+        'typical': koboldai_vars.typical,
+        'n': koboldai_vars.numseqs,
+    }
+    cluster_metadata = {
+        'prompt': txt,
+        'params': reqdata,
+        'api_key': koboldai_vars.apikey,
+        'models': koboldai_vars.cluster_requested_models,
+    }
+    if cluster_metadata["models"] == [""]:
+        cluster_metadata["models"] = []
+    logger.debug(f"Horde Payload: {cluster_metadata}")
+    try:
+        # Create request
+        req = requests.post(
+            koboldai_vars.colaburl[:-8] + "/api/v1/generate/async",
+            json=cluster_metadata,
+        )
+    except requests.exceptions.ConnectionError:
+        errmsg = f"Horde unavailable. Please try again later"
+        logger.error(errmsg)
+        emit('from_server', {'cmd': 'errmsg', 'data': errmsg}, broadcast=True)
+        set_aibusy(0)
+        return
+    if(req.status_code == 503):
+        errmsg = f"KoboldAI API Error: No available KoboldAI servers found in Horde to fulfil this request using the selected models or other properties."
+        logger.error(req.text)
+        emit('from_server', {'cmd': 'errmsg', 'data': errmsg}, broadcast=True)
+        set_aibusy(0)
+        return
+    if(not req.ok):
+        errmsg = f"KoboldAI API Error: Failed to get a standard reply from the Horde. Please check the console."
+        logger.error(req.text)
+        emit('from_server', {'cmd': 'errmsg', 'data': errmsg}, broadcast=True)
+        set_aibusy(0)
+        return
+    
+    try:
+        js = req.json()
+    except requests.exceptions.JSONDecodeError:
+        errmsg = f"Unexpected message received from the KoboldAI Horde: '{req.text}'"
+        logger.error(errmsg)
+        emit('from_server', {'cmd': 'errmsg', 'data': errmsg}, broadcast=True)
+        set_aibusy(0)
+        return
+    request_id = js['id']
+    logger.debug("Horde Request ID: {}".format(request_id))
+    #We've sent the request and got the ID back, now we need to watch it to see when it finishes
+    finished = False
+    while not finished:
+        try:
+            req = requests.get(koboldai_vars.colaburl[:-8] + "/api/v1/generate/check/" + request_id)
+        except requests.exceptions.ConnectionError:
+            errmsg = f"Horde unavailable. Please try again later"
+            logger.error(errmsg)
+            emit('from_server', {'cmd': 'errmsg', 'data': errmsg}, broadcast=True)
+            set_aibusy(0)
+            return
+        if(not req.ok):
+            errmsg = f"KoboldAI API Error: Failed to get a standard reply from the Horde. Please check the console."
+            logger.error(req.text)
+            emit('from_server', {'cmd': 'errmsg', 'data': errmsg}, broadcast=True)
+            set_aibusy(0)
+            return
+        try:
+            js = req.json()
+        except requests.exceptions.JSONDecodeError:
+            errmsg = f"Unexpected message received from the KoboldAI Horde: '{req.text}'"
+            logger.error(errmsg)
+            emit('from_server', {'cmd': 'errmsg', 'data': errmsg}, broadcast=True)
+            set_aibusy(0)
+            return
+        if not "done" in js:
+            errmsg = f"Unexpected response received from the KoboldAI Horde: '{js}'"
+            logger.error(errmsg )
+            emit('from_server', {'cmd': 'errmsg', 'data': errmsg}, broadcast=True)
+            set_aibusy(0)
+            return
+        finished = js["done"]
+        koboldai_vars.horde_wait_time = js["wait_time"]
+        koboldai_vars.horde_queue_position = js["queue_position"]
+        koboldai_vars.horde_queue_size = js["waiting"]
+        if not finished:
+            logger.debug(js)
+            time.sleep(1)
+    
+    logger.debug("Last Horde Status Message: {}".format(js))
+    js = requests.get(koboldai_vars.colaburl[:-8] + "/api/v1/generate/prompt/" + request_id).json()['generations']
+    logger.debug("Horde Result: {}".format(js))
+    
+    gen_servers = [(cgen['server_name'],cgen['server_id']) for cgen in js]
+    logger.info(f"Generations by: {gen_servers}")
+    # Just in case we want to announce it to the user
+    if len(js) == 1:        
+        warnmsg = f"Text generated by {js[0]['server_name']}"
+        emit('from_server', {'cmd': 'warnmsg', 'data': warnmsg}, broadcast=True)
+    genout = [cgen['text'] for cgen in js]
+
+    for i in range(koboldai_vars.numseqs):
+        koboldai_vars.lua_koboldbridge.outputs[i+1] = genout[i]
+
+    execute_outmod()
+    if(koboldai_vars.lua_koboldbridge.regeneration_required):
+        koboldai_vars.lua_koboldbridge.regeneration_required = False
+        genout = []
+        for i in range(koboldai_vars.numseqs):
+            genout.append(koboldai_vars.lua_koboldbridge.outputs[i+1])
+            assert type(genout[-1]) is str
+
+    if(len(genout) == 1):
+        genresult(genout[0])
+    else:
+        adjusted_genout = []
+        for item in genout:
+            adjusted_genout.append({"generated_text": item})
+        # Convert torch output format to transformers
+        seqs = []
+        for seq in adjusted_genout:
+            seqs.append({"generated_text": seq})
+        if(koboldai_vars.lua_koboldbridge.restart_sequence is not None and koboldai_vars.lua_koboldbridge.restart_sequence > 0):
+            genresult(adjusted_genout[koboldai_vars.lua_koboldbridge.restart_sequence-1]["generated_text"])
+        else:
+            genselect(adjusted_genout)
+
+    set_aibusy(0)
+    return
+
+#==================================================================#
+# END CONFLICT
 #  Send text to TPU mesh transformer backend
 #==================================================================#
 def tpumtjgenerate(txt, minimum, maximum, found_entries=None):
@@ -5562,7 +5992,8 @@ def tpumtjgenerate(txt, minimum, maximum, found_entries=None):
     found_entries = tuple(found_entries.copy() for _ in range(koboldai_vars.numseqs))
 
     if not koboldai_vars.quiet:
-        print("{0}Min:{1}, Max:{2}, Txt:{3}{4}".format(colors.YELLOW, minimum, maximum, utils.decodenewlines(tokenizer.decode(txt)), colors.END))
+        logger.debug(f"Prompt Min:{minimum}, Max:{maximum}")
+        logger.prompt(utils.decodenewlines(tokenizer.decode(txt)).encode("unicode_escape").decode("utf-8"))
 
     koboldai_vars._prompt = koboldai_vars.prompt
 
@@ -5603,13 +6034,10 @@ def tpumtjgenerate(txt, minimum, maximum, found_entries=None):
                 encoded = []
                 for i in range(koboldai_vars.numseqs):
                     txt = utils.decodenewlines(tokenizer.decode(past[i]))
-                    winfo, mem, anotetxt, _found_entries = calcsubmitbudgetheader(txt, force_use_txt=True, actions=koboldai_vars.actions)
+                    #winfo, mem, anotetxt, _found_entries = calcsubmitbudgetheader(txt, force_use_txt=True, actions=koboldai_vars.actions)
                     found_entries[i].update(_found_entries)
-                    if koboldai_vars.alt_gen:
-                       txt, _, _ = koboldai_vars.calc_ai_text(submitted_text=txt)
-                       print("Using Alt Gen: {}".format(tokenizer.decode(txt)))
-                    else:
-                        txt, _, _ = calcsubmitbudget(len(koboldai_vars.actions), winfo, mem, anotetxt, koboldai_vars.actions, submission=txt)
+                    #txt, _, _ = calcsubmitbudget(len(koboldai_vars.actions), winfo, mem, anotetxt, koboldai_vars.actions, submission=txt)
+                    txt, _, _, found_entries = koboldai_vars.calc_ai_text(submitted_text=txt)
                     encoded.append(np.array(txt, dtype=np.uint32))
                 max_length = len(max(encoded, key=len))
                 encoded = np.stack(tuple(np.pad(e, (max_length - len(e), 0), constant_values=tpu_mtj_backend.pad_token_id) for e in encoded))
@@ -5651,9 +6079,8 @@ def tpumtjgenerate(txt, minimum, maximum, found_entries=None):
             koboldai_vars.lua_running = False
             emit('from_server', {'cmd': 'errmsg', 'data': 'Lua script error; please check console.'}, broadcast=True, room="UI_1")
             sendUSStatItems()
-            print("{0}{1}{2}".format(colors.RED, "***LUA ERROR***: ", colors.END), end="", file=sys.stderr)
-            print("{0}{1}{2}".format(colors.RED, str(e).replace("\033", ""), colors.END), file=sys.stderr)
-            print("{0}{1}{2}".format(colors.YELLOW, "Lua engine stopped; please open 'Userscripts' and press Load to reinitialize scripts.", colors.END), file=sys.stderr)
+            logger.debug('LUA ERROR: ' + str(e).replace("\033", ""))
+            logger.warning("Lua engine stopped; please open 'Userscripts' and press Load to reinitialize scripts.")
             socketio.emit("error", str(e), broadcast=True, room="UI_2")
         else:
             emit('from_server', {'cmd': 'errmsg', 'data': 'Error occurred during generator call; please check console.'}, broadcast=True, room="UI_1")
@@ -5930,7 +6357,7 @@ def inlineedit(chunk, data):
         if(chunk-1 in koboldai_vars.actions):
             koboldai_vars.actions[chunk-1] = data
         else:
-            print(f"WARNING: Attempted to edit non-existent chunk {chunk}")
+            logger.warning(f"Attempted to edit non-existent chunk {chunk}")
 
     setgamesaved(False)
     update_story_chunk(chunk)
@@ -5954,7 +6381,7 @@ def inlinedelete(chunk):
         if(chunk-1 in koboldai_vars.actions):
             koboldai_vars.actions.delete_action(chunk-1)
         else:
-            print(f"WARNING: Attempted to delete non-existent chunk {chunk}")
+            logger.warning(f"Attempted to delete non-existent chunk {chunk}")
         setgamesaved(False)
         remove_story_chunk(chunk)
         emit('from_server', {'cmd': 'editmode', 'data': 'false'}, broadcast=True, room="UI_1")
@@ -6133,6 +6560,8 @@ def commitwi(ar):
         koboldai_vars.worldinfo_u[ob["uid"]]["constant"]     = ob.get("constant", False)
     stablesortwi()
     koboldai_vars.worldinfo_i = [wi for wi in koboldai_vars.worldinfo if wi["init"]]
+    koboldai_vars.sync_worldinfo_v1_to_v2()
+    sendwi()
 
 #==================================================================#
 #  
@@ -6606,16 +7035,18 @@ def loadJSON(json_text_or_dict):
         load_story_v1(json_data)
 
 def load_story_v1(js):
-    loadpath = js['v1_loadpath']
-    filename = js['v1_filename']
+    loadpath = js['v1_loadpath'] if 'v1_loadpath' in js else koboldai_vars.savedir
+    filename = js['v1_filename'] if 'v1_filename' in js else 'untitled.json'
     
     _filename = filename
     if(filename.endswith('.json')):
         _filename = filename[:-5]
+    leave_room(session['story'])
     session['story'] = _filename
+    join_room(_filename)
     #create the story
     #koboldai_vars.create_story(session['story'])
-    koboldai_vars.create_story('default')
+    koboldai_vars.create_story(session['story'])
     
     koboldai_vars.laststory = _filename
     #set the story_name
@@ -6661,7 +7092,7 @@ def load_story_v1(js):
                     data = js["actions_metadata"][key]["Alternative Text"]
                     for i in range(len(js["actions_metadata"][key]["Alternative Text"])):
                         data[i]["text"] = data[i].pop("Text")
-                    koboldai_vars.actions.set_options(data, key)
+                    koboldai_vars.actions.set_options(data, int(key))
     
     # Try not to break older save files
     if("authorsnote" in js):
@@ -6677,7 +7108,7 @@ def load_story_v1(js):
         num = 0
         for wi in js["worldinfo"]:
             koboldai_vars.worldinfo_v2.add_item([x.strip() for x in wi["key"].split(",")][0], wi["key"], wi.get("keysecondary", ""), 
-                                                wi.get("folder", "root"), wi.get("constant", False), 
+                                                "root" if wi.get("folder", "root") == 'root' else js['wifolders_d'][wi['folder']]['name'], wi.get("constant", False), 
                                                 wi["content"], wi.get("comment", ""))
 
     # Save path for save button
@@ -6701,9 +7132,13 @@ def load_story_v1(js):
     send_debug()
 
 def load_story_v2(js):
+    leave_room(session['story'])
     session['story'] = js['story_name']
+    join_room(session['story'])
+    
     koboldai_vars.load_story(session['story'], js)
     
+
 
 #==================================================================#
 # Import an AIDungon game exported with Mimi's tool
@@ -7037,7 +7472,8 @@ def final_startup():
             return
         utils.decodenewlines(tokenizer.decode([25678, 559]))
         tokenizer.encode(utils.encodenewlines("eunoia"))
-    threading.Thread(target=__preempt_tokenizer).start()
+    #threading.Thread(target=__preempt_tokenizer).start()
+    tpool.execute(__preempt_tokenizer)
 
     # Load soft prompt specified by the settings file, if applicable
     if(path.exists("settings/" + getmodelname().replace('/', '_') + ".v2_settings")):
@@ -7054,29 +7490,45 @@ def final_startup():
     if(koboldai_vars.use_colab_tpu or koboldai_vars.model in ("TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX")):
         soft_tokens = tpumtjgetsofttokens()
         if(koboldai_vars.dynamicscan or (not koboldai_vars.nogenmod and koboldai_vars.has_genmod)):
-            threading.Thread(
-                target=tpu_mtj_backend.infer_dynamic,
-                args=(np.tile(np.uint32((23403, 727, 20185)), (koboldai_vars.numseqs, 1)),),
-                kwargs={
-                    "soft_embeddings": koboldai_vars.sp,
-                    "soft_tokens": soft_tokens,
-                    "gen_len": 1,
-                    "use_callback": False,
-                    "numseqs": koboldai_vars.numseqs,
-                    "excluded_world_info": list(set() for _ in range(koboldai_vars.numseqs)),
-                },
-            ).start()
+            #threading.Thread(
+            #    target=tpu_mtj_backend.infer_dynamic,
+            #    args=(np.tile(np.uint32((23403, 727, 20185)), (koboldai_vars.numseqs, 1)),),
+            #    kwargs={
+            #        "soft_embeddings": koboldai_vars.sp,
+            #        "soft_tokens": soft_tokens,
+            #        "gen_len": 1,
+            #        "use_callback": False,
+            #        "numseqs": koboldai_vars.numseqs,
+            #        "excluded_world_info": list(set() for _ in range(koboldai_vars.numseqs)),
+            #    },
+            #).start()
+            tpool.execute(tpu_mtj_backend.infer_dynamic, np.tile(np.uint32((23403, 727, 20185)), (koboldai_vars.numseqs, 1)), 
+                    soft_embeddings= koboldai_vars.sp,
+                    soft_tokens= soft_tokens,
+                    gen_len= 1,
+                    use_callback= False,
+                    numseqs= koboldai_vars.numseqs,
+                    excluded_world_info= list(set() for _ in range(koboldai_vars.numseqs))
+            )
         else:
-            threading.Thread(
-                target=tpu_mtj_backend.infer_static,
-                args=(np.uint32((23403, 727, 20185)),),
-                kwargs={
-                    "soft_embeddings": koboldai_vars.sp,
-                    "soft_tokens": soft_tokens,
-                    "gen_len": 1,
-                    "numseqs": koboldai_vars.numseqs,
-                },
-            ).start()
+            #threading.Thread(
+            #    target=tpu_mtj_backend.infer_static,
+            #    args=(np.uint32((23403, 727, 20185)),),
+            #    kwargs={
+            #        "soft_embeddings": koboldai_vars.sp,
+            #        "soft_tokens": soft_tokens,
+            #        "gen_len": 1,
+            #        "numseqs": koboldai_vars.numseqs,
+            #    },
+            #).start()
+            tpool.execute(
+                tpu_mtj_backend.infer_static,
+                np.uint32((23403, 727, 20185)),
+                    soft_embeddings= koboldai_vars.sp,
+                    soft_tokens= soft_tokens,
+                    gen_len= 1,
+                    numseqs= koboldai_vars.numseqs
+            )
 
     # Set the initial RNG seed
     if(koboldai_vars.seed is not None):
@@ -7149,9 +7601,9 @@ def show_folder_usersripts(data):
 @app.route('/ai_text')
 def ai_text():
     start_time = time.time()
-    text = koboldai_vars.calc_ai_text()
-    print("Generating Game Text took {} seconds".format(time.time()-start_time))
-    return text
+    text = koboldai_vars.calc_ai_text(return_text=True)
+    logger.debug("Generating Game Text took {} seconds".format(time.time()-start_time))
+    return "{}\n\n\n{}".format(text, "Generating Game Text took {} seconds".format(time.time()-start_time))
     
     
     
@@ -7160,14 +7612,17 @@ def ai_text():
 # UI V2 CODE
 #==================================================================#
 @app.route('/new_ui')
+@logger.catch
 def new_ui_index():
     if 'story' in session:
         if session['story'] not in koboldai_vars.story_list():
             session['story'] = 'default'
     return render_template('index_new.html', settings=gensettings.gensettingstf, on_colab=koboldai_vars.on_colab )
 
+@logger.catch
 def ui2_connect():
     #Send all variables to client
+    logger.debug("Sending full data to client for story {}".format(session['story']))
     koboldai_vars.send_to_ui()
     UI_2_load_cookies()
     UI_2_theme_list_refresh(None)
@@ -7177,6 +7632,7 @@ def ui2_connect():
 # UI V2 CODE Themes
 #==================================================================#
 @app.route('/themes/<path:path>')
+@logger.catch
 def ui2_serve_themes(path):
     return send_from_directory('themes', path)
     
@@ -7185,31 +7641,36 @@ def ui2_serve_themes(path):
 # File Popup options
 #==================================================================#
 @socketio.on('upload_file')
+@logger.catch
 def upload_file(data):
-    if koboldai_vars.debug:
-        print("upload_file {}".format(data['filename']))
-    if 'current_folder' in session:
-        path = os.path.abspath(os.path.join(session['current_folder'], data['filename']).replace("\\", "/")).replace("\\", "/")
-        if koboldai_vars.debug:
-            print("Want to save to {}".format(path))
-        if 'popup_jailed_dir' not in session:
-            print("Someone is trying to upload a file to your server. Blocked.")
-        elif session['popup_jailed_dir'] is None:
-            if os.path.exists(path):
-                emit("error_popup", "The file already exists. Please delete it or rename the file before uploading", broadcast=False, room="UI_2");
-            else:
-                with open(path, "wb") as f:
-                    f.write(data['data'])
-                get_files_folders(session['current_folder'])
-        elif session['popup_jailed_dir'] in session['current_folder']:
-            if os.path.exists(path):
-                emit("error_popup", "The file already exists. Please delete it or rename the file before uploading", broadcast=False,  room="UI_2");
-            else:
-                with open(path, "wb") as f:
-                    f.write(data['data'])
-                get_files_folders(session['current_folder'])
+    logger.debug("upload_file {}".format(data['filename']))
+    if data['upload_no_save']:
+        json_data = json.loads(data['data'].decode("utf-8"))
+        loadJSON(json_data)
+    else:
+        if 'current_folder' in session:
+            path = os.path.abspath(os.path.join(session['current_folder'], data['filename']).replace("\\", "/")).replace("\\", "/")
+            if koboldai_vars.debug:
+                print("Want to save to {}".format(path))
+            if 'popup_jailed_dir' not in session:
+                print("Someone is trying to upload a file to your server. Blocked.")
+            elif session['popup_jailed_dir'] is None:
+                if os.path.exists(path):
+                    emit("error_popup", "The file already exists. Please delete it or rename the file before uploading", broadcast=False, room="UI_2");
+                else:
+                    with open(path, "wb") as f:
+                        f.write(data['data'])
+                    get_files_folders(session['current_folder'])
+            elif session['popup_jailed_dir'] in session['current_folder']:
+                if os.path.exists(path):
+                    emit("error_popup", "The file already exists. Please delete it or rename the file before uploading", broadcast=False,  room="UI_2");
+                else:
+                    with open(path, "wb") as f:
+                        f.write(data['data'])
+                    get_files_folders(session['current_folder'])
 
 @socketio.on('popup_change_folder')
+@logger.catch
 def popup_change_folder(data):
     if koboldai_vars.debug:
         print("Doing popup change folder: {}".format(data))
@@ -7224,6 +7685,7 @@ def popup_change_folder(data):
         print("User is trying to get at files in your server outside the jail. Blocked. Jailed Dir: {}  Requested Dir: {}".format(session['popup_jailed_dir'], data))
 
 @socketio.on('popup_rename')
+@logger.catch
 def popup_rename(data):
     if 'popup_renameable' not in session:
         print("Someone is trying to rename a file in your server. Blocked.")
@@ -7242,6 +7704,7 @@ def popup_rename(data):
         print("User is trying to rename files in your server outside the jail. Blocked. Jailed Dir: {}  Requested Dir: {}".format(session['popup_jailed_dir'], data['file']))
 
 @socketio.on('popup_delete')
+@logger.catch
 def popup_delete(data):
     if 'popup_deletable' not in session:
         print("Someone is trying to delete a file in your server. Blocked.")
@@ -7276,6 +7739,7 @@ def popup_delete(data):
         print("User is trying to delete files in your server outside the jail. Blocked. Jailed Dir: {}  Requested Dir: {}".format(session['popup_jailed_dir'], data))
 
 @socketio.on('popup_edit')
+@logger.catch
 def popup_edit(data):
     if 'popup_editable' not in session:
         print("Someone is trying to edit a file in your server. Blocked.")
@@ -7292,6 +7756,7 @@ def popup_edit(data):
         print("User is trying to delete files in your server outside the jail. Blocked. Jailed Dir: {}  Requested Dir: {}".format(session['popup_jailed_dir'], data))
 
 @socketio.on('popup_change_file')
+@logger.catch
 def popup_change_file(data):
     if 'popup_editable' not in session:
         print("Someone is trying to edit a file in your server. Blocked.")
@@ -7309,6 +7774,7 @@ def popup_change_file(data):
     else:
         print("User is trying to delete files in your server outside the jail. Blocked. Jailed Dir: {}  Requested Dir: {}".format(session['popup_jailed_dir'], data))
 
+@logger.catch
 def file_popup(popup_title, starting_folder, return_event, upload=True, jailed=True, folder_only=True, renameable=False, deleteable=False, 
                                                            editable=False, show_breadcrumbs=True, item_check=None, show_hidden=False,
                                                            valid_only=False, hide_extention=False, extra_parameter_function=None,
@@ -7348,11 +7814,12 @@ def file_popup(popup_title, starting_folder, return_event, upload=True, jailed=T
     session['show_folders'] = show_folders
     session['advanced_sort'] = advanced_sort
     
-    socketio.emit("load_popup", {"popup_title": popup_title, "call_back": return_event, "renameable": renameable, "deleteable": deleteable, "editable": editable, 'upload': upload}, broadcast=False, room="UI_2")
+    emit("load_popup", {"popup_title": popup_title, "call_back": return_event, "renameable": renameable, "deleteable": deleteable, "editable": editable, 'upload': upload}, broadcast=False)
     socketio.emit("load_popup", {"popup_title": popup_title, "call_back": return_event, "renameable": renameable, "deleteable": deleteable, "editable": editable, 'upload': upload}, broadcast=True, room="UI_1")
     
     get_files_folders(starting_folder)
-    
+
+@logger.catch
 def get_files_folders(starting_folder):
     import stat
     session['current_folder'] = os.path.abspath(starting_folder).replace("\\", "/")
@@ -7435,12 +7902,13 @@ def get_files_folders(starting_folder):
             items += files
             
     #items is a list of [Folder True/False, full path, file/folder name, validity of item to load, [list of extra columns]]
-    socketio.emit("popup_items", {"items": items, "column_names": column_names, "show_filename": show_filename, "column_widths": column_widths}, broadcast=False, include_self=True, room="UI_2")
+    emit("popup_items", {"items": items, "column_names": column_names, "show_filename": show_filename, "column_widths": column_widths}, broadcast=False)
     socketio.emit("popup_items", items, broadcast=True, include_self=True, room="UI_1")
     if show_breadcrumbs:
-        socketio.emit("popup_breadcrumbs", breadcrumbs, broadcast=False, room="UI_2")
+        emit("popup_breadcrumbs", breadcrumbs, broadcast=False)
         socketio.emit("popup_breadcrumbs", breadcrumbs, broadcast=True, room="UI_1")
 
+@logger.catch
 def get_files_sorted(path, sort, desc=False):
     data = {}
     for file in os.scandir(path=path):
@@ -7457,6 +7925,7 @@ def get_files_sorted(path, sort, desc=False):
         
 
 @socketio.on("configure_prompt")
+@logger.catch
 def UI_2_configure_prompt(data):
     import_buffer.replace_placeholders(data)
     import_buffer.commit()
@@ -7465,6 +7934,7 @@ def UI_2_configure_prompt(data):
 # Event triggered when browser SocketIO detects a variable change
 #==================================================================#
 @socketio.on('var_change')
+@logger.catch
 def UI_2_var_change(data):
     if 'value' not in data:
         return
@@ -7496,6 +7966,8 @@ def UI_2_var_change(data):
         else:
             filename = "settings/{}.v2_settings".format(classname)
         
+        if not os.path.exists("settings"):
+            os.mkdir("settings")
         with open(filename, "w") as settings_file:
             settings_file.write(getattr(koboldai_vars, "_{}".format(classname)).to_json())
     
@@ -7505,6 +7977,7 @@ def UI_2_var_change(data):
 # Saving Story
 #==================================================================#
 @socketio.on('save_story')
+@logger.catch
 def UI_2_save_story(data):
     if koboldai_vars.debug:
         print("Saving Story")
@@ -7533,6 +8006,7 @@ def UI_2_save_story(data):
 # Save story to json
 #==================================================================#
 @app.route("/json")
+@logger.catch
 def UI_2_save_to_json():
     return Response(
         koboldai_vars.to_json('story_settings'),
@@ -7545,6 +8019,7 @@ def UI_2_save_to_json():
 # Event triggered when Selected Text is edited
 #==================================================================#
 @socketio.on('Set Selected Text')
+@logger.catch
 def UI_2_Set_Selected_Text(data):
     if not koboldai_vars.quiet:
         print("Updating Selected Text: {}".format(data))
@@ -7554,6 +8029,7 @@ def UI_2_Set_Selected_Text(data):
 # Event triggered when Option is Selected
 #==================================================================#
 @socketio.on('Use Option Text')
+@logger.catch
 def UI_2_Use_Option_Text(data):
     if koboldai_vars.prompt == "":
         koboldai_vars.prompt = koboldai_vars.actions.get_current_options()[int(data['option'])]['text']
@@ -7561,11 +8037,19 @@ def UI_2_Use_Option_Text(data):
     else:
         koboldai_vars.actions.use_option(int(data['option']), action_step=int(data['chunk']))
 
+#==================================================================#
+# Event triggered when Option is Selected
+#==================================================================#
+@socketio.on('delete_option')
+@logger.catch
+def UI_2_delete_option(data):
+    koboldai_vars.actions.delete_option(int(data['option']), action_step=int(data['chunk']))
 
 #==================================================================#
 # Event triggered when user clicks the submit button
 #==================================================================#
 @socketio.on('submit')
+@logger.catch
 def UI_2_submit(data):
     if not koboldai_vars.noai and data['theme'] != "":
         if koboldai_vars.debug:
@@ -7590,6 +8074,7 @@ def UI_2_submit(data):
 # Event triggered when user clicks the submit button
 #==================================================================#
 @socketio.on('abort')
+@logger.catch
 def UI_2_abort(data):
     if koboldai_vars.debug:
         print("got abort")
@@ -7600,6 +8085,7 @@ def UI_2_abort(data):
 # Event triggered when user clicks the pin button
 #==================================================================#
 @socketio.on('Pinning')
+@logger.catch
 def UI_2_Pinning(data):
     koboldai_vars.actions.toggle_pin(int(data['chunk']), int(data['option']))
     
@@ -7607,6 +8093,7 @@ def UI_2_Pinning(data):
 # Event triggered when user clicks the back button
 #==================================================================#
 @socketio.on('back')
+@logger.catch
 def UI_2_back(data):
     if koboldai_vars.debug:
         print("back")
@@ -7617,6 +8104,7 @@ def UI_2_back(data):
 # Event triggered when user clicks the redo button
 #==================================================================#
 @socketio.on('redo')
+@logger.catch
 def UI_2_redo(data):
     if len(koboldai_vars.actions.get_current_options()) == 1:
         koboldai_vars.actions.use_option(0)
@@ -7626,6 +8114,7 @@ def UI_2_redo(data):
 # Event triggered when user clicks the retry button
 #==================================================================#
 @socketio.on('retry')
+@logger.catch
 def UI_2_retry(data):
     
     if len(koboldai_vars.actions.get_current_options_no_edits()) == 0:
@@ -7639,6 +8128,7 @@ def UI_2_retry(data):
 # Event triggered when user clicks the load model button
 #==================================================================#
 @socketio.on('load_model_button')
+@logger.catch
 def UI_2_load_model_button(data):
     sendModelSelection()
     
@@ -7646,6 +8136,7 @@ def UI_2_load_model_button(data):
 # Event triggered when user clicks the a model
 #==================================================================#
 @socketio.on('select_model')
+@logger.catch
 def UI_2_select_model(data):
     
     #We've selected a menu
@@ -7669,6 +8160,7 @@ def UI_2_select_model(data):
 # Event triggered when user loads a model
 #==================================================================#
 @socketio.on('load_model')
+@logger.catch
 def UI_2_load_model(data):
     if not os.path.exists("settings/"):
         os.mkdir("settings")
@@ -7697,6 +8189,7 @@ def UI_2_load_model(data):
 # Event triggered when load story is clicked
 #==================================================================#
 @socketio.on('load_story_list')
+@logger.catch
 def UI_2_load_story_list(data):
     file_popup("Select Story to Load", "./stories", "load_story", upload=True, jailed=True, folder_only=False, renameable=True, 
                                                                   deleteable=True, show_breadcrumbs=True, item_check=valid_story,
@@ -7704,7 +8197,8 @@ def UI_2_load_story_list(data):
                                                                   column_names=['Story Name', 'Action Count', 'Last Loaded'], show_filename=False,
                                                                   column_widths=['minmax(150px, auto)', '150px', '150px'], advanced_sort=story_sort,
                                                                   sort="Modified", desc=True)
-                                                                  
+
+@logger.catch
 def get_story_listing_data(item_full_path, item, valid_selection):
     title = ""
     action_count = -1
@@ -7732,7 +8226,7 @@ def get_story_listing_data(item_full_path, item, valid_selection):
 
     return [title, action_count, last_loaded]
     
-
+@logger.catch
 def valid_story(file):
     if file.endswith(".json"):
         with open(file, "r") as f:
@@ -7744,6 +8238,7 @@ def valid_story(file):
 
             return 'actions' in js
 
+@logger.catch
 def story_sort(base_path, desc=False):
     files = {}
     for file in os.scandir(path=base_path):
@@ -7766,6 +8261,7 @@ def story_sort(base_path, desc=False):
 # Event triggered on load story
 #==================================================================#
 @socketio.on('load_story')
+@logger.catch
 def UI_2_load_story(file):
     if koboldai_vars.debug:
         print("loading {}".format(file))
@@ -7775,6 +8271,7 @@ def UI_2_load_story(file):
 # Event triggered on load story
 #==================================================================#
 @socketio.on('new_story')
+@logger.catch
 def UI_2_new_story(data):
     koboldai_vars.create_story("")
     
@@ -7783,6 +8280,7 @@ def UI_2_new_story(data):
 # Event triggered when user moves world info
 #==================================================================#
 @socketio.on('move_wi')
+@logger.catch
 def UI_2_move_wi(data):
     if data['folder'] is None:
         koboldai_vars.worldinfo_v2.reorder(int(data['dragged_id']), int(data['drop_id']))
@@ -7793,6 +8291,7 @@ def UI_2_move_wi(data):
 # Event triggered when user moves world info
 #==================================================================#
 @socketio.on('wi_set_folder')
+@logger.catch
 def UI_2_wi_set_folder(data):
     koboldai_vars.worldinfo_v2.add_item_to_folder(int(data['dragged_id']), data['folder'])
 
@@ -7800,6 +8299,7 @@ def UI_2_wi_set_folder(data):
 # Event triggered when user renames world info folder
 #==================================================================#
 @socketio.on('Rename_World_Info_Folder')
+@logger.catch
 def UI_2_Rename_World_Info_Folder(data):
     if koboldai_vars.debug:
         print("Rename_World_Info_Folder")
@@ -7810,6 +8310,7 @@ def UI_2_Rename_World_Info_Folder(data):
 # Event triggered when user edits world info item
 #==================================================================#
 @socketio.on('edit_world_info')
+@logger.catch
 def UI_2_edit_world_info(data):
     if koboldai_vars.debug:
         print("edit_world_info")
@@ -7829,23 +8330,36 @@ def UI_2_edit_world_info(data):
 
 
 #==================================================================#
-# Event triggered when user edits world info item
+# Event triggered when user creates world info folder
 #==================================================================#
 @socketio.on('create_world_info_folder')
+@logger.catch
 def UI_2_create_world_info_folder(data):
     koboldai_vars.worldinfo_v2.add_folder("New Folder")
 
 #==================================================================#
-# Event triggered when user edits world info item
+# Event triggered when user deletes world info item
 #==================================================================#
 @socketio.on('delete_world_info')
+@logger.catch
 def UI_2_delete_world_info(uid):
     koboldai_vars.worldinfo_v2.delete(int(uid))
+
+
+#==================================================================#
+# Event triggered when user deletes world info folder
+#==================================================================#
+@socketio.on('delete_wi_folder')
+@logger.catch
+def UI_2_delete_wi_folder(folder):
+    koboldai_vars.worldinfo_v2.delete_folder(folder)
+
 
 #==================================================================#
 # Event triggered when user exports world info folder
 #==================================================================#
 @app.route('/export_world_info_folder')
+@logger.catch
 def UI_2_export_world_info_folder():
     if 'folder' in request.args:
         data = koboldai_vars.worldinfo_v2.to_json(folder=request.args['folder'])
@@ -7864,11 +8378,13 @@ def UI_2_export_world_info_folder():
 # Event triggered when user exports world info folder
 #==================================================================#
 @socketio.on('upload_world_info_folder')
+@logger.catch
 def UI_2_upload_world_info_folder(data):
     json_data = json.loads(data['data'])
     koboldai_vars.worldinfo_v2.load_json(json_data, folder=data['folder'])
 
 @socketio.on('import_world_info')
+@logger.catch
 def UI_2_import_world_info(data):
     wi_data = data["data"]
     uids = {}
@@ -7893,6 +8409,7 @@ def UI_2_import_world_info(data):
             koboldai_vars.worldinfo_v2.add_item_to_folder(uids[child], folder_name)
 
 @socketio.on("search_wi")
+@logger.catch
 def UI_2_search_wi(data):
     query = data["query"].lower()
     full_data = koboldai_vars.worldinfo_v2.to_json()
@@ -7912,15 +8429,17 @@ def UI_2_search_wi(data):
         elif query in entry["manual_text"].lower():
             results["comment"].append(entry)
 
-    socketio.emit("wi_results", results, broadcast=True, room="UI_2")
+    emit("wi_results", results, broadcast=True, room="UI_2")
 
 @socketio.on("update_wi_attribute")
+@logger.catch
 def UI_2_update_wi_attribute(data):
     uid, key, value = data["uid"], data["key"], data["value"]
     koboldai_vars.worldinfo_v2.world_info[uid][key] = value
     socketio.emit("world_info_entry", koboldai_vars.worldinfo_v2.world_info[uid], broadcast=True, room="UI_2")
 
 @socketio.on("update_wi_keys")
+@logger.catch
 def UI_2_update_wi_keys(data):
     uid, key, is_secondary, operation = data["uid"], data["key"], data["is_secondary"], data["operation"]
 
@@ -7945,6 +8464,7 @@ def UI_2_update_wi_keys(data):
 # Event triggered when user edits phrase biases
 #==================================================================#
 @socketio.on('phrase_bias_update')
+@logger.catch
 def UI_2_phrase_bias_update(biases):
     koboldai_vars.biases = biases
 
@@ -7953,6 +8473,7 @@ def UI_2_phrase_bias_update(biases):
 #==================================================================#
 # Event triggered to rely a message
 #==================================================================#
+@logger.catch
 def socket_io_relay(queue, socketio):
     while True:
         if not queue.empty():
@@ -7992,6 +8513,7 @@ def handle_exception(e):
 # Event triggered when Softprompt load menu is clicked
 #==================================================================#
 @socketio.on('load_softprompt_list')
+@logger.catch
 def UI_2_load_softprompt_list(data):
     if not koboldai_vars.allowsp:
         socketio.emit("error", "Soft prompts are not supported by your current model/backend", broadcast=True, room="UI_2")
@@ -8002,7 +8524,8 @@ def UI_2_load_softprompt_list(data):
                                                                   column_names=['Softprompt Name', 'Softprompt Description'],
                                                                   show_filename=False,
                                                                   column_widths=['150px', 'auto'])
-                                                                
+
+@logger.catch
 def valid_softprompt(file):
     z, version, shape, fortran_order, dtype = fileops.checksp(file, koboldai_vars.modeldim)
     if z in [1, 2, 3, 4]:
@@ -8013,6 +8536,7 @@ def valid_softprompt(file):
     else:
         return True
 
+@logger.catch
 def get_softprompt_desc(item_full_path, item, valid_selection):
     if not valid_selection:
         return [None, None]
@@ -8025,6 +8549,7 @@ def get_softprompt_desc(item_full_path, item, valid_selection):
 # Event triggered when Softprompt is loaded
 #==================================================================#
 @socketio.on('load_softprompt')
+@logger.catch
 def UI_2_load_softprompt(data):
     if koboldai_vars.debug:
         print("Load softprompt: {}".format(data))
@@ -8034,6 +8559,7 @@ def UI_2_load_softprompt(data):
 # Event triggered when load userscripts is clicked
 #==================================================================#
 @socketio.on('load_userscripts_list')
+@logger.catch
 def UI_2_load_userscripts_list(data):
     file_popup("Select Userscripts to Load", "./userscripts", "load_userscripts", upload=True, jailed=True, folder_only=False, renameable=True, editable=True, 
                                                                   deleteable=True, show_breadcrumbs=False, item_check=valid_userscripts_to_load,
@@ -8042,14 +8568,17 @@ def UI_2_load_userscripts_list(data):
                                                                   show_filename=True, show_folders=False,
                                                                   column_widths=['200px', '150px', 'auto'])
                                                                 
+@logger.catch
 def valid_userscripts_to_load(file):
     if koboldai_vars.debug:
         print("{} is valid: {}".format(file, file.endswith(".lua") and os.path.basename(file) not in koboldai_vars.userscripts))
     return file.endswith(".lua") and os.path.basename(file) not in koboldai_vars.userscripts
     
+@logger.catch
 def valid_userscripts_to_unload(file):
     return file.endswith(".lua") and os.path.basename(file) in koboldai_vars.userscripts
 
+@logger.catch
 def get_userscripts_desc(item_full_path, item, valid_selection):
     if not valid_selection:
         return [None, None]
@@ -8094,6 +8623,7 @@ def get_userscripts_desc(item_full_path, item, valid_selection):
 # Event triggered when userscript's are loaded
 #==================================================================#
 @socketio.on('load_userscripts')
+@logger.catch
 def UI_2_load_userscripts(data):
     if koboldai_vars.debug:
         print("Loading Userscripts: {}".format(os.path.basename(data)))
@@ -8104,6 +8634,7 @@ def UI_2_load_userscripts(data):
 # Event triggered when userscript's are unloaded
 #==================================================================#
 @socketio.on('unload_userscripts')
+@logger.catch
 def UI_2_unload_userscripts(data):
     if koboldai_vars.debug:
         print("Unloading Userscript: {}".format(data))
@@ -8116,6 +8647,7 @@ def UI_2_unload_userscripts(data):
 # Event triggered when aidg.club loaded
 #==================================================================#
 @socketio.on('load_aidg_club')
+@logger.catch
 def UI_2_load_aidg_club(data):
     if koboldai_vars.debug:
         print("Load aidg.club: {}".format(data))
@@ -8127,12 +8659,17 @@ def UI_2_load_aidg_club(data):
 # Event triggered when Theme Changed
 #==================================================================#
 @socketio.on('theme_change')
+@logger.catch
 def UI_2_theme_change(data):
     with open("themes/{}.css".format(data['name']), "w") as f:
         f.write(":root {\n")
         for key, value in data['theme'].items():
             f.write("\t{}: {};\n".format(key, value.replace(";", "").replace("--", "-")))
         f.write("}")
+        f.write("--------Special Rules from Original Theme---------\n")
+        for rule in data['special_rules']:
+            f.write(rule)
+            f.write("\n")
     if koboldai_vars.debug:
         print("Theme Saved")
 
@@ -8141,6 +8678,7 @@ def UI_2_theme_change(data):
 # Refresh SP List
 #==================================================================#
 @socketio.on('sp_list_refresh')
+@logger.catch
 def UI_2_sp_list_refresh(data):
     koboldai_vars.splist = [[f, get_softprompt_desc(os.path.join("./softprompts", f),None,True)] for f in os.listdir("./softprompts") if os.path.isfile(os.path.join("./softprompts", f)) and valid_softprompt(os.path.join("./softprompts", f))]
 
@@ -8149,6 +8687,7 @@ def UI_2_sp_list_refresh(data):
 # Refresh Theme List
 #==================================================================#
 @socketio.on('theme_list_refresh')
+@logger.catch
 def UI_2_theme_list_refresh(data):
     koboldai_vars.theme_list = [".".join(f.split(".")[:-1]) for f in os.listdir("./themes") if os.path.isfile(os.path.join("./themes", f))]
 
@@ -8156,6 +8695,7 @@ def UI_2_theme_list_refresh(data):
 # Save Tweaks
 #==================================================================#
 @socketio.on('save_cookies')
+@logger.catch
 def UI_2_save_cookies(data):
     for key in data:
         #Note this won't sync to the client automatically as we're modifying a variable rather than setting it
@@ -8183,6 +8723,7 @@ def UI_2_generate_raw():
 #==================================================================#
 # Load Tweaks
 #==================================================================#
+@logger.catch
 def UI_2_load_cookies():
     if koboldai_vars.on_colab:
         if os.path.exists("./settings/cookies.settings"):
@@ -8194,6 +8735,7 @@ def UI_2_load_cookies():
 # Save New Preset
 #==================================================================#
 @socketio.on('save_new_preset')
+@logger.catch
 def UI_2_save_new_preset(data):
     preset = {}
     #Data to get from current settings
@@ -8210,6 +8752,7 @@ def UI_2_save_new_preset(data):
     with open("./presets/{}.presets".format(data['preset']), "w") as f:
         json.dump(preset, f, indent="\t")
 
+@logger.catch
 def get_model_size(model_name):
     if "30B" in model_name:
         return "30B"
@@ -8228,17 +8771,293 @@ def get_model_size(model_name):
 # Save New Preset
 #==================================================================#
 @socketio.on('save_revision')
+@logger.catch
 def UI_2_save_revision(data):
     koboldai_vars.save_revision()
+
+
+#==================================================================#
+# Generate Image
+#==================================================================#
+@socketio.on("generate_image")
+@logger.catch
+def UI_2_generate_image(data):
+    koboldai_vars.generating_image = True
+    eventlet.sleep(0)
+    
+    #get latest action
+    if len(koboldai_vars.actions) > 0:
+        action = koboldai_vars.actions[-1]
+    else:
+        action = koboldai_vars.prompt
+    #Get matching world info entries
+    keys = []
+    for wi in koboldai_vars.worldinfo_v2:
+        for key in wi['key']:
+            if key in action:
+                #Check to make sure secondary keys are present if needed
+                if len(wi['keysecondary']) > 0:
+                    for keysecondary in wi['keysecondary']:
+                        if keysecondary in action:
+                            keys.append(key)
+                            break
+                    break
+                else:
+                    keys.append(key)
+                    break
+    
+    
+    #If we have > 4 keys, use those otherwise use sumarization
+    if len(keys) < 4:
+        start_time = time.time()
+        #text to summarize:
+        if len(koboldai_vars.actions) < 5:
+            text = "".join(koboldai_vars.actions[:-5]+[koboldai_vars.prompt])
+        else:
+            text = "".join(koboldai_vars.actions[:-5])
+            
+        
+        
+        keys = [summarize(text, max_length=args.max_summary_length)]
+    
+    art_guide = 'fantasy illustration, artstation, by jason felix by steve argyle by tyler jacobson by peter mohrbacher, cinematic lighting', 
+
+    #If we don't have a GPU, use horde if we're allowed to
+    start_time = time.time()
+    if ((not koboldai_vars.hascuda or not os.path.exists("models/stable-diffusion-v1-4")) and koboldai_vars.img_gen_priority != 0) or  koboldai_vars.img_gen_priority == 3:
+        b64_data = text2img_horde(", ".join(keys), art_guide = art_guide)
+    else:
+        import psutil
+        #We aren't being forced to use horde, so now let's figure out if we should use local
+        if torch.cuda.get_device_properties(0).total_memory - torch.cuda.memory_reserved(0) >= 6000000000:
+            #He have enough vram, just do it locally
+            b64_data = text2img_local(", ".join(keys), art_guide = art_guide)
+        elif torch.cuda.get_device_properties(0).total_memory > 6000000000 and koboldai_vars.img_gen_priority <= 1:
+            #We could do it locally by swapping the model out
+            print("Could do local or online")
+            b64_data = text2img_horde(", ".join(keys), art_guide = art_guide)
+        elif koboldai_vars.img_gen_priority != 0:
+            b64_data = text2img_horde(", ".join(keys), art_guide = art_guide)
+    logger.debug("Time to Generate Image {}".format(time.time()-start_time))
+    koboldai_vars.picture = b64_data
+    koboldai_vars.picture_prompt = ", ".join(keys)
+    koboldai_vars.generating_image = False
+    
+
+@logger.catch
+def text2img_local(prompt, art_guide="", filename="new.png"):
+    start_time = time.time()
+    logger.debug("Generating Image")
+    koboldai_vars.aibusy = True
+    koboldai_vars.generating_image = True
+    from diffusers import StableDiffusionPipeline
+    import base64
+    from io import BytesIO
+    if koboldai_vars.image_pipeline is None:
+        pipe = tpool.execute(StableDiffusionPipeline.from_pretrained, "CompVis/stable-diffusion-v1-4", revision="fp16", torch_dtype=torch.float16, cache="models/stable-diffusion-v1-4").to("cuda")
+    else:
+        pipe = koboldai_vars.image_pipeline.to("cuda")
+    logger.debug("time to load: {}".format(time.time() - start_time))
+    start_time = time.time()
+    
+    def get_image(pipe, prompt, num_inference_steps):
+        from torch import autocast
+        with autocast("cuda"):
+            return pipe(prompt, num_inference_steps=num_inference_steps)["sample"][0]
+    image = tpool.execute(get_image, pipe, prompt, num_inference_steps=35)
+    buffered = BytesIO()
+    image.save(buffered, format="JPEG")
+    img_str = base64.b64encode(buffered.getvalue()).decode('ascii')
+    logger.debug("time to generate: {}".format(time.time() - start_time))
+    start_time = time.time()
+    if koboldai_vars.keep_img_gen_in_memory:
+        pipe.to("cpu")
+        if koboldai_vars.image_pipeline is None:
+            koboldai_vars.image_pipeline = pipe
+    else:
+        koboldai_vars.image_pipeline = None
+        del pipe
+    torch.cuda.empty_cache()
+    koboldai_vars.generating_image = False
+    koboldai_vars.aibusy = False
+    logger.debug("time to unload: {}".format(time.time() - start_time))
+    return img_str
+
+@logger.catch
+def text2img_horde(prompt, 
+             art_guide = 'fantasy illustration, artstation, by jason felix by steve argyle by tyler jacobson by peter mohrbacher, cinematic lighting', 
+             filename = "story_art.png"):
+    logger.debug("Generating Image using Horde")
+    koboldai_vars.generating_image = True
+    final_imgen_params = {
+        "n": 1,
+        "width": 512,
+        "height": 512,
+        "steps": 50,
+    }
+
+    final_submit_dict = {
+        "prompt": "{}, {}".format(prompt, art_guide),
+        "api_key": koboldai_vars.sh_apikey if koboldai_vars.sh_apikey != '' else "0000000000",
+        "params": final_imgen_params,
+    }
+    logger.debug(final_submit_dict)
+    submit_req = requests.post('https://stablehorde.net/api/v1/generate/sync', json = final_submit_dict)
+    if submit_req.ok:
+        results = submit_req.json()
+        for iter in range(len(results)):
+            b64img = results[iter]["img"]
+            base64_bytes = b64img.encode('utf-8')
+            img_bytes = base64.b64decode(base64_bytes)
+            img = Image.open(BytesIO(img_bytes))
+            if len(results) > 1:
+                final_filename = f"{iter}_{filename}"
+            else:
+                final_filename = filename
+            img.save(final_filename)
+            logger.debug("Saved Image")
+            koboldai_vars.generating_image = False
+            return(b64img)
+    else:
+        koboldai_vars.generating_image = False
+        logger.error(submit_req.text)
+
+#@logger.catch
+def get_items_locations_from_text(text):
+    # load model and tokenizer
+    tokenizer = AutoTokenizer.from_pretrained("dslim/bert-base-NER")
+    model = AutoModelForTokenClassification.from_pretrained("dslim/bert-base-NER")
+    nlp = transformers.pipeline("ner", model=model, tokenizer=tokenizer)
+    # input example sentence
+    ner_results = nlp(text)
+    orgs = []
+    last_org_position = -2
+    loc = []
+    last_loc_position = -2
+    per = []
+    last_per_position = -2
+    for i, result in enumerate(ner_results):
+        if result['entity'] in ('B-ORG', 'I-ORG'):
+            if result['start']-1 <= last_org_position:
+                if result['start'] != last_org_position:
+                    orgs[-1] = "{} ".format(orgs[-1])
+                orgs[-1] = "{}{}".format(orgs[-1], result['word'].replace("##", ""))
+            else:
+                orgs.append(result['word'])
+            last_org_position = result['end']
+        elif result['entity'] in ('B-LOC', 'I-LOC'):
+            if result['start']-1 <= last_loc_position:
+                if result['start'] != last_loc_position:
+                    loc[-1] = "{} ".format(loc[-1])
+                loc[-1] = "{}{}".format(loc[-1], result['word'].replace("##", ""))
+            else:
+                loc.append(result['word'])
+            last_loc_position = result['end']
+        elif result['entity'] in ('B-PER', 'I-PER'):
+            if result['start']-1 <= last_per_position:
+                if result['start'] != last_per_position:
+                    per[-1] = "{} ".format(per[-1])
+                per[-1] = "{}{}".format(per[-1], result['word'].replace("##", ""))
+            else:
+                per.append(result['word'])
+            last_per_position = result['end']
+
+    print("Orgs: {}".format(orgs))
+    print("Locations: {}".format(loc))
+    print("People: {}".format(per))
+
+#==================================================================#
+# summarizer
+#==================================================================#
+def summarize(text, max_length=100, min_length=30):
+    from transformers import pipeline as summary_pipeline
+    start_time = time.time()
+    if koboldai_vars.summarizer is None:
+        if os.path.exists("models/{}".format(args.summarizer_model.replace('/', '_'))):
+            koboldai_vars.summary_tokenizer = AutoTokenizer.from_pretrained("models/{}".format(args.summarizer_model.replace('/', '_')), cache_dir="cache")
+            koboldai_vars.summarizer = AutoModelForSeq2SeqLM.from_pretrained("models/{}".format(args.summarizer_model.replace('/', '_')), cache_dir="cache")
+        else:
+            koboldai_vars.summary_tokenizer = AutoTokenizer.from_pretrained(args.summarizer_model, cache_dir="cache")
+            koboldai_vars.summarizer = AutoModelForSeq2SeqLM.from_pretrained(args.summarizer_model, cache_dir="cache")
+            koboldai_vars.summary_tokenizer.save_pretrained("models/{}".format(args.summarizer_model.replace('/', '_')), max_shard_size="500MiB")
+            koboldai_vars.summarizer.save_pretrained("models/{}".format(args.summarizer_model.replace('/', '_')), max_shard_size="500MiB")
+
+    #Try GPU accel
+    if koboldai_vars.hascuda and torch.cuda.get_device_properties(0).total_memory - torch.cuda.memory_reserved(0) >= 1645778560:
+        koboldai_vars.summarizer.to(0)
+        device=0
+    else:
+        device=-1
+    summarizer = tpool.execute(summary_pipeline, task="summarization", model=koboldai_vars.summarizer, tokenizer=koboldai_vars.summary_tokenizer, device=device)
+    logger.debug("Time to load summarizer: {}".format(time.time()-start_time))
+    
+    #Actual sumarization
+    start_time = time.time()
+    global old_transfomers_functions
+    temp = transformers.generation_utils.GenerationMixin._get_stopping_criteria
+    transformers.generation_utils.GenerationMixin._get_stopping_criteria = old_transfomers_functions['transformers.generation_utils.GenerationMixin._get_stopping_criteria']
+    #make sure text is less than 1024 tokens, otherwise we'll crash
+    if len(koboldai_vars.summary_tokenizer.encode(text)) > 1000:
+        text = koboldai_vars.summary_tokenizer.decode(koboldai_vars.summary_tokenizer.encode(text)[:1000])
+    output = tpool.execute(summarizer, text, max_length=max_length, min_length=min_length, do_sample=False)[0]['summary_text']
+    transformers.generation_utils.GenerationMixin._get_stopping_criteria = temp
+    logger.debug("Time to summarize: {}".format(time.time()-start_time))
+    #move model back to CPU to save precious vram
+    torch.cuda.empty_cache()
+    logger.debug("VRAM used by summarization: {}".format(torch.cuda.memory_reserved(0)))
+    koboldai_vars.summarizer.to("cpu")
+    torch.cuda.empty_cache()
+    
+    logger.debug("Original Text: {}".format(text))
+    logger.debug("Summarized Text: {}".format(output))
+    
+    return output
+
+#==================================================================#
+# Auto-memory function
+#==================================================================#
+@socketio.on("refresh_auto_memory")
+@logger.catch
+def UI_2_refresh_auto_memory(data):
+    koboldai_vars.auto_memory = "Generating..."
+    if koboldai_vars.summary_tokenizer is None:
+        koboldai_vars.summary_tokenizer = AutoTokenizer.from_pretrained("models/{}".format(args.summarizer_model.replace('/', '_')), cache_dir="cache")
+    #first, let's get all of our game text and split it into sentences
+    sentences = [x[0] for x in koboldai_vars.actions.to_sentences()]
+    sentences_lengths = [len(koboldai_vars.summary_tokenizer.encode(x)) for x in sentences]
+    
+    
+    while len(koboldai_vars.summary_tokenizer.encode("".join(sentences))) > 1000:
+        #Now let's split them into 1000 token chunks
+        summary_chunks = [""]
+        summary_chunk_lengths = [0]
+        for i in range(len(sentences)):
+            if summary_chunk_lengths[-1] + sentences_lengths[i] <= 1000:
+                summary_chunks[-1] += sentences[i]
+                summary_chunk_lengths[-1] += sentences_lengths[i]
+            else:
+                summary_chunks.append(sentences[i])
+                summary_chunk_lengths.append(sentences_lengths[i])
+        new_sentences = []
+        i=0
+        for summary_chunk in summary_chunks:
+            logger.debug("summarizing chunk {}".format(i))
+            new_sentences.extend(re.split("(?<=[.!?])\s+", summarize(summary_chunk)))
+            i+=1
+        logger.debug("Summarized to {} sentencees from {}".format(len(new_sentences), len(sentences)))
+        sentences = new_sentences
+        koboldai_vars.auto_memory = "\n".join(sentences)
+    logger.debug("OK, doing final summarization")
+    output = summarize(" ".join(sentences))
+    koboldai_vars.auto_memory += "\n\n Final Result:\n" + output
+
 
 #==================================================================#
 # Test
 #==================================================================#
-@app.route("/actions")
-def show_actions():
-    return koboldai_vars.actions.actions
-    
+
 @app.route("/vars")
+@logger.catch
 def show_vars():
     json_data = {}
     json_data['story_settings'] = json.loads(koboldai_vars.to_json("story_settings"))
@@ -8247,7 +9066,10 @@ def show_vars():
     json_data['system_settings'] = json.loads(koboldai_vars.to_json("system_settings"))
     return json_data
 
-    
+@socketio.on("trigger_error")
+@logger.catch
+def trigger_error(data):
+    temp = this_var_doesnt_exist
 
 #==================================================================#
 class EmptySchema(KoboldSchema):
@@ -10993,10 +11815,15 @@ def startup():
     socketio.start_background_task(load_model, **{'initial_load':True})
             
 print("", end="", flush=True)
-if __name__ == "__main__":
-    print("{0}\nStarting webserver...{1}".format(colors.GREEN, colors.END), flush=True)
 
+@logger.catch
+def run():
     general_startup()
+    # Start flask & SocketIO
+    logger.init("Flask", status="Starting")
+    Session(app)
+    logger.init_ok("Flask", status="OK")
+    logger.init("Webserver", status="Starting")
     patch_transformers()
     startup()
     # Start Flask/SocketIO (Blocking, so this must be last method!)
@@ -11012,6 +11839,7 @@ if __name__ == "__main__":
                 try:
                     cloudflare = str(localtunnel.stdout.readline())
                     cloudflare = (re.search("(?P<url>https?:\/\/[^\s]+loca.lt)", cloudflare).group("url"))
+                    koboldai_vars.cloudflare_link = cloudflare
                     break
                 except:
                     attempts += 1
@@ -11021,21 +11849,24 @@ if __name__ == "__main__":
                 print("LocalTunnel could not be created, falling back to cloudflare...")
                 from flask_cloudflared import _run_cloudflared
                 cloudflare = _run_cloudflared(port)
+                koboldai_vars.cloudflare_link = cloudflare
         elif(args.ngrok):
             from flask_ngrok import _run_ngrok
             cloudflare = _run_ngrok()
+            koboldai_vars.cloudflare_link = cloudflare
         elif(args.remote):
            from flask_cloudflared import _run_cloudflared
            cloudflare = _run_cloudflared(port)
+           koboldai_vars.cloudflare_link = cloudflare
         if(args.localtunnel or args.ngrok or args.remote):
             with open('cloudflare.log', 'w') as cloudflarelog:
                 cloudflarelog.write("KoboldAI has finished loading and is available at the following link : " + cloudflare)
-                koboldai_vars.cloudflare_link = cloudflare
-                print(format(colors.GREEN) + "KoboldAI has finished loading and is available at the following link for UI 1: " + cloudflare + format(colors.END))
-                print(format(colors.GREEN) + "KoboldAI has finished loading and is available at the following link for UI 2: " + cloudflare + "/new_ui" + format(colors.END))
+                logger.init_ok("Webserver", status="OK")
+                logger.message(f"KoboldAI has finished loading and is available at the following link for UI 1: {cloudflare}")
+                logger.message(f"KoboldAI has finished loading and is available at the following link for UI 2: {cloudflare}/new_ui")
         else:
-            print("{0}Webserver has started, you can now connect to this machine at port {1}{2}"
-                  .format(colors.GREEN, port, colors.END))
+            logger.init_ok("Webserver", status="OK")
+            logger.message(f"Webserver has started, you can now connect to this machine at port: {port}")
         koboldai_vars.serverstarted = True
         socketio.run(app, host='0.0.0.0', port=port)
     else:
@@ -11043,8 +11874,8 @@ if __name__ == "__main__":
             if not args.no_ui:
                 import webbrowser
                 webbrowser.open_new('http://localhost:{0}'.format(port))
-            print("{0}Server started!\nYou may now connect with a browser at http://127.0.0.1:{1}/{2}"
-                  .format(colors.GREEN, port, colors.END))
+            logger.init_ok("Webserver", status="OK")
+            logger.message(f"Webserver started! You may now connect with a browser at http://127.0.0.1:{port}")
             koboldai_vars.serverstarted = True
             socketio.run(app, port=port, host='0.0.0.0')
         else:
@@ -11057,13 +11888,20 @@ if __name__ == "__main__":
                 if not args.no_ui:
                     import webbrowser
                     webbrowser.open_new('http://localhost:{0}'.format(port))
-                print("{0}Server started!\nYou may now connect with a browser at http://127.0.0.1:{1}/{2}"
-                        .format(colors.GREEN, port, colors.END))
+                logger.init_ok("Webserver", status="OK")
+                logger.message(f"Webserver started! You may now connect with a browser at http://127.0.0.1:{port}")
                 koboldai_vars.serverstarted = True
                 socketio.run(app, port=port)
-
+    logger.init("Webserver", status="Closed")
+    
+if __name__ == "__main__":
+    run()
 else:
     general_startup()
+    # Start flask & SocketIO
+    logger.init("Flask", status="Starting")
+    Session(app)
+    logger.init_ok("Flask", status="OK")
     patch_transformers()
     startup()
     koboldai_settings.port = args.port if "port" in args and args.port is not None else 5000

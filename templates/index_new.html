@@ -95,6 +95,13 @@
 			<div class="statusbar_outer hidden var_sync_alt_system_aibusy" id="status_bar" onclick="socket.emit('abort','');">
 				<div class="statusbar_inner" style="width:0%" onclick="socket.emit('abort','');">0%</div>
 			</div><br>
+			<div class="statusbar_outer_horde var_sync_alt_system_aibusy var_sync_alt_model_horde_wait_time" id="status_bar_horde">
+				<div class="statusbar_inner_horde" style="width:100%">
+					<div>&nbsp;</div>
+					<div>Queue <span class="var_sync_model_horde_queue_position"></span> of <span class="var_sync_model_horde_queue_size"></span></div>
+					<div><span class="var_sync_model_horde_wait_time"></span> sec left</div>
+				</div>
+			</div><br>
 			<button type="button" class="btn action_button submit var_sync_alt_system_aibusy" system_aibusy=False id="btnsubmit" 
 				onclick="socket.emit('submit', {'data': document.getElementById('input_text').value, 'theme': document.getElementById('themetext').value});document.getElementById('input_text').value = '';document.getElementById('themetext').value = '';"
 				>Submit</button>
@@ -130,7 +137,5 @@
 	<div id="file-upload-notice" class="hidden">
 		<span class="material-icons-outlined">upload_file</span>
 	</div>
-
-	
 </body>
 </html>

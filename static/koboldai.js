@@ -24,11 +24,14 @@ socket.on("world_info_entry_used_in_game", function(data){world_info_entry_used_
 socket.on("world_info_folder", function(data){world_info_folder(data);});
 socket.on("delete_new_world_info_entry", function(data){document.getElementById("world_info_-1").remove();});
 socket.on("delete_world_info_entry", function(data){document.getElementById("world_info_"+data).remove();});
+socket.on("delete_world_info_folder", function(data){document.getElementById("world_info_folder_"+data).remove();});
 socket.on("error", function(data){show_error_message(data);});
 socket.on('load_cookies', function(data){load_cookies(data)});
 socket.on('load_tweaks', function(data){load_tweaks(data);});
 socket.on("wi_results", updateWISearchListings);
 socket.on("request_prompt_config", configurePrompt);
+socket.on("log_message", function(data){process_log_message(data)});
+socket.on("debug_message", function(data){console.log(data);});
 //socket.onAny(function(event_name, data) {console.log({"event": event_name, "class": data.classname, "data": data});});
 
 var presets = {};
@@ -50,6 +53,7 @@ var colab_cookies = null;
 var wi_finder_data = [];
 var wi_finder_offset = 0;
 var selected_game_chunk = null;
+var log = [];
 
 // name, desc, icon, func
 const finder_actions = [
@@ -68,6 +72,22 @@ const finder_actions = [
 	
 	// TODO: Direct theme selection
 	// {name: "", icon: "palette", func: function() { highlightEl("#biasing") }},
+];
+
+const context_menu_actions = [
+	{label: "Cut", icon: "content_cut", visibilityCondition: "SELECTION", click: cut},
+	{label: "Copy", icon: "content_copy", visibilityCondition: "SELECTION", click: copy},
+	{label: "Paste", icon: "content_paste", visibilityCondition: "SELECTION", click: paste},
+	// Null makes a seperation bar
+	null,
+	{label: "Add to Memory", icon: "assignment", visibilityCondition: "SELECTION", click: push_selection_to_memory},
+	{label: "Add to World Info Entry", icon: "auto_stories", visibilityCondition: "SELECTION", click: push_selection_to_world_info},
+	{label: "Add as Bias", icon: "insights", visibilityCondition: "SELECTION", click: push_selection_to_phrase_bias},
+	{label: "Retry from here", icon: "refresh", visibilityCondition: "CARET", click: retry_from_here},
+	// Not implemented! See view_selection_probabiltiies
+	// null,
+	// {label: "View Token Probabilities", icon: "assessment", visibilityCondition: "SELECTION", click: view_selection_probabilities},
+	// {label: "View Token Probabilities", icon: "account_tree", visibilityCondition: "SELECTION", click: view_selection_probabilities},
 ];
 
 
@@ -89,6 +109,7 @@ map2.set(5, 'Temperature')
 map2.set(6, 'Repetition Penalty')
 var calc_token_usage_timeout;
 var game_text_scroll_timeout;
+var font_size_cookie_timout;
 var var_processing_time = 0;
 var finder_last_input;
 //-----------------------------------Server to UI  Functions-----------------------------------------------
@@ -201,6 +222,12 @@ function create_options(data) {
 			icon.classList.add("oi");
 			icon.setAttribute('data-glyph', "loop-circular");
 			iconcell.append(icon);
+			delete_icon = $e("span", iconcell, {"classes": ["material-icons-outlined", "cursor", 'delete_option_icon'], 
+												"title": "delete option", 'option_id': i, 
+												'option_chunk': data.value.id, 'textContent': 'delete'});
+			delete_icon.onclick = function () {
+									socket.emit("delete_option", {"chunk": this.getAttribute("option_chunk"), "option": this.getAttribute("option_id")});
+							  };
 			textcell.onclick = function () {
 									socket.emit("Use Option Text", {"chunk": this.getAttribute("option_chunk"), "option": this.getAttribute("option_id")});
 							  };
@@ -313,6 +340,7 @@ function do_prompt(data) {
 		document.getElementById('themetext').value = "";
 		if (document.getElementById("Delete Me")) {
 			document.getElementById("Delete Me").remove();
+			document.getElementById("Selected Text").setAttribute("contenteditable", "true");
 		}
 		//enable editing
 		document.getElementById("Selected Text").setAttribute("contenteditable", "true");
@@ -464,7 +492,6 @@ function var_changed(data) {
 	}
 	//Special Case for Actions
 	if ((data.classname == "story") && (data.name == "actions")) {
-		start_processing_time = Date.now();
 		do_story_text_updates(data);
 		create_options(data);
 		do_story_text_length_updates(data);
@@ -474,8 +501,6 @@ function var_changed(data) {
 		} else {
 			document.getElementById('Selected Text Chunk '+data.value.id).classList.remove("within_max_length");
 		}
-		var_processing_time += Date.now() - start_processing_time;
-		document.getElementById('var_time').textContent = var_processing_time;
 		
 	//Special Case for Presets
 	} else if ((data.classname == 'model') && (data.name == 'presets')) {
@@ -518,6 +543,22 @@ function var_changed(data) {
 			button.childNodes[1].textContent = "Adventure";
 		} else {
 			button.childNodes[1].textContent = "Story";
+		}
+	//Special Case for story picture
+	} else if (data.classname == "story" && data.name == "picture") {
+		image_area = document.getElementById("action image");
+		while (image_area.firstChild) { 
+			image_area.removeChild(image_area.firstChild);
+		}
+		if (data.value != "") {
+			var image = new Image();
+			image.src = 'data:image/png;base64,'+data.value;
+			image.classList.add("action_image");
+			image_area.appendChild(image);
+		}
+	}  else if (data.classname == "story" && data.name == "picture_prompt") {
+		if (document.getElementById("action image").firstChild) {
+			document.getElementById("action image").firstChild.setAttribute("title", data.value);
 		}
 	//Basic Data Syncing
 	} else {
@@ -1059,6 +1100,18 @@ function oai_engines(data) {
 	}
 }
 
+function getModelParameterCount(modelName) {
+	// The "T" and "K" may be a little optimistic...
+	let paramsString = modelName.toUpperCase().match(/[\d.]+[TBMK]/)
+	if (!paramsString) return null;
+	paramsString = paramsString[0];
+
+	let base = parseFloat(paramsString);
+	let multiplier = {T: 1_000_000_000_000, B: 1_000_000_000, M: 1_000_000, K: 1_000}[paramsString[paramsString.length - 1]];
+
+	return base * multiplier;
+}
+
 function show_model_menu(data) {
 	document.getElementById("loadmodelcontainer").classList.remove("hidden");
 	
@@ -1135,6 +1188,28 @@ function show_model_menu(data) {
 		text.textContent = item[2];
 		text.style="grid-area: gpu_size;padding: 2px;";
 		popup_item.append(text);
+
+		(function() {
+			// Anon function to avoid unreasonable indentation
+			if (folder_icon.innerText !== "psychology") return;
+
+			let parameterCount = getModelParameterCount(item[0]);
+			if (!parameterCount) return;
+
+			let warningText = "";
+
+			if (parameterCount > 25_000_000_000) warningText = "This is a very high-end model and will likely not run without a specialized setup."; // 25B
+			if (parameterCount < 2_000_000_000) warningText = "This is a lower-end model and may perform poorly.";			// 2B
+			if (parameterCount < 1_000_000_000) warningText = "This is a very low-end model and may perform incoherently.";	// 1B
+
+			if (!warningText) return;
+			$e("span", list_item, {
+				classes: ["material-icons-outlined"],
+				innerText: "warning",
+				"style.grid-area": "warning_icon",
+				title: warningText
+			});
+		})();
 		
 		popup_item.onclick = function () {
 						var accept = document.getElementById("btn_loadmodelaccept");
@@ -1395,8 +1470,9 @@ function load_model() {
 	for (item of document.getElementById("oaimodel").selectedOptions) {
 		selected_models.push(item.value);
 	}
-	if (selected_models == []) {
-		selected_models = "";
+	if (selected_models == ['']) {
+
+		selected_models = [];
 	} else if (selected_models.length == 1) {
 		selected_models = selected_models[0];
 	}
@@ -1415,10 +1491,12 @@ function world_info_entry_used_in_game(data) {
 	}
 	world_info_data[data.uid]['used_in_game'] = data['used_in_game'];
 	world_info_card = document.getElementById("world_info_"+data.uid);
-	if (data.used_in_game) {
-		world_info_card.classList.add("used_in_game");
-	} else {
-		world_info_card.classList.remove("used_in_game");
+	if (world_info_card) {
+		if (data.used_in_game) {
+			world_info_card.classList.add("used_in_game");
+		} else {
+			world_info_card.classList.remove("used_in_game");
+		}
 	}
 }
 
@@ -1748,6 +1826,21 @@ function world_info_folder(data) {
 			}
 			title_text.classList.add("title");
 			title.append(title_text);
+			
+			//create delete button
+			delete_button = document.createElement("span");
+			delete_button.classList.add("material-icons-outlined");
+			delete_button.classList.add("cursor");
+			delete_button.setAttribute("folder", folder_name);
+			delete_button.textContent = "delete";
+			delete_button.onclick = function () {
+								if (window.confirm("Do you really want to delete this World Info folder and ALL entries under it?")) {
+									socket.emit("delete_wi_folder", this.getAttribute("folder"));
+								}
+							};
+			delete_button.classList.add("delete");
+			title.append(delete_button);
+			
 			//create download button
 			download = document.createElement("span");
 			download.classList.add("material-icons-outlined");
@@ -1883,7 +1976,15 @@ function world_info_folder(data) {
 function show_error_message(data) {
 	error_message_box = document.getElementById('error_message');
 	error_message_box.classList.remove("hidden");
-	error_message_box.querySelector("#popup_list_area").textContent = data;
+	error_box_data = error_message_box.querySelector("#popup_list_area")
+	//clear out the error box
+	while (error_box_data.firstChild) {
+		error_box_data.removeChild(error_box_data.firstChild);
+	}
+	for (item of data) {
+		$e("div", error_box_data, {'innerHTML': item, 'classes': ['console_text']})
+		$e("br", error_box_data)
+	}
 }
 
 function do_wpp(wpp_area) {
@@ -1924,6 +2025,26 @@ function load_cookies(data) {
 	}
 }
 
+function process_log_message(data) {
+	let level = data['record']['level']['name'];
+	let message = data['record']['message'];
+	let time = data['record']['time']['repr'];
+	let full_log = data['text'];
+	log.push({'level': level, 'message': message, 'time': time, 'full_log': full_log});
+	if (level == 'ERROR') {
+		show_error_message(data['html']);
+	}
+	
+	//put log message in log popup
+	log_popup = document.getElementById('log_popup');
+	log_popup_data = log_popup.querySelector("#popup_list_area")
+	//clear out the error box
+	for (item of data['html']) {
+		$e("div", log_popup_data, {'innerHTML': item, 'classes': ['console_text']})
+		$e("br", log_popup_data)
+	}
+}
+
 //--------------------------------------------UI to Server Functions----------------------------------
 function unload_userscripts() {
 	files_to_unload = document.getElementById('loaded_userscripts');
@@ -1935,7 +2056,7 @@ function unload_userscripts() {
 }
 
 function save_theme() {
-	var cssVars = getAllCSSVariableNames();
+	var [cssVars, rules] = getAllCSSVariableNames();
 	for (const [key, value] of Object.entries(cssVars)) {
 		if (document.getElementById(key)) {
 			if (document.getElementById(key+"_select").value == "") {
@@ -1949,7 +2070,7 @@ function save_theme() {
 	for (item of document.getElementsByClassName("Theme_Input")) {
 		cssVars["--"+item.id] = item.value;
 	}
-	socket.emit("theme_change", {"name": document.getElementById("save_theme_name").value, "theme": cssVars});
+	socket.emit("theme_change", {"name": document.getElementById("save_theme_name").value, "theme": cssVars, 'special_rules': rules});
 	document.getElementById("save_theme_name").value = "";
 	socket.emit('theme_list_refresh', '');
 }
@@ -2062,7 +2183,18 @@ function upload_file(file_box) {
 	for (file of fileList) {
 		reader = new FileReader();
 		reader.onload = function (event) {
-			socket.emit("upload_file", {'filename': file.name, "data": event.target.result});
+			socket.emit("upload_file", {'filename': file.name, "data": event.target.result, 'upload_no_save': false});
+		};
+		reader.readAsArrayBuffer(file);
+	}
+}
+
+function upload_file_without_save(file_box) {
+	var fileList = file_box.files;
+	for (file of fileList) {
+		reader = new FileReader();
+		reader.onload = function (event) {
+			socket.emit("upload_file", {'filename': file.name, "data": event.target.result, 'upload_no_save': true});
 		};
 		reader.readAsArrayBuffer(file);
 	}
@@ -2183,6 +2315,111 @@ function save_preset() {
 }
 
 //--------------------------------------------General UI Functions------------------------------------
+function set_font_size(element) {
+	new_font_size = element.value;
+	var r = document.querySelector(':root');
+	r.style.setProperty("--game_screen_font_size_adjustment", new_font_size);
+	clearTimeout(font_size_cookie_timout);
+	font_size_cookie_timout = setTimeout(function() {setCookie("font_size", new_font_size)}, 2000);
+}
+
+function push_selection_to_memory() {
+	document.getElementById("memory").value += "\n" + getSelectionText();
+	document.getElementById("memory").onchange();
+}
+
+function push_selection_to_world_info() {
+	let menu = document.getElementById("rightSideMenu");
+	if ((~menu.classList.contains("open")) && (~menu.classList.contains("pinned"))) {
+		menu.classList.add("open");
+	}
+	document.getElementById("story_flyout_tab_wi").onclick();
+	create_new_wi_entry("root");
+	document.getElementById("world_info_entry_text_-1").value = getSelectionText();
+}
+
+function push_selection_to_phrase_bias() {
+	let menu = document.getElementById("SideMenu");
+	if ((~menu.classList.contains("open")) && (~menu.classList.contains("pinned"))) {
+		menu.classList.add("open");
+	}
+	document.getElementById("settings_flyout_tab_settings").onclick();
+	document.getElementById("empty_bias_phrase").value = getSelectionText();
+	document.getElementById("empty_bias_phrase").scrollIntoView(false)
+	document.getElementById("empty_bias_phrase").onchange()
+}
+
+function retry_from_here() {
+	// TODO: Make this from the caret position (get_caret_position()) instead
+	// of per action. Actions may start out well, but go off the rails later, so
+	// we should be able to retry from any position.
+	let chunk = null;
+	for (element of document.getElementsByClassName("editing")) {
+		if (element.id == 'story_prompt') {
+			chunk = -1
+		} else {
+			chunk = parseInt(element.id.split(" ").at(-1));
+		}
+		element.classList.remove("editing");
+	}
+	if (chunk != null) {
+		action_count = parseInt(document.getElementById("action_count").textContent);
+		console.log(chunk);
+		for (let i = 0; i < (action_count-chunk); i++) {
+			socket.emit('back', {});
+		}
+		socket.emit('submit', {'data': "", 'theme': ""});
+		document.getElementById('input_text').value = '';
+		document.getElementById('themetext').value = '';
+	}
+}
+
+function view_selection_probabilities() {
+	// Not quite sure how this should work yet. Probabilities are obviously on
+	// the token level, which we have no UI representation of. There are other
+	// token-level visualization features I'd like to implement (like something
+	// for self-attention), so if that works out it might be best to have a
+	// modifier key (i.e. alt) enter a "token selection mode" when held.
+	console.log("Not implemented! :(");
+}
+
+function copy() {
+	document.execCommand("copy");
+}
+
+function paste() {
+	document.execCommand("paste");
+}
+
+function cut() {
+	document.execCommand("cut");
+}
+
+function getSelectionText() {
+    var text = "";
+    var activeEl = document.activeElement;
+    var activeElTagName = activeEl ? activeEl.tagName.toLowerCase() : null;
+    if (
+      (activeElTagName == "textarea") || (activeElTagName == "input" &&
+      /^(?:text|search|password|tel|url)$/i.test(activeEl.type)) &&
+      (typeof activeEl.selectionStart == "number")
+    ) {
+        text = activeEl.value.slice(activeEl.selectionStart, activeEl.selectionEnd);
+    } else if (window.getSelection) {
+        text = window.getSelection().toString();
+    }
+    return text;
+}
+
+function get_caret_position(target) {
+	if (
+		document.activeElement !== target &&
+		!$.contains(target, document.activeElement)
+	) return null;
+
+	return getSelection().focusOffset;
+}
+
 function show_save_preset() {
 	document.getElementById("save_preset").classList.remove("hidden");
 }
@@ -2261,39 +2498,46 @@ function Change_Theme(theme) {
 function palette_color(item) {
 	var r = document.querySelector(':root');
 	r.style.setProperty("--"+item.id, item.value);
-	//socket.emit("theme_change", getAllCSSVariableNames());
 }
 
 function getAllCSSVariableNames(styleSheets = document.styleSheets){
-   var cssVars = {};
-   // loop each stylesheet
-   //console.log(styleSheets);
-   for(var i = 0; i < styleSheets.length; i++){
-      // loop stylesheet's cssRules
-      try{ // try/catch used because 'hasOwnProperty' doesn't work
-         for( var j = 0; j < styleSheets[i].cssRules.length; j++){
-            try{
-               // loop stylesheet's cssRules' style (property names)
-               for(var k = 0; k < styleSheets[i].cssRules[j].style.length; k++){
-                  let name = styleSheets[i].cssRules[j].style[k];
-                  // test name for css variable signiture and uniqueness
-                  if(name.startsWith('--') && (styleSheets[i].ownerNode.id == "CSSTheme")){
-					let value = styleSheets[i].cssRules[j].style.getPropertyValue(name);
-					value.replace(/(\r\n|\r|\n){2,}/g, '$1\n');
-					value = value.replaceAll("\t", "").trim();
-                    cssVars[name] = value;
-                  }
-               }
-            } catch (error) {}
-         }
-      } catch (error) {}
-   }
-   return cssVars;
+	let cssVars = {};
+	let rules = [];
+	// loop each stylesheet
+	for(let i = 0; i < styleSheets.length; i++){
+		// loop stylesheet's cssRules
+		if ((styleSheets[i].href != null) && (styleSheets[i].href.includes("/themes/"))) {
+		  //if we're in the theme css, grab all the non root variables in case there are som
+		  for( let j = 0; j < styleSheets[i].cssRules.length; j++){
+				if (styleSheets[i].cssRules[j].selectorText != ":root") {
+					rules.push(styleSheets[i].cssRules[j].cssText);
+				}
+			}
+		}
+		try{ // try/catch used because 'hasOwnProperty' doesn't work
+			for( let j = 0; j < styleSheets[i].cssRules.length; j++){
+				try{
+					// loop stylesheet's cssRules' style (property names)
+					for(let k = 0; k < styleSheets[i].cssRules[j].style.length; k++){
+						let name = styleSheets[i].cssRules[j].style[k];
+						// test name for css variable signiture and uniqueness
+						if(name.startsWith('--') && (styleSheets[i].ownerNode.id == "CSSTheme")){
+							let value = styleSheets[i].cssRules[j].style.getPropertyValue(name);
+							value.replace(/(\r\n|\r|\n){2,}/g, '$1\n');
+							value = value.replaceAll("\t", "").trim();
+							cssVars[name] = value;
+						}
+					}
+				} catch (error) {}
+			}
+		} catch (error) {}
+	}
+	return [cssVars, rules];
 }
 
 function create_theming_elements() {
 	//console.log("Running theme editor");
-	var cssVars = getAllCSSVariableNames();
+	var [cssVars, rules] = getAllCSSVariableNames();
 	palette_table = document.createElement("table");
 	advanced_table = document.getElementById("advanced_theme_editor_table");
 	theme_area = document.getElementById("Palette");
@@ -2457,6 +2701,7 @@ function do_biases(data) {
 	bias_line.id = "";
 	bias_line.classList.add("bias");
 	bias_line.querySelector(".bias_phrase").querySelector("input").value = "";
+	bias_line.querySelector(".bias_phrase").querySelector("input").id = "empty_bias_phrase";
 	bias_line.querySelector(".bias_score").querySelector("input").value = 1;
 	bias_line.querySelector(".bias_comp_threshold").querySelector("input").value = 50;
 	document.getElementById('biasing').append(bias_line);
@@ -2830,9 +3075,8 @@ function assign_world_info_to_action(action_item, uid) {
 		
 		for (action of actions) {
 			//First check to see if we have a key in the text
-			var words = action.textContent.split(" ");
 			for (const [key, worldinfo] of  Object.entries(worldinfo_to_check)) {
-				//remove any world info tags
+				//remove any world info tags on the overall chunk
 				for (tag of action.getElementsByClassName("tag_uid_"+uid)) {
 					tag.classList.remove("tag_uid_"+uid);
 					tag.removeAttribute("title");
@@ -2846,121 +3090,102 @@ function assign_world_info_to_action(action_item, uid) {
 						if (worldinfo['keysecondary'].length > 0) {
 							for (second_key of worldinfo['keysecondary']) {
 								if (action.textContent.replace(/[^0-9a-z \'\"]/gi, '').includes(second_key)) {
-									//First let's assign our world info id to the action so we know to count the tokens for the world info
-									current_ids = action.getAttribute("world_info_uids")?action.getAttribute("world_info_uids").split(','):[];
-									if (!(current_ids.includes(uid))) {
-										current_ids.push(uid);
-									}
-									action.setAttribute("world_info_uids", current_ids.join(","));
-									//OK we have the phrase in our action. Let's see if we can identify the word(s) that are triggering
-									for (var i = 0; i < words.length; i++) {
-										key_words = keyword.split(" ").length;
-										var to_check = words.slice(i, i+key_words).join("").replace(/[^0-9a-z \'\"]/gi, '').trim();
-										if (keyword == to_check) {
-											var start_word = i;
-											var end_word = i+len_of_keyword;
-											var passed_words = 0;
-											for (span of action.childNodes) {
-												if (passed_words + span.textContent.split(" ").length < start_word) {
-													passed_words += span.textContent.trim().split(" ").length;
-												} else if (passed_words < end_word) {
-													//OK, we have text that matches, let's do the highlighting
-													//we can skip the highlighting if it's already done though
-													if (span.tagName != "I") {
-														var span_text = span.textContent.trim().split(" ");
-														var before_highlight_text = span_text.slice(0, start_word-passed_words).join(" ")+" ";
-														var highlight_text = span_text.slice(start_word-passed_words, end_word-passed_words).join(" ");
-														if (end_word-passed_words <= span_text.length) {
-															highlight_text += " ";
-														}
-														var after_highlight_text = span_text.slice((end_word-passed_words)).join(" ");
-														//console.log(span.textContent);
-														//console.log(keyword);
-														//console.log(before_highlight_text);
-														//console.log(highlight_text);
-														//console.log(after_highlight_text);
-														//console.log("passed: "+passed_words+" start:" + start_word + " end: "+end_word+" continue: "+(end_word-passed_words));
-														//console.log(null);
-														var before_span = document.createElement("span");
-														before_span.textContent = before_highlight_text;
-														var hightlight_span = document.createElement("i");
-														hightlight_span.textContent = highlight_text;
-														hightlight_span.title = worldinfo['content'];
-														var after_span = document.createElement("span");
-														after_span.textContent = after_highlight_text;
-														action.insertBefore(before_span, span);
-														action.insertBefore(hightlight_span, span);
-														action.insertBefore(after_span, span);
-														span.remove();
-													}
-													passed_words += span.textContent.trim().split(" ").length;
-												}
-											}
-										}
-									}
+									highlight_world_info_text_in_chunk(action, worldinfo);
+									break;
 								}
 							}
 						} else {
-							//First let's assign our world info id to the action so we know to count the tokens for the world info
-							current_ids = action.getAttribute("world_info_uids")?action.getAttribute("world_info_uids").split(','):[];
-							if (!(current_ids.includes(uid))) {
-								current_ids.push(uid);
-							}
-							action.setAttribute("world_info_uids", current_ids.join(","));
-							//OK we have the phrase in our action. Let's see if we can identify the word(s) that are triggering
-							var len_of_keyword = keyword.split(" ").length;
-							//go through each word to see where we get a match
-							for (var i = 0; i < words.length; i++) {
-								//get the words from the ith word to the i+len_of_keyword. Get rid of non-letters/numbers/'/"
-								var to_check = words.slice(i, i+len_of_keyword).join(" ").replace(/[^0-9a-z \'\"]/gi, '').trim();
-								if (keyword == to_check) {
-									var start_word = i;
-									var end_word = i+len_of_keyword;
-									var passed_words = 0;
-									for (span of action.childNodes) {
-										if (passed_words + span.textContent.split(" ").length < start_word) {
-											passed_words += span.textContent.trim().split(" ").length;
-										} else if (passed_words < end_word) {
-											//OK, we have text that matches, let's do the highlighting
-											//we can skip the highlighting if it's already done though
-											if (span.tagName != "I") {
-												var span_text = span.textContent.trim().split(" ");
-												var before_highlight_text = span_text.slice(0, start_word-passed_words).join(" ")+" ";
-												var highlight_text = span_text.slice(start_word-passed_words, end_word-passed_words).join(" ");
-												if (end_word-passed_words <= span_text.length) {
-													highlight_text += " ";
-												}
-												var after_highlight_text = span_text.slice((end_word-passed_words)).join(" ")+" ";
-												if (after_highlight_text[0] == ' ') {
-													after_highlight_text = after_highlight_text.substring(1);
-												}
-												//console.log("'"+span.textContent+"'");
-												//console.log(keyword);
-												//console.log("'"+before_highlight_text+"'");
-												//console.log("'"+highlight_text+"'");
-												//console.log("'"+after_highlight_text+"'");
-												//console.log("passed: "+passed_words+" start:" + start_word + " end: "+end_word+" continue: "+(end_word-passed_words));
-												//console.log(null);
-												var before_span = document.createElement("span");
-												before_span.textContent = before_highlight_text;
-												var hightlight_span = document.createElement("i");
-												hightlight_span.textContent = highlight_text;
-												hightlight_span.title = worldinfo['content'];
-												var after_span = document.createElement("span");
-												after_span.textContent = after_highlight_text;
-												action.insertBefore(before_span, span);
-												action.insertBefore(hightlight_span, span);
-												action.insertBefore(after_span, span);
-												span.remove();
-											}
-											passed_words += span.textContent.trim().split(" ").length;
-										}
-									}
-								}
-							}
+							highlight_world_info_text_in_chunk(action, worldinfo);
+							break;
 						}
 						
 					}
+				}
+			}
+		}
+	}
+}
+
+function highlight_world_info_text_in_chunk(action, wi) {
+	//First let's assign our world info id to the action so we know to count the tokens for the world info
+	let uid = wi['uid'];
+	let words = action.textContent.split(" ");
+	current_ids = action.getAttribute("world_info_uids")?action.getAttribute("world_info_uids").split(','):[];
+	if (!(current_ids.includes(uid))) {
+		current_ids.push(uid);
+	}
+	action.setAttribute("world_info_uids", current_ids.join(","));
+	//OK we have the phrase in our action. 
+	//First let's find the largest key that matches
+	let largest_key = "";
+	for (keyword of wi['key']) {
+		if ((keyword.length > largest_key.length) && (action.textContent.replace(/[^0-9a-z \'\"]/gi, '').includes(keyword))) {
+			largest_key = keyword;
+		}
+	}
+	//console.log(largest_key);
+	
+	
+	//Let's see if we can identify the word(s) that are triggering
+	var len_of_keyword = largest_key.split(" ").length;
+	//go through each word to see where we get a match
+	for (var i = 0; i < words.length; i++) {
+		//get the words from the ith word to the i+len_of_keyword. Get rid of non-letters/numbers/'/"
+		var to_check = words.slice(i, i+len_of_keyword).join(" ").replace(/[^0-9a-z \'\"]/gi, '').trim();
+		if (largest_key == to_check) {
+			var start_word = i;
+			var end_word = i+len_of_keyword-1;
+			var passed_words = 0;
+			//console.log("Finding "+to_check);
+			for (span of action.childNodes) {
+				//console.log(span);
+				//console.log("passed_words("+passed_words+")+span("+(span.textContent.trim().split(" ").length)+")<start_word("+start_word+"): "+(passed_words + span.textContent.trim().split(" ").length < start_word));
+				if (passed_words + span.textContent.trim().split(" ").length < start_word+1) {
+					passed_words += span.textContent.trim().split(" ").length;
+				} else if (passed_words <= end_word) {
+					//OK, we have text that matches, let's do the highlighting
+					//we can skip the highlighting if it's already done though
+					//console.log(span.textContent.trim().split(" "));
+					//console.log("start_word: "+start_word+" end_word: "+end_word+" passed_words: "+passed_words);
+					//console.log(span.textContent.trim().split(" ").slice(start_word-passed_words, end_word-passed_words+1).join(" "));
+					if (~(span.classList.contains('wi_match'))) {
+						var span_text = span.textContent.trim().split(" ");
+						//console.log(span_text);
+						if (start_word-passed_words == 0) {
+							var before_highlight_text = "";
+						} else {
+							var before_highlight_text = span_text.slice(0, start_word-passed_words).join(" ")+" ";
+						}
+						var highlight_text = span_text.slice(start_word-passed_words, end_word-passed_words+1).join(" ");
+						if (end_word-passed_words-1 <= span_text.length) {
+							highlight_text += " ";
+						}
+						var after_highlight_text = span_text.slice((end_word-passed_words+1)).join(" ")+" ";
+						if (after_highlight_text[0] == ' ') {
+							after_highlight_text = after_highlight_text.substring(1);
+						}
+						if (before_highlight_text != "") {
+							//console.log("Before Text:'"+before_highlight_text+"'");
+							var before_span = document.createElement("span");
+							before_span.textContent = before_highlight_text;
+							action.insertBefore(before_span, span);
+						}
+						//console.log("Highlight Text: '"+highlight_text+"'");
+						var hightlight_span = document.createElement("span");
+						hightlight_span.classList.add("wi_match");
+						hightlight_span.textContent = highlight_text;
+						hightlight_span.title = wi['content'];
+						action.insertBefore(hightlight_span, span);
+						if (after_highlight_text != "") {
+							//console.log("After Text: '"+after_highlight_text+"'");
+							var after_span = document.createElement("span");
+							after_span.textContent = after_highlight_text;
+							action.insertBefore(after_span, span);
+						}
+						//console.log("Done");
+						span.remove();
+					}
+					passed_words += span.textContent.trim().split(" ").length;
 				}
 			}
 		}
@@ -3127,6 +3352,7 @@ function close_menus() {
 	document.getElementById("advanced_theme_editor").classList.add("hidden");
 	document.getElementById("context-viewer-container").classList.add("hidden");
 	document.getElementById("save_preset").classList.add("hidden");
+	document.getElementById("log_popup").classList.add("hidden");
 	
 	//unselect sampler items
 	for (temp of document.getElementsByClassName("sample_order")) {
@@ -3652,7 +3878,6 @@ function updateStandardSearchListings(query) {
 
 function $e(tag, parent, attributes) {
 	// Small helper function for dynamic UI creation
-	// TODO: Support nested attributed with "." syntax.
 
 	let element = document.createElement(tag);
 
@@ -3970,7 +4195,43 @@ function process_cookies() {
 	
 	Change_Theme(getCookie("theme", "Monochrome"));
 	
+	//set font size
+	new_font_size = getCookie("font_size", 1);
+	var r = document.querySelector(':root');
+	r.style.setProperty("--game_screen_font_size_adjustment", new_font_size);
+	document.getElementById('font_size_cur').value = new_font_size;
+	document.getElementById('font_size').value = new_font_size;
+	
+	
 	load_tweaks();
+}
+
+function position_context_menu(contextMenu, x, y) {
+	// Calculate where to position context menu based on window confines and
+	// menu size.
+
+	let height = contextMenu.clientHeight;
+	let width = contextMenu.clientWidth;
+
+	let bounds = {
+		top: 0,
+		bottom: window.innerHeight,
+		left: 0,
+		right: window.innerWidth,
+	};
+
+	let farMenuBounds = {
+		top: y,
+		bottom: y + height,
+		left: x,
+		right: x + width,
+	};
+
+	if (farMenuBounds.right > bounds.right) x -= farMenuBounds.right - bounds.right;
+	if (farMenuBounds.bottom > bounds.bottom) y -= farMenuBounds.bottom - bounds.bottom;
+
+	contextMenu.style.left = `${x}px`;
+	contextMenu.style.top = `${y}px`;
 }
 
 $(document).ready(function(){
@@ -4135,6 +4396,69 @@ $(document).ready(function(){
 
 	debugContainer.addEventListener("click", function(e) {
 		debugContainer.classList.add("hidden");
+	});
+
+	// Context menu
+	const contextMenu = $e("div", document.body, {id: "context-menu", classes: ["hidden"]});
+
+	for (const action of context_menu_actions) {
+		// Null adds horizontal rule
+		if (!action) {
+			$e("hr", contextMenu);
+			continue;
+		}
+
+		let item = $e("div", contextMenu, {
+			classes: ["context-menu-item", "noselect"],
+			"visibility-condition": action.visibilityCondition
+		});
+		let icon = $e("span", item, {classes: ["material-icons-outlined"], innerText: action.icon});
+		item.append(action.label);
+
+		item.addEventListener("mousedown", (e) => (e.preventDefault()));
+		item.addEventListener("click", action.click);
+	}
+
+	$("#gamescreen").contextmenu(function(event) {
+		// Don't open browser context menu
+		event.preventDefault();
+
+		// Close if open
+		if (!contextMenu.classList.contains("hidden")) {
+			contextMenu.classList.add("hidden");
+			return;
+		}
+
+		// Disable non-applicable items
+		$(".context-menu-item").addClass("disabled");
+		
+		// A selection is made
+		if (getSelectionText()) $(".context-menu-item[visibility-condition=SELECTION]").removeClass("disabled");
+		
+		// The caret is placed
+		if (get_caret_position($("#gamescreen")[0]) !== null) $(".context-menu-item[visibility-condition=CARET]").removeClass("disabled");
+
+		contextMenu.classList.remove("hidden");
+
+		// Set position to click position
+		position_context_menu(contextMenu, event.originalEvent.x, event.originalEvent.y);
+
+		// Don't let the document contextmenu catch us and close our context menu
+		event.stopPropagation();
+	});
+
+	// When we make a browser context menu, close ours.
+	$(document).contextmenu(function(event) {
+		contextMenu.classList.add("hidden");
+	});
+
+	// When we click outside of our context menu, close ours.
+	$(document).click(function(event) {
+		contextMenu.classList.add("hidden");
+	});
+
+	window.addEventListener("blur", function(event) {
+		contextMenu.classList.add("hidden");
 	});
 });
 

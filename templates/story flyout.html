@@ -1,8 +1,8 @@
 <div class="tabrow nomenu_icon">
-	<span class="story_menu_button tab tab-story selected" tab-target="story_menu_memory" onclick="selectTab(this);">Memory</span>
-	<span class="story_menu_button tab tab-story" tab-target="story_menu_author" onclick="selectTab(this);">Author's Note</span>
-	<span class="story_menu_button tab tab-story" tab-target="story_menu_notes" onclick="selectTab(this);">Notes</span>
-	<span class="story_menu_button tab tab-story" tab-target="story_menu_wi" onclick="selectTab(this);">World Info</span>
+	<span id="story_flyout_tab_memory" class="story_menu_button tab tab-story selected" tab-target="story_menu_memory" onclick="selectTab(this);">Memory</span>
+	<span id="story_flyout_tab_author" class="story_menu_button tab tab-story" tab-target="story_menu_author" onclick="selectTab(this);">Author's Note</span>
+	<span id="story_flyout_tab_notes" class="story_menu_button tab tab-story" tab-target="story_menu_notes" onclick="selectTab(this);">Notes</span>
+	<span id="story_flyout_tab_wi" class="story_menu_button tab tab-story" tab-target="story_menu_wi" onclick="selectTab(this);">World Info</span>
 </div>
 <div class="flyout_menu_contents">
 	<div id="story_menu_memory" class="story_category_area tab-target tab-target-story">
@@ -12,6 +12,14 @@
 				Important information the AI should always keep in mind.
 			</span>
 			<textarea rows=20 id="memory" class="var_sync_story_memory var_sync_alt_story_memory_length fullwidth" onchange='sync_to_server(this);' oninput="autoResize(this)" autocomplete="off"></textarea>
+		</div>
+		<div id="Auto-Memory">
+			<h4 class="section_header">Auto-Memory (non-functional)</h4>
+			<span class="help_text">
+				What the system would use for automatic memory summarized from the game
+			</span>
+			<button class="settings_button" onclick="socket.emit('refresh_auto_memory', {});">Generate</button>
+			<textarea rows=20 id="auto_memory" class="var_sync_story_auto_memory fullwidth" oninput="autoResize(this)" autocomplete="off"></textarea>
 		</div>
 	</div>
 	<div id="story_menu_author" class="story_category_area tab-target tab-target-story hidden">

@@ -1,7 +1,7 @@
 /*
 	Name: Monochrome
 	Author: LightSaveUs
-	Version: 0.5
+	Version: 0.6.1
 	Description: A theme inspired by the NovelAI interface.
 */
 
@@ -42,18 +42,18 @@
     --input_background: #121b21;
 
     --text: #e0e0e0;
-    --text_to_ai_color: #cdd9e0;
-    --text_edit: #759bc5;
+    --text_to_ai_color: #e0e0e0;
+    --text_edit: #9cc3ee;
 
 	--statusbar_color: #3e53679e;
 	--statusbar_text_color: #e0e0e0;
-	--scrollbar-color: #3e536780;
+	--scrollbar-color: #3e53679e;
 
 	/*Buttons*/
 		/*General*/
 	--enabled_button_text: #e0e0e0;
-    --enabled_button_background_color: #2f4563;
-    --enabled_button_border_color: #263a54;
+    --enabled_button_background_color: #30435b;
+    --enabled_button_border_color: #253446;
 
 	--disabled_button_text: #303030;
     --disabled_button_background_color: #495762;
@@ -61,11 +61,11 @@
 
 		/*Home Tab*/
 	--button_text: #e0e0e0;
-	--button_background: #2f4563;
+	--button_background: #30435b;
 		
 		/*Alternate Button*/
 	--alternate_button_text: #e0e0e0;
-	--alternate_button_background: #244c65;
+	--alternate_button_background: #30435b;
 
 
 	/*Sequence, AKA Gens Per Action*/
@@ -74,7 +74,7 @@
 	--sequence_text: #cfd7a2;
 
 	/*Side Menus*/
-	--tab_color: #2b5471;
+	--tab_color: #1e2f44;
 
 	--flyout_background: #18222a;
 	--flyout_background_pinned: #18222a;
@@ -83,32 +83,31 @@
     --setting_text: #e0e0e0;
 
 	--sample_order_select_color: #244c65;
-	--sample_order_select_color_text: #e0e0e0;
+	--sample_order_select_color_text: #cfd7a2;
 
 	--dropdown_text: #cfd7a2;
 	--dropdown_background: #131c22;
 
 	--rangeslider_background_color: #1f2934;
-	--rangeslider_color: #244c65;
-	--rangeslider_circle_color: #1b354d;
+	--rangeslider_color: #1f2934;
+	--rangeslider_circle_color: #244c65;
 
-	--help_icon: #cfd7a2;
-    /*--tooltip_text: #000000;
+	--help_icon: #7c8389;/*--tooltip_text: #000000;
     --tooltip_background: #000000;*/
 	--setting_category_help_text_color: #E0E0E0;
 	
-	--setting_footer_border_color: grey;
+	--setting_footer_border_color: #334552;
 	--setting_footer_text_color: #e0e0e0;
 	--setting_footer_background_color: #18222a;
 
 	/*Palette Card*/
 	--palette_card_background: #273141;
 	--palette_card_text: #e0e0e0;
-	--palette_table_border: #eeeeeead;
+	--palette_table_border: #607c90;
 
 	/*World Info*/
-	--wi_card_border_color: #eeeeeead;
-    --wi_card_border_color_to_ai: #eeeeeead;
+	--wi_card_border_color: #334552;
+    --wi_card_border_color_to_ai: #334552;
 
     --wi_card_bg_color: #273141;
 	--wi_card_text_color: #e0e0e0;
@@ -116,31 +115,31 @@
     --wi_card_tag_bg_color: #273141;
 	--wi_card_tag_text_color: #e0e0e0;
 	
-    --wi_tag_color: #244c65;
+    --wi_tag_color: #30435b;
 	--wi_tag_text_color: #e0e0e0;
 	
 	/*Popup*/
-	--popup_background_color: #141c23;
-    --popup_title_bar_color: #2b5471;
+	--popup_background_color: #19242c;
+    --popup_title_bar_color: #25364a;
 	--popup_title_bar_color_text: #e0e0e0;
 
-    --popup_item_color: #252f3a;
+    --popup_item_color: #30435b;
 	--popup_item_color_text: #e0e0e0;
 
-	--popup_hover_color: #1f4358;
+	--popup_hover_color: #253346;
 	--popup_hover_color_text: #e0e0e0;
-	--popup_selected_color: #295c72;
-	--popup_selected_color_text:#e0e0e0;
+	--popup_selected_color: #202b3a;
+	--popup_selected_color_text: #cfd7a2;
 
-	--popup_button_color: #406494;
+	--popup_button_color: #25364a;
 	--popup_button_color_text: #e0e0e0;
-	--popup_cancel_button_color: #406494;
+	--popup_cancel_button_color: #25364a;
 	--popup_cancel_button_color_text: #e0e0e0;
 
-	--error: #ffb4ab;
-	--error_text: #690005;
-	--error_title: #93000a;
-	--error_title_text: #ffdad6;
+	--error: #19242c;
+	--error_text: #e0e0e0;
+	--error_title: #25364a;
+	--error_title_text: #e0e0e0;
 	
 	/*Context Bar Colors*/
 	--context_colors_memory: #04325c;
@@ -148,7 +147,7 @@
 	--context_colors_world_info: #1864a3;
 	--context_colors_prompt: #868686;
 	--context_colors_game_text: #63710e;
-	--context_colors_submit: #ededed;
+	--context_colors_submit: #ffffff00;
 	--context_colors_unused: #ffffff24;
 	--context_colors_soft_prompt: #141414;
 
@@ -181,16 +180,219 @@
 	--flyout_menu_closed_width: 0px;
 	--setting_menu_closed_width_no_pins_width:  0px;
 	--story_options_size: 30%;
-	--story_pinned_areas_left: "menuicon options gamescreen lefticon"
+	--story_pinned_areas_left:"menuicon options gamescreen lefticon"
 								 "menuicon theme theme lefticon"
 								 "menuicon inputrow inputrow lefticon";
-	--story_pinned_areas_right: "menuicon gamescreen options lefticon"
+	--story_pinned_areas_right:"menuicon gamescreen options lefticon"
 								 "menuicon theme theme lefticon"
 								 "menuicon inputrow inputrow lefticon";
-	--story_pinned_area_widths_left: 30px var(--story_options_size) auto 30px;
-	--story_pinned_area_widths_right: 30px auto var(--story_options_size) 30px;
-	--story_pinned_areas: var(--story_pinned_areas_left);
-	--story_pinned_area_widths: var(--story_pinned_area_widths_left);
+	--story_pinned_area_widths_left: 30pxvar(--story_options_size) auto 30px;
+	--story_pinned_area_widths_right: 30pxautovar(--story_options_size) 30px;
+	--story_pinned_areas:var(--story_pinned_areas_left);
+	--story_pinned_area_widths:var(--story_pinned_area_widths_left);
 	--font_size_adjustment: 0px;
-	--game_screen_font_size_adjustment: 1;
+	--game_screen_font_size_adjustment: 1;}
+
+/* Boxes */
+
+#input_text, #themetext {
+    border-color: #334552 !important;
+}
+
+.fullwidth {
+	border-radius: 2px;
+    border-color: #334552 !important;
+}
+
+.bias_phrase input {
+    border-color: #334552 !important;
+}
+
+/* Buttons */
+
+.settings_button {
+    border: none !important;
+}
+
+.settings_button:hover {
+	filter: brightness(120%);
+}
+
+.btn-success {
+	color: #131c22 !important;
+    border-color: #cfd7a2 !important;
+    background-color: #cfd7a2 !important;
+}
+
+.toggle-off.btn {
+	color: #cfd7a2 !important;
+    background-color: #131c22 !important;
+	border-color: #131c22 !important;
+}
+
+.toggle-off.btn:hover {
+	border-color: #cfd7a2 !important;
+}
+
+.wi_add_button:hover {
+	filter: brightness(120%);
+}
+
+.advanced_theme:hover {
+	filter: brightness(120%) !important;
+}
+
+/* Context Menu */
+
+#context-menu {
+	border-color: #334552 !important;
+	background-color: #18222a !important;
+}
+
+#context-menu > hr {
+	border-color: #334552 !important;
+}
+
+.context-menu-item:hover {
+	background-color:#334552 !important;
+}
+
+/* Context Viewer */
+
+#context-viewer-header {
+    background-color: #1e2f44 !important;
+}
+
+#context-container {
+	background-color: #273141 !important;
+}
+
+/* Finder */
+
+.result-highlight {
+    background-color: #9ba950 !important;
+}
+
+/* Icons */
+
+.material-icons-outlined:hover {
+	transform: scale(1.1);
+	filter: brightness(100%) !important;
+}
+
+span.helpicon.material-icons-outlined:hover {
+	transform: scale(1) !important;
+}
+
+#context-viewer-close:hover {
+	transform: scale(1) !important;
+}
+
+.collapsable_header .material-icons-outlined {
+    transform: translateY(7px) translateX(4px)!important;
+}
+
+/* Import */
+
+a {
+    color: #e0e0e0 !important;
+}
+
+.form-control {
+	border: none;
+    background-color: #25323d !important;
+}
+
+/* Lines */
+
+.story_title, hr {
+    border-color: #334552 !important;
+}
+
+/* Lists */
+
+.settings_select, .var_sync_system_theme_list {
+	border-color: #334552 !important;
+}
+
+/* Padding */
+
+.story_title_area {
+    padding-top: 3px;
+}
+
+/* Palette */
+
+#palette_area {
+    border-color: #334552 !important;
+}
+
+/* Popup */
+
+.popup .action_button {
+    border-radius: 2px;
+	border-color:#ffffff00;
+	background-color:#30435b !important;
+}
+
+.popup_load_cancel_button {
+    border-radius: 2px;
+	border-color:#ffffff00 !important;
+	background-color:#30435b !important;
+}
+
+.popup .action_button:hover {
+	filter: brightness(120%) !important;
+	background-color: #30435b !important;
+}
+
+.popup_load_cancel_button:hover {
+	color: #e0e0e0 !important;
+    background-color: #30435b !important;
+	border-color: #ffffff00 !important;
+	filter: brightness(120%) !important;
+}
+
+/* Tabs */
+
+.tabrow span {
+	border: none !important;
+	box-shadow: inset 0px 0px 2px #20344e !important;
+}
+
+.tabrow span::before, .tabrow span::after {
+	display: none;
+	border: none !important;
+}
+
+.tabrow span:hover {
+	background: #244c65 !important;
+}
+
+.tabrow span.selected {
+    color: #cfd7a2 !important;
+	background: #244c65 !important;
+}
+
+/* Text */
+
+.rawtext {
+    font-family: sans-serif !important;
+}
+
+/* World Info */
+
+.tag:hover {
+     filter: brightness(120%) !important;
+}
+
+.world_info_tag_area {
+    filter: brightness(100%) !important;
+	background-color: #1d2831 !important;
+}
+
+.world_info_text {
+	margin: 0 0px 0px !important;
+	filter: brightness(100%) !important;
+	background-color: #1d2831 !important;
 }
