@@ -1,8 +1,8 @@
 #!/usr/bin/python3
 #==================================================================#
 # KoboldAI
-# Version: 1.18.1
-# By: KoboldAIDev and the KoboldAI Community
+# Version: 1.19.0
+# By: The KoboldAI Community
 #==================================================================#
 
 # External packages
@@ -7703,7 +7703,7 @@ def post_generate(body: GenerationInputSchema):
             schema: GenerationInputSchema
             example:
               prompt: |-2
-                Explosions of suspicious origin occur at AMNAT satellite-receiver stations from Turkey to Labrador as three high-level Canadian defense ministers vanish and then a couple of days later are photographed at a Volgograd bistro hoisting shots of Stolichnaya with Slavic bimbos on their knee.
+                Niko the kobold stalked carefully down the alley, his small scaly figure obscured by a dusky cloak that fluttered lightly in the cold winter breeze.
               top_p: 0.9
               temperature: 0.5
       responses:
@@ -7715,8 +7715,7 @@ def post_generate(body: GenerationInputSchema):
               example:
                 results:
                   - text: |-2
-                       It is later established that all of the cabinet members have died of old age.
-                      MEGAMATRIX becomes involved in the growing number of mass abductions and kidnappings. Many disappearances occur along highways in western Canada, usually when traffic has come to a standstill because of a stalled truck or snowstorm. One or two abducted individuals will be released within a day or so but never
+                       Holding up his tail to keep it from dragging in the dirty snow that covered the cobblestone, he waited patiently for the butcher to turn his attention from his stall so that he could pilfer his next meal: a tender-looking chicken.
         {api_validation_error_response}
         {api_not_implemented_response}
         {api_server_busy_response}
