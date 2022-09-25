@@ -2,7 +2,7 @@ transformers>=4.20.1
 Flask
 Flask-SocketIO
 requests
-torch==1.11
+torch<=1.12.*
 flask-cloudflared
 flask-ngrok
 eventlet
