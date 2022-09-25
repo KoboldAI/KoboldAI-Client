@@ -330,7 +330,7 @@ class vars:
     badwordsids_opt = [[44717], [46613], [48513], [49923], [50185], [48755], [8488], [43303], [49659], [48601], [49817], [45405], [48742], [49925], [47720], [11227], [48937], [48784], [50017], [42248], [49310], [48082], [49895], [50025], [49092], [49007], [8061], [44226], [0], [742], [28578], [15698], [49784], [46679], [39365], [49281], [49609], [48081], [48906], [46161], [48554], [49670], [48677], [49721], [49632], [48610], [48462], [47457], [10975], [46077], [28696], [48709], [43839], [49798], [49154], [48203], [49625], [48395], [50155], [47161], [49095], [48833], [49420], [49666], [48443], [22176], [49242], [48651], [49138], [49750], [40389], [48021], [21838], [49070], [45333], [40862], [1], [49915], [33525], [49858], [50254], [44403], [48992], [48872], [46117], [49853], [47567], [50206], [41552], [50068], [48999], [49703], [49940], [49329], [47620], [49868], [49962], [2], [44082], [50236], [31274], [50260], [47052], [42645], [49177], [17523], [48691], [49900], [49069], [49358], [48794], [47529], [46479], [48457], [646], [49910], [48077], [48935], [46386], [48902], [49151], [48759], [49803], [45587], [48392], [47789], [48654], [49836], [49230], [48188], [50264], [46844], [44690], [48505], [50161], [27779], [49995], [41833], [50154], [49097], [48520], [50018], [8174], [50084], [49366], [49526], [50193], [7479], [49982], [3]]
     fp32_model  = False  # Whether or not the most recently loaded HF model was in fp32 format
     deletewi    = None   # Temporary storage for UID to delete
-    wirmvwhtsp  = False  # Whether to remove leading whitespace from WI entries
+    wirmvwhtsp  = True  # Whether to remove leading whitespace from WI entries
     widepth     = 3      # How many historical actions to scan for WI hits
     mode        = "play" # Whether the interface is in play, memory, or edit mode
     editln      = 0      # Which line was last selected in Edit Mode
@@ -5989,14 +5989,14 @@ def checkworldinfo(txt, allowed_entries=None, allowed_folders=None, force_use_tx
                 # Remove leading/trailing spaces if the option is enabled
                 if(vars.wirmvwhtsp):
                     ky = k.strip()
-                if ky in txt:
+                if ky.lower() in txt.lower():
                     if wi.get("selective", False) and len(keys_secondary):
                         found = False
                         for ks in keys_secondary:
                             ksy = ks
                             if(vars.wirmvwhtsp):
                                 ksy = ks.strip()
-                            if ksy in txt:
+                            if ksy.lower() in txt.lower():
                                 wimem = wimem + wi["content"] + "\n"
                                 found_entries.add(id(wi))
                                 found = True
