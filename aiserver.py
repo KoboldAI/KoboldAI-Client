@@ -8968,6 +8968,10 @@ def UI_2_refresh_auto_memory(data):
 # Test
 #==================================================================#
 
+@app.route("/exit")
+def UI_2_exit():
+    exit()
+
 @app.route("/vars")
 @logger.catch
 def show_vars():
