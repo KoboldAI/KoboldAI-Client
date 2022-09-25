@@ -1479,6 +1479,7 @@ def get_model_info(model, directory=""):
     multi_online_models = False
     gpu_count = torch.cuda.device_count()
     gpu_names = []
+    send_horde_models = False
     for i in range(gpu_count):
         gpu_names.append(torch.cuda.get_device_name(i))
     if model in ['Colab', 'API']:
@@ -1498,6 +1499,10 @@ def get_model_info(model, directory=""):
                     key_value = js["apikey"]
                 elif 'oaiapikey' in js and js['oaiapikey'] != "":
                     key_value = js["oaiapikey"]
+                if 'url' in js and js['url'] != "":
+                    url = js['url']
+            if key_value != "":
+                send_horde_models = True
     elif model in [x[1] for x in model_menu['apilist']]:
         if path.exists(get_config_filename(model)):
             with open(get_config_filename(model), "r") as file:
@@ -1544,7 +1549,9 @@ def get_model_info(model, directory=""):
                          'disk_break_value': disk_blocks, 'accelerate': utils.HAS_ACCELERATE,
                          'break_values': break_values, 'gpu_count': gpu_count, 'multi_online_models': multi_online_models,
                          'url': url, 'default_url': default_url, 'gpu_names': gpu_names, 'models_on_url': models_on_url}, broadcast=True)
-    if key_value != "":
+    if send_horde_models:
+        get_cluster_models({'key': key_value, 'url': default_url})
+    elif key_value != "" and model in [x[1] for x in model_menu['apilist']] and model != 'CLUSTER':
         get_oai_models(key_value)
     
 
@@ -1678,6 +1685,7 @@ def get_cluster_models(msg):
         js={}
         with open(get_config_filename(vars.model_selected), "w") as file:
             js["apikey"] = vars.oaiapikey
+            js["url"] = url
             file.write(json.dumps(js, indent=3))
         
     logger.init_ok("KAI Horde Models", status="OK")
