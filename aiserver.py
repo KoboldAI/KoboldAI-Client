@@ -5562,7 +5562,7 @@ def api_raw_generate(
     reqdata = {
         'prompt': decoded_prompt,
         'max_length': max_new,
-        'max_context_length': gen_settings.max_length,
+        'max_context_length': koboldai_vars.max_length,
         'rep_pen': gen_settings.rep_pen,
         'rep_pen_slope': gen_settings.rep_pen_slope,
         'rep_pen_range': gen_settings.rep_pen_range,
