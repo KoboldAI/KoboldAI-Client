@@ -436,7 +436,7 @@ class settings(object):
         if 'no_save' in self.__dict__:
             setattr(self, 'no_save', True)
         for key, value in json_data.items():
-            if key in self.__dict__:
+            if key in self.__dict__ and key not in self.no_save_variables:
                 if key == 'sampler_order':
                     if(len(value) < 7):
                         value = [6] + value
