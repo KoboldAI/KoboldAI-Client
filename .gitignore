@@ -32,6 +32,7 @@ accelerate-disk-cache
 # Temporary until HF port
 !models/RWKV-v4
 models/RWKV-v4/20B_tokenizer.json
+models/RWKV-v4/src/__pycache__
 models/RWKV-v4/models
 
 # Ignore PyCharm project files.
