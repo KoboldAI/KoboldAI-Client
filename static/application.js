@@ -107,6 +107,9 @@ var modelname = null;
 var model = "";
 var ignore_stream = false;
 
+//timer for loading CLUSTER models
+var online_model_timmer;
+
 // This is true iff [we're in macOS and the browser is Safari] or [we're in iOS]
 var using_webkit_patch = true;
 
@@ -2923,6 +2926,12 @@ $(document).ready(function(){
 				$("#modelkey").removeClass("hidden");
 				$("#modelkey")[0].value = msg.key_value;
 				if (msg.models_on_url) {
+					$("#modelkey")[0].oninput = function() {clearTimeout(online_model_timmer);
+																online_model_timmer = setTimeout(function() {
+																	socket.send({'cmd': 'Cluster_Key_Update', 'key': document.getElementById("modelkey").value, 
+																											  'url': document.getElementById("modelurl").value});
+																}, 1000);
+															}
 					$("#modelkey")[0].onblur = function () {socket.send({'cmd': 'Cluster_Key_Update', 'key': this.value, 'url': document.getElementById("modelurl").value});};
 					$("#modelurl")[0].onblur = function () {socket.send({'cmd': 'Cluster_Key_Update', 'key': document.getElementById("modelkey").value, 'url': this.value});};
 				} else {
