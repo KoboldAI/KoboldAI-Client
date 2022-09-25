@@ -1990,6 +1990,8 @@ def patch_transformers():
             if not (vars.show_probs or vars.output_streaming):
                 return False
 
+            if vars.chatmode:
+                return False
             tokenizer_text = utils.decodenewlines(tokenizer.decode(input_ids[0, -1]))
             vars.token_stream_queue.add_text(tokenizer_text)
             return False
