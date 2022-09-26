@@ -51,6 +51,7 @@ from tokenizers import Tokenizer
 from mesh_transformer.checkpoint import read_ckpt_lowmem
 from mesh_transformer.transformer_shard import CausalTransformer, CausalTransformerShard, PlaceholderTensor
 from mesh_transformer.util import to_bf16
+import time
 
 
 params: Dict[str, Any] = {}
@@ -1316,6 +1317,10 @@ def load_model(path: str, driver_version="tpu_driver0.1_dev20210607", hf_checkpo
                     )
                     
                     koboldai_vars.loaded_layers += 1
+                    try:
+                        time.sleep(0.01)
+                    except:
+                        pass
                     utils.bar.update(1)
 
                 if utils.num_shards is not None and utils.current_shard < utils.num_shards:
