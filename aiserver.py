@@ -273,7 +273,7 @@ model_menu = {
 
 class Send_to_socketio(object):
     def write(self, bar):
-        print(bar, end="")
+        print('\r' + bar, end='')
         time.sleep(0.01)
         try:
             gui_msg = bar.replace(f"{colors.PURPLE}INIT{colors.END}       | ","").replace(" ", "&nbsp;")
@@ -1738,7 +1738,7 @@ def patch_transformers_download():
             
             if bar != "":
                 try:
-                    print(bar, end="\n")
+                    print('\r' + bar, end='')
                     emit('from_server', {'cmd': 'model_load_status', 'data': bar.replace(" ", "&nbsp;")}, broadcast=True, room="UI_1")
                     eventlet.sleep(seconds=0)
                 except:
