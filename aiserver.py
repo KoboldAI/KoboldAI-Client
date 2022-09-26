@@ -7034,8 +7034,18 @@ def load_story_v1(js):
     if("worldinfo" in js):
         num = 0
         for wi in js["worldinfo"]:
+            if wi.get("folder", "root") == 'root':
+                folder = "root" 
+            else:
+                if 'wifolders_d' in js:
+                    if wi['folder'] in js['wifolders_d']:
+                        folder = js['wifolders_d'][wi['folder']]['name']
+                    else:
+                        folder = "root"
+                else:
+                    folder = "root"
             koboldai_vars.worldinfo_v2.add_item([x.strip() for x in wi["key"].split(",")][0], wi["key"], wi.get("keysecondary", ""), 
-                                                "root" if wi.get("folder", "root") == 'root' else js['wifolders_d'][wi['folder']]['name'], wi.get("constant", False), 
+                                                folder, wi.get("constant", False), 
                                                 wi["content"], wi.get("comment", ""))
 
     # Save path for save button
