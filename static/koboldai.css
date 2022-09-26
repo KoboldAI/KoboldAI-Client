@@ -1922,10 +1922,25 @@ body {
 	border-radius: 4px;
 }
 
-#finder-input {
+#finder-bar {
 	width: 100%;
+	display: flex;
+	background-color: var(--input_background);
+}
+
+#finder-input {
+	background-color: transparent;
 	padding: 5px;
 	border: none;
+	flex-grow: 1;
+}
+
+#finder-icon {
+	opacity: 0.4;
+	position: relative;
+	top: 3px;
+	right: 2px;
+	cursor: pointer;
 }
 
 .finder-result {

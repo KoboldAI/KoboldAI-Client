@@ -4160,6 +4160,14 @@ function updateFinderSelection() {
 	newSelection.classList.add("result-selected");
 }
 
+function updateFinderMode(mode) {
+	const finderIcon = document.querySelector("#finder-icon");
+	const finderInput = document.querySelector("#finder-input");
+
+	finderIcon.innerText = {ui: "search", wi: "auto_stories", scratchpad: "speaker_notes"}[mode];
+	finderInput.placeholder = {ui: "Search for something...", wi: "Search for a World Info entry...", scratchpad: "Prompt the AI..."}[mode];
+}
+
 function open_finder() {
 	const finderContainer = document.getElementById("finder-container");
 	const finderInput = document.getElementById("finder-input");
@@ -4353,7 +4361,14 @@ $(document).ready(function(){
 	finderInput.addEventListener("keydown", function(event) {
 		let delta = 0;
 		const actions = document.getElementsByClassName("finder-result");
-		
+
+		let newMode = {">": "wi", "#": "ui", "!": "scratchpad"}[event.key];
+		if (newMode && !finderInput.value) {
+			event.preventDefault();
+			updateFinderMode(newMode);
+			return;
+		}
+
 		if (event.key === "Enter") {
 			let index = finder_selection_index >= 0 ? finder_selection_index : 0;
 			actions[index].click();
