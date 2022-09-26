@@ -2293,7 +2293,7 @@ function select_game_text(event) {
 			}
 		}
 		//if we've moved to a new game chunk we need to save the old chunk
-		if ((new_selected_game_chunk != selected_game_chunk) && (selected_game_chunk != null)) {
+		if (((new_selected_game_chunk != selected_game_chunk) && (selected_game_chunk != null)) || (document.activeElement != document.getElementById("Selected Text"))) {
 			edit_game_text();
 		}
 		
