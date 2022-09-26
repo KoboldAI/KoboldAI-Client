@@ -40,7 +40,7 @@ def process_variable_changes(socketio, classname, name, value, old_value, debug_
                         return
             else:
                 room = "UI_2"
-            logger.debug("sending data to room (multi_story={},classname={}): {}".format(multi_story, classname, room))
+            #logger.debug("sending data to room (multi_story={},classname={}): {}".format(multi_story, classname, room))
             #Special Case for KoboldStoryRegister
             if isinstance(value, KoboldStoryRegister):
                 if not has_request_context():

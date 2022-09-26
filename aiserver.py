@@ -1270,7 +1270,7 @@ def general_startup(override_args=None):
     parser.add_argument("--customsettings", help="Preloads arguements from json file. You only need to provide the location of the json file. Use customsettings.json template file. It can be renamed if you wish so that you can store multiple configurations. Leave any settings you want as default as null. Any values you wish to set need to be in double quotation marks")
     parser.add_argument("--no_ui", action='store_true', default=False, help="Disables the GUI and Socket.IO server while leaving the API server running.")
     parser.add_argument("--summarizer_model", action='store', default="philschmid/bart-large-cnn-samsum", help="Huggingface model to use for summarization. Defaults to sshleifer/distilbart-cnn-12-6")
-    parser.add_argument("--max_summary_length", action='store', default=100, help="Maximum size for summary to send to image generation")
+    parser.add_argument("--max_summary_length", action='store', default=75, help="Maximum size for summary to send to image generation")
     parser.add_argument("--multi_story", action='store_true', default=False, help="Allow multi-story mode (experimental)")
     
     parser.add_argument('-f', action='store', help="option for compatability with colab memory profiles")
@@ -8734,6 +8734,8 @@ def UI_2_generate_image(data):
     koboldai_vars.generating_image = True
     eventlet.sleep(0)
     
+    art_guide = 'fantasy illustration, artstation, by jason felix by steve argyle by tyler jacobson by peter mohrbacher, cinematic lighting'
+    
     #get latest action
     if len(koboldai_vars.actions) > 0:
         action = koboldai_vars.actions[-1]
@@ -8765,11 +8767,16 @@ def UI_2_generate_image(data):
         else:
             text = "".join(koboldai_vars.actions[:-5])
             
-        
-        
-        keys = [summarize(text, max_length=args.max_summary_length)]
+        if os.path.exists("models/{}".format(args.summarizer_model.replace('/', '_'))):
+            koboldai_vars.summary_tokenizer = AutoTokenizer.from_pretrained("models/{}".format(args.summarizer_model.replace('/', '_')), cache_dir="cache")
+        else:
+            koboldai_vars.summary_tokenizer = AutoTokenizer.from_pretrained(args.summarizer_model, cache_dir="cache")
+        max_length = args.max_summary_length - len(koboldai_vars.summary_tokenizer.encode(art_guide))
+        keys = [summarize(text, max_length=max_length)]
     
-    art_guide = 'fantasy illustration, artstation, by jason felix by steve argyle by tyler jacobson by peter mohrbacher, cinematic lighting', 
+    
+
+   
 
     #If we don't have a GPU, use horde if we're allowed to
     start_time = time.time()
