@@ -1483,26 +1483,29 @@ function chunkOnBeforeInput(event) {
 	if(buildChunkSetFromNodeArray(getSelectedNodes()).size === 0) {
 		var s = rangy.getSelection();
 		var r = s.getRangeAt(0);
+		var rand = Math.random();
 		if(document.queryCommandSupported && document.execCommand && document.queryCommandSupported('insertHTML')) {
-			document.execCommand('insertHTML', false, '<span id="_EDITOR_SENTINEL_">|</span>');
+			document.execCommand('insertHTML', false, '<span id="_EDITOR_SENTINEL_' + rand + '_">|</span>');
 		} else {
 			var t = document.createTextNode('|');
 			var b = document.createElement('span');
-			b.id = "_EDITOR_SENTINEL_";
+			b.id = "_EDITOR_SENTINEL_" + rand + "_";
 			b.insertNode(t);
 			r.insertNode(b);
 		}
-		var sentinel = document.getElementById("_EDITOR_SENTINEL_");
-		if(sentinel.nextSibling && sentinel.nextSibling.tagName === "CHUNK") {
-			r.selectNodeContents(sentinel.nextSibling);
-			r.collapse(true);
-		} else if(sentinel.previousSibling && sentinel.previousSibling.tagName === "CHUNK") {
-			r.selectNodeContents(sentinel.previousSibling);
-			r.collapse(false);
-		}
-		s.removeAllRanges();
-		s.addRange(r);
-		sentinel.parentNode.removeChild(sentinel);
+		setTimeout(function() {
+			var sentinel = document.getElementById("_EDITOR_SENTINEL_" + rand + "_");
+			if(sentinel.nextSibling && sentinel.nextSibling.tagName === "CHUNK") {
+				r.selectNodeContents(sentinel.nextSibling);
+				r.collapse(true);
+			} else if(sentinel.previousSibling && sentinel.previousSibling.tagName === "CHUNK") {
+				r.selectNodeContents(sentinel.previousSibling);
+				r.collapse(false);
+			}
+			s.removeAllRanges();
+			s.addRange(r);
+			sentinel.parentNode.removeChild(sentinel);
+		}, 1);
 	}
 }
 
