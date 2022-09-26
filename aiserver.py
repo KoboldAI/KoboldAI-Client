@@ -5027,7 +5027,7 @@ def core_generate(text: list, min: int, max: int, found_entries: set):
 
             genout = result.encoded
 
-            already_generated += len(genout[0]) - 1
+            already_generated += len(genout[0])
 
             try:
                 assert already_generated <= koboldai_vars.genamt
@@ -5111,7 +5111,7 @@ class GenerationResult:
         # Shave prompt off of encoded response when needed (HF). Decoded does
         # not return prompt.
         if output_includes_prompt:
-            self.encoded = out_batches[:, len(prompt) - 1:]
+            self.encoded = out_batches[:, len(prompt):]
         else:
             self.encoded = out_batches
 
