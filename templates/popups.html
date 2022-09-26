@@ -196,9 +196,21 @@
 <!---------------- Finder ---------------------->
 <div id="finder-container" class="hidden">
 	<div id="finder">
-		<input id="finder-input" placeholder="Search for something..."></input>
+		<div id="finder-bar">
+			<input id="finder-input" placeholder="Search for something..."></input>
+			<span id="finder-icon" class="material-icons-outlined">search</span>
+		</div>
 	</div>
 	<div id="finder-wi-carousel" class="hidden"></div>
+	<div id="finder-scratchpad" class="hidden">
+		<span id="finder-scratchpad-info" class="noselect">AI Output:</span>
+		<span id="finder-scratchpad-prompt">
+			A man with 20 fingers is
+		</span>
+		<span id="finder-scratchpad-response">
+			a threat to society
+		</span>
+	</div>
 </div>
 
 <!---------------- Debug File ---------------------->

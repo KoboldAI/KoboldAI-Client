@@ -5027,7 +5027,7 @@ def core_generate(text: list, min: int, max: int, found_entries: set):
 
             genout = result.encoded
 
-            already_generated += len(genout[0]) - 1
+            already_generated += len(genout[0])
 
             try:
                 assert already_generated <= koboldai_vars.genamt
@@ -5111,7 +5111,7 @@ class GenerationResult:
         # Shave prompt off of encoded response when needed (HF). Decoded does
         # not return prompt.
         if output_includes_prompt:
-            self.encoded = out_batches[:, len(prompt) - 1:]
+            self.encoded = out_batches[:, len(prompt):]
         else:
             self.encoded = out_batches
 
@@ -5168,7 +5168,7 @@ def raw_generate(
     elif isinstance(prompt, list):
         prompt_tokens = np.array(prompt)
     elif isinstance(prompt, str):
-        prompt_tokens = tokenizer.encode(prompt)
+        prompt_tokens = np.array(tokenizer.encode(prompt))
     else:
         raise ValueError(f"Prompt is {type(prompt)}. Not a fan!")
 
@@ -8382,6 +8382,18 @@ def UI_2_update_wi_keys(data):
 
     # Send to UI
     socketio.emit("world_info_entry", koboldai_vars.worldinfo_v2.world_info[uid], broadcast=True, room="UI_2")
+
+@socketio.on("scratchpad_prompt")
+@logger.catch
+def UI_2_scratchpad_prompt(data):
+    print(data)
+    out_text = raw_generate(
+        data,
+        max_new=80,
+    ).decoded
+    print("data", data, "out", out_text)
+
+    socketio.emit("scratchpad_response", out_text, broadcast=True, room="UI_2")
 
 
 #==================================================================#
