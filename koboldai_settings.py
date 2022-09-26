@@ -134,6 +134,7 @@ class koboldai_vars(object):
             self._story_settings[story_name] = story_settings(self.socketio, self)
         if json_data is not None:
             self.load_story(story_name, json_data)
+        session['story'] = story_name
         self._story_settings[story_name].send_to_ui()
     
     def story_list(self):
