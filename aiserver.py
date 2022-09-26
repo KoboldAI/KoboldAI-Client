@@ -6964,6 +6964,7 @@ def load_story_v1(js):
     loadpath = js['v1_loadpath'] if 'v1_loadpath' in js else koboldai_vars.savedir
     filename = js['v1_filename'] if 'v1_filename' in js else 'untitled.json'
     
+    
     _filename = filename
     if(filename.endswith('.json')):
         _filename = filename[:-5]
