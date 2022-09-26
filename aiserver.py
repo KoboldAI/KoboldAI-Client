@@ -2262,7 +2262,7 @@ def reset_model_settings():
     koboldai_vars.newlinemode = "n"
     koboldai_vars.revision    = None
 
-def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=False, online_model="", use_breakmodel_args=False, breakmodel_args_default_to_cpu=False):
+def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=False, online_model="", use_breakmodel_args=False, breakmodel_args_default_to_cpu=False, url=None):
     global model
     global generator
     global torch
@@ -2921,10 +2921,12 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
             from transformers import GPT2TokenizerFast
             tokenizer = GPT2TokenizerFast.from_pretrained("EleutherAI/gpt-neo-2.7B", revision=koboldai_vars.revision, cache_dir="cache")
             loadsettings()
+            koboldai_vars.colaburl = url if url is not None else koboldai_vars.colaburl
         elif(koboldai_vars.model == "OAI"):
             from transformers import GPT2TokenizerFast
             tokenizer = GPT2TokenizerFast.from_pretrained("gpt2", revision=koboldai_vars.revision, cache_dir="cache")
             loadsettings()
+            koboldai_vars.colaburl = url if url is not None else koboldai_vars.colaburl
         # Load the TPU backend if requested
         elif(koboldai_vars.use_colab_tpu or koboldai_vars.model in ("TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX")):
             global tpu_mtj_backend
@@ -8107,7 +8109,7 @@ def UI_2_load_model(data):
     koboldai_vars.model = data['model']
     koboldai_vars.custmodpth = data['path']
     print("loading Model")
-    load_model(use_gpu=data['use_gpu'], gpu_layers=data['gpu_layers'], disk_layers=data['disk_layers'], online_model=data['online_model'])
+    load_model(use_gpu=data['use_gpu'], gpu_layers=data['gpu_layers'], disk_layers=data['disk_layers'], online_model=data['online_model'], url=koboldai_vars.colaburl)
 
 #==================================================================#
 # Event triggered when load story is clicked

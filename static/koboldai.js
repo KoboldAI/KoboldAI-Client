@@ -1509,7 +1509,12 @@ function world_info_entry(data) {
 	world_info_data[data.uid] = data;
 	
 	//delete the existing world info and recreate
+	var original_focus = null;
 	if (document.getElementById("world_info_"+data.uid)) {
+		//First let's get the id of the element we're on so we can restore it after removing the object
+		original_focus = document.activeElement.id;
+		//console.log("Active ID: "+original_focus);
+		//console.log(document.activeElement);
 		document.getElementById("world_info_"+data.uid).remove();
 	}
 	world_info_card_template = document.getElementById("world_info_");
@@ -1616,8 +1621,10 @@ function world_info_entry(data) {
 		wpp_name.value = data.wpp.name;
 	}
 	if ('attributes' in data.wpp) {
+		i = -1;
 		for (const [attribute, values] of Object.entries(data.wpp.attributes)) {
 			if (attribute != '') {
+				i += 1;
 				attribute_area = document.createElement("div");
 				label = document.createElement("span");
 				label.textContent = "\xa0\xa0\xa0\xa0Attribute: ";
@@ -1627,10 +1634,13 @@ function world_info_entry(data) {
 				input.type = "text";
 				input.setAttribute("uid", data.uid);
 				input.setAttribute("data_type", "attribute");
+				input.id = "wpp_"+data.uid+"_attr_"+i
 				input.onchange = function() {do_wpp(this.parentElement.parentElement)};
 				attribute_area.append(input);
 				world_info_wpp_area.append(attribute_area);
+				j=-1;
 				for (value of values) {
+					j+=1;
 					value_area = document.createElement("div");
 					label = document.createElement("span");
 					label.textContent = "\xa0\xa0\xa0\xa0\xa0\xa0\xa0\xa0\xa0\xa0Value: ";
@@ -1641,6 +1651,7 @@ function world_info_entry(data) {
 					input.value = value;
 					input.setAttribute("uid", data.uid);
 					input.setAttribute("data_type", "value");
+					input.id = "wpp_"+data.uid+"_value_"+i+"_"+j;
 					value_area.append(input);
 					world_info_wpp_area.append(value_area);
 				}
@@ -1652,6 +1663,7 @@ function world_info_entry(data) {
 				input.type = "text";
 				input.setAttribute("uid", data.uid);
 				input.setAttribute("data_type", "value");
+				input.id = "wpp_"+data.uid+"_value_"+i+"_blank";
 				input.onchange = function() {do_wpp(this.parentElement.parentElement)};
 				value_area.append(input);
 				world_info_wpp_area.append(value_area);
@@ -1667,6 +1679,7 @@ function world_info_entry(data) {
 	input.type = "text";
 	input.setAttribute("uid", data.uid);
 	input.setAttribute("data_type", "attribute");
+	input.id = "wpp_"+data.uid+"_attr_blank";
 	input.onchange = function() {do_wpp(this.parentElement.parentElement)};
 	attribute_area.append(input);
 	world_info_wpp_area.append(attribute_area);
@@ -1755,6 +1768,11 @@ function world_info_entry(data) {
 	} else {
 		document.getElementById("world_info_wpp_area_"+wpp_toggle.getAttribute('uid')).classList.add("hidden");
 		document.getElementById("world_info_basic_text_"+wpp_toggle.getAttribute('uid')).classList.remove("hidden");
+	}
+	
+	if (document.getElementById(original_focus)) {
+		//for some reason we have to wrap this in a timmer
+		setTimeout(function() {document.getElementById(original_focus).focus()}, 0);
 	}
 	
 	assign_world_info_to_action(null, data.uid);
@@ -2823,6 +2841,7 @@ function add_tags(tags, data) {
 		text.setAttribute("contenteditable", true);
 		text.setAttribute("uid", data.uid);
 		text.setAttribute("tag", tag);
+		text.id = "world_info_tags_text_"+data.uid+"_"+tag;
 		text.onblur = function () {
 						for (var i = 0; i < world_info_data[this.getAttribute('uid')]['key'].length; i++) {
 							if (world_info_data[this.getAttribute('uid')]['key'][i] == this.getAttribute("tag")) {
@@ -2848,6 +2867,7 @@ function add_tags(tags, data) {
 	text.textContent = "    ";
 	text.setAttribute("uid", data.uid);
 	text.setAttribute("contenteditable", true);
+	text.id = "world_info_tags_text_"+data.uid+"_blank";
 	text.onblur = function () {
 					world_info_data[this.getAttribute('uid')]['key'].push(this.textContent);
 					send_world_info(this.getAttribute('uid'));
@@ -2880,6 +2900,7 @@ function add_secondary_tags(tags, data) {
 		text.setAttribute("contenteditable", true);
 		text.setAttribute("uid", data.uid);
 		text.setAttribute("tag", tag);
+		text.id = "world_info_secondtags_text_"+data.uid+"_"+tag;
 		text.onblur = function () {
 						for (var i = 0; i < world_info_data[this.getAttribute('uid')]['keysecondary'].length; i++) {
 							if (world_info_data[this.getAttribute('uid')]['keysecondary'][i] == this.getAttribute("tag")) {
@@ -2905,6 +2926,7 @@ function add_secondary_tags(tags, data) {
 	text.textContent = "    ";
 	text.setAttribute("uid", data.uid);
 	text.setAttribute("contenteditable", true);
+	text.id = "world_info_secondtags_text_"+data.uid+"_blank";
 	text.onblur = function () {
 					world_info_data[this.getAttribute('uid')]['keysecondary'].push(this.textContent);
 					send_world_info(this.getAttribute('uid'));
