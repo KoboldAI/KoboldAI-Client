@@ -32,6 +32,7 @@ socket.on("wi_results", updateWISearchListings);
 socket.on("request_prompt_config", configurePrompt);
 socket.on("log_message", function(data){process_log_message(data)});
 socket.on("debug_message", function(data){console.log(data);});
+socket.on("scratchpad_response", recieveScratchpadResponse);
 //socket.onAny(function(event_name, data) {console.log({"event": event_name, "class": data.classname, "data": data});});
 
 var presets = {};
@@ -54,6 +55,8 @@ var wi_finder_data = [];
 var wi_finder_offset = 0;
 var selected_game_chunk = null;
 var log = [];
+var finder_mode = "ui";
+var finder_waiting_id = null;
 
 // name, desc, icon, func
 const finder_actions = [
@@ -4126,7 +4129,53 @@ function renderWISearchListings() {
 	}
 }
 
+function recieveScratchpadResponse(data) {
+	const scratchpadResponse = document.querySelector("#finder-scratchpad-response");
+
+	clearInterval(finder_waiting_id);
+	finder_waiting_id = null;
+
+	scratchpadResponse.innerText = data;
+}
+
+function sendScratchpadPrompt(prompt) {
+	// Already waiting on prompt...
+	if (finder_waiting_id) return;
+
+	const scratchpad = document.querySelector("#finder-scratchpad");
+	const scratchpadPrompt = document.querySelector("#finder-scratchpad-prompt");
+	const scratchpadResponse = document.querySelector("#finder-scratchpad-response");
+
+	scratchpadPrompt.innerText = prompt;
+	scratchpadResponse.innerText = "...";
+
+	scratchpad.classList.remove("hidden");
+
+	finder_waiting_id = setInterval(function() {
+		// Little loading animation so user doesn't think nothing is happening.
+		// TODO: Replace this with token streaming WHEN AVAILABLE.
+
+		let index = scratchpadResponse.innerText.indexOf("|");
+		if (index === 2) {
+			scratchpadResponse.innerText = "...";
+			return;
+		}
+		let buf = "";
+
+		index++;
+
+		for (let i=0;i<index;i++) buf += ".";
+		buf += "|";
+		for (let i=0;i<2-index;i++) buf += ".";
+
+		scratchpadResponse.innerText = buf;
+	}, 1000);
+
+	socket.emit("scratchpad_prompt", prompt);
+}
+
 function updateSearchListings() {
+	if (finder_mode === "scratchpad") return;
 	if (this.value === finder_last_input) return;
 	finder_last_input = this.value;
 	finder_selection_index = -1;
@@ -4139,15 +4188,13 @@ function updateSearchListings() {
 	// TODO: Maybe reuse the element? Would it give better performance?
 	$(".finder-result").remove();
 
-	if (!query || query === ">") return;
+	if (!query) return;
 
-	if (query.startsWith(">")) {
+	if (finder_mode === "wi") {
 		wiCarousel.classList.remove("hidden");
 		$(".finder-wi-block").remove();
-
-		let wiQuery = query.replace(">", "");
-		socket.emit("search_wi", {query: wiQuery});
-	} else {
+		socket.emit("search_wi", {query: query});
+	} else if (finder_mode === "ui") {
 		updateStandardSearchListings(query)
 	}
 }
@@ -4163,9 +4210,18 @@ function updateFinderSelection() {
 function updateFinderMode(mode) {
 	const finderIcon = document.querySelector("#finder-icon");
 	const finderInput = document.querySelector("#finder-input");
+	const finderScratchpad = document.querySelector("#finder-scratchpad");
 
 	finderIcon.innerText = {ui: "search", wi: "auto_stories", scratchpad: "speaker_notes"}[mode];
 	finderInput.placeholder = {ui: "Search for something...", wi: "Search for a World Info entry...", scratchpad: "Prompt the AI..."}[mode];
+	finderScratchpad.classList.add("hidden");
+
+	finder_mode = mode;
+}
+
+function cycleFinderMode() {
+	// Initiated by clicking on icon
+	updateFinderMode({ui: "wi", wi: "scratchpad", scratchpad: "ui"}[finder_mode]);
 }
 
 function open_finder() {
@@ -4174,6 +4230,7 @@ function open_finder() {
 	finderInput.value = "";
 	$(".finder-result").remove();
 	finder_selection_index = -1;
+	updateFinderMode("ui");
 	
 	finderContainer.classList.remove("hidden");
 	finderInput.focus();
@@ -4355,8 +4412,9 @@ $(document).ready(function(){
 
 	const finderContainer = document.getElementById("finder-container");
 	const finderInput = document.getElementById("finder-input");
-	const finder = document.getElementById("finder");
+	const finderIcon = document.getElementById("finder-icon");
 
+	finderIcon.addEventListener("click", cycleFinderMode);
 	finderInput.addEventListener("keyup", updateSearchListings);
 	finderInput.addEventListener("keydown", function(event) {
 		let delta = 0;
@@ -4370,8 +4428,13 @@ $(document).ready(function(){
 		}
 
 		if (event.key === "Enter") {
-			let index = finder_selection_index >= 0 ? finder_selection_index : 0;
-			actions[index].click();
+			if (finder_mode === "scratchpad") {
+				sendScratchpadPrompt(finderInput.value);
+				return;
+			} else if (finder_mode === "ui") {
+				let index = finder_selection_index >= 0 ? finder_selection_index : 0;
+				actions[index].click();
+			}
 		} else if (event.key === "ArrowUp") {
 			delta = -1;
 		} else if (event.key === "ArrowDown") {

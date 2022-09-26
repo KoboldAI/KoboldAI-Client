@@ -1915,6 +1915,10 @@ body {
 	height: 100vh;
 }
 
+#finder-container {
+	flex-direction: column;
+}
+
 #finder {
 	width: 25%;
 	background-color: var(--flyout_background_pinned);
@@ -1941,6 +1945,31 @@ body {
 	top: 3px;
 	right: 2px;
 	cursor: pointer;
+}
+
+#finder-scratchpad {
+	width: 25%;
+	background-color: var(--input_background);
+	padding: 10px;
+	border-bottom-left-radius: 4px;
+	border-bottom-right-radius: 4px;
+	overflow-wrap: break-word;
+}
+
+#finder-scratchpad-info {
+	opacity: 0.7;
+	font-weight: bold;
+	display: block;
+}
+
+#finder-scratchpad-prompt,
+#finder-scratchpad-response {
+	font-family: monospace;
+	background-color: var(--gamescreen_background);
+}
+
+#finder-scratchpad-response {
+	color: var(--text_edit);
 }
 
 .finder-result {

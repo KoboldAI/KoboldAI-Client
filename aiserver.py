@@ -8383,6 +8383,18 @@ def UI_2_update_wi_keys(data):
     # Send to UI
     socketio.emit("world_info_entry", koboldai_vars.worldinfo_v2.world_info[uid], broadcast=True, room="UI_2")
 
+@socketio.on("scratchpad_prompt")
+@logger.catch
+def UI_2_scratchpad_prompt(data):
+    print(data)
+    out_text = raw_generate(
+        data,
+        max_new=80,
+    ).decoded
+    print("data", data, "out", out_text)
+
+    socketio.emit("scratchpad_response", out_text, broadcast=True, room="UI_2")
+
 
 #==================================================================#
 # Event triggered when user edits phrase biases
