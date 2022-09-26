@@ -5168,7 +5168,7 @@ def raw_generate(
     elif isinstance(prompt, list):
         prompt_tokens = np.array(prompt)
     elif isinstance(prompt, str):
-        prompt_tokens = tokenizer.encode(prompt)
+        prompt_tokens = np.array(tokenizer.encode(prompt))
     else:
         raise ValueError(f"Prompt is {type(prompt)}. Not a fan!")
 
