@@ -730,15 +730,7 @@ def getModelSelection(modellist):
                 getModelSelection(mainmenu)
 
 def check_if_dir_is_model(path):
-    if os.path.exists(path):
-        try:
-            from transformers import AutoConfig
-            model_config = AutoConfig.from_pretrained(path)
-        except:
-            return False
-        return True
-    else:
-        return False
+    return os.path.exists(os.path.join(path, 'config.json')):
     
 #==================================================================#
 # Return all keys in tokenizer dictionary containing char
