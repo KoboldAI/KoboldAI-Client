@@ -1565,10 +1565,13 @@ def get_layer_count(model, directory=""):
                 model_config = AutoConfig.from_pretrained(directory, revision=vars.revision, cache_dir="cache")
             else:
                 model_config = AutoConfig.from_pretrained(model, revision=vars.revision, cache_dir="cache")
-        return utils.num_layers(model_config)
+        
+        if ((utils.HAS_ACCELERATE and model_config.model_type != 'gpt2') or model_config.model_type in ("gpt_neo", "gptj", "xglm", "opt")) and not vars.nobreakmodel:
+            return utils.num_layers(model_config)
+        else:
+            return None
     else:
         return None
-
 
 def get_oai_models(key):
     vars.oaiapikey = key
