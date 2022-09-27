@@ -1514,7 +1514,6 @@ def get_model_info(model, directory=""):
         pass
     else:
         layer_count = get_layer_count(model, directory=directory)
-        print("Layer Count: {}".format(layer_count))
         if layer_count is None:
             breakmodel = False
             gpu = True
