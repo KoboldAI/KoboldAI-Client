@@ -1516,6 +1516,7 @@ def get_model_info(model, directory=""):
         layer_count = get_layer_count(model, directory=directory)
         if layer_count is None:
             breakmodel = False
+            gpu = True
         else:
             breakmodel = True
             if model in ["NeoCustom", "GPT2Custom"]:
