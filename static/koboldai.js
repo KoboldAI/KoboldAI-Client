@@ -57,6 +57,7 @@ var selected_game_chunk = null;
 var log = [];
 var finder_mode = "ui";
 var finder_waiting_id = null;
+var control_held = false;
 
 // name, desc, icon, func
 const finder_actions = [
@@ -3196,11 +3197,12 @@ function highlight_world_info_text_in_chunk(action, wi) {
 							action.insertBefore(before_span, span);
 						}
 						//console.log("Highlight Text: '"+highlight_text+"'");
-						var hightlight_span = document.createElement("span");
-						hightlight_span.classList.add("wi_match");
-						hightlight_span.textContent = highlight_text;
-						hightlight_span.title = wi['content'];
-						action.insertBefore(hightlight_span, span);
+						var highlight_span = document.createElement("span");
+						highlight_span.classList.add("wi_match");
+						highlight_span.textContent = highlight_text;
+						highlight_span.title = wi['content'];
+						highlight_span.setAttribute("wi-uid", wi.uid);
+						action.insertBefore(highlight_span, span);
 						if (after_highlight_text != "") {
 							//console.log("After Text: '"+after_highlight_text+"'");
 							var after_span = document.createElement("span");
@@ -4559,6 +4561,33 @@ $(document).ready(function(){
 
 	window.addEventListener("blur", function(event) {
 		contextMenu.classList.add("hidden");
+	});
+
+	// Change appearance of WI when holding control
+	document.addEventListener("keydown", function(event) {
+		if (event.key !== "Control") return;
+		control_held = true;
+
+		const style = ".wi_match { text-decoration: underline; cursor: pointer; }";
+		$e("style", document.head, {id: "wi-link-style", innerText: style})
+	});
+	
+	// Remove on up
+	document.addEventListener("keyup", function(event) {
+		if (event.key !== "Control") return;
+		control_held = false;
+
+		document.querySelector("#wi-link-style").remove();
+	});
+
+	document.getElementById("Selected Text").addEventListener("click", function(event) {
+		// Control click on WI entry
+		if (!event.target.classList.contains("wi_match")) return;
+		if (!control_held) return;
+
+		let uid = event.target.getAttribute("wi-uid");
+		let wiCard = document.getElementById(`world_info_${uid}`);
+		highlightEl(wiCard);
 	});
 });
 
