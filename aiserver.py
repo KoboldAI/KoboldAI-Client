@@ -59,7 +59,7 @@ from utils import debounce
 import utils
 import structures
 import torch
-from transformers import StoppingCriteria, GPT2TokenizerFast, GPT2LMHeadModel, GPTNeoForCausalLM, GPTNeoModel, AutoModelForCausalLM, AutoTokenizer, PreTrainedModel, modeling_utils
+from transformers import StoppingCriteria, GPT2Tokenizer, GPT2LMHeadModel, GPTNeoForCausalLM, GPTNeoModel, AutoModelForCausalLM, AutoTokenizer, PreTrainedModel, modeling_utils
 from transformers import __version__ as transformers_version
 import transformers
 try:
@@ -2096,7 +2096,7 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
     global generator
     global torch
     global model_config
-    global GPT2TokenizerFast
+    global GPT2Tokenizer
     global tokenizer
     if(initial_load):
         use_breakmodel_args = True
@@ -2445,7 +2445,7 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
                         if("out of memory" in traceback.format_exc().lower()):
                             raise RuntimeError("One of your GPUs ran out of memory when KoboldAI tried to load your model.")
                         raise e
-                tokenizer = GPT2TokenizerFast.from_pretrained(vars.custmodpth, revision=vars.revision, cache_dir="cache")
+                tokenizer = GPT2Tokenizer.from_pretrained(vars.custmodpth, revision=vars.revision, cache_dir="cache")
                 vars.modeldim = get_hidden_size_from_model(model)
                 # Is CUDA available? If so, use GPU, otherwise fall back to CPU
                 if(vars.hascuda and vars.usegpu):
@@ -2496,9 +2496,9 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
                                 tokenizer = AutoTokenizer.from_pretrained(vars.custmodpth, revision=vars.revision, cache_dir="cache")
                             except Exception as e:
                                 try:
-                                    tokenizer = GPT2TokenizerFast.from_pretrained(vars.custmodpth, revision=vars.revision, cache_dir="cache")
+                                    tokenizer = GPT2Tokenizer.from_pretrained(vars.custmodpth, revision=vars.revision, cache_dir="cache")
                                 except Exception as e:
-                                    tokenizer = GPT2TokenizerFast.from_pretrained("gpt2", revision=vars.revision, cache_dir="cache")
+                                    tokenizer = GPT2Tokenizer.from_pretrained("gpt2", revision=vars.revision, cache_dir="cache")
                         try:
                             model     = AutoModelForCausalLM.from_pretrained(vars.custmodpth, revision=vars.revision, cache_dir="cache", **lowmem)
                         except Exception as e:
@@ -2513,9 +2513,9 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
                                 tokenizer = AutoTokenizer.from_pretrained("models/{}".format(vars.model.replace('/', '_')), revision=vars.revision, cache_dir="cache")
                             except Exception as e:
                                 try:
-                                    tokenizer = GPT2TokenizerFast.from_pretrained("models/{}".format(vars.model.replace('/', '_')), revision=vars.revision, cache_dir="cache")
+                                    tokenizer = GPT2Tokenizer.from_pretrained("models/{}".format(vars.model.replace('/', '_')), revision=vars.revision, cache_dir="cache")
                                 except Exception as e:
-                                    tokenizer = GPT2TokenizerFast.from_pretrained("gpt2", revision=vars.revision, cache_dir="cache")
+                                    tokenizer = GPT2Tokenizer.from_pretrained("gpt2", revision=vars.revision, cache_dir="cache")
                         try:
                             model     = AutoModelForCausalLM.from_pretrained("models/{}".format(vars.model.replace('/', '_')), revision=vars.revision, cache_dir="cache", **lowmem)
                         except Exception as e:
@@ -2543,9 +2543,9 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
                                 tokenizer = AutoTokenizer.from_pretrained(vars.model, revision=vars.revision, cache_dir="cache")
                             except Exception as e:
                                 try:
-                                    tokenizer = GPT2TokenizerFast.from_pretrained(vars.model, revision=vars.revision, cache_dir="cache")
+                                    tokenizer = GPT2Tokenizer.from_pretrained(vars.model, revision=vars.revision, cache_dir="cache")
                                 except Exception as e:
-                                    tokenizer = GPT2TokenizerFast.from_pretrained("gpt2", revision=vars.revision, cache_dir="cache")
+                                    tokenizer = GPT2Tokenizer.from_pretrained("gpt2", revision=vars.revision, cache_dir="cache")
                         try:
                             model     = AutoModelForCausalLM.from_pretrained(vars.model, revision=vars.revision, cache_dir="cache", **lowmem)
                         except Exception as e:
@@ -2625,8 +2625,8 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
             logger.info(f"Pipeline created: {vars.model}")
         
         else:
-            from transformers import GPT2TokenizerFast
-            tokenizer = GPT2TokenizerFast.from_pretrained("gpt2", revision=vars.revision, cache_dir="cache")
+            from transformers import GPT2Tokenizer
+            tokenizer = GPT2Tokenizer.from_pretrained("gpt2", revision=vars.revision, cache_dir="cache")
     else:
         from transformers import PreTrainedModel
         from transformers import modeling_utils
@@ -2722,12 +2722,12 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
 
         # If we're running Colab or OAI, we still need a tokenizer.
         if(vars.model in ("Colab", "API", "CLUSTER")):
-            from transformers import GPT2TokenizerFast
-            tokenizer = GPT2TokenizerFast.from_pretrained("EleutherAI/gpt-neo-2.7B", revision=vars.revision, cache_dir="cache")
+            from transformers import GPT2Tokenizer
+            tokenizer = GPT2Tokenizer.from_pretrained("EleutherAI/gpt-neo-2.7B", revision=vars.revision, cache_dir="cache")
             loadsettings()
         elif(vars.model == "OAI"):
-            from transformers import GPT2TokenizerFast
-            tokenizer = GPT2TokenizerFast.from_pretrained("gpt2", revision=vars.revision, cache_dir="cache")
+            from transformers import GPT2Tokenizer
+            tokenizer = GPT2Tokenizer.from_pretrained("gpt2", revision=vars.revision, cache_dir="cache")
             loadsettings()
         # Load the TPU backend if requested
         elif(vars.use_colab_tpu or vars.model in ("TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX")):
@@ -2982,9 +2982,9 @@ def lua_decode(tokens):
     tokens = list(tokens.values())
     assert type(tokens) is list
     if("tokenizer" not in globals()):
-        from transformers import GPT2TokenizerFast
+        from transformers import GPT2Tokenizer
         global tokenizer
-        tokenizer = GPT2TokenizerFast.from_pretrained("gpt2", revision=vars.revision, cache_dir="cache")
+        tokenizer = GPT2Tokenizer.from_pretrained("gpt2", revision=vars.revision, cache_dir="cache")
     return utils.decodenewlines(tokenizer.decode(tokens))
 
 #==================================================================#
@@ -2994,9 +2994,9 @@ def lua_decode(tokens):
 def lua_encode(string):
     assert type(string) is str
     if("tokenizer" not in globals()):
-        from transformers import GPT2TokenizerFast
+        from transformers import GPT2Tokenizer
         global tokenizer
-        tokenizer = GPT2TokenizerFast.from_pretrained("gpt2", revision=vars.revision, cache_dir="cache")
+        tokenizer = GPT2Tokenizer.from_pretrained("gpt2", revision=vars.revision, cache_dir="cache")
     return tokenizer.encode(utils.encodenewlines(string), max_length=int(4e9), truncation=True)
 
 #==================================================================#
@@ -4565,9 +4565,9 @@ def calcsubmitbudget(actionlen, winfo, mem, anotetxt, actions, submission=None, 
     lnsp = vars.sp_length
 
     if("tokenizer" not in globals()):
-        from transformers import GPT2TokenizerFast
+        from transformers import GPT2Tokenizer
         global tokenizer
-        tokenizer = GPT2TokenizerFast.from_pretrained("gpt2", revision=vars.revision, cache_dir="cache")
+        tokenizer = GPT2Tokenizer.from_pretrained("gpt2", revision=vars.revision, cache_dir="cache")
 
     lnheader = len(tokenizer._koboldai_header)
 
