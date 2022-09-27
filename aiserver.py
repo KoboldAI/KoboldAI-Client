@@ -481,6 +481,15 @@ def UI_2_logger(message):
     else:
         socketio.emit("log_message", data, broadcast=True, room="UI_2")
 
+web_log_history = []
+def UI_2_log_history(message):
+    conv = Ansi2HTMLConverter(inline=True, dark_bg=True)
+    data = json.loads(message)
+    data['html'] = [conv.convert(text, full=False) for text in data['text'].split("\n")] 
+    if len(web_log_history) >= 100:
+        del web_log_history[0]
+    web_log_history.append(data)
+
 from flask import Flask, render_template, Response, request, copy_current_request_context, send_from_directory, session, jsonify, abort, redirect, has_request_context
 from flask_socketio import SocketIO, emit, join_room, leave_room
 from flask_socketio import emit as _emit
@@ -494,8 +503,8 @@ app.config['SESSION_TYPE'] = 'filesystem'
 app.config['TEMPLATES_AUTO_RELOAD'] = True
 socketio = SocketIO(app, async_method="eventlet", manage_session=False, cors_allowed_origins='*', max_http_buffer_size=10_000_000)
 #socketio = SocketIO(app, async_method="eventlet", manage_session=False, cors_allowed_origins='*', max_http_buffer_size=10_000_000, logger=logger, engineio_logger=True)
-logger.add(UI_2_logger, serialize=True, colorize=True, enqueue=True)
-#logger.add(UI_2_logger, serialize=True, colorize=True)
+logger.add(UI_2_log_history, serialize=True, colorize=True, enqueue=True, level="INFO")
+
 #logger.add("log_file_1.log", rotation="500 MB")    # Automatically rotate too big file
 koboldai_vars = koboldai_settings.koboldai_vars(socketio)
 
@@ -8990,6 +8999,14 @@ def UI_2_refresh_auto_memory(data):
     logger.debug("OK, doing final summarization")
     output = summarize(" ".join(sentences))
     koboldai_vars.auto_memory += "\n\n Final Result:\n" + output
+
+
+#==================================================================#
+# Test
+#==================================================================#
+@socketio.on("get_log")
+def UI_2_get_log(data):
+    emit("log_message", web_log_history)
 
 
 #==================================================================#

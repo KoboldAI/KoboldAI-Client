@@ -2047,23 +2047,25 @@ function load_cookies(data) {
 	}
 }
 
-function process_log_message(data) {
-	let level = data['record']['level']['name'];
-	let message = data['record']['message'];
-	let time = data['record']['time']['repr'];
-	let full_log = data['text'];
-	log.push({'level': level, 'message': message, 'time': time, 'full_log': full_log});
-	if (level == 'ERROR') {
-		show_error_message(data['html']);
-	}
-	
-	//put log message in log popup
-	log_popup = document.getElementById('log_popup');
-	log_popup_data = log_popup.querySelector("#popup_list_area")
-	//clear out the error box
-	for (item of data['html']) {
-		$e("div", log_popup_data, {'innerHTML': item, 'classes': ['console_text']})
-		$e("br", log_popup_data)
+function process_log_message(full_data) {
+	for (data of full_data) {
+		let level = data['record']['level']['name'];
+		let message = data['record']['message'];
+		let time = data['record']['time']['repr'];
+		let full_log = data['text'];
+		//log.push({'level': level, 'message': message, 'time': time, 'full_log': full_log});
+		if (level == 'ERROR') {
+			show_error_message(data['html']);
+		}
+		
+		//put log message in log popup
+		log_popup = document.getElementById('log_popup');
+		log_popup_data = log_popup.querySelector("#popup_list_area")
+		//clear out the error box
+		for (item of data['html']) {
+			$e("div", log_popup_data, {'innerHTML': item, 'classes': ['console_text']})
+			$e("br", log_popup_data)
+		}
 	}
 }
 
