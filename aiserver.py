@@ -730,7 +730,7 @@ def getModelSelection(modellist):
                 getModelSelection(mainmenu)
 
 def check_if_dir_is_model(path):
-    return os.path.exists(os.path.join(path, 'config.json')):
+    return os.path.exists(os.path.join(path, 'config.json'))
     
 #==================================================================#
 # Return all keys in tokenizer dictionary containing char
