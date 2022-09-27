@@ -494,8 +494,9 @@ app.config['SESSION_TYPE'] = 'filesystem'
 app.config['TEMPLATES_AUTO_RELOAD'] = True
 socketio = SocketIO(app, async_method="eventlet", manage_session=False, cors_allowed_origins='*', max_http_buffer_size=10_000_000)
 #socketio = SocketIO(app, async_method="eventlet", manage_session=False, cors_allowed_origins='*', max_http_buffer_size=10_000_000, logger=logger, engineio_logger=True)
-logger.add(UI_2_logger, serialize=True, colorize=True)
-logger.add("log_file_1.log", rotation="500 MB")    # Automatically rotate too big file
+logger.add(UI_2_logger, serialize=True, colorize=True, enqueue=True)
+#logger.add(UI_2_logger, serialize=True, colorize=True)
+#logger.add("log_file_1.log", rotation="500 MB")    # Automatically rotate too big file
 koboldai_vars = koboldai_settings.koboldai_vars(socketio)
 
 utils.koboldai_vars = koboldai_vars
