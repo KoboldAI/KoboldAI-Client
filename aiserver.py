@@ -1,8 +1,8 @@
 #!/usr/bin/python3
 #==================================================================#
 # KoboldAI
-# Version: 1.18.1
-# By: KoboldAIDev and the KoboldAI Community
+# Version: 1.19.0
+# By: The KoboldAI Community
 #==================================================================#
 
 # External packages
@@ -1438,6 +1438,7 @@ def get_model_info(model, directory=""):
     show_online_model_select=False
     gpu_count = torch.cuda.device_count()
     gpu_names = []
+    send_horde_models = False
     for i in range(gpu_count):
         gpu_names.append(torch.cuda.get_device_name(i))
     if model in ['Colab', 'API']:
@@ -1458,9 +1459,10 @@ def get_model_info(model, directory=""):
                     key_value = js["apikey"]
                 elif 'oaiapikey' in js and js['oaiapikey'] != "":
                     key_value = js["oaiapikey"]
-                if 'oaiurl' in js and js['oaiurl'] != "":
-                    default_url = js['oaiurl']
-                get_cluster_models({'model': model, 'key': key_value, 'url': default_url})
+                if 'url' in js and js['url'] != "":
+                    url = js['url']
+            if key_value != "":
+                send_horde_models = True
     elif model in [x[1] for x in model_menu['apilist']]:
         show_online_model_select=True
         if path.exists("settings/{}.v2_settings".format(model)):
@@ -1519,6 +1521,10 @@ def get_model_info(model, directory=""):
                          'disk_break_value': disk_blocks, 'disk_break': utils.HAS_ACCELERATE,
                          'break_values': break_values, 'gpu_count': gpu_count,
                          'url': url, 'gpu_names': gpu_names, 'models_on_url': models_on_url, 'show_online_model_select': show_online_model_select})
+    if send_horde_models:
+        get_cluster_models({'key': key_value, 'url': default_url})
+    elif key_value != "" and model in [x[1] for x in model_menu['apilist']] and model != 'CLUSTER':
+        get_oai_models(key_value)
     
     
 
@@ -1697,6 +1703,7 @@ def get_cluster_models(msg):
         js={}
         with open(get_config_filename(model), "w") as file:
             js["apikey"] = koboldai_vars.oaiapikey
+            js["url"] = url
             file.write(json.dumps(js, indent=3))
         
     logger.init_ok("KAI Horde Models", status="OK")
@@ -2130,6 +2137,8 @@ def patch_transformers():
             if not koboldai_vars.output_streaming:
                 return False
 
+            if koboldai_vars.chatmode:
+                return False
             koboldai_vars.actions.stream_tokens([utils.decodenewlines(tokenizer.decode(x[-1])) for x in input_ids])
             return False
 
@@ -2684,14 +2693,13 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
                         try:
                             tokenizer = AutoTokenizer.from_pretrained(koboldai_vars.custmodpth, revision=koboldai_vars.revision, cache_dir="cache")
                         except Exception as e:
-                            pass
-                        try:
-                            tokenizer = AutoTokenizer.from_pretrained(koboldai_vars.custmodpth, revision=koboldai_vars.revision, cache_dir="cache", use_fast=False)
-                        except Exception as e:
                             try:
-                                tokenizer = GPT2TokenizerFast.from_pretrained(koboldai_vars.custmodpth, revision=koboldai_vars.revision, cache_dir="cache")
+                                tokenizer = AutoTokenizer.from_pretrained(koboldai_vars.custmodpth, revision=koboldai_vars.revision, cache_dir="cache", use_fast=False)
                             except Exception as e:
-                                tokenizer = GPT2TokenizerFast.from_pretrained("gpt2", revision=koboldai_vars.revision, cache_dir="cache")
+                                try:
+                                    tokenizer = GPT2TokenizerFast.from_pretrained(koboldai_vars.custmodpth, revision=koboldai_vars.revision, cache_dir="cache")
+                                except Exception as e:
+                                    tokenizer = GPT2TokenizerFast.from_pretrained("gpt2", revision=koboldai_vars.revision, cache_dir="cache")
                         try:
                             model     = AutoModelForCausalLM.from_pretrained(koboldai_vars.custmodpth, revision=koboldai_vars.revision, cache_dir="cache", **lowmem)
                         except Exception as e:
@@ -2702,14 +2710,13 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
                         try:
                             tokenizer = AutoTokenizer.from_pretrained("models/{}".format(koboldai_vars.model.replace('/', '_')), revision=koboldai_vars.revision, cache_dir="cache")
                         except Exception as e:
-                            pass
-                        try:
-                            tokenizer = AutoTokenizer.from_pretrained("models/{}".format(koboldai_vars.model.replace('/', '_')), revision=koboldai_vars.revision, cache_dir="cache", use_fast=False)
-                        except Exception as e:
                             try:
-                                tokenizer = GPT2TokenizerFast.from_pretrained("models/{}".format(koboldai_vars.model.replace('/', '_')), revision=koboldai_vars.revision, cache_dir="cache")
+                                tokenizer = AutoTokenizer.from_pretrained("models/{}".format(koboldai_vars.model.replace('/', '_')), revision=koboldai_vars.revision, cache_dir="cache", use_fast=False)
                             except Exception as e:
-                                tokenizer = GPT2TokenizerFast.from_pretrained("gpt2", revision=koboldai_vars.revision, cache_dir="cache")
+                                try:
+                                    tokenizer = GPT2TokenizerFast.from_pretrained("models/{}".format(koboldai_vars.model.replace('/', '_')), revision=koboldai_vars.revision, cache_dir="cache")
+                                except Exception as e:
+                                    tokenizer = GPT2TokenizerFast.from_pretrained("gpt2", revision=koboldai_vars.revision, cache_dir="cache")
                         try:
                             model     = AutoModelForCausalLM.from_pretrained("models/{}".format(koboldai_vars.model.replace('/', '_')), revision=koboldai_vars.revision, cache_dir="cache", **lowmem)
                         except Exception as e:
@@ -2733,14 +2740,13 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
                         try:
                             tokenizer = AutoTokenizer.from_pretrained(koboldai_vars.model, revision=koboldai_vars.revision, cache_dir="cache")
                         except Exception as e:
-                            pass
-                        try:
-                            tokenizer = AutoTokenizer.from_pretrained(koboldai_vars.model, revision=koboldai_vars.revision, cache_dir="cache", use_fast=False)
-                        except Exception as e:
                             try:
-                                tokenizer = GPT2TokenizerFast.from_pretrained(koboldai_vars.model, revision=koboldai_vars.revision, cache_dir="cache")
+                                tokenizer = AutoTokenizer.from_pretrained(koboldai_vars.model, revision=koboldai_vars.revision, cache_dir="cache", use_fast=False)
                             except Exception as e:
-                                tokenizer = GPT2TokenizerFast.from_pretrained("gpt2", revision=koboldai_vars.revision, cache_dir="cache")
+                                try:
+                                    tokenizer = GPT2TokenizerFast.from_pretrained(koboldai_vars.model, revision=koboldai_vars.revision, cache_dir="cache")
+                                except Exception as e:
+                                    tokenizer = GPT2TokenizerFast.from_pretrained("gpt2", revision=koboldai_vars.revision, cache_dir="cache")
                         try:
                             model     = AutoModelForCausalLM.from_pretrained(koboldai_vars.model, revision=koboldai_vars.revision, cache_dir="cache", **lowmem)
                         except Exception as e:
@@ -2772,7 +2778,7 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
                                         map_data = json.load(f)
                                     filenames = set(map_data["weight_map"].values())
                                     # Save the pytorch_model.bin.index.json of a sharded model
-                                    shutil.move(utils.from_pretrained_index_filename, os.path.join("models/{}".format(koboldai_vars.model.replace('/', '_')), transformers.modeling_utils.WEIGHTS_INDEX_NAME))
+                                    shutil.move(os.path.realpath(utils.from_pretrained_index_filename), os.path.join("models/{}".format(koboldai_vars.model.replace('/', '_')), transformers.modeling_utils.WEIGHTS_INDEX_NAME))
                                     # Then save the pytorch_model-#####-of-#####.bin files
                                     for filename in filenames:
                                         shutil.move(os.path.realpath(huggingface_hub.hf_hub_download(koboldai_vars.model, filename, revision=koboldai_vars.revision, cache_dir="cache", local_files_only=True, legacy_cache_layout=legacy)), os.path.join("models/{}".format(koboldai_vars.model.replace('/', '_')), filename))
@@ -3042,7 +3048,7 @@ def index():
     if args.no_ui:
         return redirect('/api/latest')
     else:
-        return render_template('index.html', hide_ai_menu=args.noaimenu, flaskwebgui=koboldai_vars.flaskwebgui)
+        return render_template('index.html', hide_ai_menu=args.noaimenu)
 @app.route('/api', strict_slashes=False)
 def api():
     return redirect('/api/latest')
@@ -6601,14 +6607,14 @@ def checkworldinfo(txt, allowed_entries=None, allowed_folders=None, force_use_tx
                 # Remove leading/trailing spaces if the option is enabled
                 if(koboldai_vars.wirmvwhtsp):
                     ky = k.strip()
-                if ky in txt:
+                if ky.lower() in txt.lower():
                     if wi.get("selective", False) and len(keys_secondary):
                         found = False
                         for ks in keys_secondary:
                             ksy = ks
                             if(koboldai_vars.wirmvwhtsp):
                                 ksy = ks.strip()
-                            if ksy in txt:
+                            if ksy.lower() in txt.lower():
                                 wimem = wimem + wi["content"] + "\n"
                                 found_entries.add(id(wi))
                                 found = True
@@ -8434,29 +8440,6 @@ def socket_io_relay(queue, socketio):
         time.sleep(0.2)
         
 
-#==================================================================#
-# Event triggered when program errors out
-#==================================================================#
-def my_except_hook(exctype, value, traceback):
-    if koboldai_vars.debug:
-        print("sending error to clients")
-    socketio.emit("error", "{}: {}".format(exctype, value), broadcast=True, room="UI_2")
-    sys.__excepthook__(exctype, value, traceback)
-sys.excepthook = my_except_hook
-
-from werkzeug.exceptions import HTTPException
-
-@app.errorhandler(Exception)
-def handle_exception(e):
-    # pass through HTTP errors
-    if isinstance(e, HTTPException):
-        return e
-
-    # now you're handling non-HTTP exceptions only
-    if koboldai_vars.debug:
-        print("sending error to clients")
-    socketio.emit("error", "{}: {}".format(e.message, e.args), broadcast=True, room="UI_2")
-    return render_template("500_generic.html", e=e), 500
 
 
 #==================================================================#
@@ -9445,7 +9428,7 @@ def post_generate(body: GenerationInputSchema):
             schema: GenerationInputSchema
             example:
               prompt: |-2
-                Explosions of suspicious origin occur at AMNAT satellite-receiver stations from Turkey to Labrador as three high-level Canadian defense ministers vanish and then a couple of days later are photographed at a Volgograd bistro hoisting shots of Stolichnaya with Slavic bimbos on their knee.
+                Niko the kobold stalked carefully down the alley, his small scaly figure obscured by a dusky cloak that fluttered lightly in the cold winter breeze.
               top_p: 0.9
               temperature: 0.5
       responses:
@@ -9457,8 +9440,7 @@ def post_generate(body: GenerationInputSchema):
               example:
                 results:
                   - text: |-2
-                       It is later established that all of the cabinet members have died of old age.
-                      MEGAMATRIX becomes involved in the growing number of mass abductions and kidnappings. Many disappearances occur along highways in western Canada, usually when traffic has come to a standstill because of a stalled truck or snowstorm. One or two abducted individuals will be released within a day or so but never
+                       Holding up his tail to keep it from dragging in the dirty snow that covered the cobblestone, he waited patiently for the butcher to turn his attention from his stall so that he could pilfer his next meal: a tender-looking chicken.
         {api_validation_error_response}
         {api_not_implemented_response}
         {api_server_busy_response}
@@ -11829,26 +11811,26 @@ def run():
     else:
         if args.unblock:
             if not args.no_ui:
-                import webbrowser
-                webbrowser.open_new('http://localhost:{0}'.format(port))
+                try:
+                    import webbrowser
+                    webbrowser.open_new('http://localhost:{0}'.format(port))
+                except:
+                    pass
             logger.init_ok("Webserver", status="OK")
             logger.message(f"Webserver started! You may now connect with a browser at http://127.0.0.1:{port}")
             koboldai_vars.serverstarted = True
             socketio.run(app, port=port, host='0.0.0.0')
         else:
-            try:
-                from flaskwebgui import FlaskUI
-                koboldai_vars.serverstarted = True
-                koboldai_vars.flaskwebgui = True
-                FlaskUI(app, socketio=socketio, start_server="flask-socketio", maximized=True, close_server_on_exit=True).run()
-            except:
-                if not args.no_ui:
+            if not args.no_ui:
+                try:
                     import webbrowser
                     webbrowser.open_new('http://localhost:{0}'.format(port))
-                logger.init_ok("Webserver", status="OK")
-                logger.message(f"Webserver started! You may now connect with a browser at http://127.0.0.1:{port}")
-                koboldai_vars.serverstarted = True
-                socketio.run(app, port=port)
+                except:
+                    pass
+            logger.init_ok("Webserver", status="OK")
+            logger.message(f"Webserver started! You may now connect with a browser at http://127.0.0.1:{port}")
+            koboldai_vars.serverstarted = True
+            socketio.run(app, port=port)
     logger.init("Webserver", status="Closed")
     
 if __name__ == "__main__":

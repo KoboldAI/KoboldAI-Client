@@ -107,6 +107,9 @@ var modelname = null;
 var model = "";
 var ignore_stream = false;
 
+//timer for loading CLUSTER models
+var online_model_timmer;
+
 // This is true iff [we're in macOS and the browser is Safari] or [we're in iOS]
 var using_webkit_patch = true;
 
@@ -1003,7 +1006,7 @@ function hideSaveAsPopup() {
 }
 
 function sendSaveAsRequest() {
-	socket.send({'cmd': 'saveasrequest', 'data': {"name": saveasinput.val(), "pins": savepins.val()}});
+	socket.send({'cmd': 'saveasrequest', 'data': {"name": saveasinput.val(), "pins": savepins.prop('checked')}});
 }
 
 function showLoadModelPopup() {
@@ -1643,26 +1646,29 @@ function chunkOnBeforeInput(event) {
 	if(buildChunkSetFromNodeArray(getSelectedNodes()).size === 0) {
 		var s = rangy.getSelection();
 		var r = s.getRangeAt(0);
+		var rand = Math.random();
 		if(document.queryCommandSupported && document.execCommand && document.queryCommandSupported('insertHTML')) {
-			document.execCommand('insertHTML', false, '<span id="_EDITOR_SENTINEL_">|</span>');
+			document.execCommand('insertHTML', false, '<span id="_EDITOR_SENTINEL_' + rand + '_">|</span>');
 		} else {
 			var t = document.createTextNode('|');
 			var b = document.createElement('span');
-			b.id = "_EDITOR_SENTINEL_";
+			b.id = "_EDITOR_SENTINEL_" + rand + "_";
 			b.insertNode(t);
 			r.insertNode(b);
 		}
-		var sentinel = document.getElementById("_EDITOR_SENTINEL_");
-		if(sentinel.nextSibling && sentinel.nextSibling.tagName === "CHUNK") {
-			r.selectNodeContents(sentinel.nextSibling);
-			r.collapse(true);
-		} else if(sentinel.previousSibling && sentinel.previousSibling.tagName === "CHUNK") {
-			r.selectNodeContents(sentinel.previousSibling);
-			r.collapse(false);
-		}
-		s.removeAllRanges();
-		s.addRange(r);
-		sentinel.parentNode.removeChild(sentinel);
+		setTimeout(function() {
+			var sentinel = document.getElementById("_EDITOR_SENTINEL_" + rand + "_");
+			if(sentinel.nextSibling && sentinel.nextSibling.tagName === "CHUNK") {
+				r.selectNodeContents(sentinel.nextSibling);
+				r.collapse(true);
+			} else if(sentinel.previousSibling && sentinel.previousSibling.tagName === "CHUNK") {
+				r.selectNodeContents(sentinel.previousSibling);
+				r.collapse(false);
+			}
+			s.removeAllRanges();
+			s.addRange(r);
+			sentinel.parentNode.removeChild(sentinel);
+		}, 1);
 	}
 }
 
@@ -2924,6 +2930,12 @@ $(document).ready(function(){
 				$("#modelkey").removeClass("hidden");
 				$("#modelkey")[0].value = msg.key_value;
 				if (msg.models_on_url) {
+					$("#modelkey")[0].oninput = function() {clearTimeout(online_model_timmer);
+																online_model_timmer = setTimeout(function() {
+																	socket.send({'cmd': 'Cluster_Key_Update', 'key': document.getElementById("modelkey").value, 
+																											  'url': document.getElementById("modelurl").value});
+																}, 1000);
+															}
 					$("#modelkey")[0].onblur = function () {socket.send({'cmd': 'Cluster_Key_Update', 'key': this.value, 'url': document.getElementById("modelurl").value});};
 					$("#modelurl")[0].onblur = function () {socket.send({'cmd': 'Cluster_Key_Update', 'key': document.getElementById("modelkey").value, 'url': this.value});};
 				} else {

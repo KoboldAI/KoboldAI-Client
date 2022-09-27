@@ -1,4 +1,4 @@
-torch >= 1.9, <= 1.11
+torch >= 1.9, < 1.13
 numpy
 tqdm
 requests
