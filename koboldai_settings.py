@@ -159,7 +159,7 @@ class koboldai_vars(object):
         else:
             method = 1
         context = []
-        token_budget = self.max_length
+        token_budget = self.max_length - self.genamt
         used_world_info = []
         if self.tokenizer is None:
             used_tokens = 99999999999999999999999
