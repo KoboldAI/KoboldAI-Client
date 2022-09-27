@@ -1566,10 +1566,12 @@ def get_layer_count(model, directory=""):
                 model_config = AutoConfig.from_pretrained(directory, revision=vars.revision, cache_dir="cache")
             else:
                 model_config = AutoConfig.from_pretrained(model, revision=vars.revision, cache_dir="cache")
-        
-        if ((utils.HAS_ACCELERATE and model_config.model_type != 'gpt2') or model_config.model_type in ("gpt_neo", "gptj", "xglm", "opt")) and not vars.nobreakmodel:
-            return utils.num_layers(model_config)
-        else:
+        try:
+            if ((utils.HAS_ACCELERATE and model_config.model_type != 'gpt2') or model_config.model_type in ("gpt_neo", "gptj", "xglm", "opt")) and not vars.nobreakmodel:
+                return utils.num_layers(model_config)
+            else:
+                return None
+        except:
             return None
     else:
         return None
@@ -2229,7 +2231,7 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
         loadmodelsettings()
         loadsettings()
         logger.init("GPU support", status="Searching")
-        vars.hascuda = torch.cuda.is_available()
+        vars.hascuda = torch.cuda.is_available() and not args.cpu
         vars.bmsupported = ((utils.HAS_ACCELERATE and vars.model_type != 'gpt2') or vars.model_type in ("gpt_neo", "gptj", "xglm", "opt")) and not vars.nobreakmodel
         if(args.breakmodel is not None and args.breakmodel):
             logger.warning("--breakmodel is no longer supported. Breakmodel mode is now automatically enabled when --breakmodel_gpulayers is used (see --help for details).")
