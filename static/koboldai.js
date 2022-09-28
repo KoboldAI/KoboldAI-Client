@@ -1595,6 +1595,7 @@ function world_info_entry(data) {
 						}
 	wpp_toggle_area.append(wpp_toggle);
 	//w++ data
+	let last_new_value = null
 	world_info_wpp_area = world_info_card.querySelector('#world_info_wpp_area_');
 	world_info_wpp_area.id = "world_info_wpp_area_"+data.uid;
 	world_info_wpp_area.setAttribute("uid", data.uid);
@@ -1666,6 +1667,7 @@ function world_info_entry(data) {
 				input.setAttribute("uid", data.uid);
 				input.setAttribute("data_type", "value");
 				input.id = "wpp_"+data.uid+"_value_"+i+"_blank";
+				last_new_value = input;
 				input.onchange = function() {if (this.value != "") {on_new_wi_item = this.id;do_wpp(this.parentElement.parentElement)}};
 				value_area.append(input);
 				world_info_wpp_area.append(value_area);
@@ -1680,6 +1682,7 @@ function world_info_entry(data) {
 	input.value = "";
 	input.type = "text";
 	input.setAttribute("uid", data.uid);
+	input.setAttribute("value_num", i);
 	input.setAttribute("data_type", "attribute");
 	input.id = "wpp_"+data.uid+"_attr_blank";
 	input.onchange = function() {if (this.value != "") {on_new_wi_item=this.id;do_wpp(this.parentElement.parentElement)}};
@@ -1776,8 +1779,11 @@ function world_info_entry(data) {
 	if (document.getElementById(original_focus)) {
 		//check if we were on a new line
 		if ((on_new_wi_item != null) && (document.getElementById(on_new_wi_item))) {
+			//if we're on a new wpp attribute, we want to move to the new value not the new attribute, so let's fix that
+			if (on_new_wi_item.includes('wpp_') && on_new_wi_item.includes('_attr_blank') && (last_new_value != null)) { 
+				on_new_wi_item = last_new_value.id;
+			}
 			original_focus = on_new_wi_item;
-			
 		}
 		on_new_wi_item = null;
 		//for some reason we have to wrap this in a timmer
