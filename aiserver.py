@@ -2442,15 +2442,25 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
                     config_path = os.path.join("models/", vars.custmodpth)
                     config_path = os.path.join(config_path, "config.json").replace("\\", "//")
                     model_config = open(config_path, "r")
-                js   = json.load(model_config)
+                #js   = json.load(model_config)
                 with(maybe_use_float16()):
                     try:
-                        model = GPT2LMHeadModel.from_pretrained(vars.custmodpth, revision=vars.revision, cache_dir="cache")
+                        if os.path.exists(vars.custmodpth):
+                            model = GPT2LMHeadModel.from_pretrained(vars.custmodpth, revision=vars.revision, cache_dir="cache")
+                            tokenizer = GPT2Tokenizer.from_pretrained(vars.custmodpth, revision=vars.revision, cache_dir="cache")
+                        elif os.path.exists(os.path.join("models/", vars.custmodpth)):
+                            model = GPT2LMHeadModel.from_pretrained(os.path.join("models/", vars.custmodpth), revision=vars.revision, cache_dir="cache")
+                            tokenizer = GPT2Tokenizer.from_pretrained(os.path.join("models/", vars.custmodpth), revision=vars.revision, cache_dir="cache")
+                        else:
+                            model = GPT2LMHeadModel.from_pretrained(vars.custmodpth, revision=vars.revision, cache_dir="cache")
+                            tokenizer = GPT2Tokenizer.from_pretrained(vars.custmodpth, revision=vars.revision, cache_dir="cache")
                     except Exception as e:
                         if("out of memory" in traceback.format_exc().lower()):
                             raise RuntimeError("One of your GPUs ran out of memory when KoboldAI tried to load your model.")
                         raise e
                 tokenizer = GPT2Tokenizer.from_pretrained(vars.custmodpth, revision=vars.revision, cache_dir="cache")
+                model.save_pretrained("models/{}".format(vars.model.replace('/', '_')), max_shard_size="500MiB")
+                tokenizer.save_pretrained("models/{}".format(vars.model.replace('/', '_')))
                 vars.modeldim = get_hidden_size_from_model(model)
                 # Is CUDA available? If so, use GPU, otherwise fall back to CPU
                 if(vars.hascuda and vars.usegpu):
