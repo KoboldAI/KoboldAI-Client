@@ -55,6 +55,7 @@ var wi_finder_data = [];
 var wi_finder_offset = 0;
 var selected_game_chunk = null;
 var log = [];
+var on_new_wi_item = null;
 var finder_mode = "ui";
 var finder_waiting_id = null;
 var control_held = false;
@@ -1665,7 +1666,7 @@ function world_info_entry(data) {
 				input.setAttribute("uid", data.uid);
 				input.setAttribute("data_type", "value");
 				input.id = "wpp_"+data.uid+"_value_"+i+"_blank";
-				input.onchange = function() {do_wpp(this.parentElement.parentElement)};
+				input.onchange = function() {if (this.value != "") {on_new_wi_item = this.id;do_wpp(this.parentElement.parentElement)}};
 				value_area.append(input);
 				world_info_wpp_area.append(value_area);
 			}
@@ -1681,7 +1682,7 @@ function world_info_entry(data) {
 	input.setAttribute("uid", data.uid);
 	input.setAttribute("data_type", "attribute");
 	input.id = "wpp_"+data.uid+"_attr_blank";
-	input.onchange = function() {do_wpp(this.parentElement.parentElement)};
+	input.onchange = function() {if (this.value != "") {on_new_wi_item=this.id;do_wpp(this.parentElement.parentElement)}};
 	attribute_area.append(input);
 	world_info_wpp_area.append(attribute_area);
 	
@@ -1771,9 +1772,16 @@ function world_info_entry(data) {
 		document.getElementById("world_info_basic_text_"+wpp_toggle.getAttribute('uid')).classList.remove("hidden");
 	}
 	
+	//put focus back where it was
 	if (document.getElementById(original_focus)) {
+		//check if we were on a new line
+		if ((on_new_wi_item != null) && (document.getElementById(on_new_wi_item))) {
+			original_focus = on_new_wi_item;
+			
+		}
+		on_new_wi_item = null;
 		//for some reason we have to wrap this in a timmer
-		setTimeout(function() {document.getElementById(original_focus).focus()}, 0);
+		setTimeout(function() {document.getElementById(original_focus).click();document.getElementById(original_focus).focus()}, 0);
 	}
 	
 	assign_world_info_to_action(null, data.uid);
@@ -2872,9 +2880,15 @@ function add_tags(tags, data) {
 	text.setAttribute("contenteditable", true);
 	text.id = "world_info_tags_text_"+data.uid+"_blank";
 	text.onblur = function () {
-					world_info_data[this.getAttribute('uid')]['key'].push(this.textContent);
-					send_world_info(this.getAttribute('uid'));
-					this.classList.add("pulse");
+					if (this.textContent != "") {
+						console.log(this.textContent);
+						on_new_wi_item = this.id;
+						world_info_data[this.getAttribute('uid')]['key'].push(this.textContent);
+						send_world_info(this.getAttribute('uid'));
+						this.classList.add("pulse");
+					} else {
+						this.textContent = "    ";
+					}
 				};
 	text.onclick = function () {
 					this.textContent = "";
@@ -2931,9 +2945,14 @@ function add_secondary_tags(tags, data) {
 	text.setAttribute("contenteditable", true);
 	text.id = "world_info_secondtags_text_"+data.uid+"_blank";
 	text.onblur = function () {
-					world_info_data[this.getAttribute('uid')]['keysecondary'].push(this.textContent);
-					send_world_info(this.getAttribute('uid'));
-					this.classList.add("pulse");
+					if (this.textContent != "") {
+						on_new_wi_item = this.id;
+						world_info_data[this.getAttribute('uid')]['keysecondary'].push(this.textContent);
+						send_world_info(this.getAttribute('uid'));
+						this.classList.add("pulse");
+					} else {
+						this.textContent = "    ";
+					}
 				};
 	text.onclick = function () {
 					this.textContent = "";
