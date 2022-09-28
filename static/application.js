@@ -107,6 +107,9 @@ var modelname = null;
 var model = "";
 var ignore_stream = false;
 
+//timer for loading CLUSTER models
+var online_model_timmer;
+
 // This is true iff [we're in macOS and the browser is Safari] or [we're in iOS]
 var using_webkit_patch = true;
 
@@ -1003,7 +1006,7 @@ function hideSaveAsPopup() {
 }
 
 function sendSaveAsRequest() {
-	socket.send({'cmd': 'saveasrequest', 'data': {"name": saveasinput.val(), "pins": savepins.val()}});
+	socket.send({'cmd': 'saveasrequest', 'data': {"name": saveasinput.val(), "pins": savepins.prop('checked')}});
 }
 
 function showLoadModelPopup() {
@@ -1643,26 +1646,29 @@ function chunkOnBeforeInput(event) {
 	if(buildChunkSetFromNodeArray(getSelectedNodes()).size === 0) {
 		var s = rangy.getSelection();
 		var r = s.getRangeAt(0);
+		var rand = Math.random();
 		if(document.queryCommandSupported && document.execCommand && document.queryCommandSupported('insertHTML')) {
-			document.execCommand('insertHTML', false, '<span id="_EDITOR_SENTINEL_">|</span>');
+			document.execCommand('insertHTML', false, '<span id="_EDITOR_SENTINEL_' + rand + '_">|</span>');
 		} else {
 			var t = document.createTextNode('|');
 			var b = document.createElement('span');
-			b.id = "_EDITOR_SENTINEL_";
+			b.id = "_EDITOR_SENTINEL_" + rand + "_";
 			b.insertNode(t);
 			r.insertNode(b);
 		}
-		var sentinel = document.getElementById("_EDITOR_SENTINEL_");
-		if(sentinel.nextSibling && sentinel.nextSibling.tagName === "CHUNK") {
-			r.selectNodeContents(sentinel.nextSibling);
-			r.collapse(true);
-		} else if(sentinel.previousSibling && sentinel.previousSibling.tagName === "CHUNK") {
-			r.selectNodeContents(sentinel.previousSibling);
-			r.collapse(false);
-		}
-		s.removeAllRanges();
-		s.addRange(r);
-		sentinel.parentNode.removeChild(sentinel);
+		setTimeout(function() {
+			var sentinel = document.getElementById("_EDITOR_SENTINEL_" + rand + "_");
+			if(sentinel.nextSibling && sentinel.nextSibling.tagName === "CHUNK") {
+				r.selectNodeContents(sentinel.nextSibling);
+				r.collapse(true);
+			} else if(sentinel.previousSibling && sentinel.previousSibling.tagName === "CHUNK") {
+				r.selectNodeContents(sentinel.previousSibling);
+				r.collapse(false);
+			}
+			s.removeAllRanges();
+			s.addRange(r);
+			sentinel.parentNode.removeChild(sentinel);
+		}, 1);
 	}
 }
 
@@ -2708,6 +2714,9 @@ $(document).ready(function(){
 		} else if(msg.cmd == "updateoutputstreaming") {
 			// Update toggle state
 			$("#setoutputstreaming").prop('checked', msg.data).change();
+		} else if(msg.cmd == "updateshowbudget") {
+			// Update toggle state
+			$("#setshowbudget").prop('checked', msg.data).change();
 		} else if(msg.cmd == "updateshowprobs") {
 			$("#setshowprobs").prop('checked', msg.data).change();
 
@@ -2847,17 +2856,17 @@ $(document).ready(function(){
 			chat_name.val(msg.data);
 		} else if(msg.cmd == "setlabelnumseq") {
 			// Update setting label with value from server
-			$("#setnumseqcur").html(msg.data);
+			$("#setnumseqcur").val(msg.data);
 		} else if(msg.cmd == "updatenumseq") {
 			// Send current max tokens value to input
-			$("#setnumseqcur").html(msg.data);
+			$("#setnumseqcur").val(msg.data);
 			$("#setnumseq").val(parseInt(msg.data)).trigger("change");
 		} else if(msg.cmd == "setlabelwidepth") {
 			// Update setting label with value from server
-			$("#setwidepthcur").html(msg.data);
+			$("#setwidepthcur").val(msg.data);
 		} else if(msg.cmd == "updatewidepth") {
 			// Send current max tokens value to input
-			$("#setwidepthcur").html(msg.data);
+			$("#setwidepthcur").val(msg.data);
 			$("#setwidepth").val(parseInt(msg.data)).trigger("change");
 		} else if(msg.cmd == "updateuseprompt") {
 			// Update toggle state
@@ -2912,20 +2921,48 @@ $(document).ready(function(){
 			$("#oaimodel").addClass("hidden")
 			buildLoadModelList(msg.data, msg.menu, msg.breadcrumbs, msg.showdelete);
 		} else if(msg.cmd == 'selected_model_info') {
+			console.log(msg);
 			enableButtons([load_model_accept]);
 			$("#oaimodel").addClass("hidden")
 			$("#oaimodel")[0].options[0].selected = true;
 			if (msg.key) {
 				$("#modelkey").removeClass("hidden");
 				$("#modelkey")[0].value = msg.key_value;
+				if (msg.models_on_url) {
+					$("#modelkey")[0].oninput = function() {clearTimeout(online_model_timmer);
+																online_model_timmer = setTimeout(function() {
+																	socket.send({'cmd': 'Cluster_Key_Update', 'key': document.getElementById("modelkey").value, 
+																											  'url': document.getElementById("modelurl").value});
+																}, 1000);
+															}
+					$("#modelkey")[0].onblur = function () {socket.send({'cmd': 'Cluster_Key_Update', 'key': this.value, 'url': document.getElementById("modelurl").value});};
+					$("#modelurl")[0].onblur = function () {socket.send({'cmd': 'Cluster_Key_Update', 'key': document.getElementById("modelkey").value, 'url': this.value});};
+				} else {
+					$("#modelkey")[0].onblur = function () {socket.send({'cmd': 'OAI_Key_Update', 'key': $('#modelkey')[0].value});};
+					$("#modelurl")[0].onblur = null;
+				}
 				//if we're in the API list, disable to load button until the model is selected (after the API Key is entered)
 				disableButtons([load_model_accept]);
 			} else {
 				$("#modelkey").addClass("hidden");
-				
 			}
+			
+			console.log(msg.multi_online_models);
+			if (msg.multi_online_models) {
+				$("#oaimodel")[0].setAttribute("multiple", "");
+				$("#oaimodel")[0].options[0].textContent = "All"
+			} else {
+				$("#oaimodel")[0].removeAttribute("multiple");
+				$("#oaimodel")[0].options[0].textContent = "Select Model(s)"
+			}
+			
+			
+			
 			if (msg.url) {
 				$("#modelurl").removeClass("hidden");
+				if (msg.default_url != null) {
+					document.getElementById("modelurl").value = msg.default_url;
+				}
 			} else {
 				$("#modelurl").addClass("hidden");
 			}
@@ -3286,7 +3323,11 @@ $(document).ready(function(){
 			}
 		}
 		var disk_layers = $("#disk_layers").length > 0 ? $("#disk_layers")[0].value : 0;
-		message = {'cmd': 'load_model', 'use_gpu': $('#use_gpu')[0].checked, 'key': $('#modelkey')[0].value, 'gpu_layers': gpu_layers.slice(0, -1), 'disk_layers': disk_layers, 'url': $('#modelurl')[0].value, 'online_model': $('#oaimodel')[0].value};
+		models = getSelectedOptions(document.getElementById('oaimodel'));
+		if (models.length == 1) {
+			models = models[0];
+		}
+		message = {'cmd': 'load_model', 'use_gpu': $('#use_gpu')[0].checked, 'key': $('#modelkey')[0].value, 'gpu_layers': gpu_layers.slice(0, -1), 'disk_layers': disk_layers, 'url': $('#modelurl')[0].value, 'online_model': models};
 		socket.send(message);
 		loadmodelcontent.html("");
 		hideLoadModelPopup();
@@ -3732,3 +3773,27 @@ function upload_file(file_box) {
 	}
 }
 
+function getSelectedOptions(element) {
+    // validate element
+    if(!element || !element.options)
+        return []; //or null?
+
+    // return HTML5 implementation of selectedOptions instead.
+    if (element.selectedOptions) {
+        selectedOptions = element.selectedOptions;
+	} else {
+		// you are here because your browser doesn't have the HTML5 selectedOptions
+		var opts = element.options;
+		var selectedOptions = [];
+		for(var i = 0; i < opts.length; i++) {
+			 if(opts[i].selected) {
+				 selectedOptions.push(opts[i]);
+			 }
+		}
+	}
+	output = []
+	for (item of selectedOptions) {
+		output.push(item.value);
+	}
+    return output;
+}

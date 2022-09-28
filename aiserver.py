@@ -1,8 +1,8 @@
 #!/usr/bin/python3
 #==================================================================#
 # KoboldAI
-# Version: 1.18.1
-# By: KoboldAIDev and the KoboldAI Community
+# Version: 1.19.0
+# By: The KoboldAI Community
 #==================================================================#
 
 # External packages
@@ -17,6 +17,8 @@ os.environ['TOKENIZERS_PARALLELISM'] = 'false'
 from eventlet import tpool
 
 import logging
+from logger import logger, set_logger_verbosity, quiesce_logger
+
 logging.getLogger("urllib3").setLevel(logging.ERROR)
 
 from os import path, getcwd
@@ -57,7 +59,7 @@ from utils import debounce
 import utils
 import structures
 import torch
-from transformers import StoppingCriteria, GPT2TokenizerFast, GPT2LMHeadModel, GPTNeoForCausalLM, GPTNeoModel, AutoModelForCausalLM, AutoTokenizer, PreTrainedModel, modeling_utils
+from transformers import StoppingCriteria, GPT2Tokenizer, GPT2LMHeadModel, GPTNeoForCausalLM, GPTNeoModel, AutoModelForCausalLM, AutoTokenizer, PreTrainedModel, modeling_utils
 from transformers import __version__ as transformers_version
 import transformers
 try:
@@ -65,11 +67,12 @@ try:
 except:
     pass
 import transformers.generation_utils
+
 global tpu_mtj_backend
 
 
 if lupa.LUA_VERSION[:2] != (5, 4):
-    print(f"Please install lupa==1.10. You have lupa {lupa.__version__}.", file=sys.stderr)
+    logger.error(f"Please install lupa==1.10. You have lupa {lupa.__version__}.")
 
 patch_causallm_patched = False
 
@@ -123,16 +126,19 @@ model_menu = {
         ["Untuned OPT", "optlist", "", True],
         ["Untuned GPT-Neo/J", "gptneolist", "", True],
         ["Untuned Fairseq Dense", "fsdlist", "", True],
+        ["Untuned Bloom", "bloomlist", "", True],
         ["Untuned XGLM", "xglmlist", "", True],
         ["Untuned GPT2", "gpt2list", "", True],
         ["Online Services", "apilist", "", True],
         ["Read Only (No AI)", "ReadOnly", "", False]
         ],
     'adventurelist': [
+        ["Skein 20B", "KoboldAI/GPT-NeoX-20B-Skein", "64GB", False],
+        ["Nerys OPT 13B V2 (Hybrid)", "KoboldAI/OPT-13B-Nerys-v2", "32GB", False],
         ["Nerys FSD 13B V2 (Hybrid)", "KoboldAI/fairseq-dense-13B-Nerys-v2", "32GB", False],
         ["Nerys FSD 13B (Hybrid)", "KoboldAI/fairseq-dense-13B-Nerys", "32GB", False],
         ["Skein 6B", "KoboldAI/GPT-J-6B-Skein", "16GB", False],
-        ["OPT Nerys 6B V2", "KoboldAI/OPT-6B-nerys-v2", "16GB", False],
+        ["OPT Nerys 6B V2 (Hybrid)", "KoboldAI/OPT-6B-nerys-v2", "16GB", False],
         ["Adventure 6B", "KoboldAI/GPT-J-6B-Adventure", "16GB", False],
         ["Nerys FSD 2.7B (Hybrid)", "KoboldAI/fairseq-dense-2.7B-Nerys", "8GB", False],
         ["Adventure 2.7B", "KoboldAI/GPT-Neo-2.7B-AID", "8GB", False],
@@ -141,10 +147,11 @@ model_menu = {
         ["Return to Main Menu", "mainmenu", "", True],
         ],
     'novellist': [
+        ["Nerys OPT 13B V2 (Hybrid)", "KoboldAI/OPT-13B-Nerys-v2", "32GB", False],
         ["Nerys FSD 13B V2 (Hybrid)", "KoboldAI/fairseq-dense-13B-Nerys-v2", "32GB", False],
         ["Janeway FSD 13B", "KoboldAI/fairseq-dense-13B-Janeway", "32GB", False],
         ["Nerys FSD 13B (Hybrid)", "KoboldAI/fairseq-dense-13B-Nerys", "32GB", False],
-        ["OPT Nerys 6B V2", "KoboldAI/OPT-6B-nerys-v2", "16GB", False],
+        ["OPT Nerys 6B V2 (Hybrid)", "KoboldAI/OPT-6B-nerys-v2", "16GB", False],
         ["Janeway FSD 6.7B", "KoboldAI/fairseq-dense-6.7B-Janeway", "16GB", False],
         ["Janeway Neo 6B", "KoboldAI/GPT-J-6B-Janeway", "16GB", False],
         ["Janeway Neo 2.7B", "KoboldAI/GPT-Neo-2.7B-Janeway", "8GB", False],
@@ -155,10 +162,15 @@ model_menu = {
         ["Return to Main Menu", "mainmenu", "", True],
         ],
     'nsfwlist': [
+        ["Erebus 20B (NSFW)", "KoboldAI/GPT-NeoX-20B-Erebus", "64GB", False],
+        ["Erebus 13B (NSFW)", "KoboldAI/OPT-13B-Erebus", "32GB", False],
         ["Shinen FSD 13B (NSFW)", "KoboldAI/fairseq-dense-13B-Shinen", "32GB", False],
+        ["Erebus 6.7B (NSFW)", "KoboldAI/OPT-6.7B-Erebus", "16GB", False],
         ["Shinen FSD 6.7B (NSFW)", "KoboldAI/fairseq-dense-6.7B-Shinen", "16GB", False],
+        ["Lit V2 6B (NSFW)", "hakurei/litv2-6B-rev3", "16GB", False],
         ["Lit 6B (NSFW)", "hakurei/lit-6B", "16GB", False],
         ["Shinen 6B (NSFW)", "KoboldAI/GPT-J-6B-Shinen", "16GB", False],
+        ["Erebus 2.7B (NSFW)", "KoboldAI/OPT-2.7B-Erebus", "8GB", False],
         ["Horni 2.7B (NSFW)", "KoboldAI/GPT-Neo-2.7B-Horni", "8GB", False],
         ["Shinen 2.7B (NSFW)", "KoboldAI/GPT-Neo-2.7B-Shinen", "8GB", False],
         ["Return to Main Menu", "mainmenu", "", True],
@@ -170,6 +182,7 @@ model_menu = {
         ["Return to Main Menu", "mainmenu", "", True],
         ],
     'gptneolist': [
+        ["GPT-NeoX 20B", "EleutherAI/gpt-neox-20b", "64GB", False],
         ["GPT-J 6B", "EleutherAI/gpt-j-6B", "16GB", False],
         ["GPT-Neo 2.7B", "EleutherAI/gpt-neo-2.7B", "8GB", False],
         ["GPT-Neo 1.3B", "EleutherAI/gpt-neo-1.3B", "6GB", False],
@@ -181,6 +194,14 @@ model_menu = {
         ["GPT-2 Large", "gpt2-large", "4GB", False],
         ["GPT-2 Med", "gpt2-medium", "2GB", False],
         ["GPT-2", "gpt2", "2GB", False],
+        ["Return to Main Menu", "mainmenu", "", True],
+        ],
+    'bloomlist': [
+        ["Bloom 176B", "bigscience/bloom", "", False],
+        ["Bloom 7.1B", "bigscience/bloom-7b1", "", False],   
+        ["Bloom 3B", "bigscience/bloom-3b", "", False], 
+        ["Bloom 1.7B", "bigscience/bloom-1b7", "", False], 
+        ["Bloom 560M", "bigscience/bloom-560m", "", False], 
         ["Return to Main Menu", "mainmenu", "", True],
         ],
     'optlist': [
@@ -217,6 +238,7 @@ model_menu = {
         ["InferKit API (requires API key)", "InferKit", "", False],
         # ["KoboldAI Server API (Old Google Colab)", "Colab", "", False],
         ["KoboldAI API", "API", "", False],
+        ["KoboldAI Horde", "CLUSTER", "", False],
         ["Return to Main Menu", "mainmenu", "", True],
     ]
     }
@@ -238,7 +260,8 @@ class vars:
     lastact     = ""     # The last action received from the user
     submission  = ""     # Same as above, but after applying input formatting
     lastctx     = ""     # The last context submitted to the generator
-    model       = ""     # Model ID string chosen at startup
+    model       = "ReadOnly"     # Model ID string chosen at startup
+    online_model = ""     # Used when Model ID is an online service, and there is a secondary option for the actual model name
     model_selected = ""  #selected model in UI
     model_type  = ""     # Model Type (Automatically taken from the model config)
     noai        = False  # Runs the script without starting up the transformers pipeline
@@ -307,7 +330,7 @@ class vars:
     badwordsids_opt = [[44717], [46613], [48513], [49923], [50185], [48755], [8488], [43303], [49659], [48601], [49817], [45405], [48742], [49925], [47720], [11227], [48937], [48784], [50017], [42248], [49310], [48082], [49895], [50025], [49092], [49007], [8061], [44226], [0], [742], [28578], [15698], [49784], [46679], [39365], [49281], [49609], [48081], [48906], [46161], [48554], [49670], [48677], [49721], [49632], [48610], [48462], [47457], [10975], [46077], [28696], [48709], [43839], [49798], [49154], [48203], [49625], [48395], [50155], [47161], [49095], [48833], [49420], [49666], [48443], [22176], [49242], [48651], [49138], [49750], [40389], [48021], [21838], [49070], [45333], [40862], [1], [49915], [33525], [49858], [50254], [44403], [48992], [48872], [46117], [49853], [47567], [50206], [41552], [50068], [48999], [49703], [49940], [49329], [47620], [49868], [49962], [2], [44082], [50236], [31274], [50260], [47052], [42645], [49177], [17523], [48691], [49900], [49069], [49358], [48794], [47529], [46479], [48457], [646], [49910], [48077], [48935], [46386], [48902], [49151], [48759], [49803], [45587], [48392], [47789], [48654], [49836], [49230], [48188], [50264], [46844], [44690], [48505], [50161], [27779], [49995], [41833], [50154], [49097], [48520], [50018], [8174], [50084], [49366], [49526], [50193], [7479], [49982], [3]]
     fp32_model  = False  # Whether or not the most recently loaded HF model was in fp32 format
     deletewi    = None   # Temporary storage for UID to delete
-    wirmvwhtsp  = False  # Whether to remove leading whitespace from WI entries
+    wirmvwhtsp  = True  # Whether to remove leading whitespace from WI entries
     widepth     = 3      # How many historical actions to scan for WI hits
     mode        = "play" # Whether the interface is in play, memory, or edit mode
     editln      = 0      # Which line was last selected in Edit Mode
@@ -318,6 +341,7 @@ class vars:
     colaburl    = ""     # Ngrok url for Google Colab mode
     apikey      = ""     # API key to use for InferKit API calls
     oaiapikey   = ""     # API key to use for OpenAI API calls
+    cluster_requested_models = [] # The models which we allow to generate during cluster mode
     savedir     = getcwd()+"\\stories"
     hascuda     = False  # Whether torch has detected CUDA on the system
     usegpu      = False  # Whether to launch pipeline with GPU support
@@ -359,7 +383,6 @@ class vars:
     actionmode  = 1
     dynamicscan = False
     host        = False
-    flaskwebgui = False
     nopromptgen = False
     rngpersist  = False
     nogenmod    = False
@@ -378,6 +401,8 @@ class vars:
     output_streaming = True
     token_stream_queue = TokenStreamQueue() # Queue for the token streaming
     show_probs = False # Whether or not to show token probabilities
+    show_budget = False # Whether or not to show token probabilities
+    configname = None
 
 utils.vars = vars
 
@@ -386,7 +411,8 @@ class Send_to_socketio(object):
         print(bar, end="")
         time.sleep(0.01)
         try:
-            emit('from_server', {'cmd': 'model_load_status', 'data': bar.replace(" ", "&nbsp;")}, broadcast=True)
+            gui_msg = bar.replace(f"{colors.PURPLE}INIT{colors.END}       | ","").replace(" ", "&nbsp;")
+            emit('from_server', {'cmd': 'model_load_status', 'data': gui_msg}, broadcast=True)
         except:
             pass
                                 
@@ -395,8 +421,6 @@ import logging
 log = logging.getLogger('werkzeug')
 log.setLevel(logging.ERROR)
 
-# Start flask & SocketIO
-print("{0}Initializing Flask... {1}".format(colors.PURPLE, colors.END), end="")
 from flask import Flask, render_template, Response, request, copy_current_request_context, send_from_directory, session, jsonify, abort, redirect
 from flask_socketio import SocketIO
 from flask_socketio import emit as _emit
@@ -407,9 +431,7 @@ app = Flask(__name__, root_path=os.getcwd())
 app.secret_key = secrets.token_hex()
 app.config['SESSION_TYPE'] = 'filesystem'
 app.config['TEMPLATES_AUTO_RELOAD'] = True
-Session(app)
 socketio = SocketIO(app, async_method="eventlet")
-print("{0}OK!{1}".format(colors.GREEN, colors.END))
 
 old_socketio_on = socketio.on
 def new_socketio_on(*a, **k):
@@ -614,6 +636,18 @@ api_v1 = KoboldAPISpec(
     tags=tags,
 )
 
+# Returns the expected config filename for the current setup.
+# If the model_name is specified, it returns what the settings file would be for that model
+def get_config_filename(model_name = None):
+    if model_name:
+        return(f"settings/{model_name.replace('/', '_')}.settings")
+    elif args.configname:
+        return(f"settings/{args.configname.replace('/', '_')}.settings")
+    elif vars.configname != '':
+        return(f"settings/{vars.configname.replace('/', '_')}.settings")
+    else:
+        logger.warning(f"Empty configfile name sent back. Defaulting to ReadOnly")
+        return(f"settings/ReadOnly.settings")
 #==================================================================#
 # Function to get model selection at startup
 #==================================================================#
@@ -697,15 +731,7 @@ def getModelSelection(modellist):
                 getModelSelection(mainmenu)
 
 def check_if_dir_is_model(path):
-    if os.path.exists(path):
-        try:
-            from transformers import AutoConfig
-            model_config = AutoConfig.from_pretrained(path)
-        except:
-            return False
-        return True
-    else:
-        return False
+    return os.path.exists(os.path.join(path, 'config.json'))
     
 #==================================================================#
 # Return all keys in tokenizer dictionary containing char
@@ -721,9 +747,8 @@ def check_if_dir_is_model(path):
 # Return Model Name
 #==================================================================#
 def getmodelname():
-    if(args.configname):
-       modelname = args.configname
-       return modelname
+    if(vars.online_model != ''):
+       return(f"{vars.model}/{vars.online_model}")
     if(vars.model in ("NeoCustom", "GPT2Custom", "TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX")):
         modelname = os.path.basename(os.path.normpath(vars.custmodpth))
         return modelname
@@ -781,14 +806,14 @@ def device_config(config):
                 breakmodel.disk_blocks = args.breakmodel_disklayers
                 n_layers -= args.breakmodel_disklayers
         except:
-            print("WARNING: --breakmodel_gpulayers is malformatted. Please use the --help option to see correct usage of --breakmodel_gpulayers. Defaulting to all layers on device 0.", file=sys.stderr)
+            logger.warning("--breakmodel_gpulayers is malformatted. Please use the --help option to see correct usage of --breakmodel_gpulayers. Defaulting to all layers on device 0.")
             breakmodel.gpu_blocks = [n_layers]
             n_layers = 0
     elif(args.breakmodel_layers is not None):
         breakmodel.gpu_blocks = [n_layers - max(0, min(n_layers, args.breakmodel_layers))]
         n_layers -= sum(breakmodel.gpu_blocks)
     elif(args.model is not None):
-        print("Breakmodel not specified, assuming GPU 0")
+        logger.info("Breakmodel not specified, assuming GPU 0")
         breakmodel.gpu_blocks = [n_layers]
         n_layers = 0
     else:
@@ -847,7 +872,7 @@ def device_config(config):
                 else:
                     print(f"{colors.RED}Please enter an integer between -1 and {n_layers}.{colors.END}")
 
-    print(colors.PURPLE + "\nFinal device configuration:")
+    logger.init_ok("Final device configuration:", status="Info")
     device_list(n_layers, primary=breakmodel.primary_device)
 
     # If all layers are on the same device, use the old GPU generation mode
@@ -860,7 +885,7 @@ def device_config(config):
         return
 
     if(not breakmodel.gpu_blocks):
-        print("Nothing assigned to a GPU, reverting to CPU only mode")
+        logger.warning("Nothing assigned to a GPU, reverting to CPU only mode")
         import breakmodel
         breakmodel.primary_device = "cpu"
         vars.breakmodel = False
@@ -1040,6 +1065,7 @@ def savesettings():
     js["welcome"]     = vars.welcome
     js["output_streaming"] = vars.output_streaming
     js["show_probs"] = vars.show_probs
+    js["show_budget"] = vars.show_budget
 
     if(vars.seed_specified):
         js["seed"]    = vars.seed
@@ -1057,7 +1083,7 @@ def savesettings():
     # Write it
     if not os.path.exists('settings'):
         os.mkdir('settings')
-    file = open("settings/" + getmodelname().replace('/', '_') + ".settings", "w")
+    file = open(get_config_filename(), "w")
     try:
         file.write(json.dumps(js, indent=3))
     finally:
@@ -1068,7 +1094,7 @@ def savesettings():
 #==================================================================#
 @debounce(2)
 def settingschanged():
-    print("{0}Saving settings!{1}".format(colors.GREEN, colors.END))
+    logger.info("Saving settings.")
     savesettings()
 
 #==================================================================#
@@ -1083,9 +1109,9 @@ def loadsettings():
         
         processsettings(js)
         file.close()
-    if(path.exists("settings/" + getmodelname().replace('/', '_') + ".settings")):
+    if(path.exists(get_config_filename())):
         # Read file contents into JSON object
-        file = open("settings/" + getmodelname().replace('/', '_') + ".settings", "r")
+        file = open(get_config_filename(), "r")
         js   = json.load(file)
         
         processsettings(js)
@@ -1094,38 +1120,41 @@ def loadsettings():
 def processsettings(js):
 # Copy file contents to vars
     if("apikey" in js):
-        vars.apikey     = js["apikey"]
+        # If the model is the HORDE, then previously saved API key in settings
+        # Will always override a new key set.
+        if vars.model != "CLUSTER" or vars.apikey == '':
+            vars.apikey = js["apikey"]
     if("andepth" in js):
-        vars.andepth    = js["andepth"]
+        vars.andepth = js["andepth"]
     if("sampler_order" in js):
         sampler_order = vars.sampler_order
         if(len(sampler_order) < 7):
             sampler_order = [6] + sampler_order
         vars.sampler_order = sampler_order
     if("temp" in js):
-        vars.temp       = js["temp"]
+        vars.temp = js["temp"]
     if("top_p" in js):
-        vars.top_p      = js["top_p"]
+        vars.top_p = js["top_p"]
     if("top_k" in js):
-        vars.top_k      = js["top_k"]
+        vars.top_k = js["top_k"]
     if("tfs" in js):
-        vars.tfs        = js["tfs"]
+        vars.tfs = js["tfs"]
     if("typical" in js):
-        vars.typical    = js["typical"]
+        vars.typical = js["typical"]
     if("top_a" in js):
-        vars.top_a      = js["top_a"]
+        vars.top_a = js["top_a"]
     if("rep_pen" in js):
-        vars.rep_pen    = js["rep_pen"]
+        vars.rep_pen = js["rep_pen"]
     if("rep_pen_slope" in js):
         vars.rep_pen_slope = js["rep_pen_slope"]
     if("rep_pen_range" in js):
         vars.rep_pen_range = js["rep_pen_range"]
     if("genamt" in js):
-        vars.genamt     = js["genamt"]
+        vars.genamt = js["genamt"]
     if("max_length" in js):
         vars.max_length = js["max_length"]
     if("ikgen" in js):
-        vars.ikgen      = js["ikgen"]
+        vars.ikgen = js["ikgen"]
     if("formatoptns" in js):
         vars.formatoptns = js["formatoptns"]
     if("numseqs" in js):
@@ -1160,6 +1189,8 @@ def processsettings(js):
         vars.output_streaming = js["output_streaming"]
     if("show_probs" in js):
         vars.show_probs = js["show_probs"]
+    if("show_budget" in js):
+        vars.show_budget = js["show_budget"]
     
     if("seed" in js):
         vars.seed = js["seed"]
@@ -1288,6 +1319,8 @@ def general_startup(override_args=None):
     parser.add_argument("--aria2_port", type=int, help="Specify the port on which aria2's RPC interface will be open if aria2 is installed (defaults to 6799)")
     parser.add_argument("--model", help="Specify the Model Type to skip the Menu")
     parser.add_argument("--path", help="Specify the Path for local models (For model NeoCustom or GPT2Custom)")
+    parser.add_argument("--apikey", help="Specify the API key to use for online services")
+    parser.add_argument("--req_model", type=str, action='append', required=False, help="Which models which we allow to generate for us during cluster mode. Can be specified multiple times.")
     parser.add_argument("--revision", help="Specify the model revision for huggingface models (can be a git branch/tag name or a git commit hash)")
     parser.add_argument("--cpu", action='store_true', help="By default unattended launches are on the GPU use this option to force CPU usage.")
     parser.add_argument("--breakmodel", action='store_true', help=argparse.SUPPRESS)
@@ -1306,6 +1339,9 @@ def general_startup(override_args=None):
     parser.add_argument("--savemodel", action='store_true', help="Saves the model to the models folder even if --colab is used (Allows you to save models to Google Drive)")
     parser.add_argument("--customsettings", help="Preloads arguements from json file. You only need to provide the location of the json file. Use customsettings.json template file. It can be renamed if you wish so that you can store multiple configurations. Leave any settings you want as default as null. Any values you wish to set need to be in double quotation marks")
     parser.add_argument("--no_ui", action='store_true', default=False, help="Disables the GUI and Socket.IO server while leaving the API server running.")
+    parser.add_argument('-v', '--verbosity', action='count', default=0, help="The default logging level is ERROR or higher. This value increases the amount of logging seen in your screen")
+    parser.add_argument('-q', '--quiesce', action='count', default=0, help="The default logging level is ERROR or higher. This value decreases the amount of logging seen in your screen")
+
     #args: argparse.Namespace = None
     if "pytest" in sys.modules and override_args is None:
         args = parser.parse_args([])
@@ -1321,6 +1357,8 @@ def general_startup(override_args=None):
     
     utils.args = args
 
+    set_logger_verbosity(args.verbosity)
+    quiesce_logger(args.quiesce)
     if args.customsettings:
         f = open (args.customsettings)
         importedsettings = json.load(f)
@@ -1337,6 +1375,11 @@ def general_startup(override_args=None):
 
     vars.model = args.model;
     vars.revision = args.revision
+
+    if args.apikey:
+        vars.apikey = args.apikey
+    if args.req_model:
+        vars.cluster_requested_models = args.req_model
 
     if args.colab:
         args.remote = True;
@@ -1383,9 +1426,10 @@ def general_startup(override_args=None):
             vars.model = "NeoCustom"
             vars.custmodpth = modpath
     elif args.model:
-        print("Welcome to KoboldAI!\nYou have selected the following Model:", vars.model)
+        logger.message(f"Welcome to KoboldAI!")
+        logger.message(f"You have selected the following Model: {vars.model}")
         if args.path:
-            print("You have selected the following path for your Model :", args.path)
+            logger.message(f"You have selected the following path for your Model: {args.path}")
             vars.custmodpth = args.path;
             vars.colaburl = args.path + "/request"; # Lets just use the same parameter to keep it simple
 #==================================================================#
@@ -1425,13 +1469,38 @@ def get_model_info(model, directory=""):
     key_value = ""
     break_values = []
     url = False
+    default_url = None
+    models_on_url = False
+    multi_online_models = False
     gpu_count = torch.cuda.device_count()
     gpu_names = []
+    send_horde_models = False
     for i in range(gpu_count):
         gpu_names.append(torch.cuda.get_device_name(i))
-    if model in [x[1] for x in model_menu['apilist']]:
-        if path.exists("settings/{}.settings".format(model)):
-            with open("settings/{}.settings".format(model), "r") as file:
+    if model in ['Colab', 'API']:
+        url = True
+    elif model == 'CLUSTER':
+        models_on_url = True
+        url = True
+        key = True
+        default_url = 'https://koboldai.net'
+        multi_online_models = True
+        if path.exists(get_config_filename(model)):
+            with open(get_config_filename(model), "r") as file:
+                # Check if API key exists
+                js = json.load(file)
+                if("apikey" in js and js["apikey"] != ""):
+                    # API key exists, grab it and close the file
+                    key_value = js["apikey"]
+                elif 'oaiapikey' in js and js['oaiapikey'] != "":
+                    key_value = js["oaiapikey"]
+                if 'url' in js and js['url'] != "":
+                    url = js['url']
+            if key_value != "":
+                send_horde_models = True
+    elif model in [x[1] for x in model_menu['apilist']]:
+        if path.exists(get_config_filename(model)):
+            with open(get_config_filename(model), "r") as file:
                 # Check if API key exists
                 js = json.load(file)
                 if("apikey" in js and js["apikey"] != ""):
@@ -1442,8 +1511,6 @@ def get_model_info(model, directory=""):
         key = True
     elif model == 'ReadOnly':
         pass
-    elif model == 'Colab':
-        url = True
     elif not utils.HAS_ACCELERATE and not torch.cuda.is_available():
         pass
     elif args.cpu:
@@ -1452,6 +1519,7 @@ def get_model_info(model, directory=""):
         layer_count = get_layer_count(model, directory=directory)
         if layer_count is None:
             breakmodel = False
+            gpu = True
         else:
             breakmodel = True
             if model in ["NeoCustom", "GPT2Custom"]:
@@ -1475,14 +1543,16 @@ def get_model_info(model, directory=""):
     emit('from_server', {'cmd': 'selected_model_info', 'key_value': key_value, 'key':key, 
                          'gpu':gpu, 'layer_count':layer_count, 'breakmodel':breakmodel, 
                          'disk_break_value': disk_blocks, 'accelerate': utils.HAS_ACCELERATE,
-                         'break_values': break_values, 'gpu_count': gpu_count,
-                         'url': url, 'gpu_names': gpu_names}, broadcast=True)
-    if key_value != "":
+                         'break_values': break_values, 'gpu_count': gpu_count, 'multi_online_models': multi_online_models,
+                         'url': url, 'default_url': default_url, 'gpu_names': gpu_names, 'models_on_url': models_on_url}, broadcast=True)
+    if send_horde_models:
+        get_cluster_models({'key': key_value, 'url': default_url})
+    elif key_value != "" and model in [x[1] for x in model_menu['apilist']] and model != 'CLUSTER':
         get_oai_models(key_value)
     
 
 def get_layer_count(model, directory=""):
-    if(model not in ["InferKit", "Colab", "API", "OAI", "GooseAI" , "ReadOnly", "TPUMeshTransformerGPTJ"]):
+    if(model not in ["InferKit", "Colab", "API", "CLUSTER", "OAI", "GooseAI" , "ReadOnly", "TPUMeshTransformerGPTJ"]):
         if(model == "GPT2Custom"):
             with open(os.path.join(directory, "config.json"), "r") as f:
                 model_config = json.load(f)
@@ -1499,10 +1569,15 @@ def get_layer_count(model, directory=""):
                 model_config = AutoConfig.from_pretrained(directory, revision=vars.revision, cache_dir="cache")
             else:
                 model_config = AutoConfig.from_pretrained(model, revision=vars.revision, cache_dir="cache")
-        return utils.num_layers(model_config)
+        try:
+            if ((utils.HAS_ACCELERATE and model_config.model_type != 'gpt2') or model_config.model_type in ("gpt_neo", "gptj", "xglm", "opt")) and not vars.nobreakmodel:
+                return utils.num_layers(model_config)
+            else:
+                return None
+        except:
+            return None
     else:
         return None
-
 
 def get_oai_models(key):
     vars.oaiapikey = key
@@ -1514,7 +1589,7 @@ def get_oai_models(key):
         return
         
     # Get list of models from OAI
-    print("{0}Retrieving engine list...{1}".format(colors.PURPLE, colors.END), end="")
+    logger.init("OAI Engines", status="Retrieving")
     req = requests.get(
         url, 
         headers = {
@@ -1526,7 +1601,7 @@ def get_oai_models(key):
         try:
             engines = [[en["id"], "{} ({})".format(en['id'], "Ready" if en["ready"] == True else "Not Ready")] for en in engines]
         except:
-            print(engines)
+            logger.error(engines)
             raise
         
         online_model = ""
@@ -1537,25 +1612,85 @@ def get_oai_models(key):
             # If the client settings file doesn't exist, create it
             # Write API key to file
             os.makedirs('settings', exist_ok=True)
-        if path.exists("settings/{}.settings".format(vars.model_selected)):
-            with open("settings/{}.settings".format(vars.model_selected), "r") as file:
+        if path.exists(get_config_filename(vars.model_selected)):
+            with open(get_config_filename(vars.model_selected), "r") as file:
                 js = json.load(file)
                 if 'online_model' in js:
                     online_model = js['online_model']
                 if "apikey" in js:
                     if js['apikey'] != key:
                         changed=True
+        else:
+            changed=True
         if changed:
-            with open("settings/{}.settings".format(vars.model_selected), "w") as file:
+            js={}
+            with open(get_config_filename(vars.model_selected), "w") as file:
                 js["apikey"] = key
                 file.write(json.dumps(js, indent=3))
             
+        logger.init_ok("OAI Engines", status="OK")
         emit('from_server', {'cmd': 'oai_engines', 'data': engines, 'online_model': online_model}, broadcast=True)
     else:
         # Something went wrong, print the message and quit since we can't initialize an engine
-        print("{0}ERROR!{1}".format(colors.RED, colors.END))
-        print(req.json())
+        logger.init_err("OAI Engines", status="Failed")
+        logger.error(req.json())
         emit('from_server', {'cmd': 'errmsg', 'data': req.json()})
+
+def get_cluster_models(msg):
+    vars.oaiapikey = msg['key']
+    vars.apikey = vars.oaiapikey
+    url = msg['url']
+    # Get list of models from public cluster
+    logger.init("KAI Horde Models", status="Retrieving")
+    try:
+        req = requests.get("{}/models".format(url))
+    except requests.exceptions.ConnectionError:
+        logger.init_err("KAI Horde Models", status="Failed")
+        logger.error("Provided KoboldAI Horde URL unreachable")
+        emit('from_server', {'cmd': 'errmsg', 'data': "Provided KoboldAI Horde URL unreachable"})
+        return
+    if(not req.ok):
+        # Something went wrong, print the message and quit since we can't initialize an engine
+        logger.init_err("KAI Horde Models", status="Failed")
+        logger.error(req.json())
+        emit('from_server', {'cmd': 'errmsg', 'data': req.json()})
+        return
+
+    engines = req.json()
+    logger.debug(engines)
+    try:
+        engines = [[en, en] for en in engines]
+    except:
+        logger.error(engines)
+        raise
+    
+    online_model = ""
+    changed=False
+    
+    #Save the key
+    if not path.exists("settings"):
+        # If the client settings file doesn't exist, create it
+        # Write API key to file
+        os.makedirs('settings', exist_ok=True)
+    if path.exists(get_config_filename(vars.model_selected)):
+        with open(get_config_filename(vars.model_selected), "r") as file:
+            js = json.load(file)
+            if 'online_model' in js:
+                online_model = js['online_model']
+            if "apikey" in js:
+                if js['apikey'] != vars.oaiapikey:
+                    changed=True
+    else:
+        changed=True
+    if changed:
+        js={}
+        with open(get_config_filename(vars.model_selected), "w") as file:
+            js["apikey"] = vars.oaiapikey
+            js["url"] = url
+            file.write(json.dumps(js, indent=3))
+        
+    logger.init_ok("KAI Horde Models", status="OK")
+    emit('from_server', {'cmd': 'oai_engines', 'data': engines, 'online_model': online_model}, broadcast=True)
 
 
 # Function to patch transformers to use our soft prompt
@@ -1600,11 +1735,11 @@ def patch_transformers_download():
                     pass
     def http_get(
         url: str,
-        temp_file: transformers.utils.hub.BinaryIO,
+        temp_file,
         proxies=None,
         resume_size=0,
-        headers: transformers.utils.hub.Optional[transformers.utils.hub.Dict[str, str]] = None,
-        file_name: transformers.utils.hub.Optional[str] = None,
+        headers=None,
+        file_name=None,
     ):
         """
         Download remote file. Do not gobble up errors.
@@ -1866,6 +2001,8 @@ def patch_transformers():
             if not (vars.show_probs or vars.output_streaming):
                 return False
 
+            if vars.chatmode:
+                return False
             tokenizer_text = utils.decodenewlines(tokenizer.decode(input_ids[0, -1]))
             vars.token_stream_queue.add_text(tokenizer_text)
             return False
@@ -1956,19 +2093,23 @@ def reset_model_settings():
     vars.sampler_order = [6, 0, 1, 2, 3, 4, 5]
     vars.newlinemode = "n"
     vars.revision    = None
+    vars.lazy_load = True
+    
 
-def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=False, online_model=""):
+def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=False, online_model="", use_breakmodel_args=False, breakmodel_args_default_to_cpu=False):
     global model
     global generator
     global torch
     global model_config
-    global GPT2TokenizerFast
+    global GPT2Tokenizer
     global tokenizer
+    if(initial_load):
+        use_breakmodel_args = True
     reset_model_settings()
     if not utils.HAS_ACCELERATE:
         disk_layers = None
     vars.noai = False
-    if not initial_load:
+    if not use_breakmodel_args:
         set_aibusy(True)
         if vars.model != 'ReadOnly':
             emit('from_server', {'cmd': 'model_load_status', 'data': "Loading {}".format(vars.model)}, broadcast=True)
@@ -1976,17 +2117,22 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
             time.sleep(0.1)
     if gpu_layers is not None:
         args.breakmodel_gpulayers = gpu_layers
-    elif initial_load:
+    elif use_breakmodel_args:
         gpu_layers = args.breakmodel_gpulayers
+    if breakmodel_args_default_to_cpu and gpu_layers is None:
+        gpu_layers = args.breakmodel_gpulayers = []
     if disk_layers is not None:
         args.breakmodel_disklayers = int(disk_layers)
-    elif initial_load:
+    elif use_breakmodel_args:
         disk_layers = args.breakmodel_disklayers
+    if breakmodel_args_default_to_cpu and disk_layers is None:
+        disk_layers = args.breakmodel_disklayers = 0
     
     #We need to wipe out the existing model and refresh the cuda cache
     model = None
     generator = None
     model_config = None
+    vars.online_model = ''
     with torch.no_grad():
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore", message="torch.distributed.reduce_op is deprecated")
@@ -2005,11 +2151,26 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
     #Reload our badwords
     vars.badwordsids = vars.badwordsids_default
     
+    if online_model == "":
+        vars.configname = getmodelname()
     #Let's set the GooseAI or OpenAI server URLs if that's applicable
-    if online_model != "":
-        if path.exists("settings/{}.settings".format(vars.model)):
+    else:
+        vars.online_model = online_model
+        # Swap OAI Server if GooseAI was selected
+        if(vars.model == "GooseAI"):
+            vars.oaiengines = "https://api.goose.ai/v1/engines"
+            vars.model = "OAI"
+            vars.configname = f"GooseAI_{online_model.replace('/', '_')}"
+        elif(vars.model == "CLUSTER") and type(online_model) is list:
+                if len(online_model) != 1:
+                    vars.configname = vars.model
+                else:
+                    vars.configname = f"{vars.model}_{online_model[0].replace('/', '_')}"
+        else:
+            vars.configname = f"{vars.model}_{online_model.replace('/', '_')}"
+        if path.exists(get_config_filename()):
             changed=False
-            with open("settings/{}.settings".format(vars.model), "r") as file:
+            with open(get_config_filename(), "r") as file:
                 # Check if API key exists
                 js = json.load(file)
                 if 'online_model' in js:
@@ -2020,20 +2181,21 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
                     changed=True
                     js['online_model'] = online_model
             if changed:
-                with open("settings/{}.settings".format(vars.model), "w") as file:
+                with open(get_config_filename(), "w") as file:
                     file.write(json.dumps(js, indent=3))
+
         # Swap OAI Server if GooseAI was selected
         if(vars.model == "GooseAI"):
             vars.oaiengines = "https://api.goose.ai/v1/engines"
             vars.model = "OAI"
             args.configname = "GooseAI" + "/" + online_model
-        else:
+        elif vars.model != "CLUSTER":
             args.configname = vars.model + "/" + online_model
         vars.oaiurl = vars.oaiengines + "/{0}/completions".format(online_model)
     
     
     # If transformers model was selected & GPU available, ask to use CPU or GPU
-    if(vars.model not in ["InferKit", "Colab", "API", "OAI", "GooseAI" , "ReadOnly", "TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX"]):
+    if(vars.model not in ["InferKit", "Colab", "API", "CLUSTER", "OAI", "GooseAI" , "ReadOnly", "TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX"]):
         vars.allowsp = True
         # Test for GPU support
         
@@ -2069,28 +2231,28 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
         elif(vars.model_type == "not_found" and vars.model == "GPT2Custom"):
             vars.model_type = "gpt2"
         elif(vars.model_type == "not_found"):
-            print("WARNING: No model type detected, assuming Neo (If this is a GPT2 model use the other menu option or --model GPT2Custom)")
+            logger.warning("No model type detected, assuming Neo (If this is a GPT2 model use the other menu option or --model GPT2Custom)")
             vars.model_type = "gpt_neo"
 
-    if(not vars.use_colab_tpu and vars.model not in ["InferKit", "Colab", "API", "OAI", "GooseAI" , "ReadOnly", "TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX"]):
+    if(not vars.use_colab_tpu and vars.model not in ["InferKit", "Colab", "API", "CLUSTER", "OAI", "GooseAI" , "ReadOnly", "TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX"]):
         loadmodelsettings()
         loadsettings()
-        print("{0}Looking for GPU support...{1}".format(colors.PURPLE, colors.END), end="")
-        vars.hascuda = torch.cuda.is_available()
-        vars.bmsupported = (utils.HAS_ACCELERATE or vars.model_type in ("gpt_neo", "gptj", "xglm", "opt")) and not vars.nobreakmodel
+        logger.init("GPU support", status="Searching")
+        vars.hascuda = torch.cuda.is_available() and not args.cpu
+        vars.bmsupported = ((utils.HAS_ACCELERATE and vars.model_type != 'gpt2') or vars.model_type in ("gpt_neo", "gptj", "xglm", "opt")) and not vars.nobreakmodel
         if(args.breakmodel is not None and args.breakmodel):
-            print("WARNING: --breakmodel is no longer supported. Breakmodel mode is now automatically enabled when --breakmodel_gpulayers is used (see --help for details).", file=sys.stderr)
+            logger.warning("--breakmodel is no longer supported. Breakmodel mode is now automatically enabled when --breakmodel_gpulayers is used (see --help for details).")
         if(args.breakmodel_layers is not None):
-            print("WARNING: --breakmodel_layers is deprecated. Use --breakmodel_gpulayers instead (see --help for details).", file=sys.stderr)
+            logger.warning("--breakmodel_layers is deprecated. Use --breakmodel_gpulayers instead (see --help for details).")
         if(args.model and vars.bmsupported and not args.breakmodel_gpulayers and not args.breakmodel_layers and (not utils.HAS_ACCELERATE or not args.breakmodel_disklayers)):
-            print("WARNING: Model launched without the --breakmodel_gpulayers argument, defaulting to GPU only mode.", file=sys.stderr)
+            logger.warning("Model launched without the --breakmodel_gpulayers argument, defaulting to GPU only mode.")
             vars.bmsupported = False
         if(not vars.bmsupported and (args.breakmodel_gpulayers is not None or args.breakmodel_layers is not None or args.breakmodel_disklayers is not None)):
-            print("WARNING: This model does not support hybrid generation. --breakmodel_gpulayers will be ignored.", file=sys.stderr)
+            logger.warning("This model does not support hybrid generation. --breakmodel_gpulayers will be ignored.")
         if(vars.hascuda):
-            print("{0}FOUND!{1}".format(colors.GREEN, colors.END))
+            logger.init_ok("GPU support", status="Found")
         else:
-            print("{0}NOT FOUND!{1}".format(colors.YELLOW, colors.END))
+            logger.init_warn("GPU support", status="Not Found")
         
         if args.cpu:
             vars.usegpu = False
@@ -2103,7 +2265,7 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
                 vars.breakmodel = True
             else:
                 vars.breakmodel = False
-                vars.usegpu = True
+                vars.usegpu = use_gpu
 
 
     # Ask for API key if InferKit was selected
@@ -2114,20 +2276,20 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
     if(vars.model == "GooseAI"):
         vars.oaiengines = "https://api.goose.ai/v1/engines"
         vars.model = "OAI"
-        args.configname = "GooseAI"
+        vars.configname = "GooseAI"
 
     # Ask for API key if OpenAI was selected
     if(vars.model == "OAI"):
-        if not args.configname:
-            args.configname = "OAI"
+        if not vars.configname:
+            vars.configname = "OAI"
         
     if(vars.model == "ReadOnly"):
         vars.noai = True
 
     # Start transformers and create pipeline
-    if(not vars.use_colab_tpu and vars.model not in ["InferKit", "Colab", "API", "OAI", "GooseAI" , "ReadOnly", "TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX"]):
+    if(not vars.use_colab_tpu and vars.model not in ["InferKit", "Colab", "API", "CLUSTER", "OAI", "GooseAI" , "ReadOnly", "TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX"]):
         if(not vars.noai):
-            print("{0}Initializing transformers, please wait...{1}".format(colors.PURPLE, colors.END))
+            logger.init("Transformers", status='Starting')
             for m in ("GPTJModel", "XGLMModel"):
                 try:
                     globals()[m] = getattr(__import__("transformers"), m)
@@ -2192,8 +2354,7 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
                             num_tensors = len(utils.get_sharded_checkpoint_num_tensors(utils.from_pretrained_model_name, utils.from_pretrained_index_filename, **utils.from_pretrained_kwargs))
                         else:
                             num_tensors = len(device_map)
-                        print(flush=True)
-                        utils.bar = tqdm(total=num_tensors, desc="Loading model tensors", file=Send_to_socketio())
+                        utils.bar = tqdm(total=num_tensors, desc=f"{colors.PURPLE}INIT{colors.END}       | Loading model tensors", file=Send_to_socketio())
 
                     with zipfile.ZipFile(f, "r") as z:
                         try:
@@ -2259,23 +2420,11 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
 
 
             def get_hidden_size_from_model(model):
-                try:
-                    return int(model.model.decoder.project_in.in_features)
-                except:
-                    try:
-                        return int(model.model.decoder.embed_tokens.out_features)
-                    except:
-                        try:
-                            return int(model.transformer.hidden_size)
-                        except:
-                            try:
-                                return int(model.transformer.embed_dim)
-                            except:
-                                return int(model.lm_head.in_features)
+                return model.get_input_embeddings().embedding_dim
             
             def maybe_low_cpu_mem_usage() -> Dict[str, Any]:
                 if(packaging.version.parse(transformers_version) < packaging.version.parse("4.11.0")):
-                    print(f"\nWARNING:  Please upgrade to transformers 4.11.0 for lower RAM usage.  You have transformers {transformers_version}.", file=sys.stderr)
+                    logger.warning(f"Please upgrade to transformers 4.11.0 for lower RAM usage. You have transformers {transformers_version}.")
                     return {}
                 return {"low_cpu_mem_usage": True}
             
@@ -2290,18 +2439,33 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
                     yield False
 
             # If custom GPT2 model was chosen
-            if(vars.model == "GPT2Custom"):
+            if(vars.model_type == "gpt2"):
                 vars.lazy_load = False
-                model_config = open(vars.custmodpth + "/config.json", "r")
-                js   = json.load(model_config)
+                if os.path.exists(vars.custmodpth):
+                    model_config = open(vars.custmodpth + "/config.json", "r")
+                elif os.path.exists(os.path.join("models/", vars.custmodpth)):
+                    config_path = os.path.join("models/", vars.custmodpth)
+                    config_path = os.path.join(config_path, "config.json").replace("\\", "//")
+                    model_config = open(config_path, "r")
+                #js   = json.load(model_config)
                 with(maybe_use_float16()):
                     try:
-                        model = GPT2LMHeadModel.from_pretrained(vars.custmodpth, revision=vars.revision, cache_dir="cache")
+                        if os.path.exists(vars.custmodpth):
+                            model = GPT2LMHeadModel.from_pretrained(vars.custmodpth, revision=vars.revision, cache_dir="cache")
+                            tokenizer = GPT2Tokenizer.from_pretrained(vars.custmodpth, revision=vars.revision, cache_dir="cache")
+                        elif os.path.exists(os.path.join("models/", vars.custmodpth)):
+                            model = GPT2LMHeadModel.from_pretrained(os.path.join("models/", vars.custmodpth), revision=vars.revision, cache_dir="cache")
+                            tokenizer = GPT2Tokenizer.from_pretrained(os.path.join("models/", vars.custmodpth), revision=vars.revision, cache_dir="cache")
+                        else:
+                            model = GPT2LMHeadModel.from_pretrained(vars.custmodpth, revision=vars.revision, cache_dir="cache")
+                            tokenizer = GPT2Tokenizer.from_pretrained(vars.custmodpth, revision=vars.revision, cache_dir="cache")
                     except Exception as e:
                         if("out of memory" in traceback.format_exc().lower()):
                             raise RuntimeError("One of your GPUs ran out of memory when KoboldAI tried to load your model.")
                         raise e
-                tokenizer = GPT2TokenizerFast.from_pretrained(vars.custmodpth, revision=vars.revision, cache_dir="cache")
+                tokenizer = GPT2Tokenizer.from_pretrained(vars.custmodpth, revision=vars.revision, cache_dir="cache")
+                model.save_pretrained("models/{}".format(vars.model.replace('/', '_')), max_shard_size="500MiB")
+                tokenizer.save_pretrained("models/{}".format(vars.model.replace('/', '_')))
                 vars.modeldim = get_hidden_size_from_model(model)
                 # Is CUDA available? If so, use GPU, otherwise fall back to CPU
                 if(vars.hascuda and vars.usegpu):
@@ -2324,7 +2488,6 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
                 # If we're using torch_lazy_loader, we need to get breakmodel config
                 # early so that it knows where to load the individual model tensors
                 if (utils.HAS_ACCELERATE or vars.lazy_load and vars.hascuda and vars.breakmodel) and not vars.nobreakmodel:
-                    print(1)
                     device_config(model_config)
 
                 # Download model from Huggingface if it does not exist, otherwise load locally
@@ -2333,7 +2496,6 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
                 if os.path.isdir(vars.model.replace('/', '_')):
                     import shutil
                     shutil.move(vars.model.replace('/', '_'), "models/{}".format(vars.model.replace('/', '_')))
-                print("\n", flush=True)
                 if(vars.lazy_load):  # If we're using lazy loader, we need to figure out what the model's hidden layers are called
                     with torch_lazy_loader.use_lazy_torch_load(dematerialized_modules=True, use_accelerate_init_empty_weights=True):
                         try:
@@ -2348,16 +2510,15 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
                         lowmem = {}
                     if(os.path.isdir(vars.custmodpth)):
                         try:
-                            tokenizer = AutoTokenizer.from_pretrained(vars.custmodpth, revision=vars.revision, cache_dir="cache")
-                        except Exception as e:
-                            pass
-                        try:
                             tokenizer = AutoTokenizer.from_pretrained(vars.custmodpth, revision=vars.revision, cache_dir="cache", use_fast=False)
                         except Exception as e:
                             try:
-                                tokenizer = GPT2TokenizerFast.from_pretrained(vars.custmodpth, revision=vars.revision, cache_dir="cache")
+                                tokenizer = AutoTokenizer.from_pretrained(vars.custmodpth, revision=vars.revision, cache_dir="cache")
                             except Exception as e:
-                                tokenizer = GPT2TokenizerFast.from_pretrained("gpt2", revision=vars.revision, cache_dir="cache")
+                                try:
+                                    tokenizer = GPT2Tokenizer.from_pretrained(vars.custmodpth, revision=vars.revision, cache_dir="cache")
+                                except Exception as e:
+                                    tokenizer = GPT2Tokenizer.from_pretrained("gpt2", revision=vars.revision, cache_dir="cache")
                         try:
                             model     = AutoModelForCausalLM.from_pretrained(vars.custmodpth, revision=vars.revision, cache_dir="cache", **lowmem)
                         except Exception as e:
@@ -2366,16 +2527,15 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
                             model     = GPTNeoForCausalLM.from_pretrained(vars.custmodpth, revision=vars.revision, cache_dir="cache", **lowmem)
                     elif(os.path.isdir("models/{}".format(vars.model.replace('/', '_')))):
                         try:
-                            tokenizer = AutoTokenizer.from_pretrained("models/{}".format(vars.model.replace('/', '_')), revision=vars.revision, cache_dir="cache")
-                        except Exception as e:
-                            pass
-                        try:
                             tokenizer = AutoTokenizer.from_pretrained("models/{}".format(vars.model.replace('/', '_')), revision=vars.revision, cache_dir="cache", use_fast=False)
                         except Exception as e:
                             try:
-                                tokenizer = GPT2TokenizerFast.from_pretrained("models/{}".format(vars.model.replace('/', '_')), revision=vars.revision, cache_dir="cache")
+                                tokenizer = AutoTokenizer.from_pretrained("models/{}".format(vars.model.replace('/', '_')), revision=vars.revision, cache_dir="cache")
                             except Exception as e:
-                                tokenizer = GPT2TokenizerFast.from_pretrained("gpt2", revision=vars.revision, cache_dir="cache")
+                                try:
+                                    tokenizer = GPT2Tokenizer.from_pretrained("models/{}".format(vars.model.replace('/', '_')), revision=vars.revision, cache_dir="cache")
+                                except Exception as e:
+                                    tokenizer = GPT2Tokenizer.from_pretrained("gpt2", revision=vars.revision, cache_dir="cache")
                         try:
                             model     = AutoModelForCausalLM.from_pretrained("models/{}".format(vars.model.replace('/', '_')), revision=vars.revision, cache_dir="cache", **lowmem)
                         except Exception as e:
@@ -2397,16 +2557,15 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
                         torch._utils._rebuild_tensor = new_rebuild_tensor
 
                         try:
-                            tokenizer = AutoTokenizer.from_pretrained(vars.model, revision=vars.revision, cache_dir="cache")
-                        except Exception as e:
-                            pass
-                        try:
                             tokenizer = AutoTokenizer.from_pretrained(vars.model, revision=vars.revision, cache_dir="cache", use_fast=False)
                         except Exception as e:
                             try:
-                                tokenizer = GPT2TokenizerFast.from_pretrained(vars.model, revision=vars.revision, cache_dir="cache")
+                                tokenizer = AutoTokenizer.from_pretrained(vars.model, revision=vars.revision, cache_dir="cache")
                             except Exception as e:
-                                tokenizer = GPT2TokenizerFast.from_pretrained("gpt2", revision=vars.revision, cache_dir="cache")
+                                try:
+                                    tokenizer = GPT2Tokenizer.from_pretrained(vars.model, revision=vars.revision, cache_dir="cache")
+                                except Exception as e:
+                                    tokenizer = GPT2Tokenizer.from_pretrained("gpt2", revision=vars.revision, cache_dir="cache")
                         try:
                             model     = AutoModelForCausalLM.from_pretrained(vars.model, revision=vars.revision, cache_dir="cache", **lowmem)
                         except Exception as e:
@@ -2426,20 +2585,22 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
                                 import transformers.configuration_utils
                                 import transformers.modeling_utils
                                 import transformers.file_utils
+                                import huggingface_hub
+                                legacy = packaging.version.parse(transformers_version) < packaging.version.parse("4.22.0.dev0")
                                 # Save the config.json
-                                shutil.move(transformers.file_utils.get_from_cache(transformers.file_utils.hf_bucket_url(vars.model, transformers.configuration_utils.CONFIG_NAME, revision=vars.revision), cache_dir="cache", local_files_only=True), os.path.join("models/{}".format(vars.model.replace('/', '_')), transformers.configuration_utils.CONFIG_NAME))
+                                shutil.move(os.path.realpath(huggingface_hub.hf_hub_download(vars.model, transformers.configuration_utils.CONFIG_NAME, revision=vars.revision, cache_dir="cache", local_files_only=True, legacy_cache_layout=legacy)), os.path.join("models/{}".format(vars.model.replace('/', '_')), transformers.configuration_utils.CONFIG_NAME))
                                 if(utils.num_shards is None):
                                     # Save the pytorch_model.bin of an unsharded model
-                                    shutil.move(transformers.file_utils.get_from_cache(transformers.file_utils.hf_bucket_url(vars.model, transformers.modeling_utils.WEIGHTS_NAME, revision=vars.revision), cache_dir="cache", local_files_only=True), os.path.join("models/{}".format(vars.model.replace('/', '_')), transformers.modeling_utils.WEIGHTS_NAME))
+                                    shutil.move(os.path.realpath(huggingface_hub.hf_hub_download(vars.model, transformers.modeling_utils.WEIGHTS_NAME, revision=vars.revision, cache_dir="cache", local_files_only=True, legacy_cache_layout=legacy)), os.path.join("models/{}".format(vars.model.replace('/', '_')), transformers.modeling_utils.WEIGHTS_NAME))
                                 else:
                                     with open(utils.from_pretrained_index_filename) as f:
                                         map_data = json.load(f)
                                     filenames = set(map_data["weight_map"].values())
                                     # Save the pytorch_model.bin.index.json of a sharded model
-                                    shutil.move(utils.from_pretrained_index_filename, os.path.join("models/{}".format(vars.model.replace('/', '_')), transformers.modeling_utils.WEIGHTS_INDEX_NAME))
+                                    shutil.move(os.path.realpath(utils.from_pretrained_index_filename), os.path.join("models/{}".format(vars.model.replace('/', '_')), transformers.modeling_utils.WEIGHTS_INDEX_NAME))
                                     # Then save the pytorch_model-#####-of-#####.bin files
                                     for filename in filenames:
-                                        shutil.move(transformers.file_utils.get_from_cache(transformers.file_utils.hf_bucket_url(vars.model, filename, revision=vars.revision), cache_dir="cache", local_files_only=True), os.path.join("models/{}".format(vars.model.replace('/', '_')), filename))
+                                        shutil.move(os.path.realpath(huggingface_hub.hf_hub_download(vars.model, filename, revision=vars.revision, cache_dir="cache", local_files_only=True, legacy_cache_layout=legacy)), os.path.join("models/{}".format(vars.model.replace('/', '_')), filename))
                             shutil.rmtree("cache/")
 
                 if(vars.badwordsids is vars.badwordsids_default and vars.model_type not in ("gpt2", "gpt_neo", "gptj")):
@@ -2455,7 +2616,6 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
                     elif(vars.breakmodel):  # Use both RAM and VRAM (breakmodel)
                         vars.modeldim = get_hidden_size_from_model(model)
                         if(not vars.lazy_load):
-                            print(2)
                             device_config(model.config)
                         move_model_to_devices(model)
                     elif(utils.HAS_ACCELERATE and __import__("breakmodel").disk_blocks > 0):
@@ -2482,11 +2642,11 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
             #for key in vars.badwords:
             #    vars.badwordsids.append([vocab[key]])
             
-            print("{0}OK! {1} pipeline created!{2}".format(colors.GREEN, vars.model, colors.END))
+            logger.info(f"Pipeline created: {vars.model}")
         
         else:
-            from transformers import GPT2TokenizerFast
-            tokenizer = GPT2TokenizerFast.from_pretrained("gpt2", revision=vars.revision, cache_dir="cache")
+            from transformers import GPT2Tokenizer
+            tokenizer = GPT2Tokenizer.from_pretrained("gpt2", revision=vars.revision, cache_dir="cache")
     else:
         from transformers import PreTrainedModel
         from transformers import modeling_utils
@@ -2583,13 +2743,13 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
             }
 
         # If we're running Colab or OAI, we still need a tokenizer.
-        if(vars.model in ("Colab", "API")):
-            from transformers import GPT2TokenizerFast
-            tokenizer = GPT2TokenizerFast.from_pretrained("EleutherAI/gpt-neo-2.7B", revision=vars.revision, cache_dir="cache")
+        if(vars.model in ("Colab", "API", "CLUSTER")):
+            from transformers import GPT2Tokenizer
+            tokenizer = GPT2Tokenizer.from_pretrained("EleutherAI/gpt-neo-2.7B", revision=vars.revision, cache_dir="cache")
             loadsettings()
         elif(vars.model == "OAI"):
-            from transformers import GPT2TokenizerFast
-            tokenizer = GPT2TokenizerFast.from_pretrained("gpt2", revision=vars.revision, cache_dir="cache")
+            from transformers import GPT2Tokenizer
+            tokenizer = GPT2Tokenizer.from_pretrained("gpt2", revision=vars.revision, cache_dir="cache")
             loadsettings()
         # Load the TPU backend if requested
         elif(vars.use_colab_tpu or vars.model in ("TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX")):
@@ -2642,10 +2802,8 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
 def index():
     if args.no_ui:
         return redirect('/api/latest')
-    if 'new_ui' in request.args:
-        return render_template('index_new.html', hide_ai_menu=args.noaimenu)
     else:
-        return render_template('index.html', hide_ai_menu=args.noaimenu, flaskwebgui=vars.flaskwebgui)
+        return render_template('index.html', hide_ai_menu=args.noaimenu)
 @app.route('/api', strict_slashes=False)
 def api():
     return redirect('/api/latest')
@@ -2708,8 +2866,8 @@ def lua_startup():
     global _bridged
     global F
     global bridged
-    if(path.exists("settings/" + getmodelname().replace('/', '_') + ".settings")):
-        file = open("settings/" + getmodelname().replace('/', '_') + ".settings", "r")
+    if(path.exists(get_config_filename())):
+        file = open(get_config_filename(), "r")
         js   = json.load(file)
         if("userscripts" in js):
             vars.userscripts = []
@@ -2730,7 +2888,7 @@ def lua_startup():
     #==================================================================#
 
     print("", end="", flush=True)
-    print(colors.PURPLE + "Initializing Lua Bridge... " + colors.END, end="", flush=True)
+    logger.init("LUA bridge", status="Starting")
 
     # Set up Lua state
     vars.lua_state = lupa.LuaRuntime(unpack_returned_tuples=True)
@@ -2753,10 +2911,10 @@ def lua_startup():
     except lupa.LuaError as e:
         print(colors.RED + "ERROR!" + colors.END)
         vars.lua_koboldbridge.obliterate_multiverse()
-        print("{0}{1}{2}".format(colors.RED, "***LUA ERROR***: ", colors.END), end="", file=sys.stderr)
-        print("{0}{1}{2}".format(colors.RED, str(e).replace("\033", ""), colors.END), file=sys.stderr)
+        logger.debug('LUA ERROR: ' + str(e).replace("\033", ""))
+        logger.warning("Lua engine stopped; please open 'Userscripts' and press Load to reinitialize scripts.")
         exit(1)
-    print(colors.GREEN + "OK!" + colors.END)
+    logger.init_ok("LUA bridge", status="OK")
 
 
 def lua_log_format_name(name):
@@ -2780,7 +2938,7 @@ def load_callback(filename, modulename):
 #  Load all Lua scripts
 #==================================================================#
 def load_lua_scripts():
-    print(colors.GREEN + "Loading Core Script" + colors.END)
+    logger.init("LUA Scripts", status="Starting")
 
     filenames = []
     modulenames = []
@@ -2812,11 +2970,11 @@ def load_lua_scripts():
         if(vars.serverstarted):
             emit('from_server', {'cmd': 'errmsg', 'data': 'Lua script error; please check console.'}, broadcast=True)
             sendUSStatItems()
-        print("{0}{1}{2}".format(colors.RED, "***LUA ERROR***: ", colors.END), end="", file=sys.stderr)
-        print("{0}{1}{2}".format(colors.RED, str(e).replace("\033", ""), colors.END), file=sys.stderr)
-        print("{0}{1}{2}".format(colors.YELLOW, "Lua engine stopped; please open 'Userscripts' and press Load to reinitialize scripts.", colors.END), file=sys.stderr)
+        logger.debug('LUA ERROR: ' + str(e).replace("\033", ""))
+        logger.warning("Lua engine stopped; please open 'Userscripts' and press Load to reinitialize scripts.")
         if(vars.serverstarted):
             set_aibusy(0)
+    logger.init_ok("LUA Scripts", status="OK")
 
 #==================================================================#
 #  Print message that originates from the userscript with the given name
@@ -2846,9 +3004,9 @@ def lua_decode(tokens):
     tokens = list(tokens.values())
     assert type(tokens) is list
     if("tokenizer" not in globals()):
-        from transformers import GPT2TokenizerFast
+        from transformers import GPT2Tokenizer
         global tokenizer
-        tokenizer = GPT2TokenizerFast.from_pretrained("gpt2", revision=vars.revision, cache_dir="cache")
+        tokenizer = GPT2Tokenizer.from_pretrained("gpt2", revision=vars.revision, cache_dir="cache")
     return utils.decodenewlines(tokenizer.decode(tokens))
 
 #==================================================================#
@@ -2858,9 +3016,9 @@ def lua_decode(tokens):
 def lua_encode(string):
     assert type(string) is str
     if("tokenizer" not in globals()):
-        from transformers import GPT2TokenizerFast
+        from transformers import GPT2Tokenizer
         global tokenizer
-        tokenizer = GPT2TokenizerFast.from_pretrained("gpt2", revision=vars.revision, cache_dir="cache")
+        tokenizer = GPT2Tokenizer.from_pretrained("gpt2", revision=vars.revision, cache_dir="cache")
     return tokenizer.encode(utils.encodenewlines(string), max_length=int(4e9), truncation=True)
 
 #==================================================================#
@@ -3229,7 +3387,7 @@ def lua_set_chunk(k, v):
 def lua_get_modeltype():
     if(vars.noai):
         return "readonly"
-    if(vars.model in ("Colab", "API", "OAI", "InferKit")):
+    if(vars.model in ("Colab", "API", "CLUSTER", "OAI", "InferKit")):
         return "api"
     if(not vars.use_colab_tpu and vars.model not in ("TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX") and (vars.model in ("GPT2Custom", "NeoCustom") or vars.model_type in ("gpt2", "gpt_neo", "gptj"))):
         hidden_size = get_hidden_size_from_model(model)
@@ -3258,7 +3416,7 @@ def lua_get_modeltype():
 def lua_get_modelbackend():
     if(vars.noai):
         return "readonly"
-    if(vars.model in ("Colab", "API", "OAI", "InferKit")):
+    if(vars.model in ("Colab", "API", "CLUSTER", "OAI", "InferKit")):
         return "api"
     if(vars.use_colab_tpu or vars.model in ("TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX")):
         return "mtj"
@@ -3309,9 +3467,8 @@ def execute_inmod():
         vars.lua_running = False
         emit('from_server', {'cmd': 'errmsg', 'data': 'Lua script error; please check console.'}, broadcast=True)
         sendUSStatItems()
-        print("{0}{1}{2}".format(colors.RED, "***LUA ERROR***: ", colors.END), end="", file=sys.stderr)
-        print("{0}{1}{2}".format(colors.RED, str(e).replace("\033", ""), colors.END), file=sys.stderr)
-        print("{0}{1}{2}".format(colors.YELLOW, "Lua engine stopped; please open 'Userscripts' and press Load to reinitialize scripts.", colors.END), file=sys.stderr)
+        logger.debug('LUA ERROR: ' + str(e).replace("\033", ""))
+        logger.warning("Lua engine stopped; please open 'Userscripts' and press Load to reinitialize scripts.")
         set_aibusy(0)
 
 def execute_genmod():
@@ -3327,9 +3484,8 @@ def execute_outmod():
         vars.lua_running = False
         emit('from_server', {'cmd': 'errmsg', 'data': 'Lua script error; please check console.'}, broadcast=True)
         sendUSStatItems()
-        print("{0}{1}{2}".format(colors.RED, "***LUA ERROR***: ", colors.END), end="", file=sys.stderr)
-        print("{0}{1}{2}".format(colors.RED, str(e).replace("\033", ""), colors.END), file=sys.stderr)
-        print("{0}{1}{2}".format(colors.YELLOW, "Lua engine stopped; please open 'Userscripts' and press Load to reinitialize scripts.", colors.END), file=sys.stderr)
+        logger.debug('LUA ERROR: ' + str(e).replace("\033", ""))
+        logger.warning("Lua engine stopped; please open 'Userscripts' and press Load to reinitialize scripts.")
         set_aibusy(0)
     if(vars.lua_koboldbridge.resend_settings_required):
         vars.lua_koboldbridge.resend_settings_required = False
@@ -3349,14 +3505,12 @@ def execute_outmod():
 #==================================================================#
 @socketio.on('connect')
 def do_connect():
-    print("{0}Client connected!{1}".format(colors.GREEN, colors.END))
+    logger.info("Client connected!")
     emit('from_server', {'cmd': 'setchatname', 'data': vars.chatname})
     emit('from_server', {'cmd': 'setanotetemplate', 'data': vars.authornotetemplate})
     emit('from_server', {'cmd': 'connected', 'smandelete': vars.smandelete, 'smanrename': vars.smanrename, 'modelname': getmodelname()})
     if(vars.host):
         emit('from_server', {'cmd': 'runs_remotely'})
-    if(vars.flaskwebgui):
-        emit('from_server', {'cmd': 'flaskwebgui'})
     if(vars.allowsp):
         emit('from_server', {'cmd': 'allowsp', 'data': vars.allowsp})
 
@@ -3402,7 +3556,7 @@ def do_connect():
 @socketio.on('message')
 def get_message(msg):
     if not vars.quiet:
-        print("{0}Data received:{1}{2}".format(colors.GREEN, msg, colors.END))
+        logger.debug(f"Data received: {msg}")
     # Submit action
     if(msg['cmd'] == 'submit'):
         if(vars.mode == "play"):
@@ -3692,6 +3846,7 @@ def get_message(msg):
     elif(msg['cmd'] == 'list_model'):
         sendModelSelection(menu=msg['data'])
     elif(msg['cmd'] == 'load_model'):
+        logger.debug(f"Selected Model: {vars.model_selected}")
         if not os.path.exists("settings/"):
             os.mkdir("settings")
         changed = True
@@ -3715,9 +3870,17 @@ def get_message(msg):
             f.close()
         vars.colaburl = msg['url'] + "/request"
         vars.model = vars.model_selected
+        if vars.model == "CLUSTER":
+            if type(msg['online_model']) is not list:
+                if msg['online_model'] == '':
+                    vars.cluster_requested_models = []
+                else:
+                    vars.cluster_requested_models = [msg['online_model']]
+            else:
+                vars.cluster_requested_models = msg['online_model']
         load_model(use_gpu=msg['use_gpu'], gpu_layers=msg['gpu_layers'], disk_layers=msg['disk_layers'], online_model=msg['online_model'])
     elif(msg['cmd'] == 'show_model'):
-        print("Model Name: {}".format(getmodelname()))
+        logger.info(f"Model Name: {getmodelname()}")
         emit('from_server', {'cmd': 'show_model_name', 'data': getmodelname()}, broadcast=True)
     elif(msg['cmd'] == 'selectmodel'):
         # This is run when a model line is selected from the UI (line from the model_menu variable) that is tagged as not a menu
@@ -3759,7 +3922,7 @@ def get_message(msg):
                 else:
                     sendModelSelection(menu=msg['data'], folder=msg['path'])
         else:
-            vars.model_selected = msg['data']
+            vars.model_selected = msg['data'] 
             if 'path' in msg:
                 vars.custmodpth = msg['path']
                 get_model_info(msg['data'], directory=msg['path'])
@@ -3768,16 +3931,18 @@ def get_message(msg):
     elif(msg['cmd'] == 'delete_model'):
         if "{}/models".format(os.getcwd()) in os.path.abspath(msg['data']) or "{}\\models".format(os.getcwd()) in os.path.abspath(msg['data']):
             if check_if_dir_is_model(msg['data']):
-                print(colors.YELLOW + "WARNING: Someone deleted " + msg['data'])
+                logger.warning(f"Someone deleted {msg['data']}")
                 import shutil
                 shutil.rmtree(msg['data'])
                 sendModelSelection(menu=msg['menu'])
             else:
-                print(colors.RED + "ERROR: Someone attempted to delete " + msg['data'] + " but this is not a valid model")
+                logger.error(f"Someone attempted to delete {msg['data']} but this is not a valid model")
         else:
-            print(colors.RED + "WARNING!!: Someone maliciously attempted to delete " + msg['data'] + " the attempt has been blocked.")
+            logger.critical(f"Someone maliciously attempted to delete {msg['data']}. The attempt has been blocked.")
     elif(msg['cmd'] == 'OAI_Key_Update'):
         get_oai_models(msg['key'])
+    elif(msg['cmd'] == 'Cluster_Key_Update'):
+        get_cluster_models(msg)
     elif(msg['cmd'] == 'loadselect'):
         vars.loadselect = msg["data"]
     elif(msg['cmd'] == 'spselect'):
@@ -3847,6 +4012,10 @@ def get_message(msg):
         refresh_settings()
     elif(msg['cmd'] == 'setoutputstreaming'):
         vars.output_streaming = msg['data']
+        settingschanged()
+        refresh_settings()
+    elif(msg['cmd'] == 'setshowbudget'):
+        vars.show_budget = msg['data']
         settingschanged()
         refresh_settings()
     elif(msg['cmd'] == 'setshowprobs'):
@@ -3971,19 +4140,27 @@ def check_for_backend_compilation():
             break
     vars.checking = False
 
-def actionsubmit(data, actionmode=0, force_submit=False, force_prompt_gen=False, disable_recentrng=False, no_generate=False):
+def actionsubmit(data, actionmode=0, force_submit=False, force_prompt_gen=False, disable_recentrng=False, no_generate=False, ignore_aibusy=False):
     # Ignore new submissions if the AI is currently busy
-    if(vars.aibusy):
+    if(not ignore_aibusy and vars.aibusy):
         return
     
     while(True):
         set_aibusy(1)
 
-        if(vars.model == "API"):
+        if(vars.model in ["API","CLUSTER"]):
             global tokenizer
-            tokenizer_id = requests.get(
-                vars.colaburl[:-8] + "/api/v1/model",
-            ).json()["result"]
+            if vars.model == "API":
+                tokenizer_id = requests.get(
+                    vars.colaburl[:-8] + "/api/v1/model",
+                ).json()["result"]
+            elif len(vars.cluster_requested_models) >= 1:
+                # If the player has requested one or more models, we use the first one for the tokenizer
+                tokenizer_id = vars.cluster_requested_models[0]
+            # The cluster can return any number of possible models for each gen, but this happens after this step
+            # So at this point, this is unknown
+            else:
+                tokenizer_id = ""
             if tokenizer_id != vars.api_tokenizer_id:
                 try:
                     if(os.path.isdir(tokenizer_id)):
@@ -4002,7 +4179,7 @@ def actionsubmit(data, actionmode=0, force_submit=False, force_prompt_gen=False,
                         except:
                             tokenizer = AutoTokenizer.from_pretrained(tokenizer_id, revision=vars.revision, cache_dir="cache", use_fast=False)
                 except:
-                    print(f"WARNING:  Unknown tokenizer {repr(tokenizer_id)}")
+                    logger.warning(f"Unknown tokenizer {repr(tokenizer_id)}")
                 vars.api_tokenizer_id = tokenizer_id
 
         if(disable_recentrng):
@@ -4113,8 +4290,8 @@ def actionsubmit(data, actionmode=0, force_submit=False, force_prompt_gen=False,
                         try:
                             alternatives = [item['Text'] for item in vars.actions_metadata[len(vars.actions)-1]["Alternative Text"]]
                         except:
-                            print(len(vars.actions))
-                            print(vars.actions_metadata)
+                            logger.debug(len(vars.actions))
+                            logger.debug(vars.actions_metadata)
                             raise
                         if data in alternatives:
                             alternatives = [item for item in vars.actions_metadata[vars.actions.get_last_key() ]["Alternative Text"] if item['Text'] != data]
@@ -4166,7 +4343,8 @@ def apiactionsubmit_generate(txt, minimum, maximum):
     vars.generated_tkns = 0
 
     if not vars.quiet:
-        print("{0}Min:{1}, Max:{2}, Txt:{3}{4}".format(colors.YELLOW, minimum, maximum, utils.decodenewlines(tokenizer.decode(txt)), colors.END))
+        logger.debug(f"Prompt Min:{minimum}, Max:{maximum}")
+        logger.prompt(utils.decodenewlines(tokenizer.decode(txt)).encode("unicode_escape").decode("utf-8"))
 
     # Clear CUDA cache if using GPU
     if(vars.hascuda and (vars.usegpu or vars.breakmodel)):
@@ -4193,7 +4371,8 @@ def apiactionsubmit_tpumtjgenerate(txt, minimum, maximum):
         tpu_mtj_backend.set_rng_seed(vars.seed)
 
     if not vars.quiet:
-        print("{0}Min:{1}, Max:{2}, Txt:{3}{4}".format(colors.YELLOW, minimum, maximum, utils.decodenewlines(tokenizer.decode(txt)), colors.END))
+        logger.debug(f"Prompt Min:{minimum}, Max:{maximum}")
+        logger.prompt(utils.decodenewlines(tokenizer.decode(txt)).encode("unicode_escape").decode("utf-8"))
 
     vars._actions = vars.actions
     vars._prompt = vars.prompt
@@ -4228,6 +4407,8 @@ def apiactionsubmit(data, use_memory=False, use_world_info=False, use_story=Fals
     if(vars.model == "Colab"):
         raise NotImplementedError("API generation is not supported in old Colab API mode.")
     elif(vars.model == "API"):
+        raise NotImplementedError("API generation is not supported in API mode.")
+    elif(vars.model == "CLUSTER"):
         raise NotImplementedError("API generation is not supported in API mode.")
     elif(vars.model == "OAI"):
         raise NotImplementedError("API generation is not supported in OpenAI/GooseAI mode.")
@@ -4279,7 +4460,7 @@ def apiactionsubmit(data, use_memory=False, use_world_info=False, use_story=Fals
     minimum = len(tokens) + 1
     maximum = len(tokens) + vars.genamt
 
-    if(not vars.use_colab_tpu and vars.model not in ["Colab", "API", "OAI", "TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX"]):
+    if(not vars.use_colab_tpu and vars.model not in ["Colab", "API", "CLUSTER", "OAI", "TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX"]):
         genout = apiactionsubmit_generate(tokens, minimum, maximum)
     elif(vars.use_colab_tpu or vars.model in ("TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX")):
         genout = apiactionsubmit_tpumtjgenerate(tokens, minimum, maximum)
@@ -4406,9 +4587,9 @@ def calcsubmitbudget(actionlen, winfo, mem, anotetxt, actions, submission=None, 
     lnsp = vars.sp_length
 
     if("tokenizer" not in globals()):
-        from transformers import GPT2TokenizerFast
+        from transformers import GPT2Tokenizer
         global tokenizer
-        tokenizer = GPT2TokenizerFast.from_pretrained("gpt2", revision=vars.revision, cache_dir="cache")
+        tokenizer = GPT2Tokenizer.from_pretrained("gpt2", revision=vars.revision, cache_dir="cache")
 
     lnheader = len(tokenizer._koboldai_header)
 
@@ -4447,7 +4628,7 @@ def calcsubmitbudget(actionlen, winfo, mem, anotetxt, actions, submission=None, 
 
     if(actionlen == 0):
         # First/Prompt action
-        tokens = (tokenizer._koboldai_header if vars.model not in ("Colab", "API", "OAI") else []) + memtokens + witokens + anotetkns + prompttkns
+        tokens = (tokenizer._koboldai_header if vars.model not in ("Colab", "API", "CLUSTER", "OAI") else []) + memtokens + witokens + anotetkns + prompttkns
         assert len(tokens) <= vars.max_length - lnsp - vars.genamt - budget_deduction
         ln = len(tokens) + lnsp
         return tokens, ln+1, ln+vars.genamt
@@ -4495,12 +4676,12 @@ def calcsubmitbudget(actionlen, winfo, mem, anotetxt, actions, submission=None, 
         # Did we get to add the A.N.? If not, do it here
         if(anotetxt != ""):
             if((not anoteadded) or forceanote):
-                tokens = (tokenizer._koboldai_header if vars.model not in ("Colab", "API", "OAI") else []) + memtokens + witokens + anotetkns + prompttkns + tokens
+                tokens = (tokenizer._koboldai_header if vars.model not in ("Colab", "API", "CLUSTER", "OAI") else []) + memtokens + witokens + anotetkns + prompttkns + tokens
             else:
-                tokens = (tokenizer._koboldai_header if vars.model not in ("Colab", "API", "OAI") else []) + memtokens + witokens + prompttkns + tokens
+                tokens = (tokenizer._koboldai_header if vars.model not in ("Colab", "API", "CLUSTER", "OAI") else []) + memtokens + witokens + prompttkns + tokens
         else:
             # Prepend Memory, WI, and Prompt before action tokens
-            tokens = (tokenizer._koboldai_header if vars.model not in ("Colab", "API", "OAI") else []) + memtokens + witokens + prompttkns + tokens
+            tokens = (tokenizer._koboldai_header if vars.model not in ("Colab", "API", "CLUSTER", "OAI") else []) + memtokens + witokens + prompttkns + tokens
 
         # Send completed bundle to generator
         assert len(tokens) <= vars.max_length - lnsp - vars.genamt - budget_deduction
@@ -4522,23 +4703,27 @@ def calcsubmit(txt):
     if(vars.model != "InferKit"):
         subtxt, min, max = calcsubmitbudget(actionlen, winfo, mem, anotetxt, vars.actions, submission=txt)
         if(actionlen == 0):
-            if(not vars.use_colab_tpu and vars.model not in ["Colab", "API", "OAI", "TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX"]):
+            if(not vars.use_colab_tpu and vars.model not in ["Colab", "API", "CLUSTER", "OAI", "TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX"]):
                 generate(subtxt, min, max, found_entries=found_entries)
             elif(vars.model == "Colab"):
                 sendtocolab(utils.decodenewlines(tokenizer.decode(subtxt)), min, max)
             elif(vars.model == "API"):
                 sendtoapi(utils.decodenewlines(tokenizer.decode(subtxt)), min, max)
+            elif(vars.model == "CLUSTER"):
+                sendtocluster(utils.decodenewlines(tokenizer.decode(subtxt)), min, max)
             elif(vars.model == "OAI"):
                 oairequest(utils.decodenewlines(tokenizer.decode(subtxt)), min, max)
             elif(vars.use_colab_tpu or vars.model in ("TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX")):
                 tpumtjgenerate(subtxt, min, max, found_entries=found_entries)
         else:
-            if(not vars.use_colab_tpu and vars.model not in ["Colab", "API", "OAI", "TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX"]):
+            if(not vars.use_colab_tpu and vars.model not in ["Colab", "API", "CLUSTER", "OAI", "TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX"]):
                 generate(subtxt, min, max, found_entries=found_entries)
             elif(vars.model == "Colab"):
                 sendtocolab(utils.decodenewlines(tokenizer.decode(subtxt)), min, max)
             elif(vars.model == "API"):
                 sendtoapi(utils.decodenewlines(tokenizer.decode(subtxt)), min, max)
+            elif(vars.model == "CLUSTER"):
+                sendtocluster(utils.decodenewlines(tokenizer.decode(subtxt)), min, max)
             elif(vars.model == "OAI"):
                 oairequest(utils.decodenewlines(tokenizer.decode(subtxt)), min, max)
             elif(vars.use_colab_tpu or vars.model in ("TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX")):
@@ -4699,7 +4884,8 @@ def generate(txt, minimum, maximum, found_entries=None):
     found_entries = tuple(found_entries.copy() for _ in range(vars.numseqs))
 
     if not vars.quiet:
-        print("{0}Min:{1}, Max:{2}, Txt:{3}{4}".format(colors.YELLOW, minimum, maximum, utils.decodenewlines(tokenizer.decode(txt)), colors.END))
+        logger.debug(f"Prompt Min:{minimum}, Max:{maximum}")
+        logger.prompt(utils.decodenewlines(tokenizer.decode(txt)).encode("unicode_escape").decode("utf-8"))
 
     # Store context in memory to use it for comparison with generated content
     vars.lastctx = utils.decodenewlines(tokenizer.decode(txt))
@@ -4718,12 +4904,11 @@ def generate(txt, minimum, maximum, found_entries=None):
             vars.lua_running = False
             emit('from_server', {'cmd': 'errmsg', 'data': 'Lua script error; please check console.'}, broadcast=True)
             sendUSStatItems()
-            print("{0}{1}{2}".format(colors.RED, "***LUA ERROR***: ", colors.END), end="", file=sys.stderr)
-            print("{0}{1}{2}".format(colors.RED, str(e).replace("\033", ""), colors.END), file=sys.stderr)
-            print("{0}{1}{2}".format(colors.YELLOW, "Lua engine stopped; please open 'Userscripts' and press Load to reinitialize scripts.", colors.END), file=sys.stderr)
+            logger.debug('LUA ERROR: ' + str(e).replace("\033", ""))
+            logger.warning("Lua engine stopped; please open 'Userscripts' and press Load to reinitialize scripts.")
         else:
             emit('from_server', {'cmd': 'errmsg', 'data': 'Error occurred during generator call; please check console.'}, broadcast=True)
-            print("{0}{1}{2}".format(colors.RED, traceback.format_exc().replace("\033", ""), colors.END), file=sys.stderr)
+            logger.error(traceback.format_exc().replace("\033", ""))
         set_aibusy(0)
         return
 
@@ -4762,7 +4947,7 @@ def generate(txt, minimum, maximum, found_entries=None):
 #==================================================================#
 def genresult(genout, flash=True, ignore_formatting=False):
     if not vars.quiet:
-        print("{0}{1}{2}".format(colors.CYAN, genout, colors.END))
+        logger.generation(genout.encode("unicode_escape").decode("utf-8"))
     
     # Format output before continuing
     if not ignore_formatting:
@@ -4796,7 +4981,8 @@ def genselect(genout):
         # Apply output formatting rules to sequences
         result["generated_text"] = applyoutputformatting(result["generated_text"])
         if not vars.quiet:
-            print("{0}[Result {1}]\n{2}{3}".format(colors.CYAN, i, result["generated_text"], colors.END))
+            logger.info(f"Generation Result {i}")
+            logger.generation(result["generated_text"].encode("unicode_escape").decode("utf-8"))
         i += 1
     
     # Add the options to the actions metadata
@@ -5006,18 +5192,122 @@ def sendtoapi(txt, min, max):
         if(len(genout) == 1):
             genresult(genout[0])
         else:
+            adjusted_genout = []
+            for item in genout:
+                adjusted_genout.append({"generated_text": item})
             # Convert torch output format to transformers
             seqs = []
-            for seq in genout:
+            for seq in adjusted_genout:
                 seqs.append({"generated_text": seq})
             if(vars.lua_koboldbridge.restart_sequence is not None and vars.lua_koboldbridge.restart_sequence > 0):
-                genresult(genout[vars.lua_koboldbridge.restart_sequence-1]["generated_text"])
+                genresult(adjusted_genout[vars.lua_koboldbridge.restart_sequence-1]["generated_text"])
             else:
-                genselect(genout)
+                genselect(adjusted_genout)
 
         set_aibusy(0)
         return
 
+#==================================================================#
+#  Send transformers-style request to KoboldAI Cluster
+#==================================================================#
+def sendtocluster(txt, min, max):
+    # Log request to console
+    if not vars.quiet:
+        logger.debug(f"Tokens Min:{min-1}")
+        logger.prompt(txt.encode("unicode_escape").decode("utf-8"))
+
+    # Store context in memory to use it for comparison with generated content
+    vars.lastctx = txt
+    # Build request JSON data
+    reqdata = {
+        'max_length': max - min + 1,
+        'max_context_length': vars.max_length,
+        'rep_pen': vars.rep_pen,
+        'rep_pen_slope': vars.rep_pen_slope,
+        'rep_pen_range': vars.rep_pen_range,
+        'temperature': vars.temp,
+        'top_p': vars.top_p,
+        'top_k': vars.top_k,
+        'top_a': vars.top_a,
+        'tfs': vars.tfs,
+        'typical': vars.typical,
+        'n': vars.numseqs,
+    }
+    cluster_metadata = {
+        'prompt': txt,
+        'params': reqdata,
+        'api_key': vars.apikey,
+        'models': vars.cluster_requested_models,
+    }
+    logger.debug(f"Horde Payload: {cluster_metadata}")
+    try:
+        # Create request
+        req = requests.post(
+            vars.colaburl[:-8] + "/api/v1/generate/sync",
+            json=cluster_metadata,
+        )
+    except requests.exceptions.ConnectionError:
+        errmsg = f"Horde unavailable. Please try again later"
+        logger.error(errmsg)
+        emit('from_server', {'cmd': 'errmsg', 'data': errmsg}, broadcast=True)
+        set_aibusy(0)
+        return
+    if(req.status_code == 503):
+        errmsg = f"KoboldAI API Error: No available KoboldAI servers found in Horde to fulfil this request using the selected models or other properties."
+        logger.error(req.text)
+        emit('from_server', {'cmd': 'errmsg', 'data': errmsg}, broadcast=True)
+        set_aibusy(0)
+        return
+    if(not req.ok):
+        errmsg = f"KoboldAI API Error: Failed to get a standard reply from the Horde. Please check the console."
+        logger.error(req.text)
+        emit('from_server', {'cmd': 'errmsg', 'data': errmsg}, broadcast=True)
+        set_aibusy(0)
+        return
+    try:
+        js = req.json()
+    except requests.exceptions.JSONDecodeError:
+        errmsg = f"Unexpected message received from the Horde: '{req.text}'"
+        logger.error(errmsg)
+        emit('from_server', {'cmd': 'errmsg', 'data': errmsg}, broadcast=True)
+        set_aibusy(0)
+        return
+    gen_servers = [(cgen['server_name'],cgen['server_id']) for cgen in js]
+    logger.info(f"Generations by: {gen_servers}")
+    # Just in case we want to announce it to the user
+    if len(js) == 1:        
+        warnmsg = f"Text generated by {js[0]['server_name']}"
+        emit('from_server', {'cmd': 'warnmsg', 'data': warnmsg}, broadcast=True)
+    genout = [cgen['text'] for cgen in js]
+
+    for i in range(vars.numseqs):
+        vars.lua_koboldbridge.outputs[i+1] = genout[i]
+
+    execute_outmod()
+    if(vars.lua_koboldbridge.regeneration_required):
+        vars.lua_koboldbridge.regeneration_required = False
+        genout = []
+        for i in range(vars.numseqs):
+            genout.append(vars.lua_koboldbridge.outputs[i+1])
+            assert type(genout[-1]) is str
+
+    if(len(genout) == 1):
+        genresult(genout[0])
+    else:
+        adjusted_genout = []
+        for item in genout:
+            adjusted_genout.append({"generated_text": item})
+        # Convert torch output format to transformers
+        seqs = []
+        for seq in adjusted_genout:
+            seqs.append({"generated_text": seq})
+        if(vars.lua_koboldbridge.restart_sequence is not None and vars.lua_koboldbridge.restart_sequence > 0):
+            genresult(adjusted_genout[vars.lua_koboldbridge.restart_sequence-1]["generated_text"])
+        else:
+            genselect(adjusted_genout)
+
+    set_aibusy(0)
+    return
 
 #==================================================================#
 #  Send text to TPU mesh transformer backend
@@ -5033,7 +5323,8 @@ def tpumtjgenerate(txt, minimum, maximum, found_entries=None):
     found_entries = tuple(found_entries.copy() for _ in range(vars.numseqs))
 
     if not vars.quiet:
-        print("{0}Min:{1}, Max:{2}, Txt:{3}{4}".format(colors.YELLOW, minimum, maximum, utils.decodenewlines(tokenizer.decode(txt)), colors.END))
+        logger.debug(f"Prompt Min:{minimum}, Max:{maximum}")
+        logger.prompt(utils.decodenewlines(tokenizer.decode(txt)).encode("unicode_escape").decode("utf-8"))
 
     vars._actions = vars.actions
     vars._prompt = vars.prompt
@@ -5121,9 +5412,8 @@ def tpumtjgenerate(txt, minimum, maximum, found_entries=None):
             vars.lua_running = False
             emit('from_server', {'cmd': 'errmsg', 'data': 'Lua script error; please check console.'}, broadcast=True)
             sendUSStatItems()
-            print("{0}{1}{2}".format(colors.RED, "***LUA ERROR***: ", colors.END), end="", file=sys.stderr)
-            print("{0}{1}{2}".format(colors.RED, str(e).replace("\033", ""), colors.END), file=sys.stderr)
-            print("{0}{1}{2}".format(colors.YELLOW, "Lua engine stopped; please open 'Userscripts' and press Load to reinitialize scripts.", colors.END), file=sys.stderr)
+            logger.debug('LUA ERROR: ' + str(e).replace("\033", ""))
+            logger.warning("Lua engine stopped; please open 'Userscripts' and press Load to reinitialize scripts.")
         else:
             emit('from_server', {'cmd': 'errmsg', 'data': 'Error occurred during generator call; please check console.'}, broadcast=True)
             print("{0}{1}{2}".format(colors.RED, traceback.format_exc().replace("\033", ""), colors.END), file=sys.stderr)
@@ -5319,6 +5609,7 @@ def refresh_settings():
     emit('from_server', {'cmd': 'updatefrmtadsnsp', 'data': vars.formatoptns["frmtadsnsp"]}, broadcast=True)
     emit('from_server', {'cmd': 'updatesingleline', 'data': vars.formatoptns["singleline"]}, broadcast=True)
     emit('from_server', {'cmd': 'updateoutputstreaming', 'data': vars.output_streaming}, broadcast=True)
+    emit('from_server', {'cmd': 'updateshowbudget', 'data': vars.show_budget}, broadcast=True)
     emit('from_server', {'cmd': 'updateshowprobs', 'data': vars.show_probs}, broadcast=True)
     
     # Allow toggle events again
@@ -5407,7 +5698,7 @@ def inlineedit(chunk, data):
             vars.actions_metadata[chunk-1]['Selected Text'] = data
             vars.actions[chunk-1] = data
         else:
-            print(f"WARNING: Attempted to edit non-existent chunk {chunk}")
+            logger.warning(f"Attempted to edit non-existent chunk {chunk}")
 
     setgamesaved(False)
     update_story_chunk(chunk)
@@ -5435,7 +5726,7 @@ def inlinedelete(chunk):
             vars.actions_metadata[chunk-1]['Selected Text'] = ''
             del vars.actions[chunk-1]
         else:
-            print(f"WARNING: Attempted to delete non-existent chunk {chunk}")
+            logger.warning(f"Attempted to delete non-existent chunk {chunk}")
         setgamesaved(False)
         remove_story_chunk(chunk)
         emit('from_server', {'cmd': 'editmode', 'data': 'false'}, broadcast=True)
@@ -5727,14 +6018,14 @@ def checkworldinfo(txt, allowed_entries=None, allowed_folders=None, force_use_tx
                 # Remove leading/trailing spaces if the option is enabled
                 if(vars.wirmvwhtsp):
                     ky = k.strip()
-                if ky in txt:
+                if ky.lower() in txt.lower():
                     if wi.get("selective", False) and len(keys_secondary):
                         found = False
                         for ks in keys_secondary:
                             ksy = ks
                             if(vars.wirmvwhtsp):
                                 ksy = ks.strip()
-                            if ksy in txt:
+                            if ksy.lower() in txt.lower():
                                 wimem = wimem + wi["content"] + "\n"
                                 found_entries.add(id(wi))
                                 found = True
@@ -5866,7 +6157,9 @@ def oairequest(txt, min, max):
     vars.lastctx = txt
     
     # Build request JSON data
-    if 'GooseAI' in args.configname:
+    # GooseAI is a subntype of OAI. So to check if it's this type, we check the configname as a workaround
+    # as the vars.model will always be OAI
+    if 'GooseAI' in vars.configname:
         reqdata = {
             'prompt': txt,
             'max_tokens': vars.genamt,
@@ -6696,8 +6989,8 @@ def final_startup():
     threading.Thread(target=__preempt_tokenizer).start()
 
     # Load soft prompt specified by the settings file, if applicable
-    if(path.exists("settings/" + getmodelname().replace('/', '_') + ".settings")):
-        file = open("settings/" + getmodelname().replace('/', '_') + ".settings", "r")
+    if(path.exists(get_config_filename())):
+        file = open(get_config_filename(), "r")
         js   = json.load(file)
         if(vars.allowsp and "softprompt" in js and type(js["softprompt"]) is str and all(q not in js["softprompt"] for q in ("..", ":")) and (len(js["softprompt"]) == 0 or all(js["softprompt"][0] not in q for q in ("/", "\\")))):
             spRequest(js["softprompt"])
@@ -7182,6 +7475,7 @@ class GenerationInputSchema(SamplerSettingsSchema):
     singleline: Optional[bool] = fields.Boolean(metadata={"description": "Output formatting option. When enabled, removes everything after the first line of the output, including the newline.\n\nIf `disable_output_formatting` is `true`, this defaults to `false` instead of the value in the KoboldAI GUI."})
     disable_input_formatting: bool = fields.Boolean(load_default=True, metadata={"description": "When enabled, all input formatting options default to `false` instead of the value in the KoboldAI GUI"})
     frmtadsnsp: Optional[bool] = fields.Boolean(metadata={"description": "Input formatting option. When enabled, adds a leading space to your input if there is no trailing whitespace at the end of the previous action.\n\nIf `disable_input_formatting` is `true`, this defaults to `false` instead of the value in the KoboldAI GUI."})
+    quiet: Optional[bool] = fields.Boolean(metadata={"description": "When enabled, Generated output will not be displayed in the console."})
 
 class GenerationResultSchema(KoboldSchema):
     text: str = fields.String(required=True, metadata={"description": "Generated output as plain text."})
@@ -7263,12 +7557,19 @@ class WorldInfoFoldersUIDsSchema(KoboldSchema):
 class WorldInfoUIDsSchema(WorldInfoEntriesUIDsSchema):
     folders: List[WorldInfoFolderSchema] = fields.List(fields.Nested(WorldInfoFolderUIDsSchema), required=True)
 
+class ModelSelectionSchema(KoboldSchema):
+    model: str = fields.String(required=True, validate=validate.Regexp(r"^(?!\s*NeoCustom)(?!\s*GPT2Custom)(?!\s*TPUMeshTransformerGPTJ)(?!\s*TPUMeshTransformerGPTNeoX)(?!\s*GooseAI)(?!\s*OAI)(?!\s*InferKit)(?!\s*Colab)(?!\s*API).*$"), metadata={"description": 'Hugging Face model ID, the path to a model folder (relative to the "models" folder in the KoboldAI root folder) or "ReadOnly" for no model'})
+
 def _generate_text(body: GenerationInputSchema):
     if vars.aibusy or vars.genseqs:
         abort(Response(json.dumps({"detail": {
             "msg": "Server is busy; please try again later.",
             "type": "service_unavailable",
         }}), mimetype="application/json", status=503))
+    # This maps each property of the setting to use when sending the generate idempotently
+    # To the object which typically contains it's value
+    # This allows to set the property only for the API generation, and then revert the setting
+    # To what it was before.
     mapping = {
         "disable_input_formatting": ("vars", "disable_input_formatting", None),
         "disable_output_formatting": ("vars", "disable_output_formatting", None),
@@ -7289,6 +7590,7 @@ def _generate_text(body: GenerationInputSchema):
         "max_length": ("vars", "genamt", None),
         "max_context_length": ("vars", "max_length", None),
         "n": ("vars", "numseqs", None),
+        "quiet": ("vars", "quiet", None),
     }
     saved_settings = {}
     set_aibusy(1)
@@ -7430,7 +7732,7 @@ def post_generate(body: GenerationInputSchema):
             schema: GenerationInputSchema
             example:
               prompt: |-2
-                Explosions of suspicious origin occur at AMNAT satellite-receiver stations from Turkey to Labrador as three high-level Canadian defense ministers vanish and then a couple of days later are photographed at a Volgograd bistro hoisting shots of Stolichnaya with Slavic bimbos on their knee.
+                Niko the kobold stalked carefully down the alley, his small scaly figure obscured by a dusky cloak that fluttered lightly in the cold winter breeze.
               top_p: 0.9
               temperature: 0.5
       responses:
@@ -7442,8 +7744,7 @@ def post_generate(body: GenerationInputSchema):
               example:
                 results:
                   - text: |-2
-                       It is later established that all of the cabinet members have died of old age.
-                      MEGAMATRIX becomes involved in the growing number of mass abductions and kidnappings. Many disappearances occur along highways in western Canada, usually when traffic has come to a standstill because of a stalled truck or snowstorm. One or two abducted individuals will be released within a day or so but never
+                       Holding up his tail to keep it from dragging in the dirty snow that covered the cobblestone, he waited patiently for the butcher to turn his attention from his stall so that he could pilfer his next meal: a tender-looking chicken.
         {api_validation_error_response}
         {api_not_implemented_response}
         {api_server_busy_response}
@@ -7472,6 +7773,49 @@ def get_model():
                 result: KoboldAI/fairseq-dense-13B-Nerys-v2
     """
     return {"result": vars.model}
+
+
+@api_v1.put("/model")
+@api_schema_wrap
+def put_model(body: ModelSelectionSchema):
+    """---
+    put:
+      summary: Load a model
+      description: |-2
+        Loads a model given its Hugging Face model ID, the path to a model folder (relative to the "models" folder in the KoboldAI root folder) or "ReadOnly" for no model.
+      tags:
+        - model
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: ModelSelectionSchema
+            example:
+              model: ReadOnly
+      responses:
+        200:
+          description: Successful request
+          content:
+            application/json:
+              schema: EmptySchema
+        {api_validation_error_response}
+        {api_server_busy_response}
+    """
+    if vars.aibusy or vars.genseqs:
+        abort(Response(json.dumps({"detail": {
+            "msg": "Server is busy; please try again later.",
+            "type": "service_unavailable",
+        }}), mimetype="application/json", status=503))
+    set_aibusy(1)
+    old_model = vars.model
+    vars.model = body.model.strip()
+    try:
+        load_model(use_breakmodel_args=True, breakmodel_args_default_to_cpu=True)
+    except Exception as e:
+        vars.model = old_model
+        raise e
+    set_aibusy(0)
+    return {}
 
 
 def prompt_validator(prompt: str):
@@ -7523,7 +7867,7 @@ def post_story_end(body: SubmissionInputSchema):
     numseqs = vars.numseqs
     vars.numseqs = 1
     try:
-        actionsubmit(body.prompt, force_submit=True, no_generate=True)
+        actionsubmit(body.prompt, force_submit=True, no_generate=True, ignore_aibusy=True)
     finally:
         vars.disable_set_aibusy = disable_set_aibusy
         vars.standalone = _standalone
@@ -9447,6 +9791,32 @@ def get_config_soft_prompt():
     """
     return {"value": vars.spfilename.strip()}
 
+class SoftPromptsListSchema(KoboldSchema):
+    values: List[SoftPromptSettingSchema] = fields.List(fields.Nested(SoftPromptSettingSchema), required=True, metadata={"description": "Array of available softprompts."})
+
+@api_v1.get("/config/soft_prompts_list")
+@api_schema_wrap
+def get_config_soft_prompts_list():
+    """---
+    get:
+      summary: Retrieve all available softprompt filenames
+      tags:
+        - config
+      responses:
+        200:
+          description: Successful request
+          content:
+            application/json:
+              schema: SoftPromptsListSchema
+              example:
+                values: []
+    """
+    splist = []
+    for sp in fileops.getspfiles(vars.modeldim):
+
+        splist.append({"value":sp["filename"]})
+    return {"values": splist}
+
 @api_v1.put("/config/soft_prompt")
 @api_schema_wrap
 def put_config_soft_prompt(body: SoftPromptSettingSchema):
@@ -9682,11 +10052,14 @@ for schema in config_endpoint_schemas:
 #==================================================================#
 #  Final startup commands to launch Flask app
 #==================================================================#
-print("", end="", flush=True)
 if __name__ == "__main__":
-    print("{0}\nStarting webserver...{1}".format(colors.GREEN, colors.END), flush=True)
 
     general_startup()
+    # Start flask & SocketIO
+    logger.init("Flask", status="Starting")
+    Session(app)
+    logger.init_ok("Flask", status="OK")
+    logger.init("Webserver", status="Starting")
     patch_transformers()
     #show_select_model_list()
     if vars.model == "" or vars.model is None:
@@ -9724,38 +10097,45 @@ if __name__ == "__main__":
         if(args.localtunnel or args.ngrok or args.remote):
             with open('cloudflare.log', 'w') as cloudflarelog:
                 cloudflarelog.write("KoboldAI has finished loading and is available at the following link : " + cloudflare)
-                print(format(colors.GREEN) + "KoboldAI has finished loading and is available at the following link : " + cloudflare + format(colors.END))
+                logger.init_ok("Webserver", status="OK")
+                logger.message(f"KoboldAI has finished loading and is available at the following link: {cloudflare}")
         else:
-            print("{0}Webserver has started, you can now connect to this machine at port {1}{2}"
-                  .format(colors.GREEN, port, colors.END))
+            logger.init_ok("Webserver", status="OK")
+            logger.message(f"Webserver has started, you can now connect to this machine at port: {port}")
         vars.serverstarted = True
         socketio.run(app, host='0.0.0.0', port=port)
     else:
         if args.unblock:
             if not args.no_ui:
-                import webbrowser
-                webbrowser.open_new('http://localhost:{0}'.format(port))
-            print("{0}Server started!\nYou may now connect with a browser at http://127.0.0.1:{1}/{2}"
-                  .format(colors.GREEN, port, colors.END))
+                try:
+                    import webbrowser
+                    webbrowser.open_new('http://localhost:{0}'.format(port))
+                except:
+                    pass
+            logger.init_ok("Webserver", status="OK")
+            logger.message(f"Webserver started! You may now connect with a browser at http://127.0.0.1:{port}")
             vars.serverstarted = True
             socketio.run(app, port=port, host='0.0.0.0')
         else:
-            try:
-                from flaskwebgui import FlaskUI
-                vars.serverstarted = True
-                vars.flaskwebgui = True
-                FlaskUI(app, socketio=socketio, start_server="flask-socketio", maximized=True, close_server_on_exit=True).run()
-            except:
-                if not args.no_ui:
+            if not args.no_ui:
+                try:
                     import webbrowser
                     webbrowser.open_new('http://localhost:{0}'.format(port))
-                print("{0}Server started!\nYou may now connect with a browser at http://127.0.0.1:{1}/{2}"
-                        .format(colors.GREEN, port, colors.END))
-                vars.serverstarted = True
-                socketio.run(app, port=port)
+                except:
+                    pass
+            logger.init_ok("Webserver", status="OK")
+            logger.message(f"Webserver started! You may now connect with a browser at http://127.0.0.1:{port}")
+            vars.serverstarted = True
+            socketio.run(app, port=port)
+    logger.init("Webserver", status="Closed")
+
 
 else:
     general_startup()
+    # Start flask & SocketIO
+    logger.init("Flask", status="Starting")
+    Session(app)
+    logger.init_ok("Flask", status="OK")
     patch_transformers()
     #show_select_model_list()
     if vars.model == "" or vars.model is None:

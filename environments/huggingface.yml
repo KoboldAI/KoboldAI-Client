@@ -19,6 +19,7 @@ dependencies:
   - protobuf
   - marshmallow>=3.13
   - apispec-webframeworks
+  - loguru
   - pip:
     - flask-cloudflared
     - flask-ngrok

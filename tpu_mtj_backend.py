@@ -30,7 +30,7 @@ SOFTWARE.
 import utils
 
 import multiprocessing
-from typing import Any, Callable, Dict, List, Optional, Tuple, TypeVar
+from typing import Any, Callable, Dict, List, NamedTuple, Optional, Tuple, TypeVar
 import progressbar
 import time
 import os
@@ -45,9 +45,8 @@ from jax.config import config
 from jax.experimental import maps
 import jax.numpy as jnp
 import numpy as np
-import optax
 import haiku as hk
-from transformers import AutoTokenizer, GPT2TokenizerFast, AutoModelForCausalLM, GPTNeoForCausalLM
+from transformers import AutoTokenizer, GPT2Tokenizer, AutoModelForCausalLM, GPTNeoForCausalLM
 from tokenizers import Tokenizer
 from mesh_transformer.checkpoint import read_ckpt_lowmem
 from mesh_transformer.transformer_shard import CausalTransformer, CausalTransformerShard, PlaceholderTensor
@@ -134,6 +133,14 @@ def __batch_xmap(shard_dim=1):
     def inner(x: __T) -> __T:
         return xmap(np.empty(shard_dim), x)
     return inner
+
+
+class _EmptyState(NamedTuple):
+    pass
+
+class _DummyOptimizer:
+    def init(*args, **kwargs):
+        return _EmptyState()
 
 
 def apply_repetition_penalty_dynamic(logits, tokens, repetition_penalty, generated_index, gen_length, rpslope, rprange):
@@ -533,7 +540,7 @@ def sample_func(data, key, numseqs_aux, badwords, repetition_penalty, generated_
                 gen_length,
                 rpslope,
                 rprange,
-            )
+            ),
             **sampler_options,
         )
         # Remember what token was picked
@@ -1054,7 +1061,7 @@ def load_model(path: str, driver_version="tpu_driver0.1_dev20210607", hf_checkpo
         "pe_rotary_dims": 64,
         "seq": 2048,
         "cores_per_replica": 8,
-        "tokenizer_class": "GPT2TokenizerFast",
+        "tokenizer_class": "GPT2Tokenizer",
         "tokenizer": "gpt2",
     }
     params = kwargs
@@ -1072,7 +1079,7 @@ def load_model(path: str, driver_version="tpu_driver0.1_dev20210607", hf_checkpo
             "pe_rotary_dims": 24,
             "seq": 2048,
             "cores_per_replica": 8,
-            "tokenizer_class": "GPT2TokenizerFast",
+            "tokenizer_class": "GPT2Tokenizer",
             "tokenizer": "gpt2",
         }
 
@@ -1167,7 +1174,7 @@ def load_model(path: str, driver_version="tpu_driver0.1_dev20210607", hf_checkpo
 
     cores_per_replica = params["cores_per_replica"]
     seq = params["seq"]
-    params["optimizer"] = optax.scale(0)
+    params["optimizer"] = _DummyOptimizer()
     mesh_shape = (1, cores_per_replica)
     devices = np.array(jax.devices()[:cores_per_replica]).reshape(mesh_shape)
     thread_resources_env = maps.ResourceEnv(maps.Mesh(devices, ('dp', 'mp')), ())
@@ -1344,48 +1351,45 @@ def load_model(path: str, driver_version="tpu_driver0.1_dev20210607", hf_checkpo
     with torch_lazy_loader.use_lazy_torch_load(callback=callback, dematerialized_modules=True):
         if(os.path.isdir(vars.custmodpth)):
             try:
-                tokenizer = AutoTokenizer.from_pretrained(vars.custmodpth, revision=vars.revision, cache_dir="cache")
-            except Exception as e:
-                pass
-            try:
                 tokenizer = AutoTokenizer.from_pretrained(vars.custmodpth, revision=vars.revision, cache_dir="cache", use_fast=False)
             except Exception as e:
                 try:
-                    tokenizer = GPT2TokenizerFast.from_pretrained(vars.custmodpth, revision=vars.revision, cache_dir="cache")
+                    tokenizer = AutoTokenizer.from_pretrained(vars.custmodpth, revision=vars.revision, cache_dir="cache")
                 except Exception as e:
-                    tokenizer = GPT2TokenizerFast.from_pretrained("gpt2", revision=vars.revision, cache_dir="cache")
+                    try:
+                        tokenizer = GPT2Tokenizer.from_pretrained(vars.custmodpth, revision=vars.revision, cache_dir="cache")
+                    except Exception as e:
+                        tokenizer = GPT2Tokenizer.from_pretrained("gpt2", revision=vars.revision, cache_dir="cache")
             try:
                 model     = AutoModelForCausalLM.from_pretrained(vars.custmodpth, revision=vars.revision, cache_dir="cache")
             except Exception as e:
                 model     = GPTNeoForCausalLM.from_pretrained(vars.custmodpth, revision=vars.revision, cache_dir="cache")
         elif(os.path.isdir("models/{}".format(vars.model.replace('/', '_')))):
             try:
-                tokenizer = AutoTokenizer.from_pretrained("models/{}".format(vars.model.replace('/', '_')), revision=vars.revision, cache_dir="cache")
-            except Exception as e:
-                pass
-            try:
                 tokenizer = AutoTokenizer.from_pretrained("models/{}".format(vars.model.replace('/', '_')), revision=vars.revision, cache_dir="cache", use_fast=False)
             except Exception as e:
                 try:
-                    tokenizer = GPT2TokenizerFast.from_pretrained("models/{}".format(vars.model.replace('/', '_')), revision=vars.revision, cache_dir="cache")
+                    tokenizer = AutoTokenizer.from_pretrained("models/{}".format(vars.model.replace('/', '_')), revision=vars.revision, cache_dir="cache")
                 except Exception as e:
-                    tokenizer = GPT2TokenizerFast.from_pretrained("gpt2", revision=vars.revision, cache_dir="cache")
+                    try:
+                        tokenizer = GPT2Tokenizer.from_pretrained("models/{}".format(vars.model.replace('/', '_')), revision=vars.revision, cache_dir="cache")
+                    except Exception as e:
+                        tokenizer = GPT2Tokenizer.from_pretrained("gpt2", revision=vars.revision, cache_dir="cache")
             try:
                 model     = AutoModelForCausalLM.from_pretrained("models/{}".format(vars.model.replace('/', '_')), revision=vars.revision, cache_dir="cache")
             except Exception as e:
                 model     = GPTNeoForCausalLM.from_pretrained("models/{}".format(vars.model.replace('/', '_')), revision=vars.revision, cache_dir="cache")
         else:
             try:
-                tokenizer = AutoTokenizer.from_pretrained(vars.model, revision=vars.revision, cache_dir="cache")
-            except Exception as e:
-                pass
-            try:
                 tokenizer = AutoTokenizer.from_pretrained(vars.model, revision=vars.revision, cache_dir="cache", use_fast=False)
             except Exception as e:
                 try:
-                    tokenizer = GPT2TokenizerFast.from_pretrained(vars.model, revision=vars.revision, cache_dir="cache")
+                    tokenizer = AutoTokenizer.from_pretrained(vars.model, revision=vars.revision, cache_dir="cache")
                 except Exception as e:
-                    tokenizer = GPT2TokenizerFast.from_pretrained("gpt2", revision=vars.revision, cache_dir="cache")
+                    try:
+                        tokenizer = GPT2Tokenizer.from_pretrained(vars.model, revision=vars.revision, cache_dir="cache")
+                    except Exception as e:
+                        tokenizer = GPT2Tokenizer.from_pretrained("gpt2", revision=vars.revision, cache_dir="cache")
             try:
                 model     = AutoModelForCausalLM.from_pretrained(vars.model, revision=vars.revision, cache_dir="cache")
             except Exception as e:

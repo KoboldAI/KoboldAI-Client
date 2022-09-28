@@ -18,11 +18,8 @@
 	<script src="static/bootstrap.min.js"></script>
 	<script src="static/bootstrap-toggle.min.js"></script>
 	<script src="static/rangy-core.min.js"></script>
-	<script src="static/application.js?ver=1.18.1e"></script>
+	<script src="static/application.js?ver=1.18.1f"></script>
 	<script src="static/favicon.js"></script>
-	{% if flaskwebgui %}
-	<script src="static/flask_web_gui.js"></script>
-	{% endif %}
 </head>
 <body>
 	<input type="file" id="remote-save-select" accept="application/json" style="display:none">
@@ -295,12 +292,12 @@
 			<div id="loadmodellistcontent" style="overflow: auto; height: 300px;">
 			</div>
 			<div class="popupfooter">
-				<input class="form-control hidden" type="text" placeholder="key" id="modelkey" onblur="socket.send({'cmd': 'OAI_Key_Update', 'key': $('#modelkey')[0].value});">
 				<input class="form-control hidden" type="text" placeholder="Enter the URL of the server (For example a trycloudflare link)" id="modelurl" onchange="check_enable_model_load()">
+				<input class="form-control hidden" type="text" placeholder="key" id="modelkey" onblur="socket.send({'cmd': 'OAI_Key_Update', 'key': $('#modelkey')[0].value});">
 				<input class="form-control hidden" type="text" placeholder="Model Path or Hugging Face Name" id="custommodelname" menu="" onblur="socket.send({'cmd': 'selectmodel', 'data': $(this).attr('menu'), 'path_modelname': $('#custommodelname')[0].value});">
 			</div>
 			<div class="popupfooter">
-				<select class="form-control hidden" id="oaimodel"><option value="">Select OAI Model</option></select>
+				<select class="form-control hidden" id="oaimodel"><option value="">Select Model(s)</option></select>
 			</div>
 			<div class="popupfooter hidden" id=modellayers>
 				<div class='settingitem' style="width:100%">

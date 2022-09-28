@@ -244,17 +244,6 @@ gensettingstf = [
     {
 	"uitype": "toggle",
 	"unit": "bool",
-	"label": "Debug",
-	"id": "debug",
-	"min": 0,
-	"max": 1,
-	"step": 1,
-	"default": 0,
-  "tooltip": "Show debug info"
-	},
-    {
-	"uitype": "toggle",
-	"unit": "bool",
 	"label": "Token Streaming",
 	"id": "setoutputstreaming",
 	"min": 0,
@@ -284,6 +273,17 @@ gensettingstf = [
 	"step": 1,
 	"default": 0,
   "tooltip": "Shows token usage when typing in relevant text boxes. <b>May lag slower devices.</b>"
+	},
+    {
+	"uitype": "toggle",
+	"unit": "bool",
+	"label": "Debug",
+	"id": "debug",
+	"min": 0,
+	"max": 1,
+	"step": 1,
+	"default": 0,
+  "tooltip": "Show debug info"
 	},
 ]
 

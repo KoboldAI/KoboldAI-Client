@@ -18,6 +18,7 @@ dependencies:
   - git=2.35.1
   - marshmallow>=3.13
   - apispec-webframeworks
+  - loguru
   - pip:
     - git+https://github.com/finetuneanon/transformers@gpt-neo-localattention3-rp-b
     - flask-cloudflared
