@@ -154,6 +154,7 @@ class koboldai_vars(object):
         self._model_settings.reset_for_model_load()
     
     def calc_ai_text(self, submitted_text="", return_text=False):
+        start_time = time.time()
         if self.alt_gen:
             method = 2
         else:
@@ -380,6 +381,8 @@ class koboldai_vars(object):
         
         self.context = context
 
+        logger.debug("Calc_AI_text: {}s".format(time.time()-start_time))
+        
         if return_text:
             return text
         return tokens, used_tokens, used_tokens+self.genamt, used_world_info
@@ -452,6 +455,7 @@ class settings(object):
         if 'no_save' in self.__dict__:
             setattr(self, 'no_save', True)
         for key, value in json_data.items():
+            start_time = time.time()
             if key in self.__dict__ and key not in self.no_save_variables:
                 if key == 'sampler_order':
                     if(len(value) < 7):
@@ -476,7 +480,7 @@ class settings(object):
                     getattr(self, key).load_json(value)
                 else:
                     setattr(self, key, value)
-        
+            logger.debug("Processing {}: {}s".format(key, time.time()-start_time))
         if 'no_save' in self.__dict__:
             setattr(self, 'no_save', False)
         
@@ -1085,20 +1089,32 @@ class KoboldStoryRegister(object):
         return {"action_count": self.action_count, "actions": self.actions}
         
     def load_json(self, json_data):
+        start_time = time.time()
         if type(json_data) == str:
             import json
             json_data = json.loads(json_data)
+        logger.debug("json to dict: {}s".format(time.time()-start_time))
         #JSON forces keys to be strings, so let's fix that
+        start_time = time.time()
         temp = {}
         for item in json_data['actions']:
             temp[int(item)] = json_data['actions'][item]
             process_variable_changes(self.socketio, "story", 'actions', {"id": item, 'action':  temp[int(item)]}, None)
-            
+        
+        logger.debug("fixing key to int and sending to client: {}s".format(time.time()-start_time))
+        start_time = time.time()
         self.action_count = json_data['action_count']
         self.actions = temp
+        logger.debug("Saving action var: {}s".format(time.time()-start_time))
+        start_time = time.time()
         self.set_game_saved()
+        logger.debug("set_game_saved: {}s".format(time.time()-start_time))
+        start_time = time.time()
         self.recalc_token_length()
+        logger.debug("recalc_token_length: {}s".format(time.time()-start_time))
+        start_time = time.time()
         self.story_settings.save_story()
+        logger.debug("save_story: {}s".format(time.time()-start_time))
         
             
     def append(self, text):
@@ -1311,8 +1327,9 @@ class KoboldStoryRegister(object):
     def recalc_token_length(self):
         if self.tokenizer is not None:
             for key in self.actions:
-                self.actions[key]['Selected Text Length'] = len(self.tokenizer.encode(self.actions[key]['Selected Text']))
-                process_variable_changes(self.socketio, "story", 'actions', {"id": key, 'action':  self.actions[key]}, None)
+                if self.actions[key]['In AI Input']:
+                    self.actions[key]['Selected Text Length'] = len(self.tokenizer.encode(self.actions[key]['Selected Text']))
+                    process_variable_changes(self.socketio, "story", 'actions', {"id": key, 'action':  self.actions[key]}, None)
         else:
             for key in self.actions:
                 self.actions[key]['Selected Text Length'] = 0
@@ -1385,6 +1402,7 @@ class KoboldStoryRegister(object):
                 process_variable_changes(self.socketio, "story", 'actions', {"id": action_id, 'action':  self.actions[action_id]}, None)
     
     def to_sentences(self):
+        start_time = time.time()
         #we're going to split our actions by sentence for better context. We'll add in which actions the sentence covers. Prompt will be added at a -1 ID
         actions = {i: self.actions[i]['Selected Text'] for i in range(len(self.actions))}
         actions[-1] = self.story_settings.prompt
@@ -1425,6 +1443,7 @@ class KoboldStoryRegister(object):
                     break
                 Sentence_Position[1] = len(action_text_split[Sentence_Position[0]][0])
         #OK, action_text_split now contains a list of [sentence including trailing space if needed, [action IDs that sentence includes]]
+        logger.debug("to_sentences: {}s".format(time.time()-start_time))
         return action_text_split
     
     def __setattr__(self, name, value):
