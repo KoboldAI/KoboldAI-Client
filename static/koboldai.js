@@ -281,7 +281,7 @@ function create_options(data) {
 	
 	
 	//make sure our last updated chunk is in view
-	option_chunk.scrollIntoView();
+	//option_chunk.scrollIntoView();
 }
 
 function do_story_text_updates(data) {
@@ -320,6 +320,7 @@ function do_story_text_updates(data) {
 		if (span.textContent != "") {
 			assign_world_info_to_action(span, null);
 		}
+		//console.log("done");
 	}
 }
 
@@ -634,9 +635,9 @@ function var_changed(data) {
 	}
 	
 	//set the selected theme to the cookie value
-	if ((data.classname == "system") && (data.name == "theme_list")) {
-		Change_Theme(getCookie("theme", "Monochrome"));
-	}
+	//if ((data.classname == "system") && (data.name == "theme_list")) {
+	//	Change_Theme(getCookie("theme", "Monochrome"));
+	//}
 	
 	//Set all options before the next chunk to hidden
 	if ((data.classname == "actions") && (data.name == "Action Count")) {
@@ -4354,7 +4355,7 @@ $(document).ready(function(){
 		colab_cookies = null;
 	}
 
-	create_theming_elements();
+	//create_theming_elements();
 	document.onkeydown = detect_key_down;
 	document.onkeyup = detect_key_up;
 	document.getElementById("input_text").onkeydown = detect_enter_submit;
