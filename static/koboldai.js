@@ -299,7 +299,7 @@ function do_story_text_updates(data) {
 		item.original_text = data.value.action['Selected Text'];
 		item.setAttribute("world_info_uids", "");
 		item.classList.remove("pulse")
-		item.scrollIntoView();
+		//item.scrollIntoView();
 		if (item.textContent != "") {
 			assign_world_info_to_action(item, null);
 		}
@@ -315,8 +315,8 @@ function do_story_text_updates(data) {
 		
 		
 		story_area.append(span);
-		//clearTimeout(game_text_scroll_timeout);
-		//game_text_scroll_timeout = setTimeout(function() {document.getElementById("Selected Text").scrollTop = document.getElementById("Selected Text").scrollHeight;}, 200);
+		clearTimeout(game_text_scroll_timeout);
+		game_text_scroll_timeout = setTimeout(function() {document.getElementById("Selected Text").scrollTop = document.getElementById("Selected Text").scrollHeight;}, 500);
 		if (span.textContent != "") {
 			assign_world_info_to_action(span, null);
 		}
