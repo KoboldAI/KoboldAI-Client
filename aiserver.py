@@ -6962,6 +6962,7 @@ def loadfromfile():
 #  Load a stored story from a file
 #==================================================================#
 def loadRequest(loadpath, filename=None):
+    start_time = time.time()
     if(loadpath):
         # Leave Edit/Memory mode before continuing
         exitModes()
@@ -6980,6 +6981,7 @@ def loadRequest(loadpath, filename=None):
         js['v1_loadpath'] = loadpath
         js['v1_filename'] = filename
         loadJSON(js)
+    logger.debug("Time to load story: {}s".format(time.time()-start_time))
 
 def loadJSON(json_text_or_dict):
     if isinstance(json_text_or_dict, str):

@@ -315,8 +315,8 @@ function do_story_text_updates(data) {
 		
 		
 		story_area.append(span);
-		clearTimeout(game_text_scroll_timeout);
-		game_text_scroll_timeout = setTimeout(function() {document.getElementById("Selected Text").scrollTop = document.getElementById("Selected Text").scrollHeight;}, 200);
+		//clearTimeout(game_text_scroll_timeout);
+		//game_text_scroll_timeout = setTimeout(function() {document.getElementById("Selected Text").scrollTop = document.getElementById("Selected Text").scrollHeight;}, 200);
 		if (span.textContent != "") {
 			assign_world_info_to_action(span, null);
 		}
@@ -359,7 +359,11 @@ function do_prompt(data) {
 }
 
 function do_story_text_length_updates(data) {
-	document.getElementById('Selected Text Chunk '+data.value.id).setAttribute("token_length", data.value.action["Selected Text Length"]);
+	if (document.getElementById('Selected Text Chunk '+data.value.id)) {
+		document.getElementById('Selected Text Chunk '+data.value.id).setAttribute("token_length", data.value.action["Selected Text Length"]);
+	} else {
+		console.log('Selected Text Chunk '+data.value.id);
+	}
 	
 }
 
