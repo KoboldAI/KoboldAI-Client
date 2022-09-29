@@ -272,14 +272,12 @@ class koboldai_vars(object):
                 game_text = "{}{}".format(authors_note_final, game_text)
                 game_context.insert(0, {"type": "authors_note", "text": authors_note_final})
             length = 0 if self.tokenizer is None else len(self.tokenizer.encode(action_text_split[i][0]))
-            print("Length for sentence {}: {}".format(i, length))
             if length+used_tokens <= token_budget and not used_all_tokens:
                 used_tokens += length
                 selected_text = action_text_split[i][0]
                 action_text_split[i][3] = True
                 game_text = "{}{}".format(selected_text, game_text)
                 game_context.insert(0, {"type": "action", "text": selected_text})
-                print("Adding in game for the following actions: {}".format(action_text_split[i][1]))
                 for action in action_text_split[i][1]:
                     if action >= 0:
                         self.actions.set_action_in_ai(action)
@@ -325,7 +323,7 @@ class koboldai_vars(object):
         if self.useprompt:
             text += prompt_text
             context.append({"type": "prompt", "text": prompt_text})
-        else:
+        elif not used_all_tokens:
             prompt_length = 0
             prompt_text = ""
             for item in action_text_split:
@@ -371,6 +369,8 @@ class koboldai_vars(object):
                 self.prompt_in_ai = True
             else:
                 self.prompt_in_ai = False
+        else:
+            self.prompt_in_ai = False
         
         text += game_text
         context += game_context
@@ -621,7 +621,7 @@ class model_settings(settings):
             
 class story_settings(settings):
     local_only_variables = ['socketio', 'tokenizer', 'koboldai_vars', 'no_save', 'revisions']
-    no_save_variables = ['socketio', 'tokenizer', 'koboldai_vars', 'context', 'no_save']
+    no_save_variables = ['socketio', 'tokenizer', 'koboldai_vars', 'context', 'no_save', 'prompt_in_ai', 'authornote_length', 'prompt_length', 'memory_length']
     settings_name = "story"
     def __init__(self, socketio, koboldai_vars, tokenizer=None):
         self.socketio = socketio
@@ -771,14 +771,17 @@ class story_settings(settings):
                     self.prompt_length = len(self.tokenizer.encode(self.prompt))
                     self.authornote_length = 0 if self.authornote=="" else len(self.tokenizer.encode(self.authornotetemplate.replace("<|>", self.authornote)))
                     ignore = self.koboldai_vars.calc_ai_text()
-                elif name == 'authornote' or name == 'authornotetemplate':
-                    self.authornote_length = 0 if self.authornote=="" else len(self.tokenizer.encode(self.authornotetemplate.replace("<|>", self.authornote)))
+                elif name == 'authornote':
+                    self.authornote_length = 0 if value=="" else len(self.tokenizer.encode(self.authornotetemplate.replace("<|>", value)))
+                    ignore = self.koboldai_vars.calc_ai_text()
+                elif name == 'authornotetemplate':
+                    self.authornote_length = 0 if self.authornote=="" else len(self.tokenizer.encode(value.replace("<|>", self.authornote)))
                     ignore = self.koboldai_vars.calc_ai_text()
                 elif name == 'memory':
-                    self.memory_length = len(self.tokenizer.encode(self.memory))
+                    self.memory_length = len(self.tokenizer.encode(value))
                     ignore = self.koboldai_vars.calc_ai_text()
                 elif name == 'prompt':
-                    self.prompt_length = len(self.tokenizer.encode(self.prompt))
+                    self.prompt_length = len(self.tokenizer.encode(value))
                     ignore = self.koboldai_vars.calc_ai_text()
             
             #Because we have seperate variables for action types, this syncs them
