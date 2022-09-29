@@ -1423,7 +1423,7 @@ class KoboldStoryRegister(object):
                 Action_Position[1] = len(actions[Action_Position[0]])
             if advance_sentence:
                 Sentence_Position[0] += 1
-                if Sentence_Position[0] > len(action_text_split):
+                if Sentence_Position[0] >= len(action_text_split):
                     break
                 Sentence_Position[1] = len(action_text_split[Sentence_Position[0]][0])
         #OK, action_text_split now contains a list of [sentence including trailing space if needed, [action IDs that sentence includes]]
