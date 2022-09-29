@@ -733,9 +733,14 @@ class story_settings(settings):
         new_world_info = KoboldWorldInfo(None, self, self.koboldai_vars, tokenizer=self.tokenizer)
         for wi in self.worldinfo:
             if wi['init'] == True:
-                new_world_info.add_item([x.strip() for x in wi["key"].split(",")][0], wi["key"], wi.get("keysecondary", ""), 
-                                                    "root" if wi["folder"] is None else self.wifolders_d[wi['folder']]['name'], wi.get("constant", False), 
-                                                    wi["content"], wi.get("comment", ""), v1_uid=wi['uid'])
+                new_world_info.add_item([x.strip() for x in wi["key"].split(",")][0], 
+                                        wi["key"], 
+                                        wi.get("keysecondary", ""), 
+                                        "root" if wi["folder"] is None else self.wifolders_d[wi['folder']]['name'], 
+                                        wi.get("constant", False), 
+                                        wi["content"], 
+                                        wi.get("comment", ""), 
+                                        v1_uid=wi['uid'])
         
         new_world_info.socketio = self.socketio
         self.worldinfo_v2 = new_world_info
@@ -1551,7 +1556,9 @@ class KoboldWorldInfo(object):
         if self.socketio is not None:
             self.socketio.emit("world_info_folder", {x: self.world_info_folder[x] for x in self.world_info_folder}, broadcast=True, room="UI_2")
                 
-    def add_item(self, title, key, keysecondary, folder, constant, manual_text, comment, use_wpp=False, wpp={'name': "", 'type': "", 'format': "W++", 'attributes': {}}, v1_uid=None):
+    def add_item(self, title, key, keysecondary, folder, constant, manual_text, 
+                 comment, use_wpp=False, wpp={'name': "", 'type': "", 'format': "W++", 'attributes': {}}, 
+                 v1_uid=None, no_recalc=False):
         if len(self.world_info) == 0:
             uid = 0
         else:
@@ -1616,7 +1623,8 @@ class KoboldWorldInfo(object):
         if self.socketio is not None:
             self.socketio.emit("world_info_folder", {x: self.world_info_folder[x] for x in self.world_info_folder}, broadcast=True, room="UI_2")
             self.socketio.emit("world_info_entry", self.world_info[uid], broadcast=True, room="UI_2")
-        ignore = self.koboldai_vars.calc_ai_text()
+        if not no_recalc:
+            ignore = self.koboldai_vars.calc_ai_text()
         return uid
         
     def edit_item(self, uid, title, key, keysecondary, folder, constant, manual_text, comment, use_wpp=False, before=None, wpp={'name': "", 'type': "", 'format': "W++", 'attributes': {}}):
@@ -1735,29 +1743,28 @@ class KoboldWorldInfo(object):
         if folder is None:
             self.world_info = {int(x): data['entries'][x] for x in data['entries']}
             self.world_info_folder = data['folders']
-            #Make sure we have all the appropriate variables:
-            for item in self.world_info:
-                for column in ["uid","title","key","keysecondary","folder","constant","content","comment","token_length","selective","used_in_game", 'v1_uid']:
-                    if column not in self.world_info[item]:
-                        self.world_info[item][column] = None
-                if "wpp" not in self.world_info[item]:
-                    self.world_info[item]['wpp'] = {'name': "", 'type': "", 'format': "W++", 'attributes': {}}
-                
-                #If we have content but not manual_text, let's move it over:
-                if 'manual_text' not in self.world_info[item]:
-                    self.world_info[item]['manual_text'] = self.world_info[item]['content']
-                
-            try:
-                self.sync_world_info_to_old_format()
-            except:
-                print(self.world_info)
-                print(data)
-                raise
-            self.send_to_ui()
-        else:
-            for uid, item in data['entries'].items():
-                self.add_item(item['title'], item['key'], item['keysecondary'], folder, item['constant'], item['manual_text'], item['comment'], 
-                                use_wpp=item['use_wpp'], wpp=item['wpp'])
+        
+        #Add the item
+        for uid, item in data['entries'].items():
+            self.add_item(item['title'] if 'title' in item else item['key'][0], 
+                          item['key'] if 'key' in item else [], 
+                          item['keysecondary'] if 'keysecondary' in item else [], 
+                          folder, 
+                          item['constant'] if 'constant' in item else False, 
+                          item['manual_text'] if 'manual_text' in item else item['content'], 
+                          item['comment'] if 'comment' in item else '',
+                          use_wpp=item['use_wpp'] if 'use_wpp' in item else False, 
+                          wpp=item['wpp'] if 'wpp' in item else {'name': "", 'type': "", 'format': "W++", 'attributes': {}},
+                          no_recalc=True)
+        
+        try:
+            self.sync_world_info_to_old_format()
+        except:
+            print(self.world_info)
+            print(data)
+            raise
+        self.send_to_ui()
+        ignore = self.koboldai_vars.calc_ai_text()
     
     def sync_world_info_to_old_format(self):
         #Since the old UI uses world info entries for folders, we need to make some up
