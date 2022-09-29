@@ -1640,7 +1640,7 @@ def get_cluster_models(msg):
     # Get list of models from public cluster
     logger.init("KAI Horde Models", status="Retrieving")
     try:
-        req = requests.get("{}/models".format(url))
+        req = requests.get("{}/api/v1/models".format(url))
     except requests.exceptions.ConnectionError:
         logger.init_err("KAI Horde Models", status="Failed")
         logger.error("Provided KoboldAI Horde URL unreachable")
