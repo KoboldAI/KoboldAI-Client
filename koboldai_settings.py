@@ -6,6 +6,7 @@ from flask_socketio import SocketIO
 from collections import OrderedDict
 import multiprocessing
 from logger import logger
+import eventlet
 
 serverstarted = False
 queue = None
@@ -1330,6 +1331,7 @@ class KoboldStoryRegister(object):
                 if self.actions[key]['In AI Input']:
                     self.actions[key]['Selected Text Length'] = len(self.tokenizer.encode(self.actions[key]['Selected Text']))
                     process_variable_changes(self.socketio, "story", 'actions', {"id": key, 'action':  self.actions[key]}, None)
+                    eventlet.sleep(0.01)
         else:
             for key in self.actions:
                 self.actions[key]['Selected Text Length'] = 0
