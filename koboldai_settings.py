@@ -260,6 +260,8 @@ class koboldai_vars(object):
         game_context = []
         authors_note_final = self.authornotetemplate.replace("<|>", self.authornote)
         used_all_tokens = False
+        with open("test.txt", "w") as f:
+            f.write(str(action_text_split))
         for action in range(len(self.actions)):
             self.actions.set_action_in_ai(action, used=False)
         for i in range(len(action_text_split)-1, -1, -1):
@@ -270,12 +272,14 @@ class koboldai_vars(object):
                 game_text = "{}{}".format(authors_note_final, game_text)
                 game_context.insert(0, {"type": "authors_note", "text": authors_note_final})
             length = 0 if self.tokenizer is None else len(self.tokenizer.encode(action_text_split[i][0]))
+            print("Length for sentence {}: {}".format(i, length))
             if length+used_tokens <= token_budget and not used_all_tokens:
                 used_tokens += length
                 selected_text = action_text_split[i][0]
                 action_text_split[i][3] = True
                 game_text = "{}{}".format(selected_text, game_text)
                 game_context.insert(0, {"type": "action", "text": selected_text})
+                print("Adding in game for the following actions: {}".format(action_text_split[i][1]))
                 for action in action_text_split[i][1]:
                     if action >= 0:
                         self.actions.set_action_in_ai(action)
@@ -311,6 +315,7 @@ class koboldai_vars(object):
                                 self.worldinfo_v2.set_world_info_used(wi['uid'])
             else:
                 used_all_tokens = True
+                break
              
         #if we don't have enough actions to get to author's note depth then we just add it right before the game text
         if len(action_text_split) < self.andepth and self.authornote != "":
@@ -1380,7 +1385,7 @@ class KoboldStoryRegister(object):
     
     def to_sentences(self):
         #we're going to split our actions by sentence for better context. We'll add in which actions the sentence covers. Prompt will be added at a -1 ID
-        actions = {i: self.actions[i] for i in range(len(self.actions))}
+        actions = {i: self.actions[i]['Selected Text'] for i in range(len(self.actions))}
         actions[-1] = self.story_settings.prompt
         action_text = self.__str__()
         action_text = "{}{}".format(self.story_settings.prompt, action_text)
@@ -1410,12 +1415,12 @@ class KoboldStoryRegister(object):
                 
             if advance_action:
                 Action_Position[0] += 1
-                if Action_Position[0] >= max(actions):
+                if Action_Position[0] > max(actions):
                     break
                 Action_Position[1] = len(actions[Action_Position[0]])
             if advance_sentence:
                 Sentence_Position[0] += 1
-                if Sentence_Position[0] >= len(action_text_split):
+                if Sentence_Position[0] > len(action_text_split):
                     break
                 Sentence_Position[1] = len(action_text_split[Sentence_Position[0]][0])
         #OK, action_text_split now contains a list of [sentence including trailing space if needed, [action IDs that sentence includes]]

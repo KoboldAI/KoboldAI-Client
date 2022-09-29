@@ -2673,7 +2673,7 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
                             raise RuntimeError("One of your GPUs ran out of memory when KoboldAI tried to load your model.")
                         raise e
                 tokenizer.save_pretrained("models/{}".format(koboldai_vars.model.replace('/', '_')))
-                model.save_pretrained("models/{}".format(koboldaivars.model.replace('/', '_')), max_shard_size="500MiB")
+                model.save_pretrained("models/{}".format(koboldai_vars.model.replace('/', '_')), max_shard_size="500MiB")
                 koboldai_vars.modeldim = get_hidden_size_from_model(model)
                 # Is CUDA available? If so, use GPU, otherwise fall back to CPU
                 if(koboldai_vars.hascuda and koboldai_vars.usegpu):
