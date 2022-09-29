@@ -260,8 +260,6 @@ class koboldai_vars(object):
         game_context = []
         authors_note_final = self.authornotetemplate.replace("<|>", self.authornote)
         used_all_tokens = False
-        with open("test.txt", "w") as f:
-            f.write(str(action_text_split))
         for action in range(len(self.actions)):
             self.actions.set_action_in_ai(action, used=False)
         for i in range(len(action_text_split)-1, -1, -1):
