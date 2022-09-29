@@ -210,8 +210,12 @@ class koboldai_vars(object):
                 if -1 not in item[1]:
                     #We've finished going through our prompt. Stop
                     break
-                if prompt_length + item[2] < self.max_prompt_length:
-                    prompt_length += item[2]
+                if self.tokenizer is None:
+                    item_size = 0
+                else:
+                    item_size = len(self.tokenizer.encode(item[0]))
+                if prompt_length + item_size < self.max_prompt_length:
+                    prompt_length += item_size
                     item[3] = True
                     prompt_text += item[0]
             if prompt_length + used_tokens < token_budget:
@@ -323,8 +327,12 @@ class koboldai_vars(object):
                 if -1 not in item[1]:
                     #We've finished going through our prompt. Stop
                     break
-                if prompt_length + item[2] < self.max_prompt_length and not item[3]:
-                    prompt_length += item[2]
+                if self.tokenizer is None:
+                    item_size = 0
+                else:
+                    item_size = len(self.tokenizer.encode(item[0]))
+                if prompt_length + item_size < self.max_prompt_length and not item[3]:
+                    prompt_length += item_size
                     item[3] = True
                     prompt_text += item[0]
             if prompt_length + used_tokens < token_budget:
@@ -1377,10 +1385,9 @@ class KoboldStoryRegister(object):
         action_text = self.__str__()
         action_text = "{}{}".format(self.story_settings.prompt, action_text)
         ###########action_text_split = [sentence, actions used in sentence, token length, included in AI context]################
-        action_text_split = [[x+" ", [], 0 if self.tokenizer is None else len(self.tokenizer.encode(x+" ")), False] for x in re.split("(?<=[.!?])\s+", action_text)]
+        action_text_split = [[x+" ", [], 0, False] for x in re.split("(?<=[.!?])\s+", action_text)]
         #The last action shouldn't have the extra space from the sentence splitting, so let's remove it
         action_text_split[-1][0] = action_text_split[-1][0][:-1]
-        action_text_split[-1][2] = 0 if self.tokenizer is None else len(self.tokenizer.encode(action_text_split[-1][0]))
         
         Action_Position = [-1, len(actions[-1])] #First element is the action item, second is how much text is left
         Sentence_Position = [0, len(action_text_split[0][0])]
