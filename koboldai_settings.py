@@ -1405,7 +1405,7 @@ class KoboldStoryRegister(object):
     def to_sentences(self):
         #start_time = time.time()
         #we're going to split our actions by sentence for better context. We'll add in which actions the sentence covers. Prompt will be added at a -1 ID
-        actions = {i: self.actions[i]['Selected Text'] for i in self.actions)}
+        actions = {i: self.actions[i]['Selected Text'] for i in self.actions}
         actions[-1] = self.story_settings.prompt
         action_text = self.__str__()
         action_text = "{}{}".format(self.story_settings.prompt, action_text)
