@@ -137,6 +137,11 @@ function disconnect() {
 
 function reset_story() {
 	console.log("Resetting story");
+	clearTimeout(calc_token_usage_timeout);
+	clearTimeout(game_text_scroll_timeout);
+	clearTimeout(font_size_cookie_timout);
+	finder_last_input = null;
+	on_new_wi_item = null;
 	current_chunk_number = null;
 	var story_area = document.getElementById('Selected Text');
 	while (story_area.lastChild.id != 'story_prompt') { 
@@ -1782,17 +1787,19 @@ function world_info_entry(data) {
 	
 	//put focus back where it was
 	if (document.getElementById(original_focus)) {
-		//check if we were on a new line
-		if ((on_new_wi_item != null) && (document.getElementById(on_new_wi_item))) {
-			//if we're on a new wpp attribute, we want to move to the new value not the new attribute, so let's fix that
-			if (on_new_wi_item.includes('wpp_') && on_new_wi_item.includes('_attr_blank') && (last_new_value != null)) { 
-				on_new_wi_item = last_new_value.id;
+		if (document.getElementById(original_focus).tagName != "BUTTON") {
+			//check if we were on a new line
+			if ((on_new_wi_item != null) && (document.getElementById(on_new_wi_item))) {
+				//if we're on a new wpp attribute, we want to move to the new value not the new attribute, so let's fix that
+				if (on_new_wi_item.includes('wpp_') && on_new_wi_item.includes('_attr_blank') && (last_new_value != null)) { 
+					on_new_wi_item = last_new_value.id;
+				}
+				original_focus = on_new_wi_item;
 			}
-			original_focus = on_new_wi_item;
+			on_new_wi_item = null;
+			//for some reason we have to wrap this in a timmer
+			setTimeout(function() {document.getElementById(original_focus).click();document.getElementById(original_focus).focus()}, 0);
 		}
-		on_new_wi_item = null;
-		//for some reason we have to wrap this in a timmer
-		setTimeout(function() {document.getElementById(original_focus).click();document.getElementById(original_focus).focus()}, 0);
 	}
 	
 	assign_world_info_to_action(null, data.uid);
@@ -3141,6 +3148,12 @@ function assign_world_info_to_action(action_item, uid) {
 					current_ids = tag.parentElement.getAttribute("world_info_uids").split(",");
 					removeA(current_ids, uid);
 					tag.parentElement.setAttribute("world_info_uids", current_ids.join(","));
+				}
+				if (worldinfo.key == undefined) {
+					console.log(uid);
+					console.log(key);
+					console.log(worldinfo);
+					console.log(world_info_data);
 				}
 				for (keyword of worldinfo['key']) {
 					if ((action.textContent.replace(/[^0-9a-z \'\"]/gi, '')).includes(keyword)) {

@@ -9,7 +9,7 @@
 from dataclasses import dataclass
 import eventlet
 eventlet.monkey_patch(all=True, thread=False, os=False)
-import os
+import os, inspect
 os.system("")
 __file__ = os.path.dirname(os.path.realpath(__file__))
 os.chdir(__file__)
@@ -6962,6 +6962,8 @@ def loadfromfile():
 #  Load a stored story from a file
 #==================================================================#
 def loadRequest(loadpath, filename=None):
+    logger.debug("Load Request")
+    logger.debug("Called from {}".format(inspect.stack()[1].function))
     start_time = time.time()
     if(loadpath):
         # Leave Edit/Memory mode before continuing
@@ -6984,6 +6986,8 @@ def loadRequest(loadpath, filename=None):
     logger.debug("Time to load story: {}s".format(time.time()-start_time))
 
 def loadJSON(json_text_or_dict):
+    logger.debug("Loading JSON Story")
+    logger.debug("Called from {}".format(inspect.stack()[1].function))
     if isinstance(json_text_or_dict, str):
         json_data = json.loads(json_text_or_dict)
     else:
@@ -6995,8 +6999,12 @@ def loadJSON(json_text_or_dict):
             load_story_v1(json_data)
     else:
         load_story_v1(json_data)
+    logger.debug("Calcing AI Text from Story Load")
+    ignore = koboldai_vars.calc_ai_text()
 
 def load_story_v1(js):
+    logger.debug("Loading V1 Story")
+    logger.debug("Called from {}".format(inspect.stack()[1].function))
     loadpath = js['v1_loadpath'] if 'v1_loadpath' in js else koboldai_vars.savedir
     filename = js['v1_filename'] if 'v1_filename' in js else 'untitled.json'
     
@@ -7082,8 +7090,7 @@ def load_story_v1(js):
                     folder = "root"
             koboldai_vars.worldinfo_v2.add_item([x.strip() for x in wi["key"].split(",")][0], wi["key"], wi.get("keysecondary", ""), 
                                                 folder, wi.get("constant", False), 
-                                                wi["content"], wi.get("comment", ""), no_recalc=True)
-            koboldai_vars.calc_ai_text()
+                                                wi["content"], wi.get("comment", ""), recalc=False)
 
     # Save path for save button
     koboldai_vars.savedir = loadpath
@@ -7106,6 +7113,8 @@ def load_story_v1(js):
     send_debug()
 
 def load_story_v2(js):
+    logger.debug("Loading V1 Story")
+    logger.debug("Called from {}".format(inspect.stack()[1].function))
     leave_room(session['story'])
     session['story'] = js['story_name']
     join_room(session['story'])
@@ -8237,6 +8246,7 @@ def story_sort(base_path, desc=False):
 @socketio.on('load_story')
 @logger.catch
 def UI_2_load_story(file):
+    logger.debug("got a call or loading a story: {}".format(file))
     if koboldai_vars.debug:
         print("loading {}".format(file))
     loadRequest(file)
@@ -8356,6 +8366,8 @@ def UI_2_export_world_info_folder():
 def UI_2_upload_world_info_folder(data):
     json_data = json.loads(data['data'])
     koboldai_vars.worldinfo_v2.load_json(json_data, folder=data['folder'])
+    logger.debug("Calcing AI Text from WI Upload")
+    koboldai_vars.calc_ai_text()
 
 @socketio.on('import_world_info')
 @logger.catch
