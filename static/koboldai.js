@@ -59,6 +59,7 @@ var on_new_wi_item = null;
 var finder_mode = "ui";
 var finder_waiting_id = null;
 var control_held = false;
+var actions_data = {};
 
 // name, desc, icon, func
 const finder_actions = [
@@ -191,15 +192,20 @@ function create_options(data) {
 	//Set all options before the next chunk to hidden
 	var option_container = document.getElementById("Select Options");
 	var current_chunk = parseInt(document.getElementById("action_count").textContent)+1;
+	if (current_chunk != data.value.id.toString()) {
+		return;
+	}
 	if (document.getElementById("Select Options Chunk " + current_chunk)) {
-		document.getElementById("Select Options Chunk " + current_chunk).classList.remove("hidden")
+		//document.getElementById("Select Options Chunk " + current_chunk).classList.remove("hidden");
+		document.getElementById("Select Options Chunk " + current_chunk).remove();
 	}
 	if (document.getElementById("Select Options Chunk " + (current_chunk-1))) {
-		document.getElementById("Select Options Chunk " + (current_chunk-1)).classList.add("hidden")
+		//document.getElementById("Select Options Chunk " + (current_chunk-1)).classList.add("hidden");
+		document.getElementById("Select Options Chunk " + (current_chunk-1)).remove();
 	}
 	
 	if (document.getElementById("Select Options Chunk "+data.value.id)) {
-		var option_chunk = document.getElementById("Select Options Chunk "+data.value.id)
+		var option_chunk = document.getElementById("Select Options Chunk "+data.value.id);
 	} else {
 		var option_chunk = document.createElement("div");
 		option_chunk.id = "Select Options Chunk "+data.value.id;
@@ -309,7 +315,7 @@ function do_story_text_updates(data) {
 		item.classList.remove("pulse")
 		//item.scrollIntoView();
 		if (item.textContent != "") {
-			assign_world_info_to_action(item, null);
+			assign_world_info_to_action(data.value.id, null);
 		}
 	} else {
 		var span = document.createElement("span");
@@ -330,7 +336,7 @@ function do_story_text_updates(data) {
 		//clearTimeout(game_text_scroll_timeout);
 		//game_text_scroll_timeout = setTimeout(function() {document.getElementById("Selected Text").scrollTop = document.getElementById("Selected Text").scrollHeight;}, 500);
 		if (span.textContent != "") {
-			assign_world_info_to_action(span, null);
+			assign_world_info_to_action(data.value.id, null);
 		}
 		//console.log("done");
 	}
@@ -350,7 +356,8 @@ function do_prompt(data) {
 		item.setAttribute("old_text", data.value);
 		item.setAttribute("WI_Search_Text", data.value.replace(/[^0-9a-z \'\"]/gi, ''));
 		item.classList.remove("pulse");
-		assign_world_info_to_action(item, null);
+		actions_data[-1] = {'Selected Text': data.value, 'WI Search Text': data.value.replace(/[^0-9a-z \'\"]/gi, '')};
+		assign_world_info_to_action(-1, null);
 	}
 	//if we have a prompt we need to disable the theme area, or enable it if we don't
 	if (data.value != "") {
@@ -515,6 +522,7 @@ function var_changed(data) {
 	}
 	//Special Case for Actions
 	if ((data.classname == "story") && (data.name == "actions")) {
+		actions_data[data.value.id] = data.value.action;
 		do_story_text_updates(data);
 		create_options(data);
 		do_story_text_length_updates(data);
@@ -1781,8 +1789,8 @@ function world_info_entry(data) {
 		document.getElementById("world_info_secondtags_"+data.uid).classList.add("hidden");
 	}
 	
-	$('#world_info_constant_'+data.uid).bootstrapToggle();
-	$('#world_info_wpp_toggle_'+data.uid).bootstrapToggle();
+	//$('#world_info_constant_'+data.uid).bootstrapToggle();
+	//$('#world_info_wpp_toggle_'+data.uid).bootstrapToggle();
 	
 	//hide/unhide w++
 	if (wpp_toggle.checked) {
@@ -3144,35 +3152,35 @@ function assign_world_info_to_action(action_item, uid) {
 			var worldinfo_to_check = world_info_data;
 		}
 		if (action_item != null) {
-			var actions = [action_item]
+			var actions = [actions_data[action_item]];
 		} else {
-			var actions = document.getElementById("Selected Text").children;
+			var actions = actions_data;
 		}
 		
-		for (action of actions) {
+		for (const [action_id, action] of  Object.entries(actions)) {
 			//First check to see if we have a key in the text
 			for (const [key, worldinfo] of  Object.entries(worldinfo_to_check)) {
 				//remove any world info tags on the overall chunk
 				if (worldinfo['constant'] == false) {
-					for (tag of action.getElementsByClassName("tag_uid_"+uid)) {
-						tag.classList.remove("tag_uid_"+uid);
-						tag.removeAttribute("title");
-						current_ids = tag.parentElement.getAttribute("world_info_uids").split(",");
-						removeA(current_ids, uid);
-						tag.parentElement.setAttribute("world_info_uids", current_ids.join(","));
-					}
+					//for (tag of action.getElementsByClassName("tag_uid_"+uid)) {
+					//	tag.classList.remove("tag_uid_"+uid);
+					//	tag.removeAttribute("title");
+					//	current_ids = tag.parentElement.getAttribute("world_info_uids").split(",");
+					//	removeA(current_ids, uid);
+					//	tag.parentElement.setAttribute("world_info_uids", current_ids.join(","));
+					//}
 					for (keyword of worldinfo['key']) {
-						if ((action.getAttribute('WI_Search_Text')).includes(keyword)) {
+						if (action['WI Search Text'].includes(keyword)) {
 							//Ok we have a key match, but we need to check for secondary keys if applicable
 							if (worldinfo['keysecondary'].length > 0) {
 								for (second_key of worldinfo['keysecondary']) {
-									if (action.getAttribute('WI_Search_Text').includes(second_key)) {
-										highlight_world_info_text_in_chunk(action, worldinfo);
+									if (action['WI Search Text'].includes(second_key)) {
+										highlight_world_info_text_in_chunk(action_id, worldinfo);
 										break;
 									}
 								}
 							} else {
-								highlight_world_info_text_in_chunk(action, worldinfo);
+								highlight_world_info_text_in_chunk(action_id, worldinfo);
 								break;
 							}
 							
@@ -3184,9 +3192,10 @@ function assign_world_info_to_action(action_item, uid) {
 	}
 }
 
-function highlight_world_info_text_in_chunk(action, wi) {
+function highlight_world_info_text_in_chunk(action_id, wi) {
 	//First let's assign our world info id to the action so we know to count the tokens for the world info
 	let uid = wi['uid'];
+	action = document.getElementById("Selected Text Chunk "+action_id);
 	let words = action.textContent.split(" ");
 	current_ids = action.getAttribute("world_info_uids")?action.getAttribute("world_info_uids").split(','):[];
 	if (!(current_ids.includes(uid))) {
