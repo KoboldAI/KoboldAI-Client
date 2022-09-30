@@ -32,3 +32,4 @@ dependencies:
     - flask-session
     - python-socketio[client]
     - ansi2html
+    - flask_compress

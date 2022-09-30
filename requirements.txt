@@ -20,3 +20,4 @@ Pillow
 diffusers
 psutil
 ansi2html
+flask_compress

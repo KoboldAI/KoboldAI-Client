@@ -30,3 +30,4 @@ dependencies:
     - transformers>=4.20.1
     - accelerate
     - ansi2html
+    - flask_compress

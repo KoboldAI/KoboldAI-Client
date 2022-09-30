@@ -2511,7 +2511,11 @@ function autoResize(element) {
 }
 
 function token_length(text) {
-	return encode(text).length;
+	if (typeof encode === 'function') {
+		return encode(text).length;
+	} else {
+		return 0;
+	}
 }
 
 function calc_token_usage() {
