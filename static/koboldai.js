@@ -114,6 +114,7 @@ map2.set(5, 'Temperature')
 map2.set(6, 'Repetition Penalty')
 var calc_token_usage_timeout;
 var game_text_scroll_timeout;
+var world_info_scroll_timeout;
 var font_size_cookie_timout;
 var var_processing_time = 0;
 var finder_last_input;
@@ -140,6 +141,7 @@ function reset_story() {
 	clearTimeout(calc_token_usage_timeout);
 	clearTimeout(game_text_scroll_timeout);
 	clearTimeout(font_size_cookie_timout);
+	clearTimeout(world_info_scroll_timeout);
 	finder_last_input = null;
 	on_new_wi_item = null;
 	current_chunk_number = null;
@@ -320,8 +322,11 @@ function do_story_text_updates(data) {
 		
 		
 		story_area.append(span);
-		clearTimeout(game_text_scroll_timeout);
-		game_text_scroll_timeout = setTimeout(function() {document.getElementById("Selected Text").scrollTop = document.getElementById("Selected Text").scrollHeight;}, 500);
+		if (data.value.id.toString() == document.getElementById('action_count').textContent) {
+			document.getElementById("Selected Text").scrollTop = document.getElementById("Selected Text").scrollHeight;
+		}
+		//clearTimeout(game_text_scroll_timeout);
+		//game_text_scroll_timeout = setTimeout(function() {document.getElementById("Selected Text").scrollTop = document.getElementById("Selected Text").scrollHeight;}, 500);
 		if (span.textContent != "") {
 			assign_world_info_to_action(span, null);
 		}
@@ -3001,8 +3006,11 @@ function create_new_wi_entry(folder) {
 									"wpp": {'name': "", 'type': "", 'format': 'W++', 'attributes': {}},
 									'use_wpp': false,
                                     };
-	card = world_info_entry(data);
-	card.scrollIntoView(false);
+	var card = world_info_entry(data);
+	//card.scrollIntoView(false);
+	clearTimeout(world_info_scroll_timeout);
+	world_info_scroll_timeout = setTimeout(function() {card.scrollIntoView(false);}, 200);
+	
 }
 
 function hide_wi_folder(folder) {
@@ -3142,34 +3150,30 @@ function assign_world_info_to_action(action_item, uid) {
 			//First check to see if we have a key in the text
 			for (const [key, worldinfo] of  Object.entries(worldinfo_to_check)) {
 				//remove any world info tags on the overall chunk
-				for (tag of action.getElementsByClassName("tag_uid_"+uid)) {
-					tag.classList.remove("tag_uid_"+uid);
-					tag.removeAttribute("title");
-					current_ids = tag.parentElement.getAttribute("world_info_uids").split(",");
-					removeA(current_ids, uid);
-					tag.parentElement.setAttribute("world_info_uids", current_ids.join(","));
-				}
-				if (worldinfo.key == undefined) {
-					console.log(uid);
-					console.log(key);
-					console.log(worldinfo);
-					console.log(world_info_data);
-				}
-				for (keyword of worldinfo['key']) {
-					if ((action.textContent.replace(/[^0-9a-z \'\"]/gi, '')).includes(keyword)) {
-						//Ok we have a key match, but we need to check for secondary keys if applicable
-						if (worldinfo['keysecondary'].length > 0) {
-							for (second_key of worldinfo['keysecondary']) {
-								if (action.textContent.replace(/[^0-9a-z \'\"]/gi, '').includes(second_key)) {
-									highlight_world_info_text_in_chunk(action, worldinfo);
-									break;
+				if (worldinfo['constant'] == false) {
+					for (tag of action.getElementsByClassName("tag_uid_"+uid)) {
+						tag.classList.remove("tag_uid_"+uid);
+						tag.removeAttribute("title");
+						current_ids = tag.parentElement.getAttribute("world_info_uids").split(",");
+						removeA(current_ids, uid);
+						tag.parentElement.setAttribute("world_info_uids", current_ids.join(","));
+					}
+					for (keyword of worldinfo['key']) {
+						if ((action.textContent.replace(/[^0-9a-z \'\"]/gi, '')).includes(keyword)) {
+							//Ok we have a key match, but we need to check for secondary keys if applicable
+							if (worldinfo['keysecondary'].length > 0) {
+								for (second_key of worldinfo['keysecondary']) {
+									if (action.textContent.replace(/[^0-9a-z \'\"]/gi, '').includes(second_key)) {
+										highlight_world_info_text_in_chunk(action, worldinfo);
+										break;
+									}
 								}
+							} else {
+								highlight_world_info_text_in_chunk(action, worldinfo);
+								break;
 							}
-						} else {
-							highlight_world_info_text_in_chunk(action, worldinfo);
-							break;
+							
 						}
-						
 					}
 				}
 			}

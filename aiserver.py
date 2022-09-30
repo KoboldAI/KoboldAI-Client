@@ -8246,10 +8246,12 @@ def story_sort(base_path, desc=False):
 @socketio.on('load_story')
 @logger.catch
 def UI_2_load_story(file):
+    start_time = time.time()
     logger.debug("got a call or loading a story: {}".format(file))
     if koboldai_vars.debug:
         print("loading {}".format(file))
     loadRequest(file)
+    logger.debug("Load Story took {}s".format(time.time()-start_time))
 
 #==================================================================#
 # Event triggered on load story

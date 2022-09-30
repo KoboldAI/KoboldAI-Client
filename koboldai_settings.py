@@ -456,6 +456,7 @@ class settings(object):
         if 'no_save' in self.__dict__:
             setattr(self, 'no_save', True)
         for key, value in json_data.items():
+            start_time = time.time()
             if key in self.__dict__ and key not in self.no_save_variables:
                 if key == 'sampler_order':
                     if(len(value) < 7):
@@ -480,6 +481,7 @@ class settings(object):
                     getattr(self, key).load_json(value)
                 else:
                     setattr(self, key, value)
+            logger.debug("Loading {} took {}s".format(key, time.time()- start_time))
         if 'no_save' in self.__dict__:
             setattr(self, 'no_save', False)
         
@@ -738,7 +740,7 @@ class story_settings(settings):
                                         wi.get("constant", False), 
                                         wi["content"], 
                                         wi.get("comment", ""), 
-                                        v1_uid=wi['uid'])
+                                        v1_uid=wi['uid'], sync=False)
         
         new_world_info.socketio = self.socketio
         self.worldinfo_v2 = new_world_info
@@ -1098,13 +1100,12 @@ class KoboldStoryRegister(object):
         if type(json_data) == str:
             import json
             json_data = json.loads(json_data)
+        self.action_count = json_data['action_count']
         #JSON forces keys to be strings, so let's fix that
         temp = {}
         for item in json_data['actions']:
             temp[int(item)] = json_data['actions'][item]
             process_variable_changes(self.socketio, "story", 'actions', {"id": item, 'action':  temp[int(item)]}, None)
-        
-        self.action_count = json_data['action_count']
         self.actions = temp
         self.set_game_saved()
         self.story_settings.save_story()
@@ -1550,7 +1551,7 @@ class KoboldWorldInfo(object):
                 
     def add_item(self, title, key, keysecondary, folder, constant, manual_text, 
                  comment, use_wpp=False, wpp={'name': "", 'type': "", 'format': "W++", 'attributes': {}}, 
-                 v1_uid=None, recalc=True):
+                 v1_uid=None, recalc=True, sync=True):
         if len(self.world_info) == 0:
             uid = 0
         else:
@@ -1568,10 +1569,10 @@ class KoboldWorldInfo(object):
                 content = "{} ]".format(content[:-1])
         else:
             content = manual_text
-        if self.tokenizer is not None:
-            token_length = len(self.tokenizer.encode(content))
-        else:
-            token_length = 0
+        #if self.tokenizer is not None:
+        #    token_length = len(self.tokenizer.encode(content))
+        #else:
+        token_length = 0
         if folder is None:
             folder = "root"
         
@@ -1610,7 +1611,8 @@ class KoboldWorldInfo(object):
             self.world_info_folder[folder] = []
         self.world_info_folder[folder].append(uid)
         self.story_settings.gamesaved = False
-        self.sync_world_info_to_old_format()
+        if sync:
+            self.sync_world_info_to_old_format()
         
         if self.socketio is not None:
             self.socketio.emit("world_info_folder", {x: self.world_info_folder[x] for x in self.world_info_folder}, broadcast=True, room="UI_2")
@@ -1742,6 +1744,7 @@ class KoboldWorldInfo(object):
         
         #Add the item
         for uid, item in data['entries'].items():
+            start_time = time.time()
             self.add_item(item['title'] if 'title' in item else item['key'][0], 
                           item['key'] if 'key' in item else [], 
                           item['keysecondary'] if 'keysecondary' in item else [], 
@@ -1751,10 +1754,12 @@ class KoboldWorldInfo(object):
                           item['comment'] if 'comment' in item else '',
                           use_wpp=item['use_wpp'] if 'use_wpp' in item else False, 
                           wpp=item['wpp'] if 'wpp' in item else {'name': "", 'type': "", 'format': "W++", 'attributes': {}},
-                          recalc=False)
-        
+                          recalc=False, sync=False)
+            logger.debug("Load World Info {} took {}s".format(uid, time.time()-start_time))
         try:
+            start_time = time.time()
             self.sync_world_info_to_old_format()
+            logger.debug("Syncing WI2 to WI1 took {}s".format(time.time()-start_time))
         except:
             print(self.world_info)
             print(data)
