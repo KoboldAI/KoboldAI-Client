@@ -1113,7 +1113,7 @@ class KoboldStoryRegister(object):
         self.set_game_saved()
         self.story_settings.save_story()
         
-    def append(self, text, action_id_offset=0):
+    def append(self, text, action_id_offset=0, recalc=True):
         self.clear_unused_options()
         self.action_count+=1
         action_id = self.action_count + action_id_offset
@@ -1139,8 +1139,9 @@ class KoboldStoryRegister(object):
             
         process_variable_changes(self.socketio, "story", 'actions', {"id": action_id, 'action':  self.actions[action_id]}, None)
         self.set_game_saved()
-        logger.debug("Calcing AI Text from Action Append")
-        ignore = self.koboldai_vars.calc_ai_text()
+        if recalc:
+            logger.debug("Calcing AI Text from Action Append")
+            ignore = self.koboldai_vars.calc_ai_text()
     
     def append_options(self, option_list):
         if self.action_count+1 in self.actions:
@@ -1818,7 +1819,6 @@ class KoboldWorldInfo(object):
         
         #self.wifolders_u = {}     # Dictionary of pairs of folder UID - list of WI UID
         self.story_settings.wifolders_u = {folder_entries[x]: [y for y in self.story_settings.worldinfo if y['folder'] == x] for x in folder_entries}
-        
         
     def reset_used_in_game(self):
         for key in self.world_info:
