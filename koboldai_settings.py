@@ -1113,7 +1113,6 @@ class KoboldStoryRegister(object):
         self.set_game_saved()
         self.story_settings.save_story()
         
-            
     def append(self, text):
         self.clear_unused_options()
         self.action_count+=1

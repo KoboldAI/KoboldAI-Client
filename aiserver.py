@@ -7053,8 +7053,11 @@ def load_story_v1(js):
         else:
             koboldai_vars.gamestarted = False
     if(koboldai_vars.gamestarted):
-        for s in actions:
-            koboldai_vars.actions.append(s)
+        koboldai_vars.actions.action_count += 1
+        for i in range(len(js["actions"])):
+            if i == len(js["actions"])-1:
+                koboldai_vars.actions.action_count -= 1
+            koboldai_vars.actions.append(js["actions"][i])
 
     if "actions_metadata" in js:
         if type(js["actions_metadata"]) == dict:
