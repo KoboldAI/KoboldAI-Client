@@ -60,6 +60,7 @@ var finder_mode = "ui";
 var finder_waiting_id = null;
 var control_held = false;
 var actions_data = {};
+var setup_wi_toggles = [];
 
 // name, desc, icon, func
 const finder_actions = [
@@ -117,6 +118,7 @@ var calc_token_usage_timeout;
 var game_text_scroll_timeout;
 var world_info_scroll_timeout;
 var font_size_cookie_timout;
+var setup_missing_wi_toggles_timeout;
 var var_processing_time = 0;
 var finder_last_input;
 //-----------------------------------Server to UI  Functions-----------------------------------------------
@@ -1791,6 +1793,7 @@ function world_info_entry(data) {
 	
 	//$('#world_info_constant_'+data.uid).bootstrapToggle();
 	//$('#world_info_wpp_toggle_'+data.uid).bootstrapToggle();
+	setup_wi_toggles.push(data.uid);
 	
 	//hide/unhide w++
 	if (wpp_toggle.checked) {
@@ -1824,7 +1827,18 @@ function world_info_entry(data) {
 	
 	clearTimeout(calc_token_usage_timeout);
 	calc_token_usage_timeout = setTimeout(calc_token_usage, 200);
+	clearTimeout(setup_missing_wi_toggles_timeout);
+	setup_missing_wi_toggles_timeout = setTimeout(setup_missing_wi_toggles, 200);
+	
 	return world_info_card;
+}
+
+function setup_missing_wi_toggles() {
+	for (item of setup_wi_toggles) {
+		$('#world_info_constant_'+item).bootstrapToggle();
+		$('#world_info_wpp_toggle_'+item).bootstrapToggle();
+	}
+	setup_wi_toggles = [];
 }
 
 function world_info_folder(data) {
