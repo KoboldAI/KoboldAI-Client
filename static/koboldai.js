@@ -149,8 +149,14 @@ function reset_story() {
 	on_new_wi_item = null;
 	current_chunk_number = null;
 	var story_area = document.getElementById('Selected Text');
-	while (story_area.lastChild.id != 'story_prompt') { 
-		story_area.removeChild(story_area.lastChild);
+	let temp = []
+	for (child of story_area.children) {
+		if (child.id != 'story_prompt') {
+			temp.push(child);
+		}
+	}
+	for (const item of temp) { 
+		item.remove();
 	}
 	dummy_span = document.createElement("div");
 	dummy_span.id = "Delete Me";
