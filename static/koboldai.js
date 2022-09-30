@@ -97,6 +97,9 @@ const context_menu_actions = [
 	// {label: "View Token Probabilities", icon: "account_tree", visibilityCondition: "SELECTION", click: view_selection_probabilities},
 ];
 
+// Elements
+const titleInput = document.querySelector(".var_sync_story_story_name");
+
 
 const map1 = new Map()
 map1.set('Top K Sampling', 0)
@@ -485,9 +488,9 @@ function update_status_bar(data) {
 		}
 	}
 	if ((percent_complete == 0) || (percent_complete == 100)) {
-		document.title = "KoboldAI Client";
+		updateTitle();
 	} else {
-		document.title = "KoboldAI Client Generating (" + percent_complete + "%)";
+		document.title = `(${percent_complete}%) KoboldAI Client`;
 	}
 }
 
@@ -628,6 +631,14 @@ function var_changed(data) {
 					item.textContent = fix_text(data.value);
 				}
 			}
+
+			// TODO: Add old value and new value to detail?
+			item.dispatchEvent(new CustomEvent("sync", {
+				detail: {},
+				bubbles: false,
+				cancelable: true,
+				composed: false,
+			}));
 		}
 		//alternative syncing method
 		var elements_to_change = document.getElementsByClassName("var_sync_alt_"+data.classname.replace(" ", "_")+"_"+data.name.replace(" ", "_"));
@@ -4403,6 +4414,11 @@ function position_context_menu(contextMenu, x, y) {
 	contextMenu.style.top = `${y}px`;
 }
 
+function updateTitle() {
+	if (!titleInput.innerText) return;
+	document.title = `${titleInput.innerText} - KoboldAI Client`;
+}
+
 $(document).ready(function(){
 	on_colab = document.getElementById("on_colab").textContent == "true";
 
@@ -4669,6 +4685,11 @@ $(document).ready(function(){
 		let wiCard = document.getElementById(`world_info_${uid}`);
 		highlightEl(wiCard);
 	});
+
+	titleInput.addEventListener("input", updateTitle);
+	titleInput.addEventListener("sync", updateTitle);
+
+	updateTitle();
 });
 
 document.addEventListener("keydown", function(event) {
