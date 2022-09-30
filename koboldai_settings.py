@@ -1113,30 +1113,31 @@ class KoboldStoryRegister(object):
         self.set_game_saved()
         self.story_settings.save_story()
         
-    def append(self, text):
+    def append(self, text, action_id_offset=0):
         self.clear_unused_options()
         self.action_count+=1
-        if self.action_count in self.actions:
-            if self.actions[self.action_count]["Selected Text"] != text:
-                self.actions[self.action_count]["Selected Text"] = text
-                self.actions[i]["WI Search Text"] = re.sub("[^0-9a-z \'\"]", "", text)
-                self.actions[self.action_count]["Probabilities"] = []
+        action_id = self.action_count + action_id_offset
+        if action_id in self.actions:
+            if self.actions[action_id]["Selected Text"] != text:
+                self.actions[action_id]["Selected Text"] = text
+                self.actions[action_id]["WI Search Text"] = re.sub("[^0-9a-z \'\"]", "", text)
+                self.actions[action_id]["Probabilities"] = []
             selected_text_length = 0
-            self.actions[self.action_count]["Selected Text Length"] = selected_text_length
-            self.actions[self.action_count]["In AI Input"] = False
-            for item in self.actions[self.action_count]["Options"]:
+            self.actions[action_id]["Selected Text Length"] = selected_text_length
+            self.actions[action_id]["In AI Input"] = False
+            for item in self.actions[action_id]["Options"]:
                 if item['text'] == text:
-                    old_options = self.actions[self.action_count]["Options"]
+                    old_options = self.actions[action_id]["Options"]
                     del item
                     
         else:
             selected_text_length = 0
             
-            self.actions[self.action_count] = {"Selected Text": text, "Selected Text Length": selected_text_length, 
+            self.actions[action_id] = {"Selected Text": text, "Selected Text Length": selected_text_length, 
                                                "WI Search Text": re.sub("[^0-9a-z \'\"]", "", text), 
                                                "In AI Input": False, "Options": [], "Probabilities": []}
             
-        process_variable_changes(self.socketio, "story", 'actions', {"id": self.action_count, 'action':  self.actions[self.action_count]}, None)
+        process_variable_changes(self.socketio, "story", 'actions', {"id": action_id, 'action':  self.actions[action_id]}, None)
         self.set_game_saved()
         logger.debug("Calcing AI Text from Action Append")
         ignore = self.koboldai_vars.calc_ai_text()

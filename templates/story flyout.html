@@ -7,14 +7,14 @@
 <div class="flyout_menu_contents">
 	<div id="story_menu_memory" class="story_category_area tab-target tab-target-story">
 		<div id="Memory">
-			<h4 class="section_header">Memory</h4>
+			<h4 class="section_header"><label for="memory">Memory</label></h4>
 			<span class="help_text">
 				Important information the AI should always keep in mind.
 			</span>
 			<textarea rows=20 id="memory" class="var_sync_story_memory var_sync_alt_story_memory_length fullwidth" onchange='sync_to_server(this);' oninput="autoResize(this)" autocomplete="off"></textarea>
 		</div>
 		<div id="Auto-Memory">
-			<h4 class="section_header">Auto-Memory (non-functional)</h4>
+			<h4 class="section_header"><label for="auto_memory">Auto-Memory (non-functional)</label></h4>
 			<span class="help_text">
 				What the system would use for automatic memory summarized from the game
 			</span>
@@ -29,9 +29,9 @@
 				Heavily influences the direction and style of the AI's writing.
 			</span>
 
-			Template:<br/>
-			<input autocomplete="off" type=text class="var_sync_story_authornotetemplate fullwidth" onchange='sync_to_server(this);'><br/>
-			Author's Notes:<br/>
+			<label for="authors_notes_template">Template:</label><br/>
+			<input autocomplete="off" id=authors_notes_template type=text class="var_sync_story_authornotetemplate fullwidth" onchange='sync_to_server(this);'><br/>
+			<label for="authors_notes">Author's Notes:</label><br/>
 			<textarea autocomplete="off" rows=17 id="authors_notes" class="var_sync_story_authornote var_sync_alt_story_authornote_length fullwidth" oninput="autoResize(this)" onchange='sync_to_server(this);'></textarea><br/>
 			<div class="setting_tile_area">
 				{% with menu='author_notes' %}
@@ -44,11 +44,11 @@
 	</div>
 	<div id="story_menu_notes" class="story_category_area tab-target tab-target-story hidden">
 		<div id="Notes">
-			<h4 class="section_header">Notes</h4>
+			<h4 class="section_header"><label for="notes">Notes</label></h4>
 			<span class="help_text">
 				Notes about the story. These notes are not read by the AI!
 			</span>
-			<textarea autocomplete="off" rows=20 class="var_sync_story_notes fullwidth" onchange='sync_to_server(this);' oninput="autoResize(this)"></textarea>
+			<textarea id="notes" autocomplete="off" rows=20 class="var_sync_story_notes fullwidth" onchange='sync_to_server(this);' oninput="autoResize(this)"></textarea>
 		</div>
 	</div>
 	<div id="story_menu_wi" class="story_category_area tab-target tab-target-story hidden">

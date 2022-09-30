@@ -7053,11 +7053,13 @@ def load_story_v1(js):
         else:
             koboldai_vars.gamestarted = False
     if(koboldai_vars.gamestarted):
+        #We set the action count higher so that we don't trigger a scroll in the UI. 
+        #Once all but the last is loaded we can bring it back down and do the last one so we scroll to it
         koboldai_vars.actions.action_count += 1
-        for i in range(len(js["actions"])):
-            if i == len(js["actions"])-1:
-                koboldai_vars.actions.action_count -= 1
-            koboldai_vars.actions.append(js["actions"][i])
+        for i in range(len(js["actions"])-1):
+            koboldai_vars.actions.append(js["actions"][i], action_id_offset=-1)
+        koboldai_vars.actions.action_count -= 1
+        koboldai_vars.actions.append(js["actions"][len(js["actions"])-1])
 
     if "actions_metadata" in js:
         if type(js["actions_metadata"]) == dict:
