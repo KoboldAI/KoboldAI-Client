@@ -2426,7 +2426,7 @@ function push_selection_to_phrase_bias() {
 	}
 	document.getElementById("settings_flyout_tab_settings").onclick();
 	document.getElementById("empty_bias_phrase").value = getSelectionText();
-	//document.getElementById("empty_bias_phrase").scrollIntoView(false)
+	document.getElementById("empty_bias_phrase").scrollIntoView(false)
 	document.getElementById("empty_bias_phrase").onchange()
 }
 
@@ -3038,8 +3038,8 @@ function create_new_wi_entry(folder) {
                                     };
 	var card = world_info_entry(data);
 	//card.scrollIntoView(false);
-	//clearTimeout(world_info_scroll_timeout);
-	//world_info_scroll_timeout = setTimeout(function() {card.scrollIntoView(false);}, 200);
+	clearTimeout(world_info_scroll_timeout);
+	world_info_scroll_timeout = setTimeout(function() {card.scrollIntoView(false);}, 200);
 	
 }
 
@@ -3905,7 +3905,7 @@ function highlightEl(element) {
 	
 	let tab = Array.from($(".tab")).filter((c) => c.getAttribute("tab-target") === area.id)[0];
 	tab.click();
-	//element.scrollIntoView();
+	element.scrollIntoView();
 }
 
 function addSearchListing(action, highlight) {
