@@ -333,6 +333,7 @@ function do_story_text_updates(data) {
 		
 		story_area.append(span);
 		if (data.value.id.toString() == document.getElementById('action_count').textContent) {
+			console.log("Scrolling. Action Count: "+document.getElementById('action_count').textContent);
 			document.getElementById("Selected Text").scrollTop = document.getElementById("Selected Text").scrollHeight;
 		}
 		//clearTimeout(game_text_scroll_timeout);
