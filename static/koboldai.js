@@ -97,9 +97,7 @@ const context_menu_actions = [
 	// {label: "View Token Probabilities", icon: "account_tree", visibilityCondition: "SELECTION", click: view_selection_probabilities},
 ];
 
-// Elements
-const titleInput = document.querySelector(".var_sync_story_story_name");
-
+function $el(selector) { return document.querySelector(selector); }
 
 const map1 = new Map()
 map1.set('Top K Sampling', 0)
@@ -4415,12 +4413,13 @@ function position_context_menu(contextMenu, x, y) {
 }
 
 function updateTitle() {
+	const titleInput = $el(".var_sync_story_story_name");
 	if (!titleInput.innerText) return;
 	document.title = `${titleInput.innerText} - KoboldAI Client`;
 }
 
 $(document).ready(function(){
-	on_colab = document.getElementById("on_colab").textContent == "true";
+	on_colab = $el("#on_colab").textContent == "true";
 
 	if (colab_cookies != null) {
 		for (const cookie of Object.keys(colab_cookies)) {
@@ -4686,6 +4685,7 @@ $(document).ready(function(){
 		highlightEl(wiCard);
 	});
 
+	const titleInput = $el(".var_sync_story_story_name");
 	titleInput.addEventListener("input", updateTitle);
 	titleInput.addEventListener("sync", updateTitle);
 
