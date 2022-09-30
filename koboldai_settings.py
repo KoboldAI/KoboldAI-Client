@@ -1199,15 +1199,16 @@ class KoboldStoryRegister(object):
         self.set_game_saved()
     
     def set_action_in_ai(self, action_id, used=True):
-        if 'In AI Input' in self.actions[action_id]:
-            old = self.actions[action_id]['In AI Input']
-        else:
-            old = None
-        self.actions[action_id]['In AI Input'] = used
-        if old != used:
-            process_variable_changes(self.socketio, "story", 'actions', {"id": action_id, 'action':  self.actions[action_id]}, None)
-            if used:
-                self.recalc_token_length(action_id)
+        if action_id in self.actions:
+            if 'In AI Input' in self.actions[action_id]:
+                old = self.actions[action_id]['In AI Input']
+            else:
+                old = None
+            self.actions[action_id]['In AI Input'] = used
+            if old != used:
+                process_variable_changes(self.socketio, "story", 'actions', {"id": action_id, 'action':  self.actions[action_id]}, None)
+                if used:
+                    self.recalc_token_length(action_id)
     
     def set_pin(self, action_step, option_number):
         if action_step in self.actions:
