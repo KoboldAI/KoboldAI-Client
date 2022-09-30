@@ -1055,6 +1055,7 @@ class KoboldStoryRegister(object):
             old_length = self.actions[i]["Selected Text Length"]
             if self.actions[i]["Selected Text"] != text:
                 self.actions[i]["Selected Text"] = text
+                self.actions[i]["WI Search Text"] = re.sub("[^0-9a-z \'\"]", "", text)
                 self.actions[i]["Probabilities"] = []
             if "Options" in self.actions[i]:
                 for j in range(len(self.actions[i]["Options"])):
@@ -1066,7 +1067,7 @@ class KoboldStoryRegister(object):
             old_text = None
             old_length = None
             old = None
-            self.actions[i] = {"Selected Text": text, "Probabilities": [], "Options": []}
+            self.actions[i] = {"Selected Text": text, "WI Search Text": re.sub("[^0-9a-z \'\"]", "", text), "Probabilities": [], "Options": []}
             
         if self.tokenizer is not None:
             self.actions[i]['Selected Text Length'] = len(self.tokenizer.encode(text))
@@ -1105,6 +1106,8 @@ class KoboldStoryRegister(object):
         temp = {}
         for item in json_data['actions']:
             temp[int(item)] = json_data['actions'][item]
+            if "WI Search Text" not in temp[int(item)]:
+                temp[int(item)]["WI Search Text"] = re.sub("[^0-9a-z \'\"]", "", temp[int(item)]['Selected Text'])
             process_variable_changes(self.socketio, "story", 'actions', {"id": item, 'action':  temp[int(item)]}, None)
         self.actions = temp
         self.set_game_saved()
@@ -1117,11 +1120,9 @@ class KoboldStoryRegister(object):
         if self.action_count in self.actions:
             if self.actions[self.action_count]["Selected Text"] != text:
                 self.actions[self.action_count]["Selected Text"] = text
+                self.actions[i]["WI Search Text"] = re.sub("[^0-9a-z \'\"]", "", text)
                 self.actions[self.action_count]["Probabilities"] = []
-            if self.tokenizer is not None:
-                selected_text_length = len(self.tokenizer.encode(text))
-            else:
-                selected_text_length = 0
+            selected_text_length = 0
             self.actions[self.action_count]["Selected Text Length"] = selected_text_length
             self.actions[self.action_count]["In AI Input"] = False
             for item in self.actions[self.action_count]["Options"]:
@@ -1130,12 +1131,11 @@ class KoboldStoryRegister(object):
                     del item
                     
         else:
-            if self.tokenizer is not None:
-                selected_text_length = len(self.tokenizer.encode(text))
-            else:
-                selected_text_length = 0
+            selected_text_length = 0
             
-            self.actions[self.action_count] = {"Selected Text": text, "Selected Text Length": selected_text_length, "In AI Input": False, "Options": [], "Probabilities": []}
+            self.actions[self.action_count] = {"Selected Text": text, "Selected Text Length": selected_text_length, 
+                                               "WI Search Text": re.sub("[^0-9a-z \'\"]", "", text), 
+                                               "In AI Input": False, "Options": [], "Probabilities": []}
             
         process_variable_changes(self.socketio, "story", 'actions', {"id": self.action_count, 'action':  self.actions[self.action_count]}, None)
         self.set_game_saved()
@@ -1198,7 +1198,6 @@ class KoboldStoryRegister(object):
             process_variable_changes(self.socketio, "story", 'actions', {"id": pointer, 'action':  self.actions[pointer]}, None)
         self.set_game_saved()
     
-    
     def set_action_in_ai(self, action_id, used=True):
         if 'In AI Input' in self.actions[action_id]:
             old = self.actions[action_id]['In AI Input']
@@ -1243,6 +1242,7 @@ class KoboldStoryRegister(object):
             old_length = self.actions[action_step]["Selected Text Length"]
             if option_number < len(self.actions[action_step]['Options']):
                 self.actions[action_step]["Selected Text"] = self.actions[action_step]['Options'][option_number]['text']
+                self.actions[action_step]["WI Search Text"] = re.sub("[^0-9a-z \'\"]", "", self.actions[action_step]["Selected Text"])
                 if 'Probabilities' in self.actions[action_step]['Options'][option_number]:
                     self.actions[action_step]["Probabilities"] = self.actions[action_step]['Options'][option_number]['Probabilities']
                 if self.tokenizer is not None:

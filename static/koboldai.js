@@ -304,6 +304,7 @@ function do_story_text_updates(data) {
 		span.textContent = data.value.action['Selected Text'];
 		item.append(span);
 		item.original_text = data.value.action['Selected Text'];
+		item.setAttribute("WI_Search_Text", data.value.action['WI Search Text']);
 		item.setAttribute("world_info_uids", "");
 		item.classList.remove("pulse")
 		//item.scrollIntoView();
@@ -318,6 +319,7 @@ function do_story_text_updates(data) {
 		span.original_text = data.value.action['Selected Text'];
 		new_span = document.createElement("span");
 		new_span.textContent = data.value.action['Selected Text'];
+		span.setAttribute("WI_Search_Text", data.value.action['WI Search Text']);
 		span.append(new_span);
 		
 		
@@ -345,7 +347,8 @@ function do_prompt(data) {
 		span = document.createElement("span");
 		span.textContent = data.value;
 		item.append(span);
-		item.setAttribute("old_text", data.value)
+		item.setAttribute("old_text", data.value);
+		item.setAttribute("WI_Search_Text", data.value.replace(/[^0-9a-z \'\"]/gi, ''));
 		item.classList.remove("pulse");
 		assign_world_info_to_action(item, null);
 	}
@@ -3159,11 +3162,11 @@ function assign_world_info_to_action(action_item, uid) {
 						tag.parentElement.setAttribute("world_info_uids", current_ids.join(","));
 					}
 					for (keyword of worldinfo['key']) {
-						if ((action.textContent.replace(/[^0-9a-z \'\"]/gi, '')).includes(keyword)) {
+						if ((action.getAttribute('WI_Search_Text')).includes(keyword)) {
 							//Ok we have a key match, but we need to check for secondary keys if applicable
 							if (worldinfo['keysecondary'].length > 0) {
 								for (second_key of worldinfo['keysecondary']) {
-									if (action.textContent.replace(/[^0-9a-z \'\"]/gi, '').includes(second_key)) {
+									if (action.getAttribute('WI_Search_Text').includes(second_key)) {
 										highlight_world_info_text_in_chunk(action, worldinfo);
 										break;
 									}
@@ -3194,7 +3197,7 @@ function highlight_world_info_text_in_chunk(action, wi) {
 	//First let's find the largest key that matches
 	let largest_key = "";
 	for (keyword of wi['key']) {
-		if ((keyword.length > largest_key.length) && (action.textContent.replace(/[^0-9a-z \'\"]/gi, '').includes(keyword))) {
+		if ((keyword.length > largest_key.length) && (action.getAttribute('WI_Search_Text').includes(keyword))) {
 			largest_key = keyword;
 		}
 	}
