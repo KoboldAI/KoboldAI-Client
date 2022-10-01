@@ -4632,6 +4632,9 @@ $(".token_breakdown").click(function() {
 	}
 
 	$("#gamescreen").contextmenu(function(event) {
+		// If control is held, do not run our custom logic or cancel the browser's.
+		if (event.ctrlKey) return;
+
 		// Don't open browser context menu
 		event.preventDefault();
 
