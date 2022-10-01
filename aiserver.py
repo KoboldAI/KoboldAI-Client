@@ -8261,11 +8261,12 @@ def UI_2_load_story(file):
     logger.debug("Load Story took {}s".format(time.time()-start_time))
 
 #==================================================================#
-# Event triggered on load story
+# Event triggered on new story
 #==================================================================#
 @socketio.on('new_story')
 @logger.catch
 def UI_2_new_story(data):
+    logger.info("Starting new story")
     koboldai_vars.create_story("")
     
     

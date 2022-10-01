@@ -2,7 +2,7 @@ from dataclasses import dataclass
 import os, re, time, threading, json, pickle, base64, copy, tqdm, datetime, sys
 from io import BytesIO
 from flask import has_request_context, session
-from flask_socketio import SocketIO
+from flask_socketio import SocketIO, join_room, leave_room
 from collections import OrderedDict
 import multiprocessing
 from logger import logger
@@ -106,8 +106,15 @@ class koboldai_vars(object):
         original_story_name = story_name
         if not multi_story:
             story_name = 'default'
+        #Leave the old room and join the new one
+        logger.debug("Leaving room {}".format(session['story']))
+        leave_room(session['story'])
+        logger.debug("Joining room {}".format(story_name))
+        join_room(story_name)
+        session['story'] = story_name
+        logger.debug("Sending story reset")
+        self._story_settings[story_name].socketio.emit("reset_story", {}, broadcast=True, room=story_name)
         if story_name in self._story_settings:
-            self._story_settings[story_name].socketio.emit("reset_story", {}, broadcast=True, room="UI_2")
             self._story_settings[story_name].no_save = True
             self._story_settings[story_name].from_json(json_data)
             self._story_settings[story_name].no_save = False
@@ -131,16 +138,22 @@ class koboldai_vars(object):
         #story_name = 'default'
         if not multi_story:
             story_name = 'default'
-        if story_name in self._story_settings:
-            self._story_settings[story_name].reset()
-        else:
-            self._story_settings[story_name] = story_settings(self.socketio, self)
-            self._story_settings[story_name].reset()
+        self._story_settings[story_name] = story_settings(self.socketio, self)
+        #self._story_settings[story_name].reset()
         if json_data is not None:
             self.load_story(story_name, json_data)
+        else:
+            #Leave the old room and join the new one
+            logger.debug("Leaving room {}".format(session['story']))
+            leave_room(session['story'])
+            logger.debug("Joining room {}".format(story_name))
+            join_room(story_name)
+            session['story'] = story_name
+            logger.debug("Sending story reset")
+            self._story_settings[story_name].socketio.emit("reset_story", {}, broadcast=True, room=story_name)
+            self._story_settings[story_name].send_to_ui()
         session['story'] = story_name
         
-        self._story_settings[story_name].send_to_ui()
     
     def story_list(self):
         return [x for x in self._story_settings]
@@ -751,7 +764,7 @@ class story_settings(settings):
         old_value = getattr(self, name, None)
         super().__setattr__(name, value)
         #Put variable change actions here
-        if name not in self.local_only_variables and name[0] != "_" and not new_variable:
+        if name not in self.local_only_variables and name[0] != "_" and not new_variable and old_value != value:
             process_variable_changes(self.socketio, self.__class__.__name__.replace("_settings", ""), name, value, old_value)
         #We want to automatically set gamesaved to false if something happens to the actions list (pins, redos, generations, text, etc)
         #To do that we need to give the actions list a copy of this data so it can set the gamesaved variable as needed
