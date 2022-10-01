@@ -4471,7 +4471,7 @@ for (const tweakContainer of document.getElementsByClassName("tweak-container"))
 process_cookies();
 
 $("#context-viewer-close").click(function() {
-	$el(".context-viewer-container").classList.add("hidden");
+	$el("#context-viewer-container").classList.add("hidden");
 });
 
 $(".token_breakdown").click(function() {
