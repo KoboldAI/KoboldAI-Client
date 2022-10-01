@@ -1121,7 +1121,7 @@ body {
 @media only screen and (min-aspect-ratio: 7/5) {
 /* ------------------- Desktop Mode --------------------------- */
 .main-grid {
-	transition: margin-left .5s;
+	transition: margin-left .5s, margin-right .5s;
 	display: grid;
 	height: 98vh;
 	margin-left: var(--setting_menu_closed_width_no_pins_width);
