@@ -1510,14 +1510,16 @@ class KoboldWorldInfo(object):
             if uid is not None:
                 if uid in self.world_info:
                     self.world_info[uid]['token_length'] = len(self.tokenizer.encode(self.world_info[uid]['content']))
+                    self.socketio.emit("world_info_entry", self.world_info[uid], broadcast=True, room="UI_2")
             else:
                 for uid in self.world_info:
                     self.world_info[uid]['token_length'] = len(self.tokenizer.encode(self.world_info[uid]['content']))
+                self.send_to_ui()
         else:
             for uid in self.world_info:
                 self.world_info[uid]['token_length'] = 0
+            self.send_to_ui()
                 
-        self.send_to_ui()
     
     def add_folder(self, folder):
         if folder in self.world_info_folder:
