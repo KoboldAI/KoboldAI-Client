@@ -188,8 +188,8 @@
 								 "menuicon inputrow inputrow lefticon";
 	--story_pinned_area_widths_left: 30pxvar(--story_options_size) auto 30px;
 	--story_pinned_area_widths_right: 30pxautovar(--story_options_size) 30px;
-	--story_pinned_areas:var(--story_pinned_areas_left);
-	--story_pinned_area_widths:var(--story_pinned_area_widths_left);
+	--story_pinned_areas: var(--story_pinned_areas_left);
+	--story_pinned_area_widths: var(--story_pinned_area_widths_left);
 	--font_size_adjustment: 0px;
 	--game_screen_font_size_adjustment: 1;}
 

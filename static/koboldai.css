@@ -1135,13 +1135,13 @@ body {
 
 .main-grid.settings_pinned {
 	margin-left: var(--flyout_menu_width);
-	grid-template-columns: 30px auto var(--story_options_size) 30px;
+	*grid-template-columns: 30px auto var(--story_options_size) 30px;
 }
 .main-grid.story_pinned {
-	margin-left: var(--flyout_menu_closed_width);
 	margin-right: var(--flyout_menu_width);
+	/*margin-left: var(--setting_menu_closed_width_no_pins_width);
 	grid-template-areas: var(--story_pinned_areas);
-	grid-template-columns: var(--story_pinned_area_widths);
+	grid-template-columns: var(--story_pinned_area_widths);*/
 }
 .main-grid.settings_pinned.story_pinned {
 	margin-left: var(--flyout_menu_width);
