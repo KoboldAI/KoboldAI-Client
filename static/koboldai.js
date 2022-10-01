@@ -49,7 +49,6 @@ var world_info_data = {};
 var world_info_folder_data = {};
 var saved_settings = {};
 var finder_selection_index = -1;
-var on_colab;
 var colab_cookies = null;
 var wi_finder_data = [];
 var wi_finder_offset = 0;
@@ -61,6 +60,7 @@ var finder_waiting_id = null;
 var control_held = false;
 var actions_data = {};
 var setup_wi_toggles = [];
+const on_colab = $el("#on_colab").textContent == "true";
 
 // name, desc, icon, func
 const finder_actions = [
@@ -97,6 +97,12 @@ const context_menu_actions = [
 	// {label: "View Token Probabilities", icon: "account_tree", visibilityCondition: "SELECTION", click: view_selection_probabilities},
 ];
 
+function $el(selector) {
+	// We do not preemptively fetch all elements upon execution (wall of consts)
+	// due to the layer of mental overhead it adds to debugging and reading
+	// code in general.
+	return document.querySelector(selector);
+}
 
 const map1 = new Map()
 map1.set('Top K Sampling', 0)
@@ -491,9 +497,9 @@ function update_status_bar(data) {
 		}
 	}
 	if ((percent_complete == 0) || (percent_complete == 100)) {
-		document.title = "KoboldAI Client";
+		updateTitle();
 	} else {
-		document.title = "KoboldAI Client Generating (" + percent_complete + "%)";
+		document.title = `(${percent_complete}%) KoboldAI Client`;
 	}
 }
 
@@ -634,6 +640,14 @@ function var_changed(data) {
 					item.textContent = fix_text(data.value);
 				}
 			}
+
+			// TODO: Add old value and new value to detail?
+			item.dispatchEvent(new CustomEvent("sync", {
+				detail: {},
+				bubbles: false,
+				cancelable: true,
+				composed: false,
+			}));
 		}
 		//alternative syncing method
 		var elements_to_change = document.getElementsByClassName("var_sync_alt_"+data.classname.replace(" ", "_")+"_"+data.name.replace(" ", "_"));
@@ -4409,53 +4423,64 @@ function position_context_menu(contextMenu, x, y) {
 	contextMenu.style.top = `${y}px`;
 }
 
-$(document).ready(function(){
-	on_colab = document.getElementById("on_colab").textContent == "true";
+function updateTitle() {
+	const titleInput = $el(".var_sync_story_story_name");
+	if (!titleInput.innerText) return;
+	document.title = `${titleInput.innerText} - KoboldAI Client`;
+}
 
-	if (colab_cookies != null) {
-		for (const cookie of Object.keys(colab_cookies)) {
-			setCookie(cookie, colab_cookies[cookie]);
-		}	
-		colab_cookies = null;
-	}
+//// INIT ////
 
-	//create_theming_elements();
-	document.onkeydown = detect_key_down;
-	document.onkeyup = detect_key_up;
-	document.getElementById("input_text").onkeydown = detect_enter_submit;
-	
-	// Tweak registering
-	for (const tweakContainer of document.getElementsByClassName("tweak-container")) {
-		let toggle = tweakContainer.querySelector("input");
+document.onkeydown = detect_key_down;
+document.onkeyup = detect_key_up;
+document.getElementById("input_text").onkeydown = detect_enter_submit;
 
-		$(toggle).change(function(e) {
-			let path = $(this).closest(".tweak-container")[0].getAttribute("tweak-path");
-			let id = `tweak-${path}`;
+/* -- Colab Cookie Handling -- */
+if (colab_cookies != null) {
+	for (const cookie of Object.keys(colab_cookies)) {
+		setCookie(cookie, colab_cookies[cookie]);
+	}	
+	colab_cookies = null;
+}
 
-			if (this.checked) {
-				let style = document.createElement("link");
-				style.rel = "stylesheet";
-				style.href = `/themes/tweaks/${path}.css`;
-				style.id = id;
-				document.head.appendChild(style);
-			} else {
-				let el = document.getElementById(id);
-				if (el) el.remove();
-			}
+//create_theming_elements();
 
-			save_tweaks();
-		});
-	}
-	
-	process_cookies();
+/* -- Tweak Registering -- */
+for (const tweakContainer of document.getElementsByClassName("tweak-container")) {
+	let toggle = tweakContainer.querySelector("input");
 
-	$("#context-viewer-close").click(function() {
-		document.getElementById("context-viewer-container").classList.add("hidden");
+	$(toggle).change(function(e) {
+		let path = $(this).closest(".tweak-container")[0].getAttribute("tweak-path");
+		let id = `tweak-${path}`;
+
+		if (this.checked) {
+			let style = document.createElement("link");
+			style.rel = "stylesheet";
+			style.href = `/themes/tweaks/${path}.css`;
+			style.id = id;
+			document.head.appendChild(style);
+		} else {
+			let el = document.getElementById(id);
+			if (el) el.remove();
+		}
+
+		save_tweaks();
 	});
+}
 
-	$(".token_breakdown").click(function() {
-		document.getElementById("context-viewer-container").classList.remove("hidden");
-	});
+process_cookies();
+
+$("#context-viewer-close").click(function() {
+	$el(".context-viewer-container").classList.add("hidden");
+});
+
+$(".token_breakdown").click(function() {
+	$el("#context-viewer-container").classList.remove("hidden");
+});
+
+/* -- Drag and Drop -- */
+(function() {
+	let lastTarget = null;
 
 	document.body.addEventListener("drop", function(e) {
 		e.preventDefault();
@@ -4475,8 +4500,6 @@ $(document).ready(function(){
 		}
 	});
 
-	let lastTarget = null;
-
 	document.body.addEventListener("dragover", function(e) {
 		e.preventDefault();
 	});
@@ -4491,8 +4514,15 @@ $(document).ready(function(){
 
 		$("#file-upload-notice")[0].classList.add("hidden");
 	});
+})();
 
-	// Parse settings for search thingey
+/* -- Finder -- */
+(function() {
+	const finderContainer = document.getElementById("finder-container");
+	const finderInput = document.getElementById("finder-input");
+	const finderIcon = document.getElementById("finder-icon");
+
+	// Parse settings for Finder
 	for (const el of $(".setting_label")) {
 		let name = el.children[0].innerText;
 
@@ -4506,7 +4536,7 @@ $(document).ready(function(){
 			func: function () { highlightEl(el.parentElement) },
 		});
 	}
-	
+
 	for (const el of $(".collapsable_header")) {
 		// https://stackoverflow.com/a/11347962
 		let headerText = $(el.children[0]).contents().filter(function() {
@@ -4519,10 +4549,6 @@ $(document).ready(function(){
 			func: function () { highlightEl(el) },
 		});
 	}
-
-	const finderContainer = document.getElementById("finder-container");
-	const finderInput = document.getElementById("finder-input");
-	const finderIcon = document.getElementById("finder-icon");
 
 	finderIcon.addEventListener("click", cycleFinderMode);
 	finderInput.addEventListener("keyup", updateSearchListings);
@@ -4569,24 +4595,28 @@ $(document).ready(function(){
 		finder_selection_index = future;
 		updateFinderSelection(delta);
 	});
-	
+
 	finderContainer.addEventListener("click", function(e) {
 		if (e.target !== this) return;
 		finderContainer.classList.add("hidden");
 	});
+})();
 
-	// Debug file
+/* -- Debug File -- */
+(function() {
+	const debugContainer = document.getElementById("debug-file-container");
 	// TODO: All of this generic backdrop code really sucks. There should be a
 	// standardised thing for popups that adds the dimmed backdrop and standard
 	// closing, etc.
 
-	const debugContainer = document.getElementById("debug-file-container");
-
 	debugContainer.addEventListener("click", function(e) {
 		debugContainer.classList.add("hidden");
 	});
+})();
 
-	// Context menu
+
+/* -- Context Menu -- */
+(function() {
 	const contextMenu = $e("div", document.body, {id: "context-menu", classes: ["hidden"]});
 
 	for (const action of context_menu_actions) {
@@ -4608,6 +4638,9 @@ $(document).ready(function(){
 	}
 
 	$("#gamescreen").contextmenu(function(event) {
+		// If control is held, do not run our custom logic or cancel the browser's.
+		if (event.ctrlKey) return;
+
 		// Don't open browser context menu
 		event.preventDefault();
 
@@ -4648,26 +4681,31 @@ $(document).ready(function(){
 	window.addEventListener("blur", function(event) {
 		contextMenu.classList.add("hidden");
 	});
+})();
 
-	// Change appearance of WI when holding control
+
+/* -- WI Ctrl+Click To Jump -- */
+(function() {
 	document.addEventListener("keydown", function(event) {
+		// Change appearance of WI when holding control
 		if (event.key !== "Control") return;
 		control_held = true;
 
 		const style = ".wi_match { text-decoration: underline; cursor: pointer; }";
 		$e("style", document.head, {id: "wi-link-style", innerText: style})
 	});
-	
+
 	// Remove on up
 	document.addEventListener("keyup", function(event) {
 		if (event.key !== "Control") return;
 		control_held = false;
 
-		document.querySelector("#wi-link-style").remove();
+		const style = document.querySelector("#wi-link-style")
+		if (style) style.remove();
 	});
 
 	document.getElementById("Selected Text").addEventListener("click", function(event) {
-		// Control click on WI entry
+		// Control click on WI entry to jump
 		if (!event.target.classList.contains("wi_match")) return;
 		if (!control_held) return;
 
@@ -4675,8 +4713,21 @@ $(document).ready(function(){
 		let wiCard = document.getElementById(`world_info_${uid}`);
 		highlightEl(wiCard);
 	});
-});
+})();
 
+/* -- Update Tab Title on Input and Sync -- */
+(function() {
+	const titleInput = $el(".var_sync_story_story_name");
+	titleInput.addEventListener("input", updateTitle);
+	titleInput.addEventListener("sync", updateTitle);
+
+	// Title may not have been sent by this point. Fear not; We abort if
+	// there's no title. If we have missed the title sync, however, this will
+	// save us.
+	updateTitle();
+})();
+
+/* -- Shortcuts -- */
 document.addEventListener("keydown", function(event) {
 		
 	if (!event.ctrlKey) return;
