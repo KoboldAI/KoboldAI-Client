@@ -71,6 +71,15 @@ def set_rng_seed(seed: int):
 def randomize_rng_seed():
     return set_rng_seed(random.randrange(sys.maxsize))
 
+def get_rng_state():
+    return rng
+
+def set_rng_state(state):
+    global rng
+    rng = state
+
+def new_rng_state(seed: int):
+    return random.Random(seed)
 
 def warper_callback(logits) -> np.array:
     raise NotImplementedError("`tpu_mtj_backend.warper_callback()` needs to be defined")
