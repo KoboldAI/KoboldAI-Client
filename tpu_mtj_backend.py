@@ -55,7 +55,7 @@ from mesh_transformer.util import to_bf16
 
 params: Dict[str, Any] = {}
 
-__seed = random.randrange(sys.maxsize)
+__seed = random.randrange(2**64)
 rng = random.Random(__seed)
 
 
@@ -69,7 +69,7 @@ def set_rng_seed(seed: int):
     return seed
 
 def randomize_rng_seed():
-    return set_rng_seed(random.randrange(sys.maxsize))
+    return set_rng_seed(random.randrange(2**64))
 
 def get_rng_state():
     return rng

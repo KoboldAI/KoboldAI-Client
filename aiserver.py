@@ -7478,7 +7478,7 @@ class GenerationInputSchema(SamplerSettingsSchema):
     frmtadsnsp: Optional[bool] = fields.Boolean(metadata={"description": "Input formatting option. When enabled, adds a leading space to your input if there is no trailing whitespace at the end of the previous action.\n\nIf `disable_input_formatting` is `true`, this defaults to `false` instead of the value in the KoboldAI GUI."})
     quiet: Optional[bool] = fields.Boolean(metadata={"description": "When enabled, Generated output will not be displayed in the console."})
     sampler_order: Optional[List[int]] = fields.List(fields.Integer(), validate=[validate.Length(min=6), permutation_validator], metadata={"description": "Sampler order to be used. If N is the length of this array, then N must be greater than or equal to 6 and the array must be a permutation of the first N non-negative integers."})
-    sampler_seed: Optional[int] = fields.Integer(metadata={"description": "RNG seed to use for sampling. If not specified, the global RNG will be used."})
+    sampler_seed: Optional[int] = fields.Integer(validate=validate.Range(min=0, max=2**64 - 1), metadata={"description": "RNG seed to use for sampling. If not specified, the global RNG will be used."})
     sampler_full_determinism: Optional[bool] = fields.Boolean(metadata={"description": "If enabled, the generated text will always be the same as long as you use the same RNG seed, input and settings. If disabled, only the *sequence* of generated texts that you get when repeatedly generating text will be the same given the same RNG seed, input and settings."})
 
 class GenerationResultSchema(KoboldSchema):
@@ -9881,7 +9881,7 @@ def put_config_soft_prompt(body: SoftPromptSettingSchema):
     return {}
 
 class SamplerSeedSettingSchema(KoboldSchema):
-    value: int = fields.Integer(required=True)
+    value: int = fields.Integer(validate=validate.Range(min=0, max=2**64 - 1), required=True)
 
 @api_v1.get("/config/sampler_seed")
 @api_schema_wrap
