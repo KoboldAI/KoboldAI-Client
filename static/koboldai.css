@@ -2354,7 +2354,7 @@ textarea {
 	outline: none;
 }
 
-/*.pulse {
+.pulse {
 	box-shadow: 0 0 0 0 rgba(255, 255, 255, 1);
 	animation: pulse-white 2s infinite;
 }
@@ -2374,7 +2374,32 @@ textarea {
     transform: scale(0.95);
     box-shadow: 0 0 0 0 rgba(255, 255, 255, 0);
   }
-}*/
+}
+
+@keyframes pulse-text {
+  0% {
+    filter: blur(3px);
+	-webkit-filter: blur(3px);
+  }
+  
+  33% {
+    filter: blur(2px);
+	-webkit-filter: blur(2px);
+  }
+  
+  66% {
+    filter: blur(1px);
+	-webkit-filter: blur(1px);
+  }
+  100% {
+    filter: blur(0px);
+	-webkit-filter: blur(0px);
+  }
+}
+
+.single_pulse {
+	animation: pulse-text 2s 1;
+}
 
 .drag-over {
     border-top: dashed 3px red;

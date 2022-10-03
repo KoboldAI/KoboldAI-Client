@@ -495,7 +495,6 @@ from flask_socketio import SocketIO, emit, join_room, leave_room
 from flask_socketio import emit as _emit
 from flask_session import Session
 from flask_compress import Compress
-import secrets
 from werkzeug.exceptions import HTTPException, NotFound, InternalServerError
 import secrets
 app = Flask(__name__, root_path=os.getcwd())
@@ -8237,13 +8236,12 @@ def story_sort(base_path, desc=False):
             with open(filename, "r") as f:
                 try:
                     js = json.load(f)
+                    if 'story_name' in js and js['story_name'] in koboldai_vars.story_loads:
+                        files[file.name] = datetime.datetime.strptime(koboldai_vars.story_loads[js['story_name']], "%m/%d/%Y, %H:%M:%S")
+                    else:
+                        files[file.name] = datetime.datetime.fromtimestamp(file.stat().st_mtime)
                 except:
                     pass
-                
-                if 'story_name' in js and js['story_name'] in koboldai_vars.story_loads:
-                    files[file.name] = datetime.datetime.strptime(koboldai_vars.story_loads[js['story_name']], "%m/%d/%Y, %H:%M:%S")
-                else:
-                    files[file.name] = datetime.datetime.fromtimestamp(file.stat().st_mtime)
     return [key[0] for key in sorted(files.items(), key=lambda kv: (kv[1], kv[0]), reverse=desc)]
 
 
@@ -9043,6 +9041,24 @@ def UI_2_refresh_auto_memory(data):
     output = summarize(" ".join(sentences))
     koboldai_vars.auto_memory += "\n\n Final Result:\n" + output
 
+
+
+#==================================================================#
+# Get next 100 actions for infinate scroll
+#==================================================================#
+@socketio.on("get_next_100_actions")
+@logger.catch
+def UI_2_get_next_100_actions(data):
+    logger.debug("Sending an additional 100 actions, starting at action {}".format(data-1))
+    sent = 0
+    data_to_send = []
+    for i in reversed(list(koboldai_vars.actions.actions)):
+        if i < data:
+            if sent >= 50:
+                break
+            data_to_send.append({"id": i, "action": koboldai_vars.actions.actions[i]})
+            sent += 1
+    emit("var_changed", {"classname": "story", "name": "actions", "old_value": None, "value":data_to_send})
 
 #==================================================================#
 # Test

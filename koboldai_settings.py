@@ -44,19 +44,24 @@ def process_variable_changes(socketio, classname, name, value, old_value, debug_
             #logger.debug("sending data to room (multi_story={},classname={}): {}".format(multi_story, classname, room))
             #Special Case for KoboldStoryRegister
             if isinstance(value, KoboldStoryRegister):
+                #To speed up loading time we will only transmit the last 100 actions to the UI, then rely on scrolling triggers to load more as needed
                 if not has_request_context():
                     if queue is not None:
                         #logger.debug("Had to use queue")
                         queue.put(["var_changed", {"classname": "actions", "name": "Action Count", "old_value": None, "value":value.action_count}, {"broadcast":True, "room":room}])
                         
-                        for i in value.actions:
-                            queue.put(["var_changed", {"classname": "story", "name": "actions", "old_value": None, "value":{"id": i, "action": value.actions[i]}}, {"broadcast":True, "room":room}])
+                        data_to_send = []
+                        for i in list(value.actions)[-100:]:
+                            data_to_send.append({"id": i, "action": value.actions[i]})
+                        queue.put(["var_changed", {"classname": "story", "name": "actions", "old_value": None, "value":data_to_send}, {"broadcast":True, "room":room}])
                 
                 else:
                     socketio.emit("var_changed", {"classname": "actions", "name": "Action Count", "old_value": None, "value":value.action_count}, broadcast=True, room=room)
                     
-                    for i in value.actions:
-                        socketio.emit("var_changed", {"classname": "story", "name": "actions", "old_value": None, "value":{"id": i, "action": value.actions[i]}}, broadcast=True, room=room)
+                    data_to_send = []
+                    for i in list(value.actions)[-100:]:
+                        data_to_send.append({"id": i, "action": value.actions[i]})
+                    socketio.emit("var_changed", {"classname": "story", "name": "actions", "old_value": None, "value": data_to_send}, broadcast=True, room=room)
             elif isinstance(value, KoboldWorldInfo):
                 value.send_to_ui()
             else:
@@ -757,6 +762,22 @@ class story_settings(settings):
         new_world_info.socketio = self.socketio
         self.worldinfo_v2 = new_world_info
         
+    def assign_world_info_to_actions(self, action_id=None, wuid=None):
+        if action_id is None or action_id not in self.actions.actions:
+            actions_to_check = self.actions.actions
+        else:
+            actions_to_check = {action_id: self.actions.actions[action_id]}
+        if wuid is None or wuid not in self.worldinfo_v2.world_info:
+            wi_to_check = self.worldinfo_v2.world_info
+        else:
+            wi_to_check = {wuid: self.worldinfo_v2.world_info[wuid]}
+            
+        for action_id, action in actions_to_check.items():
+            for uid, wi in wi_to_check.items():
+                for key in sorted(wi['key'], key=len, reverse=True):
+                    if key in action['Selected Text']:
+                        self.actions.add_wi_to_action(action_id, key, wi['content'])
+                        break
     
     def __setattr__(self, name, value):
         new_variable = name not in self.__dict__
@@ -1020,7 +1041,7 @@ class KoboldStoryRegister(object):
         self.koboldai_vars = koboldai_vars
         #### DO NOT DIRECTLY EDIT THE ACTIONS DICT. IT WILL NOT TRANSMIT TO CLIENT. USE FUCTIONS BELOW TO DO SO ###
         #### doing actions[x] = game text is OK
-        self.actions = {} #keys = "Selected Text", "Options", "Selected Text Length", "In AI Input", "Probabilities". 
+        self.actions = {} #keys = "Selected Text", "WI Search Text", "Wi_highlighted_text", "Options", "Selected Text Length", "In AI Input", "Probabilities". 
                           #Options being a list of dict with keys of "text", "Pinned", "Previous Selection", "Edited", "Probabilities"
         self.action_count = -1
         self.tokenizer = tokenizer
@@ -1031,6 +1052,14 @@ class KoboldStoryRegister(object):
     def reset(self, sequence=[]):
         self.__init__(self.socketio, self.story_settings, self.koboldai_vars, sequence=sequence, tokenizer=self.tokenizer)
         
+    def add_wi_to_action(action_id, key, content):
+        #First check to see if we have the wi_highlighted_text variable
+        if 'wi_highlighted_text' not in self.actions[action_id]:
+            self.actions[action_id]['wi_highlighted_text'] = [{"text": self.actions[action_id]['Selected Text'], "WI matches": [], "WI Text": ""}]
+        
+        
+            
+    
     def __str__(self):
         if len(self.actions) > 0:
             return "".join([x['Selected Text'] for ignore, x in sorted(self.actions.items())])
@@ -1120,7 +1149,12 @@ class KoboldStoryRegister(object):
             temp[int(item)] = json_data['actions'][item]
             if "WI Search Text" not in temp[int(item)]:
                 temp[int(item)]["WI Search Text"] = re.sub("[^0-9a-z \'\"]", "", temp[int(item)]['Selected Text'])
-            process_variable_changes(self.socketio, "story", 'actions', {"id": item, 'action':  temp[int(item)]}, None)
+            data_to_send = []
+            if int(item) >= self.action_count-100:
+                data_to_send.append({"id": item, 'action':  temp[int(item)]})
+        
+        process_variable_changes(self.socketio, "story", 'actions', data_to_send, None)
+        
         self.actions = temp
         self.set_game_saved()
         self.story_settings.save_story()

@@ -26,11 +26,11 @@ socket.on("delete_new_world_info_entry", function(data){document.getElementById(
 socket.on("delete_world_info_entry", function(data){document.getElementById("world_info_"+data).remove();});
 socket.on("delete_world_info_folder", function(data){document.getElementById("world_info_folder_"+data).remove();});
 socket.on("error", function(data){show_error_message(data);});
-socket.on('load_cookies', function(data){load_cookies(data)});
+socket.on('load_cookies', function(data){load_cookies(data);});
 socket.on('load_tweaks', function(data){load_tweaks(data);});
 socket.on("wi_results", updateWISearchListings);
 socket.on("request_prompt_config", configurePrompt);
-socket.on("log_message", function(data){process_log_message(data)});
+socket.on("log_message", function(data){process_log_message(data);});
 socket.on("debug_message", function(data){console.log(data);});
 socket.on("scratchpad_response", recieveScratchpadResponse);
 //socket.onAny(function(event_name, data) {console.log({"event": event_name, "class": data.classname, "data": data});});
@@ -60,6 +60,7 @@ var finder_waiting_id = null;
 var control_held = false;
 var actions_data = {};
 var setup_wi_toggles = [];
+var scroll_trigger_element = undefined;
 const on_colab = $el("#on_colab").textContent == "true";
 
 // name, desc, icon, func
@@ -202,11 +203,11 @@ function fix_text(val) {
 	}
 }
 
-function create_options(data) {
+function create_options(action) {
 	//Set all options before the next chunk to hidden
 	var option_container = document.getElementById("Select Options");
 	var current_chunk = parseInt(document.getElementById("action_count").textContent)+1;
-	if (current_chunk != data.value.id.toString()) {
+	if (current_chunk != action.id.toString()) {
 		return;
 	}
 	if (document.getElementById("Select Options Chunk " + current_chunk)) {
@@ -218,12 +219,12 @@ function create_options(data) {
 		document.getElementById("Select Options Chunk " + (current_chunk-1)).remove();
 	}
 	
-	if (document.getElementById("Select Options Chunk "+data.value.id)) {
-		var option_chunk = document.getElementById("Select Options Chunk "+data.value.id);
+	if (document.getElementById("Select Options Chunk "+action.id)) {
+		var option_chunk = document.getElementById("Select Options Chunk "+action.id);
 	} else {
 		var option_chunk = document.createElement("div");
-		option_chunk.id = "Select Options Chunk "+data.value.id;
-		if (current_chunk != data.value.id) {
+		option_chunk.id = "Select Options Chunk "+action.id;
+		if (current_chunk != action.id) {
 			option_chunk.classList.add("hidden");
 		}
 		option_container.append(option_chunk);
@@ -236,7 +237,7 @@ function create_options(data) {
 	table.classList.add("sequences");
 	//Add Redo options
 	i=0;
-	for (item of data.value.action.Options) {
+	for (item of action.action.Options) {
 		if ((item['Previous Selection'])) {
 			var row = document.createElement("div");
 			row.classList.add("sequence_row");
@@ -244,10 +245,10 @@ function create_options(data) {
 			textcell.textContent = item.text;
 			textcell.classList.add("sequence");
 			textcell.setAttribute("option_id", i);
-			textcell.setAttribute("option_chunk", data.value.id);
+			textcell.setAttribute("option_chunk", action.id);
 			var iconcell = document.createElement("span");
 			iconcell.setAttribute("option_id", i);
-			iconcell.setAttribute("option_chunk", data.value.id);
+			iconcell.setAttribute("option_chunk", action.id);
 			iconcell.classList.add("sequnce_icon");
 			var icon = document.createElement("span");
 			icon.id = "Pin_"+i;
@@ -256,7 +257,7 @@ function create_options(data) {
 			iconcell.append(icon);
 			delete_icon = $e("span", iconcell, {"classes": ["material-icons-outlined", "cursor", 'delete_option_icon'], 
 												"title": "delete option", 'option_id': i, 
-												'option_chunk': data.value.id, 'textContent': 'delete'});
+												'option_chunk': action.id, 'textContent': 'delete'});
 			delete_icon.onclick = function () {
 									socket.emit("delete_option", {"chunk": this.getAttribute("option_chunk"), "option": this.getAttribute("option_id")});
 							  };
@@ -271,7 +272,7 @@ function create_options(data) {
 	}
 	//Add general options
 	i=0;
-	for (item of data.value.action.Options) {
+	for (item of action.action.Options) {
 		if (!(item.Edited) && !(item['Previous Selection'])) {
 			var row = document.createElement("div");
 			row.classList.add("sequence_row");
@@ -279,10 +280,10 @@ function create_options(data) {
 			textcell.textContent = item.text;
 			textcell.classList.add("sequence");
 			textcell.setAttribute("option_id", i);
-			textcell.setAttribute("option_chunk", data.value.id);
+			textcell.setAttribute("option_chunk", action.id);
 			var iconcell = document.createElement("span");
 			iconcell.setAttribute("option_id", i);
-			iconcell.setAttribute("option_chunk", data.value.id);
+			iconcell.setAttribute("option_chunk", action.id);
 			iconcell.classList.add("sequnce_icon");
 			var icon = document.createElement("span");
 			icon.id = "Pin_"+i;
@@ -311,47 +312,61 @@ function create_options(data) {
 	//option_chunk.scrollIntoView();
 }
 
-function do_story_text_updates(data) {
+function do_story_text_updates(action) {
 	story_area = document.getElementById('Selected Text');
-	current_chunk_number = data.value.id;
-	if (document.getElementById('Selected Text Chunk '+data.value.id)) {
-		var item = document.getElementById('Selected Text Chunk '+data.value.id);
+	current_chunk_number = action.id;
+	if (document.getElementById('Selected Text Chunk '+action.id)) {
+		var item = document.getElementById('Selected Text Chunk '+action.id);
 		//clear out the item first
 		while (item.firstChild) { 
 			item.removeChild(item.firstChild);
 		}		
 		span = document.createElement("span");
-		span.textContent = data.value.action['Selected Text'];
+		span.textContent = action.action['Selected Text'];
 		item.append(span);
-		item.original_text = data.value.action['Selected Text'];
-		item.setAttribute("WI_Search_Text", data.value.action['WI Search Text']);
+		item.original_text = action.action['Selected Text'];
+		item.setAttribute("WI_Search_Text", action.action['WI Search Text']);
 		item.setAttribute("world_info_uids", "");
 		item.classList.remove("pulse")
+		item.classList.remove("single_pulse");
+		item.classList.add("single_pulse");
 		//item.scrollIntoView();
 		if (item.textContent != "") {
-			assign_world_info_to_action(data.value.id, null);
+			assign_world_info_to_action(action.id, null);
 		}
 	} else {
 		var span = document.createElement("span");
-		span.id = 'Selected Text Chunk '+data.value.id;
+		span.id = 'Selected Text Chunk '+action.id;
 		span.classList.add("rawtext");
-		span.setAttribute("chunk", data.value.id);
-		span.original_text = data.value.action['Selected Text'];
+		span.setAttribute("chunk", action.id);
+		span.original_text = action.action['Selected Text'];
 		new_span = document.createElement("span");
-		new_span.textContent = data.value.action['Selected Text'];
-		span.setAttribute("WI_Search_Text", data.value.action['WI Search Text']);
+		new_span.textContent = action.action['Selected Text'];
+		span.setAttribute("WI_Search_Text", action.action['WI Search Text']);
 		span.append(new_span);
 		
+		//need to find the closest element
+		next_id = action.id+1;
+		while (true) {
+			if (next_id in actions_data) {
+				story_area.insertBefore(span, document.getElementById('Selected Text Chunk '+next_id));
+				break;
+			} else if (Math.max.apply(null,Object.keys(actions_data)) <= next_id) {
+				story_area.append(span);
+				break;
+			}
+			next_id += 1;
+		}
+		span.classList.add("single_pulse");
 		
-		story_area.append(span);
-		if (data.value.id.toString() == document.getElementById('action_count').textContent) {
+		if (action.id.toString() == document.getElementById('action_count').textContent) {
 			console.log("Scrolling. Action Count: "+document.getElementById('action_count').textContent);
 			document.getElementById("Selected Text").scrollTop = document.getElementById("Selected Text").scrollHeight;
 		}
 		//clearTimeout(game_text_scroll_timeout);
 		//game_text_scroll_timeout = setTimeout(function() {document.getElementById("Selected Text").scrollTop = document.getElementById("Selected Text").scrollHeight;}, 500);
 		if (span.textContent != "") {
-			assign_world_info_to_action(data.value.id, null);
+			assign_world_info_to_action(action.id, null);
 		}
 		//console.log("done");
 	}
@@ -393,23 +408,24 @@ function do_prompt(data) {
 	
 }
 
-function do_story_text_length_updates(data) {
-	if (document.getElementById('Selected Text Chunk '+data.value.id)) {
-		document.getElementById('Selected Text Chunk '+data.value.id).setAttribute("token_length", data.value.action["Selected Text Length"]);
+function do_story_text_length_updates(action) {
+	if (document.getElementById('Selected Text Chunk '+action.id)) {
+		document.getElementById('Selected Text Chunk '+action.id).setAttribute("token_length", action.action["Selected Text Length"]);
 	} else {
-		console.log('Selected Text Chunk '+data.value.id);
+		console.log('Selected Text Chunk '+action.id);
+		console.log(action);
 	}
 	
 }
 
-function do_probabilities(data) {
+function do_probabilities(action) {
 	//console.log(data);
-	if (document.getElementById('probabilities_'+data.value.id)) {
-		prob_area = document.getElementById('probabilities_'+data.value.id)
+	if (document.getElementById('probabilities_'+action.id)) {
+		prob_area = document.getElementById('probabilities_'+action.id)
 	} else {
 		probabilities = document.getElementById('probabilities');
 		prob_area = document.createElement('span');
-		prob_area.id = 'probabilities_'+data.value.id;
+		prob_area.id = 'probabilities_'+action.id;
 		probabilities.append(prob_area);
 	}
 	//Clear
@@ -419,8 +435,8 @@ function do_probabilities(data) {
 	//create table
 	table = document.createElement("table");
 	table.border=1;
-	if ("Probabilities" in data.value.action) {
-		for (token of data.value.action.Probabilities) {
+	if ("Probabilities" in action.action) {
+		for (token of action.action.Probabilities) {
 			actual_text = document.createElement("td");
 			actual_text.setAttribute("rowspan", token.length);
 			actual_text.textContent = "Word Goes Here";
@@ -537,15 +553,40 @@ function var_changed(data) {
 	}
 	//Special Case for Actions
 	if ((data.classname == "story") && (data.name == "actions")) {
-		actions_data[data.value.id] = data.value.action;
-		do_story_text_updates(data);
-		create_options(data);
-		do_story_text_length_updates(data);
-		do_probabilities(data);
-		if (data.value.action['In AI Input']) {
-			document.getElementById('Selected Text Chunk '+data.value.id).classList.add("within_max_length");
+		if (Array.isArray(data.value)) {
+			actions = data.value;
 		} else {
-			document.getElementById('Selected Text Chunk '+data.value.id).classList.remove("within_max_length");
+			actions = [data.value];
+		}
+		for (action of actions) {
+			if (action.length != 0) {
+				actions_data[action.id] = action.action;
+				do_story_text_updates(action);
+				create_options(action);
+				do_story_text_length_updates(action);
+				if ('Probabilities' in action.action) {
+					do_probabilities(action);
+				}
+				if (action.action['In AI Input']) {
+					document.getElementById('Selected Text Chunk '+action.id).classList.add("within_max_length");
+				} else {
+					document.getElementById('Selected Text Chunk '+action.id).classList.remove("within_max_length");
+				}
+			}
+		}
+		//check to see if our new action is before the scroll triggering action
+		if (actions.length > 0) {
+			if ((scroll_trigger_element == undefined) || (actions[actions.length-1].id < parseInt(scroll_trigger_element.getAttribute("chunk")))) {
+				if (scroll_trigger_element != undefined) {
+					scroll_trigger_element.scrollIntoView();
+				}
+				scroll_trigger_element = document.getElementById("Selected Text Chunk "+actions[actions.length-1].id);
+				//if we hit the top, unhide the prompt and clear the scroll trigger
+				if (actions[actions.length-1].id == 0) {
+					document.getElementById("story_prompt").classList.remove("story_prompt");
+					scroll_trigger_element = null;
+				}
+			}
 		}
 		
 	//Special Case for Presets
@@ -3191,7 +3232,8 @@ function assign_world_info_to_action(action_item, uid) {
 			var worldinfo_to_check = world_info_data;
 		}
 		if (action_item != null) {
-			var actions = [actions_data[action_item]];
+			var actions = {};
+			actions[action_item] = actions_data[action_item]
 		} else {
 			var actions = actions_data;
 		}
@@ -3234,7 +3276,7 @@ function assign_world_info_to_action(action_item, uid) {
 function highlight_world_info_text_in_chunk(action_id, wi) {
 	//First let's assign our world info id to the action so we know to count the tokens for the world info
 	let uid = wi['uid'];
-	action = document.getElementById("Selected Text Chunk "+action_id);
+	let action = document.getElementById("Selected Text Chunk "+action_id);
 	let words = action.textContent.split(" ");
 	current_ids = action.getAttribute("world_info_uids")?action.getAttribute("world_info_uids").split(','):[];
 	if (!(current_ids.includes(uid))) {
@@ -4741,3 +4783,14 @@ document.addEventListener("keydown", function(event) {
 			break;
 }
 });
+
+//function to load more actions if nessisary
+document.getElementById("Selected Text").onscroll = function(){
+    //TOP
+	if ((scroll_trigger_element != undefined) && (scroll_trigger_element != null)) {
+		if(scroll_trigger_element.getBoundingClientRect().top >= 0){
+			console.log("Asking for more actions");
+			socket.emit("get_next_100_actions", parseInt(scroll_trigger_element.getAttribute("chunk")));
+		}
+	}
+}
