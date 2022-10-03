@@ -155,6 +155,7 @@ function reset_story() {
 	finder_last_input = null;
 	on_new_wi_item = null;
 	current_chunk_number = null;
+	scroll_trigger_element = undefined;
 	var story_area = document.getElementById('Selected Text');
 	let temp = []
 	for (child of story_area.children) {
@@ -579,11 +580,14 @@ function var_changed(data) {
 			if ((scroll_trigger_element == undefined) || (actions[actions.length-1].id < parseInt(scroll_trigger_element.getAttribute("chunk")))) {
 				if (scroll_trigger_element != undefined) {
 					scroll_trigger_element.scrollIntoView();
+				} else {
+					document.getElementById("Selected Text Chunk "+actions[actions.length-1].id).scrollIntoView();
 				}
-				scroll_trigger_element = document.getElementById("Selected Text Chunk "+actions[actions.length-1].id);
+				
+				scroll_trigger_element = document.getElementById("Selected Text Chunk "+actions[0].id);
 				//if we hit the top, unhide the prompt and clear the scroll trigger
 				if (actions[actions.length-1].id == 0) {
-					document.getElementById("story_prompt").classList.remove("story_prompt");
+					document.getElementById("story_prompt").classList.remove("hidden");
 					scroll_trigger_element = null;
 				}
 			}

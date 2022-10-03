@@ -1154,12 +1154,8 @@ class KoboldStoryRegister(object):
             if "WI Search Text" not in temp[int(item)]:
                 temp[int(item)]["WI Search Text"] = re.sub("[^0-9a-z \'\"]", "", temp[int(item)]['Selected Text'])
             if int(item) >= self.action_count-100:
-                print("added item {}".format(item))
                 data_to_send.append({"id": item, 'action':  temp[int(item)]})
-            else:
-                print("Not addinig item {}".format(item))
         
-        print("sending {} actions".format(len(data_to_send)))
         process_variable_changes(self.socketio, "story", 'actions', data_to_send, None)
         
         self.actions = temp
