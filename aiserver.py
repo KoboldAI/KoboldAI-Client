@@ -7056,11 +7056,11 @@ def load_story_v1(js):
     if(koboldai_vars.gamestarted):
         #We set the action count higher so that we don't trigger a scroll in the UI. 
         #Once all but the last is loaded we can bring it back down and do the last one so we scroll to it
-        koboldai_vars.actions.action_count += 1
-        for i in range(len(js["actions"])-1):
-            koboldai_vars.actions.append(js["actions"][i], action_id_offset=-1, recalc=False)
-        koboldai_vars.actions.action_count -= 1
-        koboldai_vars.actions.append(js["actions"][len(js["actions"])-1], recalc=False)
+        temp_story_class = koboldai_settings.KoboldStoryRegister(None, None, koboldai_vars, tokenizer=None)
+        
+        for i in range(len(js["actions"])):
+            temp_story_class.append(js["actions"][i], recalc=False)
+        
 
     if "actions_metadata" in js:
         if type(js["actions_metadata"]) == dict:
@@ -7069,7 +7069,10 @@ def load_story_v1(js):
                     data = js["actions_metadata"][key]["Alternative Text"]
                     for i in range(len(js["actions_metadata"][key]["Alternative Text"])):
                         data[i]["text"] = data[i].pop("Text")
-                    koboldai_vars.actions.set_options(data, int(key))
+                    temp_story_class.set_options(data, int(key))
+    print(temp_story_class.to_json())
+    koboldai_vars.actions.load_json(temp_story_class.to_json())
+    del temp_story_class
     
     # Try not to break older save files
     if("authorsnote" in js):
@@ -7119,7 +7122,7 @@ def load_story_v1(js):
     send_debug()
 
 def load_story_v2(js):
-    logger.debug("Loading V1 Story")
+    logger.debug("Loading V2 Story")
     logger.debug("Called from {}".format(inspect.stack()[1].function))
     leave_room(session['story'])
     session['story'] = js['story_name']

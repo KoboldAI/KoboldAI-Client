@@ -56,12 +56,14 @@ def process_variable_changes(socketio, classname, name, value, old_value, debug_
                         queue.put(["var_changed", {"classname": "story", "name": "actions", "old_value": None, "value":data_to_send}, {"broadcast":True, "room":room}])
                 
                 else:
-                    socketio.emit("var_changed", {"classname": "actions", "name": "Action Count", "old_value": None, "value":value.action_count}, broadcast=True, room=room)
+                    if socketio is not None:
+                        socketio.emit("var_changed", {"classname": "actions", "name": "Action Count", "old_value": None, "value":value.action_count}, broadcast=True, room=room)
                     
                     data_to_send = []
                     for i in list(value.actions)[-100:]:
                         data_to_send.append({"id": i, "action": value.actions[i]})
-                    socketio.emit("var_changed", {"classname": "story", "name": "actions", "old_value": None, "value": data_to_send}, broadcast=True, room=room)
+                    if socketio is not None:
+                        socketio.emit("var_changed", {"classname": "story", "name": "actions", "old_value": None, "value": data_to_send}, broadcast=True, room=room)
             elif isinstance(value, KoboldWorldInfo):
                 value.send_to_ui()
             else:
@@ -73,7 +75,8 @@ def process_variable_changes(socketio, classname, name, value, old_value, debug_
                         queue.put(data)
                         
                 else:
-                    socketio.emit("var_changed", {"classname": classname, "name": name, "old_value": clean_var_for_emit(old_value), "value": clean_var_for_emit(value)}, include_self=True, broadcast=True, room=room)
+                    if socketio is not None:
+                        socketio.emit("var_changed", {"classname": classname, "name": name, "old_value": clean_var_for_emit(old_value), "value": clean_var_for_emit(value)}, include_self=True, broadcast=True, room=room)
 
 class koboldai_vars(object):
     def __init__(self, socketio):
@@ -1145,19 +1148,24 @@ class KoboldStoryRegister(object):
         self.action_count = json_data['action_count']
         #JSON forces keys to be strings, so let's fix that
         temp = {}
+        data_to_send = []
         for item in json_data['actions']:
             temp[int(item)] = json_data['actions'][item]
             if "WI Search Text" not in temp[int(item)]:
                 temp[int(item)]["WI Search Text"] = re.sub("[^0-9a-z \'\"]", "", temp[int(item)]['Selected Text'])
-            data_to_send = []
             if int(item) >= self.action_count-100:
+                print("added item {}".format(item))
                 data_to_send.append({"id": item, 'action':  temp[int(item)]})
+            else:
+                print("Not addinig item {}".format(item))
         
+        print("sending {} actions".format(len(data_to_send)))
         process_variable_changes(self.socketio, "story", 'actions', data_to_send, None)
         
         self.actions = temp
         self.set_game_saved()
-        self.story_settings.save_story()
+        if self.story_settings is not None:
+            self.story_settings.save_story()
         
     def append(self, text, action_id_offset=0, recalc=True):
         self.clear_unused_options()
@@ -1370,7 +1378,7 @@ class KoboldStoryRegister(object):
             return []
         
     def set_game_saved(self):
-        if 'story_settings' in self.__dict__:
+        if self.story_settings is not None:
             self.story_settings.gamesaved = False
     
     def recalc_token_length(self, action_id):
@@ -1454,9 +1462,12 @@ class KoboldStoryRegister(object):
         #start_time = time.time()
         #we're going to split our actions by sentence for better context. We'll add in which actions the sentence covers. Prompt will be added at a -1 ID
         actions = {i: self.actions[i]['Selected Text'] for i in self.actions}
-        actions[-1] = self.story_settings.prompt
+        if self.story_settings is None:
+            actions[-1] = ""
+        else:
+            actions[-1] = self.story_settings.prompt
         action_text = self.__str__()
-        action_text = "{}{}".format(self.story_settings.prompt, action_text)
+        action_text = "{}{}".format("" if self.story_settings is None else self.story_settings.prompt, action_text)
         ###########action_text_split = [sentence, actions used in sentence, token length, included in AI context]################
         action_text_split = [[x+" ", [], 0, False] for x in re.split("(?<=[.!?])\s+", action_text)]
         #The last action shouldn't have the extra space from the sentence splitting, so let's remove it
