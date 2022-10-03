@@ -2398,7 +2398,7 @@ textarea {
 }
 
 .single_pulse {
-	animation: pulse-text 2s 1;
+	animation: pulse-text 1s 1;
 }
 
 .drag-over {
