@@ -7070,7 +7070,6 @@ def load_story_v1(js):
                     for i in range(len(js["actions_metadata"][key]["Alternative Text"])):
                         data[i]["text"] = data[i].pop("Text")
                     temp_story_class.set_options(data, int(key))
-    print(temp_story_class.to_json())
     koboldai_vars.actions.load_json(temp_story_class.to_json())
     del temp_story_class
     
