@@ -586,7 +586,7 @@ function var_changed(data) {
 				
 				scroll_trigger_element = document.getElementById("Selected Text Chunk "+actions[0].id);
 				//if we hit the top, unhide the prompt and clear the scroll trigger
-				if (actions[actions.length-1].id == 0) {
+				if (actions[0].id == 0) {
 					document.getElementById("story_prompt").classList.remove("hidden");
 					scroll_trigger_element = null;
 				}
