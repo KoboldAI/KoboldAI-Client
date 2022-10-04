@@ -230,6 +230,50 @@ gensettingstf = [
 	"default": 0,
   "tooltip": "Disables userscript generation modifiers."
 	},
+	{
+	"uitype": "toggle",
+	"unit": "bool",
+	"label": "Full Determinism",
+	"id": "setfulldeterminism",
+	"min": 0,
+	"max": 1,
+	"step": 1,
+	"default": 0,
+  "tooltip": "Causes generation to be fully deterministic -- the model will always output the same thing as long as your story, settings and RNG seed are the same. If this is off, only the sequence of outputs that the model makes will be deterministic."
+	},
+    {
+	"uitype": "toggle",
+	"unit": "bool",
+	"label": "Token Streaming",
+	"id": "setoutputstreaming",
+	"min": 0,
+	"max": 1,
+	"step": 1,
+	"default": 0,
+  "tooltip": "Shows outputs to you as they are made. Does not work with more than one gens per action."
+	},
+    {
+	"uitype": "toggle",
+	"unit": "bool",
+	"label": "Probability Viewer",
+	"id": "setshowprobs",
+	"min": 0,
+	"max": 1,
+	"step": 1,
+	"default": 0,
+  "tooltip": "Shows token selection probabilities. Does not work with more than one gens per action."
+	},
+    {
+	"uitype": "toggle",
+	"unit": "bool",
+	"label": "Show Field Budget",
+	"id": "setshowbudget",
+	"min": 0,
+	"max": 1,
+	"step": 1,
+	"default": 0,
+  "tooltip": "Shows token usage when typing in relevant text boxes. <b>May lag slower devices.</b>"
+	},
     {
 	"uitype": "toggle",
 	"unit": "bool",
@@ -240,7 +284,7 @@ gensettingstf = [
 	"step": 1,
 	"default": 0,
   "tooltip": "Show debug info"
-	}
+	},
 ]
 
 gensettingsik =[{
@@ -404,9 +448,9 @@ formatcontrols = [{
     "tooltip": "Remove special characters (@,#,%,^, etc)"
     },
     {
-    "label": "Add sentence spacing",
+    "label": "Automatic spacing",
     "id": "frmtadsnsp",
-    "tooltip": "If the last action ended with punctuation, add a space to the beginning of the next action."
+    "tooltip": "Add spaces automatically if needed"
     },
     {
     "label": "Single Line",

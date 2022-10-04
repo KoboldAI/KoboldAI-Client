@@ -5,6 +5,7 @@ channels:
 dependencies:
   - colorama
   - flask-socketio
+  - flask-session
   - python=3.8.*
   - eventlet
   - markdown
@@ -13,9 +14,12 @@ dependencies:
   - git=2.35.1
   - sentencepiece
   - protobuf
+  - marshmallow>=3.13
+  - apispec-webframeworks
+  - loguru
   - pip:
-    - --find-links https://download.pytorch.org/whl/rocm4.2/torch_stable.html
-    - torch==1.10.*
+    - --extra-index-url https://download.pytorch.org/whl/rocm5.1.1
+    - torch
     - torchvision
     - flask-cloudflared
     - flask-ngrok

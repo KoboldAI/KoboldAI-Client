@@ -1,0 +1,30 @@
+{
+  "mtj_compat": "bloom",
+  "mtj_pe": "alibi",
+  "mtj_config_map": {
+    "d_model": "n_embed",
+    "n_heads": "num_attention_heads",
+    "layers": "n_layer"
+  },
+  "static_weights": {
+    "word_embeddings.weight": {"mtj": {"module": "embedding_shard/~/linear", "param": "w", "transforms": ["no_transpose", "vocab_pad"]}},
+    "word_embeddings_layernorm.weight": {"mtj": {"module": "embedding_shard/~/replicated_layer_norm", "param": "scale"}},
+    "word_embeddings_layernorm.bias": {"mtj": {"module": "embedding_shard/~/replicated_layer_norm", "param": "offset"}},
+    "ln_f.weight": {"mtj": {"module": "projection_shard/~/replicated_layer_norm", "param": "scale"}},
+    "ln_f.bias": {"mtj": {"module": "projection_shard/~/replicated_layer_norm", "param": "offset"}}
+  },
+  "layer_weights": {
+    "h.{layer}.self_attention.query_key_value.weight": {"mtj": {"module": "layer_{layer}/~/combined_qkv", "param": "w"}},
+    "h.{layer}.self_attention.query_key_value.bias": {"mtj": {"module": "layer_{layer}/~/combined_qkv", "param": "b"}},
+    "h.{layer}.self_attention.dense.weight": {"mtj": {"module": "layer_{layer}/~/linear_3", "param": "w"}},
+    "h.{layer}.self_attention.dense.bias": {"mtj": {"module": "layer_{layer}/~/linear_3", "param": "b", "transforms": ["divide_by_shards"]}},
+    "h.{layer}.mlp.dense_h_to_4h.weight": {"mtj": {"module": "layer_{layer}/~/linear_4", "param": "w"}},
+    "h.{layer}.mlp.dense_h_to_4h.bias": {"mtj": {"module": "layer_{layer}/~/linear_4", "param": "b"}},
+    "h.{layer}.mlp.dense_4h_to_h.weight": {"mtj": {"module": "layer_{layer}/~/linear_5", "param": "w"}},
+    "h.{layer}.mlp.dense_4h_to_h.bias": {"mtj": {"module": "layer_{layer}/~/linear_5", "param": "b", "transforms": ["divide_by_shards"]}},
+    "h.{layer}.input_layernorm.weight": {"mtj": {"module": "layer_{layer}/~/replicated_layer_norm", "param": "scale"}},
+    "h.{layer}.input_layernorm.bias": {"mtj": {"module": "layer_{layer}/~/replicated_layer_norm", "param": "offset"}},
+    "h.{layer}.post_attention_layernorm.weight": {"mtj": {"module": "layer_{layer}/~/replicated_layer_norm_1", "param": "scale"}},
+    "h.{layer}.post_attention_layernorm.bias": {"mtj": {"module": "layer_{layer}/~/replicated_layer_norm_1", "param": "offset"}}
+  }
+}

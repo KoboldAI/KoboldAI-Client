@@ -1,4 +1,4 @@
-torch >= 1.9, <= 1.11
+torch >= 1.9, < 1.13
 numpy
 tqdm
 requests
@@ -16,3 +16,7 @@ eventlet
 lupa==1.10
 markdown
 bleach==4.1.0
+flask-session
+marshmallow>=3.13
+apispec-webframeworks
+loguru

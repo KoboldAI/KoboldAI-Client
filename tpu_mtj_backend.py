@@ -46,7 +46,7 @@ from jax.experimental import maps
 import jax.numpy as jnp
 import numpy as np
 import haiku as hk
-from transformers import AutoTokenizer, GPT2TokenizerFast, AutoModelForCausalLM, GPTNeoForCausalLM
+from transformers import AutoTokenizer, GPT2Tokenizer, AutoModelForCausalLM, GPTNeoForCausalLM
 from tokenizers import Tokenizer
 from mesh_transformer.checkpoint import read_ckpt_lowmem
 from mesh_transformer.transformer_shard import CausalTransformer, CausalTransformerShard, PlaceholderTensor
@@ -54,6 +54,22 @@ from mesh_transformer.util import to_bf16
 
 
 params: Dict[str, Any] = {}
+
+__seed = random.randrange(sys.maxsize)
+rng = random.Random(__seed)
+
+
+def get_rng_seed():
+    return __seed
+
+def set_rng_seed(seed: int):
+    global __seed, rng
+    rng = random.Random(seed)
+    __seed = seed
+    return seed
+
+def randomize_rng_seed():
+    return set_rng_seed(random.randrange(sys.maxsize))
 
 
 def warper_callback(logits) -> np.array:
@@ -167,7 +183,7 @@ def apply_repetition_penalty_dynamic(logits, tokens, repetition_penalty, generat
     logits[tokens] = penalty_logits
     return logits
 
-def kobold_sample_dynamic(key, logits, sampler_order: Optional[np.ndarray] = None, top_p=0.9, temp=0.5, top_k=0, tfs=1.0, typical=1.0, top_a=0.0):
+def kobold_sample_dynamic(key, logits, rpargs, sampler_order: Optional[np.ndarray] = None, top_p=0.9, temp=0.5, top_k=0, tfs=1.0, typical=1.0, top_a=0.0):
     '''
     This gets called by generate_loop_fn to apply a series of 6 filters
     to the logits (top-k, then top-a, then top-p, then TFS, then typical, then temperature)
@@ -303,6 +319,7 @@ def kobold_sample_dynamic(key, logits, sampler_order: Optional[np.ndarray] = Non
         if k == 3 and tfs < 1.0: logits = tail_free_filter(logits)
         if k == 4 and typical < 1.0: logits = typical_filter(logits)
         if k == 5 and temp != 1.0: logits = temp_filter(logits)
+        if k == 6 and rpargs[1] != 1.0: logits = apply_repetition_penalty_dynamic(logits, *rpargs)
     # Finally, pick one token using the softmax thingy again (it gives
     # an array whose elements sum to 1 so it can be used nicely as a
     # probability distribution)
@@ -353,7 +370,7 @@ def apply_repetition_penalty_static(logits, tokens, repetition_penalty, generate
     # positions in the logits array
     return logits.at[tokens].set(penalty_logits)
 
-def kobold_sample_static(key, logits, sampler_order: Optional[np.ndarray] = None, top_p=0.9, temp=0.5, top_k=0, tfs=1.0, typical=1.0, top_a=0.0):
+def kobold_sample_static(key, logits, rpargs, sampler_order: Optional[np.ndarray] = None, top_p=0.9, temp=0.5, top_k=0, tfs=1.0, typical=1.0, top_a=0.0):
     '''
     This gets called by generate_loop_fn to apply a series of 6 filters
     to the logits (top-k, then top-a, then top-p, then TFS, then typical, then temperature)
@@ -488,6 +505,7 @@ def kobold_sample_static(key, logits, sampler_order: Optional[np.ndarray] = None
         logits = jax.lax.cond(jnp.logical_and(k == 3, tfs < 1.0), tail_free_filter, lambda x: x, logits)
         logits = jax.lax.cond(jnp.logical_and(k == 4, typical < 1.0), typical_filter, lambda x: x, logits)
         logits = jax.lax.cond(jnp.logical_and(k == 5, temp != 1.0), temp_filter, lambda x: x, logits)
+        logits = jax.lax.cond(jnp.logical_and(k == 6, rpargs[1] != 1.0), lambda x: apply_repetition_penalty_static(*x), lambda x: x[0], (logits, *rpargs))
     # Finally, pick one token using the softmax thingy again (it gives
     # an array whose elements sum to 1 so it can be used nicely as a
     # probability distribution)
@@ -504,17 +522,6 @@ def sample_func(data, key, numseqs_aux, badwords, repetition_penalty, generated_
         # Get the pseudo-random number generator key that will
         # be used by kobold_sample_dynamic to randomly pick a token
         sample_key, new_key = jax.random.split(sample_key, num=2)
-        # Apply repetition penalty to all tokens that are
-        # currently inside the "generated" array
-        logits = apply_repetition_penalty_dynamic(
-            logits,
-            generated,
-            repetition_penalty,
-            generated_index, 
-            gen_length,
-            rpslope,
-            rprange,
-        )
         # Remove any tokens in the badwords list by setting
         # their logits to negative infinity which effectively
         # makes their probabilities of being chosen zero
@@ -526,6 +533,14 @@ def sample_func(data, key, numseqs_aux, badwords, repetition_penalty, generated_
         next_token = kobold_sample_dynamic(
             sample_key,
             logits,
+            (
+                generated,
+                repetition_penalty,
+                generated_index, 
+                gen_length,
+                rpslope,
+                rprange,
+            ),
             **sampler_options,
         )
         # Remember what token was picked
@@ -597,18 +612,6 @@ class PenalizingCausalTransformer(CausalTransformer):
                     assert logits.shape == (1, config["n_vocab"])
                     # Flatten it into a 1D array to make it easier to use
                     logits = logits[0]
-                    # Apply repetition penalty to all tokens that are
-                    # currently inside the "generated" array
-                    if repetition_penalty is not None:
-                        logits = apply_repetition_penalty_static(
-                            logits,
-                            generated,
-                            repetition_penalty,
-                            generated_index,
-                            gen_length,
-                            rpslope,
-                            rprange,
-                        )
                     # Remove any tokens in the badwords list by setting
                     # their logits to negative infinity which effectively
                     # makes their probabilities of being chosen zero
@@ -620,6 +623,14 @@ class PenalizingCausalTransformer(CausalTransformer):
                     next_token = kobold_sample_static(
                         sample_key,
                         logits,
+                        (
+                            generated,
+                            repetition_penalty,
+                            generated_index,
+                            gen_length,
+                            rpslope,
+                            rprange,
+                        ),
                         **sampler_options,
                     )
                     # Remember what token was picked
@@ -735,7 +746,7 @@ class PenalizingCausalTransformer(CausalTransformer):
         assert not return_logits
         assert gen_length.ndim == 1
         assert soft_embeddings is not None
-        key = hk.PRNGSequence(random.randint(0, 2 ** 60))
+        key = hk.PRNGSequence(rng.randint(0, 2 ** 60))
         batch_size = ctx.shape[0]
         self.batch_size = batch_size
         _numseqs_aux = jnp.empty((batch_size, numseqs), dtype=np.uint32)
@@ -783,7 +794,7 @@ class PenalizingCausalTransformer(CausalTransformer):
         return sample_data, n_generated, regeneration_required, halt
     def generate_static(self, ctx, ctx_length, gen_length, numseqs, sampler_options, return_logits=False, soft_embeddings=None):
         assert not return_logits
-        key = hk.PRNGSequence(random.randint(0, 2 ** 60))
+        key = hk.PRNGSequence(rng.randint(0, 2 ** 60))
         batch_size = ctx.shape[0]
         self.batch_size = batch_size
         started_compiling_callback()
@@ -854,6 +865,9 @@ def infer_static(
     maps.thread_resources.env = thread_resources_env
     if sampler_order is None:
         sampler_order = utils.default_sampler_order.copy()
+    sampler_order = sampler_order[:]
+    if len(sampler_order) < 7:  # Add repetition penalty at beginning if it's not present
+        sampler_order = [6] + sampler_order
     sampler_order = np.uint32(sampler_order)
     total_batch = 1
     tokens = context
@@ -1025,7 +1039,12 @@ def read_neox_checkpoint(state, path, config, checkpoint_shards=2):
 
 
 def load_model(path: str, driver_version="tpu_driver0.1_dev20210607", hf_checkpoint=False, **kwargs) -> None:
-    global thread_resources_env, seq, tokenizer, network, params
+    global thread_resources_env, seq, tokenizer, network, params, pad_token_id
+
+    if "pad_token_id" in kwargs:
+        pad_token_id = kwargs["pad_token_id"]
+    elif "eos_token_id" in kwargs:
+        pad_token_id = kwargs["eos_token_id"]
 
     if not hasattr(vars, "sampler_order") or not vars.sampler_order:
         vars.sampler_order = utils.default_sampler_order.copy()
@@ -1042,7 +1061,7 @@ def load_model(path: str, driver_version="tpu_driver0.1_dev20210607", hf_checkpo
         "pe_rotary_dims": 64,
         "seq": 2048,
         "cores_per_replica": 8,
-        "tokenizer_class": "GPT2TokenizerFast",
+        "tokenizer_class": "GPT2Tokenizer",
         "tokenizer": "gpt2",
     }
     params = kwargs
@@ -1060,7 +1079,7 @@ def load_model(path: str, driver_version="tpu_driver0.1_dev20210607", hf_checkpo
             "pe_rotary_dims": 24,
             "seq": 2048,
             "cores_per_replica": 8,
-            "tokenizer_class": "GPT2TokenizerFast",
+            "tokenizer_class": "GPT2Tokenizer",
             "tokenizer": "gpt2",
         }
 
@@ -1332,48 +1351,45 @@ def load_model(path: str, driver_version="tpu_driver0.1_dev20210607", hf_checkpo
     with torch_lazy_loader.use_lazy_torch_load(callback=callback, dematerialized_modules=True):
         if(os.path.isdir(vars.custmodpth)):
             try:
-                tokenizer = AutoTokenizer.from_pretrained(vars.custmodpth, revision=vars.revision, cache_dir="cache")
-            except Exception as e:
-                pass
-            try:
                 tokenizer = AutoTokenizer.from_pretrained(vars.custmodpth, revision=vars.revision, cache_dir="cache", use_fast=False)
             except Exception as e:
                 try:
-                    tokenizer = GPT2TokenizerFast.from_pretrained(vars.custmodpth, revision=vars.revision, cache_dir="cache")
+                    tokenizer = AutoTokenizer.from_pretrained(vars.custmodpth, revision=vars.revision, cache_dir="cache")
                 except Exception as e:
-                    tokenizer = GPT2TokenizerFast.from_pretrained("gpt2", revision=vars.revision, cache_dir="cache")
+                    try:
+                        tokenizer = GPT2Tokenizer.from_pretrained(vars.custmodpth, revision=vars.revision, cache_dir="cache")
+                    except Exception as e:
+                        tokenizer = GPT2Tokenizer.from_pretrained("gpt2", revision=vars.revision, cache_dir="cache")
             try:
                 model     = AutoModelForCausalLM.from_pretrained(vars.custmodpth, revision=vars.revision, cache_dir="cache")
             except Exception as e:
                 model     = GPTNeoForCausalLM.from_pretrained(vars.custmodpth, revision=vars.revision, cache_dir="cache")
         elif(os.path.isdir("models/{}".format(vars.model.replace('/', '_')))):
             try:
-                tokenizer = AutoTokenizer.from_pretrained("models/{}".format(vars.model.replace('/', '_')), revision=vars.revision, cache_dir="cache")
-            except Exception as e:
-                pass
-            try:
                 tokenizer = AutoTokenizer.from_pretrained("models/{}".format(vars.model.replace('/', '_')), revision=vars.revision, cache_dir="cache", use_fast=False)
             except Exception as e:
                 try:
-                    tokenizer = GPT2TokenizerFast.from_pretrained("models/{}".format(vars.model.replace('/', '_')), revision=vars.revision, cache_dir="cache")
+                    tokenizer = AutoTokenizer.from_pretrained("models/{}".format(vars.model.replace('/', '_')), revision=vars.revision, cache_dir="cache")
                 except Exception as e:
-                    tokenizer = GPT2TokenizerFast.from_pretrained("gpt2", revision=vars.revision, cache_dir="cache")
+                    try:
+                        tokenizer = GPT2Tokenizer.from_pretrained("models/{}".format(vars.model.replace('/', '_')), revision=vars.revision, cache_dir="cache")
+                    except Exception as e:
+                        tokenizer = GPT2Tokenizer.from_pretrained("gpt2", revision=vars.revision, cache_dir="cache")
             try:
                 model     = AutoModelForCausalLM.from_pretrained("models/{}".format(vars.model.replace('/', '_')), revision=vars.revision, cache_dir="cache")
             except Exception as e:
                 model     = GPTNeoForCausalLM.from_pretrained("models/{}".format(vars.model.replace('/', '_')), revision=vars.revision, cache_dir="cache")
         else:
             try:
-                tokenizer = AutoTokenizer.from_pretrained(vars.model, revision=vars.revision, cache_dir="cache")
-            except Exception as e:
-                pass
-            try:
                 tokenizer = AutoTokenizer.from_pretrained(vars.model, revision=vars.revision, cache_dir="cache", use_fast=False)
             except Exception as e:
                 try:
-                    tokenizer = GPT2TokenizerFast.from_pretrained(vars.model, revision=vars.revision, cache_dir="cache")
+                    tokenizer = AutoTokenizer.from_pretrained(vars.model, revision=vars.revision, cache_dir="cache")
                 except Exception as e:
-                    tokenizer = GPT2TokenizerFast.from_pretrained("gpt2", revision=vars.revision, cache_dir="cache")
+                    try:
+                        tokenizer = GPT2Tokenizer.from_pretrained(vars.model, revision=vars.revision, cache_dir="cache")
+                    except Exception as e:
+                        tokenizer = GPT2Tokenizer.from_pretrained("gpt2", revision=vars.revision, cache_dir="cache")
             try:
                 model     = AutoModelForCausalLM.from_pretrained(vars.model, revision=vars.revision, cache_dir="cache")
             except Exception as e:

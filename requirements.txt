@@ -2,7 +2,7 @@ transformers>=4.20.1
 Flask
 Flask-SocketIO
 requests
-torch==1.11
+torch >= 1.9, < 1.13
 flask-cloudflared
 flask-ngrok
 eventlet
@@ -12,3 +12,7 @@ bleach==4.1.0
 sentencepiece
 protobuf
 accelerate
+flask-session
+marshmallow>=3.13
+apispec-webframeworks
+loguru

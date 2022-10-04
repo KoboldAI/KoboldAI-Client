@@ -7,6 +7,7 @@ var socket;
 
 // UI references for jQuery
 var connect_status;
+var button_loadmodel;
 var button_newgame;
 var button_rndgame;
 var button_save;
@@ -56,6 +57,7 @@ var savepins;
 var topic;
 var saveas_accept;
 var saveas_close;
+var loadmodelpopup;
 var loadpopup;
 var	loadcontent;
 var	load_accept;
@@ -76,6 +78,8 @@ var rs_accept;
 var rs_close;
 var seqselmenu;
 var seqselcontents;
+var stream_preview;
+var token_prob_container;
 
 var storyname = null;
 var memorymode = false;
@@ -100,6 +104,11 @@ var remote = false;
 var gamestate = "";
 var gamesaved = true;
 var modelname = null;
+var model = "";
+var ignore_stream = false;
+
+//timer for loading CLUSTER models
+var online_model_timmer;
 
 // This is true iff [we're in macOS and the browser is Safari] or [we're in iOS]
 var using_webkit_patch = true;
@@ -152,6 +161,12 @@ function getThrottle(ms) {
             delete timer[id];
         }, ms);
     }
+}
+
+function reset_menus() {
+	settings_menu.html("");
+	format_menu.html("");
+	wi_menu.html("");
 }
 
 function addSetting(ob) {	
@@ -229,7 +244,26 @@ function addSetting(ob) {
 			if(ob.id == "setadventure"){
 				setadventure($(this).prop('checked'));
 			}
+
 		});
+	}
+
+	if (ob.id === "setshowbudget") {
+		$("#setshowbudget").on("change", function () {
+			for (const el of document.getElementsByClassName("input-token-usage")) {
+				if (this.checked) {
+					el.classList.remove("hidden");
+				} else {
+					el.classList.add("hidden");
+				}
+			}
+		});
+
+		if (!$("#setshowbudget")[0].checked) {
+			for (const el of document.getElementsByClassName("input-token-usage")) {
+				el.classList.add("hidden");
+			}
+		}
 	}
 }
 
@@ -500,6 +534,16 @@ function addWiLine(ob) {
 		$(".wisortable-excluded-dynamic").removeClass("wisortable-excluded-dynamic");
 		$(this).parent().css("max-height", "").find(".wicomment").find(".form-control").css("max-height", "");
 	});
+
+	for (const wientry of document.getElementsByClassName("wientry")) {
+		// If we are uninitialized, skip.
+		if ($(wientry).closest(".wilistitem-uninitialized").length) continue;
+
+		// add() will not add if the class is already present
+		wientry.classList.add("tokens-counted");
+	}
+
+	registerTokenCounters();
 }
 
 function addWiFolder(uid, ob) {
@@ -823,6 +867,7 @@ function exitMemoryMode() {
 	button_actmem.html("Memory");
 	show([button_actback, button_actfwd, button_actretry, button_actwi]);
 	input_text.val("");
+	updateInputBudget(input_text[0]);
 	// Hide Author's Note field
 	anote_menu.slideUp("fast");
 }
@@ -879,6 +924,8 @@ function formatChunkInnerText(chunk) {
 }
 
 function dosubmit(disallow_abort) {
+	beginStream();
+	submit_start = Date.now();
 	var txt = input_text.val().replace(/\u00a0/g, " ");
 	if((disallow_abort || gamestate !== "wait") && !memorymode && !gamestarted && ((!adventure || !action_mode) && txt.trim().length == 0)) {
 		return;
@@ -892,6 +939,7 @@ function dosubmit(disallow_abort) {
 }
 
 function _dosubmit() {
+	beginStream();
 	var txt = submit_throttle.txt;
 	var disallow_abort = submit_throttle.disallow_abort;
 	submit_throttle = null;
@@ -958,7 +1006,18 @@ function hideSaveAsPopup() {
 }
 
 function sendSaveAsRequest() {
-	socket.send({'cmd': 'saveasrequest', 'data': {"name": saveasinput.val(), "pins": savepins.val()}});
+	socket.send({'cmd': 'saveasrequest', 'data': {"name": saveasinput.val(), "pins": savepins.prop('checked')}});
+}
+
+function showLoadModelPopup() {
+	loadmodelpopup.removeClass("hidden");
+	loadmodelpopup.addClass("flex");
+}
+
+function hideLoadModelPopup() {
+	loadmodelpopup.removeClass("flex");
+	loadmodelpopup.addClass("hidden");
+	loadmodelcontent.html("");
 }
 
 function showLoadPopup() {
@@ -1002,6 +1061,108 @@ function showSamplersPopup() {
 function hideSamplersPopup() {
 	samplerspopup.removeClass("flex");
 	samplerspopup.addClass("hidden");
+}
+
+
+function buildLoadModelList(ar, menu, breadcrumbs, showdelete) {
+	disableButtons([load_model_accept]);
+	loadmodelcontent.html("");
+	$("#loadmodellistbreadcrumbs").html("");
+	$("#custommodelname").addClass("hidden");
+	var i;
+	for(i=0; i<breadcrumbs.length; i++) {
+		$("#loadmodellistbreadcrumbs").append("<button class=\"breadcrumbitem\" id='model_breadcrumbs"+i+"' name='"+ar[0][1]+"' value='"+breadcrumbs[i][0]+"'>"+breadcrumbs[i][1]+"</button><font color=white>\\</font>");
+		$("#model_breadcrumbs"+i).off("click").on("click", (function () {
+				return function () {
+					socket.send({'cmd': 'selectmodel', 'data': $(this).attr("name"), 'folder': $(this).attr("value")});
+					disableButtons([load_model_accept]);
+				}
+			})(i));
+	}
+	if (breadcrumbs.length > 0) {
+		$("#loadmodellistbreadcrumbs").append("<hr size='1'>")  
+	}
+	//If we're in the custom load menu (we need to send the path data back in that case)
+	if(['NeoCustom', 'GPT2Custom'].includes(menu)) {
+		$("#loadmodel"+i).off("click").on("click", (function () {
+			return function () {
+				socket.send({'cmd': 'selectmodel', 'data': $(this).attr("name"), 'path': $(this).attr("pretty_name")});
+				highlightLoadLine($(this));
+			}
+		})(i));
+		$("#custommodelname").removeClass("hidden");
+		$("#custommodelname")[0].setAttribute("menu", menu);
+	}
+	
+	for(i=0; i<ar.length; i++) {
+		if (Array.isArray(ar[i][0])) {
+			full_path = ar[i][0][0];
+			folder = ar[i][0][1];
+		} else {
+			full_path = "";
+			folder = ar[i][0];
+		}
+		
+		var html
+		html = "<div class=\"flex\">\
+			<div class=\"loadlistpadding\"></div>"
+		//if the menu item is a link to another menu
+		console.log(ar[i]);
+		if((ar[i][3]) || (['Load a model from its directory', 'Load an old GPT-2 model (eg CloverEdition)'].includes(ar[i][0]))) {
+			html = html + "<span class=\"loadlisticon loadmodellisticon-folder oi oi-folder allowed\"  aria-hidden=\"true\"></span>"
+		} else {
+		//this is a model
+			html = html + "<div class=\"loadlisticon oi oi-caret-right allowed\"></div>&nbsp;&nbsp;&nbsp;"
+		}
+		
+		//now let's do the delete icon if applicable
+		if (['NeoCustom', 'GPT2Custom'].includes(menu) && !ar[i][3] && showdelete) {
+			html = html + "<span class=\"loadlisticon loadmodellisticon-folder oi oi-x allowed\"  aria-hidden=\"true\" onclick='if(confirm(\"This will delete the selected folder with all contents. Are you sure?\")) { socket.send({\"cmd\": \"delete_model\", \"data\": \""+full_path.replaceAll("\\", "\\\\")+"\", \"menu\": \""+menu+"\"});}'></span>"
+		} else {
+			html = html + "<div class=\"loadlistpadding\"></div>"
+		}
+		
+		html = html + "<div class=\"loadlistpadding\"></div>\
+						<div class=\"loadlistitem\" id=\"loadmodel"+i+"\" name=\""+ar[i][1]+"\" pretty_name=\""+full_path+"\">\
+							<div>"+folder+"</div>\
+							<div class=\"flex-push-right\">"+ar[i][2]+"</div>\
+						</div>\
+					</div>"
+		loadmodelcontent.append(html);
+		//If this is a menu
+		console.log(ar[i]);
+		if(ar[i][3]) {
+			$("#loadmodel"+i).off("click").on("click", (function () {
+				return function () {
+					socket.send({'cmd': 'list_model', 'data': $(this).attr("name"), 'pretty_name': $(this).attr("pretty_name")});
+					disableButtons([load_model_accept]);
+				}
+			})(i));
+		//Normal load
+		} else {
+			if (['NeoCustom', 'GPT2Custom'].includes(menu)) {
+				$("#loadmodel"+i).off("click").on("click", (function () {
+					return function () {
+						$("#use_gpu_div").addClass("hidden");
+						$("#modelkey").addClass("hidden");
+						$("#modellayers").addClass("hidden");
+						socket.send({'cmd': 'selectmodel', 'data': $(this).attr("name"), 'path': $(this).attr("pretty_name")});
+						highlightLoadLine($(this));
+					}
+				})(i));
+			} else {
+				$("#loadmodel"+i).off("click").on("click", (function () {
+					return function () {
+						$("#use_gpu_div").addClass("hidden");
+						$("#modelkey").addClass("hidden");
+						$("#modellayers").addClass("hidden");
+						socket.send({'cmd': 'selectmodel', 'data': $(this).attr("name")});
+						highlightLoadLine($(this));
+					}
+				})(i));
+			}
+		}
+	}
 }
 
 function buildLoadList(ar) {
@@ -1148,12 +1309,13 @@ function buildSamplerList(samplers) {
 		"Tail-free Sampling",
 		"Typical Sampling",
 		"Temperature",
+		"Repetition Penalty",
 	]
 	for(i=0; i<samplers.length; i++) {
 		samplerslist.append("<div class=\"flex\">\
 			<div class=\"samplerslistitem flex-row-container\" sid=\""+samplers[i]+"\">\
 				<div class=\"flex-row\">\
-					<div>"+samplers_lookup_table[samplers[i]]+"</div>\
+					<div>"+(samplers[i] < samplers_lookup_table.length ? samplers_lookup_table[samplers[i]] : "Unknown sampler #" + samplers[i])+"</div>\
 				</div>\
 			</div>\
 		</div>");
@@ -1162,6 +1324,7 @@ function buildSamplerList(samplers) {
 
 function highlightLoadLine(ref) {
 	$("#loadlistcontent > div > div.popuplistselected").removeClass("popuplistselected");
+	$("#loadmodellistcontent > div > div.popuplistselected").removeClass("popuplistselected");
 	ref.addClass("popuplistselected");
 }
 
@@ -1977,6 +2140,89 @@ function unbindGametext() {
 	gametext_bound = false;
 }
 
+function beginStream() {
+	ignore_stream = false;
+	token_prob_container[0].innerHTML = "";
+}
+
+function endStream() {
+	// Clear stream, the real text is about to be displayed.
+	ignore_stream = true;
+	if (stream_preview) {
+		stream_preview.remove();
+		stream_preview = null;
+	}
+}
+
+function update_gpu_layers() {
+	var gpu_layers
+	gpu_layers = 0;
+	for (let i=0; i < $("#gpu_count")[0].value; i++) {
+		gpu_layers += parseInt($("#gpu_layers"+i)[0].value);
+		$("#gpu_layers_box_"+i)[0].value=$("#gpu_layers"+i)[0].value;
+	}
+	if ($("#disk_layers").length > 0) {
+		gpu_layers += parseInt($("#disk_layers")[0].value);
+		$("#disk_layers_box")[0].value=$("#disk_layers")[0].value;
+	}
+	if (gpu_layers > parseInt(document.getElementById("gpu_layers_max").innerHTML)) {
+		disableButtons([load_model_accept]);
+		$("#gpu_layers_current").html("<span style='color: red'>"+gpu_layers+"/"+ document.getElementById("gpu_layers_max").innerHTML +"</span>");
+	} else {
+		enableButtons([load_model_accept]);
+		$("#gpu_layers_current").html(gpu_layers+"/"+document.getElementById("gpu_layers_max").innerHTML);
+	}
+}
+
+
+function RemoveAllButFirstOption(selectElement) {
+   var i, L = selectElement.options.length - 1;
+   for(i = L; i >= 1; i--) {
+      selectElement.remove(i);
+   }
+}
+
+function interpolateRGB(color0, color1, t) {
+	return [
+		color0[0] + ((color1[0] - color0[0]) * t),
+		color0[1] + ((color1[1] - color0[1]) * t),
+		color0[2] + ((color1[2] - color0[2]) * t),
+	]
+}
+
+function updateInputBudget(inputElement) {
+	let budgetElement = document.getElementById("setshowbudget");
+	if (budgetElement && !budgetElement.checked) return;
+
+	let data = {"unencoded": inputElement.value, "field": inputElement.id};
+
+	if (inputElement.id === "anoteinput") {
+		data["anotetemplate"] = $("#anotetemplate").val();
+	}
+
+	socket.send({"cmd": "getfieldbudget", "data": data});
+}
+
+function registerTokenCounters() {
+	// Add token counters to all input containers with the class of "tokens-counted",
+	// if a token counter is not already a child of said container.
+	for (const el of document.getElementsByClassName("tokens-counted")) {
+		if (el.getElementsByClassName("input-token-usage").length) continue;
+
+		let span = document.createElement("span");
+		span.classList.add("input-token-usage");
+		el.appendChild(span);
+
+		let inputElement = el.querySelector("input, textarea");
+
+		inputElement.addEventListener("input", function() {
+			updateInputBudget(this);
+		});
+		
+		updateInputBudget(inputElement);
+	}
+}
+
 //=================================================================//
 //  READY/RUNTIME
 //=================================================================//
@@ -1985,6 +2231,8 @@ $(document).ready(function(){
 	
 	// Bind UI references
 	connect_status    = $('#connectstatus');
+	button_loadmodel  = $('#btn_loadmodel');
+	button_showmodel  = $('#btn_showmodel');
 	button_newgame    = $('#btn_newgame');
 	button_rndgame    = $('#btn_rndgame');
 	button_save       = $('#btn_save');
@@ -2038,9 +2286,13 @@ $(document).ready(function(){
 	saveas_accept     = $("#btn_saveasaccept");
 	saveas_close      = $("#btn_saveasclose");
 	loadpopup         = $("#loadcontainer");
+	loadmodelpopup    = $("#loadmodelcontainer");
 	loadcontent       = $("#loadlistcontent");
+	loadmodelcontent  = $("#loadmodellistcontent");
 	load_accept       = $("#btn_loadaccept");
 	load_close        = $("#btn_loadclose");
+	load_model_accept = $("#btn_loadmodelaccept");
+	load_model_close  = $("#btn_loadmodelclose");
 	sppopup           = $("#spcontainer");
 	spcontent         = $("#splistcontent");
 	sp_accept         = $("#btn_spaccept");
@@ -2062,11 +2314,19 @@ $(document).ready(function(){
 	rs_close          = $("#btn_rsclose");
 	seqselmenu        = $("#seqselmenu");
 	seqselcontents    = $("#seqselcontents");
+	token_prob_container = $("#token_prob_container");
+	token_prob_menu = $("#token_prob_menu");
 
 	// Connect to SocketIO server
 	socket = io.connect(window.document.origin, {transports: ['polling', 'websocket'], closeOnBeforeunload: false});
+	socket.on('load_popup', function(data){load_popup(data);});
+	socket.on('popup_items', function(data){popup_items(data);});
+	socket.on('popup_breadcrumbs', function(data){popup_breadcrumbs(data);});
+	socket.on('popup_edit_file', function(data){popup_edit_file(data);});
+	socket.on('error_popup', function(data){error_popup(data);});
 
 	socket.on('from_server', function(msg) {
+		//console.log(msg);
 		if(msg.cmd == "connected") {
 			// Connected to Server Actions
 			sman_allow_delete = msg.hasOwnProperty("smandelete") && msg.smandelete;
@@ -2080,9 +2340,7 @@ $(document).ready(function(){
 			connect_status.removeClass("color_orange");
 			connect_status.addClass("color_green");
 			// Reset Menus
-			settings_menu.html("");
-			format_menu.html("");
-			wi_menu.html("");
+			reset_menus();
 			// Set up "Allow Editing"
 			$('body').on('input', autofocus);
 			$('#allowediting').prop('checked', allowedit).prop('disabled', false).change().off('change').on('change', function () {
@@ -2115,6 +2373,75 @@ $(document).ready(function(){
 				active_element.focus();
 			})();
 			$("body").addClass("connected");
+		} else if (msg.cmd == "streamtoken") {
+			// Sometimes the stream_token messages will come in too late, after
+			// we have recieved the full text. This leads to some stray tokens
+			// appearing after the output. To combat this, we only allow tokens
+			// to be displayed after requesting and before recieving text.
+			if (ignore_stream) return;
+
+			let streamingEnabled = $("#setoutputstreaming")[0].checked;
+			let probabilitiesEnabled = $("#setshowprobs")[0].checked;
+
+			if (!streamingEnabled && !probabilitiesEnabled) return;
+
+			if (!stream_preview && streamingEnabled) {
+				stream_preview = document.createElement("span");
+				game_text.append(stream_preview);
+			}
+
+			for (const token of msg.data) {
+				if (streamingEnabled) stream_preview.innerText += token.decoded;
+
+				if (probabilitiesEnabled) {
+					// Probability display
+					let probDiv = document.createElement("div");
+					probDiv.classList.add("token-probs");
+
+					let probTokenSpan = document.createElement("span");
+					probTokenSpan.classList.add("token-probs-header");
+					probTokenSpan.innerText = token.decoded.replaceAll("\n", "\\n");
+					probDiv.appendChild(probTokenSpan);
+
+					let probTable = document.createElement("table");
+					let probTBody = document.createElement("tbody");
+					probTable.appendChild(probTBody);
+
+					for (const probToken of token.probabilities) {
+						let tr = document.createElement("tr");
+						let rgb = interpolateRGB(
+							[255, 255, 255],
+							[0, 255, 0],
+							probToken.score
+						).map(Math.round);
+						let color = `rgb(${rgb.join(", ")})`;
+
+						if (probToken.decoded === token.decoded) {
+							tr.classList.add("token-probs-final-token");
+						}
+
+						let tds = {};
+
+						for (const property of ["tokenId", "decoded", "score"]) {
+							let td = document.createElement("td");
+							td.style.color = color;
+							tds[property] = td;
+							tr.appendChild(td);
+						}
+
+						tds.tokenId.innerText = probToken.tokenId;
+						tds.decoded.innerText = probToken.decoded.toString().replaceAll("\n", "\\n");
+						tds.score.innerText = (probToken.score * 100).toFixed(2) + "%";
+
+						probTBody.appendChild(tr);
+					}
+
+					probDiv.appendChild(probTable);
+					token_prob_container.append(probDiv);
+				}
+			}
+
+			scrollToBottom();
 		} else if(msg.cmd == "updatescreen") {
 			var _gamestarted = gamestarted;
 			gamestarted = msg.gamestarted;
@@ -2145,6 +2472,7 @@ $(document).ready(function(){
 			scrollToBottom();
 		} else if(msg.cmd == "updatechunk") {
 			hideMessage();
+			game_text.attr('contenteditable', allowedit);
 			var index = msg.data.index;
 			var html = msg.data.html;
 			var existingChunk = game_text.children('#n' + index);
@@ -2160,7 +2488,11 @@ $(document).ready(function(){
 			} else if (!empty_chunks.has(index.toString())) {
 				// Append at the end
 				unbindGametext();
-				var lc = game_text[0].lastChild;
+
+				// game_text can contain things other than chunks (stream
+				// preview), so we use querySelector to get the last chunk.
+				var lc = game_text[0].querySelector("chunk:last-of-type");
+
 				if(lc.tagName === "CHUNK" && lc.lastChild !== null && lc.lastChild.tagName === "BR") {
 					lc.removeChild(lc.lastChild);
 				}
@@ -2176,7 +2508,11 @@ $(document).ready(function(){
 			var element = game_text.children('#n' + index);
 			if(element.length) {
 				unbindGametext();
-				if((element[0].nextSibling === null || element[0].nextSibling.nodeType !== 1 || element[0].nextSibling.tagName !== "CHUNK") && element[0].previousSibling !== null && element[0].previousSibling.tagName === "CHUNK") {
+				if(
+					(element[0].nextSibling === null || element[0].nextSibling.nodeType !== 1 || element[0].nextSibling.tagName !== "CHUNK")
+					&& element[0].previousSibling !== null
+					&& element[0].previousSibling.tagName === "CHUNK"
+				) {
 					element[0].previousSibling.appendChild(document.createElement("br"));
 				}
 				element.remove();  // Remove the chunk
@@ -2186,18 +2522,22 @@ $(document).ready(function(){
 		} else if(msg.cmd == "setgamestate") {
 			// Enable or Disable buttons
 			if(msg.data == "ready") {
+				endStream();
 				enableSendBtn();
 				enableButtons([button_actmem, button_actwi, button_actback, button_actfwd, button_actretry]);
 				hideWaitAnimation();
 				gamestate = "ready";
+				favicon.stop_swap();
 			} else if(msg.data == "wait") {
 				gamestate = "wait";
 				disableSendBtn();
 				disableButtons([button_actmem, button_actwi, button_actback, button_actfwd, button_actretry]);
 				showWaitAnimation();
+				favicon.start_swap();
 			} else if(msg.data == "start") {
 				setStartState();
 				gamestate = "ready";
+				favicon.stop_swap();
 			}
 		} else if(msg.cmd == "allowsp") {
 			allowsp = !!msg.data;
@@ -2222,6 +2562,7 @@ $(document).ready(function(){
 				memorytext = msg.data;
 				input_text.val(msg.data);
 			}
+			updateInputBudget(input_text[0]);
 		} else if(msg.cmd == "setmemory") {
 			memorytext = msg.data;
 			if(memorymode) {
@@ -2343,9 +2684,12 @@ $(document).ready(function(){
 		} else if(msg.cmd == "setanote") {
 			// Set contents of Author's Note field
 			anote_input.val(msg.data);
+			updateInputBudget(anote_input[0]);
 		} else if(msg.cmd == "setanotetemplate") {
 			// Set contents of Author's Note Template field
 			$("#anotetemplate").val(msg.data);
+		} else if(msg.cmd == "reset_menus") {
+			reset_menus();
 		} else if(msg.cmd == "addsetting") {
 			// Add setting controls
 			addSetting(msg.data);
@@ -2367,6 +2711,20 @@ $(document).ready(function(){
 		} else if(msg.cmd == "updatesingleline") {
 			// Update toggle state
 			$("#singleline").prop('checked', msg.data).change();
+		} else if(msg.cmd == "updateoutputstreaming") {
+			// Update toggle state
+			$("#setoutputstreaming").prop('checked', msg.data).change();
+		} else if(msg.cmd == "updateshowbudget") {
+			// Update toggle state
+			$("#setshowbudget").prop('checked', msg.data).change();
+		} else if(msg.cmd == "updateshowprobs") {
+			$("#setshowprobs").prop('checked', msg.data).change();
+
+			if(msg.data) {
+				token_prob_menu.removeClass("hidden");
+			} else {
+				token_prob_menu.addClass("hidden");
+			}
 		} else if(msg.cmd == "allowtoggle") {
 			// Allow toggle change states to propagate
 			allowtoggle = msg.data;
@@ -2498,17 +2856,17 @@ $(document).ready(function(){
 			chat_name.val(msg.data);
 		} else if(msg.cmd == "setlabelnumseq") {
 			// Update setting label with value from server
-			$("#setnumseqcur").html(msg.data);
+			$("#setnumseqcur").val(msg.data);
 		} else if(msg.cmd == "updatenumseq") {
 			// Send current max tokens value to input
-			$("#setnumseqcur").html(msg.data);
+			$("#setnumseqcur").val(msg.data);
 			$("#setnumseq").val(parseInt(msg.data)).trigger("change");
 		} else if(msg.cmd == "setlabelwidepth") {
 			// Update setting label with value from server
-			$("#setwidepthcur").html(msg.data);
+			$("#setwidepthcur").val(msg.data);
 		} else if(msg.cmd == "updatewidepth") {
 			// Send current max tokens value to input
-			$("#setwidepthcur").html(msg.data);
+			$("#setwidepthcur").val(msg.data);
 			$("#setwidepth").val(parseInt(msg.data)).trigger("change");
 		} else if(msg.cmd == "updateuseprompt") {
 			// Update toggle state
@@ -2541,6 +2899,9 @@ $(document).ready(function(){
 		} else if(msg.cmd == "updatenogenmod") {
 			// Update toggle state
 			$("#setnogenmod").prop('checked', msg.data).change();
+		} else if(msg.cmd == "updatefulldeterminism") {
+			// Update toggle state
+			$("#setfulldeterminism").prop('checked', msg.data).change();
 		} else if(msg.cmd == "runs_remotely") {
 			remote = true;
 			hide([button_savetofile, button_import, button_importwi]);
@@ -2552,7 +2913,137 @@ $(document).ready(function(){
 			} else {
 				debug_area.addClass("hidden");
 			}
+		} else if(msg.cmd == 'show_model_menu') {
+			//console.log(msg)
+			$("#use_gpu_div").addClass("hidden");
+			$("#modelkey").addClass("hidden");
+			$("#modellayers").addClass("hidden");
+			$("#oaimodel").addClass("hidden")
+			buildLoadModelList(msg.data, msg.menu, msg.breadcrumbs, msg.showdelete);
+		} else if(msg.cmd == 'selected_model_info') {
+			console.log(msg);
+			enableButtons([load_model_accept]);
+			$("#oaimodel").addClass("hidden")
+			$("#oaimodel")[0].options[0].selected = true;
+			if (msg.key) {
+				$("#modelkey").removeClass("hidden");
+				$("#modelkey")[0].value = msg.key_value;
+				if (msg.models_on_url) {
+					$("#modelkey")[0].oninput = function() {clearTimeout(online_model_timmer);
+																online_model_timmer = setTimeout(function() {
+																	socket.send({'cmd': 'Cluster_Key_Update', 'key': document.getElementById("modelkey").value, 
+																											  'url': document.getElementById("modelurl").value});
+																}, 1000);
+															}
+					$("#modelkey")[0].onblur = function () {socket.send({'cmd': 'Cluster_Key_Update', 'key': this.value, 'url': document.getElementById("modelurl").value});};
+					$("#modelurl")[0].onblur = function () {socket.send({'cmd': 'Cluster_Key_Update', 'key': document.getElementById("modelkey").value, 'url': this.value});};
+				} else {
+					$("#modelkey")[0].onblur = function () {socket.send({'cmd': 'OAI_Key_Update', 'key': $('#modelkey')[0].value});};
+					$("#modelurl")[0].onblur = null;
+				}
+				//if we're in the API list, disable to load button until the model is selected (after the API Key is entered)
+				disableButtons([load_model_accept]);
+			} else {
+				$("#modelkey").addClass("hidden");
+			}
+			
+			console.log(msg.multi_online_models);
+			if (msg.multi_online_models) {
+				$("#oaimodel")[0].setAttribute("multiple", "");
+				$("#oaimodel")[0].options[0].textContent = "All"
+			} else {
+				$("#oaimodel")[0].removeAttribute("multiple");
+				$("#oaimodel")[0].options[0].textContent = "Select Model(s)"
+			}
+			
+			
+			
+			if (msg.url) {
+				$("#modelurl").removeClass("hidden");
+				if (msg.default_url != null) {
+					document.getElementById("modelurl").value = msg.default_url;
+				}
+			} else {
+				$("#modelurl").addClass("hidden");
+			}
+			if (msg.gpu) {
+				$("#use_gpu_div").removeClass("hidden");
+			} else {
+				$("#use_gpu_div").addClass("hidden");
+			}
+			if (msg.breakmodel) {
+				var html;
+				$("#modellayers").removeClass("hidden");
+				html = "";
+				for (let i = 0; i < msg.gpu_names.length; i++) {
+					html += "GPU " + i + " " + msg.gpu_names[i] + ": ";
+					html += '<input inputmode="numeric" id="gpu_layers_box_'+i+'" class="justifyright flex-push-right model_layers" value="'+msg.break_values[i]+'" ';
+					html += 'onblur=\'$("#gpu_layers'+i+'")[0].value=$("#gpu_layers_box_'+i+'")[0].value;update_gpu_layers();\'>';
+					html += "<input type='range' class='form-range airange' min='0' max='"+msg.layer_count+"' step='1' value='"+msg.break_values[i]+"' id='gpu_layers"+i+"' onchange='update_gpu_layers();'>";
+				}
+				html += "Disk cache: ";
+				html += '<input inputmode="numeric" id="disk_layers_box" class="justifyright flex-push-right model_layers" value="'+msg.disk_break_value+'" ';
+				html += 'onblur=\'$("#disk_layers")[0].value=$("#disk_layers_box")[0].value;update_gpu_layers();\'>';
+				html += "<input type='range' class='form-range airange' min='0' max='"+msg.layer_count+"' step='1' value='"+msg.disk_break_value+"' id='disk_layers' onchange='update_gpu_layers();'>";
+				$("#model_layer_bars").html(html);
+				$("#gpu_layers_max").html(msg.layer_count);
+				$("#gpu_count")[0].value = msg.gpu_count;
+				update_gpu_layers();
+			} else {
+				$("#modellayers").addClass("hidden");
+			}
+		} else if(msg.cmd == 'oai_engines') {
+			$("#oaimodel").removeClass("hidden")
+			enableButtons([load_model_accept]);
+			selected_item = 0;
+			length = $("#oaimodel")[0].options.length;
+			for (let i = 0; i < length; i++) {
+				$("#oaimodel")[0].options.remove(1);
+			}
+			msg.data.forEach(function (item, index) {
+				var option = document.createElement("option");
+				option.value = item[0];
+				option.text = item[1];
+				if(msg.online_model == item[0]) {
+					selected_item = index+1;
+				}
+				$("#oaimodel")[0].appendChild(option);
+				if(selected_item != "") {
+					$("#oaimodel")[0].options[selected_item].selected = true;
+				}
+			})
+		} else if(msg.cmd == 'show_model_name') {
+			$("#showmodelnamecontent").html("<div class=\"flex\"><div class=\"loadlistpadding\"></div><div class=\"loadlistitem\">" + msg.data + "</div></div>");
+			$("#showmodelnamecontainer").removeClass("hidden");
+		} else if(msg.cmd == 'hide_model_name') {
+			$("#showmodelnamecontainer").addClass("hidden");
+			$(window).off('beforeunload');
+			location.reload();
+			//console.log("Closing window");
+		} else if(msg.cmd == 'model_load_status') {
+			$("#showmodelnamecontent").html("<div class=\"flex\"><div class=\"loadlistpadding\"></div><div class=\"loadlistitem\" style='align: left'>" + msg.data + "</div></div>");
+			$("#showmodelnamecontainer").removeClass("hidden");
+			//console.log(msg.data);
+		} else if(msg.cmd == 'oai_engines') {
+			RemoveAllButFirstOption($("#oaimodel")[0]);
+			for (const engine of msg.data) {
+				var opt = document.createElement('option');
+				opt.value = engine[0];
+				opt.innerHTML = engine[1];
+				$("#oaimodel")[0].appendChild(opt);
+			}
+		} else if(msg.cmd == 'showfieldbudget') {
+			let inputElement = document.getElementById(msg.data.field);
+			let tokenBudgetElement = inputElement.parentNode.getElementsByClassName("input-token-usage")[0];
+			if (msg.data.max === null) {
+				tokenBudgetElement.innerText = "";
+			} else {
+				let tokenLength = msg.data.length ?? "?";
+				let tokenMax = msg.data.max ?? "?";
+				tokenBudgetElement.innerText = `${tokenLength}/${tokenMax} Tokens`;
+			}
 		}
+		enableButtons([load_model_accept]);
 	});
 	
 	socket.on('disconnect', function() {
@@ -2673,6 +3164,7 @@ $(document).ready(function(){
 	});
 	
 	button_actretry.on("click", function(ev) {
+		beginStream();
 		hideMessage();
 		socket.send({'cmd': 'retry', 'chatname': chatmode ? chat_name.val() : undefined, 'data': ''});
 		hidegenseqs();
@@ -2806,11 +3298,39 @@ $(document).ready(function(){
 		hideLoadPopup();
 	});
 	
+	load_model_close.on("click", function(ev) {
+		$("#modellayers").addClass("hidden");
+		hideLoadModelPopup();
+	});
+	
 	load_accept.on("click", function(ev) {
 		hideMessage();
 		newly_loaded = true;
 		socket.send({'cmd': 'loadrequest', 'data': ''});
 		hideLoadPopup();
+	});
+	
+	load_model_accept.on("click", function(ev) {
+		hideMessage();
+		var gpu_layers;
+		var message;
+		if($("#modellayers")[0].classList.contains('hidden')) {
+			gpu_layers = ","
+		} else {
+			gpu_layers = ""
+			for (let i=0; i < $("#gpu_count")[0].value; i++) {
+				gpu_layers += $("#gpu_layers"+i)[0].value + ",";
+			}
+		}
+		var disk_layers = $("#disk_layers").length > 0 ? $("#disk_layers")[0].value : 0;
+		models = getSelectedOptions(document.getElementById('oaimodel'));
+		if (models.length == 1) {
+			models = models[0];
+		}
+		message = {'cmd': 'load_model', 'use_gpu': $('#use_gpu')[0].checked, 'key': $('#modelkey')[0].value, 'gpu_layers': gpu_layers.slice(0, -1), 'disk_layers': disk_layers, 'url': $('#modelurl')[0].value, 'online_model': models};
+		socket.send(message);
+		loadmodelcontent.html("");
+		hideLoadModelPopup();
 	});
 
 	sp_close.on("click", function(ev) {
@@ -2843,6 +3363,14 @@ $(document).ready(function(){
 		hideMessage();
 		socket.send({'cmd': 'samplers', 'data': samplerslist.find(".samplerslistitem").map(function() { return parseInt($(this).attr("sid")); }).toArray()});
 		hideSamplersPopup();
+	});
+	
+	button_loadmodel.on("click", function(ev) {
+		showLoadModelPopup();
+		socket.send({'cmd': 'list_model', 'data': 'mainmenu'});
+	});
+	button_showmodel.on("click", function(ev) {
+		socket.send({'cmd': 'show_model', 'data': ''});
 	});
 	
 	button_newgame.on("click", function(ev) {
@@ -2887,6 +3415,7 @@ $(document).ready(function(){
 	});
 	
 	rs_accept.on("click", function(ev) {
+		beginStream();
 		hideMessage();
 		socket.send({'cmd': 'rndgame', 'memory': $("#rngmemory").val(), 'data': topic.val()});
 		hideRandomStoryPopup();
@@ -2960,4 +3489,311 @@ $(document).ready(function(){
 			return true;
 		}
 	});
+
+	// Shortcuts
+	$(window).keydown(function (ev) {
+		// Only ctrl prefixed (for now)
+		if (!ev.ctrlKey) return;
+
+		let handled = true;
+		switch (ev.key) {
+			// Ctrl+Z - Back
+			case "z":
+				button_actback.click();
+				break;
+			// Ctrl+Y - Forward
+			case "y":
+				button_actfwd.click();
+				break;
+			// Ctrl+E - Retry
+			case "e":
+				button_actretry.click();
+				break;
+			default:
+				handled = false;
+		}
+
+		if (handled) ev.preventDefault();
+	});
+
+	$("#anotetemplate").on("input", function() {
+		updateInputBudget(anote_input[0]);
+	})
+
+	registerTokenCounters();
+
+	updateInputBudget(input_text[0]);
+
 });
+
+
+
+var popup_deleteable = false;
+var popup_editable = false;
+var popup_renameable = false;
+
+function load_popup(data) {
+	document.getElementById('spcontainer').classList.add('hidden');
+	document.getElementById('uscontainer').classList.add('hidden');
+	popup_deleteable = data.deleteable;
+	popup_editable = data.editable;
+	popup_renameable = data.renameable;
+	var popup = document.getElementById("popup");
+	var popup_title = document.getElementById("popup_title");
+	popup_title.textContent = data.popup_title;
+	var popup_list = document.getElementById("popup_list");
+	//first, let's clear out our existing data
+	while (popup_list.firstChild) {
+		popup_list.removeChild(popup_list.firstChild);
+	}
+	var breadcrumbs = document.getElementById('popup_breadcrumbs');
+	while (breadcrumbs.firstChild) {
+		breadcrumbs.removeChild(breadcrumbs.firstChild);
+	}
+	
+	if (data.upload) {
+		const dropArea = document.getElementById('popup_list');
+		dropArea.addEventListener('dragover', (event) => {
+			event.stopPropagation();
+			event.preventDefault();
+			// Style the drag-and-drop as a "copy file" operation.
+			event.dataTransfer.dropEffect = 'copy';
+		});
+
+		dropArea.addEventListener('drop', (event) => {
+			event.stopPropagation();
+			event.preventDefault();
+			const fileList = event.dataTransfer.files;
+			for (file of fileList) {
+				reader = new FileReader();
+				reader.onload = function (event) {
+					socket.emit("upload_file", {'filename': file.name, "data": event.target.result});
+				};
+				reader.readAsArrayBuffer(file);
+			}
+		});
+	} else {
+		
+	}
+	
+	popup.classList.remove("hidden");
+	
+	//adjust accept button
+	if (data.call_back == "") {
+		document.getElementById("popup_accept").classList.add("hidden");
+	} else {
+		document.getElementById("popup_accept").classList.remove("hidden");
+		var accept = document.getElementById("popup_accept");
+		accept.classList.add("disabled");
+		accept.setAttribute("emit", data.call_back);
+		accept.setAttribute("selected_value", "");
+		accept.onclick = function () {
+								socket.emit(this.emit, this.getAttribute("selected_value"));
+								document.getElementById("popup").classList.add("hidden");
+						  };
+	}
+					  
+}
+
+function popup_items(data) {
+	var popup_list = document.getElementById('popup_list');
+	//first, let's clear out our existing data
+	while (popup_list.firstChild) {
+		popup_list.removeChild(popup_list.firstChild);
+	}
+	document.getElementById('popup_upload_input').value = "";
+	
+	for (item of data) {
+		var list_item = document.createElement("span");
+		list_item.classList.add("item");
+		
+		//create the folder icon
+		var folder_icon = document.createElement("span");
+		folder_icon.classList.add("folder_icon");
+		if (item[0]) {
+			folder_icon.classList.add("oi");
+			folder_icon.setAttribute('data-glyph', "folder");
+		}
+		list_item.append(folder_icon);
+		
+		//create the edit icon
+		var edit_icon = document.createElement("span");
+		edit_icon.classList.add("edit_icon");
+		if ((popup_editable) && !(item[0])) {
+			edit_icon.classList.add("oi");
+			edit_icon.setAttribute('data-glyph', "spreadsheet");
+			edit_icon.title = "Edit"
+			edit_icon.id = item[1];
+			edit_icon.onclick = function () {
+							socket.emit("popup_edit", this.id);
+					  };
+		}
+		list_item.append(edit_icon);
+		
+		//create the rename icon
+		var rename_icon = document.createElement("span");
+		rename_icon.classList.add("rename_icon");
+		if ((popup_renameable) && !(item[0])) {
+			rename_icon.classList.add("oi");
+			rename_icon.setAttribute('data-glyph', "pencil");
+			rename_icon.title = "Rename"
+			rename_icon.id = item[1];
+			rename_icon.setAttribute("filename", item[2]);
+			rename_icon.onclick = function () {
+							var new_name = prompt("Please enter new filename for \n"+ this.getAttribute("filename"));
+							if (new_name != null) {
+								socket.emit("popup_rename", {"file": this.id, "new_name": new_name});
+							}
+					  };
+		}
+		list_item.append(rename_icon);
+		
+		//create the delete icon
+		var delete_icon = document.createElement("span");
+		delete_icon.classList.add("delete_icon");
+		if (popup_deleteable) {
+			delete_icon.classList.add("oi");
+			delete_icon.setAttribute('data-glyph', "x");
+			delete_icon.title = "Delete"
+			delete_icon.id = item[1];
+			delete_icon.setAttribute("folder", item[0]);
+			delete_icon.onclick = function () {
+							if (this.getAttribute("folder") == "true") {
+								if (window.confirm("Do you really want to delete this folder and ALL files under it?")) {
+									socket.emit("popup_delete", this.id);
+								}
+							} else {
+								if (window.confirm("Do you really want to delete this file?")) {
+									socket.emit("popup_delete", this.id);
+								}
+							}
+					  };
+		}
+		list_item.append(delete_icon);
+		
+		//create the actual item
+		var popup_item = document.createElement("span");
+		popup_item.classList.add("file");
+		popup_item.id = item[1];
+		popup_item.setAttribute("folder", item[0]);
+		popup_item.setAttribute("valid", item[3]);
+		popup_item.textContent = item[2];
+		popup_item.onclick = function () {
+						var accept = document.getElementById("popup_accept");
+						if (this.getAttribute("valid") == "true") {
+							accept.classList.remove("disabled");
+							accept.setAttribute("selected_value", this.id);
+						} else {
+							console.log("not valid");
+							accept.setAttribute("selected_value", "");
+							accept.classList.add("disabled");
+							if (this.getAttribute("folder") == "true") {
+								console.log("folder");
+								socket.emit("popup_change_folder", this.id);
+							}
+						}
+				  };
+		list_item.append(popup_item);
+		
+		
+		popup_list.append(list_item);
+		
+		
+	}
+}
+
+function popup_breadcrumbs(data) {
+	var breadcrumbs = document.getElementById('popup_breadcrumbs')
+	while (breadcrumbs.firstChild) {
+		breadcrumbs.removeChild(breadcrumbs.firstChild);
+	}
+	
+	for (item of data) {
+		var button = document.createElement("button");
+		button.id = item[0];
+		button.textContent = item[1];
+		button.classList.add("breadcrumbitem");
+		button.onclick = function () {
+							socket.emit("popup_change_folder", this.id);
+					  };
+		breadcrumbs.append(button);
+		var span = document.createElement("span");
+		span.textContent = "\\";
+		breadcrumbs.append(span);
+	}
+}
+
+function popup_edit_file(data) {
+	var popup_list = document.getElementById('popup_list');
+	var accept = document.getElementById("popup_accept");
+	accept.classList.add("btn-secondary");
+	accept.classList.remove("btn-primary");
+	accept.textContent = "Save";
+	//first, let's clear out our existing data
+	while (popup_list.firstChild) {
+		popup_list.removeChild(popup_list.firstChild);
+	}
+	var accept = document.getElementById("popup_accept");
+	accept.setAttribute("selected_value", "");
+	accept.onclick = function () {
+							var textarea = document.getElementById("filecontents");
+							socket.emit("popup_change_file", {"file": textarea.getAttribute("filename"), "data": textarea.value});
+							document.getElementById("popup").classList.add("hidden");
+							this.classList.add("hidden");
+					  };
+	
+	var textarea = document.createElement("textarea");
+	textarea.classList.add("fullwidth");
+	textarea.rows = 25;
+	textarea.id = "filecontents"
+	textarea.setAttribute("filename", data.file);
+	textarea.value = data.text;
+	textarea.onblur = function () {
+						var accept = document.getElementById("popup_accept");
+						accept.classList.remove("hidden");
+						accept.classList.remove("btn-secondary");
+						accept.classList.add("btn-primary");
+					};
+	popup_list.append(textarea);
+	
+}
+
+function error_popup(data) {
+	alert(data);
+}
+
+function upload_file(file_box) {
+	var fileList = file_box.files;
+	for (file of fileList) {
+		reader = new FileReader();
+		reader.onload = function (event) {
+			socket.emit("upload_file", {'filename': file.name, "data": event.target.result});
+		};
+		reader.readAsArrayBuffer(file);
+	}
+}
+
+function getSelectedOptions(element) {
+    // validate element
+    if(!element || !element.options)
+        return []; //or null?
+
+    // return HTML5 implementation of selectedOptions instead.
+    if (element.selectedOptions) {
+        selectedOptions = element.selectedOptions;
+	} else {
+		// you are here because your browser doesn't have the HTML5 selectedOptions
+		var opts = element.options;
+		var selectedOptions = [];
+		for(var i = 0; i < opts.length; i++) {
+			 if(opts[i].selected) {
+				 selectedOptions.push(opts[i]);
+			 }
+		}
+	}
+	output = []
+	for (item of selectedOptions) {
+		output.push(item.value);
+	}
+    return output;
+}

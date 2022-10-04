@@ -8,6 +8,9 @@ from urllib.error import HTTPError
 import requests
 import requests.adapters
 import time
+from transformers import __version__ as transformers_version
+from transformers import PreTrainedModel
+import packaging.version
 from tqdm.auto import tqdm
 import os
 import itertools
@@ -15,7 +18,13 @@ import hashlib
 import huggingface_hub
 import packaging.version
 from pathlib import Path
-from typing import Optional
+from typing import List, Optional
+
+HAS_ACCELERATE = packaging.version.parse(transformers_version) >= packaging.version.parse("4.20.0.dev0")
+try:
+    import accelerate
+except ImportError:
+    HAS_ACCELERATE = False
 
 vars = None
 num_shards: Optional[int] = None
@@ -25,7 +34,11 @@ from_pretrained_index_filename: Optional[str] = None
 from_pretrained_kwargs = {}
 bar = None
 
-default_sampler_order = [0, 1, 2, 3, 4, 5]
+layers_module_names: Optional[List[str]] = None
+module_names: Optional[List[str]] = None
+named_buffers: Optional[List[tuple]] = None
+
+default_sampler_order = [6, 0, 1, 2, 3, 4, 5]
 
 #==================================================================#
 # Decorator to prevent a function's actions from being run until
@@ -111,7 +124,7 @@ def addsentencespacing(txt, vars):
     else:
         action = vars.prompt
         lastchar = action[-1] if len(action) else ""
-    if(lastchar == "." or lastchar == "!" or lastchar == "?" or lastchar == "," or lastchar == ";" or lastchar == ":"):
+    if(lastchar != " "):
         txt = " " + txt
     return txt
 	
@@ -159,12 +172,31 @@ def decodenewlines(txt):
 #  Returns number of layers given an HF model config
 #==================================================================#
 def num_layers(config):
-    return config.num_layers if hasattr(config, "num_layers") else config.n_layer if hasattr(config, "n_layer") else config.num_hidden_layers
+    return config["n_layer"] if isinstance(config, dict) else config.num_layers if hasattr(config, "num_layers") else config.n_layer if hasattr(config, "n_layer") else config.num_hidden_layers if hasattr(config, 'num_hidden_layers') else None
 
 #==================================================================#
 #  Downloads huggingface checkpoints using aria2c if possible
 #==================================================================#
+from flask_socketio import emit
+            
 def _download_with_aria2(aria2_config: str, total_length: int, directory: str = ".", user_agent=None, force_download=False, use_auth_token=None):
+    class Send_to_socketio(object):
+        def write(self, bar):
+            bar = bar.replace("\r", "").replace("\n", "")
+            
+            if bar != "":
+                try:
+                    print('\r' + bar, end='')
+                    try:
+                        emit('from_server', {'cmd': 'model_load_status', 'data': bar.replace(" ", "&nbsp;")}, broadcast=True)
+                    except:
+                        pass
+                    eventlet.sleep(seconds=0)
+                except:
+                    pass
+        def flush(self):
+            pass
+    
     import transformers
     lengths = {}
     s = requests.Session()
@@ -188,7 +220,7 @@ def _download_with_aria2(aria2_config: str, total_length: int, directory: str = 
                     done = True
                     break
                 if bar is None:
-                    bar = tqdm(total=total_length, desc=f"[aria2] Downloading model", unit="B", unit_scale=True, unit_divisor=1000)
+                    bar = tqdm(total=total_length, desc=f"[aria2] Downloading model", unit="B", unit_scale=True, unit_divisor=1000, file=Send_to_socketio())
                 visited = set()
                 for x in r:
                     filename = x["files"][0]["path"]
@@ -406,7 +438,7 @@ def _transformers22_aria2_hook(pretrained_model_name_or_path: str, force_downloa
     headers = [requests.head(u, headers=headers, allow_redirects=True, proxies=proxies, timeout=10).headers for u in urls]
 
     for n in filenames:
-        prefix, suffix = n.rsplit("/", 1)
+        prefix, suffix = n.rsplit(os.sep, 1)
         path = os.path.join(prefix, "kai-tempfile." + suffix + ".aria2")
         if os.path.exists(path):
             os.remove(path)
@@ -414,10 +446,10 @@ def _transformers22_aria2_hook(pretrained_model_name_or_path: str, force_downloa
         if os.path.exists(path):
             os.remove(path)
     total_length = sum(int(h["Content-Length"]) for h in headers)
-    aria2_config = "\n".join(f"{u}\n  out={os.path.join(prefix, 'kai-tempfile.' + suffix)}" for u, n in zip(urls, filenames) for prefix, suffix in [n.rsplit("/", 1)]).encode()
+    aria2_config = "\n".join(f"{u}\n  out={os.path.join(prefix, 'kai-tempfile.' + suffix)}" for u, n in zip(urls, filenames) for prefix, suffix in [n.rsplit(os.sep, 1)]).encode()
     _download_with_aria2(aria2_config, total_length, use_auth_token=token if use_auth_token else None, user_agent=user_agent, force_download=force_download)
     for u, n in zip(urls, filenames):
-        prefix, suffix = n.rsplit("/", 1)
+        prefix, suffix = n.rsplit(os.sep, 1)
         os.rename(os.path.join(prefix, "kai-tempfile." + suffix), os.path.join(prefix, suffix))
 
 def aria2_hook(pretrained_model_name_or_path: str, force_download=False, cache_dir=None, proxies=None, resume_download=False, local_files_only=False, use_auth_token=None, user_agent=None, revision=None, **kwargs):
@@ -521,3 +553,53 @@ def get_sharded_checkpoint_num_tensors(pretrained_model_name_or_path, filename, 
     import torch
     shard_paths, _ = transformers.modeling_utils.get_checkpoint_shard_files(pretrained_model_name_or_path, filename, cache_dir=cache_dir, force_download=force_download, proxies=proxies, resume_download=resume_download, local_files_only=local_files_only, use_auth_token=use_auth_token, user_agent=user_agent, revision=revision)
     return list(itertools.chain(*(torch.load(p, map_location="cpu").keys() for p in shard_paths)))
+
+#==================================================================#
+#  Given a PreTrainedModel, returns the list of module names that correspond
+#  to the model's hidden layers.
+#==================================================================#
+def get_layers_module_names(model: PreTrainedModel) -> List[str]:
+    names: List[str] = []
+    def recurse(module, head=""):
+        for c in module.named_children():
+            name = head + c[0]
+            if c[0].isnumeric() and any(c[1].__class__.__name__.endswith(suffix) for suffix in ("Block", "Layer")):
+                names.append(name)
+            else:
+                recurse(c[1], head=name + ".")
+    recurse(model)
+    return names
+
+#==================================================================#
+#  Given a PreTrainedModel, returns the module name that corresponds
+#  to the model's input embeddings.
+#==================================================================#
+def get_input_embeddings_module_name(model: PreTrainedModel) -> str:
+    embeddings = model.get_input_embeddings()
+    def recurse(module, head=""):
+        for c in module.named_children():
+            name = head + c[0]
+            if c[1] is embeddings:
+                return name
+            else:
+                return recurse(c[1], head=name + ".")
+    return recurse(model)
+
+#==================================================================#
+#  Given a PreTrainedModel and a list of module names, returns a list
+#  of module names such that the union of the set of modules given as input
+#  and the set of modules returned as output contains all modules in the model.
+#==================================================================#
+def get_missing_module_names(model: PreTrainedModel, names: List[str]) -> List[str]:
+    missing_names: List[str] = []
+    def recurse(module, head=""):
+        for c in module.named_children():
+            name = head + c[0]
+            if any(name.startswith(n) for n in names):
+                continue
+            if next(c[1].named_children(), None) is None:
+                missing_names.append(name)
+            else:
+                recurse(c[1], head=name + ".")
+    recurse(model)
+    return missing_names
