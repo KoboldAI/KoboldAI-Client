@@ -1465,7 +1465,7 @@ class KoboldStoryRegister(object):
         action_text = self.__str__()
         action_text = "{}{}".format("" if self.story_settings is None else self.story_settings.prompt, action_text)
         ###########action_text_split = [sentence, actions used in sentence, token length, included in AI context]################
-        action_text_split = [[x+" ", [], 0, False] for x in re.split("(?<=[.!?])[ \t]+", action_text)]
+        action_text_split = [[x+" ", [], 0, False] for x in re.findall(".*?[.!?]\s+", action_text)]
         #The last action shouldn't have the extra space from the sentence splitting, so let's remove it
         action_text_split[-1][0] = action_text_split[-1][0][:-1]
         
