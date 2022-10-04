@@ -2297,6 +2297,7 @@ function sync_to_server(item) {
 			value = item.checked;
 		} else {
 			value = item.value;
+			if (item.classList.contains("sync_as_float")) value = parseFloat(value);
 		}
 	} else {
 		value = item.textContent;
