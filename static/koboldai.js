@@ -2125,9 +2125,13 @@ function show_error_message(data) {
 	while (error_box_data.firstChild) {
 		error_box_data.removeChild(error_box_data.firstChild);
 	}
-	for (item of data) {
+	if (Array.isArray(data)) {
+		for (item of data) {
+			$e("div", error_box_data, {'innerHTML': item, 'classes': ['console_text']})
+			$e("br", error_box_data)
+		}
+	} else {
 		$e("div", error_box_data, {'innerHTML': item, 'classes': ['console_text']})
-		$e("br", error_box_data)
 	}
 }
 
