@@ -18,8 +18,19 @@ gensettingstf = [
 	"min": 0.1,
 	"max": 2.0,
 	"step": 0.01,
-	"default": 0.5,
+	"default": 1.0,
     "tooltip": "Randomness of sampling. High values can increase creativity but may make text less sensible. Lower values will make text more predictable but can become repetitious."
+	},
+	{
+	"uitype": "slider",
+	"unit": "float",
+	"label": "Entropy",
+	"id": "setentropy", 
+	"min": 0.0,
+	"max": 1.0,
+	"step": 0.01,
+	"default": 0.3,
+    "tooltip": "A dynamic alternative to temperature that maintains a given value of normalized entropy (surprisal). High values make text more random while low values make text more repetitive. (Put this value on 0 to disable its effect)"
 	},
 	{
 	"uitype": "slider",
@@ -29,7 +40,7 @@ gensettingstf = [
 	"min": 0.0,
 	"max": 1.0,
 	"step": 0.01,
-	"default": 0.9,
+	"default": 1.0,
     "tooltip": "Used to discard unlikely text in the sampling process. Lower values will make text more predictable but can become repetitious. (Put this value on 1 to disable its effect)"
 	},
 	{
@@ -84,7 +95,7 @@ gensettingstf = [
 	"min": 1.0,
 	"max": 3.0,
 	"step": 0.01,
-	"default": 1.1,
+	"default": 1.0,
     "tooltip": "Used to penalize words that were already generated or belong to the context (Going over 1.2 breaks 6B models)."
 	},
 	{
@@ -295,8 +306,19 @@ gensettingsik =[{
 	"min": 0.1,
 	"max": 2.0,
 	"step": 0.05,
-	"default": 0.5,
+	"default": 1.0,
     "tooltip": "Randomness of sampling. High values can increase creativity but may make text less sensible. Lower values will make text more predictable but can become repetitious."
+	},
+	{
+	"uitype": "slider",
+	"unit": "float",
+	"label": "Entropy",
+	"id": "setentropy", 
+	"min": 0.0,
+	"max": 1.0,
+	"step": 0.01,
+	"default": 0.3,
+    "tooltip": "A dynamic alternative to temperature that maintains a given value of normalized entropy (surprisal). High values make text more random while low values make text more repetitive. (Put this value on 0 to disable its effect)"
 	},
 	{
 	"uitype": "slider",
