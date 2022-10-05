@@ -9056,7 +9056,7 @@ def UI_2_get_next_100_actions(data):
     data_to_send = []
     for i in reversed(list(koboldai_vars.actions.actions)):
         if i < data:
-            if sent >= 50:
+            if sent >= 100:
                 break
             data_to_send.append({"id": i, "action": koboldai_vars.actions.actions[i]})
             sent += 1

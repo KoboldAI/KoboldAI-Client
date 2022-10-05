@@ -155,6 +155,7 @@ function reset_story() {
 	finder_last_input = null;
 	on_new_wi_item = null;
 	current_chunk_number = null;
+	console.log("resetting scroll_trigger_element");
 	scroll_trigger_element = undefined;
 	var story_area = document.getElementById('Selected Text');
 	let temp = []
@@ -348,24 +349,13 @@ function do_story_text_updates(action) {
 		
 		//need to find the closest element
 		next_id = action.id+1;
-		while (true) {
-			if (next_id in actions_data) {
-				story_area.insertBefore(span, document.getElementById('Selected Text Chunk '+next_id));
-				break;
-			} else if (Math.max.apply(null,Object.keys(actions_data)) <= next_id) {
-				story_area.append(span);
-				break;
-			}
-			next_id += 1;
+		if (Math.max.apply(null,Object.keys(actions_data)) <= next_id) {
+			story_area.append(span);
+		} else {
+			story_area.prepend(span);
 		}
 		span.classList.add("single_pulse");
 		
-		if (action.id.toString() == document.getElementById('action_count').textContent) {
-			console.log("Scrolling. Action Count: "+document.getElementById('action_count').textContent);
-			document.getElementById("Selected Text").scrollTop = document.getElementById("Selected Text").scrollHeight;
-		}
-		//clearTimeout(game_text_scroll_timeout);
-		//game_text_scroll_timeout = setTimeout(function() {document.getElementById("Selected Text").scrollTop = document.getElementById("Selected Text").scrollHeight;}, 500);
 		if (span.textContent != "") {
 			assign_world_info_to_action(action.id, null);
 		}
@@ -554,11 +544,18 @@ function var_changed(data) {
 	}
 	//Special Case for Actions
 	if ((data.classname == "story") && (data.name == "actions")) {
+		start_time = Date.now();
+		if (document.getElementById("Selected Text").firstElementChild.id == "story_prompt") {
+			first_story_element = document.getElementById("Selected Text").firstElementChild.nextElementSibling;
+		} else {
+			first_story_element = document.getElementById("Selected Text").firstElementChild;
+		}
 		if (Array.isArray(data.value)) {
 			actions = data.value;
 		} else {
 			actions = [data.value];
 		}
+		if (actions.length == 0) {return;}
 		for (action of actions) {
 			if (action.length != 0) {
 				actions_data[action.id] = action.action;
@@ -575,23 +572,27 @@ function var_changed(data) {
 				}
 			}
 		}
-		//check to see if our new action is before the scroll triggering action
-		if (actions.length > 0) {
-			if ((scroll_trigger_element == undefined) || (actions[actions.length-1].id < parseInt(scroll_trigger_element.getAttribute("chunk")))) {
-				if (scroll_trigger_element != undefined) {
-					scroll_trigger_element.scrollIntoView(false);
-				} else {
-					document.getElementById("Selected Text Chunk "+actions[actions.length-1].id).scrollIntoView(false);
-				}
-				
-				scroll_trigger_element = document.getElementById("Selected Text Chunk "+actions[0].id);
-				//if we hit the top, unhide the prompt and clear the scroll trigger
-				if (actions[0].id == 0) {
-					document.getElementById("story_prompt").classList.remove("hidden");
-					scroll_trigger_element = null;
-				}
+		//if we hit the top, unhide the prompt and move it to the top
+		if (actions[0].id == 0) {
+			prompt_span = document.getElementById("story_prompt");
+			document.getElementById("Selected Text").prepend(prompt_span);
+			prompt_span.classList.remove("hidden");
+		} else if (actions[actions.length-1].id != current_action) {
+			//we are bringing in old data (not adding to the end of the game text), so set the scroll event back up
+			//and scroll so that the old top is at the top again (IE new text added is before the top of the screen)
+			if (first_story_element) {
+				first_story_element.scrollIntoView(true);
 			}
+			scroll_trigger_element = document.getElementById('Selected Text Chunk '+actions[actions.length-1].id);
+		} else {
+			//We are adding new game text to the screen (not past actions)
+			//If this is the first add, then we need to set our scroll trigger up
+			if (document.getElementsByClassName("rawtext").length == actions.length+1) {
+				scroll_trigger_element = document.getElementById('Selected Text Chunk '+actions[0].id);
+			}
+			document.getElementById('Selected Text Chunk '+actions[actions.length-1].id).scrollIntoView(false);
 		}
+		//console.log("Took "+((Date.now()-start_time)/1000)+"s to process");
 		
 	//Special Case for Presets
 	} else if ((data.classname == 'model') && (data.name == 'presets')) {
@@ -4796,9 +4797,9 @@ document.addEventListener("keydown", function(event) {
 document.getElementById("Selected Text").onscroll = function(){
     //TOP
 	if ((scroll_trigger_element != undefined) && (scroll_trigger_element != null)) {
-		if(scroll_trigger_element.getBoundingClientRect().top >= 0){
-			console.log("Asking for more actions");
+		if(scroll_trigger_element.getBoundingClientRect().bottom >= 0){
 			socket.emit("get_next_100_actions", parseInt(scroll_trigger_element.getAttribute("chunk")));
+			scroll_trigger_element == null;
 		}
 	}
 }
