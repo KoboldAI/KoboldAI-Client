@@ -3285,7 +3285,11 @@ function assign_world_info_to_action(action_item, uid) {
 function highlight_world_info_text_in_chunk(action_id, wi) {
 	//First let's assign our world info id to the action so we know to count the tokens for the world info
 	let uid = wi['uid'];
-	let action = document.getElementById("Selected Text Chunk "+action_id);
+	if (action_id < 0) {
+		let action = document.getElementById("story_prompt");
+	} else {
+		let action = document.getElementById("Selected Text Chunk "+action_id);
+	}
 	let words = action.textContent.split(" ");
 	current_ids = action.getAttribute("world_info_uids")?action.getAttribute("world_info_uids").split(','):[];
 	if (!(current_ids.includes(uid))) {

@@ -8198,11 +8198,17 @@ def get_story_listing_data(item_full_path, item, valid_selection):
     if not valid_selection:
         return [title, action_count, last_loaded]
 
-    with open(item_full_path, "r") as f:
-        js = json.load(f)
+    if os.path.getsize(item_full_path) < 2*1024*1024: #2MB
+        with open(item_full_path, "r") as f:
+            js = json.load(f)
+    else:
+        js = {}
 
     title = js['story_name'] if 'story_name' in js else ".".join(item.split(".")[:-1])
-    action_count = len(js["actions"])
+    if "actions" in js:
+        action_count = len(js["actions"])
+    else:
+        action_count = "{}MB".format(round(os.path.getsize(item_full_path)/1024/1024,1))
 
     if title in koboldai_vars._system_settings.story_loads:
         # UNIX Timestamp
@@ -8210,7 +8216,7 @@ def get_story_listing_data(item_full_path, item, valid_selection):
     else:
         last_loaded = os.path.getmtime(item_full_path)
 
-    if js.get("file_version", 1) == 1:
+    if js.get("file_version", 1) == 1 or os.path.getsize(item_full_path) >= 2*1024*1024:
         return [title, action_count, last_loaded]
 
     action_count = js['actions']['action_count']+1
@@ -8220,14 +8226,17 @@ def get_story_listing_data(item_full_path, item, valid_selection):
 @logger.catch
 def valid_story(file):
     if file.endswith(".json"):
-        with open(file, "r") as f:
-            try:
-                js = json.load(f)
-            except:
-                pass
-                return False
+        if os.path.getsize(file) < 2*1024*1024: #2MB
+            with open(file, "r") as f:
+                try:
+                    js = json.load(f)
+                except:
+                    pass
+                    return False
 
-            return 'actions' in js
+                return 'actions' in js
+        else:
+            return True
 
 @logger.catch
 def story_sort(base_path, desc=False):
@@ -8235,15 +8244,18 @@ def story_sort(base_path, desc=False):
     for file in os.scandir(path=base_path):
         if file.name.endswith(".json"):
             filename = os.path.join(base_path, file.name).replace("\\", "/")
-            with open(filename, "r") as f:
-                try:
-                    js = json.load(f)
-                    if 'story_name' in js and js['story_name'] in koboldai_vars.story_loads:
-                        files[file.name] = datetime.datetime.strptime(koboldai_vars.story_loads[js['story_name']], "%m/%d/%Y, %H:%M:%S")
-                    else:
-                        files[file.name] = datetime.datetime.fromtimestamp(file.stat().st_mtime)
-                except:
-                    pass
+            if os.path.getsize(filename) < 2*1024*1024: #2MB
+                with open(filename, "r") as f:
+                    try:
+                        js = json.load(f)
+                        if 'story_name' in js and js['story_name'] in koboldai_vars.story_loads:
+                            files[file.name] = datetime.datetime.strptime(koboldai_vars.story_loads[js['story_name']], "%m/%d/%Y, %H:%M:%S")
+                        else:
+                            files[file.name] = datetime.datetime.fromtimestamp(file.stat().st_mtime)
+                    except:
+                        pass
+            else:
+                files[file.name] = datetime.datetime.fromtimestamp(file.stat().st_mtime)
     return [key[0] for key in sorted(files.items(), key=lambda kv: (kv[1], kv[0]), reverse=desc)]
 
 
