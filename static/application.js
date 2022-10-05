@@ -2590,6 +2590,10 @@ $(document).ready(function(){
 			// Send current temp value to input
 			$("#settempcur").val(msg.data);
 			$("#settemp").val(parseFloat(msg.data)).trigger("change");
+		} else if(msg.cmd == "updateentropy") {
+			// Send current entropy value to input
+			$("#setentropycur").val(msg.data);
+			$("#setentropy").val(parseFloat(msg.data)).trigger("change");
 		} else if(msg.cmd == "updatetopp") {
 			// Send current top p value to input
 			$("#settoppcur").val(msg.data);
@@ -2637,6 +2641,9 @@ $(document).ready(function(){
 		} else if(msg.cmd == "setlabeltemp") {
 			// Update setting label with value from server
 			$("#settempcur").val(msg.data);
+		} else if(msg.cmd == "setlabelentropy") {
+			// Update setting label with value from server
+			$("#setentropycur").val(msg.data);
 		} else if(msg.cmd == "setlabeltopp") {
 			// Update setting label with value from server
 			$("#settoppcur").val(msg.data);
