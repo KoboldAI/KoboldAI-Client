@@ -177,3 +177,101 @@ class TopALogitsWarper(LogitsWarper):
         indices_to_remove = sorted_indices_to_remove.scatter(1, sorted_indices, sorted_indices_to_remove)
         scores = scores.masked_fill(indices_to_remove, self.filter_value)
         return scores
+
+# Returns counts of tokens for given `scores`. If `count_pruned_tokens` is true, pruned tokens are included in the counts; otherwise pruned tokens are removed before counting.
+def get_count(scores: torch.FloatTensor, keepdim: bool = False, count_pruned_tokens: bool = False) -> torch.FloatTensor:
+    if count_pruned_tokens:
+        count = scores.count_nonzero(dim=-1)
+    else:
+        count = scores.gt(negative_infinity).count_nonzero(dim=-1)
+    if keepdim:
+        sequences = scores.size(dim=0)
+        return count.reshape(sequences, 1)
+    else:
+        return count
+    
+# Returns entropy values of given `scores`.
+def get_entropy(scores: torch.FloatTensor, keepdim: bool = False) -> torch.FloatTensor:
+    probs = scores.softmax(dim=-1)
+    infos = probs.log().negative()
+    return infos.multiply(probs).nansum(dim=-1, keepdim=keepdim)
+
+# Returns normalized entropy values of given `scores`
+# Normalized entropy is `entropy/max_entropy`, where `max_entropy` is `log(token_count)`
+# If `count_pruned_tokens` is true, pruned tokens are included in determining max_entropy; otherwise pruned tokens are removed before calculating max_entropy.
+def get_normalized_entropy(scores: torch.FloatTensor, keepdim: bool = False, count_pruned_tokens: bool = True) -> torch.FloatTensor:
+    max_entropy = get_count(scores, keepdim, count_pruned_tokens).log()
+    entropy = get_entropy(scores, keepdim)
+    return entropy / max_entropy
+
+# Returns the temperature values that, when applied to `scores`, will approximate the given `entropy` value
+# If a temperature required to achieve the entropy is greater than `max_temp` 
+# or less than `min_temp`, then `max_temp` or `min_temp` will be returned, 
+# respectively
+def get_temp_for_entropy(scores, entropy):
+    max_temp = 8.0 # @param {type: "number"}
+    min_temp = 0.001 # @param {type: "number"}
+    max_error = 0.001 # @param {type: "number"}
+
+    curr_entropy = get_entropy(scores, keepdim=True)
+
+    count_equals_one = get_count(scores, keepdim=-1) == 1
+    no_temp_needed = (curr_entropy - entropy).abs() <= max_error
+    max_entropy = get_entropy(scores/max_temp, keepdim=True)
+    use_max_temps = (max_entropy <= entropy)
+    min_entropy = get_entropy(scores/min_temp, keepdim=True)
+    use_min_temps = (min_entropy >= entropy)
+    
+    high_temps = torch.ones(curr_entropy.shape).to(scores.device) * max_temp
+    high_temps = high_temps.masked_fill(use_max_temps, max_temp)
+    high_temps = high_temps.masked_fill(use_min_temps, min_temp)
+    high_temps = high_temps.masked_fill(no_temp_needed, 1.0)
+    high_temps = high_temps.masked_fill(count_equals_one, 1.0)
+
+    low_temps = torch.ones(curr_entropy.shape).to(scores.device) * min_temp
+    low_temps = low_temps.masked_fill(use_max_temps, max_temp)
+    low_temps = low_temps.masked_fill(use_min_temps, min_temp)
+    low_temps = low_temps.masked_fill(no_temp_needed, 1.0)
+    low_temps = low_temps.masked_fill(count_equals_one, 1.0)
+
+    while True:
+        temps = (high_temps + low_temps)/2.0
+        estimates = get_entropy(scores/temps, keepdim=True)
+        diffs = estimates - entropy
+
+        # Get indices for high and low temps (temps within error range are in both)
+        high_mask = (diffs >= -max_error)
+        low_mask = (diffs <= max_error)
+
+        high_temp_selection = temps.masked_select(high_mask)
+        low_temp_selection = temps.masked_select(low_mask)
+
+        high_temps = high_temps.masked_scatter(high_mask, high_temp_selection)
+        low_temps = low_temps.masked_scatter(low_mask, low_temp_selection)
+
+        assert (high_temps >= low_temps).all()
+
+        if high_temps.eq(low_temps).all():
+            break
+    return temps
+
+# Returns the temperature values that, when applied to `scores`, will approximate the given `normalized_entropy` value
+# This is a wrapper for `get_temp_for_entropy` using normalized_entropy instead of entropy
+# If `count_pruned_tokens` is True, pruned tokens are included in determining max_entropy; otherwise pruned tokens are removed before calculating max_entropy.
+# Note: it works better when `count_pruned_tokens` is True
+def get_temp_for_normalized_entropy(scores, normalized_entropy, count_pruned_tokens: bool = True):
+    max_entropy = get_count(scores, keepdim=True, count_pruned_tokens=count_pruned_tokens).log()
+    entropy = normalized_entropy * max_entropy
+    return get_temp_for_entropy(scores, entropy)
+
+class EntropyWarper(LogitsWarper):
+    def __init__(self, target_normalized_entropy: float = 0.0):
+        assert target_normalized_entropy >= 0
+        assert target_normalized_entropy <= 1.0
+        self.normalized_entropy = target_normalized_entropy
+
+    def __call__(self, input_ids: torch.LongTensor, scores: torch.FloatTensor) -> torch.FloatTensor:
+        normalized_scores = scores.log_softmax(dim=-1)
+        normalized_entropy = get_normalized_entropy(normalized_scores, keepdim=True)
+        temps = get_temp_for_normalized_entropy(scores, self.target_normalized_entropy
+        return scores.div(temps).log_softmax(dim=-1)
