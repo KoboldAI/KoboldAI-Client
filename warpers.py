@@ -264,7 +264,7 @@ def get_temp_for_normalized_entropy(scores, normalized_entropy, count_pruned_tok
     entropy = normalized_entropy * max_entropy
     return get_temp_for_entropy(scores, entropy)
 
-class EntropyWarper(LogitsWarper):
+class EntropyLogitsWarper(LogitsWarper):
     def __init__(self, target_normalized_entropy: float = 0.0):
         assert target_normalized_entropy >= 0
         assert target_normalized_entropy <= 1.0
