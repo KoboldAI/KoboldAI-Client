@@ -579,9 +579,9 @@ function var_changed(data) {
 		if (actions.length > 0) {
 			if ((scroll_trigger_element == undefined) || (actions[actions.length-1].id < parseInt(scroll_trigger_element.getAttribute("chunk")))) {
 				if (scroll_trigger_element != undefined) {
-					scroll_trigger_element.scrollIntoView();
+					scroll_trigger_element.scrollIntoView(false);
 				} else {
-					document.getElementById("Selected Text Chunk "+actions[actions.length-1].id).scrollIntoView();
+					document.getElementById("Selected Text Chunk "+actions[actions.length-1].id).scrollIntoView(false);
 				}
 				
 				scroll_trigger_element = document.getElementById("Selected Text Chunk "+actions[0].id);
