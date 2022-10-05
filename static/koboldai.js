@@ -588,7 +588,7 @@ function var_changed(data) {
 			//We are adding new game text to the screen (not past actions)
 			console.log("Scrolling to 'Selected Text Chunk '"+actions[actions.length-1].id);
 			console.log(document.getElementById('Selected Text Chunk '+actions[actions.length-1].id));
-			setTimeout(function() {document.getElementById('Selected Text Chunk '+actions[actions.length-1].id).scrollIntoView(false);}, 200);
+			setTimeout(function() {document.getElementById('Selected Text Chunk '+actions[actions.length-1].id).scrollIntoView(false);}, 20);
 			//If this is the first add, then we need to set our scroll trigger up
 			if (document.getElementsByClassName("rawtext").length == actions.length+1) {
 				scroll_trigger_element = document.getElementById('Selected Text Chunk '+actions[0].id);
