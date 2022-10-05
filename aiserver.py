@@ -5026,6 +5026,10 @@ def core_generate(text: list, min: int, max: int, found_entries: set):
         if koboldai_vars.full_determinism:
             tpu_mtj_backend.set_rng_seed(koboldai_vars.seed)
 
+    if gen_in.shape[-1] + koboldai_vars.genamt > koboldai_vars.max_length:
+        print(gen_in.shape[-1])
+        print(koboldai_vars.genamt)
+        print(koboldai_vars.max_length)
     assert gen_in.shape[-1] + koboldai_vars.genamt <= koboldai_vars.max_length
 
     if koboldai_vars.hascuda and koboldai_vars.usegpu:

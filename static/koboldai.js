@@ -573,7 +573,7 @@ function var_changed(data) {
 			}
 		}
 		//if we hit the top, unhide the prompt and move it to the top
-		if (actions[0].id == 0) {
+		if (actions[actions.length-1].id == 0) {
 			prompt_span = document.getElementById("story_prompt");
 			document.getElementById("Selected Text").prepend(prompt_span);
 			prompt_span.classList.remove("hidden");
@@ -586,11 +586,13 @@ function var_changed(data) {
 			scroll_trigger_element = document.getElementById('Selected Text Chunk '+actions[actions.length-1].id);
 		} else {
 			//We are adding new game text to the screen (not past actions)
+			console.log("Scrolling to 'Selected Text Chunk '"+actions[actions.length-1].id);
+			console.log(document.getElementById('Selected Text Chunk '+actions[actions.length-1].id));
+			setTimeout(function() {document.getElementById('Selected Text Chunk '+actions[actions.length-1].id).scrollIntoView(false);}, 200);
 			//If this is the first add, then we need to set our scroll trigger up
 			if (document.getElementsByClassName("rawtext").length == actions.length+1) {
 				scroll_trigger_element = document.getElementById('Selected Text Chunk '+actions[0].id);
 			}
-			document.getElementById('Selected Text Chunk '+actions[actions.length-1].id).scrollIntoView(false);
 		}
 		//console.log("Took "+((Date.now()-start_time)/1000)+"s to process");
 		
@@ -2132,6 +2134,7 @@ function show_error_message(data) {
 			$e("br", error_box_data)
 		}
 	} else {
+		console.log(item);
 		$e("div", error_box_data, {'innerHTML': item, 'classes': ['console_text']})
 	}
 }
@@ -3285,10 +3288,11 @@ function assign_world_info_to_action(action_item, uid) {
 function highlight_world_info_text_in_chunk(action_id, wi) {
 	//First let's assign our world info id to the action so we know to count the tokens for the world info
 	let uid = wi['uid'];
+	let action = undefined;
 	if (action_id < 0) {
-		let action = document.getElementById("story_prompt");
+		action = document.getElementById("story_prompt");
 	} else {
-		let action = document.getElementById("Selected Text Chunk "+action_id);
+		action = document.getElementById("Selected Text Chunk "+action_id);
 	}
 	let words = action.textContent.split(" ");
 	current_ids = action.getAttribute("world_info_uids")?action.getAttribute("world_info_uids").split(','):[];
@@ -4802,6 +4806,7 @@ document.getElementById("Selected Text").onscroll = function(){
     //TOP
 	if ((scroll_trigger_element != undefined) && (scroll_trigger_element != null)) {
 		if(scroll_trigger_element.getBoundingClientRect().bottom >= 0){
+			console.log("Scrolling action: "+scroll_trigger_element.getAttribute("chunk"));
 			socket.emit("get_next_100_actions", parseInt(scroll_trigger_element.getAttribute("chunk")));
 			scroll_trigger_element == null;
 		}
