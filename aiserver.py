@@ -7060,10 +7060,12 @@ def load_story_v1(js):
     if(koboldai_vars.gamestarted):
         #We set the action count higher so that we don't trigger a scroll in the UI. 
         #Once all but the last is loaded we can bring it back down and do the last one so we scroll to it
+        logger.debug("Created temp story class")
         temp_story_class = koboldai_settings.KoboldStoryRegister(None, None, koboldai_vars, tokenizer=None)
         
         for i in range(len(js["actions"])):
             temp_story_class.append(js["actions"][i], recalc=False)
+        logger.debug("Added actions to temp story class")
         
 
     if "actions_metadata" in js:
@@ -7075,6 +7077,8 @@ def load_story_v1(js):
                         data[i]["text"] = data[i].pop("Text")
                     temp_story_class.set_options(data, int(key))
     koboldai_vars.actions.load_json(temp_story_class.to_json())
+    logger.debug("Saved temp story class")
+    time.sleep(30)
     del temp_story_class
     
     # Try not to break older save files
@@ -9076,6 +9080,7 @@ def UI_2_get_next_100_actions(data):
                 break
             data_to_send.append({"id": i, "action": koboldai_vars.actions.actions[i]})
             sent += 1
+    logger.debug("data_to_send length: {}".format(len(data_to_send)))
     emit("var_changed", {"classname": "story", "name": "actions", "old_value": None, "value":data_to_send})
 
 #==================================================================#

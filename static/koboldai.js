@@ -61,6 +61,8 @@ var control_held = false;
 var actions_data = {};
 var setup_wi_toggles = [];
 var scroll_trigger_element = undefined;
+var first_scroll_occurred = false;
+var temp_counter = 0;
 const on_colab = $el("#on_colab").textContent == "true";
 
 // name, desc, icon, func
@@ -157,6 +159,7 @@ function reset_story() {
 	current_chunk_number = null;
 	console.log("resetting scroll_trigger_element");
 	scroll_trigger_element = undefined;
+	first_scroll_occurred = false;
 	var story_area = document.getElementById('Selected Text');
 	let temp = []
 	for (child of story_area.children) {
@@ -545,6 +548,10 @@ function var_changed(data) {
 	//Special Case for Actions
 	if ((data.classname == "story") && (data.name == "actions")) {
 		start_time = Date.now();
+		temp_counter += 1;
+		if (temp_counter > 10) {
+			return;
+		}
 		if (document.getElementById("Selected Text").firstElementChild.id == "story_prompt") {
 			first_story_element = document.getElementById("Selected Text").firstElementChild.nextElementSibling;
 		} else {
@@ -556,6 +563,12 @@ function var_changed(data) {
 			actions = [data.value];
 		}
 		if (actions.length == 0) {return;}
+		let seen_action = false;
+		if ((actions[0].id in actions_data) && (actions[actions.length-1].id in actions_data)) {
+			seen_action = true;
+		}
+		console.log("Loading actions "+actions[0].id+" to "+actions[actions.length-1].id);
+		console.log(actions);
 		for (action of actions) {
 			if (action.length != 0) {
 				actions_data[action.id] = action.action;
@@ -572,25 +585,39 @@ function var_changed(data) {
 				}
 			}
 		}
-		//if we hit the top, unhide the prompt and move it to the top
-		if (actions[actions.length-1].id == 0) {
+		if (seen_action) {
+			//We've seen this data before, no scrolling needed
+			console.log("Already seen actions, doing nothing");
+		} else if ((actions[actions.length-1].id == 0) || (actions[0].id == 0)) {
+			//if we hit the top, unhide the prompt and move it to the top
+			console.log("Hit the prompt, unhiding and killing scrolling");
+			scroll_trigger_element = null;
 			prompt_span = document.getElementById("story_prompt");
 			document.getElementById("Selected Text").prepend(prompt_span);
 			prompt_span.classList.remove("hidden");
 		} else if (actions[actions.length-1].id != current_action) {
 			//we are bringing in old data (not adding to the end of the game text), so set the scroll event back up
 			//and scroll so that the old top is at the top again (IE new text added is before the top of the screen)
+			console.log("got old actions, ading them and scrolling");
 			if (first_story_element) {
 				first_story_element.scrollIntoView(true);
 			}
-			scroll_trigger_element = document.getElementById('Selected Text Chunk '+actions[actions.length-1].id);
+			if (scroll_trigger_element != null) {
+				console.log("Setting scroll trigger to Selected Text Chunk "+actions[actions.length-1].id);
+				scroll_trigger_element = document.getElementById('Selected Text Chunk '+actions[actions.length-1].id);
+			}
 		} else {
+			console.log("New action added, scrolling to it");
 			//We are adding new game text to the screen (not past actions)
 			console.log("Scrolling to 'Selected Text Chunk '"+actions[actions.length-1].id);
 			console.log(document.getElementById('Selected Text Chunk '+actions[actions.length-1].id));
-			setTimeout(function() {document.getElementById('Selected Text Chunk '+actions[actions.length-1].id).scrollIntoView(false);}, 20);
+			setTimeout(function() {
+					document.getElementById('Selected Text Chunk '+actions[actions.length-1].id).scrollIntoView(false);
+					first_scroll_occurred = true;
+				}, 20);
 			//If this is the first add, then we need to set our scroll trigger up
-			if (document.getElementsByClassName("rawtext").length == actions.length+1) {
+			if ((document.getElementsByClassName("rawtext").length == actions.length+1) && (scroll_trigger_element != null)) {
+				console.log("Setting scroll trigger to Selected Text Chunk "+actions[0].id);
 				scroll_trigger_element = document.getElementById('Selected Text Chunk '+actions[0].id);
 			}
 		}
@@ -4804,9 +4831,10 @@ document.addEventListener("keydown", function(event) {
 //function to load more actions if nessisary
 document.getElementById("Selected Text").onscroll = function(){
     //TOP
-	if ((scroll_trigger_element != undefined) && (scroll_trigger_element != null)) {
+	if ((scroll_trigger_element != undefined) && (scroll_trigger_element != null) && (first_scroll_occurred == true)) {
 		if(scroll_trigger_element.getBoundingClientRect().bottom >= 0){
 			console.log("Scrolling action: "+scroll_trigger_element.getAttribute("chunk"));
+			console.log("sending emit");
 			socket.emit("get_next_100_actions", parseInt(scroll_trigger_element.getAttribute("chunk")));
 			scroll_trigger_element == null;
 		}

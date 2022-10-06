@@ -1038,7 +1038,6 @@ class system_settings(settings):
                                 self._horde_pid.terminate()
                                 self._horde_pid = None
                 
-        
 class KoboldStoryRegister(object):
     def __init__(self, socketio, story_settings, koboldai_vars, tokenizer=None, sequence=[]):
         self.socketio = socketio
@@ -1511,7 +1510,6 @@ class KoboldStoryRegister(object):
         super().__setattr__(name, value)
         if name == 'action_count' and not new_variable:
             process_variable_changes(self.socketio, "actions", "Action Count", value, old_value)
-
 
 class KoboldWorldInfo(object):
     
