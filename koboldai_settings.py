@@ -101,10 +101,11 @@ class koboldai_vars(object):
     
     def to_json(self, classname):
         if classname == 'story_settings':
-            data = {}
-            for story in self._story_settings:
-                data[story] = json.loads(self._story_settings[story].to_json())
-            return json.dumps(data)
+            return self._story_settings[self.get_story_name()].to_json()
+#            data = {}
+#            for story in self._story_settings:
+#                data[story] = json.loads(self._story_settings[story].to_json())
+#            return json.dumps(data)
         return self.__dict__["_{}".format(classname)].to_json()
         
     def load_story(self, story_name, json_data):
