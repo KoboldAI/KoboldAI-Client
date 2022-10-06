@@ -540,7 +540,7 @@ gensettingstf = [
     "UI_V2_Only": True,
  	"uitype": "toggle",
  	"unit": "bool",
- 	"label": "Model in memory",
+ 	"label": "Model in Memory",
  	"id": "keep_img_gen_in_memory",
  	"min": 0,
  	"max": 1,
