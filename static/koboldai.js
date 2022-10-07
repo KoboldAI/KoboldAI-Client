@@ -61,8 +61,6 @@ var control_held = false;
 var actions_data = {};
 var setup_wi_toggles = [];
 var scroll_trigger_element = undefined; //undefined means not currently set. If set to null, it's disabled.
-var first_scroll_occurred = false;
-//var temp_counter = 0;
 const on_colab = $el("#on_colab").textContent == "true";
 
 // name, desc, icon, func
@@ -159,7 +157,9 @@ function reset_story() {
 	current_chunk_number = null;
 	console.log("resetting scroll_trigger_element");
 	scroll_trigger_element = undefined;
-	first_scroll_occurred = false;
+	actions_data = {};
+	world_info_data = {};
+	world_info_folder({"root": []});
 	var story_area = document.getElementById('Selected Text');
 	let temp = []
 	for (child of story_area.children) {
@@ -189,8 +189,6 @@ function reset_story() {
 	while (world_info_area.firstChild) {
 		world_info_area.removeChild(world_info_area.firstChild);
 	}
-	world_info_data = {};
-	world_info_folder({"root": []});
 	document.getElementById("story_prompt").setAttribute("world_info_uids", "");
 	document.getElementById('themerow').classList.remove("hidden");
 	document.getElementById('input_text').placeholder = "Enter Prompt Here (shift+enter for new line)";
@@ -352,7 +350,7 @@ function do_story_text_updates(action) {
 		
 		//need to find the closest element
 		next_id = action.id+1;
-		if (Math.max.apply(null,Object.keys(actions_data)) <= next_id) {
+		if (Math.max.apply(null,Object.keys(actions_data).map(Number)) <= next_id) {
 			story_area.append(span);
 		} else {
 			story_area.prepend(span);
@@ -563,64 +561,35 @@ function var_changed(data) {
 			actions = [data.value];
 		}
 		if (actions.length == 0) {return;}
-		let seen_action = false;
+		let action_type = "????";
+		let first_action = -100;
+		//we need to figure out if this is changes to existing text, added text at the end, or infinite scroll text at the begining
 		if ((actions[0].id in actions_data) && (actions[actions.length-1].id in actions_data)) {
-			seen_action = true;
+			//update
+			action_type = "update";
+		} else if ((Object.keys(actions_data).length > 1) && (actions[actions.length-1].id < Math.min.apply(null,Object.keys(actions_data).map(Number).filter(function(x){return x>0})))) {
+			//adding to the begining
+			action_type = "prepend";
+			first_action = Math.min.apply(null,Object.keys(actions_data).map(Number).filter(function(x){return x>0}));
+		} else if (actions[actions.length-1].id > Math.max.apply(null,Object.keys(actions_data).map(Number))) {
+			action_type = "append";
 		}
-		console.log("Loading actions "+actions[0].id+" to "+actions[actions.length-1].id);
+		
+		console.log("Loading actions "+actions[0].id+" to "+actions[actions.length-1].id + " as "+action_type);
 		console.log(actions);
 		for (action of actions) {
-			if (action.length != 0) {
-				actions_data[action.id] = action.action;
-				do_story_text_updates(action);
-				create_options(action);
-				//do_story_text_length_updates(action);
-				if ('Probabilities' in action.action) {
-					do_probabilities(action);
-				}
-				//if (action.action['In AI Input']) {
-				//	document.getElementById('Selected Text Chunk '+action.id).classList.add("within_max_length");
-				//} else {
-				//	document.getElementById('Selected Text Chunk '+action.id).classList.remove("within_max_length");
-				//}
+			actions_data[parseInt(action.id)] = action.action;
+			do_story_text_updates(action);
+			create_options(action);
+			if ('Probabilities' in action.action) {
+				do_probabilities(action);
 			}
 		}
-		if (seen_action) {
-			//We've seen this data before, no scrolling needed
-			console.log("Already seen actions, doing nothing");
-		} else if ((actions[actions.length-1].id == 0) || (actions[0].id == 0)) {
-			//if we hit the top, unhide the prompt and move it to the top
-			console.log("Hit the prompt, unhiding and killing scrolling");
-			scroll_trigger_element = null;
-			prompt_span = document.getElementById("story_prompt");
-			document.getElementById("Selected Text").prepend(prompt_span);
-			prompt_span.classList.remove("hidden");
-		} else if (actions[actions.length-1].id != current_action) {
-			//we are bringing in old data (not adding to the end of the game text), so set the scroll event back up
-			//and scroll so that the old top is at the top again (IE new text added is before the top of the screen)
-			console.log("got old actions, ading them and scrolling");
-			if (first_story_element) {
-				first_story_element.scrollIntoView(true);
-			}
-			if (scroll_trigger_element != null) {
-				console.log("Setting scroll trigger to Selected Text Chunk "+actions[actions.length-1].id);
-				scroll_trigger_element = document.getElementById('Selected Text Chunk '+actions[actions.length-1].id);
-			}
-		} else {
-			console.log("New action added, scrolling to it");
-			//We are adding new game text to the screen (not past actions)
-			console.log("Scrolling to 'Selected Text Chunk '"+actions[actions.length-1].id);
-			console.log(document.getElementById('Selected Text Chunk '+actions[actions.length-1].id));
-			setTimeout(function() {
-					document.getElementById('Selected Text Chunk '+actions[actions.length-1].id).scrollIntoView(false);
-					first_scroll_occurred = true;
-				}, 20);
-			//If this is the first add, then we need to set our scroll trigger up
-			if (scroll_trigger_element == undefined) {
-				console.log("Setting scroll trigger to Selected Text Chunk "+actions[0].id);
-				scroll_trigger_element = document.getElementById('Selected Text Chunk '+actions[0].id);
-			}
-		}
+		
+		clearTimeout(game_text_scroll_timeout);
+		game_text_scroll_timeout = setTimeout(run_infinite_scroll_update.bind(null, action_type, actions, first_action), 200);
+		
+		
 		//console.log("Took "+((Date.now()-start_time)/1000)+"s to process");
 		
 	//Special Case for Presets
@@ -2869,7 +2838,6 @@ function update_bias_slider_value(slider) {
 }
 
 function update_context(data) {
-	console.log(data);
 	$(".context-block").remove();
 
 	memory_tokens = 0;
@@ -2934,12 +2902,10 @@ function update_context(data) {
 				}
 				break;
 			case 'submit':
-				console.log(entry);
 				submit_tokens = entry.tokens;
 				break;
 		}
 	}
-	console.log("Submit Tokens: "+submit_tokens);
 	calc_token_usage(soft_prompt_tokens, memory_tokens, authors_notes_tokens, prompt_tokens, game_text_tokens, world_info_tokens, submit_tokens);
 
 
@@ -4719,14 +4685,47 @@ document.addEventListener("keydown", function(event) {
 });
 
 //function to load more actions if nessisary
-//document.getElementById("Selected Text").onscroll = function(){
-//    //TOP
-//	if ((scroll_trigger_element != undefined) && (scroll_trigger_element != null) && (first_scroll_occurred == true)) {
-//		if(scroll_trigger_element.getBoundingClientRect().bottom >= 0){
-//			console.log("Scrolling action: "+scroll_trigger_element.getAttribute("chunk"));
-//			console.log("sending emit");
-//			socket.emit("get_next_100_actions", parseInt(scroll_trigger_element.getAttribute("chunk")));
-//			scroll_trigger_element == undefined;
-//		}
-//	}
-//}
+function infinite_scroll() {
+	if (scroll_trigger_element != undefined) {
+		if(scroll_trigger_element.getBoundingClientRect().bottom >= 0){
+			console.log("Scrolling action: "+scroll_trigger_element.getAttribute("chunk"));
+			console.log("sending emit");
+			socket.emit("get_next_100_actions", parseInt(scroll_trigger_element.getAttribute("chunk")));
+			scroll_trigger_element == undefined;
+		}
+	}
+}
+
+function run_infinite_scroll_update(action_type, actions, first_action) {
+	console.log("Running scroll for "+ action_type);
+	console.log(actions);
+	if (action_type == "append") {
+		console.log("Scrolling to :" + 'Selected Text Chunk '+actions[actions.length-1].id);
+		if (document.getElementById('Selected Text Chunk '+actions[actions.length-1].id)) {
+			document.getElementById('Selected Text Chunk '+actions[actions.length-1].id).scrollIntoView(false);
+		}
+		//Check to see if we need to have the scrolling in place or not
+		if (document.getElementById("story_prompt").classList.contains("hidden")) {
+			console.log("Should be setting up infinite_scroll to id "+ Math.min.apply(null,Object.keys(actions_data).map(Number).filter(function(x){return x>0})));
+			document.getElementById("Selected Text").onscroll = infinite_scroll;
+			scroll_trigger_element = document.getElementById('Selected Text Chunk '+Math.min.apply(null,Object.keys(actions_data).map(Number).filter(function(x){return x>0})));
+			console.log(scroll_trigger_element);
+		}
+	} else if (action_type == "prepend") {
+		if (Math.min.apply(null,Object.keys(actions_data).map(Number).filter(function(x){return x>0})) == 0) {
+			//We've hit our prompt, so let's unhide it, move it to the begining, and kill the infinite_scroll
+			scroll_trigger_element = undefined;
+			document.getElementById("Selected Text").onscroll = undefined;
+			document.getElementById("Selected Text").prepend(document.getElementById("story_prompt"));
+			document.getElementById("story_prompt").classList.remove("hidden");
+		} else {
+			if (document.getElementById('Selected Text Chunk '+actions[actions.length-1].id)) {
+				scroll_trigger_element = document.getElementById('Selected Text Chunk '+actions[actions.length-1].id);
+			}
+			if (document.getElementById('Selected Text Chunk '+first_action)) {
+				document.getElementById('Selected Text Chunk '+first_action).scrollIntoView(true);
+			}
+			
+		}
+	}
+}
