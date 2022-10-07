@@ -4691,14 +4691,13 @@ function infinite_scroll() {
 			console.log("Scrolling action: "+scroll_trigger_element.getAttribute("chunk"));
 			console.log("sending emit");
 			socket.emit("get_next_100_actions", parseInt(scroll_trigger_element.getAttribute("chunk")));
-			scroll_trigger_element == undefined;
+			scroll_trigger_element = undefined;
 		}
 	}
 }
 
 function run_infinite_scroll_update(action_type, actions, first_action) {
 	console.log("Running scroll for "+ action_type);
-	console.log(actions);
 	if (action_type == "append") {
 		console.log("Scrolling to :" + 'Selected Text Chunk '+actions[actions.length-1].id);
 		if (document.getElementById('Selected Text Chunk '+actions[actions.length-1].id)) {
@@ -4719,8 +4718,16 @@ function run_infinite_scroll_update(action_type, actions, first_action) {
 			document.getElementById("Selected Text").prepend(document.getElementById("story_prompt"));
 			document.getElementById("story_prompt").classList.remove("hidden");
 		} else {
-			if (document.getElementById('Selected Text Chunk '+actions[actions.length-1].id)) {
-				scroll_trigger_element = document.getElementById('Selected Text Chunk '+actions[actions.length-1].id);
+			//we just added more text and didn't hit the prompt. Move the scroll trigger back to the first non-prompt element
+			console.log("Prepend not prompt");
+			for (id of Object.keys(actions_data).map(Number).filter(function(x){return x>0}).sort(function(a, b) {return a - b;})) {
+				console.log("Checking for "+id);
+				if (document.getElementById('Selected Text Chunk '+id)) {
+					scroll_trigger_element = document.getElementById('Selected Text Chunk '+id);
+					console.log("Moving scroll trigger");
+					console.log(scroll_trigger_element);
+					break;
+				}
 			}
 			if (document.getElementById('Selected Text Chunk '+first_action)) {
 				document.getElementById('Selected Text Chunk '+first_action).scrollIntoView(true);
