@@ -4696,7 +4696,7 @@ function run_infinite_scroll_update(action_type, actions, first_action) {
 	if (action_type == "append") {
 		if (document.getElementById('Selected Text Chunk '+actions[actions.length-1].id)) {
 			document.getElementById('Selected Text Chunk '+actions[actions.length-1].id).scrollIntoView(false);
-			document.getElementById("Selected Text").scrollBy(0, 15);
+			document.getElementById("Selected Text").scrollBy(0, 25);
 		}
 		//Check to see if we need to have the scrolling in place or not
 		if (document.getElementById("story_prompt").classList.contains("hidden")) {
