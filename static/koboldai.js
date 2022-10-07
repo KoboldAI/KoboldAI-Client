@@ -1785,6 +1785,7 @@ function world_info_entry(data) {
 							send_world_info(this.getAttribute('uid'));
 							this.classList.add("pulse");
 						}
+	manual_text.dispatchEvent(new Event('input', {bubbles:true}));
 	comment = world_info_card.querySelector('#world_info_comment_');
 	comment.id = "world_info_comment_"+data.uid;
 	comment.setAttribute("uid", data.uid);
@@ -1794,6 +1795,7 @@ function world_info_entry(data) {
 							send_world_info(this.getAttribute('uid'));
 							this.classList.add("pulse");
 						}
+	comment.dispatchEvent(new Event('input', {bubbles:true}));
 	constant_area = world_info_card.querySelector('#world_info_toggle_area_');
 	constant_area.id = "world_info_toggle_area_"+data.uid;
 	constant = document.createElement("input");

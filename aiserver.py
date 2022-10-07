@@ -8992,7 +8992,7 @@ def get_items_locations_from_text(text):
 #==================================================================#
 # summarizer
 #==================================================================#
-def summarize(text, max_length=100, min_length=30):
+def summarize(text, max_length=100, min_length=30, unload=True):
     from transformers import pipeline as summary_pipeline
     start_time = time.time()
     if koboldai_vars.summarizer is None:
@@ -9028,11 +9028,12 @@ def summarize(text, max_length=100, min_length=30):
     #move model back to CPU to save precious vram
     torch.cuda.empty_cache()
     logger.debug("VRAM used by summarization: {}".format(torch.cuda.memory_reserved(0)))
-    koboldai_vars.summarizer.to("cpu")
+    if unload:
+        koboldai_vars.summarizer.to("cpu")
     torch.cuda.empty_cache()
     
-    logger.debug("Original Text: {}".format(text))
-    logger.debug("Summarized Text: {}".format(output))
+    #logger.debug("Original Text: {}".format(text))
+    #logger.debug("Summarized Text: {}".format(output))
     
     return output
 
@@ -9044,12 +9045,15 @@ def summarize(text, max_length=100, min_length=30):
 def UI_2_refresh_auto_memory(data):
     koboldai_vars.auto_memory = "Generating..."
     if koboldai_vars.summary_tokenizer is None:
-        koboldai_vars.summary_tokenizer = AutoTokenizer.from_pretrained("models/{}".format(args.summarizer_model.replace('/', '_')), cache_dir="cache")
+        if os.path.exists("models/{}".format(args.summarizer_model.replace('/', '_'))):
+            koboldai_vars.summary_tokenizer = AutoTokenizer.from_pretrained("models/{}".format(args.summarizer_model.replace('/', '_')), cache_dir="cache")
+        else:
+            koboldai_vars.summary_tokenizer = AutoTokenizer.from_pretrained(args.summarizer_model, cache_dir="cache")
     #first, let's get all of our game text and split it into sentences
     sentences = [x[0] for x in koboldai_vars.actions.to_sentences()]
     sentences_lengths = [len(koboldai_vars.summary_tokenizer.encode(x)) for x in sentences]
     
-    
+    pass_number = 1
     while len(koboldai_vars.summary_tokenizer.encode("".join(sentences))) > 1000:
         #Now let's split them into 1000 token chunks
         summary_chunks = [""]
@@ -9065,11 +9069,12 @@ def UI_2_refresh_auto_memory(data):
         i=0
         for summary_chunk in summary_chunks:
             logger.debug("summarizing chunk {}".format(i))
-            new_sentences.extend(re.split("(?<=[.!?])\s+", summarize(summary_chunk)))
+            new_sentences.extend(re.split("(?<=[.!?])\s+", summarize(summary_chunk, unload=False)))
             i+=1
-        logger.debug("Summarized to {} sentencees from {}".format(len(new_sentences), len(sentences)))
+        logger.debug("Pass {}:\nSummarized to {} sentencees from {}".format(pass_number, len(new_sentences), len(sentences)))
         sentences = new_sentences
-        koboldai_vars.auto_memory = "\n".join(sentences)
+        koboldai_vars.auto_memory += "Pass {}:\n{}\n\n".format(pass_number, "\n".join(sentences))
+        pass_number+=1
     logger.debug("OK, doing final summarization")
     output = summarize(" ".join(sentences))
     koboldai_vars.auto_memory += "\n\n Final Result:\n" + output
