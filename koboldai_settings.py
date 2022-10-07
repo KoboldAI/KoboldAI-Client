@@ -140,6 +140,7 @@ class koboldai_vars(object):
             settings_file.write(self._system_settings.to_json())
         
     def save_story(self):
+        logger.debug("Saving story from koboldai_vars.save_story()")
         self._story_settings[self.get_story_name()].save_story()
     
     def save_revision(self):
@@ -728,7 +729,8 @@ class story_settings(settings):
     def save_story(self):
         if not self.no_save:
             if self.prompt != "" or self.memory != "" or self.authornote != "" or len(self.actions) > 0 or len(self.worldinfo_v2) > 0:
-                print("Saving")
+                logger.debug("Saving story from koboldai_vars.story_settings.save_story()")
+                logger.info("Saving")
                 save_name = self.story_name if self.story_name != "" else "untitled"
                 adder = ""
                 while True:
@@ -805,6 +807,7 @@ class story_settings(settings):
         
         #autosave action
         if name == "gamesaved" and value == False and self.autosave:
+            logger.debug("Saving story from gamesaved change and on autosave")
             self.save_story()
         if not new_variable and old_value != value:
             #Change game save state
@@ -1174,8 +1177,6 @@ class KoboldStoryRegister(object):
         logger.debug("Calcing AI Text from Action load from json")
         ignore = self.koboldai_vars.calc_ai_text()
         self.set_game_saved()
-        if self.story_settings is not None:
-            self.story_settings.save_story()
         
     def append(self, text, action_id_offset=0, recalc=True):
         self.clear_unused_options()

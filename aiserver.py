@@ -7078,7 +7078,6 @@ def load_story_v1(js):
                     temp_story_class.set_options(data, int(key))
     koboldai_vars.actions.load_json(temp_story_class.to_json())
     logger.debug("Saved temp story class")
-    time.sleep(30)
     del temp_story_class
     
     # Try not to break older save files
@@ -8817,18 +8816,25 @@ def UI_2_generate_image(data):
     #If we have > 4 keys, use those otherwise use sumarization
     if len(keys) < 4:
         start_time = time.time()
-        #text to summarize:
-        if len(koboldai_vars.actions) < 5:
-            text = "".join(koboldai_vars.actions[:-5]+[koboldai_vars.prompt])
-        else:
-            text = "".join(koboldai_vars.actions[:-5])
-            
         if os.path.exists("models/{}".format(args.summarizer_model.replace('/', '_'))):
             koboldai_vars.summary_tokenizer = AutoTokenizer.from_pretrained("models/{}".format(args.summarizer_model.replace('/', '_')), cache_dir="cache")
         else:
             koboldai_vars.summary_tokenizer = AutoTokenizer.from_pretrained(args.summarizer_model, cache_dir="cache")
+        #text to summarize (get 1000 tokens worth of text):
+        text = []
+        text_length = 0
+        for item in reversed(koboldai_vars.actions.to_sentences()):
+            if len(koboldai_vars.summary_tokenizer.encode(item[0])) + text_length <= 1000:
+                text.append(item[0])
+                text_length += len(koboldai_vars.summary_tokenizer.encode(item[0]))
+            else:
+                break
+        text = "".join(text)
+        logger.debug("Text to summarizer: {}".format(text))
+        
         max_length = args.max_summary_length - len(koboldai_vars.summary_tokenizer.encode(art_guide))
         keys = [summarize(text, max_length=max_length)]
+        logger.debug("Text from summarizer: {}".format(keys[0]))
     
     
 
