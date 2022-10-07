@@ -5027,9 +5027,9 @@ def core_generate(text: list, min: int, max: int, found_entries: set):
             tpu_mtj_backend.set_rng_seed(koboldai_vars.seed)
 
     if gen_in.shape[-1] + koboldai_vars.genamt > koboldai_vars.max_length:
-        print(gen_in.shape[-1])
-        print(koboldai_vars.genamt)
-        print(koboldai_vars.max_length)
+        logger.error("gen_in.shape[-1]: {}".format(gen_in.shape[-1]))
+        logger.error("koboldai_vars.genamt: {}".format(koboldai_vars.genamt))
+        logger.error("koboldai_vars.max_length: {}".format(koboldai_vars.max_length))
     assert gen_in.shape[-1] + koboldai_vars.genamt <= koboldai_vars.max_length
 
     if koboldai_vars.hascuda and koboldai_vars.usegpu:
@@ -6976,6 +6976,7 @@ def loadRequest(loadpath, filename=None):
         
         
         # Read file contents into JSON object
+        start_time = time.time()
         if(isinstance(loadpath, str)):
             with open(loadpath, "r") as file:
                 js = json.load(file)
@@ -6987,16 +6988,19 @@ def loadRequest(loadpath, filename=None):
                 filename = "untitled.json"
         js['v1_loadpath'] = loadpath
         js['v1_filename'] = filename
+        logger.debug("Loading JSON data took {}s".format(time.time()-start_time))
         loadJSON(js)
     logger.debug("Time to load story: {}s".format(time.time()-start_time))
 
 def loadJSON(json_text_or_dict):
     logger.debug("Loading JSON Story")
     logger.debug("Called from {}".format(inspect.stack()[1].function))
+    start_time = time.time()
     if isinstance(json_text_or_dict, str):
         json_data = json.loads(json_text_or_dict)
     else:
         json_data = json_text_or_dict
+    logger.debug("Loading JSON data took {}s".format(time.time()-start_time))
     if "file_version" in json_data:
         if json_data['file_version'] == 2:
             load_story_v2(json_data)
