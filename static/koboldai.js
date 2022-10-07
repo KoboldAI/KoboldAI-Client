@@ -575,8 +575,6 @@ function var_changed(data) {
 			action_type = "append";
 		}
 		
-		console.log("Loading actions "+actions[0].id+" to "+actions[actions.length-1].id + " as "+action_type);
-		console.log(actions);
 		for (action of actions) {
 			actions_data[parseInt(action.id)] = action.action;
 			do_story_text_updates(action);
@@ -4688,8 +4686,6 @@ document.addEventListener("keydown", function(event) {
 function infinite_scroll() {
 	if (scroll_trigger_element != undefined) {
 		if(scroll_trigger_element.getBoundingClientRect().bottom >= 0){
-			console.log("Scrolling action: "+scroll_trigger_element.getAttribute("chunk"));
-			console.log("sending emit");
 			socket.emit("get_next_100_actions", parseInt(scroll_trigger_element.getAttribute("chunk")));
 			scroll_trigger_element = undefined;
 		}
@@ -4697,18 +4693,15 @@ function infinite_scroll() {
 }
 
 function run_infinite_scroll_update(action_type, actions, first_action) {
-	console.log("Running scroll for "+ action_type);
 	if (action_type == "append") {
-		console.log("Scrolling to :" + 'Selected Text Chunk '+actions[actions.length-1].id);
 		if (document.getElementById('Selected Text Chunk '+actions[actions.length-1].id)) {
 			document.getElementById('Selected Text Chunk '+actions[actions.length-1].id).scrollIntoView(false);
+			document.getElementById("Selected Text").scrollBy(0, 15);
 		}
 		//Check to see if we need to have the scrolling in place or not
 		if (document.getElementById("story_prompt").classList.contains("hidden")) {
-			console.log("Should be setting up infinite_scroll to id "+ Math.min.apply(null,Object.keys(actions_data).map(Number).filter(function(x){return x>0})));
 			document.getElementById("Selected Text").onscroll = infinite_scroll;
 			scroll_trigger_element = document.getElementById('Selected Text Chunk '+Math.min.apply(null,Object.keys(actions_data).map(Number).filter(function(x){return x>0})));
-			console.log(scroll_trigger_element);
 		}
 	} else if (action_type == "prepend") {
 		if (Math.min.apply(null,Object.keys(actions_data).map(Number).filter(function(x){return x>=0})) == 0) {
@@ -4719,13 +4712,10 @@ function run_infinite_scroll_update(action_type, actions, first_action) {
 			document.getElementById("story_prompt").classList.remove("hidden");
 		} else {
 			//we just added more text and didn't hit the prompt. Move the scroll trigger back to the first non-prompt element
-			console.log("Prepend not prompt");
 			for (id of Object.keys(actions_data).map(Number).filter(function(x){return x>0}).sort(function(a, b) {return a - b;})) {
 				console.log("Checking for "+id);
 				if (document.getElementById('Selected Text Chunk '+id)) {
 					scroll_trigger_element = document.getElementById('Selected Text Chunk '+id);
-					console.log("Moving scroll trigger");
-					console.log(scroll_trigger_element);
 					break;
 				}
 			}
