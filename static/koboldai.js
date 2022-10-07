@@ -574,15 +574,15 @@ function var_changed(data) {
 				actions_data[action.id] = action.action;
 				do_story_text_updates(action);
 				create_options(action);
-				do_story_text_length_updates(action);
+				//do_story_text_length_updates(action);
 				if ('Probabilities' in action.action) {
 					do_probabilities(action);
 				}
-				if (action.action['In AI Input']) {
-					document.getElementById('Selected Text Chunk '+action.id).classList.add("within_max_length");
-				} else {
-					document.getElementById('Selected Text Chunk '+action.id).classList.remove("within_max_length");
-				}
+				//if (action.action['In AI Input']) {
+				//	document.getElementById('Selected Text Chunk '+action.id).classList.add("within_max_length");
+				//} else {
+				//	document.getElementById('Selected Text Chunk '+action.id).classList.remove("within_max_length");
+				//}
 			}
 		}
 		if (seen_action) {
@@ -2610,16 +2610,9 @@ function autoResize(element) {
 	element.style.height = element.scrollHeight + 'px';
 }
 
-function token_length(text) {
-	if (typeof encode === 'function') {
-		return encode(text).length;
-	} else {
-		return 0;
-	}
-}
 
-function calc_token_usage(soft_prompt_tokens, memory_tokens, authors_notes_tokens, prompt_tokens, game_text_tokens, world_info_tokens) {
-    submit_tokens = token_length(document.getElementById("input_text").value);
+function calc_token_usage(soft_prompt_tokens, memory_tokens, authors_notes_tokens, prompt_tokens, game_text_tokens, world_info_tokens, submit_tokens) {
+    //submit_tokens = token_length(document.getElementById("input_text").value);
 	total_tokens = parseInt(document.getElementById('model_max_length_cur').value);
 	
 	unused_tokens = total_tokens - memory_tokens - authors_notes_tokens - world_info_tokens - prompt_tokens - game_text_tokens - submit_tokens;
@@ -2876,6 +2869,7 @@ function update_bias_slider_value(slider) {
 }
 
 function update_context(data) {
+	console.log(data);
 	$(".context-block").remove();
 
 	memory_tokens = 0;
@@ -2884,6 +2878,12 @@ function update_context(data) {
     game_text_tokens = 0;
 	world_info_tokens = 0;
 	soft_prompt_tokens = 0;
+	submit_tokens = 0;
+	
+	//clear out within_max_length class
+	for (action of document.getElementsByClassName("within_max_length")) {
+		action.classList.remove("within_max_length");
+	}
 
 	for (const entry of data) {
 		//console.log(entry);
@@ -2893,13 +2893,15 @@ function update_context(data) {
 			world_info: "wi",
 			memory: "memory",
 			authors_note: "an",
-			action: "action"
+			action: "action",
+			submit: 'submit'
 		}[entry.type]);
 
 		let el = document.createElement("span");
 		el.classList.add("context-block");
 		el.classList.add(contextClass);
 		el.innerText = entry.text;
+		el.title = entry.tokens + " tokens";
 
 		el.innerHTML = el.innerHTML.replaceAll("<br>", '<span class="material-icons-outlined context-symbol">keyboard_return</span>');
 
@@ -2908,19 +2910,37 @@ function update_context(data) {
 		switch (entry.type) {
 			case 'soft_prompt':
 				soft_prompt_tokens = entry.tokens;
+				break;
 			case 'prompt':
 				prompt_tokens = entry.tokens;
+				break;
 			case 'world_info':
 				world_info_tokens += entry.tokens;
+				break;
 			case 'memory':
 				memory_tokens = entry.tokens;
+				break;
 			case 'authors_note':
 				authors_notes_tokens = entry.tokens;
+				break;
 			case 'action':
 				game_text_tokens += entry.tokens;
+				if ('action_ids' in entry) {
+					for (action_id of entry.action_ids) {
+						if (document.getElementById('Selected Text Chunk '+action_id)) {
+							document.getElementById('Selected Text Chunk '+action_id).classList.add("within_max_length");
+						}
+					}
+				}
+				break;
+			case 'submit':
+				console.log(entry);
+				submit_tokens = entry.tokens;
+				break;
 		}
-		calc_token_usage(soft_prompt_tokens, memory_tokens, authors_notes_tokens, prompt_tokens, game_text_tokens, world_info_tokens);
 	}
+	console.log("Submit Tokens: "+submit_tokens);
+	calc_token_usage(soft_prompt_tokens, memory_tokens, authors_notes_tokens, prompt_tokens, game_text_tokens, world_info_tokens, submit_tokens);
 
 
 }
@@ -3409,131 +3429,7 @@ function highlight_world_info_text_in_chunk(action_id, wi) {
 
 function update_token_lengths() {
 	clearTimeout(calc_token_usage_timeout);
-	calc_token_usage_timeout = setTimeout(calc_token_usage, 200);
-	return
-	max_token_length = parseInt(document.getElementById("model_max_length_cur").value);
-	included_world_info = [];
-	//clear out the world info included tags
-	for (item of document.getElementsByClassName("world_info_included")) {
-		item.classList.remove("world_info_included");
-	}
-	//clear out the text tags
-	for (item of document.getElementsByClassName("within_max_length")) {
-		item.classList.remove("within_max_length");
-	}
-	
-	//figure out memory length
-	if ((document.getElementById("memory").getAttribute("story_memory_length") == null) || (document.getElementById("memory").getAttribute("story_memory_length") == "")) {
-		memory_length = 0;
-	} else {
-		memory_length = parseInt(document.getElementById("memory").getAttribute("story_memory_length"));
-	}
-	//figure out and tag the length of all the constant world infos
-	for (uid in world_info_data) {
-		if (world_info_data[uid].constant) {
-			if (world_info_data[uid].token_length != null) {
-				memory_length += world_info_data[uid].token_length;
-				included_world_info.push(uid);
-				document.getElementById("world_info_"+uid).classList.add("world_info_included");
-			}
-		}
-	}
-	//Figure out author's notes length
-	if ((document.getElementById("authors_notes").getAttribute("story_authornote_length") == null) || (document.getElementById("authors_notes").getAttribute("story_authornote_length") == "")) {
-		authors_notes = 0;
-	} else {
-		authors_notes = parseInt(document.getElementById("authors_notes").getAttribute("story_authornote_length"));
-	}
-	//figure out prompt length
-	if ((document.getElementById("story_prompt").getAttribute("story_prompt_length") == null) || (document.getElementById("story_prompt").getAttribute("story_prompt_length") == "")) {
-		prompt_length = 0;
-	} else {
-		prompt_length = parseInt(document.getElementById("story_prompt").getAttribute("story_prompt_length"));
-	}
-	
-	//prompt is truncated at 512 tokens
-	if (prompt_length > 512) {
-		prompt_length = 512;
-	}
-	
-	//used token length
-	token_length = memory_length + authors_notes;
-	
-	//add in the prompt length if it's set to always add, otherwise add it later
-	always_prompt = document.getElementById("story_useprompt").value == "true";
-	if (always_prompt) {
-		token_length += prompt_length
-		document.getElementById("story_prompt").classList.add("within_max_length");
-		uids = document.getElementById("story_prompt").getAttribute("world_info_uids")
-		for (uid of uids?uids.split(','):[]) {
-			if (!(included_world_info.includes(uid))) {
-				token_length += world_info_data[uid].token_length;
-				included_world_info.push(uid);
-				document.getElementById("world_info_"+uid).classList.add("world_info_included");
-			}
-		}
-	} else {
-		document.getElementById("story_prompt").classList.remove("within_max_length");
-	}
-	//figure out how many chunks we have
-	max_chunk = -1;
-	for (item of document.getElementById("Selected Text").childNodes) {
-		if (item.id != undefined) {
-			if (item.id != "story_prompt") {
-				chunk_num = parseInt(item.id.replace("Selected Text Chunk ", ""));
-				if (chunk_num > max_chunk) {
-					max_chunk = chunk_num;
-				}
-			}
-		}
-	}
-	
-	//go backwards through the text chunks and tag them if we still have space
-	passed_token_limit = false;
-	for (var chunk=max_chunk;chunk >= 0;chunk--) {
-		if (document.getElementById("Selected Text Chunk "+chunk).getAttribute("token_length") == null) {
-			current_chunk_length = 999999999999;
-		} else {
-			current_chunk_length = parseInt(document.getElementById("Selected Text Chunk "+chunk).getAttribute("token_length"));
-		}
-		if ((current_chunk_length != 0) && (token_length+current_chunk_length < max_token_length)&& (!(passed_token_limit))) {
-			token_length += current_chunk_length;
-			document.getElementById("Selected Text Chunk "+chunk).classList.add("within_max_length");
-			uids = document.getElementById("Selected Text Chunk "+chunk).getAttribute("world_info_uids")
-			for (uid of uids?uids.split(','):[]) {
-				if (!(included_world_info.includes(uid))) {
-					token_length += world_info_data[uid].token_length;
-					included_world_info.push(uid);
-					document.getElementById("world_info_"+uid).classList.add("world_info_included");
-				}
-			}
-		} else if (!(passed_token_limit) && (current_chunk_length != 0)) {
-			passed_token_limit = true;
-			document.getElementById("Selected Text Chunk "+chunk).classList.remove("within_max_length");
-		} else {
-			document.getElementById("Selected Text Chunk "+chunk).classList.remove("within_max_length");
-		}
-	}
-	
-	//if we don't always add prompts
-	if ((!always_prompt) && (token_length+prompt_length < max_token_length)) {
-		token_length += prompt_length
-		document.getElementById("story_prompt").classList.add("within_max_length");
-		uids = document.getElementById("story_prompt").getAttribute("world_info_uids")
-		for (uid of uids?uids.split(','):[]) {
-			if (!(included_world_info.includes(uid))) {
-				token_length += world_info_data[uid].token_length;
-				included_world_info.push(uid);
-				document.getElementById("world_info_"+uid).classList.add("world_info_included");
-			}
-		}
-	} else if (!always_prompt) {
-		document.getElementById("story_prompt").classList.remove("within_max_length");
-	}
-	//Add token count to used_token_length tags
-	for (item of document.getElementsByClassName("used_token_length")) {
-		item.textContent = "Used Tokens: " + token_length;
-	}
+	calc_token_usage_timeout = setTimeout(function() {socket.emit("update_tokens", document.getElementById("input_text").value);}, 500);
 }
 
 String.prototype.toHHMMSS = function () {
@@ -4558,14 +4454,6 @@ for (const tweakContainer of document.getElementsByClassName("tweak-container"))
 
 process_cookies();
 
-$("#context-viewer-close").click(function() {
-	$el("#context-viewer-container").classList.add("hidden");
-});
-
-$(".token_breakdown").click(function() {
-	$el("#context-viewer-container").classList.remove("hidden");
-});
-
 /* -- Drag and Drop -- */
 (function() {
 	let lastTarget = null;
@@ -4831,14 +4719,14 @@ document.addEventListener("keydown", function(event) {
 });
 
 //function to load more actions if nessisary
-document.getElementById("Selected Text").onscroll = function(){
-    //TOP
-	if ((scroll_trigger_element != undefined) && (scroll_trigger_element != null) && (first_scroll_occurred == true)) {
-		if(scroll_trigger_element.getBoundingClientRect().bottom >= 0){
-			console.log("Scrolling action: "+scroll_trigger_element.getAttribute("chunk"));
-			console.log("sending emit");
-			socket.emit("get_next_100_actions", parseInt(scroll_trigger_element.getAttribute("chunk")));
-			scroll_trigger_element == undefined;
-		}
-	}
-}
+//document.getElementById("Selected Text").onscroll = function(){
+//    //TOP
+//	if ((scroll_trigger_element != undefined) && (scroll_trigger_element != null) && (first_scroll_occurred == true)) {
+//		if(scroll_trigger_element.getBoundingClientRect().bottom >= 0){
+//			console.log("Scrolling action: "+scroll_trigger_element.getAttribute("chunk"));
+//			console.log("sending emit");
+//			socket.emit("get_next_100_actions", parseInt(scroll_trigger_element.getAttribute("chunk")));
+//			scroll_trigger_element == undefined;
+//		}
+//	}
+//}

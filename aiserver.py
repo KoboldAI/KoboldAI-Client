@@ -9084,6 +9084,14 @@ def UI_2_get_next_100_actions(data):
     emit("var_changed", {"classname": "story", "name": "actions", "old_value": None, "value":data_to_send})
 
 #==================================================================#
+# Get next 100 actions for infinate scroll
+#==================================================================#
+@socketio.on("update_tokens")
+@logger.catch
+def UI_2_update_tokens(data):
+    ignore = koboldai_vars.calc_ai_text(submitted_text=data)
+
+#==================================================================#
 # Test
 #==================================================================#
 @socketio.on("get_log")

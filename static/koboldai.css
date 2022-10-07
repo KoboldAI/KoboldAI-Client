@@ -1877,6 +1877,7 @@ body {
 .context-memory {background-color: var(--context_colors_memory);}
 .context-an {background-color: var(--context_colors_authors_notes);}
 .context-action {background-color: var(--context_colors_game_text);}
+.context-submit {background-color: var(--context_colors_submit);}
 
 /* File Drag Indicator */
 #file-upload-notice {

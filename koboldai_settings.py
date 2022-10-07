@@ -226,7 +226,7 @@ class koboldai_vars(object):
                     text += wi_text
         
         
-        action_text_split = self.actions.to_sentences()
+        action_text_split = self.actions.to_sentences(submitted_text=submitted_text)
         
         
         #Add prompt lenght/text if we're set to always use prompt
@@ -298,14 +298,17 @@ class koboldai_vars(object):
                 break;
             if len(action_text_split) - i - 1 == self.andepth and self.authornote != "":
                 game_text = "{}{}".format(authors_note_final, game_text)
-                game_context.insert(0, {"type": "authors_note", "text": authors_note_final, "tokens": authornote_length})
+                game_context.insert(0, {"type": "authors_note", "text": authors_note_final, "tokens": self.authornote_length})
             length = 0 if self.tokenizer is None else len(self.tokenizer.encode(action_text_split[i][0]))
             if length+used_tokens <= token_budget and not used_all_tokens:
                 used_tokens += length
                 selected_text = action_text_split[i][0]
                 action_text_split[i][3] = True
                 game_text = "{}{}".format(selected_text, game_text)
-                game_context.insert(0, {"type": "action", "text": selected_text, "tokens": length})
+                if action_text_split[i][1] == [self.actions.action_count+1]:
+                    game_context.insert(0, {"type": "submit", "text": selected_text, "tokens": length, "action_ids": action_text_split[i][1]})
+                else:
+                    game_context.insert(0, {"type": "action", "text": selected_text, "tokens": length, "action_ids": action_text_split[i][1]})
                 for action in action_text_split[i][1]:
                     if action >= 0:
                         self.actions.set_action_in_ai(action)
@@ -1261,6 +1264,7 @@ class KoboldStoryRegister(object):
         self.set_game_saved()
     
     def set_action_in_ai(self, action_id, used=True):
+        return
         if action_id in self.actions:
             if 'In AI Input' in self.actions[action_id]:
                 old = self.actions[action_id]['In AI Input']
@@ -1465,7 +1469,7 @@ class KoboldStoryRegister(object):
                 self.actions[action_id]["Options"][option_number]['Probabilities'].append(probabilities)
                 process_variable_changes(self.socketio, "story", 'actions', {"id": action_id, 'action':  self.actions[action_id]}, None)
     
-    def to_sentences(self):
+    def to_sentences(self, submitted_text=""):
         #start_time = time.time()
         #we're going to split our actions by sentence for better context. We'll add in which actions the sentence covers. Prompt will be added at a -1 ID
         actions = {i: self.actions[i]['Selected Text'] for i in self.actions}
@@ -1473,8 +1477,10 @@ class KoboldStoryRegister(object):
             actions[-1] = ""
         else:
             actions[-1] = self.story_settings.prompt
+        if submitted_text != "":
+            actions[self.action_count+1] = submitted_text
         action_text = self.__str__()
-        action_text = "{}{}".format("" if self.story_settings is None else self.story_settings.prompt, action_text)
+        action_text = "{}{}{}".format("" if self.story_settings is None else self.story_settings.prompt, action_text, submitted_text)
         ###########action_text_split = [sentence, actions used in sentence, token length, included in AI context]################
         action_text_split = [[x, [], 0, False] for x in re.findall(".*?[.!?]\s+", action_text)]
         #The above line can trim out the last sentence if it's incomplete. Let's check for that and add it back in
@@ -1483,7 +1489,6 @@ class KoboldStoryRegister(object):
         #The last action shouldn't have the extra space from the sentence splitting, so let's remove it
         if len(action_text_split) == 0:
             return []
-        action_text_split[-1][0] = action_text_split[-1][0][:-1]
         
         Action_Position = [-1, len(actions[-1])] #First element is the action item, second is how much text is left
         Sentence_Position = [0, len(action_text_split[0][0])]
