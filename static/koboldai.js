@@ -2883,13 +2883,31 @@ function update_context(data) {
 			action: "action"
 		}[entry.type]);
 
-		let el = document.createElement("span");
-		el.classList.add("context-block");
-		el.classList.add(contextClass);
-		el.innerText = entry.text;
+		let el = $e(
+			"span",
+			$el("#context-container"),
+			{classes: ["context-block", contextClass]}
+		);
+		//el.innerText = entry.text;
 
-		el.innerHTML = el.innerHTML.replaceAll("<br>", '<span class="material-icons-outlined context-symbol">keyboard_return</span>');
+		let encodedChunk = encode(entry.text);
 
+		for (const token of encodedChunk) {
+			// let bright = 1 - ((token / vocab_size) * 0.4);
+			//let hue = ((token / vocab_size) - 0.5) * 20
+			let bright = 0.8 + (Math.random() * 0.2);
+			let hue = Math.random() * 20;
+
+			let tokenEl = $e("span", el, {
+				classes: ["context-token"],
+				"token-id": token,
+				"tooltip": token,
+				innerText: decode([token]),
+				"style.filter": `brightness(${bright}) hue-rotate(${hue}deg)`
+			});
+
+			tokenEl.innerHTML = tokenEl.innerHTML.replaceAll("<br>", '<span class="material-icons-outlined context-symbol">keyboard_return</span>');
+		}
 		document.getElementById("context-container").appendChild(el);
 	}
 

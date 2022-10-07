@@ -1,6 +1,9 @@
 import encoder from "./encoder.js";
 import bpe_file from "./vocab.bpe.js"; 
 
+// Assumes tokens are in order!!!
+export const vocab_size = Math.max(...Object.values(encoder));
+
 const range = (x, y) => {
   const res = Array.from(Array(y).keys()).slice(x)
   return res
