@@ -4711,7 +4711,7 @@ function run_infinite_scroll_update(action_type, actions, first_action) {
 			console.log(scroll_trigger_element);
 		}
 	} else if (action_type == "prepend") {
-		if (Math.min.apply(null,Object.keys(actions_data).map(Number).filter(function(x){return x>0})) == 0) {
+		if (Math.min.apply(null,Object.keys(actions_data).map(Number).filter(function(x){return x>=0})) == 0) {
 			//We've hit our prompt, so let's unhide it, move it to the begining, and kill the infinite_scroll
 			scroll_trigger_element = undefined;
 			document.getElementById("Selected Text").onscroll = undefined;
