@@ -60,9 +60,9 @@ var finder_waiting_id = null;
 var control_held = false;
 var actions_data = {};
 var setup_wi_toggles = [];
-var scroll_trigger_element = undefined;
+var scroll_trigger_element = undefined; //undefined means not currently set. If set to null, it's disabled.
 var first_scroll_occurred = false;
-var temp_counter = 0;
+//var temp_counter = 0;
 const on_colab = $el("#on_colab").textContent == "true";
 
 // name, desc, icon, func
@@ -548,10 +548,10 @@ function var_changed(data) {
 	//Special Case for Actions
 	if ((data.classname == "story") && (data.name == "actions")) {
 		start_time = Date.now();
-		temp_counter += 1;
-		if (temp_counter > 10) {
-			return;
-		}
+		//temp_counter += 1;
+		//if (temp_counter > 10) {
+		//	return;
+		//}
 		if (document.getElementById("Selected Text").firstElementChild.id == "story_prompt") {
 			first_story_element = document.getElementById("Selected Text").firstElementChild.nextElementSibling;
 		} else {
@@ -616,7 +616,7 @@ function var_changed(data) {
 					first_scroll_occurred = true;
 				}, 20);
 			//If this is the first add, then we need to set our scroll trigger up
-			if ((document.getElementsByClassName("rawtext").length == actions.length+1) && (scroll_trigger_element != null)) {
+			if (scroll_trigger_element == undefined) {
 				console.log("Setting scroll trigger to Selected Text Chunk "+actions[0].id);
 				scroll_trigger_element = document.getElementById('Selected Text Chunk '+actions[0].id);
 			}
@@ -4836,7 +4836,7 @@ document.getElementById("Selected Text").onscroll = function(){
 			console.log("Scrolling action: "+scroll_trigger_element.getAttribute("chunk"));
 			console.log("sending emit");
 			socket.emit("get_next_100_actions", parseInt(scroll_trigger_element.getAttribute("chunk")));
-			scroll_trigger_element == null;
+			scroll_trigger_element == undefined;
 		}
 	}
 }
