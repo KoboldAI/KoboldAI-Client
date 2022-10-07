@@ -1122,7 +1122,7 @@ def loadmodelsettings():
             if setting in js["formatoptns"]:
                 setattr(koboldai_vars, setting, js["formatoptns"][setting])
     if("welcome" in js):
-        koboldai_vars.welcome = js["welcome"]
+        koboldai_vars.welcome = js["welcome"] if js["welcome"] != False else ""
     if("newlinemode" in js):
         koboldai_vars.newlinemode = js["newlinemode"]
     if("antemplate" in js):
@@ -4367,11 +4367,11 @@ def kml(txt):
 #  Send start message and tell Javascript to set UI state
 #==================================================================#
 def setStartState():
-    if koboldai_vars.welcome and isinstance(koboldai_vars.welcome, str):
+    if koboldai_vars.welcome != "":
         txt = kml(koboldai_vars.welcome) + "<br/>"
     else:
         txt = "<span>Welcome to <span class=\"color_cyan\">KoboldAI</span>! You are running <span class=\"color_green\">"+getmodelname()+"</span>.<br/>"
-    if(not koboldai_vars.noai and not koboldai_vars.welcome):
+    if(not koboldai_vars.noai and koboldai_vars.welcome == ""):
         txt = txt + "Please load a game or enter a prompt below to begin!</span>"
     if(koboldai_vars.noai):
         txt = txt + "Please load or import a story to read. There is no AI in this mode."

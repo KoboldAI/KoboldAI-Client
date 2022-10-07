@@ -554,6 +554,7 @@ class model_settings(settings):
         self.oaiapikey   = ""     # API key to use for OpenAI API calls
         self.configname = None
         self.online_model = ''
+        self.welcome     = "" # Custom Welcome Text
         
     def reset_for_model_load(self):
         self.max_length  = 2048    # Maximum number of tokens to submit per action
@@ -956,7 +957,6 @@ class system_settings(settings):
         self.comregex_ui = re.compile(r'(&lt;\|(?:.|\n)*?\|&gt;)')  # Pattern for matching comments in the editor
         self.host        = False
         self.flaskwebgui = False
-        self.welcome     = False # Custom Welcome Text (False is default)
         self.quiet       = False # If set will suppress any story text from being printed to the console (will only be seen on the client web page)
         self.use_colab_tpu  = os.environ.get("COLAB_TPU_ADDR", "") != "" or os.environ.get("TPU_NAME", "") != ""  # Whether or not we're in a Colab TPU instance or Kaggle TPU instance and are going to use the TPU rather than the CPU
         self.aria2_port  = 6799 #Specify the port on which aria2's RPC interface will be open if aria2 is installed (defaults to 6799)

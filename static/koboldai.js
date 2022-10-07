@@ -170,17 +170,7 @@ function reset_story() {
 	for (const item of temp) { 
 		item.remove();
 	}
-	dummy_span = document.createElement("div");
-	dummy_span.id = "Delete Me";
-	dummy_span.classList.add("noselect");
 	document.getElementById("Selected Text").setAttribute("contenteditable", "false");
-	text = "";
-	for (i=0;i<154;i++) {
-		text += "\xa0 ";
-	}
-	dummy_span.textContent = text;
-	dummy_span.setAttribute("contenteditable", false);
-	story_area.append(dummy_span);
 	var option_area = document.getElementById("Select Options");
 	while (option_area.firstChild) {
 		option_area.removeChild(option_area.firstChild);
@@ -386,10 +376,6 @@ function do_prompt(data) {
 		document.getElementById('input_text').placeholder = "Enter text here (shift+enter for new line)";
 		document.getElementById('themerow').classList.add("hidden");
 		document.getElementById('themetext').value = "";
-		if (document.getElementById("Delete Me")) {
-			document.getElementById("Delete Me").remove();
-			document.getElementById("Selected Text").setAttribute("contenteditable", "true");
-		}
 		//enable editing
 		document.getElementById("Selected Text").setAttribute("contenteditable", "true");
 	} else {
@@ -542,6 +528,11 @@ function var_changed(data) {
 	
 	if ((data.classname == 'actions') && (data.name == 'Action Count')) {
 		current_action = data.value;
+		if (current_action <= 0) {
+			document.getElementById("story_prompt").classList.remove("hidden");
+			scroll_trigger_element = undefined;
+			document.getElementById("Selected Text").onscroll = undefined;
+		}
 	}
 	//Special Case for Actions
 	if ((data.classname == "story") && (data.name == "actions")) {
@@ -2446,7 +2437,7 @@ function select_game_text(event) {
 }
 
 function edit_game_text() {
-	if ((selected_game_chunk != null) && (selected_game_chunk.textContent != selected_game_chunk.original_text) && (selected_game_chunk != document.getElementById("Delete Me"))) {
+	if ((selected_game_chunk != null) && (selected_game_chunk.textContent != selected_game_chunk.original_text) && (selected_game_chunk != document.getElementById("welcome_text"))) {
 		if (selected_game_chunk.id == "story_prompt") {
 			sync_to_server(selected_game_chunk);
 		} else {
