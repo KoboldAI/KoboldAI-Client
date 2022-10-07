@@ -188,7 +188,7 @@ def _download_with_aria2(aria2_config: str, total_length: int, directory: str = 
                 try:
                     print('\r' + bar, end='')
                     try:
-                        emit('from_server', {'cmd': 'model_load_status', 'data': bar.replace(" ", "&nbsp;")}, broadcast=True)
+                        emit('from_server', {'cmd': 'model_load_status', 'data': bar.replace(" ", "&nbsp;")}, broadcast=True, room="UI_1")
                     except:
                         pass
                     eventlet.sleep(seconds=0)

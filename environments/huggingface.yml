@@ -27,7 +27,7 @@ dependencies:
     - flask-cloudflared
     - flask-ngrok
     - lupa==1.10
-    - transformers==4.21.3
+    - transformers>=4.20.1
     - accelerate
     - flask-session
     - python-socketio[client]
