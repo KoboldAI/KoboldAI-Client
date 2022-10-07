@@ -2618,35 +2618,14 @@ function token_length(text) {
 	}
 }
 
-function calc_token_usage() {
-	memory_tokens = parseInt(document.getElementById("memory").getAttribute("story_memory_length"));
-    authors_notes_tokens = parseInt(document.getElementById("authors_notes").getAttribute("story_authornote_length"));
-	prompt_tokens = parseInt(document.getElementById("story_prompt").getAttribute("story_prompt_length"));
-    game_text_tokens = 0;
+function calc_token_usage(soft_prompt_tokens, memory_tokens, authors_notes_tokens, prompt_tokens, game_text_tokens, world_info_tokens) {
     submit_tokens = token_length(document.getElementById("input_text").value);
 	total_tokens = parseInt(document.getElementById('model_max_length_cur').value);
 	
-	//find world info entries set to go to AI
-	world_info_tokens = 0;
-	for (wi of document.querySelectorAll(".world_info_card.used_in_game")) {
-		if (wi.getAttribute("uid") in world_info_data) {
-			world_info_tokens += world_info_data[wi.getAttribute("uid")].token_length;
-		}
-	}
-	
-	//find game text tokens
-	var game_text_tokens = 0;
-	var game_text = document.getElementById('Selected Text').querySelectorAll(".within_max_length");
-	var game_text = Array.prototype.slice.call(game_text).reverse();
-	for (item of game_text) {
-		if (total_tokens - memory_tokens - authors_notes_tokens - world_info_tokens - prompt_tokens - game_text_tokens - submit_tokens > parseInt(item.getAttribute("token_length"))) {
-			game_text_tokens += parseInt(item.getAttribute("token_length"));
-		}
-	}
-	
-	
 	unused_tokens = total_tokens - memory_tokens - authors_notes_tokens - world_info_tokens - prompt_tokens - game_text_tokens - submit_tokens;
 	
+	document.getElementById("soft_prompt_tokens").style.width = (soft_prompt_tokens/total_tokens)*100 + "%";
+	document.getElementById("soft_prompt_tokens").title = "Soft Prompt: "+soft_prompt_tokens;
 	document.getElementById("memory_tokens").style.width = (memory_tokens/total_tokens)*100 + "%";
 	document.getElementById("memory_tokens").title = "Memory: "+memory_tokens;
 	document.getElementById("authors_notes_tokens").style.width = (authors_notes_tokens/total_tokens)*100 + "%";
@@ -2899,6 +2878,13 @@ function update_bias_slider_value(slider) {
 function update_context(data) {
 	$(".context-block").remove();
 
+	memory_tokens = 0;
+    authors_notes_tokens = 0;
+	prompt_tokens = 0;
+    game_text_tokens = 0;
+	world_info_tokens = 0;
+	soft_prompt_tokens = 0;
+
 	for (const entry of data) {
 		//console.log(entry);
 		let contextClass = "context-" + ({
@@ -2918,6 +2904,22 @@ function update_context(data) {
 		el.innerHTML = el.innerHTML.replaceAll("<br>", '<span class="material-icons-outlined context-symbol">keyboard_return</span>');
 
 		document.getElementById("context-container").appendChild(el);
+		
+		switch (entry.type) {
+			case 'soft_prompt':
+				soft_prompt_tokens = entry.tokens;
+			case 'prompt':
+				prompt_tokens = entry.tokens;
+			case 'world_info':
+				world_info_tokens += entry.tokens;
+			case 'memory':
+				memory_tokens = entry.tokens;
+			case 'authors_note':
+				authors_notes_tokens = entry.tokens;
+			case 'action':
+				game_text_tokens += entry.tokens;
+		}
+		calc_token_usage(soft_prompt_tokens, memory_tokens, authors_notes_tokens, prompt_tokens, game_text_tokens, world_info_tokens);
 	}
 
 
