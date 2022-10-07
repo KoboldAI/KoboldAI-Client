@@ -1785,7 +1785,6 @@ function world_info_entry(data) {
 							send_world_info(this.getAttribute('uid'));
 							this.classList.add("pulse");
 						}
-	manual_text.dispatchEvent(new Event('input', {bubbles:true}));
 	comment = world_info_card.querySelector('#world_info_comment_');
 	comment.id = "world_info_comment_"+data.uid;
 	comment.setAttribute("uid", data.uid);
@@ -1795,7 +1794,6 @@ function world_info_entry(data) {
 							send_world_info(this.getAttribute('uid'));
 							this.classList.add("pulse");
 						}
-	comment.dispatchEvent(new Event('input', {bubbles:true}));
 	constant_area = world_info_card.querySelector('#world_info_toggle_area_');
 	constant_area.id = "world_info_toggle_area_"+data.uid;
 	constant = document.createElement("input");
@@ -1859,6 +1857,10 @@ function world_info_entry(data) {
 		document.getElementById("world_info_wpp_area_"+wpp_toggle.getAttribute('uid')).classList.add("hidden");
 		document.getElementById("world_info_basic_text_"+wpp_toggle.getAttribute('uid')).classList.remove("hidden");
 	}
+	
+	//resize comments/text boxes
+	autoResize(comment, 100);
+	autoResize(manual_text, 100);
 	
 	//put focus back where it was
 	if (document.getElementById(original_focus)) {
@@ -2565,9 +2567,14 @@ function show_save_preset() {
 	document.getElementById("save_preset").classList.remove("hidden");
 }
 
-function autoResize(element) {
+function autoResize(element, min_size=200) {
+	console.log(min_size);
 	element.style.height = 'auto';
-	element.style.height = element.scrollHeight + 'px';
+	if (min_size > element.scrollHeight) {
+		element.style.height = min_size + "px";
+	} else {
+		element.style.height = element.scrollHeight + 'px';
+	}
 }
 
 
