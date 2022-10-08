@@ -293,10 +293,6 @@ span.material-icons-outlined.cursor.search_icon {
 	color: #464646e0 !important;
 }
 
-.collapsable_header .material-icons-outlined {
-    transform: translateY(7px) translateX(4px)!important;
-}
-
 .pinned .menu_pin, .pinned .story_menu_pin {
     color: #464646 !important;
     filter: brightness(100%) !important;
@@ -332,12 +328,6 @@ a {
 
 select#wpp_format_0.settings_select {
     background-color: #f8f4f4 !important;
-}
-
-/* Padding */
-
-.story_title_area {
-    padding-top: 3px;
 }
 
 /* Palette */
@@ -407,7 +397,6 @@ select#wpp_format_0.settings_select {
 
 .world_info_text {
 	color: #222224 !important;
-	margin: 0 0px 0px !important;
     border-color: #acacac !important;
 	filter: brightness(100%) !important;
 	background-color: #eeeeee !important;
