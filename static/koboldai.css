@@ -375,9 +375,9 @@ border-top-right-radius: var(--tabs_rounding);
 
 .search_icon {
 	position: absolute;
-	top:7px;
+	top:10px;
 	color: var(--text);
-	left: calc(var(--flyout_menu_width) - 134px);
+	left: calc(var(--flyout_menu_width) - 133px);
 	z-index:50;
 	width: 25px;
 	height: 25px;
