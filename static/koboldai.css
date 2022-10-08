@@ -375,9 +375,9 @@ border-top-right-radius: var(--tabs_rounding);
 
 .search_icon {
 	position: absolute;
-	top:10px;
+	top:7px;
 	color: var(--text);
-	left: calc(var(--flyout_menu_width) - 132px);
+	left: calc(var(--flyout_menu_width) - 134px);
 	z-index:50;
 	width: 25px;
 	height: 25px;
@@ -704,7 +704,7 @@ border-top-right-radius: var(--tabs_rounding);
 
 .collapsable_header .material-icons-outlined {
 	padding-top: 5px;
-	.collapsable_header .material-icons-outlined
+	transform: translateY(7px) translateX(4px);
 } 
 
 .var_sync_system_theme_list{
