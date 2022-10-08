@@ -1202,7 +1202,7 @@ body {
 
 .gametext {
 	margin-top: auto;
-	padding: 10px 10px 10px 10px;
+	padding: 10px 12px 10px 12px;
 	vertical-align: bottom;
 	overflow-y: scroll;
 	outline: none;
@@ -2328,7 +2328,7 @@ button.disabled {
 
 .fullwidth {
 	width: 100%;
-	padding: 5px 5px 5px 5px;
+	padding: 5px 7px 5px 7px;
 }
 
 .rawtext {
