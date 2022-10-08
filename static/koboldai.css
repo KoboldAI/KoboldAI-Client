@@ -1879,8 +1879,6 @@ body {
 }
 
 .context-token {
-	/* Tooltip tries to make this inline-block. No!!!! */
-	display: inline !important;
 	background-color: inherit;
 }
 
