@@ -288,10 +288,6 @@ span.helpicon.material-icons-outlined:hover {
 	transform: scale(1) !important;
 }
 
-.collapsable_header .material-icons-outlined {
-    transform: translateY(7px) translateX(4px)!important;
-}
-
 /* Import */
 
 a {
@@ -313,12 +309,6 @@ a {
 
 .settings_select, .var_sync_system_theme_list {
 	border-color: #334552 !important;
-}
-
-/* Padding */
-
-.story_title_area {
-    padding-top: 3px;
 }
 
 /* Palette */
@@ -392,7 +382,6 @@ a {
 }
 
 .world_info_text {
-	margin: 0 0px 0px !important;
 	filter: brightness(100%) !important;
 	background-color: #1d2831 !important;
 }
