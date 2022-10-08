@@ -377,7 +377,7 @@ border-top-right-radius: var(--tabs_rounding);
 	position: absolute;
 	top:10px;
 	color: var(--text);
-	left: calc(var(--flyout_menu_width) - 132px);
+	left: calc(var(--flyout_menu_width) - 133px);
 	z-index:50;
 	width: 25px;
 	height: 25px;
@@ -703,6 +703,7 @@ border-top-right-radius: var(--tabs_rounding);
 
 .collapsable_header .material-icons-outlined {
 	padding-top: 5px;
+	transform: translateY(7px) translateX(4px);
 } 
 
 .var_sync_system_theme_list{
@@ -1957,7 +1958,6 @@ body {
 	top: 3px;
 	right: 2px;
 	cursor: pointer;
-	transform: translateY(-3px) translateX(-2px)
 }
 
 #finder-scratchpad {
@@ -2470,7 +2470,6 @@ h2 .material-icons-outlined {
 
 .collapsable_header {
 	cursor: pointer;
-	transform: translateY(7px) translateX(4px);
 }
 
 .material-icons-outlined,
