@@ -1860,6 +1860,10 @@ body {
 	height: 100%;
 	flex-grow: 1;
 	padding: 0px 10px;
+
+	/* HACK: This is a visually ugly hack to avoid cutting of token tooltips on
+	the first line. */
+	padding-top: 15px;
 }
 
 .context-symbol {
@@ -1877,19 +1881,35 @@ body {
 .context-token {
 	/* Tooltip tries to make this inline-block. No!!!! */
 	display: inline !important;
+	background-color: inherit;
 }
 
 .context-token:hover {
 	outline: 1px solid gray;
 }
 
-.context-sp > .context-token {background-color: var(--context_colors_soft_prompt);}
-.context-prompt > .context-token {background-color: var(--context_colors_prompt);}
-.context-wi > .context-token {background-color: var(--context_colors_world_info);}
-.context-memory > .context-token {background-color: var(--context_colors_memory);}
-.context-an > .context-token {background-color: var(--context_colors_authors_notes);}
-.context-action > .context-token {background-color: var(--context_colors_game_text);}
-.context-submit > .context-token {background-color: var(--context_colors_submit);}
+.context-token:hover::after {
+	content: attr(token-id);
+	position: absolute;
+
+	top: -120%;
+	left: 50%;
+	transform: translateX(-50%);
+
+	padding: 0px 2px;
+	background-color: rgba(0, 0, 0, 0.6);
+
+	pointer-events: none;
+	z-index: 9999999;
+}
+
+.context-sp {background-color: var(--context_colors_soft_prompt);}
+.context-prompt {background-color: var(--context_colors_prompt);}
+.context-wi {background-color: var(--context_colors_world_info);}
+.context-memory {background-color: var(--context_colors_memory);}
+.context-an {background-color: var(--context_colors_authors_notes);}
+.context-action {background-color: var(--context_colors_game_text);}
+.context-submit {background-color: var(--context_colors_submit);}
 
 /* File Drag Indicator */
 #file-upload-notice {

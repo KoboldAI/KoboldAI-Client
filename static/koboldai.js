@@ -2852,7 +2852,6 @@ function update_context(data) {
 	}
 
 	for (const entry of data) {
-		//console.log(entry);
 		let contextClass = "context-" + ({
 			soft_prompt: "sp",
 			prompt: "prompt",
@@ -2868,21 +2867,15 @@ function update_context(data) {
 			$el("#context-container"),
 			{classes: ["context-block", contextClass]}
 		);
-		//el.innerText = entry.text;
 
-		let encodedChunk = encode(entry.text);
-
-		for (const token of encodedChunk) {
-			// let bright = 1 - ((token / vocab_size) * 0.4);
-			//let hue = ((token / vocab_size) - 0.5) * 20
+		for (const [tokenId, token] of entry.tokens) {
 			let bright = 0.8 + (Math.random() * 0.2);
 			let hue = Math.random() * 20;
 
 			let tokenEl = $e("span", el, {
 				classes: ["context-token"],
-				"token-id": token,
-				"tooltip": token,
-				innerText: decode([token]),
+				"token-id": tokenId === -1 ? "Soft" : tokenId,
+				innerText: token,
 				"style.filter": `brightness(${bright}) hue-rotate(${hue}deg)`
 			});
 
