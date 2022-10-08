@@ -454,6 +454,7 @@ border-top-right-radius: var(--tabs_rounding);
 
 
 .story_title_area {
+	padding-top: 3px;
 	position: relative;
 }
 
@@ -938,6 +939,10 @@ td.server_vars {
 	text-align: center;
 }
 
+#authors_notes_template {
+	margin-bottom: 3px;
+}
+
 .WI_Folder_Header {
 	margin-left: 10px;
 	display: grid;
@@ -1041,6 +1046,7 @@ td.server_vars {
 .world_info_delete {
 	grid-area: delete;
 	cursor: pointer;
+	margin: 2px 0px 0px 4px;
 }
 	
 .world_info_tag_area {
@@ -1055,7 +1061,7 @@ td.server_vars {
 
 .world_info_text {
 	width: auto;
-	margin: 0 2px 0 2px;
+	margin: 0 0px 0px;
 	border-radius: var(--radius_wi_card);
 	background-color: var(--wi_card_bg_color);
 	color: var(--wi_card_text_color);
@@ -1196,7 +1202,7 @@ body {
 
 .gametext {
 	margin-top: auto;
-	padding: 0px 5px 10px 10px;
+	padding: 10px 10px 10px 10px;
 	vertical-align: bottom;
 	overflow-y: scroll;
 	outline: none;
@@ -1951,6 +1957,7 @@ body {
 	top: 3px;
 	right: 2px;
 	cursor: pointer;
+	transform: translateY(-3px) translateX(-2px)
 }
 
 #finder-scratchpad {
@@ -2321,6 +2328,7 @@ button.disabled {
 
 .fullwidth {
 	width: 100%;
+	padding: 5px 5px 5px 5px;
 }
 
 .rawtext {
@@ -2462,6 +2470,7 @@ h2 .material-icons-outlined {
 
 .collapsable_header {
 	cursor: pointer;
+	transform: translateY(7px) translateX(4px);
 }
 
 .material-icons-outlined,
