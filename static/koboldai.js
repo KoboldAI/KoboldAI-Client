@@ -60,7 +60,7 @@ var finder_waiting_id = null;
 var control_held = false;
 var actions_data = {};
 var setup_wi_toggles = [];
-var scroll_trigger_element = undefined;
+var scroll_trigger_element = undefined; //undefined means not currently set. If set to null, it's disabled.
 const on_colab = $el("#on_colab").textContent == "true";
 
 // name, desc, icon, func
@@ -157,6 +157,9 @@ function reset_story() {
 	current_chunk_number = null;
 	console.log("resetting scroll_trigger_element");
 	scroll_trigger_element = undefined;
+	actions_data = {};
+	world_info_data = {};
+	world_info_folder({"root": []});
 	var story_area = document.getElementById('Selected Text');
 	let temp = []
 	for (child of story_area.children) {
@@ -167,17 +170,7 @@ function reset_story() {
 	for (const item of temp) { 
 		item.remove();
 	}
-	dummy_span = document.createElement("div");
-	dummy_span.id = "Delete Me";
-	dummy_span.classList.add("noselect");
 	document.getElementById("Selected Text").setAttribute("contenteditable", "false");
-	text = "";
-	for (i=0;i<154;i++) {
-		text += "\xa0 ";
-	}
-	dummy_span.textContent = text;
-	dummy_span.setAttribute("contenteditable", false);
-	story_area.append(dummy_span);
 	var option_area = document.getElementById("Select Options");
 	while (option_area.firstChild) {
 		option_area.removeChild(option_area.firstChild);
@@ -186,8 +179,6 @@ function reset_story() {
 	while (world_info_area.firstChild) {
 		world_info_area.removeChild(world_info_area.firstChild);
 	}
-	world_info_data = {};
-	world_info_folder({"root": []});
 	document.getElementById("story_prompt").setAttribute("world_info_uids", "");
 	document.getElementById('themerow').classList.remove("hidden");
 	document.getElementById('input_text').placeholder = "Enter Prompt Here (shift+enter for new line)";
@@ -349,7 +340,7 @@ function do_story_text_updates(action) {
 		
 		//need to find the closest element
 		next_id = action.id+1;
-		if (Math.max.apply(null,Object.keys(actions_data)) <= next_id) {
+		if (Math.max.apply(null,Object.keys(actions_data).map(Number)) <= next_id) {
 			story_area.append(span);
 		} else {
 			story_area.prepend(span);
@@ -385,10 +376,6 @@ function do_prompt(data) {
 		document.getElementById('input_text').placeholder = "Enter text here (shift+enter for new line)";
 		document.getElementById('themerow').classList.add("hidden");
 		document.getElementById('themetext').value = "";
-		if (document.getElementById("Delete Me")) {
-			document.getElementById("Delete Me").remove();
-			document.getElementById("Selected Text").setAttribute("contenteditable", "true");
-		}
 		//enable editing
 		document.getElementById("Selected Text").setAttribute("contenteditable", "true");
 	} else {
@@ -541,10 +528,19 @@ function var_changed(data) {
 	
 	if ((data.classname == 'actions') && (data.name == 'Action Count')) {
 		current_action = data.value;
+		if (current_action <= 0) {
+			document.getElementById("story_prompt").classList.remove("hidden");
+			scroll_trigger_element = undefined;
+			document.getElementById("Selected Text").onscroll = undefined;
+		}
 	}
 	//Special Case for Actions
 	if ((data.classname == "story") && (data.name == "actions")) {
 		start_time = Date.now();
+		//temp_counter += 1;
+		//if (temp_counter > 10) {
+		//	return;
+		//}
 		if (document.getElementById("Selected Text").firstElementChild.id == "story_prompt") {
 			first_story_element = document.getElementById("Selected Text").firstElementChild.nextElementSibling;
 		} else {
@@ -556,44 +552,33 @@ function var_changed(data) {
 			actions = [data.value];
 		}
 		if (actions.length == 0) {return;}
+		let action_type = "????";
+		let first_action = -100;
+		//we need to figure out if this is changes to existing text, added text at the end, or infinite scroll text at the begining
+		if ((actions[0].id in actions_data) && (actions[actions.length-1].id in actions_data)) {
+			//update
+			action_type = "update";
+		} else if ((Object.keys(actions_data).length > 1) && (actions[actions.length-1].id < Math.min.apply(null,Object.keys(actions_data).map(Number).filter(function(x){return x>0})))) {
+			//adding to the begining
+			action_type = "prepend";
+			first_action = Math.min.apply(null,Object.keys(actions_data).map(Number).filter(function(x){return x>0}));
+		} else if (actions[actions.length-1].id > Math.max.apply(null,Object.keys(actions_data).map(Number))) {
+			action_type = "append";
+		}
+		
 		for (action of actions) {
-			if (action.length != 0) {
-				actions_data[action.id] = action.action;
-				do_story_text_updates(action);
-				create_options(action);
-				do_story_text_length_updates(action);
-				if ('Probabilities' in action.action) {
-					do_probabilities(action);
-				}
-				if (action.action['In AI Input']) {
-					document.getElementById('Selected Text Chunk '+action.id).classList.add("within_max_length");
-				} else {
-					document.getElementById('Selected Text Chunk '+action.id).classList.remove("within_max_length");
-				}
+			actions_data[parseInt(action.id)] = action.action;
+			do_story_text_updates(action);
+			create_options(action);
+			if ('Probabilities' in action.action) {
+				do_probabilities(action);
 			}
 		}
-		//if we hit the top, unhide the prompt and move it to the top
-		if (actions[actions.length-1].id == 0) {
-			prompt_span = document.getElementById("story_prompt");
-			document.getElementById("Selected Text").prepend(prompt_span);
-			prompt_span.classList.remove("hidden");
-		} else if (actions[actions.length-1].id != current_action) {
-			//we are bringing in old data (not adding to the end of the game text), so set the scroll event back up
-			//and scroll so that the old top is at the top again (IE new text added is before the top of the screen)
-			if (first_story_element) {
-				first_story_element.scrollIntoView(true);
-			}
-			scroll_trigger_element = document.getElementById('Selected Text Chunk '+actions[actions.length-1].id);
-		} else {
-			//We are adding new game text to the screen (not past actions)
-			console.log("Scrolling to 'Selected Text Chunk '"+actions[actions.length-1].id);
-			console.log(document.getElementById('Selected Text Chunk '+actions[actions.length-1].id));
-			setTimeout(function() {document.getElementById('Selected Text Chunk '+actions[actions.length-1].id).scrollIntoView(false);}, 20);
-			//If this is the first add, then we need to set our scroll trigger up
-			if (document.getElementsByClassName("rawtext").length == actions.length+1) {
-				scroll_trigger_element = document.getElementById('Selected Text Chunk '+actions[0].id);
-			}
-		}
+		
+		clearTimeout(game_text_scroll_timeout);
+		game_text_scroll_timeout = setTimeout(run_infinite_scroll_update.bind(null, action_type, actions, first_action), 200);
+		
+		
 		//console.log("Took "+((Date.now()-start_time)/1000)+"s to process");
 		
 	//Special Case for Presets
@@ -1873,6 +1858,10 @@ function world_info_entry(data) {
 		document.getElementById("world_info_basic_text_"+wpp_toggle.getAttribute('uid')).classList.remove("hidden");
 	}
 	
+	//resize comments/text boxes
+	autoResize(comment, 100);
+	autoResize(manual_text, 100);
+	
 	//put focus back where it was
 	if (document.getElementById(original_focus)) {
 		if (document.getElementById(original_focus).tagName != "BUTTON") {
@@ -2452,7 +2441,7 @@ function select_game_text(event) {
 }
 
 function edit_game_text() {
-	if ((selected_game_chunk != null) && (selected_game_chunk.textContent != selected_game_chunk.original_text) && (selected_game_chunk != document.getElementById("Delete Me"))) {
+	if ((selected_game_chunk != null) && (selected_game_chunk.textContent != selected_game_chunk.original_text) && (selected_game_chunk != document.getElementById("welcome_text"))) {
 		if (selected_game_chunk.id == "story_prompt") {
 			sync_to_server(selected_game_chunk);
 		} else {
@@ -2578,48 +2567,25 @@ function show_save_preset() {
 	document.getElementById("save_preset").classList.remove("hidden");
 }
 
-function autoResize(element) {
+function autoResize(element, min_size=200) {
+	console.log(min_size);
 	element.style.height = 'auto';
-	element.style.height = element.scrollHeight + 'px';
-}
-
-function token_length(text) {
-	if (typeof encode === 'function') {
-		return encode(text).length;
+	if (min_size > element.scrollHeight) {
+		element.style.height = min_size + "px";
 	} else {
-		return 0;
+		element.style.height = element.scrollHeight + 'px';
 	}
 }
 
-function calc_token_usage() {
-	memory_tokens = parseInt(document.getElementById("memory").getAttribute("story_memory_length"));
-    authors_notes_tokens = parseInt(document.getElementById("authors_notes").getAttribute("story_authornote_length"));
-	prompt_tokens = parseInt(document.getElementById("story_prompt").getAttribute("story_prompt_length"));
-    game_text_tokens = 0;
-    submit_tokens = token_length(document.getElementById("input_text").value);
+
+function calc_token_usage(soft_prompt_tokens, memory_tokens, authors_notes_tokens, prompt_tokens, game_text_tokens, world_info_tokens, submit_tokens) {
+    //submit_tokens = token_length(document.getElementById("input_text").value);
 	total_tokens = parseInt(document.getElementById('model_max_length_cur').value);
-	
-	//find world info entries set to go to AI
-	world_info_tokens = 0;
-	for (wi of document.querySelectorAll(".world_info_card.used_in_game")) {
-		if (wi.getAttribute("uid") in world_info_data) {
-			world_info_tokens += world_info_data[wi.getAttribute("uid")].token_length;
-		}
-	}
-	
-	//find game text tokens
-	var game_text_tokens = 0;
-	var game_text = document.getElementById('Selected Text').querySelectorAll(".within_max_length");
-	var game_text = Array.prototype.slice.call(game_text).reverse();
-	for (item of game_text) {
-		if (total_tokens - memory_tokens - authors_notes_tokens - world_info_tokens - prompt_tokens - game_text_tokens - submit_tokens > parseInt(item.getAttribute("token_length"))) {
-			game_text_tokens += parseInt(item.getAttribute("token_length"));
-		}
-	}
-	
 	
 	unused_tokens = total_tokens - memory_tokens - authors_notes_tokens - world_info_tokens - prompt_tokens - game_text_tokens - submit_tokens;
 	
+	document.getElementById("soft_prompt_tokens").style.width = (soft_prompt_tokens/total_tokens)*100 + "%";
+	document.getElementById("soft_prompt_tokens").title = "Soft Prompt: "+soft_prompt_tokens;
 	document.getElementById("memory_tokens").style.width = (memory_tokens/total_tokens)*100 + "%";
 	document.getElementById("memory_tokens").title = "Memory: "+memory_tokens;
 	document.getElementById("authors_notes_tokens").style.width = (authors_notes_tokens/total_tokens)*100 + "%";
@@ -2872,6 +2838,19 @@ function update_bias_slider_value(slider) {
 function update_context(data) {
 	$(".context-block").remove();
 
+	memory_tokens = 0;
+    authors_notes_tokens = 0;
+	prompt_tokens = 0;
+    game_text_tokens = 0;
+	world_info_tokens = 0;
+	soft_prompt_tokens = 0;
+	submit_tokens = 0;
+	
+	//clear out within_max_length class
+	for (action of document.getElementsByClassName("within_max_length")) {
+		action.classList.remove("within_max_length");
+	}
+
 	for (const entry of data) {
 		//console.log(entry);
 		let contextClass = "context-" + ({
@@ -2880,7 +2859,8 @@ function update_context(data) {
 			world_info: "wi",
 			memory: "memory",
 			authors_note: "an",
-			action: "action"
+			action: "action",
+			submit: 'submit'
 		}[entry.type]);
 
 		let el = $e(
@@ -2909,7 +2889,39 @@ function update_context(data) {
 			tokenEl.innerHTML = tokenEl.innerHTML.replaceAll("<br>", '<span class="material-icons-outlined context-symbol">keyboard_return</span>');
 		}
 		document.getElementById("context-container").appendChild(el);
+		
+		switch (entry.type) {
+			case 'soft_prompt':
+				soft_prompt_tokens = entry.tokens;
+				break;
+			case 'prompt':
+				prompt_tokens = entry.tokens;
+				break;
+			case 'world_info':
+				world_info_tokens += entry.tokens;
+				break;
+			case 'memory':
+				memory_tokens = entry.tokens;
+				break;
+			case 'authors_note':
+				authors_notes_tokens = entry.tokens;
+				break;
+			case 'action':
+				game_text_tokens += entry.tokens;
+				if ('action_ids' in entry) {
+					for (action_id of entry.action_ids) {
+						if (document.getElementById('Selected Text Chunk '+action_id)) {
+							document.getElementById('Selected Text Chunk '+action_id).classList.add("within_max_length");
+						}
+					}
+				}
+				break;
+			case 'submit':
+				submit_tokens = entry.tokens;
+				break;
+		}
 	}
+	calc_token_usage(soft_prompt_tokens, memory_tokens, authors_notes_tokens, prompt_tokens, game_text_tokens, world_info_tokens, submit_tokens);
 
 
 }
@@ -3398,131 +3410,7 @@ function highlight_world_info_text_in_chunk(action_id, wi) {
 
 function update_token_lengths() {
 	clearTimeout(calc_token_usage_timeout);
-	calc_token_usage_timeout = setTimeout(calc_token_usage, 200);
-	return
-	max_token_length = parseInt(document.getElementById("model_max_length_cur").value);
-	included_world_info = [];
-	//clear out the world info included tags
-	for (item of document.getElementsByClassName("world_info_included")) {
-		item.classList.remove("world_info_included");
-	}
-	//clear out the text tags
-	for (item of document.getElementsByClassName("within_max_length")) {
-		item.classList.remove("within_max_length");
-	}
-	
-	//figure out memory length
-	if ((document.getElementById("memory").getAttribute("story_memory_length") == null) || (document.getElementById("memory").getAttribute("story_memory_length") == "")) {
-		memory_length = 0;
-	} else {
-		memory_length = parseInt(document.getElementById("memory").getAttribute("story_memory_length"));
-	}
-	//figure out and tag the length of all the constant world infos
-	for (uid in world_info_data) {
-		if (world_info_data[uid].constant) {
-			if (world_info_data[uid].token_length != null) {
-				memory_length += world_info_data[uid].token_length;
-				included_world_info.push(uid);
-				document.getElementById("world_info_"+uid).classList.add("world_info_included");
-			}
-		}
-	}
-	//Figure out author's notes length
-	if ((document.getElementById("authors_notes").getAttribute("story_authornote_length") == null) || (document.getElementById("authors_notes").getAttribute("story_authornote_length") == "")) {
-		authors_notes = 0;
-	} else {
-		authors_notes = parseInt(document.getElementById("authors_notes").getAttribute("story_authornote_length"));
-	}
-	//figure out prompt length
-	if ((document.getElementById("story_prompt").getAttribute("story_prompt_length") == null) || (document.getElementById("story_prompt").getAttribute("story_prompt_length") == "")) {
-		prompt_length = 0;
-	} else {
-		prompt_length = parseInt(document.getElementById("story_prompt").getAttribute("story_prompt_length"));
-	}
-	
-	//prompt is truncated at 512 tokens
-	if (prompt_length > 512) {
-		prompt_length = 512;
-	}
-	
-	//used token length
-	token_length = memory_length + authors_notes;
-	
-	//add in the prompt length if it's set to always add, otherwise add it later
-	always_prompt = document.getElementById("story_useprompt").value == "true";
-	if (always_prompt) {
-		token_length += prompt_length
-		document.getElementById("story_prompt").classList.add("within_max_length");
-		uids = document.getElementById("story_prompt").getAttribute("world_info_uids")
-		for (uid of uids?uids.split(','):[]) {
-			if (!(included_world_info.includes(uid))) {
-				token_length += world_info_data[uid].token_length;
-				included_world_info.push(uid);
-				document.getElementById("world_info_"+uid).classList.add("world_info_included");
-			}
-		}
-	} else {
-		document.getElementById("story_prompt").classList.remove("within_max_length");
-	}
-	//figure out how many chunks we have
-	max_chunk = -1;
-	for (item of document.getElementById("Selected Text").childNodes) {
-		if (item.id != undefined) {
-			if (item.id != "story_prompt") {
-				chunk_num = parseInt(item.id.replace("Selected Text Chunk ", ""));
-				if (chunk_num > max_chunk) {
-					max_chunk = chunk_num;
-				}
-			}
-		}
-	}
-	
-	//go backwards through the text chunks and tag them if we still have space
-	passed_token_limit = false;
-	for (var chunk=max_chunk;chunk >= 0;chunk--) {
-		if (document.getElementById("Selected Text Chunk "+chunk).getAttribute("token_length") == null) {
-			current_chunk_length = 999999999999;
-		} else {
-			current_chunk_length = parseInt(document.getElementById("Selected Text Chunk "+chunk).getAttribute("token_length"));
-		}
-		if ((current_chunk_length != 0) && (token_length+current_chunk_length < max_token_length)&& (!(passed_token_limit))) {
-			token_length += current_chunk_length;
-			document.getElementById("Selected Text Chunk "+chunk).classList.add("within_max_length");
-			uids = document.getElementById("Selected Text Chunk "+chunk).getAttribute("world_info_uids")
-			for (uid of uids?uids.split(','):[]) {
-				if (!(included_world_info.includes(uid))) {
-					token_length += world_info_data[uid].token_length;
-					included_world_info.push(uid);
-					document.getElementById("world_info_"+uid).classList.add("world_info_included");
-				}
-			}
-		} else if (!(passed_token_limit) && (current_chunk_length != 0)) {
-			passed_token_limit = true;
-			document.getElementById("Selected Text Chunk "+chunk).classList.remove("within_max_length");
-		} else {
-			document.getElementById("Selected Text Chunk "+chunk).classList.remove("within_max_length");
-		}
-	}
-	
-	//if we don't always add prompts
-	if ((!always_prompt) && (token_length+prompt_length < max_token_length)) {
-		token_length += prompt_length
-		document.getElementById("story_prompt").classList.add("within_max_length");
-		uids = document.getElementById("story_prompt").getAttribute("world_info_uids")
-		for (uid of uids?uids.split(','):[]) {
-			if (!(included_world_info.includes(uid))) {
-				token_length += world_info_data[uid].token_length;
-				included_world_info.push(uid);
-				document.getElementById("world_info_"+uid).classList.add("world_info_included");
-			}
-		}
-	} else if (!always_prompt) {
-		document.getElementById("story_prompt").classList.remove("within_max_length");
-	}
-	//Add token count to used_token_length tags
-	for (item of document.getElementsByClassName("used_token_length")) {
-		item.textContent = "Used Tokens: " + token_length;
-	}
+	calc_token_usage_timeout = setTimeout(function() {socket.emit("update_tokens", document.getElementById("input_text").value);}, 500);
 }
 
 String.prototype.toHHMMSS = function () {
@@ -4547,14 +4435,6 @@ for (const tweakContainer of document.getElementsByClassName("tweak-container"))
 
 process_cookies();
 
-$("#context-viewer-close").click(function() {
-	$el("#context-viewer-container").classList.add("hidden");
-});
-
-$(".token_breakdown").click(function() {
-	$el("#context-viewer-container").classList.remove("hidden");
-});
-
 /* -- Drag and Drop -- */
 (function() {
 	let lastTarget = null;
@@ -4820,13 +4700,46 @@ document.addEventListener("keydown", function(event) {
 });
 
 //function to load more actions if nessisary
-document.getElementById("Selected Text").onscroll = function(){
-    //TOP
-	if ((scroll_trigger_element != undefined) && (scroll_trigger_element != null)) {
+function infinite_scroll() {
+	if (scroll_trigger_element != undefined) {
 		if(scroll_trigger_element.getBoundingClientRect().bottom >= 0){
-			console.log("Scrolling action: "+scroll_trigger_element.getAttribute("chunk"));
 			socket.emit("get_next_100_actions", parseInt(scroll_trigger_element.getAttribute("chunk")));
-			scroll_trigger_element == null;
+			scroll_trigger_element = undefined;
+		}
+	}
+}
+
+function run_infinite_scroll_update(action_type, actions, first_action) {
+	if (action_type == "append") {
+		if (document.getElementById('Selected Text Chunk '+actions[actions.length-1].id)) {
+			document.getElementById('Selected Text Chunk '+actions[actions.length-1].id).scrollIntoView(false);
+			document.getElementById("Selected Text").scrollBy(0, 25);
+		}
+		//Check to see if we need to have the scrolling in place or not
+		if (document.getElementById("story_prompt").classList.contains("hidden")) {
+			document.getElementById("Selected Text").onscroll = infinite_scroll;
+			scroll_trigger_element = document.getElementById('Selected Text Chunk '+Math.min.apply(null,Object.keys(actions_data).map(Number).filter(function(x){return x>0})));
+		}
+	} else if (action_type == "prepend") {
+		if (Math.min.apply(null,Object.keys(actions_data).map(Number).filter(function(x){return x>=0})) == 0) {
+			//We've hit our prompt, so let's unhide it, move it to the begining, and kill the infinite_scroll
+			scroll_trigger_element = undefined;
+			document.getElementById("Selected Text").onscroll = undefined;
+			document.getElementById("Selected Text").prepend(document.getElementById("story_prompt"));
+			document.getElementById("story_prompt").classList.remove("hidden");
+		} else {
+			//we just added more text and didn't hit the prompt. Move the scroll trigger back to the first non-prompt element
+			for (id of Object.keys(actions_data).map(Number).filter(function(x){return x>0}).sort(function(a, b) {return a - b;})) {
+				console.log("Checking for "+id);
+				if (document.getElementById('Selected Text Chunk '+id)) {
+					scroll_trigger_element = document.getElementById('Selected Text Chunk '+id);
+					break;
+				}
+			}
+			if (document.getElementById('Selected Text Chunk '+first_action)) {
+				document.getElementById('Selected Text Chunk '+first_action).scrollIntoView(true);
+			}
+			
 		}
 	}
 }

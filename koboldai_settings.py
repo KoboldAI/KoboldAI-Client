@@ -126,16 +126,21 @@ class koboldai_vars(object):
         if story_name in self._story_settings:
             self._story_settings[story_name].no_save = True
             self._story_settings[story_name].from_json(json_data)
+            logger.debug("Calcing AI text after load story")
+            ignore = self.calc_ai_text()
             self._story_settings[story_name].no_save = False
         else:
             #self._story_settings[story_name].no_save = True
             self.create_story(story_name, json_data=json_data)
+            logger.debug("Calcing AI text after create story")
+            ignore = self.calc_ai_text()
             #self._story_settings[story_name].no_save = False
         self._system_settings.story_loads[original_story_name] = datetime.datetime.now().strftime("%m/%d/%Y, %H:%M:%S")
         with open("settings/system_settings.v2_settings", "w") as settings_file:
             settings_file.write(self._system_settings.to_json())
         
     def save_story(self):
+        logger.debug("Saving story from koboldai_vars.save_story()")
         self._story_settings[self.get_story_name()].save_story()
     
     def save_revision(self):
@@ -193,7 +198,7 @@ class koboldai_vars(object):
         # TODO: We may want to replace the "text" variable with a list-type
         # class of context blocks, the class having a __str__ function.
         if self.sp_length > 0:
-            context.append({"type": "soft_prompt", "text": f"<{self.sp_length} tokens of Soft Prompt.>"})
+            context.append({"type": "soft_prompt", "text": f"<{self.sp_length} tokens of Soft Prompt.>", "tokens": self.sp_length})
         # Header is never used?
         # if koboldai_vars.model not in ("Colab", "API", "OAI") and self.tokenizer._koboldai_header:
         #     context.append({"type": "header", "text": f"{len(self.tokenizer._koboldai_header})
@@ -207,7 +212,7 @@ class koboldai_vars(object):
             if self.tokenizer is not  None and self.memory_length > self.max_memory_length:
                 memory_text = self.tokenizer.decode(self.tokenizer.encode(self.memory)[-self.max_memory_length-1:])
          
-        context.append({"type": "memory", "text": memory_text})
+        context.append({"type": "memory", "text": memory_text, "tokens": memory_length})
         text += memory_text
         
         #Add constant world info entries to memory
@@ -218,11 +223,11 @@ class koboldai_vars(object):
                     used_world_info.append(wi['uid'])
                     self.worldinfo_v2.set_world_info_used(wi['uid'])
                     wi_text = wi['content']
-                    context.append({"type": "world_info", "text": wi_text})
+                    context.append({"type": "world_info", "text": wi_text, "tokens": wi['token_length']})
                     text += wi_text
         
         
-        action_text_split = self.actions.to_sentences()
+        action_text_split = self.actions.to_sentences(submitted_text=submitted_text)
         
         
         #Add prompt lenght/text if we're set to always use prompt
@@ -263,7 +268,7 @@ class koboldai_vars(object):
                                 used_tokens+=0 if  wi['token_length'] is None else wi['token_length']
                                 used_world_info.append(wi['uid'])
                                 wi_text = wi['content']
-                                context.append({"type": "world_info", "text": wi_text})
+                                context.append({"type": "world_info", "text": wi_text, "tokens": wi['token_length']})
                                 text += wi_text
                                 self.worldinfo_v2.set_world_info_used(wi['uid'])
                    
@@ -288,17 +293,23 @@ class koboldai_vars(object):
         for i in range(len(action_text_split)-1, -1, -1):
             if action_text_split[i][3] or action_text_split[i][1] == [-1]:
                 #We've hit an item we've already included or items that are only prompt. Stop
+                for action in action_text_split[i][1]:
+                    if action >= 0:
+                        self.actions.set_action_in_ai(action)
                 break;
             if len(action_text_split) - i - 1 == self.andepth and self.authornote != "":
                 game_text = "{}{}".format(authors_note_final, game_text)
-                game_context.insert(0, {"type": "authors_note", "text": authors_note_final})
+                game_context.insert(0, {"type": "authors_note", "text": authors_note_final, "tokens": self.authornote_length})
             length = 0 if self.tokenizer is None else len(self.tokenizer.encode(action_text_split[i][0]))
             if length+used_tokens <= token_budget and not used_all_tokens:
                 used_tokens += length
                 selected_text = action_text_split[i][0]
                 action_text_split[i][3] = True
                 game_text = "{}{}".format(selected_text, game_text)
-                game_context.insert(0, {"type": "action", "text": selected_text})
+                if action_text_split[i][1] == [self.actions.action_count+1]:
+                    game_context.insert(0, {"type": "submit", "text": selected_text, "tokens": length, "action_ids": action_text_split[i][1]})
+                else:
+                    game_context.insert(0, {"type": "action", "text": selected_text, "tokens": length, "action_ids": action_text_split[i][1]})
                 for action in action_text_split[i][1]:
                     if action >= 0:
                         self.actions.set_action_in_ai(action)
@@ -327,10 +338,10 @@ class koboldai_vars(object):
                                 wi_text = wi["content"]
                                 if method == 1:
                                     text = "{}{}".format(wi_text, game_text)
-                                    context.insert(0, {"type": "world_info", "text": wi_text})
+                                    context.insert(0, {"type": "world_info", "text": wi_text, "tokens": wi['token_length']})
                                 else:
                                     game_text = "{}{}".format(wi_text, game_text)
-                                    game_context.insert(0, {"type": "world_info", "text": wi_text})
+                                    game_context.insert(0, {"type": "world_info", "text": wi_text, "tokens": wi['token_length']})
                                 self.worldinfo_v2.set_world_info_used(wi['uid'])
             else:
                 used_all_tokens = True
@@ -339,11 +350,11 @@ class koboldai_vars(object):
         #if we don't have enough actions to get to author's note depth then we just add it right before the game text
         if len(action_text_split) < self.andepth and self.authornote != "":
             game_text = "{}{}".format(authors_note_final, game_text)
-            game_context.insert(0, {"type": "authors_note", "text": authors_note_final})
+            game_context.insert(0, {"type": "authors_note", "text": authors_note_final, "tokens": authornote_length})
         
         if self.useprompt:
             text += prompt_text
-            context.append({"type": "prompt", "text": prompt_text})
+            context.append({"type": "prompt", "text": prompt_text, "tokens": prompt_length})
         elif not used_all_tokens:
             prompt_length = 0
             prompt_text = ""
@@ -381,12 +392,12 @@ class koboldai_vars(object):
                                 used_tokens+=0 if  wi['token_length'] is None else wi['token_length']
                                 used_world_info.append(wi['uid'])
                                 wi_text = wi['content']
-                                context.append({"type": "world_info", "text": wi_text})
+                                context.append({"type": "world_info", "text": wi_text, "tokens": wi['token_length']})
                                 text += wi_text
                                 self.worldinfo_v2.set_world_info_used(wi['uid'])
 
                 text += prompt_text
-                context.append({"type": "prompt", "text": prompt_text})
+                context.append({"type": "prompt", "text": prompt_text, "tokens": prompt_length})
                 self.prompt_in_ai = True
             else:
                 self.prompt_in_ai = False
@@ -543,6 +554,7 @@ class model_settings(settings):
         self.oaiapikey   = ""     # API key to use for OpenAI API calls
         self.configname = None
         self.online_model = ''
+        self.welcome     = "" # Custom Welcome Text
         
     def reset_for_model_load(self):
         self.max_length  = 2048    # Maximum number of tokens to submit per action
@@ -718,7 +730,8 @@ class story_settings(settings):
     def save_story(self):
         if not self.no_save:
             if self.prompt != "" or self.memory != "" or self.authornote != "" or len(self.actions) > 0 or len(self.worldinfo_v2) > 0:
-                print("Saving")
+                logger.debug("Saving story from koboldai_vars.story_settings.save_story()")
+                logger.info("Saving")
                 save_name = self.story_name if self.story_name != "" else "untitled"
                 adder = ""
                 while True:
@@ -795,6 +808,7 @@ class story_settings(settings):
         
         #autosave action
         if name == "gamesaved" and value == False and self.autosave:
+            logger.debug("Saving story from gamesaved change and on autosave")
             self.save_story()
         if not new_variable and old_value != value:
             #Change game save state
@@ -805,6 +819,8 @@ class story_settings(settings):
                 ignore = self.koboldai_vars.calc_ai_text()
             elif name == 'actions':
                 self.actions.story_settings = self
+                logger.debug("Calcing AI text after setting actions")
+                ignore = self.koboldai_vars.calc_ai_text()
             elif name == 'story_name':
                 #reset the story id if we change the name
                 self.story_id = int.from_bytes(os.urandom(16), 'little', signed=True)
@@ -941,7 +957,6 @@ class system_settings(settings):
         self.comregex_ui = re.compile(r'(&lt;\|(?:.|\n)*?\|&gt;)')  # Pattern for matching comments in the editor
         self.host        = False
         self.flaskwebgui = False
-        self.welcome     = False # Custom Welcome Text (False is default)
         self.quiet       = False # If set will suppress any story text from being printed to the console (will only be seen on the client web page)
         self.use_colab_tpu  = os.environ.get("COLAB_TPU_ADDR", "") != "" or os.environ.get("TPU_NAME", "") != ""  # Whether or not we're in a Colab TPU instance or Kaggle TPU instance and are going to use the TPU rather than the CPU
         self.aria2_port  = 6799 #Specify the port on which aria2's RPC interface will be open if aria2 is installed (defaults to 6799)
@@ -1038,7 +1053,6 @@ class system_settings(settings):
                                 self._horde_pid.terminate()
                                 self._horde_pid = None
                 
-        
 class KoboldStoryRegister(object):
     def __init__(self, socketio, story_settings, koboldai_vars, tokenizer=None, sequence=[]):
         self.socketio = socketio
@@ -1160,9 +1174,9 @@ class KoboldStoryRegister(object):
         process_variable_changes(self.socketio, "story", 'actions', data_to_send, None)
         
         self.actions = temp
+        logger.debug("Calcing AI Text from Action load from json")
+        ignore = self.koboldai_vars.calc_ai_text()
         self.set_game_saved()
-        if self.story_settings is not None:
-            self.story_settings.save_story()
         
     def append(self, text, action_id_offset=0, recalc=True):
         self.clear_unused_options()
@@ -1251,6 +1265,7 @@ class KoboldStoryRegister(object):
         self.set_game_saved()
     
     def set_action_in_ai(self, action_id, used=True):
+        return
         if action_id in self.actions:
             if 'In AI Input' in self.actions[action_id]:
                 old = self.actions[action_id]['In AI Input']
@@ -1455,7 +1470,7 @@ class KoboldStoryRegister(object):
                 self.actions[action_id]["Options"][option_number]['Probabilities'].append(probabilities)
                 process_variable_changes(self.socketio, "story", 'actions', {"id": action_id, 'action':  self.actions[action_id]}, None)
     
-    def to_sentences(self):
+    def to_sentences(self, submitted_text=""):
         #start_time = time.time()
         #we're going to split our actions by sentence for better context. We'll add in which actions the sentence covers. Prompt will be added at a -1 ID
         actions = {i: self.actions[i]['Selected Text'] for i in self.actions}
@@ -1463,14 +1478,18 @@ class KoboldStoryRegister(object):
             actions[-1] = ""
         else:
             actions[-1] = self.story_settings.prompt
+        if submitted_text != "":
+            actions[self.action_count+1] = submitted_text
         action_text = self.__str__()
-        action_text = "{}{}".format("" if self.story_settings is None else self.story_settings.prompt, action_text)
+        action_text = "{}{}{}".format("" if self.story_settings is None else self.story_settings.prompt, action_text, submitted_text)
         ###########action_text_split = [sentence, actions used in sentence, token length, included in AI context]################
-        action_text_split = [[x+" ", [], 0, False] for x in re.findall(".*?[.!?]\s+", action_text)]
+        action_text_split = [[x, [], 0, False] for x in re.findall(".*?[.!?]\s+", action_text)]
+        #The above line can trim out the last sentence if it's incomplete. Let's check for that and add it back in
+        if len("".join([x[0] for x in action_text_split])) < len(action_text):
+            action_text_split.append([action_text[len("".join([x[0] for x in action_text_split])):], [], 0, False])
         #The last action shouldn't have the extra space from the sentence splitting, so let's remove it
         if len(action_text_split) == 0:
             return []
-        action_text_split[-1][0] = action_text_split[-1][0][:-1]
         
         Action_Position = [-1, len(actions[-1])] #First element is the action item, second is how much text is left
         Sentence_Position = [0, len(action_text_split[0][0])]
@@ -1511,7 +1530,6 @@ class KoboldStoryRegister(object):
         super().__setattr__(name, value)
         if name == 'action_count' and not new_variable:
             process_variable_changes(self.socketio, "actions", "Action Count", value, old_value)
-
 
 class KoboldWorldInfo(object):
     

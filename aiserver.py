@@ -718,7 +718,7 @@ tags = [
 api_version = None  # This gets set automatically so don't change this value
 
 api_v1 = KoboldAPISpec(
-    version="1.1.4",
+    version="1.2.0",
     prefixes=["/api/v1", "/api/latest"],
     tags=tags,
 )
@@ -1122,7 +1122,7 @@ def loadmodelsettings():
             if setting in js["formatoptns"]:
                 setattr(koboldai_vars, setting, js["formatoptns"][setting])
     if("welcome" in js):
-        koboldai_vars.welcome = js["welcome"]
+        koboldai_vars.welcome = js["welcome"] if js["welcome"] != False else ""
     if("newlinemode" in js):
         koboldai_vars.newlinemode = js["newlinemode"]
     if("antemplate" in js):
@@ -1258,7 +1258,7 @@ def general_startup(override_args=None):
     parser.add_argument("--cpu", action='store_true', help="By default unattended launches are on the GPU use this option to force CPU usage.")
     parser.add_argument("--breakmodel", action='store_true', help=argparse.SUPPRESS)
     parser.add_argument("--breakmodel_layers", type=int, help=argparse.SUPPRESS)
-    parser.add_argument("--breakmodel_gpulayers", type=str, help="If using a model that supports hybrid generation, this is a comma-separated list that specifies how many layers to put on each GPU device. For example to put 8 layers on device 0, 9 layers on device 1 and 11 layers on device 2, use --beakmodel_gpulayers 8,9,11")
+    parser.add_argument("--breakmodel_gpulayers", type=str, help="If using a model that supports hybrid generation, this is a comma-separated list that specifies how many layers to put on each GPU device. For example to put 8 layers on device 0, 9 layers on device 1 and 11 layers on device 2, use --breakmodel_gpulayers 8,9,11")
     parser.add_argument("--breakmodel_disklayers", type=int, help="If using a model that supports hybrid generation, this is the number of layers to put in disk cache.")
     parser.add_argument("--override_delete", action='store_true', help="Deleting stories from inside the browser is disabled if you are using --remote and enabled otherwise. Using this option will instead allow deleting stories if using --remote and prevent deleting stories otherwise.")
     parser.add_argument("--override_rename", action='store_true', help="Renaming stories from inside the browser is disabled if you are using --remote and enabled otherwise. Using this option will instead allow renaming stories if using --remote and prevent renaming stories otherwise.")
@@ -1633,7 +1633,7 @@ def get_cluster_models(msg):
     # Get list of models from public cluster
     print("{0}Retrieving engine list...{1}".format(colors.PURPLE, colors.END), end="")
     try:
-        req = requests.get("{}/models".format(url))
+        req = requests.get("{}/api/v1/models".format(url))
     except:
         logger.init_err("KAI Horde Models", status="Failed")
         logger.error("Provided KoboldAI Horde URL unreachable")
@@ -2673,8 +2673,9 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
                         if("out of memory" in traceback.format_exc().lower()):
                             raise RuntimeError("One of your GPUs ran out of memory when KoboldAI tried to load your model.")
                         raise e
-                tokenizer.save_pretrained("models/{}".format(koboldai_vars.model.replace('/', '_')))
+                tokenizer = GPT2Tokenizer.from_pretrained(koboldai_vars.custmodpth, revision=koboldai_vars.revision, cache_dir="cache")
                 model.save_pretrained("models/{}".format(koboldai_vars.model.replace('/', '_')), max_shard_size="500MiB")
+                tokenizer.save_pretrained("models/{}".format(koboldai_vars.model.replace('/', '_')))
                 koboldai_vars.modeldim = get_hidden_size_from_model(model)
                 # Is CUDA available? If so, use GPU, otherwise fall back to CPU
                 if(koboldai_vars.hascuda and koboldai_vars.usegpu):
@@ -4366,11 +4367,11 @@ def kml(txt):
 #  Send start message and tell Javascript to set UI state
 #==================================================================#
 def setStartState():
-    if koboldai_vars.welcome and isinstance(koboldai_vars.welcome, str):
+    if koboldai_vars.welcome != "":
         txt = kml(koboldai_vars.welcome) + "<br/>"
     else:
         txt = "<span>Welcome to <span class=\"color_cyan\">KoboldAI</span>! You are running <span class=\"color_green\">"+getmodelname()+"</span>.<br/>"
-    if(not koboldai_vars.noai and not koboldai_vars.welcome):
+    if(not koboldai_vars.noai and koboldai_vars.welcome == ""):
         txt = txt + "Please load a game or enter a prompt below to begin!</span>"
     if(koboldai_vars.noai):
         txt = txt + "Please load or import a story to read. There is no AI in this mode."
@@ -5027,9 +5028,9 @@ def core_generate(text: list, min: int, max: int, found_entries: set):
             tpu_mtj_backend.set_rng_seed(koboldai_vars.seed)
 
     if gen_in.shape[-1] + koboldai_vars.genamt > koboldai_vars.max_length:
-        print(gen_in.shape[-1])
-        print(koboldai_vars.genamt)
-        print(koboldai_vars.max_length)
+        logger.error("gen_in.shape[-1]: {}".format(gen_in.shape[-1]))
+        logger.error("koboldai_vars.genamt: {}".format(koboldai_vars.genamt))
+        logger.error("koboldai_vars.max_length: {}".format(koboldai_vars.max_length))
     assert gen_in.shape[-1] + koboldai_vars.genamt <= koboldai_vars.max_length
 
     if koboldai_vars.hascuda and koboldai_vars.usegpu:
@@ -6976,6 +6977,7 @@ def loadRequest(loadpath, filename=None):
         
         
         # Read file contents into JSON object
+        start_time = time.time()
         if(isinstance(loadpath, str)):
             with open(loadpath, "r") as file:
                 js = json.load(file)
@@ -6987,16 +6989,19 @@ def loadRequest(loadpath, filename=None):
                 filename = "untitled.json"
         js['v1_loadpath'] = loadpath
         js['v1_filename'] = filename
+        logger.debug("Loading JSON data took {}s".format(time.time()-start_time))
         loadJSON(js)
     logger.debug("Time to load story: {}s".format(time.time()-start_time))
 
 def loadJSON(json_text_or_dict):
     logger.debug("Loading JSON Story")
     logger.debug("Called from {}".format(inspect.stack()[1].function))
+    start_time = time.time()
     if isinstance(json_text_or_dict, str):
         json_data = json.loads(json_text_or_dict)
     else:
         json_data = json_text_or_dict
+    logger.debug("Loading JSON data took {}s".format(time.time()-start_time))
     if "file_version" in json_data:
         if json_data['file_version'] == 2:
             load_story_v2(json_data)
@@ -7060,10 +7065,12 @@ def load_story_v1(js):
     if(koboldai_vars.gamestarted):
         #We set the action count higher so that we don't trigger a scroll in the UI. 
         #Once all but the last is loaded we can bring it back down and do the last one so we scroll to it
+        logger.debug("Created temp story class")
         temp_story_class = koboldai_settings.KoboldStoryRegister(None, None, koboldai_vars, tokenizer=None)
         
         for i in range(len(js["actions"])):
             temp_story_class.append(js["actions"][i], recalc=False)
+        logger.debug("Added actions to temp story class")
         
 
     if "actions_metadata" in js:
@@ -7075,6 +7082,7 @@ def load_story_v1(js):
                         data[i]["text"] = data[i].pop("Text")
                     temp_story_class.set_options(data, int(key))
     koboldai_vars.actions.load_json(temp_story_class.to_json())
+    logger.debug("Saved temp story class")
     del temp_story_class
     
     # Try not to break older save files
@@ -8813,18 +8821,25 @@ def UI_2_generate_image(data):
     #If we have > 4 keys, use those otherwise use sumarization
     if len(keys) < 4:
         start_time = time.time()
-        #text to summarize:
-        if len(koboldai_vars.actions) < 5:
-            text = "".join(koboldai_vars.actions[:-5]+[koboldai_vars.prompt])
-        else:
-            text = "".join(koboldai_vars.actions[:-5])
-            
         if os.path.exists("models/{}".format(args.summarizer_model.replace('/', '_'))):
             koboldai_vars.summary_tokenizer = AutoTokenizer.from_pretrained("models/{}".format(args.summarizer_model.replace('/', '_')), cache_dir="cache")
         else:
             koboldai_vars.summary_tokenizer = AutoTokenizer.from_pretrained(args.summarizer_model, cache_dir="cache")
+        #text to summarize (get 1000 tokens worth of text):
+        text = []
+        text_length = 0
+        for item in reversed(koboldai_vars.actions.to_sentences()):
+            if len(koboldai_vars.summary_tokenizer.encode(item[0])) + text_length <= 1000:
+                text.append(item[0])
+                text_length += len(koboldai_vars.summary_tokenizer.encode(item[0]))
+            else:
+                break
+        text = "".join(text)
+        logger.debug("Text to summarizer: {}".format(text))
+        
         max_length = args.max_summary_length - len(koboldai_vars.summary_tokenizer.encode(art_guide))
         keys = [summarize(text, max_length=max_length)]
+        logger.debug("Text from summarizer: {}".format(keys[0]))
     
     
 
@@ -8977,7 +8992,7 @@ def get_items_locations_from_text(text):
 #==================================================================#
 # summarizer
 #==================================================================#
-def summarize(text, max_length=100, min_length=30):
+def summarize(text, max_length=100, min_length=30, unload=True):
     from transformers import pipeline as summary_pipeline
     start_time = time.time()
     if koboldai_vars.summarizer is None:
@@ -9013,11 +9028,12 @@ def summarize(text, max_length=100, min_length=30):
     #move model back to CPU to save precious vram
     torch.cuda.empty_cache()
     logger.debug("VRAM used by summarization: {}".format(torch.cuda.memory_reserved(0)))
-    koboldai_vars.summarizer.to("cpu")
+    if unload:
+        koboldai_vars.summarizer.to("cpu")
     torch.cuda.empty_cache()
     
-    logger.debug("Original Text: {}".format(text))
-    logger.debug("Summarized Text: {}".format(output))
+    #logger.debug("Original Text: {}".format(text))
+    #logger.debug("Summarized Text: {}".format(output))
     
     return output
 
@@ -9029,12 +9045,15 @@ def summarize(text, max_length=100, min_length=30):
 def UI_2_refresh_auto_memory(data):
     koboldai_vars.auto_memory = "Generating..."
     if koboldai_vars.summary_tokenizer is None:
-        koboldai_vars.summary_tokenizer = AutoTokenizer.from_pretrained("models/{}".format(args.summarizer_model.replace('/', '_')), cache_dir="cache")
+        if os.path.exists("models/{}".format(args.summarizer_model.replace('/', '_'))):
+            koboldai_vars.summary_tokenizer = AutoTokenizer.from_pretrained("models/{}".format(args.summarizer_model.replace('/', '_')), cache_dir="cache")
+        else:
+            koboldai_vars.summary_tokenizer = AutoTokenizer.from_pretrained(args.summarizer_model, cache_dir="cache")
     #first, let's get all of our game text and split it into sentences
     sentences = [x[0] for x in koboldai_vars.actions.to_sentences()]
     sentences_lengths = [len(koboldai_vars.summary_tokenizer.encode(x)) for x in sentences]
     
-    
+    pass_number = 1
     while len(koboldai_vars.summary_tokenizer.encode("".join(sentences))) > 1000:
         #Now let's split them into 1000 token chunks
         summary_chunks = [""]
@@ -9050,11 +9069,12 @@ def UI_2_refresh_auto_memory(data):
         i=0
         for summary_chunk in summary_chunks:
             logger.debug("summarizing chunk {}".format(i))
-            new_sentences.extend(re.split("(?<=[.!?])\s+", summarize(summary_chunk)))
+            new_sentences.extend(re.split("(?<=[.!?])\s+", summarize(summary_chunk, unload=False)))
             i+=1
-        logger.debug("Summarized to {} sentencees from {}".format(len(new_sentences), len(sentences)))
+        logger.debug("Pass {}:\nSummarized to {} sentencees from {}".format(pass_number, len(new_sentences), len(sentences)))
         sentences = new_sentences
-        koboldai_vars.auto_memory = "\n".join(sentences)
+        koboldai_vars.auto_memory += "Pass {}:\n{}\n\n".format(pass_number, "\n".join(sentences))
+        pass_number+=1
     logger.debug("OK, doing final summarization")
     output = summarize(" ".join(sentences))
     koboldai_vars.auto_memory += "\n\n Final Result:\n" + output
@@ -9076,7 +9096,16 @@ def UI_2_get_next_100_actions(data):
                 break
             data_to_send.append({"id": i, "action": koboldai_vars.actions.actions[i]})
             sent += 1
+    logger.debug("data_to_send length: {}".format(len(data_to_send)))
     emit("var_changed", {"classname": "story", "name": "actions", "old_value": None, "value":data_to_send})
+
+#==================================================================#
+# Get next 100 actions for infinate scroll
+#==================================================================#
+@socketio.on("update_tokens")
+@logger.catch
+def UI_2_update_tokens(data):
+    ignore = koboldai_vars.calc_ai_text(submitted_text=data)
 
 #==================================================================#
 # Test
@@ -9247,6 +9276,13 @@ def story_load_validator(name: str):
         raise ValidationError("Must be a valid story name.")
     return True
 
+def permutation_validator(lst: list):
+    if any(not isinstance(e, int) for e in lst):
+        return
+    if min(lst) != 0 or max(lst) != len(lst) - 1 or len(set(lst)) != len(lst):
+        raise ValidationError("Must be a permutation of the first N non-negative integers, where N is the length of this array")
+    return True
+
 class GenerationInputSchema(SamplerSettingsSchema):
     prompt: str = fields.String(required=True, metadata={"description": "This is the submission."})
     use_memory: bool = fields.Boolean(load_default=False, metadata={"description": "Whether or not to use the memory from the KoboldAI GUI when generating text."})
@@ -9266,6 +9302,9 @@ class GenerationInputSchema(SamplerSettingsSchema):
     disable_input_formatting: bool = fields.Boolean(load_default=True, metadata={"description": "When enabled, all input formatting options default to `false` instead of the value in the KoboldAI GUI"})
     frmtadsnsp: Optional[bool] = fields.Boolean(metadata={"description": "Input formatting option. When enabled, adds a leading space to your input if there is no trailing whitespace at the end of the previous action.\n\nIf `disable_input_formatting` is `true`, this defaults to `false` instead of the value in the KoboldAI GUI."})
     quiet: Optional[bool] = fields.Boolean(metadata={"description": "When enabled, Generated output will not be displayed in the console."})
+    sampler_order: Optional[List[int]] = fields.List(fields.Integer(), validate=[validate.Length(min=6), permutation_validator], metadata={"description": "Sampler order to be used. If N is the length of this array, then N must be greater than or equal to 6 and the array must be a permutation of the first N non-negative integers."})
+    sampler_seed: Optional[int] = fields.Integer(validate=validate.Range(min=0, max=2**64 - 1), metadata={"description": "RNG seed to use for sampling. If not specified, the global RNG will be used."})
+    sampler_full_determinism: Optional[bool] = fields.Boolean(metadata={"description": "If enabled, the generated text will always be the same as long as you use the same RNG seed, input and settings. If disabled, only the *sequence* of generated texts that you get when repeatedly generating text will be the same given the same RNG seed, input and settings."})
 
 class GenerationResultSchema(KoboldSchema):
     text: str = fields.String(required=True, metadata={"description": "Generated output as plain text."})
@@ -9356,6 +9395,29 @@ def _generate_text(body: GenerationInputSchema):
             "msg": "Server is busy; please try again later.",
             "type": "service_unavailable",
         }}), mimetype="application/json", status=503))
+    if vars.use_colab_tpu:
+        import tpu_mtj_backend
+    if hasattr(body, "sampler_seed"):
+        # If a seed was specified, we need to save the global RNG state so we
+        # can restore it later
+        old_seed = vars.seed
+        old_rng_state = tpu_mtj_backend.get_rng_state() if vars.use_colab_tpu else torch.get_rng_state()
+        vars.seed = body.sampler_seed
+        # We should try to use a previously saved RNG state with the same seed
+        if body.sampler_seed in vars.rng_states:
+            if vars.use_colab_tpu:
+                tpu_mtj_backend.set_rng_state(vars.rng_states[body.sampler_seed])
+            else:
+                torch.set_rng_state(vars.rng_states[body.sampler_seed])
+        else:
+            if vars.use_colab_tpu:
+                tpu_mtj_backend.set_rng_state(tpu_mtj_backend.new_rng_state(body.sampler_seed))
+            else:
+                torch.manual_seed(body.sampler_seed)
+        vars.rng_states[body.sampler_seed] = tpu_mtj_backend.get_rng_state() if vars.use_colab_tpu else torch.get_rng_state()
+    if hasattr(body, "sampler_order"):
+        if len(body.sampler_order) < 7:
+            body.sampler_order = [6] + body.sampler_order
     # This maps each property of the setting to use when sending the generate idempotently
     # To the object which typically contains it's value
     # This allows to set the property only for the API generation, and then revert the setting
@@ -9381,6 +9443,8 @@ def _generate_text(body: GenerationInputSchema):
         "max_context_length": ("koboldai_vars", "max_length", None),
         "n": ("koboldai_vars", "numseqs", None),
         "quiet": ("koboldai_vars", "quiet", None),
+        "sampler_order": ("vars", "sampler_order", None),
+        "sampler_full_determinism": ("vars", "full_determinism", None),
     }
     saved_settings = {}
     set_aibusy(1)
@@ -9430,6 +9494,12 @@ def _generate_text(body: GenerationInputSchema):
         koboldai_vars.output_streaming = output_streaming
         if koboldai_vars.allowsp and getattr(body, "soft_prompt", None) is not None:
             spRequest(old_spfilename)
+        if hasattr(body, "sampler_seed"):
+            vars.seed = old_seed
+            if vars.use_colab_tpu:
+                tpu_mtj_backend.set_rng_state(old_rng_state)
+            else:
+                torch.set_rng_state(old_rng_state)
         set_aibusy(0)
     return output
 
@@ -11635,6 +11705,60 @@ def put_config_soft_prompt(body: SoftPromptSettingSchema):
         settingschanged()
     return {}
 
+class SamplerSeedSettingSchema(KoboldSchema):
+    value: int = fields.Integer(validate=validate.Range(min=0, max=2**64 - 1), required=True)
+
+@api_v1.get("/config/sampler_seed")
+@api_schema_wrap
+def get_config_sampler_seed():
+    """---
+    get:
+      summary: Retrieve the current global sampler seed value
+      tags:
+        - config
+      responses:
+        200:
+          description: Successful request
+          content:
+            application/json:
+              schema: SamplerSeedSettingSchema
+              example:
+                value: 3475097509890965500
+    """
+    return {"value": __import__("tpu_mtj_backend").get_rng_seed() if vars.use_colab_tpu else __import__("torch").initial_seed()}
+
+@api_v1.put("/config/sampler_seed")
+@api_schema_wrap
+def put_config_sampler_seed(body: SamplerSeedSettingSchema):
+    """---
+    put:
+      summary: Set the global sampler seed value
+      tags:
+        - config
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: SamplerSeedSettingSchema
+            example:
+              value: 3475097509890965500
+      responses:
+        200:
+          description: Successful request
+          content:
+            application/json:
+              schema: EmptySchema
+        {api_validation_error_response}
+    """
+    if vars.use_colab_tpu:
+        import tpu_mtj_backend
+        tpu_mtj_backend.set_rng_seed(body.value)
+    else:
+        import torch
+        torch.manual_seed(body.value)
+    vars.seed = body.value
+    return {}
+
 config_endpoint_schemas: List[Type[KoboldSchema]] = []
 
 def config_endpoint_schema(c: Type[KoboldSchema]):
@@ -11832,6 +11956,25 @@ class AddSentenceSpacingSettingsSchema(KoboldSchema):
         name = "add sentence spacing (input formatting)"
         example_yaml_value = "false"
 
+@config_endpoint_schema
+class SamplerOrderSettingSchema(KoboldSchema):
+    value = fields.List(fields.Integer(), validate=[validate.Length(min=6), permutation_validator], required=True)
+    class KoboldMeta:
+        route_name = "sampler_order"
+        obj = "vars"
+        var_name = "sampler_order"
+        name = "sampler order"
+        example_yaml_value = "[6, 0, 1, 2, 3, 4, 5]"
+
+@config_endpoint_schema
+class SamplerFullDeterminismSettingSchema(KoboldSchema):
+    value = fields.Boolean(required=True)
+    class KoboldMeta:
+        route_name = "sampler_full_determinism"
+        obj = "vars"
+        var_name = "full_determinism"
+        name = "sampler full determinism"
+        example_yaml_value = "false"
 
 
 for schema in config_endpoint_schemas:

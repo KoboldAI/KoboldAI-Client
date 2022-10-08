@@ -9,7 +9,7 @@
 		//	debug_info.push({msg: message, url: url, line: line});
 		});
 	</script>
-	<script type="module">import {vocab_size, encode, decode} from "./static/tokenizer.js";window.encode = encode;window.decode = decode;window.vocab_size = vocab_size;</script>
+	<!---<script type="module">import {encode, decode} from "./static/tokenizer.js";window.encode = encode;window.decode = decode;</script>--->
 	<link href="static/open-iconic/css/open-iconic.css" rel="stylesheet">
 	<link rel="stylesheet" href="static/bootstrap-toggle.min.css">
 	<link rel="stylesheet" href="static/bootstrap.min.css">
@@ -45,6 +45,7 @@
 		<!------------ Game Text Screen--------------------->
 		<div class="gamescreen" id="gamescreen">
 			<div id="disconnect_message"><center><h1>Disconnected</h1></center></div>
+			<div id="welcome_text" class="var_sync_model_welcome"></div>
 			<div class="gametext" id="Selected Text" contenteditable=false onblur="select_game_text(null);" onclick="select_game_text(null);" onkeyup="select_game_text(event);">
 				<span id="story_prompt" class="var_sync_story_prompt var_sync_alt_story_prompt_length var_sync_alt_story_prompt_in_ai rawtext hidden" chunk="-1"></span>
 				<div id="Delete Me" class="noselect" contenteditable=false>
@@ -89,7 +90,7 @@
 			<textarea autocomplete="off" row=5 id="input_text" placeholder="Enter Prompt Here (shift+enter for new line)" oninput='if (this.value != "") {
 																											document.getElementById("themetext").value = "";
 																										}'
-																										onkeyup="calc_token_usage()"></textarea>
+																										onkeyup="update_token_lengths()"></textarea>
 			<div class="statusbar_outer hidden var_sync_alt_system_aibusy" id="status_bar" onclick="socket.emit('abort','');">
 				<div class="statusbar_inner" style="width:0%" onclick="socket.emit('abort','');">0%</div>
 			</div><br>

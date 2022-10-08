@@ -32,7 +32,7 @@
 			<label for="authors_notes_template">Template:</label><br/>
 			<input autocomplete="off" id=authors_notes_template type=text class="var_sync_story_authornotetemplate fullwidth" onchange='sync_to_server(this);'><br/>
 			<label for="authors_notes">Author's Notes:</label><br/>
-			<textarea autocomplete="off" rows=17 id="authors_notes" class="var_sync_story_authornote var_sync_alt_story_authornote_length fullwidth" oninput="autoResize(this)" onchange='sync_to_server(this);'></textarea><br/>
+			<textarea autocomplete="off" rows=16 id="authors_notes" class="var_sync_story_authornote var_sync_alt_story_authornote_length fullwidth" oninput="autoResize(this)" onchange='sync_to_server(this);'></textarea><br/>
 			<div class="setting_tile_area">
 				{% with menu='author_notes' %}
 					{% with sub_path='' %}
@@ -80,7 +80,7 @@
 		</div>
 	</div>
 	<div id="token-breakdown-container" class="settings_footer" style="padding-top: 10px;">
-		<div class="token_breakdown">
+		<div class="token_breakdown" onclick='socket.emit("update_tokens", document.getElementById("input_text").value);$el("#context-viewer-container").classList.remove("hidden");'>
 			<div id="soft_prompt_tokens" style="width:0%; background-color: var(--context_colors_soft_prompt);"></div>
 			<div id="memory_tokens" style="width:40%; background-color: var(--context_colors_memory);"></div>
 			<div id="authors_notes_tokens" style="width:10%; background-color: var(--context_colors_authors_notes);"></div>

@@ -377,7 +377,7 @@ border-top-right-radius: var(--tabs_rounding);
 	position: absolute;
 	top:10px;
 	color: var(--text);
-	left: calc(var(--flyout_menu_width) - 132px);
+	left: calc(var(--flyout_menu_width) - 133px);
 	z-index:50;
 	width: 25px;
 	height: 25px;
@@ -454,6 +454,7 @@ border-top-right-radius: var(--tabs_rounding);
 
 
 .story_title_area {
+	padding-top: 3px;
 	position: relative;
 }
 
@@ -702,6 +703,7 @@ border-top-right-radius: var(--tabs_rounding);
 
 .collapsable_header .material-icons-outlined {
 	padding-top: 5px;
+	transform: translateY(7px) translateX(4px);
 } 
 
 .var_sync_system_theme_list{
@@ -938,6 +940,10 @@ td.server_vars {
 	text-align: center;
 }
 
+#authors_notes_template {
+	margin-bottom: 3px;
+}
+
 .WI_Folder_Header {
 	margin-left: 10px;
 	display: grid;
@@ -1041,6 +1047,7 @@ td.server_vars {
 .world_info_delete {
 	grid-area: delete;
 	cursor: pointer;
+	margin: 2px 0px 0px 4px;
 }
 	
 .world_info_tag_area {
@@ -1055,7 +1062,7 @@ td.server_vars {
 
 .world_info_text {
 	width: auto;
-	margin: 0 2px 0 2px;
+	margin: 0 0px 0px;
 	border-radius: var(--radius_wi_card);
 	background-color: var(--wi_card_bg_color);
 	color: var(--wi_card_text_color);
@@ -1196,7 +1203,7 @@ body {
 
 .gametext {
 	margin-top: auto;
-	padding: 0px 5px 10px 10px;
+	padding: 10px 12px 10px 12px;
 	vertical-align: bottom;
 	overflow-y: scroll;
 	outline: none;
@@ -1882,6 +1889,7 @@ body {
 .context-memory > .context-token {background-color: var(--context_colors_memory);}
 .context-an > .context-token {background-color: var(--context_colors_authors_notes);}
 .context-action > .context-token {background-color: var(--context_colors_game_text);}
+.context-submit > .context-token {background-color: var(--context_colors_submit);}
 
 /* File Drag Indicator */
 #file-upload-notice {
@@ -2325,6 +2333,7 @@ button.disabled {
 
 .fullwidth {
 	width: 100%;
+	padding: 5px 7px 5px 7px;
 }
 
 .rawtext {
@@ -2485,7 +2494,7 @@ h2 .material-icons-outlined {
 
 .section_header {
 	margin-left: 2px;
-	margin-bottom: 4px;
+	margin-bottom: 2px;
 }
 
 .help_text {
