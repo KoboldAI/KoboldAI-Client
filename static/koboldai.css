@@ -384,7 +384,6 @@ border-top-right-radius: var(--tabs_rounding);
 	display: inline-block;
 	transition: left 0.5s;
 	cursor: pointer;
-	transform: translateY(-3px) translateX(-2px);
 }
 
 .SideMenu {
