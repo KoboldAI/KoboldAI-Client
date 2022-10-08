@@ -259,12 +259,6 @@
 	background-color: #212122 !important;
 }
 
-/* Icons */
-
-.collapsable_header .material-icons-outlined {
-    transform: translateY(7px) translateX(4px)!important;
-}
-
 /* Import */
 
 a {
@@ -286,12 +280,6 @@ a {
 
 .settings_select, .var_sync_system_theme_list {
 	border-color: #12324f !important;
-}
-
-/* Padding */
-
-.story_title_area {
-    padding-top: 3px;
 }
 
 /* Palette */
@@ -376,7 +364,6 @@ div#settings_footer.settings_footer {
 }
 
 .world_info_text {
-	margin: 0 0px 0px !important;
     border-color: #999999!important;
 	filter: brightness(100%) !important;
 	background-color: #404040 !important;
