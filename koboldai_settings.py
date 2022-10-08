@@ -1001,6 +1001,7 @@ class system_settings(settings):
             do_dynamic_wi: bool = False
             # Genamt stopping is mostly tied to Dynamic WI
             stop_at_genamt: bool = False
+            do_core: bool = True
         self.inference_config = _inference_config()
         
         self._koboldai_var = koboldai_var
