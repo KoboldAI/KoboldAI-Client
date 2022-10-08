@@ -264,10 +264,6 @@
 
 /* Icons */
 
-.collapsable_header .material-icons-outlined {
-    transform: translateY(7px) translateX(4px)!important;
-}
-
 span.material-icons-outlined.cursor.search_icon {
 	filter: brightness(120%) !important;
 }
@@ -302,12 +298,6 @@ a {
 
 .settings_select, .var_sync_system_theme_list {
 	border-color: #535353 !important;
-}
-
-/* Padding */
-
-.story_title_area {
-    padding-top: 3px;
 }
 
 /* Palette */
@@ -377,7 +367,6 @@ a {
 /* World Info */
 
 .world_info_text {
-	margin: 0 0px 0px !important;
 	border-color: #242424 !important;
 	background-color: #3b3b3b !important;
 }
