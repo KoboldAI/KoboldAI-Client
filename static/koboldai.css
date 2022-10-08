@@ -384,6 +384,7 @@ border-top-right-radius: var(--tabs_rounding);
 	display: inline-block;
 	transition: left 0.5s;
 	cursor: pointer;
+	transform: translateY(-3px) translateX(-2px);
 }
 
 .SideMenu {
@@ -703,6 +704,7 @@ border-top-right-radius: var(--tabs_rounding);
 
 .collapsable_header .material-icons-outlined {
 	padding-top: 5px;
+	.collapsable_header .material-icons-outlined
 } 
 
 .var_sync_system_theme_list{
@@ -1957,7 +1959,6 @@ body {
 	top: 3px;
 	right: 2px;
 	cursor: pointer;
-	transform: translateY(-3px) translateX(-2px)
 }
 
 #finder-scratchpad {
@@ -2470,7 +2471,6 @@ h2 .material-icons-outlined {
 
 .collapsable_header {
 	cursor: pointer;
-	transform: translateY(7px) translateX(4px);
 }
 
 .material-icons-outlined,
