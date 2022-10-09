@@ -1879,6 +1879,7 @@ body {
 }
 
 .context-token {
+	position: relative;
 	background-color: inherit;
 }
 

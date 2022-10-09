@@ -2835,6 +2835,22 @@ function update_bias_slider_value(slider) {
 	slider.parentElement.parentElement.querySelector(".bias_slider_cur").textContent = slider.value;
 }
 
+function distortColor(rgb) {
+	// rgb are 0..255, NOT NORMALIZED!!!!!!
+	const brightnessTamperAmplitude = 0.1;
+	const psuedoHue = 12;
+
+	let brightnessDistortion = Math.random() * (255 * brightnessTamperAmplitude);
+	rgb = rgb.map(x => x + brightnessDistortion);
+
+	// Cheap hack to imitate hue rotation
+	rgb = rgb.map(x => x += (Math.random() * psuedoHue * 2) - psuedoHue);
+
+	// Clamp and round
+	rgb = rgb.map(x => Math.round(Math.max(0, Math.min(255, x))));
+	return rgb;
+}
+
 function update_context(data) {
 	$(".context-block").remove();
 
@@ -2868,15 +2884,17 @@ function update_context(data) {
 			{classes: ["context-block", contextClass]}
 		);
 
+		let rgb = window.getComputedStyle(el)["background-color"].match(/(\d+), (\d+), (\d+)/).slice(1, 4).map(Number);
+
 		for (const [tokenId, token] of entry.tokens) {
-			let bright = 0.8 + (Math.random() * 0.2);
-			let hue = Math.random() * 20;
+			let tokenColor = distortColor(rgb);
+			tokenColor = "#" + (tokenColor.map((x) => x.toString(16)).join(""));
 
 			let tokenEl = $e("span", el, {
 				classes: ["context-token"],
 				"token-id": tokenId === -1 ? "Soft" : tokenId,
 				innerText: token,
-				"style.filter": `brightness(${bright}) hue-rotate(${hue}deg)`
+				"style.backgroundColor": tokenColor,
 			});
 
 			tokenEl.innerHTML = tokenEl.innerHTML.replaceAll("<br>", '<span class="material-icons-outlined context-symbol">keyboard_return</span>');
