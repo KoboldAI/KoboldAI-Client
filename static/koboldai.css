@@ -2259,6 +2259,26 @@ body {
 	margin-right: 5px;
 }
 
+/* Substitutions */
+#substitution-header {
+	display: flex;
+	width: 100%;
+	justify-content: space-around;
+}
+
+.substitution-card {
+	display: flex;
+
+	column-gap: 5px;
+	height: 30px;
+	width: 100%;
+	padding: 1px 0px;
+}
+
+.substitution-card > *{
+	min-width: 0;
+}
+
 /*---------------------------------- Global ------------------------------------------------*/
 .hidden {
 	display: none;

@@ -412,6 +412,46 @@
 				<input type=checkbox class="setting_item_input" data-size="mini" data-onstyle="success" data-toggle="toggle">
 			</div>
 		</div>
+
+		<div class="collapsable_header" onclick="toggle_setting_category(this);">
+			<h4 style="width:var(--flyout_menu_width);"><span class="material-icons-outlined cursor">expand_more</span> Substitutions</h4>
+		</div>
+
+		<!--
+			Some good ideas for defaults:
+			-- : –
+			(c) : ©
+			(r) : ®
+			--- : —
+			... : …
+			tm : ™ (maybe)
+		-->
+		<div class="setting_tile_area" id="Substitutions">
+			<span class="help_text">Automatically replaces characters as you type.</span>
+			<div id="substitution-header" class="noselect">
+				<b>Replace</b> <b>With</b>
+			</div>
+
+			<div class="substitution-card">
+				<input class="target">
+				<input class="substitution">
+			</div>
+			<div class="substitution-card">
+				<input class="target">
+				<input class="substitution">
+			</div>
+			<div class="substitution-card">
+				<input class="target">
+				<input class="substitution">
+			</div>
+
+			<div id="new-card" class="substitution-card cursor">
+				<span class="material-icons-outlined">
+					add
+				</span>
+			</div>
+		</div>
+
 	</div>
 	<div id="settings_footer" class="settings_footer">
 		<span>Execution Time: <span id="Execution Time"></span></span> | 
