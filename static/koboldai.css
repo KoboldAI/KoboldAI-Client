@@ -2260,13 +2260,22 @@ body {
 }
 
 /* Substitutions */
+#Substitutions > .helpicon {
+	margin-left: 5px;
+	align-self: auto;
+}
+
 #substitution-header {
 	display: flex;
 	width: 100%;
 	justify-content: space-around;
 }
 
-.substitution-card {
+#substitution-container {
+	width: 100%;
+}
+
+.substitution-card, #new-sub-card {
 	display: flex;
 
 	column-gap: 5px;
@@ -2275,9 +2284,54 @@ body {
 	padding: 1px 0px;
 }
 
-.substitution-card > *{
+.substitution-card > .card-section {
+	display: flex;
+}
+
+.substitution-card > .card-left > .material-icons-outlined {
+	margin-left: -5px;
+	margin-right: 5px;
+	color: gray;
+}
+
+.substitution-card > .card-section > input {
+	flex-grow: 1;
 	min-width: 0;
 }
+
+.substitution-card > * {
+	min-width: 0;
+}
+
+.substitution-card input {
+	padding-left: 2px;
+	border-color: var(--setting_background);
+}
+
+#new-sub-card {
+	display: flex;
+	justify-content: center;
+	background-color: var(--setting_background);
+	border-radius: 2px;
+	padding: 1px;
+	margin: 3px 0px;
+}
+
+.true-t {
+	display: none;
+}
+
+.true-t + label::before {
+	content: "edit_off";
+	color: gray;
+	margin-left: 3px;
+}
+
+.true-t:checked + label::before {
+	content: "edit";
+	color: white
+}
+
 
 /*---------------------------------- Global ------------------------------------------------*/
 .hidden {

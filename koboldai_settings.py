@@ -723,6 +723,14 @@ class story_settings(settings):
         self.revisions = []
         self.picture = "" #base64 of the image shown for the story
         self.picture_prompt = "" #Prompt used to create picture
+        self.substitutions = [
+            {"target": "--", "substitution": "–", "enabled": False},
+            {"target": "---", "substitution": "—", "enabled": False},
+            {"target": "...", "substitution": "…", "enabled": False},
+            # {"target": "(c)", "substitution": "©", "enabled": False},
+            # {"target": "(r)", "substitution": "®", "enabled": False},
+            # {"target": "(tm)", "substitution": "™", "enabled": False},
+        ]
         
         #must be at bottom
         self.no_save = False  #Temporary disable save (doesn't save with the file)

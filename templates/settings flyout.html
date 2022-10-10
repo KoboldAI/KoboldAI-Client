@@ -417,35 +417,16 @@
 			<h4 style="width:var(--flyout_menu_width);"><span class="material-icons-outlined cursor">expand_more</span> Substitutions</h4>
 		</div>
 
-		<!--
-			Some good ideas for defaults:
-			-- : –
-			(c) : ©
-			(r) : ®
-			--- : —
-			... : …
-			tm : ™ (maybe)
-		-->
 		<div class="setting_tile_area" id="Substitutions">
-			<span class="help_text">Automatically replaces characters as you type.</span>
+			<span class="help_text">Automatically replaces phrases that you or the AI insert.</span>
+
+			<span class="helpicon material-icons-outlined" title="Can be used to help you insert special characters or automatically correct the AI. The pencil button toggles if a substitution is active or not.">help_icon</span> 
 			<div id="substitution-header" class="noselect">
 				<b>Replace</b> <b>With</b>
 			</div>
+			<div id="substitution-container"></div>
 
-			<div class="substitution-card">
-				<input class="target">
-				<input class="substitution">
-			</div>
-			<div class="substitution-card">
-				<input class="target">
-				<input class="substitution">
-			</div>
-			<div class="substitution-card">
-				<input class="target">
-				<input class="substitution">
-			</div>
-
-			<div id="new-card" class="substitution-card cursor">
+			<div id="new-sub-card" class="cursor" title="Add Substitution">
 				<span class="material-icons-outlined">
 					add
 				</span>

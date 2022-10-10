@@ -6146,6 +6146,18 @@ def applyoutputformatting(txt):
     if(koboldai_vars.singleline or koboldai_vars.chatmode):
         txt = utils.singlelineprocessing(txt, koboldai_vars)
     
+    for sub in koboldai_vars.substitutions:
+        if not sub["enabled"]:
+            continue
+        i = 0
+        while sub["trueTarget"] in txt or sub["target"] in txt:
+            i += 1
+            if i > 1000:
+                logger.error("[substitutions] Infinite recursion :^(")
+                break
+            txt = txt.replace(sub["trueTarget"], sub["substitution"])
+            txt = txt.replace(sub["target"], sub["substitution"])
+    
     return txt
 
 #==================================================================#
@@ -8506,6 +8518,11 @@ def UI_2_scratchpad_prompt(data):
 def UI_2_phrase_bias_update(biases):
     koboldai_vars.biases = biases
 
+
+@socketio.on("substitution_update")
+@logger.catch
+def UI_2_substitutions_update(substitutions):
+    koboldai_vars.substitutions = substitutions
 
 
 #==================================================================#

@@ -33,6 +33,7 @@ socket.on("request_prompt_config", configurePrompt);
 socket.on("log_message", function(data){process_log_message(data);});
 socket.on("debug_message", function(data){console.log(data);});
 socket.on("scratchpad_response", recieveScratchpadResponse);
+socket.on("scratchpad_response", recieveScratchpadResponse);
 //socket.onAny(function(event_name, data) {console.log({"event": event_name, "class": data.classname, "data": data});});
 
 var presets = {};
@@ -590,6 +591,9 @@ function var_changed(data) {
 	//Special Case for phrase biasing
 	} else if ((data.classname == 'story') && (data.name == 'biases')) {
 		do_biases(data);
+	//Special Case for substitutions
+	} else if ((data.classname == 'story') && (data.name == 'substitutions')) {
+		load_substitutions(data.value);
 	//Special Case for sample_order
 	} else if ((data.classname == 'model') && (data.name == 'sampler_order')) {
 		for (const [index, item] of data.value.entries()) {
@@ -4665,6 +4669,243 @@ process_cookies();
 	// there's no title. If we have missed the title sync, however, this will
 	// save us.
 	updateTitle();
+})();
+
+/* Substitution */
+let load_substitutions;
+[load_substitutions] = (function() {
+	// TODO: Don't allow multiple substitutions for one target
+	
+	// Defaults
+	let substitutions = [];
+	const substitutionContainer = $el("#substitution-container");
+	let charMap = [];
+	
+	function getTrueTarget(bareBonesTarget) {
+		// If -- is converted to the 2dash, we make a "true target" so that a 2dash and - is the 3dash.
+		if (!bareBonesTarget) return bareBonesTarget;
+
+		let tries = 0;
+		let whatWeGot = bareBonesTarget;
+		
+		// eehhhh this kinda sucks but it's the best I can think of at the moment
+		while (true) {
+			// Sanity check; never 100% cpu!
+			tries++;
+			if (tries > 2000) {
+				alert("Some Substitution shenanigans are afoot; please send the developers your substitutions!");
+				throw Error("Substitution shenanigans!")
+				return;
+			}
+			
+			let escape = true;
+			for (const c of substitutions) {
+				if (c.target === bareBonesTarget) continue;
+				if (!c.enabled) continue;
+
+				if (whatWeGot.includes(c.target)) {
+					whatWeGot = whatWeGot.replaceAll(c.target, c.substitution);
+					escape = false;
+					break;
+				}
+			}
+			
+			if (escape) break;
+		}
+		
+		return whatWeGot;
+	}
+	
+	function getSubstitutionIndex(cardElement) {
+		for (const i in substitutions) {
+			if (substitutions[i].card === cardElement) {
+				return i
+			}
+		}
+
+		throw Error("Didn't find substitution!");
+	}
+	
+	function getDuplicateCards(target) {
+		let duplicates = [];
+		
+		for (const c of substitutions) {
+			if (c.target === target) duplicates.push(c.card);
+		}
+		
+		console.log(duplicates)
+		return duplicates.length > 1 ? duplicates : [];
+	}
+	
+	function makeCard(c) {
+		// How do we differentiate -- and ---? Convert stuff!
+		
+		let card = $e("div", substitutionContainer, {classes: ["substitution-card"]});
+		let leftContainer = $e("div", card, {classes: ["card-section", "card-left"]});
+		let deleteIcon = $e("span", leftContainer, {classes: ["material-icons-outlined", "cursor"], innerText: "clear"});
+		let targetInput = $e("input", leftContainer, {classes: ["target"], value: c.target});
+		let rightContainer = $e("div", card, {classes: ["card-section"]});
+		let substitutionInput = $e("input", rightContainer, {classes: ["target"], value: c.substitution});
+		
+		// HACK
+		let checkboxId = "sbcb" + Math.round(Math.random() * 9999).toString();
+		
+		let enabledCheckbox = $e("input", rightContainer, {id: checkboxId, classes: ["true-t"], type: "checkbox", checked: c.enabled});
+		let initCheckTooltip = c.enabled ? "Enabled" : "Disabled";
+
+		// HACK: We don't use in-house tooltip as it's cut off by container :(
+		let enabledVisual = $e("label", rightContainer, {for: checkboxId, "title": initCheckTooltip, classes: ["material-icons-outlined"]});
+		
+		targetInput.addEventListener("change", function() {
+			let card = this.parentElement.parentElement;
+			let i = getSubstitutionIndex(card);
+
+			substitutions[i].target = this.value;
+
+			// Don't do a full rebake
+			substitutions[i].trueTarget = getTrueTarget(this.value);
+			
+			for (const duplicateCard of getDuplicateCards(this.value)) {
+				if (duplicateCard === card) continue;
+				console.log("DUPE", duplicateCard)
+				substitutions.splice(getSubstitutionIndex(duplicateCard), 1);
+				duplicateCard.remove();
+			}
+
+			rebuildCharMap();
+			updateSubstitutions();
+		});
+
+		substitutionInput.addEventListener("change", function() {
+			let card = this.parentElement.parentElement;
+			let i = getSubstitutionIndex(card);
+
+			substitutions[i].substitution = this.value;
+			// No rebaking at all is needed, that all hinges on target value; not edited here.
+			updateSubstitutions();
+		});
+		
+		deleteIcon.addEventListener("click", function() {
+			let card = this.parentElement.parentElement;
+			
+			// Find and remove from substitution array
+			substitutions.splice(getSubstitutionIndex(card), 1);
+			updateSubstitutions();
+			rebakeSubstitutions();
+			card.remove();
+		});
+		
+		enabledCheckbox.addEventListener("change", function() {
+			let card = this.parentElement.parentElement;
+			let i = getSubstitutionIndex(card);
+			console.log(this.checked)
+
+			substitutions[i].enabled = this.checked;
+			enabledVisual.setAttribute("title", this.checked ? "Enabled" : "Disabled")
+			rebakeSubstitutions();
+			updateSubstitutions();
+		});
+		
+		return card;
+	}
+	
+	function updateSubstitutions() {
+		let subs = substitutions.map(x => ({target: x.target, substitution: x.substitution, trueTarget: x.trueTarget, enabled: x.enabled}));
+		socket.emit("substitution_update", subs);
+	}
+	
+	function rebakeSubstitutions() {
+		for (const c of substitutions) {
+			c.trueTarget = getTrueTarget(c.target);
+		}
+		rebuildCharMap();
+	}
+	
+	function rebuildCharMap() {
+		charMap = [];
+		for (const c of substitutions) {
+			if (!c.enabled) continue;
+			for (const char of c.target) {
+				if (!charMap.includes(char)) charMap.push(char)
+			}
+		}
+	}
+	
+	const newCardButton = $el("#new-sub-card");
+	newCardButton.addEventListener("click", function() {
+		let c = {target: "", substitution: "", enabled: true}
+		substitutions.push(c);
+		c.card = makeCard(c);
+		newCardButton.scrollIntoView();
+	});
+	
+	// Event handler on input
+	// TODO: Apply to all of gametext
+	const inputText = $el("#input_text");
+	inputText.addEventListener("keydown", function(event) {
+		if (event.ctrlKey) return;
+		if (event.ctrlKey) return;
+		if (!charMap.includes(event.key)) return;
+
+		let caretPosition = inputText.selectionStart;
+		// We don't have to worry about special keys due to charMap (hopefully)
+		let futureValue = inputText.value.slice(0, caretPosition) + event.key + inputText.value.slice(caretPosition);
+
+		for (const c of substitutions) {
+			if (!c.target) continue;
+			if (!c.enabled) continue;
+
+			let t = c.trueTarget;
+			let preCaretPosition = caretPosition - t.length + 1;
+			let bit = futureValue.slice(caretPosition - t.length + 1, caretPosition + 1)
+			
+			if (bit === t) {
+				// We're doing it!!!!
+				event.preventDefault();
+				
+				// Assemble the new text value
+				let before = inputText.value.slice(0, caretPosition - t.length + 1);
+				let after = inputText.value.slice(caretPosition);
+				let newText = before + c.substitution + after;
+				
+				inputText.value = newText;
+				
+				// Move cursor back after setting text
+				let sLength = c.substitution.length;
+				inputText.selectionStart = preCaretPosition + sLength;
+				inputText.selectionEnd = preCaretPosition + sLength;
+
+				break;
+			}
+		}
+	});
+	
+	let firstLoad = true;
+	
+	function load_substitutions(miniSubs) {
+		// HACK: Does the same "replace all on load" thing that WI does; tab
+		// support is broken and overall that kinda sucks. Would be nice to
+		// make a robust system for syncing multiple entries.
+		
+		console.log("load", miniSubs)
+
+		$(".substitution-card").remove();
+		// we only get target, trueTarget, and such
+		for (const c of miniSubs) {
+			if (!c.trueTarget) c.trueTarget = getTrueTarget(c.target);
+			//if (!c.enabled) c.enabled = false;
+			c.card = makeCard(c);
+		}
+		substitutions = miniSubs;
+		rebuildCharMap();
+		
+		// We build trueTarget on the client, and it's not initalized on the server because I'm lazy.
+		// May want to do that on the server in the future.
+		if (firstLoad) updateSubstitutions();
+		firstLoad = false;
+	}
+
+	return [load_substitutions];
 })();
 
 /* -- Shortcuts -- */
