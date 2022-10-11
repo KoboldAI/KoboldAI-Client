@@ -703,7 +703,6 @@ border-top-right-radius: var(--tabs_rounding);
 
 .collapsable_header .material-icons-outlined {
 	padding-top: 5px;
-	transform: translateY(7px) translateX(4px);
 } 
 
 .var_sync_system_theme_list{
