@@ -5013,10 +5013,14 @@ function run_infinite_scroll_update(action_type, actions, first_action) {
 		}
 		//Check to see if we need to have the scrolling in place or not
 		if (document.getElementById("story_prompt").classList.contains("hidden")) {
-			console.log("Appending, but adding infinite scroll");
-			console.log(document.getElementById('Selected Text Chunk '+Math.min.apply(null,Object.keys(actions_data).map(Number).filter(function(x){return x>0}))));
-			document.getElementById("Selected Text").onscroll = infinite_scroll;
-			scroll_trigger_element = document.getElementById('Selected Text Chunk '+Math.min.apply(null,Object.keys(actions_data).map(Number).filter(function(x){return x>0})));
+			if (Math.min.apply(null,Object.keys(actions_data).map(Number).filter(function(x){return x>=0})) <= 0) {
+				document.getElementById("story_prompt").classList.remove("hidden");
+			} else {
+				console.log("Appending, but adding infinite scroll");
+				console.log(document.getElementById('Selected Text Chunk '+Math.min.apply(null,Object.keys(actions_data).map(Number).filter(function(x){return x>=0}))));
+				document.getElementById("Selected Text").onscroll = infinite_scroll;
+				scroll_trigger_element = document.getElementById('Selected Text Chunk '+Math.min.apply(null,Object.keys(actions_data).map(Number).filter(function(x){return x>=0})));
+			}
 		}
 	} else if (action_type == "prepend") {
 		if (Math.min.apply(null,Object.keys(actions_data).map(Number).filter(function(x){return x>=0})) == 0) {
