@@ -1903,7 +1903,7 @@ body {
 .tooltip-standard {
 	border: 3px ridge grey;
 	font-family: "Helvetica Neue",Helvetica,Arial,sans-serif;
-	width: 200px;
+	 max-width: min-context;
 }
 
 .tooltip-context-token {
