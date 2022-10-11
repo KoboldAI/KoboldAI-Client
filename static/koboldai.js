@@ -4996,7 +4996,7 @@ let load_substitutions;
 
 		el.addEventListener("mouseenter", function(event) {
 			tooltip.innerText = text;
-			let specialClass = null;
+			let specialClass = "tooltip-standard";
 
 			// Kinda lame
 			if (this.classList.contains("context-token")) specialClass = "tooltip-context-token";

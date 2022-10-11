@@ -1886,16 +1886,12 @@ body {
 
 #tooltip-text {
 	content: attr(tooltip);
-	font-family: "Helvetica Neue",Helvetica,Arial,sans-serif;
 	position: fixed;
 	transition: opacity  0s linear 0.5s;
-	border: 3px ridge grey;
-	width: 200px;
 	white-space: normal;
 
 	opacity: 1;
 	
-
 	padding: 0px 2px;
 	color: var(--tooltip_text);
 	background-color: var(--tooltip_background);
@@ -1904,10 +1900,16 @@ body {
 	z-index: 9999999;
 }
 
+.tooltip-standard {
+	border: 3px ridge grey;
+	font-family: "Helvetica Neue",Helvetica,Arial,sans-serif;
+	width: 200px;
+}
+
 .tooltip-context-token {
-	border: none !important;
-	font-family: monospace !important;
-	max-width: min-content !important;
+	border: none;
+	font-family: monospace;
+	max-width: min-content;
 }
 
 
