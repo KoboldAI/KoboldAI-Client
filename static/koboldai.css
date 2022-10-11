@@ -1904,26 +1904,12 @@ body {
 	z-index: 9999999;
 }
 
-.context-token[tooltip]:hover::after {
-	content: attr(tooltip);
-	font-family: "Helvetica Neue",Helvetica,Arial,sans-serif;
-	position: fixed;
-	transition: opacity  0s linear 0.5s;
-
-	
-	top: calc(var(--mouse-y) * 100vh - 30px);
-	left: calc(var(--mouse-x) * 100vw);
-	transform: translate(var(--tooltip_x), var(--tooltip_y_context)) !important;
-	opacity: 1;
-	
-
-	padding: 0px 2px;
-	color: var(--tooltip_text);
-	background-color: var(--tooltip_background);
-
-	pointer-events: none;
-	z-index: 9999999;
+.tooltip-context-token {
+	border: none !important;
+	font-family: monospace !important;
+	max-width: min-content !important;
 }
+
 
 /* Mobile tooltips */
 @media (pointer: coarse), (hover: none) {

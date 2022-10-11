@@ -4983,18 +4983,25 @@ let load_substitutions;
 	const tooltip = $e("span", document.body, {id: "tooltip-text", "style.display": "none"});
 	let tooltipActive = false;
 
-	function alterTooltipState(enabled) {
+	function alterTooltipState(enabled, specialClass=null) {
 		tooltipActive = enabled;
 		tooltip.style.display = enabled ? "block" : "none";
+		tooltip.className = specialClass || "";
 	}
 
 	function registerElement(el) {
 		// el should have attribute "tooltip"
 		let text = el.getAttribute("tooltip");
+		el.setAttribute("wawawa", "yeah")
 
 		el.addEventListener("mouseenter", function(event) {
 			tooltip.innerText = text;
-			alterTooltipState(true);
+			let specialClass = null;
+
+			// Kinda lame
+			if (this.classList.contains("context-token")) specialClass = "tooltip-context-token";
+
+			alterTooltipState(true, specialClass);
 		});
 
 		el.addEventListener("mouseleave", function(event) {
@@ -5014,13 +5021,15 @@ let load_substitutions;
 	}
 
 	// Use a MutationObserver to catch future tooltips
-	const observer = new MutationObserver(function(record, observer) {
-		for (const node of record[0].addedNodes) {
-			if (!node.hasAttribute("tooltip")) continue;
-			registerElement(node);
+	const observer = new MutationObserver(function(records, observer) {
+		for (const record of records) {
+			for (const node of record.addedNodes) {
+				if (node.nodeType !== 1 || !node.hasAttribute("tooltip")) continue;
+				registerElement(node);
+			}
 		}
 	});
-	observer.observe(document.body, {childList: true});
+	observer.observe(document.body, {childList: true, subtree: true});
 })();
 
 /* -- Shortcuts -- */
