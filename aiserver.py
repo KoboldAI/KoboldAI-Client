@@ -2163,6 +2163,9 @@ def patch_transformers():
             scores: torch.FloatTensor,
             **kwargs,
         ) -> bool:
+            if not koboldai_vars.inference_config.do_core:
+                return False
+
             koboldai_vars.generated_tkns += 1
 
             if (
@@ -5006,7 +5009,7 @@ def calcsubmit(txt):
         # Send it!
         ikrequest(subtxt)
 
-def core_generate(text: list, min: int, max: int, found_entries: set):
+def core_generate(text: list, min: int, max: int, found_entries: set, is_core: bool = False):
     # This generation function is tangled with koboldai_vars intentionally. It
     # is meant for the story and nothing else.
 
@@ -5065,6 +5068,7 @@ def core_generate(text: list, min: int, max: int, found_entries: set):
                 batch_count=numseqs,
                 # Real max length is handled by CoreStopper.
                 bypass_hf_maxlength=True,
+                is_core=True,
             )
 
             genout = result.encoded
@@ -5192,9 +5196,11 @@ def raw_generate(
     do_dynamic_wi: bool = False,
     batch_count: int = 1,
     bypass_hf_maxlength: bool = False,
-    generation_settings: Optional[dict] = None
+    generation_settings: Optional[dict] = None,
+    is_core: bool = False
 ) -> GenerationResult:
 
+    koboldai_vars.inference_config.do_core = is_core
     gen_settings = GenerationSettings(*(generation_settings or {}))
 
     model_functions = {
@@ -6139,6 +6145,18 @@ def applyoutputformatting(txt):
 	# Single Line Mode
     if(koboldai_vars.singleline or koboldai_vars.chatmode):
         txt = utils.singlelineprocessing(txt, koboldai_vars)
+    
+    for sub in koboldai_vars.substitutions:
+        if not sub["enabled"]:
+            continue
+        i = 0
+        while sub["trueTarget"] in txt or sub["target"] in txt:
+            i += 1
+            if i > 1000:
+                logger.error("[substitutions] Infinite recursion :^(")
+                break
+            txt = txt.replace(sub["trueTarget"], sub["substitution"])
+            txt = txt.replace(sub["target"], sub["substitution"])
     
     return txt
 
@@ -8500,6 +8518,11 @@ def UI_2_scratchpad_prompt(data):
 def UI_2_phrase_bias_update(biases):
     koboldai_vars.biases = biases
 
+
+@socketio.on("substitution_update")
+@logger.catch
+def UI_2_substitutions_update(substitutions):
+    koboldai_vars.substitutions = substitutions
 
 
 #==================================================================#

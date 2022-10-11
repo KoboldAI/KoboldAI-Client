@@ -723,6 +723,14 @@ class story_settings(settings):
         self.revisions = []
         self.picture = "" #base64 of the image shown for the story
         self.picture_prompt = "" #Prompt used to create picture
+        self.substitutions = [
+            {"target": "--", "substitution": "–", "enabled": False},
+            {"target": "---", "substitution": "—", "enabled": False},
+            {"target": "...", "substitution": "…", "enabled": False},
+            # {"target": "(c)", "substitution": "©", "enabled": False},
+            # {"target": "(r)", "substitution": "®", "enabled": False},
+            # {"target": "(tm)", "substitution": "™", "enabled": False},
+        ]
         
         #must be at bottom
         self.no_save = False  #Temporary disable save (doesn't save with the file)
@@ -1001,6 +1009,7 @@ class system_settings(settings):
             do_dynamic_wi: bool = False
             # Genamt stopping is mostly tied to Dynamic WI
             stop_at_genamt: bool = False
+            do_core: bool = True
         self.inference_config = _inference_config()
         
         self._koboldai_var = koboldai_var
