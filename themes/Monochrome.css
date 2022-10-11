@@ -1,7 +1,7 @@
 /*
 	Name: Monochrome
 	Author: LightSaveUs
-	Version: 0.6.2
+	Version: 0.6.3
 	Description: A theme inspired by the NovelAI interface.
 */
 
@@ -189,8 +189,8 @@
 								 "menuicon inputrow inputrow lefticon";
 	--story_pinned_area_widths_left: 30pxvar(--story_options_size) auto 30px;
 	--story_pinned_area_widths_right: 30pxautovar(--story_options_size) 30px;
-	--story_pinned_areas: var(--story_pinned_areas_left);
-	--story_pinned_area_widths: var(--story_pinned_area_widths_left);
+	--story_pinned_areas:var(--story_pinned_areas_left);
+	--story_pinned_area_widths:var(--story_pinned_area_widths_left);
 	--font_size_adjustment: 0px;
 	--game_screen_font_size_adjustment: 1;}
 
@@ -287,6 +287,14 @@
 
 span.helpicon.material-icons-outlined:hover:not(::after) {
 	transform: scale(1) !important;
+}
+
+.collapsable_header .material-icons-outlined {
+    transform: translateY(7px) translateX(4px);
+}
+
+.collapsable_header .material-icons-outlined:hover {
+    transform: translateY(7px) translateX(4px);
 }
 
 #context-viewer-close:hover {
@@ -390,6 +398,14 @@ a {
 
 .rawtext {
     font-family: sans-serif !important;
+}
+
+/* Tooltips */
+
+.tooltip-standard {
+	border: none !important;
+	color: #e0e0e0 !important;
+	background-color: #1d2831 !important;
 }
 
 /* World Info */
