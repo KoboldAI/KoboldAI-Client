@@ -1,7 +1,7 @@
 /*
 	Name: Unicorn
 	Author: LightSaveUs
-	Version: 0.3.3
+	Version: 0.3.4
 	Description: A theme inspired by the DreamilyAI interface.
 */
 
@@ -302,6 +302,23 @@ span.material-icons-outlined.cursor.search_icon {
 	filter: brightness(100%) !important;
 }
 
+
+.substitution-card > .card-left > .material-icons-outlined {
+	color: #999 !important;
+}
+
+.substitution-card > .card-left > .material-icons-outlined:hover {
+	color: #464646 !important;
+}
+
+.true-t + label::before {
+	color: #999 !important;
+}
+
+.true-t:checked + label::before {
+	color: #dc6872 !important;
+}
+
 /* Import */
 
 a {
@@ -310,6 +327,7 @@ a {
 
 .form-control {
 	border: none;
+	color: #e26771 !important;
 	transform: translateX(6px)!important;
     background-color: #e2e2e2 !important;
 }
