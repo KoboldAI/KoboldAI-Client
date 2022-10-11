@@ -686,7 +686,7 @@ border-top-right-radius: var(--tabs_rounding);
 
 .bias_header_phrase {
 	grid-area: phrase;
-	font-size: calc(0.9em + var(--font_size_adjustment));
+	font-size: calc(1.1em + var(--font_size_adjustment));
 }
 
 .bias_header_score {
