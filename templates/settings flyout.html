@@ -297,16 +297,6 @@
 			</div>
 		</div>
 		<div class="collapsable_header" onclick="toggle_setting_category(this);">
-			<h4 style="width:var(--flyout_menu_width);"><span class="material-icons-outlined cursor">expand_more</span> Images</h4>
-		</div>
-		<div class="setting_tile_area">
-			{% with menu='Interface' %}
-				{% with sub_path='Images' %}
-					{% include 'settings item.html' %}
-				{% endwith %}
-			{% endwith %}
-		</div>
-		<div class="collapsable_header" onclick="toggle_setting_category(this);">
 			<h4 style="width:var(--flyout_menu_width);"><span class="material-icons-outlined cursor">expand_more</span> Formatting</h4>
 		</div>
 		<div class="setting_tile_area">
@@ -316,6 +306,37 @@
 				{% endwith %}
 			{% endwith %}
 		</div>
+		<div class="collapsable_header" onclick="toggle_setting_category(this);">
+			<h4 style="width:var(--flyout_menu_width);"><span class="material-icons-outlined cursor">expand_more</span> Substitutions</h4>
+		</div>
+
+		<div class="setting_tile_area" id="Substitutions">
+			<span class="help_text">Automatically replaces phrases that you or the AI insert.</span>
+
+			<span class="helpicon material-icons-outlined" title="Can be used to help you insert special characters or automatically correct the AI. The pencil button toggles if a substitution is active or not.">help_icon</span> 
+			<div id="substitution-header" class="noselect">
+				<b>Replace</b> <b>With</b>
+			</div>
+			<div id="substitution-container"></div>
+
+			<div id="new-sub-card" class="cursor" title="Add Substitution">
+				<span class="material-icons-outlined">
+					add
+				</span>
+			</div>
+		</div>
+
+		<div class="collapsable_header" onclick="toggle_setting_category(this);">
+			<h4 style="width:var(--flyout_menu_width);"><span class="material-icons-outlined cursor">expand_more</span> Images</h4>
+		</div>
+		<div class="setting_tile_area">
+			{% with menu='Interface' %}
+				{% with sub_path='Images' %}
+					{% include 'settings item.html' %}
+				{% endwith %}
+			{% endwith %}
+		</div>
+
 		<div class="collapsable_header" onclick="toggle_setting_category(this);">
 			<h4 style="width:var(--flyout_menu_width);"><span class="material-icons-outlined cursor">expand_more</span> Theme</h4>
 		</div>
@@ -412,27 +433,6 @@
 				<input type=checkbox class="setting_item_input" data-size="mini" data-onstyle="success" data-toggle="toggle">
 			</div>
 		</div>
-
-		<div class="collapsable_header" onclick="toggle_setting_category(this);">
-			<h4 style="width:var(--flyout_menu_width);"><span class="material-icons-outlined cursor">expand_more</span> Substitutions</h4>
-		</div>
-
-		<div class="setting_tile_area" id="Substitutions">
-			<span class="help_text">Automatically replaces phrases that you or the AI insert.</span>
-
-			<span class="helpicon material-icons-outlined" title="Can be used to help you insert special characters or automatically correct the AI. The pencil button toggles if a substitution is active or not.">help_icon</span> 
-			<div id="substitution-header" class="noselect">
-				<b>Replace</b> <b>With</b>
-			</div>
-			<div id="substitution-container"></div>
-
-			<div id="new-sub-card" class="cursor" title="Add Substitution">
-				<span class="material-icons-outlined">
-					add
-				</span>
-			</div>
-		</div>
-
 	</div>
 	<div id="settings_footer" class="settings_footer">
 		<span>Execution Time: <span id="Execution Time"></span></span> | 
