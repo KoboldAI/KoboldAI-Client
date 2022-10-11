@@ -1,7 +1,7 @@
 /*
 	Name: Nostalgia
 	Author: LightSaveUs
-	Version: 0.2.2
+	Version: 0.2.3
 	Description: A theme inspired by the previous KoboldAI interface.
 */
 
@@ -259,6 +259,24 @@
 	background-color: #212122 !important;
 }
 
+/* Icons */
+
+.substitution-card > .card-left > .material-icons-outlined {
+	color: #999 !important;
+}
+
+.substitution-card > .card-left > .material-icons-outlined:hover {
+	color: #fff !important;
+}
+
+.true-t + label::before {
+	color: #999 !important;
+}
+
+.true-t:checked + label::before {
+	color: #fff !important;
+}
+
 /* Import */
 
 a {
@@ -267,6 +285,7 @@ a {
 
 .form-control {
     background-color: #404040 !important;
+	color: #3bf723 !important;
 	border: none;
 }
 
