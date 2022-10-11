@@ -1902,7 +1902,8 @@ body {
 .tooltip-standard {
 	border: 3px ridge grey;
 	font-family: "Helvetica Neue",Helvetica,Arial,sans-serif;
-	 max-width: min-context;
+	width: min-context;
+	max-width: 300px;
 }
 
 .tooltip-context-token {
