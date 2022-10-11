@@ -2964,7 +2964,7 @@ def load_lua_scripts():
         if(vars.serverstarted):
             emit('from_server', {'cmd': 'errmsg', 'data': 'Lua script error; please check console.'}, broadcast=True)
             sendUSStatItems()
-        logger.debug('LUA ERROR: ' + str(e).replace("\033", ""))
+        logger.error('LUA ERROR: ' + str(e).replace("\033", ""))
         logger.warning("Lua engine stopped; please open 'Userscripts' and press Load to reinitialize scripts.")
         if(vars.serverstarted):
             set_aibusy(0)
