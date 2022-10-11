@@ -375,7 +375,7 @@ border-top-right-radius: var(--tabs_rounding);
 
 .search_icon {
 	position: absolute;
-	top:10px;
+	top:8px;
 	color: var(--text);
 	left: calc(var(--flyout_menu_width) - 133px);
 	z-index:50;
@@ -691,12 +691,12 @@ border-top-right-radius: var(--tabs_rounding);
 
 .bias_header_score {
 	grid-area: percent;
-	font-size: calc(0.9em + var(--font_size_adjustment));
+	font-size: calc(1.1em + var(--font_size_adjustment));
 }
 
 .bias_header_max {
 	grid-area: max;
-	font-size: calc(0.9em + var(--font_size_adjustment));
+	font-size: calc(1.1em + var(--font_size_adjustment));
 }
 
 /* Theme */
@@ -1361,7 +1361,7 @@ body {
 #themetext{
 	height: 100%;
 	width: 100%;
-	padding: 5px;
+	padding: 10px;
 	grid-area: textarea;
 	border-radius: var(--radius_inputbox);
 }
@@ -1853,17 +1853,14 @@ body {
 #context-viewer-header > h3 {
 	margin: 0px;
 	margin-top: 3px;
+	margin-right: 5px;
 }
 
 #context-container {
 	overflow-y: auto;
 	height: 100%;
 	flex-grow: 1;
-	padding: 0px 10px;
-
-	/* HACK: This is a visually ugly hack to avoid cutting of token tooltips on
-	the first line. */
-	padding-top: 15px;
+	padding: 15px 12px 15px 12px;
 }
 
 .context-symbol {
@@ -2376,7 +2373,7 @@ body {
 	grid-area: textarea;
 	background-color: var(--input_background);
 	color: var(--input_text);
-	padding: 5px;
+	padding: 10px;
 	resize: none;
 	border-color: white;
 	border-width: 1px;
