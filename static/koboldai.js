@@ -65,19 +65,19 @@ var scroll_trigger_element = undefined; //undefined means not currently set. If 
 const on_colab = $el("#on_colab").textContent == "true";
 
 // name, desc, icon, func
-const finder_actions = [
-	{name: "Load Model", icon: "folder_open", func: function() { socket.emit('load_model_button', {}); }},
-	{name: "New Story", icon: "description", func: function() { socket.emit('new_story', ''); }},
-	{name: "Load Story", icon: "folder_open", func: function() { socket.emit('load_story_list', ''); }},
-	{name: "Save Story", icon: "save", func: function() { socket.emit("save_story", null, (response) => {save_as_story(response);}); }},
-	{name: "Download Story", icon: "file_download", func: function() { document.getElementById('download_iframe').src = 'json'; }},
+var finder_actions = [
+	{name: "Load Model", icon: "folder_open", type: "action", func: function() { socket.emit('load_model_button', {}); }},
+	{name: "New Story", icon: "description", type: "action", func: function() { socket.emit('new_story', ''); }},
+	{name: "Load Story", icon: "folder_open", type: "action", func: function() { socket.emit('load_story_list', ''); }},
+	{name: "Save Story", icon: "save", type: "action", func: function() { socket.emit("save_story", null, (response) => {save_as_story(response);}); }},
+	{name: "Download Story", icon: "file_download", type: "action", func: function() { document.getElementById('download_iframe').src = 'json'; }},
 
 	// Locations
-	{name: "Setting Presets", icon: "open_in_new", func: function() { highlightEl(".var_sync_model_selected_preset") }},
-	{name: "Memory", icon: "open_in_new", func: function() { highlightEl("#memory") }},
-	{name: "Author's Note", icon: "open_in_new", func: function() { highlightEl("#authors_notes") }},
-	{name: "Notes", icon: "open_in_new", func: function() { highlightEl(".var_sync_story_notes") }},
-	{name: "World Info", icon: "open_in_new", func: function() { highlightEl("#WI_Area") }},
+	{name: "Setting Presets", icon: "open_in_new", type: "location", func: function() { highlightEl(".var_sync_model_selected_preset") }},
+	{name: "Memory", icon: "open_in_new", type: "location", func: function() { highlightEl("#memory") }},
+	{name: "Author's Note", icon: "open_in_new", type: "location", func: function() { highlightEl("#authors_notes") }},
+	{name: "Notes", icon: "open_in_new", type: "location", func: function() { highlightEl(".var_sync_story_notes") }},
+	{name: "World Info", icon: "open_in_new", type: "location", func: function() { highlightEl("#WI_Area") }},
 	
 	// TODO: Direct theme selection
 	// {name: "", icon: "palette", func: function() { highlightEl("#biasing") }},
@@ -4541,15 +4541,41 @@ process_cookies();
 		let name = el.children[0].innerText;
 
 		let tooltipEl = el.getElementsByClassName("helpicon")[0];
-		let tooltip = tooltipEl ? tooltipEl.getAttribute("title") : null;
+		let tooltip = tooltipEl ? tooltipEl.getAttribute("tooltip") : null;
 
 		finder_actions.push({
 			name: name,
 			desc: tooltip,
 			icon: "open_in_new",
+			type: "setting",
 			func: function () { highlightEl(el.parentElement) },
 		});
 	}
+
+	const themeSelector = $el("#selected_theme");
+
+	function updateThemes() {
+		finder_actions = finder_actions.filter(x => x.type !== "theme")
+		// Parse themes for Finder
+		for (const select of themeSelector.children) {
+			let themeName = select.value;
+			console.log(themeName)
+			console.log("curve")
+			finder_actions.push({
+				name: themeName,
+				desc: "Apply this theme to change how KoboldAI looks!",
+				icon: "palette",
+				type: "theme",
+				func: function () {
+					themeSelector.value = themeName;
+					themeSelector.onchange();
+				},
+			});
+		}
+	}
+
+	updateThemes();
+	themeSelector.addEventListener("sync", updateThemes);
 
 	for (const el of $(".collapsable_header")) {
 		// https://stackoverflow.com/a/11347962
