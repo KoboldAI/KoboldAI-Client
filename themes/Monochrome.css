@@ -92,8 +92,9 @@
 	--rangeslider_color: #1f2934;
 	--rangeslider_circle_color: #244c65;
 
-	--help_icon: #7c8389;/*--tooltip_text: #000000;
-    --tooltip_background: #000000;*/
+	--help_icon: #7c8389;
+	--tooltip_text: white;
+    --tooltip_background: black;
 	--setting_category_help_text_color: #E0E0E0;
 	
 	--setting_footer_border_color: #334552;
@@ -279,12 +280,12 @@
 
 /* Icons */
 
-.material-icons-outlined:hover {
-	transform: scale(1.1);
-	filter: brightness(100%) !important;
+.material-icons-outlined.cursor:hover {
+    transform: scale(1.1);
+    filter: brightness(100%) !important;
 }
 
-span.helpicon.material-icons-outlined:hover {
+span.helpicon.material-icons-outlined:hover:not(::after) {
 	transform: scale(1) !important;
 }
 
