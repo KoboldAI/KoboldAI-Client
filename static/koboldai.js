@@ -5004,6 +5004,60 @@ let load_substitutions;
 	return [load_substitutions];
 })();
 
+/* -- Tooltips -- */
+(function() {
+	const tooltip = $e("span", document.body, {id: "tooltip-text", "style.display": "none"});
+	let tooltipActive = false;
+
+	function alterTooltipState(enabled, specialClass=null) {
+		tooltipActive = enabled;
+		tooltip.style.display = enabled ? "block" : "none";
+		tooltip.className = specialClass || "";
+	}
+
+	function registerElement(el) {
+		// el should have attribute "tooltip"
+		let text = el.getAttribute("tooltip");
+		el.setAttribute("wawawa", "yeah")
+
+		el.addEventListener("mouseenter", function(event) {
+			tooltip.innerText = text;
+			let specialClass = "tooltip-standard";
+
+			// Kinda lame
+			if (this.classList.contains("context-token")) specialClass = "tooltip-context-token";
+
+			alterTooltipState(true, specialClass);
+		});
+
+		el.addEventListener("mouseleave", function(event) {
+			alterTooltipState(false);
+		});
+	}
+
+	document.addEventListener("mousemove", function(event) {
+		if (!tooltipActive) return;
+		tooltip.style.left = `${event.x}px`;
+		tooltip.style.top = `${event.y}px`;
+	});
+
+	// Inital scan
+	for (const element of document.querySelectorAll("[tooltip]")) {
+		registerElement(element);
+	}
+
+	// Use a MutationObserver to catch future tooltips
+	const observer = new MutationObserver(function(records, observer) {
+		for (const record of records) {
+			for (const node of record.addedNodes) {
+				if (node.nodeType !== 1 || !node.hasAttribute("tooltip")) continue;
+				registerElement(node);
+			}
+		}
+	});
+	observer.observe(document.body, {childList: true, subtree: true});
+})();
+
 /* -- Shortcuts -- */
 document.addEventListener("keydown", function(event) {
 		
@@ -5071,25 +5125,3 @@ function run_infinite_scroll_update(action_type, actions, first_action) {
 		}
 	}
 }
-
-document.addEventListener('mousemove', evt => {
-    let x = evt.clientX / innerWidth;
-    let y = evt.clientY / innerHeight;
- 
-	var r = document.querySelector(':root');
-	if (x > 0.5) {
-		r.style.setProperty("--tooltip_x", "-100%");
-	} else {
-		r.style.setProperty("--tooltip_x", "0%");
-	}
-	if (y > 0.5) {
-		r.style.setProperty("--tooltip_y", "-100%");
-		r.style.setProperty("--tooltip_y_context", "0%");
-	} else {
-		r.style.setProperty("--tooltip_y", "100%");
-		r.style.setProperty("--tooltip_y_context", "200%");
-	}
-	r.style.setProperty("--mouse-x", evt.clientX / innerWidth);
-	r.style.setProperty("--mouse-y", evt.clientY / innerHeight);
-	
-});
