@@ -1,7 +1,7 @@
 /*
 	Name: Monochrome
 	Author: LightSaveUs
-	Version: 0.6.1
+	Version: 0.6.2
 	Description: A theme inspired by the NovelAI interface.
 */
 
@@ -242,6 +242,10 @@
 	filter: brightness(120%) !important;
 }
 
+#new-sub-card:hover {
+	filter: brightness(120%) !important;
+}
+
 /* Context Menu */
 
 #context-menu {
@@ -288,6 +292,22 @@ span.helpicon.material-icons-outlined:hover {
 	transform: scale(1) !important;
 }
 
+.substitution-card > .card-left > .material-icons-outlined {
+	color: #999 !important;
+}
+
+.substitution-card > .card-left > .material-icons-outlined:hover {
+	color: #e0e0e0 !important;
+}
+
+.true-t + label::before {
+	color: #999 !important;
+}
+
+.true-t:checked + label::before {
+	color: #e0e0e0 !important;
+}
+
 /* Import */
 
 a {
@@ -296,6 +316,7 @@ a {
 
 .form-control {
 	border: none;
+	color: #e0e0e0 !important;
     background-color: #25323d !important;
 }
 
