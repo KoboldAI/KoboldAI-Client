@@ -62,6 +62,7 @@ var control_held = false;
 var actions_data = {};
 var setup_wi_toggles = [];
 var scroll_trigger_element = undefined; //undefined means not currently set. If set to null, it's disabled.
+var drag_id = null;
 const on_colab = $el("#on_colab").textContent == "true";
 
 // name, desc, icon, func
@@ -3190,8 +3191,7 @@ function unhide_wi_folder(folder) {
 }
 
 function dragStart(e) {
-    e.dataTransfer.setData('text/plain', e.target.id);
-	//console.log(e.target.id);
+    drag_id = e.target.id;
 	e.dataTransfer.dropEffect = "move";
     setTimeout(() => {
         e.target.classList.add('hidden');
@@ -3242,7 +3242,7 @@ function drop(e) {
     element.classList.remove('drag-over');
 
     // get the draggable element
-    const id = e.dataTransfer.getData('text/plain');
+    const id = drag_id;
     const draggable = document.getElementById(id);
 	//console.log(id);
 	dragged_id = draggable.id.split("_").slice(-1)[0];
@@ -3255,6 +3255,7 @@ function drop(e) {
 		socket.emit("wi_set_folder", {'dragged_id': dragged_id, 'folder': drop_id});
 	} else {
 		//insert the draggable element before the drop element
+		console.log(element);
 		element.parentElement.insertBefore(draggable, element);
 		draggable.classList.add("pulse");
 
@@ -3271,7 +3272,7 @@ function drop(e) {
 
 function dragend(e) {
 	// get the draggable element
-    const id = e.dataTransfer.getData('text/plain');
+    const id = drag_id;
     const draggable = document.getElementById(id);
 	// display the draggable element
 	draggable.classList.remove('hidden');
