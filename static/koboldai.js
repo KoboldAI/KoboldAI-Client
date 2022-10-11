@@ -529,9 +529,15 @@ function var_changed(data) {
 	if ((data.classname == 'actions') && (data.name == 'Action Count')) {
 		current_action = data.value;
 		if (current_action <= 0) {
+			console.log("setting action_count to "+current_action);
 			document.getElementById("story_prompt").classList.remove("hidden");
 			scroll_trigger_element = undefined;
 			document.getElementById("Selected Text").onscroll = undefined;
+		} else if (Math.min.apply(null,Object.keys(actions_data).map(Number).filter(function(x){return x>0})) > 0) {
+			//we have actions and our minimum action we have in the UI is above the start of the game
+			//we need to keep the story prompt hidden
+			document.getElementById("story_prompt").classList.add("hidden");
+			
 		}
 	}
 	//Special Case for Actions
@@ -4693,6 +4699,8 @@ function infinite_scroll() {
 }
 
 function run_infinite_scroll_update(action_type, actions, first_action) {
+	console.log("action_type: "+action_type);
+	console.log("first_action: "+first_action);
 	if (action_type == "append") {
 		if (document.getElementById('Selected Text Chunk '+actions[actions.length-1].id)) {
 			document.getElementById('Selected Text Chunk '+actions[actions.length-1].id).scrollIntoView(false);
@@ -4700,6 +4708,8 @@ function run_infinite_scroll_update(action_type, actions, first_action) {
 		}
 		//Check to see if we need to have the scrolling in place or not
 		if (document.getElementById("story_prompt").classList.contains("hidden")) {
+			console.log("Appending, but adding infinite scroll");
+			console.log(document.getElementById('Selected Text Chunk '+Math.min.apply(null,Object.keys(actions_data).map(Number).filter(function(x){return x>0}))));
 			document.getElementById("Selected Text").onscroll = infinite_scroll;
 			scroll_trigger_element = document.getElementById('Selected Text Chunk '+Math.min.apply(null,Object.keys(actions_data).map(Number).filter(function(x){return x>0})));
 		}
