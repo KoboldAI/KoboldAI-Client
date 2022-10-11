@@ -1860,6 +1860,10 @@ body {
 	height: 100%;
 	flex-grow: 1;
 	padding: 0px 10px;
+
+	/* HACK: This is a visually ugly hack to avoid cutting of token tooltips on
+	the first line. */
+	padding-top: 15px;
 }
 
 .context-symbol {
@@ -1874,8 +1878,28 @@ body {
 	font-family: monospace;
 }
 
-.context-block:hover {
+.context-token {
+	position: relative;
+	background-color: inherit;
+}
+
+.context-token:hover {
 	outline: 1px solid gray;
+}
+
+.context-token:hover::after {
+	content: attr(token-id);
+	position: absolute;
+
+	top: -120%;
+	left: 50%;
+	transform: translateX(-50%);
+
+	padding: 0px 2px;
+	background-color: rgba(0, 0, 0, 0.6);
+
+	pointer-events: none;
+	z-index: 9999999;
 }
 
 .context-sp {background-color: var(--context_colors_soft_prompt);}
@@ -2627,30 +2651,33 @@ input[type='range'] {
 
 /*Tooltip based on attribute*/
 [tooltip] {
-  cursor: pointer;
-  display: inline-block;
-  line-height: 1;
-  position: relative;
+	cursor: pointer;
+	display: inline-block;
+	line-height: 1;
+	position: relative;
 }
+
 [tooltip]::after {
-  background-color: rgba(51, 51, 51, 0.9);
-  border-radius: 0.3rem;
-  color: #fff;
-  content: attr(tooltip);
-  font-size: 1rem;
-  font-size: 85%;
-  font-weight: normal;
-  line-height: 1.15rem;
-  opacity: 0;
-  padding: 0.25rem 0.5rem;
-  position: absolute;
-  text-align: center;
-  text-transform: none;
-  transition: opacity 0.2s;
-  visibility: hidden;
-  white-space: nowrap;
-  z-index: 1;
+	background-color: rgba(51, 51, 51, 0.9);
+	border-radius: 0.3rem;
+	color: #fff;
+	content: attr(tooltip);
+	font-size: 1rem;
+	font-size: 85%;
+	font-weight: normal;
+	line-height: 1.15rem;
+	opacity: 0;
+	padding: 0.25rem 0.5rem;
+	position: absolute;
+	text-align: center;
+	text-transform: none;
+	transition: opacity 0.2s;
+	visibility: hidden;
+	white-space: nowrap;
+	z-index: 9999;
+	pointer-events: none;
 }
+
 @media (max-width: 767px) {
   [tooltip].tooltip::before {
     display: none;

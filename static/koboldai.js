@@ -2839,6 +2839,22 @@ function update_bias_slider_value(slider) {
 	slider.parentElement.parentElement.querySelector(".bias_slider_cur").textContent = slider.value;
 }
 
+function distortColor(rgb) {
+	// rgb are 0..255, NOT NORMALIZED!!!!!!
+	const brightnessTamperAmplitude = 0.1;
+	const psuedoHue = 12;
+
+	let brightnessDistortion = Math.random() * (255 * brightnessTamperAmplitude);
+	rgb = rgb.map(x => x + brightnessDistortion);
+
+	// Cheap hack to imitate hue rotation
+	rgb = rgb.map(x => x += (Math.random() * psuedoHue * 2) - psuedoHue);
+
+	// Clamp and round
+	rgb = rgb.map(x => Math.round(Math.max(0, Math.min(255, x))));
+	return rgb;
+}
+
 function update_context(data) {
 	$(".context-block").remove();
 
@@ -2856,7 +2872,6 @@ function update_context(data) {
 	}
 
 	for (const entry of data) {
-		//console.log(entry);
 		let contextClass = "context-" + ({
 			soft_prompt: "sp",
 			prompt: "prompt",
@@ -2867,14 +2882,27 @@ function update_context(data) {
 			submit: 'submit'
 		}[entry.type]);
 
-		let el = document.createElement("span");
-		el.classList.add("context-block");
-		el.classList.add(contextClass);
-		el.innerText = entry.text;
-		el.title = entry.tokens + " tokens";
+		let el = $e(
+			"span",
+			$el("#context-container"),
+			{classes: ["context-block", contextClass]}
+		);
 
-		el.innerHTML = el.innerHTML.replaceAll("<br>", '<span class="material-icons-outlined context-symbol">keyboard_return</span>');
+		let rgb = window.getComputedStyle(el)["background-color"].match(/(\d+), (\d+), (\d+)/).slice(1, 4).map(Number);
 
+		for (const [tokenId, token] of entry.tokens) {
+			let tokenColor = distortColor(rgb);
+			tokenColor = "#" + (tokenColor.map((x) => x.toString(16)).join(""));
+
+			let tokenEl = $e("span", el, {
+				classes: ["context-token"],
+				"token-id": tokenId === -1 ? "Soft" : tokenId,
+				innerText: token,
+				"style.backgroundColor": tokenColor,
+			});
+
+			tokenEl.innerHTML = tokenEl.innerHTML.replaceAll("<br>", '<span class="material-icons-outlined context-symbol">keyboard_return</span>');
+		}
 		document.getElementById("context-container").appendChild(el);
 		
 		switch (entry.type) {
