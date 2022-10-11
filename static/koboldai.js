@@ -2583,7 +2583,7 @@ function autoResize(element, min_size=200) {
 	if (min_size > element.scrollHeight) {
 		element.style.height = min_size + "px";
 	} else {
-		element.style.height = element.scrollHeight + 'px';
+		element.style.height = (element.scrollHeight + 5) + 'px';
 	}
 }
 
