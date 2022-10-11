@@ -1892,12 +1892,12 @@ body {
 [tooltip]:hover::after {
 	content: attr(tooltip);
 	position: fixed;
+	transition: opacity  0s linear 0.5s;
 
+	
 	top: calc(var(--mouse-y) * 100vh - 30px);
 	left: calc(var(--mouse-x) * 100vw);
-	transition: opacity  0s linear 0.5s;
 	transform: translate(var(--tooltip_x), var(--tooltip_y));
-	/*transform: translate(-100%, -100%);*/
 	opacity: 1;
 	
 
