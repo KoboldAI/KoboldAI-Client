@@ -293,6 +293,10 @@ span.helpicon.material-icons-outlined:hover:not(::after) {
     transform: translateY(7px) translateX(4px);
 }
 
+.collapsable_header .material-icons-outlined:hover {
+    transform: translateY(7px) translateX(4px);
+}
+
 #context-viewer-close:hover {
 	transform: scale(1) !important;
 }
