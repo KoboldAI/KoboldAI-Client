@@ -2902,7 +2902,7 @@ function update_context(data) {
 
 			let tokenEl = $e("span", el, {
 				classes: ["context-token"],
-				"token-id": tokenId === -1 ? "Soft" : tokenId,
+				"tooltip": tokenId === -1 ? "Soft" : tokenId,
 				innerText: token,
 				"style.backgroundColor": tokenColor,
 			});
@@ -5041,3 +5041,23 @@ function run_infinite_scroll_update(action_type, actions, first_action) {
 		}
 	}
 }
+
+document.addEventListener('mousemove', evt => {
+    let x = evt.clientX / innerWidth;
+    let y = evt.clientY / innerHeight;
+ 
+	var r = document.querySelector(':root');
+	if (x > 0.5) {
+		r.style.setProperty("--tooltip_x", "-100%");
+	} else {
+		r.style.setProperty("--tooltip_x", "0%");
+	}
+	if (y > 0.5) {
+		r.style.setProperty("--tooltip_y", "200%");
+	} else {
+		r.style.setProperty("--tooltip_y", "0%");
+	}
+	r.style.setProperty("--mouse-x", evt.clientX / innerWidth);
+	r.style.setProperty("--mouse-y", evt.clientY / innerHeight);
+	
+});

@@ -1887,13 +1887,22 @@ body {
 	outline: 1px solid gray;
 }
 
-.context-token:hover::after {
-	content: attr(token-id);
-	position: absolute;
+[tooltip]:after {
+	opacity: 0;
+	content: "";
+}
 
-	top: -120%;
-	left: 50%;
-	transform: translateX(-50%);
+[tooltip]:hover::after {
+	content: attr(tooltip);
+	position: fixed;
+
+	top: calc(var(--mouse-y) * 100vh - 30px);
+	left: calc(var(--mouse-x) * 100vw);
+	transition: opacity  0s linear 0.5s;
+	transform: translate(var(--tooltip_x), var(--tooltip_y));
+	/*transform: translate(-100%, -100%);*/
+	opacity: 1;
+	
 
 	padding: 0px 2px;
 	background-color: rgba(0, 0, 0, 0.6);
@@ -1901,6 +1910,33 @@ body {
 	pointer-events: none;
 	z-index: 9999999;
 }
+
+/* Mobile tooltips */
+@media (pointer: coarse), (hover: none) {
+	[tooltip]:after {
+		opacity: 0;
+		content: "";
+	}
+
+	[tooltip]:hover::after {
+		content: attr(tooltip);
+		position: fixed;
+
+		top: calc(var(--mouse-y) * 100vh);
+		left: calc(var(--mouse-x) * 100vw);
+		transform: translate(var(--tooltip_x), var(--tooltip-y));
+		transition: opacity  0s linear 0.5s;
+		opacity: 1;
+		
+
+		padding: 0px 2px;
+		background-color: rgba(0, 0, 0, 0.6);
+
+		pointer-events: none;
+		z-index: 9999999;
+	}
+}
+
 
 .context-sp {background-color: var(--context_colors_soft_prompt);}
 .context-prompt {background-color: var(--context_colors_prompt);}
@@ -2600,25 +2636,6 @@ h2 .material-icons-outlined {
 }
 
 
-
-@media (pointer: coarse), (hover: none) {
-	[title] {
-		position: relative;
-		display: inline-flex;
-		justify-content: center;
-	}
-	[title]:focus::after {
-		content: attr(title);
-		position: absolute;
-		top: 90%;
-		color: #000;
-		background-color: #fff;
-		border: 1px solid;
-		width: fit-content;
-		padding: 3px;
-	}
-}
-
 .horde_trigger[model_model="ReadOnly"],
 .horde_trigger[model_model="CLUSTER"] {
 	display: none;
@@ -2649,7 +2666,7 @@ input[type='range'] {
 	width: var(--flyout_menu_width);
 }
 
-/*Tooltip based on attribute*/
+/*Tooltip based on attribute
 [tooltip] {
 	cursor: pointer;
 	display: inline-block;
@@ -2697,4 +2714,4 @@ input[type='range'] {
 [tooltip]:hover::after, [tooltip][class*=tooltip]:hover::before {
   visibility: visible;
   opacity: 1;
-}
+}*/
