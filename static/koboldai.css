@@ -1891,6 +1891,7 @@ body {
 
 [tooltip]:hover::after {
 	content: attr(tooltip);
+	font-family: "Helvetica Neue",Helvetica,Arial,sans-serif !important;
 	position: fixed;
 	transition: opacity  0s linear 0.5s;
 
