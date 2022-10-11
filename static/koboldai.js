@@ -3827,6 +3827,43 @@ async function loadKoboldData(data, filename) {
 	}
 }
 
+function readLoreCard(file) {
+	// "naidata"
+	const magicNumber = new Uint8Array([0x6e, 0x61, 0x69, 0x64, 0x61, 0x74, 0x61]);
+	
+	let filename = file.name;
+	let reader = new FileReader();
+	reader.readAsArrayBuffer(file);
+
+	reader.addEventListener("load", function() {
+		let bin = new Uint8Array(reader.result);
+
+		// naidata is prefixed with magic number
+		let offset = bin.findIndex(function(item, possibleIndex, array) {
+			for (let i=0;i<magicNumber.length;i++) {
+				if (bin[i + possibleIndex] !== magicNumber[i]) return false;
+			}
+			return true;
+		});
+
+		if (offset === null) throw Error("Couldn't find offset!");
+		
+		let lengthBytes = bin.slice(offset - 8, offset - 4);
+		let length = 0;
+		
+		for (const byte of lengthBytes) {
+			length = (length << 8) + byte;
+		}
+		
+		let binData = bin.slice(offset + 8, offset + length);
+		
+		// Encoded in base64
+		let data = atob(new TextDecoder().decode(binData));
+		let j = JSON.parse(data);
+		loadNAILorebook(j, filename);
+	})
+}
+
 async function processDroppedFile(file) {
 	let extension = /.*\.(.*)/.exec(file.name)[1];
 	console.log("file is", file)
@@ -3834,10 +3871,9 @@ async function processDroppedFile(file) {
 
 	switch (extension) {
 		case "png":
-			// TODO: Support NovelAI's image lorebook cards. The format for those
-			// is base64-encoded JSON under a TXT key called "naidata".
-			console.warn("TODO: NAI LORECARDS");
-			return;
+			// NovelAI lorecard, a png with a lorebook file embedded inside it.
+			readLoreCard(file);
+			break;
 		case "json":
 			// KoboldAI file
 			data = JSON.parse(await file.text());
