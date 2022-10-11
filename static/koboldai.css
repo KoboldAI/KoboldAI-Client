@@ -1894,6 +1894,9 @@ body {
 	font-family: "Helvetica Neue",Helvetica,Arial,sans-serif;
 	position: fixed;
 	transition: opacity  0s linear 0.5s;
+	border: 3px ridge grey;
+	width: 200px;
+	white-space: normal;
 
 	
 	top: calc(var(--mouse-y) * 100vh);

@@ -5060,7 +5060,7 @@ document.addEventListener('mousemove', evt => {
 		r.style.setProperty("--tooltip_y", "-100%");
 		r.style.setProperty("--tooltip_y_context", "0%");
 	} else {
-		r.style.setProperty("--tooltip_y", "200%");
+		r.style.setProperty("--tooltip_y", "100%");
 		r.style.setProperty("--tooltip_y_context", "200%");
 	}
 	r.style.setProperty("--mouse-x", evt.clientX / innerWidth);
