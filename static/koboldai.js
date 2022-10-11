@@ -4978,6 +4978,51 @@ let load_substitutions;
 	return [load_substitutions];
 })();
 
+/* -- Tooltips -- */
+(function() {
+	const tooltip = $e("span", document.body, {id: "tooltip-text", "style.display": "none"});
+	let tooltipActive = false;
+
+	function alterTooltipState(enabled) {
+		tooltipActive = enabled;
+		tooltip.style.display = enabled ? "block" : "none";
+	}
+
+	function registerElement(el) {
+		// el should have attribute "tooltip"
+		let text = el.getAttribute("tooltip");
+
+		el.addEventListener("mouseenter", function(event) {
+			tooltip.innerText = text;
+			alterTooltipState(true);
+		});
+
+		el.addEventListener("mouseleave", function(event) {
+			alterTooltipState(false);
+		});
+	}
+
+	document.addEventListener("mousemove", function(event) {
+		if (!tooltipActive) return;
+		tooltip.style.left = `${event.x}px`;
+		tooltip.style.top = `${event.y}px`;
+	});
+
+	// Inital scan
+	for (const element of document.querySelectorAll("[tooltip]")) {
+		registerElement(element);
+	}
+
+	// Use a MutationObserver to catch future tooltips
+	const observer = new MutationObserver(function(record, observer) {
+		for (const node of record[0].addedNodes) {
+			if (!node.hasAttribute("tooltip")) continue;
+			registerElement(node);
+		}
+	});
+	observer.observe(document.body, {childList: true});
+})();
+
 /* -- Shortcuts -- */
 document.addEventListener("keydown", function(event) {
 		
@@ -5045,25 +5090,3 @@ function run_infinite_scroll_update(action_type, actions, first_action) {
 		}
 	}
 }
-
-document.addEventListener('mousemove', evt => {
-    let x = evt.clientX / innerWidth;
-    let y = evt.clientY / innerHeight;
- 
-	var r = document.querySelector(':root');
-	if (x > 0.5) {
-		r.style.setProperty("--tooltip_x", "-100%");
-	} else {
-		r.style.setProperty("--tooltip_x", "0%");
-	}
-	if (y > 0.5) {
-		r.style.setProperty("--tooltip_y", "-100%");
-		r.style.setProperty("--tooltip_y_context", "0%");
-	} else {
-		r.style.setProperty("--tooltip_y", "100%");
-		r.style.setProperty("--tooltip_y_context", "200%");
-	}
-	r.style.setProperty("--mouse-x", evt.clientX / innerWidth);
-	r.style.setProperty("--mouse-y", evt.clientY / innerHeight);
-	
-});

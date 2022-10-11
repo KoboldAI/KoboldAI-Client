@@ -1884,12 +1884,7 @@ body {
 	outline: 1px solid gray;
 }
 
-[tooltip]:after {
-	opacity: 0;
-	content: "";
-}
-
-[tooltip]:hover::after {
+#tooltip-text {
 	content: attr(tooltip);
 	font-family: "Helvetica Neue",Helvetica,Arial,sans-serif;
 	position: fixed;
@@ -1898,10 +1893,6 @@ body {
 	width: 200px;
 	white-space: normal;
 
-	
-	top: calc(var(--mouse-y) * 100vh);
-	left: calc(var(--mouse-x) * 100vw);
-	transform: translate(var(--tooltip_x), var(--tooltip_y)) !important;
 	opacity: 1;
 	
 
