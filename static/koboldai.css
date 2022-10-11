@@ -1860,6 +1860,10 @@ body {
 	height: 100%;
 	flex-grow: 1;
 	padding: 0px 10px;
+
+	/* HACK: This is a visually ugly hack to avoid cutting of token tooltips on
+	the first line. */
+	padding-top: 15px;
 }
 
 .context-symbol {
@@ -1874,8 +1878,28 @@ body {
 	font-family: monospace;
 }
 
-.context-block:hover {
+.context-token {
+	position: relative;
+	background-color: inherit;
+}
+
+.context-token:hover {
 	outline: 1px solid gray;
+}
+
+.context-token:hover::after {
+	content: attr(token-id);
+	position: absolute;
+
+	top: -120%;
+	left: 50%;
+	transform: translateX(-50%);
+
+	padding: 0px 2px;
+	background-color: rgba(0, 0, 0, 0.6);
+
+	pointer-events: none;
+	z-index: 9999999;
 }
 
 .context-sp {background-color: var(--context_colors_soft_prompt);}
@@ -2259,6 +2283,80 @@ body {
 	margin-right: 5px;
 }
 
+/* Substitutions */
+#Substitutions > .helpicon {
+	margin-left: 5px;
+	align-self: auto;
+}
+
+#substitution-header {
+	display: flex;
+	width: 100%;
+	justify-content: space-around;
+}
+
+#substitution-container {
+	width: 100%;
+}
+
+.substitution-card, #new-sub-card {
+	display: flex;
+
+	column-gap: 5px;
+	height: 30px;
+	width: 100%;
+	padding: 1px 0px;
+}
+
+.substitution-card > .card-section {
+	display: flex;
+}
+
+.substitution-card > .card-left > .material-icons-outlined {
+	margin-left: -5px;
+	margin-right: 5px;
+	color: gray;
+}
+
+.substitution-card > .card-section > input {
+	flex-grow: 1;
+	min-width: 0;
+}
+
+.substitution-card > * {
+	min-width: 0;
+}
+
+.substitution-card input {
+	padding-left: 2px;
+	border-color: var(--setting_background);
+}
+
+#new-sub-card {
+	display: flex;
+	justify-content: center;
+	background-color: var(--setting_background);
+	border-radius: 2px;
+	padding: 1px;
+	margin: 3px 0px;
+}
+
+.true-t {
+	display: none;
+}
+
+.true-t + label::before {
+	content: "edit_off";
+	color: gray;
+	margin-left: 3px;
+}
+
+.true-t:checked + label::before {
+	content: "edit";
+	color: white
+}
+
+
 /*---------------------------------- Global ------------------------------------------------*/
 .hidden {
 	display: none;
@@ -2553,30 +2651,33 @@ input[type='range'] {
 
 /*Tooltip based on attribute*/
 [tooltip] {
-  cursor: pointer;
-  display: inline-block;
-  line-height: 1;
-  position: relative;
+	cursor: pointer;
+	display: inline-block;
+	line-height: 1;
+	position: relative;
 }
+
 [tooltip]::after {
-  background-color: rgba(51, 51, 51, 0.9);
-  border-radius: 0.3rem;
-  color: #fff;
-  content: attr(tooltip);
-  font-size: 1rem;
-  font-size: 85%;
-  font-weight: normal;
-  line-height: 1.15rem;
-  opacity: 0;
-  padding: 0.25rem 0.5rem;
-  position: absolute;
-  text-align: center;
-  text-transform: none;
-  transition: opacity 0.2s;
-  visibility: hidden;
-  white-space: nowrap;
-  z-index: 1;
+	background-color: rgba(51, 51, 51, 0.9);
+	border-radius: 0.3rem;
+	color: #fff;
+	content: attr(tooltip);
+	font-size: 1rem;
+	font-size: 85%;
+	font-weight: normal;
+	line-height: 1.15rem;
+	opacity: 0;
+	padding: 0.25rem 0.5rem;
+	position: absolute;
+	text-align: center;
+	text-transform: none;
+	transition: opacity 0.2s;
+	visibility: hidden;
+	white-space: nowrap;
+	z-index: 9999;
+	pointer-events: none;
 }
+
 @media (max-width: 767px) {
   [tooltip].tooltip::before {
     display: none;
