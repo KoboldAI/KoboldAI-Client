@@ -2610,7 +2610,6 @@ function calc_token_usage(
 	world_info_length,
 	submit_length
 ) {
-    //submit_tokens = token_length(document.getElementById("input_text").value);
 	let total_tokens = parseInt(document.getElementById('model_max_length_cur').value);
 	let unused_token_count = total_tokens - memory_length - authors_note_length - world_info_length - prompt_length - game_text_length - submit_length;
 
