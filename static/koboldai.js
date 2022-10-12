@@ -5048,8 +5048,17 @@ let load_substitutions;
 
 	document.addEventListener("mousemove", function(event) {
 		if (!tooltipActive) return;
-		tooltip.style.left = `${event.x}px`;
-		tooltip.style.top = `${event.y}px`;
+
+		let [x, y] = [event.x, event.y];
+
+		// X + the tooltip's width is the farthest point right we will display;
+		// let's account for it. If we will render outside of the window,
+		// subtract accordingly.
+		let xOverflow = (x + tooltip.clientWidth) - window.innerWidth;
+		if (xOverflow > 0) x -= xOverflow;
+
+		tooltip.style.left = `${x}px`;
+		tooltip.style.top = `${y}px`;
 	});
 
 	// Inital scan
