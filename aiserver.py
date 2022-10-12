@@ -2148,7 +2148,11 @@ def patch_transformers():
 
             if koboldai_vars.chatmode:
                 return False
-            koboldai_vars.actions.stream_tokens([utils.decodenewlines(tokenizer.decode(x[-1])) for x in input_ids])
+                
+            data = [applyoutputformatting(utils.decodenewlines(tokenizer.decode(x[-1])), no_sentence_trimming=True) for x in input_ids]
+            koboldai_vars.actions.stream_tokens(data)
+            if koboldai_settings.queue is not None:
+                koboldai_settings.queue.put(["from_server", {"cmd": "streamtoken", "data": data}, {"broadcast":True, "room":"UI_1"}])
             return False
 
     class CoreStopper(StoppingCriteria):
@@ -6125,7 +6129,7 @@ def applyinputformatting(txt):
 #==================================================================#
 # Applies chosen formatting options to text returned from AI
 #==================================================================#
-def applyoutputformatting(txt):
+def applyoutputformatting(txt, no_sentence_trimming=False):
     # Use standard quotes and apostrophes
     txt = utils.fixquotes(txt)
 
@@ -6134,7 +6138,7 @@ def applyoutputformatting(txt):
         txt = koboldai_vars.acregex_ai.sub('', txt)
     
     # Trim incomplete sentences
-    if(koboldai_vars.frmttriminc and not koboldai_vars.chatmode):
+    if(koboldai_vars.frmttriminc and not koboldai_vars.chatmode and not no_sentence_trimming):
         txt = utils.trimincompletesentence(txt)
     # Replace blank lines
     if(koboldai_vars.frmtrmblln or koboldai_vars.chatmode):
@@ -7040,7 +7044,7 @@ def load_story_v1(js):
     _filename = filename
     if(filename.endswith('.json')):
         _filename = filename[:-5]
-    leave_room(session['story'])
+    leave_room(session.get('story', 'default'))
     session['story'] = _filename
     join_room(_filename)
     #create the story
