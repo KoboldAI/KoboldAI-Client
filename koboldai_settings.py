@@ -1498,7 +1498,7 @@ class KoboldStoryRegister(object):
                     if len(self.koboldai_vars.tokenizer.encode(self.actions[self.action_count+1]['Selected Text'])) != self.koboldai_vars.genamt:
                         #ui1
                         if queue is not None:
-                            queue.put(["from_server", {"cmd": "streamtoken", "data": text_list[0]}, {"broadcast":True, "room":"UI_1"}])
+                            queue.put(["from_server", {"cmd": "streamtoken", "data": [{'decoded': text_list[0]}]}, {"broadcast":True, "room":"UI_1"}])
                         #process_variable_changes(self.socketio, "actions", "Options", {"id": self.action_count+1, "options": self.actions[self.action_count+1]["Options"]}, {"id": self.action_count+1, "options": None})
                         process_variable_changes(self.socketio, "story", 'actions', {"id": self.action_count+1, 'action':  self.actions[self.action_count+1]}, None)
     
