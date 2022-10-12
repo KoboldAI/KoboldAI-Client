@@ -2456,6 +2456,7 @@ $(document).ready(function(){
 			all_modified_chunks = new Set();
 			modified_chunks = new Set();
 			empty_chunks = new Set();
+			console.log(msg.data);
 			game_text.html(msg.data);
 			if(game_text[0].lastChild !== null && game_text[0].lastChild.tagName === "CHUNK") {
 				game_text[0].lastChild.appendChild(document.createElement("br"));

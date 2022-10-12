@@ -184,6 +184,12 @@ function reset_story() {
 	document.getElementById("story_prompt").setAttribute("world_info_uids", "");
 	document.getElementById('themerow').classList.remove("hidden");
 	document.getElementById('input_text').placeholder = "Enter Prompt Here (shift+enter for new line)";
+	text = "";
+	for (i=0;i<70;i++) {
+		text += "\xa0 ";
+	}
+	document.getElementById("welcome_text").innerText = text;
+	document.getElementById("welcome_text").classList.remove("hidden");
 }
 
 function fix_text(val) {
@@ -378,6 +384,7 @@ function do_prompt(data) {
 		document.getElementById('input_text').placeholder = "Enter text here (shift+enter for new line)";
 		document.getElementById('themerow').classList.add("hidden");
 		document.getElementById('themetext').value = "";
+		document.getElementById("welcome_text").classList.add("hidden");
 		//enable editing
 		document.getElementById("Selected Text").setAttribute("contenteditable", "true");
 	} else {
@@ -650,6 +657,9 @@ function var_changed(data) {
 		if (document.getElementById("action image").firstChild) {
 			document.getElementById("action image").firstChild.setAttribute("title", data.value);
 		}
+	//special case for welcome text since we want to allow HTML
+	} else if (data.classname == 'model' && data.name == 'welcome') {
+		document.getElementById('welcome_text').innerHTML = data.value;
 	//Basic Data Syncing
 	} else {
 		var elements_to_change = document.getElementsByClassName("var_sync_"+data.classname.replace(" ", "_")+"_"+data.name.replace(" ", "_"));
