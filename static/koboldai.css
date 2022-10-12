@@ -703,7 +703,6 @@ border-top-right-radius: var(--tabs_rounding);
 
 .collapsable_header .material-icons-outlined {
 	padding-top: 5px;
-	transform: translateY(7px) translateX(4px);
 } 
 
 .var_sync_system_theme_list{
@@ -1903,7 +1902,8 @@ body {
 .tooltip-standard {
 	border: 1px ridge grey;
 	font-family: "Helvetica Neue",Helvetica,Arial,sans-serif;
-	width: 200px;
+	width: min-context;
+	max-width: 300px;
 }
 
 .tooltip-context-token {

@@ -1,7 +1,7 @@
 /*
 	Name: Darkness
 	Author: LightSaveUs
-	Version: 0.3.3
+	Version: 0.3.4
 	Description: A theme inspired by the AI Dungeon interface.
 */
 
@@ -272,6 +272,10 @@ span.material-icons-outlined.cursor.search_icon {
 	color: #848484 !important;
 }
 
+.collapsable_header .material-icons-outlined {
+    transform: translateY(7px) translateX(4px);
+}
+
 .material-icons-outlined:hover {
 	filter: brightness(100%) !important;
 }
@@ -356,7 +360,6 @@ a {
     background-color: #424243 !important;
 }
 
-
 /* Tabs */
 
 .tabrow span {
@@ -378,6 +381,14 @@ a {
 
 .rawtext {
     font-family: helvetica !important;
+}
+
+/* Tooltips */
+
+.tooltip-standard {
+	border: none !important;
+	color: #e0e0e0 !important;
+	background-color: #3b3b3b !important;
 }
 
 /* World Info */
