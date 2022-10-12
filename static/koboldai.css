@@ -702,7 +702,6 @@ border-top-right-radius: var(--tabs_rounding);
 
 .collapsable_header .material-icons-outlined {
 	padding-top: 5px;
-	transform: translateY(7px) translateX(4px);
 } 
 
 .var_sync_system_theme_list{
@@ -1859,7 +1858,7 @@ body {
 	overflow-y: auto;
 	height: 100%;
 	flex-grow: 1;
-	padding: 15px 12px 15px 12px;
+	padding: 10px 12px 10px 12px;
 }
 
 .context-symbol {
@@ -1883,28 +1882,15 @@ body {
 	outline: 1px solid gray;
 }
 
-[tooltip]:after {
-	opacity: 0;
-	content: "";
-}
-
-[tooltip]:hover::after {
+#tooltip-text {
 	content: attr(tooltip);
-	font-family: "Helvetica Neue",Helvetica,Arial,sans-serif;
 	position: fixed;
 	transition: opacity  0s linear 0.5s;
-	border: 3px ridge grey;
-	width: 200px;
 	white-space: normal;
 
-	
-	top: calc(var(--mouse-y) * 100vh);
-	left: calc(var(--mouse-x) * 100vw);
-	transform: translate(var(--tooltip_x), var(--tooltip_y)) !important;
 	opacity: 1;
 	
-
-	padding: 0px 2px;
+	padding: 10px;
 	color: var(--tooltip_text);
 	background-color: var(--tooltip_background);
 
@@ -1912,26 +1898,19 @@ body {
 	z-index: 9999999;
 }
 
-.context-token[tooltip]:hover::after {
-	content: attr(tooltip);
+.tooltip-standard {
+	border: 1px ridge grey;
 	font-family: "Helvetica Neue",Helvetica,Arial,sans-serif;
-	position: fixed;
-	transition: opacity  0s linear 0.5s;
-
-	
-	top: calc(var(--mouse-y) * 100vh - 30px);
-	left: calc(var(--mouse-x) * 100vw);
-	transform: translate(var(--tooltip_x), var(--tooltip_y_context)) !important;
-	opacity: 1;
-	
-
-	padding: 0px 2px;
-	color: var(--tooltip_text);
-	background-color: var(--tooltip_background);
-
-	pointer-events: none;
-	z-index: 9999999;
+	width: min-context;
+	max-width: 300px;
 }
+
+.tooltip-context-token {
+	border: none;
+	font-family: monospace;
+	max-width: min-content;
+}
+
 
 /* Mobile tooltips */
 @media (pointer: coarse), (hover: none) {
@@ -2342,9 +2321,10 @@ body {
 }
 
 /* Substitutions */
-#Substitutions > .helpicon {
-	margin-left: 5px;
-	align-self: auto;
+#Substitutions > .help_text > .helpicon {
+	position: relative;
+	margin-left: 1px;
+	top: 2px;
 }
 
 #substitution-header {
@@ -2651,6 +2631,7 @@ h2 .material-icons-outlined {
 .help_text {
 	margin-left: 6px;
 	margin-bottom: 0.7em;
+	width: 100%;
 	opacity: 0.7;
 	font-size: calc(0.9em + var(--font_size_adjustment));
 	display: block;
@@ -2737,3 +2718,7 @@ input[type='range'] {
   visibility: visible;
   opacity: 1;
 }*/
+
+select {
+  outline: none;
+}

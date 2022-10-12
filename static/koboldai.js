@@ -36,6 +36,9 @@ socket.on("scratchpad_response", recieveScratchpadResponse);
 socket.on("scratchpad_response", recieveScratchpadResponse);
 //socket.onAny(function(event_name, data) {console.log({"event": event_name, "class": data.classname, "data": data});});
 
+// Must be done before any elements are made; we track their changes.
+initalizeTooltips();
+
 var presets = {};
 var current_chunk_number = null;
 var ai_busy_start = Date.now();
@@ -62,22 +65,23 @@ var control_held = false;
 var actions_data = {};
 var setup_wi_toggles = [];
 var scroll_trigger_element = undefined; //undefined means not currently set. If set to null, it's disabled.
+var drag_id = null;
 const on_colab = $el("#on_colab").textContent == "true";
 
 // name, desc, icon, func
-const finder_actions = [
-	{name: "Load Model", icon: "folder_open", func: function() { socket.emit('load_model_button', {}); }},
-	{name: "New Story", icon: "description", func: function() { socket.emit('new_story', ''); }},
-	{name: "Load Story", icon: "folder_open", func: function() { socket.emit('load_story_list', ''); }},
-	{name: "Save Story", icon: "save", func: function() { socket.emit("save_story", null, (response) => {save_as_story(response);}); }},
-	{name: "Download Story", icon: "file_download", func: function() { document.getElementById('download_iframe').src = 'json'; }},
+var finder_actions = [
+	{name: "Load Model", icon: "folder_open", type: "action", func: function() { socket.emit('load_model_button', {}); }},
+	{name: "New Story", icon: "description", type: "action", func: function() { socket.emit('new_story', ''); }},
+	{name: "Load Story", icon: "folder_open", type: "action", func: function() { socket.emit('load_story_list', ''); }},
+	{name: "Save Story", icon: "save", type: "action", func: function() { socket.emit("save_story", null, (response) => {save_as_story(response);}); }},
+	{name: "Download Story", icon: "file_download", type: "action", func: function() { document.getElementById('download_iframe').src = 'json'; }},
 
 	// Locations
-	{name: "Setting Presets", icon: "open_in_new", func: function() { highlightEl(".var_sync_model_selected_preset") }},
-	{name: "Memory", icon: "open_in_new", func: function() { highlightEl("#memory") }},
-	{name: "Author's Note", icon: "open_in_new", func: function() { highlightEl("#authors_notes") }},
-	{name: "Notes", icon: "open_in_new", func: function() { highlightEl(".var_sync_story_notes") }},
-	{name: "World Info", icon: "open_in_new", func: function() { highlightEl("#WI_Area") }},
+	{name: "Setting Presets", icon: "open_in_new", type: "location", func: function() { highlightEl(".var_sync_model_selected_preset") }},
+	{name: "Memory", icon: "open_in_new", type: "location", func: function() { highlightEl("#memory") }},
+	{name: "Author's Note", icon: "open_in_new", type: "location", func: function() { highlightEl("#authors_notes") }},
+	{name: "Notes", icon: "open_in_new", type: "location", func: function() { highlightEl(".var_sync_story_notes") }},
+	{name: "World Info", icon: "open_in_new", type: "location", func: function() { highlightEl("#WI_Area") }},
 	
 	// TODO: Direct theme selection
 	// {name: "", icon: "palette", func: function() { highlightEl("#biasing") }},
@@ -148,7 +152,7 @@ function disconnect() {
 }
 
 function reset_story() {
-	console.log("Resetting story");
+	//console.log("Resetting story");
 	clearTimeout(calc_token_usage_timeout);
 	clearTimeout(game_text_scroll_timeout);
 	clearTimeout(font_size_cookie_timout);
@@ -156,7 +160,7 @@ function reset_story() {
 	finder_last_input = null;
 	on_new_wi_item = null;
 	current_chunk_number = null;
-	console.log("resetting scroll_trigger_element");
+	//console.log("resetting scroll_trigger_element");
 	scroll_trigger_element = undefined;
 	actions_data = {};
 	world_info_data = {};
@@ -183,6 +187,12 @@ function reset_story() {
 	document.getElementById("story_prompt").setAttribute("world_info_uids", "");
 	document.getElementById('themerow').classList.remove("hidden");
 	document.getElementById('input_text').placeholder = "Enter Prompt Here (shift+enter for new line)";
+	text = "";
+	for (i=0;i<70;i++) {
+		text += "\xa0 ";
+	}
+	document.getElementById("welcome_text").innerText = text;
+	document.getElementById("welcome_text").classList.remove("hidden");
 }
 
 function fix_text(val) {
@@ -377,6 +387,7 @@ function do_prompt(data) {
 		document.getElementById('input_text').placeholder = "Enter text here (shift+enter for new line)";
 		document.getElementById('themerow').classList.add("hidden");
 		document.getElementById('themetext').value = "";
+		document.getElementById("welcome_text").classList.add("hidden");
 		//enable editing
 		document.getElementById("Selected Text").setAttribute("contenteditable", "true");
 	} else {
@@ -468,6 +479,7 @@ function do_presets(data) {
 					var option = document.createElement("option");
 					option.value=preset;
 					option.text=preset_value.preset;
+					// Don't think we can use custom tooltip here (yet)
 					option.title = preset_value.description;
 					option_group.append(option);
 				}
@@ -530,7 +542,7 @@ function var_changed(data) {
 	if ((data.classname == 'actions') && (data.name == 'Action Count')) {
 		current_action = data.value;
 		if (current_action <= 0) {
-			console.log("setting action_count to "+current_action);
+			//console.log("setting action_count to "+current_action);
 			document.getElementById("story_prompt").classList.remove("hidden");
 			scroll_trigger_element = undefined;
 			document.getElementById("Selected Text").onscroll = undefined;
@@ -649,6 +661,9 @@ function var_changed(data) {
 		if (document.getElementById("action image").firstChild) {
 			document.getElementById("action image").firstChild.setAttribute("title", data.value);
 		}
+	//special case for welcome text since we want to allow HTML
+	} else if (data.classname == 'model' && data.name == 'welcome') {
+		document.getElementById('welcome_text').innerHTML = data.value;
 	//Basic Data Syncing
 	} else {
 		var elements_to_change = document.getElementsByClassName("var_sync_"+data.classname.replace(" ", "_")+"_"+data.name.replace(" ", "_"));
@@ -847,7 +862,7 @@ function redrawPopup() {
 		if (popup_editable && !row.isValid) {
 			edit_icon.classList.add("oi");
 			edit_icon.setAttribute('data-glyph', "spreadsheet");
-			edit_icon.title = "Edit"
+			edit_icon.setAttribute("tooltip", "Edit");
 			edit_icon.id = row.path;
 			edit_icon.onclick = function () {
 				socket.emit("popup_edit", this.id);
@@ -861,7 +876,7 @@ function redrawPopup() {
 		if (popup_renameable && !row.isFolder) {
 			rename_icon.classList.add("oi");
 			rename_icon.setAttribute('data-glyph', "pencil");
-			rename_icon.title = "Rename"
+			rename_icon.setAttribute("tooltip", "Rename");
 			rename_icon.id = row.path;
 			rename_icon.setAttribute("filename", row.fileName);
 			rename_icon.onclick = function () {
@@ -879,7 +894,7 @@ function redrawPopup() {
 		if (popup_deleteable) {
 			delete_icon.classList.add("oi");
 			delete_icon.setAttribute('data-glyph', "x");
-			delete_icon.title = "Delete"
+			delete_icon.setAttribute("tooltip", "Delete");
 			delete_icon.id = row.path;
 			delete_icon.setAttribute("folder", row.isFolder);
 			delete_icon.onclick = function () {
@@ -1304,7 +1319,7 @@ function show_model_menu(data) {
 				classes: ["material-icons-outlined"],
 				innerText: "warning",
 				"style.grid-area": "warning_icon",
-				title: warningText
+				tooltip: warningText
 			});
 		})();
 		
@@ -1869,8 +1884,8 @@ function world_info_entry(data) {
 	}
 	
 	//resize comments/text boxes
-	autoResize(comment, 100);
-	autoResize(manual_text, 100);
+	autoResize(comment, 60);
+	autoResize(manual_text, 60);
 	
 	//put focus back where it was
 	if (document.getElementById(original_focus)) {
@@ -1893,8 +1908,6 @@ function world_info_entry(data) {
 	
 	update_token_lengths();
 	
-	clearTimeout(calc_token_usage_timeout);
-	calc_token_usage_timeout = setTimeout(calc_token_usage, 200);
 	clearTimeout(setup_missing_wi_toggles_timeout);
 	setup_missing_wi_toggles_timeout = setTimeout(setup_missing_wi_toggles, 200);
 	
@@ -2133,7 +2146,7 @@ function show_error_message(data) {
 			$e("br", error_box_data)
 		}
 	} else {
-		console.log(item);
+		//console.log(item);
 		$e("div", error_box_data, {'innerHTML': item, 'classes': ['console_text']})
 	}
 }
@@ -2406,7 +2419,7 @@ function select_game_text(event) {
 				new_selected_game_chunk = document.selection.createRange().parentElement();
 			} else if (document.selection.createRange().parentElement().id == 'gamescreen') {
 				new_selected_game_chunk = null;
-				console.log("Do nothing");
+				//console.log("Do nothing");
 			} else {
 				new_selected_game_chunk = document.selection.createRange().parentElement().parentElement();
 			}
@@ -2416,7 +2429,7 @@ function select_game_text(event) {
 					new_selected_game_chunk = window.getSelection().anchorNode.parentNode;
 				} else if (window.getSelection().anchorNode.parentNode.id == "gamescreen") {
 					new_selected_game_chunk = null;
-					console.log("Do nothing");
+					//console.log("Do nothing");
 				} else {
 					new_selected_game_chunk = window.getSelection().anchorNode.parentNode.parentNode;
 				}
@@ -2517,7 +2530,7 @@ function retry_from_here() {
 	}
 	if (chunk != null) {
 		action_count = parseInt(document.getElementById("action_count").textContent);
-		console.log(chunk);
+		//console.log(chunk);
 		for (let i = 0; i < (action_count-chunk); i++) {
 			socket.emit('back', {});
 		}
@@ -2578,38 +2591,42 @@ function show_save_preset() {
 }
 
 function autoResize(element, min_size=200) {
-	console.log(min_size);
+	//console.log(min_size);
 	element.style.height = 'auto';
 	if (min_size > element.scrollHeight) {
 		element.style.height = min_size + "px";
 	} else {
-		element.style.height = element.scrollHeight + 'px';
+		element.style.height = (element.scrollHeight + 5) + 'px';
 	}
 }
 
 
-function calc_token_usage(soft_prompt_tokens, memory_tokens, authors_notes_tokens, prompt_tokens, game_text_tokens, world_info_tokens, submit_tokens) {
-    //submit_tokens = token_length(document.getElementById("input_text").value);
-	total_tokens = parseInt(document.getElementById('model_max_length_cur').value);
-	
-	unused_tokens = total_tokens - memory_tokens - authors_notes_tokens - world_info_tokens - prompt_tokens - game_text_tokens - submit_tokens;
-	
-	document.getElementById("soft_prompt_tokens").style.width = (soft_prompt_tokens/total_tokens)*100 + "%";
-	document.getElementById("soft_prompt_tokens").title = "Soft Prompt: "+soft_prompt_tokens;
-	document.getElementById("memory_tokens").style.width = (memory_tokens/total_tokens)*100 + "%";
-	document.getElementById("memory_tokens").title = "Memory: "+memory_tokens;
-	document.getElementById("authors_notes_tokens").style.width = (authors_notes_tokens/total_tokens)*100 + "%";
-	document.getElementById("authors_notes_tokens").title = "Author's Notes: "+authors_notes_tokens
-	document.getElementById("world_info_tokens").style.width = (world_info_tokens/total_tokens)*100 + "%";
-	document.getElementById("world_info_tokens").title = "World Info: "+world_info_tokens
-	document.getElementById("prompt_tokens").style.width = (prompt_tokens/total_tokens)*100 + "%";
-	document.getElementById("prompt_tokens").title = "Prompt: "+prompt_tokens
-	document.getElementById("game_text_tokens").style.width = (game_text_tokens/total_tokens)*100 + "%";
-	document.getElementById("game_text_tokens").title = "Game Text: "+game_text_tokens
-	document.getElementById("submit_tokens").style.width = (submit_tokens/total_tokens)*100 + "%";
-	document.getElementById("submit_tokens").title = "Submit Text: "+submit_tokens
-	document.getElementById("unused_tokens").style.width = (unused_tokens/total_tokens)*100 + "%";
-	document.getElementById("unused_tokens").title = "Remaining: "+unused_tokens
+function calc_token_usage(
+	soft_prompt_length,
+	memory_length,
+	authors_note_length,
+	prompt_length,
+	game_text_length,
+	world_info_length,
+	submit_length
+) {
+	let total_tokens = parseInt(document.getElementById('model_max_length_cur').value);
+	let unused_token_count = total_tokens - memory_length - authors_note_length - world_info_length - prompt_length - game_text_length - submit_length;
+
+	for (const dat of [
+		{id: "soft_prompt_tokens", tokenCount: soft_prompt_length, label: "Soft Prompt"},
+		{id: "memory_tokens", tokenCount: memory_length, label: "Memory"},
+		{id: "authors_notes_tokens", tokenCount: authors_note_length, label: "Author's Note"},
+		{id: "world_info_tokens", tokenCount: world_info_length, label: "World Info"},
+		{id: "prompt_tokens", tokenCount: prompt_length, label: "Prompt"},
+		{id: "game_text_tokens", tokenCount: game_text_length, label: "Game Text"},
+		{id: "submit_tokens", tokenCount: submit_length, label: "Submit Text"},
+		{id: "unused_tokens", tokenCount: unused_token_count, label: "Remaining"},
+	]) {
+		const el = document.getElementById(dat.id);
+		el.style.width = ((dat.tokenCount / total_tokens) * 100) + "%";
+		el.setAttribute("tooltip", `${dat.label}: ${dat.tokenCount}`);
+	}
 }
 
 function Change_Theme(theme) {
@@ -2864,13 +2881,13 @@ function distortColor(rgb) {
 function update_context(data) {
 	$(".context-block").remove();
 
-	memory_tokens = 0;
-    authors_notes_tokens = 0;
-	prompt_tokens = 0;
-    game_text_tokens = 0;
-	world_info_tokens = 0;
-	soft_prompt_tokens = 0;
-	submit_tokens = 0;
+	let memory_length = 0;
+	let authors_notes_length = 0;
+	let prompt_length = 0;
+	let game_text_length = 0;
+	let world_info_length = 0;
+	let soft_prompt_length = 0;
+	let submit_length = 0;
 	
 	//clear out within_max_length class
 	for (action of document.getElementsByClassName("within_max_length")) {
@@ -2913,22 +2930,22 @@ function update_context(data) {
 		
 		switch (entry.type) {
 			case 'soft_prompt':
-				soft_prompt_tokens = entry.tokens;
+				soft_prompt_length = entry.tokens.length;
 				break;
 			case 'prompt':
-				prompt_tokens = entry.tokens;
+				prompt_length = entry.tokens.length;
 				break;
 			case 'world_info':
-				world_info_tokens += entry.tokens;
+				world_info_length += entry.tokens.length;
 				break;
 			case 'memory':
-				memory_tokens = entry.tokens;
+				memory_length = entry.tokens.length;
 				break;
 			case 'authors_note':
-				authors_notes_tokens = entry.tokens;
+				authors_notes_length = entry.tokens.length;
 				break;
 			case 'action':
-				game_text_tokens += entry.tokens;
+				game_text_length += entry.tokens.length;
 				if ('action_ids' in entry) {
 					for (action_id of entry.action_ids) {
 						if (document.getElementById('Selected Text Chunk '+action_id)) {
@@ -2938,11 +2955,20 @@ function update_context(data) {
 				}
 				break;
 			case 'submit':
-				submit_tokens = entry.tokens;
+				submit_length = entry.tokens.length;
 				break;
 		}
 	}
-	calc_token_usage(soft_prompt_tokens, memory_tokens, authors_notes_tokens, prompt_tokens, game_text_tokens, world_info_tokens, submit_tokens);
+
+	calc_token_usage(
+		soft_prompt_length,
+		memory_length,
+		authors_notes_length,
+		prompt_length,
+		game_text_length,
+		world_info_length,
+		submit_length
+	);
 
 
 }
@@ -3058,7 +3084,7 @@ function add_tags(tags, data) {
 	text.id = "world_info_tags_text_"+data.uid+"_blank";
 	text.onblur = function () {
 					if (this.textContent != "") {
-						console.log(this.textContent);
+						//console.log(this.textContent);
 						on_new_wi_item = this.id;
 						world_info_data[this.getAttribute('uid')]['key'].push(this.textContent);
 						send_world_info(this.getAttribute('uid'));
@@ -3190,8 +3216,7 @@ function unhide_wi_folder(folder) {
 }
 
 function dragStart(e) {
-    e.dataTransfer.setData('text/plain', e.target.id);
-	//console.log(e.target.id);
+    drag_id = e.target.id;
 	e.dataTransfer.dropEffect = "move";
     setTimeout(() => {
         e.target.classList.add('hidden');
@@ -3242,7 +3267,7 @@ function drop(e) {
     element.classList.remove('drag-over');
 
     // get the draggable element
-    const id = e.dataTransfer.getData('text/plain');
+    const id = drag_id;
     const draggable = document.getElementById(id);
 	//console.log(id);
 	dragged_id = draggable.id.split("_").slice(-1)[0];
@@ -3255,6 +3280,7 @@ function drop(e) {
 		socket.emit("wi_set_folder", {'dragged_id': dragged_id, 'folder': drop_id});
 	} else {
 		//insert the draggable element before the drop element
+		console.log(element);
 		element.parentElement.insertBefore(draggable, element);
 		draggable.classList.add("pulse");
 
@@ -3271,7 +3297,7 @@ function drop(e) {
 
 function dragend(e) {
 	// get the draggable element
-    const id = e.dataTransfer.getData('text/plain');
+    const id = drag_id;
     const draggable = document.getElementById(id);
 	// display the draggable element
 	draggable.classList.remove('hidden');
@@ -3410,7 +3436,7 @@ function highlight_world_info_text_in_chunk(action_id, wi) {
 						var highlight_span = document.createElement("span");
 						highlight_span.classList.add("wi_match");
 						highlight_span.textContent = highlight_text;
-						highlight_span.title = wi['content'];
+						highlight_span.setAttribute("tooltip", wi['content']);
 						highlight_span.setAttribute("wi-uid", wi.uid);
 						action.insertBefore(highlight_span, span);
 						if (after_highlight_text != "") {
@@ -3584,7 +3610,7 @@ function detect_enter_submit(e) {
 		} else {
 			e.cancelBubble = true;
 		}
-		console.log("submitting");
+		//console.log("submitting");
 		document.getElementById("btnsubmit").onclick();
 		setTimeout(function() {document.getElementById('input_text').value = '';}, 1);
 	}
@@ -4541,15 +4567,41 @@ process_cookies();
 		let name = el.children[0].innerText;
 
 		let tooltipEl = el.getElementsByClassName("helpicon")[0];
-		let tooltip = tooltipEl ? tooltipEl.getAttribute("title") : null;
+		let tooltip = tooltipEl ? tooltipEl.getAttribute("tooltip") : null;
 
 		finder_actions.push({
 			name: name,
 			desc: tooltip,
 			icon: "open_in_new",
+			type: "setting",
 			func: function () { highlightEl(el.parentElement) },
 		});
 	}
+
+	const themeSelector = $el("#selected_theme");
+
+	function updateThemes() {
+		finder_actions = finder_actions.filter(x => x.type !== "theme")
+		// Parse themes for Finder
+		for (const select of themeSelector.children) {
+			let themeName = select.value;
+			//console.log(themeName)
+			//console.log("curve")
+			finder_actions.push({
+				name: themeName,
+				desc: "Apply this theme to change how KoboldAI looks!",
+				icon: "palette",
+				type: "theme",
+				func: function () {
+					themeSelector.value = themeName;
+					themeSelector.onchange();
+				},
+			});
+		}
+	}
+
+	updateThemes();
+	themeSelector.addEventListener("sync", updateThemes);
 
 	for (const el of $(".collapsable_header")) {
 		// https://stackoverflow.com/a/11347962
@@ -4906,7 +4958,7 @@ let load_substitutions;
 		let c = {target: "", substitution: "", enabled: true}
 		substitutions.push(c);
 		c.card = makeCard(c);
-		newCardButton.scrollIntoView();
+		//newCardButton.scrollIntoView(false);
 	});
 	
 	// Event handler on input
@@ -4957,7 +5009,7 @@ let load_substitutions;
 		// support is broken and overall that kinda sucks. Would be nice to
 		// make a robust system for syncing multiple entries.
 		
-		console.log("load", miniSubs)
+		//console.log("load", miniSubs)
 
 		$(".substitution-card").remove();
 		// we only get target, trueTarget, and such
@@ -4977,6 +5029,98 @@ let load_substitutions;
 
 	return [load_substitutions];
 })();
+
+/* -- Tooltips -- */
+function initalizeTooltips() {
+	const tooltip = $e("span", document.body, {id: "tooltip-text", "style.display": "none"});
+	let tooltipActive = false;
+
+	function alterTooltipState(enabled, specialClass=null) {
+		tooltipActive = enabled;
+		tooltip.style.display = enabled ? "block" : "none";
+		tooltip.className = specialClass || "";
+	}
+
+	function registerElement(el) {
+		// el should have attribute "tooltip"
+		let text = el.getAttribute("tooltip");
+		el.setAttribute("wawawa", "yeah")
+
+		el.addEventListener("mouseenter", function(event) {
+			tooltip.innerText = text;
+			let specialClass = "tooltip-standard";
+
+			// Kinda lame
+			if (this.classList.contains("context-token")) specialClass = "tooltip-context-token";
+
+			alterTooltipState(true, specialClass);
+		});
+
+		el.addEventListener("mouseleave", function(event) {
+			alterTooltipState(false);
+		});
+	}
+
+	const xOffset = 10;
+	const yOffset = 15;
+
+	document.addEventListener("mousemove", function(event) {
+		if (!tooltipActive) return;
+
+		let [x, y] = [event.x, event.y];
+
+		// X + the tooltip's width is the farthest point right we will display;
+		// let's account for it. If we will render outside of the window,
+		// subtract accordingly.
+		let xOverflow = (x + tooltip.clientWidth) - window.innerWidth;
+		if (xOverflow > 0) x -= xOverflow;
+
+		if (xOverflow + xOffset < 0) x += xOffset;
+
+		// Same for Y!
+		let yOverflow = (y + tooltip.clientHeight) - window.innerHeight;
+		if (yOverflow > 0) y -= yOverflow;
+
+		if (yOverflow + yOffset < 0) y += yOffset;
+
+		tooltip.style.left = `${x}px`;
+		tooltip.style.top = `${y}px`;
+	});
+
+	// Inital scan
+	for (const element of document.querySelectorAll("[tooltip]")) {
+		registerElement(element);
+	}
+
+	// Use a MutationObserver to catch future tooltips
+	const observer = new MutationObserver(function(records, observer) {
+		for (const record of records) {
+			
+			if (record.type === "attributes") {
+				// Sanity check
+				if (record.attributeName !== "tooltip") continue;
+				registerElement(record.target);
+				continue;
+			}
+
+			for (const node of record.addedNodes) {
+				if (node.nodeType !== 1) continue;
+
+				if (node.hasAttribute("tooltip")) registerElement(node);
+
+				// Register for descendants (Slow?)
+				for (const element of node.querySelectorAll("[tooltip]")) {
+					registerElement(element);
+				}
+			}
+		}
+	});
+	observer.observe(document.body, {
+		childList: true,
+		subtree: true,
+		attributeFilter: ["tooltip"],
+	});
+}
 
 /* -- Shortcuts -- */
 document.addEventListener("keydown", function(event) {
@@ -5004,8 +5148,8 @@ function infinite_scroll() {
 }
 
 function run_infinite_scroll_update(action_type, actions, first_action) {
-	console.log("action_type: "+action_type);
-	console.log("first_action: "+first_action);
+	//console.log("action_type: "+action_type);
+	//console.log("first_action: "+first_action);
 	if (action_type == "append") {
 		if (document.getElementById('Selected Text Chunk '+actions[actions.length-1].id)) {
 			document.getElementById('Selected Text Chunk '+actions[actions.length-1].id).scrollIntoView(false);
@@ -5016,8 +5160,8 @@ function run_infinite_scroll_update(action_type, actions, first_action) {
 			if (Math.min.apply(null,Object.keys(actions_data).map(Number).filter(function(x){return x>=0})) <= 0) {
 				document.getElementById("story_prompt").classList.remove("hidden");
 			} else {
-				console.log("Appending, but adding infinite scroll");
-				console.log(document.getElementById('Selected Text Chunk '+Math.min.apply(null,Object.keys(actions_data).map(Number).filter(function(x){return x>=0}))));
+				//console.log("Appending, but adding infinite scroll");
+				//console.log(document.getElementById('Selected Text Chunk '+Math.min.apply(null,Object.keys(actions_data).map(Number).filter(function(x){return x>=0}))));
 				document.getElementById("Selected Text").onscroll = infinite_scroll;
 				scroll_trigger_element = document.getElementById('Selected Text Chunk '+Math.min.apply(null,Object.keys(actions_data).map(Number).filter(function(x){return x>=0})));
 			}
@@ -5032,7 +5176,7 @@ function run_infinite_scroll_update(action_type, actions, first_action) {
 		} else {
 			//we just added more text and didn't hit the prompt. Move the scroll trigger back to the first non-prompt element
 			for (id of Object.keys(actions_data).map(Number).filter(function(x){return x>0}).sort(function(a, b) {return a - b;})) {
-				console.log("Checking for "+id);
+				//console.log("Checking for "+id);
 				if (document.getElementById('Selected Text Chunk '+id)) {
 					scroll_trigger_element = document.getElementById('Selected Text Chunk '+id);
 					break;
@@ -5045,25 +5189,3 @@ function run_infinite_scroll_update(action_type, actions, first_action) {
 		}
 	}
 }
-
-document.addEventListener('mousemove', evt => {
-    let x = evt.clientX / innerWidth;
-    let y = evt.clientY / innerHeight;
- 
-	var r = document.querySelector(':root');
-	if (x > 0.5) {
-		r.style.setProperty("--tooltip_x", "-100%");
-	} else {
-		r.style.setProperty("--tooltip_x", "0%");
-	}
-	if (y > 0.5) {
-		r.style.setProperty("--tooltip_y", "-100%");
-		r.style.setProperty("--tooltip_y_context", "0%");
-	} else {
-		r.style.setProperty("--tooltip_y", "100%");
-		r.style.setProperty("--tooltip_y_context", "200%");
-	}
-	r.style.setProperty("--mouse-x", evt.clientX / innerWidth);
-	r.style.setProperty("--mouse-y", evt.clientY / innerHeight);
-	
-});

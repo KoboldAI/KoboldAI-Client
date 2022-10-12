@@ -1122,7 +1122,7 @@ def loadmodelsettings():
             if setting in js["formatoptns"]:
                 setattr(koboldai_vars, setting, js["formatoptns"][setting])
     if("welcome" in js):
-        koboldai_vars.welcome = js["welcome"] if js["welcome"] != False else ""
+        koboldai_vars.welcome = kml(js["welcome"]) if js["welcome"] != False else koboldai_vars.welcome_default
     if("newlinemode" in js):
         koboldai_vars.newlinemode = js["newlinemode"]
     if("antemplate" in js):
@@ -2148,7 +2148,9 @@ def patch_transformers():
 
             if koboldai_vars.chatmode:
                 return False
-            koboldai_vars.actions.stream_tokens([utils.decodenewlines(tokenizer.decode(x[-1])) for x in input_ids])
+                
+            data = [applyoutputformatting(utils.decodenewlines(tokenizer.decode(x[-1])), no_sentence_trimming=True) for x in input_ids]
+            koboldai_vars.actions.stream_tokens(data)
             return False
 
     class CoreStopper(StoppingCriteria):
@@ -4370,11 +4372,11 @@ def kml(txt):
 #  Send start message and tell Javascript to set UI state
 #==================================================================#
 def setStartState():
-    if koboldai_vars.welcome != "":
-        txt = kml(koboldai_vars.welcome) + "<br/>"
+    if koboldai_vars.welcome != koboldai_vars.welcome_default:
+        txt = koboldai_vars.welcome + "<br/>"
     else:
         txt = "<span>Welcome to <span class=\"color_cyan\">KoboldAI</span>! You are running <span class=\"color_green\">"+getmodelname()+"</span>.<br/>"
-    if(not koboldai_vars.noai and koboldai_vars.welcome == ""):
+    if(not koboldai_vars.noai and koboldai_vars.welcome == koboldai_vars.welcome_default):
         txt = txt + "Please load a game or enter a prompt below to begin!</span>"
     if(koboldai_vars.noai):
         txt = txt + "Please load or import a story to read. There is no AI in this mode."
@@ -6125,7 +6127,7 @@ def applyinputformatting(txt):
 #==================================================================#
 # Applies chosen formatting options to text returned from AI
 #==================================================================#
-def applyoutputformatting(txt):
+def applyoutputformatting(txt, no_sentence_trimming=False):
     # Use standard quotes and apostrophes
     txt = utils.fixquotes(txt)
 
@@ -6134,7 +6136,7 @@ def applyoutputformatting(txt):
         txt = koboldai_vars.acregex_ai.sub('', txt)
     
     # Trim incomplete sentences
-    if(koboldai_vars.frmttriminc and not koboldai_vars.chatmode):
+    if(koboldai_vars.frmttriminc and not koboldai_vars.chatmode and not no_sentence_trimming):
         txt = utils.trimincompletesentence(txt)
     # Replace blank lines
     if(koboldai_vars.frmtrmblln or koboldai_vars.chatmode):
@@ -7040,7 +7042,7 @@ def load_story_v1(js):
     _filename = filename
     if(filename.endswith('.json')):
         _filename = filename[:-5]
-    leave_room(session['story'])
+    leave_room(session.get('story', 'default'))
     session['story'] = _filename
     join_room(_filename)
     #create the story
@@ -7836,7 +7838,7 @@ def file_popup(popup_title, starting_folder, return_event, upload=True, jailed=T
     session['advanced_sort'] = advanced_sort
     
     emit("load_popup", {"popup_title": popup_title, "call_back": return_event, "renameable": renameable, "deleteable": deleteable, "editable": editable, 'upload': upload}, broadcast=False)
-    socketio.emit("load_popup", {"popup_title": popup_title, "call_back": return_event, "renameable": renameable, "deleteable": deleteable, "editable": editable, 'upload': upload}, broadcast=True, room="UI_1")
+    emit("load_popup", {"popup_title": popup_title, "call_back": return_event, "renameable": renameable, "deleteable": deleteable, "editable": editable, 'upload': upload}, broadcast=True, room="UI_1")
     
     get_files_folders(starting_folder)
 
