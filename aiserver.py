@@ -4371,7 +4371,7 @@ def kml(txt):
 #==================================================================#
 def setStartState():
     if koboldai_vars.welcome != koboldai_vars.welcome_default:
-        txt = kml(koboldai_vars.welcome) + "<br/>"
+        txt = koboldai_vars.welcome + "<br/>"
     else:
         txt = "<span>Welcome to <span class=\"color_cyan\">KoboldAI</span>! You are running <span class=\"color_green\">"+getmodelname()+"</span>.<br/>"
     if(not koboldai_vars.noai and koboldai_vars.welcome == koboldai_vars.welcome_default):
