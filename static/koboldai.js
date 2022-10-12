@@ -4947,7 +4947,7 @@ let load_substitutions;
 		let c = {target: "", substitution: "", enabled: true}
 		substitutions.push(c);
 		c.card = makeCard(c);
-		newCardButton.scrollIntoView();
+		newCardButton.scrollIntoView(false);
 	});
 	
 	// Event handler on input
