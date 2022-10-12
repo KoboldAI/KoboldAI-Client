@@ -36,6 +36,9 @@ socket.on("scratchpad_response", recieveScratchpadResponse);
 socket.on("scratchpad_response", recieveScratchpadResponse);
 //socket.onAny(function(event_name, data) {console.log({"event": event_name, "class": data.classname, "data": data});});
 
+// Must be done before any elements are made; we track their changes.
+initalizeTooltips();
+
 var presets = {};
 var current_chunk_number = null;
 var ai_busy_start = Date.now();
@@ -476,6 +479,7 @@ function do_presets(data) {
 					var option = document.createElement("option");
 					option.value=preset;
 					option.text=preset_value.preset;
+					// Don't think we can use custom tooltip here (yet)
 					option.title = preset_value.description;
 					option_group.append(option);
 				}
@@ -858,7 +862,7 @@ function redrawPopup() {
 		if (popup_editable && !row.isValid) {
 			edit_icon.classList.add("oi");
 			edit_icon.setAttribute('data-glyph', "spreadsheet");
-			edit_icon.title = "Edit"
+			edit_icon.setAttribute("tooltip", "Edit");
 			edit_icon.id = row.path;
 			edit_icon.onclick = function () {
 				socket.emit("popup_edit", this.id);
@@ -872,7 +876,7 @@ function redrawPopup() {
 		if (popup_renameable && !row.isFolder) {
 			rename_icon.classList.add("oi");
 			rename_icon.setAttribute('data-glyph', "pencil");
-			rename_icon.title = "Rename"
+			rename_icon.setAttribute("tooltip", "Rename");
 			rename_icon.id = row.path;
 			rename_icon.setAttribute("filename", row.fileName);
 			rename_icon.onclick = function () {
@@ -890,7 +894,7 @@ function redrawPopup() {
 		if (popup_deleteable) {
 			delete_icon.classList.add("oi");
 			delete_icon.setAttribute('data-glyph', "x");
-			delete_icon.title = "Delete"
+			delete_icon.setAttribute("tooltip", "Delete");
 			delete_icon.id = row.path;
 			delete_icon.setAttribute("folder", row.isFolder);
 			delete_icon.onclick = function () {
@@ -1315,7 +1319,7 @@ function show_model_menu(data) {
 				classes: ["material-icons-outlined"],
 				innerText: "warning",
 				"style.grid-area": "warning_icon",
-				title: warningText
+				tooltip: warningText
 			});
 		})();
 		
@@ -2606,21 +2610,21 @@ function calc_token_usage(soft_prompt_tokens, memory_tokens, authors_notes_token
 	unused_tokens = total_tokens - memory_tokens - authors_notes_tokens - world_info_tokens - prompt_tokens - game_text_tokens - submit_tokens;
 	
 	document.getElementById("soft_prompt_tokens").style.width = (soft_prompt_tokens/total_tokens)*100 + "%";
-	document.getElementById("soft_prompt_tokens").title = "Soft Prompt: "+soft_prompt_tokens;
+	document.getElementById("soft_prompt_tokens").setAttribute("tooltip", "Soft Prompt: "+soft_prompt_tokens);
 	document.getElementById("memory_tokens").style.width = (memory_tokens/total_tokens)*100 + "%";
-	document.getElementById("memory_tokens").title = "Memory: "+memory_tokens;
+	document.getElementById("memory_tokens").setAttribute("tooltip", "Memory: "+memory_tokens);
 	document.getElementById("authors_notes_tokens").style.width = (authors_notes_tokens/total_tokens)*100 + "%";
-	document.getElementById("authors_notes_tokens").title = "Author's Notes: "+authors_notes_tokens
+	document.getElementById("authors_notes_tokens").setAttribute("tooltip", "Author's Notes: "+authors_notes_tokens);
 	document.getElementById("world_info_tokens").style.width = (world_info_tokens/total_tokens)*100 + "%";
-	document.getElementById("world_info_tokens").title = "World Info: "+world_info_tokens
+	document.getElementById("world_info_tokens").setAttribute("tooltip", "World Info: "+world_info_tokens);
 	document.getElementById("prompt_tokens").style.width = (prompt_tokens/total_tokens)*100 + "%";
-	document.getElementById("prompt_tokens").title = "Prompt: "+prompt_tokens
+	document.getElementById("prompt_tokens").setAttribute("tooltip", "Prompt: "+prompt_tokens);
 	document.getElementById("game_text_tokens").style.width = (game_text_tokens/total_tokens)*100 + "%";
-	document.getElementById("game_text_tokens").title = "Game Text: "+game_text_tokens
+	document.getElementById("game_text_tokens").setAttribute("tooltip", "Game Text: "+game_text_tokens);
 	document.getElementById("submit_tokens").style.width = (submit_tokens/total_tokens)*100 + "%";
-	document.getElementById("submit_tokens").title = "Submit Text: "+submit_tokens
+	document.getElementById("submit_tokens").setAttribute("tooltip", "Submit Text: "+submit_tokens);
 	document.getElementById("unused_tokens").style.width = (unused_tokens/total_tokens)*100 + "%";
-	document.getElementById("unused_tokens").title = "Remaining: "+unused_tokens
+	document.getElementById("unused_tokens").setAttribute("tooltip", "Remaining: "+unused_tokens);
 }
 
 function Change_Theme(theme) {
@@ -3421,7 +3425,7 @@ function highlight_world_info_text_in_chunk(action_id, wi) {
 						var highlight_span = document.createElement("span");
 						highlight_span.classList.add("wi_match");
 						highlight_span.textContent = highlight_text;
-						highlight_span.title = wi['content'];
+						highlight_span.setAttribute("tooltip", wi['content']);
 						highlight_span.setAttribute("wi-uid", wi.uid);
 						action.insertBefore(highlight_span, span);
 						if (after_highlight_text != "") {
@@ -5016,7 +5020,7 @@ let load_substitutions;
 })();
 
 /* -- Tooltips -- */
-(function() {
+function initalizeTooltips() {
 	const tooltip = $e("span", document.body, {id: "tooltip-text", "style.display": "none"});
 	let tooltipActive = false;
 
@@ -5046,6 +5050,8 @@ let load_substitutions;
 		});
 	}
 
+	const xOffset = 10;
+
 	document.addEventListener("mousemove", function(event) {
 		if (!tooltipActive) return;
 
@@ -5056,6 +5062,12 @@ let load_substitutions;
 		// subtract accordingly.
 		let xOverflow = (x + tooltip.clientWidth) - window.innerWidth;
 		if (xOverflow > 0) x -= xOverflow;
+
+		if (xOverflow + xOffset < 0) x += xOffset;
+
+		// Same for Y!
+		let yOverflow = (y + tooltip.clientHeight) - window.innerHeight;
+		if (yOverflow > 0) y -= yOverflow;
 
 		tooltip.style.left = `${x}px`;
 		tooltip.style.top = `${y}px`;
@@ -5069,14 +5081,32 @@ let load_substitutions;
 	// Use a MutationObserver to catch future tooltips
 	const observer = new MutationObserver(function(records, observer) {
 		for (const record of records) {
+			
+			if (record.type === "attributes") {
+				// Sanity check
+				if (record.attributeName !== "tooltip") continue;
+				registerElement(record.target);
+				continue;
+			}
+
 			for (const node of record.addedNodes) {
-				if (node.nodeType !== 1 || !node.hasAttribute("tooltip")) continue;
-				registerElement(node);
+				if (node.nodeType !== 1) continue;
+
+				if (node.hasAttribute("tooltip")) registerElement(node);
+
+				// Register for descendants (Slow?)
+				for (const element of node.querySelectorAll("[tooltip]")) {
+					registerElement(element);
+				}
 			}
 		}
 	});
-	observer.observe(document.body, {childList: true, subtree: true});
-})();
+	observer.observe(document.body, {
+		childList: true,
+		subtree: true,
+		attributeFilter: ["tooltip"],
+	});
+}
 
 /* -- Shortcuts -- */
 document.addEventListener("keydown", function(event) {
