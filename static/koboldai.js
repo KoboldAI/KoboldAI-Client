@@ -1908,8 +1908,6 @@ function world_info_entry(data) {
 	
 	update_token_lengths();
 	
-	clearTimeout(calc_token_usage_timeout);
-	calc_token_usage_timeout = setTimeout(calc_token_usage, 200);
 	clearTimeout(setup_missing_wi_toggles_timeout);
 	setup_missing_wi_toggles_timeout = setTimeout(setup_missing_wi_toggles, 200);
 	
@@ -2603,28 +2601,33 @@ function autoResize(element, min_size=200) {
 }
 
 
-function calc_token_usage(soft_prompt_tokens, memory_tokens, authors_notes_tokens, prompt_tokens, game_text_tokens, world_info_tokens, submit_tokens) {
+function calc_token_usage(
+	soft_prompt_length,
+	memory_length,
+	authors_note_length,
+	prompt_length,
+	game_text_length,
+	world_info_length,
+	submit_length
+) {
     //submit_tokens = token_length(document.getElementById("input_text").value);
-	total_tokens = parseInt(document.getElementById('model_max_length_cur').value);
-	
-	unused_tokens = total_tokens - memory_tokens - authors_notes_tokens - world_info_tokens - prompt_tokens - game_text_tokens - submit_tokens;
-	
-	document.getElementById("soft_prompt_tokens").style.width = (soft_prompt_tokens/total_tokens)*100 + "%";
-	document.getElementById("soft_prompt_tokens").setAttribute("tooltip", "Soft Prompt: "+soft_prompt_tokens);
-	document.getElementById("memory_tokens").style.width = (memory_tokens/total_tokens)*100 + "%";
-	document.getElementById("memory_tokens").setAttribute("tooltip", "Memory: "+memory_tokens);
-	document.getElementById("authors_notes_tokens").style.width = (authors_notes_tokens/total_tokens)*100 + "%";
-	document.getElementById("authors_notes_tokens").setAttribute("tooltip", "Author's Notes: "+authors_notes_tokens);
-	document.getElementById("world_info_tokens").style.width = (world_info_tokens/total_tokens)*100 + "%";
-	document.getElementById("world_info_tokens").setAttribute("tooltip", "World Info: "+world_info_tokens);
-	document.getElementById("prompt_tokens").style.width = (prompt_tokens/total_tokens)*100 + "%";
-	document.getElementById("prompt_tokens").setAttribute("tooltip", "Prompt: "+prompt_tokens);
-	document.getElementById("game_text_tokens").style.width = (game_text_tokens/total_tokens)*100 + "%";
-	document.getElementById("game_text_tokens").setAttribute("tooltip", "Game Text: "+game_text_tokens);
-	document.getElementById("submit_tokens").style.width = (submit_tokens/total_tokens)*100 + "%";
-	document.getElementById("submit_tokens").setAttribute("tooltip", "Submit Text: "+submit_tokens);
-	document.getElementById("unused_tokens").style.width = (unused_tokens/total_tokens)*100 + "%";
-	document.getElementById("unused_tokens").setAttribute("tooltip", "Remaining: "+unused_tokens);
+	let total_tokens = parseInt(document.getElementById('model_max_length_cur').value);
+	let unused_token_count = total_tokens - memory_length - authors_note_length - world_info_length - prompt_length - game_text_length - submit_length;
+
+	for (const dat of [
+		{id: "soft_prompt_tokens", tokenCount: soft_prompt_length, label: "Soft Prompt"},
+		{id: "memory_tokens", tokenCount: memory_length, label: "Memory"},
+		{id: "authors_notes_tokens", tokenCount: authors_note_length, label: "Author's Note"},
+		{id: "world_info_tokens", tokenCount: world_info_length, label: "World Info"},
+		{id: "prompt_tokens", tokenCount: prompt_length, label: "Prompt"},
+		{id: "game_text_tokens", tokenCount: game_text_length, label: "Game Text"},
+		{id: "submit_tokens", tokenCount: submit_length, label: "Submit Text"},
+		{id: "unused_tokens", tokenCount: unused_token_count, label: "Remaining"},
+	]) {
+		const el = document.getElementById(dat.id);
+		el.style.width = ((dat.tokenCount / total_tokens) * 100) + "%";
+		el.setAttribute("tooltip", `${dat.label}: ${dat.tokenCount}`);
+	}
 }
 
 function Change_Theme(theme) {
@@ -2879,13 +2882,13 @@ function distortColor(rgb) {
 function update_context(data) {
 	$(".context-block").remove();
 
-	memory_tokens = 0;
-    authors_notes_tokens = 0;
-	prompt_tokens = 0;
-    game_text_tokens = 0;
-	world_info_tokens = 0;
-	soft_prompt_tokens = 0;
-	submit_tokens = 0;
+	let memory_length = 0;
+	let authors_notes_length = 0;
+	let prompt_length = 0;
+	let game_text_length = 0;
+	let world_info_length = 0;
+	let soft_prompt_length = 0;
+	let submit_length = 0;
 	
 	//clear out within_max_length class
 	for (action of document.getElementsByClassName("within_max_length")) {
@@ -2928,22 +2931,22 @@ function update_context(data) {
 		
 		switch (entry.type) {
 			case 'soft_prompt':
-				soft_prompt_tokens = entry.tokens;
+				soft_prompt_length = entry.tokens.length;
 				break;
 			case 'prompt':
-				prompt_tokens = entry.tokens;
+				prompt_length = entry.tokens.length;
 				break;
 			case 'world_info':
-				world_info_tokens += entry.tokens;
+				world_info_length += entry.tokens.length;
 				break;
 			case 'memory':
-				memory_tokens = entry.tokens;
+				memory_length = entry.tokens.length;
 				break;
 			case 'authors_note':
-				authors_notes_tokens = entry.tokens;
+				authors_notes_length = entry.tokens.length;
 				break;
 			case 'action':
-				game_text_tokens += entry.tokens;
+				game_text_length += entry.tokens.length;
 				if ('action_ids' in entry) {
 					for (action_id of entry.action_ids) {
 						if (document.getElementById('Selected Text Chunk '+action_id)) {
@@ -2953,11 +2956,20 @@ function update_context(data) {
 				}
 				break;
 			case 'submit':
-				submit_tokens = entry.tokens;
+				submit_length = entry.tokens.length;
 				break;
 		}
 	}
-	calc_token_usage(soft_prompt_tokens, memory_tokens, authors_notes_tokens, prompt_tokens, game_text_tokens, world_info_tokens, submit_tokens);
+
+	calc_token_usage(
+		soft_prompt_length,
+		memory_length,
+		authors_notes_length,
+		prompt_length,
+		game_text_length,
+		world_info_length,
+		submit_length
+	);
 
 
 }
