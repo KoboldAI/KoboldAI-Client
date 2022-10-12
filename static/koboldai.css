@@ -393,7 +393,6 @@ border-top-right-radius: var(--tabs_rounding);
 	width: var(--flyout_menu_width);
 	box-shadow: var(--left_menu_strong_shadow);
 	position: fixed;
-	z-index: 3;
 	top: 0;
 	right: 100%;
 	background-color: var(--flyout_background);
@@ -1181,7 +1180,7 @@ body {
 /* ---------------------------------- GAME SCREEN ----------------------------------*/
 .gamescreen {
 	background-color: var(--gamescreen_background);
-	z-index: 2;
+	z-index: -1;
 	box-shadow: var(--light_shadow_value);
 	color: var(--gamescreen_text);
 	width: 100%;
