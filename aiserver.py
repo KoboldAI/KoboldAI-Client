@@ -2151,8 +2151,6 @@ def patch_transformers():
                 
             data = [applyoutputformatting(utils.decodenewlines(tokenizer.decode(x[-1])), no_sentence_trimming=True) for x in input_ids]
             koboldai_vars.actions.stream_tokens(data)
-            if koboldai_settings.queue is not None:
-                koboldai_settings.queue.put(["from_server", {"cmd": "streamtoken", "data": data}, {"broadcast":True, "room":"UI_1"}])
             return False
 
     class CoreStopper(StoppingCriteria):

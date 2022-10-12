@@ -2717,3 +2717,7 @@ input[type='range'] {
   visibility: visible;
   opacity: 1;
 }*/
+
+select {
+  outline: none;
+}
