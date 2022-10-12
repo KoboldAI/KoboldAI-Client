@@ -5062,6 +5062,7 @@ function initalizeTooltips() {
 	}
 
 	const xOffset = 10;
+	const yOffset = 15;
 
 	document.addEventListener("mousemove", function(event) {
 		if (!tooltipActive) return;
@@ -5079,6 +5080,8 @@ function initalizeTooltips() {
 		// Same for Y!
 		let yOverflow = (y + tooltip.clientHeight) - window.innerHeight;
 		if (yOverflow > 0) y -= yOverflow;
+
+		if (yOverflow + yOffset < 0) y += yOffset;
 
 		tooltip.style.left = `${x}px`;
 		tooltip.style.top = `${y}px`;
