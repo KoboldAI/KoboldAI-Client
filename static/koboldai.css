@@ -1891,7 +1891,7 @@ body {
 
 	opacity: 1;
 	
-	padding: 0px 2px;
+	padding: 10px;
 	color: var(--tooltip_text);
 	background-color: var(--tooltip_background);
 
@@ -1904,7 +1904,6 @@ body {
 	font-family: "Helvetica Neue",Helvetica,Arial,sans-serif;
 	width: min-context;
 	max-width: 300px;
-	padding: 10px !important;
 }
 
 .tooltip-context-token {
