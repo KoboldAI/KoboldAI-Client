@@ -2322,9 +2322,10 @@ body {
 }
 
 /* Substitutions */
-#Substitutions > .helpicon {
-	margin-left: 5px;
-	align-self: auto;
+#Substitutions > .help_text > .helpicon {
+	position: relative;
+	margin-left: 1px;
+	top: 2px;
 }
 
 #substitution-header {
