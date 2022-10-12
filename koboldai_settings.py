@@ -1504,7 +1504,7 @@ class KoboldStoryRegister(object):
     
     def set_probabilites(self, probabilities, action_id=None):
         if action_id is None:
-            action_id = self.action_count
+            action_id = self.action_count+1
         if action_id in self.actions:
             self.actions[action_id]['Probabilities'].append(probabilities)
             process_variable_changes(self.socketio, "story", 'actions', {"id": action_id, 'action':  self.actions[action_id]}, None)

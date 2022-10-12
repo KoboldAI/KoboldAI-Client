@@ -132,7 +132,7 @@
 				<h4 style="width:var(--flyout_menu_width);"><span class="material-icons-outlined cursor">expand_more</span> Sampling</h4>
 			</div>
 			<div class="setting_tile_area">
-				<span class="help_text">Change how the AI decides what to say.</span>
+				<div class="help_text">Change how the AI decides what to say.</div>
 				{% with sub_path='Sampling' %}
 					{% include 'settings item.html' %}
 				{% endwith %}
@@ -167,7 +167,7 @@
 				<h4 style="width:var(--flyout_menu_width);"><span class="material-icons-outlined cursor">expand_more</span> Repetition</h4>
 			</div>
 			<div class="setting_tile_area">
-				<span class="help_text">Change how the AI combats repetition.</span>
+				<div class="help_text">Change how the AI combats repetition.</div>
 				{% with sub_path='Repetition' %}
 					{% include 'settings item.html' %}
 				{% endwith %}
@@ -232,7 +232,7 @@
 			<h4 style="width:var(--flyout_menu_width);"><span class="material-icons-outlined cursor">expand_more</span> Biasing</h4>
 		</div>
 		<div id="biasing">
-			<span class="help_text">Influence the likelihood for the AI to output certain phrases.</span>
+			<div class="help_text">Influence the likelihood for the AI to output certain phrases.</div>
 			<div class="bias_header">
 				<div class="bias_header_phrase">Phrase</div>
 				<div class="bias_header_score">Score</div>
@@ -311,7 +311,7 @@
 		</div>
 
 		<div class="setting_tile_area" id="Substitutions">
-			<span class="help_text">Automatically replaces phrases that you or the AI insert.</span>
+			<div class="help_text">Automatically replaces phrases that you or the AI insert.</div>
 
 			<span class="helpicon material-icons-outlined" tooltip="Can be used to help you insert special characters or automatically correct the AI. The pencil button toggles if a substitution is active or not.">help_icon</span> 
 			<div id="substitution-header" class="noselect">
@@ -415,7 +415,7 @@
 			<h4 style="width:var(--flyout_menu_width);"><span class="material-icons-outlined cursor">expand_more</span> Tweaks</h4>
 		</div>
 		<div class="setting_tile_area" id="Tweaks">
-			<span class="help_text">Small UI changes that can be mixed and matched.</span>
+			<div class="help_text">Small UI changes that can be mixed and matched.</div>
 			<div class="tweak-container" tweak-path="hide-timing">
 				<span>Hide timing information</span>
 				<input type=checkbox class="setting_item_input" data-size="mini" data-onstyle="success" data-toggle="toggle">

@@ -2631,6 +2631,7 @@ h2 .material-icons-outlined {
 .help_text {
 	margin-left: 6px;
 	margin-bottom: 0.7em;
+	width: 100%;
 	opacity: 0.7;
 	font-size: calc(0.9em + var(--font_size_adjustment));
 	display: block;
