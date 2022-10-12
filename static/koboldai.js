@@ -4712,6 +4712,7 @@ process_cookies();
 
 		// Close if open
 		if (!contextMenu.classList.contains("hidden")) {
+			console.log("Close if open");
 			contextMenu.classList.add("hidden");
 			return;
 		}
@@ -4736,15 +4737,18 @@ process_cookies();
 
 	// When we make a browser context menu, close ours.
 	$(document).contextmenu(function(event) {
+		console.log("When we make a browser context menu, close ours.");
 		contextMenu.classList.add("hidden");
 	});
 
 	// When we click outside of our context menu, close ours.
 	$(document).click(function(event) {
+		console.log("When we click outside of our context menu, close ours.");
 		contextMenu.classList.add("hidden");
 	});
 
 	window.addEventListener("blur", function(event) {
+		console.log("When we blur out of our context menu, close.");
 		contextMenu.classList.add("hidden");
 	});
 })();
