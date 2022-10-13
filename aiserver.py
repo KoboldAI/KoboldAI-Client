@@ -6142,6 +6142,9 @@ def applyoutputformatting(txt, no_sentence_trimming=False):
     # Replace blank lines
     if(koboldai_vars.frmtrmblln or koboldai_vars.chatmode):
         txt = utils.replaceblanklines(txt)
+    # trim off starting new lines in replies if we're in chat mode
+    if koboldai_vars.chatmode and txt[0] == "\n":
+        txt = txt[1:]
     # Remove special characters
     if(koboldai_vars.frmtrmspch):
         txt = utils.removespecialchars(txt, koboldai_vars)
