@@ -4486,6 +4486,7 @@ def actionsubmit(data, actionmode=0, force_submit=False, force_prompt_gen=False,
                 data = f"\n\n> {data}\n"
         
         # "Chat" mode
+        logger.warning("Chatmode: {} and gamestarted: {}".format(koboldai_vars.chatmode, koboldai_vars.gamestarted))
         if(koboldai_vars.chatmode and koboldai_vars.gamestarted):
             data = re.sub(r'\n+', ' ', data)
             if(len(data)):
@@ -8075,16 +8076,14 @@ def UI_2_delete_option(data):
 @logger.catch
 def UI_2_submit(data):
     if not koboldai_vars.noai and data['theme'] != "":
-        if koboldai_vars.debug:
-            print("doing random prompt")
+        logger.debug("doing random prompt")
         memory = koboldai_vars.memory
         koboldai_vars.memory = "{}\n\nYou generate the following {} story concept :".format(koboldai_vars.memory, data['theme'])
         koboldai_vars.lua_koboldbridge.feedback = None
         actionsubmit("", force_submit=True, force_prompt_gen=True)
         koboldai_vars.memory = memory
     else:
-        if koboldai_vars.debug:
-            print("doing normal input")
+        logger.debug("doing normal input")
         koboldai_vars.actions.clear_unused_options()
         koboldai_vars.lua_koboldbridge.feedback = None
         koboldai_vars.recentrng = koboldai_vars.recentrngm = None
