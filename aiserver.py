@@ -3046,6 +3046,8 @@ def lua_compute_context(submission, entries, folders, kwargs):
         force_use_txt=True,
         scan_story=kwargs["scan_story"] if kwargs["scan_story"] != None else True,
     )
+    if kwargs["include_anote"] is not None and not kwargs["include_anote"]:
+        anotetxt = ""
     txt, _, _ = calcsubmitbudget(
         len(actions),
         winfo,
