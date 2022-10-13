@@ -1623,7 +1623,7 @@ class KoboldWorldInfo(object):
         if self.koboldai_vars.tokenizer is not None:
             if uid is not None:
                 if uid in self.world_info:
-                    logger.debug("Sending all world info after tokenizing")
+                    logger.debug("Sending single world info after tokenizing {}: {}".format(uid, self.world_info[uid]['title']))
                     self.world_info[uid]['token_length'] = len(self.koboldai_vars.tokenizer.encode(self.world_info[uid]['content']))
                     self.socketio.emit("world_info_entry", self.world_info[uid], broadcast=True, room="UI_2")
             else:
@@ -1973,7 +1973,7 @@ class KoboldWorldInfo(object):
             logger.warning("Something tried to set world info UID {} to in game, but it doesn't exist".format(uid))
         if self.socketio is not None:
             self.socketio.emit("world_info_entry_used_in_game", {"uid": uid, "used_in_game": True}, broadcast=True, room="UI_2")
-        self.recalc_token_length(uid)
+        #self.recalc_token_length(uid)
     
     def get_used_wi(self):
         return [x['content'] for x in self.world_info if x['used_in_game']]
