@@ -3024,6 +3024,7 @@ $(document).ready(function(){
 			location.reload();
 			//console.log("Closing window");
 		} else if(msg.cmd == 'model_load_status') {
+			console.log(msg.data);
 			$("#showmodelnamecontent").html("<div class=\"flex\"><div class=\"loadlistpadding\"></div><div class=\"loadlistitem\" style='align: left'>" + msg.data + "</div></div>");
 			$("#showmodelnamecontainer").removeClass("hidden");
 			//console.log(msg.data);

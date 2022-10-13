@@ -273,13 +273,15 @@ model_menu = {
 
 class Send_to_socketio(object):
     def write(self, bar):
-        print('\r' + bar, end='')
-        time.sleep(0.01)
-        try:
-            gui_msg = bar.replace(f"{colors.PURPLE}INIT{colors.END}       | ","").replace(" ", "&nbsp;")
-            emit('from_server', {'cmd': 'model_load_status', 'data': gui_msg}, broadcast=True, room="UI_1")
-        except:
-            pass
+        bar = bar.replace("\r", "").replace("\n", "")
+        if bar != "":
+            logger.info(bar)
+            #print('\r' + bar, end='')
+            time.sleep(0.01)
+            try:
+                emit('from_server', {'cmd': 'model_load_status', 'data': bar.replace(" ", "&nbsp;")}, broadcast=True, room="UI_1")
+            except:
+                pass
         
     def flush(self):
         pass
@@ -1752,6 +1754,7 @@ def patch_transformers_download():
     class Send_to_socketio(object):
         def write(self, bar):
             bar = bar.replace("\r", "").replace("\n", "")
+            logger.debug(bar)
             
             if bar != "":
                 try:
@@ -2568,7 +2571,7 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
                         print(flush=True)
                         koboldai_vars.total_layers = num_tensors
                         koboldai_vars.loaded_layers = 0
-                        utils.bar = tqdm(total=num_tensors, desc=f"{colors.PURPLE}INIT{colors.END}       | Loading model tensors", file=Send_to_socketio())
+                        utils.bar = tqdm(total=num_tensors, desc="Loading model tensors", file=Send_to_socketio())
 
                     with zipfile.ZipFile(f, "r") as z:
                         try:
@@ -3105,31 +3108,10 @@ def download():
             filename = filename[:-5]
         save.headers.set('Content-Disposition', 'attachment', filename='%s.txt' % filename)
         return(save)
-
-    # Build json to write
-    js = {}
-    js["gamestarted"] = koboldai_vars.gamestarted
-    js["prompt"]      = koboldai_vars.prompt
-    js["memory"]      = koboldai_vars.memory
-    js["authorsnote"] = koboldai_vars.authornote
-    js["anotetemplate"] = koboldai_vars.authornotetemplate
-    js["actions"]     = koboldai_vars.actions.to_json()
-    js["worldinfo"]   = []
-        
-    # Extract only the important bits of WI
-    for wi in koboldai_vars.worldinfo:
-        if(wi["constant"] or wi["key"] != ""):
-            js["worldinfo"].append({
-                "key": wi["key"],
-                "keysecondary": wi["keysecondary"],
-                "content": wi["content"],
-                "comment": wi["comment"],
-                "folder": wi["folder"],
-                "selective": wi["selective"],
-                "constant": wi["constant"]
-            })
     
-    save = Response(json.dumps(js, indent=3))
+    
+    
+    save = Response(koboldai_vars.download_story())
     filename = path.basename(koboldai_vars.savedir)
     if filename[-5:] == ".json":
         filename = filename[:-5]

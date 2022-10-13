@@ -1613,8 +1613,6 @@ function world_info_entry_used_in_game(data) {
 }
 
 function world_info_entry(data) {
-
-	
 	world_info_data[data.uid] = data;
 	
 	//delete the existing world info and recreate
@@ -1909,7 +1907,7 @@ function world_info_entry(data) {
 	update_token_lengths();
 	
 	clearTimeout(setup_missing_wi_toggles_timeout);
-	setup_missing_wi_toggles_timeout = setTimeout(setup_missing_wi_toggles, 200);
+	setup_missing_wi_toggles_timeout = setTimeout(setup_missing_wi_toggles, 10);
 	
 	return world_info_card;
 }

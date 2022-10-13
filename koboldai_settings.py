@@ -144,6 +144,9 @@ class koboldai_vars(object):
         logger.debug("Saving story from koboldai_vars.save_story()")
         self._story_settings[self.get_story_name()].save_story()
     
+    def download_story(self):
+        return self._story_settings[self.get_story_name()].to_json()
+    
     def save_revision(self):
         self._story_settings[self.get_story_name()].save_revision()
     
@@ -1620,6 +1623,7 @@ class KoboldWorldInfo(object):
         if self.koboldai_vars.tokenizer is not None:
             if uid is not None:
                 if uid in self.world_info:
+                    logger.debug("Sending all world info after tokenizing")
                     self.world_info[uid]['token_length'] = len(self.koboldai_vars.tokenizer.encode(self.world_info[uid]['content']))
                     self.socketio.emit("world_info_entry", self.world_info[uid], broadcast=True, room="UI_2")
             else:
@@ -1627,9 +1631,13 @@ class KoboldWorldInfo(object):
                     self.world_info[uid]['token_length'] = len(self.koboldai_vars.tokenizer.encode(self.world_info[uid]['content']))
                 self.send_to_ui()
         else:
+            had_change = False
             for uid in self.world_info:
+                if self.world_info[uid]['token_length'] != 0 and not had_change:
+                    had_change = True
                 self.world_info[uid]['token_length'] = 0
-            self.send_to_ui()
+            if had_change:
+                self.send_to_ui()
                 
     
     def add_folder(self, folder):
@@ -1754,6 +1762,7 @@ class KoboldWorldInfo(object):
         return uid
         
     def edit_item(self, uid, title, key, keysecondary, folder, constant, manual_text, comment, use_wpp=False, before=None, wpp={'name': "", 'type': "", 'format': "W++", 'attributes': {}}):
+        logger.debug("Editing World Info {}: {}".format(uid, title))
         old_folder = self.world_info[uid]['folder']
         #move the world info entry if the folder changed or if there is a new order requested
         if old_folder != folder or before is not None:
@@ -1853,6 +1862,7 @@ class KoboldWorldInfo(object):
     def send_to_ui(self):
         if self.socketio is not None:
             self.socketio.emit("world_info_folder", {x: self.world_info_folder[x] for x in self.world_info_folder}, broadcast=True, room="UI_2")
+            logger.debug("Sending all world info from send_to_ui")
             for uid in self.world_info:
                 self.socketio.emit("world_info_entry", self.world_info[uid], broadcast=True, room="UI_2")
     
