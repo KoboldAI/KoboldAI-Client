@@ -4703,7 +4703,7 @@ process_cookies();
 		item.addEventListener("click", action.click);
 	}
 
-	$("#gamescreen").contextmenu(function(event) {
+	$el("#gamescreen").addEventListener("contextmenu", function(event) {
 		// If control is held, do not run our custom logic or cancel the browser's.
 		if (event.ctrlKey) return;
 
@@ -4712,7 +4712,6 @@ process_cookies();
 
 		// Close if open
 		if (!contextMenu.classList.contains("hidden")) {
-			console.log("Close if open");
 			contextMenu.classList.add("hidden");
 			return;
 		}
@@ -4729,26 +4728,23 @@ process_cookies();
 		contextMenu.classList.remove("hidden");
 
 		// Set position to click position
-		position_context_menu(contextMenu, event.originalEvent.x, event.originalEvent.y);
+		position_context_menu(contextMenu, event.x, event.y);
 
 		// Don't let the document contextmenu catch us and close our context menu
 		event.stopPropagation();
 	});
 
 	// When we make a browser context menu, close ours.
-	$(document).contextmenu(function(event) {
-		console.log("When we make a browser context menu, close ours.");
+	document.addEventListener("contextmenu", function(event) {
 		contextMenu.classList.add("hidden");
 	});
 
 	// When we click outside of our context menu, close ours.
-	$(document).click(function(event) {
-		console.log("When we click outside of our context menu, close ours.");
+	document.addEventListener("click", function(event) {
 		contextMenu.classList.add("hidden");
 	});
 
 	window.addEventListener("blur", function(event) {
-		console.log("When we blur out of our context menu, close.");
 		contextMenu.classList.add("hidden");
 	});
 })();
