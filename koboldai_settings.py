@@ -81,7 +81,7 @@ def process_variable_changes(socketio, classname, name, value, old_value, debug_
 
 class koboldai_vars(object):
     def __init__(self, socketio):
-        self._model_settings = model_settings(socketio)
+        self._model_settings = model_settings(socketio, self)
         self._user_settings = user_settings(socketio)
         self._system_settings = system_settings(socketio, self)
         self._story_settings = {'default': story_settings(socketio, self)}
@@ -235,6 +235,7 @@ class koboldai_vars(object):
          
         context.append({"type": "memory", "text": memory_text, "tokens": self.get_token_representation(memory_encoded)})
         text += memory_text
+        used_tokens += self.memory_length if self.memory_length <= self.max_memory_length else self.max_memory_length
         
         #Add constant world info entries to memory
         for wi in self.worldinfo_v2:
@@ -250,6 +251,7 @@ class koboldai_vars(object):
                         "tokens": self.get_token_representation(wi_text),
                     })
                     text += wi_text
+                    used_tokens += wi['token_length']
         
         
         action_text_split = self.actions.to_sentences(submitted_text=submitted_text)
@@ -295,6 +297,7 @@ class koboldai_vars(object):
                                 wi_text = wi['content']
                                 context.append({"type": "world_info", "text": wi_text, "tokens": self.get_token_representation(wi_text)})
                                 text += wi_text
+                                used_tokens += wi['token_length']
                                 self.worldinfo_v2.set_world_info_used(wi['uid'])
                    
                 #We'll add the prompt text AFTER we go through the game text as the world info needs to come first if we're in method 1 rather than method 2
@@ -387,6 +390,7 @@ class koboldai_vars(object):
                                 else:
                                     game_text = "{}{}".format(wi_text, game_text)
                                     game_context.insert(0, {"type": "world_info", "text": wi_text, "tokens": self.get_token_representation(encoded_wi)})
+                                used_tokens += wi['token_length']
                                 self.worldinfo_v2.set_world_info_used(wi['uid'])
             else:
                 used_all_tokens = True
@@ -439,6 +443,7 @@ class koboldai_vars(object):
                                 wi_text = wi['content']
                                 context.append({"type": "world_info", "text": wi_text, "tokens": self.get_token_representation(wi_text)})
                                 text += wi_text
+                                used_tokens += wi['token_length']
                                 self.worldinfo_v2.set_world_info_used(wi['uid'])
 
                 text += prompt_text
@@ -460,7 +465,7 @@ class koboldai_vars(object):
         self.context = context
 
         #logger.debug("Calc_AI_text: {}s".format(time.time()-start_time))
-        
+        logger.debug("Token Budget: {}. Used Tokens: {}".format(token_budget, used_tokens))
         if return_text:
             return text
         return tokens, used_tokens, used_tokens+self.genamt, used_world_info
@@ -571,11 +576,11 @@ class settings(object):
                     raise
 
 class model_settings(settings):
-    local_only_variables = ['badwordsids', 'apikey', 'tqdm', 'socketio', 'default_preset']
+    local_only_variables = ['badwordsids', 'apikey', 'tqdm', 'socketio', 'default_preset', 'koboldai_vars']
     no_save_variables = ['tqdm', 'tqdm_progress', 'tqdm_rem_time', 'socketio', 'modelconfig', 'custmodpth', 'generated_tkns', 
-                         'loaded_layers', 'total_layers', 'total_download_chunks', 'downloaded_chunks', 'presets', 'default_preset']
+                         'loaded_layers', 'total_layers', 'total_download_chunks', 'downloaded_chunks', 'presets', 'default_preset', 'koboldai_vars']
     settings_name = "model"
-    def __init__(self, socketio):
+    def __init__(self, socketio, koboldai_vars):
         self.socketio = socketio
         self.reset_for_model_load()
         self.model       = ""     # Model ID string chosen at startup
@@ -600,6 +605,7 @@ class model_settings(settings):
         self.online_model = ''
         self.welcome_default = "<img src='static/Welcome_Logo.png' style='max-width: 720px; width: 100%;'><br/>Please load a model from the left." # Custom Welcome Text
         self.welcome     = self.welcome_default
+        self.koboldai_vars = koboldai_vars
         
     def reset_for_model_load(self):
         self.max_length  = 2048    # Maximum number of tokens to submit per action
@@ -642,6 +648,9 @@ class model_settings(settings):
         old_value = getattr(self, name, None)
         super().__setattr__(name, value)
         #Put variable change actions here
+        
+        if not new_variable and (name == 'max_length' or name == 'genamt'):
+            ignore = self.koboldai_vars.calc_ai_text()
         
         #set preset values
         if name == 'selected_preset' and value != "":
@@ -696,6 +705,8 @@ class model_settings(settings):
                     self.tqdm_progress = 0
                 if self.tqdm.format_dict['rate'] is not None:
                     self.tqdm_rem_time = str(datetime.timedelta(seconds=int(float(self.total_download_chunks-self.downloaded_chunks)/self.tqdm.format_dict['rate'])))  
+        
+        
         
         if name not in self.local_only_variables and name[0] != "_" and not new_variable:
             process_variable_changes(self.socketio, self.__class__.__name__.replace("_settings", ""), name, value, old_value)
