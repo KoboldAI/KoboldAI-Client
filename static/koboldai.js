@@ -2479,20 +2479,6 @@ function save_preset() {
 }
 
 //--------------------------------------------General UI Functions------------------------------------
-function enable_experemental_features(checked) {
-	if (checked) {
-		setCookie("enable_experemental_features", "true");
-		for (item of document.getElementsByClassName("experemental")) {
-			item.classList.remove("hidden");
-		}
-	} else {
-		setCookie("enable_experemental_features", "false");
-		for (item of document.getElementsByClassName("experemental")) {
-			item.classList.add("hidden");
-		}
-	}
-}
-
 function set_font_size(element) {
 	new_font_size = element.value;
 	var r = document.querySelector(':root');
@@ -4441,7 +4427,6 @@ function process_cookies() {
 	} else if (getCookie("options_on_right") == "true") {
 		options_on_right(true);
 	}
-	enable_experemental_features((getCookie("enable_experemental_features", "false") == "true"));
 	
 	Change_Theme(getCookie("theme", "Monochrome"));
 	

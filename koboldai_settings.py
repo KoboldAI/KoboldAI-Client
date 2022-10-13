@@ -1047,6 +1047,7 @@ class system_settings(settings):
         self.summary_tokenizer = None
         self.keep_img_gen_in_memory = False
         self.cookies = {} #cookies for colab since colab's URL changes, cookies are lost
+        self.experimental_features = False
         
         @dataclass
         class _inference_config:
