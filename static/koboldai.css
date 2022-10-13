@@ -1179,7 +1179,6 @@ body {
 /* ---------------------------------- GAME SCREEN ----------------------------------*/
 .gamescreen {
 	background-color: var(--gamescreen_background);
-	z-index: -1;
 	box-shadow: var(--light_shadow_value);
 	color: var(--gamescreen_text);
 	width: 100%;
