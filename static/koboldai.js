@@ -260,7 +260,7 @@ function create_options(action) {
 			icon.setAttribute('data-glyph', "loop-circular");
 			iconcell.append(icon);
 			delete_icon = $e("span", iconcell, {"classes": ["material-icons-outlined", "cursor", 'delete_option_icon'], 
-												"title": "delete option", 'option_id': i, 
+												"tooltip": "Delete Option", 'option_id': i,
 												'option_chunk': action.id, 'textContent': 'delete'});
 			delete_icon.onclick = function () {
 									socket.emit("delete_option", {"chunk": this.getAttribute("option_chunk"), "option": this.getAttribute("option_id")});
@@ -1213,6 +1213,8 @@ function oai_engines(data) {
 }
 
 function getModelParameterCount(modelName) {
+	if (!modelName) return null;
+
 	// The "T" and "K" may be a little optimistic...
 	let paramsString = modelName.toUpperCase().match(/[\d.]+[TBMK]/)
 	if (!paramsString) return null;
@@ -1275,37 +1277,40 @@ function show_model_menu(data) {
 		var folder_icon = document.createElement("span");
 		folder_icon.classList.add("material-icons-outlined");
 		folder_icon.classList.add("cursor");
-		if ((item[3]) || (item[0] == 'Load a model from its directory') || (item[0] == 'Load an old GPT-2 model (eg CloverEdition)')) {
-			folder_icon.textContent = "folder";
-		} else {
-			folder_icon.textContent = "psychology";
-		}
+
+		let isModel = !(
+			item.isMenu ||
+			item.label === "Load a model from its directory" ||
+			item.label === "Load an old GPT-2 model (eg CloverEdition)"
+		);
+
+		folder_icon.textContent = isModel ? "psychology" : "folder";
 		list_item.append(folder_icon);
 		
 		
 		//create the actual item
 		var popup_item = document.createElement("span");
 		popup_item.classList.add("model");
-		popup_item.setAttribute("display_name", item[0]);
-		popup_item.id = item[1];
+		popup_item.setAttribute("display_name", item.label);
+		popup_item.id = item.name;
 		
 		popup_item.setAttribute("Menu", data.menu)
 		//name text
 		var text = document.createElement("span");
 		text.style="grid-area: item;";
-		text.textContent = item[0];
+		text.textContent = item.label;
 		popup_item.append(text);
 		//model size text
 		var text = document.createElement("span");
-		text.textContent = item[2];
+		text.textContent = item.size;
 		text.style="grid-area: gpu_size;padding: 2px;";
 		popup_item.append(text);
 
 		(function() {
 			// Anon function to avoid unreasonable indentation
-			if (folder_icon.innerText !== "psychology") return;
+			if (!isModel) return;
 
-			let parameterCount = getModelParameterCount(item[0]);
+			let parameterCount = getModelParameterCount(item.label);
 			if (!parameterCount) return;
 
 			let warningText = "";
@@ -1316,10 +1321,24 @@ function show_model_menu(data) {
 
 			if (!warningText) return;
 			$e("span", list_item, {
-				classes: ["material-icons-outlined"],
+				classes: ["material-icons-outlined", "model-size-warning"],
 				innerText: "warning",
 				"style.grid-area": "warning_icon",
 				tooltip: warningText
+			});
+
+		})();
+
+		(function() {
+			// Anon function to avoid unreasonable indentation
+			if (!item.isDownloaded) return;
+			if (!isModel) return;
+
+			$e("span", list_item, {
+				classes: ["material-icons-outlined", "model-download-notification"],
+				innerText: "download_done",
+				"style.grid-area": "downloaded_icon",
+				tooltip: "This model is already downloaded."
 			});
 		})();
 		
@@ -1658,9 +1677,9 @@ function world_info_entry(data) {
 	delete_icon = world_info_card.querySelector('#world_info_delete_');
 	delete_icon.id = "world_info_delete_"+data.uid;
 	delete_icon.setAttribute("uid", data.uid);
-	delete_icon.setAttribute("title", data.title);
+	delete_icon.setAttribute("wi-title", data.title);
 	delete_icon.onclick = function () {
-		if (confirm("This will delete world info "+this.getAttribute("title"))) {
+		if (confirm("This will delete world info "+this.getAttribute("wi-title"))) {
 			if (parseInt(this.getAttribute("uid")) < 0) {
 				this.parentElement.parentElement.remove();
 			} else {
@@ -2652,9 +2671,13 @@ function calc_token_usage(
 function Change_Theme(theme) {
 	var css = document.getElementById("CSSTheme");
     css.setAttribute("href", "/themes/"+theme+".css");
-	setTimeout(() => {
+
+	// We must wait for the style to load before we read it
+	css.onload = function() {
+		recolorTokens();
 		create_theming_elements();
-	}, "1000")
+	}
+
 	setCookie("theme", theme);
 	select = document.getElementById("selected_theme");
 	for (element of select.childNodes) {
@@ -2898,6 +2921,24 @@ function distortColor(rgb) {
 	return rgb;
 }
 
+function dec2Hex2(number) {
+	// Two padded hex number hack
+	let x = number.toString(16);
+	if (x.length === 1) return `0${x}`;
+	return x;
+}
+
+function recolorTokens() {
+	for (const contextContainer of document.querySelectorAll(".context-block")) {
+		let rgb = window.getComputedStyle(contextContainer)["background-color"].match(/(\d+), (\d+), (\d+)/).slice(1, 4).map(Number);
+		for (const tokenEl of contextContainer.querySelectorAll(".context-token")) {
+			let tokenColor = distortColor(rgb);
+			tokenColor = "#" + (tokenColor.map(dec2Hex2).join(""));
+			tokenEl.style.backgroundColor = tokenColor;
+		}
+	}
+}
+
 function update_context(data) {
 	$(".context-block").remove();
 
@@ -2935,7 +2976,7 @@ function update_context(data) {
 
 		for (const [tokenId, token] of entry.tokens) {
 			let tokenColor = distortColor(rgb);
-			tokenColor = "#" + (tokenColor.map((x) => x.toString(16)).join(""));
+			tokenColor = "#" + (tokenColor.map(dec2Hex2).join(""));
 
 			let tokenEl = $e("span", el, {
 				classes: ["context-token"],
@@ -5084,7 +5125,6 @@ function initalizeTooltips() {
 	function registerElement(el) {
 		// el should have attribute "tooltip"
 		let text = el.getAttribute("tooltip");
-		el.setAttribute("wawawa", "yeah")
 
 		el.addEventListener("mouseenter", function(event) {
 			tooltip.innerText = text;
