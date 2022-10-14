@@ -260,7 +260,7 @@ function create_options(action) {
 			icon.setAttribute('data-glyph', "loop-circular");
 			iconcell.append(icon);
 			delete_icon = $e("span", iconcell, {"classes": ["material-icons-outlined", "cursor", 'delete_option_icon'], 
-												"title": "delete option", 'option_id': i, 
+												"tooltip": "Delete Option", 'option_id': i,
 												'option_chunk': action.id, 'textContent': 'delete'});
 			delete_icon.onclick = function () {
 									socket.emit("delete_option", {"chunk": this.getAttribute("option_chunk"), "option": this.getAttribute("option_id")});
@@ -1658,9 +1658,9 @@ function world_info_entry(data) {
 	delete_icon = world_info_card.querySelector('#world_info_delete_');
 	delete_icon.id = "world_info_delete_"+data.uid;
 	delete_icon.setAttribute("uid", data.uid);
-	delete_icon.setAttribute("title", data.title);
+	delete_icon.setAttribute("wi-title", data.title);
 	delete_icon.onclick = function () {
-		if (confirm("This will delete world info "+this.getAttribute("title"))) {
+		if (confirm("This will delete world info "+this.getAttribute("wi-title"))) {
 			if (parseInt(this.getAttribute("uid")) < 0) {
 				this.parentElement.parentElement.remove();
 			} else {
