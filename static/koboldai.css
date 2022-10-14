@@ -1030,16 +1030,23 @@ td.server_vars {
 .world_info_card.used_in_game {
 	border: 2px outset var(--wi_card_border_color_to_ai);
 }
+
+.world_info_card input {
+	user-select: text;
+}
 	
 .world_info_title_area {
 	display: grid;
 	margin-left: 2px;
 	grid-template-areas: "title delete";
 	grid-template-columns: auto 20px;
+	user-select: text;
 }
 
 .world_info_title {
 	grid-area: title;
+	user-select: text;
+	-moz-user-select:text;
 }
 
 .world_info_delete {

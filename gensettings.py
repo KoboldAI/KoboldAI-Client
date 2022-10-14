@@ -556,7 +556,7 @@ gensettingstf = [
     "UI_V2_Only": True,
  	"uitype": "toggle",
  	"unit": "bool",
- 	"label": "Experimental Items",
+ 	"label": "Experimental UI",
  	"id": "experimental_features",
  	"min": 0,
  	"max": 1,
