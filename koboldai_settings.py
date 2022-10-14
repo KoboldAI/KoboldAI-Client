@@ -1548,7 +1548,7 @@ class KoboldStoryRegister(object):
         action_text = self.__str__()
         action_text = "{}{}{}".format("" if self.story_settings is None else self.story_settings.prompt, action_text, submitted_text)
         ###########action_text_split = [sentence, actions used in sentence, token length, included in AI context]################
-        action_text_split = [[x, [], 0, False] for x in re.findall(".*?[.!?]\s+", action_text)]
+        action_text_split = [[x, [], 0, False] for x in re.findall(".*?[.!?]\s+", action_text, re.S)]
         #The above line can trim out the last sentence if it's incomplete. Let's check for that and add it back in
         if len("".join([x[0] for x in action_text_split])) < len(action_text):
             action_text_split.append([action_text[len("".join([x[0] for x in action_text_split])):], [], 0, False])
