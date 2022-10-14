@@ -1630,7 +1630,7 @@ def get_oai_models(data):
 def get_cluster_models(msg):
     koboldai_vars.oaiapikey = msg['key']
     koboldai_vars.apikey = koboldai_vars.oaiapikey
-    model = msg['model']
+    model='CLUSTER'
     url = msg['url']
     # Get list of models from public cluster
     print("{0}Retrieving engine list...{1}".format(colors.PURPLE, colors.END), end="")
@@ -5048,8 +5048,8 @@ def core_generate(text: list, min: int, max: int, found_entries: set, is_core: b
             result = raw_generate(
                 gen_in[0], 
                 max_new=koboldai_vars.genamt,
-                do_streaming=True,
-                do_dynamic_wi=True,
+                do_streaming=koboldai_vars.output_streaming,
+                do_dynamic_wi=koboldai_vars.dynamicscan,
                 batch_count=numseqs,
                 # Real max length is handled by CoreStopper.
                 bypass_hf_maxlength=True,
@@ -5182,7 +5182,8 @@ def raw_generate(
     batch_count: int = 1,
     bypass_hf_maxlength: bool = False,
     generation_settings: Optional[dict] = None,
-    is_core: bool = False
+    is_core: bool = False,
+    found_entries: set = ()
 ) -> GenerationResult:
 
     koboldai_vars.inference_config.do_core = is_core
@@ -5460,15 +5461,18 @@ def cluster_raw_generate(
     cluster_metadata = {
         'prompt': decoded_prompt,
         'params': reqdata,
-        'api_key': koboldai_vars.apikey,
         'models': [x for x in koboldai_vars.cluster_requested_models if x],
+        'trusted_workers': False,
     }
+    
+    cluster_headers = {'apikey': koboldai_vars.apikey}
 
     try:
         # Create request
         req = requests.post(
-            koboldai_vars.colaburl[:-8] + "/api/v1/generate/async",
+            koboldai_vars.colaburl[:-8] + "/api/v2/generate/async",
             json=cluster_metadata,
+            headers=cluster_headers
         )
     except requests.exceptions.ConnectionError:
         errmsg = f"Horde unavailable. Please try again later"
@@ -9404,26 +9408,26 @@ def _generate_text(body: GenerationInputSchema):
             "msg": "Server is busy; please try again later.",
             "type": "service_unavailable",
         }}), mimetype="application/json", status=503))
-    if vars.use_colab_tpu:
+    if koboldai_vars.use_colab_tpu:
         import tpu_mtj_backend
     if hasattr(body, "sampler_seed"):
         # If a seed was specified, we need to save the global RNG state so we
         # can restore it later
-        old_seed = vars.seed
-        old_rng_state = tpu_mtj_backend.get_rng_state() if vars.use_colab_tpu else torch.get_rng_state()
-        vars.seed = body.sampler_seed
+        old_seed = koboldai_vars.seed
+        old_rng_state = tpu_mtj_backend.get_rng_state() if koboldai_vars.use_colab_tpu else torch.get_rng_state()
+        koboldai_vars.seed = body.sampler_seed
         # We should try to use a previously saved RNG state with the same seed
-        if body.sampler_seed in vars.rng_states:
-            if vars.use_colab_tpu:
-                tpu_mtj_backend.set_rng_state(vars.rng_states[body.sampler_seed])
+        if body.sampler_seed in koboldai_vars.rng_states:
+            if koboldai_vars.use_colab_tpu:
+                tpu_mtj_backend.set_rng_state(koboldai_vars.rng_states[body.sampler_seed])
             else:
-                torch.set_rng_state(vars.rng_states[body.sampler_seed])
+                torch.set_rng_state(koboldai_vars.rng_states[body.sampler_seed])
         else:
-            if vars.use_colab_tpu:
+            if koboldai_vars.use_colab_tpu:
                 tpu_mtj_backend.set_rng_state(tpu_mtj_backend.new_rng_state(body.sampler_seed))
             else:
                 torch.manual_seed(body.sampler_seed)
-        vars.rng_states[body.sampler_seed] = tpu_mtj_backend.get_rng_state() if vars.use_colab_tpu else torch.get_rng_state()
+        koboldai_vars.rng_states[body.sampler_seed] = tpu_mtj_backend.get_rng_state() if koboldai_vars.use_colab_tpu else torch.get_rng_state()
     if hasattr(body, "sampler_order"):
         if len(body.sampler_order) < 7:
             body.sampler_order = [6] + body.sampler_order
@@ -9452,8 +9456,8 @@ def _generate_text(body: GenerationInputSchema):
         "max_context_length": ("koboldai_vars", "max_length", None),
         "n": ("koboldai_vars", "numseqs", None),
         "quiet": ("koboldai_vars", "quiet", None),
-        "sampler_order": ("vars", "sampler_order", None),
-        "sampler_full_determinism": ("vars", "full_determinism", None),
+        "sampler_order": ("koboldai_vars", "sampler_order", None),
+        "sampler_full_determinism": ("koboldai_vars", "full_determinism", None),
     }
     saved_settings = {}
     set_aibusy(1)
@@ -9504,8 +9508,8 @@ def _generate_text(body: GenerationInputSchema):
         if koboldai_vars.allowsp and getattr(body, "soft_prompt", None) is not None:
             spRequest(old_spfilename)
         if hasattr(body, "sampler_seed"):
-            vars.seed = old_seed
-            if vars.use_colab_tpu:
+            koboldai_vars.seed = old_seed
+            if koboldai_vars.use_colab_tpu:
                 tpu_mtj_backend.set_rng_state(old_rng_state)
             else:
                 torch.set_rng_state(old_rng_state)
@@ -11734,7 +11738,7 @@ def get_config_sampler_seed():
               example:
                 value: 3475097509890965500
     """
-    return {"value": __import__("tpu_mtj_backend").get_rng_seed() if vars.use_colab_tpu else __import__("torch").initial_seed()}
+    return {"value": __import__("tpu_mtj_backend").get_rng_seed() if koboldai_vars.use_colab_tpu else __import__("torch").initial_seed()}
 
 @api_v1.put("/config/sampler_seed")
 @api_schema_wrap
@@ -11759,13 +11763,13 @@ def put_config_sampler_seed(body: SamplerSeedSettingSchema):
               schema: EmptySchema
         {api_validation_error_response}
     """
-    if vars.use_colab_tpu:
+    if koboldai_vars.use_colab_tpu:
         import tpu_mtj_backend
         tpu_mtj_backend.set_rng_seed(body.value)
     else:
         import torch
         torch.manual_seed(body.value)
-    vars.seed = body.value
+    koboldai_vars.seed = body.value
     return {}
 
 config_endpoint_schemas: List[Type[KoboldSchema]] = []
@@ -11970,7 +11974,7 @@ class SamplerOrderSettingSchema(KoboldSchema):
     value = fields.List(fields.Integer(), validate=[validate.Length(min=6), permutation_validator], required=True)
     class KoboldMeta:
         route_name = "sampler_order"
-        obj = "vars"
+        obj = "koboldai_vars"
         var_name = "sampler_order"
         name = "sampler order"
         example_yaml_value = "[6, 0, 1, 2, 3, 4, 5]"
@@ -11980,7 +11984,7 @@ class SamplerFullDeterminismSettingSchema(KoboldSchema):
     value = fields.Boolean(required=True)
     class KoboldMeta:
         route_name = "sampler_full_determinism"
-        obj = "vars"
+        obj = "koboldai_vars"
         var_name = "full_determinism"
         name = "sampler full determinism"
         example_yaml_value = "false"

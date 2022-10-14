@@ -1639,6 +1639,7 @@ function world_info_entry(data) {
 	title.setAttribute("uid", data.uid);
 	title.setAttribute("original_text", data.title);
 	title.setAttribute("contenteditable", true);
+	title.ondragstart=function() {console.log("Killing drag");event.preventDefault();event.stopPropagation();};
 	title.onblur = function () {
 				if (this.textContent != this.getAttribute("original_text")) {
 					world_info_data[this.getAttribute('uid')]['title'] = this.textContent;
@@ -1738,6 +1739,7 @@ function world_info_entry(data) {
 				label.textContent = "\xa0\xa0\xa0\xa0Attribute: ";
 				attribute_area.append(label);
 				input = document.createElement("input");
+				input.ondragstart=function() {console.log("Killing drag");event.preventDefault();event.stopPropagation();};
 				input.value = attribute;
 				input.type = "text";
 				input.setAttribute("uid", data.uid);
@@ -1755,6 +1757,7 @@ function world_info_entry(data) {
 					value_area.append(label);
 					input = document.createElement("input");
 					input.type = "text";
+					input.ondragstart=function() {console.log("Killing drag");event.preventDefault();event.stopPropagation();};
 					input.onchange = function() {do_wpp(this.parentElement.parentElement)};
 					input.value = value;
 					input.setAttribute("uid", data.uid);
@@ -1769,6 +1772,7 @@ function world_info_entry(data) {
 				value_area.append(label);
 				input = document.createElement("input");
 				input.type = "text";
+				input.ondragstart=function() {console.log("Killing drag");event.preventDefault();event.stopPropagation();};
 				input.setAttribute("uid", data.uid);
 				input.setAttribute("data_type", "value");
 				input.id = "wpp_"+data.uid+"_value_"+i+"_blank";
@@ -1786,6 +1790,7 @@ function world_info_entry(data) {
 	input = document.createElement("input");
 	input.value = "";
 	input.type = "text";
+	input.ondragstart=function() {console.log("Killing drag");event.preventDefault();event.stopPropagation();};
 	input.setAttribute("uid", data.uid);
 	input.setAttribute("value_num", i);
 	input.setAttribute("data_type", "attribute");
@@ -3038,6 +3043,8 @@ function add_tags(tags, data) {
 	for (tag of data.key) {
 		tag_item = document.createElement("span");
 		tag_item.classList.add("tag");
+		tag_item.setAttribute("draggable", true);
+		tag_item.ondragstart=function() {console.log("Killing drag");event.preventDefault();event.stopPropagation();};
 		x = document.createElement("span");
 		x.textContent = "x ";
 		x.classList.add("delete_icon");
@@ -3103,6 +3110,7 @@ function add_secondary_tags(tags, data) {
 	for (tag of data.keysecondary) {
 		tag_item = document.createElement("span");
 		tag_item.classList.add("tag");
+		tag_item.ondragstart=function() {console.log("Killing drag");event.preventDefault();event.stopPropagation();};
 		x = document.createElement("span");
 		x.textContent = "x ";
 		x.classList.add("delete_icon");
