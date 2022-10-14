@@ -2664,6 +2664,7 @@ function Change_Theme(theme) {
 			element.selected = false;
 		}
 	}
+	recolorTokens();
 }
 
 function palette_color(item) {
@@ -2898,6 +2899,24 @@ function distortColor(rgb) {
 	return rgb;
 }
 
+function dec2Hex2(number) {
+	// Two padded hex number hack
+	let x = number.toString(16);
+	if (x.length === 1) return `0${x}`;
+	return x;
+}
+
+function recolorTokens() {
+	for (const contextContainer of document.querySelectorAll(".context-block")) {
+		let rgb = window.getComputedStyle(contextContainer)["background-color"].match(/(\d+), (\d+), (\d+)/).slice(1, 4).map(Number);
+		for (const tokenEl of contextContainer.querySelectorAll(".context-token")) {
+			let tokenColor = distortColor(rgb);
+			tokenColor = "#" + (tokenColor.map(dec2Hex2).join(""));
+			tokenEl.style.backgroundColor = tokenColor;
+		}
+	}
+}
+
 function update_context(data) {
 	$(".context-block").remove();
 
@@ -2935,7 +2954,7 @@ function update_context(data) {
 
 		for (const [tokenId, token] of entry.tokens) {
 			let tokenColor = distortColor(rgb);
-			tokenColor = "#" + (tokenColor.map((x) => x.toString(16)).join(""));
+			tokenColor = "#" + (tokenColor.map(dec2Hex2).join(""));
 
 			let tokenEl = $e("span", el, {
 				classes: ["context-token"],
