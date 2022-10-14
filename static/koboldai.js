@@ -5103,7 +5103,6 @@ function initalizeTooltips() {
 	function registerElement(el) {
 		// el should have attribute "tooltip"
 		let text = el.getAttribute("tooltip");
-		el.setAttribute("wawawa", "yeah")
 
 		el.addEventListener("mouseenter", function(event) {
 			tooltip.innerText = text;
