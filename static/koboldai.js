@@ -2652,9 +2652,13 @@ function calc_token_usage(
 function Change_Theme(theme) {
 	var css = document.getElementById("CSSTheme");
     css.setAttribute("href", "/themes/"+theme+".css");
-	setTimeout(() => {
+
+	// We must wait for the style to load before we read it
+	css.onload = function() {
+		recolorTokens();
 		create_theming_elements();
-	}, "1000")
+	}
+
 	setCookie("theme", theme);
 	select = document.getElementById("selected_theme");
 	for (element of select.childNodes) {
@@ -2664,7 +2668,6 @@ function Change_Theme(theme) {
 			element.selected = false;
 		}
 	}
-	recolorTokens();
 }
 
 function palette_color(item) {
