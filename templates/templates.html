@@ -1,7 +1,7 @@
 <div draggable="true" class="world_info_card" id="world_info_">
 	<div class="world_info_title_area">
 		<h4 draggable="true" ondragstart="event.preventDefault();event.stopPropagation();" id="world_info_title_"
-    		class="world_info_title" onfocus="this.parentElement.parentElement.setAttribute('draggable', 'false');"></h4>
+    		class="world_info_title" onfocus="this.parentElement.parentElement.setAttribute('draggable', 'false');this.setAttribute('draggable', 'false');"></h4>
 		<span id="world_info_delete_" class="world_info_delete">X</span>
 	</div>
 	<div  class="world_info_tag_area" id="world_info_toggle_area_">
@@ -25,17 +25,18 @@
 		<table>
 			<tr>
 				<td>Type:</td>
-				<td><input draggable="true" ondragstart="event.preventDefault();event.stopPropagation();" type=text id="wpp_type_" 
+				<td><input draggable="true" type=text id="wpp_type_" 
 				           onchange="do_wpp(this.parentElement.parentElement.parentElement.parentElement.parentElement)"
-						   onfocus="this.parentElement.parentElement.parentElement.parentElement.parentElement.setAttribute('draggable', 'false');"
-						   onblur="this.parentElement.parentElement.parentElement.parentElement.parentElement.setAttribute('draggable', 'true');"></td>
+						   onfocus="console.log('focus');this.parentElement.parentElement.parentElement.parentElement.parentElement.setAttribute('draggable', 'false');this.setAttribute('draggable', 'false');"
+						   onblur="console.log('blur');this.parentElement.parentElement.parentElement.parentElement.parentElement.setAttribute('draggable', 'true');this.setAttribute('draggable', 'true');"
+						   ondragstart="event.preventDefault();event.stopPropagation();" ></td>
 			</tr>
 			<tr>
 				<td>Name:</td>
 				<td><input draggable="true" ondragstart="event.preventDefault();event.stopPropagation();" type=text id="wpp_name_" 
 						   onchange="do_wpp(this.parentElement.parentElement.parentElement.parentElement.parentElement)"
-						   onfocus="this.parentElement.parentElement.parentElement.parentElement.parentElement.setAttribute('draggable', 'false');"
-						   onblur="this.parentElement.parentElement.parentElement.parentElement.parentElement.setAttribute('draggable', 'true');"></td>
+						   onfocus="this.parentElement.parentElement.parentElement.parentElement.parentElement.setAttribute('draggable', 'false');this.setAttribute('draggable', 'false');"
+						   onblur="this.parentElement.parentElement.parentElement.parentElement.parentElement.setAttribute('draggable', 'true');this.setAttribute('draggable', 'true');"></td>
 			</tr>
 		</table>
 		
@@ -43,19 +44,20 @@
 	<div id="world_info_basic_text_">
 		Text:
 		<textarea draggable="true" ondragstart="event.preventDefault();event.stopPropagation();" id="world_info_entry_text_" class="world_info_text fullwidth" oninput="autoResize(this, 60)" 
-		onfocus="this.parentElement.parentElement.setAttribute('draggable', 'false');autoResize(this, 60)" onblur="this.parentElement.parentElement.setAttribute('draggable', 'true');this.style.height='60px';"></textarea>
+		onfocus="this.parentElement.parentElement.setAttribute('draggable', 'false');this.setAttribute('draggable', 'false');autoResize(this, 60)" 
+		onblur="this.parentElement.parentElement.setAttribute('draggable', 'true');this.setAttribute('draggable', 'true');this.style.height='60px';"></textarea>
 	</div>
 	<div id="world_info_entry_w++_" class="hidden">
 		<input draggable="true" ondragstart="event.preventDefault();event.stopPropagation();" type=text placeholder="Type" 
-			   onfocus="this.parentElement.parentElement.setAttribute('draggable', 'false');"
-			   onblur="this.parentElement.parentElement.setAttribute('draggable', 'false');"/>
+			   onfocus="this.parentElement.parentElement.setAttribute('draggable', 'false');this.setAttribute('draggable', 'false');"
+			   onblur="this.parentElement.parentElement.setAttribute('draggable', 'true');this.setAttribute('draggable', 'true');"/>
 		<input type=text placeholder="Name"
 		       onfocus="this.parentElement.parentElement.setAttribute('draggable', 'false');"
-			   onblur="this.parentElement.parentElement.setAttribute('draggable', 'false');"/>
+			   onblur="this.parentElement.parentElement.setAttribute('draggable', 'true');"/>
 		<div>
 			<input draggable="true" ondragstart="event.preventDefault();event.stopPropagation();" type=text placeholder="attribute"
-				   onfocus="this.parentElement.parentElement.parentElement.setAttribute('draggable', 'false');"
-			       onblur="this.parentElement.parentElement.parentElement.setAttribute('draggable', 'false');"/>
+				   onfocus="this.parentElement.parentElement.parentElement.setAttribute('draggable', 'false');this.setAttribute('draggable', 'false');"
+			       onblur="this.parentElement.parentElement.parentElement.setAttribute('draggable', 'true');this.setAttribute('draggable', 'true');"/>
 			<input type=text placeholder="value"/>
 		</div>
 	</div>
@@ -63,8 +65,8 @@
 		Comment:
 		<textarea draggable="true" ondragstartondragstart="event.preventDefault();event.stopPropagation();" rows=1 id="world_info_comment_" 
 				  class="world_info_text fullwidth" oninput="autoResize(this, 60)" onfocus="autoResize(this, 60)" onblur="this.style.height='60px';"
-				  onfocus="this.parentElement.parentElement.setAttribute('draggable', 'false');"
-			      onblur="this.parentElement.parentElement.setAttribute('draggable', 'false');"></textarea>
+				  onfocus="this.parentElement.parentElement.setAttribute('draggable', 'false');this.setAttribute('draggable', 'false');;"
+			      onblur="this.parentElement.parentElement.setAttribute('draggable', 'true');this.setAttribute('draggable', 'true');"></textarea>
 	</div>
 </div>
 <div id="empty_bias">

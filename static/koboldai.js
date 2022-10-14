@@ -1642,6 +1642,7 @@ function world_info_entry(data) {
 	title.ondragstart=function() {event.preventDefault();event.stopPropagation();};
 	title.onblur = function () {
 				this.parentElement.parentElement.setAttribute('draggable', 'true');
+				this.setAttribute('draggable', 'true');
 				if (this.textContent != this.getAttribute("original_text")) {
 					world_info_data[this.getAttribute('uid')]['title'] = this.textContent;
 					send_world_info(this.getAttribute('uid'));
@@ -1742,8 +1743,9 @@ function world_info_entry(data) {
 				input = document.createElement("input");
 				input.setAttribute("contenteditable", true);
 				input.ondragstart=function() {event.preventDefault();event.stopPropagation();};
-				input.onfocus=function() {this.parentElement.parentElement.parentElement.setAttribute('draggable', 'false');};
-				input.onblur=function() {this.parentElement.parentElement.parentElement.setAttribute('draggable', 'true');};
+				input.onfocus=function() {this.parentElement.parentElement.parentElement.setAttribute('draggable', 'false');this.setAttribute('draggable', 'false');};
+				input.onblur=function() {this.parentElement.parentElement.parentElement.setAttribute('draggable', 'true');this.setAttribute('draggable', 'true');};
+				input.ondragstart=function() {event.preventDefault();event.stopPropagation();};
 				input.value = attribute;
 				input.type = "text";
 				input.setAttribute("uid", data.uid);
@@ -1764,8 +1766,9 @@ function world_info_entry(data) {
 					input.setAttribute("contenteditable", true);
 					input.ondragstart=function() {event.preventDefault();event.stopPropagation();};
 					input.onchange = function() {do_wpp(this.parentElement.parentElement)};
-					input.onfocus=function() {this.parentElement.parentElement.parentElement.setAttribute('draggable', 'false');};
-					input.onblur=function() {this.parentElement.parentElement.parentElement.setAttribute('draggable', 'true');};
+					input.onfocus=function() {this.parentElement.parentElement.parentElement.setAttribute('draggable', 'false');this.setAttribute('draggable', 'false');};
+					input.onblur=function() {this.parentElement.parentElement.parentElement.setAttribute('draggable', 'true');this.setAttribute('draggable', 'true');};
+					input.ondragstart=function() {event.preventDefault();event.stopPropagation();};
 					input.value = value;
 					input.setAttribute("uid", data.uid);
 					input.setAttribute("data_type", "value");
@@ -1781,8 +1784,9 @@ function world_info_entry(data) {
 				input.type = "text";
 				input.setAttribute("contenteditable", true);
 				input.ondragstart=function() {event.preventDefault();event.stopPropagation();};
-				input.onfocus=function() {this.parentElement.parentElement.parentElement.setAttribute('draggable', 'false');};
-				input.onblur=function() {this.parentElement.parentElement.parentElement.setAttribute('draggable', 'true');};
+				input.onfocus=function() {this.parentElement.parentElement.parentElement.setAttribute('draggable', 'false');this.setAttribute('draggable', 'false');};
+				input.onblur=function() {this.parentElement.parentElement.parentElement.setAttribute('draggable', 'true');this.setAttribute('draggable', 'true');};
+				input.ondragstart=function() {event.preventDefault();event.stopPropagation();};
 				input.setAttribute("uid", data.uid);
 				input.setAttribute("data_type", "value");
 				input.id = "wpp_"+data.uid+"_value_"+i+"_blank";
@@ -1802,8 +1806,8 @@ function world_info_entry(data) {
 	input.type = "text";
 	input.setAttribute("contenteditable", true);
 	input.ondragstart=function() {event.preventDefault();event.stopPropagation();};
-	input.onfocus=function() {this.parentElement.parentElement.parentElement.setAttribute('draggable', 'false');};
-	input.onblur=function() {this.parentElement.parentElement.parentElement.setAttribute('draggable', 'true');};
+	input.onfocus=function() {this.parentElement.parentElement.parentElement.setAttribute('draggable', 'false');this.setAttribute('draggable', 'false');};
+	input.onblur=function() {this.parentElement.parentElement.parentElement.setAttribute('draggable', 'true');this.setAttribute('draggable', 'true');};
 	input.setAttribute("uid", data.uid);
 	input.setAttribute("value_num", i);
 	input.setAttribute("data_type", "attribute");
@@ -3056,8 +3060,6 @@ function add_tags(tags, data) {
 	for (tag of data.key) {
 		tag_item = document.createElement("span");
 		tag_item.classList.add("tag");
-		tag_item.setAttribute("draggable", true);
-		tag_item.ondragstart=function() {event.preventDefault();event.stopPropagation();};
 		x = document.createElement("span");
 		x.textContent = "x ";
 		x.classList.add("delete_icon");
@@ -3074,9 +3076,12 @@ function add_tags(tags, data) {
 		text.setAttribute("uid", data.uid);
 		text.setAttribute("tag", tag);
 		text.id = "world_info_tags_text_"+data.uid+"_"+tag;
-		text.onfocus=function() {this.parentElement.parentElement.parentElement.setAttribute('draggable', 'false');};
+		text.ondragstart=function() {event.preventDefault();event.stopPropagation();};
+		text.setAttribute("draggable", "true");
+		text.onfocus=function() {this.parentElement.parentElement.parentElement.setAttribute('draggable', 'false');this.setAttribute('draggable', 'false');};
 		text.onblur = function () {
 						this.parentElement.parentElement.parentElement.setAttribute('draggable', 'true');
+						this.setAttribute('draggable', 'true');
 						for (var i = 0; i < world_info_data[this.getAttribute('uid')]['key'].length; i++) {
 							if (world_info_data[this.getAttribute('uid')]['key'][i] == this.getAttribute("tag")) {
 								world_info_data[this.getAttribute('uid')]['key'][i] = this.textContent;
@@ -3102,9 +3107,12 @@ function add_tags(tags, data) {
 	text.setAttribute("uid", data.uid);
 	text.setAttribute("contenteditable", true);
 	text.id = "world_info_tags_text_"+data.uid+"_blank";
-	text.onfocus=function() {this.parentElement.parentElement.parentElement.setAttribute('draggable', 'false');};
+	text.ondragstart=function() {event.preventDefault();event.stopPropagation();};
+	text.setAttribute("draggable", "true");
+	text.onfocus=function() {this.parentElement.parentElement.parentElement.setAttribute('draggable', 'false');this.setAttribute('draggable', 'false');};
 	text.onblur = function () {
 					this.parentElement.parentElement.parentElement.setAttribute('draggable', 'true');
+					this.setAttribute('draggable', 'true');
 					if (this.textContent != "") {
 						//console.log(this.textContent);
 						on_new_wi_item = this.id;
@@ -3127,7 +3135,6 @@ function add_secondary_tags(tags, data) {
 	for (tag of data.keysecondary) {
 		tag_item = document.createElement("span");
 		tag_item.classList.add("tag");
-		tag_item.ondragstart=function() {event.preventDefault();event.stopPropagation();};
 		x = document.createElement("span");
 		x.textContent = "x ";
 		x.classList.add("delete_icon");
@@ -3144,9 +3151,12 @@ function add_secondary_tags(tags, data) {
 		text.setAttribute("uid", data.uid);
 		text.setAttribute("tag", tag);
 		text.id = "world_info_secondtags_text_"+data.uid+"_"+tag;
-		text.onfocus=function() {this.parentElement.parentElement.parentElement.setAttribute('draggable', 'false');};
+		text.ondragstart=function() {event.preventDefault();event.stopPropagation();};
+		text.setAttribute("draggable", "true");
+		text.onfocus=function() {this.parentElement.parentElement.parentElement.setAttribute('draggable', 'false');this.setAttribute('draggable', 'false');};
 		text.onblur = function () {
 						this.parentElement.parentElement.parentElement.setAttribute('draggable', 'true');
+						this.setAttribute('draggable', 'true');
 						for (var i = 0; i < world_info_data[this.getAttribute('uid')]['keysecondary'].length; i++) {
 							if (world_info_data[this.getAttribute('uid')]['keysecondary'][i] == this.getAttribute("tag")) {
 								world_info_data[this.getAttribute('uid')]['keysecondary'][i] = this.textContent;
@@ -3172,9 +3182,12 @@ function add_secondary_tags(tags, data) {
 	text.setAttribute("uid", data.uid);
 	text.setAttribute("contenteditable", true);
 	text.id = "world_info_secondtags_text_"+data.uid+"_blank";
-	text.onfocus=function() {this.parentElement.parentElement.parentElement.setAttribute('draggable', 'false');};
+	text.ondragstart=function() {event.preventDefault();event.stopPropagation();};
+	text.setAttribute("draggable", "true");
+	text.onfocus=function() {this.parentElement.parentElement.parentElement.setAttribute('draggable', 'false');this.setAttribute('draggable', 'false');};
 	text.onblur = function () {
 					this.parentElement.parentElement.parentElement.setAttribute('draggable', 'true');
+					this.setAttribute('draggable', 'true');
 					if (this.textContent != "") {
 						on_new_wi_item = this.id;
 						world_info_data[this.getAttribute('uid')]['keysecondary'].push(this.textContent);

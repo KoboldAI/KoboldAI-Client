@@ -5052,7 +5052,7 @@ def core_generate(text: list, min: int, max: int, found_entries: set, is_core: b
                 do_dynamic_wi=koboldai_vars.dynamicscan,
                 batch_count=numseqs,
                 # Real max length is handled by CoreStopper.
-                bypass_hf_maxlength=True,
+                bypass_hf_maxlength=koboldai_vars.dynamicscan,
                 is_core=True,
             )
 
