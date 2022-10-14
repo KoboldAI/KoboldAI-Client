@@ -260,7 +260,7 @@ function create_options(action) {
 			icon.setAttribute('data-glyph', "loop-circular");
 			iconcell.append(icon);
 			delete_icon = $e("span", iconcell, {"classes": ["material-icons-outlined", "cursor", 'delete_option_icon'], 
-												"title": "delete option", 'option_id': i, 
+												"tooltip": "Delete Option", 'option_id': i,
 												'option_chunk': action.id, 'textContent': 'delete'});
 			delete_icon.onclick = function () {
 									socket.emit("delete_option", {"chunk": this.getAttribute("option_chunk"), "option": this.getAttribute("option_id")});
@@ -1658,9 +1658,9 @@ function world_info_entry(data) {
 	delete_icon = world_info_card.querySelector('#world_info_delete_');
 	delete_icon.id = "world_info_delete_"+data.uid;
 	delete_icon.setAttribute("uid", data.uid);
-	delete_icon.setAttribute("title", data.title);
+	delete_icon.setAttribute("wi-title", data.title);
 	delete_icon.onclick = function () {
-		if (confirm("This will delete world info "+this.getAttribute("title"))) {
+		if (confirm("This will delete world info "+this.getAttribute("wi-title"))) {
 			if (parseInt(this.getAttribute("uid")) < 0) {
 				this.parentElement.parentElement.remove();
 			} else {
@@ -2664,6 +2664,7 @@ function Change_Theme(theme) {
 			element.selected = false;
 		}
 	}
+	recolorTokens();
 }
 
 function palette_color(item) {
@@ -2898,6 +2899,24 @@ function distortColor(rgb) {
 	return rgb;
 }
 
+function dec2Hex2(number) {
+	// Two padded hex number hack
+	let x = number.toString(16);
+	if (x.length === 1) return `0${x}`;
+	return x;
+}
+
+function recolorTokens() {
+	for (const contextContainer of document.querySelectorAll(".context-block")) {
+		let rgb = window.getComputedStyle(contextContainer)["background-color"].match(/(\d+), (\d+), (\d+)/).slice(1, 4).map(Number);
+		for (const tokenEl of contextContainer.querySelectorAll(".context-token")) {
+			let tokenColor = distortColor(rgb);
+			tokenColor = "#" + (tokenColor.map(dec2Hex2).join(""));
+			tokenEl.style.backgroundColor = tokenColor;
+		}
+	}
+}
+
 function update_context(data) {
 	$(".context-block").remove();
 
@@ -2935,7 +2954,7 @@ function update_context(data) {
 
 		for (const [tokenId, token] of entry.tokens) {
 			let tokenColor = distortColor(rgb);
-			tokenColor = "#" + (tokenColor.map((x) => x.toString(16)).join(""));
+			tokenColor = "#" + (tokenColor.map(dec2Hex2).join(""));
 
 			let tokenEl = $e("span", el, {
 				classes: ["context-token"],
@@ -5084,7 +5103,6 @@ function initalizeTooltips() {
 	function registerElement(el) {
 		// el should have attribute "tooltip"
 		let text = el.getAttribute("tooltip");
-		el.setAttribute("wawawa", "yeah")
 
 		el.addEventListener("mouseenter", function(event) {
 			tooltip.innerText = text;
