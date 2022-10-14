@@ -408,7 +408,7 @@ class koboldai_vars(object):
             prompt_length = 0
             prompt_text = ""
             for item in action_text_split:
-                if -1 not in item[1]:
+                if -1 not in item[1] or item[3]:
                     #We've finished going through our prompt. Stop
                     break
                 if self.tokenizer is None:
