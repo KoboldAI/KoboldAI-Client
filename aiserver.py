@@ -737,6 +737,11 @@ def get_config_filename(model_name = None):
     else:
         logger.warning(f"Empty configfile name sent back. Defaulting to ReadOnly")
         return(f"settings/ReadOnly.settings")
+
+def is_model_downloaded(model_name: str) -> bool:
+    model_stub = model_name.replace("/", "_")
+    return os.path.isdir(os.path.join("models", model_stub))
+
 #==================================================================#
 # Function to get model selection at startup
 #==================================================================#
@@ -755,10 +760,26 @@ def sendModelSelection(menu="mainmenu", folder="./models"):
         else:
             showdelete=False
         emit('from_server', {'cmd': 'show_model_menu', 'data': menu_list, 'menu': menu, 'breadcrumbs': breadcrumbs, "showdelete": showdelete}, broadcast=True, room="UI_1")
-        emit('show_model_menu', {'data': menu_list_ui_2, 'menu': menu, 'breadcrumbs': breadcrumbs, "showdelete": showdelete}, broadcast=False)
+
+        p_menu = [{
+            "label": m[0],
+            "name": m[1],
+            "size": m[2],
+            "isMenu": m[3],
+            "isDownloaded": True,
+        } for m in menu_list_ui_2]
+        emit('show_model_menu', {'data': p_menu, 'menu': menu, 'breadcrumbs': breadcrumbs, "showdelete": showdelete}, broadcast=False)
     else:
         emit('from_server', {'cmd': 'show_model_menu', 'data': model_menu[menu], 'menu': menu, 'breadcrumbs': [], "showdelete": False}, broadcast=True, room="UI_1")
-        emit('show_model_menu', {'data': model_menu[menu], 'menu': menu, 'breadcrumbs': [], "showdelete": False}, broadcast=False)
+
+        p_menu = [{
+            "label": m[0],
+            "name": m[1],
+            "size": m[2],
+            "isMenu": m[3],
+            "isDownloaded": is_model_downloaded(m[1]) if not m[3] else False,
+        } for m in model_menu[menu]]
+        emit('show_model_menu', {'data': p_menu, 'menu': menu, 'breadcrumbs': [], "showdelete": False}, broadcast=False)
 
 def get_folder_path_info(base):
     if base == 'This PC':
@@ -1545,7 +1566,7 @@ def get_layer_count(model, directory=""):
             from transformers import AutoConfig
             if(os.path.isdir(model.replace('/', '_'))):
                 model_config = AutoConfig.from_pretrained(model.replace('/', '_'), revision=koboldai_vars.revision, cache_dir="cache")
-            elif(os.path.isdir("models/{}".format(model.replace('/', '_')))):
+            elif(is_model_downloaded(model)):
                 model_config = AutoConfig.from_pretrained("models/{}".format(model.replace('/', '_')), revision=koboldai_vars.revision, cache_dir="cache")
             elif(os.path.isdir(directory)):
                 model_config = AutoConfig.from_pretrained(directory, revision=koboldai_vars.revision, cache_dir="cache")

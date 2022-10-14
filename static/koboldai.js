@@ -1213,6 +1213,8 @@ function oai_engines(data) {
 }
 
 function getModelParameterCount(modelName) {
+	if (!modelName) return null;
+
 	// The "T" and "K" may be a little optimistic...
 	let paramsString = modelName.toUpperCase().match(/[\d.]+[TBMK]/)
 	if (!paramsString) return null;
@@ -1275,37 +1277,40 @@ function show_model_menu(data) {
 		var folder_icon = document.createElement("span");
 		folder_icon.classList.add("material-icons-outlined");
 		folder_icon.classList.add("cursor");
-		if ((item[3]) || (item[0] == 'Load a model from its directory') || (item[0] == 'Load an old GPT-2 model (eg CloverEdition)')) {
-			folder_icon.textContent = "folder";
-		} else {
-			folder_icon.textContent = "psychology";
-		}
+
+		let isModel = !(
+			item.isMenu ||
+			item.label === "Load a model from its directory" ||
+			item.label === "Load an old GPT-2 model (eg CloverEdition)"
+		);
+
+		folder_icon.textContent = isModel ? "psychology" : "folder";
 		list_item.append(folder_icon);
 		
 		
 		//create the actual item
 		var popup_item = document.createElement("span");
 		popup_item.classList.add("model");
-		popup_item.setAttribute("display_name", item[0]);
-		popup_item.id = item[1];
+		popup_item.setAttribute("display_name", item.label);
+		popup_item.id = item.name;
 		
 		popup_item.setAttribute("Menu", data.menu)
 		//name text
 		var text = document.createElement("span");
 		text.style="grid-area: item;";
-		text.textContent = item[0];
+		text.textContent = item.label;
 		popup_item.append(text);
 		//model size text
 		var text = document.createElement("span");
-		text.textContent = item[2];
+		text.textContent = item.size;
 		text.style="grid-area: gpu_size;padding: 2px;";
 		popup_item.append(text);
 
 		(function() {
 			// Anon function to avoid unreasonable indentation
-			if (folder_icon.innerText !== "psychology") return;
+			if (!isModel) return;
 
-			let parameterCount = getModelParameterCount(item[0]);
+			let parameterCount = getModelParameterCount(item.label);
 			if (!parameterCount) return;
 
 			let warningText = "";
@@ -1316,10 +1321,24 @@ function show_model_menu(data) {
 
 			if (!warningText) return;
 			$e("span", list_item, {
-				classes: ["material-icons-outlined"],
+				classes: ["material-icons-outlined", "model-size-warning"],
 				innerText: "warning",
 				"style.grid-area": "warning_icon",
 				tooltip: warningText
+			});
+
+		})();
+
+		(function() {
+			// Anon function to avoid unreasonable indentation
+			if (!item.isDownloaded) return;
+			if (!isModel) return;
+
+			$e("span", list_item, {
+				classes: ["material-icons-outlined", "model-download-notification"],
+				innerText: "download_done",
+				"style.grid-area": "downloaded_icon",
+				tooltip: "This model is already downloaded."
 			});
 		})();
 		
@@ -2652,9 +2671,13 @@ function calc_token_usage(
 function Change_Theme(theme) {
 	var css = document.getElementById("CSSTheme");
     css.setAttribute("href", "/themes/"+theme+".css");
-	setTimeout(() => {
+
+	// We must wait for the style to load before we read it
+	css.onload = function() {
+		recolorTokens();
 		create_theming_elements();
-	}, "1000")
+	}
+
 	setCookie("theme", theme);
 	select = document.getElementById("selected_theme");
 	for (element of select.childNodes) {
@@ -2664,7 +2687,6 @@ function Change_Theme(theme) {
 			element.selected = false;
 		}
 	}
-	recolorTokens();
 }
 
 function palette_color(item) {
