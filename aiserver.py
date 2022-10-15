@@ -4516,7 +4516,7 @@ def actionsubmit(data, actionmode=0, force_submit=False, force_prompt_gen=False,
                 koboldai_vars.prompt = data
                 # Clear the startup text from game screen
                 emit('from_server', {'cmd': 'updatescreen', 'gamestarted': False, 'data': 'Please wait, generating story...'}, broadcast=True, room="UI_1")
-                calcsubmit(data) # Run the first action through the generator
+                calcsubmit("") # Run the first action through the generator
                 if(not koboldai_vars.abort and koboldai_vars.lua_koboldbridge.restart_sequence is not None and len(koboldai_vars.genseqs) == 0):
                     data = ""
                     force_submit = True
@@ -4582,7 +4582,7 @@ def actionsubmit(data, actionmode=0, force_submit=False, force_prompt_gen=False,
 
             if(not no_generate and not koboldai_vars.noai and koboldai_vars.lua_koboldbridge.generating):
                 # Off to the tokenizer!
-                calcsubmit(data)
+                calcsubmit("")
                 if(not koboldai_vars.abort and koboldai_vars.lua_koboldbridge.restart_sequence is not None and len(koboldai_vars.genseqs) == 0):
                     data = ""
                     force_submit = True
