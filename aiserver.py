@@ -4960,7 +4960,7 @@ def calcsubmit(txt):
         #subtxt, min, max = calcsubmitbudget(actionlen, winfo, mem, anotetxt, koboldai_vars.actions, submission=txt)
         subtxt, min, max, found_entries  = koboldai_vars.calc_ai_text(submitted_text=txt)
 
-        if koboldai_vars.memory_attn_bias > 1:
+        if koboldai_vars.experimental_features and koboldai_vars.memory_attn_bias > 1:
             offset = 0
             bounds = None
             for c in koboldai_vars.context:
