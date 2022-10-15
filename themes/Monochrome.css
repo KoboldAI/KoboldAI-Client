@@ -1,7 +1,7 @@
 /*
 	Name: Monochrome
 	Author: LightSaveUs
-	Version: 0.6.3
+	Version: 0.7
 	Description: A theme inspired by the NovelAI interface.
 */
 
@@ -37,22 +37,22 @@
 
 /*----------------Advanced Theme--------------------*/
 	/*General*/
-	--background: #222f3a;
-	--gamescreen_background: #12181c;
-    --input_background: #121b21;
+	--background: #252e3b;
+	--gamescreen_background: #111820;
+    --input_background: #111820;
 
     --text: #e0e0e0;
     --text_to_ai_color: #e0e0e0;
     --text_edit: #9cc3ee;
 
-	--statusbar_color: #3e53679e;
+	--statusbar_color: #eedcb880;
 	--statusbar_text_color: #e0e0e0;
-	--scrollbar-color: #3e53679e;
+	--scrollbar-color: #2f3b4bdb;
 
 	/*Buttons*/
 		/*General*/
 	--enabled_button_text: #e0e0e0;
-    --enabled_button_background_color: #30435b;
+    --enabled_button_background_color: #2d3d52;
     --enabled_button_border_color: #253446;
 
 	--disabled_button_text: #303030;
@@ -61,45 +61,45 @@
 
 		/*Home Tab*/
 	--button_text: #e0e0e0;
-	--button_background: #30435b;
+	--button_background: #283445;
 		
 		/*Alternate Button*/
 	--alternate_button_text: #e0e0e0;
-	--alternate_button_background: #30435b;
+	--alternate_button_background: #283445;
 
 
 	/*Sequence, AKA Gens Per Action*/
-	--sequence_area_background: #121b21;
-    --sequence_background: #131c22;
-	--sequence_text: #cfd7a2;
+	--sequence_area_background: #111820;
+    --sequence_background: #eedcb8;
+	--sequence_text: #e0e0e0;
 
 	/*Side Menus*/
-	--tab_color: #1e2f44;
+	--tab_color: #243047;
 
-	--flyout_background: #18222a;
-	--flyout_background_pinned: #18222a;
+	--flyout_background: #18222d;
+	--flyout_background_pinned: #18222d;
 
 	--setting_background: #273141;
     --setting_text: #e0e0e0;
 
-	--sample_order_select_color: #244c65;
-	--sample_order_select_color_text: #cfd7a2;
+	--sample_order_select_color: #1f2934;
+	--sample_order_select_color_text: #eedcb8;
 
-	--dropdown_text: #cfd7a2;
-	--dropdown_background: #131c22;
+	--dropdown_text: #e0e0e0;
+	--dropdown_background: #212935;
 
 	--rangeslider_background_color: #1f2934;
 	--rangeslider_color: #1f2934;
-	--rangeslider_circle_color: #244c65;
+	--rangeslider_circle_color: #404d64;
 
 	--help_icon: #7c8389;
-	--tooltip_text: white;
-    --tooltip_background: black;
+	--tooltip_text: #e0e0e0;
+    --tooltip_background: #212d38;
 	--setting_category_help_text_color: #E0E0E0;
 	
 	--setting_footer_border_color: #334552;
 	--setting_footer_text_color: #e0e0e0;
-	--setting_footer_background_color: #18222a;
+	--setting_footer_background_color: #18222d;
 
 	/*Palette Card*/
 	--palette_card_background: #273141;
@@ -110,27 +110,27 @@
 	--wi_card_border_color: #334552;
     --wi_card_border_color_to_ai: #334552;
 
-    --wi_card_bg_color: #273141;
+    --wi_card_bg_color: #223040;
 	--wi_card_text_color: #e0e0e0;
 
-    --wi_card_tag_bg_color: #273141;
+    --wi_card_tag_bg_color: #1d2835;
 	--wi_card_tag_text_color: #e0e0e0;
 	
-    --wi_tag_color: #30435b;
+    --wi_tag_color: #283445;
 	--wi_tag_text_color: #e0e0e0;
 	
 	/*Popup*/
-	--popup_background_color: #19242c;
-    --popup_title_bar_color: #25364a;
+	--popup_background_color: #1a2530;
+    --popup_title_bar_color: #283445;
 	--popup_title_bar_color_text: #e0e0e0;
 
-    --popup_item_color: #30435b;
+    --popup_item_color: #1a2530;
 	--popup_item_color_text: #e0e0e0;
 
-	--popup_hover_color: #253346;
+	--popup_hover_color: #1e2733;
 	--popup_hover_color_text: #e0e0e0;
-	--popup_selected_color: #202b3a;
-	--popup_selected_color_text: #cfd7a2;
+	--popup_selected_color: #242d3c;
+	--popup_selected_color_text: #eedcb8;
 
 	--popup_button_color: #25364a;
 	--popup_button_color_text: #e0e0e0;
@@ -194,22 +194,61 @@
 	--font_size_adjustment: 0px;
 	--game_screen_font_size_adjustment: 1;}
 
+/*----------------Custom CSS--------------------*/
+
 /* Boxes */
 
+.gamescreen {
+    border: 1px solid #2f3b4b;
+}
+
+.sequence_area {
+	border-top: 1px solid #2f3b4b;
+	border-right: 1px solid #2f3b4b;
+	border-bottom: 1px solid #2f3b4b;
+}
+
 #input_text, #themetext {
-    border-color: #334552 !important;
+    border-color: #2f3b4b !important;
 }
 
 .fullwidth {
 	border-radius: 2px;
-    border-color: #334552 !important;
+    border-color: #2f3b4b !important;
 }
 
 .bias_phrase input {
-    border-color: #334552 !important;
+    border-color: #2f3b4b !important;
+	border-radius:2px !important;
+}
+
+.substitution-card input {
+	border-color: #2f3b4b !important;
+	border-radius:2px !important;
+}
+
+.sequence {
+	color: #121c22 !important;
+	border: 1px solid #eedcb8 !important;
+}
+
+.sequence:hover {
+	filter: brightness(100%) !important;
+	background-color: #e0e0e0; !important;
 }
 
 /* Buttons */
+
+#adventure_mode {
+	border: 1px solid;
+	border-color: var(--enabled_button_border_color);
+}
+
+.action_button:focus {
+	color: #e0e0e0;
+	box-shadow: none;
+	outline: none !important;
+}
 
 .settings_button {
     border: none !important;
@@ -219,20 +258,24 @@
 	filter: brightness(120%);
 }
 
+.settings_button:focus {
+	outline: none !important;
+}
+
 .btn-success {
-	color: #131c22 !important;
-    border-color: #cfd7a2 !important;
-    background-color: #cfd7a2 !important;
+	color: #121c22 !important;
+    border-color: #eedcb8 !important;
+    background-color: #eedcb8 !important;
 }
 
 .toggle-off.btn {
-	color: #cfd7a2 !important;
+	color: #eedcb8 !important;
     background-color: #131c22 !important;
 	border-color: #131c22 !important;
 }
 
 .toggle-off.btn:hover {
-	border-color: #cfd7a2 !important;
+	border-color: #eedcb8 !important;
 }
 
 .wi_add_button:hover {
@@ -247,19 +290,23 @@
 	filter: brightness(120%) !important;
 }
 
+#debug-dump:hover {
+	filter: brightness(120%) !important;
+}
+
 /* Context Menu */
 
 #context-menu {
-	border-color: #334552 !important;
-	background-color: #18222a !important;
+	border-color: #2f3b4b !important;
+	background-color: #18222d !important;
 }
 
 #context-menu > hr {
-	border-color: #334552 !important;
+	border-color: #2f3b4b !important;
 }
 
 .context-menu-item:hover {
-	background-color:#334552 !important;
+	background-color:#2f3b4b !important;
 }
 
 /* Context Viewer */
@@ -275,7 +322,7 @@
 /* Finder */
 
 .result-highlight {
-    background-color: #9ba950 !important;
+    background-color: #aea186 !important;
 }
 
 /* Icons */
@@ -311,10 +358,12 @@ span.helpicon.material-icons-outlined:hover:not(::after) {
 
 .true-t + label::before {
 	color: #999 !important;
+	filter: brightness(85%);
 }
 
 .true-t:checked + label::before {
 	color: #e0e0e0 !important;
+	filter: brightness(100%);
 }
 
 /* Import */
@@ -332,22 +381,51 @@ a {
 /* Lines */
 
 .story_title, hr {
-    border-color: #334552 !important;
+    border-color: #2f3b4b !important;
+}
+
+.rightSideMenu {
+	border-left: 1px solid #2f3b4b;
+}
+
+.SideMenu {
+	border-right: 1px solid #2f3b4b;
 }
 
 /* Lists */
 
 .settings_select, .var_sync_system_theme_list {
-	border-color: #334552 !important;
+	border-color: #2f3b4b !important;
+	border-radius:2px !important;
+}
+
+.settings_footer {
+    border-top: 1px solid #2f3b4b !important;
 }
 
 /* Palette */
 
 #palette_area {
-    border-color: #334552 !important;
+    border-color: #2f3b4b !important;
 }
 
 /* Popup */
+
+.popup_list_area .model_item .model{
+	border: 1px solid #2f3b4b;
+}
+
+.popup .item {
+	border: 1px solid #2f3b4b;
+}
+
+.popup .item.selected {
+	filter: brightness(110%) !important;
+}
+
+.popup .item:hover{
+	filter: brightness(110%) !important;
+}
 
 .popup .action_button {
     border-radius: 2px;
@@ -377,7 +455,7 @@ a {
 
 .tabrow span {
 	border: none !important;
-	box-shadow: inset 0px 0px 2px #20344e !important;
+	box-shadow: inset 0px 0px 2px #101214 !important;
 }
 
 .tabrow span::before, .tabrow span::after {
@@ -386,12 +464,12 @@ a {
 }
 
 .tabrow span:hover {
-	background: #244c65 !important;
+	background: #374357 !important;
 }
 
 .tabrow span.selected {
-    color: #cfd7a2 !important;
-	background: #244c65 !important;
+    color: #eedcb8 !important;
+	background: #374357 !important;
 }
 
 /* Text */
@@ -400,12 +478,14 @@ a {
     font-family: sans-serif !important;
 }
 
+.rawtext:focus {
+	outline: none !important;
+}
+
 /* Tooltips */
 
 .tooltip-standard {
 	border: none !important;
-	color: #e0e0e0 !important;
-	background-color: #1d2831 !important;
 }
 
 /* World Info */
@@ -416,10 +496,25 @@ a {
 
 .world_info_tag_area {
     filter: brightness(100%) !important;
-	background-color: #1d2831 !important;
+	background-color: #1d2835 !important;
 }
 
 .world_info_text {
 	filter: brightness(100%) !important;
-	background-color: #1d2831 !important;
+	background-color: #1d2835 !important;
+	border-color: #2f3b4b !important;
+}
+
+.world_info_title:hover {
+	filter: brightness(120%) !important;
+}
+
+.world_info_title:focus {
+	color: #eedcb8 !important;
+	filter: brightness(100%) !important;
+	outline: none !important;
+}
+
+.WI_Folder_Header .title:focus {
+	outline: none !important;
 }
