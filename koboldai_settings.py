@@ -214,7 +214,7 @@ class koboldai_vars(object):
         # TODO: We may want to replace the "text" variable with a list-type
         # class of context blocks, the class having a __str__ function.
         if self.sp_length > 0:
-            context.append({"type": "soft_prompt", "text": f"<{self.sp_length} tokens of Soft Prompt.>", "tokens": [-1] * self.sp_length})
+            context.append({"type": "soft_prompt", "text": f"<{self.sp_length} tokens of Soft Prompt.>", "tokens": [[-1, ""]] * self.sp_length})
         # Header is never used?
         # if koboldai_vars.model not in ("Colab", "API", "OAI") and self.tokenizer._koboldai_header:
         #     context.append({"type": "header", "text": f"{len(self.tokenizer._koboldai_header})
@@ -979,7 +979,7 @@ class user_settings(settings):
         
 class system_settings(settings):
     local_only_variables = ['socketio', 'lua_state', 'lua_logname', 'lua_koboldbridge', 'lua_kobold', 'lua_koboldcore', 'regex_sl', 'acregex_ai', 'acregex_ui', 'comregex_ai', 'comregex_ui', 'sp', '_horde_pid', 'inference_config', 'image_pipeline', 'summarizer', 'summary_tokenizer']
-    no_save_variables = ['socketio', 'lua_state', 'lua_logname', 'lua_koboldbridge', 'lua_kobold', 'lua_koboldcore', 'sp', '_horde_pid', 'horde_share', 'aibusy', 'serverstarted', 'inference_config', 'image_pipeline', 'summarizer', 'summary_tokenizer', 'use_colab_tpu', 'noai', 'disable_set_aibusy']
+    no_save_variables = ['socketio', 'lua_state', 'lua_logname', 'lua_koboldbridge', 'lua_kobold', 'lua_koboldcore', 'sp', 'sp_length', '_horde_pid', 'horde_share', 'aibusy', 'serverstarted', 'inference_config', 'image_pipeline', 'summarizer', 'summary_tokenizer', 'use_colab_tpu', 'noai', 'disable_set_aibusy']
     settings_name = "system"
     def __init__(self, socketio, koboldai_var):
         self.socketio = socketio
