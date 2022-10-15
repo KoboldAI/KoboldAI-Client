@@ -56,7 +56,7 @@ import time
 
 params: Dict[str, Any] = {}
 
-__seed = random.randrange(sys.maxsize)
+__seed = random.randrange(2**64)
 rng = random.Random(__seed)
 
 
@@ -70,8 +70,17 @@ def set_rng_seed(seed: int):
     return seed
 
 def randomize_rng_seed():
-    return set_rng_seed(random.randrange(sys.maxsize))
+    return set_rng_seed(random.randrange(2**64))
 
+def get_rng_state():
+    return rng
+
+def set_rng_state(state):
+    global rng
+    rng = state
+
+def new_rng_state(seed: int):
+    return random.Random(seed)
 
 def warper_callback(logits) -> np.array:
     raise NotImplementedError("`tpu_mtj_backend.warper_callback()` needs to be defined")
@@ -947,6 +956,7 @@ def read_neox_checkpoint(state, path, config, checkpoint_shards=2):
 
     import torch
     import torch.utils.dlpack
+    import torch_lazy_loader
     from tqdm.auto import tqdm
 
     move_xmap = jax.experimental.maps.xmap(
@@ -988,8 +998,9 @@ def read_neox_checkpoint(state, path, config, checkpoint_shards=2):
             continue
         layer = checkpoint_layer - 2
         shards = []
-        for checkpoint_shard in range(checkpoint_shards):
-            shards.append(torch.load(path_template.format(layer=checkpoint_layer, shard=checkpoint_shard), map_location="cpu"))
+        with torch_lazy_loader.use_custom_unpickler(torch_lazy_loader.RestrictedUnpickler):
+            for checkpoint_shard in range(checkpoint_shards):
+                shards.append(torch.load(path_template.format(layer=checkpoint_layer, shard=checkpoint_shard), map_location="cpu"))
         for key in shards[0]:
             if key == "attention.rotary_emb.inv_freq":
                 continue

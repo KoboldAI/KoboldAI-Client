@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 import os, re, time, threading, json, pickle, base64, copy, tqdm, datetime, sys
+from typing import Union
 from io import BytesIO
 from flask import has_request_context, session
 from flask_socketio import SocketIO, join_room, leave_room
@@ -80,7 +81,7 @@ def process_variable_changes(socketio, classname, name, value, old_value, debug_
 
 class koboldai_vars(object):
     def __init__(self, socketio):
-        self._model_settings = model_settings(socketio)
+        self._model_settings = model_settings(socketio, self)
         self._user_settings = user_settings(socketio)
         self._system_settings = system_settings(socketio, self)
         self._story_settings = {'default': story_settings(socketio, self)}
@@ -101,10 +102,11 @@ class koboldai_vars(object):
     
     def to_json(self, classname):
         if classname == 'story_settings':
-            data = {}
-            for story in self._story_settings:
-                data[story] = json.loads(self._story_settings[story].to_json())
-            return json.dumps(data)
+            return self._story_settings[self.get_story_name()].to_json()
+#            data = {}
+#            for story in self._story_settings:
+#                data[story] = json.loads(self._story_settings[story].to_json())
+#            return json.dumps(data)
         return self.__dict__["_{}".format(classname)].to_json()
         
     def load_story(self, story_name, json_data):
@@ -125,17 +127,25 @@ class koboldai_vars(object):
         if story_name in self._story_settings:
             self._story_settings[story_name].no_save = True
             self._story_settings[story_name].from_json(json_data)
+            logger.debug("Calcing AI text after load story")
+            ignore = self.calc_ai_text()
             self._story_settings[story_name].no_save = False
         else:
             #self._story_settings[story_name].no_save = True
             self.create_story(story_name, json_data=json_data)
+            logger.debug("Calcing AI text after create story")
+            ignore = self.calc_ai_text()
             #self._story_settings[story_name].no_save = False
         self._system_settings.story_loads[original_story_name] = datetime.datetime.now().strftime("%m/%d/%Y, %H:%M:%S")
         with open("settings/system_settings.v2_settings", "w") as settings_file:
             settings_file.write(self._system_settings.to_json())
         
     def save_story(self):
+        logger.debug("Saving story from koboldai_vars.save_story()")
         self._story_settings[self.get_story_name()].save_story()
+    
+    def download_story(self):
+        return self._story_settings[self.get_story_name()].to_json()
     
     def save_revision(self):
         self._story_settings[self.get_story_name()].save_revision()
@@ -174,6 +184,18 @@ class koboldai_vars(object):
     def reset_model(self):
         self._model_settings.reset_for_model_load()
     
+    def get_token_representation(self, text: Union[str, list, None]) -> list:
+        if not self.tokenizer or not text:
+            return []
+        
+        if isinstance(text, str):
+            encoded = self.tokenizer.encode(text)
+        else:
+            encoded = text
+
+        # TODO: This might be ineffecient, should we cache some of this?
+        return [[token, self.tokenizer.decode(token)] for token in encoded]
+    
     def calc_ai_text(self, submitted_text="", return_text=False):
         #start_time = time.time()
         if self.alt_gen:
@@ -192,7 +214,7 @@ class koboldai_vars(object):
         # TODO: We may want to replace the "text" variable with a list-type
         # class of context blocks, the class having a __str__ function.
         if self.sp_length > 0:
-            context.append({"type": "soft_prompt", "text": f"<{self.sp_length} tokens of Soft Prompt.>"})
+            context.append({"type": "soft_prompt", "text": f"<{self.sp_length} tokens of Soft Prompt.>", "tokens": [-1] * self.sp_length})
         # Header is never used?
         # if koboldai_vars.model not in ("Colab", "API", "OAI") and self.tokenizer._koboldai_header:
         #     context.append({"type": "header", "text": f"{len(self.tokenizer._koboldai_header})
@@ -202,12 +224,18 @@ class koboldai_vars(object):
         #Add memory
         memory_length = self.max_memory_length if self.memory_length > self.max_memory_length else self.memory_length
         memory_text = self.memory
+        memory_encoded = None
         if memory_length+used_tokens <= token_budget:
-            if self.tokenizer is not  None and self.memory_length > self.max_memory_length:
-                memory_text = self.tokenizer.decode(self.tokenizer.encode(self.memory)[-self.max_memory_length-1:])
+            if self.tokenizer is not None and self.memory_length > self.max_memory_length:
+                memory_encoded = self.tokenizer.encode(self.memory)[-self.max_memory_length-1:]
+                memory_text = self.tokenizer.decode(memory_encoded)
+        
+        if not memory_encoded and self.tokenizer:
+            memory_encoded = self.tokenizer.encode(memory_text)
          
-        context.append({"type": "memory", "text": memory_text})
+        context.append({"type": "memory", "text": memory_text, "tokens": self.get_token_representation(memory_encoded)})
         text += memory_text
+        used_tokens += self.memory_length if self.memory_length <= self.max_memory_length else self.max_memory_length
         
         #Add constant world info entries to memory
         for wi in self.worldinfo_v2:
@@ -217,11 +245,16 @@ class koboldai_vars(object):
                     used_world_info.append(wi['uid'])
                     self.worldinfo_v2.set_world_info_used(wi['uid'])
                     wi_text = wi['content']
-                    context.append({"type": "world_info", "text": wi_text})
+                    context.append({
+                        "type": "world_info",
+                        "text": wi_text,
+                        "tokens": self.get_token_representation(wi_text),
+                    })
                     text += wi_text
+                    used_tokens += wi['token_length']
         
         
-        action_text_split = self.actions.to_sentences()
+        action_text_split = self.actions.to_sentences(submitted_text=submitted_text)
         
         
         #Add prompt lenght/text if we're set to always use prompt
@@ -262,8 +295,9 @@ class koboldai_vars(object):
                                 used_tokens+=0 if  wi['token_length'] is None else wi['token_length']
                                 used_world_info.append(wi['uid'])
                                 wi_text = wi['content']
-                                context.append({"type": "world_info", "text": wi_text})
+                                context.append({"type": "world_info", "text": wi_text, "tokens": self.get_token_representation(wi_text)})
                                 text += wi_text
+                                used_tokens += wi['token_length']
                                 self.worldinfo_v2.set_world_info_used(wi['uid'])
                    
                 #We'll add the prompt text AFTER we go through the game text as the world info needs to come first if we're in method 1 rather than method 2
@@ -282,25 +316,50 @@ class koboldai_vars(object):
         game_context = []
         authors_note_final = self.authornotetemplate.replace("<|>", self.authornote)
         used_all_tokens = False
+
         for action in range(len(self.actions)):
             self.actions.set_action_in_ai(action, used=False)
+
         for i in range(len(action_text_split)-1, -1, -1):
             if action_text_split[i][3] or action_text_split[i][1] == [-1]:
                 #We've hit an item we've already included or items that are only prompt. Stop
-                break;
+                for action in action_text_split[i][1]:
+                    if action >= 0:
+                        self.actions.set_action_in_ai(action)
+                break
+
             if len(action_text_split) - i - 1 == self.andepth and self.authornote != "":
                 game_text = "{}{}".format(authors_note_final, game_text)
-                game_context.insert(0, {"type": "authors_note", "text": authors_note_final})
-            length = 0 if self.tokenizer is None else len(self.tokenizer.encode(action_text_split[i][0]))
+                game_context.insert(0, {"type": "authors_note", "text": authors_note_final, "tokens": self.get_token_representation(authors_note_final)})
+
+            encoded_action = [] if not self.tokenizer else self.tokenizer.encode(action_text_split[i][0])
+            length = len(encoded_action)
+
             if length+used_tokens <= token_budget and not used_all_tokens:
                 used_tokens += length
                 selected_text = action_text_split[i][0]
                 action_text_split[i][3] = True
                 game_text = "{}{}".format(selected_text, game_text)
-                game_context.insert(0, {"type": "action", "text": selected_text})
+
+                if action_text_split[i][1] == [self.actions.action_count+1]:
+                    game_context.insert(0, {
+                        "type": "submit",
+                        "text": selected_text,
+                        "tokens": self.get_token_representation(encoded_action),
+                        "action_ids": action_text_split[i][1]
+                    })
+                else:
+                    game_context.insert(0, {
+                        "type": "action",
+                        "text": selected_text,
+                        "tokens": self.get_token_representation(encoded_action),
+                        "action_ids": action_text_split[i][1]
+                    })
+
                 for action in action_text_split[i][1]:
                     if action >= 0:
                         self.actions.set_action_in_ai(action)
+
                 #Now we need to check for used world info entries
                 for wi in self.worldinfo_v2:
                     if wi['uid'] not in used_world_info:
@@ -324,12 +383,14 @@ class koboldai_vars(object):
                                 used_tokens+=0 if  wi['token_length'] is None else wi['token_length']
                                 used_world_info.append(wi['uid'])
                                 wi_text = wi["content"]
+                                encoded_wi = self.tokenizer.encode(wi_text)
                                 if method == 1:
                                     text = "{}{}".format(wi_text, game_text)
-                                    context.insert(0, {"type": "world_info", "text": wi_text})
+                                    context.insert(0, {"type": "world_info", "text": wi_text, "tokens": self.get_token_representation(encoded_wi)})
                                 else:
                                     game_text = "{}{}".format(wi_text, game_text)
-                                    game_context.insert(0, {"type": "world_info", "text": wi_text})
+                                    game_context.insert(0, {"type": "world_info", "text": wi_text, "tokens": self.get_token_representation(encoded_wi)})
+                                used_tokens += wi['token_length']
                                 self.worldinfo_v2.set_world_info_used(wi['uid'])
             else:
                 used_all_tokens = True
@@ -338,16 +399,16 @@ class koboldai_vars(object):
         #if we don't have enough actions to get to author's note depth then we just add it right before the game text
         if len(action_text_split) < self.andepth and self.authornote != "":
             game_text = "{}{}".format(authors_note_final, game_text)
-            game_context.insert(0, {"type": "authors_note", "text": authors_note_final})
+            game_context.insert(0, {"type": "authors_note", "text": authors_note_final, "tokens": self.get_token_representation(authors_note_final)})
         
         if self.useprompt:
             text += prompt_text
-            context.append({"type": "prompt", "text": prompt_text})
+            context.append({"type": "prompt", "text": prompt_text, "tokens": self.get_token_representation(prompt_text)})
         elif not used_all_tokens:
             prompt_length = 0
             prompt_text = ""
             for item in action_text_split:
-                if -1 not in item[1]:
+                if -1 not in item[1] or item[3]:
                     #We've finished going through our prompt. Stop
                     break
                 if self.tokenizer is None:
@@ -380,12 +441,13 @@ class koboldai_vars(object):
                                 used_tokens+=0 if  wi['token_length'] is None else wi['token_length']
                                 used_world_info.append(wi['uid'])
                                 wi_text = wi['content']
-                                context.append({"type": "world_info", "text": wi_text})
+                                context.append({"type": "world_info", "text": wi_text, "tokens": self.get_token_representation(wi_text)})
                                 text += wi_text
+                                used_tokens += wi['token_length']
                                 self.worldinfo_v2.set_world_info_used(wi['uid'])
 
                 text += prompt_text
-                context.append({"type": "prompt", "text": prompt_text})
+                context.append({"type": "prompt", "text": prompt_text, "tokens": self.get_token_representation(prompt_text)})
                 self.prompt_in_ai = True
             else:
                 self.prompt_in_ai = False
@@ -403,7 +465,7 @@ class koboldai_vars(object):
         self.context = context
 
         #logger.debug("Calc_AI_text: {}s".format(time.time()-start_time))
-        
+        logger.debug("Token Budget: {}. Used Tokens: {}".format(token_budget, used_tokens))
         if return_text:
             return text
         return tokens, used_tokens, used_tokens+self.genamt, used_world_info
@@ -431,8 +493,7 @@ class koboldai_vars(object):
             else:
                 setattr(self._story_settings[self.get_story_name()], name, value)
             if name == 'tokenizer':
-                setattr(self._story_settings[self.get_story_name()].actions, name, value)
-                setattr(self._story_settings[self.get_story_name()].worldinfo_v2, name, value)
+                self._story_settings[self.get_story_name()].worldinfo_v2.recalc_token_length(None)
                 setattr(self._story_settings[self.get_story_name()], name, value)
     
     def __getattr__(self, name):
@@ -515,11 +576,11 @@ class settings(object):
                     raise
 
 class model_settings(settings):
-    local_only_variables = ['badwordsids', 'apikey', 'tqdm', 'socketio', 'default_preset']
+    local_only_variables = ['badwordsids', 'apikey', 'tqdm', 'socketio', 'default_preset', 'koboldai_vars']
     no_save_variables = ['tqdm', 'tqdm_progress', 'tqdm_rem_time', 'socketio', 'modelconfig', 'custmodpth', 'generated_tkns', 
-                         'loaded_layers', 'total_layers', 'total_download_chunks', 'downloaded_chunks', 'presets', 'default_preset']
+                         'loaded_layers', 'total_layers', 'total_download_chunks', 'downloaded_chunks', 'presets', 'default_preset', 'koboldai_vars']
     settings_name = "model"
-    def __init__(self, socketio):
+    def __init__(self, socketio, koboldai_vars):
         self.socketio = socketio
         self.reset_for_model_load()
         self.model       = ""     # Model ID string chosen at startup
@@ -542,6 +603,9 @@ class model_settings(settings):
         self.oaiapikey   = ""     # API key to use for OpenAI API calls
         self.configname = None
         self.online_model = ''
+        self.welcome_default = "<img src='static/Welcome_Logo.png' style='max-width: 720px; width: 100%;'><br/>Please load a model from the left." # Custom Welcome Text
+        self.welcome     = self.welcome_default
+        self.koboldai_vars = koboldai_vars
         
     def reset_for_model_load(self):
         self.max_length  = 2048    # Maximum number of tokens to submit per action
@@ -584,6 +648,9 @@ class model_settings(settings):
         old_value = getattr(self, name, None)
         super().__setattr__(name, value)
         #Put variable change actions here
+        
+        if not new_variable and (name == 'max_length' or name == 'genamt'):
+            ignore = self.koboldai_vars.calc_ai_text()
         
         #set preset values
         if name == 'selected_preset' and value != "":
@@ -638,6 +705,8 @@ class model_settings(settings):
                     self.tqdm_progress = 0
                 if self.tqdm.format_dict['rate'] is not None:
                     self.tqdm_rem_time = str(datetime.timedelta(seconds=int(float(self.total_download_chunks-self.downloaded_chunks)/self.tqdm.format_dict['rate'])))  
+        
+        
         
         if name not in self.local_only_variables and name[0] != "_" and not new_variable:
             process_variable_changes(self.socketio, self.__class__.__name__.replace("_settings", ""), name, value, old_value)
@@ -710,6 +779,14 @@ class story_settings(settings):
         self.revisions = []
         self.picture = "" #base64 of the image shown for the story
         self.picture_prompt = "" #Prompt used to create picture
+        self.substitutions = [
+            {"target": "--", "substitution": "–", "enabled": False},
+            {"target": "---", "substitution": "—", "enabled": False},
+            {"target": "...", "substitution": "…", "enabled": False},
+            # {"target": "(c)", "substitution": "©", "enabled": False},
+            # {"target": "(r)", "substitution": "®", "enabled": False},
+            # {"target": "(tm)", "substitution": "™", "enabled": False},
+        ]
         
         #must be at bottom
         self.no_save = False  #Temporary disable save (doesn't save with the file)
@@ -720,7 +797,8 @@ class story_settings(settings):
     def save_story(self):
         if not self.no_save:
             if self.prompt != "" or self.memory != "" or self.authornote != "" or len(self.actions) > 0 or len(self.worldinfo_v2) > 0:
-                print("Saving")
+                logger.debug("Saving story from koboldai_vars.story_settings.save_story()")
+                logger.info("Saving")
                 save_name = self.story_name if self.story_name != "" else "untitled"
                 adder = ""
                 while True:
@@ -797,6 +875,7 @@ class story_settings(settings):
         
         #autosave action
         if name == "gamesaved" and value == False and self.autosave:
+            logger.debug("Saving story from gamesaved change and on autosave")
             self.save_story()
         if not new_variable and old_value != value:
             #Change game save state
@@ -807,6 +886,8 @@ class story_settings(settings):
                 ignore = self.koboldai_vars.calc_ai_text()
             elif name == 'actions':
                 self.actions.story_settings = self
+                logger.debug("Calcing AI text after setting actions")
+                ignore = self.koboldai_vars.calc_ai_text()
             elif name == 'story_name':
                 #reset the story id if we change the name
                 self.story_id = int.from_bytes(os.urandom(16), 'little', signed=True)
@@ -898,7 +979,7 @@ class user_settings(settings):
         
 class system_settings(settings):
     local_only_variables = ['socketio', 'lua_state', 'lua_logname', 'lua_koboldbridge', 'lua_kobold', 'lua_koboldcore', 'regex_sl', 'acregex_ai', 'acregex_ui', 'comregex_ai', 'comregex_ui', 'sp', '_horde_pid', 'inference_config', 'image_pipeline', 'summarizer', 'summary_tokenizer']
-    no_save_variables = ['socketio', 'lua_state', 'lua_logname', 'lua_koboldbridge', 'lua_kobold', 'lua_koboldcore', 'sp', '_horde_pid', 'horde_share', 'aibusy', 'serverstarted', 'inference_config', 'image_pipeline', 'summarizer', 'summary_tokenizer', 'use_colab_tpu']
+    no_save_variables = ['socketio', 'lua_state', 'lua_logname', 'lua_koboldbridge', 'lua_kobold', 'lua_koboldcore', 'sp', '_horde_pid', 'horde_share', 'aibusy', 'serverstarted', 'inference_config', 'image_pipeline', 'summarizer', 'summary_tokenizer', 'use_colab_tpu', 'noai', '']
     settings_name = "system"
     def __init__(self, socketio, koboldai_var):
         self.socketio = socketio
@@ -943,7 +1024,6 @@ class system_settings(settings):
         self.comregex_ui = re.compile(r'(&lt;\|(?:.|\n)*?\|&gt;)')  # Pattern for matching comments in the editor
         self.host        = False
         self.flaskwebgui = False
-        self.welcome     = False # Custom Welcome Text (False is default)
         self.quiet       = False # If set will suppress any story text from being printed to the console (will only be seen on the client web page)
         self.use_colab_tpu  = os.environ.get("COLAB_TPU_ADDR", "") != "" or os.environ.get("TPU_NAME", "") != ""  # Whether or not we're in a Colab TPU instance or Kaggle TPU instance and are going to use the TPU rather than the CPU
         self.aria2_port  = 6799 #Specify the port on which aria2's RPC interface will be open if aria2 is installed (defaults to 6799)
@@ -981,6 +1061,7 @@ class system_settings(settings):
         self.summary_tokenizer = None
         self.keep_img_gen_in_memory = False
         self.cookies = {} #cookies for colab since colab's URL changes, cookies are lost
+        self.experimental_features = False
         
         @dataclass
         class _inference_config:
@@ -988,6 +1069,7 @@ class system_settings(settings):
             do_dynamic_wi: bool = False
             # Genamt stopping is mostly tied to Dynamic WI
             stop_at_genamt: bool = False
+            do_core: bool = True
         self.inference_config = _inference_config()
         
         self._koboldai_var = koboldai_var
@@ -1040,7 +1122,6 @@ class system_settings(settings):
                                 self._horde_pid.terminate()
                                 self._horde_pid = None
                 
-        
 class KoboldStoryRegister(object):
     def __init__(self, socketio, story_settings, koboldai_vars, tokenizer=None, sequence=[]):
         self.socketio = socketio
@@ -1050,22 +1131,18 @@ class KoboldStoryRegister(object):
         self.actions = {} #keys = "Selected Text", "WI Search Text", "Wi_highlighted_text", "Options", "Selected Text Length", "In AI Input", "Probabilities". 
                           #Options being a list of dict with keys of "text", "Pinned", "Previous Selection", "Edited", "Probabilities"
         self.action_count = -1
-        self.tokenizer = tokenizer
         self.story_settings = story_settings
         for item in sequence:
             self.append(item)
     
     def reset(self, sequence=[]):
-        self.__init__(self.socketio, self.story_settings, self.koboldai_vars, sequence=sequence, tokenizer=self.tokenizer)
+        self.__init__(self.socketio, self.story_settings, self.koboldai_vars, sequence=sequence)
         
     def add_wi_to_action(action_id, key, content):
         #First check to see if we have the wi_highlighted_text variable
         if 'wi_highlighted_text' not in self.actions[action_id]:
             self.actions[action_id]['wi_highlighted_text'] = [{"text": self.actions[action_id]['Selected Text'], "WI matches": [], "WI Text": ""}]
         
-        
-            
-    
     def __str__(self):
         if len(self.actions) > 0:
             return "".join([x['Selected Text'] for ignore, x in sorted(self.actions.items())])
@@ -1116,8 +1193,8 @@ class KoboldStoryRegister(object):
             old = None
             self.actions[i] = {"Selected Text": text, "WI Search Text": re.sub("[^0-9a-z \'\"]", "", text), "Probabilities": [], "Options": []}
             
-        if self.tokenizer is not None:
-            self.actions[i]['Selected Text Length'] = len(self.tokenizer.encode(text))
+        if self.koboldai_vars.tokenizer is not None:
+            self.actions[i]['Selected Text Length'] = len(self.koboldai_vars.tokenizer.encode(text))
         else:
             self.actions[i]['Selected Text Length'] = 0
         self.actions[i]["In AI Input"] = False
@@ -1162,9 +1239,9 @@ class KoboldStoryRegister(object):
         process_variable_changes(self.socketio, "story", 'actions', data_to_send, None)
         
         self.actions = temp
+        logger.debug("Calcing AI Text from Action load from json")
+        ignore = self.koboldai_vars.calc_ai_text()
         self.set_game_saved()
-        if self.story_settings is not None:
-            self.story_settings.save_story()
         
     def append(self, text, action_id_offset=0, recalc=True):
         self.clear_unused_options()
@@ -1253,6 +1330,7 @@ class KoboldStoryRegister(object):
         self.set_game_saved()
     
     def set_action_in_ai(self, action_id, used=True):
+        return
         if action_id in self.actions:
             if 'In AI Input' in self.actions[action_id]:
                 old = self.actions[action_id]['In AI Input']
@@ -1300,8 +1378,8 @@ class KoboldStoryRegister(object):
                 self.actions[action_step]["WI Search Text"] = re.sub("[^0-9a-z \'\"]", "", self.actions[action_step]["Selected Text"])
                 if 'Probabilities' in self.actions[action_step]['Options'][option_number]:
                     self.actions[action_step]["Probabilities"] = self.actions[action_step]['Options'][option_number]['Probabilities']
-                if self.tokenizer is not None:
-                    self.actions[action_step]['Selected Text Length'] = len(self.tokenizer.encode(self.actions[action_step]['Options'][option_number]['text']))
+                if self.koboldai_vars.tokenizer is not None:
+                    self.actions[action_step]['Selected Text Length'] = len(self.koboldai_vars.tokenizer.encode(self.actions[action_step]['Options'][option_number]['text']))
                 else:
                     self.actions[action_step]['Selected Text Length'] = 0
                 del self.actions[action_step]['Options'][option_number]
@@ -1381,10 +1459,10 @@ class KoboldStoryRegister(object):
             self.story_settings.gamesaved = False
     
     def recalc_token_length(self, action_id):
-        if self.tokenizer is not None:
+        if self.koboldai_vars.tokenizer is not None:
             if action_id in self.actions:
                 if self.actions[action_id]['In AI Input']:
-                    self.actions[action_id]['Selected Text Length'] = len(self.tokenizer.encode(self.actions[action_id]['Selected Text']))
+                    self.actions[action_id]['Selected Text Length'] = len(self.koboldai_vars.tokenizer.encode(self.actions[action_id]['Selected Text']))
                     process_variable_changes(self.socketio, "story", 'actions', {"id": action_id, 'action':  self.actions[action_id]}, None)
                     eventlet.sleep(0.01)
         else:
@@ -1410,8 +1488,8 @@ class KoboldStoryRegister(object):
                     self.actions[self.action_count+1]['Options'].append({"text": text_list[i], "Pinned": False, "Previous Selection": False, "Edited": False, "Probabilities": [], "stream_id": i})
         
             #We need to see if this is the last token being streamed. If so due to the rely it will come in AFTER the actual trimmed final text overwriting it in the UI
-            if self.tokenizer is not None:
-                if len(self.tokenizer.encode(self.actions[self.action_count+1]["Options"][0]['text'])) != self.koboldai_vars.genamt:
+            if self.koboldai_vars.tokenizer is not None:
+                if len(self.koboldai_vars.tokenizer.encode(self.actions[self.action_count+1]["Options"][0]['text'])) != self.koboldai_vars.genamt:
                     #process_variable_changes(self.socketio, "actions", "Options", {"id": self.action_count+1, "options": self.actions[self.action_count+1]["Options"]}, {"id": self.action_count+1, "options": None})
                     process_variable_changes(self.socketio, "story", 'actions', {"id": self.action_count+1, 'action':  self.actions[self.action_count+1]}, None)
         else:
@@ -1419,29 +1497,32 @@ class KoboldStoryRegister(object):
             #First we need to see if this is actually the prompt. If so we'll just not do streaming:
             if self.story_settings.prompt != "":
                 if self.action_count+1 in self.actions:
-                    if self.tokenizer is not None:
-                        selected_text_length = len(self.tokenizer.encode(self.actions[self.action_count+1]['Selected Text']))
+                    if self.koboldai_vars.tokenizer is not None:
+                        selected_text_length = len(self.koboldai_vars.tokenizer.encode(self.actions[self.action_count+1]['Selected Text']))
                     else:
                         selected_text_length = 0
                     self.actions[self.action_count+1]['Selected Text'] = "{}{}".format(self.actions[self.action_count+1]['Selected Text'], text_list[0])
                     self.actions[self.action_count+1]['Selected Text Length'] = selected_text_length
                 else:
-                    if self.tokenizer is not None:
-                        selected_text_length = len(self.tokenizer.encode(text_list[0]))
+                    if self.koboldai_vars.tokenizer is not None:
+                        selected_text_length = len(self.koboldai_vars.tokenizer.encode(text_list[0]))
                     else:
                         selected_text_length = 0
                     self.actions[self.action_count+1] = {"Selected Text": text_list[0], "Selected Text Length": selected_text_length, "Options": []}
                 
                 
                 
-                if self.tokenizer is not None:
-                    if len(self.tokenizer.encode(self.actions[self.action_count+1]['Selected Text'])) != self.koboldai_vars.genamt:
+                if self.koboldai_vars.tokenizer is not None:
+                    if len(self.koboldai_vars.tokenizer.encode(self.actions[self.action_count+1]['Selected Text'])) != self.koboldai_vars.genamt:
+                        #ui1
+                        if queue is not None:
+                            queue.put(["from_server", {"cmd": "streamtoken", "data": [{'decoded': text_list[0]}]}, {"broadcast":True, "room":"UI_1"}])
                         #process_variable_changes(self.socketio, "actions", "Options", {"id": self.action_count+1, "options": self.actions[self.action_count+1]["Options"]}, {"id": self.action_count+1, "options": None})
                         process_variable_changes(self.socketio, "story", 'actions', {"id": self.action_count+1, 'action':  self.actions[self.action_count+1]}, None)
     
     def set_probabilites(self, probabilities, action_id=None):
         if action_id is None:
-            action_id = self.action_count
+            action_id = self.action_count+1
         if action_id in self.actions:
             self.actions[action_id]['Probabilities'].append(probabilities)
             process_variable_changes(self.socketio, "story", 'actions', {"id": action_id, 'action':  self.actions[action_id]}, None)
@@ -1457,7 +1538,7 @@ class KoboldStoryRegister(object):
                 self.actions[action_id]["Options"][option_number]['Probabilities'].append(probabilities)
                 process_variable_changes(self.socketio, "story", 'actions', {"id": action_id, 'action':  self.actions[action_id]}, None)
     
-    def to_sentences(self):
+    def to_sentences(self, submitted_text=""):
         #start_time = time.time()
         #we're going to split our actions by sentence for better context. We'll add in which actions the sentence covers. Prompt will be added at a -1 ID
         actions = {i: self.actions[i]['Selected Text'] for i in self.actions}
@@ -1465,12 +1546,18 @@ class KoboldStoryRegister(object):
             actions[-1] = ""
         else:
             actions[-1] = self.story_settings.prompt
+        if submitted_text != "":
+            actions[self.action_count+1] = submitted_text
         action_text = self.__str__()
-        action_text = "{}{}".format("" if self.story_settings is None else self.story_settings.prompt, action_text)
+        action_text = "{}{}{}".format("" if self.story_settings is None else self.story_settings.prompt, action_text, submitted_text)
         ###########action_text_split = [sentence, actions used in sentence, token length, included in AI context]################
-        action_text_split = [[x+" ", [], 0, False] for x in re.split("(?<=[.!?])\s+", action_text)]
+        action_text_split = [[x, [], 0, False] for x in re.findall(".*?[.!?]\s+", action_text)]
+        #The above line can trim out the last sentence if it's incomplete. Let's check for that and add it back in
+        if len("".join([x[0] for x in action_text_split])) < len(action_text):
+            action_text_split.append([action_text[len("".join([x[0] for x in action_text_split])):], [], 0, False])
         #The last action shouldn't have the extra space from the sentence splitting, so let's remove it
-        action_text_split[-1][0] = action_text_split[-1][0][:-1]
+        if len(action_text_split) == 0:
+            return []
         
         Action_Position = [-1, len(actions[-1])] #First element is the action item, second is how much text is left
         Sentence_Position = [0, len(action_text_split[0][0])]
@@ -1512,12 +1599,10 @@ class KoboldStoryRegister(object):
         if name == 'action_count' and not new_variable:
             process_variable_changes(self.socketio, "actions", "Action Count", value, old_value)
 
-
 class KoboldWorldInfo(object):
     
     def __init__(self, socketio, story_settings, koboldai_vars, tokenizer=None):
         self.socketio = socketio
-        self.tokenizer = tokenizer
         self.koboldai_vars = koboldai_vars
         self.world_info = {}
         self.world_info_folder = OrderedDict()
@@ -1525,7 +1610,7 @@ class KoboldWorldInfo(object):
         self.story_settings = story_settings
         
     def reset(self):
-        self.__init__(self.socketio, self.story_settings, self.koboldai_vars, self.tokenizer)
+        self.__init__(self.socketio, self.story_settings, self.koboldai_vars)
     
     def __iter__(self):
         self.itter = -1
@@ -1550,19 +1635,24 @@ class KoboldWorldInfo(object):
         return len(self.world_info)
     
     def recalc_token_length(self, uid):
-        if self.tokenizer is not None:
+        if self.koboldai_vars.tokenizer is not None:
             if uid is not None:
                 if uid in self.world_info:
-                    self.world_info[uid]['token_length'] = len(self.tokenizer.encode(self.world_info[uid]['content']))
+                    logger.debug("Sending single world info after tokenizing {}: {}".format(uid, self.world_info[uid]['title']))
+                    self.world_info[uid]['token_length'] = len(self.koboldai_vars.tokenizer.encode(self.world_info[uid]['content']))
                     self.socketio.emit("world_info_entry", self.world_info[uid], broadcast=True, room="UI_2")
             else:
                 for uid in self.world_info:
-                    self.world_info[uid]['token_length'] = len(self.tokenizer.encode(self.world_info[uid]['content']))
+                    self.world_info[uid]['token_length'] = len(self.koboldai_vars.tokenizer.encode(self.world_info[uid]['content']))
                 self.send_to_ui()
         else:
+            had_change = False
             for uid in self.world_info:
+                if self.world_info[uid]['token_length'] != 0 and not had_change:
+                    had_change = True
                 self.world_info[uid]['token_length'] = 0
-            self.send_to_ui()
+            if had_change:
+                self.send_to_ui()
                 
     
     def add_folder(self, folder):
@@ -1633,8 +1723,8 @@ class KoboldWorldInfo(object):
                 content = "{} ]".format(content[:-1])
         else:
             content = manual_text
-        if self.tokenizer is not None:
-            token_length = len(self.tokenizer.encode(content))
+        if self.koboldai_vars.tokenizer is not None:
+            token_length = len(self.koboldai_vars.tokenizer.encode(content))
         else:
             token_length = 0
         if folder is None:
@@ -1687,6 +1777,7 @@ class KoboldWorldInfo(object):
         return uid
         
     def edit_item(self, uid, title, key, keysecondary, folder, constant, manual_text, comment, use_wpp=False, before=None, wpp={'name': "", 'type': "", 'format': "W++", 'attributes': {}}):
+        logger.debug("Editing World Info {}: {}".format(uid, title))
         old_folder = self.world_info[uid]['folder']
         #move the world info entry if the folder changed or if there is a new order requested
         if old_folder != folder or before is not None:
@@ -1704,8 +1795,8 @@ class KoboldWorldInfo(object):
                 content = "{} ]".format(content[:-1])
         else:
             content = manual_text
-        if self.tokenizer is not None:
-            token_length = len(self.tokenizer.encode(content))
+        if self.koboldai_vars.tokenizer is not None:
+            token_length = len(self.koboldai_vars.tokenizer.encode(content))
         else:
             token_length = 0
         if folder is None:
@@ -1786,6 +1877,7 @@ class KoboldWorldInfo(object):
     def send_to_ui(self):
         if self.socketio is not None:
             self.socketio.emit("world_info_folder", {x: self.world_info_folder[x] for x in self.world_info_folder}, broadcast=True, room="UI_2")
+            logger.debug("Sending all world info from send_to_ui")
             for uid in self.world_info:
                 self.socketio.emit("world_info_entry", self.world_info[uid], broadcast=True, room="UI_2")
     
@@ -1896,18 +1988,13 @@ class KoboldWorldInfo(object):
             logger.warning("Something tried to set world info UID {} to in game, but it doesn't exist".format(uid))
         if self.socketio is not None:
             self.socketio.emit("world_info_entry_used_in_game", {"uid": uid, "used_in_game": True}, broadcast=True, room="UI_2")
-        self.recalc_token_length(uid)
+        #self.recalc_token_length(uid)
     
     def get_used_wi(self):
         return [x['content'] for x in self.world_info if x['used_in_game']]
    
-    def __setattr__(self, name, value):
-        new_variable = name not in self.__dict__
-        super().__setattr__(name, value)
-        if name == 'tokenizer' and not new_variable:
-            #We set the tokenizer, recalculate all of the item lengths
-            self.recalc_token_length(None)
 
 badwordsids_default = [[13460], [6880], [50256], [42496], [4613], [17414], [22039], [16410], [27], [29], [38430], [37922], [15913], [24618], [28725], [58], [47175], [36937], [26700], [12878], [16471], [37981], [5218], [29795], [13412], [45160], [3693], [49778], [4211], [20598], [36475], [33409], [44167], [32406], [29847], [29342], [42669], [685], [25787], [7359], [3784], [5320], [33994], [33490], [34516], [43734], [17635], [24293], [9959], [23785], [21737], [28401], [18161], [26358], [32509], [1279], [38155], [18189], [26894], [6927], [14610], [23834], [11037], [14631], [26933], [46904], [22330], [25915], [47934], [38214], [1875], [14692], [41832], [13163], [25970], [29565], [44926], [19841], [37250], [49029], [9609], [44438], [16791], [17816], [30109], [41888], [47527], [42924], [23984], [49074], [33717], [31161], [49082], [30138], [31175], [12240], [14804], [7131], [26076], [33250], [3556], [38381], [36338], [32756], [46581], [17912], [49146]] # Tokenized array of badwords used to prevent AI artifacting
 badwordsids_neox = [[0], [1], [44162], [9502], [12520], [31841], [36320], [49824], [34417], [6038], [34494], [24815], [26635], [24345], [3455], [28905], [44270], [17278], [32666], [46880], [7086], [43189], [37322], [17778], [20879], [49821], [3138], [14490], [4681], [21391], [26786], [43134], [9336], [683], [48074], [41256], [19181], [29650], [28532], [36487], [45114], [46275], [16445], [15104], [11337], [1168], [5647], [29], [27482], [44965], [43782], [31011], [42944], [47389], [6334], [17548], [38329], [32044], [35487], [2239], [34761], [7444], [1084], [12399], [18990], [17636], [39083], [1184], [35830], [28365], [16731], [43467], [47744], [1138], [16079], [40116], [45564], [18297], [42368], [5456], [18022], [42696], [34476], [23505], [23741], [39334], [37944], [45382], [38709], [33440], [26077], [43600], [34418], [36033], [6660], [48167], [48471], [15775], [19884], [41533], [1008], [31053], [36692], [46576], [20095], [20629], [31759], [46410], [41000], [13488], [30952], [39258], [16160], [27655], [22367], [42767], [43736], [49694], [13811], [12004], [46768], [6257], [37471], [5264], [44153], [33805], [20977], [21083], [25416], [14277], [31096], [42041], [18331], [33376], [22372], [46294], [28379], [38475], [1656], [5204], [27075], [50001], [16616], [11396], [7748], [48744], [35402], [28120], [41512], [4207], [43144], [14767], [15640], [16595], [41305], [44479], [38958], [18474], [22734], [30522], [46267], [60], [13976], [31830], [48701], [39822], [9014], [21966], [31422], [28052], [34607], [2479], [3851], [32214], [44082], [45507], [3001], [34368], [34758], [13380], [38363], [4299], [46802], [30996], [12630], [49236], [7082], [8795], [5218], [44740], [9686], [9983], [45301], [27114], [40125], [1570], [26997], [544], [5290], [49193], [23781], [14193], [40000], [2947], [43781], [9102], [48064], [42274], [18772], [49384], [9884], [45635], [43521], [31258], [32056], [47686], [21760], [13143], [10148], [26119], [44308], [31379], [36399], [23983], [46694], [36134], [8562], [12977], [35117], [28591], [49021], [47093], [28653], [29013], [46468], [8605], [7254], [25896], [5032], [8168], [36893], [38270], [20499], [27501], [34419], [29547], [28571], [36586], [20871], [30537], [26842], [21375], [31148], [27618], [33094], [3291], [31789], [28391], [870], [9793], [41361], [47916], [27468], [43856], [8850], [35237], [15707], [47552], [2730], [41449], [45488], [3073], [49806], [21938], [24430], [22747], [20924], [46145], [20481], [20197], [8239], [28231], [17987], [42804], [47269], [29972], [49884], [21382], [46295], [36676], [34616], [3921], [26991], [27720], [46265], [654], [9855], [40354], [5291], [34904], [44342], [2470], [14598], [880], [19282], [2498], [24237], [21431], [16369], [8994], [44524], [45662], [13663], [37077], [1447], [37786], [30863], [42854], [1019], [20322], [4398], [12159], [44072], [48664], [31547], [18736], [9259], [31], [16354], [21810], [4357], [37982], [5064], [2033], [32871], [47446], [62], [22158], [37387], [8743], [47007], [17981], [11049], [4622], [37916], [36786], [35138], [29925], [14157], [18095], [27829], [1181], [22226], [5709], [4725], [30189], [37014], [1254], [11380], [42989], [696], [24576], [39487], [30119], [1092], [8088], [2194], [9899], [14412], [21828], [3725], [13544], [5180], [44679], [34398], [3891], [28739], [14219], [37594], [49550], [11326], [6904], [17266], [5749], [10174], [23405], [9955], [38271], [41018], [13011], [48392], [36784], [24254], [21687], [23734], [5413], [41447], [45472], [10122], [17555], [15830], [47384], [12084], [31350], [47940], [11661], [27988], [45443], [905], [49651], [16614], [34993], [6781], [30803], [35869], [8001], [41604], [28118], [46462], [46762], [16262], [17281], [5774], [10943], [5013], [18257], [6750], [4713], [3951], [11899], [38791], [16943], [37596], [9318], [18413], [40473], [13208], [16375]]
 badwordsids_opt = [[44717], [46613], [48513], [49923], [50185], [48755], [8488], [43303], [49659], [48601], [49817], [45405], [48742], [49925], [47720], [11227], [48937], [48784], [50017], [42248], [49310], [48082], [49895], [50025], [49092], [49007], [8061], [44226], [0], [742], [28578], [15698], [49784], [46679], [39365], [49281], [49609], [48081], [48906], [46161], [48554], [49670], [48677], [49721], [49632], [48610], [48462], [47457], [10975], [46077], [28696], [48709], [43839], [49798], [49154], [48203], [49625], [48395], [50155], [47161], [49095], [48833], [49420], [49666], [48443], [22176], [49242], [48651], [49138], [49750], [40389], [48021], [21838], [49070], [45333], [40862], [1], [49915], [33525], [49858], [50254], [44403], [48992], [48872], [46117], [49853], [47567], [50206], [41552], [50068], [48999], [49703], [49940], [49329], [47620], [49868], [49962], [2], [44082], [50236], [31274], [50260], [47052], [42645], [49177], [17523], [48691], [49900], [49069], [49358], [48794], [47529], [46479], [48457], [646], [49910], [48077], [48935], [46386], [48902], [49151], [48759], [49803], [45587], [48392], [47789], [48654], [49836], [49230], [48188], [50264], [46844], [44690], [48505], [50161], [27779], [49995], [41833], [50154], [49097], [48520], [50018], [8174], [50084], [49366], [49526], [50193], [7479], [49982], [3]]
+genres = ['Absurdist', 'Action & Adventure', 'Adaptations & Pastiche', 'African American & Black/General', 'African American & Black/Christian', 'African American & Black/Erotica', 'African American & Black/Historical', 'African American & Black/Mystery & Detective', 'African American & Black/Urban & Street Lit', 'African American & Black/Women', 'Alternative History', 'Amish & Mennonite', 'Animals', 'Anthologies (multiple authors)', 'Asian American', 'Biographical', 'Buddhist', 'Christian/General', 'Christian/Biblical', 'Christian/Classic & Allegory', 'Christian/Collections & Anthologies', 'Christian/Contemporary', 'Christian/Fantasy', 'Christian/Futuristic', 'Christian/Historical', 'Christian/Romance/General', 'Christian/Romance/Historical', 'Christian/Romance/Suspense', 'Christian/Suspense', 'Christian/Western', 'City Life', 'Classics', 'Coming of Age', 'Crime', 'Cultural Heritage', 'Disabilities & Special Needs', 'Disaster', 'Dystopian', 'Epistolary', 'Erotica/General', 'Erotica/BDSM', 'Erotica/Collections & Anthologies', 'Erotica/Historical', 'Erotica/LGBTQ+/General', 'Erotica/LGBTQ+/Bisexual', 'Erotica/LGBTQ+/Gay', 'Erotica/LGBTQ+/Lesbian', 'Erotica/LGBTQ+/Transgender', 'Erotica/Science Fiction, Fantasy & Horror', 'Fairy Tales, Folk Tales, Legends & Mythology', 'Family Life/General', 'Family Life/Marriage & Divorce', 'Family Life/Siblings', 'Fantasy/General', 'Fantasy/Action & Adventure', 'Fantasy/Arthurian', 'Fantasy/Collections & Anthologies', 'Fantasy/Contemporary', 'Fantasy/Dark Fantasy', 'Fantasy/Dragons & Mythical Creatures', 'Fantasy/Epic', 'Fantasy/Gaslamp', 'Fantasy/Historical', 'Fantasy/Humorous', 'Fantasy/Military', 'Fantasy/Paranormal', 'Fantasy/Romance', 'Fantasy/Urban', 'Feminist', 'Friendship', 'Ghost', 'Gothic', 'Hispanic & Latino', 'Historical/General', 'Historical/Ancient', 'Historical/Civil War Era', 'Historical/Colonial America & Revolution', 'Historical/Medieval', 'Historical/Renaissance', 'Historical/World War I', 'Historical/World War II', 'Holidays', 'Horror', 'Humorous/General', 'Humorous/Black Humor', 'Indigenous', 'Jewish', 'Legal', 'LGBTQ+/General', 'LGBTQ+/Bisexual', 'LGBTQ+/Gay', 'LGBTQ+/Lesbian', 'LGBTQ+/Transgender', 'Literary', 'LitRPG (Literary Role-Playing Game) *', 'Magical Realism', 'Mashups', 'Media Tie-In', 'Medical', 'Multiple Timelines', 'Muslim', 'Mystery & Detective/General', 'Mystery & Detective/Amateur Sleuth', 'Mystery & Detective/Collections & Anthologies', 'Mystery & Detective/Cozy/General', 'Mystery & Detective/Cozy/Animals', 'Mystery & Detective/Cozy/Crafts', 'Mystery & Detective/Cozy/Culinary', 'Mystery & Detective/Cozy/Holidays & Vacation *', 'Mystery & Detective/Cozy/Paranormal *', 'Mystery & Detective/Hard-Boiled', 'Mystery & Detective/Historical', 'Mystery & Detective/International Crime & Mystery', 'Mystery & Detective/Jewish *', 'Mystery & Detective/Police Procedural', 'Mystery & Detective/Private Investigators', 'Mystery & Detective/Traditional', 'Mystery & Detective/Women Sleuths', 'Nature & the Environment', 'Noir', 'Occult & Supernatural', 'Own Voices', 'Political', 'Psychological', 'Religious', 'Romance/General', 'Romance/Action & Adventure', 'Romance/African American & Black', 'Romance/Billionaires', 'Romance/Clean & Wholesome', 'Romance/Collections & Anthologies', 'Romance/Contemporary', 'Romance/Erotic', 'Romance/Fantasy', 'Romance/Firefighters', 'Romance/Historical/General', 'Romance/Historical/American', 'Romance/Historical/Ancient World', 'Romance/Historical/Gilded Age', 'Romance/Historical/Medieval', 'Romance/Historical/Regency', 'Romance/Historical/Renaissance', 'Romance/Historical/Scottish', 'Romance/Historical/Tudor', 'Romance/Historical/20th Century', 'Romance/Historical/Victorian', 'Romance/Historical/Viking', 'Romance/Holiday', 'Romance/Later in Life', 'Romance/LGBTQ+/General', 'Romance/LGBTQ+/Bisexual', 'Romance/LGBTQ+/Gay', 'Romance/LGBTQ+/Lesbian', 'Romance/LGBTQ+/Transgender', 'Romance/Medical', 'Romance/Military', 'Romance/Multicultural & Interracial', 'Romance/New Adult', 'Romance/Paranormal/General', 'Romance/Paranormal/Shifters', 'Romance/Paranormal/Vampires', 'Romance/Paranormal/Witches', 'Romance/Police & Law Enforcement', 'Romance/Polyamory', 'Romance/Rock Stars', 'Romance/Romantic Comedy', 'Romance/Royalty', 'Romance/Science Fiction', 'Romance/Sports', 'Romance/Suspense', 'Romance/Time Travel', 'Romance/Western', 'Romance/Workplace', 'Sagas', 'Satire', 'Science Fiction/General', 'Science Fiction/Action & Adventure', 'Science Fiction/Alien Contact', 'Science Fiction/Apocalyptic & Post-Apocalyptic', 'Science Fiction/Collections & Anthologies', 'Science Fiction/Crime & Mystery', 'Science Fiction/Cyberpunk', 'Science Fiction/Genetic Engineering', 'Science Fiction/Hard Science Fiction', 'Science Fiction/Humorous', 'Science Fiction/Military', 'Science Fiction/Space Exploration', 'Science Fiction/Space Opera', 'Science Fiction/Steampunk', 'Science Fiction/Time Travel', 'Sea Stories', 'Short Stories (single author)', 'Small Town & Rural', 'Southern', 'Sports', 'Superheroes', 'Thrillers/General', 'Thrillers/Crime', 'Thrillers/Domestic', 'Thrillers/Espionage', 'Thrillers/Historical', 'Thrillers/Legal', 'Thrillers/Medical', 'Thrillers/Military', 'Thrillers/Political', 'Thrillers/Psychological', 'Thrillers/Supernatural', 'Thrillers/Suspense', 'Thrillers/Technological', 'Thrillers/Terrorism', 'Urban & Street Lit', 'Visionary & Metaphysical', 'War & Military', 'Westerns', 'Women', 'World Literature/Africa/General', 'World Literature/Africa/East Africa', 'World Literature/Africa/Nigeria', 'World Literature/Africa/Southern Africa', 'World Literature/Africa/West Africa', 'World Literature/American/General', 'World Literature/American/Colonial & Revolutionary Periods', 'World Literature/American/19th Century', 'World Literature/American/20th Century', 'World Literature/American/21st Century', 'World Literature/Argentina', 'World Literature/Asia (General)', 'World Literature/Australia', 'World Literature/Austria', 'World Literature/Brazil', 'World Literature/Canada/General', 'World Literature/Canada/Colonial & 19th Century', 'World Literature/Canada/20th Century', 'World Literature/Canada/21st Century', 'World Literature/Caribbean & West Indies', 'World Literature/Central America', 'World Literature/Chile', 'World Literature/China/General', 'World Literature/China/19th Century', 'World Literature/China/20th Century', 'World Literature/China/21st Century', 'World Literature/Colombia', 'World Literature/Czech Republic', 'World Literature/Denmark', 'World Literature/England/General', 'World Literature/England/Early & Medieval Periods', 'World Literature/England/16th & 17th Century', 'World Literature/England/18th Century', 'World Literature/England/19th Century', 'World Literature/England/20th Century', 'World Literature/England/21st Century', 'World Literature/Europe (General)', 'World Literature/Finland', 'World Literature/France/General', 'World Literature/France/18th Century', 'World Literature/France/19th Century', 'World Literature/France/20th Century', 'World Literature/France/21st Century', 'World Literature/Germany/General', 'World Literature/Germany/20th Century', 'World Literature/Germany/21st Century', 'World Literature/Greece', 'World Literature/Hungary', 'World Literature/India/General', 'World Literature/India/19th Century', 'World Literature/India/20th Century', 'World Literature/India/21st Century', 'World Literature/Ireland/General', 'World Literature/Ireland/19th Century', 'World Literature/Ireland/20th Century', 'World Literature/Ireland/21st Century', 'World Literature/Italy', 'World Literature/Japan', 'World Literature/Korea', 'World Literature/Mexico', 'World Literature/Middle East/General', 'World Literature/Middle East/Arabian Peninsula', 'World Literature/Middle East/Egypt & North Africa', 'World Literature/Middle East/Israel', 'World Literature/Netherlands', 'World Literature/New Zealand', 'World Literature/Norway', 'World Literature/Oceania', 'World Literature/Pakistan', 'World Literature/Peru', 'World Literature/Poland', 'World Literature/Portugal', 'World Literature/Russia/General', 'World Literature/Russia/19th Century', 'World Literature/Russia/20th Century', 'World Literature/Russia/21st Century', 'World Literature/Scotland/General', 'World Literature/Scotland/19th Century', 'World Literature/Scotland/20th Century', 'World Literature/Scotland/21st Century', 'World Literature/South America (General)', 'World Literature/Southeast Asia', 'World Literature/Spain/General', 'World Literature/Spain/19th Century', 'World Literature/Spain/20th Century', 'World Literature/Spain/21st Century', 'World Literature/Sweden', 'World Literature/Turkey', 'World Literature/Uruguay', 'World Literature/Wales']

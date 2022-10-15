@@ -24,7 +24,7 @@
 		<icon class="material-icons-outlined" style="font-size:14px;position:relative;top:2px;">open_in_new</icon>
 	</span>
 </div>
-<span class="material-icons-outlined cursor search_icon" title="Search Settings" onclick="open_finder();">search</span>
+<span class="material-icons-outlined cursor search_icon" tooltip="Search Settings" onclick="open_finder();">search</span>
 <div class="flyout_menu_contents">
 
 	<div id="setting_menu_home" class="settings_category_area tab-target tab-target-settings">
@@ -39,13 +39,16 @@
 			</div>
 			<div style="text-align: center;">
 				<button class="settings_button" onclick="socket.emit('load_model_button', {});">
-					<span class="material-icons-outlined cursor" title="Load Model" style="font-size: 1.4em;">folder_open</span>
+					<span class="material-icons-outlined cursor" tooltip="Load Model" style="font-size: 1.4em;">folder_open</span>
 					<span class="button_label">Load Model</span>
 				</button>
 				<select class="var_sync_model_selected_preset settings_select presets" onchange='sync_to_server(this)'><option>Preset</option></select>
 				{% if not on_colab %}
-					<div class="horde_trigger var_sync_alt_model_model"><input type=checkbox data-size="mini" data-onstyle="success" data-toggle="toggle" class='var_sync_system_horde_share' onchange='sync_to_server(this)'> Share with Horde </div>
-					<span class="helpicon material-icons-outlined" title="Shares your GPU with other KoboldAI users. Does not share data/stories.">help_icon</span>
+					<div class="horde_trigger var_sync_alt_model_model">
+						<input type=checkbox data-size="mini" data-onstyle="success" data-toggle="toggle" class='var_sync_system_horde_share' onchange='sync_to_server(this)'> Share with Horde 
+						<span class="helpicon material-icons-outlined" tooltip="Shares your GPU with other KoboldAI users. Does not share data/stories.">help_icon</span>
+						</div>
+					
 				{% endif %}
 			</div>
 		</div>
@@ -57,7 +60,7 @@
 						<span class="var_sync_story_story_name fullwidth" contenteditable=true onblur="sync_to_server(this);"></span>
 					</span>
 					<span>
-						<span class="material-icons-outlined cursor" style="padding-top: 8px;" title="Download Story" onclick="document.getElementById('download_iframe').src = 'json';">file_download</span>
+						<span class="material-icons-outlined cursor" style="padding-top: 8px;" tooltip="Download Story" onclick="document.getElementById('download_iframe').src = 'json';">file_download</span>
 					</span>
 				</div>
 				<div id="text_storyname">
@@ -65,15 +68,15 @@
 				</div>
 				<div class="story_title_icons">
 					<button class="settings_button" onclick="socket.emit('new_story', '');">
-						<span class="material-icons-outlined cursor" title="New Story">description</span>
+						<span class="material-icons-outlined cursor" tooltip="New Story">description</span>
 						<span class="button_label">New Story</span>
 					</button>
 					<button class="settings_button" onclick="socket.emit('load_story_list', '');">
-						<span class="material-icons-outlined cursor" title="Load Story">folder_open</span>
+						<span class="material-icons-outlined cursor" tooltip="Load Story">folder_open</span>
 						<span class="button_label">Load Story</span>
 					</button>
 					<button class="settings_button var_sync_alt_story_gamesaved" onclick='socket.emit("save_story", null, (response) => {save_as_story(response);});'>
-						<span class="material-icons-outlined cursor var_sync_alt_story_gamesaved" title="Save Story">save</span>
+						<span class="material-icons-outlined cursor var_sync_alt_story_gamesaved" tooltip="Save Story">save</span>
 						<span class="button_label">Save Story</span>
 					</button>
 				</div>
@@ -90,7 +93,7 @@
 				<!---Top Row---->
 				<span class="setting_label">
 					<span style="white-space: pre-wrap;">Chat Name: </span>
-					<span class="helpicon material-icons-outlined" title="Your name for chat mode.">help_icon</span>
+					<span class="helpicon material-icons-outlined" tooltip="Your name for chat mode.">help_icon</span>
 				</span>
 				<!---Bottom Row---->
 				<span class="setting_item" style="height: 25px;">
@@ -113,7 +116,7 @@
 	<div id="setting_menu_settings" class="hidden settings_category_area tab-target tab-target-settings">
 		<div class="preset_area">
 			<button class="settings_button" onclick="show_save_preset();">
-				<span class="material-icons-outlined cursor" title="Save Preset">save</span>
+				<span class="material-icons-outlined cursor" tooltip="Save Preset">save</span>
 				<span class="button_label">Save Preset</span>
 			</button>
 			<select class="var_sync_model_selected_preset settings_select presets" onchange='sync_to_server(this)'><option>Preset</option></select>
@@ -132,14 +135,14 @@
 				<h4 style="width:var(--flyout_menu_width);"><span class="material-icons-outlined cursor">expand_more</span> Sampling</h4>
 			</div>
 			<div class="setting_tile_area">
-				<span class="help_text">Change how the AI decides what to say.</span>
+				<div class="help_text">Change how the AI decides what to say.</div>
 				{% with sub_path='Sampling' %}
 					{% include 'settings item.html' %}
 				{% endwith %}
 				<div class="setting_container_single">
 					<!---Top Row---->
 					<span class="setting_label">
-						<span>Samplers Order:&nbsp;</span><span class="helpicon material-icons-outlined" title="Changes the order of the samplers to have a considerably different effect than just leaving the samplers at their default order.">help_icon</span>
+						<span>Samplers Order:&nbsp;</span><span class="helpicon material-icons-outlined" tooltip="Changes the order of the samplers to have a considerably different effect than just leaving the samplers at their default order.">help_icon</span>
 					</span>
 					<!---Bottom Row---->
 					<span class="setting_item">
@@ -153,7 +156,7 @@
 								<li class="sample_order cursor" onclick="select_sample(this);">Typical Sampling</li>
 								<li class="sample_order cursor" onclick="select_sample(this);">Temperature</li>
 							</ul>
-							<div style="display:flex;flex-direction:column;justify-content:center;align-items:center;">
+							<div style="display:flex;flex-direction:column;margin-top: 25px;">
 								<div class="material-icons-outlined cursor" onclick="move_sample('up');">arrow_upward</div>
 								<div class="material-icons-outlined cursor" onclick="move_sample('down');">arrow_downward</div>
 								
@@ -167,7 +170,7 @@
 				<h4 style="width:var(--flyout_menu_width);"><span class="material-icons-outlined cursor">expand_more</span> Repetition</h4>
 			</div>
 			<div class="setting_tile_area">
-				<span class="help_text">Change how the AI combats repetition.</span>
+				<div class="help_text">Change how the AI combats repetition.</div>
 				{% with sub_path='Repetition' %}
 					{% include 'settings item.html' %}
 				{% endwith %}
@@ -193,14 +196,14 @@
 					<!---Top Row---->
 					<span class="setting_label">
 						<span style="white-space: pre-wrap;">Soft Prompt: </span>
-						<span class="helpicon material-icons-outlined" title="Changes how the AI decides what to output.">help_icon</span>
+						<span class="helpicon material-icons-outlined" tooltip="Changes how the AI decides what to output.">help_icon</span>
 					</span>
 					<!---Bottom Row---->
 					<span class="setting_item">
 						<!---<span class="material-icons-outlined cursor" onclick="socket.emit('load_softprompt_list', '');">folder_open</span> <span class="var_sync_system_spname"></span>--->
 						<select autocomplete="off" id="sp" class="var_sync_system_splist var_sync_system_spfilename settings_select" style="width: 140px;margin-right:0px;padding-bottom: 0px;" onclick="socket.emit('load_softprompt', this.value);">
 						</select>
-						<span class="material-icons-outlined cursor" style="font-size: 18px;" title="Refresh List" onclick="socket.emit('sp_list_refresh', '');">autorenew</span>
+						<span class="material-icons-outlined cursor" style="font-size: 18px;" tooltip="Refresh List" onclick="socket.emit('sp_list_refresh', '');">autorenew</span>
 					</span>
 					<!---Slider Labels--->
 					<span class="setting_minlabel"><span style="top: -4px; position: relative;"></span></span>
@@ -210,15 +213,15 @@
 					<!---Top Row---->
 					<span class="setting_label">
 						<span style="white-space: pre-wrap;">Enabled User Scripts: </span>
-						<span class="helpicon material-icons-outlined" title="Allows for user scripts that modify the way the game functions">help_icon</span>
+						<span class="helpicon material-icons-outlined" tooltip="Allows for user scripts that modify the way the game functions">help_icon</span>
 					</span>
 					<!---Bottom Row---->
 					<span class="setting_item">
 						<div style="display: flex;flex-direction: row;">
 							<select id="loaded_userscripts" class="var_sync_system_userscripts settings_select" multiple style="width:300px;"></select>
 							<div style="display: flex;flex-direction: column;">
-								<span class="material-icons-outlined cursor" style="font-size: 24px;" title="Unload File(s)" onclick="unload_userscripts();">delete</span>
-								<span class="material-icons-outlined cursor" style="font-size: 24px;" title="Load File" onclick="socket.emit('load_userscripts_list', '');">upload_file</span>
+								<span class="material-icons-outlined cursor" style="font-size: 24px;" tooltip="Unload File(s)" onclick="unload_userscripts();">delete</span>
+								<span class="material-icons-outlined cursor" style="font-size: 24px;" tooltip="Load File" onclick="socket.emit('load_userscripts_list', '');">upload_file</span>
 							</div>
 						</div>
 					</span>
@@ -232,13 +235,13 @@
 			<h4 style="width:var(--flyout_menu_width);"><span class="material-icons-outlined cursor">expand_more</span> Biasing</h4>
 		</div>
 		<div id="biasing">
-			<span class="help_text">Influence the likelihood for the AI to output certain phrases.</span>
+			<div class="help_text">Influence the likelihood for the AI to output certain phrases.</div>
 			<div class="bias_header">
 				<div class="bias_header_phrase">Phrase</div>
 				<div class="bias_header_score">Score</div>
 				<div class="bias_header_comp_threshold">
 					Completion Threshold
-					<span class="helpicon material-icons-outlined" title="Amount of tokens that must match the phrase before it is force-completed.">help_icon</span>
+					<span class="helpicon material-icons-outlined" tooltip="Amount of tokens that must match the phrase before it is force-completed.">help_icon</span>
 				</div>
 			</div>
 		</div>
@@ -255,7 +258,7 @@
 			{% endwith %}
 			<div class="setting_container">
 				<span class="setting_label">
-					<span>Max Game Screen: &nbsp;</span><span class="helpicon material-icons-outlined" title="When enabled and both menus are un-pinned, the game screen will take up all avaialable space. When disabled, the game screen will be centered.">help_icon</span> 
+					<span>Max Game Screen: &nbsp;</span><span class="helpicon material-icons-outlined" tooltip="When enabled and both menus are un-pinned, the game screen will take up all avaialable space. When disabled, the game screen will be centered.">help_icon</span> 
 				</span>
 				<span class="setting_item">
 					<input type=checkbox id="preserve_game_space_setting" data-size=mini data-onstyle=success data-toggle=toggle onchange="preserve_game_space(this.checked)"/>
@@ -266,7 +269,7 @@
 			</div>
 			<div class="setting_container">
 				<span class="setting_label">
-					<span>Options on Right:&nbsp;</span><span class="helpicon material-icons-outlined" title="When enabled and only the story menu is pinned, the generated story options will be shown on the right instead of the left of the game text.">help_icon</span> 
+					<span>Options on Right:&nbsp;</span><span class="helpicon material-icons-outlined" tooltip="When enabled and only the story menu is pinned, the generated story options will be shown on the right instead of the left of the game text.">help_icon</span> 
 				</span>
 				<span class="setting_item">
 					<input type=checkbox id="options_on_right" data-size=mini data-onstyle=success data-toggle=toggle onchange="options_on_right(this.checked)"/>
@@ -278,7 +281,7 @@
 			<div class="setting_container">
 				<!---Top Row---->
 				<span class="setting_label">
-					<span>Font Size:&nbsp;</span><span class="helpicon material-icons-outlined" title="Change the font size of the game text">help_icon</span>
+					<span>Font Size:&nbsp;</span><span class="helpicon material-icons-outlined" tooltip="Change the font size of the game text">help_icon</span>
 				</span>
 				<input autocomplete="off" class="setting_value" id="font_size_cur"
 					   value="1" item_id="font_size" 
@@ -297,16 +300,6 @@
 			</div>
 		</div>
 		<div class="collapsable_header" onclick="toggle_setting_category(this);">
-			<h4 style="width:var(--flyout_menu_width);"><span class="material-icons-outlined cursor">expand_more</span> Images</h4>
-		</div>
-		<div class="setting_tile_area">
-			{% with menu='Interface' %}
-				{% with sub_path='Images' %}
-					{% include 'settings item.html' %}
-				{% endwith %}
-			{% endwith %}
-		</div>
-		<div class="collapsable_header" onclick="toggle_setting_category(this);">
 			<h4 style="width:var(--flyout_menu_width);"><span class="material-icons-outlined cursor">expand_more</span> Formatting</h4>
 		</div>
 		<div class="setting_tile_area">
@@ -317,16 +310,49 @@
 			{% endwith %}
 		</div>
 		<div class="collapsable_header" onclick="toggle_setting_category(this);">
+			<h4 style="width:var(--flyout_menu_width);"><span class="material-icons-outlined cursor">expand_more</span> Substitutions</h4>
+		</div>
+
+		<div class="setting_tile_area" id="Substitutions">
+			<div class="help_text">
+				Automatically replaces phrases that you or the AI insert.
+				<span class="helpicon material-icons-outlined" tooltip="Can be used to help you insert special characters or automatically correct the AI. The pencil button toggles if a substitution is active or not.">help_icon</span>
+			</div>
+
+			<div id="substitution-header" class="noselect">
+				<b>Replace</b> <b>With</b>
+			</div>
+			<div id="substitution-container"></div>
+
+			<div id="new-sub-card" class="cursor" tooltip="Add Substitution">
+				<span class="material-icons-outlined">
+					add
+				</span>
+			</div>
+		</div>
+
+		<div class="collapsable_header" onclick="toggle_setting_category(this);">
+			<h4 style="width:var(--flyout_menu_width);"><span class="material-icons-outlined cursor">expand_more</span> Images</h4>
+		</div>
+		<div class="setting_tile_area">
+			{% with menu='Interface' %}
+				{% with sub_path='Images' %}
+					{% include 'settings item.html' %}
+				{% endwith %}
+			{% endwith %}
+		</div>
+
+		<div class="collapsable_header" onclick="toggle_setting_category(this);">
 			<h4 style="width:var(--flyout_menu_width);"><span class="material-icons-outlined cursor">expand_more</span> Theme</h4>
 		</div>
 		<div class="setting_tile_area" id="Theme">
 			<select id="selected_theme" class="var_sync_system_theme_list" autocomplete="off" onchange="Change_Theme(this.value);">
-			</select><span class="material-icons-outlined cursor" title="Refresh List" onclick="socket.emit('theme_list_refresh', '');">autorenew</span>
+			</select><span class="material-icons-outlined cursor" tooltip="Refresh List" onclick="socket.emit('theme_list_refresh', '');">autorenew</span>
 			<div id="palette_area">
 				<b style="font-size: 20px;">Palette</b>
 				<div id="save_theme_area" >
 					<input type="text" id="save_theme_name" autocomplete="off" placeholder="New Theme Name"/>
-					<span class="material-icons-outlined cursor" title="Save Theme" onclick='save_theme();'>save</span>
+					<span class="material-icons-outlined cursor" tooltip="Save Theme" onclick='save_theme();'>save</span>
 				</div>
 				<div class="setting_tile_area" id="Palette">
 					<table id="Palette_Table" border=1 style="border-color: var(--palette_table_border);">
@@ -394,7 +420,7 @@
 			<h4 style="width:var(--flyout_menu_width);"><span class="material-icons-outlined cursor">expand_more</span> Tweaks</h4>
 		</div>
 		<div class="setting_tile_area" id="Tweaks">
-			<span class="help_text">Small UI changes that can be mixed and matched.</span>
+			<div class="help_text">Small UI changes that can be mixed and matched.</div>
 			<div class="tweak-container" tweak-path="hide-timing">
 				<span>Hide timing information</span>
 				<input type=checkbox class="setting_item_input" data-size="mini" data-onstyle="success" data-toggle="toggle">
@@ -407,11 +433,15 @@
 				<span>Hide text highlighting</span>
 				<input type=checkbox class="setting_item_input" data-size="mini" data-onstyle="success" data-toggle="toggle">
 			</div>
+			<div class="tweak-container" tweak-path="hide-auto-memory">
+				<span>Hide auto memory</span>
+				<input type=checkbox class="setting_item_input" data-size="mini" data-onstyle="success" data-toggle="toggle">
+			</div>
 		</div>
 	</div>
 	<div id="settings_footer" class="settings_footer">
 		<span>Execution Time: <span id="Execution Time"></span></span> | 
 		<span>Remaining Time: <span class="var_sync_model_tqdm_rem_time"></span></span> | 
-		<a onclick='socket.emit("get_log", {});document.getElementById("log_popup").classList.remove("hidden");'>Log</a>
+		<a onclick='socket.emit("get_log", {});document.getElementById("log_popup").classList.remove("hidden");' class='cursor'>Log</a>
 	</div>
 </div>

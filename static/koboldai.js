@@ -33,7 +33,11 @@ socket.on("request_prompt_config", configurePrompt);
 socket.on("log_message", function(data){process_log_message(data);});
 socket.on("debug_message", function(data){console.log(data);});
 socket.on("scratchpad_response", recieveScratchpadResponse);
+socket.on("scratchpad_response", recieveScratchpadResponse);
 //socket.onAny(function(event_name, data) {console.log({"event": event_name, "class": data.classname, "data": data});});
+
+// Must be done before any elements are made; we track their changes.
+initalizeTooltips();
 
 var presets = {};
 var current_chunk_number = null;
@@ -60,23 +64,24 @@ var finder_waiting_id = null;
 var control_held = false;
 var actions_data = {};
 var setup_wi_toggles = [];
-var scroll_trigger_element = undefined;
+var scroll_trigger_element = undefined; //undefined means not currently set. If set to null, it's disabled.
+var drag_id = null;
 const on_colab = $el("#on_colab").textContent == "true";
 
 // name, desc, icon, func
-const finder_actions = [
-	{name: "Load Model", icon: "folder_open", func: function() { socket.emit('load_model_button', {}); }},
-	{name: "New Story", icon: "description", func: function() { socket.emit('new_story', ''); }},
-	{name: "Load Story", icon: "folder_open", func: function() { socket.emit('load_story_list', ''); }},
-	{name: "Save Story", icon: "save", func: function() { socket.emit("save_story", null, (response) => {save_as_story(response);}); }},
-	{name: "Download Story", icon: "file_download", func: function() { document.getElementById('download_iframe').src = 'json'; }},
+var finder_actions = [
+	{name: "Load Model", icon: "folder_open", type: "action", func: function() { socket.emit('load_model_button', {}); }},
+	{name: "New Story", icon: "description", type: "action", func: function() { socket.emit('new_story', ''); }},
+	{name: "Load Story", icon: "folder_open", type: "action", func: function() { socket.emit('load_story_list', ''); }},
+	{name: "Save Story", icon: "save", type: "action", func: function() { socket.emit("save_story", null, (response) => {save_as_story(response);}); }},
+	{name: "Download Story", icon: "file_download", type: "action", func: function() { document.getElementById('download_iframe').src = 'json'; }},
 
 	// Locations
-	{name: "Setting Presets", icon: "open_in_new", func: function() { highlightEl(".var_sync_model_selected_preset") }},
-	{name: "Memory", icon: "open_in_new", func: function() { highlightEl("#memory") }},
-	{name: "Author's Note", icon: "open_in_new", func: function() { highlightEl("#authors_notes") }},
-	{name: "Notes", icon: "open_in_new", func: function() { highlightEl(".var_sync_story_notes") }},
-	{name: "World Info", icon: "open_in_new", func: function() { highlightEl("#WI_Area") }},
+	{name: "Setting Presets", icon: "open_in_new", type: "location", func: function() { highlightEl(".var_sync_model_selected_preset") }},
+	{name: "Memory", icon: "open_in_new", type: "location", func: function() { highlightEl("#memory") }},
+	{name: "Author's Note", icon: "open_in_new", type: "location", func: function() { highlightEl("#authors_notes") }},
+	{name: "Notes", icon: "open_in_new", type: "location", func: function() { highlightEl(".var_sync_story_notes") }},
+	{name: "World Info", icon: "open_in_new", type: "location", func: function() { highlightEl("#WI_Area") }},
 	
 	// TODO: Direct theme selection
 	// {name: "", icon: "palette", func: function() { highlightEl("#biasing") }},
@@ -147,7 +152,7 @@ function disconnect() {
 }
 
 function reset_story() {
-	console.log("Resetting story");
+	//console.log("Resetting story");
 	clearTimeout(calc_token_usage_timeout);
 	clearTimeout(game_text_scroll_timeout);
 	clearTimeout(font_size_cookie_timout);
@@ -155,7 +160,11 @@ function reset_story() {
 	finder_last_input = null;
 	on_new_wi_item = null;
 	current_chunk_number = null;
+	//console.log("resetting scroll_trigger_element");
 	scroll_trigger_element = undefined;
+	actions_data = {};
+	world_info_data = {};
+	world_info_folder({"root": []});
 	var story_area = document.getElementById('Selected Text');
 	let temp = []
 	for (child of story_area.children) {
@@ -166,17 +175,7 @@ function reset_story() {
 	for (const item of temp) { 
 		item.remove();
 	}
-	dummy_span = document.createElement("div");
-	dummy_span.id = "Delete Me";
-	dummy_span.classList.add("noselect");
 	document.getElementById("Selected Text").setAttribute("contenteditable", "false");
-	text = "";
-	for (i=0;i<154;i++) {
-		text += "\xa0 ";
-	}
-	dummy_span.textContent = text;
-	dummy_span.setAttribute("contenteditable", false);
-	story_area.append(dummy_span);
 	var option_area = document.getElementById("Select Options");
 	while (option_area.firstChild) {
 		option_area.removeChild(option_area.firstChild);
@@ -185,11 +184,15 @@ function reset_story() {
 	while (world_info_area.firstChild) {
 		world_info_area.removeChild(world_info_area.firstChild);
 	}
-	world_info_data = {};
-	world_info_folder({"root": []});
 	document.getElementById("story_prompt").setAttribute("world_info_uids", "");
 	document.getElementById('themerow').classList.remove("hidden");
 	document.getElementById('input_text').placeholder = "Enter Prompt Here (shift+enter for new line)";
+	text = "";
+	for (i=0;i<70;i++) {
+		text += "\xa0 ";
+	}
+	document.getElementById("welcome_text").innerText = text;
+	document.getElementById("welcome_text").classList.remove("hidden");
 }
 
 function fix_text(val) {
@@ -257,7 +260,7 @@ function create_options(action) {
 			icon.setAttribute('data-glyph', "loop-circular");
 			iconcell.append(icon);
 			delete_icon = $e("span", iconcell, {"classes": ["material-icons-outlined", "cursor", 'delete_option_icon'], 
-												"title": "delete option", 'option_id': i, 
+												"tooltip": "Delete Option", 'option_id': i,
 												'option_chunk': action.id, 'textContent': 'delete'});
 			delete_icon.onclick = function () {
 									socket.emit("delete_option", {"chunk": this.getAttribute("option_chunk"), "option": this.getAttribute("option_id")});
@@ -348,24 +351,13 @@ function do_story_text_updates(action) {
 		
 		//need to find the closest element
 		next_id = action.id+1;
-		while (true) {
-			if (next_id in actions_data) {
-				story_area.insertBefore(span, document.getElementById('Selected Text Chunk '+next_id));
-				break;
-			} else if (Math.max.apply(null,Object.keys(actions_data)) <= next_id) {
-				story_area.append(span);
-				break;
-			}
-			next_id += 1;
+		if (Math.max.apply(null,Object.keys(actions_data).map(Number)) <= next_id) {
+			story_area.append(span);
+		} else {
+			story_area.prepend(span);
 		}
 		span.classList.add("single_pulse");
 		
-		if (action.id.toString() == document.getElementById('action_count').textContent) {
-			console.log("Scrolling. Action Count: "+document.getElementById('action_count').textContent);
-			document.getElementById("Selected Text").scrollTop = document.getElementById("Selected Text").scrollHeight;
-		}
-		//clearTimeout(game_text_scroll_timeout);
-		//game_text_scroll_timeout = setTimeout(function() {document.getElementById("Selected Text").scrollTop = document.getElementById("Selected Text").scrollHeight;}, 500);
 		if (span.textContent != "") {
 			assign_world_info_to_action(action.id, null);
 		}
@@ -395,10 +387,7 @@ function do_prompt(data) {
 		document.getElementById('input_text').placeholder = "Enter text here (shift+enter for new line)";
 		document.getElementById('themerow').classList.add("hidden");
 		document.getElementById('themetext').value = "";
-		if (document.getElementById("Delete Me")) {
-			document.getElementById("Delete Me").remove();
-			document.getElementById("Selected Text").setAttribute("contenteditable", "true");
-		}
+		document.getElementById("welcome_text").classList.add("hidden");
 		//enable editing
 		document.getElementById("Selected Text").setAttribute("contenteditable", "true");
 	} else {
@@ -490,6 +479,7 @@ function do_presets(data) {
 					var option = document.createElement("option");
 					option.value=preset;
 					option.text=preset_value.preset;
+					// Don't think we can use custom tooltip here (yet)
 					option.title = preset_value.description;
 					option_group.append(option);
 				}
@@ -551,47 +541,64 @@ function var_changed(data) {
 	
 	if ((data.classname == 'actions') && (data.name == 'Action Count')) {
 		current_action = data.value;
+		if (current_action <= 0) {
+			//console.log("setting action_count to "+current_action);
+			document.getElementById("story_prompt").classList.remove("hidden");
+			scroll_trigger_element = undefined;
+			document.getElementById("Selected Text").onscroll = undefined;
+		} else if (Math.min.apply(null,Object.keys(actions_data).map(Number).filter(function(x){return x>0})) > 0) {
+			//we have actions and our minimum action we have in the UI is above the start of the game
+			//we need to keep the story prompt hidden
+			document.getElementById("story_prompt").classList.add("hidden");
+			
+		}
 	}
 	//Special Case for Actions
 	if ((data.classname == "story") && (data.name == "actions")) {
+		start_time = Date.now();
+		//temp_counter += 1;
+		//if (temp_counter > 10) {
+		//	return;
+		//}
+		if (document.getElementById("Selected Text").firstElementChild.id == "story_prompt") {
+			first_story_element = document.getElementById("Selected Text").firstElementChild.nextElementSibling;
+		} else {
+			first_story_element = document.getElementById("Selected Text").firstElementChild;
+		}
 		if (Array.isArray(data.value)) {
 			actions = data.value;
 		} else {
 			actions = [data.value];
 		}
+		if (actions.length == 0) {return;}
+		let action_type = "????";
+		let first_action = -100;
+		//we need to figure out if this is changes to existing text, added text at the end, or infinite scroll text at the begining
+		if ((actions[0].id in actions_data) && (actions[actions.length-1].id in actions_data)) {
+			//update
+			action_type = "update";
+		} else if ((Object.keys(actions_data).length > 1) && (actions[actions.length-1].id < Math.min.apply(null,Object.keys(actions_data).map(Number).filter(function(x){return x>0})))) {
+			//adding to the begining
+			action_type = "prepend";
+			first_action = Math.min.apply(null,Object.keys(actions_data).map(Number).filter(function(x){return x>0}));
+		} else if (actions[actions.length-1].id > Math.max.apply(null,Object.keys(actions_data).map(Number))) {
+			action_type = "append";
+		}
+		
 		for (action of actions) {
-			if (action.length != 0) {
-				actions_data[action.id] = action.action;
-				do_story_text_updates(action);
-				create_options(action);
-				do_story_text_length_updates(action);
-				if ('Probabilities' in action.action) {
-					do_probabilities(action);
-				}
-				if (action.action['In AI Input']) {
-					document.getElementById('Selected Text Chunk '+action.id).classList.add("within_max_length");
-				} else {
-					document.getElementById('Selected Text Chunk '+action.id).classList.remove("within_max_length");
-				}
+			actions_data[parseInt(action.id)] = action.action;
+			do_story_text_updates(action);
+			create_options(action);
+			if ('Probabilities' in action.action) {
+				do_probabilities(action);
 			}
 		}
-		//check to see if our new action is before the scroll triggering action
-		if (actions.length > 0) {
-			if ((scroll_trigger_element == undefined) || (actions[actions.length-1].id < parseInt(scroll_trigger_element.getAttribute("chunk")))) {
-				if (scroll_trigger_element != undefined) {
-					scroll_trigger_element.scrollIntoView();
-				} else {
-					document.getElementById("Selected Text Chunk "+actions[actions.length-1].id).scrollIntoView();
-				}
-				
-				scroll_trigger_element = document.getElementById("Selected Text Chunk "+actions[0].id);
-				//if we hit the top, unhide the prompt and clear the scroll trigger
-				if (actions[actions.length-1].id == 0) {
-					document.getElementById("story_prompt").classList.remove("hidden");
-					scroll_trigger_element = null;
-				}
-			}
-		}
+		
+		clearTimeout(game_text_scroll_timeout);
+		game_text_scroll_timeout = setTimeout(run_infinite_scroll_update.bind(null, action_type, actions, first_action), 200);
+		
+		
+		//console.log("Took "+((Date.now()-start_time)/1000)+"s to process");
 		
 	//Special Case for Presets
 	} else if ((data.classname == 'model') && (data.name == 'presets')) {
@@ -602,6 +609,9 @@ function var_changed(data) {
 	//Special Case for phrase biasing
 	} else if ((data.classname == 'story') && (data.name == 'biases')) {
 		do_biases(data);
+	//Special Case for substitutions
+	} else if ((data.classname == 'story') && (data.name == 'substitutions')) {
+		load_substitutions(data.value);
 	//Special Case for sample_order
 	} else if ((data.classname == 'model') && (data.name == 'sampler_order')) {
 		for (const [index, item] of data.value.entries()) {
@@ -651,6 +661,9 @@ function var_changed(data) {
 		if (document.getElementById("action image").firstChild) {
 			document.getElementById("action image").firstChild.setAttribute("title", data.value);
 		}
+	//special case for welcome text since we want to allow HTML
+	} else if (data.classname == 'model' && data.name == 'welcome') {
+		document.getElementById('welcome_text').innerHTML = data.value;
 	//Basic Data Syncing
 	} else {
 		var elements_to_change = document.getElementsByClassName("var_sync_"+data.classname.replace(" ", "_")+"_"+data.name.replace(" ", "_"));
@@ -849,7 +862,7 @@ function redrawPopup() {
 		if (popup_editable && !row.isValid) {
 			edit_icon.classList.add("oi");
 			edit_icon.setAttribute('data-glyph', "spreadsheet");
-			edit_icon.title = "Edit"
+			edit_icon.setAttribute("tooltip", "Edit");
 			edit_icon.id = row.path;
 			edit_icon.onclick = function () {
 				socket.emit("popup_edit", this.id);
@@ -863,7 +876,7 @@ function redrawPopup() {
 		if (popup_renameable && !row.isFolder) {
 			rename_icon.classList.add("oi");
 			rename_icon.setAttribute('data-glyph', "pencil");
-			rename_icon.title = "Rename"
+			rename_icon.setAttribute("tooltip", "Rename");
 			rename_icon.id = row.path;
 			rename_icon.setAttribute("filename", row.fileName);
 			rename_icon.onclick = function () {
@@ -881,7 +894,7 @@ function redrawPopup() {
 		if (popup_deleteable) {
 			delete_icon.classList.add("oi");
 			delete_icon.setAttribute('data-glyph', "x");
-			delete_icon.title = "Delete"
+			delete_icon.setAttribute("tooltip", "Delete");
 			delete_icon.id = row.path;
 			delete_icon.setAttribute("folder", row.isFolder);
 			delete_icon.onclick = function () {
@@ -1200,6 +1213,8 @@ function oai_engines(data) {
 }
 
 function getModelParameterCount(modelName) {
+	if (!modelName) return null;
+
 	// The "T" and "K" may be a little optimistic...
 	let paramsString = modelName.toUpperCase().match(/[\d.]+[TBMK]/)
 	if (!paramsString) return null;
@@ -1262,37 +1277,40 @@ function show_model_menu(data) {
 		var folder_icon = document.createElement("span");
 		folder_icon.classList.add("material-icons-outlined");
 		folder_icon.classList.add("cursor");
-		if ((item[3]) || (item[0] == 'Load a model from its directory') || (item[0] == 'Load an old GPT-2 model (eg CloverEdition)')) {
-			folder_icon.textContent = "folder";
-		} else {
-			folder_icon.textContent = "psychology";
-		}
+
+		let isModel = !(
+			item.isMenu ||
+			item.label === "Load a model from its directory" ||
+			item.label === "Load an old GPT-2 model (eg CloverEdition)"
+		);
+
+		folder_icon.textContent = isModel ? "psychology" : "folder";
 		list_item.append(folder_icon);
 		
 		
 		//create the actual item
 		var popup_item = document.createElement("span");
 		popup_item.classList.add("model");
-		popup_item.setAttribute("display_name", item[0]);
-		popup_item.id = item[1];
+		popup_item.setAttribute("display_name", item.label);
+		popup_item.id = item.name;
 		
 		popup_item.setAttribute("Menu", data.menu)
 		//name text
 		var text = document.createElement("span");
 		text.style="grid-area: item;";
-		text.textContent = item[0];
+		text.textContent = item.label;
 		popup_item.append(text);
 		//model size text
 		var text = document.createElement("span");
-		text.textContent = item[2];
+		text.textContent = item.size;
 		text.style="grid-area: gpu_size;padding: 2px;";
 		popup_item.append(text);
 
 		(function() {
 			// Anon function to avoid unreasonable indentation
-			if (folder_icon.innerText !== "psychology") return;
+			if (!isModel) return;
 
-			let parameterCount = getModelParameterCount(item[0]);
+			let parameterCount = getModelParameterCount(item.label);
 			if (!parameterCount) return;
 
 			let warningText = "";
@@ -1303,10 +1321,24 @@ function show_model_menu(data) {
 
 			if (!warningText) return;
 			$e("span", list_item, {
-				classes: ["material-icons-outlined"],
+				classes: ["material-icons-outlined", "model-size-warning"],
 				innerText: "warning",
 				"style.grid-area": "warning_icon",
-				title: warningText
+				tooltip: warningText
+			});
+
+		})();
+
+		(function() {
+			// Anon function to avoid unreasonable indentation
+			if (!item.isDownloaded) return;
+			if (!isModel) return;
+
+			$e("span", list_item, {
+				classes: ["material-icons-outlined", "model-download-notification"],
+				innerText: "download_done",
+				"style.grid-area": "downloaded_icon",
+				tooltip: "This model is already downloaded."
 			});
 		})();
 		
@@ -1600,8 +1632,6 @@ function world_info_entry_used_in_game(data) {
 }
 
 function world_info_entry(data) {
-
-	
 	world_info_data[data.uid] = data;
 	
 	//delete the existing world info and recreate
@@ -1628,7 +1658,10 @@ function world_info_entry(data) {
 	title.setAttribute("uid", data.uid);
 	title.setAttribute("original_text", data.title);
 	title.setAttribute("contenteditable", true);
+	title.ondragstart=function() {event.preventDefault();event.stopPropagation();};
 	title.onblur = function () {
+				this.parentElement.parentElement.setAttribute('draggable', 'true');
+				this.setAttribute('draggable', 'true');
 				if (this.textContent != this.getAttribute("original_text")) {
 					world_info_data[this.getAttribute('uid')]['title'] = this.textContent;
 					send_world_info(this.getAttribute('uid'));
@@ -1644,9 +1677,9 @@ function world_info_entry(data) {
 	delete_icon = world_info_card.querySelector('#world_info_delete_');
 	delete_icon.id = "world_info_delete_"+data.uid;
 	delete_icon.setAttribute("uid", data.uid);
-	delete_icon.setAttribute("title", data.title);
+	delete_icon.setAttribute("wi-title", data.title);
 	delete_icon.onclick = function () {
-		if (confirm("This will delete world info "+this.getAttribute("title"))) {
+		if (confirm("This will delete world info "+this.getAttribute("wi-title"))) {
 			if (parseInt(this.getAttribute("uid")) < 0) {
 				this.parentElement.parentElement.remove();
 			} else {
@@ -1727,6 +1760,11 @@ function world_info_entry(data) {
 				label.textContent = "\xa0\xa0\xa0\xa0Attribute: ";
 				attribute_area.append(label);
 				input = document.createElement("input");
+				input.setAttribute("contenteditable", true);
+				input.ondragstart=function() {event.preventDefault();event.stopPropagation();};
+				input.onfocus=function() {this.parentElement.parentElement.parentElement.setAttribute('draggable', 'false');this.setAttribute('draggable', 'false');};
+				input.onblur=function() {this.parentElement.parentElement.parentElement.setAttribute('draggable', 'true');this.setAttribute('draggable', 'true');};
+				input.ondragstart=function() {event.preventDefault();event.stopPropagation();};
 				input.value = attribute;
 				input.type = "text";
 				input.setAttribute("uid", data.uid);
@@ -1744,7 +1782,12 @@ function world_info_entry(data) {
 					value_area.append(label);
 					input = document.createElement("input");
 					input.type = "text";
+					input.setAttribute("contenteditable", true);
+					input.ondragstart=function() {event.preventDefault();event.stopPropagation();};
 					input.onchange = function() {do_wpp(this.parentElement.parentElement)};
+					input.onfocus=function() {this.parentElement.parentElement.parentElement.setAttribute('draggable', 'false');this.setAttribute('draggable', 'false');};
+					input.onblur=function() {this.parentElement.parentElement.parentElement.setAttribute('draggable', 'true');this.setAttribute('draggable', 'true');};
+					input.ondragstart=function() {event.preventDefault();event.stopPropagation();};
 					input.value = value;
 					input.setAttribute("uid", data.uid);
 					input.setAttribute("data_type", "value");
@@ -1758,6 +1801,11 @@ function world_info_entry(data) {
 				value_area.append(label);
 				input = document.createElement("input");
 				input.type = "text";
+				input.setAttribute("contenteditable", true);
+				input.ondragstart=function() {event.preventDefault();event.stopPropagation();};
+				input.onfocus=function() {this.parentElement.parentElement.parentElement.setAttribute('draggable', 'false');this.setAttribute('draggable', 'false');};
+				input.onblur=function() {this.parentElement.parentElement.parentElement.setAttribute('draggable', 'true');this.setAttribute('draggable', 'true');};
+				input.ondragstart=function() {event.preventDefault();event.stopPropagation();};
 				input.setAttribute("uid", data.uid);
 				input.setAttribute("data_type", "value");
 				input.id = "wpp_"+data.uid+"_value_"+i+"_blank";
@@ -1775,6 +1823,10 @@ function world_info_entry(data) {
 	input = document.createElement("input");
 	input.value = "";
 	input.type = "text";
+	input.setAttribute("contenteditable", true);
+	input.ondragstart=function() {event.preventDefault();event.stopPropagation();};
+	input.onfocus=function() {this.parentElement.parentElement.parentElement.setAttribute('draggable', 'false');this.setAttribute('draggable', 'false');};
+	input.onblur=function() {this.parentElement.parentElement.parentElement.setAttribute('draggable', 'true');this.setAttribute('draggable', 'true');};
 	input.setAttribute("uid", data.uid);
 	input.setAttribute("value_num", i);
 	input.setAttribute("data_type", "attribute");
@@ -1870,6 +1922,10 @@ function world_info_entry(data) {
 		document.getElementById("world_info_basic_text_"+wpp_toggle.getAttribute('uid')).classList.remove("hidden");
 	}
 	
+	//resize comments/text boxes
+	autoResize(comment, 60);
+	autoResize(manual_text, 60);
+	
 	//put focus back where it was
 	if (document.getElementById(original_focus)) {
 		if (document.getElementById(original_focus).tagName != "BUTTON") {
@@ -1891,10 +1947,8 @@ function world_info_entry(data) {
 	
 	update_token_lengths();
 	
-	clearTimeout(calc_token_usage_timeout);
-	calc_token_usage_timeout = setTimeout(calc_token_usage, 200);
 	clearTimeout(setup_missing_wi_toggles_timeout);
-	setup_missing_wi_toggles_timeout = setTimeout(setup_missing_wi_toggles, 200);
+	setup_missing_wi_toggles_timeout = setTimeout(setup_missing_wi_toggles, 10);
 	
 	return world_info_card;
 }
@@ -2125,9 +2179,14 @@ function show_error_message(data) {
 	while (error_box_data.firstChild) {
 		error_box_data.removeChild(error_box_data.firstChild);
 	}
-	for (item of data) {
+	if (Array.isArray(data)) {
+		for (item of data) {
+			$e("div", error_box_data, {'innerHTML': item, 'classes': ['console_text']})
+			$e("br", error_box_data)
+		}
+	} else {
+		//console.log(item);
 		$e("div", error_box_data, {'innerHTML': item, 'classes': ['console_text']})
-		$e("br", error_box_data)
 	}
 }
 
@@ -2400,7 +2459,7 @@ function select_game_text(event) {
 				new_selected_game_chunk = document.selection.createRange().parentElement();
 			} else if (document.selection.createRange().parentElement().id == 'gamescreen') {
 				new_selected_game_chunk = null;
-				console.log("Do nothing");
+				//console.log("Do nothing");
 			} else {
 				new_selected_game_chunk = document.selection.createRange().parentElement().parentElement();
 			}
@@ -2410,7 +2469,7 @@ function select_game_text(event) {
 					new_selected_game_chunk = window.getSelection().anchorNode.parentNode;
 				} else if (window.getSelection().anchorNode.parentNode.id == "gamescreen") {
 					new_selected_game_chunk = null;
-					console.log("Do nothing");
+					//console.log("Do nothing");
 				} else {
 					new_selected_game_chunk = window.getSelection().anchorNode.parentNode.parentNode;
 				}
@@ -2445,7 +2504,7 @@ function select_game_text(event) {
 }
 
 function edit_game_text() {
-	if ((selected_game_chunk != null) && (selected_game_chunk.textContent != selected_game_chunk.original_text) && (selected_game_chunk != document.getElementById("Delete Me"))) {
+	if ((selected_game_chunk != null) && (selected_game_chunk.textContent != selected_game_chunk.original_text) && (selected_game_chunk != document.getElementById("welcome_text"))) {
 		if (selected_game_chunk.id == "story_prompt") {
 			sync_to_server(selected_game_chunk);
 		} else {
@@ -2511,7 +2570,7 @@ function retry_from_here() {
 	}
 	if (chunk != null) {
 		action_count = parseInt(document.getElementById("action_count").textContent);
-		console.log(chunk);
+		//console.log(chunk);
 		for (let i = 0; i < (action_count-chunk); i++) {
 			socket.emit('back', {});
 		}
@@ -2571,70 +2630,55 @@ function show_save_preset() {
 	document.getElementById("save_preset").classList.remove("hidden");
 }
 
-function autoResize(element) {
+function autoResize(element, min_size=200) {
+	//console.log(min_size);
 	element.style.height = 'auto';
-	element.style.height = element.scrollHeight + 'px';
-}
-
-function token_length(text) {
-	if (typeof encode === 'function') {
-		return encode(text).length;
+	if (min_size > element.scrollHeight) {
+		element.style.height = min_size + "px";
 	} else {
-		return 0;
+		element.style.height = (element.scrollHeight + 5) + 'px';
 	}
 }
 
-function calc_token_usage() {
-	memory_tokens = parseInt(document.getElementById("memory").getAttribute("story_memory_length"));
-    authors_notes_tokens = parseInt(document.getElementById("authors_notes").getAttribute("story_authornote_length"));
-	prompt_tokens = parseInt(document.getElementById("story_prompt").getAttribute("story_prompt_length"));
-    game_text_tokens = 0;
-    submit_tokens = token_length(document.getElementById("input_text").value);
-	total_tokens = parseInt(document.getElementById('model_max_length_cur').value);
-	
-	//find world info entries set to go to AI
-	world_info_tokens = 0;
-	for (wi of document.querySelectorAll(".world_info_card.used_in_game")) {
-		if (wi.getAttribute("uid") in world_info_data) {
-			world_info_tokens += world_info_data[wi.getAttribute("uid")].token_length;
-		}
+
+function calc_token_usage(
+	soft_prompt_length,
+	memory_length,
+	authors_note_length,
+	prompt_length,
+	game_text_length,
+	world_info_length,
+	submit_length
+) {
+	let total_tokens = parseInt(document.getElementById('model_max_length_cur').value);
+	let unused_token_count = total_tokens - memory_length - authors_note_length - world_info_length - prompt_length - game_text_length - submit_length;
+
+	for (const dat of [
+		{id: "soft_prompt_tokens", tokenCount: soft_prompt_length, label: "Soft Prompt"},
+		{id: "memory_tokens", tokenCount: memory_length, label: "Memory"},
+		{id: "authors_notes_tokens", tokenCount: authors_note_length, label: "Author's Note"},
+		{id: "world_info_tokens", tokenCount: world_info_length, label: "World Info"},
+		{id: "prompt_tokens", tokenCount: prompt_length, label: "Prompt"},
+		{id: "game_text_tokens", tokenCount: game_text_length, label: "Game Text"},
+		{id: "submit_tokens", tokenCount: submit_length, label: "Submit Text"},
+		{id: "unused_tokens", tokenCount: unused_token_count, label: "Remaining"},
+	]) {
+		const el = document.getElementById(dat.id);
+		el.style.width = ((dat.tokenCount / total_tokens) * 100) + "%";
+		el.setAttribute("tooltip", `${dat.label}: ${dat.tokenCount}`);
 	}
-	
-	//find game text tokens
-	var game_text_tokens = 0;
-	var game_text = document.getElementById('Selected Text').querySelectorAll(".within_max_length");
-	var game_text = Array.prototype.slice.call(game_text).reverse();
-	for (item of game_text) {
-		if (total_tokens - memory_tokens - authors_notes_tokens - world_info_tokens - prompt_tokens - game_text_tokens - submit_tokens > parseInt(item.getAttribute("token_length"))) {
-			game_text_tokens += parseInt(item.getAttribute("token_length"));
-		}
-	}
-	
-	
-	unused_tokens = total_tokens - memory_tokens - authors_notes_tokens - world_info_tokens - prompt_tokens - game_text_tokens - submit_tokens;
-	
-	document.getElementById("memory_tokens").style.width = (memory_tokens/total_tokens)*100 + "%";
-	document.getElementById("memory_tokens").title = "Memory: "+memory_tokens;
-	document.getElementById("authors_notes_tokens").style.width = (authors_notes_tokens/total_tokens)*100 + "%";
-	document.getElementById("authors_notes_tokens").title = "Author's Notes: "+authors_notes_tokens
-	document.getElementById("world_info_tokens").style.width = (world_info_tokens/total_tokens)*100 + "%";
-	document.getElementById("world_info_tokens").title = "World Info: "+world_info_tokens
-	document.getElementById("prompt_tokens").style.width = (prompt_tokens/total_tokens)*100 + "%";
-	document.getElementById("prompt_tokens").title = "Prompt: "+prompt_tokens
-	document.getElementById("game_text_tokens").style.width = (game_text_tokens/total_tokens)*100 + "%";
-	document.getElementById("game_text_tokens").title = "Game Text: "+game_text_tokens
-	document.getElementById("submit_tokens").style.width = (submit_tokens/total_tokens)*100 + "%";
-	document.getElementById("submit_tokens").title = "Submit Text: "+submit_tokens
-	document.getElementById("unused_tokens").style.width = (unused_tokens/total_tokens)*100 + "%";
-	document.getElementById("unused_tokens").title = "Remaining: "+unused_tokens
 }
 
 function Change_Theme(theme) {
 	var css = document.getElementById("CSSTheme");
     css.setAttribute("href", "/themes/"+theme+".css");
-	setTimeout(() => {
+
+	// We must wait for the style to load before we read it
+	css.onload = function() {
+		recolorTokens();
 		create_theming_elements();
-	}, "1000")
+	}
+
 	setCookie("theme", theme);
 	select = document.getElementById("selected_theme");
 	for (element of select.childNodes) {
@@ -2862,29 +2906,131 @@ function update_bias_slider_value(slider) {
 	slider.parentElement.parentElement.querySelector(".bias_slider_cur").textContent = slider.value;
 }
 
+function distortColor(rgb) {
+	// rgb are 0..255, NOT NORMALIZED!!!!!!
+	const brightnessTamperAmplitude = 0.1;
+	const psuedoHue = 12;
+
+	let brightnessDistortion = Math.random() * (255 * brightnessTamperAmplitude);
+	rgb = rgb.map(x => x + brightnessDistortion);
+
+	// Cheap hack to imitate hue rotation
+	rgb = rgb.map(x => x += (Math.random() * psuedoHue * 2) - psuedoHue);
+
+	// Clamp and round
+	rgb = rgb.map(x => Math.round(Math.max(0, Math.min(255, x))));
+	return rgb;
+}
+
+function dec2Hex2(number) {
+	// Two padded hex number hack
+	let x = number.toString(16);
+	if (x.length === 1) return `0${x}`;
+	return x;
+}
+
+function recolorTokens() {
+	for (const contextContainer of document.querySelectorAll(".context-block")) {
+		let rgb = window.getComputedStyle(contextContainer)["background-color"].match(/(\d+), (\d+), (\d+)/).slice(1, 4).map(Number);
+		for (const tokenEl of contextContainer.querySelectorAll(".context-token")) {
+			let tokenColor = distortColor(rgb);
+			tokenColor = "#" + (tokenColor.map(dec2Hex2).join(""));
+			tokenEl.style.backgroundColor = tokenColor;
+		}
+	}
+}
+
 function update_context(data) {
 	$(".context-block").remove();
 
+	let memory_length = 0;
+	let authors_notes_length = 0;
+	let prompt_length = 0;
+	let game_text_length = 0;
+	let world_info_length = 0;
+	let soft_prompt_length = 0;
+	let submit_length = 0;
+	
+	//clear out within_max_length class
+	for (action of document.getElementsByClassName("within_max_length")) {
+		action.classList.remove("within_max_length");
+	}
+
 	for (const entry of data) {
-		//console.log(entry);
 		let contextClass = "context-" + ({
 			soft_prompt: "sp",
 			prompt: "prompt",
 			world_info: "wi",
 			memory: "memory",
 			authors_note: "an",
-			action: "action"
+			action: "action",
+			submit: 'submit'
 		}[entry.type]);
 
-		let el = document.createElement("span");
-		el.classList.add("context-block");
-		el.classList.add(contextClass);
-		el.innerText = entry.text;
+		let el = $e(
+			"span",
+			$el("#context-container"),
+			{classes: ["context-block", contextClass]}
+		);
 
-		el.innerHTML = el.innerHTML.replaceAll("<br>", '<span class="material-icons-outlined context-symbol">keyboard_return</span>');
+		let rgb = window.getComputedStyle(el)["background-color"].match(/(\d+), (\d+), (\d+)/).slice(1, 4).map(Number);
 
+		for (const [tokenId, token] of entry.tokens) {
+			let tokenColor = distortColor(rgb);
+			tokenColor = "#" + (tokenColor.map(dec2Hex2).join(""));
+
+			let tokenEl = $e("span", el, {
+				classes: ["context-token"],
+				"tooltip": tokenId === -1 ? "Soft" : tokenId,
+				innerText: token,
+				"style.backgroundColor": tokenColor,
+			});
+
+			tokenEl.innerHTML = tokenEl.innerHTML.replaceAll("<br>", '<span class="material-icons-outlined context-symbol">keyboard_return</span>');
+		}
 		document.getElementById("context-container").appendChild(el);
+		
+		switch (entry.type) {
+			case 'soft_prompt':
+				soft_prompt_length = entry.tokens.length;
+				break;
+			case 'prompt':
+				prompt_length = entry.tokens.length;
+				break;
+			case 'world_info':
+				world_info_length += entry.tokens.length;
+				break;
+			case 'memory':
+				memory_length = entry.tokens.length;
+				break;
+			case 'authors_note':
+				authors_notes_length = entry.tokens.length;
+				break;
+			case 'action':
+				game_text_length += entry.tokens.length;
+				if ('action_ids' in entry) {
+					for (action_id of entry.action_ids) {
+						if (document.getElementById('Selected Text Chunk '+action_id)) {
+							document.getElementById('Selected Text Chunk '+action_id).classList.add("within_max_length");
+						}
+					}
+				}
+				break;
+			case 'submit':
+				submit_length = entry.tokens.length;
+				break;
+		}
 	}
+
+	calc_token_usage(
+		soft_prompt_length,
+		memory_length,
+		authors_notes_length,
+		prompt_length,
+		game_text_length,
+		world_info_length,
+		submit_length
+	);
 
 
 }
@@ -2972,7 +3118,12 @@ function add_tags(tags, data) {
 		text.setAttribute("uid", data.uid);
 		text.setAttribute("tag", tag);
 		text.id = "world_info_tags_text_"+data.uid+"_"+tag;
+		text.ondragstart=function() {event.preventDefault();event.stopPropagation();};
+		text.setAttribute("draggable", "true");
+		text.onfocus=function() {this.parentElement.parentElement.parentElement.setAttribute('draggable', 'false');this.setAttribute('draggable', 'false');};
 		text.onblur = function () {
+						this.parentElement.parentElement.parentElement.setAttribute('draggable', 'true');
+						this.setAttribute('draggable', 'true');
 						for (var i = 0; i < world_info_data[this.getAttribute('uid')]['key'].length; i++) {
 							if (world_info_data[this.getAttribute('uid')]['key'][i] == this.getAttribute("tag")) {
 								world_info_data[this.getAttribute('uid')]['key'][i] = this.textContent;
@@ -2998,9 +3149,14 @@ function add_tags(tags, data) {
 	text.setAttribute("uid", data.uid);
 	text.setAttribute("contenteditable", true);
 	text.id = "world_info_tags_text_"+data.uid+"_blank";
+	text.ondragstart=function() {event.preventDefault();event.stopPropagation();};
+	text.setAttribute("draggable", "true");
+	text.onfocus=function() {this.parentElement.parentElement.parentElement.setAttribute('draggable', 'false');this.setAttribute('draggable', 'false');};
 	text.onblur = function () {
+					this.parentElement.parentElement.parentElement.setAttribute('draggable', 'true');
+					this.setAttribute('draggable', 'true');
 					if (this.textContent != "") {
-						console.log(this.textContent);
+						//console.log(this.textContent);
 						on_new_wi_item = this.id;
 						world_info_data[this.getAttribute('uid')]['key'].push(this.textContent);
 						send_world_info(this.getAttribute('uid'));
@@ -3037,7 +3193,12 @@ function add_secondary_tags(tags, data) {
 		text.setAttribute("uid", data.uid);
 		text.setAttribute("tag", tag);
 		text.id = "world_info_secondtags_text_"+data.uid+"_"+tag;
+		text.ondragstart=function() {event.preventDefault();event.stopPropagation();};
+		text.setAttribute("draggable", "true");
+		text.onfocus=function() {this.parentElement.parentElement.parentElement.setAttribute('draggable', 'false');this.setAttribute('draggable', 'false');};
 		text.onblur = function () {
+						this.parentElement.parentElement.parentElement.setAttribute('draggable', 'true');
+						this.setAttribute('draggable', 'true');
 						for (var i = 0; i < world_info_data[this.getAttribute('uid')]['keysecondary'].length; i++) {
 							if (world_info_data[this.getAttribute('uid')]['keysecondary'][i] == this.getAttribute("tag")) {
 								world_info_data[this.getAttribute('uid')]['keysecondary'][i] = this.textContent;
@@ -3063,7 +3224,12 @@ function add_secondary_tags(tags, data) {
 	text.setAttribute("uid", data.uid);
 	text.setAttribute("contenteditable", true);
 	text.id = "world_info_secondtags_text_"+data.uid+"_blank";
+	text.ondragstart=function() {event.preventDefault();event.stopPropagation();};
+	text.setAttribute("draggable", "true");
+	text.onfocus=function() {this.parentElement.parentElement.parentElement.setAttribute('draggable', 'false');this.setAttribute('draggable', 'false');};
 	text.onblur = function () {
+					this.parentElement.parentElement.parentElement.setAttribute('draggable', 'true');
+					this.setAttribute('draggable', 'true');
 					if (this.textContent != "") {
 						on_new_wi_item = this.id;
 						world_info_data[this.getAttribute('uid')]['keysecondary'].push(this.textContent);
@@ -3132,8 +3298,7 @@ function unhide_wi_folder(folder) {
 }
 
 function dragStart(e) {
-    e.dataTransfer.setData('text/plain', e.target.id);
-	//console.log(e.target.id);
+    drag_id = e.target.id;
 	e.dataTransfer.dropEffect = "move";
     setTimeout(() => {
         e.target.classList.add('hidden');
@@ -3184,7 +3349,7 @@ function drop(e) {
     element.classList.remove('drag-over');
 
     // get the draggable element
-    const id = e.dataTransfer.getData('text/plain');
+    const id = drag_id;
     const draggable = document.getElementById(id);
 	//console.log(id);
 	dragged_id = draggable.id.split("_").slice(-1)[0];
@@ -3197,6 +3362,7 @@ function drop(e) {
 		socket.emit("wi_set_folder", {'dragged_id': dragged_id, 'folder': drop_id});
 	} else {
 		//insert the draggable element before the drop element
+		console.log(element);
 		element.parentElement.insertBefore(draggable, element);
 		draggable.classList.add("pulse");
 
@@ -3213,7 +3379,7 @@ function drop(e) {
 
 function dragend(e) {
 	// get the draggable element
-    const id = e.dataTransfer.getData('text/plain');
+    const id = drag_id;
     const draggable = document.getElementById(id);
 	// display the draggable element
 	draggable.classList.remove('hidden');
@@ -3281,7 +3447,12 @@ function assign_world_info_to_action(action_item, uid) {
 function highlight_world_info_text_in_chunk(action_id, wi) {
 	//First let's assign our world info id to the action so we know to count the tokens for the world info
 	let uid = wi['uid'];
-	let action = document.getElementById("Selected Text Chunk "+action_id);
+	let action = undefined;
+	if (action_id < 0) {
+		action = document.getElementById("story_prompt");
+	} else {
+		action = document.getElementById("Selected Text Chunk "+action_id);
+	}
 	let words = action.textContent.split(" ");
 	current_ids = action.getAttribute("world_info_uids")?action.getAttribute("world_info_uids").split(','):[];
 	if (!(current_ids.includes(uid))) {
@@ -3347,7 +3518,7 @@ function highlight_world_info_text_in_chunk(action_id, wi) {
 						var highlight_span = document.createElement("span");
 						highlight_span.classList.add("wi_match");
 						highlight_span.textContent = highlight_text;
-						highlight_span.title = wi['content'];
+						highlight_span.setAttribute("tooltip", wi['content']);
 						highlight_span.setAttribute("wi-uid", wi.uid);
 						action.insertBefore(highlight_span, span);
 						if (after_highlight_text != "") {
@@ -3368,131 +3539,7 @@ function highlight_world_info_text_in_chunk(action_id, wi) {
 
 function update_token_lengths() {
 	clearTimeout(calc_token_usage_timeout);
-	calc_token_usage_timeout = setTimeout(calc_token_usage, 200);
-	return
-	max_token_length = parseInt(document.getElementById("model_max_length_cur").value);
-	included_world_info = [];
-	//clear out the world info included tags
-	for (item of document.getElementsByClassName("world_info_included")) {
-		item.classList.remove("world_info_included");
-	}
-	//clear out the text tags
-	for (item of document.getElementsByClassName("within_max_length")) {
-		item.classList.remove("within_max_length");
-	}
-	
-	//figure out memory length
-	if ((document.getElementById("memory").getAttribute("story_memory_length") == null) || (document.getElementById("memory").getAttribute("story_memory_length") == "")) {
-		memory_length = 0;
-	} else {
-		memory_length = parseInt(document.getElementById("memory").getAttribute("story_memory_length"));
-	}
-	//figure out and tag the length of all the constant world infos
-	for (uid in world_info_data) {
-		if (world_info_data[uid].constant) {
-			if (world_info_data[uid].token_length != null) {
-				memory_length += world_info_data[uid].token_length;
-				included_world_info.push(uid);
-				document.getElementById("world_info_"+uid).classList.add("world_info_included");
-			}
-		}
-	}
-	//Figure out author's notes length
-	if ((document.getElementById("authors_notes").getAttribute("story_authornote_length") == null) || (document.getElementById("authors_notes").getAttribute("story_authornote_length") == "")) {
-		authors_notes = 0;
-	} else {
-		authors_notes = parseInt(document.getElementById("authors_notes").getAttribute("story_authornote_length"));
-	}
-	//figure out prompt length
-	if ((document.getElementById("story_prompt").getAttribute("story_prompt_length") == null) || (document.getElementById("story_prompt").getAttribute("story_prompt_length") == "")) {
-		prompt_length = 0;
-	} else {
-		prompt_length = parseInt(document.getElementById("story_prompt").getAttribute("story_prompt_length"));
-	}
-	
-	//prompt is truncated at 512 tokens
-	if (prompt_length > 512) {
-		prompt_length = 512;
-	}
-	
-	//used token length
-	token_length = memory_length + authors_notes;
-	
-	//add in the prompt length if it's set to always add, otherwise add it later
-	always_prompt = document.getElementById("story_useprompt").value == "true";
-	if (always_prompt) {
-		token_length += prompt_length
-		document.getElementById("story_prompt").classList.add("within_max_length");
-		uids = document.getElementById("story_prompt").getAttribute("world_info_uids")
-		for (uid of uids?uids.split(','):[]) {
-			if (!(included_world_info.includes(uid))) {
-				token_length += world_info_data[uid].token_length;
-				included_world_info.push(uid);
-				document.getElementById("world_info_"+uid).classList.add("world_info_included");
-			}
-		}
-	} else {
-		document.getElementById("story_prompt").classList.remove("within_max_length");
-	}
-	//figure out how many chunks we have
-	max_chunk = -1;
-	for (item of document.getElementById("Selected Text").childNodes) {
-		if (item.id != undefined) {
-			if (item.id != "story_prompt") {
-				chunk_num = parseInt(item.id.replace("Selected Text Chunk ", ""));
-				if (chunk_num > max_chunk) {
-					max_chunk = chunk_num;
-				}
-			}
-		}
-	}
-	
-	//go backwards through the text chunks and tag them if we still have space
-	passed_token_limit = false;
-	for (var chunk=max_chunk;chunk >= 0;chunk--) {
-		if (document.getElementById("Selected Text Chunk "+chunk).getAttribute("token_length") == null) {
-			current_chunk_length = 999999999999;
-		} else {
-			current_chunk_length = parseInt(document.getElementById("Selected Text Chunk "+chunk).getAttribute("token_length"));
-		}
-		if ((current_chunk_length != 0) && (token_length+current_chunk_length < max_token_length)&& (!(passed_token_limit))) {
-			token_length += current_chunk_length;
-			document.getElementById("Selected Text Chunk "+chunk).classList.add("within_max_length");
-			uids = document.getElementById("Selected Text Chunk "+chunk).getAttribute("world_info_uids")
-			for (uid of uids?uids.split(','):[]) {
-				if (!(included_world_info.includes(uid))) {
-					token_length += world_info_data[uid].token_length;
-					included_world_info.push(uid);
-					document.getElementById("world_info_"+uid).classList.add("world_info_included");
-				}
-			}
-		} else if (!(passed_token_limit) && (current_chunk_length != 0)) {
-			passed_token_limit = true;
-			document.getElementById("Selected Text Chunk "+chunk).classList.remove("within_max_length");
-		} else {
-			document.getElementById("Selected Text Chunk "+chunk).classList.remove("within_max_length");
-		}
-	}
-	
-	//if we don't always add prompts
-	if ((!always_prompt) && (token_length+prompt_length < max_token_length)) {
-		token_length += prompt_length
-		document.getElementById("story_prompt").classList.add("within_max_length");
-		uids = document.getElementById("story_prompt").getAttribute("world_info_uids")
-		for (uid of uids?uids.split(','):[]) {
-			if (!(included_world_info.includes(uid))) {
-				token_length += world_info_data[uid].token_length;
-				included_world_info.push(uid);
-				document.getElementById("world_info_"+uid).classList.add("world_info_included");
-			}
-		}
-	} else if (!always_prompt) {
-		document.getElementById("story_prompt").classList.remove("within_max_length");
-	}
-	//Add token count to used_token_length tags
-	for (item of document.getElementsByClassName("used_token_length")) {
-		item.textContent = "Used Tokens: " + token_length;
-	}
+	calc_token_usage_timeout = setTimeout(function() {socket.emit("update_tokens", document.getElementById("input_text").value);}, 500);
 }
 
 String.prototype.toHHMMSS = function () {
@@ -3645,7 +3692,7 @@ function detect_enter_submit(e) {
 		} else {
 			e.cancelBubble = true;
 		}
-		console.log("submitting");
+		//console.log("submitting");
 		document.getElementById("btnsubmit").onclick();
 		setTimeout(function() {document.getElementById('input_text').value = '';}, 1);
 	}
@@ -3926,6 +3973,43 @@ async function loadKoboldData(data, filename) {
 	}
 }
 
+function readLoreCard(file) {
+	// "naidata"
+	const magicNumber = new Uint8Array([0x6e, 0x61, 0x69, 0x64, 0x61, 0x74, 0x61]);
+	
+	let filename = file.name;
+	let reader = new FileReader();
+	reader.readAsArrayBuffer(file);
+
+	reader.addEventListener("load", function() {
+		let bin = new Uint8Array(reader.result);
+
+		// naidata is prefixed with magic number
+		let offset = bin.findIndex(function(item, possibleIndex, array) {
+			for (let i=0;i<magicNumber.length;i++) {
+				if (bin[i + possibleIndex] !== magicNumber[i]) return false;
+			}
+			return true;
+		});
+
+		if (offset === null) throw Error("Couldn't find offset!");
+		
+		let lengthBytes = bin.slice(offset - 8, offset - 4);
+		let length = 0;
+		
+		for (const byte of lengthBytes) {
+			length = (length << 8) + byte;
+		}
+		
+		let binData = bin.slice(offset + 8, offset + length);
+		
+		// Encoded in base64
+		let data = atob(new TextDecoder().decode(binData));
+		let j = JSON.parse(data);
+		loadNAILorebook(j, filename);
+	})
+}
+
 async function processDroppedFile(file) {
 	let extension = /.*\.(.*)/.exec(file.name)[1];
 	console.log("file is", file)
@@ -3933,10 +4017,9 @@ async function processDroppedFile(file) {
 
 	switch (extension) {
 		case "png":
-			// TODO: Support NovelAI's image lorebook cards. The format for those
-			// is base64-encoded JSON under a TXT key called "naidata".
-			console.warn("TODO: NAI LORECARDS");
-			return;
+			// NovelAI lorecard, a png with a lorebook file embedded inside it.
+			readLoreCard(file);
+			break;
 		case "json":
 			// KoboldAI file
 			data = JSON.parse(await file.text());
@@ -4517,14 +4600,6 @@ for (const tweakContainer of document.getElementsByClassName("tweak-container"))
 
 process_cookies();
 
-$("#context-viewer-close").click(function() {
-	$el("#context-viewer-container").classList.add("hidden");
-});
-
-$(".token_breakdown").click(function() {
-	$el("#context-viewer-container").classList.remove("hidden");
-});
-
 /* -- Drag and Drop -- */
 (function() {
 	let lastTarget = null;
@@ -4574,15 +4649,41 @@ $(".token_breakdown").click(function() {
 		let name = el.children[0].innerText;
 
 		let tooltipEl = el.getElementsByClassName("helpicon")[0];
-		let tooltip = tooltipEl ? tooltipEl.getAttribute("title") : null;
+		let tooltip = tooltipEl ? tooltipEl.getAttribute("tooltip") : null;
 
 		finder_actions.push({
 			name: name,
 			desc: tooltip,
 			icon: "open_in_new",
+			type: "setting",
 			func: function () { highlightEl(el.parentElement) },
 		});
 	}
+
+	const themeSelector = $el("#selected_theme");
+
+	function updateThemes() {
+		finder_actions = finder_actions.filter(x => x.type !== "theme")
+		// Parse themes for Finder
+		for (const select of themeSelector.children) {
+			let themeName = select.value;
+			//console.log(themeName)
+			//console.log("curve")
+			finder_actions.push({
+				name: themeName,
+				desc: "Apply this theme to change how KoboldAI looks!",
+				icon: "palette",
+				type: "theme",
+				func: function () {
+					themeSelector.value = themeName;
+					themeSelector.onchange();
+				},
+			});
+		}
+	}
+
+	updateThemes();
+	themeSelector.addEventListener("sync", updateThemes);
 
 	for (const el of $(".collapsable_header")) {
 		// https://stackoverflow.com/a/11347962
@@ -4684,7 +4785,7 @@ $(".token_breakdown").click(function() {
 		item.addEventListener("click", action.click);
 	}
 
-	$("#gamescreen").contextmenu(function(event) {
+	$el("#gamescreen").addEventListener("contextmenu", function(event) {
 		// If control is held, do not run our custom logic or cancel the browser's.
 		if (event.ctrlKey) return;
 
@@ -4709,19 +4810,19 @@ $(".token_breakdown").click(function() {
 		contextMenu.classList.remove("hidden");
 
 		// Set position to click position
-		position_context_menu(contextMenu, event.originalEvent.x, event.originalEvent.y);
+		position_context_menu(contextMenu, event.x, event.y);
 
 		// Don't let the document contextmenu catch us and close our context menu
 		event.stopPropagation();
 	});
 
 	// When we make a browser context menu, close ours.
-	$(document).contextmenu(function(event) {
+	document.addEventListener("contextmenu", function(event) {
 		contextMenu.classList.add("hidden");
 	});
 
 	// When we click outside of our context menu, close ours.
-	$(document).click(function(event) {
+	document.addEventListener("click", function(event) {
 		contextMenu.classList.add("hidden");
 	});
 
@@ -4774,6 +4875,334 @@ $(".token_breakdown").click(function() {
 	updateTitle();
 })();
 
+/* Substitution */
+let load_substitutions;
+[load_substitutions] = (function() {
+	// TODO: Don't allow multiple substitutions for one target
+	
+	// Defaults
+	let substitutions = [];
+	const substitutionContainer = $el("#substitution-container");
+	let charMap = [];
+	
+	function getTrueTarget(bareBonesTarget) {
+		// If -- is converted to the 2dash, we make a "true target" so that a 2dash and - is the 3dash.
+		if (!bareBonesTarget) return bareBonesTarget;
+
+		let tries = 0;
+		let whatWeGot = bareBonesTarget;
+		
+		// eehhhh this kinda sucks but it's the best I can think of at the moment
+		while (true) {
+			// Sanity check; never 100% cpu!
+			tries++;
+			if (tries > 2000) {
+				alert("Some Substitution shenanigans are afoot; please send the developers your substitutions!");
+				throw Error("Substitution shenanigans!")
+				return;
+			}
+			
+			let escape = true;
+			for (const c of substitutions) {
+				if (c.target === bareBonesTarget) continue;
+				if (!c.enabled) continue;
+
+				if (whatWeGot.includes(c.target)) {
+					whatWeGot = whatWeGot.replaceAll(c.target, c.substitution);
+					escape = false;
+					break;
+				}
+			}
+			
+			if (escape) break;
+		}
+		
+		return whatWeGot;
+	}
+	
+	function getSubstitutionIndex(cardElement) {
+		for (const i in substitutions) {
+			if (substitutions[i].card === cardElement) {
+				return i
+			}
+		}
+
+		throw Error("Didn't find substitution!");
+	}
+	
+	function getDuplicateCards(target) {
+		let duplicates = [];
+		
+		for (const c of substitutions) {
+			if (c.target === target) duplicates.push(c.card);
+		}
+		
+		console.log(duplicates)
+		return duplicates.length > 1 ? duplicates : [];
+	}
+	
+	function makeCard(c) {
+		// How do we differentiate -- and ---? Convert stuff!
+		
+		let card = $e("div", substitutionContainer, {classes: ["substitution-card"]});
+		let leftContainer = $e("div", card, {classes: ["card-section", "card-left"]});
+		let deleteIcon = $e("span", leftContainer, {classes: ["material-icons-outlined", "cursor"], innerText: "clear"});
+		let targetInput = $e("input", leftContainer, {classes: ["target"], value: c.target});
+		let rightContainer = $e("div", card, {classes: ["card-section"]});
+		let substitutionInput = $e("input", rightContainer, {classes: ["target"], value: c.substitution});
+		
+		// HACK
+		let checkboxId = "sbcb" + Math.round(Math.random() * 9999).toString();
+		
+		let enabledCheckbox = $e("input", rightContainer, {id: checkboxId, classes: ["true-t"], type: "checkbox", checked: c.enabled});
+		let initCheckTooltip = c.enabled ? "Enabled" : "Disabled";
+
+		// HACK: We don't use in-house tooltip as it's cut off by container :(
+		let enabledVisual = $e("label", rightContainer, {for: checkboxId, "title": initCheckTooltip, classes: ["material-icons-outlined"]});
+		
+		targetInput.addEventListener("change", function() {
+			let card = this.parentElement.parentElement;
+			let i = getSubstitutionIndex(card);
+
+			substitutions[i].target = this.value;
+
+			// Don't do a full rebake
+			substitutions[i].trueTarget = getTrueTarget(this.value);
+			
+			for (const duplicateCard of getDuplicateCards(this.value)) {
+				if (duplicateCard === card) continue;
+				console.log("DUPE", duplicateCard)
+				substitutions.splice(getSubstitutionIndex(duplicateCard), 1);
+				duplicateCard.remove();
+			}
+
+			rebuildCharMap();
+			updateSubstitutions();
+		});
+
+		substitutionInput.addEventListener("change", function() {
+			let card = this.parentElement.parentElement;
+			let i = getSubstitutionIndex(card);
+
+			substitutions[i].substitution = this.value;
+			// No rebaking at all is needed, that all hinges on target value; not edited here.
+			updateSubstitutions();
+		});
+		
+		deleteIcon.addEventListener("click", function() {
+			let card = this.parentElement.parentElement;
+			
+			// Find and remove from substitution array
+			substitutions.splice(getSubstitutionIndex(card), 1);
+			updateSubstitutions();
+			rebakeSubstitutions();
+			card.remove();
+		});
+		
+		enabledCheckbox.addEventListener("change", function() {
+			let card = this.parentElement.parentElement;
+			let i = getSubstitutionIndex(card);
+			console.log(this.checked)
+
+			substitutions[i].enabled = this.checked;
+			enabledVisual.setAttribute("title", this.checked ? "Enabled" : "Disabled")
+			rebakeSubstitutions();
+			updateSubstitutions();
+		});
+		
+		return card;
+	}
+	
+	function updateSubstitutions() {
+		let subs = substitutions.map(x => ({target: x.target, substitution: x.substitution, trueTarget: x.trueTarget, enabled: x.enabled}));
+		socket.emit("substitution_update", subs);
+	}
+	
+	function rebakeSubstitutions() {
+		for (const c of substitutions) {
+			c.trueTarget = getTrueTarget(c.target);
+		}
+		rebuildCharMap();
+	}
+	
+	function rebuildCharMap() {
+		charMap = [];
+		for (const c of substitutions) {
+			if (!c.enabled) continue;
+			for (const char of c.target) {
+				if (!charMap.includes(char)) charMap.push(char)
+			}
+		}
+	}
+	
+	const newCardButton = $el("#new-sub-card");
+	newCardButton.addEventListener("click", function() {
+		let c = {target: "", substitution: "", enabled: true}
+		substitutions.push(c);
+		c.card = makeCard(c);
+		//newCardButton.scrollIntoView(false);
+	});
+	
+	// Event handler on input
+	// TODO: Apply to all of gametext
+	const inputText = $el("#input_text");
+	inputText.addEventListener("keydown", function(event) {
+		if (event.ctrlKey) return;
+		if (event.ctrlKey) return;
+		if (!charMap.includes(event.key)) return;
+
+		let caretPosition = inputText.selectionStart;
+		// We don't have to worry about special keys due to charMap (hopefully)
+		let futureValue = inputText.value.slice(0, caretPosition) + event.key + inputText.value.slice(caretPosition);
+
+		for (const c of substitutions) {
+			if (!c.target) continue;
+			if (!c.enabled) continue;
+
+			let t = c.trueTarget;
+			let preCaretPosition = caretPosition - t.length + 1;
+			let bit = futureValue.slice(caretPosition - t.length + 1, caretPosition + 1)
+			
+			if (bit === t) {
+				// We're doing it!!!!
+				event.preventDefault();
+				
+				// Assemble the new text value
+				let before = inputText.value.slice(0, caretPosition - t.length + 1);
+				let after = inputText.value.slice(caretPosition);
+				let newText = before + c.substitution + after;
+				
+				inputText.value = newText;
+				
+				// Move cursor back after setting text
+				let sLength = c.substitution.length;
+				inputText.selectionStart = preCaretPosition + sLength;
+				inputText.selectionEnd = preCaretPosition + sLength;
+
+				break;
+			}
+		}
+	});
+	
+	let firstLoad = true;
+	
+	function load_substitutions(miniSubs) {
+		// HACK: Does the same "replace all on load" thing that WI does; tab
+		// support is broken and overall that kinda sucks. Would be nice to
+		// make a robust system for syncing multiple entries.
+		
+		//console.log("load", miniSubs)
+
+		$(".substitution-card").remove();
+		// we only get target, trueTarget, and such
+		for (const c of miniSubs) {
+			if (!c.trueTarget) c.trueTarget = getTrueTarget(c.target);
+			//if (!c.enabled) c.enabled = false;
+			c.card = makeCard(c);
+		}
+		substitutions = miniSubs;
+		rebuildCharMap();
+		
+		// We build trueTarget on the client, and it's not initalized on the server because I'm lazy.
+		// May want to do that on the server in the future.
+		if (firstLoad) updateSubstitutions();
+		firstLoad = false;
+	}
+
+	return [load_substitutions];
+})();
+
+/* -- Tooltips -- */
+function initalizeTooltips() {
+	const tooltip = $e("span", document.body, {id: "tooltip-text", "style.display": "none"});
+	let tooltipActive = false;
+
+	function alterTooltipState(enabled, specialClass=null) {
+		tooltipActive = enabled;
+		tooltip.style.display = enabled ? "block" : "none";
+		tooltip.className = specialClass || "";
+	}
+
+	function registerElement(el) {
+		// el should have attribute "tooltip"
+		let text = el.getAttribute("tooltip");
+
+		el.addEventListener("mouseenter", function(event) {
+			tooltip.innerText = text;
+			let specialClass = "tooltip-standard";
+
+			// Kinda lame
+			if (this.classList.contains("context-token")) specialClass = "tooltip-context-token";
+
+			alterTooltipState(true, specialClass);
+		});
+
+		el.addEventListener("mouseleave", function(event) {
+			alterTooltipState(false);
+		});
+	}
+
+	const xOffset = 10;
+	const yOffset = 15;
+
+	document.addEventListener("mousemove", function(event) {
+		if (!tooltipActive) return;
+
+		let [x, y] = [event.x, event.y];
+
+		// X + the tooltip's width is the farthest point right we will display;
+		// let's account for it. If we will render outside of the window,
+		// subtract accordingly.
+		let xOverflow = (x + tooltip.clientWidth) - window.innerWidth;
+		if (xOverflow > 0) x -= xOverflow;
+
+		if (xOverflow + xOffset < 0) x += xOffset;
+
+		// Same for Y!
+		let yOverflow = (y + tooltip.clientHeight) - window.innerHeight;
+		if (yOverflow > 0) y -= yOverflow;
+
+		if (yOverflow + yOffset < 0) y += yOffset;
+
+		tooltip.style.left = `${x}px`;
+		tooltip.style.top = `${y}px`;
+	});
+
+	// Inital scan
+	for (const element of document.querySelectorAll("[tooltip]")) {
+		registerElement(element);
+	}
+
+	// Use a MutationObserver to catch future tooltips
+	const observer = new MutationObserver(function(records, observer) {
+		for (const record of records) {
+			
+			if (record.type === "attributes") {
+				// Sanity check
+				if (record.attributeName !== "tooltip") continue;
+				registerElement(record.target);
+				continue;
+			}
+
+			for (const node of record.addedNodes) {
+				if (node.nodeType !== 1) continue;
+
+				if (node.hasAttribute("tooltip")) registerElement(node);
+
+				// Register for descendants (Slow?)
+				for (const element of node.querySelectorAll("[tooltip]")) {
+					registerElement(element);
+				}
+			}
+		}
+	});
+	observer.observe(document.body, {
+		childList: true,
+		subtree: true,
+		attributeFilter: ["tooltip"],
+	});
+}
+
 /* -- Shortcuts -- */
 document.addEventListener("keydown", function(event) {
 		
@@ -4790,12 +5219,54 @@ document.addEventListener("keydown", function(event) {
 });
 
 //function to load more actions if nessisary
-document.getElementById("Selected Text").onscroll = function(){
-    //TOP
-	if ((scroll_trigger_element != undefined) && (scroll_trigger_element != null)) {
-		if(scroll_trigger_element.getBoundingClientRect().top >= 0){
-			console.log("Asking for more actions");
+function infinite_scroll() {
+	if (scroll_trigger_element != undefined) {
+		if(scroll_trigger_element.getBoundingClientRect().bottom >= 0){
 			socket.emit("get_next_100_actions", parseInt(scroll_trigger_element.getAttribute("chunk")));
+			scroll_trigger_element = undefined;
+		}
+	}
+}
+
+function run_infinite_scroll_update(action_type, actions, first_action) {
+	//console.log("action_type: "+action_type);
+	//console.log("first_action: "+first_action);
+	if (action_type == "append") {
+		if (document.getElementById('Selected Text Chunk '+actions[actions.length-1].id)) {
+			document.getElementById('Selected Text Chunk '+actions[actions.length-1].id).scrollIntoView(false);
+			document.getElementById("Selected Text").scrollBy(0, 25);
+		}
+		//Check to see if we need to have the scrolling in place or not
+		if (document.getElementById("story_prompt").classList.contains("hidden")) {
+			if (Math.min.apply(null,Object.keys(actions_data).map(Number).filter(function(x){return x>=0})) <= 0) {
+				document.getElementById("story_prompt").classList.remove("hidden");
+			} else {
+				//console.log("Appending, but adding infinite scroll");
+				//console.log(document.getElementById('Selected Text Chunk '+Math.min.apply(null,Object.keys(actions_data).map(Number).filter(function(x){return x>=0}))));
+				document.getElementById("Selected Text").onscroll = infinite_scroll;
+				scroll_trigger_element = document.getElementById('Selected Text Chunk '+Math.min.apply(null,Object.keys(actions_data).map(Number).filter(function(x){return x>=0})));
+			}
+		}
+	} else if (action_type == "prepend") {
+		if (Math.min.apply(null,Object.keys(actions_data).map(Number).filter(function(x){return x>=0})) == 0) {
+			//We've hit our prompt, so let's unhide it, move it to the begining, and kill the infinite_scroll
+			scroll_trigger_element = undefined;
+			document.getElementById("Selected Text").onscroll = undefined;
+			document.getElementById("Selected Text").prepend(document.getElementById("story_prompt"));
+			document.getElementById("story_prompt").classList.remove("hidden");
+		} else {
+			//we just added more text and didn't hit the prompt. Move the scroll trigger back to the first non-prompt element
+			for (id of Object.keys(actions_data).map(Number).filter(function(x){return x>0}).sort(function(a, b) {return a - b;})) {
+				//console.log("Checking for "+id);
+				if (document.getElementById('Selected Text Chunk '+id)) {
+					scroll_trigger_element = document.getElementById('Selected Text Chunk '+id);
+					break;
+				}
+			}
+			if (document.getElementById('Selected Text Chunk '+first_action)) {
+				document.getElementById('Selected Text Chunk '+first_action).scrollIntoView(true);
+			}
+			
 		}
 	}
 }

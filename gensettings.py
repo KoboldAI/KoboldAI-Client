@@ -540,7 +540,7 @@ gensettingstf = [
     "UI_V2_Only": True,
  	"uitype": "toggle",
  	"unit": "bool",
- 	"label": "Model in memory",
+ 	"label": "Model in Memory",
  	"id": "keep_img_gen_in_memory",
  	"min": 0,
  	"max": 1,
@@ -551,6 +551,22 @@ gensettingstf = [
     "sub_path": "Images",
     "classname": "system",
     "name": "keep_img_gen_in_memory"
+ 	},
+    {
+    "UI_V2_Only": True,
+ 	"uitype": "toggle",
+ 	"unit": "bool",
+ 	"label": "Experimental UI",
+ 	"id": "experimental_features",
+ 	"min": 0,
+ 	"max": 1,
+ 	"step": 1,
+ 	"default": 0,
+	"tooltip": "When enabled experemental features will be shown in the UI.",
+    "menu_path": "Interface",
+    "sub_path": "UI",
+    "classname": "system",
+    "name": "experimental_features"
  	},
 ]
 

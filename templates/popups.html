@@ -18,12 +18,12 @@
 		</span>--->
 		<span>
 			<button class="settings_button" id="upload_without_save_button" onclick="document.getElementById('upload_without_save').click()">
-				<span class="material-icons-outlined cursor" title="Load from Local">browser_updated</span>
+				<span class="material-icons-outlined cursor" tooltip="Load from Local">browser_updated</span>
 				<span class="button_label">Load from Local</span>
 			</button>
 			<input class="hidden" type=file  id="upload_without_save" onchange="upload_file_without_save(this)">
 			<button id="import_story_button" class="settings_button hidden" onclick="document.getElementById('import_aidg_club_popup').classList.remove('hidden');">
-				<span class="material-icons-outlined cursor" title="Import Story">cloud_download</span>
+				<span class="material-icons-outlined cursor" tooltip="Import Story">cloud_download</span>
 				<span class="button_label">Import Story</span>
 			</button>
 		</span>
@@ -52,7 +52,7 @@
 		</div>
 		<div class="hidden" id=modellayers>
 			<div class="justifyleft">
-				GPU/Disk Layers<span class="material-icons-outlined helpicon" title="Number of layers to assign to GPUs and to disk cache. Remaining layers will be put into CPU RAM.">help_icon</span>
+				GPU/Disk Layers<span class="material-icons-outlined helpicon" tooltip="Number of layers to assign to GPUs and to disk cache. Remaining layers will be put into CPU RAM.">help_icon</span>
 			</div>
 			<div class="justifyright"><span id="gpu_layers_current">0</span>/<span id="gpu_layers_max">0</span></div>
 			<div id=model_layer_bars style="color: white"></div>
@@ -181,9 +181,10 @@
 						<span class="noselect context-block-example context-memory">Memory</span>
 						<span class="noselect context-block-example context-an">Author's Note</span>
 						<span class="noselect context-block-example context-action">Action</span>
+						<span class="noselect context-block-example context-submit">Submit</span>
 					</div>
 				</div>
-				<span id="context-viewer-close" class="material-icons-outlined">close</span>
+				<span id="context-viewer-close" class="material-icons-outlined" onclick='$el("#context-viewer-container").classList.add("hidden");'>close</span>
 			</div>
 		</div>
 		<span class="help_text">

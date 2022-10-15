@@ -1,7 +1,7 @@
 /*
 	Name: Darkness
 	Author: LightSaveUs
-	Version: 0.3.2
+	Version: 0.3.4
 	Description: A theme inspired by the AI Dungeon interface.
 */
 
@@ -264,10 +264,6 @@
 
 /* Icons */
 
-.collapsable_header .material-icons-outlined {
-    transform: translateY(7px) translateX(4px)!important;
-}
-
 span.material-icons-outlined.cursor.search_icon {
 	filter: brightness(120%) !important;
 }
@@ -276,8 +272,28 @@ span.material-icons-outlined.cursor.search_icon {
 	color: #848484 !important;
 }
 
+.collapsable_header .material-icons-outlined {
+    transform: translateY(7px) translateX(4px);
+}
+
 .material-icons-outlined:hover {
 	filter: brightness(100%) !important;
+}
+
+.substitution-card > .card-left > .material-icons-outlined {
+	color: #999 !important;
+}
+
+.substitution-card > .card-left > .material-icons-outlined:hover {
+	color: #e0e0e0 !important;
+}
+
+.true-t + label::before {
+	color: #999 !important;
+}
+
+.true-t:checked + label::before {
+	color: #e0e0e0 !important;
 }
 
 /* Import */
@@ -288,7 +304,7 @@ a {
 
 .form-control {
 	border: none;
-    color: #555 !important;
+    color: #148883 !important;
     background-color: #424243 !important;
 }
 
@@ -302,12 +318,6 @@ a {
 
 .settings_select, .var_sync_system_theme_list {
 	border-color: #535353 !important;
-}
-
-/* Padding */
-
-.story_title_area {
-    padding-top: 3px;
 }
 
 /* Palette */
@@ -350,7 +360,6 @@ a {
     background-color: #424243 !important;
 }
 
-
 /* Tabs */
 
 .tabrow span {
@@ -374,10 +383,17 @@ a {
     font-family: helvetica !important;
 }
 
+/* Tooltips */
+
+.tooltip-standard {
+	border: none !important;
+	color: #e0e0e0 !important;
+	background-color: #3b3b3b !important;
+}
+
 /* World Info */
 
 .world_info_text {
-	margin: 0 0px 0px !important;
 	border-color: #242424 !important;
 	background-color: #3b3b3b !important;
 }

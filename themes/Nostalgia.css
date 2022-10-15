@@ -1,7 +1,7 @@
 /*
 	Name: Nostalgia
 	Author: LightSaveUs
-	Version: 0.2.2
+	Version: 0.2.4
 	Description: A theme inspired by the previous KoboldAI interface.
 */
 
@@ -262,7 +262,23 @@
 /* Icons */
 
 .collapsable_header .material-icons-outlined {
-    transform: translateY(7px) translateX(4px)!important;
+    transform: translateY(7px) translateX(4px);
+}
+
+.substitution-card > .card-left > .material-icons-outlined {
+	color: #999 !important;
+}
+
+.substitution-card > .card-left > .material-icons-outlined:hover {
+	color: #fff !important;
+}
+
+.true-t + label::before {
+	color: #999 !important;
+}
+
+.true-t:checked + label::before {
+	color: #fff !important;
 }
 
 /* Import */
@@ -273,6 +289,7 @@ a {
 
 .form-control {
     background-color: #404040 !important;
+	color: #3bf723 !important;
 	border: none;
 }
 
@@ -286,12 +303,6 @@ a {
 
 .settings_select, .var_sync_system_theme_list {
 	border-color: #12324f !important;
-}
-
-/* Padding */
-
-.story_title_area {
-    padding-top: 3px;
 }
 
 /* Palette */
@@ -367,6 +378,13 @@ div#settings_footer.settings_footer {
 	background-color: #294f71 !important;
 }
 
+/* Tooltips */
+
+.tooltip-standard {
+	border-color: #3379b7 !important;
+	background-color: #1f2931 !important;
+}
+
 /* World Info */
 
 .world_info_tag_area {
@@ -376,7 +394,6 @@ div#settings_footer.settings_footer {
 }
 
 .world_info_text {
-	margin: 0 0px 0px !important;
     border-color: #999999!important;
 	filter: brightness(100%) !important;
 	background-color: #404040 !important;

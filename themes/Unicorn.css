@@ -1,7 +1,7 @@
 /*
 	Name: Unicorn
 	Author: LightSaveUs
-	Version: 0.3.3
+	Version: 0.3.5
 	Description: A theme inspired by the DreamilyAI interface.
 */
 
@@ -293,17 +293,34 @@ span.material-icons-outlined.cursor.search_icon {
 	color: #464646e0 !important;
 }
 
-.collapsable_header .material-icons-outlined {
-    transform: translateY(7px) translateX(4px)!important;
-}
-
 .pinned .menu_pin, .pinned .story_menu_pin {
     color: #464646 !important;
     filter: brightness(100%) !important;
 }
 
+.collapsable_header .material-icons-outlined {
+    transform: translateY(7px) translateX(4px);
+}
+
 .material-icons-outlined:hover {
 	filter: brightness(100%) !important;
+}
+
+
+.substitution-card > .card-left > .material-icons-outlined {
+	color: #999 !important;
+}
+
+.substitution-card > .card-left > .material-icons-outlined:hover {
+	color: #464646 !important;
+}
+
+.true-t + label::before {
+	color: #999 !important;
+}
+
+.true-t:checked + label::before {
+	color: #dc6872 !important;
 }
 
 /* Import */
@@ -314,6 +331,7 @@ a {
 
 .form-control {
 	border: none;
+	color: #e26771 !important;
 	transform: translateX(6px)!important;
     background-color: #e2e2e2 !important;
 }
@@ -332,12 +350,6 @@ a {
 
 select#wpp_format_0.settings_select {
     background-color: #f8f4f4 !important;
-}
-
-/* Padding */
-
-.story_title_area {
-    padding-top: 3px;
 }
 
 /* Palette */
@@ -391,6 +403,14 @@ select#wpp_format_0.settings_select {
     font-family: helvetica !important;
 }
 
+/* Tooltips */
+
+.tooltip-standard {
+	border: none !important;
+	color: #222224 !important;
+	background-color: #e9e7e7 !important;
+}
+
 /* World Info */
 
 .tag {
@@ -407,7 +427,6 @@ select#wpp_format_0.settings_select {
 
 .world_info_text {
 	color: #222224 !important;
-	margin: 0 0px 0px !important;
     border-color: #acacac !important;
 	filter: brightness(100%) !important;
 	background-color: #eeeeee !important;

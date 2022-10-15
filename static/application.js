@@ -2375,6 +2375,7 @@ $(document).ready(function(){
 			})();
 			$("body").addClass("connected");
 		} else if (msg.cmd == "streamtoken") {
+			console.log(msg);
 			// Sometimes the stream_token messages will come in too late, after
 			// we have recieved the full text. This leads to some stray tokens
 			// appearing after the output. To combat this, we only allow tokens
@@ -2456,6 +2457,7 @@ $(document).ready(function(){
 			all_modified_chunks = new Set();
 			modified_chunks = new Set();
 			empty_chunks = new Set();
+			console.log(msg.data);
 			game_text.html(msg.data);
 			if(game_text[0].lastChild !== null && game_text[0].lastChild.tagName === "CHUNK") {
 				game_text[0].lastChild.appendChild(document.createElement("br"));
@@ -3022,6 +3024,7 @@ $(document).ready(function(){
 			location.reload();
 			//console.log("Closing window");
 		} else if(msg.cmd == 'model_load_status') {
+			console.log(msg.data);
 			$("#showmodelnamecontent").html("<div class=\"flex\"><div class=\"loadlistpadding\"></div><div class=\"loadlistitem\" style='align: left'>" + msg.data + "</div></div>");
 			$("#showmodelnamecontainer").removeClass("hidden");
 			//console.log(msg.data);

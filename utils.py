@@ -92,8 +92,7 @@ def trimincompletesentence(txt):
 # 
 #==================================================================#
 def replaceblanklines(txt):
-    txt = txt.replace("\n\n", "\n")
-    return txt
+    return txt.replace("\n\n", "\n")
 
 #==================================================================#
 # 
@@ -131,8 +130,8 @@ def addsentencespacing(txt, koboldai_vars):
 def singlelineprocessing(txt, koboldai_vars):
     txt = koboldai_vars.regex_sl.sub('', txt)
     if(len(koboldai_vars.actions) > 0):
-        if(len(koboldai_vars.actions[koboldai_vars.actions.get_last_key()]) > 0):
-            action = koboldai_vars.actions[koboldai_vars.actions.get_last_key()]
+        if(len(koboldai_vars.actions[-1]) > 0):
+            action = koboldai_vars.actions[-1]
             lastchar = action[-1] if len(action) else ""
         else:
             # Last action is blank, this should never happen, but
@@ -188,7 +187,7 @@ def _download_with_aria2(aria2_config: str, total_length: int, directory: str = 
                 try:
                     print('\r' + bar, end='')
                     try:
-                        emit('from_server', {'cmd': 'model_load_status', 'data': bar.replace(" ", "&nbsp;")}, broadcast=True)
+                        emit('from_server', {'cmd': 'model_load_status', 'data': bar.replace(" ", "&nbsp;")}, broadcast=True, room="UI_1")
                     except:
                         pass
                     eventlet.sleep(seconds=0)
