@@ -12,6 +12,22 @@
 				Important information the AI should always keep in mind.
 			</div>
 			<textarea rows=20 id="memory" class="var_sync_story_memory var_sync_alt_story_memory_length fullwidth" onchange='sync_to_server(this);' oninput="autoResize(this)" autocomplete="off"></textarea>
+
+			<div id="Attention-Bias" class="var_sync_alt_system_experimental_features">
+				<h4 class="section_header"><label for="Attention-Bias">Attention Bias Test</label></h4>
+				<span class="help_text">
+					<b>Note: This only works on OPT models for now! Patches will be written for other models once it's known this actually has a positive effect. Upon first use of this bias, you should see "Applying attention bias" in the console.</b><br>
+					This setting <i>may</i> change how the AI pays attention to memory. Any high number in the ballpark of 15 may cause incoherence. The option to select higher numbers is present for experimentation.
+				</span>
+				<input type="range" oninput="memAttn(this.value);" onchange="sync_to_server(this);" class="var_sync_story_memory_attn_bias sync_as_float" value="1" min="1" max="50" step="0.1"></input>
+				<span id="memattnbiaslabel">1</span>
+				<script>
+					const label = document.querySelector("#memattnbiaslabel");
+					function memAttn(val) {
+						label.innerText = val;
+					}
+				</script>
+			</div>
 		</div>
 		<div id="Auto-Memory" class="var_sync_alt_system_experimental_features">
 			<h4 class="section_header"><label for="auto_memory">Auto-Memory (non-functional)</label></h4>
