@@ -1,7 +1,7 @@
 /*
 	Name: Unicorn
 	Author: LightSaveUs
-	Version: 0.3.5
+	Version: 0.4
 	Description: A theme inspired by the DreamilyAI interface.
 */
 
@@ -37,19 +37,19 @@
 
 /*----------------Advanced Theme--------------------*/
 	/*General*/
-	--background: #eeeeee;
+	--background: #f0f0f0;
 
-	--gamescreen_background: #eeeeee;
-	--gamescreen_text: #222224;
+	--gamescreen_background: #f0f0f0;
+	--gamescreen_text: #3d3d3d;
 
-    --input_background: #eeeeee;
-	--input_text: #222224;
+    --input_background: #f0f0f0;
+	--input_text: #3d3d3d;
 
     --text: #f2f1f1;
-    --text_to_ai_color: #222224;
-    --text_edit: #222224;
+    --text_to_ai_color: #3d3d3d;
+    --text_edit: #3d3d3d;
 
-	--statusbar_color: #f2f2f499;
+	--statusbar_color: #e2677180;
 	--statusbar_text_color: white;
 	--scrollbar-color: #da4f5a00;
 
@@ -73,38 +73,38 @@
 
 
 	/*Sequence, AKA Gens Per Action*/
-	--sequence_area_background: #e8e8e8;
-    --sequence_background: #eeeeee;
-	--sequence_text: #222224;
+	--sequence_area_background: #ebebeb;
+    --sequence_background: #f0f0f0;
+	--sequence_text: #3d3d3d;
 
 	/*Side Menus*/
-	--tab_color: #a04a51;
-	--tab_text: #f2f1f1;
+	--tab_color: #eee;
+	--tab_text: #e26771;
 
-	--flyout_background: #e8e8e8;
-	--flyout_background_pinned: #e8e8e8;
-	--flyout_text: #464646;
+	--flyout_background: #ebebeb;
+	--flyout_background_pinned: #ebebeb;
+	--flyout_text: #3d3d3d;
 
-	--setting_background: #e9cece;
-    --setting_text: #421d1d;
+	--setting_background: #eed9d9;
+    --setting_text: #3d3d3d;
 
-	--sample_order_select_color: #dc6872;
+	--sample_order_select_color: #e26771;
 	--sample_order_select_color_text: #f2f1f1;
 
-	--dropdown_text: #dc6872;
+	--dropdown_text: #e26771;
 	--dropdown_background: #eeeeee;
 
 	--rangeslider_background_color: #828282;
-	--rangeslider_color: #dc6872;
+	--rangeslider_color: #e26771;
 	--rangeslider_circle_color: #f2f1f1;
 
-	--help_icon: #f2f1f1;/*--tooltip_text: #000000;
-    --tooltip_background: #000000;*/
-	--setting_category_help_text_color: #464646;
+	--help_icon: #f6f6f6;
+	--tooltip_text: #3d3d3d;--tooltip_background: #f0f0f0;
+	--setting_category_help_text_color: #3d3d3d;
 	
 	--setting_footer_border_color: #acacac;
-	--setting_footer_text_color: #464646;
-	--setting_footer_background_color: #dccccc;
+	--setting_footer_text_color: #3d3d3d;
+	--setting_footer_background_color: #e1d1d1;
 
 	/*Palette Card*/
 	--palette_card_background: #e9cece;
@@ -116,39 +116,39 @@
     --wi_card_border_color_to_ai: #acacac;
 
     --wi_card_bg_color: #ebebeb;
-	--wi_card_text_color: #e26771;
+	--wi_card_text_color: #5c5c5c;
 
-    --wi_card_tag_bg_color: #eeeeee;
+    --wi_card_tag_bg_color: #ebebeb;
 	--wi_card_tag_text_color: #5c5c5c;
 	
-    --wi_tag_color: #e26771;
-	--wi_tag_text_color: #5c5c5c;
+    --wi_tag_color: #ebebeb;
+	--wi_tag_text_color: #e26771;
 	
 	/*Popup*/
-	--popup_background_color: #e9cece;
-    --popup_title_bar_color: #dc6872;
-	--popup_title_bar_color_text: #f2f1f1;
+	--popup_background_color: #eeeeee;
+    --popup_title_bar_color: #eeeeee;
+	--popup_title_bar_color_text: #e26771;
 
-    --popup_item_color: #f2f1f1;
-	--popup_item_color_text: #e26771;
+    --popup_item_color: #eeeeee;
+	--popup_item_color_text: #3d3d3d;
 
-	--popup_hover_color: #e26771;
-	--popup_hover_color_text: #f2f1f1;
-	--popup_selected_color: #e26771;
-	--popup_selected_color_text: #f2f1f1;
+	--popup_hover_color: #e9cece;
+	--popup_hover_color_text: #e26771;
+	--popup_selected_color: #e9cece;
+	--popup_selected_color_text: #e26771;
 
-	--popup_button_color: #e9cece;
-	--popup_button_color_text: #e26771;
-	--popup_cancel_button_color: #e9cece;
+	--popup_button_color: #e26771;
+	--popup_button_color_text: #eeeeee;
+	--popup_cancel_button_color: #eeeeee;
 	--popup_cancel_button_color_text: #e26771;
 
-	--error: #e9cece;
-	--error_text: #e26771;
-	--error_title: #dc6872;
-	--error_title_text: #f2f1f1;
+	--error: #eeeeee;
+	--error_text: #3d3d3d;
+	--error_title: #eeeeee;
+	--error_title_text: #e26771;
 	
 	/*Context Bar Colors*/
-	--context_colors_memory: #464646;
+	--context_colors_memory: #3d3d3d;
 	--context_colors_authors_notes: #5c5c5c;
 	--context_colors_world_info: #b1535a;
 	--context_colors_prompt: #e1636e;
@@ -201,6 +201,8 @@
 	--font_size_adjustment: 0px;
 	--game_screen_font_size_adjustment: 1;}
 
+/*----------------Custom CSS--------------------*/
+
 /* Boxes */
 
 #input_text, #themetext {
@@ -213,27 +215,71 @@
 }
 
 .fullwidth:focus {
-    border-color: #dc6872 !important;
+    border-color: #e26771 !important;
 }
 
 .bias_phrase input {
     border-color: #c9c9c9 !important;
+	border-radius: 10px;
+}
+
+.bias_phrase input:focus {
+	border-color: #e26771 !important;
 }
 
 .sequence {
-    border-color: #c9c9c9 !important;
+    border-color: #dddddd !important;
+}
+
+.sequence:hover {
+    filter: brightness(100%) !important;
+}
+
+.substitution-card input {
+	border-radius: 10px;
+}
+
+.substitution-card input:focus {
+	border-color: #e26771 !important;
 }
 
 /* Buttons */
+
+#adventure_mode {
+	border: 1px solid;
+	border-color: var(--enabled_button_border_color);
+}
+
+.action_button:hover {
+	filter: brightness(100%) !important;
+}
+
+.action_button:active {
+	color: #f2f1f1 !important;
+}
+
+.action_button:focus {
+	color: #f2f1f1 !important;
+	outline: none !important;
+	box-shadow: none;
+}
 
 .settings_button {
     border: none !important;
 }
 
+.settings_button:hover {
+    background-color: #ee7e7e !important;
+}
+
+.settings_button:focus {
+	outline: none !important;
+}
+
 .btn-success {
 	color: #f2f1f1 !important;
-    background-color: #dc6872 !important;
-    border-color: #dc6872 !important;
+    background-color: #e26771 !important;
+    border-color: #e26771 !important;
 }
 
 .toggle-off.btn {
@@ -244,14 +290,35 @@
 
 .advanced_theme:hover {
 	filter: brightness(100%) !important;
+	background-color: #ee7e7e !important;
+}
+
+#new-sub-card {
+	border-radius: 10px !important;
+}
+
+.wi_add_button {
+	color: #e26771 !important;
+	background: #ebebeb !important;
+	border: 1px solid #e26771 !important;
+}
+
+.wi_add_button:hover {
+	color: #ebebeb !important;
+	background: #e26771 !important;
+	border: 1px solid #e26771 !important;
+}
+
+#debug-dump:hover {
+	color: #ee7e7e !important;
 }
 
 /* Context Menu */
 
 #context-menu {
-	color: #222224;
+	color: #3d3d3d;
 	border-color: #c9c9c9 !important;
-	background-color: #e8e8e8 !important;
+	background-color: #ebebeb !important;
 }
 
 #context-menu > hr {
@@ -259,7 +326,7 @@
 }
 
 .context-menu-item:hover {
-	color: #222224;
+	color: #3d3d3d;
 	background-color:#c9c9c9 !important;
 }
 
@@ -270,31 +337,28 @@
 }
 
 #context-container {
-	background-color: #e8e8e8 !important;
+	background-color: #dedede !important;
 }
 
 /* Finder */
 
 #finder {
-	color: #222224!important;
+	color: #3d3d3d !important;
 }
 
 .result-highlight {
+	color: #f0f0f0;
     background-color: #e26771 !important;
 }
 
 .finder-wi-block {
-	color: #222224;
+	color: #3d3d3d;
 }
 
 /* Icons */
 
-span.material-icons-outlined.cursor.search_icon {
-	color: #464646e0 !important;
-}
-
 .pinned .menu_pin, .pinned .story_menu_pin {
-    color: #464646 !important;
+    color: #e26771 !important;
     filter: brightness(100%) !important;
 }
 
@@ -306,34 +370,56 @@ span.material-icons-outlined.cursor.search_icon {
 	filter: brightness(100%) !important;
 }
 
-
 .substitution-card > .card-left > .material-icons-outlined {
 	color: #999 !important;
 }
 
 .substitution-card > .card-left > .material-icons-outlined:hover {
-	color: #464646 !important;
+	color: #3d3d3d !important;
 }
 
 .true-t + label::before {
 	color: #999 !important;
+	filter: brightness(85%);
 }
 
 .true-t:checked + label::before {
-	color: #dc6872 !important;
+	color: #e26771 !important;
+	filter: brightness(100%);
+}
+
+.oi[folder] {
+	color: #e26771 !important;
+}
+
+.rename_icon {
+	color: #e26771 !important;
+}
+
+.search_icon {
+	color: #e26771 !important;
+}
+
+.search_icon:hover {
+	border-radius:5px;
+	background-color: #e0e0e0 !important;
 }
 
 /* Import */
 
 a {
+    color: #5c5c5c !important;
+}
+
+a:hover, a:focus {
     color: #e26771 !important;
 }
 
 .form-control {
-	border: none;
-	color: #e26771 !important;
+	border: 1px solid #c9c9c9 !important;
+	color: #3d3d3d !important;
 	transform: translateX(6px)!important;
-    background-color: #e2e2e2 !important;
+    background-color: #f0f0f0 !important;
 }
 
 /* Lines */
@@ -342,27 +428,49 @@ a {
     border-color: #c9c9c9 !important;
 }
 
+.settings_footer {
+	border-color: #c9c9c9 !important;
+}
+
 /* Lists */
 
 .settings_select, .var_sync_system_theme_list {
 	border-color: #c9c9c9 !important;
-}
-
-select#wpp_format_0.settings_select {
-    background-color: #f8f4f4 !important;
+	border-radius: 10px !important;
 }
 
 /* Palette */
 
 #palette_area {
-    border-color: #e26771 !important;
+    border: 1px solid #d9b7ba !important;
 }
 
 /* Popup */
 
+.popup_list_area .model_item .model{
+	border: 1px solid #c9c9c9;
+	border-radius: 10px;
+}
+
+.popup .popup_load_cancel {
+	border: 1px solid #c9c9c9 !important;
+}
+
+.popup .item, .popup .title, .popup .popup_list_area {
+	border: 1px solid #c9c9c9;
+}
+
+.popup .item:hover {
+	border-color: #e26771;
+}
+
+.popup .item.selected {
+	border-color: #e26771;
+}
+
 .popup .action_button {
     border-radius: 10px;
-	border-color:#e26771
+	border-color: #e26771;
 }
 
 .popup_load_cancel_button {
@@ -370,14 +478,44 @@ select#wpp_format_0.settings_select {
 }
 
 .popup .action_button:hover {
+	color: #eeeeee;
+	border-color: #ee7e7e !important;
 	filter: brightness(100%) !important;
-	background-color: #e9cece !important;
+	background-color: #ee7e7e !important;
 }
 
 .popup_load_cancel_button:hover {
-	color: #e26771 !important;
+	color: #e26771;
 	border-color: #e26771 !important;
     background-color: #e9cece !important;
+}
+
+.popup .action_button:focus {
+	box-shadow: none;
+	outline: none !important;
+	color: #eeeeee !important;
+}
+
+.popup_load_cancel_button:focus {
+	box-shadow: none;
+	outline: none !important;
+	color: #e26771 !important;
+}
+
+#error_message.popup .btn-primary {
+	color: #e26771 !important;
+	border-color: #e26771 !important;
+	background-color: #eeeeee !important;
+}
+
+#error_message.popup .btn-primary:hover {
+	background-color: #e9cece !important;
+}
+
+.btn-primary {
+	color: #e26771 !important;
+	border-color: #e26771 !important;
+	background-color: #eeeeee !important;
 }
 
 /* Tabs */
@@ -392,9 +530,13 @@ select#wpp_format_0.settings_select {
 	border: none !important;
 }
 
+.tabrow span:hover {
+	background: #e0e0e0 !important;
+}
+
 .tabrow span.selected {
-     color: #f2f1f1 !important;
-    background: #e26771 !important;
+    color: #e26771 !important;
+    background: #eeeeee !important;
 }
 
 /* Text */
@@ -403,18 +545,26 @@ select#wpp_format_0.settings_select {
     font-family: helvetica !important;
 }
 
+.rawtext:focus {
+	outline: none !important;
+}
+
 /* Tooltips */
 
 .tooltip-standard {
 	border: none !important;
-	color: #222224 !important;
-	background-color: #e9e7e7 !important;
 }
 
 /* World Info */
 
 .tag {
-    color: #f2f1f1 !important;
+	border: 1px solid #e26771 !important
+}
+
+.tag:hover {
+	color: #ebebeb !important;
+	background: #e26771 !important;
+	border: 1px solid #e26771 !important;
 }
 
 .world_info_tag_area {
@@ -422,12 +572,21 @@ select#wpp_format_0.settings_select {
 }
 
 .world_info_delete {
-	color: #acacac !important;
+	color: #999 !important;
 }
 
 .world_info_text {
-	color: #222224 !important;
+	color: #3d3d3d !important;
     border-color: #acacac !important;
 	filter: brightness(100%) !important;
-	background-color: #eeeeee !important;
+	background-color: #ebebeb !important;
+}
+
+.world_info_title:focus {
+	color: #e26771 !important;
+	outline: none !important;
+}
+
+.WI_Folder_Header .title:focus {
+	outline: none !important;
 }

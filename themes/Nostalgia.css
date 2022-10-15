@@ -1,8 +1,8 @@
 /*
 	Name: Nostalgia
 	Author: LightSaveUs
-	Version: 0.2.4
-	Description: A theme inspired by the previous KoboldAI interface.
+	Version: 0.3
+	Description: A theme inspired by the old KoboldAI interface.
 */
 
 :root {
@@ -45,7 +45,7 @@
     --text_to_ai_color: #fff;
     --text_edit: #cdf;
 
-	--statusbar_color: #6c6c6e99;
+	--statusbar_color: #3bf72380;
 	--statusbar_text_color: #ffffff;
 	--scrollbar-color: #74747400;
 
@@ -61,7 +61,7 @@
 
 		/*Home Tab*/
 	--button_text: #ffffff;
-	--button_background: #3379b7;
+	--button_background: #337ab7;
 		
 		/*Alternate Button*/
 	--alternate_button_text: #ffffff;
@@ -69,15 +69,15 @@
 
 
 	/*Sequence, AKA Gens Per Action*/
-	--sequence_area_background: #303030;
+	--sequence_area_background: #262626;
     --sequence_background: #262626;
 	--sequence_text: #ffffff;
 
 	/*Side Menus*/
 	--tab_color: #4786be;
 
-	--flyout_background: #294f71;
-	--flyout_background_pinned: #294f71;
+	--flyout_background: #274864;
+	--flyout_background_pinned: #274864;
 
 	--setting_background: #294f71;
     --setting_text: #ffffff;
@@ -86,19 +86,20 @@
 	--sample_order_select_color_text: #23527c;
 
 	--dropdown_text: #ffffff;
-	--dropdown_background: #337ab7;
+	--dropdown_background: #386d9c;
 
 	--rangeslider_background_color: #ffffff;
-	--rangeslider_color: #005dc8;
-	--rangeslider_circle_color: #0077ff;
+	--rangeslider_color: #1a6ccd;
+	--rangeslider_circle_color: #268aff;
 
-	--help_icon: #ffffff;/*--tooltip_text: #000000;
-    --tooltip_background: #000000;*/
+	--help_icon: #ffffff;
+	--tooltip_text: #ffffff;
+    --tooltip_background: #1f2931;
 	--setting_category_help_text_color: #3bf723;
 	
 	--setting_footer_border_color: grey;
 	--setting_footer_text_color: #ffffff;
-	--setting_footer_background_color: #212122;
+	--setting_footer_background_color: #232323;
 
 	/*Palette Card*/
 	--palette_card_background: #295071;
@@ -106,10 +107,10 @@
 	--palette_table_border: #12324f;
 
 	/*World Info*/
-	--wi_card_border_color: #262626;
-    --wi_card_border_color_to_ai: #262626;
+	--wi_card_border_color: #1e1e1e;
+    --wi_card_border_color_to_ai: #1e1e1e00;
 
-    --wi_card_bg_color: #262626;
+    --wi_card_bg_color: #1e1e1e;
 	--wi_card_text_color: #ffffff;
 
     --wi_card_tag_bg_color: #295071;
@@ -193,6 +194,8 @@
 	--font_size_adjustment: 0px;
 	--game_screen_font_size_adjustment: 1;}
 
+/*----------------Custom CSS--------------------*/
+
 /* Boxes */
 
 #input_text, #themetext {
@@ -204,7 +207,38 @@
     border-color: #999999 !important;
 }
 
+.bias_phrase input {
+	border-radius: 5px;
+	border-color: #376590;
+	background-color:var(--dropdown_background);
+}
+
+.substitution-card input {
+	border-radius: 5px;
+	border-color: #376590;
+	background-color:var(--dropdown_background);
+}
+
+.sequence {
+	border-color: #8c8c8c !important;
+}
+
+.sequence:hover {
+	filter: brightness(120%) !important;
+}
+
 /* Buttons */
+
+#adventure_mode {
+	border: 1px solid;
+	border-color: var(--enabled_button_border_color);
+}
+
+.action_button:focus {
+	box-shadow: none;
+	outline: none !important;
+	color: #ffffff !important;
+}
 
 .settings_button {
     border: none !important;
@@ -215,26 +249,34 @@
 }
 
 .settings_button:focus {
-   background: #84a8c8 !important;
+	outline: none !important;
 }
 
 .wi_add_button:hover {
 	filter: brightness(80%);
 }
 
+#new-sub-card:hover {
+	filter: brightness(120%) !important;
+}
+
+#debug-dump:hover {
+	filter: brightness(80%) !important;
+}
+
 /* Context Menu */
 
 #context-menu {
-	border-color: #12324f !important;
-	background-color: #294f71 !important;
+	border-color: #11324f !important;
+	background-color: #274864 !important;
 }
 
 #context-menu > hr {
-	border-color: #12324f !important;
+	border-color: #11324f !important;
 }
 
 .context-menu-item:hover {
-	background-color:#12324f !important;
+	background-color:#11324f !important;
 }
 
 /* Context Viewer */
@@ -250,13 +292,13 @@
 /* Finder */
 
 .result-highlight {
-    background-color: #3bf723f0 !important;
+    background-color: #688f1f !important;
 }
 
 /* Flyout */
 
 .rightSideMenu {
-	background-color: #212122 !important;
+	background-color: #232323 !important;
 }
 
 /* Icons */
@@ -275,10 +317,12 @@
 
 .true-t + label::before {
 	color: #999 !important;
+	filter: brightness(85%);
 }
 
 .true-t:checked + label::before {
 	color: #fff !important;
+	filter: brightness(100%);
 }
 
 /* Import */
@@ -289,20 +333,21 @@ a {
 
 .form-control {
     background-color: #404040 !important;
-	color: #3bf723 !important;
+	color: #ffffff !important;
 	border: none;
 }
 
 /* Lines */
 
 .story_title, hr {
-    border-color: #12324f !important;
+    border-color: #11324f !important;
 }
 
 /* Lists */
 
 .settings_select, .var_sync_system_theme_list {
-	border-color: #12324f !important;
+	border-color: #376590 !important;
+	border-radius: 5px !important;
 }
 
 /* Palette */
@@ -331,6 +376,19 @@ a {
 	color: #ffffff !important;
 	border-color: #ffffff !important;
     background-color: #337ab7 !important;
+}
+
+.popup .action_button:focus {
+	outline: none !important;
+	color: #ffffff
+}
+
+.popup_load_cancel_button:focus {
+	background-color: #337ab7 !important;
+    border-color: #ffffff !important;
+	outline: none !important;
+	box-shadow: none;
+	color: #ffffff
 }
 
 #error_message.popup .btn-primary {
@@ -370,19 +428,23 @@ a {
     font-family: helvetica !important;
 }
 
-/* Timer */
+.rawtext:focus {
+	outline: none !important;
+}
+
+/* Timer Bar */
 
 div#settings_footer.settings_footer {
 	color: #ffffff !important;
-	border-color: #12324f !important;
-	background-color: #294f71 !important;
+	border-color: #11324f !important;
+	background-color: #274864 !important;
 }
 
 /* Tooltips */
 
 .tooltip-standard {
-	border-color: #3379b7 !important;
-	background-color: #1f2931 !important;
+	border: 1px solid #3379b7 !important;
+	border-radius: 5px;
 }
 
 /* World Info */
@@ -397,4 +459,12 @@ div#settings_footer.settings_footer {
     border-color: #999999!important;
 	filter: brightness(100%) !important;
 	background-color: #404040 !important;
+}
+
+.world_info_title:focus {
+	outline: none !important;
+}
+
+.WI_Folder_Header .title:focus {
+	outline: none !important;
 }
