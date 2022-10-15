@@ -1,7 +1,7 @@
 /*
 	Name: Darkness
 	Author: LightSaveUs
-	Version: 0.3.4
+	Version: 0.4
 	Description: A theme inspired by the AI Dungeon interface.
 */
 
@@ -37,8 +37,8 @@
 
 /*----------------Advanced Theme--------------------*/
 	/*General*/
-	--background: #181818;
-	--gamescreen_background: #181818;
+	--background: #141414;
+	--gamescreen_background: #141414;
     --input_background: #141414;
 
     --text: #e0e0e0;
@@ -52,7 +52,7 @@
 	/*Buttons*/
 		/*General*/
 	--enabled_button_text: #e0e0e0;
-    --enabled_button_background_color: #424243;
+    --enabled_button_background_color: #3c3c3c;
     --enabled_button_border_color: #2e2e2fe8;
 
 	--disabled_button_text: #303030;
@@ -65,11 +65,11 @@
 		
 		/*Alternate Button*/
 	--alternate_button_text: #e0e0e0;
-	--alternate_button_background: #127a76;
+	--alternate_button_background: #424243;
 
 
 	/*Sequence, AKA Gens Per Action*/
-	--sequence_area_background: #181818;
+	--sequence_area_background: #141414;
     --sequence_background: #141414;
 	--sequence_text: #e0e0e0;
 
@@ -83,17 +83,18 @@
     --setting_text: #e0e0e0;
 
 	--sample_order_select_color: #148883;
-	--sample_order_select_color_text: #e0e0e0;
+	--sample_order_select_color_text: #141414;
 
 	--dropdown_text: #e0e0e0;
-	--dropdown_background: #1f1f1f;
+	--dropdown_background: #202020;
 
 	--rangeslider_background_color: #1c1c1c;
 	--rangeslider_color: #1c1c1c;
 	--rangeslider_circle_color: #148883;
 
-	--help_icon: #6e6e6e;/*--tooltip_text: #000000;
-    --tooltip_background: #000000;*/
+	--help_icon: #6e6e6e;
+	--tooltip_text: #e0e0e0;
+    --tooltip_background: #3b3b3b;
 	--setting_category_help_text_color: #e0e0e0;
 	
 	--setting_footer_border_color: #333333;
@@ -115,20 +116,20 @@
     --wi_card_tag_bg_color: #3b3b3b;
 	--wi_card_tag_text_color: #e0e0e0;
 	
-    --wi_tag_color: #148883;
+    --wi_tag_color: #555555;
 	--wi_tag_text_color: #e0e0e0;
 	
 	/*Popup*/
-	--popup_background_color: #181818;
+	--popup_background_color: #212121;
     --popup_title_bar_color: #343434;
 	--popup_title_bar_color_text: #e0e0e0;
 
-    --popup_item_color: #181818;
+    --popup_item_color: #212121;
 	--popup_item_color_text: #e0e0e0;
 
-	--popup_hover_color: #181818;
+	--popup_hover_color: #212121;
 	--popup_hover_color_text: #e0e0e0;
-	--popup_selected_color: #181818;
+	--popup_selected_color: #212121;
 	--popup_selected_color_text: #85858580;
 
 	--popup_button_color: #424243;
@@ -194,6 +195,8 @@
 	--font_size_adjustment: 0px;
 	--game_screen_font_size_adjustment: 1;}
 
+/*----------------Custom CSS--------------------*/
+
 /* Boxes */
 
 #input_text, #themetext {
@@ -207,12 +210,55 @@
 
 .bias_phrase input {
     border-color: #808080 !important;
+	border-radius:5px;
+}
+
+.sequence {
+	border: 1px solid #b6b6b6 !important;
+}
+
+.sequence:hover {
+	filter: brightness(100%) !important;
+	background-color: #2a2a2a;
+}
+
+.substitution-card input {
+	border-radius: 5px;
+	border-color: #535353 !important;
 }
 
 /* Buttons */
 
+#adventure_mode {
+	border: 1px solid;
+	border-color: var(--enabled_button_border_color);
+}
+
+.action_button:hover {
+	filter: brightness(100%) !important;
+}
+
+.action_button:active {
+	color: #e0e0e0;
+	filter: brightness(60%) !important;
+}
+
+.action_button:focus {
+	color: #e0e0e0;
+	box-shadow: none;
+	outline: none !important;
+}
+
 .settings_button {
 	border: none !important;
+}
+
+.settings_button:active {
+	filter: brightness(60%) !important;
+}
+
+.settings_button:focus {
+	outline: none !important;
 }
 
 .btn-success {
@@ -229,6 +275,22 @@
 
 .advanced_theme:hover {
 	filter: brightness(100%) !important;
+}
+
+.advanced_theme:active {
+	filter: brightness(60%) !important;
+}
+
+#new-sub-card:active {
+	filter: brightness(60%) !important;
+}
+
+.wi_add_button:active {
+	filter: brightness(60%) !important;
+}
+
+#debug-dump:active {
+	filter: brightness(60%) !important;
 }
 
 /* Context Menu */
@@ -253,7 +315,7 @@
 }
 
 #context-container {
-	background-color: #242424 !important;
+	background-color: #2b2b2b !important;
 }
 
 /* Finder */
@@ -290,10 +352,12 @@ span.material-icons-outlined.cursor.search_icon {
 
 .true-t + label::before {
 	color: #999 !important;
+	filter: brightness(85%);
 }
 
 .true-t:checked + label::before {
 	color: #e0e0e0 !important;
+	filter: brightness(100%);
 }
 
 /* Import */
@@ -304,8 +368,8 @@ a {
 
 .form-control {
 	border: none;
-    color: #148883 !important;
-    background-color: #424243 !important;
+	color: #e0e0e0 !important;
+	background-color: #333333 !important;
 }
 
 /* Lines */
@@ -318,12 +382,13 @@ a {
 
 .settings_select, .var_sync_system_theme_list {
 	border-color: #535353 !important;
+	border-radius:5px !important;
 }
 
 /* Palette */
 
 #palette_area {
-    border-color: #333333 !important;
+	border: 1px solid #535353 !important;
 }
 
 /* Popup */
@@ -336,28 +401,46 @@ a {
 
 .popup .action_button {
     border-radius: 5px;
-	border-color:#b6b6b6;
+	border-color:#535353;
 }
 
 .popup_load_cancel_button {
     border-radius: 5px;
-	border-color:#b6b6b6 !important;
+	border-color:#535353 !important;
 }
 
 .popup .action_button:hover {
 	background-color: #424243 !important;
+	filter: brightness(100%) !important;
 }
 
 .popup_load_cancel_button:hover {
 	color: #e0e0e0 !important;
-	border-color: #e0e0e0 !important;
+	border-color: #535353 !important;
     background-color: #424243 !important;
+	outline: none !important;
+}
+
+.popup_load_cancel_button:focus {
+	color: #e0e0e0 !important;
+	border-color: #535353 !important;
+    background-color: #424243 !important;
+	outline: none;
+}
+
+.popup .action_button:active {
+	filter: brightness(60%) !important;
+}
+
+.popup_load_cancel_button:active {
+	filter: brightness(60%) !important;
+	outline: none !important;
 }
 
 #error_message.popup .btn-primary {
     color: #e0e0e0 !important;
-    border-color: #e0e0e0 !important;
-    background-color: #424243 !important;
+    border-color: #535353 !important;
+	background-color: #424243 !important;
 }
 
 /* Tabs */
@@ -377,18 +460,24 @@ a {
     background: #1c1c1c !important;
 }
 
+.tabrow span:active {
+	filter: brightness(60%) !important;
+}
+
 /* Text */
 
 .rawtext {
     font-family: helvetica !important;
 }
 
+.rawtext:focus {
+	outline: none !important;
+}
+
 /* Tooltips */
 
 .tooltip-standard {
 	border: none !important;
-	color: #e0e0e0 !important;
-	background-color: #3b3b3b !important;
 }
 
 /* World Info */
@@ -396,4 +485,12 @@ a {
 .world_info_text {
 	border-color: #242424 !important;
 	background-color: #3b3b3b !important;
+}
+
+.world_info_title:focus {
+	outline: none !important;
+}
+
+.WI_Folder_Header .title:focus {
+	outline: none !important;
 }
