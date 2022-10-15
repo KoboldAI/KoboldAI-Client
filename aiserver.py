@@ -4582,7 +4582,7 @@ def actionsubmit(data, actionmode=0, force_submit=False, force_prompt_gen=False,
 
             if(not no_generate and not koboldai_vars.noai and koboldai_vars.lua_koboldbridge.generating):
                 # Off to the tokenizer!
-                calcsubmit(data)
+                calcsubmit("")
                 if(not koboldai_vars.abort and koboldai_vars.lua_koboldbridge.restart_sequence is not None and len(koboldai_vars.genseqs) == 0):
                     data = ""
                     force_submit = True
