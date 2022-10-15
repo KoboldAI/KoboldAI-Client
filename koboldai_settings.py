@@ -675,7 +675,7 @@ class model_settings(settings):
                 self.tqdm.reset(total=self.genamt)
                 self.tqdm_progress = 0
             else:
-                self.tqdm.update(1)
+                self.tqdm.update(value-self.tqdm.n)
                 self.tqdm_progress = int(float(self.generated_tkns)/float(self.genamt)*100)
                 if self.tqdm.format_dict['rate'] is not None:
                     self.tqdm_rem_time = str(datetime.timedelta(seconds=int(float(self.genamt-self.generated_tkns)/self.tqdm.format_dict['rate'])))
