@@ -23,6 +23,9 @@ from ansi2html import Ansi2HTMLConverter
 
 logging.getLogger("urllib3").setLevel(logging.ERROR)
 
+import attention_bias
+attention_bias.do_patches()
+
 from os import path, getcwd
 import time
 import re
@@ -5000,7 +5003,27 @@ def calcsubmit(txt):
     if(koboldai_vars.model != "InferKit"):
         #subtxt, min, max = calcsubmitbudget(actionlen, winfo, mem, anotetxt, koboldai_vars.actions, submission=txt)
         subtxt, min, max, found_entries  = koboldai_vars.calc_ai_text(submitted_text=txt)
+
+        if koboldai_vars.experimental_features and koboldai_vars.memory_attn_bias > 1:
+            offset = 0
+            bounds = None
+            for c in koboldai_vars.context:
+                length = len(tokenizer.encode(c["text"]))
+                if c["type"] == "memory":
+                    bounds = [offset, offset + length]
+                    break
+                offset += length
+
+            print(f"Memory bounds: {bounds}")
+            assert bounds
+
+            bias = [1] * bounds[0]
+            bias += [koboldai_vars.memory_attn_bias] * bounds[1]
+
+            attention_bias.attention_bias = torch.Tensor(bias).to(breakmodel.primary_device)
+            print(f"Bias by {koboldai_vars.memory_attn_bias} -- {attention_bias.attention_bias}")
         generate(subtxt, min, max, found_entries)
+        attention_bias.attention_bias = None
 
                     
     # For InferKit web API
