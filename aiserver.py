@@ -3135,8 +3135,6 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
     
     koboldai_vars.presets = to_use
 
-    if tokenizer.pad_token is None:
-        tokenizer.add_special_tokens({'pad_token': '[PAD]'})
     
     koboldai_vars.aibusy = False
     if not os.path.exists("./softprompts"):
