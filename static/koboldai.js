@@ -2974,6 +2974,7 @@ function update_context(data) {
 
 		let rgb = window.getComputedStyle(el)["background-color"].match(/(\d+), (\d+), (\d+)/).slice(1, 4).map(Number);
 
+		console.log(entry);
 		for (const [tokenId, token] of entry.tokens) {
 			let tokenColor = distortColor(rgb);
 			tokenColor = "#" + (tokenColor.map(dec2Hex2).join(""));
