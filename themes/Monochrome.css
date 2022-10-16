@@ -411,7 +411,7 @@ a {
 
 /* Popup */
 
-.popup_list_area .model_item .model{
+.popup .model_item {
 	border: 1px solid #2f3b4b;
 }
 
