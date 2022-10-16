@@ -195,7 +195,7 @@ border-top-right-radius: var(--tabs_rounding);
 	background-color: var(--setting_background);
 	color: var(--setting_text);
 	border-radius: var(--radius_settings_background);
-	padding: 3px;
+	padding: 2px;
 	margin: 2px;
 }
 
@@ -214,7 +214,7 @@ border-top-right-radius: var(--tabs_rounding);
 	background-color: var(--setting_background);
 	color: var(--setting_text);
 	border-radius: var(--radius_settings_background);
-	padding: 3px;
+	padding: 2px;
 	margin-top: 5px;
 }
 
@@ -233,7 +233,7 @@ border-top-right-radius: var(--tabs_rounding);
 	background-color: var(--setting_background);
 	color: var(--setting_text);
 	border-radius: var(--radius_settings_background);
-	padding: 3px;
+	padding: 2px;
 	margin: 2px;
 }
 .setting_container_single .setting_item{
@@ -251,7 +251,7 @@ border-top-right-radius: var(--tabs_rounding);
 	background-color: var(--setting_background);
 	color: var(--setting_text);
 	border-radius: var(--radius_settings_background);
-	padding: 3px;
+	padding: 1px;
 	margin: 2px;
 }
 .setting_container_single_wide .setting_item{
