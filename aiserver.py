@@ -6201,6 +6201,9 @@ def applyinputformatting(txt):
 # Applies chosen formatting options to text returned from AI
 #==================================================================#
 def applyoutputformatting(txt, no_sentence_trimming=False):
+    #remove null ascii character (used to kill chat mode text in multi-generation)
+    txt = txt.replace(chr(0), "")
+    
     # Use standard quotes and apostrophes
     txt = utils.fixquotes(txt)
 
