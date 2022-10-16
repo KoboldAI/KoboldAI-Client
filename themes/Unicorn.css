@@ -416,8 +416,9 @@ a:hover, a:focus {
 }
 
 .form-control {
+	border-radius: 0px;
 	color: #3d3d3d !important;
-	transform: translateX(6px)!important;
+	transform: translateX(5px)!important;
 	border: 1px solid #c9c9c9 !important;
     background-color: #f0f0f0 !important;
 }
