@@ -2670,8 +2670,18 @@ function calc_token_usage(
 }
 
 function Change_Theme(theme) {
-	var css = document.getElementById("CSSTheme");
-    css.setAttribute("href", "/themes/"+theme+".css");
+	const oldCSS = $el("#CSSTheme");
+	if (oldCSS) oldCSS.remove();
+
+	const css = $e(
+		"link",
+		document.head,
+		{
+			id: "CSSTheme",
+			rel: "stylesheet",
+			href: `/themes/${theme}.css`
+		}
+	);
 
 	// We must wait for the style to load before we read it
 	css.onload = function() {
