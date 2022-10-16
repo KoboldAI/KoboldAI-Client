@@ -1817,7 +1817,7 @@ function world_info_entry(data) {
 		}
 	}
 	attribute_area = document.createElement("div");
-	label = document.createElement("span");
+	let label = document.createElement("span");
 	label.textContent = "\xa0\xa0\xa0\xa0Attribute: ";
 	attribute_area.append(label);
 	input = document.createElement("input");
