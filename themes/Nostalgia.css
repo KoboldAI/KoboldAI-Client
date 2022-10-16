@@ -333,8 +333,9 @@ a {
 
 .form-control {
 	border: none;
+	border-radius: 0px;
 	color: #ffffff !important;
-	transform: translateX(6px)!important;
+	transform: translateX(5px)!important;
     background-color: #404040 !important;
 }
 
