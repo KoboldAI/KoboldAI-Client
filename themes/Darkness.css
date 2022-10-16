@@ -393,10 +393,12 @@ a {
 
 /* Popup */
 
+.popup .model_item {
+	border: 1px solid #333333;
+}
+
 .popup .item {
-	border: solid #000;
-	border-width: 1 1px;
-	border-color: #333333 !important;
+	border: 1px solid #333333;
 }
 
 .popup .action_button {

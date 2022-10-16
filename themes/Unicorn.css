@@ -447,11 +447,9 @@ a:hover, a:focus {
 
 /* Popup */
 
-.popup_list_area .model_item .model{
+.popup .model_item {
 	border: 1px solid #c9c9c9;
-	border-radius: 10px;
 }
-
 .popup .popup_load_cancel {
 	border: 1px solid #c9c9c9 !important;
 }
