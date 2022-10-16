@@ -316,13 +316,13 @@
 }
 
 .true-t + label::before {
-	color: #999 !important;
 	filter: brightness(85%);
+	color: #999 !important;
 }
 
 .true-t:checked + label::before {
-	color: #fff !important;
 	filter: brightness(100%);
+	color: #fff !important;
 }
 
 /* Import */
@@ -332,9 +332,11 @@ a {
 }
 
 .form-control {
-    background-color: #404040 !important;
-	color: #ffffff !important;
 	border: none;
+	border-radius: 0px;
+	color: #ffffff !important;
+	transform: translateX(5px)!important;
+    background-color: #404040 !important;
 }
 
 /* Lines */
@@ -346,8 +348,8 @@ a {
 /* Lists */
 
 .settings_select, .var_sync_system_theme_list {
-	border-color: #376590 !important;
 	border-radius: 5px !important;
+	border-color: #376590 !important;
 }
 
 /* Palette */
@@ -384,11 +386,11 @@ a {
 }
 
 .popup_load_cancel_button:focus {
-	background-color: #337ab7 !important;
-    border-color: #ffffff !important;
-	outline: none !important;
-	box-shadow: none;
 	color: #ffffff
+	outline: none !important;
+	box-shadow: none !important;
+	border-color: #ffffff !important;	
+	background-color: #337ab7 !important;
 }
 
 #error_message.popup .btn-primary {

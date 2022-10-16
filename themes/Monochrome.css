@@ -218,13 +218,13 @@
 }
 
 .bias_phrase input {
-    border-color: #2f3b4b !important;
 	border-radius:2px !important;
+    border-color: #2f3b4b !important;
 }
 
 .substitution-card input {
-	border-color: #2f3b4b !important;
 	border-radius:2px !important;
+	border-color: #2f3b4b !important;
 }
 
 .sequence {
@@ -246,8 +246,8 @@
 
 .action_button:focus {
 	color: #e0e0e0;
-	box-shadow: none;
 	outline: none !important;
+	box-shadow: none !important;
 }
 
 .settings_button {
@@ -270,8 +270,8 @@
 
 .toggle-off.btn {
 	color: #eedcb8 !important;
-    background-color: #131c22 !important;
 	border-color: #131c22 !important;
+	background-color: #131c22 !important;
 }
 
 .toggle-off.btn:hover {
@@ -357,13 +357,13 @@ span.helpicon.material-icons-outlined:hover:not(::after) {
 }
 
 .true-t + label::before {
-	color: #999 !important;
 	filter: brightness(85%);
+	color: #999 !important;
 }
 
 .true-t:checked + label::before {
-	color: #e0e0e0 !important;
 	filter: brightness(100%);
+	color: #e0e0e0 !important;
 }
 
 /* Import */
@@ -374,7 +374,9 @@ a {
 
 .form-control {
 	border: none;
+	border-radius: 0px;
 	color: #e0e0e0 !important;
+	transform: translateX(5px)!important;
     background-color: #25323d !important;
 }
 
@@ -395,8 +397,8 @@ a {
 /* Lists */
 
 .settings_select, .var_sync_system_theme_list {
-	border-color: #2f3b4b !important;
 	border-radius:2px !important;
+	border-color: #2f3b4b !important;
 }
 
 .settings_footer {
@@ -446,9 +448,21 @@ a {
 
 .popup_load_cancel_button:hover {
 	color: #e0e0e0 !important;
-    background-color: #30435b !important;
-	border-color: #ffffff00 !important;
 	filter: brightness(120%) !important;
+	border-color: #ffffff00 !important;
+    background-color: #30435b !important;
+}
+
+.popup .action_button:focus {
+	outline: none !important;
+	box-shadow: none !important;
+	color: #e0e0e0 !important;
+}
+
+.popup_load_cancel_button:focus {
+	outline: none !important;
+	box-shadow: none !important;
+	color: #e0e0e0 !important;
 }
 
 /* Tabs */
@@ -500,9 +514,9 @@ a {
 }
 
 .world_info_text {
+	border-color: #2f3b4b !important;
 	filter: brightness(100%) !important;
 	background-color: #1d2835 !important;
-	border-color: #2f3b4b !important;
 }
 
 .world_info_title:hover {

@@ -259,9 +259,9 @@
 }
 
 .action_button:focus {
-	color: #f2f1f1 !important;
-	outline: none !important;
 	box-shadow: none;
+	outline: none !important;
+	color: #f2f1f1 !important;
 }
 
 .settings_button {
@@ -278,14 +278,14 @@
 
 .btn-success {
 	color: #f2f1f1 !important;
-    background-color: #e26771 !important;
     border-color: #e26771 !important;
+	background-color: #e26771 !important;
 }
 
 .toggle-off.btn {
 	color: #f2f1f1 !important;
-    background-color: #828282 !important;
 	border-color: #828282 !important;
+	background-color: #828282 !important;
 }
 
 .advanced_theme:hover {
@@ -379,13 +379,13 @@
 }
 
 .true-t + label::before {
-	color: #999 !important;
 	filter: brightness(85%);
+	color: #999 !important;
 }
 
 .true-t:checked + label::before {
-	color: #e26771 !important;
 	filter: brightness(100%);
+	color: #e26771 !important;
 }
 
 .oi[folder] {
@@ -416,9 +416,10 @@ a:hover, a:focus {
 }
 
 .form-control {
-	border: 1px solid #c9c9c9 !important;
+	border-radius: 0px;
 	color: #3d3d3d !important;
-	transform: translateX(6px)!important;
+	transform: translateX(5px)!important;
+	border: 1px solid #c9c9c9 !important;
     background-color: #f0f0f0 !important;
 }
 
@@ -435,8 +436,8 @@ a:hover, a:focus {
 /* Lists */
 
 .settings_select, .var_sync_system_theme_list {
-	border-color: #c9c9c9 !important;
 	border-radius: 10px !important;
+	border-color: #c9c9c9 !important;
 }
 
 /* Palette */
@@ -581,8 +582,8 @@ a:hover, a:focus {
 }
 
 .world_info_title:focus {
-	color: #e26771 !important;
 	outline: none !important;
+	color: #e26771 !important;
 }
 
 .WI_Folder_Header .title:focus {
