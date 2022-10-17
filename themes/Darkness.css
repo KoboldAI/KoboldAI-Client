@@ -108,7 +108,7 @@
 
 	/*World Info*/
 	--wi_card_border_color: #333333;
-    --wi_card_border_color_to_ai: #333333;
+    --wi_card_border_color_to_ai: #1e6d6aa1;
 
     --wi_card_bg_color: #242424;
 	--wi_card_text_color: #e0e0e0;
