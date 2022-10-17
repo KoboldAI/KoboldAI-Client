@@ -253,7 +253,7 @@ class koboldai_vars(object):
                     used_tokens+=wi_length
                     used_world_info.append(wi['uid'])
                     self.worldinfo_v2.set_world_info_used(wi['uid'])
-                    wi_text = wi['content']+" " if wi['content'][-1] not in [" ", "\n"] else wi['content']
+                    wi_text = wi['content']+" " if wi['content'] != "" and wi['content'][-1] not in [" ", "\n"] else wi['content']
                     wi_tokens = self.tokenizer.encode(wi_text)
                     context.append({
                         "type": "world_info",
@@ -309,7 +309,7 @@ class koboldai_vars(object):
                             if used_tokens+wi_length <= token_budget:
                                 used_tokens+=wi_length
                                 used_world_info.append(wi['uid'])
-                                wi_text = wi['content']+" " if wi['content'][-1] not in [" ", "\n"] else wi['content']
+                                wi_text = wi['content']+" " if wi['content'] != "" and wi['content'][-1] not in [" ", "\n"] else wi['content']
                                 wi_tokens = self.tokenizer.encode(wi_text)
                                 context.append({
                                     "type": "world_info",
@@ -398,7 +398,7 @@ class koboldai_vars(object):
                             if used_tokens+wi_length <= token_budget:
                                 used_tokens+=wi_length
                                 used_world_info.append(wi['uid'])
-                                wi_text = wi['content']+" " if wi['content'][-1] not in [" ", "\n"] else wi['content']
+                                wi_text = wi['content']+" " if wi['content'] != "" and wi['content'][-1] not in [" ", "\n"] else wi['content']
                                 wi_tokens = self.tokenizer.encode(wi_text)
                                 if method == 1:
                                     context.append({
@@ -1144,11 +1144,10 @@ class KoboldStoryRegister(object):
             action = self.actions[action_id]['wi_highlighted_text']
         else:
             action = self.story_settings.prompt_wi_highlighted_text
-        if action['text'] == "":
-            return
+        
         i=0
         while i < len(action):
-            if action[i]['WI matches'] is None and key in action[i]['text']:
+            if action[i]['WI matches'] is None and key in action[i]['text'] and action[i]['text'] != "":
                 chunk = action[i]
                 for j in range(len(chunk['text'])-1, -1, -1):
                     if key in chunk['text'][j:]:
