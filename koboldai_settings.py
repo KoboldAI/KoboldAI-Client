@@ -198,167 +198,180 @@ class koboldai_vars(object):
     
     def calc_ai_text(self, submitted_text="", return_text=False):
         #start_time = time.time()
+        if self.tokenizer is None:
+            if return_text:
+                return ""
+            return [], 0, 0+self.genamt, []
+            
         if self.alt_gen:
             method = 2
         else:
             method = 1
+        #Context and Game Context are lists of chunks of text that will go to the AI. Game Context will be appended after context when we're done
         context = []
+        game_context = []
         token_budget = self.max_length - self.genamt
         used_world_info = []
-        if self.tokenizer is None:
-            used_tokens = 99999999999999999999999
-        else:
-            used_tokens = 0 if self.sp_length is None else self.sp_length + len(self.tokenizer._koboldai_header)
-        text = ""
-
-        # TODO: We may want to replace the "text" variable with a list-type
-        # class of context blocks, the class having a __str__ function.
+        used_tokens = 0 if self.sp_length is None else self.sp_length + len(self.tokenizer._koboldai_header)
+        
         if self.sp_length > 0:
             context.append({"type": "soft_prompt", "text": f"<{self.sp_length} tokens of Soft Prompt.>", "tokens": [[-1, ""]] * self.sp_length})
-        # Header is never used?
-        # if koboldai_vars.model not in ("Colab", "API", "OAI") and self.tokenizer._koboldai_header:
-        #     context.append({"type": "header", "text": f"{len(self.tokenizer._koboldai_header})
         
         self.worldinfo_v2.reset_used_in_game()
         
-        #Add memory
-        memory_length = self.max_memory_length if self.memory_length > self.max_memory_length else self.memory_length
+        ######################################### Add memory ########################################################
         memory_text = self.memory
-        memory_encoded = None
-        if memory_length+used_tokens <= token_budget:
-            if self.tokenizer is not None and self.memory_length > self.max_memory_length:
-                memory_encoded = self.tokenizer.encode(self.memory)[-self.max_memory_length-1:]
-                memory_text = self.tokenizer.decode(memory_encoded)
+        if memory_text != "":
+            if memory_text[-1] not in [" ", '\n']:
+                memory_text += " "
+            memory_tokens = self.tokenizer.encode(memory_text)
+        else:
+            memory_tokens = []
+        if len(memory_tokens) > self.max_memory_length:
+            memory_tokens = memory_tokens[:self.max_memory_length]
+            memory_length = self.max_memory_length
+        memory_data = [[x, self.tokenizer.decode(x)] for x in memory_tokens]
         
-        if not memory_encoded and self.tokenizer:
-            memory_encoded = self.tokenizer.encode(memory_text)
-         
-        context.append({"type": "memory", "text": memory_text, "tokens": self.get_token_representation(memory_encoded)})
-        text += memory_text
-        used_tokens += self.memory_length if self.memory_length <= self.max_memory_length else self.max_memory_length
+        #We have so much memory that we've run out of budget without going over the max_memory_length. Just stop
+        if len(memory_tokens) > token_budget:
+            return [], 0, 0+self.genamt, []
         
+        #Actually Add Memory
+        if len(memory_tokens) != 0:
+            context.append({"type": "memory", 
+                            "text": "".join([x[1] for x in memory_data]), 
+                            "tokens": memory_data})
+            used_tokens += len(memory_tokens)
+        
+        
+        ######################################### Constant World Info ########################################################
         #Add constant world info entries to memory
         for wi in self.worldinfo_v2:
             if wi['constant']:
-                if used_tokens+0 if 'token_length' not in wi else wi['token_length'] <= token_budget:
-                    used_tokens+=0 if  wi['token_length'] is None else wi['token_length']
+                wi_length = len(self.tokenizer.encode(wi['content']))
+                if used_tokens + wi_length <= token_budget:
+                    used_tokens+=wi_length
                     used_world_info.append(wi['uid'])
                     self.worldinfo_v2.set_world_info_used(wi['uid'])
-                    wi_text = wi['content']
+                    wi_text = wi['content']+" " if wi['content'][-1] not in [" ", "\n"] else wi['content']
+                    wi_tokens = self.tokenizer.encode(wi_text)
                     context.append({
                         "type": "world_info",
                         "text": wi_text,
-                        "tokens": self.get_token_representation(wi_text),
+                        "uid": wi['uid'],
+                        "tokens": [[x, self.tokenizer.decode(x)] for x in wi_tokens],
                     })
-                    text += wi_text
-                    used_tokens += wi['token_length']
+                    used_tokens += len(wi_tokens)
         
         
+        
+        ######################################### Get Action Text by Sentence ########################################################
         action_text_split = self.actions.to_sentences(submitted_text=submitted_text)
         
         
+        ######################################### Prompt ########################################################
         #Add prompt lenght/text if we're set to always use prompt
         if self.useprompt:
             prompt_length = 0
-            prompt_text = ""
-            for item in action_text_split:
-                if -1 not in item[1]:
-                    #We've finished going through our prompt. Stop
-                    break
-                if self.tokenizer is None:
-                    item_size = 0
-                else:
-                    item_size = len(self.tokenizer.encode(item[0]))
-                if prompt_length + item_size < self.max_prompt_length:
-                    prompt_length += item_size
-                    item[3] = True
-                    prompt_text += item[0]
-            if prompt_length + used_tokens < token_budget:
+            prompt_data = []
+            for item in reversed(action_text_split):
+                if -1 in item[1]:
+                    tokenized_data = self.tokenizer.encode(item[0])
+                    item[2] = len(tokenized_data)
+                    if prompt_length + item[2] <= self.max_prompt_length:
+                        prompt_length += item[2]
+                        item[3] = True
+                        prompt_data = tokenized_data + prompt_data
+            prompt_text = self.tokenizer.decode([x[0] for x in prompt_data])
+            wi_search = re.sub("[^A-Za-z\ 0-9\'\"]", "", prompt_text)
+            if prompt_length + used_tokens <= token_budget:
                 used_tokens += prompt_length
+                #We'll add the prompt text AFTER we go through the game text as the world info needs to come first if we're in method 1 rather than method 2
+                self.prompt_in_ai = True
                 #Find World Info entries in prompt
                 for wi in self.worldinfo_v2:
                     if wi['uid'] not in used_world_info:
                         #Check to see if we have the keys/secondary keys in the text so far
                         match = False
                         for key in wi['key']:
-                            if key in prompt_text:
+                            if key in wi_search:
                                 match = True
                                 break
                         if wi['selective'] and match:
                             match = False
                             for key in wi['keysecondary']:
-                                if key in prompt_text:
+                                if key in wi_search:
                                     match=True
                                     break
                         if match:
-                            if used_tokens+0 if 'token_length' not in wi else wi['token_length'] <= token_budget:
-                                used_tokens+=0 if  wi['token_length'] is None else wi['token_length']
+                            wi_length = len(self.tokenizer.encode(wi['content']))
+                            if used_tokens+wi_length <= token_budget:
+                                used_tokens+=wi_length
                                 used_world_info.append(wi['uid'])
-                                wi_text = wi['content']
-                                context.append({"type": "world_info", "text": wi_text, "tokens": self.get_token_representation(wi_text)})
-                                text += wi_text
-                                used_tokens += wi['token_length']
+                                wi_text = wi['content']+" " if wi['content'][-1] not in [" ", "\n"] else wi['content']
+                                wi_tokens = self.tokenizer.encode(wi_text)
+                                context.append({
+                                    "type": "world_info",
+                                    "text": wi_text,
+                                    "uid": wi['uid'],
+                                    "tokens": [[x, self.tokenizer.decode(x)] for x in wi_tokens],
+                                })
+                                used_tokens += len(wi_tokens)
                                 self.worldinfo_v2.set_world_info_used(wi['uid'])
                    
-                #We'll add the prompt text AFTER we go through the game text as the world info needs to come first if we're in method 1 rather than method 2
-                self.prompt_in_ai = True
             else:
                 self.prompt_in_ai = False
         
-        #remove author's notes token length (Add the text later)
-        used_tokens += self.authornote_length
-
-
-
         
+        ######################################### Setup Author's Note Data ########################################################
+        authors_note_text = self.authornotetemplate.replace("<|>", self.authornote)
+        if len(authors_note_text) > 0 and authors_note_text[-1] not in [" ", "\n"]:
+            authors_note_text += " "
+        authors_note_data = [[x, self.tokenizer.decode(x)] for x in self.tokenizer.encode(authors_note_text)]
+        if used_tokens + len(authors_note_data) <= token_budget:
+            used_tokens += len(authors_note_data)
+        
+        
+        ######################################### Actions ########################################################
         #Start going through the actions backwards, adding it to the text if it fits and look for world info entries
-        game_text = ""
-        game_context = []
-        authors_note_final = self.authornotetemplate.replace("<|>", self.authornote)
         used_all_tokens = False
-
-        for action in range(len(self.actions)):
-            self.actions.set_action_in_ai(action, used=False)
+        actions_seen = [] #Used to track how many actions we've seen so we can insert author's note in the appropriate place as well as WI depth stop
+        inserted_author_note = False
 
         for i in range(len(action_text_split)-1, -1, -1):
-            if action_text_split[i][3] or action_text_split[i][1] == [-1]:
-                #We've hit an item we've already included or items that are only prompt. Stop
-                for action in action_text_split[i][1]:
-                    if action >= 0:
-                        self.actions.set_action_in_ai(action)
+            if action_text_split[i][3]:
+                #We've hit an item we've already included. Stop
                 break
+            for action in action_text_split[i][1]:
+                if action not in actions_seen:
+                    actions_seen.append(action)
 
-            if len(action_text_split) - i - 1 == self.andepth and self.authornote != "":
-                game_text = "{}{}".format(authors_note_final, game_text)
-                game_context.insert(0, {"type": "authors_note", "text": authors_note_final, "tokens": self.get_token_representation(authors_note_final)})
+            #Add our author's note if we've hit andepth
+            if not inserted_author_note and len(actions_seen) >= self.andepth and self.authornote != "":
+                game_context.insert(0, {"type": "authors_note", "text": authors_note_text, "tokens": authors_note_data})
+                inserted_author_note = True
 
-            encoded_action = [] if not self.tokenizer else self.tokenizer.encode(action_text_split[i][0])
-            length = len(encoded_action)
+            action_data = [[x, self.tokenizer.decode(x)] for x in self.tokenizer.encode(action_text_split[i][0])]
+            length = len(action_data)
 
-            if length+used_tokens <= token_budget and not used_all_tokens:
+            if length+used_tokens <= token_budget:
                 used_tokens += length
-                selected_text = action_text_split[i][0]
                 action_text_split[i][3] = True
-                game_text = "{}{}".format(selected_text, game_text)
 
+                action_type = "action"
                 if action_text_split[i][1] == [self.actions.action_count+1]:
-                    game_context.insert(0, {
-                        "type": "submit",
-                        "text": selected_text,
-                        "tokens": self.get_token_representation(encoded_action),
-                        "action_ids": action_text_split[i][1]
-                    })
-                else:
-                    game_context.insert(0, {
-                        "type": "action",
-                        "text": selected_text,
-                        "tokens": self.get_token_representation(encoded_action),
-                        "action_ids": action_text_split[i][1]
-                    })
+                    action_type = "submit"
+                elif -1 in action_text_split[i][1]:
+                    action_type = "prompt"
+                
+                game_context.insert(0, {
+                    "type": action_type,
+                    "text": action_text_split[i][0],
+                    "tokens": action_data,
+                    "action_ids": action_text_split[i][1]
+                })
+                wi_search = re.sub("[^A-Za-z\ 0-9\'\"]", "", action_text_split[i][0])
 
-                for action in action_text_split[i][1]:
-                    if action >= 0:
-                        self.actions.set_action_in_ai(action)
 
                 #Now we need to check for used world info entries
                 for wi in self.worldinfo_v2:
@@ -366,108 +379,70 @@ class koboldai_vars(object):
                         #Check to see if we have the keys/secondary keys in the text so far
                         match = False
                         for key in wi['key']:
-                            if key in selected_text:
+                            if key in wi_search:
                                 match = True
                                 break
                         if wi['selective'] and match:
                             match = False
                             for key in wi['keysecondary']:
-                                if key in selected_text:
+                                if key in wi_search:
                                     match=True
                                     break
                         if method == 1:
-                            if len(action_text_split) - i > self.widepth:
+                            if len(actions_seen) > self.widepth:
                                 match = False
                         if match:
-                            if used_tokens+0 if 'token_length' not in wi or wi['token_length'] is None else wi['token_length'] <= token_budget:
-                                used_tokens+=0 if  wi['token_length'] is None else wi['token_length']
+                            wi_length = len(self.tokenizer.encode(wi['content']))
+                            if used_tokens+wi_length <= token_budget:
+                                used_tokens+=wi_length
                                 used_world_info.append(wi['uid'])
-                                wi_text = wi["content"]
-                                encoded_wi = self.tokenizer.encode(wi_text)
+                                wi_text = wi['content']+" " if wi['content'][-1] not in [" ", "\n"] else wi['content']
+                                wi_tokens = self.tokenizer.encode(wi_text)
                                 if method == 1:
-                                    text = "{}{}".format(wi_text, game_text)
-                                    context.insert(0, {"type": "world_info", "text": wi_text, "tokens": self.get_token_representation(encoded_wi)})
+                                    context.append({
+                                        "type": "world_info",
+                                        "text": wi_text,
+                                        "uid": wi['uid'],
+                                        "tokens": [[x, self.tokenizer.decode(x)] for x in wi_tokens],
+                                    })
                                 else:
-                                    game_text = "{}{}".format(wi_text, game_text)
-                                    game_context.insert(0, {"type": "world_info", "text": wi_text, "tokens": self.get_token_representation(encoded_wi)})
-                                used_tokens += wi['token_length']
+                                    #for method 2 we add the game text before the current action
+                                    game_context.insert(0, {
+                                        "type": "world_info",
+                                        "text": wi_text,
+                                        "uid": wi['uid'],
+                                        "tokens": [[x, self.tokenizer.decode(x)] for x in wi_tokens],
+                                    })
+                                used_tokens += len(wi_tokens)
                                 self.worldinfo_v2.set_world_info_used(wi['uid'])
             else:
                 used_all_tokens = True
                 break
              
+             
+        ######################################### Verify Author's Note Data in AI Text ########################################################
         #if we don't have enough actions to get to author's note depth then we just add it right before the game text
-        if len(action_text_split) < self.andepth and self.authornote != "":
-            game_text = "{}{}".format(authors_note_final, game_text)
-            game_context.insert(0, {"type": "authors_note", "text": authors_note_final, "tokens": self.get_token_representation(authors_note_final)})
+        if not inserted_author_note and self.authornote != "":
+            game_context.insert(0, {"type": "authors_note", "text": authors_note_text, "tokens": authors_note_data})
         
-        if self.useprompt:
-            text += prompt_text
-            context.append({"type": "prompt", "text": prompt_text, "tokens": self.get_token_representation(prompt_text)})
-        elif not used_all_tokens:
-            prompt_length = 0
-            prompt_text = ""
-            for item in action_text_split:
-                if -1 not in item[1] or item[3]:
-                    #We've finished going through our prompt. Stop
-                    break
-                if self.tokenizer is None:
-                    item_size = 0
-                else:
-                    item_size = len(self.tokenizer.encode(item[0]))
-                if prompt_length + item_size < self.max_prompt_length and not item[3]:
-                    prompt_length += item_size
-                    item[3] = True
-                    prompt_text += item[0]
-            if prompt_length + used_tokens < token_budget:
-                used_tokens += prompt_length
-                #Find World Info entries in prompt
-                for wi in self.worldinfo_v2:
-                    if wi['uid'] not in used_world_info:
-                        #Check to see if we have the keys/secondary keys in the text so far
-                        match = False
-                        for key in wi['key']:
-                            if key in prompt_text:
-                                match = True
-                                break
-                        if wi['selective'] and match:
-                            match = False
-                            for key in wi['keysecondary']:
-                                if key in prompt_text:
-                                    match=True
-                                    break
-                        if match:
-                            if used_tokens+0 if 'token_length' not in wi or wi['token_length'] is None else wi['token_length'] <= token_budget:
-                                used_tokens+=0 if  wi['token_length'] is None else wi['token_length']
-                                used_world_info.append(wi['uid'])
-                                wi_text = wi['content']
-                                context.append({"type": "world_info", "text": wi_text, "tokens": self.get_token_representation(wi_text)})
-                                text += wi_text
-                                used_tokens += wi['token_length']
-                                self.worldinfo_v2.set_world_info_used(wi['uid'])
-
-                text += prompt_text
-                context.append({"type": "prompt", "text": prompt_text, "tokens": self.get_token_representation(prompt_text)})
-                self.prompt_in_ai = True
-            else:
-                self.prompt_in_ai = False
-        else:
-            self.prompt_in_ai = False
         
-        text += game_text
+        ######################################### Add our prompt data ########################################################
+        if self.useprompt and len(prompt_data) != 0:
+            context.append({"type": "prompt", "text": prompt_text, "tokens": prompt_data})
+        
         context += game_context
-
-        if self.tokenizer is None:
+        
+        if len(context) == 0:
             tokens = []
         else:
-            tokens = self.tokenizer.encode(text)
+            tokens = [x['tokens'][0] for x in context]
         
         self.context = context
 
         #logger.debug("Calc_AI_text: {}s".format(time.time()-start_time))
         logger.debug("Token Budget: {}. Used Tokens: {}".format(token_budget, used_tokens))
         if return_text:
-            return text
+            return "".join([x['text'] for x in context])
         return tokens, used_tokens, used_tokens+self.genamt, used_world_info
 
     def is_model_torch(self) -> bool:
@@ -492,10 +467,8 @@ class koboldai_vars(object):
                 setattr(self._system_settings, name, value)
             else:
                 setattr(self._story_settings[self.get_story_name()], name, value)
-            if name == 'tokenizer':
-                self._story_settings[self.get_story_name()].worldinfo_v2.recalc_token_length(None)
-                setattr(self._story_settings[self.get_story_name()], name, value)
-    
+
+
     def __getattr__(self, name):
         if name in self.__dict__:
             return getattr(self, name)
@@ -1128,7 +1101,7 @@ class KoboldStoryRegister(object):
         self.koboldai_vars = koboldai_vars
         #### DO NOT DIRECTLY EDIT THE ACTIONS DICT. IT WILL NOT TRANSMIT TO CLIENT. USE FUCTIONS BELOW TO DO SO ###
         #### doing actions[x] = game text is OK
-        self.actions = {} #keys = "Selected Text", "WI Search Text", "Wi_highlighted_text", "Options", "Selected Text Length", "In AI Input", "Probabilities". 
+        self.actions = {} #keys = "Selected Text", "Wi_highlighted_text", "Options", "Selected Text Length", "Probabilities". 
                           #Options being a list of dict with keys of "text", "Pinned", "Previous Selection", "Edited", "Probabilities"
         self.action_count = -1
         self.story_settings = story_settings
@@ -1179,7 +1152,6 @@ class KoboldStoryRegister(object):
             old_length = self.actions[i]["Selected Text Length"]
             if self.actions[i]["Selected Text"] != text:
                 self.actions[i]["Selected Text"] = text
-                self.actions[i]["WI Search Text"] = re.sub("[^0-9a-z \'\"]", "", text)
                 self.actions[i]["Probabilities"] = []
             if "Options" in self.actions[i]:
                 for j in range(len(self.actions[i]["Options"])):
@@ -1191,13 +1163,12 @@ class KoboldStoryRegister(object):
             old_text = None
             old_length = None
             old = None
-            self.actions[i] = {"Selected Text": text, "WI Search Text": re.sub("[^0-9a-z \'\"]", "", text), "Probabilities": [], "Options": []}
+            self.actions[i] = {"Selected Text": text, "Probabilities": [], "Options": []}
             
         if self.koboldai_vars.tokenizer is not None:
             self.actions[i]['Selected Text Length'] = len(self.koboldai_vars.tokenizer.encode(text))
         else:
             self.actions[i]['Selected Text Length'] = 0
-        self.actions[i]["In AI Input"] = False
         process_variable_changes(self.socketio, "story", 'actions', {"id": i, 'action':  self.actions[i]}, old)
         logger.debug("Calcing AI Text from Action __setitem__")
         ignore = self.koboldai_vars.calc_ai_text()
@@ -1231,8 +1202,6 @@ class KoboldStoryRegister(object):
         data_to_send = []
         for item in json_data['actions']:
             temp[int(item)] = json_data['actions'][item]
-            if "WI Search Text" not in temp[int(item)]:
-                temp[int(item)]["WI Search Text"] = re.sub("[^0-9a-z \'\"]", "", temp[int(item)]['Selected Text'])
             if int(item) >= self.action_count-100:
                 data_to_send.append({"id": item, 'action':  temp[int(item)]})
         
@@ -1250,11 +1219,9 @@ class KoboldStoryRegister(object):
         if action_id in self.actions:
             if self.actions[action_id]["Selected Text"] != text:
                 self.actions[action_id]["Selected Text"] = text
-                self.actions[action_id]["WI Search Text"] = re.sub("[^0-9a-z \'\"]", "", text)
                 self.actions[action_id]["Probabilities"] = []
             selected_text_length = 0
             self.actions[action_id]["Selected Text Length"] = selected_text_length
-            self.actions[action_id]["In AI Input"] = False
             for item in self.actions[action_id]["Options"]:
                 if item['text'] == text:
                     old_options = self.actions[action_id]["Options"]
@@ -1264,8 +1231,7 @@ class KoboldStoryRegister(object):
             selected_text_length = 0
             
             self.actions[action_id] = {"Selected Text": text, "Selected Text Length": selected_text_length, 
-                                               "WI Search Text": re.sub("[^0-9a-z \'\"]", "", text), 
-                                               "In AI Input": False, "Options": [], "Probabilities": []}
+                                               "Options": [], "Probabilities": []}
             
         process_variable_changes(self.socketio, "story", 'actions', {"id": action_id, 'action':  self.actions[action_id]}, None)
         self.set_game_saved()
@@ -1298,7 +1264,7 @@ class KoboldStoryRegister(object):
                     self.actions[self.action_count+1]['Options'].append({"text": option, "Pinned": False, "Previous Selection": False, "Edited": False, "Probabilities": []})
         else:
             old_options = None
-            self.actions[self.action_count+1] = {"Selected Text": "", "Selected Text Length": 0, "In AI Input": False, "Options": [{"text": x, "Pinned": False, "Previous Selection": False, "Edited": False, "Probabilities": []} for x in option_list]}
+            self.actions[self.action_count+1] = {"Selected Text": "", "Selected Text Length": 0, "Options": [{"text": x, "Pinned": False, "Previous Selection": False, "Edited": False, "Probabilities": []} for x in option_list]}
         process_variable_changes(self.socketio, "story", 'actions', {"id": self.action_count+1, 'action':  self.actions[self.action_count+1]}, None)
         self.set_game_saved()
             
@@ -1328,19 +1294,6 @@ class KoboldStoryRegister(object):
             new_options = self.actions[pointer]["Options"]
             process_variable_changes(self.socketio, "story", 'actions', {"id": pointer, 'action':  self.actions[pointer]}, None)
         self.set_game_saved()
-    
-    def set_action_in_ai(self, action_id, used=True):
-        return
-        if action_id in self.actions:
-            if 'In AI Input' in self.actions[action_id]:
-                old = self.actions[action_id]['In AI Input']
-            else:
-                old = None
-            self.actions[action_id]['In AI Input'] = used
-            if old != used:
-                process_variable_changes(self.socketio, "story", 'actions', {"id": action_id, 'action':  self.actions[action_id]}, None)
-                if used:
-                    self.recalc_token_length(action_id)
     
     def set_pin(self, action_step, option_number):
         if action_step in self.actions:
@@ -1375,7 +1328,6 @@ class KoboldStoryRegister(object):
             old_length = self.actions[action_step]["Selected Text Length"]
             if option_number < len(self.actions[action_step]['Options']):
                 self.actions[action_step]["Selected Text"] = self.actions[action_step]['Options'][option_number]['text']
-                self.actions[action_step]["WI Search Text"] = re.sub("[^0-9a-z \'\"]", "", self.actions[action_step]["Selected Text"])
                 if 'Probabilities' in self.actions[action_step]['Options'][option_number]:
                     self.actions[action_step]["Probabilities"] = self.actions[action_step]['Options'][option_number]['Probabilities']
                 if self.koboldai_vars.tokenizer is not None:
@@ -1457,18 +1409,6 @@ class KoboldStoryRegister(object):
     def set_game_saved(self):
         if self.story_settings is not None:
             self.story_settings.gamesaved = False
-    
-    def recalc_token_length(self, action_id):
-        if self.koboldai_vars.tokenizer is not None:
-            if action_id in self.actions:
-                if self.actions[action_id]['In AI Input']:
-                    self.actions[action_id]['Selected Text Length'] = len(self.koboldai_vars.tokenizer.encode(self.actions[action_id]['Selected Text']))
-                    process_variable_changes(self.socketio, "story", 'actions', {"id": action_id, 'action':  self.actions[action_id]}, None)
-                    eventlet.sleep(0.01)
-        else:
-            for key in self.actions:
-                self.actions[key]['Selected Text Length'] = 0
-                process_variable_changes(self.socketio, "story", 'actions', {"id": key, 'action':  self.actions[key]}, None)
     
     def stream_tokens(self, text_list):
         if len(text_list) > 1:
@@ -1633,27 +1573,6 @@ class KoboldWorldInfo(object):
     
     def __len__(self):
         return len(self.world_info)
-    
-    def recalc_token_length(self, uid):
-        if self.koboldai_vars.tokenizer is not None:
-            if uid is not None:
-                if uid in self.world_info:
-                    logger.debug("Sending single world info after tokenizing {}: {}".format(uid, self.world_info[uid]['title']))
-                    self.world_info[uid]['token_length'] = len(self.koboldai_vars.tokenizer.encode(self.world_info[uid]['content']))
-                    self.socketio.emit("world_info_entry", self.world_info[uid], broadcast=True, room="UI_2")
-            else:
-                for uid in self.world_info:
-                    self.world_info[uid]['token_length'] = len(self.koboldai_vars.tokenizer.encode(self.world_info[uid]['content']))
-                self.send_to_ui()
-        else:
-            had_change = False
-            for uid in self.world_info:
-                if self.world_info[uid]['token_length'] != 0 and not had_change:
-                    had_change = True
-                self.world_info[uid]['token_length'] = 0
-            if had_change:
-                self.send_to_ui()
-                
     
     def add_folder(self, folder):
         if folder in self.world_info_folder:
@@ -1988,7 +1907,6 @@ class KoboldWorldInfo(object):
             logger.warning("Something tried to set world info UID {} to in game, but it doesn't exist".format(uid))
         if self.socketio is not None:
             self.socketio.emit("world_info_entry_used_in_game", {"uid": uid, "used_in_game": True}, broadcast=True, room="UI_2")
-        #self.recalc_token_length(uid)
     
     def get_used_wi(self):
         return [x['content'] for x in self.world_info if x['used_in_game']]

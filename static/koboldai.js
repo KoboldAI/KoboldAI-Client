@@ -2965,6 +2965,10 @@ function update_context(data) {
 	for (action of document.getElementsByClassName("within_max_length")) {
 		action.classList.remove("within_max_length");
 	}
+	for (wi of document.getElementsByClassName("used_in_game")) {
+		wi.classList.remove("used_in_game");
+	}
+	
 
 	for (const entry of data) {
 		let contextClass = "context-" + ({
@@ -3006,9 +3010,15 @@ function update_context(data) {
 				break;
 			case 'prompt':
 				prompt_length = entry.tokens.length;
+				if (prompt_length > 0) {
+					document.getElementById('story_prompt').classList.add("within_max_length");
+				}
 				break;
 			case 'world_info':
 				world_info_length += entry.tokens.length;
+				if (document.getElementById('world_info_'+entry.uid)) {
+					document.getElementById('world_info_'+entry.uid).classList.add("used_in_game");
+				}
 				break;
 			case 'memory':
 				memory_length = entry.tokens.length;
