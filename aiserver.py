@@ -9216,6 +9216,11 @@ def UI_2_update_tokens(data):
 def UI_2_get_log(data):
     emit("log_message", web_log_history)
 
+@app.route("/test_match")
+@logger.catch
+def UI_2_test_match():
+    koboldai_vars.assign_world_info_to_actions()
+    return show_vars()
 
 #==================================================================#
 # Test

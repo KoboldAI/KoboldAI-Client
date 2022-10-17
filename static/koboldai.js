@@ -326,7 +326,20 @@ function do_story_text_updates(action) {
 			item.removeChild(item.firstChild);
 		}		
 		span = document.createElement("span");
-		span.textContent = action.action['Selected Text'];
+		if ('wi_highlighted_text' in action.action) {
+			for (chunk of action.action['wi_highlighted_text']) {
+				chunk_element = document.createElement("span");
+				chunk_element.textContent = chunk['text'];
+				if (chunk['WI matches'] != null) {
+					chunk_element.classList.add("wi_match");
+					chunk_element.setAttribute("tooltip", chunk['WI Text']);
+					chunk_element.setAttribute("wi-uid", chunk['WI matches']);
+				}
+				span.append(chunk_element);
+			}
+		} else {
+			span.textContent = action.action['Selected Text'];
+		}
 		item.append(span);
 		item.original_text = action.action['Selected Text'];
 		item.setAttribute("WI_Search_Text", action.action['WI Search Text']);
@@ -344,10 +357,20 @@ function do_story_text_updates(action) {
 		span.classList.add("rawtext");
 		span.setAttribute("chunk", action.id);
 		span.original_text = action.action['Selected Text'];
-		new_span = document.createElement("span");
-		new_span.textContent = action.action['Selected Text'];
-		span.setAttribute("WI_Search_Text", action.action['WI Search Text']);
-		span.append(new_span);
+		if ('wi_highlighted_text' in action.action) {
+			for (chunk of action.action['wi_highlighted_text']) {
+				chunk_element = document.createElement("span");
+				chunk_element.textContent = chunk['text'];
+				if (chunk['WI matches'] != null) {
+					chunk_element.classList.add("wi_match");
+					chunk_element.setAttribute("tooltip", chunk['WI Text']);
+					chunk_element.setAttribute("wi-uid", chunk['WI matches']);
+				}
+				span.append(chunk_element);
+			}
+		} else {
+			span.textContent = action.action['Selected Text'];
+		}
 		
 		//need to find the closest element
 		next_id = action.id+1;
@@ -366,20 +389,27 @@ function do_story_text_updates(action) {
 }
 
 function do_prompt(data) {
-	var elements_to_change = document.getElementsByClassName("var_sync_"+data.classname.replace(" ", "_")+"_"+data.name.replace(" ", "_"));
+	console.log(data);
+	var elements_to_change = document.getElementsByClassName("var_sync_story_prompt");
 	for (item of elements_to_change) {
 		//clear out the item first
 		while (item.firstChild) { 
 			item.removeChild(item.firstChild);
 		}
 		
-		span = document.createElement("span");
-		span.textContent = data.value;
-		item.append(span);
+		for (chunk of data.value) {
+			chunk_element = document.createElement("span");
+			chunk_element.textContent = chunk['text'];
+			if (chunk['WI matches'] != null) {
+				chunk_element.classList.add("wi_match");
+				chunk_element.setAttribute("tooltip", chunk['WI Text']);
+				chunk_element.setAttribute("wi-uid", chunk['WI matches']);
+			}
+			item.append(chunk_element);
+		}
 		item.setAttribute("old_text", data.value);
-		item.setAttribute("WI_Search_Text", data.value.replace(/[^0-9a-z \'\"]/gi, ''));
 		item.classList.remove("pulse");
-		actions_data[-1] = {'Selected Text': data.value, 'WI Search Text': data.value.replace(/[^0-9a-z \'\"]/gi, '')};
+		actions_data[-1] = {'Selected Text': data.value};
 		assign_world_info_to_action(-1, null);
 	}
 	//if we have a prompt we need to disable the theme area, or enable it if we don't
@@ -534,6 +564,18 @@ function do_ai_busy(data) {
 	}
 }
 
+function hide_show_prompt() {
+	if (Math.min.apply(null,Object.keys(actions_data).map(Number).filter(function(x){return x>=0})) == Infinity) {
+		document.getElementById("story_prompt").classList.remove("hidden");
+	} else if (Math.min.apply(null,Object.keys(actions_data).map(Number).filter(function(x){return x>=0})) > 0) {
+		//we have actions and our minimum action we have in the UI is above the start of the game
+		//we need to keep the story prompt hidden
+		document.getElementById("story_prompt").classList.add("hidden");
+	} else {
+		document.getElementById("story_prompt").classList.remove("hidden");
+	}
+}
+
 function var_changed(data) {
 	//if (data.name == "sp") {
 	//	console.log({"name": data.name, "data": data});
@@ -546,12 +588,8 @@ function var_changed(data) {
 			document.getElementById("story_prompt").classList.remove("hidden");
 			scroll_trigger_element = undefined;
 			document.getElementById("Selected Text").onscroll = undefined;
-		} else if (Math.min.apply(null,Object.keys(actions_data).map(Number).filter(function(x){return x>0})) > 0) {
-			//we have actions and our minimum action we have in the UI is above the start of the game
-			//we need to keep the story prompt hidden
-			document.getElementById("story_prompt").classList.add("hidden");
-			
 		}
+		hide_show_prompt();
 	}
 	//Special Case for Actions
 	if ((data.classname == "story") && (data.name == "actions")) {
@@ -597,14 +635,14 @@ function var_changed(data) {
 		clearTimeout(game_text_scroll_timeout);
 		game_text_scroll_timeout = setTimeout(run_infinite_scroll_update.bind(null, action_type, actions, first_action), 200);
 		
-		
+		hide_show_prompt();
 		//console.log("Took "+((Date.now()-start_time)/1000)+"s to process");
 		
 	//Special Case for Presets
 	} else if ((data.classname == 'model') && (data.name == 'presets')) {
 		do_presets(data);
 	//Special Case for prompt
-	} else if ((data.classname == 'story') && (data.name == 'prompt')) {
+	} else if ((data.classname == 'story') && (data.name == 'prompt_wi_highlighted_text')) {
 		do_prompt(data);
 	//Special Case for phrase biasing
 	} else if ((data.classname == 'story') && (data.name == 'biases')) {
@@ -3415,6 +3453,7 @@ function checkifancestorhasclass(element, classname) {
 }
 
 function assign_world_info_to_action(action_item, uid) {
+	return
 	if (Object.keys(world_info_data).length > 0) {
 		if (uid != null) {
 			var worldinfo_to_check = {};
