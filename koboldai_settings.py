@@ -904,6 +904,7 @@ class story_settings(settings):
             elif name == 'memory':
                 ignore = self.koboldai_vars.calc_ai_text()
             elif name == 'prompt':
+                self.prompt_wi_highlighted_text = [{"text": self.prompt, "WI matches": None, "WI Text": ""}]
                 self.assign_world_info_to_actions(action_id=-1, wuid=None)
                 process_variable_changes(self.socketio, self.__class__.__name__.replace("_settings", ""), 'prompt_wi_highlighted_text', self.prompt_wi_highlighted_text, None)
                 ignore = self.koboldai_vars.calc_ai_text()
@@ -1135,7 +1136,7 @@ class KoboldStoryRegister(object):
         self.__init__(self.socketio, self.story_settings, self.koboldai_vars, sequence=sequence)
         
     def add_wi_to_action(self, action_id, key, content, uid):
-        old = None if action_id == -1 else self.actions[action_id].copy()
+        old = self.story_settings.prompt_wi_highlighted_text.copy() if action_id == -1 else self.actions[action_id].copy()
         #First check to see if we have the wi_highlighted_text variable
         if action_id != -1:
             if 'wi_highlighted_text' not in self.actions[action_id]:
@@ -1170,6 +1171,9 @@ class KoboldStoryRegister(object):
         if action_id != -1:
             if old != self.actions[action_id]:
                 process_variable_changes(self.socketio, "story", 'actions', {"id": action_id, 'action':  self.actions[action_id]}, old)
+        else:
+            if old != self.story_settings.prompt_wi_highlighted_text:
+                process_variable_changes(self.socketio, "story", 'prompt_wi_highlighted_text', self.story_settings.prompt_wi_highlighted_text, old)
                     
         
     def __str__(self):
@@ -1261,8 +1265,9 @@ class KoboldStoryRegister(object):
         
         self.actions = temp
         #Check if our json has our new world info highlighting data
-        if 'wi_highlighted_text' not in self.actions[0]:
-            self.story_settings.assign_world_info_to_actions()
+        if len(self.actions) > 0:
+            if 'wi_highlighted_text' not in self.actions[0]:
+                self.story_settings.assign_world_info_to_actions()
         
         logger.debug("Calcing AI Text from Action load from json")
         ignore = self.koboldai_vars.calc_ai_text()
@@ -1289,8 +1294,9 @@ class KoboldStoryRegister(object):
             self.actions[action_id] = {"Selected Text": text, "Selected Text Length": selected_text_length, 
                                                "Options": [], "Probabilities": []}
             
-        self.story_settings.assign_world_info_to_actions(action_id=action_id)
-        process_variable_changes(self.socketio, "story", 'actions', {"id": action_id, 'action':  self.actions[action_id]}, None)
+        if self.story_settings is not None:
+            self.story_settings.assign_world_info_to_actions(action_id=action_id)
+            process_variable_changes(self.socketio, "story", 'actions', {"id": action_id, 'action':  self.actions[action_id]}, None)
         self.set_game_saved()
         if recalc:
             logger.debug("Calcing AI Text from Action Append")
