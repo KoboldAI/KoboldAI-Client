@@ -1144,6 +1144,8 @@ class KoboldStoryRegister(object):
             action = self.actions[action_id]['wi_highlighted_text']
         else:
             action = self.story_settings.prompt_wi_highlighted_text
+        if action['text'] == "":
+            return
         i=0
         while i < len(action):
             if action[i]['WI matches'] is None and key in action[i]['text']:
