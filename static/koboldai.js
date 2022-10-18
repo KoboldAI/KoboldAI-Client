@@ -344,8 +344,6 @@ function do_story_text_updates(action) {
 		}
 		item.append(span);
 		item.original_text = action.action['Selected Text'];
-		item.setAttribute("WI_Search_Text", action.action['WI Search Text']);
-		item.setAttribute("world_info_uids", "");
 		item.classList.remove("pulse")
 		item.classList.remove("single_pulse");
 		item.classList.add("single_pulse");
@@ -399,10 +397,11 @@ function do_prompt(data) {
 		while (item.firstChild) { 
 			item.removeChild(item.firstChild);
 		}
-		
+		let full_text = "";
 		for (chunk of data.value) {
 			chunk_element = document.createElement("span");
 			chunk_element.textContent = chunk['text'];
+			full_text += chunk['text'];
 			if (chunk['WI matches'] != null) {
 				chunk_element.classList.add("wi_match");
 				chunk_element.setAttribute("tooltip", chunk['WI Text']);
@@ -410,9 +409,9 @@ function do_prompt(data) {
 			}
 			item.append(chunk_element);
 		}
-		item.setAttribute("old_text", data.value);
+		item.setAttribute("old_text", full_text);
 		item.classList.remove("pulse");
-		actions_data[-1] = {'Selected Text': data.value};
+		actions_data[-1] = {'Selected Text': full_text};
 		assign_world_info_to_action(-1, null);
 	}
 	//if we have a prompt we need to disable the theme area, or enable it if we don't
