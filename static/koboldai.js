@@ -335,10 +335,12 @@ function do_story_text_updates(action) {
 					chunk_element.setAttribute("tooltip", chunk['WI Text']);
 					chunk_element.setAttribute("wi-uid", chunk['WI matches']);
 				}
-				span.append(chunk_element);
+				
 			}
 		} else {
-			span.textContent = action.action['Selected Text'];
+			chunk_element = document.createElement("span");
+			chunk_element.textContent = action.action['Selected Text'];
+			span.append(chunk_element);
 		}
 		item.append(span);
 		item.original_text = action.action['Selected Text'];
@@ -369,7 +371,9 @@ function do_story_text_updates(action) {
 				span.append(chunk_element);
 			}
 		} else {
-			span.textContent = action.action['Selected Text'];
+			chunk_element = document.createElement("span");
+			chunk_element.textContent = action.action['Selected Text'];
+			span.append(chunk_element);
 		}
 		
 		//need to find the closest element
