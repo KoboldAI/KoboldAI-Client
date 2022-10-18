@@ -2747,17 +2747,6 @@ function Change_Theme(theme) {
 				Acss.remove();
 			}
 		}
-		//Fix the select box
-		theme = getCookie("theme", "monochrome");
-		console.log("Selecting Theme: "+theme);
-		console.log(document.getElementById("selected_theme").childNodes);
-		for (element of document.getElementById("selected_theme").childNodes) {
-			console.log(element);
-			if (element.value == theme) {
-				element.selected = true;
-				console.log("changed theme");
-			}
-		}
 		recolorTokens();
 		create_theming_elements();
 	}
