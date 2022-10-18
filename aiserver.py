@@ -631,7 +631,7 @@ tags = [
 api_version = None  # This gets set automatically so don't change this value
 
 api_v1 = KoboldAPISpec(
-    version="1.2.0",
+    version="1.2.1",
     prefixes=["/api/v1", "/api/latest"],
     tags=tags,
 )
@@ -7863,7 +7863,7 @@ def prompt_validator(prompt: str):
         raise ValidationError("String does not match expected pattern.")
 
 class SubmissionInputSchema(KoboldSchema):
-    prompt: str = fields.String(required=True, validate=prompt_validator, metadata={"pattern": r"^.*\S.*$", "description": "This is the submission."})
+    prompt: str = fields.String(required=True, validate=prompt_validator, metadata={"pattern": r"^[\S\s]*\S[\S\s]*$", "description": "This is the submission."})
     disable_input_formatting: bool = fields.Boolean(load_default=True, metadata={"description": "When enabled, disables all input formatting options, overriding their individual enabled/disabled states."})
     frmtadsnsp: Optional[bool] = fields.Boolean(metadata={"description": "Input formatting option. When enabled, adds a leading space to your input if there is no trailing whitespace at the end of the previous action."})
 
