@@ -2708,14 +2708,18 @@ function calc_token_usage(
 }
 
 function Change_Theme(theme) {
-	const oldCSS = $el("#CSSTheme");
-	if (oldCSS) oldCSS.remove();
+	const Acss  = document.getElementById("CSSTheme_A");
+	const Bcss  = document.getElementById("CSSTheme_B");
+	let new_css = 'CSSTheme_B';
+	if (Bcss) {
+		new_css = 'CSSTheme_A';
+	}
 
 	const css = $e(
 		"link",
 		document.head,
 		{
-			id: "CSSTheme",
+			id: new_css,
 			rel: "stylesheet",
 			href: `/themes/${theme}.css`
 		}
@@ -2725,6 +2729,15 @@ function Change_Theme(theme) {
 	css.onload = function() {
 		recolorTokens();
 		create_theming_elements();
+		if (new_css == 'CSSTheme_A') {
+			if (Bcss) {
+				Bcss.remove();
+			}
+		} else {
+			if (Acss) {
+				Acss.remove();
+			}
+		}
 	}
 
 	setCookie("theme", theme);
