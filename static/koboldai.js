@@ -389,7 +389,6 @@ function do_story_text_updates(action) {
 }
 
 function do_prompt(data) {
-	console.log(data);
 	var elements_to_change = document.getElementsByClassName("var_sync_story_prompt");
 	for (item of elements_to_change) {
 		//clear out the item first
@@ -716,6 +715,15 @@ function var_changed(data) {
 						option.textContent = option_data;
 						option.value = option_data;
 						item.append(option);
+					}
+					if (item.id == 'selected_theme') {
+						//Fix the select box
+						theme = getCookie("theme", "monochrome");
+						for (element of item.childNodes) {
+							if (element.value == theme) {
+								element.selected = true;
+							}
+						}
 					}
 				} else if (item.tagName.toLowerCase() === 'input') {
 					item.value = fix_text(data.value);
@@ -2708,6 +2716,7 @@ function calc_token_usage(
 }
 
 function Change_Theme(theme) {
+	setCookie("theme", theme);
 	const Acss  = document.getElementById("CSSTheme_A");
 	const Bcss  = document.getElementById("CSSTheme_B");
 	let new_css = 'CSSTheme_B';
@@ -2723,12 +2732,12 @@ function Change_Theme(theme) {
 			rel: "stylesheet",
 			href: `/themes/${theme}.css`
 		}
+		
 	);
 
 	// We must wait for the style to load before we read it
 	css.onload = function() {
-		recolorTokens();
-		create_theming_elements();
+		//Delete the old CSS item
 		if (new_css == 'CSSTheme_A') {
 			if (Bcss) {
 				Bcss.remove();
@@ -2738,16 +2747,19 @@ function Change_Theme(theme) {
 				Acss.remove();
 			}
 		}
-	}
-
-	setCookie("theme", theme);
-	select = document.getElementById("selected_theme");
-	for (element of select.childNodes) {
-		if (element.value == theme) {
-			element.selected = true;
-		} else {
-			element.selected = false;
+		//Fix the select box
+		theme = getCookie("theme", "monochrome");
+		console.log("Selecting Theme: "+theme);
+		console.log(document.getElementById("selected_theme").childNodes);
+		for (element of document.getElementById("selected_theme").childNodes) {
+			console.log(element);
+			if (element.value == theme) {
+				element.selected = true;
+				console.log("changed theme");
+			}
 		}
+		recolorTokens();
+		create_theming_elements();
 	}
 }
 
