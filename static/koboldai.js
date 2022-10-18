@@ -5187,11 +5187,11 @@ let load_substitutions;
 /* -- Tooltips -- */
 function initalizeTooltips() {
 	const tooltip = $e("span", document.body, {id: "tooltip-text", "style.display": "none"});
-	let tooltipActive = false;
+	let tooltipTarget = null;
 
-	function alterTooltipState(enabled, specialClass=null) {
-		tooltipActive = enabled;
-		tooltip.style.display = enabled ? "block" : "none";
+	function alterTooltipState(target, specialClass=null) {
+		tooltipTarget = target;
+		tooltip.style.display = target ? "block" : "none";
 		tooltip.className = specialClass || "";
 	}
 
@@ -5206,11 +5206,11 @@ function initalizeTooltips() {
 			// Kinda lame
 			if (this.classList.contains("context-token")) specialClass = "tooltip-context-token";
 
-			alterTooltipState(true, specialClass);
+			alterTooltipState(el, specialClass);
 		});
 
 		el.addEventListener("mouseleave", function(event) {
-			alterTooltipState(false);
+			alterTooltipState(null);
 		});
 	}
 
@@ -5218,7 +5218,7 @@ function initalizeTooltips() {
 	const yOffset = 15;
 
 	document.addEventListener("mousemove", function(event) {
-		if (!tooltipActive) return;
+		if (!tooltipTarget) return;
 
 		let [x, y] = [event.x, event.y];
 
@@ -5255,6 +5255,9 @@ function initalizeTooltips() {
 				registerElement(record.target);
 				continue;
 			}
+			
+			// If we remove the tooltip target, stop showing the tooltip. Maybe a little ineffecient.
+			if (!document.body.contains(tooltipTarget)) alterTooltipState(null);
 
 			for (const node of record.addedNodes) {
 				if (node.nodeType !== 1) continue;
