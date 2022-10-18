@@ -3,3 +3,7 @@
     color: inherit;
     font-weight: inherit;
 }
+
+.world_info_card.used_in_game {
+	border: none;
+}
