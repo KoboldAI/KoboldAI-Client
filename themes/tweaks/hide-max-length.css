@@ -5,5 +5,5 @@
 }
 
 .world_info_card.used_in_game {
-	border: none;
+	border: 2px outset var(--wi_card_border_color);
 }
