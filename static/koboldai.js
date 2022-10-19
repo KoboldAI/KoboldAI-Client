@@ -2781,7 +2781,7 @@ function getAllCSSVariableNames(styleSheets = document.styleSheets){
 					for(let k = 0; k < styleSheets[i].cssRules[j].style.length; k++){
 						let name = styleSheets[i].cssRules[j].style[k];
 						// test name for css variable signiture and uniqueness
-						if(name.startsWith('--') && (styleSheets[i].ownerNode.id == "CSSTheme")){
+						if(name.startsWith('--') && (styleSheets[i].ownerNode.id.includes("CSSTheme"))){
 							let value = styleSheets[i].cssRules[j].style.getPropertyValue(name);
 							value.replace(/(\r\n|\r|\n){2,}/g, '$1\n');
 							value = value.replaceAll("\t", "").trim();
