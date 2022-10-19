@@ -6203,6 +6203,8 @@ def applyinputformatting(txt):
 def applyoutputformatting(txt, no_sentence_trimming=False):
     #remove null ascii character (used to kill chat mode text in multi-generation)
     txt = txt.replace(chr(0), "")
+    if len(txt) == 0:
+        return txt
     
     # Use standard quotes and apostrophes
     txt = utils.fixquotes(txt)
