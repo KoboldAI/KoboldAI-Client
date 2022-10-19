@@ -319,75 +319,46 @@ function create_options(action) {
 function do_story_text_updates(action) {
 	story_area = document.getElementById('Selected Text');
 	current_chunk_number = action.id;
+	let item = null;
 	if (document.getElementById('Selected Text Chunk '+action.id)) {
-		var item = document.getElementById('Selected Text Chunk '+action.id);
+		item = document.getElementById('Selected Text Chunk '+action.id);
 		//clear out the item first
 		while (item.firstChild) { 
 			item.removeChild(item.firstChild);
-		}		
-		span = document.createElement("span");
-		if ('wi_highlighted_text' in action.action) {
-			for (chunk of action.action['wi_highlighted_text']) {
-				chunk_element = document.createElement("span");
-				chunk_element.textContent = chunk['text'];
-				if (chunk['WI matches'] != null) {
-					chunk_element.classList.add("wi_match");
-					chunk_element.setAttribute("tooltip", chunk['WI Text']);
-					chunk_element.setAttribute("wi-uid", chunk['WI matches']);
-				}
-				
-			}
-		} else {
-			chunk_element = document.createElement("span");
-			chunk_element.textContent = action.action['Selected Text'];
-			span.append(chunk_element);
-		}
-		item.append(span);
-		item.original_text = action.action['Selected Text'];
-		item.classList.remove("pulse")
-		item.classList.remove("single_pulse");
-		item.classList.add("single_pulse");
-		//item.scrollIntoView();
-		if (item.textContent != "") {
-			assign_world_info_to_action(action.id, null);
 		}
 	} else {
-		var span = document.createElement("span");
-		span.id = 'Selected Text Chunk '+action.id;
-		span.classList.add("rawtext");
-		span.setAttribute("chunk", action.id);
-		span.original_text = action.action['Selected Text'];
-		if ('wi_highlighted_text' in action.action) {
-			for (chunk of action.action['wi_highlighted_text']) {
-				chunk_element = document.createElement("span");
-				chunk_element.textContent = chunk['text'];
-				if (chunk['WI matches'] != null) {
-					chunk_element.classList.add("wi_match");
-					chunk_element.setAttribute("tooltip", chunk['WI Text']);
-					chunk_element.setAttribute("wi-uid", chunk['WI matches']);
-				}
-				span.append(chunk_element);
-			}
-		} else {
-			chunk_element = document.createElement("span");
-			chunk_element.textContent = action.action['Selected Text'];
-			span.append(chunk_element);
-		}
-		
+		item = document.createElement("span");
+		item.id = 'Selected Text Chunk '+action.id;
+		item.classList.add("rawtext");
+		item.setAttribute("chunk", action.id);
 		//need to find the closest element
 		next_id = action.id+1;
 		if (Math.max.apply(null,Object.keys(actions_data).map(Number)) <= next_id) {
-			story_area.append(span);
+			story_area.append(item);
 		} else {
-			story_area.prepend(span);
+			story_area.prepend(item);
 		}
-		span.classList.add("single_pulse");
-		
-		if (span.textContent != "") {
-			assign_world_info_to_action(action.id, null);
-		}
-		//console.log("done");
 	}
+	if ('wi_highlighted_text' in action.action) {
+		for (chunk of action.action['wi_highlighted_text']) {
+			chunk_element = document.createElement("span");
+			chunk_element.textContent = chunk['text'];
+			if (chunk['WI matches'] != null) {
+				chunk_element.classList.add("wi_match");
+				chunk_element.setAttribute("tooltip", chunk['WI Text']);
+				chunk_element.setAttribute("wi-uid", chunk['WI matches']);
+			}
+			item.append(chunk_element);
+		}
+	} else {
+		chunk_element = document.createElement("span");
+		chunk_element.textContent = action.action['Selected Text'];
+		item.append(chunk_element);
+	}
+	item.original_text = action.action['Selected Text'];
+	item.classList.remove("pulse")
+	item.classList.remove("single_pulse");
+	item.classList.add("single_pulse");
 }
 
 function do_prompt(data) {
