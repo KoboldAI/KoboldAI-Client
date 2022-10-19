@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 #==================================================================#
 # KoboldAI
-# Version: 1.19.0
+# Version: 1.19.1
 # By: The KoboldAI Community
 #==================================================================#
 
@@ -723,7 +723,7 @@ tags = [
 api_version = None  # This gets set automatically so don't change this value
 
 api_v1 = KoboldAPISpec(
-    version="1.2.0",
+    version="1.2.1",
     prefixes=["/api/v1", "/api/latest"],
     tags=tags,
 )
@@ -872,6 +872,12 @@ def getmodelname():
     else:
         modelname = koboldai_vars.model
         return modelname
+
+#==================================================================#
+# Get hidden size from model
+#==================================================================#
+def get_hidden_size_from_model(model):
+    return model.get_input_embeddings().embedding_dim
 
 #==================================================================#
 # Breakmodel configuration functions
@@ -2702,9 +2708,6 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
                 return lazy_load_callback
 
 
-            def get_hidden_size_from_model(model):
-                return model.get_input_embeddings().embedding_dim
-            
             def maybe_low_cpu_mem_usage() -> Dict[str, Any]:
                 if(packaging.version.parse(transformers_version) < packaging.version.parse("4.11.0")):
                     logger.warning(f"Please upgrade to transformers 4.11.0 for lower RAM usage. You have transformers {transformers_version}.")
@@ -3237,7 +3240,7 @@ def lua_startup():
     except lupa.LuaError as e:
         print(colors.RED + "ERROR!" + colors.END)
         koboldai_vars.lua_koboldbridge.obliterate_multiverse()
-        logger.debug('LUA ERROR: ' + str(e).replace("\033", ""))
+        logger.error('LUA ERROR: ' + str(e).replace("\033", ""))
         logger.warning("Lua engine stopped; please open 'Userscripts' and press Load to reinitialize scripts.")
         socketio.emit("error", str(e), broadcast=True, room="UI_2")
         exit(1)
@@ -3297,7 +3300,7 @@ def load_lua_scripts():
         if(koboldai_vars.serverstarted):
             emit('from_server', {'cmd': 'errmsg', 'data': 'Lua script error; please check console.'}, broadcast=True, room="UI_1")
             sendUSStatItems()
-        logger.debug('LUA ERROR: ' + str(e).replace("\033", ""))
+        logger.error('LUA ERROR: ' + str(e).replace("\033", ""))
         logger.warning("Lua engine stopped; please open 'Userscripts' and press Load to reinitialize scripts.")
         socketio.emit("error", str(e), broadcast=True, room="UI_2")
         if(koboldai_vars.serverstarted):
@@ -3791,7 +3794,7 @@ def execute_inmod():
         koboldai_vars.lua_running = False
         emit('from_server', {'cmd': 'errmsg', 'data': 'Lua script error; please check console.'}, broadcast=True, room="UI_1")
         sendUSStatItems()
-        logger.debug('LUA ERROR: ' + str(e).replace("\033", ""))
+        logger.error('LUA ERROR: ' + str(e).replace("\033", ""))
         logger.warning("Lua engine stopped; please open 'Userscripts' and press Load to reinitialize scripts.")
         socketio.emit("error", str(e), broadcast=True, room="UI_2")
         set_aibusy(0)
@@ -3809,7 +3812,7 @@ def execute_outmod():
         koboldai_vars.lua_running = False
         emit('from_server', {'cmd': 'errmsg', 'data': 'Lua script error; please check console.'}, broadcast=True, room="UI_1")
         sendUSStatItems()
-        logger.debug('LUA ERROR: ' + str(e).replace("\033", ""))
+        logger.error('LUA ERROR: ' + str(e).replace("\033", ""))
         logger.warning("Lua engine stopped; please open 'Userscripts' and press Load to reinitialize scripts.")
         socketio.emit("error", str(e), broadcast=True, room="UI_2")
         set_aibusy(0)
@@ -5904,7 +5907,7 @@ def generate(txt, minimum, maximum, found_entries=None):
             koboldai_vars.lua_running = False
             emit('from_server', {'cmd': 'errmsg', 'data': 'Lua script error; please check console.'}, broadcast=True, room="UI_1")
             sendUSStatItems()
-            logger.debug('LUA ERROR: ' + str(e).replace("\033", ""))
+            logger.error('LUA ERROR: ' + str(e).replace("\033", ""))
             logger.warning("Lua engine stopped; please open 'Userscripts' and press Load to reinitialize scripts.")
             socketio.emit("error", str(e), broadcast=True, room="UI_2")
         else:
@@ -6126,7 +6129,7 @@ def tpumtjgenerate(txt, minimum, maximum, found_entries=None):
             koboldai_vars.lua_running = False
             emit('from_server', {'cmd': 'errmsg', 'data': 'Lua script error; please check console.'}, broadcast=True, room="UI_1")
             sendUSStatItems()
-            logger.debug('LUA ERROR: ' + str(e).replace("\033", ""))
+            logger.error('LUA ERROR: ' + str(e).replace("\033", ""))
             logger.warning("Lua engine stopped; please open 'Userscripts' and press Load to reinitialize scripts.")
             socketio.emit("error", str(e), broadcast=True, room="UI_2")
         else:
@@ -9792,7 +9795,7 @@ def prompt_validator(prompt: str):
         raise ValidationError("String does not match expected pattern.")
 
 class SubmissionInputSchema(KoboldSchema):
-    prompt: str = fields.String(required=True, validate=prompt_validator, metadata={"pattern": r"^.*\S.*$", "description": "This is the submission."})
+    prompt: str = fields.String(required=True, validate=prompt_validator, metadata={"pattern": r"^[\S\s]*\S[\S\s]*$", "description": "This is the submission."})
     disable_input_formatting: bool = fields.Boolean(load_default=True, metadata={"description": "When enabled, disables all input formatting options, overriding their individual enabled/disabled states."})
     frmtadsnsp: Optional[bool] = fields.Boolean(metadata={"description": "Input formatting option. When enabled, adds a leading space to your input if there is no trailing whitespace at the end of the previous action."})
 
