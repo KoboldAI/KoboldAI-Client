@@ -27,6 +27,7 @@ def clean_var_for_emit(value):
 def process_variable_changes(socketio, classname, name, value, old_value, debug_message=None):
     global multi_story
     if serverstarted and name != "serverstarted":
+        transmit_time = str(datetime.datetime.now())
         if debug_message is not None:
             print("{} {}: {} changed from {} to {}".format(debug_message, classname, name, old_value, value))
         if value != old_value:
@@ -49,35 +50,35 @@ def process_variable_changes(socketio, classname, name, value, old_value, debug_
                 if not has_request_context():
                     if queue is not None:
                         #logger.debug("Had to use queue")
-                        queue.put(["var_changed", {"classname": "actions", "name": "Action Count", "old_value": None, "value":value.action_count}, {"broadcast":True, "room":room}])
+                        queue.put(["var_changed", {"classname": "actions", "name": "Action Count", "old_value": None, "value":value.action_count, "transmit_time": transmit_time}, {"broadcast":True, "room":room}])
                         
                         data_to_send = []
                         for i in list(value.actions)[-100:]:
                             data_to_send.append({"id": i, "action": value.actions[i]})
-                        queue.put(["var_changed", {"classname": "story", "name": "actions", "old_value": None, "value":data_to_send}, {"broadcast":True, "room":room}])
+                        queue.put(["var_changed", {"classname": "story", "name": "actions", "old_value": None, "value":data_to_send, "transmit_time": transmit_time}, {"broadcast":True, "room":room}])
                 
                 else:
                     if socketio is not None:
-                        socketio.emit("var_changed", {"classname": "actions", "name": "Action Count", "old_value": None, "value":value.action_count}, broadcast=True, room=room)
+                        socketio.emit("var_changed", {"classname": "actions", "name": "Action Count", "old_value": None, "value":value.action_count, "transmit_time": transmit_time}, broadcast=True, room=room)
                     
                     data_to_send = []
                     for i in list(value.actions)[-100:]:
                         data_to_send.append({"id": i, "action": value.actions[i]})
                     if socketio is not None:
-                        socketio.emit("var_changed", {"classname": "story", "name": "actions", "old_value": None, "value": data_to_send}, broadcast=True, room=room)
+                        socketio.emit("var_changed", {"classname": "story", "name": "actions", "old_value": None, "value": data_to_send, "transmit_time": transmit_time}, broadcast=True, room=room)
             elif isinstance(value, KoboldWorldInfo):
                 value.send_to_ui()
             else:
                 #If we got a variable change from a thread other than what the app is run it, eventlet seems to block and no further messages are sent. Instead, we'll rely the message to the app and have the main thread send it
                 if not has_request_context():
-                    data = ["var_changed", {"classname": classname, "name": name, "old_value": clean_var_for_emit(old_value), "value": clean_var_for_emit(value)}, {"include_self":True, "broadcast":True, "room":room}]
+                    data = ["var_changed", {"classname": classname, "name": name, "old_value": clean_var_for_emit(old_value), "value": clean_var_for_emit(value), "transmit_time": transmit_time}, {"include_self":True, "broadcast":True, "room":room}]
                     if queue is not None:
                         #logger.debug("Had to use queue")
                         queue.put(data)
                         
                 else:
                     if socketio is not None:
-                        socketio.emit("var_changed", {"classname": classname, "name": name, "old_value": clean_var_for_emit(old_value), "value": clean_var_for_emit(value)}, include_self=True, broadcast=True, room=room)
+                        socketio.emit("var_changed", {"classname": classname, "name": name, "old_value": clean_var_for_emit(old_value), "value": clean_var_for_emit(value), "transmit_time": transmit_time}, include_self=True, broadcast=True, room=room)
 
 class koboldai_vars(object):
     def __init__(self, socketio):
@@ -1402,7 +1403,7 @@ class KoboldStoryRegister(object):
                 #If this is the current spot in the story, advance
                 if action_step-1 == self.action_count:
                     self.action_count+=1
-                    self.socketio.emit("var_changed", {"classname": "actions", "name": "Action Count", "old_value": None, "value":self.action_count}, broadcast=True, room="UI_2")
+                    self.socketio.emit("var_changed", {"classname": "actions", "name": "Action Count", "old_value": None, "value":self.action_count, "transmit_time": str(datetime.datetime.now())}, broadcast=True, room="UI_2")
                 self.story_settings.assign_world_info_to_actions(action_id=action_step)
                 process_variable_changes(self.socketio, "story", 'actions', {"id": action_step, 'action':  self.actions[action_step]}, None)
                 self.clear_unused_options(pointer=action_step)

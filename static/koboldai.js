@@ -39,6 +39,7 @@ socket.on("scratchpad_response", recieveScratchpadResponse);
 // Must be done before any elements are made; we track their changes.
 initalizeTooltips();
 
+var vars_sync_time = {};
 var presets = {};
 var current_chunk_number = null;
 var ai_busy_start = Date.now();
@@ -553,6 +554,13 @@ function var_changed(data) {
 	//if (data.name == "sp") {
 	//	console.log({"name": data.name, "data": data});
 	//}
+	
+	if (data.name in vars_sync_time) {
+		if (vars_sync_time[data.name] > Date.parse(data.transmit_time)) {
+			return;
+		}
+	}
+	vars_sync_time[data.name] = Date.parse(data.transmit_time);
 	
 	if ((data.classname == 'actions') && (data.name == 'Action Count')) {
 		current_action = data.value;
