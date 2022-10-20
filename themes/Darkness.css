@@ -281,11 +281,11 @@
 	filter: brightness(60%) !important;
 }
 
-#new-sub-card:active {
+.wi_add_button:active {
 	filter: brightness(60%) !important;
 }
 
-.wi_add_button:active {
+#new-sub-card:active {
 	filter: brightness(60%) !important;
 }
 
