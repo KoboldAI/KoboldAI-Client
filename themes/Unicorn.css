@@ -293,10 +293,6 @@
 	background-color: #ee7e7e !important;
 }
 
-#new-sub-card {
-	border-radius: 10px !important;
-}
-
 .wi_add_button {
 	color: #e26771 !important;
 	background: #ebebeb !important;
@@ -307,6 +303,10 @@
 	color: #ebebeb !important;
 	background: #e26771 !important;
 	border: 1px solid #e26771 !important;
+}
+
+#new-sub-card {
+	border-radius: 10px !important;
 }
 
 #debug-dump:hover {

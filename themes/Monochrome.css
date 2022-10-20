@@ -286,6 +286,10 @@
 	filter: brightness(120%) !important;
 }
 
+.settings_button[story_gamesaved="true"] {
+	filter: brightness(40%);
+}
+
 #new-sub-card:hover {
 	filter: brightness(120%) !important;
 }

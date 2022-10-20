@@ -4682,6 +4682,7 @@ process_cookies();
 	});
 
 	document.body.addEventListener("dragenter", function(e) {
+		if (!e.dataTransfer.types.includes("Files")) return;
 		lastTarget = e.target;
 		$("#file-upload-notice")[0].classList.remove("hidden");
 	});
