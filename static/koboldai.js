@@ -2681,7 +2681,7 @@ function calc_token_usage(
 	let total_tokens = parseInt(document.getElementById('model_max_length_cur').value);
 	let unused_token_count = total_tokens - memory_length - authors_note_length - world_info_length - prompt_length - game_text_length - submit_length;
 
-	for (const dat of [
+	const data = [
 		{id: "soft_prompt_tokens", tokenCount: soft_prompt_length, label: "Soft Prompt"},
 		{id: "memory_tokens", tokenCount: memory_length, label: "Memory"},
 		{id: "authors_notes_tokens", tokenCount: authors_note_length, label: "Author's Note"},
@@ -2690,7 +2690,9 @@ function calc_token_usage(
 		{id: "game_text_tokens", tokenCount: game_text_length, label: "Game Text"},
 		{id: "submit_tokens", tokenCount: submit_length, label: "Submit Text"},
 		{id: "unused_tokens", tokenCount: unused_token_count, label: "Remaining"},
-	]) {
+	]
+
+	for (const dat of data) {
 		const el = document.getElementById(dat.id);
 		el.style.width = ((dat.tokenCount / total_tokens) * 100) + "%";
 		el.setAttribute("tooltip", `${dat.label}: ${dat.tokenCount}`);
@@ -3040,10 +3042,10 @@ function update_context(data) {
 		
 		switch (entry.type) {
 			case 'soft_prompt':
-				soft_prompt_length = entry.tokens.length;
+				soft_prompt_length += entry.tokens.length;
 				break;
 			case 'prompt':
-				prompt_length = entry.tokens.length;
+				prompt_length += entry.tokens.length;
 				if (prompt_length > 0) {
 					document.getElementById('story_prompt').classList.add("within_max_length");
 				}
@@ -3055,10 +3057,10 @@ function update_context(data) {
 				}
 				break;
 			case 'memory':
-				memory_length = entry.tokens.length;
+				memory_length += entry.tokens.length;
 				break;
 			case 'authors_note':
-				authors_notes_length = entry.tokens.length;
+				authors_notes_length += entry.tokens.length;
 				break;
 			case 'action':
 				game_text_length += entry.tokens.length;
@@ -3071,7 +3073,7 @@ function update_context(data) {
 				}
 				break;
 			case 'submit':
-				submit_length = entry.tokens.length;
+				submit_length += entry.tokens.length;
 				break;
 		}
 	}
