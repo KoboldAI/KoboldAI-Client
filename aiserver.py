@@ -5005,24 +5005,27 @@ def calcsubmit(txt):
         #subtxt, min, max = calcsubmitbudget(actionlen, winfo, mem, anotetxt, koboldai_vars.actions, submission=txt)
         subtxt, min, max, found_entries  = koboldai_vars.calc_ai_text(submitted_text=txt)
 
-        if koboldai_vars.experimental_features and koboldai_vars.memory_attn_bias > 1:
+        if koboldai_vars.experimental_features:
             offset = 0
-            bounds = None
+            applied_biases = []
             for c in koboldai_vars.context:
-                length = len(tokenizer.encode(c["text"]))
-                if c["type"] == "memory":
-                    bounds = [offset, offset + length]
-                    break
+                length = len(c["tokens"])
+                if c.get("attention_multiplier") and c["attention_multiplier"] != 1:
+                    applied_biases.append({"start": offset, "end": offset + length, "multiplier": c.get("attention_multiplier", 1)})
                 offset += length
 
-            print(f"Memory bounds: {bounds}")
-            assert bounds
+            logger.info(f"Applied Biases: {applied_biases}")
 
-            bias = [1] * bounds[0]
-            bias += [koboldai_vars.memory_attn_bias] * bounds[1]
+            bias = []
+            for b in applied_biases:
+                for i in range(b["start"], b["end"]):
+                    top_index = len(bias) - 1
+                    if i > top_index:
+                        bias += [1] * (i - top_index)
+                    bias[i] = b["multiplier"]
 
             attention_bias.attention_bias = torch.Tensor(bias).to(breakmodel.primary_device)
-            print(f"Bias by {koboldai_vars.memory_attn_bias} -- {attention_bias.attention_bias}")
+            logger.info(f"Bias by {koboldai_vars.memory_attn_bias} -- {attention_bias.attention_bias}")
         generate(subtxt, min, max, found_entries)
         attention_bias.attention_bias = None
 
