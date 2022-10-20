@@ -277,7 +277,7 @@ class koboldai_vars(object):
             prompt_data = []
             for item in reversed(action_text_split):
                 if -1 in item[1]:
-                    tokenized_data = self.tokenizer.encode(item[0])
+                    tokenized_data = [[x, self.tokenizer.decode(x)] for x in self.tokenizer.encode(item[0])]
                     item[2] = len(tokenized_data)
                     if prompt_length + item[2] <= self.max_prompt_length:
                         prompt_length += item[2]
@@ -1526,7 +1526,7 @@ class KoboldStoryRegister(object):
                         #process_variable_changes(self.socketio, "actions", "Options", {"id": self.action_count+1, "options": self.actions[self.action_count+1]["Options"]}, {"id": self.action_count+1, "options": None})
                         process_variable_changes(self.socketio, "story", 'actions', {"id": self.action_count+1, 'action':  self.actions[self.action_count+1]}, None)
     
-    def set_probabilites(self, probabilities, action_id=None):
+    def set_probabilities(self, probabilities, action_id=None):
         if action_id is None:
             action_id = self.action_count+1
         if action_id in self.actions:
