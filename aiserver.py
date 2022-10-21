@@ -297,6 +297,7 @@ class ImportBuffer:
     authors_note: Optional[str] = None
     notes: Optional[str] = None
     world_infos: Optional[dict] = None
+    title: Optional[str] = None
 
     @dataclass
     class PromptPlaceholder:
@@ -416,6 +417,7 @@ class ImportBuffer:
         self.memory = j["memory"]
         self.authors_note = j["authorsNote"]
         self.notes = j["description"]
+        self.title = j["title"] or "Imported Story"
 
         self.world_infos = []
 
@@ -449,6 +451,7 @@ class ImportBuffer:
         koboldai_vars.memory = self.memory or ""
         koboldai_vars.authornote = self.authors_note or ""
         koboldai_vars.notes = self.notes
+        koboldai_vars.story_name = self.title
 
         for wi in self.world_infos:
             koboldai_vars.worldinfo_v2.add_item(

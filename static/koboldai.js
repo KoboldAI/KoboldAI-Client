@@ -76,6 +76,7 @@ var finder_actions = [
 	{name: "Load Story", icon: "folder_open", type: "action", func: function() { socket.emit('load_story_list', ''); }},
 	{name: "Save Story", icon: "save", type: "action", func: function() { socket.emit("save_story", null, (response) => {save_as_story(response);}); }},
 	{name: "Download Story", icon: "file_download", type: "action", func: function() { document.getElementById('download_iframe').src = 'json'; }},
+	{name: "Import Story", icon: "file_download", desc: "Import a prompt from aetherroom.club, formerly prompts.aidg.club", type: "action", func: openClubImport },
 
 	// Locations
 	{name: "Setting Presets", icon: "open_in_new", type: "location", func: function() { highlightEl(".var_sync_model_selected_preset") }},
@@ -4624,6 +4625,10 @@ function updateTitle() {
 	const titleInput = $el(".var_sync_story_story_name");
 	if (!titleInput.innerText) return;
 	document.title = `${titleInput.innerText} - KoboldAI Client`;
+}
+
+function openClubImport() {
+	document.getElementById("import_aidg_club_popup").classList.remove("hidden");
 }
 
 //// INIT ////
