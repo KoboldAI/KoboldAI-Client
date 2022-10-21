@@ -94,7 +94,7 @@
 
 	--help_icon: #7c8389;
 	--tooltip_text: #e0e0e0;
-    --tooltip_background: #212d38;
+    --tooltip_background: #303c50;
 	--setting_category_help_text_color: #E0E0E0;
 	
 	--setting_footer_border_color: #334552;
@@ -132,7 +132,7 @@
 	--popup_selected_color: #242d3c;
 	--popup_selected_color_text: #eedcb8;
 
-	--popup_button_color: #25364a;
+	--popup_button_color: #283445;
 	--popup_button_color_text: #e0e0e0;
 	--popup_cancel_button_color: #25364a;
 	--popup_cancel_button_color_text: #e0e0e0;
@@ -435,26 +435,27 @@ a {
 
 .popup .action_button {
     border-radius: 2px;
-	border-color:#ffffff00;
-	background-color:#30435b !important;
+	border-color:#2f3b4b;
+	background-color:#283445 !important;
 }
 
 .popup_load_cancel_button {
     border-radius: 2px;
-	border-color:#ffffff00 !important;
-	background-color:#30435b !important;
+	border-color:#2f3b4b !important;
+	background-color:#283445 !important;
 }
 
 .popup .action_button:hover {
+	border-color: #2f3b4b00 !important;
 	filter: brightness(120%) !important;
-	background-color: #30435b !important;
+	background-color: #283445 !important;
 }
 
 .popup_load_cancel_button:hover {
 	color: #e0e0e0 !important;
 	filter: brightness(120%) !important;
-	border-color: #ffffff00 !important;
-    background-color: #30435b !important;
+	border-color: #2f3b4b00 !important;
+    background-color: #283445 !important;
 }
 
 .popup .action_button:focus {
