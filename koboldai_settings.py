@@ -838,7 +838,7 @@ class story_settings(settings):
         new_world_info.socketio = self.socketio
         self.worldinfo_v2 = new_world_info
         
-    def assign_world_info_to_actions(self, action_id=None, wuid=None):
+    def assign_world_info_to_actions(self, action_id=None, wuid=None, no_transmit=False):
         logger.debug("Calcing WI Assignment for action_id: {} wuid: {}".format(action_id, wuid))
         if action_id != -1 and (action_id is None or action_id not in self.actions.actions):
             actions_to_check = self.actions.actions
@@ -853,7 +853,7 @@ class story_settings(settings):
             for uid, wi in wi_to_check.items():
                 for key in sorted(wi['key'], key=len, reverse=True):
                     if key in action['Selected Text']:
-                        self.actions.add_wi_to_action(action_id, key, wi['content'], uid)
+                        self.actions.add_wi_to_action(action_id, key, wi['content'], uid, no_transmit=no_transmit)
                         break
                         
         #Do prompt if no action_id was sent
@@ -864,10 +864,10 @@ class story_settings(settings):
                         if wi['keysecondary'] != []:
                             for key2 in wi['keysecondary']:
                                 if key2 in self.prompt:
-                                    self.actions.add_wi_to_action(-1, key, wi['content'], uid)
+                                    self.actions.add_wi_to_action(-1, key, wi['content'], uid, no_transmit=no_transmit)
                                     break
                         else:
-                            self.actions.add_wi_to_action(-1, key, wi['content'], uid)
+                            self.actions.add_wi_to_action(-1, key, wi['content'], uid, no_transmit=no_transmit)
                             break
     
     def __setattr__(self, name, value):
@@ -1138,7 +1138,7 @@ class KoboldStoryRegister(object):
     def reset(self, sequence=[]):
         self.__init__(self.socketio, self.story_settings, self.koboldai_vars, sequence=sequence)
         
-    def add_wi_to_action(self, action_id, key, content, uid):
+    def add_wi_to_action(self, action_id, key, content, uid, no_transmit=False):
         old = self.story_settings.prompt_wi_highlighted_text.copy() if action_id == -1 else self.actions[action_id].copy()
         #First check to see if we have the wi_highlighted_text variable
         if action_id != -1:
@@ -1174,10 +1174,12 @@ class KoboldStoryRegister(object):
                 i+=1
         if action_id != -1:
             if old != self.actions[action_id]:
-                process_variable_changes(self.socketio, "story", 'actions', {"id": action_id, 'action':  self.actions[action_id]}, old)
+                if not no_transmit:
+                    process_variable_changes(self.socketio, "story", 'actions', {"id": action_id, 'action':  self.actions[action_id]}, old)
         else:
             if old != self.story_settings.prompt_wi_highlighted_text:
-                process_variable_changes(self.socketio, "story", 'prompt_wi_highlighted_text', self.story_settings.prompt_wi_highlighted_text, old)
+                if not no_transmit:
+                    process_variable_changes(self.socketio, "story", 'prompt_wi_highlighted_text', self.story_settings.prompt_wi_highlighted_text, old)
                     
         
     def __str__(self):
@@ -1228,7 +1230,7 @@ class KoboldStoryRegister(object):
             old = None
             self.actions[i] = {"Selected Text": text, "Probabilities": [], "Options": []}
             
-        self.story_settings.assign_world_info_to_actions(action_id=i)
+        self.story_settings.assign_world_info_to_actions(action_id=i, no_transmit=True)
         process_variable_changes(self.socketio, "story", 'actions', {"id": i, 'action':  self.actions[i]}, old)
         logger.debug("Calcing AI Text from Action __setitem__")
         ignore = self.koboldai_vars.calc_ai_text()
@@ -1271,7 +1273,7 @@ class KoboldStoryRegister(object):
         #Check if our json has our new world info highlighting data
         if len(self.actions) > 0:
             if 'wi_highlighted_text' not in self.actions[0]:
-                self.story_settings.assign_world_info_to_actions()
+                self.story_settings.assign_world_info_to_actions(no_transmit=True)
         
         logger.debug("Calcing AI Text from Action load from json")
         ignore = self.koboldai_vars.calc_ai_text()
@@ -1299,7 +1301,7 @@ class KoboldStoryRegister(object):
                                                "Options": [], "Probabilities": []}
             
         if self.story_settings is not None:
-            self.story_settings.assign_world_info_to_actions(action_id=action_id)
+            self.story_settings.assign_world_info_to_actions(action_id=action_id, no_transmit=True)
             process_variable_changes(self.socketio, "story", 'actions', {"id": action_id, 'action':  self.actions[action_id]}, None)
         self.set_game_saved()
         if recalc:
@@ -1406,9 +1408,9 @@ class KoboldStoryRegister(object):
                 if action_step-1 == self.action_count:
                     self.action_count+=1
                     self.socketio.emit("var_changed", {"classname": "actions", "name": "Action Count", "old_value": None, "value":self.action_count, "transmit_time": str(datetime.datetime.now())}, broadcast=True, room="UI_2")
-                self.story_settings.assign_world_info_to_actions(action_id=action_step)
-                process_variable_changes(self.socketio, "story", 'actions', {"id": action_step, 'action':  self.actions[action_step]}, None)
+                self.story_settings.assign_world_info_to_actions(action_id=action_step, no_transmit=True)
                 self.clear_unused_options(pointer=action_step)
+                #process_variable_changes(self.socketio, "story", 'actions', {"id": action_step, 'action':  self.actions[action_step]}, None)
                 self.set_game_saved()
                 logger.debug("Calcing AI Text from Action Use Option")
                 ignore = self.koboldai_vars.calc_ai_text()

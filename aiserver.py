@@ -2182,7 +2182,7 @@ def patch_transformers():
             if koboldai_vars.chatmode:
                 return False
                 
-            data = [applyoutputformatting(utils.decodenewlines(tokenizer.decode(x[-1])), no_sentence_trimming=True) for x in input_ids]
+            data = [applyoutputformatting(utils.decodenewlines(tokenizer.decode(x[-1])), no_sentence_trimming=True, no_single_line=True) for x in input_ids]
             koboldai_vars.actions.stream_tokens(data)
             return False
     
@@ -6206,7 +6206,7 @@ def applyinputformatting(txt):
 #==================================================================#
 # Applies chosen formatting options to text returned from AI
 #==================================================================#
-def applyoutputformatting(txt, no_sentence_trimming=False):
+def applyoutputformatting(txt, no_sentence_trimming=False, no_single_line=False):
     #remove null ascii character (used to kill chat mode text in multi-generation)
     txt = txt.replace(chr(0), "")
     if len(txt) == 0:
@@ -6232,7 +6232,7 @@ def applyoutputformatting(txt, no_sentence_trimming=False):
     if(koboldai_vars.frmtrmspch):
         txt = utils.removespecialchars(txt, koboldai_vars)
 	# Single Line Mode
-    if(koboldai_vars.singleline or koboldai_vars.chatmode):
+    if((koboldai_vars.singleline or koboldai_vars.chatmode) and not no_single_line):
         txt = utils.singlelineprocessing(txt, koboldai_vars)
     
     for sub in koboldai_vars.substitutions:

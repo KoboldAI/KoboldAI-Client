@@ -317,6 +317,60 @@ function create_options(action) {
 	//option_chunk.scrollIntoView();
 }
 
+function process_actions_data(data) {
+	start_time = Date.now();
+	if (document.getElementById("Selected Text").firstElementChild.id == "story_prompt") {
+		first_story_element = document.getElementById("Selected Text").firstElementChild.nextElementSibling;
+	} else {
+		first_story_element = document.getElementById("Selected Text").firstElementChild;
+	}
+	if (Array.isArray(data.value)) {
+		actions = data.value;
+	} else {
+		actions = [data.value];
+	}
+	if (actions.length == 0) {return;}
+	let action_type = "????";
+	let first_action = -100;
+	//console.log('Chunk Exists: '+(document.getElementById("Selected Text Chunk " + actions[actions.length-1].id)));
+	//console.log('Passed action has no selected text: '+(actions[actions.length-1].action['Selected Text'] == ""));
+	//console.log('Old action has no selected text: '+(actions_data[Math.max.apply(null,Object.keys(actions_data).map(Number))]['Selected Text'] == ""));
+	//console.log(actions_data[Math.max.apply(null,Object.keys(actions_data).map(Number))]['Selected Text']);
+	//console.log('All action IDs already seen: '+((actions[0].id in actions_data) && (actions[actions.length-1].id in actions_data)));
+	//we need to figure out if this is changes to existing text, added text at the end, or infinite scroll text at the begining
+	if (!(document.getElementById("Selected Text Chunk " + actions[actions.length-1].id))) {
+		//We don't have this item yet, either we're an append or an prepend
+		if ((Object.keys(actions_data).length > 1) && (actions[actions.length-1].id < Math.min.apply(null,Object.keys(actions_data).map(Number).filter(function(x){return x>0})))) {
+			//adding to the begining
+			action_type = "prepend";
+			first_action = Math.min.apply(null,Object.keys(actions_data).map(Number).filter(function(x){return x>0}));
+		} else if (actions[actions.length-1].id > Math.max.apply(null,Object.keys(actions_data).map(Number))) {
+			action_type = "append";
+		}
+	} else if (actions[actions.length-1].action['Selected Text'] == "") {
+		action_type = "options text only or deleted chunk";
+	} else if (actions_data[Math.max.apply(null,Object.keys(actions_data).map(Number))]['Selected Text'] == "") {
+		action_type = "append";
+	} else if ((actions[0].id in actions_data) && (actions[actions.length-1].id in actions_data)) {
+		//update
+		action_type = "update";
+	}
+	for (action of actions) {
+		actions_data[parseInt(action.id)] = action.action;
+		do_story_text_updates(action);
+		create_options(action);
+		if ('Probabilities' in action.action) {
+			do_probabilities(action);
+		}
+	}
+	
+	clearTimeout(game_text_scroll_timeout);
+	game_text_scroll_timeout = setTimeout(run_infinite_scroll_update.bind(null, action_type, actions, first_action), 200);
+	
+	hide_show_prompt();
+	//console.log("Took "+((Date.now()-start_time)/1000)+"s to process");
+}
+
 function do_story_text_updates(action) {
 	story_area = document.getElementById('Selected Text');
 	current_chunk_number = action.id;
@@ -574,51 +628,7 @@ function var_changed(data) {
 	}
 	//Special Case for Actions
 	if ((data.classname == "story") && (data.name == "actions")) {
-		start_time = Date.now();
-		//temp_counter += 1;
-		//if (temp_counter > 10) {
-		//	return;
-		//}
-		if (document.getElementById("Selected Text").firstElementChild.id == "story_prompt") {
-			first_story_element = document.getElementById("Selected Text").firstElementChild.nextElementSibling;
-		} else {
-			first_story_element = document.getElementById("Selected Text").firstElementChild;
-		}
-		if (Array.isArray(data.value)) {
-			actions = data.value;
-		} else {
-			actions = [data.value];
-		}
-		if (actions.length == 0) {return;}
-		let action_type = "????";
-		let first_action = -100;
-		//we need to figure out if this is changes to existing text, added text at the end, or infinite scroll text at the begining
-		if ((actions[0].id in actions_data) && (actions[actions.length-1].id in actions_data)) {
-			//update
-			action_type = "update";
-		} else if ((Object.keys(actions_data).length > 1) && (actions[actions.length-1].id < Math.min.apply(null,Object.keys(actions_data).map(Number).filter(function(x){return x>0})))) {
-			//adding to the begining
-			action_type = "prepend";
-			first_action = Math.min.apply(null,Object.keys(actions_data).map(Number).filter(function(x){return x>0}));
-		} else if (actions[actions.length-1].id > Math.max.apply(null,Object.keys(actions_data).map(Number))) {
-			action_type = "append";
-		}
-		
-		for (action of actions) {
-			actions_data[parseInt(action.id)] = action.action;
-			do_story_text_updates(action);
-			create_options(action);
-			if ('Probabilities' in action.action) {
-				do_probabilities(action);
-			}
-		}
-		
-		clearTimeout(game_text_scroll_timeout);
-		game_text_scroll_timeout = setTimeout(run_infinite_scroll_update.bind(null, action_type, actions, first_action), 200);
-		
-		hide_show_prompt();
-		//console.log("Took "+((Date.now()-start_time)/1000)+"s to process");
-		
+		process_actions_data(data)
 	//Special Case for Presets
 	} else if ((data.classname == 'model') && (data.name == 'presets')) {
 		do_presets(data);
@@ -5290,7 +5300,7 @@ function infinite_scroll() {
 }
 
 function run_infinite_scroll_update(action_type, actions, first_action) {
-	//console.log("action_type: "+action_type);
+	console.log("action_type: "+action_type);
 	//console.log("first_action: "+first_action);
 	if (action_type == "append") {
 		if (document.getElementById('Selected Text Chunk '+actions[actions.length-1].id)) {
