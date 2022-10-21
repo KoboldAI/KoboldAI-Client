@@ -1694,7 +1694,7 @@ class KoboldWorldInfo(object):
                 
     def add_item(self, title, key, keysecondary, folder, constant, manual_text, 
                  comment, use_wpp=False, wpp={'name': "", 'type': "", 'format': "W++", 'attributes': {}}, 
-                 v1_uid=None, recalc=True, sync=True):
+                 v1_uid=None, recalc=True, sync=True, send_to_ui=True):
         if len(self.world_info) == 0:
             uid = 0
         else:
@@ -1759,7 +1759,7 @@ class KoboldWorldInfo(object):
         
         self.story_settings.assign_world_info_to_actions(wuid=uid)
         
-        if self.socketio is not None:
+        if self.socketio is not None and send_to_ui:
             self.socketio.emit("world_info_folder", {x: self.world_info_folder[x] for x in self.world_info_folder}, broadcast=True, room="UI_2")
             self.socketio.emit("world_info_entry", self.world_info[uid], broadcast=True, room="UI_2")
         if recalc:
@@ -1870,8 +1870,7 @@ class KoboldWorldInfo(object):
         if self.socketio is not None:
             self.socketio.emit("world_info_folder", {x: self.world_info_folder[x] for x in self.world_info_folder}, broadcast=True, room="UI_2")
             logger.debug("Sending all world info from send_to_ui")
-            for uid in self.world_info:
-                self.socketio.emit("world_info_entry", self.world_info[uid], broadcast=True, room="UI_2")
+            self.socketio.emit("world_info_entry", [self.world_info[uid] for uid in self.world_info], broadcast=True, room="UI_2")
     
     def to_json(self, folder=None):
         if folder is None:

@@ -7221,7 +7221,9 @@ def load_story_v1(js):
                     folder = "root"
             koboldai_vars.worldinfo_v2.add_item([x.strip() for x in wi["key"].split(",")][0], wi["key"], wi.get("keysecondary", ""), 
                                                 folder, wi.get("constant", False), 
-                                                wi["content"], wi.get("comment", ""), recalc=False)
+                                                wi["content"], wi.get("comment", ""), recalc=False, sync=False, send_to_ui=False)
+        koboldai_vars.worldinfo_v2.sync_world_info_to_old_format()
+        koboldai_vars.worldinfo_v2.send_to_ui()
 
     # Save path for save button
     koboldai_vars.savedir = loadpath

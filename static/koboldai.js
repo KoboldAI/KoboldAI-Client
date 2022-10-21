@@ -19,7 +19,7 @@ socket.on('selected_model_info', function(data){selected_model_info(data);});
 socket.on('oai_engines', function(data){oai_engines(data);});
 socket.on('buildload', function(data){buildload(data);});
 socket.on('error_popup', function(data){error_popup(data);});
-socket.on("world_info_entry", function(data){world_info_entry(data);});
+socket.on("world_info_entry", function(data){process_world_info_entry(data);});
 socket.on("world_info_entry_used_in_game", function(data){world_info_entry_used_in_game(data);});
 socket.on("world_info_folder", function(data){world_info_folder(data);});
 socket.on("delete_new_world_info_entry", function(data){document.getElementById("world_info_-1").remove();});
@@ -1667,6 +1667,19 @@ function world_info_entry_used_in_game(data) {
 		} else {
 			world_info_card.classList.remove("used_in_game");
 		}
+	}
+}
+
+function process_world_info_entry(data) {
+	console.log(data);
+	let temp = []
+	if (Array.isArray(data)) {
+		temp = data;
+	} else {
+		temp = [data];
+	}
+	for (wi of temp) {
+		world_info_entry(wi);
 	}
 }
 
