@@ -30,6 +30,7 @@ from os import path, getcwd
 import time
 import re
 import json
+import ijson
 import datetime
 import collections
 import zipfile
@@ -8318,17 +8319,42 @@ def get_story_listing_data(item_full_path, item, valid_selection):
     if not valid_selection:
         return [title, action_count, last_loaded]
 
-    if os.path.getsize(item_full_path) < 2*1024*1024: #2MB
-        with open(item_full_path, "r") as f:
-            js = json.load(f)
-    else:
-        js = {}
+    with open(item_full_path, 'rb') as f:
+        parse_event = ijson.parse(f)
+        depth=0
+        file_version=1
+        while True:
+            try:
+                prefix, event, value = next(parse_event)
+            except StopIteration:
+                break
+            depth+=1
+            if depth > 100 or prefix == 'file_version':
+                if prefix == 'file_version':
+                    file_version=2
+                break
 
-    title = js['story_name'] if 'story_name' in js else ".".join(item.split(".")[:-1])
-    if "actions" in js:
-        action_count = len(js["actions"])
-    else:
-        action_count = "{}MB".format(round(os.path.getsize(item_full_path)/1024/1024,1))
+        if file_version == 1:
+            title = ".".join(item.split(".")[:-1])
+        else:
+            for prefix, event, value in parse_event:
+                if prefix == 'story_name':
+                    title = value
+                    break
+                    
+        if file_version == 2:
+            for prefix, event, value in parse_event:
+                if prefix == 'actions.action_count':
+                    action_count = value+1
+                    break
+        else:
+            if os.path.getsize(item_full_path)/1024/1024 <= 20:
+                action_count=0
+                for prefix, event, value in parse_event:
+                    if prefix == 'actions.item':
+                        action_count+=1
+            else:
+                action_count = "{}MB".format(round(os.path.getsize(item_full_path)/1024/1024,1))
 
     if title in koboldai_vars._system_settings.story_loads:
         # UNIX Timestamp
@@ -8336,27 +8362,22 @@ def get_story_listing_data(item_full_path, item, valid_selection):
     else:
         last_loaded = os.path.getmtime(item_full_path)
 
-    if js.get("file_version", 1) == 1 or os.path.getsize(item_full_path) >= 2*1024*1024:
-        return [title, action_count, last_loaded]
-
-    action_count = js['actions']['action_count']+1
-
     return [title, action_count, last_loaded]
     
 @logger.catch
 def valid_story(file):
     if file.endswith(".json"):
-        if os.path.getsize(file) < 2*1024*1024: #2MB
-            with open(file, "r") as f:
-                try:
-                    js = json.load(f)
-                except:
-                    pass
-                    return False
-
-                return 'actions' in js
-        else:
-            return True
+        try:
+            valid = False
+            with open(file, 'rb') as f:
+                parser = ijson.parse(f)
+                for prefix, event, value in parser:
+                    if prefix == 'memory':
+                        valid=True
+                        break
+        except:
+            pass
+        return valid
 
 @logger.catch
 def story_sort(base_path, desc=False):

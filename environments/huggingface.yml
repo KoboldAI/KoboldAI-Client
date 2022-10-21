@@ -33,3 +33,4 @@ dependencies:
     - python-socketio[client]
     - ansi2html
     - flask_compress
+    - ijson

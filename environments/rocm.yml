@@ -31,3 +31,4 @@ dependencies:
     - accelerate
     - ansi2html
     - flask_compress
+    - ijson
