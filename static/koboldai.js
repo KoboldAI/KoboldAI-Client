@@ -4001,7 +4001,7 @@ function sendPromptConfiguration() {
 	$(".prompt-config-ph").remove();
 }
 
-function loadNAILorebook(data, filename) {
+async function loadNAILorebook(data, filename) {
 	let lorebookVersion = data.lorebookVersion;
 	let wi_data = {folders: {[filename]: []}, entries: {}};
 	console.log(`Loading NAI lorebook version ${lorebookVersion}`);
@@ -4036,7 +4036,16 @@ function loadNAILorebook(data, filename) {
 
 		i++;
 	}
-	socket.emit("import_world_info", {data: wi_data});
+
+	let r = await fetch("/upload_wi", {
+		method: "POST",
+		headers: {
+			"Content-Type": "application/json"
+		},
+		body: JSON.stringify(wi_data)
+	});
+
+	if (!r.ok) alert("WI upload errored! Please report this.");
 }
 
 async function loadKoboldData(data, filename) {
@@ -4046,7 +4055,15 @@ async function loadKoboldData(data, filename) {
 		socket.emit("load_story_list", "");
 	} else if (data.folders !== undefined && data.entries !== undefined) {
 		// World Info Folder
-		socket.emit("import_world_info", {data: data});
+		let r = await fetch("/upload_wi", {
+			method: "POST",
+			headers: {
+				"Content-Type": "application/json"
+			},
+			body: JSON.stringify(data)
+		});
+
+		if (!r.ok) alert("WI upload errored! Please report this.");
 	} else {
 		// Bad data
 		console.error("Bad data!");
