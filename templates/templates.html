@@ -1,31 +1,32 @@
+<!---------------- World Info Card ---------------------->
 <div draggable="true" class="world_info_card" id="world_info_">
 	<div class="world_info_title_area">
 		<h4 draggable="true" ondragstart="event.preventDefault();event.stopPropagation();" id="world_info_title_"
     		class="world_info_title" onfocus="this.parentElement.parentElement.setAttribute('draggable', 'false');this.setAttribute('draggable', 'false');"></h4>
 		<span id="world_info_delete_" class="world_info_delete">X</span>
 	</div>
-	<div  class="world_info_tag_area" id="world_info_toggle_area_">
+	<div  class="world_info_tag_area world_info_always_include" id="world_info_toggle_area_">
 		Always Include
 	</div>
-	<div id="world_info_tags_" class="world_info_tag_area">
+	<div id="world_info_tags_" class="world_info_tag_area world_info_tag_primary_area">
 		<div>Requires one of:</div>
 	</div>
-	<div id="world_info_secondtags_" class="world_info_tag_area">
+	<div id="world_info_secondtags_" class="world_info_tag_area world_info_tag_secondary_area">
 		<div>And (if present):</div>
 	</div>
-	<div class="world_info_tag_area" id="world_info_wpp_toggle_area_">
+	<div class="world_info_tag_area world_info_wpp_toggle_area" id="world_info_wpp_toggle_area_">
 		Use W++
 	</div>
-	<div class="world_info_tag_area hidden" id="world_info_wpp_area_">
+	<div class="world_info_tag_area hidden world_info_wpp_area" id="world_info_wpp_area_">
 		<!--this part is very sensitive to location. Javascript uses parents to find the above tag for each of the inputs, so don't add stuff without messing with JS-->
-		<select id="wpp_format_" class="settings_select">
+		<select id="wpp_format_" class="settings_select wpp_format">
 			<option>W++</option>
 			<option>Square Bracket Format (SBF)</option>
 		</select>
 		<table>
 			<tr>
 				<td>Type:</td>
-				<td><input draggable="true" type=text id="wpp_type_" 
+				<td><input draggable="true" type=text class="wpp_type" id="wpp_type_" 
 				           onchange="do_wpp(this.parentElement.parentElement.parentElement.parentElement.parentElement)"
 						   onfocus="console.log('focus');this.parentElement.parentElement.parentElement.parentElement.parentElement.setAttribute('draggable', 'false');this.setAttribute('draggable', 'false');"
 						   onblur="console.log('blur');this.parentElement.parentElement.parentElement.parentElement.parentElement.setAttribute('draggable', 'true');this.setAttribute('draggable', 'true');"
@@ -33,17 +34,17 @@
 			</tr>
 			<tr>
 				<td>Name:</td>
-				<td><input draggable="true" ondragstart="event.preventDefault();event.stopPropagation();" type=text id="wpp_name_" 
+				<td><input draggable="true" ondragstart="event.preventDefault();event.stopPropagation();" type=text class="wpp_name" id="wpp_name_" 
 						   onchange="do_wpp(this.parentElement.parentElement.parentElement.parentElement.parentElement)"
 						   onfocus="this.parentElement.parentElement.parentElement.parentElement.parentElement.setAttribute('draggable', 'false');this.setAttribute('draggable', 'false');"
 						   onblur="this.parentElement.parentElement.parentElement.parentElement.parentElement.setAttribute('draggable', 'true');this.setAttribute('draggable', 'true');"></td>
 			</tr>
 		</table>
-		
+		<div class="wpp_attributes_area"></div>
 	</div>
-	<div id="world_info_basic_text_">
+	<div id="world_info_basic_text_" class="world_info_basic_text_area">
 		Text:
-		<textarea draggable="true" ondragstart="event.preventDefault();event.stopPropagation();" id="world_info_entry_text_" class="world_info_text fullwidth" oninput="autoResize(this, 60)" 
+		<textarea draggable="true" ondragstart="event.preventDefault();event.stopPropagation();" id="world_info_entry_text_" class="world_info_text world_info_entry_text fullwidth" oninput="autoResize(this, 60)" 
 		onfocus="this.parentElement.parentElement.setAttribute('draggable', 'false');this.setAttribute('draggable', 'false');autoResize(this, 60)" 
 		onblur="this.parentElement.parentElement.setAttribute('draggable', 'true');this.setAttribute('draggable', 'true');this.style.height='60px';"></textarea>
 	</div>
@@ -64,11 +65,12 @@
 	<div>
 		Comment:
 		<textarea draggable="true" ondragstartondragstart="event.preventDefault();event.stopPropagation();" rows=1 id="world_info_comment_" 
-				  class="world_info_text fullwidth" oninput="autoResize(this, 60)" onfocus="autoResize(this, 60)" onblur="this.style.height='60px';"
+				  class="world_info_text world_info_comment fullwidth" oninput="autoResize(this, 60)" onfocus="autoResize(this, 60)" onblur="this.style.height='60px';"
 				  onfocus="this.parentElement.parentElement.setAttribute('draggable', 'false');this.setAttribute('draggable', 'false');;"
 			      onblur="this.parentElement.parentElement.setAttribute('draggable', 'true');this.setAttribute('draggable', 'true');"></textarea>
 	</div>
 </div>
+<!---------------- Phrase Bias ---------------------->
 <div id="empty_bias">
 	<div class="bias_phrase">
 		<input type=text placeholder="Word or Phrase to Bias" onchange="save_bias(this);"/>

@@ -442,7 +442,7 @@ function do_prompt(data) {
 		assign_world_info_to_action(-1, null);
 	}
 	//if we have a prompt we need to disable the theme area, or enable it if we don't
-	if (data.value != "") {
+	if (data.value[0].text != "") {
 		document.getElementById('input_text').placeholder = "Enter text here (shift+enter for new line)";
 		document.getElementById('themerow').classList.add("hidden");
 		document.getElementById('themetext').value = "";
@@ -1671,7 +1671,6 @@ function world_info_entry_used_in_game(data) {
 }
 
 function process_world_info_entry(data) {
-	console.log(data);
 	let temp = []
 	if (Array.isArray(data)) {
 		temp = data;
@@ -1690,21 +1689,23 @@ function world_info_entry(data) {
 	var original_focus = null;
 	if (document.getElementById("world_info_"+data.uid)) {
 		//First let's get the id of the element we're on so we can restore it after removing the object
-		original_focus = document.activeElement.id;
+		//original_focus = document.activeElement.id;
 		//console.log("Active ID: "+original_focus);
 		//console.log(document.activeElement);
-		document.getElementById("world_info_"+data.uid).remove();
+		//document.getElementById("world_info_"+data.uid).remove();
+		world_info_card = document.getElementById("world_info_"+data.uid);
+	} else {
+		world_info_card_template = document.getElementById("world_info_");
+		world_info_card = world_info_card_template.cloneNode(true);
+		world_info_card.id = "world_info_"+data.uid;
+		world_info_card.setAttribute("uid", data.uid);
 	}
-	world_info_card_template = document.getElementById("world_info_");
-	world_info_card = world_info_card_template.cloneNode(true);
-	world_info_card.id = "world_info_"+data.uid;
-	world_info_card.setAttribute("uid", data.uid);
 	if (data.used_in_game) {
 		world_info_card.classList.add("used_in_game");
 	} else {
 		world_info_card.classList.remove("used_in_game");
 	}
-	title = world_info_card.querySelector('#world_info_title_')
+	title = world_info_card.querySelector('.world_info_title')
 	title.id = "world_info_title_"+data.uid;
 	title.textContent = data.title;
 	title.setAttribute("uid", data.uid);
@@ -1726,7 +1727,7 @@ function world_info_entry(data) {
 	title.addEventListener('dragover', dragOver);
 	title.addEventListener('dragleave', dragLeave);
 	title.addEventListener('drop', drop);
-	delete_icon = world_info_card.querySelector('#world_info_delete_');
+	delete_icon = world_info_card.querySelector('.world_info_delete');
 	delete_icon.id = "world_info_delete_"+data.uid;
 	delete_icon.setAttribute("uid", data.uid);
 	delete_icon.setAttribute("wi-title", data.title);
@@ -1739,46 +1740,55 @@ function world_info_entry(data) {
 			}
 		}
 	}
-	tags = world_info_card.querySelector('#world_info_tags_');
+	tags = world_info_card.querySelector('.world_info_tag_primary_area');
 	tags.id = "world_info_tags_"+data.uid;
 	//add tag content here
 	add_tags(tags, data);
 	
-	secondarytags = world_info_card.querySelector('#world_info_secondtags_');
+	secondarytags = world_info_card.querySelector('.world_info_tag_secondary_area');
 	secondarytags.id = "world_info_secondtags_"+data.uid;
 	//add second tag content here
 	add_secondary_tags(secondarytags, data);
 	//w++ toggle
-	wpp_toggle_area = world_info_card.querySelector('#world_info_wpp_toggle_area_');
+	wpp_toggle_area = world_info_card.querySelector('.world_info_wpp_toggle_area');
 	wpp_toggle_area.id = "world_info_wpp_toggle_area_"+data.uid;
-	wpp_toggle = document.createElement("input");
-	wpp_toggle.id = "world_info_wpp_toggle_"+data.uid;
-	wpp_toggle.setAttribute("type", "checkbox");
-	wpp_toggle.setAttribute("uid", data.uid);
-	wpp_toggle.checked = data.use_wpp;
-	wpp_toggle.setAttribute("data-size", "mini");
-	wpp_toggle.setAttribute("data-onstyle", "success"); 
-	wpp_toggle.setAttribute("data-toggle", "toggle");
-	wpp_toggle.onchange = function () {
-							if (this.checked) {
-								document.getElementById("world_info_wpp_area_"+this.getAttribute('uid')).classList.remove("hidden");
-								document.getElementById("world_info_basic_text_"+this.getAttribute('uid')).classList.add("hidden");
-							} else {
-								document.getElementById("world_info_wpp_area_"+this.getAttribute('uid')).classList.add("hidden");
-								document.getElementById("world_info_basic_text_"+this.getAttribute('uid')).classList.remove("hidden");
+	if (document.getElementById("world_info_wpp_toggle_"+data.uid)) {
+		wpp_toggle = document.getElementById("world_info_wpp_toggle_"+data.uid);
+	} else {
+		wpp_toggle = document.createElement("input");
+		wpp_toggle.id = "world_info_wpp_toggle_"+data.uid;
+		wpp_toggle.setAttribute("type", "checkbox");
+		wpp_toggle.setAttribute("uid", data.uid);
+		wpp_toggle.setAttribute("data-size", "mini");
+		wpp_toggle.setAttribute("data-onstyle", "success"); 
+		wpp_toggle.setAttribute("data-toggle", "toggle");
+		wpp_toggle.onchange = function () {
+								if (this.checked) {
+									document.getElementById("world_info_wpp_area_"+this.getAttribute('uid')).classList.remove("hidden");
+									document.getElementById("world_info_basic_text_"+this.getAttribute('uid')).classList.add("hidden");
+								} else {
+									document.getElementById("world_info_wpp_area_"+this.getAttribute('uid')).classList.add("hidden");
+									document.getElementById("world_info_basic_text_"+this.getAttribute('uid')).classList.remove("hidden");
+								}
+								
+								world_info_data[this.getAttribute('uid')]['use_wpp'] = this.checked;
+								send_world_info(this.getAttribute('uid'));
+								this.classList.add("pulse");
 							}
-							
-							world_info_data[this.getAttribute('uid')]['use_wpp'] = this.checked;
-							send_world_info(this.getAttribute('uid'));
-							this.classList.add("pulse");
-						}
-	wpp_toggle_area.append(wpp_toggle);
+		wpp_toggle_area.append(wpp_toggle);
+	}
+	wpp_toggle.checked = data.use_wpp;
+	
 	//w++ data
 	let last_new_value = null
-	world_info_wpp_area = world_info_card.querySelector('#world_info_wpp_area_');
+	world_info_wpp_area = world_info_card.querySelector('.world_info_wpp_area');
 	world_info_wpp_area.id = "world_info_wpp_area_"+data.uid;
 	world_info_wpp_area.setAttribute("uid", data.uid);
-	wpp_format = world_info_card.querySelector('#wpp_format_');
+	wpp_attributes_area = world_info_card.querySelector('.wpp_attributes_area');
+	while (wpp_attributes_area.firstChild) { 
+		wpp_attributes_area.removeChild(wpp_attributes_area.firstChild);
+	}
+	wpp_format = world_info_card.querySelector('.wpp_format');
 	wpp_format.id = "wpp_format_"+data.uid;
 	wpp_format.setAttribute("uid", data.uid);
 	wpp_format.setAttribute("data_type", "format");
@@ -1790,12 +1800,12 @@ function world_info_entry(data) {
 	} else {
 		wpp_format.selectedIndex = 1;
 	}
-	wpp_type = world_info_card.querySelector('#wpp_type_');
+	wpp_type = world_info_card.querySelector('.wpp_type');
 	wpp_type.id = "wpp_type_"+data.uid;
 	wpp_type.setAttribute("uid", data.uid);
 	wpp_type.setAttribute("data_type", "type");
 	wpp_type.value = data.wpp.type;
-	wpp_name = world_info_card.querySelector('#wpp_name_');
+	wpp_name = world_info_card.querySelector('.wpp_name');
 	wpp_name.id = "wpp_name_"+data.uid;
 	wpp_name.setAttribute("uid", data.uid);
 	wpp_name.setAttribute("data_type", "name");
@@ -1824,7 +1834,7 @@ function world_info_entry(data) {
 				input.id = "wpp_"+data.uid+"_attr_"+i
 				input.onchange = function() {do_wpp(this.parentElement.parentElement)};
 				attribute_area.append(input);
-				world_info_wpp_area.append(attribute_area);
+				wpp_attributes_area.append(attribute_area);
 				j=-1;
 				for (value of values) {
 					j+=1;
@@ -1845,7 +1855,7 @@ function world_info_entry(data) {
 					input.setAttribute("data_type", "value");
 					input.id = "wpp_"+data.uid+"_value_"+i+"_"+j;
 					value_area.append(input);
-					world_info_wpp_area.append(value_area);
+					wpp_attributes_area.append(value_area);
 				}
 				value_area = document.createElement("div");
 				label = document.createElement("span");
@@ -1864,7 +1874,7 @@ function world_info_entry(data) {
 				last_new_value = input;
 				input.onchange = function() {if (this.value != "") {on_new_wi_item = this.id;do_wpp(this.parentElement.parentElement)}};
 				value_area.append(input);
-				world_info_wpp_area.append(value_area);
+				wpp_attributes_area.append(value_area);
 			}
 		}
 	}
@@ -1885,14 +1895,14 @@ function world_info_entry(data) {
 	input.id = "wpp_"+data.uid+"_attr_blank";
 	input.onchange = function() {if (this.value != "") {on_new_wi_item=this.id;do_wpp(this.parentElement.parentElement)}};
 	attribute_area.append(input);
-	world_info_wpp_area.append(attribute_area);
+	wpp_attributes_area.append(attribute_area);
 	
 	
 	
 	//regular data
-	content_area = world_info_card.querySelector('#world_info_basic_text_');
-	content_area.id = "world_info_basic_text_"+data.uid;
-	manual_text = world_info_card.querySelector('#world_info_entry_text_');
+	manual_text_area = world_info_card.querySelector('.world_info_basic_text_area');
+	manual_text_area.id = "world_info_basic_text_"+data.uid;
+	manual_text = world_info_card.querySelector('.world_info_entry_text');
 	manual_text.id = "world_info_entry_text_"+data.uid;
 	manual_text.setAttribute("uid", data.uid);
 	manual_text.value = data.manual_text;
@@ -1901,7 +1911,7 @@ function world_info_entry(data) {
 							send_world_info(this.getAttribute('uid'));
 							this.classList.add("pulse");
 						}
-	comment = world_info_card.querySelector('#world_info_comment_');
+	comment = world_info_card.querySelector('.world_info_comment');
 	comment.id = "world_info_comment_"+data.uid;
 	comment.setAttribute("uid", data.uid);
 	comment.value = data.comment;
@@ -1910,22 +1920,26 @@ function world_info_entry(data) {
 							send_world_info(this.getAttribute('uid'));
 							this.classList.add("pulse");
 						}
-	constant_area = world_info_card.querySelector('#world_info_toggle_area_');
+	constant_area = world_info_card.querySelector('.world_info_always_include');
 	constant_area.id = "world_info_toggle_area_"+data.uid;
-	constant = document.createElement("input");
-	constant.id = "world_info_constant_"+data.uid;
-	constant.setAttribute("type", "checkbox");
-	constant.setAttribute("uid", data.uid);
+	if (document.getElementById("world_info_constant_"+data.uid)) {
+		constant = document.getElementById("world_info_constant_"+data.uid);
+	} else {
+		constant = document.createElement("input");
+		constant.id = "world_info_constant_"+data.uid;
+		constant.setAttribute("type", "checkbox");
+		constant.setAttribute("uid", data.uid);
+		constant.setAttribute("data-size", "mini");
+		constant.setAttribute("data-onstyle", "success"); 
+		constant.setAttribute("data-toggle", "toggle");
+		constant.onchange = function () {
+								world_info_data[this.getAttribute('uid')]['constant'] = this.checked;
+								send_world_info(this.getAttribute('uid'));
+								this.classList.add("pulse");
+							}
+		constant_area.append(constant);
+	}
 	constant.checked = data.constant;
-	constant.setAttribute("data-size", "mini");
-	constant.setAttribute("data-onstyle", "success"); 
-	constant.setAttribute("data-toggle", "toggle");
-	constant.onchange = function () {
-							world_info_data[this.getAttribute('uid')]['constant'] = this.checked;
-							send_world_info(this.getAttribute('uid'));
-							this.classList.add("pulse");
-						}
-	constant_area.append(constant);
 						
 	if (!(document.getElementById("world_info_folder_"+data.folder))) {
 		folder = document.createElement("div");
@@ -1959,6 +1973,9 @@ function world_info_entry(data) {
 	if (data.constant) {
 		document.getElementById("world_info_tags_"+data.uid).classList.add("hidden");
 		document.getElementById("world_info_secondtags_"+data.uid).classList.add("hidden");
+	} else {
+		document.getElementById("world_info_tags_"+data.uid).classList.remove("hidden");
+		document.getElementById("world_info_secondtags_"+data.uid).classList.remove("hidden");
 	}
 	
 	//$('#world_info_constant_'+data.uid).bootstrapToggle();
@@ -3179,6 +3196,9 @@ function removeA(arr) {
 }
 
 function add_tags(tags, data) {
+	while (tags.firstChild) { 
+		tags.removeChild(tags.firstChild);
+	}
 	for (tag of data.key) {
 		tag_item = document.createElement("span");
 		tag_item.classList.add("tag");
@@ -3254,6 +3274,9 @@ function add_tags(tags, data) {
 }
 
 function add_secondary_tags(tags, data) {
+	while (tags.firstChild) { 
+		tags.removeChild(tags.firstChild);
+	}
 	for (tag of data.keysecondary) {
 		tag_item = document.createElement("span");
 		tag_item.classList.add("tag");
