@@ -20,9 +20,11 @@ dependencies:
   - marshmallow>=3.13
   - apispec-webframeworks
   - loguru
+  - termcolor
   - pip:
     - flask-cloudflared
     - flask-ngrok
     - lupa==1.10
     - transformers>=4.20.1
     - accelerate
+    - git+https://github.com/VE-FORBRYDERNE/mkultra

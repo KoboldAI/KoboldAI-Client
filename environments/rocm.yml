@@ -17,6 +17,7 @@ dependencies:
   - marshmallow>=3.13
   - apispec-webframeworks
   - loguru
+  - termcolor
   - pip:
     - --extra-index-url https://download.pytorch.org/whl/rocm5.1.1
     - torch
@@ -26,3 +27,4 @@ dependencies:
     - lupa==1.10
     - transformers>=4.20.1
     - accelerate
+    - git+https://github.com/VE-FORBRYDERNE/mkultra
