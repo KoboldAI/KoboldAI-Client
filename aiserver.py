@@ -8534,10 +8534,10 @@ def UI_2_upload_world_info_folder(data):
     logger.debug("Calcing AI Text from WI Upload")
     koboldai_vars.calc_ai_text()
 
-@socketio.on('import_world_info')
+@app.route("/upload_wi", methods=["POST"])
 @logger.catch
-def UI_2_import_world_info(data):
-    wi_data = data["data"]
+def UI_2_import_world_info():
+    wi_data = request.get_json()
     uids = {}
 
     for folder_name, children in wi_data["folders"].items():
@@ -8558,6 +8558,7 @@ def UI_2_import_world_info(data):
                     wpp=entry_data["wpp"],
                 )
             koboldai_vars.worldinfo_v2.add_item_to_folder(uids[child], folder_name)
+    return ":)"
 
 @socketio.on("search_wi")
 @logger.catch
