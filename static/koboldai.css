@@ -2398,7 +2398,11 @@ body {
 	color: white
 }
 
-
+#welcome-logo {
+	pointer-events: none;
+	max-width: 720px;
+	width: 100%;
+}
 /*---------------------------------- Global ------------------------------------------------*/
 .hidden {
 	display: none;
