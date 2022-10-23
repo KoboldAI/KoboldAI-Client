@@ -107,7 +107,7 @@
 		<div id="probabilities">
 			
 		</div>
-		<span id="debug-dump" class="cursor" onclick="showPopup('debug-file-prompt');">Download debug dump</span>
+		<span id="debug-dump" class="cursor" onclick="openPopup('debug-file-prompt');">Download debug dump</span>
 		<div id="Images">
 			<button class="settings_button var_sync_alt_system_generating_image" onclick="socket.emit('generate_image', {})">Generate Image</button>
 			<div id="action image"></div>
@@ -411,7 +411,7 @@
 					</table>
 				</div>
 			</div>
-			<div class="advanced_theme cursor" onclick='document.getElementById("advanced_theme_editor").classList.remove("hidden");'>
+			<div class="advanced_theme cursor" onclick='openPopup("advanced_theme_editor");'>
 				<span>Advanced Theme</h4>
 			</div>
 		</div>
@@ -442,6 +442,6 @@
 	<div id="settings_footer" class="settings_footer">
 		<span>Execution Time: <span id="Execution Time"></span></span> | 
 		<span>Remaining Time: <span class="var_sync_model_tqdm_rem_time"></span></span> | 
-		<a onclick='socket.emit("get_log", {});document.getElementById("log_popup").classList.remove("hidden");' class='cursor'>Log</a>
+		<a onclick='socket.emit("get_log", {});openPopup("log-popup");' class='cursor'>Log</a>
 	</div>
 </div>

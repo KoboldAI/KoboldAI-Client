@@ -807,7 +807,7 @@ function load_popup(data) {
 	popup_deleteable = data.deleteable;
 	popup_editable = data.editable;
 	popup_renameable = data.renameable;
-	var popup = document.getElementById("popup");
+	var popup = document.getElementById("file-browser");
 	var popup_title = document.getElementById("popup_title");
 	popup_title.textContent = data.popup_title;
 	if (data.popup_title == "Select Story to Load") {
@@ -850,7 +850,7 @@ function load_popup(data) {
 		
 	}
 	
-	popup.classList.remove("hidden");
+	openPopup("file-browser");
 	
 	//adjust accept button
 	if (data.call_back == "") {
@@ -863,7 +863,7 @@ function load_popup(data) {
 		accept.setAttribute("selected_value", "");
 		accept.onclick = function () {
 								socket.emit(this.getAttribute("emit"), this.getAttribute("selected_value"));
-								document.getElementById("popup").classList.add("hidden");
+								closePopups();
 						  };
 	}
 					  
@@ -1211,7 +1211,7 @@ function popup_edit_file(data) {
 	accept.onclick = function () {
 							var textarea = document.getElementById("filecontents");
 							socket.emit("popup_change_file", {"file": textarea.getAttribute("filename"), "data": textarea.value});
-							document.getElementById("popup").classList.add("hidden");
+							closePopups();
 					  };
 	
 	var textarea = document.createElement("textarea");
@@ -1266,8 +1266,6 @@ function getModelParameterCount(modelName) {
 }
 
 function show_model_menu(data) {
-	document.getElementById("loadmodelcontainer").classList.remove("hidden");
-	
 	//clear old options
 	document.getElementById("modelkey").classList.add("hidden");
 	document.getElementById("modelkey").value = "";
@@ -1402,6 +1400,7 @@ function show_model_menu(data) {
 	var accept = document.getElementById("btn_loadmodelaccept");
 	accept.disabled = true;
 	
+	openPopup("load-model");
 }
 
 function selected_model_info(data) {
@@ -1652,7 +1651,7 @@ function load_model() {
 			   'disk_layers': disk_layers, 'url': document.getElementById("modelurl").value, 
 			   'online_model': selected_models};
 	socket.emit("load_model", message);
-	document.getElementById("loadmodelcontainer").classList.add("hidden");
+	closePopups();
 }
 
 function world_info_entry_used_in_game(data) {
@@ -2241,9 +2240,7 @@ function world_info_folder(data) {
 }
 
 function show_error_message(data) {
-	error_message_box = document.getElementById('error_message');
-	error_message_box.classList.remove("hidden");
-	error_box_data = error_message_box.querySelector("#popup_list_area")
+	const error_box_data = $el("#error-popup").querySelector("#popup_list_area")
 	//clear out the error box
 	while (error_box_data.firstChild) {
 		error_box_data.removeChild(error_box_data.firstChild);
@@ -2257,6 +2254,7 @@ function show_error_message(data) {
 		//console.log(item);
 		$e("div", error_box_data, {'innerHTML': item, 'classes': ['console_text']})
 	}
+	openPopup("error-popup");
 }
 
 function do_wpp(wpp_area) {
@@ -2309,8 +2307,8 @@ function process_log_message(full_data) {
 		}
 		
 		//put log message in log popup
-		log_popup = document.getElementById('log_popup');
-		log_popup_data = log_popup.querySelector("#popup_list_area")
+		const log_popup = document.getElementById('log-popup');
+		const log_popup_data = log_popup.querySelector("#popup_list_area")
 		//clear out the error box
 		for (item of data['html']) {
 			$e("div", log_popup_data, {'innerHTML': item, 'classes': ['console_text']})
@@ -2384,10 +2382,7 @@ function new_story() {
 }
 
 function save_as_story(response) {
-	if (response == "overwrite?") {
-		document.getElementById('save-confirm').classList.remove('hidden')
-	}
-	
+	if (response === "overwrite?") openPopup("save-confirm");
 }
 
 function save_bias(item) {
@@ -2586,7 +2581,7 @@ function edit_game_text() {
 
 function save_preset() {
 	socket.emit("save_new_preset", {"preset": document.getElementById("new_preset_name").value, "description": document.getElementById("new_preset_description").value});
-	document.getElementById('save_preset').classList.add('hidden');
+	closePopups();
 }
 
 //--------------------------------------------General UI Functions------------------------------------
@@ -2696,7 +2691,7 @@ function get_caret_position(target) {
 }
 
 function show_save_preset() {
-	document.getElementById("save_preset").classList.remove("hidden");
+	openPopup("save-preset");
 }
 
 function autoResize(element, min_size=200) {
@@ -3670,13 +3665,6 @@ function close_menus() {
 	document.getElementById("main-grid").classList.remove("story_menu-open");
 	
 	//close popup menus
-	document.getElementById('popup').classList.add("hidden");
-	document.getElementById('loadmodelcontainer').classList.add("hidden");
-	document.getElementById('save-confirm').classList.add("hidden");
-	document.getElementById('error_message').classList.add("hidden");
-	document.getElementById("advanced_theme_editor").classList.add("hidden");
-	document.getElementById("save_preset").classList.add("hidden");
-	document.getElementById("log_popup").classList.add("hidden");
 	closePopups();
 	
 	//unselect sampler items
@@ -3977,7 +3965,7 @@ async function downloadDebugFile(redact=true) {
 }
 
 function configurePrompt(placeholderData) {
-	showPopup("prompt-config");
+	openPopup("prompt-config");
 
 	const placeholders = document.querySelector("#prompt-config-placeholders");
 
@@ -4600,7 +4588,7 @@ function open_finder() {
 	finder_selection_index = -1;
 	updateFinderMode("ui");
 	
-	showPopup("finder");
+	openPopup("finder");
 	finderInput.focus();
 }
 
@@ -4674,7 +4662,7 @@ function updateTitle() {
 }
 
 function openClubImport() {
-	document.getElementById("import_aidg_club_popup").classList.remove("hidden");
+	openPopup("aidg-import-popup");
 }
 
 //// INIT ////
@@ -4684,7 +4672,7 @@ document.onkeyup = detect_key_up;
 document.getElementById("input_text").onkeydown = detect_enter_submit;
 
 /* -- Popups -- */
-function showPopup(id) {
+function openPopup(id) {
 	closePopups();
 
 	const container = $el("#popup-container");
