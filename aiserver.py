@@ -5848,7 +5848,10 @@ def rwkv_init(model_class: str, use_gpu: bool = False):
         raise RuntimeError(f"No config for model '{model_class}' found!")
     
     if not os.path.exists(TOKENIZER_PATH):
-        raise RuntimeError(f"Can't find tokenizer at '{TOKENIZER_PATH}'!")
+        raise RuntimeError(
+            f"Can't find tokenizer at '{TOKENIZER_PATH}'! Please download it from " \
+            f"https://raw.githubusercontent.com/BlinkDL/RWKV-LM/main/RWKV-v4/20B_tokenizer.json and place it at '{TOKENIZER_PATH}"
+        )
     
     # Model stuff
     from RWKV4.src.model_run import RWKV_RNN
