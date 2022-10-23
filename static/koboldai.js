@@ -211,6 +211,7 @@ function fix_text(val) {
 
 function create_options(action) {
 	//Set all options before the next chunk to hidden
+	document.getElementById('main-grid').setAttribute('option_length', action.action.Options.length);
 	var option_container = document.getElementById("Select Options");
 	var current_chunk = parseInt(document.getElementById("action_count").textContent)+1;
 	if (current_chunk != action.id.toString()) {
@@ -757,17 +758,17 @@ function var_changed(data) {
 	}
 	
 	//if we changed the gen amount, make sure our option area is set/not set
-	if ((data.classname == 'model') && (data.name == 'numseqs')) {
-		if (data.value == 1) {
-			//allow our options to collapse to 0%, but no more than 30% (in case there is a redo or the like)
-			var r = document.querySelector(':root');
-			r.style.setProperty('--story_options_size', 'fit-content(30%)');
-		} else {
-			//static 30%
-			var r = document.querySelector(':root');
-			r.style.setProperty('--story_options_size', '30%');
-		}
-	}
+	//if ((data.classname == 'model') && (data.name == 'numseqs')) {
+	//	if (data.value == 1) {
+	//		//allow our options to collapse to 0%, but no more than 30% (in case there is a redo or the like)
+	//		var r = document.querySelector(':root');
+	//		r.style.setProperty('--story_options_size', 'fit-content(30%)');
+	//	} else {
+	//		//static 30%
+	//		var r = document.querySelector(':root');
+	//		r.style.setProperty('--story_options_size', 'fit-content(30%)');
+	//	}
+	//}
 	
 	//if we're updating generated tokens, let's show that in our status bar
 	if ((data.classname == 'model') && (data.name == 'tqdm_progress')) {
