@@ -568,7 +568,8 @@ class settings(object):
 class model_settings(settings):
     local_only_variables = ['badwordsids', 'apikey', 'tqdm', 'socketio', 'default_preset', 'koboldai_vars']
     no_save_variables = ['tqdm', 'tqdm_progress', 'tqdm_rem_time', 'socketio', 'modelconfig', 'custmodpth', 'generated_tkns', 
-                         'loaded_layers', 'total_layers', 'total_download_chunks', 'downloaded_chunks', 'presets', 'default_preset', 'koboldai_vars']
+                         'loaded_layers', 'total_layers', 'total_download_chunks', 'downloaded_chunks', 'presets', 'default_preset', 
+                         'koboldai_vars', 'welcome', 'welcome_default']
     settings_name = "model"
     def __init__(self, socketio, koboldai_vars):
         self.socketio = socketio
@@ -593,7 +594,7 @@ class model_settings(settings):
         self.oaiapikey   = ""     # API key to use for OpenAI API calls
         self.configname = None
         self.online_model = ''
-        self.welcome_default = "<img src='static/Welcome_Logo.png' style='max-width: 720px; width: 100%;'><br/>Please load a model from the left." # Custom Welcome Text
+        self.welcome_default = "<img id='welcome-logo' src='static/Welcome_Logo.png' draggable='False'><br/>Please load a model from the left." # Custom Welcome Text
         self.welcome     = self.welcome_default
         self.koboldai_vars = koboldai_vars
         
@@ -690,7 +691,12 @@ class model_settings(settings):
             else:
                 self.tqdm.update(value-old_value)
                 if self.total_download_chunks is not None:
-                    self.tqdm_progress = 0 if self.total_download_chunks==0 else round(float(self.downloaded_chunks)/float(self.total_download_chunks)*100, 1)
+                    if self.total_download_chunks==0:
+                        self.tqdm_progress = 0
+                    elif float(self.downloaded_chunks) > float(self.total_download_chunks):
+                        self.tqdm_progress = 100
+                    else: 
+                        self.tqdm_progress = round(float(self.downloaded_chunks)/float(self.total_download_chunks)*100, 1)
                 else:
                     self.tqdm_progress = 0
                 if self.tqdm.format_dict['rate'] is not None:

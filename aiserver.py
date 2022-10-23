@@ -277,10 +277,10 @@ model_menu = {
 
 class Send_to_socketio(object):
     def write(self, bar):
-        bar = bar.replace("\r", "").replace("\n", "")
-        if bar != "":
-            logger.info(bar)
-            #print('\r' + bar, end='')
+        bar = bar.replace("\r", "").replace("\n", "").replace(chr(0), "")
+        if bar != "" and [ord(num) for num in bar] != [27, 91, 65]: #No idea why we're getting the 27, 1, 65 character set, just killing to so we can move on
+            #logger.info(bar)
+            print('\r' + bar, end='')
             time.sleep(0.01)
             try:
                 emit('from_server', {'cmd': 'model_load_status', 'data': bar.replace(" ", "&nbsp;")}, broadcast=True, room="UI_1")
@@ -1788,9 +1788,8 @@ def patch_transformers_download():
     class Send_to_socketio(object):
         def write(self, bar):
             bar = bar.replace("\r", "").replace("\n", "")
-            logger.debug(bar)
             
-            if bar != "":
+            if bar != "" and [ord(num) for num in bar] != [27, 91, 65]: #No idea why we're getting the 27, 1, 65 character set, just killing to so we can move on
                 try:
                     print('\r' + bar, end='')
                     emit('from_server', {'cmd': 'model_load_status', 'data': bar.replace(" ", "&nbsp;")}, broadcast=True, room="UI_1")

@@ -1141,28 +1141,26 @@ body {
 	grid-template-areas: "menuicon gamescreen options lefticon"
 						 "menuicon theme theme lefticon"
 						 "menuicon inputrow inputrow lefticon";
-	grid-template-columns: 30px auto var(--story_options_size) 30px;
+	grid-template-columns: 30px auto fit-content(30%) 30px;
 	grid-template-rows: auto min-content 100px;
+}
+.main-grid[option_length="0"][model_numseqs="1"] {
+	grid-template-columns: 30px auto 0px 30px;
 }
 
 .main-grid.settings_pinned {
 	margin-left: var(--flyout_menu_width);
-	*grid-template-columns: 30px auto var(--story_options_size) 30px;
 }
+
 .main-grid.story_pinned {
 	margin-right: var(--flyout_menu_width);
-	/*margin-left: var(--setting_menu_closed_width_no_pins_width);
-	grid-template-areas: var(--story_pinned_areas);
-	grid-template-columns: var(--story_pinned_area_widths);*/
 }
 .main-grid.settings_pinned.story_pinned {
 	margin-left: var(--flyout_menu_width);
 	margin-right: var(--flyout_menu_width);
-	grid-template-areas: "menuicon gamescreen options lefticon"
-						 "menuicon theme theme lefticon"
-						 "menuicon inputrow inputrow lefticon";
-	grid-template-columns: 30px auto var(--story_options_size) 30px;
 }
+
+
 }
 
 @media only screen and (max-aspect-ratio: 7/5) {
@@ -2365,6 +2363,13 @@ body {
 	color: white
 }
 
+#welcome-logo {
+	pointer-events: none;
+	max-width: 720px;
+	width: 100%;
+}
+
+/* Popups */
 #popup-container {
 	position: absolute;
 	left: 0px;

@@ -223,6 +223,7 @@ function fix_text(val) {
 
 function create_options(action) {
 	//Set all options before the next chunk to hidden
+	document.getElementById('main-grid').setAttribute('option_length', action.action.Options.length);
 	var option_container = document.getElementById("Select Options");
 	var current_chunk = parseInt(document.getElementById("action_count").textContent)+1;
 	if (current_chunk != action.id.toString()) {
@@ -769,17 +770,17 @@ function var_changed(data) {
 	}
 	
 	//if we changed the gen amount, make sure our option area is set/not set
-	if ((data.classname == 'model') && (data.name == 'numseqs')) {
-		if (data.value == 1) {
-			//allow our options to collapse to 0%, but no more than 30% (in case there is a redo or the like)
-			var r = document.querySelector(':root');
-			r.style.setProperty('--story_options_size', 'fit-content(30%)');
-		} else {
-			//static 30%
-			var r = document.querySelector(':root');
-			r.style.setProperty('--story_options_size', '30%');
-		}
-	}
+	//if ((data.classname == 'model') && (data.name == 'numseqs')) {
+	//	if (data.value == 1) {
+	//		//allow our options to collapse to 0%, but no more than 30% (in case there is a redo or the like)
+	//		var r = document.querySelector(':root');
+	//		r.style.setProperty('--story_options_size', 'fit-content(30%)');
+	//	} else {
+	//		//static 30%
+	//		var r = document.querySelector(':root');
+	//		r.style.setProperty('--story_options_size', 'fit-content(30%)');
+	//	}
+	//}
 	
 	//if we're updating generated tokens, let's show that in our status bar
 	if ((data.classname == 'model') && (data.name == 'tqdm_progress')) {
@@ -1700,7 +1701,7 @@ function world_info_entry(data) {
 	var original_focus = null;
 	if (document.getElementById("world_info_"+data.uid)) {
 		//First let's get the id of the element we're on so we can restore it after removing the object
-		//original_focus = document.activeElement.id;
+		original_focus = document.activeElement.id;
 		//console.log("Active ID: "+original_focus);
 		//console.log(document.activeElement);
 		//document.getElementById("world_info_"+data.uid).remove();
@@ -1829,7 +1830,7 @@ function world_info_entry(data) {
 			if (attribute != '') {
 				i += 1;
 				attribute_area = document.createElement("div");
-				label = document.createElement("span");
+				let label = document.createElement("span");
 				label.textContent = "\xa0\xa0\xa0\xa0Attribute: ";
 				attribute_area.append(label);
 				input = document.createElement("input");
@@ -1843,7 +1844,7 @@ function world_info_entry(data) {
 				input.setAttribute("uid", data.uid);
 				input.setAttribute("data_type", "attribute");
 				input.id = "wpp_"+data.uid+"_attr_"+i
-				input.onchange = function() {do_wpp(this.parentElement.parentElement)};
+				input.onchange = function() {do_wpp(this.parentElement.parentElement.parentElement)};
 				attribute_area.append(input);
 				wpp_attributes_area.append(attribute_area);
 				j=-1;
@@ -1857,7 +1858,7 @@ function world_info_entry(data) {
 					input.type = "text";
 					input.setAttribute("contenteditable", true);
 					input.ondragstart=function() {event.preventDefault();event.stopPropagation();};
-					input.onchange = function() {do_wpp(this.parentElement.parentElement)};
+					input.onchange = function() {do_wpp(this.parentElement.parentElement.parentElement)};
 					input.onfocus=function() {this.parentElement.parentElement.parentElement.setAttribute('draggable', 'false');this.setAttribute('draggable', 'false');};
 					input.onblur=function() {this.parentElement.parentElement.parentElement.setAttribute('draggable', 'true');this.setAttribute('draggable', 'true');};
 					input.ondragstart=function() {event.preventDefault();event.stopPropagation();};
@@ -1883,7 +1884,7 @@ function world_info_entry(data) {
 				input.setAttribute("data_type", "value");
 				input.id = "wpp_"+data.uid+"_value_"+i+"_blank";
 				last_new_value = input;
-				input.onchange = function() {if (this.value != "") {on_new_wi_item = this.id;do_wpp(this.parentElement.parentElement)}};
+				input.onchange = function() {if (this.value != "") {on_new_wi_item = this.id;do_wpp(this.parentElement.parentElement.parentElement)}};
 				value_area.append(input);
 				wpp_attributes_area.append(value_area);
 			}
@@ -1904,7 +1905,7 @@ function world_info_entry(data) {
 	input.setAttribute("value_num", i);
 	input.setAttribute("data_type", "attribute");
 	input.id = "wpp_"+data.uid+"_attr_blank";
-	input.onchange = function() {if (this.value != "") {on_new_wi_item=this.id;do_wpp(this.parentElement.parentElement)}};
+	input.onchange = function() {if (this.value != "") {on_new_wi_item=this.id;do_wpp(this.parentElement.parentElement.parentElement)}};
 	attribute_area.append(input);
 	wpp_attributes_area.append(attribute_area);
 	
