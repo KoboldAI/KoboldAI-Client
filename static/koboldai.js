@@ -1690,7 +1690,7 @@ function world_info_entry(data) {
 	var original_focus = null;
 	if (document.getElementById("world_info_"+data.uid)) {
 		//First let's get the id of the element we're on so we can restore it after removing the object
-		//original_focus = document.activeElement.id;
+		original_focus = document.activeElement.id;
 		//console.log("Active ID: "+original_focus);
 		//console.log(document.activeElement);
 		//document.getElementById("world_info_"+data.uid).remove();
