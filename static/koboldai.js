@@ -105,6 +105,18 @@ const context_menu_actions = [
 	// {label: "View Token Probabilities", icon: "account_tree", visibilityCondition: "SELECTION", click: view_selection_probabilities},
 ];
 
+// CTRL-[X]
+const shortcuts = [
+	{key: "k", desc: "Finder", func: open_finder},
+	{key: "/", desc: "Help screen", func: () => openPopup("shortcuts-popup")},
+	{key: "z", desc: "Undoes last story action", func: () => socket.emit("back", {})},
+	{key: "y", desc: "Redoes last story action", func: () => socket.emit("redo", {})},
+	{key: "e", desc: "Retries last story action", func: () => socket.emit("retry", {})},
+	{key: "m", desc: "Focuses Memory", func: () => focusEl("#memory")},
+	{key: "l", desc: "Focuses Author's Note", func: () => focusEl("#authors_notes")}, // CTRL-N is reserved :^(
+	{key: "g", desc: "Focuses game text", func: () => focusEl("#input_text")},
+]
+
 function $el(selector) {
 	// We do not preemptively fetch all elements upon execution (wall of consts)
 	// due to the layer of mental overhead it adds to debugging and reading
@@ -4150,16 +4162,20 @@ function highlightEl(element) {
 		return;
 	}
 	
-	let area = $(element).closest(".tab-target")[0];
-	
-	if (!area) {
-		console.error("No error? :^(");
-		return;
+	const area = $(element).closest(".tab-target")[0];
+	if (area) {
+		// If we need to click a tab to make the element visible, do so.
+		let tab = Array.from($(".tab")).filter((c) => c.getAttribute("tab-target") === area.id)[0];
+		tab.click();
 	}
-	
-	let tab = Array.from($(".tab")).filter((c) => c.getAttribute("tab-target") === area.id)[0];
-	tab.click();
+
 	element.scrollIntoView();
+	return element;
+}
+
+function focusEl(element) {
+	const el = highlightEl(element);
+	if (el) el.focus();
 }
 
 function addSearchListing(action, highlight) {
@@ -5323,19 +5339,29 @@ function initalizeTooltips() {
 }
 
 /* -- Shortcuts -- */
-document.addEventListener("keydown", function(event) {
-		
-	if (!event.ctrlKey) return;
+(function() {
+	document.addEventListener("keydown", function(event) {
+		if (!event.ctrlKey) return;
 
-	switch (event.key) {
-		// TODO: Add other shortcuts
-		case "k":
-			open_finder()
-			
+		for (const shortcut of shortcuts) {
+			if (shortcut.key !== event.key) continue;
 			event.preventDefault();
-			break;
-}
-});
+			shortcut.func();
+		}
+	});
+
+	// Display shortcuts in popup
+	const shortcutContainer = $el("#shortcut-container");
+	for (const shortcut of shortcuts) {
+		const shortcutRow = $e("div", shortcutContainer, {classes: ["shortcut-item"]});
+		const shortcutEl = $e("div", shortcutRow, {classes: ["shortcut-keys"]});
+		for (const key of ["Ctrl", shortcut.key.toUpperCase()]) {
+			console.log("HELLO")
+			$e("span", shortcutEl, {classes: ["shortcut-key"], innerText: key});
+		}
+		const shortcutDesc = $e("div", shortcutRow, {classes: ["shortcut-desc"], innerText: shortcut.desc});
+	}
+})();
 
 //function to load more actions if nessisary
 function infinite_scroll() {

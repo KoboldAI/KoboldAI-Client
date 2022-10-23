@@ -170,7 +170,7 @@
 
 	<!---------------- Context Viewer ---------------------->
 	<div id="context-viewer" class="popup-window">
-		<div id="context-viewer-header">
+		<div id="context-viewer-header" class="popup-header">
 			<h3 class="noselect">Context Viewer</h3>
 			<div id="context-viewer-header-right">
 				<div>
@@ -238,5 +238,14 @@
 		<!-- Order, default, title, description -->
 		<div id="prompt-config-placeholders"></div>
 		<div id="prompt-config-done" onclick="sendPromptConfiguration();">Done</div>
+	</div>
+
+	<!---------------- Shortcuts ------------------->
+	<div id="shortcuts-popup" class="popup-window">
+		<div class="popup-header">
+			<h2>Shortcuts</h2>
+			<span class="popup-close material-icons-outlined" onclick='closePopups();'>close</span>
+		</div>
+		<div id="shortcut-container"></div>
 	</div>
 </div>
