@@ -594,7 +594,7 @@ class model_settings(settings):
         self.oaiapikey   = ""     # API key to use for OpenAI API calls
         self.configname = None
         self.online_model = ''
-        self.welcome_default = "<img id='welcome-logo' src='static/Welcome_Logo.png'><br/>Please load a model from the left." # Custom Welcome Text
+        self.welcome_default = "<img id='welcome-logo' src='static/Welcome_Logo.png' draggable='False'><br/>Please load a model from the left." # Custom Welcome Text
         self.welcome     = self.welcome_default
         self.koboldai_vars = koboldai_vars
         
