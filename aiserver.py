@@ -8107,8 +8107,8 @@ def UI_2_save_story(data):
         #We need to check to see if there is a file already and if it's not the same story so we can ask the client if this is OK
         save_name = koboldai_vars.story_name if koboldai_vars.story_name != "" else "untitled"
         same_story = True
-        if os.path.exists("stories/{}_v2.json".format(save_name)):
-            with open("stories/{}_v2.json".format(save_name), "r") as settings_file:
+        if os.path.exists("stories/{}.v2.json".format(save_name)):
+            with open("stories/{}.v2.json".format(save_name), "r") as settings_file:
                 json_data = json.load(settings_file)
                 if 'story_id' in json_data:
                     same_story = json_data['story_id'] == koboldai_vars.story_id
@@ -8134,7 +8134,7 @@ def UI_2_save_to_json():
         koboldai_vars.to_json('story_settings'),
         mimetype="application/json",
         headers={"Content-disposition":
-                 "attachment; filename={}_v2.json".format(koboldai_vars.story_name)})
+                 "attachment; filename={}.v2.json".format(koboldai_vars.story_name)})
     
     
 #==================================================================#
