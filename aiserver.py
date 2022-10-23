@@ -144,7 +144,7 @@ model_menu = {
         ["Untuned Fairseq Dense", "fsdlist", "", True],
         ["Untuned Bloom", "bloomlist", "", True],
         ["Untuned XGLM", "xglmlist", "", True],
-        ["Untuned RWKV-4", "rwkvlist", "", True],
+        ["Untuned RWKV-4 (Experimental)", "rwkvlist", "", True],
         ["Untuned GPT2", "gpt2list", "", True],
         ["Online Services", "apilist", "", True],
         ["Read Only (No AI)", "ReadOnly", "", False]
@@ -756,6 +756,7 @@ def sendModelSelection(menu="mainmenu", folder="./models"):
     #If we send one of the manual load options, send back the list of model directories, otherwise send the menu
     if menu in ('NeoCustom', 'GPT2Custom'):
         (paths, breadcrumbs) = get_folder_path_info(folder)
+        paths = [x for x in paths if "rwkv" not in x[1].lower()]
         if koboldai_vars.host:
             breadcrumbs = []
         menu_list = [[folder, menu, "", False] for folder in paths]
@@ -777,7 +778,9 @@ def sendModelSelection(menu="mainmenu", folder="./models"):
         } for m in menu_list_ui_2]
         emit('show_model_menu', {'data': p_menu, 'menu': menu, 'breadcrumbs': breadcrumbs, "showdelete": showdelete}, broadcast=False)
     else:
-        emit('from_server', {'cmd': 'show_model_menu', 'data': model_menu[menu], 'menu': menu, 'breadcrumbs': [], "showdelete": False}, broadcast=True, room="UI_1")
+        # Hide experimental models unless experimental mode is enabled
+        filtered_menu = [x for x in model_menu[menu] if koboldai_vars.experimental_features or "(experimental)" not in x[0].lower()]
+        emit('from_server', {'cmd': 'show_model_menu', 'data': filtered_menu, 'menu': menu, 'breadcrumbs': [], "showdelete": False}, broadcast=True, room="UI_1")
 
         p_menu = [{
             "label": m[0],
@@ -785,7 +788,7 @@ def sendModelSelection(menu="mainmenu", folder="./models"):
             "size": m[2],
             "isMenu": m[3],
             "isDownloaded": is_model_downloaded(m[1]) if not m[3] else False,
-        } for m in model_menu[menu]]
+        } for m in filtered_menu]
         emit('show_model_menu', {'data': p_menu, 'menu': menu, 'breadcrumbs': [], "showdelete": False}, broadcast=False)
 
 def get_folder_path_info(base):
@@ -5819,14 +5822,19 @@ def rwkv_init(model_class: str, use_gpu: bool = False):
     
     os.environ["RWKV_RUN_DEVICE"] = device
 
-    TOKENIZER_PATH = "models/RWKV4/20B_tokenizer.json"
-    MODEL_DIR = "models/RWKV4/models"
+    TOKENIZER_PATH = "RWKV4/20B_tokenizer.json"
+    MODEL_DIR = "models"
 
     model_files = os.listdir(MODEL_DIR)
-    matching_models = [f for f in model_files if f.startswith(f"RWKV-4-Pile-{model_class}")]
+    matching_models = [f for f in model_files if f.startswith(f"RWKV-4-{model_class}")]
+
     if not matching_models:
-        raise RuntimeError(f"No models of class '{model_class}' found in '{MODEL_DIR}'. Did you rename the model?")
-    model_path = os.path.join(MODEL_DIR, sorted(matching_models)[-1])
+        raise RuntimeError(
+            f"No models of class '{model_class}' found in '{MODEL_DIR}'. Please download a model from " \
+            "https://huggingface.co/BlinkDL, rename the .pth file to 'model.pth', and place the it in a directory named "\
+            "'{MODEL_DIR}/RWKV-4-XYZ', where XYZ is the parameter string of the model (169M, 430M, 1B5, 3B, or 7B)."
+        )
+    model_path = os.path.join(MODEL_DIR, sorted(matching_models)[-1], "model.pth")
 
     model_config = {
         "169M": RWKVConfig(n_layer=12, n_embed=768, ctx_len=1024),
@@ -5840,10 +5848,10 @@ def rwkv_init(model_class: str, use_gpu: bool = False):
         raise RuntimeError(f"No config for model '{model_class}' found!")
     
     if not os.path.exists(TOKENIZER_PATH):
-        raise RuntimeError(f"Can't find tokenizer at '{TOKENIZER_PATH}'. Did you download it and put it at that location?")
+        raise RuntimeError(f"Can't find tokenizer at '{TOKENIZER_PATH}'!")
     
     # Model stuff
-    from models.RWKV4.src.model_run import RWKV_RNN
+    from RWKV4.src.model_run import RWKV_RNN
     from transformers import PreTrainedTokenizerFast
     from torch.nn import functional as F
 
