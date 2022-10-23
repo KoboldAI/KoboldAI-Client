@@ -1819,7 +1819,7 @@ function world_info_entry(data) {
 			if (attribute != '') {
 				i += 1;
 				attribute_area = document.createElement("div");
-				label = document.createElement("span");
+				let label = document.createElement("span");
 				label.textContent = "\xa0\xa0\xa0\xa0Attribute: ";
 				attribute_area.append(label);
 				input = document.createElement("input");
@@ -1833,7 +1833,7 @@ function world_info_entry(data) {
 				input.setAttribute("uid", data.uid);
 				input.setAttribute("data_type", "attribute");
 				input.id = "wpp_"+data.uid+"_attr_"+i
-				input.onchange = function() {do_wpp(this.parentElement.parentElement)};
+				input.onchange = function() {do_wpp(this.parentElement.parentElement.parentElement)};
 				attribute_area.append(input);
 				wpp_attributes_area.append(attribute_area);
 				j=-1;
@@ -1847,7 +1847,7 @@ function world_info_entry(data) {
 					input.type = "text";
 					input.setAttribute("contenteditable", true);
 					input.ondragstart=function() {event.preventDefault();event.stopPropagation();};
-					input.onchange = function() {do_wpp(this.parentElement.parentElement)};
+					input.onchange = function() {do_wpp(this.parentElement.parentElement.parentElement)};
 					input.onfocus=function() {this.parentElement.parentElement.parentElement.setAttribute('draggable', 'false');this.setAttribute('draggable', 'false');};
 					input.onblur=function() {this.parentElement.parentElement.parentElement.setAttribute('draggable', 'true');this.setAttribute('draggable', 'true');};
 					input.ondragstart=function() {event.preventDefault();event.stopPropagation();};
@@ -1873,7 +1873,7 @@ function world_info_entry(data) {
 				input.setAttribute("data_type", "value");
 				input.id = "wpp_"+data.uid+"_value_"+i+"_blank";
 				last_new_value = input;
-				input.onchange = function() {if (this.value != "") {on_new_wi_item = this.id;do_wpp(this.parentElement.parentElement)}};
+				input.onchange = function() {if (this.value != "") {on_new_wi_item = this.id;do_wpp(this.parentElement.parentElement.parentElement)}};
 				value_area.append(input);
 				wpp_attributes_area.append(value_area);
 			}
@@ -1894,7 +1894,7 @@ function world_info_entry(data) {
 	input.setAttribute("value_num", i);
 	input.setAttribute("data_type", "attribute");
 	input.id = "wpp_"+data.uid+"_attr_blank";
-	input.onchange = function() {if (this.value != "") {on_new_wi_item=this.id;do_wpp(this.parentElement.parentElement)}};
+	input.onchange = function() {if (this.value != "") {on_new_wi_item=this.id;do_wpp(this.parentElement.parentElement.parentElement)}};
 	attribute_area.append(input);
 	wpp_attributes_area.append(attribute_area);
 	
