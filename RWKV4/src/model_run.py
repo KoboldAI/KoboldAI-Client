@@ -23,7 +23,7 @@ if os.environ['RWKV_RUN_DEVICE'] == 'cuda':
     # it's possible to go beyond CUDA limitations if you slice the ctx and pass the hidden state in each slice
 
     from torch.utils.cpp_extension import load
-    wkv_cuda = load(name="wkv", sources=["models/RWKV4/cuda/wkv_op.cpp", "models/RWKV4/cuda/wkv_cuda.cu"],
+    wkv_cuda = load(name="wkv", sources=["RWKV4/cuda/wkv_op.cpp", "RWKV4/cuda/wkv_cuda.cu"],
                     verbose=True, extra_cuda_cflags=['-res-usage', '--maxrregcount 60', '--use_fast_math', '-O3', '-Xptxas -O3', f'-DTmax={T_MAX}'])
 
     class WKV(torch.autograd.Function):
