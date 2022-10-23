@@ -183,7 +183,7 @@ def _download_with_aria2(aria2_config: str, total_length: int, directory: str = 
         def write(self, bar):
             bar = bar.replace("\r", "").replace("\n", "")
             
-            if bar != "":
+            if bar != "" and [ord(num) for num in bar] != [27, 91, 65]: #No idea why we're getting the 27, 1, 65 character set, just killing to so we can move on
                 try:
                     print('\r' + bar, end='')
                     try:
