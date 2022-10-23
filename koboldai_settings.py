@@ -568,7 +568,8 @@ class settings(object):
 class model_settings(settings):
     local_only_variables = ['badwordsids', 'apikey', 'tqdm', 'socketio', 'default_preset', 'koboldai_vars']
     no_save_variables = ['tqdm', 'tqdm_progress', 'tqdm_rem_time', 'socketio', 'modelconfig', 'custmodpth', 'generated_tkns', 
-                         'loaded_layers', 'total_layers', 'total_download_chunks', 'downloaded_chunks', 'presets', 'default_preset', 'koboldai_vars']
+                         'loaded_layers', 'total_layers', 'total_download_chunks', 'downloaded_chunks', 'presets', 'default_preset', 
+                         'koboldai_vars', 'welcome']
     settings_name = "model"
     def __init__(self, socketio, koboldai_vars):
         self.socketio = socketio

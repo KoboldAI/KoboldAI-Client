@@ -277,7 +277,7 @@ model_menu = {
 
 class Send_to_socketio(object):
     def write(self, bar):
-        bar = bar.replace("\r", "").replace("\n", "")
+        bar = bar.replace("\r", "").replace("\n", "").replace(chr(0), "")
         if bar != "":
             logger.info(bar)
             #print('\r' + bar, end='')
