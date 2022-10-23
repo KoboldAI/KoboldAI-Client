@@ -105,6 +105,18 @@ const context_menu_actions = [
 	// {label: "View Token Probabilities", icon: "account_tree", visibilityCondition: "SELECTION", click: view_selection_probabilities},
 ];
 
+// CTRL-[X]
+const shortcuts = [
+	{key: "k", desc: "Finder", func: open_finder},
+	{key: "/", desc: "Help screen", func: () => openPopup("shortcuts-popup")},
+	{key: "z", desc: "Undoes last story action", func: () => socket.emit("back", {})},
+	{key: "y", desc: "Redoes last story action", func: () => socket.emit("redo", {})},
+	{key: "e", desc: "Retries last story action", func: () => socket.emit("retry", {})},
+	{key: "m", desc: "Focuses Memory", func: () => focusEl("#memory")},
+	{key: "l", desc: "Focuses Author's Note", func: () => focusEl("#authors_notes")}, // CTRL-N is reserved :^(
+	{key: "g", desc: "Focuses game text", func: () => focusEl("#input_text")},
+]
+
 function $el(selector) {
 	// We do not preemptively fetch all elements upon execution (wall of consts)
 	// due to the layer of mental overhead it adds to debugging and reading
@@ -808,7 +820,7 @@ function load_popup(data) {
 	popup_deleteable = data.deleteable;
 	popup_editable = data.editable;
 	popup_renameable = data.renameable;
-	var popup = document.getElementById("popup");
+	var popup = document.getElementById("file-browser");
 	var popup_title = document.getElementById("popup_title");
 	popup_title.textContent = data.popup_title;
 	if (data.popup_title == "Select Story to Load") {
@@ -851,7 +863,7 @@ function load_popup(data) {
 		
 	}
 	
-	popup.classList.remove("hidden");
+	openPopup("file-browser");
 	
 	//adjust accept button
 	if (data.call_back == "") {
@@ -864,7 +876,7 @@ function load_popup(data) {
 		accept.setAttribute("selected_value", "");
 		accept.onclick = function () {
 								socket.emit(this.getAttribute("emit"), this.getAttribute("selected_value"));
-								document.getElementById("popup").classList.add("hidden");
+								closePopups();
 						  };
 	}
 					  
@@ -1212,7 +1224,7 @@ function popup_edit_file(data) {
 	accept.onclick = function () {
 							var textarea = document.getElementById("filecontents");
 							socket.emit("popup_change_file", {"file": textarea.getAttribute("filename"), "data": textarea.value});
-							document.getElementById("popup").classList.add("hidden");
+							closePopups();
 					  };
 	
 	var textarea = document.createElement("textarea");
@@ -1267,8 +1279,6 @@ function getModelParameterCount(modelName) {
 }
 
 function show_model_menu(data) {
-	document.getElementById("loadmodelcontainer").classList.remove("hidden");
-	
 	//clear old options
 	document.getElementById("modelkey").classList.add("hidden");
 	document.getElementById("modelkey").value = "";
@@ -1403,6 +1413,7 @@ function show_model_menu(data) {
 	var accept = document.getElementById("btn_loadmodelaccept");
 	accept.disabled = true;
 	
+	openPopup("load-model");
 }
 
 function selected_model_info(data) {
@@ -1653,7 +1664,7 @@ function load_model() {
 			   'disk_layers': disk_layers, 'url': document.getElementById("modelurl").value, 
 			   'online_model': selected_models};
 	socket.emit("load_model", message);
-	document.getElementById("loadmodelcontainer").classList.add("hidden");
+	closePopups();
 }
 
 function world_info_entry_used_in_game(data) {
@@ -2242,9 +2253,7 @@ function world_info_folder(data) {
 }
 
 function show_error_message(data) {
-	error_message_box = document.getElementById('error_message');
-	error_message_box.classList.remove("hidden");
-	error_box_data = error_message_box.querySelector("#popup_list_area")
+	const error_box_data = $el("#error-popup").querySelector("#popup_list_area")
 	//clear out the error box
 	while (error_box_data.firstChild) {
 		error_box_data.removeChild(error_box_data.firstChild);
@@ -2258,6 +2267,7 @@ function show_error_message(data) {
 		//console.log(item);
 		$e("div", error_box_data, {'innerHTML': item, 'classes': ['console_text']})
 	}
+	openPopup("error-popup");
 }
 
 function do_wpp(wpp_area) {
@@ -2310,8 +2320,8 @@ function process_log_message(full_data) {
 		}
 		
 		//put log message in log popup
-		log_popup = document.getElementById('log_popup');
-		log_popup_data = log_popup.querySelector("#popup_list_area")
+		const log_popup = document.getElementById('log-popup');
+		const log_popup_data = log_popup.querySelector("#popup_list_area")
 		//clear out the error box
 		for (item of data['html']) {
 			$e("div", log_popup_data, {'innerHTML': item, 'classes': ['console_text']})
@@ -2385,10 +2395,7 @@ function new_story() {
 }
 
 function save_as_story(response) {
-	if (response == "overwrite?") {
-		document.getElementById('save-confirm').classList.remove('hidden')
-	}
-	
+	if (response === "overwrite?") openPopup("save-confirm");
 }
 
 function save_bias(item) {
@@ -2587,7 +2594,7 @@ function edit_game_text() {
 
 function save_preset() {
 	socket.emit("save_new_preset", {"preset": document.getElementById("new_preset_name").value, "description": document.getElementById("new_preset_description").value});
-	document.getElementById('save_preset').classList.add('hidden');
+	closePopups();
 }
 
 //--------------------------------------------General UI Functions------------------------------------
@@ -2697,7 +2704,7 @@ function get_caret_position(target) {
 }
 
 function show_save_preset() {
-	document.getElementById("save_preset").classList.remove("hidden");
+	openPopup("save-preset");
 }
 
 function autoResize(element, min_size=200) {
@@ -3671,22 +3678,12 @@ function close_menus() {
 	document.getElementById("main-grid").classList.remove("story_menu-open");
 	
 	//close popup menus
-	document.getElementById('popup').classList.add("hidden");
-	document.getElementById('loadmodelcontainer').classList.add("hidden");
-	document.getElementById('save-confirm').classList.add("hidden");
-	document.getElementById('error_message').classList.add("hidden");
-	document.getElementById("advanced_theme_editor").classList.add("hidden");
-	document.getElementById("context-viewer-container").classList.add("hidden");
-	document.getElementById("save_preset").classList.add("hidden");
-	document.getElementById("log_popup").classList.add("hidden");
+	closePopups();
 	
 	//unselect sampler items
 	for (temp of document.getElementsByClassName("sample_order")) {
 		temp.classList.remove("selected");
 	}
-	
-	const finderContainer = document.getElementById("finder-container");
-	finderContainer.classList.add("hidden");
 }
 
 function toggle_flyout(x) {
@@ -3981,9 +3978,7 @@ async function downloadDebugFile(redact=true) {
 }
 
 function configurePrompt(placeholderData) {
-	console.log(placeholderData);
-	const container = document.querySelector("#prompt-config-container");
-	container.classList.remove("hidden");
+	openPopup("prompt-config");
 
 	const placeholders = document.querySelector("#prompt-config-placeholders");
 
@@ -4021,7 +4016,7 @@ function sendPromptConfiguration() {
 
 	socket.emit("configure_prompt", data);
 
-	document.querySelector("#prompt-config-container").classList.add("hidden");
+	closePopups();
 	$(".prompt-config-ph").remove();
 }
 
@@ -4168,26 +4163,29 @@ function highlightEl(element) {
 		return;
 	}
 	
-	let area = $(element).closest(".tab-target")[0];
-	
-	if (!area) {
-		console.error("No error? :^(");
-		return;
+	const area = $(element).closest(".tab-target")[0];
+	if (area) {
+		// If we need to click a tab to make the element visible, do so.
+		let tab = Array.from($(".tab")).filter((c) => c.getAttribute("tab-target") === area.id)[0];
+		tab.click();
 	}
-	
-	let tab = Array.from($(".tab")).filter((c) => c.getAttribute("tab-target") === area.id)[0];
-	tab.click();
+
 	element.scrollIntoView();
+	return element;
+}
+
+function focusEl(element) {
+	const el = highlightEl(element);
+	if (el) el.focus();
 }
 
 function addSearchListing(action, highlight) {
-	const finderContainer = document.getElementById("finder-container");
 	const finder = document.getElementById("finder");
 
 	let result = document.createElement("div");
 	result.classList.add("finder-result");
 	result.addEventListener("click", function(event) {
-		finderContainer.classList.add("hidden");
+		closePopups();
 		action.func();
 	});
 
@@ -4601,14 +4599,13 @@ function cycleFinderMode() {
 }
 
 function open_finder() {
-	const finderContainer = document.getElementById("finder-container");
 	const finderInput = document.getElementById("finder-input");
 	finderInput.value = "";
 	$(".finder-result").remove();
 	finder_selection_index = -1;
 	updateFinderMode("ui");
 	
-	finderContainer.classList.remove("hidden");
+	openPopup("finder");
 	finderInput.focus();
 }
 
@@ -4682,7 +4679,7 @@ function updateTitle() {
 }
 
 function openClubImport() {
-	document.getElementById("import_aidg_club_popup").classList.remove("hidden");
+	openPopup("aidg-import-popup");
 }
 
 //// INIT ////
@@ -4690,6 +4687,34 @@ function openClubImport() {
 document.onkeydown = detect_key_down;
 document.onkeyup = detect_key_up;
 document.getElementById("input_text").onkeydown = detect_enter_submit;
+
+/* -- Popups -- */
+function openPopup(id) {
+	closePopups();
+
+	const container = $el("#popup-container");
+	container.classList.remove("hidden");
+
+	for (const popupWindow of container.children) {
+		popupWindow.classList.add("hidden");
+	}
+
+	const popup = $el(`#${id}`);
+	popup.classList.remove("hidden");
+}
+
+function closePopups() {
+	const container = $el("#popup-container");
+	container.classList.add("hidden");
+
+	for (const popupWindow of container.children) {
+		popupWindow.classList.add("hidden");
+	}
+}
+
+$el("#popup-container").addEventListener("click", function(event) {
+	if (event.target === this) closePopups();
+});
 
 /* -- Colab Cookie Handling -- */
 if (colab_cookies != null) {
@@ -4767,7 +4792,6 @@ process_cookies();
 
 /* -- Finder -- */
 (function() {
-	const finderContainer = document.getElementById("finder-container");
 	const finderInput = document.getElementById("finder-input");
 	const finderIcon = document.getElementById("finder-icon");
 
@@ -4870,25 +4894,7 @@ process_cookies();
 		finder_selection_index = future;
 		updateFinderSelection(delta);
 	});
-
-	finderContainer.addEventListener("click", function(e) {
-		if (e.target !== this) return;
-		finderContainer.classList.add("hidden");
-	});
 })();
-
-/* -- Debug File -- */
-(function() {
-	const debugContainer = document.getElementById("debug-file-container");
-	// TODO: All of this generic backdrop code really sucks. There should be a
-	// standardised thing for popups that adds the dimmed backdrop and standard
-	// closing, etc.
-
-	debugContainer.addEventListener("click", function(e) {
-		debugContainer.classList.add("hidden");
-	});
-})();
-
 
 /* -- Context Menu -- */
 (function() {
@@ -5334,19 +5340,29 @@ function initalizeTooltips() {
 }
 
 /* -- Shortcuts -- */
-document.addEventListener("keydown", function(event) {
-		
-	if (!event.ctrlKey) return;
+(function() {
+	document.addEventListener("keydown", function(event) {
+		if (!event.ctrlKey) return;
 
-	switch (event.key) {
-		// TODO: Add other shortcuts
-		case "k":
-			open_finder()
-			
+		for (const shortcut of shortcuts) {
+			if (shortcut.key !== event.key) continue;
 			event.preventDefault();
-			break;
-}
-});
+			shortcut.func();
+		}
+	});
+
+	// Display shortcuts in popup
+	const shortcutContainer = $el("#shortcut-container");
+	for (const shortcut of shortcuts) {
+		const shortcutRow = $e("div", shortcutContainer, {classes: ["shortcut-item"]});
+		const shortcutEl = $e("div", shortcutRow, {classes: ["shortcut-keys"]});
+		for (const key of ["Ctrl", shortcut.key.toUpperCase()]) {
+			console.log("HELLO")
+			$e("span", shortcutEl, {classes: ["shortcut-key"], innerText: key});
+		}
+		const shortcutDesc = $e("div", shortcutRow, {classes: ["shortcut-desc"], innerText: shortcut.desc});
+	}
+})();
 
 //function to load more actions if nessisary
 function infinite_scroll() {

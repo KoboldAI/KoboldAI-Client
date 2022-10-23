@@ -1,175 +1,176 @@
-<!------------------File Browser--------------->
-<div class="popup hidden" id="popup">
-	<div class="title" id="popup_title">
-		Popup Title
-	</div>
-	<div id="popup_breadcrumbs"></div>
-	<div id="popup_column_titles"></div>
-	<div class="popup_list_area" id="popup_list"></div>
-	<div class="popup_load_cancel hidden" id="popup_upload">
-		<input type=file id="popup_upload_file">
-	</div>
-	<div style="display:flex;justify-content: space-between;">
-		<span>Drag file(s) above or click here to Upload File<input id="popup_upload_input" type=file onchange="upload_file(this)"></span>
-		<!---<span>
-			Upload file without saving to google: 
-			<input type=checkbox id="upload_no_save" class="setting_item_input"
-			       data-size="mini" data-onstyle="success" data-toggle="toggle">
-		</span>--->
-		<span>
-			<button class="settings_button" id="upload_without_save_button" onclick="document.getElementById('upload_without_save').click()">
-				<span class="material-icons-outlined cursor" tooltip="Load from Local">browser_updated</span>
-				<span class="button_label">Load from Local</span>
-			</button>
-			<input class="hidden" type=file  id="upload_without_save" onchange="upload_file_without_save(this)">
-			<button id="import_story_button" class="settings_button hidden" onclick="openClubImport();">
-				<span class="material-icons-outlined cursor" tooltip="Import Story">cloud_download</span>
-				<span class="button_label">Import Story</span>
-			</button>
-		</span>
-	</div>
-	<div class="popup_load_cancel" id="popup_load_cancel">
-		<button class="btn popup_load_cancel_button action_button" id="popup_accept" disabled>Load</button>
-		<button class="btn popup_load_cancel_button" id="popup_cancel" onclick='document.getElementById("popup").classList.add("hidden");'>Cancel</button>
-	</div>
-</div>
-
-<!---------------- Model Load Screen ---------------------->
-<div class="popup hidden" id="loadmodelcontainer">
-	<div class="title">
-		Select A Model To Load
-	</div>
-	<div id="loadmodellistbreadcrumbs">
-		
-	</div>
-	<div id="loadmodellistcontent" class="popup_list_area"></div>
-	<div class="popup_load_cancel">
-		<div>
-			<input class="hidden fullwidth" type="text" placeholder="key" id="modelkey" onchange="socket.emit('OAI_Key_Update', {'model': document.getElementById('btn_loadmodelaccept').getAttribute('selected_model'), 'key': this.value});">
-			<input class="hidden fullwidth" type="text" placeholder="Enter the URL of the server (For example a trycloudflare link)" id="modelurl" onchange="check_enable_model_load()">
-			<input class="hidden fullwidth" type="text" placeholder="Model Path or Hugging Face Name" id="custommodelname" menu="" onblur="socket.send({'cmd': 'selectmodel', 'data': $(this).attr('menu'), 'path_modelname': $('#custommodelname')[0].value});">
-			<select class="hidden fullwidth settings_select" id="oaimodel"><option value="">Select OAI Model</option></select>
+<div id="popup-container" class="hidden">
+	<!------------------File Browser--------------->
+	<div id="file-browser" class="popup-window popup">
+		<div class="title" id="popup_title">
+			Popup Title
 		</div>
-		<div class="hidden" id=modellayers>
-			<div class="justifyleft">
-				GPU/Disk Layers<span class="material-icons-outlined helpicon" tooltip="Number of layers to assign to GPUs and to disk cache. Remaining layers will be put into CPU RAM.">help_icon</span>
+		<div id="popup_breadcrumbs"></div>
+		<div id="popup_column_titles"></div>
+		<div class="popup_list_area" id="popup_list"></div>
+		<div class="popup_load_cancel hidden" id="popup_upload">
+			<input type=file id="popup_upload_file">
+		</div>
+		<div style="display:flex;justify-content: space-between;">
+			<span>Drag file(s) above or click here to Upload File<input id="popup_upload_input" type=file onchange="upload_file(this)"></span>
+			<!---<span>
+				Upload file without saving to google: 
+				<input type=checkbox id="upload_no_save" class="setting_item_input"
+					data-size="mini" data-onstyle="success" data-toggle="toggle">
+			</span>--->
+			<span>
+				<button class="settings_button" id="upload_without_save_button" onclick="document.getElementById('upload_without_save').click()">
+					<span class="material-icons-outlined cursor" tooltip="Load from Local">browser_updated</span>
+					<span class="button_label">Load from Local</span>
+				</button>
+				<input class="hidden" type=file  id="upload_without_save" onchange="upload_file_without_save(this)">
+				<button id="import_story_button" class="settings_button hidden" onclick="openClubImport();">
+					<span class="material-icons-outlined cursor" tooltip="Import Story">cloud_download</span>
+					<span class="button_label">Import Story</span>
+				</button>
+			</span>
+		</div>
+		<div class="popup_load_cancel" id="popup_load_cancel">
+			<button class="btn popup_load_cancel_button action_button" id="popup_accept" disabled>Load</button>
+			<button class="btn popup_load_cancel_button" id="popup_cancel" onclick='closePopups();'>Cancel</button>
+		</div>
+	</div>
+
+	<!---------------- Model Load Screen ---------------------->
+	<div id="load-model" class="popup-window popup">
+		<div class="title">
+			Select A Model To Load
+		</div>
+		<div id="loadmodellistbreadcrumbs">
+			
+		</div>
+		<div id="loadmodellistcontent" class="popup_list_area"></div>
+		<div class="popup_load_cancel">
+			<div>
+				<input class="hidden fullwidth" type="text" placeholder="key" id="modelkey" onchange="socket.emit('OAI_Key_Update', {'model': document.getElementById('btn_loadmodelaccept').getAttribute('selected_model'), 'key': this.value});">
+				<input class="hidden fullwidth" type="text" placeholder="Enter the URL of the server (For example a trycloudflare link)" id="modelurl" onchange="check_enable_model_load()">
+				<input class="hidden fullwidth" type="text" placeholder="Model Path or Hugging Face Name" id="custommodelname" menu="" onblur="socket.send({'cmd': 'selectmodel', 'data': $(this).attr('menu'), 'path_modelname': $('#custommodelname')[0].value});">
+				<select class="hidden fullwidth settings_select" id="oaimodel"><option value="">Select OAI Model</option></select>
 			</div>
-			<div class="justifyright"><span id="gpu_layers_current">0</span>/<span id="gpu_layers_max">0</span></div>
-			<div id=model_layer_bars style="color: white"></div>
-			<input type=hidden id='gpu_count' value=0/>
+			<div class="hidden" id=modellayers>
+				<div class="justifyleft">
+					GPU/Disk Layers<span class="material-icons-outlined helpicon" tooltip="Number of layers to assign to GPUs and to disk cache. Remaining layers will be put into CPU RAM.">help_icon</span>
+				</div>
+				<div class="justifyright"><span id="gpu_layers_current">0</span>/<span id="gpu_layers_max">0</span></div>
+				<div id=model_layer_bars style="color: white"></div>
+				<input type=hidden id='gpu_count' value=0/>
+			</div>
+			<div class="box flex-push-right hidden" id=use_gpu_div>
+				<input type="checkbox" data-toggle="toggle" data-onstyle="success" id="use_gpu" checked>
+				<div class="box-label">Use GPU</div>
+			</div>
+			<button type="button" class="btn popup_load_cancel_button action_button disabled" onclick="load_model()" id="btn_loadmodelaccept" disabled>Load</button>
+			<button type="button" class="btn popup_load_cancel_button" onclick='closePopups();' id="btn_loadmodelclose">Cancel</button>
 		</div>
-		<div class="box flex-push-right hidden" id=use_gpu_div>
-			<input type="checkbox" data-toggle="toggle" data-onstyle="success" id="use_gpu" checked>
-			<div class="box-label">Use GPU</div>
+	</div>
+
+	<!---------------- Story overwrite screen ---------------------->
+	<div id="save-confirm" class="popup-window popup">
+		<div class="title">
+			<div class="popuptitletext">Overwrite</div>
 		</div>
-		<button type="button" class="btn popup_load_cancel_button action_button disabled" onclick="load_model()" id="btn_loadmodelaccept" disabled>Load</button>
-		<button type="button" class="btn popup_load_cancel_button" onclick='document.getElementById("loadmodelcontainer").classList.add("hidden");' id="btn_loadmodelclose">Cancel</button>
+		<div id="popup_list_area" class="popup_list_area">
+			The story name you have entered already exists. Would you like to overwrite?
+		</div>
+		<div class="popup_load_cancel">
+			<button type="button" class="btn btn-primary popup_load_cancel_button" onclick='socket.emit("save_story", "overwrite");closePopups();'>Overwrite</button>
+			<button type="button" class="btn btn-primary popup_load_cancel_button" onclick="closePopups();">Cancel</button>
+		</div>
 	</div>
-</div>
 
-<!---------------- Story overwrite screen ---------------------->
-<div class="popup hidden" id="save-confirm">
-	<div class="title">
-		<div class="popuptitletext">Overwrite</div>
+	<!---------------- Save Preset screen ---------------------->
+	<div id="save-preset" class="popup-window popup">
+		<div class="title">
+			<div class="popuptitletext">Save Preset</div>
+		</div>
+		<div id="popup_list_area" class="popup_list_area">
+			<table>
+				<tr>
+					<td>
+						Name: 
+					</td>
+					<td>
+						<input type="text" id="new_preset_name"/>
+					</td>
+				</tr>
+				<tr>
+					<td>
+						Description:
+					</td>
+					<td>
+						<input type="text" id="new_preset_description"/>
+					</td>
+				</tr>
+			</table>
+		</div>
+		<div class="popup_load_cancel">
+			<button type="button" class="btn btn-primary popup_load_cancel_button" onclick='save_preset()'>Save</button>
+			<button type="button" class="btn btn-primary popup_load_cancel_button" onclick="closePopups();">Cancel</button>
+		</div>
 	</div>
-	<div id="popup_list_area" class="popup_list_area">
-		The story name you have entered already exists. Would you like to overwrite?
-	</div>
-	<div class="popup_load_cancel">
-		<button type="button" class="btn btn-primary popup_load_cancel_button" onclick='socket.emit("save_story", "overwrite"); document.getElementById("save-confirm").classList.add("hidden");'>Overwrite</button>
-		<button type="button" class="btn btn-primary popup_load_cancel_button" onclick="document.getElementById('save-confirm').classList.add('hidden');">Cancel</button>
-	</div>
-</div>
 
-<!---------------- Save Preset screen ---------------------->
-<div class="popup hidden" id="save_preset">
-	<div class="title">
-		<div class="popuptitletext">Save Preset</div>
+	<!---------------- Import aidg.club Prompt ---------------------->
+	<div id="aidg-import-popup" class="popup-window popup">
+		<div class="title">
+			<div class="popuptitletext">Enter the Prompt Number</div>
+		</div>
+		<div class="popup_list_area">
+			<br/>
+			<div style="text-align: center;"><a href="https://aetherroom.club/" target="_blank" rel="noopener noreferrer">https://aetherroom.club/</a></div>
+			<br/>
+			<input autocomplete="off" class="form-control" type="text" placeholder="Prompt Number (4-digit number at the end of aetherroom.club URL)" id="aidgpromptnum">
+		</div>
+		<div class="popup_load_cancel">
+			<button type="button" class="btn btn-primary popup_load_cancel_button" onclick="socket.emit('load_aidg_club', document.getElementById('aidgpromptnum').value);closePopups();">Accept</button>
+			<button type="button" class="btn btn-primary popup_load_cancel_button" onclick="closePopups();">Cancel</button>
+		</div>
 	</div>
-	<div id="popup_list_area" class="popup_list_area">
-		<table>
-			<tr>
-				<td>
-					Name: 
-				</td>
-				<td>
-					<input type="text" id="new_preset_name"/>
-				</td>
-			</tr>
-			<tr>
-				<td>
-					Description:
-				</td>
-				<td>
-					<input type="text" id="new_preset_description"/>
-				</td>
-			</tr>
-		</table>
-	</div>
-	<div class="popup_load_cancel">
-		<button type="button" class="btn btn-primary popup_load_cancel_button" onclick='save_preset()'>Save</button>
-		<button type="button" class="btn btn-primary popup_load_cancel_button" onclick="document.getElementById('save_preset').classList.add('hidden');">Cancel</button>
-	</div>
-</div>
 
-<!---------------- Import aidg.club Prompt ---------------------->
-<div class="popup hidden" id="import_aidg_club_popup">
-	<div class="title">
-		<div class="popuptitletext">Enter the Prompt Number</div>
+	<!---------------- error screen ---------------------->
+	<div id="error-popup" class="popup-window popup">
+		<div class="title">
+			<div class="popuptitletext">Error</div>
+		</div>
+		<div id="popup_list_area" class="popup_list_area" style="overflow-x: scroll;">
+			
+		</div>
+		<div class="popup_load_cancel">
+			<button type="button" class="btn btn-primary popup_load_cancel_button" onclick="closePopups();">Ok</button>
+		</div>
 	</div>
-	<div class="popup_list_area">
-		<br/>
-		<div style="text-align: center;"><a href="https://aetherroom.club/" target="_blank" rel="noopener noreferrer">https://aetherroom.club/</a></div>
-		<br/>
-		<input autocomplete="off" class="form-control" type="text" placeholder="Prompt Number (4-digit number at the end of aetherroom.club URL)" id="aidgpromptnum">
-	</div>
-	<div class="popup_load_cancel">
-		<button type="button" class="btn btn-primary popup_load_cancel_button" onclick="socket.emit('load_aidg_club', document.getElementById('aidgpromptnum').value); $('.popup').addClass('hidden');">Accept</button>
-		<button type="button" class="btn btn-primary popup_load_cancel_button" onclick="this.parentElement.parentElement.classList.add('hidden');">Cancel</button>
-	</div>
-</div>
 
-<!---------------- error screen ---------------------->
-<div class="popup hidden" id="error_message">
-	<div class="title">
-		<div class="popuptitletext">Error</div>
+	<!---------------- log screen ---------------------->
+	<div id="log-popup" class="popup-window popup">
+		<div class="title">
+			<div class="popuptitletext">Log</div>
+		</div>
+		<div id="popup_list_area" class="popup_list_area" style="overflow-x: scroll;">
+			
+		</div>
+		<div class="popup_load_cancel">
+			<button type="button" class="btn btn-primary popup_load_cancel_button" onclick="closePopups();">Ok</button>
+		</div>
 	</div>
-	<div id="popup_list_area" class="popup_list_area" style="overflow-x: scroll;">
-		
+	<!---------------- Advanced Theme Editor ---------------------->
+	<div id="advanced_theme_editor" class="popup-window popup">
+		<div class="title">
+			<div class="popuptitletext">Advanced Theme Editor</div>
+		</div>
+		<div id="popup_list_area" class="popup_list_area">
+			<table border=1 id="advanced_theme_editor_table"></table>
+		</div>
+		<div class="popup_load_cancel">
+			<button type="button" class="btn btn-primary popup_load_cancel_button" onclick="closePopups();">Ok</button>
+		</div>
 	</div>
-	<div class="popup_load_cancel">
-		<button type="button" class="btn btn-primary popup_load_cancel_button" onclick="document.getElementById('error_message').classList.add('hidden');">Ok</button>
-	</div>
-</div>
 
-<!---------------- log screen ---------------------->
-<div class="popup hidden" id="log_popup">
-	<div class="title">
-		<div class="popuptitletext">Log</div>
-	</div>
-	<div id="popup_list_area" class="popup_list_area" style="overflow-x: scroll;">
-		
-	</div>
-	<div class="popup_load_cancel">
-		<button type="button" class="btn btn-primary popup_load_cancel_button" onclick="document.getElementById('log_popup').classList.add('hidden');">Ok</button>
-	</div>
-</div>
-<!---------------- Advanced Theme Editor ---------------------->
-<div class="popup hidden" id="advanced_theme_editor">
-	<div class="title">
-		<div class="popuptitletext">Advanced Theme Editor</div>
-	</div>
-	<div id="popup_list_area" class="popup_list_area">
-		<table border=1 id="advanced_theme_editor_table"></table>
-	</div>
-	<div class="popup_load_cancel">
-		<button type="button" class="btn btn-primary popup_load_cancel_button" onclick="document.getElementById('advanced_theme_editor').classList.add('hidden');">Ok</button>
-	</div>
-</div>
-<!---------------- Context Viewer ---------------------->
-<div id="context-viewer-container" class="hidden">
-	<div id="context-viewer">
-		<div id="context-viewer-header">
+	<!---------------- Context Viewer ---------------------->
+	<div id="context-viewer" class="popup-window">
+		<div id="context-viewer-header" class="popup-header">
 			<h3 class="noselect">Context Viewer</h3>
 			<div id="context-viewer-header-right">
 				<div>
@@ -184,7 +185,7 @@
 						<span class="noselect context-block-example context-submit">Submit</span>
 					</div>
 				</div>
-				<span id="context-viewer-close" class="material-icons-outlined" onclick='$el("#context-viewer-container").classList.add("hidden");'>close</span>
+				<span id="context-viewer-close" class="material-icons-outlined" onclick='closePopups();'>close</span>
 			</div>
 		</div>
 		<span class="help_text">
@@ -193,10 +194,9 @@
 		</span>
 		<div id="context-container"></div>
 	</div>
-</div>
-<!---------------- Finder ---------------------->
-<div id="finder-container" class="hidden">
-	<div id="finder">
+
+	<!---------------- Finder ---------------------->
+	<div id="finder" class="popup-window">
 		<div id="finder-bar">
 			<input id="finder-input" placeholder="Search for something..."></input>
 			<span id="finder-icon" class="material-icons-outlined">search</span>
@@ -212,11 +212,9 @@
 			a threat to society
 		</span>
 	</div>
-</div>
 
-<!---------------- Debug File ---------------------->
-<div id="debug-file-container" class="hidden">
-	<div id="debug-file-prompt">
+	<!---------------- Debug File ---------------------->
+	<div id="debug-file-prompt" class="popup-window">
 		<div id="redacted" onclick="downloadDebugFile(true);">
 			<span class="focus">Download debug file</span>
 			<span class="help_text">Sensitive information, including any story data, is redacted.</span>
@@ -229,11 +227,9 @@
 			</span>
 		</div>
 	</div>
-</div>
 
-<!---------------- Prompt Config ------------------->
-<div id="prompt-config-container" class="hidden">
-	<div id="prompt-config">
+	<!---------------- Prompt Config ------------------->
+	<div id="prompt-config" class="popup-window">
 		<div id="prompt-config-header">
 			<h3 class="noselect">Prompt Configuration</h3>
 			<span class="help_text">This prompt has placeholders you need to fill in before starting.</span>
@@ -242,5 +238,14 @@
 		<!-- Order, default, title, description -->
 		<div id="prompt-config-placeholders"></div>
 		<div id="prompt-config-done" onclick="sendPromptConfiguration();">Done</div>
+	</div>
+
+	<!---------------- Shortcuts ------------------->
+	<div id="shortcuts-popup" class="popup-window">
+		<div class="popup-header">
+			<h2>Shortcuts</h2>
+			<span class="popup-close material-icons-outlined" onclick='closePopups();'>close</span>
+		</div>
+		<div id="shortcut-container"></div>
 	</div>
 </div>

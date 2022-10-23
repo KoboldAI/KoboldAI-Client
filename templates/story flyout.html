@@ -110,7 +110,7 @@
 		</div>
 	</div>
 	<div id="token-breakdown-container" class="settings_footer" style="padding-top: 10px;">
-		<div class="token_breakdown" onclick='socket.emit("update_tokens", document.getElementById("input_text").value);$el("#context-viewer-container").classList.remove("hidden");'>
+		<div class="token_breakdown" onclick='socket.emit("update_tokens", document.getElementById("input_text").value);openPopup("context-viewer");'>
 			<div id="soft_prompt_tokens" style="width:0%; background-color: var(--context_colors_soft_prompt);"></div>
 			<div id="memory_tokens" style="width:40%; background-color: var(--context_colors_memory);"></div>
 			<div id="authors_notes_tokens" style="width:10%; background-color: var(--context_colors_authors_notes);"></div>

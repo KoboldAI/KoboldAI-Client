@@ -332,7 +332,7 @@
 
 /* Context Viewer */
 
-#context-viewer-header {
+.popup-header {
     background-color: #a04a51 !important;
 }
 

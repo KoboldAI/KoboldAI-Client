@@ -1805,23 +1805,6 @@ body {
 	width:95%;
 }
 /*------------------------------ Context Viewer --------------------------------------------*/
-#context-viewer-container {
-	position: absolute;
-	left: 0px;
-	top: 0px;
-
-	display: flex;
-	justify-content: center;
-	align-items: center;
-
-	background-color: rgba(0, 0, 0, 0.7);
-
-	width: 100vw;
-	height: 100vh;
-
-	z-index: 20;
-}
-
 #context-viewer {
 	display: flex;
 	flex-direction: column;
@@ -1974,24 +1957,6 @@ body {
 }
 
 /* Finder */
-
-#finder-container,
-#debug-file-container,
-#prompt-config-container {
-	display: flex;
-	justify-content: center;
-	align-items: center;
-
-	position: absolute;
-	left: 0px;
-	top: 0px;
-
-	background-color: rgba(0, 0, 0, 0.5);
-	z-index: 99999999;
-
-	width: 100vw;
-	height: 100vh;
-}
 
 #finder-container {
 	flex-direction: column;
@@ -2403,6 +2368,80 @@ body {
 	max-width: 720px;
 	width: 100%;
 }
+
+/* Popups */
+#popup-container {
+	position: absolute;
+	left: 0px;
+	top: 0px;
+
+	display: flex;
+	justify-content: center;
+	align-items: center;
+
+	background-color: rgba(0, 0, 0, 0.7);
+
+	width: 100vw;
+	height: 100vh;
+
+	z-index: 20;
+}
+
+.popup-close {
+	cursor: pointer;
+}
+
+/* Shortcuts */
+#shortcuts-popup {
+	width: 50%;
+	height: 75%;
+	padding-bottom: 10px;
+	background-color: var(--popup_background_color);
+}
+
+#shortcuts-popup > .popup-header {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+
+	padding: 4px 7px;
+	margin-bottom: 5px;
+}
+
+#shortcuts-popup h2 {
+	display: inline;
+	margin: 0px;
+	position: relative;
+	top: 4px;
+}
+
+#shortcut-container {
+	padding: 0px 5px;
+	column-count: 2;
+	column-rule: 2px solid #ffffff1b;
+}
+
+.shortcut-item {
+	display: flex;
+	justify-content: space-between;
+	width: 100%;
+}
+
+.shortcut-keys {
+	display: inline-flex;
+	column-gap: 5px;
+
+	margin-bottom: 3px;
+}
+
+.shortcut-key {
+	background-color: #284b62;
+	padding: 2px 5px;
+	font-size: 16px;
+	font-family: monospace;
+	border-radius: 3px;
+}
+
 /*---------------------------------- Global ------------------------------------------------*/
 .hidden {
 	display: none;
