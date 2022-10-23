@@ -3675,17 +3675,14 @@ function close_menus() {
 	document.getElementById('save-confirm').classList.add("hidden");
 	document.getElementById('error_message').classList.add("hidden");
 	document.getElementById("advanced_theme_editor").classList.add("hidden");
-	document.getElementById("context-viewer-container").classList.add("hidden");
 	document.getElementById("save_preset").classList.add("hidden");
 	document.getElementById("log_popup").classList.add("hidden");
+	closePopups();
 	
 	//unselect sampler items
 	for (temp of document.getElementsByClassName("sample_order")) {
 		temp.classList.remove("selected");
 	}
-	
-	const finderContainer = document.getElementById("finder-container");
-	finderContainer.classList.add("hidden");
 }
 
 function toggle_flyout(x) {
@@ -3980,9 +3977,7 @@ async function downloadDebugFile(redact=true) {
 }
 
 function configurePrompt(placeholderData) {
-	console.log(placeholderData);
-	const container = document.querySelector("#prompt-config-container");
-	container.classList.remove("hidden");
+	showPopup("prompt-config");
 
 	const placeholders = document.querySelector("#prompt-config-placeholders");
 
@@ -4020,7 +4015,7 @@ function sendPromptConfiguration() {
 
 	socket.emit("configure_prompt", data);
 
-	document.querySelector("#prompt-config-container").classList.add("hidden");
+	closePopups();
 	$(".prompt-config-ph").remove();
 }
 
@@ -4180,13 +4175,12 @@ function highlightEl(element) {
 }
 
 function addSearchListing(action, highlight) {
-	const finderContainer = document.getElementById("finder-container");
 	const finder = document.getElementById("finder");
 
 	let result = document.createElement("div");
 	result.classList.add("finder-result");
 	result.addEventListener("click", function(event) {
-		finderContainer.classList.add("hidden");
+		closePopups();
 		action.func();
 	});
 
@@ -4600,14 +4594,13 @@ function cycleFinderMode() {
 }
 
 function open_finder() {
-	const finderContainer = document.getElementById("finder-container");
 	const finderInput = document.getElementById("finder-input");
 	finderInput.value = "";
 	$(".finder-result").remove();
 	finder_selection_index = -1;
 	updateFinderMode("ui");
 	
-	finderContainer.classList.remove("hidden");
+	showPopup("finder");
 	finderInput.focus();
 }
 
@@ -4690,6 +4683,34 @@ document.onkeydown = detect_key_down;
 document.onkeyup = detect_key_up;
 document.getElementById("input_text").onkeydown = detect_enter_submit;
 
+/* -- Popups -- */
+function showPopup(id) {
+	closePopups();
+
+	const container = $el("#popup-container");
+	container.classList.remove("hidden");
+
+	for (const popupWindow of container.children) {
+		popupWindow.classList.add("hidden");
+	}
+
+	const popup = $el(`#${id}`);
+	popup.classList.remove("hidden");
+}
+
+function closePopups() {
+	const container = $el("#popup-container");
+	container.classList.add("hidden");
+
+	for (const popupWindow of container.children) {
+		popupWindow.classList.add("hidden");
+	}
+}
+
+$el("#popup-container").addEventListener("click", function(event) {
+	if (event.target === this) closePopups();
+});
+
 /* -- Colab Cookie Handling -- */
 if (colab_cookies != null) {
 	for (const cookie of Object.keys(colab_cookies)) {
@@ -4766,7 +4787,6 @@ process_cookies();
 
 /* -- Finder -- */
 (function() {
-	const finderContainer = document.getElementById("finder-container");
 	const finderInput = document.getElementById("finder-input");
 	const finderIcon = document.getElementById("finder-icon");
 
@@ -4869,25 +4889,7 @@ process_cookies();
 		finder_selection_index = future;
 		updateFinderSelection(delta);
 	});
-
-	finderContainer.addEventListener("click", function(e) {
-		if (e.target !== this) return;
-		finderContainer.classList.add("hidden");
-	});
 })();
-
-/* -- Debug File -- */
-(function() {
-	const debugContainer = document.getElementById("debug-file-container");
-	// TODO: All of this generic backdrop code really sucks. There should be a
-	// standardised thing for popups that adds the dimmed backdrop and standard
-	// closing, etc.
-
-	debugContainer.addEventListener("click", function(e) {
-		debugContainer.classList.add("hidden");
-	});
-})();
-
 
 /* -- Context Menu -- */
 (function() {

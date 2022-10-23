@@ -166,9 +166,10 @@
 		<button type="button" class="btn btn-primary popup_load_cancel_button" onclick="document.getElementById('advanced_theme_editor').classList.add('hidden');">Ok</button>
 	</div>
 </div>
-<!---------------- Context Viewer ---------------------->
-<div id="context-viewer-container" class="hidden">
-	<div id="context-viewer">
+
+<div id="popup-container" class="hidden">
+	<!---------------- Context Viewer ---------------------->
+	<div id="context-viewer" class="popup-window">
 		<div id="context-viewer-header">
 			<h3 class="noselect">Context Viewer</h3>
 			<div id="context-viewer-header-right">
@@ -184,7 +185,7 @@
 						<span class="noselect context-block-example context-submit">Submit</span>
 					</div>
 				</div>
-				<span id="context-viewer-close" class="material-icons-outlined" onclick='$el("#context-viewer-container").classList.add("hidden");'>close</span>
+				<span id="context-viewer-close" class="material-icons-outlined" onclick='closePopups();'>close</span>
 			</div>
 		</div>
 		<span class="help_text">
@@ -193,10 +194,9 @@
 		</span>
 		<div id="context-container"></div>
 	</div>
-</div>
-<!---------------- Finder ---------------------->
-<div id="finder-container" class="hidden">
-	<div id="finder">
+
+	<!---------------- Finder ---------------------->
+	<div id="finder" class="popup-window">
 		<div id="finder-bar">
 			<input id="finder-input" placeholder="Search for something..."></input>
 			<span id="finder-icon" class="material-icons-outlined">search</span>
@@ -212,11 +212,9 @@
 			a threat to society
 		</span>
 	</div>
-</div>
 
-<!---------------- Debug File ---------------------->
-<div id="debug-file-container" class="hidden">
-	<div id="debug-file-prompt">
+	<!---------------- Debug File ---------------------->
+	<div id="debug-file-prompt" class="popup-window">
 		<div id="redacted" onclick="downloadDebugFile(true);">
 			<span class="focus">Download debug file</span>
 			<span class="help_text">Sensitive information, including any story data, is redacted.</span>
@@ -229,11 +227,9 @@
 			</span>
 		</div>
 	</div>
-</div>
 
-<!---------------- Prompt Config ------------------->
-<div id="prompt-config-container" class="hidden">
-	<div id="prompt-config">
+	<!---------------- Prompt Config ------------------->
+	<div id="prompt-config" class="popup-window">
 		<div id="prompt-config-header">
 			<h3 class="noselect">Prompt Configuration</h3>
 			<span class="help_text">This prompt has placeholders you need to fill in before starting.</span>

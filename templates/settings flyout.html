@@ -107,7 +107,7 @@
 		<div id="probabilities">
 			
 		</div>
-		<span id="debug-dump" class="cursor" onclick="document.getElementById('debug-file-container').classList.remove('hidden');">Download debug dump</span>
+		<span id="debug-dump" class="cursor" onclick="showPopup('debug-file-prompt');">Download debug dump</span>
 		<div id="Images">
 			<button class="settings_button var_sync_alt_system_generating_image" onclick="socket.emit('generate_image', {})">Generate Image</button>
 			<div id="action image"></div>

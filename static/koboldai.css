@@ -1807,23 +1807,6 @@ body {
 	width:95%;
 }
 /*------------------------------ Context Viewer --------------------------------------------*/
-#context-viewer-container {
-	position: absolute;
-	left: 0px;
-	top: 0px;
-
-	display: flex;
-	justify-content: center;
-	align-items: center;
-
-	background-color: rgba(0, 0, 0, 0.7);
-
-	width: 100vw;
-	height: 100vh;
-
-	z-index: 20;
-}
-
 #context-viewer {
 	display: flex;
 	flex-direction: column;
@@ -1976,24 +1959,6 @@ body {
 }
 
 /* Finder */
-
-#finder-container,
-#debug-file-container,
-#prompt-config-container {
-	display: flex;
-	justify-content: center;
-	align-items: center;
-
-	position: absolute;
-	left: 0px;
-	top: 0px;
-
-	background-color: rgba(0, 0, 0, 0.5);
-	z-index: 99999999;
-
-	width: 100vw;
-	height: 100vh;
-}
 
 #finder-container {
 	flex-direction: column;
@@ -2400,6 +2365,22 @@ body {
 	color: white
 }
 
+#popup-container {
+	position: absolute;
+	left: 0px;
+	top: 0px;
+
+	display: flex;
+	justify-content: center;
+	align-items: center;
+
+	background-color: rgba(0, 0, 0, 0.7);
+
+	width: 100vw;
+	height: 100vh;
+
+	z-index: 20;
+}
 
 /*---------------------------------- Global ------------------------------------------------*/
 .hidden {
