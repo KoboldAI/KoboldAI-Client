@@ -538,6 +538,7 @@ def emit(*args, **kwargs):
         return _emit(*args, **kwargs)
     except AttributeError:
         return socketio.emit(*args, **kwargs)
+utils.emit = emit
 
 #replacement for tpool.execute to maintain request contexts
 def replacement_tpool_execute(function, *args, **kwargs):
@@ -1000,7 +1001,7 @@ def device_config(config):
                     print(f"{colors.RED}Please enter an integer between -1 and {n_layers}.{colors.END}")
 
     logger.init_ok("Final device configuration:", status="Info")
-    device_list(n_layers)
+    device_list(n_layers, primary=breakmodel.primary_device)
 
     # If all layers are on the same device, use the old GPU generation mode
     while(len(breakmodel.gpu_blocks) and breakmodel.gpu_blocks[-1] == 0):
@@ -1328,6 +1329,9 @@ def general_startup(override_args=None):
         args = parser.parse_args(shlex.split(os.environ["KOBOLDAI_ARGS"]))
     else:
         args = parser.parse_args()
+    
+    utils.args = args
+
     
     #load system and user settings
     for setting in ['user_settings', 'system_settings']:
@@ -1905,8 +1909,9 @@ def patch_transformers():
         if not args.no_aria2:
             utils.aria2_hook(pretrained_model_name_or_path, **kwargs)
         return old_from_pretrained(cls, pretrained_model_name_or_path, *model_args, **kwargs)
-    old_transfomers_functions['PreTrainedModel.from_pretrained'] = PreTrainedModel.from_pretrained
-    PreTrainedModel.from_pretrained = new_from_pretrained
+    if(not hasattr(PreTrainedModel, "_kai_patched")):
+        PreTrainedModel.from_pretrained = new_from_pretrained
+        PreTrainedModel._kai_patched = True
     if(hasattr(modeling_utils, "get_checkpoint_shard_files")):
         old_get_checkpoint_shard_files = modeling_utils.get_checkpoint_shard_files
         old_transfomers_functions['modeling_utils.get_checkpoint_shard_files'] = old_get_checkpoint_shard_files
@@ -2952,7 +2957,9 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
             if not args.no_aria2:
                 utils.aria2_hook(pretrained_model_name_or_path, **kwargs)
             return old_from_pretrained(cls, pretrained_model_name_or_path, *model_args, **kwargs)
-        PreTrainedModel.from_pretrained = new_from_pretrained
+        if(not hasattr(PreTrainedModel, "_kai_patched")):
+            PreTrainedModel.from_pretrained = new_from_pretrained
+            PreTrainedModel._kai_patched = True
         if(hasattr(modeling_utils, "get_checkpoint_shard_files")):
             old_get_checkpoint_shard_files = modeling_utils.get_checkpoint_shard_files
             def new_get_checkpoint_shard_files(pretrained_model_name_or_path, index_filename, *args, **kwargs):

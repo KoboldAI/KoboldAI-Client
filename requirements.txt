@@ -16,6 +16,8 @@ flask_session
 marshmallow>=3.13
 apispec-webframeworks
 loguru
+termcolor
+git+https://github.com/VE-FORBRYDERNE/mkultra
 Pillow
 diffusers
 psutil

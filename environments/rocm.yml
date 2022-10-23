@@ -17,6 +17,7 @@ dependencies:
   - marshmallow>=3.13
   - apispec-webframeworks
   - loguru
+  - termcolor
   - Pillow
   - diffusers
   - psutil
@@ -29,6 +30,7 @@ dependencies:
     - lupa==1.10
     - transformers>=4.20.1
     - accelerate
+    - git+https://github.com/VE-FORBRYDERNE/mkultra
     - ansi2html
     - flask_compress
     - ijson

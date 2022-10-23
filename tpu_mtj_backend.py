@@ -1380,7 +1380,7 @@ def load_model(path: str, driver_version="tpu_driver0.1_dev20210607", hf_checkpo
                     tokenizer = AutoTokenizer.from_pretrained(koboldai_vars.custmodpth, revision=koboldai_vars.revision, cache_dir="cache")
                 except Exception as e:
                     try:
-                        tokenizer = GPT2Tokenizer.from_pretrained(koboldai_vars.custmodpth, revision=vars.revision, cache_dir="cache")
+                        tokenizer = GPT2Tokenizer.from_pretrained(koboldai_vars.custmodpth, revision=koboldai_vars.revision, cache_dir="cache")
                     except Exception as e:
                         tokenizer = GPT2Tokenizer.from_pretrained("gpt2", revision=koboldai_vars.revision, cache_dir="cache")
             try:

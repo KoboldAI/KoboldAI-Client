@@ -1,5 +1,7 @@
 @echo off
 cd /D %~dp0
+SET CONDA_SHLVL=
+
 TITLE KoboldAI - Server
 SET /P M=<loader.settings
 IF %M%==1 GOTO drivemap
