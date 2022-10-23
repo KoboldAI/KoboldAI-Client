@@ -25,4 +25,5 @@ dependencies:
     - flask-ngrok
     - lupa==1.10
     - transformers>=4.20.1
+    - huggingface_hub>=0.10.1
     - accelerate
