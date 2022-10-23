@@ -691,7 +691,12 @@ class model_settings(settings):
             else:
                 self.tqdm.update(value-old_value)
                 if self.total_download_chunks is not None:
-                    self.tqdm_progress = 0 if self.total_download_chunks==0 else round(float(self.downloaded_chunks)/float(self.total_download_chunks)*100, 1)
+                    if self.total_download_chunks==0:
+                        self.tqdm_progress = 0
+                    elif float(self.downloaded_chunks) > float(self.total_download_chunks):
+                        self.tqdm_progress = 100
+                    else: 
+                        self.tqdm_progress = round(float(self.downloaded_chunks)/float(self.total_download_chunks)*100, 1)
                 else:
                     self.tqdm_progress = 0
                 if self.tqdm.format_dict['rate'] is not None:
