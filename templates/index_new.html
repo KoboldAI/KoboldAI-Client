@@ -81,7 +81,10 @@
 																										}'
 																										onkeyup="update_token_lengths()"></textarea>
 			<div class="statusbar_outer hidden var_sync_alt_system_aibusy" id="status_bar" onclick="socket.emit('abort','');">
-				<div class="statusbar_inner" style="width:0%" onclick="socket.emit('abort','');">0%</div>
+				<div class="statusbar_inner" style="width:0%" onclick="socket.emit('abort','');">
+					<div id="status_bar_percent">0%</div>
+					<div class="var_sync_system_status_message" style="width:90px;"></div>
+				</div>
 			</div><br>
 			<div class="statusbar_outer_horde var_sync_alt_system_aibusy var_sync_alt_model_horde_wait_time" id="status_bar_horde">
 				<div class="statusbar_inner_horde" style="width:100%">

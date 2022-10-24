@@ -1836,6 +1836,7 @@ def patch_transformers_download():
                 desc=f"Downloading {file_name}" if file_name is not None else "Downloading",
                 file=Send_to_socketio(),
             )
+            koboldai_vars.status_message = "Download Model"
             koboldai_vars.total_download_chunks = total
         for chunk in r.iter_content(chunk_size=1024):
             if chunk:  # filter out keep-alive new chunks
@@ -1845,6 +1846,8 @@ def patch_transformers_download():
                 temp_file.write(chunk)
         if url[-11:] != 'config.json':
             progress.close()
+        
+        koboldai_vars.status_message = ""
             
     # def http_get(
         # url: str,
@@ -2651,6 +2654,7 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
                         else:
                             num_tensors = len(device_map)
                         print(flush=True)
+                        koboldai_vars.status_message = "Loading model"
                         koboldai_vars.total_layers = num_tensors
                         koboldai_vars.loaded_layers = 0
                         utils.bar = tqdm(total=num_tensors, desc="Loading model tensors", file=Send_to_socketio())
@@ -2711,6 +2715,7 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
                                     accelerate.utils.save_offload_index(utils.offload_index, "accelerate-disk-cache")
                                 utils.bar.close()
                                 utils.bar = None
+                                koboldai_vars.status_message = ""
                             lazy_load_callback.nested = False
                             if isinstance(f, zipfile.ZipExtFile):
                                 f.close()
@@ -5016,8 +5021,11 @@ def calcsubmit(txt):
     # For all transformers models
     if(koboldai_vars.model != "InferKit"):
         #subtxt, min, max = calcsubmitbudget(actionlen, winfo, mem, anotetxt, koboldai_vars.actions, submission=txt)
+        start_time = time.time()
         subtxt, min, max, found_entries  = koboldai_vars.calc_ai_text(submitted_text=txt)
+        logger.debug("Submit: get_text time {}s".format(time.time()-start_time))
 
+        start_time = time.time()
         if koboldai_vars.experimental_features:
             offset = 0
             applied_biases = []
@@ -5039,7 +5047,11 @@ def calcsubmit(txt):
 
             attention_bias.attention_bias = torch.Tensor(bias).to(breakmodel.primary_device)
             logger.info(f"Bias by {koboldai_vars.memory_attn_bias} -- {attention_bias.attention_bias}")
+        logger.debug("Submit: experimental_features time {}s".format(time.time()-start_time))
+        
+        start_time = time.time()
         generate(subtxt, min, max, found_entries)
+        logger.debug("Submit: generate time {}s".format(time.time()-start_time))
         attention_bias.attention_bias = None
 
                     
@@ -5103,8 +5115,11 @@ def core_generate(text: list, min: int, max: int, found_entries: set, is_core: b
     # This generation function is tangled with koboldai_vars intentionally. It
     # is meant for the story and nothing else.
 
+    start_time = time.time()
     gen_in = torch.tensor(text, dtype=torch.long)[None]
+    logger.debug("core_generate: torch.tensor time {}s".format(time.time()-start_time))
 
+    start_time = time.time()
     if koboldai_vars.is_model_torch():
         # Torch stuff
         if koboldai_vars.full_determinism:
@@ -5120,12 +5135,15 @@ def core_generate(text: list, min: int, max: int, found_entries: set, is_core: b
         if koboldai_vars.full_determinism:
             tpu_mtj_backend.set_rng_seed(koboldai_vars.seed)
 
+    logger.debug("core_generate: Model Setup (SP, etc) time {}s".format(time.time()-start_time))
+
     if gen_in.shape[-1] + koboldai_vars.genamt > koboldai_vars.max_length:
         logger.error("gen_in.shape[-1]: {}".format(gen_in.shape[-1]))
         logger.error("koboldai_vars.genamt: {}".format(koboldai_vars.genamt))
         logger.error("koboldai_vars.max_length: {}".format(koboldai_vars.max_length))
     assert gen_in.shape[-1] + koboldai_vars.genamt <= koboldai_vars.max_length
 
+    start_time = time.time()
     if koboldai_vars.hascuda and koboldai_vars.usegpu:
         gen_in = gen_in.to(koboldai_vars.gpu_device)
     elif koboldai_vars.hascuda and koboldai_vars.breakmodel:
@@ -5133,6 +5151,8 @@ def core_generate(text: list, min: int, max: int, found_entries: set, is_core: b
     else:
         gen_in = gen_in.to("cpu")
     
+    logger.debug("core_generate: gen_in to device time {}s".format(time.time()-start_time))
+    start_time = time.time()
     found_entries = found_entries or set()
 
     if model:
@@ -5150,6 +5170,7 @@ def core_generate(text: list, min: int, max: int, found_entries: set, is_core: b
             # stop early, and then insert WI, then continue generating. That
             # stopping and continuing is this loop.
 
+            start_time = time.time()
             result = raw_generate(
                 gen_in[0], 
                 max_new=koboldai_vars.genamt,
@@ -5160,6 +5181,7 @@ def core_generate(text: list, min: int, max: int, found_entries: set, is_core: b
                 bypass_hf_maxlength=koboldai_vars.dynamicscan,
                 is_core=True,
             )
+            logger.debug("core_generate: run raw_generate pass {} {}s".format(already_generated, time.time()-start_time))
 
             genout = result.encoded
 
@@ -5352,6 +5374,7 @@ def raw_generate(
         )
     else:
         # Torch HF
+        start_time = time.time()
         batch_encoded = torch_raw_generate(
             prompt_tokens=prompt_tokens,
             max_new=max_new if not bypass_hf_maxlength else int(2e9),
@@ -5360,12 +5383,15 @@ def raw_generate(
             batch_count=batch_count,
             gen_settings=gen_settings
         )
+        logger.debug("raw_generate: run torch_raw_generate {}s".format(time.time()-start_time))
+        start_time = time.time()
         result = GenerationResult(
             out_batches=batch_encoded,
             prompt=prompt_tokens,
             is_whole_generation=False,
             output_includes_prompt=True,
         )
+        logger.debug("raw_generate: run GenerationResult {}s".format(time.time()-start_time))
     
     time_end = round(time.time() - time_start, 2)
     tokens_per_second = round(len(result.encoded[0]) / time_end, 2)
@@ -5417,7 +5443,7 @@ def torch_raw_generate(
     do_dynamic_wi: bool = False,
     batch_count: int = 1,
 ):
-
+    start_time = time.time()
     koboldai_vars.inference_config.do_streaming = do_streaming
     koboldai_vars.inference_config.do_dynamic_wi = do_dynamic_wi
 
@@ -5427,6 +5453,8 @@ def torch_raw_generate(
     # Makes stopping criteria hook happy
     model.kai_scanner_excluded_world_info = model.kai_scanner_excluded_world_info or set()
 
+    logger.debug("torch_raw_generate: setup inference_config {}s".format(time.time()-start_time))
+    
     if not isinstance(prompt_tokens, torch.Tensor):
         gen_in = torch.tensor(prompt_tokens, dtype=torch.long)[None]
     else:
@@ -5440,6 +5468,7 @@ def torch_raw_generate(
     gen_in = gen_in.to(device)
 
     with torch.no_grad():
+        start_time = time.time()
         genout = generator(
             gen_in, 
             do_sample=True, 
@@ -5449,6 +5478,7 @@ def torch_raw_generate(
             use_cache=True,
             num_return_sequences=batch_count,
         )
+    logger.debug("torch_raw_generate: run generator {}s".format(time.time()-start_time))    
     
     return genout
 
@@ -5924,7 +5954,9 @@ def generate(txt, minimum, maximum, found_entries=None):
 
     # Submit input text to generator
     try:
+        start_time = time.time()
         genout, already_generated = tpool.execute(core_generate, txt, minimum, maximum, found_entries)
+        logger.debug("Generate: core_generate time {}s".format(time.time()-start_time))
     except Exception as e:
         if(issubclass(type(e), lupa.LuaError)):
             koboldai_vars.lua_koboldbridge.obliterate_multiverse()

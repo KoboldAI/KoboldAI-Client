@@ -234,11 +234,13 @@ def _download_with_aria2(aria2_config: str, total_length: int, directory: str = 
                         lengths[k] = (v[1], v[1])
                 if bar is None:
                     bar = tqdm(total=total_length, desc=f"[aria2] Downloading model", unit="B", unit_scale=True, unit_divisor=1000, file=Send_to_socketio())
+                    koboldai_vars.status_message = "Download Model"
                     koboldai_vars.total_download_chunks = sum(v[1] for v in lengths.values())
                 koboldai_vars.downloaded_chunks = sum(v[0] for v in lengths.values())
                 bar.n = koboldai_vars.downloaded_chunks
                 bar.update()
                 time.sleep(0.1)
+            koboldai_vars.status_message = ""
             path = f.name
     except Exception as e:
         p.terminate()

@@ -991,6 +991,7 @@ class system_settings(settings):
         self.socketio = socketio
         self.noai        = False  # Runs the script without starting up the transformers pipeline
         self.aibusy      = False  # Stops submissions while the AI is working
+        self.status_message = ""
         self.serverstarted = False  # Whether or not the Flask server has started
         self.lua_state   = None   # Lua state of the Lua scripting system
         self.lua_koboldbridge = None  # `koboldbridge` from bridge.lua

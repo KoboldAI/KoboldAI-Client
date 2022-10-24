@@ -564,9 +564,10 @@ function do_presets(data) {
 function update_status_bar(data) {
 	var percent_complete = data.value;
 	var percent_bar = document.getElementsByClassName("statusbar_inner");
+	document.getElementById('status_bar_percent').textContent = Math.round(percent_complete,1)+"%"
 	for (item of percent_bar) {
 		item.setAttribute("style", "width:"+percent_complete+"%");
-		item.textContent = Math.round(percent_complete,1)+"%"
+		
 		if ((percent_complete == 0) || (percent_complete == 100)) {
 			item.parentElement.classList.add("hidden");
 			document.getElementById("inputrow_container").classList.remove("status_bar");
@@ -5357,7 +5358,6 @@ function initalizeTooltips() {
 		const shortcutRow = $e("div", shortcutContainer, {classes: ["shortcut-item"]});
 		const shortcutEl = $e("div", shortcutRow, {classes: ["shortcut-keys"]});
 		for (const key of ["Ctrl", shortcut.key.toUpperCase()]) {
-			console.log("HELLO")
 			$e("span", shortcutEl, {classes: ["shortcut-key"], innerText: key});
 		}
 		const shortcutDesc = $e("div", shortcutRow, {classes: ["shortcut-desc"], innerText: shortcut.desc});

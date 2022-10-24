@@ -1476,6 +1476,9 @@ body {
 	height: 100%;
 	text-align: center;
 	font-size: calc(0.875em + var(--font_size_adjustment));
+	display: flex;
+	flex-direction: column;
+	justify-content: space-between;
 }
 
 /*#btnsend{
