@@ -1205,7 +1205,7 @@ def load_model(path: str, driver_version="tpu_driver0.1_dev20210607", hf_checkpo
     print("Connecting to your Colab instance's TPU", flush=True)
     old_ai_busy = koboldai_vars.aibusy
     koboldai_vars.status_message = "Connecting to TPU"
-    spinner = threading.Thread((target=show_spinner, args=())
+    spinner = threading.Thread(target=show_spinner, args=())
     spinner.start()
     if os.environ.get('COLAB_TPU_ADDR', '') != '':
         tpu_address = os.environ['COLAB_TPU_ADDR']  # Colab
