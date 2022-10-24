@@ -1141,7 +1141,7 @@ body {
 	grid-template-areas: "menuicon gamescreen options lefticon"
 						 "menuicon theme theme lefticon"
 						 "menuicon inputrow inputrow lefticon";
-	grid-template-columns: 30px auto fit-content(30%) 30px;
+	grid-template-columns: 30px auto 30% 30px;
 	grid-template-rows: auto min-content 100px;
 }
 .main-grid[option_length="0"][model_numseqs="1"] {

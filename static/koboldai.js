@@ -2310,6 +2310,7 @@ function load_cookies(data) {
 }
 
 function process_log_message(full_data) {
+	debug_info['aiserver errors'] = []
 	for (data of full_data) {
 		let level = data['record']['level']['name'];
 		let message = data['record']['message'];
@@ -2319,6 +2320,10 @@ function process_log_message(full_data) {
 		if (level == 'ERROR') {
 			show_error_message(data['html']);
 		}
+		
+		
+		let temp = JSON.parse(JSON.stringify(data.record));
+		debug_info['aiserver errors'].push(temp);
 		
 		//put log message in log popup
 		const log_popup = document.getElementById('log-popup');
@@ -3877,6 +3882,18 @@ function getRedactedValue(value) {
 async function downloadDebugFile(redact=true) {
 	let r = await fetch("/vars");
 	let varsData = await r.json();
+	
+	r = await fetch("/get_log");
+	let aiserver_log = await r.json();
+	console.log(aiserver_log);
+	
+	debug_info['aiserver errors'] = []
+	for (data of aiserver_log.aiserver_log) {
+		let temp = JSON.parse(JSON.stringify(data.record));
+		temp = {"level": temp.level.name, 'message': temp.message, 'record': temp};
+		delete temp.record.message;
+		debug_info['aiserver errors'].push(temp);
+	}
 
 	// Redact sensitive user info
 
@@ -3892,7 +3909,7 @@ async function downloadDebugFile(redact=true) {
 		"system_settings.savedir", // Can reveal username
 		"story_settings.last_story_load",
 	];
-
+	
 	if (redact) {
 		// TODO: genseqs, splist(?)
 		redactables = redactables.concat([
@@ -3912,6 +3929,7 @@ async function downloadDebugFile(redact=true) {
 			"system_settings.spfilename",
 			"system_settings.spname",
 		]);
+		
 
 		// Redact more complex things
 
@@ -3973,6 +3991,14 @@ async function downloadDebugFile(redact=true) {
 	}
 
 	debug_info.currentVars = varsData;
+	
+	//redact aiserver log messages
+	for (log_item of debug_info['aiserver errors']) {
+		if (['PROMPT', 'GENERATION'].includes(log_item.level)) {
+			log_item.message = getRedactedValue(log_item.message);
+		}
+	}
+	
 	console.log(debug_info);
 
 	downloadString(JSON.stringify(debug_info, null, 4), "kobold_debug.json");

@@ -9269,6 +9269,10 @@ def UI_2_update_tokens(data):
 @socketio.on("get_log")
 def UI_2_get_log(data):
     emit("log_message", web_log_history)
+    
+@app.route("/get_log")
+def UI_2_get_log_get():
+    return {'aiserver_log': web_log_history}
 
 @app.route("/test_match")
 @logger.catch
