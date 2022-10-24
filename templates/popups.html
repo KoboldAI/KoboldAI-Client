@@ -249,4 +249,22 @@
 		</div>
 		<div id="shortcut-container"></div>
 	</div>
+	<!---------------- Shortcuts ------------------->
+	<div id="sp-trainer-popup" class="popup-window popup">
+		<div class="title">
+			<div class="popuptitletext">Softprompt Trainer</div>
+		</div>
+		<div id="popup_list_area" class="popup_list_area" style="overflow-x: scroll;">
+			<form action="sp_tunning" method="post">
+				Soft Prompt Title: <input type=text id="sp_title"/><br/>
+				Initial Prompt: <input type=text id="sp_prompt"/><br/>
+				Dataset Location: <input type=text id="sp_dataset"/><br/>
+				Author: <input type=text id="sp_author"/><br/>
+				Description: <input type=text id="sp_description"/><br/>
+			</form>
+		</div>
+		<div class="popup_load_cancel">
+			<button type="button" class="btn btn-primary popup_load_cancel_button" onclick="closePopups();">Ok</button>
+		</div>
+	</div>
 </div>
