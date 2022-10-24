@@ -199,6 +199,10 @@ border-top-right-radius: var(--tabs_rounding);
 	margin: 2px;
 }
 
+.setting_container.var_sync_alt_system_alt_gen[system_alt_gen="true"] {
+	display: none;
+}
+
 .chat_mode[story_chatmode="false"] {
 	display: none;
 }
