@@ -1,6 +1,10 @@
 {% for item in settings %}
 {% if item["menu_path"] == menu and item['sub_path'] == sub_path %}
+{% if 'extra_classes' in item %}
+<div class="setting_container {{ item['extra_classes'] }}">
+{% else %}
 <div class="setting_container">
+{% endif %}
 	<!---Top Row---->
 	<span class="setting_label">
 		<span>{{ item['label'] }}:&nbsp;</span><span class="helpicon material-icons-outlined" tooltip="{{ item['tooltip'] }}">help_icon</span>

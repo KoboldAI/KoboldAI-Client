@@ -193,7 +193,8 @@ gensettingstf = [
     "menu_path": "World Info",
     "sub_path": "",
     "classname": "user",
-    "name": "widepth"
+    "name": "widepth",
+    "extra_classes": "var_sync_alt_system_alt_gen"
 	},
     {
 	"uitype": "toggle",

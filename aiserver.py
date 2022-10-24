@@ -8515,12 +8515,14 @@ def UI_2_edit_world_info(data):
         print(data)
     
     if data['uid'] < 0:
+        logger.debug("Creating WI: {}".format(data))
         koboldai_vars.worldinfo_v2.add_item(data['title'], data['key'], 
                                              data['keysecondary'], data['folder'], 
                                              data['constant'], data['manual_text'], 
                                              data['comment'], wpp=data['wpp'], use_wpp=data['use_wpp'])
         emit("delete_new_world_info_entry", {})
     else:
+        logger.debug("Editting WI: {}".format(data))
         koboldai_vars.worldinfo_v2.edit_item(data['uid'], data['title'], data['key'], 
                                              data['keysecondary'], data['folder'], 
                                              data['constant'], data['manual_text'], 
@@ -9299,6 +9301,10 @@ def UI_2_update_tokens(data):
 @socketio.on("get_log")
 def UI_2_get_log(data):
     emit("log_message", web_log_history)
+    
+@app.route("/get_log")
+def UI_2_get_log_get():
+    return {'aiserver_log': web_log_history}
 
 @app.route("/test_match")
 @logger.catch

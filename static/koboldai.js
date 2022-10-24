@@ -1698,14 +1698,10 @@ function process_world_info_entry(data) {
 function world_info_entry(data) {
 	world_info_data[data.uid] = data;
 	
-	//delete the existing world info and recreate
-	var original_focus = null;
+	//First let's get the id of the element we're on so we can restore it after removing the object
+	var original_focus = document.activeElement.id;
+	
 	if (document.getElementById("world_info_"+data.uid)) {
-		//First let's get the id of the element we're on so we can restore it after removing the object
-		original_focus = document.activeElement.id;
-		//console.log("Active ID: "+original_focus);
-		//console.log(document.activeElement);
-		//document.getElementById("world_info_"+data.uid).remove();
 		world_info_card = document.getElementById("world_info_"+data.uid);
 	} else {
 		world_info_card_template = document.getElementById("world_info_");
@@ -1724,6 +1720,7 @@ function world_info_entry(data) {
 	title.setAttribute("uid", data.uid);
 	title.setAttribute("original_text", data.title);
 	title.setAttribute("contenteditable", true);
+	title.classList.remove("pulse");
 	title.ondragstart=function() {event.preventDefault();event.stopPropagation();};
 	title.onblur = function () {
 				this.parentElement.parentElement.setAttribute('draggable', 'true');
@@ -1791,6 +1788,7 @@ function world_info_entry(data) {
 		wpp_toggle_area.append(wpp_toggle);
 	}
 	wpp_toggle.checked = data.use_wpp;
+	wpp_toggle.classList.remove("pulse");
 	
 	//w++ data
 	let last_new_value = null
@@ -1924,6 +1922,7 @@ function world_info_entry(data) {
 							send_world_info(this.getAttribute('uid'));
 							this.classList.add("pulse");
 						}
+	manual_text.classList.remove("pulse");
 	comment = world_info_card.querySelector('.world_info_comment');
 	comment.id = "world_info_comment_"+data.uid;
 	comment.setAttribute("uid", data.uid);
@@ -1933,6 +1932,7 @@ function world_info_entry(data) {
 							send_world_info(this.getAttribute('uid'));
 							this.classList.add("pulse");
 						}
+	comment.classList.remove("pulse");
 	constant_area = world_info_card.querySelector('.world_info_always_include');
 	constant_area.id = "world_info_toggle_area_"+data.uid;
 	if (document.getElementById("world_info_constant_"+data.uid)) {
@@ -1953,6 +1953,7 @@ function world_info_entry(data) {
 		constant_area.append(constant);
 	}
 	constant.checked = data.constant;
+	constant.classList.remove("pulse");
 						
 	if (!(document.getElementById("world_info_folder_"+data.folder))) {
 		folder = document.createElement("div");
@@ -2021,7 +2022,7 @@ function world_info_entry(data) {
 			}
 			on_new_wi_item = null;
 			//for some reason we have to wrap this in a timmer
-			setTimeout(function() {document.getElementById(original_focus).click();document.getElementById(original_focus).focus()}, 0);
+			setTimeout(function() {document.getElementById(original_focus.replace("-1", data.uid)).click();document.getElementById(original_focus.replace("-1", data.uid)).focus()}, 0);
 		}
 	}
 	
@@ -2259,6 +2260,7 @@ function show_error_message(data) {
 	while (error_box_data.firstChild) {
 		error_box_data.removeChild(error_box_data.firstChild);
 	}
+	console.log(data);
 	if (Array.isArray(data)) {
 		for (item of data) {
 			$e("div", error_box_data, {'innerHTML': item, 'classes': ['console_text']})
@@ -2266,7 +2268,7 @@ function show_error_message(data) {
 		}
 	} else {
 		//console.log(item);
-		$e("div", error_box_data, {'innerHTML': item, 'classes': ['console_text']})
+		$e("div", error_box_data, {'innerHTML': data, 'classes': ['console_text']})
 	}
 	openPopup("error-popup");
 }
@@ -2310,6 +2312,7 @@ function load_cookies(data) {
 }
 
 function process_log_message(full_data) {
+	debug_info['aiserver errors'] = []
 	for (data of full_data) {
 		let level = data['record']['level']['name'];
 		let message = data['record']['message'];
@@ -2319,6 +2322,10 @@ function process_log_message(full_data) {
 		if (level == 'ERROR') {
 			show_error_message(data['html']);
 		}
+		
+		
+		let temp = JSON.parse(JSON.stringify(data.record));
+		debug_info['aiserver errors'].push(temp);
 		
 		//put log message in log popup
 		const log_popup = document.getElementById('log-popup');
@@ -3264,7 +3271,7 @@ function add_tags(tags, data) {
 	text.onblur = function () {
 					this.parentElement.parentElement.parentElement.setAttribute('draggable', 'true');
 					this.setAttribute('draggable', 'true');
-					if (this.textContent != "") {
+					if (this.textContent.trim() != "") {
 						//console.log(this.textContent);
 						on_new_wi_item = this.id;
 						world_info_data[this.getAttribute('uid')]['key'].push(this.textContent);
@@ -3342,7 +3349,7 @@ function add_secondary_tags(tags, data) {
 	text.onblur = function () {
 					this.parentElement.parentElement.parentElement.setAttribute('draggable', 'true');
 					this.setAttribute('draggable', 'true');
-					if (this.textContent != "") {
+					if (this.textContent.trim() != "") {
 						on_new_wi_item = this.id;
 						world_info_data[this.getAttribute('uid')]['keysecondary'].push(this.textContent);
 						send_world_info(this.getAttribute('uid'));
@@ -3877,6 +3884,18 @@ function getRedactedValue(value) {
 async function downloadDebugFile(redact=true) {
 	let r = await fetch("/vars");
 	let varsData = await r.json();
+	
+	r = await fetch("/get_log");
+	let aiserver_log = await r.json();
+	console.log(aiserver_log);
+	
+	debug_info['aiserver errors'] = []
+	for (data of aiserver_log.aiserver_log) {
+		let temp = JSON.parse(JSON.stringify(data.record));
+		temp = {"level": temp.level.name, 'message': temp.message, 'record': temp};
+		delete temp.record.message;
+		debug_info['aiserver errors'].push(temp);
+	}
 
 	// Redact sensitive user info
 
@@ -3892,7 +3911,7 @@ async function downloadDebugFile(redact=true) {
 		"system_settings.savedir", // Can reveal username
 		"story_settings.last_story_load",
 	];
-
+	
 	if (redact) {
 		// TODO: genseqs, splist(?)
 		redactables = redactables.concat([
@@ -3912,6 +3931,7 @@ async function downloadDebugFile(redact=true) {
 			"system_settings.spfilename",
 			"system_settings.spname",
 		]);
+		
 
 		// Redact more complex things
 
@@ -3973,6 +3993,14 @@ async function downloadDebugFile(redact=true) {
 	}
 
 	debug_info.currentVars = varsData;
+	
+	//redact aiserver log messages
+	for (log_item of debug_info['aiserver errors']) {
+		if (['PROMPT', 'GENERATION'].includes(log_item.level)) {
+			log_item.message = getRedactedValue(log_item.message);
+		}
+	}
+	
 	console.log(debug_info);
 
 	downloadString(JSON.stringify(debug_info, null, 4), "kobold_debug.json");
