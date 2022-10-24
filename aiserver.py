@@ -283,7 +283,7 @@ class Send_to_socketio(object):
             print('\r' + bar, end='')
             time.sleep(0.01)
             try:
-                emit('from_server', {'cmd': 'model_load_status', 'data': bar.replace(" ", "&nbsp;")}, broadcast=True, room="UI_1")
+                socketio.emit('from_server', {'cmd': 'model_load_status', 'data': bar.replace(" ", "&nbsp;")}, broadcast=True, room="UI_1")
             except:
                 pass
         
@@ -1799,7 +1799,7 @@ def patch_transformers_download():
             if bar != "" and [ord(num) for num in bar] != [27, 91, 65]: #No idea why we're getting the 27, 1, 65 character set, just killing to so we can move on
                 try:
                     print('\r' + bar, end='')
-                    emit('from_server', {'cmd': 'model_load_status', 'data': bar.replace(" ", "&nbsp;")}, broadcast=True, room="UI_1")
+                    socketio.emit('from_server', {'cmd': 'model_load_status', 'data': bar.replace(" ", "&nbsp;")}, broadcast=True, room="UI_1")
                     eventlet.sleep(seconds=0)
                 except:
                     pass
@@ -3061,12 +3061,13 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
         elif(koboldai_vars.use_colab_tpu or koboldai_vars.model in ("TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX")):
             global tpu_mtj_backend
             import tpu_mtj_backend
+            
+            tpu_mtj_backend.socketio = socketio
             if(koboldai_vars.model == "TPUMeshTransformerGPTNeoX"):
                 koboldai_vars.badwordsids = koboldai_vars.badwordsids_neox
             print("{0}Initializing Mesh Transformer JAX, please wait...{1}".format(colors.PURPLE, colors.END))
             if koboldai_vars.model in ("TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX") and (not koboldai_vars.custmodpth or not os.path.isdir(koboldai_vars.custmodpth)):
                 raise FileNotFoundError(f"The specified model path {repr(koboldai_vars.custmodpth)} is not the path to a valid folder")
-            import tpu_mtj_backend
             if(koboldai_vars.model == "TPUMeshTransformerGPTNeoX"):
                 tpu_mtj_backend.pad_token_id = 2
             tpu_mtj_backend.koboldai_vars = koboldai_vars
