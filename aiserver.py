@@ -519,6 +519,7 @@ logger.add(UI_2_log_history, serialize=True, colorize=True, enqueue=True, level=
 koboldai_vars = koboldai_settings.koboldai_vars(socketio)
 
 utils.koboldai_vars = koboldai_vars
+utils.socketio = socketio
 
 old_socketio_on = socketio.on
 def new_socketio_on(*a, **k):
@@ -3853,7 +3854,7 @@ def execute_outmod():
 #==================================================================#
 @socketio.on('connect')
 def do_connect():
-    logger.info("Client connected!")
+    logger.info("Client connected! UI_{}".format(request.args.get('ui')))
     if request.args.get("rely") == "true":
         return
     join_room("UI_{}".format(request.args.get('ui')))
@@ -9595,6 +9596,7 @@ def _generate_text(body: GenerationInputSchema):
         }}), mimetype="application/json", status=503))
     if koboldai_vars.use_colab_tpu:
         import tpu_mtj_backend
+        tpu_mtj_backend.socketio = socketio
     if hasattr(body, "sampler_seed"):
         # If a seed was specified, we need to save the global RNG state so we
         # can restore it later
@@ -11950,6 +11952,7 @@ def put_config_sampler_seed(body: SamplerSeedSettingSchema):
     """
     if koboldai_vars.use_colab_tpu:
         import tpu_mtj_backend
+        tpu_mtj_backend.socketio = socketio
         tpu_mtj_backend.set_rng_seed(body.value)
     else:
         import torch

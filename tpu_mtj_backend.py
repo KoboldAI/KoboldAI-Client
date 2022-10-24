@@ -118,6 +118,7 @@ def show_spinner():
     bar = progressbar.ProgressBar(max_value=progressbar.UnknownLength, widgets=[progressbar.Timer(), '  ', progressbar.BouncingBar(left='[', right=']', marker='█')])
     i = 0
     while True:
+        print("Sending to client")
         if i % 2 == 0:
             socketio.emit('from_server', {'cmd': 'model_load_status', 'data': "Connecting to TPU..." }, broadcast=True, room="UI_1")
         else:
