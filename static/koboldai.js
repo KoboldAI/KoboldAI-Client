@@ -1697,14 +1697,10 @@ function process_world_info_entry(data) {
 function world_info_entry(data) {
 	world_info_data[data.uid] = data;
 	
-	//delete the existing world info and recreate
-	var original_focus = null;
+	//First let's get the id of the element we're on so we can restore it after removing the object
+	var original_focus = document.activeElement.id;
+	
 	if (document.getElementById("world_info_"+data.uid)) {
-		//First let's get the id of the element we're on so we can restore it after removing the object
-		original_focus = document.activeElement.id;
-		//console.log("Active ID: "+original_focus);
-		//console.log(document.activeElement);
-		//document.getElementById("world_info_"+data.uid).remove();
 		world_info_card = document.getElementById("world_info_"+data.uid);
 	} else {
 		world_info_card_template = document.getElementById("world_info_");
@@ -2025,7 +2021,7 @@ function world_info_entry(data) {
 			}
 			on_new_wi_item = null;
 			//for some reason we have to wrap this in a timmer
-			setTimeout(function() {document.getElementById(original_focus).click();document.getElementById(original_focus).focus()}, 0);
+			setTimeout(function() {document.getElementById(original_focus.replace("-1", data.uid)).click();document.getElementById(original_focus.replace("-1", data.uid)).focus()}, 0);
 		}
 	}
 	
@@ -3268,7 +3264,7 @@ function add_tags(tags, data) {
 	text.onblur = function () {
 					this.parentElement.parentElement.parentElement.setAttribute('draggable', 'true');
 					this.setAttribute('draggable', 'true');
-					if (this.textContent != "") {
+					if (this.textContent.trim() != "") {
 						//console.log(this.textContent);
 						on_new_wi_item = this.id;
 						world_info_data[this.getAttribute('uid')]['key'].push(this.textContent);
@@ -3346,7 +3342,7 @@ function add_secondary_tags(tags, data) {
 	text.onblur = function () {
 					this.parentElement.parentElement.parentElement.setAttribute('draggable', 'true');
 					this.setAttribute('draggable', 'true');
-					if (this.textContent != "") {
+					if (this.textContent.trim() != "") {
 						on_new_wi_item = this.id;
 						world_info_data[this.getAttribute('uid')]['keysecondary'].push(this.textContent);
 						send_world_info(this.getAttribute('uid'));
