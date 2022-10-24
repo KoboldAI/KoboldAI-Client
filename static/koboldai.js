@@ -1723,6 +1723,7 @@ function world_info_entry(data) {
 	title.setAttribute("uid", data.uid);
 	title.setAttribute("original_text", data.title);
 	title.setAttribute("contenteditable", true);
+	title.classList.remove("pulse");
 	title.ondragstart=function() {event.preventDefault();event.stopPropagation();};
 	title.onblur = function () {
 				this.parentElement.parentElement.setAttribute('draggable', 'true');
@@ -1790,6 +1791,7 @@ function world_info_entry(data) {
 		wpp_toggle_area.append(wpp_toggle);
 	}
 	wpp_toggle.checked = data.use_wpp;
+	wpp_toggle.classList.remove("pulse");
 	
 	//w++ data
 	let last_new_value = null
@@ -1923,6 +1925,7 @@ function world_info_entry(data) {
 							send_world_info(this.getAttribute('uid'));
 							this.classList.add("pulse");
 						}
+	manual_text.classList.remove("pulse");
 	comment = world_info_card.querySelector('.world_info_comment');
 	comment.id = "world_info_comment_"+data.uid;
 	comment.setAttribute("uid", data.uid);
@@ -1932,6 +1935,7 @@ function world_info_entry(data) {
 							send_world_info(this.getAttribute('uid'));
 							this.classList.add("pulse");
 						}
+	comment.classList.remove("pulse");
 	constant_area = world_info_card.querySelector('.world_info_always_include');
 	constant_area.id = "world_info_toggle_area_"+data.uid;
 	if (document.getElementById("world_info_constant_"+data.uid)) {
@@ -1952,6 +1956,7 @@ function world_info_entry(data) {
 		constant_area.append(constant);
 	}
 	constant.checked = data.constant;
+	constant.classList.remove("pulse");
 						
 	if (!(document.getElementById("world_info_folder_"+data.folder))) {
 		folder = document.createElement("div");
