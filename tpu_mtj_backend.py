@@ -120,11 +120,11 @@ def show_spinner():
     i = 0
     global run_spinner
     while run_spinner:
-        print("Sending to client")
-        if i % 2 == 0:
-            socketio.emit('from_server', {'cmd': 'model_load_status', 'data': "Connecting to TPU..." }, broadcast=True, room="UI_1")
-        else:
-            socketio.emit('from_server', {'cmd': 'model_load_status', 'data': "Connecting to TPU...." }, broadcast=True, room="UI_1")
+        if i % 10 == 0:
+            if i % 20 == 0:
+                socketio.emit('from_server', {'cmd': 'model_load_status', 'data': "Connecting to TPU..." }, broadcast=True, room="UI_1")
+            else:
+                socketio.emit('from_server', {'cmd': 'model_load_status', 'data': "Connecting to TPU...." }, broadcast=True, room="UI_1")
         bar.update(i)
         time.sleep(0.1)
         i += 1
