@@ -30,6 +30,7 @@ SOFTWARE.
 import utils
 
 import multiprocessing
+import threading
 from typing import Any, Callable, Dict, List, NamedTuple, Optional, Tuple, TypeVar
 import progressbar
 import time
@@ -114,7 +115,7 @@ def compiling_callback() -> None:
     pass
 
 
-def show_spinner(socketio):
+def show_spinner():
     bar = progressbar.ProgressBar(max_value=progressbar.UnknownLength, widgets=[progressbar.Timer(), '  ', progressbar.BouncingBar(left='[', right=']', marker='█')])
     i = 0
     while True:
@@ -1204,7 +1205,7 @@ def load_model(path: str, driver_version="tpu_driver0.1_dev20210607", hf_checkpo
     print("Connecting to your Colab instance's TPU", flush=True)
     old_ai_busy = koboldai_vars.aibusy
     koboldai_vars.status_message = "Connecting to TPU"
-    spinner = multiprocessing.Process(target=show_spinner, args=(socketio))
+    spinner = threading.Thread((target=show_spinner, args=())
     spinner.start()
     if os.environ.get('COLAB_TPU_ADDR', '') != '':
         tpu_address = os.environ['COLAB_TPU_ADDR']  # Colab
