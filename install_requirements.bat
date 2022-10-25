@@ -8,6 +8,7 @@ echo.
 
 Reg add "HKLM\SYSTEM\CurrentControlSet\Control\FileSystem" /v "LongPathsEnabled" /t REG_DWORD /d "1" /f 2>nul
 cd /D %~dp0
+SET CONDA_SHLVL=
 
 if exist miniconda3\ (
   echo Delete existing installation?
