@@ -55,7 +55,8 @@ from mesh_transformer.util import to_bf16
 import time
 
 
-tqdm_print = None
+socketio = None
+queue = None
 
 params: Dict[str, Any] = {}
 

@@ -1441,6 +1441,7 @@ def general_startup(override_args=None):
             
     #setup socketio relay queue
     koboldai_settings.queue = multiprocessing.Queue()
+    
     socketio.start_background_task(socket_io_relay, koboldai_settings.queue, socketio)
     
         
@@ -3080,7 +3081,7 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
             koboldai_vars.allowsp = True
             loadmodelsettings()
             loadsettings()
-            tpu_mtj_backend.load_model(koboldai_vars.custmodpth, hf_checkpoint=koboldai_vars.model not in ("TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX") and koboldai_vars.use_colab_tpu, **koboldai_vars.modelconfig)
+            tpu_mtj_backend.load_model(koboldai_vars.custmodpth, hf_checkpoint=koboldai_vars.model not in ("TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX") and koboldai_vars.use_colab_tpu, socketio_queue=koboldai_settings.queue, **koboldai_vars.modelconfig)
             #tpool.execute(tpu_mtj_backend.load_model, koboldai_vars.custmodpth, hf_checkpoint=koboldai_vars.model not in ("TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX") and koboldai_vars.use_colab_tpu, **koboldai_vars.modelconfig)
             koboldai_vars.modeldim = int(tpu_mtj_backend.params.get("d_embed", tpu_mtj_backend.params["d_model"]))
             tokenizer = tpu_mtj_backend.tokenizer
