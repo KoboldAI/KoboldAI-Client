@@ -3081,7 +3081,12 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
             koboldai_vars.allowsp = True
             loadmodelsettings()
             loadsettings()
-            tpu_mtj_backend.load_model(koboldai_vars.custmodpth, hf_checkpoint=koboldai_vars.model not in ("TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX") and koboldai_vars.use_colab_tpu, socketio_queue=koboldai_settings.queue, **koboldai_vars.modelconfig)
+            tpu_mtj_backend.load_model(koboldai_vars.custmodpth, 
+                                       hf_checkpoint=koboldai_vars.model not in ("TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX") 
+                                       and koboldai_vars.use_colab_tpu, 
+                                       socketio_queue=koboldai_settings.queue, 
+                                       initial_load=initial_load, logger=logger, cloudflare=cloudflare,
+                                       **koboldai_vars.modelconfig)
             #tpool.execute(tpu_mtj_backend.load_model, koboldai_vars.custmodpth, hf_checkpoint=koboldai_vars.model not in ("TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX") and koboldai_vars.use_colab_tpu, **koboldai_vars.modelconfig)
             koboldai_vars.modeldim = int(tpu_mtj_backend.params.get("d_embed", tpu_mtj_backend.params["d_model"]))
             tokenizer = tpu_mtj_backend.tokenizer
@@ -12240,8 +12245,11 @@ def run():
             with open('cloudflare.log', 'w') as cloudflarelog:
                 cloudflarelog.write("KoboldAI has finished loading and is available at the following link : " + cloudflare)
                 logger.init_ok("Webserver", status="OK")
-                logger.message(f"KoboldAI has finished loading and is available at the following link for UI 1: {cloudflare}")
-                logger.message(f"KoboldAI has finished loading and is available at the following link for UI 2: {cloudflare}/new_ui")
+                if not koboldai_vars.use_colab_tpu:
+                    # If we're using a TPU our UI will freeze during the connection to the TPU. To prevent this from showing to the user we 
+                    # delay the display of this message until after that step
+                    logger.message(f"KoboldAI has finished loading and is available at the following link for UI 1: {cloudflare}")
+                    logger.message(f"KoboldAI has finished loading and is available at the following link for UI 2: {cloudflare}/new_ui")
         else:
             logger.init_ok("Webserver", status="OK")
             logger.message(f"Webserver has started, you can now connect to this machine at port: {port}")

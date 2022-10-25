@@ -1080,7 +1080,7 @@ def read_neox_checkpoint(state, path, config, checkpoint_shards=2):
 
     koboldai_vars.status_message = ""
 
-def load_model(path: str, driver_version="tpu_driver0.1_dev20210607", hf_checkpoint=False, socketio_queue=None, **kwargs) -> None:
+def load_model(path: str, driver_version="tpu_driver0.1_dev20210607", hf_checkpoint=False, socketio_queue=None, initial_load=False, logger=None, cloudflare="", **kwargs) -> None:
     global thread_resources_env, seq, tokenizer, network, params, pad_token_id
 
     if "pad_token_id" in kwargs:
@@ -1239,13 +1239,21 @@ def load_model(path: str, driver_version="tpu_driver0.1_dev20210607", hf_checkpo
     koboldai_vars.aibusy = old_ai_busy
     print()
 
+    start_time = time.time()
     cores_per_replica = params["cores_per_replica"]
     seq = params["seq"]
     params["optimizer"] = _DummyOptimizer()
+    print("to line 1246 {}s".format(time.time()-start_time))
+    start_time = time.time()
     mesh_shape = (1, cores_per_replica)
-    devices = np.array(jax.devices()[:cores_per_replica]).reshape(mesh_shape)
+    devices = jax.devices()
+    devices = np.array(devices[:cores_per_replica]).reshape(mesh_shape)
     thread_resources_env = maps.ResourceEnv(maps.Mesh(devices, ('dp', 'mp')), ())
     maps.thread_resources.env = thread_resources_env
+    if initial_load:
+        logger.message(f"KoboldAI has finished loading and is available at the following link for UI 1: {cloudflare}")
+        logger.message(f"KoboldAI has finished loading and is available at the following link for UI 2: {cloudflare}/new_ui")
+
 
     global shard_xmap, batch_xmap
     shard_xmap = __shard_xmap()
@@ -1296,6 +1304,7 @@ def load_model(path: str, driver_version="tpu_driver0.1_dev20210607", hf_checkpo
     from tqdm.auto import tqdm
     import functools
 
+    
     def callback(model_dict, f, **_):
         if callback.nested:
             return
