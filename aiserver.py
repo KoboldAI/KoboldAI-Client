@@ -2413,6 +2413,15 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
                             if utils.num_shards is None or utils.current_shard >= utils.num_shards:
                                 if utils.offload_index:
                                     for name, tensor in utils.named_buffers:
+                                        dtype = tensor.dtype
+                                        if convert_to_float16 and breakmodel.primary_device != "cpu" and vars.hascuda and (vars.breakmodel or vars.usegpu):
+                                            dtype = torch.float16
+                                        if breakmodel.primary_device == "cpu" or (not vars.usegpu and not vars.breakmodel):
+                                            dtype = torch.float32
+                                        if name in model_dict and model_dict[name].dtype is not dtype:
+                                            model_dict[name] = model_dict[name].to(dtype)
+                                        if tensor.dtype is not dtype:
+                                            tensor = tensor.to(dtype)
                                         if name not in utils.offload_index:
                                             accelerate.utils.offload_weight(tensor, name, "accelerate-disk-cache", index=utils.offload_index)
                                     accelerate.utils.save_offload_index(utils.offload_index, "accelerate-disk-cache")
@@ -2582,7 +2591,7 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
                         if not args.colab or args.savemodel:
                             import shutil
                             tokenizer.save_pretrained("models/{}".format(vars.model.replace('/', '_')))
-                            if(vars.fp32_model):  # Use save_pretrained to convert fp32 models to fp16
+                            if(vars.fp32_model and ("breakmodel" not in globals() or not breakmodel.disk_blocks)):  # Use save_pretrained to convert fp32 models to fp16, unless we are using disk cache because save_pretrained is not supported in that case
                                 model = model.half()
                                 model.save_pretrained("models/{}".format(vars.model.replace('/', '_')), max_shard_size="500MiB")
                             else:  # For fp16 models, we can just copy the model files directly
