@@ -2371,9 +2371,14 @@ body {
 }
 
 #welcome-logo {
-	pointer-events: none;
-	max-width: 720px;
-	width: 100%;
+    width: 50%;
+    display: block;
+    margin-top: 480px;
+    margin-left: auto;
+    margin-right: auto;
+    pointer-events: none;
+    transform: translateY(-200px);
+    max-width: 720px;
 }
 
 /* Popups */
