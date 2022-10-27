@@ -196,7 +196,7 @@
 					<!---Top Row---->
 					<span class="setting_label">
 						<span style="white-space: pre-wrap;">Soft Prompt: </span>
-						<span class="helpicon material-icons-outlined" tooltip="Changes how the AI decides what to output.">help_icon</span>
+						<span class="helpicon material-icons-outlined" tooltip="Changes how the AI decides what to generate.">help_icon</span>
 					</span>
 					<!---Bottom Row---->
 					<span class="setting_item">
@@ -212,8 +212,8 @@
 				<div class="setting_container_single_wide">
 					<!---Top Row---->
 					<span class="setting_label">
-						<span style="white-space: pre-wrap;">Enabled User Scripts: </span>
-						<span class="helpicon material-icons-outlined" tooltip="Allows for user scripts that modify the way the game functions">help_icon</span>
+						<span style="white-space: pre-wrap;">Enabled Userscripts: </span>
+						<span class="helpicon material-icons-outlined" tooltip="Allows to activate userscripts that affect generation.">help_icon</span>
 					</span>
 					<!---Bottom Row---->
 					<span class="setting_item">
@@ -258,7 +258,7 @@
 			{% endwith %}
 			<div class="setting_container">
 				<span class="setting_label">
-					<span>Max Game Screen: &nbsp;</span><span class="helpicon material-icons-outlined" tooltip="When enabled and both menus are un-pinned, the game screen will take up all avaialable space. When disabled, the game screen will be centered.">help_icon</span> 
+					<span>Max Game Screen: &nbsp;</span><span class="helpicon material-icons-outlined" tooltip="If enabled and both menus are unpinned, the game screen will take up all available space. When disabled, the game screen will be centered.">help_icon</span> 
 				</span>
 				<span class="setting_item">
 					<input type=checkbox id="preserve_game_space_setting" data-size=mini data-onstyle=success data-toggle=toggle onchange="preserve_game_space(this.checked)"/>
@@ -269,7 +269,7 @@
 			</div>
 			<div class="setting_container">
 				<span class="setting_label">
-					<span>Options on Right:&nbsp;</span><span class="helpicon material-icons-outlined" tooltip="When enabled and only the story menu is pinned, the generated story options will be shown on the right instead of the left of the game text.">help_icon</span> 
+					<span>Options on Right:&nbsp;</span><span class="helpicon material-icons-outlined" tooltip="If enabled and only the right menu is pinned, the options will be shown on the right instead of the left of the game text.">help_icon</span> 
 				</span>
 				<span class="setting_item">
 					<input type=checkbox id="options_on_right" data-size=mini data-onstyle=success data-toggle=toggle onchange="options_on_right(this.checked)"/>
@@ -281,7 +281,7 @@
 			<div class="setting_container">
 				<!---Top Row---->
 				<span class="setting_label">
-					<span>Font Size:&nbsp;</span><span class="helpicon material-icons-outlined" tooltip="Change the font size of the game text">help_icon</span>
+					<span>Game Text Size:&nbsp;</span><span class="helpicon material-icons-outlined" tooltip="Changes the font size of the game text.">help_icon</span>
 				</span>
 				<input autocomplete="off" class="setting_value" id="font_size_cur"
 					   value="1" item_id="font_size" 
