@@ -214,7 +214,7 @@ gensettingstf = [
     {
 	"uitype": "toggle",
 	"unit": "bool",
-	"label": "Add Prompt",
+	"label": "Stored Prompt",
 	"id": "setuseprompt", 
 	"min": 0,
 	"max": 1,
