@@ -2379,8 +2379,10 @@ body {
 	max-width: 720px;
 }
 
-.welcome_text {
-	transform: translate(10px, 15px);
+#welcome-text-content {
+	position: relative;
+	top: 500px;
+	left: 10px;
 }
 
 /* Popups */
