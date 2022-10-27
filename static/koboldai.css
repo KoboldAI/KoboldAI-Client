@@ -2377,6 +2377,7 @@ body {
     margin-right: auto;
     pointer-events: none;
     transform: translateY(-200px);
+    filter: drop-shadow(5px 5px 5px #222);
     max-width: 720px;
 }
 
