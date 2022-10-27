@@ -345,7 +345,7 @@ gensettingstf = [
     {
     "uitype": "dropdown",
 	"unit": "text",
-	"label": "KoboldAI Mode",
+	"label": "Game Mode",
 	"id": "storymode",
 	"default": 0,
     "tooltip": "Select KoboldAI mode.",
