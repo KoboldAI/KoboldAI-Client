@@ -91,6 +91,7 @@ if lupa.LUA_VERSION[:2] != (5, 4):
     logger.error(f"Please install lupa==1.10. You have lupa {lupa.__version__}.")
 
 patch_causallm_patched = False
+cloudflare = ""
 
 # Make sure tqdm progress bars display properly in Colab
 from tqdm.auto import tqdm
