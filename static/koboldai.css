@@ -2381,6 +2381,10 @@ body {
     max-width: 720px;
 }
 
+.welcome_text {
+	transform: translate(10px, 15px);
+}
+
 /* Popups */
 #popup-container {
 	position: absolute;
