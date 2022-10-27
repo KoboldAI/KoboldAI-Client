@@ -594,7 +594,7 @@ class model_settings(settings):
         self.oaiapikey   = ""     # API key to use for OpenAI API calls
         self.configname = None
         self.online_model = ''
-       self.welcome_default = """<img id='welcome-logo' src='static/Welcome_Logo.png' draggable='False'><div id="welcome-text-content">Please load a model from the left.<br/>
+        self.welcome_default = """<img id='welcome-logo' src='static/Welcome_Logo.png' draggable='False'><div id="welcome-text-content">Please load a model from the left.<br/>
                                   If you encounter any issues, please click the Download debug dump link in the Home tab on the left flyout and attach the downloaded file to your error report on <a href='https://github.com/ebolam/KoboldAI/issues'>Github</a>, <a href='https://www.reddit.com/r/KoboldAI/'>Reddit</a>, or <a href='https://discord.gg/XuQWadgU9k'>Discord</a>. 
                                   A redacted version (without story text) is available.</div>""" # Custom Welcome Text
         self.welcome     = self.welcome_default
