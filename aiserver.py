@@ -8788,19 +8788,19 @@ def valid_userscripts_to_unload(file):
 def get_userscripts_desc(item_full_path, item, valid_selection):
     if not valid_selection:
         return [None, None]
-    ob = ["", ""]
+    ob = [item, "", ""]
     description = []
     multiline = False
     with open(item_full_path) as f:
-        ob[0] = f.readline().strip().replace("\033", "")
-        if ob[0][:2] != "--":
-            ob[0] = file
+        ob[1] = f.readline().strip().replace("\033", "")
+        if ob[1][:2] != "--":
+            ob[1] = file
         else:
-            ob[0] = ob[0][2:]
-            if ob[0][:2] == "[[":
-                ob[0] = ob[0][2:]
+            ob[1] = ob[1][2:]
+            if ob[1][:2] == "[[":
+                ob[1] = ob[1][2:]
                 multiline = True
-            ob[0] = ob[0].lstrip("-").strip()
+            ob[1] = ob[1].lstrip("-").strip()
             for line in f:
                 line = line.strip().replace("\033", "")
                 if multiline:
@@ -8820,9 +8820,9 @@ def get_userscripts_desc(item_full_path, item, valid_selection):
                         multiline = True
                         line = line[2:]
                     description.append(line.strip())
-    ob[1] = "\n".join(description)
-    if len(ob[1]) > 250:
-        ob[1] = ob[1][:247] + "..."
+    ob[2] = "\n".join(description)
+    if len(ob[2]) > 250:
+        ob[2] = ob[2][:247] + "..."
     return ob
 
 #==================================================================#

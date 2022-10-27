@@ -969,7 +969,7 @@ function redrawPopup() {
 		let gridIndex = 0;
 		if (row.showFilename) {
 			let popup_item = document.createElement("span");
-			popup_item.style = `grid-area: p${gridIndex};`;
+			popup_item.style = `overflow-x: hidden; grid-area: p${gridIndex};`;
 			gridIndex += 1;
 
 			popup_item.id = row.path;
@@ -1006,7 +1006,7 @@ function redrawPopup() {
 			const dataValue = row.data[columnName];
 
 			let td = document.createElement("span");
-			td.style = `grid-area: p${gridIndex};`;
+			td.style = `overflow-x: hidden; grid-area: p${gridIndex};`;
 
 			gridIndex += 1;
 			dataIndex++;
@@ -1151,7 +1151,7 @@ function popup_items(data) {
 	if (data.show_filename) {
 		td = document.createElement("span");
 		td.textContent = "File Name";
-		td.style = "grid-area: p"+i+";";
+		td.style = "overflow-x: hidden; grid-area: p"+i+";";
 		i+=1;
 		tr.append(td)
 	}
@@ -1167,13 +1167,13 @@ function popup_items(data) {
 			});
 		}(columnName));
 		container.classList.add("table-header-container")
-		container.style = `grid-area: p${i};`;
+		container.style = 'overflow-x: hidden; grid-area: p${i};';
 
 		td.classList.add("table-header-label");
 		td.textContent = columnName;
 
 		// TODO: Better unsorted icon
-		icon.id = `sort-icon-${columnName.toLowerCase().replaceAll(" ", "-")}`;
+		icon.id = 'sort-icon-${columnName.toLowerCase().replaceAll(" ", "-")}';
 		icon.innerText = "filter_list";
 		icon.classList.add("material-icons-outlined");
 		icon.classList.add("table-header-sort-icon");
