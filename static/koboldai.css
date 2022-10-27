@@ -2377,6 +2377,7 @@ body {
 	margin-right: auto;
 	margin-left: auto;
 	max-width: 720px;
+	filter: drop-shadow(5px 5px 5px #222);
 }
 
 #welcome-text-content {
