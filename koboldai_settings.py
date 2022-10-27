@@ -956,6 +956,7 @@ class user_settings(settings):
         self.frmtrmspch  = False
         self.frmtadsnsp  = False
         self.singleline  = False
+        self.remove_double_space = True
         self.importnum   = -1                # Selection on import popup list
         self.importjs    = {}                # Temporary storage for import data
         self.loadselect  = ""                # Temporary storage for story filename to load
@@ -1221,6 +1222,9 @@ class KoboldStoryRegister(object):
             return self.actions[i]["Selected Text"]
         
     def __setitem__(self, i, text):
+        if self.koboldai_vars.remove_double_space:
+            while "  " in text:
+                text = text.replace("  ", " ")
         if i in self.actions:
             old = self.actions[i]
             old_text = self.actions[i]["Selected Text"]
@@ -1289,6 +1293,9 @@ class KoboldStoryRegister(object):
         self.set_game_saved()
         
     def append(self, text, action_id_offset=0, recalc=True):
+        if self.koboldai_vars.remove_double_space:
+            while "  " in text:
+                text = text.replace("  ", " ")
         self.clear_unused_options()
         self.action_count+=1
         action_id = self.action_count + action_id_offset

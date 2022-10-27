@@ -482,6 +482,22 @@ gensettingstf = [
  	},
     {
     "UI_V2_Only": True,
+ 	"uitype": "toggle",
+ 	"unit": "bool",
+ 	"label": "No Double Spaces",
+ 	"id": "remove_double_space",
+ 	"min": 0,
+ 	"max": 1,
+ 	"step": 1,
+ 	"default": 0,
+	"tooltip": "Remove any double spaces in the game text.",
+    "menu_path": "Interface",
+    "sub_path": "Formatting",
+    "classname": "user",
+    "name": "remove_double_space"
+ 	},
+    {
+    "UI_V2_Only": True,
  	"uitype": "slider",
  	"unit": "int",
  	"label": "AN Depth",
