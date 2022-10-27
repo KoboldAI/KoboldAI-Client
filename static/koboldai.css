@@ -1626,14 +1626,13 @@ body {
 	grid-area: file;
 }
 
-.popup .item{
+.popup .item {
 	width: 98%;
 	background-color: var(--popup_item_color);
 	color: var(--popup_item_color_text);
 	margin: 5px 0 5px 1%;
 	border-radius: var(--radius_item_popup);
 	padding: 2px;
-
 }
 
 .popup .item:hover {
@@ -1699,7 +1698,7 @@ body {
 }
 
 
-#error_message .popup_load_cancel{
+#error_message .popup_load_cancel {
 	background-color: var(--error_title);
 	color: var(--error_title_text);
 }
