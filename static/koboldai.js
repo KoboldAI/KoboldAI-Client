@@ -2564,7 +2564,13 @@ function select_game_text(event) {
 		}
 		//if we've moved to a new game chunk we need to save the old chunk
 		if (((new_selected_game_chunk != selected_game_chunk) && (selected_game_chunk != null)) || (document.activeElement != document.getElementById("Selected Text"))) {
-			edit_game_text();
+			if ((selected_game_chunk != null) && (selected_game_chunk.textContent != selected_game_chunk.original_text) && (selected_game_chunk != document.getElementById("welcome_text"))) {
+				if (selected_game_chunk.id == 'story_prompt') {
+					edit_game_text(-1);
+				} else {
+					edit_game_text(parseInt(selected_game_chunk.getAttribute("chunk")));
+				}
+			}
 		}
 		
 		//Check to see if new selection is a game chunk or something else
@@ -2588,16 +2594,70 @@ function select_game_text(event) {
 	}
 }
 
-function edit_game_text() {
-	if ((selected_game_chunk != null) && (selected_game_chunk.textContent != selected_game_chunk.original_text) && (selected_game_chunk != document.getElementById("welcome_text"))) {
-		if (selected_game_chunk.id == "story_prompt") {
-			sync_to_server(selected_game_chunk);
+function edit_game_text(id) {
+	update_game_text(id)
+	//OK, now we need to go backwards and forwards until we find something that didn't change
+	
+	let check_id = id-1;
+	while (check_id >= 0) {
+		if (document.getElementById("Selected Text Chunk " + check_id)) {
+			let temp = document.getElementById("Selected Text Chunk " + check_id);
+			if (temp.textContent == temp.original_text) {
+				break;
+			} else {
+				update_game_text(check_id);
+			}
 		} else {
-			socket.emit("Set Selected Text", {"id": selected_game_chunk.getAttribute("chunk"), "text": selected_game_chunk.textContent});
+			update_game_text(check_id);
 		}
-		selected_game_chunk.original_text = selected_game_chunk.textContent;
-		selected_game_chunk.classList.add("pulse");
+		check_id -= 1;
 	}
+	if (document.getElementById("story_prompt")) {
+		let temp = document.getElementById("story_prompt");
+		if (temp.textContent != temp.original_text) {
+			update_game_text(-1);
+		}
+	} else {
+		update_game_text(-1);
+	}
+	
+	check_id = id+1;
+	while (check_id <= Math.max.apply(null,Object.keys(actions_data).map(Number))) {
+		if (document.getElementById("Selected Text Chunk " + check_id)) {
+			let temp = document.getElementById("Selected Text Chunk " + check_id);
+			if (temp.textContent == temp.original_text) {
+				break;
+			} else {
+				update_game_text(check_id);
+			}
+		} else {
+			update_game_text(check_id);
+		}
+		check_id += 1;
+	}
+}
+
+function update_game_text(id) {
+	let temp = null;
+	let new_text = ""
+	if (id == -1) {
+		temp = document.getElementById("story_prompt");
+		new_text = temp.textContent;
+		sync_to_server(temp);
+		temp.original_text = new_text;
+		temp.classList.add("pulse");
+	} else {
+		temp = document.getElementById("Selected Text Chunk " + id);
+		if (temp) {
+			new_text = temp.textContent;
+			socket.emit("Set Selected Text", {"id": id, "text": new_text});
+			temp.original_text = new_text;
+			temp.classList.add("pulse");
+		} else {
+			socket.emit("Set Selected Text", {"id": id, "text": ""});
+		}
+	}
+	
 }
 
 function save_preset() {
