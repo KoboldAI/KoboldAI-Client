@@ -2459,6 +2459,87 @@ body {
 	border-radius: 3px;
 }
 
+/* Notifcations */
+#notification-container {
+	position: absolute;
+	top: 15px;
+	right: 0px;
+	height: calc(100vh - 15px);
+	width: 400px;
+	z-index: 8;
+	pointer-events: none;
+	overflow-y: hidden;
+	overflow-x: hidden;
+	transition: 200ms top;
+}
+
+.notification {
+	z-index: 8;
+	background-color: #30414e;
+	animation: 10s 1 alternate swoosh-in;
+	margin-right: 15px;
+	overflow: hidden;
+	pointer-events: all;
+	margin-bottom: 15px;
+	left: 110%;
+}
+
+.notification.notification-error {
+	background-color: #4e3030;
+}
+
+@keyframes swoosh-in {
+	from {
+		transform: translateX(110%);
+	}
+
+	5% {
+		transform: translateX(0%);
+	}
+
+	95% {
+		transform: translateX(0%);
+	}
+
+	to {
+		transform: translateX(110%);
+	}
+}
+
+.notification .notif-text {
+	margin: 5px;
+}
+
+.notification .notif-title {
+	color: #6f96b1;
+	display: block;
+	font-weight: bold;
+}
+
+.notification.notification-error .notif-title {
+	color: #b16f6f;
+}
+
+.notification .notif-body {
+	display: block;
+}
+
+.notification .notif-bar {
+	background-color: #407497;
+	height: 3px;
+	width: 100%;
+	animation: 10s 1 alternate shrink-away;
+}
+
+.notification.notification-error .notif-bar {
+	background-color: #974040;
+}
+
+@keyframes shrink-away {
+  from { width: 100%; }
+  to { width: 0%; }
+}
+
 /*---------------------------------- Global ------------------------------------------------*/
 .hidden {
 	display: none;

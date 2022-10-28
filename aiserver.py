@@ -348,6 +348,7 @@ class ImportBuffer:
                         print("[eph] Weird char")
                         print(f"Char: {char}")
                         print(f"Ph_id: {ph_id}")
+                        show_error_notification("Error loading prompt", f"Bad character '{char}' in prompt placeholder.")
                         return
 
                 placeholders.append(self.PromptPlaceholder(
@@ -368,6 +369,7 @@ class ImportBuffer:
                 default_match = next(re.finditer(r"\[(.*?)\]", ph_text))
             except StopIteration:
                 print("[eph] Weird brackets")
+                show_error_notification("Error loading prompt", f"Unusual bracket structure in prompt.")
                 return placeholders
 
             ph_default = default_match.group(1)
@@ -409,8 +411,11 @@ class ImportBuffer:
         r = requests.get(f"https://aetherroom.club/api/{club_id}")
 
         if not r.ok:
-            # TODO: Show error message on client
             print(f"[import] Got {r.status_code} on request to club :^(")
+            message = f"Club responded with {r.status_code}"
+            if r.status_code == "404":
+                message = f"Prompt not found for ID {club_id}"
+            show_error_notification("Error loading prompt", message)
             return
 
         j = r.json()
@@ -734,6 +739,9 @@ api_v1 = KoboldAPISpec(
     prefixes=["/api/v1", "/api/latest"],
     tags=tags,
 )
+
+def show_error_notification(title: str, text: str) -> None:
+    socketio.emit("show_error_notification", {"title": title, "text": text}, broadcast=True, room="UI_2")
 
 # Returns the expected config filename for the current setup.
 # If the model_name is specified, it returns what the settings file would be for that model

@@ -34,6 +34,7 @@ socket.on("log_message", function(data){process_log_message(data);});
 socket.on("debug_message", function(data){console.log(data);});
 socket.on("scratchpad_response", recieveScratchpadResponse);
 socket.on("scratchpad_response", recieveScratchpadResponse);
+socket.on("show_error_notification", function(data) { reportError(data.title, data.text) });
 //socket.onAny(function(event_name, data) {console.log({"event": event_name, "class": data.classname, "data": data});});
 
 // Must be done before any elements are made; we track their changes.
@@ -4109,6 +4110,21 @@ function sendPromptConfiguration() {
 	$(".prompt-config-ph").remove();
 }
 
+async function postWI(wiData) {
+	let r = await fetch("/upload_wi", {
+		method: "POST",
+		headers: {
+			"Content-Type": "application/json"
+		},
+		body: JSON.stringify(wiData)
+	});
+
+	if (!r.ok) {
+		reportError("WI Upload Error", `WI upload failed with status code ${r.status}. Please report this.`);
+		return;
+	}
+}
+
 async function loadNAILorebook(data, filename) {
 	let lorebookVersion = data.lorebookVersion;
 	let wi_data = {folders: {[filename]: []}, entries: {}};
@@ -4145,15 +4161,7 @@ async function loadNAILorebook(data, filename) {
 		i++;
 	}
 
-	let r = await fetch("/upload_wi", {
-		method: "POST",
-		headers: {
-			"Content-Type": "application/json"
-		},
-		body: JSON.stringify(wi_data)
-	});
-
-	if (!r.ok) alert("WI upload errored! Please report this.");
+	await postWI(wi_data);
 }
 
 async function loadKoboldData(data, filename) {
@@ -4163,17 +4171,10 @@ async function loadKoboldData(data, filename) {
 		socket.emit("load_story_list", "");
 	} else if (data.folders !== undefined && data.entries !== undefined) {
 		// World Info Folder
-		let r = await fetch("/upload_wi", {
-			method: "POST",
-			headers: {
-				"Content-Type": "application/json"
-			},
-			body: JSON.stringify(data)
-		});
-
-		if (!r.ok) alert("WI upload errored! Please report this.");
+		await postWI(data);
 	} else {
 		// Bad data
+		reportError("Error loading file", `Unable to detect ${filename} as a valid KoboldAI file.`);
 		console.error("Bad data!");
 		return;
 	}
@@ -4198,7 +4199,10 @@ function readLoreCard(file) {
 			return true;
 		});
 
-		if (offset === null) throw Error("Couldn't find offset!");
+		if (offset === null) {
+			reportError("Error reading Lorecard", "Unable to find NAIDATA offset. Is this a valid Lorecard?");
+			throw Error("Couldn't find offset!");
+		}
 		
 		let lengthBytes = bin.slice(offset - 8, offset - 4);
 		let length = 0;
@@ -4238,9 +4242,11 @@ async function processDroppedFile(file) {
 			break;
 		case "css":
 			console.warn("TODO: THEME");
+			reportError("Unsupported", "Theme drag and drop is not implemented yet. Check back later!");
 			break;
 		case "lua":
 			console.warn("TODO: USERSCRIPT");
+			reportError("Unsupported", "Userscript drag and drop is not implemented yet. Check back later!");
 			break
 	}
 }
@@ -5119,7 +5125,7 @@ let load_substitutions;
 			// Sanity check; never 100% cpu!
 			tries++;
 			if (tries > 2000) {
-				alert("Some Substitution shenanigans are afoot; please send the developers your substitutions!");
+				reportError("Substitution error", "Some Substitution shenanigans are afoot; please send the developers your substitutions!");
 				throw Error("Substitution shenanigans!")
 				return;
 			}
@@ -5149,6 +5155,7 @@ let load_substitutions;
 			}
 		}
 
+		reportError("Substitution error", "Couldn't find substitution index from card.");
 		throw Error("Didn't find substitution!");
 	}
 	
@@ -5451,6 +5458,29 @@ function initalizeTooltips() {
 		const shortcutDesc = $e("div", shortcutRow, {classes: ["shortcut-desc"], innerText: shortcut.desc});
 	}
 })();
+
+function showNotification(title, text, type) {
+	if (!["error", "info"].includes(type)) return;
+	const nContainer = $el("#notification-container");
+	const notification = $e("div", nContainer, {classes: ["notification", `notification-${type}`]});
+	const nTextContainer = $e("div", notification, {classes: ["notif-text"]});
+	const titleEl = $e("span", nTextContainer, {classes: ["notif-title"], innerText: title});
+	const bodyEl = $e("span", nTextContainer, {classes: ["notif-body"], innerText: text});
+	const bar = $e("div", notification, {classes: ["notif-bar"]});
+	notification.style.left = "0px";
+
+	setTimeout(function() {
+		notification.remove();
+	}, 10_000);
+}
+
+function reportError(title, text) {
+	// TODO: Send to server and log there?
+	console.error(`${title}: ${text}`);
+	showNotification(title, text, "error");
+}
+
+showNotification("Be aware!", "Things are happening at an alarming pace!");
 
 //function to load more actions if nessisary
 function infinite_scroll() {
