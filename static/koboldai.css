@@ -1626,6 +1626,14 @@ body {
 	grid-area: file;
 }
 
+.popup .header {
+	width: 98%;
+	background-color: var(--popup_item_color);
+	color: var(--popup_item_color_text);
+	margin: 5px 0 5px 1%;
+	padding: 2px;
+}
+
 .popup .item {
 	width: 98%;
 	background-color: var(--popup_item_color);

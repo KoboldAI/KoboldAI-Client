@@ -1143,6 +1143,7 @@ function popup_items(data) {
 	//create titles
 	var tr = document.createElement("div");
 	tr.style = popup_style;
+	tr.classList.add("header");
 	//icon area
 	var td = document.createElement("span");
 	td.style = "grid-area: icons;";
