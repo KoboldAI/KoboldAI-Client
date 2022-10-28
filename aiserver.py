@@ -12219,7 +12219,7 @@ def run():
     logger.init_ok("Flask", status="OK")
     logger.init("Webserver", status="Starting")
     patch_transformers()
-    startup()
+    
     # Start Flask/SocketIO (Blocking, so this must be last method!)
     port = args.port if "port" in args and args.port is not None else 5000
     koboldai_vars.port = port
@@ -12252,6 +12252,9 @@ def run():
            from flask_cloudflared import _run_cloudflared
            cloudflare = _run_cloudflared(port)
            koboldai_vars.cloudflare_link = cloudflare
+           
+       startup()
+       
         if(args.localtunnel or args.ngrok or args.remote):
             with open('cloudflare.log', 'w') as cloudflarelog:
                 cloudflarelog.write("KoboldAI has finished loading and is available at the following link : " + cloudflare)
