@@ -12253,7 +12253,7 @@ def run():
            cloudflare = _run_cloudflared(port)
            koboldai_vars.cloudflare_link = cloudflare
            
-       startup()
+        startup()
        
         if(args.localtunnel or args.ngrok or args.remote):
             with open('cloudflare.log', 'w') as cloudflarelog:
