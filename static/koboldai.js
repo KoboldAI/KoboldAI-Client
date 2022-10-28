@@ -208,6 +208,7 @@ function reset_story() {
 	}
 	document.getElementById("welcome_text").innerText = text;
 	document.getElementById("welcome_text").classList.remove("hidden");
+	document.getElementById('main-grid').setAttribute('option_length', 0);
 }
 
 function fix_text(val) {
