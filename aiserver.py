@@ -91,7 +91,6 @@ if lupa.LUA_VERSION[:2] != (5, 4):
     logger.error(f"Please install lupa==1.10. You have lupa {lupa.__version__}.")
 
 patch_causallm_patched = False
-cloudflare = ""
 
 # Make sure tqdm progress bars display properly in Colab
 from tqdm.auto import tqdm
@@ -3094,8 +3093,7 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
                                        hf_checkpoint=koboldai_vars.model not in ("TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX") 
                                        and koboldai_vars.use_colab_tpu, 
                                        socketio_queue=koboldai_settings.queue, 
-                                       initial_load=initial_load, logger=logger, cloudflare=cloudflare,
-                                       **koboldai_vars.modelconfig)
+                                       initial_load=initial_load, logger=logger,                                        **koboldai_vars.modelconfig)
             #tpool.execute(tpu_mtj_backend.load_model, koboldai_vars.custmodpth, hf_checkpoint=koboldai_vars.model not in ("TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX") and koboldai_vars.use_colab_tpu, **koboldai_vars.modelconfig)
             koboldai_vars.modeldim = int(tpu_mtj_backend.params.get("d_embed", tpu_mtj_backend.params["d_model"]))
             tokenizer = tpu_mtj_backend.tokenizer
