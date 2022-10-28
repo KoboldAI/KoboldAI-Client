@@ -2170,6 +2170,14 @@ body {
 	float: right;
 }
 
+.debug-dump-log {
+	opacity: 0.7;
+	font-size: small;
+	float: right;
+	position: absolute;
+	right: 10px;
+}
+
 #debug-file-prompt {
 	width: 25%;
 	max-height: 500px;

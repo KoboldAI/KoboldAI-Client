@@ -2232,7 +2232,7 @@ def patch_transformers():
                 self.completed = [False]*len(input_ids)
             for i in range(len(input_ids)):
                 if input_ids[i][-2] == null_character:
-                    input_ids[i][-1] = tokenizer.encode(chr(0))[0]
+                    input_ids[i][-1] = null_character
                 elif data[i][-1*(len(koboldai_vars.chatname)+1):] == koboldai_vars.chatname + ":":
                     #We now have the user name in chat mode with a :. We want to remove that from the data
                     #We do need to check if the first token includes more than the chatname (Ie " You") so we don't loose the extra data
