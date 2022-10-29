@@ -887,7 +887,7 @@ def getmodelname():
         modelname = os.path.basename(os.path.normpath(koboldai_vars.custmodpth))
         return modelname
     else:
-        modelname = koboldai_vars.model
+        modelname = koboldai_vars.model if koboldai_vars.model is not None else "Read Only"
         return modelname
 
 #==================================================================#
@@ -8782,7 +8782,7 @@ def UI_2_load_userscripts_list(data):
                                                                   valid_only=True, hide_extention=True, extra_parameter_function=get_userscripts_desc,
                                                                   column_names=['Module Name', 'Description'],
                                                                   show_filename=True, show_folders=False,
-                                                                  column_widths=['200px', '150px', 'auto'])
+                                                                  column_widths=['150px', 'auto'])
                                                                 
 @logger.catch
 def valid_userscripts_to_load(file):
@@ -8798,19 +8798,19 @@ def valid_userscripts_to_unload(file):
 def get_userscripts_desc(item_full_path, item, valid_selection):
     if not valid_selection:
         return [None, None]
-    ob = [item, "", ""]
+    ob = ["", ""]
     description = []
     multiline = False
     with open(item_full_path) as f:
-        ob[1] = f.readline().strip().replace("\033", "")
-        if ob[1][:2] != "--":
-            ob[1] = file
+        ob[0] = f.readline().strip().replace("\033", "")
+        if ob[0][:2] != "--":
+            ob[0] = file
         else:
-            ob[1] = ob[1][2:]
-            if ob[1][:2] == "[[":
-                ob[1] = ob[1][2:]
+            ob[0] = ob[0][2:]
+            if ob[0][:2] == "[[":
+                ob[0] = ob[0][2:]
                 multiline = True
-            ob[1] = ob[1].lstrip("-").strip()
+            ob[0] = ob[0].lstrip("-").strip()
             for line in f:
                 line = line.strip().replace("\033", "")
                 if multiline:
@@ -8830,9 +8830,9 @@ def get_userscripts_desc(item_full_path, item, valid_selection):
                         multiline = True
                         line = line[2:]
                     description.append(line.strip())
-    ob[2] = "\n".join(description)
-    if len(ob[2]) > 250:
-        ob[2] = ob[2][:247] + "..."
+    ob[1] = "\n".join(description)
+    if len(ob[1]) > 250:
+        ob[1] = ob[1][:247] + "..."
     return ob
 
 #==================================================================#
