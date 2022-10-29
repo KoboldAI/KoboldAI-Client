@@ -33,7 +33,6 @@ socket.on("request_prompt_config", configurePrompt);
 socket.on("log_message", function(data){process_log_message(data);});
 socket.on("debug_message", function(data){console.log(data);});
 socket.on("scratchpad_response", recieveScratchpadResponse);
-socket.on("scratchpad_response", recieveScratchpadResponse);
 socket.on("show_error_notification", function(data) { reportError(data.title, data.text) });
 //socket.onAny(function(event_name, data) {console.log({"event": event_name, "class": data.classname, "data": data});});
 

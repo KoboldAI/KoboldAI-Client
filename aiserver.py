@@ -740,7 +740,10 @@ api_v1 = KoboldAPISpec(
 )
 
 def show_error_notification(title: str, text: str) -> None:
-    socketio.emit("show_error_notification", {"title": title, "text": text}, broadcast=True, room="UI_2")
+    if has_request_context():
+        socketio.emit("show_error_notification", {"title": title, "text": text}, broadcast=True, room="UI_2")
+    else:
+        koboldai_settings.queue.put(["show_error_notification", {"title": title, "text": text}, {"broadcast":True, "room":'UI_2'}])
 
 # Returns the expected config filename for the current setup.
 # If the model_name is specified, it returns what the settings file would be for that model
@@ -2337,6 +2340,7 @@ def patch_transformers():
                 found = list(set(found) - set(self.excluded_world_info[i]))
                 if len(found) != 0:
                     print("Found: {}".format(found))
+                    show_error_notification(title="Triggered Dynamic World Info", text=found)
                     model.core_stopper.regeneration_required = True
                     return True
             return False
