@@ -1,7 +1,7 @@
 /*
 	Name: Nostalgia
 	Author: LightSaveUs
-	Version: 0.3.1
+	Version: 0.4
 	Description: A theme inspired by the old KoboldAI interface.
 */
 
@@ -74,23 +74,23 @@
 	--sequence_text: #ffffff;
 
 	/*Side Menus*/
-	--tab_color: #4786be;
+	--tab_color: #4787be;
 
-	--flyout_background: #274864;
-	--flyout_background_pinned: #274864;
+	--flyout_background: #295071;
+	--flyout_background_pinned: #295071;
 
-	--setting_background: #294f71;
+	--setting_background: #295071;
     --setting_text: #ffffff;
 
-	--sample_order_select_color: #98bcdb;
-	--sample_order_select_color_text: #23527c;
+	--sample_order_select_color: #688f1f;
+	--sample_order_select_color_text: #ffffff;
 
 	--dropdown_text: #ffffff;
-	--dropdown_background: #386d9c;
+	--dropdown_background: #1f3a50;
 
 	--rangeslider_background_color: #ffffff;
-	--rangeslider_color: #1a6ccd;
-	--rangeslider_circle_color: #268aff;
+	--rangeslider_color: #0075ff;
+	--rangeslider_circle_color: #2285f9;
 
 	--help_icon: #ffffff;
 	--tooltip_text: #ffffff;
@@ -99,7 +99,7 @@
 	
 	--setting_footer_border_color: grey;
 	--setting_footer_text_color: #ffffff;
-	--setting_footer_background_color: #232323;
+	--setting_footer_background_color: #242424;
 
 	/*Palette Card*/
 	--palette_card_background: #295071;
@@ -110,21 +110,21 @@
 	--wi_card_border_color: #1e1e1e;
     --wi_card_border_color_to_ai: #3bf72380;
 
-    --wi_card_bg_color: #1e1e1e;
+    --wi_card_bg_color: #212122;
 	--wi_card_text_color: #ffffff;
 
     --wi_card_tag_bg_color: #295071;
 	--wi_card_tag_text_color: #ffffff;
 	
-    --wi_tag_color: #3379b7;
+    --wi_tag_color: #337ab7;
 	--wi_tag_text_color: #ffffff;
 	
 	/*Popup*/
-	--popup_background_color: #333;
+	--popup_background_color: #262626;
     --popup_title_bar_color: #337ab7;
 	--popup_title_bar_color_text: #ffffff;
 
-    --popup_item_color: #333333;
+    --popup_item_color: #262626;
 	--popup_item_color_text: #ffffff;
 
 	--popup_hover_color: #688f1f;
@@ -204,7 +204,7 @@
 
 .fullwidth {
 	border-radius: 5px;
-    border-color: #999999 !important;
+    border-color: #cccccc !important;
 }
 
 .bias_phrase input {
@@ -220,7 +220,7 @@
 }
 
 .sequence {
-	border-color: #8c8c8c !important;
+	border-color: #959595 !important;
 }
 
 .sequence:hover {
@@ -245,7 +245,7 @@
 }
 
 .settings_button:hover {
-   background: #84a8c8 !important;
+   filter: brightness(80%) !important;
 }
 
 .settings_button:focus {
@@ -254,6 +254,10 @@
 
 .wi_add_button:hover {
 	filter: brightness(80%);
+}
+
+.settings_button[story_gamesaved="true"] {
+	filter: brightness(40%) !important;
 }
 
 #new-sub-card:hover {
@@ -267,16 +271,16 @@
 /* Context Menu */
 
 #context-menu {
-	border-color: #11324f !important;
-	background-color: #274864 !important;
+	border-color: #12324f !important;
+	background-color: #295071 !important;
 }
 
 #context-menu > hr {
-	border-color: #11324f !important;
+	border-color: #12324f !important;
 }
 
 .context-menu-item:hover {
-	background-color:#11324f !important;
+	background-color:#12324f !important;
 }
 
 /* Context Viewer */
@@ -298,7 +302,7 @@
 /* Flyout */
 
 .rightSideMenu {
-	background-color: #232323 !important;
+	background-color: #242424 !important;
 }
 
 /* Icons */
@@ -342,31 +346,46 @@ a {
 /* Lines */
 
 .story_title, hr {
-    border-color: #11324f !important;
+    border-color: #12324f !important;
+}
+
+.setting_container {
+	border: 1px solid #12324f;
+}
+
+.setting_container_single, .setting_container_single_wide {
+	border: 1px solid #12324f;
 }
 
 /* Lists */
 
 .settings_select, .var_sync_system_theme_list {
 	border-radius: 5px !important;
-	border-color: #376590 !important;
+	border-color: #2e6594 !important;
 }
 
 /* Palette */
 
 #palette_area {
-    border-color: #12324f00 !important;
+    border: 1px solid #12324f;
+}
+
+/* Samplers Order */
+
+.setting_container_single:hover {
+	background-color: #262626 !important;
 }
 
 /* Popup */
 
 .popup .action_button {
     border-radius: 5px;
-	border-color:#ffffff
+	border-color:#337ab7;
 }
 
 .popup_load_cancel_button {
     border-radius: 5px;
+	border-color:#337ab7;
 }
 
 .popup .action_button:hover {
@@ -376,27 +395,39 @@ a {
 .popup_load_cancel_button:hover {
 	filter: brightness(80%);
 	color: #ffffff !important;
-	border-color: #ffffff !important;
+	border-color: #337ab7 !important;
     background-color: #337ab7 !important;
 }
 
 .popup .action_button:focus {
 	outline: none !important;
-	color: #ffffff
+	color: #ffffff;
 }
 
 .popup_load_cancel_button:focus {
-	color: #ffffff
 	outline: none !important;
 	box-shadow: none !important;
-	border-color: #ffffff !important;	
-	background-color: #337ab7 !important;
+	color: #ffffff !important;
+	border-color: #337ab7 !important;
+    background-color: #337ab7 !important;
+}
+
+.popup .popup_load_cancel {
+	background-color: #295071 !important;
 }
 
 #error_message.popup .btn-primary {
     color: #ffffff !important;
     border-color: #ffffff !important;
     background-color: #337ab7 !important;
+}
+
+.oi[folder]:hover {
+	color: #ef2929;
+}
+
+.rename_icon:hover {
+	color: #fce94f !important;
 }
 
 /* Tabs */
@@ -412,12 +443,12 @@ a {
 }
 
 .tabrow span:hover {
-	background: #84a8c8 !important;
+	background: #98bcdb !important;
 }
 
 .tabrow span.selected {
 	color: #ffffff !important;
-	background: #84a8c8 !important;
+	background: #98bcdb !important;
 }
 
 /* Text */
@@ -438,8 +469,8 @@ a {
 
 div#settings_footer.settings_footer {
 	color: #ffffff !important;
-	border-color: #11324f !important;
-	background-color: #274864 !important;
+	border-color: #12324f !important;
+	background-color: #295071 !important;
 }
 
 /* Tooltips */
@@ -451,6 +482,10 @@ div#settings_footer.settings_footer {
 
 /* World Info */
 
+.tag:hover {
+	filter: brightness(80%);
+}
+
 .world_info_tag_area {
 	border-color: #999999!important;
     filter: brightness(100%) !important;
@@ -458,7 +493,7 @@ div#settings_footer.settings_footer {
 }
 
 .world_info_text {
-    border-color: #999999!important;
+    border: 1px solid #cccccc!important;
 	filter: brightness(100%) !important;
 	background-color: #404040 !important;
 }
