@@ -2829,6 +2829,15 @@ function calc_token_usage(
 
 function Change_Theme(theme) {
 	setCookie("theme", theme);
+	var elements_to_change = document.getElementsByClassName("var_sync_system_theme_list");
+	for (item of elements_to_change) {
+		for (element of item.childNodes) {
+			if (element.value == theme) {
+				element.selected = true;
+			}
+		}
+	}
+
 	const Acss  = document.getElementById("CSSTheme_A");
 	const Bcss  = document.getElementById("CSSTheme_B");
 	let new_css = 'CSSTheme_B';
