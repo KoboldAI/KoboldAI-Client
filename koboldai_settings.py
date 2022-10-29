@@ -789,12 +789,15 @@ class story_settings(settings):
             # {"target": "(tm)", "substitution": "™", "enabled": False},
         ]
         
-        #must be at bottom
-        self.no_save = False  #Temporary disable save (doesn't save with the file)
-
         # bias experiment
         self.memory_attn_bias = 1
         self.an_attn_bias = 1
+        
+        
+        ################### must be at bottom #########################
+        self.no_save = False  #Temporary disable save (doesn't save with the file)
+
+        
         
     def save_story(self):
         if not self.no_save:
