@@ -145,6 +145,7 @@ var calc_token_usage_timeout;
 var game_text_scroll_timeout;
 var world_info_scroll_timeout;
 var font_size_cookie_timout;
+var colab_cookie_timeout;
 var setup_missing_wi_toggles_timeout;
 var var_processing_time = 0;
 var finder_last_input;
@@ -2306,12 +2307,19 @@ function do_wpp(wpp_area) {
 
 function load_cookies(data) {
 	colab_cookies = data;
+	for (const cookie of Object.keys(colab_cookies)) {
+		setCookie(cookie, colab_cookies[cookie]);
+	}
+	colab_cookies = null;
+	wait_for_tweaks_load();
+}
+
+function wait_for_tweaks_load() {
 	if (document.readyState === 'complete') {
-		for (const cookie of Object.keys(colab_cookies)) {
-			setCookie(cookie, colab_cookies[cookie]);
-		}
 		process_cookies();
-		colab_cookies = null;
+	} else {
+		clearTimeout(colab_cookie_timeout);
+		colab_cookie_timeout = setTimeout(wait_for_tweaks_load, 1000);
 	}
 }
 
