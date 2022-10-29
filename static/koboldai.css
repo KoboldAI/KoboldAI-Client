@@ -2405,6 +2405,7 @@ body {
 #welcome-text-content {
 	display: inline-block;
 	align-self: flex-end;
+	margin-left: 15px;
 }
 
 /* Popups */
