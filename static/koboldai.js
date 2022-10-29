@@ -1154,6 +1154,7 @@ function popup_items(data) {
 	if (data.show_filename) {
 		td = document.createElement("span");
 		td.textContent = "File Name";
+		td.classList.add("table-header-container")
 		td.style = "overflow-x: hidden; grid-area: p"+i+";";
 		i+=1;
 		tr.append(td)

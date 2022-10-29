@@ -2386,21 +2386,25 @@ body {
 	color: white
 }
 
+#welcome_text {
+	display: flex;
+	height: 100%;
+}
+
 #welcome-logo {
+	position: absolute;
+	top: 50%;
+	margin-top: -50px;
+	left: 50%;
+	transform: translate(-50%, -50%);
 	width: 50%;
-	top: 295px;
-	display: block;
-	position: relative;
-	margin-right: auto;
-	margin-left: auto;
 	max-width: 720px;
 	filter: drop-shadow(5px 5px 5px #222);
 }
 
 #welcome-text-content {
-	position: relative;
-	top: 520px;
-	left: 10px;
+	display: inline-block;
+	align-self: flex-end;
 }
 
 /* Popups */
