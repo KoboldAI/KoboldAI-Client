@@ -971,8 +971,7 @@ function redrawPopup() {
 		let gridIndex = 0;
 		if (row.showFilename) {
 			let popup_item = document.createElement("span");
-			popup_item.style = `overflow-x: hidden; grid-area: p${gridIndex};`;
-			gridIndex += 1;
+			popup_item.style = `overflow-x: hidden; grid-area: file;`;
 
 			popup_item.id = row.path;
 			popup_item.setAttribute("folder", row.isFolder);
@@ -1111,7 +1110,7 @@ function popup_items(data) {
 		dataRow.path = item[1];
 		dataRow.fileName = item[2];
 		dataRow.isValid = item[3];
-		dataRow.showFilename = item.show_filename;
+		dataRow.showFilename = data.show_filename;
 
 		popup_rows.push(dataRow);
 	}
@@ -1126,15 +1125,17 @@ function popup_items(data) {
 	
 	//create the column widths
 	popup_style = 'display: grid; grid-template-areas: "icons';
+	if (data.show_filename) {
+		popup_style += ' file';
+	}
 	for (let i=0; i < data.column_widths.length; i++) {
 		popup_style += ` p${i}`;
 	}
 
-	if (data.show_filename) {
-		popup_style += ` p${i}`;
-	}
-
 	popup_style += '"; grid-template-columns: 50px';
+	if (data.show_filename) {
+		popup_style += ' 100px';
+	}
 	for (const column_width of data.column_widths) {
 		popup_style += " "+column_width;
 	}
@@ -1155,8 +1156,7 @@ function popup_items(data) {
 		td = document.createElement("span");
 		td.textContent = "File Name";
 		td.classList.add("table-header-container")
-		td.style = "overflow-x: hidden; grid-area: p"+i+";";
-		i+=1;
+		td.style = "overflow-x: hidden; grid-area: file;";
 		tr.append(td)
 	}
 

@@ -8781,7 +8781,7 @@ def UI_2_load_userscripts_list(data):
                                                                   deleteable=True, show_breadcrumbs=False, item_check=valid_userscripts_to_load,
                                                                   valid_only=True, hide_extention=True, extra_parameter_function=get_userscripts_desc,
                                                                   column_names=['Module Name', 'Description'],
-                                                                  show_filename=True, show_folders=False,
+                                                                  show_filename=False, show_folders=False,
                                                                   column_widths=['150px', 'auto'])
                                                                 
 @logger.catch
