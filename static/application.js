@@ -79,6 +79,7 @@ var rs_close;
 var seqselmenu;
 var seqselcontents;
 var stream_preview;
+var stream_preview_text;
 var token_prob_container;
 
 var storyname = null;
@@ -2151,6 +2152,7 @@ function endStream() {
 	if (stream_preview) {
 		stream_preview.remove();
 		stream_preview = null;
+		stream_preview_text = null;
 	}
 }
 
@@ -2390,10 +2392,14 @@ $(document).ready(function(){
 			if (!stream_preview && streamingEnabled) {
 				stream_preview = document.createElement("span");
 				game_text.append(stream_preview);
+				stream_preview_text = "";
 			}
 
 			for (const token of msg.data) {
-				if (streamingEnabled) stream_preview.innerText += token.decoded;
+				if (streamingEnabled) {
+					stream_preview_text += token.decoded;
+					stream_preview.innerText = stream_preview_text;
+				}
 
 				if (probabilitiesEnabled) {
 					// Probability display
