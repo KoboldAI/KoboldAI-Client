@@ -2566,6 +2566,46 @@ body {
   to { width: 0%; }
 }
 
+
+/* WI Delete Confirm */
+#confirm-delete-dialog {
+	background-color: var(--popup_background_color);
+	padding: 10px;
+	min-width: 40vw;
+}
+
+#confirm-buttons {
+	display: flex;
+	width: 100%;
+	justify-content: center;
+	gap: 10px;
+	margin-top: 10px;
+}
+
+#confirm-deny-button { background-color: var(--button_background); }
+#confirm-confirm-button { background-color: #974040; }
+
+.confirm-button {
+	display: inline-flex;
+	height: 32px;
+
+	flex-basis: 50%;
+
+	align-items: center;
+	justify-content: center;
+
+	cursor: pointer;
+}
+
+.confirm-button > .material-icons-outlined {
+	opacity: 0.7;
+}
+
+.confirm-button > .text {
+	position: relative;
+	top: 2px;
+}
+
 /*---------------------------------- Global ------------------------------------------------*/
 .hidden {
 	display: none;
