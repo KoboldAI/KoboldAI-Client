@@ -5499,8 +5499,6 @@ function reportError(title, text) {
 	showNotification(title, text, "error");
 }
 
-showNotification("Be aware!", "Things are happening at an alarming pace!");
-
 //function to load more actions if nessisary
 function infinite_scroll() {
 	if (scroll_trigger_element != undefined) {
