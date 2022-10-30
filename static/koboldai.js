@@ -2422,8 +2422,26 @@ async function download_story_to_json() {
 		j['worldinfo_v2'] = {'entries': world_info_data, 'folders': world_info_folder_data};
 		
 		//Biases
+		let bias = {};
+		for (item of document.getElementsByClassName('bias')) {
+			let bias_phrase = item.querySelector(".bias_phrase").children[0].value;
+			let bias_score = parseInt(item.querySelector(".bias_score").querySelector(".bias_slider_cur").textContent);
+			let bias_comp_threshold = parseInt(item.querySelector(".bias_comp_threshold").querySelector(".bias_slider_cur").textContent);
+			if (bias_phrase != "") {
+				bias[bias_phrase] = [bias_score, bias_comp_threshold];
+			}
+		}
+		j['biases'] = bias;
 		
 		//substitutions
+		substitutions = [];
+		for (item of document.getElementsByClassName('substitution-card')) {
+			let target = item.children[0].querySelector(".target").value;
+			let sub = item.children[1].querySelector(".target").value;
+			let enabled = (item.children[1].querySelector(".material-icons-outlined").getAttribute("title") == 'Enabled');
+			substitutions.push({'target': target, 'substitution': sub, 'enabled': enabled});
+		}
+		j['substitutions'] = substitutions;
 		
 		j['file_version'] = 2;
 		j['gamestarted'] = true;
