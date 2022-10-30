@@ -109,9 +109,9 @@ const context_menu_actions = [
 const shortcuts = [
 	{key: "k", desc: "Finder", func: open_finder},
 	{key: "/", desc: "Help screen", func: () => openPopup("shortcuts-popup")},
-	{key: "z", desc: "Undoes last story action", func: () => socket.emit("back", {})},
-	{key: "y", desc: "Redoes last story action", func: () => socket.emit("redo", {})},
-	{key: "e", desc: "Retries last story action", func: () => socket.emit("retry", {})},
+	{key: "z", desc: "Undoes last story action", func: () => socket.emit("back", {}), criteria: canNavigateStoryHistory},
+	{key: "y", desc: "Redoes last story action", func: () => socket.emit("redo", {}), criteria: canNavigateStoryHistory},
+	{key: "e", desc: "Retries last story action", func: () => socket.emit("retry", {}), criteria: canNavigateStoryHistory},
 	{key: "m", desc: "Focuses Memory", func: () => focusEl("#memory")},
 	{key: "l", desc: "Focuses Author's Note", func: () => focusEl("#authors_notes")}, // CTRL-N is reserved :^(
 	{key: "g", desc: "Focuses game text", func: () => focusEl("#input_text")},
@@ -5489,6 +5489,7 @@ function initalizeTooltips() {
 
 		for (const shortcut of shortcuts) {
 			if (shortcut.key !== event.key) continue;
+			if (shortcut.criteria && !shortcut.criteria()) continue;
 			event.preventDefault();
 			shortcut.func();
 		}
@@ -5527,7 +5528,9 @@ function reportError(title, text) {
 	showNotification(title, text, "error");
 }
 
-showNotification("Be aware!", "Things are happening at an alarming pace!");
+function canNavigateStoryHistory() {
+	return !["TEXTAREA", "INPUT"].includes(document.activeElement.tagName);
+}
 
 //function to load more actions if nessisary
 function infinite_scroll() {
