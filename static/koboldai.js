@@ -953,15 +953,17 @@ function redrawPopup() {
 			delete_icon.id = row.path;
 			delete_icon.setAttribute("folder", row.isFolder);
 			delete_icon.onclick = function () {
-				if (this.getAttribute("folder") == "true") {
-					if (window.confirm("Do you really want to delete this folder and ALL files under it?")) {
-						socket.emit("popup_delete", this.id);
+				const message = this.getAttribute("folder") == "true" ?  "Do you really want to delete this folder and ALL files under it?" : "Do you really want to delete this file?";
+				const delId = this.id;
+
+				deleteConfirmation(
+					[{text: message}],
+					confirmText="Go for it.",
+					denyText="I've changed my mind!",
+					confirmCallback=function() {
+						socket.emit("popup_delete", delId);
 					}
-				} else {
-					if (window.confirm("Do you really want to delete this file?")) {
-						socket.emit("popup_delete", this.id);
-					}
-				}
+				);
 			};
 		}
 		icon_area.append(delete_icon);
@@ -1746,13 +1748,24 @@ function world_info_entry(data) {
 	delete_icon.setAttribute("uid", data.uid);
 	delete_icon.setAttribute("wi-title", data.title);
 	delete_icon.onclick = function () {
-		if (confirm("This will delete world info "+this.getAttribute("wi-title"))) {
-			if (parseInt(this.getAttribute("uid")) < 0) {
-				this.parentElement.parentElement.remove();
-			} else {
-				socket.emit("delete_world_info", this.getAttribute("uid"));
+		const wiTitle = this.getAttribute("wi-title");
+		const wiUid = parseInt(this.getAttribute("uid"));
+		const wiElement = this.parentElement.parentElement;
+		deleteConfirmation([
+				{text: "You're about to delete World Info entry "},
+				{text: wiTitle, format: "bold"},
+				{text: ". Are you alright with this?"},
+			],
+			confirmText="Go for it.",
+			denyText="I've changed my mind!",
+			confirmCallback=function() {
+				if (wiUid < 0) {
+					wiElement.remove();
+				} else {
+					socket.emit("delete_world_info", wiUid);
+				}
 			}
-		}
+		);
 	}
 	tags = world_info_card.querySelector('.world_info_tag_primary_area');
 	tags.id = "world_info_tags_"+data.uid;
@@ -2119,10 +2132,19 @@ function world_info_folder(data) {
 			delete_button.setAttribute("folder", folder_name);
 			delete_button.textContent = "delete";
 			delete_button.onclick = function () {
-								if (window.confirm("Do you really want to delete this World Info folder and ALL entries under it?")) {
-									socket.emit("delete_wi_folder", this.getAttribute("folder"));
-								}
-							};
+				const folderName = this.getAttribute("folder");
+				deleteConfirmation([
+						{text: "You're about to delete World Info folder "},
+						{text: folderName, format: "bold"},
+						{text: " and the "},
+						{text: countWIFolderChildren(folderName), format: "bold"},
+						{text: " entries inside it. Are you sure?"},
+					],
+					confirmText="Go for it.",
+					denyText="I've changed my mind!",
+					confirmCallback=function() { socket.emit("delete_wi_folder", folderName); }
+				);
+			};
 			delete_button.classList.add("delete");
 			title.append(delete_button);
 			
@@ -2405,9 +2427,15 @@ function new_story() {
 	//check if the story is saved
 	if (document.getElementById('save_story').getAttribute('story_gamesaved') == "false") {
 		//ask the user if they want to continue
-		if (window.confirm("You asked for a new story but your current story has not been saved. If you continue you will loose your changes.")) {
-			socket.emit('new_story', '');
-		}
+		deleteConfirmation([
+				{text: "You asked for a new story but your current story has not been saved. If you continue you will loose your changes."},
+			],
+			confirmText="Go for it.",
+			denyText="I've changed my mind!",
+			confirmCallback=function() {
+				socket.emit('new_story', '');
+			}
+		);
 	} else {
 		socket.emit('new_story', '');
 	}
@@ -5552,4 +5580,57 @@ function run_infinite_scroll_update(action_type, actions, first_action) {
 			
 		}
 	}
+}
+
+function countWIFolderChildren(folder) {
+	let count = 0;
+	for (const wi of Object.values(world_info_data)) {
+		if (wi.folder === folder) count += 1;
+	}
+	return count;
+}
+
+function sFormatted2HTML(sFormatted) {
+	// "sFormatted" is a rudimentary solution to safe formatting
+	let outHTML = "";
+
+	for (const chunk of sFormatted) {
+		// Expand as needed
+		let format = {
+			bold: "<b>%s</b>",
+			italic: "<i>%s</i>"
+		}[chunk.format] || "%s";
+		
+		// This actually sucks but apparently the best recognized way to escape
+		// HTML in JavaScript is just "make an element real quick and slap some
+		// text in it."
+		let escaped = new Option(chunk.text).innerHTML;
+
+		outHTML += format.replace("%s", escaped);
+	}
+	return outHTML;
+}
+
+function deleteConfirmation(sFormatted, confirmText, denyText, confirmCallback, denyCallback) {
+	$el("#confirm-text").innerHTML = sFormatted2HTML(sFormatted);
+	
+	$el("#confirm-confirm-button > .text").innerText = confirmText;
+	$el("#confirm-deny-button > .text").innerText = denyText;
+
+	const confirmButton = $el("#confirm-confirm-button")
+	confirmButton.onclick = function() {
+		confirmCallback();
+		closePopups();
+		confirmButton.onclick = undefined;
+	}
+
+	const denyButton = $el("#confirm-deny-button")
+	denyButton.onclick = function() {
+		// No-op if no deny callback
+		(denyCallback || function(){})();
+		closePopups();
+		confirmButton.onclick = undefined;
+	}
+
+	openPopup("confirm-delete-dialog");
 }
