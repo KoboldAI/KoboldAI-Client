@@ -142,6 +142,7 @@ map2.set(5, 'Temperature')
 map2.set(6, 'Repetition Penalty')
 var calc_token_usage_timeout;
 var game_text_scroll_timeout;
+var auto_loader_timeout;
 var world_info_scroll_timeout;
 var font_size_cookie_timout;
 var colab_cookie_timeout;
@@ -172,6 +173,7 @@ function reset_story() {
 	clearTimeout(game_text_scroll_timeout);
 	clearTimeout(font_size_cookie_timout);
 	clearTimeout(world_info_scroll_timeout);
+	clearTimeout(auto_loader_timeout);
 	finder_last_input = null;
 	on_new_wi_item = null;
 	current_chunk_number = null;
@@ -382,6 +384,8 @@ function process_actions_data(data) {
 	
 	clearTimeout(game_text_scroll_timeout);
 	game_text_scroll_timeout = setTimeout(run_infinite_scroll_update.bind(null, action_type, actions, first_action), 200);
+	clearTimeout(auto_loader_timeout);
+	
 	
 	hide_show_prompt();
 	//console.log("Took "+((Date.now()-start_time)/1000)+"s to process");
@@ -5570,6 +5574,10 @@ function run_infinite_scroll_update(action_type, actions, first_action) {
 			document.getElementById("story_prompt").classList.remove("hidden");
 		} else {
 			//we just added more text and didn't hit the prompt. Move the scroll trigger back to the first non-prompt element
+			let item_in_view = false;
+			if(scroll_trigger_element.getBoundingClientRect().bottom >= 0){
+				let item_in_view = true;
+			}
 			for (id of Object.keys(actions_data).map(Number).filter(function(x){return x>0}).sort(function(a, b) {return a - b;})) {
 				//console.log("Checking for "+id);
 				if (document.getElementById('Selected Text Chunk '+id)) {
@@ -5578,10 +5586,19 @@ function run_infinite_scroll_update(action_type, actions, first_action) {
 				}
 			}
 			if (document.getElementById('Selected Text Chunk '+first_action)) {
-				document.getElementById('Selected Text Chunk '+first_action).scrollIntoView(true);
+				if (item_in_view) {
+					document.getElementById('Selected Text Chunk '+first_action).scrollIntoView(true);
+				}
 			}
 			
 		}
+	}
+	
+	if (scroll_trigger_element != undefined) {
+		console.log("Starting auto_loader");
+		auto_loader_timeout = setTimeout(function() {socket.emit("get_next_100_actions", parseInt(scroll_trigger_element.getAttribute("chunk")));}, 1000);
+	} else {
+		console.log("Skipping auto_loader");
 	}
 }
 
