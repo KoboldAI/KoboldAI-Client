@@ -2376,6 +2376,63 @@ function process_log_message(full_data) {
 }
 
 //--------------------------------------------UI to Server Functions----------------------------------
+async function download_story_to_json() {
+	//document.getElementById('download_iframe').src = 'json';
+	try {
+		let r = await fetch("json");
+		let j = await r.json();
+		downloadString(JSON.stringify(j), j['story_name']+".json")
+		console.log("Got JSON");
+	}
+	catch(err) {
+		//first we're going to find all the var_sync_story_ classes used in the document.
+		let allClasses = [];
+		const allElements = document.querySelectorAll('*');
+
+		for (let i = 0; i < allElements.length; i++) {
+		  let classes = allElements[i].classList;
+		  for (let j = 0; j < classes.length; j++) {
+			if (!(allClasses.includes(classes[j].replace("var_sync_story_", ""))) && (classes[j].includes("var_sync_story_"))) {
+				allClasses.push(classes[j].replace("var_sync_story_", ""));
+			}
+		  }
+		}
+		
+		//OK, now we're going to go through each of those classes and get the values from the elements
+		let j = {}
+		for (class_name of allClasses) {
+			for (item of document.getElementsByClassName("var_sync_story_"+class_name)) {
+				if (['INPUT', 'TEXTAREA', 'SELECT'].includes(item.tagName)) {
+					if ((item.tagName == 'INPUT') && (item.type == "checkbox")) {
+						j[class_name] = item.checked;
+					} else {
+						j[class_name] = item.value;
+					}
+				} else {
+					j[class_name] = item.textContent;
+				}
+				break;
+			}
+		}
+		
+		//We'll add actions and world info data next
+		let temp = JSON.parse(JSON.stringify(actions_data));
+		delete temp[-1];
+		j['actions'] = {'action_count': document.getElementById('action_count').textContent, 'actions': temp};
+		j['worldinfo_v2'] = {'entries': world_info_data, 'folders': world_info_folder_data};
+		
+		//Biases
+		
+		//substitutions
+		
+		j['file_version'] = 2;
+		j['gamestarted'] = true;
+		
+		downloadString(JSON.stringify(j), j['story_name']+".json")
+		console.log("used alt json");
+	}	
+}
+
 function unload_userscripts() {
 	files_to_unload = document.getElementById('loaded_userscripts');
 	for (var i=0; i<files_to_unload.options.length; i++) {
@@ -5575,8 +5632,10 @@ function run_infinite_scroll_update(action_type, actions, first_action) {
 		} else {
 			//we just added more text and didn't hit the prompt. Move the scroll trigger back to the first non-prompt element
 			let item_in_view = false;
-			if(scroll_trigger_element.getBoundingClientRect().bottom >= 0){
-				let item_in_view = true;
+			if ((scroll_trigger_element != undefined) && (scroll_trigger_element)) {
+				if(scroll_trigger_element.getBoundingClientRect().bottom >= 0){
+					let item_in_view = true;
+				}
 			}
 			for (id of Object.keys(actions_data).map(Number).filter(function(x){return x>0}).sort(function(a, b) {return a - b;})) {
 				//console.log("Checking for "+id);
