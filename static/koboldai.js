@@ -4902,6 +4902,7 @@ function updateTitle() {
 }
 
 function openClubImport() {
+	$el("#aidgpromptnum").value = "";
 	openPopup("aidg-import-popup");
 }
 
@@ -4924,6 +4925,12 @@ function openPopup(id) {
 
 	const popup = $el(`#${id}`);
 	popup.classList.remove("hidden");
+
+	// Sometimes we want to instantly focus on certain elements when a menu opens.
+	for (const noticeMee of popup.getElementsByClassName("focus-on-me")) {
+		noticeMee.focus();
+		break;
+	}
 }
 
 function closePopups() {
@@ -5733,3 +5740,26 @@ function deleteConfirmation(sFormatted, confirmText, denyText, confirmCallback, 
 
 	openPopup("confirm-delete-dialog");
 }
+
+function attemptClubLoad() {
+	const input = $el("#aidgpromptnum");
+	let val = input.value;
+	if (!/^\d+$/.test(val)) {
+		// Not an id, is it a full URL?
+		const matches = val.match(/aetherroom\.club\/([0-9]+)/)
+		if (!matches) {
+			reportError("Malformed club import", "That doesn't look like a valid club URL or ID. Please check your input and try again.");
+			return;
+		}
+		val = matches[1];
+	}
+	socket.emit("load_aidg_club", val);
+	closePopups();
+}
+
+
+$el("#aidgpromptnum").addEventListener("keydown", function(event) {
+	if (event.key !== "Enter") return;
+	attemptClubLoad();
+	event.preventDefault();
+});
