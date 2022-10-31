@@ -4922,6 +4922,12 @@ function openPopup(id) {
 
 	const popup = $el(`#${id}`);
 	popup.classList.remove("hidden");
+
+	// Sometimes we want to instantly focus on certain elements when a menu opens.
+	for (const noticeMee of popup.getElementsByClassName("focus-on-me")) {
+		noticeMee.focus();
+		break;
+	}
 }
 
 function closePopups() {
