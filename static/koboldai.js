@@ -46,6 +46,7 @@ var ai_busy_start = Date.now();
 var popup_deleteable = false;
 var popup_editable = false;
 var popup_renameable = false;
+var rename_return_emit_name = "popup_rename";
 var popup_rows = [];
 var popup_style = "";
 var popup_sort = {};
@@ -827,6 +828,7 @@ function load_popup(data) {
 	popup_deleteable = data.deleteable;
 	popup_editable = data.editable;
 	popup_renameable = data.renameable;
+	rename_return_emit_name = data.rename_return_emit_name;
 	var popup = document.getElementById("file-browser");
 	var popup_title = document.getElementById("popup_title");
 	popup_title.textContent = data.popup_title;
@@ -941,7 +943,7 @@ function redrawPopup() {
 			rename_icon.onclick = function () {
 				let new_name = prompt("Please enter new filename for \n"+ this.getAttribute("filename"));
 				if (new_name != null) {
-					socket.emit("popup_rename", {"file": this.id, "new_name": new_name});
+					socket.emit(rename_return_emit_name, {"file": this.id, "new_name": new_name});
 				}
 			};
 		}

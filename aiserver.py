@@ -7882,10 +7882,49 @@ def popup_rename(data):
         return
     
     if session['popup_jailed_dir'] is None:
-        os.rename(data['file'], data['new_name'])
+        new_filename = os.path.join(os.path.dirname(os.path.abspath(data['file'])), data['new_name']+".json")
+        os.rename(data['file'], new_filename)
         get_files_folders(os.path.dirname(data['file']))
     elif session['popup_jailed_dir'] in data:
-        os.rename(data['file'], data['new_name'])
+        new_filename = os.path.join(os.path.dirname(os.path.abspath(data['file'])), data['new_name']+".json")
+        os.rename(data['file'], new_filename)
+        get_files_folders(os.path.dirname(data['file']))
+    else:
+        print("User is trying to rename files in your server outside the jail. Blocked. Jailed Dir: {}  Requested Dir: {}".format(session['popup_jailed_dir'], data['file']))
+
+@socketio.on('popup_rename_story')
+@logger.catch
+def popup_rename_story(data):
+    if 'popup_renameable' not in session:
+        print("Someone is trying to rename a file in your server. Blocked.")
+        return
+    if not session['popup_renameable']:
+        print("Someone is trying to rename a file in your server. Blocked.")
+        return
+    
+    if session['popup_jailed_dir'] is None:
+        #if we're using a v2 file we can't just rename the file as the story name is in the file
+        with open(data['file'], 'r') as f:
+            json_data = json.load(f)
+        if 'story_name' in json_data:
+            json_data['story_name'] = data['new_name']
+            
+        new_filename = os.path.join(os.path.dirname(os.path.abspath(data['file'])), data['new_name']+".json")
+        os.remove(data['file'])
+        with open(new_filename, "w") as f:
+            json.dump(json_data, f)
+        get_files_folders(os.path.dirname(data['file']))
+    elif session['popup_jailed_dir'] in data['file']:
+        #if we're using a v2 file we can't just rename the file as the story name is in the file
+        with open(data['file'], 'r') as f:
+            json_data = json.load(f)
+        if 'story_name' in json_data:
+            json_data['story_name'] = data['new_name']
+            
+        new_filename = os.path.join(os.path.dirname(os.path.abspath(data['file'])), data['new_name']+".json")
+        os.remove(data['file'])
+        with open(new_filename, "w") as f:
+            json.dump(json_data, f)
         get_files_folders(os.path.dirname(data['file']))
     else:
         print("User is trying to rename files in your server outside the jail. Blocked. Jailed Dir: {}  Requested Dir: {}".format(session['popup_jailed_dir'], data['file']))
@@ -7966,7 +8005,8 @@ def file_popup(popup_title, starting_folder, return_event, upload=True, jailed=T
                                                            editable=False, show_breadcrumbs=True, item_check=None, show_hidden=False,
                                                            valid_only=False, hide_extention=False, extra_parameter_function=None,
                                                            column_names=['File Name'], show_filename=True, show_folders=True,
-                                                           column_widths=["100%"], sort="Modified", advanced_sort=None, desc=False):
+                                                           column_widths=["100%"], sort="Modified", advanced_sort=None, desc=False,
+                                                           rename_return_emit_name="popup_rename"):
     #starting_folder = The folder we're going to get folders and/or items from
     #return_event = the socketio event that will be emitted when the load button is clicked
     #jailed = if set to true will look for the session variable jailed_folder and prevent navigation outside of that folder
@@ -8001,8 +8041,8 @@ def file_popup(popup_title, starting_folder, return_event, upload=True, jailed=T
     session['show_folders'] = show_folders
     session['advanced_sort'] = advanced_sort
     
-    emit("load_popup", {"popup_title": popup_title, "call_back": return_event, "renameable": renameable, "deleteable": deleteable, "editable": editable, 'upload': upload}, broadcast=False)
-    emit("load_popup", {"popup_title": popup_title, "call_back": return_event, "renameable": renameable, "deleteable": deleteable, "editable": editable, 'upload': upload}, broadcast=True, room="UI_1")
+    emit("load_popup", {"popup_title": popup_title, "call_back": return_event, "renameable": renameable, "deleteable": deleteable, "editable": editable, 'upload': upload, "rename_return_emit_name": rename_return_emit_name}, broadcast=False)
+    emit("load_popup", {"popup_title": popup_title, "call_back": return_event, "renameable": renameable, "deleteable": deleteable, "editable": editable, 'upload': upload, "rename_return_emit_name": rename_return_emit_name}, broadcast=True, room="UI_1")
     
     get_files_folders(starting_folder)
 
@@ -8381,7 +8421,7 @@ def UI_2_load_story_list(data):
                                                                   valid_only=True, hide_extention=True, extra_parameter_function=get_story_listing_data,
                                                                   column_names=['Story Name', 'Action Count', 'Last Loaded'], show_filename=False,
                                                                   column_widths=['minmax(150px, auto)', '140px', '160px'], advanced_sort=story_sort,
-                                                                  sort="Modified", desc=True)
+                                                                  sort="Modified", desc=True, rename_return_emit_name="popup_rename_story")
 
 @logger.catch
 def get_story_listing_data(item_full_path, item, valid_selection):
