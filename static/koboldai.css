@@ -2492,7 +2492,7 @@ body {
 	right: 0px;
 	height: calc(100vh - 15px);
 	width: 400px;
-	z-index: 8;
+	z-index: 99999999;
 	pointer-events: none;
 	overflow-y: hidden;
 	overflow-x: hidden;
@@ -2500,7 +2500,6 @@ body {
 }
 
 .notification {
-	z-index: 8;
 	background-color: #30414e;
 	animation: 10s 1 alternate swoosh-in;
 	margin-right: 15px;
