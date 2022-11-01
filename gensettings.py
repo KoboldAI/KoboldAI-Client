@@ -592,7 +592,7 @@ gensettingstf = [
 	"label": "Privacy Password",
 	"id": "privacy_password",
 	"default": "",
-    "tooltip": "The password to unblur the UI when ctrl+l is hit",
+    "tooltip": "The password to unblur the UI when Ctrl+L is hit.",
     "menu_path": "Interface",
     "sub_path": "UI",
     "classname": "user",
