@@ -9127,6 +9127,8 @@ def UI_2_generate_image(data):
     # Check if stable-diffusion-webui API option selected and use that if found.
     if koboldai_vars.img_gen_priority == 4:
         b64_data = text2img_api(", ".join(keys), art_guide = art_guide)
+    elif ((not koboldai_vars.hascuda or not os.path.exists("models/stable-diffusion-v1-4")) and koboldai_vars.img_gen_priority != 0) or  koboldai_vars.img_gen_priority == 3:
+        b64_data = text2img_horde(", ".join(keys), art_guide = art_guide)
     else:
         if ((not koboldai_vars.hascuda or not os.path.exists("models/stable-diffusion-v1-4")) and koboldai_vars.img_gen_priority != 0) or  koboldai_vars.img_gen_priority == 3:
             b64_data = text2img_horde(", ".join(keys), art_guide = art_guide)
