@@ -114,8 +114,9 @@ const shortcuts = [
 	{key: "y", desc: "Redoes last story action", func: () => socket.emit("redo", {}), criteria: canNavigateStoryHistory},
 	{key: "e", desc: "Retries last story action", func: () => socket.emit("retry", {}), criteria: canNavigateStoryHistory},
 	{key: "m", desc: "Focuses Memory", func: () => focusEl("#memory")},
-	{key: "l", desc: "Focuses Author's Note", func: () => focusEl("#authors_notes")}, // CTRL-N is reserved :^(
+	{key: "u", desc: "Focuses Author's Note", func: () => focusEl("#authors_notes")}, // CTRL-N is reserved :^(
 	{key: "g", desc: "Focuses game text", func: () => focusEl("#input_text")},
+	{key: "l", desc: '"Lock" screen (Not secure)', func: () => socket.emit("privacy_mode", {'enabled': true})},
 ]
 
 function $el(selector) {
@@ -630,6 +631,7 @@ function var_changed(data) {
 	//if (data.name == "sp") {
 	//	console.log({"name": data.name, "data": data});
 	//}
+	console.log(data);
 	
 	if (data.name in vars_sync_time) {
 		if (vars_sync_time[data.name] > Date.parse(data.transmit_time)) {
@@ -648,6 +650,11 @@ function var_changed(data) {
 		}
 		hide_show_prompt();
 	}
+	
+	if ((data.classname == 'story') && (data.name == 'privacy_mode')) {
+		privacy_mode(data.value);
+	}
+	
 	//Special Case for Actions
 	if ((data.classname == "story") && (data.name == "actions")) {
 		process_actions_data(data)
@@ -2786,6 +2793,22 @@ function save_preset() {
 }
 
 //--------------------------------------------General UI Functions------------------------------------
+function privacy_mode(enabled) {
+	console.log("Setting Privacy Mode: "+enabled);
+	if (enabled) {
+		document.getElementById('SideMenu').classList.add("superblur");
+		document.getElementById('main-grid').classList.add("superblur");
+		document.getElementById('rightSideMenu').classList.add("superblur");
+		openPopup("privacy_mode");
+	} else {
+		document.getElementById('SideMenu').classList.remove("superblur");
+		document.getElementById('main-grid').classList.remove("superblur");
+		document.getElementById('rightSideMenu').classList.remove("superblur");
+		closePopups();
+		document.getElementById('privacy_password').value = "";
+	}
+}
+
 function set_font_size(element) {
 	new_font_size = element.value;
 	var r = document.querySelector(':root');

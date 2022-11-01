@@ -2938,3 +2938,13 @@ select {
 [system_experimental_features="false"] {
 	display: none;
 }
+
+.superblur {
+	filter: blur(10px);
+	-webkit-filter: blur(10px);
+}
+
+.nosuperblur {
+	filter: blur(0px) !important;
+	-webkit-filter: blur(0px) !important;
+}

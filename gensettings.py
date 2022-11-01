@@ -585,6 +585,19 @@ gensettingstf = [
     "classname": "system",
     "name": "experimental_features"
  	},
+    {
+    "UI_V2_Only": True,
+ 	"uitype": "text",
+	"unit": "text",
+	"label": "Privacy Password",
+	"id": "privacy_password",
+	"default": "",
+    "tooltip": "The password to unblur the UI when ctrl+l is hit",
+    "menu_path": "Interface",
+    "sub_path": "UI",
+    "classname": "user",
+    "name": "privacy_password"
+ 	},
 ]
 
 gensettingsik =[{

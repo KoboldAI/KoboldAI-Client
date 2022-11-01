@@ -9358,6 +9358,23 @@ def UI_2_update_tokens(data):
     ignore = koboldai_vars.calc_ai_text(submitted_text=data)
 
 #==================================================================#
+# Enable/Disable Privacy Mode
+#==================================================================#
+@socketio.on("privacy_mode")
+@logger.catch
+def UI_2_privacy_mode(data):
+    print(data)
+    if data['enabled']:
+        koboldai_vars.privacy_mode = True
+        print(koboldai_vars.privacy_mode)
+    else:
+        print("checking password {} = entered: {}".format(koboldai_vars.privacy_password, data['password']))
+        if data['password'] == koboldai_vars.privacy_password:
+            print("unlocking")
+            koboldai_vars.privacy_mode = False
+
+
+#==================================================================#
 # Test
 #==================================================================#
 @socketio.on("get_log")

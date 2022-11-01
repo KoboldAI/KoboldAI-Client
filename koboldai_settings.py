@@ -721,6 +721,8 @@ class story_settings(settings):
         self.socketio = socketio
         self.tokenizer = tokenizer
         self.koboldai_vars = koboldai_vars
+        self.privacy_mode = False
+        self.privacy_password = ""
         self.story_name  = "New Game"   # Title of the story
         self.lastact     = ""     # The last action received from the user
         self.submission  = ""     # Same as above, but after applying input formatting

@@ -81,6 +81,20 @@
 			<button type="button" class="btn btn-primary popup_load_cancel_button" onclick="closePopups();">Cancel</button>
 		</div>
 	</div>
+	<!---------------- Story overwrite screen ---------------------->
+	<div id="privacy_mode" class="popup-window popup">
+		<div class="title">
+			<div class="popuptitletext">Locked</div>
+		</div>
+		<div id="popup_list_area" class="popup_list_area">
+			This story is in private mode. Please enter password to unlock<br/>
+			<input type="password" id="privacy_password"/>
+		</div>
+		<div class="popup_load_cancel">
+			<button type="button" class="btn btn-primary popup_load_cancel_button" onclick='socket.emit("privacy_mode", {"enabled": false, "password": document.getElementById("privacy_password").value});'>Unlock</button>
+		</div>
+	</div>
+	
 
 	<!---------------- Save Preset screen ---------------------->
 	<div id="save-preset" class="popup-window popup">
