@@ -1307,7 +1307,7 @@ def load_model(path: str, driver_version="tpu_driver0.1_dev20210607", hf_checkpo
                     if "divide_by_shards" in transforms:
                         tensor /= params["cores_per_replica"]
                     if "vocab_pad" in transforms:
-                        tensor = torch.nn.functional.pad(tensor, (0, 0, 0, params["n_vocab_padding"]))
+                        tensor = torch.nn.functional.pad(tensor, (0,) * (tensor.ndim * 2 - 1) + (params["n_vocab_padding"],))
                     # We don't need to transpose linear module weights anymore because MTJ will do it for us if `transposed_linear` is set to True in the config
                     #if "no_transpose" not in transforms and tensor.ndim == 2:
                     #    tensor = tensor.T
