@@ -81,7 +81,7 @@ import transformers.generation_utils
 
 # Text2img
 import base64
-from PIL import Image, ImageFont, ImageDraw, ImageFilter, ImageOps
+from PIL import Image, ImageFont, ImageDraw, ImageFilter, ImageOps, PngImagePlugin
 from io import BytesIO
 
 global tpu_mtj_backend
@@ -9124,20 +9124,26 @@ def UI_2_generate_image(data):
 
     #If we don't have a GPU, use horde if we're allowed to
     start_time = time.time()
-    if ((not koboldai_vars.hascuda or not os.path.exists("models/stable-diffusion-v1-4")) and koboldai_vars.img_gen_priority != 0) or  koboldai_vars.img_gen_priority == 3:
+    # Check if stable-diffusion-webui API option selected and use that if found.
+    if koboldai_vars.img_gen_priority == 4:
+        b64_data = text2img_api(", ".join(keys), art_guide = art_guide)
+    elif ((not koboldai_vars.hascuda or not os.path.exists("models/stable-diffusion-v1-4")) and koboldai_vars.img_gen_priority != 0) or  koboldai_vars.img_gen_priority == 3:
         b64_data = text2img_horde(", ".join(keys), art_guide = art_guide)
     else:
-        import psutil
-        #We aren't being forced to use horde, so now let's figure out if we should use local
-        if torch.cuda.get_device_properties(0).total_memory - torch.cuda.memory_reserved(0) >= 6000000000:
-            #He have enough vram, just do it locally
-            b64_data = text2img_local(", ".join(keys), art_guide = art_guide)
-        elif torch.cuda.get_device_properties(0).total_memory > 6000000000 and koboldai_vars.img_gen_priority <= 1:
-            #We could do it locally by swapping the model out
-            print("Could do local or online")
+        if ((not koboldai_vars.hascuda or not os.path.exists("models/stable-diffusion-v1-4")) and koboldai_vars.img_gen_priority != 0) or  koboldai_vars.img_gen_priority == 3:
             b64_data = text2img_horde(", ".join(keys), art_guide = art_guide)
-        elif koboldai_vars.img_gen_priority != 0:
-            b64_data = text2img_horde(", ".join(keys), art_guide = art_guide)
+        else:
+            import psutil
+            #We aren't being forced to use horde, so now let's figure out if we should use local
+            if torch.cuda.get_device_properties(0).total_memory - torch.cuda.memory_reserved(0) >= 6000000000:
+                #He have enough vram, just do it locally
+                b64_data = text2img_local(", ".join(keys), art_guide = art_guide)
+            elif torch.cuda.get_device_properties(0).total_memory > 6000000000 and koboldai_vars.img_gen_priority <= 1:
+                #We could do it locally by swapping the model out
+                print("Could do local or online")
+                b64_data = text2img_horde(", ".join(keys), art_guide = art_guide)
+            elif koboldai_vars.img_gen_priority != 0:
+                b64_data = text2img_horde(", ".join(keys), art_guide = art_guide)
     logger.debug("Time to Generate Image {}".format(time.time()-start_time))
     koboldai_vars.picture = b64_data
     koboldai_vars.picture_prompt = ", ".join(keys)
@@ -9163,7 +9169,7 @@ def text2img_local(prompt, art_guide="", filename="new.png"):
     def get_image(pipe, prompt, num_inference_steps):
         from torch import autocast
         with autocast("cuda"):
-            return pipe(prompt, num_inference_steps=num_inference_steps)["sample"][0]
+            return pipe(prompt, num_inference_steps=num_inference_steps).images[0]
     image = tpool.execute(get_image, pipe, prompt, num_inference_steps=35)
     buffered = BytesIO()
     image.save(buffered, format="JPEG")
@@ -9184,8 +9190,8 @@ def text2img_local(prompt, art_guide="", filename="new.png"):
     return img_str
 
 @logger.catch
-def text2img_horde(prompt, 
-             art_guide = 'fantasy illustration, artstation, by jason felix by steve argyle by tyler jacobson by peter mohrbacher, cinematic lighting', 
+def text2img_horde(prompt,
+             art_guide = 'fantasy illustration, artstation, by jason felix by steve argyle by tyler jacobson by peter mohrbacher, cinematic lighting',
              filename = "story_art.png"):
     logger.debug("Generating Image using Horde")
     koboldai_vars.generating_image = True
@@ -9215,6 +9221,87 @@ def text2img_horde(prompt,
             else:
                 final_filename = filename
             img.save(final_filename)
+            logger.debug("Saved Image")
+            koboldai_vars.generating_image = False
+            return(b64img)
+    else:
+        koboldai_vars.generating_image = False
+        logger.error(submit_req.text)
+
+@logger.catch
+def text2img_api(prompt,
+             #art_guide = 'fantasy illustration, artstation, by Hugin Miyama by Taiki Kawakami, cinematic lighting',
+             art_guide = 'fantasy illustration, artstation, by jason felix by steve argyle by tyler jacobson by peter mohrbacher, cinematic lighting',
+             filename = "story_art.png"):
+    logger.debug("Generating Image using Local SD-WebUI API")
+    koboldai_vars.generating_image = True
+    #Add items that you want the AI to avoid in your image.
+    negprompt = 'lowres, bad anatomy, bad hands out of frame, two heads, totem pole, several faces, extra fingers, mutated hands, (poorly drawn hands:1.21), (poorly drawn face:1.21), (mutation:1.331), (deformed:1.331), (ugly:1.21), blurry, (bad anatomy:1.21), (bad proportions:1.331), (extra limbs:1.21), glitchy, ((clip through table)), adherent bodies, slimy bodies, (badly visible legs), captions, words'
+    #The following list are valid properties with their defaults, to add/modify in final_imgen_params. Will refactor configuring values into UI element in future.
+      #"enable_hr": false,
+      #"denoising_strength": 0,
+      #"firstphase_width": 0,
+      #"firstphase_height": 0,
+      #"prompt": "",
+      #"styles": [
+      #  "string"
+      #],
+      #"seed": -1,
+      #"subseed": -1,
+      #"subseed_strength": 0,
+      #"seed_resize_from_h": -1,
+      #"seed_resize_from_w": -1,
+      #"batch_size": 1,
+      #"n_iter": 1,
+      #"steps": 50,
+      #"cfg_scale": 7,
+      #"width": 512,
+      #"height": 512,
+      #"restore_faces": false,
+      #"tiling": false,
+      #"negative_prompt": "string",
+      #"eta": 0,
+      #"s_churn": 0,
+      #"s_tmax": 0,
+      #"s_tmin": 0,
+      #"s_noise": 1,
+      #"override_settings": {},
+      #"sampler_index": "Euler"
+    final_imgen_params = {
+        "prompt": "{}, {}".format(prompt, art_guide),
+        "n": 1,
+        "width": 512,
+        "height": 512,
+        "steps": 40,
+        "cfg_scale": 10,
+        "negative_prompt": "{}".format(negprompt),
+        "sampler_index": "Euler a"
+    }
+
+    final_submit_dict = {
+        "prompt": "{}, {}".format(prompt, art_guide),
+        "params": final_imgen_params,
+    }
+    apiaddress = 'http://127.0.0.1:7860/sdapi/v1/txt2img'
+    payload_json = json.dumps(final_imgen_params)
+    logger.debug(final_submit_dict)
+    submit_req = requests.post(url=f'{apiaddress}', data=payload_json).json()
+    if submit_req:
+        results = submit_req
+        for i in results['images']:
+            final_src_img = Image.open(BytesIO(base64.b64decode(i.split(",",1)[1])))
+            buffer = BytesIO()
+            final_src_img.save(buffer, format="Webp", quality=95)
+            b64img = base64.b64encode(buffer.getvalue()).decode("utf8")
+            base64_bytes = b64img.encode('utf-8')
+            img_bytes = base64.b64decode(base64_bytes)
+            img = Image.open(BytesIO(img_bytes))
+            dt_string = datetime.datetime.now().strftime("%H%M%S%d%m%Y")
+            final_filename = "stories/art/{}_{}".format(dt_string,filename)
+            pnginfo = PngImagePlugin.PngInfo()
+            pnginfo.add_text("parameters", str(results['info']))
+            img.save(final_filename, pnginfo=pnginfo)
+            #img.save(final_filename)
             logger.debug("Saved Image")
             koboldai_vars.generating_image = False
             return(b64img)
