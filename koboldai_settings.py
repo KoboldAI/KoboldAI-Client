@@ -545,12 +545,12 @@ class settings(object):
                 else:
                     setattr(self, key, value)
             logger.debug("Loading {} took {}s".format(key, time.time()- start_time))
+        
         #check from prompt_wi_highlighted_text since that wasn't always in the V2 save format
-        if 'prompt_wi_highlighted_text' in self.__dict__:
-            if self.prompt_wi_highlighted_text[0]['text'] != self.prompt and self.prompt_wi_highlighted_text[0]['text'] == "":
-                self.prompt_wi_highlighted_text[0]['text'] = self.prompt
-                self.assign_world_info_to_actions(action_id=-1)
-                process_variable_changes(self.socketio, "story", 'prompt_wi_highlighted_text', self.prompt_wi_highlighted_text, None)
+        if 'prompt' in json_data and 'prompt_wi_highlighted_text' not in json_data:
+            self.prompt_wi_highlighted_text[0]['text'] = self.prompt
+            self.assign_world_info_to_actions(action_id=-1)
+            process_variable_changes(self.socketio, "story", 'prompt_wi_highlighted_text', self.prompt_wi_highlighted_text, None)
         
         if 'no_save' in self.__dict__:
             setattr(self, 'no_save', False)
@@ -1462,6 +1462,8 @@ class KoboldStoryRegister(object):
             old_length = self.actions[action_id]["Selected Text Length"]
             self.actions[action_id]["Options"].append({"text": self.actions[action_id]["Selected Text"], "Pinned": False, "Previous Selection": True, "Edited": False})
             self.actions[action_id]["Selected Text"] = ""
+            if "wi_highlighted_text" in self.actions[action_id]:
+                del self.actions[action_id]["wi_highlighted_text"]
             self.actions[action_id]['Selected Text Length'] = 0
             self.action_count -= 1
             process_variable_changes(self.socketio, "story", 'actions', {"id": action_id, 'action':  self.actions[action_id]}, None)
@@ -1472,10 +1474,8 @@ class KoboldStoryRegister(object):
     def pop(self):
         if self.action_count >= 0:
             text = self.actions[self.action_count]['Selected Text']
-            length = self.actions[self.action_count]['Selected Text Length']
             self.delete_action(self.action_count)
             logger.debug("Calcing AI Text from Action Pop")
-            ignore = self.koboldai_vars.calc_ai_text()
             return text
         else:
             return None

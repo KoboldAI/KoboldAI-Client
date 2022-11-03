@@ -230,30 +230,8 @@ function fix_text(val) {
 function create_options(action) {
 	//Set all options before the next chunk to hidden
 	document.getElementById('main-grid').setAttribute('option_length', action.action.Options.length);
-	var option_container = document.getElementById("Select Options");
-	var current_chunk = parseInt(document.getElementById("action_count").textContent)+1;
-	if (current_chunk != action.id.toString()) {
-		return;
-	}
-	if (document.getElementById("Select Options Chunk " + current_chunk)) {
-		//document.getElementById("Select Options Chunk " + current_chunk).classList.remove("hidden");
-		document.getElementById("Select Options Chunk " + current_chunk).remove();
-	}
-	if (document.getElementById("Select Options Chunk " + (current_chunk-1))) {
-		//document.getElementById("Select Options Chunk " + (current_chunk-1)).classList.add("hidden");
-		document.getElementById("Select Options Chunk " + (current_chunk-1)).remove();
-	}
+	var option_chunk = document.getElementById("Select Options");
 	
-	if (document.getElementById("Select Options Chunk "+action.id)) {
-		var option_chunk = document.getElementById("Select Options Chunk "+action.id);
-	} else {
-		var option_chunk = document.createElement("div");
-		option_chunk.id = "Select Options Chunk "+action.id;
-		if (current_chunk != action.id) {
-			option_chunk.classList.add("hidden");
-		}
-		option_container.append(option_chunk);
-	}
 	//first, let's clear out our existing data
 	while (option_chunk.firstChild) {
 		option_chunk.removeChild(option_chunk.firstChild);
@@ -339,11 +317,6 @@ function create_options(action) {
 
 function process_actions_data(data) {
 	start_time = Date.now();
-	if (document.getElementById("Selected Text").firstElementChild.id == "story_prompt") {
-		first_story_element = document.getElementById("Selected Text").firstElementChild.nextElementSibling;
-	} else {
-		first_story_element = document.getElementById("Selected Text").firstElementChild;
-	}
 	if (Array.isArray(data.value)) {
 		actions = data.value;
 	} else {
@@ -439,6 +412,7 @@ function do_story_text_updates(action) {
 }
 
 function do_prompt(data) {
+	console.log(data);
 	var elements_to_change = document.getElementsByClassName("var_sync_story_prompt");
 	for (item of elements_to_change) {
 		//clear out the item first
@@ -631,7 +605,6 @@ function var_changed(data) {
 	//if (data.name == "sp") {
 	//	console.log({"name": data.name, "data": data});
 	//}
-	console.log(data);
 	
 	if (data.name in vars_sync_time) {
 		if (vars_sync_time[data.name] > Date.parse(data.transmit_time)) {
@@ -2299,7 +2272,6 @@ function show_error_message(data) {
 	while (error_box_data.firstChild) {
 		error_box_data.removeChild(error_box_data.firstChild);
 	}
-	console.log(data);
 	if (Array.isArray(data)) {
 		for (item of data) {
 			$e("div", error_box_data, {'innerHTML': item, 'classes': ['console_text']})
@@ -2391,7 +2363,6 @@ async function download_story_to_json() {
 		let r = await fetch("json");
 		let j = await r.json();
 		downloadString(JSON.stringify(j), j['story_name']+".json")
-		console.log("Got JSON");
 	}
 	catch(err) {
 		//first we're going to find all the var_sync_story_ classes used in the document.
@@ -2456,7 +2427,6 @@ async function download_story_to_json() {
 		j['gamestarted'] = true;
 		
 		downloadString(JSON.stringify(j), j['story_name']+".json")
-		console.log("used alt json");
 	}	
 }
 
@@ -2794,7 +2764,6 @@ function save_preset() {
 
 //--------------------------------------------General UI Functions------------------------------------
 function privacy_mode(enabled) {
-	console.log("Setting Privacy Mode: "+enabled);
 	if (enabled) {
 		document.getElementById('SideMenu').classList.add("superblur");
 		document.getElementById('main-grid').classList.add("superblur");
@@ -5654,7 +5623,6 @@ function infinite_scroll() {
 }
 
 function run_infinite_scroll_update(action_type, actions, first_action) {
-	console.log("action_type: "+action_type);
 	//console.log("first_action: "+first_action);
 	if (action_type == "append") {
 		if (document.getElementById('Selected Text Chunk '+actions[actions.length-1].id)) {
@@ -5704,10 +5672,7 @@ function run_infinite_scroll_update(action_type, actions, first_action) {
 	}
 	
 	if (scroll_trigger_element != undefined) {
-		console.log("Starting auto_loader");
 		auto_loader_timeout = setTimeout(function() {socket.emit("get_next_100_actions", parseInt(scroll_trigger_element.getAttribute("chunk")));}, 1000);
-	} else {
-		console.log("Skipping auto_loader");
 	}
 }
 
