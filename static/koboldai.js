@@ -212,7 +212,7 @@ function reset_story() {
 		text += "\xa0 ";
 	}
 	document.getElementById("welcome_text").innerText = text;
-	document.getElementById("welcome_text").classList.remove("hidden");
+	document.getElementById("welcome_container").classList.remove("hidden");
 	document.getElementById('main-grid').setAttribute('option_length', 0);
 }
 
@@ -450,7 +450,7 @@ function do_prompt(data) {
 		document.getElementById('input_text').placeholder = "Enter text here (shift+enter for new line)";
 		document.getElementById('themerow').classList.add("hidden");
 		document.getElementById('themetext').value = "";
-		document.getElementById("welcome_text").classList.add("hidden");
+		document.getElementById("welcome_container").classList.add("hidden");
 		//enable editing
 		document.getElementById("Selected Text").setAttribute("contenteditable", "true");
 	} else {
