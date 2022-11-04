@@ -2392,6 +2392,10 @@ body {
 	margin-top: auto;
 }
 
+#welcome_text {
+	align-self: flex-end;
+}
+
 .welcome_text {
 	display: flex;
 	height: 100%;
