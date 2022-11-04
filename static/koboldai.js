@@ -239,6 +239,7 @@ function create_options(action) {
 	var table = document.createElement("div");
 	table.classList.add("sequences");
 	//Add Redo options
+	let added_options=0;
 	i=0;
 	for (item of action.action.Options) {
 		if ((item['Previous Selection'])) {
@@ -270,6 +271,7 @@ function create_options(action) {
 			row.append(textcell);
 			row.append(iconcell);
 			table.append(row);
+			added_options+=1;
 		}
 		i+=1;
 	}
@@ -305,10 +307,13 @@ function create_options(action) {
 			row.append(textcell);
 			row.append(iconcell);
 			table.append(row);
+			added_options+=1;
 		}
 		i+=1;
 	}
-	option_chunk.append(table);
+	if (added_options > 0) {
+		option_chunk.append(table);
+	}
 	
 	
 	//make sure our last updated chunk is in view
