@@ -8473,7 +8473,9 @@ def get_story_listing_data(item_full_path, item, valid_selection):
                 if prefix == 'file_version':
                     file_version=2
                 break
-
+                
+    with open(item_full_path, 'rb') as f:
+        parse_event = ijson.parse(f)
         if file_version == 1:
             title = ".".join(item.split(".")[:-1])
         else:
@@ -8481,7 +8483,9 @@ def get_story_listing_data(item_full_path, item, valid_selection):
                 if prefix == 'story_name':
                     title = value
                     break
-                    
+                
+    with open(item_full_path, 'rb') as f:
+        parse_event = ijson.parse(f)
         if file_version == 2:
             for prefix, event, value in parse_event:
                 if prefix == 'actions.action_count':
