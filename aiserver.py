@@ -9464,7 +9464,7 @@ def UI_2_get_next_100_actions(data):
     emit("var_changed", {"classname": "story", "name": "actions", "old_value": None, "value":data_to_send})
 
 #==================================================================#
-# Get next 100 actions for infinate scroll
+# Get context tokens
 #==================================================================#
 @socketio.on("update_tokens")
 @logger.catch

@@ -151,6 +151,7 @@ var colab_cookie_timeout;
 var setup_missing_wi_toggles_timeout;
 var var_processing_time = 0;
 var finder_last_input;
+var current_action;
 //-----------------------------------Server to UI  Functions-----------------------------------------------
 function connect() {
 	console.log("connected");
@@ -229,6 +230,9 @@ function fix_text(val) {
 
 function create_options(action) {
 	//Set all options before the next chunk to hidden
+	if (action.id  != current_action+1) {
+		return;
+	}
 	document.getElementById('main-grid').setAttribute('option_length', action.action.Options.length);
 	var option_chunk = document.getElementById("Select Options");
 	
