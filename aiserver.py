@@ -9240,7 +9240,7 @@ def text2img_api(prompt,
     logger.debug("Generating Image using Local SD-WebUI API")
     koboldai_vars.generating_image = True
     #Add items that you want the AI to avoid in your image.
-    negprompt = 'lowres, bad anatomy, bad hands out of frame, two heads, totem pole, several faces, extra fingers, mutated hands, (poorly drawn hands:1.21), (poorly drawn face:1.21), (mutation:1.331), (deformed:1.331), (ugly:1.21), blurry, (bad anatomy:1.21), (bad proportions:1.331), (extra limbs:1.21), glitchy, ((clip through table)), adherent bodies, slimy bodies, (badly visible legs), captions, words'
+    negprompt = '((((misshapen)))),((((ugly)))), (((duplicate))), ((morbid)), ((mutilated)), out of frame, extra fingers, mutated hands, ((poorly drawn hands)), ((poorly drawn face)), (((mutation))), (((deformed))), ((ugly)), blurry, ((bad anatomy)), (((bad proportions))), ((extra limbs)), cloned face, (((disfigured))), out of frame, ugly, extra limbs, (bad anatomy), gross proportions, (malformed limbs), ((missing arms)), ((missing legs)), (((extra arms))), (((extra legs))), mutated hands, (fused fingers), (too many fingers), (((long neck))), captions, words'
     #The following list are valid properties with their defaults, to add/modify in final_imgen_params. Will refactor configuring values into UI element in future.
       #"enable_hr": false,
       #"denoising_strength": 0,
@@ -9272,7 +9272,6 @@ def text2img_api(prompt,
       #"override_settings": {},
       #"sampler_index": "Euler"
     final_imgen_params = {
-        "prompt": "{}, {}".format(prompt, art_guide),
         "n": 1,
         "width": 512,
         "height": 512,
@@ -9287,13 +9286,13 @@ def text2img_api(prompt,
         "params": final_imgen_params,
     }
     apiaddress = 'http://127.0.0.1:7860/sdapi/v1/txt2img'
-    payload_json = json.dumps(final_imgen_params)
+    payload_json = json.dumps(final_submit_dict)
     logger.debug(final_submit_dict)
     submit_req = requests.post(url=f'{apiaddress}', data=payload_json).json()
     if submit_req:
         results = submit_req
         for i in results['images']:
-            final_src_img = Image.open(BytesIO(base64.b64decode(i.split(",",1)[1])))
+            final_src_img = Image.open(BytesIO(base64.b64decode(i.split(",",1)[0])))
             buffer = BytesIO()
             final_src_img.save(buffer, format="Webp", quality=95)
             b64img = base64.b64encode(buffer.getvalue()).decode("utf8")
@@ -9303,7 +9302,8 @@ def text2img_api(prompt,
             dt_string = datetime.datetime.now().strftime("%H%M%S%d%m%Y")
             final_filename = "stories/art/{}_{}".format(dt_string,filename)
             pnginfo = PngImagePlugin.PngInfo()
-            pnginfo.add_text("parameters", str(results['info']))
+            prompttext = results.get('info').split("\",")[0].split("\"")[3]
+            pnginfo.add_text("parameters","prompttext")
             img.save(final_filename, pnginfo=pnginfo)
             #img.save(final_filename)
             logger.debug("Saved Image")
