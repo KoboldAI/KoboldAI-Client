@@ -8077,8 +8077,8 @@ def file_popup(popup_title, starting_folder, return_event, upload=True, jailed=T
 def get_files_folders(starting_folder):
     import stat
     session['current_folder'] = os.path.abspath(starting_folder).replace("\\", "/")
-    item_check = session['popup_item_check']
-    extra_parameter_function = session['extra_parameter_function']
+    item_check = globals()[session['popup_item_check']] if session['popup_item_check'] is not None else None
+    extra_parameter_function = globals()[session['extra_parameter_function']] if session['extra_parameter_function'] is not None else None
     show_breadcrumbs = session['popup_show_breadcrumbs']
     show_hidden = session['popup_show_hidden']
     folder_only = session['popup_folder_only']
@@ -8090,7 +8090,7 @@ def get_files_folders(starting_folder):
     sort = session['sort']
     desc = session['desc']
     show_folders = session['show_folders']
-    advanced_sort = session['advanced_sort']
+    advanced_sort = globals()[session['advanced_sort']] if session['advanced_sort'] is not None else None
     
     if starting_folder == 'This PC':
         breadcrumbs = [['This PC', 'This PC']]
@@ -8444,10 +8444,10 @@ def UI_2_load_model(data):
 @logger.catch
 def UI_2_load_story_list(data):
     file_popup("Select Story to Load", "./stories", "load_story", upload=True, jailed=True, folder_only=False, renameable=True, 
-                                                                  deleteable=True, show_breadcrumbs=True, item_check=valid_story,
-                                                                  valid_only=True, hide_extention=True, extra_parameter_function=get_story_listing_data,
+                                                                  deleteable=True, show_breadcrumbs=True, item_check="valid_story",
+                                                                  valid_only=True, hide_extention=True, extra_parameter_function="get_story_listing_data",
                                                                   column_names=['Story Name', 'Action Count', 'Last Loaded'], show_filename=False,
-                                                                  column_widths=['minmax(150px, auto)', '140px', '160px'], advanced_sort=story_sort,
+                                                                  column_widths=['minmax(150px, auto)', '140px', '160px'], advanced_sort="story_sort",
                                                                   sort="Modified", desc=True, rename_return_emit_name="popup_rename_story")
 
 @logger.catch
@@ -8809,8 +8809,8 @@ def UI_2_load_softprompt_list(data):
         socketio.emit("error", "Soft prompts are not supported by your current model/backend", broadcast=True, room="UI_2")
     assert koboldai_vars.allowsp, "Soft prompts are not supported by your current model/backend"
     file_popup("Select Softprompt to Load", "./softprompts", "load_softprompt", upload=True, jailed=True, folder_only=False, renameable=True, 
-                                                                  deleteable=True, show_breadcrumbs=True, item_check=valid_softprompt,
-                                                                  valid_only=True, hide_extention=True, extra_parameter_function=get_softprompt_desc,
+                                                                  deleteable=True, show_breadcrumbs=True, item_check="valid_softprompt",
+                                                                  valid_only=True, hide_extention=True, extra_parameter_function="get_softprompt_desc",
                                                                   column_names=['Softprompt Name', 'Softprompt Description'],
                                                                   show_filename=False,
                                                                   column_widths=['150px', 'auto'])
@@ -8852,8 +8852,8 @@ def UI_2_load_softprompt(data):
 @logger.catch
 def UI_2_load_userscripts_list(data):
     file_popup("Select Userscripts to Load", "./userscripts", "load_userscripts", upload=True, jailed=True, folder_only=False, renameable=True, editable=True, 
-                                                                  deleteable=True, show_breadcrumbs=False, item_check=valid_userscripts_to_load,
-                                                                  valid_only=True, hide_extention=True, extra_parameter_function=get_userscripts_desc,
+                                                                  deleteable=True, show_breadcrumbs=False, item_check="valid_userscripts_to_load",
+                                                                  valid_only=True, hide_extention=True, extra_parameter_function="get_userscripts_desc",
                                                                   column_names=['Module Name', 'Description'],
                                                                   show_filename=False, show_folders=False,
                                                                   column_widths=['150px', 'auto'])
