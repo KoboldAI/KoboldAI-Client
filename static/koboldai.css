@@ -2611,6 +2611,62 @@ body {
 	top: 2px;
 }
 
+/* Yahoo it's Chatv2 */
+.chat-message {
+	display: flex;
+	margin-bottom: 16px;
+}
+
+.chat-left-container {
+	position: relative;
+}
+
+.chat-pfp {
+	height: 40px;
+	width: 40px;
+	border-radius: 120px;
+
+	margin: 0px 16px 0px 16px;
+}
+
+.chat-add {
+	position: absolute;
+	/* Offsets precisely calculated using the "guess until it looks right" method */
+	left: 1px;
+	top: 35px;
+
+	/* Opacity instead of display or visibility due to some weird stuff going on with :hover */
+	opacity: 0;
+}
+
+.chat-delete {
+	position: absolute;
+	left: 48px;
+	top: 35px;
+	opacity: 0;
+}
+
+.chat-left-container:hover > .chat-button {
+	opacity: 0.7;
+	cursor: pointer;
+}
+
+.chat-header { }
+
+.chat-author {
+	outline: none;
+	padding-right: 12px;
+	font-weight: bold;
+}
+
+.chat-timestamp {
+	opacity: 0.7;
+}
+
+.chat-text {
+	outline: none;
+}
+
 /*---------------------------------- Global ------------------------------------------------*/
 .hidden {
 	display: none;

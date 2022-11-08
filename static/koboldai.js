@@ -1,3 +1,8 @@
+// PLACEHOLDER TEST!!
+const chatv2 = true;
+let chatv2LastEdit = null;
+// PLACEHOLDER TEST!!
+
 var socket;
 socket = io.connect(window.location.origin, {transports: ['polling', 'websocket'], closeOnBeforeunload: false, query:{"ui":  "2"}});
 
@@ -375,49 +380,80 @@ function process_actions_data(data) {
 	//console.log("Took "+((Date.now()-start_time)/1000)+"s to process");
 }
 
+function parseChatMessages(text) {
+	console.log("hehe", text)
+	let messages = []
+
+	for (const line of text.split("\n")) {
+		const [author, text] = line.split(":", 2);
+		if (!author && !text) continue;
+		messages.push({author: author, text: text});
+	}
+	console.log("oute", messages)
+
+	return messages;
+}
+
 function do_story_text_updates(action) {
 	story_area = document.getElementById('Selected Text');
 	current_chunk_number = action.id;
 	let item = null;
-	if (document.getElementById('Selected Text Chunk '+action.id)) {
-		item = document.getElementById('Selected Text Chunk '+action.id);
-		//clear out the item first
-		while (item.firstChild) { 
-			item.removeChild(item.firstChild);
+	console.log("ancient mesage")
+
+	if (chatv2) {
+		if (action.id === chatv2LastEdit) {
+			// Swallow update if we just caused it
+			chatv2LastEdit = null;
+			return;
+		}
+		const messageEl = $el(`[action-id="${action.id}"]`);
+		let previous = messageEl ? messageEl.previousElementSibling : null;
+
+		for (const message of parseChatMessages(action.action["Selected Text"])) {
+			addMessage(message.author, message.text, action.id, previous);
 		}
 	} else {
-		item = document.createElement("span");
-		item.id = 'Selected Text Chunk '+action.id;
-		item.classList.add("rawtext");
-		item.setAttribute("chunk", action.id);
-		//need to find the closest element
-		next_id = action.id+1;
-		if (Math.max.apply(null,Object.keys(actions_data).map(Number)) <= next_id) {
-			story_area.append(item);
-		} else {
-			story_area.prepend(item);
-		}
-	}
-	if ('wi_highlighted_text' in action.action) {
-		for (chunk of action.action['wi_highlighted_text']) {
-			chunk_element = document.createElement("span");
-			chunk_element.textContent = chunk['text'];
-			if (chunk['WI matches'] != null) {
-				chunk_element.classList.add("wi_match");
-				chunk_element.setAttribute("tooltip", chunk['WI Text']);
-				chunk_element.setAttribute("wi-uid", chunk['WI matches']);
+		if (document.getElementById('Selected Text Chunk '+action.id)) {
+			item = document.getElementById('Selected Text Chunk '+action.id);
+			//clear out the item first
+			while (item.firstChild) { 
+				item.removeChild(item.firstChild);
 			}
+		} else {
+			item = document.createElement("span");
+			item.id = 'Selected Text Chunk '+action.id;
+			item.classList.add("rawtext");
+			item.setAttribute("chunk", action.id);
+			//need to find the closest element
+			next_id = action.id+1;
+			if (Math.max.apply(null,Object.keys(actions_data).map(Number)) <= next_id) {
+				story_area.append(item);
+			} else {
+				story_area.prepend(item);
+			}
+		}
+
+		if ('wi_highlighted_text' in action.action) {
+			for (chunk of action.action['wi_highlighted_text']) {
+				chunk_element = document.createElement("span");
+				chunk_element.textContent = chunk['text'];
+				if (chunk['WI matches'] != null) {
+					chunk_element.classList.add("wi_match");
+					chunk_element.setAttribute("tooltip", chunk['WI Text']);
+					chunk_element.setAttribute("wi-uid", chunk['WI matches']);
+				}
+				item.append(chunk_element);
+			}
+		} else {
+			chunk_element = document.createElement("span");
+			chunk_element.textContent = action.action['Selected Text'];
 			item.append(chunk_element);
 		}
-	} else {
-		chunk_element = document.createElement("span");
-		chunk_element.textContent = action.action['Selected Text'];
-		item.append(chunk_element);
+		item.original_text = action.action['Selected Text'];
+		item.classList.remove("pulse")
+		item.classList.remove("single_pulse");
+		item.classList.add("single_pulse");
 	}
-	item.original_text = action.action['Selected Text'];
-	item.classList.remove("pulse")
-	item.classList.remove("single_pulse");
-	item.classList.add("single_pulse");
 }
 
 function do_prompt(data) {
@@ -429,16 +465,28 @@ function do_prompt(data) {
 			item.removeChild(item.firstChild);
 		}
 		let full_text = "";
-		for (chunk of data.value) {
-			chunk_element = document.createElement("span");
-			chunk_element.textContent = chunk['text'];
-			full_text += chunk['text'];
-			if (chunk['WI matches'] != null) {
-				chunk_element.classList.add("wi_match");
-				chunk_element.setAttribute("tooltip", chunk['WI Text']);
-				chunk_element.setAttribute("wi-uid", chunk['WI matches']);
+
+		if (chatv2) {
+			for (chunk of data.value) {
+				full_text += chunk['text'];
 			}
-			item.append(chunk_element);
+
+			let previous = null
+			for (const message of parseChatMessages(full_text)) {
+				addMessage(message.author, message.text, -1, previous);
+			}
+		} else {
+			for (chunk of data.value) {
+				chunk_element = document.createElement("span");
+				chunk_element.textContent = chunk['text'];
+				full_text += chunk['text'];
+				if (chunk['WI matches'] != null) {
+					chunk_element.classList.add("wi_match");
+					chunk_element.setAttribute("tooltip", chunk['WI Text']);
+					chunk_element.setAttribute("wi-uid", chunk['WI matches']);
+				}
+				item.append(chunk_element);
+			}
 		}
 		item.setAttribute("old_text", full_text);
 		item.classList.remove("pulse");
@@ -4477,7 +4525,7 @@ function updateStandardSearchListings(query) {
 	}
 }
 
-function $e(tag, parent, attributes) {
+function $e(tag, parent, attributes, insertionLocation=null) {
 	// Small helper function for dynamic UI creation
 
 	let element = document.createElement(tag);
@@ -4513,7 +4561,19 @@ function $e(tag, parent, attributes) {
 		}
 	}
 
-	parent.appendChild(element);
+	if (insertionLocation && Object.keys(insertionLocation).length) {
+		let [placement, target] = Object.entries(insertionLocation)[0];
+		if (placement === "before") {
+			parent.insertBefore(element, target);
+		} else if (placement === "after") {
+			parent.insertBefore(element, target.nextSibling);
+		} else {
+			throw Error(`I have no clue what placement ${placement} is`);
+		}
+	} else {
+		parent.appendChild(element);
+	}
+
 	return element;
 }
 
@@ -5760,3 +5820,74 @@ $el("#aidgpromptnum").addEventListener("keydown", function(event) {
 	attemptClubLoad();
 	event.preventDefault();
 });
+
+/* -- Shiny New Chat -- */
+function addMessage(author, content, actionId, afterMsgEl=null) {
+	const gameScreen = $el("#gamescreen");
+
+
+	let insertionLocation = afterMsgEl ? {after: afterMsgEl} : null
+	const message = $e(
+		"div",
+		gameScreen,
+		{classes: ["chat-message", "chat-style-channel"], "action-id": actionId},
+		// Insertion location
+		insertionLocation,
+	);
+
+	const leftContainer = $e("div", message, {classes: ["chat-left-container"]});
+	const profilePicture = $e("img", leftContainer, {classes: ["chat-pfp"], src: "/static/testodesto.jpeg", draggable: false});
+	const addAfterButton = $e("span", leftContainer, {classes: ["chat-add", "chat-button", "material-icons-outlined"], innerText: "add"});
+	const deleteButton = $e("span", leftContainer, {classes: ["chat-delete", "chat-button", "material-icons-outlined"], innerText: "delete"});
+
+	const textContainer = $e("div", message, {classes: ["chat-text-container"]});
+
+	const messageHeader = $e("div", textContainer, {classes: ["chat-header"]});
+
+	const messageAuthor = $e("span", messageHeader, {classes: ["chat-author"], innerText: author, contenteditable: true, spellcheck: false, "data-placeholder": "Author"});
+
+	const date = new Date();
+	// TODOB4PUSH: Better formatting
+	const messageTime = $e("span", messageHeader, {classes: ["chat-timestamp", "noselect"], innerText: `today at ${date.toLocaleTimeString()}`});
+
+	// TODO: In-house less intrusive spellcheck?
+	const messageText = $e("span", textContainer, {classes: ["chat-text"], innerText: content, contenteditable: true, spellcheck: false, "data-placeholder": "Message"});
+
+	// When we edit it we need to recompute the context
+	// NOTE: `focusout` may not always trigger! `change` is not a thing on
+	// `contenteditable` and `input` fires way to often, so we'll hope this works!
+
+	for (const box of [messageAuthor, messageText]) {
+		box.addEventListener("focusout", () => computeChatGametext(actionId));
+		box.addEventListener("keydown", function(event) {
+			if (event.key === "Enter") {
+				event.preventDefault();
+				this.blur();
+			}
+		});
+	}
+
+	addAfterButton.addEventListener("click", function() {
+		addMessage("", "", actionId, message)
+	});
+
+	deleteButton.addEventListener("click", function() {
+		message.remove();
+		computeChatGametext(actionId);
+	});
+}
+
+function computeChatGametext(actionId) {
+	// TODO: Customizable format?
+	let lines = [];
+	for (const message of document.querySelectorAll(`[action-id="${actionId}"]`)) {
+		const name = message.getElementsByClassName("chat-author")[0].innerText;
+		const text = message.getElementsByClassName("chat-text")[0].innerText;
+		lines.push(`${name}: ${text}`);
+	}
+
+	let text = lines.join("\n");
+	console.log(actionId, text);
+	socket.emit("Set Selected Text", {id: actionId, text: text});
+	chatv2LastEdit = actionId;
+}
