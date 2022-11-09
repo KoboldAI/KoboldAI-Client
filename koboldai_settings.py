@@ -1286,7 +1286,7 @@ class KoboldStoryRegister(object):
         if type(json_data) == str:
             import json
             json_data = json.loads(json_data)
-        self.action_count = json_data['action_count']
+        self.action_count = int(json_data['action_count'])
         #JSON forces keys to be strings, so let's fix that
         temp = {}
         data_to_send = []
