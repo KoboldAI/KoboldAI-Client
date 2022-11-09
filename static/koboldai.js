@@ -1,8 +1,3 @@
-// PLACEHOLDER TEST!!
-const chatv2 = true;
-let chatv2LastEdit = null;
-// PLACEHOLDER TEST!!
-
 var socket;
 socket = io.connect(window.location.origin, {transports: ['polling', 'websocket'], closeOnBeforeunload: false, query:{"ui":  "2"}});
 
@@ -124,6 +119,24 @@ const shortcuts = [
 	{key: "l", desc: '"Lock" screen (Not secure)', func: () => socket.emit("privacy_mode", {'enabled': true})},
 ]
 
+const chat = {
+	STYLES: {LEGACY: 0, MESSAGES: 1, CHAT: 2},
+	style: "legacy",
+	lastEdit: null,
+
+	get useV2() {
+		return [
+			this.STYLES.MESSAGES,
+			this.STYLES.CHAT
+		].includes(this.style) && story.mode === story.MODES.CHAT
+	}
+}
+
+const story = {
+	MODES: {STORY: 0, ADVENTURE: 1, CHAT: 2},
+	mode: null,
+}
+
 function $el(selector) {
 	// We do not preemptively fetch all elements upon execution (wall of consts)
 	// due to the layer of mental overhead it adds to debugging and reading
@@ -219,6 +232,9 @@ function reset_story() {
 	document.getElementById("welcome_text").innerText = text;
 	document.getElementById("welcome_container").classList.remove("hidden");
 	document.getElementById('main-grid').setAttribute('option_length', 0);
+
+	$(".chat-message").remove();
+	addInitChatMessage();
 }
 
 function fix_text(val) {
@@ -381,7 +397,6 @@ function process_actions_data(data) {
 }
 
 function parseChatMessages(text) {
-	console.log("hehe", text)
 	let messages = []
 
 	for (const line of text.split("\n")) {
@@ -389,7 +404,6 @@ function parseChatMessages(text) {
 		if (!author && !text) continue;
 		messages.push({author: author, text: text});
 	}
-	console.log("oute", messages)
 
 	return messages;
 }
@@ -398,16 +412,22 @@ function do_story_text_updates(action) {
 	story_area = document.getElementById('Selected Text');
 	current_chunk_number = action.id;
 	let item = null;
-	console.log("ancient mesage")
 
-	if (chatv2) {
-		if (action.id === chatv2LastEdit) {
+	if (chat.useV2()) {
+		console.log(`[story_text_update] ${action.id}`)
+		if (action.id === chat.lastEdit) {
 			// Swallow update if we just caused it
-			chatv2LastEdit = null;
+			chat.lastEdit = null;
 			return;
 		}
+
+		deleteChatPromptIfEmpty();
+
 		const messageEl = $el(`[action-id="${action.id}"]`);
 		let previous = messageEl ? messageEl.previousElementSibling : null;
+
+		// Remove old ones
+		$(`[action-id="${action.id}"]`).remove();
 
 		for (const message of parseChatMessages(action.action["Selected Text"])) {
 			addMessage(message.author, message.text, action.id, previous);
@@ -457,7 +477,7 @@ function do_story_text_updates(action) {
 }
 
 function do_prompt(data) {
-	console.log(data);
+	console.log("[prompt]", data);
 	var elements_to_change = document.getElementsByClassName("var_sync_story_prompt");
 	for (item of elements_to_change) {
 		//clear out the item first
@@ -466,10 +486,13 @@ function do_prompt(data) {
 		}
 		let full_text = "";
 
-		if (chatv2) {
+		if (chat.useV2) {
 			for (chunk of data.value) {
 				full_text += chunk['text'];
 			}
+
+			// We run do_prompt multiple times; delete old prompt messages
+			$(".chat-message").remove();
 
 			let previous = null
 			for (const message of parseChatMessages(full_text)) {
@@ -505,6 +528,7 @@ function do_prompt(data) {
 		document.getElementById('input_text').placeholder = "Enter Prompt Here (shift+enter for new line)";
 		document.getElementById('input_text').disabled = false;
 		document.getElementById('themerow').classList.remove("hidden");
+		addInitChatMessage();
 	}
 	
 }
@@ -727,12 +751,18 @@ function var_changed(data) {
 		update_context(data.value);
 	//special case for story_actionmode
 	} else if (data.classname == "story" && data.name == "actionmode") {
+		story.mode = data.value;
+
 		const button = document.getElementById('adventure_mode');
 		if (data.value == 1) {
 			button.childNodes[1].textContent = "Adventure";
 		} else {
 			button.childNodes[1].textContent = "Story";
 		}
+	// Special case for chat style
+	} else if (data.classname == "story" && data.name == "chat_style") {
+		chat.style = data.value;
+		updateChatStyle();
 	//Special Case for story picture
 	} else if (data.classname == "story" && data.name == "picture") {
 		image_area = document.getElementById("action image");
@@ -5868,14 +5898,42 @@ function addMessage(author, content, actionId, afterMsgEl=null) {
 	}
 
 	addAfterButton.addEventListener("click", function() {
-		addMessage("", "", actionId, message)
+		addMessage(null, null, actionId, message);
 	});
 
 	deleteButton.addEventListener("click", function() {
 		message.remove();
 		computeChatGametext(actionId);
 	});
+
+	return message;
 }
+
+function addInitChatMessage() {
+	if (!chat.useV2) return;
+
+	// Already exists!
+	if ($el("#init-message")) return;
+
+	let message = addMessage(null, null, -1);
+	message.id = "init-message";
+}
+
+function deleteChatPromptIfEmpty() {
+	if (!chat.useV2) return;
+
+	const prompt = $el("#init-message");
+	if (!prompt) return;
+
+	let author = prompt.getElementsByClassName("chat-author")[0].innerText;
+	let content = prompt.getElementsByClassName("chat-text")[0].innerText;
+	if (author || content) return;
+
+	prompt.remove();
+}
+
+// Initial message
+//addMessage(null, null, -1);
 
 function computeChatGametext(actionId) {
 	// TODO: Customizable format?
@@ -5889,5 +5947,9 @@ function computeChatGametext(actionId) {
 	let text = lines.join("\n");
 	console.log(actionId, text);
 	socket.emit("Set Selected Text", {id: actionId, text: text});
-	chatv2LastEdit = actionId;
+	chat.lastEdit = actionId;
+}
+
+function updateChatStyle() {
+	console.log("hehehohohohihihihi")
 }

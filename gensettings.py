@@ -598,6 +598,24 @@ gensettingstf = [
     "classname": "user",
     "name": "privacy_password"
  	},
+    {
+    "UI_V2_Only": True,
+ 	"uitype": "dropdown",
+	"unit": "text",
+	"label": "Chat Style",
+	"id": "chat_style",
+	"default": 0,
+    "tooltip": "How to represent chat messages in the UI",
+    "menu_path": "Interface",
+    "sub_path": "UI",
+    "classname": "story",
+    "name": "chat_style",
+    "children": [
+		{"text": "Legacy", "value": 0},
+		{"text": "Messages", "value": 1},
+		{"text": "Chat", "value": 2}
+	],
+ 	},
 ]
 
 gensettingsik =[{

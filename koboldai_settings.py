@@ -796,6 +796,7 @@ class story_settings(settings):
         # bias experiment
         self.memory_attn_bias = 1
         self.an_attn_bias = 1
+        self.chat_style = 0
         
         
         ################### must be at bottom #########################
