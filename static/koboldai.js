@@ -1784,6 +1784,13 @@ function world_info_entry(data) {
 	//First let's get the id of the element we're on so we can restore it after removing the object
 	var original_focus = document.activeElement.id;
 	
+	if (!(document.getElementById("world_info_folder_"+data.folder))) {
+		folder = document.createElement("div");
+		//console.log("Didn't find folder " + data.folder);
+	} else {
+		folder = document.getElementById("world_info_folder_"+data.folder);
+	}
+	
 	if (document.getElementById("world_info_"+data.uid)) {
 		world_info_card = document.getElementById("world_info_"+data.uid);
 	} else {
@@ -1791,6 +1798,7 @@ function world_info_entry(data) {
 		world_info_card = world_info_card_template.cloneNode(true);
 		world_info_card.id = "world_info_"+data.uid;
 		world_info_card.setAttribute("uid", data.uid);
+		folder.append(world_info_card);
 	}
 	if (data.used_in_game) {
 		world_info_card.classList.add("used_in_game");
@@ -2049,12 +2057,6 @@ function world_info_entry(data) {
 	constant.checked = data.constant;
 	constant.classList.remove("pulse");
 						
-	if (!(document.getElementById("world_info_folder_"+data.folder))) {
-		folder = document.createElement("div");
-		//console.log("Didn't find folder " + data.folder);
-	} else {
-		folder = document.getElementById("world_info_folder_"+data.folder);
-	}
 	//Let's figure out the order to insert this card
 	var found = false;
 	var moved = false;
@@ -2888,6 +2890,11 @@ function push_selection_to_world_info() {
 		menu.classList.add("open");
 	}
 	document.getElementById("story_flyout_tab_wi").onclick();
+	
+	if (~("root" in world_info_folder_data)) {
+		world_info_folder_data["root"] = [];
+		world_info_folder(world_info_folder_data);
+	}
 	create_new_wi_entry("root");
 	document.getElementById("world_info_entry_text_-1").value = getSelectionText();
 }
