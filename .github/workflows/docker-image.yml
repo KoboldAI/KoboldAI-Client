@@ -26,4 +26,4 @@ jobs:
           context: .
           file: ./docker-standalone/Dockerfile.koboldai
           push: true
-          tags: ${{ secrets.DOCKER_HUB_USERNAME }}/KobodlAI:latest
+          tags: ${{ secrets.DOCKER_HUB_USERNAME }}/kobodlai:latest
