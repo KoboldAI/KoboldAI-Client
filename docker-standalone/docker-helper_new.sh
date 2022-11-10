@@ -2,6 +2,9 @@
 cd /opt/koboldai
 if [[ -n update ]];then
 	git pull
+	cd KoboldAI-Horde/
+	git pull
+	cd ..
 fi
 
 #The goal here is to allow any directory in /content to be mapped to the appropriate dir in the koboldai dir
