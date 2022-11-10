@@ -1,0 +1,8 @@
+FROM debian
+WORKDIR /opt/koboldai
+COPY ./environments /opt/koboldai/environments
+COPY ./install_requirements.sh /opt/koboldai
+USER root
+RUN apt update && apt install wget aria2 git bzip2 -y
+RUN ./install_requirements.sh cuda
+ENV PATH=/opt/conda/bin/:$PATH
