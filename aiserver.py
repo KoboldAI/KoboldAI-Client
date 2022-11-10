@@ -9318,7 +9318,7 @@ def text2img_api(prompt,
         "prompt": "{}, {}".format(prompt, art_guide),
         "params": final_imgen_params,
     }
-    apiaddress = 'http://127.0.0.1:7860/sdapi/v1/txt2img'
+    apiaddress = '{}/sdapi/v1/txt2img'.format(koboldai_vars.img_gen_api_url)
     payload_json = json.dumps(final_submit_dict)
     logger.debug(final_submit_dict)
     submit_req = requests.post(url=f'{apiaddress}', data=payload_json).json()

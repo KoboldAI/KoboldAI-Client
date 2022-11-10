@@ -555,6 +555,19 @@ gensettingstf = [
  	},
     {
     "UI_V2_Only": True,
+ 	"uitype": "text",
+	"unit": "text",
+	"label": "Img API URL",
+	"id": "img_gen_api_url",
+	"default": "",
+    "tooltip": "The URL to use when selecting Use Local SD-WebUI API setting in Image Priority",
+    "menu_path": "Interface",
+    "sub_path": "Images",
+    "classname": "user",
+    "name": "img_gen_api_url"
+ 	},
+    {
+    "UI_V2_Only": True,
  	"uitype": "toggle",
  	"unit": "bool",
  	"label": "Model in Memory",

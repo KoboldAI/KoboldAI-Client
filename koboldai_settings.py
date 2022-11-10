@@ -984,6 +984,7 @@ class user_settings(settings):
         self.beep_on_complete = False
         self.img_gen_priority = 1
         self.show_budget = False
+        self.img_gen_api_url = "http://127.0.0.1:7860/"
         self.cluster_requested_models = [] # The models which we allow to generate during cluster mode
         
         
