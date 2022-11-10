@@ -2375,18 +2375,18 @@ def patch_transformers():
             if not koboldai_vars.inference_config.do_dynamic_wi:
                 return False
 
+            if not koboldai_vars.dynamicscan:
+                return False
+
             if len(self.excluded_world_info) != input_ids.shape[0]:
                 print(tokenizer.decode(self.excluded_world_info))
                 print(tokenizer.decode(input_ids.shape[0]))
             assert len(self.excluded_world_info) == input_ids.shape[0]
 
-            if not koboldai_vars.dynamicscan:
-                return False
-
             tail = input_ids[..., -koboldai_vars.generated_tkns:]
             for i, t in enumerate(tail):
                 decoded = utils.decodenewlines(tokenizer.decode(t))
-                _, _, _, found = koboldai_vars.calc_ai_text(submitted_text=decoded)
+                _, _, _, found = koboldai_vars.calc_ai_text(submitted_text=decoded, send_context=False)
                 found = list(set(found) - set(self.excluded_world_info[i]))
                 if len(found) != 0:
                     print("Found: {}".format(found))
@@ -5279,7 +5279,7 @@ def core_generate(text: list, min: int, max: int, found_entries: set, is_core: b
             assert genout.shape[0] == koboldai_vars.numseqs
 
             if(koboldai_vars.lua_koboldbridge.generated_cols and koboldai_vars.generated_tkns != koboldai_vars.lua_koboldbridge.generated_cols):
-                raise RuntimeError("Inconsistency detected between KoboldAI Python and Lua backends")
+                raise RuntimeError(f"Inconsistency detected between KoboldAI Python and Lua backends ({koboldai_vars.generated_tkns} != {koboldai_vars.lua_koboldbridge.generated_cols})")
 
             if(already_generated != koboldai_vars.generated_tkns):
                 raise RuntimeError("WI scanning error")
@@ -7769,18 +7769,7 @@ def final_startup():
             )
 
     # Set the initial RNG seed
-    if(koboldai_vars.seed is not None):
-        if(koboldai_vars.use_colab_tpu):
-            if(koboldai_vars.seed_specified):
-                __import__("tpu_mtj_backend").set_rng_seed(koboldai_vars.seed)
-            else:
-                __import__("tpu_mtj_backend").randomize_rng_seed()
-        else:
-            if(koboldai_vars.seed_specified):
-                __import__("torch").manual_seed(koboldai_vars.seed)
-            else:
-                __import__("torch").seed()
-    koboldai_vars.seed = __import__("tpu_mtj_backend").get_rng_seed() if koboldai_vars.use_colab_tpu else __import__("torch").initial_seed()
+    set_seed()
 
 def send_debug():
     if koboldai_vars.debug:
@@ -8249,8 +8238,30 @@ def UI_2_var_change(data):
         with open(filename, "w") as settings_file:
             settings_file.write(getattr(koboldai_vars, "_{}".format(classname)).to_json())
     
+    if name in ['seed', 'seed_specified']:
+        set_seed()
+    
     return {'id': data['ID'], 'status': "Saved"}
     
+    
+#==================================================================#
+# Set the random seed (or constant seed) for generation
+#==================================================================#
+def set_seed():
+    print("Setting Seed")
+    if(koboldai_vars.seed is not None):
+        if(koboldai_vars.use_colab_tpu):
+            if(koboldai_vars.seed_specified):
+                __import__("tpu_mtj_backend").set_rng_seed(koboldai_vars.seed)
+            else:
+                __import__("tpu_mtj_backend").randomize_rng_seed()
+        else:
+            if(koboldai_vars.seed_specified):
+                __import__("torch").manual_seed(koboldai_vars.seed)
+            else:
+                __import__("torch").seed()
+    koboldai_vars.seed = __import__("tpu_mtj_backend").get_rng_seed() if koboldai_vars.use_colab_tpu else __import__("torch").initial_seed()
+
 #==================================================================#
 # Saving Story
 #==================================================================#

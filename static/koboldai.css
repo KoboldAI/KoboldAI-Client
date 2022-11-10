@@ -2953,3 +2953,7 @@ select {
 	filter: blur(0px) !important;
 	-webkit-filter: blur(0px) !important;
 }
+
+#seed_card[system_seed_specified=false] {
+	display: none;
+}

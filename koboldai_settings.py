@@ -197,7 +197,7 @@ class koboldai_vars(object):
         # TODO: This might be ineffecient, should we cache some of this?
         return [[token, self.tokenizer.decode(token)] for token in encoded]
     
-    def calc_ai_text(self, submitted_text="", return_text=False):
+    def calc_ai_text(self, submitted_text="", return_text=False, send_context=True):
         #start_time = time.time()
         if self.tokenizer is None:
             if return_text:
@@ -443,7 +443,8 @@ class koboldai_vars(object):
             for item in context:
                 tokens.extend([x[0] for x in item['tokens']])
         
-        self.context = context
+        if send_context:
+            self.context = context
 
         #logger.debug("Calc_AI_text: {}s".format(time.time()-start_time))
         logger.debug("Token Budget: {}. Used Tokens: {}".format(token_budget, used_tokens))

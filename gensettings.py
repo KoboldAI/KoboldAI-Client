@@ -316,17 +316,6 @@ gensettingstf = [
     "classname": "user",
     "name": "nogenmod"
 	},
-	{
-	"uitype": "toggle",
-	"unit": "bool",
-	"label": "Full Determinism",
-	"id": "setfulldeterminism",
-	"min": 0,
-	"max": 1,
-	"step": 1,
-	"default": 0,
-  "tooltip": "Causes generation to be fully deterministic. The model will always generate the same thing as long as your story, settings and RNG seed are the same. If disabled, only the sequence of outputs the model generates is deterministic."
-	},
     {
 	"uitype": "toggle",
 	"unit": "bool",
@@ -611,6 +600,37 @@ gensettingstf = [
     "classname": "user",
     "name": "privacy_password"
  	},
+    {
+	"uitype": "toggle",
+	"unit": "bool",
+	"label": "Full Determinism",
+	"id": "setfulldeterminism",
+	"min": 0,
+	"max": 1,
+	"step": 1,
+	"default": 0,
+    "tooltip": "Causes generation to be fully deterministic. The model will always generate the same thing as long as your story, settings and RNG seed are the same. If disabled, only the sequence of outputs the model generates is deterministic.",
+    "menu_path": "Settings",
+    "sub_path": "Other",
+    "classname": "system",
+    "name": "seed_specified"
+	},
+    {
+	"uitype": "text",
+	"unit": "text",
+	"label": "RNG seed",
+	"id": "seed",
+	"min": 0,
+	"max": 1,
+	"step": 1,
+	"default": 0,
+    "tooltip": "The seed number used to generate the AI text. Output will change if this number is changed.",
+    "menu_path": "Settings",
+    "sub_path": "Other",
+    "classname": "system",
+    "name": "seed",
+    "extra_classes": "var_sync_alt_system_seed_specified"
+	},
 ]
 
 gensettingsik =[{
