@@ -6,5 +6,6 @@ ENV override_delete=true
 ENV override_rename=true
 ENV update=true
 COPY . /opt/koboldai
+WORKDIR /opt/koboldai
 RUN git clone https://github.com/db0/KoboldAI-Horde-Bridge /opt/koboldai/KoboldAI-Horde/
 CMD ./docker-standalone/docker-helper.sh
