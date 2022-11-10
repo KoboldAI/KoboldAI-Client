@@ -6,7 +6,4 @@ ENV override_delete=true
 ENV override_rename=true
 ENV update=true
 COPY . /opt/koboldai
-WORKDIR /opt/koboldai/KoboldAI-Horde/
-RUN git pull
-WORKDIR /opt/koboldai/
 CMD ./docker-standalone/docker-helper.sh
