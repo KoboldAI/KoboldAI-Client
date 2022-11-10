@@ -9223,24 +9223,33 @@ def text2img_horde(prompt,
              filename = "story_art.png"):
     logger.debug("Generating Image using Horde")
     koboldai_vars.generating_image = True
-    final_imgen_params = {
-        "n": 1,
-        "width": 512,
-        "height": 512,
-        "steps": 50,
-    }
+    
 
     final_submit_dict = {
         "prompt": "{}, {}".format(prompt, art_guide),
-        "api_key": koboldai_vars.sh_apikey if koboldai_vars.sh_apikey != '' else "0000000000",
-        "params": final_imgen_params,
+        "trusted_workers": False, 
+        "models": [
+          "stable_diffusion"
+        ],
+        "params": {
+            "n":1,
+            "nsfw": True,
+            "sampler_name": "k_euler_a",
+            "karras": True,
+            "cfg_scale": 7.0,
+            "steps":25, 
+            "width":512, 
+            "height":512}
     }
+    
+    cluster_headers = {'apikey': koboldai_vars.sh_apikey if koboldai_vars.sh_apikey != '' else "0000000000",}
+    
     logger.debug(final_submit_dict)
-    submit_req = requests.post('https://stablehorde.net/api/v1/generate/sync', json = final_submit_dict)
+    submit_req = requests.post('https://stablehorde.net/api/v2/generate/sync', json = final_submit_dict, headers=cluster_headers)
     if submit_req.ok:
         results = submit_req.json()
-        for iter in range(len(results)):
-            b64img = results[iter]["img"]
+        for iter in range(len(results['generations'])):
+            b64img = results['generations'][iter]["img"]
             base64_bytes = b64img.encode('utf-8')
             img_bytes = base64.b64decode(base64_bytes)
             img = Image.open(BytesIO(img_bytes))
