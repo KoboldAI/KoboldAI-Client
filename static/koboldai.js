@@ -5943,9 +5943,6 @@ function deleteChatPromptIfEmpty() {
 	prompt.remove();
 }
 
-// Initial message
-//addMessage(null, null, -1);
-
 function computeChatGametext(actionId) {
 	// TODO: Customizable format?
 	let lines = [];
@@ -5962,11 +5959,19 @@ function computeChatGametext(actionId) {
 }
 
 function updateChatStyle() {
+	const storyArea = document.getElementById("Selected Text");
+
 	if (chat.useV2) {
 		// Already bubbles, do nothing
 		if (document.getElementsByClassName("chat-message").length) {
 			console.info("Already bubbles, do nothing")
 			return;
+		}
+
+		// Delete normal text
+
+		for (const child of storyArea.children) {
+			child.remove();
 		}
 
 		let addedMessages = 0;
@@ -5983,11 +5988,29 @@ function updateChatStyle() {
 	} else {
 		console.info("TODO: Convert 2 text")
 
-		if (!document.getElementsByClassName("chat-message").length) {
-			console.info("Already text, do nothing")
-			return;
+		if (!storyArea.children.length) {
+			for (const [chunkId, action] of Object.entries(actions_data)) {
+				let item = document.createElement("span");
+				item.id = 'Selected Text Chunk '+chunkId;
+				item.classList.add("rawtext");
+				item.setAttribute("chunk", chunkId);
+				//need to find the closest element
+				next_id = chunkId+1;
+				if (Math.max.apply(null,Object.keys(actions_data).map(Number)) <= next_id) {
+					storyArea.append(item);
+				} else {
+					storyArea.prepend(item);
+				}
+
+				chunk_element = document.createElement("span");
+				chunk_element.textContent = action['Selected Text'];
+				item.append(chunk_element);
+
+				item.original_text = action['Selected Text'];
+			}
 		}
 
-		$(".chat-message").remove();
+		const jQCM = $(".chat-message");
+		if (jQCM.length) jQCM.remove();
 	}
 }

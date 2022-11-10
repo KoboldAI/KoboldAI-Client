@@ -618,7 +618,7 @@ gensettingstf = [
 	"label": "Chat Style",
 	"id": "chat_style",
 	"default": 0,
-    "tooltip": "How to represent chat messages in the UI",
+    "tooltip": "How chat messages are shown",
     "menu_path": "Interface",
     "sub_path": "UI",
     "classname": "story",
