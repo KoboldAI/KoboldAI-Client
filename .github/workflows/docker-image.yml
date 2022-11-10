@@ -1,7 +1,8 @@
 name: Build Docker
 
 on:
-  push:
+  schedule:
+    - cron: "0 0 * * *"
 
 jobs:
   build:
@@ -26,4 +27,4 @@ jobs:
           context: .
           file: ./docker-standalone/Dockerfile.koboldai
           push: true
-          tags: ${{ secrets.DOCKER_HUB_USERNAME }}/koboldai:latest
+          tags: ${{ secrets.DOCKER_HUB_USERNAME }}/koboldai:nightly
