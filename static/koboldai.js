@@ -120,14 +120,15 @@ const shortcuts = [
 ]
 
 const chat = {
-	STYLES: {LEGACY: 0, MESSAGES: 1, CHAT: 2},
+	STYLES: {LEGACY: 0, MESSAGES: 1, BUBBLES: 2},
 	style: "legacy",
 	lastEdit: null,
 
 	get useV2() {
+		console.log(`v2 Check: style=${this.style} mode=${story.mode}`)
 		return [
 			this.STYLES.MESSAGES,
-			this.STYLES.CHAT
+			this.STYLES.BUBBLES
 		].includes(this.style) && story.mode === story.MODES.CHAT
 	}
 }
@@ -413,7 +414,7 @@ function do_story_text_updates(action) {
 	current_chunk_number = action.id;
 	let item = null;
 
-	if (chat.useV2()) {
+	if (chat.useV2) {
 		console.log(`[story_text_update] ${action.id}`)
 		if (action.id === chat.lastEdit) {
 			// Swallow update if we just caused it
@@ -708,6 +709,11 @@ function var_changed(data) {
 	if ((data.classname == 'story') && (data.name == 'privacy_mode')) {
 		privacy_mode(data.value);
 	}
+
+	if (data.classname === "story" && data.name === "storymode") {
+		story.mode = data.value;
+		updateChatStyle();
+	}
 	
 	//Special Case for Actions
 	if ((data.classname == "story") && (data.name == "actions")) {
@@ -751,8 +757,6 @@ function var_changed(data) {
 		update_context(data.value);
 	//special case for story_actionmode
 	} else if (data.classname == "story" && data.name == "actionmode") {
-		story.mode = data.value;
-
 		const button = document.getElementById('adventure_mode');
 		if (data.value == 1) {
 			button.childNodes[1].textContent = "Adventure";
@@ -5951,5 +5955,32 @@ function computeChatGametext(actionId) {
 }
 
 function updateChatStyle() {
-	console.log("hehehohohohihihihi")
+	if (chat.useV2) {
+		// Already bubbles, do nothing
+		if (document.getElementsByClassName("chat-message").length) {
+			console.info("Already bubbles, do nothing")
+			return;
+		}
+
+		let addedMessages = 0;
+
+		for (const [chunkId, chunk] of Object.entries(actions_data)) {
+			for (const message of parseChatMessages(chunk["Selected Text"])) {
+				addMessage(message.author, message.text, chunkId, null);
+				addedMessages++;
+			}
+		}
+		
+		// If we are empty, add an init message
+		if (!addedMessages) addInitChatMessage();
+	} else {
+		console.info("TODO: Convert 2 text")
+
+		if (!document.getElementsByClassName("chat-message").length) {
+			console.info("Already text, do nothing")
+			return;
+		}
+
+		$(".chat-message").remove();
+	}
 }
