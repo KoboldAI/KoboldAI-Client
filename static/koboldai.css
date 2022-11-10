@@ -2831,6 +2831,12 @@ body.NotConnected {
 	cursor: pointer;
 }
 
+.settting_container[system_experimental_features="false"] {
+	/* If any setting has the class var_sync_alt_system_experimental_features
+	it is considered to be experimental */
+	display: none;
+}
+
 @font-face {
   font-family: 'Material Icons Outlined';
   font-style: normal;

@@ -623,6 +623,7 @@ gensettingstf = [
     "sub_path": "UI",
     "classname": "story",
     "name": "chat_style",
+	"extra_classes": "var_sync_alt_system_experimental_features",
     "children": [
 		{"text": "Legacy", "value": 0},
 		{"text": "Messages", "value": 1},
