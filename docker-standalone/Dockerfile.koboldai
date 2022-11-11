@@ -7,4 +7,4 @@ ENV override_rename=true
 ENV update=true
 WORKDIR /opt/koboldai
 COPY . /opt/koboldai
-CMD ./docker-standalone/docker-helper.sh
+CMD ./docker-standalone/docker-helper_new.sh
