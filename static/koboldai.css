@@ -1904,7 +1904,7 @@ body {
 	font-family: "Helvetica Neue",Helvetica,Arial,sans-serif;
 	width: min-context;
 	max-width: 25%;
-	margin-right: -3px;
+	/*margin-right: -3px;*/
 }
 
 .tooltip-context-token {
