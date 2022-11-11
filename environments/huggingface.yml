@@ -21,6 +21,7 @@ dependencies:
   - apispec-webframeworks
   - loguru
   - termcolor
+  - psutil
   - pip:
     - flask-cloudflared
     - flask-ngrok
