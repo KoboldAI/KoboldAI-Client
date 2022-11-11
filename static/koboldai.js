@@ -373,6 +373,7 @@ function process_actions_data(data) {
 	
 	hide_show_prompt();
 	//console.log("Took "+((Date.now()-start_time)/1000)+"s to process");
+	
 }
 
 function do_story_text_updates(action) {

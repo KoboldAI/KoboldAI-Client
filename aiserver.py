@@ -536,7 +536,7 @@ def UI_2_log_history(message):
         del web_log_history[0]
     web_log_history.append(data)
 
-from flask import Flask, render_template, Response, request, copy_current_request_context, send_from_directory, session, jsonify, abort, redirect, has_request_context
+from flask import Flask, render_template, Response, request, copy_current_request_context, send_from_directory, session, jsonify, abort, redirect, has_request_context, send_file
 from flask_socketio import SocketIO, emit, join_room, leave_room
 from flask_socketio import emit as _emit
 from flask_session import Session
@@ -9564,6 +9564,19 @@ def UI_2_test_match():
     koboldai_vars.assign_world_info_to_actions()
     return show_vars()
 
+
+@app.route("/audio")
+@logger.catch
+def UI_2_audio():
+    action_id = int(request.args['id']) if 'id' in request.args else len(koboldai_vars.actions)
+    filename="stories/{}/{}.wav".format(koboldai_vars.story_id, action_id)
+    if not os.path.exists(filename):
+        koboldai_vars.actions.gen_audio(action_id)
+    return send_file(
+             filename, 
+             mimetype="audio/wav")
+             
+             
 #==================================================================#
 # Test
 #==================================================================#

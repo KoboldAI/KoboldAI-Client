@@ -106,6 +106,7 @@ gensettingstf = [
     "name": "top_a"
 	},
 	{
+    "UI_V2_Only": True,
 	"uitype": "slider",
 	"unit": "float",
 	"label": "Penalty Alpha",
@@ -602,6 +603,23 @@ gensettingstf = [
     "sub_path": "UI",
     "classname": "system",
     "name": "experimental_features"
+ 	},
+    {
+    "UI_V2_Only": True,
+ 	"uitype": "toggle",
+ 	"unit": "bool",
+ 	"label": "Generate Audio",
+ 	"id": "gen_audio",
+ 	"min": 0,
+ 	"max": 1,
+ 	"step": 1,
+ 	"default": 0,
+	"tooltip": "If enabled, The system will generate audio files for each action.",
+    "menu_path": "Interface",
+    "sub_path": "UI",
+    "classname": "story",
+    "name": "gen_audio",
+    "extra_classes": "var_sync_alt_system_experimental_features"
  	},
     {
     "UI_V2_Only": True,

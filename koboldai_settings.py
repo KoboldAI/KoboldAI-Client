@@ -8,6 +8,7 @@ from collections import OrderedDict
 import multiprocessing
 from logger import logger
 import eventlet
+import torch
 
 serverstarted = False
 queue = None
@@ -794,6 +795,7 @@ class story_settings(settings):
             # {"target": "(r)", "substitution": "®", "enabled": False},
             # {"target": "(tm)", "substitution": "™", "enabled": False},
         ]
+        self.gen_audio = False
         
         # bias experiment
         self.memory_attn_bias = 1
@@ -907,8 +909,10 @@ class story_settings(settings):
             #Change game save state
             if name in ['story_name', 'prompt', 'memory', 'authornote', 'authornotetemplate', 'andepth', 'chatname', 'actionmode', 'dynamicscan', 'notes', 'biases']:
                 self.gamesaved = False
-        
-            if name == 'useprompt':
+            
+            if name == "gen_audio" and value:
+                self.actions.gen_all_audio()
+            elif name == 'useprompt':
                 ignore = self.koboldai_vars.calc_ai_text()
             elif name == 'actions':
                 self.actions.story_settings = self
@@ -1002,11 +1006,11 @@ class system_settings(settings):
     local_only_variables = ['socketio', 'lua_state', 'lua_logname', 'lua_koboldbridge', 'lua_kobold', 
                             'lua_koboldcore', 'regex_sl', 'acregex_ai', 'acregex_ui', 'comregex_ai', 
                             'comregex_ui', 'sp', '_horde_pid', 'inference_config', 'image_pipeline', 
-                            'summarizer', 'summary_tokenizer']
+                            'summarizer', 'summary_tokenizer', 'tts_model']
     no_save_variables = ['socketio', 'lua_state', 'lua_logname', 'lua_koboldbridge', 'lua_kobold', 
                          'lua_koboldcore', 'sp', 'sp_length', '_horde_pid', 'horde_share', 'aibusy', 
                          'serverstarted', 'inference_config', 'image_pipeline', 'summarizer', 
-                         'summary_tokenizer', 'use_colab_tpu', 'noai', 'disable_set_aibusy', 'cloudflare_link']
+                         'summary_tokenizer', 'use_colab_tpu', 'noai', 'disable_set_aibusy', 'cloudflare_link', 'tts_model']
     settings_name = "system"
     def __init__(self, socketio, koboldai_var):
         self.socketio = socketio
@@ -1160,6 +1164,9 @@ class KoboldStoryRegister(object):
                           #Options being a list of dict with keys of "text", "Pinned", "Previous Selection", "Edited", "Probabilities"
         self.action_count = -1
         self.story_settings = story_settings
+        self.tts_model = None
+        self.make_audio_thread = None
+        self.make_audio_queue = multiprocessing.Queue()
         for item in sequence:
             self.append(item)
     
@@ -1266,6 +1273,7 @@ class KoboldStoryRegister(object):
         logger.debug("Calcing AI Text from Action __setitem__")
         ignore = self.koboldai_vars.calc_ai_text()
         self.set_game_saved()
+        self.gen_audio(i)
     
     def __len__(self):
         return self.action_count+1 if self.action_count >=0 else 0
@@ -1309,6 +1317,7 @@ class KoboldStoryRegister(object):
         logger.debug("Calcing AI Text from Action load from json")
         ignore = self.koboldai_vars.calc_ai_text()
         self.set_game_saved()
+        self.gen_all_audio()
         
     def append(self, text, action_id_offset=0, recalc=True):
         if self.koboldai_vars.remove_double_space:
@@ -1341,6 +1350,7 @@ class KoboldStoryRegister(object):
         if recalc:
             logger.debug("Calcing AI Text from Action Append")
             ignore = self.koboldai_vars.calc_ai_text()
+            self.gen_audio(action_id)
     
     def append_options(self, option_list):
         if self.action_count+1 in self.actions:
@@ -1448,6 +1458,7 @@ class KoboldStoryRegister(object):
                 self.set_game_saved()
                 logger.debug("Calcing AI Text from Action Use Option")
                 ignore = self.koboldai_vars.calc_ai_text()
+                self.gen_audio(action_step)
     
     def delete_option(self, option_number, action_step=None):
         if action_step is None:
@@ -1635,6 +1646,50 @@ class KoboldStoryRegister(object):
         #OK, action_text_split now contains a list of [sentence including trailing space if needed, [action IDs that sentence includes]]
         #logger.debug("to_sentences: {}s".format(time.time()-start_time))
         return action_text_split
+    
+    def gen_audio(self, action_id=None, overwrite=True):
+        if self.story_settings.gen_audio and self.koboldai_vars.experimental_features:
+            if action_id is None:
+                action_id = self.action_count
+            
+            logger.info("Generating audio for action {}".format(action_id))
+
+            if self.tts_model is None:
+                language = 'en'
+                model_id = 'v3_en'
+                self.tts_model, example_text = torch.hub.load(repo_or_dir='snakers4/silero-models',
+                                                 model='silero_tts',
+                                                 language=language,
+                                                 speaker=model_id)
+                #self.tts_model.to(torch.device(0))  # gpu or cpu
+                self.tts_model.to(torch.device("cpu"))  # gpu or cpu
+            
+            filename="stories/{}/{}.wav".format(self.story_settings.story_id, action_id)
+            if not os.path.exists("stories/{}".format(self.story_settings.story_id)):
+                os.mkdir("stories/{}".format(self.story_settings.story_id))
+                
+            if overwrite or not os.path.exists(filename):
+                self.make_audio_queue.put((self.actions[action_id]['Selected Text'], filename))
+                if self.make_audio_thread is None or not self.make_audio_thread.is_alive():
+                    self.make_audio_thread = threading.Thread(target=self.create_wave, args=(self.tts_model, self.make_audio_queue))
+                    self.make_audio_thread.start()
+                
+    def create_wave(self, model, make_audio_queue):
+        sample_rate = 48000
+        speaker = 'en_5'
+        while not make_audio_queue.empty():
+            (text, filename) = make_audio_queue.get()
+            self.tts_model.save_wav(text=text,
+                                    speaker=speaker,
+                                    sample_rate=sample_rate,
+                                    audio_path=filename)
+        
+    def gen_all_audio(self, overwrite=False):
+        if self.story_settings.gen_audio and self.koboldai_vars.experimental_features:
+            for i in reversed(list(self.actions.keys())):
+                self.gen_audio(i, overwrite=False)
+        else:
+            print("{} and {}".format(self.story_settings.gen_audio, self.koboldai_vars.experimental_features))
     
     def __setattr__(self, name, value):
         new_variable = name not in self.__dict__
