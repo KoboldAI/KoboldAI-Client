@@ -108,6 +108,21 @@ gensettingstf = [
 	{
 	"uitype": "slider",
 	"unit": "float",
+	"label": "Penalty Alpha",
+	"id": "setpenaltyalpha", 
+	"min": 0.0,
+	"max": 1.0,
+	"step": 0.01,
+	"default": 0.0,
+    "tooltip": "Alternative search method. Encourages diversity of output embeddings. To be used with Top-K. Does not work on TPU! (Put this value on 0 to disable its effect)",
+    "menu_path": "Settings",
+    "sub_path":  "Sampling",
+    "classname": "model",
+    "name": "penalty_alpha"
+	},
+	{
+	"uitype": "slider",
+	"unit": "float",
 	"label": "Repetition Penalty",
 	"id": "setreppen", 
 	"min": 1.0,

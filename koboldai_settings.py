@@ -618,6 +618,7 @@ class model_settings(settings):
         self.top_a       = 0.0     # Default generator top-a
         self.tfs         = 1.0     # Default generator tfs (tail-free sampling)
         self.typical     = 1.0     # Default generator typical sampling threshold
+        self.penalty_alpha = 0.0   # Default generator penalty_alpha (contrastive search)
         self.numseqs     = 1       # Number of sequences to ask the generator to create
         self.badwordsids = []
         self.fp32_model  = False  # Whether or not the most recently loaded HF model was in fp32 format
