@@ -10,11 +10,11 @@ if [[ ! -d "/content" ]];then
 fi
 
 for FILE in *;do 
-	#if [[ -d "/opt/koboldai/$FILE" ]];then
-	#	rm -rf /opt/koboldai/$FILE
-	#fi
-	#ln -s /content/$FILE /opt/koboldai/$FILE
-	mount --bind /content/$FILE /opt/koboldai/$FILE
+	if [[ -d "/opt/koboldai/$FILE" ]];then
+		rm -rf /opt/koboldai/$FILE
+	fi
+	ln -s /content/$FILE /opt/koboldai/$FILE
+	#mount --bind /content/$FILE /opt/koboldai/$FILE
 done
 
 
