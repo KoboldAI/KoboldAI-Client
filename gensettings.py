@@ -118,7 +118,8 @@ gensettingstf = [
     "menu_path": "Settings",
     "sub_path":  "Sampling",
     "classname": "model",
-    "name": "penalty_alpha"
+    "name": "penalty_alpha",
+    "extra_classes": "var_sync_alt_system_use_colab_tpu"
 	},
 	{
 	"uitype": "slider",

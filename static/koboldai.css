@@ -2957,3 +2957,7 @@ select {
 #seed_card[system_seed_specified=false] {
 	display: none;
 }
+
+#penalty_alpha[system_use_colab_tpu=true] {
+	display: none;
+}
