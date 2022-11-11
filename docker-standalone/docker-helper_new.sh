@@ -9,7 +9,7 @@ if [[ ! -d "/content" ]];then
 	mkdir /content
 fi
 
-for FILE in *;do 
+for FILE in /content/*;do 
 	if [[ -d "/opt/koboldai/$FILE" ]];then
 		rm -rf /opt/koboldai/$FILE
 	fi
