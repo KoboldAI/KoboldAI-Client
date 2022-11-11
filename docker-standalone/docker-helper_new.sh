@@ -9,10 +9,11 @@ if [[ ! -d "/content" ]];then
         mkdir /content
 fi
 
-for FILE in /content/*;do
-        rm -rf /opt/koboldai/$FILE
-        ln -s /content/$FILE /opt/koboldai/
-        #mount --bind /content/$FILE /opt/koboldai/$FILE
+for FILE in /content/*
+do
+    FILENAME="$(basename $FILE)"
+	rm -rf /opt/koboldai/$FILENAME
+	ln -s $FILE /opt/koboldai/
 done
 
 
