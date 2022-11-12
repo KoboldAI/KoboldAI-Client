@@ -8803,7 +8803,7 @@ def UI_2_get_wi_image(uid):
     try:
         return koboldai_vars.worldinfo_v2.image_store[str(uid)]
     except KeyError:
-        return ":( Couldn't find image", 404
+        return ":( Couldn't find image", 204
 
 @socketio.on("scratchpad_prompt")
 @logger.catch

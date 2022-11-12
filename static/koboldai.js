@@ -1861,11 +1861,12 @@ function world_info_entry(data) {
 	console.log(data.image)
 
 	if (data.uid > -1) {
-
 		fetch(`/get_wi_image/${data.uid}`, {
 			method: "GET",
 		}).then(async function(r) {
 			if (!r.ok) return;
+			// 204 is used instead of 404 because 404 SPAMS THE CONSOLE WAY TOO MUCH!!!!!!!!!
+			if (r.status == 204) return;
 			wiImgPlaceholder.style.display = "none";
 			wiImg.src = await r.text();
 		});
