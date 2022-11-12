@@ -1856,7 +1856,7 @@ function world_info_entry(data) {
 	const wiImgContainer = world_info_card.querySelector(".world_info_image_container");
 	const wiImg = wiImgContainer.querySelector(".world_info_image");
 	const wiImgPlaceholder = wiImgContainer.querySelector(".placeholder");
-	const wiImgInput = $e("input", null, {type: "file"});
+	const wiImgInput = $e("input", null, {type: "file", accept: "image/png,image/x-png,image/gif,image/jpeg"});
 
 	console.log(data.image)
 
@@ -1887,14 +1887,12 @@ function world_info_entry(data) {
 
 		let reader = new FileReader();
 		reader.addEventListener("loadend", async function() {
-			console.log(reader.result)
 			let r = await fetch(`/set_wi_image/${data.uid}`, {
 				method: "POST",
 				body: reader.result
 			});
 		});
 		reader.readAsDataURL(file);
-		console.log(file)
 	});
 
 	tags = world_info_card.querySelector('.world_info_tag_primary_area');
