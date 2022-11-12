@@ -1927,11 +1927,7 @@ class KoboldWorldInfo(object):
     
     def load_json(self, data, folder=None):
         if "images" in data:
-            print("it's there alright")
             self.image_store = data["images"]
-            print(self.image_store)
-            print("Yeeks!")
-            print(self.image_store.keys())
 
         if folder is None:
             self.world_info = {int(x): data['entries'][x] for x in data['entries']}
