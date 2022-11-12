@@ -1852,6 +1852,51 @@ function world_info_entry(data) {
 			}
 		);
 	}
+
+	const wiImgContainer = world_info_card.querySelector(".world_info_image_container");
+	const wiImg = wiImgContainer.querySelector(".world_info_image");
+	const wiImgPlaceholder = wiImgContainer.querySelector(".placeholder");
+	const wiImgInput = $e("input", null, {type: "file"});
+
+	console.log(data.image)
+
+	if (data.uid > -1) {
+
+		fetch(`/get_wi_image/${data.uid}`, {
+			method: "GET",
+		}).then(async function(r) {
+			if (!r.ok) return;
+			wiImgPlaceholder.style.display = "none";
+			wiImg.src = await r.text();
+		});
+	}
+
+	wiImgContainer.addEventListener("click", function() {
+		wiImgInput.click();
+	});
+
+	wiImgInput.addEventListener("change", function() {
+		const file = wiImgInput.files[0];
+		if (file.type.split("/")[0] !== "image") {
+			reportError("Unable to upload WI image", `File type ${file.type} is not a compatible image type!`)
+			return;
+		}
+		let objectUrl = URL.createObjectURL(file);
+		wiImgPlaceholder.style.display = "none";
+		wiImg.src = objectUrl;
+
+		let reader = new FileReader();
+		reader.addEventListener("loadend", async function() {
+			console.log(reader.result)
+			let r = await fetch(`/set_wi_image/${data.uid}`, {
+				method: "POST",
+				body: reader.result
+			});
+		});
+		reader.readAsDataURL(file);
+		console.log(file)
+	});
+
 	tags = world_info_card.querySelector('.world_info_tag_primary_area');
 	tags.id = "world_info_tags_"+data.uid;
 	//add tag content here
@@ -4601,6 +4646,8 @@ function $e(tag, parent, attributes, insertionLocation=null) {
 			element.setAttribute(attribute, value);
 		}
 	}
+
+	if (!parent) return element;
 
 	if (insertionLocation && Object.keys(insertionLocation).length) {
 		let [placement, target] = Object.entries(insertionLocation)[0];

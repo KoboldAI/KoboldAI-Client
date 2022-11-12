@@ -8779,6 +8779,32 @@ def UI_2_update_wi_keys(data):
     # Send to UI
     socketio.emit("world_info_entry", koboldai_vars.worldinfo_v2.world_info[uid], broadcast=True, room="UI_2")
 
+@app.route("/set_wi_image/<int(signed=True):uid>", methods=["POST"])
+@logger.catch
+def UI_2_set_wi_image(uid):
+    if uid < 0:
+        socketio.emit("delete_new_world_info_entry", {})
+        uid = koboldai_vars.worldinfo_v2.add_item(
+            "New World Info Entry",
+            [],
+            [],
+            None,
+            False,
+            "",
+            "",
+        )
+
+    koboldai_vars.worldinfo_v2.image_store[str(uid)] = request.get_data(as_text=True)
+    return ":)"
+
+@app.route("/get_wi_image/<int(signed=True):uid>", methods=["GET"])
+@logger.catch
+def UI_2_get_wi_image(uid):
+    try:
+        return koboldai_vars.worldinfo_v2.image_store[str(uid)]
+    except KeyError:
+        return ":( Couldn't find image", 404
+
 @socketio.on("scratchpad_prompt")
 @logger.catch
 def UI_2_scratchpad_prompt(data):

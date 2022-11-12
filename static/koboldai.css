@@ -1040,23 +1040,41 @@ td.server_vars {
 }
 	
 .world_info_title_area {
-	display: grid;
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+
 	margin-left: 2px;
-	grid-template-areas: "title delete";
-	grid-template-columns: auto 20px;
 	user-select: text;
 }
 
+.world_info_title_area > div {
+	display: flex;
+	align-items: center;
+}
+
+.world_info_image_container {
+	min-width: 32px;
+	min-height: 32px;
+
+	display: flex;
+	justify-content: center;
+	align-items: center;
+}
+
+.world_info_image {
+	max-width: 70px;
+	max-height: 70px;
+}
+
 .world_info_title {
-	grid-area: title;
 	user-select: text;
 	-moz-user-select:text;
 }
 
 .world_info_delete {
-	grid-area: delete;
 	cursor: pointer;
-	margin: 2px 0px 0px 4px;
+	margin-right: 9px;
 }
 	
 .world_info_tag_area {

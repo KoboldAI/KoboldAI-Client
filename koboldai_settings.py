@@ -1650,6 +1650,7 @@ class KoboldWorldInfo(object):
         self.world_info = {}
         self.world_info_folder = OrderedDict()
         self.world_info_folder['root'] = []
+        self.image_store = {}
         self.story_settings = story_settings
         
     def reset(self):
@@ -1854,9 +1855,14 @@ class KoboldWorldInfo(object):
         
     def delete(self, uid):
         del self.world_info[uid]
+
+        if uid in self.image_store:
+            del self.image_store[uid]
+
         for folder in self.world_info_folder:
             if uid in self.world_info_folder[folder]:
                 self.world_info_folder[folder].remove(uid)
+        
         
         self.story_settings.gamesaved = False
         self.sync_world_info_to_old_format()
@@ -1909,15 +1915,24 @@ class KoboldWorldInfo(object):
         if folder is None:
             return {
                     "folders": {x: self.world_info_folder[x] for x in self.world_info_folder},
-                    "entries": self.world_info
+                    "entries": self.world_info,
+                    "images": self.image_store
                    }
         else:
             return {
                     "folders": {x: self.world_info_folder[x] for x in self.world_info_folder if x == folder},
-                    "entries": {x: self.world_info[x] for x in self.world_info if self.world_info[x]['folder'] == folder}
+                    "entries": {x: self.world_info[x] for x in self.world_info if self.world_info[x]['folder'] == folder},
+                    "images": self.image_store
                    }
     
     def load_json(self, data, folder=None):
+        if "images" in data:
+            print("it's there alright")
+            self.image_store = data["images"]
+            print(self.image_store)
+            print("Yeeks!")
+            print(self.image_store.keys())
+
         if folder is None:
             self.world_info = {int(x): data['entries'][x] for x in data['entries']}
             self.world_info_folder = data['folders']
