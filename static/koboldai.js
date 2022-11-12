@@ -1858,8 +1858,6 @@ function world_info_entry(data) {
 	const wiImgPlaceholder = wiImgContainer.querySelector(".placeholder");
 	const wiImgInput = $e("input", null, {type: "file", accept: "image/png,image/x-png,image/gif,image/jpeg"});
 
-	console.log(data.image)
-
 	if (data.uid > -1) {
 		fetch(`/get_wi_image/${data.uid}`, {
 			method: "GET",
@@ -1900,7 +1898,11 @@ function world_info_entry(data) {
 	wiTypeSelector.value = world_info_data[data.uid].type;
 	wiTypeSelector.classList.remove("pulse");
 	wiTypeSelector.addEventListener("change", function(event) {
-		console.log(event);
+		// If no change, don't do anything. Don't loop!!!
+		if (world_info_data[data.uid].type === wiTypeSelector.value) {
+			return;
+		}
+
 		switch (wiTypeSelector.value) {
 			case "Chat Character":
 				world_info_data[data.uid].constant = true;
