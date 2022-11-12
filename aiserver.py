@@ -1422,7 +1422,8 @@ def general_startup(override_args=None):
 
     args.max_summary_length = int(args.max_summary_length)
 
-    koboldai_vars.model = args.model;
+    if args.model:
+        koboldai_vars.model = args.model;
     koboldai_vars.revision = args.revision
     koboldai_settings.multi_story = args.multi_story
 
@@ -12518,6 +12519,7 @@ def run():
         koboldai_vars.serverstarted = True
         socketio.run(app, host='0.0.0.0', port=port)
     else:
+        startup()
         if args.unblock:
             if not args.no_ui:
                 try:
