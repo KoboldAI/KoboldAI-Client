@@ -1895,6 +1895,30 @@ function world_info_entry(data) {
 		reader.readAsDataURL(file);
 	});
 
+	const wiTypeSelector = world_info_card.querySelector(".world_info_type");
+	wiTypeSelector.value = world_info_data[data.uid].type;
+	wiTypeSelector.classList.remove("pulse");
+	wiTypeSelector.addEventListener("change", function(event) {
+		console.log(event);
+		switch (wiTypeSelector.value) {
+			case "Chat Character":
+				world_info_data[data.uid].constant = true;
+				break;
+			case "Memory":
+				world_info_data[data.uid].constant = true;
+				break;
+			case "World Info":
+				world_info_data[data.uid].constant = false;
+				break;
+			default:
+				reportError("Error", `Unknown WI type ${wiTypeSelector.value}`);
+				return;
+		}
+		world_info_data[data.uid].type = wiTypeSelector.value;
+		send_world_info(data.uid);
+		this.classList.add("pulse");
+	})
+
 	tags = world_info_card.querySelector('.world_info_tag_primary_area');
 	tags.id = "world_info_tags_"+data.uid;
 	//add tag content here
@@ -2078,27 +2102,6 @@ function world_info_entry(data) {
 							this.classList.add("pulse");
 						}
 	comment.classList.remove("pulse");
-	constant_area = world_info_card.querySelector('.world_info_always_include');
-	constant_area.id = "world_info_toggle_area_"+data.uid;
-	if (document.getElementById("world_info_constant_"+data.uid)) {
-		constant = document.getElementById("world_info_constant_"+data.uid);
-	} else {
-		constant = document.createElement("input");
-		constant.id = "world_info_constant_"+data.uid;
-		constant.setAttribute("type", "checkbox");
-		constant.setAttribute("uid", data.uid);
-		constant.setAttribute("data-size", "mini");
-		constant.setAttribute("data-onstyle", "success"); 
-		constant.setAttribute("data-toggle", "toggle");
-		constant.onchange = function () {
-								world_info_data[this.getAttribute('uid')]['constant'] = this.checked;
-								send_world_info(this.getAttribute('uid'));
-								this.classList.add("pulse");
-							}
-		constant_area.append(constant);
-	}
-	constant.checked = data.constant;
-	constant.classList.remove("pulse");
 						
 	//Let's figure out the order to insert this card
 	var found = false;

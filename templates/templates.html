@@ -11,17 +11,25 @@
 		</div>
 		<span id="world_info_delete_" class="world_info_delete">X</span>
 	</div>
-	<div  class="world_info_tag_area world_info_always_include" id="world_info_toggle_area_">
-		Always Include
+
+	<div class="world_info_upper_container world_info_tag_area">
+		<div class="world_info_wpp_toggle_area" id="world_info_wpp_toggle_area_">
+			Use W++
+		</div>
+
+		<select class="world_info_type settings_select">
+			<option>World Info</option>
+			<option>Memory</option>
+			<option>Chat Character</option>
+		</select>
 	</div>
+
+
 	<div id="world_info_tags_" class="world_info_tag_area world_info_tag_primary_area">
 		<div>Requires one of:</div>
 	</div>
 	<div id="world_info_secondtags_" class="world_info_tag_area world_info_tag_secondary_area">
 		<div>And (if present):</div>
-	</div>
-	<div class="world_info_tag_area world_info_wpp_toggle_area" id="world_info_wpp_toggle_area_">
-		Use W++
 	</div>
 	<div class="world_info_tag_area hidden world_info_wpp_area" id="world_info_wpp_area_">
 		<!--this part is very sensitive to location. Javascript uses parents to find the above tag for each of the inputs, so don't add stuff without messing with JS-->

@@ -1087,6 +1087,19 @@ td.server_vars {
 	filter: brightness(90%);
 }
 
+.world_info_always_include {
+	display: inline-block;
+}
+
+.world_info_upper_container {
+	display: flex;
+	justify-content: space-between;
+}
+
+.world_info_type {
+	margin: 0px;
+}
+
 .world_info_text {
 	width: auto;
 	margin: 0 0px 0px;

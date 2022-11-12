@@ -8643,7 +8643,7 @@ def UI_2_edit_world_info(data):
         koboldai_vars.worldinfo_v2.edit_item(data['uid'], data['title'], data['key'], 
                                              data['keysecondary'], data['folder'], 
                                              data['constant'], data['manual_text'], 
-                                             data['comment'], wpp=data['wpp'], use_wpp=data['use_wpp'])
+                                             data['comment'], wi_type=data["type"], wpp=data['wpp'], use_wpp=data['use_wpp'])
 
 
 #==================================================================#

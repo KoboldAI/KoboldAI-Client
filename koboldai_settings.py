@@ -1726,8 +1726,9 @@ class KoboldWorldInfo(object):
         if self.socketio is not None:
             self.socketio.emit("world_info_folder", {x: self.world_info_folder[x] for x in self.world_info_folder}, broadcast=True, room="UI_2")
                 
-    def add_item(self, title, key, keysecondary, folder, constant, manual_text, 
-                 comment, use_wpp=False, wpp={'name': "", 'type': "", 'format': "W++", 'attributes': {}}, 
+    def add_item(self, title, key, keysecondary, folder, constant, manual_text,
+                 comment, wi_type="World Info", use_wpp=False,
+                 wpp={'name': "", 'type': "", 'format': "W++", 'attributes': {}},
                  v1_uid=None, recalc=True, sync=True, send_to_ui=True):
         if len(self.world_info) == 0:
             uid = 0
@@ -1772,6 +1773,7 @@ class KoboldWorldInfo(object):
                                     'manual_text': manual_text,
                                     "content": content,
                                     "comment": comment,
+                                    "type": wi_type,
                                     "token_length": token_length,
                                     "selective": len(keysecondary) > 0,
                                     "used_in_game": constant,
@@ -1801,7 +1803,7 @@ class KoboldWorldInfo(object):
             ignore = self.koboldai_vars.calc_ai_text()
         return uid
         
-    def edit_item(self, uid, title, key, keysecondary, folder, constant, manual_text, comment, use_wpp=False, before=None, wpp={'name': "", 'type': "", 'format': "W++", 'attributes': {}}):
+    def edit_item(self, uid, title, key, keysecondary, folder, constant, manual_text, comment, wi_type, use_wpp=False, before=None, wpp={'name': "", 'type': "", 'format': "W++", 'attributes': {}}):
         logger.debug("Editing World Info {}: {}".format(uid, title))
         old_folder = self.world_info[uid]['folder']
         #move the world info entry if the folder changed or if there is a new order requested
@@ -1836,6 +1838,7 @@ class KoboldWorldInfo(object):
                                 'manual_text': manual_text,
                                 "content": content,
                                 "comment": comment,
+                                "type": wi_type,
                                 "token_length": token_length,
                                 "selective": len(keysecondary) > 0,
                                 "used_in_game": constant,
@@ -1943,6 +1946,7 @@ class KoboldWorldInfo(object):
                           item['constant'] if 'constant' in item else False, 
                           item['manual_text'] if 'manual_text' in item else item['content'], 
                           item['comment'] if 'comment' in item else '',
+                          item.get('type', "World Info"),
                           use_wpp=item['use_wpp'] if 'use_wpp' in item else False, 
                           wpp=item['wpp'] if 'wpp' in item else {'name': "", 'type': "", 'format': "W++", 'attributes': {}},
                           recalc=False, sync=False)
