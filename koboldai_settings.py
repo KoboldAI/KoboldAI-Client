@@ -1727,7 +1727,7 @@ class KoboldWorldInfo(object):
             self.socketio.emit("world_info_folder", {x: self.world_info_folder[x] for x in self.world_info_folder}, broadcast=True, room="UI_2")
                 
     def add_item(self, title, key, keysecondary, folder, constant, manual_text,
-                 comment, wi_type="World Info", use_wpp=False,
+                 comment, wi_type="wi", use_wpp=False,
                  wpp={'name': "", 'type': "", 'format': "W++", 'attributes': {}},
                  v1_uid=None, recalc=True, sync=True, send_to_ui=True):
         if len(self.world_info) == 0:
@@ -1928,9 +1928,18 @@ class KoboldWorldInfo(object):
                     "images": self.image_store
                    }
     
+    def upgrade_entry(self, wi_entry: dict) -> dict:
+        # If we do not have a type, or it is incorrect, set to WI.
+        if wi_entry.get("type") not in ["constant", "chatcharacter", "wi"]:
+            wi_entry["type"] = "wi"
+
+        return wi_entry
+    
     def load_json(self, data, folder=None):
         if "images" in data:
             self.image_store = data["images"]
+        
+        data["entries"] = {k: self.upgrade_entry(v) for k,v in data["entries"].items()}
 
         if folder is None:
             self.world_info = {int(x): data['entries'][x] for x in data['entries']}
@@ -1939,6 +1948,7 @@ class KoboldWorldInfo(object):
         #Add the item
         for uid, item in data['entries'].items():
             start_time = time.time()
+
             self.add_item(item['title'] if 'title' in item else item['key'][0], 
                           item['key'] if 'key' in item else [], 
                           item['keysecondary'] if 'keysecondary' in item else [], 
@@ -1946,7 +1956,7 @@ class KoboldWorldInfo(object):
                           item['constant'] if 'constant' in item else False, 
                           item['manual_text'] if 'manual_text' in item else item['content'], 
                           item['comment'] if 'comment' in item else '',
-                          item.get('type', "World Info"),
+                          wi_type=item["type"],
                           use_wpp=item['use_wpp'] if 'use_wpp' in item else False, 
                           wpp=item['wpp'] if 'wpp' in item else {'name': "", 'type': "", 'format': "W++", 'attributes': {}},
                           recalc=False, sync=False)

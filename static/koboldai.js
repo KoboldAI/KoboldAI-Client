@@ -125,7 +125,6 @@ const chat = {
 	lastEdit: null,
 
 	get useV2() {
-		console.log(`v2 Check: style=${this.style} mode=${story.mode}`)
 		return [
 			this.STYLES.MESSAGES,
 			this.STYLES.BUBBLES
@@ -478,7 +477,6 @@ function do_story_text_updates(action) {
 }
 
 function do_prompt(data) {
-	console.log("[prompt]", data);
 	var elements_to_change = document.getElementsByClassName("var_sync_story_prompt");
 	for (item of elements_to_change) {
 		//clear out the item first
