@@ -402,14 +402,20 @@ function process_actions_data(data) {
 }
 
 function parseChatMessages(text) {
-	let messages = []
+	let messages = [];
 
 	for (const line of text.split("\n")) {
-		const [author, text] = line.split(":", 2);
+		let [author, text] = line.split(":", 2);
 		if (!author && !text) continue;
+
+		// If there is no ":" in the text, it's a system message.
+		if (!text) {
+			text = author;
+			author = "System";
+		}
+
 		messages.push({author: author, text: text});
 	}
-
 	return messages;
 }
 
@@ -435,7 +441,7 @@ function do_story_text_updates(action) {
 		$(`[action-id="${action.id}"]`).remove();
 
 		for (const message of parseChatMessages(action.action["Selected Text"])) {
-			addMessage(message.author || "System", message.text, action.id, previous);
+			previous = addMessage(message.author, message.text, action.id, previous);
 		}
 	} else {
 		if (document.getElementById('Selected Text Chunk '+action.id)) {
@@ -491,9 +497,8 @@ function do_prompt(data) {
 		// We run do_prompt multiple times; delete old prompt messages
 		$(".chat-message").remove();
 
-		let previous = null
 		for (const message of parseChatMessages(full_text)) {
-			addMessage(message.author || "System", message.text, -1, previous);
+			addMessage(message.author, message.text, -1, null);
 		}
 	} else {
 		// Normal
@@ -3457,9 +3462,10 @@ function update_context(data) {
 				soft_prompt_length += entry.tokens.length;
 				break;
 			case 'prompt':
+				const promptEl = document.getElementById('story_prompt');
 				prompt_length += entry.tokens.length;
-				if (prompt_length > 0) {
-					document.getElementById('story_prompt').classList.add("within_max_length");
+				if (prompt_length > 0 && promptEl) {
+					promptEl.classList.add("within_max_length");
 				}
 				break;
 			case 'world_info':
@@ -6064,7 +6070,7 @@ function updateChatStyle() {
 
 		for (const [chunkId, chunk] of Object.entries(actions_data)) {
 			for (const message of parseChatMessages(chunk["Selected Text"])) {
-				addMessage(message.author || "System", message.text, chunkId, null);
+				addMessage(message.author, message.text, chunkId, null);
 				addedMessages++;
 			}
 		}
@@ -6109,12 +6115,13 @@ function getChatPfp(chatName) {
 
 			// Not sure why this would happen, but better safe than sorry.
 			if (!img) continue;
+			if (!img.src) return "/static/default_pfp.png";
 
 			return img.src;
 		}
 	}
 
-	return "/static/testodesto.jpeg";
+	return "/static/default_pfp.png";
 }
 
 function setChatPfps(chatName, src) {
