@@ -1803,7 +1803,7 @@ function world_info_entry(data) {
 	} else {
 		world_info_card.classList.remove("used_in_game");
 	}
-	title = world_info_card.querySelector('.world_info_title')
+	const title = world_info_card.querySelector('.world_info_title');
 	title.id = "world_info_title_"+data.uid;
 	title.textContent = data.title;
 	title.setAttribute("uid", data.uid);
@@ -1856,6 +1856,8 @@ function world_info_entry(data) {
 	const wiImgPlaceholder = wiImgContainer.querySelector(".placeholder");
 	const wiImgInput = $e("input", null, {type: "file", accept: "image/png,image/x-png,image/gif,image/jpeg"});
 
+	wiImg.id = `world_info_image_${data.uid}`;
+
 	if (data.uid > -1) {
 		fetch(`/get_wi_image/${data.uid}`, {
 			method: "GET",
@@ -1865,6 +1867,7 @@ function world_info_entry(data) {
 			if (r.status == 204) return;
 			wiImgPlaceholder.style.display = "none";
 			wiImg.src = await r.text();
+			setChatPfps(title.innerText, wiImg.src);
 		});
 	}
 
@@ -1888,12 +1891,21 @@ function world_info_entry(data) {
 				method: "POST",
 				body: reader.result
 			});
+
+			setChatPfps(title.innerText, reader.result);
 		});
 		reader.readAsDataURL(file);
 	});
 
 	const wiTypeSelector = world_info_card.querySelector(".world_info_type");
-	wiTypeSelector.value = world_info_data[data.uid].type;
+
+	// We may want to change the display names of these later
+	wiTypeSelector.value = {
+		chatcharacter: "Chat Character",
+		wi: "World Info",
+		constant: "Memory",
+	}[world_info_data[data.uid].type];
+
 	wiTypeSelector.classList.remove("pulse");
 	wiTypeSelector.addEventListener("change", function(event) {
 		// If no change, don't do anything. Don't loop!!!
@@ -1915,7 +1927,11 @@ function world_info_entry(data) {
 				reportError("Error", `Unknown WI type ${wiTypeSelector.value}`);
 				return;
 		}
-		world_info_data[data.uid].type = wiTypeSelector.value;
+		world_info_data[data.uid].type = {
+			"Chat Character": "chatcharacter",
+			"Memory": "constant",
+			"World Info": "wi",
+		}[wiTypeSelector.value];
 		send_world_info(data.uid);
 		this.classList.add("pulse");
 	})
@@ -5926,7 +5942,13 @@ function addMessage(author, content, actionId, afterMsgEl=null) {
 	);
 
 	const leftContainer = $e("div", message, {classes: ["chat-left-container"]});
-	const profilePicture = $e("img", leftContainer, {classes: ["chat-pfp"], src: "/static/testodesto.jpeg", draggable: false});
+
+	const profilePicture = $e("img", leftContainer, {
+		classes: ["chat-pfp"],
+		src: getChatPfp(author),
+		draggable: false
+	});
+
 	const addAfterButton = $e("span", leftContainer, {classes: ["chat-add", "chat-button", "material-icons-outlined"], innerText: "add"});
 	const deleteButton = $e("span", leftContainer, {classes: ["chat-delete", "chat-button", "material-icons-outlined"], innerText: "delete"});
 
@@ -6061,5 +6083,33 @@ function updateChatStyle() {
 
 		const jQCM = $(".chat-message");
 		if (jQCM.length) jQCM.remove();
+	}
+}
+
+function getChatPfp(chatName) {
+	chatName = chatName.toLowerCase();
+
+	for (const entry of Object.values(world_info_data)) {
+		if (entry.type !== "chatcharacter") continue;
+		if (entry.title.toLowerCase() !== chatName) continue;
+		let img = $el(`#world_info_image_${entry.uid}`);
+
+		// Not sure why this would happen, but better safe than sorry.
+		if (!img) continue;
+
+		return img.src;
+	}
+
+	return "/static/testodesto.jpeg";
+}
+
+function setChatPfps(chatName, src) {
+	console.log("setting", chatName)
+	// Refresh pfps for one user
+	for (const chatEl of document.getElementsByClassName("chat-message")) {
+		let author = chatEl.querySelector(".chat-author").innerText;
+		if (author !== chatName) continue;
+
+		chatEl.querySelector(".chat-pfp").src = src;
 	}
 }
