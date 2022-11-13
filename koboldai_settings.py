@@ -185,6 +185,9 @@ class koboldai_vars(object):
     def reset_model(self):
         self._model_settings.reset_for_model_load()
     
+    def is_chat_v2(self):
+        return self.chat_style > 0 and self.chatmode
+    
     def get_token_representation(self, text: Union[str, list, None]) -> list:
         if not self.tokenizer or not text:
             return []
@@ -269,6 +272,10 @@ class koboldai_vars(object):
         
         ######################################### Get Action Text by Sentence ########################################################
         action_text_split = self.actions.to_sentences(submitted_text=submitted_text)
+
+        # Always add newlines on chat v2
+        if self.is_chat_v2():
+            action_text_split[-1][0] = action_text_split[-1][0].strip() + "\n"
         
         
         ######################################### Prompt ########################################################
