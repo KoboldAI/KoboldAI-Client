@@ -1265,7 +1265,7 @@ class KoboldStoryRegister(object):
             old_text = None
             old_length = None
             old = None
-            self.actions[i] = {"Selected Text": text, "Probabilities": [], "Options": []}
+            self.actions[i] = {"Selected Text": text, "Probabilities": [], "Options": [], "Time": int(time.time())}
             
         self.story_settings.assign_world_info_to_actions(action_id=i, no_transmit=True)
         process_variable_changes(self.socketio, "story", 'actions', {"id": i, 'action':  self.actions[i]}, old)
@@ -1300,6 +1300,9 @@ class KoboldStoryRegister(object):
         temp = {}
         data_to_send = []
         for item in json_data['actions']:
+            if "Time" not in json_data["actions"][item]:
+                json_data["actions"][item]["Time"] = int(time.time())
+
             temp[int(item)] = json_data['actions'][item]
             if int(item) >= self.action_count-100: #sending last 100 items to UI
                 data_to_send.append({"id": item, 'action':  temp[int(item)]})
@@ -1327,6 +1330,7 @@ class KoboldStoryRegister(object):
             if self.actions[action_id]["Selected Text"] != text:
                 self.actions[action_id]["Selected Text"] = text
                 self.actions[action_id]["Probabilities"] = []
+                self.actions[action_id]["Time"] = self.actions[action_id].get("Time", int(time.time()))
             selected_text_length = 0
             self.actions[action_id]["Selected Text Length"] = selected_text_length
             for item in self.actions[action_id]["Options"]:
@@ -1337,8 +1341,13 @@ class KoboldStoryRegister(object):
         else:
             selected_text_length = 0
             
-            self.actions[action_id] = {"Selected Text": text, "Selected Text Length": selected_text_length, 
-                                               "Options": [], "Probabilities": []}
+            self.actions[action_id] = {
+                "Selected Text": text,
+                "Selected Text Length": selected_text_length,
+                "Options": [],
+                "Probabilities": [],
+                "Time": int(time.time()),
+            }
             
         if self.story_settings is not None:
             self.story_settings.assign_world_info_to_actions(action_id=action_id, no_transmit=True)
@@ -1373,14 +1382,23 @@ class KoboldStoryRegister(object):
                     self.actions[self.action_count+1]['Options'].append({"text": option, "Pinned": False, "Previous Selection": False, "Edited": False, "Probabilities": []})
         else:
             old_options = None
-            self.actions[self.action_count+1] = {"Selected Text": "", "Selected Text Length": 0, "Options": [{"text": x, "Pinned": False, "Previous Selection": False, "Edited": False, "Probabilities": []} for x in option_list]}
+            self.actions[self.action_count+1] = {
+                "Selected Text": "",
+                "Selected Text Length": 0,
+                "Options": [{"text": x, "Pinned": False, "Previous Selection": False, "Edited": False, "Probabilities": []} for x in option_list],
+                "Time": int(time.time()),
+            }
         process_variable_changes(self.socketio, "story", 'actions', {"id": self.action_count+1, 'action':  self.actions[self.action_count+1]}, None)
         self.set_game_saved()
             
     def set_options(self, option_list, action_id):
         if action_id not in self.actions:
             old_options = None
-            self.actions[action_id] = {"Selected Text": "", "Options": option_list}
+            self.actions[action_id] = {
+                "Selected Text": "",
+                "Options": option_list,
+                "Time": int(time.time()),
+            }
         else:
             old_options = self.actions[action_id]["Options"]
             self.actions[action_id]["Options"] = []
@@ -1533,7 +1551,7 @@ class KoboldStoryRegister(object):
                     if not found:
                         self.actions[self.action_count+1]['Options'].append({"text": text_list[i], "Pinned": False, "Previous Selection": False, "Edited": False, "Probabilities": [], "stream_id": i})
             else:
-                self.actions[self.action_count+1] = {"Selected Text": "", "Selected Text Length": 0, "Options": []}
+                self.actions[self.action_count+1] = {"Selected Text": "", "Selected Text Length": 0, "Options": [], "Time": int(time.time())}
                 for i in range(len(text_list)):
                     self.actions[self.action_count+1]['Options'].append({"text": text_list[i], "Pinned": False, "Previous Selection": False, "Edited": False, "Probabilities": [], "stream_id": i})
         
@@ -1558,7 +1576,7 @@ class KoboldStoryRegister(object):
                         selected_text_length = len(self.koboldai_vars.tokenizer.encode(text_list[0]))
                     else:
                         selected_text_length = 0
-                    self.actions[self.action_count+1] = {"Selected Text": text_list[0], "Selected Text Length": selected_text_length, "Options": []}
+                    self.actions[self.action_count+1] = {"Selected Text": text_list[0], "Selected Text Length": selected_text_length, "Options": [], "Time": int(time.time())}
                 
                 
                 
