@@ -222,7 +222,12 @@ function reset_story() {
 	while (world_info_area.firstChild) {
 		world_info_area.removeChild(world_info_area.firstChild);
 	}
-	document.getElementById("story_prompt").setAttribute("world_info_uids", "");
+
+	const storyPrompt = $el("#story_prompt");
+
+	if (storyPrompt) {
+		storyPrompt.setAttribute("world_info_uids", "");
+	}
 	document.getElementById('themerow').classList.remove("hidden");
 	document.getElementById('input_text').placeholder = "Enter Prompt Here (shift+enter for new line)";
 	text = "";
@@ -430,7 +435,7 @@ function do_story_text_updates(action) {
 		$(`[action-id="${action.id}"]`).remove();
 
 		for (const message of parseChatMessages(action.action["Selected Text"])) {
-			addMessage(message.author, message.text, action.id, previous);
+			addMessage(message.author || "System", message.text, action.id, previous);
 		}
 	} else {
 		if (document.getElementById('Selected Text Chunk '+action.id)) {
@@ -477,31 +482,30 @@ function do_story_text_updates(action) {
 }
 
 function do_prompt(data) {
-	var elements_to_change = document.getElementsByClassName("var_sync_story_prompt");
-	for (item of elements_to_change) {
-		//clear out the item first
-		while (item.firstChild) { 
-			item.removeChild(item.firstChild);
+	let full_text = "";
+	for (chunk of data.value) {
+		full_text += chunk['text'];
+	}
+
+	if (chat.useV2) {
+		// We run do_prompt multiple times; delete old prompt messages
+		$(".chat-message").remove();
+
+		let previous = null
+		for (const message of parseChatMessages(full_text)) {
+			addMessage(message.author || "System", message.text, -1, previous);
 		}
-		let full_text = "";
-
-		if (chat.useV2) {
-			for (chunk of data.value) {
-				full_text += chunk['text'];
+	} else {
+		// Normal
+		let elements_to_change = document.getElementsByClassName("var_sync_story_prompt");
+		for (item of elements_to_change) {
+			//clear out the item first
+			while (item.firstChild) { 
+				item.removeChild(item.firstChild);
 			}
-
-			// We run do_prompt multiple times; delete old prompt messages
-			$(".chat-message").remove();
-
-			let previous = null
-			for (const message of parseChatMessages(full_text)) {
-				addMessage(message.author, message.text, -1, previous);
-			}
-		} else {
 			for (chunk of data.value) {
 				chunk_element = document.createElement("span");
 				chunk_element.textContent = chunk['text'];
-				full_text += chunk['text'];
 				if (chunk['WI matches'] != null) {
 					chunk_element.classList.add("wi_match");
 					chunk_element.setAttribute("tooltip", chunk['WI Text']);
@@ -509,12 +513,17 @@ function do_prompt(data) {
 				}
 				item.append(chunk_element);
 			}
+			item.setAttribute("old_text", full_text);
+			item.classList.remove("pulse");
+			assign_world_info_to_action(-1, null);
 		}
-		item.setAttribute("old_text", full_text);
-		item.classList.remove("pulse");
-		actions_data[-1] = {'Selected Text': full_text};
-		assign_world_info_to_action(-1, null);
 	}
+
+	// Sometimes full text ends up not being built
+	if (!full_text) {
+	}
+	actions_data[-1] = {'Selected Text': full_text};
+
 	//if we have a prompt we need to disable the theme area, or enable it if we don't
 	if (data.value[0].text != "") {
 		document.getElementById('input_text').placeholder = "Enter text here (shift+enter for new line)";
@@ -670,14 +679,17 @@ function do_ai_busy(data) {
 }
 
 function hide_show_prompt() {
+	const promptEl = $el("#story_prompt");
+	if (!promptEl) return;
+
 	if (Math.min.apply(null,Object.keys(actions_data).map(Number).filter(function(x){return x>=0})) == Infinity) {
-		document.getElementById("story_prompt").classList.remove("hidden");
+		promptEl.classList.remove("hidden");
 	} else if (Math.min.apply(null,Object.keys(actions_data).map(Number).filter(function(x){return x>=0})) > 0) {
 		//we have actions and our minimum action we have in the UI is above the start of the game
 		//we need to keep the story prompt hidden
-		document.getElementById("story_prompt").classList.add("hidden");
+		promptEl.classList.add("hidden");
 	} else {
-		document.getElementById("story_prompt").classList.remove("hidden");
+		promptEl.classList.remove("hidden");
 	}
 }
 
@@ -697,7 +709,8 @@ function var_changed(data) {
 		current_action = data.value;
 		if (current_action <= 0) {
 			//console.log("setting action_count to "+current_action);
-			document.getElementById("story_prompt").classList.remove("hidden");
+			const storyPrompt = $el("#story_prompt");
+			if (storyPrompt) storyPrompt.classList.remove("hidden");
 			scroll_trigger_element = undefined;
 			document.getElementById("Selected Text").onscroll = undefined;
 		}
@@ -5799,15 +5812,18 @@ function infinite_scroll() {
 
 function run_infinite_scroll_update(action_type, actions, first_action) {
 	//console.log("first_action: "+first_action);
+	const promptEl = $el("#story_prompt");
+	if (!promptEl) return;
+
 	if (action_type == "append") {
 		if (document.getElementById('Selected Text Chunk '+actions[actions.length-1].id)) {
 			document.getElementById('Selected Text Chunk '+actions[actions.length-1].id).scrollIntoView(false);
 			document.getElementById("Selected Text").scrollBy(0, 25);
 		}
 		//Check to see if we need to have the scrolling in place or not
-		if (document.getElementById("story_prompt").classList.contains("hidden")) {
+		if (promptEl.classList.contains("hidden")) {
 			if (Math.min.apply(null,Object.keys(actions_data).map(Number).filter(function(x){return x>=0})) <= 0) {
-				document.getElementById("story_prompt").classList.remove("hidden");
+				promptEl.classList.remove("hidden");
 			} else {
 				//console.log("Appending, but adding infinite scroll");
 				//console.log(document.getElementById('Selected Text Chunk '+Math.min.apply(null,Object.keys(actions_data).map(Number).filter(function(x){return x>=0}))));
@@ -5820,8 +5836,8 @@ function run_infinite_scroll_update(action_type, actions, first_action) {
 			//We've hit our prompt, so let's unhide it, move it to the begining, and kill the infinite_scroll
 			scroll_trigger_element = undefined;
 			document.getElementById("Selected Text").onscroll = undefined;
-			document.getElementById("Selected Text").prepend(document.getElementById("story_prompt"));
-			document.getElementById("story_prompt").classList.remove("hidden");
+			document.getElementById("Selected Text").prepend(promptEl);
+			promptEl.classList.remove("hidden");
 		} else {
 			//we just added more text and didn't hit the prompt. Move the scroll trigger back to the first non-prompt element
 			let item_in_view = false;
@@ -5930,7 +5946,6 @@ $el("#aidgpromptnum").addEventListener("keydown", function(event) {
 /* -- Shiny New Chat -- */
 function addMessage(author, content, actionId, afterMsgEl=null) {
 	const gameScreen = $el("#gamescreen");
-
 
 	let insertionLocation = afterMsgEl ? {after: afterMsgEl} : null
 	const message = $e(
@@ -6049,7 +6064,7 @@ function updateChatStyle() {
 
 		for (const [chunkId, chunk] of Object.entries(actions_data)) {
 			for (const message of parseChatMessages(chunk["Selected Text"])) {
-				addMessage(message.author, message.text, chunkId, null);
+				addMessage(message.author || "System", message.text, chunkId, null);
 				addedMessages++;
 			}
 		}
@@ -6057,8 +6072,6 @@ function updateChatStyle() {
 		// If we are empty, add an init message
 		if (!addedMessages) addInitChatMessage();
 	} else {
-		console.info("TODO: Convert 2 text")
-
 		if (!storyArea.children.length) {
 			for (const [chunkId, action] of Object.entries(actions_data)) {
 				let item = document.createElement("span");
@@ -6087,24 +6100,24 @@ function updateChatStyle() {
 }
 
 function getChatPfp(chatName) {
-	chatName = chatName.toLowerCase();
+	if (chatName) {
+		chatName = chatName.toLowerCase();
+		for (const entry of Object.values(world_info_data)) {
+			if (entry.type !== "chatcharacter") continue;
+			if (entry.title.toLowerCase() !== chatName) continue;
+			let img = $el(`#world_info_image_${entry.uid}`);
 
-	for (const entry of Object.values(world_info_data)) {
-		if (entry.type !== "chatcharacter") continue;
-		if (entry.title.toLowerCase() !== chatName) continue;
-		let img = $el(`#world_info_image_${entry.uid}`);
+			// Not sure why this would happen, but better safe than sorry.
+			if (!img) continue;
 
-		// Not sure why this would happen, but better safe than sorry.
-		if (!img) continue;
-
-		return img.src;
+			return img.src;
+		}
 	}
 
 	return "/static/testodesto.jpeg";
 }
 
 function setChatPfps(chatName, src) {
-	console.log("setting", chatName)
 	// Refresh pfps for one user
 	for (const chatEl of document.getElementsByClassName("chat-message")) {
 		let author = chatEl.querySelector(".chat-author").innerText;
