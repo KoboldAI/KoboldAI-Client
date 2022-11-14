@@ -1155,7 +1155,7 @@ def processsettings(js):
     if("andepth" in js):
         vars.andepth = js["andepth"]
     if("sampler_order" in js):
-        sampler_order = vars.sampler_order
+        sampler_order = js["sampler_order"]
         if(len(sampler_order) < 7):
             sampler_order = [6] + sampler_order
         vars.sampler_order = sampler_order
