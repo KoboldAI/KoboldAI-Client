@@ -573,6 +573,8 @@ class model_settings(settings):
                          'loaded_layers', 'total_layers', 'total_download_chunks', 'downloaded_chunks', 'presets', 'default_preset', 
                          'koboldai_vars', 'welcome', 'welcome_default']
     settings_name = "model"
+    default_settings = {"rep_pen" : 1.1, "rep_pen_slope": 0.7, "rep_pen_range": 1024, "temp": 0.5, "top_p": 0.9, "top_k": 0.0, "top_a": 0.0, "tfs": 1.0, "typical": 1.0,
+                        "penalty_alpha": 0.0, "sampler_order": [6,0,1,2,3,4,5]}
     def __init__(self, socketio, koboldai_vars):
         self.socketio = socketio
         self.reset_for_model_load()
@@ -651,10 +653,12 @@ class model_settings(settings):
         
         if not new_variable and (name == 'max_length' or name == 'genamt'):
             ignore = self.koboldai_vars.calc_ai_text()
-        
+            
         #set preset values
         if name == 'selected_preset' and value != "":
             if int(value) in self.uid_presets:
+                for default_key, default_value in self.default_settings:
+                    setattr(self, default_key, default_value)
                 for preset_key, preset_value in self.uid_presets[int(value)].items():
                     if preset_key in self.__dict__:
                         if type(getattr(self, preset_key)) == int:
