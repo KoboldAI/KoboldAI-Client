@@ -1017,7 +1017,7 @@ def loadmodelsettings():
     if("nobreakmodel" in js):
         vars.nobreakmodel = js["nobreakmodel"]
     if("sampler_order" in js):
-        sampler_order = vars.sampler_order
+        sampler_order = js["sampler_order"]
         if(len(sampler_order) < 7):
             sampler_order = [6] + sampler_order
         vars.sampler_order = sampler_order
