@@ -2619,10 +2619,6 @@ $(document).ready(function(){
 			// Send current top a value to input
 			$("#settopacur").val(msg.data);
 			$("#settopa").val(parseFloat(msg.data)).trigger("change");
-		} else if(msg.cmd == "updatepenaltyalpha") {
-			// Send current top p value to input
-			$("#setpenaltyalphacur").val(msg.data);
-			$("#setpenaltyalpha").val(parseFloat(msg.data)).trigger("change");
 		} else if(msg.cmd == "updatereppen") {
 			// Send current rep pen value to input
 			$("#setreppencur").val(msg.data);
@@ -2653,9 +2649,6 @@ $(document).ready(function(){
 		} else if(msg.cmd == "setlabeltopp") {
 			// Update setting label with value from server
 			$("#settoppcur").val(msg.data);
-		} else if(msg.cmd == "setlabelpenaltyalpha") {
-			// Update setting label with value from server
-			$("#setpenaltyalphacur").val(msg.data);
 		} else if(msg.cmd == "setlabeltopk") {
 			// Update setting label with value from server
 			$("#settopkcur").val(msg.data);
