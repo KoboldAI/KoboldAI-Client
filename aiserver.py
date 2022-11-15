@@ -9111,8 +9111,8 @@ def UI_2_generate_image(data):
     koboldai_vars.generating_image = True
     eventlet.sleep(0)
     
-    art_guide = 'fantasy illustration, artstation, by jason felix by steve argyle by tyler jacobson by peter mohrbacher, cinematic lighting'
-    
+    art_guide = '{}'.format(koboldai_vars.img_gen_art_guide)
+    print("Generating image using data:{} and art guide:{}".format(data,art_guide))
     #get latest action
     if len(koboldai_vars.actions) > 0:
         action = koboldai_vars.actions[-1]
@@ -9191,7 +9191,9 @@ def UI_2_generate_image(data):
     
 
 @logger.catch
-def text2img_local(prompt, art_guide="", filename="new.png"):
+def text2img_local(prompt,
+                    art_guide="",
+                    filename="new.png"):
     start_time = time.time()
     logger.debug("Generating Image")
     koboldai_vars.aibusy = True
@@ -9210,7 +9212,7 @@ def text2img_local(prompt, art_guide="", filename="new.png"):
         from torch import autocast
         with autocast("cuda"):
             return pipe(prompt, num_inference_steps=num_inference_steps).images[0]
-    image = tpool.execute(get_image, pipe, prompt, num_inference_steps=35)
+    image = tpool.execute(get_image, pipe, prompt, num_inference_steps=koboldai_vars.img_gen_steps)
     buffered = BytesIO()
     image.save(buffered, format="JPEG")
     img_str = base64.b64encode(buffered.getvalue()).decode('ascii')
@@ -9231,7 +9233,7 @@ def text2img_local(prompt, art_guide="", filename="new.png"):
 
 @logger.catch
 def text2img_horde(prompt,
-             art_guide = 'fantasy illustration, artstation, by jason felix by steve argyle by tyler jacobson by peter mohrbacher, cinematic lighting',
+             art_guide = "",
              filename = "story_art.png"):
     logger.debug("Generating Image using Horde")
     koboldai_vars.generating_image = True
@@ -9248,8 +9250,8 @@ def text2img_horde(prompt,
             "nsfw": True,
             "sampler_name": "k_euler_a",
             "karras": True,
-            "cfg_scale": 7.0,
-            "steps":25, 
+            "cfg_scale": koboldai_vars.img_gen_cfg_scale,
+            "steps":koboldai_vars.img_gen_steps, 
             "width":512, 
             "height":512}
     }
@@ -9279,13 +9281,10 @@ def text2img_horde(prompt,
 
 @logger.catch
 def text2img_api(prompt,
-             #art_guide = 'fantasy illustration, artstation, by Hugin Miyama by Taiki Kawakami, cinematic lighting',
-             art_guide = 'fantasy illustration, artstation, by jason felix by steve argyle by tyler jacobson by peter mohrbacher, cinematic lighting',
+             art_guide = "",
              filename = "story_art.png"):
     logger.debug("Generating Image using Local SD-WebUI API")
     koboldai_vars.generating_image = True
-    #Add items that you want the AI to avoid in your image.
-    negprompt = '((((misshapen)))),((((ugly)))), (((duplicate))), ((morbid)), ((mutilated)), out of frame, extra fingers, mutated hands, ((poorly drawn hands)), ((poorly drawn face)), (((mutation))), (((deformed))), ((ugly)), blurry, ((bad anatomy)), (((bad proportions))), ((extra limbs)), cloned face, (((disfigured))), out of frame, ugly, extra limbs, (bad anatomy), gross proportions, (malformed limbs), ((missing arms)), ((missing legs)), (((extra arms))), (((extra legs))), mutated hands, (fused fingers), (too many fingers), (((long neck))), captions, words'
     #The following list are valid properties with their defaults, to add/modify in final_imgen_params. Will refactor configuring values into UI element in future.
       #"enable_hr": false,
       #"denoising_strength": 0,
@@ -9317,22 +9316,19 @@ def text2img_api(prompt,
       #"override_settings": {},
       #"sampler_index": "Euler"
     final_imgen_params = {
-        "n": 1,
+        "prompt": "{}, {}".format(prompt, art_guide),
+        "n_iter": 1,
         "width": 512,
         "height": 512,
-        "steps": 40,
-        "cfg_scale": 10,
-        "negative_prompt": "{}".format(negprompt),
+        "steps": koboldai_vars.img_gen_steps,
+        "cfg_scale": koboldai_vars.img_gen_cfg_scale,
+        "negative_prompt": "{}".format(koboldai_vars.img_gen_negative_prompt),
         "sampler_index": "Euler a"
     }
-
-    final_submit_dict = {
-        "prompt": "{}, {}".format(prompt, art_guide),
-        "params": final_imgen_params,
-    }
     apiaddress = '{}/sdapi/v1/txt2img'.format(koboldai_vars.img_gen_api_url)
-    payload_json = json.dumps(final_submit_dict)
-    logger.debug(final_submit_dict)
+    payload_json = json.dumps(final_imgen_params)
+    logger.debug(final_imgen_params)
+    #print("payload_json contains " + payload_json)
     submit_req = requests.post(url=f'{apiaddress}', data=payload_json).json()
     if submit_req:
         results = submit_req
@@ -9350,7 +9346,6 @@ def text2img_api(prompt,
             prompttext = results.get('info').split("\",")[0].split("\"")[3]
             pnginfo.add_text("parameters","prompttext")
             img.save(final_filename, pnginfo=pnginfo)
-            #img.save(final_filename)
             logger.debug("Saved Image")
             koboldai_vars.generating_image = False
             return(b64img)
