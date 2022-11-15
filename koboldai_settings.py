@@ -574,7 +574,7 @@ class model_settings(settings):
                          'koboldai_vars', 'welcome', 'welcome_default']
     settings_name = "model"
     default_settings = {"rep_pen" : 1.1, "rep_pen_slope": 0.7, "rep_pen_range": 1024, "temp": 0.5, "top_p": 0.9, "top_k": 0.0, "top_a": 0.0, "tfs": 1.0, "typical": 1.0,
-                        "penalty_alpha": 0.0, "sampler_order": [6,0,1,2,3,4,5]}
+                        "sampler_order": [6,0,1,2,3,4,5]}
     def __init__(self, socketio, koboldai_vars):
         self.socketio = socketio
         self.reset_for_model_load()
