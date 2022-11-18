@@ -2410,11 +2410,13 @@ def patch_transformers():
         )
         token_streamer = TokenStreamer(tokenizer=tokenizer)
 
-        stopping_criteria.insert(0, self.core_stopper)
+        stopping_criteria.insert(0, ChatModeStopper(tokenizer=tokenizer))
         stopping_criteria.insert(0, self.kai_scanner)
         token_streamer = TokenStreamer(tokenizer=tokenizer)
         stopping_criteria.insert(0, token_streamer)
-        stopping_criteria.insert(0, ChatModeStopper(tokenizer=tokenizer))
+        #This should be last
+        stopping_criteria.insert(0, self.core_stopper)
+        
         return stopping_criteria
     use_core_manipulations.get_stopping_criteria = new_get_stopping_criteria
 
@@ -5181,7 +5183,7 @@ def calcsubmit(txt):
         # Send it!
         ikrequest(subtxt)
 
-def core_generate(text: list, min: int, max: int, found_entries: set, is_core: bool = False):
+def core_generate(text: list, _min: int, _max: int, found_entries: set, is_core: bool = False):
     # This generation function is tangled with koboldai_vars intentionally. It
     # is meant for the story and nothing else.
 
@@ -5283,6 +5285,8 @@ def core_generate(text: list, min: int, max: int, found_entries: set, is_core: b
                 raise RuntimeError(f"Inconsistency detected between KoboldAI Python and Lua backends ({koboldai_vars.generated_tkns} != {koboldai_vars.lua_koboldbridge.generated_cols})")
 
             if(already_generated != koboldai_vars.generated_tkns):
+                print("already_generated: {}".format(already_generated))
+                print("generated_tkns: {}".format(koboldai_vars.generated_tkns))
                 raise RuntimeError("WI scanning error")
 
             for r in range(koboldai_vars.numseqs):
@@ -5295,9 +5299,9 @@ def core_generate(text: list, min: int, max: int, found_entries: set, is_core: b
             for i in range(koboldai_vars.numseqs):
                 txt = utils.decodenewlines(tokenizer.decode(genout[i, -already_generated:]))
                 #winfo, mem, anotetxt, _found_entries = calcsubmitbudgetheader(txt, force_use_txt=True, actions=koboldai_vars.actions)
-                found_entries[i].update(_found_entries)
                 #txt, _, _ = calcsubmitbudget(len(koboldai_vars.actions), winfo, mem, anotetxt, koboldai_vars.actions, submission=txt)
-                txt, _, _, found_entries = koboldai_vars.calc_ai_text(submitted_text=txt)
+                txt, _, _, _found_entries = koboldai_vars.calc_ai_text(submitted_text=txt, send_context=False)
+                found_entries[i].update(_found_entries)
                 encoded.append(torch.tensor(txt, dtype=torch.long, device=genout.device))
 
             max_length = len(max(encoded, key=len))
@@ -8829,7 +8833,6 @@ def socket_io_relay(queue, socketio):
             while not queue.empty():
                 data = queue.get()
                 socketio.emit(data[0], data[1], **data[2])
-                #socketio.emit(data[0], data[1], broadcast=True, room="UI_2")
         time.sleep(0.2)
         
 

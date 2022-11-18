@@ -219,7 +219,8 @@ class koboldai_vars(object):
         if self.sp_length > 0:
             context.append({"type": "soft_prompt", "text": f"<{self.sp_length} tokens of Soft Prompt.>", "tokens": [[-1, ""]] * self.sp_length})
         
-        self.worldinfo_v2.reset_used_in_game()
+        if send_context:
+            self.worldinfo_v2.reset_used_in_game()
         
         ######################################### Add memory ########################################################
         memory_text = self.memory
@@ -255,7 +256,8 @@ class koboldai_vars(object):
                 if used_tokens + wi_length <= token_budget:
                     used_tokens+=wi_length
                     used_world_info.append(wi['uid'])
-                    self.worldinfo_v2.set_world_info_used(wi['uid'])
+                    if send_context:
+                        self.worldinfo_v2.set_world_info_used(wi['uid'])
                     wi_text = wi['content']+" " if wi['content'] != "" and wi['content'][-1] not in [" ", "\n"] else wi['content']
                     wi_tokens = self.tokenizer.encode(wi_text)
                     context.append({
@@ -321,7 +323,8 @@ class koboldai_vars(object):
                                     "tokens": [[x, self.tokenizer.decode(x)] for x in wi_tokens],
                                 })
                                 used_tokens += len(wi_tokens)
-                                self.worldinfo_v2.set_world_info_used(wi['uid'])
+                                if send_context:
+                                    self.worldinfo_v2.set_world_info_used(wi['uid'])
                    
             else:
                 self.prompt_in_ai = False
@@ -419,7 +422,8 @@ class koboldai_vars(object):
                                         "tokens": [[x, self.tokenizer.decode(x)] for x in wi_tokens],
                                     })
                                 used_tokens += len(wi_tokens)
-                                self.worldinfo_v2.set_world_info_used(wi['uid'])
+                                if send_context:
+                                    self.worldinfo_v2.set_world_info_used(wi['uid'])
             else:
                 used_all_tokens = True
                 break
@@ -451,7 +455,7 @@ class koboldai_vars(object):
         logger.debug("Token Budget: {}. Used Tokens: {}".format(token_budget, used_tokens))
         if return_text:
             return "".join([x['text'] for x in context])
-        return tokens, used_tokens, used_tokens+self.genamt, used_world_info
+        return tokens, used_tokens, used_tokens+self.genamt, set(used_world_info)
 
     def is_model_torch(self) -> bool:
         if self.use_colab_tpu:
