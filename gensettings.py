@@ -705,6 +705,22 @@ gensettingstf = [
     "menu_path": "Settings",
     "sub_path": "Other",
     "classname": "system",
+    "name": "full_determinism"
+	},
+    {
+    "UI_V2_Only": True,
+	"uitype": "toggle",
+	"unit": "bool",
+	"label": "Use AI Seed",
+	"id": "seed_specified",
+	"min": 0,
+	"max": 1,
+	"step": 1,
+	"default": 0,
+    "tooltip": "If enabled a specfic seed will be used for the random generator on text generation",
+    "menu_path": "Settings",
+    "sub_path": "Other",
+    "classname": "system",
     "name": "seed_specified"
 	},
     {
