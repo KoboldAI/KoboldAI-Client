@@ -730,6 +730,9 @@ function var_changed(data) {
 	if (data.classname === "story" && data.name === "storymode") {
 		story.mode = data.value;
 		updateChatStyle();
+	} else if (data.classname == "story" && data.name == "chat_style") {
+		chat.style = data.value;
+		updateChatStyle();
 	}
 	
 	//Special Case for Actions
@@ -780,10 +783,6 @@ function var_changed(data) {
 		} else {
 			button.childNodes[1].textContent = "Story";
 		}
-	// Special case for chat style
-	} else if (data.classname == "story" && data.name == "chat_style") {
-		chat.style = data.value;
-		updateChatStyle();
 	//Special Case for story picture
 	} else if (data.classname == "story" && data.name == "picture") {
 		image_area = document.getElementById("action image");
@@ -6069,8 +6068,8 @@ function updateChatStyle() {
 
 		// Delete normal text
 
-		for (const child of storyArea.children) {
-			child.remove();
+		while (storyArea.firstChild) {
+			storyArea.removeChild(storyArea.firstChild);
 		}
 
 		let addedMessages = 0;
@@ -6085,7 +6084,7 @@ function updateChatStyle() {
 		// If we are empty, add an init message
 		if (!addedMessages) addInitChatMessage();
 	} else {
-		if (!storyArea.children.length) {
+		if (!storyArea.querySelectorAll(".rawtext").length) {
 			for (const [chunkId, action] of Object.entries(actions_data)) {
 				let item = document.createElement("span");
 				item.id = 'Selected Text Chunk '+chunkId;
