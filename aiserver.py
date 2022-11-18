@@ -97,8 +97,9 @@ from tqdm.auto import tqdm
 old_init = tqdm.__init__
 def new_init(self, *args, **kwargs):
     old_init(self, *args, **kwargs)
-    if(self.ncols == 0 and kwargs.get("ncols") != 0):
-        self.ncols = 99
+    if 'ncols' in kwargs:
+        if(self.ncols == 0 and kwargs.get("ncols") != 0):
+            self.ncols = 99
 tqdm.__init__ = new_init
 
 # Fix some issues with the OPT tokenizer
@@ -532,7 +533,7 @@ def UI_2_log_history(message):
         del web_log_history[0]
     web_log_history.append(data)
 
-from flask import Flask, render_template, Response, request, copy_current_request_context, send_from_directory, session, jsonify, abort, redirect, has_request_context
+from flask import Flask, render_template, Response, request, copy_current_request_context, send_from_directory, session, jsonify, abort, redirect, has_request_context, send_file
 from flask_socketio import SocketIO, emit, join_room, leave_room
 from flask_socketio import emit as _emit
 from flask_session import Session
@@ -1415,7 +1416,8 @@ def general_startup(override_args=None):
 
     args.max_summary_length = int(args.max_summary_length)
 
-    koboldai_vars.model = args.model;
+    if args.model:
+        koboldai_vars.model = args.model;
     koboldai_vars.revision = args.revision
     koboldai_settings.multi_story = args.multi_story
 
@@ -2375,18 +2377,18 @@ def patch_transformers():
             if not koboldai_vars.inference_config.do_dynamic_wi:
                 return False
 
+            if not koboldai_vars.dynamicscan:
+                return False
+
             if len(self.excluded_world_info) != input_ids.shape[0]:
                 print(tokenizer.decode(self.excluded_world_info))
                 print(tokenizer.decode(input_ids.shape[0]))
             assert len(self.excluded_world_info) == input_ids.shape[0]
 
-            if not koboldai_vars.dynamicscan:
-                return False
-
             tail = input_ids[..., -koboldai_vars.generated_tkns:]
             for i, t in enumerate(tail):
                 decoded = utils.decodenewlines(tokenizer.decode(t))
-                _, _, _, found = koboldai_vars.calc_ai_text(submitted_text=decoded)
+                _, _, _, found = koboldai_vars.calc_ai_text(submitted_text=decoded, send_context=False)
                 found = list(set(found) - set(self.excluded_world_info[i]))
                 if len(found) != 0:
                     print("Found: {}".format(found))
@@ -2409,11 +2411,13 @@ def patch_transformers():
         )
         token_streamer = TokenStreamer(tokenizer=tokenizer)
 
-        stopping_criteria.insert(0, self.core_stopper)
+        stopping_criteria.insert(0, ChatModeStopper(tokenizer=tokenizer))
         stopping_criteria.insert(0, self.kai_scanner)
         token_streamer = TokenStreamer(tokenizer=tokenizer)
         stopping_criteria.insert(0, token_streamer)
-        stopping_criteria.insert(0, ChatModeStopper(tokenizer=tokenizer))
+        #This should be last
+        stopping_criteria.insert(0, self.core_stopper)
+        
         return stopping_criteria
     use_core_manipulations.get_stopping_criteria = new_get_stopping_criteria
 
@@ -5180,7 +5184,7 @@ def calcsubmit(txt):
         # Send it!
         ikrequest(subtxt)
 
-def core_generate(text: list, min: int, max: int, found_entries: set, is_core: bool = False):
+def core_generate(text: list, _min: int, _max: int, found_entries: set, is_core: bool = False):
     # This generation function is tangled with koboldai_vars intentionally. It
     # is meant for the story and nothing else.
 
@@ -5279,9 +5283,11 @@ def core_generate(text: list, min: int, max: int, found_entries: set, is_core: b
             assert genout.shape[0] == koboldai_vars.numseqs
 
             if(koboldai_vars.lua_koboldbridge.generated_cols and koboldai_vars.generated_tkns != koboldai_vars.lua_koboldbridge.generated_cols):
-                raise RuntimeError("Inconsistency detected between KoboldAI Python and Lua backends")
+                raise RuntimeError(f"Inconsistency detected between KoboldAI Python and Lua backends ({koboldai_vars.generated_tkns} != {koboldai_vars.lua_koboldbridge.generated_cols})")
 
             if(already_generated != koboldai_vars.generated_tkns):
+                print("already_generated: {}".format(already_generated))
+                print("generated_tkns: {}".format(koboldai_vars.generated_tkns))
                 raise RuntimeError("WI scanning error")
 
             for r in range(koboldai_vars.numseqs):
@@ -5294,9 +5300,9 @@ def core_generate(text: list, min: int, max: int, found_entries: set, is_core: b
             for i in range(koboldai_vars.numseqs):
                 txt = utils.decodenewlines(tokenizer.decode(genout[i, -already_generated:]))
                 #winfo, mem, anotetxt, _found_entries = calcsubmitbudgetheader(txt, force_use_txt=True, actions=koboldai_vars.actions)
-                found_entries[i].update(_found_entries)
                 #txt, _, _ = calcsubmitbudget(len(koboldai_vars.actions), winfo, mem, anotetxt, koboldai_vars.actions, submission=txt)
-                txt, _, _, found_entries = koboldai_vars.calc_ai_text(submitted_text=txt)
+                txt, _, _, _found_entries = koboldai_vars.calc_ai_text(submitted_text=txt, send_context=False)
+                found_entries[i].update(_found_entries)
                 encoded.append(torch.tensor(txt, dtype=torch.long, device=genout.device))
 
             max_length = len(max(encoded, key=len))
@@ -7769,18 +7775,7 @@ def final_startup():
             )
 
     # Set the initial RNG seed
-    if(koboldai_vars.seed is not None):
-        if(koboldai_vars.use_colab_tpu):
-            if(koboldai_vars.seed_specified):
-                __import__("tpu_mtj_backend").set_rng_seed(koboldai_vars.seed)
-            else:
-                __import__("tpu_mtj_backend").randomize_rng_seed()
-        else:
-            if(koboldai_vars.seed_specified):
-                __import__("torch").manual_seed(koboldai_vars.seed)
-            else:
-                __import__("torch").seed()
-    koboldai_vars.seed = __import__("tpu_mtj_backend").get_rng_seed() if koboldai_vars.use_colab_tpu else __import__("torch").initial_seed()
+    set_seed()
 
 def send_debug():
     if koboldai_vars.debug:
@@ -8249,8 +8244,30 @@ def UI_2_var_change(data):
         with open(filename, "w") as settings_file:
             settings_file.write(getattr(koboldai_vars, "_{}".format(classname)).to_json())
     
+    if name in ['seed', 'seed_specified']:
+        set_seed()
+    
     return {'id': data['ID'], 'status': "Saved"}
     
+    
+#==================================================================#
+# Set the random seed (or constant seed) for generation
+#==================================================================#
+def set_seed():
+    print("Setting Seed")
+    if(koboldai_vars.seed is not None):
+        if(koboldai_vars.use_colab_tpu):
+            if(koboldai_vars.seed_specified):
+                __import__("tpu_mtj_backend").set_rng_seed(koboldai_vars.seed)
+            else:
+                __import__("tpu_mtj_backend").randomize_rng_seed()
+        else:
+            if(koboldai_vars.seed_specified):
+                __import__("torch").manual_seed(koboldai_vars.seed)
+            else:
+                __import__("torch").seed()
+    koboldai_vars.seed = __import__("tpu_mtj_backend").get_rng_seed() if koboldai_vars.use_colab_tpu else __import__("torch").initial_seed()
+
 #==================================================================#
 # Saving Story
 #==================================================================#
@@ -8843,7 +8860,6 @@ def socket_io_relay(queue, socketio):
             while not queue.empty():
                 data = queue.get()
                 socketio.emit(data[0], data[1], **data[2])
-                #socketio.emit(data[0], data[1], broadcast=True, room="UI_2")
         time.sleep(0.2)
         
 
@@ -9125,8 +9141,8 @@ def UI_2_generate_image(data):
     koboldai_vars.generating_image = True
     eventlet.sleep(0)
     
-    art_guide = 'fantasy illustration, artstation, by jason felix by steve argyle by tyler jacobson by peter mohrbacher, cinematic lighting'
-    
+    art_guide = '{}'.format(koboldai_vars.img_gen_art_guide)
+    print("Generating image using data:{} and art guide:{}".format(data,art_guide))
     #get latest action
     if len(koboldai_vars.actions) > 0:
         action = koboldai_vars.actions[-1]
@@ -9205,7 +9221,9 @@ def UI_2_generate_image(data):
     
 
 @logger.catch
-def text2img_local(prompt, art_guide="", filename="new.png"):
+def text2img_local(prompt,
+                    art_guide="",
+                    filename="new.png"):
     start_time = time.time()
     logger.debug("Generating Image")
     koboldai_vars.aibusy = True
@@ -9224,7 +9242,7 @@ def text2img_local(prompt, art_guide="", filename="new.png"):
         from torch import autocast
         with autocast("cuda"):
             return pipe(prompt, num_inference_steps=num_inference_steps).images[0]
-    image = tpool.execute(get_image, pipe, prompt, num_inference_steps=35)
+    image = tpool.execute(get_image, pipe, prompt, num_inference_steps=koboldai_vars.img_gen_steps)
     buffered = BytesIO()
     image.save(buffered, format="JPEG")
     img_str = base64.b64encode(buffered.getvalue()).decode('ascii')
@@ -9245,7 +9263,7 @@ def text2img_local(prompt, art_guide="", filename="new.png"):
 
 @logger.catch
 def text2img_horde(prompt,
-             art_guide = 'fantasy illustration, artstation, by jason felix by steve argyle by tyler jacobson by peter mohrbacher, cinematic lighting',
+             art_guide = "",
              filename = "story_art.png"):
     logger.debug("Generating Image using Horde")
     koboldai_vars.generating_image = True
@@ -9262,8 +9280,8 @@ def text2img_horde(prompt,
             "nsfw": True,
             "sampler_name": "k_euler_a",
             "karras": True,
-            "cfg_scale": 7.0,
-            "steps":25, 
+            "cfg_scale": koboldai_vars.img_gen_cfg_scale,
+            "steps":koboldai_vars.img_gen_steps, 
             "width":512, 
             "height":512}
     }
@@ -9293,13 +9311,10 @@ def text2img_horde(prompt,
 
 @logger.catch
 def text2img_api(prompt,
-             #art_guide = 'fantasy illustration, artstation, by Hugin Miyama by Taiki Kawakami, cinematic lighting',
-             art_guide = 'fantasy illustration, artstation, by jason felix by steve argyle by tyler jacobson by peter mohrbacher, cinematic lighting',
+             art_guide = "",
              filename = "story_art.png"):
     logger.debug("Generating Image using Local SD-WebUI API")
     koboldai_vars.generating_image = True
-    #Add items that you want the AI to avoid in your image.
-    negprompt = '((((misshapen)))),((((ugly)))), (((duplicate))), ((morbid)), ((mutilated)), out of frame, extra fingers, mutated hands, ((poorly drawn hands)), ((poorly drawn face)), (((mutation))), (((deformed))), ((ugly)), blurry, ((bad anatomy)), (((bad proportions))), ((extra limbs)), cloned face, (((disfigured))), out of frame, ugly, extra limbs, (bad anatomy), gross proportions, (malformed limbs), ((missing arms)), ((missing legs)), (((extra arms))), (((extra legs))), mutated hands, (fused fingers), (too many fingers), (((long neck))), captions, words'
     #The following list are valid properties with their defaults, to add/modify in final_imgen_params. Will refactor configuring values into UI element in future.
       #"enable_hr": false,
       #"denoising_strength": 0,
@@ -9331,22 +9346,19 @@ def text2img_api(prompt,
       #"override_settings": {},
       #"sampler_index": "Euler"
     final_imgen_params = {
-        "n": 1,
+        "prompt": "{}, {}".format(prompt, art_guide),
+        "n_iter": 1,
         "width": 512,
         "height": 512,
-        "steps": 40,
-        "cfg_scale": 10,
-        "negative_prompt": "{}".format(negprompt),
+        "steps": koboldai_vars.img_gen_steps,
+        "cfg_scale": koboldai_vars.img_gen_cfg_scale,
+        "negative_prompt": "{}".format(koboldai_vars.img_gen_negative_prompt),
         "sampler_index": "Euler a"
     }
-
-    final_submit_dict = {
-        "prompt": "{}, {}".format(prompt, art_guide),
-        "params": final_imgen_params,
-    }
     apiaddress = '{}/sdapi/v1/txt2img'.format(koboldai_vars.img_gen_api_url)
-    payload_json = json.dumps(final_submit_dict)
-    logger.debug(final_submit_dict)
+    payload_json = json.dumps(final_imgen_params)
+    logger.debug(final_imgen_params)
+    #print("payload_json contains " + payload_json)
     submit_req = requests.post(url=f'{apiaddress}', data=payload_json).json()
     if submit_req:
         results = submit_req
@@ -9364,7 +9376,6 @@ def text2img_api(prompt,
             prompttext = results.get('info').split("\",")[0].split("\"")[3]
             pnginfo.add_text("parameters","prompttext")
             img.save(final_filename, pnginfo=pnginfo)
-            #img.save(final_filename)
             logger.debug("Saved Image")
             koboldai_vars.generating_image = False
             return(b64img)
@@ -9560,6 +9571,19 @@ def UI_2_test_match():
     koboldai_vars.assign_world_info_to_actions()
     return show_vars()
 
+
+@app.route("/audio")
+@logger.catch
+def UI_2_audio():
+    action_id = int(request.args['id']) if 'id' in request.args else len(koboldai_vars.actions)
+    filename="stories/{}/{}.wav".format(koboldai_vars.story_id, action_id)
+    if not os.path.exists(filename):
+        koboldai_vars.actions.gen_audio(action_id)
+    return send_file(
+             filename, 
+             mimetype="audio/wav")
+             
+             
 #==================================================================#
 # Test
 #==================================================================#
@@ -12500,6 +12524,7 @@ def run():
         koboldai_vars.serverstarted = True
         socketio.run(app, host='0.0.0.0', port=port)
     else:
+        startup()
         if args.unblock:
             if not args.no_ui:
                 try:

@@ -1935,7 +1935,7 @@ body {
 	font-family: "Helvetica Neue",Helvetica,Arial,sans-serif;
 	width: min-context;
 	max-width: 25%;
-	margin-right: -2px;
+	/*margin-right: -3px;*/
 }
 
 .tooltip-context-token {
@@ -3045,4 +3045,12 @@ select {
 .nosuperblur {
 	filter: blur(0px) !important;
 	-webkit-filter: blur(0px) !important;
+}
+
+#seed_card[system_seed_specified=false] {
+	display: none;
+}
+
+#penalty_alpha[system_use_colab_tpu=true] {
+	display: none;
 }

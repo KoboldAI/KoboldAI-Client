@@ -8,6 +8,7 @@ from collections import OrderedDict
 import multiprocessing
 from logger import logger
 import eventlet
+import torch
 
 serverstarted = False
 queue = None
@@ -200,7 +201,7 @@ class koboldai_vars(object):
         # TODO: This might be ineffecient, should we cache some of this?
         return [[token, self.tokenizer.decode(token)] for token in encoded]
     
-    def calc_ai_text(self, submitted_text="", return_text=False):
+    def calc_ai_text(self, submitted_text="", return_text=False, send_context=True):
         #start_time = time.time()
         if self.tokenizer is None:
             if return_text:
@@ -221,7 +222,8 @@ class koboldai_vars(object):
         if self.sp_length > 0:
             context.append({"type": "soft_prompt", "text": f"<{self.sp_length} tokens of Soft Prompt.>", "tokens": [[-1, ""]] * self.sp_length})
         
-        self.worldinfo_v2.reset_used_in_game()
+        if send_context:
+            self.worldinfo_v2.reset_used_in_game()
         
         ######################################### Add memory ########################################################
         memory_text = self.memory
@@ -257,7 +259,8 @@ class koboldai_vars(object):
                 if used_tokens + wi_length <= token_budget:
                     used_tokens+=wi_length
                     used_world_info.append(wi['uid'])
-                    self.worldinfo_v2.set_world_info_used(wi['uid'])
+                    if send_context:
+                        self.worldinfo_v2.set_world_info_used(wi['uid'])
                     wi_text = wi['content']+" " if wi['content'] != "" and wi['content'][-1] not in [" ", "\n"] else wi['content']
                     wi_tokens = self.tokenizer.encode(wi_text)
                     context.append({
@@ -327,7 +330,8 @@ class koboldai_vars(object):
                                     "tokens": [[x, self.tokenizer.decode(x)] for x in wi_tokens],
                                 })
                                 used_tokens += len(wi_tokens)
-                                self.worldinfo_v2.set_world_info_used(wi['uid'])
+                                if send_context:
+                                    self.worldinfo_v2.set_world_info_used(wi['uid'])
                    
             else:
                 self.prompt_in_ai = False
@@ -425,7 +429,8 @@ class koboldai_vars(object):
                                         "tokens": [[x, self.tokenizer.decode(x)] for x in wi_tokens],
                                     })
                                 used_tokens += len(wi_tokens)
-                                self.worldinfo_v2.set_world_info_used(wi['uid'])
+                                if send_context:
+                                    self.worldinfo_v2.set_world_info_used(wi['uid'])
             else:
                 used_all_tokens = True
                 break
@@ -450,13 +455,14 @@ class koboldai_vars(object):
             for item in context:
                 tokens.extend([x[0] for x in item['tokens']])
         
-        self.context = context
+        if send_context:
+            self.context = context
 
         #logger.debug("Calc_AI_text: {}s".format(time.time()-start_time))
         logger.debug("Token Budget: {}. Used Tokens: {}".format(token_budget, used_tokens))
         if return_text:
             return "".join([x['text'] for x in context])
-        return tokens, used_tokens, used_tokens+self.genamt, used_world_info
+        return tokens, used_tokens, used_tokens+self.genamt, set(used_world_info)
 
     def is_model_torch(self) -> bool:
         if self.use_colab_tpu:
@@ -578,6 +584,8 @@ class model_settings(settings):
                          'loaded_layers', 'total_layers', 'total_download_chunks', 'downloaded_chunks', 'presets', 'default_preset', 
                          'koboldai_vars', 'welcome', 'welcome_default']
     settings_name = "model"
+    default_settings = {"rep_pen" : 1.1, "rep_pen_slope": 0.7, "rep_pen_range": 1024, "temp": 0.5, "top_p": 0.9, "top_k": 0.0, "top_a": 0.0, "tfs": 1.0, "typical": 1.0,
+                        "sampler_order": [6,0,1,2,3,4,5]}
     def __init__(self, socketio, koboldai_vars):
         self.socketio = socketio
         self.reset_for_model_load()
@@ -655,10 +663,12 @@ class model_settings(settings):
         
         if not new_variable and (name == 'max_length' or name == 'genamt'):
             ignore = self.koboldai_vars.calc_ai_text()
-        
+            
         #set preset values
         if name == 'selected_preset' and value != "":
             if int(value) in self.uid_presets:
+                for default_key, default_value in self.default_settings:
+                    setattr(self, default_key, default_value)
                 for preset_key, preset_value in self.uid_presets[int(value)].items():
                     if preset_key in self.__dict__:
                         if type(getattr(self, preset_key)) == int:
@@ -799,6 +809,7 @@ class story_settings(settings):
             # {"target": "(r)", "substitution": "®", "enabled": False},
             # {"target": "(tm)", "substitution": "™", "enabled": False},
         ]
+        self.gen_audio = False
         
         # bias experiment
         self.memory_attn_bias = 1
@@ -913,8 +924,10 @@ class story_settings(settings):
             #Change game save state
             if name in ['story_name', 'prompt', 'memory', 'authornote', 'authornotetemplate', 'andepth', 'chatname', 'actionmode', 'dynamicscan', 'notes', 'biases']:
                 self.gamesaved = False
-        
-            if name == 'useprompt':
+            
+            if name == "gen_audio" and value:
+                self.actions.gen_all_audio()
+            elif name == 'useprompt':
                 ignore = self.koboldai_vars.calc_ai_text()
             elif name == 'actions':
                 self.actions.story_settings = self
@@ -992,7 +1005,11 @@ class user_settings(settings):
         self.beep_on_complete = False
         self.img_gen_priority = 1
         self.show_budget = False
-        self.img_gen_api_url = "http://127.0.0.1:7860/"
+        self.img_gen_api_url = "http://127.0.0.1:7860"
+        self.img_gen_art_guide = "fantasy illustration, artstation, by jason felix by steve argyle by tyler jacobson by peter mohrbacher, cinematic lighting"
+        self.img_gen_negative_prompt = "lowres, bad anatomy, bad hands, text, error, missing fingers, extra digit, fewer digits, cropped, worst quality, low quality, normal quality, jpeg artifacts, signature, watermark, username, blurry, artist name"
+        self.img_gen_steps = 30
+        self.img_gen_cfg_scale = 7.0
         self.cluster_requested_models = [] # The models which we allow to generate during cluster mode
         
         
@@ -1008,11 +1025,11 @@ class system_settings(settings):
     local_only_variables = ['socketio', 'lua_state', 'lua_logname', 'lua_koboldbridge', 'lua_kobold', 
                             'lua_koboldcore', 'regex_sl', 'acregex_ai', 'acregex_ui', 'comregex_ai', 
                             'comregex_ui', 'sp', '_horde_pid', 'inference_config', 'image_pipeline', 
-                            'summarizer', 'summary_tokenizer']
+                            'summarizer', 'summary_tokenizer', 'tts_model']
     no_save_variables = ['socketio', 'lua_state', 'lua_logname', 'lua_koboldbridge', 'lua_kobold', 
                          'lua_koboldcore', 'sp', 'sp_length', '_horde_pid', 'horde_share', 'aibusy', 
                          'serverstarted', 'inference_config', 'image_pipeline', 'summarizer', 
-                         'summary_tokenizer', 'use_colab_tpu', 'noai', 'disable_set_aibusy', 'cloudflare_link']
+                         'summary_tokenizer', 'use_colab_tpu', 'noai', 'disable_set_aibusy', 'cloudflare_link', 'tts_model']
     settings_name = "system"
     def __init__(self, socketio, koboldai_var):
         self.socketio = socketio
@@ -1166,6 +1183,9 @@ class KoboldStoryRegister(object):
                           #Options being a list of dict with keys of "text", "Pinned", "Previous Selection", "Edited", "Probabilities"
         self.action_count = -1
         self.story_settings = story_settings
+        self.tts_model = None
+        self.make_audio_thread = None
+        self.make_audio_queue = multiprocessing.Queue()
         for item in sequence:
             self.append(item)
     
@@ -1249,6 +1269,9 @@ class KoboldStoryRegister(object):
         if self.koboldai_vars.remove_double_space:
             while "  " in text:
                 text = text.replace("  ", " ")
+            if i > 0:
+                if self.actions[i-1]['Selected Text'][-1] == " " and text[0] == " ":
+                    text = text[1:]
         if i in self.actions:
             old = self.actions[i]
             old_text = self.actions[i]["Selected Text"]
@@ -1272,6 +1295,7 @@ class KoboldStoryRegister(object):
         logger.debug("Calcing AI Text from Action __setitem__")
         ignore = self.koboldai_vars.calc_ai_text()
         self.set_game_saved()
+        self.gen_audio(i)
     
     def __len__(self):
         return self.action_count+1 if self.action_count >=0 else 0
@@ -1318,11 +1342,15 @@ class KoboldStoryRegister(object):
         logger.debug("Calcing AI Text from Action load from json")
         ignore = self.koboldai_vars.calc_ai_text()
         self.set_game_saved()
+        self.gen_all_audio()
         
     def append(self, text, action_id_offset=0, recalc=True):
         if self.koboldai_vars.remove_double_space:
             while "  " in text:
                 text = text.replace("  ", " ")
+            if action_id_offset > 0:
+                if self.actions[action_id_offset-1]['Selected Text'][-1] == " " and text[0] == " ":
+                    text = text[1:]
         self.clear_unused_options()
         self.action_count+=1
         action_id = self.action_count + action_id_offset
@@ -1356,6 +1384,7 @@ class KoboldStoryRegister(object):
         if recalc:
             logger.debug("Calcing AI Text from Action Append")
             ignore = self.koboldai_vars.calc_ai_text()
+            self.gen_audio(action_id)
     
     def append_options(self, option_list):
         if self.action_count+1 in self.actions:
@@ -1472,6 +1501,7 @@ class KoboldStoryRegister(object):
                 self.set_game_saved()
                 logger.debug("Calcing AI Text from Action Use Option")
                 ignore = self.koboldai_vars.calc_ai_text()
+                self.gen_audio(action_step)
     
     def delete_option(self, option_number, action_step=None):
         if action_step is None:
@@ -1659,6 +1689,50 @@ class KoboldStoryRegister(object):
         #OK, action_text_split now contains a list of [sentence including trailing space if needed, [action IDs that sentence includes]]
         #logger.debug("to_sentences: {}s".format(time.time()-start_time))
         return action_text_split
+    
+    def gen_audio(self, action_id=None, overwrite=True):
+        if self.story_settings.gen_audio and self.koboldai_vars.experimental_features:
+            if action_id is None:
+                action_id = self.action_count
+            
+            logger.info("Generating audio for action {}".format(action_id))
+
+            if self.tts_model is None:
+                language = 'en'
+                model_id = 'v3_en'
+                self.tts_model, example_text = torch.hub.load(repo_or_dir='snakers4/silero-models',
+                                                 model='silero_tts',
+                                                 language=language,
+                                                 speaker=model_id)
+                #self.tts_model.to(torch.device(0))  # gpu or cpu
+                self.tts_model.to(torch.device("cpu"))  # gpu or cpu
+            
+            filename="stories/{}/{}.wav".format(self.story_settings.story_id, action_id)
+            if not os.path.exists("stories/{}".format(self.story_settings.story_id)):
+                os.mkdir("stories/{}".format(self.story_settings.story_id))
+                
+            if overwrite or not os.path.exists(filename):
+                self.make_audio_queue.put((self.actions[action_id]['Selected Text'], filename))
+                if self.make_audio_thread is None or not self.make_audio_thread.is_alive():
+                    self.make_audio_thread = threading.Thread(target=self.create_wave, args=(self.tts_model, self.make_audio_queue))
+                    self.make_audio_thread.start()
+                
+    def create_wave(self, model, make_audio_queue):
+        sample_rate = 48000
+        speaker = 'en_5'
+        while not make_audio_queue.empty():
+            (text, filename) = make_audio_queue.get()
+            self.tts_model.save_wav(text=text,
+                                    speaker=speaker,
+                                    sample_rate=sample_rate,
+                                    audio_path=filename)
+        
+    def gen_all_audio(self, overwrite=False):
+        if self.story_settings.gen_audio and self.koboldai_vars.experimental_features:
+            for i in reversed(list(self.actions.keys())):
+                self.gen_audio(i, overwrite=False)
+        else:
+            print("{} and {}".format(self.story_settings.gen_audio, self.koboldai_vars.experimental_features))
     
     def __setattr__(self, name, value):
         new_variable = name not in self.__dict__
@@ -1977,7 +2051,7 @@ class KoboldWorldInfo(object):
             self.add_item(item['title'] if 'title' in item else item['key'][0], 
                           item['key'] if 'key' in item else [], 
                           item['keysecondary'] if 'keysecondary' in item else [], 
-                          folder, 
+                          folder if folder is not None else item['folder'] if 'folder' in item else 'root', 
                           item['constant'] if 'constant' in item else False, 
                           item['manual_text'] if 'manual_text' in item else item['content'], 
                           item['comment'] if 'comment' in item else '',
@@ -1985,7 +2059,10 @@ class KoboldWorldInfo(object):
                           use_wpp=item['use_wpp'] if 'use_wpp' in item else False, 
                           wpp=item['wpp'] if 'wpp' in item else {'name': "", 'type': "", 'format': "W++", 'attributes': {}},
                           recalc=False, sync=False)
-            logger.debug("Load World Info {} took {}s".format(uid, time.time()-start_time))
+        if folder is None:
+            #self.world_info = {int(x): data['entries'][x] for x in data['entries']}
+            self.world_info_folder = data['folders']
+        logger.debug("Load World Info {} took {}s".format(uid, time.time()-start_time))
         try:
             start_time = time.time()
             self.sync_world_info_to_old_format()

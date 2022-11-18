@@ -399,6 +399,7 @@ function process_actions_data(data) {
 	
 	hide_show_prompt();
 	//console.log("Took "+((Date.now()-start_time)/1000)+"s to process");
+	
 }
 
 function parseChatMessages(text) {
@@ -2533,12 +2534,18 @@ function process_log_message(full_data) {
 //--------------------------------------------UI to Server Functions----------------------------------
 async function download_story_to_json() {
 	//document.getElementById('download_iframe').src = 'json';
-	try {
-		let r = await fetch("json");
-		let j = await r.json();
-		downloadString(JSON.stringify(j), j['story_name']+".json")
-	}
-	catch(err) {
+	downloaded = false;
+	if (socket.connected) {
+		try {
+			let r = await fetch("json");
+			let j = await r.json();
+			downloadString(JSON.stringify(j), j['story_name']+".json")
+			downloaded = true;
+		}
+		catch(err) {
+			downloaded = false;
+		}
+	} if (downloaded == false) {
 		//first we're going to find all the var_sync_story_ classes used in the document.
 		let allClasses = [];
 		const allElements = document.querySelectorAll('*');
