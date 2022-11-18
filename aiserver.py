@@ -97,8 +97,9 @@ from tqdm.auto import tqdm
 old_init = tqdm.__init__
 def new_init(self, *args, **kwargs):
     old_init(self, *args, **kwargs)
-    if(self.ncols == 0 and kwargs.get("ncols") != 0):
-        self.ncols = 99
+    if 'ncols' in kwargs:
+        if(self.ncols == 0 and kwargs.get("ncols") != 0):
+            self.ncols = 99
 tqdm.__init__ = new_init
 
 # Fix some issues with the OPT tokenizer
