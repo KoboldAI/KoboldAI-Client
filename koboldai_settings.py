@@ -1985,9 +1985,6 @@ class KoboldWorldInfo(object):
                    }
     
     def load_json(self, data, folder=None):
-        if folder is None:
-            self.world_info = {int(x): data['entries'][x] for x in data['entries']}
-            self.world_info_folder = data['folders']
         
         #Add the item
         for uid, item in data['entries'].items():
@@ -1995,14 +1992,17 @@ class KoboldWorldInfo(object):
             self.add_item(item['title'] if 'title' in item else item['key'][0], 
                           item['key'] if 'key' in item else [], 
                           item['keysecondary'] if 'keysecondary' in item else [], 
-                          folder, 
+                          folder if folder is not None else item['folder'] if 'folder' in item else 'root', 
                           item['constant'] if 'constant' in item else False, 
                           item['manual_text'] if 'manual_text' in item else item['content'], 
                           item['comment'] if 'comment' in item else '',
                           use_wpp=item['use_wpp'] if 'use_wpp' in item else False, 
                           wpp=item['wpp'] if 'wpp' in item else {'name': "", 'type': "", 'format': "W++", 'attributes': {}},
                           recalc=False, sync=False)
-            logger.debug("Load World Info {} took {}s".format(uid, time.time()-start_time))
+        if folder is None:
+            #self.world_info = {int(x): data['entries'][x] for x in data['entries']}
+            self.world_info_folder = data['folders']
+        logger.debug("Load World Info {} took {}s".format(uid, time.time()-start_time))
         try:
             start_time = time.time()
             self.sync_world_info_to_old_format()
