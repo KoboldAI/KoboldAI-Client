@@ -1261,6 +1261,9 @@ class KoboldStoryRegister(object):
         if self.koboldai_vars.remove_double_space:
             while "  " in text:
                 text = text.replace("  ", " ")
+            if i > 0:
+                if self.actions[i-1]['Selected Text'][-1] == " " and text[0] == " ":
+                    text = text[1:]
         if i in self.actions:
             old = self.actions[i]
             old_text = self.actions[i]["Selected Text"]
@@ -1334,6 +1337,9 @@ class KoboldStoryRegister(object):
         if self.koboldai_vars.remove_double_space:
             while "  " in text:
                 text = text.replace("  ", " ")
+            if action_id_offset > 0:
+                if self.actions[action_id_offset-1]['Selected Text'][-1] == " " and text[0] == " ":
+                    text = text[1:]
         self.clear_unused_options()
         self.action_count+=1
         action_id = self.action_count + action_id_offset
