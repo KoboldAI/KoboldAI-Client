@@ -708,7 +708,6 @@ gensettingstf = [
     "children": [
 		{"text": "Legacy", "value": 0},
 		{"text": "Messages", "value": 1},
-		{"text": "Bubbles", "value": 2}
 	],
  	},
     {

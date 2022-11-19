@@ -426,7 +426,7 @@ function do_story_text_updates(action) {
 	let item = null;
 
 	if (chat.useV2) {
-		console.log(`[story_text_update] ${action.id}`)
+		//console.log(`[story_text_update] ${action.id}`)
 		if (action.id === chat.lastEdit) {
 			// Swallow update if we just caused it
 			chat.lastEdit = null;
@@ -6019,6 +6019,7 @@ function addMessage(author, content, actionId, afterMsgEl=null, time=null) {
 		computeChatGametext(actionId);
 	});
 
+	message.scrollIntoView();
 	return message;
 }
 
@@ -6083,9 +6084,8 @@ function updateChatStyle() {
 	const storyArea = document.getElementById("Selected Text");
 
 	if (chat.useV2) {
-		// Already bubbles, do nothing
+		// Already v2, do nothing
 		if (document.getElementsByClassName("chat-message").length) {
-			console.info("Already bubbles, do nothing")
 			return;
 		}
 
