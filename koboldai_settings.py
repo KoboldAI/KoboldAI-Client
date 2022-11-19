@@ -186,6 +186,9 @@ class koboldai_vars(object):
     def reset_model(self):
         self._model_settings.reset_for_model_load()
     
+    def is_chat_v2(self):
+        return self.chat_style > 0 and self.chatmode
+    
     def get_token_representation(self, text: Union[str, list, None]) -> list:
         if not self.tokenizer or not text:
             return []
@@ -272,6 +275,10 @@ class koboldai_vars(object):
         
         ######################################### Get Action Text by Sentence ########################################################
         action_text_split = self.actions.to_sentences(submitted_text=submitted_text)
+
+        # Always add newlines on chat v2
+        if self.is_chat_v2():
+            action_text_split[-1][0] = action_text_split[-1][0].strip() + "\n"
         
         
         ######################################### Prompt ########################################################
@@ -807,6 +814,7 @@ class story_settings(settings):
         # bias experiment
         self.memory_attn_bias = 1
         self.an_attn_bias = 1
+        self.chat_style = 0
         
         
         ################### must be at bottom #########################
@@ -1280,7 +1288,7 @@ class KoboldStoryRegister(object):
             old_text = None
             old_length = None
             old = None
-            self.actions[i] = {"Selected Text": text, "Probabilities": [], "Options": []}
+            self.actions[i] = {"Selected Text": text, "Probabilities": [], "Options": [], "Time": int(time.time())}
             
         self.story_settings.assign_world_info_to_actions(action_id=i, no_transmit=True)
         process_variable_changes(self.socketio, "story", 'actions', {"id": i, 'action':  self.actions[i]}, old)
@@ -1316,6 +1324,9 @@ class KoboldStoryRegister(object):
         temp = {}
         data_to_send = []
         for item in json_data['actions']:
+            if "Time" not in json_data["actions"][item]:
+                json_data["actions"][item]["Time"] = int(time.time())
+
             temp[int(item)] = json_data['actions'][item]
             if int(item) >= self.action_count-100: #sending last 100 items to UI
                 data_to_send.append({"id": item, 'action':  temp[int(item)]})
@@ -1347,6 +1358,7 @@ class KoboldStoryRegister(object):
             if self.actions[action_id]["Selected Text"] != text:
                 self.actions[action_id]["Selected Text"] = text
                 self.actions[action_id]["Probabilities"] = []
+                self.actions[action_id]["Time"] = self.actions[action_id].get("Time", int(time.time()))
             selected_text_length = 0
             self.actions[action_id]["Selected Text Length"] = selected_text_length
             for item in self.actions[action_id]["Options"]:
@@ -1357,8 +1369,13 @@ class KoboldStoryRegister(object):
         else:
             selected_text_length = 0
             
-            self.actions[action_id] = {"Selected Text": text, "Selected Text Length": selected_text_length, 
-                                               "Options": [], "Probabilities": []}
+            self.actions[action_id] = {
+                "Selected Text": text,
+                "Selected Text Length": selected_text_length,
+                "Options": [],
+                "Probabilities": [],
+                "Time": int(time.time()),
+            }
             
         if self.story_settings is not None:
             self.story_settings.assign_world_info_to_actions(action_id=action_id, no_transmit=True)
@@ -1394,14 +1411,23 @@ class KoboldStoryRegister(object):
                     self.actions[self.action_count+1]['Options'].append({"text": option, "Pinned": False, "Previous Selection": False, "Edited": False, "Probabilities": []})
         else:
             old_options = None
-            self.actions[self.action_count+1] = {"Selected Text": "", "Selected Text Length": 0, "Options": [{"text": x, "Pinned": False, "Previous Selection": False, "Edited": False, "Probabilities": []} for x in option_list]}
+            self.actions[self.action_count+1] = {
+                "Selected Text": "",
+                "Selected Text Length": 0,
+                "Options": [{"text": x, "Pinned": False, "Previous Selection": False, "Edited": False, "Probabilities": []} for x in option_list],
+                "Time": int(time.time()),
+            }
         process_variable_changes(self.socketio, "story", 'actions', {"id": self.action_count+1, 'action':  self.actions[self.action_count+1]}, None)
         self.set_game_saved()
             
     def set_options(self, option_list, action_id):
         if action_id not in self.actions:
             old_options = None
-            self.actions[action_id] = {"Selected Text": "", "Options": option_list}
+            self.actions[action_id] = {
+                "Selected Text": "",
+                "Options": option_list,
+                "Time": int(time.time()),
+            }
         else:
             old_options = self.actions[action_id]["Options"]
             self.actions[action_id]["Options"] = []
@@ -1555,7 +1581,7 @@ class KoboldStoryRegister(object):
                     if not found:
                         self.actions[self.action_count+1]['Options'].append({"text": text_list[i], "Pinned": False, "Previous Selection": False, "Edited": False, "Probabilities": [], "stream_id": i})
             else:
-                self.actions[self.action_count+1] = {"Selected Text": "", "Selected Text Length": 0, "Options": []}
+                self.actions[self.action_count+1] = {"Selected Text": "", "Selected Text Length": 0, "Options": [], "Time": int(time.time())}
                 for i in range(len(text_list)):
                     self.actions[self.action_count+1]['Options'].append({"text": text_list[i], "Pinned": False, "Previous Selection": False, "Edited": False, "Probabilities": [], "stream_id": i})
         
@@ -1580,7 +1606,7 @@ class KoboldStoryRegister(object):
                         selected_text_length = len(self.koboldai_vars.tokenizer.encode(text_list[0]))
                     else:
                         selected_text_length = 0
-                    self.actions[self.action_count+1] = {"Selected Text": text_list[0], "Selected Text Length": selected_text_length, "Options": []}
+                    self.actions[self.action_count+1] = {"Selected Text": text_list[0], "Selected Text Length": selected_text_length, "Options": [], "Time": int(time.time())}
                 
                 
                 
@@ -1723,6 +1749,7 @@ class KoboldWorldInfo(object):
         self.world_info = {}
         self.world_info_folder = OrderedDict()
         self.world_info_folder['root'] = []
+        self.image_store = {}
         self.story_settings = story_settings
         
     def reset(self):
@@ -1798,8 +1825,9 @@ class KoboldWorldInfo(object):
         if self.socketio is not None:
             self.socketio.emit("world_info_folder", {x: self.world_info_folder[x] for x in self.world_info_folder}, broadcast=True, room="UI_2")
                 
-    def add_item(self, title, key, keysecondary, folder, constant, manual_text, 
-                 comment, use_wpp=False, wpp={'name': "", 'type': "", 'format': "W++", 'attributes': {}}, 
+    def add_item(self, title, key, keysecondary, folder, constant, manual_text,
+                 comment, wi_type="wi", use_wpp=False,
+                 wpp={'name': "", 'type': "", 'format': "W++", 'attributes': {}},
                  v1_uid=None, recalc=True, sync=True, send_to_ui=True):
         if len(self.world_info) == 0:
             uid = 0
@@ -1844,6 +1872,7 @@ class KoboldWorldInfo(object):
                                     'manual_text': manual_text,
                                     "content": content,
                                     "comment": comment,
+                                    "type": wi_type,
                                     "token_length": token_length,
                                     "selective": len(keysecondary) > 0,
                                     "used_in_game": constant,
@@ -1873,7 +1902,7 @@ class KoboldWorldInfo(object):
             ignore = self.koboldai_vars.calc_ai_text()
         return uid
         
-    def edit_item(self, uid, title, key, keysecondary, folder, constant, manual_text, comment, use_wpp=False, before=None, wpp={'name': "", 'type': "", 'format': "W++", 'attributes': {}}):
+    def edit_item(self, uid, title, key, keysecondary, folder, constant, manual_text, comment, wi_type, use_wpp=False, before=None, wpp={'name': "", 'type': "", 'format': "W++", 'attributes': {}}):
         logger.debug("Editing World Info {}: {}".format(uid, title))
         old_folder = self.world_info[uid]['folder']
         #move the world info entry if the folder changed or if there is a new order requested
@@ -1908,6 +1937,7 @@ class KoboldWorldInfo(object):
                                 'manual_text': manual_text,
                                 "content": content,
                                 "comment": comment,
+                                "type": wi_type,
                                 "token_length": token_length,
                                 "selective": len(keysecondary) > 0,
                                 "used_in_game": constant,
@@ -1927,9 +1957,14 @@ class KoboldWorldInfo(object):
         
     def delete(self, uid):
         del self.world_info[uid]
+
+        if uid in self.image_store:
+            del self.image_store[uid]
+
         for folder in self.world_info_folder:
             if uid in self.world_info_folder[folder]:
                 self.world_info_folder[folder].remove(uid)
+        
         
         self.story_settings.gamesaved = False
         self.sync_world_info_to_old_format()
@@ -1982,19 +2017,37 @@ class KoboldWorldInfo(object):
         if folder is None:
             return {
                     "folders": {x: self.world_info_folder[x] for x in self.world_info_folder},
-                    "entries": self.world_info
+                    "entries": self.world_info,
+                    "images": self.image_store
                    }
         else:
             return {
                     "folders": {x: self.world_info_folder[x] for x in self.world_info_folder if x == folder},
-                    "entries": {x: self.world_info[x] for x in self.world_info if self.world_info[x]['folder'] == folder}
+                    "entries": {x: self.world_info[x] for x in self.world_info if self.world_info[x]['folder'] == folder},
+                    "images": self.image_store
                    }
     
+    def upgrade_entry(self, wi_entry: dict) -> dict:
+        # If we do not have a type, or it is incorrect, set to WI.
+        if wi_entry.get("type") not in ["constant", "chatcharacter", "wi"]:
+            wi_entry["type"] = "wi"
+
+        return wi_entry
+    
     def load_json(self, data, folder=None):
+        if "images" in data:
+            self.image_store = data["images"]
+        
+        data["entries"] = {k: self.upgrade_entry(v) for k,v in data["entries"].items()}
+
+        if folder is None:
+            self.world_info = {int(x): data['entries'][x] for x in data['entries']}
+            self.world_info_folder = data['folders']
         
         #Add the item
         for uid, item in data['entries'].items():
             start_time = time.time()
+
             self.add_item(item['title'] if 'title' in item else item['key'][0], 
                           item['key'] if 'key' in item else [], 
                           item['keysecondary'] if 'keysecondary' in item else [], 
@@ -2002,6 +2055,7 @@ class KoboldWorldInfo(object):
                           item['constant'] if 'constant' in item else False, 
                           item['manual_text'] if 'manual_text' in item else item['content'], 
                           item['comment'] if 'comment' in item else '',
+                          wi_type=item["type"],
                           use_wpp=item['use_wpp'] if 'use_wpp' in item else False, 
                           wpp=item['wpp'] if 'wpp' in item else {'name': "", 'type': "", 'format': "W++", 'attributes': {}},
                           recalc=False, sync=False)

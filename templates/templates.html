@@ -1,21 +1,35 @@
 <!---------------- World Info Card ---------------------->
 <div draggable="true" class="world_info_card" id="world_info_">
 	<div class="world_info_title_area">
-		<h4 draggable="true" ondragstart="event.preventDefault();event.stopPropagation();" id="world_info_title_"
-    		class="world_info_title" onfocus="this.parentElement.parentElement.setAttribute('draggable', 'false');this.setAttribute('draggable', 'false');"></h4>
+		<div>
+			<div class="world_info_image_container" tooltip="Upload a picture for this World Info entry">
+				<span class="placeholder material-icons-outlined">add</span>
+				<img class="world_info_image">
+			</div>
+			<h4 draggable="true" ondragstart="event.preventDefault();event.stopPropagation();" id="world_info_title_"
+				class="world_info_title" onfocus="this.parentElement.parentElement.setAttribute('draggable', 'false');this.setAttribute('draggable', 'false');"></h4>
+		</div>
 		<span id="world_info_delete_" class="world_info_delete">X</span>
 	</div>
-	<div  class="world_info_tag_area world_info_always_include" id="world_info_toggle_area_">
-		Always Include
+
+	<div class="world_info_upper_container world_info_tag_area">
+		<div class="world_info_wpp_toggle_area" id="world_info_wpp_toggle_area_">
+			Use W++
+		</div>
+
+		<select class="world_info_type settings_select">
+			<option>World Info</option>
+			<option>Memory</option>
+			<option>Chat Character</option>
+		</select>
 	</div>
+
+
 	<div id="world_info_tags_" class="world_info_tag_area world_info_tag_primary_area">
 		<div>Requires one of:</div>
 	</div>
 	<div id="world_info_secondtags_" class="world_info_tag_area world_info_tag_secondary_area">
 		<div>And (if present):</div>
-	</div>
-	<div class="world_info_tag_area world_info_wpp_toggle_area" id="world_info_wpp_toggle_area_">
-		Use W++
 	</div>
 	<div class="world_info_tag_area hidden world_info_wpp_area" id="world_info_wpp_area_">
 		<!--this part is very sensitive to location. Javascript uses parents to find the above tag for each of the inputs, so don't add stuff without messing with JS-->

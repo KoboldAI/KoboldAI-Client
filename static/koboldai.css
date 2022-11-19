@@ -1040,23 +1040,41 @@ td.server_vars {
 }
 	
 .world_info_title_area {
-	display: grid;
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+
 	margin-left: 2px;
-	grid-template-areas: "title delete";
-	grid-template-columns: auto 20px;
 	user-select: text;
 }
 
+.world_info_title_area > div {
+	display: flex;
+	align-items: center;
+}
+
+.world_info_image_container {
+	min-width: 32px;
+	min-height: 32px;
+
+	display: flex;
+	justify-content: center;
+	align-items: center;
+}
+
+.world_info_image {
+	max-width: 70px;
+	max-height: 70px;
+}
+
 .world_info_title {
-	grid-area: title;
 	user-select: text;
 	-moz-user-select:text;
 }
 
 .world_info_delete {
-	grid-area: delete;
 	cursor: pointer;
-	margin: 2px 0px 0px 4px;
+	margin-right: 9px;
 }
 	
 .world_info_tag_area {
@@ -1067,6 +1085,19 @@ td.server_vars {
 	margin: 5px 2px 5px 2px;
 	border-radius: var(--radius_wi_card);
 	filter: brightness(90%);
+}
+
+.world_info_always_include {
+	display: inline-block;
+}
+
+.world_info_upper_container {
+	display: flex;
+	justify-content: space-between;
+}
+
+.world_info_type {
+	margin: 0px;
 }
 
 .world_info_text {
@@ -2611,6 +2642,62 @@ body {
 	top: 2px;
 }
 
+/* Yahoo it's Chatv2 */
+.chat-message {
+	display: flex;
+	margin-bottom: 16px;
+}
+
+.chat-left-container {
+	position: relative;
+}
+
+.chat-pfp {
+	height: 40px;
+	width: 40px;
+	border-radius: 120px;
+
+	margin: 0px 16px 0px 16px;
+}
+
+.chat-add {
+	position: absolute;
+	/* Offsets precisely calculated using the "guess until it looks right" method */
+	left: 1px;
+	top: 35px;
+
+	/* Opacity instead of display or visibility due to some weird stuff going on with :hover */
+	opacity: 0;
+}
+
+.chat-delete {
+	position: absolute;
+	left: 48px;
+	top: 35px;
+	opacity: 0;
+}
+
+.chat-left-container:hover > .chat-button {
+	opacity: 0.7;
+	cursor: pointer;
+}
+
+.chat-header { }
+
+.chat-author {
+	outline: none;
+	padding-right: 12px;
+	font-weight: bold;
+}
+
+.chat-timestamp {
+	opacity: 0.7;
+}
+
+.chat-text {
+	outline: none;
+}
+
 /*---------------------------------- Global ------------------------------------------------*/
 .hidden {
 	display: none;
@@ -2773,6 +2860,12 @@ body.NotConnected {
 
 .cursor {
 	cursor: pointer;
+}
+
+.settting_container[system_experimental_features="false"] {
+	/* If any setting has the class var_sync_alt_system_experimental_features
+	it is considered to be experimental */
+	display: none;
 }
 
 @font-face {

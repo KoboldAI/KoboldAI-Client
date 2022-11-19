@@ -693,6 +693,24 @@ gensettingstf = [
     "name": "privacy_password"
  	},
     {
+    "UI_V2_Only": True,
+ 	"uitype": "dropdown",
+	"unit": "text",
+	"label": "Chat Style",
+	"id": "chat_style",
+	"default": 0,
+    "tooltip": "How chat messages are shown",
+    "menu_path": "Interface",
+    "sub_path": "UI",
+    "classname": "story",
+    "name": "chat_style",
+	"extra_classes": "var_sync_alt_system_experimental_features",
+    "children": [
+		{"text": "Legacy", "value": 0},
+		{"text": "Messages", "value": 1},
+	],
+ 	},
+    {
 	"uitype": "toggle",
 	"unit": "bool",
 	"label": "Full Determinism",
