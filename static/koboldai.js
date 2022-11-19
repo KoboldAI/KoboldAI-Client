@@ -499,7 +499,7 @@ function do_prompt(data) {
 		$(".chat-message").remove();
 
 		for (const message of parseChatMessages(full_text)) {
-			addMessage(message.author, message.text, -1, null);
+			addMessage(message.author, message.text, -1, null, null);
 		}
 	} else {
 		// Normal
@@ -5956,7 +5956,8 @@ $el("#aidgpromptnum").addEventListener("keydown", function(event) {
 });
 
 /* -- Shiny New Chat -- */
-function addMessage(author, content, actionId, afterMsgEl=null) {
+function addMessage(author, content, actionId, afterMsgEl=null, time=null) {
+	if (!time) time = Number(new Date());
 	const gameScreen = $el("#gamescreen");
 
 	let insertionLocation = afterMsgEl ? {after: afterMsgEl} : null
@@ -5985,9 +5986,8 @@ function addMessage(author, content, actionId, afterMsgEl=null) {
 
 	const messageAuthor = $e("span", messageHeader, {classes: ["chat-author"], innerText: author, contenteditable: true, spellcheck: false, "data-placeholder": "Author"});
 
-	const date = new Date();
 	// TODOB4PUSH: Better formatting
-	const messageTime = $e("span", messageHeader, {classes: ["chat-timestamp", "noselect"], innerText: `today at ${date.toLocaleTimeString()}`});
+	const messageTime = $e("span", messageHeader, {classes: ["chat-timestamp", "noselect"], innerText: formatChatDate(time)});
 
 	// TODO: In-house less intrusive spellcheck?
 	const messageText = $e("span", textContainer, {classes: ["chat-text"], innerText: content, contenteditable: true, spellcheck: false, "data-placeholder": "Message"});
@@ -6016,6 +6016,25 @@ function addMessage(author, content, actionId, afterMsgEl=null) {
 	});
 
 	return message;
+}
+
+function formatChatDate(unixTimestamp) {
+	let date = new Date(unixTimestamp);
+	let now = new Date();
+
+	// TODO: Support 24 hour time
+	let timeString = date.toLocaleString("en-US").replace(/:[0-9]+\s/, " ").split(", ").splice(-1)[0];
+	let dateString = date.toLocaleString("en-US").split(", ")[0];
+
+	let hourDelta = (now.getTime() - date.getTime()) / 1000 / 60 / 60;
+
+	if (hourDelta >= 48) {
+		return dateString;
+	} else if (hourDelta >= 24) {
+		return `Yesterday at ${timeString}`;
+	} else {
+		return `Today at ${timeString}`;
+	}
 }
 
 function addInitChatMessage() {
@@ -6076,7 +6095,8 @@ function updateChatStyle() {
 
 		for (const [chunkId, chunk] of Object.entries(actions_data)) {
 			for (const message of parseChatMessages(chunk["Selected Text"])) {
-				addMessage(message.author, message.text, chunkId, null);
+				// JS Time uses milliseconds, thus the * 1000
+				addMessage(message.author, message.text, chunkId, null, chunk["Time"] * 1000);
 				addedMessages++;
 			}
 		}
