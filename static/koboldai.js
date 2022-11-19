@@ -6093,7 +6093,7 @@ function updateChatStyle() {
 
 		let addedMessages = 0;
 
-		for (const [chunkId, chunk] of Object.entries(actions_data)) {
+		for (const [chunkId, chunk] of Object.entries(actions_data).sort((a, b) => a[0].localeCompare(b[0]))) {
 			for (const message of parseChatMessages(chunk["Selected Text"])) {
 				// JS Time uses milliseconds, thus the * 1000
 				addMessage(message.author, message.text, chunkId, null, chunk["Time"] * 1000);
