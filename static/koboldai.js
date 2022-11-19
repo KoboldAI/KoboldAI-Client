@@ -6006,6 +6006,10 @@ function addMessage(author, content, actionId, afterMsgEl=null, time=null) {
 		});
 	}
 
+	messageAuthor.addEventListener("keyup", function() {
+		profilePicture.src = getChatPfp(messageAuthor.innerText);
+	})
+
 	addAfterButton.addEventListener("click", function() {
 		addMessage(null, null, actionId, message);
 	});
