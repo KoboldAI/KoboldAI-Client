@@ -3868,7 +3868,9 @@ function dragend(e) {
     const id = drag_id;
     const draggable = document.getElementById(id);
 	// display the draggable element
-	draggable.classList.remove('hidden');
+	if (draggable) {
+		draggable.classList.remove('hidden');
+	}
 	e.preventDefault();
 }
 
