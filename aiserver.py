@@ -6089,12 +6089,12 @@ def generate(txt, minimum, maximum, found_entries=None):
 #  Deal with a single return sequence from generate()
 #==================================================================#
 def genresult(genout, flash=True, ignore_formatting=False):
-    if not koboldai_vars.quiet:
-        logger.generation(genout.encode("unicode_escape").decode("utf-8"))
-    
     # Format output before continuing
     if not ignore_formatting:
         genout = applyoutputformatting(genout)
+
+    if not koboldai_vars.quiet:
+        logger.generation(genout.encode("unicode_escape").decode("utf-8"))
 
     koboldai_vars.lua_koboldbridge.feedback = genout
 

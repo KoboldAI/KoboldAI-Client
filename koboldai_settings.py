@@ -2045,8 +2045,9 @@ class KoboldWorldInfo(object):
             self.world_info_folder = data['folders']
         
         #Add the item
+        start_time = time.time()
         for uid, item in data['entries'].items():
-            start_time = time.time()
+            
 
             self.add_item(item['title'] if 'title' in item else item['key'][0], 
                           item['key'] if 'key' in item else [], 
@@ -2062,7 +2063,7 @@ class KoboldWorldInfo(object):
         if folder is None:
             #self.world_info = {int(x): data['entries'][x] for x in data['entries']}
             self.world_info_folder = data['folders']
-        logger.debug("Load World Info {} took {}s".format(uid, time.time()-start_time))
+        logger.debug("Load World Info took {}s".format(time.time()-start_time))
         try:
             start_time = time.time()
             self.sync_world_info_to_old_format()

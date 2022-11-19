@@ -3455,7 +3455,7 @@ function update_context(data) {
 			let tokenEl = $e("span", el, {
 				classes: ["context-token"],
 				"tooltip": tokenId === -1 ? "Soft" : tokenId,
-				innerText: token,
+				innerText: token.replaceAll(String.fromCharCode(0), '<span class="material-icons-outlined context-symbol">dangerous</span>'),
 				"style.backgroundColor": tokenColor,
 			});
 
