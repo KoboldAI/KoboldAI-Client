@@ -208,6 +208,7 @@ class koboldai_vars(object):
                 return ""
             return [], 0, 0+self.genamt, []
             
+            
         if self.alt_gen:
             method = 2
         else:
@@ -275,6 +276,11 @@ class koboldai_vars(object):
         
         ######################################### Get Action Text by Sentence ########################################################
         action_text_split = self.actions.to_sentences(submitted_text=submitted_text)
+
+        if action_text_split == []:
+            if return_text:
+                return ""
+            return [], 0, 0+self.genamt, []
 
         # Always add newlines on chat v2
         if self.is_chat_v2():
