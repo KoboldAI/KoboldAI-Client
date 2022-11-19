@@ -2187,7 +2187,7 @@ function world_info_entry(data) {
 	autoResize(manual_text, 60);
 	
 	//put focus back where it was
-	if (document.getElementById(original_focus)) {
+	if (original_focus && document.getElementById(original_focus)) {
 		if (document.getElementById(original_focus).tagName != "BUTTON") {
 			//check if we were on a new line
 			if ((on_new_wi_item != null) && (document.getElementById(on_new_wi_item))) {
@@ -6093,7 +6093,8 @@ function updateChatStyle() {
 
 		let addedMessages = 0;
 
-		for (const [chunkId, chunk] of Object.entries(actions_data).sort((a, b) => a[0].localeCompare(b[0]))) {
+		for (let [chunkId, chunk] of Object.entries(actions_data).sort((a, b) => parseInt(a) > parseInt(b))) {
+			chunkId = parseInt(chunkId);
 			for (const message of parseChatMessages(chunk["Selected Text"])) {
 				// JS Time uses milliseconds, thus the * 1000
 				addMessage(message.author, message.text, chunkId, null, chunk["Time"] * 1000);
