@@ -9550,12 +9550,12 @@ def UI_2_test_match():
 @logger.catch
 def UI_2_audio():
     action_id = int(request.args['id']) if 'id' in request.args else len(koboldai_vars.actions)
-    filename="stories/{}/{}.wav".format(koboldai_vars.story_id, action_id)
+    filename="stories/{}/{}.ogg".format(koboldai_vars.story_id, action_id)
     if not os.path.exists(filename):
         koboldai_vars.actions.gen_audio(action_id)
     return send_file(
              filename, 
-             mimetype="audio/wav")
+             mimetype="audio/ogg")
              
              
 #==================================================================#
