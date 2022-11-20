@@ -5292,6 +5292,7 @@ process_cookies();
 				return;
 			} else if (finder_mode === "ui") {
 				let index = finder_selection_index >= 0 ? finder_selection_index : 0;
+				if (!actions[index]) return;
 				actions[index].click();
 			}
 		} else if (event.key === "ArrowUp") {
