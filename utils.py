@@ -27,6 +27,7 @@ except ImportError:
     HAS_ACCELERATE = False
 
 vars = None
+args = None
 num_shards: Optional[int] = None
 current_shard = 0
 from_pretrained_model_name = ""
@@ -39,6 +40,8 @@ module_names: Optional[List[str]] = None
 named_buffers: Optional[List[tuple]] = None
 
 default_sampler_order = [6, 0, 1, 2, 3, 4, 5]
+
+emit = None
 
 #==================================================================#
 # Decorator to prevent a function's actions from being run until
@@ -198,6 +201,7 @@ def _download_with_aria2(aria2_config: str, total_length: int, directory: str = 
             pass
     
     import transformers
+    aria2_port = 6799 if vars is None else vars.aria2_port
     lengths = {}
     s = requests.Session()
     s.mount("http://", requests.adapters.HTTPAdapter(max_retries=requests.adapters.Retry(total=120, backoff_factor=1)))
@@ -208,9 +212,9 @@ def _download_with_aria2(aria2_config: str, total_length: int, directory: str = 
         with tempfile.NamedTemporaryFile("w+b", delete=False) as f:
             f.write(aria2_config)
             f.flush()
-            p = subprocess.Popen(["aria2c", "-x", "10", "-s", "10", "-j", "10", "--enable-rpc=true", f"--rpc-secret={secret}", "--rpc-listen-port", str(vars.aria2_port), "--disable-ipv6", "--file-allocation=trunc", "--allow-overwrite", "--auto-file-renaming=false", "-d", directory, "-i", f.name, "-U", transformers.file_utils.http_user_agent(user_agent)] + (["-c"] if not force_download else []) + ([f"--header='Authorization: Bearer {use_auth_token}'"] if use_auth_token else []), stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            p = subprocess.Popen(["aria2c", "-x", "10", "-s", "10", "-j", "10", "--enable-rpc=true", f"--rpc-secret={secret}", "--rpc-listen-port", str(aria2_port), "--disable-ipv6", "--file-allocation=trunc", "--allow-overwrite", "--auto-file-renaming=false", "-d", directory, "-i", f.name, "-U", transformers.file_utils.http_user_agent(user_agent)] + (["-c"] if not force_download else []) + ([f"--header='Authorization: Bearer {use_auth_token}'"] if use_auth_token else []), stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             while p.poll() is None:
-                r = s.post(f"http://localhost:{vars.aria2_port}/jsonrpc", json={"jsonrpc": "2.0", "id": "kai", "method": "aria2.tellActive", "params": [f"token:{secret}"]}).json()["result"]
+                r = s.post(f"http://localhost:{aria2_port}/jsonrpc", json={"jsonrpc": "2.0", "id": "kai", "method": "aria2.tellActive", "params": [f"token:{secret}"]}).json()["result"]
                 if not r:
                     s.close()
                     if bar is not None:

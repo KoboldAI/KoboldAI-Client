@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 #==================================================================#
 # KoboldAI
-# Version: 1.19.1
+# Version: 1.19.2
 # By: The KoboldAI Community
 #==================================================================#
 
@@ -125,6 +125,7 @@ model_menu = {
         ["NSFW Models", "nsfwlist", "", True],
         ["Untuned OPT", "optlist", "", True],
         ["Untuned GPT-Neo/J", "gptneolist", "", True],
+        ["Untuned Pythia", "pythialist", "", True],
         ["Untuned Fairseq Dense", "fsdlist", "", True],
         ["Untuned Bloom", "bloomlist", "", True],
         ["Untuned XGLM", "xglmlist", "", True],
@@ -154,6 +155,7 @@ model_menu = {
         ["OPT Nerys 6B V2 (Hybrid)", "KoboldAI/OPT-6B-nerys-v2", "16GB", False],
         ["Janeway FSD 6.7B", "KoboldAI/fairseq-dense-6.7B-Janeway", "16GB", False],
         ["Janeway Neo 6B", "KoboldAI/GPT-J-6B-Janeway", "16GB", False],
+        ["Qilin Lit 6B (SFW)", "rexwang8/qilin-lit-6b", "16GB", False],       
         ["Janeway Neo 2.7B", "KoboldAI/GPT-Neo-2.7B-Janeway", "8GB", False],
         ["Janeway FSD 2.7B", "KoboldAI/fairseq-dense-2.7B-Janeway", "8GB", False],
         ["Nerys FSD 2.7B (Hybrid)", "KoboldAI/fairseq-dense-2.7B-Nerys", "8GB", False],
@@ -183,10 +185,29 @@ model_menu = {
         ],
     'gptneolist': [
         ["GPT-NeoX 20B", "EleutherAI/gpt-neox-20b", "64GB", False],
+        ["Pythia 13B (NeoX, Same dataset)", "EleutherAI/pythia-13b", "32GB", False],
         ["GPT-J 6B", "EleutherAI/gpt-j-6B", "16GB", False],
         ["GPT-Neo 2.7B", "EleutherAI/gpt-neo-2.7B", "8GB", False],
         ["GPT-Neo 1.3B", "EleutherAI/gpt-neo-1.3B", "6GB", False],
+        ["Pythia 800M (NeoX, Same dataset)", "EleutherAI/pythia-800m", "4GB", False],
+        ["Pythia 350M (NeoX, Same dataset)", "EleutherAI/pythia-350m", "2GB", False],
         ["GPT-Neo 125M", "EleutherAI/gpt-neo-125M", "2GB", False],
+        ["Return to Main Menu", "mainmenu", "", True],
+        ],
+    'pythialist': [
+        ["Pythia 13B Deduped", "EleutherAI/pythia-13b-deduped", "32GB", False],
+        ["Pythia 13B", "EleutherAI/pythia-13b", "32GB", False],
+        ["Pythia 6.7B Deduped", "EleutherAI/pythia-6.7b-deduped", "16GB", False],
+        ["Pythia 6.7B", "EleutherAI/pythia-6.7b", "16GB", False],
+        ["Pythia 1.3B Deduped", "EleutherAI/pythia-1.3b-deduped", "6GB", False],
+        ["Pythia 1.3B", "EleutherAI/pythia-1.3b", "6GB", False],
+        ["Pythia 800M", "EleutherAI/pythia-800m", "4GB", False],
+        ["Pythia 350M Deduped", "EleutherAI/pythia-350m-deduped", "2GB", False],
+        ["Pythia 350M", "EleutherAI/pythia-350m", "2GB", False],        
+        ["Pythia 125M Deduped", "EleutherAI/pythia-125m-deduped", "2GB", False],
+        ["Pythia 125M", "EleutherAI/pythia-125m", "2GB", False],
+        ["Pythia 19M Deduped", "EleutherAI/pythia-19m-deduped", "1GB", False],
+        ["Pythia 19M", "EleutherAI/pythia-19m", "1GB", False],
         ["Return to Main Menu", "mainmenu", "", True],
         ],
     'gpt2list': [
@@ -452,6 +473,7 @@ def emit(*args, **kwargs):
         return _emit(*args, **kwargs)
     except AttributeError:
         return socketio.emit(*args, **kwargs)
+utils.emit = emit
 
 # marshmallow/apispec setup
 from apispec import APISpec
@@ -757,6 +779,12 @@ def getmodelname():
         return modelname
 
 #==================================================================#
+# Get hidden size from model
+#==================================================================#
+def get_hidden_size_from_model(model):
+    return model.get_input_embeddings().embedding_dim
+
+#==================================================================#
 # Breakmodel configuration functions
 #==================================================================#
 def device_list(n_layers, primary=None, selected=None):
@@ -873,7 +901,7 @@ def device_config(config):
                     print(f"{colors.RED}Please enter an integer between -1 and {n_layers}.{colors.END}")
 
     logger.init_ok("Final device configuration:", status="Info")
-    device_list(n_layers)
+    device_list(n_layers, primary=breakmodel.primary_device)
 
     # If all layers are on the same device, use the old GPU generation mode
     while(len(breakmodel.gpu_blocks) and breakmodel.gpu_blocks[-1] == 0):
@@ -989,7 +1017,7 @@ def loadmodelsettings():
     if("nobreakmodel" in js):
         vars.nobreakmodel = js["nobreakmodel"]
     if("sampler_order" in js):
-        sampler_order = vars.sampler_order
+        sampler_order = js["sampler_order"]
         if(len(sampler_order) < 7):
             sampler_order = [6] + sampler_order
         vars.sampler_order = sampler_order
@@ -1127,7 +1155,7 @@ def processsettings(js):
     if("andepth" in js):
         vars.andepth = js["andepth"]
     if("sampler_order" in js):
-        sampler_order = vars.sampler_order
+        sampler_order = js["sampler_order"]
         if(len(sampler_order) < 7):
             sampler_order = [6] + sampler_order
         vars.sampler_order = sampler_order
@@ -1354,6 +1382,8 @@ def general_startup(override_args=None):
         args = parser.parse_args(shlex.split(os.environ["KOBOLDAI_ARGS"]))
     else:
         args = parser.parse_args()
+    
+    utils.args = args
 
     set_logger_verbosity(args.verbosity)
     quiesce_logger(args.quiesce)
@@ -1790,7 +1820,9 @@ def patch_transformers():
         if not args.no_aria2:
             utils.aria2_hook(pretrained_model_name_or_path, **kwargs)
         return old_from_pretrained(cls, pretrained_model_name_or_path, *model_args, **kwargs)
-    PreTrainedModel.from_pretrained = new_from_pretrained
+    if(not hasattr(PreTrainedModel, "_kai_patched")):
+        PreTrainedModel.from_pretrained = new_from_pretrained
+        PreTrainedModel._kai_patched = True
     if(hasattr(modeling_utils, "get_checkpoint_shard_files")):
         old_get_checkpoint_shard_files = modeling_utils.get_checkpoint_shard_files
         def new_get_checkpoint_shard_files(pretrained_model_name_or_path, index_filename, *args, **kwargs):
@@ -2424,9 +2456,6 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
                 return lazy_load_callback
 
 
-            def get_hidden_size_from_model(model):
-                return model.get_input_embeddings().embedding_dim
-            
             def maybe_low_cpu_mem_usage() -> Dict[str, Any]:
                 if(packaging.version.parse(transformers_version) < packaging.version.parse("4.11.0")):
                     logger.warning(f"Please upgrade to transformers 4.11.0 for lower RAM usage. You have transformers {transformers_version}.")
@@ -2668,7 +2697,9 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
             if not args.no_aria2:
                 utils.aria2_hook(pretrained_model_name_or_path, **kwargs)
             return old_from_pretrained(cls, pretrained_model_name_or_path, *model_args, **kwargs)
-        PreTrainedModel.from_pretrained = new_from_pretrained
+        if(not hasattr(PreTrainedModel, "_kai_patched")):
+            PreTrainedModel.from_pretrained = new_from_pretrained
+            PreTrainedModel._kai_patched = True
         if(hasattr(modeling_utils, "get_checkpoint_shard_files")):
             old_get_checkpoint_shard_files = modeling_utils.get_checkpoint_shard_files
             def new_get_checkpoint_shard_files(pretrained_model_name_or_path, index_filename, *args, **kwargs):
@@ -2914,7 +2945,7 @@ def lua_startup():
     except lupa.LuaError as e:
         print(colors.RED + "ERROR!" + colors.END)
         vars.lua_koboldbridge.obliterate_multiverse()
-        logger.debug('LUA ERROR: ' + str(e).replace("\033", ""))
+        logger.error('LUA ERROR: ' + str(e).replace("\033", ""))
         logger.warning("Lua engine stopped; please open 'Userscripts' and press Load to reinitialize scripts.")
         exit(1)
     logger.init_ok("LUA bridge", status="OK")
@@ -3055,6 +3086,8 @@ def lua_compute_context(submission, entries, folders, kwargs):
         force_use_txt=True,
         scan_story=kwargs["scan_story"] if kwargs["scan_story"] != None else True,
     )
+    if kwargs["include_anote"] is not None and not kwargs["include_anote"]:
+        anotetxt = ""
     txt, _, _ = calcsubmitbudget(
         len(actions),
         winfo,
@@ -3470,7 +3503,7 @@ def execute_inmod():
         vars.lua_running = False
         emit('from_server', {'cmd': 'errmsg', 'data': 'Lua script error; please check console.'}, broadcast=True)
         sendUSStatItems()
-        logger.debug('LUA ERROR: ' + str(e).replace("\033", ""))
+        logger.error('LUA ERROR: ' + str(e).replace("\033", ""))
         logger.warning("Lua engine stopped; please open 'Userscripts' and press Load to reinitialize scripts.")
         set_aibusy(0)
 
@@ -3487,7 +3520,7 @@ def execute_outmod():
         vars.lua_running = False
         emit('from_server', {'cmd': 'errmsg', 'data': 'Lua script error; please check console.'}, broadcast=True)
         sendUSStatItems()
-        logger.debug('LUA ERROR: ' + str(e).replace("\033", ""))
+        logger.error('LUA ERROR: ' + str(e).replace("\033", ""))
         logger.warning("Lua engine stopped; please open 'Userscripts' and press Load to reinitialize scripts.")
         set_aibusy(0)
     if(vars.lua_koboldbridge.resend_settings_required):
@@ -4907,7 +4940,7 @@ def generate(txt, minimum, maximum, found_entries=None):
             vars.lua_running = False
             emit('from_server', {'cmd': 'errmsg', 'data': 'Lua script error; please check console.'}, broadcast=True)
             sendUSStatItems()
-            logger.debug('LUA ERROR: ' + str(e).replace("\033", ""))
+            logger.error('LUA ERROR: ' + str(e).replace("\033", ""))
             logger.warning("Lua engine stopped; please open 'Userscripts' and press Load to reinitialize scripts.")
         else:
             emit('from_server', {'cmd': 'errmsg', 'data': 'Error occurred during generator call; please check console.'}, broadcast=True)
@@ -5415,7 +5448,7 @@ def tpumtjgenerate(txt, minimum, maximum, found_entries=None):
             vars.lua_running = False
             emit('from_server', {'cmd': 'errmsg', 'data': 'Lua script error; please check console.'}, broadcast=True)
             sendUSStatItems()
-            logger.debug('LUA ERROR: ' + str(e).replace("\033", ""))
+            logger.error('LUA ERROR: ' + str(e).replace("\033", ""))
             logger.warning("Lua engine stopped; please open 'Userscripts' and press Load to reinitialize scripts.")
         else:
             emit('from_server', {'cmd': 'errmsg', 'data': 'Error occurred during generator call; please check console.'}, broadcast=True)

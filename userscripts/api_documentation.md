@@ -538,6 +538,7 @@ Computes the context that would be sent to the generator with the user's current
 * entries? (`KoboldWorldInfoEntry|table<any, KoboldWorldInfoEntry>`): A `KoboldWorldInfoEntry` or table thereof that indicates an allowed subset of world info entries to include in the context. Defaults to all world info entries.
 * kwargs? (`table<string, any>`): Table of optional keyword arguments from the following list. Defaults to `{}`.
     * scan_story? (`boolean`): Whether or not to scan the past few actions of the story for world info keys in addition to the submission like how world info normally behaves. If this is set to `false`, only the `submission` is scanned for world info keys. Defaults to `true`.
+    * include_anote? (`boolean`): Whether to include the author's note in the story.  Defaults to `true`, pass `false` to suppress including the author's note.
 
 ### Returns
 
@@ -636,6 +637,7 @@ The same as calling `kobold.worldinfo:compute_context()` with this world info en
 * submission (`string`): String to use as simulated user's input after being formatted by input formatting.
 * kwargs? (`table<string, any>`): Table of optional keyword arguments from the following list. Defaults to `{}`.
     * scan_story? (`boolean`): Whether or not to scan the past few actions of the story for world info keys in addition to the submission like how world info normally behaves. If this is set to `false`, only the `submission` is scanned for world info keys. Defaults to `true`.
+    * include_anote? (`boolean`): Whether to include the author's note in the story.  Defaults to `true`, pass `false` to suppress including the author's note.
 
 ### Returns
 
@@ -819,6 +821,7 @@ Unlike `kobold.worldinfo:compute_context()`, this function doesn't include world
 * entries? (`KoboldWorldInfoEntry|table<any, KoboldWorldInfoEntry>`): A `KoboldWorldInfoEntry` or table thereof that indicates an allowed subset of world info entries to include in the context. Entries that are not inside of the folder are still not included. Defaults to all world info entries in the folder.
 * kwargs? (`table<string, any>`): Table of optional keyword arguments from the following list. Defaults to `{}`.
     * scan_story? (`boolean`): Whether or not to scan the past few actions of the story for world info keys in addition to the submission like how world info normally behaves. If this is set to `false`, only the `submission` is scanned for world info keys. Defaults to `true`.
+    * include_anote? (`boolean`): Whether to include the author's note in the story.  Defaults to `true`, pass `false` to suppress including the author's note.
 
 ### Returns
 
