@@ -119,6 +119,24 @@ const shortcuts = [
 	{key: "l", desc: '"Lock" screen (Not secure)', func: () => socket.emit("privacy_mode", {'enabled': true})},
 ]
 
+const chat = {
+	STYLES: {LEGACY: 0, MESSAGES: 1, BUBBLES: 2},
+	style: "legacy",
+	lastEdit: null,
+
+	get useV2() {
+		return [
+			this.STYLES.MESSAGES,
+			this.STYLES.BUBBLES
+		].includes(this.style) && story.mode === story.MODES.CHAT
+	}
+}
+
+const story = {
+	MODES: {STORY: 0, ADVENTURE: 1, CHAT: 2},
+	mode: null,
+}
+
 function $el(selector) {
 	// We do not preemptively fetch all elements upon execution (wall of consts)
 	// due to the layer of mental overhead it adds to debugging and reading
@@ -204,7 +222,12 @@ function reset_story() {
 	while (world_info_area.firstChild) {
 		world_info_area.removeChild(world_info_area.firstChild);
 	}
-	document.getElementById("story_prompt").setAttribute("world_info_uids", "");
+
+	const storyPrompt = $el("#story_prompt");
+
+	if (storyPrompt) {
+		storyPrompt.setAttribute("world_info_uids", "");
+	}
 	document.getElementById('themerow').classList.remove("hidden");
 	document.getElementById('input_text').placeholder = "Enter Prompt Here (shift+enter for new line)";
 	text = "";
@@ -214,6 +237,9 @@ function reset_story() {
 	document.getElementById("welcome_text").innerText = text;
 	document.getElementById("welcome_container").classList.remove("hidden");
 	document.getElementById('main-grid').setAttribute('option_length', 0);
+
+	$(".chat-message").remove();
+	addInitChatMessage();
 }
 
 function fix_text(val) {
@@ -376,76 +402,134 @@ function process_actions_data(data) {
 	
 }
 
+function parseChatMessages(text) {
+	let messages = [];
+
+	for (const line of text.split("\n")) {
+		let [author, text] = line.split(":", 2);
+		if (!author && !text) continue;
+
+		// If there is no ":" in the text, it's a system message.
+		if (!text) {
+			text = author;
+			author = "System";
+		}
+
+		messages.push({author: author, text: text});
+	}
+	return messages;
+}
+
 function do_story_text_updates(action) {
 	story_area = document.getElementById('Selected Text');
 	current_chunk_number = action.id;
 	let item = null;
-	if (document.getElementById('Selected Text Chunk '+action.id)) {
-		item = document.getElementById('Selected Text Chunk '+action.id);
-		//clear out the item first
-		while (item.firstChild) { 
-			item.removeChild(item.firstChild);
+
+	if (chat.useV2) {
+		//console.log(`[story_text_update] ${action.id}`)
+		if (action.id === chat.lastEdit) {
+			// Swallow update if we just caused it
+			chat.lastEdit = null;
+			return;
+		}
+
+		deleteChatPromptIfEmpty();
+
+		const messageEl = $el(`[action-id="${action.id}"]`);
+		let previous = messageEl ? messageEl.previousElementSibling : null;
+
+		// Remove old ones
+		$(`[action-id="${action.id}"]`).remove();
+
+		for (const message of parseChatMessages(action.action["Selected Text"])) {
+			previous = addMessage(message.author, message.text, action.id, previous);
 		}
 	} else {
-		item = document.createElement("span");
-		item.id = 'Selected Text Chunk '+action.id;
-		item.classList.add("rawtext");
-		item.setAttribute("chunk", action.id);
-		//need to find the closest element
-		next_id = action.id+1;
-		if (Math.max.apply(null,Object.keys(actions_data).map(Number)) <= next_id) {
-			story_area.append(item);
-		} else {
-			story_area.prepend(item);
-		}
-	}
-	if ('wi_highlighted_text' in action.action) {
-		for (chunk of action.action['wi_highlighted_text']) {
-			chunk_element = document.createElement("span");
-			chunk_element.textContent = chunk['text'];
-			if (chunk['WI matches'] != null) {
-				chunk_element.classList.add("wi_match");
-				chunk_element.setAttribute("tooltip", chunk['WI Text']);
-				chunk_element.setAttribute("wi-uid", chunk['WI matches']);
+		if (document.getElementById('Selected Text Chunk '+action.id)) {
+			item = document.getElementById('Selected Text Chunk '+action.id);
+			//clear out the item first
+			while (item.firstChild) { 
+				item.removeChild(item.firstChild);
 			}
+		} else {
+			item = document.createElement("span");
+			item.id = 'Selected Text Chunk '+action.id;
+			item.classList.add("rawtext");
+			item.setAttribute("chunk", action.id);
+			//need to find the closest element
+			next_id = action.id+1;
+			if (Math.max.apply(null,Object.keys(actions_data).map(Number)) <= next_id) {
+				story_area.append(item);
+			} else {
+				story_area.prepend(item);
+			}
+		}
+
+		if ('wi_highlighted_text' in action.action) {
+			for (chunk of action.action['wi_highlighted_text']) {
+				chunk_element = document.createElement("span");
+				chunk_element.textContent = chunk['text'];
+				if (chunk['WI matches'] != null) {
+					chunk_element.classList.add("wi_match");
+					chunk_element.setAttribute("tooltip", chunk['WI Text']);
+					chunk_element.setAttribute("wi-uid", chunk['WI matches']);
+				}
+				item.append(chunk_element);
+			}
+		} else {
+			chunk_element = document.createElement("span");
+			chunk_element.textContent = action.action['Selected Text'];
 			item.append(chunk_element);
 		}
-	} else {
-		chunk_element = document.createElement("span");
-		chunk_element.textContent = action.action['Selected Text'];
-		item.append(chunk_element);
+		item.original_text = action.action['Selected Text'];
+		item.classList.remove("pulse")
+		item.classList.remove("single_pulse");
+		item.classList.add("single_pulse");
 	}
-	item.original_text = action.action['Selected Text'];
-	item.classList.remove("pulse")
-	item.classList.remove("single_pulse");
-	item.classList.add("single_pulse");
 }
 
 function do_prompt(data) {
-	console.log(data);
-	var elements_to_change = document.getElementsByClassName("var_sync_story_prompt");
-	for (item of elements_to_change) {
-		//clear out the item first
-		while (item.firstChild) { 
-			item.removeChild(item.firstChild);
-		}
-		let full_text = "";
-		for (chunk of data.value) {
-			chunk_element = document.createElement("span");
-			chunk_element.textContent = chunk['text'];
-			full_text += chunk['text'];
-			if (chunk['WI matches'] != null) {
-				chunk_element.classList.add("wi_match");
-				chunk_element.setAttribute("tooltip", chunk['WI Text']);
-				chunk_element.setAttribute("wi-uid", chunk['WI matches']);
-			}
-			item.append(chunk_element);
-		}
-		item.setAttribute("old_text", full_text);
-		item.classList.remove("pulse");
-		actions_data[-1] = {'Selected Text': full_text};
-		assign_world_info_to_action(-1, null);
+	let full_text = "";
+	for (chunk of data.value) {
+		full_text += chunk['text'];
 	}
+
+	if (chat.useV2) {
+		// We run do_prompt multiple times; delete old prompt messages
+		$(".chat-message").remove();
+
+		for (const message of parseChatMessages(full_text)) {
+			addMessage(message.author, message.text, -1, null, null);
+		}
+	} else {
+		// Normal
+		let elements_to_change = document.getElementsByClassName("var_sync_story_prompt");
+		for (item of elements_to_change) {
+			//clear out the item first
+			while (item.firstChild) { 
+				item.removeChild(item.firstChild);
+			}
+			for (chunk of data.value) {
+				chunk_element = document.createElement("span");
+				chunk_element.textContent = chunk['text'];
+				if (chunk['WI matches'] != null) {
+					chunk_element.classList.add("wi_match");
+					chunk_element.setAttribute("tooltip", chunk['WI Text']);
+					chunk_element.setAttribute("wi-uid", chunk['WI matches']);
+				}
+				item.append(chunk_element);
+			}
+			item.setAttribute("old_text", full_text);
+			item.classList.remove("pulse");
+			assign_world_info_to_action(-1, null);
+		}
+	}
+
+	// Sometimes full text ends up not being built
+	if (!full_text) {
+	}
+	actions_data[-1] = {'Selected Text': full_text};
+
 	//if we have a prompt we need to disable the theme area, or enable it if we don't
 	if (data.value[0].text != "") {
 		document.getElementById('input_text').placeholder = "Enter text here (shift+enter for new line)";
@@ -458,6 +542,7 @@ function do_prompt(data) {
 		document.getElementById('input_text').placeholder = "Enter Prompt Here (shift+enter for new line)";
 		document.getElementById('input_text').disabled = false;
 		document.getElementById('themerow').classList.remove("hidden");
+		addInitChatMessage();
 	}
 	
 }
@@ -600,14 +685,17 @@ function do_ai_busy(data) {
 }
 
 function hide_show_prompt() {
+	const promptEl = $el("#story_prompt");
+	if (!promptEl) return;
+
 	if (Math.min.apply(null,Object.keys(actions_data).map(Number).filter(function(x){return x>=0})) == Infinity) {
-		document.getElementById("story_prompt").classList.remove("hidden");
+		promptEl.classList.remove("hidden");
 	} else if (Math.min.apply(null,Object.keys(actions_data).map(Number).filter(function(x){return x>=0})) > 0) {
 		//we have actions and our minimum action we have in the UI is above the start of the game
 		//we need to keep the story prompt hidden
-		document.getElementById("story_prompt").classList.add("hidden");
+		promptEl.classList.add("hidden");
 	} else {
-		document.getElementById("story_prompt").classList.remove("hidden");
+		promptEl.classList.remove("hidden");
 	}
 }
 
@@ -627,7 +715,8 @@ function var_changed(data) {
 		current_action = data.value;
 		if (current_action <= 0) {
 			//console.log("setting action_count to "+current_action);
-			document.getElementById("story_prompt").classList.remove("hidden");
+			const storyPrompt = $el("#story_prompt");
+			if (storyPrompt) storyPrompt.classList.remove("hidden");
 			scroll_trigger_element = undefined;
 			document.getElementById("Selected Text").onscroll = undefined;
 		}
@@ -636,6 +725,14 @@ function var_changed(data) {
 	
 	if ((data.classname == 'story') && (data.name == 'privacy_mode')) {
 		privacy_mode(data.value);
+	}
+
+	if (data.classname === "story" && data.name === "storymode") {
+		story.mode = data.value;
+		updateChatStyle();
+	} else if (data.classname == "story" && data.name == "chat_style") {
+		chat.style = data.value;
+		updateChatStyle();
 	}
 	
 	//Special Case for Actions
@@ -1724,7 +1821,7 @@ function world_info_entry(data) {
 	} else {
 		world_info_card.classList.remove("used_in_game");
 	}
-	title = world_info_card.querySelector('.world_info_title')
+	const title = world_info_card.querySelector('.world_info_title');
 	title.id = "world_info_title_"+data.uid;
 	title.textContent = data.title;
 	title.setAttribute("uid", data.uid);
@@ -1771,6 +1868,92 @@ function world_info_entry(data) {
 			}
 		);
 	}
+
+	const wiImgContainer = world_info_card.querySelector(".world_info_image_container");
+	const wiImg = wiImgContainer.querySelector(".world_info_image");
+	const wiImgPlaceholder = wiImgContainer.querySelector(".placeholder");
+	const wiImgInput = $e("input", null, {type: "file", accept: "image/png,image/x-png,image/gif,image/jpeg"});
+
+	wiImg.id = `world_info_image_${data.uid}`;
+
+	if (data.uid > -1) {
+		fetch(`/get_wi_image/${data.uid}`, {
+			method: "GET",
+		}).then(async function(r) {
+			if (!r.ok) return;
+			// 204 is used instead of 404 because 404 SPAMS THE CONSOLE WAY TOO MUCH!!!!!!!!!
+			if (r.status == 204) return;
+			wiImgPlaceholder.style.display = "none";
+			wiImg.src = await r.text();
+			setChatPfps(title.innerText, wiImg.src);
+		});
+	}
+
+	wiImgContainer.addEventListener("click", function() {
+		wiImgInput.click();
+	});
+
+	wiImgInput.addEventListener("change", function() {
+		const file = wiImgInput.files[0];
+		if (file.type.split("/")[0] !== "image") {
+			reportError("Unable to upload WI image", `File type ${file.type} is not a compatible image type!`)
+			return;
+		}
+		let objectUrl = URL.createObjectURL(file);
+		wiImgPlaceholder.style.display = "none";
+		wiImg.src = objectUrl;
+
+		let reader = new FileReader();
+		reader.addEventListener("loadend", async function() {
+			let r = await fetch(`/set_wi_image/${data.uid}`, {
+				method: "POST",
+				body: reader.result
+			});
+
+			setChatPfps(title.innerText, reader.result);
+		});
+		reader.readAsDataURL(file);
+	});
+
+	const wiTypeSelector = world_info_card.querySelector(".world_info_type");
+
+	// We may want to change the display names of these later
+	wiTypeSelector.value = {
+		chatcharacter: "Chat Character",
+		wi: "World Info",
+		constant: "Memory",
+	}[world_info_data[data.uid].type];
+
+	wiTypeSelector.classList.remove("pulse");
+	wiTypeSelector.addEventListener("change", function(event) {
+		// If no change, don't do anything. Don't loop!!!
+		if (world_info_data[data.uid].type === wiTypeSelector.value) {
+			return;
+		}
+
+		switch (wiTypeSelector.value) {
+			case "Chat Character":
+				world_info_data[data.uid].constant = true;
+				break;
+			case "Memory":
+				world_info_data[data.uid].constant = true;
+				break;
+			case "World Info":
+				world_info_data[data.uid].constant = false;
+				break;
+			default:
+				reportError("Error", `Unknown WI type ${wiTypeSelector.value}`);
+				return;
+		}
+		world_info_data[data.uid].type = {
+			"Chat Character": "chatcharacter",
+			"Memory": "constant",
+			"World Info": "wi",
+		}[wiTypeSelector.value];
+		send_world_info(data.uid);
+		this.classList.add("pulse");
+	})
+
 	tags = world_info_card.querySelector('.world_info_tag_primary_area');
 	tags.id = "world_info_tags_"+data.uid;
 	//add tag content here
@@ -1954,27 +2137,6 @@ function world_info_entry(data) {
 							this.classList.add("pulse");
 						}
 	comment.classList.remove("pulse");
-	constant_area = world_info_card.querySelector('.world_info_always_include');
-	constant_area.id = "world_info_toggle_area_"+data.uid;
-	if (document.getElementById("world_info_constant_"+data.uid)) {
-		constant = document.getElementById("world_info_constant_"+data.uid);
-	} else {
-		constant = document.createElement("input");
-		constant.id = "world_info_constant_"+data.uid;
-		constant.setAttribute("type", "checkbox");
-		constant.setAttribute("uid", data.uid);
-		constant.setAttribute("data-size", "mini");
-		constant.setAttribute("data-onstyle", "success"); 
-		constant.setAttribute("data-toggle", "toggle");
-		constant.onchange = function () {
-								world_info_data[this.getAttribute('uid')]['constant'] = this.checked;
-								send_world_info(this.getAttribute('uid'));
-								this.classList.add("pulse");
-							}
-		constant_area.append(constant);
-	}
-	constant.checked = data.constant;
-	constant.classList.remove("pulse");
 						
 	//Let's figure out the order to insert this card
 	var found = false;
@@ -2025,7 +2187,7 @@ function world_info_entry(data) {
 	autoResize(manual_text, 60);
 	
 	//put focus back where it was
-	if (document.getElementById(original_focus)) {
+	if (original_focus && document.getElementById(original_focus)) {
 		if (document.getElementById(original_focus).tagName != "BUTTON") {
 			//check if we were on a new line
 			if ((on_new_wi_item != null) && (document.getElementById(on_new_wi_item))) {
@@ -3293,7 +3455,7 @@ function update_context(data) {
 			let tokenEl = $e("span", el, {
 				classes: ["context-token"],
 				"tooltip": tokenId === -1 ? "Soft" : tokenId,
-				innerText: token,
+				innerText: token.replaceAll(String.fromCharCode(0), '<span class="material-icons-outlined context-symbol">dangerous</span>'),
 				"style.backgroundColor": tokenColor,
 			});
 
@@ -3306,9 +3468,10 @@ function update_context(data) {
 				soft_prompt_length += entry.tokens.length;
 				break;
 			case 'prompt':
+				const promptEl = document.getElementById('story_prompt');
 				prompt_length += entry.tokens.length;
-				if (prompt_length > 0) {
-					document.getElementById('story_prompt').classList.add("within_max_length");
+				if (prompt_length > 0 && promptEl) {
+					promptEl.classList.add("within_max_length");
 				}
 				break;
 			case 'world_info':
@@ -3705,7 +3868,9 @@ function dragend(e) {
     const id = drag_id;
     const draggable = document.getElementById(id);
 	// display the draggable element
-	draggable.classList.remove('hidden');
+	if (draggable) {
+		draggable.classList.remove('hidden');
+	}
 	e.preventDefault();
 }
 
@@ -4491,7 +4656,7 @@ function updateStandardSearchListings(query) {
 	}
 }
 
-function $e(tag, parent, attributes) {
+function $e(tag, parent, attributes, insertionLocation=null) {
 	// Small helper function for dynamic UI creation
 
 	let element = document.createElement(tag);
@@ -4527,7 +4692,21 @@ function $e(tag, parent, attributes) {
 		}
 	}
 
-	parent.appendChild(element);
+	if (!parent) return element;
+
+	if (insertionLocation && Object.keys(insertionLocation).length) {
+		let [placement, target] = Object.entries(insertionLocation)[0];
+		if (placement === "before") {
+			parent.insertBefore(element, target);
+		} else if (placement === "after") {
+			parent.insertBefore(element, target.nextSibling);
+		} else {
+			throw Error(`I have no clue what placement ${placement} is`);
+		}
+	} else {
+		parent.appendChild(element);
+	}
+
 	return element;
 }
 
@@ -5647,15 +5826,18 @@ function infinite_scroll() {
 
 function run_infinite_scroll_update(action_type, actions, first_action) {
 	//console.log("first_action: "+first_action);
+	const promptEl = $el("#story_prompt");
+	if (!promptEl) return;
+
 	if (action_type == "append") {
 		if (document.getElementById('Selected Text Chunk '+actions[actions.length-1].id)) {
 			document.getElementById('Selected Text Chunk '+actions[actions.length-1].id).scrollIntoView(false);
 			document.getElementById("Selected Text").scrollBy(0, 25);
 		}
 		//Check to see if we need to have the scrolling in place or not
-		if (document.getElementById("story_prompt").classList.contains("hidden")) {
+		if (promptEl.classList.contains("hidden")) {
 			if (Math.min.apply(null,Object.keys(actions_data).map(Number).filter(function(x){return x>=0})) <= 0) {
-				document.getElementById("story_prompt").classList.remove("hidden");
+				promptEl.classList.remove("hidden");
 			} else {
 				//console.log("Appending, but adding infinite scroll");
 				//console.log(document.getElementById('Selected Text Chunk '+Math.min.apply(null,Object.keys(actions_data).map(Number).filter(function(x){return x>=0}))));
@@ -5668,8 +5850,8 @@ function run_infinite_scroll_update(action_type, actions, first_action) {
 			//We've hit our prompt, so let's unhide it, move it to the begining, and kill the infinite_scroll
 			scroll_trigger_element = undefined;
 			document.getElementById("Selected Text").onscroll = undefined;
-			document.getElementById("Selected Text").prepend(document.getElementById("story_prompt"));
-			document.getElementById("story_prompt").classList.remove("hidden");
+			document.getElementById("Selected Text").prepend(promptEl);
+			promptEl.classList.remove("hidden");
 		} else {
 			//we just added more text and didn't hit the prompt. Move the scroll trigger back to the first non-prompt element
 			let item_in_view = false;
@@ -5774,3 +5956,213 @@ $el("#aidgpromptnum").addEventListener("keydown", function(event) {
 	attemptClubLoad();
 	event.preventDefault();
 });
+
+/* -- Shiny New Chat -- */
+function addMessage(author, content, actionId, afterMsgEl=null, time=null) {
+	if (!time) time = Number(new Date());
+	const gameScreen = $el("#gamescreen");
+
+	let insertionLocation = afterMsgEl ? {after: afterMsgEl} : null
+	const message = $e(
+		"div",
+		gameScreen,
+		{classes: ["chat-message", "chat-style-channel"], "action-id": actionId},
+		// Insertion location
+		insertionLocation,
+	);
+
+	const leftContainer = $e("div", message, {classes: ["chat-left-container"]});
+
+	const profilePicture = $e("img", leftContainer, {
+		classes: ["chat-pfp"],
+		src: getChatPfp(author),
+		draggable: false
+	});
+
+	const addAfterButton = $e("span", leftContainer, {classes: ["chat-add", "chat-button", "material-icons-outlined"], innerText: "add"});
+	const deleteButton = $e("span", leftContainer, {classes: ["chat-delete", "chat-button", "material-icons-outlined"], innerText: "delete"});
+
+	const textContainer = $e("div", message, {classes: ["chat-text-container"]});
+
+	const messageHeader = $e("div", textContainer, {classes: ["chat-header"]});
+
+	const messageAuthor = $e("span", messageHeader, {classes: ["chat-author"], innerText: author, contenteditable: true, spellcheck: false, "data-placeholder": "Author"});
+
+	// TODOB4PUSH: Better formatting
+	const messageTime = $e("span", messageHeader, {classes: ["chat-timestamp", "noselect"], innerText: formatChatDate(time)});
+
+	// TODO: In-house less intrusive spellcheck?
+	const messageText = $e("span", textContainer, {classes: ["chat-text"], innerText: content, contenteditable: true, spellcheck: false, "data-placeholder": "Message"});
+
+	// When we edit it we need to recompute the context
+	// NOTE: `focusout` may not always trigger! `change` is not a thing on
+	// `contenteditable` and `input` fires way to often, so we'll hope this works!
+
+	for (const box of [messageAuthor, messageText]) {
+		box.addEventListener("focusout", () => computeChatGametext(actionId));
+		box.addEventListener("keydown", function(event) {
+			if (event.key === "Enter") {
+				event.preventDefault();
+				this.blur();
+			}
+		});
+	}
+
+	messageAuthor.addEventListener("keyup", function() {
+		profilePicture.src = getChatPfp(messageAuthor.innerText);
+	})
+
+	addAfterButton.addEventListener("click", function() {
+		addMessage(null, null, actionId, message);
+	});
+
+	deleteButton.addEventListener("click", function() {
+		message.remove();
+		computeChatGametext(actionId);
+	});
+
+	message.scrollIntoView();
+	return message;
+}
+
+function formatChatDate(unixTimestamp) {
+	let date = new Date(unixTimestamp);
+	let now = new Date();
+
+	// TODO: Support 24 hour time
+	let timeString = date.toLocaleString("en-US").replace(/:[0-9]+\s/, " ").split(", ").splice(-1)[0];
+	let dateString = date.toLocaleString("en-US").split(", ")[0];
+
+	let hourDelta = (now.getTime() - date.getTime()) / 1000 / 60 / 60;
+
+	if (hourDelta >= 48) {
+		return dateString;
+	} else if (hourDelta >= 24) {
+		return `Yesterday at ${timeString}`;
+	} else {
+		return `Today at ${timeString}`;
+	}
+}
+
+function addInitChatMessage() {
+	if (!chat.useV2) return;
+
+	// Already exists!
+	if ($el("#init-message")) return;
+
+	let message = addMessage(null, null, -1);
+	message.id = "init-message";
+}
+
+function deleteChatPromptIfEmpty() {
+	if (!chat.useV2) return;
+
+	const prompt = $el("#init-message");
+	if (!prompt) return;
+
+	let author = prompt.getElementsByClassName("chat-author")[0].innerText;
+	let content = prompt.getElementsByClassName("chat-text")[0].innerText;
+	if (author || content) return;
+
+	prompt.remove();
+}
+
+function computeChatGametext(actionId) {
+	// TODO: Customizable format?
+	let lines = [];
+	for (const message of document.querySelectorAll(`[action-id="${actionId}"]`)) {
+		const name = message.getElementsByClassName("chat-author")[0].innerText;
+		const text = message.getElementsByClassName("chat-text")[0].innerText;
+		lines.push(`${name}: ${text}`);
+	}
+
+	let text = lines.join("\n");
+	console.log(actionId, text);
+	socket.emit("Set Selected Text", {id: actionId, text: text});
+	chat.lastEdit = actionId;
+}
+
+function updateChatStyle() {
+	const storyArea = document.getElementById("Selected Text");
+
+	if (chat.useV2) {
+		// Already v2, do nothing
+		if (document.getElementsByClassName("chat-message").length) {
+			return;
+		}
+
+		// Delete normal text
+
+		while (storyArea.firstChild) {
+			storyArea.removeChild(storyArea.firstChild);
+		}
+
+		let addedMessages = 0;
+
+		for (let [chunkId, chunk] of Object.entries(actions_data).sort((a, b) => parseInt(a) > parseInt(b))) {
+			chunkId = parseInt(chunkId);
+			for (const message of parseChatMessages(chunk["Selected Text"])) {
+				// JS Time uses milliseconds, thus the * 1000
+				addMessage(message.author, message.text, chunkId, null, chunk["Time"] * 1000);
+				addedMessages++;
+			}
+		}
+		
+		// If we are empty, add an init message
+		if (!addedMessages) addInitChatMessage();
+	} else {
+		if (!storyArea.querySelectorAll(".rawtext").length) {
+			for (const [chunkId, action] of Object.entries(actions_data)) {
+				let item = document.createElement("span");
+				item.id = 'Selected Text Chunk '+chunkId;
+				item.classList.add("rawtext");
+				item.setAttribute("chunk", chunkId);
+				//need to find the closest element
+				next_id = chunkId+1;
+				if (Math.max.apply(null,Object.keys(actions_data).map(Number)) <= next_id) {
+					storyArea.append(item);
+				} else {
+					storyArea.prepend(item);
+				}
+
+				chunk_element = document.createElement("span");
+				chunk_element.textContent = action['Selected Text'];
+				item.append(chunk_element);
+
+				item.original_text = action['Selected Text'];
+			}
+		}
+
+		const jQCM = $(".chat-message");
+		if (jQCM.length) jQCM.remove();
+	}
+}
+
+function getChatPfp(chatName) {
+	if (chatName) {
+		chatName = chatName.toLowerCase();
+		for (const entry of Object.values(world_info_data)) {
+			if (entry.type !== "chatcharacter") continue;
+			if (entry.title.toLowerCase() !== chatName) continue;
+			let img = $el(`#world_info_image_${entry.uid}`);
+
+			// Not sure why this would happen, but better safe than sorry.
+			if (!img) continue;
+			if (!img.src) return "/static/default_pfp.png";
+
+			return img.src;
+		}
+	}
+
+	return "/static/default_pfp.png";
+}
+
+function setChatPfps(chatName, src) {
+	// Refresh pfps for one user
+	for (const chatEl of document.getElementsByClassName("chat-message")) {
+		let author = chatEl.querySelector(".chat-author").innerText;
+		if (author !== chatName) continue;
+
+		chatEl.querySelector(".chat-pfp").src = src;
+	}
+}
