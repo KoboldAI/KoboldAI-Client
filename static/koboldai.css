@@ -3054,3 +3054,19 @@ select {
 #penalty_alpha[system_use_colab_tpu=true] {
 	display: none;
 }
+
+.simple_ui_only {
+	display: none;
+}
+
+.simple_ui_only[user_ui_level="0"] {
+	display: inherit;
+}
+
+.simple_ui_only.setting_container[user_ui_level="0"] {
+	display: grid;
+}
+
+#tts[system_experimental_features="false"] {
+	display: none;
+}

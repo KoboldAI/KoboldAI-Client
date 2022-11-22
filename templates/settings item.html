@@ -1,15 +1,15 @@
 {% for item in settings %}
 {% if item["menu_path"] == menu and item['sub_path'] == sub_path %}
 {% if 'extra_classes' in item %}
-<div id="{{ item['name'] }}_card" class="setting_container {{ item['extra_classes'] }}">
+<div id="{{ item['name'] }}_card" class="setting_container {{ item['extra_classes'] }}" ui_level="{{ item['ui_level'] }}">
 {% else %}
-<div id="{{ item['name'] }}_card" class="setting_container">
+<div id="{{ item['name'] }}_card" class="setting_container" ui_level="{{ item['ui_level'] }}">
 {% endif %}
 	<!---Top Row---->
 	<span class="setting_label">
 		<span>{{ item['label'] }}:&nbsp;</span><span class="helpicon material-icons-outlined" tooltip="{{ item['tooltip'] }}">help_icon</span>
 	</span>
-	{% if (item['unit'] != 'bool') and (item['unit'] != 'text') %}
+	{% if (item['unit'] != 'bool') and (item['unit'] != 'text') and (item['uitype'] != 'dropdown') %}
 		<input autocomplete="off" class="setting_value var_sync_{{ item['classname'] }}_{{ item['name'] }}" id="{{ item['classname'] }}_{{ item['name'] }}_cur"
 			   value="{{ item['default'] }}" item_id="{{ item['classname'] }}_{{ item['name'] }}" 
 			   {% if item['unit'] == 'float' %} inputmode="decimal"{% elif item['unit'] == 'float' %} inputmode="numeric"{% endif %}
