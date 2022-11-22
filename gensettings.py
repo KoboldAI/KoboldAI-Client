@@ -12,7 +12,8 @@ gensettingstf = [
     "menu_path": "Settings",
     "sub_path":  "Generation",
     "classname": "model",
-    "name": "genamt"
+    "name": "genamt",
+    "ui_level": 0
 	},
    {
 	"uitype": "slider",
@@ -27,7 +28,8 @@ gensettingstf = [
     "menu_path": "Settings",
     "sub_path":  "Generation",
     "classname": "model",
-    "name": "temp"
+    "name": "temp",
+    "ui_level": 1
 	},
 	{
 	"uitype": "slider",
@@ -42,7 +44,8 @@ gensettingstf = [
     "menu_path": "Settings",
     "sub_path":  "Sampling",
     "classname": "model",
-    "name": "top_p"
+    "name": "top_p",
+    "ui_level": 1
     
 	},
 	{
@@ -58,7 +61,8 @@ gensettingstf = [
     "menu_path": "Settings",
     "sub_path":  "Sampling",
     "classname": "model",
-    "name": "top_k"
+    "name": "top_k",
+    "ui_level": 1
 	},
 	{
 	"uitype": "slider",
@@ -73,7 +77,8 @@ gensettingstf = [
     "menu_path": "Settings",
     "sub_path":  "Sampling",
     "classname": "model",
-    "name": "tfs"
+    "name": "tfs",
+    "ui_level": 1
 	},
 	{
 	"uitype": "slider",
@@ -88,7 +93,8 @@ gensettingstf = [
     "menu_path": "Settings",
     "sub_path":  "Sampling",
     "classname": "model",
-    "name": "typical"
+    "name": "typical",
+    "ui_level": 1
 	},
 	{
 	"uitype": "slider",
@@ -103,7 +109,8 @@ gensettingstf = [
     "menu_path": "Settings",
     "sub_path":  "Sampling",
     "classname": "model",
-    "name": "top_a"
+    "name": "top_a",
+    "ui_level": 1
 	},
 	{
     "UI_V2_Only": True,
@@ -119,7 +126,8 @@ gensettingstf = [
     "menu_path": "Settings",
     "sub_path":  "Repetition",
     "classname": "model",
-    "name": "rep_pen"
+    "name": "rep_pen",
+    "ui_level": 1
 	},
 	{
 	"uitype": "slider",
@@ -134,7 +142,8 @@ gensettingstf = [
     "menu_path": "Settings",
     "sub_path":  "Repetition",
     "classname": "model",
-    "name": "rep_pen_range"
+    "name": "rep_pen_range",
+    "ui_level": 1
 	},
 	{
 	"uitype": "slider",
@@ -149,7 +158,8 @@ gensettingstf = [
     "menu_path": "Settings",
     "sub_path":  "Repetition",
     "classname": "model",
-    "name": "rep_pen_slope"
+    "name": "rep_pen_slope",
+    "ui_level": 1
 	},
     {
 	"uitype": "slider",
@@ -164,7 +174,8 @@ gensettingstf = [
     "menu_path": "Settings",
     "sub_path":  "Generation",
     "classname": "model",
-    "name": "max_length"
+    "name": "max_length",
+    "ui_level": 0
 	},
     {
 	"uitype": "slider",
@@ -179,7 +190,8 @@ gensettingstf = [
     "menu_path": "Settings",
     "sub_path":  "Generation",
     "classname": "model",
-    "name": "numseqs"
+    "name": "numseqs",
+    "ui_level": 0
 	},
     {
 	"uitype": "slider",
@@ -195,7 +207,8 @@ gensettingstf = [
     "sub_path": "",
     "classname": "user",
     "name": "widepth",
-    "extra_classes": "var_sync_alt_system_alt_gen"
+    "extra_classes": "var_sync_alt_system_alt_gen",
+    "ui_level": 2
 	},
     {
 	"uitype": "toggle",
@@ -225,7 +238,8 @@ gensettingstf = [
     "menu_path": "Settings",
     "sub_path": "Other",
     "classname": "story",
-    "name": "useprompt"
+    "name": "useprompt",
+    "ui_level": 2
 	},
 	{
 	"uitype": "toggle",
@@ -270,7 +284,8 @@ gensettingstf = [
     "menu_path": "World Info",
     "sub_path": "",
     "classname": "story",
-    "name": "dynamicscan"
+    "name": "dynamicscan",
+    "ui_level": 1
 	},
 	{
 	"uitype": "toggle",
@@ -285,7 +300,8 @@ gensettingstf = [
     "menu_path": "Settings",
     "sub_path": "Other",
     "classname": "user",
-    "name": "nopromptgen"
+    "name": "nopromptgen",
+    "ui_level": 2
 	},
 	{
 	"uitype": "toggle",
@@ -300,7 +316,8 @@ gensettingstf = [
     "menu_path": "Settings",
     "sub_path": "Other",
     "classname": "user",
-    "name": "rngpersist"
+    "name": "rngpersist",
+    "ui_level": 2
 	},
 	{
 	"uitype": "toggle",
@@ -315,7 +332,8 @@ gensettingstf = [
     "menu_path": "Settings",
     "sub_path": "Modifiers",
     "classname": "user",
-    "name": "nogenmod"
+    "name": "nogenmod",
+    "ui_level": 2
 	},
     {
 	"uitype": "toggle",
@@ -343,7 +361,8 @@ gensettingstf = [
     "sub_path": "",
     "classname": "story",
     "name": "storymode",
-    'children': [{'text': 'Story', 'value': 0}, {'text':'Adventure','value':1}, {'text':'Chat', 'value':2}]
+    'children': [{'text': 'Story', 'value': 0}, {'text':'Adventure','value':1}, {'text':'Chat', 'value':2}],
+    "ui_level": 0
     },
     {
  	"uitype": "toggle",
@@ -358,7 +377,8 @@ gensettingstf = [
     "menu_path": "Interface",
     "sub_path": "UI",
     "classname": "user",
-    "name": "output_streaming"
+    "name": "output_streaming",
+    "ui_level": 1
  	},
     {
  	"uitype": "toggle",
@@ -374,6 +394,8 @@ gensettingstf = [
     "sub_path": "UI",
     "classname": "user",
     "name": "show_probs"
+    ,
+    "ui_level": 2
  	},
     {
  	"uitype": "toggle",
@@ -388,7 +410,8 @@ gensettingstf = [
     "menu_path": "Settings",
     "sub_path": "Other",
     "classname": "system",
-    "name": "alt_gen"
+    "name": "alt_gen",
+    "ui_level": 2
  	},
     {
     "UI_V2_Only": True,
@@ -404,7 +427,8 @@ gensettingstf = [
     "menu_path": "Interface",
     "sub_path": "Formatting",
     "classname": "user",
-    "name": "frmttriminc"
+    "name": "frmttriminc",
+    "ui_level": 2
  	},
     {
     "UI_V2_Only": True,
@@ -420,7 +444,8 @@ gensettingstf = [
     "menu_path": "Interface",
     "sub_path": "Formatting",
     "classname": "user",
-    "name": "frmtrmblln"
+    "name": "frmtrmblln",
+    "ui_level": 2
  	},
     {
     "UI_V2_Only": True,
@@ -436,7 +461,8 @@ gensettingstf = [
     "menu_path": "Interface",
     "sub_path": "Formatting",
     "classname": "user",
-    "name": "frmtrmspch"
+    "name": "frmtrmspch",
+    "ui_level": 2
  	},
     {
     "UI_V2_Only": True,
@@ -452,7 +478,8 @@ gensettingstf = [
     "menu_path": "Interface",
     "sub_path": "Formatting",
     "classname": "user",
-    "name": "frmtadsnsp"
+    "name": "frmtadsnsp",
+    "ui_level": 2
  	},
     {
     "UI_V2_Only": True,
@@ -468,7 +495,8 @@ gensettingstf = [
     "menu_path": "Interface",
     "sub_path": "Formatting",
     "classname": "user",
-    "name": "singleline"
+    "name": "singleline",
+    "ui_level": 2
  	},
     {
     "UI_V2_Only": True,
@@ -484,7 +512,8 @@ gensettingstf = [
     "menu_path": "Interface",
     "sub_path": "Formatting",
     "classname": "user",
-    "name": "remove_double_space"
+    "name": "remove_double_space",
+    "ui_level": 2
  	},
     {
     "UI_V2_Only": True,
@@ -500,7 +529,8 @@ gensettingstf = [
     "menu_path": "author_notes",
     "sub_path": "",
     "classname": "story",
-    "name": "andepth"
+    "name": "andepth",
+    "ui_level": 2
  	},
     {
 	"uitype": "toggle",
@@ -527,7 +557,8 @@ gensettingstf = [
     "menu_path": "Interface",
     "sub_path": "UI",
     "classname": "user",
-    "name": "beep_on_complete"
+    "name": "beep_on_complete",
+    "ui_level": 0
  	},
     {
     "UI_V2_Only": True,
@@ -541,7 +572,8 @@ gensettingstf = [
     "sub_path": "Images",
     "classname": "user",
     "name": "img_gen_priority",
-    'children': [{'text': 'Use Local Only', 'value': 0}, {'text':'Prefer Local','value':1}, {'text':'Prefer Horde', 'value':2}, {'text':'Use Horde Only', 'value':3}, {'text':'Use Local SD-WebUI API', 'value':4}]
+    'children': [{'text': 'Use Local Only', 'value': 0}, {'text':'Prefer Local','value':1}, {'text':'Prefer Horde', 'value':2}, {'text':'Use Horde Only', 'value':3}, {'text':'Use Local SD-WebUI API', 'value':4}],
+    "ui_level": 2
  	},
     {
     "UI_V2_Only": True,
@@ -554,7 +586,8 @@ gensettingstf = [
     "menu_path": "Interface",
     "sub_path": "Images",
     "classname": "user",
-    "name": "img_gen_api_url"
+    "name": "img_gen_api_url",
+    "ui_level": 2
  	},
     {
     "UI_V2_Only": True,
@@ -567,7 +600,8 @@ gensettingstf = [
     "menu_path": "Interface",
     "sub_path": "Images",
     "classname": "user",
-    "name": "img_gen_art_guide"
+    "name": "img_gen_art_guide",
+    "ui_level": 2
  	},
     {
     "UI_V2_Only": True,
@@ -580,7 +614,8 @@ gensettingstf = [
     "menu_path": "Interface",
     "sub_path": "Images",
     "classname": "user",
-    "name": "img_gen_negative_prompt"
+    "name": "img_gen_negative_prompt",
+    "ui_level": 2
  	},
     {
     "UI_V2_Only": True,
@@ -596,7 +631,8 @@ gensettingstf = [
     "menu_path": "Interface",
     "sub_path": "Images",
     "classname": "user",
-    "name": "img_gen_steps"
+    "name": "img_gen_steps",
+    "ui_level": 2
  	},
     {
     "UI_V2_Only": True,
@@ -612,7 +648,8 @@ gensettingstf = [
     "menu_path": "Interface",
     "sub_path": "Images",
     "classname": "user",
-    "name": "img_gen_cfg_scale"
+    "name": "img_gen_cfg_scale",
+    "ui_level": 2
  	},
     {
     "UI_V2_Only": True,
@@ -628,7 +665,8 @@ gensettingstf = [
     "menu_path": "Interface",
     "sub_path": "Images",
     "classname": "system",
-    "name": "keep_img_gen_in_memory"
+    "name": "keep_img_gen_in_memory",
+    "ui_level": 2
  	},
     {
     "UI_V2_Only": True,
@@ -644,7 +682,8 @@ gensettingstf = [
     "menu_path": "Interface",
     "sub_path": "Images",
     "classname": "system",
-    "name": "generating_image"
+    "name": "generating_image",
+    "ui_level": 2
  	},
     {
     "UI_V2_Only": True,
@@ -661,6 +700,8 @@ gensettingstf = [
     "sub_path": "UI",
     "classname": "system",
     "name": "experimental_features"
+    ,
+    "ui_level": 2
  	},
     {
     "UI_V2_Only": True,
@@ -678,6 +719,8 @@ gensettingstf = [
     "classname": "story",
     "name": "gen_audio",
     "extra_classes": "var_sync_alt_system_experimental_features"
+    ,
+    "ui_level": 1
  	},
     {
     "UI_V2_Only": True,
@@ -690,7 +733,8 @@ gensettingstf = [
     "menu_path": "Interface",
     "sub_path": "UI",
     "classname": "user",
-    "name": "privacy_password"
+    "name": "privacy_password",
+    "ui_level": 1
  	},
     {
     "UI_V2_Only": True,
@@ -709,6 +753,7 @@ gensettingstf = [
 		{"text": "Legacy", "value": 0},
 		{"text": "Messages", "value": 1},
 	],
+    "ui_level": 1
  	},
     {
 	"uitype": "toggle",
@@ -723,7 +768,8 @@ gensettingstf = [
     "menu_path": "Settings",
     "sub_path": "Other",
     "classname": "system",
-    "name": "full_determinism"
+    "name": "full_determinism",
+    "ui_level": 2
 	},
     {
     "UI_V2_Only": True,
@@ -739,7 +785,8 @@ gensettingstf = [
     "menu_path": "Settings",
     "sub_path": "Other",
     "classname": "system",
-    "name": "seed_specified"
+    "name": "seed_specified",
+    "ui_level": 2
 	},
     {
 	"uitype": "text",
@@ -755,7 +802,8 @@ gensettingstf = [
     "sub_path": "Other",
     "classname": "system",
     "name": "seed",
-    "extra_classes": "var_sync_alt_system_seed_specified"
+    "extra_classes": "var_sync_alt_system_seed_specified",
+    "ui_level": 2
 	},
 ]
 

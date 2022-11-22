@@ -1,9 +1,9 @@
 {% for item in settings %}
 {% if item["menu_path"] == menu and item['sub_path'] == sub_path %}
 {% if 'extra_classes' in item %}
-<div id="{{ item['name'] }}_card" class="setting_container {{ item['extra_classes'] }}">
+<div id="{{ item['name'] }}_card" class="setting_container {{ item['extra_classes'] }}" ui_level="{{ item['ui_level'] }}">
 {% else %}
-<div id="{{ item['name'] }}_card" class="setting_container">
+<div id="{{ item['name'] }}_card" class="setting_container" ui_level="{{ item['ui_level'] }}">
 {% endif %}
 	<!---Top Row---->
 	<span class="setting_label">
