@@ -315,22 +315,23 @@
 		<div class="collapsable_header" onclick="toggle_setting_category(this);">
 			<h4 style="width:var(--flyout_menu_width);"><span class="material-icons-outlined cursor">expand_more</span> Substitutions</h4>
 		</div>
+		<div>
+			<div class="setting_tile_area setting_container_single_wide" id="Substitutions" ui_level=2>
+				<div class="help_text">
+					Automatically replaces phrases that you or the AI insert.
+					<span class="helpicon material-icons-outlined" tooltip="Can be used to help you insert special characters or automatically correct the AI. The pencil button toggles if a substitution is active or not.">help_icon</span>
+				</div>
 
-		<div class="setting_tile_area setting_container_single_wide" id="Substitutions" ui_level=2>
-			<div class="help_text">
-				Automatically replaces phrases that you or the AI insert.
-				<span class="helpicon material-icons-outlined" tooltip="Can be used to help you insert special characters or automatically correct the AI. The pencil button toggles if a substitution is active or not.">help_icon</span>
-			</div>
+				<div id="substitution-header" class="noselect">
+					<b>Replace</b> <b>With</b>
+				</div>
+				<div id="substitution-container"></div>
 
-			<div id="substitution-header" class="noselect">
-				<b>Replace</b> <b>With</b>
-			</div>
-			<div id="substitution-container"></div>
-
-			<div id="new-sub-card" class="cursor" tooltip="Add Substitution">
-				<span class="material-icons-outlined">
-					add
-				</span>
+				<div id="new-sub-card" class="cursor" tooltip="Add Substitution">
+					<span class="material-icons-outlined">
+						add
+					</span>
+				</div>
 			</div>
 		</div>
 

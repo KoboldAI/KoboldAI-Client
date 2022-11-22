@@ -735,6 +735,10 @@ function var_changed(data) {
 		updateChatStyle();
 	}
 	
+	if ((data.classname == "user") && (data.name == "ui_level")) {
+		set_ui_level(data.value);
+	}
+	
 	//Special Case for Actions
 	if ((data.classname == "story") && (data.name == "actions")) {
 		process_actions_data(data)
@@ -2951,6 +2955,22 @@ function set_ui_level(level) {
 			} else {
 				element.classList.add("hidden");
 			}
+		}
+	}
+	for (category of document.getElementsByClassName('collapsable_header')) {
+		hide = true;
+		for (element of category.nextElementSibling.children) {
+			if ((!element.classList.contains('help_text')) && (!element.classList.contains('hidden'))) {
+				hide = false;
+				break;
+			}
+		}
+		if (hide) {
+			category.classList.add("hidden");
+			category.nextElementSibling.classList.add("hidden");
+		} else {
+			category.classList.remove("hidden");
+			category.nextElementSibling.classList.remove("hidden");
 		}
 	}
 }
