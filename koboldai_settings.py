@@ -9,6 +9,7 @@ import multiprocessing
 from logger import logger
 import eventlet
 import torch
+import numpy as np
 
 serverstarted = False
 queue = None
@@ -1713,7 +1714,7 @@ class KoboldStoryRegister(object):
                 #self.tts_model.to(torch.device(0))  # gpu or cpu
                 self.tts_model.to(torch.device("cpu"))  # gpu or cpu
             
-            filename="stories/{}/{}.wav".format(self.story_settings.story_id, action_id)
+            filename="stories/{}/{}.ogg".format(self.story_settings.story_id, action_id)
             if not os.path.exists("stories/{}".format(self.story_settings.story_id)):
                 os.mkdir("stories/{}".format(self.story_settings.story_id))
                 
@@ -1724,14 +1725,20 @@ class KoboldStoryRegister(object):
                     self.make_audio_thread.start()
                 
     def create_wave(self, model, make_audio_queue):
-        sample_rate = 48000
+        import pydub
+        sample_rate = 24000
         speaker = 'en_5'
         while not make_audio_queue.empty():
             (text, filename) = make_audio_queue.get()
-            self.tts_model.save_wav(text=text,
+            audio = self.tts_model.apply_tts(text=text,
                                     speaker=speaker,
-                                    sample_rate=sample_rate,
-                                    audio_path=filename)
+                                    sample_rate=sample_rate)
+                                    #audio_path=filename)
+            channels = 2 if (audio.ndim == 2 and audio.shape[1] == 2) else 1
+            #y = np.int16(audio)
+            y = np.int16(audio * 2 ** 15)
+            song = pydub.AudioSegment(y.tobytes(), frame_rate=sample_rate, sample_width=2, channels=channels)
+            song.export(filename, format="ogg", bitrate="16k")
         
     def gen_all_audio(self, overwrite=False):
         if self.story_settings.gen_audio and self.koboldai_vars.experimental_features:
