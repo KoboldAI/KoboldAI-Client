@@ -3066,3 +3066,7 @@ select {
 .simple_ui_only.setting_container[user_ui_level="0"] {
 	display: grid;
 }
+
+#tts[system_experimental_features="false"] {
+	display: none;
+}
