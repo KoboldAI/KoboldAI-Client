@@ -1300,7 +1300,7 @@ class KoboldStoryRegister(object):
         if self.koboldai_vars.remove_double_space:
             while "  " in text:
                 text = text.replace("  ", " ")
-            if i > 0:
+            if i > 0 and text != "":
                 if self.actions[i-1]['Selected Text'][-1] == " " and text[0] == " ":
                     text = text[1:]
         if i in self.actions:
