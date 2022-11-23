@@ -3179,53 +3179,63 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
         koboldai_vars.tokenizer = tokenizer
     
     #Let's load the presets
-    presets = []
-    current_max_uid = 0
+    preset_same_model = {}
+    preset_same_class_size = {}
+    preset_same_class = {}
+    preset_others = {}
+    model_info_data = model_info()
+    
     for file in os.listdir("./presets"):
         if file[-8:] == '.presets':
             with open("./presets/{}".format(file)) as f:
                 data = json.load(f)
+                if not isinstance(data, list):
+                    data = [data]
             for preset in data:
-                preset['uid'] += current_max_uid
-                presets.append(preset)
-            current_max_uid = max([preset['uid'] for preset in presets])
+                if preset['Model Name'] == koboldai_vars.model:
+                    preset_same_model[preset['preset']] = preset
+                    preset_same_model[preset['preset']]['Match'] = "Recommended"
+                elif preset['preset'] not in preset_same_model and model_info_data['Model Type'] == preset['Model Type'] and model_info_data['Model Size'] == preset['Model Size']:
+                    preset_same_class_size[preset['preset']] = preset
+                    preset_same_class_size[preset['preset']]['Match'] = "Recommended"
+                elif preset['preset'] not in preset_same_model and preset['preset'] not in preset_same_class_size and model_info_data['Model Type'] == preset['Model Type']:
+                    preset_same_class[preset['preset']] = preset
+                    preset_same_class[preset['preset']]['Match'] = "Same Class"
+                elif preset['preset'] not in preset_same_model and preset['preset'] not in preset_same_class_size and preset['preset'] not in preset_same_class:
+                    preset_others[preset['preset']] = preset
+                    preset_others[preset['preset']]['Match'] = "Other"
     
-    koboldai_vars.uid_presets = {x['uid']: x for x in presets}
+    #Combine it all
+    presets = preset_same_model
+    for item in preset_same_class_size:
+        if item not in presets:
+            presets[item] = preset_same_class_size[item]
+    for item in preset_same_class:
+        if item not in presets:
+            presets[item] = preset_same_class[item]
+    for item in preset_others:
+        if item not in presets:
+            presets[item] = preset_others[item]
+    
+    koboldai_vars.uid_presets = presets
     #We want our data to be a 2 deep dict. Top level is "Recommended", "Same Class", "Model 1", "Model 2", etc
     #Next layer is "Official", "Custom"
     #Then the preset name
     
     to_use = OrderedDict()
     
-    to_use["Recommended"] = {"Official": [], "Custom": []}
-    to_use["Same Class"] = {"Official": [], "Custom": []}
-    to_use["Other"] = {"Official": [], "Custom": []}
-    used_ids = []
-    #Build recommended first:
-    for preset in presets:
-        if preset['Model Type'] == koboldai_vars.model and preset['uid'] not in used_ids:
-            if preset['Model Category'] == 'Custom':
-                to_use['Recommended']['Custom'].append(preset)
-            else:
-                to_use['Recommended']['Official'].append(preset)
-            used_ids.append(preset['uid'])
-    #Build Same Class
-    for preset in presets:
-        if preset['Model Size'] == get_model_size(koboldai_vars.model) and preset['uid'] not in used_ids:
-            if preset['Model Category'] == 'Custom':
-                to_use['Same Class']['Custom'].append(preset)
-            else:
-                to_use['Same Class']['Official'].append(preset)
-            used_ids.append(preset['uid'])
-    #Build the rest of the stuff
-    for preset in presets:
-        if preset['uid'] not in used_ids:
-            used_ids.append(preset['uid'])
-            if preset['Model Category'] == 'Custom':
-                to_use["Other"]['Custom'].append(preset)
-            else:
-                to_use["Other"]['Official'].append(preset)
-    
+    to_use["Recommended"] = {
+                                "Official": [presets[x] for x in presets if presets[x]['Match'] == "Recommended" and presets[x]['Preset Category'] == "Official"], 
+                                "Custom": [presets[x] for x in presets if presets[x]['Match'] == "Recommended" and presets[x]['Preset Category'] == "Custom"], 
+                            }
+    to_use["Same Class"] = {
+                                "Official": [presets[x] for x in presets if presets[x]['Match'] == "Same Class" and presets[x]['Preset Category'] == "Official"], 
+                                "Custom": [presets[x] for x in presets if presets[x]['Match'] == "Same Class" and presets[x]['Preset Category'] == "Custom"], 
+                            }
+    to_use["Other"] = {
+                                "Official": [presets[x] for x in presets if presets[x]['Match'] == "Other" and presets[x]['Preset Category'] == "Official"], 
+                                "Custom": [presets[x] for x in presets if presets[x]['Match'] == "Other" and presets[x]['Preset Category'] == "Custom"], 
+                            }
     koboldai_vars.presets = to_use
 
     
@@ -9094,19 +9104,30 @@ def UI_2_load_cookies():
 @socketio.on('save_new_preset')
 @logger.catch
 def UI_2_save_new_preset(data):
-    preset = {}
+    preset = model_info()
     #Data to get from current settings
     for item in ["genamt", "rep_pen", "rep_pen_range", "rep_pen_slope", "sampler_order", "temp", "tfs", "top_a", "top_k", "top_p", "typical"]:
         preset[item] = getattr(koboldai_vars, item)
     #Data to get from UI
     for item in ['preset', 'description']:
         preset[item] = data[item]
-    preset['Model Size'] = get_model_size(koboldai_vars.model)
-    preset['Model Category'] = 'Custom'
-    preset['Model Type'] = koboldai_vars.model
-    preset['uid'] = 0
-    preset = [preset]
+    preset['Preset Category'] = 'Custom'
+    if os.path.exists("./presets/{}.presets".format(data['preset'])):
+        with open("./presets/{}.presets".format(data['preset']), "r") as f:
+            old_preset = json.load(f)
+            if not isinstance(old_preset, list):
+                old_preset = [old_preset]
+        for i in range(len(old_preset)):
+            if old_preset[i]['Model Name'] == preset['Model Name']:
+                del old_preset[i]
+                break
+        old_preset.append(preset)
+        preset = old_preset
+    else:
+        preset = [preset]
+    print(preset)
     with open("./presets/{}.presets".format(data['preset']), "w") as f:
+        print("Saving to {}".format("./presets/{}.presets".format(data['preset'])))
         json.dump(preset, f, indent="\t")
 
 @logger.catch
@@ -9588,6 +9609,10 @@ def UI_2_audio():
 #==================================================================#
 # Test
 #==================================================================#
+@app.route("/model")
+def model_info():
+    return {"Model Type": str(model_config.model_type), "Model Size": get_model_size(koboldai_vars.model), "Model Name": koboldai_vars.model.replace("_", "/")}
+    
 
 @app.route("/vars")
 @logger.catch
