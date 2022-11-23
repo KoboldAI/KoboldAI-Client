@@ -3195,10 +3195,10 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
                 if preset['Model Name'] == koboldai_vars.model:
                     preset_same_model[preset['preset']] = preset
                     preset_same_model[preset['preset']]['Match'] = "Recommended"
-                elif preset['preset'] not in preset_same_model and model_info_data['Model Type'] == preset['Model Type'] and model_info_data['Model Size'] == preset['Model Size']:
+                elif not (preset['preset'] in preset_same_model and preset_same_model[preset['preset']]['Match'] == "Recommended") and model_info_data['Model Type'] == preset['Model Type'] and model_info_data['Model Size'] == preset['Model Size']:
                     preset_same_class_size[preset['preset']] = preset
                     preset_same_class_size[preset['preset']]['Match'] = "Recommended"
-                elif preset['preset'] not in preset_same_model and preset['preset'] not in preset_same_class_size and model_info_data['Model Type'] == preset['Model Type']:
+                elif not (preset['preset'] in preset_same_model and preset_same_model[preset['preset']]['Match'] == "Recommended") and not ((preset['preset'] in preset_same_class_size and preset_same_class_size[preset['preset']]['Match'] == "Recommended")) and model_info_data['Model Type'] == preset['Model Type']:
                     preset_same_class[preset['preset']] = preset
                     preset_same_class[preset['preset']]['Match'] = "Same Class"
                 elif preset['preset'] not in preset_same_model and preset['preset'] not in preset_same_class_size and preset['preset'] not in preset_same_class:
