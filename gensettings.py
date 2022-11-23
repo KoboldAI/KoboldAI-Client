@@ -223,7 +223,8 @@ gensettingstf = [
     "menu_path": "Home",
     "sub_path": "",
     "classname": "story",
-    "name": "autosave"
+    "name": "autosave",
+    "ui_level": 0
 	},
     {
 	"uitype": "toggle",
@@ -806,6 +807,7 @@ gensettingstf = [
     "ui_level": 2
 	},
     {
+    "UI_V2_Only": True,
 	"uitype": "dropdown",
 	"unit": "int",
 	"label": "UI Mode",
@@ -827,6 +829,7 @@ gensettingstf = [
 	],
 	},
     {
+    "UI_V2_Only": True,
 	"uitype": "slider",
 	"unit": "int",
 	"label": "Randomness",
@@ -844,6 +847,7 @@ gensettingstf = [
     "ui_level": 0
 	},
     {
+    "UI_V2_Only": True,
 	"uitype": "slider",
 	"unit": "int",
 	"label": "Creativity",
@@ -861,6 +865,7 @@ gensettingstf = [
     "ui_level": 0
 	},
     {
+    "UI_V2_Only": True,
 	"uitype": "slider",
 	"unit": "int",
 	"label": "Repetiveness",
