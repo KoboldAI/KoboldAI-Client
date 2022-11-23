@@ -589,7 +589,7 @@ class model_settings(settings):
     local_only_variables = ['badwordsids', 'apikey', 'tqdm', 'socketio', 'default_preset', 'koboldai_vars']
     no_save_variables = ['tqdm', 'tqdm_progress', 'tqdm_rem_time', 'socketio', 'modelconfig', 'custmodpth', 'generated_tkns', 
                          'loaded_layers', 'total_layers', 'total_download_chunks', 'downloaded_chunks', 'presets', 'default_preset', 
-                         'koboldai_vars', 'welcome', 'welcome_default']
+                         'koboldai_vars', 'welcome', 'welcome_default', 'simple_randomness', 'simple_creativity', 'simple_repitition']
     settings_name = "model"
     default_settings = {"rep_pen" : 1.1, "rep_pen_slope": 0.7, "rep_pen_range": 1024, "temp": 0.5, "top_p": 0.9, "top_k": 0.0, "top_a": 0.0, "tfs": 1.0, "typical": 1.0,
                         "sampler_order": [6,0,1,2,3,4,5]}
@@ -694,10 +694,11 @@ class model_settings(settings):
             
         #set preset values
         if name == 'selected_preset' and value != "":
-            if int(value) in self.uid_presets:
-                for default_key, default_value in self.default_settings:
+            logger.info("Changing preset to {}".format(value))
+            if value in self.uid_presets:
+                for default_key, default_value in self.default_settings.items():
                     setattr(self, default_key, default_value)
-                for preset_key, preset_value in self.uid_presets[int(value)].items():
+                for preset_key, preset_value in self.uid_presets[value].items():
                     if preset_key in self.__dict__:
                         if type(getattr(self, preset_key)) == int:
                             preset_value = int(preset_value)

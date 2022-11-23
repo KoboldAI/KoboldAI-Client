@@ -626,7 +626,7 @@ function do_presets(data) {
 				option_group.append(option);
 				for (const [preset, preset_value] of Object.entries(group_value)) {
 					var option = document.createElement("option");
-					option.value=preset;
+					option.value=preset_value['preset'];
 					option.text=preset_value.preset;
 					// Don't think we can use custom tooltip here (yet)
 					option.title = preset_value.description;
