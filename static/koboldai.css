@@ -1231,6 +1231,7 @@ body {
 	font-family: "Helvetica Neue",Helvetica,Arial,sans-serif;
 	font-size: calc((1em*var(--game_screen_font_size_adjustment)) + var(--font_size_adjustment));
 	line-height: 1.42857143;
+	position: relative;
 }
 
 #story_prompt[story_prompt_in_ai="true"] {
@@ -2441,15 +2442,18 @@ body {
 }
 
 #welcome-logo {
-	display: block;
-	top: 0px;
-	text-align: center;
-	margin-top: 20px;
-	margin-left: auto;
-	margin-right: auto;
 	width: 50%;
 	max-width: 720px;
 	filter: drop-shadow(5px 5px 5px #222);
+}
+
+#welcome-logo-container {
+	width: 100%;
+	height: 100%;
+	position: absolute;
+	display: flex;
+	justify-content: center;
+	align-items: center;
 }
 
 #welcome-text-content {
