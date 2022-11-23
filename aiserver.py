@@ -9612,7 +9612,10 @@ def UI_2_audio():
 #==================================================================#
 @app.route("/model")
 def model_info():
-    return {"Model Type": str(model_config.model_type), "Model Size": get_model_size(koboldai_vars.model), "Model Name": koboldai_vars.model.replace("_", "/")}
+    if model_config is not None:
+        return {"Model Type": str(model_config.model_type), "Model Size": get_model_size(koboldai_vars.model), "Model Name": koboldai_vars.model.replace("_", "/")}
+    else:
+        return {"Model Type": "Read Only", "Model Size": "0", "Model Name": koboldai_vars.model.replace("_", "/")}
     
 
 @app.route("/vars")
