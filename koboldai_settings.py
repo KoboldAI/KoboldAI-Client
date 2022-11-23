@@ -694,10 +694,11 @@ class model_settings(settings):
             
         #set preset values
         if name == 'selected_preset' and value != "":
-            if int(value) in self.uid_presets:
+            logger.info("Changing preset to {}".format(value))
+            if value in self.uid_presets:
                 for default_key, default_value in self.default_settings.items():
                     setattr(self, default_key, default_value)
-                for preset_key, preset_value in self.uid_presets[int(value)].items():
+                for preset_key, preset_value in self.uid_presets[value].items():
                     if preset_key in self.__dict__:
                         if type(getattr(self, preset_key)) == int:
                             preset_value = int(preset_value)
