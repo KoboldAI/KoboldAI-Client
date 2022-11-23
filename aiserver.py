@@ -2301,6 +2301,7 @@ def patch_transformers():
                     self.completed[i] = True
             if all(self.completed):
                 koboldai_vars.generated_tkns = koboldai_vars.genamt
+                del self.completed
                 return True
             return False
             
