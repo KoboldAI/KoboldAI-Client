@@ -2425,6 +2425,7 @@ body {
 
 #welcome_text {
 	align-self: flex-end;
+	height: 100%;
 }
 
 .welcome_text {
@@ -2432,12 +2433,20 @@ body {
 	height: 100%;
 }
 
+#UI2defaultwelcome {
+		display: flex;
+		flex-direction: column;
+		height: 100%;
+		justify-content: space-between;
+}
+
 #welcome-logo {
-	position: absolute;
-	top: 50%;
-	margin-top: -50px;
-	left: 50%;
-	transform: translate(-50%, -50%);
+	display: block;
+	top: 0px;
+	text-align: center;
+	margin-top: 20px;
+	margin-left: auto;
+	margin-right: auto;
 	width: 50%;
 	max-width: 720px;
 	filter: drop-shadow(5px 5px 5px #222);
