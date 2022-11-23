@@ -8210,6 +8210,7 @@ def UI_2_configure_prompt(data):
 @logger.catch
 def UI_2_var_change(data):
     if 'value' not in data:
+        logger.error("Got a variable change without a value. Data Packet: {}".format(data))
         return
     classname = data['ID'].split("_")[0]
     name = data['ID'][len(classname)+1:]
