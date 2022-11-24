@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 #==================================================================#
 # KoboldAI
-# Version: 1.19.1
+# Version: 1.19.2
 # By: The KoboldAI Community
 #==================================================================#
 
@@ -125,6 +125,7 @@ model_menu = {
         ["NSFW Models", "nsfwlist", "", True],
         ["Untuned OPT", "optlist", "", True],
         ["Untuned GPT-Neo/J", "gptneolist", "", True],
+        ["Untuned Pythia", "pythialist", "", True],
         ["Untuned Fairseq Dense", "fsdlist", "", True],
         ["Untuned Bloom", "bloomlist", "", True],
         ["Untuned XGLM", "xglmlist", "", True],
@@ -154,6 +155,7 @@ model_menu = {
         ["OPT Nerys 6B V2 (Hybrid)", "KoboldAI/OPT-6B-nerys-v2", "16GB", False],
         ["Janeway FSD 6.7B", "KoboldAI/fairseq-dense-6.7B-Janeway", "16GB", False],
         ["Janeway Neo 6B", "KoboldAI/GPT-J-6B-Janeway", "16GB", False],
+        ["Qilin Lit 6B (SFW)", "rexwang8/qilin-lit-6b", "16GB", False],       
         ["Janeway Neo 2.7B", "KoboldAI/GPT-Neo-2.7B-Janeway", "8GB", False],
         ["Janeway FSD 2.7B", "KoboldAI/fairseq-dense-2.7B-Janeway", "8GB", False],
         ["Nerys FSD 2.7B (Hybrid)", "KoboldAI/fairseq-dense-2.7B-Nerys", "8GB", False],
@@ -183,10 +185,29 @@ model_menu = {
         ],
     'gptneolist': [
         ["GPT-NeoX 20B", "EleutherAI/gpt-neox-20b", "64GB", False],
+        ["Pythia 13B (NeoX, Same dataset)", "EleutherAI/pythia-13b", "32GB", False],
         ["GPT-J 6B", "EleutherAI/gpt-j-6B", "16GB", False],
         ["GPT-Neo 2.7B", "EleutherAI/gpt-neo-2.7B", "8GB", False],
         ["GPT-Neo 1.3B", "EleutherAI/gpt-neo-1.3B", "6GB", False],
+        ["Pythia 800M (NeoX, Same dataset)", "EleutherAI/pythia-800m", "4GB", False],
+        ["Pythia 350M (NeoX, Same dataset)", "EleutherAI/pythia-350m", "2GB", False],
         ["GPT-Neo 125M", "EleutherAI/gpt-neo-125M", "2GB", False],
+        ["Return to Main Menu", "mainmenu", "", True],
+        ],
+    'pythialist': [
+        ["Pythia 13B Deduped", "EleutherAI/pythia-13b-deduped", "32GB", False],
+        ["Pythia 13B", "EleutherAI/pythia-13b", "32GB", False],
+        ["Pythia 6.7B Deduped", "EleutherAI/pythia-6.7b-deduped", "16GB", False],
+        ["Pythia 6.7B", "EleutherAI/pythia-6.7b", "16GB", False],
+        ["Pythia 1.3B Deduped", "EleutherAI/pythia-1.3b-deduped", "6GB", False],
+        ["Pythia 1.3B", "EleutherAI/pythia-1.3b", "6GB", False],
+        ["Pythia 800M", "EleutherAI/pythia-800m", "4GB", False],
+        ["Pythia 350M Deduped", "EleutherAI/pythia-350m-deduped", "2GB", False],
+        ["Pythia 350M", "EleutherAI/pythia-350m", "2GB", False],        
+        ["Pythia 125M Deduped", "EleutherAI/pythia-125m-deduped", "2GB", False],
+        ["Pythia 125M", "EleutherAI/pythia-125m", "2GB", False],
+        ["Pythia 19M Deduped", "EleutherAI/pythia-19m-deduped", "1GB", False],
+        ["Pythia 19M", "EleutherAI/pythia-19m", "1GB", False],
         ["Return to Main Menu", "mainmenu", "", True],
         ],
     'gpt2list': [
@@ -996,7 +1017,7 @@ def loadmodelsettings():
     if("nobreakmodel" in js):
         vars.nobreakmodel = js["nobreakmodel"]
     if("sampler_order" in js):
-        sampler_order = vars.sampler_order
+        sampler_order = js["sampler_order"]
         if(len(sampler_order) < 7):
             sampler_order = [6] + sampler_order
         vars.sampler_order = sampler_order
@@ -1134,7 +1155,7 @@ def processsettings(js):
     if("andepth" in js):
         vars.andepth = js["andepth"]
     if("sampler_order" in js):
-        sampler_order = vars.sampler_order
+        sampler_order = js["sampler_order"]
         if(len(sampler_order) < 7):
             sampler_order = [6] + sampler_order
         vars.sampler_order = sampler_order
