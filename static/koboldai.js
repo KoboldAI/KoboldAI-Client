@@ -803,9 +803,7 @@ function var_changed(data) {
 			image_area.appendChild(image);
 		}
 	}  else if (data.classname == "story" && data.name == "picture_prompt") {
-		if (document.getElementById("action image").firstChild) {
-			document.getElementById("action image").firstChild.setAttribute("title", data.value);
-		}
+		if (data.value) document.getElementById("action image").setAttribute("tooltip", data.value);
 	//special case for welcome text since we want to allow HTML
 	} else if (data.classname == 'model' && data.name == 'welcome') {
 		document.getElementById('welcome_text').innerHTML = data.value;
