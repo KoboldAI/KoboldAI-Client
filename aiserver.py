@@ -9384,7 +9384,11 @@ def text2img_api(prompt,
     apiaddress = '{}/sdapi/v1/txt2img'.format(koboldai_vars.img_gen_api_url.rstrip("/"))
     payload_json = json.dumps(final_imgen_params)
     logger.debug(final_imgen_params)
-    submit_req = requests.post(url=apiaddress, data=payload_json)
+
+    try:
+        submit_req = requests.post(url=apiaddress, data=payload_json)
+    finally:
+        koboldai_vars.generating_image = False
 
     if submit_req.status_code == 404:
         show_error_notification(
@@ -9396,7 +9400,6 @@ def text2img_api(prompt,
     elif not submit_req.ok:
         show_error_notification("SD Web API Failure", f"HTTP Code {submit_req.status_code} -- See console for details")
         logger.error(f"SD Web API Failure: HTTP Code {submit_req.status_code}, Body:\n{submit_req.text}")
-        koboldai_vars.generating_image = False
         return None
 
     results = submit_req.json()
