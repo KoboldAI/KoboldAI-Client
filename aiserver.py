@@ -768,7 +768,10 @@ api_v1 = KoboldAPISpec(
     tags=tags,
 )
 
-def show_error_notification(title: str, text: str) -> None:
+def show_error_notification(title: str, text: str, do_log: bool = False) -> None:
+    if do_log:
+        logger.error(f"{title}: {text}")
+
     if has_request_context():
         socketio.emit("show_error_notification", {"title": title, "text": text}, broadcast=True, room="UI_2")
     else:
