@@ -9372,7 +9372,7 @@ def text2img_api(prompt,
       #"override_settings": {},
       #"sampler_index": "Euler"
     final_imgen_params = {
-        "prompt": "{}, {}".format(prompt, art_guide),
+        "prompt": ", ".join(filter(bool, [prompt, art_guide])),
         "n_iter": 1,
         "width": 512,
         "height": 512,
