@@ -9378,7 +9378,7 @@ def text2img_api(prompt,
         "height": 512,
         "steps": koboldai_vars.img_gen_steps,
         "cfg_scale": koboldai_vars.img_gen_cfg_scale,
-        "negative_prompt": "{}".format(koboldai_vars.img_gen_negative_prompt),
+        "negative_prompt": koboldai_vars.img_gen_negative_prompt,
         "sampler_index": "Euler a"
     }
     apiaddress = '{}/sdapi/v1/txt2img'.format(koboldai_vars.img_gen_api_url.rstrip("/"))
