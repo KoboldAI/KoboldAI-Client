@@ -1924,8 +1924,8 @@ function world_info_entry(data) {
 	// We may want to change the display names of these later
 	wiTypeSelector.value = {
 		chatcharacter: "Chat Character",
-		wi: "World Info",
-		constant: "Memory",
+		wi: "Keywords",
+		constant: "Always On",
 	}[world_info_data[data.uid].type];
 
 	wiTypeSelector.classList.remove("pulse");
@@ -1939,10 +1939,10 @@ function world_info_entry(data) {
 			case "Chat Character":
 				world_info_data[data.uid].constant = true;
 				break;
-			case "Memory":
+			case "Always On":
 				world_info_data[data.uid].constant = true;
 				break;
-			case "World Info":
+			case "Keywords":
 				world_info_data[data.uid].constant = false;
 				break;
 			default:
@@ -1951,8 +1951,8 @@ function world_info_entry(data) {
 		}
 		world_info_data[data.uid].type = {
 			"Chat Character": "chatcharacter",
-			"Memory": "constant",
-			"World Info": "wi",
+			"Always On": "constant",
+			"Keywords": "wi",
 		}[wiTypeSelector.value];
 		send_world_info(data.uid);
 		this.classList.add("pulse");
