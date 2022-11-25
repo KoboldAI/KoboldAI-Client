@@ -9381,33 +9381,33 @@ def text2img_api(prompt,
         "negative_prompt": "{}".format(koboldai_vars.img_gen_negative_prompt),
         "sampler_index": "Euler a"
     }
-    apiaddress = '{}/sdapi/v1/txt2img'.format(koboldai_vars.img_gen_api_url)
+    apiaddress = '{}/sdapi/v1/txt2img'.format(koboldai_vars.img_gen_api_url.rstrip("/"))
     payload_json = json.dumps(final_imgen_params)
     logger.debug(final_imgen_params)
-    #print("payload_json contains " + payload_json)
-    submit_req = requests.post(url=f'{apiaddress}', data=payload_json).json()
-    if submit_req:
-        results = submit_req
-        for i in results['images']:
-            final_src_img = Image.open(BytesIO(base64.b64decode(i.split(",",1)[0])))
-            buffer = BytesIO()
-            final_src_img.save(buffer, format="Webp", quality=95)
-            b64img = base64.b64encode(buffer.getvalue()).decode("utf8")
-            base64_bytes = b64img.encode('utf-8')
-            img_bytes = base64.b64decode(base64_bytes)
-            img = Image.open(BytesIO(img_bytes))
-            dt_string = datetime.datetime.now().strftime("%H%M%S%d%m%Y")
-            final_filename = "stories/art/{}_{}".format(dt_string,filename)
-            pnginfo = PngImagePlugin.PngInfo()
-            prompttext = results.get('info').split("\",")[0].split("\"")[3]
-            pnginfo.add_text("parameters","prompttext")
-            img.save(final_filename, pnginfo=pnginfo)
-            logger.debug("Saved Image")
-            koboldai_vars.generating_image = False
-            return(b64img)
-    else:
+    submit_req = requests.post(url=apiaddress, data=payload_json)
+
+    if submit_req.status_code == 404:
+        show_error_notification(
+            "SD Web API Failure",
+            f"The SD Web UI was not called with --api. Unable to connect.",
+            do_log=True
+        )
+        return None
+    elif not submit_req.ok:
+        show_error_notification("SD Web API Failure", f"HTTP Code {submit_req.status_code} -- See console for details")
+        logger.error(f"SD Web API Failure: HTTP Code {submit_req.status_code}, Body:\n{submit_req.text}")
         koboldai_vars.generating_image = False
-        logger.error(submit_req.text)
+        return None
+
+    results = submit_req.json()
+
+    try:
+        base64_image = results["images"][0]
+    except (IndexError, KeyError):
+        show_error_notification("SD Web API Failure", "SD Web API returned no images", do_log=True)
+        return None
+
+    return base64_image
 
 #@logger.catch
 def get_items_locations_from_text(text):
