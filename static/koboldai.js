@@ -4466,10 +4466,13 @@ async function postWI(wiData) {
 	}
 }
 
-async function loadNAILorebook(data, filename) {
+async function loadNAILorebook(data, filename, image=null) {
 	let lorebookVersion = data.lorebookVersion;
 	let wi_data = {folders: {[filename]: []}, entries: {}};
 	console.log(`Loading NAI lorebook version ${lorebookVersion}`);
+
+	let base = Math.max(...Object.keys(world_info_data).map(Number)) + 1;
+	if (base < 0) base = 0;
 
 	let i = 0;
 	for (const entry of data.entries) {
@@ -4499,10 +4502,25 @@ async function loadNAILorebook(data, filename) {
 		};
 		wi_data.folders[filename].push(i);
 
+
 		i++;
 	}
 
 	await postWI(wi_data);
+
+	if (image) {
+		for (let offset=0;offset<i;offset++) {
+			let uid = base+offset;
+
+			const imageEl = $el(`#world_info_image_${uid}`);
+			if (imageEl) imageEl.src = image;
+
+			let r = await fetch(`/set_wi_image/${uid}`, {
+				method: "POST",
+				body: image
+			});
+		}
+	}
 }
 
 async function loadKoboldData(data, filename) {
@@ -4521,44 +4539,60 @@ async function loadKoboldData(data, filename) {
 	}
 }
 
-function readLoreCard(file) {
+async function blob2Base64(blob) {
+	return new Promise(function(resolve, reject) {
+		const reader = new FileReader();
+		reader.readAsDataURL(blob);
+		reader.onload = () => resolve(reader.result);
+		reader.onerror = error => reject(error);
+	});
+}
+
+async function blob2ArrayBuffer(blob) {
+	return new Promise(function(resolve, reject) {
+		const reader = new FileReader();
+		reader.readAsArrayBuffer(blob);
+		reader.onload = () => resolve(reader.result);
+		reader.onerror = error => reject(error);
+	});
+}
+
+async function readLoreCard(file) {
 	// "naidata"
 	const magicNumber = new Uint8Array([0x6e, 0x61, 0x69, 0x64, 0x61, 0x74, 0x61]);
 	
 	let filename = file.name;
 	let reader = new FileReader();
-	reader.readAsArrayBuffer(file);
 
-	reader.addEventListener("load", function() {
-		let bin = new Uint8Array(reader.result);
+	let bin = new Uint8Array(await blob2ArrayBuffer(file))
 
-		// naidata is prefixed with magic number
-		let offset = bin.findIndex(function(item, possibleIndex, array) {
-			for (let i=0;i<magicNumber.length;i++) {
-				if (bin[i + possibleIndex] !== magicNumber[i]) return false;
-			}
-			return true;
-		});
-
-		if (offset === null) {
-			reportError("Error reading Lorecard", "Unable to find NAIDATA offset. Is this a valid Lorecard?");
-			throw Error("Couldn't find offset!");
+	// naidata is prefixed with magic number
+	let offset = bin.findIndex(function(item, possibleIndex, array) {
+		for (let i=0;i<magicNumber.length;i++) {
+			if (bin[i + possibleIndex] !== magicNumber[i]) return false;
 		}
-		
-		let lengthBytes = bin.slice(offset - 8, offset - 4);
-		let length = 0;
-		
-		for (const byte of lengthBytes) {
-			length = (length << 8) + byte;
-		}
-		
-		let binData = bin.slice(offset + 8, offset + length);
-		
-		// Encoded in base64
-		let data = atob(new TextDecoder().decode(binData));
-		let j = JSON.parse(data);
-		loadNAILorebook(j, filename);
-	})
+		return true;
+	});
+
+	if (offset === null) {
+		reportError("Error reading Lorecard", "Unable to find NAIDATA offset. Is this a valid Lorecard?");
+		throw Error("Couldn't find offset!");
+	}
+	
+	let lengthBytes = bin.slice(offset - 8, offset - 4);
+	let length = 0;
+	
+	for (const byte of lengthBytes) {
+		length = (length << 8) + byte;
+	}
+	
+	let binData = bin.slice(offset + 8, offset + length);
+	
+	// Encoded in base64
+	let data = atob(new TextDecoder().decode(binData));
+	let j = JSON.parse(data);
+	let b64Image = await blob2Base64(file);
+	loadNAILorebook(j, filename, b64Image);
 }
 
 async function processDroppedFile(file) {
