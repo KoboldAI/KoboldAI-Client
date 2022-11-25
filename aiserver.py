@@ -3480,21 +3480,9 @@ def lua_compute_context(submission, entries, folders, kwargs):
         while(folders[i] is not None):
             allowed_folders.add(int(folders[i]))
             i += 1
-    #winfo, mem, anotetxt, _ = calcsubmitbudgetheader(
-    #    submission,
-    #    allowed_entries=allowed_entries,
-    #    allowed_folders=allowed_folders,
-    #    force_use_txt=True,
-    #    scan_story=kwargs["scan_story"] if kwargs["scan_story"] != None else True,
-    #)
-    txt, _, _, found_entries = koboldai_vars.calc_ai_text()
-    #txt, _, _ = calcsubmitbudget(
-    #    len(actions),
-    #    winfo,
-    #    mem,
-    #    anotetxt,
-    #    actions,
-    #)
+    txt, _, _, found_entries = koboldai_vars.calc_ai_text(submitted_text=submission,
+                                                allowed_wi_entries=allowed_entries,
+                                                allowed_wi_folders=allowed_folders)
     return utils.decodenewlines(tokenizer.decode(txt))
 
 #==================================================================#
@@ -4728,7 +4716,7 @@ def actionsubmit(data, actionmode=0, force_submit=False, force_prompt_gen=False,
                 if(len(koboldai_vars.prompt.strip()) == 0):
                     koboldai_vars.prompt = data
                 else:
-                    koboldai_vars.actions.append(data)
+                    koboldai_vars.actions.append_submission(data)
                 update_story_chunk('last')
                 send_debug()
 
@@ -6082,7 +6070,6 @@ def generate(txt, minimum, maximum, found_entries=None):
     
     if(len(genout) == 1):
         genresult(genout[0]["generated_text"])
-        #koboldai_vars.actions.append(applyoutputformatting(genout[0]["generated_text"]))
     else:
         koboldai_vars.actions.append_options([applyoutputformatting(x["generated_text"]) for x in genout])
         genout = [{"generated_text": x['text']} for x in koboldai_vars.actions.get_current_options()]

@@ -202,7 +202,16 @@ class koboldai_vars(object):
         # TODO: This might be ineffecient, should we cache some of this?
         return [[token, self.tokenizer.decode(token)] for token in encoded]
     
-    def calc_ai_text(self, submitted_text="", return_text=False, send_context=True):
+    def calc_ai_text(self, submitted_text=None, return_text=False, send_context=True, allowed_wi_entries=None, allowed_wi_folders=None):
+        """Compute the context that would be submitted to the AI.
+
+        submitted_text: Optional override to the player-submitted text.
+        return_text: If True, return the context as a string.  Otherwise, return a tuple consisting of:
+            (tokens, used_tokens, used_tokens+self.genamt, set(used_world_info))
+        send_context: If True, the context is prepared for submission to the AI (by marking used world info and setting self.context
+        allowed_wi_entries: If not None, only world info entries with uids in the given set are allowed to be used.
+        allowed_wi_folders: If not None, only world info folders with uids in the given set are allowed to be used.
+        """
         #start_time = time.time()
         if self.tokenizer is None:
             if return_text:
@@ -227,6 +236,17 @@ class koboldai_vars(object):
         if send_context:
             self.worldinfo_v2.reset_used_in_game()
         
+        def allow_wi(wi):
+            """Return True if adding this world info entry is allowed."""
+            wi_uid = wi['uid']
+            if wi_uid in used_world_info:
+                return False
+            if allowed_wi_entries is not None and wi_uid not in allowed_wi_entries:
+                return False
+            if allowed_wi_folders is not None and wi['folder'] not in allowed_wi_folders:
+                return False
+            return True
+
         ######################################### Add memory ########################################################
         memory_text = self.memory
         if memory_text != "":
@@ -256,7 +276,7 @@ class koboldai_vars(object):
         ######################################### Constant World Info ########################################################
         #Add constant world info entries to memory
         for wi in self.worldinfo_v2:
-            if wi['constant']:
+            if wi['constant'] and allow_wi(wi):
                 wi_length = len(self.tokenizer.encode(wi['content']))
                 if used_tokens + wi_length <= token_budget:
                     used_tokens+=wi_length
@@ -287,9 +307,8 @@ class koboldai_vars(object):
         if self.is_chat_v2():
             action_text_split[-1][0] = action_text_split[-1][0].strip() + "\n"
         
-        
         ######################################### Prompt ########################################################
-        #Add prompt lenght/text if we're set to always use prompt
+        #Add prompt length/text if we're set to always use prompt
         if self.useprompt:
             prompt_length = 0
             prompt_data = []
@@ -310,7 +329,7 @@ class koboldai_vars(object):
                 self.prompt_in_ai = True
                 #Find World Info entries in prompt
                 for wi in self.worldinfo_v2:
-                    if wi['uid'] not in used_world_info:
+                    if allow_wi(wi):
                         #Check to see if we have the keys/secondary keys in the text so far
                         match = False
                         for key in wi['key']:
@@ -359,18 +378,23 @@ class koboldai_vars(object):
         actions_seen = [] #Used to track how many actions we've seen so we can insert author's note in the appropriate place as well as WI depth stop
         inserted_author_note = False
 
+        sentences_seen = 0
         for i in range(len(action_text_split)-1, -1, -1):
             if action_text_split[i][3]:
                 #We've hit an item we've already included. Stop
                 break
+            sentences_seen += 1
+
+            #Add our author's note if we've hit andepth
+            if not inserted_author_note and len(actions_seen) >= self.andepth and sentences_seen > self.andepth and self.authornote != "":
+                game_context.insert(0, {"type": "authors_note", "text": authors_note_text, "tokens": authors_note_data, "attention_multiplier": self.an_attn_bias})
+                inserted_author_note = True
+
+            # Add to actions_seen after potentially inserting the author note, since we want to insert the author note
+            # after the sentence that pushes our action count above the author note depth.
             for action in action_text_split[i][1]:
                 if action not in actions_seen:
                     actions_seen.append(action)
-
-            #Add our author's note if we've hit andepth
-            if not inserted_author_note and len(actions_seen) >= self.andepth and self.authornote != "":
-                game_context.insert(0, {"type": "authors_note", "text": authors_note_text, "tokens": authors_note_data, "attention_multiplier": self.an_attn_bias})
-                inserted_author_note = True
 
             action_data = [[x, self.tokenizer.decode(x)] for x in self.tokenizer.encode(action_text_split[i][0])]
             length = len(action_data)
@@ -391,13 +415,11 @@ class koboldai_vars(object):
                     "tokens": action_data,
                     "action_ids": action_text_split[i][1]
                 })
-                #wi_search = re.sub("[^A-Za-z\ 0-9\'\"]", "", action_text_split[i][0])
                 wi_search = action_text_split[i][0]
-
 
                 #Now we need to check for used world info entries
                 for wi in self.worldinfo_v2:
-                    if wi['uid'] not in used_world_info:
+                    if allow_wi(wi):
                         #Check to see if we have the keys/secondary keys in the text so far
                         match = False
                         for key in wi['key']:
@@ -411,7 +433,7 @@ class koboldai_vars(object):
                                     match=True
                                     break
                         if method == 1:
-                            if len(actions_seen) > self.widepth:
+                            if len(actions_seen) > self.widepth and sentences_seen > self.widepth:
                                 match = False
                         if match:
                             wi_length = len(self.tokenizer.encode(wi['content']))
@@ -1214,6 +1236,9 @@ class KoboldStoryRegister(object):
         self.actions = {} #keys = "Selected Text", "Wi_highlighted_text", "Options", "Selected Text Length", "Probabilities". 
                           #Options being a list of dict with keys of "text", "Pinned", "Previous Selection", "Edited", "Probabilities"
         self.action_count = -1
+        # The id of the last submission action, or 0 if the last append was not a submission
+        self.submission_id = 0
+        self.sentence_re = re.compile(r"[^.!?]*[.!?]+\"?\s*", re.S)
         self.story_settings = story_settings
         self.tts_model = None
         self.make_audio_thread = None
@@ -1376,7 +1401,15 @@ class KoboldStoryRegister(object):
         self.set_game_saved()
         self.gen_all_audio()
         
+    def append_submission(self, text, action_id_offset=0, recalc=True):
+        self._append(text, action_id_offset=action_id_offset, recalc=recalc)
+        self.submission_id = self.action_count + action_id_offset
+
     def append(self, text, action_id_offset=0, recalc=True):
+        self._append(text, action_id_offset=action_id_offset, recalc=recalc)
+        self.submission_id = 0
+
+    def _append(self, text, action_id_offset=0, recalc=True):
         if self.koboldai_vars.remove_double_space:
             while "  " in text:
                 text = text.replace("  ", " ")
@@ -1668,7 +1701,11 @@ class KoboldStoryRegister(object):
                 self.actions[action_id]["Options"][option_number]['Probabilities'].append(probabilities)
                 process_variable_changes(self.socketio, "story", 'actions', {"id": action_id, 'action':  self.actions[action_id]}, None)
     
-    def to_sentences(self, submitted_text=""):
+    def to_sentences(self, submitted_text=None):
+        """Return a list of the actions split into sentences.
+        submitted_text: Optional additional text to append to the actions, the text just submitted by the player.
+        returns: List of [sentence text, actions used, token length, included in AI context]
+        """
         #start_time = time.time()
         #we're going to split our actions by sentence for better context. We'll add in which actions the sentence covers. Prompt will be added at a -1 ID
         actions = {i: self.actions[i]['Selected Text'] for i in self.actions}
@@ -1676,16 +1713,29 @@ class KoboldStoryRegister(object):
             actions[-1] = ""
         else:
             actions[-1] = self.story_settings.prompt
-        if submitted_text != "":
-            actions[self.action_count+1] = submitted_text
-        action_text = self.__str__()
-        action_text = "{}{}{}".format("" if self.story_settings is None else self.story_settings.prompt, action_text, submitted_text)
+        # During generation, the action with id action_count+1 holds streamed tokens, and action_count holds the last
+        # submitted text.  Outside of generation, action_count+1 is missing/empty.  Strip streaming tokens and
+        # replace submitted if specified.
+        if self.action_count+1 in self.actions:
+            actions[self.action_count+1] = ""
+        if submitted_text:
+            if self.submission_id:
+                # Text has been submitted
+                actions[self.submission_id] = submitted_text
+            elif self.action_count == -1:
+                # The only submission is the prompt
+                actions[-1] = submitted_text
+            else:
+                # Add submitted_text to the end
+                actions[self.action_count + 1] = submitted_text
+        action_text = "".join(txt for _, txt in sorted(actions.items()))
         ###########action_text_split = [sentence, actions used in sentence, token length, included in AI context]################
-        action_text_split = [[x, [], 0, False] for x in re.findall(".*?[.!?]\s+", action_text, re.S)]
+        action_text_split = [[x, [], 0, False] for x in self.sentence_re.findall(action_text)]
         #The above line can trim out the last sentence if it's incomplete. Let's check for that and add it back in
-        if len("".join([x[0] for x in action_text_split])) < len(action_text):
-            action_text_split.append([action_text[len("".join([x[0] for x in action_text_split])):], [], 0, False])
-        #The last action shouldn't have the extra space from the sentence splitting, so let's remove it
+        text_len = sum(len(x[0]) for x in action_text_split)
+        if text_len < len(action_text):
+            action_text_split.append([action_text[text_len:], [], 0, False])
+        #If we don't have any actions at this point, just return.
         if len(action_text_split) == 0:
             return []
         
@@ -1701,7 +1751,9 @@ class KoboldStoryRegister(object):
                 advance_sentence = True
             if Action_Position[0] not in action_text_split[Sentence_Position[0]][1]:
                 #Since this action is in the sentence, add it to the list if it's not already there
-                action_text_split[Sentence_Position[0]][1].append(Action_Position[0])
+                #Only add actions with non-empty text
+                if len(actions[Action_Position[0]]) > 0:
+                    action_text_split[Sentence_Position[0]][1].append(Action_Position[0])
             #Fix the text length leftovers first since they interact with each other
             if not advance_action:
                 Action_Position[1] -= Sentence_Position[1]
@@ -1719,7 +1771,6 @@ class KoboldStoryRegister(object):
                     break
                 Sentence_Position[1] = len(action_text_split[Sentence_Position[0]][0])
         #OK, action_text_split now contains a list of [sentence including trailing space if needed, [action IDs that sentence includes]]
-        #logger.debug("to_sentences: {}s".format(time.time()-start_time))
         return action_text_split
     
     def gen_audio(self, action_id=None, overwrite=True):
