@@ -790,9 +790,12 @@ function var_changed(data) {
 	//Special Case for story picture
 	} else if (data.classname == "story" && data.name == "picture") {
 		image_area = document.getElementById("action image");
-		while (image_area.firstChild) { 
-			image_area.removeChild(image_area.firstChild);
-		}
+
+		let maybeImage = image_area.getElementsByClassName("action_image")[0];
+		if (maybeImage) maybeImage.remove();
+
+		$el("#image-loading").classList.add("hidden");
+
 		if (data.value != "") {
 			var image = new Image();
 			image.src = 'data:image/png;base64,'+data.value;
@@ -5989,6 +5992,11 @@ $el("#aidgpromptnum").addEventListener("keydown", function(event) {
 	if (event.key !== "Enter") return;
 	attemptClubLoad();
 	event.preventDefault();
+});
+
+$el("#generate-image-button").addEventListener("click", function() {
+	$el("#image-loading").classList.remove("hidden");
+	socket.emit("generate_image", {});
 });
 
 /* -- Shiny New Chat -- */
