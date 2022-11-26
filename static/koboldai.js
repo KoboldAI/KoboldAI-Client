@@ -317,10 +317,12 @@ function create_options(action) {
 			iconcell.classList.add("sequnce_icon");
 			var icon = document.createElement("span");
 			icon.id = "Pin_"+i;
-			icon.classList.add("oi");
-			icon.setAttribute('data-glyph', "loop-circular");
+			icon.classList.add("material-icons-outlined");
+			icon.classList.add("option_icon");
+			icon.classList.add("cursor");
+			icon.textContent = "cached";
 			iconcell.append(icon);
-			delete_icon = $e("span", iconcell, {"classes": ["material-icons-outlined", "cursor", 'delete_option_icon'], 
+			delete_icon = $e("span", iconcell, {"classes": ["material-icons-outlined", "cursor", 'option_icon'], 
 												"tooltip": "Delete Option", 'option_id': i,
 												'option_chunk': action.id, 'textContent': 'delete'});
 			delete_icon.onclick = function () {
@@ -353,8 +355,10 @@ function create_options(action) {
 			iconcell.classList.add("sequnce_icon");
 			var icon = document.createElement("span");
 			icon.id = "Pin_"+i;
-			icon.classList.add("oi");
-			icon.setAttribute('data-glyph', "pin");
+			icon.classList.add("material-icons-outlined");
+			icon.classList.add("option_icon");
+			icon.classList.add("cursor");
+			icon.textContent = "push_pin";
 			if (!(item.Pinned)) {
 				icon.setAttribute('style', "filter: brightness(50%);");
 			}

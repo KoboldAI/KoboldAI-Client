@@ -1331,9 +1331,10 @@ body {
 	margin: auto auto auto auto;
 	display: flex;
 	flex-direction: column;
+	color: var(--flyout_text);
 }
 
-.delete_option_icon {
+.option_icon {
 	font-size: 1.2em !important;
 }
 
