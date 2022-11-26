@@ -6283,7 +6283,6 @@ async function wiImageClear(summonEvent) {
 	let uid = parseInt(summonEvent.target.id.replace("world_info_image_", ""));
 	summonEvent.target.src = "";
 	summonEvent.target.parentElement.querySelector(".placeholder").classList.remove("hidden");
-	console.log(summonEvent, uid);
 	let r = await fetch(`/set_wi_image/${uid}`, {
 		method: "POST",
 		body: null
