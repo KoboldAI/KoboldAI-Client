@@ -2711,6 +2711,12 @@ body {
 	outline: none;
 }
 
+/* Big Image Viewer */
+#big-image {
+	max-height: 99%;
+	max-width: 99%;
+}
+
 /*---------------------------------- Global ------------------------------------------------*/
 .hidden {
 	display: none;

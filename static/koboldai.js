@@ -90,21 +90,28 @@ var finder_actions = [
 	// {name: "", icon: "palette", func: function() { highlightEl("#biasing") }},
 ];
 
-const context_menu_actions = [
-	{label: "Cut", icon: "content_cut", visibilityCondition: "SELECTION", click: cut},
-	{label: "Copy", icon: "content_copy", visibilityCondition: "SELECTION", click: copy},
-	{label: "Paste", icon: "content_paste", visibilityCondition: "SELECTION", click: paste},
-	// Null makes a seperation bar
-	null,
-	{label: "Add to Memory", icon: "assignment", visibilityCondition: "SELECTION", click: push_selection_to_memory},
-	{label: "Add to World Info Entry", icon: "auto_stories", visibilityCondition: "SELECTION", click: push_selection_to_world_info},
-	{label: "Add as Bias", icon: "insights", visibilityCondition: "SELECTION", click: push_selection_to_phrase_bias},
-	{label: "Retry from here", icon: "refresh", visibilityCondition: "CARET", click: retry_from_here},
-	// Not implemented! See view_selection_probabiltiies
-	// null,
-	// {label: "View Token Probabilities", icon: "assessment", visibilityCondition: "SELECTION", click: view_selection_probabilities},
-	// {label: "View Token Probabilities", icon: "account_tree", visibilityCondition: "SELECTION", click: view_selection_probabilities},
-];
+const context_menu_actions = {
+	gamescreen: [
+		{label: "Cut", icon: "content_cut", enabledOn: "SELECTION", click: cut},
+		{label: "Copy", icon: "content_copy", enabledOn: "SELECTION", click: copy},
+		{label: "Paste", icon: "content_paste", enabledOn: "SELECTION", click: paste},
+		// Null makes a seperation bar
+		null,
+		{label: "Add to Memory", icon: "assignment", enabledOn: "SELECTION", click: push_selection_to_memory},
+		{label: "Add to World Info Entry", icon: "auto_stories", enabledOn: "SELECTION", click: push_selection_to_world_info},
+		{label: "Add as Bias", icon: "insights", enabledOn: "SELECTION", click: push_selection_to_phrase_bias},
+		{label: "Retry from here", icon: "refresh", enabledOn: "CARET", click: retry_from_here},
+		// Not implemented! See view_selection_probabiltiies
+		// null,
+		// {label: "View Token Probabilities", icon: "assessment", enabledOn: "SELECTION", click: view_selection_probabilities},
+		// {label: "View Token Probabilities", icon: "account_tree", enabledOn: "SELECTION", click: view_selection_probabilities},
+	],
+	"wi-img": [
+		{label: "View", icon: "search", enabledOn: "ALWAYS", click: wiImageView},
+		{label: "Replace", icon: "swap_horiz", enabledOn: "ALWAYS", click: wiImageReplace},
+		{label: "Clear", icon: "clear", enabledOn: "ALWAYS", click: wiImageClear},
+	]
+};
 
 // CTRL-[X]
 const shortcuts = [
@@ -1880,6 +1887,7 @@ function world_info_entry(data) {
 	const wiImgInput = $e("input", null, {type: "file", accept: "image/png,image/x-png,image/gif,image/jpeg"});
 
 	wiImg.id = `world_info_image_${data.uid}`;
+	wiImg.setAttribute("context-menu", "wi-img");
 
 	if (data.uid > -1) {
 		fetch(`/get_wi_image/${data.uid}`, {
@@ -1888,7 +1896,7 @@ function world_info_entry(data) {
 			if (!r.ok) return;
 			// 204 is used instead of 404 because 404 SPAMS THE CONSOLE WAY TOO MUCH!!!!!!!!!
 			if (r.status == 204) return;
-			wiImgPlaceholder.style.display = "none";
+			wiImgPlaceholder.classList.add("hidden");
 			wiImg.src = await r.text();
 			setChatPfps(title.innerText, wiImg.src);
 		});
@@ -1905,7 +1913,7 @@ function world_info_entry(data) {
 			return;
 		}
 		let objectUrl = URL.createObjectURL(file);
-		wiImgPlaceholder.style.display = "none";
+		wiImgPlaceholder.classList.add("hidden");
 		wiImg.src = objectUrl;
 
 		let reader = new FileReader();
@@ -4467,10 +4475,13 @@ async function postWI(wiData) {
 	}
 }
 
-async function loadNAILorebook(data, filename) {
+async function loadNAILorebook(data, filename, image=null) {
 	let lorebookVersion = data.lorebookVersion;
 	let wi_data = {folders: {[filename]: []}, entries: {}};
 	console.log(`Loading NAI lorebook version ${lorebookVersion}`);
+
+	let base = Math.max(...Object.keys(world_info_data).map(Number)) + 1;
+	if (base < 0) base = 0;
 
 	let i = 0;
 	for (const entry of data.entries) {
@@ -4500,10 +4511,25 @@ async function loadNAILorebook(data, filename) {
 		};
 		wi_data.folders[filename].push(i);
 
+
 		i++;
 	}
 
 	await postWI(wi_data);
+
+	if (image) {
+		for (let offset=0;offset<i;offset++) {
+			let uid = base+offset;
+
+			const imageEl = $el(`#world_info_image_${uid}`);
+			if (imageEl) imageEl.src = image;
+
+			let r = await fetch(`/set_wi_image/${uid}`, {
+				method: "POST",
+				body: image
+			});
+		}
+	}
 }
 
 async function loadKoboldData(data, filename) {
@@ -4522,44 +4548,60 @@ async function loadKoboldData(data, filename) {
 	}
 }
 
-function readLoreCard(file) {
+async function blob2Base64(blob) {
+	return new Promise(function(resolve, reject) {
+		const reader = new FileReader();
+		reader.readAsDataURL(blob);
+		reader.onload = () => resolve(reader.result);
+		reader.onerror = error => reject(error);
+	});
+}
+
+async function blob2ArrayBuffer(blob) {
+	return new Promise(function(resolve, reject) {
+		const reader = new FileReader();
+		reader.readAsArrayBuffer(blob);
+		reader.onload = () => resolve(reader.result);
+		reader.onerror = error => reject(error);
+	});
+}
+
+async function readLoreCard(file) {
 	// "naidata"
 	const magicNumber = new Uint8Array([0x6e, 0x61, 0x69, 0x64, 0x61, 0x74, 0x61]);
 	
 	let filename = file.name;
 	let reader = new FileReader();
-	reader.readAsArrayBuffer(file);
 
-	reader.addEventListener("load", function() {
-		let bin = new Uint8Array(reader.result);
+	let bin = new Uint8Array(await blob2ArrayBuffer(file))
 
-		// naidata is prefixed with magic number
-		let offset = bin.findIndex(function(item, possibleIndex, array) {
-			for (let i=0;i<magicNumber.length;i++) {
-				if (bin[i + possibleIndex] !== magicNumber[i]) return false;
-			}
-			return true;
-		});
-
-		if (offset === null) {
-			reportError("Error reading Lorecard", "Unable to find NAIDATA offset. Is this a valid Lorecard?");
-			throw Error("Couldn't find offset!");
+	// naidata is prefixed with magic number
+	let offset = bin.findIndex(function(item, possibleIndex, array) {
+		for (let i=0;i<magicNumber.length;i++) {
+			if (bin[i + possibleIndex] !== magicNumber[i]) return false;
 		}
-		
-		let lengthBytes = bin.slice(offset - 8, offset - 4);
-		let length = 0;
-		
-		for (const byte of lengthBytes) {
-			length = (length << 8) + byte;
-		}
-		
-		let binData = bin.slice(offset + 8, offset + length);
-		
-		// Encoded in base64
-		let data = atob(new TextDecoder().decode(binData));
-		let j = JSON.parse(data);
-		loadNAILorebook(j, filename);
-	})
+		return true;
+	});
+
+	if (offset === null) {
+		reportError("Error reading Lorecard", "Unable to find NAIDATA offset. Is this a valid Lorecard?");
+		throw Error("Couldn't find offset!");
+	}
+	
+	let lengthBytes = bin.slice(offset - 8, offset - 4);
+	let length = 0;
+	
+	for (const byte of lengthBytes) {
+		length = (length << 8) + byte;
+	}
+	
+	let binData = bin.slice(offset + 8, offset + length);
+	
+	// Encoded in base64
+	let data = atob(new TextDecoder().decode(binData));
+	let j = JSON.parse(data);
+	let b64Image = await blob2Base64(file);
+	loadNAILorebook(j, filename, b64Image);
 }
 
 async function processDroppedFile(file) {
@@ -5358,28 +5400,55 @@ process_cookies();
 /* -- Context Menu -- */
 (function() {
 	const contextMenu = $e("div", document.body, {id: "context-menu", classes: ["hidden"]});
+	let summonEvent = null;
 
-	for (const action of context_menu_actions) {
-		// Null adds horizontal rule
-		if (!action) {
-			$e("hr", contextMenu);
-			continue;
+	for (const [key, actions] of Object.entries(context_menu_actions)) {
+		for (const action of actions) {
+			// Null adds horizontal rule
+			if (!action) {
+				$e("hr", contextMenu, {classes: [`context-menu-${key}`]});
+				continue;
+			}
+
+			let item = $e("div", contextMenu, {
+				classes: ["context-menu-item", "noselect", `context-menu-${key}`],
+				"enabled-on": action.enabledOn
+			});
+			let icon = $e("span", item, {classes: ["material-icons-outlined"], innerText: action.icon});
+			item.append(action.label);
+
+			item.addEventListener("mousedown", e => e.preventDefault());
+			// Expose the "summonEvent" to enable access to original context menu target.
+			item.addEventListener("click", () => action.click(summonEvent));
 		}
-
-		let item = $e("div", contextMenu, {
-			classes: ["context-menu-item", "noselect"],
-			"visibility-condition": action.visibilityCondition
-		});
-		let icon = $e("span", item, {classes: ["material-icons-outlined"], innerText: action.icon});
-		item.append(action.label);
-
-		item.addEventListener("mousedown", (e) => (e.preventDefault()));
-		item.addEventListener("click", action.click);
 	}
 
-	$el("#gamescreen").addEventListener("contextmenu", function(event) {
-		// If control is held, do not run our custom logic or cancel the browser's.
-		if (event.ctrlKey) return;
+	// When we make a browser context menu, close ours.
+	document.addEventListener("contextmenu", function(event) {
+		let target = event.target;
+		while (!target.hasAttribute("context-menu")) {
+			target = target.parentElement;
+			if (!target) break;
+		}
+
+		// If no custom context menu or control is held, do not run our custom
+		// logic or cancel the browser's.
+		if (!target || event.ctrlKey) {
+			contextMenu.classList.add("hidden");
+			return;
+		}
+
+		summonEvent = event;
+
+		// Show only applicable actions in the context menu
+		let contextMenuType = target.getAttribute("context-menu");
+		for (const contextMenuItem of contextMenu.childNodes) {
+			if (contextMenuItem.classList.contains(`context-menu-${contextMenuType}`)) {
+				contextMenuItem.classList.remove("hidden");
+			} else {
+				contextMenuItem.classList.add("hidden");
+			}
+		}
 
 		// Don't open browser context menu
 		event.preventDefault();
@@ -5394,10 +5463,12 @@ process_cookies();
 		$(".context-menu-item").addClass("disabled");
 		
 		// A selection is made
-		if (getSelectionText()) $(".context-menu-item[visibility-condition=SELECTION]").removeClass("disabled");
+		if (getSelectionText()) $(".context-menu-item[enabled-on=SELECTION]").removeClass("disabled");
 		
 		// The caret is placed
-		if (get_caret_position($("#gamescreen")[0]) !== null) $(".context-menu-item[visibility-condition=CARET]").removeClass("disabled");
+		if (get_caret_position(target) !== null) $(".context-menu-item[enabled-on=CARET]").removeClass("disabled");
+
+		$(".context-menu-item[enabled-on=ALWAYS]").removeClass("disabled");
 
 		contextMenu.classList.remove("hidden");
 
@@ -5406,11 +5477,6 @@ process_cookies();
 
 		// Don't let the document contextmenu catch us and close our context menu
 		event.stopPropagation();
-	});
-
-	// When we make a browser context menu, close ours.
-	document.addEventListener("contextmenu", function(event) {
-		contextMenu.classList.add("hidden");
 	});
 
 	// When we click outside of our context menu, close ours.
@@ -6205,4 +6271,26 @@ function setChatPfps(chatName, src) {
 
 		chatEl.querySelector(".chat-pfp").src = src;
 	}
+}
+
+/* -- WI Image Context Menu -- */
+function wiImageView(summonEvent) {
+	$el("#big-image").src = summonEvent.target.src;
+	openPopup("big-image");
+}
+
+function wiImageReplace(summonEvent) {
+	// NOTE: WI image context menu stuff is pretty reliant on the current
+	// element structure, be sure to update this code if that's changed.
+	summonEvent.target.parentElement.click();
+}
+
+async function wiImageClear(summonEvent) {
+	let uid = parseInt(summonEvent.target.id.replace("world_info_image_", ""));
+	summonEvent.target.src = "";
+	summonEvent.target.parentElement.querySelector(".placeholder").classList.remove("hidden");
+	let r = await fetch(`/set_wi_image/${uid}`, {
+		method: "POST",
+		body: null
+	});
 }
