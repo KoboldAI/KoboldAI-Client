@@ -4716,7 +4716,7 @@ def actionsubmit(data, actionmode=0, force_submit=False, force_prompt_gen=False,
                 if(len(koboldai_vars.prompt.strip()) == 0):
                     koboldai_vars.prompt = data
                 else:
-                    koboldai_vars.actions.append_submission(data)
+                    koboldai_vars.actions.append(data, submission=True)
                 update_story_chunk('last')
                 send_debug()
 
@@ -8813,7 +8813,14 @@ def UI_2_set_wi_image(uid):
             "",
         )
 
-    koboldai_vars.worldinfo_v2.image_store[str(uid)] = request.get_data(as_text=True)
+    uid = str(uid)
+    data = request.get_data(as_text=True)
+    if not data and uid in koboldai_vars.worldinfo_v2.image_store:
+        # Delete if sent null image
+        del koboldai_vars.worldinfo_v2.image_store[uid]
+    else:
+        # Otherwise assign image
+        koboldai_vars.worldinfo_v2.image_store[uid] = data
     return ":)"
 
 @app.route("/get_wi_image/<int(signed=True):uid>", methods=["GET"])

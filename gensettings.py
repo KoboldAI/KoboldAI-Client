@@ -113,7 +113,6 @@ gensettingstf = [
     "ui_level": 1
 	},
 	{
-    "UI_V2_Only": True,
 	"uitype": "slider",
 	"unit": "float",
 	"label": "Repetition Penalty",
