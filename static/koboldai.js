@@ -92,22 +92,24 @@ var finder_actions = [
 
 const context_menu_actions = {
 	gamescreen: [
-		{label: "Cut", icon: "content_cut", visibilityCondition: "SELECTION", click: cut},
-		{label: "Copy", icon: "content_copy", visibilityCondition: "SELECTION", click: copy},
-		{label: "Paste", icon: "content_paste", visibilityCondition: "SELECTION", click: paste},
+		{label: "Cut", icon: "content_cut", enabledOn: "SELECTION", click: cut},
+		{label: "Copy", icon: "content_copy", enabledOn: "SELECTION", click: copy},
+		{label: "Paste", icon: "content_paste", enabledOn: "SELECTION", click: paste},
 		// Null makes a seperation bar
 		null,
-		{label: "Add to Memory", icon: "assignment", visibilityCondition: "SELECTION", click: push_selection_to_memory},
-		{label: "Add to World Info Entry", icon: "auto_stories", visibilityCondition: "SELECTION", click: push_selection_to_world_info},
-		{label: "Add as Bias", icon: "insights", visibilityCondition: "SELECTION", click: push_selection_to_phrase_bias},
-		{label: "Retry from here", icon: "refresh", visibilityCondition: "CARET", click: retry_from_here},
+		{label: "Add to Memory", icon: "assignment", enabledOn: "SELECTION", click: push_selection_to_memory},
+		{label: "Add to World Info Entry", icon: "auto_stories", enabledOn: "SELECTION", click: push_selection_to_world_info},
+		{label: "Add as Bias", icon: "insights", enabledOn: "SELECTION", click: push_selection_to_phrase_bias},
+		{label: "Retry from here", icon: "refresh", enabledOn: "CARET", click: retry_from_here},
 		// Not implemented! See view_selection_probabiltiies
 		// null,
-		// {label: "View Token Probabilities", icon: "assessment", visibilityCondition: "SELECTION", click: view_selection_probabilities},
-		// {label: "View Token Probabilities", icon: "account_tree", visibilityCondition: "SELECTION", click: view_selection_probabilities},
+		// {label: "View Token Probabilities", icon: "assessment", enabledOn: "SELECTION", click: view_selection_probabilities},
+		// {label: "View Token Probabilities", icon: "account_tree", enabledOn: "SELECTION", click: view_selection_probabilities},
 	],
-	wiImage: [
-		{label: "Boom!!", icon: "content_cut", visibilityCondition: "SELECTION", click: cut},
+	"wi-img": [
+		{label: "View", icon: "search", enabledOn: "ALWAYS", click: wiImageView},
+		{label: "Replace", icon: "swap_horiz", enabledOn: "ALWAYS", click: wiImageReplace},
+		{label: "Clear", icon: "clear", enabledOn: "ALWAYS", click: wiImageClear},
 	]
 };
 
@@ -1884,6 +1886,7 @@ function world_info_entry(data) {
 	const wiImgInput = $e("input", null, {type: "file", accept: "image/png,image/x-png,image/gif,image/jpeg"});
 
 	wiImg.id = `world_info_image_${data.uid}`;
+	wiImg.setAttribute("context-menu", "wi-img");
 
 	if (data.uid > -1) {
 		fetch(`/get_wi_image/${data.uid}`, {
@@ -1892,7 +1895,7 @@ function world_info_entry(data) {
 			if (!r.ok) return;
 			// 204 is used instead of 404 because 404 SPAMS THE CONSOLE WAY TOO MUCH!!!!!!!!!
 			if (r.status == 204) return;
-			wiImgPlaceholder.style.display = "none";
+			wiImgPlaceholder.classList.add("hidden");
 			wiImg.src = await r.text();
 			setChatPfps(title.innerText, wiImg.src);
 		});
@@ -1909,7 +1912,7 @@ function world_info_entry(data) {
 			return;
 		}
 		let objectUrl = URL.createObjectURL(file);
-		wiImgPlaceholder.style.display = "none";
+		wiImgPlaceholder.classList.add("hidden");
 		wiImg.src = objectUrl;
 
 		let reader = new FileReader();
@@ -5396,33 +5399,28 @@ process_cookies();
 /* -- Context Menu -- */
 (function() {
 	const contextMenu = $e("div", document.body, {id: "context-menu", classes: ["hidden"]});
+	let summonEvent = null;
 
 	for (const [key, actions] of Object.entries(context_menu_actions)) {
 		for (const action of actions) {
 			// Null adds horizontal rule
 			if (!action) {
-				$e("hr", contextMenu);
+				$e("hr", contextMenu, {classes: [`context-menu-${key}`]});
 				continue;
 			}
 
 			let item = $e("div", contextMenu, {
 				classes: ["context-menu-item", "noselect", `context-menu-${key}`],
-				"visibility-condition": action.visibilityCondition
+				"enabled-on": action.enabledOn
 			});
 			let icon = $e("span", item, {classes: ["material-icons-outlined"], innerText: action.icon});
 			item.append(action.label);
 
-			item.addEventListener("mousedown", (e) => (e.preventDefault()));
-			item.addEventListener("click", action.click);
+			item.addEventListener("mousedown", e => e.preventDefault());
+			// Expose the "summonEvent" to enable access to original context menu target.
+			item.addEventListener("click", () => action.click(summonEvent));
 		}
 	}
-
-	/*
-	$el("#gamescreen").addEventListener("contextmenu", function(event) {
-
-
-	});
-	*/
 
 	// When we make a browser context menu, close ours.
 	document.addEventListener("contextmenu", function(event) {
@@ -5435,14 +5433,15 @@ process_cookies();
 		// If no custom context menu or control is held, do not run our custom
 		// logic or cancel the browser's.
 		if (!target || event.ctrlKey) {
-			console.log("yawn")
 			contextMenu.classList.add("hidden");
 			return;
 		}
 
+		summonEvent = event;
+
 		// Show only applicable actions in the context menu
 		let contextMenuType = target.getAttribute("context-menu");
-		for (const contextMenuItem of document.getElementsByClassName("context-menu-item")) {
+		for (const contextMenuItem of contextMenu.childNodes) {
 			if (contextMenuItem.classList.contains(`context-menu-${contextMenuType}`)) {
 				contextMenuItem.classList.remove("hidden");
 			} else {
@@ -5463,10 +5462,12 @@ process_cookies();
 		$(".context-menu-item").addClass("disabled");
 		
 		// A selection is made
-		if (getSelectionText()) $(".context-menu-item[visibility-condition=SELECTION]").removeClass("disabled");
+		if (getSelectionText()) $(".context-menu-item[enabled-on=SELECTION]").removeClass("disabled");
 		
 		// The caret is placed
-		if (get_caret_position(target) !== null) $(".context-menu-item[visibility-condition=CARET]").removeClass("disabled");
+		if (get_caret_position(target) !== null) $(".context-menu-item[enabled-on=CARET]").removeClass("disabled");
+
+		$(".context-menu-item[enabled-on=ALWAYS]").removeClass("disabled");
 
 		contextMenu.classList.remove("hidden");
 
@@ -5475,8 +5476,6 @@ process_cookies();
 
 		// Don't let the document contextmenu catch us and close our context menu
 		event.stopPropagation();
-
-		console.log("Hey!!", target)
 	});
 
 	// When we click outside of our context menu, close ours.
@@ -6266,4 +6265,27 @@ function setChatPfps(chatName, src) {
 
 		chatEl.querySelector(".chat-pfp").src = src;
 	}
+}
+
+/* -- WI Image Context Menu -- */
+function wiImageView(summonEvent) {
+	$el("#big-image").src = summonEvent.target.src;
+	openPopup("big-image");
+}
+
+function wiImageReplace(summonEvent) {
+	// NOTE: WI image context menu stuff is pretty reliant on the current
+	// element structure, be sure to update this code if that's changed.
+	summonEvent.target.parentElement.click();
+}
+
+async function wiImageClear(summonEvent) {
+	let uid = parseInt(summonEvent.target.id.replace("world_info_image_", ""));
+	summonEvent.target.src = "";
+	summonEvent.target.parentElement.querySelector(".placeholder").classList.remove("hidden");
+	console.log(summonEvent, uid);
+	let r = await fetch(`/set_wi_image/${uid}`, {
+		method: "POST",
+		body: null
+	});
 }
