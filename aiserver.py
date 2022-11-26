@@ -768,7 +768,10 @@ api_v1 = KoboldAPISpec(
     tags=tags,
 )
 
-def show_error_notification(title: str, text: str) -> None:
+def show_error_notification(title: str, text: str, do_log: bool = False) -> None:
+    if do_log:
+        logger.error(f"{title}: {text}")
+
     if has_request_context():
         socketio.emit("show_error_notification", {"title": title, "text": text}, broadcast=True, room="UI_2")
     else:
@@ -3477,21 +3480,9 @@ def lua_compute_context(submission, entries, folders, kwargs):
         while(folders[i] is not None):
             allowed_folders.add(int(folders[i]))
             i += 1
-    #winfo, mem, anotetxt, _ = calcsubmitbudgetheader(
-    #    submission,
-    #    allowed_entries=allowed_entries,
-    #    allowed_folders=allowed_folders,
-    #    force_use_txt=True,
-    #    scan_story=kwargs["scan_story"] if kwargs["scan_story"] != None else True,
-    #)
-    txt, _, _, found_entries = koboldai_vars.calc_ai_text()
-    #txt, _, _ = calcsubmitbudget(
-    #    len(actions),
-    #    winfo,
-    #    mem,
-    #    anotetxt,
-    #    actions,
-    #)
+    txt, _, _, found_entries = koboldai_vars.calc_ai_text(submitted_text=submission,
+                                                allowed_wi_entries=allowed_entries,
+                                                allowed_wi_folders=allowed_folders)
     return utils.decodenewlines(tokenizer.decode(txt))
 
 #==================================================================#
@@ -4725,7 +4716,7 @@ def actionsubmit(data, actionmode=0, force_submit=False, force_prompt_gen=False,
                 if(len(koboldai_vars.prompt.strip()) == 0):
                     koboldai_vars.prompt = data
                 else:
-                    koboldai_vars.actions.append(data)
+                    koboldai_vars.actions.append_submission(data)
                 update_story_chunk('last')
                 send_debug()
 
@@ -6079,7 +6070,6 @@ def generate(txt, minimum, maximum, found_entries=None):
     
     if(len(genout) == 1):
         genresult(genout[0]["generated_text"])
-        #koboldai_vars.actions.append(applyoutputformatting(genout[0]["generated_text"]))
     else:
         koboldai_vars.actions.append_options([applyoutputformatting(x["generated_text"]) for x in genout])
         genout = [{"generated_text": x['text']} for x in koboldai_vars.actions.get_current_options()]
@@ -8422,9 +8412,9 @@ def UI_2_redo(data):
 @logger.catch
 def UI_2_retry(data):
     
-    if len(koboldai_vars.actions.get_current_options_no_edits()) == 0:
-        UI_2_back(None)
     koboldai_vars.actions.clear_unused_options()
+    if len(koboldai_vars.actions.get_current_options_no_edits()) == 0:
+        ignore = koboldai_vars.actions.pop(keep=False)
     koboldai_vars.lua_koboldbridge.feedback = None
     koboldai_vars.recentrng = koboldai_vars.recentrngm = None
     actionsubmit("", actionmode=koboldai_vars.actionmode)
@@ -9376,42 +9366,45 @@ def text2img_api(prompt,
       #"override_settings": {},
       #"sampler_index": "Euler"
     final_imgen_params = {
-        "prompt": "{}, {}".format(prompt, art_guide),
+        "prompt": ", ".join(filter(bool, [prompt, art_guide])),
         "n_iter": 1,
         "width": 512,
         "height": 512,
         "steps": koboldai_vars.img_gen_steps,
         "cfg_scale": koboldai_vars.img_gen_cfg_scale,
-        "negative_prompt": "{}".format(koboldai_vars.img_gen_negative_prompt),
+        "negative_prompt": koboldai_vars.img_gen_negative_prompt,
         "sampler_index": "Euler a"
     }
-    apiaddress = '{}/sdapi/v1/txt2img'.format(koboldai_vars.img_gen_api_url)
+    apiaddress = '{}/sdapi/v1/txt2img'.format(koboldai_vars.img_gen_api_url.rstrip("/"))
     payload_json = json.dumps(final_imgen_params)
     logger.debug(final_imgen_params)
-    #print("payload_json contains " + payload_json)
-    submit_req = requests.post(url=f'{apiaddress}', data=payload_json).json()
-    if submit_req:
-        results = submit_req
-        for i in results['images']:
-            final_src_img = Image.open(BytesIO(base64.b64decode(i.split(",",1)[0])))
-            buffer = BytesIO()
-            final_src_img.save(buffer, format="Webp", quality=95)
-            b64img = base64.b64encode(buffer.getvalue()).decode("utf8")
-            base64_bytes = b64img.encode('utf-8')
-            img_bytes = base64.b64decode(base64_bytes)
-            img = Image.open(BytesIO(img_bytes))
-            dt_string = datetime.datetime.now().strftime("%H%M%S%d%m%Y")
-            final_filename = "stories/art/{}_{}".format(dt_string,filename)
-            pnginfo = PngImagePlugin.PngInfo()
-            prompttext = results.get('info').split("\",")[0].split("\"")[3]
-            pnginfo.add_text("parameters","prompttext")
-            img.save(final_filename, pnginfo=pnginfo)
-            logger.debug("Saved Image")
-            koboldai_vars.generating_image = False
-            return(b64img)
-    else:
+
+    try:
+        submit_req = requests.post(url=apiaddress, data=payload_json)
+    finally:
         koboldai_vars.generating_image = False
-        logger.error(submit_req.text)
+
+    if submit_req.status_code == 404:
+        show_error_notification(
+            "SD Web API Failure",
+            f"The SD Web UI was not called with --api. Unable to connect.",
+            do_log=True
+        )
+        return None
+    elif not submit_req.ok:
+        show_error_notification("SD Web API Failure", f"HTTP Code {submit_req.status_code} -- See console for details")
+        logger.error(f"SD Web API Failure: HTTP Code {submit_req.status_code}, Body:\n{submit_req.text}")
+        return None
+
+    results = submit_req.json()
+
+    try:
+        base64_image = results["images"][0]
+    except (IndexError, KeyError):
+        show_error_notification("SD Web API Failure", "SD Web API returned no images", do_log=True)
+        return None
+
+    return base64_image
 
 #@logger.catch
 def get_items_locations_from_text(text):

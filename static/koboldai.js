@@ -797,9 +797,12 @@ function var_changed(data) {
 	//Special Case for story picture
 	} else if (data.classname == "story" && data.name == "picture") {
 		image_area = document.getElementById("action image");
-		while (image_area.firstChild) { 
-			image_area.removeChild(image_area.firstChild);
-		}
+
+		let maybeImage = image_area.getElementsByClassName("action_image")[0];
+		if (maybeImage) maybeImage.remove();
+
+		$el("#image-loading").classList.add("hidden");
+
 		if (data.value != "") {
 			var image = new Image();
 			image.src = 'data:image/png;base64,'+data.value;
@@ -807,9 +810,7 @@ function var_changed(data) {
 			image_area.appendChild(image);
 		}
 	}  else if (data.classname == "story" && data.name == "picture_prompt") {
-		if (document.getElementById("action image").firstChild) {
-			document.getElementById("action image").firstChild.setAttribute("title", data.value);
-		}
+		if (data.value) document.getElementById("action image").setAttribute("tooltip", data.value);
 	//special case for welcome text since we want to allow HTML
 	} else if (data.classname == 'model' && data.name == 'welcome') {
 		document.getElementById('welcome_text').innerHTML = data.value;
@@ -6055,6 +6056,11 @@ $el("#aidgpromptnum").addEventListener("keydown", function(event) {
 	if (event.key !== "Enter") return;
 	attemptClubLoad();
 	event.preventDefault();
+});
+
+$el("#generate-image-button").addEventListener("click", function() {
+	$el("#image-loading").classList.remove("hidden");
+	socket.emit("generate_image", {});
 });
 
 /* -- Shiny New Chat -- */

@@ -2994,8 +2994,39 @@ input[type='range'] {
 	pointer-events:none;
 }
 
+#action\ image {
+	width: 100%;
+	aspect-ratio: 1/1;
+	position: relative;
+}
+
+#image-loading {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	position: absolute;
+	top: 0px;
+	left: 0px;
+	width: 100%;
+	height: 100% !important;
+	aspect-ratio: 1/1;
+	background-color: rgba(0, 0, 0, 0.6);
+
+	/* Defer pointer events to the image in case a user wants to quickly
+	save / view an image after asking for a new image */
+	pointer-events: none;
+}
+
+.spinner {
+	animation: spin 1s linear infinite;
+	opacity: 0.7;
+}
+
+@keyframes spin { 100% { transform: rotate(360deg) } }
+
+
 .action_image {
-	width: var(--flyout_menu_width);
+	width: 100%;
 }
 
 /*Tooltip based on attribute
