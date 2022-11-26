@@ -110,7 +110,12 @@ const context_menu_actions = {
 		{label: "View", icon: "search", enabledOn: "ALWAYS", click: wiImageView},
 		{label: "Replace", icon: "swap_horiz", enabledOn: "ALWAYS", click: wiImageReplace},
 		{label: "Clear", icon: "clear", enabledOn: "ALWAYS", click: wiImageClear},
-	]
+	],
+	"generated-image": [
+		{label: "View", icon: "search", enabledOn: "ALWAYS", click: imgGenView},
+		{label: "Download Image", icon: "download", enabledOn: "ALWAYS", click: imgGenView},
+		{label: "Use as World Info image", icon: "auto_stories", enabledOn: "ALWAYS", click: imgGenView},
+	],
 };
 
 // CTRL-[X]
@@ -807,6 +812,8 @@ function var_changed(data) {
 			var image = new Image();
 			image.src = 'data:image/png;base64,'+data.value;
 			image.classList.add("action_image");
+			image.setAttribute("context-menu", "generated-image");
+			image.addEventListener("click", imgGenView);
 			image_area.appendChild(image);
 		}
 	}  else if (data.classname == "story" && data.name == "picture_prompt") {
@@ -6293,4 +6300,11 @@ async function wiImageClear(summonEvent) {
 		method: "POST",
 		body: null
 	});
+}
+
+function imgGenView() {
+	const image = $el(".action_image");
+	if (!image) return;
+	$el("#big-image").src = image.src;
+	openPopup("big-image");
 }
