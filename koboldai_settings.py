@@ -1577,12 +1577,13 @@ class KoboldStoryRegister(object):
                 process_variable_changes(self.socketio, "story", 'actions', {"id": action_step, 'action':  self.actions[action_step]}, None)
                 self.set_game_saved()
     
-    def delete_action(self, action_id):
+    def delete_action(self, action_id, keep=True):
         if action_id in self.actions:
             old_options = copy.deepcopy(self.actions[action_id]["Options"])
             old_text = self.actions[action_id]["Selected Text"]
             old_length = self.actions[action_id]["Selected Text Length"]
-            self.actions[action_id]["Options"].append({"text": self.actions[action_id]["Selected Text"], "Pinned": False, "Previous Selection": True, "Edited": False})
+            if keep:
+                self.actions[action_id]["Options"].append({"text": self.actions[action_id]["Selected Text"], "Pinned": False, "Previous Selection": True, "Edited": False})
             self.actions[action_id]["Selected Text"] = ""
             if "wi_highlighted_text" in self.actions[action_id]:
                 del self.actions[action_id]["wi_highlighted_text"]
@@ -1593,10 +1594,10 @@ class KoboldStoryRegister(object):
             logger.debug("Calcing AI Text from Action Delete")
             ignore = self.koboldai_vars.calc_ai_text()
             
-    def pop(self):
+    def pop(self, keep=True):
         if self.action_count >= 0:
             text = self.actions[self.action_count]['Selected Text']
-            self.delete_action(self.action_count)
+            self.delete_action(self.action_count, keep=keep)
             logger.debug("Calcing AI Text from Action Pop")
             return text
         else:
