@@ -90,21 +90,26 @@ var finder_actions = [
 	// {name: "", icon: "palette", func: function() { highlightEl("#biasing") }},
 ];
 
-const context_menu_actions = [
-	{label: "Cut", icon: "content_cut", visibilityCondition: "SELECTION", click: cut},
-	{label: "Copy", icon: "content_copy", visibilityCondition: "SELECTION", click: copy},
-	{label: "Paste", icon: "content_paste", visibilityCondition: "SELECTION", click: paste},
-	// Null makes a seperation bar
-	null,
-	{label: "Add to Memory", icon: "assignment", visibilityCondition: "SELECTION", click: push_selection_to_memory},
-	{label: "Add to World Info Entry", icon: "auto_stories", visibilityCondition: "SELECTION", click: push_selection_to_world_info},
-	{label: "Add as Bias", icon: "insights", visibilityCondition: "SELECTION", click: push_selection_to_phrase_bias},
-	{label: "Retry from here", icon: "refresh", visibilityCondition: "CARET", click: retry_from_here},
-	// Not implemented! See view_selection_probabiltiies
-	// null,
-	// {label: "View Token Probabilities", icon: "assessment", visibilityCondition: "SELECTION", click: view_selection_probabilities},
-	// {label: "View Token Probabilities", icon: "account_tree", visibilityCondition: "SELECTION", click: view_selection_probabilities},
-];
+const context_menu_actions = {
+	gamescreen: [
+		{label: "Cut", icon: "content_cut", visibilityCondition: "SELECTION", click: cut},
+		{label: "Copy", icon: "content_copy", visibilityCondition: "SELECTION", click: copy},
+		{label: "Paste", icon: "content_paste", visibilityCondition: "SELECTION", click: paste},
+		// Null makes a seperation bar
+		null,
+		{label: "Add to Memory", icon: "assignment", visibilityCondition: "SELECTION", click: push_selection_to_memory},
+		{label: "Add to World Info Entry", icon: "auto_stories", visibilityCondition: "SELECTION", click: push_selection_to_world_info},
+		{label: "Add as Bias", icon: "insights", visibilityCondition: "SELECTION", click: push_selection_to_phrase_bias},
+		{label: "Retry from here", icon: "refresh", visibilityCondition: "CARET", click: retry_from_here},
+		// Not implemented! See view_selection_probabiltiies
+		// null,
+		// {label: "View Token Probabilities", icon: "assessment", visibilityCondition: "SELECTION", click: view_selection_probabilities},
+		// {label: "View Token Probabilities", icon: "account_tree", visibilityCondition: "SELECTION", click: view_selection_probabilities},
+	],
+	wiImage: [
+		{label: "Boom!!", icon: "content_cut", visibilityCondition: "SELECTION", click: cut},
+	]
+};
 
 // CTRL-[X]
 const shortcuts = [
@@ -5392,27 +5397,58 @@ process_cookies();
 (function() {
 	const contextMenu = $e("div", document.body, {id: "context-menu", classes: ["hidden"]});
 
-	for (const action of context_menu_actions) {
-		// Null adds horizontal rule
-		if (!action) {
-			$e("hr", contextMenu);
-			continue;
+	for (const [key, actions] of Object.entries(context_menu_actions)) {
+		for (const action of actions) {
+			// Null adds horizontal rule
+			if (!action) {
+				$e("hr", contextMenu);
+				continue;
+			}
+
+			let item = $e("div", contextMenu, {
+				classes: ["context-menu-item", "noselect", `context-menu-${key}`],
+				"visibility-condition": action.visibilityCondition
+			});
+			let icon = $e("span", item, {classes: ["material-icons-outlined"], innerText: action.icon});
+			item.append(action.label);
+
+			item.addEventListener("mousedown", (e) => (e.preventDefault()));
+			item.addEventListener("click", action.click);
 		}
-
-		let item = $e("div", contextMenu, {
-			classes: ["context-menu-item", "noselect"],
-			"visibility-condition": action.visibilityCondition
-		});
-		let icon = $e("span", item, {classes: ["material-icons-outlined"], innerText: action.icon});
-		item.append(action.label);
-
-		item.addEventListener("mousedown", (e) => (e.preventDefault()));
-		item.addEventListener("click", action.click);
 	}
 
+	/*
 	$el("#gamescreen").addEventListener("contextmenu", function(event) {
-		// If control is held, do not run our custom logic or cancel the browser's.
-		if (event.ctrlKey) return;
+
+
+	});
+	*/
+
+	// When we make a browser context menu, close ours.
+	document.addEventListener("contextmenu", function(event) {
+		let target = event.target;
+		while (!target.hasAttribute("context-menu")) {
+			target = target.parentElement;
+			if (!target) break;
+		}
+
+		// If no custom context menu or control is held, do not run our custom
+		// logic or cancel the browser's.
+		if (!target || event.ctrlKey) {
+			console.log("yawn")
+			contextMenu.classList.add("hidden");
+			return;
+		}
+
+		// Show only applicable actions in the context menu
+		let contextMenuType = target.getAttribute("context-menu");
+		for (const contextMenuItem of document.getElementsByClassName("context-menu-item")) {
+			if (contextMenuItem.classList.contains(`context-menu-${contextMenuType}`)) {
+				contextMenuItem.classList.remove("hidden");
+			} else {
+				contextMenuItem.classList.add("hidden");
+			}
+		}
 
 		// Don't open browser context menu
 		event.preventDefault();
@@ -5430,7 +5466,7 @@ process_cookies();
 		if (getSelectionText()) $(".context-menu-item[visibility-condition=SELECTION]").removeClass("disabled");
 		
 		// The caret is placed
-		if (get_caret_position($("#gamescreen")[0]) !== null) $(".context-menu-item[visibility-condition=CARET]").removeClass("disabled");
+		if (get_caret_position(target) !== null) $(".context-menu-item[visibility-condition=CARET]").removeClass("disabled");
 
 		contextMenu.classList.remove("hidden");
 
@@ -5439,11 +5475,8 @@ process_cookies();
 
 		// Don't let the document contextmenu catch us and close our context menu
 		event.stopPropagation();
-	});
 
-	// When we make a browser context menu, close ours.
-	document.addEventListener("contextmenu", function(event) {
-		contextMenu.classList.add("hidden");
+		console.log("Hey!!", target)
 	});
 
 	// When we click outside of our context menu, close ours.
