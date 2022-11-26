@@ -1400,16 +1400,15 @@ class KoboldStoryRegister(object):
         ignore = self.koboldai_vars.calc_ai_text()
         self.set_game_saved()
         self.gen_all_audio()
-        
-    def append_submission(self, text, action_id_offset=0, recalc=True):
-        self._append(text, action_id_offset=action_id_offset, recalc=recalc)
-        self.submission_id = self.action_count + action_id_offset
 
-    def append(self, text, action_id_offset=0, recalc=True):
-        self._append(text, action_id_offset=action_id_offset, recalc=recalc)
-        self.submission_id = 0
+    def append(self, text, action_id_offset=0, recalc=True, submission=False):
+        """Create a new action and append it to the table of actions.
 
-    def _append(self, text, action_id_offset=0, recalc=True):
+        text: The text of the action.
+        action_id_offset: An optional offset added to action_count when assiging an action_id.
+        recalc: If True, recalculate the context and generate audio.
+        submission: If True, mark this action as a user submission.
+        """
         if self.koboldai_vars.remove_double_space:
             while "  " in text:
                 text = text.replace("  ", " ")
@@ -1441,7 +1440,12 @@ class KoboldStoryRegister(object):
                 "Probabilities": [],
                 "Time": int(time.time()),
             }
-            
+
+        if submission:
+            self.submission_id = action_id
+        else:
+            self.submission_id = 0
+
         if self.story_settings is not None:
             self.story_settings.assign_world_info_to_actions(action_id=action_id, no_transmit=True)
             process_variable_changes(self.socketio, "story", 'actions', {"id": action_id, 'action':  self.actions[action_id]}, None)
