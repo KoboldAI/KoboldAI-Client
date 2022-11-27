@@ -360,9 +360,12 @@ function create_options(action) {
 			icon.classList.add("material-icons-outlined");
 			icon.classList.add("option_icon");
 			icon.classList.add("cursor");
+			icon.classList.add("pin");
 			icon.textContent = "push_pin";
 			if (!(item.Pinned)) {
 				icon.setAttribute('style', "filter: brightness(50%);");
+			} else {
+				icon.classList.add('rotate_45');
 			}
 			iconcell.append(icon);
 			iconcell.onclick = function () {
