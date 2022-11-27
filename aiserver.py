@@ -9406,6 +9406,12 @@ def text2img_api(prompt,
 
     return base64_image
 
+@socketio.on("clear_generated_image")
+@logger.catch
+def UI2_clear_generated_image(data):
+    koboldai_vars.picture = ""
+    koboldai_vars.picture_prompt = ""
+
 #@logger.catch
 def get_items_locations_from_text(text):
     # load model and tokenizer
