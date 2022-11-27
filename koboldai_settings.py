@@ -1007,12 +1007,14 @@ class story_settings(settings):
                 if value == 0:
                     self.adventure = False
                     self.chatmode = False
+                    self.actionmode = 0
                 elif value == 1:
                     self.adventure = True
                     self.chatmode = False
                 elif value == 2:
                     self.adventure = False
                     self.chatmode = True
+                    self.actionmode = 0
             elif name == 'adventure' and value == True:
                 self.chatmode = False
                 self.storymode = 1
@@ -1021,8 +1023,10 @@ class story_settings(settings):
             elif name == 'chatmode' and value == True:
                 self.adventure = False
                 self.storymode = 2
+                self.actionmode = 0
             elif name == 'chatmode' and value == False and self.adventure == False:
                 self.storymode = 0
+                self.actionmode = 0
                 
 class user_settings(settings):
     local_only_variables = ['socketio', 'importjs']
