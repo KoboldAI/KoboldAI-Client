@@ -285,10 +285,8 @@ function create_options(action) {
 	//Let's check if we only have a single redo option. In that case we din't show as the user can use the redo button
 	seen_prev_selection = false;
 	show_options = false;
-	console.log(action.action.Options);
 	for (item of action.action.Options) {
 		if (!(item['Previous Selection'])) {
-			console.log(item);
 			show_options = true;
 			break;
 		} else if (item['Previous Selection']) {
@@ -300,7 +298,6 @@ function create_options(action) {
 			}
 		}
 	}
-	console.log("seen_prev_selection: "+seen_prev_selection+" show_options: "+show_options);
 	if (!(show_options)) {
 		document.getElementById('main-grid').setAttribute('option_length', 0);
 		return;
@@ -2882,7 +2879,7 @@ function select_game_text(event) {
 			} else {
 				new_selected_game_chunk = document.selection.createRange().parentElement().parentElement();
 			}
-		} else {
+		} else if (window.getSelection().anchorNode != null ) {
 			if(window.getSelection().anchorNode.parentNode) {
 				if (window.getSelection().anchorNode.parentNode.id == 'story_prompt') {
 					new_selected_game_chunk = window.getSelection().anchorNode.parentNode;
