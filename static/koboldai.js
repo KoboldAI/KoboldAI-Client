@@ -110,6 +110,15 @@ const context_menu_actions = {
 		{label: "View", icon: "search", enabledOn: "ALWAYS", click: wiImageView},
 		{label: "Replace", icon: "swap_horiz", enabledOn: "ALWAYS", click: wiImageReplace},
 		{label: "Clear", icon: "clear", enabledOn: "ALWAYS", click: wiImageClear},
+	],
+	"generated-image": [
+		{label: "View", icon: "search", enabledOn: "ALWAYS", click: imgGenView},
+		{label: "Download", icon: "download", enabledOn: "ALWAYS", click: imgGenDownload},
+		{label: "Clear", icon: "clear", enabledOn: "ALWAYS", click: imgGenClear},
+	],
+	"wi-img-upload-button": [
+		{label: "Upload Image", icon: "file_upload", enabledOn: "ALWAYS", click: wiImageReplace},
+		{label: "Use Generated Image", icon: "image", enabledOn: "GENERATED-IMAGE", click: wiImageUseGeneratedImage},
 	]
 };
 
@@ -840,6 +849,8 @@ function var_changed(data) {
 			var image = new Image();
 			image.src = 'data:image/png;base64,'+data.value;
 			image.classList.add("action_image");
+			image.setAttribute("context-menu", "generated-image");
+			image.addEventListener("click", imgGenView);
 			image_area.appendChild(image);
 		}
 	}  else if (data.classname == "story" && data.name == "picture_prompt") {
@@ -5501,6 +5512,9 @@ process_cookies();
 		// The caret is placed
 		if (get_caret_position(target) !== null) $(".context-menu-item[enabled-on=CARET]").removeClass("disabled");
 
+		// The generated image is present
+		if ($el(".action_image")) $(".context-menu-item[enabled-on=GENERATED-IMAGE]").removeClass("disabled");
+
 		$(".context-menu-item[enabled-on=ALWAYS]").removeClass("disabled");
 
 		contextMenu.classList.remove("hidden");
@@ -5820,6 +5834,7 @@ function initalizeTooltips() {
 		let text = el.getAttribute("tooltip");
 
 		el.addEventListener("mouseenter", function(event) {
+			if (!el.hasAttribute("tooltip")) return;
 			tooltip.innerText = text;
 			let specialClass = "tooltip-standard";
 
@@ -6313,6 +6328,8 @@ function wiImageView(summonEvent) {
 }
 
 function wiImageReplace(summonEvent) {
+	// This is also used for the "Upload" context menu action on the placeholder.
+
 	// NOTE: WI image context menu stuff is pretty reliant on the current
 	// element structure, be sure to update this code if that's changed.
 	summonEvent.target.parentElement.click();
@@ -6326,4 +6343,45 @@ async function wiImageClear(summonEvent) {
 		method: "POST",
 		body: null
 	});
+}
+
+async function wiImageUseGeneratedImage(summonEvent) {
+	// summonEvent is placeholder icon
+	const generatedImage = $el(".action_image");
+	if (!generatedImage) return;
+
+	let uid = parseInt(summonEvent.target.closest(".world_info_card").getAttribute("uid"));
+	summonEvent.target.classList.add("hidden");
+
+	let image = summonEvent.target.parentElement.getElementsByTagName("img")[0];
+	image.src = generatedImage.src;
+
+	let r = await fetch(`/set_wi_image/${uid}`, {
+		method: "POST",
+		body: generatedImage.src
+	});
+}
+
+function imgGenView() {
+	const image = $el(".action_image");
+	if (!image) return;
+	$el("#big-image").src = image.src;
+	openPopup("big-image");
+}
+
+function imgGenDownload() {
+	const image = $el(".action_image");
+	if (!image) return;
+	const a = $e("a", null, {href: image.src, download: "generated.png"});
+	a.click();
+}
+
+function imgGenClear() {
+	const image = $el(".action_image");
+	if (!image) return;
+	image.remove();
+
+	const container = $el("#action\\ image");
+	container.removeAttribute("tooltip");
+	socket.emit("clear_generated_image", {});
 }

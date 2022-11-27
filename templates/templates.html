@@ -2,8 +2,12 @@
 <div draggable="true" class="world_info_card" id="world_info_">
 	<div class="world_info_title_area">
 		<div>
-			<div class="world_info_image_container" tooltip="Upload a picture for this World Info entry">
-				<span class="placeholder material-icons-outlined">add</span>
+			<div class="world_info_image_container">
+				<span
+					class="placeholder material-icons-outlined"
+					context-menu="wi-img-upload-button"
+					tooltip="Upload a picture for this World Info entry"
+				>add</span>
 				<img class="world_info_image">
 			</div>
 			<h4 draggable="true" ondragstart="event.preventDefault();event.stopPropagation();" id="world_info_title_"
