@@ -2905,8 +2905,13 @@ function select_game_text(event) {
 		}
 		
 		//Check to see if new selection is a game chunk or something else
-		
-		if ((new_selected_game_chunk == null) || (((new_selected_game_chunk.id == "story_prompt") || (new_selected_game_chunk.id.slice(0,20) == "Selected Text Chunk ")) && (document.activeElement.isContentEditable))) {
+		if (new_selected_game_chunk == null) {
+			selected_game_chunk = null;
+			for (item of document.getElementsByClassName("editing")) {
+				item.classList.remove("editing");
+			}
+			window.getSelection().removeAllRanges()
+		} else if (((new_selected_game_chunk.id == "story_prompt") || (new_selected_game_chunk.id.slice(0,20) == "Selected Text Chunk ")) && (document.activeElement.isContentEditable)) {
 			if (new_selected_game_chunk != selected_game_chunk) {
 				for (item of document.getElementsByClassName("editing")) {
 					item.classList.remove("editing");
