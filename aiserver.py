@@ -9381,6 +9381,17 @@ def text2img_api(prompt,
 
     try:
         submit_req = requests.post(url=apiaddress, data=payload_json)
+    except requests.exceptions.ConnectionError:
+        show_error_notification(
+            "SD Web API Failure",
+            "Unable to connect to SD Web UI. Is it running?",
+            do_log=True
+        )
+        return None
+    except Exception as e:
+        show_error_notification("SD Web API Failure", "Unknown error in connecting to the SD Web UI. Is it running?")
+        logger.error(f"{type(e)}: {e}")
+        return None
     finally:
         koboldai_vars.generating_image = False
 
