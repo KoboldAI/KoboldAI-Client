@@ -1154,6 +1154,7 @@ def loadmodelsettings():
                 js   = json.load(open(koboldai_vars.custmodpth.replace('/', '_') + "/config.json", "r"))            
         except Exception as e:
             js   = {}
+    koboldai_vars.default_preset = koboldai_settings.default_preset
     if koboldai_vars.model_type == "xglm" or js.get("compat", "j") == "fairseq_lm":
         koboldai_vars.newlinemode = "s"  # Default to </s> newline mode if using XGLM
     if koboldai_vars.model_type == "opt" or koboldai_vars.model_type == "bloom":
@@ -3229,7 +3230,7 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
     to_use = OrderedDict()
     
     to_use["Recommended"] = {
-                                "Official": [presets[x] for x in presets if presets[x]['Match'] == "Recommended" and presets[x]['Preset Category'] == "Official"], 
+                                "Official": [koboldai_vars.default_preset] + [presets[x] for x in presets if presets[x]['Match'] == "Recommended" and presets[x]['Preset Category'] == "Official"], 
                                 "Custom": [presets[x] for x in presets if presets[x]['Match'] == "Recommended" and presets[x]['Preset Category'] == "Custom"], 
                             }
     to_use["Same Class"] = {
