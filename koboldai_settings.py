@@ -2248,6 +2248,8 @@ default_rep_range = [1.75, 2]
 default_preset = {
         "preset": "Default",
         "description": "Known working settings.",
+        "Match": "Recommended",
+        "Preset Category": "Official",
         "temp": 0.5,
         "genamt": 80,
         "top_k": 0,

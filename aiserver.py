@@ -3222,6 +3222,8 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
         if item not in presets:
             presets[item] = preset_others[item]
     
+    presets['Default'] = koboldai_vars.default_preset
+    
     koboldai_vars.uid_presets = presets
     #We want our data to be a 2 deep dict. Top level is "Recommended", "Same Class", "Model 1", "Model 2", etc
     #Next layer is "Official", "Custom"
@@ -3230,7 +3232,7 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
     to_use = OrderedDict()
     
     to_use["Recommended"] = {
-                                "Official": [koboldai_vars.default_preset] + [presets[x] for x in presets if presets[x]['Match'] == "Recommended" and presets[x]['Preset Category'] == "Official"], 
+                                "Official": [presets[x] for x in presets if presets[x]['Match'] == "Recommended" and presets[x]['Preset Category'] == "Official"], 
                                 "Custom": [presets[x] for x in presets if presets[x]['Match'] == "Recommended" and presets[x]['Preset Category'] == "Custom"], 
                             }
     to_use["Same Class"] = {
