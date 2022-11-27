@@ -4716,7 +4716,7 @@ def actionsubmit(data, actionmode=0, force_submit=False, force_prompt_gen=False,
                 if(len(koboldai_vars.prompt.strip()) == 0):
                     koboldai_vars.prompt = data
                 else:
-                    koboldai_vars.actions.append_submission(data)
+                    koboldai_vars.actions.append(data, submission=True)
                 update_story_chunk('last')
                 send_debug()
 

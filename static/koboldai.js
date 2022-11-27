@@ -282,6 +282,30 @@ function create_options(action) {
 	while (option_chunk.firstChild) {
 		option_chunk.removeChild(option_chunk.firstChild);
 	}
+	
+	//Let's check if we only have a single redo option. In that case we din't show as the user can use the redo button
+	seen_prev_selection = false;
+	show_options = false;
+	console.log(action.action.Options);
+	for (item of action.action.Options) {
+		if (!(item['Previous Selection'])) {
+			console.log(item);
+			show_options = true;
+			break;
+		} else if (item['Previous Selection']) {
+			if (seen_prev_selection) {
+				show_options = true;
+				break;
+			} else {
+				seen_prev_selection = true;
+			}
+		}
+	}
+	console.log("seen_prev_selection: "+seen_prev_selection+" show_options: "+show_options);
+	if (!(show_options)) {
+		return;
+	}
+	
 	var table = document.createElement("div");
 	table.classList.add("sequences");
 	//Add Redo options
@@ -302,10 +326,12 @@ function create_options(action) {
 			iconcell.classList.add("sequnce_icon");
 			var icon = document.createElement("span");
 			icon.id = "Pin_"+i;
-			icon.classList.add("oi");
-			icon.setAttribute('data-glyph', "loop-circular");
+			icon.classList.add("material-icons-outlined");
+			icon.classList.add("option_icon");
+			icon.classList.add("cursor");
+			icon.textContent = "cached";
 			iconcell.append(icon);
-			delete_icon = $e("span", iconcell, {"classes": ["material-icons-outlined", "cursor", 'delete_option_icon'], 
+			delete_icon = $e("span", iconcell, {"classes": ["material-icons-outlined", "cursor", 'option_icon'], 
 												"tooltip": "Delete Option", 'option_id': i,
 												'option_chunk': action.id, 'textContent': 'delete'});
 			delete_icon.onclick = function () {
@@ -338,8 +364,10 @@ function create_options(action) {
 			iconcell.classList.add("sequnce_icon");
 			var icon = document.createElement("span");
 			icon.id = "Pin_"+i;
-			icon.classList.add("oi");
-			icon.setAttribute('data-glyph', "pin");
+			icon.classList.add("material-icons-outlined");
+			icon.classList.add("option_icon");
+			icon.classList.add("cursor");
+			icon.textContent = "push_pin";
 			if (!(item.Pinned)) {
 				icon.setAttribute('style', "filter: brightness(50%);");
 			}
