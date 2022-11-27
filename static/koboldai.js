@@ -266,7 +266,6 @@ function create_options(action) {
 	if (action.id  != current_action+1) {
 		return;
 	}
-	document.getElementById('main-grid').setAttribute('option_length', action.action.Options.length);
 	var option_chunk = document.getElementById("Select Options");
 	
 	//first, let's clear out our existing data
@@ -294,8 +293,11 @@ function create_options(action) {
 	}
 	console.log("seen_prev_selection: "+seen_prev_selection+" show_options: "+show_options);
 	if (!(show_options)) {
+		document.getElementById('main-grid').setAttribute('option_length', 0);
 		return;
 	}
+	
+	document.getElementById('main-grid').setAttribute('option_length', action.action.Options.length);
 	
 	var table = document.createElement("div");
 	table.classList.add("sequences");
