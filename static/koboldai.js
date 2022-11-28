@@ -1319,13 +1319,13 @@ function popup_items(data) {
 			});
 		}(columnName));
 		container.classList.add("table-header-container")
-		container.style = 'overflow-x: hidden; grid-area: p${i};';
+		container.style = `overflow-x: hidden; grid-area: p${i};`;
 
 		td.classList.add("table-header-label");
 		td.textContent = columnName;
 
 		// TODO: Better unsorted icon
-		icon.id = 'sort-icon-${columnName.toLowerCase().replaceAll(" ", "-")}';
+		icon.id = `sort-icon-${columnName.toLowerCase().replaceAll(" ", "-")}`;
 		icon.innerText = "filter_list";
 		icon.classList.add("material-icons-outlined");
 		icon.classList.add("table-header-sort-icon");
