@@ -871,10 +871,45 @@ class story_settings(settings):
         
         ################### must be at bottom #########################
         self.no_save = False  #Temporary disable save (doesn't save with the file)
+    
+    def save_story(self) -> None:
+        if self.no_save:
+            return
+        
+        if not any([self.prompt, self.memory, self.authornote, len(self.actions), len(self.worldinfo_v2)]):
+            return
 
+        logger.info("Saving")
+
+        save_name = self.story_name or "Untitled"
+
+        # Disambiguate stories by adding (n) if needed
+        disambiguator = 0
+        save_path = os.path.join("stories", save_name)
+        while os.path.exists(save_path):
+            try:
+                # If the stories share a story id, overwrite the existing one.
+                with open(os.path.join(save_path, "story.json"), "r") as file:
+                    j = json.load(file)
+                    if self.story_id == j["story_id"]:
+                        break
+            except FileNotFoundError:
+                raise FileNotFoundError("Malformed save file: Missing story.json")
+
+            disambiguator += 1
+            save_path = os.path.join("stories", save_name + (f" ({disambiguator})" if disambiguator else ""))
         
-        
-    def save_story(self):
+        if not os.path.exists(save_path):
+            # We are making the story for the first time. Setup the directory structure.
+            os.mkdir(save_path)
+            os.mkdir(os.path.join(save_path, "generated_audio"))
+            os.mkdir(os.path.join(save_path, "generated_images"))
+
+        with open(os.path.join(save_path, "story.json"), "w") as file:
+            file.write(self.to_json())
+        self.gamesaved = True
+
+    def old_save_story(self):
         if not self.no_save:
             if self.prompt != "" or self.memory != "" or self.authornote != "" or len(self.actions) > 0 or len(self.worldinfo_v2) > 0:
                 logger.debug("Saving story from koboldai_vars.story_settings.save_story()")

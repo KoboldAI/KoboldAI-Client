@@ -8142,10 +8142,12 @@ def get_files_folders(starting_folder):
         folders = []
         files = []
         base_path = os.path.abspath(starting_folder).replace("\\", "/")
+
         if advanced_sort is not None:
             files_to_check = advanced_sort(base_path, desc=desc)
         else:
             files_to_check = get_files_sorted(base_path, sort, desc=desc)
+
         for item in files_to_check:
             item_full_path = os.path.join(base_path, item).replace("\\", "/")
             if hasattr(os.stat(item_full_path), "st_file_attributes"):
@@ -8572,23 +8574,50 @@ def valid_story(file):
         return valid
 
 @logger.catch
+def valid_v3_story(path: str) -> bool:
+    if not os.path.exists(path): return False
+    if not os.path.isdir(path): return False
+    if not os.path.exists(os.path.join(path, "story.json")): return False
+    return True
+
+@logger.catch
 def story_sort(base_path, desc=False):
     files = {}
     for file in os.scandir(path=base_path):
-        if file.name.endswith(".json"):
-            filename = os.path.join(base_path, file.name).replace("\\", "/")
-            if os.path.getsize(filename) < 2*1024*1024: #2MB
-                with open(filename, "r") as f:
-                    try:
-                        js = json.load(f)
-                        if 'story_name' in js and js['story_name'] in koboldai_vars.story_loads:
-                            files[file.name] = datetime.datetime.strptime(koboldai_vars.story_loads[js['story_name']], "%m/%d/%Y, %H:%M:%S")
-                        else:
-                            files[file.name] = datetime.datetime.fromtimestamp(file.stat().st_mtime)
-                    except:
-                        pass
+        if file.is_dir():
+            if not valid_v3_story(file.path):
+                continue
+
+            story_path = os.path.join(file.path, "story.json")
+            story_stat = os.stat(story_path)
+
+            if os.path.getsize(story_path) < 2*1024*1024: #2MB
+                with open(story_path, "r") as f:
+                    j = json.load(f)
+                    if j.get("story_name") in koboldai_vars.story_loads:
+                        files[file.name] = datetime.datetime.strptime(koboldai_vars.story_loads[j["story_name"]], "%m/%d/%Y, %H:%M:%S")
+                    else:
+                        files[file.name] = datetime.datetime.fromtimestamp(story_stat.st_mtime)
             else:
-                files[file.name] = datetime.datetime.fromtimestamp(file.stat().st_mtime)
+                files[file.name] = datetime.datetime.fromtimestamp(story_stat.st_mtime)
+            continue
+        
+        if not file.name.endswith(".json"):
+            continue
+
+        filename = os.path.join(base_path, file.name).replace("\\", "/")
+        if os.path.getsize(filename) < 2*1024*1024: #2MB
+            with open(filename, "r") as f:
+                try:
+                    js = json.load(f)
+                    if 'story_name' in js and js['story_name'] in koboldai_vars.story_loads:
+                        files[file.name] = datetime.datetime.strptime(koboldai_vars.story_loads[js['story_name']], "%m/%d/%Y, %H:%M:%S")
+                    else:
+                        files[file.name] = datetime.datetime.fromtimestamp(file.stat().st_mtime)
+                except:
+                    pass
+        else:
+            files[file.name] = datetime.datetime.fromtimestamp(file.stat().st_mtime)
     return [key[0] for key in sorted(files.items(), key=lambda kv: (kv[1], kv[0]), reverse=desc)]
 
 
