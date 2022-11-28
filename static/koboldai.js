@@ -79,6 +79,11 @@ var finder_actions = [
 	{name: "Download Story", icon: "file_download", type: "action", func: function() { document.getElementById('download_iframe').src = 'json'; }},
 	{name: "Import Story", icon: "file_download", desc: "Import a prompt from aetherroom.club, formerly prompts.aidg.club", type: "action", func: openClubImport },
 
+	// Imggen
+	{name: "Download Generated Image", icon: "file_download", type: "action", func: imgGenDownload},
+	{name: "View Generated Image", icon: "image", type: "action", func: imgGenView},
+	{name: "Clear Generated Image", icon: "image_not_supported", type: "action", func: imgGenClear},
+
 	// Locations
 	{name: "Setting Presets", icon: "open_in_new", type: "location", func: function() { highlightEl(".var_sync_model_selected_preset") }},
 	{name: "Memory", icon: "open_in_new", type: "location", func: function() { highlightEl("#memory") }},
