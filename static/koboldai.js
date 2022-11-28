@@ -79,6 +79,11 @@ var finder_actions = [
 	{name: "Download Story", icon: "file_download", type: "action", func: function() { document.getElementById('download_iframe').src = 'json'; }},
 	{name: "Import Story", icon: "file_download", desc: "Import a prompt from aetherroom.club, formerly prompts.aidg.club", type: "action", func: openClubImport },
 
+	// Imggen
+	{name: "Download Generated Image", icon: "file_download", type: "action", func: imgGenDownload},
+	{name: "View Generated Image", icon: "image", type: "action", func: imgGenView},
+	{name: "Clear Generated Image", icon: "image_not_supported", type: "action", func: imgGenClear},
+
 	// Locations
 	{name: "Setting Presets", icon: "open_in_new", type: "location", func: function() { highlightEl(".var_sync_model_selected_preset") }},
 	{name: "Memory", icon: "open_in_new", type: "location", func: function() { highlightEl("#memory") }},
@@ -5087,8 +5092,14 @@ function sendScratchpadPrompt(prompt) {
 	socket.emit("scratchpad_prompt", prompt);
 }
 
+function finderSendImgPrompt(prompt) {
+	closePopups();
+	$el("#image-loading").classList.remove("hidden");
+	socket.emit("generate_image_from_prompt", prompt);
+}
+
 function updateSearchListings() {
-	if (finder_mode === "scratchpad") return;
+	if (["scratchpad", "imgPrompt"].includes(finder_mode)) return;
 	if (this.value === finder_last_input) return;
 	finder_last_input = this.value;
 	finder_selection_index = -1;
@@ -5125,8 +5136,13 @@ function updateFinderMode(mode) {
 	const finderInput = document.querySelector("#finder-input");
 	const finderScratchpad = document.querySelector("#finder-scratchpad");
 
-	finderIcon.innerText = {ui: "search", wi: "auto_stories", scratchpad: "speaker_notes"}[mode];
-	finderInput.placeholder = {ui: "Search for something...", wi: "Search for a World Info entry...", scratchpad: "Prompt the AI..."}[mode];
+	finderIcon.innerText = {ui: "search", wi: "auto_stories", scratchpad: "speaker_notes", "imgPrompt": "image"}[mode];
+	finderInput.placeholder = {
+		ui: "Search for something...",
+		wi: "Search for a World Info entry...",
+		scratchpad: "Prompt the AI...",
+		imgPrompt: "Generate an image..."
+	}[mode];
 	finderScratchpad.classList.add("hidden");
 
 	finder_mode = mode;
@@ -5134,7 +5150,7 @@ function updateFinderMode(mode) {
 
 function cycleFinderMode() {
 	// Initiated by clicking on icon
-	updateFinderMode({ui: "wi", wi: "scratchpad", scratchpad: "ui"}[finder_mode]);
+	updateFinderMode({ui: "wi", wi: "scratchpad", scratchpad: "imgPrompt", imgPrompt: "ui"}[finder_mode]);
 }
 
 function open_finder() {
@@ -5401,7 +5417,7 @@ process_cookies();
 		let delta = 0;
 		const actions = document.getElementsByClassName("finder-result");
 
-		let newMode = {">": "wi", "#": "ui", "!": "scratchpad"}[event.key];
+		let newMode = {">": "wi", "#": "ui", "!": "scratchpad", "?": "imgPrompt"}[event.key];
 		if (newMode && !finderInput.value) {
 			event.preventDefault();
 			updateFinderMode(newMode);
@@ -5412,10 +5428,15 @@ process_cookies();
 			if (finder_mode === "scratchpad") {
 				sendScratchpadPrompt(finderInput.value);
 				return;
+			} else if (finder_mode === "imgPrompt") {
+				finderSendImgPrompt(finderInput.value);
+				return;
 			} else if (finder_mode === "ui") {
 				let index = finder_selection_index >= 0 ? finder_selection_index : 0;
 				if (!actions[index]) return;
 				actions[index].click();
+			} else {
+				return;
 			}
 		} else if (event.key === "ArrowUp") {
 			delta = -1;
