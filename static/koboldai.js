@@ -5435,6 +5435,8 @@ process_cookies();
 				let index = finder_selection_index >= 0 ? finder_selection_index : 0;
 				if (!actions[index]) return;
 				actions[index].click();
+			} else {
+				return;
 			}
 		} else if (event.key === "ArrowUp") {
 			delta = -1;
