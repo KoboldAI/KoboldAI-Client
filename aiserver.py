@@ -1154,6 +1154,7 @@ def loadmodelsettings():
                 js   = json.load(open(koboldai_vars.custmodpth.replace('/', '_') + "/config.json", "r"))            
         except Exception as e:
             js   = {}
+    koboldai_vars.default_preset = koboldai_settings.default_preset
     if koboldai_vars.model_type == "xglm" or js.get("compat", "j") == "fairseq_lm":
         koboldai_vars.newlinemode = "s"  # Default to </s> newline mode if using XGLM
     if koboldai_vars.model_type == "opt" or koboldai_vars.model_type == "bloom":
@@ -3220,6 +3221,8 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
     for item in preset_others:
         if item not in presets:
             presets[item] = preset_others[item]
+    
+    presets['Default'] = koboldai_vars.default_preset
     
     koboldai_vars.uid_presets = presets
     #We want our data to be a 2 deep dict. Top level is "Recommended", "Same Class", "Model 1", "Model 2", etc
