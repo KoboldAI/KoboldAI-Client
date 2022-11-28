@@ -7,6 +7,7 @@
 
 # External packages
 from dataclasses import dataclass
+import shutil
 import eventlet
 eventlet.monkey_patch(all=True, thread=False, os=False)
 import os, inspect
@@ -7954,28 +7955,46 @@ def popup_rename(data):
 @logger.catch
 def popup_rename_story(data):
     if 'popup_renameable' not in session:
-        print("Someone is trying to rename a file in your server. Blocked.")
+        logger.warn("Someone is trying to rename a file in your server. Blocked.")
         return
     if not session['popup_renameable']:
-        print("Someone is trying to rename a file in your server. Blocked.")
+        logger.warn("Someone is trying to rename a file in your server. Blocked.")
         return
-    
-    if session['popup_jailed_dir'] is None or session["popup_jailed_dir"] in data["file"]:
-        path = data["file"]
-        print("path", path)
-        #if we're using a v2 file we can't just rename the file as the story name is in the file
-        with open(data['file'], 'r') as f:
-            json_data = json.load(f)
-        if 'story_name' in json_data:
-            json_data['story_name'] = data['new_name']
-            
-        new_filename = os.path.join(os.path.dirname(os.path.abspath(data['file'])), data['new_name']+".json")
+    if session['popup_jailed_dir'] and session["popup_jailed_dir"] not in data["file"]:
+        logger.warn("User is trying to rename files in your server outside the jail. Blocked. Jailed Dir: {}  Requested Dir: {}".format(session['popup_jailed_dir'], data['file']))
+        return
+
+    path = data["file"]
+    new_name = data["new_name"]
+    json_path = path
+    is_v3 = False
+
+    # Handle directory for v3 save
+    if os.path.isdir(path):
+        if not valid_v3_story(path):
+            return
+        is_v3 = True
+        json_path = os.path.join(path, "story.json")
+
+    #if we're using a v2 file we can't just rename the file as the story name is in the file
+    with open(json_path, 'r') as f:
+        json_data = json.load(f)
+    if 'story_name' in json_data:
+        json_data['story_name'] = new_name
+
+    # For v3 we move the directory, not the json file.
+    if is_v3:
+        target = os.path.join(os.path.dirname(path), new_name)
+        shutil.move(path, target)
+
+        with open(os.path.join(target, "story.json"), "w") as file:
+            json.dump(json_data, file)
+    else:
+        new_filename = os.path.join(os.path.dirname(os.path.abspath(data['file'])), new_name+".json")
         os.remove(data['file'])
         with open(new_filename, "w") as f:
             json.dump(json_data, f)
-        get_files_folders(os.path.dirname(data['file']))
-    else:
-        print("User is trying to rename files in your server outside the jail. Blocked. Jailed Dir: {}  Requested Dir: {}".format(session['popup_jailed_dir'], data['file']))
+    get_files_folders(os.path.dirname(path))
 
 @socketio.on('popup_delete')
 @logger.catch
