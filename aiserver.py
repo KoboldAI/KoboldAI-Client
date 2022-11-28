@@ -9162,7 +9162,8 @@ def UI_2_save_revision(data):
 #==================================================================#
 @socketio.on("generate_image")
 @logger.catch
-def UI_2_generate_image(data):
+def UI_2_generate_image_from_story(data):
+    # Independant of generate_story_image as summarization is rather time consuming
     koboldai_vars.generating_image = True
     eventlet.sleep(0)
     
@@ -9213,36 +9214,46 @@ def UI_2_generate_image(data):
         keys = [summarize(text, max_length=max_length)]
         logger.debug("Text from summarizer: {}".format(keys[0]))
     
-    
+    generate_story_image(", ".join(keys), art_guide=art_guide)
 
-   
 
-    #If we don't have a GPU, use horde if we're allowed to
+def generate_story_image(prompt: str, art_guide: str = "") -> None:
+    # This function is a wrapper around generate_image() that integrates the
+    # result with the story (read: puts it in the corner of the screen).
+
     start_time = time.time()
-    # Check if stable-diffusion-webui API option selected and use that if found.
-    if koboldai_vars.img_gen_priority == 4:
-        b64_data = text2img_api(", ".join(keys), art_guide = art_guide)
-    elif ((not koboldai_vars.hascuda or not os.path.exists("models/stable-diffusion-v1-4")) and koboldai_vars.img_gen_priority != 0) or  koboldai_vars.img_gen_priority == 3:
-        b64_data = text2img_horde(", ".join(keys), art_guide = art_guide)
-    else:
-        if ((not koboldai_vars.hascuda or not os.path.exists("models/stable-diffusion-v1-4")) and koboldai_vars.img_gen_priority != 0) or  koboldai_vars.img_gen_priority == 3:
-            b64_data = text2img_horde(", ".join(keys), art_guide = art_guide)
-        else:
-            import psutil
-            #We aren't being forced to use horde, so now let's figure out if we should use local
-            if torch.cuda.get_device_properties(0).total_memory - torch.cuda.memory_reserved(0) >= 6000000000:
-                #He have enough vram, just do it locally
-                b64_data = text2img_local(", ".join(keys), art_guide = art_guide)
-            elif torch.cuda.get_device_properties(0).total_memory > 6000000000 and koboldai_vars.img_gen_priority <= 1:
-                #We could do it locally by swapping the model out
-                print("Could do local or online")
-                b64_data = text2img_horde(", ".join(keys), art_guide = art_guide)
-            elif koboldai_vars.img_gen_priority != 0:
-                b64_data = text2img_horde(", ".join(keys), art_guide = art_guide)
+    koboldai_vars.generating_image = True
+
+    b64_data = generate_image(prompt, art_guide=art_guide)
+
     logger.debug("Time to Generate Image {}".format(time.time()-start_time))
+
     koboldai_vars.picture = b64_data
-    koboldai_vars.picture_prompt = ", ".join(keys)
+    koboldai_vars.picture_prompt = prompt
     koboldai_vars.generating_image = False
+
+def generate_image(prompt: str, art_guide: str = "") -> Optional[str]:
+    if koboldai_vars.img_gen_priority == 4:
+        # Check if stable-diffusion-webui API option selected and use that if found.
+        return text2img_api(prompt, art_guide=art_guide)
+    elif ((not koboldai_vars.hascuda or not os.path.exists("models/stable-diffusion-v1-4")) and koboldai_vars.img_gen_priority != 0) or  koboldai_vars.img_gen_priority == 3:
+        # If we don't have a GPU, use horde if we're allowed to
+        return text2img_horde(prompt, art_guide=art_guide)
+
+    memory = torch.cuda.get_device_properties(0).total_memory
+
+    # We aren't being forced to use horde, so now let's figure out if we should use local
+    if memory - torch.cuda.memory_reserved(0) >= 6000000000:
+        # We have enough vram, just do it locally
+        return text2img_local(prompt, art_guide=art_guide)
+    elif memory > 6000000000 and koboldai_vars.img_gen_priority <= 1:
+        # We could do it locally by swapping the model out
+        print("Could do local or online")
+        return text2img_horde(prompt, art_guide=art_guide)
+    elif koboldai_vars.img_gen_priority != 0:
+        return text2img_horde(prompt, art_guide=art_guide)
+
+    raise RuntimeError("Unable to decide image generation backend. Please report this.")
     
 
 @logger.catch
@@ -9335,9 +9346,7 @@ def text2img_horde(prompt,
         logger.error(submit_req.text)
 
 @logger.catch
-def text2img_api(prompt,
-             art_guide = "",
-             filename = "story_art.png"):
+def text2img_api(prompt, art_guide=""):
     logger.debug("Generating Image using Local SD-WebUI API")
     koboldai_vars.generating_image = True
     #The following list are valid properties with their defaults, to add/modify in final_imgen_params. Will refactor configuring values into UI element in future.
