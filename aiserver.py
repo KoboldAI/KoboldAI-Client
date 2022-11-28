@@ -7215,28 +7215,34 @@ def loadfromfile():
 def loadRequest(loadpath, filename=None):
     logger.debug("Load Request")
     logger.debug("Called from {}".format(inspect.stack()[1].function))
+
+    if not loadpath:
+        return
+
+    if os.path.isdir(loadpath):
+        if not valid_v3_story(loadpath):
+            raise RuntimeError(f"Tried to load {loadpath}, a non-save directory.")
+        loadpath = os.path.join(loadpath, "story.json")
+
     start_time = time.time()
-    if(loadpath):
-        # Leave Edit/Memory mode before continuing
-        exitModes()
-        
-        
-        # Read file contents into JSON object
-        start_time = time.time()
-        if(isinstance(loadpath, str)):
-            with open(loadpath, "r") as file:
-                js = json.load(file)
-            if(filename is None):
-                filename = path.basename(loadpath)
-        else:
-            js = loadpath
-            if(filename is None):
-                filename = "untitled.json"
-        js['v1_loadpath'] = loadpath
-        js['v1_filename'] = filename
-        logger.debug("Loading JSON data took {}s".format(time.time()-start_time))
-        loadJSON(js)
-    logger.debug("Time to load story: {}s".format(time.time()-start_time))
+    # Leave Edit/Memory mode before continuing
+    exitModes()
+    
+    # Read file contents into JSON object
+    start_time = time.time()
+    if(isinstance(loadpath, str)):
+        with open(loadpath, "r") as file:
+            js = json.load(file)
+        if(filename is None):
+            filename = path.basename(loadpath)
+    else:
+        js = loadpath
+        if(filename is None):
+            filename = "untitled.json"
+    js['v1_loadpath'] = loadpath
+    js['v1_filename'] = filename
+    logger.debug("Loading JSON data took {}s".format(time.time()-start_time))
+    loadJSON(js)
 
 def loadJSON(json_text_or_dict):
     logger.debug("Loading JSON Story")
@@ -7954,19 +7960,9 @@ def popup_rename_story(data):
         print("Someone is trying to rename a file in your server. Blocked.")
         return
     
-    if session['popup_jailed_dir'] is None:
-        #if we're using a v2 file we can't just rename the file as the story name is in the file
-        with open(data['file'], 'r') as f:
-            json_data = json.load(f)
-        if 'story_name' in json_data:
-            json_data['story_name'] = data['new_name']
-            
-        new_filename = os.path.join(os.path.dirname(os.path.abspath(data['file'])), data['new_name']+".json")
-        os.remove(data['file'])
-        with open(new_filename, "w") as f:
-            json.dump(json_data, f)
-        get_files_folders(os.path.dirname(data['file']))
-    elif session['popup_jailed_dir'] in data['file']:
+    if session['popup_jailed_dir'] is None or session["popup_jailed_dir"] in data["file"]:
+        path = data["file"]
+        print("path", path)
         #if we're using a v2 file we can't just rename the file as the story name is in the file
         with open(data['file'], 'r') as f:
             json_data = json.load(f)
@@ -8164,8 +8160,15 @@ def get_files_folders(starting_folder):
                 extra_parameters = extra_parameter_function(item_full_path, item, valid_selection)
                 
             if (show_hidden and hidden) or not hidden:
-                if os.path.isdir(os.path.join(base_path, item)):
-                    folders.append([True, item_full_path, item,  valid_selection, extra_parameters])
+                if os.path.isdir(item_full_path):
+                    folders.append([
+                        # While v3 saves are directories, we should not show them as such.
+                        not valid_v3_story(item_full_path),
+                        item_full_path,
+                        item,
+                        valid_selection,
+                        extra_parameters
+                    ])
                 else:
                     if hide_extention:
                         item = ".".join(item.split(".")[:-1])
@@ -8508,6 +8511,11 @@ def get_story_listing_data(item_full_path, item, valid_selection):
 
     if not valid_selection:
         return [title, action_count, last_loaded]
+    
+    if os.path.isdir(item_full_path):
+        if not valid_v3_story(item_full_path):
+            return [title, action_count, last_loaded]
+        item_full_path = os.path.join(item_full_path, "story.json")
 
     with open(item_full_path, 'rb') as f:
         parse_event = ijson.parse(f)
@@ -8559,19 +8567,22 @@ def get_story_listing_data(item_full_path, item, valid_selection):
     return [title, action_count, last_loaded]
     
 @logger.catch
-def valid_story(file):
-    if file.endswith(".json"):
-        try:
-            valid = False
-            with open(file, 'rb') as f:
-                parser = ijson.parse(f)
-                for prefix, event, value in parser:
-                    if prefix == 'memory':
-                        valid=True
-                        break
-        except:
-            pass
-        return valid
+def valid_story(path: str):
+    if os.path.isdir(path):
+        return valid_v3_story(path)
+
+    if not path.endswith(".json"):
+        return False
+
+    try:
+        with open(path, 'rb') as file:
+            parser = ijson.parse(file)
+            for prefix, event, value in parser:
+                if prefix == 'memory':
+                    return True
+    except:
+        pass
+    return False
 
 @logger.catch
 def valid_v3_story(path: str) -> bool:
