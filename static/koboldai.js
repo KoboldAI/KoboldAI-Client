@@ -5092,8 +5092,14 @@ function sendScratchpadPrompt(prompt) {
 	socket.emit("scratchpad_prompt", prompt);
 }
 
+function finderSendImgPrompt(prompt) {
+	closePopups();
+	$el("#image-loading").classList.remove("hidden");
+	socket.emit("generate_image_from_prompt", prompt);
+}
+
 function updateSearchListings() {
-	if (finder_mode === "scratchpad") return;
+	if (["scratchpad", "imgPrompt"].includes(finder_mode)) return;
 	if (this.value === finder_last_input) return;
 	finder_last_input = this.value;
 	finder_selection_index = -1;
@@ -5130,8 +5136,13 @@ function updateFinderMode(mode) {
 	const finderInput = document.querySelector("#finder-input");
 	const finderScratchpad = document.querySelector("#finder-scratchpad");
 
-	finderIcon.innerText = {ui: "search", wi: "auto_stories", scratchpad: "speaker_notes"}[mode];
-	finderInput.placeholder = {ui: "Search for something...", wi: "Search for a World Info entry...", scratchpad: "Prompt the AI..."}[mode];
+	finderIcon.innerText = {ui: "search", wi: "auto_stories", scratchpad: "speaker_notes", "imgPrompt": "image"}[mode];
+	finderInput.placeholder = {
+		ui: "Search for something...",
+		wi: "Search for a World Info entry...",
+		scratchpad: "Prompt the AI...",
+		imgPrompt: "Generate an image..."
+	}[mode];
 	finderScratchpad.classList.add("hidden");
 
 	finder_mode = mode;
@@ -5139,7 +5150,7 @@ function updateFinderMode(mode) {
 
 function cycleFinderMode() {
 	// Initiated by clicking on icon
-	updateFinderMode({ui: "wi", wi: "scratchpad", scratchpad: "ui"}[finder_mode]);
+	updateFinderMode({ui: "wi", wi: "scratchpad", scratchpad: "imgPrompt", imgPrompt: "ui"}[finder_mode]);
 }
 
 function open_finder() {
@@ -5406,7 +5417,7 @@ process_cookies();
 		let delta = 0;
 		const actions = document.getElementsByClassName("finder-result");
 
-		let newMode = {">": "wi", "#": "ui", "!": "scratchpad"}[event.key];
+		let newMode = {">": "wi", "#": "ui", "!": "scratchpad", "?": "imgPrompt"}[event.key];
 		if (newMode && !finderInput.value) {
 			event.preventDefault();
 			updateFinderMode(newMode);
@@ -5416,6 +5427,9 @@ process_cookies();
 		if (event.key === "Enter") {
 			if (finder_mode === "scratchpad") {
 				sendScratchpadPrompt(finderInput.value);
+				return;
+			} else if (finder_mode === "imgPrompt") {
+				finderSendImgPrompt(finderInput.value);
 				return;
 			} else if (finder_mode === "ui") {
 				let index = finder_selection_index >= 0 ? finder_selection_index : 0;

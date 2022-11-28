@@ -9216,6 +9216,11 @@ def UI_2_generate_image_from_story(data):
     
     generate_story_image(", ".join(keys), art_guide=art_guide)
 
+@socketio.on("generate_image_from_prompt")
+@logger.catch
+def UI_2_generate_image_from_prompt(prompt: str):
+    eventlet.sleep(0)
+    generate_story_image(prompt)
 
 def generate_story_image(prompt: str, art_guide: str = "") -> None:
     # This function is a wrapper around generate_image() that integrates the
