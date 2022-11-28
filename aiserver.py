@@ -2628,6 +2628,8 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
             else:
                 koboldai_vars.breakmodel = False
                 koboldai_vars.usegpu = use_gpu
+    else:
+        koboldai_vars.default_preset = koboldai_settings.default_preset
 
 
     # Ask for API key if InferKit was selected
