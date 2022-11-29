@@ -5449,6 +5449,8 @@ process_cookies();
 			return;
 		}
 
+		if (finder_mode !== "ui") return;
+
 		const actionsCount = actions.length;
 		let future = finder_selection_index + delta;
 
