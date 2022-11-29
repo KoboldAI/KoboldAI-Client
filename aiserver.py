@@ -9223,6 +9223,12 @@ def UI_2_generate_image_from_prompt(prompt: str):
     eventlet.sleep(0)
     generate_story_image(prompt)
 
+@socketio.on("retry_generated_image")
+@logger.catch
+def UI2_retry_generated_image(data):
+    eventlet.sleep(0)
+    generate_story_image(koboldai_vars.picture_prompt)
+
 def generate_story_image(prompt: str, art_guide: str = "") -> None:
     # This function is a wrapper around generate_image() that integrates the
     # result with the story (read: puts it in the corner of the screen).

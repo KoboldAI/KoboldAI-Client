@@ -119,6 +119,7 @@ const context_menu_actions = {
 	"generated-image": [
 		{label: "View", icon: "search", enabledOn: "ALWAYS", click: imgGenView},
 		{label: "Download", icon: "download", enabledOn: "ALWAYS", click: imgGenDownload},
+		{label: "Retry", icon: "refresh", enabledOn: "ALWAYS", click: imgGenRetry},
 		{label: "Clear", icon: "clear", enabledOn: "ALWAYS", click: imgGenClear},
 	],
 	"wi-img-upload-button": [
@@ -6407,4 +6408,11 @@ function imgGenClear() {
 	const container = $el("#action\\ image");
 	container.removeAttribute("tooltip");
 	socket.emit("clear_generated_image", {});
+}
+
+function imgGenRetry() {
+	const image = $el(".action_image");
+	if (!image) return;
+	$el("#image-loading").classList.remove("hidden");
+	socket.emit("retry_generated_image", {});
 }
