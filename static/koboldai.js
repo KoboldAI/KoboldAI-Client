@@ -2590,14 +2590,14 @@ function process_log_message(full_data) {
 }
 
 //--------------------------------------------UI to Server Functions----------------------------------
-async function download_story_to_json() {
+async function download_story_to_zip() {
 	//document.getElementById('download_iframe').src = 'json';
 	downloaded = false;
 	if (socket.connected) {
 		try {
-			let r = await fetch("json");
+			let r = await fetch("zip");
 			let j = await r.json();
-			downloadString(JSON.stringify(j), j['story_name']+".json")
+			downloadString(JSON.stringify(j), j['story_name']+".kaistory")
 			downloaded = true;
 		}
 		catch(err) {

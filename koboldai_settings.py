@@ -1,6 +1,7 @@
 from __future__ import annotations
 from dataclasses import dataclass
 import os, re, time, threading, json, pickle, base64, copy, tqdm, datetime, sys
+import shutil
 from typing import Union
 from io import BytesIO
 from flask import has_request_context, session
@@ -907,6 +908,15 @@ class story_settings(settings):
             os.mkdir(self.save_paths.generated_audio)
             os.mkdir(self.save_paths.generated_images)
 
+        # Convert v2 if applicable
+        v2_path = os.path.join("stories", f"{self.story_name}_v2.json")
+        if os.path.exists(v2_path):
+            logger.info("Migrating v2 save")
+            with open(v2_path, "r") as file:
+                v2j = json.load(file)
+            assert v2j["story_id"] == self.story_id
+            shutil.move(v2_path, os.path.join(self.save_paths.base, ".v2_old.json"))
+
         with open(self.save_paths.story, "w") as file:
             file.write(self.to_json())
         self.gamesaved = True
@@ -985,6 +995,7 @@ class story_settings(settings):
         if name == "gamesaved" and value == False and self.autosave:
             logger.debug("Saving story from gamesaved change and on autosave")
             self.save_story()
+
         if not new_variable and old_value != value:
             #Change game save state
             if name in ['story_name', 'prompt', 'memory', 'authornote', 'authornotetemplate', 'andepth', 'chatname', 'actionmode', 'dynamicscan', 'notes', 'biases']:
@@ -1001,6 +1012,9 @@ class story_settings(settings):
             elif name == 'story_name':
                 #reset the story id if we change the name
                 self.story_id = int.from_bytes(os.urandom(16), 'little', signed=True)
+
+                # Story name influences save base
+                self.save_paths.base = os.path.join("stories", self.story_name or "Untitled")
             
             #Recalc AI Text
             elif name == 'authornote':
@@ -1040,8 +1054,6 @@ class story_settings(settings):
             elif name == 'chatmode' and value == False and self.adventure == False:
                 self.storymode = 0
                 self.actionmode = 0
-            elif name == "story_name":
-                self.save_paths.base = os.path.join("stories", self.story_name or "Untitled")
                 
 class user_settings(settings):
     local_only_variables = ['socketio', 'importjs']
@@ -1814,9 +1826,7 @@ class KoboldStoryRegister(object):
                 #self.tts_model.to(torch.device(0))  # gpu or cpu
                 self.tts_model.to(torch.device("cpu"))  # gpu or cpu
             
-            filename="stories/{}/{}.ogg".format(self.story_settings.story_id, action_id)
-            if not os.path.exists("stories/{}".format(self.story_settings.story_id)):
-                os.mkdir("stories/{}".format(self.story_settings.story_id))
+            filename = os.path.join(self.koboldai_vars.save_paths.generated_audio, f"{action_id}.ogg")
                 
             if overwrite or not os.path.exists(filename):
                 self.make_audio_queue.put((self.actions[action_id]['Selected Text'], filename))
