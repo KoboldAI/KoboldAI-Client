@@ -74,7 +74,7 @@ const on_colab = $el("#on_colab").textContent == "true";
 var finder_actions = [
 	{name: "Load Model", icon: "folder_open", type: "action", func: function() { socket.emit('load_model_button', {}); }},
 	{name: "New Story", icon: "description", type: "action", func: function() { socket.emit('new_story', ''); }},
-	{name: "Load Story", icon: "folder_open", type: "action", func: function() { socket.emit('load_story_list', ''); }},
+	{name: "Load Story", icon: "folder_open", type: "action", func: load_story_list},
 	{name: "Save Story", icon: "save", type: "action", func: save_story},
 	{name: "Download Story", icon: "file_download", type: "action", func: function() { document.getElementById('download_iframe').src = 'json'; }},
 	{name: "Import Story", icon: "file_download", desc: "Import a prompt from aetherroom.club, formerly prompts.aidg.club", type: "action", func: openClubImport },
@@ -131,6 +131,7 @@ const context_menu_actions = {
 // CTRL-[X]
 const shortcuts = [
 	{key: "s", desc: "Save Story", func: save_story},
+	{key: "o", desc: "Open Story", func: load_story_list},
 	{key: "z", desc: "Undoes last story action", func: () => socket.emit("back", {}), criteria: canNavigateStoryHistory},
 	{key: "y", desc: "Redoes last story action", func: () => socket.emit("redo", {}), criteria: canNavigateStoryHistory},
 	{key: "e", desc: "Retries last story action", func: () => socket.emit("retry", {}), criteria: canNavigateStoryHistory},
@@ -653,9 +654,8 @@ function do_probabilities(action) {
 	
 }
 
-function save_story() {
-	socket.emit("save_story", null, response => save_as_story(response));;
-}
+function save_story() { socket.emit("save_story", null, response => save_as_story(response)); }
+function load_story_list() { socket.emit("load_story_list", ""); }
 
 function do_presets(data) {
 	for (select of document.getElementsByClassName('presets')) {
@@ -4593,7 +4593,7 @@ async function loadKoboldData(data, filename) {
 	if (data.gamestarted !== undefined) {
 		// Story
 		socket.emit("upload_file", {"filename": filename, "data": JSON.stringify(data)});
-		socket.emit("load_story_list", "");
+		load_story_list();
 	} else if (data.folders !== undefined && data.entries !== undefined) {
 		// World Info Folder
 		await postWI(data);
