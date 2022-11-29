@@ -5105,7 +5105,7 @@ def calcsubmit(txt):
         logger.debug("Submit: get_text time {}s".format(time.time()-start_time))
 
         start_time = time.time()
-        if koboldai_vars.experimental_features:
+        if koboldai_vars.experimental_features and any([c.get("attention_multiplier", 1) != 1 for c in koboldai_vars.context]):
             offset = 0
             applied_biases = []
             for c in koboldai_vars.context:
