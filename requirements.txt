@@ -24,3 +24,4 @@ psutil
 ansi2html
 flask_compress
 ijson
+bitsandbytes-cuda111

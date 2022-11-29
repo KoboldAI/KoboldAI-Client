@@ -1437,6 +1437,7 @@ function show_model_menu(data) {
 	document.getElementById("modelkey").value = "";
 	document.getElementById("modelurl").classList.add("hidden");
 	document.getElementById("use_gpu_div").classList.add("hidden");
+	document.getElementById("use_8_bit_div").classList.add("hidden");
 	document.getElementById("modellayers").classList.add("hidden");
 	document.getElementById("oaimodel").classList.add("hidden");
 	var model_layer_bars = document.getElementById('model_layer_bars');
@@ -1584,6 +1585,14 @@ function selected_model_info(data) {
 		document.getElementById("modelurl").classList.remove("hidden");
 	} else {
 		document.getElementById("modelurl").classList.add("hidden");
+	}
+	
+	//hide or unhide 8 bit mode
+	if (data.bit_8_available) {
+		document.getElementById("use_8_bit_div").classList.remove("hidden");
+	} else {
+		document.getElementById("use_8_bit_div").classList.add("hidden");
+		document.getElementById("use_8_bit").checked = false;
 	}
 	
 	//default URL loading
@@ -1815,7 +1824,8 @@ function load_model() {
 	message = {'model': model, 'path': path, 'use_gpu': document.getElementById("use_gpu").checked, 
 			   'key': document.getElementById('modelkey').value, 'gpu_layers': gpu_layers.join(), 
 			   'disk_layers': disk_layers, 'url': document.getElementById("modelurl").value, 
-			   'online_model': selected_models};
+			   'online_model': selected_models,
+			   'use_8_bit': document.getElementById('use_8_bit').checked};
 	socket.emit("load_model", message);
 	closePopups();
 }

@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+import importlib
 import os, re, time, threading, json, pickle, base64, copy, tqdm, datetime, sys
 from typing import Union
 from io import BytesIO
@@ -1087,7 +1088,7 @@ class system_settings(settings):
                          'lua_koboldcore', 'sp', 'sp_length', '_horde_pid', 'horde_share', 'aibusy', 
                          'serverstarted', 'inference_config', 'image_pipeline', 'summarizer', 
                          'summary_tokenizer', 'use_colab_tpu', 'noai', 'disable_set_aibusy', 'cloudflare_link', 'tts_model',
-                         'generating_image']
+                         'generating_image', 'bit_8_available']
     settings_name = "system"
     def __init__(self, socketio, koboldai_var):
         self.socketio = socketio
@@ -1171,6 +1172,8 @@ class system_settings(settings):
         self.keep_img_gen_in_memory = False
         self.cookies = {} #cookies for colab since colab's URL changes, cookies are lost
         self.experimental_features = False
+        #check if bitsandbytes is installed
+        self.bit_8_available = importlib.util.find_spec("bitsandbytes") is not None and sys.platform.startswith('linux') #We can install bitsandbytes, but it doesn't work on windows, so limit it here
         
         @dataclass
         class _inference_config:
