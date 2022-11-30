@@ -2962,7 +2962,7 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
 
                         torch._utils._rebuild_tensor = old_rebuild_tensor
 
-                        if not args.colab or args.savemodel:
+                        if (not args.colab or args.savemodel) and not use_8_bit:
                             import shutil
                             tokenizer.save_pretrained("models/{}".format(koboldai_vars.model.replace('/', '_')))
                             if koboldai_vars.fp32_model:  # Use save_pretrained to convert fp32 models to fp16
