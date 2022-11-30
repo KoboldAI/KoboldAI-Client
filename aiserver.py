@@ -2632,7 +2632,7 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
         elif koboldai_vars.hascuda:
             if(koboldai_vars.bmsupported):
                 koboldai_vars.usegpu = False
-                koboldai_vars.breakmodel = True
+                koboldai_vars.breakmodel = True if not koboldai_vars.use_8_bit else False
             else:
                 koboldai_vars.breakmodel = False
                 koboldai_vars.usegpu = use_gpu
@@ -2680,6 +2680,7 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
             # Lazy loader
             import torch_lazy_loader
             def get_lazy_load_callback(n_layers, convert_to_float16=True):
+                logger.info("In Callback - koboldai_vars.lazy_load: {}".format(koboldai_vars.lazy_load))
                 if not koboldai_vars.lazy_load:
                     return
 
@@ -2921,6 +2922,7 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
                                 except Exception as e:
                                     tokenizer = GPT2Tokenizer.from_pretrained("gpt2", revision=koboldai_vars.revision, cache_dir="cache")
                         try:
+                            logger.info("Using 8 bit: {}".format(use_8_bit))
                             model     = AutoModelForCausalLM.from_pretrained("models/{}".format(koboldai_vars.model.replace('/', '_')), revision=koboldai_vars.revision, cache_dir="cache", load_in_8bit=use_8_bit, device_map="auto", **lowmem)
                         except Exception as e:
                             if("out of memory" in traceback.format_exc().lower()):
