@@ -2929,6 +2929,10 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
                                 raise RuntimeError("One of your GPUs ran out of memory when KoboldAI tried to load your model.")
                             model     = GPTNeoForCausalLM.from_pretrained("models/{}".format(koboldai_vars.model.replace('/', '_')), revision=koboldai_vars.revision, cache_dir="cache", load_in_8bit=use_8_bit, device_map="auto", **lowmem)
                     else:
+                        try:
+                            torch._utils._rebuild_tensor = old_rebuild_tensor
+                        except:
+                            pass
                         old_rebuild_tensor = torch._utils._rebuild_tensor
                         def new_rebuild_tensor(storage: Union[torch_lazy_loader.LazyTensor, torch.Storage], storage_offset, shape, stride):
                             if(not isinstance(storage, torch_lazy_loader.LazyTensor)):
