@@ -2632,7 +2632,7 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
         elif koboldai_vars.hascuda:
             if(koboldai_vars.bmsupported):
                 koboldai_vars.usegpu = False
-                koboldai_vars.breakmodel = True if not koboldai_vars.use_8_bit else False
+                koboldai_vars.breakmodel = True if not use_8_bit else False
             else:
                 koboldai_vars.breakmodel = False
                 koboldai_vars.usegpu = use_gpu
