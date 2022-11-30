@@ -2461,6 +2461,7 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
     global tokenizer
     koboldai_vars.aibusy = True
     koboldai_vars.horde_share = False
+    reset_model_settings()
     
     if not koboldai_vars.bit_8_available or not koboldai_vars.experimental_features:
         use_8_bit = False
@@ -2469,7 +2470,6 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
     logger.info("koboldai_vars.lazy_load: {}".format(koboldai_vars.lazy_load))
     if(initial_load):
         use_breakmodel_args = True
-    reset_model_settings()
     if not utils.HAS_ACCELERATE:
         disk_layers = None
     koboldai_vars.reset_model()
