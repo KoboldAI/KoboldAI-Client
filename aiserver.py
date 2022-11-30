@@ -2461,10 +2461,12 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
     global tokenizer
     koboldai_vars.aibusy = True
     koboldai_vars.horde_share = False
+    
     if not koboldai_vars.bit_8_available or not koboldai_vars.experimental_features:
         use_8_bit = False
     if use_8_bit:
         koboldai_vars.lazy_load = False
+    logger.info("koboldai_vars.lazy_load: {}".format(koboldai_vars.lazy_load))
     if(initial_load):
         use_breakmodel_args = True
     reset_model_settings()
