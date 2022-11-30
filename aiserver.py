@@ -2467,6 +2467,7 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
         use_8_bit = False
     if use_8_bit:
         koboldai_vars.lazy_load = False
+        koboldai_vars.breakmodel = False
     logger.info("koboldai_vars.lazy_load: {}".format(koboldai_vars.lazy_load))
     if(initial_load):
         use_breakmodel_args = True
