@@ -7955,13 +7955,13 @@ def popup_rename(data):
 @logger.catch
 def popup_rename_story(data):
     if 'popup_renameable' not in session:
-        logger.warn("Someone is trying to rename a file in your server. Blocked.")
+        logger.warning("Someone is trying to rename a file in your server. Blocked.")
         return
     if not session['popup_renameable']:
-        logger.warn("Someone is trying to rename a file in your server. Blocked.")
+        logger.warning("Someone is trying to rename a file in your server. Blocked.")
         return
     if session['popup_jailed_dir'] and session["popup_jailed_dir"] not in data["file"]:
-        logger.warn("User is trying to rename files in your server outside the jail. Blocked. Jailed Dir: {}  Requested Dir: {}".format(session['popup_jailed_dir'], data['file']))
+        logger.warning("User is trying to rename files in your server outside the jail. Blocked. Jailed Dir: {}  Requested Dir: {}".format(session['popup_jailed_dir'], data['file']))
         return
 
     path = data["file"]
