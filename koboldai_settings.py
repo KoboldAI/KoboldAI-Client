@@ -1180,7 +1180,7 @@ class system_settings(settings):
                     if torch.cuda.get_device_properties(device).major > 7:
                         self.bit_8_available = True
                         break
-                    elif torch.cuda.get_device_properties(device).major = 7 and torch.cuda.get_device_properties(device).minor >= 2:
+                    elif torch.cuda.get_device_properties(device).major == 7 and torch.cuda.get_device_properties(device).minor >= 2:
                         self.bit_8_available = True
                         break
         
