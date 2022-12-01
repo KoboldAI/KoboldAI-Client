@@ -1173,7 +1173,17 @@ class system_settings(settings):
         self.cookies = {} #cookies for colab since colab's URL changes, cookies are lost
         self.experimental_features = False
         #check if bitsandbytes is installed
-        self.bit_8_available = importlib.util.find_spec("bitsandbytes") is not None and sys.platform.startswith('linux') #We can install bitsandbytes, but it doesn't work on windows, so limit it here
+        self.bit_8_available = False
+        if importlib.util.find_spec("bitsandbytes") is not None and sys.platform.startswith('linux'): #We can install bitsandbytes, but it doesn't work on windows, so limit it here
+            if torch.cuda.is_available():
+                for device in range(torch.cuda.device_count()):
+                    if torch.cuda.get_device_properties(device).major > 7:
+                        self.bit_8_available = True
+                        break
+                    elif torch.cuda.get_device_properties(device).major = 7 and torch.cuda.get_device_properties(device).minor >= 2:
+                        self.bit_8_available = True
+                        break
+        
         
         @dataclass
         class _inference_config:
