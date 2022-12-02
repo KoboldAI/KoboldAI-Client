@@ -1614,7 +1614,8 @@ def get_model_info(model, directory=""):
                          'gpu':gpu, 'layer_count':layer_count, 'breakmodel':breakmodel, 'multi_online_models': multi_online_models, 'default_url': default_url, 
                          'disk_break_value': disk_blocks, 'disk_break': utils.HAS_ACCELERATE,
                          'break_values': break_values, 'gpu_count': gpu_count,
-                         'url': url, 'gpu_names': gpu_names, 'models_on_url': models_on_url, 'show_online_model_select': show_online_model_select})
+                         'url': url, 'gpu_names': gpu_names, 'models_on_url': models_on_url, 'show_online_model_select': show_online_model_select,
+                         'bit_8_available': koboldai_vars.bit_8_available if koboldai_vars.experimental_features else False})
     if send_horde_models:
         get_cluster_models({'key': key_value, 'url': default_url})
     elif key_value != "" and model in [x[1] for x in model_menu['apilist']] and model != 'CLUSTER':
@@ -2452,7 +2453,7 @@ def reset_model_settings():
     koboldai_vars.revision    = None
     koboldai_vars.lazy_load = True
     
-def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=False, online_model="", use_breakmodel_args=False, breakmodel_args_default_to_cpu=False, url=None):
+def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=False, online_model="", use_breakmodel_args=False, breakmodel_args_default_to_cpu=False, url=None, use_8_bit=False):
     global model
     global generator
     global torch
@@ -5106,7 +5107,7 @@ def calcsubmit(txt):
         logger.debug("Submit: get_text time {}s".format(time.time()-start_time))
 
         start_time = time.time()
-        if koboldai_vars.experimental_features:
+        if koboldai_vars.experimental_features and any([c.get("attention_multiplier", 1) != 1 for c in koboldai_vars.context]):
             offset = 0
             applied_biases = []
             for c in koboldai_vars.context:
@@ -8507,7 +8508,7 @@ def UI_2_load_model(data):
     koboldai_vars.model = data['model']
     koboldai_vars.custmodpth = data['path']
     print("loading Model")
-    load_model(use_gpu=data['use_gpu'], gpu_layers=data['gpu_layers'], disk_layers=data['disk_layers'], online_model=data['online_model'], url=koboldai_vars.colaburl)
+    load_model(use_gpu=data['use_gpu'], gpu_layers=data['gpu_layers'], disk_layers=data['disk_layers'], online_model=data['online_model'], url=koboldai_vars.colaburl, use_8_bit=data['use_8_bit'])
 
 #==================================================================#
 # Event triggered when load story is clicked
