@@ -8827,6 +8827,7 @@ def UI_2_set_wi_image(uid):
     else:
         # Otherwise assign image
         koboldai_vars.worldinfo_v2.image_store[uid] = data
+    koboldai_vars.gamesaved = False
     return ":)"
 
 @app.route("/get_wi_image/<int(signed=True):uid>", methods=["GET"])
@@ -9222,6 +9223,12 @@ def UI_2_generate_image_from_story(data):
 def UI_2_generate_image_from_prompt(prompt: str):
     eventlet.sleep(0)
     generate_story_image(prompt)
+
+@socketio.on("retry_generated_image")
+@logger.catch
+def UI2_retry_generated_image(data):
+    eventlet.sleep(0)
+    generate_story_image(koboldai_vars.picture_prompt)
 
 def generate_story_image(prompt: str, art_guide: str = "") -> None:
     # This function is a wrapper around generate_image() that integrates the
