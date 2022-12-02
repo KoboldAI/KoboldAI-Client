@@ -7916,6 +7916,31 @@ def upload_file(data):
                         f.write(data['data'])
                     get_files_folders(session['current_folder'])
 
+@app.route("/upload_kai_story/<string:file_name>", methods=["POST"])
+@logger.catch
+def UI_2_upload_kai_story(file_name: str):
+
+    assert "/" not in file_name
+
+    raw_folder_name = file_name.replace(".kaistory", "")
+    folder_path = path.join("stories", raw_folder_name)
+    disambiguator = 0
+
+    while path.exists(folder_path):
+        disambiguator += 1
+        folder_path = path.join("stories", f"{raw_folder_name} ({disambiguator})")
+    
+    buffer = BytesIO()
+    dat = request.get_data()
+    with open("debug.zip", "wb") as file:
+        file.write(dat)
+    buffer.write(dat)
+
+    with zipfile.ZipFile(buffer, "r") as zipf:
+        zipf.extractall(folder_path)
+
+    return ":)"
+
 @socketio.on('popup_change_folder')
 @logger.catch
 def popup_change_folder(data):
@@ -8328,18 +8353,32 @@ def UI_2_save_story(data):
     else:    
         #We have an ack that it's OK to save over the file if one exists
         koboldai_vars.save_story()
-    
+
+def directory_to_zip_data(directory: str) -> bytes:
+    buffer = BytesIO()
+
+    with zipfile.ZipFile(buffer, "w") as zipf:
+        for root, _, files in os.walk(directory):
+            for file in files:
+                p = os.path.join(root, file)
+                zipf.write(
+                    p,
+                    os.path.join(*p.split(os.path.sep)[2:])
+                )
+
+    return buffer.getvalue()
+
 #==================================================================#
 # Save story to json
 #==================================================================#
-@app.route("/json")
+@app.route("/story_download")
 @logger.catch
-def UI_2_save_to_json():
+def UI_2_download_story():
     return Response(
-        koboldai_vars.to_json('story_settings'),
-        mimetype="application/json",
-        headers={"Content-disposition":
-                 "attachment; filename={}.v2.json".format(koboldai_vars.story_name)})
+        directory_to_zip_data(koboldai_vars.save_paths.base),
+        mimetype="application/octet-stream",
+        headers={"Content-disposition": f"attachment; filename={koboldai_vars.story_name}.kaistory"}
+    )
     
     
 #==================================================================#
