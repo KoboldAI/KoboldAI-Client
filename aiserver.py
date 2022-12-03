@@ -8354,17 +8354,23 @@ def UI_2_save_story(data):
         #We have an ack that it's OK to save over the file if one exists
         koboldai_vars.save_story()
 
-def directory_to_zip_data(directory: str) -> bytes:
+def directory_to_zip_data(directory: str, overrides: Optional[dict]) -> bytes:
+    overrides = overrides or {}
     buffer = BytesIO()
 
     with zipfile.ZipFile(buffer, "w") as zipf:
         for root, _, files in os.walk(directory):
             for file in files:
                 p = os.path.join(root, file)
-                zipf.write(
-                    p,
-                    os.path.join(*p.split(os.path.sep)[2:])
-                )
+                z_path = os.path.join(*p.split(os.path.sep)[2:])
+
+                if z_path in overrides:
+                    continue
+
+                zipf.write(p, z_path)
+
+        for path, contents in overrides.items():
+            zipf.writestr(path, contents)
 
     return buffer.getvalue()
 
@@ -8374,8 +8380,25 @@ def directory_to_zip_data(directory: str) -> bytes:
 @app.route("/story_download")
 @logger.catch
 def UI_2_download_story():
+    save_exists = path.exists(koboldai_vars.save_paths.base)
+    if koboldai_vars.gamesaved and save_exists:
+        # Disk is up to date; download from disk
+        data = directory_to_zip_data(koboldai_vars.save_paths.base)
+    elif save_exists:
+        # We aren't up to date but we are saved; patch what disk gives us
+        data = directory_to_zip_data(
+            koboldai_vars.save_paths.base,
+            {"story.json": koboldai_vars.to_json("story_settings")}
+        )
+    else:
+        # We are not saved; send json in zip from memory
+        buffer = BytesIO()
+        with zipfile.ZipFile(buffer, "w") as zipf:
+            zipf.writestr("story.json", koboldai_vars.to_json("story_settings"))
+        data = buffer.getvalue()
+
     return Response(
-        directory_to_zip_data(koboldai_vars.save_paths.base),
+        data,
         mimetype="application/octet-stream",
         headers={"Content-disposition": f"attachment; filename={koboldai_vars.story_name}.kaistory"}
     )
