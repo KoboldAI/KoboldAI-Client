@@ -1014,7 +1014,7 @@ function load_popup(data) {
 			for (file of fileList) {
 				reader = new FileReader();
 				reader.onload = function (event) {
-					socket.emit("upload_file", {'filename': file.name, "data": event.target.result});
+					socket.emit("upload_file", {'filename': file.name, "data": event.target.result, 'upload_no_save': true});
 				};
 				reader.readAsArrayBuffer(file);
 			}
@@ -2606,83 +2606,86 @@ function process_log_message(full_data) {
 }
 
 //--------------------------------------------UI to Server Functions----------------------------------
-async function download_story_to_json() {
-	//document.getElementById('download_iframe').src = 'json';
-	downloaded = false;
+async function download_story() {
 	if (socket.connected) {
 		try {
-			let r = await fetch("json");
-			let j = await r.json();
-			downloadString(JSON.stringify(j), j['story_name']+".json")
-			downloaded = true;
+			let name = $el(".var_sync_story_story_name").innerText;
+			let r = await fetch("story_download");
+			downloadBlob(await r.blob(), `${name}.kaistory`);
+			return;
 		}
 		catch(err) {
-			downloaded = false;
+			console.error("Error in online download");
+			console.error(err);
 		}
-	} if (downloaded == false) {
-		//first we're going to find all the var_sync_story_ classes used in the document.
-		let allClasses = [];
-		const allElements = document.querySelectorAll('*');
+	}
 
-		for (let i = 0; i < allElements.length; i++) {
-		  let classes = allElements[i].classList;
-		  for (let j = 0; j < classes.length; j++) {
-			if (!(allClasses.includes(classes[j].replace("var_sync_story_", ""))) && (classes[j].includes("var_sync_story_"))) {
-				allClasses.push(classes[j].replace("var_sync_story_", ""));
-			}
-		  }
+	console.warn("Online download failed! Using offline download...")
+
+	/* Offline Download - Compile JSON file from what we have in ram */
+	
+	//first we're going to find all the var_sync_story_ classes used in the document.
+	let allClasses = [];
+	const allElements = document.querySelectorAll('*');
+
+	for (let i = 0; i < allElements.length; i++) {
+		let classes = allElements[i].classList;
+		for (let j = 0; j < classes.length; j++) {
+		if (!(allClasses.includes(classes[j].replace("var_sync_story_", ""))) && (classes[j].includes("var_sync_story_"))) {
+			allClasses.push(classes[j].replace("var_sync_story_", ""));
 		}
-		
-		//OK, now we're going to go through each of those classes and get the values from the elements
-		let j = {}
-		for (class_name of allClasses) {
-			for (item of document.getElementsByClassName("var_sync_story_"+class_name)) {
-				if (['INPUT', 'TEXTAREA', 'SELECT'].includes(item.tagName)) {
-					if ((item.tagName == 'INPUT') && (item.type == "checkbox")) {
-						j[class_name] = item.checked;
-					} else {
-						j[class_name] = item.value;
-					}
+		}
+	}
+	
+	//OK, now we're going to go through each of those classes and get the values from the elements
+	let j = {}
+	for (class_name of allClasses) {
+		for (item of document.getElementsByClassName("var_sync_story_"+class_name)) {
+			if (['INPUT', 'TEXTAREA', 'SELECT'].includes(item.tagName)) {
+				if ((item.tagName == 'INPUT') && (item.type == "checkbox")) {
+					j[class_name] = item.checked;
 				} else {
-					j[class_name] = item.textContent;
+					j[class_name] = item.value;
 				}
-				break;
+			} else {
+				j[class_name] = item.textContent;
 			}
+			break;
 		}
-		
-		//We'll add actions and world info data next
-		let temp = JSON.parse(JSON.stringify(actions_data));
-		delete temp[-1];
-		j['actions'] = {'action_count': document.getElementById('action_count').textContent, 'actions': temp};
-		j['worldinfo_v2'] = {'entries': world_info_data, 'folders': world_info_folder_data};
-		
-		//Biases
-		let bias = {};
-		for (item of document.getElementsByClassName('bias')) {
-			let bias_phrase = item.querySelector(".bias_phrase").children[0].value;
-			let bias_score = parseInt(item.querySelector(".bias_score").querySelector(".bias_slider_cur").textContent);
-			let bias_comp_threshold = parseInt(item.querySelector(".bias_comp_threshold").querySelector(".bias_slider_cur").textContent);
-			if (bias_phrase != "") {
-				bias[bias_phrase] = [bias_score, bias_comp_threshold];
-			}
+	}
+	
+	//We'll add actions and world info data next
+	let temp = JSON.parse(JSON.stringify(actions_data));
+	delete temp[-1];
+	j['actions'] = {'action_count': document.getElementById('action_count').textContent, 'actions': temp};
+	j['worldinfo_v2'] = {'entries': world_info_data, 'folders': world_info_folder_data};
+	
+	//Biases
+	let bias = {};
+	for (item of document.getElementsByClassName('bias')) {
+		let bias_phrase = item.querySelector(".bias_phrase").children[0].value;
+		let bias_score = parseInt(item.querySelector(".bias_score").querySelector(".bias_slider_cur").textContent);
+		let bias_comp_threshold = parseInt(item.querySelector(".bias_comp_threshold").querySelector(".bias_slider_cur").textContent);
+		if (bias_phrase != "") {
+			bias[bias_phrase] = [bias_score, bias_comp_threshold];
 		}
-		j['biases'] = bias;
-		
-		//substitutions
-		substitutions = [];
-		for (item of document.getElementsByClassName('substitution-card')) {
-			let target = item.children[0].querySelector(".target").value;
-			let sub = item.children[1].querySelector(".target").value;
-			let enabled = (item.children[1].querySelector(".material-icons-outlined").getAttribute("title") == 'Enabled');
-			substitutions.push({'target': target, 'substitution': sub, 'enabled': enabled});
-		}
-		j['substitutions'] = substitutions;
-		
-		j['file_version'] = 2;
-		j['gamestarted'] = true;
-		
-		downloadString(JSON.stringify(j), j['story_name']+".json")
-	}	
+	}
+	j['biases'] = bias;
+	
+	//substitutions
+	substitutions = [];
+	for (item of document.getElementsByClassName('substitution-card')) {
+		let target = item.children[0].querySelector(".target").value;
+		let sub = item.children[1].querySelector(".target").value;
+		let enabled = (item.children[1].querySelector(".material-icons-outlined").getAttribute("title") == 'Enabled');
+		substitutions.push({'target': target, 'substitution': sub, 'enabled': enabled});
+	}
+	j['substitutions'] = substitutions;
+	
+	j['file_version'] = 2;
+	j['gamestarted'] = true;
+	
+	downloadString(JSON.stringify(j), j['story_name']+".json")
 }
 
 function unload_userscripts() {
@@ -4341,6 +4344,14 @@ function downloadString(string, fileName) {
 	a.click();
 }
 
+function downloadBlob(blob, fileName) {
+	const a = $e("a", null, {
+		href: URL.createObjectURL(blob),
+		download: fileName
+	});
+	a.click();
+}
+
 function getRedactedValue(value) {
 	if (typeof value === "string") return `[Redacted string with length ${value.length}]`;
 	if (value instanceof Array) return `[Redacted array with length ${value.length}]`;
@@ -4599,10 +4610,15 @@ async function loadNAILorebook(data, filename, image=null) {
 	}
 }
 
-async function loadKoboldData(data, filename) {
+async function loadKoboldJSON(data, filename) {
 	if (data.gamestarted !== undefined) {
 		// Story
-		socket.emit("upload_file", {"filename": filename, "data": JSON.stringify(data)});
+		socket.emit("upload_file", {
+			filename: filename,
+			data: new Blob([JSON.stringify(data)]),
+			upload_no_save: true
+		});
+		socket.emit("load_story_list", "");
 		load_story_list();
 	} else if (data.folders !== undefined && data.entries !== undefined) {
 		// World Info Folder
@@ -4682,9 +4698,16 @@ async function processDroppedFile(file) {
 			readLoreCard(file);
 			break;
 		case "json":
-			// KoboldAI file
+			// KoboldAI file (old story, etc)
 			data = JSON.parse(await file.text());
-			loadKoboldData(data, file.name);
+			loadKoboldJSON(data, file.name);
+			break;
+		case "kaistory":
+			// KoboldAI story file
+			let r = await fetch(`/upload_kai_story/${file.name}`, {
+				method: "POST",
+				body: file
+			});
 			break;
 		case "lorebook":
 			// NovelAI lorebook, JSON encoded.

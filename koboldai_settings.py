@@ -1,6 +1,8 @@
+from __future__ import annotations
 from dataclasses import dataclass
 import importlib
 import os, re, time, threading, json, pickle, base64, copy, tqdm, datetime, sys
+import shutil
 from typing import Union
 from io import BytesIO
 from flask import has_request_context, session
@@ -784,8 +786,8 @@ class model_settings(settings):
             process_variable_changes(self.socketio, self.__class__.__name__.replace("_settings", ""), name, value, old_value)
             
 class story_settings(settings):
-    local_only_variables = ['socketio', 'tokenizer', 'koboldai_vars', 'no_save', 'revisions', 'prompt']
-    no_save_variables = ['socketio', 'tokenizer', 'koboldai_vars', 'context', 'no_save', 'prompt_in_ai', 'authornote_length', 'prompt_length', 'memory_length']
+    local_only_variables = ['socketio', 'tokenizer', 'koboldai_vars', 'no_save', 'revisions', 'prompt', 'save_paths']
+    no_save_variables = ['socketio', 'tokenizer', 'koboldai_vars', 'context', 'no_save', 'prompt_in_ai', 'authornote_length', 'prompt_length', 'memory_length', 'save_paths']
     settings_name = "story"
     def __init__(self, socketio, koboldai_vars, tokenizer=None):
         self.socketio = socketio
@@ -869,36 +871,57 @@ class story_settings(settings):
         self.an_attn_bias = 1
         self.chat_style = 0
         
-        
+        self.save_paths = SavePaths(os.path.join("stories", self.story_name or "Untitled"))
+
         ################### must be at bottom #########################
         self.no_save = False  #Temporary disable save (doesn't save with the file)
-
-        
-        
-    def save_story(self):
-        if not self.no_save:
-            if self.prompt != "" or self.memory != "" or self.authornote != "" or len(self.actions) > 0 or len(self.worldinfo_v2) > 0:
-                logger.debug("Saving story from koboldai_vars.story_settings.save_story()")
-                logger.info("Saving")
-                save_name = self.story_name if self.story_name != "" else "untitled"
-                adder = ""
-                while True:
-                    if os.path.exists("stories/{}{}_v2.json".format(save_name, adder)):
-                        with open("stories/{}{}_v2.json".format(save_name, adder), "r") as f:
-                            temp = json.load(f)
-                        if 'story_id' in temp:
-                            if self.story_id != temp['story_id']:
-                                adder = 0 if adder == "" else adder+1
-                            else:
-                                break
-                        else:
-                            adder = 0 if adder == "" else adder+1
-                    else:
-                        break
-                with open("stories/{}{}_v2.json".format(save_name, adder), "w") as settings_file:
-                    settings_file.write(self.to_json())
-                self.gamesaved = True
     
+    def save_story(self) -> None:
+        if self.no_save:
+            return
+        
+        if not any([self.prompt, self.memory, self.authornote, len(self.actions), len(self.worldinfo_v2)]):
+            return
+
+        logger.info("Saving")
+
+        save_name = self.story_name or "Untitled"
+
+        # Disambiguate stories by adding (n) if needed
+        disambiguator = 0
+        self.save_paths.base = os.path.join("stories", save_name)
+        while os.path.exists(self.save_paths.base):
+            try:
+                # If the stories share a story id, overwrite the existing one.
+                with open(self.save_paths.story, "r") as file:
+                    j = json.load(file)
+                    if self.story_id == j["story_id"]:
+                        break
+            except FileNotFoundError:
+                raise FileNotFoundError("Malformed save file: Missing story.json")
+
+            disambiguator += 1
+            self.save_paths.base = os.path.join("stories", save_name + (f" ({disambiguator})" if disambiguator else ""))
+        
+        if not os.path.exists(self.save_paths.base):
+            # We are making the story for the first time. Setup the directory structure.
+            os.mkdir(self.save_paths.base)
+            os.mkdir(self.save_paths.generated_audio)
+            os.mkdir(self.save_paths.generated_images)
+
+        # Convert v2 if applicable
+        v2_path = os.path.join("stories", f"{self.story_name}_v2.json")
+        if os.path.exists(v2_path):
+            logger.info("Migrating v2 save")
+            with open(v2_path, "r") as file:
+                v2j = json.load(file)
+            assert v2j["story_id"] == self.story_id
+            shutil.move(v2_path, os.path.join(self.save_paths.base, ".v2_old.json"))
+
+        with open(self.save_paths.story, "w") as file:
+            file.write(self.to_json())
+        self.gamesaved = True
+
     def save_revision(self):
         game = json.loads(self.to_json())
         del game['revisions']
@@ -973,6 +996,7 @@ class story_settings(settings):
         if name == "gamesaved" and value == False and self.autosave:
             logger.debug("Saving story from gamesaved change and on autosave")
             self.save_story()
+
         if not new_variable and old_value != value:
             #Change game save state
             if name in ['story_name', 'prompt', 'memory', 'authornote', 'authornotetemplate', 'andepth', 'chatname', 'actionmode', 'dynamicscan', 'notes', 'biases']:
@@ -989,6 +1013,9 @@ class story_settings(settings):
             elif name == 'story_name':
                 #reset the story id if we change the name
                 self.story_id = int.from_bytes(os.urandom(16), 'little', signed=True)
+
+                # Story name influences save base
+                self.save_paths.base = os.path.join("stories", self.story_name or "Untitled")
             
             #Recalc AI Text
             elif name == 'authornote':
@@ -1812,9 +1839,7 @@ class KoboldStoryRegister(object):
                 #self.tts_model.to(torch.device(0))  # gpu or cpu
                 self.tts_model.to(torch.device("cpu"))  # gpu or cpu
             
-            filename="stories/{}/{}.ogg".format(self.story_settings.story_id, action_id)
-            if not os.path.exists("stories/{}".format(self.story_settings.story_id)):
-                os.mkdir("stories/{}".format(self.story_settings.story_id))
+            filename = os.path.join(self.koboldai_vars.save_paths.generated_audio, f"{action_id}.ogg")
                 
             if overwrite or not os.path.exists(filename):
                 self.make_audio_queue.put((self.actions[action_id]['Selected Text'], filename))
@@ -2254,6 +2279,22 @@ class KoboldWorldInfo(object):
     
     def get_used_wi(self):
         return [x['content'] for x in self.world_info if x['used_in_game']]
+
+@dataclass
+class SavePaths:
+    base: str
+
+    @property
+    def story(self) -> str:
+        return os.path.join(self.base, "story.json")
+
+    @property
+    def generated_audio(self) -> str:
+        return os.path.join(self.base, "generated_audio")
+    
+    @property
+    def generated_images(self) -> str:
+        return os.path.join(self.base, "generated_images")
    
 default_rand_range = [0.1, 1, 2]
 default_creativity_range = [0.8, 1]
