@@ -511,9 +511,6 @@ class ImportBuffer:
 
 import_buffer = ImportBuffer()
 
-with open("data/genres.json", "r") as file:
-    genre_list = json.load(file)
-                                
 # Set logging level to reduce chatter from Flask
 import logging
 log = logging.getLogger('werkzeug')
@@ -9807,6 +9804,8 @@ def UI_2_privacy_mode(data):
 #==================================================================#
 @app.route("/genre_data.json", methods=["GET"])
 def UI_2_get_applicable_genres():
+    with open("data/genres.json", "r") as file:
+        genre_list = json.load(file)
     return Response(json.dumps({
         "list": genre_list,
         "init": koboldai_vars.genres,

@@ -2623,11 +2623,14 @@ function create_new_softprompt() {
 										  "sp_author": document.getElementById("sp_author").value,
 										  "sp_description": document.getElementById("sp_description").value
 										});
+	closePopups();
 }
 
 async function download_story_to_json() {
 	//document.getElementById('download_iframe').src = 'json';
 	downloaded = false;
+}
+
 async function download_story() {
 	if (socket.connected) {
 		try {

@@ -199,7 +199,7 @@
 				{% with sub_path='Modifiers' %}
 					{% include 'settings item.html' %}
 				{% endwith %}
-				<div class="setting_container" ui_level=1>
+				<div class="setting_container_sp" ui_level=1>
 					<!---Top Row---->
 					<span class="setting_label">
 						<span style="white-space: pre-wrap;">Soft Prompt: </span>
@@ -207,14 +207,15 @@
 					</span>
 					<!---Bottom Row---->
 					<span class="setting_item">
-						<!---<span class="material-icons-outlined cursor" onclick="socket.emit('load_softprompt_list', '');">folder_open</span> <span class="var_sync_system_spname"></span>--->
-						<select autocomplete="off" id="sp" class="var_sync_system_splist var_sync_system_spfilename settings_select" style="width: 140px;margin-right:0px;padding-bottom: 0px;" onclick="socket.emit('load_softprompt', this.value);">
-						</select>
-						<span class="material-icons-outlined cursor" style="font-size: 18px;" tooltip="Refresh List" onclick="socket.emit('sp_list_refresh', '');">autorenew</span>
+						<div style="display: flex;flex-direction: row;">
+							<select autocomplete="off" id="sp" class="var_sync_system_splist var_sync_system_spfilename settings_select" style="width: 140px;margin-right:0px;padding-bottom: 0px;" onclick="socket.emit('load_softprompt', this.value);">
+							</select>
+							<div style="display: flex;flex-direction: column;">
+								<span class="material-icons-outlined cursor" style="font-size: 18px;" tooltip="Refresh List" onclick="socket.emit('sp_list_refresh', '');">autorenew</span>
+								<span class="material-icons-outlined cursor" style="font-size: 18px;" tooltip="Create New Soft Prompt" onclick="openPopup('sp-trainer-popup');">note_add</span>
+							</div>
+						</div>
 					</span>
-					<!---Slider Labels--->
-					<span class="setting_minlabel"><span style="top: -4px; position: relative;"></span></span>
-					<span class="setting_maxlabel"><span style="top: -4px; position: relative;"></span></span>
 				</div>
 				<div class="setting_container_single_wide" ui_level=2>
 					<!---Top Row---->

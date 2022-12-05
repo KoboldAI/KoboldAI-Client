@@ -199,6 +199,20 @@ border-top-right-radius: var(--tabs_rounding);
 	margin: 2px;
 }
 
+.setting_container_sp {
+	display: grid;
+	grid-template-areas: "label value"
+						 "item item";
+	grid-template-rows: 20px 43px;
+	grid-template-columns: 147px 30px;
+	row-gap: 0.2em;
+	background-color: var(--setting_background);
+	color: var(--setting_text);
+	border-radius: var(--radius_settings_background);
+	padding: 2px;
+	margin: 2px;
+}
+
 .setting_container.var_sync_alt_system_alt_gen[system_alt_gen="true"] {
 	display: none;
 }
