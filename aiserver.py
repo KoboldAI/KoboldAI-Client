@@ -510,6 +510,9 @@ class ImportBuffer:
         refresh_story()
 
 import_buffer = ImportBuffer()
+
+with open("data/genres.json", "r") as file:
+    genre_list = json.load(file)
                                 
 # Set logging level to reduce chatter from Flask
 import logging
@@ -9783,6 +9786,15 @@ def UI_2_privacy_mode(data):
         if data['password'] == koboldai_vars.privacy_password:
             koboldai_vars.privacy_mode = False
 
+#==================================================================#
+# Genres
+#==================================================================#
+@app.route("/genre_data.json", methods=["GET"])
+def UI_2_get_applicable_genres():
+    return Response(json.dumps({
+        "list": genre_list,
+        "init": koboldai_vars.genres,
+    }))
 
 #==================================================================#
 # Test

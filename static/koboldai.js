@@ -70,6 +70,10 @@ var scroll_trigger_element = undefined; //undefined means not currently set. If 
 var drag_id = null;
 const on_colab = $el("#on_colab").textContent == "true";
 
+// Each entry into this array should be an object that looks like:
+// {class: "class", key: "key", func: callback}
+let sync_hooks = [];
+
 // name, desc, icon, func
 var finder_actions = [
 	{name: "Load Model", icon: "folder_open", type: "action", func: function() { socket.emit('load_model_button', {}); }},
@@ -760,6 +764,12 @@ function var_changed(data) {
 	//if (data.name == "sp") {
 	//	console.log({"name": data.name, "data": data});
 	//}
+
+	for (const entry of sync_hooks) {
+		if (data.classname !== entry.class) continue;
+		if (data.name !== entry.name) continue;
+		entry.func(data.value);
+	}
 	
 	if (data.name in vars_sync_time) {
 		if (vars_sync_time[data.name] > Date.parse(data.transmit_time)) {
@@ -767,7 +777,7 @@ function var_changed(data) {
 		}
 	}
 	vars_sync_time[data.name] = Date.parse(data.transmit_time);
-	
+
 	if ((data.classname == 'actions') && (data.name == 'Action Count')) {
 		current_action = data.value;
 		if (current_action <= 0) {
@@ -3197,6 +3207,7 @@ function autoResize(element, min_size=200) {
 
 function calc_token_usage(
 	soft_prompt_length,
+	genre_length,
 	memory_length,
 	authors_note_length,
 	prompt_length,
@@ -3209,6 +3220,7 @@ function calc_token_usage(
 
 	const data = [
 		{id: "soft_prompt_tokens", tokenCount: soft_prompt_length, label: "Soft Prompt"},
+		{id: "genre_tokens", tokenCount: genre_length, label: "Genre"},
 		{id: "memory_tokens", tokenCount: memory_length, label: "Memory"},
 		{id: "authors_notes_tokens", tokenCount: authors_note_length, label: "Author's Note"},
 		{id: "world_info_tokens", tokenCount: world_info_length, label: "World Info"},
@@ -3525,6 +3537,7 @@ function update_context(data) {
 	$(".context-block").remove();
 
 	let memory_length = 0;
+	let genre_length = 0;
 	let authors_notes_length = 0;
 	let prompt_length = 0;
 	let game_text_length = 0;
@@ -3542,10 +3555,12 @@ function update_context(data) {
 	
 
 	for (const entry of data) {
+		console.info(entry)
 		let contextClass = "context-" + ({
 			soft_prompt: "sp",
 			prompt: "prompt",
 			world_info: "wi",
+			genre: "genre",
 			memory: "memory",
 			authors_note: "an",
 			action: "action",
@@ -3593,6 +3608,9 @@ function update_context(data) {
 				}
 				break;
 			case 'memory':
+				genre_length += entry.tokens.length;
+				break;
+			case 'memory':
 				memory_length += entry.tokens.length;
 				break;
 			case 'authors_note':
@@ -3616,6 +3634,7 @@ function update_context(data) {
 
 	calc_token_usage(
 		soft_prompt_length,
+		genre_length,
 		memory_length,
 		authors_notes_length,
 		prompt_length,
@@ -6456,3 +6475,144 @@ function imgGenRetry() {
 	$el("#image-loading").classList.remove("hidden");
 	socket.emit("retry_generated_image", {});
 }
+
+/* Genres */
+(async function() {
+	const genreContainer = $el("#genre-container");
+	const genreInput = $el("#genre-input");
+	const genreSuggestionContainer = $el("#genre-suggestion-container");
+	let genreData = await (await fetch("/genre_data.json")).json();
+	let allGenres = genreData.list;
+	let genres = genreData.init;
+	let highlightIndex = -1;
+
+	sync_hooks.push({
+		class: "story",
+		name: "genres",
+		func: function(passedGenres) {
+			genres = passedGenres;
+			$(".genre").remove();
+			for (const g of genres) {
+				addGenreUI(g);
+			}
+		}
+	})
+
+	function addGenreUI(genre) {
+		let div = $e("div", genreContainer, {classes: ["genre"]});
+		let inner = $e("div", div, {classes: ["genre-inner"]});
+		let xIcon = $e("span", inner, {innerText: "clear", classes: ["x", "material-icons-outlined"]});
+		let label = $e("span", inner, {innerText: genre, classes: ["genre-label"]});
+
+		xIcon.addEventListener("click", function() {
+			div.remove();
+			genres = genres.filter(x => x !== genre);
+			socket.emit("var_change", {"ID": "story_genres", "value": genres});
+		});
+	}
+
+	for (const initGenre of genreData.init) {
+		addGenreUI(initGenre);
+	}
+
+	function addGenre(genre) {
+		if (genres.includes(genre)) return;
+
+		addGenreUI(genre);
+		genreInput.value = "";
+		nukeSuggestions();
+
+		genres.push(genre);
+		socket.emit("var_change", {"ID": "story_genres", "value": genres});
+	}
+
+	function nukeSuggestions() {
+		genreSuggestionContainer.innerHTML = "";
+		highlightIndex = -1;
+	}
+
+	document.addEventListener("click", function(event) {
+		// Listening for clicks all over the document kinda sucks but blur
+		// fires you can click a suggestion so...
+		if (!genreSuggestionContainer.children.length) return;
+		if (event.target === genreInput) return;
+		if (event.target.classList.contains("genre-suggestion")) return;
+		nukeSuggestions();
+	});
+
+	genreInput.addEventListener("keydown", function(event) {
+		switch (event.key) {
+			case "ArrowUp":
+				highlightIndex--;
+				break;
+			case "Tab":
+				highlightIndex += event.shiftKey ? -1 : 1;
+				break;
+			case "ArrowDown":
+				highlightIndex++;
+				break;
+			case "Enter":
+				if (highlightIndex === -1) {
+					if (!genreInput.value.trim()) return;
+					addGenre(genreInput.value);
+				} else {
+					genreSuggestionContainer.children[highlightIndex].click();
+				}
+				return;
+			case "Escape":
+				genreInput.value = "";
+				nukeSuggestions();
+				event.preventDefault();
+				event.stopPropagation();
+				return;
+			default:
+				return;
+		}
+
+		event.preventDefault();
+
+		if (!genreSuggestionContainer.children.length) return;
+
+		const oldHighlighted = $el(".genre-suggestion.highlighted");
+		if (oldHighlighted) oldHighlighted.classList.remove("highlighted");
+
+		// Wrap around
+		let maxIndex = genreSuggestionContainer.children.length - 1;
+		if (highlightIndex < 0) highlightIndex = maxIndex;
+		if (highlightIndex > maxIndex) highlightIndex = 0;
+
+		const highlighted = genreSuggestionContainer.children[highlightIndex];
+		highlighted.classList.add("highlighted");
+		highlighted.scrollIntoView({
+            behavior: "auto",
+            block: "center",
+            inline: "center"
+        });
+	});
+
+	genreInput.addEventListener("input", function() {
+		let showList = [];
+		let lowerMatch = genreInput.value.toLowerCase();
+
+		nukeSuggestions();
+		if (!lowerMatch) return;
+
+		for (const genre of allGenres) {
+			if (!genre.toLowerCase().includes(lowerMatch)) continue;
+			showList.push(genre);
+		}
+
+		for (const genre of showList) {
+			let suggestion = $e("span", genreSuggestionContainer, {
+				innerText: genre,
+				classes: ["genre-suggestion"]
+			});
+
+			suggestion.addEventListener("click", function() {
+				addGenre(this.innerText);
+			});
+		}
+	});
+
+
+})()

@@ -50,6 +50,19 @@
 			<label for="authors_notes">Author's Notes:</label><br/>
 			<textarea autocomplete="off" rows=16 id="authors_notes" class="var_sync_story_authornote var_sync_alt_story_authornote_length fullwidth" oninput="autoResize(this)" onchange='sync_to_server(this);'></textarea><br/>
 
+			<h4 class="section_header">Genre</h4>
+			<div class="help_text">Styles the AI will attempt to imitate. Effectiveness depends on model.</div>
+			<input id="genre-input" class="fullwidth" autocomplete="off" spellcheck="false">
+			<div id="genre-suggestion-super-container">
+				<div id="genre-suggestion-container">
+					<span class="genre-suggestion">Animals</span>
+					<span class="genre-suggestion">Amish</span>
+					<span class="genre-suggestion">Asian</span>
+					<span class="genre-suggestion">Buddhist</span>
+				</div>
+			</div>
+			<div id="genre-container"></div>
+
 			<div id="An-Attention-Bias" class="var_sync_alt_system_experimental_features">
 				<h4 class="section_header"><label for="An-Attention-Bias">Attention Bias Test</label></h4>
 				<span class="help_text">See disclaimer in memory page.</span>
@@ -112,6 +125,7 @@
 	<div id="token-breakdown-container" class="settings_footer" style="padding-top: 10px;">
 		<div class="token_breakdown" onclick='socket.emit("update_tokens", document.getElementById("input_text").value);openPopup("context-viewer");'>
 			<div id="soft_prompt_tokens" style="width:0%; background-color: var(--context_colors_soft_prompt);"></div>
+			<div id="genre_tokens" style="width:40%; background-color: var(--context_colors_genre);"></div>
 			<div id="memory_tokens" style="width:40%; background-color: var(--context_colors_memory);"></div>
 			<div id="authors_notes_tokens" style="width:10%; background-color: var(--context_colors_authors_notes);"></div>
 			<div id="world_info_tokens" style="width:20%; background-color: var(--context_colors_world_info);"></div>
