@@ -6553,6 +6553,7 @@ function imgGenRetry() {
 				break;
 			case "Enter":
 				if (highlightIndex === -1) {
+					if (!genreInput.value.trim()) return;
 					addGenre(genreInput.value);
 				} else {
 					genreSuggestionContainer.children[highlightIndex].click();
