@@ -2206,7 +2206,6 @@ class KoboldWorldInfo(object):
         data["entries"] = {k: self.upgrade_entry(v) for k,v in data["entries"].items()}
 
         if folder is None:
-            self.world_info = {int(x): data['entries'][x] for x in data['entries']}
             self.world_info_folder = data['folders']
         
         #Add the item
