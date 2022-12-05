@@ -1,6 +1,8 @@
+from __future__ import annotations
 from dataclasses import dataclass
 import importlib
 import os, re, time, threading, json, pickle, base64, copy, tqdm, datetime, sys
+import shutil
 from typing import Union
 from io import BytesIO
 from flask import has_request_context, session
@@ -247,6 +249,28 @@ class koboldai_vars(object):
             if allowed_wi_folders is not None and wi['folder'] not in allowed_wi_folders:
                 return False
             return True
+
+        # Add Genres #
+        if self.genres:
+            # Erebus, Nerys, Janeway, Picard (probably)
+            genre_template = "[Genre: %s]"
+            model_name = self.model.lower()
+            if "skein" in model_name or "adventure" in model_name:
+                genre_template = "[Themes: %s]"
+            elif "shinen" in model_name:
+                genre_template = "[Theme: %s]"
+
+            genre_text = genre_template % (", ".join(self.genres))
+            genre_tokens = self.tokenizer.encode(genre_text)
+            genre_data = [[x, self.tokenizer.decode(x)] for x in genre_tokens]
+
+            context.append({
+                "type": "genre",
+                "text": genre_text,
+                "tokens": genre_data,
+            })
+            used_tokens += len(genre_tokens)
+
 
         ######################################### Add memory ########################################################
         memory_text = self.memory
@@ -785,8 +809,8 @@ class model_settings(settings):
             process_variable_changes(self.socketio, self.__class__.__name__.replace("_settings", ""), name, value, old_value)
             
 class story_settings(settings):
-    local_only_variables = ['socketio', 'tokenizer', 'koboldai_vars', 'no_save', 'revisions', 'prompt']
-    no_save_variables = ['socketio', 'tokenizer', 'koboldai_vars', 'context', 'no_save', 'prompt_in_ai', 'authornote_length', 'prompt_length', 'memory_length']
+    local_only_variables = ['socketio', 'tokenizer', 'koboldai_vars', 'no_save', 'revisions', 'prompt', 'save_paths']
+    no_save_variables = ['socketio', 'tokenizer', 'koboldai_vars', 'context', 'no_save', 'prompt_in_ai', 'authornote_length', 'prompt_length', 'memory_length', 'save_paths']
     settings_name = "story"
     def __init__(self, socketio, koboldai_vars, tokenizer=None):
         self.socketio = socketio
@@ -864,42 +888,67 @@ class story_settings(settings):
             # {"target": "(tm)", "substitution": "™", "enabled": False},
         ]
         self.gen_audio = False
+
+        # It's important to only use "=" syntax on this to ensure syncing; no
+        # .append() or the like
+        self.genres = []
         
         # bias experiment
         self.memory_attn_bias = 1
         self.an_attn_bias = 1
         self.chat_style = 0
         
-        
+        self.save_paths = SavePaths(os.path.join("stories", self.story_name or "Untitled"))
+
         ################### must be at bottom #########################
         self.no_save = False  #Temporary disable save (doesn't save with the file)
-
-        
-        
-    def save_story(self):
-        if not self.no_save:
-            if self.prompt != "" or self.memory != "" or self.authornote != "" or len(self.actions) > 0 or len(self.worldinfo_v2) > 0:
-                logger.debug("Saving story from koboldai_vars.story_settings.save_story()")
-                logger.info("Saving")
-                save_name = self.story_name if self.story_name != "" else "untitled"
-                adder = ""
-                while True:
-                    if os.path.exists("stories/{}{}_v2.json".format(save_name, adder)):
-                        with open("stories/{}{}_v2.json".format(save_name, adder), "r") as f:
-                            temp = json.load(f)
-                        if 'story_id' in temp:
-                            if self.story_id != temp['story_id']:
-                                adder = 0 if adder == "" else adder+1
-                            else:
-                                break
-                        else:
-                            adder = 0 if adder == "" else adder+1
-                    else:
-                        break
-                with open("stories/{}{}_v2.json".format(save_name, adder), "w") as settings_file:
-                    settings_file.write(self.to_json())
-                self.gamesaved = True
     
+    def save_story(self) -> None:
+        if self.no_save:
+            return
+        
+        if not any([self.prompt, self.memory, self.authornote, len(self.actions), len(self.worldinfo_v2)]):
+            return
+
+        logger.info("Saving")
+
+        save_name = self.story_name or "Untitled"
+
+        # Disambiguate stories by adding (n) if needed
+        disambiguator = 0
+        self.save_paths.base = os.path.join("stories", save_name)
+        while os.path.exists(self.save_paths.base):
+            try:
+                # If the stories share a story id, overwrite the existing one.
+                with open(self.save_paths.story, "r") as file:
+                    j = json.load(file)
+                    if self.story_id == j["story_id"]:
+                        break
+            except FileNotFoundError:
+                raise FileNotFoundError("Malformed save file: Missing story.json")
+
+            disambiguator += 1
+            self.save_paths.base = os.path.join("stories", save_name + (f" ({disambiguator})" if disambiguator else ""))
+        
+        if not os.path.exists(self.save_paths.base):
+            # We are making the story for the first time. Setup the directory structure.
+            os.mkdir(self.save_paths.base)
+            os.mkdir(self.save_paths.generated_audio)
+            os.mkdir(self.save_paths.generated_images)
+
+        # Convert v2 if applicable
+        v2_path = os.path.join("stories", f"{self.story_name}_v2.json")
+        if os.path.exists(v2_path):
+            logger.info("Migrating v2 save")
+            with open(v2_path, "r") as file:
+                v2j = json.load(file)
+            assert v2j["story_id"] == self.story_id
+            shutil.move(v2_path, os.path.join(self.save_paths.base, ".v2_old.json"))
+
+        with open(self.save_paths.story, "w") as file:
+            file.write(self.to_json())
+        self.gamesaved = True
+
     def save_revision(self):
         game = json.loads(self.to_json())
         del game['revisions']
@@ -974,6 +1023,7 @@ class story_settings(settings):
         if name == "gamesaved" and value == False and self.autosave:
             logger.debug("Saving story from gamesaved change and on autosave")
             self.save_story()
+
         if not new_variable and old_value != value:
             #Change game save state
             if name in ['story_name', 'prompt', 'memory', 'authornote', 'authornotetemplate', 'andepth', 'chatname', 'actionmode', 'dynamicscan', 'notes', 'biases']:
@@ -990,6 +1040,9 @@ class story_settings(settings):
             elif name == 'story_name':
                 #reset the story id if we change the name
                 self.story_id = int.from_bytes(os.urandom(16), 'little', signed=True)
+
+                # Story name influences save base
+                self.save_paths.base = os.path.join("stories", self.story_name or "Untitled")
             
             #Recalc AI Text
             elif name == 'authornote':
@@ -998,6 +1051,8 @@ class story_settings(settings):
                 ignore = self.koboldai_vars.calc_ai_text()
             elif name == 'memory':
                 ignore = self.koboldai_vars.calc_ai_text()
+            elif name == "genres":
+                self.koboldai_vars.calc_ai_text()
             elif name == 'prompt':
                 self.prompt_wi_highlighted_text = [{"text": self.prompt, "WI matches": None, "WI Text": ""}]
                 self.assign_world_info_to_actions(action_id=-1, wuid=None)
@@ -1813,9 +1868,7 @@ class KoboldStoryRegister(object):
                 #self.tts_model.to(torch.device(0))  # gpu or cpu
                 self.tts_model.to(torch.device("cpu"))  # gpu or cpu
             
-            filename="stories/{}/{}.ogg".format(self.story_settings.story_id, action_id)
-            if not os.path.exists("stories/{}".format(self.story_settings.story_id)):
-                os.mkdir("stories/{}".format(self.story_settings.story_id))
+            filename = os.path.join(self.koboldai_vars.save_paths.generated_audio, f"{action_id}.ogg")
                 
             if overwrite or not os.path.exists(filename):
                 self.make_audio_queue.put((self.actions[action_id]['Selected Text'], filename))
@@ -2255,6 +2308,22 @@ class KoboldWorldInfo(object):
     
     def get_used_wi(self):
         return [x['content'] for x in self.world_info if x['used_in_game']]
+
+@dataclass
+class SavePaths:
+    base: str
+
+    @property
+    def story(self) -> str:
+        return os.path.join(self.base, "story.json")
+
+    @property
+    def generated_audio(self) -> str:
+        return os.path.join(self.base, "generated_audio")
+    
+    @property
+    def generated_images(self) -> str:
+        return os.path.join(self.base, "generated_images")
    
 default_rand_range = [0.1, 1, 2]
 default_creativity_range = [0.8, 1]
@@ -2287,4 +2356,3 @@ default_preset = {
 badwordsids_default = [[13460], [6880], [50256], [42496], [4613], [17414], [22039], [16410], [27], [29], [38430], [37922], [15913], [24618], [28725], [58], [47175], [36937], [26700], [12878], [16471], [37981], [5218], [29795], [13412], [45160], [3693], [49778], [4211], [20598], [36475], [33409], [44167], [32406], [29847], [29342], [42669], [685], [25787], [7359], [3784], [5320], [33994], [33490], [34516], [43734], [17635], [24293], [9959], [23785], [21737], [28401], [18161], [26358], [32509], [1279], [38155], [18189], [26894], [6927], [14610], [23834], [11037], [14631], [26933], [46904], [22330], [25915], [47934], [38214], [1875], [14692], [41832], [13163], [25970], [29565], [44926], [19841], [37250], [49029], [9609], [44438], [16791], [17816], [30109], [41888], [47527], [42924], [23984], [49074], [33717], [31161], [49082], [30138], [31175], [12240], [14804], [7131], [26076], [33250], [3556], [38381], [36338], [32756], [46581], [17912], [49146]] # Tokenized array of badwords used to prevent AI artifacting
 badwordsids_neox = [[0], [1], [44162], [9502], [12520], [31841], [36320], [49824], [34417], [6038], [34494], [24815], [26635], [24345], [3455], [28905], [44270], [17278], [32666], [46880], [7086], [43189], [37322], [17778], [20879], [49821], [3138], [14490], [4681], [21391], [26786], [43134], [9336], [683], [48074], [41256], [19181], [29650], [28532], [36487], [45114], [46275], [16445], [15104], [11337], [1168], [5647], [29], [27482], [44965], [43782], [31011], [42944], [47389], [6334], [17548], [38329], [32044], [35487], [2239], [34761], [7444], [1084], [12399], [18990], [17636], [39083], [1184], [35830], [28365], [16731], [43467], [47744], [1138], [16079], [40116], [45564], [18297], [42368], [5456], [18022], [42696], [34476], [23505], [23741], [39334], [37944], [45382], [38709], [33440], [26077], [43600], [34418], [36033], [6660], [48167], [48471], [15775], [19884], [41533], [1008], [31053], [36692], [46576], [20095], [20629], [31759], [46410], [41000], [13488], [30952], [39258], [16160], [27655], [22367], [42767], [43736], [49694], [13811], [12004], [46768], [6257], [37471], [5264], [44153], [33805], [20977], [21083], [25416], [14277], [31096], [42041], [18331], [33376], [22372], [46294], [28379], [38475], [1656], [5204], [27075], [50001], [16616], [11396], [7748], [48744], [35402], [28120], [41512], [4207], [43144], [14767], [15640], [16595], [41305], [44479], [38958], [18474], [22734], [30522], [46267], [60], [13976], [31830], [48701], [39822], [9014], [21966], [31422], [28052], [34607], [2479], [3851], [32214], [44082], [45507], [3001], [34368], [34758], [13380], [38363], [4299], [46802], [30996], [12630], [49236], [7082], [8795], [5218], [44740], [9686], [9983], [45301], [27114], [40125], [1570], [26997], [544], [5290], [49193], [23781], [14193], [40000], [2947], [43781], [9102], [48064], [42274], [18772], [49384], [9884], [45635], [43521], [31258], [32056], [47686], [21760], [13143], [10148], [26119], [44308], [31379], [36399], [23983], [46694], [36134], [8562], [12977], [35117], [28591], [49021], [47093], [28653], [29013], [46468], [8605], [7254], [25896], [5032], [8168], [36893], [38270], [20499], [27501], [34419], [29547], [28571], [36586], [20871], [30537], [26842], [21375], [31148], [27618], [33094], [3291], [31789], [28391], [870], [9793], [41361], [47916], [27468], [43856], [8850], [35237], [15707], [47552], [2730], [41449], [45488], [3073], [49806], [21938], [24430], [22747], [20924], [46145], [20481], [20197], [8239], [28231], [17987], [42804], [47269], [29972], [49884], [21382], [46295], [36676], [34616], [3921], [26991], [27720], [46265], [654], [9855], [40354], [5291], [34904], [44342], [2470], [14598], [880], [19282], [2498], [24237], [21431], [16369], [8994], [44524], [45662], [13663], [37077], [1447], [37786], [30863], [42854], [1019], [20322], [4398], [12159], [44072], [48664], [31547], [18736], [9259], [31], [16354], [21810], [4357], [37982], [5064], [2033], [32871], [47446], [62], [22158], [37387], [8743], [47007], [17981], [11049], [4622], [37916], [36786], [35138], [29925], [14157], [18095], [27829], [1181], [22226], [5709], [4725], [30189], [37014], [1254], [11380], [42989], [696], [24576], [39487], [30119], [1092], [8088], [2194], [9899], [14412], [21828], [3725], [13544], [5180], [44679], [34398], [3891], [28739], [14219], [37594], [49550], [11326], [6904], [17266], [5749], [10174], [23405], [9955], [38271], [41018], [13011], [48392], [36784], [24254], [21687], [23734], [5413], [41447], [45472], [10122], [17555], [15830], [47384], [12084], [31350], [47940], [11661], [27988], [45443], [905], [49651], [16614], [34993], [6781], [30803], [35869], [8001], [41604], [28118], [46462], [46762], [16262], [17281], [5774], [10943], [5013], [18257], [6750], [4713], [3951], [11899], [38791], [16943], [37596], [9318], [18413], [40473], [13208], [16375]]
 badwordsids_opt = [[44717], [46613], [48513], [49923], [50185], [48755], [8488], [43303], [49659], [48601], [49817], [45405], [48742], [49925], [47720], [11227], [48937], [48784], [50017], [42248], [49310], [48082], [49895], [50025], [49092], [49007], [8061], [44226], [0], [742], [28578], [15698], [49784], [46679], [39365], [49281], [49609], [48081], [48906], [46161], [48554], [49670], [48677], [49721], [49632], [48610], [48462], [47457], [10975], [46077], [28696], [48709], [43839], [49798], [49154], [48203], [49625], [48395], [50155], [47161], [49095], [48833], [49420], [49666], [48443], [22176], [49242], [48651], [49138], [49750], [40389], [48021], [21838], [49070], [45333], [40862], [1], [49915], [33525], [49858], [50254], [44403], [48992], [48872], [46117], [49853], [47567], [50206], [41552], [50068], [48999], [49703], [49940], [49329], [47620], [49868], [49962], [2], [44082], [50236], [31274], [50260], [47052], [42645], [49177], [17523], [48691], [49900], [49069], [49358], [48794], [47529], [46479], [48457], [646], [49910], [48077], [48935], [46386], [48902], [49151], [48759], [49803], [45587], [48392], [47789], [48654], [49836], [49230], [48188], [50264], [46844], [44690], [48505], [50161], [27779], [49995], [41833], [50154], [49097], [48520], [50018], [8174], [50084], [49366], [49526], [50193], [7479], [49982], [3]]
-genres = ['Absurdist', 'Action & Adventure', 'Adaptations & Pastiche', 'African American & Black/General', 'African American & Black/Christian', 'African American & Black/Erotica', 'African American & Black/Historical', 'African American & Black/Mystery & Detective', 'African American & Black/Urban & Street Lit', 'African American & Black/Women', 'Alternative History', 'Amish & Mennonite', 'Animals', 'Anthologies (multiple authors)', 'Asian American', 'Biographical', 'Buddhist', 'Christian/General', 'Christian/Biblical', 'Christian/Classic & Allegory', 'Christian/Collections & Anthologies', 'Christian/Contemporary', 'Christian/Fantasy', 'Christian/Futuristic', 'Christian/Historical', 'Christian/Romance/General', 'Christian/Romance/Historical', 'Christian/Romance/Suspense', 'Christian/Suspense', 'Christian/Western', 'City Life', 'Classics', 'Coming of Age', 'Crime', 'Cultural Heritage', 'Disabilities & Special Needs', 'Disaster', 'Dystopian', 'Epistolary', 'Erotica/General', 'Erotica/BDSM', 'Erotica/Collections & Anthologies', 'Erotica/Historical', 'Erotica/LGBTQ+/General', 'Erotica/LGBTQ+/Bisexual', 'Erotica/LGBTQ+/Gay', 'Erotica/LGBTQ+/Lesbian', 'Erotica/LGBTQ+/Transgender', 'Erotica/Science Fiction, Fantasy & Horror', 'Fairy Tales, Folk Tales, Legends & Mythology', 'Family Life/General', 'Family Life/Marriage & Divorce', 'Family Life/Siblings', 'Fantasy/General', 'Fantasy/Action & Adventure', 'Fantasy/Arthurian', 'Fantasy/Collections & Anthologies', 'Fantasy/Contemporary', 'Fantasy/Dark Fantasy', 'Fantasy/Dragons & Mythical Creatures', 'Fantasy/Epic', 'Fantasy/Gaslamp', 'Fantasy/Historical', 'Fantasy/Humorous', 'Fantasy/Military', 'Fantasy/Paranormal', 'Fantasy/Romance', 'Fantasy/Urban', 'Feminist', 'Friendship', 'Ghost', 'Gothic', 'Hispanic & Latino', 'Historical/General', 'Historical/Ancient', 'Historical/Civil War Era', 'Historical/Colonial America & Revolution', 'Historical/Medieval', 'Historical/Renaissance', 'Historical/World War I', 'Historical/World War II', 'Holidays', 'Horror', 'Humorous/General', 'Humorous/Black Humor', 'Indigenous', 'Jewish', 'Legal', 'LGBTQ+/General', 'LGBTQ+/Bisexual', 'LGBTQ+/Gay', 'LGBTQ+/Lesbian', 'LGBTQ+/Transgender', 'Literary', 'LitRPG (Literary Role-Playing Game) *', 'Magical Realism', 'Mashups', 'Media Tie-In', 'Medical', 'Multiple Timelines', 'Muslim', 'Mystery & Detective/General', 'Mystery & Detective/Amateur Sleuth', 'Mystery & Detective/Collections & Anthologies', 'Mystery & Detective/Cozy/General', 'Mystery & Detective/Cozy/Animals', 'Mystery & Detective/Cozy/Crafts', 'Mystery & Detective/Cozy/Culinary', 'Mystery & Detective/Cozy/Holidays & Vacation *', 'Mystery & Detective/Cozy/Paranormal *', 'Mystery & Detective/Hard-Boiled', 'Mystery & Detective/Historical', 'Mystery & Detective/International Crime & Mystery', 'Mystery & Detective/Jewish *', 'Mystery & Detective/Police Procedural', 'Mystery & Detective/Private Investigators', 'Mystery & Detective/Traditional', 'Mystery & Detective/Women Sleuths', 'Nature & the Environment', 'Noir', 'Occult & Supernatural', 'Own Voices', 'Political', 'Psychological', 'Religious', 'Romance/General', 'Romance/Action & Adventure', 'Romance/African American & Black', 'Romance/Billionaires', 'Romance/Clean & Wholesome', 'Romance/Collections & Anthologies', 'Romance/Contemporary', 'Romance/Erotic', 'Romance/Fantasy', 'Romance/Firefighters', 'Romance/Historical/General', 'Romance/Historical/American', 'Romance/Historical/Ancient World', 'Romance/Historical/Gilded Age', 'Romance/Historical/Medieval', 'Romance/Historical/Regency', 'Romance/Historical/Renaissance', 'Romance/Historical/Scottish', 'Romance/Historical/Tudor', 'Romance/Historical/20th Century', 'Romance/Historical/Victorian', 'Romance/Historical/Viking', 'Romance/Holiday', 'Romance/Later in Life', 'Romance/LGBTQ+/General', 'Romance/LGBTQ+/Bisexual', 'Romance/LGBTQ+/Gay', 'Romance/LGBTQ+/Lesbian', 'Romance/LGBTQ+/Transgender', 'Romance/Medical', 'Romance/Military', 'Romance/Multicultural & Interracial', 'Romance/New Adult', 'Romance/Paranormal/General', 'Romance/Paranormal/Shifters', 'Romance/Paranormal/Vampires', 'Romance/Paranormal/Witches', 'Romance/Police & Law Enforcement', 'Romance/Polyamory', 'Romance/Rock Stars', 'Romance/Romantic Comedy', 'Romance/Royalty', 'Romance/Science Fiction', 'Romance/Sports', 'Romance/Suspense', 'Romance/Time Travel', 'Romance/Western', 'Romance/Workplace', 'Sagas', 'Satire', 'Science Fiction/General', 'Science Fiction/Action & Adventure', 'Science Fiction/Alien Contact', 'Science Fiction/Apocalyptic & Post-Apocalyptic', 'Science Fiction/Collections & Anthologies', 'Science Fiction/Crime & Mystery', 'Science Fiction/Cyberpunk', 'Science Fiction/Genetic Engineering', 'Science Fiction/Hard Science Fiction', 'Science Fiction/Humorous', 'Science Fiction/Military', 'Science Fiction/Space Exploration', 'Science Fiction/Space Opera', 'Science Fiction/Steampunk', 'Science Fiction/Time Travel', 'Sea Stories', 'Short Stories (single author)', 'Small Town & Rural', 'Southern', 'Sports', 'Superheroes', 'Thrillers/General', 'Thrillers/Crime', 'Thrillers/Domestic', 'Thrillers/Espionage', 'Thrillers/Historical', 'Thrillers/Legal', 'Thrillers/Medical', 'Thrillers/Military', 'Thrillers/Political', 'Thrillers/Psychological', 'Thrillers/Supernatural', 'Thrillers/Suspense', 'Thrillers/Technological', 'Thrillers/Terrorism', 'Urban & Street Lit', 'Visionary & Metaphysical', 'War & Military', 'Westerns', 'Women', 'World Literature/Africa/General', 'World Literature/Africa/East Africa', 'World Literature/Africa/Nigeria', 'World Literature/Africa/Southern Africa', 'World Literature/Africa/West Africa', 'World Literature/American/General', 'World Literature/American/Colonial & Revolutionary Periods', 'World Literature/American/19th Century', 'World Literature/American/20th Century', 'World Literature/American/21st Century', 'World Literature/Argentina', 'World Literature/Asia (General)', 'World Literature/Australia', 'World Literature/Austria', 'World Literature/Brazil', 'World Literature/Canada/General', 'World Literature/Canada/Colonial & 19th Century', 'World Literature/Canada/20th Century', 'World Literature/Canada/21st Century', 'World Literature/Caribbean & West Indies', 'World Literature/Central America', 'World Literature/Chile', 'World Literature/China/General', 'World Literature/China/19th Century', 'World Literature/China/20th Century', 'World Literature/China/21st Century', 'World Literature/Colombia', 'World Literature/Czech Republic', 'World Literature/Denmark', 'World Literature/England/General', 'World Literature/England/Early & Medieval Periods', 'World Literature/England/16th & 17th Century', 'World Literature/England/18th Century', 'World Literature/England/19th Century', 'World Literature/England/20th Century', 'World Literature/England/21st Century', 'World Literature/Europe (General)', 'World Literature/Finland', 'World Literature/France/General', 'World Literature/France/18th Century', 'World Literature/France/19th Century', 'World Literature/France/20th Century', 'World Literature/France/21st Century', 'World Literature/Germany/General', 'World Literature/Germany/20th Century', 'World Literature/Germany/21st Century', 'World Literature/Greece', 'World Literature/Hungary', 'World Literature/India/General', 'World Literature/India/19th Century', 'World Literature/India/20th Century', 'World Literature/India/21st Century', 'World Literature/Ireland/General', 'World Literature/Ireland/19th Century', 'World Literature/Ireland/20th Century', 'World Literature/Ireland/21st Century', 'World Literature/Italy', 'World Literature/Japan', 'World Literature/Korea', 'World Literature/Mexico', 'World Literature/Middle East/General', 'World Literature/Middle East/Arabian Peninsula', 'World Literature/Middle East/Egypt & North Africa', 'World Literature/Middle East/Israel', 'World Literature/Netherlands', 'World Literature/New Zealand', 'World Literature/Norway', 'World Literature/Oceania', 'World Literature/Pakistan', 'World Literature/Peru', 'World Literature/Poland', 'World Literature/Portugal', 'World Literature/Russia/General', 'World Literature/Russia/19th Century', 'World Literature/Russia/20th Century', 'World Literature/Russia/21st Century', 'World Literature/Scotland/General', 'World Literature/Scotland/19th Century', 'World Literature/Scotland/20th Century', 'World Literature/Scotland/21st Century', 'World Literature/South America (General)', 'World Literature/Southeast Asia', 'World Literature/Spain/General', 'World Literature/Spain/19th Century', 'World Literature/Spain/20th Century', 'World Literature/Spain/21st Century', 'World Literature/Sweden', 'World Literature/Turkey', 'World Literature/Uruguay', 'World Literature/Wales']

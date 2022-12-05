@@ -60,7 +60,7 @@
 						<span class="var_sync_story_story_name fullwidth" contenteditable=true onblur="sync_to_server(this);"></span>
 					</span>
 					<span>
-						<span class="material-icons-outlined cursor" style="padding-top: 8px;" tooltip="Download Story" onclick="download_story_to_json()">file_download</span>
+						<span class="material-icons-outlined cursor" style="padding-top: 8px;" tooltip="Download Story" onclick="download_story();">file_download</span>
 					</span>
 				</div>
 				<div id="text_storyname">
@@ -71,11 +71,11 @@
 						<span class="material-icons-outlined cursor" tooltip="New Story">description</span>
 						<span class="button_label">New Story</span>
 					</button>
-					<button class="settings_button" onclick="socket.emit('load_story_list', '');">
+					<button class="settings_button" onclick="load_story_list();">
 						<span class="material-icons-outlined cursor" tooltip="Load Story">folder_open</span>
 						<span class="button_label">Load Story</span>
 					</button>
-					<button class="settings_button var_sync_alt_story_gamesaved" onclick='socket.emit("save_story", null, (response) => {save_as_story(response);});'>
+					<button class="settings_button var_sync_alt_story_gamesaved" onclick='save_story();'>
 						<span class="material-icons-outlined cursor var_sync_alt_story_gamesaved" tooltip="Save Story">save</span>
 						<span class="button_label">Save Story</span>
 					</button>

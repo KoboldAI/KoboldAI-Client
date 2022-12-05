@@ -7,6 +7,7 @@
 
 # External packages
 from dataclasses import dataclass
+import shutil
 import eventlet
 eventlet.monkey_patch(all=True, thread=False, os=False)
 import os, inspect
@@ -509,6 +510,9 @@ class ImportBuffer:
         refresh_story()
 
 import_buffer = ImportBuffer()
+
+with open("data/genres.json", "r") as file:
+    genre_list = json.load(file)
                                 
 # Set logging level to reduce chatter from Flask
 import logging
@@ -7232,28 +7236,34 @@ def loadfromfile():
 def loadRequest(loadpath, filename=None):
     logger.debug("Load Request")
     logger.debug("Called from {}".format(inspect.stack()[1].function))
+
+    if not loadpath:
+        return
+
+    if os.path.isdir(loadpath):
+        if not valid_v3_story(loadpath):
+            raise RuntimeError(f"Tried to load {loadpath}, a non-save directory.")
+        loadpath = os.path.join(loadpath, "story.json")
+
     start_time = time.time()
-    if(loadpath):
-        # Leave Edit/Memory mode before continuing
-        exitModes()
-        
-        
-        # Read file contents into JSON object
-        start_time = time.time()
-        if(isinstance(loadpath, str)):
-            with open(loadpath, "r") as file:
-                js = json.load(file)
-            if(filename is None):
-                filename = path.basename(loadpath)
-        else:
-            js = loadpath
-            if(filename is None):
-                filename = "untitled.json"
-        js['v1_loadpath'] = loadpath
-        js['v1_filename'] = filename
-        logger.debug("Loading JSON data took {}s".format(time.time()-start_time))
-        loadJSON(js)
-    logger.debug("Time to load story: {}s".format(time.time()-start_time))
+    # Leave Edit/Memory mode before continuing
+    exitModes()
+    
+    # Read file contents into JSON object
+    start_time = time.time()
+    if(isinstance(loadpath, str)):
+        with open(loadpath, "r") as file:
+            js = json.load(file)
+        if(filename is None):
+            filename = path.basename(loadpath)
+    else:
+        js = loadpath
+        if(filename is None):
+            filename = "untitled.json"
+    js['v1_loadpath'] = loadpath
+    js['v1_filename'] = filename
+    logger.debug("Loading JSON data took {}s".format(time.time()-start_time))
+    loadJSON(js)
 
 def loadJSON(json_text_or_dict):
     logger.debug("Loading JSON Story")
@@ -7925,6 +7935,31 @@ def upload_file(data):
                         f.write(data['data'])
                     get_files_folders(session['current_folder'])
 
+@app.route("/upload_kai_story/<string:file_name>", methods=["POST"])
+@logger.catch
+def UI_2_upload_kai_story(file_name: str):
+
+    assert "/" not in file_name
+
+    raw_folder_name = file_name.replace(".kaistory", "")
+    folder_path = path.join("stories", raw_folder_name)
+    disambiguator = 0
+
+    while path.exists(folder_path):
+        disambiguator += 1
+        folder_path = path.join("stories", f"{raw_folder_name} ({disambiguator})")
+    
+    buffer = BytesIO()
+    dat = request.get_data()
+    with open("debug.zip", "wb") as file:
+        file.write(dat)
+    buffer.write(dat)
+
+    with zipfile.ZipFile(buffer, "r") as zipf:
+        zipf.extractall(folder_path)
+
+    return ":)"
+
 @socketio.on('popup_change_folder')
 @logger.catch
 def popup_change_folder(data):
@@ -7965,38 +8000,46 @@ def popup_rename(data):
 @logger.catch
 def popup_rename_story(data):
     if 'popup_renameable' not in session:
-        print("Someone is trying to rename a file in your server. Blocked.")
+        logger.warning("Someone is trying to rename a file in your server. Blocked.")
         return
     if not session['popup_renameable']:
-        print("Someone is trying to rename a file in your server. Blocked.")
+        logger.warning("Someone is trying to rename a file in your server. Blocked.")
         return
-    
-    if session['popup_jailed_dir'] is None:
-        #if we're using a v2 file we can't just rename the file as the story name is in the file
-        with open(data['file'], 'r') as f:
-            json_data = json.load(f)
-        if 'story_name' in json_data:
-            json_data['story_name'] = data['new_name']
-            
-        new_filename = os.path.join(os.path.dirname(os.path.abspath(data['file'])), data['new_name']+".json")
-        os.remove(data['file'])
-        with open(new_filename, "w") as f:
-            json.dump(json_data, f)
-        get_files_folders(os.path.dirname(data['file']))
-    elif session['popup_jailed_dir'] in data['file']:
-        #if we're using a v2 file we can't just rename the file as the story name is in the file
-        with open(data['file'], 'r') as f:
-            json_data = json.load(f)
-        if 'story_name' in json_data:
-            json_data['story_name'] = data['new_name']
-            
-        new_filename = os.path.join(os.path.dirname(os.path.abspath(data['file'])), data['new_name']+".json")
-        os.remove(data['file'])
-        with open(new_filename, "w") as f:
-            json.dump(json_data, f)
-        get_files_folders(os.path.dirname(data['file']))
+    if session['popup_jailed_dir'] and session["popup_jailed_dir"] not in data["file"]:
+        logger.warning("User is trying to rename files in your server outside the jail. Blocked. Jailed Dir: {}  Requested Dir: {}".format(session['popup_jailed_dir'], data['file']))
+        return
+
+    path = data["file"]
+    new_name = data["new_name"]
+    json_path = path
+    is_v3 = False
+
+    # Handle directory for v3 save
+    if os.path.isdir(path):
+        if not valid_v3_story(path):
+            return
+        is_v3 = True
+        json_path = os.path.join(path, "story.json")
+
+    #if we're using a v2 file we can't just rename the file as the story name is in the file
+    with open(json_path, 'r') as f:
+        json_data = json.load(f)
+    if 'story_name' in json_data:
+        json_data['story_name'] = new_name
+
+    # For v3 we move the directory, not the json file.
+    if is_v3:
+        target = os.path.join(os.path.dirname(path), new_name)
+        shutil.move(path, target)
+
+        with open(os.path.join(target, "story.json"), "w") as file:
+            json.dump(json_data, file)
     else:
-        print("User is trying to rename files in your server outside the jail. Blocked. Jailed Dir: {}  Requested Dir: {}".format(session['popup_jailed_dir'], data['file']))
+        new_filename = os.path.join(os.path.dirname(os.path.abspath(data['file'])), new_name+".json")
+        os.remove(data['file'])
+        with open(new_filename, "w") as f:
+            json.dump(json_data, f)
+    get_files_folders(os.path.dirname(path))
 
 @socketio.on('popup_delete')
 @logger.catch
@@ -8159,10 +8202,12 @@ def get_files_folders(starting_folder):
         folders = []
         files = []
         base_path = os.path.abspath(starting_folder).replace("\\", "/")
+
         if advanced_sort is not None:
             files_to_check = advanced_sort(base_path, desc=desc)
         else:
             files_to_check = get_files_sorted(base_path, sort, desc=desc)
+
         for item in files_to_check:
             item_full_path = os.path.join(base_path, item).replace("\\", "/")
             if hasattr(os.stat(item_full_path), "st_file_attributes"):
@@ -8179,8 +8224,15 @@ def get_files_folders(starting_folder):
                 extra_parameters = extra_parameter_function(item_full_path, item, valid_selection)
                 
             if (show_hidden and hidden) or not hidden:
-                if os.path.isdir(os.path.join(base_path, item)):
-                    folders.append([True, item_full_path, item,  valid_selection, extra_parameters])
+                if os.path.isdir(item_full_path):
+                    folders.append([
+                        # While v3 saves are directories, we should not show them as such.
+                        not valid_v3_story(item_full_path),
+                        item_full_path,
+                        item,
+                        valid_selection,
+                        extra_parameters
+                    ])
                 else:
                     if hide_extention:
                         item = ".".join(item.split(".")[:-1])
@@ -8320,18 +8372,55 @@ def UI_2_save_story(data):
     else:    
         #We have an ack that it's OK to save over the file if one exists
         koboldai_vars.save_story()
-    
+
+def directory_to_zip_data(directory: str, overrides: Optional[dict]) -> bytes:
+    overrides = overrides or {}
+    buffer = BytesIO()
+
+    with zipfile.ZipFile(buffer, "w") as zipf:
+        for root, _, files in os.walk(directory):
+            for file in files:
+                p = os.path.join(root, file)
+                z_path = os.path.join(*p.split(os.path.sep)[2:])
+
+                if z_path in overrides:
+                    continue
+
+                zipf.write(p, z_path)
+
+        for path, contents in overrides.items():
+            zipf.writestr(path, contents)
+
+    return buffer.getvalue()
+
 #==================================================================#
 # Save story to json
 #==================================================================#
-@app.route("/json")
+@app.route("/story_download")
 @logger.catch
-def UI_2_save_to_json():
+def UI_2_download_story():
+    save_exists = path.exists(koboldai_vars.save_paths.base)
+    if koboldai_vars.gamesaved and save_exists:
+        # Disk is up to date; download from disk
+        data = directory_to_zip_data(koboldai_vars.save_paths.base)
+    elif save_exists:
+        # We aren't up to date but we are saved; patch what disk gives us
+        data = directory_to_zip_data(
+            koboldai_vars.save_paths.base,
+            {"story.json": koboldai_vars.to_json("story_settings")}
+        )
+    else:
+        # We are not saved; send json in zip from memory
+        buffer = BytesIO()
+        with zipfile.ZipFile(buffer, "w") as zipf:
+            zipf.writestr("story.json", koboldai_vars.to_json("story_settings"))
+        data = buffer.getvalue()
+
     return Response(
-        koboldai_vars.to_json('story_settings'),
-        mimetype="application/json",
-        headers={"Content-disposition":
-                 "attachment; filename={}.v2.json".format(koboldai_vars.story_name)})
+        data,
+        mimetype="application/octet-stream",
+        headers={"Content-disposition": f"attachment; filename={koboldai_vars.story_name}.kaistory"}
+    )
     
     
 #==================================================================#
@@ -8523,6 +8612,11 @@ def get_story_listing_data(item_full_path, item, valid_selection):
 
     if not valid_selection:
         return [title, action_count, last_loaded]
+    
+    if os.path.isdir(item_full_path):
+        if not valid_v3_story(item_full_path):
+            return [title, action_count, last_loaded]
+        item_full_path = os.path.join(item_full_path, "story.json")
 
     with open(item_full_path, 'rb') as f:
         parse_event = ijson.parse(f)
@@ -8574,38 +8668,68 @@ def get_story_listing_data(item_full_path, item, valid_selection):
     return [title, action_count, last_loaded]
     
 @logger.catch
-def valid_story(file):
-    if file.endswith(".json"):
-        try:
-            valid = False
-            with open(file, 'rb') as f:
-                parser = ijson.parse(f)
-                for prefix, event, value in parser:
-                    if prefix == 'memory':
-                        valid=True
-                        break
-        except:
-            pass
-        return valid
+def valid_story(path: str):
+    if os.path.isdir(path):
+        return valid_v3_story(path)
+
+    if not path.endswith(".json"):
+        return False
+
+    try:
+        with open(path, 'rb') as file:
+            parser = ijson.parse(file)
+            for prefix, event, value in parser:
+                if prefix == 'memory':
+                    return True
+    except:
+        pass
+    return False
+
+@logger.catch
+def valid_v3_story(path: str) -> bool:
+    if not os.path.exists(path): return False
+    if not os.path.isdir(path): return False
+    if not os.path.exists(os.path.join(path, "story.json")): return False
+    return True
 
 @logger.catch
 def story_sort(base_path, desc=False):
     files = {}
     for file in os.scandir(path=base_path):
-        if file.name.endswith(".json"):
-            filename = os.path.join(base_path, file.name).replace("\\", "/")
-            if os.path.getsize(filename) < 2*1024*1024: #2MB
-                with open(filename, "r") as f:
-                    try:
-                        js = json.load(f)
-                        if 'story_name' in js and js['story_name'] in koboldai_vars.story_loads:
-                            files[file.name] = datetime.datetime.strptime(koboldai_vars.story_loads[js['story_name']], "%m/%d/%Y, %H:%M:%S")
-                        else:
-                            files[file.name] = datetime.datetime.fromtimestamp(file.stat().st_mtime)
-                    except:
-                        pass
+        if file.is_dir():
+            if not valid_v3_story(file.path):
+                continue
+
+            story_path = os.path.join(file.path, "story.json")
+            story_stat = os.stat(story_path)
+
+            if os.path.getsize(story_path) < 2*1024*1024: #2MB
+                with open(story_path, "r") as f:
+                    j = json.load(f)
+                    if j.get("story_name") in koboldai_vars.story_loads:
+                        files[file.name] = datetime.datetime.strptime(koboldai_vars.story_loads[j["story_name"]], "%m/%d/%Y, %H:%M:%S")
+                    else:
+                        files[file.name] = datetime.datetime.fromtimestamp(story_stat.st_mtime)
             else:
-                files[file.name] = datetime.datetime.fromtimestamp(file.stat().st_mtime)
+                files[file.name] = datetime.datetime.fromtimestamp(story_stat.st_mtime)
+            continue
+        
+        if not file.name.endswith(".json"):
+            continue
+
+        filename = os.path.join(base_path, file.name).replace("\\", "/")
+        if os.path.getsize(filename) < 2*1024*1024: #2MB
+            with open(filename, "r") as f:
+                try:
+                    js = json.load(f)
+                    if 'story_name' in js and js['story_name'] in koboldai_vars.story_loads:
+                        files[file.name] = datetime.datetime.strptime(koboldai_vars.story_loads[js['story_name']], "%m/%d/%Y, %H:%M:%S")
+                    else:
+                        files[file.name] = datetime.datetime.fromtimestamp(file.stat().st_mtime)
+                except:
+                    pass
+        else:
+            files[file.name] = datetime.datetime.fromtimestamp(file.stat().st_mtime)
     return [key[0] for key in sorted(files.items(), key=lambda kv: (kv[1], kv[0]), reverse=desc)]
 
 
@@ -8843,6 +8967,7 @@ def UI_2_set_wi_image(uid):
     else:
         # Otherwise assign image
         koboldai_vars.worldinfo_v2.image_store[uid] = data
+    koboldai_vars.gamesaved = False
     return ":)"
 
 @app.route("/get_wi_image/<int(signed=True):uid>", methods=["GET"])
@@ -9189,8 +9314,10 @@ def UI_2_generate_image_from_story(data):
     #get latest action
     if len(koboldai_vars.actions) > 0:
         action = koboldai_vars.actions[-1]
+        action_id = len(koboldai_vars.actions) - 1
     else:
         action = koboldai_vars.prompt
+        action_id = -1
     #Get matching world info entries
     keys = []
     for wi in koboldai_vars.worldinfo_v2:
@@ -9231,64 +9358,122 @@ def UI_2_generate_image_from_story(data):
         keys = [summarize(text, max_length=max_length)]
         logger.debug("Text from summarizer: {}".format(keys[0]))
     
-    generate_story_image(", ".join(keys), art_guide=art_guide)
+    prompt = ", ".join(keys)
+    generate_story_image(
+        ", ".join([part for part in [prompt, art_guide] if part]),
+        file_prefix=f"action_{action_id}",
+        display_prompt=prompt,
+        log_data={"actionId": action_id}
+    )
 
 @socketio.on("generate_image_from_prompt")
 @logger.catch
 def UI_2_generate_image_from_prompt(prompt: str):
     eventlet.sleep(0)
-    generate_story_image(prompt)
+    generate_story_image(prompt, file_prefix="prompt", generation_type="direct_prompt")
 
-def generate_story_image(prompt: str, art_guide: str = "") -> None:
+def log_image_generation(
+    prompt: str,
+    display_prompt: str,
+    file_name: str,
+    generation_type: str,
+    other_data: Optional[dict] = None
+) -> None:
+    # In the future it might be nice to have some UI where you can search past
+    # generations or something like that
+    db_path = os.path.join(koboldai_vars.save_paths.generated_images, "db.json")
+
+    try:
+        with open(db_path, "r") as file:
+            j = json.load(file)
+    except FileNotFoundError:
+        j = []
+    
+    if not isinstance(j, list):
+        logger.warning("Image database is corrupted! Will not add new entry.")
+        return
+
+        
+    log_data = {
+        "prompt": prompt,
+        "fileName": file_name,
+        "type": generation_type or None,
+        "displayPrompt": display_prompt
+    }
+    log_data.update(other_data or {})
+    j.append(log_data)
+
+    with open(db_path, "w") as file:
+        json.dump(j, file)
+
+def generate_story_image(
+    prompt: str,
+    file_prefix: str = "image",
+    generation_type: str = "",
+    display_prompt: Optional[str] = None,
+    log_data: Optional[dict] = None
+    
+) -> None:
     # This function is a wrapper around generate_image() that integrates the
     # result with the story (read: puts it in the corner of the screen).
+
+    if not display_prompt:
+        display_prompt = prompt
+    koboldai_vars.picture_prompt = display_prompt
 
     start_time = time.time()
     koboldai_vars.generating_image = True
 
-    b64_data = generate_image(prompt, art_guide=art_guide)
+    image = generate_image(prompt)
+    koboldai_vars.generating_image = False
+
+    if not image:
+        return
+
+    if os.path.exists(koboldai_vars.save_paths.generated_images):
+        # Only save image if this is a saved story
+        file_name = f"{file_prefix}_{int(time.time())}.png"
+        image.save(os.path.join(koboldai_vars.save_paths.generated_images, file_name))
+        log_image_generation(prompt, display_prompt, file_name, generation_type, log_data)
 
     logger.debug("Time to Generate Image {}".format(time.time()-start_time))
 
-    koboldai_vars.picture = b64_data
-    koboldai_vars.picture_prompt = prompt
-    koboldai_vars.generating_image = False
+    buffer = BytesIO()
+    image.save(buffer, format="JPEG")
+    b64_data = base64.b64encode(buffer.getvalue()).decode("ascii")
 
-def generate_image(prompt: str, art_guide: str = "") -> Optional[str]:
+    koboldai_vars.picture = b64_data
+
+
+def generate_image(prompt: str) -> Optional[Image.Image]:
     if koboldai_vars.img_gen_priority == 4:
         # Check if stable-diffusion-webui API option selected and use that if found.
-        return text2img_api(prompt, art_guide=art_guide)
+        return text2img_api(prompt)
     elif ((not koboldai_vars.hascuda or not os.path.exists("models/stable-diffusion-v1-4")) and koboldai_vars.img_gen_priority != 0) or  koboldai_vars.img_gen_priority == 3:
         # If we don't have a GPU, use horde if we're allowed to
-        return text2img_horde(prompt, art_guide=art_guide)
+        return text2img_horde(prompt)
 
     memory = torch.cuda.get_device_properties(0).total_memory
 
     # We aren't being forced to use horde, so now let's figure out if we should use local
     if memory - torch.cuda.memory_reserved(0) >= 6000000000:
         # We have enough vram, just do it locally
-        return text2img_local(prompt, art_guide=art_guide)
+        return text2img_local(prompt)
     elif memory > 6000000000 and koboldai_vars.img_gen_priority <= 1:
         # We could do it locally by swapping the model out
         print("Could do local or online")
-        return text2img_horde(prompt, art_guide=art_guide)
+        return text2img_horde(prompt)
     elif koboldai_vars.img_gen_priority != 0:
-        return text2img_horde(prompt, art_guide=art_guide)
+        return text2img_horde(prompt)
 
     raise RuntimeError("Unable to decide image generation backend. Please report this.")
     
 
 @logger.catch
-def text2img_local(prompt,
-                    art_guide="",
-                    filename="new.png"):
+def text2img_local(prompt: str) -> Optional[Image.Image]:
     start_time = time.time()
     logger.debug("Generating Image")
-    koboldai_vars.aibusy = True
-    koboldai_vars.generating_image = True
     from diffusers import StableDiffusionPipeline
-    import base64
-    from io import BytesIO
     if koboldai_vars.image_pipeline is None:
         pipe = tpool.execute(StableDiffusionPipeline.from_pretrained, "CompVis/stable-diffusion-v1-4", revision="fp16", torch_dtype=torch.float16, cache="models/stable-diffusion-v1-4").to("cuda")
     else:
@@ -9301,9 +9486,6 @@ def text2img_local(prompt,
         with autocast("cuda"):
             return pipe(prompt, num_inference_steps=num_inference_steps).images[0]
     image = tpool.execute(get_image, pipe, prompt, num_inference_steps=koboldai_vars.img_gen_steps)
-    buffered = BytesIO()
-    image.save(buffered, format="JPEG")
-    img_str = base64.b64encode(buffered.getvalue()).decode('ascii')
     logger.debug("time to generate: {}".format(time.time() - start_time))
     start_time = time.time()
     if koboldai_vars.keep_img_gen_in_memory:
@@ -9314,61 +9496,52 @@ def text2img_local(prompt,
         koboldai_vars.image_pipeline = None
         del pipe
     torch.cuda.empty_cache()
-    koboldai_vars.generating_image = False
-    koboldai_vars.aibusy = False
     logger.debug("time to unload: {}".format(time.time() - start_time))
-    return img_str
+    return image
 
 @logger.catch
-def text2img_horde(prompt,
-             art_guide = "",
-             filename = "story_art.png"):
+def text2img_horde(prompt: str) -> Optional[Image.Image]:
     logger.debug("Generating Image using Horde")
-    koboldai_vars.generating_image = True
     
-
     final_submit_dict = {
-        "prompt": "{}, {}".format(prompt, art_guide),
+        "prompt": prompt,
         "trusted_workers": False, 
         "models": [
           "stable_diffusion"
         ],
         "params": {
-            "n":1,
+            "n": 1,
             "nsfw": True,
             "sampler_name": "k_euler_a",
             "karras": True,
             "cfg_scale": koboldai_vars.img_gen_cfg_scale,
-            "steps":koboldai_vars.img_gen_steps, 
-            "width":512, 
-            "height":512}
+            "steps": koboldai_vars.img_gen_steps, 
+            "width": 512, 
+            "height": 512
+        }
     }
     
     cluster_headers = {'apikey': koboldai_vars.sh_apikey if koboldai_vars.sh_apikey != '' else "0000000000",}
     
     logger.debug(final_submit_dict)
-    submit_req = requests.post('https://stablehorde.net/api/v2/generate/sync', json = final_submit_dict, headers=cluster_headers)
-    if submit_req.ok:
-        results = submit_req.json()
-        for iter in range(len(results['generations'])):
-            b64img = results['generations'][iter]["img"]
-            base64_bytes = b64img.encode('utf-8')
-            img_bytes = base64.b64decode(base64_bytes)
-            img = Image.open(BytesIO(img_bytes))
-            if len(results) > 1:
-                final_filename = f"{iter}_{filename}"
-            else:
-                final_filename = filename
-            img.save(final_filename)
-            logger.debug("Saved Image")
-            koboldai_vars.generating_image = False
-            return(b64img)
-    else:
-        koboldai_vars.generating_image = False
+    submit_req = requests.post('https://stablehorde.net/api/v2/generate/sync', json=final_submit_dict, headers=cluster_headers)
+
+    if not submit_req.ok:
         logger.error(submit_req.text)
+        return
+
+    results = submit_req.json()
+    if len(results["generations"]) > 1:
+        logger.warning(f"Got too many generations, discarding extras. Got {len(results['generations'])}, expected 1.")
+    
+    b64img = results["generations"][0]["img"]
+    base64_bytes = b64img.encode("utf-8")
+    img_bytes = base64.b64decode(base64_bytes)
+    img = Image.open(BytesIO(img_bytes))
+    return img
 
 @logger.catch
-def text2img_api(prompt, art_guide=""):
+def text2img_api(prompt, art_guide="") -> Image.Image:
     logger.debug("Generating Image using Local SD-WebUI API")
     koboldai_vars.generating_image = True
     #The following list are valid properties with their defaults, to add/modify in final_imgen_params. Will refactor configuring values into UI element in future.
@@ -9402,7 +9575,7 @@ def text2img_api(prompt, art_guide=""):
       #"override_settings": {},
       #"sampler_index": "Euler"
     final_imgen_params = {
-        "prompt": ", ".join(filter(bool, [prompt, art_guide])),
+        "prompt": prompt,
         "n_iter": 1,
         "width": 512,
         "height": 512,
@@ -9451,7 +9624,7 @@ def text2img_api(prompt, art_guide=""):
         show_error_notification("SD Web API Failure", "SD Web API returned no images", do_log=True)
         return None
 
-    return base64_image
+    return Image.open(BytesIO(base64.b64decode(base64_image)))
 
 @socketio.on("clear_generated_image")
 @logger.catch
@@ -9630,6 +9803,15 @@ def UI_2_privacy_mode(data):
             koboldai_vars.privacy_mode = False
 
 #==================================================================#
+# Genres
+#==================================================================#
+@app.route("/genre_data.json", methods=["GET"])
+def UI_2_get_applicable_genres():
+    return Response(json.dumps({
+        "list": genre_list,
+        "init": koboldai_vars.genres,
+    }))
+#==================================================================#
 # Soft Prompt Tuning
 #==================================================================#
 @socketio.on("create_new_softprompt")
@@ -9701,7 +9883,7 @@ def UI_2_test_match():
 @logger.catch
 def UI_2_audio():
     action_id = int(request.args['id']) if 'id' in request.args else len(koboldai_vars.actions)
-    filename="stories/{}/{}.ogg".format(koboldai_vars.story_id, action_id)
+    filename = os.path.join(koboldai_vars.save_paths.generated_audio, f"{action_id}.ogg")
     if not os.path.exists(filename):
         koboldai_vars.actions.gen_audio(action_id)
     return send_file(
