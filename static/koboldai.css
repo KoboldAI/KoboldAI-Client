@@ -2878,6 +2878,10 @@ button.disabled {
 	color: var(--action_mode_input);
 }
 
+.action_mode_input.within_max_length {
+	color: var(--action_mode_input);
+}
+
 .console_text {
 	white-space: pre-wrap;
 	display: inline-block;
