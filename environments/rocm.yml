@@ -34,3 +34,4 @@ dependencies:
     - ansi2html
     - flask_compress
     - ijson
+    - ftfy

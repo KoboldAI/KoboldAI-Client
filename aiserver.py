@@ -2452,6 +2452,37 @@ def reset_model_settings():
     koboldai_vars.revision    = None
     koboldai_vars.lazy_load = True
     
+def unload_model():
+    global model
+    global generator
+    global model_config
+    global tokenizer
+    
+    #We need to wipe out the existing model and refresh the cuda cache
+    model = None
+    generator = None
+    model_config = None
+    koboldai_vars.online_model = ''
+    with torch.no_grad():
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore", message="torch.distributed.reduce_op is deprecated")
+            for tensor in gc.get_objects():
+                try:
+                    if torch.is_tensor(tensor):
+                        tensor.set_(torch.tensor((), device=tensor.device, dtype=tensor.dtype))
+                except:
+                    pass
+    gc.collect()
+    try:
+        with torch.no_grad():
+            torch.cuda.empty_cache()
+    except:
+        pass
+        
+    #Reload our badwords
+    koboldai_vars.badwordsids = koboldai_settings.badwordsids_default
+    
+    
 def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=False, online_model="", use_breakmodel_args=False, breakmodel_args_default_to_cpu=False, url=None, use_8_bit=False):
     global model
     global generator
@@ -2490,29 +2521,7 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
     if breakmodel_args_default_to_cpu and disk_layers is None:
         disk_layers = args.breakmodel_disklayers = 0
     
-    #We need to wipe out the existing model and refresh the cuda cache
-    model = None
-    generator = None
-    model_config = None
-    koboldai_vars.online_model = ''
-    with torch.no_grad():
-        with warnings.catch_warnings():
-            warnings.filterwarnings("ignore", message="torch.distributed.reduce_op is deprecated")
-            for tensor in gc.get_objects():
-                try:
-                    if torch.is_tensor(tensor):
-                        tensor.set_(torch.tensor((), device=tensor.device, dtype=tensor.dtype))
-                except:
-                    pass
-    gc.collect()
-    try:
-        with torch.no_grad():
-            torch.cuda.empty_cache()
-    except:
-        pass
-        
-    #Reload our badwords
-    koboldai_vars.badwordsids = koboldai_settings.badwordsids_default
+    unload_model()
     
     if online_model == "":
         koboldai_vars.configname = getmodelname()
@@ -5244,97 +5253,103 @@ def core_generate(text: list, _min: int, _max: int, found_entries: set, is_core:
     with torch.no_grad():
         already_generated = 0
         numseqs = koboldai_vars.numseqs
+        total_gens = None
 
-        while True:
-            # The reason this is a loop is due to how Dynamic WI works. We
-            # cannot simply add the WI to the context mid-generation, so we
-            # stop early, and then insert WI, then continue generating. That
-            # stopping and continuing is this loop.
+        for i in range(koboldai_vars.numseqs if koboldai_vars.alt_multi_gen else 1):
+            while True:
+                # The reason this is a loop is due to how Dynamic WI works. We
+                # cannot simply add the WI to the context mid-generation, so we
+                # stop early, and then insert WI, then continue generating. That
+                # stopping and continuing is this loop.
 
-            start_time = time.time()
-            result = raw_generate(
-                gen_in[0], 
-                max_new=koboldai_vars.genamt,
-                do_streaming=koboldai_vars.output_streaming,
-                do_dynamic_wi=koboldai_vars.dynamicscan,
-                batch_count=numseqs,
-                # Real max length is handled by CoreStopper.
-                bypass_hf_maxlength=koboldai_vars.dynamicscan,
-                is_core=True,
-            )
-            logger.debug("core_generate: run raw_generate pass {} {}s".format(already_generated, time.time()-start_time))
-
-            genout = result.encoded
-
-            already_generated += len(genout[0])
-
-            try:
-                assert already_generated <= koboldai_vars.genamt
-            except AssertionError:
-                print("AlreadyGenerated", already_generated)
-                print("genamt", koboldai_vars.genamt)
-                raise
-
-            if result.is_whole_generation:
-                break
-
-            # Generation stopped; why?
-            # If we have been told to halt, we have reached our target token
-            # amount (controlled by halt), or Dynamic WI has not told us to
-            # stop temporarily to insert WI, we can assume that we are done
-            # generating. We shall break.
-            if model.core_stopper.halt or not model.core_stopper.regeneration_required:
-                break
-
-            # Now we are doing stuff for Dynamic WI.
-            assert genout.ndim >= 2
-            assert genout.shape[0] == koboldai_vars.numseqs
-
-            if(koboldai_vars.lua_koboldbridge.generated_cols and koboldai_vars.generated_tkns != koboldai_vars.lua_koboldbridge.generated_cols):
-                raise RuntimeError(f"Inconsistency detected between KoboldAI Python and Lua backends ({koboldai_vars.generated_tkns} != {koboldai_vars.lua_koboldbridge.generated_cols})")
-
-            if(already_generated != koboldai_vars.generated_tkns):
-                print("already_generated: {}".format(already_generated))
-                print("generated_tkns: {}".format(koboldai_vars.generated_tkns))
-                raise RuntimeError("WI scanning error")
-
-            for r in range(koboldai_vars.numseqs):
-                for c in range(already_generated):
-                    assert koboldai_vars.lua_koboldbridge.generated[r+1][c+1] is not None
-                    genout[r][genout.shape[-1] - already_generated + c] = koboldai_vars.lua_koboldbridge.generated[r+1][c+1]
-
-            encoded = []
-
-            for i in range(koboldai_vars.numseqs):
-                txt = utils.decodenewlines(tokenizer.decode(genout[i, -already_generated:]))
-                #winfo, mem, anotetxt, _found_entries = calcsubmitbudgetheader(txt, force_use_txt=True, actions=koboldai_vars.actions)
-                #txt, _, _ = calcsubmitbudget(len(koboldai_vars.actions), winfo, mem, anotetxt, koboldai_vars.actions, submission=txt)
-                txt, _, _, _found_entries = koboldai_vars.calc_ai_text(submitted_text=txt, send_context=False)
-                found_entries[i].update(_found_entries)
-                encoded.append(torch.tensor(txt, dtype=torch.long, device=genout.device))
-
-            max_length = len(max(encoded, key=len))
-            encoded = torch.stack(tuple(torch.nn.functional.pad(e, (max_length - len(e), 0), value=model.config.pad_token_id or model.config.eos_token_id) for e in encoded))
-            genout = torch.cat(
-                (
-                    encoded,
-                    genout[..., -already_generated:],
-                ),
-                dim=-1
-            )
-
-            if(koboldai_vars.sp is not None):
-                soft_tokens = torch.arange(
-                    model.config.vocab_size,
-                    model.config.vocab_size + koboldai_vars.sp.shape[0],
-                    device=genout.device,
+                start_time = time.time()
+                result = raw_generate(
+                    gen_in[0], 
+                    max_new=koboldai_vars.genamt,
+                    do_streaming=koboldai_vars.output_streaming,
+                    do_dynamic_wi=koboldai_vars.dynamicscan,
+                    batch_count=numseqs if not koboldai_vars.alt_multi_gen else 1,
+                    # Real max length is handled by CoreStopper.
+                    bypass_hf_maxlength=koboldai_vars.dynamicscan,
+                    is_core=True,
                 )
-                genout = torch.cat((soft_tokens.tile(koboldai_vars.numseqs, 1), genout), dim=-1)
-            assert genout.shape[-1] + koboldai_vars.genamt - already_generated <= koboldai_vars.max_length
-            gen_in = genout
-            numseqs = 1
+                logger.debug("core_generate: run raw_generate pass {} {}s".format(already_generated, time.time()-start_time))
+
+                genout = result.encoded
+
+                already_generated += len(genout[0])
+
+                try:
+                    assert already_generated <= koboldai_vars.genamt
+                except AssertionError:
+                    print("AlreadyGenerated", already_generated)
+                    print("genamt", koboldai_vars.genamt)
+                    raise
+
+                if result.is_whole_generation:
+                    break
+
+                # Generation stopped; why?
+                # If we have been told to halt, we have reached our target token
+                # amount (controlled by halt), or Dynamic WI has not told us to
+                # stop temporarily to insert WI, we can assume that we are done
+                # generating. We shall break.
+                if model.core_stopper.halt or not model.core_stopper.regeneration_required:
+                    break
+
+                # Now we are doing stuff for Dynamic WI.
+                assert genout.ndim >= 2
+                assert genout.shape[0] == koboldai_vars.numseqs
+
+                if(koboldai_vars.lua_koboldbridge.generated_cols and koboldai_vars.generated_tkns != koboldai_vars.lua_koboldbridge.generated_cols):
+                    raise RuntimeError(f"Inconsistency detected between KoboldAI Python and Lua backends ({koboldai_vars.generated_tkns} != {koboldai_vars.lua_koboldbridge.generated_cols})")
+
+                if(already_generated != koboldai_vars.generated_tkns):
+                    print("already_generated: {}".format(already_generated))
+                    print("generated_tkns: {}".format(koboldai_vars.generated_tkns))
+                    raise RuntimeError("WI scanning error")
+
+                for r in range(koboldai_vars.numseqs):
+                    for c in range(already_generated):
+                        assert koboldai_vars.lua_koboldbridge.generated[r+1][c+1] is not None
+                        genout[r][genout.shape[-1] - already_generated + c] = koboldai_vars.lua_koboldbridge.generated[r+1][c+1]
+
+                encoded = []
+
+                for i in range(koboldai_vars.numseqs):
+                    txt = utils.decodenewlines(tokenizer.decode(genout[i, -already_generated:]))
+                    #winfo, mem, anotetxt, _found_entries = calcsubmitbudgetheader(txt, force_use_txt=True, actions=koboldai_vars.actions)
+                    #txt, _, _ = calcsubmitbudget(len(koboldai_vars.actions), winfo, mem, anotetxt, koboldai_vars.actions, submission=txt)
+                    txt, _, _, _found_entries = koboldai_vars.calc_ai_text(submitted_text=txt, send_context=False)
+                    found_entries[i].update(_found_entries)
+                    encoded.append(torch.tensor(txt, dtype=torch.long, device=genout.device))
+
+                max_length = len(max(encoded, key=len))
+                encoded = torch.stack(tuple(torch.nn.functional.pad(e, (max_length - len(e), 0), value=model.config.pad_token_id or model.config.eos_token_id) for e in encoded))
+                genout = torch.cat(
+                    (
+                        encoded,
+                        genout[..., -already_generated:],
+                    ),
+                    dim=-1
+                )
+
+                if(koboldai_vars.sp is not None):
+                    soft_tokens = torch.arange(
+                        model.config.vocab_size,
+                        model.config.vocab_size + koboldai_vars.sp.shape[0],
+                        device=genout.device,
+                    )
+                    genout = torch.cat((soft_tokens.tile(koboldai_vars.numseqs, 1), genout), dim=-1)
+                assert genout.shape[-1] + koboldai_vars.genamt - already_generated <= koboldai_vars.max_length
+                gen_in = genout
+                numseqs = 1
+            if total_gens is None:
+                total_gens = genout
+            else:
+                total_gens = torch.cat((total_gens, genout))
     
-    return genout, already_generated
+    return total_gens, already_generated
 
 class GenerationResult:
     def __init__(
@@ -6043,6 +6058,7 @@ def generate(txt, minimum, maximum, found_entries=None):
     try:
         start_time = time.time()
         genout, already_generated = tpool.execute(core_generate, txt, minimum, maximum, found_entries)
+        print(genout)
         logger.debug("Generate: core_generate time {}s".format(time.time()-start_time))
     except Exception as e:
         if(issubclass(type(e), lupa.LuaError)):
@@ -9613,6 +9629,55 @@ def UI_2_privacy_mode(data):
         if data['password'] == koboldai_vars.privacy_password:
             koboldai_vars.privacy_mode = False
 
+#==================================================================#
+# Soft Prompt Tuning
+#==================================================================#
+@socketio.on("create_new_softprompt")
+@logger.catch
+def UI_2_create_new_softprompt(data):
+    logger.info("Soft Prompt Dataset: {}".format(data))
+    from prompt_tuner import BasicTrainer
+    trainer = BasicTrainer(None, quiet=koboldai_vars.quiet)
+    trainer.data.ckpt_path = koboldai_vars.model
+    trainer.get_hf_checkpoint_metadata()
+    trainer.data.save_file = "{}.mtjsp".format("".join(x for x in data['sp_title'] if x.isalnum() or x in [" ", "-", "_"]))
+    trainer.data.prompt_method = "tokens"
+    tokenizer = trainer.get_tokenizer()
+    if trainer.data.newlinemode == "s":  # Handle fairseq-style newlines if required
+        initial_softprompt = data['sp_prompt'].replace("\n", "</s>")
+    trainer.data.initial_softprompt = tokenizer.encode(
+        data['sp_prompt'], max_length=int(2e9), truncation=True
+    )
+    trainer.tokenize_dataset(dataset_path=data['sp_dataset'], 
+                             output_file="softprompts/{}.npy".format("".join(x for x in data['sp_title'] if x.isalnum() or x in [" ", "-", "_"])), 
+                             batch_size=2048 if 'batch_size' not in data else data['batch_size'], 
+                             epochs=1 if 'epochs' not in data else data['epochs'])
+    trainer.data.dataset_file = "softprompts/{}.npy".format("".join(x for x in data['sp_title'] if x.isalnum() or x in [" ", "-", "_"]))
+    trainer.data.gradient_accumulation_steps = 16  if 'gradient_accumulation_steps' not in data else data['gradient_accumulation_steps']
+    
+    trainer.data.stparams = {
+        "lr": 3e-5,
+        "max_grad_norm": 10.0,
+        "weight_decay": 0.1,
+        "warmup": 0.1,
+        "end_lr_multiplier": 0.1,
+        "save_every": 50,
+    }
+    
+    unload_model()
+    trainer.train(breakmodel_primary_device=breakmodel.primary_device,
+                    breakmodel_gpulayers=breakmodel.gpu_blocks,
+                    breakmodel_disklayers=breakmodel.disk_blocks)
+    
+    output_file = "softprompts/{}.zip".format("".join(x for x in data['sp_title'] if x.isalnum() or x in [" ", "-", "_"]))
+    name = data['sp_title']
+    author = data['sp_author']
+    supported = koboldai_vars.model
+    description = data['sp_description']
+    trainer.export_to_kobold(output_file, name, author, supported, description)
+    output_file = "softprompts/{}.json".format("".join(x for x in data['sp_title'] if x.isalnum() or x in [" ", "-", "_"]))
+    trainer.export_to_mkultra(output_file, name, description)
+    
 
 #==================================================================#
 # Test

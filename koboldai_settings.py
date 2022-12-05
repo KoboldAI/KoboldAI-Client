@@ -649,6 +649,7 @@ class model_settings(settings):
         </div>""" # Custom Welcome Text
         self.welcome     = self.welcome_default
         self.koboldai_vars = koboldai_vars
+        self.alt_multi_gen = False
         
     def reset_for_model_load(self):
         self.max_length  = 2048    # Maximum number of tokens to submit per action

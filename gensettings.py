@@ -414,6 +414,22 @@ gensettingstf = [
     "ui_level": 2
  	},
     {
+ 	"uitype": "toggle",
+ 	"unit": "bool",
+ 	"label": "Alt Multi Gen",
+ 	"id": "alt_multi_gen",
+ 	"min": 0,
+ 	"max": 1,
+ 	"step": 1,
+ 	"default": 0,
+	"tooltip": "Runs Gens per Action one at a time so you can select one if you like it without having to wait.",
+    "menu_path": "Settings",
+    "sub_path": "Other",
+    "classname": "model",
+    "name": "alt_multi_gen",
+    "ui_level": 2
+ 	},
+    {
     "UI_V2_Only": True,
  	"uitype": "toggle",
  	"unit": "bool",

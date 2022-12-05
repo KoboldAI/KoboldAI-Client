@@ -2600,6 +2600,15 @@ function process_log_message(full_data) {
 }
 
 //--------------------------------------------UI to Server Functions----------------------------------
+function create_new_softprompt() {
+	socket.emit("create_new_softprompt", {"sp_title": document.getElementById("sp_title").value,
+										  "sp_prompt": document.getElementById("sp_prompt").value,
+										  "sp_dataset": document.getElementById("sp_dataset").value,
+										  "sp_author": document.getElementById("sp_author").value,
+										  "sp_description": document.getElementById("sp_description").value
+										});
+}
+
 async function download_story_to_json() {
 	//document.getElementById('download_iframe').src = 'json';
 	downloaded = false;

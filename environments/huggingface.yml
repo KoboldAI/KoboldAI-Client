@@ -37,3 +37,4 @@ dependencies:
     - flask_compress
     - ijson
     - bitsandbytes
+    - ftfy

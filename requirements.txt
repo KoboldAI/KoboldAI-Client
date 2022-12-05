@@ -25,3 +25,4 @@ ansi2html
 flask_compress
 ijson
 bitsandbytes
+ftfy
