@@ -2456,9 +2456,9 @@ function world_info_folder(data) {
 			add_text.textContent = "Add World Info Entry";
 			add_text.classList.add("wi_add_text");
 			add_text.setAttribute("folder", folder_name);
-			add_text.onclick = function() {
-											create_new_wi_entry(this.getAttribute("folder"));
-										  }
+			new_icon.onclick = function() {
+				create_new_wi_entry(this.querySelector(".wi_add_text").getAttribute("folder"));
+			}
 			new_icon.append(add_text);
 			folder.append(new_icon);
 			
