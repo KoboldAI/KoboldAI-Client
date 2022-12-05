@@ -6515,6 +6515,17 @@ function imgGenRetry() {
 		addGenreUI(initGenre);
 	}
 
+	function addGenre(genre) {
+		if (genres.includes(genre)) return;
+
+		addGenreUI(genre);
+		genreInput.value = "";
+		nukeSuggestions();
+
+		genres.push(genre);
+		socket.emit("var_change", {"ID": "story_genres", "value": genres});
+	}
+
 	function nukeSuggestions() {
 		genreSuggestionContainer.innerHTML = "";
 		highlightIndex = -1;
@@ -6541,7 +6552,11 @@ function imgGenRetry() {
 				highlightIndex++;
 				break;
 			case "Enter":
-				genreSuggestionContainer.children[highlightIndex].click();
+				if (highlightIndex === -1) {
+					addGenre(genreInput.value);
+				} else {
+					genreSuggestionContainer.children[highlightIndex].click();
+				}
 				return;
 			case "Escape":
 				genreInput.value = "";
@@ -6593,14 +6608,7 @@ function imgGenRetry() {
 			});
 
 			suggestion.addEventListener("click", function() {
-				if (genres.includes(this.innerText)) return;
-
-				addGenreUI(this.innerText);
-				genreInput.value = "";
-				nukeSuggestions();
-
-				genres.push(this.innerText);
-				socket.emit("var_change", {"ID": "story_genres", "value": genres});
+				addGenre(this.innerText);
 			});
 		}
 	});
