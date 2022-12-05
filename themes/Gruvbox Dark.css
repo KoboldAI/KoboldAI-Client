@@ -89,6 +89,7 @@
     --text: var(--gruvbox-light0);
     --text_to_ai_color: var(--gruvbox-bright-blue);
     --text_edit: var(--gruvbox-neutral-aqua);
+	--action_mode_input: #33E978;
 
 	--statusbar_color: #002d6ca1;
 	--statusbar_text_color: white;

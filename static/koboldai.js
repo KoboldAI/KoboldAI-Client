@@ -522,6 +522,12 @@ function do_story_text_updates(action) {
 				story_area.prepend(item);
 			}
 		}
+		
+		if (action.action['Selected Text'].charAt(0) == ">") {
+			item.classList.add("action_mode_input");
+		} else {
+			item.classList.remove("action_mode_input");
+		}
 
 		if ('wi_highlighted_text' in action.action) {
 			for (chunk of action.action['wi_highlighted_text']) {

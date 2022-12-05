@@ -2874,6 +2874,10 @@ button.disabled {
 	white-space: pre-wrap;
 }
 
+.action_mode_input {
+	color: var(--action_mode_input);
+}
+
 .console_text {
 	white-space: pre-wrap;
 	display: inline-block;
