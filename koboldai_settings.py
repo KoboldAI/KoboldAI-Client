@@ -1058,6 +1058,7 @@ class story_settings(settings):
                 self.assign_world_info_to_actions(action_id=-1, wuid=None)
                 process_variable_changes(self.socketio, self.__class__.__name__.replace("_settings", ""), 'prompt_wi_highlighted_text', self.prompt_wi_highlighted_text, None)
                 ignore = self.koboldai_vars.calc_ai_text()
+                self.actions.gen_audio(action_id=-1)
             
             #Because we have seperate variables for action types, this syncs them
             elif name == 'storymode':
@@ -1871,7 +1872,10 @@ class KoboldStoryRegister(object):
             filename = os.path.join(self.koboldai_vars.save_paths.generated_audio, f"{action_id}.ogg")
                 
             if overwrite or not os.path.exists(filename):
-                self.make_audio_queue.put((self.actions[action_id]['Selected Text'], filename))
+                if action_id == -1:
+                    self.make_audio_queue.put((self.koboldai_vars.prompt, filename))
+                else:
+                    self.make_audio_queue.put((self.actions[action_id]['Selected Text'], filename))
                 if self.make_audio_thread is None or not self.make_audio_thread.is_alive():
                     self.make_audio_thread = threading.Thread(target=self.create_wave, args=(self.tts_model, self.make_audio_queue))
                     self.make_audio_thread.start()
@@ -1894,7 +1898,7 @@ class KoboldStoryRegister(object):
         
     def gen_all_audio(self, overwrite=False):
         if self.story_settings.gen_audio and self.koboldai_vars.experimental_features:
-            for i in reversed(list(self.actions.keys())):
+            for i in reversed(list(self.actions.keys())+[-1]):
                 self.gen_audio(i, overwrite=False)
         else:
             print("{} and {}".format(self.story_settings.gen_audio, self.koboldai_vars.experimental_features))

@@ -101,6 +101,8 @@ var finder_actions = [
 
 const context_menu_actions = {
 	gamescreen: [
+		{label: "Speak", icon: "record_voice_over", enabledOn: "SELECTION", click: speak_audio},
+		null,
 		{label: "Cut", icon: "content_cut", enabledOn: "SELECTION", click: cut},
 		{label: "Copy", icon: "content_copy", enabledOn: "SELECTION", click: copy},
 		{label: "Paste", icon: "content_paste", enabledOn: "SELECTION", click: paste},
@@ -3163,6 +3165,41 @@ function retry_from_here() {
 		document.getElementById('input_text').value = '';
 		document.getElementById('themetext').value = '';
 	}
+}
+
+function speak_audio() {
+	let chunk = null;
+	for (element of document.getElementsByClassName("editing")) {
+		if (element.id == 'story_prompt') {
+			chunk = -1
+		} else {
+			chunk = parseInt(element.id.split(" ").at(-1));
+		}
+		element.classList.remove("editing");
+	}
+	if (chunk != null) {
+		action_count = parseInt(document.getElementById("action_count").textContent);
+		//console.log(chunk);
+		document.getElementById("reader").src = "/audio?id="+chunk;
+		document.getElementById("reader").play();
+		document.getElementById("play_tts").textContent = "pause";
+	}
+}
+
+function play_pause_tts() {
+	if (document.getElementById("reader").paused) {
+		document.getElementById("reader").play();
+		document.getElementById("play_tts").textContent = "pause";
+	} else {
+		document.getElementById("reader").pause();
+		document.getElementById("play_tts").textContent = "play_arrow";
+	}
+}
+
+function stop_tts() {
+	document.getElementById("reader").src="";
+	document.getElementById("reader").src="/audio";
+	document.getElementById("play_tts").textContent = "play_arrow";
 }
 
 function view_selection_probabilities() {

@@ -7251,18 +7251,20 @@ def loadRequest(loadpath, filename=None):
     if(isinstance(loadpath, str)):
         with open(loadpath, "r") as file:
             js = json.load(file)
+            from_file=loadpath
         if(filename is None):
             filename = path.basename(loadpath)
     else:
         js = loadpath
         if(filename is None):
             filename = "untitled.json"
+        from_file=None
     js['v1_loadpath'] = loadpath
     js['v1_filename'] = filename
     logger.debug("Loading JSON data took {}s".format(time.time()-start_time))
-    loadJSON(js)
+    loadJSON(js, from_file=from_file)
 
-def loadJSON(json_text_or_dict):
+def loadJSON(json_text_or_dict, from_file=None):
     logger.debug("Loading JSON Story")
     logger.debug("Called from {}".format(inspect.stack()[1].function))
     start_time = time.time()
@@ -7275,13 +7277,13 @@ def loadJSON(json_text_or_dict):
         if json_data['file_version'] == 2:
             load_story_v2(json_data)
         else:
-            load_story_v1(json_data)
+            load_story_v1(json_data, from_file=from_file)
     else:
-        load_story_v1(json_data)
+        load_story_v1(json_data, from_file=from_file)
     logger.debug("Calcing AI Text from Story Load")
     ignore = koboldai_vars.calc_ai_text()
 
-def load_story_v1(js):
+def load_story_v1(js, from_file=None):
     logger.debug("Loading V1 Story")
     logger.debug("Called from {}".format(inspect.stack()[1].function))
     loadpath = js['v1_loadpath'] if 'v1_loadpath' in js else koboldai_vars.savedir
@@ -7402,6 +7404,12 @@ def load_story_v1(js):
     print("{0}Story loaded from {1}!{2}".format(colors.GREEN, filename, colors.END))
     
     send_debug()
+    
+    if from_file is not None:
+        #Save the file so we get a new V2 format, then move the save file into the proper directory
+        koboldai_vars.save_story()
+        shutil.move(from_file, koboldai_vars.save_paths.story.replace("story.json", "v1_file.json"))
+    
 
 def load_story_v2(js):
     logger.debug("Loading V2 Story")
@@ -9881,7 +9889,7 @@ def UI_2_test_match():
 @app.route("/audio")
 @logger.catch
 def UI_2_audio():
-    action_id = int(request.args['id']) if 'id' in request.args else len(koboldai_vars.actions)
+    action_id = int(request.args['id']) if 'id' in request.args else koboldai_vars.actions.action_count
     filename = os.path.join(koboldai_vars.save_paths.generated_audio, f"{action_id}.ogg")
     if not os.path.exists(filename):
         koboldai_vars.actions.gen_audio(action_id)

@@ -1386,20 +1386,20 @@ body {
 	grid-area: inputrow;
 	z-index: 2;
 	display: grid;
-	grid-template-areas: "textarea statusbar statusbar statusbar"
-						 "textarea submit submit submit"
-	                     "textarea back redo retry";
-	grid-template-columns: auto 30px 30px 30px;
+	grid-template-areas: "textarea tts_controls statusbar statusbar statusbar"
+						 "textarea tts_controls submit submit submit"
+	                     "textarea tts_controls back redo retry";
+	grid-template-columns: auto min-content 30px 30px 30px;
 	grid-template-rows: 0px 60px 40px;
 	gap: 1px;
 	
 }
 
 .inputrow[story_storymode="1"] {
-	grid-template-areas: "adventure_mode textarea statusbar statusbar statusbar"
-						 "adventure_mode textarea submit submit submit"
-	                     "adventure_mode textarea back redo retry";
-	grid-template-columns: 80px auto 30px 30px 30px;
+	grid-template-areas: "adventure_mode textarea tts_controls statusbar statusbar statusbar"
+						 "adventure_mode textarea tts_controls submit submit submit"
+	                     "adventure_mode textarea tts_controls back redo retry";
+	grid-template-columns: 80px auto min-content 30px 30px 30px;
 	grid-template-rows: 0px 60px 40px;
 	gap: 1px;
 	
@@ -1538,6 +1538,19 @@ body {
 
 #thinking{
 	z-index: 9999;
+}
+
+.tts_controls.hidden[story_gen_audio="true"] {
+	display: inherit !important; 
+}
+
+.inputrow .tts_controls {
+	grid-area: tts_controls;
+	padding: 0px;
+	height: 100%;
+	width: 100%;
+	text-align: center;
+	overflow: hidden;
 }
 
 .inputrow .back {
