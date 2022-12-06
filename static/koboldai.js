@@ -3167,20 +3167,17 @@ function retry_from_here() {
 	}
 }
 
-function speak_audio() {
-	let chunk = null;
-	for (element of document.getElementsByClassName("editing")) {
-		if (element.id == 'story_prompt') {
-			chunk = -1
-		} else {
-			chunk = parseInt(element.id.split(" ").at(-1));
-		}
-		element.classList.remove("editing");
+function speak_audio(summonEvent) {
+	let action_id = null;
+	if (summonEvent.target.parentElement.id == "story_prompt") {
+		action_id = -1;
+	} else {
+		action_id = summonEvent.target.parentElement.id.split(" ").at(-1);
 	}
-	if (chunk != null) {
-		action_count = parseInt(document.getElementById("action_count").textContent);
+	if (action_id != null) {
 		//console.log(chunk);
-		document.getElementById("reader").src = "/audio?id="+chunk;
+		document.getElementById("reader").src = "/audio?id="+action_id;
+		document.getElementById("reader").setAttribute("action_id", action_id);
 		document.getElementById("reader").play();
 		document.getElementById("play_tts").textContent = "pause";
 	}
@@ -3200,6 +3197,19 @@ function stop_tts() {
 	document.getElementById("reader").src="";
 	document.getElementById("reader").src="/audio";
 	document.getElementById("play_tts").textContent = "play_arrow";
+}
+
+function finished_tts() {
+	next_action = parseInt(document.getElementById("reader").getAttribute("action_id"))+1;
+	action_count = parseInt(document.getElementById("action_count").textContent);
+	if (next_action <= action_count) {
+		document.getElementById("reader").src = "/audio?id="+next_action;
+		document.getElementById("reader").setAttribute("action_id", next_action);
+		document.getElementById("reader").play();
+		document.getElementById("play_tts").textContent = "pause";
+	} else {
+		document.getElementById("play_tts").textContent = "play_arrow";
+	}
 }
 
 function view_selection_probabilities() {
