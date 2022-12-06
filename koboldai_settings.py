@@ -1889,14 +1889,22 @@ class KoboldStoryRegister(object):
             if text == "":
                 shutil.move("data/empty_audio.ogg", filename)
             else:
-                audio = self.tts_model.apply_tts(text=text,
-                                        speaker=speaker,
-                                        sample_rate=sample_rate)
-                                        #audio_path=filename)
-                channels = 2 if (audio.ndim == 2 and audio.shape[1] == 2) else 1
-                #y = np.int16(audio)
-                y = np.int16(audio * 2 ** 15)
-                song = pydub.AudioSegment(y.tobytes(), frame_rate=sample_rate, sample_width=2, channels=channels)
+                if len(text) > 5000:
+                    text = self.sentence_re.findall(text)
+                else:
+                    text = [text]
+                output = None
+                for process_text in text:
+                    audio = self.tts_model.apply_tts(text=process_text,
+                                            speaker=speaker,
+                                            sample_rate=sample_rate)
+                                            #audio_path=filename)
+                    channels = 2 if (audio.ndim == 2 and audio.shape[1] == 2) else 1
+                    if output is None:
+                        output = np.int16(audio * 2 ** 15)
+                    else:
+                        output = numpy.concatenate(output, np.int16(audio * 2 ** 15))
+                song = pydub.AudioSegment(output.tobytes(), frame_rate=sample_rate, sample_width=2, channels=channels)
                 song.export(filename, format="ogg", bitrate="16k")
         
     def gen_all_audio(self, overwrite=False):
