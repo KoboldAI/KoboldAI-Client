@@ -101,7 +101,7 @@ var finder_actions = [
 
 const context_menu_actions = {
 	gamescreen: [
-		{label: "Speak", icon: "record_voice_over", enabledOn: "SELECTION", click: speak_audio},
+		{label: "Speak", icon: "record_voice_over", enabledOn: "CARET", click: speak_audio},
 		null,
 		{label: "Cut", icon: "content_cut", enabledOn: "SELECTION", click: cut},
 		{label: "Copy", icon: "content_copy", enabledOn: "SELECTION", click: copy},
