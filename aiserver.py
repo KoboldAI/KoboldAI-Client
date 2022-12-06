@@ -9891,8 +9891,12 @@ def UI_2_test_match():
 def UI_2_audio():
     action_id = int(request.args['id']) if 'id' in request.args else koboldai_vars.actions.action_count
     filename = os.path.join(koboldai_vars.save_paths.generated_audio, f"{action_id}.ogg")
+    
     if not os.path.exists(filename):
         koboldai_vars.actions.gen_audio(action_id)
+        start_time = time.time()
+        while not os.path.exists(filename) and time.time()-start_time < 60: #Waiting up to 60 seconds for the file to be generated
+            time.sleep(0.1)
     return send_file(
              filename, 
              mimetype="audio/ogg")
