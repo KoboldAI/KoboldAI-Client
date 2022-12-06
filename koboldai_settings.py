@@ -1918,8 +1918,6 @@ class KoboldStoryRegister(object):
         if self.story_settings.gen_audio and self.koboldai_vars.experimental_features:
             if action_id is None:
                 action_id = self.action_count
-            
-            logger.info("Generating audio for action {}".format(action_id))
 
             if self.tts_model is None:
                 language = 'en'
@@ -1948,10 +1946,11 @@ class KoboldStoryRegister(object):
         speaker = 'en_5'
         while not make_audio_queue.empty():
             (text, filename) = make_audio_queue.get()
-            if text == "":
-                shutil.move("data/empty_audio.ogg", filename)
+            logger.info("Creating audio for {}".format(os.path.basename(filename)))
+            if text.strip() == "":
+                shutil.copy("data/empty_audio.ogg", filename)
             else:
-                if len(text) > 5000:
+                if len(text) > 2000:
                     text = self.sentence_re.findall(text)
                 else:
                     text = [text]
@@ -1963,11 +1962,10 @@ class KoboldStoryRegister(object):
                                             #audio_path=filename)
                     channels = 2 if (audio.ndim == 2 and audio.shape[1] == 2) else 1
                     if output is None:
-                        output = np.int16(audio * 2 ** 15)
+                        output = pydub.AudioSegment(np.int16(audio * 2 ** 15).tobytes(), frame_rate=sample_rate, sample_width=2, channels=channels)
                     else:
-                        output = numpy.concatenate(output, np.int16(audio * 2 ** 15))
-                song = pydub.AudioSegment(output.tobytes(), frame_rate=sample_rate, sample_width=2, channels=channels)
-                song.export(filename, format="ogg", bitrate="16k")
+                        output = output + pydub.AudioSegment(np.int16(audio * 2 ** 15).tobytes(), frame_rate=sample_rate, sample_width=2, channels=channels)
+                output.export(filename, format="ogg", bitrate="16k")
         
     def gen_all_audio(self, overwrite=False):
         if self.story_settings.gen_audio and self.koboldai_vars.experimental_features:

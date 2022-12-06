@@ -7281,7 +7281,7 @@ def loadJSON(json_text_or_dict, from_file=None):
     logger.debug("Loading JSON data took {}s".format(time.time()-start_time))
     if "file_version" in json_data:
         if json_data['file_version'] == 2:
-            load_story_v2(json_data)
+            load_story_v2(json_data, from_file=from_file)
         else:
             load_story_v1(json_data, from_file=from_file)
     else:
@@ -7417,7 +7417,7 @@ def load_story_v1(js, from_file=None):
         shutil.move(from_file, koboldai_vars.save_paths.story.replace("story.json", "v1_file.json"))
     
 
-def load_story_v2(js):
+def load_story_v2(js, from_file=None):
     logger.debug("Loading V2 Story")
     logger.debug("Called from {}".format(inspect.stack()[1].function))
     leave_room(session['story'])
@@ -7425,6 +7425,11 @@ def load_story_v2(js):
     join_room(session['story'])
     
     koboldai_vars.load_story(session['story'], js)
+    
+    if from_file is not None and os.path.basename(from_file) != "story.json":
+        #Save the file so we get a new V2 format, then move the save file into the proper directory
+        koboldai_vars.save_story()
+        shutil.move(from_file, koboldai_vars.save_paths.story.replace("story.json", "v2_file.json"))
     
 
 
