@@ -447,9 +447,6 @@ function process_actions_data(data) {
 		actions_data[parseInt(action.id)] = action.action;
 		do_story_text_updates(action);
 		create_options(action);
-		if ('Probabilities' in action.action) {
-			do_probabilities(action);
-		}
 	}
 	
 	clearTimeout(game_text_scroll_timeout);
@@ -623,48 +620,6 @@ function do_story_text_length_updates(action) {
 	
 }
 
-function do_probabilities(action) {
-	//console.log(data);
-	if (document.getElementById('probabilities_'+action.id)) {
-		prob_area = document.getElementById('probabilities_'+action.id)
-	} else {
-		probabilities = document.getElementById('probabilities');
-		prob_area = document.createElement('span');
-		prob_area.id = 'probabilities_'+action.id;
-		probabilities.append(prob_area);
-	}
-	//Clear
-	while (prob_area.firstChild) { 
-		prob_area.removeChild(prob_area.lastChild);
-	}
-	//create table
-	table = document.createElement("table");
-	table.border=1;
-	if ("Probabilities" in action.action) {
-		for (token of action.action.Probabilities) {
-			actual_text = document.createElement("td");
-			actual_text.setAttribute("rowspan", token.length);
-			actual_text.textContent = "Word Goes Here";
-			for (const [index, word] of token.entries()) {
-				tr = document.createElement("tr");
-				if (index == 0) {
-					tr.append(actual_text);
-				}
-				decoded = document.createElement("td");
-				decoded.textContent = word.decoded;
-				tr.append(decoded);
-				score = document.createElement("td");
-				score.textContent = (word.score*100).toFixed(2)+"%";
-				tr.append(score);
-				table.append(tr);
-			}
-		}
-	}
-	prob_area.append(table);
-	
-	//prob_area.textContent = data.value.action["Probabilities"];
-	
-}
 
 function save_story() { socket.emit("save_story", null, response => save_as_story(response)); }
 function load_story_list() { socket.emit("load_story_list", ""); }
