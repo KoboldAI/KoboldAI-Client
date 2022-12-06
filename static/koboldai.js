@@ -325,7 +325,7 @@ function create_options(action) {
 	let added_options=0;
 	i=0;
 	for (item of action.action.Options) {
-		if ((item['Previous Selection'])) {
+		if ((item['Previous Selection']) && (item.text != "")) {
 			var row = document.createElement("div");
 			row.classList.add("sequence_row");
 			var textcell = document.createElement("span");
@@ -363,7 +363,7 @@ function create_options(action) {
 	//Add general options
 	i=0;
 	for (item of action.action.Options) {
-		if (!(item.Edited) && !(item['Previous Selection'])) {
+		if (!(item.Edited) && !(item['Previous Selection']) && (item.text != "")) {
 			var row = document.createElement("div");
 			row.classList.add("sequence_row");
 			var textcell = document.createElement("span");

@@ -1503,13 +1503,14 @@ class KoboldStoryRegister(object):
             if self.actions[action_id]["Selected Text"] != text:
                 self.actions[action_id]["Selected Text"] = text
                 self.actions[action_id]["Time"] = self.actions[action_id].get("Time", int(time.time()))
-                tokens = self.koboldai_vars.tokenizer.encode(text)
-                for token_num in range(len(self.actions[action_id]["Probabilities"])):
-                    for token_option in range(len(self.actions[action_id]["Probabilities"][token_num])):
-                        if token_num < len(tokens):
-                            self.actions[action_id]["Probabilities"][token_num][token_option]["Used"] = tokens[token_num] == self.actions[action_id]["Probabilities"][token_num][token_option]["tokenId"]
-                        else:
-                            self.actions[action_id]["Probabilities"][token_num][token_option]["Used"] = False
+                if 'Probabilities' in self.actions[action_id]:
+                    tokens = self.koboldai_vars.tokenizer.encode(text)
+                    for token_num in range(len(self.actions[action_id]["Probabilities"])):
+                        for token_option in range(len(self.actions[action_id]["Probabilities"][token_num])):
+                            if token_num < len(tokens):
+                                self.actions[action_id]["Probabilities"][token_num][token_option]["Used"] = tokens[token_num] == self.actions[action_id]["Probabilities"][token_num][token_option]["tokenId"]
+                            else:
+                                self.actions[action_id]["Probabilities"][token_num][token_option]["Used"] = False
             selected_text_length = 0
             self.actions[action_id]["Selected Text Length"] = selected_text_length
             for item in self.actions[action_id]["Options"]:
@@ -1547,15 +1548,6 @@ class KoboldStoryRegister(object):
             #First let's check if we did streaming, as we can just replace those items with these
             old_options = copy.deepcopy(self.actions[self.action_count+1]["Options"])
             i=-1
-            
-            #First since the probabilities are run first we could have a dummy option in our options list. Lets look for that and kill it (after grabing the probabilities
-            probabilities = []
-            for option in self.actions[self.action_count+1]["Options"]:
-                if 'temp_prob' in option:
-                    probabilities = option['Probabilities']
-                    self.actions[self.action_count+1]["Options"] = []
-                    break
-            
             for option in option_list:
                 i+=1
                 found = False
@@ -1564,23 +1556,32 @@ class KoboldStoryRegister(object):
                         item['text'] = option
                         del item['stream_id']
                         found = True
-                        tokens = self.koboldai_vars.tokenizer.encode(option)
-                        for token_num in range(len(item["Probabilities"])):
-                            for token_option in range(len(item["Probabilities"][token_num])):
-                                if token_num < len(tokens):
-                                    item["Probabilities"][token_num][token_option]["Used"] = tokens[token_num] == item["Probabilities"][token_num][token_option]["tokenId"]
-                                else:
-                                    item["Probabilities"][token_num][token_option]["Used"] = False
+                        if 'Probabilities' in item:
+                            tokens = self.koboldai_vars.tokenizer.encode(option)
+                            for token_num in range(len(item["Probabilities"])):
+                                for token_option in range(len(item["Probabilities"][token_num])):
+                                    if token_num < len(tokens):
+                                        item["Probabilities"][token_num][token_option]["Used"] = tokens[token_num] == item["Probabilities"][token_num][token_option]["tokenId"]
+                                    else:
+                                        item["Probabilities"][token_num][token_option]["Used"] = False
                         break
                     elif item['text'] == option:
                         found = True
                         if 'stream_id' in item:
                             del item['stream_id']
                         found = True
+                        if 'Probabilities' in item:
+                            tokens = self.koboldai_vars.tokenizer.encode(option)
+                            for token_num in range(len(item["Probabilities"])):
+                                for token_option in range(len(item["Probabilities"][token_num])):
+                                    if token_num < len(tokens):
+                                        item["Probabilities"][token_num][token_option]["Used"] = tokens[token_num] == item["Probabilities"][token_num][token_option]["tokenId"]
+                                    else:
+                                        item["Probabilities"][token_num][token_option]["Used"] = False
                         break
                         
                 if not found:
-                    self.actions[self.action_count+1]['Options'].append({"text": option, "Pinned": False, "Previous Selection": False, "Edited": False, "Probabilities": probabilities})
+                    self.actions[self.action_count+1]['Options'].append({"text": option, "Pinned": False, "Previous Selection": False, "Edited": False, "Probabilities": []})
         else:
             old_options = None
             self.actions[self.action_count+1] = {
@@ -1752,25 +1753,19 @@ class KoboldStoryRegister(object):
                 stream_offset = int((self.koboldai_vars.generated_tkns-1) / self.koboldai_vars.genamt)
             else:
                 stream_offset = 0
+            option_offset = 0
             if self.action_count+1 in self.actions:
-                #First since the probabilities are run first we could have a dummy option in our options list. Lets look for that and kill it (after grabing the probabilities
-                probabilities = []
-                for option in self.actions[self.action_count+1]["Options"]:
-                    if 'temp_prob' in option:
-                        probabilities = option['Probabilities']
-                        logger.info("Found temp probability")
-                        self.actions[self.action_count+1]["Options"] = []
-                        break
+                for x in range(len(self.actions[self.action_count+1]['Options'])):
+                    option = self.actions[self.action_count+1]['Options'][x]
+                    if option['Pinned'] or option["Previous Selection"] or option["Edited"]:
+                        option_offset = x+1
+            if self.action_count+1 in self.actions:
                 for i in range(len(text_list)):
-                    found = False
-                    for j in range(len(self.actions[self.action_count+1]['Options'])):
-                        if 'stream_id' in self.actions[self.action_count+1]['Options'][j]:
-                            if self.actions[self.action_count+1]['Options'][j]['stream_id'] == i+stream_offset:
-                                found = True
-                                self.actions[self.action_count+1]['Options'][j]['text'] = "{}{}".format(self.actions[self.action_count+1]['Options'][j]['text'], text_list[i])
-                    if not found:
-                        self.actions[self.action_count+1]['Options'].append({"text": text_list[i], "Pinned": False, "Previous Selection": False, "Edited": False, "Probabilities": probabilities, "stream_id": i+stream_offset})
-                        probabilities = []
+                    if i+stream_offset+option_offset < len(self.actions[self.action_count+1]['Options']):
+                        self.actions[self.action_count+1]['Options'][i+stream_offset+option_offset]['text'] = "{}{}".format(self.actions[self.action_count+1]['Options'][i+stream_offset+option_offset]['text'], text_list[i])
+                    else:
+                        logger.info(self.actions[self.action_count+1]['Options'])
+                        self.actions[self.action_count+1]['Options'].append({"text": text_list[i], "Pinned": False, "Previous Selection": False, "Edited": False, "Probabilities": [], "stream_id": i+stream_offset})
             else:
                 self.actions[self.action_count+1] = {"Selected Text": "", "Selected Text Length": 0, "Options": [], "Time": int(time.time())}
                 for i in range(len(text_list)):
@@ -1837,11 +1832,13 @@ class KoboldStoryRegister(object):
                     self.actions[action_id]["Options"][option_number]["Probabilities"] = []
                 self.actions[action_id]["Options"][option_number]['Probabilities'].append(probabilities)
                 process_variable_changes(self.socketio, "story", 'actions', {"id": action_id, 'action':  self.actions[action_id]}, None)
+            else:
+                self.actions[action_id]['Options'].append({"temp_prob": True, "text": "", "Pinned": False, "Previous Selection": False, "Edited": False, "Probabilities": [probabilities], "stream_id": option_number})
         else:
             self.actions[action_id] = {
                 "Selected Text": "",
                 "Selected Text Length": 0,
-                "Options": [{"temp_prob": True, "text": "", "Pinned": False, "Previous Selection": False, "Edited": False, "Probabilities": [probabilities]}],
+                "Options": [{"temp_prob": True, "text": "", "Pinned": False, "Previous Selection": False, "Edited": False, "Probabilities": [probabilities], "stream_id": option_number}],
                 "Time": int(time.time()),
             }
     
