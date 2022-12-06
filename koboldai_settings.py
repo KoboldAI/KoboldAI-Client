@@ -1886,15 +1886,18 @@ class KoboldStoryRegister(object):
         speaker = 'en_5'
         while not make_audio_queue.empty():
             (text, filename) = make_audio_queue.get()
-            audio = self.tts_model.apply_tts(text=text,
-                                    speaker=speaker,
-                                    sample_rate=sample_rate)
-                                    #audio_path=filename)
-            channels = 2 if (audio.ndim == 2 and audio.shape[1] == 2) else 1
-            #y = np.int16(audio)
-            y = np.int16(audio * 2 ** 15)
-            song = pydub.AudioSegment(y.tobytes(), frame_rate=sample_rate, sample_width=2, channels=channels)
-            song.export(filename, format="ogg", bitrate="16k")
+            if text == "":
+                shutil.move("data/empty_audio.ogg", filename)
+            else:
+                audio = self.tts_model.apply_tts(text=text,
+                                        speaker=speaker,
+                                        sample_rate=sample_rate)
+                                        #audio_path=filename)
+                channels = 2 if (audio.ndim == 2 and audio.shape[1] == 2) else 1
+                #y = np.int16(audio)
+                y = np.int16(audio * 2 ** 15)
+                song = pydub.AudioSegment(y.tobytes(), frame_rate=sample_rate, sample_width=2, channels=channels)
+                song.export(filename, format="ogg", bitrate="16k")
         
     def gen_all_audio(self, overwrite=False):
         if self.story_settings.gen_audio and self.koboldai_vars.experimental_features:
