@@ -1915,7 +1915,7 @@ class KoboldStoryRegister(object):
         
     def gen_all_audio(self, overwrite=False):
         if self.story_settings.gen_audio and self.koboldai_vars.experimental_features:
-            for i in reversed(list(self.actions.keys())+[-1]):
+            for i in reversed([-1]+list(self.actions.keys())):
                 self.gen_audio(i, overwrite=False)
         else:
             print("{} and {}".format(self.story_settings.gen_audio, self.koboldai_vars.experimental_features))
