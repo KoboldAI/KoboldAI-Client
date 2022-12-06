@@ -134,6 +134,8 @@ const context_menu_actions = {
 	]
 };
 
+let context_menu_cache = [];
+
 // CTRL-[X]
 const shortcuts = [
 	{key: "s", desc: "Save Story", func: save_story},
@@ -5579,10 +5581,15 @@ process_cookies();
 				continue;
 			}
 
+
 			let item = $e("div", contextMenu, {
 				classes: ["context-menu-item", "noselect", `context-menu-${key}`],
-				"enabled-on": action.enabledOn
+				"enabled-on": action.enabledOn,
+				"cache-index": context_menu_cache.length
 			});
+
+			context_menu_cache.push({shouldShow: action.shouldShow});
+
 			let icon = $e("span", item, {classes: ["material-icons-outlined"], innerText: action.icon});
 			item.append(action.label);
 
@@ -5612,7 +5619,15 @@ process_cookies();
 		// Show only applicable actions in the context menu
 		let contextMenuType = target.getAttribute("context-menu");
 		for (const contextMenuItem of contextMenu.childNodes) {
-			if (contextMenuItem.classList.contains(`context-menu-${contextMenuType}`)) {
+			let shouldShow = contextMenuItem.classList.contains(`context-menu-${contextMenuType}`);
+
+			if (shouldShow) {
+				let cacheIndex = parseInt(contextMenuItem.getAttribute("cache-index"));
+				let cacheEntry = context_menu_cache[cacheIndex];
+				if (cacheEntry && cacheEntry.shouldShow) shouldShow = cacheEntry.shouldShow();
+			}
+
+			if (shouldShow) {
 				contextMenuItem.classList.remove("hidden");
 			} else {
 				contextMenuItem.classList.add("hidden");
@@ -5641,6 +5656,15 @@ process_cookies();
 		if ($el(".action_image")) $(".context-menu-item[enabled-on=GENERATED-IMAGE]").removeClass("disabled");
 
 		$(".context-menu-item[enabled-on=ALWAYS]").removeClass("disabled");
+
+		// Make sure hr isn't first or last visible element
+		let visibles = [];
+		for (const item of contextMenu.children) {
+			if (!item.classList.contains("hidden")) visibles.push(item);
+		}
+		let lastIndex = visibles.length - 1;
+		if (visibles[0].tagName === "HR") visibles[0].classList.add("hidden");
+		if (visibles[lastIndex].tagName === "HR") visibles[lastIndex].classList.add("hidden");
 
 		contextMenu.classList.remove("hidden");
 
