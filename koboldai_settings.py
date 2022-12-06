@@ -636,7 +636,8 @@ class model_settings(settings):
     local_only_variables = ['badwordsids', 'apikey', 'tqdm', 'socketio', 'default_preset', 'koboldai_vars']
     no_save_variables = ['tqdm', 'tqdm_progress', 'tqdm_rem_time', 'socketio', 'modelconfig', 'custmodpth', 'generated_tkns', 
                          'loaded_layers', 'total_layers', 'total_download_chunks', 'downloaded_chunks', 'presets', 'default_preset', 
-                         'koboldai_vars', 'welcome', 'welcome_default', 'simple_randomness', 'simple_creativity', 'simple_repitition']
+                         'koboldai_vars', 'welcome', 'welcome_default', 'simple_randomness', 'simple_creativity', 'simple_repitition',
+                         'badwordsids', 'uid_presets']
     settings_name = "model"
     default_settings = {"rep_pen" : 1.1, "rep_pen_slope": 0.7, "rep_pen_range": 1024, "temp": 0.5, "top_p": 0.9, "top_k": 0.0, "top_a": 0.0, "tfs": 1.0, "typical": 1.0,
                         "sampler_order": [6,0,1,2,3,4,5]}
@@ -764,13 +765,13 @@ class model_settings(settings):
         #Setup TQDP for token generation
         elif name == "generated_tkns" and 'tqdm' in self.__dict__:
             if value == 0:
-                self.tqdm.reset(total=self.genamt)
+                self.tqdm.reset(total=self.genamt * self.numseqs if self.alt_multi_gen else 1 )
                 self.tqdm_progress = 0
             else:
                 self.tqdm.update(value-self.tqdm.n)
-                self.tqdm_progress = int(float(self.generated_tkns)/float(self.genamt)*100)
+                self.tqdm_progress = int(float(self.generated_tkns)/float(self.genamt * self.numseqs if self.alt_multi_gen else 1)*100)
                 if self.tqdm.format_dict['rate'] is not None:
-                    self.tqdm_rem_time = str(datetime.timedelta(seconds=int(float(self.genamt-self.generated_tkns)/self.tqdm.format_dict['rate'])))
+                    self.tqdm_rem_time = str(datetime.timedelta(seconds=int(float((self.genamt * self.numseqs if self.alt_multi_gen else 1)-self.generated_tkns)/self.tqdm.format_dict['rate'])))
         #Setup TQDP for model loading
         elif name == "loaded_layers" and 'tqdm' in self.__dict__:
             if value == 0:
@@ -1713,21 +1714,26 @@ class KoboldStoryRegister(object):
             self.story_settings.gamesaved = False
     
     def stream_tokens(self, text_list):
-        if len(text_list) > 1:
+        if len(text_list) > 1 or (self.koboldai_vars.alt_multi_gen and self.koboldai_vars.numseqs > 1):
+            if self.koboldai_vars.alt_multi_gen: 
+                #since alt_multi_gen is really just several single gens the text list is always 1 deep, so we need some 
+                #other way to figure out wich spot in our options list we're on. We'll figure it out by seeing how many
+                #tokens we generated vs how many each option should take
+                stream_offset = int((self.koboldai_vars.generated_tkns-1) / self.koboldai_vars.genamt)
             if self.action_count+1 in self.actions:
                 for i in range(len(text_list)):
                     found = False
                     for j in range(len(self.actions[self.action_count+1]['Options'])):
                         if 'stream_id' in self.actions[self.action_count+1]['Options'][j]:
-                            if self.actions[self.action_count+1]['Options'][j]['stream_id'] == i:
+                            if self.actions[self.action_count+1]['Options'][j]['stream_id'] == i+stream_offset:
                                 found = True
                                 self.actions[self.action_count+1]['Options'][j]['text'] = "{}{}".format(self.actions[self.action_count+1]['Options'][j]['text'], text_list[i])
                     if not found:
-                        self.actions[self.action_count+1]['Options'].append({"text": text_list[i], "Pinned": False, "Previous Selection": False, "Edited": False, "Probabilities": [], "stream_id": i})
+                        self.actions[self.action_count+1]['Options'].append({"text": text_list[i], "Pinned": False, "Previous Selection": False, "Edited": False, "Probabilities": [], "stream_id": i+stream_offset})
             else:
                 self.actions[self.action_count+1] = {"Selected Text": "", "Selected Text Length": 0, "Options": [], "Time": int(time.time())}
                 for i in range(len(text_list)):
-                    self.actions[self.action_count+1]['Options'].append({"text": text_list[i], "Pinned": False, "Previous Selection": False, "Edited": False, "Probabilities": [], "stream_id": i})
+                    self.actions[self.action_count+1]['Options'].append({"text": text_list[i], "Pinned": False, "Previous Selection": False, "Edited": False, "Probabilities": [], "stream_id": i+stream_offset})
         
             #We need to see if this is the last token being streamed. If so due to the rely it will come in AFTER the actual trimmed final text overwriting it in the UI
             if self.koboldai_vars.tokenizer is not None:
