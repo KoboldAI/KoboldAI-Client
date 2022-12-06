@@ -3197,11 +3197,20 @@ function stop_tts() {
 	document.getElementById("reader").src="";
 	document.getElementById("reader").src="/audio";
 	document.getElementById("play_tts").textContent = "play_arrow";
+	for (item of document.getElementsByClassName("tts_playing")) {
+		item.classList.remove("tts_playing");
+	}
 }
 
 function finished_tts() {
 	next_action = parseInt(document.getElementById("reader").getAttribute("action_id"))+1;
 	action_count = parseInt(document.getElementById("action_count").textContent);
+	if (next_action-1 == "-1") {
+		action = document.getElementById("story_prompt");
+	} else {
+		action = document.getElementById("Selected Text Chunk "+(next_action-1));
+	}
+	action.classList.remove("tts_playing");
 	if (next_action <= action_count) {
 		document.getElementById("reader").src = "/audio?id="+next_action;
 		document.getElementById("reader").setAttribute("action_id", next_action);
@@ -3210,6 +3219,16 @@ function finished_tts() {
 	} else {
 		document.getElementById("play_tts").textContent = "play_arrow";
 	}
+}
+
+function tts_playing() {
+	action_id = document.getElementById("reader").getAttribute("action_id");
+	if (action_id == "-1") {
+		action = document.getElementById("story_prompt");
+	} else {
+		action = document.getElementById("Selected Text Chunk "+action_id);
+	}
+	action.classList.add("tts_playing");
 }
 
 function view_selection_probabilities() {

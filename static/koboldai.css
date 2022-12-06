@@ -3239,3 +3239,7 @@ select {
 	transform-origin: left;
 	filter: brightness(100%);
 }
+
+.tts_playing {
+	text-decoration: underline dotted;
+}
