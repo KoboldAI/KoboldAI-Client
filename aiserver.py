@@ -1268,7 +1268,6 @@ def loadsettings():
         with open("settings/" + getmodelname().replace('/', '_') + ".v2_settings", "r") as file:
             getattr(koboldai_vars, "_model_settings").from_json(file.read())
         
-        processsettings(js)
         file.close()
     if(path.exists(get_config_filename())):
         # Read file contents into JSON object
@@ -10045,7 +10044,12 @@ def UI_2_test_match():
 def UI_2_audio():
     action_id = int(request.args['id']) if 'id' in request.args else koboldai_vars.actions.action_count
     filename = os.path.join(koboldai_vars.save_paths.generated_audio, f"{action_id}.ogg")
+    filename_slow = os.path.join(koboldai_vars.save_paths.generated_audio, f"{action_id}_slow.ogg")
     
+    if os.path.exists(filename_slow):
+        return send_file(
+                 filename_slow, 
+                 mimetype="audio/ogg")
     if not os.path.exists(filename):
         koboldai_vars.actions.gen_audio(action_id)
         start_time = time.time()

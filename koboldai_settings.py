@@ -1316,8 +1316,11 @@ class KoboldStoryRegister(object):
         self.sentence_re = re.compile(r"[^.!?]*[.!?]+\"?\s*", re.S)
         self.story_settings = story_settings
         self.tts_model = None
+        self.tortoise = None
         self.make_audio_thread = None
         self.make_audio_queue = multiprocessing.Queue()
+        self.make_audio_thread_slow = None
+        self.make_audio_queue_slow = multiprocessing.Queue()
         for item in sequence:
             self.append(item)
     
@@ -1930,17 +1933,27 @@ class KoboldStoryRegister(object):
                 self.tts_model.to(torch.device("cpu"))  # gpu or cpu
             
             filename = os.path.join(self.koboldai_vars.save_paths.generated_audio, f"{action_id}.ogg")
+            filename_slow = os.path.join(self.koboldai_vars.save_paths.generated_audio, f"{action_id}_slow.ogg")
                 
             if overwrite or not os.path.exists(filename):
                 if action_id == -1:
                     self.make_audio_queue.put((self.koboldai_vars.prompt, filename))
                 else:
                     self.make_audio_queue.put((self.actions[action_id]['Selected Text'], filename))
-                if self.make_audio_thread is None or not self.make_audio_thread.is_alive():
-                    self.make_audio_thread = threading.Thread(target=self.create_wave, args=(self.tts_model, self.make_audio_queue))
-                    self.make_audio_thread.start()
+                if self.make_audio_thread_slow is None or not self.make_audio_thread_slow.is_alive():
+                    self.make_audio_thread_slow = threading.Thread(target=self.create_wave_slow, args=(self.make_audio_queue_slow, ))
+                    self.make_audio_thread_slow.start()
+            
+            if overwrite or not os.path.exists(filename_slow):
+                if action_id == -1:
+                    self.make_audio_queue_slow.put((self.koboldai_vars.prompt, filename_slow))
+                else:
+                    self.make_audio_queue_slow.put((self.actions[action_id]['Selected Text'], filename_slow))
+                if self.make_audio_thread_slow is None or not self.make_audio_thread_slow.is_alive():
+                    self.make_audio_thread_slow = threading.Thread(target=self.create_wave_slow, args=(self.make_audio_queue_slow, ))
+                    self.make_audio_thread_slow.start()
                 
-    def create_wave(self, model, make_audio_queue):
+    def create_wave(self, make_audio_queue):
         import pydub
         sample_rate = 24000
         speaker = 'en_5'
@@ -1966,7 +1979,39 @@ class KoboldStoryRegister(object):
                     else:
                         output = output + pydub.AudioSegment(np.int16(audio * 2 ** 15).tobytes(), frame_rate=sample_rate, sample_width=2, channels=channels)
                 output.export(filename, format="ogg", bitrate="16k")
+    
+    def create_wave_slow(self, make_audio_queue_slow):
+        import pydub
+        sample_rate = 24000
+        if self.tortoise is None:
+            try:
+                from tortoise import api
+                self.tortoise=api.TextToSpeech()
+            except:
+                self.tortoise = False
         
+        if self.tortoise is not False:
+            while not make_audio_queue_slow.empty():
+                (text, filename) = make_audio_queue_slow.get()
+                logger.info("Creating audio for {}".format(os.path.basename(filename)))
+                if text.strip() == "":
+                    shutil.copy("data/empty_audio.ogg", filename)
+                else:
+                    if len(text) > 20000:
+                        text = self.sentence_re.findall(text)
+                    else:
+                        text = [text]
+                output = None
+                for process_text in text:
+                    audio = self.tortoise.tts_with_preset(process_text, preset='fast').numpy()
+                    channels = 2 if (audio.ndim == 2 and audio.shape[1] == 2) else 1
+                    if output is None:
+                        output = pydub.AudioSegment(np.int16(audio * 2 ** 15).tobytes(), frame_rate=sample_rate, sample_width=2, channels=channels)
+                    else:
+                        output = output + pydub.AudioSegment(np.int16(audio * 2 ** 15).tobytes(), frame_rate=sample_rate, sample_width=2, channels=channels)
+                output.export(filename, format="ogg", bitrate="16k")
+           
+    
     def gen_all_audio(self, overwrite=False):
         if self.story_settings.gen_audio and self.koboldai_vars.experimental_features:
             for i in reversed([-1]+list(self.actions.keys())):
