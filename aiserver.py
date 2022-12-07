@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 #==================================================================#
 # KoboldAI
-# Version: 1.19.1
+# Version: 1.19.2
 # By: The KoboldAI Community
 #==================================================================#
 
@@ -171,6 +171,7 @@ model_menu = {
         ["NSFW Models", "nsfwlist", "", True],
         ["Untuned OPT", "optlist", "", True],
         ["Untuned GPT-Neo/J", "gptneolist", "", True],
+        ["Untuned Pythia", "pythialist", "", True],
         ["Untuned Fairseq Dense", "fsdlist", "", True],
         ["Untuned Bloom", "bloomlist", "", True],
         ["Untuned XGLM", "xglmlist", "", True],
@@ -201,6 +202,7 @@ model_menu = {
         ["OPT Nerys 6B V2 (Hybrid)", "KoboldAI/OPT-6B-nerys-v2", "16GB", False],
         ["Janeway FSD 6.7B", "KoboldAI/fairseq-dense-6.7B-Janeway", "16GB", False],
         ["Janeway Neo 6B", "KoboldAI/GPT-J-6B-Janeway", "16GB", False],
+        ["Qilin Lit 6B (SFW)", "rexwang8/qilin-lit-6b", "16GB", False],       
         ["Janeway Neo 2.7B", "KoboldAI/GPT-Neo-2.7B-Janeway", "8GB", False],
         ["Janeway FSD 2.7B", "KoboldAI/fairseq-dense-2.7B-Janeway", "8GB", False],
         ["Nerys FSD 2.7B (Hybrid)", "KoboldAI/fairseq-dense-2.7B-Nerys", "8GB", False],
@@ -230,10 +232,29 @@ model_menu = {
         ],
     'gptneolist': [
         ["GPT-NeoX 20B", "EleutherAI/gpt-neox-20b", "64GB", False],
+        ["Pythia 13B (NeoX, Same dataset)", "EleutherAI/pythia-13b", "32GB", False],
         ["GPT-J 6B", "EleutherAI/gpt-j-6B", "16GB", False],
         ["GPT-Neo 2.7B", "EleutherAI/gpt-neo-2.7B", "8GB", False],
         ["GPT-Neo 1.3B", "EleutherAI/gpt-neo-1.3B", "6GB", False],
+        ["Pythia 800M (NeoX, Same dataset)", "EleutherAI/pythia-800m", "4GB", False],
+        ["Pythia 350M (NeoX, Same dataset)", "EleutherAI/pythia-350m", "2GB", False],
         ["GPT-Neo 125M", "EleutherAI/gpt-neo-125M", "2GB", False],
+        ["Return to Main Menu", "mainmenu", "", True],
+        ],
+    'pythialist': [
+        ["Pythia 13B Deduped", "EleutherAI/pythia-13b-deduped", "32GB", False],
+        ["Pythia 13B", "EleutherAI/pythia-13b", "32GB", False],
+        ["Pythia 6.7B Deduped", "EleutherAI/pythia-6.7b-deduped", "16GB", False],
+        ["Pythia 6.7B", "EleutherAI/pythia-6.7b", "16GB", False],
+        ["Pythia 1.3B Deduped", "EleutherAI/pythia-1.3b-deduped", "6GB", False],
+        ["Pythia 1.3B", "EleutherAI/pythia-1.3b", "6GB", False],
+        ["Pythia 800M", "EleutherAI/pythia-800m", "4GB", False],
+        ["Pythia 350M Deduped", "EleutherAI/pythia-350m-deduped", "2GB", False],
+        ["Pythia 350M", "EleutherAI/pythia-350m", "2GB", False],        
+        ["Pythia 125M Deduped", "EleutherAI/pythia-125m-deduped", "2GB", False],
+        ["Pythia 125M", "EleutherAI/pythia-125m", "2GB", False],
+        ["Pythia 19M Deduped", "EleutherAI/pythia-19m-deduped", "1GB", False],
+        ["Pythia 19M", "EleutherAI/pythia-19m", "1GB", False],
         ["Return to Main Menu", "mainmenu", "", True],
         ],
     'gpt2list': [
@@ -1166,7 +1187,7 @@ def loadmodelsettings():
     if("nobreakmodel" in js):
         koboldai_vars.nobreakmodel = js["nobreakmodel"]
     if("sampler_order" in js):
-        sampler_order = koboldai_vars.sampler_order
+        sampler_order = js["sampler_order"]
         if(len(sampler_order) < 7):
             sampler_order = [6] + sampler_order
         koboldai_vars.sampler_order = sampler_order
@@ -1247,6 +1268,119 @@ def loadsettings():
         with open("settings/" + getmodelname().replace('/', '_') + ".v2_settings", "r") as file:
             getattr(koboldai_vars, "_model_settings").from_json(file.read())
         
+        processsettings(js)
+        file.close()
+    if(path.exists(get_config_filename())):
+        # Read file contents into JSON object
+        file = open(get_config_filename(), "r")
+        js   = json.load(file)
+        
+        processsettings(js)
+        file.close()
+        
+def processsettings(js):
+# Copy file contents to vars
+    if("apikey" in js):
+        # If the model is the HORDE, then previously saved API key in settings
+        # Will always override a new key set.
+        if koboldai_vars.model != "CLUSTER" or koboldai_vars.apikey == '':
+            koboldai_vars.apikey = js["apikey"]
+    if("andepth" in js):
+        koboldai_vars.andepth = js["andepth"]
+    if("sampler_order" in js):
+        sampler_order = js["sampler_order"]
+        if(len(sampler_order) < 7):
+            sampler_order = [6] + sampler_order
+        koboldai_vars.sampler_order = sampler_order
+    if("temp" in js):
+        koboldai_vars.temp = js["temp"]
+    if("top_p" in js):
+        koboldai_vars.top_p = js["top_p"]
+    if("top_k" in js):
+        koboldai_vars.top_k = js["top_k"]
+    if("tfs" in js):
+        koboldai_vars.tfs = js["tfs"]
+    if("typical" in js):
+        koboldai_vars.typical = js["typical"]
+    if("top_a" in js):
+        koboldai_vars.top_a = js["top_a"]
+    if("rep_pen" in js):
+        koboldai_vars.rep_pen = js["rep_pen"]
+    if("rep_pen_slope" in js):
+        koboldai_vars.rep_pen_slope = js["rep_pen_slope"]
+    if("rep_pen_range" in js):
+        koboldai_vars.rep_pen_range = js["rep_pen_range"]
+    if("genamt" in js):
+        koboldai_vars.genamt = js["genamt"]
+    if("max_length" in js):
+        koboldai_vars.max_length = js["max_length"]
+    if("ikgen" in js):
+        koboldai_vars.ikgen = js["ikgen"]
+    if("formatoptns" in js):
+        koboldai_vars.formatoptns = js["formatoptns"]
+    if("numseqs" in js):
+        koboldai_vars.numseqs = js["numseqs"]
+    if("widepth" in js):
+        koboldai_vars.widepth = js["widepth"]
+    if("useprompt" in js):
+        koboldai_vars.useprompt = js["useprompt"]
+    if("adventure" in js):
+        koboldai_vars.adventure = js["adventure"]
+    if("chatmode" in js):
+        koboldai_vars.chatmode = js["chatmode"]
+    if("chatname" in js):
+        koboldai_vars.chatname = js["chatname"]
+    if("dynamicscan" in js):
+        koboldai_vars.dynamicscan = js["dynamicscan"]
+    if("nopromptgen" in js):
+        koboldai_vars.nopromptgen = js["nopromptgen"]
+    if("rngpersist" in js):
+        koboldai_vars.rngpersist = js["rngpersist"]
+    if("nogenmod" in js):
+        koboldai_vars.nogenmod = js["nogenmod"]
+    if("fulldeterminism" in js):
+        koboldai_vars.full_determinism = js["fulldeterminism"]
+    if("autosave" in js):
+        koboldai_vars.autosave = js["autosave"]
+    if("newlinemode" in js):
+        koboldai_vars.newlinemode = js["newlinemode"]
+    if("welcome" in js):
+        koboldai_vars.welcome = js["welcome"]
+    if("output_streaming" in js):
+        koboldai_vars.output_streaming = js["output_streaming"]
+    if("show_probs" in js):
+        koboldai_vars.show_probs = js["show_probs"]
+    if("show_budget" in js):
+        koboldai_vars.show_budget = js["show_budget"]
+    
+    if("seed" in js):
+        koboldai_vars.seed = js["seed"]
+        if(koboldai_vars.seed is not None):
+            koboldai_vars.seed_specified = True
+        else:
+            koboldai_vars.seed_specified = False
+    else:
+        koboldai_vars.seed_specified = False
+
+    if("antemplate" in js):
+        koboldai_vars.setauthornotetemplate = js["antemplate"]
+        if(not koboldai_vars.gamestarted):
+            koboldai_vars.authornotetemplate = koboldai_vars.setauthornotetemplate
+    
+    if("userscripts" in js):
+        koboldai_vars.userscripts = []
+        for userscript in js["userscripts"]:
+            if type(userscript) is not str:
+                continue
+            userscript = userscript.strip()
+            if len(userscript) != 0 and all(q not in userscript for q in ("..", ":")) and all(userscript[0] not in q for q in ("/", "\\")) and os.path.exists(fileops.uspath(userscript)):
+                koboldai_vars.userscripts.append(userscript)
+
+    if("corescript" in js and type(js["corescript"]) is str and all(q not in js["corescript"] for q in ("..", ":")) and all(js["corescript"][0] not in q for q in ("/", "\\"))):
+        koboldai_vars.corescript = js["corescript"]
+    else:
+        koboldai_vars.corescript = "default.lua"
+
 #==================================================================#
 #  Load a soft prompt from a file
 #==================================================================#
@@ -2802,6 +2936,15 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
                             if utils.num_shards is None or utils.current_shard >= utils.num_shards:
                                 if utils.offload_index:
                                     for name, tensor in utils.named_buffers:
+                                        dtype = tensor.dtype
+                                        if convert_to_float16 and breakmodel.primary_device != "cpu" and vars.hascuda and (vars.breakmodel or vars.usegpu):
+                                            dtype = torch.float16
+                                        if breakmodel.primary_device == "cpu" or (not vars.usegpu and not vars.breakmodel):
+                                            dtype = torch.float32
+                                        if name in model_dict and model_dict[name].dtype is not dtype:
+                                            model_dict[name] = model_dict[name].to(dtype)
+                                        if tensor.dtype is not dtype:
+                                            tensor = tensor.to(dtype)
                                         if name not in utils.offload_index:
                                             accelerate.utils.offload_weight(tensor, name, "accelerate-disk-cache", index=utils.offload_index)
                                     accelerate.utils.save_offload_index(utils.offload_index, "accelerate-disk-cache")
@@ -2972,7 +3115,7 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
                         if not args.colab or args.savemodel:
                             import shutil
                             tokenizer.save_pretrained("models/{}".format(koboldai_vars.model.replace('/', '_')))
-                            if(koboldai_vars.fp32_model):  # Use save_pretrained to convert fp32 models to fp16
+                            if(koboldai_vars.fp32_model and ("breakmodel" not in globals() or not breakmodel.disk_blocks)):  # Use save_pretrained to convert fp32 models to fp16, unless we are using disk cache because save_pretrained is not supported in that case
                                 model = model.half()
                                 model.save_pretrained("models/{}".format(koboldai_vars.model.replace('/', '_')), max_shard_size="500MiB")
                             else:  # For fp16 models, we can just copy the model files directly
