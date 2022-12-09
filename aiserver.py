@@ -5710,7 +5710,10 @@ def torch_raw_generate(
     koboldai_vars.inference_config.stop_at_genamt = do_dynamic_wi
 
     # Makes stopping criteria hook happy
-    model.kai_scanner_excluded_world_info = model.kai_scanner_excluded_world_info or set()
+    try:
+        model.kai_scanner_excluded_world_info = model.kai_scanner_excluded_world_info
+    except AttributeError:
+        model.kai_scanner_excluded_world_info = set()
 
     logger.debug("torch_raw_generate: setup inference_config {}s".format(time.time()-start_time))
     
