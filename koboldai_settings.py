@@ -929,7 +929,7 @@ class story_settings(settings):
                     if self.story_id == j["story_id"]:
                         break
             except FileNotFoundError:
-                raise FileNotFoundError("Malformed save file: Missing story.json")
+                raise FileNotFoundError(f"Malformed save file: Missing story.json in {self.save_paths.base}")
 
             disambiguator += 1
             self.save_paths.base = os.path.join("stories", save_name + (f" ({disambiguator})" if disambiguator else ""))
@@ -946,7 +946,13 @@ class story_settings(settings):
             logger.info("Migrating v2 save")
             with open(v2_path, "r") as file:
                 v2j = json.load(file)
-            assert v2j["story_id"] == self.story_id
+            
+            try:
+                assert v2j["story_id"] == self.story_id
+            except AssertionError:
+                logger.error(f"Story mismatch in v2 migration! Existing file had story id {v2j['story_id']} but we have {self.story_id}")
+                raise
+
             shutil.move(v2_path, os.path.join(self.save_paths.base, ".v2_old.json"))
 
         with open(self.save_paths.story, "w") as file:
