@@ -3599,7 +3599,6 @@ function update_context(data) {
 	
 
 	for (const entry of data) {
-		console.info(entry)
 		let contextClass = "context-" + ({
 			soft_prompt: "sp",
 			prompt: "prompt",
@@ -6681,4 +6680,4 @@ function imgGenRetry() {
 	});
 
 
-})()
+})();
