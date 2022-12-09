@@ -1268,14 +1268,6 @@ def loadsettings():
         with open("settings/" + getmodelname().replace('/', '_') + ".v2_settings", "r") as file:
             getattr(koboldai_vars, "_model_settings").from_json(file.read())
         
-        file.close()
-    if(path.exists(get_config_filename())):
-        # Read file contents into JSON object
-        file = open(get_config_filename(), "r")
-        js   = json.load(file)
-        
-        processsettings(js)
-        file.close()
         
 def processsettings(js):
 # Copy file contents to vars
