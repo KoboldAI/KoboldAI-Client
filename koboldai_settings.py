@@ -18,6 +18,9 @@ serverstarted = False
 queue = None
 multi_story = False
 
+if importlib.util.find_spec("tortoise") is not None:
+    from tortoise import api
+    from tortoise.utils.audio import load_voices
 
 def clean_var_for_emit(value):
     if isinstance(value, KoboldStoryRegister) or isinstance(value, KoboldWorldInfo):
@@ -1983,16 +1986,16 @@ class KoboldStoryRegister(object):
     def create_wave_slow(self, make_audio_queue_slow):
         import pydub
         sample_rate = 24000
+        speaker = 'train_daws'
         if self.tortoise is None:
-            try:
-                from tortoise import api
-                self.tortoise=api.TextToSpeech()
-            except:
-                self.tortoise = False
+           self.tortoise=api.TextToSpeech()
         
-        if self.tortoise is not False:
+        if importlib.util.find_spec("tortoise") is not None:
+            voice_samples, conditioning_latents = load_voices([speaker])
             while not make_audio_queue_slow.empty():
+                start_time = time.time()
                 (text, filename) = make_audio_queue_slow.get()
+                text_length = len(text)
                 logger.info("Creating audio for {}".format(os.path.basename(filename)))
                 if text.strip() == "":
                     shutil.copy("data/empty_audio.ogg", filename)
@@ -2003,13 +2006,14 @@ class KoboldStoryRegister(object):
                         text = [text]
                 output = None
                 for process_text in text:
-                    audio = self.tortoise.tts_with_preset(process_text, preset='fast').numpy()
+                    audio = self.tortoise.tts_with_preset(process_text, preset='ultra_fast', voice_samples=voice_samples, conditioning_latents=conditioning_latents).numpy()
                     channels = 2 if (audio.ndim == 2 and audio.shape[1] == 2) else 1
                     if output is None:
                         output = pydub.AudioSegment(np.int16(audio * 2 ** 15).tobytes(), frame_rate=sample_rate, sample_width=2, channels=channels)
                     else:
                         output = output + pydub.AudioSegment(np.int16(audio * 2 ** 15).tobytes(), frame_rate=sample_rate, sample_width=2, channels=channels)
                 output.export(filename, format="ogg", bitrate="16k")
+                logger.info("Slow audio took {} for {} characters".format(time.time()-start_time, text_length))
            
     
     def gen_all_audio(self, overwrite=False):
