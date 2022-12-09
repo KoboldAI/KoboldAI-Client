@@ -34,6 +34,7 @@ socket.on("log_message", function(data){process_log_message(data);});
 socket.on("debug_message", function(data){console.log(data);});
 socket.on("scratchpad_response", recieveScratchpadResponse);
 socket.on("show_error_notification", function(data) { reportError(data.title, data.text) });
+socket.on("show_story_review", showStoryReview);
 //socket.onAny(function(event_name, data) {console.log({"event": event_name, "class": data.classname, "data": data});});
 
 // Must be done before any elements are made; we track their changes.
@@ -6681,3 +6682,14 @@ function imgGenRetry() {
 
 
 })();
+
+function requestStoryReview(who, template=null) {
+	let data = {who: who};
+	if (template) data.template = template;
+	socket.emit("story_review", data);
+}
+
+function showStoryReview(data) {
+	console.log(`${data.who}: ${data.review}`)
+
+}

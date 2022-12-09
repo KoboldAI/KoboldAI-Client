@@ -9927,6 +9927,41 @@ def UI_2_refresh_auto_memory(data):
     koboldai_vars.auto_memory += "\n\n Final Result:\n" + output
 
 
+#==================================================================#
+# Story review zero-shot
+#==================================================================#
+@socketio.on("story_review")
+@logger.catch
+def UI_2_story_review(data):
+    who = data["who"]
+    template = data.get("template", "\n\n%s's thoughts on this situation:\n\"")
+    prompt = template % who
+    logger.info(prompt)
+
+    context = koboldai_vars.calc_ai_text(
+        prompt,
+        return_text=True,
+        send_context=False
+    )
+
+    out_text = raw_generate(
+        context,
+        max_new=30,
+    ).decoded[0]
+
+
+    out_text = re.sub(r"[\s\(\)]", " ", out_text)
+    # Beware contractions!
+    # out_text = re.sub(r"[\s!\.\?]'", " ", out_text)
+    while "  " in out_text:
+        out_text = out_text.replace("  ", " ")
+
+    if '"' in out_text:
+        out_text = out_text.split('"')[0]
+
+    out_text = out_text.strip()
+    out_text = utils.trimincompletesentence(out_text)
+    emit("show_story_review", {"who": who, "review": out_text})
 
 #==================================================================#
 # Get next 100 actions for infinate scroll
