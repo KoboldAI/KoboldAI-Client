@@ -4672,6 +4672,9 @@ def kml(txt):
 #  Send start message and tell Javascript to set UI state
 #==================================================================#
 def setStartState():
+    # Old UI sets welcome to a boolean sometimes
+    koboldai_vars.welcome = koboldai_vars.welcome or koboldai_vars.welcome_default
+
     if koboldai_vars.welcome != koboldai_vars.welcome_default:
         txt = koboldai_vars.welcome + "<br/>"
     else:
