@@ -937,11 +937,12 @@ class story_settings(settings):
             disambiguator += 1
             self.save_paths.base = os.path.join("stories", save_name + (f" ({disambiguator})" if disambiguator else ""))
         
-        if not os.path.exists(self.save_paths.base):
-            # We are making the story for the first time. Setup the directory structure.
-            os.mkdir(self.save_paths.base)
-            os.mkdir(self.save_paths.generated_audio)
-            os.mkdir(self.save_paths.generated_images)
+        # Setup the directory structure.
+        for path in self.save_paths.required_paths:
+            try:
+                os.mkdir(path)
+            except FileExistsError:
+                pass
 
         # Convert v2 if applicable
         v2_path = os.path.join("stories", f"{self.story_name}_v2.json")
@@ -955,6 +956,17 @@ class story_settings(settings):
         with open(self.save_paths.story, "w") as file:
             file.write(self.to_json())
         self.gamesaved = True
+    
+    def update_story_path_structure(self, path: str) -> None:
+        # Upon loading a file, makes directories that are required for certain
+        # functionality.
+        sp = SavePaths(path)
+
+        for path in sp.required_paths:
+            try:
+                os.mkdir(path)
+            except FileExistsError:
+                pass
 
     def save_revision(self):
         game = json.loads(self.to_json())
@@ -2437,6 +2449,16 @@ class KoboldWorldInfo(object):
 @dataclass
 class SavePaths:
     base: str
+
+    @property
+    def required_paths(self) -> List[str]:
+        return [
+            self.base,
+            self.story,
+            self.generated_audio,
+            self.generated_images,
+            self.commentator_pictures
+        ]
 
     @property
     def story(self) -> str:
