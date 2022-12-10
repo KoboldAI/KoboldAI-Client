@@ -18,6 +18,9 @@ serverstarted = False
 queue = None
 multi_story = False
 
+if importlib.util.find_spec("tortoise") is not None:
+    from tortoise import api
+    from tortoise.utils.audio import load_voices
 
 def clean_var_for_emit(value):
     if isinstance(value, KoboldStoryRegister) or isinstance(value, KoboldWorldInfo):
@@ -932,7 +935,8 @@ class story_settings(settings):
                     if self.story_id == j["story_id"]:
                         break
             except FileNotFoundError:
-                raise FileNotFoundError("Malformed save file: Missing story.json")
+                logger.error(f"Malformed save file: Missing story.json in {self.save_paths.base}. Populating it with new data.")
+                break
 
             disambiguator += 1
             self.save_paths.base = os.path.join("stories", save_name + (f" ({disambiguator})" if disambiguator else ""))
@@ -950,8 +954,11 @@ class story_settings(settings):
             logger.info("Migrating v2 save")
             with open(v2_path, "r") as file:
                 v2j = json.load(file)
-            assert v2j["story_id"] == self.story_id
-            shutil.move(v2_path, os.path.join(self.save_paths.base, ".v2_old.json"))
+            
+            if v2j["story_id"] == self.story_id:
+                shutil.move(v2_path, os.path.join(self.save_paths.base, ".v2_old.json"))
+            else:
+                logger.warning(f"Story mismatch in v2 migration. Existing file had story id {v2j['story_id']} but we have {self.story_id}")
 
         with open(self.save_paths.story, "w") as file:
             file.write(self.to_json())
@@ -2001,16 +2008,16 @@ class KoboldStoryRegister(object):
     def create_wave_slow(self, make_audio_queue_slow):
         import pydub
         sample_rate = 24000
+        speaker = 'train_daws'
         if self.tortoise is None:
-            try:
-                from tortoise import api
-                self.tortoise=api.TextToSpeech()
-            except:
-                self.tortoise = False
+           self.tortoise=api.TextToSpeech()
         
-        if self.tortoise is not False:
+        if importlib.util.find_spec("tortoise") is not None:
+            voice_samples, conditioning_latents = load_voices([speaker])
             while not make_audio_queue_slow.empty():
+                start_time = time.time()
                 (text, filename) = make_audio_queue_slow.get()
+                text_length = len(text)
                 logger.info("Creating audio for {}".format(os.path.basename(filename)))
                 if text.strip() == "":
                     shutil.copy("data/empty_audio.ogg", filename)
@@ -2021,13 +2028,14 @@ class KoboldStoryRegister(object):
                         text = [text]
                 output = None
                 for process_text in text:
-                    audio = self.tortoise.tts_with_preset(process_text, preset='fast').numpy()
+                    audio = self.tortoise.tts_with_preset(process_text, preset='ultra_fast', voice_samples=voice_samples, conditioning_latents=conditioning_latents).numpy()
                     channels = 2 if (audio.ndim == 2 and audio.shape[1] == 2) else 1
                     if output is None:
                         output = pydub.AudioSegment(np.int16(audio * 2 ** 15).tobytes(), frame_rate=sample_rate, sample_width=2, channels=channels)
                     else:
                         output = output + pydub.AudioSegment(np.int16(audio * 2 ** 15).tobytes(), frame_rate=sample_rate, sample_width=2, channels=channels)
                 output.export(filename, format="ogg", bitrate="16k")
+                logger.info("Slow audio took {} for {} characters".format(time.time()-start_time, text_length))
            
     
     def gen_all_audio(self, overwrite=False):
