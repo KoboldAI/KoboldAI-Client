@@ -34,7 +34,6 @@ socket.on("log_message", function(data){process_log_message(data);});
 socket.on("debug_message", function(data){console.log(data);});
 socket.on("scratchpad_response", recieveScratchpadResponse);
 socket.on("show_error_notification", function(data) { reportError(data.title, data.text) });
-socket.on("show_story_review", showStoryReview);
 //socket.onAny(function(event_name, data) {console.log({"event": event_name, "class": data.classname, "data": data});});
 
 // Must be done before any elements are made; we track their changes.
@@ -69,6 +68,7 @@ var actions_data = {};
 var setup_wi_toggles = [];
 var scroll_trigger_element = undefined; //undefined means not currently set. If set to null, it's disabled.
 var drag_id = null;
+var story_commentary_characters = {};
 const on_colab = $el("#on_colab").textContent == "true";
 
 // Each entry into this array should be an object that looks like:
@@ -141,9 +141,9 @@ let context_menu_cache = [];
 const shortcuts = [
 	{key: "s", desc: "Save Story", func: save_story},
 	{key: "o", desc: "Open Story", func: load_story_list},
-	{key: "z", desc: "Undoes last story action", func: () => socket.emit("back", {}), criteria: canNavigateStoryHistory},
-	{key: "y", desc: "Redoes last story action", func: () => socket.emit("redo", {}), criteria: canNavigateStoryHistory},
-	{key: "e", desc: "Retries last story action", func: () => socket.emit("retry", {}), criteria: canNavigateStoryHistory},
+	{key: "z", desc: "Undoes last story action", func: storyBack, criteria: canNavigateStoryHistory},
+	{key: "y", desc: "Redoes last story action", func: storyRedo, criteria: canNavigateStoryHistory},
+	{key: "e", desc: "Retries last story action", func: storyRetry, criteria: canNavigateStoryHistory},
 	{key: "m", desc: "Focuses Memory", func: () => focusEl("#memory")},
 	{key: "u", desc: "Focuses Author's Note", func: () => focusEl("#authors_notes")}, // CTRL-N is reserved :^(
 	{key: "g", desc: "Focuses game text", func: () => focusEl("#input_text")},
@@ -219,6 +219,34 @@ function disconnect() {
 		item.classList.add("NotConnected");
 	}
 	document.getElementById("disconnect_message").classList.remove("hidden");
+}
+
+function storySubmit() {
+	disruptStoryState();
+	socket.emit('submit', {'data': document.getElementById('input_text').value, 'theme': document.getElementById('themetext').value});
+	document.getElementById('input_text').value = '';
+	document.getElementById('themetext').value = '';
+}
+
+function storyBack() {
+	disruptStoryState();
+	socket.emit('back', {});
+}
+
+function storyRedo() {
+	disruptStoryState();
+	socket.emit('redo', {});
+}
+
+function storyRetry() {
+	disruptStoryState();
+	socket.emit('retry', {});
+}
+
+function disruptStoryState() {
+	// This function is responsible for wiping things away which are sensitive
+	// to story state
+	$el("#story-review").classList.add("hidden");
 }
 
 function reset_story() {
@@ -3117,7 +3145,7 @@ function retry_from_here() {
 		action_count = parseInt(document.getElementById("action_count").textContent);
 		//console.log(chunk);
 		for (let i = 0; i < (action_count-chunk); i++) {
-			socket.emit('back', {});
+			storyBack();
 		}
 		socket.emit('submit', {'data': "", 'theme': ""});
 		document.getElementById('input_text').value = '';
@@ -6683,13 +6711,178 @@ function imgGenRetry() {
 
 })();
 
-function requestStoryReview(who, template=null) {
-	let data = {who: who};
-	if (template) data.template = template;
-	socket.emit("story_review", data);
+(function() {
+	const characterContainer = $el(".story-commentary-characters");
+	const settingsContainer = $el("#story-commentary-settings");
+	const storyReviewImg = $el("#story-review-img");
+
+	function syncCommentatorCards() {
+		story_commentary_characters = {};
+		for (const card of document.getElementsByClassName("story-commentary-character")) {
+			let idString = card.getAttribute("commentator-id");
+			story_commentary_characters[idString] = card.querySelector(".name").value;
+		}
+
+		socket.emit("var_change", {
+			ID: "story_commentary_characters",
+			value: story_commentary_characters
+		});
+	}
+
+	sync_hooks.push({
+		class: "story",
+		name: "commentary_characters",
+		func: function(commentators) {
+			$(".story-commentary-character").remove();
+			for (const [idString, name] of Object.entries(commentators)) {
+				makeCommentatorCard(idString, name)
+			}
+		}
+	})
+
+	function makeCommentatorCard(idString=null, name=null) {
+
+		// String due to JS array keys and DOM attributes being strings. Sux!
+		while (!idString || $el(`[commentator-id="${idString}"`)) {
+			idString = Math.floor(Math.random() * 1_000_000_000).toString();
+		}
+
+		let card = $e("div", characterContainer, {
+			classes: ["story-commentary-character"],
+			"commentator-id": idString,
+		});
+		let imageContainer = $e("div", card, {classes: ["image-container"]});
+		let placeholderImage = $e("span", imageContainer, {
+			classes: ["material-icons-outlined"],
+			tooltip: "Upload a picture for this character",
+			innerText: "add_a_photo"
+		});
+		let image = $e("img", imageContainer, {
+			classes: ["hidden"],
+			src: `/get_commentator_picture/${idString}`
+		});
+
+		image.addEventListener("load", function() {
+			image.classList.remove("hidden");
+			placeholderImage.classList.add("hidden");
+		});
+
+		let input = $e("input", card, {classes: ["name"], placeholder: "Character name"});
+		if (name) input.value = name;
+		input.addEventListener("change", syncCommentatorCards);
+
+		let deleteButton = $e("span", card, {
+			classes: ["close", "material-icons-outlined"],
+			tooltip: "Upload a picture for this character",
+			innerText: "clear"
+		});
+		deleteButton.addEventListener("click", function() {
+			card.remove();
+			syncCommentatorCards();
+		});
+
+		const imgInput = $e("input", null, {type: "file", accept: "image/png,image/x-png,image/gif,image/jpeg"});
+		imgInput.addEventListener("change", async function() {
+			const file = imgInput.files[0];
+			if (file.type.split("/")[0] !== "image") {
+				reportError("Unable to upload commentary image", `File type ${file.type} is not a compatible image type!`)
+				return;
+			}
+
+			let objectUrl = URL.createObjectURL(file);
+			placeholderImage.classList.add("hidden");
+			image.src = objectUrl;
+			image.classList.remove("hidden");
+
+			let r = await fetch(`/set_commentator_picture/${idString}`, {
+				method: "POST",
+				body: file
+			});
+		});
+
+		imageContainer.addEventListener("click", function() {
+			imgInput.click();
+		});
+
+		characterContainer.scrollIntoView();
+	}
+
+	$el("#story-commentary-settings > .add").addEventListener("click", () => makeCommentatorCard());
+
+	async function showStoryReview(data) {
+		console.log(`${data.who}: ${data.review}`)
+		storyReviewImg.src = `/get_commentator_picture/${data.id}`;
+		$el("#story-review-author").innerText = data.who;
+		$el("#story-review-content").innerText = data.review;
+		
+		$el("#story-review").classList.remove("hidden");
+	}
+	socket.on("show_story_review", showStoryReview);
+
+	let x = $el("#story-commentary-enable").querySelector("input")
+	console.log(x)
+
+	// Bootstrap toggle requires jQuery for events
+	$($el("#story-commentary-enable").querySelector("input")).change(function() {
+		socket.emit("var_change", {
+			ID: "story_commentary_enabled",
+			value: this.checked
+		});
+	});
+
+	sync_hooks.push({
+		class: "story",
+		name: "commentary_enabled",
+		func: function(commentaryEnabled) {
+			if (commentaryEnabled) {
+				settingsContainer.classList.remove("disabled");
+			} else {
+				settingsContainer.classList.add("disabled");
+			}
+		}
+	});
+
+	storyReviewImg.addEventListener("error", function() {
+		if (storyReviewImg.src === "/static/default_pfp.png") {
+			// Something has gone horribly wrong
+			return;
+		}
+		storyReviewImg.src = "/static/default_pfp.png";
+	});
+
+	$el("#story-review-img").addEventListener
+})();
+
+for (const el of document.querySelectorAll("[sync-var]")) {
+	let varName = el.getAttribute("sync-var");
+
+	el.addEventListener("change", function() {
+		sync_to_server(this);
+	});
+
+	const proxy = $el(`[sync-proxy-host="${varName}"]`);
+	if (proxy) {
+		el.addEventListener("input", function() {
+			proxy.value = this.value;
+		});
+	}
+
+	let slug = varName.replaceAll(".", "_");
+	el.classList.add("var_sync_" + slug);
 }
 
-function showStoryReview(data) {
-	console.log(`${data.who}: ${data.review}`)
+for (const proxy of document.querySelectorAll("[sync-proxy-host]")) {
+	let varName = proxy.getAttribute("sync-proxy-host");
+	const hostEl = $el(`[sync-var="${varName}"]`);
+	if (!hostEl) {
+		throw Error(`Bad sync proxy host ${varName}`)
+	}
 
+	proxy.addEventListener("change", function() {
+		hostEl.value = this.value;
+		socket.emit("var_change", {
+			ID: varName.replaceAll(".", "_"),
+			value: this.value
+		});
+	});
 }

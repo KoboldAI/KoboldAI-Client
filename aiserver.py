@@ -7,6 +7,7 @@
 
 # External packages
 from dataclasses import dataclass
+import random
 import shutil
 import eventlet
 eventlet.monkey_patch(all=True, thread=False, os=False)
@@ -6261,6 +6262,8 @@ def generate(txt, minimum, maximum, found_entries=None):
         gc.collect()
         torch.cuda.empty_cache()
     
+    maybe_review_story()
+
     set_aibusy(0)
 
 #==================================================================#
@@ -9930,13 +9933,19 @@ def UI_2_refresh_auto_memory(data):
 #==================================================================#
 # Story review zero-shot
 #==================================================================#
-@socketio.on("story_review")
-@logger.catch
-def UI_2_story_review(data):
-    who = data["who"]
-    template = data.get("template", "\n\n%s's thoughts on this situation:\n\"")
-    prompt = template % who
-    logger.info(prompt)
+def maybe_review_story():
+    if not (
+        koboldai_vars.commentary_characters
+        and koboldai_vars.commentary_chance
+        and koboldai_vars.commentary_enabled
+    ):
+        return
+
+    if random.randrange(100) > koboldai_vars.commentary_chance:
+        return
+
+    speaker_id, speaker_name = random.choice(list(koboldai_vars.commentary_characters.items()))
+    prompt = "\n\n%s's thoughts on what just happened in this story: \"" % speaker_name
 
     context = koboldai_vars.calc_ai_text(
         prompt,
@@ -9949,10 +9958,8 @@ def UI_2_story_review(data):
         max_new=30,
     ).decoded[0]
 
-
     out_text = re.sub(r"[\s\(\)]", " ", out_text)
-    # Beware contractions!
-    # out_text = re.sub(r"[\s!\.\?]'", " ", out_text)
+
     while "  " in out_text:
         out_text = out_text.replace("  ", " ")
 
@@ -9961,7 +9968,7 @@ def UI_2_story_review(data):
 
     out_text = out_text.strip()
     out_text = utils.trimincompletesentence(out_text)
-    emit("show_story_review", {"who": who, "review": out_text})
+    emit("show_story_review", {"who": speaker_name, "review": out_text, "id": speaker_id})
 
 #==================================================================#
 # Get next 100 actions for infinate scroll

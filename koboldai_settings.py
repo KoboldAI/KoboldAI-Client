@@ -3,7 +3,7 @@ from dataclasses import dataclass
 import importlib
 import os, re, time, threading, json, pickle, base64, copy, tqdm, datetime, sys
 import shutil
-from typing import Union
+from typing import List, Union
 from io import BytesIO
 from flask import has_request_context, session
 from flask_socketio import SocketIO, join_room, leave_room
@@ -898,6 +898,12 @@ class story_settings(settings):
         self.memory_attn_bias = 1
         self.an_attn_bias = 1
         self.chat_style = 0
+
+        # In percent!!!
+        self.commentary_chance = 0
+        # id: {name}
+        self.commentary_characters = {}
+        self.commentary_enabled = False
         
         self.save_paths = SavePaths(os.path.join("stories", self.story_name or "Untitled"))
 
@@ -2443,6 +2449,10 @@ class SavePaths:
     @property
     def generated_images(self) -> str:
         return os.path.join(self.base, "generated_images")
+
+    @property
+    def commentator_pictures(self) -> str:
+        return os.path.join(self.base, "commentator_pictures")
    
 default_rand_range = [0.1, 1, 2]
 default_creativity_range = [0.8, 1]
