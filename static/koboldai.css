@@ -1237,11 +1237,12 @@ body {
 	height: 98vh;
 	margin-left: var(--flyout_menu_closed_width);
 	grid-template-areas: "menuicon gamescreen lefticon"
+						 "menuicon review lefticon"
 					     "menuicon options lefticon"
 						 "menuicon theme lefticon"
 						 "menuicon inputrow lefticon";
 	grid-template-columns: 30px auto 30px;
-	grid-template-rows: auto min-content min-content 100px;
+	grid-template-rows: auto min-content min-content min-content 100px;
 }
 }
 
