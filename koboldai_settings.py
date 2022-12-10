@@ -929,16 +929,22 @@ class story_settings(settings):
                     if self.story_id == j["story_id"]:
                         break
             except FileNotFoundError:
-                raise FileNotFoundError("Malformed save file: Missing story.json")
+                logger.error(f"Malformed save file: Missing story.json in {self.save_paths.base}. Populating it with new data.")
+                break
 
             disambiguator += 1
             self.save_paths.base = os.path.join("stories", save_name + (f" ({disambiguator})" if disambiguator else ""))
         
-        if not os.path.exists(self.save_paths.base):
-            # We are making the story for the first time. Setup the directory structure.
-            os.mkdir(self.save_paths.base)
-            os.mkdir(self.save_paths.generated_audio)
-            os.mkdir(self.save_paths.generated_images)
+        # Setup the directory structure.
+        for path in [
+            self.save_paths.base,
+            self.save_paths.generated_audio,
+            self.save_paths.generated_images,
+        ]:
+            try:
+                os.mkdir(path)
+            except FileExistsError:
+                pass
 
         # Convert v2 if applicable
         v2_path = os.path.join("stories", f"{self.story_name}_v2.json")
@@ -946,8 +952,11 @@ class story_settings(settings):
             logger.info("Migrating v2 save")
             with open(v2_path, "r") as file:
                 v2j = json.load(file)
-            assert v2j["story_id"] == self.story_id
-            shutil.move(v2_path, os.path.join(self.save_paths.base, ".v2_old.json"))
+            
+            if v2j["story_id"] == self.story_id:
+                shutil.move(v2_path, os.path.join(self.save_paths.base, ".v2_old.json"))
+            else:
+                logger.warning(f"Story mismatch in v2 migration. Existing file had story id {v2j['story_id']} but we have {self.story_id}")
 
         with open(self.save_paths.story, "w") as file:
             file.write(self.to_json())
