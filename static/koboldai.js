@@ -251,6 +251,7 @@ function disruptStoryState() {
 
 function reset_story() {
 	//console.log("Resetting story");
+	disruptStoryState();
 	clearTimeout(calc_token_usage_timeout);
 	clearTimeout(game_text_scroll_timeout);
 	clearTimeout(font_size_cookie_timout);
@@ -6834,6 +6835,7 @@ function imgGenRetry() {
 		class: "story",
 		name: "commentary_enabled",
 		func: function(commentaryEnabled) {
+			this.checked = commentaryEnabled;
 			if (commentaryEnabled) {
 				settingsContainer.classList.remove("disabled");
 			} else {
@@ -6860,9 +6862,15 @@ for (const el of document.querySelectorAll("[sync-var]")) {
 		sync_to_server(this);
 	});
 
+
+
 	const proxy = $el(`[sync-proxy-host="${varName}"]`);
 	if (proxy) {
 		el.addEventListener("input", function() {
+			proxy.value = this.value;
+		});
+
+		el.addEventListener("sync", function() {
 			proxy.value = this.value;
 		});
 	}
