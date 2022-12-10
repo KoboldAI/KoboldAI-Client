@@ -2454,7 +2454,6 @@ class SavePaths:
     def required_paths(self) -> List[str]:
         return [
             self.base,
-            self.story,
             self.generated_audio,
             self.generated_images,
             self.commentator_pictures
