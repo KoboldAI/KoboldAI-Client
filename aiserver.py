@@ -2395,7 +2395,7 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
                                     try:
                                         f = z.open(f"archive/data/{storage_key}")
                                     except:
-                                        f = z.open(f"%s/data/{storage_key}" % zipfolder)
+                                        f = z.open(f"{zipfolder}/data/{storage_key}")
                                     current_offset = 0
                                 if current_offset != model_dict[key].seek_offset:
                                     f.read(model_dict[key].seek_offset - current_offset)

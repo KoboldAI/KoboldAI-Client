@@ -1287,7 +1287,7 @@ def load_model(path: str, driver_version="tpu_driver0.1_dev20210607", hf_checkpo
                         try:
                             f = z.open(f"archive/data/{storage_key}")
                         except:
-                            f = z.open(f"%s/data/{storage_key}" % zipfolder)
+                            f = z.open(f"{zipfolder}/data/{storage_key}")
                         current_offset = 0
                     if current_offset != model_dict[key].seek_offset:
                         f.read(model_dict[key].seek_offset - current_offset)
