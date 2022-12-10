@@ -6811,7 +6811,6 @@ function imgGenRetry() {
 	$el("#story-commentary-settings > .add").addEventListener("click", () => makeCommentatorCard());
 
 	async function showStoryReview(data) {
-		console.log(`${data.who}: ${data.review}`)
 		storyReviewImg.src = `/get_commentator_picture/${data.id}`;
 		$el("#story-review-author").innerText = data.who;
 		$el("#story-review-content").innerText = data.review;
@@ -6821,7 +6820,6 @@ function imgGenRetry() {
 	socket.on("show_story_review", showStoryReview);
 
 	let x = $el("#story-commentary-enable").querySelector("input")
-	console.log(x)
 
 	// Bootstrap toggle requires jQuery for events
 	$($el("#story-commentary-enable").querySelector("input")).change(function() {
