@@ -9695,16 +9695,43 @@ def text2img_horde(prompt: str) -> Optional[Image.Image]:
         }
     }
     
-    cluster_headers = {'apikey': koboldai_vars.sh_apikey if koboldai_vars.sh_apikey != '' else "0000000000",}
+    cluster_headers = {"apikey": koboldai_vars.sh_apikey or "0000000000"}
+    id_req = requests.post("https://stablehorde.net/api/v2/generate/async", json=final_submit_dict, headers=cluster_headers)
+
+    if not id_req.ok:
+        logger.error(f"HTTP {id_req.status_code}, expected OK-ish")
+        logger.error(id_req.text)
+        logger.error(f"Response headers: {id_req.headers}")
+        raise HordeException("Image seeding failed. See console for more details.")
     
-    logger.debug(final_submit_dict)
-    submit_req = requests.post('https://stablehorde.net/api/v2/generate/sync', json=final_submit_dict, headers=cluster_headers)
+    image_id = id_req.json()["id"]
 
-    if not submit_req.ok:
-        logger.error(submit_req.text)
-        return
+    while True:
+        poll_req = requests.get(f"https://stablehorde.net/api/v2/generate/check/{image_id}")
+        if not poll_req.ok:
+            logger.error(f"HTTP {poll_req.status_code}, expected OK-ish")
+            logger.error(poll_req.text)
+            logger.error(f"Response headers: {poll_req.headers}")
+            raise HordeException("Image polling failed. See console for more details.")
+        poll_j = poll_req.json()
 
-    results = submit_req.json()
+        if poll_j["finished"] > 0:
+            break
+
+        # This should always exist but if it doesn't 2 seems like a safe bet.
+        sleepy_time = int(poll_req.headers.get("retry-after", 2))
+        time.sleep(sleepy_time)
+    
+    # Done generating, we can now fetch it.
+
+    gen_req = requests.get(f"https://stablehorde.net/api/v2/generate/status/{image_id}")
+    if not gen_req.ok:
+        logger.error(f"HTTP {gen_req.status_code}, expected OK-ish")
+        logger.error(gen_req.text)
+        logger.error(f"Response headers: {gen_req.headers}")
+        raise HordeException("Image fetching failed. See console for more details.")
+    results = gen_req.json()
+
     if len(results["generations"]) > 1:
         logger.warning(f"Got too many generations, discarding extras. Got {len(results['generations'])}, expected 1.")
     
