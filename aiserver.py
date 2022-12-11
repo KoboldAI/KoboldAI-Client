@@ -7,6 +7,7 @@
 
 # External packages
 from dataclasses import dataclass
+import random
 import shutil
 import eventlet
 eventlet.monkey_patch(all=True, thread=False, os=False)
@@ -5702,7 +5703,10 @@ def torch_raw_generate(
     koboldai_vars.inference_config.stop_at_genamt = do_dynamic_wi
 
     # Makes stopping criteria hook happy
-    model.kai_scanner_excluded_world_info = model.kai_scanner_excluded_world_info or set()
+    try:
+        model.kai_scanner_excluded_world_info = model.kai_scanner_excluded_world_info
+    except AttributeError:
+        model.kai_scanner_excluded_world_info = set()
 
     logger.debug("torch_raw_generate: setup inference_config {}s".format(time.time()-start_time))
     
@@ -6250,6 +6254,8 @@ def generate(txt, minimum, maximum, found_entries=None):
         gc.collect()
         torch.cuda.empty_cache()
     
+    maybe_review_story()
+
     set_aibusy(0)
 
 #==================================================================#
@@ -7383,6 +7389,7 @@ def loadRequest(loadpath, filename=None):
     if os.path.isdir(loadpath):
         if not valid_v3_story(loadpath):
             raise RuntimeError(f"Tried to load {loadpath}, a non-save directory.")
+        koboldai_vars.update_story_path_structure(loadpath)
         loadpath = os.path.join(loadpath, "story.json")
 
     start_time = time.time()
@@ -8455,8 +8462,10 @@ def UI_2_var_change(data):
         value = str(data['value'])
     elif type(getattr(koboldai_vars, name)) == list:
         value = list(data['value'])
+    elif type(getattr(koboldai_vars, name)) == dict:
+        value = dict(data['value'])
     else:
-        print("Unknown Type {} = {}".format(name, type(getattr(koboldai_vars, name))))
+        raise ValueError("Unknown Type {} = {}".format(name, type(getattr(koboldai_vars, name))))
     
     #print("Setting {} to {} as type {}".format(name, value, type(value)))
     setattr(koboldai_vars, name, value)
@@ -9131,15 +9140,31 @@ def UI_2_get_wi_image(uid):
     except KeyError:
         return ":( Couldn't find image", 204
 
+@app.route("/get_commentator_picture/<int(signed=True):commentator_id>", methods=["GET"])
+@logger.catch
+def UI_2_get_commentator_image(commentator_id):
+    try:
+        return send_file(os.path.join(koboldai_vars.save_paths.commentator_pictures, str(commentator_id)))
+    except FileNotFoundError:
+        # 404 Spams browser console
+        return ":(", 204
+
+
+@app.route("/set_commentator_picture/<int(signed=True):commentator_id>", methods=["POST"])
+@logger.catch
+def UI_2_set_commentator_image(commentator_id):
+    data = request.get_data()
+    with open(os.path.join(koboldai_vars.save_paths.commentator_pictures, str(commentator_id)), "wb") as file:
+        file.write(data)
+    return ":)"
+
 @socketio.on("scratchpad_prompt")
 @logger.catch
 def UI_2_scratchpad_prompt(data):
-    print(data)
     out_text = raw_generate(
         data,
         max_new=80,
     ).decoded
-    print("data", data, "out", out_text)
 
     socketio.emit("scratchpad_response", out_text, broadcast=True, room="UI_2")
 
@@ -9916,6 +9941,45 @@ def UI_2_refresh_auto_memory(data):
     koboldai_vars.auto_memory += "\n\n Final Result:\n" + output
 
 
+#==================================================================#
+# Story review zero-shot
+#==================================================================#
+def maybe_review_story():
+    if not (
+        koboldai_vars.commentary_characters
+        and koboldai_vars.commentary_chance
+        and koboldai_vars.commentary_enabled
+    ):
+        return
+
+    if random.randrange(100) > koboldai_vars.commentary_chance:
+        return
+
+    speaker_id, speaker_name = random.choice(list(koboldai_vars.commentary_characters.items()))
+    prompt = "\n\n%s's thoughts on what just happened in this story: \"" % speaker_name
+
+    context = koboldai_vars.calc_ai_text(
+        prompt,
+        return_text=True,
+        send_context=False
+    )
+
+    out_text = raw_generate(
+        context,
+        max_new=30,
+    ).decoded[0]
+
+    out_text = re.sub(r"[\s\(\)]", " ", out_text)
+
+    while "  " in out_text:
+        out_text = out_text.replace("  ", " ")
+
+    if '"' in out_text:
+        out_text = out_text.split('"')[0]
+
+    out_text = out_text.strip()
+    out_text = utils.trimincompletesentence(out_text)
+    emit("show_story_review", {"who": speaker_name, "review": out_text, "id": speaker_id})
 
 #==================================================================#
 # Get next 100 actions for infinate scroll

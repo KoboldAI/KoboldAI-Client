@@ -3,7 +3,7 @@ from dataclasses import dataclass
 import importlib
 import os, re, time, threading, json, pickle, base64, copy, tqdm, datetime, sys
 import shutil
-from typing import Union
+from typing import List, Union
 from io import BytesIO
 from flask import has_request_context, session
 from flask_socketio import SocketIO, join_room, leave_room
@@ -901,6 +901,12 @@ class story_settings(settings):
         self.memory_attn_bias = 1
         self.an_attn_bias = 1
         self.chat_style = 0
+
+        # In percent!!!
+        self.commentary_chance = 0
+        # id: {name}
+        self.commentary_characters = {}
+        self.commentary_enabled = False
         
         self.save_paths = SavePaths(os.path.join("stories", self.story_name or "Untitled"))
 
@@ -936,11 +942,7 @@ class story_settings(settings):
             self.save_paths.base = os.path.join("stories", save_name + (f" ({disambiguator})" if disambiguator else ""))
         
         # Setup the directory structure.
-        for path in [
-            self.save_paths.base,
-            self.save_paths.generated_audio,
-            self.save_paths.generated_images,
-        ]:
+        for path in self.save_paths.required_paths:
             try:
                 os.mkdir(path)
             except FileExistsError:
@@ -961,6 +963,17 @@ class story_settings(settings):
         with open(self.save_paths.story, "w") as file:
             file.write(self.to_json())
         self.gamesaved = True
+    
+    def update_story_path_structure(self, path: str) -> None:
+        # Upon loading a file, makes directories that are required for certain
+        # functionality.
+        sp = SavePaths(path)
+
+        for path in sp.required_paths:
+            try:
+                os.mkdir(path)
+            except FileExistsError:
+                pass
 
     def save_revision(self):
         game = json.loads(self.to_json())
@@ -2446,6 +2459,15 @@ class SavePaths:
     base: str
 
     @property
+    def required_paths(self) -> List[str]:
+        return [
+            self.base,
+            self.generated_audio,
+            self.generated_images,
+            self.commentator_pictures
+        ]
+
+    @property
     def story(self) -> str:
         return os.path.join(self.base, "story.json")
 
@@ -2456,6 +2478,10 @@ class SavePaths:
     @property
     def generated_images(self) -> str:
         return os.path.join(self.base, "generated_images")
+
+    @property
+    def commentator_pictures(self) -> str:
+        return os.path.join(self.base, "commentator_pictures")
    
 default_rand_range = [0.1, 1, 2]
 default_creativity_range = [0.8, 1]
