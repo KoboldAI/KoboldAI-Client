@@ -2803,6 +2803,36 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
 
         global breakmodel
         import breakmodel
+    elif koboldai_vars.model in ["Colab", "API", "CLUSTER", "OAI"]:
+        # If we're running Colab or OAI, we still need a tokenizer.
+        if koboldai_vars.model == "API":
+            tokenizer_id = requests.get(
+                koboldai_vars.colaburl[:-8] + "/api/v1/model",
+            ).json()["result"]
+        else:
+            tokenizer_id = {
+                "Colab": "EleutherAI/gpt-neo-2.7B",
+                "CLUSTER": koboldai_vars.cluster_requested_models[0],
+                "OAI": "gpt2",
+            }[koboldai_vars.model]
+        
+        # TODO: This should probably be a bit more robust of a check.
+        koboldai_vars.newlinemode = "n"
+        if "xglm" in tokenizer_id:
+            # Default to </s> newline mode if using XGLM
+            koboldai_vars.newlinemode = "s"
+        if "opt" in tokenizer_id or "bloom" in tokenizer_id:
+            # Handle </s> but don't convert newlines if using Fairseq models that have newlines trained in them
+            koboldai_vars.newlinemode = "ns"
+        
+        print(tokenizer_id, koboldai_vars.newlinemode)
+
+        tokenizer = AutoTokenizer.from_pretrained(tokenizer_id, revision=koboldai_vars.revision, cache_dir="cache")
+
+        loadsettings()
+        koboldai_vars.colaburl = url or koboldai_vars.colaburl
+        koboldai_vars.usegpu = False
+        koboldai_vars.breakmodel = False
     elif (not koboldai_vars.use_colab_tpu and koboldai_vars.model not in ["InferKit", "Colab", "API", "CLUSTER", "OAI", "GooseAI" , "ReadOnly", "TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX"]):
         if(not koboldai_vars.noai):
             logger.init("Transformers", status='Starting')
@@ -3272,19 +3302,8 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
                 "rprange": int(koboldai_vars.rep_pen_range),
             }
 
-        # If we're running Colab or OAI, we still need a tokenizer.
-        if(koboldai_vars.model in ("Colab", "API", "CLUSTER")):
-            from transformers import GPT2Tokenizer
-            tokenizer = GPT2Tokenizer.from_pretrained("EleutherAI/gpt-neo-2.7B", revision=koboldai_vars.revision, cache_dir="cache")
-            loadsettings()
-            koboldai_vars.colaburl = url if url is not None else koboldai_vars.colaburl
-        elif(koboldai_vars.model == "OAI"):
-            from transformers import GPT2Tokenizer
-            tokenizer = GPT2Tokenizer.from_pretrained("gpt2", revision=koboldai_vars.revision, cache_dir="cache")
-            loadsettings()
-            koboldai_vars.colaburl = url if url is not None else koboldai_vars.colaburl
         # Load the TPU backend if requested
-        elif(koboldai_vars.use_colab_tpu or koboldai_vars.model in ("TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX")):
+        if (koboldai_vars.use_colab_tpu or koboldai_vars.model in ("TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX")):
             global tpu_mtj_backend
             import tpu_mtj_backend
             
