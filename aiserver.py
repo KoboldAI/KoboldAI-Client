@@ -5852,7 +5852,7 @@ def cluster_raw_generate(
         'rep_pen_range': gen_settings.rep_pen_range,
         'temperature': gen_settings.temp,
         'top_p': gen_settings.top_p,
-        'top_k': gen_settings.top_k,
+        'top_k': int(gen_settings.top_k),
         'top_a': gen_settings.top_a,
         'tfs': gen_settings.tfs,
         'typical': gen_settings.typical,
