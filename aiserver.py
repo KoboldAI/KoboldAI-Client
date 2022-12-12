@@ -9420,6 +9420,52 @@ def UI_2_save_cookies(data):
     with open("./settings/cookies.settings", "w") as f:
         json.dump(koboldai_vars.cookies, f)
 
+#==================================================================#
+# Fewshot WI generation
+#==================================================================#
+@socketio.on("generate_wi")
+@logger.catch
+def UI_2_generate_wi(data):
+    uid = data["uid"]
+    field = data["field"]
+    existing = data["existing"]
+    gen_amount = data["genAmount"]
+    print(uid, field)
+
+    with open("data/wi_fewshot.txt", "r") as file:
+        fewshot_template = file.read()
+    
+    if field == "title":
+        prompt = fewshot_template
+        for thing in ["type", "desc"]:
+            if not existing[thing]:
+                continue
+            pretty = {"type": "Type", "desc": "Description"}[thing]
+            prompt += f"{pretty}: {existing[thing]}\n"
+        
+        pretty = "Title"
+        if existing["desc"]:
+            # Don't let the model think we're starting a new entry
+            pretty = "Alternate Title"
+
+        prompt += pretty + ":"
+    elif field == "desc":
+        # MUST be title and type
+        assert existing["title"]
+        assert existing["type"]
+        prompt = f"{fewshot_template}Title: {existing['title']}\nType: {existing['type']}\nDescription:"
+    else:
+        assert False, "What"
+    
+    logger.info(prompt)
+    out_text = tpool.execute(
+        raw_generate,
+        prompt,
+        max_new=gen_amount,
+        single_line=True,
+    ).decoded[0]
+    print(f'{out_text}')
+
 @app.route("/generate_raw", methods=["GET"])
 def UI_2_generate_raw():
     prompt = request.args.get("prompt")

@@ -6892,3 +6892,12 @@ for (const proxy of document.querySelectorAll("[sync-proxy-host]")) {
 		});
 	});
 }
+
+function generateWIData(uid, field, title=null, type=null, desc=null, genAmount=80) {
+	socket.emit("generate_wi", {
+		uid: uid,
+		field: field,
+		genAmount: genAmount || 80,
+		existing: {title: title, type: type, desc: desc}
+	});
+}
