@@ -2139,7 +2139,7 @@ class KoboldWorldInfo(object):
     def add_item(self, title, key, keysecondary, folder, constant, manual_text,
                  comment, wi_type="wi", use_wpp=False,
                  wpp={'name': "", 'type': "", 'format': "W++", 'attributes': {}},
-                 v1_uid=None, recalc=True, sync=True, send_to_ui=True):
+                 v1_uid=None, recalc=True, sync=True, send_to_ui=True, object_type=None):
         if len(self.world_info) == 0:
             uid = 0
         else:
@@ -2189,7 +2189,8 @@ class KoboldWorldInfo(object):
                                     "used_in_game": constant,
                                     'wpp': wpp,
                                     'use_wpp': use_wpp,
-                                    'v1_uid': v1_uid
+                                    'v1_uid': v1_uid,
+                                    "object_type": object_type,
                                     }
         except:
             print("Error:")
@@ -2213,7 +2214,22 @@ class KoboldWorldInfo(object):
             ignore = self.koboldai_vars.calc_ai_text()
         return uid
         
-    def edit_item(self, uid, title, key, keysecondary, folder, constant, manual_text, comment, wi_type, use_wpp=False, before=None, wpp={'name': "", 'type': "", 'format': "W++", 'attributes': {}}):
+    def edit_item(
+            self,
+            uid,
+            title,
+            key,
+            keysecondary,
+            folder,
+            constant,
+            manual_text,
+            comment,
+            wi_type,
+            use_wpp=False,
+            before=None,
+            wpp={'name': "", 'type': "", 'format': "W++", 'attributes': {}},
+            object_type=None,
+        ):
         logger.debug("Editing World Info {}: {}".format(uid, title))
         old_folder = self.world_info[uid]['folder']
         #move the world info entry if the folder changed or if there is a new order requested
@@ -2253,7 +2269,8 @@ class KoboldWorldInfo(object):
                                 "selective": len(keysecondary) > 0,
                                 "used_in_game": constant,
                                 'wpp': wpp,
-                                'use_wpp': use_wpp
+                                'use_wpp': use_wpp,
+                                "object_type": object_type,
                                 }
                                 
         self.story_settings.gamesaved = False
@@ -2369,6 +2386,7 @@ class KoboldWorldInfo(object):
                           wi_type=item["type"],
                           use_wpp=item['use_wpp'] if 'use_wpp' in item else False, 
                           wpp=item['wpp'] if 'wpp' in item else {'name': "", 'type': "", 'format': "W++", 'attributes': {}},
+                          object_type=item.get("object_type"),
                           recalc=False, sync=False)
         if folder is None:
             #self.world_info = {int(x): data['entries'][x] for x in data['entries']}
