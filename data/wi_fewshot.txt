@@ -1,0 +1,35 @@
+Title: Note Day
+Type: Holiday
+Description: On Note Day, everyone in the nation celebrates the day when they were born. This is also the day when children are given their first notebook and pencils. It is considered a national holiday. Note Day is usually celebrated on the third Saturday of every month.
+
+Title: Oaksville
+Type: Town
+Description: Oaksville is a small town located in the northeastern part of the United States. Oaksville has a population of around 8,000. It also has a high crime rate, and the town is also home to a large prison. In the past, the town was a center of manufacturing, but now that manufacturing has moved elsewhere, the town has fallen on hard times.
+
+Title: Lemonfooted Gnome
+Type: Species
+Description: Lemonfooted Gnomes are small, slender, and very nimble creatures, which are usually found in dry, arid areas. They are often mistaken for leprechauns, but they are actually a separate species of gnome. They have small, pointed ears and a set of yellow eyes. They also have a mohawk-like hairstyle, but the hair is not as curly as a typical leprechaun's. Their skin is pinkish-white, and their clothing is typically made out of a light fabric that glows in the dark.
+
+Title: Wild Yaerylberry
+Type: Fruit
+Description: A wild yaerylberry is a fruit native to the southern continent. It resembles a small, spherical blueberry. It is said to be delicious, but is not eaten often because it is difficult to find. The fruits are also very poisonous. When eaten, it causes nausea, vomiting, and diarrhea. The fruit is the only known source of the drug amylase, which is used in the creation of the drug "Yaeryl". The fruit has a high concentration of amylase, so it is used in the production of Yaeryl by humans.
+
+Title: Golem
+Type: Species
+Description: Golem are the product of magical experimentation, and they are generally considered to be dangerous creatures. They are usually created by wizards or sorcerers to do their bidding. They are often used in combat, although they can also be used for other purposes. They are tall, bulky, and have large heads. They are usually made out of stone, metal, and often times, other materials as well. They are usually very powerful, but they are also very durable. They are often used in conjunction with other creatures. Golems are known to be extremely intelligent and very loyal to their masters.
+
+Title: KR-23
+Type: Firearm
+Description: The KR-23 is a high-power, medium-range, gas-operated semi-automatic rifle. It fires a.45 ACP round, and is chambered for the standard NATO 7.62x51mm NATO cartridge. The KR-23 has a slightly thicker barrel than the AKM, and has a more modern design. The KR-23 is a very reliable weapon. It is also a lot more accurate than the AKM, and can be fitted with a suppressor. It is an extremely powerful weapon, and can easily kill anything it hits, including armored opponents.
+
+Title: Brillnor
+Type: Species
+Description: Brillnor are a race of humanoids who dwell deep in the mountains of Aurthiem. They resemble dwarves, but are much taller, with longer, thicker necks and a single horn on the top of their head. They are also smaller in stature than dwarves, despite being able to reach much higher heights. Brillnor have a strong affinity for metal and tools, and they are skilled at crafting them. They are also very strong and durable, which is why they are often employed as miners.
+
+Title: Michael
+Type: Person
+Description: Michael is a young man living in a small town in New Zealand. He's studying to become a teacher, and he's very interested in history and politics. He enjoys playing Dungeons & Dragons, and he's got a wonderful group of friends. 
+
+Title: Milvoch
+Type: Kingdom
+Description: Milvoch is a large kingdom located in the southern part of the continent. It is the largest kingdom in the entire continent, and it is home to a sizable population of elves. The city is surrounded by a large wall, which is topped by a massive watchtower. The majority of the people of Milvoch are elves, but the city is also home to a number of dwarves and humans. The government of the city is a hereditary monarchy, with King Avantur being the current ruler.
