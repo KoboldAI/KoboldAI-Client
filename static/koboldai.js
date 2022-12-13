@@ -6954,7 +6954,6 @@ function generateWIData(uid, field, title=null, type=null, desc=null, genAmount=
 
 function showGeneratedWIData(data) {
 	generating_summary = false;
-	console.warn(data)
 	const card = $el(`.world_info_card[uid="${data.uid}"]`);
 	const manualTextEl = card.querySelector(".world_info_entry_text");
 	manualTextEl.classList.remove("disabled");
