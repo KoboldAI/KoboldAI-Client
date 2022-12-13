@@ -5528,6 +5528,10 @@ class GenerationResult:
 
         # Controls if we should trim output by prompt length
         output_includes_prompt: bool = False,
+
+        # Lazy filter to cut off extra lines where we can't manipulate
+        # probabilities
+        single_line: bool = False,
     ):
         # Shave prompt off of encoded response when needed (HF). Decoded does
         # not return prompt.
@@ -5540,6 +5544,10 @@ class GenerationResult:
         self.is_whole_generation = is_whole_generation
 
         self.decoded = [utils.decodenewlines(tokenizer.decode(enc)) for enc in self.encoded]
+
+        if single_line:
+            self.decoded = [x.split("\n", 1)[0] for x in self.decoded]
+            self.encoded = tokenizer(self.decoded).input_ids
 
 class GenerationSettings:
     def __init__(self, **overrides) -> None:
@@ -5580,8 +5588,10 @@ def raw_generate(
     bypass_hf_maxlength: bool = False,
     generation_settings: Optional[dict] = None,
     is_core: bool = False,
+    single_line: bool = False,
     found_entries: set = ()
 ) -> GenerationResult:
+    # TODO: Support singleline outside of torch
 
     koboldai_vars.inference_config.do_core = is_core
     gen_settings = GenerationSettings(*(generation_settings or {}))
@@ -5621,7 +5631,7 @@ def raw_generate(
                 gen_settings=gen_settings
             )
             result = GenerationResult(
-                out_batches=batch_encoded, prompt=prompt_tokens, is_whole_generation=True
+                out_batches=batch_encoded, prompt=prompt_tokens, is_whole_generation=True, single_line=True
             )
         elif koboldai_vars.model in model_functions:
             batch_encoded = model_functions[koboldai_vars.model](
@@ -5631,7 +5641,7 @@ def raw_generate(
                 gen_settings=gen_settings
             )
             result = GenerationResult(
-                out_batches=batch_encoded, prompt=prompt_tokens, is_whole_generation=True
+                out_batches=batch_encoded, prompt=prompt_tokens, is_whole_generation=True, single_line=True
             )
         elif koboldai_vars.model.startswith("RWKV"):
             batch_encoded = rwkv_raw_generate(
@@ -5641,7 +5651,7 @@ def raw_generate(
                 gen_settings=gen_settings
             )
             result = GenerationResult(
-                out_batches=batch_encoded, prompt=prompt_tokens, is_whole_generation=True, output_includes_prompt=True
+                out_batches=batch_encoded, prompt=prompt_tokens, is_whole_generation=True, output_includes_prompt=True, single_line=True
             )
         else:
             # Torch HF
@@ -5651,8 +5661,9 @@ def raw_generate(
                 max_new=max_new if not bypass_hf_maxlength else int(2e9),
                 do_streaming=do_streaming,
                 do_dynamic_wi=do_dynamic_wi,
+                single_line=single_line,
                 batch_count=batch_count,
-                gen_settings=gen_settings
+                gen_settings=gen_settings,
             )
             logger.debug("raw_generate: run torch_raw_generate {}s".format(time.time()-start_time))
             start_time = time.time()
@@ -5712,6 +5723,7 @@ def torch_raw_generate(
 
     do_streaming: bool = False,
     do_dynamic_wi: bool = False,
+    single_line: bool = False,
     batch_count: int = 1,
 ):
     start_time = time.time()
@@ -5737,6 +5749,8 @@ def torch_raw_generate(
     device = get_auxilary_device()
     gen_in = gen_in.to(device)
 
+    additional_bad_words_ids = [tokenizer.encode("\n")] if single_line else []
+
     with torch.no_grad():
         start_time = time.time()
         genout = generator(
@@ -5744,7 +5758,7 @@ def torch_raw_generate(
             do_sample=True, 
             max_length=min(len(prompt_tokens) + max_new, koboldai_vars.max_length),
             repetition_penalty=1.0,
-            bad_words_ids=koboldai_vars.badwordsids,
+            bad_words_ids=koboldai_vars.badwordsids + additional_bad_words_ids,
             use_cache=True,
             num_return_sequences=batch_count,
         )
@@ -8984,14 +8998,17 @@ def UI_2_edit_world_info(data):
         koboldai_vars.worldinfo_v2.add_item(data['title'], data['key'], 
                                              data['keysecondary'], data['folder'], 
                                              data['constant'], data['manual_text'], 
-                                             data['comment'], wpp=data['wpp'], use_wpp=data['use_wpp'])
+                                             data['comment'], wpp=data['wpp'],
+                                             use_wpp=data['use_wpp'], object_type=data["object_type"])
         emit("delete_new_world_info_entry", {})
     else:
         logger.debug("Editting WI: {}".format(data))
         koboldai_vars.worldinfo_v2.edit_item(data['uid'], data['title'], data['key'], 
                                              data['keysecondary'], data['folder'], 
                                              data['constant'], data['manual_text'], 
-                                             data['comment'], wi_type=data["type"], wpp=data['wpp'], use_wpp=data['use_wpp'])
+                                             data['comment'], wi_type=data["type"],
+                                             wpp=data['wpp'], use_wpp=data['use_wpp'],
+                                             object_type=data["object_type"])
 
 
 #==================================================================#
@@ -9413,6 +9430,76 @@ def UI_2_save_cookies(data):
         koboldai_vars.cookies[key] = data[key]
     with open("./settings/cookies.settings", "w") as f:
         json.dump(koboldai_vars.cookies, f)
+
+#==================================================================#
+# Fewshot WI generation
+#==================================================================#
+@socketio.on("generate_wi")
+@logger.catch
+def UI_2_generate_wi(data):
+    uid = data["uid"]
+    field = data["field"]
+    existing = data["existing"]
+    gen_amount = data["genAmount"]
+
+    # The template to coax what we want from the model
+    extractor_string = ""
+
+    if field == "title":
+        for thing in ["type", "desc"]:
+            if not existing[thing]:
+                continue
+            pretty = {"type": "Type", "desc": "Description"}[thing]
+            extractor_string += f"{pretty}: {existing[thing]}\n"
+        
+        pretty = "Title"
+        if existing["desc"]:
+            # Don't let the model think we're starting a new entry
+            pretty = "Alternate Title"
+
+        extractor_string += pretty + ":"
+    elif field == "desc":
+        # MUST be title and type
+        assert existing["title"]
+        assert existing["type"]
+        extractor_string = f"Title: {existing['title']}\nType: {existing['type']}\nDescription:"
+    else:
+        assert False, "What"
+
+    with open("data/wi_fewshot.txt", "r") as file:
+        fewshot_entries = [x.strip() for x in file.read().split("\n\n") if x]
+
+    # Use user's own WI entries in prompt
+    if koboldai_vars.wigen_use_own_wi:
+        fewshot_entries += koboldai_vars.worldinfo_v2.to_wi_fewshot_format(excluding_uid=uid)
+    
+    # We must have this amount or less in our context.
+    target = koboldai_vars.max_length - gen_amount - len(tokenizer.encode(extractor_string))
+
+    used = []
+    # Walk the entries backwards until we can't cram anymore in
+    for entry in reversed(fewshot_entries):
+        maybe = [entry] + used
+        maybe_str = "\n\n".join(maybe)
+        possible_encoded = tokenizer.encode(maybe_str)
+        if len(possible_encoded) > target:
+            break
+        yes_str = maybe_str
+        used = maybe
+    
+    prompt = f"{yes_str}\n\n{extractor_string}"
+    
+    # logger.info(prompt)
+    # TODO: Make single_line mode that stops on newline rather than bans it (for title)
+    out_text = tpool.execute(
+        raw_generate,
+        prompt,
+        max_new=gen_amount,
+        single_line=True,
+    ).decoded[0]
+    out_text = utils.trimincompletesentence(out_text.strip())
+
+    socketio.emit("generated_wi", {"uid": uid, "field": field, "out": out_text}, room="UI_2")
 
 @app.route("/generate_raw", methods=["GET"])
 def UI_2_generate_raw():

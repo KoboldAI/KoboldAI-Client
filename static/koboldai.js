@@ -34,6 +34,7 @@ socket.on("log_message", function(data){process_log_message(data);});
 socket.on("debug_message", function(data){console.log(data);});
 socket.on("scratchpad_response", recieveScratchpadResponse);
 socket.on("show_error_notification", function(data) { reportError(data.title, data.text) });
+socket.on("generated_wi", showGeneratedWIData);
 //socket.onAny(function(event_name, data) {console.log({"event": event_name, "class": data.classname, "data": data});});
 
 // Must be done before any elements are made; we track their changes.
@@ -69,6 +70,7 @@ var setup_wi_toggles = [];
 var scroll_trigger_element = undefined; //undefined means not currently set. If set to null, it's disabled.
 var drag_id = null;
 var story_commentary_characters = {};
+var generating_summary = false;
 const on_colab = $el("#on_colab").textContent == "true";
 
 // Each entry into this array should be an object that looks like:
@@ -2248,6 +2250,50 @@ function world_info_entry(data) {
 		document.getElementById("world_info_tags_"+data.uid).classList.remove("hidden");
 		document.getElementById("world_info_secondtags_"+data.uid).classList.remove("hidden");
 	}
+
+	const genTypeInput = world_info_card.querySelector(".world_info_item_type");
+	const generateDescButton = world_info_card.querySelector(".wi-lc-text > .generate-button");
+	generateDescButton.addEventListener("click", function() {
+		if (generating_summary) return;
+		let type = genTypeInput.innerText;
+
+		if (!type) {
+			genTypeInput.classList.add("bad-input");
+			return;
+		} else {
+			genTypeInput.classList.remove("bad-input");
+		}
+
+		// TODO: Make type input element
+		let genAmount = parseInt($el("#user_wigen_amount").value);
+		generateWIData(data.uid, "desc", title.innerText, type, null, genAmount);
+		this.innerText = "autorenew";
+		this.classList.add("spinner");
+		manual_text.classList.add("disabled");
+	});
+
+	genTypeInput.addEventListener("focus", function() {
+		this.classList.remove("bad-input");
+	});
+
+	genTypeInput.addEventListener("keydown", function(event) {
+		if (event.key === "Enter") {
+			event.preventDefault();
+			this.blur();
+		}
+	});
+
+	genTypeInput.addEventListener("blur", function() {
+		this.innerText = this.innerText.trim();
+
+		if (this.innerText == this.getAttribute("old-text")) return;
+		this.setAttribute("old-text", this.innerText);
+
+		world_info_data[data.uid].object_type = this.innerText;
+		send_world_info(data.uid);
+	});
+
+	genTypeInput.innerText = data.object_type;
 	
 	//$('#world_info_constant_'+data.uid).bootstrapToggle();
 	//$('#world_info_wpp_toggle_'+data.uid).bootstrapToggle();
@@ -3957,6 +4003,7 @@ function create_new_wi_entry(folder) {
                                     "selective": false,
 									"wpp": {'name': "", 'type': "", 'format': 'W++', 'attributes': {}},
 									'use_wpp': false,
+									"object_type": null,
                                     };
 	var card = world_info_entry(data);
 	//card.scrollIntoView(false);
@@ -6891,4 +6938,34 @@ for (const proxy of document.querySelectorAll("[sync-proxy-host]")) {
 			value: this.value
 		});
 	});
+}
+
+function generateWIData(uid, field, title=null, type=null, desc=null, genAmount=80) {
+	if (generating_summary) return;
+	generating_summary = true;
+
+	socket.emit("generate_wi", {
+		uid: uid,
+		field: field,
+		genAmount: genAmount || 80,
+		existing: {title: title, type: type, desc: desc}
+	});
+}
+
+function showGeneratedWIData(data) {
+	generating_summary = false;
+	const card = $el(`.world_info_card[uid="${data.uid}"]`);
+	const manualTextEl = card.querySelector(".world_info_entry_text");
+	manualTextEl.classList.remove("disabled");
+
+	// Stop spinning!
+	for (const littleRobotFriend of card.querySelectorAll(".generate-button.spinner")) {
+		littleRobotFriend.classList.remove("spinner");
+		littleRobotFriend.innerText = "smart_toy";
+	}
+
+	if (data.field === "desc") {
+		world_info_data[data.uid].manual_text = data.out;
+		send_world_info(data.uid);
+	}
 }

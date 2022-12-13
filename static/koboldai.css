@@ -1100,6 +1100,25 @@ td.server_vars {
 .world_info_title {
 	user-select: text;
 	-moz-user-select:text;
+	margin-bottom: 0px;
+}
+
+.wi-type-leadup {
+	opacity: 0.4;
+}
+
+.world_info_item_type {
+	/* Workaround for Firefox bug: https://stackoverflow.com/a/42283543 */
+	padding: 1px;
+
+	outline: none;
+	border-bottom: 1px solid gray;
+	transition: color 200ms, border-bottom-color 200ms;
+}
+
+.world_info_item_type.bad-input {
+	color: rgb(255, 103, 103);
+	border-bottom-color: red;
 }
 
 .world_info_delete {
@@ -1139,6 +1158,24 @@ td.server_vars {
 	border: 2px var(--wi_card_text_color) solid;
 	filter: brightness(90%);
 }
+
+.world_info_label_container {
+	display: flex;
+	justify-content: space-between;
+	margin: 1px 5px;
+}
+
+.world_info_label_container > .wi-ui-label {
+	position: relative;
+	top: 2px;
+}
+
+.world_info_label_container > .generate-button {
+	opacity: 0.8;
+	cursor: pointer;
+}
+
+.world_info_label_container > .generate-button:hover { opacity: 1.0; }
 
 .tag {
 	background-color: var(--wi_tag_color);

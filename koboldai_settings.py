@@ -1152,6 +1152,8 @@ class user_settings(settings):
         self.img_gen_steps = 30
         self.img_gen_cfg_scale = 7.0
         self.cluster_requested_models = [] # The models which we allow to generate during cluster mode
+        self.wigen_use_own_wi = False
+        self.wigen_amount = 80
         
         
     def __setattr__(self, name, value):
@@ -2139,7 +2141,7 @@ class KoboldWorldInfo(object):
     def add_item(self, title, key, keysecondary, folder, constant, manual_text,
                  comment, wi_type="wi", use_wpp=False,
                  wpp={'name': "", 'type': "", 'format': "W++", 'attributes': {}},
-                 v1_uid=None, recalc=True, sync=True, send_to_ui=True):
+                 v1_uid=None, recalc=True, sync=True, send_to_ui=True, object_type=None):
         if len(self.world_info) == 0:
             uid = 0
         else:
@@ -2189,7 +2191,8 @@ class KoboldWorldInfo(object):
                                     "used_in_game": constant,
                                     'wpp': wpp,
                                     'use_wpp': use_wpp,
-                                    'v1_uid': v1_uid
+                                    'v1_uid': v1_uid,
+                                    "object_type": object_type,
                                     }
         except:
             print("Error:")
@@ -2213,7 +2216,22 @@ class KoboldWorldInfo(object):
             ignore = self.koboldai_vars.calc_ai_text()
         return uid
         
-    def edit_item(self, uid, title, key, keysecondary, folder, constant, manual_text, comment, wi_type, use_wpp=False, before=None, wpp={'name': "", 'type': "", 'format': "W++", 'attributes': {}}):
+    def edit_item(
+            self,
+            uid,
+            title,
+            key,
+            keysecondary,
+            folder,
+            constant,
+            manual_text,
+            comment,
+            wi_type,
+            use_wpp=False,
+            before=None,
+            wpp={'name': "", 'type': "", 'format': "W++", 'attributes': {}},
+            object_type=None,
+        ):
         logger.debug("Editing World Info {}: {}".format(uid, title))
         old_folder = self.world_info[uid]['folder']
         #move the world info entry if the folder changed or if there is a new order requested
@@ -2253,7 +2271,8 @@ class KoboldWorldInfo(object):
                                 "selective": len(keysecondary) > 0,
                                 "used_in_game": constant,
                                 'wpp': wpp,
-                                'use_wpp': use_wpp
+                                'use_wpp': use_wpp,
+                                "object_type": object_type,
                                 }
                                 
         self.story_settings.gamesaved = False
@@ -2369,6 +2388,7 @@ class KoboldWorldInfo(object):
                           wi_type=item["type"],
                           use_wpp=item['use_wpp'] if 'use_wpp' in item else False, 
                           wpp=item['wpp'] if 'wpp' in item else {'name': "", 'type': "", 'format': "W++", 'attributes': {}},
+                          object_type=item.get("object_type"),
                           recalc=False, sync=False)
         if folder is None:
             #self.world_info = {int(x): data['entries'][x] for x in data['entries']}
@@ -2453,6 +2473,38 @@ class KoboldWorldInfo(object):
     
     def get_used_wi(self):
         return [x['content'] for x in self.world_info if x['used_in_game']]
+    
+    def to_wi_fewshot_format(self, excluding_uid: int) -> List[str]:
+        """
+        Returns a list of strings representing applicable (has title, text, and
+        object type) World Info entries. Intended for feeding into the fewshot
+        generator.
+        """
+        the_collection = []
+        for entry in self.world_info.values():
+            if entry["uid"] == excluding_uid:
+                continue
+
+            if not (
+                entry["title"]
+                and entry["manual_text"]
+                and entry["object_type"]
+            ):
+                continue
+                
+            processed_desc = entry["manual_text"].replace("\n", " ")
+            while "  " in processed_desc:
+                processed_desc = processed_desc.replace("  ", " ")
+            processed_desc = processed_desc.strip()
+
+            the_collection.append(
+                f"Title: {entry['title']}\n" \
+                f"Type: {entry['object_type']}\n"
+                f"Description: {processed_desc}"
+            )
+        
+        return the_collection
+
 
 @dataclass
 class SavePaths:
