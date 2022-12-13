@@ -2265,9 +2265,11 @@ function world_info_entry(data) {
 		}
 
 		// TODO: Make type input element
-		generateWIData(data.uid, "desc", title.innerText, type, null, 80);
+		let genAmount = parseInt($el("#user_wigen_amount").value);
+		generateWIData(data.uid, "desc", title.innerText, type, null, genAmount);
 		this.innerText = "autorenew";
 		this.classList.add("spinner");
+		manual_text.classList.add("disabled");
 	});
 
 	genTypeInput.addEventListener("focus", function() {
@@ -6954,6 +6956,8 @@ function showGeneratedWIData(data) {
 	generating_summary = false;
 	console.warn(data)
 	const card = $el(`.world_info_card[uid="${data.uid}"]`);
+	const manualTextEl = card.querySelector(".world_info_entry_text");
+	manualTextEl.classList.remove("disabled");
 
 	// Stop spinning!
 	for (const littleRobotFriend of card.querySelectorAll(".generate-button.spinner")) {

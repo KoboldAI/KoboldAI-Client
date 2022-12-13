@@ -882,6 +882,23 @@ gensettingstf = [
 	},
     {
     "UI_V2_Only": True,
+	"uitype": "slider",
+	"unit": "int",
+	"label": "WI Gen Amount",
+	"id": "wigen_amount",
+	"min": 25,
+	"max": 125,
+	"step": 1,
+	"default": 80,
+    "tooltip": "How many tokens the World Info Generator creates.",
+    "menu_path": "World Info",
+    "sub_path": "",
+    "classname": "user",
+    "name": "wigen_amount",
+    "ui_level": 2
+	},
+    {
+    "UI_V2_Only": True,
 	"uitype": "toggle",
 	"unit": "bool",
 	"label": "Native WI Gen",

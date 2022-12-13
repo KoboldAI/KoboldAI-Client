@@ -1153,6 +1153,7 @@ class user_settings(settings):
         self.img_gen_cfg_scale = 7.0
         self.cluster_requested_models = [] # The models which we allow to generate during cluster mode
         self.wigen_use_own_wi = False
+        self.wigen_amount = 80
         
         
     def __setattr__(self, name, value):
