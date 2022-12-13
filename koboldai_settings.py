@@ -1152,6 +1152,7 @@ class user_settings(settings):
         self.img_gen_steps = 30
         self.img_gen_cfg_scale = 7.0
         self.cluster_requested_models = [] # The models which we allow to generate during cluster mode
+        self.wigen_use_own_wi = False
         
         
     def __setattr__(self, name, value):
@@ -2471,6 +2472,38 @@ class KoboldWorldInfo(object):
     
     def get_used_wi(self):
         return [x['content'] for x in self.world_info if x['used_in_game']]
+    
+    def to_wi_fewshot_format(self, excluding_uid: int) -> List[str]:
+        """
+        Returns a list of strings representing applicable (has title, text, and
+        object type) World Info entries. Intended for feeding into the fewshot
+        generator.
+        """
+        the_collection = []
+        for entry in self.world_info.values():
+            if entry["uid"] == excluding_uid:
+                continue
+
+            if not (
+                entry["title"]
+                and entry["manual_text"]
+                and entry["object_type"]
+            ):
+                continue
+                
+            processed_desc = entry["manual_text"].replace("\n", " ")
+            while "  " in processed_desc:
+                processed_desc = processed_desc.replace("  ", " ")
+            processed_desc = processed_desc.strip()
+
+            the_collection.append(
+                f"Title: {entry['title']}\n" \
+                f"Type: {entry['object_type']}\n"
+                f"Description: {processed_desc}"
+            )
+        
+        return the_collection
+
 
 @dataclass
 class SavePaths:

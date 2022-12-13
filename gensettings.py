@@ -880,6 +880,20 @@ gensettingstf = [
     "extra_classes": "simple_ui_only var_sync_alt_user_ui_level",
     "ui_level": 0
 	},
+    {
+    "UI_V2_Only": True,
+	"uitype": "toggle",
+	"unit": "bool",
+	"label": "Native WI Gen",
+	"id": "wigen_use_own_wi", 
+	"default": False,
+    "tooltip": "Uses your existing applicable (has title, type, content) World Info entries as inspiration for generated ones.",
+    "menu_path": "World Info",
+    "sub_path": "",
+    "classname": "user",
+    "name": "wigen_use_own_wi",
+    "ui_level": 2
+	},
 ]
 
 gensettingsik =[{

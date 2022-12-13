@@ -10,8 +10,22 @@
 				>add</span>
 				<img class="world_info_image">
 			</div>
-			<h4 draggable="true" ondragstart="event.preventDefault();event.stopPropagation();" id="world_info_title_"
-				class="world_info_title" onfocus="this.parentElement.parentElement.setAttribute('draggable', 'false');this.setAttribute('draggable', 'false');"></h4>
+			<div>
+				<h4
+					draggable="true"
+					ondragstart="event.preventDefault();event.stopPropagation();"
+					id="world_info_title_"
+					class="world_info_title"
+					onfocus="this.parentElement.parentElement.setAttribute('draggable', 'false');this.setAttribute('draggable', 'false');"
+				></h4>
+				<span class="wi-type-leadup">is a</span>
+				<span
+					class="world_info_item_type"
+					contenteditable="true"
+					data-placeholder="Person"
+					spellcheck="false"
+				></span>
+			</div>
 		</div>
 		<span id="world_info_delete_" class="world_info_delete">X</span>
 	</div>
@@ -61,7 +75,12 @@
 		<div class="wpp_attributes_area"></div>
 	</div>
 	<div id="world_info_basic_text_" class="world_info_basic_text_area">
-		Text:
+		<div class="world_info_label_container wi-lc-text">
+			<span class="wi-ui-label">Text</span>
+			<span class="material-icons-outlined generate-button" tooltip="Generate Content">
+				smart_toy
+			</span>
+		</div>
 		<textarea draggable="true" ondragstart="event.preventDefault();event.stopPropagation();" id="world_info_entry_text_" class="world_info_text world_info_entry_text fullwidth" oninput="autoResize(this, 60)" 
 		onfocus="this.parentElement.parentElement.setAttribute('draggable', 'false');this.setAttribute('draggable', 'false');autoResize(this, 60)" 
 		onblur="this.parentElement.parentElement.setAttribute('draggable', 'true');this.setAttribute('draggable', 'true');this.style.height='60px';"></textarea>
@@ -81,6 +100,10 @@
 		</div>
 	</div>
 	<div>
+		<div class="world_info_label_container wi-lc-comment">
+			<span class="wi-ui-label">Comment</span>
+			<padding></padding>
+		</div>
 		<textarea draggable="true" ondragstartondragstart="event.preventDefault();event.stopPropagation();" rows=1 id="world_info_comment_" 
 				  class="world_info_text world_info_comment fullwidth" oninput="autoResize(this, 60)" onfocus="autoResize(this, 60)" onblur="this.style.height='60px';"
 				  onfocus="this.parentElement.parentElement.setAttribute('draggable', 'false');this.setAttribute('draggable', 'false');;"
