@@ -183,6 +183,22 @@ border-top-right-radius: var(--tabs_rounding);
 }
 
 
+.dynamic-setting-container {
+	background-color: var(--setting_background);
+	color: var(--setting_text);
+	border-radius: var(--radius_settings_background);
+	padding: 2px;
+	margin-bottom: 5px;
+
+	width: 100%;
+}
+
+.dynamic-setting-bounds, .dynamic-setting-top {
+	width: 100%;
+	display: flex;
+	justify-content: space-between;
+}
+
 
 .setting_container {
 	display: grid;
@@ -788,7 +804,7 @@ border-top-right-radius: var(--tabs_rounding);
 }
 
 /* Tweaks */
-.tweak-container {
+.wide-boolean-setting {
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
@@ -1084,6 +1100,25 @@ td.server_vars {
 .world_info_title {
 	user-select: text;
 	-moz-user-select:text;
+	margin-bottom: 0px;
+}
+
+.wi-type-leadup {
+	opacity: 0.4;
+}
+
+.world_info_item_type {
+	/* Workaround for Firefox bug: https://stackoverflow.com/a/42283543 */
+	padding: 1px;
+
+	outline: none;
+	border-bottom: 1px solid gray;
+	transition: color 200ms, border-bottom-color 200ms;
+}
+
+.world_info_item_type.bad-input {
+	color: rgb(255, 103, 103);
+	border-bottom-color: red;
 }
 
 .world_info_delete {
@@ -1123,6 +1158,24 @@ td.server_vars {
 	border: 2px var(--wi_card_text_color) solid;
 	filter: brightness(90%);
 }
+
+.world_info_label_container {
+	display: flex;
+	justify-content: space-between;
+	margin: 1px 5px;
+}
+
+.world_info_label_container > .wi-ui-label {
+	position: relative;
+	top: 2px;
+}
+
+.world_info_label_container > .generate-button {
+	opacity: 0.8;
+	cursor: pointer;
+}
+
+.world_info_label_container > .generate-button:hover { opacity: 1.0; }
 
 .tag {
 	background-color: var(--wi_tag_color);
@@ -1188,10 +1241,11 @@ body {
 	margin-left: var(--setting_menu_closed_width_no_pins_width);
 	margin-right: var(--flyout_menu_closed_width);
 	grid-template-areas: "menuicon gamescreen options lefticon"
+						 "menuicon review review lefticon"
 						 "menuicon theme theme lefticon"
 						 "menuicon inputrow inputrow lefticon";
 	grid-template-columns: 30px auto 30% 30px;
-	grid-template-rows: auto min-content 100px;
+	grid-template-rows: auto min-content min-content 100px;
 }
 .main-grid[option_length="0"][model_numseqs="1"] {
 	grid-template-columns: 30px auto 0px 30px;
@@ -1220,11 +1274,12 @@ body {
 	height: 98vh;
 	margin-left: var(--flyout_menu_closed_width);
 	grid-template-areas: "menuicon gamescreen lefticon"
+						 "menuicon review lefticon"
 					     "menuicon options lefticon"
 						 "menuicon theme lefticon"
 						 "menuicon inputrow lefticon";
 	grid-template-columns: 30px auto 30px;
-	grid-template-rows: auto min-content min-content 100px;
+	grid-template-rows: auto min-content min-content min-content 100px;
 }
 }
 
@@ -2810,6 +2865,79 @@ body {
 
 .genre-inner > .x:hover { opacity: 1; }
 
+/* Story Commentary */
+
+#story-review {
+	grid-area: review;
+	min-height: 52px;
+	padding: 10px;
+	background-color: var(--gamescreen_background);
+	margin: 10px 0px;
+}
+
+#story-review-img {
+	width: 48px;
+	height: 48px;
+	object-fit: cover;
+	float: left;
+	margin-right: 10px;
+}
+
+#story-review-author {
+	display: block;
+	font-weight: bold;
+}
+
+#story-commentary-settings { width: 100%; }
+
+.story-commentary-character {
+	display: flex;
+	align-items: stretch;
+	margin-bottom: 5px;
+}
+
+.story-commentary-character > .image-container {
+	width: 48px;
+	height: 48px;
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	background-color: var(--setting_background);
+	margin-right: 10px;
+}
+
+.story-commentary-character > .image-container > img {
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+}
+
+.story-commentary-character > .name {
+	border: none;
+	flex-grow: 1;
+}
+
+.story-commentary-character > .close {
+	float: right;
+	color: white !important;
+	transform: scale(1) !important;
+	display: flex;
+	align-items: center;
+	margin-left: 8px;
+}
+
+#story-commentary-settings > .add {
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	width: 100%;
+	transform: scale(1) !important;
+	margin-top: 3px;
+}
+
+#story-commentary-settings > p {
+	font-size: calc(1.1em + var(--font_size_adjustment));
+}
 
 /*---------------------------------- Global ------------------------------------------------*/
 .hidden {
@@ -3045,6 +3173,7 @@ h2 .material-icons-outlined {
 .help_text,
 .sample_order,
 .table-header-label,
+.disabled,
 .noselect {
 	-webkit-touch-callout: none;
 	-webkit-user-select: none;

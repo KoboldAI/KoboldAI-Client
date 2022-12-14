@@ -7,6 +7,7 @@
 
 # External packages
 from dataclasses import dataclass
+import random
 import shutil
 import eventlet
 eventlet.monkey_patch(all=True, thread=False, os=False)
@@ -2803,6 +2804,36 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
 
         global breakmodel
         import breakmodel
+    elif koboldai_vars.model in ["Colab", "API", "CLUSTER", "OAI"]:
+        # If we're running Colab or OAI, we still need a tokenizer.
+        if koboldai_vars.model == "API":
+            tokenizer_id = requests.get(
+                koboldai_vars.colaburl[:-8] + "/api/v1/model",
+            ).json()["result"]
+        else:
+            tokenizer_id = {
+                "Colab": "EleutherAI/gpt-neo-2.7B",
+                "CLUSTER": koboldai_vars.cluster_requested_models[0],
+                "OAI": "gpt2",
+            }[koboldai_vars.model]
+        
+        # TODO: This should probably be a bit more robust of a check.
+        koboldai_vars.newlinemode = "n"
+        if "xglm" in tokenizer_id:
+            # Default to </s> newline mode if using XGLM
+            koboldai_vars.newlinemode = "s"
+        if "opt" in tokenizer_id or "bloom" in tokenizer_id:
+            # Handle </s> but don't convert newlines if using Fairseq models that have newlines trained in them
+            koboldai_vars.newlinemode = "ns"
+        
+        print(tokenizer_id, koboldai_vars.newlinemode)
+
+        tokenizer = AutoTokenizer.from_pretrained(tokenizer_id, revision=koboldai_vars.revision, cache_dir="cache")
+
+        loadsettings()
+        koboldai_vars.colaburl = url or koboldai_vars.colaburl
+        koboldai_vars.usegpu = False
+        koboldai_vars.breakmodel = False
     elif (not koboldai_vars.use_colab_tpu and koboldai_vars.model not in ["InferKit", "Colab", "API", "CLUSTER", "OAI", "GooseAI" , "ReadOnly", "TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX"]):
         if(not koboldai_vars.noai):
             logger.init("Transformers", status='Starting')
@@ -3272,19 +3303,8 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
                 "rprange": int(koboldai_vars.rep_pen_range),
             }
 
-        # If we're running Colab or OAI, we still need a tokenizer.
-        if(koboldai_vars.model in ("Colab", "API", "CLUSTER")):
-            from transformers import GPT2Tokenizer
-            tokenizer = GPT2Tokenizer.from_pretrained("EleutherAI/gpt-neo-2.7B", revision=koboldai_vars.revision, cache_dir="cache")
-            loadsettings()
-            koboldai_vars.colaburl = url if url is not None else koboldai_vars.colaburl
-        elif(koboldai_vars.model == "OAI"):
-            from transformers import GPT2Tokenizer
-            tokenizer = GPT2Tokenizer.from_pretrained("gpt2", revision=koboldai_vars.revision, cache_dir="cache")
-            loadsettings()
-            koboldai_vars.colaburl = url if url is not None else koboldai_vars.colaburl
         # Load the TPU backend if requested
-        elif(koboldai_vars.use_colab_tpu or koboldai_vars.model in ("TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX")):
+        if (koboldai_vars.use_colab_tpu or koboldai_vars.model in ("TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX")):
             global tpu_mtj_backend
             import tpu_mtj_backend
             
@@ -5508,6 +5528,10 @@ class GenerationResult:
 
         # Controls if we should trim output by prompt length
         output_includes_prompt: bool = False,
+
+        # Lazy filter to cut off extra lines where we can't manipulate
+        # probabilities
+        single_line: bool = False,
     ):
         # Shave prompt off of encoded response when needed (HF). Decoded does
         # not return prompt.
@@ -5520,6 +5544,10 @@ class GenerationResult:
         self.is_whole_generation = is_whole_generation
 
         self.decoded = [utils.decodenewlines(tokenizer.decode(enc)) for enc in self.encoded]
+
+        if single_line:
+            self.decoded = [x.split("\n", 1)[0] for x in self.decoded]
+            self.encoded = tokenizer(self.decoded).input_ids
 
 class GenerationSettings:
     def __init__(self, **overrides) -> None:
@@ -5560,8 +5588,10 @@ def raw_generate(
     bypass_hf_maxlength: bool = False,
     generation_settings: Optional[dict] = None,
     is_core: bool = False,
+    single_line: bool = False,
     found_entries: set = ()
 ) -> GenerationResult:
+    # TODO: Support singleline outside of torch
 
     koboldai_vars.inference_config.do_core = is_core
     gen_settings = GenerationSettings(*(generation_settings or {}))
@@ -5601,7 +5631,7 @@ def raw_generate(
                 gen_settings=gen_settings
             )
             result = GenerationResult(
-                out_batches=batch_encoded, prompt=prompt_tokens, is_whole_generation=True
+                out_batches=batch_encoded, prompt=prompt_tokens, is_whole_generation=True, single_line=True
             )
         elif koboldai_vars.model in model_functions:
             batch_encoded = model_functions[koboldai_vars.model](
@@ -5611,7 +5641,7 @@ def raw_generate(
                 gen_settings=gen_settings
             )
             result = GenerationResult(
-                out_batches=batch_encoded, prompt=prompt_tokens, is_whole_generation=True
+                out_batches=batch_encoded, prompt=prompt_tokens, is_whole_generation=True, single_line=True
             )
         elif koboldai_vars.model.startswith("RWKV"):
             batch_encoded = rwkv_raw_generate(
@@ -5621,7 +5651,7 @@ def raw_generate(
                 gen_settings=gen_settings
             )
             result = GenerationResult(
-                out_batches=batch_encoded, prompt=prompt_tokens, is_whole_generation=True, output_includes_prompt=True
+                out_batches=batch_encoded, prompt=prompt_tokens, is_whole_generation=True, output_includes_prompt=True, single_line=True
             )
         else:
             # Torch HF
@@ -5631,8 +5661,9 @@ def raw_generate(
                 max_new=max_new if not bypass_hf_maxlength else int(2e9),
                 do_streaming=do_streaming,
                 do_dynamic_wi=do_dynamic_wi,
+                single_line=single_line,
                 batch_count=batch_count,
-                gen_settings=gen_settings
+                gen_settings=gen_settings,
             )
             logger.debug("raw_generate: run torch_raw_generate {}s".format(time.time()-start_time))
             start_time = time.time()
@@ -5692,6 +5723,7 @@ def torch_raw_generate(
 
     do_streaming: bool = False,
     do_dynamic_wi: bool = False,
+    single_line: bool = False,
     batch_count: int = 1,
 ):
     start_time = time.time()
@@ -5702,7 +5734,10 @@ def torch_raw_generate(
     koboldai_vars.inference_config.stop_at_genamt = do_dynamic_wi
 
     # Makes stopping criteria hook happy
-    model.kai_scanner_excluded_world_info = model.kai_scanner_excluded_world_info or set()
+    try:
+        model.kai_scanner_excluded_world_info = model.kai_scanner_excluded_world_info
+    except AttributeError:
+        model.kai_scanner_excluded_world_info = set()
 
     logger.debug("torch_raw_generate: setup inference_config {}s".format(time.time()-start_time))
     
@@ -5714,6 +5749,8 @@ def torch_raw_generate(
     device = get_auxilary_device()
     gen_in = gen_in.to(device)
 
+    additional_bad_words_ids = [tokenizer.encode("\n")] if single_line else []
+
     with torch.no_grad():
         start_time = time.time()
         genout = generator(
@@ -5721,7 +5758,7 @@ def torch_raw_generate(
             do_sample=True, 
             max_length=min(len(prompt_tokens) + max_new, koboldai_vars.max_length),
             repetition_penalty=1.0,
-            bad_words_ids=koboldai_vars.badwordsids,
+            bad_words_ids=koboldai_vars.badwordsids + additional_bad_words_ids,
             use_cache=True,
             num_return_sequences=batch_count,
         )
@@ -5833,7 +5870,7 @@ def cluster_raw_generate(
         'rep_pen_range': gen_settings.rep_pen_range,
         'temperature': gen_settings.temp,
         'top_p': gen_settings.top_p,
-        'top_k': gen_settings.top_k,
+        'top_k': int(gen_settings.top_k),
         'top_a': gen_settings.top_a,
         'tfs': gen_settings.tfs,
         'typical': gen_settings.typical,
@@ -5868,6 +5905,8 @@ def cluster_raw_generate(
     elif not req.ok:
         errmsg = f"KoboldAI API Error: Failed to get a standard reply from the Horde. Please check the console."
         logger.error(errmsg)
+        logger.error(f"HTTP {req.status_code}!!!")
+        logger.error(req.text)
         raise HordeException(errmsg)
     
     try:
@@ -6250,6 +6289,8 @@ def generate(txt, minimum, maximum, found_entries=None):
         gc.collect()
         torch.cuda.empty_cache()
     
+    maybe_review_story()
+
     set_aibusy(0)
 
 #==================================================================#
@@ -7383,6 +7424,7 @@ def loadRequest(loadpath, filename=None):
     if os.path.isdir(loadpath):
         if not valid_v3_story(loadpath):
             raise RuntimeError(f"Tried to load {loadpath}, a non-save directory.")
+        koboldai_vars.update_story_path_structure(loadpath)
         loadpath = os.path.join(loadpath, "story.json")
 
     start_time = time.time()
@@ -8455,8 +8497,10 @@ def UI_2_var_change(data):
         value = str(data['value'])
     elif type(getattr(koboldai_vars, name)) == list:
         value = list(data['value'])
+    elif type(getattr(koboldai_vars, name)) == dict:
+        value = dict(data['value'])
     else:
-        print("Unknown Type {} = {}".format(name, type(getattr(koboldai_vars, name))))
+        raise ValueError("Unknown Type {} = {}".format(name, type(getattr(koboldai_vars, name))))
     
     #print("Setting {} to {} as type {}".format(name, value, type(value)))
     setattr(koboldai_vars, name, value)
@@ -8954,14 +8998,17 @@ def UI_2_edit_world_info(data):
         koboldai_vars.worldinfo_v2.add_item(data['title'], data['key'], 
                                              data['keysecondary'], data['folder'], 
                                              data['constant'], data['manual_text'], 
-                                             data['comment'], wpp=data['wpp'], use_wpp=data['use_wpp'])
+                                             data['comment'], wpp=data['wpp'],
+                                             use_wpp=data['use_wpp'], object_type=data["object_type"])
         emit("delete_new_world_info_entry", {})
     else:
         logger.debug("Editting WI: {}".format(data))
         koboldai_vars.worldinfo_v2.edit_item(data['uid'], data['title'], data['key'], 
                                              data['keysecondary'], data['folder'], 
                                              data['constant'], data['manual_text'], 
-                                             data['comment'], wi_type=data["type"], wpp=data['wpp'], use_wpp=data['use_wpp'])
+                                             data['comment'], wi_type=data["type"],
+                                             wpp=data['wpp'], use_wpp=data['use_wpp'],
+                                             object_type=data["object_type"])
 
 
 #==================================================================#
@@ -9131,15 +9178,31 @@ def UI_2_get_wi_image(uid):
     except KeyError:
         return ":( Couldn't find image", 204
 
+@app.route("/get_commentator_picture/<int(signed=True):commentator_id>", methods=["GET"])
+@logger.catch
+def UI_2_get_commentator_image(commentator_id):
+    try:
+        return send_file(os.path.join(koboldai_vars.save_paths.commentator_pictures, str(commentator_id)))
+    except FileNotFoundError:
+        # 404 Spams browser console
+        return ":(", 204
+
+
+@app.route("/set_commentator_picture/<int(signed=True):commentator_id>", methods=["POST"])
+@logger.catch
+def UI_2_set_commentator_image(commentator_id):
+    data = request.get_data()
+    with open(os.path.join(koboldai_vars.save_paths.commentator_pictures, str(commentator_id)), "wb") as file:
+        file.write(data)
+    return ":)"
+
 @socketio.on("scratchpad_prompt")
 @logger.catch
 def UI_2_scratchpad_prompt(data):
-    print(data)
     out_text = raw_generate(
         data,
         max_new=80,
     ).decoded
-    print("data", data, "out", out_text)
 
     socketio.emit("scratchpad_response", out_text, broadcast=True, room="UI_2")
 
@@ -9367,6 +9430,76 @@ def UI_2_save_cookies(data):
         koboldai_vars.cookies[key] = data[key]
     with open("./settings/cookies.settings", "w") as f:
         json.dump(koboldai_vars.cookies, f)
+
+#==================================================================#
+# Fewshot WI generation
+#==================================================================#
+@socketio.on("generate_wi")
+@logger.catch
+def UI_2_generate_wi(data):
+    uid = data["uid"]
+    field = data["field"]
+    existing = data["existing"]
+    gen_amount = data["genAmount"]
+
+    # The template to coax what we want from the model
+    extractor_string = ""
+
+    if field == "title":
+        for thing in ["type", "desc"]:
+            if not existing[thing]:
+                continue
+            pretty = {"type": "Type", "desc": "Description"}[thing]
+            extractor_string += f"{pretty}: {existing[thing]}\n"
+        
+        pretty = "Title"
+        if existing["desc"]:
+            # Don't let the model think we're starting a new entry
+            pretty = "Alternate Title"
+
+        extractor_string += pretty + ":"
+    elif field == "desc":
+        # MUST be title and type
+        assert existing["title"]
+        assert existing["type"]
+        extractor_string = f"Title: {existing['title']}\nType: {existing['type']}\nDescription:"
+    else:
+        assert False, "What"
+
+    with open("data/wi_fewshot.txt", "r") as file:
+        fewshot_entries = [x.strip() for x in file.read().split("\n\n") if x]
+
+    # Use user's own WI entries in prompt
+    if koboldai_vars.wigen_use_own_wi:
+        fewshot_entries += koboldai_vars.worldinfo_v2.to_wi_fewshot_format(excluding_uid=uid)
+    
+    # We must have this amount or less in our context.
+    target = koboldai_vars.max_length - gen_amount - len(tokenizer.encode(extractor_string))
+
+    used = []
+    # Walk the entries backwards until we can't cram anymore in
+    for entry in reversed(fewshot_entries):
+        maybe = [entry] + used
+        maybe_str = "\n\n".join(maybe)
+        possible_encoded = tokenizer.encode(maybe_str)
+        if len(possible_encoded) > target:
+            break
+        yes_str = maybe_str
+        used = maybe
+    
+    prompt = f"{yes_str}\n\n{extractor_string}"
+    
+    # logger.info(prompt)
+    # TODO: Make single_line mode that stops on newline rather than bans it (for title)
+    out_text = tpool.execute(
+        raw_generate,
+        prompt,
+        max_new=gen_amount,
+        single_line=True,
+    ).decoded[0]
+    out_text = utils.trimincompletesentence(out_text.strip())
+
+    socketio.emit("generated_wi", {"uid": uid, "field": field, "out": out_text}, room="UI_2")
 
 @app.route("/generate_raw", methods=["GET"])
 def UI_2_generate_raw():
@@ -9674,16 +9807,43 @@ def text2img_horde(prompt: str) -> Optional[Image.Image]:
         }
     }
     
-    cluster_headers = {'apikey': koboldai_vars.sh_apikey if koboldai_vars.sh_apikey != '' else "0000000000",}
+    cluster_headers = {"apikey": koboldai_vars.sh_apikey or "0000000000"}
+    id_req = requests.post("https://stablehorde.net/api/v2/generate/async", json=final_submit_dict, headers=cluster_headers)
+
+    if not id_req.ok:
+        logger.error(f"HTTP {id_req.status_code}, expected OK-ish")
+        logger.error(id_req.text)
+        logger.error(f"Response headers: {id_req.headers}")
+        raise HordeException("Image seeding failed. See console for more details.")
     
-    logger.debug(final_submit_dict)
-    submit_req = requests.post('https://stablehorde.net/api/v2/generate/sync', json=final_submit_dict, headers=cluster_headers)
+    image_id = id_req.json()["id"]
 
-    if not submit_req.ok:
-        logger.error(submit_req.text)
-        return
+    while True:
+        poll_req = requests.get(f"https://stablehorde.net/api/v2/generate/check/{image_id}")
+        if not poll_req.ok:
+            logger.error(f"HTTP {poll_req.status_code}, expected OK-ish")
+            logger.error(poll_req.text)
+            logger.error(f"Response headers: {poll_req.headers}")
+            raise HordeException("Image polling failed. See console for more details.")
+        poll_j = poll_req.json()
 
-    results = submit_req.json()
+        if poll_j["finished"] > 0:
+            break
+
+        # This should always exist but if it doesn't 2 seems like a safe bet.
+        sleepy_time = int(poll_req.headers.get("retry-after", 2))
+        time.sleep(sleepy_time)
+    
+    # Done generating, we can now fetch it.
+
+    gen_req = requests.get(f"https://stablehorde.net/api/v2/generate/status/{image_id}")
+    if not gen_req.ok:
+        logger.error(f"HTTP {gen_req.status_code}, expected OK-ish")
+        logger.error(gen_req.text)
+        logger.error(f"Response headers: {gen_req.headers}")
+        raise HordeException("Image fetching failed. See console for more details.")
+    results = gen_req.json()
+
     if len(results["generations"]) > 1:
         logger.warning(f"Got too many generations, discarding extras. Got {len(results['generations'])}, expected 1.")
     
@@ -9916,6 +10076,45 @@ def UI_2_refresh_auto_memory(data):
     koboldai_vars.auto_memory += "\n\n Final Result:\n" + output
 
 
+#==================================================================#
+# Story review zero-shot
+#==================================================================#
+def maybe_review_story():
+    if not (
+        koboldai_vars.commentary_characters
+        and koboldai_vars.commentary_chance
+        and koboldai_vars.commentary_enabled
+    ):
+        return
+
+    if random.randrange(100) > koboldai_vars.commentary_chance:
+        return
+
+    speaker_id, speaker_name = random.choice(list(koboldai_vars.commentary_characters.items()))
+    prompt = "\n\n%s's thoughts on what just happened in this story: \"" % speaker_name
+
+    context = koboldai_vars.calc_ai_text(
+        prompt,
+        return_text=True,
+        send_context=False
+    )
+
+    out_text = raw_generate(
+        context,
+        max_new=30,
+    ).decoded[0]
+
+    out_text = re.sub(r"[\s\(\)]", " ", out_text)
+
+    while "  " in out_text:
+        out_text = out_text.replace("  ", " ")
+
+    if '"' in out_text:
+        out_text = out_text.split('"')[0]
+
+    out_text = out_text.strip()
+    out_text = utils.trimincompletesentence(out_text)
+    emit("show_story_review", {"who": speaker_name, "review": out_text, "id": speaker_id})
 
 #==================================================================#
 # Get next 100 actions for infinate scroll
