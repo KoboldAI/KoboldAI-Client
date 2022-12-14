@@ -893,6 +893,8 @@ class story_settings(settings):
             # {"target": "(tm)", "substitution": "™", "enabled": False},
         ]
         self.gen_audio = False
+        self.prompt_picture_filename = ""
+        self.prompt_picture_prompt = ""
 
         # It's important to only use "=" syntax on this to ensure syncing; no
         # .append() or the like
@@ -1397,7 +1399,6 @@ class KoboldStoryRegister(object):
             if old != self.story_settings.prompt_wi_highlighted_text:
                 if not no_transmit:
                     process_variable_changes(self.socketio, "story", 'prompt_wi_highlighted_text', self.story_settings.prompt_wi_highlighted_text, old)
-                    
         
     def __str__(self):
         if len(self.actions) > 0:
@@ -1873,14 +1874,17 @@ class KoboldStoryRegister(object):
                 "Time": int(time.time()),
             }
     
-    def to_sentences(self, submitted_text=None):
+    def to_sentences(self, submitted_text=None, max_action_id=None):
         """Return a list of the actions split into sentences.
         submitted_text: Optional additional text to append to the actions, the text just submitted by the player.
         returns: List of [sentence text, actions used, token length, included in AI context]
         """
         #start_time = time.time()
         #we're going to split our actions by sentence for better context. We'll add in which actions the sentence covers. Prompt will be added at a -1 ID
-        actions = {i: self.actions[i]['Selected Text'] for i in self.actions}
+        if max_action_id is None:
+            actions = {i: self.actions[i]['Selected Text'] for i in self.actions}
+        else:
+            actions = {i: self.actions[i]['Selected Text'] for i in self.actions if i <= max_action_id}
         if self.story_settings is None:
             actions[-1] = ""
         else:
@@ -2039,7 +2043,6 @@ class KoboldStoryRegister(object):
                         output = output + pydub.AudioSegment(np.int16(audio * 2 ** 15).tobytes(), frame_rate=sample_rate, sample_width=2, channels=channels)
                 output.export(filename, format="ogg", bitrate="16k")
                 logger.info("Slow audio took {} for {} characters".format(time.time()-start_time, text_length))
-           
     
     def gen_all_audio(self, overwrite=False):
         if self.story_settings.gen_audio and self.koboldai_vars.experimental_features:
@@ -2047,6 +2050,30 @@ class KoboldStoryRegister(object):
                 self.gen_audio(i, overwrite=False)
         else:
             print("{} and {}".format(self.story_settings.gen_audio, self.koboldai_vars.experimental_features))
+    
+    def set_picture(self, action_id, filename, prompt):
+        if action_id == -1:
+            self.story_settings.prompt_picture_filename = filename
+            self.story_settings.prompt_picture_prompt = prompt
+        elif action_id in self.actions:
+            self.actions[action_id]['picture_filename'] = filename
+            self.actions[action_id]['picture_prompt'] = prompt
+    
+    def get_picture(self, action_id):
+        if action_id == -1:
+            if self.story_settings.prompt_picture_filename == "":
+                return None, None
+            filename = os.path.join(self.koboldai_vars.save_paths.generated_images, self.story_settings.prompt_picture_filename)
+            prompt = self.story_settings.prompt_picture_prompt
+        elif action_id in self.actions:
+            filename = os.path.join(self.koboldai_vars.save_paths.generated_images, self.actions[action_id]['picture_filename'])
+            prompt = self.actions[action_id]['picture_prompt']
+        else:
+            return None, None
+        
+        if os.path.exists(filename):
+            return filename, prompt
+        return None, None
     
     def __setattr__(self, name, value):
         new_variable = name not in self.__dict__

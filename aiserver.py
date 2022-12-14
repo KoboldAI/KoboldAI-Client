@@ -9596,14 +9596,19 @@ def UI_2_generate_image_from_story(data):
     eventlet.sleep(0)
     
     art_guide = '{}'.format(koboldai_vars.img_gen_art_guide)
-    print("Generating image using data:{} and art guide:{}".format(data,art_guide))
-    #get latest action
-    if len(koboldai_vars.actions) > 0:
-        action = koboldai_vars.actions[-1]
-        action_id = len(koboldai_vars.actions) - 1
+    
+    if 'action_id' in data and (int(data['action_id']) in koboldai_vars.actions.actions or int(data['action_id']) == -1):
+        action_id = int(data['action_id'])
     else:
-        action = koboldai_vars.prompt
-        action_id = -1
+        #get latest action
+        if len(koboldai_vars.actions) > 0:
+            action = koboldai_vars.actions[-1]
+            action_id = len(koboldai_vars.actions) - 1
+        else:
+            action = koboldai_vars.prompt
+            action_id = -1
+    
+    logger.info("Generating image for action {}".format(action_id))
     
     start_time = time.time()
     if os.path.exists("models/{}".format(args.summarizer_model.replace('/', '_'))):
@@ -9613,7 +9618,7 @@ def UI_2_generate_image_from_story(data):
     #text to summarize (get 1000 tokens worth of text):
     text = []
     text_length = 0
-    for item in reversed(koboldai_vars.actions.to_sentences()):
+    for item in reversed(koboldai_vars.actions.to_sentences(max_action_id=action_id)):
         if len(koboldai_vars.summary_tokenizer.encode(item[0])) + text_length <= 1000:
             text.append(item[0])
             text_length += len(koboldai_vars.summary_tokenizer.encode(item[0]))
@@ -9631,7 +9636,7 @@ def UI_2_generate_image_from_story(data):
         ", ".join([part for part in [prompt, art_guide] if part]),
         file_prefix=f"action_{action_id}",
         display_prompt=prompt,
-        log_data={"actionId": action_id}
+        log_data={"actionId": action_id},
     )
 
 @socketio.on("generate_image_from_prompt")
@@ -9672,7 +9677,7 @@ def log_image_generation(
     j.append(log_data)
 
     with open(db_path, "w") as file:
-        json.dump(j, file)
+        json.dump(j, file, indent="\t")
 
 def generate_story_image(
     prompt: str,
@@ -9707,6 +9712,9 @@ def generate_story_image(
         file_name = f"{file_prefix}_{int(time.time())}.jpg"
         image.save(os.path.join(koboldai_vars.save_paths.generated_images, file_name), format="JPEG", exif=exif)
         log_image_generation(prompt, display_prompt, file_name, generation_type, log_data)
+        #let's also add this data to the action so we know where the latest picture is at
+        logger.info("setting picture filename")
+        koboldai_vars.actions.set_picture(int(log_data['actionId']), file_name, prompt)
 
     logger.debug("Time to Generate Image {}".format(time.time()-start_time))
 
@@ -9715,6 +9723,8 @@ def generate_story_image(
     b64_data = base64.b64encode(buffer.getvalue()).decode("ascii")
 
     koboldai_vars.picture = b64_data
+    
+    
 
 
 def generate_image(prompt: str) -> Optional[Image.Image]:
@@ -10218,7 +10228,9 @@ def UI_2_test_match():
     koboldai_vars.assign_world_info_to_actions()
     return show_vars()
 
-
+#==================================================================#
+# Download of the audio file
+#==================================================================#
 @app.route("/audio")
 @logger.catch
 def UI_2_audio():
@@ -10238,8 +10250,23 @@ def UI_2_audio():
     return send_file(
              filename, 
              mimetype="audio/ogg")
-             
-             
+
+
+#==================================================================#
+# Download of the image for an action
+#==================================================================#
+@app.route("/action_image")
+@logger.catch
+def UI_2_action_image():
+    action_id = int(request.args['id']) if 'id' in request.args else koboldai_vars.actions.action_count
+    filename, prompt = koboldai_vars.actions.get_picture(action_id)
+    koboldai_vars.picture_prompt = prompt
+    if filename is not None:
+        return send_file(
+                 filename, 
+                 mimetype="image/jpeg")
+    else:
+        return None
 #==================================================================#
 # Test
 #==================================================================#

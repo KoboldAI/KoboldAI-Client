@@ -3014,6 +3014,7 @@ function select_game_text(event) {
 				}
 				selected_game_chunk = new_selected_game_chunk;
 				selected_game_chunk.classList.add("editing");
+				update_story_picture(selected_game_chunk.getAttribute("chunk"));
 			}
 			
 		} else {
@@ -3126,6 +3127,11 @@ function set_ui_level(level) {
 	}
 }
 
+function update_story_picture(chunk_id) {
+	const image = document.getElementsByClassName("action_image")[0];
+	image.src = "/action_image?id=" + chunk_id + "&ignore="+new Date().getTime();
+	image.setAttribute("chunk", chunk_id);
+}
 
 function privacy_mode(enabled) {
 	if (enabled) {
@@ -6624,7 +6630,7 @@ function imgGenRetry() {
 	const image = $el(".action_image");
 	if (!image) return;
 	$el("#image-loading").classList.remove("hidden");
-	socket.emit("retry_generated_image", {});
+	socket.emit("generate_image", {'action_id': image.getAttribute("chunk")});
 }
 
 /* Genres */
