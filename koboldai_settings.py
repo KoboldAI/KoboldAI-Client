@@ -135,6 +135,7 @@ class koboldai_vars(object):
         self._story_settings[story_name].socketio.emit("reset_story", {}, broadcast=True, room=story_name)
         if story_name in self._story_settings:
             self._story_settings[story_name].no_save = True
+            self._story_settings[story_name].worldinfo_v2.reset()
             self._story_settings[story_name].from_json(json_data)
             logger.debug("Calcing AI text after load story")
             ignore = self.calc_ai_text()
@@ -2336,7 +2337,6 @@ class KoboldWorldInfo(object):
         start_time = time.time()
         for uid, item in data['entries'].items():
             
-
             self.add_item(item['title'] if 'title' in item else item['key'][0], 
                           item['key'] if 'key' in item else [], 
                           item['keysecondary'] if 'keysecondary' in item else [], 

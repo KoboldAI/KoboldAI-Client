@@ -221,7 +221,7 @@ function disconnect() {
 }
 
 function reset_story() {
-	//console.log("Resetting story");
+	console.log("Resetting story");
 	clearTimeout(calc_token_usage_timeout);
 	clearTimeout(game_text_scroll_timeout);
 	clearTimeout(font_size_cookie_timout);
@@ -230,11 +230,10 @@ function reset_story() {
 	finder_last_input = null;
 	on_new_wi_item = null;
 	current_chunk_number = null;
-	//console.log("resetting scroll_trigger_element");
 	scroll_trigger_element = undefined;
+	
+	//clear actions
 	actions_data = {};
-	world_info_data = {};
-	world_info_folder({"root": []});
 	var story_area = document.getElementById('Selected Text');
 	let temp = []
 	for (child of story_area.children) {
@@ -246,15 +245,22 @@ function reset_story() {
 		item.remove();
 	}
 	document.getElementById("Selected Text").setAttribute("contenteditable", "false");
+	
+	//clear any options
 	var option_area = document.getElementById("Select Options");
 	while (option_area.firstChild) {
 		option_area.removeChild(option_area.firstChild);
 	}
+	
+	//clear world info
+	world_info_data = {};
+	world_info_folder({"root": []});
 	var world_info_area = document.getElementById("WI_Area");
 	while (world_info_area.firstChild) {
 		world_info_area.removeChild(world_info_area.firstChild);
 	}
 
+	
 	const storyPrompt = $el("#story_prompt");
 
 	if (storyPrompt) {
@@ -4030,7 +4036,11 @@ function drop(e) {
 		// display the draggable element
 		draggable.classList.remove('hidden');
 		
-		if (element.getAttribute("folder") == draggable.getAttribute("folder")) {
+		console.log("Drop_ID = "+drop_id);
+		if (drop_id == "-1") {
+			folder = element.parentElement.id.split("_").slice(-1)[0];
+			socket.emit("wi_set_folder", {'dragged_id': dragged_id, 'folder': folder});
+		} else if (element.getAttribute("folder") == draggable.getAttribute("folder")) {
 			socket.emit("move_wi", {'dragged_id': dragged_id, 'drop_id': drop_id, 'folder': null});
 		} else {
 			socket.emit("move_wi", {'dragged_id': dragged_id, 'drop_id': drop_id, 'folder': element.getAttribute("folder")});
