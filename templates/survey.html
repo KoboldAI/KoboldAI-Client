@@ -36,49 +36,56 @@
 		<h1><center>{{ question }}</center></h1>
 	</div>
 	<input type=hidden id="id" value="{{ random_num }}"/>
-	<table>
+	<table border=1>
 		<tr>
 			<td>
-				<h2><center><input type=radio autocomplete="off" name="answer" id="A" onclick="send_results();">A</center></h2>
+				<input type=radio autocomplete="off" name="answer" id="A" onclick="send_results();">
 			</td>
 			<td>
-				<h2><center><input type=radio autocomplete="off" name="answer" id="B" onclick="send_results();">B</center></h2>
-			</td>
-			<td>
-				<h2><center><input type=radio autocomplete="off" name="answer" id="C" onclick="send_results();">About the same</center></h2>
-			</td>
-			<td>
-				<h2><center><input type=radio autocomplete="off" name="answer" id="D" onclick="send_results();">A is incoherent</center></h2>
-			</td>
-			<td>
-				<h2><center><input type=radio autocomplete="off" name="answer" id="E" onclick="send_results();">B is incoherent</center></h2>
-			</td>
-			<td>
-				<h2><center><input type=radio autocomplete="off" name="answer" id="F" onclick="send_results();">Both are incoherent</center></h2>
+				{{ a }}
 			</td>
 		</tr>
 		<tr>
 			<td>
-				<table border=1>
-					{% for item in a %}
-					<tr>
-						<td>
-							{{ item }}
-						</td>
-					</tr>
-					{% endfor %}
-				</table>
+				<input type=radio autocomplete="off" name="answer" id="B" onclick="send_results();">
 			</td>
 			<td>
-				<table border=1>
-					{% for item in b %}
-					<tr>
-						<td>
-							{{ item }}
-						</td>
-					</tr>
-					{% endfor %}
-				</table>
+				{{ b }}
+			</td>
+		</tr>
+		<tr>
+			<td colspan=2>&nbsp;</td>
+		</tr>
+		<tr>
+			<td>
+				<input type=radio autocomplete="off" name="answer" id="C" onclick="send_results();">
+			</td>
+			<td>
+				About the same
+			</td>
+		</tr>
+		<tr>
+			<td>
+				<input type=radio autocomplete="off" name="answer" id="D" onclick="send_results();">
+			</td>
+			<td>
+				The first is incoherent
+			</td>
+		</tr>
+		<tr>
+			<td>
+				<input type=radio autocomplete="off" name="answer" id="E" onclick="send_results();">
+			</td>
+			<td>
+				The second is incoherent
+			</td>
+		</tr>
+		<tr>
+			<td>
+				<input type=radio autocomplete="off" name="answer" id="F" onclick="send_results();">
+			</td>
+			<td>
+				Both the first and second are incoherent
 			</td>
 		</tr>
 	</table>

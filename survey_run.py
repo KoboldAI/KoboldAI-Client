@@ -30,8 +30,10 @@ def index():
     results[question][random_num]['A'] = a
     results[question][random_num]['B'] = b
     
-    a = data[data_type][a]
-    b = data[data_type][b]
+    a = random.choice(data[data_type][a])
+    b = random.choice(data[data_type][b])
+    results[question][random_num]['A value'] = a
+    results[question][random_num]['B value'] = b
     
     return flask.render_template('survey.html', question=question, a=a, b=b, random_num=random_num)
     
