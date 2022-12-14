@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<script src="static/socket.io.min.js"></script>
+	<script>
+		var socket;
+		socket = io.connect(window.location.origin, {transports: ['polling', 'websocket'], closeOnBeforeunload: false});
+		
+		function send_results() {
+			var answer = "";
+			if (document.getElementById("A").checked) {
+				var answer = "A";
+			} else if (document.getElementById("B").checked) {
+				var answer = "B";
+			} else if (document.getElementById("C").checked) {
+				var answer = "C";
+			} else if (document.getElementById("D").checked) {
+				var answer = "D";
+			} else if (document.getElementById("E").checked) {
+				var answer = "E";
+			} else if (document.getElementById("E").checked) {
+				var answer = "F";
+			}
+			console.log(answer);
+			socket.emit("answer", {"question": "{{ question }}", "answer": answer, "id": document.getElementById("id").value});
+		}
+	</script>
+</head>
+<body>
+	<div>
+		Prompt:<br/>
+		Niko the kobold stalked carefully down the alley, his small scaly figure obscured by a dusky cloak that fluttered lightly in the cold winter breeze. Holding up his tail to keep it from dragging in the dirty snow that covered the cobblestone, he waited patiently for the butcher to turn his attention from his stall so that he could pilfer his next meal: a tender-looking chicken. He crouched just slightly as he neared the stall to ensure that no one was watching, not that anyone would be dumb enough to hassle a small kobold. What else was there for a lowly kobold to do in a city? All that Niko needed to know was where to find the chicken and then how to make off with it. A soft thud caused Niko to quickly lift his head. Standing behind the stall where the butcher had been cutting his chicken,
+	</div>
+	<br/>
+	<div>
+		<h1><center>{{ question }}</center></h1>
+	</div>
+	<input type=hidden id="id" value="{{ random_num }}"/>
+	<table>
+		<tr>
+			<td>
+				<h2><center><input type=radio autocomplete="off" name="answer" id="A" onclick="send_results();">A</center></h2>
+			</td>
+			<td>
+				<h2><center><input type=radio autocomplete="off" name="answer" id="B" onclick="send_results();">B</center></h2>
+			</td>
+			<td>
+				<h2><center><input type=radio autocomplete="off" name="answer" id="C" onclick="send_results();">About the same</center></h2>
+			</td>
+			<td>
+				<h2><center><input type=radio autocomplete="off" name="answer" id="D" onclick="send_results();">A is incoherent</center></h2>
+			</td>
+			<td>
+				<h2><center><input type=radio autocomplete="off" name="answer" id="E" onclick="send_results();">B is incoherent</center></h2>
+			</td>
+			<td>
+				<h2><center><input type=radio autocomplete="off" name="answer" id="F" onclick="send_results();">Both are incoherent</center></h2>
+			</td>
+		</tr>
+		<tr>
+			<td>
+				<table border=1>
+					{% for item in a %}
+					<tr>
+						<td>
+							{{ item }}
+						</td>
+					</tr>
+					{% endfor %}
+				</table>
+			</td>
+			<td>
+				<table border=1>
+					{% for item in b %}
+					<tr>
+						<td>
+							{{ item }}
+						</td>
+					</tr>
+					{% endfor %}
+				</table>
+			</td>
+		</tr>
+	</table>
+	
+</body>
+</html>
