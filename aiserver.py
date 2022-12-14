@@ -9604,45 +9604,27 @@ def UI_2_generate_image_from_story(data):
     else:
         action = koboldai_vars.prompt
         action_id = -1
-    #Get matching world info entries
-    keys = []
-    for wi in koboldai_vars.worldinfo_v2:
-        for key in wi['key']:
-            if key in action:
-                #Check to make sure secondary keys are present if needed
-                if len(wi['keysecondary']) > 0:
-                    for keysecondary in wi['keysecondary']:
-                        if keysecondary in action:
-                            keys.append(key)
-                            break
-                    break
-                else:
-                    keys.append(key)
-                    break
     
-    
-    #If we have > 4 keys, use those otherwise use sumarization
-    if len(keys) < 4:
-        start_time = time.time()
-        if os.path.exists("models/{}".format(args.summarizer_model.replace('/', '_'))):
-            koboldai_vars.summary_tokenizer = AutoTokenizer.from_pretrained("models/{}".format(args.summarizer_model.replace('/', '_')), cache_dir="cache")
+    start_time = time.time()
+    if os.path.exists("models/{}".format(args.summarizer_model.replace('/', '_'))):
+        koboldai_vars.summary_tokenizer = AutoTokenizer.from_pretrained("models/{}".format(args.summarizer_model.replace('/', '_')), cache_dir="cache")
+    else:
+        koboldai_vars.summary_tokenizer = AutoTokenizer.from_pretrained(args.summarizer_model, cache_dir="cache")
+    #text to summarize (get 1000 tokens worth of text):
+    text = []
+    text_length = 0
+    for item in reversed(koboldai_vars.actions.to_sentences()):
+        if len(koboldai_vars.summary_tokenizer.encode(item[0])) + text_length <= 1000:
+            text.append(item[0])
+            text_length += len(koboldai_vars.summary_tokenizer.encode(item[0]))
         else:
-            koboldai_vars.summary_tokenizer = AutoTokenizer.from_pretrained(args.summarizer_model, cache_dir="cache")
-        #text to summarize (get 1000 tokens worth of text):
-        text = []
-        text_length = 0
-        for item in reversed(koboldai_vars.actions.to_sentences()):
-            if len(koboldai_vars.summary_tokenizer.encode(item[0])) + text_length <= 1000:
-                text.append(item[0])
-                text_length += len(koboldai_vars.summary_tokenizer.encode(item[0]))
-            else:
-                break
-        text = "".join(text)
-        logger.debug("Text to summarizer: {}".format(text))
-        
-        max_length = args.max_summary_length - len(koboldai_vars.summary_tokenizer.encode(art_guide))
-        keys = [summarize(text, max_length=max_length)]
-        logger.debug("Text from summarizer: {}".format(keys[0]))
+            break
+    text = "".join(text)
+    logger.debug("Text to summarizer: {}".format(text))
+    
+    max_length = args.max_summary_length - len(koboldai_vars.summary_tokenizer.encode(art_guide))
+    keys = [summarize(text, max_length=max_length)]
+    logger.debug("Text from summarizer: {}".format(keys[0]))
     
     prompt = ", ".join(keys)
     generate_story_image(
@@ -9715,17 +9697,21 @@ def generate_story_image(
 
     if not image:
         return
+        
+    exif = image.getexif()
+    exif[0x9286] = prompt
+    exif[0x927C] = generation_type if generation_type != "" else "Stable Diffusion from KoboldAI"
 
     if os.path.exists(koboldai_vars.save_paths.generated_images):
         # Only save image if this is a saved story
-        file_name = f"{file_prefix}_{int(time.time())}.png"
-        image.save(os.path.join(koboldai_vars.save_paths.generated_images, file_name))
+        file_name = f"{file_prefix}_{int(time.time())}.jpg"
+        image.save(os.path.join(koboldai_vars.save_paths.generated_images, file_name), format="JPEG", exif=exif)
         log_image_generation(prompt, display_prompt, file_name, generation_type, log_data)
 
     logger.debug("Time to Generate Image {}".format(time.time()-start_time))
 
     buffer = BytesIO()
-    image.save(buffer, format="JPEG")
+    image.save(buffer, format="JPEG", exif=exif)
     b64_data = base64.b64encode(buffer.getvalue()).decode("ascii")
 
     koboldai_vars.picture = b64_data
