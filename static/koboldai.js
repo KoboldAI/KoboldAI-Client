@@ -783,6 +783,7 @@ function var_changed(data) {
 
 	if ((data.classname == 'actions') && (data.name == 'Action Count')) {
 		current_action = data.value;
+		document.getElementsByClassName("action_image")[0].setAttribute("chunk", data.value);
 		if (current_action <= 0) {
 			//console.log("setting action_count to "+current_action);
 			const storyPrompt = $el("#story_prompt");
@@ -973,6 +974,7 @@ function var_changed(data) {
 	if ((data.classname == "actions") && (data.name == "Action Count")) {
 		var option_container = document.getElementById("Select Options");
 		var current_chunk = parseInt(document.getElementById("action_count").textContent)+1;
+		
 		var children = option_container.children;
 		for (var i = 0; i < children.length; i++) {
 			var chunk = children[i];
