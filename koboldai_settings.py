@@ -2562,9 +2562,9 @@ class SavePaths:
     def commentator_pictures(self) -> str:
         return os.path.join(self.base, "commentator_pictures")
    
-default_rand_range = [0.1, 1, 2]
-default_creativity_range = [0.8, 1]
-default_rep_range = [1.75, 2]
+default_rand_range = [0.44, 1, 2]
+default_creativity_range = [0.5, 1]
+default_rep_range = [1.0, 1.3]
 default_preset = {
         "preset": "Default",
         "description": "Known working settings.",
