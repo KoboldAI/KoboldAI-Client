@@ -4112,7 +4112,6 @@ function drop(e) {
 		// display the draggable element
 		draggable.classList.remove('hidden');
 		
-		if (element.getAttribute("folder") == draggable.getAttribute("folder")) {
 		if (drop_id == "-1") {
 			folder = element.parentElement.id.split("_").slice(-1)[0];
 			socket.emit("wi_set_folder", {'dragged_id': dragged_id, 'folder': folder});
