@@ -2,6 +2,7 @@ function $el(selector) { return document.querySelector(selector) }
 
 var socket = io.connect(window.location.origin, { transports: ['polling', 'websocket'], closeOnBeforeunload: false });
 var question = $el("#question").value;
+var model = $el("#model").value;
 
 function send_results() {
     var answer = "";
@@ -15,7 +16,7 @@ function send_results() {
     }
 
     console.log(answer);
-    socket.emit("answer", { "question": question, "answer": answer, "id": document.getElementById("id").value });
+    socket.emit("answer", { "question": question, "answer": answer, "id": document.getElementById("id").value, "model": model});
 }
 
 for (const child of $el("#choices-container").children) {
