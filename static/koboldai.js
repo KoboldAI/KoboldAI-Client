@@ -783,7 +783,9 @@ function var_changed(data) {
 
 	if ((data.classname == 'actions') && (data.name == 'Action Count')) {
 		current_action = data.value;
-		document.getElementsByClassName("action_image")[0].setAttribute("chunk", data.value);
+		if (document.getElementsByClassName("action_image")[0]) {
+			document.getElementsByClassName("action_image")[0].setAttribute("chunk", data.value);
+		}
 		if (current_action <= 0) {
 			//console.log("setting action_count to "+current_action);
 			const storyPrompt = $el("#story_prompt");
