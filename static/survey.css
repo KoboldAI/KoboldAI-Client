@@ -1,0 +1,59 @@
+:root {
+    --card-radius: 6px;
+}
+
+body {
+    color: white;
+    background-color: #111820;
+    font-family: Arial, Helvetica, sans-serif
+}
+
+.hidden {
+    display: none;
+}
+
+#prompt-container {
+    border: 2px solid #36485e;
+    border-radius: 8px;
+    background-color: #273141;
+    padding: 5px;
+    padding-top: 1.5em;
+}
+
+#prompt-container>.loopy-label {
+    position: absolute;
+    top: 0em;
+    background-color: #273141;
+    padding: 0px 3px;
+    border-top: 2px solid #36485e;
+}
+
+#question {
+    text-align: center;
+}
+
+.choice {
+    font-size: 1.2em;
+    background-color: #273141;
+    padding: 10px 5px;
+    margin-bottom: 3px;
+    cursor: pointer;
+}
+
+.meta-choice {
+    font-style: italic;
+}
+
+.meta-choice>.choice-text {
+    opacity: 0.5;
+}
+
+.choice:first-child {
+    border-top-left-radius: var(--card-radius);
+    border-top-right-radius: var(--card-radius);
+}
+
+.choice:last-child {
+    border-bottom-left-radius: var(--card-radius);
+    border-bottom-right-radius: var(--card-radius);
+}
