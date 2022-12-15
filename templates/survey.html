@@ -22,7 +22,7 @@
 				var answer = "F";
 			}
 			console.log(answer);
-			socket.emit("answer", {"question": "{{ question }}", "answer": answer, "id": document.getElementById("id").value});
+			socket.emit("answer", {"question": "{{ question }}", "answer": answer, "id": document.getElementById("id").value, "model": document.getElementById("model").value});
 		}
 	</script>
 </head>
@@ -36,6 +36,7 @@
 		<h1><center>{{ question }}</center></h1>
 	</div>
 	<input type=hidden id="id" value="{{ random_num }}"/>
+	<input type=hidden id="model" value="{{ model }}"/>
 	<table border=1>
 		<tr>
 			<td>
