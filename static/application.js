@@ -3492,28 +3492,26 @@ $(document).ready(function(){
 
 	// Shortcuts
 	$(window).keydown(function (ev) {
-		// Only ctrl prefixed (for now)
-		if (!ev.ctrlKey) return;
-
-		let handled = true;
-		switch (ev.key) {
-			// Ctrl+Z - Back
-			case "z":
-				button_actback.click();
-				break;
-			// Ctrl+Y - Forward
-			case "y":
-				button_actfwd.click();
-				break;
-			// Ctrl+E - Retry
-			case "e":
-				button_actretry.click();
-				break;
-			default:
-				handled = false;
+		if (ev.altKey)
+			switch (ev.key) {
+				// Alt+Z - Back
+				case "z":
+					button_actback.click();
+					break;
+				// Alt+Y - Forward
+				case "y":
+					button_actfwd.click();
+					break;
+				// Alt+R - Retry
+				case "r":
+					button_actretry.click();
+					break;
+				default:
+					return;
+		} else {
+			return;
 		}
-
-		if (handled) ev.preventDefault();
+		ev.preventDefault();
 	});
 
 	$("#anotetemplate").on("input", function() {
