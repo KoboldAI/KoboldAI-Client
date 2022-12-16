@@ -1442,12 +1442,12 @@ class KoboldStoryRegister(object):
             if self.actions[i]["Selected Text"] != text:
                 self.actions[i]["Selected Text"] = text
                 tokens = self.koboldai_vars.tokenizer.encode(text)
-                for token_num in range(len(self.actions[action_id]["Probabilities"])):
-                    for token_option in range(len(self.actions[action_id]["Probabilities"][token_num])):
+                for token_num in range(len(self.actions[i]["Probabilities"])):
+                    for token_option in range(len(self.actions[i]["Probabilities"][token_num])):
                         if token_num < len(tokens):
-                            self.actions[action_id]["Probabilities"][token_num][token_option]["Used"] = tokens[token_num] == self.actions[action_id]["Probabilities"][token_num][token_option]["tokenId"]
+                            self.actions[i]["Probabilities"][token_num][token_option]["Used"] = tokens[token_num] == self.actions[i]["Probabilities"][token_num][token_option]["tokenId"]
                         else:
-                            self.actions[action_id]["Probabilities"][token_num][token_option]["Used"] = False
+                            self.actions[i]["Probabilities"][token_num][token_option]["Used"] = False
             if "Options" in self.actions[i]:
                 for j in range(len(self.actions[i]["Options"])):
                     if self.actions[i]["Options"][j]["text"] == text:
