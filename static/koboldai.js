@@ -3132,6 +3132,7 @@ function set_ui_level(level) {
 
 function update_story_picture(chunk_id) {
 	const image = document.getElementsByClassName("action_image")[0];
+	if (!image) return;
 	image.src = "/action_image?id=" + chunk_id + "&ignore="+new Date().getTime();
 	image.setAttribute("chunk", chunk_id);
 }
