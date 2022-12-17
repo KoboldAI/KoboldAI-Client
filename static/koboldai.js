@@ -2994,7 +2994,7 @@ function select_game_text(event) {
 		}
 		//if we've moved to a new game chunk we need to save the old chunk
 		if (((new_selected_game_chunk != selected_game_chunk) && (selected_game_chunk != null)) || (document.activeElement != document.getElementById("Selected Text"))) {
-			if ((selected_game_chunk != null) && (selected_game_chunk.textContent != selected_game_chunk.original_text) && (selected_game_chunk != document.getElementById("welcome_text"))) {
+			if ((selected_game_chunk != null) && (selected_game_chunk.innerText != selected_game_chunk.original_text) && (selected_game_chunk != document.getElementById("welcome_text"))) {
 				if (selected_game_chunk.id == 'story_prompt') {
 					edit_game_text(-1);
 				} else {
