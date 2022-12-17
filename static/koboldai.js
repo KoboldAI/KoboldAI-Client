@@ -72,6 +72,7 @@ var drag_id = null;
 var story_commentary_characters = {};
 var generating_summary = false;
 const on_colab = $el("#on_colab").textContent == "true";
+let story_id = -1;
 
 // Each entry into this array should be an object that looks like:
 // {class: "class", key: "key", func: callback}
@@ -794,6 +795,8 @@ function var_changed(data) {
 		}
 		hide_show_prompt();
 	}
+
+	if (data.classname === "story" && data.name === "story_id") story_id = data.value;
 	
 	if ((data.classname == 'story') && (data.name == 'privacy_mode')) {
 		privacy_mode(data.value);
@@ -1977,7 +1980,8 @@ function world_info_entry(data) {
 		wiImg.classList.add("hidden");
 	});
 
-	if (data.uid > -1) wiImg.src = `/get_wi_image/${data.uid}`;
+	// Story id is used to invalidate cache from other stories
+	if (data.uid > -1) wiImg.src = `/get_wi_image/${data.uid}?${story_id}`;
 
 	wiImgContainer.addEventListener("click", function() {
 		wiImgInput.click();
@@ -6792,7 +6796,8 @@ function imgGenRetry() {
 	const storyReviewImg = $el("#story-review-img");
 
 	async function showStoryReview(data) {
-		storyReviewImg.src = `/get_wi_image/${data.uid}`;
+		// Story id is used to invalidate cache from other stories
+		storyReviewImg.src = `/get_wi_image/${data.uid}?${story_id}`;
 		$el("#story-review-author").innerText = data.who;
 		$el("#story-review-content").innerText = data.review;
 		

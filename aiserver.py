@@ -10138,11 +10138,7 @@ def maybe_review_story() -> None:
         uid = int(uid)
         allowed_wi_uids.append(uid)
 
-    # prompt = f"\n\n{speaker_name}'s thoughts on what just happened in this story: \""
-    prompt = f"\n***\n{speaker_name}'s thoughts on what just happened in this story: \""
-    # prompt = f"\n***\n{speaker_name}'s thoughts on the story's latest event: \""
-
-    print(prompt)
+    prompt = f"\n\n{speaker_name}'s thoughts on what just happened in this story: \""
 
     context = koboldai_vars.calc_ai_text(
         prompt,
