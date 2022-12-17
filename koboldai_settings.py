@@ -1433,7 +1433,7 @@ class KoboldStoryRegister(object):
         if self.koboldai_vars.remove_double_space:
             while "  " in text:
                 text = text.replace("  ", " ")
-            if i > 0 and text != "":
+            if i > 0 and text != "" and i-1 in self.actions and self.actions[i-1]['Selected Text'] != "":
                 if self.actions[i-1]['Selected Text'][-1] == " " and text[0] == " ":
                     text = text[1:]
         if i in self.actions:
@@ -1441,14 +1441,15 @@ class KoboldStoryRegister(object):
             old_text = self.actions[i]["Selected Text"]
             if self.actions[i]["Selected Text"] != text:
                 self.actions[i]["Selected Text"] = text
-                tokens = self.koboldai_vars.tokenizer.encode(text)
-                if 'oribabilities' in self.actions[i]:
-                    for token_num in range(len(self.actions[i]["Probabilities"])):
-                        for token_option in range(len(self.actions[i]["Probabilities"][token_num])):
-                            if token_num < len(tokens):
-                                self.actions[i]["Probabilities"][token_num][token_option]["Used"] = tokens[token_num] == self.actions[i]["Probabilities"][token_num][token_option]["tokenId"]
-                            else:
-                                self.actions[i]["Probabilities"][token_num][token_option]["Used"] = False
+                if self.koboldai_vars.tokenizer is not None:
+                    tokens = self.koboldai_vars.tokenizer.encode(text)
+                    if 'Probabilities' in self.actions[i]:
+                        for token_num in range(len(self.actions[i]["Probabilities"])):
+                            for token_option in range(len(self.actions[i]["Probabilities"][token_num])):
+                                if token_num < len(tokens):
+                                    self.actions[i]["Probabilities"][token_num][token_option]["Used"] = tokens[token_num] == self.actions[i]["Probabilities"][token_num][token_option]["tokenId"]
+                                else:
+                                    self.actions[i]["Probabilities"][token_num][token_option]["Used"] = False
             if "Options" in self.actions[i]:
                 for j in range(len(self.actions[i]["Options"])):
                     if self.actions[i]["Options"][j]["text"] == text:
