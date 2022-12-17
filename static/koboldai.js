@@ -570,7 +570,7 @@ function do_story_text_updates(action) {
 		if ('wi_highlighted_text' in action.action) {
 			for (chunk of action.action['wi_highlighted_text']) {
 				chunk_element = document.createElement("span");
-				chunk_element.textContent = chunk['text'];
+				chunk_element.innerText = chunk['text'];
 				if (chunk['WI matches'] != null) {
 					chunk_element.classList.add("wi_match");
 					chunk_element.setAttribute("tooltip", chunk['WI Text']);
@@ -580,7 +580,7 @@ function do_story_text_updates(action) {
 			}
 		} else {
 			chunk_element = document.createElement("span");
-			chunk_element.textContent = action.action['Selected Text'];
+			chunk_element.innerText = action.action['Selected Text'];
 			item.append(chunk_element);
 		}
 		item.original_text = action.action['Selected Text'];
@@ -613,7 +613,7 @@ function do_prompt(data) {
 			}
 			for (chunk of data.value) {
 				chunk_element = document.createElement("span");
-				chunk_element.textContent = chunk['text'];
+				chunk_element.innerText = chunk['text'];
 				if (chunk['WI matches'] != null) {
 					chunk_element.classList.add("wi_match");
 					chunk_element.setAttribute("tooltip", chunk['WI Text']);
@@ -2874,7 +2874,7 @@ function sync_to_server(item) {
 			if (item.classList.contains("sync_as_float")) value = parseFloat(value);
 		}
 	} else {
-		value = item.textContent;
+		value = item.innerText;
 	}
 	
 	//get name
@@ -3078,14 +3078,14 @@ function update_game_text(id) {
 	let new_text = ""
 	if (id == -1) {
 		temp = document.getElementById("story_prompt");
-		new_text = temp.textContent;
+		new_text = temp.innerText;
 		sync_to_server(temp);
 		temp.original_text = new_text;
 		temp.classList.add("pulse");
 	} else {
 		temp = document.getElementById("Selected Text Chunk " + id);
 		if (temp) {
-			new_text = temp.textContent;
+			new_text = temp.innerText;
 			socket.emit("Set Selected Text", {"id": id, "text": new_text});
 			temp.original_text = new_text;
 			temp.classList.add("pulse");
@@ -4212,7 +4212,7 @@ function highlight_world_info_text_in_chunk(action_id, wi) {
 	} else {
 		action = document.getElementById("Selected Text Chunk "+action_id);
 	}
-	let words = action.textContent.split(" ");
+	let words = action.innerText.split(" ");
 	current_ids = action.getAttribute("world_info_uids")?action.getAttribute("world_info_uids").split(','):[];
 	if (!(current_ids.includes(uid))) {
 		current_ids.push(uid);
@@ -4243,8 +4243,8 @@ function highlight_world_info_text_in_chunk(action_id, wi) {
 			for (span of action.childNodes) {
 				//console.log(span);
 				//console.log("passed_words("+passed_words+")+span("+(span.textContent.trim().split(" ").length)+")<start_word("+start_word+"): "+(passed_words + span.textContent.trim().split(" ").length < start_word));
-				if (passed_words + span.textContent.trim().split(" ").length < start_word+1) {
-					passed_words += span.textContent.trim().split(" ").length;
+				if (passed_words + span.innerText.trim().split(" ").length < start_word+1) {
+					passed_words += span.innerText.trim().split(" ").length;
 				} else if (passed_words <= end_word) {
 					//OK, we have text that matches, let's do the highlighting
 					//we can skip the highlighting if it's already done though
@@ -4252,7 +4252,7 @@ function highlight_world_info_text_in_chunk(action_id, wi) {
 					//console.log("start_word: "+start_word+" end_word: "+end_word+" passed_words: "+passed_words);
 					//console.log(span.textContent.trim().split(" ").slice(start_word-passed_words, end_word-passed_words+1).join(" "));
 					if (~(span.classList.contains('wi_match'))) {
-						var span_text = span.textContent.trim().split(" ");
+						var span_text = span.innerText.trim().split(" ");
 						//console.log(span_text);
 						if (start_word-passed_words == 0) {
 							var before_highlight_text = "";
@@ -4270,26 +4270,26 @@ function highlight_world_info_text_in_chunk(action_id, wi) {
 						if (before_highlight_text != "") {
 							//console.log("Before Text:'"+before_highlight_text+"'");
 							var before_span = document.createElement("span");
-							before_span.textContent = before_highlight_text;
+							before_span.innerText = before_highlight_text;
 							action.insertBefore(before_span, span);
 						}
 						//console.log("Highlight Text: '"+highlight_text+"'");
 						var highlight_span = document.createElement("span");
 						highlight_span.classList.add("wi_match");
-						highlight_span.textContent = highlight_text;
+						highlight_span.innerText = highlight_text;
 						highlight_span.setAttribute("tooltip", wi['content']);
 						highlight_span.setAttribute("wi-uid", wi.uid);
 						action.insertBefore(highlight_span, span);
 						if (after_highlight_text != "") {
 							//console.log("After Text: '"+after_highlight_text+"'");
 							var after_span = document.createElement("span");
-							after_span.textContent = after_highlight_text;
+							after_span.innerText = after_highlight_text;
 							action.insertBefore(after_span, span);
 						}
 						//console.log("Done");
 						span.remove();
 					}
-					passed_words += span.textContent.trim().split(" ").length;
+					passed_words += span.innerText.trim().split(" ").length;
 				}
 			}
 		}
@@ -6528,7 +6528,7 @@ function updateChatStyle() {
 				}
 
 				chunk_element = document.createElement("span");
-				chunk_element.textContent = action['Selected Text'];
+				chunk_element.innerText = action['Selected Text'];
 				item.append(chunk_element);
 
 				item.original_text = action['Selected Text'];
