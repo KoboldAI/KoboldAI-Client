@@ -6161,6 +6161,7 @@ function initalizeTooltips() {
 (function() {
 	document.addEventListener("keydown", function(event) {
 		for (const shortcut of shortcuts) {
+			if (!(event.ctrlKey || event.altKey)) continue;
 			if (event.ctrlKey && shortcut.mod !== "ctrl") continue;
 			if (event.altKey && shortcut.mod !== "alt") continue;
 
