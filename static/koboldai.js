@@ -139,19 +139,18 @@ const context_menu_actions = {
 
 let context_menu_cache = [];
 
-// CTRL-[X]
 const shortcuts = [
-	{key: "s", desc: "Save Story", func: save_story},
-	{key: "o", desc: "Open Story", func: load_story_list},
-	{key: "z", desc: "Undoes last story action", func: storyBack, criteria: canNavigateStoryHistory},
-	{key: "y", desc: "Redoes last story action", func: storyRedo, criteria: canNavigateStoryHistory},
-	{key: "e", desc: "Retries last story action", func: storyRetry, criteria: canNavigateStoryHistory},
-	{key: "m", desc: "Focuses Memory", func: () => focusEl("#memory")},
-	{key: "u", desc: "Focuses Author's Note", func: () => focusEl("#authors_notes")}, // CTRL-N is reserved :^(
-	{key: "g", desc: "Focuses game text", func: () => focusEl("#input_text")},
-	{key: "l", desc: '"Lock" screen (Not secure)', func: () => socket.emit("privacy_mode", {'enabled': true})},
-	{key: "k", desc: "Finder", func: open_finder},
-	{key: "/", desc: "Help screen", func: () => openPopup("shortcuts-popup")},
+	{mod: "ctrl", key: "s", desc: "Save Story", func: save_story},
+	{mod: "ctrl", key: "o", desc: "Open Story", func: load_story_list},
+	{mod: "alt", key: "z", desc: "Undoes last story action", func: storyBack, criteria: canNavigateStoryHistory},
+	{mod: "alt", key: "y", desc: "Redoes last story action", func: storyRedo, criteria: canNavigateStoryHistory},
+	{mod: "alt", key: "r", desc: "Retries last story action", func: storyRetry, criteria: canNavigateStoryHistory},
+	{mod: "ctrl", key: "m", desc: "Focuses Memory", func: () => focusEl("#memory")},
+	{mod: "ctrl", key: "u", desc: "Focuses Author's Note", func: () => focusEl("#authors_notes")}, // CTRL-N is reserved :^(
+	{mod: "ctrl", key: "g", desc: "Focuses game text", func: () => focusEl("#input_text")},
+	{mod: "ctrl", key: "l", desc: '"Lock" screen (Not secure)', func: () => socket.emit("privacy_mode", {'enabled': true})},
+	{mod: "ctrl", key: "k", desc: "Finder", func: open_finder},
+	{mod: "ctrl", key: "/", desc: "Help screen", func: () => openPopup("shortcuts-popup")},
 ]
 
 const chat = {
@@ -3133,6 +3132,7 @@ function set_ui_level(level) {
 
 function update_story_picture(chunk_id) {
 	const image = document.getElementsByClassName("action_image")[0];
+	if (!image) return;
 	image.src = "/action_image?id=" + chunk_id + "&ignore="+new Date().getTime();
 	image.setAttribute("chunk", chunk_id);
 }
@@ -6160,9 +6160,10 @@ function initalizeTooltips() {
 /* -- Shortcuts -- */
 (function() {
 	document.addEventListener("keydown", function(event) {
-		if (!event.ctrlKey) return;
-
 		for (const shortcut of shortcuts) {
+			if (event.ctrlKey && shortcut.mod !== "ctrl") continue;
+			if (event.altKey && shortcut.mod !== "alt") continue;
+
 			if (shortcut.key !== event.key) continue;
 			if (shortcut.criteria && !shortcut.criteria()) continue;
 			event.preventDefault();
@@ -6175,7 +6176,9 @@ function initalizeTooltips() {
 	for (const shortcut of shortcuts) {
 		const shortcutRow = $e("div", shortcutContainer, {classes: ["shortcut-item"]});
 		const shortcutEl = $e("div", shortcutRow, {classes: ["shortcut-keys"]});
-		for (const key of ["Ctrl", shortcut.key.toUpperCase()]) {
+		const pretty = shortcut.mod[0].toUpperCase() + shortcut.mod.slice(1);
+
+		for (const key of [pretty, shortcut.key.toUpperCase()]) {
 			$e("span", shortcutEl, {classes: ["shortcut-key"], innerText: key});
 		}
 		const shortcutDesc = $e("div", shortcutRow, {classes: ["shortcut-desc"], innerText: shortcut.desc});
