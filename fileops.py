@@ -110,6 +110,31 @@ def getstoryfiles():
                     print(f"Browser loading error: {file} has incorrect format.")
                     continue
             list.append(ob)
+        elif os.path.isdir("stories/{}".format(file)):
+            if os.path.exists("stories/{}/story.json".format(file)):
+                ob = {}
+                ob["name"] = file
+                f = open("stories/{}/story.json".format(file), "r")
+                try:
+                    js = json.load(f)
+                except:
+                    print(f"Browser loading error: {file} is malformed or not a JSON file.")
+                    f.close()
+                    continue
+                f.close()
+                if 'file_version' in js:
+                    try:
+                        ob["actions"] = int(js["actions"]["action_count"])+1
+                    except TypeError:
+                        print(f"Browser loading error: {file} has incorrect format.")
+                        continue
+                else:
+                    try:
+                        ob["actions"] = len(js["actions"])
+                    except TypeError:
+                        print(f"Browser loading error: {file} has incorrect format.")
+                        continue
+                list.append(ob)
     return list
 
 #==================================================================#

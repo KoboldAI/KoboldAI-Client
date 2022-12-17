@@ -16,8 +16,8 @@ else:
 
 @app.route('/')
 def index():
-    #choose temp, top_k, or rep_pen
-    data_type = random.choice(['temp', 'temp', 'temp', 'temp', 'top_k', 'top_k', 'rep_pen'])
+    #choose temp, top_p, or rep_pen
+    data_type = random.choice(['temp', 'temp', 'temp', 'temp', 'top_p', 'top_p', 'rep_pen'])
     model = random.choice([x for x in data])
     a = random.choice([x for x in data[model][data_type]])
     b = random.choice([x for x in data[model][data_type]])
@@ -25,7 +25,7 @@ def index():
         b = random.choice([x for x in data[model][data_type]])
         
     random_num=random.randint(-sys.maxsize, sys.maxsize)
-    question = {"temp": "Which one feels more random", "top_k": "Which one feels more creative", "rep_pen": "Which one feels more repetative"}[data_type]
+    question = {"temp": "Which one feels more random", "top_p": "Which one feels more creative", "rep_pen": "Which one feels more repetative"}[data_type]
     if random_num not in results[model][question]:
         results[model][question][random_num] = {}
     results[model][question][random_num]['A'] = a

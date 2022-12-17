@@ -548,7 +548,6 @@ class koboldai_vars(object):
             else:
                 setattr(self._story_settings[self.get_story_name()], name, value)
 
-
     def __getattr__(self, name):
         if name in self.__dict__:
             return getattr(self, name)
@@ -1663,6 +1662,10 @@ class KoboldStoryRegister(object):
                 self.actions[pointer]['Probabilities'] = []
             process_variable_changes(self.socketio, "story", 'actions', {"id": pointer, 'action':  self.actions[pointer]}, None)
         self.set_game_saved()
+    
+    def clear_all_options(self):
+        for i in self.actions:
+            self.actions[i]["Options"] = []
     
     def set_pin(self, action_step, option_number):
         if action_step in self.actions:

@@ -12,7 +12,7 @@ var button_newgame;
 var button_rndgame;
 var button_save;
 var button_saveas;
-var button_savetofile;
+//var button_savetofile;
 var button_load;
 var button_import;
 var button_importwi;
@@ -2239,7 +2239,7 @@ $(document).ready(function(){
 	button_rndgame    = $('#btn_rndgame');
 	button_save       = $('#btn_save');
 	button_saveas     = $('#btn_saveas');
-	button_savetofile = $('#btn_savetofile');
+	//button_savetofile = $('#btn_savetofile');
 	button_download   = $('#btn_download');
 	button_downloadtxt= $('#btn_downloadtxt');
 	button_load       = $('#btn_load');
@@ -2913,7 +2913,8 @@ $(document).ready(function(){
 			$("#setfulldeterminism").prop('checked', msg.data).change();
 		} else if(msg.cmd == "runs_remotely") {
 			remote = true;
-			hide([button_savetofile, button_import, button_importwi]);
+			//hide([button_savetofile, button_import, button_importwi]);
+			hide([button_import, button_importwi]);
 		} else if(msg.cmd == "debug_info") {
 			$("#debuginfo").val(msg.data);
 		} else if(msg.cmd == "set_debug") {
@@ -3196,9 +3197,9 @@ $(document).ready(function(){
 		socket.send({'cmd': 'memory', 'data': ''});
 	});
 	
-	button_savetofile.on("click", function(ev) {
-		socket.send({'cmd': 'savetofile', 'data': ''});
-	});
+	//button_savetofile.on("click", function(ev) {
+	//	socket.send({'cmd': 'savetofile', 'data': ''});
+	//});
 	
 	button_loadfrfile.on("click", function(ev) {
 		if(remote) {

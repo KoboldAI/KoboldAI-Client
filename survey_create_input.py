@@ -27,7 +27,7 @@ if os.path.exists("survey_input.json"):
 else:
     results = {}
 if model not in results:
-    results[model] = {"temp": {}, "top_k": {}, "rep_pen": {}}
+    results[model] = {"temp": {}, "top_p": {}, "rep_pen": {}}
 for temp_tenths in tqdm.tqdm(range(1, 21)):
     temp = float(temp_tenths)/10.0
     output = []
@@ -40,9 +40,9 @@ for temp_tenths in tqdm.tqdm(range(50, 101, 5)):
     temp = float(temp_tenths)/100.0
     output = []
     while len(output) < total_sequences:
-        x = requests.post(url, json = {"prompt": prompt, "top_k": temp, "n": sequences, "max_length": 50}, headers = {"Content-Type": "application/json", "accept": "application/json"}, auth=basic)
+        x = requests.post(url, json = {"prompt": prompt, "top_p": temp, "n": sequences, "max_length": 50}, headers = {"Content-Type": "application/json", "accept": "application/json"}, auth=basic)
         output.extend([item['text'] for item in x.json()['results']])
-    results[model]["top_k"][temp] = output[:10]
+    results[model]["top_p"][temp] = output[:10]
 
 for temp_tenths in tqdm.tqdm(range(100, 131, 5)):
     temp = float(temp_tenths)/100.0
