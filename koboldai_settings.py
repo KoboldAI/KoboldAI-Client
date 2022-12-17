@@ -1538,13 +1538,14 @@ class KoboldStoryRegister(object):
                 self.actions[action_id]["Selected Text"] = text
                 self.actions[action_id]["Time"] = self.actions[action_id].get("Time", int(time.time()))
                 if 'Probabilities' in self.actions[action_id]:
-                    tokens = self.koboldai_vars.tokenizer.encode(text)
-                    for token_num in range(len(self.actions[action_id]["Probabilities"])):
-                        for token_option in range(len(self.actions[action_id]["Probabilities"][token_num])):
-                            if token_num < len(tokens):
-                                self.actions[action_id]["Probabilities"][token_num][token_option]["Used"] = tokens[token_num] == self.actions[action_id]["Probabilities"][token_num][token_option]["tokenId"]
-                            else:
-                                self.actions[action_id]["Probabilities"][token_num][token_option]["Used"] = False
+                    if self.koboldai_vars.tokenizer is not None:
+                        tokens = self.koboldai_vars.tokenizer.encode(text)
+                        for token_num in range(len(self.actions[action_id]["Probabilities"])):
+                            for token_option in range(len(self.actions[action_id]["Probabilities"][token_num])):
+                                if token_num < len(tokens):
+                                    self.actions[action_id]["Probabilities"][token_num][token_option]["Used"] = tokens[token_num] == self.actions[action_id]["Probabilities"][token_num][token_option]["tokenId"]
+                                else:
+                                    self.actions[action_id]["Probabilities"][token_num][token_option]["Used"] = False
             selected_text_length = 0
             self.actions[action_id]["Selected Text Length"] = selected_text_length
             for item in self.actions[action_id]["Options"]:
@@ -1591,13 +1592,14 @@ class KoboldStoryRegister(object):
                         del item['stream_id']
                         found = True
                         if 'Probabilities' in item:
-                            tokens = self.koboldai_vars.tokenizer.encode(option)
-                            for token_num in range(len(item["Probabilities"])):
-                                for token_option in range(len(item["Probabilities"][token_num])):
-                                    if token_num < len(tokens):
-                                        item["Probabilities"][token_num][token_option]["Used"] = tokens[token_num] == item["Probabilities"][token_num][token_option]["tokenId"]
-                                    else:
-                                        item["Probabilities"][token_num][token_option]["Used"] = False
+                            if self.koboldai_vars.tokenizer is not None:
+                                tokens = self.koboldai_vars.tokenizer.encode(option)
+                                for token_num in range(len(item["Probabilities"])):
+                                    for token_option in range(len(item["Probabilities"][token_num])):
+                                        if token_num < len(tokens):
+                                            item["Probabilities"][token_num][token_option]["Used"] = tokens[token_num] == item["Probabilities"][token_num][token_option]["tokenId"]
+                                        else:
+                                            item["Probabilities"][token_num][token_option]["Used"] = False
                         break
                     elif item['text'] == option:
                         found = True
@@ -1605,13 +1607,14 @@ class KoboldStoryRegister(object):
                             del item['stream_id']
                         found = True
                         if 'Probabilities' in item:
-                            tokens = self.koboldai_vars.tokenizer.encode(option)
-                            for token_num in range(len(item["Probabilities"])):
-                                for token_option in range(len(item["Probabilities"][token_num])):
-                                    if token_num < len(tokens):
-                                        item["Probabilities"][token_num][token_option]["Used"] = tokens[token_num] == item["Probabilities"][token_num][token_option]["tokenId"]
-                                    else:
-                                        item["Probabilities"][token_num][token_option]["Used"] = False
+                            if self.koboldai_vars.tokenizer is not None:
+                                tokens = self.koboldai_vars.tokenizer.encode(option)
+                                for token_num in range(len(item["Probabilities"])):
+                                    for token_option in range(len(item["Probabilities"][token_num])):
+                                        if token_num < len(tokens):
+                                            item["Probabilities"][token_num][token_option]["Used"] = tokens[token_num] == item["Probabilities"][token_num][token_option]["tokenId"]
+                                        else:
+                                            item["Probabilities"][token_num][token_option]["Used"] = False
                         break
                         
                 if not found:
