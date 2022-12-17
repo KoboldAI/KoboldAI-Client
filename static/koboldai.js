@@ -72,6 +72,7 @@ var drag_id = null;
 var story_commentary_characters = {};
 var generating_summary = false;
 const on_colab = $el("#on_colab").textContent == "true";
+let story_id = -1;
 
 // Each entry into this array should be an object that looks like:
 // {class: "class", key: "key", func: callback}
@@ -794,6 +795,8 @@ function var_changed(data) {
 		}
 		hide_show_prompt();
 	}
+
+	if (data.classname === "story" && data.name === "story_id") story_id = data.value;
 	
 	if ((data.classname == 'story') && (data.name == 'privacy_mode')) {
 		privacy_mode(data.value);
@@ -1967,18 +1970,18 @@ function world_info_entry(data) {
 	wiImg.id = `world_info_image_${data.uid}`;
 	wiImg.setAttribute("context-menu", "wi-img");
 
-	if (data.uid > -1) {
-		fetch(`/get_wi_image/${data.uid}`, {
-			method: "GET",
-		}).then(async function(r) {
-			if (!r.ok) return;
-			// 204 is used instead of 404 because 404 SPAMS THE CONSOLE WAY TOO MUCH!!!!!!!!!
-			if (r.status == 204) return;
-			wiImgPlaceholder.classList.add("hidden");
-			wiImg.src = await r.text();
-			setChatPfps(title.innerText, wiImg.src);
-		});
-	}
+	wiImg.addEventListener("load", function() {
+		wiImgPlaceholder.classList.add("hidden");
+		wiImg.classList.remove("hidden");
+		setChatPfps(title.innerText, wiImg.src);
+	});
+
+	wiImg.addEventListener("error", function() {
+		wiImg.classList.add("hidden");
+	});
+
+	// Story id is used to invalidate cache from other stories
+	if (data.uid > -1) wiImg.src = `/get_wi_image/${data.uid}?${story_id}`;
 
 	wiImgContainer.addEventListener("click", function() {
 		wiImgInput.click();
@@ -2013,6 +2016,7 @@ function world_info_entry(data) {
 		chatcharacter: "Chat Character",
 		wi: "Keywords",
 		constant: "Always On",
+		commentator: "Commentator",
 	}[world_info_data[data.uid].type];
 
 	wiTypeSelector.classList.remove("pulse");
@@ -2032,6 +2036,9 @@ function world_info_entry(data) {
 			case "Keywords":
 				world_info_data[data.uid].constant = false;
 				break;
+			case "Commentator":
+				world_info_data[data.uid].constant = true;
+				break;
 			default:
 				reportError("Error", `Unknown WI type ${wiTypeSelector.value}`);
 				return;
@@ -2040,6 +2047,7 @@ function world_info_entry(data) {
 			"Chat Character": "chatcharacter",
 			"Always On": "constant",
 			"Keywords": "wi",
+			"Commentator": "commentator",
 		}[wiTypeSelector.value];
 		send_world_info(data.uid);
 		this.classList.add("pulse");
@@ -2252,7 +2260,7 @@ function world_info_entry(data) {
 	}
 	
 	//hide keys if constant set
-	if (data.constant) {
+	if (data.constant || data.type === "commentator") {
 		document.getElementById("world_info_tags_"+data.uid).classList.add("hidden");
 		document.getElementById("world_info_secondtags_"+data.uid).classList.add("hidden");
 	} else {
@@ -6787,109 +6795,15 @@ function imgGenRetry() {
 	const settingsContainer = $el("#story-commentary-settings");
 	const storyReviewImg = $el("#story-review-img");
 
-	function syncCommentatorCards() {
-		story_commentary_characters = {};
-		for (const card of document.getElementsByClassName("story-commentary-character")) {
-			let idString = card.getAttribute("commentator-id");
-			story_commentary_characters[idString] = card.querySelector(".name").value;
-		}
-
-		socket.emit("var_change", {
-			ID: "story_commentary_characters",
-			value: story_commentary_characters
-		});
-	}
-
-	sync_hooks.push({
-		class: "story",
-		name: "commentary_characters",
-		func: function(commentators) {
-			$(".story-commentary-character").remove();
-			for (const [idString, name] of Object.entries(commentators)) {
-				makeCommentatorCard(idString, name)
-			}
-		}
-	})
-
-	function makeCommentatorCard(idString=null, name=null) {
-
-		// String due to JS array keys and DOM attributes being strings. Sux!
-		while (!idString || $el(`[commentator-id="${idString}"`)) {
-			idString = Math.floor(Math.random() * 1_000_000_000).toString();
-		}
-
-		let card = $e("div", characterContainer, {
-			classes: ["story-commentary-character"],
-			"commentator-id": idString,
-		});
-		let imageContainer = $e("div", card, {classes: ["image-container"]});
-		let placeholderImage = $e("span", imageContainer, {
-			classes: ["material-icons-outlined"],
-			tooltip: "Upload a picture for this character",
-			innerText: "add_a_photo"
-		});
-		let image = $e("img", imageContainer, {
-			classes: ["hidden"],
-			src: `/get_commentator_picture/${idString}`
-		});
-
-		image.addEventListener("load", function() {
-			image.classList.remove("hidden");
-			placeholderImage.classList.add("hidden");
-		});
-
-		let input = $e("input", card, {classes: ["name"], placeholder: "Character name"});
-		if (name) input.value = name;
-		input.addEventListener("change", syncCommentatorCards);
-
-		let deleteButton = $e("span", card, {
-			classes: ["close", "material-icons-outlined"],
-			tooltip: "Upload a picture for this character",
-			innerText: "clear"
-		});
-		deleteButton.addEventListener("click", function() {
-			card.remove();
-			syncCommentatorCards();
-		});
-
-		const imgInput = $e("input", null, {type: "file", accept: "image/png,image/x-png,image/gif,image/jpeg"});
-		imgInput.addEventListener("change", async function() {
-			const file = imgInput.files[0];
-			if (file.type.split("/")[0] !== "image") {
-				reportError("Unable to upload commentary image", `File type ${file.type} is not a compatible image type!`)
-				return;
-			}
-
-			let objectUrl = URL.createObjectURL(file);
-			placeholderImage.classList.add("hidden");
-			image.src = objectUrl;
-			image.classList.remove("hidden");
-
-			let r = await fetch(`/set_commentator_picture/${idString}`, {
-				method: "POST",
-				body: file
-			});
-		});
-
-		imageContainer.addEventListener("click", function() {
-			imgInput.click();
-		});
-
-		characterContainer.scrollIntoView();
-	}
-
-	$el("#story-commentary-settings > .add").addEventListener("click", () => makeCommentatorCard());
-
 	async function showStoryReview(data) {
-		storyReviewImg.src = `/get_commentator_picture/${data.id}`;
+		// Story id is used to invalidate cache from other stories
+		storyReviewImg.src = `/get_wi_image/${data.uid}?${story_id}`;
 		$el("#story-review-author").innerText = data.who;
 		$el("#story-review-content").innerText = data.review;
 		
 		$el("#story-review").classList.remove("hidden");
 	}
 	socket.on("show_story_review", showStoryReview);
-
-	let x = $el("#story-commentary-enable").querySelector("input")
 
 	// Bootstrap toggle requires jQuery for events
 	$($el("#story-commentary-enable").querySelector("input")).change(function() {
