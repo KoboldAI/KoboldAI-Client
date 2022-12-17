@@ -1442,12 +1442,13 @@ class KoboldStoryRegister(object):
             if self.actions[i]["Selected Text"] != text:
                 self.actions[i]["Selected Text"] = text
                 tokens = self.koboldai_vars.tokenizer.encode(text)
-                for token_num in range(len(self.actions[i]["Probabilities"])):
-                    for token_option in range(len(self.actions[i]["Probabilities"][token_num])):
-                        if token_num < len(tokens):
-                            self.actions[i]["Probabilities"][token_num][token_option]["Used"] = tokens[token_num] == self.actions[i]["Probabilities"][token_num][token_option]["tokenId"]
-                        else:
-                            self.actions[i]["Probabilities"][token_num][token_option]["Used"] = False
+                if 'oribabilities' in self.actions[i]:
+                    for token_num in range(len(self.actions[i]["Probabilities"])):
+                        for token_option in range(len(self.actions[i]["Probabilities"][token_num])):
+                            if token_num < len(tokens):
+                                self.actions[i]["Probabilities"][token_num][token_option]["Used"] = tokens[token_num] == self.actions[i]["Probabilities"][token_num][token_option]["tokenId"]
+                            else:
+                                self.actions[i]["Probabilities"][token_num][token_option]["Used"] = False
             if "Options" in self.actions[i]:
                 for j in range(len(self.actions[i]["Options"])):
                     if self.actions[i]["Options"][j]["text"] == text:
@@ -1640,7 +1641,8 @@ class KoboldStoryRegister(object):
                 for old_item in old_options:
                     if item['text'] == old_item['text']:
                         #We already have this option, so we need to save the probabilities
-                        item['Probabilities'] = old_item['Probabilities']
+                        if 'Probabilities' in old_item:
+                            item['Probabilities'] = old_item['Probabilities']
                     self.actions[action_id]["Options"].append(item)
         process_variable_changes(self.socketio, "story", 'actions', {"id": action_id, 'action':  self.actions[action_id]}, None)
     
