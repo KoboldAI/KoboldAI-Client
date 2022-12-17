@@ -2753,7 +2753,7 @@ body {
 	height: 40px;
 	width: 40px;
 	border-radius: 120px;
-
+	object-fit: cover;
 	margin: 0px 16px 0px 16px;
 }
 

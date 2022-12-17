@@ -9203,34 +9203,30 @@ def UI_2_set_wi_image(uid):
             "",
         )
 
-    uid = str(uid)
-    data = request.get_data(as_text=True)
-    if not data and uid in koboldai_vars.worldinfo_v2.image_store:
+    data = base64.b64decode(request.get_data(as_text=True).split(",")[-1])
+    path = os.path.join(koboldai_vars.save_paths.wi_images, str(uid))
+
+    if not data:
         # Delete if sent null image
-        del koboldai_vars.worldinfo_v2.image_store[uid]
+        try:
+            os.remove(path)
+        except FileNotFoundError:
+            pass
     else:
         # Otherwise assign image
-        koboldai_vars.worldinfo_v2.image_store[uid] = data
+        with open(path, "wb") as file:
+            file.write(data)
     koboldai_vars.gamesaved = False
     return ":)"
 
 @app.route("/get_wi_image/<int(signed=True):uid>", methods=["GET"])
 @logger.catch
 def UI_2_get_wi_image(uid):
+    path = os.path.join(koboldai_vars.save_paths.wi_images, str(uid))
     try:
-        return koboldai_vars.worldinfo_v2.image_store[str(uid)]
-    except KeyError:
-        return ":( Couldn't find image", 204
-
-@app.route("/get_commentator_picture/<int(signed=True):commentator_id>", methods=["GET"])
-@logger.catch
-def UI_2_get_commentator_image(commentator_id):
-    try:
-        return send_file(os.path.join(koboldai_vars.save_paths.commentator_pictures, str(commentator_id)))
+        return send_file(path)
     except FileNotFoundError:
-        # 404 Spams browser console
-        return ":(", 204
-
+        return ":( Couldn't find image", 204
 
 @app.route("/set_commentator_picture/<int(signed=True):commentator_id>", methods=["POST"])
 @logger.catch
@@ -10119,9 +10115,10 @@ def UI_2_refresh_auto_memory(data):
 #==================================================================#
 # Story review zero-shot
 #==================================================================#
-def maybe_review_story():
+def maybe_review_story() -> None:
+    commentary_characters = koboldai_vars.worldinfo_v2.get_commentators()
     if not (
-        koboldai_vars.commentary_characters
+        commentary_characters
         and koboldai_vars.commentary_chance
         and koboldai_vars.commentary_enabled
     ):
@@ -10130,18 +10127,35 @@ def maybe_review_story():
     if random.randrange(100) > koboldai_vars.commentary_chance:
         return
 
-    speaker_id, speaker_name = random.choice(list(koboldai_vars.commentary_characters.items()))
-    prompt = "\n\n%s's thoughts on what just happened in this story: \"" % speaker_name
+    char = random.choice(commentary_characters)
+    speaker_uid = char["uid"]
+    speaker_name = char["title"]
+
+    allowed_wi_uids = [speaker_uid]
+    for uid, wi in koboldai_vars.worldinfo_v2.world_info.items():
+        if wi["type"] == "commentator":
+            continue
+        uid = int(uid)
+        allowed_wi_uids.append(uid)
+
+    # prompt = f"\n\n{speaker_name}'s thoughts on what just happened in this story: \""
+    prompt = f"\n***\n{speaker_name}'s thoughts on what just happened in this story: \""
+    # prompt = f"\n***\n{speaker_name}'s thoughts on the story's latest event: \""
+
+    print(prompt)
 
     context = koboldai_vars.calc_ai_text(
         prompt,
         return_text=True,
-        send_context=False
+        send_context=False,
+        allowed_wi_entries=allowed_wi_uids
     )
 
-    out_text = raw_generate(
+
+    out_text = tpool.execute(
+        raw_generate,
         context,
-        max_new=30,
+        max_new=30
     ).decoded[0]
 
     out_text = re.sub(r"[\s\(\)]", " ", out_text)
@@ -10154,7 +10168,7 @@ def maybe_review_story():
 
     out_text = out_text.strip()
     out_text = utils.trimincompletesentence(out_text)
-    emit("show_story_review", {"who": speaker_name, "review": out_text, "id": speaker_id})
+    emit("show_story_review", {"who": speaker_name, "review": out_text, "uid": speaker_uid})
 
 #==================================================================#
 # Get next 100 actions for infinate scroll
