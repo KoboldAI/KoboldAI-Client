@@ -2380,6 +2380,7 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
                     with zipfile.ZipFile(f, "r") as z:
                         try:
                             last_storage_key = None
+                            zipfolder = os.path.basename(os.path.normpath(f)).split('.')[0]
                             f = None
                             current_offset = 0
                             able_to_pin_layers = True
@@ -2391,7 +2392,10 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
                                     last_storage_key = storage_key
                                     if isinstance(f, zipfile.ZipExtFile):
                                         f.close()
-                                    f = z.open(f"archive/data/{storage_key}")
+                                    try:
+                                        f = z.open(f"archive/data/{storage_key}")
+                                    except:
+                                        f = z.open(f"{zipfolder}/data/{storage_key}")
                                     current_offset = 0
                                 if current_offset != model_dict[key].seek_offset:
                                     f.read(model_dict[key].seek_offset - current_offset)

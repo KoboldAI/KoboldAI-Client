@@ -1251,6 +1251,7 @@ def load_model(path: str, driver_version="tpu_driver0.1_dev20210607", hf_checkpo
         with zipfile.ZipFile(f, "r") as z:
             try:
                 last_storage_key = None
+                zipfolder = os.path.basename(os.path.normpath(f)).split('.')[0]
                 f = None
                 current_offset = 0
                 if utils.current_shard == 0:
@@ -1283,7 +1284,10 @@ def load_model(path: str, driver_version="tpu_driver0.1_dev20210607", hf_checkpo
                         last_storage_key = storage_key
                         if isinstance(f, zipfile.ZipExtFile):
                             f.close()
-                        f = z.open(f"archive/data/{storage_key}")
+                        try:
+                            f = z.open(f"archive/data/{storage_key}")
+                        except:
+                            f = z.open(f"{zipfolder}/data/{storage_key}")
                         current_offset = 0
                     if current_offset != model_dict[key].seek_offset:
                         f.read(model_dict[key].seek_offset - current_offset)
