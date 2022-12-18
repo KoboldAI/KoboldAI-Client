@@ -7616,7 +7616,8 @@ def load_story_v1(js, from_file=None):
     if from_file is not None:
         #Save the file so we get a new V2 format, then move the save file into the proper directory
         koboldai_vars.save_story()
-        shutil.move(from_file, koboldai_vars.save_paths.story.replace("story.json", "v1_file.json"))
+        #We're no longer moving the original file. It'll stay in place.
+        #shutil.move(from_file, koboldai_vars.save_paths.story.replace("story.json", "v1_file.json"))
     
 
 def load_story_v2(js, from_file=None):
@@ -8893,6 +8894,9 @@ def valid_story(path: str):
         return valid_v3_story(path)
 
     if not path.endswith(".json"):
+        return False
+
+    if os.path.exists(path.replace(".json", "/story.json")):
         return False
 
     try:
