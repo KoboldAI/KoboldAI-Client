@@ -2562,29 +2562,8 @@ def patch_transformers():
     use_core_manipulations.get_stopping_criteria = new_get_stopping_criteria
 
 def reset_model_settings():
-    koboldai_vars.socketio = socketio
-    koboldai_vars.max_length  = 1024    # Maximum number of tokens to submit per action
-    koboldai_vars.ikmax       = 3000    # Maximum number of characters to submit to InferKit
-    koboldai_vars.genamt      = 80      # Amount of text for each action to generate
-    koboldai_vars.ikgen       = 200     # Number of characters for InferKit to generate
-    koboldai_vars.rep_pen     = 1.1     # Default generator repetition_penalty
-    koboldai_vars.rep_pen_slope = 0.7   # Default generator repetition penalty slope
-    koboldai_vars.rep_pen_range = 1024  # Default generator repetition penalty range
-    koboldai_vars.temp        = 0.5     # Default generator temperature
-    koboldai_vars.top_p       = 0.9     # Default generator top_p
-    koboldai_vars.top_k       = 0       # Default generator top_k
-    koboldai_vars.top_a       = 0.0     # Default generator top-a
-    koboldai_vars.tfs         = 1.0     # Default generator tfs (tail-free sampling)
-    koboldai_vars.typical     = 1.0     # Default generator typical sampling threshold
-    koboldai_vars.numseqs     = 1       # Number of sequences to ask the generator to create
-    koboldai_vars.generated_tkns = 0    # If using a backend that supports Lua generation modifiers, how many tokens have already been generated, otherwise 0
-    koboldai_vars.badwordsids = []
-    koboldai_vars.fp32_model  = False  # Whether or not the most recently loaded HF model was in fp32 format
-    koboldai_vars.modeldim    = -1     # Embedding dimension of your model (e.g. it's 4096 for GPT-J-6B and 2560 for GPT-Neo-2.7B)
-    koboldai_vars.sampler_order = [0, 1, 2, 3, 4, 5]
-    koboldai_vars.newlinemode = "n"
-    koboldai_vars.revision    = None
-    koboldai_vars.lazy_load = True
+    koboldai_vars.reset_for_model_load()
+    
     
 def unload_model():
     global model

@@ -696,6 +696,7 @@ class model_settings(settings):
         self.tfs         = 1.0     # Default generator tfs (tail-free sampling)
         self.typical     = 1.0     # Default generator typical sampling threshold
         self.numseqs     = 1       # Number of sequences to ask the generator to create
+        self.generated_tkns = 0    # If using a backend that supports Lua generation modifiers, how many tokens have already been generated, otherwise 0
         self.badwordsids = []
         self.fp32_model  = False  # Whether or not the most recently loaded HF model was in fp32 format
         self.modeldim    = -1     # Embedding dimension of your model (e.g. it's 4096 for GPT-J-6B and 2560 for GPT-Neo-2.7B)
@@ -713,6 +714,8 @@ class model_settings(settings):
         self.simple_randomness = 0
         self.simple_creativity = 0
         self.simple_repitition = 0
+        
+
 
         
     #dummy class to eat the tqdm output
