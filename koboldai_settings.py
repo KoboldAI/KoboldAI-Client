@@ -506,6 +506,9 @@ class koboldai_vars(object):
     def assign_world_info_to_actions(self, *args, **kwargs):
         self._story_settings[self.get_story_name()].assign_world_info_to_actions(*args, **kwargs)
     
+    def reset_for_model_load(self):
+        self._model_settings.reset_for_model_load()
+    
     def __setattr__(self, name, value):
         if name[0] == "_" or name == "tokenizer":
             super().__setattr__(name, value)
