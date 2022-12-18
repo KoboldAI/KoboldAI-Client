@@ -1125,11 +1125,11 @@ class user_settings(settings):
         self.socketio = socketio
         self.wirmvwhtsp  = False             # Whether to remove leading whitespace from WI entries
         self.widepth     = 3                 # How many historical actions to scan for WI hits
-        self.formatoptns = {'frmttriminc': True, 'frmtrmblln': False, 'frmtrmspch': False, 'frmtadsnsp': False, 'singleline': False}     # Container for state of formatting options
+        self.formatoptns = {'frmttriminc': True, 'frmtrmblln': False, 'frmtrmspch': False, 'frmtadsnsp': True, 'singleline': False}     # Container for state of formatting options
         self.frmttriminc = True
         self.frmtrmblln  = False
         self.frmtrmspch  = False
-        self.frmtadsnsp  = False
+        self.frmtadsnsp  = True
         self.singleline  = False
         self.remove_double_space = True
         self.importnum   = -1                # Selection on import popup list
