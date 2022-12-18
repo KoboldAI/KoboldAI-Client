@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<script src="static/socket.io.min.js"></script>
+	<link href="/static/survey.css" rel="stylesheet">
+	<input id="question" class="hidden" value="{{ question }}">
+	<input type=hidden id="model" value="{{ model }}"/>
+</head>
+<body>
+	<div id="prompt-container">
+		<span class="loopy-label">Prompt</span>
+		Niko the kobold stalked carefully down the alley, his small scaly figure obscured by a dusky cloak that fluttered lightly in the cold winter breeze. Holding up his tail to keep it from dragging in the dirty snow that covered the cobblestone, he waited patiently for the butcher to turn his attention from his stall so that he could pilfer his next meal: a tender-looking chicken. He crouched just slightly as he neared the stall to ensure that no one was watching, not that anyone would be dumb enough to hassle a small kobold. What else was there for a lowly kobold to do in a city? All that Niko needed to know was where to find the chicken and then how to make off with it. A soft thud caused Niko to quickly lift his head. Standing behind the stall where the butcher had been cutting his chicken,
+	</div>
+
+	<h1 id="question">{{ question }}</h1>
+
+	<input type=hidden id="id" value="{{ random_num }}"/>
+
+	<div id="choices-container">
+		<div answer="A" class="choice">
+			<input type="radio" name="answer" autocomplete="off">
+			<span class="choice-text">{{ a }}</span>
+		</div>
+
+		<div answer="B" class="choice">
+			<input type="radio" name="answer" autocomplete="off">
+			<span class="choice-text">{{ b }}</span>
+		</div>
+
+		<div answer="C" class="choice meta-choice">
+			<input type="radio" name="answer" autocomplete="off">
+			<span class="choice-text">Both choices are about the same</span>
+		</div>
+
+		<div answer="D" class="choice meta-choice">
+			<input type="radio" name="answer" autocomplete="off">
+			<span class="choice-text">The first choice is incoherent</span>
+		</div>
+
+		<div answer="E" class="choice meta-choice">
+			<input type="radio" name="answer" autocomplete="off">
+			<span class="choice-text">The second choice is incoherent</span>
+		</div>
+
+		<div answer="F" class="choice meta-choice">
+			<input type="radio" name="answer" autocomplete="off">
+			<span class="choice-text">Both choices are incoherent</span>
+		</div>
+	</div>
+	
+	<script src="/static/survey.js"></script>
+</body>
+</html>

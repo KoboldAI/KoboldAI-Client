@@ -9,11 +9,11 @@
   },
   "static_weights": {
     "transformer.wte.weight": {"mtj": {"module": "embedding_shard/~/linear", "param": "w", "transforms": ["no_transpose", "vocab_pad"]}},
-    "transformer.wte.bias": {"mtj": {"module": "embedding_shard/~/linear", "param": "b"}},
+    "transformer.wte.bias": {"mtj": {"module": "embedding_shard/~/linear", "param": "b", "transforms": ["vocab_pad"]}},
     "transformer.ln_f.weight": {"mtj": {"module": "projection_shard/~/replicated_layer_norm", "param": "scale"}},
     "transformer.ln_f.bias": {"mtj": {"module": "projection_shard/~/replicated_layer_norm", "param": "offset"}},
     "lm_head.weight": {"mtj": {"module": "projection_shard/~/linear", "param": "w", "transforms": ["vocab_pad"]}},
-    "lm_head.bias": {"mtj": {"module": "projection_shard/~/linear", "param": "b"}}
+    "lm_head.bias": {"mtj": {"module": "projection_shard/~/linear", "param": "b", "transforms": ["vocab_pad"]}}
   },
   "layer_weights": {
     "transformer.h.{layer}.attn.bias": {},

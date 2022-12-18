@@ -47,6 +47,7 @@
     --text: var(--on_background_palette);
     --text_to_ai_color: var(--on_background_palette);
     --text_edit: var(--on_background_palette);
+	--action_mode_input: #33E978;
 
 	--statusbar_color: #002d6ca1;
 	--statusbar_text_color: white;

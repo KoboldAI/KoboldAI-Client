@@ -34,6 +34,7 @@ socket.on("log_message", function(data){process_log_message(data);});
 socket.on("debug_message", function(data){console.log(data);});
 socket.on("scratchpad_response", recieveScratchpadResponse);
 socket.on("show_error_notification", function(data) { reportError(data.title, data.text) });
+socket.on("generated_wi", showGeneratedWIData);
 //socket.onAny(function(event_name, data) {console.log({"event": event_name, "class": data.classname, "data": data});});
 
 // Must be done before any elements are made; we track their changes.
@@ -68,14 +69,21 @@ var actions_data = {};
 var setup_wi_toggles = [];
 var scroll_trigger_element = undefined; //undefined means not currently set. If set to null, it's disabled.
 var drag_id = null;
+var story_commentary_characters = {};
+var generating_summary = false;
 const on_colab = $el("#on_colab").textContent == "true";
+let story_id = -1;
+
+// Each entry into this array should be an object that looks like:
+// {class: "class", key: "key", func: callback}
+let sync_hooks = [];
 
 // name, desc, icon, func
 var finder_actions = [
 	{name: "Load Model", icon: "folder_open", type: "action", func: function() { socket.emit('load_model_button', {}); }},
 	{name: "New Story", icon: "description", type: "action", func: function() { socket.emit('new_story', ''); }},
-	{name: "Load Story", icon: "folder_open", type: "action", func: function() { socket.emit('load_story_list', ''); }},
-	{name: "Save Story", icon: "save", type: "action", func: function() { socket.emit("save_story", null, (response) => {save_as_story(response);}); }},
+	{name: "Load Story", icon: "folder_open", type: "action", func: load_story_list},
+	{name: "Save Story", icon: "save", type: "action", func: save_story},
 	{name: "Download Story", icon: "file_download", type: "action", func: function() { document.getElementById('download_iframe').src = 'json'; }},
 	{name: "Import Story", icon: "file_download", desc: "Import a prompt from aetherroom.club, formerly prompts.aidg.club", type: "action", func: openClubImport },
 
@@ -97,6 +105,8 @@ var finder_actions = [
 
 const context_menu_actions = {
 	gamescreen: [
+		{label: "Speak", icon: "record_voice_over", enabledOn: "CARET", click: speak_audio, shouldShow: function () {return document.getElementById("story_gen_audio").checked;}},
+		null,
 		{label: "Cut", icon: "content_cut", enabledOn: "SELECTION", click: cut},
 		{label: "Copy", icon: "content_copy", enabledOn: "SELECTION", click: copy},
 		{label: "Paste", icon: "content_paste", enabledOn: "SELECTION", click: paste},
@@ -119,6 +129,7 @@ const context_menu_actions = {
 	"generated-image": [
 		{label: "View", icon: "search", enabledOn: "ALWAYS", click: imgGenView},
 		{label: "Download", icon: "download", enabledOn: "ALWAYS", click: imgGenDownload},
+		{label: "Retry", icon: "refresh", enabledOn: "ALWAYS", click: imgGenRetry},
 		{label: "Clear", icon: "clear", enabledOn: "ALWAYS", click: imgGenClear},
 	],
 	"wi-img-upload-button": [
@@ -127,17 +138,20 @@ const context_menu_actions = {
 	]
 };
 
-// CTRL-[X]
+let context_menu_cache = [];
+
 const shortcuts = [
-	{key: "k", desc: "Finder", func: open_finder},
-	{key: "/", desc: "Help screen", func: () => openPopup("shortcuts-popup")},
-	{key: "z", desc: "Undoes last story action", func: () => socket.emit("back", {}), criteria: canNavigateStoryHistory},
-	{key: "y", desc: "Redoes last story action", func: () => socket.emit("redo", {}), criteria: canNavigateStoryHistory},
-	{key: "e", desc: "Retries last story action", func: () => socket.emit("retry", {}), criteria: canNavigateStoryHistory},
-	{key: "m", desc: "Focuses Memory", func: () => focusEl("#memory")},
-	{key: "u", desc: "Focuses Author's Note", func: () => focusEl("#authors_notes")}, // CTRL-N is reserved :^(
-	{key: "g", desc: "Focuses game text", func: () => focusEl("#input_text")},
-	{key: "l", desc: '"Lock" screen (Not secure)', func: () => socket.emit("privacy_mode", {'enabled': true})},
+	{mod: "ctrl", key: "s", desc: "Save Story", func: save_story},
+	{mod: "ctrl", key: "o", desc: "Open Story", func: load_story_list},
+	{mod: "alt", key: "z", desc: "Undoes last story action", func: storyBack, criteria: canNavigateStoryHistory},
+	{mod: "alt", key: "y", desc: "Redoes last story action", func: storyRedo, criteria: canNavigateStoryHistory},
+	{mod: "alt", key: "r", desc: "Retries last story action", func: storyRetry, criteria: canNavigateStoryHistory},
+	{mod: "ctrl", key: "m", desc: "Focuses Memory", func: () => focusEl("#memory")},
+	{mod: "ctrl", key: "u", desc: "Focuses Author's Note", func: () => focusEl("#authors_notes")}, // CTRL-N is reserved :^(
+	{mod: "ctrl", key: "g", desc: "Focuses game text", func: () => focusEl("#input_text")},
+	{mod: "ctrl", key: "l", desc: '"Lock" screen (Not secure)', func: () => socket.emit("privacy_mode", {'enabled': true})},
+	{mod: "ctrl", key: "k", desc: "Finder", func: open_finder},
+	{mod: "ctrl", key: "/", desc: "Help screen", func: () => openPopup("shortcuts-popup")},
 ]
 
 const chat = {
@@ -209,8 +223,37 @@ function disconnect() {
 	document.getElementById("disconnect_message").classList.remove("hidden");
 }
 
+function storySubmit() {
+	disruptStoryState();
+	socket.emit('submit', {'data': document.getElementById('input_text').value, 'theme': document.getElementById('themetext').value});
+	document.getElementById('input_text').value = '';
+	document.getElementById('themetext').value = '';
+}
+
+function storyBack() {
+	disruptStoryState();
+	socket.emit('back', {});
+}
+
+function storyRedo() {
+	disruptStoryState();
+	socket.emit('redo', {});
+}
+
+function storyRetry() {
+	disruptStoryState();
+	socket.emit('retry', {});
+}
+
+function disruptStoryState() {
+	// This function is responsible for wiping things away which are sensitive
+	// to story state
+	$el("#story-review").classList.add("hidden");
+}
+
 function reset_story() {
-	//console.log("Resetting story");
+	console.log("Resetting story");
+	disruptStoryState();
 	clearTimeout(calc_token_usage_timeout);
 	clearTimeout(game_text_scroll_timeout);
 	clearTimeout(font_size_cookie_timout);
@@ -219,11 +262,10 @@ function reset_story() {
 	finder_last_input = null;
 	on_new_wi_item = null;
 	current_chunk_number = null;
-	//console.log("resetting scroll_trigger_element");
 	scroll_trigger_element = undefined;
+	
+	//clear actions
 	actions_data = {};
-	world_info_data = {};
-	world_info_folder({"root": []});
 	var story_area = document.getElementById('Selected Text');
 	let temp = []
 	for (child of story_area.children) {
@@ -235,15 +277,22 @@ function reset_story() {
 		item.remove();
 	}
 	document.getElementById("Selected Text").setAttribute("contenteditable", "false");
+	
+	//clear any options
 	var option_area = document.getElementById("Select Options");
 	while (option_area.firstChild) {
 		option_area.removeChild(option_area.firstChild);
 	}
+	
+	//clear world info
+	world_info_data = {};
+	world_info_folder({"root": []});
 	var world_info_area = document.getElementById("WI_Area");
 	while (world_info_area.firstChild) {
 		world_info_area.removeChild(world_info_area.firstChild);
 	}
 
+	
 	const storyPrompt = $el("#story_prompt");
 
 	if (storyPrompt) {
@@ -316,7 +365,7 @@ function create_options(action) {
 	let added_options=0;
 	i=0;
 	for (item of action.action.Options) {
-		if ((item['Previous Selection'])) {
+		if ((item['Previous Selection']) && (item.text != "")) {
 			var row = document.createElement("div");
 			row.classList.add("sequence_row");
 			var textcell = document.createElement("span");
@@ -354,7 +403,7 @@ function create_options(action) {
 	//Add general options
 	i=0;
 	for (item of action.action.Options) {
-		if (!(item.Edited) && !(item['Previous Selection'])) {
+		if (!(item.Edited) && !(item['Previous Selection']) && (item.text != "")) {
 			var row = document.createElement("div");
 			row.classList.add("sequence_row");
 			var textcell = document.createElement("span");
@@ -438,9 +487,6 @@ function process_actions_data(data) {
 		actions_data[parseInt(action.id)] = action.action;
 		do_story_text_updates(action);
 		create_options(action);
-		if ('Probabilities' in action.action) {
-			do_probabilities(action);
-		}
 	}
 	
 	clearTimeout(game_text_scroll_timeout);
@@ -515,11 +561,17 @@ function do_story_text_updates(action) {
 				story_area.prepend(item);
 			}
 		}
+		
+		if (action.action['Selected Text'].charAt(0) == ">") {
+			item.classList.add("action_mode_input");
+		} else {
+			item.classList.remove("action_mode_input");
+		}
 
 		if ('wi_highlighted_text' in action.action) {
 			for (chunk of action.action['wi_highlighted_text']) {
 				chunk_element = document.createElement("span");
-				chunk_element.textContent = chunk['text'];
+				chunk_element.innerText = chunk['text'];
 				if (chunk['WI matches'] != null) {
 					chunk_element.classList.add("wi_match");
 					chunk_element.setAttribute("tooltip", chunk['WI Text']);
@@ -529,7 +581,7 @@ function do_story_text_updates(action) {
 			}
 		} else {
 			chunk_element = document.createElement("span");
-			chunk_element.textContent = action.action['Selected Text'];
+			chunk_element.innerText = action.action['Selected Text'];
 			item.append(chunk_element);
 		}
 		item.original_text = action.action['Selected Text'];
@@ -562,7 +614,7 @@ function do_prompt(data) {
 			}
 			for (chunk of data.value) {
 				chunk_element = document.createElement("span");
-				chunk_element.textContent = chunk['text'];
+				chunk_element.innerText = chunk['text'];
 				if (chunk['WI matches'] != null) {
 					chunk_element.classList.add("wi_match");
 					chunk_element.setAttribute("tooltip", chunk['WI Text']);
@@ -608,48 +660,9 @@ function do_story_text_length_updates(action) {
 	
 }
 
-function do_probabilities(action) {
-	//console.log(data);
-	if (document.getElementById('probabilities_'+action.id)) {
-		prob_area = document.getElementById('probabilities_'+action.id)
-	} else {
-		probabilities = document.getElementById('probabilities');
-		prob_area = document.createElement('span');
-		prob_area.id = 'probabilities_'+action.id;
-		probabilities.append(prob_area);
-	}
-	//Clear
-	while (prob_area.firstChild) { 
-		prob_area.removeChild(prob_area.lastChild);
-	}
-	//create table
-	table = document.createElement("table");
-	table.border=1;
-	if ("Probabilities" in action.action) {
-		for (token of action.action.Probabilities) {
-			actual_text = document.createElement("td");
-			actual_text.setAttribute("rowspan", token.length);
-			actual_text.textContent = "Word Goes Here";
-			for (const [index, word] of token.entries()) {
-				tr = document.createElement("tr");
-				if (index == 0) {
-					tr.append(actual_text);
-				}
-				decoded = document.createElement("td");
-				decoded.textContent = word.decoded;
-				tr.append(decoded);
-				score = document.createElement("td");
-				score.textContent = (word.score*100).toFixed(2)+"%";
-				tr.append(score);
-				table.append(tr);
-			}
-		}
-	}
-	prob_area.append(table);
-	
-	//prob_area.textContent = data.value.action["Probabilities"];
-	
-}
+
+function save_story() { socket.emit("save_story", null, response => save_as_story(response)); }
+function load_story_list() { socket.emit("load_story_list", ""); }
 
 function do_presets(data) {
 	for (select of document.getElementsByClassName('presets')) {
@@ -754,6 +767,12 @@ function var_changed(data) {
 	//if (data.name == "sp") {
 	//	console.log({"name": data.name, "data": data});
 	//}
+
+	for (const entry of sync_hooks) {
+		if (data.classname !== entry.class) continue;
+		if (data.name !== entry.name) continue;
+		entry.func(data.value);
+	}
 	
 	if (data.name in vars_sync_time) {
 		if (vars_sync_time[data.name] > Date.parse(data.transmit_time)) {
@@ -761,9 +780,12 @@ function var_changed(data) {
 		}
 	}
 	vars_sync_time[data.name] = Date.parse(data.transmit_time);
-	
+
 	if ((data.classname == 'actions') && (data.name == 'Action Count')) {
 		current_action = data.value;
+		if (document.getElementsByClassName("action_image")[0]) {
+			document.getElementsByClassName("action_image")[0].setAttribute("chunk", data.value);
+		}
 		if (current_action <= 0) {
 			//console.log("setting action_count to "+current_action);
 			const storyPrompt = $el("#story_prompt");
@@ -773,6 +795,8 @@ function var_changed(data) {
 		}
 		hide_show_prompt();
 	}
+
+	if (data.classname === "story" && data.name === "story_id") story_id = data.value;
 	
 	if ((data.classname == 'story') && (data.name == 'privacy_mode')) {
 		privacy_mode(data.value);
@@ -954,6 +978,7 @@ function var_changed(data) {
 	if ((data.classname == "actions") && (data.name == "Action Count")) {
 		var option_container = document.getElementById("Select Options");
 		var current_chunk = parseInt(document.getElementById("action_count").textContent)+1;
+		
 		var children = option_container.children;
 		for (var i = 0; i < children.length; i++) {
 			var chunk = children[i];
@@ -1008,7 +1033,7 @@ function load_popup(data) {
 			for (file of fileList) {
 				reader = new FileReader();
 				reader.onload = function (event) {
-					socket.emit("upload_file", {'filename': file.name, "data": event.target.result});
+					socket.emit("upload_file", {'filename': file.name, "data": event.target.result, 'upload_no_save': true});
 				};
 				reader.readAsArrayBuffer(file);
 			}
@@ -1945,18 +1970,18 @@ function world_info_entry(data) {
 	wiImg.id = `world_info_image_${data.uid}`;
 	wiImg.setAttribute("context-menu", "wi-img");
 
-	if (data.uid > -1) {
-		fetch(`/get_wi_image/${data.uid}`, {
-			method: "GET",
-		}).then(async function(r) {
-			if (!r.ok) return;
-			// 204 is used instead of 404 because 404 SPAMS THE CONSOLE WAY TOO MUCH!!!!!!!!!
-			if (r.status == 204) return;
-			wiImgPlaceholder.classList.add("hidden");
-			wiImg.src = await r.text();
-			setChatPfps(title.innerText, wiImg.src);
-		});
-	}
+	wiImg.addEventListener("load", function() {
+		wiImgPlaceholder.classList.add("hidden");
+		wiImg.classList.remove("hidden");
+		setChatPfps(title.innerText, wiImg.src);
+	});
+
+	wiImg.addEventListener("error", function() {
+		wiImg.classList.add("hidden");
+	});
+
+	// Story id is used to invalidate cache from other stories
+	if (data.uid > -1) wiImg.src = `/get_wi_image/${data.uid}?${story_id}`;
 
 	wiImgContainer.addEventListener("click", function() {
 		wiImgInput.click();
@@ -1991,6 +2016,7 @@ function world_info_entry(data) {
 		chatcharacter: "Chat Character",
 		wi: "Keywords",
 		constant: "Always On",
+		commentator: "Commentator",
 	}[world_info_data[data.uid].type];
 
 	wiTypeSelector.classList.remove("pulse");
@@ -2010,6 +2036,9 @@ function world_info_entry(data) {
 			case "Keywords":
 				world_info_data[data.uid].constant = false;
 				break;
+			case "Commentator":
+				world_info_data[data.uid].constant = true;
+				break;
 			default:
 				reportError("Error", `Unknown WI type ${wiTypeSelector.value}`);
 				return;
@@ -2018,6 +2047,7 @@ function world_info_entry(data) {
 			"Chat Character": "chatcharacter",
 			"Always On": "constant",
 			"Keywords": "wi",
+			"Commentator": "commentator",
 		}[wiTypeSelector.value];
 		send_world_info(data.uid);
 		this.classList.add("pulse");
@@ -2230,13 +2260,57 @@ function world_info_entry(data) {
 	}
 	
 	//hide keys if constant set
-	if (data.constant) {
+	if (data.constant || data.type === "commentator") {
 		document.getElementById("world_info_tags_"+data.uid).classList.add("hidden");
 		document.getElementById("world_info_secondtags_"+data.uid).classList.add("hidden");
 	} else {
 		document.getElementById("world_info_tags_"+data.uid).classList.remove("hidden");
 		document.getElementById("world_info_secondtags_"+data.uid).classList.remove("hidden");
 	}
+
+	const genTypeInput = world_info_card.querySelector(".world_info_item_type");
+	const generateDescButton = world_info_card.querySelector(".wi-lc-text > .generate-button");
+	generateDescButton.addEventListener("click", function() {
+		if (generating_summary) return;
+		let type = genTypeInput.innerText;
+
+		if (!type) {
+			genTypeInput.classList.add("bad-input");
+			return;
+		} else {
+			genTypeInput.classList.remove("bad-input");
+		}
+
+		// TODO: Make type input element
+		let genAmount = parseInt($el("#user_wigen_amount").value);
+		generateWIData(data.uid, "desc", title.innerText, type, null, genAmount);
+		this.innerText = "autorenew";
+		this.classList.add("spinner");
+		manual_text.classList.add("disabled");
+	});
+
+	genTypeInput.addEventListener("focus", function() {
+		this.classList.remove("bad-input");
+	});
+
+	genTypeInput.addEventListener("keydown", function(event) {
+		if (event.key === "Enter") {
+			event.preventDefault();
+			this.blur();
+		}
+	});
+
+	genTypeInput.addEventListener("blur", function() {
+		this.innerText = this.innerText.trim();
+
+		if (this.innerText == this.getAttribute("old-text")) return;
+		this.setAttribute("old-text", this.innerText);
+
+		world_info_data[data.uid].object_type = this.innerText;
+		send_world_info(data.uid);
+	});
+
+	genTypeInput.innerText = data.object_type;
 	
 	//$('#world_info_constant_'+data.uid).bootstrapToggle();
 	//$('#world_info_wpp_toggle_'+data.uid).bootstrapToggle();
@@ -2434,9 +2508,9 @@ function world_info_folder(data) {
 			add_text.textContent = "Add World Info Entry";
 			add_text.classList.add("wi_add_text");
 			add_text.setAttribute("folder", folder_name);
-			add_text.onclick = function() {
-											create_new_wi_entry(this.getAttribute("folder"));
-										  }
+			new_icon.onclick = function() {
+				create_new_wi_entry(this.querySelector(".wi_add_text").getAttribute("folder"));
+			}
 			new_icon.append(add_text);
 			folder.append(new_icon);
 			
@@ -2600,83 +2674,101 @@ function process_log_message(full_data) {
 }
 
 //--------------------------------------------UI to Server Functions----------------------------------
+function create_new_softprompt() {
+	socket.emit("create_new_softprompt", {"sp_title": document.getElementById("sp_title").value,
+										  "sp_prompt": document.getElementById("sp_prompt").value,
+										  "sp_dataset": document.getElementById("sp_dataset").value,
+										  "sp_author": document.getElementById("sp_author").value,
+										  "sp_description": document.getElementById("sp_description").value
+										});
+	closePopups();
+}
+
 async function download_story_to_json() {
 	//document.getElementById('download_iframe').src = 'json';
 	downloaded = false;
+}
+
+async function download_story() {
 	if (socket.connected) {
 		try {
-			let r = await fetch("json");
-			let j = await r.json();
-			downloadString(JSON.stringify(j), j['story_name']+".json")
-			downloaded = true;
+			let name = $el(".var_sync_story_story_name").innerText;
+			let r = await fetch("story_download");
+			downloadBlob(await r.blob(), `${name}.kaistory`);
+			return;
 		}
 		catch(err) {
-			downloaded = false;
+			console.error("Error in online download");
+			console.error(err);
 		}
-	} if (downloaded == false) {
-		//first we're going to find all the var_sync_story_ classes used in the document.
-		let allClasses = [];
-		const allElements = document.querySelectorAll('*');
+	}
 
-		for (let i = 0; i < allElements.length; i++) {
-		  let classes = allElements[i].classList;
-		  for (let j = 0; j < classes.length; j++) {
-			if (!(allClasses.includes(classes[j].replace("var_sync_story_", ""))) && (classes[j].includes("var_sync_story_"))) {
-				allClasses.push(classes[j].replace("var_sync_story_", ""));
-			}
-		  }
+	console.warn("Online download failed! Using offline download...")
+
+	/* Offline Download - Compile JSON file from what we have in ram */
+	
+	//first we're going to find all the var_sync_story_ classes used in the document.
+	let allClasses = [];
+	const allElements = document.querySelectorAll('*');
+
+	for (let i = 0; i < allElements.length; i++) {
+		let classes = allElements[i].classList;
+		for (let j = 0; j < classes.length; j++) {
+		if (!(allClasses.includes(classes[j].replace("var_sync_story_", ""))) && (classes[j].includes("var_sync_story_"))) {
+			allClasses.push(classes[j].replace("var_sync_story_", ""));
 		}
-		
-		//OK, now we're going to go through each of those classes and get the values from the elements
-		let j = {}
-		for (class_name of allClasses) {
-			for (item of document.getElementsByClassName("var_sync_story_"+class_name)) {
-				if (['INPUT', 'TEXTAREA', 'SELECT'].includes(item.tagName)) {
-					if ((item.tagName == 'INPUT') && (item.type == "checkbox")) {
-						j[class_name] = item.checked;
-					} else {
-						j[class_name] = item.value;
-					}
+		}
+	}
+	
+	//OK, now we're going to go through each of those classes and get the values from the elements
+	let j = {}
+	for (class_name of allClasses) {
+		for (item of document.getElementsByClassName("var_sync_story_"+class_name)) {
+			if (['INPUT', 'TEXTAREA', 'SELECT'].includes(item.tagName)) {
+				if ((item.tagName == 'INPUT') && (item.type == "checkbox")) {
+					j[class_name] = item.checked;
 				} else {
-					j[class_name] = item.textContent;
+					j[class_name] = item.value;
 				}
-				break;
+			} else {
+				j[class_name] = item.textContent;
 			}
+			break;
 		}
-		
-		//We'll add actions and world info data next
-		let temp = JSON.parse(JSON.stringify(actions_data));
-		delete temp[-1];
-		j['actions'] = {'action_count': document.getElementById('action_count').textContent, 'actions': temp};
-		j['worldinfo_v2'] = {'entries': world_info_data, 'folders': world_info_folder_data};
-		
-		//Biases
-		let bias = {};
-		for (item of document.getElementsByClassName('bias')) {
-			let bias_phrase = item.querySelector(".bias_phrase").children[0].value;
-			let bias_score = parseInt(item.querySelector(".bias_score").querySelector(".bias_slider_cur").textContent);
-			let bias_comp_threshold = parseInt(item.querySelector(".bias_comp_threshold").querySelector(".bias_slider_cur").textContent);
-			if (bias_phrase != "") {
-				bias[bias_phrase] = [bias_score, bias_comp_threshold];
-			}
+	}
+	
+	//We'll add actions and world info data next
+	let temp = JSON.parse(JSON.stringify(actions_data));
+	delete temp[-1];
+	j['actions'] = {'action_count': document.getElementById('action_count').textContent, 'actions': temp};
+	j['worldinfo_v2'] = {'entries': world_info_data, 'folders': world_info_folder_data};
+	
+	//Biases
+	let bias = {};
+	for (item of document.getElementsByClassName('bias')) {
+		let bias_phrase = item.querySelector(".bias_phrase").children[0].value;
+		let bias_score = parseInt(item.querySelector(".bias_score").querySelector(".bias_slider_cur").textContent);
+		let bias_comp_threshold = parseInt(item.querySelector(".bias_comp_threshold").querySelector(".bias_slider_cur").textContent);
+		if (bias_phrase != "") {
+			bias[bias_phrase] = [bias_score, bias_comp_threshold];
 		}
-		j['biases'] = bias;
-		
-		//substitutions
-		substitutions = [];
-		for (item of document.getElementsByClassName('substitution-card')) {
-			let target = item.children[0].querySelector(".target").value;
-			let sub = item.children[1].querySelector(".target").value;
-			let enabled = (item.children[1].querySelector(".material-icons-outlined").getAttribute("title") == 'Enabled');
-			substitutions.push({'target': target, 'substitution': sub, 'enabled': enabled});
-		}
-		j['substitutions'] = substitutions;
-		
-		j['file_version'] = 2;
-		j['gamestarted'] = true;
-		
-		downloadString(JSON.stringify(j), j['story_name']+".json")
-	}	
+	}
+	j['biases'] = bias;
+	
+	//substitutions
+	substitutions = [];
+	for (item of document.getElementsByClassName('substitution-card')) {
+		let target = item.children[0].querySelector(".target").value;
+		let sub = item.children[1].querySelector(".target").value;
+		let enabled = (item.children[1].querySelector(".material-icons-outlined").getAttribute("title") == 'Enabled');
+		substitutions.push({'target': target, 'substitution': sub, 'enabled': enabled});
+	}
+	j['substitutions'] = substitutions;
+	
+	j['file_version'] = 2;
+	j['gamestarted'] = true;
+	
+	downloadString(JSON.stringify(j), j['story_name']+".json")
 }
 
 function unload_userscripts() {
@@ -2790,7 +2882,7 @@ function sync_to_server(item) {
 			if (item.classList.contains("sync_as_float")) value = parseFloat(value);
 		}
 	} else {
-		value = item.textContent;
+		value = item.innerText;
 	}
 	
 	//get name
@@ -2910,7 +3002,7 @@ function select_game_text(event) {
 		}
 		//if we've moved to a new game chunk we need to save the old chunk
 		if (((new_selected_game_chunk != selected_game_chunk) && (selected_game_chunk != null)) || (document.activeElement != document.getElementById("Selected Text"))) {
-			if ((selected_game_chunk != null) && (selected_game_chunk.textContent != selected_game_chunk.original_text) && (selected_game_chunk != document.getElementById("welcome_text"))) {
+			if ((selected_game_chunk != null) && (selected_game_chunk.innerText != selected_game_chunk.original_text) && (selected_game_chunk != document.getElementById("welcome_text"))) {
 				if (selected_game_chunk.id == 'story_prompt') {
 					edit_game_text(-1);
 				} else {
@@ -2933,6 +3025,7 @@ function select_game_text(event) {
 				}
 				selected_game_chunk = new_selected_game_chunk;
 				selected_game_chunk.classList.add("editing");
+				update_story_picture(selected_game_chunk.getAttribute("chunk"));
 			}
 			
 		} else {
@@ -2993,14 +3086,14 @@ function update_game_text(id) {
 	let new_text = ""
 	if (id == -1) {
 		temp = document.getElementById("story_prompt");
-		new_text = temp.textContent;
+		new_text = temp.innerText;
 		sync_to_server(temp);
 		temp.original_text = new_text;
 		temp.classList.add("pulse");
 	} else {
 		temp = document.getElementById("Selected Text Chunk " + id);
 		if (temp) {
-			new_text = temp.textContent;
+			new_text = temp.innerText;
 			socket.emit("Set Selected Text", {"id": id, "text": new_text});
 			temp.original_text = new_text;
 			temp.classList.add("pulse");
@@ -3045,6 +3138,12 @@ function set_ui_level(level) {
 	}
 }
 
+function update_story_picture(chunk_id) {
+	const image = document.getElementsByClassName("action_image")[0];
+	if (!image) return;
+	image.src = "/action_image?id=" + chunk_id + "&ignore="+new Date().getTime();
+	image.setAttribute("chunk", chunk_id);
+}
 
 function privacy_mode(enabled) {
 	if (enabled) {
@@ -3117,12 +3216,76 @@ function retry_from_here() {
 		action_count = parseInt(document.getElementById("action_count").textContent);
 		//console.log(chunk);
 		for (let i = 0; i < (action_count-chunk); i++) {
-			socket.emit('back', {});
+			storyBack();
 		}
 		socket.emit('submit', {'data': "", 'theme': ""});
 		document.getElementById('input_text').value = '';
 		document.getElementById('themetext').value = '';
 	}
+}
+
+function speak_audio(summonEvent) {
+	let action_id = null;
+	if (summonEvent.target.parentElement.id == "story_prompt") {
+		action_id = -1;
+	} else {
+		action_id = summonEvent.target.parentElement.id.split(" ").at(-1);
+	}
+	if (action_id != null) {
+		//console.log(chunk);
+		document.getElementById("reader").src = "/audio?id="+action_id;
+		document.getElementById("reader").setAttribute("action_id", action_id);
+		document.getElementById("reader").play();
+		document.getElementById("play_tts").textContent = "pause";
+	}
+}
+
+function play_pause_tts() {
+	if (document.getElementById("reader").paused) {
+		document.getElementById("reader").play();
+		document.getElementById("play_tts").textContent = "pause";
+	} else {
+		document.getElementById("reader").pause();
+		document.getElementById("play_tts").textContent = "play_arrow";
+	}
+}
+
+function stop_tts() {
+	document.getElementById("reader").src="";
+	document.getElementById("reader").src="/audio";
+	document.getElementById("play_tts").textContent = "play_arrow";
+	for (item of document.getElementsByClassName("tts_playing")) {
+		item.classList.remove("tts_playing");
+	}
+}
+
+function finished_tts() {
+	next_action = parseInt(document.getElementById("reader").getAttribute("action_id"))+1;
+	action_count = parseInt(document.getElementById("action_count").textContent);
+	if (next_action-1 == "-1") {
+		action = document.getElementById("story_prompt");
+	} else {
+		action = document.getElementById("Selected Text Chunk "+(next_action-1));
+	}
+	action.classList.remove("tts_playing");
+	if (next_action <= action_count) {
+		document.getElementById("reader").src = "/audio?id="+next_action;
+		document.getElementById("reader").setAttribute("action_id", next_action);
+		document.getElementById("reader").play();
+		document.getElementById("play_tts").textContent = "pause";
+	} else {
+		document.getElementById("play_tts").textContent = "play_arrow";
+	}
+}
+
+function tts_playing() {
+	action_id = document.getElementById("reader").getAttribute("action_id");
+	if (action_id == "-1") {
+		action = document.getElementById("story_prompt");
+	} else {
+		action = document.getElementById("Selected Text Chunk "+action_id);
+	}
+	action.classList.add("tts_playing");
 }
 
 function view_selection_probabilities() {
@@ -3188,6 +3351,7 @@ function autoResize(element, min_size=200) {
 
 function calc_token_usage(
 	soft_prompt_length,
+	genre_length,
 	memory_length,
 	authors_note_length,
 	prompt_length,
@@ -3200,6 +3364,7 @@ function calc_token_usage(
 
 	const data = [
 		{id: "soft_prompt_tokens", tokenCount: soft_prompt_length, label: "Soft Prompt"},
+		{id: "genre_tokens", tokenCount: genre_length, label: "Genre"},
 		{id: "memory_tokens", tokenCount: memory_length, label: "Memory"},
 		{id: "authors_notes_tokens", tokenCount: authors_note_length, label: "Author's Note"},
 		{id: "world_info_tokens", tokenCount: world_info_length, label: "World Info"},
@@ -3516,6 +3681,7 @@ function update_context(data) {
 	$(".context-block").remove();
 
 	let memory_length = 0;
+	let genre_length = 0;
 	let authors_notes_length = 0;
 	let prompt_length = 0;
 	let game_text_length = 0;
@@ -3537,6 +3703,7 @@ function update_context(data) {
 			soft_prompt: "sp",
 			prompt: "prompt",
 			world_info: "wi",
+			genre: "genre",
 			memory: "memory",
 			authors_note: "an",
 			action: "action",
@@ -3584,6 +3751,9 @@ function update_context(data) {
 				}
 				break;
 			case 'memory':
+				genre_length += entry.tokens.length;
+				break;
+			case 'memory':
 				memory_length += entry.tokens.length;
 				break;
 			case 'authors_note':
@@ -3607,6 +3777,7 @@ function update_context(data) {
 
 	calc_token_usage(
 		soft_prompt_length,
+		genre_length,
 		memory_length,
 		authors_notes_length,
 		prompt_length,
@@ -3856,6 +4027,7 @@ function create_new_wi_entry(folder) {
                                     "selective": false,
 									"wpp": {'name': "", 'type': "", 'format': 'W++', 'attributes': {}},
 									'use_wpp': false,
+									"object_type": null,
                                     };
 	var card = world_info_entry(data);
 	//card.scrollIntoView(false);
@@ -3958,7 +4130,10 @@ function drop(e) {
 		// display the draggable element
 		draggable.classList.remove('hidden');
 		
-		if (element.getAttribute("folder") == draggable.getAttribute("folder")) {
+		if (drop_id == "-1") {
+			folder = element.parentElement.id.split("_").slice(-1)[0];
+			socket.emit("wi_set_folder", {'dragged_id': dragged_id, 'folder': folder});
+		} else if (element.getAttribute("folder") == draggable.getAttribute("folder")) {
 			socket.emit("move_wi", {'dragged_id': dragged_id, 'drop_id': drop_id, 'folder': null});
 		} else {
 			socket.emit("move_wi", {'dragged_id': dragged_id, 'drop_id': drop_id, 'folder': element.getAttribute("folder")});
@@ -4045,7 +4220,7 @@ function highlight_world_info_text_in_chunk(action_id, wi) {
 	} else {
 		action = document.getElementById("Selected Text Chunk "+action_id);
 	}
-	let words = action.textContent.split(" ");
+	let words = action.innerText.split(" ");
 	current_ids = action.getAttribute("world_info_uids")?action.getAttribute("world_info_uids").split(','):[];
 	if (!(current_ids.includes(uid))) {
 		current_ids.push(uid);
@@ -4076,8 +4251,8 @@ function highlight_world_info_text_in_chunk(action_id, wi) {
 			for (span of action.childNodes) {
 				//console.log(span);
 				//console.log("passed_words("+passed_words+")+span("+(span.textContent.trim().split(" ").length)+")<start_word("+start_word+"): "+(passed_words + span.textContent.trim().split(" ").length < start_word));
-				if (passed_words + span.textContent.trim().split(" ").length < start_word+1) {
-					passed_words += span.textContent.trim().split(" ").length;
+				if (passed_words + span.innerText.trim().split(" ").length < start_word+1) {
+					passed_words += span.innerText.trim().split(" ").length;
 				} else if (passed_words <= end_word) {
 					//OK, we have text that matches, let's do the highlighting
 					//we can skip the highlighting if it's already done though
@@ -4085,7 +4260,7 @@ function highlight_world_info_text_in_chunk(action_id, wi) {
 					//console.log("start_word: "+start_word+" end_word: "+end_word+" passed_words: "+passed_words);
 					//console.log(span.textContent.trim().split(" ").slice(start_word-passed_words, end_word-passed_words+1).join(" "));
 					if (~(span.classList.contains('wi_match'))) {
-						var span_text = span.textContent.trim().split(" ");
+						var span_text = span.innerText.trim().split(" ");
 						//console.log(span_text);
 						if (start_word-passed_words == 0) {
 							var before_highlight_text = "";
@@ -4103,26 +4278,26 @@ function highlight_world_info_text_in_chunk(action_id, wi) {
 						if (before_highlight_text != "") {
 							//console.log("Before Text:'"+before_highlight_text+"'");
 							var before_span = document.createElement("span");
-							before_span.textContent = before_highlight_text;
+							before_span.innerText = before_highlight_text;
 							action.insertBefore(before_span, span);
 						}
 						//console.log("Highlight Text: '"+highlight_text+"'");
 						var highlight_span = document.createElement("span");
 						highlight_span.classList.add("wi_match");
-						highlight_span.textContent = highlight_text;
+						highlight_span.innerText = highlight_text;
 						highlight_span.setAttribute("tooltip", wi['content']);
 						highlight_span.setAttribute("wi-uid", wi.uid);
 						action.insertBefore(highlight_span, span);
 						if (after_highlight_text != "") {
 							//console.log("After Text: '"+after_highlight_text+"'");
 							var after_span = document.createElement("span");
-							after_span.textContent = after_highlight_text;
+							after_span.innerText = after_highlight_text;
 							action.insertBefore(after_span, span);
 						}
 						//console.log("Done");
 						span.remove();
 					}
-					passed_words += span.textContent.trim().split(" ").length;
+					passed_words += span.innerText.trim().split(" ").length;
 				}
 			}
 		}
@@ -4332,6 +4507,14 @@ function downloadString(string, fileName) {
 	let a = document.createElement("a");
 	a.setAttribute("download", fileName);
 	a.href = URL.createObjectURL(new Blob([string]));
+	a.click();
+}
+
+function downloadBlob(blob, fileName) {
+	const a = $e("a", null, {
+		href: URL.createObjectURL(blob),
+		download: fileName
+	});
 	a.click();
 }
 
@@ -4593,11 +4776,16 @@ async function loadNAILorebook(data, filename, image=null) {
 	}
 }
 
-async function loadKoboldData(data, filename) {
+async function loadKoboldJSON(data, filename) {
 	if (data.gamestarted !== undefined) {
 		// Story
-		socket.emit("upload_file", {"filename": filename, "data": JSON.stringify(data)});
+		socket.emit("upload_file", {
+			filename: filename,
+			data: new Blob([JSON.stringify(data)]),
+			upload_no_save: true
+		});
 		socket.emit("load_story_list", "");
+		load_story_list();
 	} else if (data.folders !== undefined && data.entries !== undefined) {
 		// World Info Folder
 		await postWI(data);
@@ -4676,9 +4864,16 @@ async function processDroppedFile(file) {
 			readLoreCard(file);
 			break;
 		case "json":
-			// KoboldAI file
+			// KoboldAI file (old story, etc)
 			data = JSON.parse(await file.text());
-			loadKoboldData(data, file.name);
+			loadKoboldJSON(data, file.name);
+			break;
+		case "kaistory":
+			// KoboldAI story file
+			let r = await fetch(`/upload_kai_story/${file.name}`, {
+				method: "POST",
+				body: file
+			});
 			break;
 		case "lorebook":
 			// NovelAI lorebook, JSON encoded.
@@ -5458,6 +5653,8 @@ process_cookies();
 			return;
 		}
 
+		if (finder_mode !== "ui") return;
+
 		const actionsCount = actions.length;
 		let future = finder_selection_index + delta;
 
@@ -5487,10 +5684,15 @@ process_cookies();
 				continue;
 			}
 
+
 			let item = $e("div", contextMenu, {
 				classes: ["context-menu-item", "noselect", `context-menu-${key}`],
-				"enabled-on": action.enabledOn
+				"enabled-on": action.enabledOn,
+				"cache-index": context_menu_cache.length
 			});
+
+			context_menu_cache.push({shouldShow: action.shouldShow});
+
 			let icon = $e("span", item, {classes: ["material-icons-outlined"], innerText: action.icon});
 			item.append(action.label);
 
@@ -5520,7 +5722,15 @@ process_cookies();
 		// Show only applicable actions in the context menu
 		let contextMenuType = target.getAttribute("context-menu");
 		for (const contextMenuItem of contextMenu.childNodes) {
-			if (contextMenuItem.classList.contains(`context-menu-${contextMenuType}`)) {
+			let shouldShow = contextMenuItem.classList.contains(`context-menu-${contextMenuType}`);
+
+			if (shouldShow) {
+				let cacheIndex = parseInt(contextMenuItem.getAttribute("cache-index"));
+				let cacheEntry = context_menu_cache[cacheIndex];
+				if (cacheEntry && cacheEntry.shouldShow) shouldShow = cacheEntry.shouldShow();
+			}
+
+			if (shouldShow) {
 				contextMenuItem.classList.remove("hidden");
 			} else {
 				contextMenuItem.classList.add("hidden");
@@ -5549,6 +5759,15 @@ process_cookies();
 		if ($el(".action_image")) $(".context-menu-item[enabled-on=GENERATED-IMAGE]").removeClass("disabled");
 
 		$(".context-menu-item[enabled-on=ALWAYS]").removeClass("disabled");
+
+		// Make sure hr isn't first or last visible element
+		let visibles = [];
+		for (const item of contextMenu.children) {
+			if (!item.classList.contains("hidden")) visibles.push(item);
+		}
+		let lastIndex = visibles.length - 1;
+		if (visibles[0].tagName === "HR") visibles[0].classList.add("hidden");
+		if (visibles[lastIndex].tagName === "HR") visibles[lastIndex].classList.add("hidden");
 
 		contextMenu.classList.remove("hidden");
 
@@ -5949,9 +6168,11 @@ function initalizeTooltips() {
 /* -- Shortcuts -- */
 (function() {
 	document.addEventListener("keydown", function(event) {
-		if (!event.ctrlKey) return;
-
 		for (const shortcut of shortcuts) {
+			if (!(event.ctrlKey || event.altKey)) continue;
+			if (event.ctrlKey && shortcut.mod !== "ctrl") continue;
+			if (event.altKey && shortcut.mod !== "alt") continue;
+
 			if (shortcut.key !== event.key) continue;
 			if (shortcut.criteria && !shortcut.criteria()) continue;
 			event.preventDefault();
@@ -5964,7 +6185,9 @@ function initalizeTooltips() {
 	for (const shortcut of shortcuts) {
 		const shortcutRow = $e("div", shortcutContainer, {classes: ["shortcut-item"]});
 		const shortcutEl = $e("div", shortcutRow, {classes: ["shortcut-keys"]});
-		for (const key of ["Ctrl", shortcut.key.toUpperCase()]) {
+		const pretty = shortcut.mod[0].toUpperCase() + shortcut.mod.slice(1);
+
+		for (const key of [pretty, shortcut.key.toUpperCase()]) {
 			$e("span", shortcutEl, {classes: ["shortcut-key"], innerText: key});
 		}
 		const shortcutDesc = $e("div", shortcutRow, {classes: ["shortcut-desc"], innerText: shortcut.desc});
@@ -6313,7 +6536,7 @@ function updateChatStyle() {
 				}
 
 				chunk_element = document.createElement("span");
-				chunk_element.textContent = action['Selected Text'];
+				chunk_element.innerText = action['Selected Text'];
 				item.append(chunk_element);
 
 				item.original_text = action['Selected Text'];
@@ -6418,3 +6641,276 @@ function imgGenClear() {
 	container.removeAttribute("tooltip");
 	socket.emit("clear_generated_image", {});
 }
+
+function imgGenRetry() {
+	const image = $el(".action_image");
+	if (!image) return;
+	$el("#image-loading").classList.remove("hidden");
+	socket.emit("generate_image", {'action_id': image.getAttribute("chunk")});
+}
+
+/* Genres */
+(async function() {
+	const genreContainer = $el("#genre-container");
+	const genreInput = $el("#genre-input");
+	const genreSuggestionContainer = $el("#genre-suggestion-container");
+	let genreData = await (await fetch("/genre_data.json")).json();
+	let allGenres = genreData.list;
+	let genres = genreData.init;
+	let highlightIndex = -1;
+
+	sync_hooks.push({
+		class: "story",
+		name: "genres",
+		func: function(passedGenres) {
+			genres = passedGenres;
+			$(".genre").remove();
+			for (const g of genres) {
+				addGenreUI(g);
+			}
+		}
+	})
+
+	function addGenreUI(genre) {
+		let div = $e("div", genreContainer, {classes: ["genre"]});
+		let inner = $e("div", div, {classes: ["genre-inner"]});
+		let xIcon = $e("span", inner, {innerText: "clear", classes: ["x", "material-icons-outlined"]});
+		let label = $e("span", inner, {innerText: genre, classes: ["genre-label"]});
+
+		xIcon.addEventListener("click", function() {
+			div.remove();
+			genres = genres.filter(x => x !== genre);
+			socket.emit("var_change", {"ID": "story_genres", "value": genres});
+		});
+	}
+
+	for (const initGenre of genreData.init) {
+		addGenreUI(initGenre);
+	}
+
+	function addGenre(genre) {
+		if (genres.includes(genre)) return;
+
+		addGenreUI(genre);
+		genreInput.value = "";
+		nukeSuggestions();
+
+		genres.push(genre);
+		socket.emit("var_change", {"ID": "story_genres", "value": genres});
+	}
+
+	function nukeSuggestions() {
+		genreSuggestionContainer.innerHTML = "";
+		highlightIndex = -1;
+	}
+
+	document.addEventListener("click", function(event) {
+		// Listening for clicks all over the document kinda sucks but blur
+		// fires you can click a suggestion so...
+		if (!genreSuggestionContainer.children.length) return;
+		if (event.target === genreInput) return;
+		if (event.target.classList.contains("genre-suggestion")) return;
+		nukeSuggestions();
+	});
+
+	genreInput.addEventListener("keydown", function(event) {
+		switch (event.key) {
+			case "ArrowUp":
+				highlightIndex--;
+				break;
+			case "Tab":
+				highlightIndex += event.shiftKey ? -1 : 1;
+				break;
+			case "ArrowDown":
+				highlightIndex++;
+				break;
+			case "Enter":
+				if (highlightIndex === -1) {
+					if (!genreInput.value.trim()) return;
+					addGenre(genreInput.value);
+				} else {
+					genreSuggestionContainer.children[highlightIndex].click();
+				}
+				return;
+			case "Escape":
+				genreInput.value = "";
+				nukeSuggestions();
+				event.preventDefault();
+				event.stopPropagation();
+				return;
+			default:
+				return;
+		}
+
+		event.preventDefault();
+
+		if (!genreSuggestionContainer.children.length) return;
+
+		const oldHighlighted = $el(".genre-suggestion.highlighted");
+		if (oldHighlighted) oldHighlighted.classList.remove("highlighted");
+
+		// Wrap around
+		let maxIndex = genreSuggestionContainer.children.length - 1;
+		if (highlightIndex < 0) highlightIndex = maxIndex;
+		if (highlightIndex > maxIndex) highlightIndex = 0;
+
+		const highlighted = genreSuggestionContainer.children[highlightIndex];
+		highlighted.classList.add("highlighted");
+		highlighted.scrollIntoView({
+            behavior: "auto",
+            block: "center",
+            inline: "center"
+        });
+	});
+
+	genreInput.addEventListener("input", function() {
+		let showList = [];
+		let lowerMatch = genreInput.value.toLowerCase();
+
+		nukeSuggestions();
+		if (!lowerMatch) return;
+
+		for (const genre of allGenres) {
+			if (!genre.toLowerCase().includes(lowerMatch)) continue;
+			showList.push(genre);
+		}
+
+		for (const genre of showList) {
+			let suggestion = $e("span", genreSuggestionContainer, {
+				innerText: genre,
+				classes: ["genre-suggestion"]
+			});
+
+			suggestion.addEventListener("click", function() {
+				addGenre(this.innerText);
+			});
+		}
+	});
+
+
+})();
+
+(function() {
+	const characterContainer = $el(".story-commentary-characters");
+	const settingsContainer = $el("#story-commentary-settings");
+	const storyReviewImg = $el("#story-review-img");
+
+	async function showStoryReview(data) {
+		// Story id is used to invalidate cache from other stories
+		storyReviewImg.src = `/get_wi_image/${data.uid}?${story_id}`;
+		$el("#story-review-author").innerText = data.who;
+		$el("#story-review-content").innerText = data.review;
+		
+		$el("#story-review").classList.remove("hidden");
+	}
+	socket.on("show_story_review", showStoryReview);
+
+	// Bootstrap toggle requires jQuery for events
+	$($el("#story-commentary-enable").querySelector("input")).change(function() {
+		socket.emit("var_change", {
+			ID: "story_commentary_enabled",
+			value: this.checked
+		});
+	});
+
+	sync_hooks.push({
+		class: "story",
+		name: "commentary_enabled",
+		func: function(commentaryEnabled) {
+			this.checked = commentaryEnabled;
+			if (commentaryEnabled) {
+				settingsContainer.classList.remove("disabled");
+			} else {
+				settingsContainer.classList.add("disabled");
+			}
+		}
+	});
+
+	storyReviewImg.addEventListener("error", function() {
+		if (storyReviewImg.src === "/static/default_pfp.png") {
+			// Something has gone horribly wrong
+			return;
+		}
+		storyReviewImg.src = "/static/default_pfp.png";
+	});
+
+	$el("#story-review-img").addEventListener
+})();
+
+for (const el of document.querySelectorAll("[sync-var]")) {
+	let varName = el.getAttribute("sync-var");
+
+	el.addEventListener("change", function() {
+		sync_to_server(this);
+	});
+
+
+
+	const proxy = $el(`[sync-proxy-host="${varName}"]`);
+	if (proxy) {
+		el.addEventListener("input", function() {
+			proxy.value = this.value;
+		});
+
+		el.addEventListener("sync", function() {
+			proxy.value = this.value;
+		});
+	}
+
+	let slug = varName.replaceAll(".", "_");
+	el.classList.add("var_sync_" + slug);
+}
+
+for (const proxy of document.querySelectorAll("[sync-proxy-host]")) {
+	let varName = proxy.getAttribute("sync-proxy-host");
+	const hostEl = $el(`[sync-var="${varName}"]`);
+	if (!hostEl) {
+		throw Error(`Bad sync proxy host ${varName}`)
+	}
+
+	proxy.addEventListener("change", function() {
+		hostEl.value = this.value;
+		socket.emit("var_change", {
+			ID: varName.replaceAll(".", "_"),
+			value: this.value
+		});
+	});
+}
+
+function generateWIData(uid, field, title=null, type=null, desc=null, genAmount=80) {
+	if (generating_summary) return;
+	generating_summary = true;
+
+	socket.emit("generate_wi", {
+		uid: uid,
+		field: field,
+		genAmount: genAmount || 80,
+		existing: {title: title, type: type, desc: desc}
+	});
+}
+
+function showGeneratedWIData(data) {
+	generating_summary = false;
+	const card = $el(`.world_info_card[uid="${data.uid}"]`);
+	const manualTextEl = card.querySelector(".world_info_entry_text");
+	manualTextEl.classList.remove("disabled");
+
+	// Stop spinning!
+	for (const littleRobotFriend of card.querySelectorAll(".generate-button.spinner")) {
+		littleRobotFriend.classList.remove("spinner");
+		littleRobotFriend.innerText = "smart_toy";
+	}
+
+	if (data.field === "desc") {
+		world_info_data[data.uid].manual_text = data.out;
+		send_world_info(data.uid);
+	}
+}
+
+$el(".gametext").addEventListener("keydown", function(event) {
+	if (event.key !== "Enter") return;
+	// execCommand is deprecated but until Firefox supports
+	// contentEditable="plaintext-only" we're just gonna have to roll with it
+	document.execCommand("insertLineBreak");
+	event.preventDefault();
+});

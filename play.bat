@@ -2,6 +2,8 @@
 cd /D %~dp0
 SET CONDA_SHLVL=
 
+rmdir /S /Q flask_session
+
 TITLE KoboldAI - Server
 SET /P M=<loader.settings
 IF %M%==1 GOTO drivemap

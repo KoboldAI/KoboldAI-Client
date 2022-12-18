@@ -60,6 +60,13 @@
 		<div id="action_count" class="var_sync_actions_Action_Count hidden"></div>
 		<div id="Select Options" class="sequence_area"></div>
 
+		<!-- Story Review -->
+		<div id="story-review" class="hidden">
+			<img id="story-review-img">
+			<span id="story-review-author">Bob McBobhead</span>
+			<span id="story-review-content">Wow, this is a great story. And I mean that. It's positively stelar.</span>
+		</div>
+
 		<!------------ Theme Area--------------------->
 		<div class="themerow" id="themerow">
 			<div class="tabrow nomenu_icon">
@@ -98,13 +105,15 @@
 					<div><span class="var_sync_model_horde_wait_time"></span> sec left</div>
 				</div>
 			</div><br>
-			<button type="button" class="btn action_button submit var_sync_alt_system_aibusy" system_aibusy=False id="btnsubmit" 
-				onclick="socket.emit('submit', {'data': document.getElementById('input_text').value, 'theme': document.getElementById('themetext').value});document.getElementById('input_text').value = '';document.getElementById('themetext').value = '';"
-				>Submit</button>
+			<span class="tts_controls hidden var_sync_alt_story_gen_audio">
+					<button type="button" class="btn action_button" style="width: 30px; padding: 0px;" onclick='play_pause_tts()' aria-label="play"><span id="play_tts" class="material-icons-outlined" style="font-size: 1.4em;">play_arrow</span></button>
+					<button type="button" class="btn action_button" style="width: 30px; padding: 0px;" onclick='stop_tts()' aria-label="play"><span id="stop_tts" class="material-icons-outlined" style="font-size: 1.4em;">stop</span></button>
+			</span>
+			<button type="button" class="btn action_button submit var_sync_alt_system_aibusy" system_aibusy=False id="btnsubmit" onclick="storySubmit();">Submit</button>
 			<button type="button" class="btn action_button submited var_sync_alt_system_aibusy"  system_aibusy=False id="btnsent"><img id="thinking" src="static/thinking.gif" class="force_center" onclick="socket.emit('abort','');"></button>
-			<button type="button" class="btn action_button back" onclick="socket.emit('back', {});" aria-label="undo"><span class="oi" data-glyph="action-undo"></span></button>
-			<button type="button" class="btn action_button redo" onclick="socket.emit('redo', {});" aria-label="redo"><span class="oi" data-glyph="action-redo"></span></button>
-			<button type="button" class="btn action_button retry" onclick="socket.emit('retry', {});" aria-label="retry"><span class="oi" data-glyph="loop-circular"></span></button>
+			<button type="button" class="btn action_button back" onclick="storyBack();" aria-label="undo"><span class="material-icons-outlined" style="font-size: 1.4em;">replay</span></button>
+			<button type="button" class="btn action_button redo" onclick="storyRedo();" aria-label="redo"><span class="material-icons-outlined" style="font-size: 1.4em;">arrow_forward</span></button>
+			<button type="button" class="btn action_button retry" onclick="storyRetry();" aria-label="retry"><span class="material-icons-outlined" style="font-size: 1.4em;">autorenew</span></button>
 		</div>
 	</div>
 	

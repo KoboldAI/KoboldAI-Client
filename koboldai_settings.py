@@ -1,7 +1,9 @@
+from __future__ import annotations
 from dataclasses import dataclass
 import importlib
 import os, re, time, threading, json, pickle, base64, copy, tqdm, datetime, sys
-from typing import Union
+import shutil
+from typing import List, Union
 from io import BytesIO
 from flask import has_request_context, session
 from flask_socketio import SocketIO, join_room, leave_room
@@ -16,6 +18,9 @@ serverstarted = False
 queue = None
 multi_story = False
 
+if importlib.util.find_spec("tortoise") is not None:
+    from tortoise import api
+    from tortoise.utils.audio import load_voices
 
 def clean_var_for_emit(value):
     if isinstance(value, KoboldStoryRegister) or isinstance(value, KoboldWorldInfo):
@@ -130,6 +135,7 @@ class koboldai_vars(object):
         self._story_settings[story_name].socketio.emit("reset_story", {}, broadcast=True, room=story_name)
         if story_name in self._story_settings:
             self._story_settings[story_name].no_save = True
+            self._story_settings[story_name].worldinfo_v2.reset()
             self._story_settings[story_name].from_json(json_data)
             logger.debug("Calcing AI text after load story")
             ignore = self.calc_ai_text()
@@ -242,11 +248,35 @@ class koboldai_vars(object):
             wi_uid = wi['uid']
             if wi_uid in used_world_info:
                 return False
+            if wi["type"] == "commentator" and not (allowed_wi_entries and wi_uid in allowed_wi_entries):
+                return False
             if allowed_wi_entries is not None and wi_uid not in allowed_wi_entries:
                 return False
             if allowed_wi_folders is not None and wi['folder'] not in allowed_wi_folders:
                 return False
             return True
+
+        # Add Genres #
+        if self.genres:
+            # Erebus, Nerys, Janeway, Picard (probably)
+            genre_template = "[Genre: %s]"
+            model_name = self.model.lower()
+            if "skein" in model_name or "adventure" in model_name:
+                genre_template = "[Themes: %s]"
+            elif "shinen" in model_name:
+                genre_template = "[Theme: %s]"
+
+            genre_text = genre_template % (", ".join(self.genres))
+            genre_tokens = self.tokenizer.encode(genre_text)
+            genre_data = [[x, self.tokenizer.decode(x)] for x in genre_tokens]
+
+            context.append({
+                "type": "genre",
+                "text": genre_text,
+                "tokens": genre_data,
+            })
+            used_tokens += len(genre_tokens)
+
 
         ######################################### Add memory ########################################################
         memory_text = self.memory
@@ -523,7 +553,6 @@ class koboldai_vars(object):
             else:
                 setattr(self._story_settings[self.get_story_name()], name, value)
 
-
     def __getattr__(self, name):
         if name in self.__dict__:
             return getattr(self, name)
@@ -615,9 +644,10 @@ class model_settings(settings):
     local_only_variables = ['badwordsids', 'apikey', 'tqdm', 'socketio', 'default_preset', 'koboldai_vars']
     no_save_variables = ['tqdm', 'tqdm_progress', 'tqdm_rem_time', 'socketio', 'modelconfig', 'custmodpth', 'generated_tkns', 
                          'loaded_layers', 'total_layers', 'total_download_chunks', 'downloaded_chunks', 'presets', 'default_preset', 
-                         'koboldai_vars', 'welcome', 'welcome_default', 'simple_randomness', 'simple_creativity', 'simple_repitition']
+                         'koboldai_vars', 'welcome', 'welcome_default', 'simple_randomness', 'simple_creativity', 'simple_repitition',
+                         'badwordsids', 'uid_presets']
     settings_name = "model"
-    default_settings = {"rep_pen" : 1.1, "rep_pen_slope": 0.7, "rep_pen_range": 1024, "temp": 0.5, "top_p": 0.9, "top_k": 0.0, "top_a": 0.0, "tfs": 1.0, "typical": 1.0,
+    default_settings = {"rep_pen" : 1.1, "rep_pen_slope": 0.7, "rep_pen_range": 1024, "temp": 0.5, "top_p": 0.9, "top_k": 0, "top_a": 0.0, "tfs": 1.0, "typical": 1.0,
                         "sampler_order": [6,0,1,2,3,4,5]}
     def __init__(self, socketio, koboldai_vars):
         self.socketio = socketio
@@ -652,6 +682,7 @@ class model_settings(settings):
         </div>""" # Custom Welcome Text
         self.welcome     = self.welcome_default
         self.koboldai_vars = koboldai_vars
+        self.alt_multi_gen = False
         
     def reset_for_model_load(self):
         self.max_length  = 2048    # Maximum number of tokens to submit per action
@@ -668,6 +699,7 @@ class model_settings(settings):
         self.tfs         = 1.0     # Default generator tfs (tail-free sampling)
         self.typical     = 1.0     # Default generator typical sampling threshold
         self.numseqs     = 1       # Number of sequences to ask the generator to create
+        self.generated_tkns = 0    # If using a backend that supports Lua generation modifiers, how many tokens have already been generated, otherwise 0
         self.badwordsids = []
         self.fp32_model  = False  # Whether or not the most recently loaded HF model was in fp32 format
         self.modeldim    = -1     # Embedding dimension of your model (e.g. it's 4096 for GPT-J-6B and 2560 for GPT-Neo-2.7B)
@@ -685,6 +717,8 @@ class model_settings(settings):
         self.simple_randomness = 0
         self.simple_creativity = 0
         self.simple_repitition = 0
+        
+
 
         
     #dummy class to eat the tqdm output
@@ -742,13 +776,13 @@ class model_settings(settings):
         #Setup TQDP for token generation
         elif name == "generated_tkns" and 'tqdm' in self.__dict__:
             if value == 0:
-                self.tqdm.reset(total=self.genamt)
+                self.tqdm.reset(total=self.genamt * (self.numseqs if self.alt_multi_gen else 1) )
                 self.tqdm_progress = 0
             else:
                 self.tqdm.update(value-self.tqdm.n)
-                self.tqdm_progress = int(float(self.generated_tkns)/float(self.genamt)*100)
+                self.tqdm_progress = int(float(self.generated_tkns)/float(self.genamt * (self.numseqs if self.alt_multi_gen else 1))*100)
                 if self.tqdm.format_dict['rate'] is not None:
-                    self.tqdm_rem_time = str(datetime.timedelta(seconds=int(float(self.genamt-self.generated_tkns)/self.tqdm.format_dict['rate'])))
+                    self.tqdm_rem_time = str(datetime.timedelta(seconds=int(float((self.genamt * (self.numseqs if self.alt_multi_gen else 1))-self.generated_tkns)/self.tqdm.format_dict['rate'])))
         #Setup TQDP for model loading
         elif name == "loaded_layers" and 'tqdm' in self.__dict__:
             if value == 0:
@@ -787,8 +821,8 @@ class model_settings(settings):
             process_variable_changes(self.socketio, self.__class__.__name__.replace("_settings", ""), name, value, old_value)
             
 class story_settings(settings):
-    local_only_variables = ['socketio', 'tokenizer', 'koboldai_vars', 'no_save', 'revisions', 'prompt']
-    no_save_variables = ['socketio', 'tokenizer', 'koboldai_vars', 'context', 'no_save', 'prompt_in_ai', 'authornote_length', 'prompt_length', 'memory_length']
+    local_only_variables = ['socketio', 'tokenizer', 'koboldai_vars', 'no_save', 'revisions', 'prompt', 'save_paths']
+    no_save_variables = ['socketio', 'tokenizer', 'koboldai_vars', 'context', 'no_save', 'prompt_in_ai', 'authornote_length', 'prompt_length', 'memory_length', 'save_paths']
     settings_name = "story"
     def __init__(self, socketio, koboldai_vars, tokenizer=None):
         self.socketio = socketio
@@ -866,42 +900,89 @@ class story_settings(settings):
             # {"target": "(tm)", "substitution": "™", "enabled": False},
         ]
         self.gen_audio = False
+        self.prompt_picture_filename = ""
+        self.prompt_picture_prompt = ""
+
+        # It's important to only use "=" syntax on this to ensure syncing; no
+        # .append() or the like
+        self.genres = []
         
         # bias experiment
         self.memory_attn_bias = 1
         self.an_attn_bias = 1
         self.chat_style = 0
+
+        # In percent!!!
+        self.commentary_chance = 0
+        self.commentary_enabled = False
         
-        
+        self.save_paths = SavePaths(os.path.join("stories", self.story_name or "Untitled"))
+
         ################### must be at bottom #########################
         self.no_save = False  #Temporary disable save (doesn't save with the file)
-
-        
-        
-    def save_story(self):
-        if not self.no_save:
-            if self.prompt != "" or self.memory != "" or self.authornote != "" or len(self.actions) > 0 or len(self.worldinfo_v2) > 0:
-                logger.debug("Saving story from koboldai_vars.story_settings.save_story()")
-                logger.info("Saving")
-                save_name = self.story_name if self.story_name != "" else "untitled"
-                adder = ""
-                while True:
-                    if os.path.exists("stories/{}{}_v2.json".format(save_name, adder)):
-                        with open("stories/{}{}_v2.json".format(save_name, adder), "r") as f:
-                            temp = json.load(f)
-                        if 'story_id' in temp:
-                            if self.story_id != temp['story_id']:
-                                adder = 0 if adder == "" else adder+1
-                            else:
-                                break
-                        else:
-                            adder = 0 if adder == "" else adder+1
-                    else:
-                        break
-                with open("stories/{}{}_v2.json".format(save_name, adder), "w") as settings_file:
-                    settings_file.write(self.to_json())
-                self.gamesaved = True
     
+    def save_story(self) -> None:
+        if self.no_save:
+            return
+        
+        if not any([self.prompt, self.memory, self.authornote, len(self.actions), len(self.worldinfo_v2)]):
+            return
+
+        logger.info("Saving")
+
+        save_name = self.story_name or "Untitled"
+
+        # Disambiguate stories by adding (n) if needed
+        disambiguator = 0
+        self.save_paths.base = os.path.join("stories", save_name)
+        while os.path.exists(self.save_paths.base):
+            try:
+                # If the stories share a story id, overwrite the existing one.
+                with open(self.save_paths.story, "r") as file:
+                    j = json.load(file)
+                    if self.story_id == j["story_id"]:
+                        break
+            except FileNotFoundError:
+                logger.error(f"Malformed save file: Missing story.json in {self.save_paths.base}. Populating it with new data.")
+                break
+
+            disambiguator += 1
+            self.save_paths.base = os.path.join("stories", save_name + (f" ({disambiguator})" if disambiguator else ""))
+        
+        # Setup the directory structure.
+        for path in self.save_paths.required_paths:
+            try:
+                os.mkdir(path)
+            except FileExistsError:
+                pass
+
+        # Convert v2 if applicable
+        v2_path = os.path.join("stories", f"{self.story_name}_v2.json")
+        if os.path.exists(v2_path):
+            logger.info("Migrating v2 save")
+            with open(v2_path, "r") as file:
+                v2j = json.load(file)
+            
+            if v2j["story_id"] == self.story_id:
+                shutil.move(v2_path, os.path.join(self.save_paths.base, ".v2_old.json"))
+            else:
+                logger.warning(f"Story mismatch in v2 migration. Existing file had story id {v2j['story_id']} but we have {self.story_id}")
+
+        with open(self.save_paths.story, "w") as file:
+            file.write(self.to_json())
+        self.gamesaved = True
+    
+    def update_story_path_structure(self, path: str) -> None:
+        # Upon loading a file, makes directories that are required for certain
+        # functionality.
+        sp = SavePaths(path)
+
+        for path in sp.required_paths:
+            try:
+                os.mkdir(path)
+            except FileExistsError:
+                pass
+
     def save_revision(self):
         game = json.loads(self.to_json())
         del game['revisions']
@@ -976,6 +1057,7 @@ class story_settings(settings):
         if name == "gamesaved" and value == False and self.autosave:
             logger.debug("Saving story from gamesaved change and on autosave")
             self.save_story()
+
         if not new_variable and old_value != value:
             #Change game save state
             if name in ['story_name', 'prompt', 'memory', 'authornote', 'authornotetemplate', 'andepth', 'chatname', 'actionmode', 'dynamicscan', 'notes', 'biases']:
@@ -992,6 +1074,9 @@ class story_settings(settings):
             elif name == 'story_name':
                 #reset the story id if we change the name
                 self.story_id = int.from_bytes(os.urandom(16), 'little', signed=True)
+
+                # Story name influences save base
+                self.save_paths.base = os.path.join("stories", self.story_name or "Untitled")
             
             #Recalc AI Text
             elif name == 'authornote':
@@ -1000,11 +1085,14 @@ class story_settings(settings):
                 ignore = self.koboldai_vars.calc_ai_text()
             elif name == 'memory':
                 ignore = self.koboldai_vars.calc_ai_text()
+            elif name == "genres":
+                self.koboldai_vars.calc_ai_text()
             elif name == 'prompt':
                 self.prompt_wi_highlighted_text = [{"text": self.prompt, "WI matches": None, "WI Text": ""}]
                 self.assign_world_info_to_actions(action_id=-1, wuid=None)
                 process_variable_changes(self.socketio, self.__class__.__name__.replace("_settings", ""), 'prompt_wi_highlighted_text', self.prompt_wi_highlighted_text, None)
                 ignore = self.koboldai_vars.calc_ai_text()
+                self.actions.gen_audio(action_id=-1)
             
             #Because we have seperate variables for action types, this syncs them
             elif name == 'storymode':
@@ -1040,11 +1128,11 @@ class user_settings(settings):
         self.socketio = socketio
         self.wirmvwhtsp  = False             # Whether to remove leading whitespace from WI entries
         self.widepth     = 3                 # How many historical actions to scan for WI hits
-        self.formatoptns = {'frmttriminc': True, 'frmtrmblln': False, 'frmtrmspch': False, 'frmtadsnsp': False, 'singleline': False}     # Container for state of formatting options
+        self.formatoptns = {'frmttriminc': True, 'frmtrmblln': False, 'frmtrmspch': False, 'frmtadsnsp': True, 'singleline': False}     # Container for state of formatting options
         self.frmttriminc = True
         self.frmtrmblln  = False
         self.frmtrmspch  = False
-        self.frmtadsnsp  = False
+        self.frmtadsnsp  = True
         self.singleline  = False
         self.remove_double_space = True
         self.importnum   = -1                # Selection on import popup list
@@ -1072,6 +1160,8 @@ class user_settings(settings):
         self.img_gen_steps = 30
         self.img_gen_cfg_scale = 7.0
         self.cluster_requested_models = [] # The models which we allow to generate during cluster mode
+        self.wigen_use_own_wi = False
+        self.wigen_amount = 80
         
         
     def __setattr__(self, name, value):
@@ -1176,7 +1266,17 @@ class system_settings(settings):
         self.cookies = {} #cookies for colab since colab's URL changes, cookies are lost
         self.experimental_features = False
         #check if bitsandbytes is installed
-        self.bit_8_available = importlib.util.find_spec("bitsandbytes") is not None and sys.platform.startswith('linux') #We can install bitsandbytes, but it doesn't work on windows, so limit it here
+        self.bit_8_available = False
+        if importlib.util.find_spec("bitsandbytes") is not None and sys.platform.startswith('linux'): #We can install bitsandbytes, but it doesn't work on windows, so limit it here
+            if torch.cuda.is_available():
+                for device in range(torch.cuda.device_count()):
+                    if torch.cuda.get_device_properties(device).major > 7:
+                        self.bit_8_available = True
+                        break
+                    elif torch.cuda.get_device_properties(device).major == 7 and torch.cuda.get_device_properties(device).minor >= 2:
+                        self.bit_8_available = True
+                        break
+        
         
         @dataclass
         class _inference_config:
@@ -1251,8 +1351,11 @@ class KoboldStoryRegister(object):
         self.sentence_re = re.compile(r"[^.!?]*[.!?]+\"?\s*", re.S)
         self.story_settings = story_settings
         self.tts_model = None
+        self.tortoise = None
         self.make_audio_thread = None
         self.make_audio_queue = multiprocessing.Queue()
+        self.make_audio_thread_slow = None
+        self.make_audio_queue_slow = multiprocessing.Queue()
         for item in sequence:
             self.append(item)
     
@@ -1301,7 +1404,6 @@ class KoboldStoryRegister(object):
             if old != self.story_settings.prompt_wi_highlighted_text:
                 if not no_transmit:
                     process_variable_changes(self.socketio, "story", 'prompt_wi_highlighted_text', self.story_settings.prompt_wi_highlighted_text, old)
-                    
         
     def __str__(self):
         if len(self.actions) > 0:
@@ -1336,7 +1438,7 @@ class KoboldStoryRegister(object):
         if self.koboldai_vars.remove_double_space:
             while "  " in text:
                 text = text.replace("  ", " ")
-            if i > 0 and text != "":
+            if i > 0 and text != "" and i-1 in self.actions and self.actions[i-1]['Selected Text'] != "":
                 if self.actions[i-1]['Selected Text'][-1] == " " and text[0] == " ":
                     text = text[1:]
         if i in self.actions:
@@ -1344,7 +1446,15 @@ class KoboldStoryRegister(object):
             old_text = self.actions[i]["Selected Text"]
             if self.actions[i]["Selected Text"] != text:
                 self.actions[i]["Selected Text"] = text
-                self.actions[i]["Probabilities"] = []
+                if self.koboldai_vars.tokenizer is not None:
+                    tokens = self.koboldai_vars.tokenizer.encode(text)
+                    if 'Probabilities' in self.actions[i]:
+                        for token_num in range(len(self.actions[i]["Probabilities"])):
+                            for token_option in range(len(self.actions[i]["Probabilities"][token_num])):
+                                if token_num < len(tokens):
+                                    self.actions[i]["Probabilities"][token_num][token_option]["Used"] = tokens[token_num] == self.actions[i]["Probabilities"][token_num][token_option]["tokenId"]
+                                else:
+                                    self.actions[i]["Probabilities"][token_num][token_option]["Used"] = False
             if "Options" in self.actions[i]:
                 for j in range(len(self.actions[i]["Options"])):
                     if self.actions[i]["Options"][j]["text"] == text:
@@ -1425,14 +1535,22 @@ class KoboldStoryRegister(object):
             if action_id_offset > 0:
                 if self.actions[action_id_offset-1]['Selected Text'][-1] == " " and text[0] == " ":
                     text = text[1:]
-        self.clear_unused_options()
+        self.clear_unused_options(clear_probabilities=False)
         self.action_count+=1
         action_id = self.action_count + action_id_offset
         if action_id in self.actions:
             if self.actions[action_id]["Selected Text"] != text:
                 self.actions[action_id]["Selected Text"] = text
-                self.actions[action_id]["Probabilities"] = []
                 self.actions[action_id]["Time"] = self.actions[action_id].get("Time", int(time.time()))
+                if 'Probabilities' in self.actions[action_id]:
+                    if self.koboldai_vars.tokenizer is not None:
+                        tokens = self.koboldai_vars.tokenizer.encode(text)
+                        for token_num in range(len(self.actions[action_id]["Probabilities"])):
+                            for token_option in range(len(self.actions[action_id]["Probabilities"][token_num])):
+                                if token_num < len(tokens):
+                                    self.actions[action_id]["Probabilities"][token_num][token_option]["Used"] = tokens[token_num] == self.actions[action_id]["Probabilities"][token_num][token_option]["tokenId"]
+                                else:
+                                    self.actions[action_id]["Probabilities"][token_num][token_option]["Used"] = False
             selected_text_length = 0
             self.actions[action_id]["Selected Text Length"] = selected_text_length
             for item in self.actions[action_id]["Options"]:
@@ -1478,12 +1596,30 @@ class KoboldStoryRegister(object):
                         item['text'] = option
                         del item['stream_id']
                         found = True
+                        if 'Probabilities' in item:
+                            if self.koboldai_vars.tokenizer is not None:
+                                tokens = self.koboldai_vars.tokenizer.encode(option)
+                                for token_num in range(len(item["Probabilities"])):
+                                    for token_option in range(len(item["Probabilities"][token_num])):
+                                        if token_num < len(tokens):
+                                            item["Probabilities"][token_num][token_option]["Used"] = tokens[token_num] == item["Probabilities"][token_num][token_option]["tokenId"]
+                                        else:
+                                            item["Probabilities"][token_num][token_option]["Used"] = False
                         break
                     elif item['text'] == option:
                         found = True
                         if 'stream_id' in item:
                             del item['stream_id']
                         found = True
+                        if 'Probabilities' in item:
+                            if self.koboldai_vars.tokenizer is not None:
+                                tokens = self.koboldai_vars.tokenizer.encode(option)
+                                for token_num in range(len(item["Probabilities"])):
+                                    for token_option in range(len(item["Probabilities"][token_num])):
+                                        if token_num < len(tokens):
+                                            item["Probabilities"][token_num][token_option]["Used"] = tokens[token_num] == item["Probabilities"][token_num][token_option]["tokenId"]
+                                        else:
+                                            item["Probabilities"][token_num][token_option]["Used"] = False
                         break
                         
                 if not found:
@@ -1514,11 +1650,12 @@ class KoboldStoryRegister(object):
                 for old_item in old_options:
                     if item['text'] == old_item['text']:
                         #We already have this option, so we need to save the probabilities
-                        item['Probabilities'] = old_item['Probabilities']
+                        if 'Probabilities' in old_item:
+                            item['Probabilities'] = old_item['Probabilities']
                     self.actions[action_id]["Options"].append(item)
         process_variable_changes(self.socketio, "story", 'actions', {"id": action_id, 'action':  self.actions[action_id]}, None)
     
-    def clear_unused_options(self, pointer=None):
+    def clear_unused_options(self, pointer=None, clear_probabilities=True):
         new_options = []
         old_options = None
         if pointer is None:
@@ -1527,8 +1664,14 @@ class KoboldStoryRegister(object):
             old_options = copy.deepcopy(self.actions[pointer]["Options"])
             self.actions[pointer]["Options"] = [x for x in self.actions[pointer]["Options"] if x["Pinned"] or x["Previous Selection"] or x["Edited"]]
             new_options = self.actions[pointer]["Options"]
+            if clear_probabilities:
+                self.actions[pointer]['Probabilities'] = []
             process_variable_changes(self.socketio, "story", 'actions', {"id": pointer, 'action':  self.actions[pointer]}, None)
         self.set_game_saved()
+    
+    def clear_all_options(self):
+        for i in self.actions:
+            self.actions[i]["Options"] = []
     
     def set_pin(self, action_step, option_number):
         if action_step in self.actions:
@@ -1649,21 +1792,31 @@ class KoboldStoryRegister(object):
             self.story_settings.gamesaved = False
     
     def stream_tokens(self, text_list):
-        if len(text_list) > 1:
+        if len(text_list) > 1 or (self.koboldai_vars.alt_multi_gen and self.koboldai_vars.numseqs > 1):
+            if self.koboldai_vars.alt_multi_gen: 
+                #since alt_multi_gen is really just several single gens the text list is always 1 deep, so we need some 
+                #other way to figure out wich spot in our options list we're on. We'll figure it out by seeing how many
+                #tokens we generated vs how many each option should take
+                stream_offset = int((self.koboldai_vars.generated_tkns-1) / self.koboldai_vars.genamt)
+            else:
+                stream_offset = 0
+            option_offset = 0
+            if self.action_count+1 in self.actions:
+                for x in range(len(self.actions[self.action_count+1]['Options'])):
+                    option = self.actions[self.action_count+1]['Options'][x]
+                    if option['Pinned'] or option["Previous Selection"] or option["Edited"]:
+                        option_offset = x+1
             if self.action_count+1 in self.actions:
                 for i in range(len(text_list)):
-                    found = False
-                    for j in range(len(self.actions[self.action_count+1]['Options'])):
-                        if 'stream_id' in self.actions[self.action_count+1]['Options'][j]:
-                            if self.actions[self.action_count+1]['Options'][j]['stream_id'] == i:
-                                found = True
-                                self.actions[self.action_count+1]['Options'][j]['text'] = "{}{}".format(self.actions[self.action_count+1]['Options'][j]['text'], text_list[i])
-                    if not found:
-                        self.actions[self.action_count+1]['Options'].append({"text": text_list[i], "Pinned": False, "Previous Selection": False, "Edited": False, "Probabilities": [], "stream_id": i})
+                    if i+stream_offset+option_offset < len(self.actions[self.action_count+1]['Options']):
+                        self.actions[self.action_count+1]['Options'][i+stream_offset+option_offset]['text'] = "{}{}".format(self.actions[self.action_count+1]['Options'][i+stream_offset+option_offset]['text'], text_list[i])
+                    else:
+                        logger.info(self.actions[self.action_count+1]['Options'])
+                        self.actions[self.action_count+1]['Options'].append({"text": text_list[i], "Pinned": False, "Previous Selection": False, "Edited": False, "Probabilities": [], "stream_id": i+stream_offset})
             else:
                 self.actions[self.action_count+1] = {"Selected Text": "", "Selected Text Length": 0, "Options": [], "Time": int(time.time())}
                 for i in range(len(text_list)):
-                    self.actions[self.action_count+1]['Options'].append({"text": text_list[i], "Pinned": False, "Previous Selection": False, "Edited": False, "Probabilities": [], "stream_id": i})
+                    self.actions[self.action_count+1]['Options'].append({"text": text_list[i], "Pinned": False, "Previous Selection": False, "Edited": False, "Probabilities": [], "stream_id": i+stream_offset})
         
             #We need to see if this is the last token being streamed. If so due to the rely it will come in AFTER the actual trimmed final text overwriting it in the UI
             if self.koboldai_vars.tokenizer is not None:
@@ -1702,8 +1855,19 @@ class KoboldStoryRegister(object):
         if action_id is None:
             action_id = self.action_count+1
         if action_id in self.actions:
+            if 'Probabilities' not in self.actions[action_id]:
+                self.actions[action_id]['Probabilities'] = []
             self.actions[action_id]['Probabilities'].append(probabilities)
-            process_variable_changes(self.socketio, "story", 'actions', {"id": action_id, 'action':  self.actions[action_id]}, None)
+        else:
+            self.actions[action_id] = {
+                "Selected Text": "",
+                "Selected Text Length": 0,
+                "Options": [],
+                "Probabilities": [probabilities],
+                "Time": int(time.time()),
+            }
+            
+        process_variable_changes(self.socketio, "story", 'actions', {"id": action_id, 'action':  self.actions[action_id]}, None)
             
     def set_option_probabilities(self, probabilities, option_number, action_id=None):
         if action_id is None:
@@ -1715,15 +1879,27 @@ class KoboldStoryRegister(object):
                     self.actions[action_id]["Options"][option_number]["Probabilities"] = []
                 self.actions[action_id]["Options"][option_number]['Probabilities'].append(probabilities)
                 process_variable_changes(self.socketio, "story", 'actions', {"id": action_id, 'action':  self.actions[action_id]}, None)
+            else:
+                self.actions[action_id]['Options'].append({"temp_prob": True, "text": "", "Pinned": False, "Previous Selection": False, "Edited": False, "Probabilities": [probabilities], "stream_id": option_number})
+        else:
+            self.actions[action_id] = {
+                "Selected Text": "",
+                "Selected Text Length": 0,
+                "Options": [{"temp_prob": True, "text": "", "Pinned": False, "Previous Selection": False, "Edited": False, "Probabilities": [probabilities], "stream_id": option_number}],
+                "Time": int(time.time()),
+            }
     
-    def to_sentences(self, submitted_text=None):
+    def to_sentences(self, submitted_text=None, max_action_id=None):
         """Return a list of the actions split into sentences.
         submitted_text: Optional additional text to append to the actions, the text just submitted by the player.
         returns: List of [sentence text, actions used, token length, included in AI context]
         """
         #start_time = time.time()
         #we're going to split our actions by sentence for better context. We'll add in which actions the sentence covers. Prompt will be added at a -1 ID
-        actions = {i: self.actions[i]['Selected Text'] for i in self.actions}
+        if max_action_id is None:
+            actions = {i: self.actions[i]['Selected Text'] for i in self.actions}
+        else:
+            actions = {i: self.actions[i]['Selected Text'] for i in self.actions if i <= max_action_id}
         if self.story_settings is None:
             actions[-1] = ""
         else:
@@ -1792,8 +1968,6 @@ class KoboldStoryRegister(object):
         if self.story_settings.gen_audio and self.koboldai_vars.experimental_features:
             if action_id is None:
                 action_id = self.action_count
-            
-            logger.info("Generating audio for action {}".format(action_id))
 
             if self.tts_model is None:
                 language = 'en'
@@ -1805,38 +1979,116 @@ class KoboldStoryRegister(object):
                 #self.tts_model.to(torch.device(0))  # gpu or cpu
                 self.tts_model.to(torch.device("cpu"))  # gpu or cpu
             
-            filename="stories/{}/{}.ogg".format(self.story_settings.story_id, action_id)
-            if not os.path.exists("stories/{}".format(self.story_settings.story_id)):
-                os.mkdir("stories/{}".format(self.story_settings.story_id))
+            filename = os.path.join(self.koboldai_vars.save_paths.generated_audio, f"{action_id}.ogg")
+            filename_slow = os.path.join(self.koboldai_vars.save_paths.generated_audio, f"{action_id}_slow.ogg")
                 
             if overwrite or not os.path.exists(filename):
-                self.make_audio_queue.put((self.actions[action_id]['Selected Text'], filename))
-                if self.make_audio_thread is None or not self.make_audio_thread.is_alive():
-                    self.make_audio_thread = threading.Thread(target=self.create_wave, args=(self.tts_model, self.make_audio_queue))
-                    self.make_audio_thread.start()
+                if action_id == -1:
+                    self.make_audio_queue.put((self.koboldai_vars.prompt, filename))
+                else:
+                    self.make_audio_queue.put((self.actions[action_id]['Selected Text'], filename))
+                if self.make_audio_thread_slow is None or not self.make_audio_thread_slow.is_alive():
+                    self.make_audio_thread_slow = threading.Thread(target=self.create_wave_slow, args=(self.make_audio_queue_slow, ))
+                    self.make_audio_thread_slow.start()
+            
+            if overwrite or not os.path.exists(filename_slow):
+                if action_id == -1:
+                    self.make_audio_queue_slow.put((self.koboldai_vars.prompt, filename_slow))
+                else:
+                    self.make_audio_queue_slow.put((self.actions[action_id]['Selected Text'], filename_slow))
+                if self.make_audio_thread_slow is None or not self.make_audio_thread_slow.is_alive():
+                    self.make_audio_thread_slow = threading.Thread(target=self.create_wave_slow, args=(self.make_audio_queue_slow, ))
+                    self.make_audio_thread_slow.start()
                 
-    def create_wave(self, model, make_audio_queue):
+    def create_wave(self, make_audio_queue):
         import pydub
         sample_rate = 24000
         speaker = 'en_5'
         while not make_audio_queue.empty():
             (text, filename) = make_audio_queue.get()
-            audio = self.tts_model.apply_tts(text=text,
-                                    speaker=speaker,
-                                    sample_rate=sample_rate)
-                                    #audio_path=filename)
-            channels = 2 if (audio.ndim == 2 and audio.shape[1] == 2) else 1
-            #y = np.int16(audio)
-            y = np.int16(audio * 2 ** 15)
-            song = pydub.AudioSegment(y.tobytes(), frame_rate=sample_rate, sample_width=2, channels=channels)
-            song.export(filename, format="ogg", bitrate="16k")
+            logger.info("Creating audio for {}".format(os.path.basename(filename)))
+            if text.strip() == "":
+                shutil.copy("data/empty_audio.ogg", filename)
+            else:
+                if len(text) > 2000:
+                    text = self.sentence_re.findall(text)
+                else:
+                    text = [text]
+                output = None
+                for process_text in text:
+                    audio = self.tts_model.apply_tts(text=process_text,
+                                            speaker=speaker,
+                                            sample_rate=sample_rate)
+                                            #audio_path=filename)
+                    channels = 2 if (audio.ndim == 2 and audio.shape[1] == 2) else 1
+                    if output is None:
+                        output = pydub.AudioSegment(np.int16(audio * 2 ** 15).tobytes(), frame_rate=sample_rate, sample_width=2, channels=channels)
+                    else:
+                        output = output + pydub.AudioSegment(np.int16(audio * 2 ** 15).tobytes(), frame_rate=sample_rate, sample_width=2, channels=channels)
+                output.export(filename, format="ogg", bitrate="16k")
+    
+    def create_wave_slow(self, make_audio_queue_slow):
+        import pydub
+        sample_rate = 24000
+        speaker = 'train_daws'
+        if self.tortoise is None:
+           self.tortoise=api.TextToSpeech()
         
+        if importlib.util.find_spec("tortoise") is not None:
+            voice_samples, conditioning_latents = load_voices([speaker])
+            while not make_audio_queue_slow.empty():
+                start_time = time.time()
+                (text, filename) = make_audio_queue_slow.get()
+                text_length = len(text)
+                logger.info("Creating audio for {}".format(os.path.basename(filename)))
+                if text.strip() == "":
+                    shutil.copy("data/empty_audio.ogg", filename)
+                else:
+                    if len(text) > 20000:
+                        text = self.sentence_re.findall(text)
+                    else:
+                        text = [text]
+                output = None
+                for process_text in text:
+                    audio = self.tortoise.tts_with_preset(process_text, preset='ultra_fast', voice_samples=voice_samples, conditioning_latents=conditioning_latents).numpy()
+                    channels = 2 if (audio.ndim == 2 and audio.shape[1] == 2) else 1
+                    if output is None:
+                        output = pydub.AudioSegment(np.int16(audio * 2 ** 15).tobytes(), frame_rate=sample_rate, sample_width=2, channels=channels)
+                    else:
+                        output = output + pydub.AudioSegment(np.int16(audio * 2 ** 15).tobytes(), frame_rate=sample_rate, sample_width=2, channels=channels)
+                output.export(filename, format="ogg", bitrate="16k")
+                logger.info("Slow audio took {} for {} characters".format(time.time()-start_time, text_length))
+    
     def gen_all_audio(self, overwrite=False):
         if self.story_settings.gen_audio and self.koboldai_vars.experimental_features:
-            for i in reversed(list(self.actions.keys())):
+            for i in reversed([-1]+list(self.actions.keys())):
                 self.gen_audio(i, overwrite=False)
         else:
             print("{} and {}".format(self.story_settings.gen_audio, self.koboldai_vars.experimental_features))
+    
+    def set_picture(self, action_id, filename, prompt):
+        if action_id == -1:
+            self.story_settings.prompt_picture_filename = filename
+            self.story_settings.prompt_picture_prompt = prompt
+        elif action_id in self.actions:
+            self.actions[action_id]['picture_filename'] = filename
+            self.actions[action_id]['picture_prompt'] = prompt
+    
+    def get_picture(self, action_id):
+        if action_id == -1:
+            if self.story_settings.prompt_picture_filename == "":
+                return None, None
+            filename = os.path.join(self.koboldai_vars.save_paths.generated_images, self.story_settings.prompt_picture_filename)
+            prompt = self.story_settings.prompt_picture_prompt
+        elif action_id in self.actions:
+            filename = os.path.join(self.koboldai_vars.save_paths.generated_images, self.actions[action_id]['picture_filename'])
+            prompt = self.actions[action_id]['picture_prompt']
+        else:
+            return None, None
+        
+        if os.path.exists(filename):
+            return filename, prompt
+        return None, None
     
     def __setattr__(self, name, value):
         new_variable = name not in self.__dict__
@@ -1853,7 +2105,6 @@ class KoboldWorldInfo(object):
         self.world_info = {}
         self.world_info_folder = OrderedDict()
         self.world_info_folder['root'] = []
-        self.image_store = {}
         self.story_settings = story_settings
         
     def reset(self):
@@ -1932,7 +2183,7 @@ class KoboldWorldInfo(object):
     def add_item(self, title, key, keysecondary, folder, constant, manual_text,
                  comment, wi_type="wi", use_wpp=False,
                  wpp={'name': "", 'type': "", 'format': "W++", 'attributes': {}},
-                 v1_uid=None, recalc=True, sync=True, send_to_ui=True):
+                 v1_uid=None, recalc=True, sync=True, send_to_ui=True, object_type=None):
         if len(self.world_info) == 0:
             uid = 0
         else:
@@ -1982,7 +2233,8 @@ class KoboldWorldInfo(object):
                                     "used_in_game": constant,
                                     'wpp': wpp,
                                     'use_wpp': use_wpp,
-                                    'v1_uid': v1_uid
+                                    'v1_uid': v1_uid,
+                                    "object_type": object_type,
                                     }
         except:
             print("Error:")
@@ -2006,7 +2258,22 @@ class KoboldWorldInfo(object):
             ignore = self.koboldai_vars.calc_ai_text()
         return uid
         
-    def edit_item(self, uid, title, key, keysecondary, folder, constant, manual_text, comment, wi_type, use_wpp=False, before=None, wpp={'name': "", 'type': "", 'format': "W++", 'attributes': {}}):
+    def edit_item(
+            self,
+            uid,
+            title,
+            key,
+            keysecondary,
+            folder,
+            constant,
+            manual_text,
+            comment,
+            wi_type,
+            use_wpp=False,
+            before=None,
+            wpp={'name': "", 'type': "", 'format': "W++", 'attributes': {}},
+            object_type=None,
+        ):
         logger.debug("Editing World Info {}: {}".format(uid, title))
         old_folder = self.world_info[uid]['folder']
         #move the world info entry if the folder changed or if there is a new order requested
@@ -2046,7 +2313,8 @@ class KoboldWorldInfo(object):
                                 "selective": len(keysecondary) > 0,
                                 "used_in_game": constant,
                                 'wpp': wpp,
-                                'use_wpp': use_wpp
+                                'use_wpp': use_wpp,
+                                "object_type": object_type,
                                 }
                                 
         self.story_settings.gamesaved = False
@@ -2062,8 +2330,10 @@ class KoboldWorldInfo(object):
     def delete(self, uid):
         del self.world_info[uid]
 
-        if uid in self.image_store:
-            del self.image_store[uid]
+        try:
+            os.remove(os.path.join(self.koboldai_vars.save_paths.wi_images, str(uid)))
+        except FileNotFoundError:
+            pass
 
         for folder in self.world_info_folder:
             if uid in self.world_info_folder[folder]:
@@ -2122,37 +2392,44 @@ class KoboldWorldInfo(object):
             return {
                     "folders": {x: self.world_info_folder[x] for x in self.world_info_folder},
                     "entries": self.world_info,
-                    "images": self.image_store
                    }
         else:
             return {
                     "folders": {x: self.world_info_folder[x] for x in self.world_info_folder if x == folder},
                     "entries": {x: self.world_info[x] for x in self.world_info if self.world_info[x]['folder'] == folder},
-                    "images": self.image_store
                    }
     
     def upgrade_entry(self, wi_entry: dict) -> dict:
         # If we do not have a type, or it is incorrect, set to WI.
-        if wi_entry.get("type") not in ["constant", "chatcharacter", "wi"]:
+        if wi_entry.get("type") not in ["constant", "chatcharacter", "wi", "commentator"]:
             wi_entry["type"] = "wi"
+        
+        if wi_entry["type"] in ["commentator", "constant"]:
+            wi_entry["constant"] = True
 
         return wi_entry
     
     def load_json(self, data, folder=None):
+        # Legacy WI images (stored in json)
         if "images" in data:
-            self.image_store = data["images"]
+            for uid, image_b64 in data["images"].items():
+                image_b64 = image_b64.split(",")[-1]
+                image_path = os.path.join(
+                    self.koboldai_vars.save_paths.wi_images,
+                    str(uid)
+                )
+                with open(image_path, "wb") as file:
+                    file.write(base64.b64decode(image_b64))
         
         data["entries"] = {k: self.upgrade_entry(v) for k,v in data["entries"].items()}
 
         if folder is None:
-            self.world_info = {int(x): data['entries'][x] for x in data['entries']}
             self.world_info_folder = data['folders']
         
         #Add the item
         start_time = time.time()
         for uid, item in data['entries'].items():
             
-
             self.add_item(item['title'] if 'title' in item else item['key'][0], 
                           item['key'] if 'key' in item else [], 
                           item['keysecondary'] if 'keysecondary' in item else [], 
@@ -2163,6 +2440,7 @@ class KoboldWorldInfo(object):
                           wi_type=item["type"],
                           use_wpp=item['use_wpp'] if 'use_wpp' in item else False, 
                           wpp=item['wpp'] if 'wpp' in item else {'name': "", 'type': "", 'format': "W++", 'attributes': {}},
+                          object_type=item.get("object_type"),
                           recalc=False, sync=False)
         if folder is None:
             #self.world_info = {int(x): data['entries'][x] for x in data['entries']}
@@ -2247,10 +2525,79 @@ class KoboldWorldInfo(object):
     
     def get_used_wi(self):
         return [x['content'] for x in self.world_info if x['used_in_game']]
+    
+    def to_wi_fewshot_format(self, excluding_uid: int) -> List[str]:
+        """
+        Returns a list of strings representing applicable (has title, text, and
+        object type) World Info entries. Intended for feeding into the fewshot
+        generator.
+        """
+        the_collection = []
+        for entry in self.world_info.values():
+            if entry["uid"] == excluding_uid:
+                continue
+
+            if not (
+                entry["title"]
+                and entry["manual_text"]
+                and entry["object_type"]
+            ):
+                continue
+                
+            processed_desc = entry["manual_text"].replace("\n", " ")
+            while "  " in processed_desc:
+                processed_desc = processed_desc.replace("  ", " ")
+            processed_desc = processed_desc.strip()
+
+            the_collection.append(
+                f"Title: {entry['title']}\n" \
+                f"Type: {entry['object_type']}\n"
+                f"Description: {processed_desc}"
+            )
+        
+        return the_collection
+    
+    def get_commentators(self) -> List[dict]:
+        ret = []
+        for entry in self.world_info.values():
+            if entry["type"] != "commentator":
+                continue
+            ret.append(entry)
+        return ret
+
+
+@dataclass
+class SavePaths:
+    base: str
+
+    @property
+    def required_paths(self) -> List[str]:
+        return [
+            self.base,
+            self.generated_audio,
+            self.generated_images,
+            self.wi_images
+        ]
+
+    @property
+    def story(self) -> str:
+        return os.path.join(self.base, "story.json")
+
+    @property
+    def generated_audio(self) -> str:
+        return os.path.join(self.base, "generated_audio")
+    
+    @property
+    def generated_images(self) -> str:
+        return os.path.join(self.base, "generated_images")
+
+    @property
+    def wi_images(self) -> str:
+        return os.path.join(self.base, "wi_images")
    
-default_rand_range = [0.1, 1, 2]
-default_creativity_range = [0.8, 1]
-default_rep_range = [1.75, 2]
+default_rand_range = [0.44, 1, 2]
+default_creativity_range = [0.5, 1]
+default_rep_range = [1.0, 1.3]
 default_preset = {
         "preset": "Default",
         "description": "Known working settings.",
@@ -2279,4 +2626,3 @@ default_preset = {
 badwordsids_default = [[13460], [6880], [50256], [42496], [4613], [17414], [22039], [16410], [27], [29], [38430], [37922], [15913], [24618], [28725], [58], [47175], [36937], [26700], [12878], [16471], [37981], [5218], [29795], [13412], [45160], [3693], [49778], [4211], [20598], [36475], [33409], [44167], [32406], [29847], [29342], [42669], [685], [25787], [7359], [3784], [5320], [33994], [33490], [34516], [43734], [17635], [24293], [9959], [23785], [21737], [28401], [18161], [26358], [32509], [1279], [38155], [18189], [26894], [6927], [14610], [23834], [11037], [14631], [26933], [46904], [22330], [25915], [47934], [38214], [1875], [14692], [41832], [13163], [25970], [29565], [44926], [19841], [37250], [49029], [9609], [44438], [16791], [17816], [30109], [41888], [47527], [42924], [23984], [49074], [33717], [31161], [49082], [30138], [31175], [12240], [14804], [7131], [26076], [33250], [3556], [38381], [36338], [32756], [46581], [17912], [49146]] # Tokenized array of badwords used to prevent AI artifacting
 badwordsids_neox = [[0], [1], [44162], [9502], [12520], [31841], [36320], [49824], [34417], [6038], [34494], [24815], [26635], [24345], [3455], [28905], [44270], [17278], [32666], [46880], [7086], [43189], [37322], [17778], [20879], [49821], [3138], [14490], [4681], [21391], [26786], [43134], [9336], [683], [48074], [41256], [19181], [29650], [28532], [36487], [45114], [46275], [16445], [15104], [11337], [1168], [5647], [29], [27482], [44965], [43782], [31011], [42944], [47389], [6334], [17548], [38329], [32044], [35487], [2239], [34761], [7444], [1084], [12399], [18990], [17636], [39083], [1184], [35830], [28365], [16731], [43467], [47744], [1138], [16079], [40116], [45564], [18297], [42368], [5456], [18022], [42696], [34476], [23505], [23741], [39334], [37944], [45382], [38709], [33440], [26077], [43600], [34418], [36033], [6660], [48167], [48471], [15775], [19884], [41533], [1008], [31053], [36692], [46576], [20095], [20629], [31759], [46410], [41000], [13488], [30952], [39258], [16160], [27655], [22367], [42767], [43736], [49694], [13811], [12004], [46768], [6257], [37471], [5264], [44153], [33805], [20977], [21083], [25416], [14277], [31096], [42041], [18331], [33376], [22372], [46294], [28379], [38475], [1656], [5204], [27075], [50001], [16616], [11396], [7748], [48744], [35402], [28120], [41512], [4207], [43144], [14767], [15640], [16595], [41305], [44479], [38958], [18474], [22734], [30522], [46267], [60], [13976], [31830], [48701], [39822], [9014], [21966], [31422], [28052], [34607], [2479], [3851], [32214], [44082], [45507], [3001], [34368], [34758], [13380], [38363], [4299], [46802], [30996], [12630], [49236], [7082], [8795], [5218], [44740], [9686], [9983], [45301], [27114], [40125], [1570], [26997], [544], [5290], [49193], [23781], [14193], [40000], [2947], [43781], [9102], [48064], [42274], [18772], [49384], [9884], [45635], [43521], [31258], [32056], [47686], [21760], [13143], [10148], [26119], [44308], [31379], [36399], [23983], [46694], [36134], [8562], [12977], [35117], [28591], [49021], [47093], [28653], [29013], [46468], [8605], [7254], [25896], [5032], [8168], [36893], [38270], [20499], [27501], [34419], [29547], [28571], [36586], [20871], [30537], [26842], [21375], [31148], [27618], [33094], [3291], [31789], [28391], [870], [9793], [41361], [47916], [27468], [43856], [8850], [35237], [15707], [47552], [2730], [41449], [45488], [3073], [49806], [21938], [24430], [22747], [20924], [46145], [20481], [20197], [8239], [28231], [17987], [42804], [47269], [29972], [49884], [21382], [46295], [36676], [34616], [3921], [26991], [27720], [46265], [654], [9855], [40354], [5291], [34904], [44342], [2470], [14598], [880], [19282], [2498], [24237], [21431], [16369], [8994], [44524], [45662], [13663], [37077], [1447], [37786], [30863], [42854], [1019], [20322], [4398], [12159], [44072], [48664], [31547], [18736], [9259], [31], [16354], [21810], [4357], [37982], [5064], [2033], [32871], [47446], [62], [22158], [37387], [8743], [47007], [17981], [11049], [4622], [37916], [36786], [35138], [29925], [14157], [18095], [27829], [1181], [22226], [5709], [4725], [30189], [37014], [1254], [11380], [42989], [696], [24576], [39487], [30119], [1092], [8088], [2194], [9899], [14412], [21828], [3725], [13544], [5180], [44679], [34398], [3891], [28739], [14219], [37594], [49550], [11326], [6904], [17266], [5749], [10174], [23405], [9955], [38271], [41018], [13011], [48392], [36784], [24254], [21687], [23734], [5413], [41447], [45472], [10122], [17555], [15830], [47384], [12084], [31350], [47940], [11661], [27988], [45443], [905], [49651], [16614], [34993], [6781], [30803], [35869], [8001], [41604], [28118], [46462], [46762], [16262], [17281], [5774], [10943], [5013], [18257], [6750], [4713], [3951], [11899], [38791], [16943], [37596], [9318], [18413], [40473], [13208], [16375]]
 badwordsids_opt = [[44717], [46613], [48513], [49923], [50185], [48755], [8488], [43303], [49659], [48601], [49817], [45405], [48742], [49925], [47720], [11227], [48937], [48784], [50017], [42248], [49310], [48082], [49895], [50025], [49092], [49007], [8061], [44226], [0], [742], [28578], [15698], [49784], [46679], [39365], [49281], [49609], [48081], [48906], [46161], [48554], [49670], [48677], [49721], [49632], [48610], [48462], [47457], [10975], [46077], [28696], [48709], [43839], [49798], [49154], [48203], [49625], [48395], [50155], [47161], [49095], [48833], [49420], [49666], [48443], [22176], [49242], [48651], [49138], [49750], [40389], [48021], [21838], [49070], [45333], [40862], [1], [49915], [33525], [49858], [50254], [44403], [48992], [48872], [46117], [49853], [47567], [50206], [41552], [50068], [48999], [49703], [49940], [49329], [47620], [49868], [49962], [2], [44082], [50236], [31274], [50260], [47052], [42645], [49177], [17523], [48691], [49900], [49069], [49358], [48794], [47529], [46479], [48457], [646], [49910], [48077], [48935], [46386], [48902], [49151], [48759], [49803], [45587], [48392], [47789], [48654], [49836], [49230], [48188], [50264], [46844], [44690], [48505], [50161], [27779], [49995], [41833], [50154], [49097], [48520], [50018], [8174], [50084], [49366], [49526], [50193], [7479], [49982], [3]]
-genres = ['Absurdist', 'Action & Adventure', 'Adaptations & Pastiche', 'African American & Black/General', 'African American & Black/Christian', 'African American & Black/Erotica', 'African American & Black/Historical', 'African American & Black/Mystery & Detective', 'African American & Black/Urban & Street Lit', 'African American & Black/Women', 'Alternative History', 'Amish & Mennonite', 'Animals', 'Anthologies (multiple authors)', 'Asian American', 'Biographical', 'Buddhist', 'Christian/General', 'Christian/Biblical', 'Christian/Classic & Allegory', 'Christian/Collections & Anthologies', 'Christian/Contemporary', 'Christian/Fantasy', 'Christian/Futuristic', 'Christian/Historical', 'Christian/Romance/General', 'Christian/Romance/Historical', 'Christian/Romance/Suspense', 'Christian/Suspense', 'Christian/Western', 'City Life', 'Classics', 'Coming of Age', 'Crime', 'Cultural Heritage', 'Disabilities & Special Needs', 'Disaster', 'Dystopian', 'Epistolary', 'Erotica/General', 'Erotica/BDSM', 'Erotica/Collections & Anthologies', 'Erotica/Historical', 'Erotica/LGBTQ+/General', 'Erotica/LGBTQ+/Bisexual', 'Erotica/LGBTQ+/Gay', 'Erotica/LGBTQ+/Lesbian', 'Erotica/LGBTQ+/Transgender', 'Erotica/Science Fiction, Fantasy & Horror', 'Fairy Tales, Folk Tales, Legends & Mythology', 'Family Life/General', 'Family Life/Marriage & Divorce', 'Family Life/Siblings', 'Fantasy/General', 'Fantasy/Action & Adventure', 'Fantasy/Arthurian', 'Fantasy/Collections & Anthologies', 'Fantasy/Contemporary', 'Fantasy/Dark Fantasy', 'Fantasy/Dragons & Mythical Creatures', 'Fantasy/Epic', 'Fantasy/Gaslamp', 'Fantasy/Historical', 'Fantasy/Humorous', 'Fantasy/Military', 'Fantasy/Paranormal', 'Fantasy/Romance', 'Fantasy/Urban', 'Feminist', 'Friendship', 'Ghost', 'Gothic', 'Hispanic & Latino', 'Historical/General', 'Historical/Ancient', 'Historical/Civil War Era', 'Historical/Colonial America & Revolution', 'Historical/Medieval', 'Historical/Renaissance', 'Historical/World War I', 'Historical/World War II', 'Holidays', 'Horror', 'Humorous/General', 'Humorous/Black Humor', 'Indigenous', 'Jewish', 'Legal', 'LGBTQ+/General', 'LGBTQ+/Bisexual', 'LGBTQ+/Gay', 'LGBTQ+/Lesbian', 'LGBTQ+/Transgender', 'Literary', 'LitRPG (Literary Role-Playing Game) *', 'Magical Realism', 'Mashups', 'Media Tie-In', 'Medical', 'Multiple Timelines', 'Muslim', 'Mystery & Detective/General', 'Mystery & Detective/Amateur Sleuth', 'Mystery & Detective/Collections & Anthologies', 'Mystery & Detective/Cozy/General', 'Mystery & Detective/Cozy/Animals', 'Mystery & Detective/Cozy/Crafts', 'Mystery & Detective/Cozy/Culinary', 'Mystery & Detective/Cozy/Holidays & Vacation *', 'Mystery & Detective/Cozy/Paranormal *', 'Mystery & Detective/Hard-Boiled', 'Mystery & Detective/Historical', 'Mystery & Detective/International Crime & Mystery', 'Mystery & Detective/Jewish *', 'Mystery & Detective/Police Procedural', 'Mystery & Detective/Private Investigators', 'Mystery & Detective/Traditional', 'Mystery & Detective/Women Sleuths', 'Nature & the Environment', 'Noir', 'Occult & Supernatural', 'Own Voices', 'Political', 'Psychological', 'Religious', 'Romance/General', 'Romance/Action & Adventure', 'Romance/African American & Black', 'Romance/Billionaires', 'Romance/Clean & Wholesome', 'Romance/Collections & Anthologies', 'Romance/Contemporary', 'Romance/Erotic', 'Romance/Fantasy', 'Romance/Firefighters', 'Romance/Historical/General', 'Romance/Historical/American', 'Romance/Historical/Ancient World', 'Romance/Historical/Gilded Age', 'Romance/Historical/Medieval', 'Romance/Historical/Regency', 'Romance/Historical/Renaissance', 'Romance/Historical/Scottish', 'Romance/Historical/Tudor', 'Romance/Historical/20th Century', 'Romance/Historical/Victorian', 'Romance/Historical/Viking', 'Romance/Holiday', 'Romance/Later in Life', 'Romance/LGBTQ+/General', 'Romance/LGBTQ+/Bisexual', 'Romance/LGBTQ+/Gay', 'Romance/LGBTQ+/Lesbian', 'Romance/LGBTQ+/Transgender', 'Romance/Medical', 'Romance/Military', 'Romance/Multicultural & Interracial', 'Romance/New Adult', 'Romance/Paranormal/General', 'Romance/Paranormal/Shifters', 'Romance/Paranormal/Vampires', 'Romance/Paranormal/Witches', 'Romance/Police & Law Enforcement', 'Romance/Polyamory', 'Romance/Rock Stars', 'Romance/Romantic Comedy', 'Romance/Royalty', 'Romance/Science Fiction', 'Romance/Sports', 'Romance/Suspense', 'Romance/Time Travel', 'Romance/Western', 'Romance/Workplace', 'Sagas', 'Satire', 'Science Fiction/General', 'Science Fiction/Action & Adventure', 'Science Fiction/Alien Contact', 'Science Fiction/Apocalyptic & Post-Apocalyptic', 'Science Fiction/Collections & Anthologies', 'Science Fiction/Crime & Mystery', 'Science Fiction/Cyberpunk', 'Science Fiction/Genetic Engineering', 'Science Fiction/Hard Science Fiction', 'Science Fiction/Humorous', 'Science Fiction/Military', 'Science Fiction/Space Exploration', 'Science Fiction/Space Opera', 'Science Fiction/Steampunk', 'Science Fiction/Time Travel', 'Sea Stories', 'Short Stories (single author)', 'Small Town & Rural', 'Southern', 'Sports', 'Superheroes', 'Thrillers/General', 'Thrillers/Crime', 'Thrillers/Domestic', 'Thrillers/Espionage', 'Thrillers/Historical', 'Thrillers/Legal', 'Thrillers/Medical', 'Thrillers/Military', 'Thrillers/Political', 'Thrillers/Psychological', 'Thrillers/Supernatural', 'Thrillers/Suspense', 'Thrillers/Technological', 'Thrillers/Terrorism', 'Urban & Street Lit', 'Visionary & Metaphysical', 'War & Military', 'Westerns', 'Women', 'World Literature/Africa/General', 'World Literature/Africa/East Africa', 'World Literature/Africa/Nigeria', 'World Literature/Africa/Southern Africa', 'World Literature/Africa/West Africa', 'World Literature/American/General', 'World Literature/American/Colonial & Revolutionary Periods', 'World Literature/American/19th Century', 'World Literature/American/20th Century', 'World Literature/American/21st Century', 'World Literature/Argentina', 'World Literature/Asia (General)', 'World Literature/Australia', 'World Literature/Austria', 'World Literature/Brazil', 'World Literature/Canada/General', 'World Literature/Canada/Colonial & 19th Century', 'World Literature/Canada/20th Century', 'World Literature/Canada/21st Century', 'World Literature/Caribbean & West Indies', 'World Literature/Central America', 'World Literature/Chile', 'World Literature/China/General', 'World Literature/China/19th Century', 'World Literature/China/20th Century', 'World Literature/China/21st Century', 'World Literature/Colombia', 'World Literature/Czech Republic', 'World Literature/Denmark', 'World Literature/England/General', 'World Literature/England/Early & Medieval Periods', 'World Literature/England/16th & 17th Century', 'World Literature/England/18th Century', 'World Literature/England/19th Century', 'World Literature/England/20th Century', 'World Literature/England/21st Century', 'World Literature/Europe (General)', 'World Literature/Finland', 'World Literature/France/General', 'World Literature/France/18th Century', 'World Literature/France/19th Century', 'World Literature/France/20th Century', 'World Literature/France/21st Century', 'World Literature/Germany/General', 'World Literature/Germany/20th Century', 'World Literature/Germany/21st Century', 'World Literature/Greece', 'World Literature/Hungary', 'World Literature/India/General', 'World Literature/India/19th Century', 'World Literature/India/20th Century', 'World Literature/India/21st Century', 'World Literature/Ireland/General', 'World Literature/Ireland/19th Century', 'World Literature/Ireland/20th Century', 'World Literature/Ireland/21st Century', 'World Literature/Italy', 'World Literature/Japan', 'World Literature/Korea', 'World Literature/Mexico', 'World Literature/Middle East/General', 'World Literature/Middle East/Arabian Peninsula', 'World Literature/Middle East/Egypt & North Africa', 'World Literature/Middle East/Israel', 'World Literature/Netherlands', 'World Literature/New Zealand', 'World Literature/Norway', 'World Literature/Oceania', 'World Literature/Pakistan', 'World Literature/Peru', 'World Literature/Poland', 'World Literature/Portugal', 'World Literature/Russia/General', 'World Literature/Russia/19th Century', 'World Literature/Russia/20th Century', 'World Literature/Russia/21st Century', 'World Literature/Scotland/General', 'World Literature/Scotland/19th Century', 'World Literature/Scotland/20th Century', 'World Literature/Scotland/21st Century', 'World Literature/South America (General)', 'World Literature/Southeast Asia', 'World Literature/Spain/General', 'World Literature/Spain/19th Century', 'World Literature/Spain/20th Century', 'World Literature/Spain/21st Century', 'World Literature/Sweden', 'World Literature/Turkey', 'World Literature/Uruguay', 'World Literature/Wales']

@@ -414,6 +414,22 @@ gensettingstf = [
     "ui_level": 2
  	},
     {
+ 	"uitype": "toggle",
+ 	"unit": "bool",
+ 	"label": "Alt Multi Gen",
+ 	"id": "alt_multi_gen",
+ 	"min": 0,
+ 	"max": 1,
+ 	"step": 1,
+ 	"default": 0,
+	"tooltip": "Runs Gens per Action one at a time so you can select one if you like it without having to wait.",
+    "menu_path": "Settings",
+    "sub_path": "Other",
+    "classname": "model",
+    "name": "alt_multi_gen",
+    "ui_level": 2
+ 	},
+    {
     "UI_V2_Only": True,
  	"uitype": "toggle",
  	"unit": "bool",
@@ -863,6 +879,37 @@ gensettingstf = [
     "name": "simple_repitition",
     "extra_classes": "simple_ui_only var_sync_alt_user_ui_level",
     "ui_level": 0
+	},
+    {
+    "UI_V2_Only": True,
+	"uitype": "slider",
+	"unit": "int",
+	"label": "WI Gen Amount",
+	"id": "wigen_amount",
+	"min": 25,
+	"max": 125,
+	"step": 1,
+	"default": 80,
+    "tooltip": "How many tokens the World Info Generator creates.",
+    "menu_path": "World Info",
+    "sub_path": "",
+    "classname": "user",
+    "name": "wigen_amount",
+    "ui_level": 2
+	},
+    {
+    "UI_V2_Only": True,
+	"uitype": "toggle",
+	"unit": "bool",
+	"label": "Native WI Gen",
+	"id": "wigen_use_own_wi", 
+	"default": False,
+    "tooltip": "Uses your existing applicable (has title, type, content) World Info entries as inspiration for generated ones.",
+    "menu_path": "World Info",
+    "sub_path": "",
+    "classname": "user",
+    "name": "wigen_use_own_wi",
+    "ui_level": 2
 	},
 ]
 
