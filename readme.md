@@ -1,6 +1,21 @@
-## KoboldAI - Your gateway to GPT writing
+<p align="center"><img src="docs/logo.png" width=100/></p>
 
-This is a browser-based front-end for AI-assisted writing with multiple local & remote AI models. It offers the standard array of tools, including Memory, Author's Note, World Info, Save & Load, adjustable AI settings, formatting options, and the ability to import existing AI Dungeon adventures. You can also turn on Adventure mode and play the game like AI Dungeon Unleashed.
+<h1 align="center">KoboldAI</h1>
+
+<h2 align="center">Your gateway to GPT writing</h2>
+
+<p align="center" width="50%">
+  This is a browser-based front-end for AI-assisted writing with multiple local & remote AI models. It offers the
+  standard array of tools, including Memory, Author's Note, World Info, Save & Load, adjustable AI settings, formatting
+  options, and the ability to import existing AI Dungeon adventures. You can also turn on Adventure mode and play the
+  game like AI Dungeon Unleashed.
+</p>
+
+<p align="center"><a href="docs/usage.md">Usage</a> - <a href="docs/installation.md">Installation</a> - <a href="docs/foo.md">Foo</a> - <a href="docs/bar.md">Bar</a></p>
+
+<p align="center">
+  <img src="docs/screenshot.png" width="80%"/>
+</p>
 
 ## Multiple ways to play
 
