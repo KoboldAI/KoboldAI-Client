@@ -1,9 +1,8 @@
-
-## Multiple ways to play
+# Multiple ways to play
 
 Stories can be played like a Novel, a text adventure game or used as a chatbot with an easy toggles to change between the multiple gameplay styles. This makes KoboldAI both a writing assistant, a game and a platform for so much more. The way you play and how good the AI will be depends on the model or service you decide to use. No matter if you want to use the free, fast power of Google Colab, your own high end graphics card, an online service you have an API key for (Like OpenAI or Inferkit) or if you rather just run it slower on your CPU you will be able to find a way to use KoboldAI that works for you.
 
-### Adventure mode
+## Adventure mode
 
 By default KoboldAI will run in a generic mode optimized for writing, but with the right model you can play this like AI Dungeon without any issues. You can enable this in the settings and bring your own prompt, try generating a random prompt or download one of the prompts available at [/aids/ Prompts](https://aetherroom.club/).
 
@@ -16,11 +15,11 @@ Just typing the quote might work, but the AI is at its best when you specify who
 
 If you want to do this with your friends we advise using the main character as You and using the other characters by their name if you are playing on a model trained for Adventures. These models assume there is a You in the story. This mode does usually not perform well on Novel models because they do not know how to handle the input those are best used with regular story writing where you take turns with the AI.
 
-### Writing assistant
+## Writing assistant
 
 If you want to use KoboldAI as a writing assistant this is best done in the regular mode with a model optimized for Novels. These models do not make the assumption that there is a You character and focus on Novel like writing. For writing these will often give you better results than Adventure or Generic models. That said, if you give it a good introduction to the story large generic models like 13B can be used if a more specific model is not available for what you wish to write. You can also try to use models that are not specific to what you wish to do, for example a NSFW Novel model for a SFW story if a SFW model is unavailable. This will mean you will have to correct the model more often because of its bias, but can still produce good enough results if it is familiar enough with your topic.
 
-### Chatbot Mode
+## Chatbot Mode
 
 In chatbot mode you can use a suitable model as a chatbot, this mode automatically adds your name to the beginning of the sentences and prevents the AI from talking as you. To use it properly you must write your story opening as both characters in the following format (You can use your own text) :
 
@@ -39,13 +38,13 @@ This mode works the best on either a Generic model or a chatbot model specifical
 
 Novel or Adventure models are not recommended for this feature but might still work but can derail away from the conversation format quickly.
 
-## Play KoboldAI online for free on Google Colab (The easiest way to play)
+# Play KoboldAI online for free on Google Colab (The easiest way to play)
 
 If you would like to play KoboldAI online for free on a powerful computer you can use Google Colaboraty. We provide two editions, a TPU and a GPU edition with a variety of models available. These run entirely on Google's Servers and will automatically upload saves to your Google Drive if you choose to save a story (Alternatively, you can choose to download your save instead so that it never gets stored on Google Drive). Detailed instructions on how to use them are at the bottom of the Colab's.
 
 Each edition features different models and requires different hardware to run, this means that if you are unable to obtain a TPU or a GPU you might still be able to use the other version. The models you can use are listed underneath the edition. To open a Colab click the big link featuring the editions name.
 
-## [TPU Edition Model Descriptions](https://colab.research.google.com/github/KoboldAI/KoboldAI-Client/blob/main/colab/TPU.ipynb)
+# [TPU Edition Model Descriptions](https://colab.research.google.com/github/KoboldAI/KoboldAI-Client/blob/main/colab/TPU.ipynb)
 
 | Model | Style | Description |
 | --- | --- | --- |
@@ -61,7 +60,7 @@ Each edition features different models and requires different hardware to run, t
 | [Fairseq Dense](https://huggingface.co/KoboldAI/fairseq-dense-13B) | Generic | Trained by Facebook Researchers this model stems from the MOE research project within Fairseq. This particular version has been converted by us for use in KoboldAI. It is known to be on par with the larger 20B model from EleutherAI and considered as better for pop culture and language tasks. Because the model has never seen a new line (enter) it may perform worse on formatting and paragraphing. Compared to other models the dataset focuses primarily on literature and contains little else. |
 | [GPT-J-6B](https://huggingface.co/EleutherAI/gpt-j-6B) by EleutherAI | Generic | This model serves as the basis for most other 6B models (Some being based on Fairseq Dense instead). Being trained on the Pile and not biased towards anything in particular it is suitable for a variety of tasks such as writing, Q&A and coding tasks. You will likely get better result with larger generic models or finetuned models. |
 
-## [GPU Edition Model Descriptions](https://colab.research.google.com/github/KoboldAI/KoboldAI-Client/blob/main/colab/GPU.ipynb)
+# [GPU Edition Model Descriptions](https://colab.research.google.com/github/KoboldAI/KoboldAI-Client/blob/main/colab/GPU.ipynb)
 
 | Model | Style | Description |
 | --- | --- | --- |
@@ -77,7 +76,7 @@ Each edition features different models and requires different hardware to run, t
 | [Fairseq Dense](https://huggingface.co/KoboldAI/fairseq-dense-2.7B) | Generic | Trained by Facebook Researchers this model stems from the MOE research project within Fairseq. This particular version has been converted by us for use in KoboldAI. It is known to be on par with the larger models from EleutherAI and considered as better for pop culture and language tasks. Because the model has never seen a new line (enter) it may perform worse on formatting and paragraphing. Compared to other models the dataset focuses primarily on literature and contains little else. |
 | [Neo](https://huggingface.co/EleutherAI/gpt-neo-2.7B) by EleutherAI | Generic | This is the base model for all the other 2.7B models, it is best used when you have a use case that we have no other models available for, such as writing blog articles or programming. It can also be a good basis for the experience of some of the softprompts if your softprompt is not about a subject the other models cover. |
 
-### Styles
+## Styles
 
 | Type | Description |
 | --- | --- |
@@ -87,7 +86,7 @@ Each edition features different models and requires different hardware to run, t
 | Hybrid | Hybrid models are a blend between different Types, for example they are trained on both Novel stories and Adventure stories. These models are great variety models that you can use for multiple different playTypes and modes, but depending on your usage you may need to enable Adventure Mode or the You bias (in userscripts). |
 | Generic | Generic models are not trained towards anything specific, typically used as a basis for other tasks and models. They can do everything the other models can do, but require much more handholding to work properly. Generic models are an ideal basis for tasks that we have no specific model for, or for experiencing a softprompt in its raw form. |
 
-## Tips to get the most out of Google Colab
+# Tips to get the most out of Google Colab
 
 *   Google will occationally show a Captcha, typically after it has been open for 30 minutes but it can be more frequent if you often use Colab. Make sure to do these properly, or you risk getting your instance shut down and getting a lower priority towards the TPU's.
 *   KoboldAI uses Google Drive to store your files and settings, if you wish to upload a softprompt or userscript this can be done directly on the Google Drive website. You can also use this to download backups of your KoboldAI related files or upload models of your own.
@@ -96,7 +95,7 @@ Each edition features different models and requires different hardware to run, t
 *   Done with KoboldAI? Go to the Runtime menu, click on Manage Sessions and terminate your open sessions that you no longer need. This trick can help you maintain higher priority towards getting a TPU.
 *   Models stored on Google Drive typically load faster than models we need to download from the internet.
 
-## Softprompts
+# Softprompts
 
 Softprompts (also known as Modules in other products) are addons that can change the output of existing models. For example you may load a softprompt that biases the AI towards a certain subject and style like transcripts from your favorite TV show.
 
@@ -106,7 +105,7 @@ That way we are better protected from any DMCA claims as things can be taken dow
 
 Training softprompts can be done for free with the [Easy Softprompt Tuner](https://colab.research.google.com/gist/henk717/281fd57ebd2e88d852ef9dcc3f29bebf/easy-softprompt-tuner.ipynb#sandboxMode=true), in that case you can leave most of the settings default. Your source data needs to be a folder with text files that are UTF-8 formatted and contain Unix line endings.
 
-## Userscripts
+# Userscripts
 
 Userscripts are scripts that can automate tasks in KoboldAI, or modify the AI behavior / input / output.  
 Scripting is done in LUA5.4 (Lua does not need to be separately installed as long as you got all the python requirements) and has sandboxing to help protect you from malicious behavior. Even with these measures in place we strongly advise you only run userscripts from places you trust and/or understand, otherwise consult the community for advice on how safe the script might be.
@@ -119,7 +118,7 @@ Lastly the all the features of our userscript API are documented inside the API 
 
 For our TPU versions keep in mind that scripts modifying AI behavior relies on a different way of processing that is slower than if you leave these userscripts disabled even if your script only sporadically uses this modifier. If you want to partially use a script at its full speed than you can enable "No Gen Modifiers" to ensure that the parts that would make the TPU slow are not active.
 
-## API
+# API
 
 KoboldAI has a REST API that can be accessed by adding /api to the URL that Kobold provides you (For example http://127.0.0.1:5000/api).  
 When accessing this link in a browser you will be taken to the interactive documentation.
