@@ -38,7 +38,9 @@ This mode works the best on either a Generic model or a chatbot model specifical
 
 Novel or Adventure models are not recommended for this feature but might still work but can derail away from the conversation format quickly.
 
-# Play KoboldAI online for free on Google Colab (The easiest way to play)
+# Play KoboldAI online for free on Google Colab
+
+**(The easiest way to play)**
 
 If you would like to play KoboldAI online for free on a powerful computer you can use Google Colaboraty. We provide two editions, a TPU and a GPU edition with a variety of models available. These run entirely on Google's Servers and will automatically upload saves to your Google Drive if you choose to save a story (Alternatively, you can choose to download your save instead so that it never gets stored on Google Drive). Detailed instructions on how to use them are at the bottom of the Colab's.
 
