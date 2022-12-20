@@ -1,5 +1,6 @@
 body {
 	background-color: #303030;
+	padding-bottom: 8px;
 }
 
 chunk {
@@ -49,7 +50,6 @@ chunk.editing, chunk.editing * {
 #topmenu-and-settings-wrapper {
     background: #295071;
     border-radius: 0px 0px 3px 3px;
-    overflow: hidden;
 }
 
 #topmenu {
@@ -98,7 +98,7 @@ body.connected #topmenu, #topmenu.always-available {
 #navbar li {
 	margin: 3px;
 	background-color: #828282;
-	border-radius: 5px;
+	border-radius: 3px;
 }
 
 #navbarNavDropdown {
@@ -119,7 +119,9 @@ body.connected #navbar li, #navbar li.always-available {
 	display: flex;
 	flex-wrap: wrap;
 	background-color: #4d4d4d;
-	padding: 10px;
+	padding: 14px 11px;
+	justify-content: space-between;
+	border-radius: 0px 0px 3px 3px;
 }
 
 body.connected #settingsmenu, #settingsmenu.always-available {
@@ -167,7 +169,7 @@ body.connected #formatmenu, #formatmenu.always-available {
 	max-height: 100%;
 	width: 100%;
 	word-wrap: break-word;
-	padding: 10px;
+	padding: 20px;
 	overflow-y: auto;
 }
 
@@ -182,12 +184,19 @@ body.connected #formatmenu, #formatmenu.always-available {
 	margin-top: 10px;
 }
 
-#actionmenuitems {
-
+@media (max-width: 768px) {
+    #actionmenu, #inputmenu {
+        /* bootstrap has negative margins here.
+        On mobile this makes the actionmenu touch the sides of the screen,
+        which isn't very pretty */
+        margin-left: 0px;
+        margin-right: 0px;
+    }
 }
 
 #actionmenuitems button {
 	width: 80px;
+	margin-bottom: 4px;
 }
 
 #messagefield {
@@ -1145,6 +1154,10 @@ hr {
 	grid-template-columns: 50% 50%;
 }
 
+.navbar-nav {
+    margin: 0px;
+}
+
 .navbar .navbar-nav .nav-link:hover {
 	border-radius: 5px;
 	background-color: #bababa;
@@ -1175,7 +1188,7 @@ body.connected .navbar .navbar-nav .nav-link:focus, .navbar .navbar-nav .nav-lin
 	background-color: #757575;
 	border: 1px solid #bababa;
 	height: 45px;
-	width: 60px;
+	width: 52px;
 	border-radius: 6px;
 }
 
@@ -1185,6 +1198,7 @@ body.connected .navbar-toggler, .navbar-toggler.always-available {
 
 body .navbar-toggler {
 	background-color: #337ab7;
+	margin-bottom: 10px;
 }
 
 .navbar-toggler:hover {
@@ -1204,6 +1218,10 @@ body.connected .navbar-togger:hover, .navbar-togger.always-available:hover {
 @media (max-width: 768px) {
 	.nav-item {
 		margin-bottom: 3px;
+	}
+
+	.nav.navbar-nav {
+	    padding-top: 10px;
 	}
 }
 
@@ -1332,13 +1350,12 @@ body.connected .popupfooter, .popupfooter.always-available {
 }
 
 .settingitem {
-	width: 20%;
-	padding-left: 10px;
-	padding-right: 10px;
-	padding-bottom: 5px;
-	padding-top: 5px;
 	display: inline-block;
 	border-bottom: 1px solid #12324f;
+	margin: 3px;
+	flex-basis: 270px;
+	flex-grow: 1;
+	padding: 10px 15px;
 }
 
 .settingsave {
