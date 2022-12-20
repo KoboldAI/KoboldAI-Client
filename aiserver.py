@@ -9598,7 +9598,10 @@ def generate_story_image(
         log_image_generation(prompt, display_prompt, file_name, generation_type, log_data)
         #let's also add this data to the action so we know where the latest picture is at
         logger.info("setting picture filename")
-        koboldai_vars.actions.set_picture(int(log_data['actionId']), file_name, prompt)
+        try:
+            koboldai_vars.actions.set_picture(int(log_data['actionId']), file_name, prompt)
+        except KeyError:
+            pass
 
     logger.debug("Time to Generate Image {}".format(time.time()-start_time))
 
