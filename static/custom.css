@@ -46,6 +46,12 @@ chunk.editing, chunk.editing * {
 	outline: 0px solid transparent;
 }
 
+#topmenu-and-settings-wrapper {
+    background: #295071;
+    border-radius: 0px 0px 3px 3px;
+    overflow: hidden;
+}
+
 #topmenu {
 	background-color: #757575;
 	padding: 10px;
@@ -54,6 +60,7 @@ chunk.editing, chunk.editing * {
 
 body.connected #topmenu, #topmenu.always-available {
 	background-color: #337ab7;
+	border-radius: 0px 0px 3px 3px;
 }
 
 #topic {
@@ -89,9 +96,13 @@ body.connected #topmenu, #topmenu.always-available {
 }
 
 #navbar li {
-	margin-right: 5px;
+	margin: 3px;
 	background-color: #828282;
 	border-radius: 5px;
+}
+
+#navbarNavDropdown {
+	padding-left: 3px;
 }
 
 body.connected #navbar li, #navbar li.always-available {
@@ -101,6 +112,7 @@ body.connected #navbar li, #navbar li.always-available {
 #navbar li > a {
 	color: #ffffff;
 	font-weight: bold;
+	padding: 10px 15px;
 }
 
 #settingsmenu {
@@ -139,6 +151,7 @@ body.connected #formatmenu, #formatmenu.always-available {
 	color: #ffffff;
 	font-size: 12pt;
 	font-family: "Helvetica";
+	border-radius: 3px;
 }
 
 #gamescreen.wigamescreen {
@@ -170,7 +183,7 @@ body.connected #formatmenu, #formatmenu.always-available {
 }
 
 #actionmenuitems {
-	
+
 }
 
 #actionmenuitems button {
@@ -239,7 +252,7 @@ body.connected #formatmenu, #formatmenu.always-available {
 	pointer-events: none;
 	position:absolute;
 	top:18px;
-	left:5px;	
+	left:5px;
 }
 
 #anoterowcontainer {
@@ -589,7 +602,7 @@ a.dropdown-item.always-available:focus, a.dropdown-item.always-available:hover {
 	-webkit-transition: color 1s ease-in, text-shadow 1s ease-in;
 	transition: color 1s ease-in, text-shadow 1s ease-in;
 }
-	
+
 .color_orange {
 	color: #f7a223;
 }
@@ -603,7 +616,7 @@ a.dropdown-item.always-available:focus, a.dropdown-item.always-available:hover {
 }
 
 .color_red {
-	color: #ff0000;	
+	color: #ff0000;
 }
 
 .dropdown-menu {
@@ -685,7 +698,7 @@ body.connected .dropdown-item:hover, .dropdown-item.always-available:hover {
 }
 
 .formatrow:only-child {
-	
+
 }
 
 .formatlabel {
@@ -830,7 +843,7 @@ body.connected .dropdown-item:hover, .dropdown-item.always-available:hover {
 	text-align: center;
 	padding-left: 8px;
 	padding-right: 8px;
-	font-size: 30px !important;
+	font-size: 20px !important;
 	font-weight: bold;
 	text-align: center;
 	font-size: 1.4ex;
@@ -1060,7 +1073,7 @@ body.connected .statusiconlabel, .statusiconlabel.always-available {
 	display: flex;
 	flex-grow: 1;
 	color: #ffffff;
-	
+
 	-moz-transition: background-color 0.25s ease-in;
 	-o-transition: background-color 0.25s ease-in;
 	-webkit-transition: background-color 0.25s ease-in;
@@ -1077,7 +1090,7 @@ body.connected .statusiconlabel, .statusiconlabel.always-available {
 	color: #ffffff;
 	background-color: transparent;
 	border: none;
-	
+
 	-moz-transition: background-color 0.25s ease-in;
 	-o-transition: background-color 0.25s ease-in;
 	-webkit-transition: background-color 0.25s ease-in;
@@ -1091,7 +1104,7 @@ body.connected .statusiconlabel, .statusiconlabel.always-available {
 
 hr {
     padding: 0px;
-    margin: 0px;    
+    margin: 0px;
 }
 
 .loadlistpadding {
@@ -1230,7 +1243,7 @@ body.connected .navbar-togger:hover, .navbar-togger.always-available:hover {
 	display: grid;
 	grid-template-columns: 30% 10% 60%;
 	color: #ffffff;
-	
+
 	-moz-transition: background-color 0.25s ease-in;
 	-o-transition: background-color 0.25s ease-in;
 	-webkit-transition: background-color 0.25s ease-in;
@@ -1366,7 +1379,7 @@ body.connected .popupfooter, .popupfooter.always-available {
 	display: flex;
 	flex-grow: 1;
 	color: #ffffff;
-	
+
 	-moz-transition: background-color 0.25s ease-in;
 	-o-transition: background-color 0.25s ease-in;
 	-webkit-transition: background-color 0.25s ease-in;
@@ -1388,7 +1401,7 @@ body.connected .popupfooter, .popupfooter.always-available {
 	display: flex;
 	flex-grow: 1;
 	color: #ffffff;
-	
+
 	-moz-transition: background-color 0.25s ease-in;
 	-o-transition: background-color 0.25s ease-in;
 	-webkit-transition: background-color 0.25s ease-in;
@@ -1489,7 +1502,7 @@ body.connected .popupfooter, .popupfooter.always-available {
 .model_layers {
 	width: 3ch;
 	background-color: inherit;
-	border: none; 
+	border: none;
 	outline: none;
 }
 
@@ -1582,7 +1595,7 @@ body.connected .popupfooter, .popupfooter.always-available {
 	display: grid;
 	grid-template-areas: "folder_icon delete_icon edit_icon rename_icon file";
 	grid-template-columns: 20px 20px 20px 20px auto;
-	
+
 }
 
 .new_popup .item .folder_icon {
@@ -1637,7 +1650,7 @@ body.connected .popupfooter, .popupfooter.always-available {
 	color: #ffffff;
 	background-color: transparent;
 	border: none;
-	
+
 	-moz-transition: background-color 0.25s ease-in;
 	-o-transition: background-color 0.25s ease-in;
 	-webkit-transition: background-color 0.25s ease-in;

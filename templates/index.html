@@ -24,95 +24,97 @@
 <body>
 	<input type="file" id="remote-save-select" accept="application/json" style="display:none">
 	<div class="container">
-		<div class="row" id="topmenu">
-			<div id="menuitems">
-				<div class="navcontainer">
-					<nav class="navbar" id="navbar">
-						<button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNavDropdown">
-							<span class="navbar-button-bar"></span>
-							<span class="navbar-button-bar"></span>
-							<span class="navbar-button-bar"></span>
-						</button>
-						<div class="collapse navbar-collapse" id="navbarNavDropdown">
-							<ul class="nav navbar-nav">
-								{% if not hide_ai_menu %}
-								<li class="nav-item">
-									<a class="nav-link" href="#" id="btn_loadmodel">AI</a>
-								</li>
-								{% endif %}
-								<li class="nav-item dropdown">
-									<a class="nav-link dropdown-toggle" href="#" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">New Game</a>
-									<div class="dropdown-menu">
-										<a class="dropdown-item" href="#" id="btn_newgame">Blank Story</a>
-										<a class="dropdown-item" href="#" id="btn_rndgame">Random Story</a>
-									</div>
-								</li>
-								<li class="nav-item dropdown always-available">
-									<a class="nav-link dropdown-toggle always-available" href="#" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Save</a>
-									<div class="dropdown-menu">
-										<a class="dropdown-item" href="#" id="btn_save">Save</a>
-										<a class="dropdown-item" href="#" id="btn_saveas">Save As</a>
-										<a class="dropdown-item" href="#" id="btn_savetofile">Save To File...</a>
-										<a class="dropdown-item always-available" href="#" id="btn_download">Download Story as JSON</a>
-										<a class="dropdown-item" href="#" id="btn_downloadtxt">Download Story as Plaintext</a>
-									</div>
-								</li>
-								<li class="nav-item dropdown">
-									<a class="nav-link dropdown-toggle" href="#" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Load</a>
-									<div class="dropdown-menu">
-										<a class="dropdown-item" href="#" id="btn_load">Load</a>
-										<a class="dropdown-item" href="#" id="btn_loadfromfile">Load From File...</a>
-									</div>
-								</li>
-								<li class="nav-item dropdown">
-									<a class="nav-link dropdown-toggle" href="#" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Import</a>
-									<div class="dropdown-menu">
-										<a class="dropdown-item" href="#" id="btn_import">AI Dungeon Adventure</a>
-										<a class="dropdown-item" href="#" id="btn_importwi">AI Dungeon World Info</a>
-										<a class="dropdown-item" href="#" id="btn_impaidg">aetherroom.club Prompt</a>
-									</div>
-								</li>
-								<li class="nav-item">
-									<a class="nav-link" href="#" id="btn_settings">Settings</a>
-								</li>
-								<li class="nav-item">
-									<a class="nav-link" href="#" id="btn_format">Formatting</a>
-								</li>
-								<li class="nav-item">
-									<a class="nav-link" href="#" id="btn_samplers">Samplers</a>
-								</li>
-								<li class="nav-item">
-									<a class="nav-link" href="#" id="btn_userscripts">Userscripts</a>
-								</li>
-								<li class="nav-item">
-									<a class="nav-link hidden" href="#" id="btn_softprompt">Soft Prompt</a>
-								</li>
-							</ul>
+		<div class="row container" id="topmenu-and-settings-wrapper">
+			<div class="row" id="topmenu">
+				<div id="menuitems">
+					<div class="navcontainer">
+						<nav class="navbar" id="navbar">
+							<button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNavDropdown">
+								<span class="navbar-button-bar"></span>
+								<span class="navbar-button-bar"></span>
+								<span class="navbar-button-bar"></span>
+							</button>
+							<div class="collapse navbar-collapse" id="navbarNavDropdown">
+								<ul class="nav navbar-nav">
+									{% if not hide_ai_menu %}
+									<li class="nav-item">
+										<a class="nav-link" href="#" id="btn_loadmodel">AI</a>
+									</li>
+									{% endif %}
+									<li class="nav-item dropdown">
+										<a class="nav-link dropdown-toggle" href="#" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">New Game</a>
+										<div class="dropdown-menu">
+											<a class="dropdown-item" href="#" id="btn_newgame">Blank Story</a>
+											<a class="dropdown-item" href="#" id="btn_rndgame">Random Story</a>
+										</div>
+									</li>
+									<li class="nav-item dropdown always-available">
+										<a class="nav-link dropdown-toggle always-available" href="#" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Save</a>
+										<div class="dropdown-menu">
+											<a class="dropdown-item" href="#" id="btn_save">Save</a>
+											<a class="dropdown-item" href="#" id="btn_saveas">Save As</a>
+											<a class="dropdown-item" href="#" id="btn_savetofile">Save To File...</a>
+											<a class="dropdown-item always-available" href="#" id="btn_download">Download Story as JSON</a>
+											<a class="dropdown-item" href="#" id="btn_downloadtxt">Download Story as Plaintext</a>
+										</div>
+									</li>
+									<li class="nav-item dropdown">
+										<a class="nav-link dropdown-toggle" href="#" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Load</a>
+										<div class="dropdown-menu">
+											<a class="dropdown-item" href="#" id="btn_load">Load</a>
+											<a class="dropdown-item" href="#" id="btn_loadfromfile">Load From File...</a>
+										</div>
+									</li>
+									<li class="nav-item dropdown">
+										<a class="nav-link dropdown-toggle" href="#" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Import</a>
+										<div class="dropdown-menu">
+											<a class="dropdown-item" href="#" id="btn_import">AI Dungeon Adventure</a>
+											<a class="dropdown-item" href="#" id="btn_importwi">AI Dungeon World Info</a>
+											<a class="dropdown-item" href="#" id="btn_impaidg">aetherroom.club Prompt</a>
+										</div>
+									</li>
+									<li class="nav-item">
+										<a class="nav-link" href="#" id="btn_settings">Settings</a>
+									</li>
+									<li class="nav-item">
+										<a class="nav-link" href="#" id="btn_format">Formatting</a>
+									</li>
+									<li class="nav-item">
+										<a class="nav-link" href="#" id="btn_samplers">Samplers</a>
+									</li>
+									<li class="nav-item">
+										<a class="nav-link" href="#" id="btn_userscripts">Userscripts</a>
+									</li>
+									<li class="nav-item">
+										<a class="nav-link hidden" href="#" id="btn_softprompt">Soft Prompt</a>
+									</li>
+								</ul>
+							</div>
+						</nav>
+					</div>
+					<div id="connectstatusdiv" class="flex-row-container">
+						<span id="connectstatus" class="color_orange flex-row">Waiting for connection...</span>
+						<div class="layer-container status-container flex-push-left" style="color: #FFFFFF;" id="runtime"></div>
+						<div class="layer-container status-container flex-push-right">
+							<span class="oi oi-puzzle-piece statusicon layer-bottom" aria-hidden="true">
+								<div class="statustext statustext-wide">
+									<div id="stat-us" class="statusheader">No userscripts active</div>
+									<div id="stat-usactive"></div>
+								</div>
+							</span>
+							<div class="layer-top statusiconlabel" id="usiconlabel"></div>
 						</div>
-					</nav>
-				</div>
-				<div id="connectstatusdiv" class="flex-row-container">
-					<span id="connectstatus" class="color_orange flex-row">Waiting for connection...</span>
-					<div class="layer-container status-container flex-push-left" style="color: #FFFFFF;" id="runtime"></div>
-					<div class="layer-container status-container flex-push-right">
-						<span class="oi oi-puzzle-piece statusicon layer-bottom" aria-hidden="true">
-							<div class="statustext statustext-wide">
-								<div id="stat-us" class="statusheader">No userscripts active</div>
-								<div id="stat-usactive"></div>
+						<span class="oi oi-lightbulb statusicon" aria-hidden="true">
+							<div class="statustext">
+								<div id="stat-sp" class="statusheader">No soft prompt active</div>
+								<div id="stat-spactive"></div>
 							</div>
 						</span>
-						<div class="layer-top statusiconlabel" id="usiconlabel"></div>
 					</div>
-					<span class="oi oi-lightbulb statusicon" aria-hidden="true">
-						<div class="statustext">
-							<div id="stat-sp" class="statusheader">No soft prompt active</div>
-							<div id="stat-spactive"></div>
-						</div>
-					</span>
 				</div>
 			</div>
+			<div class="row" id="settingsmenu" style="display:none;">
 		</div>
-		<div class="row" id="settingsmenu" style="display:none;">
 		</div>
 		<div class="row" id="formatmenu">
 		</div>
