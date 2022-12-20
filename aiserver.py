@@ -9694,6 +9694,14 @@ def text2img_horde(prompt: str) -> Optional[Image.Image]:
     id_req = requests.post("https://stablehorde.net/api/v2/generate/async", json=final_submit_dict, headers=cluster_headers)
 
     if not id_req.ok:
+        if id_req.status_code == 403:
+            show_error_notification(
+                "Stable Horde failure",
+                "Stable Horde is currently not accepting anonymous requuests. " \
+                "Try again in a few minutes or register for priority access at https://stablehorde.net",
+                do_log=True
+            )
+            return None
         logger.error(f"HTTP {id_req.status_code}, expected OK-ish")
         logger.error(id_req.text)
         logger.error(f"Response headers: {id_req.headers}")
