@@ -9572,6 +9572,8 @@ def generate_story_image(
     # This function is a wrapper around generate_image() that integrates the
     # result with the story (read: puts it in the corner of the screen).
 
+    log_data = log_data or {}
+
     if not display_prompt:
         display_prompt = prompt
     koboldai_vars.picture_prompt = display_prompt
