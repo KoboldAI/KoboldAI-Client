@@ -427,6 +427,7 @@ body.connected #popupfooter, #popupfooter.always-available {
 	width: 800px;
 	background-color: #262626;
 	margin-top: 100px;
+	max-width: 100vw;
 }
 
 @media (max-width: 768px) {
