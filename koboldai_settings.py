@@ -13,6 +13,7 @@ from logger import logger
 import eventlet
 import torch
 import numpy as np
+import inspect
 
 serverstarted = False
 queue = None
@@ -685,7 +686,10 @@ class model_settings(settings):
         self.alt_multi_gen = False
         
     def reset_for_model_load(self):
-        self.max_length  = 2048    # Maximum number of tokens to submit per action
+        self.simple_randomness = 0 #Set first as this affects other outputs
+        self.simple_creativity = 0 #Set first as this affects other outputs
+        self.simple_repitition = 0 #Set first as this affects other outputs
+        self.max_length  = 1024    # Maximum number of tokens to submit per action
         self.ikmax       = 3000    # Maximum number of characters to submit to InferKit
         self.genamt      = 80      # Amount of text for each action to generate
         self.ikgen       = 200     # Number of characters for InferKit to generate
@@ -714,9 +718,7 @@ class model_settings(settings):
         self.horde_wait_time = 0
         self.horde_queue_position = 0
         self.horde_queue_size = 0
-        self.simple_randomness = 0
-        self.simple_creativity = 0
-        self.simple_repitition = 0
+        
         
 
 
@@ -731,6 +733,9 @@ class model_settings(settings):
         old_value = getattr(self, name, None)
         super().__setattr__(name, value)
         #Put variable change actions here
+        
+        if name == 'temp':
+            logger.info("Called from temp set to {} - {}".format(value, [x.function for x in inspect.stack()]))
         
         if name in ['simple_randomness', 'simple_creativity', 'simple_repitition'] and not new_variable:
             #We need to disable all of the samplers
