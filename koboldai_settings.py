@@ -2080,7 +2080,7 @@ class KoboldStoryRegister(object):
                 return None, None
             filename = os.path.join(self.koboldai_vars.save_paths.generated_images, self.story_settings.prompt_picture_filename)
             prompt = self.story_settings.prompt_picture_prompt
-        elif action_id in self.actions:
+        elif action_id in self.actions and 'picture_filename' in self.actions[action_id]:
             filename = os.path.join(self.koboldai_vars.save_paths.generated_images, self.actions[action_id]['picture_filename'])
             prompt = self.actions[action_id]['picture_prompt']
         else:
