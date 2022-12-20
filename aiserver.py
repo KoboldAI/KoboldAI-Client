@@ -9572,6 +9572,8 @@ def generate_story_image(
     # This function is a wrapper around generate_image() that integrates the
     # result with the story (read: puts it in the corner of the screen).
 
+    log_data = log_data or {}
+
     if not display_prompt:
         display_prompt = prompt
     koboldai_vars.picture_prompt = display_prompt
@@ -9596,7 +9598,10 @@ def generate_story_image(
         log_image_generation(prompt, display_prompt, file_name, generation_type, log_data)
         #let's also add this data to the action so we know where the latest picture is at
         logger.info("setting picture filename")
-        koboldai_vars.actions.set_picture(int(log_data['actionId']), file_name, prompt)
+        try:
+            koboldai_vars.actions.set_picture(int(log_data['actionId']), file_name, prompt)
+        except KeyError:
+            pass
 
     logger.debug("Time to Generate Image {}".format(time.time()-start_time))
 
@@ -9689,6 +9694,14 @@ def text2img_horde(prompt: str) -> Optional[Image.Image]:
     id_req = requests.post("https://stablehorde.net/api/v2/generate/async", json=final_submit_dict, headers=cluster_headers)
 
     if not id_req.ok:
+        if id_req.status_code == 403:
+            show_error_notification(
+                "Stable Horde failure",
+                "Stable Horde is currently not accepting anonymous requuests. " \
+                "Try again in a few minutes or register for priority access at https://stablehorde.net",
+                do_log=True
+            )
+            return None
         logger.error(f"HTTP {id_req.status_code}, expected OK-ish")
         logger.error(id_req.text)
         logger.error(f"Response headers: {id_req.headers}")
