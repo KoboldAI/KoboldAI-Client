@@ -102,7 +102,7 @@ body.connected #topmenu, #topmenu.always-available {
 }
 
 #navbarNavDropdown {
-	padding-left: 3px;
+	padding: 0px;
 }
 
 body.connected #navbar li, #navbar li.always-available {
@@ -141,6 +141,7 @@ body.connected #formatmenu, #formatmenu.always-available {
 #connectstatusdiv {
 	display: flex;
 	text-align: right;
+	padding-left: 10px;
 }
 
 #gamescreen {
