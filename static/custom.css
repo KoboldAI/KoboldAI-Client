@@ -49,7 +49,6 @@ chunk.editing, chunk.editing * {
 
 #topmenu-and-settings-wrapper {
     background: #295071;
-    border-radius: 0px 0px 3px 3px;
 }
 
 #topmenu {
@@ -60,7 +59,6 @@ chunk.editing, chunk.editing * {
 
 body.connected #topmenu, #topmenu.always-available {
 	background-color: #337ab7;
-	border-radius: 0px 0px 3px 3px;
 }
 
 #topic {
@@ -93,6 +91,9 @@ body.connected #topmenu, #topmenu.always-available {
 
 #navbar {
 	margin: 0px;
+
+	/* disabling a bootstrap rule with 0 benefits */
+	min-height: auto;
 }
 
 #navbar li {
@@ -121,7 +122,13 @@ body.connected #navbar li, #navbar li.always-available {
 	background-color: #4d4d4d;
 	padding: 14px 11px;
 	justify-content: space-between;
-	border-radius: 0px 0px 3px 3px;
+}
+
+/* on wider screens, when there is space to the sides of the menus, add a bit of border-radius */
+@media (min-width: 768px) {
+    #topmenu-and-settings-wrapper, body.connected #topmenu, #topmenu.always-available, #settingsmenu {
+	    border-radius: 0px 0px 3px 3px;
+    }
 }
 
 body.connected #settingsmenu, #settingsmenu.always-available {
@@ -858,7 +865,6 @@ body.connected .dropdown-item:hover, .dropdown-item.always-available:hover {
 	font-weight: bold;
 	text-align: center;
 	font-size: 1.4ex;
-	line-height: 1.8ex;
 	text-decoration: none;
 	color: #9e9e9e;
 }
@@ -1190,12 +1196,12 @@ body.connected .navbar .navbar-nav .nav-link:focus, .navbar .navbar-nav .nav-lin
 	background-color: #757575;
 	border: 1px solid #bababa;
 	height: 45px;
-	width: 52px;
+	width: 54px;
 	border-radius: 6px;
 }
 
 body.connected .navbar-toggler, .navbar-toggler.always-available {
-	border: 1px solid #98bcdb;
+	border: 0px;
 }
 
 body .navbar-toggler {
