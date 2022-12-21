@@ -1355,6 +1355,7 @@ class KoboldStoryRegister(object):
         self.make_audio_queue = multiprocessing.Queue()
         self.make_audio_thread_slow = None
         self.make_audio_queue_slow = multiprocessing.Queue()
+        self.probability_buffer = None
         for item in sequence:
             self.append(item)
     
@@ -1541,7 +1542,7 @@ class KoboldStoryRegister(object):
             if self.actions[action_id]["Selected Text"] != text:
                 self.actions[action_id]["Selected Text"] = text
                 self.actions[action_id]["Time"] = self.actions[action_id].get("Time", int(time.time()))
-                if 'Probabilities' in self.actions[action_id]:
+                if 'buffer' in self.actions[action_id]:
                     if self.koboldai_vars.tokenizer is not None:
                         tokens = self.koboldai_vars.tokenizer.encode(text)
                         for token_num in range(len(self.actions[action_id]["Probabilities"])):
@@ -1846,11 +1847,16 @@ class KoboldStoryRegister(object):
                     if len(self.koboldai_vars.tokenizer.encode(self.actions[self.action_count+1]['Selected Text'])) != self.koboldai_vars.genamt:
                         #ui1
                         if queue is not None:
-                            queue.put(["from_server", {"cmd": "streamtoken", "data": [{'decoded': text_list[0]}]}, {"broadcast":True, "room":"UI_1"}])
+                            queue.put(["from_server", {"cmd": "streamtoken", "data": [{
+                                "decoded": text_list[0],
+                                "probabilities": self.probability_buffer
+                            }]}, {"broadcast":True, "room":"UI_1"}])
                         #process_variable_changes(self.socketio, "actions", "Options", {"id": self.action_count+1, "options": self.actions[self.action_count+1]["Options"]}, {"id": self.action_count+1, "options": None})
                         process_variable_changes(self.socketio, "story", 'actions', {"id": self.action_count+1, 'action':  self.actions[self.action_count+1]}, None)
     
     def set_probabilities(self, probabilities, action_id=None):
+        self.probability_buffer = probabilities
+
         if action_id is None:
             action_id = self.action_count+1
         if action_id in self.actions:
