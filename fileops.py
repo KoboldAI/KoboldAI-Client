@@ -66,6 +66,9 @@ def getdirpath(dir, title):
 #  Returns the path (as a string) to the given story by its name
 #==================================================================#
 def storypath(name):
+    if os.path.exists("stories/{}".format(name)) and os.path.isdir("stories/{}".format(name)):
+        if os.path.exists("stories/{}/story.json".format(name)):
+            return "stories/{}/story.json".format(name)
     return path.join("stories", name + ".json")
 
 #==================================================================#
