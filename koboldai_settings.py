@@ -780,13 +780,13 @@ class model_settings(settings):
         #Setup TQDP for token generation
         elif name == "generated_tkns" and 'tqdm' in self.__dict__:
             if value == 0:
-                self.tqdm.reset(total=self.genamt * (self.numseqs if self.alt_multi_gen else 1) )
+                self.tqdm.reset(total=self.genamt * (self.numseqs if self.alt_multi_gen and self.koboldai_vars.experimental_features else 1) )
                 self.tqdm_progress = 0
             else:
                 self.tqdm.update(value-self.tqdm.n)
-                self.tqdm_progress = int(float(self.generated_tkns)/float(self.genamt * (self.numseqs if self.alt_multi_gen else 1))*100)
+                self.tqdm_progress = int(float(self.generated_tkns)/float(self.genamt * (self.numseqs if self.alt_multi_gen and self.koboldai_vars.experimental_features else 1))*100)
                 if self.tqdm.format_dict['rate'] is not None:
-                    self.tqdm_rem_time = str(datetime.timedelta(seconds=int(float((self.genamt * (self.numseqs if self.alt_multi_gen else 1))-self.generated_tkns)/self.tqdm.format_dict['rate'])))
+                    self.tqdm_rem_time = str(datetime.timedelta(seconds=int(float((self.genamt * (self.numseqs if self.alt_multi_gen and self.koboldai_vars.experimental_features else 1))-self.generated_tkns)/self.tqdm.format_dict['rate'])))
         #Setup TQDP for model loading
         elif name == "loaded_layers" and 'tqdm' in self.__dict__:
             if value == 0:
@@ -1790,8 +1790,8 @@ class KoboldStoryRegister(object):
             self.story_settings.gamesaved = False
     
     def stream_tokens(self, text_list):
-        if len(text_list) > 1 or (self.koboldai_vars.alt_multi_gen and self.koboldai_vars.numseqs > 1):
-            if self.koboldai_vars.alt_multi_gen: 
+        if len(text_list) > 1 or (self.koboldai_vars.alt_multi_gen and self.koboldai_vars.experimental_features and self.koboldai_vars.numseqs > 1):
+            if self.koboldai_vars.alt_multi_gen and self.koboldai_vars.experimental_features: 
                 #since alt_multi_gen is really just several single gens the text list is always 1 deep, so we need some 
                 #other way to figure out wich spot in our options list we're on. We'll figure it out by seeing how many
                 #tokens we generated vs how many each option should take

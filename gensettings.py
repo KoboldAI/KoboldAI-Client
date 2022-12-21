@@ -414,6 +414,7 @@ gensettingstf = [
     "ui_level": 2
  	},
     {
+    "UI_V2_Only": True,
  	"uitype": "toggle",
  	"unit": "bool",
  	"label": "Alt Multi Gen",
@@ -427,7 +428,8 @@ gensettingstf = [
     "sub_path": "Other",
     "classname": "model",
     "name": "alt_multi_gen",
-    "ui_level": 2
+    "ui_level": 2,
+    "extra_classes": "var_sync_alt_system_experimental_features"
  	},
     {
     "UI_V2_Only": True,
