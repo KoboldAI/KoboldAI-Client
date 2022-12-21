@@ -2294,7 +2294,7 @@ def patch_transformers():
     def visualize_probabilities(scores: torch.FloatTensor) -> None:
         assert scores.ndim == 2
 
-        if vars.numseqs > 1 or not vars.show_probs:
+        if koboldai_vars.numseqs > 1 or not koboldai_vars.show_probs:
             return
 
             if not koboldai_vars.show_probs:
@@ -2940,9 +2940,9 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
                                 if utils.offload_index:
                                     for name, tensor in utils.named_buffers:
                                         dtype = tensor.dtype
-                                        if convert_to_float16 and breakmodel.primary_device != "cpu" and vars.hascuda and (vars.breakmodel or vars.usegpu):
+                                        if convert_to_float16 and breakmodel.primary_device != "cpu" and koboldai_vars.hascuda and (koboldai_vars.breakmodel or koboldai_vars.usegpu):
                                             dtype = torch.float16
-                                        if breakmodel.primary_device == "cpu" or (not vars.usegpu and not vars.breakmodel):
+                                        if breakmodel.primary_device == "cpu" or (not koboldai_vars.usegpu and not koboldai_vars.breakmodel):
                                             dtype = torch.float32
                                         if name in model_dict and model_dict[name].dtype is not dtype:
                                             model_dict[name] = model_dict[name].to(dtype)
