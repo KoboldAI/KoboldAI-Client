@@ -1,7 +1,7 @@
 #!/bin/bash
 cd /opt/koboldai
-git pull
-#./install_requirements.sh cuda
+
+git pull --recurse-submodules && ./install_requirements.sh cuda
 
 if [[ ! -v KOBOLDAI_DATADIR ]];then
 	mkdir /content

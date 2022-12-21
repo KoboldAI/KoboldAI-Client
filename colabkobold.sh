@@ -136,6 +136,8 @@ if [ "$init" != "skip" ]; then
         git reset --hard origin/$(git_default_branch)
     fi
 
+    git submodule update --init --recursive
+    
     cd /content/KoboldAI-Client
 
     cp -rn stories/* /content/drive/MyDrive/KoboldAI/stories/
