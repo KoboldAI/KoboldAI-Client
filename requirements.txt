@@ -27,3 +27,4 @@ flask_compress
 ijson
 bitsandbytes
 ftfy
+pydub

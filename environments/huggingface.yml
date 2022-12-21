@@ -39,3 +39,4 @@ dependencies:
     - ijson
     - bitsandbytes
     - ftfy
+    - pydub

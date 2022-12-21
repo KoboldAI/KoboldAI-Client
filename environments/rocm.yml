@@ -36,3 +36,4 @@ dependencies:
     - flask_compress
     - ijson
     - ftfy
+    - pydub
