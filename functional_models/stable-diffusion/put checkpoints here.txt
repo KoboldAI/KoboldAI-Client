@@ -1,0 +1,1 @@
+If you want to use local image generation, you have to download the full stable diffusion model and put all the files here
