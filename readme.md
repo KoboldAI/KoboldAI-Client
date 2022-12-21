@@ -11,7 +11,7 @@
   game like AI Dungeon Unleashed.
 </p>
 
-<p align="center"><a href="docs/installation.md">Installation</a> - <a href="docs/usage.md">Usage</a> - <a href="docs/contributors.md">Contributors</a> - <a href="docs/license.md">License</a></p>
+<p align="center"><a href="docs/installation.md">Installation</a> - <a href="docs/usage.md">Usage</a> - <a href="docs/contributors.md">Contributors</a> - <a href="LICENSE.md">License</a></p>
 
 <p align="center">
   <img src="docs/screenshot.png" width="80%"/>
