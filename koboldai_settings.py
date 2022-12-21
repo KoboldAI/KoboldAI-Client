@@ -14,6 +14,8 @@ import eventlet
 import torch
 import numpy as np
 import inspect
+import ctypes
+import random
 
 serverstarted = False
 queue = None
@@ -733,10 +735,7 @@ class model_settings(settings):
         old_value = getattr(self, name, None)
         super().__setattr__(name, value)
         #Put variable change actions here
-        
-        if name == 'temp':
-            logger.info("Called from temp set to {} - {}".format(value, [x.function for x in inspect.stack()]))
-        
+                
         if name in ['simple_randomness', 'simple_creativity', 'simple_repitition'] and not new_variable:
             #We need to disable all of the samplers
             self.top_k = 0
@@ -1160,7 +1159,7 @@ class user_settings(settings):
         self.show_budget = False
         self.ui_level    = 2
         self.img_gen_api_url = "http://127.0.0.1:7860"
-        self.img_gen_art_guide = "fantasy illustration, artstation, by jason felix by steve argyle by tyler jacobson by peter mohrbacher, cinematic lighting"
+        self.img_gen_art_guide = "digital painting, dramatic lighting, highly detailed, trending"
         self.img_gen_negative_prompt = "lowres, bad anatomy, bad hands, text, error, missing fingers, extra digit, fewer digits, cropped, worst quality, low quality, normal quality, jpeg artifacts, signature, watermark, username, blurry, artist name"
         self.img_gen_steps = 30
         self.img_gen_cfg_scale = 7.0
@@ -1327,20 +1326,14 @@ class system_settings(settings):
                     if os.path.exists("./KoboldAI-Horde"):
                         if value == True:
                             if self._horde_pid is None:
-                                import subprocess
-                                import random
-                                random.seed()
-                                if os.path.exists('./KoboldAI-Horde/venv/scripts/python.exe'):
-                                    self._horde_pid = subprocess.Popen(['./KoboldAI-Horde/venv/scripts/python.exe', './KoboldAI-Horde/bridge.py', 
-                                                                            '--kai_url', 'http://127.0.0.1:{}'.format(self.port), '--cluster_url', "http://koboldai.net"])
-                                else:
-                                    self._horde_pid = subprocess.Popen(['./KoboldAI-Horde/venv/bin/python', './KoboldAI-Horde/bridge.py', 
-                                                                            '--kai_url', 'http://127.0.0.1:{}'.format(self.port), '--cluster_url', "http://koboldai.net"])
+                                logger.info("Starting Horde bridge")
+                                bridge = importlib.import_module("KoboldAI-Horde.bridge")
+                                self._horde_pid = bridge.kai_bridge()
+                                threading.Thread(target=self._horde_pid.bridge, args=(1, "0000000000", f"Automated Instance #{random.randint(-100000000, 100000000)}", 'http://127.0.0.1:{}'.format(self.port), "http://koboldai.net", [])).run()
                         else:
                             if self._horde_pid is not None:
-                                print("kill bridge")
-                                self._horde_pid.terminate()
-                                self._horde_pid = None
+                                logger.info("Killing Horde bridge")
+                                self._horde_pid.stop()
                 
 class KoboldStoryRegister(object):
     def __init__(self, socketio, story_settings, koboldai_vars, tokenizer=None, sequence=[]):

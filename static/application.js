@@ -3029,7 +3029,7 @@ $(document).ready(function(){
 			$("#showmodelnamecontainer").addClass("hidden");
 			$(window).off('beforeunload');
 			location.reload();
-			//console.log("Closing window");
+			console.log("Closing window");
 		} else if(msg.cmd == 'model_load_status') {
 			console.log(msg.data);
 			$("#showmodelnamecontent").html("<div class=\"flex\"><div class=\"loadlistpadding\"></div><div class=\"loadlistitem\" style='align: left'>" + msg.data + "</div></div>");

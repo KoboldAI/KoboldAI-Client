@@ -2980,12 +2980,11 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
             if(koboldai_vars.model_type == "gpt2"):
                 koboldai_vars.lazy_load = False
                 if os.path.exists(koboldai_vars.custmodpth):
-                    model_config = open(koboldai_vars.custmodpth + "/config.json", "r")
+                    model_config = json.load(open(koboldai_vars.custmodpth + "/config.json", "r"))
                 elif os.path.exists(os.path.join("models/", koboldai_vars.custmodpth)):
                     config_path = os.path.join("models/", koboldai_vars.custmodpth)
                     config_path = os.path.join(config_path, "config.json").replace("\\", "//")
-                    model_config = open(config_path, "r")
-                #js   = json.load(model_config)
+                    model_config = json.load(open(config_path, "r"))
                 with(maybe_use_float16()):
                     try:
                         if os.path.exists(koboldai_vars.custmodpth):
@@ -3322,15 +3321,15 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
     load_lua_scripts()
     
     final_startup()
-    if not initial_load:
-        set_aibusy(False)
-        emit('from_server', {'cmd': 'hide_model_name'}, broadcast=True, room="UI_1")
-        time.sleep(0.1)
+    #if not initial_load:
+    set_aibusy(False)
+    socketio.emit('from_server', {'cmd': 'hide_model_name'}, broadcast=True, room="UI_1")
+    time.sleep(0.1)
         
-        if not koboldai_vars.gamestarted:
-            setStartState()
-            sendsettings()
-            refresh_settings()
+    if not koboldai_vars.gamestarted:
+        setStartState()
+        sendsettings()
+        refresh_settings()
     
     #Saving the tokenizer to the KoboldStoryRegister class so we can do token counting on the story data
     if 'tokenizer' in [x for x in globals()]:
@@ -4682,27 +4681,27 @@ def setStartState():
         txt = txt + "Please load a game or enter a prompt below to begin!</span>"
     if(koboldai_vars.noai):
         txt = txt + "Please load or import a story to read. There is no AI in this mode."
-    emit('from_server', {'cmd': 'updatescreen', 'gamestarted': koboldai_vars.gamestarted, 'data': txt}, broadcast=True, room="UI_1")
-    emit('from_server', {'cmd': 'setgamestate', 'data': 'start'}, broadcast=True, room="UI_1")
+    socketio.emit('from_server', {'cmd': 'updatescreen', 'gamestarted': koboldai_vars.gamestarted, 'data': txt}, broadcast=True, room="UI_1")
+    socketio.emit('from_server', {'cmd': 'setgamestate', 'data': 'start'}, broadcast=True, room="UI_1")
 
 #==================================================================#
 #  Transmit applicable settings to SocketIO to build UI sliders/toggles
 #==================================================================#
 def sendsettings():
     # Send settings for selected AI type
-    emit('from_server', {'cmd': 'reset_menus'}, room="UI_1")
+    socketio.emit('from_server', {'cmd': 'reset_menus'}, room="UI_1")
     if(koboldai_vars.model != "InferKit"):
         for set in gensettings.gensettingstf:
             if 'UI_V2_Only' not in set:
-                emit('from_server', {'cmd': 'addsetting', 'data': set}, room="UI_1")
+                socketio.emit('from_server', {'cmd': 'addsetting', 'data': set}, room="UI_1")
     else:
         for set in gensettings.gensettingsik:
             if 'UI_V2_Only' not in set:
-                emit('from_server', {'cmd': 'addsetting', 'data': set}, room="UI_1")
+                socketio.emit('from_server', {'cmd': 'addsetting', 'data': set}, room="UI_1")
     
     # Send formatting options
     for frm in gensettings.formatcontrols:
-        emit('from_server', {'cmd': 'addformat', 'data': frm}, room="UI_1")
+        socketio.emit('from_server', {'cmd': 'addformat', 'data': frm}, room="UI_1")
         # Add format key to vars if it wasn't loaded with client.settings
         if(not hasattr(koboldai_vars, frm["id"])):
             setattr(koboldai_vars, frm["id"], False)
@@ -4713,7 +4712,7 @@ def sendsettings():
 def setgamesaved(gamesaved):
     assert type(gamesaved) is bool
     if(gamesaved != koboldai_vars.gamesaved):
-        emit('from_server', {'cmd': 'gamesaved', 'data': gamesaved}, broadcast=True, room="UI_1")
+        socketio.emit('from_server', {'cmd': 'gamesaved', 'data': gamesaved}, broadcast=True, room="UI_1")
     koboldai_vars.gamesaved = gamesaved
 
 #==================================================================#
@@ -6491,48 +6490,48 @@ def remove_story_chunk(idx: int):
 #==================================================================#
 def refresh_settings():
     # Suppress toggle change events while loading state
-    emit('from_server', {'cmd': 'allowtoggle', 'data': False}, broadcast=True, room="UI_1")
+    socketio.emit('from_server', {'cmd': 'allowtoggle', 'data': False}, broadcast=True, room="UI_1")
     
     if(koboldai_vars.model != "InferKit"):
-        emit('from_server', {'cmd': 'updatetemp', 'data': koboldai_vars.temp}, broadcast=True, room="UI_1")
-        emit('from_server', {'cmd': 'updatetopp', 'data': koboldai_vars.top_p}, broadcast=True, room="UI_1")
-        emit('from_server', {'cmd': 'updatetopk', 'data': koboldai_vars.top_k}, broadcast=True, room="UI_1")
-        emit('from_server', {'cmd': 'updatetfs', 'data': koboldai_vars.tfs}, broadcast=True, room="UI_1")
-        emit('from_server', {'cmd': 'updatetypical', 'data': koboldai_vars.typical}, broadcast=True, room="UI_1")
-        emit('from_server', {'cmd': 'updatetopa', 'data': koboldai_vars.top_a}, broadcast=True, room="UI_1")
-        emit('from_server', {'cmd': 'updatereppen', 'data': koboldai_vars.rep_pen}, broadcast=True, room="UI_1")
-        emit('from_server', {'cmd': 'updatereppenslope', 'data': koboldai_vars.rep_pen_slope}, broadcast=True, room="UI_1")
-        emit('from_server', {'cmd': 'updatereppenrange', 'data': koboldai_vars.rep_pen_range}, broadcast=True, room="UI_1")
-        emit('from_server', {'cmd': 'updateoutlen', 'data': koboldai_vars.genamt}, broadcast=True, room="UI_1")
-        emit('from_server', {'cmd': 'updatetknmax', 'data': koboldai_vars.max_length}, broadcast=True, room="UI_1")
-        emit('from_server', {'cmd': 'updatenumseq', 'data': koboldai_vars.numseqs}, broadcast=True, room="UI_1")
+        socketio.emit('from_server', {'cmd': 'updatetemp', 'data': koboldai_vars.temp}, broadcast=True, room="UI_1")
+        socketio.emit('from_server', {'cmd': 'updatetopp', 'data': koboldai_vars.top_p}, broadcast=True, room="UI_1")
+        socketio.emit('from_server', {'cmd': 'updatetopk', 'data': koboldai_vars.top_k}, broadcast=True, room="UI_1")
+        socketio.emit('from_server', {'cmd': 'updatetfs', 'data': koboldai_vars.tfs}, broadcast=True, room="UI_1")
+        socketio.emit('from_server', {'cmd': 'updatetypical', 'data': koboldai_vars.typical}, broadcast=True, room="UI_1")
+        socketio.emit('from_server', {'cmd': 'updatetopa', 'data': koboldai_vars.top_a}, broadcast=True, room="UI_1")
+        socketio.emit('from_server', {'cmd': 'updatereppen', 'data': koboldai_vars.rep_pen}, broadcast=True, room="UI_1")
+        socketio.emit('from_server', {'cmd': 'updatereppenslope', 'data': koboldai_vars.rep_pen_slope}, broadcast=True, room="UI_1")
+        socketio.emit('from_server', {'cmd': 'updatereppenrange', 'data': koboldai_vars.rep_pen_range}, broadcast=True, room="UI_1")
+        socketio.emit('from_server', {'cmd': 'updateoutlen', 'data': koboldai_vars.genamt}, broadcast=True, room="UI_1")
+        socketio.emit('from_server', {'cmd': 'updatetknmax', 'data': koboldai_vars.max_length}, broadcast=True, room="UI_1")
+        socketio.emit('from_server', {'cmd': 'updatenumseq', 'data': koboldai_vars.numseqs}, broadcast=True, room="UI_1")
     else:
-        emit('from_server', {'cmd': 'updatetemp', 'data': koboldai_vars.temp}, broadcast=True, room="UI_1")
-        emit('from_server', {'cmd': 'updatetopp', 'data': koboldai_vars.top_p}, broadcast=True, room="UI_1")
-        emit('from_server', {'cmd': 'updateikgen', 'data': koboldai_vars.ikgen}, broadcast=True, room="UI_1")
+        socketio.emit('from_server', {'cmd': 'updatetemp', 'data': koboldai_vars.temp}, broadcast=True, room="UI_1")
+        socketio.emit('from_server', {'cmd': 'updatetopp', 'data': koboldai_vars.top_p}, broadcast=True, room="UI_1")
+        socketio.emit('from_server', {'cmd': 'updateikgen', 'data': koboldai_vars.ikgen}, broadcast=True, room="UI_1")
     
-    emit('from_server', {'cmd': 'updateanotedepth', 'data': koboldai_vars.andepth}, broadcast=True, room="UI_1")
-    emit('from_server', {'cmd': 'updatewidepth', 'data': koboldai_vars.widepth}, broadcast=True, room="UI_1")
-    emit('from_server', {'cmd': 'updateuseprompt', 'data': koboldai_vars.useprompt}, broadcast=True, room="UI_1")
-    emit('from_server', {'cmd': 'updateadventure', 'data': koboldai_vars.adventure}, broadcast=True, room="UI_1")
-    emit('from_server', {'cmd': 'updatechatmode', 'data': koboldai_vars.chatmode}, broadcast=True, room="UI_1")
-    emit('from_server', {'cmd': 'updatedynamicscan', 'data': koboldai_vars.dynamicscan}, broadcast=True, room="UI_1")
-    emit('from_server', {'cmd': 'updateautosave', 'data': koboldai_vars.autosave}, broadcast=True, room="UI_1")
-    emit('from_server', {'cmd': 'updatenopromptgen', 'data': koboldai_vars.nopromptgen}, broadcast=True, room="UI_1")
-    emit('from_server', {'cmd': 'updaterngpersist', 'data': koboldai_vars.rngpersist}, broadcast=True, room="UI_1")
-    emit('from_server', {'cmd': 'updatenogenmod', 'data': koboldai_vars.nogenmod}, broadcast=True, room="UI_1")
-    emit('from_server', {'cmd': 'updatefulldeterminism', 'data': koboldai_vars.full_determinism}, broadcast=True, room="UI_1")
+    socketio.emit('from_server', {'cmd': 'updateanotedepth', 'data': koboldai_vars.andepth}, broadcast=True, room="UI_1")
+    socketio.emit('from_server', {'cmd': 'updatewidepth', 'data': koboldai_vars.widepth}, broadcast=True, room="UI_1")
+    socketio.emit('from_server', {'cmd': 'updateuseprompt', 'data': koboldai_vars.useprompt}, broadcast=True, room="UI_1")
+    socketio.emit('from_server', {'cmd': 'updateadventure', 'data': koboldai_vars.adventure}, broadcast=True, room="UI_1")
+    socketio.emit('from_server', {'cmd': 'updatechatmode', 'data': koboldai_vars.chatmode}, broadcast=True, room="UI_1")
+    socketio.emit('from_server', {'cmd': 'updatedynamicscan', 'data': koboldai_vars.dynamicscan}, broadcast=True, room="UI_1")
+    socketio.emit('from_server', {'cmd': 'updateautosave', 'data': koboldai_vars.autosave}, broadcast=True, room="UI_1")
+    socketio.emit('from_server', {'cmd': 'updatenopromptgen', 'data': koboldai_vars.nopromptgen}, broadcast=True, room="UI_1")
+    socketio.emit('from_server', {'cmd': 'updaterngpersist', 'data': koboldai_vars.rngpersist}, broadcast=True, room="UI_1")
+    socketio.emit('from_server', {'cmd': 'updatenogenmod', 'data': koboldai_vars.nogenmod}, broadcast=True, room="UI_1")
+    socketio.emit('from_server', {'cmd': 'updatefulldeterminism', 'data': koboldai_vars.full_determinism}, broadcast=True, room="UI_1")
     
-    emit('from_server', {'cmd': 'updatefrmttriminc', 'data': koboldai_vars.frmttriminc}, broadcast=True, room="UI_1")
-    emit('from_server', {'cmd': 'updatefrmtrmblln', 'data': koboldai_vars.frmtrmblln}, broadcast=True, room="UI_1")
-    emit('from_server', {'cmd': 'updatefrmtrmspch', 'data': koboldai_vars.frmtrmspch}, broadcast=True, room="UI_1")
-    emit('from_server', {'cmd': 'updatefrmtadsnsp', 'data': koboldai_vars.frmtadsnsp}, broadcast=True, room="UI_1")
-    emit('from_server', {'cmd': 'updatesingleline', 'data': koboldai_vars.singleline}, broadcast=True, room="UI_1")
-    emit('from_server', {'cmd': 'updateoutputstreaming', 'data': koboldai_vars.output_streaming}, broadcast=True, room="UI_1")
-    emit('from_server', {'cmd': 'updateshowprobs', 'data': koboldai_vars.show_probs}, broadcast=True, room="UI_1")
+    socketio.emit('from_server', {'cmd': 'updatefrmttriminc', 'data': koboldai_vars.frmttriminc}, broadcast=True, room="UI_1")
+    socketio.emit('from_server', {'cmd': 'updatefrmtrmblln', 'data': koboldai_vars.frmtrmblln}, broadcast=True, room="UI_1")
+    socketio.emit('from_server', {'cmd': 'updatefrmtrmspch', 'data': koboldai_vars.frmtrmspch}, broadcast=True, room="UI_1")
+    socketio.emit('from_server', {'cmd': 'updatefrmtadsnsp', 'data': koboldai_vars.frmtadsnsp}, broadcast=True, room="UI_1")
+    socketio.emit('from_server', {'cmd': 'updatesingleline', 'data': koboldai_vars.singleline}, broadcast=True, room="UI_1")
+    socketio.emit('from_server', {'cmd': 'updateoutputstreaming', 'data': koboldai_vars.output_streaming}, broadcast=True, room="UI_1")
+    socketio.emit('from_server', {'cmd': 'updateshowprobs', 'data': koboldai_vars.show_probs}, broadcast=True, room="UI_1")
     
     # Allow toggle events again
-    emit('from_server', {'cmd': 'allowtoggle', 'data': True}, broadcast=True, room="UI_1")
+    socketio.emit('from_server', {'cmd': 'allowtoggle', 'data': True}, broadcast=True, room="UI_1")
 
 #==================================================================#
 #  Sets the logical and display states for the AI Busy condition
@@ -6545,7 +6544,7 @@ def set_aibusy(state):
         emit('from_server', {'cmd': 'setgamestate', 'data': 'wait'}, broadcast=True, room="UI_1")
     else:
         koboldai_vars.aibusy = False
-        emit('from_server', {'cmd': 'setgamestate', 'data': 'ready'}, broadcast=True, room="UI_1")
+        socketio.emit('from_server', {'cmd': 'setgamestate', 'data': 'ready'}, broadcast=True, room="UI_1")
 
 #==================================================================#
 # 
@@ -10182,7 +10181,16 @@ def UI_2_action_image():
 @app.route("/model")
 def model_info():
     if model_config is not None:
-        return {"Model Type": str(model_config.model_type), "Model Size": get_model_size(koboldai_vars.model), "Model Name": koboldai_vars.model.replace("_", "/")}
+        if isinstance(model_config, dict):
+            if 'model_type' in model_config:
+                model_type = str(model_config['model_type'])
+            elif koboldai_vars.mode[:4] == 'gpt2':
+                model_type = 'gpt2'
+            else:
+                model_type = "Unknown"
+        else:
+            model_type = str(model_config.model_type)
+        return {"Model Type": model_type, "Model Size": get_model_size(koboldai_vars.model), "Model Name": koboldai_vars.model.replace("_", "/")}
     else:
         return {"Model Type": "Read Only", "Model Size": "0", "Model Name": koboldai_vars.model.replace("_", "/")}
     
