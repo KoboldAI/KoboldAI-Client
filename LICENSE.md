@@ -1,3 +1,18 @@
+KoboldAI is licensed with a AGPL license, in short this means that it can be used by anyone for any purpose. However,
+if you decide to make a publicly available instance your users are entitled to a copy of the source code including all
+modifications that you have made (which needs to be available trough an interface such as a button on your website),
+you may also not distribute this project in a form that does not contain the source code (Such as compiling / encrypting
+the code and distributing this version without also distributing the source code that includes the changes that you
+made. You are allowed to distribute this in a closed form if you also provide a separate archive with the source code.).
+
+umamba.exe is bundled for convenience because we observed that many of our users had trouble with command line download
+methods, it is not part of our project and does not fall under the AGPL license. It is licensed under the BSD-3-Clause
+license. Other files with differing licenses will have a reference or embedded version of this license within the file.
+It has been sourced from https://anaconda.org/conda-forge/micromamba/files and its source code can be found
+here : https://github.com/mamba-org/mamba/tree/master/micromamba
+
+---
+
                     GNU AFFERO GENERAL PUBLIC LICENSE
                        Version 3, 19 November 2007
 
