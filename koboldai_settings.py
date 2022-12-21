@@ -1280,6 +1280,7 @@ class system_settings(settings):
                     elif torch.cuda.get_device_properties(device).major == 7 and torch.cuda.get_device_properties(device).minor >= 2:
                         self.bit_8_available = True
                         break
+        self.seen_messages = []
         
         
         @dataclass

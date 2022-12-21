@@ -26,6 +26,7 @@ socket.on("delete_new_world_info_entry", function(data){document.getElementById(
 socket.on("delete_world_info_entry", function(data){document.getElementById("world_info_"+data).remove();});
 socket.on("delete_world_info_folder", function(data){document.getElementById("world_info_folder_"+data).remove();});
 socket.on("error", function(data){show_error_message(data);});
+socket.on("message", function(data){show_message(data);});
 socket.on('load_cookies', function(data){load_cookies(data);});
 socket.on('load_tweaks', function(data){load_tweaks(data);});
 socket.on("wi_results", updateWISearchListings);
@@ -2584,21 +2585,36 @@ function world_info_folder(data) {
 }
 
 function show_error_message(data) {
-	const error_box_data = $el("#error-popup").querySelector("#popup_list_area")
+	const error_box_data = $el("#error-popup").querySelector("#popup_list_area");
 	//clear out the error box
 	while (error_box_data.firstChild) {
 		error_box_data.removeChild(error_box_data.firstChild);
 	}
 	if (Array.isArray(data)) {
 		for (item of data) {
-			$e("div", error_box_data, {'innerHTML': item, 'classes': ['console_text']})
-			$e("br", error_box_data)
+			$e("div", error_box_data, {'innerHTML': item, 'classes': ['console_text']});
+			$e("br", error_box_data);
 		}
 	} else {
 		//console.log(item);
-		$e("div", error_box_data, {'innerHTML': data, 'classes': ['console_text']})
+		$e("div", error_box_data, {'innerHTML': data, 'classes': ['console_text']});
 	}
 	openPopup("error-popup");
+}
+
+function show_message(data) {
+	const message_box_data = $el("#message-popup").querySelector("#popup_list_area");
+	const message_box_title = $el("#message-popup").querySelector("#popup_title");
+	const message_box_ok = $el("#message-popup").querySelector("#ok");
+	//clear out the error box
+	while (message_box_data.firstChild) {
+		message_box_data.removeChild(message_box_data.firstChild);
+	}
+	$e("div", message_box_data, {'innerHTML': data['message'], 'classes': ['console_text']})
+	message_box_title.innerText = data['title'];
+	message_box_ok.setAttribute("message_id", data['id'])
+	
+	openPopup("message-popup");
 }
 
 function do_wpp(wpp_area) {

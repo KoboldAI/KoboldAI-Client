@@ -4083,9 +4083,12 @@ def execute_outmod():
 #==================================================================#
 @socketio.on('connect')
 def do_connect():
-    logger.info("Client connected! UI_{}".format(request.args.get('ui')))
     if request.args.get("rely") == "true":
         return
+    logger.info("Client connected! UI_{}".format(request.args.get('ui')))
+    #If this we have a message to send to the users and they haven't seen it we'll transmit it now
+    eventlet.spawn(send_one_time_messages, '', wait_time=1)
+    
     join_room("UI_{}".format(request.args.get('ui')))
     if 'story' not in session:
         session['story'] = 'default'
@@ -10177,6 +10180,30 @@ def UI_2_action_image():
                  mimetype="image/jpeg")
     else:
         return None
+
+#==================================================================#
+# display messages if they have never been sent before on this install
+#==================================================================#
+@logger.catch
+@socketio.on("check_messages")
+def send_one_time_messages(data, wait_time=0):
+    time.sleep(wait_time) #Need to wait a bit for the web page to load as the connect event is very eary
+    messages = {
+                    1: {"id": 1, "title": "Warning New Save Format", "message": "This version of KoboldAI includes a new save game format which is incompatable with older versions of KoboldAI. Your old saves will not be modified and can be loaded on older versions but if you save and new actions taken will not be visible on older versions"},
+               }
+    if data != '':
+        koboldai_vars.seen_messages.append(int(data))
+        #Now let's save
+        filename = "settings/system_settings.v2_settings"
+        if not os.path.exists("settings"):
+            os.mkdir("settings")
+        with open(filename, "w") as settings_file:
+            settings_file.write(getattr(koboldai_vars, "_system_settings").to_json())
+    for message in messages:
+        if message not in koboldai_vars.seen_messages:
+            socketio.emit("message", messages[message])
+            break
+
 #==================================================================#
 # Test
 #==================================================================#

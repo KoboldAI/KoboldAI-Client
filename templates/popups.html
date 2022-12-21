@@ -160,6 +160,21 @@
 			<button type="button" class="btn btn-primary popup_load_cancel_button" onclick="closePopups();">Ok</button>
 		</div>
 	</div>
+	
+	<!---------------- message screen ---------------------->
+	<div id="message-popup" class="popup-window popup">
+		<div class="title">
+			<div class="popuptitletext" id="popup_title"></div>
+		</div>
+		<div id="popup_list_area" class="popup_list_area" style="overflow-x: scroll;">
+			
+		</div>
+		<div class="popup_load_cancel">
+			<button id="ok" type="button" class="btn btn-primary popup_load_cancel_button" onclick="closePopups();socket.emit('check_messages', this.getAttribute('message_id'));">Ok</button>
+		</div>
+	</div>
+	
+	message-popup
 
 	<!---------------- log screen ---------------------->
 	<div id="log-popup" class="popup-window popup">
