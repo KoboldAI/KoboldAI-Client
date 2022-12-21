@@ -1323,7 +1323,7 @@ class system_settings(settings):
             
             if name == 'horde_share':
                 if self.on_colab == False:
-                    if os.path.exists("./KoboldAI-Horde"):
+                    if os.path.exists("./KoboldAI-Horde-Bridge"):
                         if value == True:
                             if self._horde_pid is None:
                                 logger.info("Starting Horde bridge")
