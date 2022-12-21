@@ -1132,6 +1132,7 @@ gensettingsik =[{
     "name": "show_probs"
  	},
     {
+    "UI_V2_Only": True,
  	"uitype": "toggle",
  	"unit": "bool",
  	"label": "Alt Text Gen",
