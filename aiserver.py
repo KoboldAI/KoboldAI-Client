@@ -4025,7 +4025,7 @@ def lua_set_spfilename(filename: Union[str, None]):
     filename = str(filename).strip()
     changed = lua_get_spfilename() != filename
     assert all(q not in filename for q in ("/", "\\"))
-    spRequest("softprompts/"+filename)
+    spRequest(filename)
     return changed
 
 #==================================================================#
@@ -4540,7 +4540,7 @@ def get_message(msg):
     elif(msg['cmd'] == 'loadrequest'):
         loadRequest(fileops.storypath(koboldai_vars.loadselect))
     elif(msg['cmd'] == 'sprequest'):
-        spRequest("softprompts/"+koboldai_vars.spselect)
+        spRequest(koboldai_vars.spselect)
     elif(msg['cmd'] == 'deletestory'):
         deletesave(msg['data'])
     elif(msg['cmd'] == 'renamestory'):
@@ -7851,7 +7851,7 @@ def final_startup():
         js   = json.load(file)
         if(koboldai_vars.allowsp and "softprompt" in js and type(js["softprompt"]) is str and all(q not in js["softprompt"] for q in ("..", ":")) and (len(js["softprompt"]) != 0 and all(js["softprompt"][0] not in q for q in ("/", "\\")))):
             if valid_softprompt("softprompts/"+js["softprompt"]):
-                spRequest("softprompts/"+js["softprompt"])
+                spRequest(js["softprompt"])
         else:
             koboldai_vars.spfilename = ""
         file.close()
