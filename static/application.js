@@ -2735,6 +2735,10 @@ $(document).ready(function(){
 			} else {
 				token_prob_menu.addClass("hidden");
 			}
+		} else if(msg.cmd == "updatealt_text_gen") {
+			$("#alttextgen").prop('checked', msg.data).change();
+		} else if(msg.cmd == "updatealt_multi_gen") {
+			$("#alt_multi_gen").prop('checked', msg.data).change();
 		} else if(msg.cmd == "allowtoggle") {
 			// Allow toggle change states to propagate
 			allowtoggle = msg.data;

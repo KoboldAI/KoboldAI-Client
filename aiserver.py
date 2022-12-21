@@ -2306,7 +2306,7 @@ def patch_transformers():
                     option = koboldai_vars.actions.actions[koboldai_vars.actions.action_count+1]['Options'][x]
                     if option['Pinned'] or option["Previous Selection"] or option["Edited"]:
                         option_offset = x+1
-            batch_offset = int((koboldai_vars.generated_tkns-1) / koboldai_vars.genamt) if koboldai_vars.alt_multi_gen and koboldai_vars.experimental_features else 0
+            batch_offset = int((koboldai_vars.generated_tkns-1) / koboldai_vars.genamt) if koboldai_vars.alt_multi_gen else 0
             for batch_index, batch in enumerate(scores):
                 probs = F.softmax(batch, dim = -1).cpu().numpy()
 
@@ -2489,7 +2489,7 @@ def patch_transformers():
             self.halt = not koboldai_vars.lua_koboldbridge.generating
             koboldai_vars.lua_koboldbridge.regeneration_required = False
 
-            for i in range(koboldai_vars.numseqs) if not (koboldai_vars.alt_multi_gen and koboldai_vars.experimental_features) else range(1):
+            for i in range(koboldai_vars.numseqs) if not koboldai_vars.alt_multi_gen else range(1):
                 koboldai_vars.lua_koboldbridge.generated[i+1][koboldai_vars.generated_tkns] = int(input_ids[i, -1].item())
 
             return self.regeneration_required or self.halt
@@ -4612,6 +4612,14 @@ def get_message(msg):
         koboldai_vars.show_probs = msg['data']
         settingschanged()
         refresh_settings()
+    elif(msg['cmd'] == 'alttextgen'):
+        koboldai_vars.alt_gen = msg['data']
+        settingschanged()
+        refresh_settings()
+    elif(msg['cmd'] == 'alt_multi_gen'):
+        koboldai_vars.alt_multi_gen = msg['data']
+        settingschanged()
+        refresh_settings()
     elif(not koboldai_vars.host and msg['cmd'] == 'importwi'):
         wiimportrequest()
     elif(msg['cmd'] == 'debug'):
@@ -5403,7 +5411,7 @@ def core_generate(text: list, _min: int, _max: int, found_entries: set, is_core:
         numseqs = koboldai_vars.numseqs
         total_gens = None
 
-        for i in range(koboldai_vars.numseqs if koboldai_vars.alt_multi_gen and koboldai_vars.experimental_features else 1):
+        for i in range(koboldai_vars.numseqs if koboldai_vars.alt_multi_gen else 1):
             while True:
                 # The reason this is a loop is due to how Dynamic WI works. We
                 # cannot simply add the WI to the context mid-generation, so we
@@ -5416,7 +5424,7 @@ def core_generate(text: list, _min: int, _max: int, found_entries: set, is_core:
                     max_new=koboldai_vars.genamt,
                     do_streaming=koboldai_vars.output_streaming,
                     do_dynamic_wi=koboldai_vars.dynamicscan,
-                    batch_count=numseqs if not (koboldai_vars.alt_multi_gen and koboldai_vars.experimental_features) else 1,
+                    batch_count=numseqs if not koboldai_vars.alt_multi_gen  else 1,
                     # Real max length is handled by CoreStopper.
                     bypass_hf_maxlength=koboldai_vars.dynamicscan,
                     is_core=True,
@@ -5428,7 +5436,7 @@ def core_generate(text: list, _min: int, _max: int, found_entries: set, is_core:
                 already_generated += len(genout[0])
 
                 try:
-                    assert already_generated <= koboldai_vars.genamt * koboldai_vars.numseqs if koboldai_vars.alt_multi_gen and koboldai_vars.experimental_features else 1
+                    assert already_generated <= koboldai_vars.genamt * koboldai_vars.numseqs if koboldai_vars.alt_multi_gen else 1
                 except AssertionError:
                     print("AlreadyGenerated", already_generated)
                     print("genamt", koboldai_vars.genamt)
@@ -6533,7 +6541,10 @@ def refresh_settings():
     socketio.emit('from_server', {'cmd': 'updatefrmtadsnsp', 'data': koboldai_vars.frmtadsnsp}, broadcast=True, room="UI_1")
     socketio.emit('from_server', {'cmd': 'updatesingleline', 'data': koboldai_vars.singleline}, broadcast=True, room="UI_1")
     socketio.emit('from_server', {'cmd': 'updateoutputstreaming', 'data': koboldai_vars.output_streaming}, broadcast=True, room="UI_1")
+    socketio.emit('from_server', {'cmd': 'updateshowbudget', 'data': koboldai_vars.show_budget}, broadcast=True, room="UI_1")
     socketio.emit('from_server', {'cmd': 'updateshowprobs', 'data': koboldai_vars.show_probs}, broadcast=True, room="UI_1")
+    socketio.emit('from_server', {'cmd': 'updatealt_text_gen', 'data': koboldai_vars.alt_gen}, broadcast=True, room="UI_1")
+    socketio.emit('from_server', {'cmd': 'updatealt_multi_gen', 'data': koboldai_vars.alt_multi_gen}, broadcast=True, room="UI_1")
     
     # Allow toggle events again
     socketio.emit('from_server', {'cmd': 'allowtoggle', 'data': True}, broadcast=True, room="UI_1")

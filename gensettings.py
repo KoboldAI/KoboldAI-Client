@@ -414,7 +414,6 @@ gensettingstf = [
     "ui_level": 2
  	},
     {
-    "UI_V2_Only": True,
  	"uitype": "toggle",
  	"unit": "bool",
  	"label": "Alt Multi Gen",
