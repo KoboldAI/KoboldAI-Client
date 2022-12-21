@@ -1327,7 +1327,7 @@ class system_settings(settings):
                         if value == True:
                             if self._horde_pid is None:
                                 logger.info("Starting Horde bridge")
-                                bridge = importlib.import_module("KoboldAI-Horde.bridge")
+                                bridge = importlib.import_module("KoboldAI-Horde-Bridge.bridge")
                                 self._horde_pid = bridge.kai_bridge()
                                 threading.Thread(target=self._horde_pid.bridge, args=(1, "0000000000", f"Automated Instance #{random.randint(-100000000, 100000000)}", 'http://127.0.0.1:{}'.format(self.port), "http://koboldai.net", [])).run()
                         else:
