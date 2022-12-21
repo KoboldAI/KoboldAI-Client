@@ -28,7 +28,7 @@ dependencies:
     - flask-cloudflared
     - flask-ngrok
     - lupa==1.10
-    - ttransformers==4.24.0
+    - transformers==4.24.0
     - huggingface_hub>=0.10.1
     - accelerate
     - git+https://github.com/VE-FORBRYDERNE/mkultra
