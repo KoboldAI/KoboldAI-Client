@@ -2321,6 +2321,7 @@ $(document).ready(function(){
 
 	// Connect to SocketIO server
 	socket = io.connect(window.document.origin, {transports: ['polling', 'websocket'], closeOnBeforeunload: false, query:{"ui":  "1"}});
+	socket.on("message", function(data){show_message(data);});
 	//console.log(socket);
 	socket.on('load_popup', function(data){load_popup(data);});
 	socket.on('popup_items', function(data){popup_items(data);});
@@ -3805,4 +3806,23 @@ function getSelectedOptions(element) {
 		output.push(item.value);
 	}
     return output;
+}
+
+
+function show_message(data) {
+	const message_box_data = document.getElementById('message-popup').querySelector("#popup_list_area");
+	const message_box_title = document.getElementById('message-popup').querySelector("#popup_title");
+	const message_box_ok = document.getElementById('message-popup').querySelector("#ok");
+	//clear out the error box
+	while (message_box_data.firstChild) {
+		message_box_data.removeChild(message_box_data.firstChild);
+	}
+	div = document.createElement('div');
+	div.innerHTML = data['message'];
+	div.classList.add('console_text');
+	message_box_data.append(div);
+	message_box_title.innerText = data['title'];
+	message_box_ok.setAttribute("message_id", data['id'])
+	
+	document.getElementById('message-popup').classList.remove('hidden');
 }

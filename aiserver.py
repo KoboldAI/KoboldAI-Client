@@ -10189,16 +10189,17 @@ def UI_2_action_image():
 def send_one_time_messages(data, wait_time=0):
     time.sleep(wait_time) #Need to wait a bit for the web page to load as the connect event is very eary
     messages = {
-                    1: {"id": 1, "title": "Warning New Save Format", "message": "This version of KoboldAI includes a new save game format which is incompatable with older versions of KoboldAI. Your old saves will not be modified and can be loaded on older versions but if you save and new actions taken will not be visible on older versions"},
+                    1: {"id": 1, "title": "Warning New Save Format", "message": "This version of KoboldAI introduces a new save format which is incompatible with older versions of KoboldAI, this means your saves will not be able to load on the old version if they are saved with this version. For existing stories we will leave a copy of the original save intact if you wish to switch back to the older version, when you load your save in the old version of KoboldAI you will not see any of the changes saved with this version."},
                }
     if data != '':
-        koboldai_vars.seen_messages.append(int(data))
-        #Now let's save
-        filename = "settings/system_settings.v2_settings"
-        if not os.path.exists("settings"):
-            os.mkdir("settings")
-        with open(filename, "w") as settings_file:
-            settings_file.write(getattr(koboldai_vars, "_system_settings").to_json())
+        if int(data) not in koboldai_vars.seen_messages:
+            koboldai_vars.seen_messages.append(int(data))
+            #Now let's save
+            filename = "settings/system_settings.v2_settings"
+            if not os.path.exists("settings"):
+                os.mkdir("settings")
+            with open(filename, "w") as settings_file:
+                settings_file.write(getattr(koboldai_vars, "_system_settings").to_json())
     for message in messages:
         if message not in koboldai_vars.seen_messages:
             socketio.emit("message", messages[message])
