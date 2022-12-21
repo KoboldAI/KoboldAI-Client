@@ -86,7 +86,7 @@ def uspath(filename):
 def getstoryfiles():
     list = []
     for file in listdir("stories"):
-        if file.endswith(".json") and not file.endswith(".v2.json"):
+        if file.endswith(".json") and not file.endswith(".v2.json") and not os.path.isdir("stories/{}".format(file.replace(".json", ""))):
             ob = {}
             ob["name"] = file.replace(".json", "")
             f = open("stories/"+file, "r")
