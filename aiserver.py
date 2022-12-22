@@ -2297,34 +2297,34 @@ def patch_transformers():
         if koboldai_vars.numseqs > 1 or not koboldai_vars.show_probs:
             return
 
-            if not koboldai_vars.show_probs:
-                return scores
-
-            option_offset = 0
-            if koboldai_vars.actions.action_count+1 in koboldai_vars.actions.actions:
-                for x in range(len(koboldai_vars.actions.actions[koboldai_vars.actions.action_count+1]['Options'])):
-                    option = koboldai_vars.actions.actions[koboldai_vars.actions.action_count+1]['Options'][x]
-                    if option['Pinned'] or option["Previous Selection"] or option["Edited"]:
-                        option_offset = x+1
-            batch_offset = int((koboldai_vars.generated_tkns-1) / koboldai_vars.genamt) if koboldai_vars.alt_multi_gen else 0
-            for batch_index, batch in enumerate(scores):
-                probs = F.softmax(batch, dim = -1).cpu().numpy()
-
-                token_prob_info = []
-                for token_id, score in sorted(enumerate(probs), key=lambda x: x[1], reverse=True)[:8]:
-                    token_prob_info.append({
-                        "tokenId": token_id,
-                        "decoded": utils.decodenewlines(tokenizer.decode(token_id)),
-                        "score": float(score),
-                    })
-
-
-                if koboldai_vars.numseqs == 1:
-                    koboldai_vars.actions.set_probabilities(token_prob_info)
-                else:
-                    koboldai_vars.actions.set_option_probabilities(token_prob_info, batch_index+option_offset+batch_offset)
-
+        if not koboldai_vars.show_probs:
             return scores
+
+        option_offset = 0
+        if koboldai_vars.actions.action_count+1 in koboldai_vars.actions.actions:
+            for x in range(len(koboldai_vars.actions.actions[koboldai_vars.actions.action_count+1]['Options'])):
+                option = koboldai_vars.actions.actions[koboldai_vars.actions.action_count+1]['Options'][x]
+                if option['Pinned'] or option["Previous Selection"] or option["Edited"]:
+                    option_offset = x+1
+        batch_offset = int((koboldai_vars.generated_tkns-1) / koboldai_vars.genamt) if koboldai_vars.alt_multi_gen else 0
+        for batch_index, batch in enumerate(scores):
+            probs = F.softmax(batch, dim = -1).cpu().numpy()
+
+            token_prob_info = []
+            for token_id, score in sorted(enumerate(probs), key=lambda x: x[1], reverse=True)[:8]:
+                token_prob_info.append({
+                    "tokenId": token_id,
+                    "decoded": utils.decodenewlines(tokenizer.decode(token_id)),
+                    "score": float(score),
+                })
+
+
+            if koboldai_vars.numseqs == 1:
+                koboldai_vars.actions.set_probabilities(token_prob_info)
+            else:
+                koboldai_vars.actions.set_option_probabilities(token_prob_info, batch_index+option_offset+batch_offset)
+
+        return scores
     
     def new_get_logits_processor(*args, **kwargs) -> LogitsProcessorList:
         processors = new_get_logits_processor.old_get_logits_processor(*args, **kwargs)
