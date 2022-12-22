@@ -10195,13 +10195,13 @@ def UI_2_action_image():
 #==================================================================#
 # display messages if they have never been sent before on this install
 #==================================================================#
+with open("data/one_time_messages.json", "r") as f:
+    messages = json.load(f)
+    messages = {int(x): messages[x] for x in messages}
 @logger.catch
 @socketio.on("check_messages")
 def send_one_time_messages(data, wait_time=0):
     time.sleep(wait_time) #Need to wait a bit for the web page to load as the connect event is very eary
-    messages = {
-                    1: {"id": 1, "title": "Warning New Save Format", "message": "This version of KoboldAI introduces a new save format which is incompatible with older versions of KoboldAI, this means your saves will not be able to load on the old version if they are saved with this version. For existing stories we will leave a copy of the original save intact if you wish to switch back to the older version, when you load your save in the old version of KoboldAI you will not see any of the changes saved with this version."},
-               }
     if data != '':
         if int(data) not in koboldai_vars.seen_messages:
             koboldai_vars.seen_messages.append(int(data))

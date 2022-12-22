@@ -3026,6 +3026,7 @@ button.disabled {
 .console_text {
 	white-space: pre-wrap;
 	display: inline-block;
+	margin-left: 5px;
 }
 
 .text_red {
