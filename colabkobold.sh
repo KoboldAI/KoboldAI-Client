@@ -98,8 +98,8 @@ mkdir /content/drive/MyDrive/KoboldAI/models/
 mkdir /content/drive/MyDrive/KoboldAI/settings/
 mkdir /content/drive/MyDrive/KoboldAI/softprompts/
 mkdir /content/drive/MyDrive/KoboldAI/userscripts/
-mkdir /content/drive/MyDrive/KoboldAI/presets
-mkdir $/content/drive/MyDrive/KoboldAI/themes
+mkdir /content/drive/MyDrive/KoboldAI/presets/
+mkdir /content/drive/MyDrive/KoboldAI/themes/
 
 if [ "$init" == "drive" ]; then
 	echo Google Drive folders created.
@@ -146,8 +146,8 @@ if [ "$init" != "skip" ]; then
     cp -rn stories/* /content/drive/MyDrive/KoboldAI/stories/
     cp -rn userscripts/* /content/drive/MyDrive/KoboldAI/userscripts/
     cp -rn softprompts/* /content/drive/MyDrive/KoboldAI/softprompts/
-    cp -rn softprompts/* /content/drive/MyDrive/KoboldAI/presets/
-    cp -rn softprompts/* /content/drive/MyDrive/KoboldAI/themes/
+    cp -rn presets/* /content/drive/MyDrive/KoboldAI/presets/
+    cp -rn themes/* /content/drive/MyDrive/KoboldAI/themes/
     rm stories
     rm -rf stories/
     rm userscripts
