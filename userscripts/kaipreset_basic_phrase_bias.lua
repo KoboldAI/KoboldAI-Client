@@ -49,7 +49,7 @@ local example_config = [[# Phrase bias
 # case-sensitive, with a leading space, to appear in the output, with the
 # bias increasing as each consecutive token in that phrase appears):
 # 7, 25.4, 1309, 262, 3809, 286, 1842, 1011, 345, 2440
-#
+# #
 ]]
 
 -- If config file is empty, write example config

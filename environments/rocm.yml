@@ -18,6 +18,8 @@ dependencies:
   - apispec-webframeworks
   - loguru
   - termcolor
+  - Pillow
+  - diffusers
   - psutil
   - pip:
     - --extra-index-url https://download.pytorch.org/whl/rocm5.1.1
@@ -30,3 +32,8 @@ dependencies:
     - huggingface_hub>=0.10.1
     - accelerate
     - git+https://github.com/VE-FORBRYDERNE/mkultra
+    - ansi2html
+    - flask_compress
+    - ijson
+    - ftfy
+    - pydub

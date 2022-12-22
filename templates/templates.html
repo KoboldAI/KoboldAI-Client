@@ -1,0 +1,143 @@
+<!---------------- World Info Card ---------------------->
+<div draggable="true" class="world_info_card" id="world_info_">
+	<div class="world_info_title_area">
+		<div>
+			<div class="world_info_image_container">
+				<span
+					class="placeholder material-icons-outlined"
+					context-menu="wi-img-upload-button"
+					tooltip="Upload a picture for this World Info entry"
+				>add</span>
+				<img class="world_info_image">
+			</div>
+			<div>
+				<h4
+					draggable="true"
+					ondragstart="event.preventDefault();event.stopPropagation();"
+					id="world_info_title_"
+					class="world_info_title"
+					onfocus="this.parentElement.parentElement.setAttribute('draggable', 'false');this.setAttribute('draggable', 'false');"
+				></h4>
+				<span class="wi-type-leadup">is a</span>
+				<span
+					class="world_info_item_type"
+					contenteditable="true"
+					data-placeholder="Person"
+					spellcheck="false"
+				></span>
+			</div>
+		</div>
+		<span id="world_info_delete_" class="world_info_delete">X</span>
+	</div>
+
+	<div class="world_info_upper_container world_info_tag_area">
+		<div class="world_info_wpp_toggle_area" id="world_info_wpp_toggle_area_">
+			Use W++
+		</div>
+
+		<select class="world_info_type settings_select">
+			<option>Keywords</option>
+			<option>Always On</option>
+			<option>Chat Character</option>
+			<option>Commentator</option>
+		</select>
+	</div>
+
+
+	<div id="world_info_tags_" class="world_info_tag_area world_info_tag_primary_area">
+		<div>Requires one of:</div>
+	</div>
+	<div id="world_info_secondtags_" class="world_info_tag_area world_info_tag_secondary_area">
+		<div>And (if present):</div>
+	</div>
+	<div class="world_info_tag_area hidden world_info_wpp_area" id="world_info_wpp_area_">
+		<!--this part is very sensitive to location. Javascript uses parents to find the above tag for each of the inputs, so don't add stuff without messing with JS-->
+		<select id="wpp_format_" class="settings_select wpp_format">
+			<option>W++</option>
+			<option>Square Bracket Format (SBF)</option>
+		</select>
+		<table>
+			<tr>
+				<td>Type:</td>
+				<td><input draggable="true" type=text class="wpp_type" id="wpp_type_" 
+				           onchange="do_wpp(this.parentElement.parentElement.parentElement.parentElement.parentElement)"
+						   onfocus="console.log('focus');this.parentElement.parentElement.parentElement.parentElement.parentElement.setAttribute('draggable', 'false');this.setAttribute('draggable', 'false');"
+						   onblur="console.log('blur');this.parentElement.parentElement.parentElement.parentElement.parentElement.setAttribute('draggable', 'true');this.setAttribute('draggable', 'true');"
+						   ondragstart="event.preventDefault();event.stopPropagation();" ></td>
+			</tr>
+			<tr>
+				<td>Name:</td>
+				<td><input draggable="true" ondragstart="event.preventDefault();event.stopPropagation();" type=text class="wpp_name" id="wpp_name_" 
+						   onchange="do_wpp(this.parentElement.parentElement.parentElement.parentElement.parentElement)"
+						   onfocus="this.parentElement.parentElement.parentElement.parentElement.parentElement.setAttribute('draggable', 'false');this.setAttribute('draggable', 'false');"
+						   onblur="this.parentElement.parentElement.parentElement.parentElement.parentElement.setAttribute('draggable', 'true');this.setAttribute('draggable', 'true');"></td>
+			</tr>
+		</table>
+		<div class="wpp_attributes_area"></div>
+	</div>
+	<div id="world_info_basic_text_" class="world_info_basic_text_area">
+		<div class="world_info_label_container wi-lc-text">
+			<span class="wi-ui-label">Text</span>
+			<span class="material-icons-outlined generate-button" tooltip="Generate Content">
+				smart_toy
+			</span>
+		</div>
+		<textarea draggable="true" ondragstart="event.preventDefault();event.stopPropagation();" id="world_info_entry_text_" class="world_info_text world_info_entry_text fullwidth" oninput="autoResize(this, 60)" 
+		onfocus="this.parentElement.parentElement.setAttribute('draggable', 'false');this.setAttribute('draggable', 'false');autoResize(this, 60)" 
+		onblur="this.parentElement.parentElement.setAttribute('draggable', 'true');this.setAttribute('draggable', 'true');this.style.height='60px';"></textarea>
+	</div>
+	<div id="world_info_entry_w++_" class="hidden">
+		<input draggable="true" ondragstart="event.preventDefault();event.stopPropagation();" type=text placeholder="Type" 
+			   onfocus="this.parentElement.parentElement.setAttribute('draggable', 'false');this.setAttribute('draggable', 'false');"
+			   onblur="this.parentElement.parentElement.setAttribute('draggable', 'true');this.setAttribute('draggable', 'true');"/>
+		<input type=text placeholder="Name"
+		       onfocus="this.parentElement.parentElement.setAttribute('draggable', 'false');"
+			   onblur="this.parentElement.parentElement.setAttribute('draggable', 'true');"/>
+		<div>
+			<input draggable="true" ondragstart="event.preventDefault();event.stopPropagation();" type=text placeholder="attribute"
+				   onfocus="this.parentElement.parentElement.parentElement.setAttribute('draggable', 'false');this.setAttribute('draggable', 'false');"
+			       onblur="this.parentElement.parentElement.parentElement.setAttribute('draggable', 'true');this.setAttribute('draggable', 'true');"/>
+			<input type=text placeholder="value"/>
+		</div>
+	</div>
+	<div>
+		<div class="world_info_label_container wi-lc-comment">
+			<span class="wi-ui-label">Comment</span>
+			<padding></padding>
+		</div>
+		<textarea draggable="true" ondragstartondragstart="event.preventDefault();event.stopPropagation();" rows=1 id="world_info_comment_" 
+				  class="world_info_text world_info_comment fullwidth" oninput="autoResize(this, 60)" onfocus="autoResize(this, 60)" onblur="this.style.height='60px';"
+				  onfocus="this.parentElement.parentElement.setAttribute('draggable', 'false');this.setAttribute('draggable', 'false');;"
+			      onblur="this.parentElement.parentElement.setAttribute('draggable', 'true');this.setAttribute('draggable', 'true');"></textarea>
+	</div>
+</div>
+<!---------------- Phrase Bias ---------------------->
+<div id="empty_bias">
+	<div class="bias_phrase">
+		<input type=text placeholder="Word or Phrase to Bias" onchange="save_bias(this);"/>
+	</div>
+	<div class="bias_score">
+		<div class="bias_slider">
+			<div class="bias_slider_bar">
+				<input type="range" min="-50" max="50" step="0.01" value="0" class="setting_item_input" 
+					oninput="update_bias_slider_value(this);"
+					onchange="save_bias(this);"/>
+			</div>
+			<div class="bias_slider_min">-50</div>
+			<div class="bias_slider_cur">0</div>
+			<div class="bias_slider_max">50</div>
+		</div>
+	</div>
+	<div class="bias_comp_threshold">
+		<div class="bias_slider">
+			<div class="bias_slider_bar">
+				<input type="range" min="0" max="10" step="1" value="10" class="setting_item_input"
+					oninput="update_bias_slider_value(this);" 
+					onchange="save_bias(this);"/>
+			</div>
+			<div class="bias_slider_min">0</div>
+			<div class="bias_slider_cur">10</div>
+			<div class="bias_slider_max">10</div>
+		</div>
+	</div>
+</div>

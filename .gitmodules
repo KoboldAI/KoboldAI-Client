@@ -1,0 +1,6 @@
+[submodule "KoboldAI-Horde"]
+	path = KoboldAI-Horde
+	url = https://github.com/db0/KoboldAI-Horde-Bridge
+[submodule "KoboldAI-Horde-Bridge"]
+	path = KoboldAI-Horde-Bridge
+	url = https://github.com/db0/KoboldAI-Horde-Bridge

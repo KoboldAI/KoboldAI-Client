@@ -3,7 +3,7 @@ import os
 import sys
 import math
 import numpy as np
-import termcolor
+from logger import logger
 import contextlib
 import traceback
 import random
@@ -70,21 +70,24 @@ def patch_transformers_download():
     class Send_to_socketio(object):
         def write(self, bar):
             bar = bar.replace("\r", "").replace("\n", "")
-            if bar != "":
+            
+            if bar != "" and [ord(num) for num in bar] != [27, 91, 65]: #No idea why we're getting the 27, 1, 65 character set, just killing to so we can move on
                 try:
-                    print(bar, end="\r")
-                    if utils.emit is not None:
-                        utils.emit('from_server', {'cmd': 'model_load_status', 'data': bar.replace(" ", "&nbsp;")}, broadcast=True)
+                    print('\r' + bar, end='')
+                    socketio.emit('from_server', {'cmd': 'model_load_status', 'data': bar.replace(" ", "&nbsp;")}, broadcast=True, room="UI_1")
                     eventlet.sleep(seconds=0)
                 except:
                     pass
+        def flush(self):
+            pass
+    
     def http_get(
         url: str,
-        temp_file: transformers.utils.hub.BinaryIO,
+        temp_file,
         proxies=None,
         resume_size=0,
-        headers: transformers.utils.hub.Optional[transformers.utils.hub.Dict[str, str]] = None,
-        file_name: transformers.utils.hub.Optional[str] = None,
+        headers=None,
+        file_name=None,
     ):
         """
         Download remote file. Do not gobble up errors.
@@ -108,13 +111,18 @@ def patch_transformers_download():
                 desc=f"Downloading {file_name}" if file_name is not None else "Downloading",
                 file=Send_to_socketio(),
             )
+            koboldai_vars.status_message = "Download Model"
+            koboldai_vars.total_download_chunks = total
         for chunk in r.iter_content(chunk_size=1024):
             if chunk:  # filter out keep-alive new chunks
                 if url[-11:] != 'config.json':
                     progress.update(len(chunk))
+                    koboldai_vars.downloaded_chunks += len(chunk)
                 temp_file.write(chunk)
         if url[-11:] != 'config.json':
             progress.close()
+        
+        koboldai_vars.status_message = ""
 
     transformers.utils.hub.http_get = http_get
 
@@ -195,18 +203,18 @@ def device_list(n_layers, primary=None, selected=None):
     if(device_count < 2):
         primary = None
     gpu_blocks = breakmodel.gpu_blocks + (device_count - len(breakmodel.gpu_blocks))*[0]
-    print(f"{colors.YELLOW}       DEVICE ID  |  LAYERS  |  DEVICE NAME{colors.END}")
+    logger.info("       DEVICE ID  |  LAYERS  |  DEVICE NAME{colors.END}")
     for i in range(device_count):
         name = torch.cuda.get_device_name(i)
         if(len(name) > 47):
             name = "..." + name[-44:]
         row_color = colors.END
         sep_color = colors.YELLOW
-        print(f"{row_color}{colors.YELLOW + '->' + row_color if i == selected else '  '} {'(primary)' if i == primary else ' '*9} {i:3}  {sep_color}|{row_color}     {gpu_blocks[i]:3}  {sep_color}|{row_color}  {name}{colors.END}")
+        logger.info(f"{'(primary)' if i == primary else ' '*9} {i:3}  |     {gpu_blocks[i]:3}  |  {name}")
     row_color = colors.END
     sep_color = colors.YELLOW
-    print(f"{row_color}{colors.YELLOW + '->' + row_color if -1 == selected else '  '} {' '*9} N/A  {sep_color}|{row_color}     {breakmodel.disk_blocks:3}  {sep_color}|{row_color}  (Disk cache){colors.END}")
-    print(f"{row_color}   {' '*9} N/A  {sep_color}|{row_color}     {n_layers:3}  {sep_color}|{row_color}  (CPU){colors.END}")
+    logger.info(f" {' '*9} N/A  |     {breakmodel.disk_blocks:3}  |  (Disk cache)")
+    logger.info(f"   {' '*9} N/A  |     {n_layers:3}  |  (CPU)")
 
 
 def move_model_to_devices(model, usegpu, gpu_device):
@@ -440,12 +448,12 @@ class TrainerBase(abc.ABC):
 
         @property
         def lazy_load_spec(self):
-            print("WARNING:  `TrainerData.lazy_load_spec` is currently unused", file=sys.stderr)
+            logger.warning("WARNING:  `TrainerData.lazy_load_spec` is currently unused")
             return self.__lazy_load_spec
 
         @lazy_load_spec.setter
         def lazy_load_spec(self, value: Optional[dict]):
-            print("WARNING:  `TrainerData.lazy_load_spec` is currently unused", file=sys.stderr)
+            logger.warning("WARNING:  `TrainerData.lazy_load_spec` is currently unused")
             self.__lazy_load_spec = value
 
         @property
@@ -465,7 +473,7 @@ class TrainerBase(abc.ABC):
         self.data = self.TrainerData()
         self._spmodule: Optional[str] = None
         if universe is not None:
-            print("WARNING:  The `universe` argument of `TrainerBase.__init__` is currently unused", file=sys.stderr)
+            logger.warning("WARNING:  The `universe` argument of `TrainerBase.__init__` is currently unused")
 
     def raise_configuration_error(self, msg, **kwargs):
         if "quiet" not in kwargs:
@@ -608,14 +616,11 @@ class TrainerBase(abc.ABC):
             self.data.params["max_batch_size"] - self.data.soft_in_dim,
         )
         assert batch_size >= 0
-        print(
-            termcolor.colored(
-                "\nIf you see a warning somewhere below about token indices, ignore it.  That warning is normal.\n",
-                "magenta",
-            )
+        logger.info(
+            "\nIf you see a warning somewhere below about token indices, ignore it.  That warning is normal.\n"
         )
-        print("Batch size:", batch_size)
-        print(termcolor.colored("Tokenizing your dataset...\n", "magenta"))
+        logger.info("Batch size: {}".format(batch_size))
+        logger.info("Tokenizing your dataset...\n")
 
         if not isinstance(dataset_path, str):
             files = [dataset_path]
@@ -632,7 +637,7 @@ class TrainerBase(abc.ABC):
         eos = tokenizer.decode(self.data.params["eos_token"])
         for path in files:
             if isinstance(path, str):
-                f = open(path)
+                f = open(path, 'r', encoding='utf-8')
             else:
                 f = path
             try:
@@ -645,7 +650,7 @@ class TrainerBase(abc.ABC):
                 if isinstance(path, str):
                     f.close()
 
-        print("Dataset size (in tokens):", len(tokens))
+        logger.info("Dataset size (in tokens): {}".format(len(tokens)))
         if len(tokens) < batch_size + 1:
             self.raise_configuration_error(
                 "Your dataset is too small!  The number of tokens has to be greater than the batch size.  Try increasing the epochs.",
@@ -653,7 +658,7 @@ class TrainerBase(abc.ABC):
             )
         tail = len(tokens) % (batch_size + 1)
         if tail:
-            print(
+            logger.info(
                 f"We're removing the last {tail} tokens from your dataset to make the length a multiple of {batch_size+1}."
             )
             tokens = tokens[:-tail]
@@ -671,7 +676,7 @@ class TrainerBase(abc.ABC):
                 axis=0,
             )
         tokens = tokens[: math.ceil(epochs * sequences_per_epoch)]
-        print(f"Total sequences in your dataset: {tokens.shape[0]}")
+        logger.info(f"Total sequences in your dataset: {tokens.shape[0]}")
 
         if isinstance(output_file, str):
             f = open(output_file, "w")
@@ -698,7 +703,7 @@ class TrainerBase(abc.ABC):
             self.data.params["max_batch_size"] = 2048
 
         if not os.path.exists(self.data.save_file):
-            print("We are starting a brand new soft-tuning session.\n")
+            logger.info("We are starting a brand new soft-tuning session.\n")
             self.startup(step=-1)
             if self.data.soft_in_dim <= 0:
                 self.raise_configuration_error(
@@ -718,7 +723,7 @@ class TrainerBase(abc.ABC):
                 opt_state = z["opt_state"]
             except AssertionError:
                 self.raise_configuration_error("MKUSP file is corrupted.", code=14)
-            print(f"We're resuming a previous soft-tuning session at step {step+1}.\n")
+            logger.info(f"We're resuming a previous soft-tuning session at step {step+1}.\n")
             self.startup(step=step + 1)
             soft_embeddings = z["tensor"]
 
@@ -785,7 +790,7 @@ class TrainerBase(abc.ABC):
                     num_tensors = len(utils.get_sharded_checkpoint_num_tensors(utils.from_pretrained_model_name, utils.from_pretrained_index_filename, **utils.from_pretrained_kwargs))
                 else:
                     num_tensors = len(device_map)
-                print(flush=True)
+                #print(flush=True)
                 utils.bar = tqdm(total=num_tensors, desc="Loading model tensors", file=Send_to_socketio())
 
             with zipfile.ZipFile(f, "r") as z:

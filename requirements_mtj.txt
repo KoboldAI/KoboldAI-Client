@@ -21,3 +21,11 @@ flask-session
 marshmallow>=3.13
 apispec-webframeworks
 loguru
+Pillow
+diffusers
+psutil
+ansi2html
+flask_compress
+ijson
+ftfy
+pydub

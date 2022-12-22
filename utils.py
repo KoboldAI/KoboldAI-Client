@@ -26,7 +26,7 @@ try:
 except ImportError:
     HAS_ACCELERATE = False
 
-vars = None
+koboldai_vars = None
 args = None
 num_shards: Optional[int] = None
 current_shard = 0
@@ -95,14 +95,13 @@ def trimincompletesentence(txt):
 # 
 #==================================================================#
 def replaceblanklines(txt):
-    txt = txt.replace("\n\n", "\n")
-    return txt
+    return txt.replace("\n\n", "\n")
 
 #==================================================================#
 # 
 #==================================================================#
-def removespecialchars(txt, vars=None):
-    if vars is None or vars.actionmode == 0:
+def removespecialchars(txt, koboldai_vars=None):
+    if koboldai_vars is None or koboldai_vars.actionmode == 0:
         txt = re.sub(r"[#/@%<>{}+=~|\^]", "", txt)
     else:
         txt = re.sub(r"[#/@%{}+=~|\^]", "", txt)
@@ -111,38 +110,38 @@ def removespecialchars(txt, vars=None):
 #==================================================================#
 # If the next action follows a sentence closure, add a space
 #==================================================================#
-def addsentencespacing(txt, vars):
+def addsentencespacing(txt, koboldai_vars):
     # Don't add sentence spacing if submission is empty or starts with whitespace
     if(len(txt) == 0 or len(txt) != len(txt.lstrip())):
         return txt
     # Get last character of last action
-    if(len(vars.actions) > 0):
-        if(len(vars.actions[vars.actions.get_last_key()]) > 0):
-            action = vars.actions[vars.actions.get_last_key()]
+    if(len(koboldai_vars.actions) > 0):
+        if(len(koboldai_vars.actions[koboldai_vars.actions.get_last_key()]) > 0):
+            action = koboldai_vars.actions[koboldai_vars.actions.get_last_key()]
             lastchar = action[-1] if len(action) else ""
         else:
             # Last action is blank, this should never happen, but
             # since it did let's bail out.
             return txt
     else:
-        action = vars.prompt
+        action = koboldai_vars.prompt
         lastchar = action[-1] if len(action) else ""
     if(lastchar != " "):
         txt = " " + txt
     return txt
 	
-def singlelineprocessing(txt, vars):
-    txt = vars.regex_sl.sub('', txt)
-    if(len(vars.actions) > 0):
-        if(len(vars.actions[vars.actions.get_last_key()]) > 0):
-            action = vars.actions[vars.actions.get_last_key()]
+def singlelineprocessing(txt, koboldai_vars):
+    txt = koboldai_vars.regex_sl.sub('', txt)
+    if(len(koboldai_vars.actions) > 0):
+        if(len(koboldai_vars.actions[-1]) > 0):
+            action = koboldai_vars.actions[-1]
             lastchar = action[-1] if len(action) else ""
         else:
             # Last action is blank, this should never happen, but
             # since it did let's bail out.
             return txt
     else:
-        action = vars.prompt
+        action = koboldai_vars.prompt
         lastchar = action[-1] if len(action) else ""
     if(lastchar != "\n"):
         txt = txt + "\n"
@@ -160,14 +159,14 @@ def cleanfilename(filename):
 #  Newline substitution for fairseq models
 #==================================================================#
 def encodenewlines(txt):
-    if(vars.newlinemode == "s"):
+    if(koboldai_vars.newlinemode == "s"):
         return txt.replace('\n', "</s>")
     return txt
 
 def decodenewlines(txt):
-    if(vars.newlinemode == "s"):
+    if(koboldai_vars.newlinemode == "s"):
         return txt.replace("</s>", '\n')
-    if(vars.newlinemode == "ns"):
+    if(koboldai_vars.newlinemode == "ns"):
         return txt.replace("</s>", '')
     return txt
 
@@ -187,11 +186,11 @@ def _download_with_aria2(aria2_config: str, total_length: int, directory: str = 
         def write(self, bar):
             bar = bar.replace("\r", "").replace("\n", "")
             
-            if bar != "":
+            if bar != "" and [ord(num) for num in bar] != [27, 91, 65]: #No idea why we're getting the 27, 1, 65 character set, just killing to so we can move on
                 try:
                     print('\r' + bar, end='')
                     try:
-                        emit('from_server', {'cmd': 'model_load_status', 'data': bar.replace(" ", "&nbsp;")}, broadcast=True)
+                        socketio.emit('from_server', {'cmd': 'model_load_status', 'data': bar.replace(" ", "&nbsp;")}, broadcast=True, room="UI_1")
                     except:
                         pass
                     eventlet.sleep(seconds=0)
@@ -201,8 +200,9 @@ def _download_with_aria2(aria2_config: str, total_length: int, directory: str = 
             pass
     
     import transformers
-    aria2_port = 6799 if vars is None else vars.aria2_port
+    aria2_port = 6799 if koboldai_vars is None else koboldai_vars.aria2_port
     lengths = {}
+    path = None
     s = requests.Session()
     s.mount("http://", requests.adapters.HTTPAdapter(max_retries=requests.adapters.Retry(total=120, backoff_factor=1)))
     bar = None
@@ -220,11 +220,10 @@ def _download_with_aria2(aria2_config: str, total_length: int, directory: str = 
                     if bar is not None:
                         bar.n = bar.total
                         bar.close()
+                        koboldai_vars.downloaded_chunks = bar.total
                     p.terminate()
                     done = True
                     break
-                if bar is None:
-                    bar = tqdm(total=total_length, desc=f"[aria2] Downloading model", unit="B", unit_scale=True, unit_divisor=1000, file=Send_to_socketio())
                 visited = set()
                 for x in r:
                     filename = x["files"][0]["path"]
@@ -233,16 +232,24 @@ def _download_with_aria2(aria2_config: str, total_length: int, directory: str = 
                 for k, v in lengths.items():
                     if k not in visited:
                         lengths[k] = (v[1], v[1])
-                bar.n = sum(v[0] for v in lengths.values())
+                if bar is None:
+                    bar = tqdm(total=total_length, desc=f"[aria2] Downloading model", unit="B", unit_scale=True, unit_divisor=1000, file=Send_to_socketio())
+                    koboldai_vars.status_message = "Download Model"
+                    koboldai_vars.total_download_chunks = sum(v[1] for v in lengths.values())
+                koboldai_vars.downloaded_chunks = sum(v[0] for v in lengths.values())
+                bar.n = koboldai_vars.downloaded_chunks
                 bar.update()
                 time.sleep(0.1)
+            koboldai_vars.status_message = ""
             path = f.name
     except Exception as e:
         p.terminate()
         raise e
     finally:
         try:
-            os.remove(path)
+            if path is not None:
+                if os.path.exists(path):
+                    os.remove(path)
         except OSError:
             pass
     code = p.wait()

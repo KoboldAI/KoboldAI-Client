@@ -1,0 +1,507 @@
+/*
+	Name: Darkness
+	Author: LightSaveUs
+	Version: 0.4.1
+	Description: A theme inspired by the AI Dungeon interface.
+*/
+
+:root {
+/*----------------Palette Theme--------------------*/
+	--primary_palette: #000000;
+	--on_primary_palette: #000000;
+	--primary_container_palette: #000000;
+	--on_primary_container_palette: #000000;
+
+	--secondary_palette: #000000;
+	--on_secondary_palette: #000000;
+	--secondary_container_palette: #000000;
+	--on_secondary_container_palette: #000000;
+
+	--tertiary_palette: #000000;
+	--on_tertiary_palette: #000000;
+	--tertiary_container_palette: #000000;
+	--on_tertiary_container_palette: #000000;
+
+	--background_palette: #000000;
+	--on_background_palette:#000000;
+	--layer1_palette: #000000;
+	--layer2_palette: #000000;
+	--layer3_palette: #000000;
+	--layer4_palette: #000000;
+	--outline_palette: #000000;
+
+	--middle_palette: #000000;
+	--on_middle_palette: #000000;
+	--surface_palette: #000000;
+	--on_surface_palette: #000000;
+
+/*----------------Advanced Theme--------------------*/
+	/*General*/
+	--background: #141414;
+	--gamescreen_background: #141414;
+    --input_background: #141414;
+
+    --text: #e0e0e0;
+    --text_to_ai_color: #e0e0e0;
+    --text_edit: #34dae7;
+	--action_mode_input: #33E978;
+
+	--statusbar_color: #1e6d6aa1;
+	--statusbar_text_color: #e0e0e0;
+	--scrollbar-color: #1a615e00;
+
+	/*Buttons*/
+		/*General*/
+	--enabled_button_text: #e0e0e0;
+    --enabled_button_background_color: #3c3c3c;
+    --enabled_button_border_color: #2e2e2fe8;
+
+	--disabled_button_text: #303030;
+    --disabled_button_background_color: #495762;
+    --disabled_button_border_color: #686c68;
+
+		/*Home Tab*/
+	--button_text: #e0e0e0;
+	--button_background: #424243;
+		
+		/*Alternate Button*/
+	--alternate_button_text: #e0e0e0;
+	--alternate_button_background: #424243;
+
+
+	/*Sequence, AKA Gens Per Action*/
+	--sequence_area_background: #141414;
+    --sequence_background: #141414;
+	--sequence_text: #e0e0e0;
+
+	/*Side Menus*/
+	--tab_color: #141414;
+
+	--flyout_background: #1c1c1c;
+	--flyout_background_pinned: #1c1c1c;
+
+	--setting_background: #242424;
+    --setting_text: #e0e0e0;
+
+	--sample_order_select_color: #148883;
+	--sample_order_select_color_text: #141414;
+
+	--dropdown_text: #e0e0e0;
+	--dropdown_background: #202020;
+
+	--rangeslider_background_color: #1c1c1c;
+	--rangeslider_color: #1c1c1c;
+	--rangeslider_circle_color: #148883;
+
+	--help_icon: #6e6e6e;
+	--tooltip_text: #e0e0e0;
+    --tooltip_background: #3b3b3b;
+	--setting_category_help_text_color: #e0e0e0;
+	
+	--setting_footer_border_color: #333333;
+	--setting_footer_text_color: #e0e0e0;
+	--setting_footer_background_color: #1c1c1c;
+
+	/*Palette Card*/
+	--palette_card_background: #242424;
+	--palette_card_text: #e0e0e0;
+	--palette_table_border: #6e6e6e;
+
+	/*World Info*/
+	--wi_card_border_color: #333333;
+    --wi_card_border_color_to_ai: #1e6d6aa1;
+
+    --wi_card_bg_color: #242424;
+	--wi_card_text_color: #e0e0e0;
+
+    --wi_card_tag_bg_color: #3b3b3b;
+	--wi_card_tag_text_color: #e0e0e0;
+	
+    --wi_tag_color: #555555;
+	--wi_tag_text_color: #e0e0e0;
+	
+	/*Popup*/
+	--popup_background_color: #212121;
+    --popup_title_bar_color: #343434;
+	--popup_title_bar_color_text: #e0e0e0;
+
+    --popup_item_color: #212121;
+	--popup_item_color_text: #e0e0e0;
+
+	--popup_hover_color: #212121;
+	--popup_hover_color_text: #e0e0e0;
+	--popup_selected_color: #212121;
+	--popup_selected_color_text: #85858580;
+
+	--popup_button_color: #424243;
+	--popup_button_color_text: #e0e0e0;
+	--popup_cancel_button_color: #424243;
+	--popup_cancel_button_color_text: #e0e0e0;
+
+	--error: #242424;
+	--error_text: #e0e0e0;
+	--error_title: #343434;
+	--error_title_text: #e0e0e0;
+	
+	/*Context Bar Colors*/
+	--context_colors_memory: #242424;
+	--context_colors_authors_notes: #333333;
+	--context_colors_world_info: #484848;
+	--context_colors_prompt: #2d9cac;
+	--context_colors_game_text: #148883;
+	--context_colors_submit: #ffffff00;
+	--context_colors_unused: #ffffff11;
+	--context_colors_soft_prompt: #141414;
+	
+
+    /*Parameters*/
+	--scrollbar-size: 6px;
+	--palette_card_shadow: 0;
+	--wi_card_shadow: 0;
+	--light_shadow_value: 0;
+	--left_menu_strong_shadow: 0;
+	--right_menu_light_shadow: 0;
+	--right_menu_strong_shadow: 0;
+	--radius_inputbox: 10px;
+	--radius_unpinned_menu: 0px;
+	--radius_sequence: 10px;
+	--radius_settings_background: 10px;
+	--radius_button: 5px;
+	--radius_alternate_button: 5px;
+	--radius_item_popup: 5px;
+	--radius_wi_card: 10px;
+	--radius_palette_card: 10px;
+	--radius_settings_button: 5px;
+	--tabs_rounding: 5px;
+
+
+
+
+
+
+/*----------------VARIABLES--------------------*/
+	--flyout_menu_closed_width: 0px;
+	--setting_menu_closed_width_no_pins_width:  0px;
+	--story_options_size: 30%;
+	--story_pinned_areas_left:"menuicon options gamescreen lefticon"
+								 "menuicon theme theme lefticon"
+								 "menuicon inputrow inputrow lefticon";
+	--story_pinned_areas_right:"menuicon gamescreen options lefticon"
+								 "menuicon theme theme lefticon"
+								 "menuicon inputrow inputrow lefticon";
+	--story_pinned_area_widths_left: 30pxvar(--story_options_size) auto 30px;
+	--story_pinned_area_widths_right: 30pxautovar(--story_options_size) 30px;
+	--story_pinned_areas:var(--story_pinned_areas_left);
+	--story_pinned_area_widths:var(--story_pinned_area_widths_left);
+	--font_size_adjustment: 0px;
+	--game_screen_font_size_adjustment: 1;}
+
+/*----------------Custom CSS--------------------*/
+
+/* Boxes */
+
+#input_text, #themetext {
+    border-color: #b6b6b6 !important;
+}
+
+.fullwidth {
+    border-radius: 5px;
+	border-color: #808080 !important;
+}
+
+.bias_phrase input {
+    border-color: #808080 !important;
+	border-radius:5px;
+}
+
+.sequence {
+	border: 1px solid #b6b6b6 !important;
+}
+
+.sequence:hover {
+	filter: brightness(100%) !important;
+	background-color: #2a2a2a;
+}
+
+.substitution-card input {
+	border-radius: 5px;
+	border-color: #535353 !important;
+}
+
+/* Buttons */
+
+#adventure_mode {
+	border: 1px solid;
+	border-color: var(--enabled_button_border_color);
+}
+
+.action_button:hover {
+	filter: brightness(100%) !important;
+}
+
+.action_button:active {
+	color: #e0e0e0;
+	filter: brightness(60%) !important;
+}
+
+.action_button:focus {
+	color: #e0e0e0;
+	box-shadow: none;
+	outline: none !important;
+}
+
+.settings_button {
+	border: none !important;
+}
+
+.settings_button:active {
+	filter: brightness(60%) !important;
+}
+
+.settings_button:focus {
+	outline: none !important;
+}
+
+.btn-success {
+	color: #e0e0e0 !important;
+    border-color: #148883 !important;
+    background-color: #148883 !important;
+}
+
+.toggle-off.btn {
+	color: #e0e0e0 !important;
+	border-color: #242424 !important;
+    background-color: #242424 !important;
+}
+
+.advanced_theme:hover {
+	filter: brightness(100%) !important;
+}
+
+.advanced_theme:active {
+	filter: brightness(60%) !important;
+}
+
+.wi_add_button:active {
+	filter: brightness(60%) !important;
+}
+
+#new-sub-card:active {
+	filter: brightness(60%) !important;
+}
+
+#debug-dump:active {
+	filter: brightness(60%) !important;
+}
+
+/* Context Menu */
+
+#context-menu {
+	border-color: #333333 !important;
+	background-color: #1c1c1c !important;
+}
+
+#context-menu > hr {
+	border-color: #333333 !important;
+}
+
+.context-menu-item:hover {
+	background-color:#333333 !important;
+}
+
+/* Context Viewer */
+
+.popup-header {
+    background-color: #141414 !important;
+}
+
+#context-container {
+	background-color: #2b2b2b !important;
+}
+
+/* Finder */
+
+.result-highlight {
+    background-color: #148883 !important;
+}
+
+/* Icons */
+
+span.material-icons-outlined.cursor.search_icon {
+	filter: brightness(120%) !important;
+}
+
+.helpicon:hover {
+	color: #848484 !important;
+}
+
+.collapsable_header .material-icons-outlined {
+    transform: translateY(7px) translateX(4px);
+}
+
+.material-icons-outlined:hover {
+	filter: brightness(100%) !important;
+}
+
+.substitution-card > .card-left > .material-icons-outlined {
+	color: #999 !important;
+}
+
+.substitution-card > .card-left > .material-icons-outlined:hover {
+	color: #e0e0e0 !important;
+}
+
+.true-t + label::before {
+	filter: brightness(85%);
+	color: #999 !important;
+}
+
+.true-t:checked + label::before {
+	filter: brightness(100%);
+	color: #e0e0e0 !important;
+}
+
+/* Import */
+
+a {
+    color: #148883 !important;
+}
+
+.form-control {
+	border: none;
+	border-radius: 0px;
+	color: #e0e0e0 !important;
+	transform: translateX(5px)!important;
+	background-color: #333333 !important;
+}
+
+/* Lines */
+
+.story_title, hr {
+    border-color: #333333 !important;
+}
+
+/* Lists */
+
+.settings_select, .var_sync_system_theme_list {
+	border-radius:5px !important;
+	border-color: #535353 !important;
+}
+
+/* Palette */
+
+#palette_area {
+	border: 1px solid #535353 !important;
+}
+
+/* Popup */
+
+.popup .model_item {
+	border: 1px solid #333333;
+}
+
+.popup .item {
+	border: 1px solid #333333;
+}
+
+.popup .action_button {
+    border-radius: 5px;
+	border-color:#535353;
+}
+
+.popup_load_cancel_button {
+    border-radius: 5px;
+	border-color:#535353 !important;
+}
+
+.popup .action_button:hover {
+	filter: brightness(100%) !important;
+	background-color: #424243 !important;
+}
+
+.popup_load_cancel_button:hover {
+	outline: none !important;
+	color: #e0e0e0 !important;
+	border-color: #535353 !important;
+    background-color: #424243 !important;
+}
+
+.popup .action_button:focus {
+	outline: none;
+	box-shadow: none;
+}
+
+.popup_load_cancel_button:focus {
+	outline: none;
+	box-shadow: none;
+	color: #e0e0e0 !important;
+	border-color: #535353 !important;
+    background-color: #424243 !important;
+}
+
+.popup .action_button:active {
+	filter: brightness(60%) !important;
+}
+
+.popup_load_cancel_button:active {
+	outline: none !important;
+	filter: brightness(60%) !important;
+}
+
+#error_message.popup .btn-primary {
+    color: #e0e0e0 !important;
+    border-color: #535353 !important;
+	background-color: #424243 !important;
+}
+
+/* Tabs */
+
+.tabrow span {
+	border: none !important;
+	box-shadow: inset 0px 0px 1px !important;
+}
+
+.tabrow span::before, .tabrow span::after {
+	display: none;
+	border: none !important;
+}
+
+.tabrow span.selected {
+    color: #e0e0e0 !important;
+    background: #1c1c1c !important;
+}
+
+.tabrow span:active {
+	filter: brightness(60%) !important;
+}
+
+/* Text */
+
+.rawtext {
+    font-family: helvetica !important;
+}
+
+.rawtext:focus {
+	outline: none !important;
+}
+
+/* Tooltips */
+
+.tooltip-standard {
+	border: none !important;
+}
+
+/* World Info */
+
+.world_info_text {
+	border-color: #242424 !important;
+	background-color: #3b3b3b !important;
+}
+
+.world_info_title:focus {
+	outline: none !important;
+}
+
+.WI_Folder_Header .title:focus {
+	outline: none !important;
+}

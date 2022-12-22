@@ -13,7 +13,7 @@ def client_data():
     app = aiserver.app
     #app.test_client_class = FlaskLoginClient
     client_conn = app.test_client()
-    socketio_client = aiserver.socketio.test_client(app, flask_test_client=client_conn)
+    socketio_client = aiserver.socketio.test_client(app, flask_test_client=client_conn, query_string="ui=1")
     #Clear out the connection message
     response = socketio_client.get_received()
     return (client_conn, app, socketio_client)

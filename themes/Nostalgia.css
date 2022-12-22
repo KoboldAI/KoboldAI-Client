@@ -1,0 +1,508 @@
+/*
+	Name: Nostalgia
+	Author: LightSaveUs
+	Version: 0.4
+	Description: A theme inspired by the old KoboldAI interface.
+*/
+
+:root {
+/*----------------Palette Theme--------------------*/
+	--primary_palette: #000000;
+	--on_primary_palette: #000000;
+	--primary_container_palette: #000000;
+	--on_primary_container_palette: #000000;
+
+	--secondary_palette: #000000;
+	--on_secondary_palette: #000000;
+	--secondary_container_palette: #000000;
+	--on_secondary_container_palette: #000000;
+
+	--tertiary_palette: #000000;
+	--on_tertiary_palette: #000000;
+	--tertiary_container_palette: #000000;
+	--on_tertiary_container_palette: #000000;
+
+	--background_palette: #000000;
+	--on_background_palette:#000000;
+	--layer1_palette: #000000;
+	--layer2_palette: #000000;
+	--layer3_palette: #000000;
+	--layer4_palette: #000000;
+	--outline_palette: #000000;
+
+	--middle_palette: #000000;
+	--on_middle_palette: #000000;
+	--surface_palette: #000000;
+	--on_surface_palette: #000000;
+
+/*----------------Advanced Theme--------------------*/
+	/*General*/
+	--background: #303030;
+	--gamescreen_background: #262626;
+    --input_background: #404040;
+
+    --text: #fff;
+    --text_to_ai_color: #fff;
+    --text_edit: #cdf;
+	--action_mode_input: #33E978;
+
+	--statusbar_color: #3bf72380;
+	--statusbar_text_color: #ffffff;
+	--scrollbar-color: #74747400;
+
+	/*Buttons*/
+		/*General*/
+	--enabled_button_text: #ffffff;
+    --enabled_button_background_color: #337ab7;
+    --enabled_button_border_color: #2e6da4;
+
+	--disabled_button_text: #303030;
+    --disabled_button_background_color: #495762;
+    --disabled_button_border_color: #686c68;
+
+		/*Home Tab*/
+	--button_text: #ffffff;
+	--button_background: #337ab7;
+		
+		/*Alternate Button*/
+	--alternate_button_text: #ffffff;
+	--alternate_button_background: #3379b7;
+
+
+	/*Sequence, AKA Gens Per Action*/
+	--sequence_area_background: #262626;
+    --sequence_background: #262626;
+	--sequence_text: #ffffff;
+
+	/*Side Menus*/
+	--tab_color: #4787be;
+
+	--flyout_background: #295071;
+	--flyout_background_pinned: #295071;
+
+	--setting_background: #295071;
+    --setting_text: #ffffff;
+
+	--sample_order_select_color: #688f1f;
+	--sample_order_select_color_text: #ffffff;
+
+	--dropdown_text: #ffffff;
+	--dropdown_background: #1f3a50;
+
+	--rangeslider_background_color: #ffffff;
+	--rangeslider_color: #0075ff;
+	--rangeslider_circle_color: #2285f9;
+
+	--help_icon: #ffffff;
+	--tooltip_text: #ffffff;
+    --tooltip_background: #1f2931;
+	--setting_category_help_text_color: #3bf723;
+	
+	--setting_footer_border_color: grey;
+	--setting_footer_text_color: #ffffff;
+	--setting_footer_background_color: #242424;
+
+	/*Palette Card*/
+	--palette_card_background: #295071;
+	--palette_card_text: #ffffff;
+	--palette_table_border: #12324f;
+
+	/*World Info*/
+	--wi_card_border_color: #1e1e1e;
+    --wi_card_border_color_to_ai: #3bf72380;
+
+    --wi_card_bg_color: #212122;
+	--wi_card_text_color: #ffffff;
+
+    --wi_card_tag_bg_color: #295071;
+	--wi_card_tag_text_color: #ffffff;
+	
+    --wi_tag_color: #337ab7;
+	--wi_tag_text_color: #ffffff;
+	
+	/*Popup*/
+	--popup_background_color: #262626;
+    --popup_title_bar_color: #337ab7;
+	--popup_title_bar_color_text: #ffffff;
+
+    --popup_item_color: #262626;
+	--popup_item_color_text: #ffffff;
+
+	--popup_hover_color: #688f1f;
+	--popup_hover_color_text: #ffffff;
+	--popup_selected_color: #688f1f;
+	--popup_selected_color_text: #ffffff;
+
+	--popup_button_color: #337ab7;
+	--popup_button_color_text: #ffffff;
+	--popup_cancel_button_color: #337ab7;
+	--popup_cancel_button_color_text: #ffffff;
+
+	--error: #333;
+	--error_text: #ffffff;
+	--error_title: #337ab7;
+	--error_title_text: #ffffff;
+	
+	/*Context Bar Colors*/
+	--context_colors_memory: #303030;
+	--context_colors_authors_notes: #404040;
+	--context_colors_world_info: #295071;
+	--context_colors_prompt: #3379b7;
+	--context_colors_game_text: #26d721ba;
+	--context_colors_submit: #ffffff00;
+	--context_colors_unused: #ffffff24;
+	--context_colors_soft_prompt: #262626;
+
+    /*Parameters*/
+	--scrollbar-size: 6px;
+	--palette_card_shadow: 0;
+	--wi_card_shadow: 0;
+	--light_shadow_value: 0;
+	--left_menu_strong_shadow: 0;
+	--right_menu_light_shadow: 0;
+	--right_menu_strong_shadow: 0;
+	--radius_inputbox: 5px;
+	--radius_unpinned_menu: 5px;
+	--radius_sequence: 5px;
+	--radius_settings_background: 5px;
+	--radius_button: 5px;
+	--radius_alternate_button: 5px;
+	--radius_item_popup: 5px;
+	--radius_wi_card: 5px;
+	--radius_palette_card: 5px;
+	--radius_settings_button: 5px;
+	--tabs_rounding: 5px;
+
+
+
+
+
+
+/*----------------VARIABLES--------------------*/
+	--flyout_menu_closed_width: 0px;
+	--setting_menu_closed_width_no_pins_width:  0px;
+	--story_options_size: 30%;
+	--story_pinned_areas_left:"menuicon options gamescreen lefticon"
+								 "menuicon theme theme lefticon"
+								 "menuicon inputrow inputrow lefticon";
+	--story_pinned_areas_right:"menuicon gamescreen options lefticon"
+								 "menuicon theme theme lefticon"
+								 "menuicon inputrow inputrow lefticon";
+	--story_pinned_area_widths_left: 30pxvar(--story_options_size) auto 30px;
+	--story_pinned_area_widths_right: 30pxautovar(--story_options_size) 30px;
+	--story_pinned_areas:var(--story_pinned_areas_left);
+	--story_pinned_area_widths:var(--story_pinned_area_widths_left);
+	--font_size_adjustment: 0px;
+	--game_screen_font_size_adjustment: 1;}
+
+/*----------------Custom CSS--------------------*/
+
+/* Boxes */
+
+#input_text, #themetext {
+    border-color: #999999 !important;
+}
+
+.fullwidth {
+	border-radius: 5px;
+    border-color: #cccccc !important;
+}
+
+.bias_phrase input {
+	border-radius: 5px;
+	border-color: #376590;
+	background-color:var(--dropdown_background);
+}
+
+.substitution-card input {
+	border-radius: 5px;
+	border-color: #376590;
+	background-color:var(--dropdown_background);
+}
+
+.sequence {
+	border-color: #959595 !important;
+}
+
+.sequence:hover {
+	filter: brightness(120%) !important;
+}
+
+/* Buttons */
+
+#adventure_mode {
+	border: 1px solid;
+	border-color: var(--enabled_button_border_color);
+}
+
+.action_button:focus {
+	box-shadow: none;
+	outline: none !important;
+	color: #ffffff !important;
+}
+
+.settings_button {
+    border: none !important;
+}
+
+.settings_button:hover {
+   filter: brightness(80%) !important;
+}
+
+.settings_button:focus {
+	outline: none !important;
+}
+
+.wi_add_button:hover {
+	filter: brightness(80%);
+}
+
+.settings_button[story_gamesaved="true"] {
+	filter: brightness(40%) !important;
+}
+
+#new-sub-card:hover {
+	filter: brightness(120%) !important;
+}
+
+#debug-dump:hover {
+	filter: brightness(80%) !important;
+}
+
+/* Context Menu */
+
+#context-menu {
+	border-color: #12324f !important;
+	background-color: #295071 !important;
+}
+
+#context-menu > hr {
+	border-color: #12324f !important;
+}
+
+.context-menu-item:hover {
+	background-color:#12324f !important;
+}
+
+/* Context Viewer */
+
+.popup-header {
+    background-color: #262626 !important;
+}
+
+#context-container {
+	background-color: #404040 !important;
+}
+
+/* Finder */
+
+.result-highlight {
+    background-color: #688f1f !important;
+}
+
+/* Flyout */
+
+.rightSideMenu {
+	background-color: #242424 !important;
+}
+
+/* Icons */
+
+.collapsable_header .material-icons-outlined {
+    transform: translateY(7px) translateX(4px);
+}
+
+.substitution-card > .card-left > .material-icons-outlined {
+	color: #999 !important;
+}
+
+.substitution-card > .card-left > .material-icons-outlined:hover {
+	color: #fff !important;
+}
+
+.true-t + label::before {
+	filter: brightness(85%);
+	color: #999 !important;
+}
+
+.true-t:checked + label::before {
+	filter: brightness(100%);
+	color: #fff !important;
+}
+
+/* Import */
+
+a {
+    color: #3bf723 !important;
+}
+
+.form-control {
+	border: none;
+	border-radius: 0px;
+	color: #ffffff !important;
+	transform: translateX(5px)!important;
+    background-color: #404040 !important;
+}
+
+/* Lines */
+
+.story_title, hr {
+    border-color: #12324f !important;
+}
+
+.setting_container {
+	border: 1px solid #12324f;
+}
+
+.setting_container_single, .setting_container_single_wide {
+	border: 1px solid #12324f;
+}
+
+/* Lists */
+
+.settings_select, .var_sync_system_theme_list {
+	border-radius: 5px !important;
+	border-color: #2e6594 !important;
+}
+
+/* Palette */
+
+#palette_area {
+    border: 1px solid #12324f;
+}
+
+/* Samplers Order */
+
+.setting_container_single:hover {
+	background-color: #262626 !important;
+}
+
+/* Popup */
+
+.popup .action_button {
+    border-radius: 5px;
+	border-color:#337ab7;
+}
+
+.popup_load_cancel_button {
+    border-radius: 5px;
+	border-color:#337ab7;
+}
+
+.popup .action_button:hover {
+	background-color: #337ab7 !important;
+}
+
+.popup_load_cancel_button:hover {
+	filter: brightness(80%);
+	color: #ffffff !important;
+	border-color: #337ab7 !important;
+    background-color: #337ab7 !important;
+}
+
+.popup .action_button:focus {
+	outline: none !important;
+	color: #ffffff;
+}
+
+.popup_load_cancel_button:focus {
+	outline: none !important;
+	box-shadow: none !important;
+	color: #ffffff !important;
+	border-color: #337ab7 !important;
+    background-color: #337ab7 !important;
+}
+
+.popup .popup_load_cancel {
+	background-color: #295071 !important;
+}
+
+#error_message.popup .btn-primary {
+    color: #ffffff !important;
+    border-color: #ffffff !important;
+    background-color: #337ab7 !important;
+}
+
+.oi[folder]:hover {
+	color: #ef2929;
+}
+
+.rename_icon:hover {
+	color: #fce94f !important;
+}
+
+/* Tabs */
+
+.tabrow span {
+	border: none !important;
+	box-shadow: inset 0px 0px 2px #20344e !important;
+}
+
+.tabrow span::before, .tabrow span::after {
+	display: none;
+	border: none !important;
+}
+
+.tabrow span:hover {
+	background: #98bcdb !important;
+}
+
+.tabrow span.selected {
+	color: #ffffff !important;
+	background: #98bcdb !important;
+}
+
+/* Text */
+
+.help_text {
+    opacity: 1.0 !important;
+}
+
+.rawtext {
+    font-family: helvetica !important;
+}
+
+.rawtext:focus {
+	outline: none !important;
+}
+
+/* Timer Bar */
+
+div#settings_footer.settings_footer {
+	color: #ffffff !important;
+	border-color: #12324f !important;
+	background-color: #295071 !important;
+}
+
+/* Tooltips */
+
+.tooltip-standard {
+	border: 1px solid #3379b7 !important;
+	border-radius: 5px;
+}
+
+/* World Info */
+
+.tag:hover {
+	filter: brightness(80%);
+}
+
+.world_info_tag_area {
+	border-color: #999999!important;
+    filter: brightness(100%) !important;
+	background-color: #404040 !important;
+}
+
+.world_info_text {
+    border: 1px solid #cccccc!important;
+	filter: brightness(100%) !important;
+	background-color: #404040 !important;
+}
+
+.world_info_title:focus {
+	outline: none !important;
+}
+
+.WI_Folder_Header .title:focus {
+	outline: none !important;
+}

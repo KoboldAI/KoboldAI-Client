@@ -1,0 +1,14 @@
+.within_max_length,
+#story_prompt[story_prompt_in_ai="true"] {
+    color: inherit;
+    font-weight: inherit;
+}
+
+.world_info_card.used_in_game {
+	border: 2px outset var(--wi_card_border_color);
+}
+
+.wi_match {
+	font-style: normal;
+	pointer-events: none;
+}
