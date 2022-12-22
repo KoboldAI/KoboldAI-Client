@@ -23,6 +23,7 @@ userscripts
 !userscripts/api_documentation.*
 softprompts
 models
+functional_models
 !models/models go here.txt
 Uninstall
 flask_session
