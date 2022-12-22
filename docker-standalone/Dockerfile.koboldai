@@ -1,0 +1,10 @@
+FROM ebolam/koboldai_base
+EXPOSE 5000/tcp
+ENV remote=true
+ENV quiet=true
+ENV override_delete=true
+ENV override_rename=true
+ENV update=true
+WORKDIR /opt/koboldai
+COPY . /opt/koboldai
+CMD ./docker-standalone/docker-helper_new.sh

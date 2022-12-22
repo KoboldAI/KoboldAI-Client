@@ -1,0 +1,204 @@
+/*
+	Name: Material You
+	Author: GuiAworld
+	Description: A theme that demonstrates the power of the Palette system. Based off of Google's Material You.
+*/
+
+:root {
+/*----------------Palette Theme--------------------*/
+	--primary_palette: #afc6ff;
+	--on_primary_palette: #002d6c;
+	--primary_container_palette: #004397;
+	--on_primary_container_palette: #d9e2ff;
+
+	--secondary_palette: #f7c5ee;
+	--on_secondary_palette: #5c0059;
+	--secondary_container_palette: #d663bd;
+	--on_secondary_container_palette: #4e0039;
+
+	--tertiary_palette: #a8d473;
+	--on_tertiary_palette: #1f3700;
+	--tertiary_container_palette: #2f4f00;
+	--on_tertiary_container_palette: #c3f18c; 
+
+	--background_palette: #1b1b1f;
+	--on_background_palette:#e3e2e6;
+	--layer1_palette: #212126;
+	--layer2_palette: #28282D;
+	--layer3_palette: #2F2F35;
+	--layer4_palette: #35353D;
+	--outline_palette: #8e9099;
+
+	--middle_palette: #232328;
+	--on_middle_palette: #86868e;
+	--surface_palette: #2f2f36;
+	--on_surface_palette: #e3e2e6;
+
+/*----------------Advanced Theme--------------------*/
+	/*General*/
+	--background: var(--background_palette);
+
+	--gamescreen_background: var(--layer2_palette);
+	--gamescreen_text: var(--on_background_palette);
+
+    --input_background: var(--layer3_palette);
+	--input_text: var(--on_background_palette);
+
+    --text: var(--on_background_palette);
+    --text_to_ai_color: var(--on_background_palette);
+    --text_edit: var(--on_background_palette);
+	--action_mode_input: #33E978;
+
+	--statusbar_color: #002d6ca1;
+	--statusbar_text_color: white;
+	--scrollbar-color: #9b9b9b80;
+
+	/*Buttons*/
+		/*General*/
+	--enabled_button_text: var(--on_primary_palette);
+    --enabled_button_background_color: var(--primary_palette);
+    --enabled_button_border_color: var(--on_primary_palette);
+
+	--disabled_button_text: #303030;
+    --disabled_button_background_color: #495762;
+    --disabled_button_border_color: #686c68;
+
+		/*Home Tab*/
+	--button_text: var(--on_primary_palette);
+	--button_background: var(--primary_palette);
+		
+		/*Alternate Button*/
+	--alternate_button_text: var(--on_primary_container_palette);
+	--alternate_button_background: var(--primary_container_palette);
+
+
+	/*Sequence, AKA Gens Per Action*/
+	--sequence_area_background: var(--layer1_palette);
+    --sequence_background: var(--primary_palette);
+	--sequence_text: var(--on_primary_palette);
+
+	/*Side Menus*/
+	--tab_color: var(--primary_container_palette);
+	--tab_text: var(--on_background_palette);
+
+	--flyout_background: var(--layer1_palette);
+	--flyout_background_pinned: var(--layer1_palette);
+	--flyout_text: var(--on_background_palette);
+
+	--setting_background: var(--surface_palette);
+    --setting_text: var(--on_surface_palette);
+	
+	--sample_order_select_color: var(--primary_palette);
+	--sample_order_select_color_text: var(--on_primary_palette);
+
+	--dropdown_text: var(--on_secondary_palette);
+	--dropdown_background: var(--secondary_palette);
+
+	--rangeslider_background_color: var(--on_primary_container_palette);
+	--rangeslider_color: var(--primary_container_palette);
+	--rangeslider_circle_color: var(--on_primary_palette);
+
+	--help_icon: var(--secondary_palette);
+    /*--tooltip_text: var(--on_secondary_palette);
+    --tooltip_background: var(--secondary_palette);*/
+	--setting_category_help_text_color: #E0E0E0;
+	
+	--setting_footer_border_color: grey;
+	--setting_footer_text_color: var(--on_surface_palette);
+	--setting_footer_background_color: var(--layer1_palette);
+
+	/*Palette Card*/
+	--palette_card_background: var(--primary_palette);
+	--palette_card_text: var(--on_primary_palette);
+	--palette_table_border: var(--on_primary_palette);
+
+	/*World Info*/
+	--wi_card_border_color: var(--on_primary_palette);
+    --wi_card_border_color_to_ai: var(--on_secondary_palette);
+
+    --wi_card_bg_color: var(--primary_palette);
+	--wi_card_text_color: var(--on_primary_palette);
+
+    --wi_card_tag_bg_color: var(--primary_palette);
+	--wi_card_tag_text_color:var(--on_primary_palette);
+	
+    --wi_tag_color: var(--primary_container_palette);
+	--wi_tag_text_color: var(--on_primary_container_palette);
+	
+	/*Popup*/
+	--popup_background_color: var(--layer4_palette);
+    --popup_title_bar_color: var(--primary_palette);
+	--popup_title_bar_color_text: var(--on_primary_palette);
+
+    --popup_item_color: var(--surface_palette);
+	--popup_item_color_text: var(--on_surface_palette);
+
+	--popup_hover_color: var(--secondary_palette);
+	--popup_hover_color_text: var(--on_secondary_palette);
+	--popup_selected_color: var(--secondary_container_palette);
+	--popup_selected_color_text: var(--on_secondary_container_palette);
+
+	--popup_button_color: var(--primary_container_palette);
+	--popup_button_color_text: var(--on_primary_container_palette);
+	--popup_cancel_button_color: var(--primary_palette);
+	--popup_cancel_button_color_text: var(--on_primary_palette);
+	
+	--error: #ffb4ab;
+	--error_text: #690005;
+	--error_title: #93000a;
+	--error_title_text: #ffdad6;
+	
+	/*Context Bar Colors*/
+	--context_colors_memory: #3572A5;
+	--context_colors_authors_notes: #f1e05a;
+	--context_colors_world_info: #563d7c;
+	--context_colors_prompt: #e34c26;
+	--context_colors_game_text: #c6538c;
+	--context_colors_submit: #ededed;
+	--context_colors_unused: white;
+	--context_colors_soft_prompt: #000080;
+
+    /*Parameters*/
+	--scrollbar-size: 6px;
+	--light_shadow_value: 0 0px 8px 0 rgba(0, 0, 0, 0.2), 0px 0px 20px 0 rgba(0, 0, 0, 0.19);
+	--palette_card_shadow: 0 0px 8px 0 rgb(0 0 0 / 20%), 0px 11px 20px 8px rgb(0 0 0 / 19%);
+	--wi_card_shadow: 0 0px 8px 0 rgb(0 0 0 / 20%), 0px 11px 20px 8px rgb(0 0 0 / 19%);
+	--left_menu_light_shadow: 0 0px 8px 0 rgba(0, 0, 0, 0.2), 0px 0px 20px 0 rgba(0, 0, 0, 0.19);
+	--left_menu_strong_shadow: 0 0px 8px 0 rgba(0, 0, 0, 0.2), 25px 0px 20px 0 rgba(0, 0, 0, 0.19);
+	--right_menu_light_shadow: 0 0px 8px 0 rgba(0, 0, 0, 0.2), 0px 0px 20px 0 rgba(0, 0, 0, 0.19);
+	--right_menu_strong_shadow: 0 0px 8px 0 rgba(0, 0, 0, 0.2), -25px 0px 20px 0 rgba(0, 0, 0, 0.19);
+	--popup_shadow: 0 0 35px 20px#1b1b1f;
+	--radius_inputbox: 10px;
+	--radius_unpinned_menu: 20px;
+	--radius_sequence: 10px;
+	--radius_settings_background: 5px;
+	--radius_button: 5px;
+	--radius_alternate_button: 5px;
+	--radius_item_popup: 2px;
+	--radius_wi_card: 5px;
+	--radius_palette_card: 5px;
+	--radius_settings_button: 5px;
+	--tabs_rounding: 6px;
+
+
+
+
+
+
+/*----------------VARIABLES--------------------*/
+	--flyout_menu_closed_width: 0px;
+	--setting_menu_closed_width_no_pins_width:  0px;
+	--story_options_size: 30%;
+	--story_pinned_areas_left: "menuicon options gamescreen lefticon"
+								 "menuicon theme theme lefticon"
+								 "menuicon inputrow inputrow lefticon";
+	--story_pinned_areas_right: "menuicon gamescreen options lefticon"
+								 "menuicon theme theme lefticon"
+								 "menuicon inputrow inputrow lefticon";
+	--story_pinned_area_widths_left: 30px var(--story_options_size) auto 30px;
+	--story_pinned_area_widths_right: 30px auto var(--story_options_size) 30px;
+	--story_pinned_areas: var(--story_pinned_areas_left);
+	--story_pinned_area_widths: var(--story_pinned_area_widths_left);
+	--font_size_adjustment: 0px;
+	--game_screen_font_size_adjustment: 1;
+}

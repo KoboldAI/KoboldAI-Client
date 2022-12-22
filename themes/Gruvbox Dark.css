@@ -1,0 +1,323 @@
+/*
+	Name: Gruvbox Dark
+	Author: one-some
+	Description: Port of the standard dark Gruvbox theme.
+*/
+
+:root {
+    --gruvbox-dark0-hard: #1d2021;
+    --gruvbox-dark0: #282828;
+    --gruvbox-dark0-soft: #32302f;
+    --gruvbox-dark1: #3c3836;
+    --gruvbox-dark2: #504945;
+    --gruvbox-dark3: #665c54;
+    --gruvbox-dark4: #7c6f64;
+    --gruvbox-gray-245: #928374;
+    --gruvbox-gray-244: #928374;
+    --gruvbox-light0-hard: #f9f5d7;
+    --gruvbox-light0: #fbf1c7;
+    --gruvbox-light0-soft: #f2e5bc;
+    --gruvbox-light1: #ebdbb2;
+    --gruvbox-light2: #d5c4a1;
+    --gruvbox-light3: #bdae93;
+    --gruvbox-light4: #a89984;
+    --gruvbox-bright-red: #fb4934;
+    --gruvbox-bright-green: #b8bb26;
+    --gruvbox-bright-yellow: #fabd2f;
+    --gruvbox-bright-blue: #83a598;
+    --gruvbox-bright-purple: #d3869b;
+    --gruvbox-bright-aqua: #8ec07c;
+    --gruvbox-bright-orange: #fe8019;
+    --gruvbox-neutral-red: #cc241d;
+    --gruvbox-neutral-green: #98971a;
+    --gruvbox-neutral-yellow: #d79921;
+    --gruvbox-neutral-blue: #458588;
+    --gruvbox-neutral-purple: #b16286;
+    --gruvbox-neutral-aqua: #689d6a;
+    --gruvbox-neutral-orange: #d65d0e;
+    --gruvbox-faded-red: #9d0006;
+    --gruvbox-faded-green: #79740e;
+    --gruvbox-faded-yellow: #b57614;
+    --gruvbox-faded-blue: #076678;
+    --gruvbox-faded-purple: #8f3f71;
+    --gruvbox-faded-aqua: #427b58;
+    --gruvbox-faded-orange: #af3a03;
+
+
+	--main_accent: var(--gruvbox-neutral-purple);
+
+	/* Palette */
+	--primary_palette: #000000;
+	--on_primary_palette: var(--gruvbox-light0);
+	--primary_containter_palette: #000000;
+	--on_primary_containter_palette: #000000;
+
+	--secondary_palette: #000000;
+	--on_secondary_palette: #000000;
+	--secondary_container_palette: #000000;
+	--on_secondary_container_palette: #000000;
+
+	--tertiary_palette: #000000;
+	--on_tertiary_palette: #000000;
+	--tertiary_container_palette: #000000;
+	--on_tertiary_container_palette: #000000; 
+
+	--error_palette: #000000;
+	--on_error_palette: #000000;
+	--error_container_palette: #000000;
+	--on_error_container_palette: #000000;
+
+	--background_palette: var(--gruvbox-dark0-soft);
+	--on_background_palette: var(--gruvbox-light0);
+	--layer1_palette: var(--gruvbox-dark1);
+	--layer2_palette: var(--gruvbox-dark2);
+	--layer3_palette: var(--gruvbox-dark3);
+	--layer4_palette: var(--gruvbox-dark4);
+	--outline_palette: #8e9099;
+
+	--middle_palette: #232328;
+	--on_middle_palette: #86868e;
+	--surface_palette: #2f2f36;
+	--on_surface_palette: #e3e2e6;
+
+	/* Advanced */
+	/* General */
+	--background: var(--gruvbox-dark0);
+	--gamescreen_background: var(--gruvbox-dark0-soft);
+    --input_background: var(--gruvbox-dark1);
+
+    --text: var(--gruvbox-light0);
+    --text_to_ai_color: var(--gruvbox-bright-blue);
+    --text_edit: var(--gruvbox-neutral-aqua);
+	--action_mode_input: #33E978;
+
+	--statusbar_color: #002d6ca1;
+	--statusbar_text_color: white;
+	--scrollbar-color: #3e536780;
+
+	/* Buttons */
+	--enabled_button_text: var(--gruvbox-light0);
+    --enabled_button_background_color: var(--gruvbox-dark1);
+    --enabled_button_border_color: transparent;
+	--disabled_button_text: var(--gruvbox-dark4);
+    --disabled_button_background_color: var(--gruvbox-dark1);
+    --disabled_button_border_color: transparent;
+
+	/* Sequence, AKA Gens Per Action */
+	--sequence_area_background: var(--gruvbox-dark1);
+    --sequence_background: var(--gruvbox-dark2);
+	--sequence_text: var(--gruvbox-light0);
+
+	/* Side Menus */
+	--tab_color: var(--gruvbox-dark2);
+
+	--flyout_background: var(--gruvbox-dark0-soft);
+	--flyout_background_pinned: var(--gruvbox-dark0-soft);
+
+	--setting_background: var(--gruvbox-dark1);
+    --setting_text: var(--gruvbox-light0);
+	
+	--button_text: var(--setting_text);
+	--button_background: var(--gruvbox-dark2);
+
+	--sample_order_select_color: var(--gruvbox-dark2);
+	--sample_order_select_color_text: var(--gruvbox-light2);
+
+	--dropdown_text: var(--gruvbox-light0);
+	--dropdown_background: var(--gruvbox-dark0-soft);
+
+	--rangeslider_background_color: var(--gruvbox-dark0-soft);
+	--rangeslider_color: var(--main_accent);
+	--rangeslider_circle_color: var(--gruvbox-light2);
+
+	--help_icon: var(--gruvbox-light0);
+	--help_icon_text: #282c2c;
+    --tooltip_text:var(--gruvbox-light0);
+    --tooltip_background:var(--secondary_palette);
+
+	/* World Info */
+	--wi_card_border_color: var(--gruvbox-dark3);
+    --wi_card_border_color_to_ai:var(--gruvbox-light0);
+
+    --wi_card_bg_color: var(--gruvbox-dark0);
+	--wi_card_text_color:var(--gruvbox-light0);
+
+    --wi_card_tag_bg_color: var(--gruvbox-dark0);
+	--wi_card_tag_text_color: var(--gruvbox-light0);
+	
+    --wi_tag_color: var(--gruvbox-neutral-blue);
+	--wi_tag_text_color:var(--gruvbox-light0);
+	--wi_folder_background: var(--gruvbox-dark0);
+	
+	/* Popup */
+	--popup_background_color: var(--gruvbox-dark0);
+    --popup_title_bar_color: var(--gruvbox-dark2);
+	--popup_title_bar_color_text: var(--gruvbox-light0);
+
+    --popup_item_color: var(--gruvbox-dark1);
+	--popup_item_color_text: var(--gruvbox-light0);
+
+	--popup_hover_color: var(--gruvbox-dark1);
+	--popup_hover_color_text: var(--gruvbox-light0);
+	--popup_selected_color: var(--gruvbox-dark3);
+	--popup_selected_color_text: var(--on_secondary_container_palette_palette);
+
+	--popup_button_color: var(--gruvbox-dark1);
+	--popup_button_color_text: var(--gruvbox-light0);
+	--popup_cancel_button_color: var(--gruvbox-dark1);
+	--popup_cancel_button_color_text: var(--gruvbox-light0);
+
+    /* Parameters */
+	--scrollbar-size: 6px;
+	--light_shadow_value: 0;
+	--left_menu_strong_shadow: 0;
+	--right_menu_light_shadow: 0;
+	--right_menu_strong_shadow: 0;
+
+	--radius_inputbox: 0px;
+	--radius_unpinned_menu: 0px;
+	--radius_sequence: 0px;
+	--radius_settings_background: 0px;
+	--radius_buttons: 0px;
+	--radius_item_popup: 0px;
+	--radius_wi_card: 0px;
+	--radius_settings_button: 5px;
+	--radius_settings_button: 0px;
+	--radius_alternate_button: 0px;
+	--radius_palette_card: 0px;
+	--tabs_rounding: 6px;
+
+	/* Variables */
+	--flyout_menu_closed_width: 0px;
+	--setting_menu_closed_width_no_pins_width:  0px;
+	--story_options_size: 30%;
+	--story_pinned_areas_left: "menuicon options gamescreen lefticon"
+								 "menuicon theme theme lefticon"
+								 "menuicon inputrow inputrow lefticon";
+	--story_pinned_areas_right: "menuicon gamescreen options lefticon"
+								 "menuicon theme theme lefticon"
+								 "menuicon inputrow inputrow lefticon";
+	--story_pinned_area_widths_left: 30px var(--story_options_size) auto 30px;
+	--story_pinned_area_widths_right: 30px auto var(--story_options_size) 30px;
+	--story_pinned_areas: var(--story_pinned_areas_left);
+	--story_pinned_area_widths: var(--story_pinned_area_widths_left);
+	--font_size_adjustment: 0px;
+	--game_screen_font_size_adjustment: 1;
+
+	/*Context Bar Colors*/
+	--context_colors_memory: var(--gruvbox-faded-blue);
+	--context_colors_authors_notes: var(--gruvbox-faded-yellow);
+	--context_colors_world_info: var(--gruvbox-faded-purple);
+	--context_colors_prompt: var(--gruvbox-faded-orange);
+	--context_colors_game_text: var(--gruvbox-neutral-purple);
+	--context_colors_submit: var(--gruvbox-light4);
+	--context_colors_unused: var(--gruvbox-light0);
+	--context_colors_soft_prompt: var(--gruvbox-neutral-aqua);
+}
+
+/* Overrides */
+input, textarea{
+	border: 1px solid var(--gruvbox-dark3);
+	border-color: var(--gruvbox-dark3) !important;
+}
+
+select {
+	border: 1px solid var(--gruvbox-dark2);
+	border-radius: 0px !important;
+	padding: 8px;
+}
+
+hr, #token-breakdown-container, .tabrow::before {
+	border-color: var(--gruvbox-light4) !important;
+}
+
+.setting_item > select {
+	background-color: var(--gruvbox-dark1);
+}
+
+#gamescreen {
+	color: var(--gruvbox-light0);
+	margin-bottom: 7px;
+}
+
+#input_text, #themetext {
+	border: none !important;
+}
+
+.settings_category_area .action_button {
+    --enabled_button_background_color: var(--gruvbox-dark0-soft);
+    --disabled_button_background_color: var(--gruvbox-dark0-soft);
+}
+
+.action_button {
+	border: none;
+}
+
+.action_button {
+	border-radius: 0px;
+	border: 1px solid var(--gruvbox-dark2);
+}
+
+.btn {
+	color: var(--gruvbox-light0);
+}
+
+.btn-success {
+	background-color: var(--gruvbox-neutral-aqua);
+	border-color: var(--gruvbox-neutral-aqua);
+}
+
+.settings_button {
+	border: 0px !important;
+}
+
+/* Firefox hacks, add this to upstream when done testing */
+input[type="range"]::-moz-range-thumb {
+    background-color: var(--rangeslider_circle_color);
+    border-radius: 50%;
+	border-color: transparent;
+    appearance: none;
+    width: 16px;
+    height: 16px;
+}
+
+/* Sequence stuff */
+.sequence {
+	border: 2px solid var(--gruvbox-dark3) !important;
+}
+
+.sequence_row {
+	/* TODO: Upstream */
+	grid-gap: 5px;
+	padding-right: 5px;
+}
+
+/* Tabs */
+.tabrow span {
+	border: none !important;
+	border-radius: 0px !important;
+	box-shadow: none !important;
+}
+
+.tabrow span.selected {
+	background-color: var(--gruvbox-light0) !important;
+}
+
+.tabrow span::before, .tabrow span::after {
+	display: none;
+	border: none !important;
+}
+
+.menubar1, .menubar2, .menubar3 {
+	background-color: var(--gruvbox-light4) !important;
+}
+
+#loadmodelcontainer, #popup {
+	border: 2px solid var(--gruvbox-dark3);
+	border-radius: 0px !important;
+}
+
+.popup_load_cancel_button {
+	border: none;
+	border-radius: 0px;
+}

@@ -66,6 +66,9 @@ def getdirpath(dir, title):
 #  Returns the path (as a string) to the given story by its name
 #==================================================================#
 def storypath(name):
+    if os.path.exists("stories/{}".format(name)) and os.path.isdir("stories/{}".format(name)):
+        if os.path.exists("stories/{}/story.json".format(name)):
+            return "stories/{}/story.json".format(name)
     return path.join("stories", name + ".json")
 
 #==================================================================#
@@ -86,7 +89,7 @@ def uspath(filename):
 def getstoryfiles():
     list = []
     for file in listdir("stories"):
-        if file.endswith(".json") and not file.endswith(".v2.json"):
+        if file.endswith(".json") and not file.endswith(".v2.json") and not os.path.isdir("stories/{}".format(file.replace(".json", ""))):
             ob = {}
             ob["name"] = file.replace(".json", "")
             f = open("stories/"+file, "r")
@@ -97,12 +100,44 @@ def getstoryfiles():
                 f.close()
                 continue
             f.close()
-            try:
-                ob["actions"] = len(js["actions"])
-            except TypeError:
-                print(f"Browser loading error: {file} has incorrect format.")
-                continue
+            if 'file_version' in js:
+                try:
+                    ob["actions"] = int(js["actions"]["action_count"])+1
+                except TypeError:
+                    print(f"Browser loading error: {file} has incorrect format.")
+                    continue
+            else:
+                try:
+                    ob["actions"] = len(js["actions"])
+                except TypeError:
+                    print(f"Browser loading error: {file} has incorrect format.")
+                    continue
             list.append(ob)
+        elif os.path.isdir("stories/{}".format(file)):
+            if os.path.exists("stories/{}/story.json".format(file)):
+                ob = {}
+                ob["name"] = file
+                f = open("stories/{}/story.json".format(file), "r")
+                try:
+                    js = json.load(f)
+                except:
+                    print(f"Browser loading error: {file} is malformed or not a JSON file.")
+                    f.close()
+                    continue
+                f.close()
+                if 'file_version' in js:
+                    try:
+                        ob["actions"] = int(js["actions"]["action_count"])+1
+                    except TypeError:
+                        print(f"Browser loading error: {file} has incorrect format.")
+                        continue
+                else:
+                    try:
+                        ob["actions"] = len(js["actions"])
+                    except TypeError:
+                        print(f"Browser loading error: {file} has incorrect format.")
+                        continue
+                list.append(ob)
     return list
 
 #==================================================================#
@@ -113,7 +148,7 @@ def checksp(filename: str, model_dimension: int) -> Tuple[Union[zipfile.ZipFile,
     if 'np' not in globals():
         import numpy as np
     try:
-        z = zipfile.ZipFile("softprompts/"+filename)
+        z = zipfile.ZipFile(filename)
         with z.open('tensor.npy') as f:
             # Read only the header of the npy file, for efficiency reasons
             version: Tuple[int, int] = np.lib.format.read_magic(f)
@@ -148,7 +183,7 @@ def getspfiles(model_dimension: int):
     for file in listdir("softprompts"):
         if not file.endswith(".zip"):
             continue
-        z, version, shape, fortran_order, dtype = checksp(file, model_dimension)
+        z, version, shape, fortran_order, dtype = checksp("./softprompts/"+file, model_dimension)
         if z == 1:
             logger.warning(f"Softprompt {file} is malformed or not a soft prompt ZIP file.")
             continue

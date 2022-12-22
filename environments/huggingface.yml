@@ -21,12 +21,22 @@ dependencies:
   - apispec-webframeworks
   - loguru
   - termcolor
+  - Pillow
+  - diffusers
   - psutil
   - pip:
     - flask-cloudflared
     - flask-ngrok
     - lupa==1.10
-    - transformers>=4.20.1
+    - transformers==4.24.0
     - huggingface_hub>=0.10.1
     - accelerate
     - git+https://github.com/VE-FORBRYDERNE/mkultra
+    - flask-session
+    - python-socketio[client]
+    - ansi2html
+    - flask_compress
+    - ijson
+    - bitsandbytes
+    - ftfy
+    - pydub

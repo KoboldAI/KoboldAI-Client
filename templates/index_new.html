@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<script>
+		// Error handler before all
+		var debug_info = {errors: []};
+
+		window.addEventListener('error', function(event) {
+			let fileName = event.filename.split("/").splice(-1)[0];
+			reportError(`Error at ${fileName}:${event.lineno}`, `${event.message}\n--\nPlease report this error to the developers.`);
+			debug_info.errors.push({msg: event.message, url: event.filename, line: event.lineno});
+		});
+	</script>
+	<!---<script type="module">import {encode, decode} from "./static/tokenizer.js";window.encode = encode;window.decode = decode;</script>--->
+	<link href="static/open-iconic/css/open-iconic.css" rel="stylesheet">
+	<link rel="stylesheet" href="static/bootstrap-toggle.min.css">
+	<link rel="stylesheet" href="static/bootstrap.min.css">
+	<script src="static/jquery-3.6.0.min.js"></script>
+	<script src="static/bootstrap-toggle.min.js"></script>
+	<script src="static/socket.io.min.js"></script>
+	<title>KoboldAI Client</title>
+	<meta charset="utf-8">
+	<link href="themes/Monochrome.css" rel="stylesheet" id="CSSTheme_A">
+	<link href="static/koboldai.css" rel="stylesheet">
+	<script defer src="static/koboldai.js"></script>
+	<script src="static/favicon.js"></script>
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+</head>
+<body>
+	<span class="hidden var_sync_system_on_colab" id="on_colab">false</span>
+	<!------------ Left Flyout Menu--------------------->
+	<div id="SideMenu" class="SideMenu pinned">
+		<!------------ Menu Pin --------------------->
+		<span id="menu_pin" class="oi menu_pin" onclick="toggle_settings_pin_flyout()" data-glyph="pin"></span>
+		{% include 'settings flyout.html' %}
+	</div>
+
+	<!------------ Left Menu Icon--------------------->
+	<div id="setting_menu_icon" class="menu_icon hidden changed" onclick="toggle_flyout(this)"> 
+		<div class="menubar1"></div>
+		<div class="menubar2"></div>
+		<div class="menubar3"></div>
+	</div>
+
+	<!------------ Main Screen--------------------->
+	<div id="main-grid" class="main-grid settings_pinned var_sync_alt_model_numseqs" onclick="close_menus();" option_length="0">
+		<!------------ Game Text Screen--------------------->
+		<div class="gamescreen" id="gamescreen" context-menu="gamescreen">
+			<div id="disconnect_message"><center><h1>Disconnected</h1></center></div>
+
+			<div id="welcome_container" class="welcome_container">
+				<div id="welcome_text" class="var_sync_model_welcome" draggable="False"></div>
+			</div>
+
+			<div class="gametext" id="Selected Text" contenteditable=false onblur="select_game_text(null);" onclick="select_game_text(null);" onkeyup="select_game_text(event);">
+				<span id="story_prompt" class="var_sync_story_prompt var_sync_alt_story_prompt_in_ai rawtext hidden" chunk="-1"></span></div><!--don't move the /div down or it'll cause odd spacing issues in the UI--->
+		</div>
+
+		<!------------ Sequences --------------------->
+		<div id="action_count" class="var_sync_actions_Action_Count hidden"></div>
+		<div id="Select Options" class="sequence_area"></div>
+
+		<!-- Story Review -->
+		<div id="story-review" class="hidden">
+			<img id="story-review-img">
+			<span id="story-review-author">Bob McBobhead</span>
+			<span id="story-review-content">Wow, this is a great story. And I mean that. It's positively stelar.</span>
+		</div>
+
+		<!------------ Theme Area--------------------->
+		<div class="themerow" id="themerow">
+			<div class="tabrow nomenu_icon">
+				<span class="prompt_menu selected" id="prompt_menu_random" onclick="this.classList.add('selected');
+															document.getElementById('prompt_menu_normal').classList.remove('selected');
+															document.getElementById('random_game_prompt').classList.add('hidden');
+															document.getElementById('input_text').classList.remove('hidden');">Prompt</span>
+				<span class="prompt_menu" id="prompt_menu_normal" onclick="this.classList.add('selected');
+															document.getElementById('prompt_menu_random').classList.remove('selected');
+															document.getElementById('random_game_prompt').classList.remove('hidden');
+															document.getElementById('input_text').classList.add('hidden');">Random Prompt</span>
+			</div>
+		</div>
+		<!------------ Input Area--------------------->
+		<div class="inputrow var_sync_alt_story_storymode" id="inputrow_container">
+			<div id="random_game_prompt" class="hidden">
+				<input type="text" autocomplete="off" id="themetext" placeholder="Theme for Random Story" oninput='if (this.value != "") {
+																													document.getElementById("input_text").value = "";}'/>
+				<span class="help_text" style="margin:0px;margin-top:5px;">The AI can create a prompt for you! Optionally type in one or more themes above, or let the AI do it's thing.</span>
+			</div>
+			<button class="var_sync_alt_story_storymode action_button" id="adventure_mode" onclick="toggle_adventure_mode(this);"><span style="font-weight: bold;">Mode: </span><span>Story</span></button>
+			<textarea autocomplete="off" row=5 id="input_text" placeholder="Enter Prompt Here (shift+enter for new line)" oninput='if (this.value != "") {
+																											document.getElementById("themetext").value = "";
+																										}'
+																										onkeyup="update_token_lengths()"></textarea>
+			<div class="statusbar_outer hidden var_sync_alt_system_aibusy" id="status_bar" onclick="socket.emit('abort','');">
+				<div class="statusbar_inner" style="width:0%" onclick="socket.emit('abort','');">
+					<div id="status_bar_percent">0%</div>
+					<div class="var_sync_system_status_message" style="width:90px;"></div>
+				</div>
+			</div><br>
+			<div class="statusbar_outer_horde var_sync_alt_system_aibusy var_sync_alt_model_horde_wait_time" id="status_bar_horde">
+				<div class="statusbar_inner_horde" style="width:100%">
+					<div>&nbsp;</div>
+					<div>Queue <span class="var_sync_model_horde_queue_position"></span> of <span class="var_sync_model_horde_queue_size"></span></div>
+					<div><span class="var_sync_model_horde_wait_time"></span> sec left</div>
+				</div>
+			</div><br>
+			<span class="tts_controls hidden var_sync_alt_story_gen_audio">
+					<button type="button" class="btn action_button" style="width: 30px; padding: 0px;" onclick='play_pause_tts()' aria-label="play"><span id="play_tts" class="material-icons-outlined" style="font-size: 1.4em;">play_arrow</span></button>
+					<button type="button" class="btn action_button" style="width: 30px; padding: 0px;" onclick='stop_tts()' aria-label="play"><span id="stop_tts" class="material-icons-outlined" style="font-size: 1.4em;">stop</span></button>
+			</span>
+			<button type="button" class="btn action_button submit var_sync_alt_system_aibusy" system_aibusy=False id="btnsubmit" onclick="storySubmit();">Submit</button>
+			<button type="button" class="btn action_button submited var_sync_alt_system_aibusy"  system_aibusy=False id="btnsent"><img id="thinking" src="static/thinking.gif" class="force_center" onclick="socket.emit('abort','');"></button>
+			<button type="button" class="btn action_button back" onclick="storyBack();" aria-label="undo"><span class="material-icons-outlined" style="font-size: 1.4em;">replay</span></button>
+			<button type="button" class="btn action_button redo" onclick="storyRedo();" aria-label="redo"><span class="material-icons-outlined" style="font-size: 1.4em;">arrow_forward</span></button>
+			<button type="button" class="btn action_button retry" onclick="storyRetry();" aria-label="retry"><span class="material-icons-outlined" style="font-size: 1.4em;">autorenew</span></button>
+		</div>
+	</div>
+	
+	<!------------ Right Menu Icon--------------------->
+	<div id="story_menu_icon" class="right_menu_icon" onclick="toggle_flyout_right(this)"> 
+		<div class="menubar1"></div>
+		<div class="menubar2"></div>
+		<div class="menubar3"></div>
+	</div>
+	
+	<!------------ Right Flyout Menu--------------------->
+	<div id="rightSideMenu" class="rightSideMenu">
+		<span id="story_menu_pin" class="oi story_menu_pin" onclick="toggle_story_pin_flyout()" data-glyph="pin"></span>
+		{% include 'story flyout.html' %}
+	</div>
+	
+	<!------------- Pop-Ups ------------------------------->
+	{% include 'popups.html' %}
+	
+	<!------------- Templates ------------------------------->
+	<div class="hidden">
+		{% include 'templates.html' %}
+	</div>
+	<iframe id="download_iframe" style="display:none;"></iframe>
+
+	<div id="file-upload-notice" class="hidden">
+		<span class="material-icons-outlined">upload_file</span>
+	</div>
+</body>
+</html>

@@ -12,7 +12,7 @@ var button_newgame;
 var button_rndgame;
 var button_save;
 var button_saveas;
-var button_savetofile;
+//var button_savetofile;
 var button_load;
 var button_import;
 var button_importwi;
@@ -79,6 +79,7 @@ var rs_close;
 var seqselmenu;
 var seqselcontents;
 var stream_preview;
+var stream_preview_text;
 var token_prob_container;
 
 var storyname = null;
@@ -2151,6 +2152,7 @@ function endStream() {
 	if (stream_preview) {
 		stream_preview.remove();
 		stream_preview = null;
+		stream_preview_text = null;
 	}
 }
 
@@ -2237,7 +2239,7 @@ $(document).ready(function(){
 	button_rndgame    = $('#btn_rndgame');
 	button_save       = $('#btn_save');
 	button_saveas     = $('#btn_saveas');
-	button_savetofile = $('#btn_savetofile');
+	//button_savetofile = $('#btn_savetofile');
 	button_download   = $('#btn_download');
 	button_downloadtxt= $('#btn_downloadtxt');
 	button_load       = $('#btn_load');
@@ -2318,7 +2320,9 @@ $(document).ready(function(){
 	token_prob_menu = $("#token_prob_menu");
 
 	// Connect to SocketIO server
-	socket = io.connect(window.document.origin, {transports: ['polling', 'websocket'], closeOnBeforeunload: false});
+	socket = io.connect(window.document.origin, {transports: ['polling', 'websocket'], closeOnBeforeunload: false, query:{"ui":  "1"}});
+	socket.on("message", function(data){show_message(data);});
+	//console.log(socket);
 	socket.on('load_popup', function(data){load_popup(data);});
 	socket.on('popup_items', function(data){popup_items(data);});
 	socket.on('popup_breadcrumbs', function(data){popup_breadcrumbs(data);});
@@ -2388,10 +2392,14 @@ $(document).ready(function(){
 			if (!stream_preview && streamingEnabled) {
 				stream_preview = document.createElement("span");
 				game_text.append(stream_preview);
+				stream_preview_text = "";
 			}
 
 			for (const token of msg.data) {
-				if (streamingEnabled) stream_preview.innerText += token.decoded;
+				if (streamingEnabled) {
+					stream_preview_text += token.decoded;
+					stream_preview.innerText = stream_preview_text;
+				}
 
 				if (probabilitiesEnabled) {
 					// Probability display
@@ -2455,6 +2463,7 @@ $(document).ready(function(){
 			all_modified_chunks = new Set();
 			modified_chunks = new Set();
 			empty_chunks = new Set();
+			console.log(msg.data);
 			game_text.html(msg.data);
 			if(game_text[0].lastChild !== null && game_text[0].lastChild.tagName === "CHUNK") {
 				game_text[0].lastChild.appendChild(document.createElement("br"));
@@ -2725,6 +2734,10 @@ $(document).ready(function(){
 			} else {
 				token_prob_menu.addClass("hidden");
 			}
+		} else if(msg.cmd == "updatealt_text_gen") {
+			$("#alttextgen").prop('checked', msg.data).change();
+		} else if(msg.cmd == "updatealt_multi_gen") {
+			$("#alt_multi_gen").prop('checked', msg.data).change();
 		} else if(msg.cmd == "allowtoggle") {
 			// Allow toggle change states to propagate
 			allowtoggle = msg.data;
@@ -2904,7 +2917,8 @@ $(document).ready(function(){
 			$("#setfulldeterminism").prop('checked', msg.data).change();
 		} else if(msg.cmd == "runs_remotely") {
 			remote = true;
-			hide([button_savetofile, button_import, button_importwi]);
+			//hide([button_savetofile, button_import, button_importwi]);
+			hide([button_import, button_importwi]);
 		} else if(msg.cmd == "debug_info") {
 			$("#debuginfo").val(msg.data);
 		} else if(msg.cmd == "set_debug") {
@@ -3019,8 +3033,9 @@ $(document).ready(function(){
 			$("#showmodelnamecontainer").addClass("hidden");
 			$(window).off('beforeunload');
 			location.reload();
-			//console.log("Closing window");
+			console.log("Closing window");
 		} else if(msg.cmd == 'model_load_status') {
+			console.log(msg.data);
 			$("#showmodelnamecontent").html("<div class=\"flex\"><div class=\"loadlistpadding\"></div><div class=\"loadlistitem\" style='align: left'>" + msg.data + "</div></div>");
 			$("#showmodelnamecontainer").removeClass("hidden");
 			//console.log(msg.data);
@@ -3186,9 +3201,9 @@ $(document).ready(function(){
 		socket.send({'cmd': 'memory', 'data': ''});
 	});
 	
-	button_savetofile.on("click", function(ev) {
-		socket.send({'cmd': 'savetofile', 'data': ''});
-	});
+	//button_savetofile.on("click", function(ev) {
+	//	socket.send({'cmd': 'savetofile', 'data': ''});
+	//});
 	
 	button_loadfrfile.on("click", function(ev) {
 		if(remote) {
@@ -3492,28 +3507,26 @@ $(document).ready(function(){
 
 	// Shortcuts
 	$(window).keydown(function (ev) {
-		// Only ctrl prefixed (for now)
-		if (!ev.ctrlKey) return;
-
-		let handled = true;
-		switch (ev.key) {
-			// Ctrl+Z - Back
-			case "z":
-				button_actback.click();
-				break;
-			// Ctrl+Y - Forward
-			case "y":
-				button_actfwd.click();
-				break;
-			// Ctrl+E - Retry
-			case "e":
-				button_actretry.click();
-				break;
-			default:
-				handled = false;
+		if (ev.altKey)
+			switch (ev.key) {
+				// Alt+Z - Back
+				case "z":
+					button_actback.click();
+					break;
+				// Alt+Y - Forward
+				case "y":
+					button_actfwd.click();
+					break;
+				// Alt+R - Retry
+				case "r":
+					button_actretry.click();
+					break;
+				default:
+					return;
+		} else {
+			return;
 		}
-
-		if (handled) ev.preventDefault();
+		ev.preventDefault();
 	});
 
 	$("#anotetemplate").on("input", function() {
@@ -3796,4 +3809,23 @@ function getSelectedOptions(element) {
 		output.push(item.value);
 	}
     return output;
+}
+
+
+function show_message(data) {
+	const message_box_data = document.getElementById('message-popup').querySelector("#popup_list_area");
+	const message_box_title = document.getElementById('message-popup').querySelector("#popup_title");
+	const message_box_ok = document.getElementById('message-popup').querySelector("#ok");
+	//clear out the error box
+	while (message_box_data.firstChild) {
+		message_box_data.removeChild(message_box_data.firstChild);
+	}
+	div = document.createElement('div');
+	div.innerHTML = data['message'];
+	div.classList.add('console_text');
+	message_box_data.append(div);
+	message_box_title.innerText = data['title'];
+	message_box_ok.setAttribute("message_id", data['id'])
+	
+	document.getElementById('message-popup').classList.remove('hidden');
 }

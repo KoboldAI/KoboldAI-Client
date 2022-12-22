@@ -61,7 +61,9 @@ var favicon = {
 		this.run = false;
 		this.change(fav_icon);
 		if (typeof submit_start !== 'undefined') {
-			$("#runtime")[0].innerHTML = `Execution time: ${Math.round((Date.now() - submit_start)/1000)} sec`;
+			if (document.getElementById("runtime")) {
+				$("#runtime")[0].innerHTML = `Execution time: ${Math.round((Date.now() - submit_start)/1000)} sec`;
+			}
 			delete submit_start;
 		}
 	},

@@ -52,7 +52,7 @@
 									<div class="dropdown-menu">
 										<a class="dropdown-item" href="#" id="btn_save">Save</a>
 										<a class="dropdown-item" href="#" id="btn_saveas">Save As</a>
-										<a class="dropdown-item" href="#" id="btn_savetofile">Save To File...</a>
+										<!--<a class="dropdown-item" href="#" id="btn_savetofile">Save To File...</a>-->
 										<a class="dropdown-item always-available" href="#" id="btn_download">Download Story as JSON</a>
 										<a class="dropdown-item" href="#" id="btn_downloadtxt">Download Story as Plaintext</a>
 									</div>
@@ -94,6 +94,7 @@
 				<div id="connectstatusdiv" class="flex-row-container">
 					<span id="connectstatus" class="color_orange flex-row">Waiting for connection...</span>
 					<div class="layer-container status-container flex-push-left" style="color: #FFFFFF;" id="runtime"></div>
+					<span><button class="btn btn-primary" onclick="window.location='/new_ui'">Try New UI</button></span>
 					<div class="layer-container status-container flex-push-right">
 						<span class="oi oi-puzzle-piece statusicon layer-bottom" aria-hidden="true">
 							<div class="statustext statustext-wide">
@@ -495,5 +496,22 @@
 			</div>
 		</div>
 	</div>
+	
+	<!---------------- message screen ---------------------->
+	<div id="message-popup" class="popupcontainer hidden">
+		<div class="new_popup">
+			<div>
+				<div class="title" id="popup_title">
+					Popup Title
+				</div>
+			</div>
+			<div id="popup_list_area" class="popup_list_area" style="overflow-x: scroll;"></div>
+			<div class="popup_load_cancel" id="popup_load_cancel">
+					<button id="ok" type="button" class="btn btn-primary popup_load_cancel_button" onclick="document.getElementById('message-popup').classList.add('hidden');socket.emit('check_messages', this.getAttribute('message_id'));">Ok</button>
+				</div>
+			</div>
+		</div>
+	</div>
+	
 </body>
 </html>

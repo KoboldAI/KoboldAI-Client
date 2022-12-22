@@ -1,0 +1,2 @@
+Place the models extracted in their own subfolder.
+currently only for stable diffusion and summarization models

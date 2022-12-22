@@ -1,0 +1,43 @@
+{% for item in settings %}
+{% if item["menu_path"] == menu and item['sub_path'] == sub_path %}
+{% if 'extra_classes' in item %}
+<div id="{{ item['name'] }}_card" class="setting_container {{ item['extra_classes'] }}" ui_level="{{ item['ui_level'] }}">
+{% else %}
+<div id="{{ item['name'] }}_card" class="setting_container" ui_level="{{ item['ui_level'] }}">
+{% endif %}
+	<!---Top Row---->
+	<span class="setting_label">
+		<span>{{ item['label'] }}:&nbsp;</span><span class="helpicon material-icons-outlined" tooltip="{{ item['tooltip'] }}">help_icon</span>
+	</span>
+	{% if (item['unit'] != 'bool') and (item['unit'] != 'text') and (item['uitype'] != 'dropdown') %}
+		<input autocomplete="off" class="setting_value var_sync_{{ item['classname'] }}_{{ item['name'] }}" id="{{ item['classname'] }}_{{ item['name'] }}_cur"
+			   value="{{ item['default'] }}" item_id="{{ item['classname'] }}_{{ item['name'] }}" 
+			   {% if item['unit'] == 'float' %} inputmode="decimal"{% elif item['unit'] == 'float' %} inputmode="numeric"{% endif %}
+			   onchange="document.getElementById(this.getAttribute('item_id')).value = this.value; socket.emit('var_change', {'ID': this.id.replace('_cur', ''), 'value': this.value});">
+	{% endif %}
+	<!---Bottom Row---->
+	<span class="setting_item">
+		{% if item["uitype"] == "slider" %}
+			<input type="range" min="{{ item['min'] }}" max="{{ item['max'] }}" step="{{ item['step'] }}" 
+				   value="{{ item['default'] }}" id="{{ item['classname'] }}_{{ item['name'] }}" class="setting_item_input var_sync_{{ item['classname'] }}_{{ item['name'] }}"
+				   oninput="document.getElementById(this.id+'_cur').value = this.value;"
+				   onclick="sync_to_server(this);">
+	    {% elif item["uitype"] == "toggle" %}
+			<input type=checkbox id="{{ item['classname'] }}_{{ item['name'] }}" class="setting_item_input var_sync_{{ item['classname'] }}_{{ item['name'] }}"
+			       data-size="mini" data-onstyle="success" data-toggle="toggle" onchange='sync_to_server(this);'>
+		{% elif item['uitype'] == "dropdown" %}
+			<select id="{{ item['classname'] }}_{{ item['name'] }}" class="settings_select var_sync_{{ item['classname'] }}_{{ item['name'] }}" onchange='sync_to_server(this);'>
+				{% for option in item['children'] %}
+					<option value="{{ option['value'] }}">{{ option["text"] }}</option>
+				{% endfor %}
+			</select>
+		{% elif item['uitype'] == "text" %}
+			<input id="{{ item['classname'] }}_{{ item['name'] }}" class="settings_select var_sync_{{ item['classname'] }}_{{ item['name'] }}" onchange='sync_to_server(this);' value='{{ item['default'] }}'>
+		{% endif %}
+	</span>
+	<!---Slider Labels--->
+	<span class="setting_minlabel"><span style="position: relative;">{% if item["uitype"] == "slider" %}{{ item['min'] }}{% endif %}</span></span>
+	<span class="setting_maxlabel"><span style="position: relative;">{% if item["uitype"] == "slider" %}{{ item['max'] }}{% endif %}</span></span>
+</div>
+{% endif %}
+{% endfor %}

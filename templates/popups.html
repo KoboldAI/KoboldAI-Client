@@ -1,0 +1,327 @@
+<div id="popup-container" class="hidden">
+	<!------------------File Browser--------------->
+	<div id="file-browser" class="popup-window popup">
+		<div class="title" id="popup_title">
+			Popup Title
+		</div>
+		<div id="popup_breadcrumbs"></div>
+		<div id="popup_column_titles"></div>
+		<div class="popup_list_area" id="popup_list"></div>
+		<div class="popup_load_cancel hidden" id="popup_upload">
+			<input type=file id="popup_upload_file">
+		</div>
+		<div style="display:flex;justify-content: space-between;">
+			<span>Drag file(s) above or click here to Upload File<input id="popup_upload_input" type=file onchange="upload_file(this)"></span>
+			<!---<span>
+				Upload file without saving to google: 
+				<input type=checkbox id="upload_no_save" class="setting_item_input"
+					data-size="mini" data-onstyle="success" data-toggle="toggle">
+			</span>--->
+			<span>
+				<button class="settings_button" id="upload_without_save_button" onclick="document.getElementById('upload_without_save').click()">
+					<span class="material-icons-outlined cursor" tooltip="Load from Local">browser_updated</span>
+					<span class="button_label">Load from Local</span>
+				</button>
+				<input class="hidden" type=file  id="upload_without_save" onchange="upload_file_without_save(this)">
+				<button id="import_story_button" class="settings_button hidden" onclick="openClubImport();">
+					<span class="material-icons-outlined cursor" tooltip="Import Story">cloud_download</span>
+					<span class="button_label">Import Story</span>
+				</button>
+			</span>
+		</div>
+		<div class="popup_load_cancel" id="popup_load_cancel">
+			<button class="btn popup_load_cancel_button action_button" id="popup_accept" disabled>Load</button>
+			<button class="btn popup_load_cancel_button" id="popup_cancel" onclick='closePopups();'>Cancel</button>
+		</div>
+	</div>
+
+	<!---------------- Model Load Screen ---------------------->
+	<div id="load-model" class="popup-window popup">
+		<div class="title">
+			Select A Model To Load
+		</div>
+		<div id="loadmodellistbreadcrumbs">
+			
+		</div>
+		<div id="loadmodellistcontent" class="popup_list_area"></div>
+		<div class="popup_load_cancel">
+			<div>
+				<input class="hidden fullwidth" type="text" placeholder="key" id="modelkey" onchange="socket.emit('OAI_Key_Update', {'model': document.getElementById('btn_loadmodelaccept').getAttribute('selected_model'), 'key': this.value});">
+				<input class="hidden fullwidth" type="text" placeholder="Enter the URL of the server (For example a trycloudflare link)" id="modelurl" onchange="check_enable_model_load()">
+				<input class="hidden fullwidth" type="text" placeholder="Model Path or Hugging Face Name" id="custommodelname" menu="" onblur="socket.send({'cmd': 'selectmodel', 'data': $(this).attr('menu'), 'path_modelname': $('#custommodelname')[0].value});">
+				<select class="hidden fullwidth settings_select" id="oaimodel"><option value="">Select OAI Model</option></select>
+			</div>
+			<div class="hidden" id=modellayers>
+				<div class="justifyleft">
+					GPU/Disk Layers<span class="material-icons-outlined helpicon" tooltip="Number of layers to assign to GPUs and to disk cache. Remaining layers will be put into CPU RAM.">help_icon</span>
+				</div>
+				<div class="justifyright"><span id="gpu_layers_current">0</span>/<span id="gpu_layers_max">0</span></div>
+				<div id=model_layer_bars style="color: white"></div>
+				<input type=hidden id='gpu_count' value=0/>
+			</div>
+			<div class="box flex-push-right hidden" id=use_gpu_div>
+				<input type="checkbox" data-toggle="toggle" data-onstyle="success" id="use_gpu" checked>
+				<div class="box-label">Use GPU</div>
+			</div>
+			<div class="box flex-push-right hidden" id=use_8_bit_div>
+				<input type="checkbox" data-toggle="toggle" data-onstyle="success" id="use_8_bit" checked>
+				<div class="box-label">Use 8 bit mode</div>
+			</div>
+			<button type="button" class="btn popup_load_cancel_button action_button disabled" onclick="load_model()" id="btn_loadmodelaccept" disabled>Load</button>
+			<button type="button" class="btn popup_load_cancel_button" onclick='closePopups();' id="btn_loadmodelclose">Cancel</button>
+		</div>
+	</div>
+
+	<!---------------- Story overwrite screen ---------------------->
+	<div id="save-confirm" class="popup-window popup">
+		<div class="title">
+			<div class="popuptitletext">Overwrite</div>
+		</div>
+		<div id="popup_list_area" class="popup_list_area">
+			The story name you have entered already exists. Would you like to overwrite?
+		</div>
+		<div class="popup_load_cancel">
+			<button type="button" class="btn btn-primary popup_load_cancel_button" onclick='socket.emit("save_story", "overwrite");closePopups();'>Overwrite</button>
+			<button type="button" class="btn btn-primary popup_load_cancel_button" onclick="closePopups();">Cancel</button>
+		</div>
+	</div>
+	<!---------------- Private Mode Unlock screen ---------------------->
+	<div id="privacy_mode" class="popup-window popup">
+		<div class="title">
+			<div class="popuptitletext">Locked</div>
+		</div>
+		<div id="popup_list_area" class="popup_list_area">
+			This story is in private mode. Please enter password to unlock<br/>
+			<input type="password" id="privacy_password"/>
+		</div>
+		<div class="popup_load_cancel">
+			<button type="button" class="btn btn-primary popup_load_cancel_button" onclick='socket.emit("privacy_mode", {"enabled": false, "password": document.getElementById("privacy_password").value});'>Unlock</button>
+		</div>
+	</div>
+	
+
+	<!---------------- Save Preset screen ---------------------->
+	<div id="save-preset" class="popup-window popup">
+		<div class="title">
+			<div class="popuptitletext">Save Preset</div>
+		</div>
+		<div id="popup_list_area" class="popup_list_area">
+			<table>
+				<tr>
+					<td>
+						Name: 
+					</td>
+					<td>
+						<input type="text" id="new_preset_name"/>
+					</td>
+				</tr>
+				<tr>
+					<td>
+						Description:
+					</td>
+					<td>
+						<input type="text" id="new_preset_description"/>
+					</td>
+				</tr>
+			</table>
+		</div>
+		<div class="popup_load_cancel">
+			<button type="button" class="btn btn-primary popup_load_cancel_button" onclick='save_preset()'>Save</button>
+			<button type="button" class="btn btn-primary popup_load_cancel_button" onclick="closePopups();">Cancel</button>
+		</div>
+	</div>
+
+	<!---------------- Import aidg.club Prompt ---------------------->
+	<div id="aidg-import-popup" class="popup-window popup">
+		<div class="title">
+			<div class="popuptitletext">Enter the Prompt Number</div>
+		</div>
+		<div class="popup_list_area">
+			<br/>
+			<div style="text-align: center;"><a href="https://aetherroom.club/" target="_blank" rel="noopener noreferrer">https://aetherroom.club/</a></div>
+			<br/>
+			<input autocomplete="off" class="form-control focus-on-me" type="text" placeholder="Prompt ID or URL" id="aidgpromptnum">
+		</div>
+		<div class="popup_load_cancel">
+			<button type="button" class="btn btn-primary popup_load_cancel_button" onclick="attemptClubLoad();">Accept</button>
+			<button type="button" class="btn btn-primary popup_load_cancel_button" onclick="closePopups();">Cancel</button>
+		</div>
+	</div>
+
+	<!---------------- error screen ---------------------->
+	<div id="error-popup" class="popup-window popup">
+		<div class="title">
+			<div class="popuptitletext">Error</div>
+		</div>
+		<div id="popup_list_area" class="popup_list_area" style="overflow-x: scroll;">
+			
+		</div>
+		<div class="popup_load_cancel">
+			<button type="button" class="btn btn-primary popup_load_cancel_button" onclick="closePopups();">Ok</button>
+		</div>
+	</div>
+	
+	<!---------------- message screen ---------------------->
+	<div id="message-popup" class="popup-window popup">
+		<div class="title">
+			<div class="popuptitletext" id="popup_title"></div>
+		</div>
+		<div id="popup_list_area" class="popup_list_area" style="overflow-x: scroll;">
+			
+		</div>
+		<div class="popup_load_cancel">
+			<button id="ok" type="button" class="btn btn-primary popup_load_cancel_button" onclick="closePopups();socket.emit('check_messages', this.getAttribute('message_id'));">Ok</button>
+		</div>
+	</div>
+	
+	message-popup
+
+	<!---------------- log screen ---------------------->
+	<div id="log-popup" class="popup-window popup">
+		<div class="title">
+			<div class="popuptitletext">Log</div>
+		</div>
+		<div id="popup_list_area" class="popup_list_area" style="overflow-x: scroll;">
+			
+		</div>
+		<div class="popup_load_cancel">
+			<span class="cursor debug-dump-log" onclick="openPopup('debug-file-prompt');">Download debug dump</span>
+			<button type="button" class="btn btn-primary popup_load_cancel_button" onclick="closePopups();">Ok</button>
+		</div>
+	</div>
+	<!---------------- Advanced Theme Editor ---------------------->
+	<div id="advanced_theme_editor" class="popup-window popup">
+		<div class="title">
+			<div class="popuptitletext">Advanced Theme Editor</div>
+		</div>
+		<div id="popup_list_area" class="popup_list_area">
+			<table border=1 id="advanced_theme_editor_table"></table>
+		</div>
+		<div class="popup_load_cancel">
+			<button type="button" class="btn btn-primary popup_load_cancel_button" onclick="closePopups();">Ok</button>
+		</div>
+	</div>
+
+	<!---------------- Context Viewer ---------------------->
+	<div id="context-viewer" class="popup-window">
+		<div id="context-viewer-header" class="popup-header">
+			<h3 class="noselect">Context Viewer</h3>
+			<div id="context-viewer-header-right">
+				<div>
+					<span class="noselect">Key:</span>
+					<div>
+						<span class="noselect context-block-example context-sp">Soft Prompt</span>
+						<span class="noselect context-block-example context-genre">Genre</span>
+						<span class="noselect context-block-example context-memory">Memory</span>
+						<span class="noselect context-block-example context-wi">World Info</span>
+						<span class="noselect context-block-example context-an">Author's Note</span>
+						<span class="noselect context-block-example context-prompt">Prompt</span>
+						<span class="noselect context-block-example context-action">Action</span>
+						<span class="noselect context-block-example context-submit">Submit</span>
+					</div>
+				</div>
+				<span id="context-viewer-close" class="material-icons-outlined" onclick='closePopups();'>close</span>
+			</div>
+		</div>
+		<span class="help_text">
+			Context is the text the AI is sent when you ask it to generate text.
+			As the context is limited in size, you can use the Context Viewer to check if things you want the AI to know are in the context.
+		</span>
+		<div id="context-container"></div>
+	</div>
+
+	<!---------------- Finder ---------------------->
+	<div id="finder" class="popup-window">
+		<div id="finder-bar">
+			<input id="finder-input" placeholder="Search for something..."></input>
+			<span id="finder-icon" class="material-icons-outlined">search</span>
+		</div>
+	</div>
+	<div id="finder-wi-carousel" class="hidden"></div>
+	<div id="finder-scratchpad" class="hidden">
+		<span id="finder-scratchpad-info" class="noselect">AI Output:</span>
+		<span id="finder-scratchpad-prompt">
+			A man with 20 fingers is
+		</span>
+		<span id="finder-scratchpad-response">
+			a threat to society
+		</span>
+	</div>
+
+	<!---------------- Debug File ---------------------->
+	<div id="debug-file-prompt" class="popup-window">
+		<div id="redacted" onclick="downloadDebugFile(true);">
+			<span class="focus">Download debug file</span>
+			<span class="help_text">Sensitive information, including any story data, is redacted.</span>
+		</div>
+		<div id="unredacted" onclick="downloadDebugFile(false);">
+			<span class="focus">Download unredacted debug file</span>
+			<span class="help_text">
+				Extremely sensitive information, such as API keys or information about other stories, is still redacted.
+				<br><b>This file will contain your story.</b>
+			</span>
+		</div>
+	</div>
+
+	<!---------------- Prompt Config ------------------->
+	<div id="prompt-config" class="popup-window">
+		<div id="prompt-config-header">
+			<h3 class="noselect">Prompt Configuration</h3>
+			<span class="help_text">This prompt has placeholders you need to fill in before starting.</span>
+		</div>
+
+		<!-- Order, default, title, description -->
+		<div id="prompt-config-placeholders"></div>
+		<div id="prompt-config-done" onclick="sendPromptConfiguration();">Done</div>
+	</div>
+
+	<!---------------- Shortcuts ------------------->
+	<div id="shortcuts-popup" class="popup-window">
+		<div class="popup-header">
+			<h2>Shortcuts</h2>
+			<span class="popup-close material-icons-outlined" onclick='closePopups();'>close</span>
+		</div>
+		<div id="shortcut-container"></div>
+	</div>
+	
+	<!---------------- Softprompt Trainer ------------------->
+	<div id="sp-trainer-popup" class="popup-window popup">
+		<div class="title">
+			<div class="popuptitletext">Softprompt Trainer</div>
+		</div>
+		<div id="popup_list_area" class="popup_list_area" style="overflow-x: scroll;">
+			<form action="sp_tunning" method="post">
+				Soft Prompt Title: <input type=text id="sp_title"/><br/>
+				Initial Prompt: <input type=text id="sp_prompt"/><br/>
+				Dataset Location: <input type=text id="sp_dataset"/><br/>
+				Author: <input type=text id="sp_author"/><br/>
+				Description: <input type=text id="sp_description"/><br/>
+			</form>
+		</div>
+		<div class="popup_load_cancel">
+			<button type="button" class="btn btn-primary popup_load_cancel_button" onclick="create_new_softprompt();">Ok</button>
+			<button type="button" class="btn btn-primary popup_load_cancel_button" onclick="closePopups();">Cancel</button>
+		</div>
+	</div>
+
+	<!-- WI deletion confirmation -->
+	<div id="confirm-delete-dialog">
+		<span id="confirm-text">You're about to delete World Info folder <b>evil and malice</b> and the <b>infinite</b> entries inside it. Are you sure?</span>
+
+		<div id="confirm-buttons">
+			<div id="confirm-deny-button" class="confirm-button">
+				<span class="material-icons-outlined">close</span>
+				<span class="text">I've changed my mind!</span>
+			</div>
+			<div id="confirm-confirm-button" class="confirm-button">
+				<span class="material-icons-outlined">delete</span>
+				<span class="text">Go for it.</span>
+			</div>
+		</div>
+	</div>
+
+	<!-- Big Image -->
+	<img id="big-image"></img>
+</div>
+
+<div id="notification-container"></div>

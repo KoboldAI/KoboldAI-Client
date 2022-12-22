@@ -30,6 +30,7 @@ SOFTWARE.
 import utils
 
 import multiprocessing
+import threading
 from typing import Any, Callable, Dict, List, NamedTuple, Optional, Tuple, TypeVar
 import progressbar
 import time
@@ -51,7 +52,10 @@ from tokenizers import Tokenizer
 from mesh_transformer.checkpoint import read_ckpt_lowmem
 from mesh_transformer.transformer_shard import CausalTransformer, CausalTransformerShard, PlaceholderTensor
 from mesh_transformer.util import to_bf16
+import time
 
+
+socketio = None
 
 params: Dict[str, Any] = {}
 
@@ -111,13 +115,32 @@ def compiling_callback() -> None:
     pass
 
 
-def show_spinner():
+def show_spinner(queue):
     bar = progressbar.ProgressBar(max_value=progressbar.UnknownLength, widgets=[progressbar.Timer(), '  ', progressbar.BouncingBar(left='[', right=']', marker='█')])
     i = 0
     while True:
+        if i % 2 == 0:
+            queue.put(["from_server", {'cmd': 'model_load_status', 'data': "Connecting to TPU..." }, {"broadcast":True, "room":"UI_1"}])
+        else:
+            queue.put(["from_server", {'cmd': 'model_load_status', 'data': "Connecting to TPU...." }, {"broadcast":True, "room":"UI_1"}])
         bar.update(i)
         time.sleep(0.1)
         i += 1
+
+class Send_to_socketio(object):
+    def write(self, bar):
+        bar = bar.replace("\r", "").replace("\n", "").replace(chr(0), "")
+        if bar != "" and [ord(num) for num in bar] != [27, 91, 65]: #No idea why we're getting the 27, 1, 65 character set, just killing to so we can move on
+            #logger.info(bar)
+            print('\r' + bar, end='')
+            time.sleep(0.01)
+            try:
+                socketio.emit('from_server', {'cmd': 'model_load_status', 'data': bar.replace(" ", "&nbsp;")}, broadcast=True, room="UI_1")
+            except:
+                pass
+        
+    def flush(self):
+        pass
 
 
 __F = TypeVar("__F", bound=Callable)
@@ -578,7 +601,7 @@ class PenalizingCausalTransformer(CausalTransformer):
             compiling_callback()
             numseqs = numseqs_aux.shape[0]
             # These are the tokens that we don't want the AI to ever write
-            badwords = jnp.array(vars.badwordsids).squeeze()
+            badwords = jnp.array(koboldai_vars.badwordsids).squeeze()
             @hk.transform
             def generate_sample(context, ctx_length):
                 # Give the initial context to the transformer
@@ -990,7 +1013,13 @@ def read_neox_checkpoint(state, path, config, checkpoint_shards=2):
     }
 
     tqdm_length = len(static_mapping) + config["layers"]*len(layer_mapping)
-    bar = tqdm(total=tqdm_length, desc="Loading from NeoX checkpoint")
+    if socketio is None:
+        bar = tqdm(total=tqdm_length, desc="Loading from NeoX checkpoint")
+    else:
+        bar = tqdm(total=tqdm_length, desc="Loading from NeoX checkpoint", file=Send_to_socketio())
+    koboldai_vars.status_message = "Loading TPU"
+    koboldai_vars.total_layers = tqdm_length
+    koboldai_vars.loaded_layers = 0
 
     for checkpoint_layer in range(config["layers"] + 5):
         if checkpoint_layer in (1, config["layers"] + 2):
@@ -1041,6 +1070,7 @@ def read_neox_checkpoint(state, path, config, checkpoint_shards=2):
                 np.zeros(config["cores_per_replica"]),
             )
             bar.update(1)
+            koboldai_vars.loaded_layers+=1
     for mk, mv in state["params"].items():
         for pk, pv in mv.items():
             if isinstance(pv, PlaceholderTensor):
@@ -1048,8 +1078,9 @@ def read_neox_checkpoint(state, path, config, checkpoint_shards=2):
                 print("\n\nERROR:  " + error, file=sys.stderr)
                 raise RuntimeError(error)
 
+    koboldai_vars.status_message = ""
 
-def load_model(path: str, driver_version="tpu_driver0.1_dev20210607", hf_checkpoint=False, **kwargs) -> None:
+def load_model(path: str, driver_version="tpu_driver0.1_dev20210607", hf_checkpoint=False, socketio_queue=None, initial_load=False, logger=None, **kwargs) -> None:
     global thread_resources_env, seq, tokenizer, network, params, pad_token_id
 
     if "pad_token_id" in kwargs:
@@ -1057,8 +1088,8 @@ def load_model(path: str, driver_version="tpu_driver0.1_dev20210607", hf_checkpo
     elif "eos_token_id" in kwargs:
         pad_token_id = kwargs["eos_token_id"]
 
-    if not hasattr(vars, "sampler_order") or not vars.sampler_order:
-        vars.sampler_order = utils.default_sampler_order.copy()
+    if not hasattr(koboldai_vars, "sampler_order") or not koboldai_vars.sampler_order:
+        koboldai_vars.sampler_order = utils.default_sampler_order.copy()
 
     default_params = {
         "compat": "j",
@@ -1077,7 +1108,7 @@ def load_model(path: str, driver_version="tpu_driver0.1_dev20210607", hf_checkpo
     }
     params = kwargs
 
-    if vars.model == "TPUMeshTransformerGPTNeoX":
+    if koboldai_vars.model == "TPUMeshTransformerGPTNeoX":
         default_params = {
             "compat": "neox",
             "layers": 44,
@@ -1096,9 +1127,9 @@ def load_model(path: str, driver_version="tpu_driver0.1_dev20210607", hf_checkpo
 
     # Try to convert HF config.json to MTJ config
     if hf_checkpoint:
-        spec_path = os.path.join("maps", vars.model_type + ".json")
+        spec_path = os.path.join("maps", koboldai_vars.model_type + ".json")
         if not os.path.isfile(spec_path):
-            raise NotImplementedError(f"Unsupported model type {repr(vars.model_type)}")
+            raise NotImplementedError(f"Unsupported model type {repr(koboldai_vars.model_type)}")
         with open(spec_path) as f:
             lazy_load_spec = json.load(f)
 
@@ -1153,7 +1184,7 @@ def load_model(path: str, driver_version="tpu_driver0.1_dev20210607", hf_checkpo
         params["transposed_linear"] = True
 
     # Load tokenizer
-    if vars.model == "TPUMeshTransformerGPTNeoX":
+    if koboldai_vars.model == "TPUMeshTransformerGPTNeoX":
         tokenizer = Tokenizer.from_file(os.path.join(path, "20B_tokenizer.json"))
         def new_encode(old_encode):
             def encode(s, *args, **kwargs):
@@ -1172,8 +1203,8 @@ def load_model(path: str, driver_version="tpu_driver0.1_dev20210607", hf_checkpo
     jax.host_id = jax.process_index
 
     print("Connecting to your Colab instance's TPU", flush=True)
-    spinner = multiprocessing.Process(target=show_spinner, args=())
-    spinner.start()
+    old_ai_busy = koboldai_vars.aibusy
+    koboldai_vars.status_message = "Connecting to TPU"
     if os.environ.get('COLAB_TPU_ADDR', '') != '':
         tpu_address = os.environ['COLAB_TPU_ADDR']  # Colab
     else:
@@ -1181,19 +1212,49 @@ def load_model(path: str, driver_version="tpu_driver0.1_dev20210607", hf_checkpo
     tpu_address = tpu_address.replace("grpc://", "")
     tpu_address_without_port = tpu_address.split(':', 1)[0]
     url = f'http://{tpu_address_without_port}:8475/requestversion/{driver_version}'
-    requests.post(url)
+    def check_status(url, queue):
+        requests.post(url)
+        queue.put("Done")
+        
+    queue = multiprocessing.Queue()
+    spinner = multiprocessing.Process(target=check_status, args=(url, queue))
+    spinner.start()
+    i = 0
+    bar = progressbar.ProgressBar(max_value=progressbar.UnknownLength, widgets=[progressbar.Timer(), '  ', progressbar.BouncingBar(left='[', right=']', marker='█')])
+    while True:
+        if not queue.empty():
+            queue.get()
+            break
+        if i % 20 == 0:
+        #    socketio.emit("from_server", {'cmd': 'model_load_status', 'data': "Connecting to TPU..." }, broadcast=True, room="UI_1")
+            socketio_queue.put(["from_server", {'cmd': 'model_load_status', 'data': "Connecting to TPU..." }, {"broadcast":True, "room":"UI_1"}])
+        elif i % 10 == 0:
+        #    socketio.emit("from_server", {'cmd': 'model_load_status', 'data': "Connecting to TPU...." }, broadcast=True, room="UI_1")
+           socketio_queue.put(["from_server", {'cmd': 'model_load_status', 'data': "Connecting to TPU...." }, {"broadcast":True, "room":"UI_1"}])
+        bar.update(i)
+        time.sleep(0.1)
+        i += 1
+        
     config.FLAGS.jax_xla_backend = "tpu_driver"
     config.FLAGS.jax_backend_target = "grpc://" + tpu_address
-    spinner.terminate()
+    koboldai_vars.aibusy = old_ai_busy
     print()
 
+    start_time = time.time()
     cores_per_replica = params["cores_per_replica"]
     seq = params["seq"]
     params["optimizer"] = _DummyOptimizer()
+    print("to line 1246 {}s".format(time.time()-start_time))
+    start_time = time.time()
     mesh_shape = (1, cores_per_replica)
-    devices = np.array(jax.devices()[:cores_per_replica]).reshape(mesh_shape)
+    devices = jax.devices()
+    devices = np.array(devices[:cores_per_replica]).reshape(mesh_shape)
     thread_resources_env = maps.ResourceEnv(maps.Mesh(devices, ('dp', 'mp')), ())
     maps.thread_resources.env = thread_resources_env
+    if initial_load:
+        logger.message(f"KoboldAI has finished loading and is available at the following link for UI 1: {koboldai_vars.cloudflare_link}")
+        logger.message(f"KoboldAI has finished loading and is available at the following link for UI 2: {koboldai_vars.cloudflare_link}/new_ui")
+
 
     global shard_xmap, batch_xmap
     shard_xmap = __shard_xmap()
@@ -1201,19 +1262,19 @@ def load_model(path: str, driver_version="tpu_driver0.1_dev20210607", hf_checkpo
 
     global badwords
     # These are the tokens that we don't want the AI to ever write
-    badwords = jnp.array(vars.badwordsids).squeeze()
+    badwords = jnp.array(koboldai_vars.badwordsids).squeeze()
 
     if not path.endswith("/"):
         path += "/"
 
     network = PenalizingCausalTransformer(params, dematerialized=True)
 
-    if not hf_checkpoint and vars.model != "TPUMeshTransformerGPTNeoX":
+    if not hf_checkpoint and koboldai_vars.model != "TPUMeshTransformerGPTNeoX":
         network.state = read_ckpt_lowmem(network.state, path, devices.shape[1])
         #network.state = network.move_xmap(network.state, np.zeros(cores_per_replica))
         return
 
-    if vars.model == "TPUMeshTransformerGPTNeoX":
+    if koboldai_vars.model == "TPUMeshTransformerGPTNeoX":
         print("\n\n\nThis model has  ", f"{hk.data_structures.tree_size(network.state['params']):,d}".replace(",", " "), "  parameters.\n")
         read_neox_checkpoint(network.state, path, params)
         return
@@ -1244,6 +1305,7 @@ def load_model(path: str, driver_version="tpu_driver0.1_dev20210607", hf_checkpo
     from tqdm.auto import tqdm
     import functools
 
+    
     def callback(model_dict, f, **_):
         if callback.nested:
             return
@@ -1251,6 +1313,7 @@ def load_model(path: str, driver_version="tpu_driver0.1_dev20210607", hf_checkpo
         with zipfile.ZipFile(f, "r") as z:
             try:
                 last_storage_key = None
+                zipfolder = os.path.basename(os.path.normpath(f)).split('.')[0]
                 f = None
                 current_offset = 0
                 if utils.current_shard == 0:
@@ -1261,7 +1324,13 @@ def load_model(path: str, driver_version="tpu_driver0.1_dev20210607", hf_checkpo
                         num_tensors = len(utils.get_sharded_checkpoint_num_tensors(utils.from_pretrained_model_name, utils.from_pretrained_index_filename, **utils.from_pretrained_kwargs))
                     else:
                         num_tensors = len(model_dict)
-                    utils.bar = tqdm(total=num_tensors, desc="Loading model tensors")
+                    if socketio is None:
+                        utils.bar = tqdm(total=num_tensors, desc="Loading model tensors")
+                    else:
+                        utils.bar = tqdm(total=num_tensors, desc="Loading model tensors", file=Send_to_socketio())
+                    koboldai_vars.status_message = "Loading model"
+                    koboldai_vars.loaded_layers = 0
+                    koboldai_vars.total_layers = num_tensors
 
                 if utils.num_shards is not None:
                     utils.current_shard += 1
@@ -1276,6 +1345,7 @@ def load_model(path: str, driver_version="tpu_driver0.1_dev20210607", hf_checkpo
                     if model_spec_key is None:
                         model_dict[key] = torch.empty(model_dict[key].shape, dtype=model_dict[key].dtype, device="meta")
                         utils.bar.update(1)
+                        koboldai_vars.loaded_layers += 1
                         continue
 
                     storage_key = model_dict[key].key
@@ -1283,7 +1353,10 @@ def load_model(path: str, driver_version="tpu_driver0.1_dev20210607", hf_checkpo
                         last_storage_key = storage_key
                         if isinstance(f, zipfile.ZipExtFile):
                             f.close()
-                        f = z.open(f"archive/data/{storage_key}")
+                        try:
+                            f = z.open(f"archive/data/{storage_key}")
+                        except:
+                            f = z.open(f"{zipfolder}/data/{storage_key}")
                         current_offset = 0
                     if current_offset != model_dict[key].seek_offset:
                         f.read(model_dict[key].seek_offset - current_offset)
@@ -1328,7 +1401,12 @@ def load_model(path: str, driver_version="tpu_driver0.1_dev20210607", hf_checkpo
                         )).copy(),
                         np.empty(params["cores_per_replica"]),
                     )
-
+                    
+                    koboldai_vars.loaded_layers += 1
+                    try:
+                        time.sleep(0.01)
+                    except:
+                        pass
                     utils.bar.update(1)
 
                 if utils.num_shards is not None and utils.current_shard < utils.num_shards:
@@ -1355,60 +1433,61 @@ def load_model(path: str, driver_version="tpu_driver0.1_dev20210607", hf_checkpo
                 if utils.num_shards is None or utils.current_shard >= utils.num_shards:
                     utils.bar.close()
                     utils.bar = None
+                    koboldai_vars.status_message = ""
                 callback.nested = False
                 if isinstance(f, zipfile.ZipExtFile):
                     f.close()
     callback.nested = False
 
-    if os.path.isdir(vars.model.replace('/', '_')):
+    if os.path.isdir(koboldai_vars.model.replace('/', '_')):
         import shutil
-        shutil.move(vars.model.replace('/', '_'), "models/{}".format(vars.model.replace('/', '_')))
+        shutil.move(koboldai_vars.model.replace('/', '_'), "models/{}".format(koboldai_vars.model.replace('/', '_')))
     print("\n", flush=True)
     with torch_lazy_loader.use_lazy_torch_load(callback=callback, dematerialized_modules=True):
-        if(os.path.isdir(vars.custmodpth)):
+        if(os.path.isdir(koboldai_vars.custmodpth)):
             try:
-                tokenizer = AutoTokenizer.from_pretrained(vars.custmodpth, revision=vars.revision, cache_dir="cache", use_fast=False)
+                tokenizer = AutoTokenizer.from_pretrained(koboldai_vars.custmodpth, revision=koboldai_vars.revision, cache_dir="cache", use_fast=False)
             except Exception as e:
                 try:
-                    tokenizer = AutoTokenizer.from_pretrained(vars.custmodpth, revision=vars.revision, cache_dir="cache")
+                    tokenizer = AutoTokenizer.from_pretrained(koboldai_vars.custmodpth, revision=koboldai_vars.revision, cache_dir="cache")
                 except Exception as e:
                     try:
-                        tokenizer = GPT2Tokenizer.from_pretrained(vars.custmodpth, revision=vars.revision, cache_dir="cache")
+                        tokenizer = GPT2Tokenizer.from_pretrained(koboldai_vars.custmodpth, revision=koboldai_vars.revision, cache_dir="cache")
                     except Exception as e:
-                        tokenizer = GPT2Tokenizer.from_pretrained("gpt2", revision=vars.revision, cache_dir="cache")
+                        tokenizer = GPT2Tokenizer.from_pretrained("gpt2", revision=koboldai_vars.revision, cache_dir="cache")
             try:
-                model     = AutoModelForCausalLM.from_pretrained(vars.custmodpth, revision=vars.revision, cache_dir="cache")
+                model     = AutoModelForCausalLM.from_pretrained(koboldai_vars.custmodpth, revision=koboldai_vars.revision, cache_dir="cache")
             except Exception as e:
-                model     = GPTNeoForCausalLM.from_pretrained(vars.custmodpth, revision=vars.revision, cache_dir="cache")
-        elif(os.path.isdir("models/{}".format(vars.model.replace('/', '_')))):
+                model     = GPTNeoForCausalLM.from_pretrained(koboldai_vars.custmodpth, revision=koboldai_vars.revision, cache_dir="cache")
+        elif(os.path.isdir("models/{}".format(koboldai_vars.model.replace('/', '_')))):
             try:
-                tokenizer = AutoTokenizer.from_pretrained("models/{}".format(vars.model.replace('/', '_')), revision=vars.revision, cache_dir="cache", use_fast=False)
+                tokenizer = AutoTokenizer.from_pretrained("models/{}".format(koboldai_vars.model.replace('/', '_')), revision=koboldai_vars.revision, cache_dir="cache", use_fast=False)
             except Exception as e:
                 try:
-                    tokenizer = AutoTokenizer.from_pretrained("models/{}".format(vars.model.replace('/', '_')), revision=vars.revision, cache_dir="cache")
+                    tokenizer = AutoTokenizer.from_pretrained("models/{}".format(koboldai_vars.model.replace('/', '_')), revision=koboldai_vars.revision, cache_dir="cache")
                 except Exception as e:
                     try:
-                        tokenizer = GPT2Tokenizer.from_pretrained("models/{}".format(vars.model.replace('/', '_')), revision=vars.revision, cache_dir="cache")
+                        tokenizer = GPT2Tokenizer.from_pretrained("models/{}".format(koboldai_vars.model.replace('/', '_')), revision=koboldai_vars.revision, cache_dir="cache")
                     except Exception as e:
-                        tokenizer = GPT2Tokenizer.from_pretrained("gpt2", revision=vars.revision, cache_dir="cache")
+                        tokenizer = GPT2Tokenizer.from_pretrained("gpt2", revision=koboldai_vars.revision, cache_dir="cache")
             try:
-                model     = AutoModelForCausalLM.from_pretrained("models/{}".format(vars.model.replace('/', '_')), revision=vars.revision, cache_dir="cache")
+                model     = AutoModelForCausalLM.from_pretrained("models/{}".format(koboldai_vars.model.replace('/', '_')), revision=koboldai_vars.revision, cache_dir="cache")
             except Exception as e:
-                model     = GPTNeoForCausalLM.from_pretrained("models/{}".format(vars.model.replace('/', '_')), revision=vars.revision, cache_dir="cache")
+                model     = GPTNeoForCausalLM.from_pretrained("models/{}".format(koboldai_vars.model.replace('/', '_')), revision=koboldai_vars.revision, cache_dir="cache")
         else:
             try:
-                tokenizer = AutoTokenizer.from_pretrained(vars.model, revision=vars.revision, cache_dir="cache", use_fast=False)
+                tokenizer = AutoTokenizer.from_pretrained(koboldai_vars.model, revision=koboldai_vars.revision, cache_dir="cache", use_fast=False)
             except Exception as e:
                 try:
-                    tokenizer = AutoTokenizer.from_pretrained(vars.model, revision=vars.revision, cache_dir="cache")
+                    tokenizer = AutoTokenizer.from_pretrained(koboldai_vars.model, revision=koboldai_vars.revision, cache_dir="cache")
                 except Exception as e:
                     try:
-                        tokenizer = GPT2Tokenizer.from_pretrained(vars.model, revision=vars.revision, cache_dir="cache")
+                        tokenizer = GPT2Tokenizer.from_pretrained(koboldai_vars.model, revision=koboldai_vars.revision, cache_dir="cache")
                     except Exception as e:
-                        tokenizer = GPT2Tokenizer.from_pretrained("gpt2", revision=vars.revision, cache_dir="cache")
+                        tokenizer = GPT2Tokenizer.from_pretrained("gpt2", revision=koboldai_vars.revision, cache_dir="cache")
             try:
-                model     = AutoModelForCausalLM.from_pretrained(vars.model, revision=vars.revision, cache_dir="cache")
+                model     = AutoModelForCausalLM.from_pretrained(koboldai_vars.model, revision=koboldai_vars.revision, cache_dir="cache")
             except Exception as e:
-                model     = GPTNeoForCausalLM.from_pretrained(vars.model, revision=vars.revision, cache_dir="cache")
+                model     = GPTNeoForCausalLM.from_pretrained(koboldai_vars.model, revision=koboldai_vars.revision, cache_dir="cache")
 
     #network.state = network.move_xmap(network.state, np.zeros(cores_per_replica))
