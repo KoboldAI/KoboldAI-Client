@@ -3171,7 +3171,7 @@ function privacy_mode(enabled) {
 		document.getElementById('SideMenu').classList.remove("superblur");
 		document.getElementById('main-grid').classList.remove("superblur");
 		document.getElementById('rightSideMenu').classList.remove("superblur");
-		closePopups();
+		if (!$el("#privacy_mode").classList.contains("hidden")) closePopups();
 		document.getElementById('privacy_password').value = "";
 	}
 }
