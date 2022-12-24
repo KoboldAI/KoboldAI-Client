@@ -6930,3 +6930,76 @@ $el(".gametext").addEventListener("keydown", function(event) {
 	document.execCommand("insertLineBreak");
 	event.preventDefault();
 });
+
+/* Screenshot */
+(function() {
+	const screenshotTarget = $el("#screenshot-target");
+	const screenshotImagePicker = $el("#screenshot-image-picker");
+	const genImgToggle = $el("#sw-gen-img");
+	const attributionToggle = $el("#sw-attribution");
+	const screenshotImageContainer = $el("#screenshot-images");
+
+	// JQuery required for bootstrap toggle events
+	$(genImgToggle).change(function() {
+		screenshotImagePicker.classList.toggle("disabled", !genImgToggle.checked);
+		updateShownImages();
+	});
+
+	$(genImgToggle).bootstrapToggle();
+
+	function showScreenshotWizard() {
+		let imageUrls = [];
+
+		for (let i=1;i<17;i++) {
+			let s = i.toString();
+			if (s.length === 1) s = "0"+s;
+			imageUrls.push(`/static/test/${s}.jpg`);
+		}
+
+		for (const imageSrc of imageUrls) {
+			const imgContainer = $e("div", screenshotImagePicker, {classes: ["img-container"]});
+			const checkbox = $e("input", imgContainer, {type: "checkbox"});
+			const image = $e("img", imgContainer, {src: imageSrc, draggable: false});
+
+			imgContainer.addEventListener("click", function(event) {
+				// TODO: Preventdefault if too many images selected and checked is false
+				checkbox.click();
+			});
+
+			checkbox.addEventListener("click", function(event) {
+				event.stopPropagation();
+				updateShownImages();
+			});
+		}
+		openPopup("screenshot-wizard");
+	}
+
+	function updateShownImages() {
+		screenshotImageContainer.innerHTML = "";
+		if (!genImgToggle.checked) return;
+
+		for (const imgCont of screenshotImagePicker.children) {
+			const checked = imgCont.querySelector("input").checked;
+			if (!checked) continue;
+			const src = imgCont.querySelector("img").src;
+			$e("img", screenshotImageContainer, {src: src});
+		}
+	}
+
+	async function downloadScreenshot() {
+		// TODO: Upscale (eg transform with given ratio like 1.42 to make image
+		// bigger via screenshotTarget cloning)
+		const canvas = await html2canvas(screenshotTarget, {
+			width: screenshotTarget.clientWidth,
+			height: screenshotTarget.clientHeight - 1
+		});
+
+		canvas.style.display = "none";
+		document.body.appendChild(canvas);
+		$e("a", null, {download: "screenshot.png", href: canvas.toDataURL("image/png")}).click();
+		canvas.remove();
+	}
+	$el("#sw-download").addEventListener("click", downloadScreenshot);
+
+	showScreenshotWizard();
+})();
