@@ -1,5 +1,6 @@
 from __future__ import annotations
 from dataclasses import dataclass
+import difflib
 import importlib
 import os, re, time, threading, json, pickle, base64, copy, tqdm, datetime, sys
 import shutil
@@ -2106,6 +2107,37 @@ class KoboldStoryRegister(object):
             return filename, prompt
         return None, None
     
+    def get_action_composition(self, action_id: int) -> List[dict]:
+        """
+        Returns a list of chunks that comprise an action in dictionaries
+        formatted as follows:
+            type: string identifying chunk type ("ai", "user", or "edit")
+            content: the actual content of the chunk
+        """
+        current_text = self.actions[action_id]["Selected Text"]
+        action_original_type = "ai"
+
+        matching_blocks = difflib.SequenceMatcher(
+            None,
+            self.actions[action_id]["Original Text"],
+            current_text
+        ).get_matching_blocks()
+
+        chunks = []
+        base = 0
+        for chunk_match in matching_blocks:
+            inserted = current_text[base:chunk_match.b]
+            content = current_text[chunk_match.b:chunk_match.b + chunk_match.size]
+
+            base = chunk_match.b + chunk_match.size
+
+            if inserted:
+                chunks.append({"type": "edit", "content": inserted})
+            if content:
+                chunks.append({"type": action_original_type, "content": content})
+
+        return chunks
+
     def __setattr__(self, name, value):
         new_variable = name not in self.__dict__
         old_value = getattr(self, name, None)

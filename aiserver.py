@@ -9106,6 +9106,29 @@ def UI_2_get_image_db():
     except FileNotFoundError:
         return jsonify([])
 
+@app.route("/action_composition.json", methods=["GET"])
+@logger.catch
+def UI_2_get_action_composition():
+    try:
+        actions = request.args.get("actions").split(",")
+        if not actions:
+            raise ValueError()
+    except (ValueError, AttributeError):
+        return "No actions", 400
+
+    try:
+        actions = [int(action) for action in actions]
+    except TypeError:
+        return "Not all actions int", 400
+
+    ret = []
+    for action_id in actions:
+        try:
+            ret.append(koboldai_vars.actions.get_action_composition(action_id))
+        except KeyError:
+            ret.append([])
+    return jsonify(ret)
+
 @app.route("/generated_images/<path:path>")
 def UI_2_send_generated_images(path):
     return send_from_directory(koboldai_vars.save_paths.generated_images, path)
