@@ -9093,6 +9093,15 @@ def UI_2_set_commentator_image(commentator_id):
         file.write(data)
     return ":)"
 
+@app.route("/image_db.json", methods=["GET"])
+@logger.catch
+def UI_2_get_image_db():
+    return send_file(os.path.join(koboldai_vars.save_paths.generated_images, "db.json"))
+
+@app.route("/generated_images/<path:path>")
+def UI_2_send_generated_images(path):
+    return send_from_directory(koboldai_vars.save_paths.generated_images, path)
+
 @socketio.on("scratchpad_prompt")
 @logger.catch
 def UI_2_scratchpad_prompt(data):

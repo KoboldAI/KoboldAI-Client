@@ -6932,7 +6932,7 @@ $el(".gametext").addEventListener("keydown", function(event) {
 });
 
 /* Screenshot */
-(function() {
+(async function() {
 	const screenshotTarget = $el("#screenshot-target");
 	const screenshotImagePicker = $el("#screenshot-image-picker");
 	const genImgToggle = $el("#sw-gen-img");
@@ -6947,19 +6947,13 @@ $el(".gametext").addEventListener("keydown", function(event) {
 
 	$(genImgToggle).bootstrapToggle();
 
-	function showScreenshotWizard() {
-		let imageUrls = [];
+	async function showScreenshotWizard() {
+		let imageData = await (await fetch("/image_db.json")).json();
 
-		for (let i=1;i<17;i++) {
-			let s = i.toString();
-			if (s.length === 1) s = "0"+s;
-			imageUrls.push(`/static/test/${s}.jpg`);
-		}
-
-		for (const imageSrc of imageUrls) {
+		for (const image of imageData) {
 			const imgContainer = $e("div", screenshotImagePicker, {classes: ["img-container"]});
 			const checkbox = $e("input", imgContainer, {type: "checkbox"});
-			const image = $e("img", imgContainer, {src: imageSrc, draggable: false});
+			const imageEl = $e("img", imgContainer, {src: `/generated_images/${image.fileName}`, draggable: false});
 
 			imgContainer.addEventListener("click", function(event) {
 				// TODO: Preventdefault if too many images selected and checked is false
@@ -7001,5 +6995,5 @@ $el(".gametext").addEventListener("keydown", function(event) {
 	}
 	$el("#sw-download").addEventListener("click", downloadScreenshot);
 
-	showScreenshotWizard();
+	await showScreenshotWizard();
 })();
