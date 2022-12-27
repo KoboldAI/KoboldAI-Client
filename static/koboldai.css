@@ -1264,35 +1264,35 @@ td.server_vars {
 	font-weight: bold;
 }
 
-.robot-attribution {
+#robot-attribution {
 	margin-top: 30px;
 }
 
 #screenshot-target .human-text,
-.robot-attribution > .human-attribution {
+#robot-attribution #human-attribution {
 	color: var(--text_edit);
 }
 
 #screenshot-target .ai-text,
-.robot-attribution > .model-name {
+#robot-attribution #model-name {
 	color: var(--text);
 }
 
-.robot-attribution > .model-name {
+#robot-attribution #model-name {
 	font-family: monospace;
 }
 
-.robot-attribution > .story-attribution {
+#robot-attribution #story-attribution {
 	font-style: italic;
 }
 
-.robot-attribution > .human-attribution,
-.robot-attribution > .model-name,
-.robot-attribution > .story-attribution {
+#robot-attribution #human-attribution,
+#robot-attribution #model-name,
+#robot-attribution #story-attribution {
 	font-weight: bold;
 }
 
-.robot-attribution > .boring-part-of-madlibs {
+#robot-attribution .boring-part-of-madlibs {
 	opacity: 0.9;
 }
 

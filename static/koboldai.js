@@ -6932,14 +6932,65 @@ $el(".gametext").addEventListener("keydown", function(event) {
 });
 
 /* Screenshot */
-(async function() {
+const showScreenshotWizard = (async function() {
 	const screenshotTarget = $el("#screenshot-target");
 	const screenshotImagePicker = $el("#screenshot-image-picker");
-	const attributionToggle = $el("#sw-attribution");
 	const screenshotImageContainer = $el("#screenshot-images");
+	const robotAttribution = $el("#robot-attribution");
 
-	// JQuery required for bootstrap toggle events
-	// TODO: Settings
+	sync_hooks.push({
+		class: "story",
+		name: "story_name",
+		func: function(title) {
+			$el("#story-attribution").innerText = title;
+		}
+	});
+
+	sync_hooks.push({
+		class: "user",
+		name: "screenshot_author_name",
+		func: function(name) {
+			$el("#human-attribution").innerText = name;
+		}
+	});
+
+	sync_hooks.push({
+		class: "user",
+		name: "screenshot_show_attribution",
+		func: function(show) {
+			robotAttribution.classList.toggle("hidden", !show);
+			$el("#screenshot-options-attribution").classList.toggle("disabled", !show);
+			if (show) robotAttribution.scrollIntoView();
+		}
+	});
+
+	sync_hooks.push({
+		class: "user",
+		name: "screenshot_show_story_title",
+		func: function(show) {
+			$el("#story-title-vis").classList.toggle("hidden", !show);
+			robotAttribution.scrollIntoView();
+		}
+	});
+
+	sync_hooks.push({
+		class: "user",
+		name: "screenshot_show_author_name",
+		func: function(show) {
+			$el("#author-name-vis").classList.toggle("hidden", !show);
+			$el("#screenshot-options-author-name").classList.toggle("disabled", !show);
+			robotAttribution.scrollIntoView();
+		}
+	});
+
+	sync_hooks.push({
+		class: "user",
+		name: "screenshot_show_model_name",
+		func: function(show) {
+			$el("#model-name-vis").classList.toggle("hidden", !show);
+			robotAttribution.scrollIntoView();
+		}
+	});
 
 	async function showScreenshotWizard() {
 		let imageData = await (await fetch("/image_db.json")).json();
@@ -6947,7 +6998,11 @@ $el(".gametext").addEventListener("keydown", function(event) {
 		for (const image of imageData) {
 			const imgContainer = $e("div", screenshotImagePicker, {classes: ["img-container"]});
 			const checkbox = $e("input", imgContainer, {type: "checkbox"});
-			const imageEl = $e("img", imgContainer, {src: `/generated_images/${image.fileName}`, draggable: false});
+			const imageEl = $e("img", imgContainer, {
+				src: `/generated_images/${image.fileName}`,
+				draggable: false,
+				tooltip: image.displayPrompt
+			});
 
 			imgContainer.addEventListener("click", function(event) {
 				// TODO: Preventdefault if too many images selected and checked is false
@@ -6988,5 +7043,12 @@ $el(".gametext").addEventListener("keydown", function(event) {
 	}
 	$el("#sw-download").addEventListener("click", downloadScreenshot);
 
+	// Other side of screenshot-options hack
+	for (const el of document.getElementsByClassName("screenshot-setting")) {
+		// yeah this really sucks but bootstrap toggle only works with this
+		el.setAttribute("onchange", "sync_to_server(this);")
+	}
+
 	await showScreenshotWizard();
+	return showScreenshotWizard;
 })();

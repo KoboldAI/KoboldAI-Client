@@ -9096,7 +9096,10 @@ def UI_2_set_commentator_image(commentator_id):
 @app.route("/image_db.json", methods=["GET"])
 @logger.catch
 def UI_2_get_image_db():
-    return send_file(os.path.join(koboldai_vars.save_paths.generated_images, "db.json"))
+    try:
+        return send_file(os.path.join(koboldai_vars.save_paths.generated_images, "db.json"))
+    except FileNotFoundError:
+        return jsonify([])
 
 @app.route("/generated_images/<path:path>")
 def UI_2_send_generated_images(path):

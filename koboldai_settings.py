@@ -1166,6 +1166,12 @@ class user_settings(settings):
         self.cluster_requested_models = [] # The models which we allow to generate during cluster mode
         self.wigen_use_own_wi = False
         self.wigen_amount = 80
+        self.screenshot_show_attribution = True
+        self.screenshot_show_story_title = True
+        self.screenshot_show_author_name = True
+        self.screenshot_author_name = "Anonymous"
+        self.screenshot_show_model_name = True
+        self.screenshot_use_boring_colors = False
         
         
     def __setattr__(self, name, value):

@@ -356,13 +356,27 @@
 							Lorem ipsum dolor sit amet, consectetur adipisci elit, sed eiusmod tempor incidunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrum exercitationem ullam corporis suscipit laboriosam, nisi ut aliquid ex ea commodi consequatur. Quis aute iure reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint obcaecat cupiditat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
 						</span>
 					</div>
-					<span class="robot-attribution">
-						<span class="boring-part-of-madlibs">A snippit of</span>
-						<span class="story-attribution">The Great John Koblad</span>,
-						<span class="boring-part-of-madlibs">written by</span>
-						<span class="human-attribution">one-some</span>
-						<span class="boring-part-of-madlibs">in KoboldAI with</span>
-						<span class="model-name">facebook/OPT_175B</span>
+					<span id="robot-attribution">
+						<span class="boring-part-of-madlibs">A snippit</span>
+
+						<span id="story-title-vis">
+							<span class="boring-part-of-madlibs">of</span>
+							<span id="story-attribution">The Great John Koblad</span>,
+						</span>
+
+						<span class="boring-part-of-madlibs">written</span>
+
+						<span id="author-name-vis">
+							<span class="boring-part-of-madlibs">by</span>
+							<span id="human-attribution">one-some</span>
+						</span>
+
+						<span class="boring-part-of-madlibs">in KoboldAI</span>
+
+						<span id="model-name-vis">
+							<span class="boring-part-of-madlibs">with</span>
+							<span id="model-name">facebook/OPT_175B</span>
+						</span>
 					</span>
 				</div>
 				<div id="screenshot-images"></div>
@@ -370,20 +384,38 @@
 		</div>
 
 		<div id="screenshot-options">
+			<!--
+				FIXME: screenshot-setting is a lazy hack until var_sync can converted to an attribute for scanning and such
+			-->
 			<span class="header">Options</span>
 			<div class="option">
 				Show Attribution
-				<input id="sw-attribution" type="checkbox" data-size="mini" data-onstyle="success" data-toggle="toggle">
+				<input id="sw-attribution" class="screenshot-setting var_sync_user_screenshot_show_attribution" type="checkbox" data-size="mini" data-onstyle="success" data-toggle="toggle">
 			</div>
-			<div class="indent">
-				<div class="option">Show Story Title <input type="checkbox" data-size="mini" data-onstyle="success" data-toggle="toggle"></div>
-				<div class="option">Show Author Name <input type="checkbox" data-size="mini" data-onstyle="success" data-toggle="toggle"></div>
+			<div id="screenshot-options-attribution" class="indent">
+				<div class="option">
+					Show Story Title
+					<input class="screenshot-setting var_sync_user_screenshot_show_story_title" type="checkbox" data-size="mini" data-onstyle="success" data-toggle="toggle">
+				</div>
+				<div class="option">
+					Show Author Name
+					<input class="screenshot-setting var_sync_user_screenshot_show_author_name" type="checkbox" data-size="mini" data-onstyle="success" data-toggle="toggle">
+				</div>
 				<div class="indent">
-					<div class="option">Author Name <input></div>
+					<div id="screenshot-options-author-name" class="option">
+						Author Name
+						<input class="screenshot-setting var_sync_user_screenshot_author_name">
+					</div>
 					<span id="option-author-name-too-big" class="hidden warning">Isn't that a bit excessive?</span>
 				</div>
-				<div class="option">Show Model Name <input type="checkbox" data-size="mini" data-onstyle="success" data-toggle="toggle"></div>
-				<div class="option">Boring Colors <input type="checkbox" data-size="mini" data-onstyle="success" data-toggle="toggle"></div>
+				<div class="option">
+					Show Model Name
+					<input class="screenshot-setting var_sync_user_screenshot_show_model_name" type="checkbox" data-size="mini" data-onstyle="success" data-toggle="toggle">
+				</div>
+				<div class="option">
+					Boring Colors
+					<input class="screenshot-setting var_sync_user_screenshot_use_boring_colors" type="checkbox" data-size="mini" data-onstyle="success" data-toggle="toggle">
+				</div>
 			</div>
 		</div>
 		<div class="header">Generated Images</div>
