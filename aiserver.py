@@ -8526,7 +8526,12 @@ def UI_2_download_story():
 def UI_2_Set_Selected_Text(data):
     if not koboldai_vars.quiet:
         print("Updating Selected Text: {}".format(data))
-    koboldai_vars.actions[int(data['id'])] = data['text']
+    action_id = int(data["id"])
+
+    if not koboldai_vars.actions.actions[action_id].get("Original Text"):
+        koboldai_vars.actions.actions[action_id]["Original Text"] = data["text"]
+
+    koboldai_vars.actions[action_id] = data['text']
 
 #==================================================================#
 # Event triggered when Option is Selected
