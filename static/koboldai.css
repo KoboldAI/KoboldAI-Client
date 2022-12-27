@@ -1312,13 +1312,6 @@ td.server_vars {
 	margin-bottom: 3px;
 }
 
-#screenshot-wizard .distribution-bar {
-	display: flex;
-	justify-content: space-between;
-	padding-left: 5px;
-	padding-right: 5px;
-}
-
 #screenshot-options .indent {
 	margin-left: 15px;
 }

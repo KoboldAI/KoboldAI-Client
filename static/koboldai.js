@@ -6935,17 +6935,11 @@ $el(".gametext").addEventListener("keydown", function(event) {
 (async function() {
 	const screenshotTarget = $el("#screenshot-target");
 	const screenshotImagePicker = $el("#screenshot-image-picker");
-	const genImgToggle = $el("#sw-gen-img");
 	const attributionToggle = $el("#sw-attribution");
 	const screenshotImageContainer = $el("#screenshot-images");
 
 	// JQuery required for bootstrap toggle events
-	$(genImgToggle).change(function() {
-		screenshotImagePicker.classList.toggle("disabled", !genImgToggle.checked);
-		updateShownImages();
-	});
-
-	$(genImgToggle).bootstrapToggle();
+	// TODO: Settings
 
 	async function showScreenshotWizard() {
 		let imageData = await (await fetch("/image_db.json")).json();
@@ -6970,7 +6964,6 @@ $el(".gametext").addEventListener("keydown", function(event) {
 
 	function updateShownImages() {
 		screenshotImageContainer.innerHTML = "";
-		if (!genImgToggle.checked) return;
 
 		for (const imgCont of screenshotImagePicker.children) {
 			const checked = imgCont.querySelector("input").checked;
