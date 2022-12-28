@@ -7054,6 +7054,11 @@ async function showScreenshotWizard(actionComposition, startDebt, endDebt) {
 		}
 	}
 
+	const firstAction = screenshotTextContainer.children[0];
+	const lastAction = screenshotTextContainer.children[screenshotTextContainer.children.length-1];
+	firstAction.innerText = firstAction.innerText.trimStart();
+	lastAction.innerText = lastAction.innerText.trimEnd();
+
 	let imageData = await (await fetch("/image_db.json")).json();
 	screenshotImagePicker.innerHTML = "";
 
