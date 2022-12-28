@@ -7063,6 +7063,8 @@ async function showScreenshotWizard(actionComposition, startDebt, endDebt) {
 	screenshotImagePicker.innerHTML = "";
 
 	for (const image of imageData) {
+		if (!image) continue;
+
 		const imgContainer = $e("div", screenshotImagePicker, {classes: ["img-container"]});
 		const checkbox = $e("input", imgContainer, {type: "checkbox"});
 		const imageEl = $e("img", imgContainer, {
