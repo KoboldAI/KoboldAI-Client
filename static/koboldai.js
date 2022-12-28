@@ -4643,7 +4643,7 @@ async function downloadDebugFile(redact=true) {
 
 		// actions - "Selected Text", Options, Probabilities
 		for (const key of Object.keys(varsData.story_settings.actions.actions)) {
-			for (const redactKey of ["Selected Text", "Options", "Probabilities"]) {
+			for (const redactKey of ["Selected Text", "Options", "Probabilities", "Original Text"]) {
 				varsData.story_settings.actions.actions[key][redactKey] = getRedactedValue(varsData.story_settings.actions.actions[key][redactKey]);
 			}
 		}
