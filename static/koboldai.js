@@ -117,6 +117,8 @@ const context_menu_actions = {
 		{label: "Add to World Info Entry", icon: "auto_stories", enabledOn: "SELECTION", click: push_selection_to_world_info},
 		{label: "Add as Bias", icon: "insights", enabledOn: "SELECTION", click: push_selection_to_phrase_bias},
 		{label: "Retry from here", icon: "refresh", enabledOn: "CARET", click: retry_from_here},
+		null,
+		{label: "Take Screenshot", icon: "screenshot_monitor", enabledOn: "SELECTION", click: screenshot_selection},
 		// Not implemented! See view_selection_probabiltiies
 		// null,
 		// {label: "View Token Probabilities", icon: "assessment", enabledOn: "SELECTION", click: view_selection_probabilities},
@@ -6932,123 +6934,178 @@ $el(".gametext").addEventListener("keydown", function(event) {
 });
 
 /* Screenshot */
-const showScreenshotWizard = (async function() {
-	const screenshotTarget = $el("#screenshot-target");
-	const screenshotImagePicker = $el("#screenshot-image-picker");
-	const screenshotImageContainer = $el("#screenshot-images");
-	const robotAttribution = $el("#robot-attribution");
+const screenshotTarget = $el("#screenshot-target");
+const screenshotImagePicker = $el("#screenshot-image-picker");
+const screenshotImageContainer = $el("#screenshot-images");
+const robotAttribution = $el("#robot-attribution");
+const screenshotTextContainer = $el("#screenshot-text-container");
 
-	sync_hooks.push({
-		class: "story",
-		name: "story_name",
-		func: function(title) {
-			$el("#story-attribution").innerText = title;
-		}
-	});
-
-	sync_hooks.push({
-		class: "user",
-		name: "screenshot_author_name",
-		func: function(name) {
-			$el("#human-attribution").innerText = name;
-		}
-	});
-
-	sync_hooks.push({
-		class: "user",
-		name: "screenshot_show_attribution",
-		func: function(show) {
-			robotAttribution.classList.toggle("hidden", !show);
-			$el("#screenshot-options-attribution").classList.toggle("disabled", !show);
-			if (show) robotAttribution.scrollIntoView();
-		}
-	});
-
-	sync_hooks.push({
-		class: "user",
-		name: "screenshot_show_story_title",
-		func: function(show) {
-			$el("#story-title-vis").classList.toggle("hidden", !show);
-			robotAttribution.scrollIntoView();
-		}
-	});
-
-	sync_hooks.push({
-		class: "user",
-		name: "screenshot_show_author_name",
-		func: function(show) {
-			$el("#author-name-vis").classList.toggle("hidden", !show);
-			$el("#screenshot-options-author-name").classList.toggle("disabled", !show);
-			robotAttribution.scrollIntoView();
-		}
-	});
-
-	sync_hooks.push({
-		class: "user",
-		name: "screenshot_show_model_name",
-		func: function(show) {
-			$el("#model-name-vis").classList.toggle("hidden", !show);
-			robotAttribution.scrollIntoView();
-		}
-	});
-
-	async function showScreenshotWizard() {
-		let imageData = await (await fetch("/image_db.json")).json();
-
-		for (const image of imageData) {
-			const imgContainer = $e("div", screenshotImagePicker, {classes: ["img-container"]});
-			const checkbox = $e("input", imgContainer, {type: "checkbox"});
-			const imageEl = $e("img", imgContainer, {
-				src: `/generated_images/${image.fileName}`,
-				draggable: false,
-				tooltip: image.displayPrompt
-			});
-
-			imgContainer.addEventListener("click", function(event) {
-				// TODO: Preventdefault if too many images selected and checked is false
-				checkbox.click();
-			});
-
-			checkbox.addEventListener("click", function(event) {
-				event.stopPropagation();
-				updateShownImages();
-			});
-		}
-		openPopup("screenshot-wizard");
+sync_hooks.push({
+	class: "story",
+	name: "story_name",
+	func: function(title) {
+		$el("#story-attribution").innerText = title;
 	}
+});
 
-	function updateShownImages() {
-		screenshotImageContainer.innerHTML = "";
+sync_hooks.push({
+	class: "model",
+	name: "model",
+	func: function(modelName) {
+		$el("#model-name").innerText = modelName
+	}
+})
 
-		for (const imgCont of screenshotImagePicker.children) {
-			const checked = imgCont.querySelector("input").checked;
-			if (!checked) continue;
-			const src = imgCont.querySelector("img").src;
-			$e("img", screenshotImageContainer, {src: src});
+sync_hooks.push({
+	class: "user",
+	name: "screenshot_author_name",
+	func: function(name) {
+		$el("#human-attribution").innerText = name;
+	}
+});
+
+sync_hooks.push({
+	class: "user",
+	name: "screenshot_show_attribution",
+	func: function(show) {
+		robotAttribution.classList.toggle("hidden", !show);
+		$el("#screenshot-options-attribution").classList.toggle("disabled", !show);
+		if (show) robotAttribution.scrollIntoView();
+	}
+});
+
+sync_hooks.push({
+	class: "user",
+	name: "screenshot_show_story_title",
+	func: function(show) {
+		$el("#story-title-vis").classList.toggle("hidden", !show);
+		robotAttribution.scrollIntoView();
+	}
+});
+
+sync_hooks.push({
+	class: "user",
+	name: "screenshot_show_author_name",
+	func: function(show) {
+		$el("#author-name-vis").classList.toggle("hidden", !show);
+		$el("#screenshot-options-author-name").classList.toggle("disabled", !show);
+		robotAttribution.scrollIntoView();
+	}
+});
+
+sync_hooks.push({
+	class: "user",
+	name: "screenshot_show_model_name",
+	func: function(show) {
+		$el("#model-name-vis").classList.toggle("hidden", !show);
+		robotAttribution.scrollIntoView();
+	}
+});
+
+async function showScreenshotWizard(actionIds) {
+	// actionIds is an array of string action ids
+	let actionComposition = await (await fetch(`/action_composition.json?actions=${actionIds.join(",")}`)).json();
+	console.log(actionComposition);
+	screenshotTextContainer.innerHTML = "";
+	for (const action of actionComposition) {
+		for (const chunk of action) {
+			let actionClass = {
+				ai: "ai-text",
+				user: "human-text",
+				edit: "edit-text",
+				prompt: "prompt-text",
+			}[chunk.type];
+
+			$e("span", screenshotTextContainer, {
+				innerText: chunk.content,
+				classes: ["action-text", actionClass]
+			});
 		}
 	}
 
-	async function downloadScreenshot() {
-		// TODO: Upscale (eg transform with given ratio like 1.42 to make image
-		// bigger via screenshotTarget cloning)
-		const canvas = await html2canvas(screenshotTarget, {
-			width: screenshotTarget.clientWidth,
-			height: screenshotTarget.clientHeight - 1
+	let imageData = await (await fetch("/image_db.json")).json();
+	screenshotImagePicker.innerHTML = "";
+
+	for (const image of imageData) {
+		const imgContainer = $e("div", screenshotImagePicker, {classes: ["img-container"]});
+		const checkbox = $e("input", imgContainer, {type: "checkbox"});
+		const imageEl = $e("img", imgContainer, {
+			src: `/generated_images/${image.fileName}`,
+			draggable: false,
+			tooltip: image.displayPrompt
 		});
 
-		canvas.style.display = "none";
-		document.body.appendChild(canvas);
-		$e("a", null, {download: "screenshot.png", href: canvas.toDataURL("image/png")}).click();
-		canvas.remove();
-	}
-	$el("#sw-download").addEventListener("click", downloadScreenshot);
+		imgContainer.addEventListener("click", function(event) {
+			// TODO: Preventdefault if too many images selected and checked is false
+			checkbox.click();
+		});
 
-	// Other side of screenshot-options hack
-	for (const el of document.getElementsByClassName("screenshot-setting")) {
-		// yeah this really sucks but bootstrap toggle only works with this
-		el.setAttribute("onchange", "sync_to_server(this);")
+		checkbox.addEventListener("click", function(event) {
+			event.stopPropagation();
+			screenshotWizardUpdateShownImages();
+		});
+	}
+	openPopup("screenshot-wizard");
+}
+
+function screenshotWizardUpdateShownImages() {
+	screenshotImageContainer.innerHTML = "";
+
+	for (const imgCont of screenshotImagePicker.children) {
+		const checked = imgCont.querySelector("input").checked;
+		if (!checked) continue;
+		const src = imgCont.querySelector("img").src;
+		$e("img", screenshotImageContainer, {src: src});
+	}
+}
+
+async function downloadScreenshot() {
+	// TODO: Upscale (eg transform with given ratio like 1.42 to make image
+	// bigger via screenshotTarget cloning)
+	const canvas = await html2canvas(screenshotTarget, {
+		width: screenshotTarget.clientWidth,
+		height: screenshotTarget.clientHeight - 1
+	});
+
+	canvas.style.display = "none";
+	document.body.appendChild(canvas);
+	$e("a", null, {download: "screenshot.png", href: canvas.toDataURL("image/png")}).click();
+	canvas.remove();
+}
+$el("#sw-download").addEventListener("click", downloadScreenshot);
+
+// Other side of screenshot-options hack
+for (const el of document.getElementsByClassName("screenshot-setting")) {
+	// yeah this really sucks but bootstrap toggle only works with this
+	el.setAttribute("onchange", "sync_to_server(this);")
+}
+
+async function screenshot_selection(summonEvent) {
+	// TODO: Fix single selection
+
+	// Adapted from https://stackoverflow.com/a/4220888
+	let selection = window.getSelection();
+	let range = selection.getRangeAt(0);
+	let commonAncestorContainer = range.commonAncestorContainer;
+
+	if (commonAncestorContainer.nodeName === "#text") commonAncestorContainer = commonAncestorContainer.parentNode;
+
+	let rangeParentChildren = commonAncestorContainer.childNodes;
+
+	// Array of STRING actions ids
+	let selectedActionIds = [];
+
+	for (let el of rangeParentChildren) {
+		if (selection.containsNode(el, true)) {
+			// When selecting a portion of a singular action, el can be a text
+			// node rather than an action span
+			if (el.nodeName === "#text") el = el.parentNode.closest("[chunk]");
+			let actionId = el.getAttribute("chunk");
+			if (!actionId) continue;
+			if (selectedActionIds.includes(actionId)) continue;
+			selectedActionIds.push(actionId);
+		}
 	}
 
-	await showScreenshotWizard();
-	return showScreenshotWizard;
-})();
+	await showScreenshotWizard(selectedActionIds);
+}

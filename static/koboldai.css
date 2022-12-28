@@ -1269,6 +1269,8 @@ td.server_vars {
 }
 
 #screenshot-target .human-text,
+#screenshot-target .edit-text,
+#screenshot-target .prompt-text,
 #robot-attribution #human-attribution {
 	color: var(--text_edit);
 }
