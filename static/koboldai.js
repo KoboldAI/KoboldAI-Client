@@ -7016,6 +7016,7 @@ async function showScreenshotWizard(actionComposition, startDebt, endDebt) {
 	
 	screenshotTextContainer.innerHTML = "";
 	let charCount = startDebt;
+	let i = 0;
 	for (const action of actionComposition) {
 		for (const chunk of action) {
 			// Account for debt
@@ -7034,9 +7035,13 @@ async function showScreenshotWizard(actionComposition, startDebt, endDebt) {
 				break;
 			} else if (charCount + chunk.content.length > endDebt) {
 				let charsLeft = endDebt - charCount
-				chunk.content = chunk.content.slice(0, charsLeft);
+				chunk.content = chunk.content.slice(0, charsLeft).trimEnd();
 				endDebt = -1;
 			}
+
+
+			if (i == 0) chunk.content = chunk.content.trimStart();
+			i++;
 
 			charCount += chunk.content.length;
 
@@ -7053,11 +7058,6 @@ async function showScreenshotWizard(actionComposition, startDebt, endDebt) {
 			});
 		}
 	}
-
-	const firstAction = screenshotTextContainer.children[0];
-	const lastAction = screenshotTextContainer.children[screenshotTextContainer.children.length-1];
-	firstAction.innerText = firstAction.innerText.trimStart();
-	lastAction.innerText = lastAction.innerText.trimEnd();
 
 	let imageData = await (await fetch("/image_db.json")).json();
 	screenshotImagePicker.innerHTML = "";
