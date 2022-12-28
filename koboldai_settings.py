@@ -2111,9 +2111,15 @@ class KoboldStoryRegister(object):
         """
         Returns a list of chunks that comprise an action in dictionaries
         formatted as follows:
-            type: string identifying chunk type ("ai", "user", or "edit")
+            type: string identifying chunk type ("ai", "user", "edit", or "prompt")
             content: the actual content of the chunk
         """
+        # Prompt doesn't need standard edit data
+        if action_id == -1:
+            if self.koboldai_vars.prompt:
+                return [{"type": "prompt", "content": self.koboldai_vars.prompt}]
+            return []
+
         current_text = self.actions[action_id]["Selected Text"]
         action_original_type = "ai"
 
