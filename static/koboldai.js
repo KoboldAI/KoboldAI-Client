@@ -7010,10 +7010,36 @@ sync_hooks.push({
 	}
 });
 
-async function showScreenshotWizard(actionComposition) {
+async function showScreenshotWizard(actionComposition, startDebt, endDebt) {
+	// startDebt is the amount we need to shave off the front, and endDebt the
+	// same for the end
+	
 	screenshotTextContainer.innerHTML = "";
+	let charCount = startDebt;
 	for (const action of actionComposition) {
 		for (const chunk of action) {
+			// Account for debt
+			if (startDebt > 0) {
+				if (chunk.content.length <= startDebt) {
+					startDebt -= chunk.content.length;
+					continue;
+				} else {
+					// Slice up chunk
+					chunk.content = chunk.content.slice(startDebt);
+					startDebt = 0;
+				}
+			}
+
+			if (charCount > endDebt) {
+				break;
+			} else if (charCount + chunk.content.length > endDebt) {
+				let charsLeft = endDebt - charCount
+				chunk.content = chunk.content.slice(0, charsLeft);
+				endDebt = -1;
+			}
+
+			charCount += chunk.content.length;
+
 			let actionClass = {
 				ai: "ai-text",
 				user: "human-text",
@@ -7094,23 +7120,35 @@ async function screenshot_selection(summonEvent) {
 	if (commonAncestorContainer.nodeName === "#text") commonAncestorContainer = commonAncestorContainer.parentNode;
 
 	let rangeParentChildren = commonAncestorContainer.childNodes;
-
 	// Array of STRING actions ids
 	let selectedActionIds = [];
 
 	for (let el of rangeParentChildren) {
-		if (selection.containsNode(el, true)) {
-			// When selecting a portion of a singular action, el can be a text
-			// node rather than an action span
-			if (el.nodeName === "#text") el = el.parentNode.closest("[chunk]");
-			let actionId = el.getAttribute("chunk");
-			if (!actionId) continue;
-			if (selectedActionIds.includes(actionId)) continue;
-			selectedActionIds.push(actionId);
-		}
+		if (!selection.containsNode(el, true)) continue;
+		// When selecting a portion of a singular action, el can be a text
+		// node rather than an action span
+		if (el.nodeName === "#text") el = el.parentNode.closest("[chunk]");
+		let actionId = el.getAttribute("chunk");
+
+		if (!actionId) continue;
+		if (selectedActionIds.includes(actionId)) continue;
+
+		selectedActionIds.push(actionId);
 	}
 
 	let actionComposition = await (await fetch(`/action_composition.json?actions=${selectedActionIds.join(",")}`)).json();
-	console.log(actionComposition);
-	await showScreenshotWizard(actionComposition);
+
+	let totalText = "";
+
+	for (const action of actionComposition) {
+		for (const chunk of action) totalText += chunk.content;
+	}
+
+	let selectionContent = selection.toString();
+	let startDebt = totalText.indexOf(selectionContent);
+	// lastIndexOf??
+	// endDebt is distance from the end of selection.
+	let endDebt = totalText.indexOf(selectionContent) + selectionContent.length;
+
+	await showScreenshotWizard(actionComposition, startDebt=startDebt, endDebt=endDebt, totalText);
 }
