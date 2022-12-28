@@ -1472,7 +1472,7 @@ class KoboldStoryRegister(object):
             old_text = None
             old_length = None
             old = None
-            self.actions[i] = {"Selected Text": text, "Probabilities": [], "Options": [], "Time": int(time.time()), "Original Text": text}
+            self.actions[i] = {"Selected Text": text, "Probabilities": [], "Options": [], "Time": int(time.time())}
             
         self.story_settings.assign_world_info_to_actions(action_id=i, no_transmit=True)
         process_variable_changes(self.socketio, "story", 'actions', {"id": i, 'action':  self.actions[i]}, old)
@@ -1549,10 +1549,12 @@ class KoboldStoryRegister(object):
         self.action_count+=1
         action_id = self.action_count + action_id_offset
         if action_id in self.actions:
+            if not self.actions[action_id].get("Original Text"):
+                self.actions[action_id]["Original Text"] = text
+
             if self.actions[action_id]["Selected Text"] != text:
                 self.actions[action_id]["Selected Text"] = text
                 self.actions[action_id]["Time"] = self.actions[action_id].get("Time", int(time.time()))
-                self.actions[action_id]["Original Text"] = self.actions[action_id].get("Original Text", text)
                 if 'buffer' in self.actions[action_id]:
                     if self.koboldai_vars.tokenizer is not None:
                         tokens = self.koboldai_vars.tokenizer.encode(text)
@@ -1579,6 +1581,7 @@ class KoboldStoryRegister(object):
                 "Probabilities": [],
                 "Time": int(time.time()),
                 "Original Text": text,
+                "Origin": "user" if submission else "ai"
             }
 
         if submission:
@@ -2121,7 +2124,8 @@ class KoboldStoryRegister(object):
             return []
 
         current_text = self.actions[action_id]["Selected Text"]
-        action_original_type = "ai"
+        action_original_type = self.actions[action_id].get("Origin", "ai")
+        original = self.actions[action_id]["Original Text"]
 
         matching_blocks = difflib.SequenceMatcher(
             None,
