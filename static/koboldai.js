@@ -7002,10 +7002,15 @@ sync_hooks.push({
 	}
 });
 
-async function showScreenshotWizard(actionIds) {
-	// actionIds is an array of string action ids
-	let actionComposition = await (await fetch(`/action_composition.json?actions=${actionIds.join(",")}`)).json();
-	console.log(actionComposition);
+sync_hooks.push({
+	class: "user",
+	name: "screenshot_use_boring_colors",
+	func: function(boring) {
+		screenshotTarget.classList.toggle("boring-colors", boring);
+	}
+});
+
+async function showScreenshotWizard(actionComposition) {
 	screenshotTextContainer.innerHTML = "";
 	for (const action of actionComposition) {
 		for (const chunk of action) {
@@ -7081,8 +7086,6 @@ for (const el of document.getElementsByClassName("screenshot-setting")) {
 }
 
 async function screenshot_selection(summonEvent) {
-	// TODO: Fix single selection
-
 	// Adapted from https://stackoverflow.com/a/4220888
 	let selection = window.getSelection();
 	let range = selection.getRangeAt(0);
@@ -7107,5 +7110,7 @@ async function screenshot_selection(summonEvent) {
 		}
 	}
 
-	await showScreenshotWizard(selectedActionIds);
+	let actionComposition = await (await fetch(`/action_composition.json?actions=${selectedActionIds.join(",")}`)).json();
+	console.log(actionComposition);
+	await showScreenshotWizard(actionComposition);
 }

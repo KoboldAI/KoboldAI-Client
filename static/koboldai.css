@@ -1268,9 +1268,9 @@ td.server_vars {
 	margin-top: 30px;
 }
 
-#screenshot-target .human-text,
-#screenshot-target .edit-text,
-#screenshot-target .prompt-text,
+#screenshot-target:not(.boring-colors) .human-text,
+#screenshot-target:not(.boring-colors) .edit-text,
+#screenshot-target:not(.boring-colors) .prompt-text,
 #robot-attribution #human-attribution {
 	color: var(--text_edit);
 }
