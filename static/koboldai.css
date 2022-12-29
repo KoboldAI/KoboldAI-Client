@@ -565,8 +565,7 @@ border-top-right-radius: var(--tabs_rounding);
 }
 
 .Model_Info .settings_button {
-	transform: translateY(7%);
-	margin: -5px;
+	margin: 5px;
 }
 
 #import_story_button {
@@ -3312,7 +3311,15 @@ input[type='range'] {
 
 select {
   outline: none;
+  border: 1px solid;
 }
+
+@-moz-document url-prefix() {
+  select, .presets {
+    padding-left: 5px; /* Add padding to the left side of the select element */
+  }
+}
+  
 
 [system_experimental_features="false"] {
 	display: none;
