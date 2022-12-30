@@ -357,6 +357,10 @@ border-top-right-radius: var(--tabs_rounding);
 	overflow: hidden;
 }
 
+.setting_item .toggle {
+	margin-left: 5px;
+}
+
 .setting_item_input {
 	width:95%;
 }
