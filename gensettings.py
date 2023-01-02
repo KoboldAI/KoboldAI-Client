@@ -613,7 +613,7 @@ gensettingstf = [
 	"label": "Art Guide",
 	"id": "img_gen_art_guide",
 	"default": "",
-    "tooltip": "The art guide sent with image gen requests. \nDefault: fantasy illustration, artstation, by jason felix by steve argyle by tyler jacobson by peter mohrbacher, cinematic lighting",
+    "tooltip": "The art guide sent with image gen requests. <|> (optional) is replaced with the story summary, otherwise the art guide is appended to the summary. \nDefault: masterpiece, digital painting, <|>, dramatic lighting, highly detailed, trending",
     "menu_path": "Interface",
     "sub_path": "Images",
     "classname": "user",
