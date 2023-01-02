@@ -1110,10 +1110,18 @@ td.server_vars {
 .world_info_item_type {
 	/* Workaround for Firefox bug: https://stackoverflow.com/a/42283543 */
 	padding: 1px;
+	padding-bottom: 0px;
 
+	display: inline-block;
+	height: 2.8ex;
+	cursor: text;
 	outline: none;
 	border-bottom: 1px solid gray;
 	transition: color 200ms, border-bottom-color 200ms;
+}
+
+.world_info_item_type::before {
+	opacity: 0.3 !important;
 }
 
 .world_info_item_type.bad-input {
@@ -2555,6 +2563,7 @@ body {
 	display: flex;
 	justify-content: center;
 	align-items: center;
+	flex-direction: column;
 
 	background-color: rgba(0, 0, 0, 0.7);
 
@@ -3026,6 +3035,7 @@ button.disabled {
 .console_text {
 	white-space: pre-wrap;
 	display: inline-block;
+	margin-left: 5px;
 }
 
 .text_red {
