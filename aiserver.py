@@ -9532,7 +9532,7 @@ def UI_2_generate_image_from_story(data):
     koboldai_vars.generating_image = True
     eventlet.sleep(0)
     
-    art_guide = '{}'.format(koboldai_vars.img_gen_art_guide)
+    art_guide = str(koboldai_vars.img_gen_art_guide)
     
     if 'action_id' in data and (int(data['action_id']) in koboldai_vars.actions.actions or int(data['action_id']) == -1):
         action_id = int(data['action_id'])
@@ -9566,13 +9566,21 @@ def UI_2_generate_image_from_story(data):
     
     max_length = args.max_summary_length - len(koboldai_vars.summary_tokenizer.encode(art_guide))
     keys = [summarize(text, max_length=max_length)]
-    logger.debug("Text from summarizer: {}".format(keys[0]))
-    
     prompt = ", ".join(keys)
+    logger.debug("Text from summarizer: {}".format(prompt))
+
+    if art_guide:
+        if '<|>' in art_guide:
+            full_prompt = art_guide.replace('<|>', prompt)
+        else:
+            full_prompt = f"{prompt}, {art_guide}"
+    else:
+        full_prompt = prompt
+
     generate_story_image(
-        ", ".join([part for part in [prompt, art_guide] if part]),
+        full_prompt,
         file_prefix=f"action_{action_id}",
-        display_prompt=prompt,
+        display_prompt=full_prompt,
         log_data={"actionId": action_id},
     )
 

@@ -2993,66 +2993,74 @@ function toggle_adventure_mode(button) {
 }
 
 function select_game_text(event) {
-	if ((event == null) || (event.code == 'ArrowRight') || (event.code == 'ArrowLeft') || (event.code == 'ArrowDown') || (event.code == 'ArrowUp')) {
-		let new_selected_game_chunk = null;
-		if (document.selection) {
-			if (document.selection.createRange().parentElement().id == 'story_prompt') {
-				new_selected_game_chunk = document.selection.createRange().parentElement();
-			} else if (document.selection.createRange().parentElement().id == 'gamescreen') {
+	if (!((event === null) || ["ArrowRight", "ArrowLeft", "ArrowDown", "ArrowUp"].includes(event.code))) return;
+
+	let anchorNode = window.getSelection().anchorNode;
+	let new_selected_game_chunk = null;
+
+	if (document.selection) {
+		if (document.selection.createRange().parentElement().id == 'story_prompt') {
+			new_selected_game_chunk = document.selection.createRange().parentElement();
+		} else if (document.selection.createRange().parentElement().id == 'gamescreen') {
+			new_selected_game_chunk = null;
+			//console.log("Do nothing");
+		} else {
+			new_selected_game_chunk = document.selection.createRange().parentElement().parentElement();
+		}
+	} else if (anchorNode != null && anchorNode.tagName === "SPAN") {
+		// If clicking to the right of an action, the event target is actually
+		// the whole of gametext, and the anchorNode is a child span of an
+		// action rather than a text node.
+		new_selected_game_chunk = anchorNode.parentNode;
+	} else if (anchorNode != null ) {
+		if(anchorNode.parentNode) {
+			if (anchorNode.parentNode.id == 'story_prompt') {
+				new_selected_game_chunk = anchorNode.parentNode;
+			} else if (anchorNode.parentNode.id == "gamescreen") {
 				new_selected_game_chunk = null;
 				//console.log("Do nothing");
 			} else {
-				new_selected_game_chunk = document.selection.createRange().parentElement().parentElement();
+				new_selected_game_chunk = anchorNode.parentNode.parentNode;
 			}
-		} else if (window.getSelection().anchorNode != null ) {
-			if(window.getSelection().anchorNode.parentNode) {
-				if (window.getSelection().anchorNode.parentNode.id == 'story_prompt') {
-					new_selected_game_chunk = window.getSelection().anchorNode.parentNode;
-				} else if (window.getSelection().anchorNode.parentNode.id == "gamescreen") {
-					new_selected_game_chunk = null;
-					//console.log("Do nothing");
-				} else {
-					new_selected_game_chunk = window.getSelection().anchorNode.parentNode.parentNode;
-				}
+		} else {
+			new_selected_game_chunk = null;
+		}
+	}
+
+	//if we've moved to a new game chunk we need to save the old chunk
+	if (((new_selected_game_chunk != selected_game_chunk) && (selected_game_chunk != null)) || (document.activeElement != document.getElementById("Selected Text"))) {
+		if ((selected_game_chunk != null) && (selected_game_chunk.innerText != selected_game_chunk.original_text) && (selected_game_chunk != document.getElementById("welcome_text"))) {
+			if (selected_game_chunk.id == 'story_prompt') {
+				edit_game_text(-1);
 			} else {
-				new_selected_game_chunk = null;
+				edit_game_text(parseInt(selected_game_chunk.getAttribute("chunk")));
 			}
 		}
-		//if we've moved to a new game chunk we need to save the old chunk
-		if (((new_selected_game_chunk != selected_game_chunk) && (selected_game_chunk != null)) || (document.activeElement != document.getElementById("Selected Text"))) {
-			if ((selected_game_chunk != null) && (selected_game_chunk.innerText != selected_game_chunk.original_text) && (selected_game_chunk != document.getElementById("welcome_text"))) {
-				if (selected_game_chunk.id == 'story_prompt') {
-					edit_game_text(-1);
-				} else {
-					edit_game_text(parseInt(selected_game_chunk.getAttribute("chunk")));
-				}
+	}
+	
+	//Check to see if new selection is a game chunk or something else
+	if (new_selected_game_chunk == null) {
+		selected_game_chunk = null;
+		for (item of document.getElementsByClassName("editing")) {
+			item.classList.remove("editing");
+		}
+		window.getSelection().removeAllRanges()
+	} else if (((new_selected_game_chunk.id == "story_prompt") || (new_selected_game_chunk.id.slice(0,20) == "Selected Text Chunk ")) && (document.activeElement.isContentEditable)) {
+		if (new_selected_game_chunk != selected_game_chunk) {
+			for (item of document.getElementsByClassName("editing")) {
+				item.classList.remove("editing");
 			}
+			selected_game_chunk = new_selected_game_chunk;
+			selected_game_chunk.classList.add("editing");
+			update_story_picture(selected_game_chunk.getAttribute("chunk"));
 		}
 		
-		//Check to see if new selection is a game chunk or something else
-		if (new_selected_game_chunk == null) {
-			selected_game_chunk = null;
-			for (item of document.getElementsByClassName("editing")) {
-				item.classList.remove("editing");
-			}
-			window.getSelection().removeAllRanges()
-		} else if (((new_selected_game_chunk.id == "story_prompt") || (new_selected_game_chunk.id.slice(0,20) == "Selected Text Chunk ")) && (document.activeElement.isContentEditable)) {
-			if (new_selected_game_chunk != selected_game_chunk) {
-				for (item of document.getElementsByClassName("editing")) {
-					item.classList.remove("editing");
-				}
-				selected_game_chunk = new_selected_game_chunk;
-				selected_game_chunk.classList.add("editing");
-				update_story_picture(selected_game_chunk.getAttribute("chunk"));
-			}
-			
-		} else {
-			selected_game_chunk = null;
-			for (item of document.getElementsByClassName("editing")) {
-				item.classList.remove("editing");
-			}
-			window.getSelection().removeAllRanges()
+	} else {
+		selected_game_chunk = null;
+		for (item of document.getElementsByClassName("editing")) {
+			item.classList.remove("editing");
 		}
+		window.getSelection().removeAllRanges()
 	}
 }
 

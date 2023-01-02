@@ -98,6 +98,9 @@ mkdir /content/drive/MyDrive/KoboldAI/models/
 mkdir /content/drive/MyDrive/KoboldAI/settings/
 mkdir /content/drive/MyDrive/KoboldAI/softprompts/
 mkdir /content/drive/MyDrive/KoboldAI/userscripts/
+mkdir /content/drive/MyDrive/KoboldAI/presets/
+mkdir /content/drive/MyDrive/KoboldAI/themes/
+
 if [ "$init" == "drive" ]; then
 	echo Google Drive folders created.
 	exit 0
@@ -136,11 +139,15 @@ if [ "$init" != "skip" ]; then
         git reset --hard origin/$(git_default_branch)
     fi
 
+    git submodule update --init --recursive
+    
     cd /content/KoboldAI-Client
 
     cp -rn stories/* /content/drive/MyDrive/KoboldAI/stories/
     cp -rn userscripts/* /content/drive/MyDrive/KoboldAI/userscripts/
     cp -rn softprompts/* /content/drive/MyDrive/KoboldAI/softprompts/
+    cp -rn presets/* /content/drive/MyDrive/KoboldAI/presets/
+    cp -rn themes/* /content/drive/MyDrive/KoboldAI/themes/
     rm stories
     rm -rf stories/
     rm userscripts
@@ -149,11 +156,17 @@ if [ "$init" != "skip" ]; then
     rm -rf softprompts/
     rm models
     rm -rf models/
+    rm presets
+    rm -rf presets/
+    rm themes
+    rm -rf themes/
     ln -s /content/drive/MyDrive/KoboldAI/stories/ stories
     ln -s /content/drive/MyDrive/KoboldAI/settings/ settings
     ln -s /content/drive/MyDrive/KoboldAI/softprompts/ softprompts
     ln -s /content/drive/MyDrive/KoboldAI/userscripts/ userscripts
     ln -s /content/drive/MyDrive/KoboldAI/models/ models
+    ln -s /content/drive/MyDrive/KoboldAI/presets/ presets
+    ln -s /content/drive/MyDrive/KoboldAI/themes/ themes
 
     if [ -n "${COLAB_TPU_ADDR+set}" ]; then
         pip install -r requirements_mtj.txt

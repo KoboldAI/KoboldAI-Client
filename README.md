@@ -105,7 +105,7 @@ KoboldAI has a large number of dependencies you will need to install on your com
 
 ### Downloading the latest version of KoboldAI
 
-KoboldAI is a rolling release on our github, the code you see is also the game. You can the software by clicking on the green Code button at the top of the page and clicking Download ZIP.
+KoboldAI is a rolling release on our github, the code you see is also the game. You can download the software by clicking on the green Code button at the top of the page and clicking Download ZIP, or use the `git clone` command instead. Then, on Windows you need to you run install_requirements.bat (using admin mode is recommanded to avoid errors), and once it's done, or if you're on Linux, either play.bat/sh or remote-play.bat/sh to run it.
 
 The easiest way for Windows users is to use the [offline installer](https://sourceforge.net/projects/koboldai/files/latest/download) below.
 

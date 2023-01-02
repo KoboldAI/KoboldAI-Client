@@ -1160,7 +1160,7 @@ class user_settings(settings):
         self.show_budget = False
         self.ui_level    = 2
         self.img_gen_api_url = "http://127.0.0.1:7860"
-        self.img_gen_art_guide = "digital painting, dramatic lighting, highly detailed, trending"
+        self.img_gen_art_guide = "masterpiece, digital painting, <|>, dramatic lighting, highly detailed, trending"
         self.img_gen_negative_prompt = "lowres, bad anatomy, bad hands, text, error, missing fingers, extra digit, fewer digits, cropped, worst quality, low quality, normal quality, jpeg artifacts, signature, watermark, username, blurry, artist name"
         self.img_gen_steps = 30
         self.img_gen_cfg_scale = 7.0
