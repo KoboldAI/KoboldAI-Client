@@ -1,5 +1,6 @@
 from __future__ import annotations
 from dataclasses import dataclass
+import difflib
 import importlib
 import os, re, time, threading, json, pickle, base64, copy, tqdm, datetime, sys
 import shutil
@@ -1166,6 +1167,12 @@ class user_settings(settings):
         self.cluster_requested_models = [] # The models which we allow to generate during cluster mode
         self.wigen_use_own_wi = False
         self.wigen_amount = 80
+        self.screenshot_show_attribution = True
+        self.screenshot_show_story_title = True
+        self.screenshot_show_author_name = True
+        self.screenshot_author_name = "Anonymous"
+        self.screenshot_show_model_name = True
+        self.screenshot_use_boring_colors = False
         
         
     def __setattr__(self, name, value):
@@ -1504,6 +1511,9 @@ class KoboldStoryRegister(object):
             if "Time" not in json_data["actions"][item]:
                 json_data["actions"][item]["Time"] = int(time.time())
 
+            if "Original Text" not in json_data["actions"][item]:
+                json_data["actions"][item]["Original Text"] = json_data["actions"][item]["Selected Text"]
+
             temp[int(item)] = json_data['actions'][item]
             if int(item) >= self.action_count-100: #sending last 100 items to UI
                 data_to_send.append({"id": item, 'action':  temp[int(item)]})
@@ -1539,6 +1549,9 @@ class KoboldStoryRegister(object):
         self.action_count+=1
         action_id = self.action_count + action_id_offset
         if action_id in self.actions:
+            if not self.actions[action_id].get("Original Text"):
+                self.actions[action_id]["Original Text"] = text
+
             if self.actions[action_id]["Selected Text"] != text:
                 self.actions[action_id]["Selected Text"] = text
                 self.actions[action_id]["Time"] = self.actions[action_id].get("Time", int(time.time()))
@@ -1567,6 +1580,8 @@ class KoboldStoryRegister(object):
                 "Options": [],
                 "Probabilities": [],
                 "Time": int(time.time()),
+                "Original Text": text,
+                "Origin": "user" if submission else "ai"
             }
 
         if submission:
@@ -2095,6 +2110,44 @@ class KoboldStoryRegister(object):
             return filename, prompt
         return None, None
     
+    def get_action_composition(self, action_id: int) -> List[dict]:
+        """
+        Returns a list of chunks that comprise an action in dictionaries
+        formatted as follows:
+            type: string identifying chunk type ("ai", "user", "edit", or "prompt")
+            content: the actual content of the chunk
+        """
+        # Prompt doesn't need standard edit data
+        if action_id == -1:
+            if self.koboldai_vars.prompt:
+                return [{"type": "prompt", "content": self.koboldai_vars.prompt}]
+            return []
+
+        current_text = self.actions[action_id]["Selected Text"]
+        action_original_type = self.actions[action_id].get("Origin", "ai")
+        original = self.actions[action_id]["Original Text"]
+
+        matching_blocks = difflib.SequenceMatcher(
+            None,
+            self.actions[action_id]["Original Text"],
+            current_text
+        ).get_matching_blocks()
+
+        chunks = []
+        base = 0
+        for chunk_match in matching_blocks:
+            inserted = current_text[base:chunk_match.b]
+            content = current_text[chunk_match.b:chunk_match.b + chunk_match.size]
+
+            base = chunk_match.b + chunk_match.size
+
+            if inserted:
+                chunks.append({"type": "edit", "content": inserted})
+            if content:
+                chunks.append({"type": action_original_type, "content": content})
+
+        return chunks
+
     def __setattr__(self, name, value):
         new_variable = name not in self.__dict__
         old_value = getattr(self, name, None)

@@ -117,6 +117,8 @@ const context_menu_actions = {
 		{label: "Add to World Info Entry", icon: "auto_stories", enabledOn: "SELECTION", click: push_selection_to_world_info},
 		{label: "Add as Bias", icon: "insights", enabledOn: "SELECTION", click: push_selection_to_phrase_bias},
 		{label: "Retry from here", icon: "refresh", enabledOn: "CARET", click: retry_from_here},
+		null,
+		{label: "Take Screenshot", icon: "screenshot_monitor", enabledOn: "SELECTION", click: screenshot_selection},
 		// Not implemented! See view_selection_probabiltiies
 		// null,
 		// {label: "View Token Probabilities", icon: "assessment", enabledOn: "SELECTION", click: view_selection_probabilities},
@@ -3179,7 +3181,7 @@ function privacy_mode(enabled) {
 		document.getElementById('SideMenu').classList.remove("superblur");
 		document.getElementById('main-grid').classList.remove("superblur");
 		document.getElementById('rightSideMenu').classList.remove("superblur");
-		closePopups();
+		if (!$el("#privacy_mode").classList.contains("hidden")) closePopups();
 		document.getElementById('privacy_password').value = "";
 	}
 }
@@ -4651,7 +4653,7 @@ async function downloadDebugFile(redact=true) {
 
 		// actions - "Selected Text", Options, Probabilities
 		for (const key of Object.keys(varsData.story_settings.actions.actions)) {
-			for (const redactKey of ["Selected Text", "Options", "Probabilities"]) {
+			for (const redactKey of ["Selected Text", "Options", "Probabilities", "Original Text"]) {
 				varsData.story_settings.actions.actions[key][redactKey] = getRedactedValue(varsData.story_settings.actions.actions[key][redactKey]);
 			}
 		}
@@ -6938,3 +6940,230 @@ $el(".gametext").addEventListener("keydown", function(event) {
 	document.execCommand("insertLineBreak");
 	event.preventDefault();
 });
+
+/* Screenshot */
+const screenshotTarget = $el("#screenshot-target");
+const screenshotImagePicker = $el("#screenshot-image-picker");
+const screenshotImageContainer = $el("#screenshot-images");
+const robotAttribution = $el("#robot-attribution");
+const screenshotTextContainer = $el("#screenshot-text-container");
+
+sync_hooks.push({
+	class: "story",
+	name: "story_name",
+	func: function(title) {
+		$el("#story-attribution").innerText = title;
+	}
+});
+
+sync_hooks.push({
+	class: "model",
+	name: "model",
+	func: function(modelName) {
+		$el("#model-name").innerText = modelName
+	}
+})
+
+sync_hooks.push({
+	class: "user",
+	name: "screenshot_author_name",
+	func: function(name) {
+		$el("#human-attribution").innerText = name;
+	}
+});
+
+sync_hooks.push({
+	class: "user",
+	name: "screenshot_show_attribution",
+	func: function(show) {
+		robotAttribution.classList.toggle("hidden", !show);
+		$el("#screenshot-options-attribution").classList.toggle("disabled", !show);
+		if (show) robotAttribution.scrollIntoView();
+	}
+});
+
+sync_hooks.push({
+	class: "user",
+	name: "screenshot_show_story_title",
+	func: function(show) {
+		$el("#story-title-vis").classList.toggle("hidden", !show);
+		robotAttribution.scrollIntoView();
+	}
+});
+
+sync_hooks.push({
+	class: "user",
+	name: "screenshot_show_author_name",
+	func: function(show) {
+		$el("#author-name-vis").classList.toggle("hidden", !show);
+		$el("#screenshot-options-author-name").classList.toggle("disabled", !show);
+		robotAttribution.scrollIntoView();
+	}
+});
+
+sync_hooks.push({
+	class: "user",
+	name: "screenshot_show_model_name",
+	func: function(show) {
+		$el("#model-name-vis").classList.toggle("hidden", !show);
+		robotAttribution.scrollIntoView();
+	}
+});
+
+sync_hooks.push({
+	class: "user",
+	name: "screenshot_use_boring_colors",
+	func: function(boring) {
+		screenshotTarget.classList.toggle("boring-colors", boring);
+	}
+});
+
+async function showScreenshotWizard(actionComposition, startDebt, endDebt) {
+	// startDebt is the amount we need to shave off the front, and endDebt the
+	// same for the end
+	
+	screenshotTextContainer.innerHTML = "";
+	let charCount = startDebt;
+	let i = 0;
+	for (const action of actionComposition) {
+		for (const chunk of action) {
+			// Account for debt
+			if (startDebt > 0) {
+				if (chunk.content.length <= startDebt) {
+					startDebt -= chunk.content.length;
+					continue;
+				} else {
+					// Slice up chunk
+					chunk.content = chunk.content.slice(startDebt);
+					startDebt = 0;
+				}
+			}
+
+			if (charCount > endDebt) {
+				break;
+			} else if (charCount + chunk.content.length > endDebt) {
+				let charsLeft = endDebt - charCount
+				chunk.content = chunk.content.slice(0, charsLeft).trimEnd();
+				endDebt = -1;
+			}
+
+
+			if (i == 0) chunk.content = chunk.content.trimStart();
+			i++;
+
+			charCount += chunk.content.length;
+
+			let actionClass = {
+				ai: "ai-text",
+				user: "human-text",
+				edit: "edit-text",
+				prompt: "prompt-text",
+			}[chunk.type];
+
+			$e("span", screenshotTextContainer, {
+				innerText: chunk.content,
+				classes: ["action-text", actionClass]
+			});
+		}
+	}
+
+	let imageData = await (await fetch("/image_db.json")).json();
+	screenshotImagePicker.innerHTML = "";
+
+	for (const image of imageData) {
+		if (!image) continue;
+
+		const imgContainer = $e("div", screenshotImagePicker, {classes: ["img-container"]});
+		const checkbox = $e("input", imgContainer, {type: "checkbox"});
+		const imageEl = $e("img", imgContainer, {
+			src: `/generated_images/${image.fileName}`,
+			draggable: false,
+			tooltip: image.displayPrompt
+		});
+
+		imgContainer.addEventListener("click", function(event) {
+			// TODO: Preventdefault if too many images selected and checked is false
+			checkbox.click();
+		});
+
+		checkbox.addEventListener("click", function(event) {
+			event.stopPropagation();
+			screenshotWizardUpdateShownImages();
+		});
+	}
+	openPopup("screenshot-wizard");
+}
+
+function screenshotWizardUpdateShownImages() {
+	screenshotImageContainer.innerHTML = "";
+
+	for (const imgCont of screenshotImagePicker.children) {
+		const checked = imgCont.querySelector("input").checked;
+		if (!checked) continue;
+		const src = imgCont.querySelector("img").src;
+		$e("img", screenshotImageContainer, {src: src});
+	}
+}
+
+async function downloadScreenshot() {
+	// TODO: Upscale (eg transform with given ratio like 1.42 to make image
+	// bigger via screenshotTarget cloning)
+	const canvas = await html2canvas(screenshotTarget, {
+		width: screenshotTarget.clientWidth,
+		height: screenshotTarget.clientHeight - 1
+	});
+
+	canvas.style.display = "none";
+	document.body.appendChild(canvas);
+	$e("a", null, {download: "screenshot.png", href: canvas.toDataURL("image/png")}).click();
+	canvas.remove();
+}
+$el("#sw-download").addEventListener("click", downloadScreenshot);
+
+// Other side of screenshot-options hack
+for (const el of document.getElementsByClassName("screenshot-setting")) {
+	// yeah this really sucks but bootstrap toggle only works with this
+	el.setAttribute("onchange", "sync_to_server(this);")
+}
+
+async function screenshot_selection(summonEvent) {
+	// Adapted from https://stackoverflow.com/a/4220888
+	let selection = window.getSelection();
+	let range = selection.getRangeAt(0);
+	let commonAncestorContainer = range.commonAncestorContainer;
+
+	if (commonAncestorContainer.nodeName === "#text") commonAncestorContainer = commonAncestorContainer.parentNode;
+
+	let rangeParentChildren = commonAncestorContainer.childNodes;
+	// Array of STRING actions ids
+	let selectedActionIds = [];
+
+	for (let el of rangeParentChildren) {
+		if (!selection.containsNode(el, true)) continue;
+		// When selecting a portion of a singular action, el can be a text
+		// node rather than an action span
+		if (el.nodeName === "#text") el = el.parentNode.closest("[chunk]");
+		let actionId = el.getAttribute("chunk");
+
+		if (!actionId) continue;
+		if (selectedActionIds.includes(actionId)) continue;
+
+		selectedActionIds.push(actionId);
+	}
+
+	let actionComposition = await (await fetch(`/action_composition.json?actions=${selectedActionIds.join(",")}`)).json();
+
+	let totalText = "";
+
+	for (const action of actionComposition) {
+		for (const chunk of action) totalText += chunk.content;
+	}
+
+	let selectionContent = selection.toString();
+	let startDebt = totalText.indexOf(selectionContent);
+	// lastIndexOf??
+	// endDebt is distance from the end of selection.
+	let endDebt = totalText.indexOf(selectionContent) + selectionContent.length;
+
+	await showScreenshotWizard(actionComposition, startDebt=startDebt, endDebt=endDebt, totalText);
+}

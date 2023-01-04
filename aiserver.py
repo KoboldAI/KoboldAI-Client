@@ -8526,7 +8526,12 @@ def UI_2_download_story():
 def UI_2_Set_Selected_Text(data):
     if not koboldai_vars.quiet:
         print("Updating Selected Text: {}".format(data))
-    koboldai_vars.actions[int(data['id'])] = data['text']
+    action_id = int(data["id"])
+
+    if not koboldai_vars.actions.actions[action_id].get("Original Text"):
+        koboldai_vars.actions.actions[action_id]["Original Text"] = data["text"]
+
+    koboldai_vars.actions[action_id] = data['text']
 
 #==================================================================#
 # Event triggered when Option is Selected
@@ -9092,6 +9097,41 @@ def UI_2_set_commentator_image(commentator_id):
     with open(os.path.join(koboldai_vars.save_paths.commentator_pictures, str(commentator_id)), "wb") as file:
         file.write(data)
     return ":)"
+
+@app.route("/image_db.json", methods=["GET"])
+@logger.catch
+def UI_2_get_image_db():
+    try:
+        return send_file(os.path.join(koboldai_vars.save_paths.generated_images, "db.json"))
+    except FileNotFoundError:
+        return jsonify([])
+
+@app.route("/action_composition.json", methods=["GET"])
+@logger.catch
+def UI_2_get_action_composition():
+    try:
+        actions = request.args.get("actions").split(",")
+        if not actions:
+            raise ValueError()
+    except (ValueError, AttributeError):
+        return "No actions", 400
+
+    try:
+        actions = [int(action) for action in actions]
+    except TypeError:
+        return "Not all actions int", 400
+
+    ret = []
+    for action_id in actions:
+        try:
+            ret.append(koboldai_vars.actions.get_action_composition(action_id))
+        except KeyError:
+            ret.append([])
+    return jsonify(ret)
+
+@app.route("/generated_images/<path:path>")
+def UI_2_send_generated_images(path):
+    return send_from_directory(koboldai_vars.save_paths.generated_images, path)
 
 @socketio.on("scratchpad_prompt")
 @logger.catch
