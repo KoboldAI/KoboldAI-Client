@@ -6974,16 +6974,6 @@ sync_hooks.push({
 
 sync_hooks.push({
 	class: "user",
-	name: "screenshot_show_attribution",
-	func: function(show) {
-		robotAttribution.classList.toggle("hidden", !show);
-		$el("#screenshot-options-attribution").classList.toggle("disabled", !show);
-		if (show) robotAttribution.scrollIntoView();
-	}
-});
-
-sync_hooks.push({
-	class: "user",
 	name: "screenshot_show_story_title",
 	func: function(show) {
 		$el("#story-title-vis").classList.toggle("hidden", !show);
@@ -6997,15 +6987,6 @@ sync_hooks.push({
 	func: function(show) {
 		$el("#author-name-vis").classList.toggle("hidden", !show);
 		$el("#screenshot-options-author-name").classList.toggle("disabled", !show);
-		robotAttribution.scrollIntoView();
-	}
-});
-
-sync_hooks.push({
-	class: "user",
-	name: "screenshot_show_model_name",
-	func: function(show) {
-		$el("#model-name-vis").classList.toggle("hidden", !show);
 		robotAttribution.scrollIntoView();
 	}
 });
