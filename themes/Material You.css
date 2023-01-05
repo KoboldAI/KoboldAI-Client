@@ -99,8 +99,8 @@
 	--rangeslider_circle_color: var(--on_primary_palette);
 
 	--help_icon: var(--secondary_palette);
-    /*--tooltip_text: var(--on_secondary_palette);
-    --tooltip_background: var(--secondary_palette);*/
+    --tooltip_text: var(--on_secondary_palette);
+    --tooltip_background: var(--secondary_palette);
 	--setting_category_help_text_color: #E0E0E0;
 	
 	--setting_footer_border_color: grey;
