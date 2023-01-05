@@ -16,10 +16,12 @@
     input[type='range'] {
       overflow: hidden;
 	  border-color: var(--setting_background);
-      width: 100%;
+      width: calc(100% - 10px);
       -webkit-appearance: none;
       background-color: var(--rangeslider_background_color);
 	  border-radius: 16px;
+	  margin-left: 5px;
+	  margin-right: 5px;
     }
 	 
     input[type='range']::-webkit-slider-runnable-track {
@@ -179,9 +181,12 @@ border-top-right-radius: var(--tabs_rounding);
 	display: flex;
 	flex-direction: row;
 	flex-wrap: wrap;
-	width: 100%;
 }
 
+#Images {
+	padding-left: 10px;
+	padding-right: 10px;
+}
 
 .dynamic-setting-container {
 	background-color: var(--setting_background);
@@ -213,6 +218,7 @@ border-top-right-radius: var(--tabs_rounding);
 	border-radius: var(--radius_settings_background);
 	padding: 2px;
 	margin: 2px;
+	width: calc(50% - 4px);
 }
 
 .setting_container_sp {
@@ -227,6 +233,11 @@ border-top-right-radius: var(--tabs_rounding);
 	border-radius: var(--radius_settings_background);
 	padding: 2px;
 	margin: 2px;
+}
+
+#biasing {
+	margin-left: 5px;
+	margin-right: 5px;
 }
 
 .setting_container.var_sync_alt_system_alt_gen[system_alt_gen="true"] {
@@ -250,6 +261,7 @@ border-top-right-radius: var(--tabs_rounding);
 	border-radius: var(--radius_settings_background);
 	padding: 2px;
 	margin-top: 5px;
+	flex-grow: 1;
 }
 
 #story_menu_author .setting_tile_area{
@@ -269,6 +281,7 @@ border-top-right-radius: var(--tabs_rounding);
 	border-radius: var(--radius_settings_background);
 	padding: 2px;
 	margin: 2px;
+	width: calc(50% - 4px);
 }
 .setting_container_single .setting_item{
 	font-size: calc(0.93em + var(--font_size_adjustment));
@@ -287,6 +300,7 @@ border-top-right-radius: var(--tabs_rounding);
 	border-radius: var(--radius_settings_background);
 	padding: 1px;
 	margin: 2px;
+	width: calc(100% - 8px);
 }
 .setting_container_single_wide .setting_item{
 	font-size: calc(0.93em + var(--font_size_adjustment));
@@ -341,6 +355,10 @@ border-top-right-radius: var(--tabs_rounding);
 .setting_item {
 	grid-area: item;
 	overflow: hidden;
+}
+
+.setting_item .toggle {
+	margin-left: 5px;
 }
 
 .setting_item_input {
@@ -453,7 +471,7 @@ border-top-right-radius: var(--tabs_rounding);
 .SideMenu .flyout_menu_contents {
 	overflow-x: hidden;
 	overflow-y: auto;
-	height: calc(100vh - 40px);
+	height: calc(100vh - 34px);
 }
 
 .settings_footer {
@@ -544,18 +562,14 @@ border-top-right-radius: var(--tabs_rounding);
 	border-radius: var(--radius_settings_button);
 	border-style:solid;
 	height: 35px;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
 }
 
 .settings_button > .material-icons-outlined {
 	margin-right: 2px;
 	top: 2px;
-}
-
-
-.settings_button > .button_label {
-	position: relative;
-	bottom: 3px;
-	right: 4px;
 }
 
 .settings_button > .material-icons-outlined {
@@ -565,8 +579,7 @@ border-top-right-radius: var(--tabs_rounding);
 }
 
 .Model_Info .settings_button {
-	transform: translateY(7%);
-	margin: -5px;
+	margin: 5px;
 }
 
 #import_story_button {
@@ -752,7 +765,7 @@ border-top-right-radius: var(--tabs_rounding);
 	border: 2px solid var(--palette_card_text);
 	border-radius: var(--radius_palette_card);
 	box-shadow: var(--palette_card_shadow);
-	margin: 5px;
+	margin-top: 5px;
 	padding: 5px 0 10px 0;
 	background: var(--palette_card_background);
 	color: var(--palette_card_text);
@@ -1110,10 +1123,18 @@ td.server_vars {
 .world_info_item_type {
 	/* Workaround for Firefox bug: https://stackoverflow.com/a/42283543 */
 	padding: 1px;
+	padding-bottom: 0px;
 
+	display: inline-block;
+	height: 2.8ex;
+	cursor: text;
 	outline: none;
 	border-bottom: 1px solid gray;
 	transition: color 200ms, border-bottom-color 200ms;
+}
+
+.world_info_item_type::before {
+	opacity: 0.3 !important;
 }
 
 .world_info_item_type.bad-input {
@@ -1199,6 +1220,182 @@ td.server_vars {
 	margin-right: 5px;
 }
 
+#screenshot-wizard {
+	width: 50%;
+	background-color: var(--background);
+}
+
+#screenshot-wizard > .popup-header {
+	padding-top: 5px;
+	padding-left: 5px;
+	margin-bottom: 6px;
+}
+
+#screenshot-wizard > .help_text {
+	margin-top: 0.7em;
+}
+
+#screenshot-wizard > .popup-header > h1 {
+	margin-top: 0px;
+	margin-bottom: 0px;
+}
+
+#screenshot-target-container {
+	position: relative;
+	margin: 20px;
+	margin-top: 10px;
+	max-height: 25vh;
+	overflow-y: auto;
+}
+
+#screenshot-target {
+	min-height: 130px;
+	background-color: var(--gamescreen_background);
+	padding: 20px;
+	/* width: 1080px; */
+	display: flex;
+	overflow: hidden;
+}
+
+#screenshot-target > #screenshot-left {
+	display: flex;
+	flex-direction: column;
+	justify-content: space-between;
+	flex-grow: 1;
+}
+
+#screenshot-target > #screenshot-images {
+	border-left: 1px solid var(--background);
+	flex-shrink: 0;
+	max-width: 25%;
+	padding-left: 20px;
+	margin-left: 20px;
+	position: relative;
+	overflow: hidden;
+}
+
+#screenshot-target > #screenshot-images > img {
+	display: block;
+	width: 100%; /* the buggy line */
+	margin-bottom: 12px;
+}
+
+#screenshot-target .action-text {
+	font-size: 1.1em;
+	font-weight: bold;
+}
+
+#robot-attribution {
+	margin-top: 30px;
+}
+
+#screenshot-target:not(.boring-colors) .human-text,
+#screenshot-target:not(.boring-colors) .edit-text,
+#screenshot-target:not(.boring-colors) .prompt-text,
+#robot-attribution #human-attribution {
+	color: var(--text_edit);
+}
+
+#screenshot-target .ai-text,
+#robot-attribution #model-name {
+	color: var(--text);
+}
+
+#robot-attribution #model-name {
+	font-family: monospace;
+}
+
+#robot-attribution #story-attribution {
+	font-style: italic;
+}
+
+#robot-attribution #human-attribution,
+#robot-attribution #model-name,
+#robot-attribution #story-attribution {
+	font-weight: bold;
+}
+
+#robot-attribution .boring-part-of-madlibs {
+	opacity: 0.9;
+}
+
+#screenshot-options {
+	display: flex;
+	flex-direction: column;
+	margin-left: 8px;
+	margin-bottom: 8px;
+}
+
+#screenshot-wizard .header {
+	font-weight: bold;
+	opacity: 0.6;
+}
+
+#screenshot-wizard .option {
+	margin-bottom: 3px;
+}
+
+#screenshot-options .indent {
+	margin-left: 15px;
+}
+
+#screenshot-options .warning {
+	color: rgb(185, 70, 70);
+	font-style: italic;
+}
+
+/* Screenshot Image Picker */
+#screenshot-image-picker {
+	display: grid;
+	grid-template-columns: auto auto auto auto auto;
+	max-height: 200px;
+	overflow-y: auto;
+	overflow-x: hidden;
+	/* TODO: We REALLY need to figure out a better system for colors and themeing */
+	background-color: var(--flyout_background_pinned);
+}
+
+#screenshot-image-picker > .img-container {
+	display: inline-block;
+	position: relative;
+	cursor: pointer;
+	border: 2px solid var(----enabled_button_background_color);
+}
+
+#screenshot-image-picker > .img-container > img {
+	height: 100%;
+	width: 100%;
+	object-fit: cover;
+	overflow: hidden;
+	aspect-ratio: 1/1;
+}
+
+#screenshot-image-picker > .img-container > input {
+	position: absolute;
+	bottom: 5px;
+	right: 5px;
+	z-index: 2;
+}
+
+#screenshot-image-picker > .img-container > input:checked ~ img {
+	opacity: 0.6;
+}
+
+#sw-download {
+	margin-top: 12px;
+	margin: 3px;
+	padding: 12px;
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	background-color: var(--button_background);
+	font-size: 1.2em;
+	cursor: pointer;
+}
+
+#screenshot-text-container {
+	line-height: 2;
+}
 
 /* ---------------------------- OVERALL PAGE CONFIG ------------------------------*/
 body {
@@ -2285,6 +2482,7 @@ body {
 	opacity: 0.7;
 	font-size: small;
 	float: right;
+	padding-right: 10px;
 }
 
 .debug-dump-log {
@@ -2429,6 +2627,13 @@ body {
 }
 
 /* Substitutions */
+#Substitutions {
+	margin-left: 10px;
+	margin-right: 10px;
+	justify-content: center;
+	width: auto;
+}
+
 #Substitutions > .help_text > .helpicon {
 	position: relative;
 	margin-left: 1px;
@@ -2555,6 +2760,7 @@ body {
 	display: flex;
 	justify-content: center;
 	align-items: center;
+	flex-direction: column;
 
 	background-color: rgba(0, 0, 0, 0.7);
 
@@ -3011,6 +3217,11 @@ button.disabled {
 	padding: 5px 7px 5px 7px;
 }
 
+textarea.fullwidth {
+	border-style: solid;
+	resize: vertical;
+}
+
 .rawtext {
 	white-space: pre-wrap;
 }
@@ -3026,6 +3237,7 @@ button.disabled {
 .console_text {
 	white-space: pre-wrap;
 	display: inline-block;
+	margin-left: 5px;
 }
 
 .text_red {
@@ -3312,7 +3524,18 @@ input[type='range'] {
 
 select {
   outline: none;
+  border: 1px solid;
 }
+
+@-moz-document url-prefix() {
+	select, .presets {
+		padding-left: 5px; /* Add padding to the left side of the select element */
+	}
+	select {
+		padding-top: 0;
+	}
+}
+  
 
 [system_experimental_features="false"] {
 	display: none;

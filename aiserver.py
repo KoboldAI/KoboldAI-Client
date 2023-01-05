@@ -8526,7 +8526,12 @@ def UI_2_download_story():
 def UI_2_Set_Selected_Text(data):
     if not koboldai_vars.quiet:
         print("Updating Selected Text: {}".format(data))
-    koboldai_vars.actions[int(data['id'])] = data['text']
+    action_id = int(data["id"])
+
+    if not koboldai_vars.actions.actions[action_id].get("Original Text"):
+        koboldai_vars.actions.actions[action_id]["Original Text"] = data["text"]
+
+    koboldai_vars.actions[action_id] = data['text']
 
 #==================================================================#
 # Event triggered when Option is Selected
@@ -9093,6 +9098,41 @@ def UI_2_set_commentator_image(commentator_id):
         file.write(data)
     return ":)"
 
+@app.route("/image_db.json", methods=["GET"])
+@logger.catch
+def UI_2_get_image_db():
+    try:
+        return send_file(os.path.join(koboldai_vars.save_paths.generated_images, "db.json"))
+    except FileNotFoundError:
+        return jsonify([])
+
+@app.route("/action_composition.json", methods=["GET"])
+@logger.catch
+def UI_2_get_action_composition():
+    try:
+        actions = request.args.get("actions").split(",")
+        if not actions:
+            raise ValueError()
+    except (ValueError, AttributeError):
+        return "No actions", 400
+
+    try:
+        actions = [int(action) for action in actions]
+    except TypeError:
+        return "Not all actions int", 400
+
+    ret = []
+    for action_id in actions:
+        try:
+            ret.append(koboldai_vars.actions.get_action_composition(action_id))
+        except KeyError:
+            ret.append([])
+    return jsonify(ret)
+
+@app.route("/generated_images/<path:path>")
+def UI_2_send_generated_images(path):
+    return send_from_directory(koboldai_vars.save_paths.generated_images, path)
+
 @socketio.on("scratchpad_prompt")
 @logger.catch
 def UI_2_scratchpad_prompt(data):
@@ -9492,7 +9532,7 @@ def UI_2_generate_image_from_story(data):
     koboldai_vars.generating_image = True
     eventlet.sleep(0)
     
-    art_guide = '{}'.format(koboldai_vars.img_gen_art_guide)
+    art_guide = str(koboldai_vars.img_gen_art_guide)
     
     if 'action_id' in data and (int(data['action_id']) in koboldai_vars.actions.actions or int(data['action_id']) == -1):
         action_id = int(data['action_id'])
@@ -9526,13 +9566,21 @@ def UI_2_generate_image_from_story(data):
     
     max_length = args.max_summary_length - len(koboldai_vars.summary_tokenizer.encode(art_guide))
     keys = [summarize(text, max_length=max_length)]
-    logger.debug("Text from summarizer: {}".format(keys[0]))
-    
     prompt = ", ".join(keys)
+    logger.debug("Text from summarizer: {}".format(prompt))
+
+    if art_guide:
+        if '<|>' in art_guide:
+            full_prompt = art_guide.replace('<|>', prompt)
+        else:
+            full_prompt = f"{prompt}, {art_guide}"
+    else:
+        full_prompt = prompt
+
     generate_story_image(
-        ", ".join([part for part in [prompt, art_guide] if part]),
+        full_prompt,
         file_prefix=f"action_{action_id}",
-        display_prompt=prompt,
+        display_prompt=full_prompt,
         log_data={"actionId": action_id},
     )
 
@@ -10195,13 +10243,13 @@ def UI_2_action_image():
 #==================================================================#
 # display messages if they have never been sent before on this install
 #==================================================================#
+with open("data/one_time_messages.json", "r") as f:
+    messages = json.load(f)
+    messages = {int(x): messages[x] for x in messages}
 @logger.catch
 @socketio.on("check_messages")
 def send_one_time_messages(data, wait_time=0):
     time.sleep(wait_time) #Need to wait a bit for the web page to load as the connect event is very eary
-    messages = {
-                    1: {"id": 1, "title": "Warning New Save Format", "message": "This version of KoboldAI introduces a new save format which is incompatible with older versions of KoboldAI, this means your saves will not be able to load on the old version if they are saved with this version. For existing stories we will leave a copy of the original save intact if you wish to switch back to the older version, when you load your save in the old version of KoboldAI you will not see any of the changes saved with this version."},
-               }
     if data != '':
         if int(data) not in koboldai_vars.seen_messages:
             koboldai_vars.seen_messages.append(int(data))
