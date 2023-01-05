@@ -3,6 +3,7 @@ cd /opt/koboldai
 
 if [[ -n update ]];then
         git pull --recurse-submodules && ./install_requirements.sh cuda
+	git submodule update --init --recursive
 fi
 
 if [[ ! -v KOBOLDAI_DATADIR ]];then

@@ -1,6 +1,6 @@
 FROM debian
 RUN apt update && apt install wget aria2 git bzip2 -y
-RUN git clone https://github.com/henk717/koboldai /opt/koboldai
+RUN git clone --recursive https://github.com/henk717/koboldai /opt/koboldai
 WORKDIR /opt/koboldai
 RUN ./install_requirements.sh cuda
 COPY docker-helper.sh /opt/koboldai/docker-helper.sh
