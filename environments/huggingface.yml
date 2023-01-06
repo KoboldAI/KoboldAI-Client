@@ -30,6 +30,7 @@ dependencies:
     - lupa==1.10
     - transformers==4.24.0
     - huggingface_hub>=0.10.1
+    - safetensors
     - accelerate
     - git+https://github.com/VE-FORBRYDERNE/mkultra
     - flask-session
