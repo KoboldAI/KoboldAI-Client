@@ -18,4 +18,5 @@ marshmallow>=3.13
 apispec-webframeworks
 loguru
 termcolor
+safetensors
 git+https://github.com/VE-FORBRYDERNE/mkultra
