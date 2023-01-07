@@ -68,6 +68,18 @@
 	--alternate_button_text: #e0e0e0;
 	--alternate_button_background: #283445;
 
+	/*Buttons -> Icon Button*/
+	--icon_button_background:;
+	--icon_button_color:;
+	--icon_button_border_color:;
+
+	/*Context Menu*/
+	--context_menu_text:;
+	--context_menu_background:;
+	--context_menu_border:;
+	--context_menu_division:;
+	--context_menu_hover_text:;
+	--context_menu_hover_background:;
 
 	/*Sequence, AKA Gens Per Action*/
 	--sequence_area_background: #111820;
@@ -101,6 +113,10 @@
 	--setting_footer_border_color: #334552;
 	--setting_footer_text_color: #e0e0e0;
 	--setting_footer_background_color: #18222d;
+
+	/*Substitution Card*/
+	--substitution_card_input_border:;
+	--substitution_card_input_background:;
 
 	/*Palette Card*/
 	--palette_card_background: #273141;
@@ -162,6 +178,7 @@
 	--left_menu_strong_shadow: 0;
 	--right_menu_light_shadow: 0;
 	--right_menu_strong_shadow: 0;
+	--context_menu_shadow: var(--wi_card_shadow);	
 	--radius_inputbox: 2px;
 	--radius_unpinned_menu: 2px;
 	--radius_sequence: 5px;
@@ -173,7 +190,10 @@
 	--radius_palette_card: 5px;
 	--radius_settings_button: 2px;
 	--tabs_rounding: 2px;
-
+	--radius_context_menu: 2px;
+	--radius_context_menu_hover: 2px;
+	--radius_genre_tag: 2px;
+	--radius_tooltip: 2px;
 
 
 
@@ -342,13 +362,13 @@ span.helpicon.material-icons-outlined:hover:not(::after) {
 	transform: scale(1) !important;
 }
 
-.collapsable_header .material-icons-outlined {
+/*.collapsable_header .material-icons-outlined {
     transform: translateY(7px) translateX(4px);
 }
 
 .collapsable_header .material-icons-outlined:hover {
     transform: translateY(7px) translateX(4px);
-}
+}*/
 
 #context-viewer-close:hover {
 	transform: scale(1) !important;

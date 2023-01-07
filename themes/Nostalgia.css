@@ -68,6 +68,18 @@
 	--alternate_button_text: #ffffff;
 	--alternate_button_background: #3379b7;
 
+	/*Buttons -> Icon Button*/
+	--icon_button_background:;
+	--icon_button_color:;
+	--icon_button_border_color:;
+
+	/*Context Menu*/
+	--context_menu_text:;
+	--context_menu_background:;
+	--context_menu_border:;
+	--context_menu_division:;
+	--context_menu_hover_text:;
+	--context_menu_hover_background:;
 
 	/*Sequence, AKA Gens Per Action*/
 	--sequence_area_background: #262626;
@@ -101,6 +113,10 @@
 	--setting_footer_border_color: grey;
 	--setting_footer_text_color: #ffffff;
 	--setting_footer_background_color: #242424;
+
+	/*Substitution Card*/
+	--substitution_card_input_border:;
+	--substitution_card_input_background:;
 
 	/*Palette Card*/
 	--palette_card_background: #295071;
@@ -161,6 +177,7 @@
 	--left_menu_strong_shadow: 0;
 	--right_menu_light_shadow: 0;
 	--right_menu_strong_shadow: 0;
+	--context_menu_shadow: var(--wi_card_shadow);
 	--radius_inputbox: 5px;
 	--radius_unpinned_menu: 5px;
 	--radius_sequence: 5px;
@@ -172,6 +189,10 @@
 	--radius_palette_card: 5px;
 	--radius_settings_button: 5px;
 	--tabs_rounding: 5px;
+	--radius_context_menu: 5px;
+	--radius_context_menu_hover: 5px;
+	--radius_genre_tag: 5px;
+	--radius_tooltip: 5px;
 
 
 
@@ -308,9 +329,9 @@
 
 /* Icons */
 
-.collapsable_header .material-icons-outlined {
+/*.collapsable_header .material-icons-outlined {
     transform: translateY(7px) translateX(4px);
-}
+}*/
 
 .substitution-card > .card-left > .material-icons-outlined {
 	color: #999 !important;
