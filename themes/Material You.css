@@ -1,7 +1,10 @@
 /*
 	Name: Material You
 	Author: GuiAworld
-	Description: A theme that demonstrates the power of the Palette system. Based off of Google's Material You.
+	Version: v2
+	Description: A theme that demonstrates the power of the Palette system. Based off of Google's Material You. 
+	PS.: Feel free to remix this theme, but please keep the "This theme is based off of Material You by GuiAworld"
+	-This theme is based off of Material You by GuiAworld-
 */
 
 :root {
@@ -53,8 +56,7 @@
 	--statusbar_text_color: white;
 	--scrollbar-color: #9b9b9b80;
 
-	/*Buttons*/
-		/*General*/
+	/*Buttons -> General*/
 	--enabled_button_text: var(--on_primary_palette);
     --enabled_button_background_color: var(--primary_palette);
     --enabled_button_border_color: var(--on_primary_palette);
@@ -63,16 +65,29 @@
     --disabled_button_background_color: #495762;
     --disabled_button_border_color: #686c68;
 
-		/*Home Tab*/
+	/*Buttons -> Home Tab*/
 	--button_text: var(--on_primary_palette);
 	--button_background: var(--primary_palette);
 		
-		/*Alternate Button*/
+	/*Buttons -> Alternate Button*/
 	--alternate_button_text: var(--on_primary_container_palette);
 	--alternate_button_background: var(--primary_container_palette);
 
+	/*Buttons -> Icon Button*/
+	--icon_button_background: var(--tertiary_palette);
+	--icon_button_color: var(--on_tertiary_palette);
+	--icon_button_border_color: var(--on_tertiary_palette);
 
-	/*Sequence, AKA Gens Per Action*/
+	/*Context Menu*/
+	--context_menu_text: var(--on_tertiary_palette);
+	--context_menu_background: var(--tertiary_palette);
+	--context_menu_border: var(--on_tertiary_palette);
+	--context_menu_division: var(--on_tertiary_palette);
+	--context_menu_hover_text: var(--on_tertiary_container_palette);
+	--context_menu_hover_background: var(--tertiary_container_palette);
+
+
+	/*Sequences, AKA Gens Per Action*/
 	--sequence_area_background: var(--layer1_palette);
     --sequence_background: var(--primary_palette);
 	--sequence_text: var(--on_primary_palette);
@@ -107,6 +122,10 @@
 	--setting_footer_text_color: var(--on_surface_palette);
 	--setting_footer_background_color: var(--layer1_palette);
 
+	/*Substitution Card*/
+	--substitution_card_input_border: var(--outline_palette);
+	--substitution_card_input_background: var(--layer4_palette);
+	
 	/*Palette Card*/
 	--palette_card_background: var(--primary_palette);
 	--palette_card_text: var(--on_primary_palette);
@@ -150,11 +169,12 @@
 	
 	/*Context Bar Colors*/
 	--context_colors_memory: #3572A5;
-	--context_colors_authors_notes: #f1e05a;
+	--context_colors_authors_notes: #21a300;
 	--context_colors_world_info: #563d7c;
+	--context_colors_genre: #bd0000;
 	--context_colors_prompt: #e34c26;
-	--context_colors_game_text: #c6538c;
-	--context_colors_submit: #ededed;
+	--context_colors_game_text: #b13673;
+	--context_colors_submit: #221f24;
 	--context_colors_unused: white;
 	--context_colors_soft_prompt: #000080;
 
@@ -167,6 +187,7 @@
 	--left_menu_strong_shadow: 0 0px 8px 0 rgba(0, 0, 0, 0.2), 25px 0px 20px 0 rgba(0, 0, 0, 0.19);
 	--right_menu_light_shadow: 0 0px 8px 0 rgba(0, 0, 0, 0.2), 0px 0px 20px 0 rgba(0, 0, 0, 0.19);
 	--right_menu_strong_shadow: 0 0px 8px 0 rgba(0, 0, 0, 0.2), -25px 0px 20px 0 rgba(0, 0, 0, 0.19);
+	--context_menu_shadow: var(--wi_card_shadow);
 	--popup_shadow: 0 0 35px 20px#1b1b1f;
 	--radius_inputbox: 10px;
 	--radius_unpinned_menu: 20px;
@@ -178,6 +199,10 @@
 	--radius_wi_card: 5px;
 	--radius_palette_card: 5px;
 	--radius_settings_button: 5px;
+	--radius_context_menu: 10px;
+	--radius_context_menu_hover: 5px;
+	--radius_genre_tag: 5px;
+	--radius_tooltip: 10px;
 	--tabs_rounding: 6px;
 
 
