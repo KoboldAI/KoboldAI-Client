@@ -17,7 +17,7 @@
       overflow: hidden;
 	  border-color: var(--setting_background);
       width: calc(100% - 10px);
-      /*-webkit-appearance: none; Looks WAAAAAYYY better without it -GuiAworld*/
+      -webkit-appearance: none;
 	  padding-top: 1px;
       background-color: var(--rangeslider_background_color);
 	  border-radius: 16px;
