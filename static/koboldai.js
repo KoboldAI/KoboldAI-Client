@@ -2890,8 +2890,9 @@ function save_bias(item) {
 
 function sync_to_server(item) {
 	//get value
-	value = null;
-	name = null;
+	let value = null;
+	let name = null;
+
 	if ((item.tagName.toLowerCase() === 'checkbox') || (item.tagName.toLowerCase() === 'input') || (item.tagName.toLowerCase() === 'select') || (item.tagName.toLowerCase() == 'textarea')) {
 		if (item.getAttribute("type") == "checkbox") {
 			value = item.checked;
