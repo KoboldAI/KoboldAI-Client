@@ -2862,8 +2862,7 @@ function save_as_story(response) {
 	if (response === "overwrite?") openPopup("save-confirm");
 }
 
-function save_bias(item) {
-	
+function save_bias() {
 	var have_blank = false;
 	var biases = {};
 	//get all of our biases
@@ -3634,8 +3633,15 @@ function options_on_right(data) {
 }
 
 function makeBiasCard(phrase, score, compThreshold) {
-	function updateLabel(input) {
-		input.closest(".bias_slider").querySelector(".bias_slider_cur").innerText = input.value;
+	function updateBias(origin, input, save=true) {
+		const textInput = input.closest(".bias_slider").querySelector(".bias_slider_cur");
+		let value = (origin === "slider") ? input.value : parseFloat(textInput.innerText);
+		textInput.innerText = value;
+		input.value = value;
+
+		// Only save on "commitful" actions like blur or mouseup to not spam
+		// the poor server
+		if (save) console.warn("saving")
 	}
 
 	const biasContainer = $el("#biasing");
@@ -3647,14 +3653,78 @@ function makeBiasCard(phrase, score, compThreshold) {
 	const compThresholdInput = biasCard.querySelector(".bias_comp_threshold input");
 
 	phraseInput.value = phrase;
-
 	scoreInput.value = score;
-	scoreInput.addEventListener("input", function() { updateLabel(this) });
-	updateLabel(scoreInput);
-
 	compThresholdInput.value = compThreshold;
-	compThresholdInput.addEventListener("input", function() { updateLabel(this) });
-	updateLabel(compThresholdInput);
+
+	for (const input of [scoreInput, compThresholdInput]) {
+		// Init sync
+		updateBias("slider", input, false);
+
+		// Visual update on each value change
+		input.addEventListener("input", function() { updateBias("slider", this, false) });
+
+		// Only when we leave do we sync to server (might come back to bite us)
+		input.addEventListener("mouseup", function() { updateBias("slider", this) });
+		input.addEventListener("blur", function() { updateBias("slider", this) });
+
+		// Personally I don't want to press a key 100 times to add one
+		const nudge = parseFloat(input.getAttribute("keyboard-step") ?? input.getAttribute("step"));
+		const min = parseFloat(input.getAttribute("min"));
+		const max = parseFloat(input.getAttribute("max"));
+
+		const currentHitbox = input.closest(".hitbox");
+		const currentLabel = input.closest(".bias_slider").querySelector(".bias_slider_cur");
+		currentLabel.addEventListener("keydown", function(event) {
+			// Nothing special for numbers
+			if ([".", "-"].includes(event.key) || parseInt(event.key)) return;
+
+			// Either we are special keys or forbidden keys
+			event.preventDefault();
+
+			switch (event.key) {
+				case "Enter":
+					currentLabel.blur();
+					break;
+				// This feels very nice :^)
+				case "ArrowDown":
+				case "ArrowUp":
+					let delta = (event.key === "ArrowUp") ? nudge : -nudge;
+					let currentValue = parseFloat(currentLabel.innerText);
+
+					event.preventDefault();
+					if (!currentValue && currentValue !== 0) return;
+
+					// toFixed because 1.1 + 0.1 !== 1.2 yay rounding errors.
+					// Although the added decimal place(s) look cleaner now
+					// that I think about it.
+					let value = Math.min(max, Math.max(min, currentValue + delta));
+					currentLabel.innerText = value.toFixed(2);
+
+					updateBias("text", input, false);
+					break;
+			}
+		});
+
+		currentHitbox.addEventListener("wheel", function(event) {
+			// Only when focused! (May drop this requirement later, browsers seem to behave when scrolling :] )
+			if (currentLabel !== document.activeElement) return;
+			if (event.deltaY === 0) return;
+
+			let delta = (event.deltaY > 0) ? nudge : -nudge;
+			let currentValue = parseFloat(currentLabel.innerText);
+
+			event.preventDefault();
+			if (!currentValue && currentValue !== 0) return;
+			let value = Math.min(max, Math.max(min, currentValue + delta));
+			currentLabel.innerText = value.toFixed(2);
+
+			updateBias("text", input, false);
+		});
+
+		currentLabel.addEventListener("blur", function(event) {
+			updateBias("text", input);
+		});
+	}
 
 	biasContainer.appendChild(biasCard);
 }
