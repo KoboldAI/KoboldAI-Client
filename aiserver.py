@@ -7981,7 +7981,12 @@ def new_ui_index():
     if 'story' in session:
         if session['story'] not in koboldai_vars.story_list():
             session['story'] = 'default'
-    return render_template('index_new.html', settings=gensettings.gensettingstf, on_colab=koboldai_vars.on_colab )
+    return render_template(
+        'index_new.html',
+        settings=gensettings.gensettingstf,
+        on_colab=koboldai_vars.on_colab,
+        hide_ai_menu=args.noaimenu
+    )
 
 @logger.catch
 def ui2_connect():
