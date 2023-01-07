@@ -38,10 +38,12 @@
 					<b class="noselect">1) Model: </b>
 			</div>
 			<div style="display: flex; justify-content: center;">
-				<button class="settings_button" onclick="socket.emit('load_model_button', {});">
-					<span class="material-icons-outlined cursor" tooltip="Load Model" style="font-size: 1.4em;">folder_open</span>
-					<span class="button_label">Load Model</span>
-				</button>
+				{% if not hide_ai_menu %}
+					<button class="settings_button" onclick="socket.emit('load_model_button', {});">
+						<span class="material-icons-outlined cursor" tooltip="Load Model" style="font-size: 1.4em;">folder_open</span>
+						<span class="button_label">Load Model</span>
+					</button>
+				{% endif %}
 				<select class="var_sync_model_selected_preset settings_select presets" onchange='sync_to_server(this)'><option>Preset</option></select>
 			</div>
 			{% if not on_colab %}
