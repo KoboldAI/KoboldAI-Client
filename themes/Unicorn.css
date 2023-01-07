@@ -72,6 +72,18 @@
 	--alternate_button_text: #f2f1f1;
 	--alternate_button_background: #e26771;
 
+	/*Buttons -> Icon Button*/
+	--icon_button_background:;
+	--icon_button_color:;
+	--icon_button_border_color:;
+
+	/*Context Menu*/
+	--context_menu_text:;
+	--context_menu_background:;
+	--context_menu_border:;
+	--context_menu_division:;
+	--context_menu_hover_text:;
+	--context_menu_hover_background:;
 
 	/*Sequence, AKA Gens Per Action*/
 	--sequence_area_background: #ebebeb;
@@ -106,6 +118,10 @@
 	--setting_footer_border_color: #acacac;
 	--setting_footer_text_color: #3d3d3d;
 	--setting_footer_background_color: #e1d1d1;
+
+	/*Substitution Card*/
+	--substitution_card_input_border:;
+	--substitution_card_input_background:;
 
 	/*Palette Card*/
 	--palette_card_background: #e9cece;
@@ -167,6 +183,7 @@
 	--left_menu_strong_shadow: 0;
 	--right_menu_light_shadow: 0;
 	--right_menu_strong_shadow: 0;
+	--context_menu_shadow: var(--wi_card_shadow);
 	--popup_shadow: 0;
 	--radius_inputbox: 15px;
 	--radius_unpinned_menu: 0px;
@@ -179,6 +196,10 @@
 	--radius_palette_card: 10px;
 	--radius_settings_button: 10px;
 	--tabs_rounding: 10px;
+	--radius_context_menu: 10px;
+	--radius_context_menu_hover: 10px;
+	--radius_genre_tag: 10px;
+	--radius_tooltip: 10px;
 
 
 
@@ -363,9 +384,9 @@
     filter: brightness(100%) !important;
 }
 
-.collapsable_header .material-icons-outlined {
+/*.collapsable_header .material-icons-outlined {
     transform: translateY(7px) translateX(4px);
-}
+}*/
 
 .material-icons-outlined:hover {
 	filter: brightness(100%) !important;
