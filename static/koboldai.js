@@ -3633,42 +3633,49 @@ function options_on_right(data) {
 	}
 }
 
+function makeBiasCard(phrase, score, compThreshold) {
+	function updateLabel(input) {
+		input.closest(".bias_slider").querySelector(".bias_slider_cur").innerText = input.value;
+	}
+
+	const biasContainer = $el("#biasing");
+	const biasCard = $el(".bias_card.template").cloneNode(true);
+	biasCard.classList.remove("template");
+
+	const phraseInput = biasCard.querySelector(".bias_phrase");
+	const scoreInput = biasCard.querySelector(".bias_score input");
+	const compThresholdInput = biasCard.querySelector(".bias_comp_threshold input");
+
+	phraseInput.value = phrase;
+
+	scoreInput.value = score;
+	scoreInput.addEventListener("input", function() { updateLabel(this) });
+	updateLabel(scoreInput);
+
+	compThresholdInput.value = compThreshold;
+	compThresholdInput.addEventListener("input", function() { updateLabel(this) });
+	updateLabel(compThresholdInput);
+
+	biasContainer.appendChild(biasCard);
+}
+
 function do_biases(data) {
-	//console.log(data);
 	//clear out our old bias lines
-	let bias_list = Object.assign([], document.getElementsByClassName("bias"));
-	for (item of bias_list) {
-		//console.log(item);
+	for (item of document.getElementsByClassName("bias_card")) {
+		if (item.classList.contains("template")) continue;
 		item.parentNode.removeChild(item);
 	}
 	
 	//add our bias lines
 	for (const [key, value] of Object.entries(data.value)) {
-		bias_line = document.getElementById("empty_bias").cloneNode(true);
-		bias_line.id = "";
-		bias_line.classList.add("bias");
-		bias_line.querySelector(".bias_phrase").querySelector("input").value = key;
-		bias_line.querySelector(".bias_score").querySelector("input").value = value[0];
-		update_bias_slider_value(bias_line.querySelector(".bias_score").querySelector("input"));
-		bias_line.querySelector(".bias_comp_threshold").querySelector("input").value = value[1];
-		update_bias_slider_value(bias_line.querySelector(".bias_comp_threshold").querySelector("input"));
-		document.getElementById('biasing').append(bias_line);
+		makeBiasCard(key, value[0], value[1]);
 	}
 	
 	//add another bias line if this is the phrase and it's not blank
-	bias_line = document.getElementById("empty_bias").cloneNode(true);
-	bias_line.id = "";
-	bias_line.classList.add("bias");
-	bias_line.querySelector(".bias_phrase").querySelector("input").value = "";
-	bias_line.querySelector(".bias_phrase").querySelector("input").id = "empty_bias_phrase";
-	bias_line.querySelector(".bias_score").querySelector("input").value = 1;
-	bias_line.querySelector(".bias_comp_threshold").querySelector("input").value = 50;
-	document.getElementById('biasing').append(bias_line);
+	const templateBiasCard = makeBiasCard("", 1, 50);
+	// bias_line.querySelector(".bias_phrase").querySelector("input").id = "empty_bias_phrase";
 }
 
-function update_bias_slider_value(slider) {
-	slider.parentElement.parentElement.querySelector(".bias_slider_cur").textContent = slider.value;
-}
 
 function distortColor(rgb) {
 	// rgb are 0..255, NOT NORMALIZED!!!!!!

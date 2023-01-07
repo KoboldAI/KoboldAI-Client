@@ -235,11 +235,6 @@ border-top-right-radius: var(--tabs_rounding);
 	margin: 2px;
 }
 
-#biasing {
-	margin-left: 5px;
-	margin-right: 5px;
-}
-
 .setting_container.var_sync_alt_system_alt_gen[system_alt_gen="true"] {
 	display: none;
 }
@@ -664,40 +659,40 @@ border-top-right-radius: var(--tabs_rounding);
 }
 
 /* Bias */
-#biases_label {
-	cursor: pointer;
+#biasing {
+	padding: 0px 10px;
 }
 
-.bias {
-	display: grid;
-	grid-template-areas: "phrase percent max";
-	grid-template-columns: auto 100px 100px;
+.bias_card {
+	background-color: var(--setting_background);
+	padding: 8px;
+}
+
+.bias_top {
+	display: flex;
+	justify-content: space-between;
+}
+
+.bias_top > .close_button {
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	cursor: pointer;
+	margin-left: 7px;
+}
+
+.bias_card input {
+	width: 100%;
+	border: none;
 }
 
 .bias_phrase {
-	grid-area: phrase;
-	margin-right: 5px;
+	height: 36px;
 }
 
-.bias_phrase input {
-	width: 100%;
-}
-
-.bias_score {
-	grid-area: percent;
-	margin-right: 5px;
-}
-
-.bias_comp_threshold {
-	grid-area: max;
-	margin-right: 5px;
-}
-
-.bias_slider {
-	display: grid;
-	grid-template-areas: "bar bar bar"
-						 "min cur max";
-	grid-template-columns: 33px 34px 33px;
+.bias_slider_labels {
+	display: flex;
+	justify-content: space-between;
 }
 
 .bias_slider_bar {
