@@ -7,15 +7,12 @@ import shutil
 from typing import List, Union
 from io import BytesIO
 from flask import has_request_context, session
-from flask_socketio import SocketIO, join_room, leave_room
+from flask_socketio import join_room, leave_room
 from collections import OrderedDict
 import multiprocessing
 from logger import logger
-import eventlet
 import torch
 import numpy as np
-import inspect
-import ctypes
 import random
 
 serverstarted = False

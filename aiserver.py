@@ -40,7 +40,6 @@ import packaging
 import packaging.version
 import contextlib
 import traceback
-import threading
 import markdown
 import bleach
 import itertools
@@ -63,7 +62,6 @@ import sys
 import gc
 
 import lupa
-import importlib
 
 # KoboldAI
 import fileops
@@ -83,7 +81,7 @@ import transformers.generation_utils
 
 # Text2img
 import base64
-from PIL import Image, ImageFont, ImageDraw, ImageFilter, ImageOps, PngImagePlugin
+from PIL import Image
 from io import BytesIO
 
 global tpu_mtj_backend
@@ -7847,7 +7845,6 @@ def final_startup():
             return
         utils.decodenewlines(tokenizer.decode([25678, 559]))
         tokenizer.encode(utils.encodenewlines("eunoia"))
-    #threading.Thread(target=__preempt_tokenizer).start()
     tpool.execute(__preempt_tokenizer)
 
     # Load soft prompt specified by the settings file, if applicable
@@ -7865,18 +7862,6 @@ def final_startup():
     if(koboldai_vars.use_colab_tpu or koboldai_vars.model in ("TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX")):
         soft_tokens = tpumtjgetsofttokens()
         if(koboldai_vars.dynamicscan or (not koboldai_vars.nogenmod and koboldai_vars.has_genmod)):
-            #threading.Thread(
-            #    target=tpu_mtj_backend.infer_dynamic,
-            #    args=(np.tile(np.uint32((23403, 727, 20185)), (koboldai_vars.numseqs, 1)),),
-            #    kwargs={
-            #        "soft_embeddings": koboldai_vars.sp,
-            #        "soft_tokens": soft_tokens,
-            #        "gen_len": 1,
-            #        "use_callback": False,
-            #        "numseqs": koboldai_vars.numseqs,
-            #        "excluded_world_info": list(set() for _ in range(koboldai_vars.numseqs)),
-            #    },
-            #).start()
             tpool.execute(tpu_mtj_backend.infer_dynamic, np.tile(np.uint32((23403, 727, 20185)), (koboldai_vars.numseqs, 1)), 
                     soft_embeddings= koboldai_vars.sp,
                     soft_tokens= soft_tokens,
@@ -7886,16 +7871,6 @@ def final_startup():
                     excluded_world_info= list(set() for _ in range(koboldai_vars.numseqs))
             )
         else:
-            #threading.Thread(
-            #    target=tpu_mtj_backend.infer_static,
-            #    args=(np.uint32((23403, 727, 20185)),),
-            #    kwargs={
-            #        "soft_embeddings": koboldai_vars.sp,
-            #        "soft_tokens": soft_tokens,
-            #        "gen_len": 1,
-            #        "numseqs": koboldai_vars.numseqs,
-            #    },
-            #).start()
             tpool.execute(
                 tpu_mtj_backend.infer_static,
                 np.uint32((23403, 727, 20185)),
