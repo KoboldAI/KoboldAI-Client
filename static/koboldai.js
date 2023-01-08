@@ -3698,7 +3698,11 @@ function makeBiasCard(phrase="", score=0, compThreshold=10) {
 		const currentLabel = input.closest(".bias_slider").querySelector(".bias_slider_cur");
 		currentLabel.addEventListener("keydown", function(event) {
 			// Nothing special for numbers
-			if ([".", "-"].includes(event.key) || parseInt(event.key)) return;
+			if (
+				[".", "-", "ArrowLeft", "ArrowRight", "Backspace", "Delete"].includes(event.key)
+				|| event.ctrlKey
+				|| (parseInt(event.key) || parseInt(event.key) === 0)
+			) return;
 
 			// Either we are special keys or forbidden keys
 			event.preventDefault();
@@ -3732,7 +3736,7 @@ function makeBiasCard(phrase="", score=0, compThreshold=10) {
 			if (currentLabel !== document.activeElement) return;
 			if (event.deltaY === 0) return;
 
-			let delta = (event.deltaY > 0) ? nudge : -nudge;
+			let delta = (event.deltaY > 0) ? -nudge : nudge;
 			let currentValue = parseFloat(currentLabel.innerText);
 
 			event.preventDefault();
