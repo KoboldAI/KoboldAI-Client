@@ -3293,7 +3293,9 @@ function finished_tts() {
 	} else {
 		action = document.getElementById("Selected Text Chunk "+(next_action-1));
 	}
-	action.classList.remove("tts_playing");
+	if (action) {
+		action.classList.remove("tts_playing");
+	}
 	if (next_action <= action_count) {
 		document.getElementById("reader").src = "/audio?id="+next_action;
 		document.getElementById("reader").setAttribute("action_id", next_action);
@@ -3311,7 +3313,9 @@ function tts_playing() {
 	} else {
 		action = document.getElementById("Selected Text Chunk "+action_id);
 	}
-	action.classList.add("tts_playing");
+	if (action) {
+		action.classList.add("tts_playing");
+	}
 }
 
 function view_selection_probabilities() {
