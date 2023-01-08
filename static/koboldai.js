@@ -3696,6 +3696,10 @@ function makeBiasCard(phrase="", score=0, compThreshold=10) {
 
 		const currentHitbox = input.closest(".hitbox");
 		const currentLabel = input.closest(".bias_slider").querySelector(".bias_slider_cur");
+
+		// TODO: Prevent paste of just non-number characters
+		currentLabel.addEventListener("paste", function(event) { event.preventDefault(); })
+
 		currentLabel.addEventListener("keydown", function(event) {
 			// Nothing special for numbers
 			if (
