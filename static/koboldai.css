@@ -666,6 +666,7 @@ border-top-right-radius: var(--tabs_rounding);
 .bias_card {
 	background-color: var(--setting_background);
 	padding: 8px;
+	margin-bottom: 12px;
 }
 
 .bias_top {
@@ -717,6 +718,20 @@ border-top-right-radius: var(--tabs_rounding);
 	width: 100%;
 	display: flex;
 	justify-content: center;
+}
+
+#bias-add {
+	width: 100%;
+	cursor: pointer;
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	padding: 4px;
+}
+
+#bias-add:hover {
+	width: 100%;
+	background-color: rgba(255, 255, 255, 0.05);
 }
 
 /* Theme */
