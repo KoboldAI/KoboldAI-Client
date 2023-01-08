@@ -28,3 +28,4 @@ ijson
 bitsandbytes
 ftfy
 pydub
+safetensors

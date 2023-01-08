@@ -4816,6 +4816,11 @@ def actionsubmit(data, actionmode=0, force_submit=False, force_prompt_gen=False,
                 execute_inmod()
             koboldai_vars.submission = re.sub(r"[^\S\r\n]*([\r\n]*)$", r"\1", koboldai_vars.submission)  # Remove trailing whitespace, excluding newlines
             data = koboldai_vars.submission
+            if koboldai_vars.prompt:
+                # This will happen only when loading a non-started save game (i.e. one consisting only of a saved prompt).
+                # In this case, prepend the prompt to the sumission. This allows the player to submit a blank initial submission
+                # (preserving the prompt), or to add to the prompt by submitting non-empty data.
+                data = koboldai_vars.prompt + data
             if(not force_submit and len(data.strip()) == 0):
                 set_aibusy(0)
                 socketio.emit("error", "No prompt or random story theme entered", broadcast=True, room="UI_2")
@@ -7426,17 +7431,17 @@ def load_story_v1(js, from_file=None):
         logger.debug("Added actions to temp story class")
         
 
-    if "actions_metadata" in js:
-        if type(js["actions_metadata"]) == dict:
-            for key in js["actions_metadata"]:
-                if js["actions_metadata"][key]["Alternative Text"] != []:
-                    data = js["actions_metadata"][key]["Alternative Text"]
-                    for i in range(len(js["actions_metadata"][key]["Alternative Text"])):
-                        data[i]["text"] = data[i].pop("Text")
-                    temp_story_class.set_options(data, int(key))
-    koboldai_vars.actions.load_json(temp_story_class.to_json())
-    logger.debug("Saved temp story class")
-    del temp_story_class
+        if "actions_metadata" in js:
+            if type(js["actions_metadata"]) == dict:
+                for key in js["actions_metadata"]:
+                    if js["actions_metadata"][key]["Alternative Text"] != []:
+                        data = js["actions_metadata"][key]["Alternative Text"]
+                        for i in range(len(js["actions_metadata"][key]["Alternative Text"])):
+                            data[i]["text"] = data[i].pop("Text")
+                        temp_story_class.set_options(data, int(key))
+        koboldai_vars.actions.load_json(temp_story_class.to_json())
+        logger.debug("Saved temp story class")
+        del temp_story_class
     
     # Try not to break older save files
     if("authorsnote" in js):
@@ -7976,7 +7981,12 @@ def new_ui_index():
     if 'story' in session:
         if session['story'] not in koboldai_vars.story_list():
             session['story'] = 'default'
-    return render_template('index_new.html', settings=gensettings.gensettingstf, on_colab=koboldai_vars.on_colab )
+    return render_template(
+        'index_new.html',
+        settings=gensettings.gensettingstf,
+        on_colab=koboldai_vars.on_colab,
+        hide_ai_menu=args.noaimenu
+    )
 
 @logger.catch
 def ui2_connect():

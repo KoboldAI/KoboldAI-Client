@@ -18,6 +18,7 @@
 	  border-color: var(--setting_background);
       width: calc(100% - 10px);
       -webkit-appearance: none;
+	  padding-top: 1px;
       background-color: var(--rangeslider_background_color);
 	  border-radius: 16px;
 	  margin-left: 5px;
@@ -181,6 +182,7 @@ border-top-right-radius: var(--tabs_rounding);
 	display: flex;
 	flex-direction: row;
 	flex-wrap: wrap;
+	animation: 1s 1 normal grow-backY;
 }
 
 #Images {
@@ -219,6 +221,48 @@ border-top-right-radius: var(--tabs_rounding);
 	padding: 2px;
 	margin: 2px;
 	width: calc(50% - 4px);
+}
+
+/*Couldn't find a way to give this settings a specific class, so bruteforce it is. Well, until someone smarter than me can fix this. -GuiAworld*/
+#img_gen_art_guide_card {
+    grid-template-areas:
+        "label value"
+        "item item"
+        "minlabel maxlabel";
+	grid-template-rows: 20px 30px 5px;
+	grid-template-columns: 338px 30px;
+    flex-grow: 2;
+    width: 99%;
+}
+#user_img_gen_art_guide {
+	width: 358px;
+    margin-left: 5px;
+    margin-right: 5px;
+	color: var(--dropdown_text);
+    background: var(--dropdown_background);
+    border-color: var(--dropdown_text);
+	padding: 4px 0 3px 5px;
+	border-radius: 5px;
+}
+#img_gen_negative_prompt_card {
+    grid-template-areas:
+        "label value"
+        "item item"
+        "minlabel maxlabel";
+	grid-template-rows: 20px 30px 5px;
+	grid-template-columns: 338px 30px;
+    flex-grow: 2;
+    width: 99%;
+}
+#user_img_gen_negative_prompt {
+	width: 358px;
+    margin-left: 5px;
+    margin-right: 5px;
+	color: var(--dropdown_text);
+    background: var(--dropdown_background);
+    border-color: var(--dropdown_text);
+	padding: 4px 0 3px 5px;
+	border-radius: 5px;
 }
 
 .setting_container_sp {
@@ -748,15 +792,19 @@ border-top-right-radius: var(--tabs_rounding);
 /* Theme */
 
 .collapsable_header .material-icons-outlined {
-	padding-top: 5px;
+	/*padding-top: 5px;*/
+	translate: 0 5px;
 } 
 
 .var_sync_system_theme_list{
 	padding: 6px 0 9px 0;
-	margin-left: 10px;
 	border-radius: 5px;
 	color: var(--dropdown_text);
 	background: var(--dropdown_background);
+	width: 90%;
+}
+.setting_tile_area#Theme .icon_button{
+	padding: 5px;
 }
 
 #palette_area {
@@ -806,8 +854,8 @@ border-top-right-radius: var(--tabs_rounding);
 }
 
 .advanced_theme {
-	margin: 10px 10px 0 auto;
-	padding: 2px 4px 2px 4px;
+	margin: 6px 1px 0 auto;
+	padding: 4px 8px 4px 8px;
 	border-radius: var(--radius_alternate_button);
 	background-color: var(--alternate_button_background);
 	color: var(--alternate_button_text);
@@ -1037,7 +1085,7 @@ td.server_vars {
 
 .wi_title {
 	position: relative;
-	bottom: 4px;
+	bottom: 2px;
 	margin-left: 4px;
 }
 
@@ -2200,6 +2248,7 @@ body {
 	position: fixed;
 	transition: opacity  0s linear 0.5s;
 	white-space: normal;
+	border-radius: var(--radius_tooltip);
 
 	opacity: 1;
 	
@@ -2597,14 +2646,16 @@ body {
 	/* Nothing should be above the context menu (that I can think of) */
 	z-index: 9999999;
 
-	/* TODO: Theme */
-	background-color: #222f3a;
-	border: 1px solid #485e6d;
+	color: var(--context_menu_text);
+	background-color: var(--context_menu_background);
+	border: 1px solid var(--context_menu_border);
+	border-radius: var(--radius_context_menu);
+	box-shadow: var(--context_menu_shadow);
 }
 
 #context-menu > hr {
-	/* TODO: Theme */
-	border-top: 2px solid #485e6d;
+	/* Division Color*/
+	border-top: 2px solid var(--context_menu_division);
 	margin: 5px 5px;
 }
 
@@ -2615,8 +2666,9 @@ body {
 }
 
 .context-menu-item:hover {
-	/* TODO: Theme */
-	background-color: #273b48;
+	color: var(--context_menu_hover_text);
+	background-color: var(--context_menu_hover_background);
+	border-radius: var(--radius_context_menu_hover);
 }
 
 .context-menu-item > .material-icons-outlined {
@@ -2680,7 +2732,8 @@ body {
 
 .substitution-card input {
 	padding-left: 2px;
-	border-color: var(--setting_background);
+	border-color: var(--substitution_card_input_border);
+	background-color: var(--substitution_card_input_background);
 }
 
 #new-sub-card {
@@ -2731,9 +2784,12 @@ body {
 }
 
 #welcome-logo {
-	width: 50%;
-	max-width: 720px;
-	filter: drop-shadow(5px 5px 5px #222);
+    width: 56%;
+    max-width: 720px;
+    filter: drop-shadow(5px 5px 5px rgb(0 0 0));
+    box-shadow: 0px 0px 84px 20px rgb(12 12 12 / 35%), inset 0px 0px 100px 100px rgb(0 0 0 / 18%);
+    border-radius: 18%;
+    padding: 5px;
 }
 
 #welcome-logo-container {
@@ -3031,24 +3087,26 @@ body {
 	padding: 5px 0px;
 	background-color: var(--wi_tag_color);
 	margin-bottom: 2px;
+	border-radius:var(--radius_genre_tag);
 }
 
-.genre-suggestion.highlighted {
-	background-color: #151e28;
+.genre-suggestion:hover {
+	filter: brightness(75%);
 }
 
 #genre-container {
+	margin-top: 5px;
 	max-height: 50vh;
 	overflow-y: auto;
 	
-	background-color: #151e28;
+	/*background-color: #151e28;*/
 }
 
 .genre {
 	display: inline-flex;
 	align-items: center;
 	background-color: var(--wi_tag_color);
-	border-radius: var(--radius_wi_card);
+	border-radius:var(--radius_genre_tag);
 	padding: 4px 0px;
 	margin: 2px 2px;
 }
@@ -3065,6 +3123,8 @@ body {
 
 .genre-inner > .x {
 	font-size: 16px;
+    transform: translateY(10%);
+    padding-right: 3px;
 	cursor: pointer;
 	opacity: 0.7;
 }
@@ -3200,6 +3260,16 @@ button.disabled {
 	background-color: var(--disabled_button_background_color);
 	border-color: var(--disabled_button_border_color);
 	cursor: not-allowed;
+}
+
+.icon_button {
+	background-color: var(--icon_button_background);
+	color: var(--icon_button_color);
+	border: 1px solid var(--icon_button_border_color);
+	border-radius: var(--radius_button);
+	margin-top: 1px;
+	transform: translateY(-3%);
+	padding: 1px;
 }
 
 .force_center {
@@ -3595,3 +3665,5 @@ select {
 .tts_playing {
 	text-decoration: underline dotted;
 }
+
+

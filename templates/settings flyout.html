@@ -38,10 +38,12 @@
 					<b class="noselect">1) Model: </b>
 			</div>
 			<div style="display: flex; justify-content: center;">
-				<button class="settings_button" onclick="socket.emit('load_model_button', {});">
-					<span class="material-icons-outlined cursor" tooltip="Load Model" style="font-size: 1.4em;">folder_open</span>
-					<span class="button_label">Load Model</span>
-				</button>
+				{% if not hide_ai_menu %}
+					<button class="settings_button" onclick="socket.emit('load_model_button', {});">
+						<span class="material-icons-outlined cursor" tooltip="Load Model" style="font-size: 1.4em;">folder_open</span>
+						<span class="button_label">Load Model</span>
+					</button>
+				{% endif %}
 				<select class="var_sync_model_selected_preset settings_select presets" onchange='sync_to_server(this)'><option>Preset</option></select>
 			</div>
 			{% if not on_colab %}
@@ -361,7 +363,7 @@
 				<div id="substitution-container"></div>
 
 				<div id="new-sub-card" class="cursor" tooltip="Add Substitution">
-					<span class="material-icons-outlined">
+					<span class="material-icons-outlined icon_button">
 						add
 					</span>
 				</div>
@@ -384,8 +386,8 @@
 		</div>
 		<div class="setting_tile_area" id="Theme">
 			<select id="selected_theme" class="var_sync_system_theme_list" autocomplete="off" onchange="Change_Theme(this.value);">
-			</select><span class="material-icons-outlined cursor" tooltip="Refresh List" onclick="socket.emit('theme_list_refresh', '');">autorenew</span>
-			<div id="palette_area" class="palette_area" ui_level=2>
+			</select><span class="material-icons-outlined cursor icon_button" tooltip="Refresh List" onclick="socket.emit('theme_list_refresh', '');">autorenew</span>
+			<div id="palette_area" class="palette_area" ui_level=1>
 				<b style="font-size: 20px;">Palette</b>
 				<div id="save_theme_area" >
 					<input type="text" id="save_theme_name" autocomplete="off" placeholder="New Theme Name"/>
@@ -448,7 +450,7 @@
 					</table>
 				</div>
 			</div>
-			<div class="advanced_theme cursor" onclick='openPopup("advanced_theme_editor");'>
+			<div class="advanced_theme cursor" ui_level="2" onclick='openPopup("advanced_theme_editor");'>
 				<span>Advanced Theme</h4>
 			</div>
 		</div>

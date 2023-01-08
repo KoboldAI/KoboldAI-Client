@@ -103,6 +103,19 @@
     --disabled_button_background_color: var(--gruvbox-dark1);
     --disabled_button_border_color: transparent;
 
+	/*Buttons -> Icon Button*/
+	--icon_button_background:;
+	--icon_button_color:;
+	--icon_button_border_color:;
+
+	/*Context Menu*/
+	--context_menu_text:;
+	--context_menu_background:var(--gruvbox-dark2);
+	--context_menu_border:;
+	--context_menu_division:;
+	--context_menu_hover_text:;
+	--context_menu_hover_background:var(--gruvbox-dark1);
+
 	/* Sequence, AKA Gens Per Action */
 	--sequence_area_background: var(--gruvbox-dark1);
     --sequence_background: var(--gruvbox-dark2);
@@ -135,6 +148,10 @@
     --tooltip_text:var(--gruvbox-light0);
     --tooltip_background:var(--secondary_palette);
 
+	/*Substitution Card*/
+	--substitution_card_input_border:;
+	--substitution_card_input_background:;
+	
 	/* World Info */
 	--wi_card_border_color: var(--gruvbox-dark3);
     --wi_card_border_color_to_ai:var(--gruvbox-light0);
@@ -173,6 +190,7 @@
 	--left_menu_strong_shadow: 0;
 	--right_menu_light_shadow: 0;
 	--right_menu_strong_shadow: 0;
+	--context_menu_shadow: var(--wi_card_shadow);
 
 	--radius_inputbox: 0px;
 	--radius_unpinned_menu: 0px;
@@ -186,6 +204,10 @@
 	--radius_alternate_button: 0px;
 	--radius_palette_card: 0px;
 	--tabs_rounding: 6px;
+	--radius_context_menu: 00px;
+	--radius_context_menu_hover: 0px;
+	--radius_genre_tag: 0px;
+	--radius_tooltip: 0px;
 
 	/* Variables */
 	--flyout_menu_closed_width: 0px;

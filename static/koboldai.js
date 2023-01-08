@@ -3137,7 +3137,7 @@ function save_preset() {
 
 //--------------------------------------------General UI Functions------------------------------------
 function set_ui_level(level) {
-	for (classname of ['setting_container', 'setting_container_single', 'setting_container_single_wide', 'biasing', 'palette_area']) {
+	for (classname of ['setting_container', 'setting_container_single', 'setting_container_single_wide', 'biasing', 'palette_area', 'advanced_theme']) {
 		for (element of document.getElementsByClassName(classname)) {
 			if (parseInt(element.getAttribute('ui_level')) <= level) {
 				element.classList.remove("hidden");
