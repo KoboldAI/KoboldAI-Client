@@ -1601,6 +1601,13 @@ function show_model_menu(data) {
 	var accept = document.getElementById("btn_loadmodelaccept");
 	accept.disabled = true;
 	
+	//finally, if they selected the custom hugging face menu we show the input box
+	if (data['menu'] == "customhuggingface") {
+		document.getElementById("custommodelname").classList.remove("hidden");
+	} else {
+		document.getElementById("custommodelname").classList.add("hidden");
+	}
+	
 	openPopup("load-model");
 }
 

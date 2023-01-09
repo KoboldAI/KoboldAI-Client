@@ -165,6 +165,7 @@ model_menu = {
     'mainmenu': [
         ["Load a model from its directory", "NeoCustom", "", False],
         ["Load an old GPT-2 model (eg CloverEdition)", "GPT2Custom", "", False],
+        ["Load custom model from Hugging Face", "customhuggingface", "", True],
         ["Adventure Models", "adventurelist", "", True],
         ["Novel Models", "novellist", "", True],
         ["NSFW Models", "nsfwlist", "", True],
@@ -842,6 +843,18 @@ def sendModelSelection(menu="mainmenu", folder="./models"):
             "isMenu": m[3],
             "isDownloaded": True,
         } for m in menu_list_ui_2]
+        emit('show_model_menu', {'data': p_menu, 'menu': menu, 'breadcrumbs': breadcrumbs, "showdelete": showdelete}, broadcast=False)
+    elif menu in ('customhuggingface'):
+        p_menu = [{
+            "label": "Return to Main Menu",
+            "name": "mainmenu",
+            "size": "",
+            "isMenu": True,
+            "isDownloaded": True,
+        }]
+        breadcrumbs = []
+        showdelete=False
+        emit('from_server', {'cmd': 'show_model_menu', 'data': [["Return to Main Menu", "mainmenu", "", True]], 'menu': menu, 'breadcrumbs': breadcrumbs, "showdelete": showdelete}, broadcast=True, room="UI_1")
         emit('show_model_menu', {'data': p_menu, 'menu': menu, 'breadcrumbs': breadcrumbs, "showdelete": showdelete}, broadcast=False)
     else:
         # Hide experimental models unless experimental mode is enabled
@@ -1638,8 +1651,10 @@ def tpumtjgetsofttokens():
         dtype=np.uint32
     )
     return soft_tokens
- 
+
+@socketio.on("get_model_info")
 def get_model_info(model, directory=""):
+    logger.info("Selected: {}, {}".format(model, directory))
     # if the model is in the api list
     disk_blocks = 0
     key = False
@@ -1656,6 +1671,7 @@ def get_model_info(model, directory=""):
     gpu_count = torch.cuda.device_count()
     gpu_names = []
     send_horde_models = False
+    show_custom_model_box = False
     for i in range(gpu_count):
         gpu_names.append(torch.cuda.get_device_name(i))
     if model in ['Colab', 'API']:
@@ -1703,6 +1719,8 @@ def get_model_info(model, directory=""):
         pass
     elif model == 'ReadOnly':
         pass
+    #elif model == 'customhuggingface':
+    #    show_custom_model_box = True
     elif not utils.HAS_ACCELERATE and not torch.cuda.is_available():
         pass
     elif args.cpu:
@@ -1714,7 +1732,7 @@ def get_model_info(model, directory=""):
             gpu = True
         else:
             breakmodel = True
-            if model in ["NeoCustom", "GPT2Custom"]:
+            if model in ["NeoCustom", "GPT2Custom", "customhuggingface"]:
                 filename = "settings/{}.breakmodel".format(os.path.basename(os.path.normpath(directory)))
             else:
                 filename = "settings/{}.breakmodel".format(model.replace("/", "_"))
@@ -1733,13 +1751,15 @@ def get_model_info(model, directory=""):
                          'gpu':gpu, 'layer_count':layer_count, 'breakmodel':breakmodel, 
                          'disk_break_value': disk_blocks, 'accelerate': utils.HAS_ACCELERATE,
                          'break_values': break_values, 'gpu_count': gpu_count,
-                         'url': url, 'gpu_names': gpu_names, 'models_on_url': models_on_url}, broadcast=True, room="UI_1")
+                         'url': url, 'gpu_names': gpu_names, 'models_on_url': models_on_url,
+                         'show_custom_model_box': show_custom_model_box}, broadcast=True, room="UI_1")
     emit('selected_model_info', {'key_value': key_value, 'key':key, 
                          'gpu':gpu, 'layer_count':layer_count, 'breakmodel':breakmodel, 'multi_online_models': multi_online_models, 'default_url': default_url, 
                          'disk_break_value': disk_blocks, 'disk_break': utils.HAS_ACCELERATE,
                          'break_values': break_values, 'gpu_count': gpu_count,
                          'url': url, 'gpu_names': gpu_names, 'models_on_url': models_on_url, 'show_online_model_select': show_online_model_select,
-                         'bit_8_available': koboldai_vars.bit_8_available if koboldai_vars.experimental_features else False})
+                         'bit_8_available': koboldai_vars.bit_8_available if koboldai_vars.experimental_features else False,
+                         'show_custom_model_box': show_custom_model_box})
     if send_horde_models:
         get_cluster_models({'key': key_value, 'url': default_url})
     elif key_value != "" and model in [x[1] for x in model_menu['apilist']] and model != 'CLUSTER':
@@ -4543,13 +4563,13 @@ def get_message(msg):
         # The data variable will contain the model name. But our Custom lines need a bit more processing
         # If we're on a custom line that we have selected a model for, the path variable will be in msg
         # so if that's missing we need to run the menu to show the model folders in the models folder
-        if msg['data'] in ('NeoCustom', 'GPT2Custom') and 'path' not in msg and 'path_modelname' not in msg:
+        if msg['data'] in ('NeoCustom', 'GPT2Custom', 'customhuggingface') and 'path' not in msg and 'path_modelname' not in msg:
             if 'folder' not in msg or koboldai_vars.host:
                 folder = "./models"
             else:
                 folder = msg['folder']
             sendModelSelection(menu=msg['data'], folder=folder)
-        elif msg['data'] in ('NeoCustom', 'GPT2Custom') and 'path_modelname' in msg:
+        elif msg['data'] in ('NeoCustom', 'GPT2Custom', 'customhuggingface') and 'path_modelname' in msg:
             #Here the user entered custom text in the text box. This could be either a model name or a path.
             if check_if_dir_is_model(msg['path_modelname']):
                 koboldai_vars.model_selected = msg['data']
@@ -4561,7 +4581,7 @@ def get_message(msg):
                     get_model_info(koboldai_vars.model_selected)
                 except:
                     emit('from_server', {'cmd': 'errmsg', 'data': "The model entered doesn't exist."}, room="UI_1")
-        elif msg['data'] in ('NeoCustom', 'GPT2Custom'):
+        elif msg['data'] in ('NeoCustom', 'GPT2Custom', 'customhuggingface'):
             if check_if_dir_is_model(msg['path']):
                 koboldai_vars.model_selected = msg['data']
                 koboldai_vars.custmodpth = msg['path']
@@ -8702,7 +8722,7 @@ def UI_2_select_model(data):
     elif data['model'] in ("NeoCustom", "GPT2Custom") and 'path' in data:
         sendModelSelection(menu=data['model'], folder=data['path'])
     #We've selected a custom menu
-    elif data['model'] in ("NeoCustom", "GPT2Custom"):
+    elif data['model'] in ("NeoCustom", "GPT2Custom", "customhuggingface"):
         sendModelSelection(menu=data['model'], folder="./models")
     else:
         #We now have some model we want to potentially load.
