@@ -9671,6 +9671,12 @@ def log_image_generation(
     with open(db_path, "w") as file:
         json.dump(j, file, indent="\t")
 
+@socketio.on("retry_generated_image")
+@logger.catch
+def UI2_retry_generated_image():
+    eventlet.sleep(0)
+    generate_story_image(koboldai_vars.picture_prompt)
+
 def generate_story_image(
     prompt: str,
     file_prefix: str = "image",
@@ -9720,9 +9726,6 @@ def generate_story_image(
     b64_data = base64.b64encode(buffer.getvalue()).decode("ascii")
 
     koboldai_vars.picture = b64_data
-    
-    
-
 
 def generate_image(prompt: str) -> Optional[Image.Image]:
     if koboldai_vars.img_gen_priority == 4:

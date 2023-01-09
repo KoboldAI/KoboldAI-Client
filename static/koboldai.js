@@ -6798,7 +6798,7 @@ function imgGenRetry() {
 	const image = $el(".action_image");
 	if (!image) return;
 	$el("#image-loading").classList.remove("hidden");
-	socket.emit("generate_image", {'action_id': image.getAttribute("chunk")});
+	socket.emit("retry_generated_image");
 }
 
 /* Genres */
