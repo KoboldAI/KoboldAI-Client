@@ -4880,7 +4880,6 @@ def actionsubmit(data, actionmode=0, force_submit=False, force_prompt_gen=False,
                 data = f"\n\n> {data}\n"
         
         # "Chat" mode
-        logger.warning("Chatmode: {} and gamestarted: {}".format(koboldai_vars.chatmode, koboldai_vars.gamestarted))
         if(koboldai_vars.chatmode and koboldai_vars.gamestarted):
             data = re.sub(r'\n+', ' ', data)
             if(len(data)):
