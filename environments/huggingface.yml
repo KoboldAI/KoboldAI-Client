@@ -22,7 +22,6 @@ dependencies:
   - loguru
   - termcolor
   - Pillow
-  - diffusers
   - psutil
   - pip:
     - flask-cloudflared
@@ -41,3 +40,4 @@ dependencies:
     - bitsandbytes
     - ftfy
     - pydub
+    - diffusers

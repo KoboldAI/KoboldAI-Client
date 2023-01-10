@@ -56,6 +56,7 @@ var shift_down = false;
 var world_info_data = {};
 var world_info_folder_data = {};
 var saved_settings = {};
+var biases_data = {};
 var finder_selection_index = -1;
 var colab_cookies = null;
 var wi_finder_data = [];
@@ -2862,36 +2863,43 @@ function save_as_story(response) {
 	if (response === "overwrite?") openPopup("save-confirm");
 }
 
-function save_bias(item) {
-	
-	var have_blank = false;
+function save_bias() {
 	var biases = {};
 	//get all of our biases
-	for (bias of document.getElementsByClassName("bias")) {
+
+	for (const biasCard of document.getElementsByClassName("bias_card")) {
 		//phrase
-		var phrase = bias.querySelector(".bias_phrase").querySelector("input").value;
+		var phrase = biasCard.querySelector(".bias_phrase").value;
+		if (!phrase) continue;
 		
 		//Score
-		var percent = parseFloat(bias.querySelector(".bias_score").querySelector("input").value);
+		var score = parseFloat(biasCard.querySelector(".bias_score input").value);
 		
 		//completion threshold
-		var comp_threshold = parseInt(bias.querySelector(".bias_comp_threshold").querySelector("input").value);
+		var compThreshold = parseInt(biasCard.querySelector(".bias_comp_threshold input").value);
 		
-		if (phrase != "") {
-			biases[phrase] = [percent, comp_threshold];
-		}
-		bias.classList.add("pulse");
+		biases[phrase] = [score, compThreshold];
 	}
-	
+
+	// Because of course JS couldn't just support comparison in a core type
+	// that would be silly and foolish
+	if (JSON.stringify(biases) === JSON.stringify(biases_data)) {
+		// No changes. :(
+		return;
+	}
+
+	biases_data = biases;
+	console.info("saving biases", biases)
+
 	//send the biases to the backend
 	socket.emit("phrase_bias_update", biases);
-	
 }
 
 function sync_to_server(item) {
 	//get value
-	value = null;
-	name = null;
+	let value = null;
+	let name = null;
+
 	if ((item.tagName.toLowerCase() === 'checkbox') || (item.tagName.toLowerCase() === 'input') || (item.tagName.toLowerCase() === 'select') || (item.tagName.toLowerCase() == 'textarea')) {
 		if (item.getAttribute("type") == "checkbox") {
 			value = item.checked;
@@ -3293,7 +3301,9 @@ function finished_tts() {
 	} else {
 		action = document.getElementById("Selected Text Chunk "+(next_action-1));
 	}
-	action.classList.remove("tts_playing");
+	if (action) {
+		action.classList.remove("tts_playing");
+	}
 	if (next_action <= action_count) {
 		document.getElementById("reader").src = "/audio?id="+next_action;
 		document.getElementById("reader").setAttribute("action_id", next_action);
@@ -3311,7 +3321,9 @@ function tts_playing() {
 	} else {
 		action = document.getElementById("Selected Text Chunk "+action_id);
 	}
-	action.classList.add("tts_playing");
+	if (action) {
+		action.classList.add("tts_playing");
+	}
 }
 
 function view_selection_probabilities() {
@@ -3632,42 +3644,156 @@ function options_on_right(data) {
 	}
 }
 
-function do_biases(data) {
-	//console.log(data);
-	//clear out our old bias lines
-	let bias_list = Object.assign([], document.getElementsByClassName("bias"));
-	for (item of bias_list) {
-		//console.log(item);
-		item.parentNode.removeChild(item);
+function makeBiasCard(phrase="", score=0, compThreshold=10) {
+	function updateBias(origin, input, save=true) {
+		const textInput = input.closest(".bias_slider").querySelector(".bias_slider_cur");
+		let value = (origin === "slider") ? input.value : parseFloat(textInput.innerText);
+		textInput.innerText = value;
+		input.value = value;
+
+		// Only save on "commitful" actions like blur or mouseup to not spam
+		// the poor server
+		if (save) save_bias();
 	}
-	
+
+	const biasContainer = $el("#bias-container");
+	const biasCard = $el(".bias_card.template").cloneNode(true);
+	biasCard.classList.remove("template");
+
+	const closeButton = biasCard.querySelector(".close_button");
+	closeButton.addEventListener("click", function(event) {
+		biasCard.remove();
+
+		// We just deleted the last bias, we probably don't want to keep seeing
+		// them pop up
+		if (!biasContainer.firstChild) biasContainer.setAttribute(
+			"please-stop-adding-biases-whenever-i-delete-them",
+			"i mean it"
+		);
+		save_bias();
+	});
+
+	const phraseInput = biasCard.querySelector(".bias_phrase");
+	phraseInput.addEventListener("change", save_bias);
+
+	const scoreInput = biasCard.querySelector(".bias_score input");
+	const compThresholdInput = biasCard.querySelector(".bias_comp_threshold input");
+
+	phraseInput.value = phrase;
+	scoreInput.value = score;
+	compThresholdInput.value = compThreshold;
+
+	for (const input of [scoreInput, compThresholdInput]) {
+		// Init sync
+		updateBias("slider", input, false);
+
+		// Visual update on each value change
+		input.addEventListener("input", function() { updateBias("slider", this, false) });
+
+		// Only when we leave do we sync to server
+		input.addEventListener("change", function() { updateBias("slider", this) });
+
+		// Personally I don't want to press a key 100 times to add one
+		const nudge = parseFloat(input.getAttribute("keyboard-step") ?? input.getAttribute("step"));
+		const min = parseFloat(input.getAttribute("min"));
+		const max = parseFloat(input.getAttribute("max"));
+
+		const currentHitbox = input.closest(".hitbox");
+		const currentLabel = input.closest(".bias_slider").querySelector(".bias_slider_cur");
+
+		// TODO: Prevent paste of just non-number characters
+		currentLabel.addEventListener("paste", function(event) { event.preventDefault(); })
+
+		currentLabel.addEventListener("keydown", function(event) {
+			// Nothing special for numbers
+			if (
+				[".", "-", "ArrowLeft", "ArrowRight", "Backspace", "Delete"].includes(event.key)
+				|| event.ctrlKey
+				|| (parseInt(event.key) || parseInt(event.key) === 0)
+			) return;
+
+			// Either we are special keys or forbidden keys
+			event.preventDefault();
+
+			switch (event.key) {
+				case "Enter":
+					currentLabel.blur();
+					break;
+				// This feels very nice :^)
+				case "ArrowDown":
+				case "ArrowUp":
+					let delta = (event.key === "ArrowUp") ? nudge : -nudge;
+					let currentValue = parseFloat(currentLabel.innerText);
+
+					event.preventDefault();
+					if (!currentValue && currentValue !== 0) return;
+
+					// toFixed because 1.1 + 0.1 !== 1.2 yay rounding errors.
+					// Although the added decimal place(s) look cleaner now
+					// that I think about it.
+					let value = Math.min(max, Math.max(min, currentValue + delta));
+					currentLabel.innerText = value.toFixed(2);
+
+					updateBias("text", input, false);
+					break;
+			}
+		});
+
+		currentHitbox.addEventListener("wheel", function(event) {
+			// Only when focused! (May drop this requirement later, browsers seem to behave when scrolling :] )
+			if (currentLabel !== document.activeElement) return;
+			if (event.deltaY === 0) return;
+
+			let delta = (event.deltaY > 0) ? -nudge : nudge;
+			let currentValue = parseFloat(currentLabel.innerText);
+
+			event.preventDefault();
+			if (!currentValue && currentValue !== 0) return;
+			let value = Math.min(max, Math.max(min, currentValue + delta));
+			currentLabel.innerText = value.toFixed(2);
+
+			updateBias("text", input, false);
+		});
+
+		currentLabel.addEventListener("blur", function(event) {
+			updateBias("text", input);
+		});
+	}
+
+	biasContainer.appendChild(biasCard);
+	return biasCard;
+}
+$el("#bias-add").addEventListener("click", function(event) {
+	const card = makeBiasCard();
+	card.querySelector(".bias_phrase").focus();
+});
+
+function do_biases(data) {
+	console.info("Taking inventory of biases")
+	biases_data = data.value;
+
+	// Clear out our old bias cards, weird recursion because remove sometimes
+	// doesn't work (???)
+	const biasContainer = $el("#bias-container");
+	for (let i=0;i<10000;i++) {
+		if (!biasContainer.firstChild) break;
+		biasContainer.firstChild.remove();
+	}
+	if(biasContainer.firstChild) reportError("We are doomed", "Undead zombie bias, please report this");
+
 	//add our bias lines
 	for (const [key, value] of Object.entries(data.value)) {
-		bias_line = document.getElementById("empty_bias").cloneNode(true);
-		bias_line.id = "";
-		bias_line.classList.add("bias");
-		bias_line.querySelector(".bias_phrase").querySelector("input").value = key;
-		bias_line.querySelector(".bias_score").querySelector("input").value = value[0];
-		update_bias_slider_value(bias_line.querySelector(".bias_score").querySelector("input"));
-		bias_line.querySelector(".bias_comp_threshold").querySelector("input").value = value[1];
-		update_bias_slider_value(bias_line.querySelector(".bias_comp_threshold").querySelector("input"));
-		document.getElementById('biasing').append(bias_line);
+		makeBiasCard(key, value[0], value[1]);
 	}
-	
-	//add another bias line if this is the phrase and it's not blank
-	bias_line = document.getElementById("empty_bias").cloneNode(true);
-	bias_line.id = "";
-	bias_line.classList.add("bias");
-	bias_line.querySelector(".bias_phrase").querySelector("input").value = "";
-	bias_line.querySelector(".bias_phrase").querySelector("input").id = "empty_bias_phrase";
-	bias_line.querySelector(".bias_score").querySelector("input").value = 1;
-	bias_line.querySelector(".bias_comp_threshold").querySelector("input").value = 50;
-	document.getElementById('biasing').append(bias_line);
+
+	// Add seed card if we have no bias cards and we didn't just delete the
+	// last bias card
+	if (
+		!biasContainer.firstChild &&
+		!biasContainer.getAttribute("please-stop-adding-biases-whenever-i-delete-them")
+	) makeBiasCard();
 }
 
-function update_bias_slider_value(slider) {
-	slider.parentElement.parentElement.querySelector(".bias_slider_cur").textContent = slider.value;
-}
 
 function distortColor(rgb) {
 	// rgb are 0..255, NOT NORMALIZED!!!!!!
@@ -6672,7 +6798,7 @@ function imgGenRetry() {
 	const image = $el(".action_image");
 	if (!image) return;
 	$el("#image-loading").classList.remove("hidden");
-	socket.emit("generate_image", {'action_id': image.getAttribute("chunk")});
+	socket.emit("retry_generated_image");
 }
 
 /* Genres */

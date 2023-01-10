@@ -279,11 +279,6 @@ border-top-right-radius: var(--tabs_rounding);
 	margin: 2px;
 }
 
-#biasing {
-	margin-left: 5px;
-	margin-right: 5px;
-}
-
 .setting_container.var_sync_alt_system_alt_gen[system_alt_gen="true"] {
 	display: none;
 }
@@ -708,85 +703,79 @@ border-top-right-radius: var(--tabs_rounding);
 }
 
 /* Bias */
-#biases_label {
-	cursor: pointer;
+#biasing {
+	padding: 0px 10px;
 }
 
-.bias {
-	display: grid;
-	grid-template-areas: "phrase percent max";
-	grid-template-columns: auto 100px 100px;
+.bias_card {
+	background-color: var(--setting_background);
+	padding: 8px;
+	margin-bottom: 12px;
+}
+
+.bias_top {
+	display: flex;
+	justify-content: space-between;
+}
+
+.bias_top > .close_button {
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	cursor: pointer;
+	margin-left: 7px;
+}
+
+.bias_card input {
+	width: 100%;
+	border: none;
 }
 
 .bias_phrase {
-	grid-area: phrase;
-	margin-right: 5px;
+	height: 36px;
 }
 
-.bias_phrase input {
-	width: 100%;
+.bias_slider_labels {
+	display: flex;
+	justify-content: space-between;
+	position: relative;
 }
 
-.bias_score {
-	grid-area: percent;
-	margin-right: 5px;
-}
-
-.bias_comp_threshold {
-	grid-area: max;
-	margin-right: 5px;
-}
-
-.bias_slider {
-	display: grid;
-	grid-template-areas: "bar bar bar"
-						 "min cur max";
-	grid-template-columns: 33px 34px 33px;
-}
-
-.bias_slider_bar {
-	grid-area: bar;
-}
-
-.bias_slider_min {
-	grid-area: min;
+.bias_slider_min, .bias_slider_max{
 	font-size: calc(0.8em + var(--font_size_adjustment));
-	margin-right: 5px;
-	margin-left: 5px;
+	user-select: none;
 }
 
 .bias_slider_cur {
-	grid-area: cur;
 	text-align: center;
+	outline: none;
 }
 
-.bias_slider_max {
-	grid-area: max;
-	font-size: calc(0.8em + var(--font_size_adjustment));
-	text-align: right;
-	margin-right: 5px;
-	margin-left: 5px;
+.bias_score, .bias_top {
+	margin-bottom: 12px;
 }
 
-.bias_header {
-	display: grid;
-	grid-template-areas: "phrase percent max";
-	grid-template-columns: auto 100px 100px;
+.bias_slider_centerlayer {
+	/* Yeah its a bit of a hack */
+	position: absolute;
+	left: 0px;
+	width: 100%;
+	display: flex;
+	justify-content: center;
 }
 
-.bias_header_phrase {
-	grid-area: phrase;
-	font-size: calc(1.1em + var(--font_size_adjustment));
+#bias-add {
+	width: 100%;
+	cursor: pointer;
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	padding: 4px;
 }
 
-.bias_header_score {
-	grid-area: percent;
-	font-size: calc(1.1em + var(--font_size_adjustment));
-}
-
-.bias_header_max {
-	grid-area: max;
-	font-size: calc(1.1em + var(--font_size_adjustment));
+#bias-add:hover {
+	width: 100%;
+	background-color: rgba(255, 255, 255, 0.05);
 }
 
 /* Theme */
