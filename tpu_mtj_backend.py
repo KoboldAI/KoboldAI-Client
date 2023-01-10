@@ -201,15 +201,23 @@ def apply_repetition_penalty_dynamic(logits, tokens, repetition_penalty, generat
     # values by repetition_penalty (the academic publication that described
     # this technique actually just only divided, but that would cause tokens
     # with negative logits to become more likely, which is obviously wrong)
-    penalty_logits = np.where(
-        penalty_arange >= 0,
-        np.where(
-            penalty_logits > 0,
-            penalty_logits/repetition_penalty,
-            penalty_logits*repetition_penalty,
-        ),
-        penalty_logits,
-    )
+    if koboldai_vars.use_alt_rep_pen:
+        penalty_logits = np.where(
+            penalty_arange >= 0,
+            penalty_logits - np.log(repetition_penalty),
+            penalty_logits,
+        )
+
+    else:
+        penalty_logits = np.where(
+            penalty_arange >= 0,
+            np.where(
+                penalty_logits > 0,
+                penalty_logits/repetition_penalty,
+                penalty_logits*repetition_penalty,
+            ),
+            penalty_logits,
+        )
     # Finally, put those penalized logit values back into their original
     # positions in the logits array
     logits[tokens] = penalty_logits
@@ -389,15 +397,22 @@ def apply_repetition_penalty_static(logits, tokens, repetition_penalty, generate
     # values by repetition_penalty (the academic publication that described
     # this technique actually just only divided, but that would cause tokens
     # with negative logits to become more likely, which is obviously wrong)
-    penalty_logits = jnp.where(
-        penalty_arange >= 0,
-        jnp.where(
-            penalty_logits > 0,
-            penalty_logits/repetition_penalty,
-            penalty_logits*repetition_penalty,
-        ),
-        penalty_logits,
-    )
+    if koboldai_vars.use_alt_rep_pen:
+        penalty_logits = jnp.where(
+            penalty_arange >= 0,
+            penalty_logits - jnp.log(repetition_penalty),
+            penalty_logits,
+        )
+    else:
+        penalty_logits = jnp.where(
+            penalty_arange >= 0,
+            jnp.where(
+                penalty_logits > 0,
+                penalty_logits/repetition_penalty,
+                penalty_logits*repetition_penalty,
+            ),
+            penalty_logits,
+        )
     # Finally, put those penalized logit values back into their original
     # positions in the logits array
     return logits.at[tokens].set(penalty_logits)

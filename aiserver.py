@@ -2180,7 +2180,7 @@ def patch_transformers():
                 return old_call(self, *args, **kwargs)
             return args[1]
         cls.__call__ = new_call
-    dynamic_processor_wrap(AdvancedRepetitionPenaltyLogitsProcessor, ("penalty", "penalty_slope", "penalty_range"), ("rep_pen", "rep_pen_slope", "rep_pen_range"), cond=lambda x: x[0] != 1.0)
+    dynamic_processor_wrap(AdvancedRepetitionPenaltyLogitsProcessor, ("penalty", "penalty_slope", "penalty_range", "use_alt_rep_pen"), ("rep_pen", "rep_pen_slope", "rep_pen_range", "use_alt_rep_pen"), cond=lambda x: x[0] != 1.0)
     dynamic_processor_wrap(TopKLogitsWarper, "top_k", "top_k", cond=lambda x: x > 0)
     dynamic_processor_wrap(TopALogitsWarper, "top_a", "top_a", cond=lambda x: x > 0.0)
     dynamic_processor_wrap(TopPLogitsWarper, "top_p", "top_p", cond=lambda x: x < 1.0)

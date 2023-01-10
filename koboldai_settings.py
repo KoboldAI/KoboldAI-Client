@@ -720,6 +720,7 @@ class model_settings(settings):
         self.horde_wait_time = 0
         self.horde_queue_position = 0
         self.horde_queue_size = 0
+        self.use_alt_rep_pen = False
         
         
 
