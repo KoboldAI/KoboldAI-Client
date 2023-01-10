@@ -515,7 +515,8 @@ class koboldai_vars(object):
         else:
             tokens = []
             for item in context:
-                tokens.extend([x[0] for x in item['tokens']])
+                if item['type'] != 'soft_prompt':
+                    tokens.extend([x[0] for x in item['tokens']])
         
         if send_context:
             self.context = context
@@ -524,6 +525,9 @@ class koboldai_vars(object):
         logger.debug("Token Budget: {}. Used Tokens: {}".format(token_budget, used_tokens))
         if return_text:
             return "".join([x['text'] for x in context])
+        print(self.sp_length)
+        print(context)
+        print(tokens)
         return tokens, used_tokens, used_tokens+self.genamt, set(used_world_info)
 
     def is_model_torch(self) -> bool:
