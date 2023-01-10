@@ -8016,16 +8016,7 @@ def show_folder_soft_prompt(data):
 @socketio.on('show_folder_usersripts')
 def show_folder_usersripts(data):
     file_popup("Load Softprompt", "./userscripts", "", renameable=True, folder_only=False, editable=True, deleteable=True, jailed=True, item_check=None)
-# UI V2 CODE
-#==================================================================#
-@app.route('/ai_text')
-def ai_text():
-    start_time = time.time()
-    text = koboldai_vars.calc_ai_text(return_text=True)
-    logger.debug("Generating Game Text took {} seconds".format(time.time()-start_time))
-    return "{}\n\n\n{}".format(text, "Generating Game Text took {} seconds".format(time.time()-start_time))
-    
-    
+
     
 
 #==================================================================#
@@ -8034,6 +8025,8 @@ def ai_text():
 @app.route('/new_ui')
 @logger.catch
 def new_ui_index():
+    if args.no_ui:
+        return redirect('/api/latest')
     if 'story' in session:
         if session['story'] not in koboldai_vars.story_list():
             session['story'] = 'default'
@@ -8560,6 +8553,8 @@ def directory_to_zip_data(directory: str, overrides: Optional[dict]) -> bytes:
 @app.route("/story_download")
 @logger.catch
 def UI_2_download_story():
+    if args.no_ui:
+        return redirect('/api/latest')
     save_exists = path.exists(koboldai_vars.save_paths.base)
     if koboldai_vars.gamesaved and save_exists:
         # Disk is up to date; download from disk
@@ -9150,6 +9145,8 @@ def UI_2_set_wi_image(uid):
 @app.route("/get_wi_image/<int(signed=True):uid>", methods=["GET"])
 @logger.catch
 def UI_2_get_wi_image(uid):
+    if args.no_ui:
+        return redirect('/api/latest')
     path = os.path.join(koboldai_vars.save_paths.wi_images, str(uid))
     try:
         return send_file(path)
@@ -9167,6 +9164,8 @@ def UI_2_set_commentator_image(commentator_id):
 @app.route("/image_db.json", methods=["GET"])
 @logger.catch
 def UI_2_get_image_db():
+    if args.no_ui:
+        return redirect('/api/latest')
     try:
         return send_file(os.path.join(koboldai_vars.save_paths.generated_images, "db.json"))
     except FileNotFoundError:
@@ -9175,6 +9174,8 @@ def UI_2_get_image_db():
 @app.route("/action_composition.json", methods=["GET"])
 @logger.catch
 def UI_2_get_action_composition():
+    if args.no_ui:
+        return redirect('/api/latest')
     try:
         actions = request.args.get("actions").split(",")
         if not actions:
@@ -10261,6 +10262,8 @@ def UI_2_get_log(data):
     
 @app.route("/get_log")
 def UI_2_get_log_get():
+    if args.no_ui:
+        return redirect('/api/latest')
     return {'aiserver_log': web_log_history}
 
 @app.route("/test_match")
@@ -10275,6 +10278,8 @@ def UI_2_test_match():
 @app.route("/audio")
 @logger.catch
 def UI_2_audio():
+    if args.no_ui:
+        return redirect('/api/latest')
     action_id = int(request.args['id']) if 'id' in request.args else koboldai_vars.actions.action_count
     filename = os.path.join(koboldai_vars.save_paths.generated_audio, f"{action_id}.ogg")
     filename_slow = os.path.join(koboldai_vars.save_paths.generated_audio, f"{action_id}_slow.ogg")
@@ -10299,6 +10304,8 @@ def UI_2_audio():
 @app.route("/action_image")
 @logger.catch
 def UI_2_action_image():
+    if args.no_ui:
+        return redirect('/api/latest')
     action_id = int(request.args['id']) if 'id' in request.args else koboldai_vars.actions.action_count
     filename, prompt = koboldai_vars.actions.get_picture(action_id)
     koboldai_vars.picture_prompt = prompt
@@ -10336,7 +10343,6 @@ def send_one_time_messages(data, wait_time=0):
 #==================================================================#
 # Test
 #==================================================================#
-@app.route("/model")
 def model_info():
     if model_config is not None:
         if isinstance(model_config, dict):
@@ -10351,11 +10357,12 @@ def model_info():
         return {"Model Type": model_type, "Model Size": get_model_size(koboldai_vars.model), "Model Name": koboldai_vars.model.replace("_", "/")}
     else:
         return {"Model Type": "Read Only", "Model Size": "0", "Model Name": koboldai_vars.model.replace("_", "/")}
-    
 
 @app.route("/vars")
 @logger.catch
 def show_vars():
+    if args.no_ui:
+        return redirect('/api/latest')
     json_data = {}
     json_data['story_settings'] = json.loads(koboldai_vars.to_json("story_settings"))
     json_data['model_settings'] = json.loads(koboldai_vars.to_json("model_settings"))
