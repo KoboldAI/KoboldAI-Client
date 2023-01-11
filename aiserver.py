@@ -2474,9 +2474,6 @@ def patch_transformers():
 
             if not koboldai_vars.output_streaming:
                 return False
-
-            if koboldai_vars.chatmode:
-                return False
                 
             data = [applyoutputformatting(utils.decodenewlines(tokenizer.decode(x[-1])), no_sentence_trimming=True, no_single_line=True) for x in input_ids]
             koboldai_vars.actions.stream_tokens(data)
@@ -6507,7 +6504,7 @@ def applyoutputformatting(txt, no_sentence_trimming=False, no_single_line=False)
     if(koboldai_vars.frmtrmspch):
         txt = utils.removespecialchars(txt, koboldai_vars)
 	# Single Line Mode
-    if((koboldai_vars.singleline or koboldai_vars.chatmode) and not no_single_line):
+    if(koboldai_vars.singleline and not no_single_line):
         txt = utils.singlelineprocessing(txt, koboldai_vars)
     
     for sub in koboldai_vars.substitutions:
