@@ -515,7 +515,8 @@ class koboldai_vars(object):
         else:
             tokens = []
             for item in context:
-                tokens.extend([x[0] for x in item['tokens']])
+                if item['type'] != 'soft_prompt':
+                    tokens.extend([x[0] for x in item['tokens']])
         
         if send_context:
             self.context = context
@@ -719,6 +720,7 @@ class model_settings(settings):
         self.horde_wait_time = 0
         self.horde_queue_position = 0
         self.horde_queue_size = 0
+        self.use_alt_rep_pen = False
         
         
 
@@ -1018,8 +1020,10 @@ class story_settings(settings):
         logger.debug("Calcing WI Assignment for action_id: {} wuid: {}".format(action_id, wuid))
         if action_id != -1 and (action_id is None or action_id not in self.actions.actions):
             actions_to_check = self.actions.actions
-        else:
+        elif action_id == -1:
             actions_to_check = {}
+        else:
+            actions_to_check = {action_id: self.actions.actions[action_id]}
         if wuid is None or wuid not in self.worldinfo_v2.world_info:
             wi_to_check = self.worldinfo_v2.world_info
         else:
@@ -1367,6 +1371,7 @@ class KoboldStoryRegister(object):
         
     def add_wi_to_action(self, action_id, key, content, uid, no_transmit=False):
         old = self.story_settings.prompt_wi_highlighted_text.copy() if action_id == -1 else self.actions[action_id].copy()
+        force_changed = False
         #First check to see if we have the wi_highlighted_text variable
         if action_id != -1:
             if 'wi_highlighted_text' not in self.actions[action_id]:
@@ -1397,14 +1402,18 @@ class KoboldStoryRegister(object):
                         if post_text is not None:   
                             action.insert(i+adder, {"text": post_text, "WI matches": None, "WI Text": ""})
                         break;
+            elif action[i]['WI matches'] == uid:
+                action[i]['WI Text'] = content
+                force_changed = True
+                i+=1
             else:
                 i+=1
         if action_id != -1:
-            if old != self.actions[action_id]:
+            if old != self.actions[action_id] or force_changed:
                 if not no_transmit:
                     process_variable_changes(self.socketio, "story", 'actions', {"id": action_id, 'action':  self.actions[action_id]}, old)
         else:
-            if old != self.story_settings.prompt_wi_highlighted_text:
+            if old != self.story_settings.prompt_wi_highlighted_text or force_changed:
                 if not no_transmit:
                     process_variable_changes(self.socketio, "story", 'prompt_wi_highlighted_text', self.story_settings.prompt_wi_highlighted_text, old)
         
@@ -1449,6 +1458,8 @@ class KoboldStoryRegister(object):
             old_text = self.actions[i]["Selected Text"]
             if self.actions[i]["Selected Text"] != text:
                 self.actions[i]["Selected Text"] = text
+                if 'wi_highlighted_text' in self.actions[i]:
+                    del self.actions[i]['wi_highlighted_text']
                 if self.koboldai_vars.tokenizer is not None:
                     tokens = self.koboldai_vars.tokenizer.encode(text)
                     if 'Probabilities' in self.actions[i]:

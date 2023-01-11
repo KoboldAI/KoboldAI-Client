@@ -165,6 +165,7 @@ model_menu = {
     'mainmenu': [
         ["Load a model from its directory", "NeoCustom", "", False],
         ["Load an old GPT-2 model (eg CloverEdition)", "GPT2Custom", "", False],
+        ["Load custom model from Hugging Face", "customhuggingface", "", True],
         ["Adventure Models", "adventurelist", "", True],
         ["Novel Models", "novellist", "", True],
         ["NSFW Models", "nsfwlist", "", True],
@@ -842,6 +843,18 @@ def sendModelSelection(menu="mainmenu", folder="./models"):
             "isMenu": m[3],
             "isDownloaded": True,
         } for m in menu_list_ui_2]
+        emit('show_model_menu', {'data': p_menu, 'menu': menu, 'breadcrumbs': breadcrumbs, "showdelete": showdelete}, broadcast=False)
+    elif menu in ('customhuggingface'):
+        p_menu = [{
+            "label": "Return to Main Menu",
+            "name": "mainmenu",
+            "size": "",
+            "isMenu": True,
+            "isDownloaded": True,
+        }]
+        breadcrumbs = []
+        showdelete=False
+        emit('from_server', {'cmd': 'show_model_menu', 'data': [["Return to Main Menu", "mainmenu", "", True]], 'menu': menu, 'breadcrumbs': breadcrumbs, "showdelete": showdelete}, broadcast=True, room="UI_1")
         emit('show_model_menu', {'data': p_menu, 'menu': menu, 'breadcrumbs': breadcrumbs, "showdelete": showdelete}, broadcast=False)
     else:
         # Hide experimental models unless experimental mode is enabled
@@ -1638,8 +1651,10 @@ def tpumtjgetsofttokens():
         dtype=np.uint32
     )
     return soft_tokens
- 
+
+@socketio.on("get_model_info")
 def get_model_info(model, directory=""):
+    logger.info("Selected: {}, {}".format(model, directory))
     # if the model is in the api list
     disk_blocks = 0
     key = False
@@ -1656,6 +1671,7 @@ def get_model_info(model, directory=""):
     gpu_count = torch.cuda.device_count()
     gpu_names = []
     send_horde_models = False
+    show_custom_model_box = False
     for i in range(gpu_count):
         gpu_names.append(torch.cuda.get_device_name(i))
     if model in ['Colab', 'API']:
@@ -1703,6 +1719,8 @@ def get_model_info(model, directory=""):
         pass
     elif model == 'ReadOnly':
         pass
+    #elif model == 'customhuggingface':
+    #    show_custom_model_box = True
     elif not utils.HAS_ACCELERATE and not torch.cuda.is_available():
         pass
     elif args.cpu:
@@ -1714,7 +1732,7 @@ def get_model_info(model, directory=""):
             gpu = True
         else:
             breakmodel = True
-            if model in ["NeoCustom", "GPT2Custom"]:
+            if model in ["NeoCustom", "GPT2Custom", "customhuggingface"]:
                 filename = "settings/{}.breakmodel".format(os.path.basename(os.path.normpath(directory)))
             else:
                 filename = "settings/{}.breakmodel".format(model.replace("/", "_"))
@@ -1733,13 +1751,15 @@ def get_model_info(model, directory=""):
                          'gpu':gpu, 'layer_count':layer_count, 'breakmodel':breakmodel, 
                          'disk_break_value': disk_blocks, 'accelerate': utils.HAS_ACCELERATE,
                          'break_values': break_values, 'gpu_count': gpu_count,
-                         'url': url, 'gpu_names': gpu_names, 'models_on_url': models_on_url}, broadcast=True, room="UI_1")
+                         'url': url, 'gpu_names': gpu_names, 'models_on_url': models_on_url,
+                         'show_custom_model_box': show_custom_model_box}, broadcast=True, room="UI_1")
     emit('selected_model_info', {'key_value': key_value, 'key':key, 
                          'gpu':gpu, 'layer_count':layer_count, 'breakmodel':breakmodel, 'multi_online_models': multi_online_models, 'default_url': default_url, 
                          'disk_break_value': disk_blocks, 'disk_break': utils.HAS_ACCELERATE,
                          'break_values': break_values, 'gpu_count': gpu_count,
                          'url': url, 'gpu_names': gpu_names, 'models_on_url': models_on_url, 'show_online_model_select': show_online_model_select,
-                         'bit_8_available': koboldai_vars.bit_8_available if koboldai_vars.experimental_features else False})
+                         'bit_8_available': koboldai_vars.bit_8_available if koboldai_vars.experimental_features else False,
+                         'show_custom_model_box': show_custom_model_box})
     if send_horde_models:
         get_cluster_models({'key': key_value, 'url': default_url})
     elif key_value != "" and model in [x[1] for x in model_menu['apilist']] and model != 'CLUSTER':
@@ -2160,7 +2180,7 @@ def patch_transformers():
                 return old_call(self, *args, **kwargs)
             return args[1]
         cls.__call__ = new_call
-    dynamic_processor_wrap(AdvancedRepetitionPenaltyLogitsProcessor, ("penalty", "penalty_slope", "penalty_range"), ("rep_pen", "rep_pen_slope", "rep_pen_range"), cond=lambda x: x[0] != 1.0)
+    dynamic_processor_wrap(AdvancedRepetitionPenaltyLogitsProcessor, ("penalty", "penalty_slope", "penalty_range", "use_alt_rep_pen"), ("rep_pen", "rep_pen_slope", "rep_pen_range", "use_alt_rep_pen"), cond=lambda x: x[0] != 1.0)
     dynamic_processor_wrap(TopKLogitsWarper, "top_k", "top_k", cond=lambda x: x > 0)
     dynamic_processor_wrap(TopALogitsWarper, "top_a", "top_a", cond=lambda x: x > 0.0)
     dynamic_processor_wrap(TopPLogitsWarper, "top_p", "top_p", cond=lambda x: x < 1.0)
@@ -4543,13 +4563,13 @@ def get_message(msg):
         # The data variable will contain the model name. But our Custom lines need a bit more processing
         # If we're on a custom line that we have selected a model for, the path variable will be in msg
         # so if that's missing we need to run the menu to show the model folders in the models folder
-        if msg['data'] in ('NeoCustom', 'GPT2Custom') and 'path' not in msg and 'path_modelname' not in msg:
+        if msg['data'] in ('NeoCustom', 'GPT2Custom', 'customhuggingface') and 'path' not in msg and 'path_modelname' not in msg:
             if 'folder' not in msg or koboldai_vars.host:
                 folder = "./models"
             else:
                 folder = msg['folder']
             sendModelSelection(menu=msg['data'], folder=folder)
-        elif msg['data'] in ('NeoCustom', 'GPT2Custom') and 'path_modelname' in msg:
+        elif msg['data'] in ('NeoCustom', 'GPT2Custom', 'customhuggingface') and 'path_modelname' in msg:
             #Here the user entered custom text in the text box. This could be either a model name or a path.
             if check_if_dir_is_model(msg['path_modelname']):
                 koboldai_vars.model_selected = msg['data']
@@ -4561,7 +4581,7 @@ def get_message(msg):
                     get_model_info(koboldai_vars.model_selected)
                 except:
                     emit('from_server', {'cmd': 'errmsg', 'data': "The model entered doesn't exist."}, room="UI_1")
-        elif msg['data'] in ('NeoCustom', 'GPT2Custom'):
+        elif msg['data'] in ('NeoCustom', 'GPT2Custom', 'customhuggingface'):
             if check_if_dir_is_model(msg['path']):
                 koboldai_vars.model_selected = msg['data']
                 koboldai_vars.custmodpth = msg['path']
@@ -4860,7 +4880,6 @@ def actionsubmit(data, actionmode=0, force_submit=False, force_prompt_gen=False,
                 data = f"\n\n> {data}\n"
         
         # "Chat" mode
-        logger.warning("Chatmode: {} and gamestarted: {}".format(koboldai_vars.chatmode, koboldai_vars.gamestarted))
         if(koboldai_vars.chatmode and koboldai_vars.gamestarted):
             data = re.sub(r'\n+', ' ', data)
             if(len(data)):
@@ -7997,16 +8016,7 @@ def show_folder_soft_prompt(data):
 @socketio.on('show_folder_usersripts')
 def show_folder_usersripts(data):
     file_popup("Load Softprompt", "./userscripts", "", renameable=True, folder_only=False, editable=True, deleteable=True, jailed=True, item_check=None)
-# UI V2 CODE
-#==================================================================#
-@app.route('/ai_text')
-def ai_text():
-    start_time = time.time()
-    text = koboldai_vars.calc_ai_text(return_text=True)
-    logger.debug("Generating Game Text took {} seconds".format(time.time()-start_time))
-    return "{}\n\n\n{}".format(text, "Generating Game Text took {} seconds".format(time.time()-start_time))
-    
-    
+
     
 
 #==================================================================#
@@ -8015,6 +8025,8 @@ def ai_text():
 @app.route('/new_ui')
 @logger.catch
 def new_ui_index():
+    if args.no_ui:
+        return redirect('/api/latest')
     if 'story' in session:
         if session['story'] not in koboldai_vars.story_list():
             session['story'] = 'default'
@@ -8541,6 +8553,8 @@ def directory_to_zip_data(directory: str, overrides: Optional[dict]) -> bytes:
 @app.route("/story_download")
 @logger.catch
 def UI_2_download_story():
+    if args.no_ui:
+        return redirect('/api/latest')
     save_exists = path.exists(koboldai_vars.save_paths.base)
     if koboldai_vars.gamesaved and save_exists:
         # Disk is up to date; download from disk
@@ -8702,7 +8716,7 @@ def UI_2_select_model(data):
     elif data['model'] in ("NeoCustom", "GPT2Custom") and 'path' in data:
         sendModelSelection(menu=data['model'], folder=data['path'])
     #We've selected a custom menu
-    elif data['model'] in ("NeoCustom", "GPT2Custom"):
+    elif data['model'] in ("NeoCustom", "GPT2Custom", "customhuggingface"):
         sendModelSelection(menu=data['model'], folder="./models")
     else:
         #We now have some model we want to potentially load.
@@ -9131,6 +9145,8 @@ def UI_2_set_wi_image(uid):
 @app.route("/get_wi_image/<int(signed=True):uid>", methods=["GET"])
 @logger.catch
 def UI_2_get_wi_image(uid):
+    if args.no_ui:
+        return redirect('/api/latest')
     path = os.path.join(koboldai_vars.save_paths.wi_images, str(uid))
     try:
         return send_file(path)
@@ -9148,6 +9164,8 @@ def UI_2_set_commentator_image(commentator_id):
 @app.route("/image_db.json", methods=["GET"])
 @logger.catch
 def UI_2_get_image_db():
+    if args.no_ui:
+        return redirect('/api/latest')
     try:
         return send_file(os.path.join(koboldai_vars.save_paths.generated_images, "db.json"))
     except FileNotFoundError:
@@ -9156,6 +9174,8 @@ def UI_2_get_image_db():
 @app.route("/action_composition.json", methods=["GET"])
 @logger.catch
 def UI_2_get_action_composition():
+    if args.no_ui:
+        return redirect('/api/latest')
     try:
         actions = request.args.get("actions").split(",")
         if not actions:
@@ -10242,6 +10262,8 @@ def UI_2_get_log(data):
     
 @app.route("/get_log")
 def UI_2_get_log_get():
+    if args.no_ui:
+        return redirect('/api/latest')
     return {'aiserver_log': web_log_history}
 
 @app.route("/test_match")
@@ -10256,6 +10278,8 @@ def UI_2_test_match():
 @app.route("/audio")
 @logger.catch
 def UI_2_audio():
+    if args.no_ui:
+        return redirect('/api/latest')
     action_id = int(request.args['id']) if 'id' in request.args else koboldai_vars.actions.action_count
     filename = os.path.join(koboldai_vars.save_paths.generated_audio, f"{action_id}.ogg")
     filename_slow = os.path.join(koboldai_vars.save_paths.generated_audio, f"{action_id}_slow.ogg")
@@ -10280,6 +10304,8 @@ def UI_2_audio():
 @app.route("/action_image")
 @logger.catch
 def UI_2_action_image():
+    if args.no_ui:
+        return redirect('/api/latest')
     action_id = int(request.args['id']) if 'id' in request.args else koboldai_vars.actions.action_count
     filename, prompt = koboldai_vars.actions.get_picture(action_id)
     koboldai_vars.picture_prompt = prompt
@@ -10317,7 +10343,6 @@ def send_one_time_messages(data, wait_time=0):
 #==================================================================#
 # Test
 #==================================================================#
-@app.route("/model")
 def model_info():
     if model_config is not None:
         if isinstance(model_config, dict):
@@ -10332,11 +10357,12 @@ def model_info():
         return {"Model Type": model_type, "Model Size": get_model_size(koboldai_vars.model), "Model Name": koboldai_vars.model.replace("_", "/")}
     else:
         return {"Model Type": "Read Only", "Model Size": "0", "Model Name": koboldai_vars.model.replace("_", "/")}
-    
 
 @app.route("/vars")
 @logger.catch
 def show_vars():
+    if args.no_ui:
+        return redirect('/api/latest')
     json_data = {}
     json_data['story_settings'] = json.loads(koboldai_vars.to_json("story_settings"))
     json_data['model_settings'] = json.loads(koboldai_vars.to_json("model_settings"))
