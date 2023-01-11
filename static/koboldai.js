@@ -556,11 +556,6 @@ function do_story_text_updates(action) {
 			item = document.createElement("span");
 			item.id = 'Selected Text Chunk '+action.id;
 			item.classList.add("rawtext");
-			item.addEventListener("paste", function(e) {
-															e.preventDefault();
-															var text = e.clipboardData.getData("text/plain");
-															document.execCommand("insertHTML", false, text);
-														});
 			item.setAttribute("chunk", action.id);
 			//need to find the closest element
 			next_id = action.id+1;
@@ -6544,11 +6539,6 @@ function addMessage(author, content, actionId, afterMsgEl=null, time=null) {
 		// Insertion location
 		insertionLocation,
 	);
-	message.addEventListener("paste", function(e) {
-													e.preventDefault();
-													var text = e.clipboardData.getData("text/plain");
-													document.execCommand("insertHTML", false, text);
-												});
 
 	const leftContainer = $e("div", message, {classes: ["chat-left-container"]});
 
