@@ -161,6 +161,22 @@ gensettingstf = [
     "ui_level": 1
 	},
     {
+ 	"uitype": "toggle",
+ 	"unit": "bool",
+ 	"label": "Alt Rep Pen",
+ 	"id": "use_alt_rep_pen",
+ 	"min": 0,
+ 	"max": 1,
+ 	"step": 1,
+ 	"default": 0,
+	"tooltip": "Applies repetition penalty as a logarithmic modifier rather than a linear modifier.",
+    "menu_path": "Settings",
+    "sub_path": "Repetition",
+    "classname": "model",
+    "name": "use_alt_rep_pen",
+    "ui_level": 2
+ 	},
+    {
 	"uitype": "slider",
 	"unit": "int",
 	"label": "Context Tokens",

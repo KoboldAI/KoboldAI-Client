@@ -1084,7 +1084,7 @@ function buildLoadModelList(ar, menu, breadcrumbs, showdelete) {
 		$("#loadmodellistbreadcrumbs").append("<hr size='1'>")  
 	}
 	//If we're in the custom load menu (we need to send the path data back in that case)
-	if(['NeoCustom', 'GPT2Custom'].includes(menu)) {
+	if(['NeoCustom', 'GPT2Custom', 'customhuggingface'].includes(menu)) {
 		$("#loadmodel"+i).off("click").on("click", (function () {
 			return function () {
 				socket.send({'cmd': 'selectmodel', 'data': $(this).attr("name"), 'path': $(this).attr("pretty_name")});
@@ -2928,7 +2928,7 @@ $(document).ready(function(){
 				debug_area.addClass("hidden");
 			}
 		} else if(msg.cmd == 'show_model_menu') {
-			//console.log(msg)
+			console.log(msg)
 			$("#use_gpu_div").addClass("hidden");
 			$("#modelkey").addClass("hidden");
 			$("#modellayers").addClass("hidden");

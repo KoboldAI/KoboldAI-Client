@@ -1601,6 +1601,13 @@ function show_model_menu(data) {
 	var accept = document.getElementById("btn_loadmodelaccept");
 	accept.disabled = true;
 	
+	//finally, if they selected the custom hugging face menu we show the input box
+	if (data['menu'] == "customhuggingface") {
+		document.getElementById("custommodelname").classList.remove("hidden");
+	} else {
+		document.getElementById("custommodelname").classList.add("hidden");
+	}
+	
 	openPopup("load-model");
 }
 
@@ -7274,3 +7281,14 @@ async function screenshot_selection(summonEvent) {
 
 	await showScreenshotWizard(actionComposition, startDebt=startDebt, endDebt=endDebt, totalText);
 }
+
+$el("#gamescreen").addEventListener("paste", function(event) {
+	// Get rid of rich text, it messes with actions. Not a great fix since it
+	// relies on execCommand but it'll have to do
+	event.preventDefault();
+	document.execCommand(
+		"insertHTML",
+		false,
+		event.clipboardData.getData("text/plain")
+	);
+});
