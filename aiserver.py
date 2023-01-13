@@ -168,6 +168,7 @@ model_menu = {
         ["Load custom model from Hugging Face", "customhuggingface", "", True],
         ["Adventure Models", "adventurelist", "", True],
         ["Novel Models", "novellist", "", True],
+        ["Chat Models", "chatlist", "", True],
         ["NSFW Models", "nsfwlist", "", True],
         ["Untuned OPT", "optlist", "", True],
         ["Untuned GPT-Neo/J", "gptneolist", "", True],
@@ -225,9 +226,10 @@ model_menu = {
         ["Return to Main Menu", "mainmenu", "", True],
         ],
     'chatlist': [
-        ["Convo 6B (Chatbot)", "hitomi-team/convo-6B", "16GB", False],
-        ["C1 6B (Chatbot)", "hakurei/c1-6B", "16GB", False],
-        ["C1 1.3B (Chatbot)", "iokru/c1-1.3B", "6GB", False],
+        ["Pygmalion 6B", "PygmalionAI/pygmalion-6b", "16GB", False],
+        ["Pygmalion 2.7B", "PygmalionAI/pygmalion-2.7b", "8GB", False],
+        ["Pygmalion 1.3B", "PygmalionAI/pygmalion-1.3b", "6GB", False],
+        ["Pygmalion 350M", "PygmalionAI/pygmalion-350m", "2GB", False],
         ["Return to Main Menu", "mainmenu", "", True],
         ],
     'gptneolist': [
@@ -2474,9 +2476,6 @@ def patch_transformers():
 
             if not koboldai_vars.output_streaming:
                 return False
-
-            if koboldai_vars.chatmode:
-                return False
                 
             data = [applyoutputformatting(utils.decodenewlines(tokenizer.decode(x[-1])), no_sentence_trimming=True, no_single_line=True) for x in input_ids]
             koboldai_vars.actions.stream_tokens(data)
@@ -3210,7 +3209,10 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
                                 shutil.move(os.path.realpath(huggingface_hub.hf_hub_download(koboldai_vars.model, transformers.configuration_utils.CONFIG_NAME, revision=koboldai_vars.revision, cache_dir="cache", local_files_only=True, legacy_cache_layout=legacy)), os.path.join("models/{}".format(koboldai_vars.model.replace('/', '_')), transformers.configuration_utils.CONFIG_NAME))
                                 if(utils.num_shards is None):
                                     # Save the pytorch_model.bin of an unsharded model
-                                    shutil.move(os.path.realpath(huggingface_hub.hf_hub_download(koboldai_vars.model, transformers.modeling_utils.WEIGHTS_NAME, revision=koboldai_vars.revision, cache_dir="cache", local_files_only=True, legacy_cache_layout=legacy)), os.path.join("models/{}".format(koboldai_vars.model.replace('/', '_')), transformers.modeling_utils.WEIGHTS_NAME))
+                                    try:
+                                        shutil.move(os.path.realpath(huggingface_hub.hf_hub_download(koboldai_vars.model, transformers.modeling_utils.WEIGHTS_NAME, revision=koboldai_vars.revision, cache_dir="cache", local_files_only=True, legacy_cache_layout=legacy)), os.path.join("models/{}".format(koboldai_vars.model.replace('/', '_')), transformers.modeling_utils.WEIGHTS_NAME))
+                                    except:
+                                        shutil.move(os.path.realpath(huggingface_hub.hf_hub_download(koboldai_vars.model,  "model.safetensors", revision=koboldai_vars.revision, cache_dir="cache", local_files_only=True, legacy_cache_layout=legacy)), os.path.join("models/{}".format(koboldai_vars.model.replace('/', '_')), "model.safetensors"))
                                 else:
                                     with open(utils.from_pretrained_index_filename) as f:
                                         map_data = json.load(f)
@@ -6473,7 +6475,7 @@ def getnewcontent(txt):
 #==================================================================#
 def applyinputformatting(txt):
     # Add sentence spacing
-    if(koboldai_vars.frmtadsnsp):
+    if(koboldai_vars.frmtadsnsp and not koboldai_vars.chatmode):
         txt = utils.addsentencespacing(txt, koboldai_vars)
  
     return txt
@@ -6507,9 +6509,11 @@ def applyoutputformatting(txt, no_sentence_trimming=False, no_single_line=False)
     if(koboldai_vars.frmtrmspch):
         txt = utils.removespecialchars(txt, koboldai_vars)
 	# Single Line Mode
-    if((koboldai_vars.singleline or koboldai_vars.chatmode) and not no_single_line):
+    if(koboldai_vars.singleline and not no_single_line):
         txt = utils.singlelineprocessing(txt, koboldai_vars)
-    
+ 	# Chat Mode Trimming
+    if(koboldai_vars.chatmode):
+        txt = utils.chatmodeprocessing(txt, koboldai_vars)   
     for sub in koboldai_vars.substitutions:
         if not sub["enabled"]:
             continue

@@ -7281,3 +7281,14 @@ async function screenshot_selection(summonEvent) {
 
 	await showScreenshotWizard(actionComposition, startDebt=startDebt, endDebt=endDebt, totalText);
 }
+
+$el("#gamescreen").addEventListener("paste", function(event) {
+	// Get rid of rich text, it messes with actions. Not a great fix since it
+	// relies on execCommand but it'll have to do
+	event.preventDefault();
+	document.execCommand(
+		"insertHTML",
+		false,
+		event.clipboardData.getData("text/plain")
+	);
+});
