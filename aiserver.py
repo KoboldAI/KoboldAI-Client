@@ -6475,7 +6475,7 @@ def getnewcontent(txt):
 #==================================================================#
 def applyinputformatting(txt):
     # Add sentence spacing
-    if(koboldai_vars.frmtadsnsp):
+    if(koboldai_vars.frmtadsnsp and not koboldai_vars.chatmode):
         txt = utils.addsentencespacing(txt, koboldai_vars)
  
     return txt
@@ -6511,7 +6511,9 @@ def applyoutputformatting(txt, no_sentence_trimming=False, no_single_line=False)
 	# Single Line Mode
     if(koboldai_vars.singleline and not no_single_line):
         txt = utils.singlelineprocessing(txt, koboldai_vars)
-    
+ 	# Chat Mode Trimming
+    if(koboldai_vars.chatmode):
+        txt = utils.chatmodeprocessing(txt, koboldai_vars)   
     for sub in koboldai_vars.substitutions:
         if not sub["enabled"]:
             continue
