@@ -26,7 +26,7 @@ dependencies:
     - flask-cloudflared
     - flask-ngrok
     - lupa==1.10
-    - transformers==4.24.0
+    - transformers==4.25.1
     - huggingface_hub>=0.10.1
     - safetensors
     - accelerate

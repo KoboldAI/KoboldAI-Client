@@ -77,7 +77,8 @@ try:
     from transformers.models.opt.modeling_opt import OPTDecoder
 except:
     pass
-import transformers.generation_utils
+
+from transformers import GenerationMixin
 
 # Text2img
 import base64
@@ -127,20 +128,20 @@ class use_core_manipulations:
     old_get_stopping_criteria: callable
 
     def __enter__(self):
-        use_core_manipulations.old_get_logits_processor = transformers.generation_utils.GenerationMixin._get_logits_processor
-        transformers.generation_utils.GenerationMixin._get_logits_processor = use_core_manipulations.get_logits_processor
+        use_core_manipulations.old_get_logits_processor = transformers.GenerationMixin._get_logits_processor
+        transformers.GenerationMixin._get_logits_processor = use_core_manipulations.get_logits_processor
 
-        use_core_manipulations.old_sample = transformers.generation_utils.GenerationMixin.sample
-        transformers.generation_utils.GenerationMixin.sample = use_core_manipulations.sample
+        use_core_manipulations.old_sample = transformers.GenerationMixin.sample
+        transformers.GenerationMixin.sample = use_core_manipulations.sample
 
-        use_core_manipulations.old_get_stopping_criteria = transformers.generation_utils.GenerationMixin._get_stopping_criteria
-        transformers.generation_utils.GenerationMixin._get_stopping_criteria = use_core_manipulations.get_stopping_criteria
+        use_core_manipulations.old_get_stopping_criteria = transformers.GenerationMixin._get_stopping_criteria
+        transformers.GenerationMixin._get_stopping_criteria = use_core_manipulations.get_stopping_criteria
         return self
     
     def __exit__(self, exc_type, exc_value, exc_traceback):
-        transformers.generation_utils.GenerationMixin._get_logits_processor = use_core_manipulations.old_get_logits_processor
-        transformers.generation_utils.GenerationMixin.sample = use_core_manipulations.old_sample
-        transformers.generation_utils.GenerationMixin._get_stopping_criteria = use_core_manipulations.old_get_stopping_criteria
+        transformers.GenerationMixin._get_logits_processor = use_core_manipulations.old_get_logits_processor
+        transformers.GenerationMixin.sample = use_core_manipulations.old_sample
+        transformers.GenerationMixin._get_stopping_criteria = use_core_manipulations.old_get_stopping_criteria
 
 #==================================================================#
 # Variables & Storage
@@ -2414,7 +2415,7 @@ def patch_transformers():
         processors.append(PhraseBiasLogitsProcessor())
         return processors
     use_core_manipulations.get_logits_processor =  new_get_logits_processor
-    new_get_logits_processor.old_get_logits_processor = transformers.generation_utils.GenerationMixin._get_logits_processor
+    new_get_logits_processor.old_get_logits_processor = transformers.GenerationMixin._get_logits_processor
 
     class KoboldLogitsWarperList(LogitsProcessorList):
         def __init__(self, beams: int = 1, **kwargs):
@@ -2449,15 +2450,15 @@ def patch_transformers():
             kwargs.setdefault("pad_token_id", 2)
         return new_sample.old_sample(self, *args, **kwargs)
 
-    new_sample.old_sample = transformers.generation_utils.GenerationMixin.sample
+    new_sample.old_sample = transformers.GenerationMixin.sample
     use_core_manipulations.sample = new_sample
 
     # Allow bad words filter to ban <|endoftext|> token
-    import transformers.generation_logits_process
+    import transformers.generation.logits_process
     def new_init(self, bad_words_ids: List[List[int]], eos_token_id: int):
         return new_init.old_init(self, bad_words_ids, -1)
-    new_init.old_init = transformers.generation_logits_process.NoBadWordsLogitsProcessor.__init__
-    transformers.generation_logits_process.NoBadWordsLogitsProcessor.__init__ = new_init
+    new_init.old_init = transformers.generation.logits_process.NoBadWordsLogitsProcessor.__init__
+    transformers.generation.logits_process.NoBadWordsLogitsProcessor.__init__ = new_init
 
     class TokenStreamer(StoppingCriteria):
         # A StoppingCriteria is used here because it seems to run after
@@ -2615,7 +2616,7 @@ def patch_transformers():
             return False
 
 
-    old_get_stopping_criteria = transformers.generation_utils.GenerationMixin._get_stopping_criteria
+    old_get_stopping_criteria = transformers.GenerationMixin._get_stopping_criteria
 
     def new_get_stopping_criteria(self, *args, **kwargs):
         global tokenizer
