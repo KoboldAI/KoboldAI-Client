@@ -1941,7 +1941,7 @@ body {
 	
 }
 
-.popup .model_item {
+#modelspecifier, .popup .model_item {
 	width: 98%;
 	background-color: var(--popup_item_color);
 	color: var(--popup_item_color_text);
@@ -2089,12 +2089,22 @@ body {
 }
 /*----------------------------- Model Load Popup ------------------------------------------*/
 
-.popup_list_area .model_item .model {
+#specspan, .popup_list_area .model_item .model {
 	grid-area: file;
 	display: grid;
 	grid-template-areas: "item gpu_size";
-	grid-template-columns: auto 40px;
+	grid-template-columns: auto 95px;
 	cursor: pointer;
+}
+
+#specspan {
+	grid-template-columns: auto 100px !important;
+	cursor: auto !important;
+}
+
+#model-spec-usage {
+	position: relative;
+	left: -20px;
 }
 
 .popup .model_item:hover {
