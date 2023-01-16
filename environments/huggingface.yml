@@ -11,6 +11,7 @@ dependencies:
   - python=3.8.*
   - cudatoolkit=11.1
   - eventlet
+  - dnspython=2.2.1
   - markdown
   - bleach=4.1.0
   - pip
