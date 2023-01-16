@@ -7,6 +7,7 @@ torch >= 1.9, < 1.13
 flask-cloudflared
 flask-ngrok
 eventlet
+dnspython==2.2.1
 lupa==1.10
 markdown
 bleach==4.1.0

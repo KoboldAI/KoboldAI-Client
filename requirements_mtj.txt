@@ -14,6 +14,7 @@ Flask-SocketIO
 flask-cloudflared >= 0.0.5
 flask-ngrok
 eventlet
+dnspython==2.2.1
 lupa==1.10
 markdown
 bleach==4.1.0
