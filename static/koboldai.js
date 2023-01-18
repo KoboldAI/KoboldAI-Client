@@ -1607,6 +1607,16 @@ function show_model_menu(data) {
 	} else {
 		document.getElementById("custommodelname").classList.add("hidden");
 	}
+
+
+	// detect if we are in a model selection screen and show the reference
+	var refelement = document.getElementById("modelspecifier");
+	var check = document.getElementById("mainmenu");
+	if (check) {
+		refelement.classList.remove("hidden");
+	} else {
+		refelement.classList.add("hidden");
+	}
 	
 	openPopup("load-model");
 }
