@@ -10320,7 +10320,9 @@ def UI_2_action_image():
                  filename, 
                  mimetype="image/jpeg")
     else:
-        return None
+        return send_file(
+                 "static/blank.png", 
+                 mimetype="image/png")
 
 #==================================================================#
 # display messages if they have never been sent before on this install
