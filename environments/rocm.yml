@@ -8,6 +8,7 @@ dependencies:
   - flask-session
   - python=3.8.*
   - eventlet
+  - dnspython=2.2.1
   - markdown
   - bleach=4.1.0
   - pip
@@ -22,11 +23,11 @@ dependencies:
   - psutil
   - pip:
     - --extra-index-url https://download.pytorch.org/whl/rocm5.1.1
-    - torch==1.11.*
+    - torch==1.12.1+rocm5.1.1
     - flask-cloudflared
     - flask-ngrok
     - lupa==1.10
-    - transformers==4.24.0
+    - transformers==4.25.1
     - huggingface_hub>=0.10.1
     - safetensors
     - accelerate

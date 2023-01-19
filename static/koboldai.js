@@ -1607,6 +1607,16 @@ function show_model_menu(data) {
 	} else {
 		document.getElementById("custommodelname").classList.add("hidden");
 	}
+
+
+	// detect if we are in a model selection screen and show the reference
+	var refelement = document.getElementById("modelspecifier");
+	var check = document.getElementById("mainmenu");
+	if (check) {
+		refelement.classList.remove("hidden");
+	} else {
+		refelement.classList.add("hidden");
+	}
 	
 	openPopup("load-model");
 }
@@ -7281,3 +7291,14 @@ async function screenshot_selection(summonEvent) {
 
 	await showScreenshotWizard(actionComposition, startDebt=startDebt, endDebt=endDebt, totalText);
 }
+
+$el("#gamescreen").addEventListener("paste", function(event) {
+	// Get rid of rich text, it messes with actions. Not a great fix since it
+	// relies on execCommand but it'll have to do
+	event.preventDefault();
+	document.execCommand(
+		"insertHTML",
+		false,
+		event.clipboardData.getData("text/plain")
+	);
+});

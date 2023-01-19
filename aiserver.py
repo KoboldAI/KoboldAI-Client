@@ -77,7 +77,8 @@ try:
     from transformers.models.opt.modeling_opt import OPTDecoder
 except:
     pass
-import transformers.generation_utils
+
+from transformers import GenerationMixin
 
 # Text2img
 import base64
@@ -127,20 +128,20 @@ class use_core_manipulations:
     old_get_stopping_criteria: callable
 
     def __enter__(self):
-        use_core_manipulations.old_get_logits_processor = transformers.generation_utils.GenerationMixin._get_logits_processor
-        transformers.generation_utils.GenerationMixin._get_logits_processor = use_core_manipulations.get_logits_processor
+        use_core_manipulations.old_get_logits_processor = transformers.GenerationMixin._get_logits_processor
+        transformers.GenerationMixin._get_logits_processor = use_core_manipulations.get_logits_processor
 
-        use_core_manipulations.old_sample = transformers.generation_utils.GenerationMixin.sample
-        transformers.generation_utils.GenerationMixin.sample = use_core_manipulations.sample
+        use_core_manipulations.old_sample = transformers.GenerationMixin.sample
+        transformers.GenerationMixin.sample = use_core_manipulations.sample
 
-        use_core_manipulations.old_get_stopping_criteria = transformers.generation_utils.GenerationMixin._get_stopping_criteria
-        transformers.generation_utils.GenerationMixin._get_stopping_criteria = use_core_manipulations.get_stopping_criteria
+        use_core_manipulations.old_get_stopping_criteria = transformers.GenerationMixin._get_stopping_criteria
+        transformers.GenerationMixin._get_stopping_criteria = use_core_manipulations.get_stopping_criteria
         return self
     
     def __exit__(self, exc_type, exc_value, exc_traceback):
-        transformers.generation_utils.GenerationMixin._get_logits_processor = use_core_manipulations.old_get_logits_processor
-        transformers.generation_utils.GenerationMixin.sample = use_core_manipulations.old_sample
-        transformers.generation_utils.GenerationMixin._get_stopping_criteria = use_core_manipulations.old_get_stopping_criteria
+        transformers.GenerationMixin._get_logits_processor = use_core_manipulations.old_get_logits_processor
+        transformers.GenerationMixin.sample = use_core_manipulations.old_sample
+        transformers.GenerationMixin._get_stopping_criteria = use_core_manipulations.old_get_stopping_criteria
 
 #==================================================================#
 # Variables & Storage
@@ -168,6 +169,7 @@ model_menu = {
         ["Load custom model from Hugging Face", "customhuggingface", "", True],
         ["Adventure Models", "adventurelist", "", True],
         ["Novel Models", "novellist", "", True],
+        ["Chat Models", "chatlist", "", True],
         ["NSFW Models", "nsfwlist", "", True],
         ["Untuned OPT", "optlist", "", True],
         ["Untuned GPT-Neo/J", "gptneolist", "", True],
@@ -225,9 +227,10 @@ model_menu = {
         ["Return to Main Menu", "mainmenu", "", True],
         ],
     'chatlist': [
-        ["Convo 6B (Chatbot)", "hitomi-team/convo-6B", "16GB", False],
-        ["C1 6B (Chatbot)", "hakurei/c1-6B", "16GB", False],
-        ["C1 1.3B (Chatbot)", "iokru/c1-1.3B", "6GB", False],
+        ["Pygmalion 6B", "PygmalionAI/pygmalion-6b", "16GB", False],
+        ["Pygmalion 2.7B", "PygmalionAI/pygmalion-2.7b", "8GB", False],
+        ["Pygmalion 1.3B", "PygmalionAI/pygmalion-1.3b", "6GB", False],
+        ["Pygmalion 350M", "PygmalionAI/pygmalion-350m", "2GB", False],
         ["Return to Main Menu", "mainmenu", "", True],
         ],
     'gptneolist': [
@@ -314,12 +317,12 @@ model_menu = {
         ["Return to Main Menu", "mainmenu", "", True],
         ],
     'apilist': [
-        ["GooseAI API (requires API key)", "GooseAI", "", False],
-        ["OpenAI API (requires API key)", "OAI", "", False],
-        ["InferKit API (requires API key)", "InferKit", "", False],
+        ["GooseAI API (requires API key)", "GooseAI", "None", False],
+        ["OpenAI API (requires API key)", "OAI", "None", False],
+        ["InferKit API (requires API key)", "InferKit", "None", False],
         # ["KoboldAI Server API (Old Google Colab)", "Colab", "", False],
-        ["KoboldAI API", "API", "", False],
-        ["KoboldAI Horde", "CLUSTER", "", False],
+        ["KoboldAI API", "API", "None", False],
+        ["KoboldAI Horde", "CLUSTER", "None", False],
         ["Return to Main Menu", "mainmenu", "", True],
     ]
     }
@@ -1493,6 +1496,7 @@ def general_startup(override_args=None):
     parser.add_argument("--no_aria2", action='store_true', default=False, help="Prevents KoboldAI from using aria2 to download huggingface models more efficiently, in case aria2 is causing you issues")
     parser.add_argument("--lowmem", action='store_true', help="Extra Low Memory loading for the GPU, slower but memory does not peak to twice the usage")
     parser.add_argument("--savemodel", action='store_true', help="Saves the model to the models folder even if --colab is used (Allows you to save models to Google Drive)")
+    parser.add_argument("--cacheonly", action='store_true', help="Does not save the model to the models folder when it has been downloaded in the cache")
     parser.add_argument("--customsettings", help="Preloads arguements from json file. You only need to provide the location of the json file. Use customsettings.json template file. It can be renamed if you wish so that you can store multiple configurations. Leave any settings you want as default as null. Any values you wish to set need to be in double quotation marks")
     parser.add_argument("--no_ui", action='store_true', default=False, help="Disables the GUI and Socket.IO server while leaving the API server running.")
     parser.add_argument("--summarizer_model", action='store', default="philschmid/bart-large-cnn-samsum", help="Huggingface model to use for summarization. Defaults to sshleifer/distilbart-cnn-12-6")
@@ -2412,7 +2416,7 @@ def patch_transformers():
         processors.append(PhraseBiasLogitsProcessor())
         return processors
     use_core_manipulations.get_logits_processor =  new_get_logits_processor
-    new_get_logits_processor.old_get_logits_processor = transformers.generation_utils.GenerationMixin._get_logits_processor
+    new_get_logits_processor.old_get_logits_processor = transformers.GenerationMixin._get_logits_processor
 
     class KoboldLogitsWarperList(LogitsProcessorList):
         def __init__(self, beams: int = 1, **kwargs):
@@ -2447,15 +2451,15 @@ def patch_transformers():
             kwargs.setdefault("pad_token_id", 2)
         return new_sample.old_sample(self, *args, **kwargs)
 
-    new_sample.old_sample = transformers.generation_utils.GenerationMixin.sample
+    new_sample.old_sample = transformers.GenerationMixin.sample
     use_core_manipulations.sample = new_sample
 
     # Allow bad words filter to ban <|endoftext|> token
-    import transformers.generation_logits_process
+    import transformers.generation.logits_process
     def new_init(self, bad_words_ids: List[List[int]], eos_token_id: int):
         return new_init.old_init(self, bad_words_ids, -1)
-    new_init.old_init = transformers.generation_logits_process.NoBadWordsLogitsProcessor.__init__
-    transformers.generation_logits_process.NoBadWordsLogitsProcessor.__init__ = new_init
+    new_init.old_init = transformers.generation.logits_process.NoBadWordsLogitsProcessor.__init__
+    transformers.generation.logits_process.NoBadWordsLogitsProcessor.__init__ = new_init
 
     class TokenStreamer(StoppingCriteria):
         # A StoppingCriteria is used here because it seems to run after
@@ -2473,9 +2477,6 @@ def patch_transformers():
                 return False
 
             if not koboldai_vars.output_streaming:
-                return False
-
-            if koboldai_vars.chatmode:
                 return False
                 
             data = [applyoutputformatting(utils.decodenewlines(tokenizer.decode(x[-1])), no_sentence_trimming=True, no_single_line=True) for x in input_ids]
@@ -2616,7 +2617,7 @@ def patch_transformers():
             return False
 
 
-    old_get_stopping_criteria = transformers.generation_utils.GenerationMixin._get_stopping_criteria
+    old_get_stopping_criteria = transformers.GenerationMixin._get_stopping_criteria
 
     def new_get_stopping_criteria(self, *args, **kwargs):
         global tokenizer
@@ -3194,7 +3195,7 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
 
                         torch._utils._rebuild_tensor = old_rebuild_tensor
 
-                        if not args.colab or args.savemodel:
+                        if not (args.colab or args.cacheonly) or args.savemodel:
                             import shutil
                             tokenizer.save_pretrained("models/{}".format(koboldai_vars.model.replace('/', '_')))
                             if(koboldai_vars.fp32_model and ("breakmodel" not in globals() or not breakmodel.disk_blocks)):  # Use save_pretrained to convert fp32 models to fp16, unless we are using disk cache because save_pretrained is not supported in that case
@@ -3210,7 +3211,10 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
                                 shutil.move(os.path.realpath(huggingface_hub.hf_hub_download(koboldai_vars.model, transformers.configuration_utils.CONFIG_NAME, revision=koboldai_vars.revision, cache_dir="cache", local_files_only=True, legacy_cache_layout=legacy)), os.path.join("models/{}".format(koboldai_vars.model.replace('/', '_')), transformers.configuration_utils.CONFIG_NAME))
                                 if(utils.num_shards is None):
                                     # Save the pytorch_model.bin of an unsharded model
-                                    shutil.move(os.path.realpath(huggingface_hub.hf_hub_download(koboldai_vars.model, transformers.modeling_utils.WEIGHTS_NAME, revision=koboldai_vars.revision, cache_dir="cache", local_files_only=True, legacy_cache_layout=legacy)), os.path.join("models/{}".format(koboldai_vars.model.replace('/', '_')), transformers.modeling_utils.WEIGHTS_NAME))
+                                    try:
+                                        shutil.move(os.path.realpath(huggingface_hub.hf_hub_download(koboldai_vars.model, transformers.modeling_utils.WEIGHTS_NAME, revision=koboldai_vars.revision, cache_dir="cache", local_files_only=True, legacy_cache_layout=legacy)), os.path.join("models/{}".format(koboldai_vars.model.replace('/', '_')), transformers.modeling_utils.WEIGHTS_NAME))
+                                    except:
+                                        shutil.move(os.path.realpath(huggingface_hub.hf_hub_download(koboldai_vars.model,  "model.safetensors", revision=koboldai_vars.revision, cache_dir="cache", local_files_only=True, legacy_cache_layout=legacy)), os.path.join("models/{}".format(koboldai_vars.model.replace('/', '_')), "model.safetensors"))
                                 else:
                                     with open(utils.from_pretrained_index_filename) as f:
                                         map_data = json.load(f)
@@ -6473,7 +6477,7 @@ def getnewcontent(txt):
 #==================================================================#
 def applyinputformatting(txt):
     # Add sentence spacing
-    if(koboldai_vars.frmtadsnsp):
+    if(koboldai_vars.frmtadsnsp and not koboldai_vars.chatmode):
         txt = utils.addsentencespacing(txt, koboldai_vars)
  
     return txt
@@ -6507,9 +6511,11 @@ def applyoutputformatting(txt, no_sentence_trimming=False, no_single_line=False)
     if(koboldai_vars.frmtrmspch):
         txt = utils.removespecialchars(txt, koboldai_vars)
 	# Single Line Mode
-    if((koboldai_vars.singleline or koboldai_vars.chatmode) and not no_single_line):
+    if(koboldai_vars.singleline and not no_single_line):
         txt = utils.singlelineprocessing(txt, koboldai_vars)
-    
+ 	# Chat Mode Trimming
+    if(koboldai_vars.chatmode):
+        txt = utils.chatmodeprocessing(txt, koboldai_vars)   
     for sub in koboldai_vars.substitutions:
         if not sub["enabled"]:
             continue

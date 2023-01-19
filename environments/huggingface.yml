@@ -11,6 +11,7 @@ dependencies:
   - python=3.8.*
   - cudatoolkit=11.1
   - eventlet
+  - dnspython=2.2.1
   - markdown
   - bleach=4.1.0
   - pip
@@ -27,7 +28,7 @@ dependencies:
     - flask-cloudflared
     - flask-ngrok
     - lupa==1.10
-    - transformers==4.24.0
+    - transformers==4.25.1
     - huggingface_hub>=0.10.1
     - safetensors
     - accelerate

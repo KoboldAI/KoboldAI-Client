@@ -147,6 +147,24 @@ def singlelineprocessing(txt, koboldai_vars):
         txt = txt + "\n"
     return txt
 
+def chatmodeprocessing(txt, koboldai_vars):
+    chatregex = re.compile(r'%s:[.|\n|\W|\w]*'%koboldai_vars.chatname)
+    txt = chatregex.sub('', txt)
+    if(len(koboldai_vars.actions) > 0):
+        if(len(koboldai_vars.actions[-1]) > 0):
+            action = koboldai_vars.actions[-1]
+            lastchar = action[-1] if len(action) else ""
+        else:
+            # Last action is blank, this should never happen, but
+            # since it did let's bail out.
+            return txt
+    else:
+        action = koboldai_vars.prompt
+        lastchar = action[-1] if len(action) else ""
+    if(lastchar != "\n"):
+        txt = txt + "\n"
+    return txt
+
 #==================================================================#
 #  Cleans string for use in file name
 #==================================================================#

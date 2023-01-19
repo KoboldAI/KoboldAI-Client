@@ -1,4 +1,4 @@
-transformers==4.24.0
+transformers==4.25.1
 huggingface_hub>=0.10.1
 Flask
 Flask-SocketIO
@@ -7,6 +7,7 @@ torch >= 1.9, < 1.13
 flask-cloudflared
 flask-ngrok
 eventlet
+dnspython==2.2.1
 lupa==1.10
 markdown
 bleach==4.1.0
