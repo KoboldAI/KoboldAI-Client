@@ -2090,8 +2090,8 @@ class KoboldStoryRegister(object):
         if self.story_settings.gen_audio and self.koboldai_vars.experimental_features:
             for i in reversed([-1]+list(self.actions.keys())):
                 self.gen_audio(i, overwrite=False)
-        else:
-            print("{} and {}".format(self.story_settings.gen_audio, self.koboldai_vars.experimental_features))
+        #else:
+        #    print("{} and {}".format(self.story_settings.gen_audio, self.koboldai_vars.experimental_features))
     
     def set_picture(self, action_id, filename, prompt):
         if action_id == -1:
@@ -2111,7 +2111,22 @@ class KoboldStoryRegister(object):
             filename = os.path.join(self.koboldai_vars.save_paths.generated_images, self.actions[action_id]['picture_filename'])
             prompt = self.actions[action_id]['picture_prompt']
         else:
-            return None, None
+            #Let's find the last picture if there is one
+            found = False
+            for i in reversed(range(-1, action_id)):
+                if i in self.actions and 'picture_filename' in self.actions[i]:
+                    filename = os.path.join(self.koboldai_vars.save_paths.generated_images, self.actions[i]['picture_filename'])
+                    prompt = self.actions[i]['picture_prompt']
+                    found = True
+                    break
+                elif i == -1:
+                    if self.story_settings.prompt_picture_filename == "":
+                        return None, None
+                    filename = os.path.join(self.koboldai_vars.save_paths.generated_images, self.story_settings.prompt_picture_filename)
+                    prompt = self.story_settings.prompt_picture_prompt
+                    found = True
+            if not found:
+                return None, None
         
         if os.path.exists(filename):
             return filename, prompt
