@@ -331,13 +331,8 @@ class koboldai_vars(object):
         ######################################### Get Action Text by Sentence ########################################################
         action_text_split = self.actions.to_sentences(submitted_text=submitted_text)
 
-        if action_text_split == []:
-            if return_text:
-                return ""
-            return [], 0, 0+self.genamt, []
-
         # Always add newlines on chat v2
-        if self.is_chat_v2():
+        if action_text_split and self.is_chat_v2():
             action_text_split[-1][0] = action_text_split[-1][0].strip() + "\n"
         
         ######################################### Prompt ########################################################
