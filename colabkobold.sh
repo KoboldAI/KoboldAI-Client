@@ -2,7 +2,7 @@
 # KoboldAI Easy Colab Deployment Script by Henk717
 
 # read the options
-TEMP=`getopt -o m:i:p:c:d:x:a:l:z:g:t:n:b:s: --long model:,init:,path:,configname:,download:,aria2:,dloc:,xloc:,7z:,git:,tar:,ngrok:,branch:,savemodel:,localtunnel:,lt: -- "$@"`
+TEMP=`getopt -o m:i:p:c:d:x:a:l:z:g:t:n:b:s:r: --long model:,init:,path:,configname:,download:,aria2:,dloc:,xloc:,7z:,git:,tar:,ngrok:,branch:,savemodel:,localtunnel:,lt:,revision: -- "$@"`
 eval set -- "$TEMP"
 
 # extract options and their arguments into variables.
