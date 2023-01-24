@@ -10,6 +10,8 @@ while true ; do
     case "$1" in
         -m|--model)
             model=" --model $2" ; shift 2 ;;
+        -r|--revision)
+            revision=" --revision $2" ; shift 2 ;;
         -i|--init)
             init=$2 ; shift 2 ;;
         -p|--path)
