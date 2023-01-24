@@ -54,8 +54,8 @@ function launch
         exit 0
     else
     cd /content/KoboldAI-Client
-    echo "Launching KoboldAI with the following options : python3 aiserver.py$model$kmpath$configname$ngrok$localtunnel$savemodel --colab"
-    python3 aiserver.py$model$kmpath$configname$ngrok$localtunnel$savemodel --colab
+    echo "Launching KoboldAI with the following options : python3 aiserver.py$model$kmpath$configname$ngrok$localtunnel$savemodel$revision --colab"
+    python3 aiserver.py$model$kmpath$configname$ngrok$localtunnel$savemodel$revision --colab
     exit
     fi
 }
