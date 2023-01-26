@@ -7,6 +7,7 @@
 
 		window.addEventListener('error', function(event) {
 			let fileName = event.filename.split("/").splice(-1)[0];
+			if (event.message.includes("ResizeObserver loop completed with undelivered notifications")) return;
 			reportError(`Error at ${fileName}:${event.lineno}`, `${event.message}\n--\nPlease report this error to the developers.`);
 			debug_info.errors.push({msg: event.message, url: event.filename, line: event.lineno});
 		});
