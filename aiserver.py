@@ -563,12 +563,14 @@ from flask_socketio import SocketIO, emit, join_room, leave_room
 from flask_socketio import emit as _emit
 from flask_session import Session
 from flask_compress import Compress
+from flask_cors import CORS
 from werkzeug.exceptions import HTTPException, NotFound, InternalServerError
 import secrets
 app = Flask(__name__, root_path=os.getcwd())
 app.secret_key = secrets.token_hex()
 app.config['SESSION_TYPE'] = 'filesystem'
 app.config['TEMPLATES_AUTO_RELOAD'] = True
+CORS(app)
 Compress(app)
 socketio = SocketIO(app, async_method="eventlet", manage_session=False, cors_allowed_origins='*', max_http_buffer_size=10_000_000)
 #socketio = SocketIO(app, async_method="eventlet", manage_session=False, cors_allowed_origins='*', max_http_buffer_size=10_000_000, logger=logger, engineio_logger=True)
