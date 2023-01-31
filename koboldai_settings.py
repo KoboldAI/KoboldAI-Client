@@ -1187,7 +1187,7 @@ class system_settings(settings):
                          'lua_koboldcore', 'sp', 'sp_length', '_horde_pid', 'horde_share', 'aibusy', 
                          'serverstarted', 'inference_config', 'image_pipeline', 'summarizer', 
                          'summary_tokenizer', 'use_colab_tpu', 'noai', 'disable_set_aibusy', 'cloudflare_link', 'tts_model',
-                         'generating_image', 'bit_8_available', 'host', 'hascuda', 'usegpu']
+                         'generating_image', 'bit_8_available', 'host', 'hascuda', 'usegpu', 'revision']
     settings_name = "system"
     def __init__(self, socketio, koboldai_var):
         self.socketio = socketio
