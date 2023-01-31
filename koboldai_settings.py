@@ -331,13 +331,8 @@ class koboldai_vars(object):
         ######################################### Get Action Text by Sentence ########################################################
         action_text_split = self.actions.to_sentences(submitted_text=submitted_text)
 
-        if action_text_split == []:
-            if return_text:
-                return ""
-            return [], 0, 0+self.genamt, []
-
         # Always add newlines on chat v2
-        if self.is_chat_v2():
+        if action_text_split and self.is_chat_v2():
             action_text_split[-1][0] = action_text_split[-1][0].strip() + "\n"
         
         ######################################### Prompt ########################################################
@@ -648,7 +643,7 @@ class model_settings(settings):
     no_save_variables = ['tqdm', 'tqdm_progress', 'tqdm_rem_time', 'socketio', 'modelconfig', 'custmodpth', 'generated_tkns', 
                          'loaded_layers', 'total_layers', 'total_download_chunks', 'downloaded_chunks', 'presets', 'default_preset', 
                          'koboldai_vars', 'welcome', 'welcome_default', 'simple_randomness', 'simple_creativity', 'simple_repitition',
-                         'badwordsids', 'uid_presets']
+                         'badwordsids', 'uid_presets', 'revision', 'model', 'model_type', 'lazy_load', 'fp32_model', 'modeldim', 'horde_wait_time', 'horde_queue_position', 'horde_queue_size', 'newlinemode']
     settings_name = "model"
     default_settings = {"rep_pen" : 1.1, "rep_pen_slope": 0.7, "rep_pen_range": 1024, "temp": 0.5, "top_p": 0.9, "top_k": 0, "top_a": 0.0, "tfs": 1.0, "typical": 1.0,
                         "sampler_order": [6,0,1,2,3,4,5]}
