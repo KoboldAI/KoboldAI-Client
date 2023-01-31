@@ -286,7 +286,7 @@ def _transformers22_aria2_hook(pretrained_model_name_or_path: str, force_downloa
             if token is None:
                 raise EnvironmentError("You specified use_auth_token=True, but a huggingface token was not found.")
     _cache_dir = str(cache_dir) if cache_dir is not None else transformers.TRANSFORMERS_CACHE
-    _revision = revision if revision is not None else huggingface_hub.constants.DEFAULT_REVISION
+    _revision = args.revision if args.revision is not None else huggingface_hub.constants.DEFAULT_REVISION
     sharded = False
     headers = {"user-agent": transformers.file_utils.http_user_agent(user_agent)}
     if use_auth_token:
@@ -297,7 +297,7 @@ def _transformers22_aria2_hook(pretrained_model_name_or_path: str, force_downloa
 
     def is_cached(filename):
         try:
-            huggingface_hub.hf_hub_download(pretrained_model_name_or_path, filename, cache_dir=cache_dir, local_files_only=True)
+            huggingface_hub.hf_hub_download(pretrained_model_name_or_path, filename, cache_dir=cache_dir, local_files_only=True, revision=_revision)
         except ValueError:
             return False
         return True
@@ -306,7 +306,7 @@ def _transformers22_aria2_hook(pretrained_model_name_or_path: str, force_downloa
             filename = transformers.modeling_utils.WEIGHTS_INDEX_NAME if sharded else transformers.modeling_utils.WEIGHTS_NAME
         except AttributeError:
             return
-        url = huggingface_hub.hf_hub_url(pretrained_model_name_or_path, filename, revision=revision)
+        url = huggingface_hub.hf_hub_url(pretrained_model_name_or_path, filename, revision=_revision)
         if is_cached(filename) or requests.head(url, allow_redirects=True, proxies=proxies, headers=headers):
             break
         if sharded:
@@ -320,7 +320,7 @@ def _transformers22_aria2_hook(pretrained_model_name_or_path: str, force_downloa
         with open(map_filename) as f:
             map_data = json.load(f)
         filenames = set(map_data["weight_map"].values())
-    urls = [huggingface_hub.hf_hub_url(pretrained_model_name_or_path, n, revision=revision) for n in filenames]
+    urls = [huggingface_hub.hf_hub_url(pretrained_model_name_or_path, n, revision=_revision) for n in filenames]
     if not force_download:
         urls = [u for u, n in zip(urls, filenames) if not is_cached(n)]
         if not urls:
