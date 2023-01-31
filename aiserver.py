@@ -1590,13 +1590,13 @@ def get_layer_count(model, directory=""):
                 model = directory
             from transformers import AutoConfig
             if(os.path.isdir(model.replace('/', '_'))):
-                model_config = AutoConfig.from_pretrained(model.replace('/', '_'), revision=vars.revision, cache_dir="cache")
+                model_config = AutoConfig.from_pretrained(model.replace('/', '_'), revision=args.revision, cache_dir="cache")
             elif(os.path.isdir("models/{}".format(model.replace('/', '_')))):
-                model_config = AutoConfig.from_pretrained("models/{}".format(model.replace('/', '_')), revision=vars.revision, cache_dir="cache")
+                model_config = AutoConfig.from_pretrained("models/{}".format(model.replace('/', '_')), revision=args.revision, cache_dir="cache")
             elif(os.path.isdir(directory)):
-                model_config = AutoConfig.from_pretrained(directory, revision=vars.revision, cache_dir="cache")
+                model_config = AutoConfig.from_pretrained(directory, revision=args.revision, cache_dir="cache")
             else:
-                model_config = AutoConfig.from_pretrained(model, revision=vars.revision, cache_dir="cache")
+                model_config = AutoConfig.from_pretrained(model, revision=args.revision, cache_dir="cache")
         try:
             if ((utils.HAS_ACCELERATE and model_config.model_type != 'gpt2') or model_config.model_type in ("gpt_neo", "gptj", "xglm", "opt")) and not vars.nobreakmodel:
                 return utils.num_layers(model_config)
@@ -2231,19 +2231,19 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
         from transformers import AutoConfig
         if(os.path.isdir(vars.custmodpth.replace('/', '_'))):
             try:
-                model_config = AutoConfig.from_pretrained(vars.custmodpth.replace('/', '_'), revision=vars.revision, cache_dir="cache")
+                model_config = AutoConfig.from_pretrained(vars.custmodpth.replace('/', '_'), revision=args.revision, cache_dir="cache")
                 vars.model_type = model_config.model_type
             except ValueError as e:
                 vars.model_type = "not_found"
         elif(os.path.isdir("models/{}".format(vars.custmodpth.replace('/', '_')))):
             try:
-                model_config = AutoConfig.from_pretrained("models/{}".format(vars.custmodpth.replace('/', '_')), revision=vars.revision, cache_dir="cache")
+                model_config = AutoConfig.from_pretrained("models/{}".format(vars.custmodpth.replace('/', '_')), revision=args.revision, cache_dir="cache")
                 vars.model_type = model_config.model_type
             except ValueError as e:
                 vars.model_type = "not_found"
         else:
             try:
-                model_config = AutoConfig.from_pretrained(vars.custmodpth, revision=vars.revision, cache_dir="cache")
+                model_config = AutoConfig.from_pretrained(vars.custmodpth, revision=args.revision, cache_dir="cache")
                 vars.model_type = model_config.model_type
             except ValueError as e:
                 vars.model_type = "not_found"
@@ -2482,19 +2482,19 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
                 with(maybe_use_float16()):
                     try:
                         if os.path.exists(vars.custmodpth):
-                            model = GPT2LMHeadModel.from_pretrained(vars.custmodpth, revision=vars.revision, cache_dir="cache")
-                            tokenizer = GPT2Tokenizer.from_pretrained(vars.custmodpth, revision=vars.revision, cache_dir="cache")
+                            model = GPT2LMHeadModel.from_pretrained(vars.custmodpth, revision=args.revision, cache_dir="cache")
+                            tokenizer = GPT2Tokenizer.from_pretrained(vars.custmodpth, revision=args.revision, cache_dir="cache")
                         elif os.path.exists(os.path.join("models/", vars.custmodpth)):
-                            model = GPT2LMHeadModel.from_pretrained(os.path.join("models/", vars.custmodpth), revision=vars.revision, cache_dir="cache")
-                            tokenizer = GPT2Tokenizer.from_pretrained(os.path.join("models/", vars.custmodpth), revision=vars.revision, cache_dir="cache")
+                            model = GPT2LMHeadModel.from_pretrained(os.path.join("models/", vars.custmodpth), revision=args.revision, cache_dir="cache")
+                            tokenizer = GPT2Tokenizer.from_pretrained(os.path.join("models/", vars.custmodpth), revision=args.revision, cache_dir="cache")
                         else:
-                            model = GPT2LMHeadModel.from_pretrained(vars.custmodpth, revision=vars.revision, cache_dir="cache")
-                            tokenizer = GPT2Tokenizer.from_pretrained(vars.custmodpth, revision=vars.revision, cache_dir="cache")
+                            model = GPT2LMHeadModel.from_pretrained(vars.custmodpth, revision=args.revision, cache_dir="cache")
+                            tokenizer = GPT2Tokenizer.from_pretrained(vars.custmodpth, revision=args.revision, cache_dir="cache")
                     except Exception as e:
                         if("out of memory" in traceback.format_exc().lower()):
                             raise RuntimeError("One of your GPUs ran out of memory when KoboldAI tried to load your model.")
                         raise e
-                tokenizer = GPT2Tokenizer.from_pretrained(vars.custmodpth, revision=vars.revision, cache_dir="cache")
+                tokenizer = GPT2Tokenizer.from_pretrained(vars.custmodpth, revision=args.revision, cache_dir="cache")
                 model.save_pretrained("models/{}".format(vars.model.replace('/', '_')), max_shard_size="500MiB")
                 tokenizer.save_pretrained("models/{}".format(vars.model.replace('/', '_')))
                 vars.modeldim = get_hidden_size_from_model(model)
@@ -2541,38 +2541,38 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
                         lowmem = {}
                     if(os.path.isdir(vars.custmodpth)):
                         try:
-                            tokenizer = AutoTokenizer.from_pretrained(vars.custmodpth, revision=vars.revision, cache_dir="cache", use_fast=False)
+                            tokenizer = AutoTokenizer.from_pretrained(vars.custmodpth, revision=args.revision, cache_dir="cache", use_fast=False)
                         except Exception as e:
                             try:
-                                tokenizer = AutoTokenizer.from_pretrained(vars.custmodpth, revision=vars.revision, cache_dir="cache")
+                                tokenizer = AutoTokenizer.from_pretrained(vars.custmodpth, revision=args.revision, cache_dir="cache")
                             except Exception as e:
                                 try:
-                                    tokenizer = GPT2Tokenizer.from_pretrained(vars.custmodpth, revision=vars.revision, cache_dir="cache")
+                                    tokenizer = GPT2Tokenizer.from_pretrained(vars.custmodpth, revision=args.revision, cache_dir="cache")
                                 except Exception as e:
-                                    tokenizer = GPT2Tokenizer.from_pretrained("gpt2", revision=vars.revision, cache_dir="cache")
+                                    tokenizer = GPT2Tokenizer.from_pretrained("gpt2", revision=args.revision, cache_dir="cache")
                         try:
-                            model     = AutoModelForCausalLM.from_pretrained(vars.custmodpth, revision=vars.revision, cache_dir="cache", **lowmem)
+                            model     = AutoModelForCausalLM.from_pretrained(vars.custmodpth, revision=args.revision, cache_dir="cache", **lowmem)
                         except Exception as e:
                             if("out of memory" in traceback.format_exc().lower()):
                                 raise RuntimeError("One of your GPUs ran out of memory when KoboldAI tried to load your model.")
-                            model     = GPTNeoForCausalLM.from_pretrained(vars.custmodpth, revision=vars.revision, cache_dir="cache", **lowmem)
+                            model     = GPTNeoForCausalLM.from_pretrained(vars.custmodpth, revision=args.revision, cache_dir="cache", **lowmem)
                     elif(os.path.isdir("models/{}".format(vars.model.replace('/', '_')))):
                         try:
-                            tokenizer = AutoTokenizer.from_pretrained("models/{}".format(vars.model.replace('/', '_')), revision=vars.revision, cache_dir="cache", use_fast=False)
+                            tokenizer = AutoTokenizer.from_pretrained("models/{}".format(vars.model.replace('/', '_')), revision=args.revision, cache_dir="cache", use_fast=False)
                         except Exception as e:
                             try:
-                                tokenizer = AutoTokenizer.from_pretrained("models/{}".format(vars.model.replace('/', '_')), revision=vars.revision, cache_dir="cache")
+                                tokenizer = AutoTokenizer.from_pretrained("models/{}".format(vars.model.replace('/', '_')), revision=args.revision, cache_dir="cache")
                             except Exception as e:
                                 try:
-                                    tokenizer = GPT2Tokenizer.from_pretrained("models/{}".format(vars.model.replace('/', '_')), revision=vars.revision, cache_dir="cache")
+                                    tokenizer = GPT2Tokenizer.from_pretrained("models/{}".format(vars.model.replace('/', '_')), revision=args.revision, cache_dir="cache")
                                 except Exception as e:
-                                    tokenizer = GPT2Tokenizer.from_pretrained("gpt2", revision=vars.revision, cache_dir="cache")
+                                    tokenizer = GPT2Tokenizer.from_pretrained("gpt2", revision=args.revision, cache_dir="cache")
                         try:
-                            model     = AutoModelForCausalLM.from_pretrained("models/{}".format(vars.model.replace('/', '_')), revision=vars.revision, cache_dir="cache", **lowmem)
+                            model     = AutoModelForCausalLM.from_pretrained("models/{}".format(vars.model.replace('/', '_')), revision=args.revision, cache_dir="cache", **lowmem)
                         except Exception as e:
                             if("out of memory" in traceback.format_exc().lower()):
                                 raise RuntimeError("One of your GPUs ran out of memory when KoboldAI tried to load your model.")
-                            model     = GPTNeoForCausalLM.from_pretrained("models/{}".format(vars.model.replace('/', '_')), revision=vars.revision, cache_dir="cache", **lowmem)
+                            model     = GPTNeoForCausalLM.from_pretrained("models/{}".format(vars.model.replace('/', '_')), revision=args.revision, cache_dir="cache", **lowmem)
                     else:
                         old_rebuild_tensor = torch._utils._rebuild_tensor
                         def new_rebuild_tensor(storage: Union[torch_lazy_loader.LazyTensor, torch.Storage], storage_offset, shape, stride):
@@ -2588,21 +2588,21 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
                         torch._utils._rebuild_tensor = new_rebuild_tensor
 
                         try:
-                            tokenizer = AutoTokenizer.from_pretrained(vars.model, revision=vars.revision, cache_dir="cache", use_fast=False)
+                            tokenizer = AutoTokenizer.from_pretrained(vars.model, revision=args.revision, cache_dir="cache", use_fast=False)
                         except Exception as e:
                             try:
-                                tokenizer = AutoTokenizer.from_pretrained(vars.model, revision=vars.revision, cache_dir="cache")
+                                tokenizer = AutoTokenizer.from_pretrained(vars.model, revision=args.revision, cache_dir="cache")
                             except Exception as e:
                                 try:
-                                    tokenizer = GPT2Tokenizer.from_pretrained(vars.model, revision=vars.revision, cache_dir="cache")
+                                    tokenizer = GPT2Tokenizer.from_pretrained(vars.model, revision=args.revision, cache_dir="cache")
                                 except Exception as e:
-                                    tokenizer = GPT2Tokenizer.from_pretrained("gpt2", revision=vars.revision, cache_dir="cache")
+                                    tokenizer = GPT2Tokenizer.from_pretrained("gpt2", revision=args.revision, cache_dir="cache")
                         try:
-                            model     = AutoModelForCausalLM.from_pretrained(vars.model, revision=vars.revision, cache_dir="cache", **lowmem)
+                            model     = AutoModelForCausalLM.from_pretrained(vars.model, revision=args.revision, cache_dir="cache", **lowmem)
                         except Exception as e:
                             if("out of memory" in traceback.format_exc().lower()):
                                 raise RuntimeError("One of your GPUs ran out of memory when KoboldAI tried to load your model.")
-                            model     = GPTNeoForCausalLM.from_pretrained(vars.model, revision=vars.revision, cache_dir="cache", **lowmem)
+                            model     = GPTNeoForCausalLM.from_pretrained(vars.model, revision=args.revision, cache_dir="cache", **lowmem)
 
                         torch._utils._rebuild_tensor = old_rebuild_tensor
 
@@ -2619,10 +2619,10 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
                                 import huggingface_hub
                                 legacy = packaging.version.parse(transformers_version) < packaging.version.parse("4.22.0.dev0")
                                 # Save the config.json
-                                shutil.move(os.path.realpath(huggingface_hub.hf_hub_download(vars.model, transformers.configuration_utils.CONFIG_NAME, revision=vars.revision, cache_dir="cache", local_files_only=True, legacy_cache_layout=legacy)), os.path.join("models/{}".format(vars.model.replace('/', '_')), transformers.configuration_utils.CONFIG_NAME))
+                                shutil.move(os.path.realpath(huggingface_hub.hf_hub_download(vars.model, transformers.configuration_utils.CONFIG_NAME, revision=args.revision, cache_dir="cache", local_files_only=True, legacy_cache_layout=legacy)), os.path.join("models/{}".format(vars.model.replace('/', '_')), transformers.configuration_utils.CONFIG_NAME))
                                 if(utils.num_shards is None):
                                     # Save the pytorch_model.bin of an unsharded model
-                                    shutil.move(os.path.realpath(huggingface_hub.hf_hub_download(vars.model, transformers.modeling_utils.WEIGHTS_NAME, revision=vars.revision, cache_dir="cache", local_files_only=True, legacy_cache_layout=legacy)), os.path.join("models/{}".format(vars.model.replace('/', '_')), transformers.modeling_utils.WEIGHTS_NAME))
+                                    shutil.move(os.path.realpath(huggingface_hub.hf_hub_download(vars.model, transformers.modeling_utils.WEIGHTS_NAME, revision=args.revision, cache_dir="cache", local_files_only=True, legacy_cache_layout=legacy)), os.path.join("models/{}".format(vars.model.replace('/', '_')), transformers.modeling_utils.WEIGHTS_NAME))
                                 else:
                                     with open(utils.from_pretrained_index_filename) as f:
                                         map_data = json.load(f)
@@ -2631,7 +2631,7 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
                                     shutil.move(os.path.realpath(utils.from_pretrained_index_filename), os.path.join("models/{}".format(vars.model.replace('/', '_')), transformers.modeling_utils.WEIGHTS_INDEX_NAME))
                                     # Then save the pytorch_model-#####-of-#####.bin files
                                     for filename in filenames:
-                                        shutil.move(os.path.realpath(huggingface_hub.hf_hub_download(vars.model, filename, revision=vars.revision, cache_dir="cache", local_files_only=True, legacy_cache_layout=legacy)), os.path.join("models/{}".format(vars.model.replace('/', '_')), filename))
+                                        shutil.move(os.path.realpath(huggingface_hub.hf_hub_download(vars.model, filename, revision=args.revision, cache_dir="cache", local_files_only=True, legacy_cache_layout=legacy)), os.path.join("models/{}".format(vars.model.replace('/', '_')), filename))
                             shutil.rmtree("cache/")
 
                 if(vars.badwordsids is vars.badwordsids_default and vars.model_type not in ("gpt2", "gpt_neo", "gptj")):
@@ -2677,7 +2677,7 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
         
         else:
             from transformers import GPT2Tokenizer
-            tokenizer = GPT2Tokenizer.from_pretrained("gpt2", revision=vars.revision, cache_dir="cache")
+            tokenizer = GPT2Tokenizer.from_pretrained("gpt2", revision=args.revision, cache_dir="cache")
     else:
         from transformers import PreTrainedModel
         from transformers import modeling_utils
@@ -2776,11 +2776,11 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
         # If we're running Colab or OAI, we still need a tokenizer.
         if(vars.model in ("Colab", "API", "CLUSTER")):
             from transformers import GPT2Tokenizer
-            tokenizer = GPT2Tokenizer.from_pretrained("EleutherAI/gpt-neo-2.7B", revision=vars.revision, cache_dir="cache")
+            tokenizer = GPT2Tokenizer.from_pretrained("EleutherAI/gpt-neo-2.7B", revision=args.revision, cache_dir="cache")
             loadsettings()
         elif(vars.model == "OAI"):
             from transformers import GPT2Tokenizer
-            tokenizer = GPT2Tokenizer.from_pretrained("gpt2", revision=vars.revision, cache_dir="cache")
+            tokenizer = GPT2Tokenizer.from_pretrained("gpt2", revision=args.revision, cache_dir="cache")
             loadsettings()
         # Load the TPU backend if requested
         elif(vars.use_colab_tpu or vars.model in ("TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX")):
@@ -3037,7 +3037,7 @@ def lua_decode(tokens):
     if("tokenizer" not in globals()):
         from transformers import GPT2Tokenizer
         global tokenizer
-        tokenizer = GPT2Tokenizer.from_pretrained("gpt2", revision=vars.revision, cache_dir="cache")
+        tokenizer = GPT2Tokenizer.from_pretrained("gpt2", revision=args.revision, cache_dir="cache")
     return utils.decodenewlines(tokenizer.decode(tokens))
 
 #==================================================================#
@@ -3049,7 +3049,7 @@ def lua_encode(string):
     if("tokenizer" not in globals()):
         from transformers import GPT2Tokenizer
         global tokenizer
-        tokenizer = GPT2Tokenizer.from_pretrained("gpt2", revision=vars.revision, cache_dir="cache")
+        tokenizer = GPT2Tokenizer.from_pretrained("gpt2", revision=args.revision, cache_dir="cache")
     return tokenizer.encode(utils.encodenewlines(string), max_length=int(4e9), truncation=True)
 
 #==================================================================#
@@ -4198,19 +4198,19 @@ def actionsubmit(data, actionmode=0, force_submit=False, force_prompt_gen=False,
                 try:
                     if(os.path.isdir(tokenizer_id)):
                         try:
-                            tokenizer = AutoTokenizer.from_pretrained(tokenizer_id, revision=vars.revision, cache_dir="cache")
+                            tokenizer = AutoTokenizer.from_pretrained(tokenizer_id, revision=args.revision, cache_dir="cache")
                         except:
-                            tokenizer = AutoTokenizer.from_pretrained(tokenizer_id, revision=vars.revision, cache_dir="cache", use_fast=False)
+                            tokenizer = AutoTokenizer.from_pretrained(tokenizer_id, revision=args.revision, cache_dir="cache", use_fast=False)
                     elif(os.path.isdir("models/{}".format(tokenizer_id.replace('/', '_')))):
                         try:
-                            tokenizer = AutoTokenizer.from_pretrained("models/{}".format(tokenizer_id.replace('/', '_')), revision=vars.revision, cache_dir="cache")
+                            tokenizer = AutoTokenizer.from_pretrained("models/{}".format(tokenizer_id.replace('/', '_')), revision=args.revision, cache_dir="cache")
                         except:
-                            tokenizer = AutoTokenizer.from_pretrained("models/{}".format(tokenizer_id.replace('/', '_')), revision=vars.revision, cache_dir="cache", use_fast=False)
+                            tokenizer = AutoTokenizer.from_pretrained("models/{}".format(tokenizer_id.replace('/', '_')), revision=args.revision, cache_dir="cache", use_fast=False)
                     else:
                         try:
-                            tokenizer = AutoTokenizer.from_pretrained(tokenizer_id, revision=vars.revision, cache_dir="cache")
+                            tokenizer = AutoTokenizer.from_pretrained(tokenizer_id, revision=args.revision, cache_dir="cache")
                         except:
-                            tokenizer = AutoTokenizer.from_pretrained(tokenizer_id, revision=vars.revision, cache_dir="cache", use_fast=False)
+                            tokenizer = AutoTokenizer.from_pretrained(tokenizer_id, revision=args.revision, cache_dir="cache", use_fast=False)
                 except:
                     logger.warning(f"Unknown tokenizer {repr(tokenizer_id)}")
                 vars.api_tokenizer_id = tokenizer_id
@@ -4622,7 +4622,7 @@ def calcsubmitbudget(actionlen, winfo, mem, anotetxt, actions, submission=None, 
     if("tokenizer" not in globals()):
         from transformers import GPT2Tokenizer
         global tokenizer
-        tokenizer = GPT2Tokenizer.from_pretrained("gpt2", revision=vars.revision, cache_dir="cache")
+        tokenizer = GPT2Tokenizer.from_pretrained("gpt2", revision=args.revision, cache_dir="cache")
 
     lnheader = len(tokenizer._koboldai_header)
 
