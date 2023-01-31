@@ -6491,10 +6491,14 @@ def applyoutputformatting(txt, no_sentence_trimming=False, no_single_line=False)
     if len(txt) == 0:
         return txt
     
-    # Workaround for endoftext appearing in models that need it, you can supposedly do this directly with the tokenizer but it keeps showing up
-    # So for now since we only have two known end of text tokens and only one model that wishes to have its generation stopped this is easier
-    # If you see this and you wish to do a universal implementation for this, feel free just make sure to test it on all platforms - Henk
-    txt = txt.replace("<|endoftext|>", "")
+    # Handle <|endoftext|> for models that want this
+    # In the future it would be nice if we could extend this to all EOS models.
+    # However, since EOS detection may have unforseen consequences for now we hardcode <|endoftext|> until more can be tested
+    # - Henk
+    eotregex = re.compile(r'<\|endoftext\|>[.|\n|\W|\w]*')
+    txt = eotregex.sub('', txt)
+
+    # Cleanup stray </s>
     txt = txt.replace("</s>", "")
 
     # Use standard quotes and apostrophes
