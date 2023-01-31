@@ -6491,6 +6491,12 @@ def applyoutputformatting(txt, no_sentence_trimming=False, no_single_line=False)
     if len(txt) == 0:
         return txt
     
+    # Workaround for endoftext appearing in models that need it, you can supposedly do this directly with the tokenizer but it keeps showing up
+    # So for now since we only have two known end of text tokens and only one model that wishes to have its generation stopped this is easier
+    # If you see this and you wish to do a universal implementation for this, feel free just make sure to test it on all platforms - Henk
+    txt = txt.replace("<|endoftext|>", "")
+    txt = txt.replace("</s>", "")
+
     # Use standard quotes and apostrophes
     txt = utils.fixquotes(txt)
 
