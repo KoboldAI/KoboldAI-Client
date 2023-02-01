@@ -13,6 +13,7 @@ flask
 Flask-SocketIO
 flask-cloudflared >= 0.0.5
 flask-ngrok
+flask-cors
 eventlet
 dnspython==2.2.1
 lupa==1.10
