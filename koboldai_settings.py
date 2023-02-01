@@ -1332,11 +1332,29 @@ class system_settings(settings):
                                 logger.info("Starting Horde bridge")
                                 bridge = importlib.import_module("KoboldAI-Horde-Bridge.bridge")
                                 self._horde_pid = bridge.kai_bridge()
-                                threading.Thread(target=self._horde_pid.bridge, args=(1, "0000000000", f"Automated Instance #{random.randint(-100000000, 100000000)}", 'http://127.0.0.1:{}'.format(self.port), "http://koboldai.net", [])).run()
+                                try:
+                                    bridge_cd = importlib.import_module("KoboldAI-Horde-Bridge.clientData")
+                                    cluster_url = bridge_cd.cluster_url
+                                    kai_name = bridge_cd.kai_name
+                                    if kai_name == "My Awesome Instance":
+                                        kai_name = f"Automated Instance #{random.randint(-100000000, 100000000)}"
+                                    api_key = bridge_cd.api_key
+                                    priority_usernames = bridge_cd.priority_usernames
+                                except:
+                                    cluster_url = "http://koboldai.net"
+                                    kai_name = f"Automated Instance #{random.randint(-100000000, 100000000)}"
+                                    api_key = "0000000000"
+                                    priority_usernames = []
+                                # Always use the local URL & port
+                                kai_url = f'http://127.0.0.1:{self.port}'
+
+                                logger.info(f"Name: {kai_name} on {kai_url}")
+                                threading.Thread(target=self._horde_pid.bridge, args=(1, api_key, kai_name, kai_url, cluster_url, priority_usernames)).run()
                         else:
                             if self._horde_pid is not None:
                                 logger.info("Killing Horde bridge")
                                 self._horde_pid.stop()
+                                self._horde_pid = None
                 
 class KoboldStoryRegister(object):
     def __init__(self, socketio, story_settings, koboldai_vars, tokenizer=None, sequence=[]):
