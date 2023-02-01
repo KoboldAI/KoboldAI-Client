@@ -8701,9 +8701,9 @@ def UI_2_redo(data):
 @logger.catch
 def UI_2_retry(data):
     
-    koboldai_vars.actions.clear_unused_options()
     if len(koboldai_vars.actions.get_current_options_no_edits()) == 0:
-        ignore = koboldai_vars.actions.pop(keep=False)
+        ignore = koboldai_vars.actions.pop(keep=True)
+    koboldai_vars.actions.clear_unused_options()
     koboldai_vars.lua_koboldbridge.feedback = None
     koboldai_vars.recentrng = koboldai_vars.recentrngm = None
     actionsubmit("", actionmode=koboldai_vars.actionmode)
@@ -10331,7 +10331,9 @@ def UI_2_action_image():
                  filename, 
                  mimetype="image/jpeg")
     else:
-        return None
+        return send_file(
+                 "static/blank.png", 
+                 mimetype="image/png")
 
 #==================================================================#
 # display messages if they have never been sent before on this install
