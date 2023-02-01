@@ -1767,6 +1767,21 @@ body {
 	display: inline;
 }
 
+.back[system_aibusy=true] {
+	filter: brightness(40%);
+	pointer-events: none;
+}
+
+.redo[system_aibusy=true] {
+	filter: brightness(40%);
+	pointer-events: none;
+}
+
+.retry[system_aibusy=true] {
+	filter: brightness(40%);
+	pointer-events: none;
+}
+
 .statusbar_outer {
 	color: var(--statusbar_color);
 	background-color: transparent;
