@@ -563,6 +563,7 @@ from flask_socketio import SocketIO, emit, join_room, leave_room
 from flask_socketio import emit as _emit
 from flask_session import Session
 from flask_compress import Compress
+from flask_cors import CORS
 from werkzeug.exceptions import HTTPException, NotFound, InternalServerError
 import secrets
 app = Flask(__name__, root_path=os.getcwd())
@@ -6491,10 +6492,14 @@ def applyoutputformatting(txt, no_sentence_trimming=False, no_single_line=False)
     if len(txt) == 0:
         return txt
     
-    # Workaround for endoftext appearing in models that need it, you can supposedly do this directly with the tokenizer but it keeps showing up
-    # So for now since we only have two known end of text tokens and only one model that wishes to have its generation stopped this is easier
-    # If you see this and you wish to do a universal implementation for this, feel free just make sure to test it on all platforms - Henk
-    txt = txt.replace("<|endoftext|>", "")
+    # Handle <|endoftext|> for models that want this
+    # In the future it would be nice if we could extend this to all EOS models.
+    # However, since EOS detection may have unforseen consequences for now we hardcode <|endoftext|> until more can be tested
+    # - Henk
+    eotregex = re.compile(r'<\|endoftext\|>[.|\n|\W|\w]*')
+    txt = eotregex.sub('', txt)
+
+    # Cleanup stray </s>
     txt = txt.replace("</s>", "")
 
     # Use standard quotes and apostrophes
@@ -8696,9 +8701,9 @@ def UI_2_redo(data):
 @logger.catch
 def UI_2_retry(data):
     
-    koboldai_vars.actions.clear_unused_options()
     if len(koboldai_vars.actions.get_current_options_no_edits()) == 0:
-        ignore = koboldai_vars.actions.pop(keep=False)
+        ignore = koboldai_vars.actions.pop(keep=True)
+    koboldai_vars.actions.clear_unused_options()
     koboldai_vars.lua_koboldbridge.feedback = None
     koboldai_vars.recentrng = koboldai_vars.recentrngm = None
     actionsubmit("", actionmode=koboldai_vars.actionmode)
@@ -10326,7 +10331,9 @@ def UI_2_action_image():
                  filename, 
                  mimetype="image/jpeg")
     else:
-        return None
+        return send_file(
+                 "static/blank.png", 
+                 mimetype="image/png")
 
 #==================================================================#
 # display messages if they have never been sent before on this install
@@ -13253,6 +13260,8 @@ def run():
     general_startup()
     # Start flask & SocketIO
     logger.init("Flask", status="Starting")
+    if koboldai_vars.host:
+        CORS(app)
     Session(app)
     logger.init_ok("Flask", status="OK")
     logger.init("Webserver", status="Starting")

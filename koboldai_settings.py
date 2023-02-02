@@ -1332,11 +1332,29 @@ class system_settings(settings):
                                 logger.info("Starting Horde bridge")
                                 bridge = importlib.import_module("KoboldAI-Horde-Bridge.bridge")
                                 self._horde_pid = bridge.kai_bridge()
-                                threading.Thread(target=self._horde_pid.bridge, args=(1, "0000000000", f"Automated Instance #{random.randint(-100000000, 100000000)}", 'http://127.0.0.1:{}'.format(self.port), "http://koboldai.net", [])).run()
+                                try:
+                                    bridge_cd = importlib.import_module("KoboldAI-Horde-Bridge.clientData")
+                                    cluster_url = bridge_cd.cluster_url
+                                    kai_name = bridge_cd.kai_name
+                                    if kai_name == "My Awesome Instance":
+                                        kai_name = f"Automated Instance #{random.randint(-100000000, 100000000)}"
+                                    api_key = bridge_cd.api_key
+                                    priority_usernames = bridge_cd.priority_usernames
+                                except:
+                                    cluster_url = "http://koboldai.net"
+                                    kai_name = f"Automated Instance #{random.randint(-100000000, 100000000)}"
+                                    api_key = "0000000000"
+                                    priority_usernames = []
+                                # Always use the local URL & port
+                                kai_url = f'http://127.0.0.1:{self.port}'
+
+                                logger.info(f"Name: {kai_name} on {kai_url}")
+                                threading.Thread(target=self._horde_pid.bridge, args=(1, api_key, kai_name, kai_url, cluster_url, priority_usernames)).run()
                         else:
                             if self._horde_pid is not None:
                                 logger.info("Killing Horde bridge")
                                 self._horde_pid.stop()
+                                self._horde_pid = None
                 
 class KoboldStoryRegister(object):
     def __init__(self, socketio, story_settings, koboldai_vars, tokenizer=None, sequence=[]):
@@ -2085,8 +2103,8 @@ class KoboldStoryRegister(object):
         if self.story_settings.gen_audio and self.koboldai_vars.experimental_features:
             for i in reversed([-1]+list(self.actions.keys())):
                 self.gen_audio(i, overwrite=False)
-        else:
-            print("{} and {}".format(self.story_settings.gen_audio, self.koboldai_vars.experimental_features))
+        #else:
+        #    print("{} and {}".format(self.story_settings.gen_audio, self.koboldai_vars.experimental_features))
     
     def set_picture(self, action_id, filename, prompt):
         if action_id == -1:
@@ -2106,7 +2124,22 @@ class KoboldStoryRegister(object):
             filename = os.path.join(self.koboldai_vars.save_paths.generated_images, self.actions[action_id]['picture_filename'])
             prompt = self.actions[action_id]['picture_prompt']
         else:
-            return None, None
+            #Let's find the last picture if there is one
+            found = False
+            for i in reversed(range(-1, action_id)):
+                if i in self.actions and 'picture_filename' in self.actions[i]:
+                    filename = os.path.join(self.koboldai_vars.save_paths.generated_images, self.actions[i]['picture_filename'])
+                    prompt = self.actions[i]['picture_prompt']
+                    found = True
+                    break
+                elif i == -1:
+                    if self.story_settings.prompt_picture_filename == "":
+                        return None, None
+                    filename = os.path.join(self.koboldai_vars.save_paths.generated_images, self.story_settings.prompt_picture_filename)
+                    prompt = self.story_settings.prompt_picture_prompt
+                    found = True
+            if not found:
+                return None, None
         
         if os.path.exists(filename):
             return filename, prompt

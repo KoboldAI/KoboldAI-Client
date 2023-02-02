@@ -6,6 +6,7 @@ requests
 torch >= 1.9, < 1.13
 flask-cloudflared
 flask-ngrok
+flask-cors
 eventlet
 dnspython==2.2.1
 lupa==1.10
