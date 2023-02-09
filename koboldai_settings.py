@@ -14,6 +14,7 @@ from logger import logger
 import torch
 import numpy as np
 import random
+import inspect
 
 serverstarted = False
 queue = None
@@ -95,7 +96,7 @@ class koboldai_vars(object):
         self._user_settings = user_settings(socketio)
         self._system_settings = system_settings(socketio, self)
         self._story_settings = {'default': story_settings(socketio, self)}
-        self.socketio = socketio
+        self._socketio = socketio
         self.tokenizer = None
     
     def get_story_name(self):
@@ -133,7 +134,7 @@ class koboldai_vars(object):
         join_room(story_name)
         session['story'] = story_name
         logger.debug("Sending story reset")
-        self._story_settings[story_name].socketio.emit("reset_story", {}, broadcast=True, room=story_name)
+        self._story_settings[story_name]._socketio.emit("reset_story", {}, broadcast=True, room=story_name)
         if story_name in self._story_settings:
             self._story_settings[story_name].no_save = True
             self._story_settings[story_name].worldinfo_v2.reset()
@@ -167,7 +168,7 @@ class koboldai_vars(object):
         #story_name = 'default'
         if not multi_story:
             story_name = 'default'
-        self._story_settings[story_name] = story_settings(self.socketio, self)
+        self._story_settings[story_name] = story_settings(self._socketio, self)
         #self._story_settings[story_name].reset()
         if json_data is not None:
             self.load_story(story_name, json_data)
@@ -179,7 +180,7 @@ class koboldai_vars(object):
             join_room(story_name)
             session['story'] = story_name
             logger.debug("Sending story reset")
-            self._story_settings[story_name].socketio.emit("reset_story", {}, broadcast=True, room=story_name)
+            self._story_settings[story_name]._socketio.emit("reset_story", {}, broadcast=True, room=story_name)
             self._story_settings[story_name].send_to_ui()
         session['story'] = story_name
         
@@ -331,13 +332,8 @@ class koboldai_vars(object):
         ######################################### Get Action Text by Sentence ########################################################
         action_text_split = self.actions.to_sentences(submitted_text=submitted_text)
 
-        if action_text_split == []:
-            if return_text:
-                return ""
-            return [], 0, 0+self.genamt, []
-
         # Always add newlines on chat v2
-        if self.is_chat_v2():
+        if action_text_split and self.is_chat_v2():
             action_text_split[-1][0] = action_text_split[-1][0].strip() + "\n"
         
         ######################################### Prompt ########################################################
@@ -628,7 +624,7 @@ class settings(object):
         if 'prompt' in json_data and 'prompt_wi_highlighted_text' not in json_data:
             self.prompt_wi_highlighted_text[0]['text'] = self.prompt
             self.assign_world_info_to_actions(action_id=-1)
-            process_variable_changes(self.socketio, "story", 'prompt_wi_highlighted_text', self.prompt_wi_highlighted_text, None)
+            process_variable_changes(self._socketio, "story", 'prompt_wi_highlighted_text', self.prompt_wi_highlighted_text, None)
         
         if 'no_save' in self.__dict__:
             setattr(self, 'no_save', False)
@@ -638,22 +634,22 @@ class settings(object):
         for (name, value) in vars(self).items():
             if name not in self.local_only_variables and name[0] != "_":
                 try:
-                    process_variable_changes(self.socketio, self.__class__.__name__.replace("_settings", ""), name, value, None)
+                    process_variable_changes(self._socketio, self.__class__.__name__.replace("_settings", ""), name, value, None)
                 except:
                     print("{} is of type {} and I can't transmit".format(name, type(value)))
                     raise
 
 class model_settings(settings):
-    local_only_variables = ['badwordsids', 'apikey', 'tqdm', 'socketio', 'default_preset', 'koboldai_vars']
-    no_save_variables = ['tqdm', 'tqdm_progress', 'tqdm_rem_time', 'socketio', 'modelconfig', 'custmodpth', 'generated_tkns', 
+    local_only_variables = ['badwordsids', 'apikey', 'default_preset']
+    no_save_variables = ['modelconfig', 'custmodpth', 'generated_tkns', 
                          'loaded_layers', 'total_layers', 'total_download_chunks', 'downloaded_chunks', 'presets', 'default_preset', 
-                         'koboldai_vars', 'welcome', 'welcome_default', 'simple_randomness', 'simple_creativity', 'simple_repitition',
-                         'badwordsids', 'uid_presets']
+                         'welcome', 'welcome_default', 'simple_randomness', 'simple_creativity', 'simple_repitition',
+                         'badwordsids', 'uid_presets', 'revision', 'model', 'model_type', 'lazy_load', 'fp32_model', 'modeldim', 'horde_wait_time', 'horde_queue_position', 'horde_queue_size', 'newlinemode']
     settings_name = "model"
     default_settings = {"rep_pen" : 1.1, "rep_pen_slope": 0.7, "rep_pen_range": 1024, "temp": 0.5, "top_p": 0.9, "top_k": 0, "top_a": 0.0, "tfs": 1.0, "typical": 1.0,
                         "sampler_order": [6,0,1,2,3,4,5]}
     def __init__(self, socketio, koboldai_vars):
-        self.socketio = socketio
+        self._socketio = socketio
         self.reset_for_model_load()
         self.model       = ""     # Model ID string chosen at startup
         self.model_type  = ""     # Model Type (Automatically taken from the model config)
@@ -664,9 +660,9 @@ class model_settings(settings):
         self.total_layers = 0      # Same as above
         self.total_download_chunks = 0 # tracks how much of the model has downloaded for the UI 2
         self.downloaded_chunks = 0 #as above
-        self.tqdm        = tqdm.tqdm(total=self.genamt, file=self.ignore_tqdm())    # tqdm agent for generating tokens. This will allow us to calculate the remaining time
-        self.tqdm_progress = 0     # TQDP progress
-        self.tqdm_rem_time = 0     # tqdm calculated reemaining time
+        self._tqdm        = tqdm.tqdm(total=self.genamt, file=self.ignore_tqdm())    # tqdm agent for generating tokens. This will allow us to calculate the remaining time
+        self._tqdm_progress = 0     # TQDP progress
+        self._tqdm_rem_time = 0     # tqdm calculated reemaining time
         self.url         = "https://api.inferkit.com/v1/models/standard/generate" # InferKit API URL
         self.oaiurl      = "" # OpenAI API URL
         self.oaiengines  = "https://api.openai.com/v1/engines"
@@ -684,7 +680,7 @@ class model_settings(settings):
             </div>
         </div>""" # Custom Welcome Text
         self.welcome     = self.welcome_default
-        self.koboldai_vars = koboldai_vars
+        self._koboldai_vars = koboldai_vars
         self.alt_multi_gen = False
         
     def reset_for_model_load(self):
@@ -756,7 +752,7 @@ class model_settings(settings):
             self.rep_pen = (default_rep_range[1]-default_rep_range[0])/200*self.simple_repitition+sum(default_rep_range)/2
         
         if not new_variable and (name == 'max_length' or name == 'genamt'):
-            ignore = self.koboldai_vars.calc_ai_text()
+            ignore = self._koboldai_vars.calc_ai_text()
             
         #set preset values
         if name == 'selected_preset' and value != "":
@@ -779,60 +775,60 @@ class model_settings(settings):
                                 preset_value.insert(0, 6)
                         setattr(self, preset_key, preset_value)
         #Setup TQDP for token generation
-        elif name == "generated_tkns" and 'tqdm' in self.__dict__:
+        elif name == "generated_tkns" and '_tqdm' in self.__dict__:
             if value == 0:
-                self.tqdm.reset(total=self.genamt * (self.numseqs if self.alt_multi_gen else 1) )
-                self.tqdm_progress = 0
+                self._tqdm.reset(total=self.genamt * (self.numseqs if self.alt_multi_gen else 1) )
+                self._tqdm_progress = 0
             else:
-                self.tqdm.update(value-self.tqdm.n)
-                self.tqdm_progress = int(float(self.generated_tkns)/float(self.genamt * (self.numseqs if self.alt_multi_gen else 1))*100)
-                if self.tqdm.format_dict['rate'] is not None:
-                    self.tqdm_rem_time = str(datetime.timedelta(seconds=int(float((self.genamt * (self.numseqs if self.alt_multi_gen else 1))-self.generated_tkns)/self.tqdm.format_dict['rate'])))
+                self._tqdm.update(value-self._tqdm.n)
+                self._tqdm_progress = int(float(self.generated_tkns)/float(self.genamt * (self.numseqs if self.alt_multi_gen else 1))*100)
+                if self._tqdm.format_dict['rate'] is not None:
+                    self._tqdm_rem_time = str(datetime.timedelta(seconds=int(float((self.genamt * (self.numseqs if self.alt_multi_gen else 1))-self.generated_tkns)/self._tqdm.format_dict['rate'])))
         #Setup TQDP for model loading
-        elif name == "loaded_layers" and 'tqdm' in self.__dict__:
+        elif name == "loaded_layers" and '_tqdm' in self.__dict__:
             if value == 0:
-                self.tqdm.reset(total=self.total_layers)
-                self.tqdm_progress = 0
+                self._tqdm.reset(total=self.total_layers)
+                self._tqdm_progress = 0
             else:
-                self.tqdm.update(1)
-                self.tqdm_progress = int(float(self.loaded_layers)/float(self.total_layers)*100)
-                if self.tqdm.format_dict['rate'] is not None:
-                    self.tqdm_rem_time = str(datetime.timedelta(seconds=int(float(self.total_layers-self.loaded_layers)/self.tqdm.format_dict['rate'])))  
+                self._tqdm.update(1)
+                self._tqdm_progress = int(float(self.loaded_layers)/float(self.total_layers)*100)
+                if self._tqdm.format_dict['rate'] is not None:
+                    self._tqdm_rem_time = str(datetime.timedelta(seconds=int(float(self.total_layers-self.loaded_layers)/self._tqdm.format_dict['rate'])))  
         #Setup TQDP for model downloading
-        elif name == "total_download_chunks" and 'tqdm' in self.__dict__:
-            self.tqdm.reset(total=value)
-            self.tqdm_progress = 0
-        elif name == "downloaded_chunks" and 'tqdm' in self.__dict__:
+        elif name == "total_download_chunks" and '_tqdm' in self.__dict__:
+            self._tqdm.reset(total=value)
+            self._tqdm_progress = 0
+        elif name == "downloaded_chunks" and '_tqdm' in self.__dict__:
             if value == 0:
-                self.tqdm.reset(total=self.total_download_chunks)
-                self.tqdm_progress = 0
+                self._tqdm.reset(total=self.total_download_chunks)
+                self._tqdm_progress = 0
             else:
-                self.tqdm.update(value-old_value)
+                self._tqdm.update(value-old_value)
                 if self.total_download_chunks is not None:
                     if self.total_download_chunks==0:
-                        self.tqdm_progress = 0
+                        self._tqdm_progress = 0
                     elif float(self.downloaded_chunks) > float(self.total_download_chunks):
-                        self.tqdm_progress = 100
+                        self._tqdm_progress = 100
                     else: 
-                        self.tqdm_progress = round(float(self.downloaded_chunks)/float(self.total_download_chunks)*100, 1)
+                        self._tqdm_progress = round(float(self.downloaded_chunks)/float(self.total_download_chunks)*100, 1)
                 else:
-                    self.tqdm_progress = 0
-                if self.tqdm.format_dict['rate'] is not None:
-                    self.tqdm_rem_time = str(datetime.timedelta(seconds=int(float(self.total_download_chunks-self.downloaded_chunks)/self.tqdm.format_dict['rate'])))  
+                    self._tqdm_progress = 0
+                if self._tqdm.format_dict['rate'] is not None:
+                    self._tqdm_rem_time = str(datetime.timedelta(seconds=int(float(self.total_download_chunks-self.downloaded_chunks)/self._tqdm.format_dict['rate'])))  
         
         
         
         if name not in self.local_only_variables and name[0] != "_" and not new_variable:
-            process_variable_changes(self.socketio, self.__class__.__name__.replace("_settings", ""), name, value, old_value)
+            process_variable_changes(self._socketio, self.__class__.__name__.replace("_settings", ""), name, value, old_value)
             
 class story_settings(settings):
-    local_only_variables = ['socketio', 'tokenizer', 'koboldai_vars', 'no_save', 'revisions', 'prompt', 'save_paths']
-    no_save_variables = ['socketio', 'tokenizer', 'koboldai_vars', 'context', 'no_save', 'prompt_in_ai', 'authornote_length', 'prompt_length', 'memory_length', 'save_paths']
+    local_only_variables = ['tokenizer', 'no_save', 'revisions', 'prompt', 'save_paths']
+    no_save_variables = ['tokenizer', 'context', 'no_save', 'prompt_in_ai', 'authornote_length', 'prompt_length', 'memory_length', 'save_paths']
     settings_name = "story"
     def __init__(self, socketio, koboldai_vars, tokenizer=None):
-        self.socketio = socketio
+        self._socketio = socketio
         self.tokenizer = tokenizer
-        self.koboldai_vars = koboldai_vars
+        self._koboldai_vars = koboldai_vars
         self.privacy_mode = False
         self.privacy_password = ""
         self.story_name  = "New Game"   # Title of the story
@@ -996,12 +992,12 @@ class story_settings(settings):
     
     def reset(self):
         self.no_save = True
-        self.socketio.emit("reset_story", {}, broadcast=True, room="UI_2")
-        self.__init__(self.socketio, self.koboldai_vars, tokenizer=self.tokenizer)
+        self._socketio.emit("reset_story", {}, broadcast=True, room="UI_2")
+        self.__init__(self._socketio, self._koboldai_vars, tokenizer=self.tokenizer)
         self.no_save = False
       
     def sync_worldinfo_v1_to_v2(self):
-        new_world_info = KoboldWorldInfo(None, self, self.koboldai_vars, tokenizer=self.tokenizer)
+        new_world_info = KoboldWorldInfo(None, self, self._koboldai_vars, tokenizer=self.tokenizer)
         for wi in self.worldinfo:
             if wi['init'] == True:
                 new_world_info.add_item([x.strip() for x in wi["key"].split(",")][0], 
@@ -1013,7 +1009,7 @@ class story_settings(settings):
                                         wi.get("comment", ""), 
                                         v1_uid=wi['uid'], sync=False)
         
-        new_world_info.socketio = self.socketio
+        new_world_info._socketio = self._socketio
         self.worldinfo_v2 = new_world_info
         
     def assign_world_info_to_actions(self, action_id=None, wuid=None, no_transmit=False):
@@ -1056,7 +1052,7 @@ class story_settings(settings):
         super().__setattr__(name, value)
         #Put variable change actions here
         if name not in self.local_only_variables and name[0] != "_" and not new_variable and old_value != value:
-            process_variable_changes(self.socketio, self.__class__.__name__.replace("_settings", ""), name, value, old_value)
+            process_variable_changes(self._socketio, self.__class__.__name__.replace("_settings", ""), name, value, old_value)
         #We want to automatically set gamesaved to false if something happens to the actions list (pins, redos, generations, text, etc)
         #To do that we need to give the actions list a copy of this data so it can set the gamesaved variable as needed
         
@@ -1073,11 +1069,11 @@ class story_settings(settings):
             if name == "gen_audio" and value:
                 self.actions.gen_all_audio()
             elif name == 'useprompt':
-                ignore = self.koboldai_vars.calc_ai_text()
+                ignore = self._koboldai_vars.calc_ai_text()
             elif name == 'actions':
                 self.actions.story_settings = self
                 logger.debug("Calcing AI text after setting actions")
-                ignore = self.koboldai_vars.calc_ai_text()
+                ignore = self._koboldai_vars.calc_ai_text()
             elif name == 'story_name':
                 #reset the story id if we change the name
                 self.story_id = int.from_bytes(os.urandom(16), 'little', signed=True)
@@ -1087,18 +1083,18 @@ class story_settings(settings):
             
             #Recalc AI Text
             elif name == 'authornote':
-                ignore = self.koboldai_vars.calc_ai_text()
+                ignore = self._koboldai_vars.calc_ai_text()
             elif name == 'authornotetemplate':
-                ignore = self.koboldai_vars.calc_ai_text()
+                ignore = self._koboldai_vars.calc_ai_text()
             elif name == 'memory':
-                ignore = self.koboldai_vars.calc_ai_text()
+                ignore = self._koboldai_vars.calc_ai_text()
             elif name == "genres":
-                self.koboldai_vars.calc_ai_text()
+                self._koboldai_vars.calc_ai_text()
             elif name == 'prompt':
                 self.prompt_wi_highlighted_text = [{"text": self.prompt, "WI matches": None, "WI Text": ""}]
                 self.assign_world_info_to_actions(action_id=-1, wuid=None)
-                process_variable_changes(self.socketio, self.__class__.__name__.replace("_settings", ""), 'prompt_wi_highlighted_text', self.prompt_wi_highlighted_text, None)
-                ignore = self.koboldai_vars.calc_ai_text()
+                process_variable_changes(self._socketio, self.__class__.__name__.replace("_settings", ""), 'prompt_wi_highlighted_text', self.prompt_wi_highlighted_text, None)
+                ignore = self._koboldai_vars.calc_ai_text()
                 self.actions.gen_audio(action_id=-1)
             
             #Because we have seperate variables for action types, this syncs them
@@ -1128,11 +1124,11 @@ class story_settings(settings):
                 self.actionmode = 0
                 
 class user_settings(settings):
-    local_only_variables = ['socketio', 'importjs']
-    no_save_variables = ['socketio', 'importnum', 'importjs', 'loadselect', 'spselect', 'svowname', 'saveow', 'laststory', 'sid']
+    local_only_variables = ['importjs']
+    no_save_variables = ['importnum', 'importjs', 'loadselect', 'spselect', 'svowname', 'saveow', 'laststory', 'sid']
     settings_name = "user"
     def __init__(self, socketio):
-        self.socketio = socketio
+        self._socketio = socketio
         self.wirmvwhtsp  = False             # Whether to remove leading whitespace from WI entries
         self.widepth     = 3                 # How many historical actions to scan for WI hits
         self.formatoptns = {'frmttriminc': True, 'frmtrmblln': False, 'frmtrmspch': False, 'frmtadsnsp': True, 'singleline': False}     # Container for state of formatting options
@@ -1183,21 +1179,30 @@ class user_settings(settings):
         super().__setattr__(name, value)
         #Put variable change actions here
         if name not in self.local_only_variables and name[0] != "_" and not new_variable:
-            process_variable_changes(self.socketio, self.__class__.__name__.replace("_settings", ""), name, value, old_value)
+            process_variable_changes(self._socketio, self.__class__.__name__.replace("_settings", ""), name, value, old_value)
+
+class undefined_settings(settings):
+    def __init__(self):
+        pass
         
+    def __setattr__(self, name, value):
+        super().__setattr__(name, value)
+        logger.error("{} just set {} to {} in koboldai_vars. That variable isn't defined!".format(inspect.stack()[1].function, name, value))
+        
+
 class system_settings(settings):
-    local_only_variables = ['socketio', 'lua_state', 'lua_logname', 'lua_koboldbridge', 'lua_kobold', 
+    local_only_variables = ['lua_state', 'lua_logname', 'lua_koboldbridge', 'lua_kobold', 
                             'lua_koboldcore', 'regex_sl', 'acregex_ai', 'acregex_ui', 'comregex_ai', 
                             'comregex_ui', 'sp', '_horde_pid', 'inference_config', 'image_pipeline', 
                             'summarizer', 'summary_tokenizer', 'tts_model']
-    no_save_variables = ['socketio', 'lua_state', 'lua_logname', 'lua_koboldbridge', 'lua_kobold', 
+    no_save_variables = ['lua_state', 'lua_logname', 'lua_koboldbridge', 'lua_kobold', 
                          'lua_koboldcore', 'sp', 'sp_length', '_horde_pid', 'horde_share', 'aibusy', 
                          'serverstarted', 'inference_config', 'image_pipeline', 'summarizer', 
                          'summary_tokenizer', 'use_colab_tpu', 'noai', 'disable_set_aibusy', 'cloudflare_link', 'tts_model',
                          'generating_image', 'bit_8_available', 'host', 'hascuda', 'usegpu']
     settings_name = "system"
     def __init__(self, socketio, koboldai_var):
-        self.socketio = socketio
+        self._socketio = socketio
         self.noai        = False  # Runs the script without starting up the transformers pipeline
         self.aibusy      = False  # Stops submissions while the AI is working
         self.status_message = ""
@@ -1314,14 +1319,14 @@ class system_settings(settings):
             global serverstarted
             serverstarted = value
         if name not in self.local_only_variables and name[0] != "_" and not new_variable:
-            process_variable_changes(self.socketio, self.__class__.__name__.replace("_settings", ""), name, value, old_value)
+            process_variable_changes(self._socketio, self.__class__.__name__.replace("_settings", ""), name, value, old_value)
             
             #if name == "aibusy" and value == False and self.abort == True:
             #    koboldai_vars.abort = False
             
             #for original UI
             if name == 'sp_changed':
-                self.socketio.emit('from_server', {'cmd': 'spstatitems', 'data': {self.spfilename: self.spmeta} if self.allowsp and len(self.spfilename) else {}}, namespace=None, broadcast=True, room="UI_1")
+                self._socketio.emit('from_server', {'cmd': 'spstatitems', 'data': {self.spfilename: self.spmeta} if self.allowsp and len(self.spfilename) else {}}, namespace=None, broadcast=True, room="UI_1")
                 super().__setattr__("sp_changed", False)
             
             if name == 'keep_img_gen_in_memory' and value == False:
@@ -1339,16 +1344,34 @@ class system_settings(settings):
                                 logger.info("Starting Horde bridge")
                                 bridge = importlib.import_module("KoboldAI-Horde-Bridge.bridge")
                                 self._horde_pid = bridge.kai_bridge()
-                                threading.Thread(target=self._horde_pid.bridge, args=(1, "0000000000", f"Automated Instance #{random.randint(-100000000, 100000000)}", 'http://127.0.0.1:{}'.format(self.port), "http://koboldai.net", [])).run()
+                                try:
+                                    bridge_cd = importlib.import_module("KoboldAI-Horde-Bridge.clientData")
+                                    cluster_url = bridge_cd.cluster_url
+                                    kai_name = bridge_cd.kai_name
+                                    if kai_name == "My Awesome Instance":
+                                        kai_name = f"Automated Instance #{random.randint(-100000000, 100000000)}"
+                                    api_key = bridge_cd.api_key
+                                    priority_usernames = bridge_cd.priority_usernames
+                                except:
+                                    cluster_url = "http://koboldai.net"
+                                    kai_name = f"Automated Instance #{random.randint(-100000000, 100000000)}"
+                                    api_key = "0000000000"
+                                    priority_usernames = []
+                                # Always use the local URL & port
+                                kai_url = f'http://127.0.0.1:{self.port}'
+
+                                logger.info(f"Name: {kai_name} on {kai_url}")
+                                threading.Thread(target=self._horde_pid.bridge, args=(1, api_key, kai_name, kai_url, cluster_url, priority_usernames)).run()
                         else:
                             if self._horde_pid is not None:
                                 logger.info("Killing Horde bridge")
                                 self._horde_pid.stop()
+                                self._horde_pid = None
                 
 class KoboldStoryRegister(object):
     def __init__(self, socketio, story_settings, koboldai_vars, tokenizer=None, sequence=[]):
-        self.socketio = socketio
-        self.koboldai_vars = koboldai_vars
+        self._socketio = socketio
+        self._koboldai_vars = koboldai_vars
         #### DO NOT DIRECTLY EDIT THE ACTIONS DICT. IT WILL NOT TRANSMIT TO CLIENT. USE FUCTIONS BELOW TO DO SO ###
         #### doing actions[x] = game text is OK
         self.actions = {} #keys = "Selected Text", "Wi_highlighted_text", "Options", "Selected Text Length", "Probabilities". 
@@ -1369,7 +1392,7 @@ class KoboldStoryRegister(object):
             self.append(item)
     
     def reset(self, sequence=[]):
-        self.__init__(self.socketio, self.story_settings, self.koboldai_vars, sequence=sequence)
+        self.__init__(self._socketio, self.story_settings, self._koboldai_vars, sequence=sequence)
         
     def add_wi_to_action(self, action_id, key, content, uid, no_transmit=False):
         old = self.story_settings.prompt_wi_highlighted_text.copy() if action_id == -1 else self.actions[action_id].copy()
@@ -1413,11 +1436,11 @@ class KoboldStoryRegister(object):
         if action_id != -1:
             if old != self.actions[action_id] or force_changed:
                 if not no_transmit:
-                    process_variable_changes(self.socketio, "story", 'actions', {"id": action_id, 'action':  self.actions[action_id]}, old)
+                    process_variable_changes(self._socketio, "story", 'actions', {"id": action_id, 'action':  self.actions[action_id]}, old)
         else:
             if old != self.story_settings.prompt_wi_highlighted_text or force_changed:
                 if not no_transmit:
-                    process_variable_changes(self.socketio, "story", 'prompt_wi_highlighted_text', self.story_settings.prompt_wi_highlighted_text, old)
+                    process_variable_changes(self._socketio, "story", 'prompt_wi_highlighted_text', self.story_settings.prompt_wi_highlighted_text, old)
         
     def __str__(self):
         if len(self.actions) > 0:
@@ -1449,7 +1472,7 @@ class KoboldStoryRegister(object):
             return self.actions[i]["Selected Text"]
         
     def __setitem__(self, i, text):
-        if self.koboldai_vars.remove_double_space:
+        if self._koboldai_vars.remove_double_space:
             while "  " in text:
                 text = text.replace("  ", " ")
             if i > 0 and text != "" and i-1 in self.actions and self.actions[i-1]['Selected Text'] != "":
@@ -1462,8 +1485,8 @@ class KoboldStoryRegister(object):
                 self.actions[i]["Selected Text"] = text
                 if 'wi_highlighted_text' in self.actions[i]:
                     del self.actions[i]['wi_highlighted_text']
-                if self.koboldai_vars.tokenizer is not None:
-                    tokens = self.koboldai_vars.tokenizer.encode(text)
+                if self._koboldai_vars.tokenizer is not None:
+                    tokens = self._koboldai_vars.tokenizer.encode(text)
                     if 'Probabilities' in self.actions[i]:
                         for token_num in range(len(self.actions[i]["Probabilities"])):
                             for token_option in range(len(self.actions[i]["Probabilities"][token_num])):
@@ -1484,9 +1507,9 @@ class KoboldStoryRegister(object):
             self.actions[i] = {"Selected Text": text, "Probabilities": [], "Options": [], "Time": int(time.time())}
             
         self.story_settings.assign_world_info_to_actions(action_id=i, no_transmit=True)
-        process_variable_changes(self.socketio, "story", 'actions', {"id": i, 'action':  self.actions[i]}, old)
+        process_variable_changes(self._socketio, "story", 'actions', {"id": i, 'action':  self.actions[i]}, old)
         logger.debug("Calcing AI Text from Action __setitem__")
-        ignore = self.koboldai_vars.calc_ai_text()
+        ignore = self._koboldai_vars.calc_ai_text()
         self.set_game_saved()
         self.gen_audio(i)
     
@@ -1527,7 +1550,7 @@ class KoboldStoryRegister(object):
             if int(item) >= self.action_count-100: #sending last 100 items to UI
                 data_to_send.append({"id": item, 'action':  temp[int(item)]})
         
-        process_variable_changes(self.socketio, "story", 'actions', data_to_send, None)
+        process_variable_changes(self._socketio, "story", 'actions', data_to_send, None)
         
         self.actions = temp
         #Check if our json has our new world info highlighting data
@@ -1536,7 +1559,7 @@ class KoboldStoryRegister(object):
                 self.story_settings.assign_world_info_to_actions(no_transmit=True)
         
         logger.debug("Calcing AI Text from Action load from json")
-        ignore = self.koboldai_vars.calc_ai_text()
+        ignore = self._koboldai_vars.calc_ai_text()
         self.set_game_saved()
         self.gen_all_audio()
 
@@ -1548,7 +1571,7 @@ class KoboldStoryRegister(object):
         recalc: If True, recalculate the context and generate audio.
         submission: If True, mark this action as a user submission.
         """
-        if self.koboldai_vars.remove_double_space:
+        if self._koboldai_vars.remove_double_space:
             while "  " in text:
                 text = text.replace("  ", " ")
             if action_id_offset > 0:
@@ -1565,8 +1588,8 @@ class KoboldStoryRegister(object):
                 self.actions[action_id]["Selected Text"] = text
                 self.actions[action_id]["Time"] = self.actions[action_id].get("Time", int(time.time()))
                 if 'buffer' in self.actions[action_id]:
-                    if self.koboldai_vars.tokenizer is not None:
-                        tokens = self.koboldai_vars.tokenizer.encode(text)
+                    if self._koboldai_vars.tokenizer is not None:
+                        tokens = self._koboldai_vars.tokenizer.encode(text)
                         for token_num in range(len(self.actions[action_id]["Probabilities"])):
                             for token_option in range(len(self.actions[action_id]["Probabilities"][token_num])):
                                 if token_num < len(tokens):
@@ -1600,11 +1623,11 @@ class KoboldStoryRegister(object):
 
         if self.story_settings is not None:
             self.story_settings.assign_world_info_to_actions(action_id=action_id, no_transmit=True)
-            process_variable_changes(self.socketio, "story", 'actions', {"id": action_id, 'action':  self.actions[action_id]}, None)
+            process_variable_changes(self._socketio, "story", 'actions', {"id": action_id, 'action':  self.actions[action_id]}, None)
         self.set_game_saved()
         if recalc:
             logger.debug("Calcing AI Text from Action Append")
-            ignore = self.koboldai_vars.calc_ai_text()
+            ignore = self._koboldai_vars.calc_ai_text()
             self.gen_audio(action_id)
     
     def append_options(self, option_list):
@@ -1621,8 +1644,8 @@ class KoboldStoryRegister(object):
                         del item['stream_id']
                         found = True
                         if 'Probabilities' in item:
-                            if self.koboldai_vars.tokenizer is not None:
-                                tokens = self.koboldai_vars.tokenizer.encode(option)
+                            if self._koboldai_vars.tokenizer is not None:
+                                tokens = self._koboldai_vars.tokenizer.encode(option)
                                 for token_num in range(len(item["Probabilities"])):
                                     for token_option in range(len(item["Probabilities"][token_num])):
                                         if token_num < len(tokens):
@@ -1636,8 +1659,8 @@ class KoboldStoryRegister(object):
                             del item['stream_id']
                         found = True
                         if 'Probabilities' in item:
-                            if self.koboldai_vars.tokenizer is not None:
-                                tokens = self.koboldai_vars.tokenizer.encode(option)
+                            if self._koboldai_vars.tokenizer is not None:
+                                tokens = self._koboldai_vars.tokenizer.encode(option)
                                 for token_num in range(len(item["Probabilities"])):
                                     for token_option in range(len(item["Probabilities"][token_num])):
                                         if token_num < len(tokens):
@@ -1656,7 +1679,7 @@ class KoboldStoryRegister(object):
                 "Options": [{"text": x, "Pinned": False, "Previous Selection": False, "Edited": False, "Probabilities": []} for x in option_list],
                 "Time": int(time.time()),
             }
-        process_variable_changes(self.socketio, "story", 'actions', {"id": self.action_count+1, 'action':  self.actions[self.action_count+1]}, None)
+        process_variable_changes(self._socketio, "story", 'actions', {"id": self.action_count+1, 'action':  self.actions[self.action_count+1]}, None)
         self.set_game_saved()
             
     def set_options(self, option_list, action_id):
@@ -1677,7 +1700,7 @@ class KoboldStoryRegister(object):
                         if 'Probabilities' in old_item:
                             item['Probabilities'] = old_item['Probabilities']
                     self.actions[action_id]["Options"].append(item)
-        process_variable_changes(self.socketio, "story", 'actions', {"id": action_id, 'action':  self.actions[action_id]}, None)
+        process_variable_changes(self._socketio, "story", 'actions', {"id": action_id, 'action':  self.actions[action_id]}, None)
     
     def clear_unused_options(self, pointer=None, clear_probabilities=True):
         new_options = []
@@ -1690,7 +1713,7 @@ class KoboldStoryRegister(object):
             new_options = self.actions[pointer]["Options"]
             if clear_probabilities:
                 self.actions[pointer]['Probabilities'] = []
-            process_variable_changes(self.socketio, "story", 'actions', {"id": pointer, 'action':  self.actions[pointer]}, None)
+            process_variable_changes(self._socketio, "story", 'actions', {"id": pointer, 'action':  self.actions[pointer]}, None)
         self.set_game_saved()
     
     def clear_all_options(self):
@@ -1702,7 +1725,7 @@ class KoboldStoryRegister(object):
             if option_number < len(self.actions[action_step]['Options']):
                 old_options = copy.deepcopy(self.actions[action_step]["Options"])
                 self.actions[action_step]['Options'][option_number]['Pinned'] = True
-                process_variable_changes(self.socketio, "story", 'actions', {"id": action_step, 'action':  self.actions[action_step]}, None)
+                process_variable_changes(self._socketio, "story", 'actions', {"id": action_step, 'action':  self.actions[action_step]}, None)
                 self.set_game_saved()
     
     def unset_pin(self, action_step, option_number):
@@ -1710,7 +1733,7 @@ class KoboldStoryRegister(object):
             old_options = copy.deepcopy(self.actions[action_step]["Options"])
             if option_number < len(self.actions[action_step]['Options']):
                 self.actions[action_step]['Options'][option_number]['Pinned'] = False
-                process_variable_changes(self.socketio, "story", 'actions', {"id": action_step, 'action':  self.actions[action_step]}, None)
+                process_variable_changes(self._socketio, "story", 'actions', {"id": action_step, 'action':  self.actions[action_step]}, None)
                 self.set_game_saved()
     
     def toggle_pin(self, action_step, option_number):
@@ -1718,7 +1741,7 @@ class KoboldStoryRegister(object):
             old_options = copy.deepcopy(self.actions[action_step]["Options"])
             if option_number < len(self.actions[action_step]['Options']):
                 self.actions[action_step]['Options'][option_number]['Pinned'] = not self.actions[action_step]['Options'][option_number]['Pinned']
-                process_variable_changes(self.socketio, "story", 'actions', {"id": action_step, 'action':  self.actions[action_step]}, None)
+                process_variable_changes(self._socketio, "story", 'actions', {"id": action_step, 'action':  self.actions[action_step]}, None)
                 self.set_game_saved()
     
     def use_option(self, option_number, action_step=None):
@@ -1732,21 +1755,21 @@ class KoboldStoryRegister(object):
                 self.actions[action_step]["Selected Text"] = self.actions[action_step]['Options'][option_number]['text']
                 if 'Probabilities' in self.actions[action_step]['Options'][option_number]:
                     self.actions[action_step]["Probabilities"] = self.actions[action_step]['Options'][option_number]['Probabilities']
-                if self.koboldai_vars.tokenizer is not None:
-                    self.actions[action_step]['Selected Text Length'] = len(self.koboldai_vars.tokenizer.encode(self.actions[action_step]['Options'][option_number]['text']))
+                if self._koboldai_vars.tokenizer is not None:
+                    self.actions[action_step]['Selected Text Length'] = len(self._koboldai_vars.tokenizer.encode(self.actions[action_step]['Options'][option_number]['text']))
                 else:
                     self.actions[action_step]['Selected Text Length'] = 0
                 del self.actions[action_step]['Options'][option_number]
                 #If this is the current spot in the story, advance
                 if action_step-1 == self.action_count:
                     self.action_count+=1
-                    self.socketio.emit("var_changed", {"classname": "actions", "name": "Action Count", "old_value": None, "value":self.action_count, "transmit_time": str(datetime.datetime.now())}, broadcast=True, room="UI_2")
+                    self._socketio.emit("var_changed", {"classname": "actions", "name": "Action Count", "old_value": None, "value":self.action_count, "transmit_time": str(datetime.datetime.now())}, broadcast=True, room="UI_2")
                 self.story_settings.assign_world_info_to_actions(action_id=action_step, no_transmit=True)
                 self.clear_unused_options(pointer=action_step)
-                #process_variable_changes(self.socketio, "story", 'actions', {"id": action_step, 'action':  self.actions[action_step]}, None)
+                #process_variable_changes(self._socketio, "story", 'actions', {"id": action_step, 'action':  self.actions[action_step]}, None)
                 self.set_game_saved()
                 logger.debug("Calcing AI Text from Action Use Option")
-                ignore = self.koboldai_vars.calc_ai_text()
+                ignore = self._koboldai_vars.calc_ai_text()
                 self.gen_audio(action_step)
     
     def delete_option(self, option_number, action_step=None):
@@ -1755,7 +1778,7 @@ class KoboldStoryRegister(object):
         if action_step in self.actions:
             if option_number < len(self.actions[action_step]['Options']):
                 del self.actions[action_step]['Options'][option_number]
-                process_variable_changes(self.socketio, "story", 'actions', {"id": action_step, 'action':  self.actions[action_step]}, None)
+                process_variable_changes(self._socketio, "story", 'actions', {"id": action_step, 'action':  self.actions[action_step]}, None)
                 self.set_game_saved()
     
     def delete_action(self, action_id, keep=True):
@@ -1770,10 +1793,10 @@ class KoboldStoryRegister(object):
                 del self.actions[action_id]["wi_highlighted_text"]
             self.actions[action_id]['Selected Text Length'] = 0
             self.action_count -= 1
-            process_variable_changes(self.socketio, "story", 'actions', {"id": action_id, 'action':  self.actions[action_id]}, None)
+            process_variable_changes(self._socketio, "story", 'actions', {"id": action_id, 'action':  self.actions[action_id]}, None)
             self.set_game_saved()
             logger.debug("Calcing AI Text from Action Delete")
-            ignore = self.koboldai_vars.calc_ai_text()
+            ignore = self._koboldai_vars.calc_ai_text()
             
     def pop(self, keep=True):
         if self.action_count >= 0:
@@ -1816,12 +1839,12 @@ class KoboldStoryRegister(object):
             self.story_settings.gamesaved = False
     
     def stream_tokens(self, text_list):
-        if len(text_list) > 1 or (self.koboldai_vars.alt_multi_gen and self.koboldai_vars.numseqs > 1):
-            if self.koboldai_vars.alt_multi_gen: 
+        if len(text_list) > 1 or (self._koboldai_vars.alt_multi_gen and self._koboldai_vars.numseqs > 1):
+            if self._koboldai_vars.alt_multi_gen: 
                 #since alt_multi_gen is really just several single gens the text list is always 1 deep, so we need some 
                 #other way to figure out wich spot in our options list we're on. We'll figure it out by seeing how many
                 #tokens we generated vs how many each option should take
-                stream_offset = int((self.koboldai_vars.generated_tkns-1) / self.koboldai_vars.genamt)
+                stream_offset = int((self._koboldai_vars.generated_tkns-1) / self._koboldai_vars.genamt)
             else:
                 stream_offset = 0
             option_offset = 0
@@ -1843,40 +1866,40 @@ class KoboldStoryRegister(object):
                     self.actions[self.action_count+1]['Options'].append({"text": text_list[i], "Pinned": False, "Previous Selection": False, "Edited": False, "Probabilities": [], "stream_id": i+stream_offset})
         
             #We need to see if this is the last token being streamed. If so due to the rely it will come in AFTER the actual trimmed final text overwriting it in the UI
-            if self.koboldai_vars.tokenizer is not None:
-                if len(self.koboldai_vars.tokenizer.encode(self.actions[self.action_count+1]["Options"][0]['text'])) != self.koboldai_vars.genamt:
-                    #process_variable_changes(self.socketio, "actions", "Options", {"id": self.action_count+1, "options": self.actions[self.action_count+1]["Options"]}, {"id": self.action_count+1, "options": None})
-                    process_variable_changes(self.socketio, "story", 'actions', {"id": self.action_count+1, 'action':  self.actions[self.action_count+1]}, None)
+            if self._koboldai_vars.tokenizer is not None:
+                if len(self._koboldai_vars.tokenizer.encode(self.actions[self.action_count+1]["Options"][0]['text'])) != self._koboldai_vars.genamt:
+                    #process_variable_changes(self._socketio, "actions", "Options", {"id": self.action_count+1, "options": self.actions[self.action_count+1]["Options"]}, {"id": self.action_count+1, "options": None})
+                    process_variable_changes(self._socketio, "story", 'actions', {"id": self.action_count+1, 'action':  self.actions[self.action_count+1]}, None)
         else:
             #We're streaming single options so our output is our selected
             #First we need to see if this is actually the prompt. If so we'll just not do streaming:
             if self.story_settings.prompt != "":
                 if self.action_count+1 in self.actions:
-                    if self.koboldai_vars.tokenizer is not None:
-                        selected_text_length = len(self.koboldai_vars.tokenizer.encode(self.actions[self.action_count+1]['Selected Text']))
+                    if self._koboldai_vars.tokenizer is not None:
+                        selected_text_length = len(self._koboldai_vars.tokenizer.encode(self.actions[self.action_count+1]['Selected Text']))
                     else:
                         selected_text_length = 0
                     self.actions[self.action_count+1]['Selected Text'] = "{}{}".format(self.actions[self.action_count+1]['Selected Text'], text_list[0])
                     self.actions[self.action_count+1]['Selected Text Length'] = selected_text_length
                 else:
-                    if self.koboldai_vars.tokenizer is not None:
-                        selected_text_length = len(self.koboldai_vars.tokenizer.encode(text_list[0]))
+                    if self._koboldai_vars.tokenizer is not None:
+                        selected_text_length = len(self._koboldai_vars.tokenizer.encode(text_list[0]))
                     else:
                         selected_text_length = 0
                     self.actions[self.action_count+1] = {"Selected Text": text_list[0], "Selected Text Length": selected_text_length, "Options": [], "Time": int(time.time())}
                 
                 
                 
-                if self.koboldai_vars.tokenizer is not None:
-                    if len(self.koboldai_vars.tokenizer.encode(self.actions[self.action_count+1]['Selected Text'])) != self.koboldai_vars.genamt:
+                if self._koboldai_vars.tokenizer is not None:
+                    if len(self._koboldai_vars.tokenizer.encode(self.actions[self.action_count+1]['Selected Text'])) != self._koboldai_vars.genamt:
                         #ui1
                         if queue is not None:
                             queue.put(["from_server", {"cmd": "streamtoken", "data": [{
                                 "decoded": text_list[0],
                                 "probabilities": self.probability_buffer
                             }]}, {"broadcast":True, "room":"UI_1"}])
-                        #process_variable_changes(self.socketio, "actions", "Options", {"id": self.action_count+1, "options": self.actions[self.action_count+1]["Options"]}, {"id": self.action_count+1, "options": None})
-                        process_variable_changes(self.socketio, "story", 'actions', {"id": self.action_count+1, 'action':  self.actions[self.action_count+1]}, None)
+                        #process_variable_changes(self._socketio, "actions", "Options", {"id": self.action_count+1, "options": self.actions[self.action_count+1]["Options"]}, {"id": self.action_count+1, "options": None})
+                        process_variable_changes(self._socketio, "story", 'actions', {"id": self.action_count+1, 'action':  self.actions[self.action_count+1]}, None)
     
     def set_probabilities(self, probabilities, action_id=None):
         self.probability_buffer = probabilities
@@ -1896,7 +1919,7 @@ class KoboldStoryRegister(object):
                 "Time": int(time.time()),
             }
             
-        process_variable_changes(self.socketio, "story", 'actions', {"id": action_id, 'action':  self.actions[action_id]}, None)
+        process_variable_changes(self._socketio, "story", 'actions', {"id": action_id, 'action':  self.actions[action_id]}, None)
             
     def set_option_probabilities(self, probabilities, option_number, action_id=None):
         if action_id is None:
@@ -1907,7 +1930,7 @@ class KoboldStoryRegister(object):
                 if "Probabilities" not in self.actions[action_id]["Options"][option_number]:
                     self.actions[action_id]["Options"][option_number]["Probabilities"] = []
                 self.actions[action_id]["Options"][option_number]['Probabilities'].append(probabilities)
-                process_variable_changes(self.socketio, "story", 'actions', {"id": action_id, 'action':  self.actions[action_id]}, None)
+                process_variable_changes(self._socketio, "story", 'actions', {"id": action_id, 'action':  self.actions[action_id]}, None)
             else:
                 self.actions[action_id]['Options'].append({"temp_prob": True, "text": "", "Pinned": False, "Previous Selection": False, "Edited": False, "Probabilities": [probabilities], "stream_id": option_number})
         else:
@@ -1994,7 +2017,7 @@ class KoboldStoryRegister(object):
         return action_text_split
     
     def gen_audio(self, action_id=None, overwrite=True):
-        if self.story_settings.gen_audio and self.koboldai_vars.experimental_features:
+        if self.story_settings.gen_audio and self._koboldai_vars.experimental_features:
             if action_id is None:
                 action_id = self.action_count
 
@@ -2008,12 +2031,12 @@ class KoboldStoryRegister(object):
                 #self.tts_model.to(torch.device(0))  # gpu or cpu
                 self.tts_model.to(torch.device("cpu"))  # gpu or cpu
             
-            filename = os.path.join(self.koboldai_vars.save_paths.generated_audio, f"{action_id}.ogg")
-            filename_slow = os.path.join(self.koboldai_vars.save_paths.generated_audio, f"{action_id}_slow.ogg")
+            filename = os.path.join(self._koboldai_vars.save_paths.generated_audio, f"{action_id}.ogg")
+            filename_slow = os.path.join(self._koboldai_vars.save_paths.generated_audio, f"{action_id}_slow.ogg")
                 
             if overwrite or not os.path.exists(filename):
                 if action_id == -1:
-                    self.make_audio_queue.put((self.koboldai_vars.prompt, filename))
+                    self.make_audio_queue.put((self._koboldai_vars.prompt, filename))
                 else:
                     self.make_audio_queue.put((self.actions[action_id]['Selected Text'], filename))
                 if self.make_audio_thread_slow is None or not self.make_audio_thread_slow.is_alive():
@@ -2022,7 +2045,7 @@ class KoboldStoryRegister(object):
             
             if overwrite or not os.path.exists(filename_slow):
                 if action_id == -1:
-                    self.make_audio_queue_slow.put((self.koboldai_vars.prompt, filename_slow))
+                    self.make_audio_queue_slow.put((self._koboldai_vars.prompt, filename_slow))
                 else:
                     self.make_audio_queue_slow.put((self.actions[action_id]['Selected Text'], filename_slow))
                 if self.make_audio_thread_slow is None or not self.make_audio_thread_slow.is_alive():
@@ -2089,11 +2112,11 @@ class KoboldStoryRegister(object):
                 logger.info("Slow audio took {} for {} characters".format(time.time()-start_time, text_length))
     
     def gen_all_audio(self, overwrite=False):
-        if self.story_settings.gen_audio and self.koboldai_vars.experimental_features:
+        if self.story_settings.gen_audio and self._koboldai_vars.experimental_features:
             for i in reversed([-1]+list(self.actions.keys())):
                 self.gen_audio(i, overwrite=False)
         #else:
-        #    print("{} and {}".format(self.story_settings.gen_audio, self.koboldai_vars.experimental_features))
+        #    print("{} and {}".format(self.story_settings.gen_audio, self._koboldai_vars.experimental_features))
     
     def set_picture(self, action_id, filename, prompt):
         if action_id == -1:
@@ -2107,24 +2130,24 @@ class KoboldStoryRegister(object):
         if action_id == -1:
             if self.story_settings.prompt_picture_filename == "":
                 return None, None
-            filename = os.path.join(self.koboldai_vars.save_paths.generated_images, self.story_settings.prompt_picture_filename)
+            filename = os.path.join(self._koboldai_vars.save_paths.generated_images, self.story_settings.prompt_picture_filename)
             prompt = self.story_settings.prompt_picture_prompt
         elif action_id in self.actions and 'picture_filename' in self.actions[action_id]:
-            filename = os.path.join(self.koboldai_vars.save_paths.generated_images, self.actions[action_id]['picture_filename'])
+            filename = os.path.join(self._koboldai_vars.save_paths.generated_images, self.actions[action_id]['picture_filename'])
             prompt = self.actions[action_id]['picture_prompt']
         else:
             #Let's find the last picture if there is one
             found = False
             for i in reversed(range(-1, action_id)):
                 if i in self.actions and 'picture_filename' in self.actions[i]:
-                    filename = os.path.join(self.koboldai_vars.save_paths.generated_images, self.actions[i]['picture_filename'])
+                    filename = os.path.join(self._koboldai_vars.save_paths.generated_images, self.actions[i]['picture_filename'])
                     prompt = self.actions[i]['picture_prompt']
                     found = True
                     break
                 elif i == -1:
                     if self.story_settings.prompt_picture_filename == "":
                         return None, None
-                    filename = os.path.join(self.koboldai_vars.save_paths.generated_images, self.story_settings.prompt_picture_filename)
+                    filename = os.path.join(self._koboldai_vars.save_paths.generated_images, self.story_settings.prompt_picture_filename)
                     prompt = self.story_settings.prompt_picture_prompt
                     found = True
             if not found:
@@ -2143,8 +2166,8 @@ class KoboldStoryRegister(object):
         """
         # Prompt doesn't need standard edit data
         if action_id == -1:
-            if self.koboldai_vars.prompt:
-                return [{"type": "prompt", "content": self.koboldai_vars.prompt}]
+            if self._koboldai_vars.prompt:
+                return [{"type": "prompt", "content": self._koboldai_vars.prompt}]
             return []
 
         current_text = self.actions[action_id]["Selected Text"]
@@ -2177,20 +2200,20 @@ class KoboldStoryRegister(object):
         old_value = getattr(self, name, None)
         super().__setattr__(name, value)
         if name == 'action_count' and not new_variable:
-            process_variable_changes(self.socketio, "actions", "Action Count", value, old_value)
+            process_variable_changes(self._socketio, "actions", "Action Count", value, old_value)
 
 class KoboldWorldInfo(object):
     
     def __init__(self, socketio, story_settings, koboldai_vars, tokenizer=None):
-        self.socketio = socketio
-        self.koboldai_vars = koboldai_vars
+        self._socketio = socketio
+        self._koboldai_vars = koboldai_vars
         self.world_info = {}
         self.world_info_folder = OrderedDict()
         self.world_info_folder['root'] = []
         self.story_settings = story_settings
         
     def reset(self):
-        self.__init__(self.socketio, self.story_settings, self.koboldai_vars)
+        self.__init__(self._socketio, self.story_settings, self._koboldai_vars)
     
     def __iter__(self):
         self.itter = -1
@@ -2223,8 +2246,8 @@ class KoboldWorldInfo(object):
         self.world_info_folder[folder] = []
         self.story_settings.gamesaved = False
         self.sync_world_info_to_old_format()
-        if self.socketio is not None:
-            self.socketio.emit("world_info_folder", {x: self.world_info_folder[x] for x in self.world_info_folder}, broadcast=True, room="UI_2")
+        if self._socketio is not None:
+            self._socketio.emit("world_info_folder", {x: self.world_info_folder[x] for x in self.world_info_folder}, broadcast=True, room="UI_2")
         
     def delete_folder(self, folder):
         keys = [key for key in self.world_info]
@@ -2233,10 +2256,10 @@ class KoboldWorldInfo(object):
                 self.delete(key)
         if folder in self.world_info_folder:
             del self.world_info_folder[folder]
-        if self.socketio is not None:
-            self.socketio.emit("delete_world_info_folder", folder, broadcast=True, room="UI_2")
+        if self._socketio is not None:
+            self._socketio.emit("delete_world_info_folder", folder, broadcast=True, room="UI_2")
         logger.debug("Calcing AI Text from WI Folder Delete")
-        ignore = self.koboldai_vars.calc_ai_text()
+        ignore = self._koboldai_vars.calc_ai_text()
         
     def add_item_to_folder(self, uid, folder, before=None):
         if uid in self.world_info:
@@ -2259,8 +2282,8 @@ class KoboldWorldInfo(object):
             self.world_info[uid]['folder'] = folder
             self.story_settings.gamesaved = False
             self.sync_world_info_to_old_format()
-        if self.socketio is not None:
-            self.socketio.emit("world_info_folder", {x: self.world_info_folder[x] for x in self.world_info_folder}, broadcast=True, room="UI_2")
+        if self._socketio is not None:
+            self._socketio.emit("world_info_folder", {x: self.world_info_folder[x] for x in self.world_info_folder}, broadcast=True, room="UI_2")
                 
     def add_item(self, title, key, keysecondary, folder, constant, manual_text,
                  comment, wi_type="wi", use_wpp=False,
@@ -2283,8 +2306,8 @@ class KoboldWorldInfo(object):
                 content = "{} ]".format(content[:-1])
         else:
             content = manual_text
-        if self.koboldai_vars.tokenizer is not None:
-            token_length = len(self.koboldai_vars.tokenizer.encode(content))
+        if self._koboldai_vars.tokenizer is not None:
+            token_length = len(self._koboldai_vars.tokenizer.encode(content))
         else:
             token_length = 0
         if folder is None:
@@ -2332,12 +2355,12 @@ class KoboldWorldInfo(object):
         
         self.story_settings.assign_world_info_to_actions(wuid=uid)
         
-        if self.socketio is not None and send_to_ui:
-            self.socketio.emit("world_info_folder", {x: self.world_info_folder[x] for x in self.world_info_folder}, broadcast=True, room="UI_2")
-            self.socketio.emit("world_info_entry", self.world_info[uid], broadcast=True, room="UI_2")
+        if self._socketio is not None and send_to_ui:
+            self._socketio.emit("world_info_folder", {x: self.world_info_folder[x] for x in self.world_info_folder}, broadcast=True, room="UI_2")
+            self._socketio.emit("world_info_entry", self.world_info[uid], broadcast=True, room="UI_2")
         if recalc:
             logger.debug("Calcing AI Text from WI Add")
-            ignore = self.koboldai_vars.calc_ai_text()
+            ignore = self._koboldai_vars.calc_ai_text()
         return uid
         
     def edit_item(
@@ -2374,8 +2397,8 @@ class KoboldWorldInfo(object):
                 content = "{} ]".format(content[:-1])
         else:
             content = manual_text
-        if self.koboldai_vars.tokenizer is not None:
-            token_length = len(self.koboldai_vars.tokenizer.encode(content))
+        if self._koboldai_vars.tokenizer is not None:
+            token_length = len(self._koboldai_vars.tokenizer.encode(content))
         else:
             token_length = 0
         if folder is None:
@@ -2403,17 +2426,17 @@ class KoboldWorldInfo(object):
         self.sync_world_info_to_old_format()
         self.story_settings.assign_world_info_to_actions(wuid=uid)
         logger.debug("Calcing AI Text from WI Edit")
-        ignore = self.koboldai_vars.calc_ai_text()
+        ignore = self._koboldai_vars.calc_ai_text()
         
-        if self.socketio is not None:
-            self.socketio.emit("world_info_folder", {x: self.world_info_folder[x] for x in self.world_info_folder}, broadcast=True, room="UI_2")
-            self.socketio.emit("world_info_entry", self.world_info[uid], broadcast=True, room="UI_2")
+        if self._socketio is not None:
+            self._socketio.emit("world_info_folder", {x: self.world_info_folder[x] for x in self.world_info_folder}, broadcast=True, room="UI_2")
+            self._socketio.emit("world_info_entry", self.world_info[uid], broadcast=True, room="UI_2")
         
     def delete(self, uid):
         del self.world_info[uid]
 
         try:
-            os.remove(os.path.join(self.koboldai_vars.save_paths.wi_images, str(uid)))
+            os.remove(os.path.join(self._koboldai_vars.save_paths.wi_images, str(uid)))
         except FileNotFoundError:
             pass
 
@@ -2424,11 +2447,11 @@ class KoboldWorldInfo(object):
         
         self.story_settings.gamesaved = False
         self.sync_world_info_to_old_format()
-        if self.socketio is not None:
-            self.socketio.emit("world_info_folder", {x: self.world_info_folder[x] for x in self.world_info_folder}, broadcast=True, room="UI_2")
-            self.socketio.emit("delete_world_info_entry", uid, broadcast=True, room="UI_2")
+        if self._socketio is not None:
+            self._socketio.emit("world_info_folder", {x: self.world_info_folder[x] for x in self.world_info_folder}, broadcast=True, room="UI_2")
+            self._socketio.emit("delete_world_info_entry", uid, broadcast=True, room="UI_2")
         logger.debug("Calcing AI Text from WI Delete")
-        ignore = self.koboldai_vars.calc_ai_text()
+        ignore = self._koboldai_vars.calc_ai_text()
     
     def rename_folder(self, old_folder, folder):
         self.story_settings.gamesaved = False
@@ -2456,18 +2479,18 @@ class KoboldWorldInfo(object):
         
         self.story_settings.gamesaved = False
         self.sync_world_info_to_old_format()
-        if self.socketio is not None:
-            self.socketio.emit("world_info_folder", {x: self.world_info_folder[x] for x in self.world_info_folder}, broadcast=True, room="UI_2")
+        if self._socketio is not None:
+            self._socketio.emit("world_info_folder", {x: self.world_info_folder[x] for x in self.world_info_folder}, broadcast=True, room="UI_2")
     
     def reorder(self, uid, before):
         self.add_item_to_folder(uid, self.world_info[before]['folder'], before=before)
         self.sync_world_info_to_old_format()
     
     def send_to_ui(self):
-        if self.socketio is not None:
-            self.socketio.emit("world_info_folder", {x: self.world_info_folder[x] for x in self.world_info_folder}, broadcast=True, room="UI_2")
+        if self._socketio is not None:
+            self._socketio.emit("world_info_folder", {x: self.world_info_folder[x] for x in self.world_info_folder}, broadcast=True, room="UI_2")
             logger.debug("Sending all world info from send_to_ui")
-            self.socketio.emit("world_info_entry", [self.world_info[uid] for uid in self.world_info], broadcast=True, room="UI_2")
+            self._socketio.emit("world_info_entry", [self.world_info[uid] for uid in self.world_info], broadcast=True, room="UI_2")
     
     def to_json(self, folder=None):
         if folder is None:
@@ -2497,7 +2520,7 @@ class KoboldWorldInfo(object):
             for uid, image_b64 in data["images"].items():
                 image_b64 = image_b64.split(",")[-1]
                 image_path = os.path.join(
-                    self.koboldai_vars.save_paths.wi_images,
+                    self._koboldai_vars.save_paths.wi_images,
                     str(uid)
                 )
                 with open(image_path, "wb") as file:
@@ -2594,16 +2617,16 @@ class KoboldWorldInfo(object):
         for key in self.world_info:
             if self.world_info[key]["used_in_game"] != self.world_info[key]["constant"]:
                 self.world_info[key]["used_in_game"] = self.world_info[key]["constant"]
-                if self.socketio is not None:
-                    self.socketio.emit("world_info_entry_used_in_game", {"uid": key, "used_in_game": False}, broadcast=True, room="UI_2")
+                if self._socketio is not None:
+                    self._socketio.emit("world_info_entry_used_in_game", {"uid": key, "used_in_game": False}, broadcast=True, room="UI_2")
         
     def set_world_info_used(self, uid):
         if uid in self.world_info:
             self.world_info[uid]["used_in_game"] = True
         else:
             logger.warning("Something tried to set world info UID {} to in game, but it doesn't exist".format(uid))
-        if self.socketio is not None:
-            self.socketio.emit("world_info_entry_used_in_game", {"uid": uid, "used_in_game": True}, broadcast=True, room="UI_2")
+        if self._socketio is not None:
+            self._socketio.emit("world_info_entry_used_in_game", {"uid": uid, "used_in_game": True}, broadcast=True, room="UI_2")
     
     def get_used_wi(self):
         return [x['content'] for x in self.world_info if x['used_in_game']]
@@ -2705,7 +2728,7 @@ default_preset = {
             5
         ]
     }
-badwordsids_default = [[13460], [6880], [50256], [42496], [4613], [17414], [22039], [16410], [27], [29], [38430], [37922], [15913], [24618], [28725], [58], [47175], [36937], [26700], [12878], [16471], [37981], [5218], [29795], [13412], [45160], [3693], [49778], [4211], [20598], [36475], [33409], [44167], [32406], [29847], [29342], [42669], [685], [25787], [7359], [3784], [5320], [33994], [33490], [34516], [43734], [17635], [24293], [9959], [23785], [21737], [28401], [18161], [26358], [32509], [1279], [38155], [18189], [26894], [6927], [14610], [23834], [11037], [14631], [26933], [46904], [22330], [25915], [47934], [38214], [1875], [14692], [41832], [13163], [25970], [29565], [44926], [19841], [37250], [49029], [9609], [44438], [16791], [17816], [30109], [41888], [47527], [42924], [23984], [49074], [33717], [31161], [49082], [30138], [31175], [12240], [14804], [7131], [26076], [33250], [3556], [38381], [36338], [32756], [46581], [17912], [49146]] # Tokenized array of badwords used to prevent AI artifacting
+badwordsids_default = [[6880], [50256], [42496], [4613], [17414], [22039], [16410], [27], [29], [38430], [37922], [15913], [24618], [28725], [58], [47175], [36937], [26700], [12878], [16471], [37981], [5218], [29795], [13412], [45160], [3693], [49778], [4211], [20598], [36475], [33409], [44167], [32406], [29847], [29342], [42669], [685], [25787], [7359], [3784], [5320], [33994], [33490], [34516], [43734], [17635], [24293], [9959], [23785], [21737], [28401], [18161], [26358], [32509], [1279], [38155], [18189], [26894], [6927], [14610], [23834], [11037], [14631], [26933], [46904], [22330], [25915], [47934], [38214], [1875], [14692], [41832], [13163], [25970], [29565], [44926], [19841], [37250], [49029], [9609], [44438], [16791], [17816], [30109], [41888], [47527], [42924], [23984], [49074], [33717], [31161], [49082], [30138], [31175], [12240], [14804], [7131], [26076], [33250], [3556], [38381], [36338], [32756], [46581], [17912], [49146]] # Tokenized array of badwords used to prevent AI artifacting
 badwordsids_neox = [[0], [1], [44162], [9502], [12520], [31841], [36320], [49824], [34417], [6038], [34494], [24815], [26635], [24345], [3455], [28905], [44270], [17278], [32666], [46880], [7086], [43189], [37322], [17778], [20879], [49821], [3138], [14490], [4681], [21391], [26786], [43134], [9336], [683], [48074], [41256], [19181], [29650], [28532], [36487], [45114], [46275], [16445], [15104], [11337], [1168], [5647], [29], [27482], [44965], [43782], [31011], [42944], [47389], [6334], [17548], [38329], [32044], [35487], [2239], [34761], [7444], [1084], [12399], [18990], [17636], [39083], [1184], [35830], [28365], [16731], [43467], [47744], [1138], [16079], [40116], [45564], [18297], [42368], [5456], [18022], [42696], [34476], [23505], [23741], [39334], [37944], [45382], [38709], [33440], [26077], [43600], [34418], [36033], [6660], [48167], [48471], [15775], [19884], [41533], [1008], [31053], [36692], [46576], [20095], [20629], [31759], [46410], [41000], [13488], [30952], [39258], [16160], [27655], [22367], [42767], [43736], [49694], [13811], [12004], [46768], [6257], [37471], [5264], [44153], [33805], [20977], [21083], [25416], [14277], [31096], [42041], [18331], [33376], [22372], [46294], [28379], [38475], [1656], [5204], [27075], [50001], [16616], [11396], [7748], [48744], [35402], [28120], [41512], [4207], [43144], [14767], [15640], [16595], [41305], [44479], [38958], [18474], [22734], [30522], [46267], [60], [13976], [31830], [48701], [39822], [9014], [21966], [31422], [28052], [34607], [2479], [3851], [32214], [44082], [45507], [3001], [34368], [34758], [13380], [38363], [4299], [46802], [30996], [12630], [49236], [7082], [8795], [5218], [44740], [9686], [9983], [45301], [27114], [40125], [1570], [26997], [544], [5290], [49193], [23781], [14193], [40000], [2947], [43781], [9102], [48064], [42274], [18772], [49384], [9884], [45635], [43521], [31258], [32056], [47686], [21760], [13143], [10148], [26119], [44308], [31379], [36399], [23983], [46694], [36134], [8562], [12977], [35117], [28591], [49021], [47093], [28653], [29013], [46468], [8605], [7254], [25896], [5032], [8168], [36893], [38270], [20499], [27501], [34419], [29547], [28571], [36586], [20871], [30537], [26842], [21375], [31148], [27618], [33094], [3291], [31789], [28391], [870], [9793], [41361], [47916], [27468], [43856], [8850], [35237], [15707], [47552], [2730], [41449], [45488], [3073], [49806], [21938], [24430], [22747], [20924], [46145], [20481], [20197], [8239], [28231], [17987], [42804], [47269], [29972], [49884], [21382], [46295], [36676], [34616], [3921], [26991], [27720], [46265], [654], [9855], [40354], [5291], [34904], [44342], [2470], [14598], [880], [19282], [2498], [24237], [21431], [16369], [8994], [44524], [45662], [13663], [37077], [1447], [37786], [30863], [42854], [1019], [20322], [4398], [12159], [44072], [48664], [31547], [18736], [9259], [31], [16354], [21810], [4357], [37982], [5064], [2033], [32871], [47446], [62], [22158], [37387], [8743], [47007], [17981], [11049], [4622], [37916], [36786], [35138], [29925], [14157], [18095], [27829], [1181], [22226], [5709], [4725], [30189], [37014], [1254], [11380], [42989], [696], [24576], [39487], [30119], [1092], [8088], [2194], [9899], [14412], [21828], [3725], [13544], [5180], [44679], [34398], [3891], [28739], [14219], [37594], [49550], [11326], [6904], [17266], [5749], [10174], [23405], [9955], [38271], [41018], [13011], [48392], [36784], [24254], [21687], [23734], [5413], [41447], [45472], [10122], [17555], [15830], [47384], [12084], [31350], [47940], [11661], [27988], [45443], [905], [49651], [16614], [34993], [6781], [30803], [35869], [8001], [41604], [28118], [46462], [46762], [16262], [17281], [5774], [10943], [5013], [18257], [6750], [4713], [3951], [11899], [38791], [16943], [37596], [9318], [18413], [40473], [13208], [16375]]
 badwordsids_opt = [[44717], [46613], [48513], [49923], [50185], [48755], [8488], [43303], [49659], [48601], [49817], [45405], [48742], [49925], [47720], [11227], [48937], [48784], [50017], [42248], [49310], [48082], [49895], [50025], [49092], [49007], [8061], [44226], [0], [742], [28578], [15698], [49784], [46679], [39365], [49281], [49609], [48081], [48906], [46161], [48554], [49670], [48677], [49721], [49632], [48610], [48462], [47457], [10975], [46077], [28696], [48709], [43839], [49798], [49154], [48203], [49625], [48395], [50155], [47161], [49095], [48833], [49420], [49666], [48443], [22176], [49242], [48651], [49138], [49750], [40389], [48021], [21838], [49070], [45333], [40862], [1], [49915], [33525], [49858], [50254], [44403], [48992], [48872], [46117], [49853], [47567], [50206], [41552], [50068], [48999], [49703], [49940], [49329], [47620], [49868], [49962], [2], [44082], [50236], [31274], [50260], [47052], [42645], [49177], [17523], [48691], [49900], [49069], [49358], [48794], [47529], [46479], [48457], [646], [49910], [48077], [48935], [46386], [48902], [49151], [48759], [49803], [45587], [48392], [47789], [48654], [49836], [49230], [48188], [50264], [46844], [44690], [48505], [50161], [27779], [49995], [41833], [50154], [49097], [48520], [50018], [8174], [50084], [49366], [49526], [50193], [7479], [49982], [3]]
 

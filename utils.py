@@ -297,7 +297,7 @@ def _transformers22_aria2_hook(pretrained_model_name_or_path: str, force_downloa
 
     def is_cached(filename):
         try:
-            huggingface_hub.hf_hub_download(pretrained_model_name_or_path, filename, cache_dir=cache_dir, local_files_only=True)
+            huggingface_hub.hf_hub_download(pretrained_model_name_or_path, filename, cache_dir=cache_dir, local_files_only=True, revision=revision)
         except ValueError:
             return False
         return True
@@ -316,7 +316,7 @@ def _transformers22_aria2_hook(pretrained_model_name_or_path: str, force_downloa
     if not sharded:  # If the model has a pytorch_model.bin file, that's the only file to download
         filenames = [transformers.modeling_utils.WEIGHTS_NAME]
     else:  # Otherwise download the pytorch_model.bin.index.json and then let aria2 download all the pytorch_model-#####-of-#####.bin files mentioned inside it
-        map_filename = huggingface_hub.hf_hub_download(pretrained_model_name_or_path, filename, cache_dir=cache_dir, force_download=force_download, proxies=proxies, resume_download=resume_download, use_auth_token=use_auth_token, user_agent=user_agent)
+        map_filename = huggingface_hub.hf_hub_download(pretrained_model_name_or_path, filename, cache_dir=cache_dir, force_download=force_download, proxies=proxies, resume_download=resume_download, use_auth_token=use_auth_token, user_agent=user_agent, revision=revision)
         with open(map_filename) as f:
             map_data = json.load(f)
         filenames = set(map_data["weight_map"].values())

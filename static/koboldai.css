@@ -1658,7 +1658,7 @@ body {
 
 .themerow {
 	grid-area: theme;
-	width: 500px;
+	/* width: 500px; */
 	margin-left: 10px;
 }
 
@@ -1765,6 +1765,21 @@ body {
 	text-align: center;
 	overflow: hidden;
 	display: inline;
+}
+
+.back[system_aibusy=true] {
+	filter: brightness(40%);
+	pointer-events: none;
+}
+
+.redo[system_aibusy=true] {
+	filter: brightness(40%);
+	pointer-events: none;
+}
+
+.retry[system_aibusy=true] {
+	filter: brightness(40%);
+	pointer-events: none;
 }
 
 .statusbar_outer {
