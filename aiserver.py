@@ -2508,15 +2508,12 @@ def patch_transformers():
                 if input_ids[i][-2] == null_character:
                     input_ids[i][-1] = null_character
                 elif data[i][-1*(len(koboldai_vars.chatname)+1):] == koboldai_vars.chatname + ":":
-                    #We now have the user name in chat mode with a :. We want to remove that from the data
-                    #We do need to check if the first token includes more than the chatname (Ie " You") so we don't loose the extra data
-                    chatname_tokens = len(tokenizer.encode(koboldai_vars.chatname+":"))
-                    if input_ids[i][-1*chatname_tokens] != koboldai_vars.chatname[0]:
-                        input_ids[i][-1*chatname_tokens] = tokenizer.encode(tokenizer.decode(input_ids[i][-1*chatname_tokens]))[0]
-                    else:
-                        input_ids[i][-1*chatname_tokens] = null_character
-                    for j in range(len(koboldai_vars.chatname)+1):
-                        input_ids[i][-j] = tokenizer.encode(chr(0))[0]
+                    #We'll decode the whole AI text, strip off the username, then re-encode it and pad it with nulls
+                    temp = data[i][:-1*(len(koboldai_vars.chatname)+1)]
+                    temp = tokenizer.encode(temp)
+                    temp = temp + tokenizer.encode(chr(0))*(len(input_ids[i])-len(temp))
+                    for j in range(len(input_ids[i])):
+                        input_ids[i][j] = temp[j]
                     self.completed[i] = True
             if all(self.completed):
                 koboldai_vars.generated_tkns = koboldai_vars.genamt
@@ -2872,7 +2869,7 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
         else:
             tokenizer_id = {
                 "Colab": "EleutherAI/gpt-neo-2.7B",
-                "CLUSTER": koboldai_vars.cluster_requested_models[0],
+                "CLUSTER": koboldai_vars.cluster_requested_models[0] if len(koboldai_vars.cluster_requested_models) > 0 else "gpt2",
                 "OAI": "gpt2",
             }[koboldai_vars.model]
         
@@ -8679,6 +8676,8 @@ def UI_2_Pinning(data):
 @socketio.on('back')
 @logger.catch
 def UI_2_back(data):
+    if koboldai_vars.aibusy:
+        return
     if koboldai_vars.debug:
         print("back")
     koboldai_vars.actions.clear_unused_options()
@@ -8690,6 +8689,8 @@ def UI_2_back(data):
 @socketio.on('redo')
 @logger.catch
 def UI_2_redo(data):
+    if koboldai_vars.aibusy:
+        return
     if len(koboldai_vars.actions.get_current_options()) == 1:
         koboldai_vars.actions.use_option(0)
     
@@ -8700,7 +8701,8 @@ def UI_2_redo(data):
 @socketio.on('retry')
 @logger.catch
 def UI_2_retry(data):
-    
+    if koboldai_vars.aibusy:
+        return
     if len(koboldai_vars.actions.get_current_options_no_edits()) == 0:
         ignore = koboldai_vars.actions.pop(keep=True)
     koboldai_vars.actions.clear_unused_options()
