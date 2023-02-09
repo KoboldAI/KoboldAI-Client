@@ -2511,9 +2511,12 @@ def patch_transformers():
                     #We'll decode the whole AI text, strip off the username, then re-encode it and pad it with nulls
                     temp = data[i][:-1*(len(koboldai_vars.chatname)+1)]
                     temp = tokenizer.encode(temp)
-                    temp = temp + tokenizer.encode(chr(0))*(len(input_ids[i])-len(temp))
+                    #temp = temp + tokenizer.encode(chr(0))*(len(input_ids[i])-len(temp))
                     for j in range(len(input_ids[i])):
-                        input_ids[i][j] = temp[j]
+                        if j < len(temp):
+                            input_ids[i][j] = temp[j]
+                        else:
+                            input_ids[i][j] = tokenizer.encode(chr(0))[0]
                     self.completed[i] = True
             if all(self.completed):
                 koboldai_vars.generated_tkns = koboldai_vars.genamt
