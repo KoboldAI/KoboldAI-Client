@@ -9932,7 +9932,12 @@ def text2img_api(prompt, art_guide="") -> Image.Image:
     logger.debug(final_imgen_params)
 
     try:
-        submit_req = requests.post(url=apiaddress, data=payload_json)
+        logger.info("Gen Image API: Username: {}".format(koboldai_vars.img_gen_api_username))
+        if koboldai_vars.img_gen_api_username != "":
+            basic = requests.auth.HTTPBasicAuth(koboldai_vars.img_gen_api_username, koboldai_vars.img_gen_api_password)
+            submit_req = requests.post(url=apiaddress, data=payload_json, auth=basic)
+        else:
+            submit_req = requests.post(url=apiaddress, data=payload_json)
     except requests.exceptions.ConnectionError:
         show_error_notification(
             "SD Web API Failure",
