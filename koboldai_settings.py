@@ -550,7 +550,7 @@ class koboldai_vars(object):
                 setattr(self._user_settings, name, value)
             elif name in self._system_settings.__dict__:
                 setattr(self._system_settings, name, value)
-            elif name in self._story_settings[self.get_story_name()]:
+            elif name in self._story_settings[self.get_story_name()].__dict__:
                 setattr(self._story_settings[self.get_story_name()], name, value)
             else:
                 setattr(self._undefined_settings, name, value)
@@ -558,13 +558,13 @@ class koboldai_vars(object):
     def __getattr__(self, name):
         if name in self.__dict__:
             return getattr(self, name)
-        elif name in self._model_settings.__dict__:
+        elif name in self._model_settings.__dict__ or hasattr(self._model_settings, name):
             return getattr(self._model_settings, name)
-        elif name in self._user_settings.__dict__:
+        elif name in self._user_settings.__dict__ or hasattr(self._user_settings, name):
             return getattr(self._user_settings, name)
-        elif name in self._system_settings.__dict__:
+        elif name in self._system_settings.__dict__ or hasattr(self._system_settings, name):
             return getattr(self._system_settings, name)
-        elif name in self._story_settings[self.get_story_name()].__dict__:
+        elif name in self._story_settings[self.get_story_name()].__dict__ or hasattr(self._story_settings[self.get_story_name()], name):
             return getattr(self._story_settings[self.get_story_name()], name)
         else:
             return getattr(self._undefined_settings, name)
