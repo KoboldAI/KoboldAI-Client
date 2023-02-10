@@ -661,8 +661,8 @@ class model_settings(settings):
         self.total_download_chunks = 0 # tracks how much of the model has downloaded for the UI 2
         self.downloaded_chunks = 0 #as above
         self._tqdm        = tqdm.tqdm(total=self.genamt, file=self.ignore_tqdm())    # tqdm agent for generating tokens. This will allow us to calculate the remaining time
-        self._tqdm_progress = 0     # TQDP progress
-        self._tqdm_rem_time = 0     # tqdm calculated reemaining time
+        self.tqdm_progress = 0     # TQDP progress
+        self.tqdm_rem_time = 0     # tqdm calculated reemaining time
         self.url         = "https://api.inferkit.com/v1/models/standard/generate" # InferKit API URL
         self.oaiurl      = "" # OpenAI API URL
         self.oaiengines  = "https://api.openai.com/v1/engines"
@@ -778,43 +778,43 @@ class model_settings(settings):
         elif name == "generated_tkns" and '_tqdm' in self.__dict__:
             if value == 0:
                 self._tqdm.reset(total=self.genamt * (self.numseqs if self.alt_multi_gen else 1) )
-                self._tqdm_progress = 0
+                self.tqdm_progress = 0
             else:
                 self._tqdm.update(value-self._tqdm.n)
-                self._tqdm_progress = int(float(self.generated_tkns)/float(self.genamt * (self.numseqs if self.alt_multi_gen else 1))*100)
+                self.tqdm_progress = int(float(self.generated_tkns)/float(self.genamt * (self.numseqs if self.alt_multi_gen else 1))*100)
                 if self._tqdm.format_dict['rate'] is not None:
-                    self._tqdm_rem_time = str(datetime.timedelta(seconds=int(float((self.genamt * (self.numseqs if self.alt_multi_gen else 1))-self.generated_tkns)/self._tqdm.format_dict['rate'])))
+                    self.tqdm_rem_time = str(datetime.timedelta(seconds=int(float((self.genamt * (self.numseqs if self.alt_multi_gen else 1))-self.generated_tkns)/self._tqdm.format_dict['rate'])))
         #Setup TQDP for model loading
         elif name == "loaded_layers" and '_tqdm' in self.__dict__:
             if value == 0:
                 self._tqdm.reset(total=self.total_layers)
-                self._tqdm_progress = 0
+                self.tqdm_progress = 0
             else:
                 self._tqdm.update(1)
-                self._tqdm_progress = int(float(self.loaded_layers)/float(self.total_layers)*100)
+                self.tqdm_progress = int(float(self.loaded_layers)/float(self.total_layers)*100)
                 if self._tqdm.format_dict['rate'] is not None:
-                    self._tqdm_rem_time = str(datetime.timedelta(seconds=int(float(self.total_layers-self.loaded_layers)/self._tqdm.format_dict['rate'])))  
+                    self.tqdm_rem_time = str(datetime.timedelta(seconds=int(float(self.total_layers-self.loaded_layers)/self._tqdm.format_dict['rate'])))  
         #Setup TQDP for model downloading
         elif name == "total_download_chunks" and '_tqdm' in self.__dict__:
             self._tqdm.reset(total=value)
-            self._tqdm_progress = 0
+            self.tqdm_progress = 0
         elif name == "downloaded_chunks" and '_tqdm' in self.__dict__:
             if value == 0:
                 self._tqdm.reset(total=self.total_download_chunks)
-                self._tqdm_progress = 0
+                self.tqdm_progress = 0
             else:
                 self._tqdm.update(value-old_value)
                 if self.total_download_chunks is not None:
                     if self.total_download_chunks==0:
-                        self._tqdm_progress = 0
+                        self.tqdm_progress = 0
                     elif float(self.downloaded_chunks) > float(self.total_download_chunks):
-                        self._tqdm_progress = 100
+                        self.tqdm_progress = 100
                     else: 
-                        self._tqdm_progress = round(float(self.downloaded_chunks)/float(self.total_download_chunks)*100, 1)
+                        self.tqdm_progress = round(float(self.downloaded_chunks)/float(self.total_download_chunks)*100, 1)
                 else:
-                    self._tqdm_progress = 0
+                    self.tqdm_progress = 0
                 if self._tqdm.format_dict['rate'] is not None:
-                    self._tqdm_rem_time = str(datetime.timedelta(seconds=int(float(self.total_download_chunks-self.downloaded_chunks)/self._tqdm.format_dict['rate'])))  
+                    self.tqdm_rem_time = str(datetime.timedelta(seconds=int(float(self.total_download_chunks-self.downloaded_chunks)/self._tqdm.format_dict['rate'])))  
         
         
         
