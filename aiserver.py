@@ -2505,18 +2505,7 @@ def patch_transformers():
             if 'completed' not in self.__dict__:
                 self.completed = [False]*len(input_ids)
             for i in range(len(input_ids)):
-                if input_ids[i][-2] == null_character:
-                    input_ids[i][-1] = null_character
-                elif data[i][-1*(len(koboldai_vars.chatname)+1):] == koboldai_vars.chatname + ":":
-                    #We'll decode the whole AI text, strip off the username, then re-encode it and pad it with nulls
-                    temp = data[i][:-1*(len(koboldai_vars.chatname)+1)]
-                    temp = tokenizer.encode(temp)
-                    #temp = temp + tokenizer.encode(chr(0))*(len(input_ids[i])-len(temp))
-                    for j in range(len(input_ids[i])):
-                        if j < len(temp):
-                            input_ids[i][j] = temp[j]
-                        else:
-                            input_ids[i][j] = tokenizer.encode(chr(0))[0]
+                if data[i][-1*(len(koboldai_vars.chatname)+1):] == koboldai_vars.chatname + ":":
                     self.completed[i] = True
             if all(self.completed):
                 koboldai_vars.generated_tkns = koboldai_vars.genamt
