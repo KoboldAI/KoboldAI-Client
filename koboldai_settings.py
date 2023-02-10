@@ -96,6 +96,7 @@ class koboldai_vars(object):
         self._user_settings = user_settings(socketio)
         self._system_settings = system_settings(socketio, self)
         self._story_settings = {'default': story_settings(socketio, self)}
+        self._undefined_settings = undefined_settings()
         self._socketio = socketio
         self.tokenizer = None
     
@@ -549,8 +550,10 @@ class koboldai_vars(object):
                 setattr(self._user_settings, name, value)
             elif name in self._system_settings.__dict__:
                 setattr(self._system_settings, name, value)
-            else:
+            elif name in self._story_settings[self.get_story_name()]:
                 setattr(self._story_settings[self.get_story_name()], name, value)
+            else:
+                setattr(self._undefined_settings, name, value)
 
     def __getattr__(self, name):
         if name in self.__dict__:
@@ -561,8 +564,10 @@ class koboldai_vars(object):
             return getattr(self._user_settings, name)
         elif name in self._system_settings.__dict__:
             return getattr(self._system_settings, name)
-        else:
+        elif name in self._story_settings[self.get_story_name()].__dict__:
             return getattr(self._story_settings[self.get_story_name()], name)
+        else:
+            return getattr(self._undefined_settings, name)
 
 
 class settings(object):
