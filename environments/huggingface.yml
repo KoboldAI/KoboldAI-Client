@@ -24,7 +24,7 @@ dependencies:
   - termcolor
   - psutil
   - pip:
-    - flask-cloudflared
+    - flask-cloudflared==0.0.10
     - flask-ngrok
     - lupa==1.10
     - transformers==4.24.0

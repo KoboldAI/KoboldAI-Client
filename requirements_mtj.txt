@@ -11,7 +11,7 @@ progressbar2
 git+https://github.com/VE-FORBRYDERNE/mesh-transformer-jax@ck
 flask
 Flask-SocketIO
-flask-cloudflared >= 0.0.5
+flask-cloudflared==0.0.10
 flask-ngrok
 eventlet
 dnspython==2.2.1
