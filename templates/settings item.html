@@ -31,6 +31,8 @@
 					<option value="{{ option['value'] }}">{{ option["text"] }}</option>
 				{% endfor %}
 			</select>
+		{% elif item['uitype'] == "password" %}
+			<input type=password id="{{ item['classname'] }}_{{ item['name'] }}" class="settings_select var_sync_{{ item['classname'] }}_{{ item['name'] }}" onchange='sync_to_server(this);' value='{{ item['default'] }}'>
 		{% elif item['uitype'] == "text" %}
 			<input id="{{ item['classname'] }}_{{ item['name'] }}" class="settings_select var_sync_{{ item['classname'] }}_{{ item['name'] }}" onchange='sync_to_server(this);' value='{{ item['default'] }}'>
 		{% endif %}
