@@ -8068,7 +8068,7 @@ def ui2_serve_themes(path):
 @logger.catch
 def upload_file(data):
     logger.debug("upload_file {}".format(data['filename']))
-    if data['upload_no_save']:
+    if 'upload_no_save' in data and data['upload_no_save']:
         json_data = json.loads(data['data'].decode("utf-8"))
         loadJSON(json_data)
     else:
