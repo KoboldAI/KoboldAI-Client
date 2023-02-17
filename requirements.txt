@@ -4,7 +4,7 @@ Flask
 Flask-SocketIO
 requests
 torch >= 1.9, < 1.13
-flask-cloudflared
+flask-cloudflared==0.0.10
 flask-ngrok
 flask-cors
 eventlet

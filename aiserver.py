@@ -2505,18 +2505,7 @@ def patch_transformers():
             if 'completed' not in self.__dict__:
                 self.completed = [False]*len(input_ids)
             for i in range(len(input_ids)):
-                if input_ids[i][-2] == null_character:
-                    input_ids[i][-1] = null_character
-                elif data[i][-1*(len(koboldai_vars.chatname)+1):] == koboldai_vars.chatname + ":":
-                    #We now have the user name in chat mode with a :. We want to remove that from the data
-                    #We do need to check if the first token includes more than the chatname (Ie " You") so we don't loose the extra data
-                    chatname_tokens = len(tokenizer.encode(koboldai_vars.chatname+":"))
-                    if input_ids[i][-1*chatname_tokens] != koboldai_vars.chatname[0]:
-                        input_ids[i][-1*chatname_tokens] = tokenizer.encode(tokenizer.decode(input_ids[i][-1*chatname_tokens]))[0]
-                    else:
-                        input_ids[i][-1*chatname_tokens] = null_character
-                    for j in range(len(koboldai_vars.chatname)+1):
-                        input_ids[i][-j] = tokenizer.encode(chr(0))[0]
+                if data[i][-1*(len(koboldai_vars.chatname)+1):] == koboldai_vars.chatname + ":":
                     self.completed[i] = True
             if all(self.completed):
                 koboldai_vars.generated_tkns = koboldai_vars.genamt
@@ -2872,7 +2861,7 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
         else:
             tokenizer_id = {
                 "Colab": "EleutherAI/gpt-neo-2.7B",
-                "CLUSTER": koboldai_vars.cluster_requested_models[0],
+                "CLUSTER": koboldai_vars.cluster_requested_models[0] if len(koboldai_vars.cluster_requested_models) > 0 else "gpt2",
                 "OAI": "gpt2",
             }[koboldai_vars.model]
         
@@ -8079,7 +8068,7 @@ def ui2_serve_themes(path):
 @logger.catch
 def upload_file(data):
     logger.debug("upload_file {}".format(data['filename']))
-    if data['upload_no_save']:
+    if 'upload_no_save' in data and data['upload_no_save']:
         json_data = json.loads(data['data'].decode("utf-8"))
         loadJSON(json_data)
     else:
@@ -8679,6 +8668,8 @@ def UI_2_Pinning(data):
 @socketio.on('back')
 @logger.catch
 def UI_2_back(data):
+    if koboldai_vars.aibusy:
+        return
     if koboldai_vars.debug:
         print("back")
     koboldai_vars.actions.clear_unused_options()
@@ -8690,6 +8681,8 @@ def UI_2_back(data):
 @socketio.on('redo')
 @logger.catch
 def UI_2_redo(data):
+    if koboldai_vars.aibusy:
+        return
     if len(koboldai_vars.actions.get_current_options()) == 1:
         koboldai_vars.actions.use_option(0)
     
@@ -8700,7 +8693,8 @@ def UI_2_redo(data):
 @socketio.on('retry')
 @logger.catch
 def UI_2_retry(data):
-    
+    if koboldai_vars.aibusy:
+        return
     if len(koboldai_vars.actions.get_current_options_no_edits()) == 0:
         ignore = koboldai_vars.actions.pop(keep=True)
     koboldai_vars.actions.clear_unused_options()
@@ -9943,7 +9937,12 @@ def text2img_api(prompt, art_guide="") -> Image.Image:
     logger.debug(final_imgen_params)
 
     try:
-        submit_req = requests.post(url=apiaddress, data=payload_json)
+        logger.info("Gen Image API: Username: {}".format(koboldai_vars.img_gen_api_username))
+        if koboldai_vars.img_gen_api_username != "":
+            basic = requests.auth.HTTPBasicAuth(koboldai_vars.img_gen_api_username, koboldai_vars.img_gen_api_password)
+            submit_req = requests.post(url=apiaddress, data=payload_json, auth=basic)
+        else:
+            submit_req = requests.post(url=apiaddress, data=payload_json)
     except requests.exceptions.ConnectionError:
         show_error_notification(
             "SD Web API Failure",
@@ -10581,7 +10580,7 @@ class StoryChunkSchema(StoryNumsChunkSchema, KoboldSchema):
 class StorySchema(KoboldSchema):
     results: List[StoryChunkSchema] = fields.List(fields.Nested(StoryChunkSchema), required=True, metadata={"description": "Array of story actions. The array is sorted such that actions closer to the end of this array are closer to the end of the story."})
 
-class BasicBooleanSchema(KoboldSchema):
+class BasicBooleanResultSchema(KoboldSchema):
     result: bool = fields.Boolean(required=True)
 
 class StoryNumsSchema(KoboldSchema):
@@ -11269,7 +11268,7 @@ def get_story_nums_num(num: int):
           description: Successful request
           content:
             application/json:
-              schema: BasicBooleanSchema
+              schema: BasicBooleanResultSchema
     """
     if num == 0:
         return {"result": koboldai_vars.gamestarted}
@@ -11667,7 +11666,7 @@ def get_world_info_uids_uid(uid: int):
           description: Successful request
           content:
             application/json:
-              schema: BasicBooleanSchema
+              schema: BasicBooleanResultSchema
     """
     return {"result": uid in koboldai_vars.worldinfo_u and koboldai_vars.worldinfo_u[uid]["init"]}
 
@@ -11800,7 +11799,7 @@ def get_world_info_folders_none_uids_uid(uid: int):
           description: Successful request
           content:
             application/json:
-              schema: BasicBooleanSchema
+              schema: BasicBooleanResultSchema
     """
     return {"result": uid in koboldai_vars.worldinfo_u and koboldai_vars.worldinfo_u[uid]["folder"] is None and koboldai_vars.worldinfo_u[uid]["init"]}
 
@@ -11937,7 +11936,7 @@ def get_world_info_folders_folder_uid_uids_entry_uid(folder_uid: int, entry_uid:
           description: Successful request
           content:
             application/json:
-              schema: BasicBooleanSchema
+              schema: BasicBooleanResultSchema
     """
     return {"result": entry_uid in koboldai_vars.worldinfo_u and koboldai_vars.worldinfo_u[entry_uid]["folder"] == folder_uid and koboldai_vars.worldinfo_u[entry_uid]["init"]}
 
@@ -12466,7 +12465,7 @@ def get_world_info_uid_selective(uid: int):
           description: Successful request
           content:
             application/json:
-              schema: BasicBooleanSchema
+              schema: BasicBooleanResultSchema
         404:
           description: Not found
           content:
@@ -12558,7 +12557,7 @@ def get_world_info_uid_constant(uid: int):
           description: Successful request
           content:
             application/json:
-              schema: BasicBooleanSchema
+              schema: BasicBooleanResultSchema
         404:
           description: Not found
           content:

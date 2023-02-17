@@ -25,7 +25,7 @@ dependencies:
   - Pillow
   - psutil
   - pip:
-    - flask-cloudflared
+    - flask-cloudflared==0.0.10
     - flask-ngrok
     - flask-cors
     - lupa==1.10

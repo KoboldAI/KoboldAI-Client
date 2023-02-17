@@ -24,7 +24,7 @@ dependencies:
   - pip:
     - --extra-index-url https://download.pytorch.org/whl/rocm5.1.1
     - torch==1.12.1+rocm5.1.1
-    - flask-cloudflared
+    - flask-cloudflared==0.0.10
     - flask-ngrok
     - flask-cors
     - lupa==1.10

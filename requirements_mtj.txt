@@ -11,7 +11,7 @@ progressbar2
 git+https://github.com/VE-FORBRYDERNE/mesh-transformer-jax@ck
 flask
 Flask-SocketIO
-flask-cloudflared >= 0.0.5
+flask-cloudflared==0.0.10
 flask-ngrok
 flask-cors
 eventlet
@@ -22,7 +22,6 @@ bleach==4.1.0
 flask-session
 marshmallow>=3.13
 apispec-webframeworks
-safetensors
 loguru
 Pillow
 diffusers
