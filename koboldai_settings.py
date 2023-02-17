@@ -668,12 +668,6 @@ class model_settings(settings):
         self._tqdm        = tqdm.tqdm(total=self.genamt, file=self.ignore_tqdm())    # tqdm agent for generating tokens. This will allow us to calculate the remaining time
         self.tqdm_progress = 0     # TQDP progress
         self.tqdm_rem_time = 0     # tqdm calculated reemaining time
-        self.url         = "https://api.inferkit.com/v1/models/standard/generate" # InferKit API URL
-        self.oaiurl      = "" # OpenAI API URL
-        self.oaiengines  = "https://api.openai.com/v1/engines"
-        self.colaburl    = ""     # Ngrok url for Google Colab mode
-        self.apikey      = ""     # API key to use for InferKit API calls
-        self.oaiapikey   = ""     # API key to use for OpenAI API calls
         self.configname = None
         self.online_model = ''
         self.welcome_default = """<style>#welcome_container { display: block; } #welcome_text { display: flex; height: 100%; } .welcome_text { align-self: flex-end; }</style>
@@ -1176,7 +1170,12 @@ class user_settings(settings):
         self.screenshot_show_author_name = True
         self.screenshot_author_name = "Anonymous"
         self.screenshot_use_boring_colors = False
-        
+        self.oaiurl      = "" # OpenAI API URL
+        self.oaiengines  = "https://api.openai.com/v1/engines"
+        self.url         = "https://api.inferkit.com/v1/models/standard/generate" # InferKit API URL
+        self.colaburl    = ""     # Ngrok url for Google Colab mode
+        self.apikey      = ""     # API key to use for InferKit API calls
+        self.oaiapikey   = ""     # API key to use for OpenAI API calls
         
     def __setattr__(self, name, value):
         new_variable = name not in self.__dict__
