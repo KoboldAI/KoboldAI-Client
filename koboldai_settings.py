@@ -649,7 +649,7 @@ class model_settings(settings):
     no_save_variables = ['modelconfig', 'custmodpth', 'generated_tkns', 
                          'loaded_layers', 'total_layers', 'total_download_chunks', 'downloaded_chunks', 'presets', 'default_preset', 
                          'welcome', 'welcome_default', 'simple_randomness', 'simple_creativity', 'simple_repitition',
-                         'badwordsids', 'uid_presets', 'revision', 'model', 'model_type', 'lazy_load', 'fp32_model', 'modeldim', 'horde_wait_time', 'horde_queue_position', 'horde_queue_size', 'newlinemode', 'tqdm_progress', 'tqdm_rem_time', '_tqdm']
+                         'badwordsids', 'uid_presets', 'model', 'model_type', 'lazy_load', 'fp32_model', 'modeldim', 'horde_wait_time', 'horde_queue_position', 'horde_queue_size', 'newlinemode', 'tqdm_progress', 'tqdm_rem_time', '_tqdm']
     settings_name = "model"
     default_settings = {"rep_pen" : 1.1, "rep_pen_slope": 0.7, "rep_pen_range": 1024, "temp": 0.5, "top_p": 0.9, "top_k": 0, "top_a": 0.0, "tfs": 1.0, "typical": 1.0,
                         "sampler_order": [6,0,1,2,3,4,5]}
@@ -707,7 +707,6 @@ class model_settings(settings):
         self.sampler_order = [6, 0, 1, 2, 3, 4, 5]
         self.newlinemode = "n"
         self.lazy_load   = True # Whether or not to use torch_lazy_loader.py for transformers models in order to reduce CPU memory usage
-        self.revision    = None
         self.presets     = []   # Holder for presets
         self.selected_preset = ""
         self.uid_presets = []
@@ -1124,7 +1123,7 @@ class story_settings(settings):
                 
 class user_settings(settings):
     local_only_variables = ['importjs']
-    no_save_variables = ['importnum', 'importjs', 'loadselect', 'spselect', 'svowname', 'saveow', 'laststory', 'sid']
+    no_save_variables = ['importnum', 'importjs', 'loadselect', 'spselect', 'svowname', 'saveow', 'laststory', 'sid', "revision"]
     settings_name = "user"
     def __init__(self, socketio):
         self._socketio = socketio
@@ -1171,6 +1170,7 @@ class user_settings(settings):
         self.screenshot_author_name = "Anonymous"
         self.screenshot_use_boring_colors = False
         self.oaiurl      = "" # OpenAI API URL
+        self.revision    = None
         self.oaiengines  = "https://api.openai.com/v1/engines"
         self.url         = "https://api.inferkit.com/v1/models/standard/generate" # InferKit API URL
         self.colaburl    = ""     # Ngrok url for Google Colab mode
