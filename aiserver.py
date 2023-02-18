@@ -1792,7 +1792,6 @@ def get_layer_count(model, directory=""):
                 model_config = AutoConfig.from_pretrained(koboldai_vars.custmodpth.replace('/', '_'), revision=args.revision, cache_dir="cache")
             else:
                 model_config = AutoConfig.from_pretrained(model, revision=args.revision, cache_dir="cache")
-                model_config = AutoConfig.from_pretrained(model, revision=args.revision, cache_dir="cache")
         try:
             if ((utils.HAS_ACCELERATE and model_config.model_type != 'gpt2') or model_config.model_type in ("gpt_neo", "gptj", "xglm", "opt")) and not koboldai_vars.nobreakmodel:
                 return utils.num_layers(model_config)
@@ -3130,7 +3129,6 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
                                     tokenizer = GPT2Tokenizer.from_pretrained(koboldai_vars.custmodpth, revision=args.revision, cache_dir="cache")
                                 except Exception as e:
                                     tokenizer = GPT2Tokenizer.from_pretrained("gpt2", revision=args.revision, cache_dir="cache")
-                                    tokenizer = GPT2Tokenizer.from_pretrained("gpt2", revision=args.revision, cache_dir="cache")
                         try:
                             model     = AutoModelForCausalLM.from_pretrained(koboldai_vars.custmodpth, revision=args.revision, cache_dir="cache", **lowmem)
                         except Exception as e:
@@ -3147,7 +3145,6 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
                                 try:
                                     tokenizer = GPT2Tokenizer.from_pretrained("models/{}".format(koboldai_vars.model.replace('/', '_')), revision=args.revision, cache_dir="cache")
                                 except Exception as e:
-                                    tokenizer = GPT2Tokenizer.from_pretrained("gpt2", revision=args.revision, cache_dir="cache")
                                     tokenizer = GPT2Tokenizer.from_pretrained("gpt2", revision=args.revision, cache_dir="cache")
                         try:
                             model     = AutoModelForCausalLM.from_pretrained("models/{}".format(koboldai_vars.model.replace('/', '_')), revision=args.revision, cache_dir="cache", **lowmem)
@@ -3178,7 +3175,6 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
                                 try:
                                     tokenizer = GPT2Tokenizer.from_pretrained(koboldai_vars.model, revision=args.revision, cache_dir="cache")
                                 except Exception as e:
-                                    tokenizer = GPT2Tokenizer.from_pretrained("gpt2", revision=args.revision, cache_dir="cache")
                                     tokenizer = GPT2Tokenizer.from_pretrained("gpt2", revision=args.revision, cache_dir="cache")
                         try:
                             model     = AutoModelForCausalLM.from_pretrained(koboldai_vars.model, revision=args.revision, cache_dir="cache", **lowmem)
@@ -3263,7 +3259,6 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
         
         else:
             from transformers import GPT2Tokenizer
-            tokenizer = GPT2Tokenizer.from_pretrained("gpt2", revision=args.revision, cache_dir="cache")
             tokenizer = GPT2Tokenizer.from_pretrained("gpt2", revision=args.revision, cache_dir="cache")
     else:
         from transformers import PreTrainedModel
@@ -3678,7 +3673,6 @@ def lua_decode(tokens):
         from transformers import GPT2Tokenizer
         global tokenizer
         tokenizer = GPT2Tokenizer.from_pretrained("gpt2", revision=args.revision, cache_dir="cache")
-        tokenizer = GPT2Tokenizer.from_pretrained("gpt2", revision=args.revision, cache_dir="cache")
     return utils.decodenewlines(tokenizer.decode(tokens))
 
 #==================================================================#
@@ -3690,7 +3684,6 @@ def lua_encode(string):
     if("tokenizer" not in globals()):
         from transformers import GPT2Tokenizer
         global tokenizer
-        tokenizer = GPT2Tokenizer.from_pretrained("gpt2", revision=args.revision, cache_dir="cache")
         tokenizer = GPT2Tokenizer.from_pretrained("gpt2", revision=args.revision, cache_dir="cache")
     return tokenizer.encode(utils.encodenewlines(string), max_length=int(4e9), truncation=True)
 
@@ -4850,23 +4843,17 @@ def actionsubmit(data, actionmode=0, force_submit=False, force_prompt_gen=False,
                     if(os.path.isdir(tokenizer_id)):
                         try:
                             tokenizer = AutoTokenizer.from_pretrained(tokenizer_id, revision=args.revision, cache_dir="cache")
-                            tokenizer = AutoTokenizer.from_pretrained(tokenizer_id, revision=args.revision, cache_dir="cache")
                         except:
-                            tokenizer = AutoTokenizer.from_pretrained(tokenizer_id, revision=args.revision, cache_dir="cache", use_fast=False)
                             tokenizer = AutoTokenizer.from_pretrained(tokenizer_id, revision=args.revision, cache_dir="cache", use_fast=False)
                     elif(os.path.isdir("models/{}".format(tokenizer_id.replace('/', '_')))):
                         try:
                             tokenizer = AutoTokenizer.from_pretrained("models/{}".format(tokenizer_id.replace('/', '_')), revision=args.revision, cache_dir="cache")
-                            tokenizer = AutoTokenizer.from_pretrained("models/{}".format(tokenizer_id.replace('/', '_')), revision=args.revision, cache_dir="cache")
                         except:
-                            tokenizer = AutoTokenizer.from_pretrained("models/{}".format(tokenizer_id.replace('/', '_')), revision=args.revision, cache_dir="cache", use_fast=False)
                             tokenizer = AutoTokenizer.from_pretrained("models/{}".format(tokenizer_id.replace('/', '_')), revision=args.revision, cache_dir="cache", use_fast=False)
                     else:
                         try:
                             tokenizer = AutoTokenizer.from_pretrained(tokenizer_id, revision=args.revision, cache_dir="cache")
-                            tokenizer = AutoTokenizer.from_pretrained(tokenizer_id, revision=args.revision, cache_dir="cache")
                         except:
-                            tokenizer = AutoTokenizer.from_pretrained(tokenizer_id, revision=args.revision, cache_dir="cache", use_fast=False)
                             tokenizer = AutoTokenizer.from_pretrained(tokenizer_id, revision=args.revision, cache_dir="cache", use_fast=False)
                 except:
                     logger.warning(f"Unknown tokenizer {repr(tokenizer_id)}")
@@ -5242,7 +5229,6 @@ def calcsubmitbudget(actionlen, winfo, mem, anotetxt, actions, submission=None, 
     if("tokenizer" not in globals()):
         from transformers import GPT2Tokenizer
         global tokenizer
-        tokenizer = GPT2Tokenizer.from_pretrained("gpt2", revision=args.revision, cache_dir="cache")
         tokenizer = GPT2Tokenizer.from_pretrained("gpt2", revision=args.revision, cache_dir="cache")
 
     lnheader = len(tokenizer._koboldai_header)
