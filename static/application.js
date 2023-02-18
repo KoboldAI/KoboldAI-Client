@@ -946,7 +946,9 @@ function _dosubmit() {
 	submit_throttle = null;
 	input_text.val("");
 	hideMessage();
-	hidegenseqs();
+	if(!memorymode){
+		hidegenseqs();
+	}
 	socket.send({'cmd': 'submit', 'allowabort': !disallow_abort, 'actionmode': adventure ? action_mode : 0, 'chatname': chatmode ? chat_name.val() : undefined, 'data': txt});
 }
 
