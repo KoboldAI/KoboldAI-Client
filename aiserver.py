@@ -1337,6 +1337,8 @@ def processsettings(js):
         koboldai_vars.chatmode = js["chatmode"]
     if("chatname" in js):
         koboldai_vars.chatname = js["chatname"]
+    if("botname" in js):
+        koboldai_vars.botname = js["botname"]
     if("dynamicscan" in js):
         koboldai_vars.dynamicscan = js["dynamicscan"]
     if("nopromptgen" in js):
@@ -3858,6 +3860,7 @@ def lua_has_setting(setting):
         "useprompt",
         "chatmode",
         "chatname",
+        "botname",
         "adventure",
         "dynamicscan",
         "nopromptgen",
@@ -4174,6 +4177,7 @@ def do_connect():
         return
     logger.debug("{0}Client connected!{1}".format(colors.GREEN, colors.END))
     emit('from_server', {'cmd': 'setchatname', 'data': koboldai_vars.chatname}, room="UI_1")
+    emit('from_server', {'cmd': 'setbotname', 'data': koboldai_vars.botname}, room="UI_1")
     emit('from_server', {'cmd': 'setanotetemplate', 'data': koboldai_vars.authornotetemplate}, room="UI_1")
     emit('from_server', {'cmd': 'connected', 'smandelete': koboldai_vars.smandelete, 'smanrename': koboldai_vars.smanrename, 'modelname': getmodelname()}, room="UI_1")
     if(koboldai_vars.host):
@@ -4239,8 +4243,10 @@ def get_message(msg):
                 if(type(msg['chatname']) is not str):
                     raise ValueError("Chatname must be a string")
                 koboldai_vars.chatname = msg['chatname']
+                koboldai_vars.botname = msg['botname']
                 settingschanged()
                 emit('from_server', {'cmd': 'setchatname', 'data': koboldai_vars.chatname}, room="UI_1")
+                emit('from_server', {'cmd': 'setbotname', 'data': koboldai_vars.botname}, room="UI_1")
             koboldai_vars.recentrng = koboldai_vars.recentrngm = None
             actionsubmit(msg['data'], actionmode=msg['actionmode'])
         elif(koboldai_vars.mode == "edit"):
@@ -4258,8 +4264,10 @@ def get_message(msg):
             if(type(msg['chatname']) is not str):
                 raise ValueError("Chatname must be a string")
             koboldai_vars.chatname = msg['chatname']
+            koboldai_vars.botname = msg['botname']
             settingschanged()
             emit('from_server', {'cmd': 'setchatname', 'data': koboldai_vars.chatname}, room="UI_1")
+            emit('from_server', {'cmd': 'setbotname', 'data': koboldai_vars.botname}, room="UI_1")
         actionretry(msg['data'])
     # Back/Undo Action
     elif(msg['cmd'] == 'back'):
@@ -4875,9 +4883,13 @@ def actionsubmit(data, actionmode=0, force_submit=False, force_prompt_gen=False,
         
         # "Chat" mode
         if(koboldai_vars.chatmode and koboldai_vars.gamestarted):
+            if(koboldai_vars.botname):
+                botname = (koboldai_vars.botname + ":")
+            else:
+                botname = ""
             data = re.sub(r'\n+', ' ', data)
             if(len(data)):
-                data = f"\n{koboldai_vars.chatname}: {data}\n"
+                data = f"\n{koboldai_vars.chatname}: {data}\n{botname}"
         
         # If we're not continuing, store a copy of the raw input
         if(data != ""):

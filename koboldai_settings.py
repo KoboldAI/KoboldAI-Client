@@ -870,6 +870,7 @@ class story_settings(settings):
         self.useprompt   = False   # Whether to send the full prompt with every submit action
         self.chatmode    = False
         self.chatname    = "You"
+        self.botname    = "Bot"
         self.adventure   = False
         self.actionmode  = 0
         self.storymode   = 0

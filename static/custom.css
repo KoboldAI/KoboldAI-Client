@@ -79,6 +79,13 @@ body.connected #topmenu, #topmenu.always-available {
 	margin-left: 10px;
 }
 
+#botname {
+	background-color: #404040;
+	color: #ffffff;
+	width: 200px;
+	margin-left: 10px;
+}
+
 #menuitems {
 	display: flex;
 	width: 100%;
