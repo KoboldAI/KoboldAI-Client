@@ -7162,8 +7162,8 @@ def exitModes():
 #  Launch in-browser save prompt
 #==================================================================#
 def saveas(data):
-    
-    koboldai_vars.story_name = data['name']
+    name = data['name']
+    koboldai_vars.story_name = name
     if not data['pins']:
         koboldai_vars.actions.clear_all_options()
     # Check if filename exists already
