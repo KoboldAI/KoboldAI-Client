@@ -22,7 +22,7 @@ dependencies:
   - psutil
   - pip:
     - --extra-index-url https://download.pytorch.org/whl/rocm5.2
-    - torch==1.13.0+rocm5.2
+    - torch==1.13.1+rocm5.2
     - flask-cloudflared==0.0.10
     - flask-ngrok
     - lupa==1.10
