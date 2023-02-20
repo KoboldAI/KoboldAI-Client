@@ -1337,6 +1337,8 @@ def processsettings(js):
         koboldai_vars.chatmode = js["chatmode"]
     if("chatname" in js):
         koboldai_vars.chatname = js["chatname"]
+    if("botname" in js):
+        koboldai_vars.botname = js["botname"]
     if("dynamicscan" in js):
         koboldai_vars.dynamicscan = js["dynamicscan"]
     if("nopromptgen" in js):
@@ -1783,15 +1785,15 @@ def get_layer_count(model, directory=""):
                 model = directory
             from transformers import AutoConfig
             if(os.path.isdir(model.replace('/', '_'))):
-                model_config = AutoConfig.from_pretrained(model.replace('/', '_'), revision=args.revision, cache_dir="cache")
+                model_config = AutoConfig.from_pretrained(model.replace('/', '_'), revision=koboldai_vars.revision, cache_dir="cache")
             elif(is_model_downloaded(model)):
-                model_config = AutoConfig.from_pretrained("models/{}".format(model.replace('/', '_')), revision=args.revision, cache_dir="cache")
+                model_config = AutoConfig.from_pretrained("models/{}".format(model.replace('/', '_')), revision=koboldai_vars.revision, cache_dir="cache")
             elif(os.path.isdir(directory)):
-                model_config = AutoConfig.from_pretrained(directory, revision=args.revision, cache_dir="cache")
+                model_config = AutoConfig.from_pretrained(directory, revision=koboldai_vars.revision, cache_dir="cache")
             elif(os.path.isdir(koboldai_vars.custmodpth.replace('/', '_'))):
-                model_config = AutoConfig.from_pretrained(koboldai_vars.custmodpth.replace('/', '_'), revision=args.revision, cache_dir="cache")
+                model_config = AutoConfig.from_pretrained(koboldai_vars.custmodpth.replace('/', '_'), revision=koboldai_vars.revision, cache_dir="cache")
             else:
-                model_config = AutoConfig.from_pretrained(model, revision=args.revision, cache_dir="cache")
+                model_config = AutoConfig.from_pretrained(model, revision=koboldai_vars.revision, cache_dir="cache")
         try:
             if ((utils.HAS_ACCELERATE and model_config.model_type != 'gpt2') or model_config.model_type in ("gpt_neo", "gptj", "xglm", "opt")) and not koboldai_vars.nobreakmodel:
                 return utils.num_layers(model_config)
@@ -2764,19 +2766,19 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
         from transformers import AutoConfig
         if(os.path.isdir(koboldai_vars.custmodpth.replace('/', '_'))):
             try:
-                model_config = AutoConfig.from_pretrained(koboldai_vars.custmodpth.replace('/', '_'), revision=args.revision, cache_dir="cache")
+                model_config = AutoConfig.from_pretrained(koboldai_vars.custmodpth.replace('/', '_'), revision=koboldai_vars.revision, cache_dir="cache")
                 koboldai_vars.model_type = model_config.model_type
             except ValueError as e:
                 koboldai_vars.model_type = "not_found"
         elif(os.path.isdir("models/{}".format(koboldai_vars.custmodpth.replace('/', '_')))):
             try:
-                model_config = AutoConfig.from_pretrained("models/{}".format(koboldai_vars.custmodpth.replace('/', '_')), revision=args.revision, cache_dir="cache")
+                model_config = AutoConfig.from_pretrained("models/{}".format(koboldai_vars.custmodpth.replace('/', '_')), revision=koboldai_vars.revision, cache_dir="cache")
                 koboldai_vars.model_type = model_config.model_type
             except ValueError as e:
                 koboldai_vars.model_type = "not_found"
         else:
             try:
-                model_config = AutoConfig.from_pretrained(koboldai_vars.custmodpth, revision=args.revision, cache_dir="cache")
+                model_config = AutoConfig.from_pretrained(koboldai_vars.custmodpth, revision=koboldai_vars.revision, cache_dir="cache")
                 koboldai_vars.model_type = model_config.model_type
             except ValueError as e:
                 koboldai_vars.model_type = "not_found"
@@ -2876,7 +2878,7 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
         
         print(tokenizer_id, koboldai_vars.newlinemode)
 
-        tokenizer = AutoTokenizer.from_pretrained(tokenizer_id, revision=args.revision, cache_dir="cache")
+        tokenizer = AutoTokenizer.from_pretrained(tokenizer_id, revision=koboldai_vars.revision, cache_dir="cache")
 
         loadsettings()
         koboldai_vars.colaburl = url or koboldai_vars.colaburl
@@ -3061,19 +3063,19 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
                 with(maybe_use_float16()):
                     try:
                         if os.path.exists(koboldai_vars.custmodpth):
-                            model = GPT2LMHeadModel.from_pretrained(koboldai_vars.custmodpth, revision=args.revision, cache_dir="cache")
-                            tokenizer = GPT2Tokenizer.from_pretrained(koboldai_vars.custmodpth, revision=args.revision, cache_dir="cache")
+                            model = GPT2LMHeadModel.from_pretrained(koboldai_vars.custmodpth, revision=koboldai_vars.revision, cache_dir="cache")
+                            tokenizer = GPT2Tokenizer.from_pretrained(koboldai_vars.custmodpth, revision=koboldai_vars.revision, cache_dir="cache")
                         elif os.path.exists(os.path.join("models/", koboldai_vars.custmodpth)):
-                            model = GPT2LMHeadModel.from_pretrained(os.path.join("models/", koboldai_vars.custmodpth), revision=args.revision, cache_dir="cache")
-                            tokenizer = GPT2Tokenizer.from_pretrained(os.path.join("models/", koboldai_vars.custmodpth), revision=args.revision, cache_dir="cache")
+                            model = GPT2LMHeadModel.from_pretrained(os.path.join("models/", koboldai_vars.custmodpth), revision=koboldai_vars.revision, cache_dir="cache")
+                            tokenizer = GPT2Tokenizer.from_pretrained(os.path.join("models/", koboldai_vars.custmodpth), revision=koboldai_vars.revision, cache_dir="cache")
                         else:
-                            model = GPT2LMHeadModel.from_pretrained(koboldai_vars.custmodpth, revision=args.revision, cache_dir="cache")
-                            tokenizer = GPT2Tokenizer.from_pretrained(koboldai_vars.custmodpth, revision=args.revision, cache_dir="cache")
+                            model = GPT2LMHeadModel.from_pretrained(koboldai_vars.custmodpth, revision=koboldai_vars.revision, cache_dir="cache")
+                            tokenizer = GPT2Tokenizer.from_pretrained(koboldai_vars.custmodpth, revision=koboldai_vars.revision, cache_dir="cache")
                     except Exception as e:
                         if("out of memory" in traceback.format_exc().lower()):
                             raise RuntimeError("One of your GPUs ran out of memory when KoboldAI tried to load your model.")
                         raise e
-                tokenizer = GPT2Tokenizer.from_pretrained(koboldai_vars.custmodpth, revision=args.revision, cache_dir="cache")
+                tokenizer = GPT2Tokenizer.from_pretrained(koboldai_vars.custmodpth, revision=koboldai_vars.revision, cache_dir="cache")
                 model.save_pretrained("models/{}".format(koboldai_vars.model.replace('/', '_')), max_shard_size="500MiB")
                 tokenizer.save_pretrained("models/{}".format(koboldai_vars.model.replace('/', '_')))
                 koboldai_vars.modeldim = get_hidden_size_from_model(model)
@@ -3120,38 +3122,38 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
                         lowmem = {}
                     if(os.path.isdir(koboldai_vars.custmodpth)):
                         try:
-                            tokenizer = AutoTokenizer.from_pretrained(koboldai_vars.custmodpth, revision=args.revision, cache_dir="cache", use_fast=False)
+                            tokenizer = AutoTokenizer.from_pretrained(koboldai_vars.custmodpth, revision=koboldai_vars.revision, cache_dir="cache", use_fast=False)
                         except Exception as e:
                             try:
-                                tokenizer = AutoTokenizer.from_pretrained(koboldai_vars.custmodpth, revision=args.revision, cache_dir="cache")
+                                tokenizer = AutoTokenizer.from_pretrained(koboldai_vars.custmodpth, revision=koboldai_vars.revision, cache_dir="cache")
                             except Exception as e:
                                 try:
-                                    tokenizer = GPT2Tokenizer.from_pretrained(koboldai_vars.custmodpth, revision=args.revision, cache_dir="cache")
+                                    tokenizer = GPT2Tokenizer.from_pretrained(koboldai_vars.custmodpth, revision=koboldai_vars.revision, cache_dir="cache")
                                 except Exception as e:
-                                    tokenizer = GPT2Tokenizer.from_pretrained("gpt2", revision=args.revision, cache_dir="cache")
+                                    tokenizer = GPT2Tokenizer.from_pretrained("gpt2", revision=koboldai_vars.revision, cache_dir="cache")
                         try:
-                            model     = AutoModelForCausalLM.from_pretrained(koboldai_vars.custmodpth, revision=args.revision, cache_dir="cache", **lowmem)
+                            model     = AutoModelForCausalLM.from_pretrained(koboldai_vars.custmodpth, revision=koboldai_vars.revision, cache_dir="cache", **lowmem)
                         except Exception as e:
                             if("out of memory" in traceback.format_exc().lower()):
                                 raise RuntimeError("One of your GPUs ran out of memory when KoboldAI tried to load your model.")
-                            model     = GPTNeoForCausalLM.from_pretrained(koboldai_vars.custmodpth, revision=args.revision, cache_dir="cache", **lowmem)
+                            model     = GPTNeoForCausalLM.from_pretrained(koboldai_vars.custmodpth, revision=koboldai_vars.revision, cache_dir="cache", **lowmem)
                     elif(os.path.isdir("models/{}".format(koboldai_vars.model.replace('/', '_')))):
                         try:
-                            tokenizer = AutoTokenizer.from_pretrained("models/{}".format(koboldai_vars.model.replace('/', '_')), revision=args.revision, cache_dir="cache", use_fast=False)
+                            tokenizer = AutoTokenizer.from_pretrained("models/{}".format(koboldai_vars.model.replace('/', '_')), revision=koboldai_vars.revision, cache_dir="cache", use_fast=False)
                         except Exception as e:
                             try:
-                                tokenizer = AutoTokenizer.from_pretrained("models/{}".format(koboldai_vars.model.replace('/', '_')), revision=args.revision, cache_dir="cache")
+                                tokenizer = AutoTokenizer.from_pretrained("models/{}".format(koboldai_vars.model.replace('/', '_')), revision=koboldai_vars.revision, cache_dir="cache")
                             except Exception as e:
                                 try:
-                                    tokenizer = GPT2Tokenizer.from_pretrained("models/{}".format(koboldai_vars.model.replace('/', '_')), revision=args.revision, cache_dir="cache")
+                                    tokenizer = GPT2Tokenizer.from_pretrained("models/{}".format(koboldai_vars.model.replace('/', '_')), revision=koboldai_vars.revision, cache_dir="cache")
                                 except Exception as e:
-                                    tokenizer = GPT2Tokenizer.from_pretrained("gpt2", revision=args.revision, cache_dir="cache")
+                                    tokenizer = GPT2Tokenizer.from_pretrained("gpt2", revision=koboldai_vars.revision, cache_dir="cache")
                         try:
-                            model     = AutoModelForCausalLM.from_pretrained("models/{}".format(koboldai_vars.model.replace('/', '_')), revision=args.revision, cache_dir="cache", **lowmem)
+                            model     = AutoModelForCausalLM.from_pretrained("models/{}".format(koboldai_vars.model.replace('/', '_')), revision=koboldai_vars.revision, cache_dir="cache", **lowmem)
                         except Exception as e:
                             if("out of memory" in traceback.format_exc().lower()):
                                 raise RuntimeError("One of your GPUs ran out of memory when KoboldAI tried to load your model.")
-                            model     = GPTNeoForCausalLM.from_pretrained("models/{}".format(koboldai_vars.model.replace('/', '_')), revision=args.revision, cache_dir="cache", **lowmem)
+                            model     = GPTNeoForCausalLM.from_pretrained("models/{}".format(koboldai_vars.model.replace('/', '_')), revision=koboldai_vars.revision, cache_dir="cache", **lowmem)
                     else:
                         old_rebuild_tensor = torch._utils._rebuild_tensor
                         def new_rebuild_tensor(storage: Union[torch_lazy_loader.LazyTensor, torch.Storage], storage_offset, shape, stride):
@@ -3167,21 +3169,21 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
                         torch._utils._rebuild_tensor = new_rebuild_tensor
 
                         try:
-                            tokenizer = AutoTokenizer.from_pretrained(koboldai_vars.model, revision=args.revision, cache_dir="cache", use_fast=False)
+                            tokenizer = AutoTokenizer.from_pretrained(koboldai_vars.model, revision=koboldai_vars.revision, cache_dir="cache", use_fast=False)
                         except Exception as e:
                             try:
-                                tokenizer = AutoTokenizer.from_pretrained(koboldai_vars.model, revision=args.revision, cache_dir="cache")
+                                tokenizer = AutoTokenizer.from_pretrained(koboldai_vars.model, revision=koboldai_vars.revision, cache_dir="cache")
                             except Exception as e:
                                 try:
-                                    tokenizer = GPT2Tokenizer.from_pretrained(koboldai_vars.model, revision=args.revision, cache_dir="cache")
+                                    tokenizer = GPT2Tokenizer.from_pretrained(koboldai_vars.model, revision=koboldai_vars.revision, cache_dir="cache")
                                 except Exception as e:
-                                    tokenizer = GPT2Tokenizer.from_pretrained("gpt2", revision=args.revision, cache_dir="cache")
+                                    tokenizer = GPT2Tokenizer.from_pretrained("gpt2", revision=koboldai_vars.revision, cache_dir="cache")
                         try:
-                            model     = AutoModelForCausalLM.from_pretrained(koboldai_vars.model, revision=args.revision, cache_dir="cache", **lowmem)
+                            model     = AutoModelForCausalLM.from_pretrained(koboldai_vars.model, revision=koboldai_vars.revision, cache_dir="cache", **lowmem)
                         except Exception as e:
                             if("out of memory" in traceback.format_exc().lower()):
                                 raise RuntimeError("One of your GPUs ran out of memory when KoboldAI tried to load your model.")
-                            model     = GPTNeoForCausalLM.from_pretrained(koboldai_vars.model, revision=args.revision, cache_dir="cache", **lowmem)
+                            model     = GPTNeoForCausalLM.from_pretrained(koboldai_vars.model, revision=koboldai_vars.revision, cache_dir="cache", **lowmem)
 
                         torch._utils._rebuild_tensor = old_rebuild_tensor
 
@@ -3198,13 +3200,13 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
                                 import huggingface_hub
                                 legacy = packaging.version.parse(transformers_version) < packaging.version.parse("4.22.0.dev0")
                                 # Save the config.json
-                                shutil.move(os.path.realpath(huggingface_hub.hf_hub_download(koboldai_vars.model, transformers.configuration_utils.CONFIG_NAME, revision=args.revision, cache_dir="cache", local_files_only=True, legacy_cache_layout=legacy)), os.path.join("models/{}".format(koboldai_vars.model.replace('/', '_')), transformers.configuration_utils.CONFIG_NAME))
+                                shutil.move(os.path.realpath(huggingface_hub.hf_hub_download(koboldai_vars.model, transformers.configuration_utils.CONFIG_NAME, revision=koboldai_vars.revision, cache_dir="cache", local_files_only=True, legacy_cache_layout=legacy)), os.path.join("models/{}".format(koboldai_vars.model.replace('/', '_')), transformers.configuration_utils.CONFIG_NAME))
                                 if(utils.num_shards is None):
                                     # Save the pytorch_model.bin of an unsharded model
                                     try:
-                                        shutil.move(os.path.realpath(huggingface_hub.hf_hub_download(koboldai_vars.model, transformers.modeling_utils.WEIGHTS_NAME, revision=args.revision, cache_dir="cache", local_files_only=True, legacy_cache_layout=legacy)), os.path.join("models/{}".format(koboldai_vars.model.replace('/', '_')), transformers.modeling_utils.WEIGHTS_NAME))
+                                        shutil.move(os.path.realpath(huggingface_hub.hf_hub_download(koboldai_vars.model, transformers.modeling_utils.WEIGHTS_NAME, revision=koboldai_vars.revision, cache_dir="cache", local_files_only=True, legacy_cache_layout=legacy)), os.path.join("models/{}".format(koboldai_vars.model.replace('/', '_')), transformers.modeling_utils.WEIGHTS_NAME))
                                     except:
-                                        shutil.move(os.path.realpath(huggingface_hub.hf_hub_download(koboldai_vars.model,  "model.safetensors", revision=args.revision, cache_dir="cache", local_files_only=True, legacy_cache_layout=legacy)), os.path.join("models/{}".format(koboldai_vars.model.replace('/', '_')), "model.safetensors"))
+                                        shutil.move(os.path.realpath(huggingface_hub.hf_hub_download(koboldai_vars.model,  "model.safetensors", revision=koboldai_vars.revision, cache_dir="cache", local_files_only=True, legacy_cache_layout=legacy)), os.path.join("models/{}".format(koboldai_vars.model.replace('/', '_')), "model.safetensors"))
                                 else:
                                     with open(utils.from_pretrained_index_filename) as f:
                                         map_data = json.load(f)
@@ -3213,7 +3215,7 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
                                     shutil.move(os.path.realpath(utils.from_pretrained_index_filename), os.path.join("models/{}".format(koboldai_vars.model.replace('/', '_')), transformers.modeling_utils.WEIGHTS_INDEX_NAME))
                                     # Then save the pytorch_model-#####-of-#####.bin files
                                     for filename in filenames:
-                                        shutil.move(os.path.realpath(huggingface_hub.hf_hub_download(koboldai_vars.model, filename, revision=args.revision, cache_dir="cache", local_files_only=True, legacy_cache_layout=legacy)), os.path.join("models/{}".format(koboldai_vars.model.replace('/', '_')), filename))
+                                        shutil.move(os.path.realpath(huggingface_hub.hf_hub_download(koboldai_vars.model, filename, revision=koboldai_vars.revision, cache_dir="cache", local_files_only=True, legacy_cache_layout=legacy)), os.path.join("models/{}".format(koboldai_vars.model.replace('/', '_')), filename))
                             shutil.rmtree("cache/")
 
                 if(koboldai_vars.badwordsids is koboldai_settings.badwordsids_default and koboldai_vars.model_type not in ("gpt2", "gpt_neo", "gptj")):
@@ -3259,7 +3261,7 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
         
         else:
             from transformers import GPT2Tokenizer
-            tokenizer = GPT2Tokenizer.from_pretrained("gpt2", revision=args.revision, cache_dir="cache")
+            tokenizer = GPT2Tokenizer.from_pretrained("gpt2", revision=koboldai_vars.revision, cache_dir="cache")
     else:
         from transformers import PreTrainedModel
         from transformers import modeling_utils
@@ -3672,7 +3674,7 @@ def lua_decode(tokens):
     if("tokenizer" not in globals()):
         from transformers import GPT2Tokenizer
         global tokenizer
-        tokenizer = GPT2Tokenizer.from_pretrained("gpt2", revision=args.revision, cache_dir="cache")
+        tokenizer = GPT2Tokenizer.from_pretrained("gpt2", revision=koboldai_vars.revision, cache_dir="cache")
     return utils.decodenewlines(tokenizer.decode(tokens))
 
 #==================================================================#
@@ -3684,7 +3686,7 @@ def lua_encode(string):
     if("tokenizer" not in globals()):
         from transformers import GPT2Tokenizer
         global tokenizer
-        tokenizer = GPT2Tokenizer.from_pretrained("gpt2", revision=args.revision, cache_dir="cache")
+        tokenizer = GPT2Tokenizer.from_pretrained("gpt2", revision=koboldai_vars.revision, cache_dir="cache")
     return tokenizer.encode(utils.encodenewlines(string), max_length=int(4e9), truncation=True)
 
 #==================================================================#
@@ -3858,6 +3860,7 @@ def lua_has_setting(setting):
         "useprompt",
         "chatmode",
         "chatname",
+        "botname",
         "adventure",
         "dynamicscan",
         "nopromptgen",
@@ -4174,6 +4177,7 @@ def do_connect():
         return
     logger.debug("{0}Client connected!{1}".format(colors.GREEN, colors.END))
     emit('from_server', {'cmd': 'setchatname', 'data': koboldai_vars.chatname}, room="UI_1")
+    emit('from_server', {'cmd': 'setbotname', 'data': koboldai_vars.botname}, room="UI_1")
     emit('from_server', {'cmd': 'setanotetemplate', 'data': koboldai_vars.authornotetemplate}, room="UI_1")
     emit('from_server', {'cmd': 'connected', 'smandelete': koboldai_vars.smandelete, 'smanrename': koboldai_vars.smanrename, 'modelname': getmodelname()}, room="UI_1")
     if(koboldai_vars.host):
@@ -4239,8 +4243,10 @@ def get_message(msg):
                 if(type(msg['chatname']) is not str):
                     raise ValueError("Chatname must be a string")
                 koboldai_vars.chatname = msg['chatname']
+                koboldai_vars.botname = msg['botname']
                 settingschanged()
                 emit('from_server', {'cmd': 'setchatname', 'data': koboldai_vars.chatname}, room="UI_1")
+                emit('from_server', {'cmd': 'setbotname', 'data': koboldai_vars.botname}, room="UI_1")
             koboldai_vars.recentrng = koboldai_vars.recentrngm = None
             actionsubmit(msg['data'], actionmode=msg['actionmode'])
         elif(koboldai_vars.mode == "edit"):
@@ -4258,8 +4264,10 @@ def get_message(msg):
             if(type(msg['chatname']) is not str):
                 raise ValueError("Chatname must be a string")
             koboldai_vars.chatname = msg['chatname']
+            koboldai_vars.botname = msg['botname']
             settingschanged()
             emit('from_server', {'cmd': 'setchatname', 'data': koboldai_vars.chatname}, room="UI_1")
+            emit('from_server', {'cmd': 'setbotname', 'data': koboldai_vars.botname}, room="UI_1")
         actionretry(msg['data'])
     # Back/Undo Action
     elif(msg['cmd'] == 'back'):
@@ -4842,19 +4850,19 @@ def actionsubmit(data, actionmode=0, force_submit=False, force_prompt_gen=False,
                 try:
                     if(os.path.isdir(tokenizer_id)):
                         try:
-                            tokenizer = AutoTokenizer.from_pretrained(tokenizer_id, revision=args.revision, cache_dir="cache")
+                            tokenizer = AutoTokenizer.from_pretrained(tokenizer_id, revision=koboldai_vars.revision, cache_dir="cache")
                         except:
-                            tokenizer = AutoTokenizer.from_pretrained(tokenizer_id, revision=args.revision, cache_dir="cache", use_fast=False)
+                            tokenizer = AutoTokenizer.from_pretrained(tokenizer_id, revision=koboldai_vars.revision, cache_dir="cache", use_fast=False)
                     elif(os.path.isdir("models/{}".format(tokenizer_id.replace('/', '_')))):
                         try:
-                            tokenizer = AutoTokenizer.from_pretrained("models/{}".format(tokenizer_id.replace('/', '_')), revision=args.revision, cache_dir="cache")
+                            tokenizer = AutoTokenizer.from_pretrained("models/{}".format(tokenizer_id.replace('/', '_')), revision=koboldai_vars.revision, cache_dir="cache")
                         except:
-                            tokenizer = AutoTokenizer.from_pretrained("models/{}".format(tokenizer_id.replace('/', '_')), revision=args.revision, cache_dir="cache", use_fast=False)
+                            tokenizer = AutoTokenizer.from_pretrained("models/{}".format(tokenizer_id.replace('/', '_')), revision=koboldai_vars.revision, cache_dir="cache", use_fast=False)
                     else:
                         try:
-                            tokenizer = AutoTokenizer.from_pretrained(tokenizer_id, revision=args.revision, cache_dir="cache")
+                            tokenizer = AutoTokenizer.from_pretrained(tokenizer_id, revision=koboldai_vars.revision, cache_dir="cache")
                         except:
-                            tokenizer = AutoTokenizer.from_pretrained(tokenizer_id, revision=args.revision, cache_dir="cache", use_fast=False)
+                            tokenizer = AutoTokenizer.from_pretrained(tokenizer_id, revision=koboldai_vars.revision, cache_dir="cache", use_fast=False)
                 except:
                     logger.warning(f"Unknown tokenizer {repr(tokenizer_id)}")
                 koboldai_vars.api_tokenizer_id = tokenizer_id
@@ -4875,9 +4883,13 @@ def actionsubmit(data, actionmode=0, force_submit=False, force_prompt_gen=False,
         
         # "Chat" mode
         if(koboldai_vars.chatmode and koboldai_vars.gamestarted):
+            if(koboldai_vars.botname):
+                botname = (koboldai_vars.botname + ":")
+            else:
+                botname = ""
             data = re.sub(r'\n+', ' ', data)
             if(len(data)):
-                data = f"\n{koboldai_vars.chatname}: {data}\n"
+                data = f"\n{koboldai_vars.chatname}: {data}\n{botname}"
         
         # If we're not continuing, store a copy of the raw input
         if(data != ""):
@@ -5229,7 +5241,7 @@ def calcsubmitbudget(actionlen, winfo, mem, anotetxt, actions, submission=None, 
     if("tokenizer" not in globals()):
         from transformers import GPT2Tokenizer
         global tokenizer
-        tokenizer = GPT2Tokenizer.from_pretrained("gpt2", revision=args.revision, cache_dir="cache")
+        tokenizer = GPT2Tokenizer.from_pretrained("gpt2", revision=koboldai_vars.revision, cache_dir="cache")
 
     lnheader = len(tokenizer._koboldai_header)
 
@@ -7162,8 +7174,8 @@ def exitModes():
 #  Launch in-browser save prompt
 #==================================================================#
 def saveas(data):
-    
-    koboldai_vars.story_name = data['name']
+    name = data['name']
+    koboldai_vars.story_name = name
     if not data['pins']:
         koboldai_vars.actions.clear_all_options()
     # Check if filename exists already

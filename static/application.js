@@ -946,8 +946,10 @@ function _dosubmit() {
 	submit_throttle = null;
 	input_text.val("");
 	hideMessage();
-	hidegenseqs();
-	socket.send({'cmd': 'submit', 'allowabort': !disallow_abort, 'actionmode': adventure ? action_mode : 0, 'chatname': chatmode ? chat_name.val() : undefined, 'data': txt});
+	if(!memorymode){
+		hidegenseqs();
+	}
+	socket.send({'cmd': 'submit', 'allowabort': !disallow_abort, 'actionmode': adventure ? action_mode : 0, 'chatname': chatmode ? chat_name.val() : undefined, 'botname': chatmode ? bot_name.val() : undefined, 'data': txt});
 }
 
 function changemode() {
@@ -1490,8 +1492,10 @@ function setmodevisibility(state) {
 function setchatnamevisibility(state) {
 	if(state){  // Enabling
 		show([chat_name]);
+		show([bot_name]);
 	} else{  // Disabling
 		hide([chat_name]);
+		hide([bot_name]);
 	}
 }
 
@@ -2264,6 +2268,7 @@ $(document).ready(function(){
 	input_text        = $('#input_text');
 	message_text      = $('#messagefield');
 	chat_name         = $('#chatname');
+	bot_name          = $('#botname');
 	settings_menu     = $("#settingsmenu");
 	format_menu       = $('#formatmenu');
 	anote_menu        = $('#anoterowcontainer');
@@ -2867,6 +2872,8 @@ $(document).ready(function(){
 			hidegenseqs();
 		} else if(msg.cmd == "setchatname") {
 			chat_name.val(msg.data);
+		} else if(msg.cmd == "setbotname") {
+			bot_name.val(msg.data);
 		} else if(msg.cmd == "setlabelnumseq") {
 			// Update setting label with value from server
 			$("#setnumseqcur").val(msg.data);
@@ -3181,7 +3188,7 @@ $(document).ready(function(){
 	button_actretry.on("click", function(ev) {
 		beginStream();
 		hideMessage();
-		socket.send({'cmd': 'retry', 'chatname': chatmode ? chat_name.val() : undefined, 'data': ''});
+		socket.send({'cmd': 'retry', 'chatname': chatmode ? chat_name.val() : undefined, 'botname': chatmode ? bot_name.val() : undefined, 'data': ''});
 		hidegenseqs();
 	});
 	

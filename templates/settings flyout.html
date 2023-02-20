@@ -109,6 +109,20 @@
 				<span class="setting_minlabel"><span style="top: -4px; position: relative;"></span></span>
 				<span class="setting_maxlabel"><span style="top: -4px; position: relative;"></span></span>
 			</div>
+			<div class="setting_container chat_mode var_sync_alt_story_chatmode" ui_level=0>
+				<!---Top Row---->
+				<span class="setting_label">
+					<span style="white-space: pre-wrap;">Bot Name: </span>
+					<span class="helpicon material-icons-outlined" tooltip="The bot's name for chat mode.">help_icon</span>
+				</span>
+				<!---Bottom Row---->
+				<span class="setting_item" style="height: 25px;">
+					<input autocomplete="off" id="var_sync_story_botname" class="var_sync_story_botname settings_select" onchange="sync_to_server(this);">
+				</span>
+				<!---Slider Labels--->
+				<span class="setting_minlabel"><span style="top: -4px; position: relative;"></span></span>
+				<span class="setting_maxlabel"><span style="top: -4px; position: relative;"></span></span>
+			</div>
 		</div>
 		<span id="debug-dump" class="cursor" onclick="openPopup('debug-file-prompt');">Download debug dump</span>
 		<div id="Images">
