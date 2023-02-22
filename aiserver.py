@@ -7334,7 +7334,7 @@ def saveRequest(savpath, savepins=True):
 
         # Write it
         try:
-            file = open(savpath, "w")
+            file = open(savpath, "w", encoding="utf-8")
         except Exception as e:
             return e
         try:
@@ -7345,7 +7345,7 @@ def saveRequest(savpath, savepins=True):
         file.close()
         
         try:
-            file = open(txtpath, "w")
+            file = open(txtpath, "w", encoding="utf-8")
         except Exception as e:
             return e
         try:
@@ -7429,7 +7429,7 @@ def loadRequest(loadpath, filename=None):
     # Read file contents into JSON object
     start_time = time.time()
     if(isinstance(loadpath, str)):
-        with open(loadpath, "r") as file:
+        with open(loadpath, "r", encoding="utf-8") as file:
             js = json.load(file)
             from_file=loadpath
         if(filename is None):
