@@ -938,7 +938,7 @@ class story_settings(settings):
         while os.path.exists(self.save_paths.base):
             try:
                 # If the stories share a story id, overwrite the existing one.
-                with open(self.save_paths.story, "r") as file:
+                with open(self.save_paths.story, "r", encoding="utf-8") as file:
                     j = json.load(file)
                     if self.story_id == j["story_id"]:
                         break
@@ -960,7 +960,7 @@ class story_settings(settings):
         v2_path = os.path.join("stories", f"{self.story_name}_v2.json")
         if os.path.exists(v2_path):
             logger.info("Migrating v2 save")
-            with open(v2_path, "r") as file:
+            with open(v2_path, "r", encoding="utf-8") as file:
                 v2j = json.load(file)
             
             if v2j["story_id"] == self.story_id:
@@ -968,7 +968,7 @@ class story_settings(settings):
             else:
                 logger.warning(f"Story mismatch in v2 migration. Existing file had story id {v2j['story_id']} but we have {self.story_id}")
 
-        with open(self.save_paths.story, "w") as file:
+        with open(self.save_paths.story, "w", encoding="utf-8") as file:
             file.write(self.to_json())
         self.gamesaved = True
     

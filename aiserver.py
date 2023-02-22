@@ -7273,7 +7273,7 @@ def save():
     save_name = koboldai_vars.story_name if koboldai_vars.story_name != "" else "untitled"
     same_story = True
     if os.path.exists("stories/{}".format(save_name)):
-        with open("stories/{}/story.json".format(save_name), "r") as settings_file:
+        with open("stories/{}/story.json".format(save_name), "r", encoding="utf-8") as settings_file:
             json_data = json.load(settings_file)
             if 'story_id' in json_data:
                 same_story = json_data['story_id'] == koboldai_vars.story_id
