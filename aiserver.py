@@ -179,8 +179,11 @@ model_menu = {
         ],
     'chatlist': [
         ["Convo 6B (Chatbot)", "hitomi-team/convo-6B", "16GB", False],
+	["Pygmalion 6B (Chatbot)", "PygmalionAI/pygmalion-6b", "16GB", False],
         ["C1 6B (Chatbot)", "hakurei/c1-6B", "16GB", False],
+	["Pygmalion 2.7B (Chatbot)", "PygmalionAI/pygmalion-2.7b", "8GB", False],
         ["C1 1.3B (Chatbot)", "iokru/c1-1.3B", "6GB", False],
+	["Pygmalion 1.3B (Chatbot)", "PygmalionAI/pygmalion-1.3b", "6GB", False],
         ["Return to Main Menu", "mainmenu", "", True],
         ],
     'gptneolist': [
