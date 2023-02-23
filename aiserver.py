@@ -1511,7 +1511,7 @@ def get_model_info(model, directory=""):
         models_on_url = True
         url = True
         key = True
-        default_url = 'https://koboldai.net'
+        default_url = 'https://stablehorde.net'
         multi_online_models = True
         if path.exists(get_config_filename(model)):
             with open(get_config_filename(model), "r") as file:
@@ -5275,7 +5275,7 @@ def sendtocluster(txt, min, max):
     }    
     client_agent = "KoboldAI:1.19.3:(discord)Henky!!#2205"
     cluster_headers = {
-        'apikey': koboldai_vars.apikey,
+        'apikey': vars.apikey,
         "Client-Agent": client_agent
     }    
     logger.debug(f"Horde Payload: {cluster_metadata}")
@@ -5323,7 +5323,7 @@ def sendtocluster(txt, min, max):
 
     while not finished:
         try: 
-            req = requests.get(koboldai_vars.colaburl[:-8] + "/api/v2/generate/text/status/" + request_id, headers=cluster_agent_headers)
+            req = requests.get(vars.colaburl[:-8] + "/api/v2/generate/text/status/" + request_id, headers=cluster_agent_headers)
         except requests.exceptions.ConnectionError:
             errmsg = f"Horde unavailable. Please try again later"
             logger.error(errmsg)
