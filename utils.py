@@ -680,3 +680,67 @@ def getnewcontent(txt, tokenizer):
     newtokens = txttokens[dif:]
     
     return decodenewlines(tokenizer.decode(newtokens))
+
+#==================================================================#
+# Applies chosen formatting options to text returned from AI
+#==================================================================#
+def applyoutputformatting(txt, no_sentence_trimming=False, no_single_line=False):
+    #remove null ascii character (used to kill chat mode text in multi-generation)
+    txt = txt.replace(chr(0), "")
+    if len(txt) == 0:
+        return txt
+    
+    # Handle <|endoftext|> for models that want this
+    # In the future it would be nice if we could extend this to all EOS models.
+    # However, since EOS detection may have unforseen consequences for now we hardcode <|endoftext|> until more can be tested
+    # - Henk
+    eotregex = re.compile(r'<\|endoftext\|>[.|\n|\W|\w]*')
+    txt = eotregex.sub('', txt)
+
+    # Cleanup stray </s>
+    txt = txt.replace("</s>", "")
+
+    # Use standard quotes and apostrophes
+    txt = fixquotes(txt)
+
+    # Adventure mode clipping of all characters after '>'
+    if(koboldai_vars.adventure):
+        txt = koboldai_vars.acregex_ai.sub('', txt)
+    
+    # Trim incomplete sentences
+    if(koboldai_vars.frmttriminc and not koboldai_vars.chatmode and not no_sentence_trimming):
+        txt = trimincompletesentence(txt)
+
+    # Replace blank lines
+    if(koboldai_vars.frmtrmblln or koboldai_vars.chatmode):
+        txt = replaceblanklines(txt)
+
+    # trim off starting new lines in replies if we're in chat mode
+    if koboldai_vars.chatmode and txt[0] == "\n":
+        txt = txt[1:]
+
+    # Remove special characters
+    if(koboldai_vars.frmtrmspch):
+        txt = removespecialchars(txt, koboldai_vars)
+
+	# Single Line Mode
+    if(koboldai_vars.singleline and not no_single_line):
+        txt = singlelineprocessing(txt, koboldai_vars)
+
+ 	# Chat Mode Trimming
+    if(koboldai_vars.chatmode):
+        txt = chatmodeprocessing(txt, koboldai_vars)   
+
+    for sub in koboldai_vars.substitutions:
+        if not sub["enabled"]:
+            continue
+        i = 0
+        while sub["trueTarget"] in txt or sub["target"] in txt:
+            i += 1
+            if i > 1000:
+                print("[substitutions] Infinite recursion :^(")
+                break
+            txt = txt.replace(sub["trueTarget"], sub["substitution"])
+            txt = txt.replace(sub["target"], sub["substitution"])
+    
+    return txt

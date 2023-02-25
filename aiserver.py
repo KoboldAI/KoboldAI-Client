@@ -79,8 +79,6 @@ try:
 except:
     pass
 
-from transformers import GenerationMixin
-
 # Text2img
 import base64
 from PIL import Image
@@ -538,7 +536,7 @@ utils.koboldai_vars = koboldai_vars
 utils.socketio = socketio
 
 # HACK: Weird import position to steal koboldai_vars from utils
-from model import GenericHFTorchInferenceModel, CustomGPT2HFTorchInferenceModel, HFMTJInferenceModel, patch_transformers
+from model import APIInferenceModel, GenericHFTorchInferenceModel, CustomGPT2HFTorchInferenceModel, HFMTJInferenceModel, HordeInferenceModel, OpenAIAPIInferenceModel, patch_transformers
 
 old_socketio_on = socketio.on
 def new_socketio_on(*a, **k):
@@ -1870,85 +1868,66 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
         koboldai_vars.noai = True
 
     # Start transformers and create pipeline
-    if koboldai_vars.model.startswith("RWKV"):
-        _, model_class, device = koboldai_vars.model.split("-")
-        model, tokenizer = rwkv_init(
-            model_class=model_class,
-            use_gpu=(device == "GPU")
-        )
+    # if koboldai_vars.model.startswith("RWKV"):
+    #     _, model_class, device = koboldai_vars.model.split("-")
+    #     model, tokenizer = rwkv_init(
+    #         model_class=model_class,
+    #         use_gpu=(device == "GPU")
+    #     )
 
-        global breakmodel
-        import breakmodel
+    #     global breakmodel
+    #     import breakmodel
+
+    # TODO: InferKit
+    if koboldai_vars.model == "ReadOnly":
+        print(":P")
     elif koboldai_vars.model in ["Colab", "API", "CLUSTER", "OAI"]:
-        # If we're running Colab or OAI, we still need a tokenizer.
-        if koboldai_vars.model == "API":
-            tokenizer_id = requests.get(
-                koboldai_vars.colaburl[:-8] + "/api/v1/model",
-            ).json()["result"]
-        
-        
-        koboldai_vars.newlinemode = "n"
-        if "xglm" in tokenizer_id:
-            # Default to </s> newline mode if using XGLM
-            koboldai_vars.newlinemode = "s"
-        if "opt" in tokenizer_id or "bloom" in tokenizer_id:
-            # Handle </s> but don't convert newlines if using Fairseq models that have newlines trained in them
-            koboldai_vars.newlinemode = "ns"
-        
-        print(tokenizer_id, koboldai_vars.newlinemode)
-
-        tokenizer = AutoTokenizer.from_pretrained(tokenizer_id, revision=koboldai_vars.revision, cache_dir="cache")
+        if koboldai_vars.model == "Colab":
+            model = APIInferenceModel()
+        elif koboldai_vars.model == "API":
+            model = APIInferenceModel()
+        elif koboldai_vars.model == "CLUSTER":
+            model = HordeInferenceModel()
+        elif koboldai_vars.model == "OAI":
+            model = OpenAIAPIInferenceModel()
 
         loadsettings()
         koboldai_vars.colaburl = url or koboldai_vars.colaburl
         koboldai_vars.usegpu = False
         koboldai_vars.breakmodel = False
-    elif (not koboldai_vars.use_colab_tpu and koboldai_vars.model not in ["InferKit", "Colab", "API", "CLUSTER", "OAI", "GooseAI" , "ReadOnly", "TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX"]):
-        if(not koboldai_vars.noai):
-            logger.init("Transformers", status='Starting')
-            for m in ("GPTJModel", "XGLMModel"):
-                try:
-                    globals()[m] = getattr(__import__("transformers"), m)
-                except:
-                    pass
+    elif not koboldai_vars.use_colab_tpu and not koboldai_vars.noai:
+        # HF Torch
+        logger.init("Transformers", status='Starting')
+        for m in ("GPTJModel", "XGLMModel"):
+            try:
+                globals()[m] = getattr(__import__("transformers"), m)
+            except:
+                pass
 
-            if koboldai_vars.model_type == "gpt2":
-                model = CustomGPT2HFTorchInferenceModel(
-                    koboldai_vars.model,
-                    low_mem=args.lowmem
-                )
-                model._load(
-                    save_model=not (args.colab or args.cacheonly) or args.savemodel
-                )
-            else:
-                model = GenericHFTorchInferenceModel(
-                    koboldai_vars.model,
-                    lazy_load=koboldai_vars.lazy_load,
-                    low_mem=args.lowmem
-                )
-                model._load(
-                    save_model=not (args.colab or args.cacheonly) or args.savemodel
-                )
-            
-            # TODO: Convert everywhere to use model.tokenizer
-            tokenizer = model.tokenizer
-            print("Cool")
-            # Use the Generic implementation
-            # END
-
-            # Suppress Author's Note by flagging square brackets (Old implementation)
-            #vocab         = tokenizer.get_vocab()
-            #vocab_keys    = vocab.keys()
-            #koboldai_vars.badwords = gettokenids("[")
-            #for key in koboldai_vars.badwords:
-            #    koboldai_vars.badwordsids.append([vocab[key]])
-            
-            logger.info(f"Pipeline created: {koboldai_vars.model}")
-        
+        if koboldai_vars.model_type == "gpt2":
+            model = CustomGPT2HFTorchInferenceModel(
+                koboldai_vars.model,
+                low_mem=args.lowmem
+            )
+            model.load(
+                save_model=not (args.colab or args.cacheonly) or args.savemodel
+            )
         else:
-            from transformers import GPT2Tokenizer
-            tokenizer = GPT2Tokenizer.from_pretrained("gpt2", revision=koboldai_vars.revision, cache_dir="cache")
+            model = GenericHFTorchInferenceModel(
+                koboldai_vars.model,
+                lazy_load=koboldai_vars.lazy_load,
+                low_mem=args.lowmem
+            )
+            model.load(
+                save_model=not (args.colab or args.cacheonly) or args.savemodel
+            )
+        
+        # TODO: Convert everywhere to use model.tokenizer
+        tokenizer = model.tokenizer
+        logger.info(f"Pipeline created: {koboldai_vars.model}")
     else:
+        # TPU
+        raise NotImplementedError
         from transformers import PreTrainedModel
         from transformers import modeling_utils
         old_from_pretrained = PreTrainedModel.from_pretrained.__func__
@@ -2148,17 +2127,17 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
     to_use = OrderedDict()
     
     to_use["Recommended"] = {
-                                "Official": [presets[x] for x in presets if presets[x]['Match'] == "Recommended" and presets[x]['Preset Category'] == "Official"], 
-                                "Custom": [presets[x] for x in presets if presets[x]['Match'] == "Recommended" and presets[x]['Preset Category'] == "Custom"], 
-                            }
+        "Official": [presets[x] for x in presets if presets[x]['Match'] == "Recommended" and presets[x]['Preset Category'] == "Official"], 
+        "Custom": [presets[x] for x in presets if presets[x]['Match'] == "Recommended" and presets[x]['Preset Category'] == "Custom"], 
+    }
     to_use["Same Class"] = {
-                                "Official": [presets[x] for x in presets if presets[x]['Match'] == "Same Class" and presets[x]['Preset Category'] == "Official"], 
-                                "Custom": [presets[x] for x in presets if presets[x]['Match'] == "Same Class" and presets[x]['Preset Category'] == "Custom"], 
-                            }
+        "Official": [presets[x] for x in presets if presets[x]['Match'] == "Same Class" and presets[x]['Preset Category'] == "Official"], 
+        "Custom": [presets[x] for x in presets if presets[x]['Match'] == "Same Class" and presets[x]['Preset Category'] == "Custom"], 
+    }
     to_use["Other"] = {
-                                "Official": [presets[x] for x in presets if presets[x]['Match'] == "Other" and presets[x]['Preset Category'] == "Official"], 
-                                "Custom": [presets[x] for x in presets if presets[x]['Match'] == "Other" and presets[x]['Preset Category'] == "Custom"], 
-                            }
+    "Official": [presets[x] for x in presets if presets[x]['Match'] == "Other" and presets[x]['Preset Category'] == "Official"], 
+    "Custom": [presets[x] for x in presets if presets[x]['Match'] == "Other" and presets[x]['Preset Category'] == "Custom"], 
+    }
     koboldai_vars.presets = to_use
 
     
@@ -3623,7 +3602,7 @@ def actionsubmit(data, actionmode=0, force_submit=False, force_prompt_gen=False,
                 for i in range(koboldai_vars.numseqs):
                     genout.append({"generated_text": koboldai_vars.lua_koboldbridge.outputs[i+1]})
                     assert type(genout[-1]["generated_text"]) is str
-                koboldai_vars.actions.append_options([applyoutputformatting(x["generated_text"]) for x in genout])
+                koboldai_vars.actions.append_options([utils.applyoutputformatting(x["generated_text"]) for x in genout])
                 genout = [{"generated_text": x['text']} for x in koboldai_vars.actions.get_current_options()]
                 if(len(genout) == 1):
                     genresult(genout[0]["generated_text"], flash=False)
@@ -3687,7 +3666,7 @@ def actionsubmit(data, actionmode=0, force_submit=False, force_prompt_gen=False,
                 for i in range(koboldai_vars.numseqs):
                     genout.append({"generated_text": koboldai_vars.lua_koboldbridge.outputs[i+1] if not no_generate else ""})
                     assert type(genout[-1]["generated_text"]) is str
-                koboldai_vars.actions.append_options([applyoutputformatting(x["generated_text"]) for x in genout])
+                koboldai_vars.actions.append_options([utils.applyoutputformatting(x["generated_text"]) for x in genout])
                 genout = [{"generated_text": x['text']} for x in koboldai_vars.actions.get_current_options()]
                 if(len(genout) == 1):
                     genresult(genout[0]["generated_text"])
@@ -3723,7 +3702,7 @@ def apiactionsubmit_generate(txt, minimum, maximum):
     # Submit input text to generator
     _genout, already_generated = tpool.execute(model.core_generate, txt, minimum, maximum, set())
 
-    genout = [applyoutputformatting(utils.decodenewlines(tokenizer.decode(tokens[-already_generated:]))) for tokens in _genout]
+    genout = [utils.applyoutputformatting(utils.decodenewlines(tokenizer.decode(tokens[-already_generated:]))) for tokens in _genout]
 
     # Clear CUDA cache again if using GPU
     if(koboldai_vars.hascuda and (koboldai_vars.usegpu or koboldai_vars.breakmodel)):
@@ -3765,7 +3744,7 @@ def apiactionsubmit_tpumtjgenerate(txt, minimum, maximum):
         soft_tokens=soft_tokens,
         sampler_order=koboldai_vars.sampler_order,
     )
-    genout = [applyoutputformatting(utils.decodenewlines(tokenizer.decode(txt))) for txt in genout]
+    genout = [utils.applyoutputformatting(utils.decodenewlines(tokenizer.decode(txt))) for txt in genout]
 
     return genout
 
@@ -4198,7 +4177,7 @@ def generate(txt, minimum, maximum, found_entries=None):
     if(len(genout) == 1):
         genresult(genout[0]["generated_text"])
     else:
-        koboldai_vars.actions.append_options([applyoutputformatting(x["generated_text"]) for x in genout])
+        koboldai_vars.actions.append_options([utils.applyoutputformatting(x["generated_text"]) for x in genout])
         genout = [{"generated_text": x['text']} for x in koboldai_vars.actions.get_current_options()]
         if(koboldai_vars.lua_koboldbridge.restart_sequence is not None and koboldai_vars.lua_koboldbridge.restart_sequence > 0):
             genresult(genout[koboldai_vars.lua_koboldbridge.restart_sequence-1]["generated_text"])
@@ -4221,7 +4200,7 @@ def generate(txt, minimum, maximum, found_entries=None):
 def genresult(genout, flash=True, ignore_formatting=False):
     # Format output before continuing
     if not ignore_formatting:
-        genout = applyoutputformatting(genout)
+        genout = utils.applyoutputformatting(genout)
 
     if not koboldai_vars.quiet:
         logger.generation(genout.encode("unicode_escape").decode("utf-8"))
@@ -4248,7 +4227,7 @@ def genselect(genout):
     i = 0
     for result in genout:
         # Apply output formatting rules to sequences
-        result["generated_text"] = applyoutputformatting(result["generated_text"])
+        result["generated_text"] = utils.applyoutputformatting(result["generated_text"])
         if not koboldai_vars.quiet:
             logger.info(f"Generation Result {i}")
             logger.generation(result["generated_text"].encode("unicode_escape").decode("utf-8"))
@@ -4324,64 +4303,6 @@ def applyinputformatting(txt):
     if(koboldai_vars.frmtadsnsp and not koboldai_vars.chatmode):
         txt = utils.addsentencespacing(txt, koboldai_vars)
  
-    return txt
-
-#==================================================================#
-# Applies chosen formatting options to text returned from AI
-#==================================================================#
-def applyoutputformatting(txt, no_sentence_trimming=False, no_single_line=False):
-    #remove null ascii character (used to kill chat mode text in multi-generation)
-    txt = txt.replace(chr(0), "")
-    if len(txt) == 0:
-        return txt
-    
-    # Handle <|endoftext|> for models that want this
-    # In the future it would be nice if we could extend this to all EOS models.
-    # However, since EOS detection may have unforseen consequences for now we hardcode <|endoftext|> until more can be tested
-    # - Henk
-    eotregex = re.compile(r'<\|endoftext\|>[.|\n|\W|\w]*')
-    txt = eotregex.sub('', txt)
-
-    # Cleanup stray </s>
-    txt = txt.replace("</s>", "")
-
-    # Use standard quotes and apostrophes
-    txt = utils.fixquotes(txt)
-
-    # Adventure mode clipping of all characters after '>'
-    if(koboldai_vars.adventure):
-        txt = koboldai_vars.acregex_ai.sub('', txt)
-    
-    # Trim incomplete sentences
-    if(koboldai_vars.frmttriminc and not koboldai_vars.chatmode and not no_sentence_trimming):
-        txt = utils.trimincompletesentence(txt)
-    # Replace blank lines
-    if(koboldai_vars.frmtrmblln or koboldai_vars.chatmode):
-        txt = utils.replaceblanklines(txt)
-    # trim off starting new lines in replies if we're in chat mode
-    if koboldai_vars.chatmode and txt[0] == "\n":
-        txt = txt[1:]
-    # Remove special characters
-    if(koboldai_vars.frmtrmspch):
-        txt = utils.removespecialchars(txt, koboldai_vars)
-	# Single Line Mode
-    if(koboldai_vars.singleline and not no_single_line):
-        txt = utils.singlelineprocessing(txt, koboldai_vars)
- 	# Chat Mode Trimming
-    if(koboldai_vars.chatmode):
-        txt = utils.chatmodeprocessing(txt, koboldai_vars)   
-    for sub in koboldai_vars.substitutions:
-        if not sub["enabled"]:
-            continue
-        i = 0
-        while sub["trueTarget"] in txt or sub["target"] in txt:
-            i += 1
-            if i > 1000:
-                logger.error("[substitutions] Infinite recursion :^(")
-                break
-            txt = txt.replace(sub["trueTarget"], sub["substitution"])
-            txt = txt.replace(sub["target"], sub["substitution"])
-    
     return txt
 
 #==================================================================#

@@ -94,6 +94,114 @@ class GenerationSettings:
             )
 
 
+class Stoppers:
+    @staticmethod
+    def core_stopper(
+        model: InferenceModel,
+        input_ids: torch.LongTensor,
+    ) -> bool:
+        if not utils.koboldai_vars.inference_config.do_core:
+            return False
+
+        utils.koboldai_vars.generated_tkns += 1
+
+        if (
+            not utils.koboldai_vars.standalone
+            and utils.koboldai_vars.lua_koboldbridge.generated_cols
+            and utils.koboldai_vars.generated_tkns
+            != utils.koboldai_vars.lua_koboldbridge.generated_cols
+        ):
+            raise RuntimeError(
+                f"Inconsistency detected between KoboldAI Python and Lua backends ({utils.koboldai_vars.generated_tkns} != {utils.koboldai_vars.lua_koboldbridge.generated_cols})"
+            )
+
+        if utils.koboldai_vars.abort or (
+            utils.koboldai_vars.inference_config.stop_at_genamt
+            and utils.koboldai_vars.generated_tkns >= utils.koboldai_vars.genamt
+        ):
+            utils.koboldai_vars.abort = False
+            model.gen_state["regeneration_required"] = False
+            model.gen_state["halt"] = False
+            return True
+
+        if utils.koboldai_vars.standalone:
+            return False
+
+        assert input_ids.ndim == 2
+
+        model.gen_state[
+            "regeneration_required"
+        ] = utils.koboldai_vars.lua_koboldbridge.regeneration_required
+        model.gen_state["halt"] = not utils.koboldai_vars.lua_koboldbridge.generating
+        utils.koboldai_vars.lua_koboldbridge.regeneration_required = False
+
+        for i in (
+            range(utils.koboldai_vars.numseqs)
+            if not utils.koboldai_vars.alt_multi_gen
+            else range(1)
+        ):
+            utils.koboldai_vars.lua_koboldbridge.generated[i + 1][
+                utils.koboldai_vars.generated_tkns
+            ] = int(input_ids[i, -1].item())
+
+        return model.gen_state["regeneration_required"] or model.gen_state["halt"]
+
+    @staticmethod
+    def wi_scanner(
+        model: InferenceModel,
+        input_ids: torch.LongTensor,
+    ) -> bool:
+        return False
+
+    @staticmethod
+    def chat_mode_stopper(
+        model: InferenceModel,
+        input_ids: torch.LongTensor,
+    ) -> bool:
+        if not utils.koboldai_vars.chatmode:
+            return False
+
+        data = [model.tokenizer.decode(x) for x in input_ids]
+        # null_character = model.tokenizer.encode(chr(0))[0]
+        if "completed" not in model.gen_state:
+            model.gen_state["completed"] = [False] * len(input_ids)
+
+        for i in range(len(input_ids)):
+            if (
+                data[i][-1 * (len(utils.koboldai_vars.chatname) + 1) :]
+                == utils.koboldai_vars.chatname + ":"
+            ):
+                model.gen_state["completed"][i] = True
+        if all(model.gen_state["completed"]):
+            utils.koboldai_vars.generated_tkns = utils.koboldai_vars.genamt
+            del model.gen_state["completed"]
+            return True
+        return False
+
+
+class PostTokenHooks:
+    @staticmethod
+    def stream_tokens(
+        model: InferenceModel,
+        input_ids: torch.LongTensor,
+    ) -> None:
+        if not model.gen_state["do_streaming"]:
+            return
+
+        if not utils.koboldai_vars.output_streaming:
+            return
+
+        data = [
+            utils.applyoutputformatting(
+                utils.decodenewlines(model.tokenizer.decode(x[-1])),
+                no_sentence_trimming=True,
+                no_single_line=True,
+            )
+            for x in input_ids
+        ]
+        utils.koboldai_vars.actions.stream_tokens(data)
+
+
 # We only want to use logit manipulations and such on our core text model
 class use_core_manipulations:
     # These must be set by wherever they get setup
@@ -446,7 +554,9 @@ def patch_transformers():
 
             scores_shape = scores.shape
             scores_list = scores.tolist()
-            utils.koboldai_vars.lua_koboldbridge.logits = utils.koboldai_vars.lua_state.table()
+            utils.koboldai_vars.lua_koboldbridge.logits = (
+                utils.koboldai_vars.lua_state.table()
+            )
             for r, row in enumerate(scores_list):
                 utils.koboldai_vars.lua_koboldbridge.logits[
                     r + 1
@@ -479,7 +589,10 @@ def patch_transformers():
             return scores
 
         option_offset = 0
-        if utils.koboldai_vars.actions.action_count + 1 in utils.koboldai_vars.actions.actions:
+        if (
+            utils.koboldai_vars.actions.action_count + 1
+            in utils.koboldai_vars.actions.actions
+        ):
             for x in range(
                 len(
                     utils.koboldai_vars.actions.actions[
@@ -580,7 +693,9 @@ def patch_transformers():
         kwargs["logits_warper"] = new_get_logits_warper(
             beams=1,
         )
-        if (utils.koboldai_vars.newlinemode == "s") or (utils.koboldai_vars.newlinemode == "ns"):
+        if (utils.koboldai_vars.newlinemode == "s") or (
+            utils.koboldai_vars.newlinemode == "ns"
+        ):
             kwargs["eos_token_id"] = -1
             kwargs.setdefault("pad_token_id", 2)
         return new_sample.old_sample(self, *args, **kwargs)
@@ -598,125 +713,6 @@ def patch_transformers():
         transformers.generation.logits_process.NoBadWordsLogitsProcessor.__init__
     )
     transformers.generation.logits_process.NoBadWordsLogitsProcessor.__init__ = new_init
-
-    class TokenStreamer(StoppingCriteria):
-        # A StoppingCriteria is used here because it seems to run after
-        # everything has been evaluated score-wise.
-        def __init__(self, tokenizer):
-            self.tokenizer = tokenizer
-
-        def __call__(
-            self,
-            input_ids: torch.LongTensor,
-            scores: torch.FloatTensor,
-            **kwargs,
-        ) -> bool:
-            if not utils.koboldai_vars.inference_config.do_streaming:
-                return False
-
-            if not utils.koboldai_vars.output_streaming:
-                return False
-
-            data = [
-                applyoutputformatting(
-                    utils.decodenewlines(tokenizer.decode(x[-1])),
-                    no_sentence_trimming=True,
-                    no_single_line=True,
-                )
-                for x in input_ids
-            ]
-            utils.koboldai_vars.actions.stream_tokens(data)
-            return False
-
-    class ChatModeStopper(StoppingCriteria):
-        # A StoppingCriteria is used here because it seems to run after
-        # everything has been evaluated score-wise.
-        def __init__(self, tokenizer):
-            self.tokenizer = tokenizer
-
-        def __call__(
-            self,
-            input_ids: torch.LongTensor,
-            scores: torch.FloatTensor,
-            **kwargs,
-        ) -> bool:
-
-            if not utils.koboldai_vars.chatmode:
-                return False
-
-            data = [tokenizer.decode(x) for x in input_ids]
-            null_character = tokenizer.encode(chr(0))[0]
-            if "completed" not in self.__dict__:
-                self.completed = [False] * len(input_ids)
-            for i in range(len(input_ids)):
-                if (
-                    data[i][-1 * (len(utils.koboldai_vars.chatname) + 1) :]
-                    == utils.koboldai_vars.chatname + ":"
-                ):
-                    self.completed[i] = True
-            if all(self.completed):
-                utils.koboldai_vars.generated_tkns = utils.koboldai_vars.genamt
-                del self.completed
-                return True
-            return False
-
-    class CoreStopper(StoppingCriteria):
-        # Controls core generation stuff; aborting, counting generated tokens, etc
-        def __init__(self):
-            self.regeneration_required = False
-            self.halt = False
-
-        def __call__(
-            self,
-            input_ids: torch.LongTensor,
-            scores: torch.FloatTensor,
-            **kwargs,
-        ) -> bool:
-            if not utils.koboldai_vars.inference_config.do_core:
-                return False
-
-            utils.koboldai_vars.generated_tkns += 1
-
-            if (
-                not utils.koboldai_vars.standalone
-                and utils.koboldai_vars.lua_koboldbridge.generated_cols
-                and utils.koboldai_vars.generated_tkns
-                != utils.koboldai_vars.lua_koboldbridge.generated_cols
-            ):
-                raise RuntimeError(
-                    f"Inconsistency detected between KoboldAI Python and Lua backends ({utils.koboldai_vars.generated_tkns} != {utils.koboldai_vars.lua_koboldbridge.generated_cols})"
-                )
-
-            if utils.koboldai_vars.abort or (
-                utils.koboldai_vars.inference_config.stop_at_genamt
-                and utils.koboldai_vars.generated_tkns >= utils.koboldai_vars.genamt
-            ):
-                utils.koboldai_vars.abort = False
-                self.regeneration_required = False
-                self.halt = False
-                return True
-
-            if utils.koboldai_vars.standalone:
-                return False
-
-            assert input_ids.ndim == 2
-
-            self.regeneration_required = (
-                utils.koboldai_vars.lua_koboldbridge.regeneration_required
-            )
-            self.halt = not utils.koboldai_vars.lua_koboldbridge.generating
-            utils.koboldai_vars.lua_koboldbridge.regeneration_required = False
-
-            for i in (
-                range(utils.koboldai_vars.numseqs)
-                if not utils.koboldai_vars.alt_multi_gen
-                else range(1)
-            ):
-                utils.koboldai_vars.lua_koboldbridge.generated[i + 1][
-                    utils.koboldai_vars.generated_tkns
-                ] = int(input_ids[i, -1].item())
-
-            return self.regeneration_required or self.halt
 
     # Sets up dynamic world info scanner
     class DynamicWorldInfoScanCriteria(StoppingCriteria):
@@ -757,30 +753,6 @@ def patch_transformers():
                     print("FOUNDWI", found)
                     return True
             return False
-
-    old_get_stopping_criteria = transformers.GenerationMixin._get_stopping_criteria
-
-    def new_get_stopping_criteria(self, *args, **kwargs):
-        stopping_criteria = old_get_stopping_criteria(self, *args, **kwargs)
-
-        self.core_stopper = CoreStopper()
-        self.kai_scanner = DynamicWorldInfoScanCriteria(
-            tokenizer=tokenizer,
-            excluded_world_info=self.kai_model.gen_config["wi_scanner_excluded_keys"],
-        )
-        token_streamer = TokenStreamer(tokenizer=tokenizer)
-
-        stopping_criteria.insert(0, ChatModeStopper(tokenizer=tokenizer))
-        stopping_criteria.insert(0, self.kai_scanner)
-        token_streamer = TokenStreamer(tokenizer=tokenizer)
-        stopping_criteria.insert(0, token_streamer)
-        # This should be last
-        stopping_criteria.insert(0, self.core_stopper)
-
-        return stopping_criteria
-
-    use_core_manipulations.get_stopping_criteria = new_get_stopping_criteria
-
 
 class GenerationResult:
     def __init__(
@@ -828,10 +800,19 @@ class ModelCapabilities:
 class InferenceModel:
     def __init__(self) -> None:
         self.gen_state = {}
-        self.token_gen_hooks = []
+        self.post_token_hooks = []
         self.stopper_hooks = []
         self.tokenizer = None
         self.capabilties = ModelCapabilities()
+
+    def load(self, save_model: bool) -> None:
+        """Main load function. Do not override this. Override _load() instead."""
+
+        self._load(save_model=save_model)
+        self._post_load()
+
+    def _post_load(self) -> None:
+        pass
 
     def _load(self, save_model: bool) -> None:
         raise NotImplementedError
@@ -1194,11 +1175,11 @@ class InferenceModel:
         single_line: bool = False,
         batch_count: int = 1,
     ) -> torch.Tensor:
-        raise NotImplementedError("generate() was not overridden")
+        raise NotImplementedError
 
     def _post_token_gen(self, input_ids: torch.LongTensor) -> None:
-        for hook in self.token_gen_hooks:
-            hook(input_ids)
+        for hook in self.post_token_hooks:
+            hook(self, input_ids)
 
 
 class HFMTJInferenceModel:
@@ -1313,6 +1294,13 @@ class HFTorchInferenceModel(InferenceModel):
         self.lazy_load = lazy_load
         self.low_mem = low_mem
 
+        self.post_token_hooks = [
+            Stoppers.core_stopper,
+            PostTokenHooks.stream_tokens,
+            Stoppers.wi_scanner,
+            Stoppers.chat_mode_stopper,
+        ]
+
         self.model = None
         self.tokenizer = None
         self.model_config = None
@@ -1322,6 +1310,38 @@ class HFTorchInferenceModel(InferenceModel):
             stopper_hooks=True,
             post_token_probs=True,
         )
+        self._old_stopping_criteria = None
+
+    def _post_load(self) -> None:
+        print("HELLLOOOOOOOOOOOOOOOOOOOOOOOOOOO")
+        # Patch stopping_criteria
+
+        class PTHStopper(StoppingCriteria):
+            def __call__(
+                hf_self,
+                input_ids: torch.LongTensor,
+                scores: torch.FloatTensor,
+            ) -> None:
+                self._post_token_gen(input_ids)
+
+                for stopper in self.stopper_hooks:
+                    do_stop = stopper(input_ids)
+                    if do_stop:
+                        return True
+                return False
+
+        old_gsc = transformers.GenerationMixin._get_stopping_criteria
+
+        def _get_stopping_criteria(
+            hf_self,
+            *args,
+            **kwargs,
+        ):
+            stopping_criteria = old_gsc(hf_self, *args, **kwargs)
+            stopping_criteria.insert(0, PTHStopper)
+            return stopping_criteria
+
+        use_core_manipulations.get_stopping_criteria = _get_stopping_criteria
 
     def _raw_generate(
         self,
@@ -2626,9 +2646,12 @@ class ColabInferenceModel(InferenceModel):
         )
 
 
-class ColabInferenceModel(InferenceModel):
+class APIInferenceModel(InferenceModel):
     def _load(self, save_model: bool) -> None:
-        self.tokenizer = self._get_tokenizer("EleutherAI/gpt-neo-2.7B")
+        tokenizer_id = requests.get(
+            utils.koboldai_vars.colaburl[:-8] + "/api/v1/model",
+        ).json()["result"]
+        self.tokenizer = self._get_tokenizer(tokenizer_id)
 
     def _raw_generate(
         self,

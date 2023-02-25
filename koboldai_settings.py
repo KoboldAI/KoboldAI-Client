@@ -523,7 +523,7 @@ class koboldai_vars(object):
         if return_text:
             return "".join([x['text'] for x in context])
         return tokens, used_tokens, used_tokens+self.genamt, set(used_world_info)
-
+    
     def is_model_torch(self) -> bool:
         if self.use_colab_tpu:
             return False
