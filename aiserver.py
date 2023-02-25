@@ -66,6 +66,7 @@ import lupa
 # KoboldAI
 import fileops
 import gensettings
+import breakmodel
 from utils import debounce
 import utils
 import koboldai_settings
@@ -80,6 +81,7 @@ except:
 
 from transformers import GenerationMixin
 
+from model import GenericHFTorchInferenceModel, CustomGPT2HFTorchInferenceModel
 # Text2img
 import base64
 from PIL import Image
@@ -326,23 +328,6 @@ model_menu = {
         ["Return to Main Menu", "mainmenu", "", True],
     ]
     }
-
-
-
-class Send_to_socketio(object):
-    def write(self, bar):
-        bar = bar.replace("\r", "").replace("\n", "").replace(chr(0), "")
-        if bar != "" and [ord(num) for num in bar] != [27, 91, 65]: #No idea why we're getting the 27, 1, 65 character set, just killing to so we can move on
-            #logger.info(bar)
-            print('\r' + bar, end='')
-            time.sleep(0.01)
-            try:
-                socketio.emit('from_server', {'cmd': 'model_load_status', 'data': bar.replace(" ", "&nbsp;")}, broadcast=True, room="UI_1")
-            except:
-                pass
-        
-    def flush(self):
-        pass
 
 @dataclass
 class ImportBuffer:
@@ -969,214 +954,7 @@ def getmodelname():
 def get_hidden_size_from_model(model):
     return model.get_input_embeddings().embedding_dim
 
-#==================================================================#
-# Breakmodel configuration functions
-#==================================================================#
-def device_list(n_layers, primary=None, selected=None):
-    device_count = torch.cuda.device_count()
-    if(device_count < 2):
-        primary = None
-    gpu_blocks = breakmodel.gpu_blocks + (device_count - len(breakmodel.gpu_blocks))*[0]
-    print(f"{colors.YELLOW}       DEVICE ID  |  LAYERS  |  DEVICE NAME{colors.END}")
-    for i in range(device_count):
-        name = torch.cuda.get_device_name(i)
-        if(len(name) > 47):
-            name = "..." + name[-44:]
-        row_color = colors.END
-        sep_color = colors.YELLOW
-        print(f"{row_color}{colors.YELLOW + '->' + row_color if i == selected else '  '} {'(primary)' if i == primary else ' '*9} {i:3}  {sep_color}|{row_color}     {gpu_blocks[i]:3}  {sep_color}|{row_color}  {name}{colors.END}")
-    row_color = colors.END
-    sep_color = colors.YELLOW
-    if(utils.HAS_ACCELERATE):
-        print(f"{row_color}{colors.YELLOW + '->' + row_color if -1 == selected else '  '} {' '*9} N/A  {sep_color}|{row_color}     {breakmodel.disk_blocks:3}  {sep_color}|{row_color}  (Disk cache){colors.END}")
-    print(f"{row_color}   {' '*9} N/A  {sep_color}|{row_color}     {n_layers:3}  {sep_color}|{row_color}  (CPU){colors.END}")
 
-def device_config(config):
-    global breakmodel, generator
-    import breakmodel
-    n_layers = utils.num_layers(config)
-    if args.cpu:
-        breakmodel.gpu_blocks = [0]*n_layers
-        return
-    elif(args.breakmodel_gpulayers is not None or (utils.HAS_ACCELERATE and args.breakmodel_disklayers is not None)):
-        try:
-            if(not args.breakmodel_gpulayers):
-                breakmodel.gpu_blocks = []
-            else:
-                breakmodel.gpu_blocks = list(map(int, args.breakmodel_gpulayers.split(',')))
-            assert len(breakmodel.gpu_blocks) <= torch.cuda.device_count()
-            s = n_layers
-            for i in range(len(breakmodel.gpu_blocks)):
-                if(breakmodel.gpu_blocks[i] <= -1):
-                    breakmodel.gpu_blocks[i] = s
-                    break
-                else:
-                    s -= breakmodel.gpu_blocks[i]
-            assert sum(breakmodel.gpu_blocks) <= n_layers
-            n_layers -= sum(breakmodel.gpu_blocks)
-            if(args.breakmodel_disklayers is not None):
-                assert args.breakmodel_disklayers <= n_layers
-                breakmodel.disk_blocks = args.breakmodel_disklayers
-                n_layers -= args.breakmodel_disklayers
-        except:
-            logger.warning("--breakmodel_gpulayers is malformatted. Please use the --help option to see correct usage of --breakmodel_gpulayers. Defaulting to all layers on device 0.")
-            breakmodel.gpu_blocks = [n_layers]
-            n_layers = 0
-    elif(args.breakmodel_layers is not None):
-        breakmodel.gpu_blocks = [n_layers - max(0, min(n_layers, args.breakmodel_layers))]
-        n_layers -= sum(breakmodel.gpu_blocks)
-    elif(args.model is not None):
-        logger.info("Breakmodel not specified, assuming GPU 0")
-        breakmodel.gpu_blocks = [n_layers]
-        n_layers = 0
-    else:
-        device_count = torch.cuda.device_count()
-        if(device_count > 1):
-            print(colors.CYAN + "\nPlease select one of your GPUs to be your primary GPU.")
-            print("VRAM usage in your primary GPU will be higher than for your other ones.")
-            print("It is recommended you make your fastest GPU your primary GPU.")
-            device_list(n_layers)
-            while(True):
-                primaryselect = input("device ID> ")
-                if(primaryselect.isnumeric() and 0 <= int(primaryselect) < device_count):
-                    breakmodel.primary_device = int(primaryselect)
-                    break
-                else:
-                    print(f"{colors.RED}Please enter an integer between 0 and {device_count-1}.{colors.END}")
-        else:
-            breakmodel.primary_device = 0
-
-        print(colors.PURPLE + "\nIf you don't have enough VRAM to run the model on a single GPU")
-        print("you can split the model between your CPU and your GPU(s), or between")
-        print("multiple GPUs if you have more than one.")
-        print("By putting more 'layers' on a GPU or CPU, more computations will be")
-        print("done on that device and more VRAM or RAM will be required on that device")
-        print("(roughly proportional to number of layers).")
-        print("It should be noted that GPUs are orders of magnitude faster than the CPU.")
-        print(f"This model has{colors.YELLOW} {n_layers} {colors.PURPLE}layers.{colors.END}\n")
-
-        for i in range(device_count):
-            device_list(n_layers, primary=breakmodel.primary_device, selected=i)
-            print(f"{colors.CYAN}\nHow many of the remaining{colors.YELLOW} {n_layers} {colors.CYAN}layers would you like to put into device {i}?\nYou can also enter -1 to allocate all remaining layers to this device.{colors.END}\n")
-            while(True):
-                layerselect = input("# of layers> ")
-                if((layerselect.isnumeric() or layerselect.strip() == '-1') and -1 <= int(layerselect) <= n_layers):
-                    layerselect = int(layerselect)
-                    layerselect = n_layers if layerselect == -1 else layerselect
-                    breakmodel.gpu_blocks.append(layerselect)
-                    n_layers -= layerselect
-                    break
-                else:
-                    print(f"{colors.RED}Please enter an integer between -1 and {n_layers}.{colors.END}")
-            if(n_layers == 0):
-                break
-
-        if(utils.HAS_ACCELERATE and n_layers > 0):
-            device_list(n_layers, primary=breakmodel.primary_device, selected=-1)
-            print(f"{colors.CYAN}\nHow many of the remaining{colors.YELLOW} {n_layers} {colors.CYAN}layers would you like to put into the disk cache?\nYou can also enter -1 to allocate all remaining layers to this device.{colors.END}\n")
-            while(True):
-                layerselect = input("# of layers> ")
-                if((layerselect.isnumeric() or layerselect.strip() == '-1') and -1 <= int(layerselect) <= n_layers):
-                    layerselect = int(layerselect)
-                    layerselect = n_layers if layerselect == -1 else layerselect
-                    breakmodel.disk_blocks = layerselect
-                    n_layers -= layerselect
-                    break
-                else:
-                    print(f"{colors.RED}Please enter an integer between -1 and {n_layers}.{colors.END}")
-
-    logger.init_ok("Final device configuration:", status="Info")
-    device_list(n_layers, primary=breakmodel.primary_device)
-
-    # If all layers are on the same device, use the old GPU generation mode
-    while(len(breakmodel.gpu_blocks) and breakmodel.gpu_blocks[-1] == 0):
-        breakmodel.gpu_blocks.pop()
-    if(len(breakmodel.gpu_blocks) and breakmodel.gpu_blocks[-1] in (-1, utils.num_layers(config))):
-        koboldai_vars.breakmodel = False
-        koboldai_vars.usegpu = True
-        koboldai_vars.gpu_device = len(breakmodel.gpu_blocks)-1
-        return
-
-    if(not breakmodel.gpu_blocks):
-        logger.warning("Nothing assigned to a GPU, reverting to CPU only mode")
-        import breakmodel
-        breakmodel.primary_device = "cpu"
-        koboldai_vars.breakmodel = False
-        koboldai_vars.usegpu = False
-        return
-
-def move_model_to_devices(model):
-    global generator
-
-    if(not utils.HAS_ACCELERATE and not koboldai_vars.breakmodel):
-        if(koboldai_vars.usegpu):
-            model = model.half().to(koboldai_vars.gpu_device)
-        else:
-            model = model.to('cpu').float()
-        generator = model.generate
-        return
-
-    import breakmodel
-
-    if(utils.HAS_ACCELERATE):
-        import accelerate.utils
-        for key, value in model.state_dict().items():
-            target_dtype = torch.float32 if breakmodel.primary_device == "cpu" else torch.float16
-            if(value.dtype is not target_dtype):
-                accelerate.utils.set_module_tensor_to_device(model, key, target_dtype)
-        disk_blocks = breakmodel.disk_blocks
-        gpu_blocks = breakmodel.gpu_blocks
-        ram_blocks = len(utils.layers_module_names) - sum(gpu_blocks)
-        cumulative_gpu_blocks = tuple(itertools.accumulate(gpu_blocks))
-        device_map = {}
-        for name in utils.layers_module_names:
-            layer = int(name.rsplit(".", 1)[1])
-            device = ("disk" if layer < disk_blocks else "cpu") if layer < ram_blocks else bisect.bisect_right(cumulative_gpu_blocks, layer - ram_blocks)
-            device_map[name] = device
-        for name in utils.get_missing_module_names(model, list(device_map.keys())):
-            device_map[name] = breakmodel.primary_device
-        breakmodel.dispatch_model_ex(model, device_map, main_device=breakmodel.primary_device, offload_buffers=True, offload_dir="accelerate-disk-cache")
-        gc.collect()
-        generator = model.generate
-        return
-
-    model.half()
-    gc.collect()
-
-    if(hasattr(model, "transformer")):
-        model.transformer.wte.to(breakmodel.primary_device)
-        model.transformer.ln_f.to(breakmodel.primary_device)
-        if(hasattr(model, 'lm_head')):
-            model.lm_head.to(breakmodel.primary_device)
-        if(hasattr(model.transformer, 'wpe')):
-            model.transformer.wpe.to(breakmodel.primary_device)
-    elif(not hasattr(model.model, "decoder")):
-        model.model.embed_tokens.to(breakmodel.primary_device)
-        model.model.layer_norm.to(breakmodel.primary_device)
-        model.lm_head.to(breakmodel.primary_device)
-        model.model.embed_positions.to(breakmodel.primary_device)
-    else:
-        model.model.decoder.embed_tokens.to(breakmodel.primary_device)
-        if(model.model.decoder.project_in is not None):
-            model.model.decoder.project_in.to(breakmodel.primary_device)
-        if(model.model.decoder.project_out is not None):
-            model.model.decoder.project_out.to(breakmodel.primary_device)
-        model.model.decoder.embed_positions.to(breakmodel.primary_device)
-    gc.collect()
-    GPTNeoModel.forward = breakmodel.new_forward_neo
-    if("GPTJModel" in globals()):
-        GPTJModel.forward = breakmodel.new_forward_neo # type: ignore
-    if("XGLMModel" in globals()):
-        XGLMModel.forward = breakmodel.new_forward_xglm # type: ignore
-    if("OPTDecoder" in globals()):
-        OPTDecoder.forward = breakmodel.new_forward_opt # type: ignore
-    generator = model.generate
-    if(hasattr(model, "transformer")):
-        breakmodel.move_hidden_layers(model.transformer)
-    elif(not hasattr(model.model, "decoder")):
-        breakmodel.move_hidden_layers(model.model, model.model.layers)
-    else:
-        breakmodel.move_hidden_layers(model.model.decoder, model.model.decoder.layers)
 
 #==================================================================#
 #  Allow the models to override some settings
@@ -1962,33 +1740,6 @@ def get_cluster_models(msg):
     emit('from_server', {'cmd': 'oai_engines', 'data': engines, 'online_model': online_model}, broadcast=True)
 
 
-# Function to patch transformers to use our soft prompt
-def patch_causallm(model):
-    from torch.nn import Embedding
-    if(getattr(Embedding, "_koboldai_patch_causallm_model", None)):
-        Embedding._koboldai_patch_causallm_model = model
-        return model
-    old_embedding_call = Embedding.__call__
-    def new_embedding_call(self, input_ids, *args, **kwargs):
-        if(Embedding._koboldai_patch_causallm_model.get_input_embeddings() is not self):
-            return old_embedding_call(self, input_ids, *args, **kwargs)
-        assert input_ids is not None
-        if(koboldai_vars.sp is not None):
-            shifted_input_ids = input_ids - model.config.vocab_size
-        input_ids.clamp_(max=model.config.vocab_size-1)
-        inputs_embeds = old_embedding_call(self, input_ids, *args, **kwargs)
-        if(koboldai_vars.sp is not None):
-            koboldai_vars.sp = koboldai_vars.sp.to(inputs_embeds.dtype).to(inputs_embeds.device)
-            inputs_embeds = torch.where(
-                (shifted_input_ids >= 0)[..., None],
-                koboldai_vars.sp[shifted_input_ids.clamp(min=0)],
-                inputs_embeds,
-            )
-        return inputs_embeds
-    Embedding.__call__ = new_embedding_call
-    Embedding._koboldai_patch_causallm_model = model
-    return model
-
 def patch_transformers_download():
     global transformers
     import copy, requests, tqdm, time
@@ -2751,44 +2502,7 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
     
     
     # If transformers model was selected & GPU available, ask to use CPU or GPU
-    if(koboldai_vars.model not in ["InferKit", "Colab", "API", "CLUSTER", "OAI", "GooseAI" , "ReadOnly", "TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX"] and not koboldai_vars.model.startswith("RWKV")):
-        koboldai_vars.allowsp = True
-        # Test for GPU support
-        
-        # Make model path the same as the model name to make this consistent with the other loading method if it isn't a known model type
-        # This code is not just a workaround for below, it is also used to make the behavior consistent with other loading methods - Henk717
-        if(not koboldai_vars.model in ["NeoCustom", "GPT2Custom"]):
-            koboldai_vars.custmodpth = koboldai_vars.model
-        elif(koboldai_vars.model == "NeoCustom"):
-            koboldai_vars.model = os.path.basename(os.path.normpath(koboldai_vars.custmodpth))
-
-        # Get the model_type from the config or assume a model type if it isn't present
-        from transformers import AutoConfig
-        if(os.path.isdir(koboldai_vars.custmodpth.replace('/', '_'))):
-            try:
-                model_config = AutoConfig.from_pretrained(koboldai_vars.custmodpth.replace('/', '_'), revision=koboldai_vars.revision, cache_dir="cache")
-                koboldai_vars.model_type = model_config.model_type
-            except ValueError as e:
-                koboldai_vars.model_type = "not_found"
-        elif(os.path.isdir("models/{}".format(koboldai_vars.custmodpth.replace('/', '_')))):
-            try:
-                model_config = AutoConfig.from_pretrained("models/{}".format(koboldai_vars.custmodpth.replace('/', '_')), revision=koboldai_vars.revision, cache_dir="cache")
-                koboldai_vars.model_type = model_config.model_type
-            except ValueError as e:
-                koboldai_vars.model_type = "not_found"
-        else:
-            try:
-                model_config = AutoConfig.from_pretrained(koboldai_vars.custmodpth, revision=koboldai_vars.revision, cache_dir="cache")
-                koboldai_vars.model_type = model_config.model_type
-            except ValueError as e:
-                koboldai_vars.model_type = "not_found"
-        if(koboldai_vars.model_type == "not_found" and koboldai_vars.model == "NeoCustom"):
-            koboldai_vars.model_type = "gpt_neo"
-        elif(koboldai_vars.model_type == "not_found" and koboldai_vars.model == "GPT2Custom"):
-            koboldai_vars.model_type = "gpt2"
-        elif(koboldai_vars.model_type == "not_found"):
-            logger.warning("No model type detected, assuming Neo (If this is a GPT2 model use the other menu option or --model GPT2Custom)")
-            koboldai_vars.model_type = "gpt_neo"
+    # if(koboldai_vars.model not in ["InferKit", "Colab", "API", "CLUSTER", "OAI", "GooseAI" , "ReadOnly", "TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX"] and not koboldai_vars.model.startswith("RWKV")):
 
     if(not koboldai_vars.use_colab_tpu and koboldai_vars.model not in ["InferKit", "Colab", "API", "CLUSTER", "OAI", "GooseAI" , "ReadOnly", "TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX"]):
         loadmodelsettings()
@@ -2893,363 +2607,30 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
                 except:
                     pass
 
-            # Lazy loader
-            import torch_lazy_loader
-            def get_lazy_load_callback(n_layers, convert_to_float16=True):
-                if not koboldai_vars.lazy_load:
-                    return
-
-                from tqdm.auto import tqdm
-
-                global breakmodel
-                import breakmodel
-
-                if utils.HAS_ACCELERATE:
-                    import accelerate.utils
-
-                if args.breakmodel_disklayers is not None:
-                    breakmodel.disk_blocks = args.breakmodel_disklayers
-
-                disk_blocks = breakmodel.disk_blocks
-                gpu_blocks = breakmodel.gpu_blocks
-                ram_blocks = ram_blocks = n_layers - sum(gpu_blocks)
-                cumulative_gpu_blocks = tuple(itertools.accumulate(gpu_blocks))
-
-                def lazy_load_callback(model_dict: Dict[str, Union[torch_lazy_loader.LazyTensor, torch.Tensor]], f, **_):
-                    if lazy_load_callback.nested:
-                        return
-                    lazy_load_callback.nested = True
-
-                    device_map: Dict[str, Union[str, int]] = {}
-
-                    @functools.lru_cache(maxsize=None)
-                    def get_original_key(key):
-                        return max((original_key for original_key in utils.module_names if original_key.endswith(key)), key=len)
-
-                    for key, value in model_dict.items():
-                        original_key = get_original_key(key)
-                        if isinstance(value, torch_lazy_loader.LazyTensor) and not any(original_key.startswith(n) for n in utils.layers_module_names):
-                            device_map[key] = koboldai_vars.gpu_device if koboldai_vars.hascuda and koboldai_vars.usegpu else "cpu" if not koboldai_vars.hascuda or not koboldai_vars.breakmodel else breakmodel.primary_device
-                        else:
-                            layer = int(max((n for n in utils.layers_module_names if original_key.startswith(n)), key=len).rsplit(".", 1)[1])
-                            device = koboldai_vars.gpu_device if koboldai_vars.hascuda and koboldai_vars.usegpu else "disk" if layer < disk_blocks and layer < ram_blocks else "cpu" if not koboldai_vars.hascuda or not koboldai_vars.breakmodel else "shared" if layer < ram_blocks else bisect.bisect_right(cumulative_gpu_blocks, layer - ram_blocks)
-                            device_map[key] = device
-
-                    if utils.num_shards is None or utils.current_shard == 0:
-                        utils.offload_index = {}
-                        if utils.HAS_ACCELERATE:
-                            if os.path.isdir("accelerate-disk-cache"):
-                                # Delete all of the files in the disk cache folder without deleting the folder itself to allow people to create symbolic links for this folder
-                                # (the folder doesn't contain any subfolders so os.remove will do just fine)
-                                for filename in os.listdir("accelerate-disk-cache"):
-                                    try:
-                                        os.remove(os.path.join("accelerate-disk-cache", filename))
-                                    except OSError:
-                                        pass
-                            os.makedirs("accelerate-disk-cache", exist_ok=True)
-                        if utils.num_shards is not None:
-                            num_tensors = len(utils.get_sharded_checkpoint_num_tensors(utils.from_pretrained_model_name, utils.from_pretrained_index_filename, **utils.from_pretrained_kwargs))
-                        else:
-                            num_tensors = len(device_map)
-                        print(flush=True)
-                        koboldai_vars.status_message = "Loading model"
-                        koboldai_vars.total_layers = num_tensors
-                        koboldai_vars.loaded_layers = 0
-                        utils.bar = tqdm(total=num_tensors, desc="Loading model tensors", file=Send_to_socketio())
-
-                    with zipfile.ZipFile(f, "r") as z:
-                        try:
-                            last_storage_key = None
-                            zipfolder = os.path.basename(os.path.normpath(f)).split('.')[0]
-                            f = None
-                            current_offset = 0
-                            able_to_pin_layers = True
-                            if utils.num_shards is not None:
-                                utils.current_shard += 1
-                            for key in sorted(device_map.keys(), key=lambda k: (model_dict[k].key, model_dict[k].seek_offset)):
-                                storage_key = model_dict[key].key
-                                if storage_key != last_storage_key or model_dict[key].seek_offset < current_offset:
-                                    last_storage_key = storage_key
-                                    if isinstance(f, zipfile.ZipExtFile):
-                                        f.close()
-                                    try:
-                                        f = z.open(f"archive/data/{storage_key}")
-                                    except:
-                                        f = z.open(f"{zipfolder}/data/{storage_key}")
-                                    current_offset = 0
-                                if current_offset != model_dict[key].seek_offset:
-                                    f.read(model_dict[key].seek_offset - current_offset)
-                                    current_offset = model_dict[key].seek_offset
-                                device = device_map[key]
-                                size = functools.reduce(lambda x, y: x * y, model_dict[key].shape, 1)
-                                dtype = model_dict[key].dtype
-                                nbytes = size if dtype is torch.bool else size * ((torch.finfo if dtype.is_floating_point else torch.iinfo)(dtype).bits >> 3)
-                                #print(f"Transferring <{key}>  to  {f'({device.upper()})' if isinstance(device, str) else '[device ' + str(device) + ']'} ... ", end="", flush=True)
-                                model_dict[key] = model_dict[key].materialize(f, map_location="cpu")
-                                if model_dict[key].dtype is torch.float32:
-                                    koboldai_vars.fp32_model = True
-                                if convert_to_float16 and breakmodel.primary_device != "cpu" and koboldai_vars.hascuda and (koboldai_vars.breakmodel or koboldai_vars.usegpu) and model_dict[key].dtype is torch.float32:
-                                    model_dict[key] = model_dict[key].to(torch.float16)
-                                if breakmodel.primary_device == "cpu" or (not koboldai_vars.usegpu and not koboldai_vars.breakmodel and model_dict[key].dtype is torch.float16):
-                                    model_dict[key] = model_dict[key].to(torch.float32)
-                                if device == "shared":
-                                    model_dict[key] = model_dict[key].to("cpu").detach_()
-                                    if able_to_pin_layers and utils.HAS_ACCELERATE:
-                                        try:
-                                            model_dict[key] = model_dict[key].pin_memory()
-                                        except:
-                                            able_to_pin_layers = False
-                                elif device == "disk":
-                                    accelerate.utils.offload_weight(model_dict[key], get_original_key(key), "accelerate-disk-cache", index=utils.offload_index)
-                                    model_dict[key] = model_dict[key].to("meta")
-                                else:
-                                    model_dict[key] = model_dict[key].to(device)
-                                #print("OK", flush=True)
-                                current_offset += nbytes
-                                utils.bar.update(1)
-                                koboldai_vars.loaded_layers += 1
-                        finally:
-                            if utils.num_shards is None or utils.current_shard >= utils.num_shards:
-                                if utils.offload_index:
-                                    for name, tensor in utils.named_buffers:
-                                        dtype = tensor.dtype
-                                        if convert_to_float16 and breakmodel.primary_device != "cpu" and koboldai_vars.hascuda and (koboldai_vars.breakmodel or koboldai_vars.usegpu):
-                                            dtype = torch.float16
-                                        if breakmodel.primary_device == "cpu" or (not koboldai_vars.usegpu and not koboldai_vars.breakmodel):
-                                            dtype = torch.float32
-                                        if name in model_dict and model_dict[name].dtype is not dtype:
-                                            model_dict[name] = model_dict[name].to(dtype)
-                                        if tensor.dtype is not dtype:
-                                            tensor = tensor.to(dtype)
-                                        if name not in utils.offload_index:
-                                            accelerate.utils.offload_weight(tensor, name, "accelerate-disk-cache", index=utils.offload_index)
-                                    accelerate.utils.save_offload_index(utils.offload_index, "accelerate-disk-cache")
-                                utils.bar.close()
-                                utils.bar = None
-                                koboldai_vars.status_message = ""
-                            lazy_load_callback.nested = False
-                            if isinstance(f, zipfile.ZipExtFile):
-                                f.close()
-
-                lazy_load_callback.nested = False
-                return lazy_load_callback
-
-
-            def maybe_low_cpu_mem_usage() -> Dict[str, Any]:
-                if(packaging.version.parse(transformers_version) < packaging.version.parse("4.11.0")):
-                    logger.warning(f"Please upgrade to transformers 4.11.0 for lower RAM usage. You have transformers {transformers_version}.")
-                    return {}
-                return {"low_cpu_mem_usage": True}
-            
-            @contextlib.contextmanager
-            def maybe_use_float16(always_use=False):
-                if(always_use or (koboldai_vars.hascuda and args.lowmem and (koboldai_vars.usegpu or koboldai_vars.breakmodel))):
-                    original_dtype = torch.get_default_dtype()
-                    torch.set_default_dtype(torch.float16)
-                    yield True
-                    torch.set_default_dtype(original_dtype)
-                else:
-                    yield False
-
-            # If custom GPT2 model was chosen
-            if(koboldai_vars.model_type == "gpt2"):
-                koboldai_vars.lazy_load = False
-                if os.path.exists(koboldai_vars.custmodpth):
-                    model_config = json.load(open(koboldai_vars.custmodpth + "/config.json", "r"))
-                elif os.path.exists(os.path.join("models/", koboldai_vars.custmodpth)):
-                    config_path = os.path.join("models/", koboldai_vars.custmodpth)
-                    config_path = os.path.join(config_path, "config.json").replace("\\", "//")
-                    model_config = json.load(open(config_path, "r"))
-                with(maybe_use_float16()):
-                    try:
-                        if os.path.exists(koboldai_vars.custmodpth):
-                            model = GPT2LMHeadModel.from_pretrained(koboldai_vars.custmodpth, revision=koboldai_vars.revision, cache_dir="cache")
-                            tokenizer = GPT2Tokenizer.from_pretrained(koboldai_vars.custmodpth, revision=koboldai_vars.revision, cache_dir="cache")
-                        elif os.path.exists(os.path.join("models/", koboldai_vars.custmodpth)):
-                            model = GPT2LMHeadModel.from_pretrained(os.path.join("models/", koboldai_vars.custmodpth), revision=koboldai_vars.revision, cache_dir="cache")
-                            tokenizer = GPT2Tokenizer.from_pretrained(os.path.join("models/", koboldai_vars.custmodpth), revision=koboldai_vars.revision, cache_dir="cache")
-                        else:
-                            model = GPT2LMHeadModel.from_pretrained(koboldai_vars.custmodpth, revision=koboldai_vars.revision, cache_dir="cache")
-                            tokenizer = GPT2Tokenizer.from_pretrained(koboldai_vars.custmodpth, revision=koboldai_vars.revision, cache_dir="cache")
-                    except Exception as e:
-                        if("out of memory" in traceback.format_exc().lower()):
-                            raise RuntimeError("One of your GPUs ran out of memory when KoboldAI tried to load your model.")
-                        raise e
-                tokenizer = GPT2Tokenizer.from_pretrained(koboldai_vars.custmodpth, revision=koboldai_vars.revision, cache_dir="cache")
-                model.save_pretrained("models/{}".format(koboldai_vars.model.replace('/', '_')), max_shard_size="500MiB")
-                tokenizer.save_pretrained("models/{}".format(koboldai_vars.model.replace('/', '_')))
-                koboldai_vars.modeldim = get_hidden_size_from_model(model)
-                # Is CUDA available? If so, use GPU, otherwise fall back to CPU
-                if(koboldai_vars.hascuda and koboldai_vars.usegpu):
-                    model = model.half().to(koboldai_vars.gpu_device)
-                    generator = model.generate
-                else:
-                    model = model.to('cpu').float()
-                    generator = model.generate
-                patch_causallm(model)
-            # Use the Generic implementation
+            if koboldai_vars.model_type == "gpt2":
+                model = CustomGPT2HFTorchInferenceModel(
+                    koboldai_vars.model,
+                    low_mem=args.lowmem
+                )
+                model._load(
+                    save_model=not (args.colab or args.cacheonly) or args.savemodel
+                )
             else:
-                lowmem = maybe_low_cpu_mem_usage()
-                # We must disable low_cpu_mem_usage (by setting lowmem to {}) if
-                # using a GPT-2 model because GPT-2 is not compatible with this
-                # feature yet
-                if(koboldai_vars.model_type == "gpt2"):
-                    lowmem = {}
-                    koboldai_vars.lazy_load = False  # Also, lazy loader doesn't support GPT-2 models
-                
-                # If we're using torch_lazy_loader, we need to get breakmodel config
-                # early so that it knows where to load the individual model tensors
-                if (utils.HAS_ACCELERATE or koboldai_vars.lazy_load and koboldai_vars.hascuda and koboldai_vars.breakmodel) and not koboldai_vars.nobreakmodel:
-                    device_config(model_config)
-
-                # Download model from Huggingface if it does not exist, otherwise load locally
-                
-                #If we specify a model and it's in the root directory, we need to move it to the models directory (legacy folder structure to new)
-                if os.path.isdir(koboldai_vars.model.replace('/', '_')):
-                    import shutil
-                    shutil.move(koboldai_vars.model.replace('/', '_'), "models/{}".format(koboldai_vars.model.replace('/', '_')))
-                if(koboldai_vars.lazy_load):  # If we're using lazy loader, we need to figure out what the model's hidden layers are called
-                    with torch_lazy_loader.use_lazy_torch_load(dematerialized_modules=True, use_accelerate_init_empty_weights=True):
-                        try:
-                            metamodel = AutoModelForCausalLM.from_config(model_config)
-                        except Exception as e:
-                            metamodel = GPTNeoForCausalLM.from_config(model_config)
-                        utils.layers_module_names = utils.get_layers_module_names(metamodel)
-                        utils.module_names = list(metamodel.state_dict().keys())
-                        utils.named_buffers = list(metamodel.named_buffers(recurse=True))
-                with maybe_use_float16(), torch_lazy_loader.use_lazy_torch_load(enable=koboldai_vars.lazy_load, callback=get_lazy_load_callback(utils.num_layers(model_config)) if koboldai_vars.lazy_load else None, dematerialized_modules=True):
-                    if(koboldai_vars.lazy_load):  # torch_lazy_loader.py and low_cpu_mem_usage can't be used at the same time
-                        lowmem = {}
-                    if(os.path.isdir(koboldai_vars.custmodpth)):
-                        try:
-                            tokenizer = AutoTokenizer.from_pretrained(koboldai_vars.custmodpth, revision=koboldai_vars.revision, cache_dir="cache", use_fast=False)
-                        except Exception as e:
-                            try:
-                                tokenizer = AutoTokenizer.from_pretrained(koboldai_vars.custmodpth, revision=koboldai_vars.revision, cache_dir="cache")
-                            except Exception as e:
-                                try:
-                                    tokenizer = GPT2Tokenizer.from_pretrained(koboldai_vars.custmodpth, revision=koboldai_vars.revision, cache_dir="cache")
-                                except Exception as e:
-                                    tokenizer = GPT2Tokenizer.from_pretrained("gpt2", revision=koboldai_vars.revision, cache_dir="cache")
-                        try:
-                            model     = AutoModelForCausalLM.from_pretrained(koboldai_vars.custmodpth, revision=koboldai_vars.revision, cache_dir="cache", **lowmem)
-                        except Exception as e:
-                            if("out of memory" in traceback.format_exc().lower()):
-                                raise RuntimeError("One of your GPUs ran out of memory when KoboldAI tried to load your model.")
-                            model     = GPTNeoForCausalLM.from_pretrained(koboldai_vars.custmodpth, revision=koboldai_vars.revision, cache_dir="cache", **lowmem)
-                    elif(os.path.isdir("models/{}".format(koboldai_vars.model.replace('/', '_')))):
-                        try:
-                            tokenizer = AutoTokenizer.from_pretrained("models/{}".format(koboldai_vars.model.replace('/', '_')), revision=koboldai_vars.revision, cache_dir="cache", use_fast=False)
-                        except Exception as e:
-                            try:
-                                tokenizer = AutoTokenizer.from_pretrained("models/{}".format(koboldai_vars.model.replace('/', '_')), revision=koboldai_vars.revision, cache_dir="cache")
-                            except Exception as e:
-                                try:
-                                    tokenizer = GPT2Tokenizer.from_pretrained("models/{}".format(koboldai_vars.model.replace('/', '_')), revision=koboldai_vars.revision, cache_dir="cache")
-                                except Exception as e:
-                                    tokenizer = GPT2Tokenizer.from_pretrained("gpt2", revision=koboldai_vars.revision, cache_dir="cache")
-                        try:
-                            model     = AutoModelForCausalLM.from_pretrained("models/{}".format(koboldai_vars.model.replace('/', '_')), revision=koboldai_vars.revision, cache_dir="cache", **lowmem)
-                        except Exception as e:
-                            if("out of memory" in traceback.format_exc().lower()):
-                                raise RuntimeError("One of your GPUs ran out of memory when KoboldAI tried to load your model.")
-                            model     = GPTNeoForCausalLM.from_pretrained("models/{}".format(koboldai_vars.model.replace('/', '_')), revision=koboldai_vars.revision, cache_dir="cache", **lowmem)
-                    else:
-                        old_rebuild_tensor = torch._utils._rebuild_tensor
-                        def new_rebuild_tensor(storage: Union[torch_lazy_loader.LazyTensor, torch.Storage], storage_offset, shape, stride):
-                            if(not isinstance(storage, torch_lazy_loader.LazyTensor)):
-                                dtype = storage.dtype
-                            else:
-                                dtype = storage.storage_type.dtype
-                                if(not isinstance(dtype, torch.dtype)):
-                                    dtype = storage.storage_type(0).dtype
-                            if(dtype is torch.float32 and len(shape) >= 2):
-                                koboldai_vars.fp32_model = True
-                            return old_rebuild_tensor(storage, storage_offset, shape, stride)
-                        torch._utils._rebuild_tensor = new_rebuild_tensor
-
-                        try:
-                            tokenizer = AutoTokenizer.from_pretrained(koboldai_vars.model, revision=koboldai_vars.revision, cache_dir="cache", use_fast=False)
-                        except Exception as e:
-                            try:
-                                tokenizer = AutoTokenizer.from_pretrained(koboldai_vars.model, revision=koboldai_vars.revision, cache_dir="cache")
-                            except Exception as e:
-                                try:
-                                    tokenizer = GPT2Tokenizer.from_pretrained(koboldai_vars.model, revision=koboldai_vars.revision, cache_dir="cache")
-                                except Exception as e:
-                                    tokenizer = GPT2Tokenizer.from_pretrained("gpt2", revision=koboldai_vars.revision, cache_dir="cache")
-                        try:
-                            model     = AutoModelForCausalLM.from_pretrained(koboldai_vars.model, revision=koboldai_vars.revision, cache_dir="cache", **lowmem)
-                        except Exception as e:
-                            if("out of memory" in traceback.format_exc().lower()):
-                                raise RuntimeError("One of your GPUs ran out of memory when KoboldAI tried to load your model.")
-                            model     = GPTNeoForCausalLM.from_pretrained(koboldai_vars.model, revision=koboldai_vars.revision, cache_dir="cache", **lowmem)
-
-                        torch._utils._rebuild_tensor = old_rebuild_tensor
-
-                        if not (args.colab or args.cacheonly) or args.savemodel:
-                            import shutil
-                            tokenizer.save_pretrained("models/{}".format(koboldai_vars.model.replace('/', '_')))
-                            if(koboldai_vars.fp32_model and ("breakmodel" not in globals() or not breakmodel.disk_blocks)):  # Use save_pretrained to convert fp32 models to fp16, unless we are using disk cache because save_pretrained is not supported in that case
-                                model = model.half()
-                                model.save_pretrained("models/{}".format(koboldai_vars.model.replace('/', '_')), max_shard_size="500MiB")
-                            else:  # For fp16 models, we can just copy the model files directly
-                                import transformers.configuration_utils
-                                import transformers.modeling_utils
-                                import transformers.file_utils
-                                import huggingface_hub
-                                legacy = packaging.version.parse(transformers_version) < packaging.version.parse("4.22.0.dev0")
-                                # Save the config.json
-                                shutil.move(os.path.realpath(huggingface_hub.hf_hub_download(koboldai_vars.model, transformers.configuration_utils.CONFIG_NAME, revision=koboldai_vars.revision, cache_dir="cache", local_files_only=True, legacy_cache_layout=legacy)), os.path.join("models/{}".format(koboldai_vars.model.replace('/', '_')), transformers.configuration_utils.CONFIG_NAME))
-                                if(utils.num_shards is None):
-                                    # Save the pytorch_model.bin of an unsharded model
-                                    try:
-                                        shutil.move(os.path.realpath(huggingface_hub.hf_hub_download(koboldai_vars.model, transformers.modeling_utils.WEIGHTS_NAME, revision=koboldai_vars.revision, cache_dir="cache", local_files_only=True, legacy_cache_layout=legacy)), os.path.join("models/{}".format(koboldai_vars.model.replace('/', '_')), transformers.modeling_utils.WEIGHTS_NAME))
-                                    except:
-                                        shutil.move(os.path.realpath(huggingface_hub.hf_hub_download(koboldai_vars.model,  "model.safetensors", revision=koboldai_vars.revision, cache_dir="cache", local_files_only=True, legacy_cache_layout=legacy)), os.path.join("models/{}".format(koboldai_vars.model.replace('/', '_')), "model.safetensors"))
-                                else:
-                                    with open(utils.from_pretrained_index_filename) as f:
-                                        map_data = json.load(f)
-                                    filenames = set(map_data["weight_map"].values())
-                                    # Save the pytorch_model.bin.index.json of a sharded model
-                                    shutil.move(os.path.realpath(utils.from_pretrained_index_filename), os.path.join("models/{}".format(koboldai_vars.model.replace('/', '_')), transformers.modeling_utils.WEIGHTS_INDEX_NAME))
-                                    # Then save the pytorch_model-#####-of-#####.bin files
-                                    for filename in filenames:
-                                        shutil.move(os.path.realpath(huggingface_hub.hf_hub_download(koboldai_vars.model, filename, revision=koboldai_vars.revision, cache_dir="cache", local_files_only=True, legacy_cache_layout=legacy)), os.path.join("models/{}".format(koboldai_vars.model.replace('/', '_')), filename))
-                            shutil.rmtree("cache/")
-
-                if(koboldai_vars.badwordsids is koboldai_settings.badwordsids_default and koboldai_vars.model_type not in ("gpt2", "gpt_neo", "gptj")):
-                    koboldai_vars.badwordsids = [[v] for k, v in tokenizer.get_vocab().items() if any(c in str(k) for c in "<>[]") if koboldai_vars.newlinemode != "s" or str(k) != "</s>"]
-
-                patch_causallm(model)
-
-                if(koboldai_vars.hascuda):
-                    if(koboldai_vars.usegpu):
-                        koboldai_vars.modeldim = get_hidden_size_from_model(model)
-                        model = model.half().to(koboldai_vars.gpu_device)
-                        generator = model.generate
-                    elif(koboldai_vars.breakmodel):  # Use both RAM and VRAM (breakmodel)
-                        koboldai_vars.modeldim = get_hidden_size_from_model(model)
-                        if(not koboldai_vars.lazy_load):
-                            device_config(model.config)
-                        move_model_to_devices(model)
-                    elif(utils.HAS_ACCELERATE and __import__("breakmodel").disk_blocks > 0):
-                        move_model_to_devices(model)
-                        koboldai_vars.modeldim = get_hidden_size_from_model(model)
-                        generator = model.generate
-                    else:
-                        model = model.to('cpu').float()
-                        koboldai_vars.modeldim = get_hidden_size_from_model(model)
-                        generator = model.generate
-                elif(utils.HAS_ACCELERATE and __import__("breakmodel").disk_blocks > 0):
-                    move_model_to_devices(model)
-                    koboldai_vars.modeldim = get_hidden_size_from_model(model)
-                    generator = model.generate
-                else:
-                    model.to('cpu').float()
-                    koboldai_vars.modeldim = get_hidden_size_from_model(model)
-                    generator = model.generate
+                model = GenericHFTorchInferenceModel(
+                    koboldai_vars.model,
+                    lazy_load=koboldai_vars.lazy_load,
+                    low_mem=args.lowmem
+                )
+                model._load(
+                    save_model=not (args.colab or args.cacheonly) or args.savemodel
+                )
             
+            # TODO: Convert everywhere to use model.tokenizer
+            tokenizer = model.tokenizer
+            print("Cool")
+            # Use the Generic implementation
+            # END
+
             # Suppress Author's Note by flagging square brackets (Old implementation)
             #vocab         = tokenizer.get_vocab()
             #vocab_keys    = vocab.keys()
@@ -5492,7 +4873,7 @@ def core_generate(text: list, _min: int, _max: int, found_entries: set, is_core:
     found_entries = found_entries or set()
 
     if model:
-        model.kai_scanner_excluded_world_info = found_entries
+        model.model.kai_scanner_excluded_world_info = found_entries
 
     koboldai_vars._prompt = koboldai_vars.prompt
 
@@ -5833,7 +5214,8 @@ def torch_raw_generate(
 
     with torch.no_grad():
         start_time = time.time()
-        genout = generator(
+        # HACK: raw_generate functions should be in the model itself
+        genout = model.model.generate(
             gen_in, 
             do_sample=True, 
             max_length=min(len(prompt_tokens) + max_new, koboldai_vars.max_length),

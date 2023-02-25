@@ -634,3 +634,19 @@ def get_missing_module_names(model: PreTrainedModel, names: List[str]) -> List[s
                 recurse(c[1], head=name + ".")
     recurse(model)
     return missing_names
+
+class UIProgressBarFile(object):
+    """Write TQDM progress to the UI."""
+    def write(self, bar):
+        bar = bar.replace("\r", "").replace("\n", "").replace(chr(0), "")
+        if bar != "" and [ord(num) for num in bar] != [27, 91, 65]: #No idea why we're getting the 27, 1, 65 character set, just killing to so we can move on
+            #logger.info(bar)
+            print('\r' + bar, end='')
+            time.sleep(0.01)
+            try:
+                emit('from_server', {'cmd': 'model_load_status', 'data': bar.replace(" ", "&nbsp;")}, broadcast=True, room="UI_1")
+            except:
+                pass
+        
+    def flush(self):
+        pass
