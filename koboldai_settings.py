@@ -1358,7 +1358,7 @@ class system_settings(settings):
                                     if kai_name == "My Awesome Instance":
                                         kai_name = f"KoboldAI UI Instance #{random.randint(-100000000, 100000000)}"
                                     api_key = bridge_cd.api_key
-                                    old_api_key = bridge_cd.api_key
+                                    old_api_key = bridge_cd.old_api_key
                                     priority_usernames = bridge_cd.priority_usernames
                                 except:
                                     cluster_url = "https://horde.koboldai.net"
