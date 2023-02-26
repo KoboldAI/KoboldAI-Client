@@ -9,7 +9,6 @@ import requests
 import requests.adapters
 import time
 import breakmodel
-from transformers import __version__ as transformers_version
 from transformers import PreTrainedModel
 import packaging.version
 from tqdm.auto import tqdm
@@ -20,12 +19,6 @@ import huggingface_hub
 import packaging.version
 from pathlib import Path
 from typing import List, Optional
-
-HAS_ACCELERATE = packaging.version.parse(transformers_version) >= packaging.version.parse("4.20.0.dev0")
-try:
-    import accelerate
-except ImportError:
-    HAS_ACCELERATE = False
 
 koboldai_vars = None
 args = None

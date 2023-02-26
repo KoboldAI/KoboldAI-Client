@@ -1458,8 +1458,6 @@ def get_model_info(model, directory=""):
         pass
     #elif model == 'customhuggingface':
     #    show_custom_model_box = True
-    elif not utils.HAS_ACCELERATE and not torch.cuda.is_available():
-        pass
     elif args.cpu:
         pass
     else:
@@ -1486,13 +1484,13 @@ def get_model_info(model, directory=""):
             break_values += [0] * (gpu_count - len(break_values))
     emit('from_server', {'cmd': 'selected_model_info', 'key_value': key_value, 'key':key, 'multi_online_models': multi_online_models, 'default_url': default_url, 
                          'gpu':gpu, 'layer_count':layer_count, 'breakmodel':breakmodel, 
-                         'disk_break_value': disk_blocks, 'accelerate': utils.HAS_ACCELERATE,
+                         'disk_break_value': disk_blocks, 'accelerate': True,
                          'break_values': break_values, 'gpu_count': gpu_count,
                          'url': url, 'gpu_names': gpu_names, 'models_on_url': models_on_url,
                          'show_custom_model_box': show_custom_model_box}, broadcast=True, room="UI_1")
     emit('selected_model_info', {'key_value': key_value, 'key':key, 
                          'gpu':gpu, 'layer_count':layer_count, 'breakmodel':breakmodel, 'multi_online_models': multi_online_models, 'default_url': default_url, 
-                         'disk_break_value': disk_blocks, 'disk_break': utils.HAS_ACCELERATE,
+                         'disk_break_value': disk_blocks, 'disk_break': True,
                          'break_values': break_values, 'gpu_count': gpu_count,
                          'url': url, 'gpu_names': gpu_names, 'models_on_url': models_on_url, 'show_online_model_select': show_online_model_select,
                          'bit_8_available': koboldai_vars.bit_8_available if koboldai_vars.experimental_features else False,
@@ -1525,7 +1523,7 @@ def get_layer_count(model, directory=""):
             else:
                 model_config = AutoConfig.from_pretrained(model, revision=koboldai_vars.revision, cache_dir="cache")
         try:
-            if ((utils.HAS_ACCELERATE and model_config.model_type != 'gpt2') or model_config.model_type in ("gpt_neo", "gptj", "xglm", "opt")) and not koboldai_vars.nobreakmodel:
+            if (model_config.model_type != 'gpt2' or model_config.model_type in ("gpt_neo", "gptj", "xglm", "opt")) and not koboldai_vars.nobreakmodel:
                 return utils.num_layers(model_config)
             else:
                 return None
@@ -1819,12 +1817,12 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
         # loadsettings()
         logger.init("GPU support", status="Searching")
         koboldai_vars.hascuda = torch.cuda.is_available() and not args.cpu
-        koboldai_vars.bmsupported = ((utils.HAS_ACCELERATE and koboldai_vars.model_type != 'gpt2') or koboldai_vars.model_type in ("gpt_neo", "gptj", "xglm", "opt")) and not koboldai_vars.nobreakmodel
+        koboldai_vars.bmsupported = ((koboldai_vars.model_type != 'gpt2') or koboldai_vars.model_type in ("gpt_neo", "gptj", "xglm", "opt")) and not koboldai_vars.nobreakmodel
         if(args.breakmodel is not None and args.breakmodel):
             logger.warning("--breakmodel is no longer supported. Breakmodel mode is now automatically enabled when --breakmodel_gpulayers is used (see --help for details).")
         if(args.breakmodel_layers is not None):
             logger.warning("--breakmodel_layers is deprecated. Use --breakmodel_gpulayers instead (see --help for details).")
-        if(args.model and koboldai_vars.bmsupported and not args.breakmodel_gpulayers and not args.breakmodel_layers and (not utils.HAS_ACCELERATE or not args.breakmodel_disklayers)):
+        if(args.model and koboldai_vars.bmsupported and not args.breakmodel_gpulayers and not args.breakmodel_layers and (not args.breakmodel_disklayers)):
             logger.warning("Model launched without the --breakmodel_gpulayers argument, defaulting to GPU only mode.")
             koboldai_vars.bmsupported = False
         if(not koboldai_vars.bmsupported and (args.breakmodel_gpulayers is not None or args.breakmodel_layers is not None or args.breakmodel_disklayers is not None)):
@@ -2206,7 +2204,7 @@ def lua_decode(tokens):
         from transformers import GPT2Tokenizer
         global tokenizer
         tokenizer = GPT2Tokenizer.from_pretrained("gpt2", revision=koboldai_vars.revision, cache_dir="cache")
-    return utils.decodenewlines(tokenizer.decode(tokens))
+    return utils.decodenewlines(mtokenizer.decode(tokens))
 
 #==================================================================#
 #  Encode string into list of token IDs using current tokenizer
@@ -3053,8 +3051,6 @@ def get_message(msg):
         if not os.path.exists("settings/"):
             os.mkdir("settings")
         changed = True
-        if not utils.HAS_ACCELERATE:
-            msg['disk_layers'] = "0"
         if os.path.exists("settings/" + koboldai_vars.model_selected.replace('/', '_') + ".breakmodel"):
             with open("settings/" + koboldai_vars.model_selected.replace('/', '_') + ".breakmodel", "r") as file:
                 data = file.read().split('\n')[:2]
@@ -3995,7 +3991,7 @@ def generate(txt, minimum, maximum, found_entries=None):
 
     if not koboldai_vars.quiet:
         logger.debug(f"Prompt Min:{minimum}, Max:{maximum}")
-        logger.prompt(utils.decodenewlines(tokenizer.decode(txt)).encode("unicode_escape").decode("utf-8"))
+        logger.prompt(utils.decodenewlines(model.tokenizer.decode(txt)).encode("unicode_escape").decode("utf-8"))
 
     # Store context in memory to use it for comparison with generated content
     koboldai_vars.lastctx = utils.decodenewlines(tokenizer.decode(txt))
@@ -6384,8 +6380,6 @@ def UI_2_load_model(data):
     if not os.path.exists("settings/"):
         os.mkdir("settings")
     changed = True
-    if not utils.HAS_ACCELERATE:
-        data['disk_layers'] = "0"
     if os.path.exists("settings/" + data['model'].replace('/', '_') + ".breakmodel"):
         with open("settings/" + data['model'].replace('/', '_') + ".breakmodel", "r") as file:
             file_data = file.read().split('\n')[:2]

@@ -303,7 +303,7 @@ def use_lazy_torch_load(enable=True, callback: Optional[Callable] = None, demate
         torch.load = torch_load
 
         if dematerialized_modules:
-            if use_accelerate_init_empty_weights and utils.HAS_ACCELERATE:
+            if use_accelerate_init_empty_weights:
                 import accelerate
                 init_empty_weights = accelerate.init_empty_weights()
                 init_empty_weights.__enter__()
@@ -334,7 +334,7 @@ def use_lazy_torch_load(enable=True, callback: Optional[Callable] = None, demate
         torch._utils._rebuild_tensor = old_rebuild_tensor
         torch.load = old_torch_load
         if dematerialized_modules:
-            if use_accelerate_init_empty_weights and utils.HAS_ACCELERATE:
+            if use_accelerate_init_empty_weights:
                 init_empty_weights.__exit__(None, None, None)
             else:
                 torch.nn.Linear.__init__ = old_linear_init

@@ -1779,18 +1779,17 @@ class HFTorchInferenceModel(InferenceModel):
 
             if utils.num_shards is None or utils.current_shard == 0:
                 utils.offload_index = {}
-                if utils.HAS_ACCELERATE:
-                    if os.path.isdir("accelerate-disk-cache"):
-                        # Delete all of the files in the disk cache folder without deleting the folder itself to allow people to create symbolic links for this folder
-                        # (the folder doesn't contain any subfolders so os.remove will do just fine)
-                        for filename in os.listdir("accelerate-disk-cache"):
-                            try:
-                                os.remove(
-                                    os.path.join("accelerate-disk-cache", filename)
-                                )
-                            except OSError:
-                                pass
-                    os.makedirs("accelerate-disk-cache", exist_ok=True)
+                if os.path.isdir("accelerate-disk-cache"):
+                    # Delete all of the files in the disk cache folder without deleting the folder itself to allow people to create symbolic links for this folder
+                    # (the folder doesn't contain any subfolders so os.remove will do just fine)
+                    for filename in os.listdir("accelerate-disk-cache"):
+                        try:
+                            os.remove(
+                                os.path.join("accelerate-disk-cache", filename)
+                            )
+                        except OSError:
+                            pass
+                os.makedirs("accelerate-disk-cache", exist_ok=True)
                 if utils.num_shards is not None:
                     num_tensors = len(
                         utils.get_sharded_checkpoint_num_tensors(
@@ -1883,7 +1882,7 @@ class HFTorchInferenceModel(InferenceModel):
                             model_dict[key] = model_dict[key].to(torch.float32)
                         if device == "shared":
                             model_dict[key] = model_dict[key].to("cpu").detach_()
-                            if able_to_pin_layers and utils.HAS_ACCELERATE:
+                            if able_to_pin_layers:
                                 try:
                                     model_dict[key] = model_dict[key].pin_memory()
                                 except:
@@ -1987,10 +1986,9 @@ class HFTorchInferenceModel(InferenceModel):
             )
         row_color = colors.END
         sep_color = colors.YELLOW
-        if utils.HAS_ACCELERATE:
-            print(
-                f"{row_color}{colors.YELLOW + '->' + row_color if -1 == selected else '  '} {' '*9} N/A  {sep_color}|{row_color}     {breakmodel.disk_blocks:3}  {sep_color}|{row_color}  (Disk cache){colors.END}"
-            )
+        print(
+            f"{row_color}{colors.YELLOW + '->' + row_color if -1 == selected else '  '} {' '*9} N/A  {sep_color}|{row_color}     {breakmodel.disk_blocks:3}  {sep_color}|{row_color}  (Disk cache){colors.END}"
+        )
         print(
             f"{row_color}   {' '*9} N/A  {sep_color}|{row_color}     {n_layers:3}  {sep_color}|{row_color}  (CPU){colors.END}"
         )
@@ -2007,9 +2005,7 @@ class HFTorchInferenceModel(InferenceModel):
             breakmodel.gpu_blocks = [0] * n_layers
             return
 
-        elif utils.args.breakmodel_gpulayers is not None or (
-            utils.HAS_ACCELERATE and utils.args.breakmodel_disklayers is not None
-        ):
+        elif utils.args.breakmodel_gpulayers is not None or utils.args.breakmodel_disklayers is not None:
             try:
                 if not utils.args.breakmodel_gpulayers:
                     breakmodel.gpu_blocks = []
@@ -2117,7 +2113,7 @@ class HFTorchInferenceModel(InferenceModel):
                 if n_layers == 0:
                     break
 
-            if utils.HAS_ACCELERATE and n_layers > 0:
+            if n_layers > 0:
                 self.breakmodel_device_list(
                     n_layers, primary=breakmodel.primary_device, selected=-1
                 )
