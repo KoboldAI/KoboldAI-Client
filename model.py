@@ -327,7 +327,7 @@ def patch_transformers_download():
                 desc=f"Downloading {file_name}"
                 if file_name is not None
                 else "Downloading",
-                file=utils.UIProgressBarFile,
+                file=utils.UIProgressBarFile(),
             )
             utils.koboldai_vars.status_message = "Download Model"
             utils.koboldai_vars.total_download_chunks = total

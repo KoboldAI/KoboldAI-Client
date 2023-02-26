@@ -127,22 +127,6 @@ def show_spinner(queue):
         time.sleep(0.1)
         i += 1
 
-class Send_to_socketio(object):
-    def write(self, bar):
-        bar = bar.replace("\r", "").replace("\n", "").replace(chr(0), "")
-        if bar != "" and [ord(num) for num in bar] != [27, 91, 65]: #No idea why we're getting the 27, 1, 65 character set, just killing to so we can move on
-            #logger.info(bar)
-            print('\r' + bar, end='')
-            time.sleep(0.01)
-            try:
-                socketio.emit('from_server', {'cmd': 'model_load_status', 'data': bar.replace(" ", "&nbsp;")}, broadcast=True, room="UI_1")
-            except:
-                pass
-        
-    def flush(self):
-        pass
-
-
 __F = TypeVar("__F", bound=Callable)
 __T = TypeVar("__T")
 
@@ -1031,7 +1015,7 @@ def read_neox_checkpoint(state, path, config, checkpoint_shards=2):
     if socketio is None:
         bar = tqdm(total=tqdm_length, desc="Loading from NeoX checkpoint")
     else:
-        bar = tqdm(total=tqdm_length, desc="Loading from NeoX checkpoint", file=Send_to_socketio())
+        bar = tqdm(total=tqdm_length, desc="Loading from NeoX checkpoint", file=utils.UIProgressBarFile())
     koboldai_vars.status_message = "Loading TPU"
     koboldai_vars.total_layers = tqdm_length
     koboldai_vars.loaded_layers = 0
