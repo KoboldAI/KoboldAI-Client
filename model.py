@@ -2720,7 +2720,7 @@ class HordeInferenceModel(InferenceModel):
             raise HordeException("Horde Text generation faulted! Please try again.")
 
         generations = req_status["generations"]
-        gen_servers = [(cgen["server_name"], cgen["server_id"]) for cgen in generations]
+        gen_servers = [(cgen["worker_name"], cgen["worker_id"]) for cgen in generations]
         logger.info(f"Generations by: {gen_servers}")
 
         return GenerationResult(
