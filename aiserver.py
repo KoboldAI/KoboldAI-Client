@@ -1921,7 +1921,8 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
         )
     
     # TODO: Convert everywhere to use model.tokenizer
-    tokenizer = model.tokenizer
+    if model:
+        tokenizer = model.tokenizer
 
     lua_startup()
     # Load scripts
