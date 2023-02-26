@@ -2274,7 +2274,7 @@ class GenericHFTorchInferenceModel(HFTorchInferenceModel):
         if utils.koboldai_vars.hascuda:
             if utils.koboldai_vars.usegpu:
                 # Use just VRAM
-                model = model.half().to(utils.koboldai_vars.gpu_device)
+                self.model = self.model.half().to(utils.koboldai_vars.gpu_device)
             elif utils.koboldai_vars.breakmodel:
                 # Use both RAM and VRAM (breakmodel)
                 if not utils.koboldai_vars.lazy_load:
