@@ -1732,19 +1732,21 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
     global generator
     global torch
     global model_config
-    global GPT2Tokenizer
-    global tokenizer
+
     koboldai_vars.aibusy = True
     koboldai_vars.horde_share = False
-    if(initial_load):
+
+    if initial_load:
         use_breakmodel_args = True
+
     reset_model_settings()
-    if not utils.HAS_ACCELERATE:
-        disk_layers = None
+    disk_layers = None
     koboldai_vars.reset_model()
+
     koboldai_vars.cluster_requested_models = [online_model] if isinstance(online_model, str) else online_model
     if koboldai_vars.cluster_requested_models == [""]:
         koboldai_vars.cluster_requested_models = []
+
     koboldai_vars.noai = False
     if not use_breakmodel_args:
         set_aibusy(True)
@@ -1752,6 +1754,7 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
             emit('from_server', {'cmd': 'model_load_status', 'data': "Loading {}".format(koboldai_vars.model)}, broadcast=True)
             #Have to add a sleep so the server will send the emit for some reason
             time.sleep(0.1)
+
     if gpu_layers is not None:
         args.breakmodel_gpulayers = gpu_layers
     elif use_breakmodel_args:
@@ -1773,17 +1776,18 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
     else:
         koboldai_vars.online_model = online_model
         # Swap OAI Server if GooseAI was selected
-        if(koboldai_vars.model == "GooseAI"):
+        if koboldai_vars.model == "GooseAI":
             koboldai_vars.oaiengines = "https://api.goose.ai/v1/engines"
             koboldai_vars.model = "OAI"
             koboldai_vars.configname = f"GooseAI_{online_model.replace('/', '_')}"
-        elif(koboldai_vars.model == "CLUSTER") and type(online_model) is list:
+        elif koboldai_vars.model == "CLUSTER" and isinstance(online_model, list):
                 if len(online_model) != 1:
                     koboldai_vars.configname = koboldai_vars.model
                 else:
                     koboldai_vars.configname = f"{koboldai_vars.model}_{online_model[0].replace('/', '_')}"
         else:
             koboldai_vars.configname = f"{koboldai_vars.model}_{online_model.replace('/', '_')}"
+
         if path.exists(get_config_filename()):
             changed=False
             with open(get_config_filename(), "r") as file:
@@ -1796,12 +1800,13 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
                 else:
                     changed=True
                     js['online_model'] = online_model
+
             if changed:
                 with open("settings/{}.v2_settings".format(koboldai_vars.model), "w") as file:
                     file.write(json.dumps(js, indent=3))
 
         # Swap OAI Server if GooseAI was selected
-        if(koboldai_vars.model == "GooseAI"):
+        if koboldai_vars.model == "GooseAI":
             koboldai_vars.oaiengines = "https://api.goose.ai/v1/engines"
             koboldai_vars.model = "OAI"
             args.configname = "GooseAI" + "/" + online_model
@@ -1809,13 +1814,10 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
             args.configname = koboldai_vars.model + "/" + online_model
         koboldai_vars.oaiurl = koboldai_vars.oaiengines + "/{0}/completions".format(online_model)
     
-    
     # If transformers model was selected & GPU available, ask to use CPU or GPU
-    # if(koboldai_vars.model not in ["InferKit", "Colab", "API", "CLUSTER", "OAI", "GooseAI" , "ReadOnly", "TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX"] and not koboldai_vars.model.startswith("RWKV")):
-
     if(not koboldai_vars.use_colab_tpu and koboldai_vars.model not in ["InferKit", "Colab", "API", "CLUSTER", "OAI", "GooseAI" , "ReadOnly", "TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX"]):
-        loadmodelsettings()
-        loadsettings()
+        # loadmodelsettings()
+        # loadsettings()
         logger.init("GPU support", status="Searching")
         koboldai_vars.hascuda = torch.cuda.is_available() and not args.cpu
         koboldai_vars.bmsupported = ((utils.HAS_ACCELERATE and koboldai_vars.model_type != 'gpt2') or koboldai_vars.model_type in ("gpt_neo", "gptj", "xglm", "opt")) and not koboldai_vars.nobreakmodel
@@ -1850,36 +1852,27 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
 
 
     # Ask for API key if InferKit was selected
-    if(koboldai_vars.model == "InferKit"):
+    if koboldai_vars.model == "InferKit":
         koboldai_vars.apikey = koboldai_vars.oaiapikey
                     
     # Swap OAI Server if GooseAI was selected
-    if(koboldai_vars.model == "GooseAI"):
+    if koboldai_vars.model == "GooseAI":
         koboldai_vars.oaiengines = "https://api.goose.ai/v1/engines"
         koboldai_vars.model = "OAI"
         koboldai_vars.configname = "GooseAI"
 
     # Ask for API key if OpenAI was selected
-    if(koboldai_vars.model == "OAI"):
-        if not koboldai_vars.configname:
-            koboldai_vars.configname = "OAI"
+    if koboldai_vars.model == "OAI" and not koboldai_vars.configname:
+        koboldai_vars.configname = "OAI"
         
-    if(koboldai_vars.model == "ReadOnly"):
+    if koboldai_vars.model == "ReadOnly":
         koboldai_vars.noai = True
 
-    # Start transformers and create pipeline
-    # if koboldai_vars.model.startswith("RWKV"):
-    #     _, model_class, device = koboldai_vars.model.split("-")
-    #     model, tokenizer = rwkv_init(
-    #         model_class=model_class,
-    #         use_gpu=(device == "GPU")
-    #     )
-
-    #     global breakmodel
-    #     import breakmodel
+    loadmodelsettings()
+    loadsettings()
 
     # TODO: InferKit
-    if koboldai_vars.model == "ReadOnly":
+    if koboldai_vars.model == "ReadOnly" or koboldai_vars.noai:
         print(":P")
     elif koboldai_vars.model in ["Colab", "API", "CLUSTER", "OAI"]:
         if koboldai_vars.model == "Colab":
@@ -1891,10 +1884,10 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
         elif koboldai_vars.model == "OAI":
             model = OpenAIAPIInferenceModel()
 
-        loadsettings()
         koboldai_vars.colaburl = url or koboldai_vars.colaburl
         koboldai_vars.usegpu = False
         koboldai_vars.breakmodel = False
+        model.load(initial_load=initial_load)
     elif not koboldai_vars.use_colab_tpu and not koboldai_vars.noai:
         # HF Torch
         logger.init("Transformers", status='Starting')
@@ -1909,155 +1902,29 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
                 koboldai_vars.model,
                 low_mem=args.lowmem
             )
-            model.load(
-                save_model=not (args.colab or args.cacheonly) or args.savemodel
-            )
         else:
             model = GenericHFTorchInferenceModel(
                 koboldai_vars.model,
                 lazy_load=koboldai_vars.lazy_load,
                 low_mem=args.lowmem
             )
-            model.load(
-                save_model=not (args.colab or args.cacheonly) or args.savemodel
-            )
+        model.load(
+            save_model=not (args.colab or args.cacheonly) or args.savemodel,
+            initial_load=initial_load,
+        )
         
         # TODO: Convert everywhere to use model.tokenizer
         tokenizer = model.tokenizer
         logger.info(f"Pipeline created: {koboldai_vars.model}")
     else:
         # TPU
-        raise NotImplementedError
-        from transformers import PreTrainedModel
-        from transformers import modeling_utils
-        old_from_pretrained = PreTrainedModel.from_pretrained.__func__
-        @classmethod
-        def new_from_pretrained(cls, pretrained_model_name_or_path, *model_args, **kwargs):
-            koboldai_vars.fp32_model = False
-            utils.num_shards = None
-            utils.current_shard = 0
-            utils.from_pretrained_model_name = pretrained_model_name_or_path
-            utils.from_pretrained_index_filename = None
-            utils.from_pretrained_kwargs = kwargs
-            utils.bar = None
-            if not args.no_aria2:
-                utils.aria2_hook(pretrained_model_name_or_path, **kwargs)
-            return old_from_pretrained(cls, pretrained_model_name_or_path, *model_args, **kwargs)
-        if(not hasattr(PreTrainedModel, "_kai_patched")):
-            PreTrainedModel.from_pretrained = new_from_pretrained
-            PreTrainedModel._kai_patched = True
-        if(hasattr(modeling_utils, "get_checkpoint_shard_files")):
-            old_get_checkpoint_shard_files = modeling_utils.get_checkpoint_shard_files
-            def new_get_checkpoint_shard_files(pretrained_model_name_or_path, index_filename, *args, **kwargs):
-                utils.num_shards = utils.get_num_shards(index_filename)
-                utils.from_pretrained_index_filename = index_filename
-                return old_get_checkpoint_shard_files(pretrained_model_name_or_path, index_filename, *args, **kwargs)
-            modeling_utils.get_checkpoint_shard_files = new_get_checkpoint_shard_files
-
-
-        def tpumtjgenerate_warper_callback(scores) -> "np.array":
-            scores_shape = scores.shape
-            scores_list = scores.tolist()
-            koboldai_vars.lua_koboldbridge.logits = koboldai_vars.lua_state.table()
-            for r, row in enumerate(scores_list):
-                koboldai_vars.lua_koboldbridge.logits[r+1] = koboldai_vars.lua_state.table(*row)
-            koboldai_vars.lua_koboldbridge.vocab_size = scores_shape[-1]
-
-            execute_genmod()
-
-            scores = np.array(
-                tuple(tuple(row.values()) for row in koboldai_vars.lua_koboldbridge.logits.values()),
-                dtype=scores.dtype,
-            )
-            assert scores.shape == scores_shape
-
-            return scores
-        
-        def tpumtjgenerate_stopping_callback(generated, n_generated, excluded_world_info) -> Tuple[List[set], bool, bool]:
-            koboldai_vars.generated_tkns += 1
-
-            assert len(excluded_world_info) == len(generated)
-            regeneration_required = koboldai_vars.lua_koboldbridge.regeneration_required
-            halt = koboldai_vars.abort or not koboldai_vars.lua_koboldbridge.generating or koboldai_vars.generated_tkns >= koboldai_vars.genamt
-            koboldai_vars.lua_koboldbridge.regeneration_required = False
-
-            global past
-
-            for i in range(koboldai_vars.numseqs):
-                koboldai_vars.lua_koboldbridge.generated[i+1][koboldai_vars.generated_tkns] = int(generated[i, tpu_mtj_backend.params["seq"] + n_generated - 1].item())
-
-            if(not koboldai_vars.dynamicscan or halt):
-                return excluded_world_info, regeneration_required, halt
-
-            for i, t in enumerate(generated):
-                decoded = utils.decodenewlines(tokenizer.decode(past[i])) + utils.decodenewlines(tokenizer.decode(t[tpu_mtj_backend.params["seq"] : tpu_mtj_backend.params["seq"] + n_generated]))
-                #_, found = checkworldinfo(decoded, force_use_txt=True, actions=koboldai_vars.actions)
-                _, _, _, found = koboldai_vars.calc_ai_text(submitted_text=decoded)
-                found -= excluded_world_info[i]
-                if(len(found) != 0):
-                    regeneration_required = True
-                    break
-            return excluded_world_info, regeneration_required, halt
-
-        def tpumtjgenerate_compiling_callback() -> None:
-            print(colors.GREEN + "TPU backend compilation triggered" + colors.END)
-            koboldai_vars.compiling = True
-
-        def tpumtjgenerate_stopped_compiling_callback() -> None:
-            print(colors.GREEN + "TPU backend compilation stopped" + colors.END)
-            koboldai_vars.compiling = False
-        
-        def tpumtjgenerate_settings_callback() -> dict:
-            sampler_order = koboldai_vars.sampler_order[:]
-            if len(sampler_order) < 7:  # Add repetition penalty at beginning if it's not present
-                sampler_order = [6] + sampler_order
-            return {
-                "sampler_order": koboldai_vars.sampler_order,
-                "top_p": float(koboldai_vars.top_p),
-                "temp": float(koboldai_vars.temp),
-                "top_k": int(koboldai_vars.top_k),
-                "tfs": float(koboldai_vars.tfs),
-                "typical": float(koboldai_vars.typical),
-                "top_a": float(koboldai_vars.top_a),
-                "repetition_penalty": float(koboldai_vars.rep_pen),
-                "rpslope": float(koboldai_vars.rep_pen_slope),
-                "rprange": int(koboldai_vars.rep_pen_range),
-            }
-
-        # Load the TPU backend if requested
-        if (koboldai_vars.use_colab_tpu or koboldai_vars.model in ("TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX")):
-            global tpu_mtj_backend
-            import tpu_mtj_backend
-            
-            tpu_mtj_backend.socketio = socketio
-            if(koboldai_vars.model == "TPUMeshTransformerGPTNeoX"):
-                koboldai_vars.badwordsids = koboldai_vars.badwordsids_neox
-            print("{0}Initializing Mesh Transformer JAX, please wait...{1}".format(colors.PURPLE, colors.END))
-            if koboldai_vars.model in ("TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX") and (not koboldai_vars.custmodpth or not os.path.isdir(koboldai_vars.custmodpth)):
-                raise FileNotFoundError(f"The specified model path {repr(koboldai_vars.custmodpth)} is not the path to a valid folder")
-            if(koboldai_vars.model == "TPUMeshTransformerGPTNeoX"):
-                tpu_mtj_backend.pad_token_id = 2
-            tpu_mtj_backend.koboldai_vars = koboldai_vars
-            tpu_mtj_backend.warper_callback = tpumtjgenerate_warper_callback
-            tpu_mtj_backend.stopping_callback = tpumtjgenerate_stopping_callback
-            tpu_mtj_backend.compiling_callback = tpumtjgenerate_compiling_callback
-            tpu_mtj_backend.stopped_compiling_callback = tpumtjgenerate_stopped_compiling_callback
-            tpu_mtj_backend.settings_callback = tpumtjgenerate_settings_callback
-            koboldai_vars.allowsp = True
-            loadmodelsettings()
-            loadsettings()
-            tpu_mtj_backend.load_model(koboldai_vars.custmodpth, 
-                                       hf_checkpoint=koboldai_vars.model not in ("TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX") 
-                                       and koboldai_vars.use_colab_tpu, 
-                                       socketio_queue=koboldai_settings.queue, 
-                                       initial_load=initial_load, logger=logger,                                        **koboldai_vars.modelconfig)
-            #tpool.execute(tpu_mtj_backend.load_model, koboldai_vars.custmodpth, hf_checkpoint=koboldai_vars.model not in ("TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX") and koboldai_vars.use_colab_tpu, **koboldai_vars.modelconfig)
-            koboldai_vars.modeldim = int(tpu_mtj_backend.params.get("d_embed", tpu_mtj_backend.params["d_model"]))
-            tokenizer = tpu_mtj_backend.tokenizer
-            if(koboldai_vars.badwordsids is koboldai_settings.badwordsids_default and koboldai_vars.model_type not in ("gpt2", "gpt_neo", "gptj")):
-                koboldai_vars.badwordsids = [[v] for k, v in tokenizer.get_vocab().items() if any(c in str(k) for c in "<>[]") if koboldai_vars.newlinemode != "s" or str(k) != "</s>"]
-        else:
-            loadsettings()
+        model = HFMTJInferenceModel(
+            koboldai_vars.model
+        )
+        model.load(
+            save_model=not (args.colab or args.cacheonly) or args.savemodel,
+            initial_load=initial_load,
+        )
     
     lua_startup()
     # Load scripts

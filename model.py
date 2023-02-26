@@ -1,7 +1,5 @@
 # TODO:
 # - Intertwine stoppers and streaming and such
-# - Support RWKV
-# - Support 8-bit lazy-load
 from __future__ import annotations
 
 import bisect
@@ -18,7 +16,7 @@ import json
 import os
 import time
 import traceback
-from typing import Dict, Iterable, List, Optional, Set, Union
+from typing import Dict, Iterable, List, Optional, Set, Tuple, Union
 import zipfile
 from tqdm.auto import tqdm
 from logger import logger
@@ -56,6 +54,17 @@ except ModuleNotFoundError as e:
     # Not on TPU... hopefully
     if utils.koboldai_vars.use_colab_tpu:
         raise e
+
+# HACK: Tttttttterrrible structure hack
+class colors:
+    PURPLE = "\033[95m"
+    BLUE = "\033[94m"
+    CYAN = "\033[96m"
+    GREEN = "\033[92m"
+    YELLOW = "\033[93m"
+    RED = "\033[91m"
+    END = "\033[0m"
+    UNDERLINE = "\033[4m"
 
 
 class OpenAIAPIError(Exception):
@@ -291,6 +300,7 @@ def patch_transformers_download():
         total = (
             resume_size + int(content_length) if content_length is not None else None
         )
+
         # `tqdm` behavior is determined by `utils.logging.is_progress_bar_enabled()`
         # and can be set using `utils.logging.enable/disable_progress_bar()`
         if url[-11:] != "config.json":
@@ -307,12 +317,14 @@ def patch_transformers_download():
             )
             utils.koboldai_vars.status_message = "Download Model"
             utils.koboldai_vars.total_download_chunks = total
+
         for chunk in r.iter_content(chunk_size=1024):
             if chunk:  # filter out keep-alive new chunks
                 if url[-11:] != "config.json":
                     progress.update(len(chunk))
                     utils.koboldai_vars.downloaded_chunks += len(chunk)
                 temp_file.write(chunk)
+
         if url[-11:] != "config.json":
             progress.close()
 
@@ -321,12 +333,11 @@ def patch_transformers_download():
     transformers.utils.hub.http_get = http_get
 
 
-def patch_transformers():
-    # ????? why is this needed
-    global transformers
-    print(transformers)
-    patch_transformers_download()
-
+def patch_transformers_loader() -> None:
+    """
+    Patch the Transformers loader to use aria2 and our shard tracking.
+    Universal for TPU/MTJ and Torch.
+    """
     old_from_pretrained = PreTrainedModel.from_pretrained.__func__
 
     @classmethod
@@ -347,6 +358,7 @@ def patch_transformers():
     if not hasattr(PreTrainedModel, "_kai_patched"):
         PreTrainedModel.from_pretrained = new_from_pretrained
         PreTrainedModel._kai_patched = True
+
     if hasattr(modeling_utils, "get_checkpoint_shard_files"):
         old_get_checkpoint_shard_files = modeling_utils.get_checkpoint_shard_files
 
@@ -361,7 +373,12 @@ def patch_transformers():
 
         modeling_utils.get_checkpoint_shard_files = new_get_checkpoint_shard_files
 
-    # Patch transformers to use our custom logit warpers
+
+def patch_transformers_generation() -> None:
+    # Not sure why this global is needed...
+    global transformers
+
+    # Patch transformers to use our custom logit warpers -- Only HFTorchInferenceModel uses this
     from transformers import (
         LogitsProcessorList,
         LogitsWarper,
@@ -507,18 +524,18 @@ def patch_transformers():
             # Handle direct phrases
             if phrase.startswith("{") and phrase.endswith("}"):
                 no_brackets = phrase[1:-1]
-                return [tokenizer.encode(no_brackets)]
+                return [HACK_currentmodel.tokenizer.encode(no_brackets)]
 
             # Handle untamperable phrases
             if not self._allow_leftwards_tampering(phrase):
-                return [tokenizer.encode(phrase)]
+                return [HACK_currentmodel.tokenizer.encode(phrase)]
 
             # Handle slight alterations to original phrase
             phrase = phrase.strip(" ")
             ret = []
 
             for alt_phrase in [phrase, f" {phrase}"]:
-                ret.append(tokenizer.encode(alt_phrase))
+                ret.append(HACK_currentmodel.tokenizer.encode(alt_phrase))
 
             return ret
 
@@ -747,6 +764,14 @@ def patch_transformers():
     transformers.generation.logits_process.NoBadWordsLogitsProcessor.__init__ = new_init
 
 
+def patch_transformers() -> None:
+    patch_transformers_download()
+    patch_transformers_loader()
+
+    # Doesn't do anything for TPU
+    patch_transformers_generation()
+
+
 class GenerationResult:
     def __init__(
         self,
@@ -798,10 +823,10 @@ class InferenceModel:
         self.tokenizer = None
         self.capabilties = ModelCapabilities()
 
-    def load(self, save_model: bool) -> None:
+    def load(self, save_model: bool, initial_load: bool = False) -> None:
         """Main load function. Do not override this. Override _load() instead."""
 
-        self._load(save_model=save_model)
+        self._load(save_model=save_model, initial_load=initial_load)
         self._post_load()
 
         global HACK_currentmodel
@@ -810,7 +835,7 @@ class InferenceModel:
     def _post_load(self) -> None:
         pass
 
-    def _load(self, save_model: bool) -> None:
+    def _load(self, save_model: bool, inital_load: bool) -> None:
         raise NotImplementedError
 
     def _get_tokenizer(self, location: str):
@@ -1193,6 +1218,177 @@ class HFMTJInferenceModel:
             post_token_probs=False,
         )
 
+    def setup_mtj(self) -> None:
+        def mtj_warper_callback(scores) -> "np.array":
+            scores_shape = scores.shape
+            scores_list = scores.tolist()
+            utils.koboldai_vars.lua_koboldbridge.logits = (
+                utils.koboldai_vars.lua_state.table()
+            )
+            for r, row in enumerate(scores_list):
+                utils.koboldai_vars.lua_koboldbridge.logits[
+                    r + 1
+                ] = utils.koboldai_vars.lua_state.table(*row)
+            utils.koboldai_vars.lua_koboldbridge.vocab_size = scores_shape[-1]
+
+            utils.koboldai_vars.lua_koboldbridge.execute_genmod()
+
+            scores = np.array(
+                tuple(
+                    tuple(row.values())
+                    for row in utils.koboldai_vars.lua_koboldbridge.logits.values()
+                ),
+                dtype=scores.dtype,
+            )
+            assert scores.shape == scores_shape
+
+            return scores
+
+        def mtj_stopping_callback(
+            generated, n_generated, excluded_world_info
+        ) -> Tuple[List[set], bool, bool]:
+            utils.koboldai_vars.generated_tkns += 1
+
+            assert len(excluded_world_info) == len(generated)
+            regeneration_required = (
+                utils.koboldai_vars.lua_koboldbridge.regeneration_required
+            )
+            halt = (
+                utils.koboldai_vars.abort
+                or not utils.koboldai_vars.lua_koboldbridge.generating
+                or utils.koboldai_vars.generated_tkns >= utils.koboldai_vars.genamt
+            )
+            utils.koboldai_vars.lua_koboldbridge.regeneration_required = False
+
+            global past
+
+            for i in range(utils.koboldai_vars.numseqs):
+                utils.koboldai_vars.lua_koboldbridge.generated[i + 1][
+                    utils.koboldai_vars.generated_tkns
+                ] = int(
+                    generated[i, tpu_mtj_backend.params["seq"] + n_generated - 1].item()
+                )
+
+            if not utils.koboldai_vars.dynamicscan or halt:
+                return excluded_world_info, regeneration_required, halt
+
+            for i, t in enumerate(generated):
+                decoded = utils.decodenewlines(
+                    self.tokenizer.decode(past[i])
+                ) + utils.decodenewlines(
+                    self.tokenizer.decode(
+                        t[
+                            tpu_mtj_backend.params["seq"] : tpu_mtj_backend.params[
+                                "seq"
+                            ]
+                            + n_generated
+                        ]
+                    )
+                )
+                # _, found = checkworldinfo(decoded, force_use_txt=True, actions=koboldai_vars.actions)
+                _, _, _, found = utils.koboldai_vars.calc_ai_text(
+                    submitted_text=decoded
+                )
+                found -= excluded_world_info[i]
+                if len(found) != 0:
+                    regeneration_required = True
+                    break
+            return excluded_world_info, regeneration_required, halt
+
+        def mtj_compiling_callback() -> None:
+            print(colors.GREEN + "TPU backend compilation triggered" + colors.END)
+            utils.koboldai_vars.compiling = True
+
+        def mtj_stopped_compiling_callback() -> None:
+            print(colors.GREEN + "TPU backend compilation stopped" + colors.END)
+            utils.koboldai_vars.compiling = False
+
+        def mtj_settings_callback() -> dict:
+            sampler_order = utils.koboldai_vars.sampler_order[:]
+            if (
+                len(sampler_order) < 7
+            ):  # Add repetition penalty at beginning if it's not present
+                sampler_order = [6] + sampler_order
+            return {
+                "sampler_order": utils.koboldai_vars.sampler_order,
+                "top_p": float(utils.koboldai_vars.top_p),
+                "temp": float(utils.koboldai_vars.temp),
+                "top_k": int(utils.koboldai_vars.top_k),
+                "tfs": float(utils.koboldai_vars.tfs),
+                "typical": float(utils.koboldai_vars.typical),
+                "top_a": float(utils.koboldai_vars.top_a),
+                "repetition_penalty": float(utils.koboldai_vars.rep_pen),
+                "rpslope": float(utils.koboldai_vars.rep_pen_slope),
+                "rprange": int(utils.koboldai_vars.rep_pen_range),
+            }
+
+        self.load_mtj_backend()
+
+        tpu_mtj_backend.socketio = utils.socketio
+
+        if utils.koboldai_vars.model == "TPUMeshTransformerGPTNeoX":
+            utils.koboldai_vars.badwordsids = utils.koboldai_vars.badwordsids_neox
+
+        print(
+            "{0}Initializing Mesh Transformer JAX, please wait...{1}".format(
+                colors.PURPLE, colors.END
+            )
+        )
+        if utils.koboldai_vars.model in (
+            "TPUMeshTransformerGPTJ",
+            "TPUMeshTransformerGPTNeoX",
+        ) and (
+            not utils.koboldai_vars.custmodpth
+            or not os.path.isdir(utils.koboldai_vars.custmodpth)
+        ):
+            raise FileNotFoundError(
+                f"The specified model path {repr(utils.koboldai_vars.custmodpth)} is not the path to a valid folder"
+            )
+        if utils.koboldai_vars.model == "TPUMeshTransformerGPTNeoX":
+            tpu_mtj_backend.pad_token_id = 2
+
+        tpu_mtj_backend.koboldai_vars = utils.koboldai_vars
+        tpu_mtj_backend.warper_callback = mtj_warper_callback
+        tpu_mtj_backend.stopping_callback = mtj_stopping_callback
+        tpu_mtj_backend.compiling_callback = mtj_compiling_callback
+        tpu_mtj_backend.stopped_compiling_callback = mtj_stopped_compiling_callback
+        tpu_mtj_backend.settings_callback = mtj_settings_callback
+
+    def _load(self, save_model: bool, initial_load: bool) -> None:
+        self.patch_transformers()
+        self.setup_mtj()
+
+        utils.koboldai_vars.allowsp = True
+        # loadmodelsettings()
+        # loadsettings()
+        tpu_mtj_backend.load_model(
+            utils.koboldai_vars.custmodpth,
+            hf_checkpoint=utils.koboldai_vars.model
+            not in ("TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX")
+            and utils.koboldai_vars.use_colab_tpu,
+            socketio_queue=koboldai_settings.queue,
+            initial_load=initial_load,
+            logger=logger,
+            **utils.koboldai_vars.modelconfig,
+        )
+
+        # tpool.execute(tpu_mtj_backend.load_model, koboldai_vars.custmodpth, hf_checkpoint=koboldai_vars.model not in ("TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX") and koboldai_vars.use_colab_tpu, **koboldai_vars.modelconfig)
+        utils.koboldai_vars.modeldim = int(
+            tpu_mtj_backend.params.get("d_embed", tpu_mtj_backend.params["d_model"])
+        )
+
+        self.tokenizer = tpu_mtj_backend.tokenizer
+        if (
+            utils.koboldai_vars.badwordsids is koboldai_settings.badwordsids_default
+            and utils.koboldai_vars.model_type not in ("gpt2", "gpt_neo", "gptj")
+        ):
+            utils.koboldai_vars.badwordsids = [
+                [v]
+                for k, v in self.tokenizer.get_vocab().items()
+                if any(c in str(k) for c in "<>[]")
+                if utils.koboldai_vars.newlinemode != "s" or str(k) != "</s>"
+            ]
+
     def get_soft_tokens() -> np.array:
         soft_tokens = None
 
@@ -1465,45 +1661,6 @@ class HFTorchInferenceModel(InferenceModel):
 
         gc.collect()
         return
-
-        # == Old non-accelerate stuff
-        # model.half()
-        # gc.collect()
-
-        # if(hasattr(model, "transformer")):
-        #     model.transformer.wte.to(breakmodel.primary_device)
-        #     model.transformer.ln_f.to(breakmodel.primary_device)
-        #     if(hasattr(model, 'lm_head')):
-        #         model.lm_head.to(breakmodel.primary_device)
-        #     if(hasattr(model.transformer, 'wpe')):
-        #         model.transformer.wpe.to(breakmodel.primary_device)
-        # elif(not hasattr(model.model, "decoder")):
-        #     model.model.embed_tokens.to(breakmodel.primary_device)
-        #     model.model.layer_norm.to(breakmodel.primary_device)
-        #     model.lm_head.to(breakmodel.primary_device)
-        #     model.model.embed_positions.to(breakmodel.primary_device)
-        # else:
-        #     model.model.decoder.embed_tokens.to(breakmodel.primary_device)
-        #     if(model.model.decoder.project_in is not None):
-        #         model.model.decoder.project_in.to(breakmodel.primary_device)
-        #     if(model.model.decoder.project_out is not None):
-        #         model.model.decoder.project_out.to(breakmodel.primary_device)
-        #     model.model.decoder.embed_positions.to(breakmodel.primary_device)
-        # gc.collect()
-        # GPTNeoModel.forward = breakmodel.new_forward_neo
-        # if("GPTJModel" in globals()):
-        #     GPTJModel.forward = breakmodel.new_forward_neo # type: ignore
-        # if("XGLMModel" in globals()):
-        #     XGLMModel.forward = breakmodel.new_forward_xglm # type: ignore
-        # if("OPTDecoder" in globals()):
-        #     OPTDecoder.forward = breakmodel.new_forward_opt # type: ignore
-        # generator = model.generate
-        # if(hasattr(model, "transformer")):
-        #     breakmodel.move_hidden_layers(model.transformer)
-        # elif(not hasattr(model.model, "decoder")):
-        #     breakmodel.move_hidden_layers(model.model, model.model.layers)
-        # else:
-        #     breakmodel.move_hidden_layers(model.model.decoder, model.model.decoder.layers)
 
     # Function to patch transformers to use our soft prompt
     def patch_embedding(self) -> None:
@@ -1812,17 +1969,6 @@ class HFTorchInferenceModel(InferenceModel):
     def breakmodel_device_list(self, n_layers, primary=None, selected=None):
         # TODO: Find a better place for this or rework this
 
-        # HACK: Tttttttterrrible structure_hack
-        class colors:
-            PURPLE = "\033[95m"
-            BLUE = "\033[94m"
-            CYAN = "\033[96m"
-            GREEN = "\033[92m"
-            YELLOW = "\033[93m"
-            RED = "\033[91m"
-            END = "\033[0m"
-            UNDERLINE = "\033[4m"
-
         device_count = torch.cuda.device_count()
         if device_count < 2:
             primary = None
@@ -1851,17 +1997,6 @@ class HFTorchInferenceModel(InferenceModel):
 
     def breakmodel_device_config(self, config):
         # TODO: Find a better place for this or rework this
-
-        # HACK: Tttttttterrrible structure_hack
-        class colors:
-            PURPLE = "\033[95m"
-            BLUE = "\033[94m"
-            CYAN = "\033[96m"
-            GREEN = "\033[92m"
-            YELLOW = "\033[93m"
-            RED = "\033[91m"
-            END = "\033[0m"
-            UNDERLINE = "\033[4m"
 
         global breakmodel, generator
         import breakmodel
@@ -2030,7 +2165,7 @@ class HFTorchInferenceModel(InferenceModel):
 
 
 class GenericHFTorchInferenceModel(HFTorchInferenceModel):
-    def _load(self, save_model: bool) -> None:
+    def _load(self, save_model: bool, initial_load: bool) -> None:
         utils.koboldai_vars.allowsp = True
 
         # Make model path the same as the model name to make this consistent
@@ -2297,7 +2432,7 @@ class GenericHFTorchInferenceModel(HFTorchInferenceModel):
 
 
 class CustomGPT2HFTorchInferenceModel(HFTorchInferenceModel):
-    def _load(self, save_model: bool) -> None:
+    def _load(self, save_model: bool, initial_load: bool) -> None:
         utils.koboldai_vars.lazy_load = False
 
         model_path = None
@@ -2360,7 +2495,7 @@ class CustomGPT2HFTorchInferenceModel(HFTorchInferenceModel):
 
 
 class OpenAIAPIInferenceModel(InferenceModel):
-    def _load(self, save_model: bool) -> None:
+    def _load(self, save_model: bool, initial_load: bool) -> None:
         self.tokenizer = self._get_tokenizer("gpt2")
 
     def _raw_generate(
@@ -2440,7 +2575,7 @@ class OpenAIAPIInferenceModel(InferenceModel):
 
 
 class HordeInferenceModel(InferenceModel):
-    def _load(self, save_model: bool) -> None:
+    def _load(self, save_model: bool, initial_load: bool) -> None:
         self.tokenizer = self._get_tokenizer(
             utils.koboldai_vars.cluster_requested_models[0]
             if len(utils.koboldai_vars.cluster_requested_models) > 0
@@ -2586,7 +2721,7 @@ class HordeInferenceModel(InferenceModel):
 
 
 class ColabInferenceModel(InferenceModel):
-    def _load(self, save_model: bool) -> None:
+    def _load(self, save_model: bool, initial_load: bool) -> None:
         self.tokenizer = self._get_tokenizer("EleutherAI/gpt-neo-2.7B")
 
     def _raw_generate(
@@ -2645,7 +2780,7 @@ class ColabInferenceModel(InferenceModel):
 
 
 class APIInferenceModel(InferenceModel):
-    def _load(self, save_model: bool) -> None:
+    def _load(self, save_model: bool, initial_load: bool) -> None:
         tokenizer_id = requests.get(
             utils.koboldai_vars.colaburl[:-8] + "/api/v1/model",
         ).json()["result"]
