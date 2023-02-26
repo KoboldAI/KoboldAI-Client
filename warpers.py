@@ -38,11 +38,31 @@ file are mostly porting warper code to the torch methods.
 
 from __future__ import annotations
 
+import utils
 import torch
-import jax
-import jax.numpy as jnp
 import numpy as np
-import tpu_mtj_backend
+
+try:
+    import jax
+    import jax.numpy as jnp
+    import tpu_mtj_backend
+except ImportError:
+    assert not utils.koboldai_vars.use_colab_tpu
+
+
+def update_settings():
+    # This feels like a bad way to structure this
+    koboldai_vars = utils.koboldai_vars
+    Temperature.temperature = koboldai_vars.temp
+    TopP.top_p = koboldai_vars.top_p
+    TopK.top_k = koboldai_vars.top_k
+    TopA.top_a = koboldai_vars.top_a
+    TailFree.tfs = koboldai_vars.tfs
+    Typical.typical = koboldai_vars.typical
+    RepetitionPenalty.rep_pen = koboldai_vars.rep_pen
+    RepetitionPenalty.rep_pen_range = koboldai_vars.rep_pen_range
+    RepetitionPenalty.rep_pen_slope = koboldai_vars.rep_pen_slope
+    RepetitionPenalty.use_alt_rep_pen = koboldai_vars.use_alt_rep_pen
 
 
 class Warper:
@@ -70,7 +90,7 @@ class Temperature(Warper):
 
     @classmethod
     def jax(cls, scores: jnp.array) -> jnp.array:
-        return scores / cls.value
+        return scores / cls.temperature
 
 
 class TopP(Warper):
@@ -88,7 +108,7 @@ class TopP(Warper):
         cumulative_probs = sorted_logits.softmax(dim=-1).cumsum(dim=-1)
 
         # Remove tokens with cumulative top_p above the threshold (token with 0 are kept)
-        sorted_indices_to_remove = cumulative_probs <= (1 - cls.value)
+        sorted_indices_to_remove = cumulative_probs <= (1 - cls.top_p)
 
         # scatter sorted tensors to original indexing
         indices_to_remove = sorted_indices_to_remove.scatter(
@@ -109,7 +129,7 @@ class TopP(Warper):
         cumulative_probabilities = jnp.cumsum(probabilities, axis=-1)
         # We want to remove tokens with cumulative probability higher
         # than top_p
-        sorted_indices_to_remove = cumulative_probabilities > cls.value
+        sorted_indices_to_remove = cumulative_probabilities > cls.top_p
         # Don't ever remove the token with the highest logit, even if
         # the probability is higher than top_p
         sorted_indices_to_remove = sorted_indices_to_remove.at[0].set(False)
@@ -358,7 +378,7 @@ class RepetitionPenalty(Warper):
     use_alt_rep_pen: bool = False
 
     @classmethod
-    def torch(cls, scores: torch.Tensor) -> torch.Tensor:
+    def torch(cls, scores: torch.Tensor, input_ids: torch.Tensor) -> torch.Tensor:
         cls.rep_pen_range = int(cls.rep_pen_range)
         clipped_penalty_range = min(input_ids.shape[-1], cls.rep_pen_range)
 

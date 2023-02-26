@@ -349,57 +349,6 @@ def kobold_sample_dynamic(key, logits, rpargs, sampler_order: Optional[np.ndarra
     # probability distribution)
     return jax.random.categorical(key, logits, -1).astype(np.uint32)
 
-def apply_repetition_penalty_static(logits, tokens, repetition_penalty, generated_index, gen_length, rpslope, rprange):
-    '''
-    This gets called by generate_loop_fn to apply repetition penalty
-    to the 1D array logits using the provided 1D array of tokens to penalize
-    '''
-    rpslope = jnp.int32(rpslope)
-    rprange = jnp.int32(rprange)
-    clipped_rprange = jax.lax.cond(rprange > 0, lambda x: x, lambda x: tokens.shape[-1], rprange)
-    penalty_arange = jnp.roll(jnp.arange(tokens.shape[-1]) + (clipped_rprange - tokens.shape[-1]), generated_index, axis=-1)
-    # Make a new array with the same length as the tokens array but with
-    # each element replaced by the value at the corresponding index in the
-    # logits array; e.g.
-    # if logits is [77, 5, 3, 98] and tokens is [0, 1, 2, 3, 2, 3, 1],
-    # then penalty_logits will be [77, 5, 3, 98, 3, 98, 5]
-    penalty_logits = jnp.take(logits, tokens)
-    # Repetition penalty slope
-    def apply_slope(carry):
-        repetition_penalty, rprange = carry
-        _penalty = (penalty_arange/(rprange - 1)) * 2 - 1
-        _penalty = (rpslope * _penalty) / (1 + jnp.abs(_penalty) * (rpslope - 1))
-        _penalty = 1 + ((_penalty + 1) / 2) * (repetition_penalty - 1)
-        return _penalty
-    repetition_penalty = jax.lax.cond(
-        (rpslope != 0.0) & (rprange > 0),  # Not a typo; do not use `and` here, it makes JAX crash
-        apply_slope,
-        lambda carry: jnp.full(tokens.shape, carry[0]),
-        (repetition_penalty, rprange),
-    )
-    # Divide positive values by repetition_penalty and multiply negative
-    # values by repetition_penalty (the academic publication that described
-    # this technique actually just only divided, but that would cause tokens
-    # with negative logits to become more likely, which is obviously wrong)
-    if koboldai_vars.use_alt_rep_pen:
-        penalty_logits = jnp.where(
-            penalty_arange >= 0,
-            penalty_logits - jnp.log(repetition_penalty),
-            penalty_logits,
-        )
-    else:
-        penalty_logits = jnp.where(
-            penalty_arange >= 0,
-            jnp.where(
-                penalty_logits > 0,
-                penalty_logits/repetition_penalty,
-                penalty_logits*repetition_penalty,
-            ),
-            penalty_logits,
-        )
-    # Finally, put those penalized logit values back into their original
-    # positions in the logits array
-    return logits.at[tokens].set(penalty_logits)
 
 def kobold_sample_static(key, logits, rpargs, sampler_order: Optional[np.ndarray] = None, top_p=0.9, temp=0.5, top_k=0, tfs=1.0, typical=1.0, top_a=0.0):
     '''
