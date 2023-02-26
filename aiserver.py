@@ -5889,6 +5889,7 @@ def oai_raw_generate(
             'max_tokens': max_new,
             'temperature': gen_settings.temp,
             'top_p': gen_settings.top_p,
+            'frequency_penalty': gen_settings.rep_pen,
             'n': batch_count,
             'stream': False
         }
