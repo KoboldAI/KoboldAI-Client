@@ -1729,8 +1729,7 @@ def unload_model():
     
 def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=False, online_model="", use_breakmodel_args=False, breakmodel_args_default_to_cpu=False, url=None, use_8_bit=False):
     global model
-    global generator
-    global torch
+    global tokenizer
     global model_config
 
     koboldai_vars.aibusy = True
@@ -1912,9 +1911,6 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
             save_model=not (args.colab or args.cacheonly) or args.savemodel,
             initial_load=initial_load,
         )
-        
-        # TODO: Convert everywhere to use model.tokenizer
-        tokenizer = model.tokenizer
         logger.info(f"Pipeline created: {koboldai_vars.model}")
     else:
         # TPU
@@ -1926,6 +1922,9 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
             initial_load=initial_load,
         )
     
+    # TODO: Convert everywhere to use model.tokenizer
+    tokenizer = model.tokenizer
+
     lua_startup()
     # Load scripts
     load_lua_scripts()
