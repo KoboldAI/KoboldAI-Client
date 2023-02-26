@@ -241,9 +241,9 @@ class PostTokenHooks:
 # We only want to use logit manipulations and such on our core text model
 class use_core_manipulations:
     # These must be set by wherever they get setup
-    get_logits_processor: callable
-    sample: callable
-    get_stopping_criteria: callable
+    get_logits_processor: callable = None
+    sample: callable = None
+    get_stopping_criteria: callable = None
 
     # We set these automatically
     old_get_logits_processor: callable
@@ -251,32 +251,46 @@ class use_core_manipulations:
     old_get_stopping_criteria: callable
 
     def __enter__(self):
-        use_core_manipulations.old_get_logits_processor = (
-            transformers.GenerationMixin._get_logits_processor
-        )
-        transformers.GenerationMixin._get_logits_processor = (
-            use_core_manipulations.get_logits_processor
-        )
+        if self.get_logits_processor:
+            use_core_manipulations.old_get_logits_processor = (
+                transformers.GenerationMixin._get_logits_processor
+            )
+            transformers.GenerationMixin._get_logits_processor = (
+                use_core_manipulations.get_logits_processor
+            )
 
-        use_core_manipulations.old_sample = transformers.GenerationMixin.sample
-        transformers.GenerationMixin.sample = use_core_manipulations.sample
+        if self.sample:
+            use_core_manipulations.old_sample = transformers.GenerationMixin.sample
+            transformers.GenerationMixin.sample = use_core_manipulations.sample
 
-        use_core_manipulations.old_get_stopping_criteria = (
-            transformers.GenerationMixin._get_stopping_criteria
-        )
-        transformers.GenerationMixin._get_stopping_criteria = (
-            use_core_manipulations.get_stopping_criteria
-        )
+        if self.get_stopping_criteria:
+            use_core_manipulations.old_get_stopping_criteria = (
+                transformers.GenerationMixin._get_stopping_criteria
+            )
+            transformers.GenerationMixin._get_stopping_criteria = (
+                use_core_manipulations.get_stopping_criteria
+            )
         return self
 
     def __exit__(self, exc_type, exc_value, exc_traceback):
-        transformers.GenerationMixin._get_logits_processor = (
-            use_core_manipulations.old_get_logits_processor
-        )
-        transformers.GenerationMixin.sample = use_core_manipulations.old_sample
-        transformers.GenerationMixin._get_stopping_criteria = (
-            use_core_manipulations.old_get_stopping_criteria
-        )
+        if self.old_get_logits_processor:
+            transformers.GenerationMixin._get_logits_processor = (
+                use_core_manipulations.old_get_logits_processor
+            )
+        else:
+            assert not self.get_logits_processor, "Patch leak: THE MONKEYS HAVE ESCAPED"
+
+        if self.old_sample:
+            transformers.GenerationMixin.sample = use_core_manipulations.old_sample
+        else:
+            assert not self.sample, "Patch leak: THE MONKEYS HAVE ESCAPED"
+
+        if self.old_get_stopping_criteria:
+            transformers.GenerationMixin._get_stopping_criteria = (
+                use_core_manipulations.old_get_stopping_criteria
+            )
+        else:
+            assert not self.get_stopping_criteria, "Patch leak: THE MONKEYS HAVE ESCAPED"
 
 
 def patch_transformers_download():
@@ -823,7 +837,7 @@ class InferenceModel:
         self.tokenizer = None
         self.capabilties = ModelCapabilities()
 
-    def load(self, save_model: bool, initial_load: bool = False) -> None:
+    def load(self, save_model: bool = False, initial_load: bool = False) -> None:
         """Main load function. Do not override this. Override _load() instead."""
 
         self._load(save_model=save_model, initial_load=initial_load)
@@ -2614,12 +2628,16 @@ class HordeInferenceModel(InferenceModel):
             "trusted_workers": False,
         }
 
-        cluster_headers = {"apikey": utils.koboldai_vars.apikey}
+        client_agent = "KoboldAI:2.0.0:koboldai.org"
+        cluster_headers = {
+            "apikey": utils.koboldai_vars.horde_api_key,
+            "Client-Agent": client_agent
+        }
 
         try:
             # Create request
             req = requests.post(
-                utils.koboldai_vars.colaburl[:-8] + "/api/v2/generate/async",
+                utils.koboldai_vars.colaburl[:-8] + "/api/v2/generate/text/async",
                 json=cluster_metadata,
                 headers=cluster_headers,
             )
@@ -2640,24 +2658,27 @@ class HordeInferenceModel(InferenceModel):
             raise HordeException(errmsg)
 
         try:
-            js = req.json()
+            req_status = req.json()
         except requests.exceptions.JSONDecodeError:
             errmsg = f"Unexpected message received from the Horde: '{req.text}'"
             logger.error(errmsg)
             raise HordeException(errmsg)
 
-        request_id = js["id"]
+        request_id = req_status["id"]
         logger.debug("Horde Request ID: {}".format(request_id))
 
         # We've sent the request and got the ID back, now we need to watch it to see when it finishes
         finished = False
 
+        cluster_agent_headers = {
+            "Client-Agent": client_agent
+        }
+
         while not finished:
             try:
                 req = requests.get(
-                    utils.koboldai_vars.colaburl[:-8]
-                    + "/api/v1/generate/check/"
-                    + request_id
+                    f"{utils.koboldai_vars.colaburl[:-8]}/api/v2/generate/text/status/{request_id}",
+                    headers=cluster_agent_headers
                 )
             except requests.exceptions.ConnectionError:
                 errmsg = f"Horde unavailable. Please try again later"
@@ -2670,7 +2691,7 @@ class HordeInferenceModel(InferenceModel):
                 raise HordeException(errmsg)
 
             try:
-                js = req.json()
+                req_status = req.json()
             except requests.exceptions.JSONDecodeError:
                 errmsg = (
                     f"Unexpected message received from the KoboldAI Horde: '{req.text}'"
@@ -2678,38 +2699,32 @@ class HordeInferenceModel(InferenceModel):
                 logger.error(errmsg)
                 raise HordeException(errmsg)
 
-            if "done" not in js:
-                errmsg = f"Unexpected response received from the KoboldAI Horde: '{js}'"
+            if "done" not in req_status:
+                errmsg = f"Unexpected response received from the KoboldAI Horde: '{req_status}'"
                 logger.error(errmsg)
                 raise HordeException(errmsg)
 
-            finished = js["done"]
-            utils.koboldai_vars.horde_wait_time = js["wait_time"]
-            utils.koboldai_vars.horde_queue_position = js["queue_position"]
-            utils.koboldai_vars.horde_queue_size = js["waiting"]
+            finished = req_status["done"]
+            utils.koboldai_vars.horde_wait_time = req_status["wait_time"]
+            utils.koboldai_vars.horde_queue_position = req_status["queue_position"]
+            utils.koboldai_vars.horde_queue_size = req_status["waiting"]
 
             if not finished:
-                logger.debug(js)
+                logger.debug(req_status)
                 time.sleep(1)
 
-        logger.debug("Last Horde Status Message: {}".format(js))
-        js = requests.get(
-            utils.koboldai_vars.colaburl[:-8] + "/api/v1/generate/prompt/" + request_id
-        ).json()["generations"]
-        logger.debug("Horde Result: {}".format(js))
+        logger.debug("Last Horde Status Message: {}".format(req_status))
 
-        gen_servers = [(cgen["server_name"], cgen["server_id"]) for cgen in js]
+        if req_status["faulted"]:
+            raise HordeException("Horde Text generation faulted! Please try again.")
+
+        generations = req_status["generations"]
+        gen_servers = [(cgen["server_name"], cgen["server_id"]) for cgen in generations]
         logger.info(f"Generations by: {gen_servers}")
-
-        # TODO: Fix this, using tpool so it's a context error
-        # Just in case we want to announce it to the user
-        # if len(js) == 1:
-        #     warnmsg = f"Text generated by {js[0]['server_name']}"
-        #     emit('from_server', {'cmd': 'warnmsg', 'data': warnmsg}, broadcast=True)
 
         return GenerationResult(
             model=self,
-            out_batches=np.array([self.tokenizer.encode(cgen["text"]) for cgen in js]),
+            out_batches=np.array([self.tokenizer.encode(cgen["text"]) for cgen in generations]),
             prompt=prompt_tokens,
             is_whole_generation=True,
             single_line=single_line,

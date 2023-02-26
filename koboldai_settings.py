@@ -1177,6 +1177,9 @@ class user_settings(settings):
         self.colaburl    = ""     # Ngrok url for Google Colab mode
         self.apikey      = ""     # API key to use for InferKit API calls
         self.oaiapikey   = ""     # API key to use for OpenAI API calls
+        self.horde_api_key = "0000000000"
+        self.horde_worker_name = "My Awesome Instance"
+        self.horde_url = "https://horde.koboldai.net"
         
     def __setattr__(self, name, value):
         new_variable = name not in self.__dict__
@@ -1280,7 +1283,6 @@ class system_settings(settings):
         print("Colab Check: {}".format(self.on_colab))
         self.horde_share = False
         self._horde_pid = None
-        self.sh_apikey   = ""     # API key to use for txt2img from the Stable Horde.
         self.generating_image = False #The current status of image generation
         self.image_pipeline = None
         self.summarizer = None
@@ -1352,21 +1354,29 @@ class system_settings(settings):
                                 try:
                                     bridge_cd = importlib.import_module("KoboldAI-Horde-Bridge.clientData")
                                     cluster_url = bridge_cd.cluster_url
+                                    old_api_url = bridge_cd.old_api_url
+                                    serve_old_api = bridge_cd.serve_old_api
                                     kai_name = bridge_cd.kai_name
                                     if kai_name == "My Awesome Instance":
-                                        kai_name = f"Automated Instance #{random.randint(-100000000, 100000000)}"
+                                        kai_name = f"KoboldAI UI Instance #{random.randint(-100000000, 100000000)}"
                                     api_key = bridge_cd.api_key
+                                    old_api_key = bridge_cd.old_api_key
                                     priority_usernames = bridge_cd.priority_usernames
                                 except:
-                                    cluster_url = "http://koboldai.net"
-                                    kai_name = f"Automated Instance #{random.randint(-100000000, 100000000)}"
-                                    api_key = "0000000000"
+                                    cluster_url = "https://horde.koboldai.net"
+                                    old_api_url = "https://koboldai.net"
+                                    serve_old_api = True
+                                    kai_name = self._koboldai_var.horde_worker_name
+                                    if kai_name == "My Awesome Instance":
+                                        kai_name = f"KoboldAI UI Instance #{random.randint(-100000000, 100000000)}"
+                                    api_key = self._koboldai_var.horde_api_key
+                                    old_api_key = "0000000000"
                                     priority_usernames = []
                                 # Always use the local URL & port
                                 kai_url = f'http://127.0.0.1:{self.port}'
 
                                 logger.info(f"Name: {kai_name} on {kai_url}")
-                                threading.Thread(target=self._horde_pid.bridge, args=(1, api_key, kai_name, kai_url, cluster_url, priority_usernames)).run()
+                                threading.Thread(target=self._horde_pid.bridge, args=(1, api_key, kai_name, kai_url, cluster_url, priority_usernames, serve_old_api, old_api_url, old_api_key)).run()
                         else:
                             if self._horde_pid is not None:
                                 logger.info("Killing Horde bridge")
