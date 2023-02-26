@@ -1481,7 +1481,7 @@ def general_startup(override_args=None):
     parser.add_argument("--model", help="Specify the Model Type to skip the Menu")
     parser.add_argument("--path", help="Specify the Path for local models (For model NeoCustom or GPT2Custom)")
     parser.add_argument("--apikey", help="Specify the API key to use for online services")
-    parser.add_argument("--sh_apikey", help="Specify the API key to use for txt2img from the Stable Horde. Get a key from https://stablehorde.net/register")
+    parser.add_argument("--sh_apikey", help="Specify the API key to use for txt2img from the Stable Horde. Get a key from https://horde.koboldai.net/register")
     parser.add_argument("--req_model", type=str, action='append', required=False, help="Which models which we allow to generate for us during cluster mode. Can be specified multiple times.")
     parser.add_argument("--revision", help="Specify the model revision for huggingface models (can be a git branch/tag name or a git commit hash)")
     parser.add_argument("--cpu", action='store_true', help="By default unattended launches are on the GPU use this option to force CPU usage.")
@@ -1572,8 +1572,9 @@ def general_startup(override_args=None):
 
     if args.apikey:
         koboldai_vars.apikey = args.apikey
+        koboldai_vars.horde_api_key = args.apikey
     if args.sh_apikey:
-        koboldai_vars.sh_apikey = args.sh_apikey
+        koboldai_vars.horde_api_key = args.sh_apikey
     if args.req_model:
         koboldai_vars.cluster_requested_models = args.req_model
 
@@ -1688,21 +1689,12 @@ def get_model_info(model, directory=""):
         show_online_model_select=True
         url = True
         key = True
-        default_url = 'https://koboldai.net'
+        default_url = koboldai_vars.horde_url
         multi_online_models = True
-        if path.exists(get_config_filename(model)):
-            with open(get_config_filename(model), "r") as file:
-                # Check if API key exists
-                js = json.load(file)
-                if("apikey" in js and js["apikey"] != ""):
-                    # API key exists, grab it and close the file
-                    key_value = js["apikey"]
-                elif 'oaiapikey' in js and js['oaiapikey'] != "":
-                    key_value = js["oaiapikey"]
-                if 'url' in js and js['url'] != "":
-                    url = js['url']
-            if key_value != "":
-                send_horde_models = True
+        key_value = koboldai_vars.horde_api_key
+        url = koboldai_vars.horde_url
+        if key_value:
+            send_horde_models = True
     elif model in [x[1] for x in model_menu['apilist']]:
         show_online_model_select=True
         if path.exists("settings/{}.v2_settings".format(model)):
@@ -1869,10 +1861,10 @@ def get_oai_models(data):
 
 @socketio.on("get_cluster_models")
 def get_cluster_models(msg):
-    koboldai_vars.oaiapikey = msg['key']
-    koboldai_vars.apikey = koboldai_vars.oaiapikey
+    koboldai_vars.horde_api_key = msg['key'] or koboldai_vars.horde_api_key
     model='CLUSTER'
-    url = msg['url']
+    url = msg['url'] or koboldai_vars.horde_url
+    koboldai_vars.horde_url = url
     # Get list of models from public cluster
     print("{0}Retrieving engine list...{1}".format(colors.PURPLE, colors.END), end="")
     try:
@@ -1899,29 +1891,7 @@ def get_cluster_models(msg):
     logger.debug(engines)
     
     online_model = ""
-    changed=False
-    
-    #Save the key
-    if not path.exists("settings"):
-        # If the client settings file doesn't exist, create it
-        # Write API key to file
-        os.makedirs('settings', exist_ok=True)
-    if path.exists(get_config_filename(model)):
-        with open(get_config_filename(model), "r") as file:
-            js = json.load(file)
-            if 'online_model' in js:
-                online_model = js['online_model']
-            if "apikey" in js:
-                if js['apikey'] != koboldai_vars.oaiapikey:
-                    changed=True
-    else:
-        changed=True
-    if changed:
-        js={}
-        with open(get_config_filename(model), "w") as file:
-            js["apikey"] = koboldai_vars.oaiapikey
-            js["url"] = url
-            file.write(json.dumps(js, indent=3))        
+    savesettings()
 
     logger.init_ok("KAI Horde Models", status="OK")
 
@@ -5932,9 +5902,9 @@ def cluster_raw_generate(
         'trusted_workers': False,
     }
     
-    client_agent = "KoboldAI:2.0.0:(discord)ebolam#1007"
+    client_agent = "KoboldAI:2.0.0:koboldai.org"
     cluster_headers = {
-        'apikey': koboldai_vars.apikey,
+        'apikey': koboldai_vars.horde_api_key,
         "Client-Agent": client_agent
     }
     try:
@@ -9821,19 +9791,19 @@ def text2img_horde(prompt: str) -> Optional[Image.Image]:
             "height": 512
         }
     }
-    client_agent = "KoboldAI:2.0.0:(discord)ebolam#1007"
+    client_agent = "KoboldAI:2.0.0:koboldai.org"
     cluster_headers = {
-        'apikey': koboldai_vars.apikey or "0000000000",
+        'apikey': koboldai_vars.horde_api_key,
         "Client-Agent": client_agent
     }    
-    id_req = requests.post("https://stablehorde.net/api/v2/generate/async", json=final_submit_dict, headers=cluster_headers)
+    id_req = requests.post(f"{koboldai_vars.horde_url}/api/v2/generate/async", json=final_submit_dict, headers=cluster_headers)
 
     if not id_req.ok:
         if id_req.status_code == 403:
             show_error_notification(
                 "Stable Horde failure",
                 "Stable Horde is currently not accepting anonymous requuests. " \
-                "Try again in a few minutes or register for priority access at https://stablehorde.net",
+                "Try again in a few minutes or register for priority access at https://horde.koboldai.net",
                 do_log=True
             )
             return None
@@ -9845,7 +9815,7 @@ def text2img_horde(prompt: str) -> Optional[Image.Image]:
     image_id = id_req.json()["id"]
 
     while True:
-        poll_req = requests.get(f"https://stablehorde.net/api/v2/generate/check/{image_id}")
+        poll_req = requests.get(f"{koboldai_vars.horde_url}/api/v2/generate/check/{image_id}")
         if not poll_req.ok:
             logger.error(f"HTTP {poll_req.status_code}, expected OK-ish")
             logger.error(poll_req.text)
@@ -9862,7 +9832,7 @@ def text2img_horde(prompt: str) -> Optional[Image.Image]:
     
     # Done generating, we can now fetch it.
 
-    gen_req = requests.get(f"https://stablehorde.net/api/v2/generate/status/{image_id}")
+    gen_req = requests.get(f"{koboldai_vars.horde_url}/api/v2/generate/status/{image_id}")
     if not gen_req.ok:
         logger.error(f"HTTP {gen_req.status_code}, expected OK-ish")
         logger.error(gen_req.text)
