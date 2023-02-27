@@ -9,7 +9,7 @@ if [[ ! -v KOBOLDAI_DATADIR ]];then
 fi
 
 mkdir $KOBOLDAI_DATADIR/stories
-if [[ ! -v KOBOLDAI_MODELDIR ]];then
+if [[ -v KOBOLDAI_MODELDIR ]];then
 	mkdir $KOBOLDAI_MODELDIR/models
 fi
 mkdir $KOBOLDAI_DATADIR/settings
@@ -28,7 +28,7 @@ rm -rf userscripts/
 rm softprompts
 rm -rf softprompts/
 
-if [[ ! -v KOBOLDAI_MODELDIR ]];then
+if [[ -v KOBOLDAI_MODELDIR ]];then
 	rm models
 	rm -rf models/
 	#rm cache
@@ -39,7 +39,7 @@ ln -s $KOBOLDAI_DATADIR/stories/ stories
 ln -s $KOBOLDAI_DATADIR/settings/ settings
 ln -s $KOBOLDAI_DATADIR/softprompts/ softprompts
 ln -s $KOBOLDAI_DATADIR/userscripts/ userscripts
-if [[ ! -v KOBOLDAI_MODELDIR ]];then
+if [[ -v KOBOLDAI_MODELDIR ]];then
 	ln -s $KOBOLDAI_MODELDIR/models/ models
 	#ln -s $KOBOLDAI_MODELDIR/cache/ cache
 fi
