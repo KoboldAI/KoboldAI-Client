@@ -1177,6 +1177,9 @@ class user_settings(settings):
         self.colaburl    = ""     # Ngrok url for Google Colab mode
         self.apikey      = ""     # API key to use for InferKit API calls
         self.oaiapikey   = ""     # API key to use for OpenAI API calls
+        self.horde_api_key = "0000000000"
+        self.horde_worker_name = "My Awesome Instance"
+        self.horde_url = "https://horde.koboldai.net"
         
     def __setattr__(self, name, value):
         new_variable = name not in self.__dict__
@@ -1280,7 +1283,6 @@ class system_settings(settings):
         print("Colab Check: {}".format(self.on_colab))
         self.horde_share = False
         self._horde_pid = None
-        self.sh_apikey   = ""     # API key to use for txt2img from the Stable Horde.
         self.generating_image = False #The current status of image generation
         self.image_pipeline = None
         self.summarizer = None
@@ -1364,8 +1366,10 @@ class system_settings(settings):
                                     cluster_url = "https://horde.koboldai.net"
                                     old_api_url = "https://koboldai.net"
                                     serve_old_api = True
-                                    kai_name = f"KoboldAI UI Instance #{random.randint(-100000000, 100000000)}"
-                                    api_key = "0000000000"
+                                    kai_name = self._koboldai_var.horde_worker_name
+                                    if kai_name == "My Awesome Instance":
+                                        kai_name = f"KoboldAI UI Instance #{random.randint(-100000000, 100000000)}"
+                                    api_key = self._koboldai_var.horde_api_key
                                     old_api_key = "0000000000"
                                     priority_usernames = []
                                 # Always use the local URL & port
