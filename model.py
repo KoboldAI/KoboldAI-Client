@@ -44,8 +44,13 @@ from transformers import (
 )
 
 import utils
-import breakmodel
 import koboldai_settings
+
+try:
+    import breakmodel
+except ModuleNotFoundError as e:
+    if not utils.koboldai_vars.use_colab_tpu:
+        raise e
 
 HACK_currentmodel = None
 
