@@ -92,6 +92,10 @@ class Temperature(Warper):
     def jax(cls, scores: jnp.array) -> jnp.array:
         return scores / cls.temperature
 
+    @classmethod
+    def value_is_valid(cls) -> bool:
+        return cls.temperature != 1.0
+
 
 class TopP(Warper):
     """
@@ -140,6 +144,10 @@ class TopP(Warper):
         )
         return jnp.where(indices_to_remove, -jnp.inf, scores)
 
+    @classmethod
+    def value_is_valid(cls) -> bool:
+        return cls.top_p < 1.0
+
 
 class TopK(Warper):
     """
@@ -172,6 +180,10 @@ class TopK(Warper):
             sorted_indices_to_remove,
         )
         return np.where(indices_to_remove, -np.inf, scores)
+
+    @classmethod
+    def value_is_valid(cls) -> bool:
+        return cls.top_p > 0
 
 
 class TailFree(Warper):
@@ -256,6 +268,10 @@ class TailFree(Warper):
         )
         return np.where(indices_to_remove, -np.inf, scores)
 
+    @classmethod
+    def value_is_valid(cls) -> bool:
+        return cls.tfs < 1.0
+
 
 class Typical(Warper):
     """Typical sampling, described in https://arxiv.org/pdf/2202.00666.pdf"""
@@ -332,6 +348,10 @@ class Typical(Warper):
         )
         return np.where(indices_to_remove, -jnp.inf, scores)
 
+    @classmethod
+    def value_is_valid(cls) -> bool:
+        return cls.typical < 1.0
+
 
 class TopA(Warper):
     """
@@ -369,6 +389,10 @@ class TopA(Warper):
         return np.where(
             probabilities < probs_max * probs_max * cls.top_a, -np.inf, scores
         )
+
+    @classmethod
+    def value_is_valid(cls) -> bool:
+        return cls.top_a > 0.0
 
 
 class RepetitionPenalty(Warper):
@@ -543,3 +567,7 @@ class RepetitionPenalty(Warper):
         # positions in the logits array
         scores[tokens] = penalty_logits
         return scores
+
+    @classmethod
+    def value_is_valid(cls) -> bool:
+        return cls.rep_pen != 1.0

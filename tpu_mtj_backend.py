@@ -54,6 +54,8 @@ from mesh_transformer.transformer_shard import CausalTransformer, CausalTransfor
 from mesh_transformer.util import to_bf16
 import time
 
+import warpers
+from warpers import Warper
 
 socketio = None
 
@@ -213,6 +215,7 @@ def kobold_sample_dynamic(key, logits, rpargs, sampler_order: Optional[np.ndarra
     to the logits (top-k, then top-a, then top-p, then TFS, then typical, then temperature)
     before picking one token using the modified logits
     '''
+    """
     # Top-k (keep only the k tokens with the highest logits and remove
     # the rest, by setting their logits to negative infinity)
     def top_k_filter(logits):
@@ -344,6 +347,18 @@ def kobold_sample_dynamic(key, logits, rpargs, sampler_order: Optional[np.ndarra
         if k == 4 and typical < 1.0: logits = typical_filter(logits)
         if k == 5 and temp != 1.0: logits = temp_filter(logits)
         if k == 6 and rpargs[1] != 1.0: logits = apply_repetition_penalty_dynamic(logits, *rpargs)
+    """
+    for sid in sampler_order:
+        warper = Warper.from_id(sid)
+        if not warper.value_is_valid():
+            continue
+
+        if warper == warpers.RepetitionPenalty:
+            print("ISREP", warper)
+            logits = warper.jax()
+        else:
+            print("AINTREP", warper)
+            logits = warper.jax_dynamic(logits, *rpargs)
     # Finally, pick one token using the softmax thingy again (it gives
     # an array whose elements sum to 1 so it can be used nicely as a
     # probability distribution)
@@ -356,6 +371,7 @@ def kobold_sample_static(key, logits, rpargs, sampler_order: Optional[np.ndarray
     to the logits (top-k, then top-a, then top-p, then TFS, then typical, then temperature)
     before picking one token using the modified logits
     '''
+    """
     # Top-k (keep only the k tokens with the highest logits and remove
     # the rest, by setting their logits to negative infinity)
     def top_k_filter(logits):
@@ -486,6 +502,18 @@ def kobold_sample_static(key, logits, rpargs, sampler_order: Optional[np.ndarray
         logits = jax.lax.cond(jnp.logical_and(k == 4, typical < 1.0), typical_filter, lambda x: x, logits)
         logits = jax.lax.cond(jnp.logical_and(k == 5, temp != 1.0), temp_filter, lambda x: x, logits)
         logits = jax.lax.cond(jnp.logical_and(k == 6, rpargs[1] != 1.0), lambda x: apply_repetition_penalty_static(*x), lambda x: x[0], (logits, *rpargs))
+    """
+    for sid in sampler_order:
+        warper = Warper.from_id(sid)
+        if not warper.value_is_valid():
+            continue
+
+        if warper == warpers.RepetitionPenalty:
+            print("ISREP", warper)
+            logits = warper.jax()
+        else:
+            print("AINTREP", warper)
+            logits = warper.jax_static(logits, *rpargs)
     # Finally, pick one token using the softmax thingy again (it gives
     # an array whose elements sum to 1 so it can be used nicely as a
     # probability distribution)
@@ -515,11 +543,11 @@ def sample_func(data, key, numseqs_aux, badwords, repetition_penalty, generated_
             logits,
             (
                 generated,
-                repetition_penalty,
+                # repetition_penalty,
                 generated_index, 
                 gen_length,
-                rpslope,
-                rprange,
+                # rpslope,
+                # rprange,
             ),
             **sampler_options,
         )
@@ -605,11 +633,11 @@ class PenalizingCausalTransformer(CausalTransformer):
                         logits,
                         (
                             generated,
-                            repetition_penalty,
+                            # repetition_penalty,
                             generated_index,
-                            gen_length,
-                            rpslope,
-                            rprange,
+                            # gen_length,
+                            # rpslope,
+                            # rprange,
                         ),
                         **sampler_options,
                     )

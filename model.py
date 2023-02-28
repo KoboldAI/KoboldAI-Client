@@ -2203,8 +2203,6 @@ class GenericHFTorchInferenceModel(HFTorchInferenceModel):
 
         # Get the model_type from the config or assume a model type if it isn't present
         try:
-            print("LMP:", self.get_local_model_path())
-            print("M:", utils.koboldai_vars.model)
             model_config = AutoConfig.from_pretrained(
                 self.get_local_model_path() or utils.koboldai_vars.model,
                 revision=utils.koboldai_vars.revision,
