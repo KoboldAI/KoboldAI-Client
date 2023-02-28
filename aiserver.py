@@ -66,7 +66,6 @@ import lupa
 # KoboldAI
 import fileops
 import gensettings
-import breakmodel
 from utils import debounce
 import utils
 import koboldai_settings
@@ -7802,6 +7801,7 @@ def UI_2_get_applicable_genres():
 @socketio.on("create_new_softprompt")
 @logger.catch
 def UI_2_create_new_softprompt(data):
+    import breakmodel
     logger.info("Soft Prompt Dataset: {}".format(data))
     from prompt_tuner import BasicTrainer
     trainer = BasicTrainer(None, quiet=koboldai_vars.quiet)
