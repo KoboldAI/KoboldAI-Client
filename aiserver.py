@@ -5519,6 +5519,7 @@ def final_startup():
 
     # Precompile TPU backend if required
     if isinstance(model, HFMTJInferenceModel):
+        import tpu_mtj_backend
         soft_tokens = model.get_soft_tokens()
         if(koboldai_vars.dynamicscan or (not koboldai_vars.nogenmod and koboldai_vars.has_genmod)):
             tpool.execute(tpu_mtj_backend.infer_dynamic, np.tile(np.uint32((23403, 727, 20185)), (koboldai_vars.numseqs, 1)), 

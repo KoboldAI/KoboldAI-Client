@@ -27,7 +27,6 @@ from warpers import Warper
 import torch
 from torch.nn import Embedding
 import numpy as np
-import accelerate.utils
 import transformers
 from transformers import (
     StoppingCriteria,
@@ -48,6 +47,7 @@ import koboldai_settings
 
 try:
     import breakmodel
+    import accelerate.utils
 except ModuleNotFoundError as e:
     if not utils.koboldai_vars.use_colab_tpu:
         raise e
@@ -889,7 +889,52 @@ class InferenceModel:
             hook(self, input_ids)
 
 
-class HFMTJInferenceModel(InferenceModel):
+class HFInferenceModel(InferenceModel):
+    def __init__(self) -> None:
+        super().__init__()
+        self.model_config = None
+
+    def get_local_model_path(
+        self, legacy: bool = False, ignore_existance: bool = False
+    ) -> Optional[str]:
+        """
+        Returns a string of the model's path locally, or None if it is not downloaded.
+        If ignore_existance is true, it will always return a path.
+        """
+
+        basename = utils.koboldai_vars.model.replace("/", "_")
+        if legacy:
+            ret = basename
+        else:
+            ret = os.path.join("models", basename)
+
+        if os.path.isdir(ret) or ignore_existance:
+            return ret
+        return None
+
+    def init_model_config(self) -> None:
+        # Get the model_type from the config or assume a model type if it isn't present
+        try:
+            self.model_config = AutoConfig.from_pretrained(
+                self.get_local_model_path() or utils.koboldai_vars.model,
+                revision=utils.koboldai_vars.revision,
+                cache_dir="cache",
+            )
+            utils.koboldai_vars.model_type = self.model_config.model_type
+        except ValueError:
+            utils.koboldai_vars.model_type = {
+                "NeoCustom": "gpt_neo",
+                "GPT2Custom": "gpt2",
+            }.get(utils.koboldai_vars.model)
+
+            if not utils.koboldai_vars.model_type:
+                logger.warning(
+                    "No model type detected, assuming Neo (If this is a GPT2 model use the other menu option or --model GPT2Custom)"
+                )
+                utils.koboldai_vars.model_type = "gpt_neo"
+
+
+class HFMTJInferenceModel(HFInferenceModel):
     def __init__(
         self,
         model_name: str,
@@ -1012,8 +1057,6 @@ class HFMTJInferenceModel(InferenceModel):
                 "rprange": int(utils.koboldai_vars.rep_pen_range),
             }
 
-        self.load_mtj_backend()
-
         tpu_mtj_backend.socketio = utils.socketio
 
         if utils.koboldai_vars.model == "TPUMeshTransformerGPTNeoX":
@@ -1045,21 +1088,20 @@ class HFMTJInferenceModel(InferenceModel):
         tpu_mtj_backend.settings_callback = mtj_settings_callback
 
     def _load(self, save_model: bool, initial_load: bool) -> None:
-        self.patch_transformers()
         self.setup_mtj()
-
+        self.init_model_config()
         utils.koboldai_vars.allowsp = True
-        # loadmodelsettings()
-        # loadsettings()
+
         tpu_mtj_backend.load_model(
-            utils.koboldai_vars.custmodpth,
+            utils.koboldai_vars.model,
             hf_checkpoint=utils.koboldai_vars.model
             not in ("TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX")
             and utils.koboldai_vars.use_colab_tpu,
             socketio_queue=koboldai_settings.queue,
             initial_load=initial_load,
             logger=logger,
-            **utils.koboldai_vars.modelconfig,
+            **self.model_config.to_dict()
+            # **utils.koboldai_vars.modelconfig,
         )
 
         # tpool.execute(tpu_mtj_backend.load_model, koboldai_vars.custmodpth, hf_checkpoint=koboldai_vars.model not in ("TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX") and koboldai_vars.use_colab_tpu, **koboldai_vars.modelconfig)
@@ -1079,7 +1121,7 @@ class HFMTJInferenceModel(InferenceModel):
                 if utils.koboldai_vars.newlinemode != "s" or str(k) != "</s>"
             ]
 
-    def get_soft_tokens() -> np.array:
+    def get_soft_tokens(self) -> np.array:
         soft_tokens = None
 
         if utils.koboldai_vars.sp is None:
@@ -1152,6 +1194,7 @@ class HFMTJInferenceModel(InferenceModel):
         genout = np.array(genout)
 
         return GenerationResult(
+            self,
             out_batches=genout,
             prompt=prompt_tokens,
             is_whole_generation=True,
@@ -1159,7 +1202,7 @@ class HFMTJInferenceModel(InferenceModel):
         )
 
 
-class HFTorchInferenceModel(InferenceModel):
+class HFTorchInferenceModel(HFInferenceModel):
     def __init__(
         self,
         model_name: str,
@@ -1181,7 +1224,6 @@ class HFTorchInferenceModel(InferenceModel):
 
         self.model = None
         self.tokenizer = None
-        self.model_config = None
         self.capabilties = ModelCapabilities(
             embedding_manipulation=True,
             post_token_hooks=True,
@@ -1198,10 +1240,8 @@ class HFTorchInferenceModel(InferenceModel):
             warper = Warper.from_id(sid)
             if warper == warpers.RepetitionPenalty:
                 # Rep pen needs more data than other samplers
-                print("is rep:", warper)
                 scores = warper.torch(scores, input_ids=input_ids)
             else:
-                print("aint rep:", warper)
                 scores = warper.torch(scores)
         return scores
 
@@ -1615,24 +1655,6 @@ class HFTorchInferenceModel(InferenceModel):
                 cache_dir="cache",
                 **tf_kwargs,
             )
-
-    def get_local_model_path(
-        self, legacy: bool = False, ignore_existance: bool = False
-    ) -> Optional[str]:
-        """
-        Returns a string of the model's path locally, or None if it is not downloaded.
-        If ignore_existance is true, it will always return a path.
-        """
-
-        basename = utils.koboldai_vars.model.replace("/", "_")
-        if legacy:
-            ret = basename
-        else:
-            ret = os.path.join("models", basename)
-
-        if os.path.isdir(ret) or ignore_existance:
-            return ret
-        return None
 
     def get_hidden_size(self) -> int:
         return self.model.get_input_embeddings().embedding_dim
@@ -2206,25 +2228,7 @@ class GenericHFTorchInferenceModel(HFTorchInferenceModel):
                 self.get_local_model_path(ignore_existance=True),
             )
 
-        # Get the model_type from the config or assume a model type if it isn't present
-        try:
-            model_config = AutoConfig.from_pretrained(
-                self.get_local_model_path() or utils.koboldai_vars.model,
-                revision=utils.koboldai_vars.revision,
-                cache_dir="cache",
-            )
-            utils.koboldai_vars.model_type = model_config.model_type
-        except ValueError as e:
-            utils.koboldai_vars.model_type = {
-                "NeoCustom": "gpt_neo",
-                "GPT2Custom": "gpt2",
-            }.get(utils.koboldai_vars.model)
-
-            if not utils.koboldai_vars.model_type:
-                logger.warning(
-                    "No model type detected, assuming Neo (If this is a GPT2 model use the other menu option or --model GPT2Custom)"
-                )
-                utils.koboldai_vars.model_type = "gpt_neo"
+        self.init_model_config()
 
         tf_kwargs = {
             "low_cpu_mem_usage": True,
@@ -2246,7 +2250,7 @@ class GenericHFTorchInferenceModel(HFTorchInferenceModel):
             and utils.koboldai_vars.breakmodel
             and not utils.koboldai_vars.nobreakmodel
         ):
-            self.breakmodel_device_config(model_config)
+            self.breakmodel_device_config(self.model_config)
 
         if utils.koboldai_vars.lazy_load:
             # If we're using lazy loader, we need to figure out what the model's hidden layers are called
@@ -2254,9 +2258,9 @@ class GenericHFTorchInferenceModel(HFTorchInferenceModel):
                 dematerialized_modules=True, use_accelerate_init_empty_weights=True
             ):
                 try:
-                    metamodel = AutoModelForCausalLM.from_config(model_config)
+                    metamodel = AutoModelForCausalLM.from_config(self.model_config)
                 except Exception as e:
-                    metamodel = GPTNeoForCausalLM.from_config(model_config)
+                    metamodel = GPTNeoForCausalLM.from_config(self.model_config)
                 utils.layers_module_names = utils.get_layers_module_names(metamodel)
                 utils.module_names = list(metamodel.state_dict().keys())
                 utils.named_buffers = list(metamodel.named_buffers(recurse=True))
@@ -2264,7 +2268,7 @@ class GenericHFTorchInferenceModel(HFTorchInferenceModel):
         # Download model from Huggingface if it does not exist, otherwise load locally
         with self._maybe_use_float16(), torch_lazy_loader.use_lazy_torch_load(
             enable=utils.koboldai_vars.lazy_load,
-            callback=self._get_lazy_load_callback(utils.num_layers(model_config))
+            callback=self._get_lazy_load_callback(utils.num_layers(self.model_config))
             if utils.koboldai_vars.lazy_load
             else None,
             dematerialized_modules=True,

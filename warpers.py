@@ -46,8 +46,10 @@ try:
     import jax
     import jax.numpy as jnp
     import tpu_mtj_backend
-except ImportError:
-    assert not utils.koboldai_vars.use_colab_tpu
+except ImportError as e:
+    print(e)
+    if utils.koboldai_vars.use_colab_tpu:
+        raise e
 
 
 def update_settings():
@@ -89,7 +91,11 @@ class Temperature(Warper):
         return scores / cls.temperature
 
     @classmethod
-    def jax(cls, scores: jnp.array) -> jnp.array:
+    def jax_dynamic(cls, scores: np.array) -> np.array:
+        return scores / cls.temperature
+
+    @classmethod
+    def jax_static(cls, scores: jnp.array) -> jnp.array:
         return scores / cls.temperature
 
     @classmethod
@@ -121,7 +127,31 @@ class TopP(Warper):
         return scores.masked_fill(indices_to_remove, -np.inf)
 
     @classmethod
-    def jax(cls, scores: jnp.array) -> jnp.array:
+    def jax_dynamic(cls, scores: np.array) -> np.array:
+        # Sort the logits array in descending order, replace every element
+        # with e (Euler's number) to the power of that element, and divide
+        # each element of the new array by the sum of the elements in the
+        # new array
+        sorted_logits = -np.sort(-scores)
+        probabilities = np.array(jax.nn.softmax(sorted_logits), copy=True)
+        # Calculate cumulative_probabilities as the prefix-sum array of
+        # probabilities
+        cumulative_probabilities = np.cumsum(probabilities, axis=-1)
+        # We want to remove tokens with cumulative probability higher
+        # than top_p
+        sorted_indices_to_remove = cumulative_probabilities > cls.top_p
+        # Don't ever remove the token with the highest logit, even if
+        # the probability is higher than top_p
+        sorted_indices_to_remove[0] = False
+        # Unsort and remove
+        _, indices_to_remove = jax.lax.sort_key_val(
+            np.argsort(-scores),
+            sorted_indices_to_remove,
+        )
+        return np.where(indices_to_remove, -np.inf, scores)
+
+    @classmethod
+    def jax_static(cls, scores: jnp.array) -> jnp.array:
         # Sort the logits array in descending order, replace every element
         # with e (Euler's number) to the power of that element, and divide
         # each element of the new array by the sum of the elements in the
@@ -166,7 +196,7 @@ class TopK(Warper):
         return scores
 
     @classmethod
-    def jax(cls, scores: jnp.array) -> jnp.array:
+    def jax_dynamic(cls, scores: np.array) -> np.array:
         # After sorting the logits array in descending order,
         # sorted_indices_to_remove is a 1D array that is True for tokens
         # in the sorted logits array we want to remove and False for ones
@@ -180,6 +210,16 @@ class TopK(Warper):
             sorted_indices_to_remove,
         )
         return np.where(indices_to_remove, -np.inf, scores)
+
+    @classmethod
+    def jax_static(cls, scores: jnp.array) -> jnp.array:
+        sorted_indices_to_remove = jnp.arange(len(scores)) >= cls.top_k
+
+        _, indices_to_remove = jax.lax.sort_key_val(
+            jnp.argsort(-scores),
+            sorted_indices_to_remove,
+        )
+        return jnp.where(indices_to_remove, -jnp.inf, scores)
 
     @classmethod
     def value_is_valid(cls) -> bool:
@@ -225,7 +265,7 @@ class TailFree(Warper):
         return scores
 
     @classmethod
-    def jax(cls, scores: jnp.array) -> jnp.array:
+    def jax_dynamic(cls, scores: np.array) -> np.array:
         # Sort in descending order
         sorted_logits = -np.sort(-scores)
 
@@ -267,6 +307,30 @@ class TailFree(Warper):
             sorted_indices_to_remove,
         )
         return np.where(indices_to_remove, -np.inf, scores)
+
+    @classmethod
+    def jax_static(cls, scores: jnp.array) -> jnp.array:
+        sorted_logits = -jnp.sort(-scores)
+        probabilities = jax.nn.softmax(sorted_logits)
+
+        d2 = jnp.diff(jnp.diff(probabilities))
+        d2 = jnp.abs(d2)
+        d2 = d2 / d2.sum(axis=-1, keepdims=True)
+
+        cumulative_d2 = jnp.cumsum(d2, axis=-1)
+        sorted_indices_to_remove = cumulative_d2 > cls.tfs
+        sorted_indices_to_remove = sorted_indices_to_remove.at[0].set(False)
+        sorted_indices_to_remove = jnp.pad(
+            sorted_indices_to_remove,
+            (0, 2),
+            constant_values=True,
+        )
+
+        _, indices_to_remove = jax.lax.sort_key_val(
+            jnp.argsort(-scores),
+            sorted_indices_to_remove,
+        )
+        return jnp.where(indices_to_remove, -jnp.inf, scores)
 
     @classmethod
     def value_is_valid(cls) -> bool:
@@ -315,7 +379,7 @@ class Typical(Warper):
         return scores
 
     @classmethod
-    def jax(cls, scores: jnp.array) -> jnp.array:
+    def jax_dynamic(cls, scores: np.array) -> np.array:
         # Compute softmax probabilities and the natural logarithms of them
         probs = jax.nn.softmax(scores)
         with np.errstate(divide="ignore"):
@@ -349,6 +413,25 @@ class Typical(Warper):
         return np.where(indices_to_remove, -jnp.inf, scores)
 
     @classmethod
+    def jax_static(cls, scores: jnp.array) -> jnp.array:
+        probs = jax.nn.softmax(scores)
+        log_probs = jnp.log(probs)
+
+        neg_entropy = jnp.nansum(probs * log_probs, axis=-1, keepdims=True)
+        entropy_deviation = jnp.abs(neg_entropy - log_probs)
+
+        _, sorted_logits = jax.lax.sort_key_val(entropy_deviation, probs)
+        sorted_indices_to_remove = jnp.cumsum(sorted_logits, axis=-1) >= cls.typical
+        sorted_indices_to_remove = jnp.roll(sorted_indices_to_remove, 1, axis=-1)
+        sorted_indices_to_remove = sorted_indices_to_remove.at[0].set(False)
+
+        _, indices_to_remove = jax.lax.sort_key_val(
+            jnp.argsort(entropy_deviation),
+            sorted_indices_to_remove,
+        )
+        return jnp.where(indices_to_remove, -jnp.inf, scores)
+
+    @classmethod
     def value_is_valid(cls) -> bool:
         return cls.typical < 1.0
 
@@ -377,7 +460,7 @@ class TopA(Warper):
         return scores
 
     @classmethod
-    def jax(cls, scores: jnp.array) -> jnp.array:
+    def jax_dynamic(cls, scores: np.array) -> np.array:
         # Replace every element in the logits array
         # with e (Euler's number) to the power of that element, and divide
         # each element of the new array by the sum of the elements in the
@@ -388,6 +471,14 @@ class TopA(Warper):
         # Remove tokens
         return np.where(
             probabilities < probs_max * probs_max * cls.top_a, -np.inf, scores
+        )
+
+    @classmethod
+    def jax_static(cls, scores: jnp.array) -> jnp.array:
+        probabilities = jax.nn.softmax(scores)
+        probs_max = probabilities.max()
+        return jnp.where(
+            probabilities < probs_max * probs_max * cls.top_a, -jnp.inf, scores
         )
 
     @classmethod
@@ -436,7 +527,6 @@ class RepetitionPenalty(Warper):
         return scores
 
     @classmethod
-    # def jax_static(cls, scores: jnp.array) -> jnp.array:
     def jax_static(
         cls,
         logits: jnp.array,

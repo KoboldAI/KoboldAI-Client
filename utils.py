@@ -8,7 +8,6 @@ from urllib.error import HTTPError
 import requests
 import requests.adapters
 import time
-import breakmodel
 from transformers import PreTrainedModel
 import packaging.version
 from tqdm.auto import tqdm
@@ -653,6 +652,7 @@ def get_auxilary_device():
     if koboldai_vars.hascuda and koboldai_vars.usegpu:
         return koboldai_vars.gpu_device
     elif koboldai_vars.hascuda and koboldai_vars.breakmodel:
+        import breakmodel
         return breakmodel.primary_device
     return "cpu"
 
