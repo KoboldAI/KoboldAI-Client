@@ -1511,7 +1511,7 @@ def get_model_info(model, directory=""):
         models_on_url = True
         url = True
         key = True
-        default_url = 'https://stablehorde.net'
+        default_url = 'https://horde.koboldai.net'
         multi_online_models = True
         if path.exists(get_config_filename(model)):
             with open(get_config_filename(model), "r") as file:
@@ -5273,7 +5273,7 @@ def sendtocluster(txt, min, max):
         'models': vars.cluster_requested_models,
         'trusted_workers': False,
     }    
-    client_agent = "KoboldAI:1.19.3:(discord)Henky!!#2205"
+    client_agent = "KoboldAI:1.19.3:koboldai.org"
     cluster_headers = {
         'apikey': vars.apikey,
         "Client-Agent": client_agent
