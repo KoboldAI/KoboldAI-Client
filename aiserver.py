@@ -3498,7 +3498,7 @@ def apiactionsubmit_generate(txt, minimum, maximum):
         torch.cuda.empty_cache()
 
     # Submit input text to generator
-    _genout, already_generated = tpool.execute(model.core_generate, txt, minimum, maximum, set())
+    _genout, already_generated = tpool.execute(model.core_generate, txt, set())
 
     genout = [utils.applyoutputformatting(utils.decodenewlines(tokenizer.decode(tokens[-already_generated:]))) for tokens in _genout]
 
@@ -3939,7 +3939,7 @@ def generate(txt, minimum, maximum, found_entries=None):
     # Submit input text to generator
     try:
         start_time = time.time()
-        genout, already_generated = tpool.execute(model.core_generate, txt, minimum, maximum, found_entries)
+        genout, already_generated = tpool.execute(model.core_generate, txt, found_entries)
         logger.debug("Generate: core_generate time {}s".format(time.time()-start_time))
     except Exception as e:
         if(issubclass(type(e), lupa.LuaError)):

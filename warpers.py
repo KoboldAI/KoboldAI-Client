@@ -68,6 +68,25 @@ def update_settings():
 
 
 class Warper:
+    """The backbone for implementing code which manipulates token logits.
+    All Warpers should be singletons defined in the warpers.py file.
+
+    To make a new warper/sampler:
+    - Create your class, implementing `torch()`, `jax_dynamic`, `jax_static`,
+      and `value_is_valid()`. Dynamic and static methods are seperated for Jax
+      due to how it does JIT compilation of functions (from what I gather).
+      These `static` methods are very picky about what you can and can't do
+      with data at runtime and thus sometimes need to be implemented
+      differently than the `dynamic` methods, which are more like the Torch
+      methods.
+    - Add it to Warper.from_id and tpu_mtj_backend.kobold_sample_static.
+    - Add it to the UI/sampler_order.
+
+    To implement the samplers on a new model type/interface, assuming you're
+    dealing with Torch tensors, iterate over Warpers from sampler_order using
+    `Warper.from_id()`, and apply changes with the `torch()` methods.
+    """
+
     @staticmethod
     def from_id(warper_id: int) -> Warper:
         return {
@@ -79,6 +98,22 @@ class Warper:
             5: Temperature,
             6: RepetitionPenalty,
         }[warper_id]
+
+    @classmethod
+    def torch(cls, scores: torch.Tensor) -> torch.Tensor:
+        raise NotImplementedError("Please override `torch()`.")
+
+    @classmethod
+    def jax_dynamic(cls, scores: np.array) -> np.array:
+        raise NotImplementedError("Please override `jax_dynamic()`.")
+
+    @classmethod
+    def jax_static(cls, scores: jnp.array) -> jnp.array:
+        raise NotImplementedError("Please override `jax_static()`.")
+
+    @classmethod
+    def value_is_valid(cls) -> bool:
+        raise NotImplementedError("Please override `value_is_valid()`.")
 
 
 class Temperature(Warper):
@@ -534,8 +569,8 @@ class RepetitionPenalty(Warper):
         generated_index,
     ) -> jnp.array:
         """
-        This gets called by generate_loop_fn to apply repetition penalty
-        to the 1D array logits using the provided 1D array of tokens to penalize
+        This gets called to apply repetition penalty to the 1D array logits
+        using the provided 1D array of tokens to penalize
         """
         rpslope = jnp.int32(cls.rep_pen_slope)
         rprange = jnp.int32(cls.rep_pen_range)
