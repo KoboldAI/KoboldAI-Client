@@ -28,6 +28,7 @@ class OpenAIAPIInferenceModel(InferenceModel):
         gen_settings: GenerationSettings,
         single_line: bool = False,
         batch_count: int = 1,
+        **kwargs
     ) -> GenerationResult:
         # Taken mainly from oairequest()
 

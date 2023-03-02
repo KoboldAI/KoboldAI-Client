@@ -448,6 +448,7 @@ class HFTorchInferenceModel(HFInferenceModel):
         gen_settings: GenerationSettings,
         single_line: bool = False,
         batch_count: int = 1,
+        **kwargs
     ) -> GenerationResult:
         if not isinstance(prompt_tokens, torch.Tensor):
             gen_in = torch.tensor(prompt_tokens, dtype=torch.long)[None]

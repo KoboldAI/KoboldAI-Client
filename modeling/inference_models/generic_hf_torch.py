@@ -9,9 +9,15 @@ from typing import Union
 from transformers import AutoModelForCausalLM, GPTNeoForCausalLM
 
 import utils
-import breakmodel
 import torch_lazy_loader
 import koboldai_settings
+
+try:
+    import breakmodel
+except ModuleNotFoundError as e:
+    # Breakmodel is only expected to work on GPU
+    if not utils.koboldai_vars.use_colab_tpu:
+        raise e
 
 from modeling.inference_models.hf_torch import HFTorchInferenceModel
 

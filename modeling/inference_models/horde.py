@@ -35,6 +35,7 @@ class HordeInferenceModel(InferenceModel):
         gen_settings: GenerationSettings,
         single_line: bool = False,
         batch_count: int = 1,
+        **kwargs
     ) -> GenerationResult:
         decoded_prompt = utils.decodenewlines(self.tokenizer.decode(prompt_tokens))
 

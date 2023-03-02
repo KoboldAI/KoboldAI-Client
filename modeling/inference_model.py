@@ -330,6 +330,11 @@ class InferenceModel:
                         # Real max length is handled by CoreStopper.
                         bypass_hf_maxlength=utils.koboldai_vars.dynamicscan,
                         is_core=True,
+                        tpu_dynamic_inference=utils.koboldai_vars.dynamicscan
+                        or (
+                            not utils.koboldai_vars.nogenmod
+                            and utils.koboldai_vars.has_genmod
+                        ),
                     )
                     logger.debug(
                         "core_generate: run raw_generate pass {} {}s".format(
@@ -473,6 +478,7 @@ class InferenceModel:
         gen_settings: GenerationSettings,
         single_line: bool = False,
         batch_count: int = 1,
+        **kwargs,
     ) -> GenerationResult:
         """Lowest level model-agnostic generation function. To be overridden by model implementation.
 
@@ -501,6 +507,8 @@ class InferenceModel:
         is_core: bool = False,
         single_line: bool = False,
         found_entries: set = (),
+        tpu_dynamic_inference: bool = False,
+        **kwargs,
     ) -> GenerationResult:
         """A wrapper around `_raw_generate()` that handles gen_state and other stuff. Use this to generate text outside of the story.
 
@@ -563,6 +571,7 @@ class InferenceModel:
                 batch_count=batch_count,
                 gen_settings=gen_settings,
                 single_line=single_line,
+                tpu_dynamic_inference=tpu_dynamic_inference,
             )
 
         time_end = round(time.time() - time_start, 2)
