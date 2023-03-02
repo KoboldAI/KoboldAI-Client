@@ -2471,7 +2471,7 @@ def patch_transformers():
                 self.completed = [False]*len(input_ids)
 
             for i in range(len(input_ids)):
-                if (re.compile(r'\n').search(data[i][-1 * (len(koboldai_vars.chatname) + 1):]) is not None):
+                if data[i][-1] == "\n":
                     self.completed[i] = True
 
             return self.completed[i]
