@@ -1604,6 +1604,7 @@ def general_startup(override_args=None):
 
     if args.host:
         koboldai_vars.host = True;
+        args.unblock = True;
 
     if args.cpu:
         koboldai_vars.use_colab_tpu = False
@@ -13278,7 +13279,10 @@ def run():
             logger.init_ok("Webserver", status="OK")
             logger.message(f"Webserver has started, you can now connect to this machine at port: {port}")
         koboldai_vars.serverstarted = True
-        socketio.run(app, host='0.0.0.0', port=port)
+        if args.unblock:
+            socketio.run(app, port=port, host='0.0.0.0')
+        else:
+            socketio.run(app, port=port)
     else:
         startup()
         if args.unblock:
