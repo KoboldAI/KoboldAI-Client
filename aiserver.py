@@ -534,8 +534,15 @@ koboldai_vars = koboldai_settings.koboldai_vars(socketio)
 utils.koboldai_vars = koboldai_vars
 utils.socketio = socketio
 
-# HACK: Weird import position to steal koboldai_vars from utils
-from model import APIInferenceModel, GenericHFTorchInferenceModel, CustomGPT2HFTorchInferenceModel, HFMTJInferenceModel, HordeInferenceModel, OpenAIAPIInferenceModel, patch_transformers
+# Weird import position to steal koboldai_vars from utils
+from modeling.patches import patch_transformers
+from modeling.inference_models.api import APIInferenceModel
+from modeling.inference_models.generic_hf_torch import GenericHFTorchInferenceModel
+from modeling.inference_models.legacy_gpt2_hf import CustomGPT2HFTorchInferenceModel
+from modeling.inference_models.hf_mtj import HFMTJInferenceModel
+from modeling.inference_models.horde import HordeInferenceModel
+from modeling.inference_models.openai import OpenAIAPIInferenceModel
+
 
 old_socketio_on = socketio.on
 def new_socketio_on(*a, **k):

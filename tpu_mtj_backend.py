@@ -54,7 +54,7 @@ from mesh_transformer.transformer_shard import CausalTransformer, CausalTransfor
 from mesh_transformer.util import to_bf16
 import time
 
-import warpers
+import modeling.warpers as warpers
 
 socketio = None
 

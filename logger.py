@@ -2,6 +2,18 @@ import sys
 from functools import partialmethod
 from loguru import logger
 
+# Yes this shouldn't be here but I couldn't really find a better place to put
+# it barring creating a whole file just for this which is rather silly
+class Colors:
+    PURPLE = "\033[95m"
+    BLUE = "\033[94m"
+    CYAN = "\033[96m"
+    GREEN = "\033[92m"
+    YELLOW = "\033[93m"
+    RED = "\033[91m"
+    END = "\033[0m"
+    UNDERLINE = "\033[4m"
+
 STDOUT_LEVELS = ["GENERATION", "PROMPT"]
 INIT_LEVELS = ["INIT", "INIT_OK", "INIT_WARN", "INIT_ERR"]
 MESSAGE_LEVELS = ["MESSAGE"]
