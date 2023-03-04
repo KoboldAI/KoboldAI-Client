@@ -266,7 +266,7 @@ class HFMTJInferenceModel(HFInferenceModel):
         soft_tokens = self.get_soft_tokens()
 
         dynamic_inference = kwargs.get("tpu_dynamic_inference", False)
-        print(f"DYNAMIC_INFERENCE={dynamic_inference} KWARGS={kwargs}")
+        logger.info(f"dynamic_inference={dynamic_inference}")
 
         if not dynamic_inference:
             genout = tpool.execute(

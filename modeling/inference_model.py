@@ -176,8 +176,6 @@ class InferenceModel:
         global current_model
         current_model = self
 
-        print(self.raw_generate("Hi guys,", 20).__dict__)
-
     def _post_load(self) -> None:
         """Post load hook. Called after `_load()`."""
 
