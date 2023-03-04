@@ -320,8 +320,8 @@ model_menu = {
         ["GooseAI API (requires API key)", "GooseAI", "None", False],
         ["OpenAI API (requires API key)", "OAI", "None", False],
         ["InferKit API (requires API key)", "InferKit", "None", False],
-        # ["KoboldAI Server API (Old Google Colab)", "Colab", "", False],
         ["KoboldAI API", "API", "None", False],
+        ["Basic Model API", "Colab", "", False],
         ["KoboldAI Horde", "CLUSTER", "None", False],
         ["Return to Main Menu", "mainmenu", "", True],
     ]
