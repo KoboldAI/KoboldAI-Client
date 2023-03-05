@@ -365,8 +365,8 @@ class InferenceModel:
                     # stop temporarily to insert WI, we can assume that we are done
                     # generating. We shall break.
                     if (
-                        self.gen_state["halt"]
-                        or not self.gen_state["regeneration_required"]
+                        self.gen_state.get("halt")
+                        or not self.gen_state.get("regeneration_required")
                     ):
                         break
 
