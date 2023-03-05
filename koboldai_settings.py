@@ -1002,7 +1002,7 @@ class story_settings(settings):
                 new_world_info.add_item([x.strip() for x in wi["key"].split(",")][0], 
                                         wi["key"], 
                                         wi.get("keysecondary", ""), 
-                                        "root" if wi["folder"] is None else self.wifolders_d[wi['folder']]['name'], 
+                                        "root" if wi["folder"] is None else self.wifolders_d[str(wi['folder'])]['name'], 
                                         wi.get("constant", False), 
                                         wi["content"], 
                                         wi.get("comment", ""), 
