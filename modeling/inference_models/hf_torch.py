@@ -48,6 +48,10 @@ except ModuleNotFoundError as e:
     if not utils.koboldai_vars.use_colab_tpu:
         raise e
 
+# When set to true, messages will appear in the console if samplers are not
+# changing the scores. Keep in mind some samplers don't always change the
+# scores for each token.
+LOG_SAMPLER_NO_EFFECT = False
 
 class HFTorchInferenceModel(HFInferenceModel):
     def __init__(
@@ -87,6 +91,10 @@ class HFTorchInferenceModel(HFInferenceModel):
         self, scores: torch.Tensor, input_ids: torch.Tensor
     ) -> torch.Tensor:
         warpers.update_settings()
+
+        if LOG_SAMPLER_NO_EFFECT:
+            pre = torch.Tensor(scores)
+
         for sid in utils.koboldai_vars.sampler_order:
             warper = Warper.from_id(sid)
             if warper == warpers.RepetitionPenalty:
@@ -94,6 +102,11 @@ class HFTorchInferenceModel(HFInferenceModel):
                 scores = warper.torch(scores, input_ids=input_ids)
             else:
                 scores = warper.torch(scores)
+
+            if LOG_SAMPLER_NO_EFFECT:
+                if torch.equal(pre, scores):
+                    logger.info(warper, "had no effect on the scores.")
+                pre = torch.Tensor(scores)
         return scores
 
     def _post_load(self) -> None:
