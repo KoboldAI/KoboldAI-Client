@@ -63,9 +63,13 @@ class HFTorchInferenceModel(HFInferenceModel):
         self.low_mem = low_mem
 
         self.post_token_hooks = [
-            Stoppers.core_stopper,
             PostTokenHooks.stream_tokens,
+        ]
+
+        self.stopper_hooks = [
+            Stoppers.core_stopper,
             Stoppers.dynamic_wi_scanner,
+            Stoppers.singleline_stopper,
             Stoppers.chat_mode_stopper,
         ]
 
@@ -104,7 +108,7 @@ class HFTorchInferenceModel(HFInferenceModel):
                 self._post_token_gen(input_ids)
 
                 for stopper in self.stopper_hooks:
-                    do_stop = stopper(input_ids)
+                    do_stop = stopper(self, input_ids)
                     if do_stop:
                         return True
                 return False

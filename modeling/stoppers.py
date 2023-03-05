@@ -115,3 +115,32 @@ class Stoppers:
             del model.gen_state["completed"]
             return True
         return False
+
+    @staticmethod
+    def singleline_stopper(
+        model: InferenceModel,
+        input_ids: torch.LongTensor,
+    ) -> bool:
+        """If singleline mode is enabled, it's pointless to generate output beyond the first newline."""
+
+        if not utils.koboldai_vars.singleline:
+            return False
+
+        # Keep track of presence of newlines in each sequence; we cannot stop a
+        # batch member individually, so we must wait for all of them to contain
+        # a newline.
+        if "newline_in_sequence" not in model.gen_state:
+            model.gen_state["newline_in_sequence"] = [False] * len(input_ids)
+        
+        print(model.gen_state["newline_in_sequence"])
+
+        for sequence_idx, batch_sequence in enumerate(input_ids):
+            if model.tokenizer.decode(batch_sequence[-1]) == "\n":
+                model.gen_state["newline_in_sequence"][sequence_idx] = True
+
+        if all(model.gen_state["newline_in_sequence"]):
+            del model.gen_state["newline_in_sequence"]
+            print("OUT")
+            return True
+        print("nah its ok")
+        return False
