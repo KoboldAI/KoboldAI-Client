@@ -3180,9 +3180,10 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
                                         shutil.move(os.path.realpath(huggingface_hub.hf_hub_download(koboldai_vars.model, filename, revision=koboldai_vars.revision, cache_dir="cache", local_files_only=True, legacy_cache_layout=legacy)), os.path.join("models/{}".format(koboldai_vars.model.replace('/', '_')), filename))
                             shutil.rmtree("cache/")
 
-                if(koboldai_vars.badwordsids is koboldai_settings.badwordsids_default and koboldai_vars.model_type not in ("gpt2", "gpt_neo", "gptj")):
+                if(koboldai_vars.badwordsids is koboldai_settings.badwordsids_default and koboldai_vars.model_type not in ("gpt2", "gpt_neo", "gptj", "llama")):
                     koboldai_vars.badwordsids = [[v] for k, v in tokenizer.get_vocab().items() if any(c in str(k) for c in "<>[]") if koboldai_vars.newlinemode != "s" or str(k) != "</s>"]
-
+                if(koboldai_vars.badwordsids is koboldai_settings.badwordsids_default and koboldai_vars.model_type == "llama"):
+                    koboldai_vars.badwordsids = koboldai_settings.badwordsids_llama
                 patch_causallm(model)
 
                 if(koboldai_vars.hascuda):
