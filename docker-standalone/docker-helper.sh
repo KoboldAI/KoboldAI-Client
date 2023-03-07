@@ -11,11 +11,6 @@ if [[ ! -v KOBOLDAI_DATADIR ]];then
 	KOBOLDAI_DATADIR=/content
 fi
 
-if [[ ! -v KOBOLDAI_MODELDIR ]];then
-	mkdir $KOBOLDAI_MODELDIR/models
-	mkdir $KOBOLDAI_MODELDIR/functional_models
-fi
-
 mkdir $KOBOLDAI_DATADIR/stories
 mkdir $KOBOLDAI_DATADIR/settings
 mkdir $KOBOLDAI_DATADIR/softprompts
@@ -29,12 +24,11 @@ cp -rn softprompts/* $KOBOLDAI_DATADIR/softprompts/
 cp -rn presets/* $KOBOLDAI_DATADIR/presets/
 cp -rn themes/* $KOBOLDAI_DATADIR/themes/
 
-if [[ ! -v KOBOLDAI_MODELDIR ]];then
+if [[ -v KOBOLDAI_MODELDIR ]];then
+	mkdir $KOBOLDAI_MODELDIR/models
+	mkdir $KOBOLDAI_MODELDIR/functional_models
 	rm models
 	rm -rf models/
-fi
-
-if [[ ! -v KOBOLDAI_MODELDIR ]];then
 	ln -s $KOBOLDAI_MODELDIR/models/ models
 	ln -s $KOBOLDAI_MODELDIR/functional_models/ functional_models
 fi

@@ -320,8 +320,8 @@ model_menu = {
         ["GooseAI API (requires API key)", "GooseAI", "None", False],
         ["OpenAI API (requires API key)", "OAI", "None", False],
         ["InferKit API (requires API key)", "InferKit", "None", False],
-        # ["KoboldAI Server API (Old Google Colab)", "Colab", "", False],
         ["KoboldAI API", "API", "None", False],
+        ["Basic Model API", "Colab", "", False],
         ["KoboldAI Horde", "CLUSTER", "None", False],
         ["Return to Main Menu", "mainmenu", "", True],
     ]
@@ -1604,6 +1604,7 @@ def general_startup(override_args=None):
 
     if args.host:
         koboldai_vars.host = True;
+        args.unblock = True;
 
     if args.cpu:
         koboldai_vars.use_colab_tpu = False
@@ -2452,6 +2453,29 @@ def patch_transformers():
                 return True
             return False
             
+    class SinglelineStopper(StoppingCriteria):
+        # If singleline mode is enabled, it's pointless to generate output beyond the first newline.
+        def __init__(self, tokenizer):
+            self.tokenizer = tokenizer
+
+        def __call__(
+                self,
+                input_ids: torch.LongTensor,
+                scores: torch.FloatTensor,
+                **kwargs,
+        ) -> bool:
+            if not koboldai_vars.singleline:
+                return False
+
+            data = [tokenizer.decode(x) for x in input_ids]
+            if 'completed' not in self.__dict__:
+                self.completed = [False]*len(input_ids)
+
+            for i in range(len(input_ids)):
+                if data[i][-1] == "\n":
+                    self.completed[i] = True
+
+            return self.completed[i]
 
     class CoreStopper(StoppingCriteria):
         # Controls core generation stuff; aborting, counting generated tokens, etc
@@ -2560,6 +2584,7 @@ def patch_transformers():
         token_streamer = TokenStreamer(tokenizer=tokenizer)
 
         stopping_criteria.insert(0, ChatModeStopper(tokenizer=tokenizer))
+        stopping_criteria.insert(0, SinglelineStopper(tokenizer=tokenizer))
         stopping_criteria.insert(0, self.kai_scanner)
         token_streamer = TokenStreamer(tokenizer=tokenizer)
         stopping_criteria.insert(0, token_streamer)
@@ -3156,8 +3181,7 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
                             shutil.rmtree("cache/")
 
                 if(koboldai_vars.badwordsids is koboldai_settings.badwordsids_default and koboldai_vars.model_type not in ("gpt2", "gpt_neo", "gptj")):
-                    koboldai_vars.badwordsids = [[v] for k, v in tokenizer.get_vocab().items() if any(c in str(k) for c in "<>[]") if koboldai_vars.newlinemode != "s" or str(k) != "</s>"]
-
+                    koboldai_vars.badwordsids = [[v] for k, v in tokenizer.get_vocab().items() if any(c in str(k) for c in "[]")]
                 patch_causallm(model)
 
                 if(koboldai_vars.hascuda):
@@ -4386,7 +4410,7 @@ def get_message(msg):
         emit('from_server', {'cmd': 'wiupdate', 'num': msg['num'], 'data': {field: koboldai_vars.worldinfo[num][field] for field in fields}}, broadcast=True, room="UI_1")
     elif(msg['cmd'] == 'wifolderupdate'):
         setgamesaved(False)
-        uid = int(msg['uid'])
+        uid = str(msg['uid'])
         fields = ("name", "collapsed")
         for field in fields:
             if(field in msg['data'] and type(msg['data'][field]) is (str if field != "collapsed" else bool)):
@@ -6736,7 +6760,7 @@ def addwiitem(folder_uid=None):
     ob = {"key": "", "keysecondary": "", "content": "", "comment": "", "folder": folder_uid, "num": len(koboldai_vars.worldinfo), "init": False, "selective": False, "constant": False}
     koboldai_vars.worldinfo.append(ob)
     while(True):
-        uid = int.from_bytes(os.urandom(4), "little", signed=True)
+        uid = str(int.from_bytes(os.urandom(4), "little", signed=True))
         if(uid not in koboldai_vars.worldinfo_u):
             break
     koboldai_vars.worldinfo_u[uid] = koboldai_vars.worldinfo[-1]
@@ -6750,7 +6774,7 @@ def addwiitem(folder_uid=None):
 #==================================================================#
 def addwifolder():
     while(True):
-        uid = int.from_bytes(os.urandom(4), "little", signed=True)
+        uid = str(int.from_bytes(os.urandom(4), "little", signed=True))
         if(uid not in koboldai_vars.wifolders_d):
             break
     ob = {"name": "", "collapsed": False}
@@ -6819,7 +6843,7 @@ def sendwi():
         last_folder = ...
         for wi in koboldai_vars.worldinfo:
             if(wi["folder"] != last_folder):
-                emit('from_server', {'cmd': 'addwifolder', 'uid': wi["folder"], 'data': koboldai_vars.wifolders_d[wi["folder"]] if wi["folder"] is not None else None}, broadcast=True, room="UI_1")
+                emit('from_server', {'cmd': 'addwifolder', 'uid': wi["folder"], 'data': koboldai_vars.wifolders_d[str(wi["folder"])] if wi["folder"] is not None else None}, broadcast=True, room="UI_1")
                 last_folder = wi["folder"]
             ob = wi
             emit('from_server', {'cmd': 'addwiitem', 'data': ob}, broadcast=True, room="UI_1")
@@ -6862,7 +6886,7 @@ def stablesortwi():
 #==================================================================#
 def commitwi(ar):
     for ob in ar:
-        ob["uid"] = int(ob["uid"])
+        ob["uid"] = str(ob["uid"])
         koboldai_vars.worldinfo_u[ob["uid"]]["key"]          = ob["key"]
         koboldai_vars.worldinfo_u[ob["uid"]]["keysecondary"] = ob["keysecondary"]
         koboldai_vars.worldinfo_u[ob["uid"]]["content"]      = ob["content"]
@@ -6902,7 +6926,7 @@ def deletewi(uid):
 #  
 #==================================================================#
 def deletewifolder(uid):
-    uid = int(uid)
+    uid = str(uid)
     del koboldai_vars.wifolders_u[uid]
     del koboldai_vars.wifolders_d[uid]
     del koboldai_vars.wifolders_l[koboldai_vars.wifolders_l.index(uid)]
@@ -13278,7 +13302,10 @@ def run():
             logger.init_ok("Webserver", status="OK")
             logger.message(f"Webserver has started, you can now connect to this machine at port: {port}")
         koboldai_vars.serverstarted = True
-        socketio.run(app, host='0.0.0.0', port=port)
+        if args.unblock:
+            socketio.run(app, port=port, host='0.0.0.0')
+        else:
+            socketio.run(app, port=port)
     else:
         startup()
         if args.unblock:
