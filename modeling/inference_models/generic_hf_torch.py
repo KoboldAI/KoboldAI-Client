@@ -237,8 +237,7 @@ class GenericHFTorchInferenceModel(HFTorchInferenceModel):
             utils.koboldai_vars.badwordsids = [
                 [v]
                 for k, v in self.tokenizer.get_vocab().items()
-                if any(c in str(k) for c in "<>[]")
-                if utils.koboldai_vars.newlinemode != "s" or str(k) != "</s>"
+                if any(c in str(k) for c in "[]")
             ]
 
         self.patch_embedding()

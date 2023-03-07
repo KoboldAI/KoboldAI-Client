@@ -202,6 +202,7 @@ class HFMTJInferenceModel(HFInferenceModel):
         )
 
         self.tokenizer = tpu_mtj_backend.tokenizer
+
         if (
             utils.koboldai_vars.badwordsids is koboldai_settings.badwordsids_default
             and utils.koboldai_vars.model_type not in ("gpt2", "gpt_neo", "gptj")
@@ -209,8 +210,7 @@ class HFMTJInferenceModel(HFInferenceModel):
             utils.koboldai_vars.badwordsids = [
                 [v]
                 for k, v in self.tokenizer.get_vocab().items()
-                if any(c in str(k) for c in "<>[]")
-                if utils.koboldai_vars.newlinemode != "s" or str(k) != "</s>"
+                if any(c in str(k) for c in "[]")
             ]
 
     def get_soft_tokens(self) -> np.array:
