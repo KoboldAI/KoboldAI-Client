@@ -89,7 +89,7 @@ def new_rng_state(seed: int):
 def warper_callback(logits) -> np.array:
     raise NotImplementedError("`tpu_mtj_backend.warper_callback()` needs to be defined")
 
-def stopping_callback(generated, n_generated, excluded_world_info) -> Tuple[List[set], bool, bool]:
+def stopping_callback(generated, n_generated) -> Tuple[bool, bool]:
     raise NotImplementedError("`tpu_mtj_backend.stopping_callback()` needs to be defined")
 
 def settings_callback() -> dict:
@@ -219,7 +219,7 @@ def kobold_sample_dynamic(key, logits, rpargs, sampler_order: Optional[np.ndarra
         warper = warpers.Warper.from_id(sid)
         if not warper.value_is_valid():
             continue
-        logits = warper.jax_dynamic()
+        logits = warper.jax_dynamic(logits)
 
     # Finally, pick one token using the softmax thingy again (it gives
     # an array whose elements sum to 1 so it can be used nicely as a
@@ -473,8 +473,7 @@ class PenalizingCausalTransformer(CausalTransformer):
             out_axes=["shard", "batch", ...],
             axis_resources={'shard': 'mp', 'batch': 'dp'},
         )
-    def generate_dynamic(self, ctx, ctx_length, gen_length, numseqs, return_logits=False, soft_embeddings=None, excluded_world_info=None, use_callback=True):
-        assert excluded_world_info is not None
+    def generate_dynamic(self, ctx, ctx_length, gen_length, numseqs, return_logits=False, soft_embeddings=None, use_callback=True):
         assert not return_logits
         assert gen_length.ndim == 1
         assert soft_embeddings is not None
@@ -517,7 +516,7 @@ class PenalizingCausalTransformer(CausalTransformer):
                 generate_data[i][3] = np.tile(sample_data[i][0][sample_data[i][1]-1][np.newaxis, np.newaxis], (params["cores_per_replica"], 1, 1))
             if use_callback:
                 generated = np.uint32(tuple(d[0] for d in sample_data))
-                excluded_world_info, regeneration_required, halt = stopping_callback(generated, n_generated, excluded_world_info)
+                regeneration_required, halt = stopping_callback(generated, n_generated)
                 if regeneration_required or halt:
                     break
             else:
@@ -550,10 +549,8 @@ def infer_dynamic(
     gen_len=80,
     soft_embeddings: Optional[np.array] = None,
     soft_tokens: Optional[np.array] = None,
-    excluded_world_info = None,
     use_callback=True,
 ) -> Tuple[List[np.array], int, bool, bool]:
-    assert excluded_world_info is not None
     maps.thread_resources.env = thread_resources_env
     total_batch = 1
     tokens = context
@@ -570,7 +567,6 @@ def infer_dynamic(
         np.ones(total_batch, dtype=np.uint32) * gen_len,
         numseqs,
         soft_embeddings=soft_embeddings,
-        excluded_world_info=excluded_world_info,
         use_callback=use_callback,
     )
     for out in output[0]:

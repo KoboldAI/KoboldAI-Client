@@ -258,7 +258,7 @@ class TopK(Warper):
 
     @classmethod
     def value_is_valid(cls) -> bool:
-        return cls.top_p > 0
+        return cls.top_k > 0
 
 
 class TailFree(Warper):

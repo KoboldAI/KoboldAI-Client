@@ -71,11 +71,10 @@ class HFMTJInferenceModel(HFInferenceModel):
             return scores
 
         def mtj_stopping_callback(
-            generated, n_generated, excluded_world_info
+            generated, n_generated
         ) -> Tuple[List[set], bool, bool]:
             utils.koboldai_vars.generated_tkns += 1
 
-            assert len(excluded_world_info) == len(generated)
             regeneration_required = (
                 utils.koboldai_vars.lua_koboldbridge.regeneration_required
             )
@@ -98,7 +97,7 @@ class HFMTJInferenceModel(HFInferenceModel):
                 )
 
             if not utils.koboldai_vars.dynamicscan or halt:
-                return excluded_world_info, regeneration_required, halt
+                return regeneration_required, halt
 
             for i, t in enumerate(generated):
                 decoded = utils.decodenewlines(
@@ -114,14 +113,16 @@ class HFMTJInferenceModel(HFInferenceModel):
                     )
                 )
                 # _, found = checkworldinfo(decoded, force_use_txt=True, actions=koboldai_vars.actions)
-                _, _, _, found = utils.koboldai_vars.calc_ai_text(
+                _, _, _, used_world_info = utils.koboldai_vars.calc_ai_text(
                     submitted_text=decoded
                 )
-                found -= excluded_world_info[i]
-                if len(found) != 0:
+                print(utils.koboldai_vars.calc_ai_text())
+                # found -= excluded_world_info[i]
+                if used_world_info:
+                    print("lets regen")
                     regeneration_required = True
                     break
-            return excluded_world_info, regeneration_required, halt
+            return regeneration_required, halt
 
         def mtj_compiling_callback() -> None:
             print(Colors.GREEN + "TPU backend compilation triggered" + Colors.END)
@@ -261,7 +262,7 @@ class HFMTJInferenceModel(HFInferenceModel):
         gen_settings: GenerationSettings,
         single_line: bool = False,
         batch_count: int = 1,
-        **kwargs
+        **kwargs,
     ) -> GenerationResult:
         soft_tokens = self.get_soft_tokens()
 
@@ -289,19 +290,82 @@ class HFMTJInferenceModel(HFInferenceModel):
             )
             genout = np.array(genout)
         else:
-            genout = tpool.execute(
-                tpu_mtj_backend.infer_dynamic,
-                context=np.uint32(prompt_tokens),
-                numseqs=batch_count,
-                gen_len=max_new,
-                soft_embeddings=utils.koboldai_vars.sp,
-                soft_tokens=soft_tokens,
-                # TODO: Fix Dynamic WI on TPU
-                excluded_world_info=set(),
-                use_callback=True
+            global past
+            context = np.tile(
+                np.uint32(prompt_tokens), (utils.koboldai_vars.numseqs, 1)
             )
-            print(genout)
-            print(type(genout))
+            past = np.empty((utils.koboldai_vars.numseqs, 0), dtype=np.uint32)
+            self.gen_state["wi_scanner_excluded_keys"] = set()
+
+            while True:
+                genout, n_generated, regeneration_required, halt = tpool.execute(
+                    tpu_mtj_backend.infer_dynamic,
+                    context,
+                    gen_len=max_new,
+                    numseqs=utils.koboldai_vars.numseqs,
+                    soft_embeddings=utils.koboldai_vars.sp,
+                    soft_tokens=soft_tokens,
+                )
+
+                past = np.pad(past, ((0, 0), (0, n_generated)))
+                for r in range(utils.koboldai_vars.numseqs):
+                    for c in range(utils.koboldai_vars.lua_koboldbridge.generated_cols):
+                        assert (
+                            utils.koboldai_vars.lua_koboldbridge.generated[r + 1][c + 1]
+                            is not None
+                        )
+                        past[r, c] = utils.koboldai_vars.lua_koboldbridge.generated[
+                            r + 1
+                        ][c + 1]
+
+                if utils.koboldai_vars.abort or halt or not regeneration_required:
+                    break
+
+                print("(regeneration triggered)")
+
+                encoded = []
+                for i in range(utils.koboldai_vars.numseqs):
+                    txt = utils.decodenewlines(self.tokenizer.decode(past[i]))
+                    # _, _, _, _found_entries = utils.koboldai_vars.calc_ai_text(
+                    #     self.tokenizer.decode(prompt_tokens)
+                    # )
+                    # # utils.koboldai_vars.calc_ai_text()
+                    # print(_found_entries)
+                    # self.gen_state["wi_scanner_excluded_keys"].update(_found_entries)
+                    encoded.append(np.array(txt, dtype=np.uint32))
+
+                max_length = len(max(encoded, key=len))
+                encoded = np.stack(
+                    tuple(
+                        np.pad(
+                            e,
+                            (max_length - len(e), 0),
+                            constant_values=tpu_mtj_backend.pad_token_id,
+                        )
+                        for e in encoded
+                    )
+                )
+                context = np.concatenate(
+                    (
+                        encoded,
+                        past,
+                    ),
+                    axis=-1,
+                )
+            # genout = tpool.execute(
+            #     tpu_mtj_backend.infer_dynamic,
+            #     context=np.uint32(prompt_tokens),
+            #     numseqs=batch_count,
+            #     gen_len=max_new,
+            #     soft_embeddings=utils.koboldai_vars.sp,
+            #     soft_tokens=soft_tokens,
+            #     # TODO: Fix Dynamic WI on TPU
+            #     excluded_world_info=set(),
+            #     use_callback=True
+            # )
+            # print(genout)
+            # print(type(genout))
+            print(context)
             genout = np.array(genout)
 
         return GenerationResult(
