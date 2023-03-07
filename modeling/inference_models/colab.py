@@ -11,6 +11,7 @@ from modeling.inference_model import (
     GenerationResult,
     GenerationSettings,
     InferenceModel,
+    ModelCapabilities,
 )
 
 
@@ -19,6 +20,12 @@ class ColabException(Exception):
 
 
 class ColabInferenceModel(InferenceModel):
+    def __init__(self) -> None:
+        super().__init__()
+
+        # Do not allow API to be served over the API
+        self.capabilties = ModelCapabilities(api_host=False)
+
     def _load(self, save_model: bool, initial_load: bool) -> None:
         self.tokenizer = self._get_tokenizer("EleutherAI/gpt-neo-2.7B")
 

@@ -14,6 +14,7 @@ from modeling.inference_model import (
     GenerationResult,
     GenerationSettings,
     InferenceModel,
+    ModelCapabilities,
 )
 
 
@@ -26,7 +27,11 @@ class APIInferenceModel(InferenceModel):
         tokenizer_id = requests.get(
             utils.koboldai_vars.colaburl[:-8] + "/api/v1/model",
         ).json()["result"]
+
         self.tokenizer = self._get_tokenizer(tokenizer_id)
+
+        # Do not allow API to be served over the API
+        self.capabilties = ModelCapabilities(api_host=False)
 
     def _raw_generate(
         self,

@@ -156,6 +156,9 @@ class ModelCapabilities:
     # TODO: Support non-live probabilities from APIs
     post_token_probs: bool = False
 
+    # Some models cannot be hosted over the API, namely the API itself.
+    api_host: bool = True
+
 
 class InferenceModel:
     """Root class for all models."""

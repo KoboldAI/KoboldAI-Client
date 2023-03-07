@@ -3555,16 +3555,8 @@ def apiactionsubmit_tpumtjgenerate(txt, minimum, maximum):
     return genout
 
 def apiactionsubmit(data, use_memory=False, use_world_info=False, use_story=False, use_authors_note=False):
-    if(koboldai_vars.model == "Colab"):
-        raise NotImplementedError("API generation is not supported in old Colab API mode.")
-    elif(koboldai_vars.model == "API"):
-        raise NotImplementedError("API generation is not supported in API mode.")
-    elif(koboldai_vars.model == "CLUSTER"):
-        raise NotImplementedError("API generation is not supported in API mode.")
-    elif(koboldai_vars.model == "OAI"):
-        raise NotImplementedError("API generation is not supported in OpenAI/GooseAI mode.")
-    elif(koboldai_vars.model == "ReadOnly"):
-        raise NotImplementedError("API generation is not supported in read-only mode; please load a model and then try again.")
+    if not model or not model.capabilties.api_host:
+        raise NotImplementedError(f"API generation isn't allowed on model '{koboldai_vars.model}'")
 
     data = applyinputformatting(data)
 

@@ -13,6 +13,7 @@ from modeling.inference_model import (
     GenerationResult,
     GenerationSettings,
     InferenceModel,
+    ModelCapabilities,
 )
 
 
@@ -21,6 +22,12 @@ class HordeException(Exception):
 
 
 class HordeInferenceModel(InferenceModel):
+    def __init__(self) -> None:
+        super().__init__()
+
+        # Do not allow API to be served over the API
+        self.capabilties = ModelCapabilities(api_host=False)
+
     def _load(self, save_model: bool, initial_load: bool) -> None:
         self.tokenizer = self._get_tokenizer(
             utils.koboldai_vars.cluster_requested_models[0]
