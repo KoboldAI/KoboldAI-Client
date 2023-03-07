@@ -15,11 +15,11 @@ from modeling.inference_model import (
 )
 
 
-class ColabException(Exception):
-    """To be used for errors when using the Colab API as an interface."""
+class BasicAPIException(Exception):
+    """To be used for errors when using the Basic API as an interface."""
 
 
-class ColabInferenceModel(InferenceModel):
+class BasicAPIInferenceModel(InferenceModel):
     def __init__(self) -> None:
         super().__init__()
 
@@ -65,7 +65,7 @@ class ColabInferenceModel(InferenceModel):
         req = requests.post(utils.koboldai_vars.colaburl, json=reqdata)
 
         if req.status_code != 200:
-            raise ColabException(f"Bad status code {req.status_code}")
+            raise BasicAPIException(f"Bad status code {req.status_code}")
 
         # Deal with the response
         js = req.json()["data"]
