@@ -97,6 +97,10 @@ class HFTorchInferenceModel(HFInferenceModel):
 
         for sid in utils.koboldai_vars.sampler_order:
             warper = Warper.from_id(sid)
+
+            if not warper.value_is_valid():
+                continue
+
             if warper == warpers.RepetitionPenalty:
                 # Rep pen needs more data than other samplers
                 scores = warper.torch(scores, input_ids=input_ids)
