@@ -1202,12 +1202,12 @@ class system_settings(settings):
     local_only_variables = ['lua_state', 'lua_logname', 'lua_koboldbridge', 'lua_kobold', 
                             'lua_koboldcore', 'regex_sl', 'acregex_ai', 'acregex_ui', 'comregex_ai', 
                             'comregex_ui', 'sp', '_horde_pid', 'inference_config', 'image_pipeline', 
-                            'summarizer', 'summary_tokenizer', 'tts_model']
+                            'summarizer', 'summary_tokenizer', 'tts_model', 'rng_states']
     no_save_variables = ['lua_state', 'lua_logname', 'lua_koboldbridge', 'lua_kobold', 
                          'lua_koboldcore', 'sp', 'sp_length', '_horde_pid', 'horde_share', 'aibusy', 
                          'serverstarted', 'inference_config', 'image_pipeline', 'summarizer', 
                          'summary_tokenizer', 'use_colab_tpu', 'noai', 'disable_set_aibusy', 'cloudflare_link', 'tts_model',
-                         'generating_image', 'bit_8_available', 'host', 'hascuda', 'usegpu']
+                         'generating_image', 'bit_8_available', 'host', 'hascuda', 'usegpu', 'rng_states']
     settings_name = "system"
     def __init__(self, socketio, koboldai_var):
         self._socketio = socketio
@@ -1263,6 +1263,7 @@ class system_settings(settings):
         self.disable_output_formatting = False
         self.full_determinism = False  # Whether or not full determinism is enabled
         self.seed_specified = False  # Whether or not the current RNG seed was specified by the user (in their settings file)
+        self.rng_states = {} # creates an empty dictionary to store the random number generator (RNG) states for a given seed, which is used to restore the RNG state later on
         self.seed        = None   # The current RNG seed (as an int), or None if unknown
         self.alt_gen = False # Use the calc_ai_text method for generating text to go to the AI
         self.theme_list = [".".join(f.split(".")[:-1]) for f in os.listdir("./themes") if os.path.isfile(os.path.join("./themes", f))]
