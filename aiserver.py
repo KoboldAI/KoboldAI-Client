@@ -422,7 +422,7 @@ class ImportBuffer:
             status = err.status_code
             print(f"[import] Got {status} on request to club :^(")
             message = f"Club responded with {status}"
-            if status == "404":
+            if status == 404:
                 message = f"Prompt not found for ID {club_id}"
             show_error_notification("Error loading prompt", message)
             return
