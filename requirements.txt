@@ -12,7 +12,6 @@ dnspython==2.2.1
 lupa==1.10
 markdown
 bleach==4.1.0
-black
 sentencepiece
 protobuf
 accelerate
