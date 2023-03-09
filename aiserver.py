@@ -414,40 +414,25 @@ class ImportBuffer:
                 self.world_infos[i][key] = self._replace_placeholders(self.world_infos[i][key])
 
     def from_club(self, club_id):
-        # Maybe it is a better to parse the NAI Scenario (if available), it has more data
-        r = requests.get(f"https://aetherroom.club/api/{club_id}")
-
-        if not r.ok:
-            print(f"[import] Got {r.status_code} on request to club :^(")
-            message = f"Club responded with {r.status_code}"
-            if r.status_code == "404":
+        from importers import aetherroom
+        import_data: aetherroom.ImportData
+        try:
+            import_data = aetherroom.import_scenario(club_id)
+        except aetherroom.RequestFailed as err:
+            status = err.status_code
+            print(f"[import] Got {status} on request to club :^(")
+            message = f"Club responded with {status}"
+            if status == "404":
                 message = f"Prompt not found for ID {club_id}"
             show_error_notification("Error loading prompt", message)
             return
 
-        j = r.json()
-
-        self.prompt = j["promptContent"]
-        self.memory = j["memory"]
-        self.authors_note = j["authorsNote"]
-        self.notes = j["description"]
-        self.title = j["title"] or "Imported Story"
-
-        self.world_infos = []
-
-        for wi in j["worldInfos"]:
-            self.world_infos.append({
-                "key_list": wi["keysList"],
-                "keysecondary": [],
-                "content": wi["entry"],
-                "comment": "",
-                "folder": wi.get("folder", None),
-                "num": 0,
-                "init": True,
-                "selective": wi.get("selective", False),
-                "constant": wi.get("constant", False),
-                "uid": None,
-            })
+        self.prompt = import_data.prompt
+        self.memory = import_data.memory
+        self.authors_note = import_data.authors_note
+        self.notes = import_data.notes
+        self.title = import_data.title
+        self.world_infos = import_data.world_infos
 
         placeholders = self.extract_placeholders(self.prompt)
         if not placeholders:

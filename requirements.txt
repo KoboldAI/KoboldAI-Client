@@ -12,6 +12,7 @@ dnspython==2.2.1
 lupa==1.10
 markdown
 bleach==4.1.0
+black
 sentencepiece
 protobuf
 accelerate
@@ -29,5 +30,10 @@ flask_compress
 ijson
 bitsandbytes
 ftfy
+py==1.11.0
 pydub
+pytest==7.2.2
+pytest-html==3.2.0
+pytest-metadata==2.0.4
+requests-mock==1.10.0
 safetensors
