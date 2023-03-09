@@ -8074,7 +8074,7 @@ def soft_prompt_validator(soft_prompt: str):
         raise ValidationError("Cannot use soft prompts with current backend.")
     if any(q in soft_prompt for q in ("/", "\\")):
         return
-    z, _, _, _, _ = fileops.checksp(soft_prompt.strip(), koboldai_vars.modeldim)
+    z, _, _, _, _ = fileops.checksp("./softprompts/"+soft_prompt.strip(), koboldai_vars.modeldim)
     if isinstance(z, int):
         raise ValidationError("Must be a valid soft prompt name.")
     z.close()
