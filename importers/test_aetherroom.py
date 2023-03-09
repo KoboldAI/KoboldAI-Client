@@ -21,7 +21,7 @@ def test_import_scenario_success(requests_mock: requests_mock.Mocker):
         "authorsNote": "authorsNote",
         "description": "description",
         "title": "title",
-        "worldinfos": [],
+        "worldInfos": [],
     }
     requests_mock.get("https://aetherroom.club/api/1", json=json)
 
@@ -37,7 +37,7 @@ def test_import_scenario_no_title(requests_mock: requests_mock.Mocker):
         "memory": "memory",
         "authorsNote": "authorsNote",
         "description": "description",
-        "worldinfos": [],
+        "worldInfos": [],
     }
     requests_mock.get("https://aetherroom.club/api/1", json=json)
 
@@ -53,7 +53,7 @@ def test_import_scenario_world_infos(requests_mock: requests_mock.Mocker):
         "memory": "memory",
         "authorsNote": "authorsNote",
         "description": "description",
-        "worldinfos": [
+        "worldInfos": [
             {
                 "entry": "Info 1",
                 "keysList": ["a", "b", "c"],
@@ -116,7 +116,7 @@ def test_import_scenario_world_info_missing_properties(
         "memory": "memory",
         "authorsNote": "authorsNote",
         "description": "description",
-        "worldinfos": [
+        "worldInfos": [
             {
                 "entry": "Info 1",
                 "keysList": ["a", "b", "c"],

@@ -38,7 +38,7 @@ def import_scenario(id: int) -> ImportData:
     title = json.get("title", "Imported Story")
 
     world_infos = []
-    for info in json["worldinfos"]:
+    for info in json["worldInfos"]:
         world_infos.append(
             {
                 "key_list": info["keysList"],
