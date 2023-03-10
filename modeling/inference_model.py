@@ -22,10 +22,6 @@ except ModuleNotFoundError as e:
     if utils.koboldai_vars.use_colab_tpu:
         raise e
 
-# I don't really like this way of pointing to the current model but I can't
-# find a way around it in some areas.
-current_model = None
-
 # We only want to use logit manipulations and such on our core text model
 class use_core_manipulations:
     """Use in a `with` block to patch functions for core story model sampling."""
@@ -175,9 +171,6 @@ class InferenceModel:
 
         self._load(save_model=save_model, initial_load=initial_load)
         self._post_load()
-
-        global current_model
-        current_model = self
 
     def _post_load(self) -> None:
         """Post load hook. Called after `_load()`."""
