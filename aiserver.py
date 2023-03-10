@@ -3130,7 +3130,12 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
                         #             tokenizer = GPT2Tokenizer.from_pretrained("gpt2", revision=koboldai_vars.revision, cache_dir="cache")
                         try:
                             # model     = AutoModelForCausalLM.from_pretrained(koboldai_vars.custmodpth, revision=koboldai_vars.revision, cache_dir="cache", **lowmem)
-                            model = load_quant(koboldai_vars.custmodpth, os.environ['LLAMA_4BIT'], 4)
+                            if os.environ.get('LLAMA_4BIT') is not None:
+                                model = load_quant(koboldai_vars.custmodpth, os.environ['LLAMA_4BIT'], 4)
+                            else:
+                                raise RuntimeError("It looks like your environment variable for LLAMA_4BIT is not set (the model path).\nPlease set this variable before procedding.")
+                                exit(1)
+
                         except Exception as e:
                             if("out of memory" in traceback.format_exc().lower()):
                                 raise RuntimeError("One of your GPUs ran out of memory when KoboldAI tried to load your model.")
