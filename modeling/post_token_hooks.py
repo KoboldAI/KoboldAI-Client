@@ -10,7 +10,7 @@ class PostTokenHooks:
         model: InferenceModel,
         input_ids: torch.LongTensor,
     ) -> None:
-        if not model.gen_state["do_streaming"]:
+        if not model.gen_state.get("do_streaming"):
             return
 
         if not utils.koboldai_vars.output_streaming:

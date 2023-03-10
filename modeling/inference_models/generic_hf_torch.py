@@ -58,19 +58,19 @@ class GenericHFTorchInferenceModel(HFTorchInferenceModel):
             tf_kwargs.pop("low_cpu_mem_usage", None)
 
             # Also, lazy loader doesn't support GPT-2 models
-            utils.koboldai_vars.lazy_load = False
+            self.lazy_load = False
 
         # If we're using torch_lazy_loader, we need to get breakmodel config
         # early so that it knows where to load the individual model tensors
         if (
-            utils.koboldai_vars.lazy_load
+            self.lazy_load
             and utils.koboldai_vars.hascuda
             and utils.koboldai_vars.breakmodel
             and not utils.koboldai_vars.nobreakmodel
         ):
             self.breakmodel_device_config(self.model_config)
 
-        if utils.koboldai_vars.lazy_load:
+        if self.lazy_load:
             # If we're using lazy loader, we need to figure out what the model's hidden layers are called
             with torch_lazy_loader.use_lazy_torch_load(
                 dematerialized_modules=True, use_accelerate_init_empty_weights=True
@@ -78,6 +78,7 @@ class GenericHFTorchInferenceModel(HFTorchInferenceModel):
                 try:
                     metamodel = AutoModelForCausalLM.from_config(self.model_config)
                 except Exception as e:
+                    print("Fell back to neo for metamodel")
                     metamodel = GPTNeoForCausalLM.from_config(self.model_config)
                 utils.layers_module_names = utils.get_layers_module_names(metamodel)
                 utils.module_names = list(metamodel.state_dict().keys())
@@ -85,13 +86,13 @@ class GenericHFTorchInferenceModel(HFTorchInferenceModel):
 
         # Download model from Huggingface if it does not exist, otherwise load locally
         with self._maybe_use_float16(), torch_lazy_loader.use_lazy_torch_load(
-            enable=utils.koboldai_vars.lazy_load,
+            enable=self.lazy_load,
             callback=self._get_lazy_load_callback(utils.num_layers(self.model_config))
-            if utils.koboldai_vars.lazy_load
+            if self.lazy_load
             else None,
             dematerialized_modules=True,
         ):
-            if utils.koboldai_vars.lazy_load:
+            if self.lazy_load:
                 # torch_lazy_loader.py and low_cpu_mem_usage can't be used at the same time
                 tf_kwargs.pop("low_cpu_mem_usage", None)
 
@@ -248,7 +249,7 @@ class GenericHFTorchInferenceModel(HFTorchInferenceModel):
                 self.model = self.model.half().to(utils.koboldai_vars.gpu_device)
             elif utils.koboldai_vars.breakmodel:
                 # Use both RAM and VRAM (breakmodel)
-                if not utils.koboldai_vars.lazy_load:
+                if not self.lazy_load:
                     self.breakmodel_device_config(model.config)
                 self._move_to_devices()
             elif breakmodel.disk_blocks > 0:

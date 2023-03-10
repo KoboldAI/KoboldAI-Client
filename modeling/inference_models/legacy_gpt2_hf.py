@@ -12,7 +12,7 @@ from modeling.inference_models.hf_torch import HFTorchInferenceModel
 
 class CustomGPT2HFTorchInferenceModel(HFTorchInferenceModel):
     def _load(self, save_model: bool, initial_load: bool) -> None:
-        utils.koboldai_vars.lazy_load = False
+        self.lazy_load = False
 
         model_path = None
 

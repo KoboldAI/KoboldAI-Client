@@ -508,10 +508,13 @@ class HFTorchInferenceModel(HFInferenceModel):
                 **tf_kwargs,
             )
         except Exception as e:
+            print("Fell back for model due to", e)
+
             if "out of memory" in traceback.format_exc().lower():
                 raise RuntimeError(
                     "One of your GPUs ran out of memory when KoboldAI tried to load your model."
                 )
+
             return GPTNeoForCausalLM.from_pretrained(
                 location,
                 revision=utils.koboldai_vars.revision,
