@@ -18,6 +18,7 @@ class OpenAIAPIError(Exception):
 
 class OpenAIAPIInferenceModel(InferenceModel):
     """InferenceModel for interfacing with OpenAI's generation API."""
+
     def _load(self, save_model: bool, initial_load: bool) -> None:
         self.tokenizer = self._get_tokenizer("gpt2")
 
@@ -28,7 +29,7 @@ class OpenAIAPIInferenceModel(InferenceModel):
         gen_settings: GenerationSettings,
         single_line: bool = False,
         batch_count: int = 1,
-        **kwargs
+        **kwargs,
     ) -> GenerationResult:
         # Taken mainly from oairequest()
 

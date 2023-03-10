@@ -360,9 +360,8 @@ class InferenceModel:
                     # amount (controlled by halt), or Dynamic WI has not told us to
                     # stop temporarily to insert WI, we can assume that we are done
                     # generating. We shall break.
-                    if (
-                        self.gen_state.get("halt")
-                        or not self.gen_state.get("regeneration_required")
+                    if self.gen_state.get("halt") or not self.gen_state.get(
+                        "regeneration_required"
                     ):
                         break
 

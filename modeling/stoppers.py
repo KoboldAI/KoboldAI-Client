@@ -131,7 +131,7 @@ class Stoppers:
         # a newline.
         if "newline_in_sequence" not in model.gen_state:
             model.gen_state["newline_in_sequence"] = [False] * len(input_ids)
-        
+
         for sequence_idx, batch_sequence in enumerate(input_ids):
             if model.tokenizer.decode(batch_sequence[-1]) == "\n":
                 model.gen_state["newline_in_sequence"][sequence_idx] = True
