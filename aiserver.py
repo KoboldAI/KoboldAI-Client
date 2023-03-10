@@ -36,22 +36,16 @@ import ijson
 import datetime
 import collections
 import zipfile
-import packaging
 import packaging.version
-import contextlib
 import traceback
 import markdown
 import bleach
-import itertools
-import bisect
 import functools
 import traceback
 import inspect
 import warnings
 import multiprocessing
-import copy
 import numpy as np
-from collections.abc import Iterable
 from collections import OrderedDict
 from typing import Any, Callable, TypeVar, Tuple, Union, Dict, Set, List, Optional, Type
 
@@ -70,13 +64,8 @@ from utils import debounce
 import utils
 import koboldai_settings
 import torch
-from transformers import StoppingCriteria, GPT2Tokenizer, GPT2LMHeadModel, GPTNeoForCausalLM, GPTNeoModel, AutoModelForCausalLM, AutoModelForSeq2SeqLM, AutoTokenizer, PreTrainedModel, modeling_utils, AutoModelForTokenClassification
-from transformers import __version__ as transformers_version
+from transformers import AutoModelForSeq2SeqLM, AutoTokenizer, AutoModelForTokenClassification
 import transformers
-try:
-    from transformers.models.opt.modeling_opt import OPTDecoder
-except:
-    pass
 
 # Text2img
 import base64
