@@ -552,9 +552,6 @@ class InferenceModel:
         assert isinstance(prompt_tokens, np.ndarray)
         assert len(prompt_tokens.shape) == 1
 
-        if utils.koboldai_vars.model == "ReadOnly":
-            raise NotImplementedError("No loaded model")
-
         time_start = time.time()
 
         with use_core_manipulations():

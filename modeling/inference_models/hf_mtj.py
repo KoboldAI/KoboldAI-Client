@@ -30,12 +30,8 @@ class HFMTJInferenceModel(HFInferenceModel):
         self,
         model_name: str,
     ) -> None:
-        super().__init__()
+        super().__init__(model_name)
 
-        self.model_name = model_name
-
-        self.model = None
-        self.tokenizer = None
         self.model_config = None
         self.capabilties = ModelCapabilities(
             embedding_manipulation=False,

@@ -61,9 +61,7 @@ class HFTorchInferenceModel(HFInferenceModel):
         lazy_load: bool,
         low_mem: bool,
     ) -> None:
-        super().__init__()
-
-        self.model_name = model_name
+        super().__init__(model_name)
         self.lazy_load = lazy_load
         self.low_mem = low_mem
 
@@ -78,8 +76,6 @@ class HFTorchInferenceModel(HFInferenceModel):
             Stoppers.chat_mode_stopper,
         ]
 
-        self.model = None
-        self.tokenizer = None
         self.capabilties = ModelCapabilities(
             embedding_manipulation=True,
             post_token_hooks=True,

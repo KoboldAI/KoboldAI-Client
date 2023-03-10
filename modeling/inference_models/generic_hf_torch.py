@@ -33,10 +33,11 @@ class GenericHFTorchInferenceModel(HFTorchInferenceModel):
         # if utils.koboldai_vars.model not in ["NeoCustom", "GPT2Custom"]:
         #     utils.koboldai_vars.custmodpth = utils.koboldai_vars.model
 
-        if utils.koboldai_vars.model == "NeoCustom":
-            utils.koboldai_vars.model = os.path.basename(
+        if self.model_name == "NeoCustom":
+            self.model_name = os.path.basename(
                 os.path.normpath(utils.koboldai_vars.custmodpth)
             )
+            utils.koboldai_vars.model = self.model_name
 
         # If we specify a model and it's in the root directory, we need to move
         # it to the models directory (legacy folder structure to new)
@@ -123,8 +124,8 @@ class GenericHFTorchInferenceModel(HFTorchInferenceModel):
                     return old_rebuild_tensor(storage, storage_offset, shape, stride)
 
                 torch._utils._rebuild_tensor = new_rebuild_tensor
-                self.model = self._get_model(utils.koboldai_vars.model, tf_kwargs)
-                self.tokenizer = self._get_tokenizer(utils.koboldai_vars.model)
+                self.model = self._get_model(self.model_name, tf_kwargs)
+                self.tokenizer = self._get_tokenizer(self.model_name)
                 torch._utils._rebuild_tensor = old_rebuild_tensor
 
                 if save_model:
@@ -153,7 +154,7 @@ class GenericHFTorchInferenceModel(HFTorchInferenceModel):
                         shutil.move(
                             os.path.realpath(
                                 huggingface_hub.hf_hub_download(
-                                    utils.koboldai_vars.model,
+                                    self.model_name,
                                     transformers.configuration_utils.CONFIG_NAME,
                                     revision=utils.koboldai_vars.revision,
                                     cache_dir="cache",
@@ -177,7 +178,7 @@ class GenericHFTorchInferenceModel(HFTorchInferenceModel):
                                     shutil.move(
                                         os.path.realpath(
                                             huggingface_hub.hf_hub_download(
-                                                utils.koboldai_vars.model,
+                                                self.model_name,
                                                 possible_weight_name,
                                                 revision=utils.koboldai_vars.revision,
                                                 cache_dir="cache",
@@ -214,7 +215,7 @@ class GenericHFTorchInferenceModel(HFTorchInferenceModel):
                                 shutil.move(
                                     os.path.realpath(
                                         huggingface_hub.hf_hub_download(
-                                            utils.koboldai_vars.model,
+                                            self.model_name,
                                             filename,
                                             revision=utils.koboldai_vars.revision,
                                             cache_dir="cache",
