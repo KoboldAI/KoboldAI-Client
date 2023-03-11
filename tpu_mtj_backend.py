@@ -779,9 +779,9 @@ def read_neox_checkpoint(state, path, config, checkpoint_shards=2):
 def load_model(path: str, driver_version="tpu_driver0.1_dev20210607", hf_checkpoint=False, socketio_queue=None, initial_load=False, logger=None, **kwargs) -> None:
     global thread_resources_env, seq, tokenizer, network, params, pad_token_id
 
-    if "pad_token_id" in kwargs:
+    if kwargs.get("pad_token_id"):
         pad_token_id = kwargs["pad_token_id"]
-    elif "eos_token_id" in kwargs:
+    elif kwargs.get("eos_token_id"):
         pad_token_id = kwargs["eos_token_id"]
 
     if not hasattr(koboldai_vars, "sampler_order") or not koboldai_vars.sampler_order:

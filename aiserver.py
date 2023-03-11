@@ -5493,26 +5493,7 @@ def final_startup():
 
     # Precompile TPU backend if required
     if isinstance(model, HFMTJInferenceModel):
-        import tpu_mtj_backend
-        soft_tokens = model.get_soft_tokens()
-        if(koboldai_vars.dynamicscan or (not koboldai_vars.nogenmod and koboldai_vars.has_genmod)):
-            tpool.execute(tpu_mtj_backend.infer_dynamic, np.tile(np.uint32((23403, 727, 20185)), (koboldai_vars.numseqs, 1)), 
-                    soft_embeddings= koboldai_vars.sp,
-                    soft_tokens= soft_tokens,
-                    gen_len= 1,
-                    use_callback= False,
-                    numseqs= koboldai_vars.numseqs,
-                    excluded_world_info= list(set() for _ in range(koboldai_vars.numseqs))
-            )
-        else:
-            tpool.execute(
-                tpu_mtj_backend.infer_static,
-                np.uint32((23403, 727, 20185)),
-                    soft_embeddings= koboldai_vars.sp,
-                    soft_tokens= soft_tokens,
-                    gen_len= 1,
-                    numseqs= koboldai_vars.numseqs
-            )
+        model.raw_generate([23403, 727, 20185], max_new=1)
 
     # Set the initial RNG seed
     set_seed()
