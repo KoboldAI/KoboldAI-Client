@@ -47,7 +47,6 @@ try:
     import jax.numpy as jnp
     import tpu_mtj_backend
 except ImportError as e:
-    print(e)
     if utils.koboldai_vars.use_colab_tpu:
         raise e
 
