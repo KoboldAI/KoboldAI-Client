@@ -1801,7 +1801,6 @@ class KoboldStoryRegister(object):
             if "wi_highlighted_text" in self.actions[action_id]:
                 del self.actions[action_id]["wi_highlighted_text"]
             self.actions[action_id]['Selected Text Length'] = 0
-            self.action_count -= 1
             process_variable_changes(self._socketio, "story", 'actions', {"id": action_id, 'action':  self.actions[action_id]}, None)
             self.set_game_saved()
             logger.debug("Calcing AI Text from Action Delete")

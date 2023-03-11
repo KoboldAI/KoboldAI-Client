@@ -11211,7 +11211,7 @@ def get_story():
     chunks = []
     if koboldai_vars.gamestarted:
         chunks.append({"num": 0, "text": koboldai_vars.prompt})
-    for num, action in koboldai_vars.actions.actions.items():
+    for num, action in koboldai_vars.actions.items():
         chunks.append({"num": num + 1, "text": action})
     return {"results": chunks}
 
@@ -11597,7 +11597,7 @@ def get_world_info():
             if wi["folder"] != last_folder:
                 folder = []
                 if wi["folder"] is not None:
-                    folders.append({"uid": wi["folder"], "name": koboldai_vars.wifolders_d[str(wi["folder"])]["name"], "entries": folder})
+                    folders.append({"uid": wi["folder"], "name": koboldai_vars.wifolders_d[wi["folder"]]["name"], "entries": folder})
                 last_folder = wi["folder"]
             (folder if wi["folder"] is not None else entries).append({k: v for k, v in wi.items() if k not in ("init", "folder", "num") and (wi["selective"] or k != "keysecondary")})
     return {"folders": folders, "entries": entries}
@@ -11685,7 +11685,7 @@ def get_world_info_folders():
     """
     stablesortwi()
     koboldai_vars.worldinfo_i = [wi for wi in koboldai_vars.worldinfo if wi["init"]]
-    return {"folders": [{"uid": folder, **{k: v for k, v in koboldai_vars.wifolders_d[str(folder)].items() if k != "collapsed"}} for folder in koboldai_vars.wifolders_l]}
+    return {"folders": [{"uid": folder, **{k: v for k, v in koboldai_vars.wifolders_d[folder].items() if k != "collapsed"}} for folder in koboldai_vars.wifolders_l]}
 
 
 @api_v1.get("/world_info/folders/uids")
