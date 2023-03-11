@@ -2636,7 +2636,7 @@ class KoboldWorldInfo(object):
             self._socketio.emit("world_info_entry_used_in_game", {"uid": uid, "used_in_game": True}, broadcast=True, room="UI_2")
     
     def get_used_wi(self):
-        return [self.world_info[x]['content'] for x in self.world_info if self.world_info[x]['used_in_game']]
+        return [x['content'] for x in self.world_info if x['used_in_game']]
     
     def to_wi_fewshot_format(self, excluding_uid: int) -> List[str]:
         """
