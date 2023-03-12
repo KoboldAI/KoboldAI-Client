@@ -2449,7 +2449,7 @@ class KoboldWorldInfo(object):
             raise Exception("removing the root folder is not supported")
         
         del self.world_info[uid]
-
+        
         try:
             os.remove(os.path.join(self._koboldai_vars.save_paths.wi_images, str(uid)))
         except FileNotFoundError:
