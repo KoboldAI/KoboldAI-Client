@@ -2259,6 +2259,8 @@ class KoboldWorldInfo(object):
             self._socketio.emit("world_info_folder", {x: self.world_info_folder[x] for x in self.world_info_folder}, broadcast=True, room="UI_2")
         
     def delete_folder(self, folder):
+        if folder == "root":
+            raise Exception("removing the root folder is not supported")
         keys = [key for key in self.world_info]
         for key in keys:
             if self.world_info[key]['folder'] == folder:
@@ -2443,6 +2445,9 @@ class KoboldWorldInfo(object):
             self._socketio.emit("world_info_entry", self.world_info[uid], broadcast=True, room="UI_2")
         
     def delete(self, uid):
+        if self.world_info[uid]['folder'] == "root":
+            raise Exception("removing the root folder is not supported")
+        
         del self.world_info[uid]
 
         try:
