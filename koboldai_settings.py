@@ -2272,7 +2272,7 @@ class KoboldWorldInfo(object):
         
     def add_item_to_folder(self, uid, folder, before=None):
         if uid in self.world_info:
-            #fiirst we need to remove the item from whatever folder it's in
+            #first we need to remove the item from whatever folder it's in
             for temp in self.world_info_folder:
                 if uid in self.world_info_folder[temp]:
                     self.world_info_folder[temp].remove(uid)
@@ -2464,6 +2464,8 @@ class KoboldWorldInfo(object):
         ignore = self._koboldai_vars.calc_ai_text()
     
     def rename_folder(self, old_folder, folder):
+        if old_folder == "root":
+            raise Exception("renaming the root folder is not supported")
         self.story_settings.gamesaved = False
         if folder in self.world_info_folder:
             i=0
