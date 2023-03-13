@@ -825,7 +825,7 @@ gensettingstf = [
 	"max": 1,
 	"step": 1,
 	"default": 0,
-    "tooltip": "If enabled a specfic seed will be used for the random generator on text generation",
+    "tooltip": "If enabled, a specific seed will be used for the random generator on text generation",
     "menu_path": "Settings",
     "sub_path": "Other",
     "classname": "system",
