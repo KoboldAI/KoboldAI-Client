@@ -4436,11 +4436,11 @@ def get_message(msg):
         emit('from_server', {'cmd': 'wiexpandfolder', 'data': msg['data']}, broadcast=True, room="UI_1")
     elif(msg['cmd'] == 'wifoldercollapsecontent'):
         setgamesaved(False)
-        koboldai_vars.wifolders_d[msg['data']]['collapsed'] = True
+        koboldai_vars.wifolders_d[str(msg['data'])]['collapsed'] = True
         emit('from_server', {'cmd': 'wifoldercollapsecontent', 'data': msg['data']}, broadcast=True, room="UI_1")
     elif(msg['cmd'] == 'wifolderexpandcontent'):
         setgamesaved(False)
-        koboldai_vars.wifolders_d[msg['data']]['collapsed'] = False
+        koboldai_vars.wifolders_d[str(msg['data'])]['collapsed'] = False
         emit('from_server', {'cmd': 'wifolderexpandcontent', 'data': msg['data']}, broadcast=True, room="UI_1")
     elif(msg['cmd'] == 'wiupdate'):
         setgamesaved(False)
@@ -4452,12 +4452,12 @@ def get_message(msg):
         emit('from_server', {'cmd': 'wiupdate', 'num': msg['num'], 'data': {field: koboldai_vars.worldinfo[num][field] for field in fields}}, broadcast=True, room="UI_1")
     elif(msg['cmd'] == 'wifolderupdate'):
         setgamesaved(False)
-        uid = str(msg['uid'])
+        str_uid = str(msg['uid'])
         fields = ("name", "collapsed")
         for field in fields:
             if(field in msg['data'] and type(msg['data'][field]) is (str if field != "collapsed" else bool)):
-                koboldai_vars.wifolders_d[uid][field] = msg['data'][field]
-        emit('from_server', {'cmd': 'wifolderupdate', 'uid': msg['uid'], 'data': {field: koboldai_vars.wifolders_d[uid][field] for field in fields}}, broadcast=True, room="UI_1")
+                koboldai_vars.wifolders_d[str_uid][field] = msg['data'][field]
+        emit('from_server', {'cmd': 'wifolderupdate', 'uid': msg['uid'], 'data': {field: koboldai_vars.wifolders_d[str_uid][field] for field in fields}}, broadcast=True, room="UI_1")
     elif(msg['cmd'] == 'wiselon'):
         setgamesaved(False)
         koboldai_vars.worldinfo[msg['data']]["selective"] = True
@@ -6798,7 +6798,8 @@ def togglewimode():
 #   
 #==================================================================#
 def addwiitem(folder_uid=None):
-    assert folder_uid is None or folder_uid in koboldai_vars.wifolders_d
+    str_folder_uid = str(folder_uid) if folder_uid is not None else None
+    assert str_folder_uid is None or str_folder_uid in koboldai_vars.wifolders_d
     ob = {"key": "", "keysecondary": "", "content": "", "comment": "", "folder": folder_uid, "num": len(koboldai_vars.worldinfo), "init": False, "selective": False, "constant": False}
     koboldai_vars.worldinfo.append(ob)
     while(True):
@@ -6806,9 +6807,9 @@ def addwiitem(folder_uid=None):
         if(uid not in koboldai_vars.worldinfo_u):
             break
     koboldai_vars.worldinfo_u[uid] = koboldai_vars.worldinfo[-1]
-    koboldai_vars.worldinfo[-1]["uid"] = uid
-    if(folder_uid is not None):
-        koboldai_vars.wifolders_u[folder_uid].append(koboldai_vars.worldinfo[-1])
+    koboldai_vars.worldinfo[-1]["uid"] = int(uid)
+    if(str_folder_uid is not None):
+        koboldai_vars.wifolders_u[str_folder_uid].append(koboldai_vars.worldinfo[-1])
     emit('from_server', {'cmd': 'addwiitem', 'data': ob}, broadcast=True, room="UI_1")
 
 #==================================================================#
@@ -6821,10 +6822,10 @@ def addwifolder():
             break
     ob = {"name": "", "collapsed": False}
     koboldai_vars.wifolders_d[uid] = ob
-    koboldai_vars.wifolders_l.append(uid)
+    koboldai_vars.wifolders_l.append(int(uid))
     koboldai_vars.wifolders_u[uid] = []
-    emit('from_server', {'cmd': 'addwifolder', 'uid': uid, 'data': ob}, broadcast=True, room="UI_1")
-    addwiitem(folder_uid=uid)
+    emit('from_server', {'cmd': 'addwifolder', 'uid': int(uid), 'data': ob}, broadcast=True, room="UI_1")
+    addwiitem(folder_uid=int(uid))
 
 #==================================================================#
 #   Move the WI entry with UID src so that it immediately precedes
@@ -6928,14 +6929,14 @@ def stablesortwi():
 #==================================================================#
 def commitwi(ar):
     for ob in ar:
-        ob["uid"] = str(ob["uid"])
-        koboldai_vars.worldinfo_u[ob["uid"]]["key"]          = ob["key"]
-        koboldai_vars.worldinfo_u[ob["uid"]]["keysecondary"] = ob["keysecondary"]
-        koboldai_vars.worldinfo_u[ob["uid"]]["content"]      = ob["content"]
-        koboldai_vars.worldinfo_u[ob["uid"]]["comment"]      = ob.get("comment", "")
-        koboldai_vars.worldinfo_u[ob["uid"]]["folder"]       = ob.get("folder", None)
-        koboldai_vars.worldinfo_u[ob["uid"]]["selective"]    = ob["selective"]
-        koboldai_vars.worldinfo_u[ob["uid"]]["constant"]     = ob.get("constant", False)
+        str_uid = str(ob["uid"])
+        koboldai_vars.worldinfo_u[str_uid]["key"]          = ob["key"]
+        koboldai_vars.worldinfo_u[str_uid]["keysecondary"] = ob["keysecondary"]
+        koboldai_vars.worldinfo_u[str_uid]["content"]      = ob["content"]
+        koboldai_vars.worldinfo_u[str_uid]["comment"]      = ob.get("comment", "")
+        koboldai_vars.worldinfo_u[str_uid]["folder"]       = ob.get("folder", None)
+        koboldai_vars.worldinfo_u[str_uid]["selective"]    = ob["selective"]
+        koboldai_vars.worldinfo_u[str_uid]["constant"]     = ob.get("constant", False)
     stablesortwi()
     koboldai_vars.worldinfo_i = [wi for wi in koboldai_vars.worldinfo if wi["init"]]
     koboldai_vars.sync_worldinfo_v1_to_v2()
@@ -6945,20 +6946,22 @@ def commitwi(ar):
 #  
 #==================================================================#
 def deletewi(uid):
-    if(uid in koboldai_vars.worldinfo_u):
+    if(str(uid) in koboldai_vars.worldinfo_u):
         setgamesaved(False)
         # Store UID of deletion request
         koboldai_vars.deletewi = uid
         if(koboldai_vars.deletewi is not None):
-            if(koboldai_vars.worldinfo_u[koboldai_vars.deletewi]["folder"] is not None):
-                for i, e in enumerate(koboldai_vars.wifolders_u[koboldai_vars.worldinfo_u[koboldai_vars.deletewi]["folder"]]):
-                    if(e is koboldai_vars.worldinfo_u[koboldai_vars.deletewi]):
-                        koboldai_vars.wifolders_u[koboldai_vars.worldinfo_u[koboldai_vars.deletewi]["folder"]].pop(i)
+            str_uid = str(uid)
+            if(koboldai_vars.worldinfo_u[str_uid]["folder"] is not None):
+                str_folder_uid = str(koboldai_vars.worldinfo_u[str_uid]["folder"])
+                for i, e in enumerate(koboldai_vars.wifolders_u[str_folder_uid]):
+                    if(e is koboldai_vars.worldinfo_u[str_uid]):
+                        koboldai_vars.wifolders_u[str_folder_uid].pop(i)
             for i, e in enumerate(koboldai_vars.worldinfo):
-                if(e is koboldai_vars.worldinfo_u[koboldai_vars.deletewi]):
+                if(e is koboldai_vars.worldinfo_u[str_uid]):
                     del koboldai_vars.worldinfo[i]
                     break
-            del koboldai_vars.worldinfo_u[koboldai_vars.deletewi]
+            del koboldai_vars.worldinfo_u[str_uid]
             # Send the new WI array structure
             sendwi()
             # And reset deletewi
@@ -6968,9 +6971,9 @@ def deletewi(uid):
 #  
 #==================================================================#
 def deletewifolder(uid):
-    uid = str(uid)
-    del koboldai_vars.wifolders_u[uid]
-    del koboldai_vars.wifolders_d[uid]
+    str_uid = str(uid)
+    del koboldai_vars.wifolders_u[str_uid]
+    del koboldai_vars.wifolders_d[str_uid]
     del koboldai_vars.wifolders_l[koboldai_vars.wifolders_l.index(uid)]
     setgamesaved(False)
     # Delete uninitialized entries in the folder we're going to delete
@@ -7480,7 +7483,7 @@ def loadJSON(json_text_or_dict, from_file=None):
     ignore = koboldai_vars.calc_ai_text()
 
 def load_story_v1(js, from_file=None):
-    logger.debug("Loading V1 Story")
+    logger.info("Loading V1 Story")
     logger.debug("Called from {}".format(inspect.stack()[1].function))
     loadpath = js['v1_loadpath'] if 'v1_loadpath' in js else koboldai_vars.savedir
     filename = js['v1_filename'] if 'v1_filename' in js else 'untitled.json'
@@ -7509,7 +7512,7 @@ def load_story_v1(js, from_file=None):
     koboldai_vars.worldinfo   = []
     koboldai_vars.worldinfo_i = []
     koboldai_vars.worldinfo_u = {}
-    koboldai_vars.wifolders_d = {int(k): v for k, v in js.get("wifolders_d", {}).items()}
+    koboldai_vars.wifolders_d = {k: v for k, v in js.get("wifolders_d", {}).items()}
     koboldai_vars.wifolders_l = js.get("wifolders_l", [])
     koboldai_vars.wifolders_u = {uid: [] for uid in koboldai_vars.wifolders_d}
     koboldai_vars.lastact     = ""
@@ -7569,8 +7572,9 @@ def load_story_v1(js, from_file=None):
                 folder = "root" 
             else:
                 if 'wifolders_d' in js:
-                    if wi['folder'] in js['wifolders_d']:
-                        folder = js['wifolders_d'][wi['folder']]['name']
+                    str_folder_uid = str(wi['folder'])
+                    if str_folder_uid in js['wifolders_d']:
+                        folder = js['wifolders_d'][str_folder_uid]['name']
                     else:
                         folder = "root"
                 else:
@@ -7609,7 +7613,7 @@ def load_story_v1(js, from_file=None):
     
 
 def load_story_v2(js, from_file=None):
-    logger.debug("Loading V2 Story")
+    logger.info("Loading V2 Story")
     logger.debug("Called from {}".format(inspect.stack()[1].function))
     leave_room(session['story'])
     session['story'] = js['story_name']
@@ -7620,7 +7624,8 @@ def load_story_v2(js, from_file=None):
     if from_file is not None and os.path.basename(from_file) != "story.json":
         #Save the file so we get a new V2 format, then move the save file into the proper directory
         koboldai_vars.save_story()
-        shutil.move(from_file, koboldai_vars.save_paths.story.replace("story.json", "v2_file.json"))
+        #We're no longer moving the original file. It'll stay in place.
+        #shutil.move(from_file, koboldai_vars.save_paths.story.replace("story.json", "v2_file.json"))
     
 
 

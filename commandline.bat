@@ -1,6 +1,10 @@
 @echo off
 cd /D %~dp0
+
+:Isolation
 SET CONDA_SHLVL=
+SET PYTHONNOUSERSITE=1
+SET PYTHONPATH=
 
 TITLE CMD for KoboldAI Runtime
 SET /P M=<loader.settings
