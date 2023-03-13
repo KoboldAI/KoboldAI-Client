@@ -12,6 +12,7 @@ from transformers import (
     GPT2Tokenizer,
     AutoTokenizer,
 )
+from modeling.tokenizer import GenericTokenizer
 
 import utils
 
@@ -180,7 +181,7 @@ class InferenceModel:
         selected device(s) and preparing it for inference should be implemented here."""
         raise NotImplementedError
 
-    def _get_tokenizer(self, location: str) -> AutoTokenizer:
+    def _get_tokenizer(self, location: str) -> GenericTokenizer:
         """Returns the appropiate tokenizer for the location. Should be ran once and result stored in `tokenizer`.
 
         Args:
@@ -214,7 +215,7 @@ class InferenceModel:
 
         for i, try_get_tokenizer in enumerate(suppliers):
             try:
-                return try_get_tokenizer()
+                return GenericTokenizer(try_get_tokenizer())
             except:
                 # If we error on each attempt, raise the last one
                 if i == len(suppliers) - 1:
