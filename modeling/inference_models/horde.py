@@ -4,7 +4,7 @@ import time
 import torch
 import requests
 import numpy as np
-from typing import List, Union
+from typing import List, Optional, Union
 
 import utils
 from logger import logger
@@ -87,7 +87,7 @@ class HordeInferenceModel(InferenceModel):
         try:
             # Create request
             req = requests.post(
-                utils.koboldai_vars.colaburl[:-8] + "/api/v2/generate/text/async",
+                f"{utils.koboldai_vars.horde_url}/api/v2/generate/text/async",
                 json=cluster_metadata,
                 headers=cluster_headers,
             )
@@ -102,8 +102,8 @@ class HordeInferenceModel(InferenceModel):
             raise HordeException(errmsg)
         elif not req.ok:
             errmsg = f"KoboldAI API Error: Failed to get a standard reply from the Horde. Please check the console."
+            logger.error(req.url)
             logger.error(errmsg)
-            logger.error(f"HTTP {req.status_code}!!!")
             logger.error(req.text)
             raise HordeException(errmsg)
 
@@ -125,7 +125,7 @@ class HordeInferenceModel(InferenceModel):
         while not finished:
             try:
                 req = requests.get(
-                    f"{utils.koboldai_vars.colaburl[:-8]}/api/v2/generate/text/status/{request_id}",
+                    f"{utils.koboldai_vars.horde_url}/api/v2/generate/text/status/{request_id}",
                     headers=cluster_agent_headers,
                 )
             except requests.exceptions.ConnectionError:

@@ -471,7 +471,6 @@ class HFTorchInferenceModel(HFInferenceModel):
         additional_bad_words_ids = [self.tokenizer.encode("\n")] if single_line else []
 
         if seed is not None:
-            print("seeding", seed)
             torch.manual_seed(seed)
 
         with torch.no_grad():

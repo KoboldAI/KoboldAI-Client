@@ -23,10 +23,12 @@ class APIException(Exception):
 
 
 class APIInferenceModel(InferenceModel):
+    def __init__(self, base_url: str = "http://localhost:5000") -> None:
+        super().__init__()
+        self.base_url = base_url
+
     def _load(self, save_model: bool, initial_load: bool) -> None:
-        tokenizer_id = requests.get(
-            utils.koboldai_vars.colaburl[:-8] + "/api/v1/model",
-        ).json()["result"]
+        tokenizer_id = requests.get(f"{self.base_url}/api/v1/model").json()["result"]
 
         self.tokenizer = self._get_tokenizer(tokenizer_id)
 
@@ -73,13 +75,10 @@ class APIInferenceModel(InferenceModel):
 
         # Create request
         while True:
-            req = requests.post(
-                utils.koboldai_vars.colaburl[:-8] + "/api/v1/generate",
-                json=reqdata,
-            )
-            if (
-                req.status_code == 503
-            ):  # Server is currently generating something else so poll until it's our turn
+            req = requests.post(f"{self.base_url}/api/v1/generate", json=reqdata)
+
+            if req.status_code == 503:
+                # Server is currently generating something else so poll until it's our turn
                 time.sleep(1)
                 continue
 
