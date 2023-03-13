@@ -1504,9 +1504,9 @@ class KoboldStoryRegister(object):
                                 else:
                                     self.actions[i]["Probabilities"][token_num][token_option]["Used"] = False
             if "Options" in self.actions[i]:
-                for j in range(len(self.actions[i]["Options"])):
-                    if self.actions[i]["Options"][j]["text"] == text:
-                        del self.actions[i]["Options"][j]
+                for option in self.actions[i]["Options"][:]:
+                    if option["text"] == text:
+                        self.actions[i]["Options"].remove(option)
             if old_text != "":
                 self.actions[i]["Options"].append({"text": old_text, "Pinned": False, "Previous Selection": False, "Edited": True})
         else:
