@@ -7,6 +7,7 @@
 
 # External packages
 from dataclasses import dataclass
+from enum import Enum
 import random
 import shutil
 import eventlet
@@ -103,6 +104,10 @@ def new_pretrainedtokenizerbase_from_pretrained(cls, *args, **kwargs):
 PreTrainedTokenizerBase.from_pretrained = new_pretrainedtokenizerbase_from_pretrained
 
 
+def is_model_downloaded(model_name: str) -> bool:
+    model_stub = model_name.replace("/", "_")
+    return os.path.isdir(os.path.join("models", model_stub))
+
 #==================================================================#
 # Variables & Storage
 #==================================================================#
@@ -118,174 +123,241 @@ class colors:
     END       = '\033[0m'
     UNDERLINE = '\033[4m'
 
+class MenuModelType(Enum):
+    HUGGINGFACE = 0
+    ONLINE_API = 1
+    OTHER = 2
+    RWKV = 3
+
+class MenuItem:
+    def __init__(
+        self,
+        label: str,
+        name: str,
+        experimental: bool = False
+    ) -> None:
+        self.label = label
+        self.name = name
+        self.experimental = experimental
+
+    def should_show(self) -> bool:
+        return koboldai_vars.experimental_features or not self.experimental
+
+class MenuFolder(MenuItem):
+    def to_ui1(self) -> list:
+        return [
+            self.label,
+            self.name,
+            "",
+            True,
+        ]
+    
+    def to_json(self) -> dict:
+        return {
+            "label": self.label,
+            "name": self.name,
+            "size": "",
+            "isMenu": True,
+            "isDownloaded": False,
+        }
+
+class MenuModel(MenuItem):
+    def __init__(
+        self,
+        label: str,
+        name: str,
+        vram_requirements: str = "",
+        model_type: MenuModelType = MenuModelType.HUGGINGFACE,
+        experimental: bool = False,
+    ) -> None:
+        super().__init__(label, name, experimental)
+        self.model_type = model_type
+        self.vram_requirements = vram_requirements
+        self.is_downloaded = is_model_downloaded(self.name)
+    
+    def to_ui1(self) -> list:
+        return [
+            self.label,
+            self.name,
+            self.vram_requirements,
+            False,
+            self.is_downloaded
+        ]
+
+    def to_json(self) -> dict:
+        return {
+            "label": self.label,
+            "name": self.name,
+            "size": self.vram_requirements,
+            "isMenu": False,
+            "isDownloaded": self.is_downloaded,
+        }
+
+
 # AI models Menu
 # This is a dict of lists where they key is the menu name, and the list is the menu items.
 # Each item takes the 4 elements, 1: Text to display, 2: Model Name (koboldai_vars.model) or menu name (Key name for another menu),
 # 3: the memory requirement for the model, 4: if the item is a menu or not (True/False)
 model_menu = {
-    'mainmenu': [
-        ["Load a model from its directory", "NeoCustom", "", False],
-        ["Load an old GPT-2 model (eg CloverEdition)", "GPT2Custom", "", False],
-        ["Load custom model from Hugging Face", "customhuggingface", "", True],
-        ["Adventure Models", "adventurelist", "", True],
-        ["Novel Models", "novellist", "", True],
-        ["Chat Models", "chatlist", "", True],
-        ["NSFW Models", "nsfwlist", "", True],
-        ["Untuned OPT", "optlist", "", True],
-        ["Untuned GPT-Neo/J", "gptneolist", "", True],
-        ["Untuned Pythia", "pythialist", "", True],
-        ["Untuned Fairseq Dense", "fsdlist", "", True],
-        ["Untuned Bloom", "bloomlist", "", True],
-        ["Untuned XGLM", "xglmlist", "", True],
-        # ["Untuned RWKV-4 (Experimental)", "rwkvlist", "", True],
-        ["Untuned GPT2", "gpt2list", "", True],
-        ["Online Services", "apilist", "", True],
-        ["Read Only (No AI)", "ReadOnly", "", False]
-        ],
+    "mainmenu": [
+        MenuModel("Load a model from its directory", "NeoCustom"),
+        MenuModel("Load an old GPT-2 model (eg CloverEdition)", "GPT2Custom"),
+        MenuFolder("Load custom model from Hugging Face", "customhuggingface"),
+        MenuFolder("Adventure Models", "adventurelist"),
+        MenuFolder("Novel Models", "novellist"),
+        MenuFolder("Chat Models", "chatlist"),
+        MenuFolder("NSFW Models", "nsfwlist"),
+        MenuFolder("Untuned OPT", "optlist"),
+        MenuFolder("Untuned GPT-Neo/J", "gptneolist"),
+        MenuFolder("Untuned Pythia", "pythialist"),
+        MenuFolder("Untuned Fairseq Dense", "fsdlist"),
+        MenuFolder("Untuned Bloom", "bloomlist"),
+        MenuFolder("Untuned XGLM", "xglmlist"),
+        MenuFolder("Untuned RWKV-4 (Experimental)", "rwkvlist"),
+        MenuFolder("Untuned GPT2", "gpt2list"),
+        MenuFolder("Online Services", "apilist"),
+        MenuModel("Read Only (No AI)", "ReadOnly", model_type=MenuModelType.OTHER),
+    ],
     'adventurelist': [
-        ["Skein 20B", "KoboldAI/GPT-NeoX-20B-Skein", "64GB", False],
-        ["Nerys OPT 13B V2 (Hybrid)", "KoboldAI/OPT-13B-Nerys-v2", "32GB", False],
-        ["Nerys FSD 13B V2 (Hybrid)", "KoboldAI/fairseq-dense-13B-Nerys-v2", "32GB", False],
-        ["Nerys FSD 13B (Hybrid)", "KoboldAI/fairseq-dense-13B-Nerys", "32GB", False],
-        ["Skein 6B", "KoboldAI/GPT-J-6B-Skein", "16GB", False],
-        ["OPT Nerys 6B V2 (Hybrid)", "KoboldAI/OPT-6B-nerys-v2", "16GB", False],
-        ["Adventure 6B", "KoboldAI/GPT-J-6B-Adventure", "16GB", False],
-        ["Nerys FSD 2.7B (Hybrid)", "KoboldAI/fairseq-dense-2.7B-Nerys", "8GB", False],
-        ["Adventure 2.7B", "KoboldAI/GPT-Neo-2.7B-AID", "8GB", False],
-        ["Adventure 1.3B", "KoboldAI/GPT-Neo-1.3B-Adventure", "6GB", False],
-        ["Adventure 125M (Mia)", "Merry/AID-Neo-125M", "2GB", False],
-        ["Return to Main Menu", "mainmenu", "", True],
+        MenuModel("Skein 20B", "KoboldAI/GPT-NeoX-20B-Skein", "64GB"),
+        MenuModel("Nerys OPT 13B V2 (Hybrid)", "KoboldAI/OPT-13B-Nerys-v2", "32GB"),
+        MenuModel("Nerys FSD 13B V2 (Hybrid)", "KoboldAI/fairseq-dense-13B-Nerys-v2", "32GB"),
+        MenuModel("Nerys FSD 13B (Hybrid)", "KoboldAI/fairseq-dense-13B-Nerys", "32GB"),
+        MenuModel("Skein 6B", "KoboldAI/GPT-J-6B-Skein", "16GB"),
+        MenuModel("OPT Nerys 6B V2 (Hybrid)", "KoboldAI/OPT-6B-nerys-v2", "16GB"),
+        MenuModel("Adventure 6B", "KoboldAI/GPT-J-6B-Adventure", "16GB"),
+        MenuModel("Nerys FSD 2.7B (Hybrid)", "KoboldAI/fairseq-dense-2.7B-Nerys", "8GB"),
+        MenuModel("Adventure 2.7B", "KoboldAI/GPT-Neo-2.7B-AID", "8GB"),
+        MenuModel("Adventure 1.3B", "KoboldAI/GPT-Neo-1.3B-Adventure", "6GB"),
+        MenuModel("Adventure 125M (Mia)", "Merry/AID-Neo-125M", "2GB"),
+        MenuFolder("Return to Main Menu", "mainmenu"),
         ],
     'novellist': [
-        ["Nerys OPT 13B V2 (Hybrid)", "KoboldAI/OPT-13B-Nerys-v2", "32GB", False],
-        ["Nerys FSD 13B V2 (Hybrid)", "KoboldAI/fairseq-dense-13B-Nerys-v2", "32GB", False],
-        ["Janeway FSD 13B", "KoboldAI/fairseq-dense-13B-Janeway", "32GB", False],
-        ["Nerys FSD 13B (Hybrid)", "KoboldAI/fairseq-dense-13B-Nerys", "32GB", False],
-        ["OPT Nerys 6B V2 (Hybrid)", "KoboldAI/OPT-6B-nerys-v2", "16GB", False],
-        ["Janeway FSD 6.7B", "KoboldAI/fairseq-dense-6.7B-Janeway", "16GB", False],
-        ["Janeway Neo 6B", "KoboldAI/GPT-J-6B-Janeway", "16GB", False],
-        ["Qilin Lit 6B (SFW)", "rexwang8/qilin-lit-6b", "16GB", False],       
-        ["Janeway Neo 2.7B", "KoboldAI/GPT-Neo-2.7B-Janeway", "8GB", False],
-        ["Janeway FSD 2.7B", "KoboldAI/fairseq-dense-2.7B-Janeway", "8GB", False],
-        ["Nerys FSD 2.7B (Hybrid)", "KoboldAI/fairseq-dense-2.7B-Nerys", "8GB", False],
-        ["Horni-LN 2.7B", "KoboldAI/GPT-Neo-2.7B-Horni-LN", "8GB", False],
-        ["Picard 2.7B (Older Janeway)", "KoboldAI/GPT-Neo-2.7B-Picard", "8GB", False],
-        ["Return to Main Menu", "mainmenu", "", True],
+        MenuModel("Nerys OPT 13B V2 (Hybrid)", "KoboldAI/OPT-13B-Nerys-v2", "32GB"),
+        MenuModel("Nerys FSD 13B V2 (Hybrid)", "KoboldAI/fairseq-dense-13B-Nerys-v2", "32GB"),
+        MenuModel("Janeway FSD 13B", "KoboldAI/fairseq-dense-13B-Janeway", "32GB"),
+        MenuModel("Nerys FSD 13B (Hybrid)", "KoboldAI/fairseq-dense-13B-Nerys", "32GB"),
+        MenuModel("OPT Nerys 6B V2 (Hybrid)", "KoboldAI/OPT-6B-nerys-v2", "16GB"),
+        MenuModel("Janeway FSD 6.7B", "KoboldAI/fairseq-dense-6.7B-Janeway", "16GB"),
+        MenuModel("Janeway Neo 6B", "KoboldAI/GPT-J-6B-Janeway", "16GB"),
+        MenuModel("Qilin Lit 6B (SFW)", "rexwang8/qilin-lit-6b", "16GB"),       
+        MenuModel("Janeway Neo 2.7B", "KoboldAI/GPT-Neo-2.7B-Janeway", "8GB"),
+        MenuModel("Janeway FSD 2.7B", "KoboldAI/fairseq-dense-2.7B-Janeway", "8GB"),
+        MenuModel("Nerys FSD 2.7B (Hybrid)", "KoboldAI/fairseq-dense-2.7B-Nerys", "8GB"),
+        MenuModel("Horni-LN 2.7B", "KoboldAI/GPT-Neo-2.7B-Horni-LN", "8GB"),
+        MenuModel("Picard 2.7B (Older Janeway)", "KoboldAI/GPT-Neo-2.7B-Picard", "8GB"),
+        MenuFolder("Return to Main Menu", "mainmenu"),
         ],
     'nsfwlist': [
-        ["Erebus 20B (NSFW)", "KoboldAI/GPT-NeoX-20B-Erebus", "64GB", False],
-        ["Erebus 13B (NSFW)", "KoboldAI/OPT-13B-Erebus", "32GB", False],
-        ["Shinen FSD 13B (NSFW)", "KoboldAI/fairseq-dense-13B-Shinen", "32GB", False],
-        ["Erebus 6.7B (NSFW)", "KoboldAI/OPT-6.7B-Erebus", "16GB", False],
-        ["Shinen FSD 6.7B (NSFW)", "KoboldAI/fairseq-dense-6.7B-Shinen", "16GB", False],
-        ["Lit V2 6B (NSFW)", "hakurei/litv2-6B-rev3", "16GB", False],
-        ["Lit 6B (NSFW)", "hakurei/lit-6B", "16GB", False],
-        ["Shinen 6B (NSFW)", "KoboldAI/GPT-J-6B-Shinen", "16GB", False],
-        ["Erebus 2.7B (NSFW)", "KoboldAI/OPT-2.7B-Erebus", "8GB", False],
-        ["Horni 2.7B (NSFW)", "KoboldAI/GPT-Neo-2.7B-Horni", "8GB", False],
-        ["Shinen 2.7B (NSFW)", "KoboldAI/GPT-Neo-2.7B-Shinen", "8GB", False],
-        ["Return to Main Menu", "mainmenu", "", True],
+        MenuModel("Erebus 20B (NSFW)", "KoboldAI/GPT-NeoX-20B-Erebus", "64GB"),
+        MenuModel("Erebus 13B (NSFW)", "KoboldAI/OPT-13B-Erebus", "32GB"),
+        MenuModel("Shinen FSD 13B (NSFW)", "KoboldAI/fairseq-dense-13B-Shinen", "32GB"),
+        MenuModel("Erebus 6.7B (NSFW)", "KoboldAI/OPT-6.7B-Erebus", "16GB"),
+        MenuModel("Shinen FSD 6.7B (NSFW)", "KoboldAI/fairseq-dense-6.7B-Shinen", "16GB"),
+        MenuModel("Lit V2 6B (NSFW)", "hakurei/litv2-6B-rev3", "16GB"),
+        MenuModel("Lit 6B (NSFW)", "hakurei/lit-6B", "16GB"),
+        MenuModel("Shinen 6B (NSFW)", "KoboldAI/GPT-J-6B-Shinen", "16GB"),
+        MenuModel("Erebus 2.7B (NSFW)", "KoboldAI/OPT-2.7B-Erebus", "8GB"),
+        MenuModel("Horni 2.7B (NSFW)", "KoboldAI/GPT-Neo-2.7B-Horni", "8GB"),
+        MenuModel("Shinen 2.7B (NSFW)", "KoboldAI/GPT-Neo-2.7B-Shinen", "8GB"),
+        MenuFolder("Return to Main Menu", "mainmenu"),
         ],
     'chatlist': [
-        ["Pygmalion 6B", "PygmalionAI/pygmalion-6b", "16GB", False],
-        ["Pygmalion 2.7B", "PygmalionAI/pygmalion-2.7b", "8GB", False],
-        ["Pygmalion 1.3B", "PygmalionAI/pygmalion-1.3b", "6GB", False],
-        ["Pygmalion 350M", "PygmalionAI/pygmalion-350m", "2GB", False],
-        ["Return to Main Menu", "mainmenu", "", True],
+        MenuModel("Pygmalion 6B", "PygmalionAI/pygmalion-6b", "16GB"),
+        MenuModel("Pygmalion 2.7B", "PygmalionAI/pygmalion-2.7b", "8GB"),
+        MenuModel("Pygmalion 1.3B", "PygmalionAI/pygmalion-1.3b", "6GB"),
+        MenuModel("Pygmalion 350M", "PygmalionAI/pygmalion-350m", "2GB"),
+        MenuFolder("Return to Main Menu", "mainmenu"),
         ],
     'gptneolist': [
-        ["GPT-NeoX 20B", "EleutherAI/gpt-neox-20b", "64GB", False],
-        ["Pythia 13B (NeoX, Same dataset)", "EleutherAI/pythia-13b", "32GB", False],
-        ["GPT-J 6B", "EleutherAI/gpt-j-6B", "16GB", False],
-        ["GPT-Neo 2.7B", "EleutherAI/gpt-neo-2.7B", "8GB", False],
-        ["GPT-Neo 1.3B", "EleutherAI/gpt-neo-1.3B", "6GB", False],
-        ["Pythia 800M (NeoX, Same dataset)", "EleutherAI/pythia-800m", "4GB", False],
-        ["Pythia 350M (NeoX, Same dataset)", "EleutherAI/pythia-350m", "2GB", False],
-        ["GPT-Neo 125M", "EleutherAI/gpt-neo-125M", "2GB", False],
-        ["Return to Main Menu", "mainmenu", "", True],
+        MenuModel("GPT-NeoX 20B", "EleutherAI/gpt-neox-20b", "64GB"),
+        MenuModel("Pythia 13B (NeoX, Same dataset)", "EleutherAI/pythia-13b", "32GB"),
+        MenuModel("GPT-J 6B", "EleutherAI/gpt-j-6B", "16GB"),
+        MenuModel("GPT-Neo 2.7B", "EleutherAI/gpt-neo-2.7B", "8GB"),
+        MenuModel("GPT-Neo 1.3B", "EleutherAI/gpt-neo-1.3B", "6GB"),
+        MenuModel("Pythia 800M (NeoX, Same dataset)", "EleutherAI/pythia-800m", "4GB"),
+        MenuModel("Pythia 350M (NeoX, Same dataset)", "EleutherAI/pythia-350m", "2GB"),
+        MenuModel("GPT-Neo 125M", "EleutherAI/gpt-neo-125M", "2GB"),
+        MenuFolder("Return to Main Menu", "mainmenu"),
         ],
     'pythialist': [
-        ["Pythia 13B Deduped", "EleutherAI/pythia-13b-deduped", "32GB", False],
-        ["Pythia 13B", "EleutherAI/pythia-13b", "32GB", False],
-        ["Pythia 6.7B Deduped", "EleutherAI/pythia-6.7b-deduped", "16GB", False],
-        ["Pythia 6.7B", "EleutherAI/pythia-6.7b", "16GB", False],
-        ["Pythia 1.3B Deduped", "EleutherAI/pythia-1.3b-deduped", "6GB", False],
-        ["Pythia 1.3B", "EleutherAI/pythia-1.3b", "6GB", False],
-        ["Pythia 800M", "EleutherAI/pythia-800m", "4GB", False],
-        ["Pythia 350M Deduped", "EleutherAI/pythia-350m-deduped", "2GB", False],
-        ["Pythia 350M", "EleutherAI/pythia-350m", "2GB", False],        
-        ["Pythia 125M Deduped", "EleutherAI/pythia-125m-deduped", "2GB", False],
-        ["Pythia 125M", "EleutherAI/pythia-125m", "2GB", False],
-        ["Pythia 19M Deduped", "EleutherAI/pythia-19m-deduped", "1GB", False],
-        ["Pythia 19M", "EleutherAI/pythia-19m", "1GB", False],
-        ["Return to Main Menu", "mainmenu", "", True],
+        MenuModel("Pythia 13B Deduped", "EleutherAI/pythia-13b-deduped", "32GB"),
+        MenuModel("Pythia 13B", "EleutherAI/pythia-13b", "32GB"),
+        MenuModel("Pythia 6.7B Deduped", "EleutherAI/pythia-6.7b-deduped", "16GB"),
+        MenuModel("Pythia 6.7B", "EleutherAI/pythia-6.7b", "16GB"),
+        MenuModel("Pythia 1.3B Deduped", "EleutherAI/pythia-1.3b-deduped", "6GB"),
+        MenuModel("Pythia 1.3B", "EleutherAI/pythia-1.3b", "6GB"),
+        MenuModel("Pythia 800M", "EleutherAI/pythia-800m", "4GB"),
+        MenuModel("Pythia 350M Deduped", "EleutherAI/pythia-350m-deduped", "2GB"),
+        MenuModel("Pythia 350M", "EleutherAI/pythia-350m", "2GB"),        
+        MenuModel("Pythia 125M Deduped", "EleutherAI/pythia-125m-deduped", "2GB"),
+        MenuModel("Pythia 125M", "EleutherAI/pythia-125m", "2GB"),
+        MenuModel("Pythia 19M Deduped", "EleutherAI/pythia-19m-deduped", "1GB"),
+        MenuModel("Pythia 19M", "EleutherAI/pythia-19m", "1GB"),
+        MenuFolder("Return to Main Menu", "mainmenu"),
         ],
     'gpt2list': [
-        ["GPT-2 XL", "gpt2-xl", "6GB", False],
-        ["GPT-2 Large", "gpt2-large", "4GB", False],
-        ["GPT-2 Med", "gpt2-medium", "2GB", False],
-        ["GPT-2", "gpt2", "2GB", False],
-        ["Return to Main Menu", "mainmenu", "", True],
+        MenuModel("GPT-2 XL", "gpt2-xl", "6GB"),
+        MenuModel("GPT-2 Large", "gpt2-large", "4GB"),
+        MenuModel("GPT-2 Med", "gpt2-medium", "2GB"),
+        MenuModel("GPT-2", "gpt2", "2GB"),
+        MenuFolder("Return to Main Menu", "mainmenu"),
         ],
     'bloomlist': [
-        ["Bloom 176B", "bigscience/bloom", "", False],
-        ["Bloom 7.1B", "bigscience/bloom-7b1", "", False],   
-        ["Bloom 3B", "bigscience/bloom-3b", "", False], 
-        ["Bloom 1.7B", "bigscience/bloom-1b7", "", False], 
-        ["Bloom 560M", "bigscience/bloom-560m", "", False], 
-        ["Return to Main Menu", "mainmenu", "", True],
+        MenuModel("Bloom 176B", "bigscience/bloom"),
+        MenuModel("Bloom 7.1B", "bigscience/bloom-7b1"),   
+        MenuModel("Bloom 3B", "bigscience/bloom-3b"), 
+        MenuModel("Bloom 1.7B", "bigscience/bloom-1b7"), 
+        MenuModel("Bloom 560M", "bigscience/bloom-560m"), 
+        MenuFolder("Return to Main Menu", "mainmenu"),
         ],
     'optlist': [
-        ["OPT 66B", "facebook/opt-66b", "128GB", False],
-        ["OPT 30B", "facebook/opt-30b", "64GB", False],
-        ["OPT 13B", "facebook/opt-13b", "32GB", False],
-        ["OPT 6.7B", "facebook/opt-6.7b", "16GB", False],
-        ["OPT 2.7B", "facebook/opt-2.7b", "8GB", False],
-        ["OPT 1.3B", "facebook/opt-1.3b", "4GB", False],
-        ["OPT 350M", "facebook/opt-350m", "2GB", False],
-        ["OPT 125M", "facebook/opt-125m", "1GB", False],
-        ["Return to Main Menu", "mainmenu", "", True],
+        MenuModel("OPT 66B", "facebook/opt-66b", "128GB"),
+        MenuModel("OPT 30B", "facebook/opt-30b", "64GB"),
+        MenuModel("OPT 13B", "facebook/opt-13b", "32GB"),
+        MenuModel("OPT 6.7B", "facebook/opt-6.7b", "16GB"),
+        MenuModel("OPT 2.7B", "facebook/opt-2.7b", "8GB"),
+        MenuModel("OPT 1.3B", "facebook/opt-1.3b", "4GB"),
+        MenuModel("OPT 350M", "facebook/opt-350m", "2GB"),
+        MenuModel("OPT 125M", "facebook/opt-125m", "1GB"),
+        MenuFolder("Return to Main Menu", "mainmenu"),
         ],
     'fsdlist': [
-        ["Fairseq Dense 13B", "KoboldAI/fairseq-dense-13B", "32GB", False],
-        ["Fairseq Dense 6.7B", "KoboldAI/fairseq-dense-6.7B", "16GB", False],
-        ["Fairseq Dense 2.7B", "KoboldAI/fairseq-dense-2.7B", "8GB", False],
-        ["Fairseq Dense 1.3B", "KoboldAI/fairseq-dense-1.3B", "4GB", False],
-        ["Fairseq Dense 355M", "KoboldAI/fairseq-dense-355M", "2GB", False],
-        ["Fairseq Dense 125M", "KoboldAI/fairseq-dense-125M", "1GB", False],
-        ["Return to Main Menu", "mainmenu", "", True],
+        MenuModel("Fairseq Dense 13B", "KoboldAI/fairseq-dense-13B", "32GB"),
+        MenuModel("Fairseq Dense 6.7B", "KoboldAI/fairseq-dense-6.7B", "16GB"),
+        MenuModel("Fairseq Dense 2.7B", "KoboldAI/fairseq-dense-2.7B", "8GB"),
+        MenuModel("Fairseq Dense 1.3B", "KoboldAI/fairseq-dense-1.3B", "4GB"),
+        MenuModel("Fairseq Dense 355M", "KoboldAI/fairseq-dense-355M", "2GB"),
+        MenuModel("Fairseq Dense 125M", "KoboldAI/fairseq-dense-125M", "1GB"),
+        MenuFolder("Return to Main Menu", "mainmenu"),
         ],
     'xglmlist': [
-        ["XGLM 4.5B (Larger Dataset)", "facebook/xglm-4.5B", "12GB", False],
-        ["XGLM 7.5B", "facebook/xglm-7.5B", "18GB", False],
-        ["XGLM 2.9B", "facebook/xglm-2.9B", "10GB", False],
-        ["XGLM 1.7B", "facebook/xglm-1.7B", "6GB", False],
-        ["XGLM 564M", "facebook/xglm-564M", "4GB", False],
-        ["Return to Main Menu", "mainmenu", "", True],
+        MenuModel("XGLM 4.5B (Larger Dataset)", "facebook/xglm-4.5B", "12GB"),
+        MenuModel("XGLM 7.5B", "facebook/xglm-7.5B", "18GB"),
+        MenuModel("XGLM 2.9B", "facebook/xglm-2.9B", "10GB"),
+        MenuModel("XGLM 1.7B", "facebook/xglm-1.7B", "6GB"),
+        MenuModel("XGLM 564M", "facebook/xglm-564M", "4GB"),
+        MenuFolder("Return to Main Menu", "mainmenu"),
         ],
-    # 'rwkvlist': [
-    #     ["RWKV-4 7B (GPU)", "RWKV-7B-GPU", "??GB", False],
-    #     ["RWKV-4 7B (CPU)", "RWKV-7B-CPU", "??GB", False],
-    #     ["RWKV-4 3B (GPU)", "RWKV-3B-GPU", "?GB", False],
-    #     ["RWKV-4 3B (CPU)", "RWKV-3B-CPU", "?GB", False],
-    #     ["RWKV-4 1.5B (GPU)", "RWKV-1B5-GPU", "9GB", False],
-    #     ["RWKV-4 1.5B (CPU)", "RWKV-1B5-CPU", "6GB", False],
-    #     ["RWKV-4 340M (GPU)", "RWKV-340M-GPU", "?GB", False],
-    #     ["RWKV-4 340M (CPU)", "RWKV-340M-CPU", "?GB", False],
-    #     ["RWKV-4 169M (GPU)", "RWKV-169M-GPU", "?GB", False],
-    #     ["RWKV-4 169M (CPU)", "RWKV-169M-CPU", "?GB", False],
-    #     ["Return to Main Menu", "mainmenu", "", True],
-    #     ],
+    'rwkvlist': [
+        MenuModel("RWKV-4 14B", "rwkv-4-pile-14b", "??GB", model_type=MenuModelType.RWKV),
+        MenuModel("RWKV-4 7B", "rwkv-4-pile-7b", "??GB", model_type=MenuModelType.RWKV),
+        MenuModel("RWKV-4 3B", "rwkv-4-pile-3b", "?GB", model_type=MenuModelType.RWKV),
+        MenuModel("RWKV-4 1.5B", "rwkv-4-pile-1b5", "9GB", model_type=MenuModelType.RWKV),
+        MenuModel("RWKV-4 340M", "rwkv-4-pile-430m", "?GB", model_type=MenuModelType.RWKV),
+        MenuModel("RWKV-4 169M", "rwkv-4-pile-169m", "?GB", model_type=MenuModelType.RWKV),
+        MenuFolder("Return to Main Menu", "mainmenu"),
+        ],
     'apilist': [
-        ["GooseAI API (requires API key)", "GooseAI", "None", False],
-        ["OpenAI API (requires API key)", "OAI", "None", False],
-        ["InferKit API (requires API key)", "InferKit", "None", False],
-        ["KoboldAI API", "API", "None", False],
-        ["Basic Model API", "Colab", "", False],
-        ["KoboldAI Horde", "CLUSTER", "None", False],
-        ["Return to Main Menu", "mainmenu", "", True],
+        MenuModel("GooseAI API (requires API key)", "GooseAI", model_type=MenuModelType.ONLINE_API),
+        MenuModel("OpenAI API (requires API key)", "OAI", model_type=MenuModelType.ONLINE_API),
+        MenuModel("InferKit API (requires API key)", "InferKit", model_type=MenuModelType.ONLINE_API),
+        MenuModel("KoboldAI API", "API", model_type=MenuModelType.ONLINE_API),
+        MenuModel("Basic Model API", "Colab", model_type=MenuModelType.ONLINE_API),
+        MenuModel("KoboldAI Horde", "CLUSTER", model_type=MenuModelType.ONLINE_API),
+        MenuFolder("Return to Main Menu", "mainmenu"),
     ]
-    }
+}
 
 @dataclass
 class ImportBuffer:
@@ -753,24 +825,22 @@ def get_config_filename(model_name = None):
         logger.warning(f"Empty configfile name sent back. Defaulting to ReadOnly")
         return(f"settings/ReadOnly.settings")
 
-def is_model_downloaded(model_name: str) -> bool:
-    model_stub = model_name.replace("/", "_")
-    return os.path.isdir(os.path.join("models", model_stub))
-
 #==================================================================#
 # Function to get model selection at startup
 #==================================================================#
 def sendModelSelection(menu="mainmenu", folder="./models"):
     #If we send one of the manual load options, send back the list of model directories, otherwise send the menu
     if menu in ('NeoCustom', 'GPT2Custom'):
-        (paths, breadcrumbs) = get_folder_path_info(folder)
-        paths = [x for x in paths if "rwkv" not in x[1].lower()]
+        paths, breadcrumbs = get_folder_path_info(folder)
+        # paths = [x for x in paths if "rwkv" not in x[1].lower()]
         if koboldai_vars.host:
             breadcrumbs = []
+
         menu_list = [[folder, menu, "", False] for folder in paths]
         menu_list_ui_2 = [[folder[0], folder[1], "", False] for folder in paths]
         menu_list.append(["Return to Main Menu", "mainmenu", "", True])
         menu_list_ui_2.append(["Return to Main Menu", "mainmenu", "", True])
+
         if os.path.abspath("{}/models".format(os.getcwd())) == os.path.abspath(folder):
             showdelete=True
         else:
@@ -785,7 +855,7 @@ def sendModelSelection(menu="mainmenu", folder="./models"):
             "isDownloaded": True,
         } for m in menu_list_ui_2]
         emit('show_model_menu', {'data': p_menu, 'menu': menu, 'breadcrumbs': breadcrumbs, "showdelete": showdelete}, broadcast=False)
-    elif menu in ('customhuggingface'):
+    elif menu == "customhuggingface":
         p_menu = [{
             "label": "Return to Main Menu",
             "name": "mainmenu",
@@ -798,18 +868,31 @@ def sendModelSelection(menu="mainmenu", folder="./models"):
         emit('from_server', {'cmd': 'show_model_menu', 'data': [["Return to Main Menu", "mainmenu", "", True]], 'menu': menu, 'breadcrumbs': breadcrumbs, "showdelete": showdelete}, broadcast=True, room="UI_1")
         emit('show_model_menu', {'data': p_menu, 'menu': menu, 'breadcrumbs': breadcrumbs, "showdelete": showdelete}, broadcast=False)
     else:
-        # Hide experimental models unless experimental mode is enabled
-        filtered_menu = [x for x in model_menu[menu] if koboldai_vars.experimental_features or "(experimental)" not in x[0].lower()]
-        emit('from_server', {'cmd': 'show_model_menu', 'data': filtered_menu, 'menu': menu, 'breadcrumbs': [], "showdelete": False}, broadcast=True, room="UI_1")
+        filtered_menu = [item for item in model_menu[menu] if item.should_show()]
 
-        p_menu = [{
-            "label": m[0],
-            "name": m[1],
-            "size": m[2],
-            "isMenu": m[3],
-            "isDownloaded": is_model_downloaded(m[1]) if not m[3] else False,
-        } for m in filtered_menu]
-        emit('show_model_menu', {'data': p_menu, 'menu': menu, 'breadcrumbs': [], "showdelete": False}, broadcast=False)
+        emit(
+            "from_server",
+            {
+                "cmd": "show_model_menu",
+                "data": [item.to_ui1() for item in filtered_menu],
+                "menu": menu,
+                "breadcrumbs": [],
+                "showdelete": False
+            },
+            broadcast=True,
+            room="UI_1"
+        )
+
+        emit(
+            "show_model_menu",
+            {
+                "data": [item.to_json() for item in filtered_menu],
+                "menu": menu,
+                "breadcrumbs": [],
+                "showdelete": False
+            },
+            broadcast=False
+        )
 
 def get_folder_path_info(base):
     if base == 'This PC':
@@ -1406,7 +1489,7 @@ def get_model_info(model, directory=""):
         url = koboldai_vars.horde_url
         if key_value:
             send_horde_models = True
-    elif model in [x[1] for x in model_menu['apilist']]:
+    elif model in [x.name for x in model_menu['apilist']]:
         show_online_model_select=True
         if path.exists("settings/{}.v2_settings".format(model)):
             with open("settings/{}.v2_settings".format(model), "r") as file:
@@ -1425,7 +1508,7 @@ def get_model_info(model, directory=""):
                     print(":(")
                     pass
         key = True
-    elif model.startswith("RWKV"):
+    elif "rwkv" in model.lower():
         pass
     elif model == 'ReadOnly':
         pass
@@ -1470,7 +1553,7 @@ def get_model_info(model, directory=""):
                          'show_custom_model_box': show_custom_model_box})
     if send_horde_models:
         get_cluster_models({'key': key_value, 'url': default_url})
-    elif key_value != "" and model in [x[1] for x in model_menu['apilist']] and model != 'CLUSTER':
+    elif key_value != "" and model in [x.name for x in model_menu['apilist']] and model != 'CLUSTER':
         get_oai_models(key_value)
     
     
@@ -1802,6 +1885,10 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
         koboldai_vars.usegpu = False
         koboldai_vars.breakmodel = False
         model.load(initial_load=initial_load)
+    elif koboldai_vars.model.startswith("rwkv:"):
+        if koboldai_vars.use_colab_tpu:
+            raise RuntimeError("RWKV is not supported on the TPU.")
+        print("Trying to load", koboldai_vars.model)
     elif not koboldai_vars.use_colab_tpu and not koboldai_vars.noai:
         # HF Torch
         logger.init("Transformers", status='Starting')
