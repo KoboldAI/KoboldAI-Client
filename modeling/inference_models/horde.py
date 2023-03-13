@@ -42,8 +42,14 @@ class HordeInferenceModel(InferenceModel):
         gen_settings: GenerationSettings,
         single_line: bool = False,
         batch_count: int = 1,
+        seed: Optional[int] = None,
         **kwargs,
     ) -> GenerationResult:
+        if seed is not None:
+            logger.warning(
+                "Seed is unsupported on the APIInferenceModel. Seed will be ignored."
+            )
+
         decoded_prompt = utils.decodenewlines(self.tokenizer.decode(prompt_tokens))
 
         # Store context in memory to use it for comparison with generated content

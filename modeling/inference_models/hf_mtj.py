@@ -4,7 +4,7 @@ import os
 import torch
 import numpy as np
 from eventlet import tpool
-from typing import List, Tuple, Union
+from typing import List, Optional, Tuple, Union
 
 import utils
 import koboldai_settings
@@ -258,12 +258,16 @@ class HFMTJInferenceModel(HFInferenceModel):
         gen_settings: GenerationSettings,
         single_line: bool = False,
         batch_count: int = 1,
+        seed: Optional[int] = None,
         **kwargs,
     ) -> GenerationResult:
         soft_tokens = self.get_soft_tokens()
 
         dynamic_inference = kwargs.get("tpu_dynamic_inference", False)
         logger.info(f"dynamic_inference={dynamic_inference}")
+
+        if seed is not None:
+            tpu_mtj_backend.set_rng_seed(seed)
 
         if not dynamic_inference:
             genout = tpool.execute(

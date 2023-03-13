@@ -3,10 +3,10 @@ from __future__ import annotations
 import torch
 import requests
 import numpy as np
-from typing import List, Union
+from typing import List, Optional, Union
 
 import utils
-
+from logger import logger
 from modeling.inference_model import (
     GenerationResult,
     GenerationSettings,
@@ -36,8 +36,14 @@ class BasicAPIInferenceModel(InferenceModel):
         gen_settings: GenerationSettings,
         single_line: bool = False,
         batch_count: int = 1,
+        seed: Optional[int] = None,
         **kwargs,
     ):
+        if seed is not None:
+            logger.warning(
+                "Seed is unsupported on the APIInferenceModel. Seed will be ignored."
+            )
+
         decoded_prompt = utils.decodenewlines(self.tokenizer.decode(prompt_tokens))
 
         # Store context in memory to use it for comparison with generated content

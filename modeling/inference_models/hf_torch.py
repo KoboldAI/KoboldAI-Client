@@ -10,7 +10,7 @@ import itertools
 import traceback
 import contextlib
 from tqdm.auto import tqdm
-from typing import Dict, List, Union
+from typing import Dict, List, Optional, Union
 
 import torch
 from torch.nn import Embedding
@@ -457,6 +457,7 @@ class HFTorchInferenceModel(HFInferenceModel):
         gen_settings: GenerationSettings,
         single_line: bool = False,
         batch_count: int = 1,
+        seed: Optional[int] = None,
         **kwargs,
     ) -> GenerationResult:
         if not isinstance(prompt_tokens, torch.Tensor):
@@ -468,6 +469,10 @@ class HFTorchInferenceModel(HFInferenceModel):
         gen_in = gen_in.to(device)
 
         additional_bad_words_ids = [self.tokenizer.encode("\n")] if single_line else []
+
+        if seed is not None:
+            print("seeding", seed)
+            torch.manual_seed(seed)
 
         with torch.no_grad():
             start_time = time.time()
