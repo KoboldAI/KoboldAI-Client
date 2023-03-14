@@ -340,12 +340,16 @@ model_menu = {
         MenuFolder("Return to Main Menu", "mainmenu"),
         ],
     'rwkvlist': [
-        MenuModel("RWKV-4 14B", "rwkv-4-pile-14b", "??GB", model_type=MenuModelType.RWKV),
-        MenuModel("RWKV-4 7B", "rwkv-4-pile-7b", "??GB", model_type=MenuModelType.RWKV),
-        MenuModel("RWKV-4 3B", "rwkv-4-pile-3b", "?GB", model_type=MenuModelType.RWKV),
-        MenuModel("RWKV-4 1.5B", "rwkv-4-pile-1b5", "9GB", model_type=MenuModelType.RWKV),
+        MenuModel("RWKV-4 14B ctx4096", "rwkv-4-pile-14b:ctx4096", "??GB", model_type=MenuModelType.RWKV),
+        MenuModel("RWKV-4 14B ctx1024", "rwkv-4-pile-14b", "??GB", model_type=MenuModelType.RWKV),
+        MenuModel("RWKV-4 7B ctx4096", "rwkv-4-pile-7b:ctx4096", "??GB", model_type=MenuModelType.RWKV),
+        MenuModel("RWKV-4 7B ctx1024", "rwkv-4-pile-7b", "??GB", model_type=MenuModelType.RWKV),
+        MenuModel("RWKV-4 3B ctx4096", "rwkv-4-pile-3b:ctx4096", "?GB", model_type=MenuModelType.RWKV),
+        MenuModel("RWKV-4 3B ctx1024", "rwkv-4-pile-3b", "?GB", model_type=MenuModelType.RWKV),
+        MenuModel("RWKV-4 1.5B ctx4096", "rwkv-4-pile-1b5:ctx4096", "9GB", model_type=MenuModelType.RWKV),
+        MenuModel("RWKV-4 1.5B ctx1024", "rwkv-4-pile-1b5", "9GB", model_type=MenuModelType.RWKV),
         MenuModel("RWKV-4 340M", "rwkv-4-pile-430m", "?GB", model_type=MenuModelType.RWKV),
-        MenuModel("RWKV-4 169M", "rwkv-4-pile-169m", "?GB", model_type=MenuModelType.RWKV),
+        MenuModel("RWKV-4 169M ctx1024", "rwkv-4-pile-169m", "?GB", model_type=MenuModelType.RWKV),
         MenuFolder("Return to Main Menu", "mainmenu"),
         ],
     'apilist': [
@@ -588,6 +592,7 @@ from modeling.inference_models.legacy_gpt2_hf import CustomGPT2HFTorchInferenceM
 from modeling.inference_models.hf_mtj import HFMTJInferenceModel
 from modeling.inference_models.horde import HordeInferenceModel
 from modeling.inference_models.openai import OpenAIAPIInferenceModel
+from modeling.inference_models.rwkv import RWKVInferenceModel
 
 
 old_socketio_on = socketio.on
@@ -1885,10 +1890,12 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
         koboldai_vars.usegpu = False
         koboldai_vars.breakmodel = False
         model.load(initial_load=initial_load)
-    elif koboldai_vars.model.startswith("rwkv:"):
+    # TODO: This check sucks, make a model object or somethign
+    elif "rwkv" in koboldai_vars.model:
         if koboldai_vars.use_colab_tpu:
             raise RuntimeError("RWKV is not supported on the TPU.")
-        print("Trying to load", koboldai_vars.model)
+        model = RWKVInferenceModel(koboldai_vars.model)
+        model.load()
     elif not koboldai_vars.use_colab_tpu and not koboldai_vars.noai:
         # HF Torch
         logger.init("Transformers", status='Starting')

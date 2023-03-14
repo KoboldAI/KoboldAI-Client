@@ -28,7 +28,7 @@ SOFTWARE.
 
 ---
 
-Some of the code in this file is also from Hugging Face logitsTransformers:
+Some of the code in this file is also from Hugging Face LogitsTransformers:
 https://github.com/huggingface/transformers
 
 Transformers is licensed under the Apache-2.0 License. The changes made to this

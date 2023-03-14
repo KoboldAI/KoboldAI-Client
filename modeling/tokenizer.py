@@ -13,11 +13,19 @@ class GenericTokenizer:
         # TODO: Get rid of this
         self._koboldai_header = []
 
+        self.get_vocab = tokenizer.get_vocab
+
     def encode(self, text: str) -> list:
+        if isinstance(self.tokenizer, PreTrainedTokenizer):
+            return self.tokenizer.encode(text)
         return self.tokenizer.encode(text).ids
 
     def decode(self, tokens: Union[int, List[int], torch.Tensor]) -> str:
+        if isinstance(tokens, torch.Tensor):
+            tokens = tokens.cpu().tolist()
+
         if isinstance(tokens, int):
             tokens = [tokens]
 
         return self.tokenizer.decode(tokens)
+    
