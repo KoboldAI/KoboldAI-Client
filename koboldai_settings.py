@@ -2573,10 +2573,10 @@ class KoboldWorldInfo(object):
     def sync_world_info_to_old_format(self):
         #Since the old UI uses world info entries for folders, we need to make some up
         if "root" not in self.world_info_folder:
-            olf_world_info_folder = self.world_info_folder
+            old_world_info_folder = self.world_info_folder
             self.world_info_folder = OrderedDict()
             self.world_info_folder["root"] = []
-            self.world_info_folder.update(olf_world_info_folder)
+            self.world_info_folder.update(old_world_info_folder)
         folder_entries = {}
         i=-1
         for folder in self.world_info_folder:
