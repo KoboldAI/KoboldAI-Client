@@ -630,6 +630,8 @@ def get_missing_module_names(model: PreTrainedModel, names: List[str]) -> List[s
 
 class UIProgressBarFile(object):
     """Write TQDM progress to the UI."""
+    def __init__(self, emit_func=emit) -> None:
+        self.emit_func = emit_func
 
     def write(self, bar):
         bar = bar.replace("\r", "").replace("\n", "").replace(chr(0), "")
@@ -638,8 +640,9 @@ class UIProgressBarFile(object):
             print('\r' + bar, end='')
             time.sleep(0.01)
             try:
-                emit('from_server', {'cmd': 'model_load_status', 'data': bar.replace(" ", "&nbsp;")}, broadcast=True, room="UI_1")
-            except:
+                self.emit_func('from_server', {'cmd': 'model_load_status', 'data': bar.replace(" ", "&nbsp;")}, broadcast=True, room="UI_1")
+            except Exception as e:
+                print(e)
                 pass
         
     def flush(self):
