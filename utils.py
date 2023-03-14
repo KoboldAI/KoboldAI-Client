@@ -641,8 +641,7 @@ class UIProgressBarFile(object):
             time.sleep(0.01)
             try:
                 self.emit_func('from_server', {'cmd': 'model_load_status', 'data': bar.replace(" ", "&nbsp;")}, broadcast=True, room="UI_1")
-            except Exception as e:
-                print(e)
+            except:
                 pass
         
     def flush(self):
