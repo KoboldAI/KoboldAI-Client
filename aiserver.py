@@ -592,7 +592,6 @@ from modeling.inference_models.legacy_gpt2_hf import CustomGPT2HFTorchInferenceM
 from modeling.inference_models.hf_mtj import HFMTJInferenceModel
 from modeling.inference_models.horde import HordeInferenceModel
 from modeling.inference_models.openai import OpenAIAPIInferenceModel
-from modeling.inference_models.rwkv import RWKVInferenceModel
 
 
 old_socketio_on = socketio.on
@@ -1894,6 +1893,7 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
     elif "rwkv" in koboldai_vars.model:
         if koboldai_vars.use_colab_tpu:
             raise RuntimeError("RWKV is not supported on the TPU.")
+        from modeling.inference_models.rwkv import RWKVInferenceModel
         model = RWKVInferenceModel(koboldai_vars.model)
         model.load()
     elif not koboldai_vars.use_colab_tpu and not koboldai_vars.noai:
