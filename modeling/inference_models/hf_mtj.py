@@ -10,6 +10,7 @@ import utils
 import koboldai_settings
 from logger import logger, Colors
 
+from modeling import warpers
 from modeling.inference_model import (
     GenerationResult,
     GenerationSettings,
@@ -262,6 +263,8 @@ class HFMTJInferenceModel(HFInferenceModel):
         seed: Optional[int] = None,
         **kwargs,
     ) -> GenerationResult:
+        warpers.update_settings()
+
         soft_tokens = self.get_soft_tokens()
 
         dynamic_inference = kwargs.get("tpu_dynamic_inference", False)
