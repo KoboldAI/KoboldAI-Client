@@ -139,7 +139,7 @@ class RWKVInferenceModel(InferenceModel):
         # Download model if we need to
         model_path = os.path.join(model_dir, MODEL_FILES[self.model_name])
         if not os.path.exists(model_path):
-            self.download_model(self, model_path, model_class)
+            self._download_model(self, model_path, model_class)
 
         # Now we load!
 
