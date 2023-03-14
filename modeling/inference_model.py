@@ -156,6 +156,9 @@ class ModelCapabilities:
     # Some models cannot be hosted over the API, namely the API itself.
     api_host: bool = True
 
+    # Some models need to warm up the TPU before use
+    uses_tpu: bool = False
+
 
 class InferenceModel:
     """Root class for all models."""

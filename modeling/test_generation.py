@@ -1,11 +1,11 @@
 import torch
 
 # We have to go through aiserver to initalize koboldai_vars :(
-from aiserver import GenericHFTorchInferenceModel
 from aiserver import koboldai_vars
 
 from modeling.inference_model import InferenceModel
 from modeling.inference_models.api import APIInferenceModel
+from modeling.inference_models.generic_hf_torch import GenericHFTorchInferenceModel
 from modeling.inference_models.horde import HordeInferenceModel
 
 model: InferenceModel

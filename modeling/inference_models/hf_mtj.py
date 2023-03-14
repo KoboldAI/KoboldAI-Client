@@ -38,6 +38,7 @@ class HFMTJInferenceModel(HFInferenceModel):
             post_token_hooks=False,
             stopper_hooks=False,
             post_token_probs=False,
+            uses_tpu=True
         )
 
     def setup_mtj(self) -> None:
