@@ -3128,20 +3128,15 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
                         #             tokenizer = GPT2Tokenizer.from_pretrained(koboldai_vars.custmodpth, revision=koboldai_vars.revision, cache_dir="cache")
                         #         except Exception as e:
                         #             tokenizer = GPT2Tokenizer.from_pretrained("gpt2", revision=koboldai_vars.revision, cache_dir="cache")
-                        try:
-                            # model     = AutoModelForCausalLM.from_pretrained(koboldai_vars.custmodpth, revision=koboldai_vars.revision, cache_dir="cache", **lowmem)
-                            if os.environ.get('LLAMA_4BIT') is not None:
-                                model = load_quant(koboldai_vars.custmodpth, os.environ['LLAMA_4BIT'], 4)
-                            else:
-                                raise RuntimeError("It looks like your environment variable for LLAMA_4BIT is not set (the model path).\nPlease set this variable before proceeding.")
+                        # model     = AutoModelForCausalLM.from_pretrained(koboldai_vars.custmodpth, revision=koboldai_vars.revision, cache_dir="cache", **lowmem)
 
-                            if model is None:
-                                raise RuntimeError("Model returned 'None'. This is not expected to happen, but due to this, the model will not load.")
+                        if os.environ.get('LLAMA_4BIT'):
+                            model = load_quant(koboldai_vars.custmodpth, os.environ['LLAMA_4BIT'], 4)
+                        else:
+                            raise RuntimeError("It looks like your environment variable for LLAMA_4BIT is not set (the model path).\nPlease set this variable before proceeding.")
 
-                        except Exception as e:
-                            if("out of memory" in traceback.format_exc().lower()):
-                                raise RuntimeError("One of your GPUs ran out of memory when KoboldAI tried to load your model.")
-                            # model     = GPTNeoForCausalLM.from_pretrained(koboldai_vars.custmodpth, revision=koboldai_vars.revision, cache_dir="cache", **lowmem)
+                        if model is None:
+                            raise RuntimeError("Model returned 'None'. This is not expected to happen, but due to this, the model will not load.")
                     elif(os.path.isdir("models/{}".format(koboldai_vars.model.replace('/', '_')))):
                         try:
                             tokenizer = AutoTokenizer.from_pretrained("models/{}".format(koboldai_vars.model.replace('/', '_')), revision=koboldai_vars.revision, cache_dir="cache", use_fast=False)
