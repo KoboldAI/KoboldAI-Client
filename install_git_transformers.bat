@@ -1,14 +1,12 @@
 @echo off
 cd /D %~dp0
-
-:Isolation
 SET CONDA_SHLVL=
-SET PYTHONNOUSERSITE=1
-SET PYTHONPATH=
 
-rmdir /S /Q flask_session
+TITLE KoboldAI - Git Transformers Installer
+ECHO This script will replace the Transformers version with the latest Git Transformers which may contain breaking changes.
+ECHO If you wish to return to the approved version of transformers you can run the install_requirements.bat script or KoboldAI Updater.
+pause
 
-TITLE KoboldAI - Server
 SET /P M=<loader.settings
 IF %M%==1 GOTO drivemap
 IF %M%==2 GOTO subfolder
@@ -19,7 +17,7 @@ ECHO Runtime launching in subfolder mode
 SET TEMP=%~DP0MINICONDA3
 SET TMP=%~DP0MINICONDA3
 call miniconda3\condabin\activate
-python aiserver.py %*
+pip install git+https://github.com/huggingface/transformers
 cmd /k
 
 :drivemap
@@ -29,7 +27,7 @@ subst K: miniconda3 >nul
 SET TEMP=K:\
 SET TMP=K:\
 call K:\python\condabin\activate
-python aiserver.py %*
+pip install git+https://github.com/huggingface/transformers
 cmd /k
 
 :drivemap_B
@@ -39,5 +37,5 @@ subst B: miniconda3 >nul
 SET TEMP=B:\
 SET TMP=B:\
 call B:\python\condabin\activate
-python aiserver.py %*
+pip install git+https://github.com/huggingface/transformers
 cmd /k
