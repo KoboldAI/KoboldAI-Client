@@ -28,4 +28,3 @@ class GenericTokenizer:
             tokens = [tokens]
 
         return self.tokenizer.decode(tokens)
-    

@@ -217,10 +217,7 @@ class RWKVInferenceModel(InferenceModel):
             for _ in range(max_new):
 
                 logits, state = self.model.forward([last_token], state)
-                last_token = self._sample_token(
-                    logits,
-                    context
-                )
+                last_token = self._sample_token(logits, context)
                 out.append(last_token)
                 add = torch.tensor([[last_token]]).to(aux_device)
                 context = torch.cat((context, add), dim=-1)

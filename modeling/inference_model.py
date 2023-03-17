@@ -16,13 +16,6 @@ from modeling.tokenizer import GenericTokenizer
 
 import utils
 
-try:
-    import tpu_mtj_backend
-except ModuleNotFoundError as e:
-    # Not on TPU... hopefully
-    if utils.koboldai_vars.use_colab_tpu:
-        raise e
-
 # We only want to use logit manipulations and such on our core text model
 class use_core_manipulations:
     """Use in a `with` block to patch functions for core story model sampling."""
