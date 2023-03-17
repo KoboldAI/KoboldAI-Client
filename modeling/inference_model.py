@@ -13,6 +13,7 @@ from transformers import (
     AutoTokenizer,
 )
 from modeling.tokenizer import GenericTokenizer
+from modeling import logits_processors
 
 import utils
 
@@ -160,6 +161,11 @@ class InferenceModel:
         self.gen_state = {}
         self.post_token_hooks = []
         self.stopper_hooks = []
+        self.logits_processors = [
+            logits_processors.LuaIntegration(),
+            logits_processors.PhraseBiasLogitsProcessor(),
+            logits_processors.ProbabilityVisualization(),
+        ]
         self.tokenizer = None
         self.capabilties = ModelCapabilities()
 
