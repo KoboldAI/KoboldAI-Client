@@ -1280,8 +1280,7 @@ class system_settings(settings):
             self.on_colab = True
         except:
             self.on_colab = False
-            pass
-        print("Colab Check: {}".format(self.on_colab))
+        print(f"Colab Check: {self.on_colab}, TPU: {self.use_colab_tpu}")
         self.horde_share = False
         self._horde_pid = None
         self.generating_image = False #The current status of image generation
