@@ -968,9 +968,9 @@ class story_settings(settings):
             else:
                 logger.warning(f"Story mismatch in v2 migration. Existing file had story id {v2j['story_id']} but we have {self.story_id}")
 
+        self.gamesaved = True
         with open(self.save_paths.story, "w", encoding="utf-8") as file:
             file.write(self.to_json())
-        self.gamesaved = True
     
     def update_story_path_structure(self, path: str) -> None:
         # Upon loading a file, makes directories that are required for certain
@@ -1202,12 +1202,12 @@ class system_settings(settings):
     local_only_variables = ['lua_state', 'lua_logname', 'lua_koboldbridge', 'lua_kobold', 
                             'lua_koboldcore', 'regex_sl', 'acregex_ai', 'acregex_ui', 'comregex_ai', 
                             'comregex_ui', 'sp', '_horde_pid', 'inference_config', 'image_pipeline', 
-                            'summarizer', 'summary_tokenizer', 'tts_model']
+                            'summarizer', 'summary_tokenizer', 'tts_model', 'rng_states']
     no_save_variables = ['lua_state', 'lua_logname', 'lua_koboldbridge', 'lua_kobold', 
                          'lua_koboldcore', 'sp', 'sp_length', '_horde_pid', 'horde_share', 'aibusy', 
                          'serverstarted', 'inference_config', 'image_pipeline', 'summarizer', 
                          'summary_tokenizer', 'use_colab_tpu', 'noai', 'disable_set_aibusy', 'cloudflare_link', 'tts_model',
-                         'generating_image', 'bit_8_available', 'host', 'hascuda', 'usegpu']
+                         'generating_image', 'bit_8_available', 'host', 'hascuda', 'usegpu', 'rng_states']
     settings_name = "system"
     def __init__(self, socketio, koboldai_var):
         self._socketio = socketio
@@ -1263,6 +1263,7 @@ class system_settings(settings):
         self.disable_output_formatting = False
         self.full_determinism = False  # Whether or not full determinism is enabled
         self.seed_specified = False  # Whether or not the current RNG seed was specified by the user (in their settings file)
+        self.rng_states = {} # creates an empty dictionary to store the random number generator (RNG) states for a given seed, which is used to restore the RNG state later on
         self.seed        = None   # The current RNG seed (as an int), or None if unknown
         self.alt_gen = False # Use the calc_ai_text method for generating text to go to the AI
         self.theme_list = [".".join(f.split(".")[:-1]) for f in os.listdir("./themes") if os.path.isfile(os.path.join("./themes", f))]
@@ -1504,7 +1505,7 @@ class KoboldStoryRegister(object):
                                 else:
                                     self.actions[i]["Probabilities"][token_num][token_option]["Used"] = False
             if "Options" in self.actions[i]:
-                for j in range(len(self.actions[i]["Options"])):
+                for j in reversed(range(len(self.actions[i]["Options"]))):
                     if self.actions[i]["Options"][j]["text"] == text:
                         del self.actions[i]["Options"][j]
             if old_text != "":
@@ -2259,6 +2260,8 @@ class KoboldWorldInfo(object):
             self._socketio.emit("world_info_folder", {x: self.world_info_folder[x] for x in self.world_info_folder}, broadcast=True, room="UI_2")
         
     def delete_folder(self, folder):
+        if folder == "root":
+            raise Exception("removing the root folder is not supported")
         keys = [key for key in self.world_info]
         for key in keys:
             if self.world_info[key]['folder'] == folder:
@@ -2272,7 +2275,7 @@ class KoboldWorldInfo(object):
         
     def add_item_to_folder(self, uid, folder, before=None):
         if uid in self.world_info:
-            #fiirst we need to remove the item from whatever folder it's in
+            #first we need to remove the item from whatever folder it's in
             for temp in self.world_info_folder:
                 if uid in self.world_info_folder[temp]:
                     self.world_info_folder[temp].remove(uid)
@@ -2357,7 +2360,8 @@ class KoboldWorldInfo(object):
             raise
         if folder not in self.world_info_folder:
             self.world_info_folder[folder] = []
-        self.world_info_folder[folder].append(uid)
+        if uid not in self.world_info_folder[folder]:
+            self.world_info_folder[folder].append(uid)
         self.story_settings.gamesaved = False
         if sync:
             self.sync_world_info_to_old_format()
@@ -2442,8 +2446,11 @@ class KoboldWorldInfo(object):
             self._socketio.emit("world_info_entry", self.world_info[uid], broadcast=True, room="UI_2")
         
     def delete(self, uid):
+        if self.world_info[uid]['folder'] == "root":
+            raise Exception("removing the root folder is not supported")
+        
         del self.world_info[uid]
-
+        
         try:
             os.remove(os.path.join(self._koboldai_vars.save_paths.wi_images, str(uid)))
         except FileNotFoundError:
@@ -2463,6 +2470,8 @@ class KoboldWorldInfo(object):
         ignore = self._koboldai_vars.calc_ai_text()
     
     def rename_folder(self, old_folder, folder):
+        if old_folder == "root":
+            raise Exception("renaming the root folder is not supported")
         self.story_settings.gamesaved = False
         if folder in self.world_info_folder:
             i=0
@@ -2536,14 +2545,10 @@ class KoboldWorldInfo(object):
                     file.write(base64.b64decode(image_b64))
         
         data["entries"] = {k: self.upgrade_entry(v) for k,v in data["entries"].items()}
-
-        if folder is None:
-            self.world_info_folder = data['folders']
         
         #Add the item
         start_time = time.time()
         for uid, item in data['entries'].items():
-            
             self.add_item(item['title'] if 'title' in item else item['key'][0], 
                           item['key'] if 'key' in item else [], 
                           item['keysecondary'] if 'keysecondary' in item else [], 
@@ -2555,10 +2560,9 @@ class KoboldWorldInfo(object):
                           use_wpp=item['use_wpp'] if 'use_wpp' in item else False, 
                           wpp=item['wpp'] if 'wpp' in item else {'name': "", 'type': "", 'format': "W++", 'attributes': {}},
                           object_type=item.get("object_type"),
+                          v1_uid=item.get("v1_uid"),
                           recalc=False, sync=False)
-        if folder is None:
-            #self.world_info = {int(x): data['entries'][x] for x in data['entries']}
-            self.world_info_folder = data['folders']
+
         logger.debug("Load World Info took {}s".format(time.time()-start_time))
         try:
             start_time = time.time()
@@ -2577,50 +2581,52 @@ class KoboldWorldInfo(object):
         for folder in self.world_info_folder:
             folder_entries[folder] = i
             i-=1
-    
-    
+        
+        #self.wifolders_l = []     # List of World Info folder UIDs
+        self.story_settings.wifolders_l = [folder_entries[x] for x in folder_entries if x != "root"]
+        
         #self.worldinfo_i = []     # List of World Info key/value objects sans uninitialized entries
         self.story_settings.worldinfo_i = [{
-                                            "comment": self.world_info[x]['comment'],
-                                            "constant": self.world_info[x]['constant'],
-                                            "content": self.world_info[x]['content'],
-                                            "folder": folder_entries[self.world_info[x]['folder']],
-                                            "init": True,
                                             "key": ",".join(self.world_info[x]['key']),
                                             "keysecondary": ",".join(self.world_info[x]['keysecondary']),
+                                            "content": self.world_info[x]['content'],
+                                            "comment": self.world_info[x]['comment'],
+                                            "folder": folder_entries[self.world_info[x]['folder']] if self.world_info[x]['folder'] != "root" else None,
                                             "num": x,
+                                            "init": True,
                                             "selective": len(self.world_info[x]['keysecondary'])>0,
+                                            "constant": self.world_info[x]['constant'],
                                             "uid": self.world_info[x]['uid'] if 'v1_uid' not in self.world_info[x] or self.world_info[x]['v1_uid'] is None else self.world_info[x]['v1_uid']
                                         } for x in self.world_info]
-                                        
+        
         #self.worldinfo   = []     # List of World Info key/value objects
         self.story_settings.worldinfo = [x for x in self.story_settings.worldinfo_i]
         #We have to have an uninitialized blank entry for every folder or the old method craps out
         for folder in folder_entries:
             self.story_settings.worldinfo.append({
-                                            "comment": "",
-                                            "constant": False,
-                                            "content": "",
-                                            "folder": folder_entries[folder],
-                                            "init": False,
                                             "key": "",
                                             "keysecondary": "",
+                                            "content": "",
+                                            "comment": "",
+                                            "folder": folder_entries[folder] if folder != "root" else None,
                                             "num": (0 if len(self.world_info) == 0 else max(self.world_info))+(folder_entries[folder]*-1),
+                                            "init": False,
                                             "selective": False,
+                                            "constant": False,
                                             "uid": folder_entries[folder]
                                         })
         
+        mapping = {uid: index for index, uid in enumerate(self.story_settings.wifolders_l)}
+        self.story_settings.worldinfo.sort(key=lambda x: mapping[x["folder"]] if x["folder"] is not None else float("inf"))
+        
         #self.wifolders_d = {}     # Dictionary of World Info folder UID-info pairs
-        self.story_settings.wifolders_d = {folder_entries[x]: {'collapsed': False, 'name': x} for x in folder_entries}
+        self.story_settings.wifolders_d = {str(folder_entries[x]): {'name': x, 'collapsed': False} for x in folder_entries if x != "root"}
         
         #self.worldinfo_u = {}     # Dictionary of World Info UID - key/value pairs
-        self.story_settings.worldinfo_u = {x['uid']: x for x in self.story_settings.worldinfo}
-        
-        #self.wifolders_l = []     # List of World Info folder UIDs
-        self.story_settings.wifolders_l = [folder_entries[x] for x in folder_entries]
+        self.story_settings.worldinfo_u = {str(y["uid"]): y for x in folder_entries for y in self.story_settings.worldinfo if y["folder"] == (folder_entries[x] if x != "root" else None)}
         
         #self.wifolders_u = {}     # Dictionary of pairs of folder UID - list of WI UID
-        self.story_settings.wifolders_u = {folder_entries[x]: [y for y in self.story_settings.worldinfo if y['folder'] == x] for x in folder_entries}
+        self.story_settings.wifolders_u = {str(folder_entries[x]): [y for y in self.story_settings.worldinfo if y['folder'] == folder_entries[x]] for x in folder_entries if x != "root"}
         
     def reset_used_in_game(self):
         for key in self.world_info:
