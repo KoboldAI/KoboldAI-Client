@@ -87,37 +87,14 @@ from io import BytesIO
 
 global tpu_mtj_backend
 
-from transformers.models.llama.tokenization_llama import LLaMATokenizer
-from repos.gptq.gptq import *
-from repos.gptq.modelutils import *
-from repos.gptq.quant import *
-def load_quant(model, checkpoint, wbits):
-    from transformers import LLaMAConfig, LLaMAForCausalLM 
-    config = LLaMAConfig.from_pretrained(model)
-    def noop(*args, **kwargs):
-        pass
-    torch.nn.init.kaiming_uniform_ = noop 
-    torch.nn.init.uniform_ = noop 
-    torch.nn.init.normal_ = noop 
 
-    torch.set_default_dtype(torch.half)
-    transformers.modeling_utils._init_weights = False
-    torch.set_default_dtype(torch.half)
-    model = LLaMAForCausalLM(config)
-    torch.set_default_dtype(torch.float)
-    model = model.eval()
-    layers = find_layers(model)
-    for name in ['lm_head']:
-        if name in layers:
-            del layers[name]
-    make_quant(model, layers, wbits)
-
-    print('Loading model ...')
-    model.load_state_dict(torch.load(checkpoint))
-    model.seqlen = 2048
-    print('Done.')
-
-    return model
+# 4-bit dependencies
+from pathlib import Path
+sys.path.insert(0, os.path.abspath(Path("repos/gptq")))
+from gptj import load_quant as gptj_load_quant
+from gptneox import load_quant as gptneox_load_quant
+from llama import load_quant as llama_load_quant
+vars_4bit = {}
 
 
 if lupa.LUA_VERSION[:2] != (5, 4):
@@ -1541,6 +1518,11 @@ def general_startup(override_args=None):
     parser.add_argument('-v', '--verbosity', action='count', default=0, help="The default logging level is ERROR or higher. This value increases the amount of logging seen in your screen")
     parser.add_argument('-q', '--quiesce', action='count', default=0, help="The default logging level is ERROR or higher. This value decreases the amount of logging seen in your screen")
 
+    # 4-bit stuff
+    parser.add_argument('--gptj4bit', help="Load a GPT-J model 4-bit pt file with this path")
+    parser.add_argument('--gptneox4bit', help="Load a GPT-NeoX model 4-bit pt file with this path")
+    parser.add_argument('--llama4bit', help="Load a Llama model 4-bit pt file with this path")
+
     #args: argparse.Namespace = None
     if "pytest" in sys.modules and override_args is None:
         args = parser.parse_args([])
@@ -1644,6 +1626,11 @@ def general_startup(override_args=None):
     koboldai_vars.smanrename = koboldai_vars.host == args.override_rename
 
     koboldai_vars.aria2_port = args.aria2_port or 6799
+
+    global vars_4bit
+    vars_4bit["gptj4bit"] = args.gptj4bit
+    vars_4bit["gptneox4bit"] = args.gptneox4bit
+    vars_4bit["llama4bit"] = args.llama4bit
     
     #Now let's look to see if we are going to force a load of a model from a user selected folder
     if(koboldai_vars.model == "selectfolder"):
@@ -2971,7 +2958,8 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
                                     try:
                                         f = z.open(f"archive/data/{storage_key}")
                                     except:
-                                        f = z.open(f"{zipfolder}/data/{storage_key}")
+                                        ziproot = z.namelist()[0].split(os.sep)[0]
+                                        f = z.open(f"{ziproot}/data/{storage_key}")
                                     current_offset = 0
                                 if current_offset != model_dict[key].seek_offset:
                                     f.read(model_dict[key].seek_offset - current_offset)
@@ -3117,23 +3105,29 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
                     if(koboldai_vars.lazy_load):  # torch_lazy_loader.py and low_cpu_mem_usage can't be used at the same time
                         lowmem = {}
                     if(os.path.isdir(koboldai_vars.custmodpth)):
-                        tokenizer = LLaMATokenizer.from_pretrained(koboldai_vars.custmodpth)
-                        # try:
-                        #     tokenizer = AutoTokenizer.from_pretrained(koboldai_vars.custmodpth, revision=koboldai_vars.revision, cache_dir="cache", use_fast=False)
-                        # except Exception as e:
-                        #     try:
-                        #         tokenizer = AutoTokenizer.from_pretrained(koboldai_vars.custmodpth, revision=koboldai_vars.revision, cache_dir="cache")
-                        #     except Exception as e:
-                        #         try:
-                        #             tokenizer = GPT2Tokenizer.from_pretrained(koboldai_vars.custmodpth, revision=koboldai_vars.revision, cache_dir="cache")
-                        #         except Exception as e:
-                        #             tokenizer = GPT2Tokenizer.from_pretrained("gpt2", revision=koboldai_vars.revision, cache_dir="cache")
-                        # model     = AutoModelForCausalLM.from_pretrained(koboldai_vars.custmodpth, revision=koboldai_vars.revision, cache_dir="cache", **lowmem)
+                        global vars_4bit
 
-                        if os.environ.get('LLAMA_4BIT'):
-                            model = load_quant(koboldai_vars.custmodpth, os.environ['LLAMA_4BIT'], 4)
+                        if vars_4bit.get("gptj4bit"):
+                            model = gptj_load_quant(koboldai_vars.custmodpth, vars_4bit["gptj4bit"], 4)
+                            tokenizer = AutoTokenizer.from_pretrained(koboldai_vars.custmodpth)
+                        elif vars_4bit.get("gptneox4bit"):
+                            model = gptneox_load_quant(koboldai_vars.custmodpth, vars_4bit["gptneox4bit"], 4)
+                            tokenizer = AutoTokenizer.from_pretrained(koboldai_vars.custmodpth)
+                        elif vars_4bit.get("llama4bit"):
+                            model = llama_load_quant(koboldai_vars.custmodpth, vars_4bit["llama4bit"], 4)
+                            tokenizer = AutoTokenizer.from_pretrained(koboldai_vars.custmodpth)
                         else:
-                            raise RuntimeError("It looks like your environment variable for LLAMA_4BIT is not set (the model path).\nPlease set this variable before proceeding.")
+                            try:
+                                tokenizer = AutoTokenizer.from_pretrained(koboldai_vars.custmodpth, revision=koboldai_vars.revision, cache_dir="cache", use_fast=False)
+                            except Exception as e:
+                                try:
+                                    tokenizer = AutoTokenizer.from_pretrained(koboldai_vars.custmodpth, revision=koboldai_vars.revision, cache_dir="cache")
+                                except Exception as e:
+                                    try:
+                                        tokenizer = GPT2Tokenizer.from_pretrained(koboldai_vars.custmodpth, revision=koboldai_vars.revision, cache_dir="cache")
+                                    except Exception as e:
+                                        tokenizer = GPT2Tokenizer.from_pretrained("gpt2", revision=koboldai_vars.revision, cache_dir="cache")
+                            model     = AutoModelForCausalLM.from_pretrained(koboldai_vars.custmodpth, revision=koboldai_vars.revision, cache_dir="cache", **lowmem)
 
                         if model is None:
                             raise RuntimeError("Model returned 'None'. This is not expected to happen, but due to this, the model will not load.")
