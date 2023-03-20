@@ -3248,7 +3248,12 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
             #koboldai_vars.badwords = gettokenids("[")
             #for key in koboldai_vars.badwords:
             #    koboldai_vars.badwordsids.append([vocab[key]])
-            
+
+            # These are model specific overrides if a model has bad defaults
+            if koboldai_vars.model_type == "llama":
+                tokenizer.decode_with_prefix_space = True
+                tokenizer.add_bos_token = False
+                        
             logger.info(f"Pipeline created: {koboldai_vars.model}")
         
         else:

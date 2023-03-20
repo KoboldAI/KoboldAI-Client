@@ -5,12 +5,13 @@ channels:
   - defaults
 dependencies:
   - colorama
-  - flask-socketio
-  - flask-session
+  - flask-socketio=5.3.2
+  - flask-session=0.4.0
+  - python-socketio=5.7.2
   - pytorch=1.11.*
   - python=3.8.*
   - cudatoolkit=11.1
-  - eventlet
+  - eventlet=0.33.3
   - dnspython=2.2.1
   - markdown
   - bleach=4.1.0
