@@ -1,4 +1,4 @@
-from typing import List, Union
+from typing import Any, List, Union
 from tokenizers import Tokenizer
 import torch
 from transformers import PreTrainedTokenizer
@@ -10,10 +10,16 @@ class GenericTokenizer:
     def __init__(self, tokenizer: Union[Tokenizer, PreTrainedTokenizer]) -> None:
         self.tokenizer = tokenizer
 
-        # TODO: Get rid of this
-        self._koboldai_header = []
+    def __getattr__(self, name: str) -> Any:
+        # Fall back to tokenizer for non-generic stuff
+        return getattr(self.tokenizer, name)
 
-        self.get_vocab = tokenizer.get_vocab
+    def __setattr__(self, name: str, value: Any) -> None:
+        # To prevent infinite recursion on __init__ setting
+        if name == "tokenizer":
+            super().__setattr__(name, value)
+            return
+        setattr(self.tokenizer, name, value)
 
     def encode(self, text: str) -> list:
         if isinstance(self.tokenizer, PreTrainedTokenizer):

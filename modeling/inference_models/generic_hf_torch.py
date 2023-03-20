@@ -137,8 +137,8 @@ class GenericHFTorchInferenceModel(HFTorchInferenceModel):
                         # Use save_pretrained to convert fp32 models to fp16,
                         # unless we are using disk cache because save_pretrained
                         # is not supported in that case
-                        model = model.half()
-                        model.save_pretrained(
+                        self.model = self.model.half()
+                        self.model.save_pretrained(
                             self.get_local_model_path(ignore_existance=True),
                             max_shard_size="500MiB",
                         )
