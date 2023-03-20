@@ -2958,7 +2958,7 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
                                     try:
                                         f = z.open(f"archive/data/{storage_key}")
                                     except:
-                                        ziproot = z.namelist()[0].split(os.sep)[0]
+                                        ziproot = z.namelist()[0].split("/")[0]
                                         f = z.open(f"{ziproot}/data/{storage_key}")
                                     current_offset = 0
                                 if current_offset != model_dict[key].seek_offset:
