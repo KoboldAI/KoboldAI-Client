@@ -2915,10 +2915,10 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
 
                     @functools.lru_cache(maxsize=None)
                     def get_original_key(key):
-                        # try:
-                        return max((original_key for original_key in utils.module_names if original_key.endswith(key)), key=len)
-                        # except ValueError:
-                        #     return key
+                        try:
+                            return max((original_key for original_key in utils.module_names if original_key.endswith(key)), key=len)
+                        except ValueError:
+                            return key
 
                     for key, value in model_dict.items():
                         original_key = get_original_key(key)
@@ -3128,8 +3128,8 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
                         path_4bit = os.path.join(koboldai_vars.custmodpth, "4bit.pt")
 
                         if not os.path.isfile(path_4bit):
-                            print(f"4-bit file {path_4bit} not found, aborting 4-bit load")
-                            use_4_bit = False
+                            print(f"4-bit file {path_4bit} not found, loading failed")
+                            raise RuntimeError(f"4-bit load failed. PT-File not found at {path_4bit}")
 
                         if use_4_bit:
                             print(f"Trying to load {koboldai_vars.model_type} model in 4-bit")
@@ -3155,7 +3155,7 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
                                         tokenizer = GPT2Tokenizer.from_pretrained(koboldai_vars.custmodpth, revision=koboldai_vars.revision, cache_dir="cache")
                                     except Exception as e:
                                         tokenizer = GPT2Tokenizer.from_pretrained("gpt2", revision=koboldai_vars.revision, cache_dir="cache")
-                            model     = AutoModelForCausalLM.from_pretrained(koboldai_vars.custmodpth, revision=koboldai_vars.revision, cache_dir="cache", **lowmem)
+                            model = AutoModelForCausalLM.from_pretrained(koboldai_vars.custmodpth, revision=koboldai_vars.revision, cache_dir="cache", **lowmem)
 
                         if model is None:
                             raise RuntimeError("Model returned 'None'. This is not expected to happen, but due to this, the model will not load.")
