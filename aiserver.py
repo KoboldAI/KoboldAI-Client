@@ -70,7 +70,7 @@ from utils import debounce
 import utils
 import koboldai_settings
 import torch
-from transformers import StoppingCriteria, GPT2Tokenizer, GPT2LMHeadModel, GPTNeoForCausalLM, GPTNeoModel, AutoModelForCausalLM, AutoModelForSeq2SeqLM, AutoTokenizer, PreTrainedModel, modeling_utils, AutoModelForTokenClassification
+from transformers import StoppingCriteria, GPT2Tokenizer, GPT2LMHeadModel, GPTNeoForCausalLM, GPTNeoModel, AutoModelForCausalLM, AutoModelForSeq2SeqLM, AutoTokenizer, PreTrainedModel, modeling_utils, AutoModelForTokenClassification, LlamaTokenizer
 from transformers import __version__ as transformers_version
 import transformers
 try:
@@ -1114,14 +1114,20 @@ def device_config(config):
         koboldai_vars.usegpu = False
         return
 
-def move_model_to_devices(model):
+def move_model_to_devices(model, use_4_bit=False):
     global generator
 
     if(not utils.HAS_ACCELERATE and not koboldai_vars.breakmodel):
         if(koboldai_vars.usegpu):
-            model = model.to(koboldai_vars.gpu_device)
+            if not use_4_bit:
+                model = model.half().to(koboldai_vars.gpu_device)
+            else:
+                model = model.to(koboldai_vars.gpu_device)
         else:
-            model = model.to('cpu')
+            if not use_4_bit:
+                model = model.to('cpu').float()
+            else:
+                model = model.to('cpu')
         generator = model.generate
         return
 
@@ -1149,6 +1155,8 @@ def move_model_to_devices(model):
         generator = model.generate
         return
 
+    if not use_4_bit:
+        model.half()
     gc.collect()
 
     if(hasattr(model, "transformer")):
@@ -1518,11 +1526,6 @@ def general_startup(override_args=None):
     parser.add_argument('-v', '--verbosity', action='count', default=0, help="The default logging level is ERROR or higher. This value increases the amount of logging seen in your screen")
     parser.add_argument('-q', '--quiesce', action='count', default=0, help="The default logging level is ERROR or higher. This value decreases the amount of logging seen in your screen")
 
-    # 4-bit stuff
-    parser.add_argument('--gptj4bit', help="Load a GPT-J model 4-bit pt file with this path")
-    parser.add_argument('--gptneox4bit', help="Load a GPT-NeoX model 4-bit pt file with this path")
-    parser.add_argument('--llama4bit', help="Load a Llama model 4-bit pt file with this path")
-
     #args: argparse.Namespace = None
     if "pytest" in sys.modules and override_args is None:
         args = parser.parse_args([])
@@ -1626,11 +1629,6 @@ def general_startup(override_args=None):
     koboldai_vars.smanrename = koboldai_vars.host == args.override_rename
 
     koboldai_vars.aria2_port = args.aria2_port or 6799
-
-    global vars_4bit
-    vars_4bit["gptj4bit"] = args.gptj4bit
-    vars_4bit["gptneox4bit"] = args.gptneox4bit
-    vars_4bit["llama4bit"] = args.llama4bit
     
     #Now let's look to see if we are going to force a load of a model from a user selected folder
     if(koboldai_vars.model == "selectfolder"):
@@ -1777,6 +1775,7 @@ def get_model_info(model, directory=""):
                          'break_values': break_values, 'gpu_count': gpu_count,
                          'url': url, 'gpu_names': gpu_names, 'models_on_url': models_on_url, 'show_online_model_select': show_online_model_select,
                          'bit_8_available': koboldai_vars.bit_8_available if koboldai_vars.experimental_features else False,
+                         'bit_4_available': koboldai_vars.bit_4_available if koboldai_vars.experimental_features else False,
                          'show_custom_model_box': show_custom_model_box})
     if send_horde_models:
         get_cluster_models({'key': key_value, 'url': default_url})
@@ -1917,6 +1916,18 @@ def get_cluster_models(msg):
     emit('from_server', {'cmd': 'oai_engines', 'data': engines, 'online_model': online_model}, broadcast=True, room="UI_1")
     emit('oai_engines', {'data': engines, 'online_model': online_model}, broadcast=False, room="UI_2")
 
+
+@socketio.on("use_4_bit_toggle")
+def use_4_bit_toggle(msg):
+    # Disable lazy_load and breakmodel
+    if msg["use_4_bit"]:
+        koboldai_vars.lazy_load = False
+        koboldai_vars.nobreakmodel = True
+    else:
+        koboldai_vars.lazy_load = True
+        koboldai_vars.nobreakmodel = False
+
+    # TODO: Reload JS values for this stuff
 
 # Function to patch transformers to use our soft prompt
 def patch_causallm(model):
@@ -2647,7 +2658,7 @@ def unload_model():
     koboldai_vars.badwordsids = koboldai_settings.badwordsids_default
     
     
-def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=False, online_model="", use_breakmodel_args=False, breakmodel_args_default_to_cpu=False, url=None, use_8_bit=False):
+def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=False, online_model="", use_breakmodel_args=False, breakmodel_args_default_to_cpu=False, url=None, use_8_bit=False, use_4_bit=False):
     global model
     global generator
     global torch
@@ -2684,7 +2695,7 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
         disk_layers = args.breakmodel_disklayers
     if breakmodel_args_default_to_cpu and disk_layers is None:
         disk_layers = args.breakmodel_disklayers = 0
-    
+
     unload_model()
     
     if online_model == "":
@@ -2904,10 +2915,10 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
 
                     @functools.lru_cache(maxsize=None)
                     def get_original_key(key):
-                        try:
-                            return max((original_key for original_key in utils.module_names if original_key.endswith(key)), key=len)
-                        except ValueError:
-                            return key
+                        # try:
+                        return max((original_key for original_key in utils.module_names if original_key.endswith(key)), key=len)
+                        # except ValueError:
+                        #     return key
 
                     for key, value in model_dict.items():
                         original_key = get_original_key(key)
@@ -2970,10 +2981,11 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
                                 nbytes = size if dtype is torch.bool else size * ((torch.finfo if dtype.is_floating_point else torch.iinfo)(dtype).bits >> 3)
                                 #print(f"Transferring <{key}>  to  {f'({device.upper()})' if isinstance(device, str) else '[device ' + str(device) + ']'} ... ", end="", flush=True)
                                 model_dict[key] = model_dict[key].materialize(f, map_location="cpu")
-                                # if model_dict[key].dtype is torch.float32:
-                                #     koboldai_vars.fp32_model = True
-                                # if convert_to_float16 and breakmodel.primary_device != "cpu" and koboldai_vars.hascuda and (koboldai_vars.breakmodel or koboldai_vars.usegpu) and model_dict[key].dtype is torch.float32:
-                                #     model_dict[key] = model_dict[key].to(torch.float16)
+                                if not use_4_bit:
+                                    if model_dict[key].dtype is torch.float32:
+                                        koboldai_vars.fp32_model = True
+                                    if convert_to_float16 and breakmodel.primary_device != "cpu" and koboldai_vars.hascuda and (koboldai_vars.breakmodel or koboldai_vars.usegpu) and model_dict[key].dtype is torch.float32:
+                                        model_dict[key] = model_dict[key].to(torch.float16)
                                 if breakmodel.primary_device == "cpu" or (not koboldai_vars.usegpu and not koboldai_vars.breakmodel and model_dict[key].dtype is torch.float16):
                                     model_dict[key] = model_dict[key].to(torch.float32)
                                 if device == "shared":
@@ -2997,16 +3009,17 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
                                 if utils.offload_index:
                                     for name, tensor in utils.named_buffers:
                                         dtype = tensor.dtype
-                                        # if convert_to_float16 and breakmodel.primary_device != "cpu" and koboldai_vars.hascuda and (koboldai_vars.breakmodel or koboldai_vars.usegpu):
-                                        #     dtype = torch.float16
-                                        # if breakmodel.primary_device == "cpu" or (not koboldai_vars.usegpu and not koboldai_vars.breakmodel):
-                                        #     dtype = torch.float32
-                                        # if name in model_dict and model_dict[name].dtype is not dtype:
-                                        #     model_dict[name] = model_dict[name].to(dtype)
-                                        # if tensor.dtype is not dtype:
-                                        #     tensor = tensor.to(dtype)
-                                        # if name not in utils.offload_index:
-                                        #     accelerate.utils.offload_weight(tensor, name, "accelerate-disk-cache", index=utils.offload_index)
+                                        if not use_4_bit:
+                                            if convert_to_float16 and breakmodel.primary_device != "cpu" and koboldai_vars.hascuda and (koboldai_vars.breakmodel or koboldai_vars.usegpu):
+                                                dtype = torch.float16
+                                            if breakmodel.primary_device == "cpu" or (not koboldai_vars.usegpu and not koboldai_vars.breakmodel):
+                                                dtype = torch.float32
+                                            if name in model_dict and model_dict[name].dtype is not dtype:
+                                                model_dict[name] = model_dict[name].to(dtype)
+                                            if tensor.dtype is not dtype:
+                                                tensor = tensor.to(dtype)
+                                            if name not in utils.offload_index:
+                                                accelerate.utils.offload_weight(tensor, name, "accelerate-disk-cache", index=utils.offload_index)
                                     accelerate.utils.save_offload_index(utils.offload_index, "accelerate-disk-cache")
                                 utils.bar.close()
                                 utils.bar = None
@@ -3065,10 +3078,16 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
                 koboldai_vars.modeldim = get_hidden_size_from_model(model)
                 # Is CUDA available? If so, use GPU, otherwise fall back to CPU
                 if(koboldai_vars.hascuda and koboldai_vars.usegpu):
-                    model = model.to(koboldai_vars.gpu_device)
+                    if not use_4_bit:
+                        model = model.half().to(koboldai_vars.gpu_device)
+                    else:
+                        model = model.to(koboldai_vars.gpu_device)
                     generator = model.generate
                 else:
-                    model = model.to('cpu')
+                    if not use_4_bit:
+                        model = model.to('cpu').float()
+                    else:
+                        model = model.to('cpu')
                     generator = model.generate
                 patch_causallm(model)
             # Use the Generic implementation
@@ -3105,17 +3124,26 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
                     if(koboldai_vars.lazy_load):  # torch_lazy_loader.py and low_cpu_mem_usage can't be used at the same time
                         lowmem = {}
                     if(os.path.isdir(koboldai_vars.custmodpth)):
-                        global vars_4bit
 
-                        if vars_4bit.get("gptj4bit"):
-                            model = gptj_load_quant(koboldai_vars.custmodpth, vars_4bit["gptj4bit"], 4)
-                            tokenizer = AutoTokenizer.from_pretrained(koboldai_vars.custmodpth)
-                        elif vars_4bit.get("gptneox4bit"):
-                            model = gptneox_load_quant(koboldai_vars.custmodpth, vars_4bit["gptneox4bit"], 4)
-                            tokenizer = AutoTokenizer.from_pretrained(koboldai_vars.custmodpth)
-                        elif vars_4bit.get("llama4bit"):
-                            model = llama_load_quant(koboldai_vars.custmodpth, vars_4bit["llama4bit"], 4)
-                            tokenizer = AutoTokenizer.from_pretrained(koboldai_vars.custmodpth)
+                        path_4bit = os.path.join(koboldai_vars.custmodpth, "4bit.pt")
+
+                        if not os.path.isfile(path_4bit):
+                            print(f"4-bit file {path_4bit} not found, aborting 4-bit load")
+                            use_4_bit = False
+
+                        if use_4_bit:
+                            print(f"Trying to load {koboldai_vars.model_type} model in 4-bit")
+                            if koboldai_vars.model_type == "gptj":
+                                model = gptj_load_quant(koboldai_vars.custmodpth, path_4bit, 4)
+                                tokenizer = AutoTokenizer.from_pretrained(koboldai_vars.custmodpth)
+                            elif koboldai_vars.model_type == "gpt_neox":
+                                model = gptneox_load_quant(koboldai_vars.custmodpth, path_4bit, 4)
+                                tokenizer = AutoTokenizer.from_pretrained(koboldai_vars.custmodpth)
+                            elif koboldai_vars.model_type == "llama":
+                                model = llama_load_quant(koboldai_vars.custmodpth, path_4bit, 4)
+                                tokenizer = LlamaTokenizer.from_pretrained(koboldai_vars.custmodpth)
+                            else:
+                                raise RuntimeError(f"4-bit load failed. Model type {koboldai_vars.model_type} not supported in 4-bit")
                         else:
                             try:
                                 tokenizer = AutoTokenizer.from_pretrained(koboldai_vars.custmodpth, revision=koboldai_vars.revision, cache_dir="cache", use_fast=False)
@@ -3185,6 +3213,8 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
                             import shutil
                             tokenizer.save_pretrained("models/{}".format(koboldai_vars.model.replace('/', '_')))
                             if(koboldai_vars.fp32_model and ("breakmodel" not in globals() or not breakmodel.disk_blocks)):  # Use save_pretrained to convert fp32 models to fp16, unless we are using disk cache because save_pretrained is not supported in that case
+                                if not use_4_bit:
+                                    model = model.half()
                                 model.save_pretrained("models/{}".format(koboldai_vars.model.replace('/', '_')), max_shard_size="500MiB")
                             else:  # For fp16 models, we can just copy the model files directly
                                 import transformers.configuration_utils
@@ -3218,27 +3248,36 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
                 if(koboldai_vars.hascuda):
                     if(koboldai_vars.usegpu):
                         koboldai_vars.modeldim = get_hidden_size_from_model(model)
-                        model = model.to(koboldai_vars.gpu_device)
+                        if not use_4_bit:
+                            model = model.half().to(koboldai_vars.gpu_device)
+                        else:
+                            model = model.to(koboldai_vars.gpu_device)
                         generator = model.generate
                     elif(koboldai_vars.breakmodel):  # Use both RAM and VRAM (breakmodel)
                         koboldai_vars.modeldim = get_hidden_size_from_model(model)
                         if(not koboldai_vars.lazy_load):
                             device_config(model.config)
-                        move_model_to_devices(model)
+                        move_model_to_devices(model, use_4_bit)
                     elif(utils.HAS_ACCELERATE and __import__("breakmodel").disk_blocks > 0):
-                        move_model_to_devices(model)
+                        move_model_to_devices(model, use_4_bit)
                         koboldai_vars.modeldim = get_hidden_size_from_model(model)
                         generator = model.generate
                     else:
-                        model = model.to('cpu')
+                        if not use_4_bit:
+                            model.to('cpu').float()
+                        else:
+                            model.to('cpu')
                         koboldai_vars.modeldim = get_hidden_size_from_model(model)
                         generator = model.generate
                 elif(utils.HAS_ACCELERATE and __import__("breakmodel").disk_blocks > 0):
-                    move_model_to_devices(model)
+                    move_model_to_devices(model, use_4_bit)
                     koboldai_vars.modeldim = get_hidden_size_from_model(model)
                     generator = model.generate
                 else:
-                    model.to('cpu')
+                    if not use_4_bit:
+                        model.to('cpu').float()
+                    else:
+                        model.to('cpu')
                     koboldai_vars.modeldim = get_hidden_size_from_model(model)
                     generator = model.generate
             
@@ -8784,7 +8823,7 @@ def UI_2_load_model(data):
     koboldai_vars.model = data['model']
     koboldai_vars.custmodpth = data['path']
     print("loading Model")
-    load_model(use_gpu=data['use_gpu'], gpu_layers=data['gpu_layers'], disk_layers=data['disk_layers'], online_model=data['online_model'], url=koboldai_vars.colaburl, use_8_bit=data['use_8_bit'])
+    load_model(use_gpu=data['use_gpu'], gpu_layers=data['gpu_layers'], disk_layers=data['disk_layers'], online_model=data['online_model'], url=koboldai_vars.colaburl, use_8_bit=data['use_8_bit'], use_4_bit=data['use_4_bit'])
 
 #==================================================================#
 # Event triggered when load story is clicked

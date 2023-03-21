@@ -1207,7 +1207,7 @@ class system_settings(settings):
                          'lua_koboldcore', 'sp', 'sp_length', '_horde_pid', 'horde_share', 'aibusy', 
                          'serverstarted', 'inference_config', 'image_pipeline', 'summarizer', 
                          'summary_tokenizer', 'use_colab_tpu', 'noai', 'disable_set_aibusy', 'cloudflare_link', 'tts_model',
-                         'generating_image', 'bit_8_available', 'host', 'hascuda', 'usegpu', 'rng_states']
+                         'generating_image', 'bit_8_available', 'bit_4_available', 'host', 'hascuda', 'usegpu', 'rng_states']
     settings_name = "system"
     def __init__(self, socketio, koboldai_var):
         self._socketio = socketio
@@ -1302,6 +1302,8 @@ class system_settings(settings):
                     elif torch.cuda.get_device_properties(device).major == 7 and torch.cuda.get_device_properties(device).minor >= 2:
                         self.bit_8_available = True
                         break
+        # Check if repos/gptq exists for 4-bit mode
+        self.bit_4_available = os.path.isdir("repos/gptq")
         self.seen_messages = []
         
         
