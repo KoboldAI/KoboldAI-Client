@@ -3102,7 +3102,7 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
                 
                 # If we're using torch_lazy_loader, we need to get breakmodel config
                 # early so that it knows where to load the individual model tensors
-                if (utils.HAS_ACCELERATE or koboldai_vars.lazy_load and koboldai_vars.hascuda and koboldai_vars.breakmodel) and not koboldai_vars.nobreakmodel:
+                if (utils.HAS_ACCELERATE or koboldai_vars.lazy_load and koboldai_vars.hascuda and koboldai_vars.breakmodel) and not koboldai_vars.nobreakmodel and not use_4_bit:
                     device_config(model_config)
 
                 # Download model from Huggingface if it does not exist, otherwise load locally
@@ -3133,6 +3133,8 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
 
                         if use_4_bit:
                             print(f"Trying to load {koboldai_vars.model_type} model in 4-bit")
+                            koboldai_vars.breakmodel = False
+                            koboldai_vars.usegpu = True
                             if koboldai_vars.model_type == "gptj":
                                 model = gptj_load_quant(koboldai_vars.custmodpth, path_4bit, 4)
                                 tokenizer = AutoTokenizer.from_pretrained(koboldai_vars.custmodpth)
@@ -3255,7 +3257,7 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
                         generator = model.generate
                     elif(koboldai_vars.breakmodel):  # Use both RAM and VRAM (breakmodel)
                         koboldai_vars.modeldim = get_hidden_size_from_model(model)
-                        if(not koboldai_vars.lazy_load):
+                        if(not koboldai_vars.lazy_load and not use_4_bit):
                             device_config(model.config)
                         move_model_to_devices(model, use_4_bit)
                     elif(utils.HAS_ACCELERATE and __import__("breakmodel").disk_blocks > 0):
