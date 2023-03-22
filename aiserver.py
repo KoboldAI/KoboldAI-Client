@@ -3125,13 +3125,13 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
                         lowmem = {}
                     if(os.path.isdir(koboldai_vars.custmodpth)):
 
-                        path_4bit = os.path.join(koboldai_vars.custmodpth, "4bit.pt")
-
-                        if not os.path.isfile(path_4bit):
-                            print(f"4-bit file {path_4bit} not found, loading failed")
-                            raise RuntimeError(f"4-bit load failed. PT-File not found at {path_4bit}")
-
                         if use_4_bit:
+                            path_4bit = os.path.join(koboldai_vars.custmodpth, "4bit.pt")
+
+                            if not os.path.isfile(path_4bit):
+                                print(f"4-bit file {path_4bit} not found, loading failed")
+                                raise RuntimeError(f"4-bit load failed. PT-File not found at {path_4bit}")
+
                             print(f"Trying to load {koboldai_vars.model_type} model in 4-bit")
                             koboldai_vars.breakmodel = False
                             koboldai_vars.usegpu = True
