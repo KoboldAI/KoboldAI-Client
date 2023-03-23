@@ -3136,13 +3136,13 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
                             koboldai_vars.breakmodel = False
                             koboldai_vars.usegpu = True
                             if koboldai_vars.model_type == "gptj":
-                                model = gptj_load_quant(koboldai_vars.custmodpth, path_4bit, 4)
+                                model = gptj_load_quant(koboldai_vars.custmodpth, path_4bit, 4, -1)
                                 tokenizer = AutoTokenizer.from_pretrained(koboldai_vars.custmodpth)
                             elif koboldai_vars.model_type == "gpt_neox":
-                                model = gptneox_load_quant(koboldai_vars.custmodpth, path_4bit, 4)
+                                model = gptneox_load_quant(koboldai_vars.custmodpth, path_4bit, 4, -1)
                                 tokenizer = AutoTokenizer.from_pretrained(koboldai_vars.custmodpth)
                             elif koboldai_vars.model_type == "llama":
-                                model = llama_load_quant(koboldai_vars.custmodpth, path_4bit, 4)
+                                model = llama_load_quant(koboldai_vars.custmodpth, path_4bit, 4, -1)
                                 tokenizer = LlamaTokenizer.from_pretrained(koboldai_vars.custmodpth)
                             else:
                                 raise RuntimeError(f"4-bit load failed. Model type {koboldai_vars.model_type} not supported in 4-bit")
