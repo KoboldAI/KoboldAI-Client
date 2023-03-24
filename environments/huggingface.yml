@@ -30,7 +30,7 @@ dependencies:
     - flask-ngrok
     - flask-cors
     - lupa==1.10
-    - git+https://github.com/zphang/transformers@llama_push
+    - git+https://github.com/huggingface/transformers@88dae78f4d204428568f749e864ef5ba09da7d24
     - git+https://github.com/huggingface/datasets@test-pandas-2.0.0rc
     - huggingface_hub==0.12.1
     - safetensors
