@@ -94,7 +94,6 @@ sys.path.insert(0, os.path.abspath(Path("repos/gptq")))
 from gptj import load_quant as gptj_load_quant
 from gptneox import load_quant as gptneox_load_quant
 from llama import load_quant as llama_load_quant
-vars_4bit = {}
 
 
 if lupa.LUA_VERSION[:2] != (5, 4):
@@ -3127,9 +3126,29 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
 
                         if use_4_bit:
                             path_4bit = os.path.join(koboldai_vars.custmodpth, "4bit.pt")
+                            path_4bit_old = os.path.join(koboldai_vars.custmodpth, "4bit-old.pt")
+
+                            # Monkey-patch in old-format pt-file support
+                            if not os.path.isfile(path_4bit):
+                                print(f"4-bit file {path_4bit} not found, falling back to {path_4bit_old}")
+                                path_4bit = path_4bit_old
+
+                                import llama, opt, gptneox, gptj, old_quant, quant_cuda_old
+                                llama.make_quant = old_quant.old_make_quant
+                                opt.make_quant = old_quant.old_make_quant
+                                gptneox.make_quant = old_quant.old_make_quant
+                                gptj.make_quant = old_quant.old_make_quant
+                            elif llama.make_quant == old_quant.old_make_quant:
+                                # Undo monkey patch
+                                import quant
+                                llama.make_quant = quant.make_quant
+                                opt.make_quant = quant.make_quant
+                                gptneox.make_quant = quant.make_quant
+                                gptj.make_quant = quant.make_quant
+
 
                             if not os.path.isfile(path_4bit):
-                                print(f"4-bit file {path_4bit} not found, loading failed")
+                                print(f"4-bit old-format file {path_4bit} not found, loading failed")
                                 raise RuntimeError(f"4-bit load failed. PT-File not found at {path_4bit}")
 
                             print(f"Trying to load {koboldai_vars.model_type} model in 4-bit")
