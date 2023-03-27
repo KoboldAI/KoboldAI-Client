@@ -94,6 +94,7 @@ sys.path.insert(0, os.path.abspath(Path("repos/gptq")))
 from gptj import load_quant as gptj_load_quant
 from gptneox import load_quant as gptneox_load_quant
 from llama import load_quant as llama_load_quant
+monkey_patched_4bit = False
 
 
 if lupa.LUA_VERSION[:2] != (5, 4):
@@ -3128,23 +3129,28 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
                             path_4bit = os.path.join(koboldai_vars.custmodpth, "4bit.pt")
                             path_4bit_old = os.path.join(koboldai_vars.custmodpth, "4bit-old.pt")
 
+                            global monkey_patched_4bit
+
                             # Monkey-patch in old-format pt-file support
                             if not os.path.isfile(path_4bit):
                                 print(f"4-bit file {path_4bit} not found, falling back to {path_4bit_old}")
                                 path_4bit = path_4bit_old
 
-                                import llama, opt, gptneox, gptj, old_quant, quant_cuda_old
+                                import llama, opt, gptneox, gptj, old_quant
                                 llama.make_quant = old_quant.old_make_quant
                                 opt.make_quant = old_quant.old_make_quant
                                 gptneox.make_quant = old_quant.old_make_quant
                                 gptj.make_quant = old_quant.old_make_quant
-                            elif llama.make_quant == old_quant.old_make_quant:
+                                monkey_patched_4bit = True
+                            elif monkey_patched_4bit:
                                 # Undo monkey patch
-                                import quant
+                                print("Undoing 4-bit old format monkey patch")
+                                import llama, opt, gptneox, gptj, quant
                                 llama.make_quant = quant.make_quant
                                 opt.make_quant = quant.make_quant
                                 gptneox.make_quant = quant.make_quant
                                 gptj.make_quant = quant.make_quant
+                                monkey_patched_4bit = False
 
 
                             if not os.path.isfile(path_4bit):
@@ -3165,6 +3171,8 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
                                 tokenizer = LlamaTokenizer.from_pretrained(koboldai_vars.custmodpth)
                             else:
                                 raise RuntimeError(f"4-bit load failed. Model type {koboldai_vars.model_type} not supported in 4-bit")
+
+                            model = model.float()
                         else:
                             try:
                                 tokenizer = AutoTokenizer.from_pretrained(koboldai_vars.custmodpth, revision=koboldai_vars.revision, cache_dir="cache", use_fast=False)
