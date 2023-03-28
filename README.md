@@ -1,3 +1,57 @@
+## This is a fork of KoboldAI that implements 4bit GPTQ quantized support to include Llama.
+
+### Install/Use Guide
+(This guide is for both Linux and Windows and assumes user has git installed and a basic grasp of command line use)
+
+In the command prompt/command line navigate to where you want the KoboldAI subfolder to be created.
+
+git clone https://github.com/0cc4m/KoboldAI -b latestgptq --recurse-submodules
+
+cd KoboldAI
+
+Next step, subfolder mode or B: option doesn't matter choose either
+
+[if on Windows] install_requirements.bat if it closes the window when it finishes, reopen a command prompt and navigate back to your KoboldAI directory.
+
+[if on Linux] install_requirements.sh
+
+
+[if on Windows] run commandline.bat
+
+[if on Linux] run commandline.sh
+
+commandline.bat/commandline.sh will put you in KoboldAI's virtual environment (as shown by (base) affixed to the prompt).
+
+
+cd repos
+
+cd gptq
+
+
+[if on Windows, Visual Studio 2019 must be installed with C++ compiler option] python setup_cuda.py install
+
+[if on Linux] python setup_cuda.py install
+
+After the Cuda kernel is compiled, return to KoboldAI base directory
+
+[if on Windows (only applies to windows users)] pip install flask_cors
+
+If you haven't already done so, create a model folder with the same name as your model (or whatever you want to name the folder)
+
+Put your 4bit quantized .pt in that folder with all associated .json files and tokenizer.model (.json files and tokenizer.model should be from the Huggingface model folder of the same model type).
+
+Then move your model folder to KoboldAI/models, and rename the .pt in your model folder to 4bit.pt
+
+So - your .pt's model folder should look like this: "4bit.pt, config.json, generation_config.json, pytorch_model.bin.index.json, special_tokens_map.json, tokenizer.model, tokenizer_config.json" Note: the 4bit.pt file can be in the same folder as the regular HF .bin files it was quantized from, so long as the 4-bit toggle switch is on, it'll load the quantized model (4-bit switch explained below).
+
+If you haven't done so already, exit the command prompt/leave KAI's (base) venv
+
+Run play.bat [windows] or play.sh [linux]
+
+Switch to UI2, enable Experimental UI under the Interface tab, then load your model and be sure 4-bit toggle is on.
+
+The 4bit toggle shows when a model to load is selected.
+
 ## KoboldAI - Your gateway to GPT writing
 
 This is a browser-based front-end for AI-assisted writing with multiple local & remote AI models. It offers the standard array of tools, including Memory, Author's Note, World Info, Save & Load, adjustable AI settings, formatting options, and the ability to import existing AI Dungeon adventures. You can also turn on Adventure mode and play the game like AI Dungeon Unleashed.
