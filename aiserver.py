@@ -2667,7 +2667,7 @@ def prepare_4bit_load(modelpath):
     groupsize = -1
     for p in paths_4bit:
         p = os.path.join(modelpath, p)
-        val = glob.glob(p)
+        val = [v for v in glob.glob(p) if "4bit-old" not in v]
         if val:
             result = val[0]
             fname = Path(result).parts[-1]
