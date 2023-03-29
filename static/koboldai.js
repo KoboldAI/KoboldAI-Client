@@ -3173,14 +3173,7 @@ function save_preset() {
 function set_4_bit_mode(invert=true) {
 	bit_4_status = document.getElementById("use_4_bit").checked;
 	if (invert) {
-	bit_4_status = !bit_4_status;
-	}
-	if (bit_4_status) {
-		document.getElementById("modellayers").classList.add("hidden");
-		socket.emit("use_4_bit_toggle", {"use_4_bit": false});
-	} else {
-		document.getElementById("modellayers").classList.remove("hidden");
-		socket.emit("use_4_bit_toggle", {"use_4_bit": true});
+		bit_4_status = !bit_4_status;
 	}
 }
 

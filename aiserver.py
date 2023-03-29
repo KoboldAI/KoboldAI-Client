@@ -1139,7 +1139,7 @@ def move_model_to_devices(model, use_4_bit=False):
         import accelerate.utils
         for key, value in model.state_dict().items():
             target_dtype = torch.float32 if breakmodel.primary_device == "cpu" else torch.float16
-            if(value.dtype is not target_dtype):
+            if(value.dtype not in (torch.bool, torch.int) and value.dtype is not target_dtype):
                 accelerate.utils.set_module_tensor_to_device(model, key, target_dtype)
         disk_blocks = breakmodel.disk_blocks
         gpu_blocks = breakmodel.gpu_blocks
@@ -1918,18 +1918,6 @@ def get_cluster_models(msg):
     emit('from_server', {'cmd': 'oai_engines', 'data': engines, 'online_model': online_model}, broadcast=True, room="UI_1")
     emit('oai_engines', {'data': engines, 'online_model': online_model}, broadcast=False, room="UI_2")
 
-
-@socketio.on("use_4_bit_toggle")
-def use_4_bit_toggle(msg):
-    # Disable lazy_load and breakmodel
-    if msg["use_4_bit"]:
-        koboldai_vars.lazy_load = False
-        koboldai_vars.nobreakmodel = True
-    else:
-        koboldai_vars.lazy_load = True
-        koboldai_vars.nobreakmodel = False
-
-    # TODO: Reload JS values for this stuff
 
 # Function to patch transformers to use our soft prompt
 def patch_causallm(model):
@@ -3033,11 +3021,10 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
                                 nbytes = size if dtype is torch.bool else size * ((torch.finfo if dtype.is_floating_point else torch.iinfo)(dtype).bits >> 3)
                                 #print(f"Transferring <{key}>  to  {f'({device.upper()})' if isinstance(device, str) else '[device ' + str(device) + ']'} ... ", end="", flush=True)
                                 model_dict[key] = model_dict[key].materialize(f, map_location="cpu")
-                                if not use_4_bit:
-                                    if model_dict[key].dtype is torch.float32:
-                                        koboldai_vars.fp32_model = True
-                                    if convert_to_float16 and breakmodel.primary_device != "cpu" and koboldai_vars.hascuda and (koboldai_vars.breakmodel or koboldai_vars.usegpu) and model_dict[key].dtype is torch.float32:
-                                        model_dict[key] = model_dict[key].to(torch.float16)
+                                if model_dict[key].dtype is torch.float32:
+                                    koboldai_vars.fp32_model = True
+                                if convert_to_float16 and breakmodel.primary_device != "cpu" and koboldai_vars.hascuda and (koboldai_vars.breakmodel or koboldai_vars.usegpu) and model_dict[key].dtype is torch.float32:
+                                    model_dict[key] = model_dict[key].to(torch.float16)
                                 if breakmodel.primary_device == "cpu" or (not koboldai_vars.usegpu and not koboldai_vars.breakmodel and model_dict[key].dtype is torch.float16):
                                     model_dict[key] = model_dict[key].to(torch.float32)
                                 if device == "shared":
@@ -3061,17 +3048,16 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
                                 if utils.offload_index:
                                     for name, tensor in utils.named_buffers:
                                         dtype = tensor.dtype
-                                        if not use_4_bit:
-                                            if convert_to_float16 and breakmodel.primary_device != "cpu" and koboldai_vars.hascuda and (koboldai_vars.breakmodel or koboldai_vars.usegpu):
-                                                dtype = torch.float16
-                                            if breakmodel.primary_device == "cpu" or (not koboldai_vars.usegpu and not koboldai_vars.breakmodel):
-                                                dtype = torch.float32
-                                            if name in model_dict and model_dict[name].dtype is not dtype:
-                                                model_dict[name] = model_dict[name].to(dtype)
-                                            if tensor.dtype is not dtype:
-                                                tensor = tensor.to(dtype)
-                                            if name not in utils.offload_index:
-                                                accelerate.utils.offload_weight(tensor, name, "accelerate-disk-cache", index=utils.offload_index)
+                                        if convert_to_float16 and breakmodel.primary_device != "cpu" and koboldai_vars.hascuda and (koboldai_vars.breakmodel or koboldai_vars.usegpu):
+                                            dtype = torch.float16
+                                        if breakmodel.primary_device == "cpu" or (not koboldai_vars.usegpu and not koboldai_vars.breakmodel):
+                                            dtype = torch.float32
+                                        if name in model_dict and model_dict[name].dtype is not dtype:
+                                            model_dict[name] = model_dict[name].to(dtype)
+                                        if tensor.dtype is not dtype:
+                                            tensor = tensor.to(dtype)
+                                        if name not in utils.offload_index:
+                                            accelerate.utils.offload_weight(tensor, name, "accelerate-disk-cache", index=utils.offload_index)
                                     accelerate.utils.save_offload_index(utils.offload_index, "accelerate-disk-cache")
                                 utils.bar.close()
                                 utils.bar = None
@@ -3154,7 +3140,7 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
                 
                 # If we're using torch_lazy_loader, we need to get breakmodel config
                 # early so that it knows where to load the individual model tensors
-                if (utils.HAS_ACCELERATE or koboldai_vars.lazy_load and koboldai_vars.hascuda and koboldai_vars.breakmodel) and not koboldai_vars.nobreakmodel and not use_4_bit:
+                if (utils.HAS_ACCELERATE or koboldai_vars.lazy_load and koboldai_vars.hascuda and koboldai_vars.breakmodel) and not koboldai_vars.nobreakmodel:
                     device_config(model_config)
 
                 # Download model from Huggingface if it does not exist, otherwise load locally
@@ -3182,8 +3168,6 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
                             print(f"Using 4-bit file: {path_4bit}, groupsize {groupsize}")
 
                             print(f"Trying to load {koboldai_vars.model_type} model in 4-bit")
-                            koboldai_vars.breakmodel = False
-                            koboldai_vars.usegpu = True
                             if koboldai_vars.model_type == "gptj":
                                 model = gptj_load_quant(koboldai_vars.custmodpth, path_4bit, 4, groupsize)
                                 tokenizer = AutoTokenizer.from_pretrained(koboldai_vars.custmodpth)
@@ -3311,7 +3295,7 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
                         generator = model.generate
                     elif(koboldai_vars.breakmodel):  # Use both RAM and VRAM (breakmodel)
                         koboldai_vars.modeldim = get_hidden_size_from_model(model)
-                        if(not koboldai_vars.lazy_load and not use_4_bit):
+                        if(not koboldai_vars.lazy_load):
                             device_config(model.config)
                         move_model_to_devices(model, use_4_bit)
                     elif(utils.HAS_ACCELERATE and __import__("breakmodel").disk_blocks > 0):
