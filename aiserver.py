@@ -2661,13 +2661,19 @@ def unload_model():
 
 
 def prepare_4bit_load(modelpath):
-    paths_4bit = ["4bit.pt", "4bit.safetensors"]
+    paths_4bit = ["4bit*.safetensors", "4bit*.pt"]
     paths_4bit_old = ["4bit-old.pt", "4bit-old.safetensors"]
     result = False
+    groupsize = -1
     for p in paths_4bit:
         p = os.path.join(modelpath, p)
-        if os.path.isfile(p):
-            result = p
+        val = glob.glob(p)
+        if val:
+            result = val[0]
+            fname = Path(result).parts[-1]
+            g = re.findall("^(?:4bit)(?:-)(\d+)(?:b-?)", fname)
+            if g:
+                groupsize = int(g[0])
             break
 
     global monkey_patched_4bit
@@ -2701,7 +2707,7 @@ def prepare_4bit_load(modelpath):
         gptj.make_quant = quant.make_quant
         monkey_patched_4bit = False
 
-    return result
+    return result, groupsize
     
     
 def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=False, online_model="", use_breakmodel_args=False, breakmodel_args_default_to_cpu=False, url=None, use_8_bit=False, use_4_bit=False):
@@ -3172,22 +3178,23 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
                     if(os.path.isdir(koboldai_vars.custmodpth)):
 
                         if use_4_bit:
-                            path_4bit = prepare_4bit_load(koboldai_vars.custmodpth)
+                            path_4bit, groupsize = prepare_4bit_load(koboldai_vars.custmodpth)
+                            print(f"Using 4-bit file: {path_4bit}, groupsize {groupsize}")
 
                             print(f"Trying to load {koboldai_vars.model_type} model in 4-bit")
                             koboldai_vars.breakmodel = False
                             koboldai_vars.usegpu = True
                             if koboldai_vars.model_type == "gptj":
-                                model = gptj_load_quant(koboldai_vars.custmodpth, path_4bit, 4, -1)
+                                model = gptj_load_quant(koboldai_vars.custmodpth, path_4bit, 4, groupsize)
                                 tokenizer = AutoTokenizer.from_pretrained(koboldai_vars.custmodpth)
                             elif koboldai_vars.model_type == "gpt_neox":
-                                model = gptneox_load_quant(koboldai_vars.custmodpth, path_4bit, 4, -1)
+                                model = gptneox_load_quant(koboldai_vars.custmodpth, path_4bit, 4, groupsize)
                                 tokenizer = AutoTokenizer.from_pretrained(koboldai_vars.custmodpth)
                             elif koboldai_vars.model_type == "llama":
-                                model = llama_load_quant(koboldai_vars.custmodpth, path_4bit, 4, -1)
+                                model = llama_load_quant(koboldai_vars.custmodpth, path_4bit, 4, groupsize)
                                 tokenizer = LlamaTokenizer.from_pretrained(koboldai_vars.custmodpth)
                             elif koboldai_vars.model_type == "opt":
-                                model = opt_load_quant(koboldai_vars.custmodpth, path_4bit, 4, -1)
+                                model = opt_load_quant(koboldai_vars.custmodpth, path_4bit, 4, groupsize)
                                 tokenizer = AutoTokenizer.from_pretrained(koboldai_vars.custmodpth)
                             else:
                                 raise RuntimeError(f"4-bit load failed. Model type {koboldai_vars.model_type} not supported in 4-bit")
