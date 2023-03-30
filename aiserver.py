@@ -2680,7 +2680,7 @@ def prepare_4bit_load(modelpath):
 
     # Monkey-patch in old-format pt-file support
     if not result:
-        print(f"4-bit file {path_4bit} not found, falling back to {path_4bit_old}")
+        print("4-bit file not found, falling back to old format.")
         for p in paths_4bit_old:
             p = os.path.join(modelpath, p)
             if os.path.isfile(p):
@@ -2688,8 +2688,8 @@ def prepare_4bit_load(modelpath):
                 break
 
         if not result:
-            print(f"4-bit old-format file {path_4bit} not found, loading failed")
-            raise RuntimeError(f"4-bit load failed. PT-File not found at {path_4bit}")
+            print("4-bit old-format file not found, loading failed.")
+            raise RuntimeError(f"4-bit load failed. PT-File not found.")
 
         import llama, opt, gptneox, gptj, old_quant
         llama.make_quant = old_quant.old_make_quant
