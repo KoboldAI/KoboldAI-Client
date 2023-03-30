@@ -5,6 +5,7 @@ requests
 dm-haiku == 0.0.5
 jax == 0.2.21
 jaxlib >= 0.1.69, <= 0.3.7
+chex == 0.1.5
 transformers == 4.24.0
 huggingface_hub==0.12.1
 progressbar2
