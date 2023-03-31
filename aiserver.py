@@ -2659,7 +2659,7 @@ def prepare_4bit_load(modelpath):
         if val:
             result = val[0]
             fname = Path(result).parts[-1]
-            g = re.findall("^(?:4bit)(?:-)(\d+)(?:b-?)", fname)
+            g = re.findall("^(?:4bit)(?:-)(\d+)(?:g-?)", fname)
             if g:
                 groupsize = int(g[0])
             break
