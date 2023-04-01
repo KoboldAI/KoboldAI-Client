@@ -11,6 +11,9 @@ dependencies:
   - pytorch=1.11.*
   - python=3.8.*
   - cudatoolkit=11.1
+  - cudatoolkit-dev=11.1
+  - gcc=9.*
+  - gxx=9.*
   - eventlet=0.33.3
   - dnspython=2.2.1
   - markdown
@@ -30,7 +33,7 @@ dependencies:
     - flask-ngrok
     - flask-cors
     - lupa==1.10
-    - git+https://github.com/huggingface/transformers@88dae78f4d204428568f749e864ef5ba09da7d24
+    - git+https://github.com/huggingface/transformers@c612628045822f909020f7eb6784c79700813eda
     - git+https://github.com/huggingface/datasets@test-pandas-2.0.0rc
     - huggingface_hub==0.12.1
     - safetensors
