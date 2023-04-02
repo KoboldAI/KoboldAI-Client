@@ -9,8 +9,9 @@ from typing import Union
 from transformers import AutoModelForCausalLM, GPTNeoForCausalLM
 
 import utils
-import torch_lazy_loader
+import modeling.lazy_loader as lazy_loader
 import koboldai_settings
+from logger import logger, set_logger_verbosity, quiesce_logger
 
 try:
     import breakmodel
@@ -73,20 +74,20 @@ class GenericHFTorchInferenceModel(HFTorchInferenceModel):
 
         if self.lazy_load:
             # If we're using lazy loader, we need to figure out what the model's hidden layers are called
-            with torch_lazy_loader.use_lazy_torch_load(
+            with lazy_loader.use_lazy_load(
                 dematerialized_modules=True, use_accelerate_init_empty_weights=True
             ):
                 try:
                     metamodel = AutoModelForCausalLM.from_config(self.model_config)
                 except Exception as e:
-                    print("Fell back to neo for metamodel")
+                    logger.error(f"Fell back to neo for metamodel due to {e}")
                     metamodel = GPTNeoForCausalLM.from_config(self.model_config)
                 utils.layers_module_names = utils.get_layers_module_names(metamodel)
                 utils.module_names = list(metamodel.state_dict().keys())
                 utils.named_buffers = list(metamodel.named_buffers(recurse=True))
 
         # Download model from Huggingface if it does not exist, otherwise load locally
-        with self._maybe_use_float16(), torch_lazy_loader.use_lazy_torch_load(
+        with self._maybe_use_float16(), lazy_loader.use_lazy_load(
             enable=self.lazy_load,
             callback=self._get_lazy_load_callback(utils.num_layers(self.model_config))
             if self.lazy_load
@@ -108,12 +109,12 @@ class GenericHFTorchInferenceModel(HFTorchInferenceModel):
                 old_rebuild_tensor = torch._utils._rebuild_tensor
 
                 def new_rebuild_tensor(
-                    storage: Union[torch_lazy_loader.LazyTensor, torch.Storage],
+                    storage: Union[lazy_loader.LazyTensor, torch.Storage],
                     storage_offset,
                     shape,
                     stride,
                 ):
-                    if not isinstance(storage, torch_lazy_loader.LazyTensor):
+                    if not isinstance(storage, lazy_loader.LazyTensor):
                         dtype = storage.dtype
                     else:
                         dtype = storage.storage_type.dtype
@@ -256,8 +257,6 @@ class GenericHFTorchInferenceModel(HFTorchInferenceModel):
             elif breakmodel.disk_blocks > 0:
                 # Use disk
                 self._move_to_devices()
-            elif breakmodel.disk_blocks > 0:
-                self._move_to_devices()
             else:
                 # Use CPU
                 self.model = self.model.to("cpu").float()
@@ -265,5 +264,6 @@ class GenericHFTorchInferenceModel(HFTorchInferenceModel):
             self._move_to_devices()
         else:
             self.model = self.model.to("cpu").float()
+
         self.model.kai_model = self
         utils.koboldai_vars.modeldim = self.get_hidden_size()

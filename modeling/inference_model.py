@@ -172,8 +172,12 @@ class InferenceModel:
     def load(self, save_model: bool = False, initial_load: bool = False) -> None:
         """User-facing load function. Do not override this; try `_load()` instead."""
 
+        self._pre_load()
         self._load(save_model=save_model, initial_load=initial_load)
         self._post_load()
+
+    def _pre_load(self) -> None:
+        """Pre load hook. Called before `_load()`."""
 
     def _post_load(self) -> None:
         """Post load hook. Called after `_load()`."""

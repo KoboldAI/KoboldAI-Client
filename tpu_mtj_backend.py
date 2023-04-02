@@ -674,7 +674,7 @@ def read_neox_checkpoint(state, path, config, checkpoint_shards=2):
 
     import torch
     import torch.utils.dlpack
-    import torch_lazy_loader
+    import modeling.lazy_loader as lazy_loader
     from tqdm.auto import tqdm
 
     move_xmap = jax.experimental.maps.xmap(
@@ -722,7 +722,7 @@ def read_neox_checkpoint(state, path, config, checkpoint_shards=2):
             continue
         layer = checkpoint_layer - 2
         shards = []
-        with torch_lazy_loader.use_custom_unpickler(torch_lazy_loader.RestrictedUnpickler):
+        with lazy_loader.use_custom_unpickler(lazy_loader.RestrictedUnpickler):
             for checkpoint_shard in range(checkpoint_shards):
                 shards.append(torch.load(path_template.format(layer=checkpoint_layer, shard=checkpoint_shard), map_location="cpu"))
         for key in shards[0]:
@@ -997,7 +997,7 @@ def load_model(path: str, driver_version="tpu_driver0.1_dev20210607", hf_checkpo
                 model_spec[key] = spec["mtj"].copy()
                 model_spec[key]["module"] = "causal_transformer_shard/~/" + model_spec[key]["module"].format(layer=layer)
 
-    import torch_lazy_loader
+    import modeling.lazy_loader as lazy_loader
     import torch
     from tqdm.auto import tqdm
     import functools
@@ -1061,7 +1061,7 @@ def load_model(path: str, driver_version="tpu_driver0.1_dev20210607", hf_checkpo
                         current_offset = model_dict[key].seek_offset
                     spec = model_spec[model_spec_key]
                     transforms = set(spec.get("transforms", ()))
-                    if not isinstance(model_dict[key], torch_lazy_loader.LazyTensor):
+                    if not isinstance(model_dict[key], lazy_loader.LazyTensor):
                         error = f"Duplicate key {repr(key)}"
                         print("\n\nERROR:  " + error, file=sys.stderr)
                         raise RuntimeError(error)
@@ -1141,7 +1141,7 @@ def load_model(path: str, driver_version="tpu_driver0.1_dev20210607", hf_checkpo
         import shutil
         shutil.move(koboldai_vars.model.replace('/', '_'), "models/{}".format(koboldai_vars.model.replace('/', '_')))
     print("\n", flush=True)
-    with torch_lazy_loader.use_lazy_torch_load(callback=callback, dematerialized_modules=True):
+    with lazy_loader.use_lazy_load(callback=callback, dematerialized_modules=True):
         if(os.path.isdir(koboldai_vars.custmodpth)):
             try:
                 tokenizer = AutoTokenizer.from_pretrained(koboldai_vars.custmodpth, revision=koboldai_vars.revision, cache_dir="cache", use_fast=False)
