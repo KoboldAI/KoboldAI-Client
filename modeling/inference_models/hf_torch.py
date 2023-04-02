@@ -315,7 +315,11 @@ class HFTorchInferenceModel(HFInferenceModel):
             )
             if value.dtype is not target_dtype:
                 accelerate.utils.set_module_tensor_to_device(
-                    self.model, key, target_dtype
+                    self.model,
+                    tensor_name=key,
+                    device=torch.device(value.device),
+                    value=value,
+                    dtype=target_dtype,
                 )
 
         disk_blocks = breakmodel.disk_blocks
