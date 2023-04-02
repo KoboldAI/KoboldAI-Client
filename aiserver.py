@@ -3144,6 +3144,7 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
 
                 if offload_4bit:
                     koboldai_vars.lazy_load = False
+                    print("4-bit CPU offloader active")
                 
                 # If we're using torch_lazy_loader, we need to get breakmodel config
                 # early so that it knows where to load the individual model tensors
@@ -3176,10 +3177,16 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
 
                             print(f"Trying to load {koboldai_vars.model_type} model in 4-bit")
                             if koboldai_vars.model_type == "gptj":
-                                model = gptj_load_quant(koboldai_vars.custmodpth, path_4bit, 4, groupsize)
+                                if offload_4bit:
+                                    model = load_quant_offload(gptj_load_quant, koboldai_vars.custmodpth, path_4bit, 4, groupsize, gpu_layers_list)
+                                else:
+                                    model = gptj_load_quant(koboldai_vars.custmodpth, path_4bit, 4, groupsize)
                                 tokenizer = AutoTokenizer.from_pretrained(koboldai_vars.custmodpth)
                             elif koboldai_vars.model_type == "gpt_neox":
-                                model = gptneox_load_quant(koboldai_vars.custmodpth, path_4bit, 4, groupsize)
+                                if offload_4bit:
+                                    model = load_quant_offload(gptneox_load_quant, koboldai_vars.custmodpth, path_4bit, 4, groupsize, gpu_layers_list)
+                                else:
+                                    model = gptneox_load_quant(koboldai_vars.custmodpth, path_4bit, 4, groupsize)
                                 tokenizer = AutoTokenizer.from_pretrained(koboldai_vars.custmodpth)
                             elif koboldai_vars.model_type == "llama":
                                 if offload_4bit:
@@ -3188,7 +3195,10 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
                                     model = llama_load_quant(koboldai_vars.custmodpth, path_4bit, 4, groupsize)
                                 tokenizer = LlamaTokenizer.from_pretrained(koboldai_vars.custmodpth)
                             elif koboldai_vars.model_type == "opt":
-                                model = opt_load_quant(koboldai_vars.custmodpth, path_4bit, 4, groupsize)
+                                if offload_4bit:
+                                    model = load_quant_offload(opt_load_quant, koboldai_vars.custmodpth, path_4bit, 4, groupsize, gpu_layers_list)
+                                else:
+                                    model = opt_load_quant(koboldai_vars.custmodpth, path_4bit, 4, groupsize)
                                 tokenizer = AutoTokenizer.from_pretrained(koboldai_vars.custmodpth)
                             else:
                                 raise RuntimeError(f"4-bit load failed. Model type {koboldai_vars.model_type} not supported in 4-bit")
