@@ -252,7 +252,7 @@ class GenericHFTorchInferenceModel(HFTorchInferenceModel):
             elif utils.koboldai_vars.breakmodel:
                 # Use both RAM and VRAM (breakmodel)
                 if not self.lazy_load:
-                    self.breakmodel_device_config(model.config)
+                    self.breakmodel_device_config(self.model.config)
                 self._move_to_devices()
             elif breakmodel.disk_blocks > 0:
                 # Use disk
