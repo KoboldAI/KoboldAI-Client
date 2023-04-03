@@ -11,9 +11,6 @@ dependencies:
   - pytorch=1.11.*
   - python=3.8.*
   - cudatoolkit=11.1
-  - cudatoolkit-dev=11.1
-  - gcc=9.*
-  - gxx=9.*
   - eventlet=0.33.3
   - dnspython=2.2.1
   - markdown
