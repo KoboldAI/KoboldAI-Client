@@ -5,48 +5,46 @@
 
 In the command prompt/command line navigate to where you want the KoboldAI subfolder to be created.
 
-git clone https://github.com/0cc4m/KoboldAI -b latestgptq --recurse-submodules
+`git clone https://github.com/0cc4m/KoboldAI -b latestgptq --recurse-submodules`
 
-cd KoboldAI
+`cd KoboldAI`
 
-Next step, subfolder mode or B: option doesn't matter choose either
+Next step, (Windows) subfolder mode or B: option doesn't matter choose either
 
-[if on Windows] install_requirements.bat if it closes the window when it finishes, reopen a command prompt and navigate back to your KoboldAI directory.
+[if on Windows] `install_requirements.bat` if it closes the window when it finishes, reopen a command prompt and navigate back to your KoboldAI directory.
 
-[if on Linux] install_requirements.sh
-
-
-[if on Windows] run commandline.bat
-
-[if on Linux] run commandline.sh
-
-commandline.bat/commandline.sh will put you in KoboldAI's virtual environment (as shown by (base) affixed to the prompt).
+[if on Linux] `install_requirements.sh`
 
 
-cd repos
+[if on Windows] run `commandline.bat`
 
-cd gptq
+[if on Linux] run `commandline.sh`
+
+`commandline.bat/commandline.sh` will put you in KoboldAI's virtual environment (as shown by (base) affixed to the prompt).
 
 
-[if on Windows, Visual Studio 2019 must be installed with C++ compiler option] python setup_cuda.py install
+`cd repos`
 
-[if on Linux] python setup_cuda.py install
+`cd gptq`
+
+
+[if on Windows, Visual Studio 2019 must be installed with C++ compiler option] `python setup_cuda.py install`
+
+[if on Linux] `python setup_cuda.py install`
 
 After the Cuda kernel is compiled, return to KoboldAI base directory
 
-[if on Windows (only applies to windows users)] pip install flask_cors
-
 If you haven't already done so, create a model folder with the same name as your model (or whatever you want to name the folder)
 
-Put your 4bit quantized .pt in that folder with all associated .json files and tokenizer.model (.json files and tokenizer.model should be from the Huggingface model folder of the same model type).
+Put your 4bit quantized .pt or .safetensors in that folder with all associated .json files and tokenizer.model (.json files and tokenizer.model should be from the Huggingface model folder of the same model type).
 
-Then move your model folder to KoboldAI/models, and rename the .pt/safetensors file in your model folder to `4bit.pt` or `4bit.safetensors` for non-groupsize models or `4bit-<groupsize>g.pt` or `4bit-<groupsize>.safetensors` for a groupsize mode (Example: `4bit-128g.safetensors`)
+Then move your model folder to KoboldAI/models, and rename the .pt or .safetensors file in your model folder to `4bit.pt` or `4bit.safetensors` for non-groupsize models or `4bit-<groupsize>g.pt` or `4bit-<groupsize>.safetensors` for a groupsize mode (Example: `4bit-128g.safetensors`)
 
 So - your .pt's model folder should look like this: "4bit.pt, config.json, generation_config.json, pytorch_model.bin.index.json, special_tokens_map.json, tokenizer.model, tokenizer_config.json" Note: the 4bit.pt file can be in the same folder as the regular HF .bin files it was quantized from, so long as the 4-bit toggle switch is on, it'll load the quantized model (4-bit switch explained below).
 
 If you haven't done so already, exit the command prompt/leave KAI's (base) venv
 
-Run play.bat [windows] or play.sh [linux]
+Run `play.bat` [windows] or `play.sh` [linux]
 
 Switch to UI2, enable Experimental UI under the Interface tab, then load your model and be sure 4-bit toggle is on.
 
