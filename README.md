@@ -40,7 +40,7 @@ If you haven't already done so, create a model folder with the same name as your
 
 Put your 4bit quantized .pt in that folder with all associated .json files and tokenizer.model (.json files and tokenizer.model should be from the Huggingface model folder of the same model type).
 
-Then move your model folder to KoboldAI/models, and rename the .pt in your model folder to 4bit.pt
+Then move your model folder to KoboldAI/models, and rename the .pt/safetensors file in your model folder to `4bit.pt` or `4bit.safetensors` for non-groupsize models or `4bit-<groupsize>g.pt` or `4bit-<groupsize>.safetensors` for a groupsize mode (Example: `4bit-128g.safetensors`)
 
 So - your .pt's model folder should look like this: "4bit.pt, config.json, generation_config.json, pytorch_model.bin.index.json, special_tokens_map.json, tokenizer.model, tokenizer_config.json" Note: the 4bit.pt file can be in the same folder as the regular HF .bin files it was quantized from, so long as the 4-bit toggle switch is on, it'll load the quantized model (4-bit switch explained below).
 
