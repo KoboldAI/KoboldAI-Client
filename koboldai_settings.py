@@ -2262,16 +2262,16 @@ class KoboldWorldInfo(object):
             self._socketio.emit("world_info_folder", {x: self.world_info_folder[x] for x in self.world_info_folder}, broadcast=True, room="UI_2")
         
     def delete_folder(self, folder):
-        if folder == "root":
-            raise Exception("removing the root folder is not supported")
         keys = [key for key in self.world_info]
         for key in keys:
             if self.world_info[key]['folder'] == folder:
                 self.delete(key)
         if folder in self.world_info_folder:
             del self.world_info_folder[folder]
+        self.sync_world_info_to_old_format()
         if self._socketio is not None:
             self._socketio.emit("delete_world_info_folder", folder, broadcast=True, room="UI_2")
+            self._socketio.emit("world_info_folder", {x: self.world_info_folder[x] for x in self.world_info_folder}, broadcast=True, room="UI_2")
         logger.debug("Calcing AI Text from WI Folder Delete")
         ignore = self._koboldai_vars.calc_ai_text()
         
@@ -2448,9 +2448,6 @@ class KoboldWorldInfo(object):
             self._socketio.emit("world_info_entry", self.world_info[uid], broadcast=True, room="UI_2")
         
     def delete(self, uid):
-        if self.world_info[uid]['folder'] == "root":
-            raise Exception("removing the root folder is not supported")
-        
         del self.world_info[uid]
         
         try:
@@ -2472,8 +2469,6 @@ class KoboldWorldInfo(object):
         ignore = self._koboldai_vars.calc_ai_text()
     
     def rename_folder(self, old_folder, folder):
-        if old_folder == "root":
-            raise Exception("renaming the root folder is not supported")
         self.story_settings.gamesaved = False
         if folder in self.world_info_folder:
             i=0
@@ -2500,7 +2495,8 @@ class KoboldWorldInfo(object):
         self.story_settings.gamesaved = False
         self.sync_world_info_to_old_format()
         if self._socketio is not None:
-            self._socketio.emit("world_info_folder", {x: self.world_info_folder[x] for x in self.world_info_folder}, broadcast=True, room="UI_2")
+            self._socketio.emit("delete_world_info_folder", old_folder, broadcast=True, room="UI_2")
+            self.send_to_ui()
     
     def reorder(self, uid, before):
         self.add_item_to_folder(uid, self.world_info[before]['folder'], before=before)
@@ -2578,6 +2574,11 @@ class KoboldWorldInfo(object):
     
     def sync_world_info_to_old_format(self):
         #Since the old UI uses world info entries for folders, we need to make some up
+        if "root" not in self.world_info_folder:
+            old_world_info_folder = self.world_info_folder
+            self.world_info_folder = OrderedDict()
+            self.world_info_folder["root"] = []
+            self.world_info_folder.update(old_world_info_folder)
         folder_entries = {}
         i=-1
         for folder in self.world_info_folder:
