@@ -973,7 +973,7 @@ def check_if_dir_is_model(path):
 #==================================================================#
 def getmodelname():
     if(koboldai_vars.online_model != ''):
-       return(f"{koboldai_vars.model}/{koboldai_vars.online_model}")
+        return(f"{koboldai_vars.model}/{koboldai_vars.online_model}")
     if(koboldai_vars.model in ("NeoCustom", "GPT2Custom", "TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX")):
         modelname = os.path.basename(os.path.normpath(koboldai_vars.custmodpth))
         return modelname
@@ -2217,7 +2217,7 @@ def lua_decode(tokens):
         from transformers import GPT2Tokenizer
         global tokenizer
         tokenizer = GPT2Tokenizer.from_pretrained("gpt2", revision=koboldai_vars.revision, cache_dir="cache")
-    return utils.decodenewlines(mtokenizer.decode(tokens))
+    return utils.decodenewlines(tokenizer.decode(tokens))
 
 #==================================================================#
 #  Encode string into list of token IDs using current tokenizer
@@ -3912,7 +3912,7 @@ def calcsubmit(txt):
                         bias += [1] * (i - top_index)
                     bias[i] = b["multiplier"]
 
-            device = get_auxilary_device()
+            device = utils.get_auxilary_device()
             attention_bias.attention_bias = torch.Tensor(bias).to(device)
             logger.info(f"Bias by {koboldai_vars.memory_attn_bias} -- {attention_bias.attention_bias}")
         logger.debug("Submit: experimental_features time {}s".format(time.time()-start_time))
@@ -6835,7 +6835,7 @@ def UI_2_send_generated_images(path):
 @socketio.on("scratchpad_prompt")
 @logger.catch
 def UI_2_scratchpad_prompt(data):
-    out_text = raw_generate(
+    out_text = model.raw_generate(
         data,
         max_new=80,
     ).decoded
@@ -7128,7 +7128,7 @@ def UI_2_generate_wi(data):
     # logger.info(prompt)
     # TODO: Make single_line mode that stops on newline rather than bans it (for title)
     out_text = tpool.execute(
-        raw_generate,
+        model.raw_generate,
         prompt,
         max_new=gen_amount,
         single_line=True,
@@ -7148,11 +7148,11 @@ def UI_2_generate_raw():
         return Response(json.dumps({"error": "No model"}), status=500)
 
     try:
-        out = raw_generate(prompt, max_new=80)
+        out = model.raw_generate(prompt, max_new=80)
     except NotImplementedError as e:
         return Response(json.dumps({"error": str(e)}), status=500)
 
-    return out
+    return out.decoded
 
 #==================================================================#
 # Load Tweaks
@@ -7780,7 +7780,7 @@ def maybe_review_story() -> None:
 
 
     out_text = tpool.execute(
-        raw_generate,
+        model.raw_generate,
         context,
         max_new=30
     ).decoded[0]
