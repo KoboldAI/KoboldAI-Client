@@ -1907,6 +1907,7 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
             from modeling.inference_models.legacy_gpt2_hf import CustomGPT2HFTorchInferenceModel
             model = CustomGPT2HFTorchInferenceModel(
                 koboldai_vars.model,
+                lazy_load=koboldai_vars.lazy_load,
                 low_mem=args.lowmem
             )
         else:
