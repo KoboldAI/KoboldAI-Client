@@ -22,9 +22,10 @@ class GenericTokenizer:
         setattr(self.tokenizer, name, value)
 
     def encode(self, text: str) -> list:
-        if isinstance(self.tokenizer, PreTrainedTokenizer):
-            return self.tokenizer.encode(text)
-        return self.tokenizer.encode(text).ids
+        ret = self.tokenizer.encode(text)
+        if isinstance(ret, list):
+            return ret
+        return ret.ids
 
     def decode(self, tokens: Union[int, List[int], torch.Tensor]) -> str:
         if isinstance(tokens, torch.Tensor):
