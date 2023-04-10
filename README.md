@@ -15,27 +15,6 @@ Next step, (Windows) subfolder mode or B: option doesn't matter choose either
 
 [if on Linux] `install_requirements.sh`
 
-
-[if on Windows] run `commandline.bat`
-
-[if on Linux] run `commandline.sh`
-
-`commandline.bat/commandline.sh` will put you in KoboldAI's virtual environment.
-On Windows, this will show (base) at the start of the prompt line.
-If it shows (base) on Linux, you most likely have a base conda environment that you need to deactivate (`conda deactivate`)
-
-Then run
-`cd repos`
-
-`cd gptq`
-
-
-[if on Windows, Visual Studio 2019 must be installed with C++ compiler option] `python setup_cuda.py install`
-
-[if on Linux] `python setup_cuda.py install`
-
-After the Cuda kernel is compiled, return to KoboldAI base directory
-
 If you haven't already done so, create a model folder with the same name as your model (or whatever you want to name the folder)
 
 Put your 4bit quantized .pt or .safetensors in that folder with all associated .json files and tokenizer.model (.json files and tokenizer.model should be from the Huggingface model folder of the same model type).
