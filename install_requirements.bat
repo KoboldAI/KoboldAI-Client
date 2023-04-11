@@ -48,9 +48,9 @@ umamba.exe create -r B:\python\ -n base
 umamba.exe install --no-shortcuts -r B:\python\ -n base -f "%~dp0\environments\huggingface.yml" -y --always-copy
 umamba.exe -r B:\ clean -a -y
 rd B:\Python\pkgs /S /Q
-subst B: /d
 call B:\python\condabin\activate
-cmd /k "pip install https://github.com/0cc4m/GPTQ-for-LLaMa/releases/download/2023-04-10/quant_cuda-0.0.0-cp38-cp38-win_amd64.whl"
+pip install "https://github.com/0cc4m/GPTQ-for-LLaMa/releases/download/2023-04-10/quant_cuda-0.0.0-cp38-cp38-win_amd64.whl"
+subst B: /d
 pause
 exit
 
@@ -63,6 +63,6 @@ umamba.exe install --no-shortcuts -r miniconda3 -n base -f environments\huggingf
 umamba.exe clean -a -y
 rd miniconda3\Python\pkgs /S /Q
 call miniconda3\condabin\activate
-cmd /k "pip install https://github.com/0cc4m/GPTQ-for-LLaMa/releases/download/2023-04-10/quant_cuda-0.0.0-cp38-cp38-win_amd64.whl"
+pip install "https://github.com/0cc4m/GPTQ-for-LLaMa/releases/download/2023-04-10/quant_cuda-0.0.0-cp38-cp38-win_amd64.whl"
 pause
 exit
