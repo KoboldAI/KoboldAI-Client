@@ -2951,7 +2951,7 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
                         koboldai_vars.status_message = "Loading model"
                         koboldai_vars.total_layers = num_tensors
                         koboldai_vars.loaded_layers = 0
-                        utils.bar = tqdm(total=num_tensors, desc="Loading model tensors", file=Send_to_socketio())
+                        utils.bar = tqdm(total=num_tensors, desc="Loading model tensors", file=Send_to_socketio(), position=1)
 
                     with zipfile.ZipFile(f, "r") as z:
                         try:
