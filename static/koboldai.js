@@ -344,7 +344,7 @@ function create_options(action) {
 	seen_prev_selection = false;
 	show_options = false;
 	for (item of action.action.Options) {
-		if (!(item['Previous Selection'])) {
+		if (!(item['Previous Selection']) && !(item['Edited'])) {
 			show_options = true;
 			break;
 		} else if (item['Previous Selection']) {
@@ -3023,6 +3023,7 @@ function select_game_text(event) {
 	let anchorNode = window.getSelection().anchorNode;
 	let new_selected_game_chunk = null;
 
+	//grab the correct action we're trying to modify
 	if (document.selection) {
 		if (document.selection.createRange().parentElement().id == 'story_prompt') {
 			new_selected_game_chunk = document.selection.createRange().parentElement();
@@ -3089,6 +3090,32 @@ function select_game_text(event) {
 	}
 }
 
+function capturegametextpaste(event) {
+	//Stop all paste stuff from happening in the browser
+	event.preventDefault();
+	event.stopPropagation();
+	
+	//get the pasted text
+	let pastedText = (event.clipboardData || window.clipboardData).getData("text");
+	
+	
+	//Figure out where we pasted (the span element)
+	let anchorNode = window.getSelection().anchorNode;
+	if (anchorNode.nodeName == '#text') {
+		anchorNode = anchorNode.parentNode;
+	}
+	//Get the text that was there
+	var original_text = anchorNode.textContent
+	//Add the pasted text at the appropriate offset
+	original_text = [original_text.slice(0, getSelection().anchorOffset), pastedText, original_text.slice(getSelection().anchorOffset)].join('');
+	
+	//put the text back
+	anchorNode.textContent = original_text;
+	
+	return false;
+	
+}
+
 function edit_game_text(id) {
 	update_game_text(id)
 	//OK, now we need to go backwards and forwards until we find something that didn't change
@@ -3136,14 +3163,18 @@ function update_game_text(id) {
 	let temp = null;
 	let new_text = ""
 	if (id == -1) {
-		temp = document.getElementById("story_prompt");
-		new_text = temp.innerText;
-		sync_to_server(temp);
-		temp.original_text = new_text;
-		temp.classList.add("pulse");
+		if (document.getElementById("story_prompt")) {
+			temp = document.getElementById("story_prompt");
+			new_text = temp.innerText;
+			sync_to_server(temp);
+			temp.original_text = new_text;
+			temp.classList.add("pulse");
+		} else {
+			socket.emit("var_change", {"ID": 'story_prompt', "value": ''})
+		}
 	} else {
-		temp = document.getElementById("Selected Text Chunk " + id);
-		if (temp) {
+		if (document.getElementById("Selected Text Chunk " + id)) {
+			temp = document.getElementById("Selected Text Chunk " + id);
 			new_text = temp.innerText;
 			socket.emit("Set Selected Text", {"id": id, "text": new_text});
 			temp.original_text = new_text;
