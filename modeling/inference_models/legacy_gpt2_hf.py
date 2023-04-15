@@ -19,6 +19,7 @@ class CustomGPT2HFTorchInferenceModel(HFTorchInferenceModel):
         for possible_config_path in [
             utils.koboldai_vars.custmodpth,
             os.path.join("models", utils.koboldai_vars.custmodpth),
+            self.model_name
         ]:
             try:
                 with open(
@@ -36,12 +37,13 @@ class CustomGPT2HFTorchInferenceModel(HFTorchInferenceModel):
         with self._maybe_use_float16():
             try:
                 self.model = GPT2LMHeadModel.from_pretrained(
-                    utils.koboldai_vars.custmodpth,
+                    model_path,
                     revision=utils.koboldai_vars.revision,
                     cache_dir="cache",
+                    local_files_only=True
                 )
                 self.tokenizer = GPT2Tokenizer.from_pretrained(
-                    utils.koboldai_vars.custmodpth,
+                    model_path,
                     revision=utils.koboldai_vars.revision,
                     cache_dir="cache",
                 )
@@ -69,4 +71,4 @@ class CustomGPT2HFTorchInferenceModel(HFTorchInferenceModel):
         else:
             self.model = self.model.to("cpu").float()
 
-        self.patch_causal_lm()
+        self.patch_embedding()

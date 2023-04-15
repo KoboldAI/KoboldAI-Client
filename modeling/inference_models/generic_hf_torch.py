@@ -7,6 +7,7 @@ import shutil
 from typing import Union
 
 from transformers import AutoModelForCausalLM, GPTNeoForCausalLM
+from modeling.inference_model import SuperLegacyModelError
 
 import utils
 import modeling.lazy_loader as lazy_loader
@@ -81,7 +82,12 @@ class GenericHFTorchInferenceModel(HFTorchInferenceModel):
                     metamodel = AutoModelForCausalLM.from_config(self.model_config)
                 except Exception as e:
                     logger.error(f"Fell back to neo for metamodel due to {e}")
-                    metamodel = GPTNeoForCausalLM.from_config(self.model_config)
+                    try:
+                        metamodel = GPTNeoForCausalLM.from_config(self.model_config)
+                    except Exception as e:
+                        logger.error(f"Falling back again due to {e}")
+                        raise SuperLegacyModelError
+
                 utils.layers_module_names = utils.get_layers_module_names(metamodel)
                 utils.module_names = list(metamodel.state_dict().keys())
                 utils.named_buffers = list(metamodel.named_buffers(recurse=True))
