@@ -1613,9 +1613,6 @@ def general_startup(override_args=None):
     if args.localtunnel:
         koboldai_vars.host = True;
 
-    if args.host == "":
-        koboldai_vars.host = True
-        args.unblock = True
     if args.host:
             # This means --host option was submitted without an argument
             # Enable all LAN IPs (0.0.0.0/0)
