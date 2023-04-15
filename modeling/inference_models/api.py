@@ -25,7 +25,7 @@ class APIException(Exception):
 class APIInferenceModel(InferenceModel):
     def __init__(self, base_url: str) -> None:
         super().__init__()
-        self.base_url = base_url
+        self.base_url = base_url.rstrip("/")
 
     def _load(self, save_model: bool, initial_load: bool) -> None:
         tokenizer_id = requests.get(f"{self.base_url}/api/v1/model").json()["result"]

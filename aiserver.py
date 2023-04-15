@@ -1911,12 +1911,16 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
     if koboldai_vars.model == "ReadOnly" or koboldai_vars.noai:
         print(":P")
     elif koboldai_vars.model in ["Colab", "API", "CLUSTER", "OAI"]:
+        koboldai_vars.colaburl = url or koboldai_vars.colaburl
+        koboldai_vars.usegpu = False
+        koboldai_vars.breakmodel = False
+
         if koboldai_vars.model == "Colab":
             from modeling.inference_models.basic_api import BasicAPIInferenceModel
             model = BasicAPIInferenceModel()
         elif koboldai_vars.model == "API":
             from modeling.inference_models.api import APIInferenceModel
-            model = APIInferenceModel(url.replace("/request", ""))
+            model = APIInferenceModel(koboldai_vars.colaburl.replace("/request", ""))
         elif koboldai_vars.model == "CLUSTER":
             from modeling.inference_models.horde import HordeInferenceModel
             model = HordeInferenceModel()
@@ -1924,9 +1928,6 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
             from modeling.inference_models.openai import OpenAIAPIInferenceModel
             model = OpenAIAPIInferenceModel()
 
-        koboldai_vars.colaburl = url or koboldai_vars.colaburl
-        koboldai_vars.usegpu = False
-        koboldai_vars.breakmodel = False
         model.load(initial_load=initial_load)
     # TODO: This check sucks, make a model object or somethign
     elif "rwkv" in koboldai_vars.model:
