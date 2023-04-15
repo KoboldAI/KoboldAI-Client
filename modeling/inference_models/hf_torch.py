@@ -497,6 +497,7 @@ class HFTorchInferenceModel(HFInferenceModel):
                     total=num_tensors,
                     desc="Loading model tensors",
                     file=utils.UIProgressBarFile(),
+                    position=1
                 )
 
             if not is_safetensors:
