@@ -171,16 +171,19 @@ class GenericHFTorchInferenceModel(HFTorchInferenceModel):
 
                         if utils.num_shards is None:
                             # Save the pytorch_model.bin or model.safetensors of an unsharded model
-                            for possible_weight_name in [
+                            any_success = False
+                            possible_checkpoint_names = [
                                 transformers.modeling_utils.WEIGHTS_NAME,
                                 "model.safetensors",
-                            ]:
+                            ]
+
+                            for possible_checkpoint_name in possible_checkpoint_names:
                                 try:
                                     shutil.move(
                                         os.path.realpath(
                                             huggingface_hub.hf_hub_download(
                                                 self.model_name,
-                                                possible_weight_name,
+                                                possible_checkpoint_name,
                                                 revision=utils.koboldai_vars.revision,
                                                 cache_dir="cache",
                                                 local_files_only=True,
@@ -191,12 +194,15 @@ class GenericHFTorchInferenceModel(HFTorchInferenceModel):
                                             self.get_local_model_path(
                                                 ignore_existance=True
                                             ),
-                                            possible_weight_name,
+                                            possible_checkpoint_name,
                                         ),
                                     )
+                                    any_success = True
                                 except Exception:
-                                    if possible_weight_name == "model.safetensors":
-                                        raise
+                                    pass
+
+                            if not any_success:
+                                raise RuntimeError(f"Couldn't find any of {possible_checkpoint_names} in cache for {self.model_name} @ '{utils.koboldai_vars.revisison}'")
                         else:
                             # Handle saving sharded models
 
