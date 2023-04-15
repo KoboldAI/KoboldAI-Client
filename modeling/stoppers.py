@@ -117,6 +117,33 @@ class Stoppers:
         return False
 
     @staticmethod
+    def stop_sequence_stopper(
+        model: InferenceModel,
+        input_ids: torch.LongTensor,
+    ) -> bool:
+                
+        data = [model.tokenizer.decode(x) for x in input_ids]
+        # null_character = model.tokenizer.encode(chr(0))[0]
+        if "completed" not in model.gen_state:
+            model.gen_state["completed"] = [False] * len(input_ids)
+        
+        #one issue is that the stop sequence may not actual align with the end of token 
+        #if its a subsection of a longer token
+        for stopper in utils.koboldai_vars.stop_sequence:
+            for i in range(len(input_ids)):
+                if (
+                    data[i][-1 * (len(stopper)) :]
+                    == stopper
+                ):
+                    model.gen_state["completed"][i] = True
+
+        if all(model.gen_state["completed"]):
+            utils.koboldai_vars.generated_tkns = utils.koboldai_vars.genamt
+            del model.gen_state["completed"]
+            return True
+        return False
+
+    @staticmethod
     def singleline_stopper(
         model: InferenceModel,
         input_ids: torch.LongTensor,
