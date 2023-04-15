@@ -487,7 +487,6 @@ class HFTorchInferenceModel(HFInferenceModel):
                 utils.koboldai_vars.status_message = "Loading model"
                 utils.koboldai_vars.total_layers = num_tensors
                 utils.koboldai_vars.loaded_layers = 0
-                print(utils.emit)
                 utils.bar = tqdm(
                     total=num_tensors,
                     desc="Loading model tensors",

@@ -639,7 +639,6 @@ class UIProgressBarFile(object):
                 with flask_app.app_context():
                     self.emit_func('from_server', {'cmd': 'model_load_status', 'data': bar.replace(" ", "&nbsp;")}, broadcast=True, room="UI_1", namespace="/")
             except Exception as e:
-                print(e)
                 pass
         
     def flush(self):
