@@ -1482,7 +1482,7 @@ def general_startup(override_args=None):
     parser.add_argument("--noaimenu", action='store_true', help="Disables the ability to select the AI")
     parser.add_argument("--ngrok", action='store_true', help="Optimizes KoboldAI for Remote Play using Ngrok")
     parser.add_argument("--localtunnel", action='store_true', help="Optimizes KoboldAI for Remote Play using Localtunnel")
-    parser.add_argument("--host", type=str, default="", nargs="?", const="", help="Optimizes KoboldAI for LAN Remote Play without using a proxy service. --host opens to all LAN. Enable IP whitelisting by using a comma separated IP list. Supports individual IPs, ranges, and subnets --host 127.0.0.1,127.0.0.2,127.0.0.3,192.168.1.0-192.168.1.255,10.0.0.0/24,etc")
+    parser.add_argument("--host", type=str, default="Disabled", nargs="?", const="", help="Optimizes KoboldAI for LAN Remote Play without using a proxy service. --host opens to all LAN. Enable IP whitelisting by using a comma separated IP list. Supports individual IPs, ranges, and subnets --host 127.0.0.1,127.0.0.2,127.0.0.3,192.168.1.0-192.168.1.255,10.0.0.0/24,etc")
     parser.add_argument("--port", type=int, help="Specify the port on which the application will be joinable")
     parser.add_argument("--aria2_port", type=int, help="Specify the port on which aria2's RPC interface will be open if aria2 is installed (defaults to 6799)")
     parser.add_argument("--model", help="Specify the Model Type to skip the Menu")
@@ -1613,14 +1613,14 @@ def general_startup(override_args=None):
     if args.localtunnel:
         koboldai_vars.host = True;
 
-    if args.host:
+    if args.host != "Disabled":
             # This means --host option was submitted without an argument
             # Enable all LAN IPs (0.0.0.0/0)
+        koboldai_vars.host = True
+        args.unblock = True
         if args.host != "":
             # Check if --host option was submitted with an argument
             # Parse the supplied IP(s) and add them to the allowed IPs list
-            koboldai_vars.host = True
-            args.unblock = True
             enable_whitelist = True
             for ip_str in args.host.split(","):
                 if "/" in ip_str:
@@ -1635,6 +1635,7 @@ def general_startup(override_args=None):
             # Sort and print the allowed IPs list
             allowed_ips = sorted(allowed_ips, key=lambda ip: int(''.join([i.zfill(3) for i in ip.split('.')])))
             print(f"Allowed IPs: {allowed_ips}")
+
 
 
     if args.cpu:
