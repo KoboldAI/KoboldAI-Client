@@ -585,6 +585,10 @@ app = Flask(__name__, root_path=os.getcwd())
 app.secret_key = secrets.token_hex()
 app.config['SESSION_TYPE'] = 'filesystem'
 app.config['TEMPLATES_AUTO_RELOAD'] = True
+
+# Hack for socket stuff that needs app context
+utils.flask_app = app
+
 Compress(app)
 socketio = SocketIO(app, async_method="eventlet", manage_session=False, cors_allowed_origins='*', max_http_buffer_size=10_000_000)
 #socketio = SocketIO(app, async_method="eventlet", manage_session=False, cors_allowed_origins='*', max_http_buffer_size=10_000_000, logger=logger, engineio_logger=True)

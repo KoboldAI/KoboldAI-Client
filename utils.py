@@ -36,6 +36,9 @@ default_sampler_order = [6, 0, 1, 2, 3, 4, 5]
 
 emit = None
 
+# Hack for socket stuff that needs app context
+flask_app = None
+
 #==================================================================#
 # Decorator to prevent a function's actions from being run until
 # at least x seconds have passed without the function being called
@@ -633,8 +636,10 @@ class UIProgressBarFile(object):
             print('\r' + bar, end='')
             time.sleep(0.01)
             try:
-                self.emit_func('from_server', {'cmd': 'model_load_status', 'data': bar.replace(" ", "&nbsp;")}, broadcast=True, room="UI_1")
-            except:
+                with flask_app.app_context():
+                    self.emit_func('from_server', {'cmd': 'model_load_status', 'data': bar.replace(" ", "&nbsp;")}, broadcast=True, room="UI_1", namespace="/")
+            except Exception as e:
+                print(e)
                 pass
         
     def flush(self):
