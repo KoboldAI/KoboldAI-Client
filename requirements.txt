@@ -15,7 +15,7 @@ markdown
 bleach==4.1.0
 sentencepiece
 protobuf
-accelerate
+accelerate==0.18.0
 flask-session==0.4.0
 marshmallow>=3.13
 apispec-webframeworks
