@@ -1916,7 +1916,7 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
             model = BasicAPIInferenceModel()
         elif koboldai_vars.model == "API":
             from modeling.inference_models.api import APIInferenceModel
-            model = APIInferenceModel()
+            model = APIInferenceModel(url.replace("/request", ""))
         elif koboldai_vars.model == "CLUSTER":
             from modeling.inference_models.horde import HordeInferenceModel
             model = HordeInferenceModel()

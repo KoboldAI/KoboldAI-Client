@@ -23,7 +23,7 @@ class APIException(Exception):
 
 
 class APIInferenceModel(InferenceModel):
-    def __init__(self, base_url: str = "http://localhost:5000") -> None:
+    def __init__(self, base_url: str) -> None:
         super().__init__()
         self.base_url = base_url
 
