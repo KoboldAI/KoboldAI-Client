@@ -874,6 +874,7 @@ class story_settings(settings):
         self.chatmode    = False
         self.chatname    = "You"
         self.botname    = "Bot"
+        self.stop_sequence = []     #use for configuring stop sequences
         self.adventure   = False
         self.actionmode  = 0
         self.storymode   = 0

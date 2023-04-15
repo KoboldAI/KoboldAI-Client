@@ -72,6 +72,7 @@ class RWKVInferenceModel(InferenceModel):
             Stoppers.dynamic_wi_scanner,
             Stoppers.singleline_stopper,
             Stoppers.chat_mode_stopper,
+            Stoppers.stop_sequence_stopper,
         ]
 
         self.capabilties = ModelCapabilities(
