@@ -1773,7 +1773,6 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
         use_breakmodel_args = True
 
     reset_model_settings()
-    disk_layers = None
     koboldai_vars.reset_model()
 
     koboldai_vars.cluster_requested_models = [online_model] if isinstance(online_model, str) else online_model
