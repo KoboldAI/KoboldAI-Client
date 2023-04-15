@@ -1294,17 +1294,6 @@ class system_settings(settings):
         self.keep_img_gen_in_memory = False
         self.cookies = {} #cookies for colab since colab's URL changes, cookies are lost
         self.experimental_features = False
-        #check if bitsandbytes is installed
-        self.bit_8_available = False
-        if importlib.util.find_spec("bitsandbytes") is not None:# and sys.platform.startswith('linux'): #We can install bitsandbytes, but it doesn't work on windows, so limit it here
-            try:
-                import bitsandbytes
-                bits_and_bytes = True
-            except:
-                bits_and_bytes = False
-                pass
-            if torch.cuda.is_available() and bits_and_bytes:
-                self.bit_8_available = True
         self.seen_messages = []
         self.git_repository = ""
         self.git_branch = ""
