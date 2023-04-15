@@ -302,13 +302,6 @@ class HFTorchInferenceModel(HFInferenceModel):
         return True
 
     def _move_to_devices(self) -> None:
-        if not utils.koboldai_vars.breakmodel:
-            if utils.koboldai_vars.usegpu:
-                self.model = self.model.half().to(utils.koboldai_vars.gpu_device)
-            else:
-                self.model = self.model.to("cpu").float()
-            return
-
         for key, value in self.model.state_dict().items():
             target_dtype = (
                 torch.float32 if breakmodel.primary_device == "cpu" else torch.float16
