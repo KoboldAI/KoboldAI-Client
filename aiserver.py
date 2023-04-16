@@ -3171,7 +3171,10 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
                     lowmem = {}
                     koboldai_vars.lazy_load = False  # Also, lazy loader doesn't support GPT-2 models
 
-                gpu_layers_list = [int(l) for l in gpu_layers.split(",")]
+                try:
+                    gpu_layers_list = [int(l) for l in gpu_layers.split(",")]
+                except ValueError:
+                    gpu_layers_list = [utils.num_layers(model_config)]
                 offload_4bit = use_4_bit and sum(gpu_layers_list) < utils.num_layers(model_config)
 
                 if offload_4bit:
