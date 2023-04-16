@@ -1776,56 +1776,6 @@ def unload_model():
         
     #Reload our badwords
     koboldai_vars.badwordsids = koboldai_settings.badwordsids_default
-
-
-def prepare_4bit_load(modelpath):
-    paths_4bit = ["4bit*.safetensors", "4bit*.pt"]
-    paths_4bit_old = ["4bit-old.pt", "4bit-old.safetensors"]
-    result = False
-    groupsize = -1
-    for p in paths_4bit:
-        p = os.path.join(modelpath, p)
-        val = [v for v in glob.glob(p) if "4bit-old" not in v]
-        if val:
-            result = val[0]
-            fname = Path(result).parts[-1]
-            g = re.findall("^(?:4bit)(?:-)(\d+)(?:g-?)", fname)
-            if g:
-                groupsize = int(g[0])
-            break
-
-    global monkey_patched_4bit
-
-    # Monkey-patch in old-format pt-file support
-    if not result:
-        print("4-bit file not found, falling back to old format.")
-        for p in paths_4bit_old:
-            p = os.path.join(modelpath, p)
-            if os.path.isfile(p):
-                result = p
-                break
-
-        if not result:
-            print("4-bit old-format file not found, loading failed.")
-            raise RuntimeError(f"4-bit load failed. PT-File not found.")
-
-        import llama, opt, gptneox, gptj, old_quant
-        llama.make_quant = old_quant.old_make_quant
-        opt.make_quant = old_quant.old_make_quant
-        gptneox.make_quant = old_quant.old_make_quant
-        gptj.make_quant = old_quant.old_make_quant
-        monkey_patched_4bit = True
-    elif monkey_patched_4bit:
-        # Undo monkey patch
-        print("Undoing 4-bit old format monkey patch")
-        import llama, opt, gptneox, gptj, quant
-        llama.make_quant = quant.make_quant
-        opt.make_quant = quant.make_quant
-        gptneox.make_quant = quant.make_quant
-        gptj.make_quant = quant.make_quant
-        monkey_patched_4bit = False
-
-    return result, groupsize
     
     
 def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=False, online_model="", use_breakmodel_args=False, breakmodel_args_default_to_cpu=False, url=None, use_8_bit=False, use_4_bit=False):
@@ -2008,9 +1958,9 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
             except:
                 pass
 
-        try:
-            from modeling.inference_models.generic_hf_torch import GenericHFTorchInferenceModel
-            model = GenericHFTorchInferenceModel(
+        if use_4_bit:
+            from modeling.inference_models.hf_torch_4bit import HFTorch4BitInferenceModel
+            model = HFTorch4BitInferenceModel(
                 koboldai_vars.model,
                 lazy_load=koboldai_vars.lazy_load,
                 low_mem=args.lowmem
@@ -2020,18 +1970,31 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
                 save_model=not (args.colab or args.cacheonly) or args.savemodel,
                 initial_load=initial_load,
             )
-        except SuperLegacyModelError:
-            from modeling.inference_models.legacy_gpt2_hf import CustomGPT2HFTorchInferenceModel
-            model = CustomGPT2HFTorchInferenceModel(
-                koboldai_vars.model,
-                lazy_load=koboldai_vars.lazy_load,
-                low_mem=args.lowmem
-            )
+        else:
+            try:
+                from modeling.inference_models.generic_hf_torch import GenericHFTorchInferenceModel
+                model = GenericHFTorchInferenceModel(
+                    koboldai_vars.model,
+                    lazy_load=koboldai_vars.lazy_load,
+                    low_mem=args.lowmem
+                )
 
-            model.load(
-                save_model=not (args.colab or args.cacheonly) or args.savemodel,
-                initial_load=initial_load,
-            )
+                model.load(
+                    save_model=not (args.colab or args.cacheonly) or args.savemodel,
+                    initial_load=initial_load,
+                )
+            except SuperLegacyModelError:
+                from modeling.inference_models.legacy_gpt2_hf import CustomGPT2HFTorchInferenceModel
+                model = CustomGPT2HFTorchInferenceModel(
+                    koboldai_vars.model,
+                    lazy_load=koboldai_vars.lazy_load,
+                    low_mem=args.lowmem
+                )
+
+                model.load(
+                    save_model=not (args.colab or args.cacheonly) or args.savemodel,
+                    initial_load=initial_load,
+                )
 
         logger.info(f"Pipeline created: {koboldai_vars.model}")
     else:
