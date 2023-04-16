@@ -3490,7 +3490,8 @@ def is_allowed_ip():
     client_ip = request.remote_addr
     if request.path != '/genre_data.json':
         print("Connection Attempt: " + request.remote_addr)
-        print("Allowed?: ",  request.remote_addr in allowed_ips)
+        if allowed_ips:
+            print("Allowed?: ",  request.remote_addr in allowed_ips)
     return client_ip in allowed_ips
 
 
@@ -4189,7 +4190,8 @@ def execute_outmod():
 @socketio.on('connect')
 def do_connect():
     print("Connection Attempt: " + request.remote_addr)
-    print("Allowed?: ",  request.remote_addr in allowed_ips)
+    if allowed_ips:
+        print("Allowed?: ",  request.remote_addr in allowed_ips)
     if request.args.get("rely") == "true":
         return
     logger.info("Client connected! UI_{}".format(request.args.get('ui')))
