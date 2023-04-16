@@ -87,6 +87,18 @@ allowed_ips = set()  # empty set
 enable_whitelist = False
 
 
+# 4-bit dependencies
+from pathlib import Path
+import glob
+sys.path.insert(0, os.path.abspath(Path("repos/gptq")))
+from gptj import load_quant as gptj_load_quant
+from gptneox import load_quant as gptneox_load_quant
+from llama import load_quant as llama_load_quant
+from opt import load_quant as opt_load_quant
+from offload import load_quant_offload
+monkey_patched_4bit = False
+
+
 if lupa.LUA_VERSION[:2] != (5, 4):
     logger.error(f"Please install lupa==1.10. You have lupa {lupa.__version__}.")
 
@@ -1002,8 +1014,6 @@ def getmodelname():
 def get_hidden_size_from_model(model):
     return model.get_input_embeddings().embedding_dim
 
-
-
 #==================================================================#
 #  Allow the models to override some settings
 #==================================================================#
@@ -1305,7 +1315,7 @@ def general_startup(override_args=None):
     parser.add_argument("--noaimenu", action='store_true', help="Disables the ability to select the AI")
     parser.add_argument("--ngrok", action='store_true', help="Optimizes KoboldAI for Remote Play using Ngrok")
     parser.add_argument("--localtunnel", action='store_true', help="Optimizes KoboldAI for Remote Play using Localtunnel")
-    parser.add_argument("--host", type=str, default="", nargs="?", const="", help="Optimizes KoboldAI for LAN Remote Play without using a proxy service. --host opens to all LAN. Enable IP whitelisting by using a comma separated IP list. Supports individual IPs, ranges, and subnets --host 127.0.0.1,127.0.0.2,127.0.0.3,192.168.1.0-192.168.1.255,10.0.0.0/24,etc")
+    parser.add_argument("--host", type=str, default="Disabled", nargs="?", const="", help="Optimizes KoboldAI for LAN Remote Play without using a proxy service. --host opens to all LAN. Enable IP whitelisting by using a comma separated IP list. Supports individual IPs, ranges, and subnets --host 127.0.0.1,127.0.0.2,127.0.0.3,192.168.1.0-192.168.1.255,10.0.0.0/24,etc")
     parser.add_argument("--port", type=int, help="Specify the port on which the application will be joinable")
     parser.add_argument("--aria2_port", type=int, help="Specify the port on which aria2's RPC interface will be open if aria2 is installed (defaults to 6799)")
     parser.add_argument("--model", help="Specify the Model Type to skip the Menu")
@@ -1436,17 +1446,14 @@ def general_startup(override_args=None):
     if args.localtunnel:
         koboldai_vars.host = True;
 
-    if args.host == "":
-        koboldai_vars.host = True
-        args.unblock = True
-    if args.host:
+    if args.host != "Disabled":
             # This means --host option was submitted without an argument
             # Enable all LAN IPs (0.0.0.0/0)
+        koboldai_vars.host = True
+        args.unblock = True
         if args.host != "":
             # Check if --host option was submitted with an argument
             # Parse the supplied IP(s) and add them to the allowed IPs list
-            koboldai_vars.host = True
-            args.unblock = True
             enable_whitelist = True
             for ip_str in args.host.split(","):
                 if "/" in ip_str:
@@ -1461,6 +1468,7 @@ def general_startup(override_args=None):
             # Sort and print the allowed IPs list
             allowed_ips = sorted(allowed_ips, key=lambda ip: int(''.join([i.zfill(3) for i in ip.split('.')])))
             print(f"Allowed IPs: {allowed_ips}")
+
 
 
     if args.cpu:
@@ -1594,6 +1602,7 @@ def get_model_info(model, directory=""):
                          'break_values': break_values, 'gpu_count': gpu_count,
                          'url': url, 'gpu_names': gpu_names, 'models_on_url': models_on_url, 'show_online_model_select': show_online_model_select,
                          'bit_8_available': koboldai_vars.bit_8_available if koboldai_vars.experimental_features else False,
+                         'bit_4_available': koboldai_vars.bit_4_available if koboldai_vars.experimental_features else False,
                          'show_custom_model_box': show_custom_model_box})
     if send_horde_models:
         get_cluster_models({'key': key_value, 'url': default_url})
@@ -1767,9 +1776,59 @@ def unload_model():
         
     #Reload our badwords
     koboldai_vars.badwordsids = koboldai_settings.badwordsids_default
+
+
+def prepare_4bit_load(modelpath):
+    paths_4bit = ["4bit*.safetensors", "4bit*.pt"]
+    paths_4bit_old = ["4bit-old.pt", "4bit-old.safetensors"]
+    result = False
+    groupsize = -1
+    for p in paths_4bit:
+        p = os.path.join(modelpath, p)
+        val = [v for v in glob.glob(p) if "4bit-old" not in v]
+        if val:
+            result = val[0]
+            fname = Path(result).parts[-1]
+            g = re.findall("^(?:4bit)(?:-)(\d+)(?:g-?)", fname)
+            if g:
+                groupsize = int(g[0])
+            break
+
+    global monkey_patched_4bit
+
+    # Monkey-patch in old-format pt-file support
+    if not result:
+        print("4-bit file not found, falling back to old format.")
+        for p in paths_4bit_old:
+            p = os.path.join(modelpath, p)
+            if os.path.isfile(p):
+                result = p
+                break
+
+        if not result:
+            print("4-bit old-format file not found, loading failed.")
+            raise RuntimeError(f"4-bit load failed. PT-File not found.")
+
+        import llama, opt, gptneox, gptj, old_quant
+        llama.make_quant = old_quant.old_make_quant
+        opt.make_quant = old_quant.old_make_quant
+        gptneox.make_quant = old_quant.old_make_quant
+        gptj.make_quant = old_quant.old_make_quant
+        monkey_patched_4bit = True
+    elif monkey_patched_4bit:
+        # Undo monkey patch
+        print("Undoing 4-bit old format monkey patch")
+        import llama, opt, gptneox, gptj, quant
+        llama.make_quant = quant.make_quant
+        opt.make_quant = quant.make_quant
+        gptneox.make_quant = quant.make_quant
+        gptj.make_quant = quant.make_quant
+        monkey_patched_4bit = False
+
+    return result, groupsize
     
     
-def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=False, online_model="", use_breakmodel_args=False, breakmodel_args_default_to_cpu=False, url=None, use_8_bit=False):
+def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=False, online_model="", use_breakmodel_args=False, breakmodel_args_default_to_cpu=False, url=None, use_8_bit=False, use_4_bit=False):
     global model
     global tokenizer
     global model_config
@@ -1807,7 +1866,7 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
         disk_layers = args.breakmodel_disklayers
     if breakmodel_args_default_to_cpu and disk_layers is None:
         disk_layers = args.breakmodel_disklayers = 0
-    
+
     unload_model()
     
     if online_model == "":
@@ -6472,7 +6531,7 @@ def UI_2_load_model(data):
     koboldai_vars.model = data['model']
     koboldai_vars.custmodpth = data['path']
     print("loading Model")
-    load_model(use_gpu=data['use_gpu'], gpu_layers=data['gpu_layers'], disk_layers=data['disk_layers'], online_model=data['online_model'], url=koboldai_vars.colaburl, use_8_bit=data['use_8_bit'])
+    load_model(use_gpu=data['use_gpu'], gpu_layers=data['gpu_layers'], disk_layers=data['disk_layers'], online_model=data['online_model'], url=koboldai_vars.colaburl, use_8_bit=data['use_8_bit'], use_4_bit=data['use_4_bit'])
 
 #==================================================================#
 # Event triggered when load story is clicked

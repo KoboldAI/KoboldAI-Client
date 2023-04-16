@@ -4,3 +4,7 @@
 [submodule "KoboldAI-Horde-Bridge"]
 	path = KoboldAI-Horde-Bridge
 	url = https://github.com/db0/KoboldAI-Horde-Bridge
+[submodule "repos/gptq"]
+	path = repos/gptq
+	url = https://github.com/0cc4m/GPTQ-for-LLaMa
+	branch = a8303654c200c25577130466e5f9bc1e70fc8a50

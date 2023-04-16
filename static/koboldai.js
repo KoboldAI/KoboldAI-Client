@@ -1472,6 +1472,7 @@ function show_model_menu(data) {
 	document.getElementById("modelurl").classList.add("hidden");
 	document.getElementById("use_gpu_div").classList.add("hidden");
 	document.getElementById("use_8_bit_div").classList.add("hidden");
+	document.getElementById("use_4_bit_div").classList.add("hidden");
 	document.getElementById("modellayers").classList.add("hidden");
 	document.getElementById("oaimodel").classList.add("hidden");
 	var model_layer_bars = document.getElementById('model_layer_bars');
@@ -1646,6 +1647,14 @@ function selected_model_info(data) {
 		document.getElementById("use_8_bit").checked = false;
 	}
 	
+	//hide or unhide 4 bit mode
+	if (data.bit_4_available) {
+		document.getElementById("use_4_bit_div").classList.remove("hidden");
+	} else {
+		document.getElementById("use_4_bit_div").classList.add("hidden");
+		document.getElementById("use_4_bit").checked = false;
+	}
+
 	//default URL loading
 	if (data.default_url != null) {
 		document.getElementById("modelurl").value = data.default_url;
@@ -1815,7 +1824,7 @@ function selected_model_info(data) {
 	}
 	accept.disabled = false;
 	
-	
+	set_4_bit_mode(invert=false);
 }
 
 function update_gpu_layers() {
@@ -1876,7 +1885,8 @@ function load_model() {
 			   'key': document.getElementById('modelkey').value, 'gpu_layers': gpu_layers.join(), 
 			   'disk_layers': disk_layers, 'url': document.getElementById("modelurl").value, 
 			   'online_model': selected_models,
-			   'use_8_bit': document.getElementById('use_8_bit').checked};
+			   'use_8_bit': document.getElementById('use_8_bit').checked,
+			   'use_4_bit': document.getElementById('use_4_bit').checked};
 	socket.emit("load_model", message);
 	closePopups();
 }
@@ -3159,6 +3169,15 @@ function save_preset() {
 	socket.emit("save_new_preset", {"preset": document.getElementById("new_preset_name").value, "description": document.getElementById("new_preset_description").value});
 	closePopups();
 }
+
+function set_4_bit_mode(invert=true) {
+	bit_4_status = document.getElementById("use_4_bit").checked;
+	if (invert) {
+		bit_4_status = !bit_4_status;
+	}
+}
+
+
 
 //--------------------------------------------General UI Functions------------------------------------
 function set_ui_level(level) {
