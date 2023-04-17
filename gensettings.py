@@ -884,6 +884,38 @@ gensettingstf = [
     "ui_level": 2
 	},
     {
+	"uitype": "text",
+	"unit": "text",
+	"label": "comregex_ai_string",
+	"id": "comregex_ai_string", 
+	"min": 0,
+	"max": 1,
+	"step": 1,
+	"default": 1,
+    "tooltip": "Pattern for matching comments to remove them before sending them to the AI.",
+    "menu_path": "Settings",
+    "sub_path": "Other",
+    "classname": "system",
+    "name": "comregex_ai_string",
+    "ui_level": 2
+	},
+    {
+	"uitype": "text",
+	"unit": "text",
+	"label": "comregex_ui_string",
+	"id": "comregex_ui_string", 
+	"min": 0,
+	"max": 1,
+	"step": 1,
+	"default": 1,
+    "tooltip": "Pattern for matching comments in the editor.",
+    "menu_path": "Settings",
+    "sub_path": "Other",
+    "classname": "system",
+    "name": "comregex_ui_string",
+    "ui_level": 2
+	},
+    {
     "UI_V2_Only": True,
 	"uitype": "dropdown",
 	"unit": "int",
