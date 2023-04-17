@@ -104,8 +104,6 @@ class HFTorch4BitInferenceModel(HFTorchInferenceModel):
             )
             utils.koboldai_vars.model = self.model_name
 
-        self.lazy_load = False
-
         self.init_model_config()
 
         gpulayers = utils.args.breakmodel_gpulayers

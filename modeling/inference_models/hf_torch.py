@@ -412,14 +412,17 @@ class HFTorchInferenceModel(HFInferenceModel):
 
             @functools.lru_cache(maxsize=None)
             def get_original_key(key):
-                return max(
-                    (
-                        original_key
-                        for original_key in utils.module_names
-                        if original_key.endswith(key)
-                    ),
-                    key=len,
-                )
+                try:
+                    return max(
+                        (
+                            original_key
+                            for original_key in utils.module_names
+                            if original_key.endswith(key)
+                        ),
+                        key=len,
+                    )
+                except ValueError:
+                    return key
 
             for key, value in model_dict.items():
                 original_key = get_original_key(key)
