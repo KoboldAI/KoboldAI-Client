@@ -1602,7 +1602,7 @@ def get_model_info(model, directory=""):
                          'break_values': break_values, 'gpu_count': gpu_count,
                          'url': url, 'gpu_names': gpu_names, 'models_on_url': models_on_url, 'show_online_model_select': show_online_model_select,
                          'bit_8_available': koboldai_vars.bit_8_available if koboldai_vars.experimental_features else False,
-                         'bit_4_available': koboldai_vars.bit_4_available if koboldai_vars.experimental_features else False,
+                         'bit_4_available': koboldai_vars.bit_4_available,
                          'show_custom_model_box': show_custom_model_box})
     if send_horde_models:
         get_cluster_models({'key': key_value, 'url': default_url})
