@@ -109,10 +109,10 @@ class HFTorch4BitInferenceModel(HFTorchInferenceModel):
         gpulayers = utils.args.breakmodel_gpulayers
 
         try:
-            gpu_layers_list = [int(l) for l in gpulayers.split(",")]
+            self.gpu_layers_list = [int(l) for l in gpulayers.split(",")]
         except ValueError:
-            gpu_layers_list = [utils.num_layers(self.model_config)]
-        self.offload_4bit = sum(gpu_layers_list) < utils.num_layers(self.model_config)
+            self.gpu_layers_list = [utils.num_layers(self.model_config)]
+        self.offload_4bit = sum(self.gpu_layers_list) < utils.num_layers(self.model_config)
 
         if self.offload_4bit:
             utils.koboldai_vars.lazy_load = False
@@ -321,25 +321,8 @@ class HFTorch4BitInferenceModel(HFTorchInferenceModel):
 
         self.patch_embedding()
 
-        if utils.koboldai_vars.hascuda:
-            if utils.koboldai_vars.usegpu:
-                # Use just VRAM
-                self.model = self.model.half().to(utils.koboldai_vars.gpu_device)
-            elif utils.koboldai_vars.breakmodel:
-                # Use both RAM and VRAM (breakmodel)
-                if not self.lazy_load:
-                    self.breakmodel_device_config(self.model.config)
-                self._move_to_devices()
-            elif breakmodel.disk_blocks > 0:
-                # Use disk
-                self._move_to_devices()
-            else:
-                # Use CPU
-                self.model = self.model.to("cpu").float()
-        elif breakmodel.disk_blocks > 0:
-            self._move_to_devices()
-        else:
-            self.model = self.model.to("cpu").float()
+        if not self.offload_4bit:
+            self.model = self.model.half().to(utils.koboldai_vars.gpu_device)
 
         self.model.kai_model = self
         utils.koboldai_vars.modeldim = self.get_hidden_size()
@@ -351,28 +334,28 @@ class HFTorch4BitInferenceModel(HFTorchInferenceModel):
         print(f"Trying to load {utils.koboldai_vars.model_type} model in 4-bit")
         if utils.koboldai_vars.model_type == "gptj":
             if self.offload_4bit:
-                model = load_quant_offload(gptj_load_quant, utils.koboldai_vars.custmodpth, path_4bit, 4, groupsize, gpu_layers_list)
+                model = load_quant_offload(gptj_load_quant, utils.koboldai_vars.custmodpth, path_4bit, 4, groupsize, self.gpu_layers_list)
             else:
                 model = gptj_load_quant(utils.koboldai_vars.custmodpth, path_4bit, 4, groupsize)
         elif utils.koboldai_vars.model_type == "gpt_neox":
             if self.offload_4bit:
-                model = load_quant_offload(gptneox_load_quant, utils.koboldai_vars.custmodpth, path_4bit, 4, groupsize, gpu_layers_list)
+                model = load_quant_offload(gptneox_load_quant, utils.koboldai_vars.custmodpth, path_4bit, 4, groupsize, self.gpu_layers_list)
             else:
                 model = gptneox_load_quant(utils.koboldai_vars.custmodpth, path_4bit, 4, groupsize)
         elif utils.koboldai_vars.model_type == "llama":
             if self.offload_4bit:
-                model = load_quant_offload(llama_load_quant, utils.koboldai_vars.custmodpth, path_4bit, 4, groupsize, gpu_layers_list)
+                model = load_quant_offload(llama_load_quant, utils.koboldai_vars.custmodpth, path_4bit, 4, groupsize, self.gpu_layers_list)
             else:
                 model = llama_load_quant(utils.koboldai_vars.custmodpth, path_4bit, 4, groupsize)
         elif utils.koboldai_vars.model_type == "opt":
             if self.offload_4bit:
-                model = load_quant_offload(opt_load_quant, utils.koboldai_vars.custmodpth, path_4bit, 4, groupsize, gpu_layers_list)
+                model = load_quant_offload(opt_load_quant, utils.koboldai_vars.custmodpth, path_4bit, 4, groupsize, self.gpu_layers_list)
             else:
                 model = opt_load_quant(utils.koboldai_vars.custmodpth, path_4bit, 4, groupsize)
         else:
             raise RuntimeError(f"4-bit load failed. Model type {utils.koboldai_vars.model_type} not supported in 4-bit")
 
-        return model.half()
+        return model.half() if not self.offload_4bit else model
 
     def _get_tokenizer(self, location: str):
         if utils.koboldai_vars.model_type == "llama":
