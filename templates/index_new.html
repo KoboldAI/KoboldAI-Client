@@ -53,8 +53,9 @@
 				<div id="welcome_text" class="var_sync_model_welcome" draggable="False"></div>
 			</div>
 
-			<div class="gametext" id="Selected Text" contenteditable=false onblur="select_game_text(null);" onclick="select_game_text(null);" onkeyup="select_game_text(event);" onpaste="capturegametextpaste(event);">
-				<span id="story_prompt" class="var_sync_story_prompt var_sync_alt_story_prompt_in_ai rawtext hidden" chunk="-1"></span></div><!--don't move the /div down or it'll cause odd spacing issues in the UI--->
+			<!---<div class="gametext" id="Selected Text" contenteditable=false onfocusin="select_game_text('focusin');" onfocusout="select_game_text('focusout');" onclick="select_game_text(null);" onkeyup="select_game_text(event);" onpaste="capturegametextpaste(event);">-->
+			<div class="gametext" id="Selected Text" contenteditable=false onpaste="capturegametextpaste(event);">
+				<span id="story_prompt" class="var_sync_story_prompt var_sync_alt_story_prompt_in_ai rawtext hidden" tabindex=0 chunk="-1" onfocus="set_edit(this);" onblur="select_game_text(null, this, 'onblur prompt');"></span></div><!--don't move the /div down or it'll cause odd spacing issues in the UI--->
 		</div>
 
 		<!------------ Sequences --------------------->
