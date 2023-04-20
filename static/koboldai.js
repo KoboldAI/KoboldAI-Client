@@ -42,34 +42,9 @@ socket.on("generated_wi", showGeneratedWIData);
 initalizeTooltips();
 
 //setup an observer on the game text
-var chunk_delete_observer = new MutationObserver(function (records) {
-	for (const record of records) {
-		if ((record.type === "childList") && (record.removedNodes.length > 0)) {
-			for (const chunk of record.removedNodes) {
-				if (chunk instanceof HTMLElement) {
-					if (chunk.id == "story_prompt") {
-						chunk.innerText = '';
-						document.getElementById("Selected Text").prepend(chunk);
-					}
-					update_game_text(parseInt(chunk.getAttribute("chunk")), '');
-				}
-			}
-		} else if ((record.type === "childList") && (record.addedNodes.length > 0) && !(record.addedNodes[0] instanceof HTMLElement)) {
-			//If we delete everything then start typing it creates the text as a direct element to the game text node. This is not in a chunk, so let's fix that
-			story_prompt = document.getElementById("story_prompt")
-			if (!story_prompt.lastChild) {
-				story_prompt.append(document.createElement("span"));
-			}
-			
-			story_prompt.lastChild.innerText = record.addedNodes[0].data;
-			update_game_text(parseInt(-1), record.addedNodes[0].data);
-			setTimeout(function () {put_cursor_at_element(story_prompt);}, 500);
-			record.addedNodes[0].remove();
-		}
-	}
-});
+var chunk_delete_observer = new MutationObserver(function (records) {gametextwatcher(records)});
 
-chunk_delete_observer.observe(document.getElementById('Selected Text'), { childList: true, characterData: true });
+chunk_delete_observer.observe(document.getElementById('Selected Text'), { subtree: true, childList: true, characterData: true });
 
 var vars_sync_time = {};
 var presets = {};
@@ -590,13 +565,7 @@ function do_story_text_updates(action) {
 			item.id = 'Selected Text Chunk '+action.id;
 			item.classList.add("rawtext");
 			item.setAttribute("chunk", action.id);
-			item.addEventListener("blur", (event) => {
-				select_game_text(null, event.target, 'onblur');
-			});
-			item.addEventListener("focus", (event) => {
-				set_edit(event.target);
-			});
-			item.setAttribute("tabindex", action.id+1);
+			item.setAttribute("tabindex", parseInt(action.id)+1);
 			
 			//need to find the closest element
 			closest_element = document.getElementById("story_prompt");
@@ -613,6 +582,8 @@ function do_story_text_updates(action) {
 				story_area.append(item);
 			}
 		}
+		
+		item.classList.remove("dirty");
 		
 		if (action.action['Selected Text'].charAt(0) == ">") {
 			item.classList.add("action_mode_input");
@@ -703,6 +674,7 @@ function do_prompt(data) {
 		document.getElementById('themerow').classList.remove("hidden");
 		addInitChatMessage();
 	}
+	document.getElementById("story_prompt").classList.remove("dirty");
 	
 }
 
@@ -3077,71 +3049,75 @@ function set_edit(element) {
 	element.classList.add("editing");
 }
 
-function select_game_text(event, anchorNode = null, message= null) {
-	if (!((event === null) || ["ArrowRight", "ArrowLeft", "ArrowDown", "ArrowUp"].includes(event.code))) return;
-
-	if (anchorNode === null) {
-		anchorNode = window.getSelection().anchorNode;
-	} else {
-		for (item of document.getElementsByClassName("editing")) {
-			item.classList.remove("editing");
-		};
-	}
-	
-	//OK we know where our cursor is at. Let's see if we can figure out what's changed
-	
-	//First we need to get up to the chunk since the anchor node can be the actual text, or the span that has the world info text in it
-	while ((!(anchorNode instanceof HTMLElement) || !anchorNode.hasAttribute('chunk')) && (anchorNode.id != 'Selected Text')) {
-		anchorNode = anchorNode.parentElement;
-	}
-	
-	//If we went all the way up to the selected text node then we've killed all the game text. Treat that different
-	if (anchorNode.id == 'Selected Text') {
-		update_game_text(-1, anchorNode.innerText);
-	//We have a chunk. Check to see if it changed. If it didn't then there isn't anything to do
-	} else if (anchorNode.innerText != anchorNode.original_text) {
-		Initial_Game_Chunk = parseInt(anchorNode.getAttribute("chunk"))
-		console.log("Changing action "+Initial_Game_Chunk+" due to change (initial selection)");
-		console.log(anchorNode.innerText);
-		console.log(anchorNode.original_text);
-		update_game_text(Initial_Game_Chunk, anchorNode.innerText);
-		
-		//Now we need to go forward and backwards to see if anything around the selected chunk also changed (since we can select multiple actions)
-		current_action = Initial_Game_Chunk - 1;
-		while (document.getElementById("Selected Text Chunk " + current_action) && (document.getElementById("Selected Text Chunk " + current_action).innerText != document.getElementById("Selected Text Chunk " + current_action).original_text)) {
-			console.log("Changing action "+current_action+" due to new text");
-			update_game_text(current_action, document.getElementById("Selected Text Chunk " + current_action).innerText);
-			current_action -= 1;
+function gametextwatcher(records) {
+	//Here we want to take care of two possible events
+	//User deleted an action. For this we'll restore the action and set it's text to "" and mark it as dirty
+	//User changes text. For this we simply mark it as dirty
+	var game_text = document.getElementById("Selected Text");
+	var did_deletes = false;
+	for (const record of records) {
+		if ((record.type === "childList") && (record.removedNodes.length > 0)) {
+			for (const chunk of record.removedNodes) {
+				if ((chunk instanceof HTMLElement) && (chunk.hasAttribute("chunk"))) {
+					chunk.innerText = '';
+					var found = -1
+					for (let i = parseInt(chunk.getAttribute("chunk"))-1; i > -1; i--) { 
+						
+						if (document.getElementById("Selected Text Chunk " + i)) {
+							found = i;
+							break;
+						}
+					}
+					if (found != -1) {
+						if (document.getElementById("Selected Text Chunk " + found).nextSibling) {
+							document.getElementById("Selected Text Chunk " + found).parentNode.insertBefore(chunk, document.getElementById("Selected Text Chunk " + found).nextSibling);
+						} else {
+							document.getElementById("Selected Text Chunk " + found).parentNode.append(chunk);
+						}
+					} else if (parseInt(chunk.getAttribute("chunk")) == -1) {
+						game_text.prepend(chunk);
+					} else {
+						game_text.append(chunk);
+					}
+					chunk.classList.add("dirty");
+					did_delets = true;
+				}
+			}
+		} else {
+			var chunk = record.target;
+			var skip = true;
+			while (chunk != game_text) {
+				if ((chunk instanceof HTMLElement) && (chunk.hasAttribute("chunk"))) {
+					skip = false;
+					break;
+				}
+				chunk = chunk.parentNode;
+			}
+			if ((chunk.original_text != chunk.innerText) && (!skip)) {;
+				chunk.classList.add("dirty");
+			} else if ((skip) && (record.target.childNodes.length > 1) && !(record.target.childNodes[1] instanceof HTMLElement) && (record.target.childNodes[1].data.trim() != "")) {
+				//here we added a node that wasn't under a chunk. This should only happen if you delete everything, so let's move this to the story chunk
+				var story_prompt = document.getElementById("story_prompt");
+				if (story_prompt.firstChild) {
+					story_prompt.firstChild.innerText = record.target.childNodes[1].data;
+				} else {
+					story_prompt.innerText = record.target.childNodes[1].data;
+				}
+				record.target.childNodes[1].remove()
+				story_prompt.classList.add("dirty");
+				put_cursor_at_element(story_prompt);
+			}
 		}
-		//We might have deleted elements, so we need to make sure we went all the way back to -1 (the prompt)
-		while ((current_action >= 0) && !document.getElementById("Selected Text Chunk " + current_action)) {
-			console.log("Deleting action "+current_action+" due to it being deleted");
-			update_game_text(current_action, '');
-			current_action -= 1;
-		}
-		//Check the prompt
-		if (document.getElementById("story_prompt") && (document.getElementById("story_prompt").innerText != document.getElementById("story_prompt").original_text)) {
-			update_game_text(-1, document.getElementById("story_prompt").innerText);
-		} else if (!document.getElementById("story_prompt")) {
-			update_game_text(-1, '');
-		}
-		
-		current_action = Initial_Game_Chunk + 1;
-		while (document.getElementById("Selected Text Chunk " + current_action) && (document.getElementById("Selected Text Chunk " + current_action).innerText != document.getElementById("Selected Text Chunk " + current_action).original_text)) {
-			console.log("Changing action "+current_action+" due to new text");
-			update_game_text(current_action, document.getElementById("Selected Text Chunk " + current_action).innerText);
-			current_action += 1;
-		}
-		//We might have deleted elements, so we need to make sure we went all the way back to the current action
-		while ((current_action <= current_chunk_number) && !document.getElementById("Selected Text Chunk " + current_action)) {
-			console.log("Deleting action "+current_action+" due to it being deleted");
-			update_game_text(current_action, '');
-			current_action += 1;
-		}
-		
-		
 	}
 }
+
+function savegametextchanges() {
+	console.log("Firing save")
+	for (const chunk of document.getElementsByClassName("dirty")) {
+		update_game_text(parseInt(chunk.getAttribute("chunk")), chunk.innerText);
+	}
+}
+
 
 function capturegametextpaste(event) {
 	//Stop all paste stuff from happening in the browser
@@ -3167,49 +3143,6 @@ function capturegametextpaste(event) {
 	
 	return false;
 	
-}
-
-function edit_game_text(id) {
-	update_game_text(id)
-	//OK, now we need to go backwards and forwards until we find something that didn't change
-	
-	let check_id = id-1;
-	while (check_id >= 0) {
-		if (document.getElementById("Selected Text Chunk " + check_id)) {
-			let temp = document.getElementById("Selected Text Chunk " + check_id);
-			if (temp.textContent == temp.original_text) {
-				break;
-			} else {
-				update_game_text(check_id);
-			}
-		} else {
-			update_game_text(check_id);
-		}
-		check_id -= 1;
-	}
-	if (document.getElementById("story_prompt")) {
-		let temp = document.getElementById("story_prompt");
-		if (temp.textContent != temp.original_text) {
-			update_game_text(-1);
-		}
-	} else {
-		update_game_text(-1);
-	}
-	
-	check_id = id+1;
-	while (check_id <= Math.max.apply(null,Object.keys(actions_data).map(Number))) {
-		if (document.getElementById("Selected Text Chunk " + check_id)) {
-			let temp = document.getElementById("Selected Text Chunk " + check_id);
-			if (temp.textContent == temp.original_text) {
-				break;
-			} else {
-				update_game_text(check_id);
-			}
-		} else {
-			update_game_text(check_id);
-		}
-		check_id += 1;
-	}
 }
 
 function update_game_text(id, new_text) {
@@ -3245,7 +3178,7 @@ function save_preset() {
 function put_cursor_at_element(element) {
 	var range = document.createRange();
 	var sel = window.getSelection();
-	if (element.lastChild) {
+	if ((element.lastChild) && (element.lastChild instanceof HTMLElement)) {
 		range.setStart(element.lastChild, element.lastChild.innerText.length);
 	} else {
 		range.setStart(element, element.innerText.length);
