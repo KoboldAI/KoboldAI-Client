@@ -566,6 +566,9 @@ function do_story_text_updates(action) {
 			item.classList.add("rawtext");
 			item.setAttribute("chunk", action.id);
 			item.setAttribute("tabindex", parseInt(action.id)+1);
+			item.addEventListener("focus", (event) => {
+				set_edit(event.target);
+			});
 			
 			//need to find the closest element
 			closest_element = document.getElementById("story_prompt");
@@ -3042,7 +3045,6 @@ function toggle_adventure_mode(button) {
 }
 
 function set_edit(element) {
-	console.log(element);
 	for (item of document.getElementsByClassName("editing")) {
 		item.classList.remove("editing");
 	}
@@ -3059,28 +3061,29 @@ function gametextwatcher(records) {
 		if ((record.type === "childList") && (record.removedNodes.length > 0)) {
 			for (const chunk of record.removedNodes) {
 				if ((chunk instanceof HTMLElement) && (chunk.hasAttribute("chunk"))) {
-					chunk.innerText = '';
-					var found = -1
-					for (let i = parseInt(chunk.getAttribute("chunk"))-1; i > -1; i--) { 
+					if (!document.getElementById("Selected Text Chunk " + chunk.getAttribute("chunk"))) {
+						chunk.innerText = '';
+						var found = -1
+						for (let i = parseInt(chunk.getAttribute("chunk"))-1; i > -1; i--) { 
+							if (document.getElementById("Selected Text Chunk " + i)) {
+								found = i;
+								break;
+							}
+						}
 						
-						if (document.getElementById("Selected Text Chunk " + i)) {
-							found = i;
-							break;
-						}
-					}
-					if (found != -1) {
-						if (document.getElementById("Selected Text Chunk " + found).nextSibling) {
-							document.getElementById("Selected Text Chunk " + found).parentNode.insertBefore(chunk, document.getElementById("Selected Text Chunk " + found).nextSibling);
+						if (found != -1) {
+							if (document.getElementById("Selected Text Chunk " + found).nextSibling) {
+								document.getElementById("Selected Text Chunk " + found).parentNode.insertBefore(chunk, document.getElementById("Selected Text Chunk " + found).nextSibling);
+							} else {
+								document.getElementById("Selected Text Chunk " + found).parentNode.append(chunk);
+							}
+						} else if (parseInt(chunk.getAttribute("chunk")) == -1) {
+							game_text.prepend(chunk);
 						} else {
-							document.getElementById("Selected Text Chunk " + found).parentNode.append(chunk);
+							game_text.append(chunk);
 						}
-					} else if (parseInt(chunk.getAttribute("chunk")) == -1) {
-						game_text.prepend(chunk);
-					} else {
-						game_text.append(chunk);
+						chunk.classList.add("dirty");
 					}
-					chunk.classList.add("dirty");
-					did_delets = true;
 				}
 			}
 		} else {
@@ -3095,17 +3098,13 @@ function gametextwatcher(records) {
 			}
 			if ((chunk.original_text != chunk.innerText) && (!skip)) {;
 				chunk.classList.add("dirty");
-			} else if ((skip) && (record.target.childNodes.length > 1) && !(record.target.childNodes[1] instanceof HTMLElement) && (record.target.childNodes[1].data.trim() != "")) {
-				//here we added a node that wasn't under a chunk. This should only happen if you delete everything, so let's move this to the story chunk
-				var story_prompt = document.getElementById("story_prompt");
-				if (story_prompt.firstChild) {
-					story_prompt.firstChild.innerText = record.target.childNodes[1].data;
-				} else {
-					story_prompt.innerText = record.target.childNodes[1].data;
-				}
-				record.target.childNodes[1].remove()
-				story_prompt.classList.add("dirty");
-				put_cursor_at_element(story_prompt);
+			} else if ((record.addedNodes.length > 0) && (record.addedNodes[0].parentNode == game_text) && !(record.addedNodes[0] instanceof HTMLElement)) {
+				//Here we added a text node directly under game text. We should move it to be in the previous chunk
+				record.addedNodes[0].previousElementSibling.innerText = record.addedNodes[0].previousElementSibling.innerText + record.addedNodes[0].data;
+				record.addedNodes[0].previousElementSibling.classList.add("dirty");
+				var temp = record.addedNodes[0].previousElementSibling;
+				record.addedNodes[0].remove();
+				temp.focus();
 			}
 		}
 	}
@@ -3113,37 +3112,14 @@ function gametextwatcher(records) {
 
 function savegametextchanges() {
 	console.log("Firing save")
+	for (item of document.getElementsByClassName("editing")) {
+		item.classList.remove("editing");
+	}
 	for (const chunk of document.getElementsByClassName("dirty")) {
 		update_game_text(parseInt(chunk.getAttribute("chunk")), chunk.innerText);
 	}
 }
 
-
-function capturegametextpaste(event) {
-	//Stop all paste stuff from happening in the browser
-	event.preventDefault();
-	event.stopPropagation();
-	
-	//get the pasted text
-	let pastedText = (event.clipboardData || window.clipboardData).getData("text");
-	
-	
-	//Figure out where we pasted (the span element)
-	let anchorNode = window.getSelection().anchorNode;
-	if (anchorNode.nodeName == '#text') {
-		anchorNode = anchorNode.parentNode;
-	}
-	//Get the text that was there
-	var original_text = anchorNode.textContent
-	//Add the pasted text at the appropriate offset
-	original_text = [original_text.slice(0, getSelection().anchorOffset), pastedText, original_text.slice(getSelection().anchorOffset)].join('');
-	
-	//put the text back
-	anchorNode.textContent = original_text;
-	
-	return false;
-	
-}
 
 function update_game_text(id, new_text) {
 	let temp = null;
@@ -3186,7 +3162,7 @@ function put_cursor_at_element(element) {
 	range.collapse(true);
 	sel.removeAllRanges();
 	sel.addRange(range);
-	console.log(range)
+
 }
 
 function set_ui_level(level) {
