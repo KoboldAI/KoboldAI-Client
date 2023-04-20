@@ -3060,8 +3060,11 @@ function gametextwatcher(records) {
 	for (const record of records) {
 		if ((record.type === "childList") && (record.removedNodes.length > 0)) {
 			for (const chunk of record.removedNodes) {
+				//we've deleted a node. Let's find the chunk span and put it back
+				//Skip over deletes that are not chunks
 				if ((chunk instanceof HTMLElement) && (chunk.hasAttribute("chunk"))) {
 					if (!document.getElementById("Selected Text Chunk " + chunk.getAttribute("chunk"))) {
+						//Node was actually deleted. Now let's figure out where to put it back (could be in the middle)
 						chunk.innerText = '';
 						var found = -1
 						for (let i = parseInt(chunk.getAttribute("chunk"))-1; i > -1; i--) { 
@@ -3083,6 +3086,12 @@ function gametextwatcher(records) {
 							game_text.append(chunk);
 						}
 						chunk.classList.add("dirty");
+					} else {
+						//For some reason we've deleted a chunk but it still exists in the DOM. Something is wrong here
+						//Seems to loose the events on the item, but otherwise is OK. DEPLOY HACK!!!
+						document.getElementById("Selected Text Chunk " + chunk.getAttribute("chunk")).addEventListener("focus", (event) => {
+							set_edit(event.target);
+						});
 					}
 				}
 			}
