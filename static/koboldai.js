@@ -320,7 +320,7 @@ function reset_story() {
 	$(".chat-message").remove();
 	addInitChatMessage();
 	
-	chunk_delete_observer.observe(document.getElementById('Selected Text'), { childList: true });
+	chunk_delete_observer.observe(document.getElementById('Selected Text'), { subtree: true, childList: true, characterData: true });
 }
 
 function fix_text(val) {
