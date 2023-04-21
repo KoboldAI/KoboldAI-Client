@@ -1203,14 +1203,14 @@ class undefined_settings(settings):
 
 class system_settings(settings):
     local_only_variables = ['lua_state', 'lua_logname', 'lua_koboldbridge', 'lua_kobold', 
-                            'lua_koboldcore', 'regex_sl', 'acregex_ai', 'acregex_ui', 'comregex_ai', 
-                            'comregex_ui', 'sp', '_horde_pid', 'inference_config', 'image_pipeline', 
+                            'lua_koboldcore', 'regex_sl', 'acregex_ai', 'acregex_ui', 'comregex_ai', 'comregex_ui',
+                            'sp', '_horde_pid', 'inference_config', 'image_pipeline', 
                             'summarizer', 'summary_tokenizer', 'tts_model', 'rng_states']
     no_save_variables = ['lua_state', 'lua_logname', 'lua_koboldbridge', 'lua_kobold', 
                          'lua_koboldcore', 'sp', 'sp_length', '_horde_pid', 'horde_share', 'aibusy', 
                          'serverstarted', 'inference_config', 'image_pipeline', 'summarizer', 
                          'summary_tokenizer', 'use_colab_tpu', 'noai', 'disable_set_aibusy', 'cloudflare_link', 'tts_model',
-                         'generating_image', 'bit_8_available', 'host', 'hascuda', 'usegpu', 'rng_states', 'git_repository', 'git_branch']
+                         'generating_image', 'bit_8_available', 'host', 'hascuda', 'usegpu', 'rng_states', 'comregex_ai', 'comregex_ui', 'git_repository', 'git_branch']
     settings_name = "system"
     def __init__(self, socketio, koboldai_var):
         self._socketio = socketio
@@ -1252,8 +1252,10 @@ class system_settings(settings):
         self.regex_sl    = re.compile(r'\n*(?<=.) *\n(.|\n)*')  # Pattern for limiting the output to a single line
         self.acregex_ai  = re.compile(r'\n* *>(.|\n)*')  # Pattern for matching adventure actions from the AI so we can remove them
         self.acregex_ui  = re.compile(r'^ *(&gt;.*)$', re.MULTILINE)    # Pattern for matching actions in the HTML-escaped story so we can apply colouring, etc (make sure to encase part to format in parentheses)
-        self.comregex_ai = re.compile(r'(?:\n<\|(?:.|\n)*?\|>(?=\n|$))|(?:<\|(?:.|\n)*?\|>\n?)')  # Pattern for matching comments to remove them before sending them to the AI
-        self.comregex_ui = re.compile(r'(&lt;\|(?:.|\n)*?\|&gt;)')  # Pattern for matching comments in the editor
+        self.comregex_ai_string = '(?:\n\[<\|(?:.|\n)*?\|>\](?=\n|$))|(?:\[<\|(?:.|\n)*?\|>\]\n?)' # Pattern for matching comments to remove them before sending them to the AI
+        self.comregex_ui_string = '(\[&lt;\|(?:.|\n)*?\|&gt;\])' # Pattern for matching comments in the editor
+        self.comregex_ai = re.compile(self.comregex_ai_string)  # Pattern for matching comments to remove them before sending them to the AI
+        self.comregex_ui = re.compile(self.comregex_ui_string)  # Pattern for matching comments in the editor
         self.host        = False
         self.flaskwebgui = False
         self.quiet       = False # If set will suppress any story text from being printed to the console (will only be seen on the client web page)
@@ -1330,6 +1332,12 @@ class system_settings(settings):
             if name == 'sp_changed':
                 self._socketio.emit('from_server', {'cmd': 'spstatitems', 'data': {self.spfilename: self.spmeta} if self.allowsp and len(self.spfilename) else {}}, namespace=None, broadcast=True, room="UI_1")
                 super().__setattr__("sp_changed", False)
+            
+            if name == 'comregex_ai_string':
+                self.comregex_ai = re.compile(self.comregex_ai_string)
+            
+            if name == 'comregex_ui_string':
+                self.comregex_ui = re.compile(self.comregex_ui_string)
             
             if name == 'keep_img_gen_in_memory' and value == False:
                 self.image_pipeline = None
