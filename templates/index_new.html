@@ -27,7 +27,7 @@
 	<script src="static/favicon.js"></script>
 	<meta name="viewport" content="width=device-width, initial-scale=1">
 </head>
-<body>
+<body onload="chunk_delete_observer.observe(document.getElementById('Selected Text'), { subtree: true, childList: true, characterData: true });">
 	<span class="hidden var_sync_system_on_colab" id="on_colab">false</span>
 	<!------------ Left Flyout Menu--------------------->
 	<div id="SideMenu" class="SideMenu pinned">

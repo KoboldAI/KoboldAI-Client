@@ -44,7 +44,6 @@ initalizeTooltips();
 //setup an observer on the game text
 var chunk_delete_observer = new MutationObserver(function (records) {gametextwatcher(records)});
 
-chunk_delete_observer.observe(document.getElementById('Selected Text'), { subtree: true, childList: true, characterData: true });
 
 var vars_sync_time = {};
 var presets = {};
