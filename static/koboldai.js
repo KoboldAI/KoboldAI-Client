@@ -566,9 +566,9 @@ function do_story_text_updates(action) {
 			item.classList.add("rawtext");
 			item.setAttribute("chunk", action.id);
 			item.setAttribute("tabindex", parseInt(action.id)+1);
-			item.addEventListener("focus", (event) => {
-				set_edit(event.target);
-			});
+			//item.addEventListener("focus", (event) => {
+			//	set_edit(event.target);
+			//});
 			
 			//need to find the closest element
 			closest_element = document.getElementById("story_prompt");
@@ -3044,11 +3044,23 @@ function toggle_adventure_mode(button) {
 	
 }
 
-function set_edit(element) {
-	for (item of document.getElementsByClassName("editing")) {
-		item.classList.remove("editing");
+function set_edit(event) {
+	//get the element sitting on
+	var game_text = document.getElementById("Selected Text");
+	if ((event.key === undefined) || (event.key == 'ArrowDown') || (event.key == 'ArrowUp') || (event.key == 'ArrowLeft') || (event.key == 'ArrowRight')) {
+		var chunk = window.getSelection().anchorNode;
+		while (chunk != game_text) {
+			if ((chunk instanceof HTMLElement) && (chunk.hasAttribute("chunk"))) {
+				break;
+			}
+			chunk = chunk.parentNode;
+		}
+		for (item of document.getElementsByClassName("editing")) {
+			item.classList.remove("editing");
+		}
+		chunk.classList.add("editing");
 	}
-	element.classList.add("editing");
+	return true;
 }
 
 function gametextwatcher(records) {
@@ -3089,9 +3101,9 @@ function gametextwatcher(records) {
 					} else {
 						//For some reason we've deleted a chunk but it still exists in the DOM. Something is wrong here
 						//Seems to loose the events on the item, but otherwise is OK. DEPLOY HACK!!!
-						document.getElementById("Selected Text Chunk " + chunk.getAttribute("chunk")).addEventListener("focus", (event) => {
-							set_edit(event.target);
-						});
+						//document.getElementById("Selected Text Chunk " + chunk.getAttribute("chunk")).addEventListener("focus", (event) => {
+						//	set_edit(event.target);
+						//});
 					}
 				}
 			}
