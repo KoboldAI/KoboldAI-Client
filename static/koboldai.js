@@ -3097,6 +3097,7 @@ function gametextwatcher(records) {
 							game_text.append(chunk);
 						}
 						chunk.classList.add("dirty");
+						did_deletes = true;
 					} else {
 						//For some reason we've deleted a chunk but it still exists in the DOM. Something is wrong here
 						//Seems to loose the events on the item, but otherwise is OK. DEPLOY HACK!!!
@@ -3127,6 +3128,9 @@ function gametextwatcher(records) {
 				temp.focus();
 			}
 		}
+	}
+	if (did_deletes) {
+		savegametextchanges();
 	}
 }
 
