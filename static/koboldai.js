@@ -3109,23 +3109,42 @@ function gametextwatcher(records) {
 			}
 		} else {
 			var chunk = record.target;
-			var skip = true;
+			var found_chunk = false;
 			while (chunk != game_text) {
-				if ((chunk instanceof HTMLElement) && (chunk.hasAttribute("chunk"))) {
-					skip = false;
+				if (chunk) {
+					if ((chunk instanceof HTMLElement) && (chunk.hasAttribute("chunk"))) {
+						found_chunk = true;
+						break;
+					}
+					chunk = chunk.parentNode;
+				} else {
 					break;
 				}
-				chunk = chunk.parentNode;
 			}
-			if ((chunk.original_text != chunk.innerText) && (!skip)) {;
+			if ((found_chunk) && (chunk.original_text != chunk.innerText)) {;
 				chunk.classList.add("dirty");
-			} else if ((record.addedNodes.length > 0) && (record.addedNodes[0].parentNode == game_text) && !(record.addedNodes[0] instanceof HTMLElement)) {
+			} else if ((record.addedNodes.length > 0) && !(found_chunk) && !(record.addedNodes[0] instanceof HTMLElement)) {
 				//Here we added a text node directly under game text. We should move it to be in the previous chunk
-				record.addedNodes[0].previousElementSibling.innerText = record.addedNodes[0].previousElementSibling.innerText + record.addedNodes[0].data;
-				record.addedNodes[0].previousElementSibling.classList.add("dirty");
-				var temp = record.addedNodes[0].previousElementSibling;
-				record.addedNodes[0].remove();
-				temp.focus();
+				var chunk = record.addedNodes[0];
+				found_chunk = false;
+				while (chunk != game_text) {
+					if (chunk) {
+						if (chunk.parentNode === game_text) {
+							found_chunk = true;
+							break;
+						}
+						chunk = chunk.parentNode;
+					} else {
+						break;
+					}
+				}
+				if (found_chunk) {
+					chunk.previousElementSibling.innerText = chunk.previousElementSibling.innerText + record.addedNodes[0].data;
+					chunk.previousElementSibling.classList.add("dirty");
+					var temp = chunk.previousElementSibling;
+					chunk.remove();
+					temp.focus();
+				}
 			}
 		}
 	}
