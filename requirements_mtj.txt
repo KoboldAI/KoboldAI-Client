@@ -2,9 +2,9 @@ torch >= 1.9, < 1.13
 numpy
 tqdm
 requests
-dm-haiku == 0.0.5
-jax == 0.2.21
-jaxlib >= 0.1.69, <= 0.3.7
+dm-haiku==0.0.9
+jax==0.3.25
+jaxlib==0.3.25
 transformers == 4.28.0
 chex == 0.1.5
 huggingface_hub==0.12.1
