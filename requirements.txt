@@ -4,7 +4,7 @@ Flask==2.2.3
 Flask-SocketIO==5.3.2
 python-socketio==5.7.2
 requests
-torch >= 1.9, < 1.13
+torch>=1.9,<1.13
 flask-cloudflared==0.0.10
 flask-ngrok
 eventlet==0.33.3

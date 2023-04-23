@@ -1,13 +1,12 @@
-torch >= 1.9, < 1.13
+torch>=1.9,<1.13
 numpy
 tqdm
 requests
 dm-haiku==0.0.9
 jax==0.3.25
 jaxlib==0.3.25
-transformers == 4.28.0
-chex == 0.1.5
-transformers == 4.24.0
+transformers==4.28.0
+chex==0.1.5
 huggingface_hub==0.12.1
 progressbar2
 git+https://github.com/VE-FORBRYDERNE/mesh-transformer-jax@ck
