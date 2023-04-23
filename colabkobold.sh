@@ -116,6 +116,9 @@ if [ "$init" != "skip" ]; then
         if [ "$git" == "united" ]; then
             git=https://github.com/henk717/KoboldAI-Client
         fi
+        if [ "$git" == "Test" ]; then
+            git=https://github.com/arcticlinux/KoboldAI-Client
+        fi
     else
         git=https://github.com/koboldai/KoboldAI-Client
     fi
@@ -156,6 +159,10 @@ if [ "$init" != "skip" ]; then
     ln -s /content/drive/MyDrive/KoboldAI/models/ models
 
     if [ -n "${COLAB_TPU_ADDR+set}" ]; then
+        # Install mesh-transformer-jax dependencies without jax
+        pip install $(curl -s https://raw.githubusercontent.com/VE-FORBRYDERNE/mesh-transformer-jax/ck/requirements.txt  | grep -vE "jax|bleach")
+        # Install mesh-transformer-jax without installing dependencies
+        pip install --no-deps git+https://github.com/VE-FORBRYDERNE/mesh-transformer-jax@ck
         pip install -r requirements_mtj.txt
     else
         pip install -r requirements.txt

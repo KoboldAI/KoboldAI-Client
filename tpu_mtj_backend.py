@@ -37,8 +37,9 @@ import os
 import sys
 import json
 import zipfile
-import requests
 import random
+import jax.tools.colab_tpu
+jax.tools.colab_tpu.setup_tpu()
 import jax
 import jax.dlpack
 from jax.config import config
@@ -1179,13 +1180,12 @@ def load_model(path: str, driver_version="tpu_driver0.1_dev20210607", hf_checkpo
     else:
         tpu_address = os.environ['TPU_NAME']  # Kaggle
     tpu_address = tpu_address.replace("grpc://", "")
-    tpu_address_without_port = tpu_address.split(':', 1)[0]
-    url = f'http://{tpu_address_without_port}:8475/requestversion/{driver_version}'
-    requests.post(url)
     config.FLAGS.jax_xla_backend = "tpu_driver"
     config.FLAGS.jax_backend_target = "grpc://" + tpu_address
     spinner.terminate()
     print()
+    print('Registered TPU:', config.FLAGS.jax_backend_target)
+    print('Jax Devices: ', jax.devices())
 
     cores_per_replica = params["cores_per_replica"]
     seq = params["seq"]
