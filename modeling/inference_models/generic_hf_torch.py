@@ -81,11 +81,11 @@ class GenericHFTorchInferenceModel(HFTorchInferenceModel):
                 try:
                     metamodel = AutoModelForCausalLM.from_config(self.model_config)
                 except Exception as e:
-                    logger.error(f"Fell back to neo for metamodel due to {e}")
+                    logger.warning(f"Fell back to neo for metamodel due to {e}")
                     try:
                         metamodel = GPTNeoForCausalLM.from_config(self.model_config)
                     except Exception as e:
-                        logger.error(f"Falling back again due to {e}")
+                        logger.warning(f"Falling back again due to {e}")
                         raise SuperLegacyModelError
 
                 utils.layers_module_names = utils.get_layers_module_names(metamodel)
