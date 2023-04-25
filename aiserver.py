@@ -108,15 +108,14 @@ def new_init(self, *args, **kwargs):
             self.ncols = 99
 tqdm.__init__ = new_init
 
-# Fix some issues with the OPT tokenizer
+# Add _koboldai_header support for some optional tokenizer fixes
+# This used to be an OPT tokenizer fix, this has been moved search for "# These are model specific overrides if a model has bad defaults" for the new section
 from transformers import PreTrainedTokenizerBase
 old_pretrainedtokenizerbase_from_pretrained = PreTrainedTokenizerBase.from_pretrained.__func__
 @classmethod
 def new_pretrainedtokenizerbase_from_pretrained(cls, *args, **kwargs):
     tokenizer = old_pretrainedtokenizerbase_from_pretrained(cls, *args, **kwargs)
-    tokenizer._koboldai_header = tokenizer.encode("")
-    tokenizer.add_bos_token = False
-    tokenizer.add_prefix_space = False
+    tokenizer._koboldai_header = []
     return tokenizer
 PreTrainedTokenizerBase.from_pretrained = new_pretrainedtokenizerbase_from_pretrained
 
@@ -3251,10 +3250,14 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
             #    koboldai_vars.badwordsids.append([vocab[key]])
 
             # These are model specific overrides if a model has bad defaults
+            tokenizer._koboldai_header = []
             if koboldai_vars.model_type == "llama":
                 tokenizer.decode_with_prefix_space = True
                 tokenizer.add_bos_token = False
-                        
+            if koboldai_vars.model_type == "opt":
+                tokenizer._koboldai_header = tokenizer.encode("")
+                tokenizer.add_bos_token = False
+                tokenizer.add_prefix_space = False
             logger.info(f"Pipeline created: {koboldai_vars.model}")
         
         else:
