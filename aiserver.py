@@ -223,7 +223,7 @@ model_menu = {
         MenuFolder("Untuned Fairseq Dense", "fsdlist"),
         MenuFolder("Untuned Bloom", "bloomlist"),
         MenuFolder("Untuned XGLM", "xglmlist"),
-        MenuFolder("Untuned RWKV-4 (Experimental)", "rwkvlist"),
+        MenuFolder("Untuned RWKV-4 (Experimental)", "rwkvlist", experimental=True),
         MenuFolder("Untuned GPT2", "gpt2list"),
         MenuFolder("Online Services", "apilist"),
         MenuModel("Read Only (No AI)", "ReadOnly", model_type=MenuModelType.OTHER),
