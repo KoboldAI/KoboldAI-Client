@@ -131,10 +131,14 @@ class HFTorchInferenceModel(HFInferenceModel):
         if not utils.koboldai_vars.model_type:
             utils.koboldai_vars.model_type = m_self.get_model_type()
 
-        # Model specific overrides if a model has bad defaults
+        # These are model specific overrides if a model has bad defaults
         if utils.koboldai_vars.model_type == "llama":
             m_self.tokenizer.decode_with_prefix_space = True
             m_self.tokenizer.add_bos_token = False
+        elif utils.koboldai_vars.model_type == "opt":
+            m_self.tokenizer._koboldai_header = m_self.tokenizer.encode("")
+            m_self.tokenizer.add_bos_token = False
+            m_self.tokenizer.add_prefix_space = False
 
         # Patch stopping_criteria
         class PTHStopper(StoppingCriteria):

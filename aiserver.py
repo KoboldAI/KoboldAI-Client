@@ -102,15 +102,14 @@ def new_init(self, *args, **kwargs):
             self.ncols = 99
 tqdm.__init__ = new_init
 
-# Fix some issues with the OPT tokenizer
+# Add _koboldai_header support for some optional tokenizer fixes
+# This used to be an OPT tokenizer fix, this has been moved search for "# These are model specific overrides if a model has bad defaults" for the new section
 from transformers import PreTrainedTokenizerBase
 old_pretrainedtokenizerbase_from_pretrained = PreTrainedTokenizerBase.from_pretrained.__func__
 @classmethod
 def new_pretrainedtokenizerbase_from_pretrained(cls, *args, **kwargs):
     tokenizer = old_pretrainedtokenizerbase_from_pretrained(cls, *args, **kwargs)
-    tokenizer._koboldai_header = tokenizer.encode("")
-    tokenizer.add_bos_token = False
-    tokenizer.add_prefix_space = False
+    tokenizer._koboldai_header = []
     return tokenizer
 PreTrainedTokenizerBase.from_pretrained = new_pretrainedtokenizerbase_from_pretrained
 
@@ -1305,7 +1304,7 @@ def general_startup(override_args=None):
     parser.add_argument("--noaimenu", action='store_true', help="Disables the ability to select the AI")
     parser.add_argument("--ngrok", action='store_true', help="Optimizes KoboldAI for Remote Play using Ngrok")
     parser.add_argument("--localtunnel", action='store_true', help="Optimizes KoboldAI for Remote Play using Localtunnel")
-    parser.add_argument("--host", type=str, default="", nargs="?", const="", help="Optimizes KoboldAI for LAN Remote Play without using a proxy service. --host opens to all LAN. Enable IP whitelisting by using a comma separated IP list. Supports individual IPs, ranges, and subnets --host 127.0.0.1,127.0.0.2,127.0.0.3,192.168.1.0-192.168.1.255,10.0.0.0/24,etc")
+    parser.add_argument("--host", type=str, default="Disabled", nargs="?", const="", help="Optimizes KoboldAI for LAN Remote Play without using a proxy service. --host opens to all LAN. Enable IP whitelisting by using a comma separated IP list. Supports individual IPs, ranges, and subnets --host 127.0.0.1,127.0.0.2,127.0.0.3,192.168.1.0-192.168.1.255,10.0.0.0/24,etc")
     parser.add_argument("--port", type=int, help="Specify the port on which the application will be joinable")
     parser.add_argument("--aria2_port", type=int, help="Specify the port on which aria2's RPC interface will be open if aria2 is installed (defaults to 6799)")
     parser.add_argument("--model", help="Specify the Model Type to skip the Menu")
@@ -1436,17 +1435,14 @@ def general_startup(override_args=None):
     if args.localtunnel:
         koboldai_vars.host = True;
 
-    if args.host == "":
-        koboldai_vars.host = True
-        args.unblock = True
-    if args.host:
+    if args.host != "Disabled":
             # This means --host option was submitted without an argument
             # Enable all LAN IPs (0.0.0.0/0)
+        koboldai_vars.host = True
+        args.unblock = True
         if args.host != "":
             # Check if --host option was submitted with an argument
             # Parse the supplied IP(s) and add them to the allowed IPs list
-            koboldai_vars.host = True
-            args.unblock = True
             enable_whitelist = True
             for ip_str in args.host.split(","):
                 if "/" in ip_str:
@@ -1461,6 +1457,7 @@ def general_startup(override_args=None):
             # Sort and print the allowed IPs list
             allowed_ips = sorted(allowed_ips, key=lambda ip: int(''.join([i.zfill(3) for i in ip.split('.')])))
             print(f"Allowed IPs: {allowed_ips}")
+
 
 
     if args.cpu:
@@ -2088,7 +2085,8 @@ def is_allowed_ip():
     client_ip = request.remote_addr
     if request.path != '/genre_data.json':
         print("Connection Attempt: " + request.remote_addr)
-        print("Allowed?: ",  request.remote_addr in allowed_ips)
+        if allowed_ips:
+            print("Allowed?: ",  request.remote_addr in allowed_ips)
     return client_ip in allowed_ips
 
 
@@ -2787,7 +2785,8 @@ def execute_outmod():
 @socketio.on('connect')
 def do_connect():
     print("Connection Attempt: " + request.remote_addr)
-    print("Allowed?: ",  request.remote_addr in allowed_ips)
+    if allowed_ips:
+        print("Allowed?: ",  request.remote_addr in allowed_ips)
     if request.args.get("rely") == "true":
         return
     logger.info("Client connected! UI_{}".format(request.args.get('ui')))
@@ -5125,13 +5124,13 @@ def loadRequest(loadpath, filename=None):
 
     if not loadpath:
         return
-        
+    
     #Original UI only sends the story name and assumes it's always a .json file... here we check to see if it's a directory to load that way
-    if not os.path.exists(loadpath):
+    if not isinstance(loadpath, dict) and not os.path.exists(loadpath):
         if os.path.exists(loadpath.replace(".json", "")):
             loadpath = loadpath.replace(".json", "")
 
-    if os.path.isdir(loadpath):
+    if not isinstance(loadpath, dict) and os.path.isdir(loadpath):
         if not valid_v3_story(loadpath):
             raise RuntimeError(f"Tried to load {loadpath}, a non-save directory.")
         koboldai_vars.update_story_path_structure(loadpath)
