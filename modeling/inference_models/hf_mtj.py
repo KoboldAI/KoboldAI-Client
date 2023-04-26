@@ -265,7 +265,6 @@ class HFMTJInferenceModel(HFInferenceModel):
         soft_tokens = self.get_soft_tokens()
 
         dynamic_inference = kwargs.get("tpu_dynamic_inference", False)
-        logger.info(f"dynamic_inference={dynamic_inference}")
 
         if seed is not None:
             tpu_mtj_backend.set_rng_seed(seed)
