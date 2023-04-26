@@ -3080,36 +3080,44 @@ function gametextwatcher(records) {
 						//Node was actually deleted. 
 						if (!dirty_chunks.includes(chunk.getAttribute("chunk"))) {
 							dirty_chunks.push(chunk.getAttribute("chunk"));
+							//Stupid firefox sometimes looses focus as you type after deleting stuff. Fix that here
+							//var sel = window.getSelection();
+							//if (sel.anchorNode instanceof HTMLElement) {
+							//	sel.anchorNode.focus();
+							//} else {
+							//	game_text.focus();
+							//}
 						}
 					}
 				}
 			}
-		} else {
-			//get the actual chunk rather than the sub-node
-			var chunk = record.target;
-			var found_chunk = false;
-			while (chunk != game_text) {
-				if (chunk) {
-					if ((chunk instanceof HTMLElement) && (chunk.hasAttribute("chunk"))) {
-						found_chunk = true;
-						break;
-					}
-					chunk = chunk.parentNode;
-				} else {
+		}
+		//get the actual chunk rather than the sub-node
+		//console.log(record);
+		var chunk = record.target;
+		var found_chunk = false;
+		while (chunk != game_text) {
+			if (chunk) {
+				if ((chunk instanceof HTMLElement) && (chunk.hasAttribute("chunk"))) {
+					found_chunk = true;
 					break;
 				}
+				chunk = chunk.parentNode;
+			} else {
+				break;
 			}
-			if ((found_chunk) && (chunk.original_text != chunk.innerText)) {;
-				if (!dirty_chunks.includes(chunk.getAttribute("chunk"))) {
-					dirty_chunks.push(chunk.getAttribute("chunk"));
-				}
-			} else if ((record.addedNodes.length > 0) && !(found_chunk) && !(record.addedNodes[0] instanceof HTMLElement)) {
-				if (!dirty_chunks.includes("game_text")) {
-					dirty_chunks.push("game_text");
-				}
+		}
+		if ((found_chunk) && (chunk.original_text != chunk.innerText)) {;
+			if (!dirty_chunks.includes(chunk.getAttribute("chunk"))) {
+				dirty_chunks.push(chunk.getAttribute("chunk"));
+			}
+		} else if ((record.addedNodes.length > 0) && !(found_chunk) && !(record.addedNodes[0] instanceof HTMLElement)) {
+			if (!dirty_chunks.includes("game_text")) {
+				dirty_chunks.push("game_text");
 			}
 		}
 	}
+	//console.log(dirty_chunks);
 }
 
 function fix_dirty_game_text() {
@@ -3133,7 +3141,7 @@ function fix_dirty_game_text() {
 		console.log("Firing Fix messed up text");
 		//Fixing text outside of chunks
 		for (node of game_text.childNodes) {
-			if (!(node instanceof HTMLElement) || !node.hasAttribute("chunk")) {
+			if ((!(node instanceof HTMLElement) || !node.hasAttribute("chunk")) && (node.wholeText.trim() != "")) {
 				console.log("Found Node that needs to be combined");
 				console.log(node);
 				//We have a text only node. It should be moved into the previous chunk
