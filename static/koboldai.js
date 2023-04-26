@@ -3065,6 +3065,10 @@ function set_edit(event) {
 	return true;
 }
 
+function check_game_after_paste() {
+	setTimeout(function() {savegametextchanges();}, 500);
+}
+
 function gametextwatcher(records) {
 	//Here we want to take care of two possible events
 	//User deleted an action. For this we'll restore the action and set it's text to "" and mark it as dirty
