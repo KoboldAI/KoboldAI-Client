@@ -8,7 +8,11 @@ echo.
 
 Reg add "HKLM\SYSTEM\CurrentControlSet\Control\FileSystem" /v "LongPathsEnabled" /t REG_DWORD /d "1" /f 2>nul
 cd /D %~dp0
+
+:Isolation
 SET CONDA_SHLVL=
+SET PYTHONNOUSERSITE=1
+SET PYTHONPATH=
 
 if exist miniconda3\ (
   echo Delete existing installation?

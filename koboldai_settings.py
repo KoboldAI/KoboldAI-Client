@@ -19,6 +19,8 @@ import inspect
 serverstarted = False
 queue = None
 multi_story = False
+global enable_whitelist
+enable_whitelist = False
 
 if importlib.util.find_spec("tortoise") is not None:
     from tortoise import api
@@ -654,6 +656,7 @@ class model_settings(settings):
     default_settings = {"rep_pen" : 1.1, "rep_pen_slope": 0.7, "rep_pen_range": 1024, "temp": 0.5, "top_p": 0.9, "top_k": 0, "top_a": 0.0, "tfs": 1.0, "typical": 1.0,
                         "sampler_order": [6,0,1,2,3,4,5]}
     def __init__(self, socketio, koboldai_vars):
+        self.enable_whitelist = False
         self._socketio = socketio
         self.reset_for_model_load()
         self.model       = ""     # Model ID string chosen at startup
@@ -1200,14 +1203,14 @@ class undefined_settings(settings):
 
 class system_settings(settings):
     local_only_variables = ['lua_state', 'lua_logname', 'lua_koboldbridge', 'lua_kobold', 
-                            'lua_koboldcore', 'regex_sl', 'acregex_ai', 'acregex_ui', 'comregex_ai', 
-                            'comregex_ui', 'sp', '_horde_pid', 'inference_config', 'image_pipeline', 
-                            'summarizer', 'summary_tokenizer', 'tts_model', 'rng_states']
+                            'lua_koboldcore', 'regex_sl', 'acregex_ai', 'acregex_ui', 'comregex_ai', 'comregex_ui',
+                            'sp', '_horde_pid', 'inference_config', 'image_pipeline', 
+                            'summarizer', 'summary_tokenizer', 'tts_model', 'rng_states', 'comregex_ai', 'comregex_ui']
     no_save_variables = ['lua_state', 'lua_logname', 'lua_koboldbridge', 'lua_kobold', 
                          'lua_koboldcore', 'sp', 'sp_length', '_horde_pid', 'horde_share', 'aibusy', 
                          'serverstarted', 'inference_config', 'image_pipeline', 'summarizer', 
                          'summary_tokenizer', 'use_colab_tpu', 'noai', 'disable_set_aibusy', 'cloudflare_link', 'tts_model',
-                         'generating_image', 'bit_8_available', 'host', 'hascuda', 'usegpu', 'rng_states']
+                         'generating_image', 'bit_8_available', 'host', 'hascuda', 'usegpu', 'rng_states', 'comregex_ai', 'comregex_ui']
     settings_name = "system"
     def __init__(self, socketio, koboldai_var):
         self._socketio = socketio
@@ -1249,8 +1252,8 @@ class system_settings(settings):
         self.regex_sl    = re.compile(r'\n*(?<=.) *\n(.|\n)*')  # Pattern for limiting the output to a single line
         self.acregex_ai  = re.compile(r'\n* *>(.|\n)*')  # Pattern for matching adventure actions from the AI so we can remove them
         self.acregex_ui  = re.compile(r'^ *(&gt;.*)$', re.MULTILINE)    # Pattern for matching actions in the HTML-escaped story so we can apply colouring, etc (make sure to encase part to format in parentheses)
-        self.comregex_ai = re.compile(r'(?:\n<\|(?:.|\n)*?\|>(?=\n|$))|(?:<\|(?:.|\n)*?\|>\n?)')  # Pattern for matching comments to remove them before sending them to the AI
-        self.comregex_ui = re.compile(r'(&lt;\|(?:.|\n)*?\|&gt;)')  # Pattern for matching comments in the editor
+        self.comregex_ai = re.compile(r'(?:\n\[<\|(?:.|\n)*?\|>\](?=\n|$))|(?:\[<\|(?:.|\n)*?\|>\]\n?)')  # Pattern for matching comments to remove them before sending them to the AI
+        self.comregex_ui = re.compile(r'(\[&lt;\|(?:.|\n)*?\|&gt;\])')  # Pattern for matching comments in the editor
         self.host        = False
         self.flaskwebgui = False
         self.quiet       = False # If set will suppress any story text from being printed to the console (will only be seen on the client web page)
