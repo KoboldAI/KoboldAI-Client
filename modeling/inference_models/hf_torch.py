@@ -18,6 +18,7 @@ import transformers
 from transformers import (
     StoppingCriteria,
     GPTNeoForCausalLM,
+    GPT2LMHeadModel,
     AutoModelForCausalLM,
     LogitsProcessorList,
 )
@@ -277,19 +278,28 @@ class HFTorchInferenceModel(HFInferenceModel):
                 **tf_kwargs,
             )
         except Exception as e:
-            logger.warning(f"Fell back to GPTNeoForCausalLM due to {e}")
-
             if "out of memory" in traceback.format_exc().lower():
                 raise RuntimeError(
                     "One of your GPUs ran out of memory when KoboldAI tried to load your model."
                 )
 
-            return GPTNeoForCausalLM.from_pretrained(
-                location,
-                revision=utils.koboldai_vars.revision,
-                cache_dir="cache",
-                **tf_kwargs,
-            )
+            logger.warning(f"Fell back to GPT2LMHeadModel due to {e}")
+
+            try:
+                return GPT2LMHeadModel.from_pretrained(
+                    location,
+                    revision=utils.koboldai_vars.revision,
+                    cache_dir="cache",
+                    **tf_kwargs,
+                )
+            except Exception as e:
+                logger.warning(f"Fell back to GPTNeoForCausalLM due to {e}")
+                return GPTNeoForCausalLM.from_pretrained(
+                    location,
+                    revision=utils.koboldai_vars.revision,
+                    cache_dir="cache",
+                    **tf_kwargs,
+                )
 
     def get_hidden_size(self) -> int:
         return self.model.get_input_embeddings().embedding_dim

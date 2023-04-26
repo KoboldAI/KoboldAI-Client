@@ -19,7 +19,7 @@ class CustomGPT2HFTorchInferenceModel(HFTorchInferenceModel):
         for possible_config_path in [
             utils.koboldai_vars.custmodpth,
             os.path.join("models", utils.koboldai_vars.custmodpth),
-            self.model_name
+            self.model_name,
         ]:
             try:
                 with open(
@@ -40,7 +40,7 @@ class CustomGPT2HFTorchInferenceModel(HFTorchInferenceModel):
                     model_path,
                     revision=utils.koboldai_vars.revision,
                     cache_dir="cache",
-                    local_files_only=True
+                    local_files_only=True,
                 )
                 self.tokenizer = GPT2Tokenizer.from_pretrained(
                     model_path,
