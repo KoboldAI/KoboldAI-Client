@@ -79,6 +79,7 @@ var story_commentary_characters = {};
 var generating_summary = false;
 const on_colab = $el("#on_colab").textContent == "true";
 let story_id = -1;
+var dirty_chunks = [];
 
 // Each entry into this array should be an object that looks like:
 // {class: "class", key: "key", func: callback}
@@ -285,7 +286,8 @@ function reset_story() {
 	for (const item of temp) { 
 		item.remove();
 	}
-	document.getElementById("Selected Text").setAttribute("contenteditable", "false");
+	//document.getElementById("Selected Text").setAttribute("contenteditable", "false");
+	document.getElementById("story_prompt").setAttribute("contenteditable", "false");
 	
 	//clear any options
 	var option_area = document.getElementById("Select Options");
@@ -585,7 +587,6 @@ function do_story_text_updates(action) {
 			}
 		}
 		
-		item.classList.remove("dirty");
 		
 		if (action.action['Selected Text'].charAt(0) == ">") {
 			item.classList.add("action_mode_input");
@@ -3067,7 +3068,6 @@ function gametextwatcher(records) {
 	//User deleted an action. For this we'll restore the action and set it's text to "" and mark it as dirty
 	//User changes text. For this we simply mark it as dirty
 	var game_text = document.getElementById("Selected Text");
-	var did_deletes = false;
 	for (const record of records) {
 		if ((record.type === "childList") && (record.removedNodes.length > 0)) {
 			for (const chunk of record.removedNodes) {
@@ -3075,39 +3075,15 @@ function gametextwatcher(records) {
 				//Skip over deletes that are not chunks
 				if ((chunk instanceof HTMLElement) && (chunk.hasAttribute("chunk"))) {
 					if (!document.getElementById("Selected Text Chunk " + chunk.getAttribute("chunk"))) {
-						//Node was actually deleted. Now let's figure out where to put it back (could be in the middle)
-						chunk.innerText = '';
-						var found = -1
-						for (let i = parseInt(chunk.getAttribute("chunk"))-1; i > -1; i--) { 
-							if (document.getElementById("Selected Text Chunk " + i)) {
-								found = i;
-								break;
-							}
+						//Node was actually deleted. 
+						if (!dirty_chunks.includes(chunk.getAttribute("chunk"))) {
+							dirty_chunks.push(chunk.getAttribute("chunk"));
 						}
-						
-						if (found != -1) {
-							if (document.getElementById("Selected Text Chunk " + found).nextSibling) {
-								document.getElementById("Selected Text Chunk " + found).parentNode.insertBefore(chunk, document.getElementById("Selected Text Chunk " + found).nextSibling);
-							} else {
-								document.getElementById("Selected Text Chunk " + found).parentNode.append(chunk);
-							}
-						} else if (parseInt(chunk.getAttribute("chunk")) == -1) {
-							game_text.prepend(chunk);
-						} else {
-							game_text.append(chunk);
-						}
-						chunk.classList.add("dirty");
-						did_deletes = true;
-					} else {
-						//For some reason we've deleted a chunk but it still exists in the DOM. Something is wrong here
-						//Seems to loose the events on the item, but otherwise is OK. DEPLOY HACK!!!
-						//document.getElementById("Selected Text Chunk " + chunk.getAttribute("chunk")).addEventListener("focus", (event) => {
-						//	set_edit(event.target);
-						//});
 					}
 				}
 			}
 		} else {
+			//get the actual chunk rather than the sub-node
 			var chunk = record.target;
 			var found_chunk = false;
 			while (chunk != game_text) {
@@ -3122,45 +3098,78 @@ function gametextwatcher(records) {
 				}
 			}
 			if ((found_chunk) && (chunk.original_text != chunk.innerText)) {;
-				chunk.classList.add("dirty");
-			} else if ((record.addedNodes.length > 0) && !(found_chunk) && !(record.addedNodes[0] instanceof HTMLElement)) {
-				//Here we added a text node directly under game text. We should move it to be in the previous chunk
-				var chunk = record.addedNodes[0];
-				found_chunk = false;
-				while (chunk != game_text) {
-					if (chunk) {
-						if (chunk.parentNode === game_text) {
-							found_chunk = true;
-							break;
-						}
-						chunk = chunk.parentNode;
-					} else {
-						break;
-					}
+				if (!dirty_chunks.includes(chunk.getAttribute("chunk"))) {
+					dirty_chunks.push(chunk.getAttribute("chunk"));
 				}
-				if (found_chunk) {
-					chunk.previousElementSibling.innerText = chunk.previousElementSibling.innerText + record.addedNodes[0].data;
-					chunk.previousElementSibling.classList.add("dirty");
-					var temp = chunk.previousElementSibling;
-					chunk.remove();
-					temp.focus();
+			} else if ((record.addedNodes.length > 0) && !(found_chunk) && !(record.addedNodes[0] instanceof HTMLElement)) {
+				if (!dirty_chunks.includes("game_text")) {
+					dirty_chunks.push("game_text");
 				}
 			}
 		}
 	}
-	if (did_deletes) {
-		savegametextchanges();
+}
+
+function fix_dirty_game_text() {
+	//This should get fired if we have deleted chunks or have added text outside of a node.
+	//We wait until after the game text has lost focus to fix things otherwise it messes with typing
+	var game_text = document.getElementById("Selected Text");
+	//Fix missing story prompt
+	if (dirty_chunks.includes("-1")) {
+		if (!document.getElementById("story_prompt")) {
+			story_prompt = document.createElement("span");
+			story_prompt.id = "story_prompt";
+			story_prompt.classList.add("var_sync_story_prompt");
+			story_prompt.classList.add("var_sync_alt_story_prompt_in_ai");
+			story_prompt.classList.add("rawtext");
+			story_prompt.setAttribute("chunk", "-1");
+			game_text.prepend(story_prompt);
+		}
+	}
+	if (dirty_chunks.includes("game_text")) {
+		dirty_chunks = dirty_chunks.filter(item => item != "game_text");
+		console.log("Firing Fix messed up text");
+		//Fixing text outside of chunks
+		for (node of game_text.childNodes) {
+			if (!(node instanceof HTMLElement) || !node.hasAttribute("chunk")) {
+				console.log("Found Node that needs to be combined");
+				console.log(node);
+				//We have a text only node. It should be moved into the previous chunk
+				if (node instanceof HTMLElement) {
+					node.previousElementSibling.innerText = node.previousElementSibling.innerText + node.innerText;
+				} else {
+					node.previousElementSibling.innerText = node.previousElementSibling.innerText + node.data;
+				}
+				if (!dirty_chunks.includes(node.previousElementSibling.getAttribute("chunk"))) {
+					dirty_chunks.push(node.previousElementSibling.getAttribute("chunk"));
+				}
+				node.remove();
+			}
+		}
 	}
 }
 
 function savegametextchanges() {
-	console.log("Firing save")
+	fix_dirty_game_text();
 	for (item of document.getElementsByClassName("editing")) {
 		item.classList.remove("editing");
 	}
-	for (const chunk of document.getElementsByClassName("dirty")) {
-		update_game_text(parseInt(chunk.getAttribute("chunk")), chunk.innerText);
+	if (dirty_chunks.length > 0) {
+		console.log("Firing save");
 	}
+	for (const chunk_id of dirty_chunks) {
+		if (chunk_id == -1) {
+			chunk = document.getElementById("story_prompt");
+		} else {
+			chunk = document.getElementById("Selected Text Chunk " + chunk);
+		}
+		if (chunk) {
+			update_game_text(parseInt(chunk.getAttribute("chunk")), chunk.innerText);
+		} else {
+			update_game_text(parseInt(chunk_id), "");
+		}
+	}
+	dirty_chunks = [];
 }
 
 
@@ -3169,18 +3178,18 @@ function update_game_text(id, new_text) {
 	if (id == -1) {
 		if (document.getElementById("story_prompt")) {
 			temp = document.getElementById("story_prompt");
-			sync_to_server(temp);
 			temp.original_text = new_text;
 			temp.classList.add("pulse");
+			sync_to_server(temp);
 		} else {
-			socket.emit("var_change", {"ID": 'story_prompt', "value": new_text})
+			socket.emit("var_change", {"ID": 'story_prompt', "value": new_text});
 		}
 	} else {
 		if (document.getElementById("Selected Text Chunk " + id)) {
 			temp = document.getElementById("Selected Text Chunk " + id);
-			socket.emit("Set Selected Text", {"id": id, "text": new_text});
 			temp.original_text = new_text;
 			temp.classList.add("pulse");
+			socket.emit("Set Selected Text", {"id": id, "text": new_text});
 		} else {
 			socket.emit("Set Selected Text", {"id": id, "text": ""});
 		}
