@@ -3085,12 +3085,12 @@ function gametextwatcher(records) {
 						if (!dirty_chunks.includes(chunk.getAttribute("chunk"))) {
 							dirty_chunks.push(chunk.getAttribute("chunk"));
 							//Stupid firefox sometimes looses focus as you type after deleting stuff. Fix that here
-							//var sel = window.getSelection();
-							//if (sel.anchorNode instanceof HTMLElement) {
-							//	sel.anchorNode.focus();
-							//} else {
-							//	game_text.focus();
-							//}
+							var sel = window.getSelection();
+							if (sel.anchorNode instanceof HTMLElement) {
+								sel.anchorNode.focus();
+							} else {
+								game_text.focus();
+							}
 						}
 					}
 				}
