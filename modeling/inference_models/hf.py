@@ -26,9 +26,13 @@ class HFInferenceModel(InferenceModel):
 
         if self.model_name in ["NeoCustom", "GPT2Custom", "TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX"]:
             assert utils.koboldai_vars.custmodpth
-            assert os.path.exists(utils.koboldai_vars.custmodpth)
 
-            print("CUSTMODPATH")
+            try:
+                assert os.path.exists(utils.koboldai_vars.custmodpth)
+            except AssertionError:
+                logger.error(f"Custom model at '{utils.koboldai_vars.custmodpth}' doesn't seem to exist")
+                raise
+
             return utils.koboldai_vars.custmodpth
 
         basename = utils.koboldai_vars.model.replace("/", "_")
