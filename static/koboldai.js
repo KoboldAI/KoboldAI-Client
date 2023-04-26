@@ -3058,7 +3058,9 @@ function set_edit(event) {
 		for (item of document.getElementsByClassName("editing")) {
 			item.classList.remove("editing");
 		}
-		chunk.classList.add("editing");
+		if (chunk != game_text) {
+			chunk.classList.add("editing");
+		}
 	}
 	return true;
 }
@@ -3161,7 +3163,7 @@ function savegametextchanges() {
 		if (chunk_id == -1) {
 			chunk = document.getElementById("story_prompt");
 		} else {
-			chunk = document.getElementById("Selected Text Chunk " + chunk);
+			chunk = document.getElementById("Selected Text Chunk " + chunk_id);
 		}
 		if (chunk) {
 			update_game_text(parseInt(chunk.getAttribute("chunk")), chunk.innerText);
