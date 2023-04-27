@@ -49,7 +49,7 @@ If you haven't done so already, exit the command prompt/leave KAI's conda env. (
 
 Run `play.bat` [windows], `play.sh` [linux Nvidia], or `play-rocm.sh` [linux AMD]
 
-Switch to UI2, enable Experimental UI under the Interface tab, then load your model and be sure 4-bit toggle is on.
+Switch to UI2, then load your model and be sure 4-bit toggle is on.
 
 The 4bit toggle shows when a model to load is selected.
 
