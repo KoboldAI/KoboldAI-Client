@@ -316,7 +316,9 @@ function reset_story() {
 		text += "\xa0 ";
 	}
 	document.getElementById("welcome_text").innerText = text;
-	document.getElementById("welcome_container").classList.remove("hidden");
+	if (document.getElementById("story_prompt").innerText == "") {
+		document.getElementById("welcome_container").classList.remove("hidden");
+	}
 	document.getElementById('main-grid').setAttribute('option_length', 0);
 
 	$(".chat-message").remove();
