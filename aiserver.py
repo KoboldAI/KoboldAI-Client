@@ -2296,7 +2296,7 @@ def lua_encode(string):
         from transformers import GPT2Tokenizer
         global tokenizer
         tokenizer = GPT2Tokenizer.from_pretrained("gpt2", revision=koboldai_vars.revision, cache_dir="cache")
-    return tokenizer.encode(utils.encodenewlines(string), max_length=int(4e9), truncation=True)
+    return tokenizer.encode(utils.encodenewlines(string))
 
 #==================================================================#
 #  Computes context given a submission, Lua array of entry UIDs and a Lua array
