@@ -286,8 +286,6 @@ function reset_story() {
 	for (const item of temp) { 
 		item.remove();
 	}
-	//document.getElementById("Selected Text").setAttribute("contenteditable", "false");
-	document.getElementById("story_prompt").setAttribute("contenteditable", "false");
 	
 	//clear any options
 	var option_area = document.getElementById("Select Options");
@@ -316,8 +314,11 @@ function reset_story() {
 		text += "\xa0 ";
 	}
 	document.getElementById("welcome_text").innerText = text;
+	document.getElementById("Selected Text").setAttribute("contenteditable", "false");
 	if (document.getElementById("story_prompt").innerText == "") {
 		document.getElementById("welcome_container").classList.remove("hidden");
+		document.getElementById("Selected Text").setAttribute("contenteditable", "true");
+		
 	}
 	document.getElementById('main-grid').setAttribute('option_length', 0);
 
@@ -679,7 +680,6 @@ function do_prompt(data) {
 		document.getElementById('themerow').classList.remove("hidden");
 		addInitChatMessage();
 	}
-	document.getElementById("story_prompt").classList.remove("dirty");
 	
 }
 
