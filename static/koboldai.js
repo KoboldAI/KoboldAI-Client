@@ -80,6 +80,7 @@ var generating_summary = false;
 const on_colab = $el("#on_colab").textContent == "true";
 let story_id = -1;
 var dirty_chunks = [];
+var initial_socketio_connection_occured = false;
 
 // Each entry into this array should be an object that looks like:
 // {class: "class", key: "key", func: callback}
@@ -218,6 +219,10 @@ var current_action;
 function connect() {
 	console.log("connected");
 	//reset_story();
+	if (initial_socketio_connection_occured) {
+		location.reload();
+	}
+	initial_socketio_connection_occured = true;
 	for (item of document.getElementsByTagName("body")) {
 		item.classList.remove("NotConnected");
 	}
