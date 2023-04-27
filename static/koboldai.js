@@ -262,6 +262,7 @@ function disruptStoryState() {
 
 function reset_story() {
 	console.log("Resetting story");
+	location.reload();
 	disruptStoryState();
 	chunk_delete_observer.disconnect();
 	clearTimeout(calc_token_usage_timeout);
