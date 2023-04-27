@@ -114,15 +114,14 @@ def new_init(self, *args, **kwargs):
             self.ncols = 99
 tqdm.__init__ = new_init
 
-# Fix some issues with the OPT tokenizer
+# Add _koboldai_header support for some optional tokenizer fixes
+# This used to be an OPT tokenizer fix, this has been moved search for "# These are model specific overrides if a model has bad defaults" for the new section
 from transformers import PreTrainedTokenizerBase
 old_pretrainedtokenizerbase_from_pretrained = PreTrainedTokenizerBase.from_pretrained.__func__
 @classmethod
 def new_pretrainedtokenizerbase_from_pretrained(cls, *args, **kwargs):
     tokenizer = old_pretrainedtokenizerbase_from_pretrained(cls, *args, **kwargs)
-    tokenizer._koboldai_header = tokenizer.encode("")
-    tokenizer.add_bos_token = False
-    tokenizer.add_prefix_space = False
+    tokenizer._koboldai_header = []
     return tokenizer
 PreTrainedTokenizerBase.from_pretrained = new_pretrainedtokenizerbase_from_pretrained
 
@@ -2110,7 +2109,8 @@ def is_allowed_ip():
     client_ip = request.remote_addr
     if request.path != '/genre_data.json':
         print("Connection Attempt: " + request.remote_addr)
-        print("Allowed?: ",  request.remote_addr in allowed_ips)
+        if allowed_ips:
+            print("Allowed?: ",  request.remote_addr in allowed_ips)
     return client_ip in allowed_ips
 
 
@@ -2809,7 +2809,8 @@ def execute_outmod():
 @socketio.on('connect')
 def do_connect():
     print("Connection Attempt: " + request.remote_addr)
-    print("Allowed?: ",  request.remote_addr in allowed_ips)
+    if allowed_ips:
+        print("Allowed?: ",  request.remote_addr in allowed_ips)
     if request.args.get("rely") == "true":
         return
     logger.info("Client connected! UI_{}".format(request.args.get('ui')))
@@ -5147,13 +5148,13 @@ def loadRequest(loadpath, filename=None):
 
     if not loadpath:
         return
-        
+    
     #Original UI only sends the story name and assumes it's always a .json file... here we check to see if it's a directory to load that way
-    if not os.path.exists(loadpath):
+    if not isinstance(loadpath, dict) and not os.path.exists(loadpath):
         if os.path.exists(loadpath.replace(".json", "")):
             loadpath = loadpath.replace(".json", "")
 
-    if os.path.isdir(loadpath):
+    if not isinstance(loadpath, dict) and os.path.isdir(loadpath):
         if not valid_v3_story(loadpath):
             raise RuntimeError(f"Tried to load {loadpath}, a non-save directory.")
         koboldai_vars.update_story_path_structure(loadpath)

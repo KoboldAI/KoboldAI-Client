@@ -1,6 +1,10 @@
 @echo off
 cd /D %~dp0
+
+:Isolation
 SET CONDA_SHLVL=
+SET PYTHONNOUSERSITE=1
+SET PYTHONPATH=
 
 TITLE KoboldAI - Git Transformers Installer
 ECHO This script will replace the Transformers version with the latest Git Transformers which may contain breaking changes.
