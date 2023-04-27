@@ -3147,7 +3147,7 @@ function fix_dirty_game_text() {
 		console.log("Firing Fix messed up text");
 		//Fixing text outside of chunks
 		for (node of game_text.childNodes) {
-			if ((!(node instanceof HTMLElement) || !node.hasAttribute("chunk")) && (node.wholeText.trim() != "")) {
+			if ((!(node instanceof HTMLElement) || !node.hasAttribute("chunk")) && (node.textContent.trim() != "")) {
 				console.log("Found Node that needs to be combined");
 				console.log(node);
 				//We have a text only node. It should be moved into the previous chunk
