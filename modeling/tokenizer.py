@@ -28,6 +28,7 @@ class GenericTokenizer:
         return ret.ids
 
     def decode(self, tokens: Union[int, List[int], torch.Tensor]) -> str:
+        print(f"[decode] Tokens: {tokens}")
         if isinstance(tokens, torch.Tensor):
             tokens = tokens.cpu().tolist()
 
